@@ -1,6 +1,6 @@
 # 独立 Lens 数值与图像算法
 
-这里是 QCut 自行编写的 C++20 库、命令行工具和测试。默认构建只依赖 C++ 标准库，不加载剪映、OpenCV、模型或 GPU 程序。当前恢复了 `liblens` 中 `LENS::ALGORITHM::MoveSys::Util` 的六个 CPU 数值原语、`fsnew` 的 RGBA 仿射图像采样与 BGR 转换、`ImageTransform` 的另一种仿射坐标计算顺序，两对锚点和已处理裁切矩形到缩放矩阵的算法，以及 `OnlineMove::RectSmoother` 的连续帧裁切平滑。`CenterFocus` / `RectCropper` 将已选检测框或缺失检测送入真实的边界跟随、尺度规划和时序裁切链。第三批新增 `Move::Run` 的 border=11 运动约束核，限制像素空间的缩放、旋转和平移；第四批补上夹住这个约束核的两侧坐标转换 `Util::Rigid2Lock` 与 `Util::Lock2Rigid`。六个数值原语是 3×3 矩阵乘法、求逆、点旋转、刚性点变换、高斯核、轨迹高斯平滑。
+这里是 QCut 自行编写的 C++20 库、命令行工具和测试。默认构建只依赖 C++ 标准库，不加载剪映、OpenCV、模型或 GPU 程序。当前恢复了 `liblens` 中 `LENS::ALGORITHM::MoveSys::Util` 的六个 CPU 数值原语、`fsnew` 的 RGBA 仿射图像采样与 BGR 转换、`ImageTransform` 的另一种仿射坐标计算顺序，两对锚点和已处理裁切矩形到缩放矩阵的算法，以及 `OnlineMove::RectSmoother` 的连续帧裁切平滑。`CenterFocus` / `RectCropper` 将已选检测框或缺失检测送入真实的边界跟随、尺度规划和时序裁切链。第三批新增 `Move::Run` 的 border=11 运动约束核，限制像素空间的缩放、旋转和平移；第四批补上夹住这个约束核的两侧坐标转换 `Util::Rigid2Lock` 与 `Util::Lock2Rigid`；第五批把三段串成完整的 `MoveSys::MergeUtil`，并通过 `SmartMotionPipeline` 的真实构造与 `init` 拿到配置好的 `SettingInfo`。六个数值原语是 3×3 矩阵乘法、求逆、点旋转、刚性点变换、高斯核、轨迹高斯平滑。
 
 这些单元有当前版本二进制静态证据和隔离进程的原生对照。新增像素单元在 3,892 组矩阵、尺寸和布局组合中，RGBA/BGR 共 161,540,260 字节逐字节一致；与原有点变换 `warp_points` 是不同接口。这里尚不提供完整 VAS 防抖、Deflicker、UMVFI、VMB 或成片导出，也未证明剪映当前界面选择这个 `base` 后端。
 
@@ -176,9 +176,43 @@ EOF
 
 详见 [模板与像素坐标转换](../../docs/task/jianying-filter-runtime-research/lens-rigid-lock-conversion-2026-09-10.zh.md)。本轮没有配置 `SettingInfo`（其默认构造把宽高写成 `-1f`），也没有调用整个 `MergeUtil`；没有新增产品像素或 VAS/Deflicker 完整链声明。本轮远程 CI 按新 head 另行验收。
 
+## MergeUtil 整链
+
+[merge_util.hpp](merge_util.hpp) 的 `merge_util` 恢复 `MoveSys::MergeUtil`（`0xb0f00`）整条链，把前三节的三个单元按原生顺序串起来：
+
+```text
+templated = Rigid{tx = current[2], ty = current[3], degrees = current[1], scale = current[0]}
+locked    = Rigid2Lock(templated, 中心 = (W/2, H/2), W, H)
+CX = (box[2] + box[0]) / 2f      CY = (box[3] + box[1]) / 2f
+shifted   = Rigid{locked.tx + (CX - W/2f), locked.ty + (CY - H/2f), locked.degrees, locked.scale}
+moved     = Move::Run(shifted)   参数 = (border 11, W, H, CX, CY, 0.2f)
+merged    = Lock2Rigid(moved, 中心 = (CX, CY), W, H)
+输出      = {merged.scale, merged.degrees, merged.tx, merged.ty}
+```
+
+三点必须写死：**模板向量的物理顺序是 `[scale, degrees, tx, ty]`，不是 Rigid 的字段顺序**，输出用同一个置换写回；**`0xb1028` 算出的 `(x1-x0)/width` 是死值**，全函数再没读过，把它当水平位移是最容易犯的错；**三段中心不同**——`Rigid2Lock` 用画幅中心，`Move` 与 `Lock2Rigid` 用框中心。位移是 `(sum/2) - (extent/2)`，不能折成 `(sum - extent)/2`。
+
+`MergeSettings` 只建模 `MergeUtil` 实际解引用的三个 `SettingInfo` 字段：`+0x00` width（六次载入）、`+0x04` height（五次）、`+0x10`（一次，载入后丢弃）。原生 `SettingInfo` 共 `0x44` 字节，其余字段的语义没有恢复。`unused_field` 取任何值都不改变结果，默认测试与原生诊断都用毒值断言了这一点。
+
+两个向量都必须至少四个元素：原生用 `operator[]` 不做边界检查，少于四个在原生是 UB，这里拒绝；多于四个原生忽略，这里也忽略。宽高 `1..8192`（三段子域的合取），其余边界是三段各自的域，拒绝时返回值指明是哪一段拒绝的。输出恒为四个元素，可与输入引用同一容器。
+
+```sh
+/tmp/qcut-independent-lens/lens-merge-util <<'EOF'
+merge 1920 1080 .8 2 0 .25 -.5 0 0 1920 1080
+EOF
+```
+
+输出 `{"vector":[2,-0,0.25,-0.5],...}`。每行字段为 `merge width height unused_field scale degrees tx ty x0 y0 x1 y1`；成功立即 flush，非法输入非零退出且不写成功占位。
+
+第五批本机 Release 与 fail-closed ASan/UBSan **各 21/21 CTest**；新增 C++ **3,459 项检查**和一组 CLI 测试。**387,498 次真实 `MergeUtil` 调用**，其中 334,645 次落在声明域内，**1,338,580 个 float32 逐 bit 零差异**；两种构建的原生 JSON 逐字符相同，八个既有原生诊断保持原值。十四个错误算法变体被默认 CTest 与原生对照同时检出，两个身份负控在任何数值调用前中止。
+
+**声明域外不宣称一致**：52,836 次被拒绝的调用里有 51,606 次原生返回的四个 float 全部有限，也就是原生给得出结果而本实现拒绝；本实现比原生更窄，这是安全策略。17×145 这种极小画幅有 63% 的样例被运动段的 4×边长平移门禁拒绝，计数写死在默认测试里，不用删小画幅来掩盖。`lock_to_rigid` 那一段的门禁在 387,498 次调用里一次都没触发，守卫保留但**不宣称验证过**。
+
+详见 [MergeUtil 整链与 SettingInfo 配置入口](../../docs/task/jianying-filter-runtime-research/lens-merge-util-2026-09-10-batch5.zh.md)。本轮把 `SmartMotionPipeline` 只当作 `SettingInfo` 的真实工厂；`process`、`update`、`preview` 以及 `preview` 里排在前面的 `CenterFocus::Process` 都没有恢复，也没有新增产品像素或 VAS/Deflicker 完整链声明。
+
 ## 可选原生诊断
 
-只有显式开启 `LENS_CONTRACT_NATIVE_ORACLE=ON` 才编译 [数值诊断](native_oracle.cpp)、[原 base 图像诊断](image_warp_native_oracle.cpp)、[后端诊断](image_warp_backend_native_oracle.cpp) 、[矩阵计划诊断](transform_plan_native_oracle.cpp) 、[连续帧诊断](temporal_crop_native_oracle.cpp)、[检测框裁切诊断](crop_selection_native_oracle.cpp)、[运动约束诊断](motion_constraint_native_oracle.cpp) 和 [坐标转换诊断](rigid_lock_conversion_native_oracle.cpp)。工具限 macOS arm64；共用 [身份校验](native_identity.hpp)，在装载前检查完整文件 SHA256，解析每个导出符号后检查已加载 Mach-O UUID，不匹配即退出。图像诊断调用真实 `Mat` 构造和析构，矩阵计划诊断还调用真实 `ImageTransform` 构造和析构；额外检查导出锚点地址后才使用固定版本的内部入口。[共享诊断支持](image_warp_native_support.hpp) 避免重复 Mat ABI 和旧图像样本。
+只有显式开启 `LENS_CONTRACT_NATIVE_ORACLE=ON` 才编译 [数值诊断](native_oracle.cpp)、[原 base 图像诊断](image_warp_native_oracle.cpp)、[后端诊断](image_warp_backend_native_oracle.cpp) 、[矩阵计划诊断](transform_plan_native_oracle.cpp) 、[连续帧诊断](temporal_crop_native_oracle.cpp)、[检测框裁切诊断](crop_selection_native_oracle.cpp)、[运动约束诊断](motion_constraint_native_oracle.cpp) 、[坐标转换诊断](rigid_lock_conversion_native_oracle.cpp) 和 [MergeUtil 整链诊断](merge_util_native_oracle.cpp)。工具限 macOS arm64；共用 [身份校验](native_identity.hpp)，在装载前检查完整文件 SHA256，解析每个导出符号后检查已加载 Mach-O UUID，不匹配即退出。图像诊断调用真实 `Mat` 构造和析构，矩阵计划诊断还调用真实 `ImageTransform` 构造和析构；额外检查导出锚点地址后才使用固定版本的内部入口。[共享诊断支持](image_warp_native_support.hpp) 避免重复 Mat ABI 和旧图像样本。
 
 ```sh
 cmake -S research/independent-lens-contract -B /tmp/qcut-independent-lens-native -DCMAKE_BUILD_TYPE=Release -DLENS_CONTRACT_NATIVE_ORACLE=ON
@@ -191,6 +225,9 @@ DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/q
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-crop-selection-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-motion-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-rigid-lock-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
+DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-merge-util-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 ```
 
 工具只在隔离进程中调用被固定身份验证的函数，不启动或注入剪映、不读取项目。原生依赖的诊断信息写入标准错误；JSON 验证统计写入标准输出。默认库与 CLI 都不会链接这个诊断工具，也不会包含私有运行库。
+
+MergeUtil 诊断会构造真实 `SmartMotionPipeline`，供应商库在构造时往标准输出打印 `bytenn` / `mobilecv2` banner；诊断在整个运行期间把标准输出重定向到标准错误，只在最后恢复出来写那一行 JSON。
