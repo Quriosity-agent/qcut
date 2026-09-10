@@ -15,6 +15,16 @@
 
 // Types
 export {
+	INDEPENDENT_FILTER_PROVIDERS,
+	isIndependentFilterProvider,
+	isNativeLocalEffectProvider,
+	NATIVE_LOCAL_EFFECT_PROVIDERS,
+} from "./color-providers.js";
+export type {
+	IndependentFilterProvider,
+	NativeLocalEffectProvider,
+} from "./color-providers.js";
+export {
 	DEFAULT_MEDIA_PORTRAIT_ADJUSTMENTS,
 	DEFAULT_MEDIA_PORTRAIT_MANUAL_BODY,
 	hasMediaPortraitAdjustments,
