@@ -21,6 +21,7 @@ import {
 	rename,
 	rm,
 	stat,
+	writeFile,
 } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import extractZip from "extract-zip";
@@ -30,6 +31,9 @@ type RifePlatform = keyof typeof manifest.targets;
 
 const ROOT = resolve(import.meta.dir, "..");
 const CACHE_ROOT = join(ROOT, "node_modules", ".cache", "qcut-rife");
+const DOWNLOAD_MAX_RETRIES = 3;
+/** Generous for the 436 MB macOS archive, small enough that a stall fails the job. */
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const RESOURCES_ROOT = join(ROOT, "electron", "resources", "rife");
 const PLATFORMS = Object.keys(manifest.targets) as RifePlatform[];
 
@@ -95,19 +99,43 @@ async function downloadArchive({
 	const cached = await sha256File({ filePath: archivePath }).catch(() => null);
 	if (cached === target.sha256) return archivePath;
 	const tempPath = `${archivePath}.download`;
-	await rm(tempPath, { force: true });
-	const response = await fetch(target.url, { redirect: "follow" });
-	if (!response.ok || !response.body) {
-		throw new Error(`Download failed (${response.status}): ${target.url}`);
+	// A hung release-asset download stalled three release jobs for hours:
+	// bound every attempt and retry, like scripts/stage-ffmpeg-binaries.ts.
+	let lastError: Error | null = null;
+	for (let attempt = 1; attempt <= DOWNLOAD_MAX_RETRIES; attempt += 1) {
+		await rm(tempPath, { force: true });
+		try {
+			process.stdout.write(
+				`[stage-rife] ${platform}: downloading ${basename(archivePath)} (attempt ${attempt}/${DOWNLOAD_MAX_RETRIES})\n`
+			);
+			const response = await fetch(target.url, {
+				redirect: "follow",
+				signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+			});
+			if (!response.ok) {
+				throw new Error(`Download failed (${response.status}): ${target.url}`);
+			}
+			await writeFile(tempPath, Buffer.from(await response.arrayBuffer()));
+			await expectHash({
+				filePath: tempPath,
+				expected: target.sha256,
+				label: `${platform} archive`,
+			});
+			await rename(tempPath, archivePath);
+			return archivePath;
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			await rm(tempPath, { force: true });
+			if (attempt < DOWNLOAD_MAX_RETRIES) {
+				process.stderr.write(
+					`[stage-rife] ${platform}: attempt ${attempt}/${DOWNLOAD_MAX_RETRIES} failed: ${lastError.message}; retrying\n`
+				);
+			}
+		}
 	}
-	await Bun.write(tempPath, response);
-	await expectHash({
-		filePath: tempPath,
-		expected: target.sha256,
-		label: `${platform} archive`,
-	});
-	await rename(tempPath, archivePath);
-	return archivePath;
+	throw new Error(
+		`Could not download the RIFE archive for ${platform} after ${DOWNLOAD_MAX_RETRIES} attempts: ${lastError?.message ?? "unknown error"}`
+	);
 }
 
 async function stage({ platform }: { platform: RifePlatform }): Promise<void> {
