@@ -1186,6 +1186,7 @@ export function MediaProperties({
 						<StabilizationSection
 							enhancements={visual.enhancements}
 							onChange={updateEnhancements}
+							mediaItem={mediaItem}
 						/>
 					) : null}
 
