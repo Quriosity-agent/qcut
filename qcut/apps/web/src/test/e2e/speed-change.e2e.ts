@@ -328,7 +328,9 @@ test.describe("Speed change workflow", () => {
 
 		// Smart interpolation now lives inside the curve tab, below the editor.
 		await speedPanel.getByTestId("speed-mode-curve").click();
+		// Interpolation is a three-way select now: off / FFmpeg motion / RIFE.
 		await speedPanel.getByTestId("speed-frame-interpolation").click();
+		await page.getByRole("option", { name: "运动补偿（FFmpeg）" }).click();
 		await expect
 			.poll(async () => (await speedState({ page })).frameInterpolation)
 			.toBe("motion-compensated");
