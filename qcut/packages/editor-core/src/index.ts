@@ -437,6 +437,7 @@ export {
 
 // Timeline utilities
 export {
+	easeClipTransitionProgress,
 	sortTracksByOrder,
 	normalizeTrackOrder,
 	moveTrack,
