@@ -1,13 +1,15 @@
+import type { StabilizationProfile } from "@/lib/stabilization/stabilization-plan";
+
 /**
  * Discrete stabilization levels for the 视频防抖 section's level dropdown.
  *
- * The FFmpeg backend (electron/ffmpeg/video-enhancement-filter.ts) quantizes
- * `enhancements.stabilization` (0–100) to a deshake radius of
+ * The stored value stays the 0–100 `enhancements.stabilization` number. The
+ * in-house stabilizer (preview and canvas export) maps each level to a
+ * smoothing window and a crop scale through `STABILIZATION_PROFILES`; the
+ * FFmpeg CLI/API engines still quantize the same value to a deshake radius of
  * `ceil(value / 100 * 4) * 16`, i.e. exactly four steps: 16, 32, 48 and 64 px.
- * Exposing a slider therefore promises more precision than the filter has;
- * the level enum maps one-to-one onto those steps instead.
+ * The level enum maps one-to-one onto those steps.
  */
-
 export type StabilizationLevel = "low" | "recommended" | "high" | "max";
 
 export const STABILIZATION_LEVELS: ReadonlyArray<{
@@ -49,6 +51,29 @@ export const STABILIZATION_LEVELS: ReadonlyArray<{
 ];
 
 export const DEFAULT_STABILIZATION_LEVEL: StabilizationLevel = "recommended";
+
+/**
+ * In-house stabilizer tuning per level: a wider smoothing window follows the
+ * camera path less closely, and a smaller crop scale leaves more room for the
+ * correction before the lens motion constraint has to clip it.
+ */
+export const STABILIZATION_PROFILES: Record<
+	StabilizationLevel,
+	StabilizationProfile
+> = {
+	low: { smoothingSeconds: 0.6, cropScale: 0.94 },
+	recommended: { smoothingSeconds: 1.2, cropScale: 0.9 },
+	high: { smoothingSeconds: 2, cropScale: 0.86 },
+	max: { smoothingSeconds: 3, cropScale: 0.8 },
+};
+
+/** Profile for a stored 0–100 value; null when stabilization is off. */
+export function stabilizationProfileForValue(
+	value: number
+): StabilizationProfile | null {
+	const level = stabilizationLevelForValue(value);
+	return level ? STABILIZATION_PROFILES[level] : null;
+}
 
 /** Mirror of the backend quantization, kept here so the UI can be tested against it. */
 export function deshakeRadiusForStabilization(value: number): number {
