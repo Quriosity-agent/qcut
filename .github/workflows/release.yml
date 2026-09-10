@@ -110,7 +110,16 @@ jobs:
       - name: Build afterPack script
         run: cd scripts && bunx tsc
 
+      - name: Cache RIFE archive
+        uses: actions/cache@v5
+        with:
+          path: qcut/node_modules/.cache/qcut-rife
+          key: rife-${{ runner.os }}-${{ hashFiles('qcut/electron/rife/rife-binaries.json') }}
+
       - name: Stage RIFE frame interpolation host
+        # The download is bounded and retried in the script; this cap turns a
+        # stalled runner network into a failed job instead of a 6-hour hang.
+        timeout-minutes: 25
         run: bun run stage-rife-binaries
 
       - name: Build Electron application
@@ -225,7 +234,16 @@ jobs:
           bun run stage-jianying-filter-local-bridge
           bun run stage-independent-filter-host
 
+      - name: Cache RIFE archive
+        uses: actions/cache@v5
+        with:
+          path: qcut/node_modules/.cache/qcut-rife
+          key: rife-${{ runner.os }}-${{ hashFiles('qcut/electron/rife/rife-binaries.json') }}
+
       - name: Stage RIFE frame interpolation host
+        # The download is bounded and retried in the script; this cap turns a
+        # stalled runner network into a failed job instead of a 6-hour hang.
+        timeout-minutes: 25
         run: bun run stage-rife-binaries
 
       - name: Build Electron application
@@ -357,7 +375,16 @@ jobs:
             exit 1
           fi
 
+      - name: Cache RIFE archive
+        uses: actions/cache@v5
+        with:
+          path: qcut/node_modules/.cache/qcut-rife
+          key: rife-${{ runner.os }}-${{ hashFiles('qcut/electron/rife/rife-binaries.json') }}
+
       - name: Stage RIFE frame interpolation host
+        # The download is bounded and retried in the script; this cap turns a
+        # stalled runner network into a failed job instead of a 6-hour hang.
+        timeout-minutes: 25
         run: bun run stage-rife-binaries
 
       - name: Build Electron application
