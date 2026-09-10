@@ -110,6 +110,9 @@ jobs:
       - name: Build afterPack script
         run: cd scripts && bunx tsc
 
+      - name: Stage RIFE frame interpolation host
+        run: bun run stage-rife-binaries
+
       - name: Build Electron application
         run: |
           npx electron-builder --win --publish never --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -118,6 +121,9 @@ jobs:
 
       - name: Verify packaged dependencies
         run: bun run verify:packaged-dependencies
+
+      - name: Verify packaged RIFE host
+        run: bun run verify:packaged-rife
 
       - name: Verify update artifacts
         run: bun run verify:update-artifacts -- --manifest latest.yml
@@ -219,6 +225,9 @@ jobs:
           bun run stage-jianying-filter-local-bridge
           bun run stage-independent-filter-host
 
+      - name: Stage RIFE frame interpolation host
+        run: bun run stage-rife-binaries
+
       - name: Build Electron application
         run: |
           rm -rf dist-electron
@@ -240,6 +249,9 @@ jobs:
 
       - name: Verify packaged dependencies
         run: bun run verify:packaged-dependencies
+
+      - name: Verify packaged RIFE host
+        run: bun run verify:packaged-rife
 
       - name: Build macOS DMG (custom hdiutil-based, sidesteps dmg-builder Tahoe bug)
         run: bun run build:mac-dmg
@@ -345,6 +357,9 @@ jobs:
             exit 1
           fi
 
+      - name: Stage RIFE frame interpolation host
+        run: bun run stage-rife-binaries
+
       - name: Build Electron application
         run: |
           npx electron-builder --linux --publish never --config.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -353,6 +368,9 @@ jobs:
 
       - name: Verify packaged dependencies
         run: bun run verify:packaged-dependencies
+
+      - name: Verify packaged RIFE host
+        run: bun run verify:packaged-rife
 
       - name: Verify update artifacts
         run: bun run verify:update-artifacts -- --manifest latest-linux.yml
