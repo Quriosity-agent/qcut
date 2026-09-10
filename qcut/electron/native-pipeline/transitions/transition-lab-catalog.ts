@@ -1,9 +1,16 @@
+import { GL_TRANSITION_RECIPES } from "./gl-transitions-recipes.js";
+import {
+	fragmentShader,
+	TRANSITION_LAB_VERTEX_SHADER,
+} from "./transition-lab-shader.js";
+
 export type TransitionLabClipType =
 	| "dissolve"
 	| "push"
 	| "page-flip"
 	| "motion-blur"
-	| "cube";
+	| "cube"
+	| "shader";
 
 export type TransitionLabDirection = "left" | "right" | "up" | "down";
 export type TransitionLabEasing = "linear" | "easeInOut" | "easeInOutQuint";
@@ -26,45 +33,17 @@ export interface TransitionLabRecipe {
 	};
 	shader: {
 		fragmentSource: string;
-		origin: "qcut-clean-room";
+		origin: "qcut-clean-room" | "gl-transitions";
 		license: "MIT";
 		binaryAssets: false;
+		/** Credited author of an imported gl-transition. */
+		author?: string;
+		/** Vendored file an imported recipe was generated from. */
+		sourceFile?: string;
 	};
 }
 
-export const TRANSITION_LAB_VERTEX_SHADER = `
-attribute vec2 aPosition;
-varying vec2 vUv;
-
-void main() {
-	vUv = aPosition * 0.5 + 0.5;
-	gl_Position = vec4(aPosition, 0.0, 1.0);
-}
-`;
-
-function fragmentShader({
-	helpers = "",
-	body,
-}: {
-	helpers?: string;
-	body: string;
-}): string {
-	return `
-precision highp float;
-uniform sampler2D uFrom;
-uniform sampler2D uTo;
-uniform float uProgress;
-uniform float uIntensity;
-uniform vec2 uResolution;
-varying vec2 vUv;
-
-${helpers}
-
-void main() {
-${body}
-}
-`;
-}
+export { TRANSITION_LAB_VERTEX_SHADER } from "./transition-lab-shader.js";
 
 const IN_BOUNDS_GLSL = `
 bool inBounds(vec2 uv) {
@@ -186,7 +165,7 @@ function cleanRoomShader({ fragmentSource }: { fragmentSource: string }) {
 	};
 }
 
-export const TRANSITION_LAB_RECIPES: readonly TransitionLabRecipe[] = [
+const CLEAN_ROOM_RECIPES: readonly TransitionLabRecipe[] = [
 	{
 		id: "lab-clean-dissolve",
 		name: "Clean Dissolve",
@@ -269,6 +248,11 @@ export const TRANSITION_LAB_RECIPES: readonly TransitionLabRecipe[] = [
 		},
 		shader: cleanRoomShader({ fragmentSource: CUBE_ROTATE_FRAGMENT }),
 	},
+];
+
+export const TRANSITION_LAB_RECIPES: readonly TransitionLabRecipe[] = [
+	...CLEAN_ROOM_RECIPES,
+	...GL_TRANSITION_RECIPES,
 ];
 
 export function getTransitionLabRecipe({
