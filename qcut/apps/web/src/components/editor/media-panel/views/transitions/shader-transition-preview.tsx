@@ -186,6 +186,12 @@ function drawShaderFrame({
 	context.uniform1f(progressLocation, progress);
 	context.uniform1f(intensityLocation, intensity);
 	context.uniform2f(resolutionLocation, width, height);
+	// Adapted gl-transitions read `ratio` through this uniform; clean-room
+	// recipes never declare it and the lookup is simply null.
+	context.uniform1f(
+		context.getUniformLocation(program, "uRatio"),
+		width / height
+	);
 	context.drawArrays(context.TRIANGLES, 0, 6);
 }
 
