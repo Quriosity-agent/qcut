@@ -369,8 +369,10 @@ export function PreviewElementRenderer({
 		runtimeQuality: runtimePreviewQuality,
 		sourceWidth: previewMediaItem?.width ?? canvasSize.width,
 		sourceHeight: previewMediaItem?.height ?? canvasSize.height,
+		// Stabilization renders on the in-house canvas path; only the FFmpeg
+		// enhancements should push auto quality onto the proxy preset.
 		hasEnhancements: hasMediaEnhancements({
-			enhancements: previewEnhancements,
+			enhancements: { ...previewEnhancements, stabilization: 0 },
 		}),
 	});
 	const previewEffectRenderMode = resolvePreviewEffectRenderMode({
