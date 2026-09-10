@@ -19,7 +19,9 @@
 `SmartMotionPipeline::preview`（`0x1118e4`）先在 `0x111a40` 调 `CenterFocus::Process`，再在 `0x111a64` 调 `MergeUtil`（`0xb0f00`）。`MergeUtil` 内部顺序与第三批 [运动约束研究](lens-crop-merge-2026-09-08.zh.md) 记录一致，本轮补上其中的第 2 步和第 5 步：
 
 - `0xb0f34` / `0xb0f38` 读 `SettingInfo`，`+0x00` 是 width、`+0x04` 是 height，`+0x10` 读出后本函数未再使用。
-- `0xb0fc8` / `0xb0fd4` 用 `fmov s2,#2.0` 做 `fdiv`，于 `0xb0fe8` 以 `(w/2, h/2, w, h)` 调 `Rigid2Lock`；`0xb1240` 以同样四个参数调 `Lock2Rigid`。中心是前两个 float 实参，不是函数内部推导出来的。
+- `0xb0fc8` / `0xb0fd4` 用 `fmov s2,#2.0` 做 `fdiv`，于 `0xb0fe8` 以 `(w/2, h/2, w, h)` 调 `Rigid2Lock`；`0xb1240` 调 `Lock2Rigid`，宽高相同但中心不同。中心是前两个 float 实参，不是函数内部推导出来的。
+
+  **修正（第五批反汇编实测）**：本文最初写「`0xb1240` 以同样四个参数调 `Lock2Rigid`」，这是**错的**。`0xb121c`/`0xb1228` 装进 `s0`/`s1` 的是 `MergeUtil` 第二个入参那个框的中心 `((x1+x0)/2, (y1+y0)/2)`，`0xb1230`/`0xb1238` 才装 width/height；只有后两个实参与 `Rigid2Lock` 相同。因此下文那 36,024 次「MergeUtil 形状调用」用 `w/2, h/2` 当中心，证明的是 `Lock2Rigid` 本身，不是 `MergeUtil` 的实际实参。整链的实参与原生对照见 [第五批研究记录](lens-merge-util-2026-09-10-batch5.zh.md)。
 
 `SettingInfo` 的默认构造 `0x1126d8` 把 `+0x00`、`+0x04` 写成 `-1.0f`（`+0x08` 写 `0.4f`、`+0x0c` 写 `0.7f`）。本轮没有恢复真实宽高的配置入口，也没有手写对象字段去凑一个可用配置，因此整个 `MergeUtil` 仍未打通。这一条明确不算关闭。
 
