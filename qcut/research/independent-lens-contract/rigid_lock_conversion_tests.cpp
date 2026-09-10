@@ -54,8 +54,15 @@ void goldens() {
 }
 
 void fingerprints() {
-  // Holding the angle at a signed zero keeps cosf, sinf and atan2f exact, so
-  // this fingerprint is a bit-exact contract on any conforming libm.
+  // Pinning the angle to a signed zero keeps cosf and sinf exact, but the
+  // decomposition still calls powf and atan2f on the swept matrix elements,
+  // and those round differently across libm implementations. The pinned value
+  // therefore records what the platform the native oracle actually ran on
+  // produces; remote CI proved that Linux and Windows differ here even though
+  // the eight hand-picked goldens above agree everywhere. Off that platform
+  // this sweep still checks that every fixture is accepted, and its count.
+  // Nothing stronger is asserted there: a NaN degrees is a legitimate native
+  // outcome in the negative-scale family, so finiteness is not an invariant.
   Random random{0x1d40b3a9U};
   std::uint64_t value = 14695981039346656037ULL;
   std::size_t results = 0;
@@ -70,8 +77,13 @@ void fingerprints() {
     hash(value, output);
     ++results;
   }
-  require(results == 8192 && value == 0x203c0291aed5b4c3ULL,
+  require(results == 8192, "The zero-angle sweep must produce 8192 results");
+#if defined(__APPLE__) && defined(__aarch64__)
+  require(value == 0x203c0291aed5b4c3ULL,
           "8192 native-observed zero-angle results changed");
+#else
+  static_cast<void>(value);
+#endif
 }
 
 void structure() {
