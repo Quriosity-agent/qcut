@@ -15,6 +15,7 @@ import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source
 import { cn } from "@/lib/utils";
 import { useColorPickerStore } from "@/stores/editor/color-picker-store";
 import { useColorPreviewStore } from "@/stores/editor/color-preview-store";
+import { isIndependentFilterProvider } from "@qcut/editor-core";
 
 function sourceDimensions(source: HTMLVideoElement | HTMLImageElement) {
 	if (source instanceof HTMLVideoElement) {
@@ -297,16 +298,9 @@ export function ColorPreviewCanvas({
 					const independent = renderedLayers.some(
 						({ settings }) =>
 							settings.multiPass?.enabled &&
-							(settings.multiPass.nativeEffect?.provider ===
-								"qcut-metal-fog-v1" ||
-								settings.multiPass.nativeEffect?.provider ===
-									"qcut-metal-lut-v1" ||
-								settings.multiPass.nativeEffect?.provider ===
-									"qcut-metal-graph-v1" ||
-								settings.multiPass.nativeEffect?.provider ===
-									"qcut-cpu-soft-glow-v1" ||
-								settings.multiPass.nativeEffect?.provider ===
-									"qcut-cpu-soft-glow-ui-snapshot-v1")
+							isIndependentFilterProvider(
+								settings.multiPass.nativeEffect?.provider
+							)
 					);
 					// The color layer reports the failure; retain the last good preview.
 					if (!independent) throw error;
