@@ -17,7 +17,13 @@ const execFileAsync = promisify(execFile);
  * cleanly on machines and CI runners that have not staged them.
  */
 const projectRoot = path.resolve(__dirname, "..", "..");
-const rifeDir = path.join(projectRoot, "electron", "resources", "rife", process.platform);
+const rifeDir = path.join(
+	projectRoot,
+	"electron",
+	"resources",
+	"rife",
+	process.platform
+);
 const staged =
 	existsSync(path.join(rifeDir, RIFE_EXECUTABLE)) &&
 	existsSync(path.join(rifeDir, RIFE_MODEL, "flownet.bin")) &&
@@ -83,8 +89,9 @@ describe.skipIf(!staged)("neural frame interpolation (staged binaries)", () => {
 			"json",
 			result?.path ?? "",
 		]);
-		const stream = (JSON.parse(stdout) as { streams: Array<Record<string, string>> })
-			.streams[0];
+		const stream = (
+			JSON.parse(stdout) as { streams: Array<Record<string, string>> }
+		).streams[0];
 		expect(stream.nb_read_frames).toBe("18");
 		expect(stream.r_frame_rate).toBe("30/1");
 		expect(stream.pix_fmt).toBe("yuv444p");
