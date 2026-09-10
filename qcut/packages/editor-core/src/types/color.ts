@@ -1,3 +1,5 @@
+import type { NativeLocalEffectProvider } from "../color-providers.js";
+
 export type ColorHslRangeName =
 	| "red"
 	| "orange"
@@ -139,13 +141,7 @@ export interface ColorMultiPassSettings {
 	intensity: number;
 	fidelity: "structural" | "native-local";
 	nativeEffect?: {
-		provider:
-			| "jianying-local-effect-v1"
-			| "qcut-metal-fog-v1"
-			| "qcut-metal-lut-v1"
-			| "qcut-metal-graph-v1"
-			| "qcut-cpu-soft-glow-v1"
-			| "qcut-cpu-soft-glow-ui-snapshot-v1";
+		provider: NativeLocalEffectProvider;
 		resourceId: string;
 		version: string;
 	};
