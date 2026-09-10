@@ -5,8 +5,9 @@ option(AGFX_CONTRACT_SANITIZERS "Enable address and undefined behavior sanitizer
 option(AGFX_CONTRACT_NATIVE_PROBE "Build the optional macOS arm64 diagnostic probe" OFF)
 option(AGFX_CONTRACT_NATIVE_ORACLE "Build the optional macOS arm64 native differential oracle" OFF)
 option(AGFX_CONTRACT_EXHAUSTIVE "Register the 2^32 standalone sweep as a test" OFF)
+option(AGFX_CONTRACT_GL_FRAGMENT "Build the optional macOS arm64 GL fragment arithmetic oracle" OFF)
 
-add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp m4_spatial.cpp cv_plane_format.cpp)
+add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp m4_spatial.cpp cv_plane_format.cpp gl_fragment_profile.cpp)
 target_compile_features(agfx_contract PUBLIC cxx_std_20)
 target_include_directories(agfx_contract PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -24,6 +25,8 @@ add_executable(agfx-m4-trilinear-tests m4_trilinear_tests.cpp)
 target_link_libraries(agfx-m4-trilinear-tests PRIVATE agfx_contract)
 add_executable(agfx-cv-plane-tests cv_plane_format_tests.cpp)
 target_link_libraries(agfx-cv-plane-tests PRIVATE agfx_contract)
+add_executable(agfx-gl-fragment-tests gl_fragment_profile_tests.cpp)
+target_link_libraries(agfx-gl-fragment-tests PRIVATE agfx_contract)
 # Standalone re-derivation of the 2^32 sweep. It loads no vendor library; it
 # only checks the standard-library model against counts and a fingerprint that
 # the native oracle produced. Too slow for the default suite, so it is a test
@@ -31,7 +34,7 @@ target_link_libraries(agfx-cv-plane-tests PRIVATE agfx_contract)
 add_executable(agfx-cv-plane-sweep cv_plane_format_sweep.cpp)
 target_link_libraries(agfx-cv-plane-sweep PRIVATE agfx_contract)
 
-set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests agfx-m4-trilinear-tests agfx-cv-plane-tests agfx-cv-plane-sweep)
+set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests agfx-m4-trilinear-tests agfx-cv-plane-tests agfx-cv-plane-sweep agfx-gl-fragment-tests)
 
 if(AGFX_CONTRACT_NATIVE_PROBE)
     if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -67,6 +70,19 @@ if(AGFX_CONTRACT_NATIVE_ORACLE)
     list(APPEND contract_targets agfx-cv-plane-native-oracle)
 endif()
 
+if(AGFX_CONTRACT_GL_FRAGMENT)
+    if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        message(FATAL_ERROR "The GL fragment arithmetic profile is only verified on macOS arm64")
+    endif()
+    # The oracle measures one renderer through its own diagnostic context. It
+    # loads no vendor library; the identity it enforces is the GL renderer and
+    # driver build, not a dylib hash.
+    add_executable(agfx-gl-fragment-oracle gl_fragment_native_oracle.cpp)
+    target_link_libraries(agfx-gl-fragment-oracle PRIVATE agfx_contract "-framework OpenGL")
+    target_compile_options(agfx-gl-fragment-oracle PRIVATE -Wno-deprecated-declarations)
+    list(APPEND contract_targets agfx-gl-fragment-oracle)
+endif()
+
 foreach(target IN LISTS contract_targets)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /WX /fp:strict)
@@ -90,6 +106,7 @@ add_test(NAME agfx-mip-contract COMMAND agfx-mip-tests)
 add_test(NAME agfx-m4-texture-contract COMMAND agfx-m4-texture-tests)
 add_test(NAME agfx-m4-trilinear-contract COMMAND agfx-m4-trilinear-tests)
 add_test(NAME agfx-cv-plane-format-contract COMMAND agfx-cv-plane-tests)
+add_test(NAME agfx-gl-fragment-contract COMMAND agfx-gl-fragment-tests)
 if(AGFX_CONTRACT_EXHAUSTIVE)
     add_test(NAME agfx-cv-plane-format-sweep COMMAND agfx-cv-plane-sweep)
 endif()
