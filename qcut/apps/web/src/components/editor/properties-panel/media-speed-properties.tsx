@@ -2,6 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -541,19 +548,38 @@ export function MediaSpeedProperties({
 								<PropertyItemLabel htmlFor={frameInterpolationId}>
 									{t("audioProperties.speed.frameInterpolation")}
 								</PropertyItemLabel>
-								<Switch
-									id={frameInterpolationId}
-									aria-label={t("audioProperties.speed.frameInterpolation")}
-									data-testid="speed-frame-interpolation"
-									checked={element.frameInterpolation === "motion-compensated"}
-									onCheckedChange={(enabled) =>
-										update({
-											frameInterpolation: enabled
-												? "motion-compensated"
-												: "none",
-										})
-									}
-								/>
+								<Select
+									value={element.frameInterpolation ?? "none"}
+									onValueChange={(value) => {
+										if (
+											value === "none" ||
+											value === "motion-compensated" ||
+											value === "neural"
+										) {
+											update({ frameInterpolation: value });
+										}
+									}}
+								>
+									<SelectTrigger
+										id={frameInterpolationId}
+										aria-label={t("audioProperties.speed.frameInterpolation")}
+										data-testid="speed-frame-interpolation"
+										className="w-52"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="none">
+											{t("audioProperties.speed.frameInterpolationOff")}
+										</SelectItem>
+										<SelectItem value="motion-compensated">
+											{t("audioProperties.speed.frameInterpolationMotion")}
+										</SelectItem>
+										<SelectItem value="neural">
+											{t("audioProperties.speed.frameInterpolationNeural")}
+										</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 						) : null}
 					</div>
