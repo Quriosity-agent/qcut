@@ -17,11 +17,31 @@ import { useColorPickerStore } from "@/stores/editor/color-picker-store";
 import { useColorPreviewStore } from "@/stores/editor/color-preview-store";
 import { isIndependentFilterProvider } from "@qcut/editor-core";
 
-function sourceDimensions(source: HTMLVideoElement | HTMLImageElement) {
+type ColorPreviewSource =
+	| HTMLVideoElement
+	| HTMLImageElement
+	| HTMLCanvasElement;
+
+/** Dispatched by canvas sources (the stabilized frame canvas) after each draw. */
+export const COLOR_PREVIEW_SOURCE_FRAME_EVENT = "qcut-frame";
+
+function sourceDimensions(source: ColorPreviewSource) {
 	if (source instanceof HTMLVideoElement) {
 		return { width: source.videoWidth, height: source.videoHeight };
 	}
+	if (source instanceof HTMLCanvasElement) {
+		return { width: source.width, height: source.height };
+	}
 	return { width: source.naturalWidth, height: source.naturalHeight };
+}
+
+/** Source time of the frame a canvas source currently shows. */
+function sourceTimestampSeconds(source: ColorPreviewSource): number {
+	if (source instanceof HTMLVideoElement) return source.currentTime;
+	if (source instanceof HTMLCanvasElement) {
+		return Number(source.dataset.sourceTime ?? 0) || 0;
+	}
+	return 0;
 }
 
 function drawObjectFit({
@@ -32,7 +52,7 @@ function drawObjectFit({
 	fitMode,
 }: {
 	context: CanvasRenderingContext2D;
-	source: HTMLVideoElement | HTMLImageElement;
+	source: ColorPreviewSource;
 	width: number;
 	height: number;
 	fitMode: "cover" | "contain" | "fill";
@@ -193,11 +213,12 @@ export function ColorPreviewCanvas({
 		const canvas = canvasRef.current;
 		const parent = canvas?.parentElement;
 		if (!canvas || !parent) return;
-		const source = parent.querySelector<HTMLVideoElement | HTMLImageElement>(
-			sourceSelector
-		);
+		const source = parent.querySelector<ColorPreviewSource>(sourceSelector);
 		if (!source) return;
-		const sourceLocation = source.currentSrc || source.src || sourceSelector;
+		const sourceLocation =
+			source instanceof HTMLCanvasElement
+				? sourceSelector
+				: source.currentSrc || source.src || sourceSelector;
 		const elementId = parent.closest<HTMLElement>("[data-preview-element-id]")
 			?.dataset.previewElementId;
 		const sourceKey = portraitPreviewSourceKey({
@@ -273,8 +294,7 @@ export function ColorPreviewCanvas({
 						layers: renderedLayers,
 						frameSeed,
 						sourceKey,
-						timestampSeconds:
-							source instanceof HTMLVideoElement ? source.currentTime : 0,
+						timestampSeconds: sourceTimestampSeconds(source),
 						portraitAdjustments,
 					});
 					if (cancelled) return;
@@ -336,12 +356,14 @@ export function ColorPreviewCanvas({
 		const redraw = () => void draw();
 		source.addEventListener("loadeddata", redraw);
 		source.addEventListener("seeked", redraw);
+		source.addEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
 		animationFrame = requestAnimationFrame(loop);
 		return () => {
 			cancelled = true;
 			observer.disconnect();
 			source.removeEventListener("loadeddata", redraw);
 			source.removeEventListener("seeked", redraw);
+			source.removeEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
 			cancelAnimationFrame(animationFrame);
 		};
 	}, [fitMode, frameSeed, portraitAdjustments, renderedLayers, sourceSelector]);
