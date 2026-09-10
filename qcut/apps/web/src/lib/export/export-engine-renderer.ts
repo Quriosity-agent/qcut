@@ -36,6 +36,10 @@ import {
 	type ClipTransitionLayer,
 } from "./export-clip-transitions";
 import {
+	beginShaderTransitionLayer,
+	destroyShaderTransitionLayers,
+} from "./export-shader-transitions";
+import {
 	resolveActiveClipTransitionPreview,
 	type ClipTransitionPreviewState,
 } from "@/lib/transitions/clip-transition-preview";
@@ -196,6 +200,7 @@ export function destroyExportCompositor(): void {
 	adjustmentFrameCanvas = null;
 	adjustmentFrameCtx = null;
 	destroyClipTransitionLayer();
+	destroyShaderTransitionLayers();
 }
 
 /**
@@ -213,6 +218,16 @@ function beginMediaTransitionLayer({
 }): ClipTransitionLayer {
 	if (!transitionState) {
 		return { ctx: context.ctx, active: false, finish: () => undefined };
+	}
+	// GLSL transitions read both clips at once, so they bypass the per-clip
+	// presentation model and composite in their own offscreen pass.
+	if (transitionState.transition.type === "shader") {
+		return beginShaderTransitionLayer({
+			ctx: context.ctx,
+			width: context.canvas.width,
+			height: context.canvas.height,
+			transitionState,
+		});
 	}
 	const presentation = getClipTransitionLayerPresentation({
 		transition: transitionState.transition,
