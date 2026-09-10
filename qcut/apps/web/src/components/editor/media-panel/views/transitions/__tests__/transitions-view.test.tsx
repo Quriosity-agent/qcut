@@ -255,7 +255,7 @@ describe("TransitionsView", () => {
 
 		selectCategory({ name: "转场实验室" });
 
-		expect(screen.getByText("526 个转场")).toBeVisible();
+		expect(screen.getByText("649 个转场")).toBeVisible();
 		expect(screen.getByTestId("transition-card-lab-page-curl")).toBeVisible();
 		expect(
 			screen.getByTestId("transition-lab-canvas-lab-page-curl")
@@ -329,13 +329,16 @@ describe("TransitionsView", () => {
 			expect(
 				screen.getByTestId("transition-card-jianying-local-3d-space")
 			).toBeVisible();
-			expect(screen.getByText("526 个转场")).toBeVisible();
+			expect(screen.getByText("649 个转场")).toBeVisible();
 			const sources = within(
 				screen.getByRole("tablist", { name: "转场实验室来源" })
 			);
-			expect(sources.getByRole("tab", { name: /全部\s+526/ })).toBeVisible();
+			expect(sources.getByRole("tab", { name: /全部\s+649/ })).toBeVisible();
 			expect(
 				sources.getByRole("tab", { name: /QCut Shader\s+6/ })
+			).toBeVisible();
+			expect(
+				sources.getByRole("tab", { name: /开源 Shader\s+123/ })
 			).toBeVisible();
 			expect(
 				sources.getByRole("tab", { name: /本机剪映\s+520/ })
