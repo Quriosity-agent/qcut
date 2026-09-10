@@ -55,6 +55,23 @@
 - 预览：`stabilized-video-canvas` 在分析完成后挂载并带 `data-source-time`；`data-video-enhancement-proxy-status` 保持 `idle`——仅开防抖不再生成 FFmpeg deshake 代理（第一次运行暴露了 `hasEnhancements` 把自动画质推到「清晰/强制代理」预设的问题，已把 stabilization 从该判断里排除）。
 - 残余 2.46 px 主要是平滑后的低频轨迹（1.2 s 窗口跟随缓慢漂移），不是估计误差；闭环脚本里估计误差 ≤ 0.013 px。
 
+## 四b、真机测试（2026-09-10，可见的隔离 QCut 实例，副屏）
+
+用 `QCUT_WINDOW_DISPLAY=secondary QCUT_API_PORT=8791 … bun run electron -- --user-data-dir=<临时目录>` 起本分支构建的第二个 QCut（与用户正在跑的 QCut 共存），全部操作走编辑器 HTTP API（建项目 → 导入 → 上时间线 → PATCH `enhancements.stabilization=50` → 选中 → 导出），截图在 `docs/task/recordly/screenshots/stabilization-2026-09-10/`。
+
+1. **真实手机素材 `~/Movies/6月21日.mov`（1920×1080 @30，143 s，4298 帧）**：整段分析完成（面板显示「运动分析已就绪」，见 `04-analysis-ready.png`），muxer 导出 143 s 用时 22 s（4299 帧，bt709）。但用同一估计器量输入本身，逐帧运动只有 **0.02 px RMS**——这段是架着拍屏幕的，几乎没有抖动，所以输出只体现裁切放大（`05-before-after-10s.png`），比值无意义（噪声地板）。**这段素材证明的是链路能跑通，不能证明去抖效果。**
+2. **同一素材 10–40 s 叠加合成手持抖动**（多频正弦平移 ±77 px、旋转 ±1°，真实纹理，`handheld-shake-30s.mp4`）：导入 → 分析 → 导出 30 s 用时 6 s。同一估计器测量：
+
+   | 指标 | 输入 | 导出 | 比值 |
+   |---|---|---|---|
+   | 逐帧平移 RMS（640 px 分析尺度） | 9.27 px | 1.74 px | **0.187** |
+   | 逐帧平移 P95 | 16.1 px | 4.7 px | 0.29 |
+   | 逐帧旋转 RMS | 0.317° | 0.0125° | **0.039** |
+   | 匹配丢帧 | 1 / 899 | 1 / 899 | — |
+
+   `07-shake-motion-trail-12s.png` 是 8 帧叠加：左边原片糊成重影，右边导出清晰；`09-shaky-clip-status.png` 是面板里的「运动分析已就绪」。
+3. 没量到的：分析耗时没有埋点（30 s 片段的分析在 5 分钟轮询窗内完成，导出前置检查命中缓存，所以导出只要 6 s）；真实手持抖动（含视差、滚动快门）还没测——需要一段真正手持拍摄的素材。
+
 ## 五、明确没做 / 已知限制
 
 - 相似变换只有 4 自由度，滚动快门与视差不建模；纯平移 + 小角度场景效果最好。
