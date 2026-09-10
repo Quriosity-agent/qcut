@@ -1,6 +1,6 @@
 # Independent editor contracts
 
-Original C++20 implementations of fourteen bounded contracts observed in Jianying
+Original C++20 implementations of fifteen bounded contracts observed in Jianying
 11.3.0 `libvideoeditor.dylib` and `libcccreator.dylib` (arm64). The static library uses only the standard
 library. It neither loads Jianying nor implements a video renderer.
 
@@ -20,6 +20,7 @@ library. It neither loads Jianying nor implements a video renderer.
 | `variable_time` | Positive continuous speed normalization, three-piece integration and quadratic inverse, Video endpoint/fallback timing, control records and preselected graph-free nonlinear property | 384 genuine native configurations; 628,308 map calls, 46,080 records and 7,872 property calls, zero mismatches |
 | `variable_graph` | Nonempty graph expansion followed by curve-speed record mapping, raw channel controls versus mapped scalar controls, closed-record selection and actual multichannel property | 1,330 genuine native configurations; 95,372 property calls and 10,764 record comparisons, zero mismatches |
 | `property_dispatch` | Single-Video window dispatch: exact-hit and single-neighbor copies, mapped out-of-range clamping, curve routing into the existing linear and record paths, and the reported Segment-default and Caption gates | 384 genuine native configurations; 15,903 actual property calls and 15,903 finder attribution checks, zero mismatches |
+| `caption_color` | The Caption color evaluator itself: shape and range gates, the polar form with wrapped 32-bit channel differences, shortest-arc blending, the six-sector table and the 255 quantizer, plus the exported caption type predicate | 473,918 actual evaluator calls and 1,895,672 doubles, zero mismatches; 50 predicate calls in both string layouts |
 
 The models describe observed fields with ordinary C++ values; they do not expose
 vendor object layouts. State codes remain numeric because their broader event or
@@ -314,3 +315,24 @@ branch assertions, because the native entrypoint returns an empty vector either 
 See the [property dispatch evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-property-dispatch-2026-09-10.zh.md)
 for the branch map, the reported-but-unimplemented Segment-default and Caption gates,
 and the remaining boundaries.
+
+`evaluate_caption_color` reconstructs the unexported evaluator the Caption color branch
+calls, and `is_caption_type` the exported predicate its gate ends in. It is the evaluator
+and that one leaf, not the whole path: `isCaptionText`, the four color key comparisons and
+the positive mapped span are still only static conclusions, and `property_dispatch` still
+refuses the Caption branch rather than calling this unit. The two units were deliberately
+not connected, because the composed branch has no native counterpart while a Video segment
+is the only reachable segment type. Each side needs at least three doubles and a progress
+inside the closed unit interval; a NaN progress is deliberately not out of range, and its
+arithmetic collapses back onto the guard result, so no native comparison can separate the
+two. Channel scaling narrows through saturating toward-zero conversions and the resulting
+32-bit differences wrap, which is how a hue far outside one turn and the unsigned
+out-of-table sector are reached at all. Output is not clamped into a UI range: saturated
+channels produce values far above one. `caption_color_progress` is transcribed from four
+instructions and has no native call site here; it is excluded from the zero-mismatch count.
+Fourteen deliberately wrong implementations were compiled from the shipped source: eleven
+are caught by the native comparison and all fourteen by the standalone suite. The three the
+native comparison cannot see are a NaN-progress guard and a dropped zero turn, both
+structurally invisible in the return value, and the binary32 progress, which has no native
+call site. See the [caption color evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-caption-color-2026-09-10-batch5.zh.md)
+for the branch map, the measured reachability of both invisible controls, and what is not closed.
