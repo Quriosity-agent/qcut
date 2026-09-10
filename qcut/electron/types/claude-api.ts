@@ -238,7 +238,7 @@ export interface ClaudeMediaTimingProperties {
 	freezeFrameTime?: number;
 	freezeFrameDuration?: number;
 	preservePitch?: boolean;
-	frameInterpolation?: "none" | "blend" | "motion-compensated";
+	frameInterpolation?: "none" | "blend" | "motion-compensated" | "neural";
 }
 
 export interface ClaudeElement
