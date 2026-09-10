@@ -1,6 +1,6 @@
 # 剪映语义与滤镜算法：六个独立 C++ 工程
 
-本入口统一构建六个标准 C++20 工程，当前含 64 组 CTest：09-07 基线 40 组，09-08 首批 46、第二批 52、第三批 58，09-10 第四批 64。本机 Release 和禁止恢复的 ASan/UBSan 均 64/64，全部可选 macOS 原生探针编译通过。默认不加载剪映、不依赖 Qt 或 Metal；新 head 的云端 CI 单独验收。
+本入口统一构建六个标准 C++20 工程，当前含 70 组 CTest：09-07 基线 40 组，09-08 首批 46、第二批 52、第三批 58，09-10 第四批 64、第五批 70。本机 Release 和禁止恢复的 ASan/UBSan 均 70/70，全部可选 macOS 原生探针编译通过。默认不加载剪映、不依赖 Qt 或 Metal；新 head 的云端 CI 单独验收。
 
 其中电影柔光和迷雾是两条完整标准 C++ 滤镜算法链；其他工程交付局部合同或图像原语。六个工程不表示六个原生库被重写，整库完成数仍为 0/6。迷雾新 CPU 产品 adapter、Preview/Export 和 UI E2E 尚未接入。
 
@@ -25,6 +25,6 @@ Windows 把 `/tmp` 换成本机路径。ASan/UBSan 使用另一个构建目录�
 
 macOS ARM64 可加 `-DBINARY_CONTRACT_NATIVE_PROBES=ON` 编译诊断程序；它们不加入默认 CTest，私有库需显式传入，未知身份拒绝。CI 在 Linux、Windows、macOS 构建独立源码，另跑 Linux sanitizers；macOS 编译原生诊断，并使用自产 CGL 图样验证捕获器与 float→RGBA8 转换，不携带或执行厂商库。
 
-合并验证包含旧合同、新算法金样例、阶段解析负控、CLI、原生协议与参考验证器负控。默认测试中的“原生协议/验证器”只使用自产临时数据，不偷偷加载厂商库。各模块的真实差分、保护策略和未验证链路见工程文档；它们不能替代 QCut 编辑器预览、导出、撤销/重做或整库替换验收。历史迷雾 Metal 产品证据也不替代新标准 C++ 路径验收。当前构建及远端结果以[执行记录](../../docs/task/jianying-filter-runtime-research/binary-cpp-batch4-2026-09-10.zh.md)和当前 PR head 为准。
+合并验证包含旧合同、新算法金样例、阶段解析负控、CLI、原生协议与参考验证器负控。默认测试中的“原生协议/验证器”只使用自产临时数据，不偷偷加载厂商库。各模块的真实差分、保护策略和未验证链路见工程文档；它们不能替代 QCut 编辑器预览、导出、撤销/重做或整库替换验收。历史迷雾 Metal 产品证据也不替代新标准 C++ 路径验收。当前构建及远端结果以[执行记录](../../docs/task/jianying-filter-runtime-research/binary-cpp-batch5-2026-09-10.zh.md)和当前 PR head 为准。
 
-详细进度见[执行记录](../../docs/task/jianying-filter-runtime-research/binary-cpp-batch4-2026-09-10.zh.md)。
+详细进度见[执行记录](../../docs/task/jianying-filter-runtime-research/binary-cpp-batch5-2026-09-10.zh.md)。
