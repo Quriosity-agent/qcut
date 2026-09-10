@@ -784,6 +784,13 @@ export function buildXfadeTransitionFilter({
 			});
 			break;
 		default: {
+			// GLSL shader transitions never reach FFmpeg by design: the export
+			// factory pins timelines that use them to the canvas muxer.
+			if ((type as string) === "shader") {
+				throw new Error(
+					`Transition "${transition.presetId}" is a GLSL shader transition; FFmpeg cannot run it. Export with the canvas engine.`
+				);
+			}
 			const unsupportedType: never = type;
 			throw new Error(`Unsupported transition type: ${unsupportedType}`);
 		}
