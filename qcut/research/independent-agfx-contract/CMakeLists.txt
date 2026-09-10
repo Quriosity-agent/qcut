@@ -3,8 +3,10 @@ project(independent_agfx_contract LANGUAGES CXX)
 
 option(AGFX_CONTRACT_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)
 option(AGFX_CONTRACT_NATIVE_PROBE "Build the optional macOS arm64 diagnostic probe" OFF)
+option(AGFX_CONTRACT_NATIVE_ORACLE "Build the optional macOS arm64 native differential oracle" OFF)
+option(AGFX_CONTRACT_EXHAUSTIVE "Register the 2^32 standalone sweep as a test" OFF)
 
-add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp m4_spatial.cpp)
+add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp m4_spatial.cpp cv_plane_format.cpp)
 target_compile_features(agfx_contract PUBLIC cxx_std_20)
 target_include_directories(agfx_contract PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -20,8 +22,16 @@ add_executable(agfx-m4-texture-tests m4_texture_tests.cpp)
 target_link_libraries(agfx-m4-texture-tests PRIVATE agfx_contract)
 add_executable(agfx-m4-trilinear-tests m4_trilinear_tests.cpp)
 target_link_libraries(agfx-m4-trilinear-tests PRIVATE agfx_contract)
+add_executable(agfx-cv-plane-tests cv_plane_format_tests.cpp)
+target_link_libraries(agfx-cv-plane-tests PRIVATE agfx_contract)
+# Standalone re-derivation of the 2^32 sweep. It loads no vendor library; it
+# only checks the standard-library model against counts and a fingerprint that
+# the native oracle produced. Too slow for the default suite, so it is a test
+# only under AGFX_CONTRACT_EXHAUSTIVE.
+add_executable(agfx-cv-plane-sweep cv_plane_format_sweep.cpp)
+target_link_libraries(agfx-cv-plane-sweep PRIVATE agfx_contract)
 
-set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests agfx-m4-trilinear-tests)
+set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests agfx-m4-trilinear-tests agfx-cv-plane-tests agfx-cv-plane-sweep)
 
 if(AGFX_CONTRACT_NATIVE_PROBE)
     if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -43,6 +53,18 @@ if(AGFX_CONTRACT_NATIVE_PROBE)
       target_compile_options(agfx-${probe}-probe PRIVATE -fobjc-arc -Wno-deprecated-declarations)
       list(APPEND contract_targets agfx-${probe}-probe)
     endforeach()
+endif()
+
+if(AGFX_CONTRACT_NATIVE_ORACLE)
+    if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        message(FATAL_ERROR "The private diagnostic ABI is only verified on macOS arm64")
+    endif()
+    enable_language(OBJCXX)
+    add_executable(agfx-cv-plane-native-oracle cv_plane_format_native_oracle.mm)
+    set_target_properties(agfx-cv-plane-native-oracle PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED YES)
+    target_link_libraries(agfx-cv-plane-native-oracle PRIVATE agfx_contract "-framework Foundation" "-framework CoreVideo")
+    target_compile_options(agfx-cv-plane-native-oracle PRIVATE -fobjc-arc)
+    list(APPEND contract_targets agfx-cv-plane-native-oracle)
 endif()
 
 foreach(target IN LISTS contract_targets)
@@ -67,3 +89,7 @@ add_test(NAME agfx-texture-contract COMMAND agfx-texture-tests)
 add_test(NAME agfx-mip-contract COMMAND agfx-mip-tests)
 add_test(NAME agfx-m4-texture-contract COMMAND agfx-m4-texture-tests)
 add_test(NAME agfx-m4-trilinear-contract COMMAND agfx-m4-trilinear-tests)
+add_test(NAME agfx-cv-plane-format-contract COMMAND agfx-cv-plane-tests)
+if(AGFX_CONTRACT_EXHAUSTIVE)
+    add_test(NAME agfx-cv-plane-format-sweep COMMAND agfx-cv-plane-sweep)
+endif()
