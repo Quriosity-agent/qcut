@@ -11,6 +11,8 @@
 
 2026-09-08 第三批收尾：graph 与曲线时间组合、Graph 整树 stash/diff、Lens border=11 运动约束、M4 多层联合线性采样已交付，本机统一 Release/ASanUBSan 各 **58/58**。具体原生计数和输入域见[第三批记录](binary-cpp-batch3-2026-09-08.zh.md)。以下历史描述中的 graph+变速、Graph stash/diff、多层 linear+linear 缺口在该有界合同内关闭；完整分派/Session undo、整个 MergeUtil、其他设备、通用图与产品接入仍缺。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
 
+2026-09-10 第四批更新：PR #469 已于 09-09 合并（`a52a891d1`）并随 v2026.09.09.1 发版；从 master `97cf30a83` 新建 `codex/jianying-binary-cpp-batch4-20260910`。四线新增 videoeditor 返回值分派、Creator 节点历史索引、Lens 的 Rigid2Lock/Lock2Rigid 两侧转换和 AGFX 的 CoreVideo 平面格式解析，本机统一 Release/ASanUBSan 各 **64/64**。具体原生计数、负控与未检出项见[第四批记录](binary-cpp-batch4-2026-09-10.zh.md)。**本批四个子项各自闭合一个有界单元，下方八个工作包一个都没有关闭**；其中 AGFX 交付的是平面格式解析而不是原定的 04 逐 Pass 残差，04 没有推进。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
