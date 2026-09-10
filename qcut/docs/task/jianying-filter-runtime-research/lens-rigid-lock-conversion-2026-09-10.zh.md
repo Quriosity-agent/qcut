@@ -100,7 +100,9 @@ scale = (sx + sy) / 2f
 1. **两个方向不是往返关系。** 45 度经 `Rigid2Lock` 得 42.1861 度，再经 `Lock2Rigid` 得 39.6338615 度；这两步本身也在原生对照里逐 bit 走了一遍。文档、README 和 CLI 帮助都写死了这一点，不能把其中一个说成另一个的逆。原生诊断中还有 420 次 `Rigid2Lock` 的输出直接落在 `Lock2Rigid` 安全域之外（`relay_out_of_domain`），也一并记下来。
 2. **NaN 只声明分类。** 负 scale 配接近零的角度时，`atan2f(-0.0, m11<0) = -pi` 与 `atan2f(+0.0, m00<0) = +pi` 让乘积为负，原生 `fsqrt` 得到 NaN **角度**，而 tx/ty/scale 仍是有限值。本轮 1,332,811 次调用中出现 4,601 次，每次恰好一个 NaN 字段。对照按分类比较通过，但**不宣称 payload 一致**。
 3. **scale 为零的四 NaN 族不在覆盖范围内**，见上一节。
-4. **逐位一致只在 Apple Silicon / macOS 上验证。** `cosf`/`sinf`/`powf`/`atan2f` 的舍入是系统 libm 的。默认 CTest 里，角度为有符号零的一族（8 个定点样例 + 8,192 个结果的指纹）按逐位断言，因为那一族的 `cosf(0)`、`sinf(0)`、`atan2f(±0, x)` 在任何合规 libm 上都精确、且 `sqrtf(fl(x*x))` 恰为 `|x|`；其余 8 个含三角函数的样例按 `1e-5 × max(1, |期望值|)` 的容差断言。Windows 与远程 CI 仍按新 head 另行验收。
+4. **逐位一致只在 Apple Silicon / macOS 上验证。** `cosf`/`sinf`/`powf`/`atan2f` 的舍入是系统 libm 的。默认 CTest 里 8 个定点样例按逐位断言，远程 CI 已确认这 8 个在 Linux 与 Windows 上同样精确；其余 8 个含三角函数的样例按 `1e-5 × max(1, |期望值|)` 的容差断言。
+
+   **修正（远程 CI 实测）**：本文最初推断 8,192 个结果的指纹也是 libm 无关的，理由是该族的 `cosf(0)`、`sinf(0)`、`atan2f(±0, x)` 在任何合规 libm 上都精确。这个推断是**错的**——分解尾部仍然对扫出来的矩阵元素调用 `powf` 和 `atan2f`，它们的实参并不总是精确零。PR #470 的首次云端 CI 在 ubuntu-24.04（含 ASan/UBSan）和 windows-latest 三个 job 上都以 `8192 native-observed zero-angle results changed` 失败，只有 macOS 通过。该指纹现在只在原生对照实际运行过的平台（Apple Silicon / macOS arm64）上按逐位断言，其他平台改为检查接受、计数与有限性。这与本工程 README 早就写明的「数值逐位对照目前只在 Apple Silicon/macOS 上验证」是一致的；原来的写法把本机 libm 的位钉进了跨平台默认测试。
 5. **没有配置 `SettingInfo`，没有调用整个 `MergeUtil`**，也没有 `ProcessDetectionImage`、VAS、Deflicker、UMVFI、VMB。
 6. **这是从固定二进制恢复的坐标转换**，不能据此宣称 QCut 或剪映当前界面走这条路径，也不构成任何成片像素声明。
 
