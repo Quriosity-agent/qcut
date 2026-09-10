@@ -9,6 +9,7 @@ import { platform } from "@qcut/platform-core";
 import { requiresJianyingLocalColorExport } from "./jianying-local-color-export";
 import { timelineHasEnabledFilterStack } from "./export-filter-stack-policy";
 import { timelineHasShaderTransition } from "./export-shader-transitions";
+import { timelineHasStabilization } from "./export-stabilization";
 import {
 	hasStickerRuntimeForExport,
 	StickerRuntimeExportUnsupportedError,
@@ -155,6 +156,15 @@ export class ExportEngineFactory {
 				engineType: ExportEngineType.MUXER,
 				reason:
 					"Timeline uses GLSL shader transitions; only the canvas muxer can run them",
+				capabilities,
+				estimatedPerformance: "medium",
+			};
+		}
+		if (tracks && timelineHasStabilization({ tracks })) {
+			return {
+				engineType: ExportEngineType.MUXER,
+				reason:
+					"Timeline uses video stabilization; the canvas muxer applies the same per-frame motion correction as the preview",
 				capabilities,
 				estimatedPerformance: "medium",
 			};
