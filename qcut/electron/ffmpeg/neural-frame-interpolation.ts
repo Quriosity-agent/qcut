@@ -1,11 +1,19 @@
-import { execFile } from "node:child_process";
+import { type ExecFileOptions, execFile } from "node:child_process";
 import { mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { interpolateFrameDirectory } from "../rife/rife-bridge.js";
 import { getFFmpegPath, getFFprobePath } from "./paths.js";
 
-const execFileAsync = promisify(execFile);
+// Resolved at call time: export-engine tests mock node:child_process with
+// only spawn, and promisify(undefined) at import time would break them.
+function execFileAsync(
+	file: string,
+	args: readonly string[],
+	options: Omit<ExecFileOptions, "encoding">
+): Promise<{ stdout: string; stderr: string }> {
+	return promisify(execFile)(file, args, { ...options, encoding: "utf8" });
+}
 
 /**
  * Export-time neural frame interpolation (`frameInterpolation: "neural"`).
