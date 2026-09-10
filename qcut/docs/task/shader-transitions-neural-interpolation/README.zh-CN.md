@@ -73,7 +73,7 @@
 ### 明确没做
 
 - 分割模型（BiRefNet）不做：+115 MB 且做不了实时，代价与收益不匹配。
-- 防抖自研方案（OpenCV 运动估计 + 已还原的 lens C++）尚未开始，是下一项。
+- 防抖自研方案（OpenCV 运动估计 + 已还原的 lens C++）在本批之后完成，见 `docs/task/video-stabilization/README.zh-CN.md`。
 
 ## 复现
 
