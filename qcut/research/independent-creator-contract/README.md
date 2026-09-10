@@ -12,6 +12,7 @@ in-memory state models. It does not send requests, change live drafts, or render
 | `model_gate` | Batch-selection keyframe-removal flag and deferred acceptance |
 | `dialog_callbacks` | Two callbacks in argument order; preview dismissal call, cache update, notification count |
 | `history_index` | Node-history index construction over the seven walked classes: visit order, ID-view keys, strong-copy values, first-wins duplicates, active-list-only traversal, and the provably inert escape hooks |
+| `keyframe_stash` | Record selection for `CommonKeyframes` → `NodeArray<CommonKeyframe>` → `CommonKeyframe` → its two controls and graph slot: which subtree produces a record, what the record is made of, which object each element slot ends up holding, and when the caller's changed flag is written |
 
 `ResolvedCandidate` is an explicit boundary: the caller supplies segment-type
 resolution and the value returned by the timeline evaluator at the current
@@ -283,3 +284,49 @@ real run are pinned into the default CTest, since the SDK's generated UUIDs cann
 reproduced. Session history selection, transaction commit/rollback and undo/redo replay remain
 outside this contract. See the
 [fourth-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-history-index-2026-09-10.zh.md).
+
+## Keyframe record selection (2026-09-10, fifth batch)
+
+`keyframe_stash.*` reconstructs `get_stash_copy` for the keyframe family: `CommonKeyframes`
+(exported at 0xc84570), `NodeArray<CommonKeyframe>` (0xc873f8, reached only through vtable slot
+0x38) and `CommonKeyframe` (0xc7ea80), with the two controls and the optional graph delegating to
+the graph-side walks the second batch already delivered. **Only the keyframe node level and the
+group level are newly reconstructed here.** The array level is the second instantiation of one
+class template — after normalising branch targets, `NodeArray<CommonKeyframe>::get_stash_copy`
+and `GraphPointArray::get_stash_copy` are 412 identical instructions apart from three constants
+— so it is reused and re-verified rather than recovered again, and the graph half stays where the
+second batch left it.
+
+A record is the historical node's payload wearing the current node's state code and changed flag,
+with a field written only where the two nodes differ. A history miss, a present-but-null entry and
+a present-but-wrong-type entry are all the same branch: report a change and return a deep copy.
+The value vector is compared by IEEE equality and not bit for bit, so opposite signed zeros are
+equal and any NaN forces a replacement vector. Both controls and the graph report through the
+caller's own flag; the one graph transition this level reports by itself is losing a graph the
+history still holds, which clears the record's graph slot. The array level gives each element a
+flag of its own, resolves a silent element through the index to the *historical* object, and uses
+that object's own ID — not the key it was found under — to decide whether the substitution counts
+as a change. An array with no substitution and an empty retained list produces no record at all.
+
+Fourteen portable CTest groups now hold 114 new assertions and pass Release and fail-fast
+ASan/UBSan. The optional `creator-native-keyframe-stash` resolves the five exported entry points
+by mangled name *and* by recorded address, and reaches the two unexported array levels only after
+reading a live object's vptr and checking its 0x38 slot. It then checks 2,207 real SDK cases and
+397,277 comparisons with zero mismatches; the repeat run and the sanitized run agree on every
+count. Its corpus reached all three roots (508 / 400 / 292), 1,100 records and 100 silent walks,
+220 empty indexes, 50 null and 50 wrong-typed entries, 66 dropped and 132 gained graphs, 129
+arrays with a retained list, 120 arrays with the change-suppression flag set, and 209 record
+slots holding a historical element. Fourteen compiled mutants are rejected by both the standalone
+tests and the native comparison; two further variants are recorded as semantically identical
+programs rather than mutations, and two escape-channel variants as structurally unobservable.
+
+Two reconnaissance findings were corrected in the process and are recorded rather than quietly
+fixed: the array's change-suppression flag *is* reachable, through the same `make_shared` helper
+the graph-point array factory already uses, so the suppression branches were actually exercised;
+and the array's `deep_copy_raw` clears only the tracking flag, copying the state code and changed
+flag across, which is what the second batch's `deep_array` already did.
+
+Session-level record selection, `Draft::get_stash_copy`, `Draft::reorganize_dirty_states`,
+`Session::draftTransaction`, the IOManager transaction pair and the patch-JSON family are all
+untouched. See the
+[fifth-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-keyframe-stash-2026-09-10-batch5.zh.md).
