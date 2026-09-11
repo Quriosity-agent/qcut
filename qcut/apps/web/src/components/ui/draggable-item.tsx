@@ -40,7 +40,12 @@ export interface DraggableMediaItemProps {
 	rounded?: boolean;
 	variant?: "default" | "card";
 	isDraggable?: boolean;
-	layout?: "grid" | "list";
+	/** "strip" is a full-width, fixed-height preview with the label below. */
+	layout?: "grid" | "list" | "strip";
+	/** Grid only: fill the column instead of the fixed 112 px square. */
+	fill?: boolean;
+	/** Replaces the default name label under the preview. */
+	label?: ReactNode;
 	stopPropagation?: boolean;
 	onActivate?: () => void;
 	"data-testid"?: string;
@@ -60,6 +65,8 @@ export function DraggableMediaItem({
 	variant = "default",
 	isDraggable = true,
 	layout = "grid",
+	fill = false,
+	label,
 	stopPropagation = true,
 	onActivate,
 	"data-testid": dataTestId,
@@ -261,13 +268,33 @@ export function DraggableMediaItem({
 		};
 	}, [cleanupTouchDrag]);
 
+	const dragHandleProps = {
+		draggable: isDraggable && !isIOS,
+		onDragStart: isDraggable && !isIOS ? handleDragStart : undefined,
+		onDragEnd: isDraggable && !isIOS ? handleDragEnd : undefined,
+		onPointerDown: isDraggable ? handlePointerDown : undefined,
+	};
+	const previewContent = (
+		<>
+			{preview}
+			{!isDragging && !onActivate && (
+				<PlusButton
+					className="opacity-0 group-hover:opacity-100"
+					onClick={handleAddToTimeline}
+				/>
+			)}
+		</>
+	);
+
 	return (
 		<>
 			<div
 				ref={dragRef}
 				className={cn(
 					"relative group",
-					layout === "list" ? "h-14 w-full" : "h-28 w-28"
+					layout === "list" && "h-14 w-full",
+					layout === "strip" && "w-full",
+					layout === "grid" && (fill ? "w-full" : "h-28 w-28")
 				)}
 				data-testid={dataTestId}
 			>
@@ -295,39 +322,44 @@ export function DraggableMediaItem({
 						onActivate();
 					}}
 				>
-					<AspectRatio
-						ratio={aspectRatio}
-						className={cn(
-							"relative overflow-hidden bg-accent",
-							layout === "list" && "h-14 w-24 shrink-0",
-							rounded && "rounded-md",
-							"[&::-webkit-drag-ghost]:opacity-0" // Webkit-specific ghost hiding
-						)}
-						draggable={isDraggable && !isIOS}
-						onDragStart={isDraggable && !isIOS ? handleDragStart : undefined}
-						onDragEnd={isDraggable && !isIOS ? handleDragEnd : undefined}
-						onPointerDown={isDraggable ? handlePointerDown : undefined}
-					>
-						{preview}
-						{!isDragging && !onActivate && (
-							<PlusButton
-								className="opacity-0 group-hover:opacity-100"
-								onClick={handleAddToTimeline}
-							/>
-						)}
-					</AspectRatio>
-					{showLabel && (
-						<span
+					{layout === "strip" ? (
+						<div
 							className={cn(
-								"w-full truncate text-left text-[0.7rem] text-muted-foreground",
-								layout === "list" && "px-2 text-xs text-foreground"
+								"relative h-14 w-full overflow-hidden bg-accent",
+								rounded && "rounded-md",
+								"[&::-webkit-drag-ghost]:opacity-0"
 							)}
-							aria-label={name}
-							title={name}
+							{...dragHandleProps}
 						>
-							{name}
-						</span>
+							{previewContent}
+						</div>
+					) : (
+						<AspectRatio
+							ratio={aspectRatio}
+							className={cn(
+								"relative overflow-hidden bg-accent",
+								layout === "list" && "h-14 w-24 shrink-0",
+								rounded && "rounded-md",
+								"[&::-webkit-drag-ghost]:opacity-0" // Webkit-specific ghost hiding
+							)}
+							{...dragHandleProps}
+						>
+							{previewContent}
+						</AspectRatio>
 					)}
+					{showLabel &&
+						(label ?? (
+							<span
+								className={cn(
+									"w-full truncate text-left text-[0.7rem] text-muted-foreground",
+									layout === "list" && "px-2 text-xs text-foreground"
+								)}
+								aria-label={name}
+								title={name}
+							>
+								{name}
+							</span>
+						))}
 				</div>
 			</div>
 
