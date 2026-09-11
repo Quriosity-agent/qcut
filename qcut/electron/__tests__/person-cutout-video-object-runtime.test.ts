@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	calculateVideoObjectGraphSize,
 	createVideoObjectRuntimeFingerprints,
@@ -9,11 +11,36 @@ import {
 	VIDEO_OBJECT_COREML_PROCESSOR_VERSION,
 	VIDEO_OBJECT_HOST_INTEROP_PROVIDER_CAPABILITY,
 	VIDEO_OBJECT_PROVIDER_CAPABILITY,
+	videoObjectRuntimeAssetRoots,
 } from "../jianying-person-cutout/video-object-runtime.js";
 import {
 	VIDEO_OBJECT_BACH_DEPENDENCY_CLOSURE_MARKER,
 	VIDEO_OBJECT_BACH_DEPENDENCY_CLOSURE_SHA256,
 } from "../jianying-person-cutout/video-object-runtime-closure.js";
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
+
+describe("video-object runtime asset roots", () => {
+	it("keeps the private runtime under the platform QCut user-data directory", () => {
+		const userData = path.join(os.tmpdir(), "qcut-video-object-user-data");
+		vi.stubEnv("QCUT_USER_DATA_DIR", userData);
+		vi.stubEnv("QCUT_JIANYING_VIDEO_OBJECT_RUNTIME", "/tmp/explicit-runtime");
+		expect(videoObjectRuntimeAssetRoots()).toEqual({
+			configuredRoot: "/tmp/explicit-runtime",
+			jianyingEffectRoot: path.join(
+				os.homedir(),
+				"Movies",
+				"JianyingPro",
+				"User Data",
+				"Cache",
+				"effect"
+			),
+			privateRuntimeRoot: path.join(userData, "PrivateRuntimes"),
+		});
+	});
+});
 
 describe("legacy host video-object graph sizing", () => {
 	it("matches Jianying's 512-pixel portrait and landscape graph inputs", () => {
