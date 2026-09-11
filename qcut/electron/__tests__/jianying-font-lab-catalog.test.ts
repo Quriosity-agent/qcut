@@ -2,9 +2,10 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	buildJianyingFontCatalog,
+	getDefaultJianyingFontSearchRoots,
 	readVerifiedJianyingFontBytes,
 	summarizeJianyingFontCatalog,
 } from "../jianying-font-lab-catalog.js";
@@ -18,6 +19,7 @@ async function createTemporaryDirectory() {
 }
 
 afterEach(async () => {
+	vi.unstubAllEnvs();
 	await Promise.all(
 		temporaryDirectories
 			.splice(0)
@@ -26,6 +28,23 @@ afterEach(async () => {
 });
 
 describe("Jianying font lab catalog", () => {
+	it("searches the QCut private caches under the platform user-data directory", () => {
+		const userData = join(tmpdir(), "qcut-font-lab-user-data");
+		vi.stubEnv("QCUT_USER_DATA_DIR", userData);
+		const roots = getDefaultJianyingFontSearchRoots();
+		expect(roots.slice(0, 2)).toEqual([
+			{
+				path: join(userData, "PrivateAssets", "JianyingFonts"),
+				sourceKind: "qcut-cache",
+			},
+			{
+				path: join(userData, "PrivateAssets", "JianyingText", "Cache"),
+				sourceKind: "qcut-cache",
+			},
+		]);
+		// Jianying's own cache stays where the app writes it.
+		expect(roots[2].path.endsWith(join("JianyingPro", "User Data", "Cache", "effect"))).toBe(true);
+	});
 	it("deduplicates exact font files, combines sources, and never exposes paths", async () => {
 		const cache = await createTemporaryDirectory();
 		const effect = join(cache, "effect");
