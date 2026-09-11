@@ -132,10 +132,12 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
 			<ContextMenu>
 				<ContextMenuTrigger asChild>
 					<div
-						className={`w-full px-2 py-1.5 text-sm rounded flex items-center gap-1 transition-colors cursor-default ${
-							isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+						className={`flex w-full cursor-default items-center gap-1 rounded-md py-1.5 pr-2 text-xs transition-colors ${
+							isSelected
+								? "text-primary"
+								: "text-foreground/85 hover:bg-accent/60"
 						}`}
-						style={{ paddingLeft: `${8 + depth * 12}px` }}
+						style={{ paddingLeft: `${10 + depth * 12}px` }}
 					>
 						{/* Expand/Collapse toggle */}
 						{hasChildren ? (
@@ -166,13 +168,13 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
 							{/* Folder icon */}
 							{isExpanded && hasChildren ? (
 								<FolderOpen
-									className="h-4 w-4 flex-shrink-0"
+									className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground"
 									style={{ color: folder.color || undefined }}
 									aria-hidden="true"
 								/>
 							) : (
 								<Folder
-									className="h-4 w-4 flex-shrink-0"
+									className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground"
 									style={{ color: folder.color || undefined }}
 									aria-hidden="true"
 								/>
