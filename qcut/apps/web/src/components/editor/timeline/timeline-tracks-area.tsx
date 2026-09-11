@@ -194,7 +194,7 @@ export function TimelineTracksArea({
 			{tracks.length > 0 && (
 				<div
 					ref={trackLabelsRef}
-					className="w-56 shrink-0 border-r border-black overflow-y-auto z-200 bg-panel"
+					className="w-64 shrink-0 border-r border-black overflow-y-auto z-200 bg-panel"
 					data-track-labels
 				>
 					<ScrollArea className="w-full h-full" ref={trackLabelsScrollRef}>
