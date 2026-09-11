@@ -63,12 +63,12 @@ export function TimelineTrackLabel({
 		startHeight: number;
 	} | null>(null);
 	const controlClassName =
-		"grid size-6 shrink-0 place-items-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
+		"grid size-5 shrink-0 place-items-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 	return (
 		<div
 			className={cn(
-				"relative flex items-center gap-1 border-b border-muted/30 bg-foreground/5 px-1.5",
+				"relative flex items-center gap-0.5 border-b border-muted/30 bg-foreground/5 px-1.5",
 				track.hidden && "opacity-55",
 				isDragging && "bg-accent shadow-md"
 			)}
@@ -98,8 +98,6 @@ export function TimelineTrackLabel({
 					{displayName}
 				</span>
 			</div>
-
-			{track.isMain ? <CoverButton placement="timeline" /> : null}
 
 			<button
 				type="button"
@@ -210,6 +208,12 @@ export function TimelineTrackLabel({
 						<span className="text-[10px] leading-none">S</span>
 					</button>
 				</>
+			) : null}
+
+			{/* The cover card sits at the end of the header, right before the
+			    first clip, like the reference editor's cover tile. */}
+			{track.isMain ? (
+				<CoverButton placement="timeline" compact={trackHeight < 56} />
 			) : null}
 
 			<div
