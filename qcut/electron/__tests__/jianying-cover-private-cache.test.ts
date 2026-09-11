@@ -99,7 +99,10 @@ afterEach(async () => {
 describe("private Jianying cover cache", () => {
 	it("stores covers under the platform QCut user-data directory unless overridden", () => {
 		vi.stubEnv("QCUT_JIANYING_COVER_CACHE_ROOT", undefined);
-		vi.stubEnv("QCUT_USER_DATA_DIR", path.join(tmpdir(), "qcut-cover-user-data"));
+		vi.stubEnv(
+			"QCUT_USER_DATA_DIR",
+			path.join(tmpdir(), "qcut-cover-user-data")
+		);
 		expect(coverCacheRoot()).toBe(
 			path.join(
 				tmpdir(),
