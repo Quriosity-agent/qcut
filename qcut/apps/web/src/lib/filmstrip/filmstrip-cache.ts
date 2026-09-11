@@ -1,11 +1,17 @@
 /**
  * LRU cache for filmstrip thumbnail Blob URLs.
- * Automatically revokes Blob URLs on eviction to prevent memory leaks.
+ *
+ * The cache owns every URL it hands out. A consumer that paints a frame
+ * retains it for as long as the frame is on screen; retained entries are
+ * never evicted, so a URL a clip is painting stays valid until the clip
+ * releases it. Everything else is evicted least-recently-used and revoked on
+ * eviction.
  */
 
 interface CacheEntry {
 	url: string;
 	accessedAt: number;
+	retainCount: number;
 }
 
 export class FilmstripCache {
@@ -29,17 +35,45 @@ export class FilmstripCache {
 		return entry.url;
 	}
 
-	set(mediaId: string, time: number, url: string): void {
+	/**
+	 * Stores a freshly captured frame and returns the URL the cache owns for
+	 * that timestamp. When a capture of the same frame already landed, the
+	 * existing URL wins and the duplicate is revoked instead: a clip may still
+	 * be painting the earlier URL, so it is never pulled out from under it.
+	 */
+	set(mediaId: string, time: number, url: string): string {
 		const key = this.makeKey(mediaId, time);
-
-		// If key already exists, revoke old URL first
 		const existing = this.cache.get(key);
-		if (existing && existing.url !== url) {
-			URL.revokeObjectURL(existing.url);
+		if (existing) {
+			existing.accessedAt = Date.now();
+			if (existing.url !== url) URL.revokeObjectURL(url);
+			return existing.url;
 		}
+		this.cache.set(key, { url, accessedAt: Date.now(), retainCount: 0 });
+		this.evictIfNeeded(key);
+		return url;
+	}
 
-		this.cache.set(key, { url, accessedAt: Date.now() });
-		this.evictIfNeeded();
+	/**
+	 * Marks a frame as on screen and returns its URL, or null when the frame
+	 * is not cached. Every successful retain must be paired with a release.
+	 */
+	retain(mediaId: string, time: number): string | null {
+		const entry = this.cache.get(this.makeKey(mediaId, time));
+		if (!entry) return null;
+		entry.retainCount++;
+		entry.accessedAt = Date.now();
+		return entry.url;
+	}
+
+	release(mediaId: string, time: number): void {
+		const entry = this.cache.get(this.makeKey(mediaId, time));
+		if (!entry || entry.retainCount === 0) return;
+		entry.retainCount--;
+	}
+
+	retainCount(mediaId: string, time: number): number {
+		return this.cache.get(this.makeKey(mediaId, time))?.retainCount ?? 0;
 	}
 
 	/** Get all cached frame URLs for a media item, keyed by time */
@@ -82,16 +116,21 @@ export class FilmstripCache {
 		return this.cache.size;
 	}
 
-	private evictIfNeeded(): void {
+	private evictIfNeeded(keepKey: string): void {
 		if (this.cache.size <= this.maxEntries) return;
 
-		// Sort entries by access time (oldest first) and evict ~20%
-		const entries = [...this.cache.entries()].sort(
-			(a, b) => a[1].accessedAt - b[1].accessedAt
+		// Only frames nobody is painting are candidates, oldest access first. The
+		// entry just stored is about to be handed to the caller, so it stays.
+		const candidates = [...this.cache.entries()]
+			.filter(([key, entry]) => key !== keepKey && entry.retainCount === 0)
+			.sort((a, b) => a[1].accessedAt - b[1].accessedAt);
+		// Evict ~20% so the next few inserts do not each pay for a sort.
+		const toRemove = Math.min(
+			candidates.length,
+			Math.max(1, Math.floor(this.cache.size * 0.2))
 		);
-		const toRemove = Math.max(1, Math.floor(entries.length * 0.2));
 		for (let i = 0; i < toRemove; i++) {
-			const [key, entry] = entries[i];
+			const [key, entry] = candidates[i];
 			URL.revokeObjectURL(entry.url);
 			this.cache.delete(key);
 		}
