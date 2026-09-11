@@ -28,11 +28,12 @@ describe("FilmstripCache", () => {
 		expect(cache.size).toBe(2);
 	});
 
-	it("revokes old URL when overwriting same key", () => {
-		cache.set("v1", 1.0, "blob:old");
-		cache.set("v1", 1.0, "blob:new");
-		expect(revokeObjectURL).toHaveBeenCalledWith("blob:old");
-		expect(cache.get("v1", 1.0)).toBe("blob:new");
+	it("keeps the first URL for a key and revokes a duplicate capture", () => {
+		expect(cache.set("v1", 1.0, "blob:first")).toBe("blob:first");
+		expect(cache.set("v1", 1.0, "blob:duplicate")).toBe("blob:first");
+		expect(revokeObjectURL).toHaveBeenCalledWith("blob:duplicate");
+		expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:first");
+		expect(cache.get("v1", 1.0)).toBe("blob:first");
 	});
 
 	it("does not revoke URL when setting same value", () => {
@@ -108,5 +109,74 @@ describe("FilmstripCache", () => {
 		expect(cache.get("v1", 0)).toBe("blob:0");
 
 		vi.useRealTimers();
+	});
+
+	describe("retain / release", () => {
+		it("retain returns the cached URL and counts the reference", () => {
+			cache.set("v1", 2, "blob:2");
+			expect(cache.retain("v1", 2)).toBe("blob:2");
+			expect(cache.retain("v1", 2)).toBe("blob:2");
+			expect(cache.retainCount("v1", 2)).toBe(2);
+			cache.release("v1", 2);
+			expect(cache.retainCount("v1", 2)).toBe(1);
+		});
+
+		it("retain of a missing frame returns null and its release is a no-op", () => {
+			expect(cache.retain("v1", 9)).toBeNull();
+			cache.release("v1", 9);
+			expect(cache.retainCount("v1", 9)).toBe(0);
+		});
+
+		it("release never drops the count below zero", () => {
+			cache.set("v1", 0, "blob:0");
+			cache.release("v1", 0);
+			expect(cache.retainCount("v1", 0)).toBe(0);
+		});
+
+		it("eviction skips a retained frame even when it is the oldest", () => {
+			vi.useFakeTimers();
+			cache.set("v1", 0, "blob:0");
+			cache.retain("v1", 0);
+			for (let i = 1; i < 5; i++) {
+				vi.advanceTimersByTime(100);
+				cache.set("v1", i, `blob:${i}`);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.get("v1", 0)).toBe("blob:0");
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:0");
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:1");
+			vi.useRealTimers();
+		});
+
+		it("a released frame becomes evictable again", () => {
+			vi.useFakeTimers();
+			cache.set("v1", 0, "blob:0");
+			cache.retain("v1", 0);
+			cache.release("v1", 0);
+			for (let i = 1; i < 5; i++) {
+				vi.advanceTimersByTime(100);
+				cache.set("v1", i, `blob:${i}`);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.get("v1", 0)).toBeNull();
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:0");
+			vi.useRealTimers();
+		});
+
+		it("grows past the limit rather than revoking frames that are on screen", () => {
+			for (let i = 0; i < 5; i++) {
+				cache.set("v1", i, `blob:${i}`);
+				cache.retain("v1", i);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.size).toBe(6);
+			expect(revokeObjectURL).not.toHaveBeenCalled();
+		});
 	});
 });
