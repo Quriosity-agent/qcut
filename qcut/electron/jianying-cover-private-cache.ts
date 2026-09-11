@@ -10,8 +10,8 @@ import {
 	unlink,
 	writeFile,
 } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
+import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
 import { z } from "zod";
 import { coverDependencyReferences } from "./jianying-cover-dependencies.js";
 import {
@@ -47,10 +47,7 @@ const templateSchema = z
 export function coverCacheRoot(): string {
 	return (
 		process.env.QCUT_JIANYING_COVER_CACHE_ROOT ??
-		path.join(
-			homedir(),
-			"Library/Application Support/QCut/PrivateAssets/JianyingCover"
-		)
+		path.join(qcutStandaloneUserDataRoot(), "PrivateAssets", "JianyingCover")
 	);
 }
 
