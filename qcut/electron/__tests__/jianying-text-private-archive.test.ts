@@ -108,7 +108,7 @@ describe("QCut Jianying text private archive", () => {
 	});
 
 	afterEach(async () => {
-	vi.unstubAllEnvs();
+		vi.unstubAllEnvs();
 		await rm(workspace, { recursive: true, force: true });
 	});
 
