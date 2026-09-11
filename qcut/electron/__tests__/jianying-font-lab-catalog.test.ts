@@ -43,7 +43,11 @@ describe("Jianying font lab catalog", () => {
 			},
 		]);
 		// Jianying's own cache stays where the app writes it.
-		expect(roots[2].path.endsWith(join("JianyingPro", "User Data", "Cache", "effect"))).toBe(true);
+		expect(
+			roots[2].path.endsWith(
+				join("JianyingPro", "User Data", "Cache", "effect")
+			)
+		).toBe(true);
 	});
 	it("deduplicates exact font files, combines sources, and never exposes paths", async () => {
 		const cache = await createTemporaryDirectory();
