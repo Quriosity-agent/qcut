@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
 	Image as ImageIcon,
+	SquarePen,
 	Undo2,
 	Redo2,
 	Crop,
@@ -15,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/stores/project-store";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
@@ -27,25 +29,36 @@ import { CoverTemplateBrowser } from "./cover-template-browser";
 import { CoverSourceStrip } from "./cover-source-strip";
 import "./cover-editor.css";
 
+/**
+ * Opens the cover editor. On the timeline it is the small card docked at the
+ * end of the main track's header, right before the first clip; `compact`
+ * drops the label so it still fits a short track.
+ */
 export function CoverButton({
 	placement = "preview",
+	compact = false,
 }: {
 	placement?: "preview" | "timeline";
+	compact?: boolean;
 } = {}) {
 	const project = useProjectStore((state) => state.activeProject);
 	const [open, setOpen] = useState(false);
 	const trigger = useRef<HTMLButtonElement>(null);
 	const { t } = useTranslation();
+	const onTimeline = placement === "timeline";
 	return (
 		<>
 			<Button
 				ref={trigger}
 				type="button"
 				variant="text"
-				size={placement === "timeline" ? "sm" : "icon"}
+				size={onTimeline ? "sm" : "icon"}
 				className={
-					placement === "timeline"
-						? "h-6 shrink-0 gap-1 rounded-sm border border-cyan-400/35 bg-cyan-400/10 px-1.5 text-cyan-700 dark:text-cyan-200"
+					onTimeline
+						? cn(
+								"ml-0.5 flex shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-foreground/10 p-0 text-foreground/80 hover:bg-foreground/15 hover:text-foreground",
+								compact ? "h-7 w-7" : "h-[52px] w-7"
+							)
 						: undefined
 				}
 				disabled={!project}
@@ -61,10 +74,14 @@ export function CoverButton({
 					setOpen(true);
 				}}
 			>
-				<ImageIcon className="size-4">
-					<title>{t("editor.cover.title")}</title>
-				</ImageIcon>
-				{placement === "timeline" && (
+				{onTimeline ? (
+					<SquarePen className="size-3.5" />
+				) : (
+					<ImageIcon className="size-4">
+						<title>{t("editor.cover.title")}</title>
+					</ImageIcon>
+				)}
+				{onTimeline && !compact && (
 					<span className="text-[10px] leading-none">
 						{t("timeline.track.cover")}
 					</span>
