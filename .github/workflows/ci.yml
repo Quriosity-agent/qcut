@@ -61,6 +61,10 @@ jobs:
 
       - name: Type check
         run: bun run check-types
+        env:
+          # tsc over apps/web has exhausted Node's default heap on the macOS
+          # runner (twice on 2026-09-11); same headroom as the build step.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Build
         run: bun run build
