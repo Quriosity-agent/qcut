@@ -246,7 +246,7 @@ export function Timeline() {
 				{/* Timeline Header with Ruler */}
 				<div className="flex bg-panel sticky top-0 z-10">
 					{/* Track Labels Header */}
-					<div className="w-56 shrink-0 bg-panel border-r flex items-center justify-between px-3 py-2">
+					<div className="w-64 shrink-0 bg-panel border-r flex items-center justify-between px-3 py-2">
 						<span className="text-sm font-medium text-muted-foreground opacity-0">
 							.
 						</span>
