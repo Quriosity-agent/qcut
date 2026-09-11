@@ -3,13 +3,6 @@ import { useEffect, useState } from "react";
 import { Image, Loader2, Music, Video } from "lucide-react";
 import AudioWaveform from "@/components/editor/audio-waveform";
 
-/** Format seconds as mm:ss */
-function formatDuration(duration: number) {
-	const min = Math.floor(duration / 60);
-	const sec = Math.floor(duration % 60);
-	return `${min}:${sec.toString().padStart(2, "0")}`;
-}
-
 interface MediaPreviewProps {
 	item: MediaItem;
 }
@@ -28,26 +21,21 @@ function VideoPreview({ item }: MediaPreviewProps) {
 
 	if (!previewUrl || hasError) {
 		return (
-			<div className="w-full h-full bg-linear-to-br from-blue-500/20 to-cyan-500/20 flex flex-col items-center justify-center text-muted-foreground rounded border border-blue-500/20">
+			<div className="flex h-full w-full flex-col items-center justify-center bg-linear-to-br from-blue-500/20 to-cyan-500/20 text-muted-foreground">
 				{isGenerating ? (
-					<Loader2 className="h-6 w-6 mb-1 animate-spin" />
+					<Loader2 className="mb-1 h-6 w-6 animate-spin" />
 				) : (
-					<Video className="h-6 w-6 mb-1" />
+					<Video className="mb-1 h-6 w-6" />
 				)}
 				<span className="text-xs">
 					{isGenerating ? "Generating..." : "Video"}
 				</span>
-				{item.duration && (
-					<span className="text-xs opacity-70">
-						{formatDuration(item.duration)}
-					</span>
-				)}
 			</div>
 		);
 	}
 
 	return (
-		<div className="w-full h-full relative flex items-center justify-center overflow-hidden rounded">
+		<div className="relative flex h-full w-full items-center justify-center overflow-hidden">
 			{isLoading && (
 				<div className="absolute inset-0 flex items-center justify-center bg-muted/20">
 					<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -56,7 +44,7 @@ function VideoPreview({ item }: MediaPreviewProps) {
 			<img
 				src={previewUrl}
 				alt={item.name}
-				className="max-w-full max-h-full object-cover"
+				className="h-full w-full object-cover"
 				loading="lazy"
 				onLoad={() => setIsLoading(false)}
 				onError={() => {
@@ -64,33 +52,33 @@ function VideoPreview({ item }: MediaPreviewProps) {
 					setIsLoading(false);
 				}}
 			/>
-			<div className="absolute bottom-1 right-1 bg-black/65 text-white text-[10px] px-1 py-0.5 rounded">
-				{item.duration ? formatDuration(item.duration) : "Video"}
-			</div>
 		</div>
 	);
 }
 
-/** Renders a preview thumbnail for a single media item based on its type. */
+/**
+ * Thumbnail for a media card. The card draws the duration and "added" badges
+ * over it, so the preview only paints the picture (or a typed placeholder).
+ */
 export function MediaPreview({ item }: MediaPreviewProps) {
 	if (item.type === "image") {
 		const imageUrl = item.url || item.thumbnailUrl;
 
 		if (!imageUrl) {
 			return (
-				<div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+				<div className="flex h-full w-full flex-col items-center justify-center bg-muted/30 text-muted-foreground">
 					<Image className="h-6 w-6" />
-					<span className="text-xs mt-1">Image</span>
+					<span className="mt-1 text-xs">Image</span>
 				</div>
 			);
 		}
 
 		return (
-			<div className="w-full h-full flex items-center justify-center">
+			<div className="flex h-full w-full items-center justify-center overflow-hidden">
 				<img
 					src={imageUrl}
 					alt={item.name}
-					className="max-w-full max-h-full object-contain"
+					className="h-full w-full object-cover"
 					loading="lazy"
 				/>
 			</div>
@@ -103,7 +91,7 @@ export function MediaPreview({ item }: MediaPreviewProps) {
 
 	if (item.type === "audio") {
 		return (
-			<div className="relative h-full w-full overflow-hidden rounded border border-[#3D7EBF]/40 bg-[#1E3A5F]">
+			<div className="relative h-full w-full overflow-hidden bg-[#1E3A5F]">
 				<div className="absolute inset-x-1 inset-y-2">
 					<AudioWaveform
 						audioUrl={item.url || ""}
@@ -122,22 +110,17 @@ export function MediaPreview({ item }: MediaPreviewProps) {
 						anchor="bottom"
 					/>
 				</div>
-				<Music className="absolute left-1 top-1 h-3.5 w-3.5 text-[#7EC4FF]/80">
+				<Music className="absolute bottom-1 left-1 h-3.5 w-3.5 text-[#7EC4FF]/80">
 					<title>Audio</title>
 				</Music>
-				{item.duration ? (
-					<div className="absolute bottom-1 right-1 rounded bg-black/65 px-1 py-0.5 text-[10px] text-white">
-						{formatDuration(item.duration)}
-					</div>
-				) : null}
 			</div>
 		);
 	}
 
 	return (
-		<div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+		<div className="flex h-full w-full flex-col items-center justify-center bg-muted/30 text-muted-foreground">
 			<Image className="h-6 w-6" />
-			<span className="text-xs mt-1">Unknown</span>
+			<span className="mt-1 text-xs">Unknown</span>
 		</div>
 	);
 }
