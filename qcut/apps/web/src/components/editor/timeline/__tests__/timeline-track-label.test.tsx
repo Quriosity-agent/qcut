@@ -149,4 +149,34 @@ describe("TimelineTrackLabel", () => {
 
 		expect(screen.queryByTestId("main-track-cover-badge")).toBeNull();
 	});
+
+	it("keeps the cover card as an icon-only tile on a short main track", () => {
+		const commonProps = {
+			dragHandleProps: null,
+			isDragging: false,
+			onToggleHidden: vi.fn(),
+			onToggleLocked: vi.fn(),
+			onToggleMuted: vi.fn(),
+			onToggleSolo: vi.fn(),
+			onResizeStart: vi.fn(),
+			onResizeHeight: vi.fn(),
+		};
+		const shortMainTrack: TimelineTrack = {
+			id: "main-track",
+			name: "Main Track",
+			type: "media",
+			elements: [],
+			isMain: true,
+			height: 32,
+		};
+		render(<TimelineTrackLabel track={shortMainTrack} {...commonProps} />);
+
+		const card = screen.getByTestId("main-track-cover-badge");
+		expect(card).not.toHaveTextContent("Cover");
+		expect(card).toHaveAccessibleName("Project cover");
+		// The header lists the track controls first; the cover card is the last
+		// button before the resize handle so it sits next to the first clip.
+		const buttons = screen.getAllByRole("button");
+		expect(buttons[buttons.length - 1]).toBe(card);
+	});
 });
