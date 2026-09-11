@@ -3,7 +3,7 @@ import { extractFrames } from "@/lib/filmstrip/filmstrip-extractor";
 import { filmstripCache } from "@/lib/filmstrip/filmstrip-cache";
 
 const TILE_ASPECT_RATIO = 16 / 9;
-const DEBOUNCE_MS = 150;
+export const DEBOUNCE_MS = 150;
 const TILE_PADDING = 8; // matches timeline-element.tsx tileHeight = trackHeight - 8
 export const MAX_FILMSTRIP_TILES = 24;
 
@@ -57,10 +57,19 @@ export interface FilmstripResult {
 	tileHeight: number;
 }
 
+interface RetainedFrame {
+	mediaId: string;
+	time: number;
+}
+
 /**
  * Computes filmstrip frame timestamps and triggers extraction.
  * Returns an array of { time, url } for rendering individual tiles.
  * Debounces recalculation on zoom/width changes to avoid thrashing.
+ *
+ * Frame URLs belong to the filmstrip cache. The hook retains every frame it
+ * hands to the clip and releases it once the clip stops showing it, so the
+ * cache never revokes a URL that is still being painted.
  */
 export function useFilmstripThumbnails({
 	mediaId,
@@ -83,6 +92,28 @@ export function useFilmstripThumbnails({
 	const [isLoading, setIsLoading] = useState(false);
 	const abortRef = useRef<AbortController | null>(null);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const retainedRef = useRef<RetainedFrame[]>([]);
+
+	// Show the cached URL for each timestamp. New frames are retained before
+	// the previous set is released so a frame present in both never drops to
+	// zero references and becomes evictable in between.
+	const publishFrames = useCallback(
+		(timestamps: number[]): FilmstripFrame[] => {
+			const next = timestamps.map((time) => ({
+				time,
+				url: filmstripCache.retain(mediaId, time),
+			}));
+			for (const retained of retainedRef.current) {
+				filmstripCache.release(retained.mediaId, retained.time);
+			}
+			retainedRef.current = next
+				.filter((frame) => frame.url !== null)
+				.map((frame) => ({ mediaId, time: frame.time }));
+			setFrames(next);
+			return next;
+		},
+		[mediaId]
+	);
 
 	// Compute frame timestamps based on tile count + trim
 	const computeTimestamps = useCallback(
@@ -107,7 +138,7 @@ export function useFilmstripThumbnails({
 	// Trigger extraction when parameters change (debounced)
 	useEffect(() => {
 		if (!enabled || !file || visibleTiles === 0) {
-			setFrames([]);
+			publishFrames([]);
 			return;
 		}
 
@@ -124,20 +155,13 @@ export function useFilmstripThumbnails({
 
 			const timestamps = computeTimestamps(visibleTiles);
 			if (timestamps.length === 0) {
-				setFrames([]);
+				publishFrames([]);
 				return;
 			}
 
 			// Immediately show cached frames (or null for uncached)
-			const initial: FilmstripFrame[] = timestamps.map((t) => ({
-				time: t,
-				url: filmstripCache.get(mediaId, t),
-			}));
-			setFrames(initial);
-
-			// Check if all frames are already cached
-			const allCached = initial.every((f) => f.url !== null);
-			if (allCached) {
+			const initial = publishFrames(timestamps);
+			if (initial.every((frame) => frame.url !== null)) {
 				setIsLoading(false);
 				return;
 			}
@@ -150,14 +174,10 @@ export function useFilmstripThumbnails({
 				timestamps,
 				signal: controller.signal,
 			})
-				.then((result) => {
+				.then(() => {
 					if (controller.signal.aborted) return;
-					setFrames(
-						timestamps.map((t) => ({
-							time: t,
-							url: result.get(t) ?? filmstripCache.get(mediaId, t),
-						}))
-					);
+					// Read the frames back from the cache, which owns their URLs.
+					publishFrames(timestamps);
 					setIsLoading(false);
 				})
 				.catch((err) => {
@@ -171,7 +191,7 @@ export function useFilmstripThumbnails({
 				clearTimeout(debounceRef.current);
 			}
 		};
-	}, [enabled, file, mediaId, visibleTiles, computeTimestamps]);
+	}, [enabled, file, mediaId, visibleTiles, computeTimestamps, publishFrames]);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -180,6 +200,10 @@ export function useFilmstripThumbnails({
 			if (debounceRef.current) {
 				clearTimeout(debounceRef.current);
 			}
+			for (const retained of retainedRef.current) {
+				filmstripCache.release(retained.mediaId, retained.time);
+			}
+			retainedRef.current = [];
 		};
 	}, []);
 
