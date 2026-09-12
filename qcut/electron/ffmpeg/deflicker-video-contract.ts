@@ -1,12 +1,16 @@
 import { resolveAutorotatedVideoDimensions } from "../jianying-person-cutout/video-display-dimensions.js";
 import { buildVideoLabFilter } from "./video-lab-filter.js";
 
+const TRANSPARENT_PIXEL_FORMAT = /^(?:yuva|gbrap|rgba|bgra|argb|abgr|ya)/;
+
 export interface LocalDeflickerMetadata {
 	width: number;
 	height: number;
 	fps: number;
 	frameCount: number;
 	durationSeconds: number;
+	durationBasis?: "video" | "container";
+	containerDurationSeconds?: number;
 	audioStreams: number;
 }
 
@@ -29,7 +33,10 @@ export function parseLocalDeflickerMetadata({
 }: {
 	json: string;
 }): LocalDeflickerMetadata {
-	const probe = JSON.parse(json) as { streams?: ProbeStream[] };
+	const probe = JSON.parse(json) as {
+		streams?: ProbeStream[];
+		format?: { duration?: string };
+	};
 	if (!probe || !Array.isArray(probe.streams))
 		throw new Error("Invalid video probe metadata");
 	const video = probe.streams?.find((stream) => stream.codec_type === "video");
@@ -70,7 +77,7 @@ export function parseLocalDeflickerMetadata({
 		throw new Error("Local deflicker currently supports SDR video only");
 	}
 	if (
-		/^(?:yuva|gbrap|rgba|bgra|argb|abgr|ya)/.test(video.pix_fmt ?? "") ||
+		TRANSPARENT_PIXEL_FORMAT.test(video.pix_fmt ?? "") ||
 		Number(video.tags?.alpha_mode) > 0
 	) {
 		throw new Error("Local deflicker does not support transparent video");
@@ -103,7 +110,13 @@ export function parseLocalDeflickerMetadata({
 		.map(Number);
 	const fps = numerator / denominator;
 	const frameCount = Number(video.nb_read_frames);
-	const durationSeconds = Number(video.duration);
+	const streamDurationSeconds = Number(video.duration);
+	const containerDurationSeconds = Number(probe.format?.duration);
+	const hasVideoDuration =
+		Number.isFinite(streamDurationSeconds) && streamDurationSeconds > 0;
+	const durationSeconds = hasVideoDuration
+		? streamDurationSeconds
+		: containerDurationSeconds;
 	if (
 		extra !== undefined ||
 		!Number.isFinite(fps) ||
@@ -124,6 +137,11 @@ export function parseLocalDeflickerMetadata({
 		fps,
 		frameCount,
 		durationSeconds,
+		durationBasis: hasVideoDuration ? "video" : "container",
+		containerDurationSeconds:
+			Number.isFinite(containerDurationSeconds) && containerDurationSeconds > 0
+				? containerDurationSeconds
+				: undefined,
 		audioStreams:
 			probe.streams?.filter((stream) => stream.codec_type === "audio").length ??
 			0,
@@ -195,13 +213,22 @@ export function verifyLocalDeflickerOutput({
 	source: LocalDeflickerMetadata;
 	output: LocalDeflickerMetadata;
 }): void {
+	// A container can include audio that extends beyond its video stream.
+	const outputDuration =
+		source.durationBasis === "container"
+			? output.containerDurationSeconds
+			: output.durationSeconds;
+	const durationMatches =
+		outputDuration !== undefined &&
+		Number.isFinite(outputDuration) &&
+		Math.abs(source.durationSeconds - outputDuration) <=
+			Math.max(0.05, 1 / source.fps);
 	if (
 		source.width !== output.width ||
 		source.height !== output.height ||
 		source.frameCount !== output.frameCount ||
 		source.audioStreams !== output.audioStreams ||
-		Math.abs(source.durationSeconds - output.durationSeconds) >
-			Math.max(0.05, 1 / source.fps)
+		!durationMatches
 	) {
 		throw new Error(
 			"Deflicker output failed dimensions, frame count, audio or duration verification"
