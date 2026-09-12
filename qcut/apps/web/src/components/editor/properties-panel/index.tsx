@@ -7,6 +7,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import type { TimelineElement, CaptionElement } from "@/types/timeline";
 import { ScrollArea } from "../../ui/scroll-area";
 import { AudioProperties } from "./audio-properties";
+import { isAudioClipSelection } from "./audio-clip-selection";
 import {
 	AudioMultiSelectionProperties,
 	type AudioBatchSelection,
@@ -124,11 +125,12 @@ export function PropertiesPanel() {
 				const mediaItem = mediaItems.find(
 					(candidate) => candidate.id === element.mediaId
 				);
-				return mediaItem?.type === "audio"
+				const track = tracks.find((candidate) => candidate.id === trackId);
+				return isAudioClipSelection({ element, track, mediaItem })
 					? ([{ trackId, element }] satisfies AudioBatchSelection[])
 					: [];
 			}),
-		[mediaItems, resolvedSelections]
+		[mediaItems, resolvedSelections, tracks]
 	);
 	const isSingleAudioSelection =
 		resolvedSelections.length === 1 && audioBatchSelections.length === 1;
@@ -217,8 +219,9 @@ export function PropertiesPanel() {
 
 		if (element.type === "media") {
 			const mediaItem = mediaItems.find((item) => item.id === element.mediaId);
+			const track = tracks.find((candidate) => candidate.id === trackId);
 
-			if (mediaItem?.type === "audio") {
+			if (isAudioClipSelection({ element, track, mediaItem })) {
 				return <AudioProperties element={element} trackId={trackId} />;
 			}
 
