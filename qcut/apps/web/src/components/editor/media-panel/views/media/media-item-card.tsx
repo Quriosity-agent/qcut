@@ -50,7 +50,7 @@ interface MediaItemCardProps {
 }
 
 /** File name whose tail stays visible, so long names truncate in the middle. */
-function MediaItemName({ name }: { name: string }) {
+export function MediaItemName({ name }: { name: string }) {
 	const { head, tail } = splitMediaNameForEllipsis(name);
 	return (
 		<span
