@@ -3,10 +3,12 @@
 #include <mach-o/dyld.h>
 #include <algorithm>
 #include <cmath>
+#include <cerrno>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <unistd.h>
 #include "fog-shader-source.h"
 #include "graph-plan.h"
 
@@ -20,8 +22,29 @@ static_assert(sizeof(GraphConfig) == 24);
 static_assert(sizeof(Parameters) == 16);
 static_assert(sizeof(FrameHeader) == 12);
 
-void readExact(void* target, size_t length) {
-    if (!std::cin.read(static_cast<char*>(target), length)) throw std::runtime_error("Truncated input frame");
+bool readExact(void* target, size_t length, bool allowEof = false) {
+    size_t offset = 0;
+    while (offset < length) {
+        const auto count = ::read(STDIN_FILENO, static_cast<char*>(target) + offset, length - offset);
+        if (count < 0 && errno == EINTR) continue;
+        if (count < 0) throw std::runtime_error("Input stream failed");
+        if (count == 0) {
+            if (allowEof && offset == 0) return false;
+            throw std::runtime_error("Truncated input frame");
+        }
+        offset += static_cast<size_t>(count);
+    }
+    return true;
+}
+
+void writeExact(const void* source, size_t length) {
+    size_t offset = 0;
+    while (offset < length) {
+        const auto count = ::write(STDOUT_FILENO, static_cast<const char*>(source) + offset, length - offset);
+        if (count < 0 && errno == EINTR) continue;
+        if (count <= 0) throw std::runtime_error("Output stream closed");
+        offset += static_cast<size_t>(count);
+    }
 }
 
 id<MTLTexture> makeTexture(id<MTLDevice> device, size_t width, size_t height) {
@@ -37,7 +60,6 @@ id<MTLTexture> makeTexture(id<MTLDevice> device, size_t width, size_t height) {
 int main(int argc, const char* argv[]) {
     @autoreleasepool {
         try {
-            std::ios::sync_with_stdio(false);
             const bool graphMode = argc == 3 && std::string(argv[1]) == "--graph";
             const bool cubeMode = graphMode || (argc == 3 && std::string(argv[1]) == "--cube");
             const int cubeSize = cubeMode ? std::stoi(argv[2]) : 0;
@@ -143,15 +165,15 @@ int main(int argc, const char* argv[]) {
             }
             std::cerr << (graphMode ? "qcut-metal-graph-v1" : cubeMode ? "qcut-metal-lut-v1" : "qcut-metal-fog-v1") << " ready; device=" << device.name.UTF8String << "; jianyingLibraries=0\n";
             const uint32_t ready = dualMode ? 0x51464d33 : 0x51464d31;
-            std::cout.write(reinterpret_cast<const char*>(&ready), sizeof(ready)).flush();
+            writeExact(&ready, sizeof(ready));
             uint32_t lastWidth = 0, lastHeight = 0;
             id<MTLTexture> original;
             id<MTLTexture> stages[11];
             std::vector<GraphStage> plan;
-            while (std::cin.peek() != std::char_traits<char>::eof()) {
+            while (true) {
                 @autoreleasepool {
                     FrameHeader header;
-                    readExact(&header, sizeof(header));
+                    if (!readExact(&header, sizeof(header), true)) break;
                     const size_t pixels = size_t(header.width) * header.height;
                     if (!header.width || !header.height || header.width > 4096 || header.height > 4096 ||
                         pixels > 1920 * 1080 || !std::isfinite(header.strength) || header.strength < 0 || header.strength > 1)
@@ -177,8 +199,7 @@ int main(int argc, const char* argv[]) {
                             withBytes:maskBytes.data() bytesPerRow:maskHeader.width];
                     }
                     if (header.strength == 0) {
-                        std::cout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()).flush();
-                        if (!std::cout) throw std::runtime_error("Output stream closed");
+                        writeExact(bytes.data(), bytes.size());
                         continue;
                     }
                     if (header.width != lastWidth || header.height != lastHeight) {
@@ -226,8 +247,7 @@ int main(int argc, const char* argv[]) {
                         throw std::runtime_error(command.error.localizedDescription.UTF8String);
                     [stages[plan.size() - 1] getBytes:bytes.data() bytesPerRow:header.width * 4
                         fromRegion:MTLRegionMake2D(0, 0, header.width, header.height) mipmapLevel:0];
-                    std::cout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()).flush();
-                    if (!std::cout) throw std::runtime_error("Output stream closed");
+                    writeExact(bytes.data(), bytes.size());
                 }
             }
             return 0;
