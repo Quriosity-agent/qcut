@@ -36,6 +36,7 @@ async function inspectVideo({
 			"-v",
 			"error",
 			"-count_frames",
+			"-show_format",
 			"-show_streams",
 			"-of",
 			"json",
