@@ -13,7 +13,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deflickerLocalVideo } from "../ffmpeg/deflicker-video.js";
-import { getFFmpegPath } from "../ffmpeg/paths.js";
+import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
 
 const execFileAsync = promisify(execFile);
 const nativeEnabled = process.env.QCUT_DEFLICKER_NATIVE === "1";
@@ -133,6 +133,65 @@ describe.skipIf(!nativeEnabled)("standalone deflicker native video", () => {
 	afterAll(async () => {
 		if (directory) await rm(directory, { force: true, recursive: true });
 	});
+
+	it("processes Matroska without stream duration and retains a longer audio tail", async () => {
+		const video = await createFixture({
+			name: "matroska-source",
+			flicker: true,
+		});
+		const input = path.join(directory, "long-audio.mkv");
+		await execFileAsync(ffmpeg, [
+			"-v",
+			"error",
+			"-i",
+			video,
+			"-f",
+			"lavfi",
+			"-i",
+			"sine=frequency=660:sample_rate=48000:duration=6",
+			"-map",
+			"0:v:0",
+			"-map",
+			"1:a:0",
+			"-c:v",
+			"copy",
+			"-c:a",
+			"aac",
+			input,
+		]);
+		const { stdout } = await execFileAsync(await getFFprobePath(), [
+			"-v",
+			"error",
+			"-show_streams",
+			"-show_format",
+			"-of",
+			"json",
+			input,
+		]);
+		const probe = JSON.parse(stdout) as {
+			streams: Array<{ codec_type: string; duration?: string }>;
+			format: { duration: string };
+		};
+		expect(
+			Number.isFinite(
+				Number(probe.streams.find((s) => s.codec_type === "video")?.duration)
+			)
+		).toBe(false);
+		expect(Number(probe.format.duration)).toBeGreaterThan(6);
+		const output = path.join(directory, "long-audio-output.mp4");
+		const result = await deflickerLocalVideo({
+			sourcePath: input,
+			outputPath: output,
+			strength: 70,
+		});
+		expect(result.frameCount).toBe(frameCount);
+		expect(result.hasAudio).toBe(true);
+		expect(result.durationSeconds).toBeCloseTo(4, 1);
+		expect(result.containerDurationSeconds).toBeCloseTo(
+			Number(probe.format.duration),
+			1
+		);
+	}, 60_000);
 
 	it("reduces alternating flicker on a moving clip and preserves audio packets", async () => {
 		const input = await createFixture({ name: "moving", flicker: true });
