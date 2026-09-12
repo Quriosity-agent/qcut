@@ -225,7 +225,7 @@ test.describe("Professional audio properties", () => {
 		});
 
 		await expect(panel.getByTestId("audio-module-separation")).toBeVisible();
-		await panel.getByLabel("启用人声增强").click();
+		await panel.getByLabel("启用人声美化").click();
 		await panel
 			.getByTestId("audio-module-voice-enhance")
 			.locator("summary")
@@ -246,7 +246,7 @@ test.describe("Professional audio properties", () => {
 			animations: "disabled",
 		});
 
-		await panel.getByRole("tab", { name: "人声" }).click();
+		await panel.getByRole("tab", { name: "换音色" }).click();
 		await expect(
 			panel.getByTestId("audio-voice-preset-controls")
 		).toBeVisible();
@@ -258,7 +258,7 @@ test.describe("Professional audio properties", () => {
 			animations: "disabled",
 		});
 
-		await panel.getByRole("tab", { name: "音效" }).click();
+		await panel.getByRole("tab", { name: "声音效果" }).click();
 		await expect(panel.getByTestId("audio-preset-controls")).toBeVisible();
 		await panel.getByLabel("启用均衡器").click();
 		await setAudioNumber({ page, label: "低频", value: 4 });
@@ -279,7 +279,7 @@ test.describe("Professional audio properties", () => {
 			animations: "disabled",
 		});
 
-		await panel.getByRole("tab", { name: "歌词" }).click();
+		await panel.getByRole("tab", { name: "改词翻唱" }).click();
 		await expect(panel.getByTestId("audio-lyrics-settings")).toBeVisible();
 		await expect(panel.getByTestId("audio-cover-settings")).toBeVisible();
 		await panel.screenshot({
