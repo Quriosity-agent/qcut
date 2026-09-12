@@ -86,4 +86,4 @@ node dist/scripts/benchmark-independent-metal.cjs \
 - Electron TypeScript 检查及本次 TypeScript 文件 Biome 检查通过。
 - 最终两种尺寸的前后宿主分别为 `fd84b087a114e4737cf33f0b0dfab107e62aa3e20bc12b28515cbe0965e6108d` 与 `4311ea0e861b7702c71368865477509df4cc6995afdc09a99350dec6df93c893`。
 
-私有证据目录：`/Users/peter/Downloads/QCut-Product-2026-09-12/performance/`。主要结果在 `final-before-720p/`、`final-after-720p/`、`final-before-1080p/`、`final-after-1080p/`，测试日志为 `final-tests.log`。原始素材、基线副本、二进制和完整报告不提交到 Git。早期并行探索结果与最终串行结果分开保存，不能混用来做性能结论。
+`EVIDENCE_ROOT` 表示自行选定的仓库外证据目录。私有证据目录：`$EVIDENCE_ROOT/performance/`。主要结果在 `final-before-720p/`、`final-after-720p/`、`final-before-1080p/`、`final-after-1080p/`，测试日志为 `final-tests.log`。原始素材、基线副本、二进制和完整报告不提交到 Git。早期并行探索结果与最终串行结果分开保存，不能混用来做性能结论。
