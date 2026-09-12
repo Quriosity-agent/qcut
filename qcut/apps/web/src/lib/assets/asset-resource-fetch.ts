@@ -77,7 +77,7 @@ async function readResponseChunks({
 	const nextLoadedBytes = loadedBytes + value.byteLength;
 	if (nextLoadedBytes > maxFileBytes) {
 		await reader.cancel();
-		throw new Error(`Asset resource exceeds ${maxFileBytes} bytes`);
+		throw new AssetResourceSizeError({ maxFileBytes });
 	}
 	chunks.push(value);
 	onProgress?.({ loadedBytes: nextLoadedBytes, totalBytes });
@@ -100,6 +100,14 @@ function isAbortError({ error }: { error: unknown }): boolean {
 
 function retryableStatus({ status }: { status: number }): boolean {
 	return status === 408 || status === 429 || status >= 500;
+}
+
+/** The resource is over the caller's size limit: deterministic, never retried. */
+export class AssetResourceSizeError extends Error {
+	constructor({ maxFileBytes }: { maxFileBytes: number }) {
+		super(`Asset resource exceeds ${maxFileBytes} bytes`);
+		this.name = "AssetResourceSizeError";
+	}
 }
 
 class AssetResourceHttpError extends Error {
@@ -143,7 +151,7 @@ async function fetchResourceBytes({
 		? Number.parseInt(contentLengthHeader, 10)
 		: undefined;
 	if (contentLength && contentLength > maxFileBytes) {
-		throw new Error(`Asset resource exceeds ${maxFileBytes} bytes`);
+		throw new AssetResourceSizeError({ maxFileBytes });
 	}
 	const bytes = response.body
 		? await readResponseChunks({
@@ -156,7 +164,7 @@ async function fetchResourceBytes({
 			})
 		: new Uint8Array(await response.arrayBuffer());
 	if (bytes.byteLength > maxFileBytes) {
-		throw new Error(`Asset resource exceeds ${maxFileBytes} bytes`);
+		throw new AssetResourceSizeError({ maxFileBytes });
 	}
 	return {
 		bytes,
@@ -201,6 +209,7 @@ export async function fetchResourceWithRetry({
 	} catch (error) {
 		const retryable =
 			!isAbortError({ error }) &&
+			!(error instanceof AssetResourceSizeError) &&
 			(!(error instanceof AssetResourceHttpError) || error.retryable);
 		if (!retryable || attempt >= retryCount) throw error;
 		return fetchResourceWithRetry({
