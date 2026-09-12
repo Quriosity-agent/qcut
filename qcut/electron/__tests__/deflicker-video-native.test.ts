@@ -134,7 +134,7 @@ describe.skipIf(!nativeEnabled)("standalone deflicker native video", () => {
 		if (directory) await rm(directory, { force: true, recursive: true });
 	});
 
-	it("processes Matroska without stream duration and retains a longer audio tail", async () => {
+	it("retains longer audio tails with Matroska fallback and MP4 stream timing", async () => {
 		const video = await createFixture({
 			name: "matroska-source",
 			flicker: true,
@@ -189,6 +189,19 @@ describe.skipIf(!nativeEnabled)("standalone deflicker native video", () => {
 		expect(result.durationSeconds).toBeCloseTo(4, 1);
 		expect(result.containerDurationSeconds).toBeCloseTo(
 			Number(probe.format.duration),
+			1
+		);
+		expect(result.durationBasis).toBe("video");
+		const mp4Result = await deflickerLocalVideo({
+			sourcePath: output,
+			outputPath: path.join(directory, "long-audio-mp4-output.mp4"),
+			strength: 70,
+		});
+		expect(mp4Result.frameCount).toBe(frameCount);
+		expect(mp4Result.hasAudio).toBe(true);
+		expect(mp4Result.durationSeconds).toBeCloseTo(4, 1);
+		expect(mp4Result.containerDurationSeconds).toBeCloseTo(
+			result.containerDurationSeconds ?? 0,
 			1
 		);
 	}, 60_000);
