@@ -46,7 +46,7 @@
 
 QCut 像素测试使用 `editor:element:patch` 写入参数，再由 `editor:timeline:export` 回读持久化状态，最后用 `editor:export:start --preset tiktok --fps 30 --poll` 导出。可见 UI 还逐项切换并截图，组合状态也导出为 `qcut-ui-combined.mp4`。
 
-防闪烁新增独立派生媒体路径：`qcut edit deflicker -i ... --strength 70 --output ...` 与可见 UI 按钮使用同一私有 Provider。UI E2E 证明真人素材的时间线 `mediaId` 已替换、强度归零且预览非空；这与旧矩阵中的 FFmpeg 参数导出是两条明确区分的路径。
+防闪烁新增独立派生媒体路径：`qcut edit deflicker --backend jianying -i ... --strength 70 --output ...` 与可见 UI 按钮使用同一私有 Provider。UI E2E 证明真人素材的时间线 `mediaId` 已替换、强度归零且预览非空；这与旧矩阵中的 FFmpeg 参数导出是两条明确区分的路径。
 
 智能工具测试在可见 QCut 中导入真人源片，通过本地 MediaPipe 得到 `12` 个采样点、`100%` 进度和 `ready` 状态，再分别生成运镜、裁剪和追踪关键帧。三份输出均不同于同源基线。
 
