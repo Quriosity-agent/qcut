@@ -2,7 +2,7 @@
 
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import { useProjectStore } from "@/stores/project-store";
@@ -11,8 +11,10 @@ import { useFolderStore } from "@/stores/folder-store";
 import { FolderTree } from "../../folder-tree";
 import { useMediaActions } from "./use-media-actions";
 import { MediaItemCard } from "./media-item-card";
+import { MediaFolderCard } from "./media-folder-card";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import {
+	buildMediaLibraryEntries,
 	getMediaUsageCounts,
 	sortMediaLibraryItems,
 	type MediaLibrarySort,
@@ -47,7 +49,7 @@ export function MediaView() {
 	const removeFromFolder = mediaStore?.removeFromFolder;
 
 	// Folder state
-	const { folders, selectedFolderId } = useFolderStore();
+	const { folders, selectedFolderId, setSelectedFolder } = useFolderStore();
 	const { activeProject } = useProjectStore();
 	const tracks = useTimelineStore((state) => state.tracks);
 
@@ -134,13 +136,38 @@ export function MediaView() {
 		triggerAutoSync();
 	}, [triggerAutoSync]);
 
+	// Folders show up among the tiles like a file browser: the children of the
+	// current folder (or the root), narrowed by the search box like media is.
+	const entries = useMemo(() => {
+		const query = searchQuery.toLowerCase();
+		const childFolders = folders.filter(
+			(folder) =>
+				folder.parentId === selectedFolderId &&
+				(!query || folder.name.toLowerCase().includes(query))
+		);
+		return buildMediaLibraryEntries({
+			folders: childFolders,
+			items: filteredMediaItems,
+			sortBy,
+			direction: sortDirection,
+		});
+	}, [
+		folders,
+		selectedFolderId,
+		searchQuery,
+		filteredMediaItems,
+		sortBy,
+		sortDirection,
+	]);
+
 	// The heading over the grid names the current scope, like the source
-	// groups in the sidebar: the whole library or the selected folder.
-	const scopeLabel =
-		(selectedFolderId === null
+	// groups in the sidebar: the whole library or the selected folder, with a
+	// way back up once inside a folder.
+	const selectedFolder =
+		selectedFolderId === null
 			? null
-			: folders.find((folder) => folder.id === selectedFolderId)?.name) ??
-		t("common.all");
+			: (folders.find((folder) => folder.id === selectedFolderId) ?? null);
+	const scopeLabel = selectedFolder?.name ?? t("common.all");
 
 	// Handle media store loading/error states
 	if (mediaStoreError) {
@@ -228,21 +255,33 @@ export function MediaView() {
 					</div>
 
 					<div
-						className="px-3 pb-2 text-xs font-medium text-foreground/80"
+						className="flex items-center gap-1 px-3 pb-2 text-xs font-medium text-foreground/80"
 						data-testid="media-scope-label"
 					>
-						{scopeLabel}
+						{selectedFolder ? (
+							<button
+								type="button"
+								className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+								onClick={() => setSelectedFolder(selectedFolder.parentId)}
+								aria-label={t("media.backToParent")}
+								title={t("media.backToParent")}
+								data-testid="media-scope-back"
+							>
+								<ChevronLeft className="size-3.5" />
+							</button>
+						) : null}
+						<span className="truncate">{scopeLabel}</span>
 					</div>
 
 					<ScrollArea className="h-full">
 						<div className="flex-1 px-3 pb-3">
-							{isDragOver || filteredMediaItems.length === 0 ? (
+							{isDragOver || entries.length === 0 ? (
 								<MediaDragOverlay
 									isVisible={true}
 									isProcessing={isProcessing}
 									progress={progress}
 									onClick={handleFileSelect}
-									isEmptyState={filteredMediaItems.length === 0 && !isDragOver}
+									isEmptyState={entries.length === 0 && !isDragOver}
 								/>
 							) : (
 								<div
@@ -262,22 +301,31 @@ export function MediaView() {
 									data-testid="media-library-items"
 									data-view-mode={viewMode}
 								>
-									{filteredMediaItems.map((item) => (
-										<MediaItemCard
-											key={item.id}
-											item={item}
-											isSelected={selectedIds.has(item.id)}
-											filteredMediaItems={filteredMediaItems}
-											folders={folders}
-											addToFolder={addToFolder}
-											removeFromFolder={removeFromFolder}
-											onToggleSelect={toggleSelect}
-											onEdit={handleEdit}
-											onRemove={handleRemove}
-											viewMode={viewMode}
-											usageCount={mediaUsageCounts.get(item.id) ?? 0}
-										/>
-									))}
+									{entries.map((entry) =>
+										entry.kind === "folder" ? (
+											<MediaFolderCard
+												key={`folder-${entry.folder.id}`}
+												folder={entry.folder}
+												viewMode={viewMode}
+												onOpen={setSelectedFolder}
+											/>
+										) : (
+											<MediaItemCard
+												key={entry.item.id}
+												item={entry.item}
+												isSelected={selectedIds.has(entry.item.id)}
+												filteredMediaItems={filteredMediaItems}
+												folders={folders}
+												addToFolder={addToFolder}
+												removeFromFolder={removeFromFolder}
+												onToggleSelect={toggleSelect}
+												onEdit={handleEdit}
+												onRemove={handleRemove}
+												viewMode={viewMode}
+												usageCount={mediaUsageCounts.get(entry.item.id) ?? 0}
+											/>
+										)
+									)}
 								</div>
 							)}
 						</div>
