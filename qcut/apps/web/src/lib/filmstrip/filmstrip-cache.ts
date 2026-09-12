@@ -5,7 +5,9 @@
  * retains it for as long as the frame is on screen; retained entries are
  * never evicted, so a URL a clip is painting stays valid until the clip
  * releases it. Everything else is evicted least-recently-used and revoked on
- * eviction.
+ * eviction. Dropping a whole media item or clearing the cache while a frame
+ * is retained only orphans that entry: its URL is revoked on the release
+ * that brings the count to zero.
  */
 
 interface CacheEntry {
@@ -16,6 +18,8 @@ interface CacheEntry {
 
 export class FilmstripCache {
 	private cache = new Map<string, CacheEntry>();
+	/** Entries dropped while retained; revoked once their last consumer lets go. */
+	private orphans = new Map<string, CacheEntry>();
 	private maxEntries: number;
 
 	constructor(maxEntries = 500) {
@@ -67,9 +71,13 @@ export class FilmstripCache {
 	}
 
 	release(mediaId: string, time: number): void {
-		const entry = this.cache.get(this.makeKey(mediaId, time));
+		const key = this.makeKey(mediaId, time);
+		const entry = this.cache.get(key) ?? this.orphans.get(key);
 		if (!entry || entry.retainCount === 0) return;
 		entry.retainCount--;
+		if (entry.retainCount === 0 && this.orphans.delete(key)) {
+			URL.revokeObjectURL(entry.url);
+		}
 	}
 
 	retainCount(mediaId: string, time: number): number {
@@ -93,23 +101,25 @@ export class FilmstripCache {
 	/** Evict all entries for a specific media item */
 	evictMedia(mediaId: string): void {
 		const prefix = `${mediaId}:`;
-		const toDelete: string[] = [];
-		for (const [key, entry] of this.cache) {
-			if (key.startsWith(prefix)) {
-				URL.revokeObjectURL(entry.url);
-				toDelete.push(key);
-			}
-		}
-		for (const key of toDelete) {
-			this.cache.delete(key);
+		for (const [key, entry] of [...this.cache]) {
+			if (key.startsWith(prefix)) this.drop(key, entry);
 		}
 	}
 
 	clear(): void {
-		for (const entry of this.cache.values()) {
+		for (const [key, entry] of [...this.cache]) {
+			this.drop(key, entry);
+		}
+	}
+
+	/** Remove an entry; revoke now, or on release if a consumer still paints it. */
+	private drop(key: string, entry: CacheEntry): void {
+		this.cache.delete(key);
+		if (entry.retainCount > 0) {
+			this.orphans.set(key, entry);
+		} else {
 			URL.revokeObjectURL(entry.url);
 		}
-		this.cache.clear();
 	}
 
 	get size(): number {
