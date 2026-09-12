@@ -207,6 +207,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"filter-intensity": { type: "string" },
 			beauty: { type: "string" },
 			strength: { type: "string" },
+			backend: { type: "string" },
 			"list-presets": { type: "boolean", default: false },
 			profile: { type: "string", multiple: true },
 			"save-intermediates": { type: "boolean", default: false },
@@ -677,6 +678,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		beauty: values.beauty === undefined ? undefined : Number(values.beauty),
 		strength:
 			values.strength === undefined ? undefined : Number(values.strength),
+		backend: values.backend as string | undefined,
 		listPresets: (values["list-presets"] as boolean) ?? false,
 		profile: values.profile as string[] | undefined,
 		saveIntermediates: (values["save-intermediates"] as boolean) ?? false,
