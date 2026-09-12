@@ -1,4 +1,4 @@
-import type { MediaItem } from "@/stores/media/media-store-types";
+import type { MediaFolder, MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack } from "@/types/timeline";
 
 /** Sort keys offered by the media library toolbar, in menu order. */
@@ -51,6 +51,44 @@ export function sortMediaLibraryItems({
 	};
 	return [...items].sort(
 		(left, right) => sign * compare(left, right) || byName(left, right)
+	);
+}
+
+/** One tile of the library grid: a folder to open or a media item. */
+export type MediaLibraryEntry =
+	| { kind: "folder"; folder: MediaFolder }
+	| { kind: "media"; item: MediaItem };
+
+/**
+ * Folders and media as one sorted list, the way a file browser shows them.
+ * Sorting by name interleaves the two; every other key puts the folders
+ * first in name order, because a folder has no time, type or duration.
+ */
+export function buildMediaLibraryEntries({
+	folders,
+	items,
+	sortBy,
+	direction = "asc",
+}: {
+	folders: MediaFolder[];
+	items: MediaItem[];
+	sortBy: MediaLibrarySort;
+	direction?: MediaLibrarySortDirection;
+}): MediaLibraryEntry[] {
+	const sign = direction === "asc" ? 1 : -1;
+	const folderEntries: MediaLibraryEntry[] = [...folders]
+		.sort((left, right) => sign * left.name.localeCompare(right.name))
+		.map((folder) => ({ kind: "folder", folder }));
+	const mediaEntries: MediaLibraryEntry[] = sortMediaLibraryItems({
+		items,
+		sortBy,
+		direction,
+	}).map((item) => ({ kind: "media", item }));
+	if (sortBy !== "name") return [...folderEntries, ...mediaEntries];
+	const nameOf = (entry: MediaLibraryEntry) =>
+		entry.kind === "folder" ? entry.folder.name : entry.item.name;
+	return [...folderEntries, ...mediaEntries].sort(
+		(left, right) => sign * nameOf(left).localeCompare(nameOf(right))
 	);
 }
 
