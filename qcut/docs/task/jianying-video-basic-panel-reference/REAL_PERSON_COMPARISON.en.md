@@ -46,7 +46,7 @@ Every SSIM value compares an editor's effect export with that editor's own same-
 
 The QCut pixel run uses `editor:element:patch`, reads the persisted value back with `editor:timeline:export`, and exports with `editor:export:start --preset tiktok --fps 30 --poll`. The visible UI was also exercised and captured for every feature, then exported once with the combined state as `qcut-ui-combined.mp4`.
 
-Deflicker now also has a separate derived-media path. `qcut edit deflicker -i ... --strength 70 --output ...` and the visible UI action share the same private provider. UI E2E proves a changed timeline media ID, a reset strength, a non-empty derived file, and a visible preview. This is intentionally distinguished from the historical FFmpeg parameter-export matrix.
+Deflicker now also has a separate derived-media path. `qcut edit deflicker --backend jianying -i ... --strength 70 --output ...` and the visible UI action share the same private provider. UI E2E proves a changed timeline media ID, a reset strength, a non-empty derived file, and a visible preview. This is intentionally distinguished from the historical FFmpeg parameter-export matrix.
 
 The smart-tool run imports the real clip into visible QCut, completes local MediaPipe tracking with `12` samples, `100%` progress, and `ready` status, then produces separate motion, crop, and tracking keyframes. All three exports differ from their same-source baseline.
 

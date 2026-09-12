@@ -44,6 +44,8 @@ export interface CLIRunOptions {
 	beauty?: number;
 	/** Local video-lab processing strength from 1 to 100. */
 	strength?: number;
+	/** Local video processing backend: ffmpeg or jianying. */
+	backend?: string;
 	/** Print available portrait filter presets. */
 	listPresets?: boolean;
 	duration?: string;

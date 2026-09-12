@@ -60,10 +60,14 @@ QCut 的“实验室防闪烁”现在有第一条真实剪映本机运行时路
 
 ```bash
 qcut edit deflicker \
+  --backend jianying \
   -i /absolute/path/source.mp4 \
   --strength 70 \
   --output /absolute/path/result.mp4
 ```
+
+
+从 2026-09-12 起，CLI 默认使用独立的 FFmpeg 后端。复现本文的私有运行时路径必须传入 `--backend jianying`；UI 私有 Provider 按钮不变。见[独立本地防闪烁 CLI](../local-deflicker-cli-2026-09-12.zh.md)。
 
 `--strength` 必须是 `1-100` 的整数，默认 `70`。已有输出不会被覆盖，除非显式传入 `--force`。CLI 和 UI 使用同一个 Provider、缓存、取消机制和输出校验。
 

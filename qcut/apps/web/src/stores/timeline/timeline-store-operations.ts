@@ -16,6 +16,7 @@ import { createTransitionOps } from "./timeline-transition-ops";
 import { createPrecisionEditOps } from "./timeline-precision-edit-ops";
 import { createMediaTimingOps } from "./timeline-media-timing-ops";
 import { createTimelineColorLabelOperations } from "./timeline-color-label-operations";
+import { createMediaBatchOperations } from "./timeline-media-batch-operations";
 
 /**
  * Dependencies injected from the store closure.
@@ -56,5 +57,6 @@ export function createTimelineOperations({
 		...createPrecisionEditOps(get, set, deps),
 		...createMediaTimingOps(get, set, deps),
 		...createTimelineColorLabelOperations({ get, set, deps }),
+		...createMediaBatchOperations({ get, deps }),
 	};
 }

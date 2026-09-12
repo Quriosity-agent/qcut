@@ -81,7 +81,10 @@ jobs:
       # anywhere in CI — regressions like a broken callModelApi path shipped
       # unnoticed. No continue-on-error: this step is a real gate.
       - name: Run electron unit tests
-        run: bunx vitest run electron/__tests__/
+        run: >-
+          bunx vitest run electron/__tests__/
+          electron/native-pipeline/cli/__tests__/cli-handlers-video-lab.test.ts
+          electron/native-pipeline/cli/__tests__/cli-parse-video-lab.test.ts
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu'
