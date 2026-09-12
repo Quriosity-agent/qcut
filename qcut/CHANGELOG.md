@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Edit position, scale, rotation and opacity across multiple video clips, with mixed values, relative adjustments, keyframe support and one undo step per field change.
+- Run `qcut edit deflicker` with the local FFmpeg backend by default. The explicit Jianying reference backend remains available. Deflicker is intended for individual shots, not across scene cuts.
+
+### Improved
+- Reduce frame-transfer overhead in the independent Metal filter host while preserving shader output.
+- Verify deflicker frame counts, video/container duration and audio tails, including MKV files without video-stream duration.
+
+### Fixed
+- Prevent duplicate editor actions after StrictMode remounts, restoring single-step toolbar undo and redo.
+- Protect deflicker source files against directory/case aliases and cancellation during output publication; cover directory junctions in Windows CI.
+
 ## [0.3.58] - 2026-02-09
 
 ## [0.3.57] - 2026-02-09
