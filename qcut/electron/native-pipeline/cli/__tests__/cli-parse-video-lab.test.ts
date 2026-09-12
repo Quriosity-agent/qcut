@@ -28,4 +28,21 @@ describe("Video Lab CLI registration", () => {
 			"number"
 		);
 	});
+	it("parses explicit backends and documents the independent default", () => {
+		for (const backend of ["ffmpeg", "jianying"]) {
+			expect(
+				parseCliArgs([
+					"edit",
+					"deflicker",
+					"-i",
+					"source.mp4",
+					"--backend",
+					backend,
+				]).backend
+			).toBe(backend);
+		}
+		expect(getCommandFlag("video-lab-deflicker", "--backend")?.default).toBe(
+			"ffmpeg"
+		);
+	});
 });

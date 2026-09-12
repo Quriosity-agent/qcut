@@ -33,6 +33,7 @@ export {
 	validateElementTrackCompatibility,
 } from "@/types/timeline";
 
+import type { MediaBatchEdit } from "@/lib/video/media-batch-properties";
 import type {
 	TimelineTrack,
 	TimelineElement,
@@ -701,6 +702,7 @@ export interface TimelineStore {
 		size: { width: number; height: number; x?: number; y?: number }
 	) => void;
 	updateElementRotation: (elementId: string, rotation: number) => void;
+	updateMediaPropertiesBatch: (edit: MediaBatchEdit) => number;
 	updateMediaElement: (
 		trackId: string,
 		elementId: string,

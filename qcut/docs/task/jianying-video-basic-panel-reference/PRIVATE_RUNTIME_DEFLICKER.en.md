@@ -55,10 +55,14 @@ They are not committed, bundled, or publicly downloaded. This establishes local 
 
 ```bash
 qcut edit deflicker \
+  --backend jianying \
   -i /absolute/path/source.mp4 \
   --strength 70 \
   --output /absolute/path/result.mp4
 ```
+
+
+From 2026-09-12, the CLI defaults to the independent FFmpeg backend. Pass `--backend jianying` to reproduce the private-runtime path in this document; the UI private-provider action is unchanged. See [standalone local deflicker](../local-deflicker-cli-2026-09-12.zh.md).
 
 `--strength` is an integer from `1` to `100` and defaults to `70`. Existing outputs require `--force`. CLI and UI share the same provider, cache, cancellation, and media validation.
 

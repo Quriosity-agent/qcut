@@ -243,7 +243,6 @@ export function useActionHandler<A extends Action>(
 	isActive: MutableRefObject<boolean> | boolean | undefined
 ) {
 	const handlerRef = useRef(handler);
-	const [isBound, setIsBound] = useState(false);
 
 	// Update handler ref when handler changes
 	useEffect(() => {
@@ -259,44 +258,27 @@ export function useActionHandler<A extends Action>(
 	) as ActionFunc<A>;
 
 	useEffect(() => {
-		const shouldBind =
-			isActive === undefined ||
-			(typeof isActive === "boolean" ? isActive : isActive.current);
-
-		if (shouldBind && !isBound) {
-			bindAction(action, stableHandler);
-			setIsBound(true);
-		} else if (!shouldBind && isBound) {
-			unbindAction(action, stableHandler);
-			setIsBound(false);
-		}
-
-		return () => {
-			if (isBound) {
-				unbindAction(action, stableHandler);
-				setIsBound(false);
-			}
+		let bound = false;
+		const syncBinding = () => {
+			const shouldBind =
+				isActive === undefined ||
+				(typeof isActive === "boolean" ? isActive : isActive.current);
+			if (shouldBind === bound) return;
+			if (shouldBind) bindAction(action, stableHandler);
+			else unbindAction(action, stableHandler);
+			bound = shouldBind;
 		};
-	}, [action, stableHandler, isActive, isBound]);
-
-	// Handle ref-based isActive changes
-	useEffect(() => {
-		if (isActive && typeof isActive === "object" && "current" in isActive) {
-			// Poll for ref changes
-			const interval = setInterval(() => {
-				const shouldBind = isActive.current;
-				if (shouldBind !== isBound) {
-					if (shouldBind) {
-						bindAction(action, stableHandler);
-					} else {
-						unbindAction(action, stableHandler);
-					}
-					setIsBound(shouldBind);
-				}
-			}, 100);
-			return () => clearInterval(interval);
-		}
-	}, [action, stableHandler, isActive, isBound]);
+		syncBinding();
+		const interval =
+			isActive && typeof isActive === "object"
+				? setInterval(syncBinding, 100)
+				: undefined;
+		return () => {
+			if (interval !== undefined) clearInterval(interval);
+			// Cleanup owns this effect's registration, including StrictMode replay.
+			if (bound) unbindAction(action, stableHandler);
+		};
+	}, [action, stableHandler, isActive]);
 }
 
 /**
