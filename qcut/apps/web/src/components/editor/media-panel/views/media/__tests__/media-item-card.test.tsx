@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 
@@ -103,6 +103,24 @@ describe("MediaItemCard", () => {
 		expect(screen.getByTestId("media-item-duration")).toHaveTextContent(
 			"00:16"
 		);
+	});
+
+	it("falls back to the image placeholder when the picture fails to load", () => {
+		renderCard({
+			item: video({
+				id: "i1",
+				name: "poster.png",
+				type: "image",
+				duration: undefined,
+				url: "blob:gone",
+				thumbnailUrl: undefined,
+			}),
+		});
+		const image = screen.getByRole("img");
+		expect(image).toHaveAttribute("src", "blob:gone");
+		fireEvent.error(image);
+		expect(screen.queryByRole("img")).toBeNull();
+		expect(screen.getByText("Image")).toBeInTheDocument();
 	});
 
 	it("uses the waveform for audio strips and skips the duration for items without one", () => {
