@@ -5,6 +5,7 @@ import {
 	validateIndependentFilterIdentity,
 } from "./assets.js";
 import { resolveIndependentFilterHost } from "./bridge.js";
+import { FilterResponseBuffer } from "./response-buffer.js";
 import {
 	createLocalSkinMaskSource,
 	encodeSkinMask,
@@ -100,7 +101,9 @@ export async function createIndependentFilterSession(
 	);
 	let failure: Error | undefined;
 	let stderr = "";
-	let buffered = Buffer.alloc(0);
+	const buffered = new FilterResponseBuffer({
+		maximumBytes: 1920 * 1080 * 4 + 4,
+	});
 	let waiting:
 		| {
 				size: number;
@@ -118,6 +121,7 @@ export async function createIndependentFilterSession(
 	});
 	const reject = (error: Error) => {
 		failure ??= error;
+		buffered.clear();
 		if (waiting) {
 			clearTimeout(waiting.timer);
 			waiting.reject(error);
@@ -125,12 +129,12 @@ export async function createIndependentFilterSession(
 		}
 	};
 	const consume = () => {
-		if (!waiting || buffered.length < waiting.size) return;
+		if (!waiting) return;
+		const bytes = buffered.read({ size: waiting.size });
+		if (!bytes) return;
 		const current = waiting;
 		waiting = undefined;
 		clearTimeout(current.timer);
-		const bytes = buffered.subarray(0, current.size);
-		buffered = buffered.subarray(current.size);
 		current.resolve(bytes);
 	};
 	const read = ({ size }: { size: number }) =>
@@ -154,9 +158,11 @@ export async function createIndependentFilterSession(
 		stderr = (stderr + chunk.toString()).slice(-4096);
 	});
 	child.stdout.on("data", (chunk: Buffer) => {
-		buffered = Buffer.concat([buffered, chunk]);
-		if (buffered.length > 1920 * 1080 * 4 + 4) {
-			reject(new Error("Invalid Metal frame response."));
+		if (failure || closed) return;
+		try {
+			buffered.append({ chunk });
+		} catch (error) {
+			reject(error instanceof Error ? error : new Error(String(error)));
 			child.kill("SIGKILL");
 			return;
 		}
