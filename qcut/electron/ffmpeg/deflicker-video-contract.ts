@@ -206,6 +206,22 @@ export function buildLocalDeflickerArgs({
 	];
 }
 
+function durationsMatch({
+	expected,
+	actual,
+	tolerance,
+}: {
+	expected: number;
+	actual: number | undefined;
+	tolerance: number;
+}): boolean {
+	return (
+		actual !== undefined &&
+		Number.isFinite(actual) &&
+		Math.abs(expected - actual) <= tolerance
+	);
+}
+
 export function verifyLocalDeflickerOutput({
 	source,
 	output,
@@ -218,17 +234,26 @@ export function verifyLocalDeflickerOutput({
 		source.durationBasis === "container"
 			? output.containerDurationSeconds
 			: output.durationSeconds;
-	const durationMatches =
-		outputDuration !== undefined &&
-		Number.isFinite(outputDuration) &&
-		Math.abs(source.durationSeconds - outputDuration) <=
-			Math.max(0.05, 1 / source.fps);
+	const tolerance = Math.max(0.05, 1 / source.fps);
+	const durationMatches = durationsMatch({
+		expected: source.durationSeconds,
+		actual: outputDuration,
+		tolerance,
+	});
+	const containerDurationMatches =
+		source.containerDurationSeconds === undefined ||
+		durationsMatch({
+			expected: source.containerDurationSeconds,
+			actual: output.containerDurationSeconds,
+			tolerance,
+		});
 	if (
 		source.width !== output.width ||
 		source.height !== output.height ||
 		source.frameCount !== output.frameCount ||
 		source.audioStreams !== output.audioStreams ||
-		!durationMatches
+		!durationMatches ||
+		!containerDurationMatches
 	) {
 		throw new Error(
 			"Deflicker output failed dimensions, frame count, audio or duration verification"
