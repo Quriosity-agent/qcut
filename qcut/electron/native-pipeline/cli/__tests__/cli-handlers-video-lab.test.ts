@@ -261,29 +261,30 @@ describe("video-lab deflicker CLI handler", () => {
 		).toEqual([]);
 	});
 
-	it.skipIf(process.platform === "win32")(
-		"rejects private force output through a directory symlink pointing to the source",
-		async () => {
-			const directory = await temporaryDirectory();
-			const input = path.join(directory, "source.mp4");
-			const alias = path.join(directory, "directory-alias");
-			await writeFile(input, "source");
-			await symlink(directory, alias, "dir");
-			const output = path.join(alias, "source.mp4");
-			const result = await handleVideoLabDeflicker(
-				{ ...options({ input, output }), backend: "jianying", force: true },
-				vi.fn(),
-				new AbortController().signal
-			);
-			expect(result).toMatchObject({
-				success: false,
-				error: "Output must not overwrite the source video",
-			});
-			expect(deflickerRuntime).not.toHaveBeenCalled();
-			expect(localDeflicker).not.toHaveBeenCalled();
-			expect(await readFile(input, "utf8")).toBe("source");
-		}
-	);
+	it("rejects private force output through a directory symlink pointing to the source", async () => {
+		const directory = await temporaryDirectory();
+		const input = path.join(directory, "source.mp4");
+		const alias = path.join(directory, "directory-alias");
+		await writeFile(input, "source");
+		await symlink(
+			directory,
+			alias,
+			process.platform === "win32" ? "junction" : "dir"
+		);
+		const output = path.join(alias, "source.mp4");
+		const result = await handleVideoLabDeflicker(
+			{ ...options({ input, output }), backend: "jianying", force: true },
+			vi.fn(),
+			new AbortController().signal
+		);
+		expect(result).toMatchObject({
+			success: false,
+			error: "Output must not overwrite the source video",
+		});
+		expect(deflickerRuntime).not.toHaveBeenCalled();
+		expect(localDeflicker).not.toHaveBeenCalled();
+		expect(await readFile(input, "utf8")).toBe("source");
+	});
 	it("rejects a case alias on case-insensitive filesystems", async ({
 		skip,
 	}) => {
