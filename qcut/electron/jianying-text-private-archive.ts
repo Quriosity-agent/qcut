@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
 import {
 	isPrivateArchiveDirectory,
 	summarizePrivateArchiveContainer,
@@ -67,14 +68,7 @@ export function getDefaultJianyingTextProjectEvidenceSourceRoot() {
 export function getQCutJianyingTextPrivateArchiveRoot() {
 	return (
 		process.env.QCUT_JIANYING_TEXT_PRIVATE_ARCHIVE_ROOT ??
-		path.join(
-			homedir(),
-			"Library",
-			"Application Support",
-			"QCut",
-			"PrivateAssets",
-			"JianyingText"
-		)
+		path.join(qcutStandaloneUserDataRoot(), "PrivateAssets", "JianyingText")
 	);
 }
 

@@ -5,6 +5,8 @@
  *
  * Features:
  * - Concurrency-limited queue (max 2 jobs)
+ * - One job at a time per media item, so clips of the same media share
+ *   frames through the cache instead of decoding the file in parallel
  * - AbortController support for cancellation
  * - Blob URL output at thumbnail resolution
  * - Integrates with FilmstripCache for deduplication
@@ -19,6 +21,31 @@ const SEEK_TIMEOUT_MS = 5_000;
 
 let activeJobs = 0;
 const pendingQueue: Array<() => void> = [];
+
+/**
+ * Tail of the extraction chain per media id. Two clips of one media that
+ * mount together would otherwise decode the same file twice and race each
+ * other for the same cache keys; the later clip instead waits for the
+ * earlier job, finds its frames in the cache and only decodes the rest.
+ */
+const jobsByMedia = new Map<string, Promise<void>>();
+
+function runSerializedByMedia<T>(
+	mediaId: string,
+	job: () => Promise<T>
+): Promise<T> {
+	const previous = jobsByMedia.get(mediaId) ?? Promise.resolve();
+	const run = previous.then(job);
+	const link = run.then(
+		() => undefined,
+		() => undefined
+	);
+	jobsByMedia.set(mediaId, link);
+	link.then(() => {
+		if (jobsByMedia.get(mediaId) === link) jobsByMedia.delete(mediaId);
+	});
+	return run;
+}
 
 function enqueue(): Promise<void> {
 	if (activeJobs < MAX_CONCURRENT_JOBS) {
@@ -172,14 +199,44 @@ export interface ExtractFramesOptions {
 	signal?: AbortSignal;
 }
 
+/** Copy cached frames into `result` and return the timestamps still missing */
+function collectMissing(
+	mediaId: string,
+	timestamps: number[],
+	result: Map<number, string>
+): number[] {
+	const missing: number[] = [];
+	for (const t of timestamps) {
+		const cached = filmstripCache.get(mediaId, t);
+		if (cached) {
+			result.set(t, cached);
+		} else {
+			missing.push(t);
+		}
+	}
+	return missing;
+}
+
 /**
  * Extract frames at specified timestamps from a video file.
  * Returns a Map of timestamp -> Blob URL.
- * Results are also stored in the shared filmstripCache.
+ * Results are also stored in the shared filmstripCache, which owns the URLs.
  *
  * Timestamps that are already cached are skipped.
  */
-export async function extractFrames({
+export async function extractFrames(
+	options: ExtractFramesOptions
+): Promise<Map<number, string>> {
+	const result = new Map<number, string>();
+	// A fully cached request does not wait behind another clip's decode.
+	const missing = collectMissing(options.mediaId, options.timestamps, result);
+	if (missing.length === 0) return result;
+	return runSerializedByMedia(options.mediaId, () =>
+		extractMissingFrames(options)
+	);
+}
+
+async function extractMissingFrames({
 	file,
 	mediaId,
 	timestamps,
@@ -187,19 +244,13 @@ export async function extractFrames({
 	height = THUMBNAIL_HEIGHT,
 	signal,
 }: ExtractFramesOptions): Promise<Map<number, string>> {
-	const result = new Map<number, string>();
-
-	// Filter out already-cached timestamps
-	const needed: number[] = [];
-	for (const t of timestamps) {
-		const cached = filmstripCache.get(mediaId, t);
-		if (cached) {
-			result.set(t, cached);
-		} else {
-			needed.push(t);
-		}
+	if (signal?.aborted) {
+		throw new DOMException("Aborted", "AbortError");
 	}
 
+	const result = new Map<number, string>();
+	// The job that ran before us on this media may have captured these.
+	const needed = collectMissing(mediaId, timestamps, result);
 	if (needed.length === 0) return result;
 
 	// Wait for a queue slot
@@ -235,8 +286,9 @@ export async function extractFrames({
 			await seekTo(video, clampedTime, signal);
 			const frameUrl = await captureFrame(video, canvas, ctx, width, height);
 
-			filmstripCache.set(mediaId, time, frameUrl);
-			result.set(time, frameUrl);
+			// The cache owns frame URLs: if a capture of this frame landed first,
+			// this hands back that one and revokes ours.
+			result.set(time, filmstripCache.set(mediaId, time, frameUrl));
 		}
 
 		canvas.remove();

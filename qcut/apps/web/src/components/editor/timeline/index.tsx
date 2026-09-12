@@ -15,7 +15,10 @@ import { useSelectionBox } from "@/hooks/timeline/use-selection-box";
 import { SnapIndicator } from "../snap-indicator";
 import { TimelineHoverAxis } from "./timeline-hover-axis";
 import type { SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
-import { calculateMinimumTimelineDuration } from "@/constants/timeline-constants";
+import {
+	calculateMinimumTimelineDuration,
+	TRACK_LABEL_COLUMN_WIDTH,
+} from "@/constants/timeline-constants";
 import { useWordTimelineStore } from "@/stores/timeline/word-timeline-store";
 import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import { TimelineToolbar } from "./timeline-toolbar";
@@ -246,7 +249,10 @@ export function Timeline() {
 				{/* Timeline Header with Ruler */}
 				<div className="flex bg-panel sticky top-0 z-10">
 					{/* Track Labels Header */}
-					<div className="w-56 shrink-0 bg-panel border-r flex items-center justify-between px-3 py-2">
+					<div
+						className="shrink-0 bg-panel flex items-center justify-between px-3 py-2"
+						style={{ width: `${TRACK_LABEL_COLUMN_WIDTH}px` }}
+					>
 						<span className="text-sm font-medium text-muted-foreground opacity-0">
 							.
 						</span>

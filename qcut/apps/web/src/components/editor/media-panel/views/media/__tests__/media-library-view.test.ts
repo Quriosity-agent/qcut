@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack } from "@/types/timeline";
+import type { MediaFolder } from "@/stores/media/media-store-types";
 import {
+	buildMediaLibraryEntries,
+	formatMediaDuration,
 	getMediaUsageCounts,
 	sortMediaLibraryItems,
+	splitMediaNameForEllipsis,
+	type MediaLibrarySort,
+	type MediaLibrarySortDirection,
 } from "../media-library-view";
 
 function media({
@@ -29,6 +35,7 @@ function media({
 }
 
 describe("media library view data", () => {
+	// Store order is import order: "b" was imported before "a".
 	const items = [
 		media({
 			id: "b",
@@ -45,20 +52,51 @@ describe("media library view data", () => {
 			lastModified: 20,
 		}),
 	];
+	const ids = (
+		sortBy: MediaLibrarySort,
+		direction?: MediaLibrarySortDirection
+	) =>
+		sortMediaLibraryItems({ items, sortBy, direction }).map((item) => item.id);
 
-	it("sorts without mutating the media store order", () => {
+	it("sorts by name without mutating the media store order", () => {
+		expect(ids("name")).toEqual(["a", "b"]);
+		expect(ids("name", "desc")).toEqual(["b", "a"]);
+		expect(items.map((item) => item.id)).toEqual(["b", "a"]);
+	});
+
+	it("sorts by import order, file time, duration and type in both directions", () => {
+		expect(ids("importTime")).toEqual(["b", "a"]);
+		expect(ids("importTime", "desc")).toEqual(["a", "b"]);
+		expect(ids("createdTime")).toEqual(["b", "a"]);
+		expect(ids("createdTime", "desc")).toEqual(["a", "b"]);
+		expect(ids("duration")).toEqual(["b", "a"]);
+		expect(ids("duration", "desc")).toEqual(["a", "b"]);
+		expect(ids("type")).toEqual(["a", "b"]);
+		expect(ids("type", "desc")).toEqual(["b", "a"]);
+	});
+
+	it("breaks ties by name", () => {
+		const twins = [
+			media({
+				id: "z",
+				name: "Zed",
+				type: "video",
+				duration: 5,
+				lastModified: 1,
+			}),
+			media({
+				id: "y",
+				name: "Yak",
+				type: "video",
+				duration: 5,
+				lastModified: 1,
+			}),
+		];
 		expect(
-			sortMediaLibraryItems({ items, sortBy: "name" }).map((item) => item.id)
-		).toEqual(["a", "b"]);
-		expect(
-			sortMediaLibraryItems({ items, sortBy: "recent" }).map((item) => item.id)
-		).toEqual(["a", "b"]);
-		expect(
-			sortMediaLibraryItems({ items, sortBy: "duration" }).map(
+			sortMediaLibraryItems({ items: twins, sortBy: "duration" }).map(
 				(item) => item.id
 			)
-		).toEqual(["a", "b"]);
-		expect(items.map((item) => item.id)).toEqual(["b", "a"]);
+		).toEqual(["y", "z"]);
 	});
 
 	it("counts every timeline reference to a media item", () => {
@@ -94,5 +132,68 @@ describe("media library view data", () => {
 
 		expect(getMediaUsageCounts({ tracks }).get("b")).toBe(2);
 		expect(getMediaUsageCounts({ tracks }).has("a")).toBe(false);
+	});
+
+	it("interleaves folders with media by name and puts them first otherwise", () => {
+		const folders: MediaFolder[] = [
+			{
+				id: "clips",
+				name: "clips",
+				parentId: null,
+				isExpanded: false,
+				createdAt: 1,
+				updatedAt: 1,
+			},
+			{
+				id: "audio",
+				name: "Audio",
+				parentId: null,
+				isExpanded: false,
+				createdAt: 1,
+				updatedAt: 1,
+			},
+		];
+		const label = (
+			entry: ReturnType<typeof buildMediaLibraryEntries>[number]
+		) => (entry.kind === "folder" ? `dir:${entry.folder.id}` : entry.item.id);
+
+		expect(
+			buildMediaLibraryEntries({ folders, items, sortBy: "name" }).map(label)
+		).toEqual(["a", "dir:audio", "b", "dir:clips"]);
+		expect(
+			buildMediaLibraryEntries({
+				folders,
+				items,
+				sortBy: "name",
+				direction: "desc",
+			}).map(label)
+		).toEqual(["dir:clips", "b", "dir:audio", "a"]);
+		expect(
+			buildMediaLibraryEntries({ folders, items, sortBy: "duration" }).map(
+				label
+			)
+		).toEqual(["dir:audio", "dir:clips", "b", "a"]);
+	});
+
+	it("formats durations with two-digit minutes", () => {
+		expect(formatMediaDuration(16)).toBe("00:16");
+		expect(formatMediaDuration(75.9)).toBe("01:15");
+		expect(formatMediaDuration(3661)).toBe("1:01:01");
+		expect(formatMediaDuration(-3)).toBe("00:00");
+	});
+
+	it("keeps the tail of a long file name for a middle ellipsis", () => {
+		expect(splitMediaNameForEllipsis("25_Shot21_一部手机.mp4")).toEqual({
+			head: "25_Shot21_",
+			tail: "一部手机.mp4",
+		});
+		expect(splitMediaNameForEllipsis("clip.mp4")).toEqual({
+			head: "clip.mp4",
+			tail: "",
+		});
+		expect(splitMediaNameForEllipsis(`${"😀".repeat(13)}.mp4`, 5)).toEqual({
+			head: "😀".repeat(12),
+			tail: "😀.mp4",
+		});
 	});
 });

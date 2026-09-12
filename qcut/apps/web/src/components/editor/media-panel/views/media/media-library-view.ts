@@ -1,28 +1,95 @@
-import type { MediaItem } from "@/stores/media/media-store-types";
+import type { MediaFolder, MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack } from "@/types/timeline";
 
-export type MediaLibrarySort = "name" | "recent" | "duration" | "type";
+/** Sort keys offered by the media library toolbar, in menu order. */
+export const MEDIA_LIBRARY_SORT_KEYS = [
+	"importTime",
+	"createdTime",
+	"name",
+	"type",
+	"duration",
+] as const;
 
+export type MediaLibrarySort = (typeof MEDIA_LIBRARY_SORT_KEYS)[number];
+export type MediaLibrarySortDirection = "asc" | "desc";
+
+/**
+ * Sorts a copy of the library. `items` must be in store order, which is the
+ * order media was imported: "importTime" sorts by that position because media
+ * items carry no import timestamp. "createdTime" uses the source file's
+ * modification time, the closest thing to a creation date the browser
+ * exposes. Ties fall back to the name so the order is stable across renders.
+ */
 export function sortMediaLibraryItems({
 	items,
 	sortBy,
+	direction = "asc",
 }: {
 	items: MediaItem[];
 	sortBy: MediaLibrarySort;
-}) {
-	return [...items].sort((left, right) => {
-		if (sortBy === "recent") {
-			return (right.file.lastModified ?? 0) - (left.file.lastModified ?? 0);
+	direction?: MediaLibrarySortDirection;
+}): MediaItem[] {
+	const importOrder = new Map(items.map((item, index) => [item.id, index]));
+	const sign = direction === "asc" ? 1 : -1;
+	const byName = (left: MediaItem, right: MediaItem) =>
+		left.name.localeCompare(right.name);
+	const compare = (left: MediaItem, right: MediaItem): number => {
+		switch (sortBy) {
+			case "importTime":
+				return (
+					(importOrder.get(left.id) ?? 0) - (importOrder.get(right.id) ?? 0)
+				);
+			case "createdTime":
+				return (left.file.lastModified ?? 0) - (right.file.lastModified ?? 0);
+			case "duration":
+				return (left.duration ?? 0) - (right.duration ?? 0);
+			case "type":
+				return left.type.localeCompare(right.type);
+			default:
+				return byName(left, right);
 		}
-		if (sortBy === "duration") {
-			return (right.duration ?? 0) - (left.duration ?? 0);
-		}
-		if (sortBy === "type") {
-			const typeComparison = left.type.localeCompare(right.type);
-			return typeComparison || left.name.localeCompare(right.name);
-		}
-		return left.name.localeCompare(right.name);
-	});
+	};
+	return [...items].sort(
+		(left, right) => sign * compare(left, right) || byName(left, right)
+	);
+}
+
+/** One tile of the library grid: a folder to open or a media item. */
+export type MediaLibraryEntry =
+	| { kind: "folder"; folder: MediaFolder }
+	| { kind: "media"; item: MediaItem };
+
+/**
+ * Folders and media as one sorted list, the way a file browser shows them.
+ * Sorting by name interleaves the two; every other key puts the folders
+ * first in name order, because a folder has no time, type or duration.
+ */
+export function buildMediaLibraryEntries({
+	folders,
+	items,
+	sortBy,
+	direction = "asc",
+}: {
+	folders: MediaFolder[];
+	items: MediaItem[];
+	sortBy: MediaLibrarySort;
+	direction?: MediaLibrarySortDirection;
+}): MediaLibraryEntry[] {
+	const sign = direction === "asc" ? 1 : -1;
+	const folderEntries: MediaLibraryEntry[] = [...folders]
+		.sort((left, right) => sign * left.name.localeCompare(right.name))
+		.map((folder) => ({ kind: "folder", folder }));
+	const mediaEntries: MediaLibraryEntry[] = sortMediaLibraryItems({
+		items,
+		sortBy,
+		direction,
+	}).map((item) => ({ kind: "media", item }));
+	if (sortBy !== "name") return [...folderEntries, ...mediaEntries];
+	const nameOf = (entry: MediaLibraryEntry) =>
+		entry.kind === "folder" ? entry.folder.name : entry.item.name;
+	return [...folderEntries, ...mediaEntries].sort(
+		(left, right) => sign * nameOf(left).localeCompare(nameOf(right))
+	);
 }
 
 export function getMediaUsageCounts({
@@ -38,4 +105,31 @@ export function getMediaUsageCounts({
 		}
 	}
 	return counts;
+}
+
+/** Formats a duration as mm:ss, or h:mm:ss past an hour, for clip badges. */
+export function formatMediaDuration(seconds: number): string {
+	const total = Math.max(0, Math.floor(seconds));
+	const hours = Math.floor(total / 3600);
+	const minutes = Math.floor((total % 3600) / 60);
+	const secs = total % 60;
+	const clock = `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+	return hours > 0 ? `${hours}:${clock}` : clock;
+}
+
+/**
+ * Splits a file name so its tail (extension plus a few characters) stays
+ * visible while CSS truncates the head: a middle ellipsis without measuring
+ * text. Short names are returned whole so they never gain an ellipsis.
+ */
+export function splitMediaNameForEllipsis(
+	name: string,
+	tailLength = 8
+): { head: string; tail: string } {
+	const characters = Array.from(name);
+	if (characters.length <= tailLength + 4) return { head: name, tail: "" };
+	return {
+		head: characters.slice(0, -tailLength).join(""),
+		tail: characters.slice(-tailLength).join(""),
+	};
 }

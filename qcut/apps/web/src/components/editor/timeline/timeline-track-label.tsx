@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimelineTrack } from "@/types/timeline";
-import { getTrackHeight } from "@/constants/timeline-constants";
+import {
+	getTrackHeight,
+	TRACK_HEADER_GUTTER_WIDTH,
+} from "@/constants/timeline-constants";
 import { TrackIcon } from "./track-icon";
 import { useTranslation } from "@/lib/i18n";
 import { localizeTrackName } from "@/lib/i18n/timeline-names";
@@ -63,154 +66,177 @@ export function TimelineTrackLabel({
 		startHeight: number;
 	} | null>(null);
 	const controlClassName =
-		"grid size-6 shrink-0 place-items-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
+		"grid size-5 shrink-0 place-items-center text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 	return (
 		<div
 			className={cn(
-				"relative flex items-center gap-1 border-b border-muted/30 bg-foreground/5 px-1.5",
+				"relative flex",
 				track.hidden && "opacity-55",
-				isDragging && "bg-accent shadow-md"
+				isDragging && "shadow-md"
 			)}
 			style={{ height: `${trackHeight}px` }}
 			data-testid="timeline-track-label"
 			data-track-id={track.id}
 		>
-			<button
-				type="button"
-				data-testid="timeline-track-reorder"
-				className={cn(controlClassName, !track.locked && "cursor-grab")}
-				aria-label={t("timeline.reorder", { name: displayName })}
-				title={
-					track.locked
-						? t("timeline.unlockToReorder")
-						: t("timeline.dragToReorder")
-				}
-				disabled={track.locked}
-				{...dragHandleProps}
+			<div
+				className={cn(
+					"flex min-w-0 flex-1 items-center gap-0.5 border-b border-r border-muted/30 bg-foreground/5 px-1.5",
+					isDragging && "bg-accent"
+				)}
+				data-testid="timeline-track-header"
 			>
-				<GripVertical className="size-3.5" />
-			</button>
+				<button
+					type="button"
+					data-testid="timeline-track-reorder"
+					className={cn(controlClassName, !track.locked && "cursor-grab")}
+					aria-label={t("timeline.reorder", { name: displayName })}
+					title={
+						track.locked
+							? t("timeline.unlockToReorder")
+							: t("timeline.dragToReorder")
+					}
+					disabled={track.locked}
+					{...dragHandleProps}
+				>
+					<GripVertical className="size-3.5" />
+				</button>
 
-			<div className="flex min-w-0 flex-1 items-center gap-1.5">
-				<TrackIcon type={track.type} />
-				<span className="truncate text-xs" title={displayName}>
-					{displayName}
-				</span>
+				<div className="flex min-w-0 flex-1 items-center gap-1.5">
+					<TrackIcon type={track.type} />
+					<span className="truncate text-xs" title={displayName}>
+						{displayName}
+					</span>
+				</div>
+
+				<button
+					type="button"
+					className={controlClassName}
+					onClick={(event) => {
+						event.stopPropagation();
+						onToggleLocked();
+					}}
+					onKeyDown={(event) =>
+						handleKeyboardActivation({ event, action: onToggleLocked })
+					}
+					aria-label={
+						track.locked
+							? t("timeline.unlock", { name: displayName })
+							: t("timeline.lock", { name: displayName })
+					}
+					title={
+						track.locked ? t("timeline.unlockTrack") : t("timeline.lockTrack")
+					}
+				>
+					{track.locked ? (
+						<Lock className="size-3.5">
+							<title>{t("timeline.unlockTrack")}</title>
+						</Lock>
+					) : (
+						<Unlock className="size-3.5">
+							<title>{t("timeline.lockTrack")}</title>
+						</Unlock>
+					)}
+				</button>
+
+				<button
+					type="button"
+					className={controlClassName}
+					onClick={(event) => {
+						event.stopPropagation();
+						onToggleHidden();
+					}}
+					onKeyDown={(event) =>
+						handleKeyboardActivation({ event, action: onToggleHidden })
+					}
+					aria-label={
+						track.hidden
+							? t("timeline.show", { name: displayName })
+							: t("timeline.hide", { name: displayName })
+					}
+					title={
+						track.hidden ? t("timeline.showTrack") : t("timeline.hideTrack")
+					}
+				>
+					{track.hidden ? (
+						<EyeOff className="size-3.5" />
+					) : (
+						<Eye className="size-3.5" />
+					)}
+				</button>
+
+				{hasAudioControls ? (
+					<>
+						<button
+							type="button"
+							className={controlClassName}
+							onClick={(event) => {
+								event.stopPropagation();
+								onToggleMuted();
+							}}
+							onKeyDown={(event) =>
+								handleKeyboardActivation({ event, action: onToggleMuted })
+							}
+							aria-label={
+								track.muted
+									? t("timeline.unmute", { name: displayName })
+									: t("timeline.mute", { name: displayName })
+							}
+							title={
+								track.muted
+									? t("timeline.unmuteTrack")
+									: t("timeline.muteTrack")
+							}
+						>
+							{track.muted ? (
+								<VolumeX className="size-3.5" />
+							) : (
+								<Volume2 className="size-3.5" />
+							)}
+						</button>
+						<button
+							type="button"
+							className={cn(
+								controlClassName,
+								track.audio?.solo && "bg-primary/15 font-semibold text-primary"
+							)}
+							onClick={(event) => {
+								event.stopPropagation();
+								onToggleSolo();
+							}}
+							onKeyDown={(event) =>
+								handleKeyboardActivation({ event, action: onToggleSolo })
+							}
+							aria-label={
+								track.audio?.solo
+									? t("timeline.disableSolo", { name: displayName })
+									: t("timeline.solo", { name: displayName })
+							}
+							aria-pressed={track.audio?.solo === true}
+							title={
+								track.audio?.solo
+									? t("timeline.disableSoloTrack")
+									: t("timeline.soloTrack")
+							}
+						>
+							<span className="text-[10px] leading-none">S</span>
+						</button>
+					</>
+				) : null}
 			</div>
 
-			{track.isMain ? <CoverButton placement="timeline" /> : null}
-
-			<button
-				type="button"
-				className={controlClassName}
-				onClick={(event) => {
-					event.stopPropagation();
-					onToggleLocked();
-				}}
-				onKeyDown={(event) =>
-					handleKeyboardActivation({ event, action: onToggleLocked })
-				}
-				aria-label={
-					track.locked
-						? t("timeline.unlock", { name: displayName })
-						: t("timeline.lock", { name: displayName })
-				}
-				title={
-					track.locked ? t("timeline.unlockTrack") : t("timeline.lockTrack")
-				}
+			{/* Gutter between the header and the clips. The main track's cover
+			    tile stands here on its own, in front of the first clip, like the
+			    reference editor's cover tile. */}
+			<div
+				className="flex shrink-0 items-center justify-center border-b border-muted/30"
+				style={{ width: `${TRACK_HEADER_GUTTER_WIDTH}px` }}
+				data-testid="timeline-track-gutter"
 			>
-				{track.locked ? (
-					<Lock className="size-3.5">
-						<title>{t("timeline.unlockTrack")}</title>
-					</Lock>
-				) : (
-					<Unlock className="size-3.5">
-						<title>{t("timeline.lockTrack")}</title>
-					</Unlock>
-				)}
-			</button>
-
-			<button
-				type="button"
-				className={controlClassName}
-				onClick={(event) => {
-					event.stopPropagation();
-					onToggleHidden();
-				}}
-				onKeyDown={(event) =>
-					handleKeyboardActivation({ event, action: onToggleHidden })
-				}
-				aria-label={
-					track.hidden
-						? t("timeline.show", { name: displayName })
-						: t("timeline.hide", { name: displayName })
-				}
-				title={track.hidden ? t("timeline.showTrack") : t("timeline.hideTrack")}
-			>
-				{track.hidden ? (
-					<EyeOff className="size-3.5" />
-				) : (
-					<Eye className="size-3.5" />
-				)}
-			</button>
-
-			{hasAudioControls ? (
-				<>
-					<button
-						type="button"
-						className={controlClassName}
-						onClick={(event) => {
-							event.stopPropagation();
-							onToggleMuted();
-						}}
-						onKeyDown={(event) =>
-							handleKeyboardActivation({ event, action: onToggleMuted })
-						}
-						aria-label={
-							track.muted
-								? t("timeline.unmute", { name: displayName })
-								: t("timeline.mute", { name: displayName })
-						}
-						title={
-							track.muted ? t("timeline.unmuteTrack") : t("timeline.muteTrack")
-						}
-					>
-						{track.muted ? (
-							<VolumeX className="size-3.5" />
-						) : (
-							<Volume2 className="size-3.5" />
-						)}
-					</button>
-					<button
-						type="button"
-						className={cn(
-							controlClassName,
-							track.audio?.solo && "bg-primary/15 font-semibold text-primary"
-						)}
-						onClick={(event) => {
-							event.stopPropagation();
-							onToggleSolo();
-						}}
-						onKeyDown={(event) =>
-							handleKeyboardActivation({ event, action: onToggleSolo })
-						}
-						aria-label={
-							track.audio?.solo
-								? t("timeline.disableSolo", { name: displayName })
-								: t("timeline.solo", { name: displayName })
-						}
-						aria-pressed={track.audio?.solo === true}
-						title={
-							track.audio?.solo
-								? t("timeline.disableSoloTrack")
-								: t("timeline.soloTrack")
-						}
-					>
-						<span className="text-[10px] leading-none">S</span>
-					</button>
-				</>
-			) : null}
+				{track.isMain ? (
+					<CoverButton placement="timeline" compact={trackHeight < 56} />
+				) : null}
+			</div>
 
 			<div
 				role="separator"

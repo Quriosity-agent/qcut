@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
+import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
 import { create, type Font, type FontCollection } from "fontkit";
 import type {
 	JianyingFontFormat,
@@ -110,10 +111,7 @@ export function getDefaultJianyingFontSearchRoots(): JianyingFontSearchRoot[] {
 		{ path: jianyingPrivateFontRoot(), sourceKind: "qcut-cache" },
 		{
 			path: join(
-				homedir(),
-				"Library",
-				"Application Support",
-				"QCut",
+				qcutStandaloneUserDataRoot(),
 				"PrivateAssets",
 				"JianyingText",
 				"Cache"

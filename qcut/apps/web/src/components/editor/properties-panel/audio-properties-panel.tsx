@@ -62,6 +62,9 @@ export function AudioPropertiesPanel({
 		(state) => state.updateMediaElement
 	);
 	const pushHistory = useTimelineStore((state) => state.pushHistory);
+	const trackType = useTimelineStore(
+		(state) => state._tracks.find((track) => track.id === trackId)?.type
+	);
 	const currentTime = usePlaybackStore((state) => state.currentTime);
 	const seek = usePlaybackStore((state) => state.seek);
 	const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -439,7 +442,11 @@ export function AudioPropertiesPanel({
 					<MediaSpeedProperties
 						element={element}
 						trackId={trackId}
-						mediaKind={mediaItem?.type === "audio" ? "audio" : "video"}
+						mediaKind={
+							mediaItem?.type === "audio" || trackType === "audio"
+								? "audio"
+								: "video"
+						}
 					/>
 				</TabsContent>
 				<TabsContent value="lyrics" className="m-0 px-3">

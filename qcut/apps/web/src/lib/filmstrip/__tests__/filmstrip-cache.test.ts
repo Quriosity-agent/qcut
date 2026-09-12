@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FilmstripCache } from "../filmstrip-cache";
 
 // Mock URL.revokeObjectURL
@@ -11,6 +11,10 @@ describe("FilmstripCache", () => {
 	beforeEach(() => {
 		cache = new FilmstripCache(5);
 		revokeObjectURL.mockClear();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	it("stores and retrieves entries", () => {
@@ -28,11 +32,12 @@ describe("FilmstripCache", () => {
 		expect(cache.size).toBe(2);
 	});
 
-	it("revokes old URL when overwriting same key", () => {
-		cache.set("v1", 1.0, "blob:old");
-		cache.set("v1", 1.0, "blob:new");
-		expect(revokeObjectURL).toHaveBeenCalledWith("blob:old");
-		expect(cache.get("v1", 1.0)).toBe("blob:new");
+	it("keeps the first URL for a key and revokes a duplicate capture", () => {
+		expect(cache.set("v1", 1.0, "blob:first")).toBe("blob:first");
+		expect(cache.set("v1", 1.0, "blob:duplicate")).toBe("blob:first");
+		expect(revokeObjectURL).toHaveBeenCalledWith("blob:duplicate");
+		expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:first");
+		expect(cache.get("v1", 1.0)).toBe("blob:first");
 	});
 
 	it("does not revoke URL when setting same value", () => {
@@ -106,7 +111,94 @@ describe("FilmstripCache", () => {
 
 		// Entry 0 should survive (recently accessed)
 		expect(cache.get("v1", 0)).toBe("blob:0");
+	});
 
-		vi.useRealTimers();
+	describe("retain / release", () => {
+		it("retain returns the cached URL and counts the reference", () => {
+			cache.set("v1", 2, "blob:2");
+			expect(cache.retain("v1", 2)).toBe("blob:2");
+			expect(cache.retain("v1", 2)).toBe("blob:2");
+			expect(cache.retainCount("v1", 2)).toBe(2);
+			cache.release("v1", 2);
+			expect(cache.retainCount("v1", 2)).toBe(1);
+		});
+
+		it("retain of a missing frame returns null and its release is a no-op", () => {
+			expect(cache.retain("v1", 9)).toBeNull();
+			cache.release("v1", 9);
+			expect(cache.retainCount("v1", 9)).toBe(0);
+		});
+
+		it("release never drops the count below zero", () => {
+			cache.set("v1", 0, "blob:0");
+			cache.release("v1", 0);
+			expect(cache.retainCount("v1", 0)).toBe(0);
+		});
+
+		it("eviction skips a retained frame even when it is the oldest", () => {
+			vi.useFakeTimers();
+			cache.set("v1", 0, "blob:0");
+			cache.retain("v1", 0);
+			for (let i = 1; i < 5; i++) {
+				vi.advanceTimersByTime(100);
+				cache.set("v1", i, `blob:${i}`);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.get("v1", 0)).toBe("blob:0");
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:0");
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:1");
+		});
+
+		it("a released frame becomes evictable again", () => {
+			vi.useFakeTimers();
+			cache.set("v1", 0, "blob:0");
+			cache.retain("v1", 0);
+			cache.release("v1", 0);
+			for (let i = 1; i < 5; i++) {
+				vi.advanceTimersByTime(100);
+				cache.set("v1", i, `blob:${i}`);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.get("v1", 0)).toBeNull();
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:0");
+		});
+
+		it("evictMedia and clear defer revoking a retained frame until it is released", () => {
+			cache.set("v1", 0, "blob:kept");
+			cache.set("v1", 1, "blob:free");
+			cache.retain("v1", 0);
+
+			cache.evictMedia("v1");
+
+			expect(cache.get("v1", 0)).toBeNull();
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:free");
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:kept");
+			cache.release("v1", 0);
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:kept");
+
+			cache.set("v2", 0, "blob:shown");
+			cache.retain("v2", 0);
+			cache.clear();
+			expect(cache.size).toBe(0);
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:shown");
+			cache.release("v2", 0);
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:shown");
+		});
+
+		it("grows past the limit rather than revoking frames that are on screen", () => {
+			for (let i = 0; i < 5; i++) {
+				cache.set("v1", i, `blob:${i}`);
+				cache.retain("v1", i);
+			}
+
+			cache.set("v1", 5, "blob:5");
+
+			expect(cache.size).toBe(6);
+			expect(revokeObjectURL).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	mkdtemp,
 	mkdir,
@@ -16,6 +16,7 @@ import {
 import {
 	backupCoverCatalog,
 	cacheJianyingCovers,
+	coverCacheRoot,
 	coverDependencyReferences,
 	listPrivateCovers,
 	readCoverCatalog,
@@ -89,12 +90,30 @@ async function fixture() {
 }
 
 afterEach(async () => {
+	vi.unstubAllEnvs();
 	await Promise.all(
 		roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))
 	);
 });
 
 describe("private Jianying cover cache", () => {
+	it("stores covers under the platform QCut user-data directory unless overridden", () => {
+		vi.stubEnv("QCUT_JIANYING_COVER_CACHE_ROOT", undefined);
+		vi.stubEnv(
+			"QCUT_USER_DATA_DIR",
+			path.join(tmpdir(), "qcut-cover-user-data")
+		);
+		expect(coverCacheRoot()).toBe(
+			path.join(
+				tmpdir(),
+				"qcut-cover-user-data",
+				"PrivateAssets",
+				"JianyingCover"
+			)
+		);
+		vi.stubEnv("QCUT_JIANYING_COVER_CACHE_ROOT", "/tmp/explicit-cover-root");
+		expect(coverCacheRoot()).toBe("/tmp/explicit-cover-root");
+	});
 	it("preserves the observed eight categories in native order", () => {
 		expect(JIANYING_COVER_CATEGORIES.map((item) => item.zh)).toEqual([
 			"默认",

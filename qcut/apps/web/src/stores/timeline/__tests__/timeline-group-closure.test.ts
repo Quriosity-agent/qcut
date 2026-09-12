@@ -165,4 +165,37 @@ describe("timeline group closure", () => {
 		expect(elementIds("audio")).toEqual(["a"]);
 		expect(elementIds("main")).toEqual([]);
 	});
+
+	it("selects a separated-audio clip on its own but a user group whole", () => {
+		setTracks([
+			...baseTracks(),
+			{
+				id: "audio",
+				name: "Audio",
+				type: "audio",
+				elements: [
+					mediaElement({ id: "a", startTime: 0, groupId: "sep", mediaId: "m" }),
+				],
+			},
+			{
+				id: "second",
+				name: "Second",
+				type: "media",
+				elements: [
+					mediaElement({ id: "v", startTime: 0, groupId: "sep", mediaId: "m" }),
+				],
+			},
+		]);
+		const selectedIds = () =>
+			useTimelineStore.getState().selectedElements.map((s) => s.elementId);
+
+		useTimelineStore.getState().selectElement("audio", "a");
+		expect(selectedIds()).toEqual(["a"]);
+
+		useTimelineStore.getState().selectElement("second", "v");
+		expect(selectedIds()).toEqual(["v"]);
+
+		useTimelineStore.getState().selectElement("main", "g1");
+		expect(selectedIds()).toEqual(["g1", "g2"]);
+	});
 });

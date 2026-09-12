@@ -9,10 +9,11 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	ensureQCutJianyingTextPrivateArchive,
 	findQCutJianyingTextPrivateArchive,
+	getQCutJianyingTextPrivateArchiveRoot,
 } from "../jianying-text-private-archive.js";
 
 async function writeFixture({
@@ -27,6 +28,20 @@ async function writeFixture({
 }
 
 describe("QCut Jianying text private archive", () => {
+	it("archives under the platform QCut user-data directory unless overridden", () => {
+		vi.stubEnv("QCUT_JIANYING_TEXT_PRIVATE_ARCHIVE_ROOT", undefined);
+		vi.stubEnv("QCUT_USER_DATA_DIR", join(tmpdir(), "qcut-text-user-data"));
+		expect(getQCutJianyingTextPrivateArchiveRoot()).toBe(
+			join(tmpdir(), "qcut-text-user-data", "PrivateAssets", "JianyingText")
+		);
+		vi.stubEnv(
+			"QCUT_JIANYING_TEXT_PRIVATE_ARCHIVE_ROOT",
+			"/tmp/explicit-text-archive"
+		);
+		expect(getQCutJianyingTextPrivateArchiveRoot()).toBe(
+			"/tmp/explicit-text-archive"
+		);
+	});
 	let workspace = "";
 	let sourceCacheRoot = "";
 	let archiveRoot = "";
@@ -93,6 +108,7 @@ describe("QCut Jianying text private archive", () => {
 	});
 
 	afterEach(async () => {
+		vi.unstubAllEnvs();
 		await rm(workspace, { recursive: true, force: true });
 	});
 

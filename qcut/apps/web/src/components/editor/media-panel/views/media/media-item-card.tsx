@@ -28,6 +28,11 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { addMediaItemAsOverlay } from "@/lib/stickers/add-media-overlay";
 import { cn } from "@/lib/utils";
 import { MediaPreview } from "./media-preview";
+import { MediaStripPreview } from "./media-strip-preview";
+import {
+	formatMediaDuration,
+	splitMediaNameForEllipsis,
+} from "./media-library-view";
 import { useTranslation } from "@/lib/i18n";
 
 interface MediaItemCardProps {
@@ -44,7 +49,26 @@ interface MediaItemCardProps {
 	usageCount: number;
 }
 
-/** Individual media item with drag support, selection ring, and context menu. */
+/** File name whose tail stays visible, so long names truncate in the middle. */
+export function MediaItemName({ name }: { name: string }) {
+	const { head, tail } = splitMediaNameForEllipsis(name);
+	return (
+		<span
+			className="flex w-full min-w-0 text-left text-[11px] leading-4 text-muted-foreground"
+			title={name}
+			data-testid="media-item-name"
+		>
+			<span className="min-w-0 truncate">{head}</span>
+			{tail ? <span className="shrink-0">{tail}</span> : null}
+		</span>
+	);
+}
+
+/**
+ * Individual media item with drag support, selection ring, and context menu.
+ * Grid cards show the thumbnail with the "added" badge and duration drawn
+ * over it; list rows show a full-width filmstrip strip instead.
+ */
 export const MediaItemCard = memo(function MediaItemCard({
 	item,
 	isSelected,
@@ -68,20 +92,39 @@ export const MediaItemCard = memo(function MediaItemCard({
 						onToggleSelect(item.id, e);
 					}}
 					className={cn(
-						"relative rounded-sm transition-shadow",
-						viewMode === "list" && "w-full border-b border-border/60 py-1",
+						"relative rounded-md transition-shadow",
 						isSelected &&
 							"ring-2 ring-primary ring-offset-1 ring-offset-background"
 					)}
 				>
 					{usageCount > 0 ? (
-						<span className="pointer-events-none absolute left-1 top-1 z-20 rounded-sm bg-cyan-600 px-1 py-0.5 text-[9px] font-medium text-white">
-							{t("media.used", { count: usageCount })}
+						<span
+							className="pointer-events-none absolute left-1.5 top-1.5 z-20 rounded-sm bg-black/60 px-1 py-px text-[10px] font-medium leading-4 text-white"
+							data-testid="media-item-added-badge"
+						>
+							{usageCount > 1
+								? t("media.addedCount", { count: usageCount })
+								: t("media.added")}
+						</span>
+					) : null}
+					{item.duration ? (
+						<span
+							className="pointer-events-none absolute right-1.5 top-1.5 z-20 rounded-sm bg-black/45 px-1 py-px text-[10px] leading-4 tabular-nums text-white"
+							data-testid="media-item-duration"
+						>
+							{formatMediaDuration(item.duration)}
 						</span>
 					) : null}
 					<DraggableMediaItem
 						name={item.name}
-						preview={<MediaPreview item={item} />}
+						preview={
+							viewMode === "list" ? (
+								<MediaStripPreview item={item} />
+							) : (
+								<MediaPreview item={item} />
+							)
+						}
+						label={<MediaItemName name={item.name} />}
 						dragData={{
 							id: item.id,
 							type: item.type,
@@ -91,8 +134,9 @@ export const MediaItemCard = memo(function MediaItemCard({
 						onAddToTimeline={(currentTime) =>
 							useTimelineStore.getState().addMediaAtTime(item, currentTime)
 						}
-						rounded={false}
-						layout={viewMode}
+						rounded
+						fill
+						layout={viewMode === "list" ? "strip" : "grid"}
 						data-testid="media-item"
 					/>
 				</div>

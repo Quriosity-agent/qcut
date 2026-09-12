@@ -28,6 +28,7 @@ import {
 import { createTimelineOperations } from "./timeline-store-operations";
 import { createAutoSaveHelpers } from "./timeline-store-autosave";
 import { createCrudOperations } from "./timeline-store-crud";
+import { isSeparatedAudioPairGroup } from "./timeline-group-operations";
 import { createPersistenceOperations } from "./timeline-store-persistence";
 import { getMediaTimelineDuration } from "@/lib/video/video-timing";
 import { useProjectStore } from "../project-store";
@@ -158,7 +159,16 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 				const selectedElement = state._tracks
 					.find((track) => track.id === trackId)
 					?.elements.find((element) => element.id === elementId);
-				if (selectedElement?.groupId) {
+				// A user group selects as a whole. A separated-audio pair shares a
+				// groupId only as a timing link (QTL-008), so each clip selects on
+				// its own, the way the reference editor treats detached audio.
+				if (
+					selectedElement?.groupId &&
+					!isSeparatedAudioPairGroup({
+						tracks: state._tracks,
+						groupId: selectedElement.groupId,
+					})
+				) {
 					return {
 						selectedElements: state._tracks.flatMap((track) =>
 							track.elements

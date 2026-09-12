@@ -349,6 +349,27 @@ describe("asset resource cache", () => {
 		).rejects.toThrow("exceeds 100 bytes");
 	});
 
+	it("does not retry an oversized resource", async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Promise.resolve(
+				new Response("ignored", {
+					headers: { "content-length": "1000" },
+					status: 200,
+				})
+			)
+		);
+		await expect(
+			ensureAssetResources({
+				asset: remoteAsset(),
+				fetchImpl,
+				maxFileBytes: 100,
+				retryCount: 2,
+				storage,
+			})
+		).rejects.toThrow("exceeds 100 bytes");
+		expect(fetchImpl).toHaveBeenCalledTimes(1);
+	});
+
 	it("evicts least-recently-used files while protecting active versions", async () => {
 		const createCached = ({
 			assetKey,

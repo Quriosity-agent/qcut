@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { qcutStandaloneUserDataRoot } from "../jianying-effect/user-data-paths.js";
 import {
 	firstMatchingDirectory,
 	firstMatchingFile,
@@ -291,18 +292,18 @@ async function prepareEffectDirectory({
 	return directory;
 }
 
-interface VideoObjectRuntimeAssetRoots {
+export interface VideoObjectRuntimeAssetRoots {
 	configuredRoot: string | undefined;
 	jianyingEffectRoot: string;
 	privateRuntimeRoot: string;
 }
 
-function videoObjectRuntimeAssetRoots(): VideoObjectRuntimeAssetRoots {
-	const home = os.homedir();
+/** Exported for tests; the private runtime root follows the platform user-data directory. */
+export function videoObjectRuntimeAssetRoots(): VideoObjectRuntimeAssetRoots {
 	return {
 		configuredRoot: process.env.QCUT_JIANYING_VIDEO_OBJECT_RUNTIME,
 		jianyingEffectRoot: path.join(
-			home,
+			os.homedir(),
 			"Movies",
 			"JianyingPro",
 			"User Data",
@@ -310,10 +311,7 @@ function videoObjectRuntimeAssetRoots(): VideoObjectRuntimeAssetRoots {
 			"effect"
 		),
 		privateRuntimeRoot: path.join(
-			home,
-			"Library",
-			"Application Support",
-			"QCut",
+			qcutStandaloneUserDataRoot(),
 			"PrivateRuntimes"
 		),
 	};

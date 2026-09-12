@@ -164,6 +164,17 @@ export function getTotalTracksHeight(
 /** Sentinel mediaId used for placeholder/test clips that have no real media backing */
 export const TEST_MEDIA_ID = "test";
 
+/** Width of a lane's header: drag grip, name and track controls. */
+export const TRACK_HEADER_WIDTH = 256;
+/**
+ * Gutter between the header and the clips. The main track's cover tile sits
+ * here, in front of the first clip, without moving the timeline's 0 s origin.
+ */
+export const TRACK_HEADER_GUTTER_WIDTH = 56;
+/** Width of the whole label column; the ruler spacer has to match it. */
+export const TRACK_LABEL_COLUMN_WIDTH =
+	TRACK_HEADER_WIDTH + TRACK_HEADER_GUTTER_WIDTH;
+
 // Other timeline constants
 export const TIMELINE_CONSTANTS = {
 	ELEMENT_MIN_WIDTH: 2,
