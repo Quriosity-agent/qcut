@@ -56,8 +56,8 @@ export function CoverButton({
 				className={
 					onTimeline
 						? cn(
-								"ml-0.5 flex shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-foreground/10 p-0 text-foreground/80 hover:bg-foreground/15 hover:text-foreground",
-								compact ? "h-7 w-7" : "h-[52px] w-7"
+								"flex shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-foreground/10 p-0 text-foreground/80 hover:bg-foreground/15 hover:text-foreground",
+								compact ? "h-7 w-7" : "h-[52px] w-8"
 							)
 						: undefined
 				}
