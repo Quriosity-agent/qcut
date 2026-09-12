@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
 	Image as ImageIcon,
-	SquarePen,
+	Pencil,
 	Undo2,
 	Redo2,
 	Crop,
@@ -75,7 +75,7 @@ export function CoverButton({
 				}}
 			>
 				{onTimeline ? (
-					<SquarePen className="size-3.5" />
+					<Pencil className="size-4" />
 				) : (
 					<ImageIcon className="size-4">
 						<title>{t("editor.cover.title")}</title>
