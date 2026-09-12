@@ -35,7 +35,7 @@ describe("Metal response buffer", () => {
 		const result = buffer.read({ size: 4096 });
 		expect(result).toEqual(source);
 		source.fill(0);
-		expect(result?.[257]).toBe(1);
+		expect(result?.at(257)).toBe(1);
 	});
 
 	it("rejects overflow before retaining bytes and frees capacity after reads", () => {
