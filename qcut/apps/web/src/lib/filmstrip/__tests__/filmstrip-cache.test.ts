@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FilmstripCache } from "../filmstrip-cache";
 
 // Mock URL.revokeObjectURL
@@ -11,6 +11,10 @@ describe("FilmstripCache", () => {
 	beforeEach(() => {
 		cache = new FilmstripCache(5);
 		revokeObjectURL.mockClear();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	it("stores and retrieves entries", () => {
@@ -107,8 +111,6 @@ describe("FilmstripCache", () => {
 
 		// Entry 0 should survive (recently accessed)
 		expect(cache.get("v1", 0)).toBe("blob:0");
-
-		vi.useRealTimers();
 	});
 
 	describe("retain / release", () => {
@@ -147,7 +149,6 @@ describe("FilmstripCache", () => {
 			expect(cache.get("v1", 0)).toBe("blob:0");
 			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:0");
 			expect(revokeObjectURL).toHaveBeenCalledWith("blob:1");
-			vi.useRealTimers();
 		});
 
 		it("a released frame becomes evictable again", () => {
@@ -164,7 +165,28 @@ describe("FilmstripCache", () => {
 
 			expect(cache.get("v1", 0)).toBeNull();
 			expect(revokeObjectURL).toHaveBeenCalledWith("blob:0");
-			vi.useRealTimers();
+		});
+
+		it("evictMedia and clear defer revoking a retained frame until it is released", () => {
+			cache.set("v1", 0, "blob:kept");
+			cache.set("v1", 1, "blob:free");
+			cache.retain("v1", 0);
+
+			cache.evictMedia("v1");
+
+			expect(cache.get("v1", 0)).toBeNull();
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:free");
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:kept");
+			cache.release("v1", 0);
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:kept");
+
+			cache.set("v2", 0, "blob:shown");
+			cache.retain("v2", 0);
+			cache.clear();
+			expect(cache.size).toBe(0);
+			expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:shown");
+			cache.release("v2", 0);
+			expect(revokeObjectURL).toHaveBeenCalledWith("blob:shown");
 		});
 
 		it("grows past the limit rather than revoking frames that are on screen", () => {
