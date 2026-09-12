@@ -8,11 +8,14 @@ import {
 function probe({
 	video = {},
 	audio = true,
+	format,
 }: {
 	video?: Record<string, unknown>;
 	audio?: boolean;
+	format?: { duration?: string };
 } = {}) {
 	return JSON.stringify({
+		format,
 		streams: [
 			{
 				codec_type: "video",
@@ -31,6 +34,70 @@ function probe({
 }
 
 describe("standalone local deflicker contract", () => {
+	it.each([
+		undefined,
+		"N/A",
+		"",
+		"0",
+		"-1",
+	])("uses container timing when stream duration is unavailable: %s", (duration) => {
+		const source = parseLocalDeflickerMetadata({
+			json: probe({ video: { duration }, format: { duration: "4" } }),
+		});
+		expect(source).toMatchObject({
+			durationSeconds: 4,
+			durationBasis: "container",
+			containerDurationSeconds: 4,
+		});
+		const output = parseLocalDeflickerMetadata({
+			json: probe({ format: { duration: "4.001" } }),
+		});
+		expect(output.durationSeconds).toBe(2);
+		expect(() => verifyLocalDeflickerOutput({ source, output })).not.toThrow();
+	});
+
+	it("compares video timing when available even if audio extends the container", () => {
+		const source = parseLocalDeflickerMetadata({
+			json: probe({ format: { duration: "4" } }),
+		});
+		expect(source.durationBasis).toBe("video");
+		expect(() =>
+			verifyLocalDeflickerOutput({
+				source,
+				output: { ...source, durationSeconds: 1.5 },
+			})
+		).toThrow("verification");
+	});
+
+	it.each([
+		undefined,
+		Number.NaN,
+		3.5,
+	])("rejects missing or changed output container timing: %s", (containerDurationSeconds) => {
+		const source = parseLocalDeflickerMetadata({
+			json: probe({ video: { duration: "N/A" }, format: { duration: "4" } }),
+		});
+		expect(() =>
+			verifyLocalDeflickerOutput({
+				source,
+				output: { ...source, containerDurationSeconds },
+			})
+		).toThrow("verification");
+	});
+
+	it.each([
+		undefined,
+		"N/A",
+		"0",
+		"-2",
+	])("rejects metadata without usable stream or container timing: %s", (duration) => {
+		expect(() =>
+			parseLocalDeflickerMetadata({
+				json: probe({ video: { duration: "N/A" }, format: { duration } }),
+			})
+		).toThrow("timing");
+	});
+
 	it.each([
 		"not json",
 		"null",
