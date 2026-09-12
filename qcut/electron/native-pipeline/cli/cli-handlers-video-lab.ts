@@ -1,13 +1,21 @@
-import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
+import {
+	copyFile,
+	link,
+	mkdir,
+	mkdtemp,
+	realpath,
+	rename,
+	rm,
+	stat,
+} from "node:fs/promises";
 import { basename, dirname, extname, resolve } from "node:path";
+import { deflickerLocalVideo } from "../../ffmpeg/deflicker-video.js";
 import { deflickerWithJianyingRuntime } from "../../jianying-basic-video-runtime/runtime.js";
 import type {
 	CLIRunOptions,
 	CLIResult,
 	ProgressFn,
 } from "./cli-runner/types.js";
-
-const resultProvider = "jianying-private-cache";
 
 function defaultOutputPath({ inputPath }: { inputPath: string }) {
 	const extension = extname(inputPath);
@@ -35,29 +43,61 @@ async function pathExists({ filePath }: { filePath: string }) {
 	}
 }
 
+async function assertDistinctSourceAndOutput({
+	sourcePath,
+	outputPath,
+}: {
+	sourcePath: string;
+	outputPath: string;
+}) {
+	if (sourcePath === outputPath) {
+		throw new Error("Output must not overwrite the source video");
+	}
+	if (!(await pathExists({ filePath: outputPath }))) return;
+	const [canonicalSource, canonicalOutput, sourceStat, outputStat] =
+		await Promise.all([
+			realpath(sourcePath),
+			realpath(outputPath),
+			stat(sourcePath),
+			stat(outputPath),
+		]);
+	const sameEntryWithDifferentCase =
+		sourceStat.dev === outputStat.dev &&
+		sourceStat.ino === outputStat.ino &&
+		basename(canonicalSource).toLowerCase() ===
+			basename(canonicalOutput).toLowerCase();
+	if (canonicalSource === canonicalOutput || sameEntryWithDifferentCase) {
+		throw new Error("Output must not overwrite the source video");
+	}
+}
+
 async function publishOutput({
 	cachePath,
 	force,
 	outputPath,
+	signal,
 }: {
 	cachePath: string;
 	force: boolean;
 	outputPath: string;
+	signal: AbortSignal;
 }) {
 	if (resolve(cachePath) === resolve(outputPath)) return;
 	const outputExists = await pathExists({ filePath: outputPath });
 	if (outputExists && !force)
 		throw new Error(`Output already exists: ${outputPath}`);
 	await mkdir(dirname(outputPath), { recursive: true });
-	const temporaryPath = `${outputPath}.${process.pid}.partial.mp4`;
+	const temporaryDirectory = await mkdtemp(
+		resolve(dirname(outputPath), ".qcut-deflicker-publish-")
+	);
+	const temporaryPath = resolve(temporaryDirectory, "result.mp4");
 	try {
 		await copyFile(cachePath, temporaryPath);
-		// POSIX rename replaces the destination atomically on the supported
-		// macOS target, so an interruption never leaves the previous output
-		// deleted without a replacement.
-		await rename(temporaryPath, outputPath);
+		signal.throwIfAborted();
+		if (force) await rename(temporaryPath, outputPath);
+		else await link(temporaryPath, outputPath);
 	} finally {
-		await rm(temporaryPath, { force: true });
+		await rm(temporaryDirectory, { force: true, recursive: true });
 	}
 }
 
@@ -73,36 +113,61 @@ export async function handleVideoLabDeflicker(
 		const outputPath = options.output
 			? resolve(options.output)
 			: defaultOutputPath({ inputPath: sourcePath });
-		if (sourcePath === outputPath) {
-			throw new Error("Output must not overwrite the source video");
-		}
+		await assertDistinctSourceAndOutput({ sourcePath, outputPath });
 		const strength = validateStrength({ value: options.strength });
 		if ((await pathExists({ filePath: outputPath })) && !options.force) {
 			throw new Error(`Output already exists: ${outputPath}`);
 		}
-		const result = await deflickerWithJianyingRuntime({
-			request: {
-				sourcePath,
-				strength,
-				taskId: options.commandId ?? `cli-deflicker-${Date.now()}`,
-			},
-			signal,
-			onProgress: ({ progress, stage, status }) => {
-				onProgress({
-					message: status,
-					model: resultProvider,
-					percent: progress,
-					stage,
-				});
-			},
-		});
-		await publishOutput({
-			cachePath: result.outputPath,
-			force: options.force ?? false,
-			outputPath,
-		});
+		const backend = options.backend ?? "ffmpeg";
+		if (backend !== "ffmpeg" && backend !== "jianying") {
+			throw new Error("--backend must be ffmpeg or jianying");
+		}
+		const reportProgress = ({
+			progress,
+			stage,
+			status,
+		}: {
+			progress: number;
+			stage: string;
+			status: string;
+		}) =>
+			onProgress({
+				message: status,
+				model: backend === "ffmpeg" ? "ffmpeg" : "jianying-private-cache",
+				percent: progress,
+				stage,
+			});
+		const result =
+			backend === "ffmpeg"
+				? await deflickerLocalVideo({
+						sourcePath,
+						outputPath,
+						strength,
+						force: options.force,
+						signal,
+						onProgress: reportProgress,
+					})
+				: await deflickerWithJianyingRuntime({
+						request: {
+							sourcePath,
+							strength,
+							taskId: options.commandId ?? `cli-deflicker-${Date.now()}`,
+						},
+						signal,
+						onProgress: reportProgress,
+					});
+		if (backend === "jianying") {
+			signal.throwIfAborted();
+			await publishOutput({
+				cachePath: result.outputPath,
+				force: options.force ?? false,
+				outputPath,
+				signal,
+			});
+		}
 		return {
 			data: {
+				backend,
 				cache_hit: result.cacheHit,
 				fps: result.fps,
 				frame_count: result.frameCount,
