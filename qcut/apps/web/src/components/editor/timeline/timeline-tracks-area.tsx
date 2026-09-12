@@ -27,6 +27,7 @@ import {
 	getCumulativeHeightBefore,
 	getTotalTracksHeight,
 	TIMELINE_CONSTANTS,
+	TRACK_LABEL_COLUMN_WIDTH,
 } from "@/constants/timeline-constants";
 import type { RefObject } from "react";
 import type { TimelineTrack } from "@/types/timeline";
@@ -194,7 +195,8 @@ export function TimelineTracksArea({
 			{tracks.length > 0 && (
 				<div
 					ref={trackLabelsRef}
-					className="w-64 shrink-0 border-r border-black overflow-y-auto z-200 bg-panel"
+					className="shrink-0 overflow-y-auto z-200 bg-panel"
+					style={{ width: `${TRACK_LABEL_COLUMN_WIDTH}px` }}
 					data-track-labels
 				>
 					<ScrollArea className="w-full h-full" ref={trackLabelsScrollRef}>
