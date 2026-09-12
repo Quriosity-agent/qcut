@@ -56,33 +56,40 @@ function VideoPreview({ item }: MediaPreviewProps) {
 	);
 }
 
+/** Keyed by URL from MediaPreview, so a new picture starts without the error. */
+function ImagePreview({ item }: MediaPreviewProps) {
+	const imageUrl = item.url || item.thumbnailUrl;
+	const [hasError, setHasError] = useState(false);
+
+	if (!imageUrl || hasError) {
+		return (
+			<div className="flex h-full w-full flex-col items-center justify-center bg-muted/30 text-muted-foreground">
+				<Image className="h-6 w-6" />
+				<span className="mt-1 text-xs">Image</span>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex h-full w-full items-center justify-center overflow-hidden">
+			<img
+				src={imageUrl}
+				alt={item.name}
+				className="h-full w-full object-cover"
+				loading="lazy"
+				onError={() => setHasError(true)}
+			/>
+		</div>
+	);
+}
+
 /**
  * Thumbnail for a media card. The card draws the duration and "added" badges
  * over it, so the preview only paints the picture (or a typed placeholder).
  */
 export function MediaPreview({ item }: MediaPreviewProps) {
 	if (item.type === "image") {
-		const imageUrl = item.url || item.thumbnailUrl;
-
-		if (!imageUrl) {
-			return (
-				<div className="flex h-full w-full flex-col items-center justify-center bg-muted/30 text-muted-foreground">
-					<Image className="h-6 w-6" />
-					<span className="mt-1 text-xs">Image</span>
-				</div>
-			);
-		}
-
-		return (
-			<div className="flex h-full w-full items-center justify-center overflow-hidden">
-				<img
-					src={imageUrl}
-					alt={item.name}
-					className="h-full w-full object-cover"
-					loading="lazy"
-				/>
-			</div>
-		);
+		return <ImagePreview key={item.url || item.thumbnailUrl} item={item} />;
 	}
 
 	if (item.type === "video") {
