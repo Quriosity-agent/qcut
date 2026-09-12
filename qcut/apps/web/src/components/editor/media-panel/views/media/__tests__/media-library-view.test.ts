@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack } from "@/types/timeline";
+import type { MediaFolder } from "@/stores/media/media-store-types";
 import {
+	buildMediaLibraryEntries,
 	formatMediaDuration,
 	getMediaUsageCounts,
 	sortMediaLibraryItems,
@@ -130,6 +132,47 @@ describe("media library view data", () => {
 
 		expect(getMediaUsageCounts({ tracks }).get("b")).toBe(2);
 		expect(getMediaUsageCounts({ tracks }).has("a")).toBe(false);
+	});
+
+	it("interleaves folders with media by name and puts them first otherwise", () => {
+		const folders: MediaFolder[] = [
+			{
+				id: "clips",
+				name: "clips",
+				parentId: null,
+				isExpanded: false,
+				createdAt: 1,
+				updatedAt: 1,
+			},
+			{
+				id: "audio",
+				name: "Audio",
+				parentId: null,
+				isExpanded: false,
+				createdAt: 1,
+				updatedAt: 1,
+			},
+		];
+		const label = (
+			entry: ReturnType<typeof buildMediaLibraryEntries>[number]
+		) => (entry.kind === "folder" ? `dir:${entry.folder.id}` : entry.item.id);
+
+		expect(
+			buildMediaLibraryEntries({ folders, items, sortBy: "name" }).map(label)
+		).toEqual(["a", "dir:audio", "b", "dir:clips"]);
+		expect(
+			buildMediaLibraryEntries({
+				folders,
+				items,
+				sortBy: "name",
+				direction: "desc",
+			}).map(label)
+		).toEqual(["dir:clips", "b", "dir:audio", "a"]);
+		expect(
+			buildMediaLibraryEntries({ folders, items, sortBy: "duration" }).map(
+				label
+			)
+		).toEqual(["dir:audio", "dir:clips", "b", "a"]);
 	});
 
 	it("formats durations with two-digit minutes", () => {
