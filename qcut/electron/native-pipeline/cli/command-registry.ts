@@ -1279,7 +1279,7 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 	"video-lab-deflicker": {
 		name: "video-lab-deflicker",
 		description:
-			"Deflicker a local video with a verified, offline Jianying runtime cache",
+			"Reduce local video brightness flicker with FFmpeg; optionally use a verified Jianying cache",
 		category: "editing",
 		flags: [
 			f("--input", "string", "Local source video", {
@@ -1287,13 +1287,25 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 				required: true,
 			}),
 			f("--output", "string", "Output MP4 path"),
-			f("--strength", "number", "Deflicker strength from 1 to 100", {
-				default: 70,
-			}),
+			f(
+				"--backend",
+				"string",
+				"ffmpeg (default) or jianying (requires local runtime cache)",
+				{ default: "ffmpeg" }
+			),
+			f(
+				"--strength",
+				"number",
+				"Temporal smoothing from 1 to 100; FFmpeg uses a 3–31 frame window",
+				{
+					default: 70,
+				}
+			),
 			f("--force", "boolean", "Replace an existing output"),
 		],
 		examples: [
 			"qcut edit deflicker -i source.mp4 --strength 70 --output source-deflicker.mp4",
+			"qcut edit deflicker -i source.mp4 --backend jianying --strength 70",
 		],
 	},
 	"analyze-consistency": {
