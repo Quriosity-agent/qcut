@@ -66,7 +66,12 @@ export class IndexedDbAssetResourceCache implements AssetResourceCacheStorage {
 					files.createIndex("by-last-accessed", "lastAccessedAt");
 				},
 			}
-		);
+		).catch((error: unknown) => {
+			// Forget a failed open so the next call can try IndexedDB again
+			// instead of replaying the same rejection forever.
+			this.databasePromise = undefined;
+			throw error;
+		});
 		return this.databasePromise;
 	}
 
