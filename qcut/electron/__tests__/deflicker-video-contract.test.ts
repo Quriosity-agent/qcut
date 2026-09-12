@@ -72,6 +72,36 @@ describe("standalone local deflicker contract", () => {
 	it.each([
 		undefined,
 		Number.NaN,
+		2,
+		6,
+	])("rejects changed audio-tail timing even when video timing matches: %s", (containerDurationSeconds) => {
+		const source = parseLocalDeflickerMetadata({
+			json: probe({ format: { duration: "4" } }),
+		});
+		expect(() =>
+			verifyLocalDeflickerOutput({
+				source,
+				output: { ...source, containerDurationSeconds },
+			})
+		).toThrow("verification");
+	});
+
+	it("accepts matching video and container durations within tolerance", () => {
+		const source = parseLocalDeflickerMetadata({
+			json: probe({ format: { duration: "4" } }),
+		});
+		const output = parseLocalDeflickerMetadata({
+			json: probe({
+				video: { duration: "2.001" },
+				format: { duration: "4.001" },
+			}),
+		});
+		expect(() => verifyLocalDeflickerOutput({ source, output })).not.toThrow();
+	});
+
+	it.each([
+		undefined,
+		Number.NaN,
 		3.5,
 	])("rejects missing or changed output container timing: %s", (containerDurationSeconds) => {
 		const source = parseLocalDeflickerMetadata({
