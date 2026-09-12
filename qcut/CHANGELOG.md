@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.09.12.1] - 2026-09-12
+
 ### Added
 - Edit position, scale, rotation and opacity across multiple video clips, with mixed values, relative adjustments, keyframe support and one undo step per field change.
 - Run `qcut edit deflicker` with the local FFmpeg backend by default. The explicit Jianying reference backend remains available. Deflicker is intended for individual shots, not across scene cuts.
