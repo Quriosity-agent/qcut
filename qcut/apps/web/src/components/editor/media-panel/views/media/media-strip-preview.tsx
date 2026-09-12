@@ -76,6 +76,10 @@ function VideoStrip({
 	width: number;
 	isVisible: boolean;
 }) {
+	// An omitted status predates status tracking; only an in-flight or failed
+	// thumbnail holds frame extraction back.
+	const canExtract =
+		item.thumbnailStatus === undefined || item.thumbnailStatus === "ready";
 	const { frames } = useFilmstripThumbnails({
 		mediaId: item.id,
 		file: item.file,
@@ -85,7 +89,7 @@ function VideoStrip({
 		zoomLevel: 1,
 		trackHeight: MEDIA_STRIP_HEIGHT + 8,
 		clipWidthPx: width,
-		enabled: item.thumbnailStatus === "ready" && isVisible && width > 0,
+		enabled: canExtract && isVisible && width > 0,
 	});
 	const isGenerating =
 		item.thumbnailStatus === "pending" || item.thumbnailStatus === "loading";
