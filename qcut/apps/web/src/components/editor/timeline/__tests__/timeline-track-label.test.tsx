@@ -174,9 +174,11 @@ describe("TimelineTrackLabel", () => {
 		const card = screen.getByTestId("main-track-cover-badge");
 		expect(card).not.toHaveTextContent("Cover");
 		expect(card).toHaveAccessibleName("Project cover");
-		// The header lists the track controls first; the cover card is the last
-		// button before the resize handle so it sits next to the first clip.
-		const buttons = screen.getAllByRole("button");
-		expect(buttons[buttons.length - 1]).toBe(card);
+		// The tile stands in the gutter between the header and the clips, not
+		// among the track controls, so it reads as its own element.
+		expect(screen.getByTestId("timeline-track-gutter")).toContainElement(card);
+		expect(screen.getByTestId("timeline-track-header")).not.toContainElement(
+			card
+		);
 	});
 });
