@@ -57,7 +57,7 @@ export function CoverButton({
 					onTimeline
 						? cn(
 								"flex shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-foreground/10 p-0 text-foreground/80 hover:bg-foreground/15 hover:text-foreground",
-								compact ? "h-7 w-7" : "h-[52px] w-8"
+								compact ? "h-5 w-5" : "h-[52px] w-8"
 							)
 						: undefined
 				}
@@ -75,7 +75,9 @@ export function CoverButton({
 				}}
 			>
 				{onTimeline ? (
-					<Pencil className="size-4" />
+					<Pencil className={compact ? "size-3.5" : "size-4"}>
+						{compact ? <title>{t("editor.cover.title")}</title> : null}
+					</Pencil>
 				) : (
 					<ImageIcon className="size-4">
 						<title>{t("editor.cover.title")}</title>
