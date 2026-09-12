@@ -12,6 +12,8 @@ import {
 	type AudioBatchSelection,
 } from "./audio-multi-selection-properties";
 import { MediaProperties } from "./media-properties";
+import { VideoMultiSelectionProperties } from "./video-multi-selection-properties";
+import type { MediaBatchSelection } from "@/lib/video/media-batch-properties";
 import {
 	TextGroupProperties,
 	TextProperties,
@@ -132,6 +134,20 @@ export function PropertiesPanel() {
 	);
 	const isSingleAudioSelection =
 		resolvedSelections.length === 1 && audioBatchSelections.length === 1;
+	const videoBatchSelections = useMemo(
+		() =>
+			resolvedSelections.flatMap(({ trackId, element }) => {
+				if (element.type !== "media") return [];
+				return mediaItems.find((item) => item.id === element.mediaId)?.type ===
+					"video"
+					? ([{ trackId, element }] satisfies MediaBatchSelection[])
+					: [];
+			}),
+		[mediaItems, resolvedSelections]
+	);
+	const isVideoBatchSelection =
+		videoBatchSelections.length > 1 &&
+		videoBatchSelections.length === selectedElements.length;
 	const isAudioBatchSelection =
 		resolvedSelections.length > 1 &&
 		audioBatchSelections.length === resolvedSelections.length;
@@ -290,6 +306,10 @@ export function PropertiesPanel() {
 								{isAudioBatchSelection ? (
 									<AudioMultiSelectionProperties
 										selections={audioBatchSelections}
+									/>
+								) : isVideoBatchSelection ? (
+									<VideoMultiSelectionProperties
+										selections={videoBatchSelections}
 									/>
 								) : isTextGroupSelection ? (
 									<TextGroupProperties selections={textGroupSelections} />
