@@ -1069,6 +1069,8 @@ export interface CaptionElement extends BaseTimelineElement {
 	source: "transcription" | "manual" | "imported";
 	style?: SubtitleStyle;
 	words?: AudioLyricsWord[];
+	/** Marked as a key point (划重点) and styled with the lane's keyword preset. */
+	emphasis?: boolean;
 }
 
 export interface RemotionElement extends BaseTimelineElement {
