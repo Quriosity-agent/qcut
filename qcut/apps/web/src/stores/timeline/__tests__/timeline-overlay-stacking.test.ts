@@ -86,10 +86,50 @@ describe("overlay stacking mode", () => {
 		expect(useTimelineStore.getState().tracks[0].id).toBe(trackId);
 	});
 
-	it("byType appends a fresh captions lane the legacy way", () => {
+	it("byType slots a fresh captions lane into its type group, above the main track", () => {
 		setup({ mode: "byType" });
 		useTimelineStore.getState().findOrCreateTrack("captions");
-		expect(trackTypes()).toEqual(["text", "sticker", "media", "captions"]);
+		// Rows are layers: appended below the main track the captions would
+		// paint underneath the video and never show in preview or export.
+		expect(trackTypes()).toEqual(["text", "captions", "sticker", "media"]);
+	});
+
+	it("byType puts a new overlay media lane above the main track", () => {
+		setup({ mode: "byType" });
+		const trackId = useTimelineStore.getState().addTrackInTypeGroup("media");
+		const tracks = useTimelineStore.getState().tracks;
+		expect(tracks.map((track) => track.type)).toEqual([
+			"text",
+			"sticker",
+			"media",
+			"media",
+		]);
+		expect(tracks[2].id).toBe(trackId);
+		expect(tracks[3].isMain).toBe(true);
+	});
+
+	it("byType creates the first captions lane at the top when only main and audio exist", () => {
+		useTimelineStore.setState({
+			_tracks: [
+				{
+					id: "main",
+					name: "Main",
+					type: "media",
+					isMain: true,
+					elements: [],
+					order: 0,
+				},
+				{ id: "audio", name: "Audio", type: "audio", elements: [], order: 1 },
+			],
+			tracks: [],
+			history: [],
+			redoStack: [],
+			selectedElements: [],
+			selectedTransition: null,
+			overlayStacking: "byType",
+		});
+		useTimelineStore.getState().findOrCreateTrack("captions");
+		expect(trackTypes()).toEqual(["captions", "media", "audio"]);
 	});
 
 	it("adjustment insertion index follows the mode", () => {
