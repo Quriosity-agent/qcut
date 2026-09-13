@@ -33,5 +33,36 @@ describe("Claude caption export", () => {
 			content: "Grace in motion",
 			language: "en",
 		});
+		expect(caption.style).toBeUndefined();
+	});
+
+	it("keeps the caption style so native export burns in the styled look", () => {
+		const style = { fontSize: 56, fontColor: "#ffe066", bold: true };
+		const tracks: TimelineTrack[] = [
+			{
+				id: "captions",
+				name: "Styled Captions",
+				type: "captions",
+				elements: [
+					{
+						id: "caption-1",
+						type: "captions",
+						name: "Styled",
+						text: "Styled",
+						language: "zh",
+						source: "manual",
+						startTime: 0.5,
+						duration: 4,
+						trimStart: 0,
+						trimEnd: 0,
+						style: style as never,
+					},
+				],
+			},
+		];
+
+		const [caption] = formatTracksForExport({ tracks, fps: 30 })[0].elements;
+
+		expect(caption.style).toEqual(style);
 	});
 });
