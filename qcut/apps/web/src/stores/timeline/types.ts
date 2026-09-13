@@ -244,6 +244,8 @@ export interface TimelineStore {
 
 	/** Add a new track of the specified type to the timeline */
 	addTrack: (type: TrackType) => string;
+	/** Insert a lane at the top of its type group (above the main track for visual lanes). */
+	addTrackInTypeGroup: (type: TrackType) => string;
 	/** Insert a new track at the specified index position */
 	insertTrackAt: (type: TrackType, index: number) => string;
 	/** Move an existing track to a zero-based UI position */
