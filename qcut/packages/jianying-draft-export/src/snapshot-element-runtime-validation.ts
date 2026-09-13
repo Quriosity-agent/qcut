@@ -183,6 +183,7 @@ const CAPTION_ELEMENT_KEYS = createElementAllowedKeySet<CaptionElement>({
 		style: true,
 		text: true,
 		words: true,
+		emphasis: true,
 	},
 });
 const ADJUSTMENT_ELEMENT_KEYS = createElementAllowedKeySet<AdjustmentElement>({
