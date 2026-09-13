@@ -81,7 +81,9 @@ export function LyricsRecognitionCard() {
 	const { t } = useTranslation();
 	const mediaItems = useMediaStore((store) => store.mediaItems);
 	const tracks = useTimelineStore((store) => store.tracks);
-	const addTrack = useTimelineStore((store) => store.addTrack);
+	const addTrackInTypeGroup = useTimelineStore(
+		(store) => store.addTrackInTypeGroup
+	);
 	const removeTrack = useTimelineStore((store) => store.removeTrack);
 	const addElementToTrack = useTimelineStore(
 		(store) => store.addElementToTrack
@@ -167,7 +169,7 @@ export function LyricsRecognitionCard() {
 			) {
 				removeTrack(previousTrackId);
 			}
-			const trackId = addTrack("captions");
+			const trackId = addTrackInTypeGroup("captions");
 			for (const caption of captions) {
 				addElementToTrack(trackId, caption, {
 					pushHistory: false,
@@ -185,7 +187,7 @@ export function LyricsRecognitionCard() {
 		}
 	}, [
 		addElementToTrack,
-		addTrack,
+		addTrackInTypeGroup,
 		effect,
 		fps,
 		language,
