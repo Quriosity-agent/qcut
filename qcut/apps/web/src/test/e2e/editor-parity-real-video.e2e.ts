@@ -417,12 +417,12 @@ test.describe("Editor parity with real video", () => {
 		});
 		const captionProperties = page.getByTestId("caption-properties");
 		await expect(captionProperties).toBeVisible();
-		for (const tab of ["基础", "预设", "动画", "配音", "数字人"]) {
+		for (const tab of ["字幕", "文本", "动画", "朗读", "数字人"]) {
 			await expect(
 				captionProperties.getByRole("tab", { name: tab, exact: true })
 			).toBeVisible();
 		}
-		await captionProperties.getByRole("tab", { name: "预设" }).click();
+		await captionProperties.getByRole("tab", { name: "文本" }).click();
 		await page.screenshot({
 			path: path.join(artifactDirectory, "07-caption-presets-and-scope.png"),
 			animations: "disabled",
