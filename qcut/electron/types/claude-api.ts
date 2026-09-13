@@ -307,6 +307,8 @@ export interface ClaudeElement
 	zIndex?: number;
 	content?: string;
 	language?: string;
+	/** Caption marked as a key point (划重点). */
+	emphasis?: boolean;
 	markdownContent?: string;
 	style?: Record<string, unknown>;
 	name?: string;
