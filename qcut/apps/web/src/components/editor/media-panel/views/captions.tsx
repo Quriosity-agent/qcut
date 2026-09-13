@@ -42,7 +42,9 @@ import { useGeminiFileTranscription } from "@/hooks/captions/use-gemini-file-tra
 import type { TranscriptionResult } from "@/types/captions";
 import type { SubtitleStyle } from "@/types/timeline";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
 import { useCaptionsStore } from "@/stores/captions-store";
+import { pickCaptionLane } from "@/lib/captions/caption-lane";
 import { CaptionTemplateGallery } from "@/components/captions/caption-template-gallery";
 import { LyricsRecognitionCard } from "@/components/captions/lyrics-recognition-card";
 import {
@@ -81,7 +83,7 @@ export function CaptionsView() {
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	// Timeline and captions store hooks
-	const { findOrCreateTrack, addElementToTrack, removeTrack, tracks } =
+	const { addTrackInTypeGroup, addElementToTrack, removeTrack, tracks } =
 		useTimelineStore();
 	const { createCaptionElements } = useCaptionsStore();
 
@@ -122,9 +124,17 @@ export function CaptionsView() {
 					}
 				}
 
-				// Reuse the existing captions track so repeated runs don't stack
-				// duplicate tracks.
-				const trackId = findOrCreateTrack("captions");
+				// Reuse a captions lane that has room for every new caption.
+				// A lane already holding captions at these times would reject
+				// them one by one (same-track no-overlap rule), so open a fresh
+				// lane above it instead. Read the store live: the clear above
+				// may just have removed the lanes this closure still lists.
+				const trackId =
+					pickCaptionLane({
+						tracks: useTimelineStore.getState().tracks,
+						elements: captionElements,
+						fps: useProjectStore.getState().activeProject?.fps ?? 30,
+					}) ?? addTrackInTypeGroup("captions");
 
 				// Add all caption elements to the track
 				for (const captionElement of captionElements) {
@@ -150,7 +160,7 @@ export function CaptionsView() {
 		},
 		[
 			createCaptionElements,
-			findOrCreateTrack,
+			addTrackInTypeGroup,
 			addElementToTrack,
 			removeTrack,
 			tracks,
