@@ -174,18 +174,18 @@ export function CaptionStyleControls({
 			action: () => onChange({ bold: !style.bold }),
 		},
 		{
-			label: t("caption.italic"),
-			active: style.italic,
-			content: "I",
-			className: "italic",
-			action: () => onChange({ italic: !style.italic }),
-		},
-		{
 			label: t("caption.underline"),
 			active: style.underline,
 			content: "U",
 			className: "underline",
 			action: () => onChange({ underline: !style.underline }),
+		},
+		{
+			label: t("caption.italic"),
+			active: style.italic,
+			content: "I",
+			className: "italic",
+			action: () => onChange({ italic: !style.italic }),
 		},
 	];
 	const setVertical = (align: "top" | "center" | "bottom", y: number) =>
