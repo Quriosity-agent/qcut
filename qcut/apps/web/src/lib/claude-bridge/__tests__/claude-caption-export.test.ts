@@ -56,6 +56,7 @@ describe("Claude caption export", () => {
 						trimStart: 0,
 						trimEnd: 0,
 						style: style as never,
+						emphasis: true,
 					},
 				],
 			},
@@ -64,5 +65,6 @@ describe("Claude caption export", () => {
 		const [caption] = formatTracksForExport({ tracks, fps: 30 })[0].elements;
 
 		expect(caption.style).toEqual(style);
+		expect(caption.emphasis).toBe(true);
 	});
 });
