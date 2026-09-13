@@ -7,6 +7,7 @@ export {
 	sortTracksByOrder,
 	normalizeTrackOrder,
 	moveTrack,
+	trackTypeGroupInsertionIndex,
 	compareTrackTypePriority,
 	getMainTrack,
 	ensureMainTrack,
