@@ -584,7 +584,9 @@ export interface TimelineStore {
 	updateCaptionElement: (
 		trackId: string,
 		elementId: string,
-		updates: Partial<Pick<CaptionElement, "text" | "language" | "style">>,
+		updates: Partial<
+			Pick<CaptionElement, "text" | "language" | "style" | "emphasis">
+		>,
 		pushHistory?: boolean
 	) => void;
 	applyCaptionStyle: ({
