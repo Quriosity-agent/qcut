@@ -78,7 +78,9 @@ export function AudioLyricsSettings({
 }) {
 	const { t } = useTranslation();
 	const fps = useProjectStore((state) => state.activeProject?.fps ?? 30);
-	const addTrack = useTimelineStore((state) => state.addTrack);
+	const addTrackInTypeGroup = useTimelineStore(
+		(state) => state.addTrackInTypeGroup
+	);
 	const addElementToTrack = useTimelineStore(
 		(state) => state.addElementToTrack
 	);
@@ -220,7 +222,7 @@ export function AudioLyricsSettings({
 		) {
 			removeTrack(lyrics.captionTrackId);
 		}
-		const captionTrackId = addTrack("captions");
+		const captionTrackId = addTrackInTypeGroup("captions");
 		for (const caption of captions) {
 			addElementToTrack(captionTrackId, caption, {
 				pushHistory: false,
