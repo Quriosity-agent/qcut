@@ -3,6 +3,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore } from "@/stores/media/media-store";
 import { normalizeMediaPortraitAdjustments } from "@qcut/editor-core";
 import type {
+	CaptionElement,
 	MediaElement,
 	MediaPortraitAdjustments,
 	StickerElement,
@@ -245,6 +246,31 @@ export const applyElementChanges = ({
 			}
 		}
 
+		if (element.type === "captions") {
+			// Captions expose their text as `content` in the export snapshot, so
+			// the same key is accepted back; style merges over the current look.
+			const captionUpdates: Partial<
+				Pick<CaptionElement, "text" | "language" | "style">
+			> = {};
+			if (typeof changes.content === "string") {
+				captionUpdates.text = changes.content;
+			}
+			if (typeof changes.language === "string") {
+				captionUpdates.language = changes.language;
+			}
+			if (styleChanges) {
+				captionUpdates.style =
+					styleChanges as unknown as CaptionElement["style"];
+			}
+			if (Object.keys(captionUpdates).length > 0) {
+				timelineStore.updateCaptionElement(
+					track.id,
+					elementId,
+					captionUpdates,
+					false
+				);
+			}
+		}
 		if (element.type === "media") {
 			const timingUpdates = getClaudeMediaTimingProperties({
 				element: changes,
