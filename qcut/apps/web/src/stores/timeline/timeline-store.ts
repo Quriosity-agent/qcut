@@ -327,9 +327,13 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 				return existingTrack.id;
 			}
 
-			return overlayCreatesOnTop
-				? get().insertTrackAt(trackType, 0)
-				: get().addTrack(trackType);
+			if (overlayCreatesOnTop) return get().insertTrackAt(trackType, 0);
+			// Rows are layers: a lane appended below the main track paints
+			// underneath its video, so visual lanes slot into their type group
+			// (above the main track); only audio keeps stacking downward.
+			return trackType === "audio"
+				? get().addTrack(trackType)
+				: get().addTrackInTypeGroup(trackType);
 		},
 
 		// CRUD operations (add/remove/move/update tracks and elements)
