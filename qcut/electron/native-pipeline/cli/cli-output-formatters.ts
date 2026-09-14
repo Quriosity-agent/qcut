@@ -51,6 +51,31 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 		return;
 	}
 
+	if (command === "analyze-shots") {
+		const data = result.data as {
+			available?: boolean;
+			cut_points?: number[];
+			duration_seconds?: number;
+			fps?: number;
+			frame_count?: number;
+			message?: string;
+			shots?: unknown[];
+		};
+		if (!data.cut_points) {
+			console.log(
+				`\n${data.available ? "Ready" : "Unavailable"}: ${data.message ?? ""}`
+			);
+			return;
+		}
+		console.log(
+			`\nShots: ${data.shots?.length ?? 0} (${data.frame_count} frames at ${data.fps} fps, ${data.duration_seconds}s)`
+		);
+		console.log(
+			`Cut points (s): ${data.cut_points.length ? data.cut_points.join(", ") : "none"}`
+		);
+		return;
+	}
+
 	// Model listing commands
 	if (
 		command === "list-models" ||
