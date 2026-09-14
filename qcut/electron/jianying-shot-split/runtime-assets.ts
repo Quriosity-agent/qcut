@@ -72,13 +72,12 @@ function recordValue(value: unknown): Record<string, unknown> | null {
 		: null;
 }
 
+/** Manifest paths are POSIX by construction (written on macOS), whatever host reads them. */
 function isSafeRelativePath({ value }: { value: string }) {
-	if (!value || path.isAbsolute(value)) return false;
-	const normalized = path.normalize(value);
+	if (!value || path.posix.isAbsolute(value)) return false;
+	const normalized = path.posix.normalize(value);
 	return (
-		normalized === value &&
-		normalized !== ".." &&
-		!normalized.startsWith(`..${path.sep}`)
+		normalized === value && normalized !== ".." && !normalized.startsWith("../")
 	);
 }
 
@@ -188,7 +187,9 @@ async function listFiles({
 			if (entry.isDirectory()) {
 				return listFiles({ baseDirectory, directory: entryPath });
 			}
-			return entry.isFile() ? [path.relative(baseDirectory, entryPath)] : [];
+			return entry.isFile()
+				? [path.relative(baseDirectory, entryPath).split(path.sep).join("/")]
+				: [];
 		})
 	);
 	return nested.flat().sort();
