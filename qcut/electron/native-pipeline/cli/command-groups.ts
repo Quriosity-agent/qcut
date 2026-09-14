@@ -75,6 +75,7 @@ export const COMMAND_GROUPS: CommandGroup[] = [
 			inspect: "analyze-inspect",
 			consistency: "analyze-consistency",
 			"image-consistency": "analyze-image-consistency",
+			shots: "analyze-shots",
 			query: "query-video",
 			transcribe: "transcribe",
 			translate: "translate-video",
