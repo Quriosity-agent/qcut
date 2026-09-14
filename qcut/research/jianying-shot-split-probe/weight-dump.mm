@@ -224,6 +224,8 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
 
   FILE *idx = fopen((dir + "/weights.tsv").c_str(), "w");
   if (idx) fprintf(idx, "序号\t层名\td0\td1\td2\td3\t字节数\t元素数\n");
+  FILE *params = fopen((dir + "/params.tsv").c_str(), "w");
+  if (params) fprintf(params, "序号\t层名\t类型\tkh\tkw\tcin\tcout\tih\tiw\n");
   size_t dumped = 0, totalBytes = 0;
   for (size_t i = 0; i < count; ++i) {
     void *layer = *reinterpret_cast<void **>(begin + i * 16);
@@ -240,44 +242,18 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
     *reinterpret_cast<int32_t *>(tensor + 0x1c) = *reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x44);
     unsigned long bytes = (data && byteSize) ? byteSize(tensor) : 0;
     unsigned long elems = (data && dataCount) ? dataCount(tensor) : 0;
-    // 抓取层对象里“看起来就是权重”的缓冲,存下前若干字节当指纹,供与模型文件比对
+    // 导出每层参数:类型、卷积核、输入输出通道(供离线把权重段切分到层)
     const std::string &kind = *reinterpret_cast<const std::string *>(static_cast<char *>(layer) + 0x30);
     const int32_t *p118 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x118);
     const int32_t *p140 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x140);
-    int kh = p118[0], kw = p118[1], cin = p140[0], cout = p140[1];
-    bool convLike = kind.find("Convolution") != std::string::npos;
-    if (convLike && dumped < 12) {
-      const uintptr_t *w = reinterpret_cast<const uintptr_t *>(layer);
-      int perLayer = 0;
-      for (int k = 1; k < 256 && perLayer < 2; ++k) {
-        uintptr_t v = w[k];
-        if (v <= 0x100000000ull || v >= 0x800000000000ull) continue;
-        unsigned char probe[1024] = {};
-        mach_vm_size_t got = 0;
-        if (mach_vm_read_overwrite(mach_task_self(), v, sizeof(probe), (mach_vm_address_t)probe, &got) != KERN_SUCCESS || got < 256) continue;
-        // 缓冲前面可能有头部,窗口从 0 和 0x30 两处都试
-        const float *f = reinterpret_cast<const float *>(probe);
-        int bestStart = -1;
-        for (int start : {0, 12}) {
-          size_t sane = 0, distinct = 0;
-          for (int q = start; q < start + 64; ++q) {
-            float x = f[q], ax = fabsf(x);
-            if (std::isfinite(x) && ax >= 1e-5f && ax <= 5.0f) ++sane;
-            if (x != f[start]) ++distinct;
-          }
-          if (sane >= 45 && distinct >= 30) { bestStart = start; break; }
-        }
-        if (bestStart < 0) continue;
-        f += bestStart;
-        char fn[512];
-        snprintf(fn, sizeof(fn), "%s/probe-%03zu-off0x%03x+%d-%s.bin", dir.c_str(), i, k * 8, bestStart * 4, kind.c_str());
-        FILE *pf = fopen(fn, "wb");
-        if (pf) { fwrite(probe + bestStart * 4, 1, got - bestStart * 4, pf); fclose(pf); }
-        printf("    [%3zu] %-44s %-30s %dx%d k=%dx%d @+0x%03x  %.5f %.5f %.5f %.5f\n",
-               i, name.c_str(), kind.c_str(), cin, cout, kh, kw, k * 8, f[0], f[1], f[2], f[3]);
-        ++perLayer; ++dumped; totalBytes += got;
-      }
-    }
+    const int32_t *p158 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x158);
+    int kh = p118[0], kw = p118[1], cin = p140[0], cout = p140[1], ih = p158[0], iw = p158[1];
+    if (params)
+      fprintf(params, "%zu\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n",
+              i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw);
+    if (i < 4)
+      printf("    [%3zu] %-44s %-30s k=%dx%d %dx%d in=%dx%d\n", i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw);
+    ++dumped;
     if (idx) fprintf(idx, "%zu\t%s\t%d\t%d\t%d\t%d\t%lu\t%lu\n", i, name.c_str(), td[0], td[1], td[2], td[3], bytes, elems);
     if (data && bytes > 0 && bytes < (1ul << 27)) {
       std::string safe = name.empty() ? ("layer" + std::to_string(i)) : name;
@@ -287,6 +263,7 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
     }
   }
   if (idx) fclose(idx);
+  if (params) fclose(params);
   printf("  ✓ 导出 %zu 个权重张量,共 %.2f MiB -> %s\n", dumped, totalBytes / 1048576.0, dir.c_str());
 }
 
