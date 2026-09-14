@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { Eraser, Highlighter, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PRESET_LABEL_KEYS } from "@/components/captions/caption-preset-grid";
+import { activateOnKeyboard } from "@/components/captions/caption-style-controls";
 import {
+	applyEmphasisUpdates,
 	captionsToSegments,
+	clearEmphasisUpdates,
 	DEFAULT_EMPHASIS_PRESET_ID,
 	findEmphasisPreset,
 	pickEmphasisCandidates,
-	resolveLaneBaseStyle,
 } from "@/lib/captions/caption-emphasis";
 import { CAPTION_STYLE_PRESETS } from "@/lib/captions/caption-style-presets";
 import { selectKeySegments } from "@/lib/captions/smart-recognition";
@@ -26,7 +28,21 @@ import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { CaptionElement } from "@/types/timeline";
+import type { CaptionElement, TimelineTrack } from "@/types/timeline";
+
+/** The lane's captions in playback order. */
+function laneCaptions({
+	tracks,
+	trackId,
+}: {
+	tracks: readonly TimelineTrack[];
+	trackId: string;
+}): CaptionElement[] {
+	const track = tracks.find((candidate) => candidate.id === trackId);
+	return (track?.elements ?? [])
+		.filter((element): element is CaptionElement => element.type === "captions")
+		.sort((a, b) => a.startTime - b.startTime);
+}
 
 /**
  * 字幕 tab of the caption panel: every caption on the lane, numbered and in
@@ -54,14 +70,11 @@ export function CaptionListTab({
 		DEFAULT_EMPHASIS_PRESET_ID
 	);
 	const [isPicking, setIsPicking] = useState(false);
-	const captions = useMemo(() => {
-		const track = tracks.find((candidate) => candidate.id === trackId);
-		return (track?.elements ?? [])
-			.filter(
-				(element): element is CaptionElement => element.type === "captions"
-			)
-			.sort((a, b) => a.startTime - b.startTime);
-	}, [trackId, tracks]);
+	const keywordStyleId = useId();
+	const captions = useMemo(
+		() => laneCaptions({ tracks, trackId }),
+		[trackId, tracks]
+	);
 	const emphasizedCount = captions.filter((caption) => caption.emphasis).length;
 
 	const focusCaption = useCallback(
@@ -78,17 +91,21 @@ export function CaptionListTab({
 				toast.info(t("caption.list.noCandidates"));
 				return;
 			}
-			const preset = findEmphasisPreset({ presetId: emphasisPresetId });
-			pushHistory();
-			for (const id of ids) {
-				updateCaptionElement(
+			// Read the lane live: auto-highlight lands after an async labeler call.
+			const updates = applyEmphasisUpdates({
+				captions: laneCaptions({
+					tracks: useTimelineStore.getState().tracks,
 					trackId,
-					id,
-					{ emphasis: true, style: structuredClone(preset.style) },
-					false
-				);
+				}),
+				ids,
+				preset: findEmphasisPreset({ presetId: emphasisPresetId }),
+			});
+			if (updates.length === 0) return;
+			pushHistory();
+			for (const { id, updates: captionUpdates } of updates) {
+				updateCaptionElement(trackId, id, captionUpdates, false);
 			}
-			toast.success(t("caption.list.highlighted", { count: ids.length }));
+			toast.success(t("caption.list.highlighted", { count: updates.length }));
 		},
 		[emphasisPresetId, pushHistory, t, trackId, updateCaptionElement]
 	);
@@ -136,19 +153,14 @@ export function CaptionListTab({
 	);
 
 	const clearEmphasis = useCallback(() => {
-		const targets = captions.filter((caption) => caption.emphasis);
-		if (targets.length === 0) return;
-		const base = resolveLaneBaseStyle({ captions });
+		// Each caption gets back its own pre-highlight style, not one lane look.
+		const updates = clearEmphasisUpdates({ captions });
+		if (updates.length === 0) return;
 		pushHistory();
-		for (const caption of targets) {
-			updateCaptionElement(
-				trackId,
-				caption.id,
-				{ emphasis: false, style: structuredClone(base) },
-				false
-			);
+		for (const { id, updates: captionUpdates } of updates) {
+			updateCaptionElement(trackId, id, captionUpdates, false);
 		}
-		toast.success(t("caption.list.cleared", { count: targets.length }));
+		toast.success(t("caption.list.cleared", { count: updates.length }));
 	}, [captions, pushHistory, t, trackId, updateCaptionElement]);
 
 	return (
@@ -190,6 +202,12 @@ export function CaptionListTab({
 									type="button"
 									className="flex w-full flex-col items-start gap-0.5 px-2 py-1.5 text-left"
 									onClick={() => focusCaption(caption)}
+									onKeyDown={(event) =>
+										activateOnKeyboard({
+											event,
+											action: () => focusCaption(caption),
+										})
+									}
 									aria-current={active ? "true" : undefined}
 								>
 									<span className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -229,6 +247,12 @@ export function CaptionListTab({
 														className="rounded bg-muted px-1.5 py-0.5 text-[10px] hover:bg-muted/70"
 														title={formatClockTime({ seconds: word.start })}
 														onClick={() => seek(word.start)}
+														onKeyDown={(event) =>
+															activateOnKeyboard({
+																event,
+																action: () => seek(word.start),
+															})
+														}
 													>
 														{word.text}
 													</button>
@@ -244,6 +268,13 @@ export function CaptionListTab({
 												onClick={() =>
 													removeElementFromTrack(trackId, caption.id)
 												}
+												onKeyDown={(event) =>
+													activateOnKeyboard({
+														event,
+														action: () =>
+															removeElementFromTrack(trackId, caption.id),
+													})
+												}
 											>
 												<Trash2 className="size-3" />
 												{t("caption.list.delete")}
@@ -258,11 +289,12 @@ export function CaptionListTab({
 			)}
 			<div className="space-y-2 border-t border-border pt-3">
 				<div className="flex items-center gap-2">
-					<Label className="shrink-0 text-xs">
+					<Label className="shrink-0 text-xs" htmlFor={keywordStyleId}>
 						{t("caption.list.keywordStyle")}
 					</Label>
 					<Select value={emphasisPresetId} onValueChange={restyleEmphasized}>
 						<SelectTrigger
+							id={keywordStyleId}
 							className="h-7 text-xs"
 							aria-label={t("caption.list.keywordStyle")}
 						>
@@ -288,6 +320,12 @@ export function CaptionListTab({
 						className="h-8 text-xs"
 						disabled={isPicking || captions.length === 0}
 						onClick={() => void autoHighlight()}
+						onKeyDown={(event) =>
+							activateOnKeyboard({
+								event,
+								action: () => void autoHighlight(),
+							})
+						}
 						data-testid="caption-auto-highlight"
 					>
 						{isPicking ? (
@@ -304,6 +342,9 @@ export function CaptionListTab({
 						className="h-8 text-xs"
 						disabled={emphasizedCount === 0}
 						onClick={clearEmphasis}
+						onKeyDown={(event) =>
+							activateOnKeyboard({ event, action: clearEmphasis })
+						}
 						data-testid="caption-clear-highlights"
 					>
 						<Eraser className="size-3.5" />
