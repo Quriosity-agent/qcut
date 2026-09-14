@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	applyEmphasisUpdates,
 	captionsToSegments,
+	clearEmphasisUpdates,
 	DEFAULT_EMPHASIS_PRESET_ID,
 	findEmphasisPreset,
 	pickEmphasisCandidates,
@@ -69,5 +71,65 @@ describe("caption emphasis helpers", () => {
 				captions: [{ emphasis: true, style: plainStyle }],
 			}).fontColor
 		).toBe(resolveSubtitleStyle().fontColor);
+	});
+
+	it("remembers each caption's own look once and restores it when cleared", () => {
+		const preset = findEmphasisPreset({ presetId: DEFAULT_EMPHASIS_PRESET_ID });
+		const red = { ...resolveSubtitleStyle(), fontColor: "#ff0000" };
+		const blue = { ...resolveSubtitleStyle(), fontColor: "#0000ff" };
+		const captions = [
+			{ id: "a", style: red },
+			{ id: "b", style: blue },
+			{ id: "c", style: undefined },
+		];
+		const applied = applyEmphasisUpdates({ captions, ids: ["b", "a"], preset });
+		expect(applied.map((update) => update.id)).toEqual(["a", "b"]);
+		expect(applied[0].updates).toMatchObject({
+			emphasis: true,
+			emphasisBaseStyle: red,
+			style: preset.style,
+		});
+
+		const emphasized = captions.map((caption) => {
+			const update = applied.find((item) => item.id === caption.id);
+			return update ? { ...caption, ...update.updates } : caption;
+		});
+		// Re-applying keeps the remembered look instead of the highlight.
+		const reapplied = applyEmphasisUpdates({
+			captions: emphasized,
+			ids: ["a"],
+			preset,
+		});
+		expect(reapplied[0].updates).not.toHaveProperty("emphasisBaseStyle");
+
+		const cleared = clearEmphasisUpdates({ captions: emphasized });
+		expect(cleared.map((update) => update.id)).toEqual(["a", "b"]);
+		const byId = Object.fromEntries(
+			cleared.map((update) => [update.id, update.updates])
+		);
+		expect(byId.a.emphasis).toBe(false);
+		expect(byId.a.emphasisBaseStyle).toBeUndefined();
+		expect(byId.a.style?.fontColor).toBe("#ff0000");
+		expect(byId.b.style?.fontColor).toBe("#0000ff");
+	});
+
+	it("clears highlight-only keys and falls back to the lane look without a memory", () => {
+		const plain = { ...resolveSubtitleStyle(), fontColor: "#123456" };
+		const highlight = {
+			...resolveSubtitleStyle(),
+			karaokeMode: "word-highlight" as const,
+			highlightColor: "#22d3ee",
+		};
+		const [update] = clearEmphasisUpdates({
+			captions: [
+				{ id: "plain", style: plain },
+				{ id: "legacy", emphasis: true, style: highlight },
+			],
+		});
+		expect(update.id).toBe("legacy");
+		const merged = { ...highlight, ...update.updates.style };
+		expect(merged.fontColor).toBe("#123456");
+		expect(merged.karaokeMode).toBeUndefined();
+		expect(merged.highlightColor).toBeUndefined();
 	});
 });
