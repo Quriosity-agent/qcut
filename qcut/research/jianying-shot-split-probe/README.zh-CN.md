@@ -41,7 +41,10 @@
 | `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节）；`.mm` 也是 QCut `analyze shots` 按需编译的源码 |
 | `bytenn-probe.mm` | 只用 ByteNN 自己导出的接口加载 `.bytenn`(`IESNN::Net::CreateNetFromFile` 已实测可用),各尝试放 fork 子进程,崩溃不影响其余 |
 | `weight-dump.mm` | 加载后在进程内按引擎虚表定位对象,走 `GetNetwork`/`GetLayers`/`GetLayerName` 导出网络结构;权重数值尚未导出,见交接文档第 5 节 |
-| `extract-weights.py` | 纯离线从 `.bytenn` 提取 float32 权重(不加载运行库);权重是明文,只是浮点数组在段内不按 4 字节对齐 |
+| `extract-weights.py` | 早期的离线权重提取(按「浮点看起来合理」扫描切段)。**已被 `arena_weights.py` 取代**:那套扫描会在大权重处断开,切出来的层是错的,只留作历史记录 |
+| `feature-dump.mm` | 加载后喂帧,用 `Thrustor::Extract` 取引擎**自己算出来的**逐层张量、用 `ThrustorGetInput` 取网络真正看到的输入;复现对拍的基准就来自这里(注意内存池复用,只有形状唯一的缓冲区可信,见交接文档 5.1) |
+| `arena_weights.py` | 按已验证的布局从 `.bytenn` 直接切权重:起点 16069、576896 个 float、逐层「权重(OHWI)+ 偏置」 |
+| `torch_backbone.py` / `torch_compare.py` / `torch_check.py` | PyTorch 复现主干、与引擎张量对拍、在已知切点的素材上做行为验证 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
