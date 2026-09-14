@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { AudioLines, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CloudTaskStatus } from "@/components/editor/cloud-task-status";
 import {
+	activateOnKeyboard,
 	CaptionStyleSlider,
 	ColorControl,
 } from "@/components/captions/caption-style-controls";
@@ -61,18 +62,6 @@ const KARAOKE_MODE_LABEL_KEYS: Record<KaraokeMode, TranslationKey> = {
 	glitch: "caption.karaoke.glitch",
 	mischief: "caption.karaoke.mischief",
 };
-
-function activateOnKeyboard({
-	event,
-	action,
-}: {
-	event: React.KeyboardEvent<HTMLButtonElement>;
-	action: () => void;
-}) {
-	if (event.key !== "Enter" && event.key !== " ") return;
-	event.preventDefault();
-	action();
-}
 
 function CaptionAnimationControls({
 	style,
@@ -144,9 +133,12 @@ function KaraokeControls({
 }) {
 	const { t } = useTranslation();
 	const karaokeMode = style.karaokeMode ?? "none";
+	const karaokeModeId = useId();
 	return (
 		<div className="space-y-3 border-t border-border pt-4">
-			<Label className="text-xs">{t("caption.karaoke")}</Label>
+			<Label className="text-xs" htmlFor={karaokeModeId}>
+				{t("caption.karaoke")}
+			</Label>
 			<Select
 				value={karaokeMode}
 				onValueChange={(value) =>
@@ -154,6 +146,7 @@ function KaraokeControls({
 				}
 			>
 				<SelectTrigger
+					id={karaokeModeId}
 					className="h-8 text-xs"
 					aria-label={t("caption.karaokeMode")}
 				>
@@ -193,6 +186,8 @@ export function CaptionProperties({
 	trackId: string;
 }) {
 	const { t } = useTranslation();
+	const voiceModelId = useId();
+	const portraitId = useId();
 	const updateCaptionElement = useTimelineStore(
 		(state) => state.updateCaptionElement
 	);
@@ -302,12 +297,15 @@ export function CaptionProperties({
 				</TabsContent>
 				<TabsContent value="voice" className="mt-4 space-y-4 px-4">
 					<div className="space-y-1.5">
-						<Label className="text-xs">{t("caption.voiceModel")}</Label>
+						<Label className="text-xs" htmlFor={voiceModelId}>
+							{t("caption.voiceModel")}
+						</Label>
 						<Select
 							value={generation.speechModel}
 							onValueChange={generation.setSpeechModel}
 						>
 							<SelectTrigger
+								id={voiceModelId}
 								className="h-8 text-xs"
 								aria-label={t("caption.voiceModel")}
 							>
@@ -348,12 +346,15 @@ export function CaptionProperties({
 				</TabsContent>
 				<TabsContent value="avatar" className="mt-4 space-y-4 px-4">
 					<div className="space-y-1.5">
-						<Label className="text-xs">{t("caption.portrait")}</Label>
+						<Label className="text-xs" htmlFor={portraitId}>
+							{t("caption.portrait")}
+						</Label>
 						<Select
 							value={generation.avatarImageId}
 							onValueChange={generation.setAvatarImageId}
 						>
 							<SelectTrigger
+								id={portraitId}
 								className="h-8 text-xs"
 								aria-label={t("caption.portrait")}
 								data-testid="caption-avatar-portrait"
