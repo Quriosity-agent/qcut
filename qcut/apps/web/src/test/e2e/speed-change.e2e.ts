@@ -182,8 +182,8 @@ test.describe("Speed change workflow", () => {
 		await expect(speedPanel).toBeVisible();
 		await expect(speedPanel.getByTestId("speed-mode-normal")).toBeVisible();
 		const initialState = await speedState({ page });
-		await speedPanel.getByLabel("倍速数值").fill("2");
-		await speedPanel.getByLabel("倍速数值").press("Tab");
+		await speedPanel.getByLabel("倍数数值").fill("2");
+		await speedPanel.getByLabel("倍数数值").press("Tab");
 		const expectedFollowingStart =
 			initialState.followingStartTime - initialState.sourceDuration / 2;
 		await expect

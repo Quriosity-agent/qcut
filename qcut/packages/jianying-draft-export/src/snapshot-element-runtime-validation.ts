@@ -183,6 +183,8 @@ const CAPTION_ELEMENT_KEYS = createElementAllowedKeySet<CaptionElement>({
 		style: true,
 		text: true,
 		words: true,
+		emphasis: true,
+		emphasisBaseStyle: true,
 	},
 });
 const ADJUSTMENT_ELEMENT_KEYS = createElementAllowedKeySet<AdjustmentElement>({
@@ -1108,10 +1110,24 @@ function validateCaptionElement({
 			value: element.words,
 		});
 	}
-	if (element.style === undefined) return;
+	// Absent on drafts saved before 划重点 existed; a string "false" would be truthy.
+	assertOptionalBoolean({ path: `${path}.emphasis`, value: element.emphasis });
+	for (const key of ["style", "emphasisBaseStyle"]) {
+		const value = element[key];
+		if (value !== undefined) {
+			validateSubtitleStyle({ path: `${path}.${key}`, value });
+		}
+	}
+}
 
-	const stylePath = `${path}.style`;
-	const style = getRecord({ path: stylePath, value: element.style });
+function validateSubtitleStyle({
+	path: stylePath,
+	value,
+}: {
+	path: string;
+	value: JsonValue;
+}): void {
+	const style = getRecord({ path: stylePath, value });
 	assertKeys({ allowed: SUBTITLE_STYLE_KEYS, path: stylePath, record: style });
 	for (const key of [
 		"fontFamily",

@@ -203,6 +203,7 @@ export {
 	sortTracksByOrder,
 	normalizeTrackOrder,
 	moveTrack,
+	trackTypeGroupInsertionIndex,
 	buildCompositionPlan,
 	CLIP_TRANSITION_MAX_DURATION_SECONDS,
 	CLIP_TRANSITION_MIN_DURATION_SECONDS,

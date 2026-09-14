@@ -244,6 +244,8 @@ export interface TimelineStore {
 
 	/** Add a new track of the specified type to the timeline */
 	addTrack: (type: TrackType) => string;
+	/** Insert a lane at the top of its type group (above the main track for visual lanes). */
+	addTrackInTypeGroup: (type: TrackType) => string;
 	/** Insert a new track at the specified index position */
 	insertTrackAt: (type: TrackType, index: number) => string;
 	/** Move an existing track to a zero-based UI position */
@@ -582,7 +584,12 @@ export interface TimelineStore {
 	updateCaptionElement: (
 		trackId: string,
 		elementId: string,
-		updates: Partial<Pick<CaptionElement, "text" | "language" | "style">>,
+		updates: Partial<
+			Pick<
+				CaptionElement,
+				"text" | "language" | "style" | "emphasis" | "emphasisBaseStyle"
+			>
+		>,
 		pushHistory?: boolean
 	) => void;
 	applyCaptionStyle: ({
@@ -837,6 +844,12 @@ export interface TimelineStore {
 		trackType: TrackType,
 		span?: { startTime: number; duration: number }
 	) => string;
+	/**
+	 * Opens a NEW lane where the overlay stacking mode puts it: on top for
+	 * overlay lanes in byArrival mode (and always for text/markdown), in the
+	 * type group above the main track otherwise, appended for audio.
+	 */
+	addTrackByStackingPolicy: (trackType: TrackType) => string;
 	addMediaAtTime: (item: MediaItem, currentTime?: number) => boolean;
 	addTextAtTime: (item: Partial<TextElement>, currentTime?: number) => boolean;
 	/** Drop a preset as a region effect segment at the playhead (特效轨). */

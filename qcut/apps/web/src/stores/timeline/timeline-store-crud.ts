@@ -11,6 +11,7 @@ import type { TimelineElement, TimelineTrack } from "@/types/timeline";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import {
 	moveTrack as reorderTracks,
+	trackTypeGroupInsertionIndex,
 	validateElementTrackCompatibility,
 } from "@/types/timeline";
 import { generateUUID } from "@/lib/utils";
@@ -81,6 +82,12 @@ export function createCrudOperations(
 			updateTracksAndSave([...get()._tracks, newTrack]);
 			return newTrack.id;
 		},
+
+		addTrackInTypeGroup: (type) =>
+			get().insertTrackAt(
+				type,
+				trackTypeGroupInsertionIndex({ tracks: get()._tracks, type })
+			),
 
 		insertTrackAt: (type, index) => {
 			get().pushHistory();

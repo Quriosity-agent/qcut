@@ -1163,6 +1163,36 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"qcut analyze video -i video.mp4 --analysis-type review --review-language zh --json",
 		],
 	},
+	"analyze-shots": {
+		name: "analyze-shots",
+		description:
+			"Detect shot boundaries offline with the Jianying 智能镜头分割 model from QCut's private runtime snapshot",
+		category: "analysis",
+		flags: [
+			f("--input", "string", "Local source video (required unless --check)", {
+				short: "-i",
+			}),
+			f("--fps", "number", "Sampling rate fed to the model (1–60)", {
+				default: 24,
+			}),
+			f("--width", "number", "Sampled frame width (16–1920)", { default: 320 }),
+			f("--height", "number", "Sampled frame height (16–1920)", {
+				default: 180,
+			}),
+			f("--output", "string", "Write the JSON report to this path"),
+			f("--force", "boolean", "Replace an existing report"),
+			f(
+				"--check",
+				"boolean",
+				"Only report whether the private runtime and native bridge are ready"
+			),
+		],
+		examples: [
+			"qcut analyze shots -i footage.mp4 --json",
+			"qcut analyze shots -i footage.mp4 --fps 12 --output shots.json",
+			"qcut analyze shots --check --json",
+		],
+	},
 	"analyze-index": {
 		name: "analyze-index",
 		description:

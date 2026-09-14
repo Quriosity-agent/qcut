@@ -111,6 +111,29 @@ export function moveTrack({
 	return nextTracks.map((track, order) => ({ ...track, order }));
 }
 
+/**
+ * Where a NEW lane of `type` belongs under classic type grouping: the top of
+ * its own group or, without one, above the first group that sorts after it.
+ * Rows are layers (the top row paints last), so a lane appended below the
+ * main track paints underneath its video; captions, stickers and overlay
+ * clips must land above it to show at all.
+ */
+export function trackTypeGroupInsertionIndex({
+	tracks,
+	type,
+}: {
+	tracks: TimelineTrack[];
+	type: TrackType;
+}): number {
+	const sameType = tracks.findIndex((track) => track.type === type);
+	if (sameType !== -1) return sameType;
+	const priority = TRACK_PRIORITY[type];
+	const nextGroup = tracks.findIndex(
+		(track) => TRACK_PRIORITY[track.type] > priority
+	);
+	return nextGroup === -1 ? tracks.length : nextGroup;
+}
+
 /** Legacy comparator exposed for diagnostics and migration tests. */
 export function compareTrackTypePriority({
 	a,

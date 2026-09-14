@@ -513,7 +513,7 @@ function highlightQuoteCandidates({
 	};
 }
 
-function getQuoteCandidateScore({ text }: { text: string }): number {
+export function getQuoteCandidateScore({ text }: { text: string }): number {
 	const trimmedText = text.trim();
 	let score = 0;
 	if (trimmedText.length >= 12 && trimmedText.length <= 48) score += 2;

@@ -139,13 +139,11 @@ export function createAddOps(
 				// Audio lanes stack downward at the bottom of the timeline.
 				targetTrackId = get().addTrack("audio");
 			} else {
-				// Keep media lanes grouped above the audio lanes: insert right
-				// after the last existing media track.
-				let lastMediaIndex = -1;
-				for (const [index, track] of get()._tracks.entries()) {
-					if (track.type === "media") lastMediaIndex = index;
-				}
-				targetTrackId = get().insertTrackAt("media", lastMediaIndex + 1);
+				// Rows are layers: the new overlay lane goes to the top of the
+				// media group, above the main track, so its clip paints over the
+				// main video instead of underneath it (the drop handler does
+				// the same).
+				targetTrackId = get().addTrackInTypeGroup("media");
 			}
 
 			get().addElementToTrack(targetTrackId, {

@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { AudioLines, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -11,12 +10,11 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { CloudTaskStatus } from "@/components/editor/cloud-task-status";
-import { CaptionPresetGrid } from "@/components/captions/caption-preset-grid";
 import {
-	CaptionStyleControls,
+	activateOnKeyboard,
 	CaptionStyleSlider,
+	ColorControl,
 } from "@/components/captions/caption-style-controls";
 import { useSpeechAvatarGeneration } from "@/hooks/use-speech-avatar-generation";
 import {
@@ -28,6 +26,11 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { CaptionStyleScope } from "@/stores/timeline/types";
 import type { CaptionElement, SubtitleStyle } from "@/types/timeline";
 import { useTranslation, type TranslationKey } from "@/lib/i18n";
+import { CaptionListTab } from "./caption-list-tab";
+import { CaptionTextTab } from "./caption-text-tab";
+
+const TAB_CLASS =
+	"h-9 min-w-0 rounded-none border-b-2 border-transparent px-1 text-[10px] data-[state=active]:border-primary data-[state=active]:bg-transparent";
 
 const CAPTION_ANIMATION_LABEL_KEYS: Record<
 	(typeof CAPTION_ANIMATION_TYPES)[number],
@@ -60,105 +63,6 @@ const KARAOKE_MODE_LABEL_KEYS: Record<KaraokeMode, TranslationKey> = {
 	mischief: "caption.karaoke.mischief",
 };
 
-function activateOnKeyboard({
-	event,
-	action,
-}: {
-	event: React.KeyboardEvent<HTMLButtonElement>;
-	action: () => void;
-}) {
-	if (event.key !== "Enter" && event.key !== " ") return;
-	event.preventDefault();
-	action();
-}
-
-function ColorControl({
-	label,
-	value,
-	onChange,
-}: {
-	label: string;
-	value: string;
-	onChange: (value: string) => void;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3">
-			<Label className="text-xs">{label}</Label>
-			<Input
-				type="color"
-				aria-label={label}
-				value={value}
-				onChange={(event) => onChange(event.target.value)}
-				className="h-8 w-16 cursor-pointer p-1"
-			/>
-		</div>
-	);
-}
-
-function CaptionAppearanceControls({
-	style,
-	onChange,
-	onInteractionStart,
-	onInteractionEnd,
-}: {
-	style: SubtitleStyle;
-	onChange: (updates: Partial<SubtitleStyle>) => void;
-	onInteractionStart: () => void;
-	onInteractionEnd: () => void;
-}) {
-	const { t } = useTranslation();
-
-	return (
-		<div className="space-y-4 border-t border-border pt-4">
-			<CaptionStyleSlider
-				label={t("caption.textOpacity")}
-				value={style.fontOpacity * 100}
-				min={0}
-				max={100}
-				step={1}
-				onChange={(fontOpacity) => onChange({ fontOpacity: fontOpacity / 100 })}
-				onInteractionStart={onInteractionStart}
-				onInteractionEnd={onInteractionEnd}
-			/>
-			<ColorControl
-				label={t("caption.outlineColor")}
-				value={style.outlineColor}
-				onChange={(outlineColor) => onChange({ outlineColor })}
-			/>
-			<CaptionStyleSlider
-				label={t("caption.outlineWidth")}
-				value={style.outlineWidth}
-				min={0}
-				max={10}
-				step={0.5}
-				onChange={(outlineWidth) => onChange({ outlineWidth })}
-				onInteractionStart={onInteractionStart}
-				onInteractionEnd={onInteractionEnd}
-			/>
-			<ColorControl
-				label={t("caption.shadowColor")}
-				value={style.shadowColor}
-				onChange={(shadowColor) => onChange({ shadowColor })}
-			/>
-			<ColorControl
-				label={t("caption.backgroundColor")}
-				value={style.backgroundColor}
-				onChange={(backgroundColor) => onChange({ backgroundColor })}
-			/>
-			<CaptionStyleSlider
-				label={t("caption.backgroundOpacity")}
-				value={style.bgOpacity * 100}
-				min={0}
-				max={100}
-				step={1}
-				onChange={(bgOpacity) => onChange({ bgOpacity: bgOpacity / 100 })}
-				onInteractionStart={onInteractionStart}
-				onInteractionEnd={onInteractionEnd}
-			/>
-		</div>
-	);
-}
-
 function CaptionAnimationControls({
 	style,
 	onChange,
@@ -171,7 +75,6 @@ function CaptionAnimationControls({
 	onInteractionEnd: () => void;
 }) {
 	const { t } = useTranslation();
-
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 gap-2">
@@ -230,9 +133,12 @@ function KaraokeControls({
 }) {
 	const { t } = useTranslation();
 	const karaokeMode = style.karaokeMode ?? "none";
+	const karaokeModeId = useId();
 	return (
 		<div className="space-y-3 border-t border-border pt-4">
-			<Label className="text-xs">{t("caption.karaoke")}</Label>
+			<Label className="text-xs" htmlFor={karaokeModeId}>
+				{t("caption.karaoke")}
+			</Label>
 			<Select
 				value={karaokeMode}
 				onValueChange={(value) =>
@@ -240,6 +146,7 @@ function KaraokeControls({
 				}
 			>
 				<SelectTrigger
+					id={karaokeModeId}
 					className="h-8 text-xs"
 					aria-label={t("caption.karaokeMode")}
 				>
@@ -279,8 +186,8 @@ export function CaptionProperties({
 	trackId: string;
 }) {
 	const { t } = useTranslation();
-	const tracks = useTimelineStore((state) => state.tracks);
-	const selectedElements = useTimelineStore((state) => state.selectedElements);
+	const voiceModelId = useId();
+	const portraitId = useId();
 	const updateCaptionElement = useTimelineStore(
 		(state) => state.updateCaptionElement
 	);
@@ -288,35 +195,13 @@ export function CaptionProperties({
 		(state) => state.applyCaptionStyle
 	);
 	const pushHistory = useTimelineStore((state) => state.pushHistory);
-	const [scope, setScope] = useState<CaptionStyleScope>("element");
+	// 文本、排列、气泡、花字应用到全部字幕: styling either edits this caption
+	// or every caption in the project.
+	const [applyToAll, setApplyToAll] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string>();
 	const interactionActive = useRef(false);
 	const style = resolveSubtitleStyle(element.style);
-	const scopeCounts = useMemo(() => {
-		const captionTracks = tracks.filter((track) => track.type === "captions");
-		const project = captionTracks.reduce(
-			(total, track) =>
-				total +
-				track.elements.filter((candidate) => candidate.type === "captions")
-					.length,
-			0
-		);
-		const track =
-			captionTracks
-				.find((candidate) => candidate.id === trackId)
-				?.elements.filter((candidate) => candidate.type === "captions")
-				.length ?? 0;
-		const selection = selectedElements.filter(
-			({ trackId: selectedTrackId, elementId }) =>
-				tracks
-					.find((candidate) => candidate.id === selectedTrackId)
-					?.elements.some(
-						(candidate) =>
-							candidate.id === elementId && candidate.type === "captions"
-					)
-		).length;
-		return { project, selection, track };
-	}, [selectedElements, trackId, tracks]);
+	const scope: CaptionStyleScope = applyToAll ? "project" : "element";
 	const generation = useSpeechAvatarGeneration({
 		captionElementId: element.id,
 		text: element.text,
@@ -326,7 +211,6 @@ export function CaptionProperties({
 			element.duration - element.trimStart - element.trimEnd
 		),
 	});
-
 	const beginInteraction = useCallback(() => {
 		if (interactionActive.current) return;
 		interactionActive.current = true;
@@ -349,78 +233,61 @@ export function CaptionProperties({
 	);
 
 	return (
-		<div className="space-y-4 p-4" data-testid="caption-properties">
-			<Textarea
-				placeholder={t("caption.textPlaceholder")}
-				value={element.text}
-				className="min-h-20 resize-none bg-background/50"
-				onChange={(event) =>
-					updateCaptionElement(trackId, element.id, {
-						text: event.target.value,
-					})
-				}
-			/>
-
-			<div className="space-y-1.5">
-				<Label className="text-xs">{t("caption.scopeLabel")}</Label>
-				<Select
-					value={scope}
-					onValueChange={(value) => setScope(value as CaptionStyleScope)}
-				>
-					<SelectTrigger
-						className="h-8 text-xs"
-						aria-label={t("caption.scopeAria")}
+		<div className="pb-4" data-testid="caption-properties">
+			<Tabs defaultValue="captions">
+				<TabsList className="sticky top-0 z-10 grid h-9 w-full grid-cols-5 rounded-none border-b border-border bg-panel p-0">
+					<TabsTrigger
+						value="captions"
+						className={TAB_CLASS}
+						data-testid="caption-list-tab-trigger"
 					>
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="element">
-							{t("caption.scope.element")}
-						</SelectItem>
-						<SelectItem value="selection">
-							{t("caption.scope.selection", { count: scopeCounts.selection })}
-						</SelectItem>
-						<SelectItem value="track">
-							{t("caption.scope.track", { count: scopeCounts.track })}
-						</SelectItem>
-						<SelectItem value="project">
-							{t("caption.scope.project", { count: scopeCounts.project })}
-						</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
-
-			<Tabs defaultValue="basic">
-				<TabsList className="grid h-9 w-full grid-cols-5">
-					<TabsTrigger value="basic" className="px-1 text-[10px]">
-						{t("caption.tab.basic")}
+						{t("caption.tab.captions")}
 					</TabsTrigger>
-					<TabsTrigger value="presets" className="px-1 text-[10px]">
-						{t("caption.tab.presets")}
+					<TabsTrigger
+						value="text"
+						className={TAB_CLASS}
+						data-testid="caption-text-tab-trigger"
+					>
+						{t("caption.tab.text")}
 					</TabsTrigger>
-					<TabsTrigger value="motion" className="px-1 text-[10px]">
+					<TabsTrigger value="motion" className={TAB_CLASS}>
 						{t("caption.tab.motion")}
 					</TabsTrigger>
-					<TabsTrigger value="voice" className="px-1 text-[10px]">
+					<TabsTrigger value="voice" className={TAB_CLASS}>
 						{t("caption.tab.voice")}
 					</TabsTrigger>
 					<TabsTrigger
 						value="avatar"
-						className="px-1 text-[10px]"
+						className={TAB_CLASS}
 						data-testid="caption-avatar-tab"
 					>
 						{t("caption.tab.avatar")}
 					</TabsTrigger>
 				</TabsList>
-
-				<TabsContent value="basic" className="mt-4 space-y-4">
-					<CaptionStyleControls
+				<TabsContent value="captions" className="mt-4 px-4">
+					<CaptionListTab trackId={trackId} activeElementId={element.id} />
+				</TabsContent>
+				<TabsContent value="text" className="mt-4 px-4">
+					<CaptionTextTab
+						text={element.text}
+						onTextChange={(text) =>
+							updateCaptionElement(trackId, element.id, { text })
+						}
 						style={style}
-						onChange={updateStyle}
+						applyToAll={applyToAll}
+						onApplyToAllChange={setApplyToAll}
+						onStyleChange={updateStyle}
 						onInteractionStart={beginInteraction}
 						onInteractionEnd={endInteraction}
+						selectedPresetId={selectedPresetId}
+						onSelectPreset={(preset) => {
+							setSelectedPresetId(preset.id);
+							updateStyle(preset.style);
+						}}
 					/>
-					<CaptionAppearanceControls
+				</TabsContent>
+				<TabsContent value="motion" className="mt-4 space-y-4 px-4">
+					<CaptionAnimationControls
 						style={style}
 						onChange={updateStyle}
 						onInteractionStart={beginInteraction}
@@ -428,34 +295,17 @@ export function CaptionProperties({
 					/>
 					<KaraokeControls style={style} onChange={updateStyle} />
 				</TabsContent>
-
-				<TabsContent value="presets" className="mt-4">
-					<CaptionPresetGrid
-						selectedId={selectedPresetId}
-						onSelect={(preset) => {
-							setSelectedPresetId(preset.id);
-							updateStyle(preset.style);
-						}}
-					/>
-				</TabsContent>
-
-				<TabsContent value="motion" className="mt-4">
-					<CaptionAnimationControls
-						style={style}
-						onChange={updateStyle}
-						onInteractionStart={beginInteraction}
-						onInteractionEnd={endInteraction}
-					/>
-				</TabsContent>
-
-				<TabsContent value="voice" className="mt-4 space-y-4">
+				<TabsContent value="voice" className="mt-4 space-y-4 px-4">
 					<div className="space-y-1.5">
-						<Label className="text-xs">{t("caption.voiceModel")}</Label>
+						<Label className="text-xs" htmlFor={voiceModelId}>
+							{t("caption.voiceModel")}
+						</Label>
 						<Select
 							value={generation.speechModel}
 							onValueChange={generation.setSpeechModel}
 						>
 							<SelectTrigger
+								id={voiceModelId}
 								className="h-8 text-xs"
 								aria-label={t("caption.voiceModel")}
 							>
@@ -494,15 +344,17 @@ export function CaptionProperties({
 							: t("caption.generateSpeech")}
 					</Button>
 				</TabsContent>
-
-				<TabsContent value="avatar" className="mt-4 space-y-4">
+				<TabsContent value="avatar" className="mt-4 space-y-4 px-4">
 					<div className="space-y-1.5">
-						<Label className="text-xs">{t("caption.portrait")}</Label>
+						<Label className="text-xs" htmlFor={portraitId}>
+							{t("caption.portrait")}
+						</Label>
 						<Select
 							value={generation.avatarImageId}
 							onValueChange={generation.setAvatarImageId}
 						>
 							<SelectTrigger
+								id={portraitId}
 								className="h-8 text-xs"
 								aria-label={t("caption.portrait")}
 								data-testid="caption-avatar-portrait"

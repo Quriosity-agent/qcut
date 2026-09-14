@@ -1992,6 +1992,10 @@ function formatElementForExport({
 				...baseElement,
 				content: element.text,
 				language: element.language,
+				// Native export reads the burn-in look from here; without it the
+				// caption falls back to the white default style.
+				style: element.style as Record<string, unknown> | undefined,
+				emphasis: element.emphasis,
 			};
 		case "sticker":
 			return {

@@ -42,7 +42,12 @@ import { useGeminiFileTranscription } from "@/hooks/captions/use-gemini-file-tra
 import type { TranscriptionResult } from "@/types/captions";
 import type { SubtitleStyle } from "@/types/timeline";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
 import { useCaptionsStore } from "@/stores/captions-store";
+import {
+	partitionCaptionBatch,
+	pickCaptionLane,
+} from "@/lib/captions/caption-lane";
 import { CaptionTemplateGallery } from "@/components/captions/caption-template-gallery";
 import { LyricsRecognitionCard } from "@/components/captions/lyrics-recognition-card";
 import {
@@ -81,7 +86,7 @@ export function CaptionsView() {
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	// Timeline and captions store hooks
-	const { findOrCreateTrack, addElementToTrack, removeTrack, tracks } =
+	const { addTrackByStackingPolicy, addElementToTrack, removeTrack, tracks } =
 		useTimelineStore();
 	const { createCaptionElements } = useCaptionsStore();
 
@@ -122,19 +127,30 @@ export function CaptionsView() {
 					}
 				}
 
-				// Reuse the existing captions track so repeated runs don't stack
-				// duplicate tracks.
-				const trackId = findOrCreateTrack("captions");
-
-				// Add all caption elements to the track
-				for (const captionElement of captionElements) {
-					addElementToTrack(trackId, captionElement);
+				// Overlapping cues cannot share a lane (same-track no-overlap
+				// rule), so each non-overlapping group reuses a lane with room
+				// for all of it or opens a fresh one. Read the store live: the
+				// clear above, or the previous group, changed the lanes this
+				// closure still lists.
+				const fps = useProjectStore.getState().activeProject?.fps ?? 30;
+				let addedCount = 0;
+				for (const group of partitionCaptionBatch({
+					elements: captionElements,
+				})) {
+					const trackId =
+						pickCaptionLane({
+							tracks: useTimelineStore.getState().tracks,
+							elements: group,
+							fps,
+						}) ?? addTrackByStackingPolicy("captions");
+					for (const captionElement of group) {
+						if (addElementToTrack(trackId, captionElement)) addedCount += 1;
+					}
 				}
 
+				if (addedCount === 0) return;
 				toast.success(
-					t("captions.panel.addedToTimeline", {
-						count: captionElements.length,
-					})
+					t("captions.panel.addedToTimeline", { count: addedCount })
 				);
 			} catch (error) {
 				handleError(error, {
@@ -150,7 +166,7 @@ export function CaptionsView() {
 		},
 		[
 			createCaptionElements,
-			findOrCreateTrack,
+			addTrackByStackingPolicy,
 			addElementToTrack,
 			removeTrack,
 			tracks,

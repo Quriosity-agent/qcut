@@ -235,7 +235,7 @@ describe("MediaSpeedProperties", () => {
 			/>
 		);
 
-		fireEvent.change(screen.getByLabelText("倍速数值"), {
+		fireEvent.change(screen.getByLabelText("倍数数值"), {
 			target: { value: "20" },
 		});
 

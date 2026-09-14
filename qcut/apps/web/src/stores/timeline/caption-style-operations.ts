@@ -50,18 +50,24 @@ export function applyCaptionStyleToTracks({
 					selectedCaptionIds.has(`${track.id}:${element.id}`));
 			if (!isTarget) return element;
 
-			const currentStyle = resolveSubtitleStyle(element.style);
+			const mergeInto = (base: SubtitleStyle): SubtitleStyle => ({
+				...base,
+				...style,
+				position: style.position
+					? { ...base.position, ...style.position }
+					: base.position,
+			});
 			trackChanged = true;
 			updatedCount += 1;
 			return {
 				...element,
-				style: {
-					...currentStyle,
-					...style,
-					position: style.position
-						? { ...currentStyle.position, ...style.position }
-						: currentStyle.position,
-				},
+				style: mergeInto(resolveSubtitleStyle(element.style)),
+				// A broad restyle is meant for every caption's own look too, so a
+				// key point cleared later comes back with it. Editing one caption
+				// only changes its highlighted look.
+				...(element.emphasisBaseStyle && scope !== "element"
+					? { emphasisBaseStyle: mergeInto(element.emphasisBaseStyle) }
+					: {}),
 			};
 		});
 

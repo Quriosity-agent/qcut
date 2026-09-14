@@ -867,6 +867,63 @@ describe("snapshot runtime property allowlists", () => {
 		}
 	});
 
+	it("validates caption key-point fields and keeps drafts without them valid", async () => {
+		const outputParentDirectory = await createTemporaryDirectory();
+		const sourcePath = join(outputParentDirectory, "proof.png");
+		await writeFile(sourcePath, "runtime validation only");
+		const snapshot = createNormalizedSnapshot({ sourcePath });
+		const caption = snapshot.tracks[2]?.elements[0];
+		if (!caption || caption.type !== "captions") {
+			throw new Error("Expected the normalized snapshot to carry a caption");
+		}
+		Object.assign(caption, {
+			emphasis: true,
+			emphasisBaseStyle: createSubtitleStyle(),
+		});
+		const session = new StandaloneJianyingDraftExportSession({
+			ffprobePath: TRUSTED_FFPROBE_PATH,
+		});
+		const plan = await session.plan({
+			input: {
+				draftName: "Emphasized caption",
+				outputParentDirectory,
+				snapshot,
+				targetPlatform: "macos",
+			},
+		});
+		expect(plan.requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+
+		const cases: {
+			expectedPath: string;
+			mutate: (value: QCutDraftExportSnapshotV1) => void;
+		}[] = [
+			{
+				expectedPath: "$.snapshot.tracks[2].elements[0].emphasis",
+				mutate: (value) => {
+					Object.assign(value.tracks[2]?.elements[0] ?? {}, {
+						emphasis: "false",
+					});
+				},
+			},
+			{
+				expectedPath:
+					"$.snapshot.tracks[2].elements[0].emphasisBaseStyle.fontSize",
+				mutate: (value) => {
+					Object.assign(value.tracks[2]?.elements[0] ?? {}, {
+						emphasisBaseStyle: { ...createSubtitleStyle(), fontSize: "big" },
+					});
+				},
+			},
+		];
+		for (const testCase of cases) {
+			await expectUnknownKeyRejection({
+				...testCase,
+				outputParentDirectory,
+				snapshot,
+			});
+		}
+	});
+
 	it("uses the request validation error type for unknown properties", async () => {
 		const outputParentDirectory = await createTemporaryDirectory();
 		const snapshot = {

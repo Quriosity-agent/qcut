@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineTrack } from "@/types/timeline";
+import { resolveSubtitleStyle } from "@/lib/captions/subtitle-style";
 import { applyCaptionStyleToTracks } from "../caption-style-operations";
 
 function captionTrack({
@@ -62,6 +63,37 @@ describe("applyCaptionStyleToTracks", () => {
 						element.type === "captions" && element.style?.fontSize === 72
 				)
 		).toHaveLength(expectedCount);
+	});
+
+	it("carries broad restyles into a key point's remembered look, but not single-caption edits", () => {
+		const emphasized = captionTrack({ id: "captions-e", elementIds: ["e-1"] });
+		const baseStyle = resolveSubtitleStyle({ fontColor: "#123456" });
+		const [element] = emphasized.elements;
+		const withBase = {
+			...emphasized,
+			elements: [{ ...element, emphasis: true, emphasisBaseStyle: baseStyle }],
+		} satisfies TimelineTrack;
+		const restyle = (scope: "element" | "project") => {
+			const [next] = applyCaptionStyleToTracks({
+				tracks: [withBase],
+				selectedElements: [],
+				trackId: "captions-e",
+				elementId: "e-1",
+				style: { fontSize: 72, position: { align: "top", x: 50, y: 10 } },
+				scope,
+			}).tracks[0].elements;
+			if (next.type !== "captions") throw new Error("expected a caption");
+			return next;
+		};
+
+		const broad = restyle("project");
+		expect(broad.style?.fontSize).toBe(72);
+		expect(broad.emphasisBaseStyle).toMatchObject({
+			fontColor: "#123456",
+			fontSize: 72,
+			position: { align: "top", x: 50, y: 10 },
+		});
+		expect(restyle("element").emphasisBaseStyle).toEqual(baseStyle);
 	});
 
 	it("preserves nested position values when applying a partial style", () => {

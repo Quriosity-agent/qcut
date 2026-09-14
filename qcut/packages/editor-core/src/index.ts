@@ -441,6 +441,7 @@ export {
 	sortTracksByOrder,
 	normalizeTrackOrder,
 	moveTrack,
+	trackTypeGroupInsertionIndex,
 	compareTrackTypePriority,
 	buildCompositionPlan,
 	getMainTrack,

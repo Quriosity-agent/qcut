@@ -6,7 +6,7 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 
-const PRESET_LABEL_KEYS: Record<
+export const PRESET_LABEL_KEYS: Record<
 	string,
 	{ name: TranslationKey; platform: TranslationKey }
 > = {

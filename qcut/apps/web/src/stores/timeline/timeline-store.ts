@@ -299,18 +299,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 		findOrCreateTrack: (trackType, span) => {
 			// Always create new text/markdown tracks to keep overlays independent.
 			if (trackType === "text" || trackType === "markdown") {
-				return get().insertTrackAt(trackType, 0);
+				return get().addTrackByStackingPolicy(trackType);
 			}
-			// Jianying-style arrival stacking (T6): a NEW overlay lane of any
-			// type goes straight to the top instead of its type group. Reuse of
-			// an existing free lane below is unchanged in both modes.
-			const overlayCreatesOnTop =
-				get().overlayStacking === "byArrival" &&
-				(trackType === "captions" ||
-					trackType === "sticker" ||
-					trackType === "adjustment" ||
-					trackType === "effect");
-
+			// Reuse of an existing free lane is unchanged in both stacking modes.
 			const existingTrack = get()._tracks.find((track) => {
 				if (track.type !== trackType || track.locked) return false;
 				if (!span) return true;
@@ -326,10 +317,27 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 			if (existingTrack) {
 				return existingTrack.id;
 			}
+			return get().addTrackByStackingPolicy(trackType);
+		},
 
-			return overlayCreatesOnTop
-				? get().insertTrackAt(trackType, 0)
-				: get().addTrack(trackType);
+		addTrackByStackingPolicy: (trackType) => {
+			// Jianying-style arrival stacking (T6): a NEW overlay lane of any
+			// type goes straight to the top instead of its type group.
+			const createsOnTop =
+				trackType === "text" ||
+				trackType === "markdown" ||
+				(get().overlayStacking === "byArrival" &&
+					(trackType === "captions" ||
+						trackType === "sticker" ||
+						trackType === "adjustment" ||
+						trackType === "effect"));
+			if (createsOnTop) return get().insertTrackAt(trackType, 0);
+			// Rows are layers: a lane appended below the main track paints
+			// underneath its video, so visual lanes slot into their type group
+			// (above the main track); only audio keeps stacking downward.
+			return trackType === "audio"
+				? get().addTrack(trackType)
+				: get().addTrackInTypeGroup(trackType);
 		},
 
 		// CRUD operations (add/remove/move/update tracks and elements)

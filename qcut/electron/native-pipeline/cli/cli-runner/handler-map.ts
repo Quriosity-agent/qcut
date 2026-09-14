@@ -24,6 +24,7 @@ import {
 } from "../cli-handlers-editorial.js";
 import { handleAnalyzeConsistency } from "../cli-handlers-character-consistency.js";
 import { handleAnalyzeImageConsistency } from "../cli-handlers-image-consistency.js";
+import { handleAnalyzeShots } from "../cli-handlers-analyze-shots.js";
 import { handleGenerateRemotion } from "../cli-handlers-remotion.js";
 import { handleMoyinParseScript } from "../cli-handlers-moyin.js";
 import {
@@ -330,6 +331,7 @@ export const HANDLER_MAP: Record<string, CommandHandler> = {
 	"analyze-inspect": handleAnalyzeInspect,
 	"analyze-consistency": handleAnalyzeConsistency,
 	"analyze-image-consistency": handleAnalyzeImageConsistency,
+	"analyze-shots": wrapOPS(handleAnalyzeShots),
 	"query-video": mediaHandleQueryVideo,
 	"transcribe": mediaHandleTranscribe,
 
