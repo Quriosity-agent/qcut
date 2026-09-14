@@ -100,6 +100,10 @@
 | `bytenn_cpu::Thrustor::GetWeightLen()` | 0x13a73c | 权重区总长（backbone 2,307,592；predhead 1,212,940） |
 | `bytenn_cpu::Thrustor::GetWeight(const std::string&)` | 0x13a804 | 返回 32 字节 Tensor：`+0x00` data，`+0x08..0x17` 四维（源 `+0x24` 经 `st2.2s` 交错为 a,c,b,d），`+0x18/+0x1c` 两个 int |
 | `vtable for BYTENN::ByteNNEngineImpl` | 0x4a8190 | 用于在内存里按 `vtable+16` 认出引擎对象 |
+| `bytenn_cpu::Thrustor::Extract(const std::string&)` | 0x13a974 | **按 blob 名取该层算出来的张量**(sret)。推理后只有形状唯一的缓冲区还是真值,内存池会复用 |
+| `bytenn_cpu::ThrustorGetInput(Thrustor*)` | 0x13b6f8 | 取网络真正看到的输入张量(sret);实现就是取输入名后尾调 `Extract` |
+| `bytenn_cpu::Thrustor::SetSubNet(vector<TextureLayerOutput>*, vector<TextureLayerOutput>*)` | 0x13ac1c | 可把网络截断到指定 blob 做输出 —— 逐层拿真值的下一步,`TextureLayerOutput` 布局待查 |
+| `bytenn_cpu::Thrustor::getOutput()` | 0x13afb0 | 网络输出(sret) |
 | 层表构造函数（内部） | 0x1fedec | `fn(out, impl+0x80)` 产出 `{begin,end}`；元素 16 字节，首字是层指针 |
 
 层对象字段（`Thrustor` 在 `LabNetWork+0x40`，其 impl 在 `Thrustor+0x08`）：
@@ -112,6 +116,15 @@
 | +0x118 | 卷积核 (kh, kw) |
 | +0x140 | 通道 (in, out) |
 | +0x158 | 输入尺寸（首层 96×96） |
+
+调用约定:`Extract` / `ThrustorGetInput` / `getOutput` 都用 sret(隐藏指针走 x8)。在 C 里把返回类型声明成
+一个大于 16 字节的 POD(比如 `struct { unsigned char raw[256]; }`),编译器就会自动按同一套 ABI 传,
+实际 `Tensor` 只有 32 字节:`+0x00` data,`+0x08..0x17` 四维(NHWC),后面两个 int。
+`Tensor::GetByteSize()` 对 `Extract` 返回的张量给 0(它读的 dtype 字段在推理态没填),按四维自己乘。
+
+模型文件头(未加密,图定义区加密):`+0x04` 文件总长,`+0x0c`/`+0x10` 图定义区长度/偏移,
+`+0x14`/`+0x18` **权重区长度/偏移**。权重区开头 8 字节是它自己的头,之后是明文小端 float32,
+逐层「权重(OHWI:cout,kh,kw,cin)+ 偏置」。
 
 配置键 `compress_shot_detect_model_forward_type` 在 0xcc7a00 被读进 w23（intParam 在算法对象 `+0x88`，unordered_map，值在节点 `+0x28`），
 但 w23 直到函数收尾都未被使用 —— **死代码**，改它不会切到 CoreML 后端。
