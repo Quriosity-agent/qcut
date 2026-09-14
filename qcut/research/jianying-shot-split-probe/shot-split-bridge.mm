@@ -168,7 +168,7 @@ std::vector<int> readIntResult(void *lib, void *system, const char *key) {
     // vector-typed BachObject: payload is the AmazingEngine::PrimitiveVector<int> impl, elements in [+0x10, +0x18)
     auto vbegin = *reinterpret_cast<int **>(payload + 0x10);
     auto vend = *reinterpret_cast<int **>(payload + 0x18);
-    long n = vbegin && vend >= vbegin ? (long)(vend - vbegin) : -1;
+    long n = (!vbegin && !vend) ? 0 : (vbegin && vend >= vbegin ? (long)(vend - vbegin) : -1);  // empty vector = null/null
     printf("[result] %s: vector impl %p begin=%p end=%p n=%ld\n", key, (void *)payload, (void *)vbegin, (void *)vend, n);
     if (n >= 0 && n < 1000000) { for (long i = 0; i < n; ++i) out.push_back(vbegin[i]); return out; }
   }
