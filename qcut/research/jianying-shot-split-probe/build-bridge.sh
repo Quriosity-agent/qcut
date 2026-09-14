@@ -8,7 +8,7 @@ mkdir -p "$OUT/build"
 clang++ -std=c++17 -ObjC++ -O1 -g -fobjc-arc -framework Foundation -Wl,-rpath,"$RT/Frameworks" -o "$OUT/build/shot-split-bridge" "$HERE/shot-split-bridge.mm"
 echo "built $OUT/build/shot-split-bridge"
 # 研究工具:ByteNN 接口探针与结构/权重导出
-for tool in bytenn-probe weight-dump; do
+for tool in bytenn-probe weight-dump feature-dump; do
   [ -f "$HERE/$tool.mm" ] || continue
   clang++ -std=c++17 -ObjC++ -O1 -g -fobjc-arc -framework Foundation -Wl,-rpath,"$RT/Frameworks" -o "$OUT/build/$tool" "$HERE/$tool.mm"
   echo "built $OUT/build/$tool"
