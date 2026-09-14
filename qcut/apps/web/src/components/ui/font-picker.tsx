@@ -8,6 +8,8 @@ import {
 import { FONT_OPTIONS } from "@/constants/font-constants";
 
 interface FontPickerProps {
+	/** Forwarded to the trigger so a visible `<Label htmlFor>` can name it. */
+	id?: string;
 	value?: string;
 	defaultValue?: string;
 	onValueChange?: (value: string) => void;
@@ -16,6 +18,7 @@ interface FontPickerProps {
 }
 
 export function FontPicker({
+	id,
 	value,
 	defaultValue,
 	onValueChange,
@@ -29,7 +32,7 @@ export function FontPicker({
 			defaultValue={value === undefined ? defaultValue : undefined}
 			onValueChange={onValueChange}
 		>
-			<SelectTrigger className={`w-full text-xs ${className || ""}`}>
+			<SelectTrigger id={id} className={`w-full text-xs ${className || ""}`}>
 				<SelectValue placeholder="Select a font" />
 			</SelectTrigger>
 			<SelectContent>
