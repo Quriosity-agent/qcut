@@ -2,21 +2,25 @@ import { describe, expect, it } from "vitest";
 import type { TimelineTrack } from "../../types/timeline.js";
 import { trackTypeGroupInsertionIndex } from "../track-utils.js";
 
-function track(
-	id: string,
-	type: TimelineTrack["type"],
-	isMain = false
-): TimelineTrack {
+function track({
+	id,
+	type,
+	isMain = false,
+}: {
+	id: string;
+	type: TimelineTrack["type"];
+	isMain?: boolean;
+}): TimelineTrack {
 	return { id, name: id, type, elements: [], ...(isMain ? { isMain } : {}) };
 }
 
 describe("trackTypeGroupInsertionIndex", () => {
 	const tracks = [
-		track("text", "text"),
-		track("sticker", "sticker"),
-		track("main", "media", true),
-		track("overlay", "media"),
-		track("audio", "audio"),
+		track({ id: "text", type: "text" }),
+		track({ id: "sticker", type: "sticker" }),
+		track({ id: "main", type: "media", isMain: true }),
+		track({ id: "overlay", type: "media" }),
+		track({ id: "audio", type: "audio" }),
 	];
 
 	it("puts a lane at the top of its existing group", () => {
@@ -35,7 +39,10 @@ describe("trackTypeGroupInsertionIndex", () => {
 	});
 
 	it("keeps visual lanes above a main track that sits first", () => {
-		const mainFirst = [track("main", "media", true), track("audio", "audio")];
+		const mainFirst = [
+			track({ id: "main", type: "media", isMain: true }),
+			track({ id: "audio", type: "audio" }),
+		];
 		expect(
 			trackTypeGroupInsertionIndex({ tracks: mainFirst, type: "captions" })
 		).toBe(0);
@@ -45,7 +52,7 @@ describe("trackTypeGroupInsertionIndex", () => {
 	});
 
 	it("appends when nothing sorts after the type", () => {
-		const noAudio = [track("main", "media", true)];
+		const noAudio = [track({ id: "main", type: "media", isMain: true })];
 		expect(
 			trackTypeGroupInsertionIndex({ tracks: noAudio, type: "audio" })
 		).toBe(1);
