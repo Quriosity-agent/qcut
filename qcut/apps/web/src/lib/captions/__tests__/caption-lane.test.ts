@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CreateCaptionElement, TimelineTrack } from "@/types/timeline";
-import { pickCaptionLane } from "../caption-lane";
+import { partitionCaptionBatch, pickCaptionLane } from "../caption-lane";
 
 function caption({
 	start,
@@ -69,6 +69,17 @@ describe("pickCaptionLane", () => {
 		);
 	});
 
+	it("skips locked lanes, which would reject every caption", () => {
+		const locked = { ...lane("locked", []), locked: true };
+		expect(
+			pickCaptionLane({
+				tracks: [locked, lane("open", [])],
+				elements: batch,
+				fps: 30,
+			})
+		).toBe("open");
+	});
+
 	it("ignores non-caption lanes", () => {
 		const media: TimelineTrack = {
 			id: "main",
@@ -80,5 +91,44 @@ describe("pickCaptionLane", () => {
 		expect(pickCaptionLane({ tracks: [media], elements: batch, fps: 30 })).toBe(
 			null
 		);
+	});
+});
+
+describe("partitionCaptionBatch", () => {
+	const names = (groups: CreateCaptionElement[][]) =>
+		groups.map((group) => group.map((element) => element.name));
+
+	it("keeps a batch without overlaps as one group", () => {
+		const groups = partitionCaptionBatch({
+			elements: [
+				caption({ start: 3, duration: 2 }),
+				caption({ start: 0, duration: 3 }),
+			],
+		});
+		expect(names(groups)).toEqual([["caption 0", "caption 3"]]);
+	});
+
+	it("moves overlapping cues to further groups so no lane rejects them", () => {
+		const groups = partitionCaptionBatch({
+			elements: [
+				caption({ start: 0, duration: 4 }),
+				caption({ start: 1, duration: 1 }),
+				caption({ start: 1.5, duration: 1 }),
+				caption({ start: 4, duration: 1 }),
+			],
+		});
+		expect(names(groups)).toEqual([
+			["caption 0", "caption 4"],
+			["caption 1"],
+			["caption 1.5"],
+		]);
+	});
+
+	it("measures captions by their trimmed length", () => {
+		const trimmed = { ...caption({ start: 0, duration: 4 }), trimEnd: 3 };
+		const groups = partitionCaptionBatch({
+			elements: [trimmed, caption({ start: 1, duration: 1 })],
+		});
+		expect(groups).toHaveLength(1);
 	});
 });
