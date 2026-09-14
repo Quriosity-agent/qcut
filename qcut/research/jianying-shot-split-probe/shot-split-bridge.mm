@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <cerrno>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
 #include <sstream>
 #include <chrono>
 
@@ -184,9 +188,25 @@ std::vector<int> readIntResult(void *lib, void *system, const char *key) {
 }
 } // namespace
 
+// Reads exactly n bytes or returns false at EOF. A pipe handed over by Node/Bun may be
+// non-blocking, so EAGAIN waits on poll() instead of ending the stream early.
+static bool readFully(int fd, unsigned char *buf, size_t n) {
+  size_t got = 0;
+  while (got < n) {
+    ssize_t r = read(fd, buf + got, n - got);
+    if (r > 0) { got += (size_t)r; continue; }
+    if (r == 0) return false;
+    if (errno == EINTR) continue;
+    if (errno == EAGAIN || errno == EWOULDBLOCK) { struct pollfd p{fd, POLLIN, 0}; poll(&p, 1, -1); continue; }
+    fprintf(stderr, "read failed: %s\n", strerror(errno));
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char **argv) {
   setvbuf(stdout, nullptr, _IONBF, 0); setvbuf(stderr, nullptr, _IONBF, 0);  // a crash must not eat the log
-  if (argc < 2) { fprintf(stderr, "usage: shot-split-bridge <runtime-dir> [appName] [second] [graph.json] [frames.rgba width height fps [format]]\n"); return 2; }
+  if (argc < 2) { fprintf(stderr, "usage: shot-split-bridge <runtime-dir> [appName] [second] [graph.json] [frames.rgba|- width height fps [format [inputType [maxFrames]]]]\n"); return 2; }
   g_runtime = argv[1];
   g_modelDir = g_runtime + "/Resources/models";
   std::string appName = argc > 2 ? argv[2] : "VESDK";
@@ -233,15 +253,15 @@ int main(int argc, char **argv) {
   int format = argc > 9 ? atoi(argv[9]) : 0;
   int inputType = argc > 10 ? atoi(argv[10]) : 1;   // BachAlgorithmInput +0x08 (TE uses 1)
   int maxFrames = argc > 11 ? atoi(argv[11]) : 1 << 30;
-  std::ifstream raw(rawPath, std::ios::binary);
-  if (!raw) { fprintf(stderr, "cannot open %s\n", rawPath.c_str()); return 1; }
+  int rawFd = rawPath == "-" ? STDIN_FILENO : open(rawPath.c_str(), O_RDONLY);   // "-" streams frames from stdin (an ffmpeg pipe)
+  if (rawFd < 0) { fprintf(stderr, "cannot open %s: %s\n", rawPath.c_str(), strerror(errno)); return 1; }
   size_t frameBytes = (size_t)width * height * 4;
   std::vector<unsigned char> pixels(frameBytes);
   uintptr_t base = imageBase(lib);
   auto execute = slot<int (*)(void *, const AlgorithmInputView *)>(system, 5);
   int frameIndex = 0, failures = 0;
   auto t0 = std::chrono::steady_clock::now();
-  while (frameIndex < maxFrames && raw.read(reinterpret_cast<char *>(pixels.data()), frameBytes)) {
+  while (frameIndex < maxFrames && readFully(rawFd, pixels.data(), frameBytes)) {
     ImageBufferView image{}; image.vptr = reinterpret_cast<void *>(base + kImageVtableFileAddr);
     image.width = width; image.height = height; image.data = pixels.data(); image.format = format;
     image.timestamp = frameIndex / fps;
@@ -251,6 +271,7 @@ int main(int argc, char **argv) {
     if (r != 0) { failures++; if (failures < 4) printf("[execute] frame %d -> %d\n", frameIndex, r); }
     if (frameIndex == 0) printf("[execute] first frame -> %d\n", r);
     frameIndex++;
+    if (frameIndex % 240 == 0) printf("[progress] fed %d frames\n", frameIndex);   // machine-readable heartbeat
   }
   double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   printf("M5a fed %d frames (%dx%d rgba fmt=%d type=%d fps=%.2f) in %.0f ms, failures=%d\n", frameIndex, width, height, format, inputType, fps, ms, failures);
