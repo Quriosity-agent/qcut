@@ -225,7 +225,7 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
   FILE *idx = fopen((dir + "/weights.tsv").c_str(), "w");
   if (idx) fprintf(idx, "序号\t层名\td0\td1\td2\td3\t字节数\t元素数\n");
   FILE *params = fopen((dir + "/params.tsv").c_str(), "w");
-  if (params) fprintf(params, "序号\t层名\t类型\tkh\tkw\tcin\tcout\tih\tiw\n");
+  if (params) fprintf(params, "序号\t层名\t类型\tkh\tkw\tcin\tcout\tih\tiw\tf120\tf128\tf130\tf138\tf148\tf180\ts190\ts1c0\n");
   size_t dumped = 0, totalBytes = 0;
   for (size_t i = 0; i < count; ++i) {
     void *layer = *reinterpret_cast<void **>(begin + i * 16);
@@ -248,9 +248,20 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
     const int32_t *p140 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x140);
     const int32_t *p158 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x158);
     int kh = p118[0], kw = p118[1], cin = p140[0], cout = p140[1], ih = p158[0], iw = p158[1];
+    // 更多字段:步长/padding/膨胀在 +0x120..+0x138,+0x190 与 +0x1c0 疑似输入输出张量名
+    auto i32 = [layer](int off) { return *reinterpret_cast<const int32_t *>(static_cast<const char *>(layer) + off); };
+    auto strAt = [layer](int off) -> std::string {
+      const std::string &v = *reinterpret_cast<const std::string *>(static_cast<const char *>(layer) + off);
+      return (v.size() < 512) ? v : std::string("?");
+    };
     if (params)
-      fprintf(params, "%zu\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n",
-              i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw);
+      fprintf(params,
+              "%zu\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d"
+              "\t%d,%d\t%d,%d\t%d,%d\t%d,%d\t%d,%d\t%d\t%s\t%s\n",
+              i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw,
+              i32(0x120), i32(0x124), i32(0x128), i32(0x12c), i32(0x130), i32(0x134),
+              i32(0x138), i32(0x13c), i32(0x148), i32(0x14c), i32(0x180),
+              strAt(0x190).c_str(), strAt(0x1c0).c_str());
     if (i < 4)
       printf("    [%3zu] %-44s %-30s k=%dx%d %dx%d in=%dx%d\n", i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw);
     ++dumped;
