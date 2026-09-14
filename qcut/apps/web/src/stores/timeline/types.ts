@@ -585,7 +585,10 @@ export interface TimelineStore {
 		trackId: string,
 		elementId: string,
 		updates: Partial<
-			Pick<CaptionElement, "text" | "language" | "style" | "emphasis">
+			Pick<
+				CaptionElement,
+				"text" | "language" | "style" | "emphasis" | "emphasisBaseStyle"
+			>
 		>,
 		pushHistory?: boolean
 	) => void;
@@ -841,6 +844,12 @@ export interface TimelineStore {
 		trackType: TrackType,
 		span?: { startTime: number; duration: number }
 	) => string;
+	/**
+	 * Opens a NEW lane where the overlay stacking mode puts it: on top for
+	 * overlay lanes in byArrival mode (and always for text/markdown), in the
+	 * type group above the main track otherwise, appended for audio.
+	 */
+	addTrackByStackingPolicy: (trackType: TrackType) => string;
 	addMediaAtTime: (item: MediaItem, currentTime?: number) => boolean;
 	addTextAtTime: (item: Partial<TextElement>, currentTime?: number) => boolean;
 	/** Drop a preset as a region effect segment at the playhead (特效轨). */
