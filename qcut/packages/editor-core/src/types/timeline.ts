@@ -1071,6 +1071,8 @@ export interface CaptionElement extends BaseTimelineElement {
 	words?: AudioLyricsWord[];
 	/** Marked as a key point (划重点) and styled with the lane's keyword preset. */
 	emphasis?: boolean;
+	/** The caption's own style from before 划重点 replaced it; restored when the key point is cleared. */
+	emphasisBaseStyle?: SubtitleStyle;
 }
 
 export interface RemotionElement extends BaseTimelineElement {
