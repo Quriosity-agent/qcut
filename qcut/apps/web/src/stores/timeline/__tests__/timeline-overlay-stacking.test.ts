@@ -132,6 +132,24 @@ describe("overlay stacking mode", () => {
 		expect(trackTypes()).toEqual(["captions", "media", "audio"]);
 	});
 
+	it("opens fresh lanes by the stacking mode without reusing existing ones", () => {
+		setup({ mode: "byArrival" });
+		const first = useTimelineStore
+			.getState()
+			.addTrackByStackingPolicy("captions");
+		const second = useTimelineStore
+			.getState()
+			.addTrackByStackingPolicy("captions");
+		expect(second).not.toBe(first);
+		expect(useTimelineStore.getState().tracks[0].id).toBe(second);
+
+		setup({ mode: "byType" });
+		useTimelineStore.getState().addTrackByStackingPolicy("captions");
+		expect(trackTypes()).toEqual(["text", "captions", "sticker", "media"]);
+		useTimelineStore.getState().addTrackByStackingPolicy("audio");
+		expect(trackTypes().at(-1)).toBe("audio");
+	});
+
 	it("adjustment insertion index follows the mode", () => {
 		const tracks = baseTracks();
 		expect(adjustmentTrackInsertionIndex({ tracks })).toBe(2);
