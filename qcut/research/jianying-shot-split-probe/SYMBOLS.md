@@ -71,3 +71,13 @@
 `compress_shot_detect_model_forward_type`, `compress_shot_detect_is_last_frame`,
 `compress_shot_detect_debug_data_save_path`；AB 开关 `ve_enable_cut_point_fps_opt`（本机 true）、
 `smart_cut_frame_enable_interval`、`ve_enable_bach_npu_model`。
+
+## 6. Bach::BachAlgorithmSystemGE::Impl 虚表（0x3614ea8，槽位与 GE 相同）
+
+| 槽 | 地址 | 说明 |
+|---|---|---|
+| 5 | 0xc6bdd4 | `Impl::execute(const BachAlgorithmInput&)`：读 `input+0x08` 类型；3 = 已是内部列表；1/2 = 单缓冲，按 `src_array_0`/`src_data_0` 键包成内部列表后尾跳到 `_execute`（0xc6bedc） |
+| — | 0xc6bedc | `_execute`：按类型 0..7 跳表分派；type 1 分支读 `+0x18` 数据、`+0x20` count（日志 `src resolution … 1xcount`），随后进图执行 |
+
+键字符串：`Bach::_SRC_DATA_KEY_0_ = "src_data_0"`，`Bach::_SRC_ARRAY_KEY_0_ = "src_array_0"`。
+结果读取：`getResult(AlgorithmType 182)` → 容器 `[+0x18,+0x20)` → 首项 `+0x10` 是 `unordered_map<std::string, {…, BachObject @+0x28}>`（libc++ 节点：值在节点 `+0x28`）；`BachObject` 标量值在 `+0`、类型标记在 `+0x80`（31 = 整数，14 = 向量，向量 payload 指向 `AmazingEngine::PrimitiveVector<int>` 实现，元素区间 `[+0x10,+0x18)`）。
