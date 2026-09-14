@@ -81,3 +81,37 @@
 
 键字符串：`Bach::_SRC_DATA_KEY_0_ = "src_data_0"`，`Bach::_SRC_ARRAY_KEY_0_ = "src_array_0"`。
 结果读取：`getResult(AlgorithmType 182)` → 容器 `[+0x18,+0x20)` → 首项 `+0x10` 是 `unordered_map<std::string, {…, BachObject @+0x28}>`（libc++ 节点：值在节点 `+0x28`）；`BachObject` 标量值在 `+0`、类型标记在 `+0x80`（31 = 整数，14 = 向量，向量 payload 指向 `AmazingEngine::PrimitiveVector<int>` 实现，元素区间 `[+0x10,+0x18)`）。
+
+## 7. ByteNN（libbytenn.dylib，未剥符号，2026-09-15 补）
+
+推理引擎在 `libbytenn.dylib`，**符号完整导出**，不需要逆向就能调用。文件地址即 vmaddr（`__TEXT` vmaddr = fileoff = 0）。
+`dlsym` 时要去掉 `nm` 显示的前导下划线。
+
+| 符号 | 文件地址 | 说明 |
+|---|---|---|
+| `IESNN::Net::CreateNetFromFile(const char*)` | 0x7ff94 | 给路径即可独立加载 `.bytenn`，返回 `Net*`（已实测可用） |
+| `IESNN::Net::GetIESNet() const` | — | 取内部网络对象（内部布局未导出） |
+| `BYTENN::EngineFactory::Create()` | — | libcccreator 实际用的入口，返回 `shared_ptr<ByteNNEngine>`（sret 走 x8） |
+| `BYTENN::ByteNNEngineImpl::GetNetwork()` | 0xfbf8 | 引擎 → `LabNetWork*` |
+| `BYTENN::LabNetWork::GetLayers()` | 0x2eb00 | 层数；实现是 `ldr x0,[x0,#0x40]` 后尾调 `Thrustor::getLayers` |
+| `BYTENN::LabNetWork::GetLayerName(int)` | 0x2eaf8 | 层名，返回 `std::string`（sret） |
+| `BYTENN::LabNetWork::GetWeight(const std::string&, Tensor*)` | 0x29868 | 按名取权重；**推理态对所有层名都返回 5 且 data 为空** |
+| `BYTENN::LabNetWork::SaveModel(void*)` | 0x29838 | 返回 0 但不按传入路径落盘，参数含义未知 |
+| `bytenn_cpu::Thrustor::GetWeightLen()` | 0x13a73c | 权重区总长（backbone 2,307,592；predhead 1,212,940） |
+| `bytenn_cpu::Thrustor::GetWeight(const std::string&)` | 0x13a804 | 返回 32 字节 Tensor：`+0x00` data，`+0x08..0x17` 四维（源 `+0x24` 经 `st2.2s` 交错为 a,c,b,d），`+0x18/+0x1c` 两个 int |
+| `vtable for BYTENN::ByteNNEngineImpl` | 0x4a8190 | 用于在内存里按 `vtable+16` 认出引擎对象 |
+| 层表构造函数（内部） | 0x1fedec | `fn(out, impl+0x80)` 产出 `{begin,end}`；元素 16 字节，首字是层指针 |
+
+层对象字段（`Thrustor` 在 `LabNetWork+0x40`，其 impl 在 `Thrustor+0x08`）：
+
+| 偏移 | 内容 |
+|---|---|
+| +0x00 | 虚表指针（libbytenn 内） |
+| +0x18 | 层名 `std::string` |
+| +0x30 | 层类型 `std::string`：`Convolution` / `DepthwiseSeparableConvolution` / `GRU` / `Concat` / `Transpose` 等 |
+| +0x118 | 卷积核 (kh, kw) |
+| +0x140 | 通道 (in, out) |
+| +0x158 | 输入尺寸（首层 96×96） |
+
+配置键 `compress_shot_detect_model_forward_type` 在 0xcc7a00 被读进 w23（intParam 在算法对象 `+0x88`，unordered_map，值在节点 `+0x28`），
+但 w23 直到函数收尾都未被使用 —— **死代码**，改它不会切到 CoreML 后端。
