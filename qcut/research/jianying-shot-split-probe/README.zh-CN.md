@@ -36,6 +36,7 @@
 | `extract-symbols.sh` | 只读快照：`lipo` 出 arm64 切片，导出 `exports.sorted`、全量 `strings`、镜头检测相关字符串、`Bach::BachAlgorithmSystemGE` 虚表、`TEBachVideoAutoSplit` 与两个 `bef_bach_*` C 入口的注释反汇编 → `.local/jianying-shot-split/` |
 | `tools/disasm.py` | 区间反汇编 + 字符串字面量/导出符号/虚表槽注释（`llvm-objdump`，arm64 thin 切片） |
 | `tools/vtable.py` | 按虚表地址列出每个槽的符号名 |
+| `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节） |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
@@ -48,15 +49,54 @@ npm run symbols      # 从快照重新生成符号与反汇编证据
 npm test             # 切点比对工具的单元测试
 ```
 
-## 4. 还没定下的、以及下一步
+## 4. 脱离剪映跑真模型：已跑通（2026-09-14）
 
-**未知**（都在代码常量里，字符串抓不到，需要实机一次或继续反汇编）：抽帧采样率（`input_to_bach_frame_num`、fps 优化开关）、最短镜头合并规则、Mac 上 ByteNN 是走 CPU 还是转成 CoreML/神经引擎（`ve_enable_bach_npu_model`；若转换会在 `~/Library/Containers/com.lemon.lvpro/Data/Library/Caches/com.lemon.lvpro/bach_private_cache/coremlModels_*/` 留下带 `model.espresso.net` 层图的 `.mlmodelc`）。运行 `watch-shot-split.sh` 同时在剪映里点一次即可全部拿到。
+`shot-split-bridge.mm` 用快照里的运行库直接驱动 Bach 的 `COMPRESS_SHOT_DETECT`，不启动剪映：
 
-**脱离剪映跑真模型（桥接）的路线**，按取证可行性排序：
+```bash
+cd research/jianying-shot-split-probe
+npm run snapshot            # 一次性
+npm run build-bridge        # clang++，rpath 指向快照 Frameworks
+./detect-cuts.sh some.mp4 24   # → {"fps":24,"frames":288,"cutFrames":[71,143,215],"cutPoints":[3.0,6.0,9.0]}
+```
 
-1. **VESDK C++ 路线**（已摸清的部分最多）：`dlopen` 快照里的 23 库 → `Bach::BachAlgorithmFactory::CreateAlgorithmSystem()`（导出）→ 通过虚表槽 2/3 调 `init(BachInitConfig)`、`initGraph(config.json)`（`BachInitConfig` ≈ `{资源查找器指针, string, string}`，查找器由 `TEEffectFinderClient::getResourceFinder` 或 `bef_bach_resource_finder_create` 提供）→ 槽 5 `execute(BachAlgorithmInput)` 逐帧喂 96×96 之前的原始像素（executeFrame 里是 `{buffer, count=1}` 的单元素输入，像素格式枚举 <4，pts 秒）→ 末帧前 `setParams(compress_shot_detect_is_last_frame)` → 槽 6 `getResult(COMPRESS_SHOT_DETECT)` → `predict_result`（`PrimitiveVector<int>`）。还缺：`BachInitConfig` / `BachAlgorithmInput` / 图像缓冲的精确内存布局（要继续读 `disasm-executeFrame.txt` 0x203ce68–0x203cf50 和 Impl 侧实现）。
-2. **EffectSDK C 路线**：`bef_effect_create` + `bef_effect_init_with_resource_finder`（查找器签名 `char* (*)(void*, const char* dir, const char* name)`，与 `research/jianying-runtime-probe/effect-probe.mm` 相同）→ `bef_bach_get_graph(handle, config.json, view_w, view_h, …)` → `bef_effect_algorithm_buffer` 逐帧 → `bef_effect_algorithm_cap_get_algorithm_result_serialize`。参数语义只从字符串推断，未验证。
-3. **不依赖剪映权重的复刻**：同样的管线形状（小图嵌入 → 滑窗分类 → 阈值 → 合并）用 TransNetV2 的开源权重（ONNX）实现，再用 `compare-cutpoints.mjs` 对着剪映导出的切点校准阈值。这是能进产品的路线；`.bytenn` 权重不可分发。
+五个里程碑逐一实机验证：
+
+| 里程碑 | 做法 | 结果 |
+|---|---|---|
+| M1 加载闭包 | `dlopen` 快照 `Frameworks/libcccreator.dylib`（`@rpath` 依赖靠 `-Wl,-rpath`） | OK |
+| M2 建系统 | 导出符号 `Bach::BachAlgorithmFactory::CreateAlgorithmSystem()` | OK，Bach SDK 22.1.0 |
+| M3 init | 自写资源查找器（虚表 7 槽：2 = `findResource(BachAlgorithmModel&)` 读文件填 `data/length/path`，6 = `findResourcePath(const char*)`，其余空实现）+ `BachInitConfig{finder, appName, ""}` → 虚表槽 2 | OK |
+| M4 图与模型 | 槽 3 `initGraph(config.json 路径)` → 槽 32 `loadModel()`；查找器按裸名 `jy_compressShotDetectBackbone_new` 解析成 `<name>_v1.0_size0.bytenn` | 两个模型加载成功，**ByteNN CPU 后端**（"Run ByteNN with CPU forward type"，backend 0），Metal 只给 blit 节点 |
+| M5 喂帧 / 读结果 | 输入对象照 `TEBachVideoAutoSplit::executeFrame` 的布局复刻（下表），逐帧槽 5 `execute`；EOF = 1×1 四字节零缓冲、`count=0` 的一帧；槽 6 `getResult(182)` → 结果容器 `[+0x18,+0x20)` 首项 → `+0x10` 的 `unordered_map<string,…>` 里 `frame_received`（BachObject type 31，值 1）和 `predict_result`（type 14，payload 指向 `PrimitiveVector<int>` 实现，元素在 `[+0x10,+0x18)`） | 288 帧 149 ms（≈0.5 ms/帧），`predict_result=[71,143,215]` |
+
+输入契约（`Bach::BachAlgorithmInput`，`+0x08` 类型必须是 **1**；0/2/3 分别是别的缓冲类型，会走纹理路径或崩溃）：
+
+```
+input  +0x00 vptr(复用 TE 的 0x36c5d58，只有虚析构)  +0x08 int type=1  +0x10 ImageBuffer*  +0x18 const void* pixels  +0x20 int count(1；EOF 为 0)
+image  +0x00 vptr(0x36c4840)  +0x0c int width  +0x10 int height  +0x18 pixels  +0x20 rotation=0  +0x24 pixel format(<4；RGBA 用 0)  +0x30 double timestamp 秒
+```
+
+`predict_result` 的每个整数是**镜头最后一帧的索引**（切点在它和下一帧之间），Bach 日志里那句 `src resolution 1x1` 是 type 1 分支把 `count` 当高度打的，不影响推理。
+
+### 用它测出来的模型行为
+
+| 实验（合成夹具，24 fps） | 结果 |
+|---|---|
+| 3 个硬切（3/6/9 s） | 71/143/215 → 3.000/6.000/9.000 s，全中 |
+| 同一夹具降到 12 fps | 35/71/107 → 3.0/6.0/9.0 s，仍全中 |
+| 降到 6 fps | 17/36/53 → 3.0/6.17/9.0 s，开始抖动（7 帧滑窗在低帧率下变粗） |
+| 1 s 叠化（xfade fade） | **没有**报边界：阈值 0.35 下渐变转场漏检 |
+| 0.25 s 短镜头（6 帧） | 报了前后两个切点，模型层**不合并**短镜头 |
+| 3 帧闪白 | 报了闪白进出两个切点，模型层**不抑制**闪光 |
+
+所以剪映产品里若有最短镜头合并或闪光抑制，是在 VESDK/UI 层做的，不在模型里；抽帧采样率仍需实机抓取（模型对 12 fps 已足够，估计产品在 10–24 fps 之间）。
+
+### 还没做的
+
+- 抽帧采样率、最短镜头合并规则：`watch-shot-split.sh` 在剪映里点一次即可确认（两次窗口内用户未触发）。
+- 结果对象是直接按内存偏移读的，换剪映版本要用 `extract-symbols.sh` 重新核对 `SYMBOLS.md` 里的地址（bridge 里 `k*FileAddr` 常量）。
+- 产品化仍走 TransNetV2 复刻路线（`.bytenn` 权重不可分发）；本桥接只做参照/校准。
 
 ## 5. 红线
 
