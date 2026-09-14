@@ -93,7 +93,7 @@ See the [QCut plugin documentation](qcut/plugins/qcut/README.md) for setup, diag
 
 ## QCut CLI
 
-Every QCut build ships a structured command-line interface. It has 280 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`; the one exception is an async job, which answers `{ "status": "pending", "jobId": ... }` for you to poll), and `--help --json` works at the root, group, command, and flag level.
+Every QCut build ships a structured command-line interface. It has 285 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`; the one exception is an async job, which answers `{ "status": "pending", "jobId": ... }` for you to poll), and `--help --json` works at the root, group, command, and flag level.
 
 ```bash
 qcut --help --json                                   # groups, commands, global flags
