@@ -1,3 +1,4 @@
+import { useId } from "react";
 import {
 	AlignCenter,
 	AlignLeft,
@@ -34,9 +35,12 @@ export function CaptionStyleSlider({
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
 }) {
+	const inputId = useId();
 	return (
 		<div className="space-y-1.5">
-			<Label className="text-xs">{label}</Label>
+			<Label className="text-xs" htmlFor={inputId}>
+				{label}
+			</Label>
 			<div className="flex items-center gap-2">
 				<Slider
 					aria-label={label}
@@ -53,6 +57,7 @@ export function CaptionStyleSlider({
 					className="min-w-0 flex-1"
 				/>
 				<Input
+					id={inputId}
 					type="number"
 					aria-label={`${label} value`}
 					value={Number(value.toFixed(2))}
@@ -84,10 +89,14 @@ export function ColorControl({
 	value: string;
 	onChange: (value: string) => void;
 }) {
+	const inputId = useId();
 	return (
 		<div className="flex items-center justify-between gap-3">
-			<Label className="text-xs">{label}</Label>
+			<Label className="text-xs" htmlFor={inputId}>
+				{label}
+			</Label>
 			<Input
+				id={inputId}
 				type="color"
 				aria-label={label}
 				value={value}
@@ -98,7 +107,8 @@ export function ColorControl({
 	);
 }
 
-function activateOnKeyboard({
+/** Enter/Space activation for click-driven buttons (repo accessibility rule 5). */
+export function activateOnKeyboard({
 	event,
 	action,
 }: {
@@ -129,10 +139,14 @@ function SpacingField({
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
 }) {
+	const inputId = useId();
 	return (
 		<div className="flex min-w-0 flex-1 items-center gap-2">
-			<Label className="shrink-0 text-xs">{label}</Label>
+			<Label className="shrink-0 text-xs" htmlFor={inputId}>
+				{label}
+			</Label>
 			<Input
+				id={inputId}
 				type="number"
 				aria-label={label}
 				value={Number(value.toFixed(2))}
@@ -165,6 +179,8 @@ export function CaptionStyleControls({
 	onInteractionEnd: () => void;
 }) {
 	const { t } = useTranslation();
+	const fontId = useId();
+	const colorId = useId();
 	const textStyleButtons = [
 		{
 			label: t("caption.bold"),
@@ -237,8 +253,11 @@ export function CaptionStyleControls({
 	return (
 		<div className="space-y-4" data-testid="caption-style-controls">
 			<div className="space-y-1.5">
-				<Label className="text-xs">{t("caption.font")}</Label>
+				<Label className="text-xs" htmlFor={fontId}>
+					{t("caption.font")}
+				</Label>
 				<FontPicker
+					id={fontId}
 					aria-label={t("caption.fontFamily")}
 					defaultValue={style.fontFamily}
 					onValueChange={(fontFamily: FontFamily) => onChange({ fontFamily })}
@@ -278,8 +297,11 @@ export function CaptionStyleControls({
 					</div>
 				</div>
 				<div className="w-16 space-y-1.5">
-					<Label className="text-xs">{t("caption.color")}</Label>
+					<Label className="text-xs" htmlFor={colorId}>
+						{t("caption.color")}
+					</Label>
 					<Input
+						id={colorId}
 						type="color"
 						aria-label={t("caption.fontColor")}
 						value={style.fontColor}
@@ -330,7 +352,9 @@ export function CaptionStyleControls({
 								title={alignment.label}
 								aria-pressed={alignment.active}
 							>
-								<Icon className="size-4" />
+								<Icon className="size-4">
+									<title>{alignment.label}</title>
+								</Icon>
 							</Button>
 						);
 					})}
