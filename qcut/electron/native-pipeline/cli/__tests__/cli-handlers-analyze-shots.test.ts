@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { JianyingShotSplitResult } from "../../../jianying-shot-split-contract.js";
 import {
@@ -146,8 +146,11 @@ describe("analyze shots CLI", () => {
 		);
 		expect(written.success).toBe(true);
 		expect(written.outputPath).toBe(outputPath);
+		// The handler resolves --input, which adds a drive letter on Windows.
 		expect(JSON.parse(readFileSync(outputPath, "utf8"))).toEqual(
-			buildAnalyzeShotsReport({ result: RESULT })
+			buildAnalyzeShotsReport({
+				result: { ...RESULT, sourcePath: resolve("/videos/clip.mp4") },
+			})
 		);
 		const refused = await handleAnalyzeShots(
 			baseOptions({ input: "/videos/clip.mp4", output: outputPath }),
