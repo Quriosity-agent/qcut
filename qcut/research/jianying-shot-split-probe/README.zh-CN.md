@@ -36,7 +36,7 @@
 | `extract-symbols.sh` | 只读快照：`lipo` 出 arm64 切片，导出 `exports.sorted`、全量 `strings`、镜头检测相关字符串、`Bach::BachAlgorithmSystemGE` 虚表、`TEBachVideoAutoSplit` 与两个 `bef_bach_*` C 入口的注释反汇编 → `.local/jianying-shot-split/` |
 | `tools/disasm.py` | 区间反汇编 + 字符串字面量/导出符号/虚表槽注释（`llvm-objdump`，arm64 thin 切片） |
 | `tools/vtable.py` | 按虚表地址列出每个槽的符号名 |
-| `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节） |
+| `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节）；`.mm` 也是 QCut `analyze shots` 按需编译的源码 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
@@ -58,6 +58,15 @@ cd research/jianying-shot-split-probe
 npm run snapshot            # 一次性
 npm run build-bridge        # clang++，rpath 指向快照 Frameworks
 ./detect-cuts.sh some.mp4 24   # → {"fps":24,"frames":288,"cutFrames":[71,143,215],"cutPoints":[3.0,6.0,9.0]}
+```
+
+QCut CLI 已接入同一条链路（`electron/jianying-shot-split/`，命令 `analyze-shots`）：校验快照清单与逐文件 SHA-256、
+按需把本桥编译到 `~/Library/Caches/QCut/JianyingShotSplitBridge/`、ffmpeg 经命名管道流式喂帧（不落盘），桥在
+`sandbox-exec` 断网沙箱里跑：
+
+```bash
+qcut analyze shots -i some.mp4 --json          # cut_points / cut_frames / shots
+qcut analyze shots --check --json              # 快照与桥是否就绪
 ```
 
 五个里程碑逐一实机验证：
