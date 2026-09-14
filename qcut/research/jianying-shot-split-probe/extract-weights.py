@@ -1,99 +1,121 @@
 #!/usr/bin/env python3
-"""从剪映镜头分割模型里提取 float32 权重。纯离线,只读模型文件,不加载任何运行库。
+"""从剪映镜头分割模型里提取 float32 权重,并按层切分。纯离线,只读模型文件,不加载任何运行库。
 
-背景:`.bytenn` 没有加密。文件头是一张分段表,权重段从偏移 68 开始、到头部 +0x14 处记的偏移结束。
-段里是若干张量的 float32 数据,张量之间隔着很短的记录头,而且**浮点数组在段内不按 4 字节对齐**
-(backbone 对齐 1,predhead 对齐 3),所以从段起始直接解会是乱码——这一点当初误判成"存在变换"。
+已验证的文件布局(backbone 与 predhead 相同形状):
+
+    [文件头 + 图定义]  [权重: 各张量按层顺序紧挨排列的 float32]  [尾部元数据]
+
+要点,当初都踩过坑:
+
+* 权重**没有加密、没有变换**,就是明文小端 float32。
+* 浮点数组**不按 4 字节对齐**(起点由扫描确定),所以从文件头偏移直接解会是乱码。
+* 张量之间**没有记录头**,一个接一个;中间看起来像分隔符的 4 字节,其实是绝对值较大的权重。
+* 权重区**不止文件头里 +0x14 指的那一段**,会越过它继续排,一直到尾部元数据之前。
+
+每层的形状来自 `weight-dump.mm` 导出的 `params.tsv`(层名、类型、卷积核、输入输出通道)。
+GRU 的参数量按 3·H·I + 3·H·H + 6·H 计算。
 
 用法:
-    ./extract-weights.py <模型.bytenn> [输出目录]
+    ./extract-weights.py <模型.bytenn> <params.tsv> [输出目录]
 
 产出:
-    <名字>-weights-f32.bin   按文件顺序拼接的 float32 数组
-    <名字>-runs.json         每个连续段在权重段内的偏移与长度
+    <层号>-<层名>.f32    该层权重,小端 float32,形状见 layer-map.json
+    layer-map.json       每层的类型、形状、参数个数、在文件中的偏移
 
 产物只留本机,不入库、不外发。
 """
+import csv
 import json
 import math
 import pathlib
 import struct
 import sys
 
-MIN_RUN = 32          # 少于这么多个连续浮点不算张量
-PLAUSIBLE_MAX = 20.0  # 训练权重的量级上限,用来把浮点数据和记录头区分开
+GRU_INPUT = 128        # 主干输出 128 维,时序头按同样宽度
+GRU_HIDDEN = 128
+MAX_PLAUSIBLE = 300.0  # 用来判断某处能否读出一串像权重的浮点
 
 
-def weight_section(data: bytes) -> tuple[int, int]:
-    """权重段 = [68, 头部 +0x14 记的偏移)。"""
-    if data[:2] != b"BM":
-        raise SystemExit("不是 BM 容器")
-    end = struct.unpack_from("<I", data, 0x14)[0]
-    if not 68 < end <= len(data):
-        raise SystemExit(f"权重段结束偏移不合理: {end}")
-    return 68, end
+def tensor_stats(data: bytes, offset: int, count: int):
+    """返回 (最大绝对值, 平均绝对值);越界或含非有限值时返回 None。"""
+    if offset < 0 or offset + count * 4 > len(data):
+        return None
+    values = struct.unpack_from("<%df" % count, data, offset)
+    if not all(math.isfinite(v) for v in values):
+        return None
+    magnitudes = [abs(v) for v in values]
+    return max(magnitudes), sum(magnitudes) / count
 
 
-def float_runs(section: bytes, align: int) -> list[tuple[int, int]]:
-    """在给定对齐下,找出连续的、数值像权重的 float32 段。"""
-    count = (len(section) - align) // 4
-    values = struct.unpack_from("<%df" % count, section, align)
-    runs, start = [], None
-    for i, x in enumerate(values):
-        ok = math.isfinite(x) and (x == 0.0 or 1e-6 <= abs(x) <= PLAUSIBLE_MAX)
-        if ok:
-            if start is None:
-                start = i
-        elif start is not None:
-            if i - start >= MIN_RUN:
-                runs.append((align + start * 4, i - start))
-            start = None
-    if start is not None and count - start >= MIN_RUN:
-        runs.append((align + start * 4, count - start))
-    return runs
+def plausible(data: bytes, offset: int, count: int) -> bool:
+    stats = tensor_stats(data, offset, count)
+    return bool(stats and stats[0] < MAX_PLAUSIBLE and stats[1] < 3)
+
+
+def layers_from_params(path: pathlib.Path) -> list[dict]:
+    """按层顺序算出每层的权重个数与形状;没有权重的层直接跳过。"""
+    layers = []
+    for row in csv.DictReader(open(path), delimiter="\t"):
+        kind = row["类型"]
+        kh, kw, cin, cout = (int(row[k]) for k in ("kh", "kw", "cin", "cout"))
+        if kind == "GRU":
+            count = 3 * GRU_HIDDEN * GRU_INPUT + 3 * GRU_HIDDEN * GRU_HIDDEN + 6 * GRU_HIDDEN
+            shape = ["GRU", GRU_INPUT, GRU_HIDDEN]
+        elif not (0 < kh <= 11 and 0 < kw <= 11 and 0 < cin <= 4096 and 0 < cout <= 4096):
+            continue                                  # 非卷积层的这些字段是无意义值
+        elif "Depthwise" in kind:
+            count, shape = cout * kh * kw, [cout, 1, kh, kw]
+        elif "Convolution" in kind or kind == "InnerProduct":
+            count, shape = cout * cin * kh * kw, [cout, cin, kh, kw]
+        else:
+            continue
+        layers.append({"layer": int(row["序号"]), "name": row["层名"],
+                       "type": kind, "shape": shape, "floats": count})
+    return layers
+
+
+def find_first_tensor(data: bytes, count: int) -> int | None:
+    """首个张量的起点:第一个能连续读出 count 个像权重的浮点的位置。"""
+    for offset in range(64, min(len(data), 200_000)):
+        if plausible(data, offset, count):
+            return offset
+    return None
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         raise SystemExit(__doc__)
-    path = pathlib.Path(sys.argv[1])
-    outdir = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else path.parent
+    model = pathlib.Path(sys.argv[1])
+    params = pathlib.Path(sys.argv[2])
+    outdir = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else model.parent / "extracted"
     outdir.mkdir(parents=True, exist_ok=True)
-    data = path.read_bytes()
-    start, end = weight_section(data)
-    section = data[start:end]
 
-    # 对齐未知,四种都试,取覆盖最多的那个
-    best_align, best_runs, best_total = 0, [], 0
-    for align in range(4):
-        runs = float_runs(section, align)
-        total = sum(c for _, c in runs)
-        if total > best_total:
-            best_align, best_runs, best_total = align, runs, total
+    data = model.read_bytes()
+    layers = layers_from_params(params)
+    if not layers:
+        raise SystemExit("参数表里没有带权重的层")
+    offset = find_first_tensor(data, layers[0]["floats"])
+    if offset is None:
+        raise SystemExit("找不到第一个张量")
 
-    flat = []
-    for offset, count in best_runs:
-        flat.extend(struct.unpack_from("<%df" % count, section, offset))
-    name = path.stem.split("_v")[0]
-    blob = outdir / f"{name}-weights-f32.bin"
-    blob.write_bytes(struct.pack("<%df" % len(flat), *flat))
-    json.dump(
-        {
-            "model": path.name,
-            "section": [start, end],
-            "align": best_align,
-            "floats": best_total,
-            "runs": [{"offset_in_section": o, "floats": c} for o, c in best_runs],
-        },
-        open(outdir / f"{name}-runs.json", "w"),
-        indent=1,
-    )
-    mean_abs = sum(abs(x) for x in flat) / len(flat)
-    print(f"{path.name}")
-    print(f"  权重段 {len(section)} 字节,对齐 {best_align},{len(best_runs)} 段")
-    print(f"  参数 {best_total} 个,覆盖 {best_total * 4 / len(section):.1%}")
-    print(f"  |w| 最大 {max(abs(x) for x in flat):.4f},平均 {mean_abs:.5f}")
-    print(f"  -> {blob.name}")
+    good = 0
+    for layer in layers:
+        stats = tensor_stats(data, offset, layer["floats"])
+        layer["file_offset"] = offset
+        layer["ok"] = bool(stats and stats[0] < MAX_PLAUSIBLE and stats[1] < 3)
+        if layer["ok"]:
+            good += 1
+            name = layer["name"].replace("/", "_")
+            (outdir / f"{layer['layer']:03d}-{name}.f32").write_bytes(
+                data[offset:offset + layer["floats"] * 4])
+        offset += layer["floats"] * 4
+    json.dump(layers, open(outdir / "layer-map.json", "w"), ensure_ascii=False, indent=1)
+
+    total = sum(l["floats"] for l in layers)
+    print(f"{model.name}")
+    print(f"  {good}/{len(layers)} 层数值正常,共 {total} 个参数")
+    print(f"  权重区 +0x{layers[0]['file_offset']:x} .. +0x{offset:x},尾部剩 {len(data) - offset} 字节")
+    print(f"  -> {outdir}")
 
 
 if __name__ == "__main__":
