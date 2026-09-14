@@ -77,3 +77,73 @@ export function resolveLaneBaseStyle({
 	const plain = captions.find((caption) => !caption.emphasis);
 	return resolveSubtitleStyle(plain?.style);
 }
+
+type EmphasisCaption = Pick<
+	CaptionElement,
+	"id" | "style" | "emphasis" | "emphasisBaseStyle"
+>;
+
+export interface CaptionEmphasisUpdate {
+	id: string;
+	updates: Pick<CaptionElement, "emphasis" | "emphasisBaseStyle" | "style">;
+}
+
+/**
+ * Updates that mark captions as key points with a preset. A caption's own
+ * look is remembered the first time it is emphasized, so clearing can bring
+ * it back; re-applying never overwrites that memory with a highlight look.
+ */
+export function applyEmphasisUpdates({
+	captions,
+	ids,
+	preset,
+}: {
+	captions: readonly EmphasisCaption[];
+	ids: readonly string[];
+	preset: CaptionStylePreset;
+}): CaptionEmphasisUpdate[] {
+	const targets = new Set(ids);
+	return captions
+		.filter((caption) => targets.has(caption.id))
+		.map((caption) => ({
+			id: caption.id,
+			updates: {
+				emphasis: true,
+				style: structuredClone(preset.style),
+				...(caption.emphasis
+					? {}
+					: { emphasisBaseStyle: resolveSubtitleStyle(caption.style) }),
+			},
+		}));
+}
+
+/**
+ * Updates that clear every key point: each caption gets back the look it had
+ * before, or the lane's plain look when none was remembered (captions created
+ * already highlighted). The store merges styles, so keys only the highlight
+ * carried, such as its karaoke settings, are cleared explicitly.
+ */
+export function clearEmphasisUpdates({
+	captions,
+}: {
+	captions: readonly EmphasisCaption[];
+}): CaptionEmphasisUpdate[] {
+	const laneBase = resolveLaneBaseStyle({ captions });
+	return captions
+		.filter((caption) => caption.emphasis)
+		.map((caption) => {
+			const restored = structuredClone(caption.emphasisBaseStyle ?? laneBase);
+			const cleared: Partial<Record<keyof SubtitleStyle, undefined>> = {};
+			for (const key of Object.keys(caption.style ?? {})) {
+				cleared[key as keyof SubtitleStyle] = undefined;
+			}
+			return {
+				id: caption.id,
+				updates: {
+					emphasis: false,
+					emphasisBaseStyle: undefined,
+					style: { ...cleared, ...restored },
+				},
+			};
+		});
+}
