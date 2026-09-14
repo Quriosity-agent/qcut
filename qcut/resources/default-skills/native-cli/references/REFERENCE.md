@@ -134,6 +134,36 @@ videos are split automatically and also write `review-split-manifest.json`.
 qcut analyze video -i video.mp4 --analysis-type review --review-language zh --max-tokens 16000 --json -o /tmp/qcut-output
 ```
 
+### `analyze shots`
+
+Detect shot boundaries offline with the Jianying 智能镜头分割 model, executed
+from QCut's private runtime snapshot on Apple Silicon (no Jianying launch, no
+network).
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--input` | `-i` | string | | Local source video (required unless `--check`) |
+| `--fps` | | number | `24` | Sampling rate fed to the model, 1–60 |
+| `--width` | | number | `320` | Sampled frame width, 16–1920 |
+| `--height` | | number | `180` | Sampled frame height, 16–1920 |
+| `--output` | | string | | Write the JSON report to this path |
+| `--force` | | boolean | `false` | Replace an existing report |
+| `--check` | | boolean | `false` | Only report whether the private runtime and native bridge are ready |
+
+The report carries `cut_points` (seconds where each new shot starts),
+`cut_frames` (the model's raw `predict_result`: last sampled frame index of
+each shot), `shots` (`start_frame`/`end_frame`/`start_time`/`end_time`),
+`frame_count`, `duration_seconds`, and the verified runtime identity
+(`app_version`, `core_uuid`). Requires the snapshot produced by
+`research/jianying-shot-split-probe/snapshot-private-runtime.sh` and the Xcode
+command line tools for the one-time bridge build.
+
+```bash
+qcut analyze shots -i footage.mp4 --json
+qcut analyze shots -i footage.mp4 --fps 12 --output shots.json
+qcut analyze shots --check --json
+```
+
 ### `analyze transcribe`
 
 Transcribe audio to text with optional SRT.
