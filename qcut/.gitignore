@@ -211,6 +211,7 @@ apps/web/public/sticker-lab/*
 # Local Jianying runtime payloads used by research probes; proprietary, never commit.
 /.local/jianying-runtime/
 /.local/jianying-effect-references/
+/.local/jianying-shot-split/
 /.local/jianying-parity/
 /.local/jianying-basic-video-probe/
 /research/jianying-runtime-probe/build/
