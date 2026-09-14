@@ -6,7 +6,9 @@
 		"snapshot": "bash ./snapshot-private-runtime.sh",
 		"symbols": "bash ./extract-symbols.sh",
 		"compare": "node ./compare-cutpoints.mjs",
-		"test": "node --test ./compare-cutpoints.test.mjs"
+		"test": "node --test ./compare-cutpoints.test.mjs",
+		"build-bridge": "bash ./build-bridge.sh",
+		"detect": "bash ./detect-cuts.sh"
 	},
 	"engines": {
 		"node": ">=18"
