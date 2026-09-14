@@ -54,13 +54,28 @@ qcut generate-grid -t "Seasons of a tree" --layout 2x2
 | `analyze consistency` | `--ref --input` | `--model`, `--language`, `--fps`, `--scene-detect`, `--batch-size`, `--min-severity`, `--max-tokens` | Detect character consistency issues in a video against reference images |
 | `analyze image-consistency` | `--ref` | `--candidate`, `--dir`, `--rule`, `--rules-file`, `--model`, `--language`, `--min-severity` | Check candidate images against reference images and an optional rule |
 | `analyze query` | `--input` | `--prompt`, `--text`, `--model` | Query a video with a custom prompt (keep/cut segments) |
+| `analyze shots` | `--input` (or `--check`) | `--fps`, `--width`, `--height`, `--output`, `--force`, `--check` | Detect shot boundaries offline with the Jianying 智能镜头分割 model from QCut's private runtime snapshot (Apple Silicon, no app launch) |
 
 ```bash
 qcut analyze index --dir ./downloads -o ./analysis
 qcut analyze inspect --index ./analysis/index.json --source clip.mp4 --start 2 --end 9
 qcut analyze consistency --ref ref.jpg -i scene.mp4 --json
 qcut analyze image-consistency --ref ref.png --candidate gen.png --json
+qcut analyze shots -i footage.mp4 --json
+qcut analyze shots --check --json
 ```
+
+`analyze shots` runs the Jianying `COMPRESS_SHOT_DETECT` model locally. It needs
+the private runtime snapshot from
+`research/jianying-shot-split-probe/snapshot-private-runtime.sh` (never shipped
+or committed) and compiles the native bridge on first use with the Xcode command
+line tools; `--check --json` reports whether both are ready. Frames stream
+through a named pipe at `--fps` (default 24; 12–24 is the measured sweet spot)
+scaled to `--width`×`--height`. The report lists `cut_points` (seconds where a
+new shot starts), `cut_frames` (last sampled frame of each shot, the model's raw
+`predict_result`), and `shots` ranges. Hard cuts are exact; slow dissolves are
+missed and sub-second shots or flashes are reported unmerged, because the model
+itself does neither.
 
 `analyze video` takes `--input/-i`. The `--video-url` spelling seen in older
 notes is accepted by the handler but is not a declared flag, so structured help
