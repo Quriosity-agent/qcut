@@ -240,75 +240,42 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
     *reinterpret_cast<int32_t *>(tensor + 0x1c) = *reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x44);
     unsigned long bytes = (data && byteSize) ? byteSize(tensor) : 0;
     unsigned long elems = (data && dataCount) ? dataCount(tensor) : 0;
-    // 用层自身的参数算出期望权重个数,再在对象里找“大小和数值都对得上”的缓冲
+    // 抓取层对象里“看起来就是权重”的缓冲,存下前若干字节当指纹,供与模型文件比对
     const std::string &kind = *reinterpret_cast<const std::string *>(static_cast<char *>(layer) + 0x30);
     const int32_t *p118 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x118);
     const int32_t *p140 = reinterpret_cast<const int32_t *>(static_cast<char *>(layer) + 0x140);
     int kh = p118[0], kw = p118[1], cin = p140[0], cout = p140[1];
-    bool convLike = kind.find("Convolution") != std::string::npos || kind == "InnerProduct";
-    long expect = 0;
-    if (convLike && kh > 0 && kh <= 11 && kw > 0 && kw <= 11 && cin > 0 && cout > 0 && cin < 4096 && cout < 4096) {
-      expect = (kind.find("Depthwise") != std::string::npos) ? (long)cout * kh * kw
-                                                            : (long)cout * cin * kh * kw;
-    }
-    if (expect > 0) {
+    bool convLike = kind.find("Convolution") != std::string::npos;
+    if (convLike && dumped < 12) {
       const uintptr_t *w = reinterpret_cast<const uintptr_t *>(layer);
-      size_t want = (size_t)expect * 4;
-      std::vector<unsigned char> bufw(want);
-      bool found = false;
-      for (int k = 1; k < 256 && !found; ++k) {      // 跳过 +0x00 的虚表
+      int perLayer = 0;
+      for (int k = 1; k < 256 && perLayer < 2; ++k) {
         uintptr_t v = w[k];
         if (v <= 0x100000000ull || v >= 0x800000000000ull) continue;
+        unsigned char probe[1024] = {};
         mach_vm_size_t got = 0;
-        if (mach_vm_read_overwrite(mach_task_self(), v, want, (mach_vm_address_t)bufw.data(), &got) != KERN_SUCCESS || got < want) continue;
-        const float *f = reinterpret_cast<const float *>(bufw.data());
-        // 真权重:绝大多数落在 1e-5..5 的量级,不能是一堆非规格化小数或全同值
-        size_t ok = 0, sane = 0, denorm = 0, distinct = 0;
-        float first = f[0];
-        for (long q = 0; q < expect; ++q) {
-          float x = f[q], ax = fabsf(x);
-          if (!std::isfinite(x) || ax > 10.0f) { ok = 0; break; }
-          ++ok;
-          if (ax >= 1e-5f && ax <= 5.0f) ++sane;
-          else if (x != 0 && ax < 1e-20f) ++denorm;
-          if (x != first) ++distinct;
-        }
-        if (ok == (size_t)expect && sane >= (size_t)expect * 7 / 10 &&
-            denorm <= (size_t)expect / 10 && distinct > (size_t)expect / 2) {
-          std::string safe = name;
-          for (auto &c : safe) if (c == '/' || c == ' ') c = '_';
-          FILE *f2 = fopen((dir + "/" + std::to_string(i) + "-" + safe + ".f32").c_str(), "wb");
-          if (f2) { fwrite(bufw.data(), 1, want, f2); fclose(f2); }
-          if (dumped < 6)
-            printf("    [%3zu] %-46s %-32s %dx%d k=%dx%d -> %ld 权重 @+0x%03x (%.4f %.4f %.4f)\n",
-                   i, name.c_str(), kind.c_str(), cin, cout, kh, kw, expect, k * 8, f[0], f[1], f[2]);
-          ++dumped; totalBytes += want; found = true;
-        }
-      }
-      if (!found) {
-        // 按经验偏移取:Convolution 在 +0x2f8,Depthwise 在 +0x678;整块取出留待离线对齐
-        int off = (kind.find("Depthwise") != std::string::npos) ? 0x678 : 0x2f8;
-        uintptr_t v = w[off / 8];
-        if (v > 0x100000000ull && v < 0x800000000000ull) {
-          size_t slab = 16384;
-          std::vector<unsigned char> sb(slab);
-          mach_vm_size_t got = 0;
-          if (mach_vm_read_overwrite(mach_task_self(), v, slab, (mach_vm_address_t)sb.data(), &got) == KERN_SUCCESS && got >= 256) {
-            const float *f = reinterpret_cast<const float *>(sb.data());
-            size_t sane = 0;
-            for (int q = 0; q < 64; ++q) { float ax = fabsf(f[q]); if (std::isfinite(f[q]) && ax >= 1e-5f && ax <= 5.0f) ++sane; }
-            if (sane >= 40) {
-              std::string safe = name;
-              for (auto &c : safe) if (c == '/' || c == ' ') c = '_';
-              FILE *f2 = fopen((dir + "/" + std::to_string(i) + "-" + safe + ".slab").c_str(), "wb");
-              if (f2) { fwrite(sb.data(), 1, got, f2); fclose(f2); }
-              if (dumped < 8)
-                printf("    [%3zu] %-44s %-30s %dx%d k=%dx%d 期望%ld @+0x%03x 取块 (%.4f %.4f %.4f)\n",
-                       i, name.c_str(), kind.c_str(), cin, cout, kh, kw, expect, off, f[0], f[1], f[2]);
-              ++dumped; totalBytes += got;
-            }
+        if (mach_vm_read_overwrite(mach_task_self(), v, sizeof(probe), (mach_vm_address_t)probe, &got) != KERN_SUCCESS || got < 256) continue;
+        // 缓冲前面可能有头部,窗口从 0 和 0x30 两处都试
+        const float *f = reinterpret_cast<const float *>(probe);
+        int bestStart = -1;
+        for (int start : {0, 12}) {
+          size_t sane = 0, distinct = 0;
+          for (int q = start; q < start + 64; ++q) {
+            float x = f[q], ax = fabsf(x);
+            if (std::isfinite(x) && ax >= 1e-5f && ax <= 5.0f) ++sane;
+            if (x != f[start]) ++distinct;
           }
+          if (sane >= 45 && distinct >= 30) { bestStart = start; break; }
         }
+        if (bestStart < 0) continue;
+        f += bestStart;
+        char fn[512];
+        snprintf(fn, sizeof(fn), "%s/probe-%03zu-off0x%03x+%d-%s.bin", dir.c_str(), i, k * 8, bestStart * 4, kind.c_str());
+        FILE *pf = fopen(fn, "wb");
+        if (pf) { fwrite(probe + bestStart * 4, 1, got - bestStart * 4, pf); fclose(pf); }
+        printf("    [%3zu] %-44s %-30s %dx%d k=%dx%d @+0x%03x  %.5f %.5f %.5f %.5f\n",
+               i, name.c_str(), kind.c_str(), cin, cout, kh, kw, k * 8, f[0], f[1], f[2], f[3]);
+        ++perLayer; ++dumped; totalBytes += got;
       }
     }
     if (idx) fprintf(idx, "%zu\t%s\t%d\t%d\t%d\t%d\t%lu\t%lu\n", i, name.c_str(), td[0], td[1], td[2], td[3], bytes, elems);
