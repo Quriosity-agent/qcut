@@ -4,6 +4,8 @@
 
 这个目录让镜头分割的研究不再依赖装着剪映的机器状态：`snapshot-private-runtime.sh` 把 23 个运行库、4 个镜头检测模型和 2 份算法图配置复制到 QCut 的私有运行时目录（`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit/current`，SHA-256 清单，`localOnly`），之后 `extract-symbols.sh`、`tools/` 里的反汇编与虚表工具全部只读这份快照。快照、导出符号、反汇编产物都在仓库之外或 `.local/jianying-shot-split/`（已 git-ignore）。
 
+> **接手请先读 [HANDOVER.zh-CN.md](./HANDOVER.zh-CN.md)**：现状、怎么跑、模型结构、权重进展、已走死的路,都在那一份。
+
 ## 1. 结论
 
 剪映的智能镜头分割 = **端侧 ByteNN 两段神经网络镜头边界检测器**，不联网推理。
@@ -37,6 +39,8 @@
 | `tools/disasm.py` | 区间反汇编 + 字符串字面量/导出符号/虚表槽注释（`llvm-objdump`，arm64 thin 切片） |
 | `tools/vtable.py` | 按虚表地址列出每个槽的符号名 |
 | `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节）；`.mm` 也是 QCut `analyze shots` 按需编译的源码 |
+| `bytenn-probe.mm` | 只用 ByteNN 自己导出的接口加载 `.bytenn`(`IESNN::Net::CreateNetFromFile` 已实测可用),各尝试放 fork 子进程,崩溃不影响其余 |
+| `weight-dump.mm` | 加载后在进程内按引擎虚表定位对象,走 `GetNetwork`/`GetLayers`/`GetLayerName` 导出网络结构;权重数值尚未导出,见交接文档第 5 节 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
