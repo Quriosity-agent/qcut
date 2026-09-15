@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 import type { JianyingShotSplitResult } from "../../../jianying-shot-split-contract.js";
 import {
 	type AnalyzeShotsDependencies,
+	buildAnalyzeShotsBothReport,
 	buildAnalyzeShotsReport,
 	handleAnalyzeShots,
+	resolveAnalyzeShotsEngine,
 } from "../cli-handlers-analyze-shots.js";
 import { parseCliArgs } from "../cli.js";
 import type { CLIRunOptions } from "../cli-runner/types.js";
@@ -18,6 +20,7 @@ const RESULT: JianyingShotSplitResult = {
 	cutPoints: [3, 6],
 	durationSeconds: 9,
 	elapsedMs: 420,
+	engine: "bridge",
 	fps: 24,
 	frameCount: 216,
 	height: 180,
@@ -31,16 +34,52 @@ const RESULT: JianyingShotSplitResult = {
 	width: 320,
 };
 
+/** The torch reproduction found the second cut one frame later and an extra one. */
+const TORCH_RESULT: JianyingShotSplitResult = {
+	...RESULT,
+	cutFrames: [71, 144, 200],
+	cutPoints: [3, 6.041667, 8.375],
+	elapsedMs: 5100,
+	engine: "torch",
+	route: "qcut-jianying-shot-split-torch-v1",
+	scores: [[71, 0.74]],
+	shots: [
+		{ endFrame: 71, endTime: 3, index: 0, startFrame: 0, startTime: 0 },
+		{
+			endFrame: 144,
+			endTime: 6.041667,
+			index: 1,
+			startFrame: 72,
+			startTime: 3,
+		},
+		{
+			endFrame: 200,
+			endTime: 8.375,
+			index: 2,
+			startFrame: 145,
+			startTime: 6.041667,
+		},
+		{ endFrame: 215, endTime: 9, index: 3, startFrame: 201, startTime: 8.375 },
+	],
+};
+
 function dependencies({
 	calls,
+	torchCalls = [],
 }: {
 	calls: Parameters<AnalyzeShotsDependencies["detect"]>[0][];
+	torchCalls?: Parameters<AnalyzeShotsDependencies["detectTorch"]>[0][];
 }): AnalyzeShotsDependencies {
 	return {
 		detect: async (input) => {
 			calls.push(input);
 			input.onProgress?.({ progress: 50, stage: "decode", status: "half" });
 			return { ...RESULT, sourcePath: input.request.sourcePath };
+		},
+		detectTorch: async (input) => {
+			torchCalls.push(input);
+			input.onProgress?.({ progress: 30, stage: "decode", status: "torch" });
+			return { ...TORCH_RESULT, sourcePath: input.request.sourcePath };
 		},
 		inspect: async () => ({
 			available: false,
@@ -50,6 +89,11 @@ function dependencies({
 			platformSupported: true,
 			route: "qcut-jianying-shot-split-v1",
 			runtimeRoot: "/runtime",
+			torch: {
+				available: true,
+				message: "torch ready",
+				torchVersion: "2.10.0",
+			},
 		}),
 	};
 }
@@ -90,6 +134,80 @@ describe("analyze shots CLI", () => {
 		expect(options.height).toBe(180);
 		expect(options.output).toBe("shots.json");
 		expect(parseCliArgs(["analyze", "shots", "--check"]).checkOnly).toBe(true);
+		expect(
+			parseCliArgs(["analyze", "shots", "-i", "clip.mp4", "--engine", "both"])
+				.engine
+		).toBe("both");
+	});
+
+	it("defaults to the bridge engine and rejects unknown engines", () => {
+		expect(resolveAnalyzeShotsEngine({ engine: undefined })).toBe("bridge");
+		expect(resolveAnalyzeShotsEngine({ engine: "torch" })).toBe("torch");
+		expect(() => resolveAnalyzeShotsEngine({ engine: "coreml" })).toThrow(
+			"--engine must be one of bridge, torch, both"
+		);
+	});
+
+	it("runs only the torch engine with --engine torch", async () => {
+		const calls: Parameters<AnalyzeShotsDependencies["detect"]>[0][] = [];
+		const torchCalls: Parameters<AnalyzeShotsDependencies["detectTorch"]>[0][] =
+			[];
+		const result = await handleAnalyzeShots(
+			baseOptions({ engine: "torch", input: "/videos/clip.mp4" }),
+			() => {},
+			new AbortController().signal,
+			dependencies({ calls, torchCalls })
+		);
+		expect(result.success).toBe(true);
+		expect(calls).toHaveLength(0);
+		expect(torchCalls).toHaveLength(1);
+		expect(result.data).toMatchObject({
+			engine: "torch",
+			route: "qcut-jianying-shot-split-torch-v1",
+			cut_frames: [71, 144, 200],
+		});
+	});
+
+	it("runs both engines and reports the comparison with --engine both", async () => {
+		const calls: Parameters<AnalyzeShotsDependencies["detect"]>[0][] = [];
+		const torchCalls: Parameters<AnalyzeShotsDependencies["detectTorch"]>[0][] =
+			[];
+		const progress: string[] = [];
+		const result = await handleAnalyzeShots(
+			baseOptions({ engine: "both", input: "/videos/clip.mp4" }),
+			(update) => progress.push(`${update.percent}:${update.message}`),
+			new AbortController().signal,
+			dependencies({ calls, torchCalls })
+		);
+		expect(result.success).toBe(true);
+		expect(calls).toHaveLength(1);
+		expect(torchCalls).toHaveLength(1);
+		expect(progress).toContain("25:[bridge] half");
+		expect(result.data).toEqual(
+			buildAnalyzeShotsBothReport({
+				bridge: { ...RESULT, sourcePath: resolve("/videos/clip.mp4") },
+				torch: { ...TORCH_RESULT, sourcePath: resolve("/videos/clip.mp4") },
+			})
+		);
+		expect(result.data).toMatchObject({
+			engine: "both",
+			cut_frames: [71, 143],
+			torch: { engine: "torch", cut_frames: [71, 144, 200] },
+			comparison: {
+				agreement: 2 / 3,
+				matched_count: 2,
+				matches: [
+					{ bridge_frame: 71, torch_frame: 71, frame_delta: 0 },
+					{ bridge_frame: 143, torch_frame: 144, frame_delta: 1 },
+				],
+				bridge_only_frames: [],
+				torch_only_frames: [200],
+				max_frame_delta: 1,
+				frame_count_matches: true,
+				bridge_elapsed_ms: 420,
+				torch_elapsed_ms: 5100,
+			},
+		});
 	});
 
 	it("runs detection with an absolute source path and relays progress", async () => {
@@ -192,6 +310,9 @@ describe("analyze shots CLI", () => {
 			runtime_root: "/runtime",
 			app_version: null,
 			core_uuid: null,
+			torch_available: true,
+			torch_message: "torch ready",
+			torch_version: "2.10.0",
 		});
 		const missing = await handleAnalyzeShots(
 			baseOptions(),
