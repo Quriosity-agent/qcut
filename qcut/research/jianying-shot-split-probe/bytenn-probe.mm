@@ -22,6 +22,7 @@ template <typename T> static T sym(const char *name) {
 static int attempt(const char *label, void (*body)(const std::string &), const std::string &arg) {
   fflush(nullptr);
   pid_t pid = fork();
+  if (pid < 0) { perror("fork"); return -1; }
   if (pid == 0) { body(arg); fflush(nullptr); _exit(0); }
   int st = 0; waitpid(pid, &st, 0);
   if (WIFSIGNALED(st)) printf("   %s -> 崩溃 (signal %d)\n", label, WTERMSIG(st));
@@ -53,7 +54,9 @@ static void tryCreateNetFromFile(const std::string &path) {
   }
 
   // 配置调用另起子进程,避免崩溃丢掉上面的结果
-  if (fork() == 0) {
+  pid_t configChild = fork();
+  if (configChild < 0) { perror("fork"); return; }
+  if (configChild == 0) {
   // 输入/输出张量描述(导出接口,无需猜结构)
   auto inCfg = sym<int (*)(void *, void *)>("_ZN5IESNN3Net14GetInputConfigERNSt3__16vectorINS_6TensorENS1_9allocatorIS3_EEEE");
   auto outCfg = sym<int (*)(void *, void *)>("_ZN5IESNN3Net15GetOutputConfigERNSt3__16vectorINS_6TensorENS1_9allocatorIS3_EEEE");
@@ -73,7 +76,7 @@ static void tryCreateNetFromFile(const std::string &path) {
   }
 
     _exit(0);
-  } else { int st; wait(&st); if (WIFSIGNALED(st)) printf("   GetInput/OutputConfig -> 崩溃\n"); }
+  } else { int st = 0; waitpid(configChild, &st, 0); if (WIFSIGNALED(st)) printf("   GetInput/OutputConfig -> 崩溃\n"); }
 }
 
 static void tryThrustor(const std::string &path) {
