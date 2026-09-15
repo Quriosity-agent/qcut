@@ -1,67 +1,32 @@
 #!/usr/bin/env python3
-"""行为验证:用复现的主干算连续帧特征距离,看峰值是否落在已知切点上。
+"""行为验证:用纯 PyTorch 复现在一段视频上出切点,和已知切点(或剪映桥接的结果)比一下。
 
-主干若复现正确,镜头切换处相邻帧的特征应当明显拉开距离。用合成夹具(切点已知)可以直接判对错,
-同时用来定预处理:几种候选归一化各跑一遍,看哪种把峰值对到真实切点上。
+比 detect_cuts_torch.py 多做的只是打印每个切点附近的概率,方便看边缘案例。
 
-用法:
-    ./torch_check.py <视频> <权重目录> <params.tsv> [fps]
+用法: ./torch_check.py <视频> <backbone.bytenn> <backbone params.tsv> <predhead.bytenn> <predhead params.tsv> [fps] [期望切点帧,逗号分隔]
 """
 import pathlib
-import subprocess
 import sys
 
-import torch
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from arena_weights import install, slice_arena  # noqa: E402
-from torch_backbone import build, forward, load_specs  # noqa: E402
-
-FFMPEG = pathlib.Path(__file__).resolve().parents[2] / "electron/resources/ffmpeg/darwin-arm64/ffmpeg"
-SIZE = 96
-
-PREPROCESS = {
-    "x/255": lambda t: t,
-    "x/127.5-1": lambda t: t * 2 - 1,
-    "(x/255-0.5)/0.5": lambda t: (t - 0.5) / 0.5,
-    "ImageNet": lambda t: (t - torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
-    / torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1),
-    "raw 0..255": lambda t: t * 255,
-}
-
-
-def frames(video, fps):
-    out = subprocess.run(
-        [str(FFMPEG), "-v", "error", "-i", str(video), "-vf", f"fps={fps},scale={SIZE}:{SIZE}",
-         "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1"],
-        capture_output=True, check=True).stdout
-    n = len(out) // (SIZE * SIZE * 3)
-    data = torch.frombuffer(bytearray(out), dtype=torch.uint8)[: n * SIZE * SIZE * 3]
-    return data.reshape(n, SIZE, SIZE, 3).permute(0, 3, 1, 2).float() / 255.0
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from detect_cuts_torch import cut_points, frame_scores, frames_from_video  # noqa: E402
+from torch_backbone import build  # noqa: E402
+from torch_predhead import PredHead  # noqa: E402
 
 
 def main():
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 6:
         raise SystemExit(__doc__)
-    video, model_file, params_tsv = sys.argv[1], sys.argv[2], sys.argv[3]
-    fps = float(sys.argv[4]) if len(sys.argv) > 4 else 24.0
-    specs, order = load_specs(params_tsv)
-    model = build(specs)
-    install(model, slice_arena(model_file, specs, order))
-    loaded = sum(1 for m in model.modules() if isinstance(m, torch.nn.Conv2d))
-    model.eval()
-    batch = frames(video, fps)
-    print(f"装入 {loaded} 层权重;{batch.shape[0]} 帧 @ {fps} fps")
-
-    for label, fn in PREPROCESS.items():
-        with torch.no_grad():
-            feats = torch.cat([forward(model, fn(batch[i : i + 32])) for i in range(0, len(batch), 32)])
-        feats = torch.nn.functional.normalize(feats, dim=1)
-        dist = 1 - (feats[1:] * feats[:-1]).sum(dim=1)          # 相邻帧余弦距离
-        top = torch.topk(dist, 6)
-        peaks = sorted(int(i) for i in top.indices)
-        sharpness = (top.values.mean() / dist.median()).item() if dist.median() > 0 else float("inf")
-        print(f"  {label:16} 峰值帧 {peaks}  峰值/中位数 = {sharpness:.1f}")
+    video, bb_file, bb_tsv, ph_file, ph_tsv = sys.argv[1:6]
+    fps = float(sys.argv[6]) if len(sys.argv) > 6 else 24.0
+    expected = [int(x) for x in sys.argv[7].split(",")] if len(sys.argv) > 7 else None
+    frames = frames_from_video(video, fps)
+    scores, diffs = frame_scores(build(bb_file, bb_tsv), PredHead(ph_file, ph_tsv).eval(), frames)
+    cuts = cut_points(scores, diffs, 0.35)
+    print(f"{len(frames)} 帧 @ {fps:g} fps;切点 {cuts}" + (f";期望 {expected} -> {'一致' if cuts == expected else '不一致'}" if expected else ""))
+    for c in cuts:
+        near = " ".join(f"{k}:{scores[k]:.3f}" for k in range(c - 2, c + 3) if k in scores)
+        print(f"  切点 {c} ({c / fps:.3f}s) 附近概率  {near}")
 
 
 if __name__ == "__main__":
