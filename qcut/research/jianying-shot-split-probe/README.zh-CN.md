@@ -46,7 +46,7 @@
 | `layer-trace.mm` | 给每种层类型的 forward 虚函数挂钩子,每层一返回就 `Extract`,118 + 41 层全是真值;还能按帧追加 Sigmoid 概率(`scores.tsv`)、按 blob 名抓 GRU 内部输出。复现逐层对拍全靠它 |
 | `arena_weights.py` | 按已验证的布局从主干 `.bytenn` 切权重:起点 16061、图顺序逐层「权重 + 偏置」、两个注意力缩放常数;密集 OHWI / 1x1 (cout,cin) / 深度 HWC |
 | `torch_backbone.py` / `torch_predhead.py` | 纯 PyTorch 复现主干与预测头(含 GRU、相似度图、classifier),与引擎逐位一致 |
-| `detect_cuts_torch.py` | **不依赖剪映运行库**的端到端分镜:视频/原始帧 -> 切点,后处理照 libcccreator 反汇编逐字实现,与桥接 `predict_result` 一致 |
+| `detect_cuts_torch.py` | **不依赖剪映运行库**的端到端分镜:视频/原始帧 -> 切点,后处理照 libcccreator 反汇编逐字实现,与桥接 `predict_result` 一致。`--json` 是给 QCut CLI 的接口:`qcut analyze shots --engine torch` / `--engine both`(与桥接并跑并对比)都经它运行,桌面网页端「引擎」下拉同理 |
 | `torch_compare.py` / `torch_check.py` | 与 `layer-trace` 真值对拍;在已知切点的视频上做行为验证 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
