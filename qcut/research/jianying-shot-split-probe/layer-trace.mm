@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
   printf("T1-T4 OK  模型已加载\n");
 
   void *bytenn = dlopen((g_runtime + "/Frameworks/libbytenn.dylib").c_str(), RTLD_NOW | RTLD_GLOBAL);
-  uintptr_t slide = reinterpret_cast<uintptr_t>(dlsym(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;
+  uintptr_t slide = reinterpret_cast<uintptr_t>(sym<void *>(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;   // 缺符号就明确退出,不算出野 slide
   g_extract = reinterpret_cast<ExtractFn>(dlsym(bytenn, "_ZN10bytenn_cpu8Thrustor7ExtractERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE"));
   auto getNetwork = sym<void *(*)(void *)>(bytenn, "_ZN6BYTENN16ByteNNEngineImpl10GetNetworkEv");
   std::vector<void *> engines = findEngines(slide + kEngineVtableFileAddr + 16);
@@ -473,7 +473,7 @@ int main(int argc, char **argv) {
       while (got < frameBytes) { ssize_t r = read(rawFd, pixels.data() + got, frameBytes - got); if (r <= 0) break; got += (size_t)r; }
       if (got < frameBytes) break;
       ImageBufferView image{}; image.vptr = reinterpret_cast<void *>(base + kImageVtableFileAddr);
-      image.width = width; image.height = height; image.data = pixels.data(); image.format = 0; image.timestamp = fed / 24.0;
+      image.width = width; image.height = height; image.data = pixels.data(); image.format = 0; image.timestamp = g_totalFed / 24.0;
       AlgorithmInputView input{}; input.vptr = reinterpret_cast<void *>(base + kInputVtableFileAddr);
       input.image = &image; input.data = pixels.data(); input.count = 1; input.f08 = 1;
       g_frameIndex = g_totalFed; execute(system, &input); ++fed; ++g_totalFed;
