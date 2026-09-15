@@ -373,7 +373,7 @@ int main(int argc, char **argv) {
   std::string bytennPath = g_runtime + "/Frameworks/libbytenn.dylib";
   void *bytenn = dlopen(bytennPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
   if (!bytenn) { fprintf(stderr, "F7 FAIL dlopen libbytenn: %s\n", dlerror()); return 1; }
-  uintptr_t slide = reinterpret_cast<uintptr_t>(dlsym(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;
+  uintptr_t slide = reinterpret_cast<uintptr_t>(sym<void *>(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;   // 缺符号就明确退出,不算出野 slide
   uintptr_t vptr = slide + kEngineVtableFileAddr + 16;
   g_slide = slide;
   std::vector<void *> engines = findEngines(vptr);
