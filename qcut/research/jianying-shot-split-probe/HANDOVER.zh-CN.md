@@ -64,6 +64,18 @@ python3 research/jianying-shot-split-probe/detect_cuts_torch.py <backbone.bytenn
 ```
 只要 PyTorch、两个 `.bytenn` 和 `weight-dump` 导出的层表,Windows / Intel Mac 也能跑;结果与桥接一致(第 5 节)。
 
+它也已接进 CLI 和桌面网页端,原桥接路径原样保留:
+
+```bash
+qcut analyze shots -i 某个.mp4 --engine torch --json    # 只跑 PyTorch 复现
+qcut analyze shots -i 某个.mp4 --engine both --json     # 两个引擎并跑,报告里多出 torch 与 comparison
+qcut analyze shots --check --json                        # torch_available / torch_message 说明 PyTorch 引擎是否就绪
+```
+实现在 `electron/jianying-shot-split/torch-engine.ts`(找 python3、层表、模型,起子进程,解析 `--json`)和
+`compare.ts`(±1 帧容差配对切点);桌面网页端 `~/Desktop/智能分镜` 的「引擎」下拉传同一个参数,选「两者对比」时页面多出切点对照表。
+PyTorch 引擎需要 PATH 里的 `python3` 装有 torch(或 `QCUT_JIANYING_SHOT_SPLIT_PYTHON`),以及层表 `.local/jianying-shot-split/params2`
+(或 `QCUT_JIANYING_SHOT_SPLIT_LAYER_TABLES`);两样都不进 Git。
+
 ## 4. 模型结构(已完整取出)
 
 配置在快照的 `Resources/SceneEditDetection/config.json`:输入 blit 到 96×96,7 帧滑窗,特征 128 维,阈值 0.35,
