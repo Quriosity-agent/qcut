@@ -143,24 +143,34 @@ network).
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--input` | `-i` | string | | Local source video (required unless `--check`) |
+| `--engine` | | string | `bridge` | `bridge` runs the original ByteNN models through the native bridge; `torch` runs the bit-exact PyTorch reproduction; `both` runs the two and compares their cut points |
 | `--fps` | | number | `24` | Sampling rate fed to the model, 1–60 |
 | `--width` | | number | `320` | Sampled frame width, 16–1920 |
 | `--height` | | number | `180` | Sampled frame height, 16–1920 |
 | `--output` | | string | | Write the JSON report to this path |
 | `--force` | | boolean | `false` | Replace an existing report |
-| `--check` | | boolean | `false` | Only report whether the private runtime and native bridge are ready |
+| `--check` | | boolean | `false` | Only report whether the private runtime, native bridge and torch engine are ready |
 
-The report carries `cut_points` (seconds where each new shot starts),
+The report carries `engine`, `cut_points` (seconds where each new shot starts),
 `cut_frames` (the model's raw `predict_result`: last sampled frame index of
 each shot), `shots` (`start_frame`/`end_frame`/`start_time`/`end_time`),
 `frame_count`, `duration_seconds`, and the verified runtime identity
-(`app_version`, `core_uuid`). Requires the snapshot produced by
+(`app_version`, `core_uuid`). With `--engine both` the bridge report stays at
+the top level, `torch` holds the reproduction's report and `comparison` pairs
+the cut frames within ±1 frame (`agreement`, `matched_count`, `matches`,
+`bridge_only_frames`, `torch_only_frames`, `max_frame_delta`,
+`bridge_elapsed_ms`, `torch_elapsed_ms`). Requires the snapshot produced by
 `research/jianying-shot-split-probe/snapshot-private-runtime.sh` and the Xcode
-command line tools for the one-time bridge build.
+command line tools for the one-time bridge build; the torch engine additionally
+needs a `python3` with torch (or `QCUT_JIANYING_SHOT_SPLIT_PYTHON`) and the
+`weight-dump` layer tables under `.local/jianying-shot-split/params2` (or
+`QCUT_JIANYING_SHOT_SPLIT_LAYER_TABLES`). `--check --json` reports
+`torch_available` and `torch_message` alongside the bridge status.
 
 ```bash
 qcut analyze shots -i footage.mp4 --json
 qcut analyze shots -i footage.mp4 --fps 12 --output shots.json
+qcut analyze shots -i footage.mp4 --engine both --json
 qcut analyze shots --check --json
 ```
 
