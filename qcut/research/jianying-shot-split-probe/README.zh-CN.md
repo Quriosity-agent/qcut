@@ -51,6 +51,8 @@
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
+前提:`torch_check.py` / `detect_cuts_torch.py --video` 解码视频用的是 QCut 自带的 `electron/resources/ffmpeg/darwin-arm64/ffmpeg`,这个二进制不在仓库里,由 QCut 构建阶段暂存;没有它时会退回 PATH 里的 `ffmpeg`,也可以用 `--ffmpeg <路径>` 显式指定。
+
 复现：
 
 ```bash
