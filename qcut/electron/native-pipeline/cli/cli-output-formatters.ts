@@ -54,25 +54,59 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 	if (command === "analyze-shots") {
 		const data = result.data as {
 			available?: boolean;
+			comparison?: {
+				agreement: number;
+				bridge_elapsed_ms: number;
+				bridge_only_frames: number[];
+				matched_count: number;
+				max_frame_delta: number;
+				torch_elapsed_ms: number;
+				torch_only_frames: number[];
+			};
 			cut_points?: number[];
 			duration_seconds?: number;
+			engine?: string;
 			fps?: number;
 			frame_count?: number;
 			message?: string;
 			shots?: unknown[];
+			torch?: { cut_points: number[]; shots: unknown[] };
+			torch_available?: boolean;
+			torch_message?: string | null;
 		};
 		if (!data.cut_points) {
 			console.log(
 				`\n${data.available ? "Ready" : "Unavailable"}: ${data.message ?? ""}`
 			);
+			if (data.torch_message) {
+				console.log(
+					`Torch engine ${data.torch_available ? "ready" : "unavailable"}: ${data.torch_message}`
+				);
+			}
 			return;
 		}
+		const label =
+			data.engine === "both"
+				? " [bridge]"
+				: data.engine
+					? ` [${data.engine}]`
+					: "";
 		console.log(
-			`\nShots: ${data.shots?.length ?? 0} (${data.frame_count} frames at ${data.fps} fps, ${data.duration_seconds}s)`
+			`\nShots${label}: ${data.shots?.length ?? 0} (${data.frame_count} frames at ${data.fps} fps, ${data.duration_seconds}s)`
 		);
 		console.log(
 			`Cut points (s): ${data.cut_points.length ? data.cut_points.join(", ") : "none"}`
 		);
+		if (data.torch && data.comparison) {
+			const c = data.comparison;
+			console.log(`Shots [torch]: ${data.torch.shots.length}`);
+			console.log(
+				`Cut points [torch] (s): ${data.torch.cut_points.length ? data.torch.cut_points.join(", ") : "none"}`
+			);
+			console.log(
+				`Agreement: ${Math.round(c.agreement * 100)}% (${c.matched_count} matched, bridge-only ${c.bridge_only_frames.length}, torch-only ${c.torch_only_frames.length}, max delta ${c.max_frame_delta} frame${c.max_frame_delta === 1 ? "" : "s"}; bridge ${c.bridge_elapsed_ms} ms vs torch ${c.torch_elapsed_ms} ms)`
+			);
+		}
 		return;
 	}
 

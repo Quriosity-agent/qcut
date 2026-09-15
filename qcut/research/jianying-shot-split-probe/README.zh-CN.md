@@ -4,6 +4,8 @@
 
 这个目录让镜头分割的研究不再依赖装着剪映的机器状态：`snapshot-private-runtime.sh` 把 23 个运行库、4 个镜头检测模型和 2 份算法图配置复制到 QCut 的私有运行时目录（`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit/current`，SHA-256 清单，`localOnly`），之后 `extract-symbols.sh`、`tools/` 里的反汇编与虚表工具全部只读这份快照。快照、导出符号、反汇编产物都在仓库之外或 `.local/jianying-shot-split/`（已 git-ignore）。
 
+> **接手请先读 [HANDOVER.zh-CN.md](./HANDOVER.zh-CN.md)**：现状、怎么跑、模型结构、权重进展、已走死的路,都在那一份。
+
 ## 1. 结论
 
 剪映的智能镜头分割 = **端侧 ByteNN 两段神经网络镜头边界检测器**，不联网推理。
@@ -37,8 +39,19 @@
 | `tools/disasm.py` | 区间反汇编 + 字符串字面量/导出符号/虚表槽注释（`llvm-objdump`，arm64 thin 切片） |
 | `tools/vtable.py` | 按虚表地址列出每个槽的符号名 |
 | `shot-split-bridge.mm` / `build-bridge.sh` / `detect-cuts.sh` | 脱离剪映跑真模型的桥接与命令行封装（第 4 节）；`.mm` 也是 QCut `analyze shots` 按需编译的源码 |
+| `bytenn-probe.mm` | 只用 ByteNN 自己导出的接口加载 `.bytenn`(`IESNN::Net::CreateNetFromFile` 已实测可用),各尝试放 fork 子进程,崩溃不影响其余 |
+| `weight-dump.mm` | 加载后在进程内按引擎虚表定位对象,走 `GetNetwork`/`GetLayers`/`GetLayerName` 导出网络结构;权重数值尚未导出,见交接文档第 5 节 |
+| `extract-weights.py` | 早期的离线权重提取(按「浮点看起来合理」扫描切段)。**已被 `arena_weights.py` 取代**:那套扫描会在大权重处断开,切出来的层是错的,只留作历史记录 |
+| `feature-dump.mm` | 加载后喂帧,用 `Thrustor::Extract` 取引擎逐层张量、用 `ThrustorGetInput` 取网络真正看到的输入。**只在前向结束后取,内存池复用让中间层几乎全是脏数据**,只有形状唯一的几层可信;逐层真值请用 `layer-trace` |
+| `layer-trace.mm` | 给每种层类型的 forward 虚函数挂钩子,每层一返回就 `Extract`,118 + 41 层全是真值;还能按帧追加 Sigmoid 概率(`scores.tsv`)、按 blob 名抓 GRU 内部输出。复现逐层对拍全靠它 |
+| `arena_weights.py` | 按已验证的布局从主干 `.bytenn` 切权重:起点 16061、图顺序逐层「权重 + 偏置」、两个注意力缩放常数;密集 OHWI / 1x1 (cout,cin) / 深度 HWC |
+| `torch_backbone.py` / `torch_predhead.py` | 纯 PyTorch 复现主干与预测头(含 GRU、相似度图、classifier),与引擎逐位一致 |
+| `detect_cuts_torch.py` | **不依赖剪映运行库**的端到端分镜:视频/原始帧 -> 切点,后处理照 libcccreator 反汇编逐字实现,与桥接 `predict_result` 一致。`--json` 是给 QCut CLI 的接口:`qcut analyze shots --engine torch` / `--engine both`(与桥接并跑并对比)都经它运行,桌面网页端「引擎」下拉同理 |
+| `torch_compare.py` / `torch_check.py` | 与 `layer-trace` 真值对拍;在已知切点的视频上做行为验证 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
+
+前提:`torch_check.py` / `detect_cuts_torch.py --video` 解码视频用的是 QCut 自带的 `electron/resources/ffmpeg/darwin-arm64/ffmpeg`,这个二进制不在仓库里,由 QCut 构建阶段暂存;没有它时会退回 PATH 里的 `ffmpeg`,也可以用 `--ffmpeg <路径>` 显式指定。
 
 复现：
 
