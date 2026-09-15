@@ -220,6 +220,7 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
   char *end = *reinterpret_cast<char **>(vec + 8);
   if (!begin || end < begin) { printf("  层表为空\n"); return; }
   size_t count = (size_t)(end - begin) / 16;
+  if (count > 20000) { printf("  层表项数不合理(%zu),跳过\n", count); return; }
   printf("  层表: %zu 项\n", count);
 
   FILE *idx = fopen((dir + "/weights.tsv").c_str(), "w");
@@ -264,7 +265,6 @@ void walkLayers(void *bytenn, uintptr_t slide, void *net, const std::string &dir
               strAt(0x190).c_str(), strAt(0x1c0).c_str());
     if (i < 4)
       printf("    [%3zu] %-44s %-30s k=%dx%d %dx%d in=%dx%d\n", i, name.c_str(), kind.c_str(), kh, kw, cin, cout, ih, iw);
-    ++dumped;
     if (idx) fprintf(idx, "%zu\t%s\t%d\t%d\t%d\t%d\t%lu\t%lu\n", i, name.c_str(), td[0], td[1], td[2], td[3], bytes, elems);
     if (data && bytes > 0 && bytes < (1ul << 27)) {
       std::string safe = name.empty() ? ("layer" + std::to_string(i)) : name;
@@ -302,7 +302,8 @@ void dumpEngine(void *bytenn, void *engine, int index, const std::string &outDir
   for (int i = 0; i < layers; ++i) {
     std::string name = getLayerName(net, i);
     alignas(16) unsigned char tensor[256] = {};
-    int rc = -1;
+    int rc = -1;          // 首次尝试的返回值,仅用于打印
+    bool found = false;   // 只有某个后缀真正拿到数据指针才算成功;失败时 tensor 保持清零
     std::string used;
     if (!name.empty()) {
       const char *suffixes[] = {"", ".weight", "_weight", ".w", ".conv.weight", "/weight"};
@@ -310,15 +311,16 @@ void dumpEngine(void *bytenn, void *engine, int index, const std::string &outDir
         std::string candidate = name + sfx;
         memset(tensor, 0, sizeof(tensor));
         int r = getWeight(net, &candidate, tensor);
-        if (r == 0 && *reinterpret_cast<void **>(tensor)) { rc = r; used = candidate; break; }
         if (rc == -1) rc = r;
+        if (r == 0 && *reinterpret_cast<void **>(tensor)) { rc = r; used = candidate; found = true; break; }
       }
+      if (!found) memset(tensor, 0, sizeof(tensor));
       if (!used.empty()) name = used;
     }
-    void *data = *reinterpret_cast<void **>(tensor);
+    void *data = found ? *reinterpret_cast<void **>(tensor) : nullptr;
     int32_t *dims = reinterpret_cast<int32_t *>(tensor + 8);
-    unsigned long bytes = (rc == 0 && data && byteSize) ? byteSize(tensor) : 0;
-    unsigned long count = (rc == 0 && data && dataCount) ? dataCount(tensor) : 0;
+    unsigned long bytes = (found && byteSize) ? byteSize(tensor) : 0;
+    unsigned long count = (found && dataCount) ? dataCount(tensor) : 0;
     if (i < 8 || (data && i % 50 == 0))
       printf("    [%3d] %-34s rc=%d data=%p dims=%d,%d,%d,%d bytes=%lu count=%lu\n",
              i, name.c_str(), rc, data, dims[0], dims[1], dims[2], dims[3], bytes, count);
@@ -397,7 +399,7 @@ int main(int argc, char **argv) {
   std::string bytennPath = g_runtime + "/Frameworks/libbytenn.dylib";
   void *bytenn = dlopen(bytennPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
   if (!bytenn) { fprintf(stderr, "W6 FAIL dlopen libbytenn: %s\n", dlerror()); return 1; }
-  uintptr_t slide = reinterpret_cast<uintptr_t>(dlsym(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;
+  uintptr_t slide = reinterpret_cast<uintptr_t>(sym<void *>(bytenn, "_ZN6BYTENN10LabNetWork9GetLayersEv")) - kLabGetLayersFileAddr;   // 缺符号就明确退出,不算出野 slide
   uintptr_t vptr = slide + kEngineVtableFileAddr + 16;   // Itanium ABI:对象首字指向虚表第 3 个槽
   g_slide = slide;
   printf("W6 OK  libbytenn slide=0x%lx 引擎 vptr=0x%lx\n", (unsigned long)slide, (unsigned long)vptr);
