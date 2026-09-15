@@ -54,7 +54,7 @@ qcut generate-grid -t "Seasons of a tree" --layout 2x2
 | `analyze consistency` | `--ref --input` | `--model`, `--language`, `--fps`, `--scene-detect`, `--batch-size`, `--min-severity`, `--max-tokens` | Detect character consistency issues in a video against reference images |
 | `analyze image-consistency` | `--ref` | `--candidate`, `--dir`, `--rule`, `--rules-file`, `--model`, `--language`, `--min-severity` | Check candidate images against reference images and an optional rule |
 | `analyze query` | `--input` | `--prompt`, `--text`, `--model` | Query a video with a custom prompt (keep/cut segments) |
-| `analyze shots` | `--input` (or `--check`) | `--fps`, `--width`, `--height`, `--output`, `--force`, `--check` | Detect shot boundaries offline with the Jianying 智能镜头分割 model from QCut's private runtime snapshot (Apple Silicon, no app launch) |
+| `analyze shots` | `--input` (or `--check`) | `--engine`, `--fps`, `--width`, `--height`, `--output`, `--force`, `--check` | Detect shot boundaries offline with the Jianying 智能镜头分割 model from QCut's private runtime snapshot (Apple Silicon, no app launch); `--engine bridge|torch|both` picks the native bridge, the PyTorch reproduction, or a side-by-side comparison |
 
 ```bash
 qcut analyze index --dir ./downloads -o ./analysis
@@ -62,6 +62,7 @@ qcut analyze inspect --index ./analysis/index.json --source clip.mp4 --start 2 -
 qcut analyze consistency --ref ref.jpg -i scene.mp4 --json
 qcut analyze image-consistency --ref ref.png --candidate gen.png --json
 qcut analyze shots -i footage.mp4 --json
+qcut analyze shots -i footage.mp4 --engine both --json
 qcut analyze shots --check --json
 ```
 
@@ -76,6 +77,18 @@ new shot starts), `cut_frames` (last sampled frame of each shot, the model's raw
 `predict_result`), and `shots` ranges. Hard cuts are exact; slow dissolves are
 missed and sub-second shots or flashes are reported unmerged, because the model
 itself does neither.
+
+`--engine` chooses the inference engine. `bridge` (default) runs the original
+ByteNN models through the native bridge. `torch` runs the bit-exact PyTorch
+reproduction (`research/jianying-shot-split-probe/detect_cuts_torch.py`) against
+the same `.bytenn` files; it needs a `python3` with torch on PATH (or
+`QCUT_JIANYING_SHOT_SPLIT_PYTHON`) plus the `weight-dump` layer tables under
+`.local/jianying-shot-split/params2` (or `QCUT_JIANYING_SHOT_SPLIT_LAYER_TABLES`),
+and is several times slower. `both` runs the two concurrently: the bridge report
+stays at the top level, `torch` holds the second report and `comparison` pairs
+the cut frames within ±1 frame (`agreement`, `matches`, `bridge_only_frames`,
+`torch_only_frames`, `max_frame_delta`, per-engine `elapsed_ms`). `--check --json`
+also reports `torch_available` / `torch_message`.
 
 `analyze video` takes `--input/-i`. The `--video-url` spelling seen in older
 notes is accepted by the handler but is not a declared flag, so structured help
