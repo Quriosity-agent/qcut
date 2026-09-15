@@ -1,11 +1,37 @@
 /**
  * Shared types for offline shot-boundary detection with the Jianying
- * 智能镜头分割 model, executed from QCut's private runtime snapshot
- * (`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit`)
- * without launching the Jianying app.
+ * 智能镜头分割 model. Two engines produce the same result shape: the native
+ * bridge runs the original ByteNN models from QCut's private runtime snapshot
+ * (`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit`);
+ * the torch engine runs the bit-exact PyTorch reproduction of the same models
+ * (`research/jianying-shot-split-probe/detect_cuts_torch.py`). Neither
+ * launches the Jianying app or touches the network.
  */
 
 export const JIANYING_SHOT_SPLIT_ROUTE = "qcut-jianying-shot-split-v1" as const;
+export const JIANYING_SHOT_SPLIT_TORCH_ROUTE =
+	"qcut-jianying-shot-split-torch-v1" as const;
+
+export type JianyingShotSplitRoute =
+	| typeof JIANYING_SHOT_SPLIT_ROUTE
+	| typeof JIANYING_SHOT_SPLIT_TORCH_ROUTE;
+
+/** `bridge` is the original engine; `torch` the reproduction; `both` runs and compares them. */
+export const JIANYING_SHOT_SPLIT_ENGINES = ["bridge", "torch", "both"] as const;
+export type JianyingShotSplitEngine =
+	(typeof JIANYING_SHOT_SPLIT_ENGINES)[number];
+export type JianyingShotSplitSingleEngine = Exclude<
+	JianyingShotSplitEngine,
+	"both"
+>;
+
+export interface JianyingShotSplitTorchStatus {
+	available: boolean;
+	message: string;
+	/** Interpreter the engine would spawn, when one was found. */
+	python?: string;
+	torchVersion?: string;
+}
 
 export interface JianyingShotSplitStatus {
 	appVersion?: string;
@@ -18,6 +44,7 @@ export interface JianyingShotSplitStatus {
 	platformSupported: boolean;
 	route: typeof JIANYING_SHOT_SPLIT_ROUTE;
 	runtimeRoot?: string;
+	torch?: JianyingShotSplitTorchStatus;
 }
 
 export interface JianyingShotSplitSampling {
@@ -50,14 +77,39 @@ export interface JianyingShotSplitResult extends JianyingShotSplitSampling {
 	cutPoints: number[];
 	durationSeconds: number;
 	elapsedMs: number;
+	engine: JianyingShotSplitSingleEngine;
 	frameCount: number;
-	route: typeof JIANYING_SHOT_SPLIT_ROUTE;
+	route: JianyingShotSplitRoute;
 	shots: JianyingShotSplitShot[];
 	sourcePath: string;
+	/** Torch engine only: per-frame cut probability, keyed by the window's centre frame. */
+	scores?: Array<[frame: number, probability: number]>;
 }
 
 export interface JianyingShotSplitProgress {
 	progress: number;
 	stage: "collect" | "decode" | "prepare" | "probe" | "verify";
 	status: string;
+}
+
+export interface JianyingShotSplitCutMatch {
+	bridgeFrame: number;
+	/** `torchFrame - bridgeFrame`, within the comparison tolerance. */
+	frameDelta: number;
+	torchFrame: number;
+}
+
+/** How the two engines' cut lists line up, frame by frame. */
+export interface JianyingShotSplitComparison {
+	/** Matched pairs divided by the union of both cut sets (1 when identical). */
+	agreement: number;
+	bridgeElapsedMs: number;
+	bridgeOnlyFrames: number[];
+	frameCountMatches: boolean;
+	matches: JianyingShotSplitCutMatch[];
+	maxFrameDelta: number;
+	/** Cuts within this many sampled frames count as the same boundary. */
+	toleranceFrames: number;
+	torchElapsedMs: number;
+	torchOnlyFrames: number[];
 }
