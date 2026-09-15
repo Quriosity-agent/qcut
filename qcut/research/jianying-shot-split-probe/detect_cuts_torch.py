@@ -21,6 +21,7 @@
 import argparse
 import json
 import pathlib
+import shutil
 import subprocess
 import sys
 import time
@@ -43,9 +44,21 @@ def progress(message):
     print(f"[progress] {message}", file=sys.stderr, flush=True)
 
 
+def resolve_ffmpeg(ffmpeg=None):
+    """优先用显式路径,其次 QCut 自带的(仓库里不跟踪,只靠构建阶段落到 electron/resources),最后 PATH 里的 ffmpeg。"""
+    if ffmpeg:
+        return ffmpeg
+    if FFMPEG.exists():
+        return str(FFMPEG)
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    raise SystemExit(f"找不到 ffmpeg:QCut 自带的 {FFMPEG} 尚未落地(先跑一次 QCut 构建或 ffmpeg 暂存脚本),PATH 里也没有;可用 --ffmpeg 指定")
+
+
 def frames_from_video(path, fps, width=320, height=180, ffmpeg=None):
     """与 CLI 桥接路径同一套 ffmpeg 采样:fps 过滤 + 双线性缩放到 width x height。"""
-    cmd = [str(ffmpeg or FFMPEG), "-hide_banner", "-loglevel", "error", "-nostdin", "-i", str(path), "-map", "0:v:0", "-an", "-sn",
+    cmd = [resolve_ffmpeg(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", "-i", str(path), "-map", "0:v:0", "-an", "-sn",
            "-vf", f"fps={fps:g},scale={width}:{height}:flags=bilinear", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"]
     run = subprocess.run(cmd, capture_output=True)
     if run.returncode != 0:
