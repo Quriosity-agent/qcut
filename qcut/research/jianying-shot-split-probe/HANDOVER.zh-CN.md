@@ -8,7 +8,7 @@
 ## 1. 一句话现状
 
 剪映 11.3.0 的「智能镜头分割」模型已经能在本机脱离剪映 App 运行,并且已经接进 QCut CLI 和一个桌面网页工具;
-模型的**网络结构、预处理、权重格式都已取出并用引擎自己的张量验证过**,PyTorch 复现还差最后一步。
+两个模型、预处理和后处理**都已在纯 PyTorch 里逐位复现**(`detect_cuts_torch.py`),不再需要剪映的运行库。
 
 | 事项 | 状态 |
 |---|---|
@@ -16,9 +16,9 @@
 | 接进 QCut CLI (`qcut analyze shots`) | ✅ 已合并进 master,v2026.09.14.1 起可用 |
 | 桌面拖拽视频出分镜表 | ✅ `~/Desktop/智能分镜`,见该目录 README |
 | 模型网络结构 | ✅ 两个模型逐层取出,见第 4 节 |
-| 模型权重数值 | ✅ 位置、格式、排布已验证,单层对拍余弦 0.98,见第 5 节 |
-| 复现前向(PyTorch) | 🟡 结构搭好、预处理定死;整模型数值还对不上,卡在权重区前 60 层的排列顺序 |
-| 跨平台(Windows/Intel Mac) | ⬜ 不可能靠移植做到,只能自训权重,见第 7 节 |
+| 模型权重数值 | ✅ 两个模型全部逐层精确切出,见第 5 节 |
+| 复现前向(PyTorch) | ✅ 主干 128 维输出、预测头概率均与引擎误差 ≤ 1e-6;后处理照反汇编逐字实现,3 份素材 15 个切点全部一致 |
+| 跨平台(Windows/Intel Mac) | ✅ 复现只依赖 PyTorch + 两个 .bytenn 文件;但模型文件仍是剪映资产,见第 7 节 |
 
 ## 2. 环境前提
 
@@ -31,7 +31,7 @@
 - Xcode 命令行工具(`xcrun clang++`),首次运行要编译本机桥。
 - Bun,跑 QCut CLI 和桌面工具。
 
-## 3. 三条使用路径
+## 3. 四条使用路径
 
 **研究路径(最底层)**
 
@@ -57,6 +57,13 @@ ffmpeg 到桥之间**必须走命名管道**,用 Bun 的流式 pipe 会丢帧,�
 `~/Desktop/智能分镜`,双击 `启动.command`,浏览器拖入视频出分镜表。它内部就是调上面的 CLI。
 不在 Git 里,是本机工具,自带 README。
 
+### 路径四:纯 PyTorch,不加载剪映运行库(2026-09-15 起)
+
+```bash
+python3 research/jianying-shot-split-probe/detect_cuts_torch.py <backbone.bytenn> <engine-4/params.tsv> <predhead.bytenn> <engine-5/params.tsv> --video 某个.mp4 --fps 24
+```
+只要 PyTorch、两个 `.bytenn` 和 `weight-dump` 导出的层表,Windows / Intel Mac 也能跑;结果与桥接一致(第 5 节)。
+
 ## 4. 模型结构(已完整取出)
 
 配置在快照的 `Resources/SceneEditDetection/config.json`:输入 blit 到 96×96,7 帧滑窗,特征 128 维,阈值 0.35,
@@ -74,79 +81,97 @@ GlobalAveragePool → Flatten,输出 128 维,与配置的 `img_feat_dims` 对上
 
 逐层清单(层名、类型、卷积参数)由 `weight-dump.mm` 产出,落在 `.local/jianying-shot-split/weights/engine-*/`,不入库。
 
-## 5. 权重与复现(2026-09-15 复核)
+## 5. PyTorch 复现:已完成(2026-09-15)
 
-### 5.1 先说工具:`feature-dump`,能拿到引擎自己的张量
-
-`feature-dump.mm`(`build-bridge.sh` 会一并编译)复用桥接的加载流程,喂若干帧之后在进程内
-定位 ByteNN 引擎对象,用 libbytenn 导出的 `bytenn_cpu::Thrustor::Extract(层名)` 取出**引擎自己算出来的张量**,
-并用 `bytenn_cpu::ThrustorGetInput` 取出**网络真正看到的输入**。有了它就不用再靠猜来对齐:
+### 5.1 结论与用法
 
 ```bash
-.local/jianying-shot-split/build/feature-dump "$RT" frames.rgba 320 180 out-dir 3
+cd research/jianying-shot-split-probe
+RT="$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit/current"
+python3 detect_cuts_torch.py \
+  "$RT/Resources/models/jy_compressShotDetectBackbone_new_v1.0_size0.bytenn" ../../.local/jianying-shot-split/params2/engine-4/params.tsv \
+  "$RT/Resources/models/jy_compressShotDetectPredHead_new_v1.0_size0.bytenn" ../../.local/jianying-shot-split/params2/engine-5/params.tsv \
+  --video 某个.mp4 --fps 24
 ```
 
-产出 `out-dir/engine-N/features.tsv`(每层名字、四维、元素数)和逐层 `.f32`。
+不加载 `libcccreator` / `libbytenn`,只读两个 `.bytenn` 文件和 `weight-dump` 导出的层表。验证结果:
 
-**要害:ByteNN 复用内存池。**一帧跑完之后,只有**形状唯一**的缓冲区还留着真值 ——
-`__input`、`114 final_expand`、`115 embedding`、`116 GlobalAveragePool`、`117 Flatten`;
-中间层的缓冲区已经被后面的层覆写(最明显的证据是 `Softmax_152` 里出现负数,还有 `-82.179/82.386`
-这一对极值在二十几个互不相关的层里重复出现)。**拿中间层当真值会得出完全错误的结论**,
-我就是先信了它,才误判「第一层结构不对」。
+| 对拍项 | 结果 |
+|---|---|
+| 主干 118 层逐层(引擎自己的张量) | 全部余弦 1.00000、最大误差 0.0000 |
+| 主干最终 128 维输出 | 余弦 +1.000000,最大绝对误差 0.000000 |
+| 预测头:GRU 堆叠 / 相似度图 / 切点概率 | 误差 4e-7 / 9e-7 / 概率 0.000786 vs 0.000786 |
+| 端到端逐帧概率(cuts、soft 素材) | 最大差 0.0065 / 0.0012,平均差 6e-5 / 3e-5 |
+| 端到端切点 vs 桥接 `predict_result` | cuts `71 143 215`、soft `119 125 198 201` 完全一致;拼接素材 8 个切点中 8 个一致,另多出 1 个 p=0.352 vs 引擎 0.345 的阈值边缘案例 |
 
-### 5.2 这次靠引擎张量定死的三件事
+唯一残差来自**缩放**:引擎 blit 节点输出 96×96 RGB uint8,我们用 `torch` 双线性(整帧拉伸、无抗锯齿、`align_corners=False`)再四舍五入,
+仍有约 3% 像素差 1 级(试过 8~16 位定点、多种取整,最好 933/27648);由此概率差约 0.007,只在 p 距阈值 0.01 以内时决策才可能不同。
 
-| 事项 | 结论 | 怎么验的 |
+### 5.2 结构(全部经引擎逐层张量精确对拍)
+
+主干(`torch_backbone.py`):
+```
+first_conv 3x3 s2 +ReLU
+GhostBottleneck x8 (features.0/2/3/4/5/6/7/8):
+    ghost1 = [primary 1x1 +ReLU] ‖ [cheap dw3x3 +ReLU]
+    步长 2 的块(0/2/5/8)接 dw3x3 s2(无激活)
+    ghost2 = [primary 1x1] ‖ [cheap dw3x3](无激活)
+    shortcut(步长 2 的块)= dw3x3 s2 **+ReLU** -> 1x1;其余恒等;输出 = 主路 + 旁路
+注意力块 x2 (features.13/14),2 头 x 32 维(头按通道分块):
+    q/k/v 1x1;attn = softmax(q k^T * 0.125)(0.125 作为 1 元素常数存在权重区)
+    proj 1x1 **+ReLU**;a = x + proj;**a = 2a**(图里紧挨的两个 Add)
+    ff = fc1 1x1 +ReLU -> dw3x3 +ReLU -> fc2 1x1;输出 = a + ff
+final_expand 1x1 +ReLU -> embedding 3x3 -> 全局平均 -> 128 维
+```
+预处理:NHWC 96×96×3,`x/127.5-1`(RGB,整帧拉伸双线性)。
+
+预测头(`torch_predhead.py`):输入最近 7 帧特征 `[f-6, f]`,概率归到中心帧 `f-3`(引擎从喂入第 7 帧起产出):
+```
+GRU_8 -> GRU_11(128->128,单向,PyTorch 式 linear_before_reset,h0=0)
+-> 128 维按连续 32 维分 4 组,每组算 7x7 帧间余弦相似度 -> (1,4,7,7)
+-> Conv5x5 4->128 +ReLU -> [dw5x5 +ReLU -> 1x1 +ReLU] x3 -> 全局平均
+-> Linear 128->128 -> LeakyReLU(0.01) -> Linear -> LeakyReLU(0.01) -> Linear 128->1 -> Sigmoid
+```
+
+### 5.3 权重文件布局(`arena_weights.py` / `torch_predhead.py`)
+
+文件头明文:`+0x14`/`+0x18` 是权重区长度/偏移(图定义区加密,读不出层表;层表来自 `weight-dump` 在内存里导出的 params.tsv)。
+权重区是明文小端 float32,按**图顺序**逐层「权重 + 偏置」连续排列:
+
+| | 主干 | 预测头 |
 |---|---|---|
-| 预处理 | NHWC `1×96×96×3`,取值 `x/127.5-1` | 引擎输入张量实测落在 `[-1, 1]`,维度直接读出来 |
-| 注意力缩放 | `dim**-0.5` | 图里 `Constant_150` 实测 `0.125` = `64**-0.5`,q 的输出通道正是 64 |
-| 注意力块有两个 Eltwise | `Add_160` 紧跟 `Add_161` | 118 层完整图谱,见 `features.tsv` |
+| 权重区起点(字节) | 16061 | 2911(不 4 字节对齐,直接按字节切) |
+| 长度(float) | 576,899(用到 576,898) | 303,236(最后 1 个是垃圾) |
+| 额外常数 | 两个注意力缩放 0.125,各在自己的 `proj.conv` 之前 | 两个 LeakyReLU 斜率 0.01,各在 `classifier.0` / `.2` 之后 |
+| GRU 块 | — | 各 98,816:`A(256x256,行 [r;z],列 [x|h])` `W_n(128x128)` `R_n(128x128)` `b_r b_z b_n_in b_n_h` |
 
-### 5.3 权重:位置和格式已经验证,排列顺序还没有
+卷积权重排布:密集 3x3 **OHWI** `(cout,kh,kw,cin)`;1x1 `(cout,cin)`;深度卷积 **HWC** `(kh,kw,cout)`。
+BatchNorm 已融合进权重和偏置(所以有的偏置到 30 多、深度卷积权重到 50 多,是正常的)。
 
-文件头是可读的(图定义区加密,权重区不加密):
+### 5.4 后处理(`detect_cuts_torch.py::cut_points`,照 libcccreator 0xcc7844 的反汇编逐字写)
 
-| 偏移 | 值 | 含义 |
-|---|---|---|
-| `+0x04` | 2,323,729 | 文件总长 |
-| `+0x0c` / `+0x10` | 15,993 / 68 | 图定义区长度 / 偏移(这一段加密,里面找不到任何可打印串) |
-| `+0x14` / `+0x18` | 2,307,596 / 16,061 | **权重区长度 / 偏移** |
+算法对象里有两组逐帧数组:P(+0x440,每帧概率)和 Q(+0x458,**当前帧与前一帧 96x96 RGB uint8 图的逐字节平均绝对差**,第一帧不推,
+所以 Q[k] 对应第 k 与 k+1 帧)。阈值在 +0x408,窗口半宽 `(7+1)/2 = 4`,常数 `d8 = 0.1`(0x2c46c40)。
+```
+for i in 1..len(P)-2:
+    rising = (P[i-1] < P[i]) or carry;  carry = (P[i] <= P[i+1]) and rising
+    if P[i] <= P[i+1] or not rising: continue          # 只在「上升后下降」的局部极大值处
+    if not P[i] > thr: carry = 0; continue
+    c = i + 4                                            # = 该窗口的中心帧
+    if |P[i]-P[i-1]| < 0.1 and Q[c-1] > 2·Q[c-2]: c -= 1
+    elif |P[i]-P[i+1]| < 0.1 and Q[c] < 2·Q[c+1]: c += 1
+    emit c
+```
+硬切两侧相邻两帧概率都很高、几乎相等,靠 Q 判断边界在哪一侧;这就是为什么同样的硬切有时报旧镜头末帧、有时报新镜头首帧。
 
-权重区开头 8 字节是它自己的头,数据从字节 **16069** 开始,共 **576,896 个明文小端 float32**,
-正好等于 61 个卷积的 `权重 + 偏置`(573,904 + 2,992),一个不多一个不少;
-和 `Thrustor::GetWeightLen()` 报的 2,307,592 字节也对得上。
+### 5.5 怎么得到这些结论(方法可复用)
 
-排布是 **OHWI**(`cout, kh, kw, cin`),不是 PyTorch 的 OIHW。1×1 卷积两者等价,3×3 的非深度卷积会差。
-
-**验证方法(可复用)**:embedding 这一层的输入(114)和输出(115)都是可信缓冲区。3×3 卷积在 3×3 输入上、
-中心位置的输出正好是「整个权重向量 · 整个输入向量」,于是把权重区和输入向量做一次滑动点积(FFT 互相关),
-再要求 128 个输出通道**同时**命中(通道之间间距必须是 3456),就能把该层的起点唯一定死:
-偏移 134402 处残差 0.023,相邻位置全都 ≥ 0.84。装进 PyTorch 单层对拍余弦 **0.981**,
-这一层占全模型 77% 的参数。
-
-还没定死的是**前 60 层在权重区里的先后顺序**。按图顺序(`params.tsv` 的层序)逐层切「权重+偏置」,
-从 embedding 末尾倒着走回去正好落在 float 2(前面剩 2 个头),**边界在算术上自洽**;
-但除 embedding 和 final_expand 外,每一层切出来的「偏置」幅度都在 1~33,而且所有幅度异常大的权重
-(42.6 / 52.3 / 39.1 / 39.4)全是深度卷积。整模型前向因此从第一个 bottleneck 起就放大,
-最终输出到 1e12 量级(引擎是 0.53)。
-
-已经排除的解释:
-- 不是按形状装错层。改成按层名装载后结果**完全一样**(不过按形状匹配本身是个隐患,已经改掉)。
-- 不是 ReLU 少放。把 ReLU 加在深度卷积后 / ghost2 后 / shortcut 后 / 残差后,16 种组合全试过,
-  幅度从 1e12 压到 1e6,离 0.53 还差六个数量级,余弦最高 0.33。
-- 不是 OIHW/OHWI 或深度卷积 CHW/HWC 选错。16 种「顺序 × 排布」组合全试过,没有一个接近。
-
-### 5.4 建议的下一步
-
-把 5.3 的互相关定位法**推广到其余各层**。难点是中间层没有可信真值,两条路:
-
-1. `bytenn_cpu::Thrustor::SetSubNet(vector<TextureLayerOutput>*, vector<TextureLayerOutput>*)` 已导出。
-   用它把网络截断到某一层做输出,该层的缓冲区就不会被覆写,于是每一层都能拿到真值,
-   再用互相关逐层定位。要先弄清 `TextureLayerOutput` 的布局。
-2. 或者反过来:每次只喂一帧、并在**每层执行之间**取张量。需要在层的虚函数上下断点,成本更高。
-
-拿到任意一层的可信「输入 + 输出」之后,该层在权重区的位置就能像 embedding 一样一次定死,
-顺藤摸瓜把 60 层的顺序全排出来。
+1. `layer-trace`:给每种层类型的 forward 虚函数挂钩子(槽位靠计数探测:卷积虚表上 5/18/19 三个槽每层每帧各调一次),
+   每层一返回就 `Thrustor::Extract(层名)`,118 + 41 层全部是真值。`feature-dump` 只在前向结束后取,内存池复用让中间层几乎全是脏数据。
+2. GRU 的输出 blob 不叫层名,叫 `GRU_8.out`;层对象里还能扫出 `GRU_8_rz_blob` / `_n_blob` / `_concat_blob` 等内部 blob 名 —— 它们暴露了
+   「r、z 融合成一次 [x|h] GEMM,n 单独算」的内核结构,权重排布也就跟着定了。
+3. 单层权重定位用互相关:已知一层的输入输出,把权重区和输入向量做滑动点积,要求全部输出通道按固定间距同时命中。
+4. 后处理规则光靠拟合概率序列猜不出来(15 个样本、几十种规则族全败),最后是 `xref` 阈值键 -> 找到 `ldr s3,[x20,#0x408]` -> 读那 60 条指令。
 
 ## 6. 已经走死的路(不用再试)
 
@@ -165,20 +190,16 @@ GlobalAveragePool → Flatten,输出 128 维,与配置的 `img_feat_dims` 对上
 
 ## 7. 跨平台与"彻底脱离剪映"
 
-两件事要分开:
+- **脱离剪映 App**:早就做到。
+- **脱离剪映的运行库**:现在也做到了 —— `detect_cuts_torch.py` 只要 PyTorch,Windows / Intel Mac / Linux 都能跑。
+- **脱离剪映的权重**:没有,也不该有。两个 `.bytenn` 是剪映的资产,只能放在本机私有目录里做内部参照,不能随 QCut 发布。
 
-- **脱离剪映 App**:已经做到,跑分镜不需要装剪映。
-- **脱离剪映的代码和权重**:没有。现在仍依赖 `libcccreator` 和 `libbytenn`,以及它训练的权重。
-
-Windows 和 Intel Mac 用不了,而且不是移植能解决的:运行库是 macOS arm64 动态库,桥接里的地址是按这一版二进制逆向的,
-Windows 版剪映用 MSVC 编译,字符串和虚表布局都不同,等于重做一遍逆向。
-
-真正的独立只有一条路:**照第 4 节的结构自训一套权重**。就算把剪映的权重完整抠出来,那也是它的资产,只能内部参照、不能随产品发布;
-抠出来的价值在于当对照基准,验证自训模型有没有训到位。
+所以要上产品,路线是:用这份复现当**教师/基准**,照第 5.2 节的结构自己训一套权重(TransNet 类数据即可),
+再用 `torch_compare.py` 那套逐层对拍的方法验收自训模型。复现的价值就在于把结构、预处理、后处理全部钉死了,自训时不用再猜。
 
 ## 8. 红线
 
-- 剪映的运行库、模型、快照、反汇编产物、导出的权重,**一律不进 Git、不外发**。研究产物统一放 gitignore 掉的
+- 剪映的运行库、模型、快照、反汇编产物、导出的权重、`layer-trace` 抓的张量,**一律不进 Git、不外发**。研究产物统一放 gitignore 掉的
   `.local/jianying-shot-split/`,快照放私有 runtime 目录。
 - 本目录里只放我们自己写的工具和分析结论。
 - 不解密任何加密草稿。
