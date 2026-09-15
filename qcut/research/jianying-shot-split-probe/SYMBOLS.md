@@ -126,5 +126,35 @@
 `+0x14`/`+0x18` **权重区长度/偏移**。权重区开头 8 字节是它自己的头,之后是明文小端 float32,
 逐层「权重(OHWI:cout,kh,kw,cin)+ 偏置」。
 
+### 7.1 逐层真值:虚表钩子(`layer-trace.mm`)
+
+卷积层虚表(所有卷积类层共用一张,含深度卷积)上,**槽位 18、19、5 每层每帧各调用一次,顺序 18 → 19 → 5**;
+在这三个槽都挂钩、每次返回后 `Thrustor::Extract(层名)`,后调用的覆盖先调用的,留下的就是 forward 完成后的输出。
+其余层类型的虚表在同样槽位挂同样的钩子即可(10 种层类型)。虚表所在页用 `vm_protect(... VM_PROT_COPY)` 改成可写。
+
+blob 名不总等于层名。预测头 GRU 相关的 blob(从层对象里扫字符串得到):
+
+| blob | 形状(NHWC) | 含义 |
+|---|---|---|
+| `GRU_8.out` / `GRU_11.out` | 1,1,7,128 | 两个 GRU 的输出 (T, H) |
+| `GRU_8_Transpose_to_BHT.out` | 1,1,7,128 | GRU 输入的内部布局 |
+| `GRU_11_Reshape_to_BDHT.out` / `GRU_11_0` | 1,7,128,1 / 7,128,1,1 | 输出回到 ONNX 布局的中间态 |
+| `GRU_*_concat_blob` `_rz_blob` `_z_blob` `_r_blob` `_n_blob` `_trn_in_blob` `_trn_out_blob` | 未导出 | 内核结构:r、z 门对 `[x|h]` 拼接输入做一次融合 GEMM,n 门单独算(linear_before_reset) |
+
+### 7.2 后处理函数(libcccreator,0xcc7844 ~ 0xcc79b4)
+
+`compress_shot_detect_post_process_threshold` 的字符串在 0x300cd16,被 0xcc7ec0 读入算法对象 `+0x408`(float);唯一读取处 `0xcc78f4: ldr s3, [x20, #0x408]`。
+
+| 算法对象偏移 | 内容 |
+|---|---|
+| `+0x400` | 滑窗大小(7);半宽 `(7+1)/2 = 4` |
+| `+0x408` | 后处理阈值(0.35) |
+| `+0x440` / `+0x448` | `vector<float>` P:每帧切点概率(喂入第 7 帧起,每帧一个) |
+| `+0x458` | `vector<float>` Q:当前帧与前一帧 96x96 RGB uint8 缩放图的逐字节平均绝对差(0xcc73f0~0xcc7450 计算,`fabd` 累加 / `3·w·h`;第一帧不推) |
+| `+0x478` | 首帧标志 |
+| `+0x480` | 上一帧 96x96 RGB uint8 缓冲 |
+
+常数 `0x2c46c40`(double)= 0.1,用于判断极值两侧概率是否"平"。规则本身见交接文档 5.4。结果通过 `frame_received` / `predict_result`(0x301b0a2 / 0x301b0b1)写出,读取端是 `TEBachVideoAutoSplit::getBachResult`(0x203bc24)。
+
 配置键 `compress_shot_detect_model_forward_type` 在 0xcc7a00 被读进 w23（intParam 在算法对象 `+0x88`，unordered_map，值在节点 `+0x28`），
 但 w23 直到函数收尾都未被使用 —— **死代码**，改它不会切到 CoreML 后端。
