@@ -42,9 +42,12 @@
 | `bytenn-probe.mm` | 只用 ByteNN 自己导出的接口加载 `.bytenn`(`IESNN::Net::CreateNetFromFile` 已实测可用),各尝试放 fork 子进程,崩溃不影响其余 |
 | `weight-dump.mm` | 加载后在进程内按引擎虚表定位对象,走 `GetNetwork`/`GetLayers`/`GetLayerName` 导出网络结构;权重数值尚未导出,见交接文档第 5 节 |
 | `extract-weights.py` | 早期的离线权重提取(按「浮点看起来合理」扫描切段)。**已被 `arena_weights.py` 取代**:那套扫描会在大权重处断开,切出来的层是错的,只留作历史记录 |
-| `feature-dump.mm` | 加载后喂帧,用 `Thrustor::Extract` 取引擎**自己算出来的**逐层张量、用 `ThrustorGetInput` 取网络真正看到的输入;复现对拍的基准就来自这里(注意内存池复用,只有形状唯一的缓冲区可信,见交接文档 5.1) |
-| `arena_weights.py` | 按已验证的布局从 `.bytenn` 直接切权重:起点 16069、576896 个 float、逐层「权重(OHWI)+ 偏置」 |
-| `torch_backbone.py` / `torch_compare.py` / `torch_check.py` | PyTorch 复现主干、与引擎张量对拍、在已知切点的素材上做行为验证 |
+| `feature-dump.mm` | 加载后喂帧,用 `Thrustor::Extract` 取引擎逐层张量、用 `ThrustorGetInput` 取网络真正看到的输入。**只在前向结束后取,内存池复用让中间层几乎全是脏数据**,只有形状唯一的几层可信;逐层真值请用 `layer-trace` |
+| `layer-trace.mm` | 给每种层类型的 forward 虚函数挂钩子,每层一返回就 `Extract`,118 + 41 层全是真值;还能按帧追加 Sigmoid 概率(`scores.tsv`)、按 blob 名抓 GRU 内部输出。复现逐层对拍全靠它 |
+| `arena_weights.py` | 按已验证的布局从主干 `.bytenn` 切权重:起点 16061、图顺序逐层「权重 + 偏置」、两个注意力缩放常数;密集 OHWI / 1x1 (cout,cin) / 深度 HWC |
+| `torch_backbone.py` / `torch_predhead.py` | 纯 PyTorch 复现主干与预测头(含 GRU、相似度图、classifier),与引擎逐位一致 |
+| `detect_cuts_torch.py` | **不依赖剪映运行库**的端到端分镜:视频/原始帧 -> 切点,后处理照 libcccreator 反汇编逐字实现,与桥接 `predict_result` 一致 |
+| `torch_compare.py` / `torch_check.py` | 与 `layer-trace` 真值对拍;在已知切点的视频上做行为验证 |
 | `compare-cutpoints.mjs` / `.test.mjs` | 两份切点列表按容差比对（精确率/召回率/平均偏差），吃 QCut `analyze/:pid/scenes` 的返回或纯数组 |
 | `watch-shot-split.sh` | 用户在剪映里点一次「智能镜头分割」时，在旁边抓 90 秒：打开的模型/缓存文件、CPU、网络字节、CoreML/AlgorithmCache 目录变化 |
 
