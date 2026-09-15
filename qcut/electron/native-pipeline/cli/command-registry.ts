@@ -1179,17 +1179,24 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			f("--height", "number", "Sampled frame height (16–1920)", {
 				default: 180,
 			}),
+			f(
+				"--engine",
+				"string",
+				"bridge (original ByteNN models via the native bridge), torch (bit-exact PyTorch reproduction), or both (run and compare)",
+				{ default: "bridge" }
+			),
 			f("--output", "string", "Write the JSON report to this path"),
 			f("--force", "boolean", "Replace an existing report"),
 			f(
 				"--check",
 				"boolean",
-				"Only report whether the private runtime and native bridge are ready"
+				"Only report whether the private runtime, native bridge and torch engine are ready"
 			),
 		],
 		examples: [
 			"qcut analyze shots -i footage.mp4 --json",
 			"qcut analyze shots -i footage.mp4 --fps 12 --output shots.json",
+			"qcut analyze shots -i footage.mp4 --engine both --json",
 			"qcut analyze shots --check --json",
 		],
 	},
