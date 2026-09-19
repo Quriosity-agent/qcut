@@ -84,6 +84,9 @@ def load_predictor(*, path, network=None):
     if kind == "qcut-private-ocr-recognizer-logits-pytorch-v4":
         from ocr_rec_torch import load_validated_model
         return load_validated_model(path=path), kind
+    if kind == "qcut-private-matting-gru-cpu-v3":
+        from matting_validated import load_model as load_matting
+        return load_matting(path=path), kind
     raise ValueError(f"unsupported bundle format: {kind}")
 
 
