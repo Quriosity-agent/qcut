@@ -2,9 +2,29 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
+import sysconfig
+
+
+def dependency_read(*, event, args, roots):
+    if event not in {"open", "ctypes.dlopen"} or not args or not isinstance(args[0], (str, bytes, os.PathLike)):
+        return False
+    path = Path(os.fsdecode(args[0])).resolve()
+    metadata = path.parent.name.endswith(".dist-info") and path.name in {
+        "METADATA", "PKG-INFO", "entry_points.txt", "top_level.txt", "RECORD", "WHEEL"}
+    if (path.suffix not in {".py", ".pyc", ".so", ".dylib"} and not metadata
+            or not any(path.is_relative_to(root) for root in roots)):
+        return False
+    if event == "ctypes.dlopen":
+        return path.suffix in {".so", ".dylib"}
+    mode = args[1] if len(args) > 1 else None
+    flags = args[2] if len(args) > 2 else None
+    if isinstance(mode, str) and any(char in mode for char in "wax+"):
+        return False
+    return type(flags) is int and not flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)
 
 
 def file_hash(*, path):
@@ -18,11 +38,13 @@ def worker(*, job_path, out):
     out = out.resolve()
     allowed = {model_path, *(Path(case["input"]).resolve() for case in job["cases"])}
     from portable_smoke import denied_access
+    dependency_roots = {Path(sysconfig.get_path(key)).resolve() for key in ("purelib", "platlib")}
+    sys.dont_write_bytecode = True
     blocked = []
 
     def audit(event, args):
         reason = denied_access(event=event, args=args, allowed=allowed, output=out)
-        if reason:
+        if reason and not dependency_read(event=event, args=args, roots=dependency_roots):
             blocked.append({"event": event, "reason": reason})
             raise PermissionError(reason)
 
@@ -32,7 +54,10 @@ def worker(*, job_path, out):
     try:
         import numpy as np
         import torch
-        from vision_batch_torch import load_model
+        if job.get("format") == "qcut-private-bandou-ordered-pytorch-v1":
+            from bandou_phase5_torch import load_model
+        else:
+            from vision_batch_torch import load_model
         torch.set_num_threads(2)
         model = load_model(path=model_path, expected_sha256=job["model_sha256"])
         for index, case in enumerate(job["cases"]):
@@ -67,7 +92,8 @@ def run_batch(*, reports, out):
         model = Path(source_report["artifact"])
         if file_hash(path=model) != source_report["artifact_sha256"]:
             raise ValueError("model no longer matches native report")
-        job = {"model": str(model), "model_sha256": source_report["artifact_sha256"], "cases": []}
+        job = {"model": str(model), "model_sha256": source_report["artifact_sha256"],
+               "format": source_report["format"], "cases": []}
         for case in source_report["cases"]:
             inputs = Path(case["input_npz"])
             job["cases"].append({"case": case["case"], "input": str(inputs), "input_sha256": file_hash(path=inputs)})
@@ -113,7 +139,8 @@ def run_batch(*, reports, out):
             handoff.append({"profile": source["profile"], "report": str(path.resolve()),
                             "artifact": source["artifact"], "artifact_sha256": source["artifact_sha256"],
                             "source_sha256": source["source_sha256"], "schema": source["schema"],
-                            "loader": "vision_batch_torch.load_model(path=..., expected_sha256=...)",
+                            "loader": ("bandou_phase5_torch" if source["format"] == "qcut-private-bandou-ordered-pytorch-v1"
+                                       else "vision_batch_torch") + ".load_model(path=..., expected_sha256=...)",
                             "format": source["format"], "onnx_verified_by_this_worker": False,
                             "cases": [{"case": case["case"], "input": case["input_npz"],
                                        "native_output": str(Path(case["input_npz"]).with_name("native.npz")),
