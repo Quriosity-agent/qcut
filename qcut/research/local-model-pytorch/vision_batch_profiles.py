@@ -64,6 +64,19 @@ PROFILES = {
         "input_shape": [1, 3, 224, 224], "layer_count": 50,
         "outputs": {"v_projector": [1, 128, 1, 1]},
     },
+    # Experimental saliency matting ("matting"): 640x640 image in, one 640x640 sigmoid mask
+    # out of a guided-filter refiner; the arena is fp16 (header E) and is widened with the
+    # pinned ARM64 rule while the native oracle runs the original graph.
+    "saliency_matting": {
+        "source_filename": "saliency_matting_v1.0_size0_md55882cbfb5e9c1f205cd599d3c5d0833a.model",
+        "source_sha256": "ac2ae6badafc6a94641dc59b5844762676eee71b218785bfad37169eea380341",
+        "bm_sha256": "44952b5a54204d43e96010b461bb0478369cfd88b4217206eaaa590b1ce16318",
+        "graph_sha256": "4f681b2f1fcf3391ea35f944308202f150de0376938cc4aaba09c354291935b7",
+        "state_sha256": "da8833efb05be81fe6ef9359770ce7fc9c1e2e71711708970d52d957cc0b44e9",
+        "native_verified": True, "arena": "fp16",
+        "input_shape": [1, 3, 640, 640], "layer_count": 214,
+        "outputs": {"Sigmoid_316": [1, 1, 640, 640]},
+    },
     # Skin-evening GAN ("yunfu"): a 320x320 image plus a three-value condition
     # vector that gates every decoder stage through 1x1 convolutions.
     "yunfuhua": {
