@@ -16,10 +16,10 @@
 - source SHA256：`7951eba5af0daa1f78e3962073b938169171d102107ed1585a5c6851adf3aab2`
 - 原生库：`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit/current/Frameworks/libbytenn.dylib`
 - runtime SHA256：`1bf9be7855a9bb6202a5595e2a1c5bdbb9750efd74749b8bdf589d1023c53ad0`
-- bundle：[tracking.pt](/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/tracking-final-20260919/tracking.pt)
+- bundle：[tracking.pt](../../.local/jianying-model-pytorch/tracking-final-20260919/tracking.pt)
 - artifact SHA256：`13bd6063507b1435e684d142681d3a7d4784ed15e769902cfa6aaa5d6e245ea2`
-- 汇总：[report.json](/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/tracking-final-20260919/report.json)
-- 无厂商访问回放：[portable-smoke.json](/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/tracking-final-20260919/portable-smoke.json)
+- 汇总：[report.json](../../.local/jianying-model-pytorch/tracking-final-20260919/report.json)
+- 无厂商访问回放：[portable-smoke.json](../../.local/jianying-model-pytorch/tracking-final-20260919/portable-smoke.json)
 
 汇总的 `networks[]` 每项分别包含稳定 `network_id`、源/图/子容器/arena/runtime SHA、共同 artifact 路径与 SHA、输入输出 schema、backend/scope、逐 case 和逐 output 的 `passed`。每项也单独保存在 `<network>/report.json`。根状态只有四网均通过才标为通过，不会用部分成功掩盖缺网。
 
@@ -51,7 +51,7 @@ import numpy as np
 import torch
 from tracking_torch import load_model
 
-root = Path("/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/tracking-final-20260919")
+root = Path(".local/jianying-model-pytorch/tracking-final-20260919")  # relative to the qcut/ checkout
 model = load_model(path=root / "tracking.pt", name="kernel")
 case = root / "kernel/case-holdout-new-asymmetric"
 with np.load(case / "inputs.npz", allow_pickle=False) as fixture:
