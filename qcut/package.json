@@ -314,6 +314,17 @@
 		"nodeGypRebuild": false,
 		"extraResources": [
 			{
+				"from": "research/local-model-pytorch",
+				"to": "local-models/shot",
+				"filter": [
+					"shot_onnx.py",
+					"shot_video.py",
+					"shot_postprocess.py",
+					"onnx_infer.py",
+					"requirements-onnx-runtime.txt"
+				]
+			},
+			{
 				"from": "resources/default-skills",
 				"to": "default-skills",
 				"filter": [
