@@ -4,6 +4,7 @@ import { registerDesktopVideo } from "../media/register-desktop-video";
 
 const mocks = vi.hoisted(() => ({
 	isElectron: true,
+	claudeAvailable: true,
 	info: vi.fn(),
 	importMedia: vi.fn(),
 }));
@@ -11,7 +12,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@qcut/platform-core", () => ({
 	platform: () => ({
 		isElectron: mocks.isElectron,
-		claude: { media: { info: mocks.info } },
+		...(mocks.claudeAvailable
+			? { claude: { media: { info: mocks.info } } }
+			: {}),
 		mediaImport: { import: mocks.importMedia },
 	}),
 }));
@@ -27,6 +30,7 @@ const item: MediaItem = {
 
 beforeEach(() => {
 	mocks.isElectron = true;
+	mocks.claudeAvailable = true;
 	mocks.info.mockReset().mockResolvedValue(null);
 	mocks.importMedia.mockReset().mockResolvedValue({
 		success: true,
@@ -56,7 +60,9 @@ describe("desktop video registration", () => {
 	});
 
 	it("waits for registration before exposing a successful result", async () => {
-		let finish!: (value: { success: boolean; targetPath: string }) => void;
+		let finish:
+			| ((value: { success: boolean; targetPath: string }) => void)
+			| undefined;
 		mocks.importMedia.mockImplementation(
 			() =>
 				new Promise((resolve) => {
@@ -73,10 +79,20 @@ describe("desktop video registration", () => {
 		});
 		await Promise.resolve();
 		expect(settled).toBe(false);
-		finish({ success: true, targetPath: "/project/copy.mp4" });
+		expect(finish).toBeDefined();
+		finish?.({ success: true, targetPath: "/project/copy.mp4" });
 		await expect(pending).resolves.toMatchObject({
 			localPath: "/project/copy.mp4",
 		});
+	});
+
+	it("fails closed when the media lookup bridge is unavailable", async () => {
+		mocks.claudeAvailable = false;
+		await expect(
+			registerDesktopVideo({ projectId: "project", mediaItem: item })
+		).rejects.toThrow("media lookup bridge is unavailable");
+		expect(mocks.info).not.toHaveBeenCalled();
+		expect(mocks.importMedia).not.toHaveBeenCalled();
 	});
 
 	it("does not reimport an already registered target onto itself", async () => {
