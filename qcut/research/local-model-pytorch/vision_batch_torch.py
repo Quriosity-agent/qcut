@@ -196,6 +196,10 @@ class VisionGraph(nn.Module):
             raise ValueError("truncated vision weight arena")
         return result
 
+    def upsample(self, *, value, mode):
+        return F.interpolate(value, scale_factor=2, mode=mode,
+                             align_corners=False if mode == "bilinear" else None)
+
     def forward(self, inputs, *, capture=False):
         if not isinstance(inputs, dict) or set(inputs) != set(self.input_shapes):
             raise ValueError("exact declared inputs required")
@@ -224,8 +228,7 @@ class VisionGraph(nn.Module):
                 # The audited native shuffle interleaves four-channel blocks, not individual channels.
                 value = data[0].reshape(n, 2, c // 8, 4, h, w).transpose(1, 2).reshape(n, c, h, w)
             elif op == "UpSampling":
-                value = F.interpolate(data[0], scale_factor=2, mode=params["mode"],
-                                      align_corners=False if params["mode"] == "bilinear" else None)
+                value = self.upsample(value=data[0], mode=params["mode"])
             elif op == "Tanh":
                 value = data[0].tanh()
             elif op == "PoolingDown":
