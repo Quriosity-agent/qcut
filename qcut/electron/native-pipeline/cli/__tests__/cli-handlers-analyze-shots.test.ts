@@ -95,6 +95,17 @@ function dependencies({
 				torchVersion: "2.10.0",
 			},
 		}),
+		detectOnnx: async (input) => ({
+			...RESULT,
+			sourcePath: input.request.sourcePath,
+			engine: "onnx",
+			route: "qcut-jianying-shot-split-onnx-v1",
+		}),
+		inspectOnnx: async () => ({
+			available: true,
+			message: "ONNX ready",
+			onnxVersion: "1.30.0",
+		}),
 	};
 }
 
@@ -111,6 +122,50 @@ function baseOptions(overrides: Partial<CLIRunOptions> = {}): CLIRunOptions {
 }
 
 describe("analyze shots CLI", () => {
+	it("runs ONNX independently of the native runtime and torch", async () => {
+		const calls: Parameters<AnalyzeShotsDependencies["detect"]>[0][] = [];
+		const deps = dependencies({ calls });
+		deps.inspect = async () => {
+			throw new Error("native inspection must not run");
+		};
+		const status = await handleAnalyzeShots(
+			baseOptions({ engine: "onnx", checkOnly: true }),
+			() => {},
+			new AbortController().signal,
+			deps
+		);
+		expect(status.data).toMatchObject({ engine: "onnx", available: true });
+		const result = await handleAnalyzeShots(
+			baseOptions({ engine: "onnx", input: "/videos/clip.mp4" }),
+			() => {},
+			new AbortController().signal,
+			deps
+		);
+		expect(result.data).toMatchObject({
+			engine: "onnx",
+			cut_frames: [71, 143],
+		});
+		expect(calls).toHaveLength(0);
+	});
+
+	it("does not fall back when ONNX fails", async () => {
+		const calls: Parameters<AnalyzeShotsDependencies["detect"]>[0][] = [];
+		const deps = dependencies({ calls });
+		deps.detectOnnx = async () => {
+			throw new Error("model hash mismatch");
+		};
+		const result = await handleAnalyzeShots(
+			baseOptions({ engine: "onnx", input: "/videos/clip.mp4" }),
+			() => {},
+			new AbortController().signal,
+			deps
+		);
+		expect(result).toMatchObject({
+			success: false,
+			error: "model hash mismatch",
+		});
+		expect(calls).toHaveLength(0);
+	});
 	it("parses the grouped command and sampling flags", () => {
 		const options = parseCliArgs([
 			"analyze",

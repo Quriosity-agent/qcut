@@ -1182,7 +1182,7 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			f(
 				"--engine",
 				"string",
-				"bridge (original ByteNN models via the native bridge), torch (bit-exact PyTorch reproduction), or both (run and compare)",
+				"bridge (native), torch (PyTorch reproduction), both (compare), or onnx (opt-in portable local model)",
 				{ default: "bridge" }
 			),
 			f("--output", "string", "Write the JSON report to this path"),
@@ -1197,6 +1197,8 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"qcut analyze shots -i footage.mp4 --json",
 			"qcut analyze shots -i footage.mp4 --fps 12 --output shots.json",
 			"qcut analyze shots -i footage.mp4 --engine both --json",
+			"qcut analyze shots -i footage.mp4 --engine onnx --json",
+			"qcut analyze shots --engine onnx --check --json",
 			"qcut analyze shots --check --json",
 		],
 	},

@@ -127,7 +127,12 @@ export async function analyzeComposeMedia({
 						kind: "scenes",
 						mediaId: id,
 						body: { aiAnalysis: false },
-						fallback: { scenes: [], totalScenes: 0, averageShotDuration: 0 },
+						fallback: {
+							engine: "ffmpeg",
+							scenes: [],
+							totalScenes: 0,
+							averageShotDuration: 0,
+						},
 					})
 				: { scenes: [] };
 		const timestamps = [

@@ -1,0 +1,4 @@
+-r requirements-onnx-runtime.txt
+torch==2.10.0
+onnx==1.23.0
+onnxscript==0.7.2

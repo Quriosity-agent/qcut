@@ -1,23 +1,31 @@
 /**
  * Shared types for offline shot-boundary detection with the Jianying
- * 智能镜头分割 model. Two engines produce the same result shape: the native
+ * 智能镜头分割 model. The native
  * bridge runs the original ByteNN models from QCut's private runtime snapshot
  * (`~/Library/Application Support/QCut/PrivateRuntimes/JianyingShotSplit`);
- * the torch engine runs the bit-exact PyTorch reproduction of the same models
- * (`research/jianying-shot-split-probe/detect_cuts_torch.py`). Neither
- * launches the Jianying app or touches the network.
+ * torch engine uses the recovered PyTorch graph; the opt-in ONNX engine uses
+ * a hash-pinned portable graph and a separately named preprocessing profile.
+ * None launches the Jianying app or touches the network.
  */
 
 export const JIANYING_SHOT_SPLIT_ROUTE = "qcut-jianying-shot-split-v1" as const;
 export const JIANYING_SHOT_SPLIT_TORCH_ROUTE =
 	"qcut-jianying-shot-split-torch-v1" as const;
+export const JIANYING_SHOT_SPLIT_ONNX_ROUTE =
+	"qcut-jianying-shot-split-onnx-v1" as const;
 
 export type JianyingShotSplitRoute =
 	| typeof JIANYING_SHOT_SPLIT_ROUTE
-	| typeof JIANYING_SHOT_SPLIT_TORCH_ROUTE;
+	| typeof JIANYING_SHOT_SPLIT_TORCH_ROUTE
+	| typeof JIANYING_SHOT_SPLIT_ONNX_ROUTE;
 
-/** `bridge` is the original engine; `torch` the reproduction; `both` runs and compares them. */
-export const JIANYING_SHOT_SPLIT_ENGINES = ["bridge", "torch", "both"] as const;
+/** `both` compares bridge and torch; `onnx` is an independent opt-in engine. */
+export const JIANYING_SHOT_SPLIT_ENGINES = [
+	"bridge",
+	"torch",
+	"both",
+	"onnx",
+] as const;
 export type JianyingShotSplitEngine =
 	(typeof JIANYING_SHOT_SPLIT_ENGINES)[number];
 export type JianyingShotSplitSingleEngine = Exclude<
@@ -31,6 +39,13 @@ export interface JianyingShotSplitTorchStatus {
 	/** Interpreter the engine would spawn, when one was found. */
 	python?: string;
 	torchVersion?: string;
+}
+
+export interface JianyingShotSplitOnnxStatus {
+	available: boolean;
+	message: string;
+	python?: string;
+	onnxVersion?: string;
 }
 
 export interface JianyingShotSplitStatus {
@@ -82,8 +97,10 @@ export interface JianyingShotSplitResult extends JianyingShotSplitSampling {
 	route: JianyingShotSplitRoute;
 	shots: JianyingShotSplitShot[];
 	sourcePath: string;
-	/** Torch engine only: per-frame cut probability, keyed by the window's centre frame. */
+	/** Reproduction engines: probability keyed by the window's centre frame. */
 	scores?: Array<[frame: number, probability: number]>;
+	modelSha256?: string;
+	preprocessing?: string;
 }
 
 export interface JianyingShotSplitProgress {

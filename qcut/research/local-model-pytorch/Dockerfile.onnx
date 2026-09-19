@@ -1,0 +1,7 @@
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 OMP_NUM_THREADS=2
+WORKDIR /runner
+COPY requirements-onnx-runtime.txt ./
+RUN python -m pip install --no-cache-dir -r requirements-onnx-runtime.txt
+COPY onnx_infer.py onnx_replay.py ./
+ENTRYPOINT ["python", "/runner/onnx_replay.py"]
