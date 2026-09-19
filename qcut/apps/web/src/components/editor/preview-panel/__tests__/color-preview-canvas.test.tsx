@@ -98,13 +98,12 @@ beforeEach(() => {
 	Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
 		configurable: true,
 		value: function (this: HTMLCanvasElement) {
-			const canvas = this;
 			return {
-				canvas,
+				canvas: this,
 				clearRect: vi.fn(),
 				drawImage: vi.fn((source: CanvasImageSource) => {
 					if (source instanceof HTMLCanvasElement)
-						canvas.dataset.paintedIntensity = source.dataset.paintedIntensity;
+						this.dataset.paintedIntensity = source.dataset.paintedIntensity;
 				}),
 			};
 		},
