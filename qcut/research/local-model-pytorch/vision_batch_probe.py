@@ -23,13 +23,16 @@ def probe(*, run, out, indices, case="random-17"):
     records = []
     original_text = (run / "graph.private.txt").read_text()
     prefix = "D\\n\n" if original_text.startswith("D") else ""
+    input_count = len(model.input_shapes)
     for index in indices:
-        if not 1 <= index < len(model.nodes):
+        if not input_count <= index < len(model.nodes):
             raise ValueError("invalid prefix index")
         nodes = model.nodes[:index + 1]
         shape_model = VisionGraph(nodes=nodes)
         graph = out / f"prefix-{index}.private.txt"
-        text = prefix + f"1 {index} 0\\n\n" + "\n".join(" ".join(row) + "\\n" for row in nodes) + "\n"
+        # Header: <inputs> <layers> <stamp>; every leading DataV2 row stays in the prefix.
+        text = (prefix + f"{input_count} {index + 1 - input_count} 0\\n\n"
+                + "\n".join(" ".join(row) + "\\n" for row in nodes) + "\n")
         graph.write_text(text)
         native = predict(graph=graph, arena=run / "arena.private.bin", inputs=inputs,
                          output_shapes=shape_model.output_shapes, out=out / f"native-{index}")
