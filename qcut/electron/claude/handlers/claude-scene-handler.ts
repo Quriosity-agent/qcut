@@ -13,6 +13,8 @@ import { claudeLog } from "../utils/logger.js";
 import { sanitizeProjectId } from "../utils/helpers.js";
 import { getFFmpegPath } from "../../ffmpeg/utils.js";
 import { getDecryptedApiKeys } from "../../api-key-handler.js";
+import { detectShotsWithOnnxEngine } from "../../jianying-shot-split/onnx-engine.js";
+import { SCENE_DETECTION_ENGINES } from "../../types/claude-api.js";
 import type {
 	SceneBoundary,
 	SceneDetectionRequest,
@@ -93,6 +95,10 @@ export function detectScenesWithFFmpeg(
 			if (settled) return;
 			settled = true;
 			clearTimeout(timeout);
+			if (code !== 0) {
+				reject(new Error(`Scene detection failed (FFmpeg code ${code})`));
+				return;
+			}
 
 			// FFmpeg returns 0 on success; scene filter output goes to stderr
 			const scenes = parseShowInfoOutput(stderr);
@@ -303,6 +309,21 @@ export async function detectScenes(
 	projectId: string,
 	request: SceneDetectionRequest
 ): Promise<SceneDetectionResult> {
+	const engine = request.engine === undefined ? "ffmpeg" : request.engine;
+	if (!SCENE_DETECTION_ENGINES.some((candidate) => candidate === engine)) {
+		throw new Error(
+			"Invalid scene detection engine; expected 'ffmpeg' or 'onnx'"
+		);
+	}
+	if (
+		request.aiAnalysis !== undefined &&
+		typeof request.aiAnalysis !== "boolean"
+	) {
+		throw new Error("aiAnalysis must be a boolean");
+	}
+	if (engine === "onnx" && request.threshold !== undefined) {
+		throw new Error("threshold is only supported by the FFmpeg scene engine");
+	}
 	const safeProjectId = sanitizeProjectId(projectId);
 
 	claudeLog.info(
@@ -313,30 +334,71 @@ export async function detectScenes(
 	// 1. Resolve video path
 	const videoPath = await resolveVideoForScene(safeProjectId, request.mediaId);
 
-	// 2. Tier 1: FFmpeg scene detection
-	const threshold = request.threshold ?? 0.3;
-	let scenes = await detectScenesWithFFmpeg(videoPath, threshold);
+	let scenes: SceneBoundary[];
+	let route: string | undefined;
+	let durationSeconds: number | undefined;
+	if (engine === "onnx") {
+		const result = await detectShotsWithOnnxEngine({
+			request: { sourcePath: videoPath },
+		});
+		if (
+			result.engine !== "onnx" ||
+			!Number.isFinite(result.durationSeconds) ||
+			result.durationSeconds <= 0 ||
+			result.cutFrames.length !== result.cutPoints.length ||
+			result.cutPoints.some(
+				(timestamp, index) =>
+					!Number.isFinite(timestamp) ||
+					timestamp <= 0 ||
+					timestamp >= result.durationSeconds ||
+					(index > 0 && timestamp <= result.cutPoints[index - 1])
+			)
+		) {
+			throw new Error("Invalid result from the ONNX scene engine");
+		}
+		const scores = new Map(result.scores ?? []);
+		scenes = [
+			{ timestamp: 0, confidence: 1 },
+			...result.cutPoints.map((timestamp, index) => ({
+				timestamp,
+				confidence: scores.get(result.cutFrames[index]) ?? 0,
+			})),
+		];
+		route = result.route;
+		durationSeconds = result.durationSeconds;
+	} else {
+		scenes = await detectScenesWithFFmpeg(videoPath, request.threshold ?? 0.3);
+	}
 	claudeLog.info(
 		HANDLER_NAME,
-		`FFmpeg detected ${scenes.length} scene boundaries`
+		`${engine} detected ${scenes.length} scene boundaries`
 	);
 
 	// 3. Tier 2: Optional AI analysis
-	if (request.aiAnalysis) {
+	if (request.aiAnalysis === true) {
 		scenes = await enrichWithAI(videoPath, scenes, request.model);
 	}
 
 	// 4. Compute statistics
 	const totalScenes = scenes.length;
 	let averageShotDuration = 0;
-	if (totalScenes > 1) {
+	if (durationSeconds !== undefined && totalScenes > 0) {
+		averageShotDuration = Math.round((durationSeconds / totalScenes) * 10) / 10;
+	} else if (totalScenes > 1) {
 		const totalDuration =
 			scenes[totalScenes - 1].timestamp - scenes[0].timestamp;
 		averageShotDuration =
 			Math.round((totalDuration / (totalScenes - 1)) * 10) / 10;
 	}
 
-	return { scenes, totalScenes, averageShotDuration };
+	return {
+		engine,
+		route,
+		durationSeconds,
+		scenes,
+		totalScenes,
+		averageShotDuration,
+	};
 }
 
 // CommonJS export for compatibility
