@@ -221,11 +221,15 @@ export interface PlatformClaudeAnalyzeAPI {
 		projectId: string,
 		options: {
 			mediaId: string;
+			engine?: "ffmpeg" | "onnx";
 			threshold?: number;
 			aiAnalysis?: boolean;
 			model?: string;
 		}
 	): Promise<{
+		engine: "ffmpeg" | "onnx";
+		route?: string;
+		durationSeconds?: number;
 		scenes: Array<{
 			timestamp: number;
 			confidence: number;
