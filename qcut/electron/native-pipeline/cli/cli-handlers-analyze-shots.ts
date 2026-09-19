@@ -1,17 +1,19 @@
 /**
  * `qcut analyze shots` — offline shot-boundary detection with the Jianying
  * 智能镜头分割 model, run from QCut's private runtime snapshot. No cloud call,
- * no Jianying app; the runtime must have been snapshotted on this Mac.
+ * no Jianying app. Native/torch use the private snapshot; ONNX uses a separately
+ * configured, hash-pinned model and only NumPy + ONNX Runtime.
  *
  * `--engine bridge` (default) runs the original ByteNN models through the
- * native bridge, `--engine torch` runs the bit-exact PyTorch reproduction, and
- * `--engine both` runs the two and reports how their cut points line up.
+ * native bridge, `--engine torch` runs the PyTorch reproduction, and
+ * `--engine both` compares them. `--engine onnx` never falls back to either.
  */
 
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
 	JIANYING_SHOT_SPLIT_ENGINES,
+	JIANYING_SHOT_SPLIT_ONNX_ROUTE,
 	type JianyingShotSplitComparison,
 	type JianyingShotSplitEngine,
 	type JianyingShotSplitResult,
@@ -23,6 +25,10 @@ import {
 	detectShotsWithTorchEngine,
 	inspectJianyingShotSplit,
 } from "../../jianying-shot-split/runtime.js";
+import {
+	detectShotsWithOnnxEngine,
+	inspectOnnxEngine,
+} from "../../jianying-shot-split/onnx-engine.js";
 import type {
 	CLIRunOptions,
 	CLIResult,
@@ -32,12 +38,16 @@ import type {
 export interface AnalyzeShotsDependencies {
 	detect: typeof detectShotsWithJianyingRuntime;
 	detectTorch: typeof detectShotsWithTorchEngine;
+	detectOnnx: typeof detectShotsWithOnnxEngine;
+	inspectOnnx: typeof inspectOnnxEngine;
 	inspect: typeof inspectJianyingShotSplit;
 }
 
 const DEFAULT_DEPENDENCIES: AnalyzeShotsDependencies = {
 	detect: detectShotsWithJianyingRuntime,
 	detectTorch: detectShotsWithTorchEngine,
+	detectOnnx: detectShotsWithOnnxEngine,
+	inspectOnnx: inspectOnnxEngine,
 	inspect: inspectJianyingShotSplit,
 };
 
@@ -82,6 +92,12 @@ export function buildAnalyzeShotsReport({
 			end_time: shot.endTime,
 		})),
 		elapsed_ms: result.elapsedMs,
+		...(result.modelSha256
+			? {
+					model_sha256: result.modelSha256,
+					preprocessing: result.preprocessing,
+				}
+			: {}),
 	};
 }
 
@@ -207,6 +223,23 @@ export async function handleAnalyzeShots(
 ): Promise<CLIResult> {
 	const startedAt = Date.now();
 	try {
+		const engine = resolveAnalyzeShotsEngine({ engine: options.engine });
+		if (options.checkOnly && engine === "onnx") {
+			const status = await dependencies.inspectOnnx();
+			return {
+				success: true,
+				duration: (Date.now() - startedAt) / 1000,
+				data: {
+					route: JIANYING_SHOT_SPLIT_ONNX_ROUTE,
+					engine,
+					available: status.available,
+					message: status.message,
+					local_only: true,
+					offline_ready: status.available,
+					onnx_version: status.onnxVersion ?? null,
+				},
+			};
+		}
 		if (options.checkOnly) {
 			const status = await dependencies.inspect();
 			return {
@@ -215,7 +248,6 @@ export async function handleAnalyzeShots(
 				success: true,
 			};
 		}
-		const engine = resolveAnalyzeShotsEngine({ engine: options.engine });
 		if (!options.input) {
 			throw new Error(
 				"--input is required (pass --check to inspect the runtime)"
@@ -246,8 +278,12 @@ export async function handleAnalyzeShots(
 			});
 			report = buildAnalyzeShotsBothReport({ bridge, torch });
 		} else {
-			const detect =
-				engine === "torch" ? dependencies.detectTorch : dependencies.detect;
+			const detectors = {
+				bridge: dependencies.detect,
+				torch: dependencies.detectTorch,
+				onnx: dependencies.detectOnnx,
+			};
+			const detect = detectors[engine];
 			const result = await detect({
 				onProgress: ({ progress, stage, status }) =>
 					onProgress({
