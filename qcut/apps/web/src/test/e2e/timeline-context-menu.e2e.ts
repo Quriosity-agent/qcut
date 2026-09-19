@@ -395,6 +395,7 @@ test.describe("Timeline Right-Click Context Menu", () => {
 				async (_event, projectId, request) => {
 					(globalThis as any).__qcutSceneRequests.push({ projectId, request });
 					return {
+						engine: "ffmpeg",
 						scenes: [
 							{ timestamp: 0, confidence: 1 },
 							{ timestamp: 1, confidence: 0.9 },
