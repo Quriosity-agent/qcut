@@ -84,12 +84,12 @@
 
 ## 7. ByteNN（libbytenn.dylib，未剥符号，2026-09-15 补）
 
-推理引擎在 `libbytenn.dylib`，**符号完整导出**，不需要逆向就能调用。文件地址即 vmaddr（`__TEXT` vmaddr = fileoff = 0）。
+推理引擎在 `libbytenn.dylib`，保留了大量导出符号，但仍须确认 ABI、对象生命周期和参数语义，不能仅凭符号名直接认定可用。文件地址即 vmaddr（`__TEXT` vmaddr = fileoff = 0）。
 `dlsym` 时要去掉 `nm` 显示的前导下划线。
 
 | 符号 | 文件地址 | 说明 |
 |---|---|---|
-| `IESNN::Net::CreateNetFromFile(const char*)` | 0x7ff94 | 给路径即可独立加载 `.bytenn`，返回 `Net*`（已实测可用） |
+| `IESNN::Net::CreateNetFromFile(const char*)` | 0x7ff94 | 2026-09-19 纠正：本机已审计版本仅分配空对象，不读取路径；非空 `Net*` 不是加载成功证据 |
 | `IESNN::Net::GetIESNet() const` | — | 取内部网络对象（内部布局未导出） |
 | `BYTENN::EngineFactory::Create()` | — | libcccreator 实际用的入口，返回 `shared_ptr<ByteNNEngine>`（sret 走 x8） |
 | `BYTENN::ByteNNEngineImpl::GetNetwork()` | 0xfbf8 | 引擎 → `LabNetWork*` |
@@ -105,6 +105,10 @@
 | `bytenn_cpu::Thrustor::SetSubNet(vector<TextureLayerOutput>*, vector<TextureLayerOutput>*)` | 0x13ac1c | 可把网络截断到指定 blob 做输出 —— 逐层拿真值的下一步,`TextureLayerOutput` 布局待查 |
 | `bytenn_cpu::Thrustor::getOutput()` | 0x13afb0 | 网络输出(sret) |
 | 层表构造函数（内部） | 0x1fedec | `fn(out, impl+0x80)` 产出 `{begin,end}`；元素 16 字节，首字是层指针 |
+
+后续 [容器取证](../local-model-pytorch/CONTAINER-FORMATS.zh-CN.md) 记录了固定运行库哈希与空对象问题。
+已验证的直接执行路线见 [降噪探针](../local-model-pytorch/denoise_notes.zh-CN.md)：`Thrustor::CreateNet` 接收解码图与权重 arena，`SetInput` 的首个整数为字节数，还需回读输入核验。
+这不意味着任意 ByteNN 格式或 GPU 后端均已支持。
 
 层对象字段（`Thrustor` 在 `LabNetWork+0x40`，其 impl 在 `Thrustor+0x08`）：
 
