@@ -4,6 +4,7 @@ import { useState } from "react";
 import { handleMediaProcessingError } from "@/lib/debug/error-handler";
 import { platform } from "@qcut/platform-core";
 import { assertRestrictedMediaExportAllowed } from "../../../../../../electron/types/restricted-media-export-policy";
+import type { SceneDetectionRequest } from "../../../../../../electron/types/claude-api";
 import { Button } from "../../ui/button";
 import {
 	MoreVertical,
@@ -39,6 +40,7 @@ import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { useCloudTaskStore } from "@/stores/cloud-task-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useSceneStore } from "@/stores/timeline/scene-store";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useExportStore } from "@/stores/export-store";
@@ -161,6 +163,322 @@ function clipExportFilename({
 }): string {
 	const base = name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9._-]+/g, "-");
 	return `${base || "clip"}-${secondsForCli({ value: start })}-${secondsForCli({ value: end })}.mp4`;
+}
+
+function captureShotSplitSource({
+	projectId,
+	trackId,
+	elementId,
+}: {
+	projectId: string;
+	trackId: string;
+	elementId: string;
+}) {
+	const project = useProjectStore.getState().activeProject;
+	const sourceTrack = useTimelineStore
+		.getState()
+		._tracks.find((item) => item.id === trackId);
+	const element = sourceTrack?.elements.find((item) => item.id === elementId);
+	const media =
+		element?.type === "media"
+			? useMediaStore
+					.getState()
+					.mediaItems.find((item) => item.id === element.mediaId)
+			: undefined;
+	if (
+		!project ||
+		project.id !== projectId ||
+		useProjectStore.getState().isLoading ||
+		!element ||
+		element.type !== "media" ||
+		sourceTrack?.locked ||
+		media?.type !== "video"
+	) {
+		throw new Error(
+			"Shot splitting needs an unlocked video clip in the active project"
+		);
+	}
+	const sourceElement = structuredClone(element);
+	const elementSnapshot = JSON.stringify(sourceElement);
+	const sceneId = useSceneStore.getState().currentScene?.id;
+	const sourceFile = media.file;
+	const sourceIdentity = JSON.stringify([
+		media.localPath,
+		media.url,
+		media.originalUrl,
+		media.importMetadata,
+	]);
+	const contextMatches = () => {
+		const current = useProjectStore.getState();
+		const currentMedia = useMediaStore
+			.getState()
+			.mediaItems.find((item) => item.id === media.id);
+		return (
+			!current.isLoading &&
+			current.activeProject?.id === projectId &&
+			current.activeProject.currentSceneId === project.currentSceneId &&
+			current.activeProject.fps === project.fps &&
+			useSceneStore.getState().currentScene?.id === sceneId &&
+			currentMedia?.type === "video" &&
+			currentMedia.file === sourceFile &&
+			JSON.stringify([
+				currentMedia.localPath,
+				currentMedia.url,
+				currentMedia.originalUrl,
+				currentMedia.importMetadata,
+			]) === sourceIdentity
+		);
+	};
+	const sourceMatches = () => {
+		const currentTrack = useTimelineStore
+			.getState()
+			._tracks.find((item) => item.id === trackId);
+		return (
+			contextMatches() &&
+			!currentTrack?.locked &&
+			JSON.stringify(
+				currentTrack?.elements.find((item) => item.id === elementId)
+			) === elementSnapshot
+		);
+	};
+	let stale = false;
+	const observe = () => {
+		stale ||= !sourceMatches();
+	};
+	// Latch invalidation even when a move, relink, or project switch is later undone.
+	const subscriptions = [
+		useTimelineStore.subscribe(observe),
+		useProjectStore.subscribe(observe),
+		useSceneStore.subscribe(observe),
+		useMediaStore.subscribe(observe),
+	];
+	return {
+		sourceElement,
+		mediaId: media.id,
+		fps: project.fps ?? 30,
+		contextMatches,
+		isCurrent: () => !stale && sourceMatches(),
+		dispose: () => {
+			for (const unsubscribe of subscriptions) unsubscribe();
+		},
+	};
+}
+
+export async function runTimelineSmartShotSplit({
+	projectId,
+	trackId,
+	elementId,
+	engine = "ffmpeg",
+	existingTaskId,
+}: {
+	projectId: string;
+	trackId: string;
+	elementId: string;
+	engine?: SceneDetectionRequest["engine"];
+	existingTaskId?: string;
+}): Promise<void> {
+	const analyzeScenes = platform().claude?.analyze.scenes;
+	let taskId = existingTaskId;
+	let source: ReturnType<typeof captureShotSplitSource> | undefined;
+	let toastId: string | number | undefined;
+	let canceled = false;
+	try {
+		if (!analyzeScenes) throw new Error("智能镜头分割仅支持桌面版");
+		if (taskId) {
+			const task = useCloudTaskStore
+				.getState()
+				.tasks.find((item) => item.id === taskId);
+			if (
+				!task ||
+				task.payload.projectId !== projectId ||
+				task.payload.engine !== engine ||
+				task.payload.elementId !== elementId ||
+				task.payload.trackId !== trackId
+			)
+				throw new Error("Scene task no longer matches this clip and engine");
+			if (task.status === "running") return;
+			if (task.status !== "queued")
+				useCloudTaskStore.getState().retryTask({ id: taskId });
+		}
+		source = captureShotSplitSource({ projectId, trackId, elementId });
+		const snapshot = source;
+		taskId ??= useCloudTaskStore.getState().createTask({
+			kind: "scene-detection",
+			label: `镜头分割 (${engine === "onnx" ? "ONNX" : "FFmpeg"})：${source.sourceElement.name}`,
+			payload: {
+				projectId,
+				elementId,
+				trackId,
+				mediaId: source.mediaId,
+				engine,
+			},
+			message: "等待检测镜头",
+		});
+		const currentTaskId = taskId;
+		const openSource = () => {
+			if (snapshot.contextMatches())
+				useTimelineStore.getState().selectElement(trackId, elementId);
+		};
+		const retry = () =>
+			void runTimelineSmartShotSplit({
+				projectId,
+				trackId,
+				elementId,
+				engine,
+				existingTaskId: currentTaskId,
+			});
+		const isCanceled = () =>
+			canceled ||
+			useCloudTaskStore
+				.getState()
+				.tasks.find((task) => task.id === currentTaskId)?.status === "canceled";
+		registerCloudTaskRuntimeActions({
+			taskId,
+			actions: {
+				cancel: () => {
+					canceled = true;
+					snapshot.dispose();
+					useCloudTaskStore.getState().cancelTask({ id: currentTaskId });
+					if (toastId !== undefined) toast.dismiss(toastId);
+				},
+				retry,
+				open: openSource,
+			},
+		});
+		useCloudTaskStore
+			.getState()
+			.startTask({
+				id: taskId,
+				message: `正在检测镜头边界 (${engine === "onnx" ? "ONNX" : "FFmpeg"})`,
+			});
+		useCloudTaskStore.getState().updateProgress({ id: taskId, progress: 10 });
+		toastId = toast.loading("正在检测镜头边界...");
+		const result = await analyzeScenes(projectId, {
+			mediaId: source.mediaId,
+			engine,
+			aiAnalysis: false,
+			...(engine === "ffmpeg" ? { threshold: 0.3 } : {}),
+		});
+		if (isCanceled()) {
+			toast.dismiss(toastId);
+			return;
+		}
+		if (result.engine !== engine)
+			throw new Error(
+				"Scene detection returned a different engine; timeline unchanged"
+			);
+		if (!source.isCurrent())
+			throw new Error(
+				"Clip, source media, or active project changed during detection; timeline unchanged"
+			);
+		source.dispose();
+		useCloudTaskStore
+			.getState()
+			.updateProgress({ id: taskId, progress: 70, message: "正在写入时间线" });
+		const splitTimes = sceneTimelineSplitTimes({
+			element: source.sourceElement,
+			scenes: result.scenes,
+			fps: source.fps,
+		});
+		const timeline = useTimelineStore.getState();
+		const createdIds = applyTimelineSceneSplits({
+			trackId,
+			elementId,
+			splitTimes,
+			pushHistory: timeline.pushHistory,
+			splitElement: timeline.splitElement,
+		});
+		const output = {
+			engine: result.engine,
+			route: result.route,
+			createdElementIds: createdIds,
+		};
+		const message =
+			createdIds.length === 0
+				? "片段内未发现镜头边界"
+				: `已分成 ${createdIds.length + 1} 个镜头`;
+		useCloudTaskStore.getState().completeTask({ id: taskId, message, output });
+		if (createdIds.length === 0) {
+			registerCloudTaskRuntimeActions({
+				taskId,
+				actions: { open: openSource, retry },
+			});
+			toast.info(message, { id: toastId });
+			return;
+		}
+		const splitTrackSnapshot = JSON.stringify(
+			useTimelineStore.getState()._tracks.find((item) => item.id === trackId)
+		);
+		toast.success(message, { id: toastId });
+		registerCloudTaskRuntimeActions({
+			taskId,
+			actions: {
+				open: openSource,
+				undo: () => {
+					const currentTimeline = useTimelineStore.getState();
+					const currentTrack = currentTimeline._tracks.find(
+						(item) => item.id === trackId
+					);
+					if (
+						!snapshot.contextMatches() ||
+						JSON.stringify(currentTrack) !== splitTrackSnapshot
+					) {
+						toast.error(
+							"Timeline changed after detection; use timeline Undo to review subsequent edits"
+						);
+						return;
+					}
+					currentTimeline.pushHistory();
+					currentTimeline.restoreTracks(
+						rollbackTimelineSceneSplits({
+							tracks: currentTimeline._tracks,
+							trackId,
+							sourceElement: snapshot.sourceElement,
+							createdElementIds: createdIds,
+						})
+					);
+					void useTimelineStore.getState().saveImmediate();
+					useCloudTaskStore.setState(({ tasks }) => ({
+						tasks: tasks.map((task) =>
+							task.id === currentTaskId && task.status === "completed"
+								? {
+										...task,
+										message: "镜头分割结果已撤销",
+										output: {
+											...task.output,
+											engine,
+											createdElementIds: [],
+											undone: true,
+										},
+										updatedAt: Date.now(),
+									}
+								: task
+						),
+					}));
+					registerCloudTaskRuntimeActions({
+						taskId: currentTaskId,
+						actions: { open: openSource, retry },
+					});
+					toast.success("已撤销镜头分割");
+				},
+			},
+		});
+	} catch (error) {
+		if (
+			canceled ||
+			useCloudTaskStore.getState().tasks.find((task) => task.id === taskId)
+				?.status === "canceled"
+		) {
+			if (toastId !== undefined) toast.dismiss(toastId);
+			return;
+		}
+		const message = error instanceof Error ? error.message : "智能镜头分割失败";
+		if (taskId)
+			useCloudTaskStore.getState().failTask({ id: taskId, error: message });
+		toast.error(message, { id: toastId });
+	} finally {
+		source?.dispose();
+	}
 }
 
 function TimelineElementComponent({
@@ -953,140 +1271,25 @@ function TimelineElementComponent({
 		input.click();
 	};
 
-	const runSmartShotSplit = async ({
-		existingTaskId,
-	}: {
-		existingTaskId?: string;
-	} = {}) => {
-		if (element.type !== "media" || !activeProject || !mediaItem) return;
-		const analyzeScenes = platform().claude?.analyze.scenes;
-		if (!analyzeScenes) {
-			toast.error("智能镜头分割仅支持桌面版");
-			return;
-		}
-		const sourceElement = structuredClone(element);
-		const taskId =
-			existingTaskId ??
-			useCloudTaskStore.getState().createTask({
-				kind: "scene-detection",
-				label: `镜头分割：${element.name}`,
-				payload: {
-					elementId: element.id,
-					trackId: track.id,
-					mediaId: mediaItem.id,
-				},
-				message: "等待检测镜头",
-			});
-		let canceled = false;
-		const openSource = () =>
-			useTimelineStore.getState().selectElement(track.id, element.id);
-		const retry = () => void runSmartShotSplit({ existingTaskId: taskId });
-		registerCloudTaskRuntimeActions({
-			taskId,
-			actions: {
-				cancel: () => {
-					canceled = true;
-				},
-				retry,
-				open: openSource,
-			},
-		});
-		useCloudTaskStore.getState().startTask({
-			id: taskId,
-			message: "正在检测镜头边界",
-		});
-		useCloudTaskStore.getState().updateProgress({ id: taskId, progress: 10 });
-		const toastId = toast.loading("正在检测镜头边界...");
-		try {
-			const result = await analyzeScenes(activeProject.id, {
-				mediaId: mediaItem.id,
-				threshold: 0.3,
-			});
-			if (
-				canceled ||
-				useCloudTaskStore.getState().tasks.find((task) => task.id === taskId)
-					?.status === "canceled"
-			) {
-				toast.dismiss(toastId);
-				return;
-			}
-			useCloudTaskStore.getState().updateProgress({
-				id: taskId,
-				progress: 70,
-				message: "正在写入时间线",
-			});
-			const splitTimes = sceneTimelineSplitTimes({
-				element,
-				scenes: result.scenes,
-				fps: projectFps,
-			});
-			const createdIds = applyTimelineSceneSplits({
-				trackId: track.id,
-				elementId: element.id,
-				splitTimes,
-				pushHistory,
-				splitElement,
-			});
-			if (createdIds.length === 0) {
-				useCloudTaskStore.getState().completeTask({
-					id: taskId,
-					message: "片段内未发现镜头边界",
-					output: { createdElementIds: [] },
-				});
-				toast.info("片段内未发现镜头边界", {
-					id: toastId,
-				});
-				return;
-			}
-			useCloudTaskStore.getState().completeTask({
-				id: taskId,
-				message: `已分成 ${createdIds.length + 1} 个镜头`,
-				output: { createdElementIds: createdIds },
-			});
-			toast.success(`已分成 ${createdIds.length + 1} 个镜头`, {
-				id: toastId,
-			});
-			registerCloudTaskRuntimeActions({
-				taskId,
-				actions: {
-					open: openSource,
-					undo: () => {
-						const timeline = useTimelineStore.getState();
-						timeline.pushHistory();
-						timeline.restoreTracks(
-							rollbackTimelineSceneSplits({
-								tracks: timeline._tracks,
-								trackId: track.id,
-								sourceElement,
-								createdElementIds: createdIds,
-							})
-						);
-						void useTimelineStore.getState().saveImmediate();
-						useCloudTaskStore.getState().completeTask({
-							id: taskId,
-							message: "镜头分割结果已撤销",
-							output: { createdElementIds: [], undone: true },
-						});
-						registerCloudTaskRuntimeActions({
-							taskId,
-							actions: { open: openSource, retry },
-						});
-						toast.success("已撤销镜头分割");
-					},
-				},
-			});
-		} catch (error) {
-			if (canceled) return;
-			const message =
-				error instanceof Error ? error.message : "智能镜头分割失败";
-			useCloudTaskStore.getState().failTask({ id: taskId, error: message });
-			toast.error(message, { id: toastId });
-		}
-	};
-
 	const handleSmartShotSplit = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		void runSmartShotSplit();
+		if (!activeProject) return;
+		void runTimelineSmartShotSplit({
+			projectId: activeProject.id,
+			trackId: track.id,
+			elementId: element.id,
+			engine: "ffmpeg",
+		});
+	};
+
+	const handleOnnxShotSplit = () => {
+		if (!activeProject) return;
+		void runTimelineSmartShotSplit({
+			projectId: activeProject.id,
+			trackId: track.id,
+			elementId: element.id,
+			engine: "onnx",
+		});
 	};
 
 	const handleExportSelectedClip = async (e: React.MouseEvent) => {
@@ -1807,6 +2010,7 @@ function TimelineElementComponent({
 						keepLeft: handleSplitAndKeepLeftContext,
 						keepRight: handleSplitAndKeepRightContext,
 						smartShotSplit: handleSmartShotSplit,
+						onnxShotSplit: handleOnnxShotSplit,
 						openAiTextVideo: (e) => handleOpenAiPanel({ e, mode: "text" }),
 						openAiImageVideo: (e) => handleOpenAiPanel({ e, mode: "image" }),
 						openAiAudio: handleOpenAiAudio,
