@@ -4,6 +4,7 @@
 
 ## 批次记录
 
+- [显著性抠像（saliency_matting）CPU 对拍与 ONNX](saliency-matting-parity.zh-CN.md)：盘点表 N07 首次恢复；解释器新增 `E` 头 fp16 arena、dilated `Conv2D`、最大池化、通道 Slice、Mul、ReduceSum；原生对拍 10/10，ONNX 导出并对冻结原生输出回比 10/10；产品接入未做。
 - [匀肤 GAN（yunfuhua）CPU 网络对拍](yunfuhua-parity.zh-CN.md)：盘点表 N14 的 `jypc_yunfuhua_gpucpu` 首次恢复；通用视觉解释器新增多输入、Sigmoid、SEScale、分数倍上采样与固定 CPU 数值 profile，原生对拍 10/10，主输出逐位一致；ONNX 与产品接入未做。
 - [第五阶段收尾与验收边界](PHASE5-20260919.zh-CN.md)：Windows/x86 合成 CI、无 Torch 视频分镜、编辑器接入、OCR 字表/CTC，以及 GRU/Bandou 新精度 profile。
 - [第四阶段：更多模型、ONNX 跨系统与媒体 E2E](PHASE4-20260919.zh-CN.md) 保留该阶段累计：21 个网络版本、16 个 PT 包、19 份 ONNX；产品接入仍另列。
