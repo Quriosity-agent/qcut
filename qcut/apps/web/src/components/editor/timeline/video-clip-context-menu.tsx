@@ -57,6 +57,7 @@ interface VideoClipMenuActions {
 	keepLeft: MouseEventHandler<HTMLDivElement>;
 	keepRight: MouseEventHandler<HTMLDivElement>;
 	smartShotSplit: MouseEventHandler<HTMLDivElement>;
+	onnxShotSplit: () => void;
 	openAiTextVideo: MouseEventHandler<HTMLDivElement>;
 	openAiImageVideo: MouseEventHandler<HTMLDivElement>;
 	openAiAudio: MouseEventHandler<HTMLDivElement>;
@@ -133,7 +134,7 @@ export function VideoClipContextMenu({
 	currentColorLabel?: TimelineColorLabel;
 	actions: VideoClipMenuActions;
 }) {
-	const { t } = useTranslation();
+	const { locale, t } = useTranslation();
 
 	return (
 		<ContextMenuContent
@@ -280,7 +281,19 @@ export function VideoClipContextMenu({
 
 			<ContextMenuItem onClick={actions.smartShotSplit}>
 				<SplitSquareHorizontal />
-				{t("timeline.menu.smartShotSplit")}
+				{t("timeline.menu.smartShotSplit")} (FFmpeg)
+			</ContextMenuItem>
+			<ContextMenuItem
+				data-testid="onnx-shot-split-menu-item"
+				onSelect={(event) => {
+					event.stopPropagation();
+					actions.onnxShotSplit();
+				}}
+			>
+				<SplitSquareHorizontal />
+				{locale === "zh"
+					? "本地神经网络分镜 (ONNX)"
+					: "Local neural shot split (ONNX)"}
 			</ContextMenuItem>
 			<ContextMenuItem onClick={actions.openSmartSpeech}>
 				<AudioLines />
