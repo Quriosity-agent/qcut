@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from denoise_torch import DenoiseGraph, PRIVATE, load_model, read_descriptors
+from denoise_torch import DenoiseGraph, load_model, read_descriptors
 
 
 def fixture():
@@ -80,7 +80,7 @@ class DenoiseTests(unittest.TestCase):
             DenoiseGraph(nodes=self.nodes)
 
     def test_unknown_bundle_rejected(self):
-        with tempfile.TemporaryDirectory(dir=PRIVATE) as directory:
+        with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "synthetic.pt"
             torch.save({"format": "other"}, path)
             with self.assertRaises(ValueError):
@@ -109,6 +109,5 @@ class DenoiseTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    PRIVATE.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(2)
     unittest.main()
