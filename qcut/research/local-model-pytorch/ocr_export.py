@@ -96,7 +96,21 @@ def compare(*, actual, expected):
             "max_abs": float(delta.max()), "mae": float(delta.mean()), "shape": list(actual.shape)}
 
 
+def require_pinned_runtime():
+    """The oracle loads LIBRARY afresh, so re-pin it right before every native run."""
+    if sha(data=LIBRARY.read_bytes()) != RUNTIME_SHA256:
+        raise ValueError("native runtime library differs from the pinned RUNTIME_SHA256")
+
+
+def parity_status(*, parity, oracle, complete):
+    """Full parity status is reserved for the canonical case set; reduced runs stay partial."""
+    if parity:
+        return "native-parity-passed" if complete else "native-parity-partial"
+    return "verification-failed" if oracle else "native-unverified"
+
+
 def run_oracle(*, out):
+    require_pinned_runtime()
     compiler = "/Library/Developer/CommandLineTools/usr/bin/clang++"
     binary = out / "ocr-oracle"
     command = [compiler, "-std=c++17", "-O2", "-isysroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
@@ -127,6 +141,7 @@ def verify_fp16(*, out):
     for name, bits in vectors.items():
         source, destination = directory / f"{name}.f16", directory / f"{name}.f32"
         source.write_bytes(bits.tobytes())
+        require_pinned_runtime()
         result = subprocess.run([str(out / "ocr-oracle"), "--widen", str(LIBRARY), str(source), str(destination)],
                                 cwd=directory, capture_output=True, timeout=30)
         expected = widen_fp16(bits=bits).tobytes()
@@ -214,7 +229,8 @@ def export(*, out, quick, trace, oracle):
                         graph_status="native-final-output-parity-passed" if parity else "native-unverified-or-failed")
     report = {"format": FORMAT, "source": str(SOURCE), "source_sha256": SOURCE_SHA256,
               "artifact": str(artifact), "artifact_sha256": artifact_sha, "artifact_bytes": artifact.stat().st_size,
-              "status": "native-parity-passed" if parity else "verification-failed" if oracle else "native-unverified",
+              "status": parity_status(parity=parity, oracle=oracle, complete=not quick),
+              "case_set": "complete" if not quick else "partial-quick",
               "backend": "CPU float32 PyTorch versus forced bytenn_cpu",
               "scope": "complete detector graph with runtime ReInferShape; no preprocessing, boxes, alphabet or CTC",
               "original_graph_unchanged": False, "original_topology_unchanged": True,
@@ -230,7 +246,8 @@ def export(*, out, quick, trace, oracle):
               "parameter_roundtrip_exact": state_exact,
               "native": native, "tolerance": {"atol": 1e-4, "rtol": 1e-4}, "cases": cases,
               "fp16_decoder_proof": fp16_proof,
-              "all_declared_outputs_verified": parity, "holdouts_passed": any(c["holdout"] for c in cases) and all(c["passed"] for c in cases if c["holdout"])}
+              "all_declared_outputs_verified": parity and not quick,
+              "holdouts_passed": any(c["holdout"] for c in cases) and all(c["passed"] for c in cases if c["holdout"])}
     (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return report
 
