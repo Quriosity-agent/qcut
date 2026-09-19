@@ -48,6 +48,8 @@ class TupleGraph(nn.Module):
 
 def export_model(*, path, network=None):
     kind = torch.load(path, map_location="cpu", weights_only=True).get("format")
+    if kind == "qcut-private-matting-gru-cpu-v3":
+        raise ValueError("GRU v3 CPU parity is approved, but its ONNX numeric adapter is not qualified")
     if kind in {"qcut-private-shot-pytorch", "qcut-private-legacy-shot-pytorch"}:
         if network is not None:
             raise ValueError("shot export combines backbone and temporal head")
