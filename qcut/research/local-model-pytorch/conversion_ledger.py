@@ -55,7 +55,9 @@ def prior_evidence(*, entry):
         raise ValueError("prior report source identity differs")
     if report.get("status") != entry["status"]:
         raise ValueError("prior report status changed; regenerate the prior index")
-    evidence_fields = {key: report.get(key) for key in ("native", "cases", "verification")}
+    # Copy only the evidence the prior report carries; a None would overwrite
+    # the same key inherited from the prior index record.
+    evidence_fields = {key: report[key] for key in ("native", "cases", "verification") if key in report}
     return evidence(report={**entry, **evidence_fields}, path=path, inherited=True)
 
 
