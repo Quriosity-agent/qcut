@@ -3,7 +3,7 @@
 审计日期：2026-09-19。代码基线：`a0113abec1e602b995b08a6a6b8353dec8a4ec3e`，本轮 `fetch origin master` 后又以 `ls-remote` 核对远端。
 
 分支：`codex/local-neural-model-audit-20260919`。
-工作区：`/Users/peter/Desktop/code/qcut/qcut`；Git 根目录为其上一级。
+工作区：仓库的 `qcut/` 子目录；Git 根目录为其上一级。
 
 本页首先记录只读审计时的初始分类；同日后续研究见下方更新。初次审计未修改产品执行路径；第五阶段新增显式 ONNX 分镜选项，默认引擎不变。没有调用收费云端接口。
 
