@@ -55,7 +55,7 @@
 | N04 | `jy_compressShotDetectPredHead_new_v1.0_size0.bytenn` | 分镜时序预测头，现有实现含 GRU | N03/N04 组成一个分镜管线，但确实是两份网络资产 |
 | N05 | `tt_matting_video_gru` v1.0 | 人像抠像 `portrait-gru` | 私有剪映模型与运行库；可再融合 Apple Vision |
 | N06 | `video_saliency_seg_bce` v1.0 | 通用视频对象抠像 `video-object` | Bach、同模型 CoreML、实验宿主互操作都是同一模型的不同路径 |
-| N07 | `saliency_matting` v1.0 | `saliency-script` 显著性抠像 | **实验路径**；resolver 同时要求 A01 及 N06 等资产 |
+| N07 | `saliency_matting` v1.0 | `saliency-script` 显著性抠像 | **实验路径**；resolver 同时要求 A01 及 N06 等资产；2026-09-19 已恢复为 PyTorch 并通过 CPU 原生对拍与 ONNX 回比（[记录](../../../research/local-model-pytorch/saliency-matting-parity.zh-CN.md)），脚本编排与产品前处理未验证 |
 | N08 | `tt_fsnew_base_jianying` v2.0 | 基础人脸检测，供美颜及抠像自动路由采样 | 固定效果包动态加载；不是 QCut 自训模型 |
 | N09 | `tt_face` v11.2 | 人脸/关键点相关输入，多个人像包共享 | 不把每个美颜滑条计为独立模型 |
 | N10 | `tt_face_extra` v15.0 | 人脸细节与扩展关键点 | 逻辑名与物理文件版本可能不同，需保留 resolver 证据 |
