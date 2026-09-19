@@ -1,8 +1,28 @@
-"""Audited identities for the bounded phase-four vision conversion batch."""
+"""Audited identities for the bounded vision conversion batch (phase four, extended 2026-09-19)."""
 
 FORMAT = "qcut-private-vision-batch-pytorch-v1"
 EXECUTION_PROFILE = "cpu-fp32-ohwi-hwc-v1"
+# Pinned CPU numerics for networks whose decoder amplifies plain fp32 rounding past the
+# parity gate: convolutions replay the native FMA accumulation order (ocr_rec_numeric),
+# sigmoid and tanh use the estimate-and-refine kernels, and both bilinear resizes are
+# separable (x then y) with fused multiply-add on the half-pixel grid.
+ORDERED_EXECUTION_PROFILE = "cpu-fp32-ohwi-hwc-ordered-fma-pinned-v1"
 RUNTIME_SHA256 = "1bf9be7855a9bb6202a5595e2a1c5bdbb9750efd74749b8bdf589d1023c53ad0"
+
+
+def ordered_execution(*, profile):
+    return profile.get("execution") == "ordered-fma"
+
+
+def execution_profile(*, profile):
+    return ORDERED_EXECUTION_PROFILE if ordered_execution(profile=profile) else EXECUTION_PROFILE
+
+
+def input_shapes(*, profile):
+    """Declared input schema; single-input profiles keep the historical `input_shape` key."""
+    if "input_shapes" in profile:
+        return {name: tuple(shape) for name, shape in profile["input_shapes"].items()}
+    return {"data": tuple(profile["input_shape"])}
 PROFILES = {
     "bandou": {
         "source_filename": "newbandou_v1.0_size0_md5bb66e26e632c60d1dff15a1ceec50d4f.model",
@@ -43,5 +63,17 @@ PROFILES = {
         "native_verified": True,
         "input_shape": [1, 3, 224, 224], "layer_count": 50,
         "outputs": {"v_projector": [1, 128, 1, 1]},
+    },
+    # Skin-evening GAN ("yunfu"): a 320x320 image plus a three-value condition
+    # vector that gates every decoder stage through 1x1 convolutions.
+    "yunfuhua": {
+        "source_filename": "jypc_yunfuhua_gpucpu_v1.0_size0_md52fb34821a520d7c79c38d93a494cfe00.model",
+        "source_sha256": "ff86b484516a6e1333e4678492e5c92ec5f423ab8e596968c53f7d2589a624d4",
+        "bm_sha256": "5c0d3dc4c230ea12a7affebcb7ecafde8c7a446bec7a5c2e2e1492c91c1a6f99",
+        "graph_sha256": "0d4ee06dc029fc5be581a47248d4bee32a489721d96a00b7db36a0038a981256",
+        "state_sha256": "4ccd96412fe3bf55c0cd255b7a693287c30f97b50d95afe134461eb17e29bb8e",
+        "native_verified": True, "execution": "ordered-fma",
+        "input_shapes": {"data0": [1, 3, 320, 320], "data1": [1, 3, 1, 1]}, "layer_count": 84,
+        "outputs": {"Tanh_126": [1, 4, 320, 320], "Tanh_127": [1, 2, 320, 320]},
     },
 }
