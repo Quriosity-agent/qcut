@@ -12,6 +12,7 @@ import { debugLog, debugError } from "@/lib/debug/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getOrCreateObjectURL } from "@/lib/media/blob-manager";
+import { registerDesktopVideo } from "@/lib/media/register-desktop-video";
 import {
 	handleStorageError,
 	handleMediaProcessingError,
@@ -265,10 +266,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			id = generateUUID();
 		}
 
-		const newItem: MediaItem = {
-			...item,
-			id,
-		};
+		const newItem = await registerDesktopVideo({
+			projectId,
+			mediaItem: { ...item, id },
+		});
 
 		console.log("[MediaStore.addMediaItem] Saving media item", {
 			projectId,
