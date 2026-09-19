@@ -86,7 +86,7 @@ def cancellation(*, output, ledger, video):
     case_output = output / "cancelled"
     argv = arguments(model=PRIVATE / BUNDLES["skin"], ledger=ledger, video=video,
                      output=case_output, profile="skin", frames=120) + ["--fps", "30"]
-    signal_sent = False
+    signal_sent, returncode, error = False, None, None
     with (output / "cancelled.log").open("w") as stream:
         process = subprocess.Popen(argv, stdout=stream, stderr=subprocess.STDOUT)
         try:
@@ -101,16 +101,20 @@ def cancellation(*, output, ledger, video):
                         break
                 time.sleep(0.02)
             returncode = process.wait(timeout=20)
+        except subprocess.TimeoutExpired as exception:
+            # A child that never reports a frame or ignores SIGTERM is a failed
+            # cancellation case; the suite must still finalize suite.json.
+            error = f"{type(exception).__name__}: {exception}"
         finally:
             if process.poll() is None:
                 process.kill()
                 process.wait()
     report_path = case_output / "report.json"
     report = json.loads(report_path.read_text()) if report_path.is_file() else {}
-    passed = signal_sent and returncode == 130 and report.get("status") == "cancelled" and report.get("passed") is False
+    passed = error is None and signal_sent and returncode == 130 and report.get("status") == "cancelled" and report.get("passed") is False
     return {"case": "SIGTERM-after-real-inference", "passed": passed, "signal_sent": signal_sent,
             "returncode": returncode, "case_report": str(report_path.resolve()),
-            "completed_frames": report.get("completed_frames"), "status": report.get("status")}
+            "completed_frames": report.get("completed_frames"), "status": report.get("status"), "error": error}
 
 
 def run_suite(*, output, ledger, profiles, backend="pytorch", onnx_root=None, baseline=None, test_failures=False):
