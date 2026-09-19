@@ -4,19 +4,22 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import sysconfig
 
 
 def guard_worker(*, job_path, out):
     job = json.loads(job_path.read_text())
     model, fixture = Path(job["model"]).resolve(), Path(job["input"]).resolve()
     from portable_smoke import denied_access
+    from vision_batch_replay import dependency_read
+    dependencies = {Path(sysconfig.get_path(key)).resolve() for key in ("purelib", "platlib")}
     import ctypes
     import socket
     events = []
 
     def audit(event, args):
         reason = denied_access(event=event, args=args, allowed={model, fixture}, output=out.resolve())
-        if reason:
+        if reason and not dependency_read(event=event, args=args, roots=dependencies):
             events.append({"event": event, "reason": reason})
             raise PermissionError(reason)
 
