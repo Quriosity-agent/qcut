@@ -267,7 +267,7 @@ tracking 的 `[3125,2,1,1]` 则是前 3124 个 pair 走向量路径、最后一�
 
 ### 交付与集成
 
-私有根目录：`/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/`。
+私有根目录：`.local/jianying-model-pytorch/`（相对仓库的 `qcut/` 目录）。
 
 - 最终汇总：`matting-cpu-phase3-final-20260919/report.json`，102 个网络 case，整体失败。
 - 单帧与原始权重证明：`matting-cpu-phase3-20260919-r7/report.json`、`native-expand.log`、`native-expanded-weights.f32`。
