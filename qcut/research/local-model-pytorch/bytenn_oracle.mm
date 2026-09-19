@@ -2,6 +2,8 @@
 #import <Foundation/Foundation.h>
 #include <CommonCrypto/CommonDigest.h>
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -92,13 +94,27 @@ fs::path localFile(const fs::path &directory, NSString *filename) {
   return result;
 }
 
+// Generated tensors are created exclusively: an existing file or symlink at
+// the path is rejected instead of followed, so a caller that can write into
+// the output directory cannot redirect a tensor write elsewhere.
+void writeExclusive(const fs::path &path, const char *data, size_t size) {
+  int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+  if (fd < 0) throw std::runtime_error("exclusive tensor create failed: " + path.filename().string());
+  size_t written = 0;
+  while (written < size) {
+    ssize_t count = ::write(fd, data + written, size - written);
+    if (count <= 0) { ::close(fd); throw std::runtime_error("tensor write failed"); }
+    written += static_cast<size_t>(count);
+  }
+  if (::close(fd)) throw std::runtime_error("tensor close failed");
+}
+
 NSDictionary *writeTensor(const fs::path &path, NSString *name, const TensorView &view, const std::array<int32_t, 4> &shape) {
   validateView(view, shape);
   size_t count = elements(shape);
   const float *values = static_cast<const float *>(view.data);
   for (size_t i = 0; i < count; ++i) if (!std::isfinite(values[i])) throw std::runtime_error("nonfinite native tensor");
-  std::ofstream output(path, std::ios::binary);
-  if (!output.write(static_cast<const char *>(view.data), count * sizeof(float))) throw std::runtime_error("tensor write failed");
+  writeExclusive(path, static_cast<const char *>(view.data), count * sizeof(float));
   return @{@"name": name, @"file": [NSString stringWithUTF8String:path.filename().c_str()],
            @"shape_nwhc": @[@(shape[0]), @(shape[1]), @(shape[2]), @(shape[3])],
            @"raw_i32": @[@(view.raw[0]), @(view.raw[1])]};
