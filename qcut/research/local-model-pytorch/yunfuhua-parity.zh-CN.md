@@ -107,8 +107,8 @@ profile 声明 `execution: ordered-fma` 时接受该 stamp，其余四个视觉 
 
 ## 剩余工作
 
-1. 同一容器格式的 `tt_face_extra_v15.0`（bytenn，头 `B`，量化存储字段 `2 7 4 13 2 5`）与
-   `saliency_matting_v1.0`（头 `E` fp16，另有 `Conv2D`、`Pooling`、`OnnxOp2` 等算子）仍待恢复。
+1. 同一容器格式的 `tt_face_extra_v15.0`（bytenn，头 `B`，量化存储字段 `2 7 4 13 2 5`）仍待恢复；
+   `saliency_matting_v1.0` 已在同一分支完成，见 [saliency-matting-parity.zh-CN.md](saliency-matting-parity.zh-CN.md)。
 2. `tt_fsnew_base_jianying`、`tt_face_v11.2`、`tt_freid`、`tt_faceverify` 是带名字记录的结构化容器，
    载荷不是明文 bytenn 图，需要先弄清 `libcccreator` 加载时如何解包。
 3. 2 通道 `Tanh` 尾部规则、ONNX 数值适配器、真实素材与产品前处理、编辑器接入。
