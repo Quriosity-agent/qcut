@@ -17,6 +17,7 @@ from matting_torch import INPUT_SHAPES
 
 class BoundaryTests(unittest.TestCase):
     def setUp(self):
+        self.addCleanup(torch.set_num_threads, torch.get_num_threads())
         torch.set_num_threads(1)
 
     def test_bitwise_comparison_keeps_signed_zero(self):
