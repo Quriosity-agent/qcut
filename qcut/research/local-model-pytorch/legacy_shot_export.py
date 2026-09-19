@@ -239,7 +239,9 @@ def main():
     torch.set_num_threads(4)
     report = export_legacy(runtime=args.runtime, evidence=args.evidence)
     print(json.dumps(report, indent=2))
-    return int(not all(case["passed"] for case in report["roundtrip"] + report["native"]))
+    # The status already requires native parity for both roles; roundtrip
+    # success alone must not exit 0 while the report says unverified.
+    return int(report["status"] != "native-parity-passed")
 
 
 if __name__ == "__main__":
