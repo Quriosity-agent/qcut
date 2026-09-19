@@ -28,6 +28,7 @@ def small_model(*, activation=2, profile=rec.EXECUTION_PROFILE):
 class RecognizerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.addClassCleanup(torch.set_num_threads, torch.get_num_threads())
         torch.set_num_threads(2)
 
     def setUp(self):
