@@ -67,6 +67,13 @@ def comparison(*, native, actual):
     return result
 
 
+def output_differs(*, item):
+    """A nonfinite or unshaped capture is a difference, not a skipped comparison."""
+    if not item.get("finite_and_shape_valid"):
+        return True
+    return item.get("equal_elements") != item.get("compared_elements")
+
+
 def prefix_text(*, nodes, index):
     if type(index) is not int or not 1 <= index < len(nodes):
         raise ValueError("bounded nonempty prefix required")
@@ -130,7 +137,7 @@ def probe(*, run, out, case, indices, kernels=(), channels=8, ordered=False, ord
         report["prefixes"].append(result)
         print(json.dumps({"prefix": index, **result}), flush=True)
         (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-        if stop_at_difference and any(item["equal_elements"] != item["compared_elements"] for item in result["outputs"].values()):
+        if stop_at_difference and any(output_differs(item=item) for item in result["outputs"].values()):
             if kernels:
                 raise ValueError("stop-at-difference cannot be combined with kernels")
             break
