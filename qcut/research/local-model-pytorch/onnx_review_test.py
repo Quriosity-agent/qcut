@@ -55,12 +55,11 @@ class ONNXReviewTests(unittest.TestCase):
         ]))
         try:
             run_batch(manifest=manifest, out=out)
+            self.fail("incomplete manifest was accepted")
         except (KeyError, ValueError):
             pass
         checkpoint = out / "batch-jobs-report.json"
-        if checkpoint.exists():
-            report = json.loads(checkpoint.read_text())
-            self.assertFalse(report["passed"], f"incomplete {len(report['jobs'])}/2 jobs incorrectly marked passed")
+        self.assertFalse(checkpoint.exists(), "rejected manifest left a durable checkpoint")
 
     def test_missing_source_retains_export_failure_report(self):
         _, inputs = self.source()
