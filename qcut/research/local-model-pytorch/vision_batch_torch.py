@@ -36,8 +36,10 @@ def parse_graph(*, text):
     if not isinstance(text, str) or len(text) > 131072:
         raise ValueError("invalid vision graph")
     rows = [line.removesuffix("\\n").split() for line in text.splitlines() if line.strip()]
-    if rows and rows[0] == ["D"]:
-        rows = rows[1:]
+    # Optional storage prefixes: E marks an fp16 arena (widened by the exporter), D float32.
+    for prefix in (["E"], ["D"]):
+        if rows and rows[0] == prefix:
+            rows = rows[1:]
     # Header: <input count> <layer count> <stamp>; every input is a leading DataV2 row.
     if (not rows or len(rows[0]) != 3 or not all(v.isdecimal() for v in rows[0])
             or not 1 <= int(rows[0][0]) <= 4 or not 1 <= int(rows[0][1]) <= 256
@@ -47,6 +49,16 @@ def parse_graph(*, text):
     if any(row[0] != "DataV2" for row in rows[1:1 + count]) or any(row[0] == "DataV2" for row in rows[1 + count:]):
         raise ValueError("declared input count differs from the leading DataV2 rows")
     return rows[1:]
+
+
+def channel_sum(*, value, ordered):
+    """Keep-dim sum over channels; the ordered form adds channels one at a time like the native loop."""
+    if not ordered:
+        return value.sum(dim=1, keepdim=True)
+    total = value[:, :1]
+    for index in range(1, value.shape[1]):
+        total = total + value[:, index:index + 1]
+    return total
 
 
 def fma(*, a, b, c):
@@ -106,7 +118,7 @@ class VisionGraph(nn.Module):
                 if index != len(self.input_shapes) or len(row) != 9 or row[6:] != ["4", "0", "0"]:
                     raise ValueError("unsupported input storage")
                 n, h, w, c = map(int, row[2:6])
-                if n != 1 or c != 3 or min(h, w) < 1 or max(h, w) > 512:
+                if n != 1 or c != 3 or min(h, w) < 1 or max(h, w) > 1024:
                     raise ValueError("unsupported input dimensions")
                 target, shape = name, (n, c, h, w)
                 self.input_shapes[name] = shape
@@ -135,6 +147,56 @@ class VisionGraph(nn.Module):
                     with torch.no_grad():
                         layer.weight.copy_(kernel)
                         layer.bias.copy_(torch.from_numpy(data[-co:].copy()))
+            elif op == "Conv2D":
+                # groups ci co kh kw sh sw pad(l r t b) dilation(h w) bias relu, then storage and names.
+                if len(row) != 25 or row[17:23] != ["4", "0"] * 3:
+                    raise ValueError("unsupported dilated convolution storage")
+                g, ci, co, kh, kw, sh, sw, pl, pr, pt, pb, dh, dw, bias, relu = map(int, row[2:17])
+                if (g != 1 or not 1 <= co <= 1280 or kh != kw or kh not in (1, 3, 5) or sh != sw or sh != 1
+                        or not (pl == pr == pt == pb) or dh != dw or not 1 <= dh <= 32 or pl != dh * (kh // 2)
+                        or bias != 1 or relu not in (0, 1)):
+                    raise ValueError("unsupported dilated convolution semantics")
+                inputs, target, params = [row[23]], row[24], {"relu": bool(relu)}
+                n, cin, hi, wi = self._shape(name=inputs[0])
+                if cin != ci:
+                    raise ValueError("dilated convolution input channels differ")
+                layer = nn.Conv2d(ci, co, kh, 1, pl, dilation=dh)
+                shape = (n, co, hi, wi)
+                count = co * ci * kh * kw + co
+                if weights is not None:
+                    data = self._slice(weights=weights, start=cursor, count=count)
+                    with torch.no_grad():
+                        layer.weight.copy_(torch.from_numpy(data[:-co].copy()).reshape(co, kh, kw, ci).permute(0, 3, 1, 2))
+                        layer.bias.copy_(torch.from_numpy(data[-co:].copy()))
+            elif op == "Pooling":
+                if len(row) != 13 or row[2:11] != ["2", "2", "2", "2", "0", "0", "4", "0", "MAX"]:
+                    raise ValueError("only 2x2 stride-2 max pooling supported")
+                inputs, target = [row[11]], row[12]
+                n, c, h, w = self._shape(name=inputs[0])
+                if h % 2 or w % 2:
+                    raise ValueError("max pooling needs even extents")
+                shape = (n, c, h // 2, w // 2)
+            elif op == "Slice":
+                # Channel split into a leading block of K channels and the remainder.
+                if len(row) != 11 or row[3:5] != ["1", "1"] or row[6] != "2" or row[8] != "0" or row[10] != "0":
+                    raise ValueError("unsupported slice")
+                inputs, split = [row[2]], int(row[5])
+                n, c, h, w = self._shape(name=inputs[0])
+                if not 0 < split < c:
+                    raise ValueError("slice point outside the channel extent")
+                target, extra, params = row[7], row[9], {"split": split}
+                shape = (n, split, h, w)
+                if extra in self.shapes or extra == target:
+                    raise ValueError("duplicate slice output")
+                self.shapes[extra] = (n, c - split, h, w)
+                params["extra"] = extra
+            elif op == "OnnxOp2":
+                if len(row) != 8 or row[2] != "Mul" or row[6:] != ["4", "0"]:
+                    raise ValueError("unsupported binary operation")
+                inputs, target = row[3:5], row[5]
+                shape = self._shape(name=inputs[0])
+                if self._shape(name=inputs[1]) != shape:
+                    raise ValueError("multiply shapes differ; broadcasting unsupported")
             elif op == "Eltwise":
                 if len(row) != 8 or row[5:7] != ["4", "0"] or row[7] not in ("0", "1"):
                     raise ValueError("unsupported residual addition")
@@ -203,6 +265,12 @@ class VisionGraph(nn.Module):
                 else:
                     raise ValueError("unsupported pool parameters")
                 params = {"global": global_pool}
+            elif op == "OnnxOp1" and row[2:3] == ["ReduceSum"]:
+                if len(row) != 10 or row[5:] != ["4", "0", "1", "1", "1"]:
+                    raise ValueError("only keepdim channel reduce-sum supported")
+                inputs, target = [row[3]], row[4]
+                n, c, h, w = self._shape(name=inputs[0])
+                shape, params = (n, 1, h, w), {"reduce": True}
             elif op == "OnnxOp1":
                 if len(row) != 12 or row[2] != "Reshape":
                     raise ValueError("unsupported unary operation")
@@ -274,10 +342,10 @@ class VisionGraph(nn.Module):
             if op == "DataV2":
                 continue
             data = [values[k] for k in step["inputs"]]
-            if op in {"Convolution", "DepthwiseSeparableConvolution"}:
+            if op in {"Convolution", "DepthwiseSeparableConvolution", "Conv2D"}:
                 layer = self.layers[str(index)]
                 value = (self.ordered_convolution(value=data[0], weight=layer.weight, bias=layer.bias, stride=layer.stride,
-                                                  padding=layer.padding, groups=layer.groups)
+                                                  padding=layer.padding, groups=layer.groups, dilation=layer.dilation)
                          if self.ordered else layer(data[0]))
             elif op == "InnerProduct":
                 value = self.layers[str(index)](data[0].flatten(1))[:, :, None, None]
@@ -302,6 +370,14 @@ class VisionGraph(nn.Module):
                          else F.interpolate(data[0], size=params["size"], mode="bilinear", align_corners=False))
             elif op == "PoolingDown":
                 value = data[0].mean((2, 3), keepdim=True) if params["global"] else F.avg_pool2d(data[0], 2, 2)
+            elif op == "Pooling":
+                value = F.max_pool2d(data[0], 2, 2)
+            elif op == "Slice":
+                value, values[params["extra"]] = data[0][:, :params["split"]], data[0][:, params["split"]:]
+            elif op == "OnnxOp2":
+                value = data[0] * data[1]
+            elif op == "OnnxOp1" and params.get("reduce"):
+                value = channel_sum(value=data[0], ordered=self.ordered)
             elif op == "OnnxOp1":
                 value = data[0]
             else:
