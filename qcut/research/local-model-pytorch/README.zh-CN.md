@@ -117,7 +117,7 @@ mkdir -p .local/jianying-model-pytorch/bin
   research/local-model-pytorch/coreml-oracle.mm \
   -o .local/jianying-model-pytorch/bin/coreml-oracle
 
-EVIDENCE=/Users/peter/Desktop/code/qcut-binary-cpp-scaleup-wt/qcut/.local/jianying-shot-split
+EVIDENCE=.local/jianying-shot-split
 /opt/homebrew/bin/python3 research/local-model-pytorch/batch_export.py \
   --runtime-root "$HOME/Library/Application Support/QCut/PrivateRuntimes" \
   --oracle .local/jianying-model-pytorch/bin/coreml-oracle \
