@@ -13,6 +13,7 @@ from matting_torch import MattingGraph, linear_upsample, load_model, parse_graph
 
 class MattingTests(unittest.TestCase):
     def setUp(self):
+        self.addCleanup(torch.set_num_threads, torch.get_num_threads())
         torch.set_num_threads(1)
 
     def test_graph_counts_exclude_data(self):
