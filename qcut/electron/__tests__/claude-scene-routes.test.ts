@@ -57,15 +57,13 @@ function sceneRoute() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mocks.detectScenes
-		.mockReset()
-		.mockResolvedValue({
-			engine: "onnx",
-			route: "onnx-route",
-			scenes: [],
-			totalScenes: 0,
-			averageShotDuration: 0,
-		});
+	mocks.detectScenes.mockReset().mockResolvedValue({
+		engine: "onnx",
+		route: "onnx-route",
+		scenes: [],
+		totalScenes: 0,
+		averageShotDuration: 0,
+	});
 });
 
 describe("scene HTTP engine routing", () => {
@@ -97,16 +95,18 @@ describe("scene HTTP engine routing", () => {
 		);
 	});
 
+	// Each row is wrapped so vitest passes the value itself; a bare [] row
+	// would spread to no arguments and test `undefined` instead.
 	it.each([
-		null,
-		false,
-		0,
-		"auto",
-		"ONNX",
-		"torch",
-		"",
-		[],
-		{},
+		[null],
+		[false],
+		[0],
+		["auto"],
+		["ONNX"],
+		["torch"],
+		[""],
+		[[]],
+		[{}],
 	])("rejects invalid engine %j as HTTP 400", async (engine) => {
 		await expect(
 			sceneRoute()({ body: { mediaId: "video", engine } })
