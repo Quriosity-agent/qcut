@@ -186,6 +186,58 @@ test.describe("Private ONNX scene split through the real Electron editor", () =>
 		"Requires absolute QCUT_ONNX_SHOT_E2E_SOURCE (6s/four-scene montage), ONNX contract, and Python runtime paths"
 	);
 
+	test("S1 resolves an ordinary imported video and runs real ONNX inference", async ({
+		page,
+	}, testInfo) => {
+		const clip = await prepareMontage({ page });
+		const before = await readTimeline({ page });
+		const source = before.tracks
+			.flatMap((track) => track.elements)
+			.find((element): element is MediaElement => element.type === "media");
+		if (!source) throw new Error("Expected an imported video");
+		const media = await page.evaluate(async (mediaId) => {
+			const project = (
+				window as unknown as HarnessWindow
+			).__projectStore.getState().activeProject;
+			if (!project || !window.electronAPI?.claude)
+				throw new Error("Editor API unavailable");
+			return window.electronAPI.claude.media.info(project.id, mediaId);
+		}, source.mediaId);
+		expect(media).toMatchObject({ type: "video" });
+		if (!media?.path) throw new Error("Imported media has no durable path");
+		expect(path.basename(media.path)).toBe(`${source.mediaId}.mp4`);
+		expect((await stat(media.path)).size).toBe((await stat(sourcePath)).size);
+		await page.screenshot({ path: testInfo.outputPath("01-imported.png") });
+		await clip.click({ button: "right" });
+		await page.getByTestId("onnx-shot-split-menu-item").click();
+		await expect
+			.poll(
+				async () => {
+					const task = await readTask({ page });
+					if (task?.status === "failed") throw new Error(task.error);
+					return task?.status;
+				},
+				{ timeout: 60_000 }
+			)
+			.toBe("completed");
+		expect((await readTask({ page }))?.output).toMatchObject({
+			engine: "onnx",
+			route: "qcut-jianying-shot-split-onnx-v1",
+		});
+		await expect(page.getByTestId("timeline-element")).toHaveCount(4);
+		await page.screenshot({
+			path: testInfo.outputPath("02-media-resolved.png"),
+		});
+		await writeFile(
+			testInfo.outputPath("media-resolution.json"),
+			JSON.stringify(
+				{ mediaId: source.mediaId, media, task: await readTask({ page }) },
+				null,
+				2
+			)
+		);
+	});
+
 	test("detects four shots, previews each, undoes, saves, reloads, and exports", async ({
 		page,
 		electronApp,
