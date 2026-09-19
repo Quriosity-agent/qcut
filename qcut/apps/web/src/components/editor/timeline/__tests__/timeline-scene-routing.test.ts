@@ -379,12 +379,10 @@ describe("pending scene-result snapshot guard", () => {
 				break;
 			case "replace-file":
 				useMediaStore.setState({
-					mediaItems: useMediaStore
-						.getState()
-						.mediaItems.map((item) => ({
-							...item,
-							file: new File(["other"], "source.mp4"),
-						})),
+					mediaItems: useMediaStore.getState().mediaItems.map((item) => ({
+						...item,
+						file: new File(["other"], "source.mp4"),
+					})),
 				});
 				break;
 			case "remove-media":
