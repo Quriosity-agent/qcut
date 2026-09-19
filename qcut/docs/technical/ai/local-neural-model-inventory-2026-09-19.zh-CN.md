@@ -62,7 +62,7 @@
 | N11 | `tt_freid` v2.0 | 人脸跨帧 ID，逐人美颜参数绑定 | 不等于已经接入跨镜头身份识别 `tt_faceverify` |
 | N12 | `tt_skin_seg` v5.1 | 皮肤掩膜、磨皮/肤色、模型驱动双 LUT 滤镜 | Metal 混合器独立，不意味着 skin mask 模型独立 |
 | N13 | `tt_skeletonsquat` v10.0 | 美体关键点与形变输入 | `body` 固定包；不要从此推导所有骨骼模型都已接入 |
-| N14 | `jypc_yunfuhua_gpucpu` v1.0 | 匀肤、丰盈 GAN | 两个控制共用 `skin-gan` 包，计一个模型家族 |
+| N14 | `jypc_yunfuhua_gpucpu` v1.0 | 匀肤、丰盈 GAN | 两个控制共用 `skin-gan` 包，计一个模型家族；2026-09-19 已恢复为 PyTorch 并通过 CPU 原生对拍（[记录](../../../research/local-model-pytorch/yunfuhua-parity.zh-CN.md)），产品前处理、GPU 路径与接入未验证 |
 | N15 | `newbandou` v1.0 | 祛斑祛痘神经修复 | `spot-acne` 包，另有 A02 脚本依赖 |
 
 可追溯代码：
