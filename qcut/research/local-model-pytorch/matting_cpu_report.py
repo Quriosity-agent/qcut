@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from matting_cpu_export import digest, fresh_directory
+from matting_cpu_math_oracle import CASE_NAMES as MATH_CASE_NAMES, SCOPE as MATH_SCOPE
 
 
 def combine(*, run: Path, media: list[Path], trace: Path, math: Path, out: Path,
@@ -34,6 +35,12 @@ def combine(*, run: Path, media: list[Path], trace: Path, math: Path, out: Path,
         media_checks[-1].update({key: item[key] for key in ("sampled_frames", "fps") if key in item})
     diagnosis = json.loads(trace.read_text())
     math_proof = json.loads(math.read_text())
+    # The synthetic proof carries no bundle identity, so pin its contract:
+    # the published scope, the exact case set, and the bundle's runtime.
+    if math_proof.get("scope") != MATH_SCOPE or [case.get("case") for case in math_proof.get("cases", [])] != list(MATH_CASE_NAMES):
+        raise ValueError("math proof does not match the synthetic softmax contract")
+    if math_proof.get("native", {}).get("runtime_sha256") != base["runtime_sha256"]:
+        raise ValueError("math proof runtime differs from the bundle")
     diagnostics = []
     for path in [trace, *(extra_traces or []), *([counterexample] if counterexample else [])]:
         item = json.loads(path.read_text())
@@ -47,8 +54,12 @@ def combine(*, run: Path, media: list[Path], trace: Path, math: Path, out: Path,
                             "scope": item.get("scope", "not a model-parity assessment")})
     passed = (all(scope["status"] == "native-parity-passed" for scope in scopes) and all(case["passed"] for case in cases)
               and math_proof["status"] == "native-parity-passed")
+    temporal_passed = (all(scope["status"] == "native-parity-passed" for scope in scopes if scope["name"].startswith("temporal-clip-"))
+                       and all(case["passed"] for case in cases if case["scope"].startswith("temporal-clip-")))
     report = {**base, "status": "native-parity-passed" if passed else "native-parity-failed", "cases": cases,
-              "verification_scopes": scopes, "temporal_checks": media_checks, "temporal_scope": "executed; see separately failed temporal scopes",
+              "verification_scopes": scopes, "temporal_checks": media_checks, "temporal_passed": temporal_passed,
+              "temporal_scope": "executed; every temporal scope and case passed" if temporal_passed
+              else "executed; see separately failed temporal scopes",
               "first_failing_layer": diagnosis["first_failure"], "diagnostic_report": str(trace.resolve()),
               "diagnostics": diagnostics,
               "isolated_softmax_on_native_logits": diagnosis["isolated_cpu_softmax_on_native_logits"],
@@ -58,7 +69,9 @@ def combine(*, run: Path, media: list[Path], trace: Path, math: Path, out: Path,
               "integration": {"module": "matting_torch", "loader": "load_model(path=..., expected_sha256=..., allow_unverified=True)",
                               "candidate_opt_in_required": True,
                               "format": "qcut-private-matting-gru-cpu-v2", "vendor_runtime_required_for_loading": False},
-              "scope": "CPU network only; original arena normalization independently native-verified; complete temporal parity failed; no product/editor GPU or preprocessing claim"}
+              "scope": "CPU network only; original arena normalization independently native-verified; "
+                       + ("complete temporal parity passed" if temporal_passed else "complete temporal parity failed")
+                       + "; no product/editor GPU or preprocessing claim"}
     (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return report
 
