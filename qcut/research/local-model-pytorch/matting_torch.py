@@ -17,6 +17,7 @@ from matting_cpu_math import CPU_SOFTMAX, two_channel_softmax
 
 FORMAT = "qcut-private-matting-gru-v1"
 CPU_FORMAT = "qcut-private-matting-gru-cpu-v2"
+ORDERED_CPU_FORMAT = "qcut-private-matting-gru-cpu-v3"
 CPU_RUNTIME_SHA256 = "febfce4549cd6337c232c22ed00463a54cda7b255c4961426a33bfc78542b863"
 NODES_SHA256 = "2f990fecc0a2e4fb1f19763a2e4b9d5b35c615862c912363e8bc38771904ba40"
 OUTPUTS = ("nn_3", "Add_196", "Add_213", "Add_230")
@@ -276,21 +277,30 @@ def load_model(path: Path | str, *, expected_sha256: str | None = None,
     bundle = torch.load(path, map_location="cpu", weights_only=True)
     if not isinstance(bundle, dict) or not isinstance(bundle.get("source_asset"), dict) or not isinstance(bundle.get("loaded_buffer"), dict):
         raise ValueError("invalid matting bundle schema")
-    if bundle.get("format") not in {FORMAT, CPU_FORMAT} or bundle.get("source_asset", {}).get("sha256") != SOURCE_SHA256 or bundle.get("loaded_buffer", {}).get("sha256") != LOADED_SHA256 or bundle.get("resize_profile") != "half-pixel-zero-border":
+    if bundle.get("format") not in {FORMAT, CPU_FORMAT, ORDERED_CPU_FORMAT} or bundle.get("source_asset", {}).get("sha256") != SOURCE_SHA256 or bundle.get("loaded_buffer", {}).get("sha256") != LOADED_SHA256 or bundle.get("resize_profile") != "half-pixel-zero-border":
         raise ValueError("unsupported matting bundle provenance")
-    if bundle["format"] == CPU_FORMAT and not allow_unverified:
+    cpu_format = bundle["format"] in {CPU_FORMAT, ORDERED_CPU_FORMAT}
+    if cpu_format and not allow_unverified:
         raise ValueError("unverified CPU matting candidate: research loading requires allow_unverified=True")
-    profile = CPU_SOFTMAX if bundle["format"] == CPU_FORMAT else "torch"
+    profile = CPU_SOFTMAX if cpu_format else "torch"
     if bundle.get("softmax_profile", "torch") != profile:
         raise ValueError("matting softmax profile mismatch")
     nodes = bundle.get("nodes")
     if not isinstance(nodes, list) or len(nodes) != 198 or hashlib.sha256(json.dumps(nodes, separators=(",", ":")).encode()).hexdigest() != NODES_SHA256:
         raise ValueError("unsupported matting graph semantics")
-    if bundle["format"] == CPU_FORMAT and (bundle.get("runtime_sha256") != CPU_RUNTIME_SHA256 or
+    if cpu_format and (bundle.get("runtime_sha256") != CPU_RUNTIME_SHA256 or
             bundle.get("input_schema") != INPUT_SHAPES or bundle.get("output_schema") != OUTPUT_SHAPES or
             bundle.get("fp16_decoder_profile") != "arm64-four-lane-xor-subnormal-standard-tail"):
         raise ValueError("CPU matting runtime or tensor schema mismatch")
-    model = MattingGraph(nodes=bundle["nodes"], softmax_profile=profile).eval()
+    if bundle["format"] == ORDERED_CPU_FORMAT:
+        from matting_phase5_torch import ORDERED_PROFILE, OrderedMattingGraph
+        if bundle.get("arithmetic_profile") != ORDERED_PROFILE:
+            raise ValueError("ordered matting arithmetic profile mismatch")
+        model = OrderedMattingGraph(nodes=bundle["nodes"], softmax_profile=profile).eval()
+    else:
+        if bundle.get("arithmetic_profile", "torch") != "torch":
+            raise ValueError("legacy matting arithmetic profile mismatch")
+        model = MattingGraph(nodes=bundle["nodes"], softmax_profile=profile).eval()
     validate_state(model=model, state=bundle.get("state_dict"))
     model.load_state_dict(bundle["state_dict"], strict=True)
     if model.input_shapes != INPUT_SHAPES or model.parameter_count != 1787410 or len(model.nodes) != 198:
