@@ -35,6 +35,14 @@ def require(*, layer, key, values, default=0):
         raise UnsupportedModel(f"{layer['name']}: unsupported {key}={layer.get(key)}")
 
 
+def require_positive(*, layer, key, integer=False):
+    """Fields that _execute indexes directly must be present at construction time."""
+    value = layer.get(key)
+    valid = isinstance(value, int) if integer else isinstance(value, (int, float))
+    if isinstance(value, bool) or not valid or value <= 0:
+        raise UnsupportedModel(f"{layer['name']}: missing or invalid {key}={value}")
+
+
 def validate_layer(*, layer):
     kind = layer["type"]
     if kind not in OP_FIELDS:
@@ -83,6 +91,8 @@ def validate_layer(*, layer):
             require(layer=layer, key=key, values={0})
         for key in ("fractional_scaling_factor_x", "fractional_scaling_factor_y"):
             require(layer=layer, key=key, values={1}, default=1)
+        for key in ("scaling_factor_x", "scaling_factor_y"):
+            require_positive(layer=layer, key=key)
     if kind == "split_nd":
         require(layer=layer, key="nd_axis", values={-3, 1})
         if any(value != 0 for key, value in layer.items() if key.startswith("begin_")):
@@ -92,6 +102,8 @@ def validate_layer(*, layer):
         require(layer=layer, key="top_shape_style", values={2})
         if any(layer.get("pad_" + edge, 0) for edge in ("l", "r", "t", "b")):
             raise UnsupportedModel("padded pooling")
+        for key in ("size_x", "size_y", "stride_x", "stride_y"):
+            require_positive(layer=layer, key=key, integer=True)
     if kind == "load_constant":
         require(layer=layer, key="nd_rank", values={1, 4}, default=4)
         if layer.get("nd_rank") == 1 and any(layer[key] != 1 for key in ("n", "k", "h", "w")):
