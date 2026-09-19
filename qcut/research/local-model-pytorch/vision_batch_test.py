@@ -9,13 +9,15 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 
-from vision_batch_export import fresh_directory, synthetic_cases
+from vision_batch_export import fresh_directory, synthetic_cases, synthetic_input_cases
+from vision_batch_profiles import (ORDERED_EXECUTION_PROFILE, execution_profile,
+                                   input_shapes as profile_input_shapes)
 from vision_batch_torch import (EXECUTION_PROFILE, FORMAT, PROFILES, RUNTIME_SHA256,
-                                VisionGraph, digest, load_model, parse_graph, state_digest)
+                                VisionGraph, digest, load_model, parse_graph, separable_bilinear, state_digest)
 
 
-def data_row(*, h=4, w=4):
-    return ["DataV2", "data", "1", str(h), str(w), "3", "4", "0", "0"]
+def data_row(*, h=4, w=4, name="data"):
+    return ["DataV2", name, "1", str(h), str(w), "3", "4", "0", "0"]
 
 
 def conv_row(*, kind="Convolution", name="conv", cin="data", co=3, kernel=1, relu=0):
@@ -23,8 +25,8 @@ def conv_row(*, kind="Convolution", name="conv", cin="data", co=3, kernel=1, rel
             "1", str(relu), "4", "0", "4", "0", "4", "0", cin, name]
 
 
-def graph_text(*, nodes):
-    return f"1 {len(nodes) - 1} 0\\n\n" + "\n".join(" ".join(row) + "\\n" for row in nodes) + "\n"
+def graph_text(*, nodes, inputs=1):
+    return f"{inputs} {len(nodes) - inputs} 0\\n\n" + "\n".join(" ".join(row) + "\\n" for row in nodes) + "\n"
 
 
 class VisionGraphTests(unittest.TestCase):
@@ -95,6 +97,69 @@ class VisionGraphTests(unittest.TestCase):
         model = VisionGraph(nodes=[data_row(), row])
         value = torch.arange(48, dtype=torch.float32).reshape(1, 3, 4, 4)
         torch.testing.assert_close(model({"data": value})["pool"], F.avg_pool2d(value, 2, 2), atol=0, rtol=0)
+
+    def test_condition_gate_sigmoid_and_fractional_upsample(self):
+        nodes = [data_row(), data_row(h=1, w=1, name="cond"), conv_row(name="feat"),
+                 conv_row(name="gate", cin="cond"), ["Sigmoid", "sig", "gate", "sig", "4", "0"],
+                 ["SEScale", "scaled", "feat", "sig", "scaled", "4", "0", "0"],
+                 ["Upsample", "up", "1.5", "linear", "0", "1", "scaled", "up"]]
+        weights = np.concatenate([np.arange(12, dtype=np.float32), np.arange(12, dtype=np.float32)[::-1].copy()])
+        model = VisionGraph(nodes=parse_graph(text=graph_text(nodes=nodes, inputs=2)), weights=weights)
+        self.assertEqual(model.input_shapes, {"data": (1, 3, 4, 4), "cond": (1, 3, 1, 1)})
+        self.assertEqual(model.output_shapes, {"up": (1, 3, 6, 6)})
+        image, cond = torch.rand(1, 3, 4, 4), torch.rand(1, 3, 1, 1)
+        result = model({"data": image, "cond": cond}, capture=True)
+        expected_scaled = result["feat"] * torch.sigmoid(result["gate"])
+        torch.testing.assert_close(result["scaled"], expected_scaled, atol=0, rtol=0)
+        torch.testing.assert_close(result["up"], F.interpolate(expected_scaled, size=(6, 6), mode="bilinear",
+                                                              align_corners=False), atol=0, rtol=0)
+
+    def test_inputs_must_lead_and_gate_must_be_singleton(self):
+        with self.assertRaises(ValueError):
+            VisionGraph(nodes=[data_row(), conv_row(), data_row(name="late")])
+        with self.assertRaises(ValueError):
+            VisionGraph(nodes=[data_row(), data_row(name="other"), conv_row(), conv_row(name="b", cin="other"),
+                               ["SEScale", "s", "conv", "b", "s", "4", "0", "0"]])
+        for row in (["Upsample", "up", "0.5", "linear", "0", "1", "conv", "up"],
+                    ["Upsample", "up", "2", "nearest", "0", "1", "conv", "up"],
+                    ["Upsample", "up", "2", "linear", "1", "1", "conv", "up"]):
+            with self.assertRaises(ValueError):
+                VisionGraph(nodes=[data_row(), conv_row(), row])
+        with self.assertRaises(ValueError):
+            parse_graph(text=graph_text(nodes=[data_row(), data_row(name="other"), conv_row()], inputs=1))
+
+    def test_profile_input_shapes_and_multi_input_cases(self):
+        self.assertEqual(profile_input_shapes(profile={"input_shape": [1, 3, 4, 4]}), {"data": (1, 3, 4, 4)})
+        shapes = profile_input_shapes(profile={"input_shapes": {"data0": [1, 3, 4, 4], "data1": [1, 3, 1, 1]}})
+        cases = synthetic_input_cases(shapes=shapes)
+        self.assertEqual(len(cases), 10)
+        self.assertEqual({tuple(v.shape) for case in cases.values() for v in case.values()}, {(1, 3, 4, 4), (1, 3, 1, 1)})
+        first, second = cases["random-17"]["data0"].flatten()[:3], cases["random-17"]["data1"].flatten()
+        self.assertFalse(np.array_equal(first, second))
+        np.testing.assert_array_equal(cases["random-17"]["data0"], synthetic_cases(shape=(1, 3, 4, 4))["random-17"])
+
+    def test_separable_bilinear_matches_half_pixel_resize(self):
+        value = torch.rand(1, 3, 3, 4)
+        for size in ((6, 8), (5, 7)):
+            torch.testing.assert_close(separable_bilinear(value=value, size=size),
+                                       F.interpolate(value, size=size, mode="bilinear", align_corners=False),
+                                       atol=4e-6, rtol=0)
+        constant = torch.full((1, 2, 3, 3), 0.7)
+        self.assertTrue(torch.equal(separable_bilinear(value=constant, size=(5, 5)), torch.full((1, 2, 5, 5), 0.7)))
+
+    def test_ordered_execution_matches_plain_within_rounding(self):
+        nodes = [data_row(), conv_row(name="a", kernel=3), conv_row(kind="DepthwiseSeparableConvolution", name="b", cin="a", kernel=3),
+                 ["Tanh", "t", "b", "t", "4", "0"], ["Sigmoid", "s", "b", "s", "4", "0"], ["UpSampling", "u", "b", "u", "BILINEAR"]]
+        weights = np.linspace(-1, 1, 84 + 30, dtype=np.float32)
+        plain = VisionGraph(nodes=nodes, weights=weights)
+        ordered = VisionGraph(nodes=nodes, weights=weights, ordered=True)
+        value = torch.rand(1, 3, 4, 4)
+        for name in ("t", "s", "u"):
+            torch.testing.assert_close(ordered({"data": value})[name], plain({"data": value})[name], atol=1e-5, rtol=1e-5)
+        with self.assertRaises(ValueError):
+            VisionGraph(nodes=nodes, ordered=1)
+        self.assertEqual(execution_profile(profile={"execution": "ordered-fma"}), ORDERED_EXECUTION_PROFILE)
+        self.assertNotEqual(execution_profile(profile={}), ORDERED_EXECUTION_PROFILE)
 
     def test_bad_weight_arena_rejected(self):
         for weights in (np.zeros(11, np.float32), np.zeros(13, np.float32), np.zeros(12, np.float64),
@@ -182,6 +247,13 @@ class VisionBundleTests(unittest.TestCase):
         torch.save(self.bundle, self.path)
         with patch.dict(PROFILES, {"synthetic": self.profile}):
             return load_model(path=self.path, allow_unverified=allow_unverified, expected_sha256=expected_sha256)
+
+    def test_ordered_profile_requires_ordered_bundle_stamp(self):
+        self.profile["execution"] = "ordered-fma"
+        with self.assertRaises(ValueError):
+            self.load()
+        self.bundle["execution_profile"] = ORDERED_EXECUTION_PROFILE
+        self.assertTrue(self.load().ordered)
 
     def test_weights_only_roundtrip(self):
         clone = self.load()
