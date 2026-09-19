@@ -1,0 +1,92 @@
+name: Local model ONNX portability
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/onnx_*.py
+      - qcut/research/local-model-pytorch/requirements-onnx-*.txt
+      - .github/workflows/local-model-onnx.yml
+  push:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/onnx_*.py
+      - qcut/research/local-model-pytorch/requirements-onnx-*.txt
+      - .github/workflows/local-model-onnx.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-model-onnx-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: qcut
+
+jobs:
+  synthetic-portability:
+    name: Authored ONNX (${{ matrix.runner }}, ${{ matrix.architecture }})
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+            system: Linux
+            machine: x86_64
+          - runner: windows-2025
+            architecture: x64
+            system: Windows
+            machine: x86_64
+          - runner: macos-15
+            architecture: arm64
+            system: Darwin
+            machine: arm64
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+            system: Linux
+            machine: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.10'
+          architecture: ${{ matrix.architecture }}
+      - name: Install only the pinned public graph and CPU runtime dependencies
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+          root = Path('research/local-model-pytorch')
+          pins = [line.strip() for line in (root / 'requirements-onnx-export.txt').read_text().splitlines()
+                  if line.startswith('onnx==')]
+          if len(pins) != 1:
+              raise SystemExit('Expected exactly one pinned ONNX graph-builder dependency')
+          subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--only-binary=:all:',
+                                 '-r', str(root / 'requirements-onnx-runtime.txt'), pins[0]])
+          PY
+      - name: Verify authored graphs and runtime contracts without PyTorch
+        run: >-
+          python research/local-model-pytorch/onnx_platform_suite.py
+          --out .local/jianying-model-pytorch/phase5-platform/ci-${{ matrix.runner }}
+          --require-no-torch
+          --expected-system ${{ matrix.system }}
+          --expected-machine ${{ matrix.machine }}
+      - name: Upload synthetic metrics only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onnx-synthetic-${{ matrix.runner }}-${{ matrix.architecture }}
+          path: qcut/.local/jianying-model-pytorch/phase5-platform/ci-${{ matrix.runner }}/report.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
