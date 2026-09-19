@@ -54,10 +54,10 @@ def depthwise_accumulate(patches: torch.Tensor, weights: torch.Tensor, bias: tor
     return total
 
 
-def ordered_convolution(*, value, weight, bias, stride, padding, groups):
+def ordered_convolution(*, value, weight, bias, stride, padding, groups, dilation=(1, 1)):
     n, channels, height, width = value.shape
     cout, _, kh, kw = weight.shape
-    patches = F.unfold(value, (kh, kw), padding=padding, stride=stride)
+    patches = F.unfold(value, (kh, kw), dilation=dilation, padding=padding, stride=stride)
     if groups == 1:
         patches = patches.reshape(n, channels, kh * kw, -1).transpose(1, 2).flatten(1, 2)
         weights = weight.permute(0, 2, 3, 1).reshape(cout, -1)
@@ -66,6 +66,6 @@ def ordered_convolution(*, value, weight, bias, stride, padding, groups):
         result = depthwise_accumulate(patches.reshape(n, channels, kh * kw, -1), weight.reshape(cout, -1), bias)
     else:
         raise ValueError("unsupported ordered convolution grouping")
-    oh = (height + 2 * padding[0] - kh) // stride[0] + 1
-    ow = (width + 2 * padding[1] - kw) // stride[1] + 1
+    oh = (height + 2 * padding[0] - dilation[0] * (kh - 1) - 1) // stride[0] + 1
+    ow = (width + 2 * padding[1] - dilation[1] * (kw - 1) - 1) // stride[1] + 1
     return result.reshape(n, cout, oh, ow)
