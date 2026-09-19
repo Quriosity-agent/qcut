@@ -14,6 +14,10 @@ def metrics(*, actual: torch.Tensor, expected: torch.Tensor) -> dict[str, object
     if actual.shape == expected.shape and actual.dtype == expected.dtype == torch.float32:
         differing = actual.contiguous().view(torch.int32) != expected.contiguous().view(torch.int32)
         result.update(bitwise_equal=not bool(differing.any()), bitwise_differing_values=int(differing.sum()))
+    else:
+        # A schema mismatch is a difference the diagnostics must report, not a
+        # missing key for them to trip over.
+        result.update(bitwise_equal=False, bitwise_differing_values=None)
     return result
 
 
