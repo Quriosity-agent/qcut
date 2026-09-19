@@ -345,12 +345,10 @@ export async function runTimelineSmartShotSplit({
 				open: openSource,
 			},
 		});
-		useCloudTaskStore
-			.getState()
-			.startTask({
-				id: taskId,
-				message: `正在检测镜头边界 (${engine === "onnx" ? "ONNX" : "FFmpeg"})`,
-			});
+		useCloudTaskStore.getState().startTask({
+			id: taskId,
+			message: `正在检测镜头边界 (${engine === "onnx" ? "ONNX" : "FFmpeg"})`,
+		});
 		useCloudTaskStore.getState().updateProgress({ id: taskId, progress: 10 });
 		toastId = toast.loading("正在检测镜头边界...");
 		const result = await analyzeScenes(projectId, {
