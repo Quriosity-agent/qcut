@@ -9,6 +9,9 @@ from matting_cpu_export import (compare, compile_oracle, fresh_directory, read_t
                                 run_oracle, write_schema, write_tensor)
 from matting_cpu_math import two_channel_softmax
 
+SCOPE = "synthetic two-channel CPU Softmax only, fixed 256x256 vectorized profile"
+CASE_NAMES = ("case-000-zero", "case-001-ramp", "case-002-holdout-random", "case-003-holdout-extreme")
+
 
 def verify(*, out: Path):
     out = fresh_directory(path=out)
@@ -24,6 +27,8 @@ def verify(*, out: Path):
     values = {"zero": torch.zeros(shape), "ramp": torch.linspace(-40, 40, 131072).reshape(shape),
               "holdout-random": torch.rand(shape, generator=generator) * 24 - 12,
               "holdout-extreme": torch.rand(shape, generator=generator) * 2000 - 1000}
+    if tuple(f"case-{index:03d}-{name}" for index, name in enumerate(values)) != CASE_NAMES:
+        raise ValueError("synthetic proof case set drifted from the published contract")
     for index, (name, value) in enumerate(values.items()):
         directory = out / f"case-{index:03d}-{name}"
         directory.mkdir()
@@ -39,7 +44,7 @@ def verify(*, out: Path):
                           input_echo_exact=(directory / "in-data.f32").read_bytes() == (directory / "echo-data.f32").read_bytes())
             cases.append(result)
     report = {"status": "native-parity-passed" if cases and all(case["passed"] and case["input_echo_exact"] for case in cases) else "native-parity-failed",
-              "native": native, "cases": cases, "scope": "synthetic two-channel CPU Softmax only, fixed 256x256 vectorized profile",
+              "native": native, "cases": cases, "scope": SCOPE,
               "tolerances": {"atol": 1e-4, "rtol": 1e-4}}
     (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return report
