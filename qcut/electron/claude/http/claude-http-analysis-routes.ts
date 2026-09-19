@@ -44,6 +44,7 @@ import { saveTranscription } from "./claude-http-search-routes.js";
 import { getRequestCorrelationId } from "./claude-http-meta-routes.js";
 import type { BrowserWindow } from "electron";
 import type { WindowProxy } from "./claude-http-shared-routes.js";
+import { SCENE_DETECTION_ENGINES } from "../../types/claude-api.js";
 import type {
 	AutoEditRequest,
 	AutoEditJob,
@@ -442,9 +443,31 @@ export function registerAnalysisRoutes(
 		if (!req.body?.mediaId) {
 			throw new HttpError(400, "Missing 'mediaId' in request body");
 		}
+		if (
+			req.body.engine !== undefined &&
+			!SCENE_DETECTION_ENGINES.some((engine) => engine === req.body.engine)
+		) {
+			throw new HttpError(
+				400,
+				"Invalid scene detection engine; expected 'ffmpeg' or 'onnx'"
+			);
+		}
+		if (
+			req.body.aiAnalysis !== undefined &&
+			typeof req.body.aiAnalysis !== "boolean"
+		) {
+			throw new HttpError(400, "aiAnalysis must be a boolean");
+		}
+		if (req.body.engine === "onnx" && req.body.threshold !== undefined) {
+			throw new HttpError(
+				400,
+				"threshold is only supported by the FFmpeg scene engine"
+			);
+		}
 		try {
 			const result = await detectScenes(req.params.projectId, {
 				mediaId: req.body.mediaId,
+				engine: req.body.engine,
 				threshold: req.body.threshold,
 				aiAnalysis: req.body.aiAnalysis,
 				model: req.body.model,
@@ -455,7 +478,12 @@ export function registerAnalysisRoutes(
 				details: `Detected scenes for media ${req.body.mediaId}`,
 				timestamp: Date.now(),
 				projectId: req.params.projectId,
-				metadata: { mediaId: req.body.mediaId, model: req.body.model },
+				metadata: {
+					mediaId: req.body.mediaId,
+					model: req.body.model,
+					engine: result.engine,
+					route: result.route,
+				},
 			});
 			return result;
 		} catch (error) {
