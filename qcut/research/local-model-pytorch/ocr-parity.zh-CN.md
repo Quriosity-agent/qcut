@@ -87,7 +87,7 @@ outputs = model({"data": input_tensor})
 
 ## 识别器失败候选
 
-独立初探已留下 `ocr-rec-r1`，未继续扩展，也未计入通过数量：
+独立初探留下的首个失败候选是 `ocr-rec-r1`，它本身未计入通过数量。同一源随后继续做了 v2、v3、v4 候选，v4 已在完整 20/20 用例通过，见 [ocr-rec-phase4.zh-CN.md](ocr-rec-phase4.zh-CN.md)。以下是 r1 的历史记录：
 
 - 源 SHA：`d158975a0f2e1cacf95cb88a6f83343143af5f5dbf4cc850eff92aeba3bf7bac`。
 - 269 层，源尺寸 `[1,3,32,512]`；原生 CPU 两个用例成功执行，输入回读相同，完整 FP16 arena 扩展与原生一致。
