@@ -14,7 +14,7 @@ import torch
 
 from matting_cpu_math import CPU_SOFTMAX
 from ocr_torch import widen_fp16
-from matting_torch import (CPU_FORMAT, CPU_RUNTIME_SHA256, INPUT_SHAPES, LOADED_SHA256, OUTPUTS, OUTPUT_SHAPES, SOURCE_PATH,
+from matting_torch import (CPU_FORMAT, ORDERED_CPU_FORMAT, CPU_RUNTIME_SHA256, INPUT_SHAPES, LOADED_SHA256, OUTPUTS, OUTPUT_SHAPES, SOURCE_PATH,
                            SOURCE_SHA256, MattingGraph, load_model, parse_graph)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -170,7 +170,9 @@ def verify_case(*, path: Path, actual: dict[str, torch.Tensor], supplied: dict[s
     return result
 
 
-def export(*, out: Path) -> dict[str, object]:
+def export(*, out: Path, ordered: bool = False) -> dict[str, object]:
+    if type(ordered) is not bool:
+        raise ValueError("ordered must be an explicit boolean")
     out = fresh_directory(path=out)
     source = SOURCE_PATH.read_bytes()
     bm = (EVIDENCE / "loaded-buffer.bin").read_bytes()
@@ -192,14 +194,21 @@ def export(*, out: Path) -> dict[str, object]:
     arena = out / "arena-fp32.private.bin"
     # The recovered graph has already lost its outer E (FP16-arena) marker.
     arena.write_bytes(weights.astype("<f4").tobytes() + raw_arena[-4:])
-    model = MattingGraph(nodes=parse_graph(text=graph_text), weights=weights, softmax_profile=CPU_SOFTMAX).eval()
-    bundle = {"format": CPU_FORMAT, "nodes": model.nodes, "state_dict": model.state_dict(),
+    graph_type = MattingGraph
+    arithmetic_profile = "torch"
+    if ordered:
+        from matting_phase5_torch import ORDERED_PROFILE, OrderedMattingGraph
+        graph_type, arithmetic_profile = OrderedMattingGraph, ORDERED_PROFILE
+    model = graph_type(nodes=parse_graph(text=graph_text), weights=weights, softmax_profile=CPU_SOFTMAX).eval()
+    bundle = {"format": ORDERED_CPU_FORMAT if ordered else CPU_FORMAT, "nodes": model.nodes, "state_dict": model.state_dict(),
               "source_asset": {"path": str(SOURCE_PATH), "sha256": SOURCE_SHA256},
               "loaded_buffer": {"sha256": LOADED_SHA256}, "local_only": True,
               "runtime_sha256": RUNTIME_SHA256, "resize_profile": "half-pixel-zero-border", "softmax_profile": CPU_SOFTMAX,
               "input_schema": INPUT_SHAPES, "output_schema": OUTPUT_SHAPES,
               "fp16_decoder_profile": fp16_proof["profile"],
               "validation_status": "candidate-native-unverified"}
+    if ordered:
+        bundle["arithmetic_profile"] = arithmetic_profile
     artifact = out / "matting-gru.pt"
     torch.save(bundle, artifact)
     restored = load_model(path=artifact, allow_unverified=True)
@@ -207,6 +216,9 @@ def export(*, out: Path) -> dict[str, object]:
     write_schema(path=out / "inputs.tsv", shapes=INPUT_SHAPES)
     write_schema(path=out / "outputs.tsv", shapes=OUTPUT_SHAPES)
     cases = synthetic_cases()
+    if ordered:
+        from matting_phase5_cases import holdout_cases
+        cases.update(holdout_cases())
     forward_equal = True
     actuals = {}
     with torch.inference_mode():
@@ -230,6 +242,7 @@ def export(*, out: Path) -> dict[str, object]:
               "source_bm_offset": source.index(bm), "runtime_sha256": RUNTIME_SHA256,
               "graph_sha256": digest(data=graph_text.encode()), "arena_sha256": digest(data=arena.read_bytes()),
               "artifact": str(artifact), "artifact_sha256": digest(data=artifact.read_bytes()),
+              "arithmetic_profile": arithmetic_profile,
               "backend": "bytenn_cpu::Thrustor forced CPU", "native": native,
               "verification_scope": "forced CPU Thrustor forward_type=0; original FP16 arena expansion bit-exact against pinned native function; explicit retained four-output NWHC/NHWC tensors",
               "scope": "original-size network tensors; not product GPU/preprocessing/mask parity",
@@ -246,9 +259,10 @@ def export(*, out: Path) -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--ordered", action="store_true")
     args = parser.parse_args()
     torch.set_num_threads(2)
-    report = export(out=args.out)
+    report = export(out=args.out, ordered=args.ordered)
     print(json.dumps({"status": report["status"], "artifact": report["artifact"], "native": report["native"],
                       "case_passes": [case["passed"] for case in report["cases"]]}, indent=2))
     return 0 if report["status"] == "native-parity-passed" else 1
