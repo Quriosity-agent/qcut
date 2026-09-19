@@ -122,6 +122,11 @@ vi.mock("../ffmpeg/utils", () => ({
 	getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
 }));
 
+const { mockDetectOnnx } = vi.hoisted(() => ({ mockDetectOnnx: vi.fn() }));
+vi.mock("../jianying-shot-split/onnx-engine.js", () => ({
+	detectShotsWithOnnxEngine: mockDetectOnnx,
+}));
+
 // Mock child_process.spawn for FFmpeg scene detection
 const { mockSpawn } = vi.hoisted(() => {
 	const { EventEmitter } = require("node:events");
@@ -278,6 +283,160 @@ describe("detectScenes", () => {
 		const spawnArgs = mockSpawn.mock.calls[0][1] as string[];
 		const filterArg = spawnArgs.find((a: string) => a.includes("scene,"));
 		expect(filterArg).toContain("0.5");
+		expect(result.engine).toBe("ffmpeg");
+		expect(mockDetectOnnx).not.toHaveBeenCalled();
+	});
+});
+
+describe("detectScenes ONNX routing", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockExistsSync.mockReturnValue(true);
+		mockDetectOnnx.mockReset();
+		mockDetectOnnx.mockResolvedValue({
+			engine: "onnx",
+			route: "qcut-jianying-shot-split-onnx-v1",
+			durationSeconds: 12,
+			cutPoints: [2, 2.25, 8],
+			cutFrames: [47, 53, 191],
+			scores: [
+				[47, 0.91],
+				[53, 0.73],
+				[191, 0.88],
+			],
+		});
+	});
+
+	it("keeps precise close ONNX cuts, engine metadata, and the final shot duration", async () => {
+		const result = await detectScenes("test-project", {
+			mediaId: "valid-video",
+			engine: "onnx",
+		});
+		expect(mockDetectOnnx).toHaveBeenCalledWith({
+			request: {
+				sourcePath: "/mock/Documents/QCut/Projects/test/media/test.mp4",
+			},
+		});
+		expect(result).toEqual({
+			engine: "onnx",
+			route: "qcut-jianying-shot-split-onnx-v1",
+			durationSeconds: 12,
+			scenes: [
+				{ timestamp: 0, confidence: 1 },
+				{ timestamp: 2, confidence: 0.91 },
+				{ timestamp: 2.25, confidence: 0.73 },
+				{ timestamp: 8, confidence: 0.88 },
+			],
+			totalScenes: 4,
+			averageShotDuration: 3,
+		});
+		expect(mockSpawn).not.toHaveBeenCalled();
+		expect(mockGetDecryptedApiKeys).not.toHaveBeenCalled();
+		expect(mockGenerateContent).not.toHaveBeenCalled();
+	});
+
+	it("keeps a single full-duration shot when there are no cuts", async () => {
+		mockDetectOnnx.mockResolvedValueOnce({
+			engine: "onnx",
+			durationSeconds: 4,
+			route: "onnx",
+			cutFrames: [],
+			cutPoints: [],
+		});
+		const result = await detectScenes("test-project", {
+			mediaId: "valid-video",
+			engine: "onnx",
+			aiAnalysis: false,
+		});
+		expect(result.scenes).toEqual([{ timestamp: 0, confidence: 1 }]);
+		expect(result.averageShotDuration).toBe(4);
+		expect(mockGetDecryptedApiKeys).not.toHaveBeenCalled();
+	});
+
+	it("does not fall back to FFmpeg after an ONNX error", async () => {
+		mockDetectOnnx.mockRejectedValueOnce(
+			new Error("Private ONNX contract missing")
+		);
+		await expect(
+			detectScenes("test-project", { mediaId: "valid-video", engine: "onnx" })
+		).rejects.toThrow("Private ONNX contract missing");
+		expect(mockSpawn).not.toHaveBeenCalled();
+		expect(mockGetDecryptedApiKeys).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"auto",
+		"torch",
+		"ONNX",
+		"",
+		null,
+		false,
+		2,
+		{},
+		[],
+	])("rejects invalid engine %j before doing work", async (engine) => {
+		const request = {
+			mediaId: "valid-video",
+			engine,
+		} as unknown as import("../types/claude-api").SceneDetectionRequest;
+		await expect(detectScenes("test-project", request)).rejects.toThrow(
+			"Invalid scene detection engine"
+		);
+		expect(mockDetectOnnx).not.toHaveBeenCalled();
+		expect(mockSpawn).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"false",
+		"true",
+		1,
+		null,
+	])("rejects nonboolean AI opt-in %j", async (aiAnalysis) => {
+		const request = {
+			mediaId: "valid-video",
+			engine: "onnx",
+			aiAnalysis,
+		} as unknown as import("../types/claude-api").SceneDetectionRequest;
+		await expect(detectScenes("test-project", request)).rejects.toThrow(
+			"aiAnalysis must be a boolean"
+		);
+		expect(mockGetDecryptedApiKeys).not.toHaveBeenCalled();
+		expect(mockDetectOnnx).not.toHaveBeenCalled();
+	});
+
+	it("rejects FFmpeg-only threshold for the fixed ONNX profile", async () => {
+		await expect(
+			detectScenes("test-project", {
+				mediaId: "valid-video",
+				engine: "onnx",
+				threshold: 0.3,
+			})
+		).rejects.toThrow("threshold is only supported");
+		expect(mockDetectOnnx).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ engine: "ffmpeg" },
+		{ durationSeconds: Number.NaN },
+		{ durationSeconds: 0 },
+		{ cutPoints: [2, Number.NaN, 8] },
+		{ cutPoints: [2, 2, 8] },
+		{ cutPoints: [2, 8, 4] },
+		{ cutPoints: [0, 2, 8] },
+		{ cutPoints: [2, 3, 12] },
+		{ cutFrames: [] },
+	])("rejects malformed core output %j", async (patch) => {
+		mockDetectOnnx.mockResolvedValueOnce({
+			engine: "onnx",
+			durationSeconds: 12,
+			cutPoints: [2, 3, 8],
+			cutFrames: [47, 71, 191],
+			...patch,
+		});
+		await expect(
+			detectScenes("test-project", { mediaId: "valid-video", engine: "onnx" })
+		).rejects.toThrow("Invalid result");
+		expect(mockSpawn).not.toHaveBeenCalled();
 	});
 });
 
@@ -354,6 +513,19 @@ describe("detectScenesWithFFmpeg (mocked)", () => {
 
 		await expect(detectScenesWithFFmpeg("/mock/video.mp4")).rejects.toThrow(
 			"spawn failed"
+		);
+	});
+
+	it("rejects a nonzero FFmpeg exit instead of reporting an empty success", async () => {
+		const { EventEmitter } = await import("node:events");
+		mockSpawn.mockImplementation(() => {
+			const proc = new EventEmitter();
+			Object.assign(proc, { kill: vi.fn(), stderr: new EventEmitter() });
+			process.nextTick(() => proc.emit("close", 1));
+			return proc;
+		});
+		await expect(detectScenesWithFFmpeg("/mock/video.mp4")).rejects.toThrow(
+			"FFmpeg code 1"
 		);
 	});
 });
