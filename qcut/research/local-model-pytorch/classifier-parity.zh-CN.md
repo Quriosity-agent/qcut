@@ -17,7 +17,7 @@
 
 ## 来源与私有制品
 
-仓库根目录为 `/Users/peter/Desktop/code/qcut/qcut`。下述相对路径均相对该根目录。
+下述相对路径均相对仓库的 `qcut/` 目录（本文件所在 `research/` 的上一级）。
 所有原始子图、派生探针图、权重、输入、输出、原生日志及报告均保留在 git-ignored
 `.local/jianying-model-pytorch/`，不进入产品、不分发源模型。
 
@@ -127,7 +127,7 @@ import torch
 from classifier_torch import load_model
 
 model = load_model(
-    path="/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/classifier-c73-20260919-verified/c73.pt",
+    path=".local/jianying-model-pytorch/classifier-c73-20260919-verified/c73.pt",
     expected_sha256="821242daffa3aee05935c3896602f9d314c3643dee2d48638582a15b66a9197a",
 )
 with torch.inference_mode():
