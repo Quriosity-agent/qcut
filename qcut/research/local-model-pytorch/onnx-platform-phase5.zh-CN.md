@@ -59,7 +59,7 @@
 
 实际运行 [35427584529](https://github.com/Quriosity-agent/qcut/actions/runs/35427584529)，提交 `6786b918f27e927b6322fb108ea28f9a84e0d021`：Windows x64、Linux x64、Linux ARM64、macOS ARM64 四个 job 全部成功。每个平台 33 项单测和五图套件通过；四份报告已下载到私有 `phase5-platform/github-35427584529/`。本结果不代表后续提交的所有仓库 CI 已通过。
 
-真正的 Git 根目录是 `/Users/peter/Desktop/code/qcut`；workflow 位于其 `.github/workflows/local-model-onnx.yml`，不是 QCut 子目录内的同名路径。
+真正的 Git 根目录是 `qcut/` 的上一级目录；workflow 位于其 `.github/workflows/local-model-onnx.yml`，不是 QCut 子目录内的同名路径。
 
 矩阵为：
 
