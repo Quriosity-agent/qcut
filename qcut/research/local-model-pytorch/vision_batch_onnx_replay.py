@@ -11,6 +11,7 @@ import onnxruntime as ort
 
 from onnx_infer import ONNXModel, check_values, digest, read_npz
 from vision_batch_profiles import FORMAT, PROFILES
+from vision_batch_profiles import input_shapes as profile_input_shapes
 
 ROOT = Path(__file__).resolve().parents[2]
 PRIVATE = ROOT / ".local/jianying-model-pytorch"
@@ -58,7 +59,8 @@ def check_cases(*, entry, native_report):
 
 def check_contract(*, metadata, entry):
     profile = PROFILES[entry["profile"]]
-    inputs = {"data": {"shape": profile["input_shape"], "dtype": "float32"}}
+    inputs = {name: {"shape": list(shape), "dtype": "float32"}
+              for name, shape in profile_input_shapes(profile=profile).items()}
     outputs = {name: {"shape": shape, "dtype": "float32"} for name, shape in profile["outputs"].items()}
     if (metadata.get("source_format") != FORMAT or metadata.get("source_bundle_sha256") != entry["artifact_sha256"]
             or metadata.get("network") is not None or metadata.get("inputs") != inputs or metadata.get("outputs") != outputs):
