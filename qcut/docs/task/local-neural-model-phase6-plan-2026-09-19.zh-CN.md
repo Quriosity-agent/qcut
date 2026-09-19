@@ -3,7 +3,7 @@
 日期：2026-09-19。代码基线：`c4343a392ce2e7cfe4040e6ab9a069458448c2e9`。
 分支：`codex/local-neural-model-audit-20260919`；沿用 [PR #477](https://github.com/Quriosity-agent/qcut/pull/477)。
 
-**初稿仅记录计划；当前已推进 S1 的普通桌面视频登记修复，定向测试通过，但真实 Electron 验收受启动错误阻塞。S1 尚未全部完成，不进入 S2。后续仍每次只推进一个步骤，证据通过后再继续。**
+**当前已完成 S1 的普通桌面视频登记修复及定向回归；补齐完整 Electron 构建后，真实 UI 导入 → 原 ID 查找 → ONNX 推理 → 四段时间线的冒烟测试通过。重开与异常场景矩阵尚未验收，S1 尚未全部完成，不进入 S2。后续仍每次只推进一个步骤。**
 
 ## 1. 基线与边界
 
@@ -32,7 +32,7 @@
 
 | 步骤 | 本步唯一交付 | 状态 | 进入条件 |
 | --- | --- | --- | --- |
-| S1 | 修复并验证编辑器媒体身份/路径链 | 登记修复已实现，真实验收待完成 | 文档就绪 |
+| S1 | 修复并验证编辑器媒体身份/路径链 | 登记修复及真实冒烟通过，重开与异常矩阵待验收 | 文档就绪 |
 | S2 | 两项真实分镜 E2E 通过及截图、导出证据 | 未开始 | S1 通过 |
 | S3 | 编辑器取消真正终止后台推理 | 未开始 | S2 通过 |
 | S4 | Windows 私有回放与桌面部署验收 | 未开始 | S3 通过且受控 Windows 环境可用 |
@@ -180,7 +180,7 @@ bunx tsc -p apps/web/tsconfig.json --noEmit --pretty false
 bunx vitest run src/components/editor/timeline/__tests__/video-clip-context-menu.test.tsx src/components/editor/timeline/__tests__/timeline-scene-routing.test.ts
 ```
 
-真实编辑器需要先构建 Electron 与前端，不依赖旧 `dist/`。下列命令是后续执行模板，本轮没有运行：
+真实编辑器需要先构建 Electron 与前端，不依赖旧 `dist/`。下列命令是完整验收模板，实际执行范围以第 12 节为准：
 
 ```sh
 bun run build:electron
@@ -191,6 +191,8 @@ export QCUT_ONNX_SHOT_E2E_SOURCE="$SIX_SECOND_MONTAGE"
 bun run qcut analyze shots --engine onnx --check --json
 bunx playwright test onnx-shot-split.e2e.ts --project=electron --workers=1 --retries=0 --reporter=line --output="$EVIDENCE_DIR/editor"
 ```
+
+类型检查使用 `tsc --noEmit`。不要用单独输出文件的 `tsc -p electron/tsconfig.json` 代替 `bun run build:electron`：它会覆盖需要 esbuild 打包的 runtime 桥接产物，导致 Electron 从 `@qcut/editor-core` 的 TypeScript 源码解析不存在的 `.js` 模块。执行过该命令后须重新运行完整 Electron 构建。
 
 `$SHOT_CONTRACT`、`$SIX_SECOND_MONTAGE` 必须是有效绝对路径，`$EVIDENCE_DIR` 必须是新的 `.local/jianying-model-pytorch/phase6-<step>-<run>/` 绝对目录。缺任意私有输入导致 skip，必须记为“未执行”，不能当通过。失败诊断追加 trace 时仍保存到该私有目录，不往公开 docs 输出报告。
 
@@ -209,7 +211,7 @@ bunx playwright test onnx-shot-split.e2e.ts --project=electron --workers=1 --ret
 | 步骤 | 实现 commit | 验收证据 | 结论 |
 | --- | --- | --- | --- |
 | 文档 | `b0aaeaf5c` | 核对当前源码入口与第五阶段报告 | 初稿完成 |
-| S1 | 本轮单文件提交 | 下方 S1 首次推进记录 | 登记代码和定向回归完成；真实验收未完成 |
+| S1 | 登记 `c2b95f3ed` / `dbc312dbe`；用例 `f740f859e` | 下方首次推进与启动复验记录 | 定向回归及真实冒烟通过；重开与异常矩阵待验收 |
 | S2–S8 | 无 | 无 | 未开始 |
 
 ### S1 首次推进记录
@@ -221,4 +223,27 @@ bunx playwright test onnx-shot-split.e2e.ts --project=electron --workers=1 --ret
 - 追加一个 S1 真机冒烟用例：普通 UI 导入，按原 ID 查询项目媒体，检查落盘文件，再通过右键触发真实 ONNX。没有 mock 推理或成功状态。
 - 真实运行 **1 failed**，失败在 `electron.launch`，未进入媒体导入。启动日志报告 `ERR_MODULE_NOT_FOUND: packages/editor-core/src/color-providers.js`，由 `packages/editor-core/src/index.ts` 引用。按本轮限额停止该测试进程，没有转入编辑器打包修复；本次没有生成成功截图，不能称 `Media not found` 已获真实 E2E 验证。
 - 私有日志：`.local/jianying-model-pytorch/phase6-s1-{unit,types,build,electron-build,lint,e2e}.log`；E2E 目录 `phase6-s1-editor/`。本轮测试进程已结束，未操作用户项目。
-- 下一次仍停留 S1：先修复/校正 Electron 启动产物，执行新增的 S1 用例，补媒体身份、重开和错误场景证据；通过后再开启 S2。
+- 当时的下一步是校正 Electron 启动产物并补媒体身份、重开和错误场景证据；启动复验结果见下方，仍未开启 S2。
+
+### S1 启动复验（2026-09-19）
+
+- 代码基线 `3adb6b00ae8f4ca10b44b495cd8656a720ac70ab`。本次只校正构建流程、运行已有 S1 用例并记录结果，没有修改产品源码。
+- 上次只执行输出文件的 `tsc`，覆盖了 `editor-core-tracking-runtime.js` 和 `jianying-text-runtime/reference.js` 的 esbuild bundle，留下对 `@qcut/editor-core` 的直接 `require`。该包导出 TS 源码，其 `.js` 引用无法由 Electron 解析。这是上次验证流程遗漏，不是已证明需要修改包导出的产品缺陷。
+- `bun run build:electron` 完成，两个 runtime 的 Node `require` 冒烟均通过。前端沿用同一源码基线的已构建产物；本次没有重跑前述 52 项单元测试。
+- 在独立 Electron profile/documents 下执行现有 `S1 resolves an ordinary imported video and runs real ONNX inference`：**1 passed，0 failed，0 skipped，10.5 秒，无重试**。普通 UI 文件导入后，按原 renderer media ID 查到项目 `media/imported/${mediaId}.mp4`，实际文件存在且大小与输入一致（354852 字节）。查询结果的 API ID 仍采用现有文件型 ID，不代表两种 ID 已统一。
+- 右键菜单实际触发本地 ONNX，任务返回 `engine: onnx`、`route: qcut-jianying-shot-split-onnx-v1`，状态 completed，时间线从一个片段变为四段；没有 mock 推理。已保存两张截图与 `media-resolution.json`，并目视检查切分后截图中的预览、四段时间线及成功提示。
+- 本次用例只证明这条正常路径及片段数量，不证明绝对切点位置、逐帧预览、撤销、重开或导出。重开、删除源文件、中文/空格路径、重复文件名、无效/跨项目 ID、导入未完成及 Windows 行为仍待验收。S2–S8 未开始。
+
+复验命令（三个输入环境变量均已指向本地真实文件）：
+
+```sh
+bunx playwright test onnx-shot-split.e2e.ts --grep 'S1 resolves' --project=electron --workers=1 --retries=0 --reporter=line --output=.local/jianying-model-pytorch/phase6-s1-startup-editor
+```
+
+私有证据均位于 `.local/jianying-model-pytorch/`，不提交 Git：
+
+- 构建与测试日志：`phase6-s1-startup-build.log`、`phase6-s1-startup-e2e.log`。
+- 证据目录：`phase6-s1-startup-editor/onnx-shot-split.e2e.ts-Pri-c5bd0-nd-runs-real-ONNX-inference-electron/`。
+- 目录内文件：`01-imported.png`、`02-media-resolved.png`、`media-resolution.json`。
+
+本次构建与测试进程均已正常退出，未操作用户项目。下一步仍只补 S1 尚缺的重开或一个异常场景，不启动大规模模型验证。
