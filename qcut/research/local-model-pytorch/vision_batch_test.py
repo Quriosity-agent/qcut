@@ -36,7 +36,8 @@ class VisionGraphTests(unittest.TestCase):
     def test_parser_accepts_only_audited_prefix(self):
         text = graph_text(nodes=[data_row(), conv_row()])
         self.assertEqual(parse_graph(text=text), parse_graph(text="D\\n\n" + text))
-        for prefix in ("E", "B", "unknown"):
+        self.assertEqual(parse_graph(text=text), parse_graph(text="E\\n\nD\\n\n" + text))
+        for prefix in ("B", "unknown", "D\\n\nE"):
             with self.assertRaises(ValueError):
                 parse_graph(text=prefix + "\n" + text)
 
@@ -137,6 +138,31 @@ class VisionGraphTests(unittest.TestCase):
         first, second = cases["random-17"]["data0"].flatten()[:3], cases["random-17"]["data1"].flatten()
         self.assertFalse(np.array_equal(first, second))
         np.testing.assert_array_equal(cases["random-17"]["data0"], synthetic_cases(shape=(1, 3, 4, 4))["random-17"])
+
+    def test_dilated_conv_max_pool_split_multiply_and_reduce(self):
+        nodes = [data_row(h=8, w=8), conv_row(name="feat"),
+                 ["Conv2D", "dil", "1", "3", "4", "3", "3", "1", "1", "2", "2", "2", "2", "2", "2", "1", "1", "4", "0", "4", "0", "4", "0", "feat", "dil"],
+                 ["Pooling", "pool", "2", "2", "2", "2", "0", "0", "4", "0", "MAX", "dil", "pool"],
+                 ["Slice", "split", "dil", "1", "1", "3", "2", "rgb", "0", "rest", "0"],
+                 ["OnnxOp2", "mul", "Mul", "rgb", "data", "mul", "4", "0"],
+                 ["OnnxOp1", "sum", "ReduceSum", "mul", "sum", "4", "0", "1", "1", "1"],
+                 ["Eltwise", "add", "sum", "rest", "add", "4", "0", "0"]]
+        weights = np.linspace(-1, 1, 12 + 4 * 3 * 9 + 4, dtype=np.float32)
+        text = f"E\\n\nD\\n\n" + graph_text(nodes=nodes)
+        model = VisionGraph(nodes=parse_graph(text=text), weights=weights)
+        self.assertEqual(model.output_shapes, {"pool": (1, 4, 4, 4), "add": (1, 1, 8, 8)})
+        value = torch.rand(1, 3, 8, 8)
+        result = model({"data": value}, capture=True)
+        layer = model.layers["2"]
+        torch.testing.assert_close(result["dil"], F.conv2d(result["feat"], layer.weight, layer.bias, padding=2, dilation=2).relu(), atol=0, rtol=0)
+        torch.testing.assert_close(result["pool"], F.max_pool2d(result["dil"], 2, 2), atol=0, rtol=0)
+        torch.testing.assert_close(result["rgb"], result["dil"][:, :3], atol=0, rtol=0)
+        torch.testing.assert_close(result["rest"], result["dil"][:, 3:], atol=0, rtol=0)
+        torch.testing.assert_close(result["add"], (result["rgb"] * value).sum(1, keepdim=True) + result["rest"], atol=0, rtol=0)
+        ordered = VisionGraph(nodes=parse_graph(text=text), weights=weights, ordered=True)
+        torch.testing.assert_close(ordered({"data": value})["add"], result["add"], atol=1e-5, rtol=1e-5)
+        with self.assertRaises(ValueError):
+            VisionGraph(nodes=[data_row(), conv_row(), ["Slice", "s", "conv", "1", "1", "3", "2", "a", "0", "b", "0"]])
 
     def test_separable_bilinear_matches_half_pixel_resize(self):
         value = torch.rand(1, 3, 3, 4)
