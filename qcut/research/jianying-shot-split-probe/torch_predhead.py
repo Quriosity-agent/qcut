@@ -47,8 +47,10 @@ def load_head_specs(params_tsv):
 class GRUCell(nn.Module):
     """引擎的 GRU 约定:rz 共用 [x|h] 拼接输入,n 门 linear_before_reset。"""
 
-    def __init__(self, blk):
+    def __init__(self, blk=None):
         super().__init__()
+        if blk is None:
+            blk = np.zeros(GRU_BLOCK, dtype=np.float32)
         A = torch.from_numpy(blk[:4 * H * H].copy()).reshape(2 * H, 2 * H)
         self.Wr, self.Wz = nn.Parameter(A[:H, :H].clone()), nn.Parameter(A[H:, :H].clone())
         self.Rr, self.Rz = nn.Parameter(A[:H, H:].clone()), nn.Parameter(A[H:, H:].clone())
@@ -70,8 +72,19 @@ class GRUCell(nn.Module):
 
 
 class PredHead(nn.Module):
-    def __init__(self, model_file, params_tsv):
+    def __init__(self, model_file=None, params_tsv=None, *, bundle=None):
         super().__init__()
+        if bundle is not None:
+            self.gru1, self.gru2 = GRUCell(), GRUCell()
+            self.conv_specs = bundle["conv_specs"]
+            self.alphas = list(bundle["alphas"])
+            self.convs = nn.ModuleList([
+                nn.Conv2d(s["cin"], s["cout"], s["k"], s["stride"], s["pad"],
+                          groups=s["cin"] if s["depthwise"] else 1)
+                for s in self.conv_specs
+            ])
+            self.load_state_dict(bundle["state_dict"], strict=True)
+            return
         arena = np.frombuffer(pathlib.Path(model_file).read_bytes()[HEAD_ARENA_START:HEAD_ARENA_START + HEAD_ARENA_FLOATS * 4], dtype="<f4").copy()
         self.gru1, self.gru2 = GRUCell(arena[:GRU_BLOCK]), GRUCell(arena[GRU_BLOCK:2 * GRU_BLOCK])
         self.convs = nn.ModuleList()
