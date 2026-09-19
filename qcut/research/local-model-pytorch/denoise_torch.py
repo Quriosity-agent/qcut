@@ -177,7 +177,6 @@ def main():
     parser.add_argument("--out", type=pathlib.Path, default=PRIVATE / "denoise")
     parser.add_argument("--side", type=int, default=64)
     parser.add_argument("--oracle", action="store_true")
-    parser.add_argument("--align-corners", action="store_true")
     parser.add_argument("--original-shape", action="store_true")
     args = parser.parse_args()
     if args.side < 16 or args.side > 512 or args.side % 16:
@@ -199,10 +198,11 @@ def main():
                                     cwd=output, stdout=log, stderr=subprocess.STDOUT, timeout=90)
         if result.returncode:
             raise RuntimeError(f"native oracle failed {result.returncode}: {output / 'oracle.log'}")
-    model = DenoiseGraph(nodes=nodes, weights=weights, align_corners=args.align_corners).eval()
+    # The verified native resize profile is align_corners=False; load_model rejects anything else.
+    model = DenoiseGraph(nodes=nodes, weights=weights, align_corners=False).eval()
     artifact = output / "candidate.pt"
     torch.save({"format": FORMAT, "source_sha256": SOURCE_SHA256, "local_only": True,
-                "nodes": nodes, "state_dict": model.state_dict(), "align_corners": args.align_corners,
+                "nodes": nodes, "state_dict": model.state_dict(), "align_corners": False,
                 "original_input_shape": [1, 3, 1088, 1920],
                 "derived_input_shape": None if args.original_shape else [1, 3, height, width]}, artifact)
     clone = load_model(path=artifact)
