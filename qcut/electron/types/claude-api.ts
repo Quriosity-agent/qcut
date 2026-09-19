@@ -1024,14 +1024,21 @@ export interface SceneBoundary {
 	transitionType?: "cut" | "dissolve" | "fade" | "unknown";
 }
 
+export const SCENE_DETECTION_ENGINES = ["ffmpeg", "onnx"] as const;
+
 export interface SceneDetectionRequest {
 	mediaId: string;
+	engine?: (typeof SCENE_DETECTION_ENGINES)[number];
+	/** FFmpeg scene-filter threshold; the ONNX model uses its verified profile. */
 	threshold?: number;
 	aiAnalysis?: boolean;
 	model?: string;
 }
 
 export interface SceneDetectionResult {
+	engine: (typeof SCENE_DETECTION_ENGINES)[number];
+	route?: string;
+	durationSeconds?: number;
 	scenes: SceneBoundary[];
 	totalScenes: number;
 	averageShotDuration: number;
@@ -1070,6 +1077,7 @@ export interface SceneDetectionJob {
 	jobId: string;
 	projectId: string;
 	mediaId: string;
+	engine?: (typeof SCENE_DETECTION_ENGINES)[number];
 	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
 	progress: number;
 	message: string;
