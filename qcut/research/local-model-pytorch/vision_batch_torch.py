@@ -9,7 +9,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from vision_batch_profiles import EXECUTION_PROFILE, FORMAT, PROFILES, RUNTIME_SHA256
+from vision_batch_profiles import (EXECUTION_PROFILE, FORMAT, PROFILES, RUNTIME_SHA256, execution_profile,
+                                   input_shapes as profile_input_shapes, ordered_execution)
 
 
 def digest(*, data):
@@ -37,16 +38,53 @@ def parse_graph(*, text):
     rows = [line.removesuffix("\\n").split() for line in text.splitlines() if line.strip()]
     if rows and rows[0] == ["D"]:
         rows = rows[1:]
+    # Header: <input count> <layer count> <stamp>; every input is a leading DataV2 row.
     if (not rows or len(rows[0]) != 3 or not all(v.isdecimal() for v in rows[0])
-            or rows[0][0] != "1" or not 1 <= int(rows[0][1]) <= 256
-            or len(rows) != int(rows[0][1]) + 2):
+            or not 1 <= int(rows[0][0]) <= 4 or not 1 <= int(rows[0][1]) <= 256
+            or len(rows) != int(rows[0][0]) + int(rows[0][1]) + 1):
         raise ValueError("unsupported header or layer count")
+    count = int(rows[0][0])
+    if any(row[0] != "DataV2" for row in rows[1:1 + count]) or any(row[0] == "DataV2" for row in rows[1 + count:]):
+        raise ValueError("declared input count differs from the leading DataV2 rows")
     return rows[1:]
 
 
+def fma(*, a, b, c):
+    """Single-rounding multiply-add, as the ARM kernels fuse it."""
+    return (a.double() * (b.double() if isinstance(b, torch.Tensor) else b) + c.double()).float()
+
+
+def separable_bilinear(*, value, size):
+    """Half-pixel bilinear resize evaluated x first, then y, with fused multiply-adds; matches the native CPU kernel."""
+    n, c, h, w = value.shape
+    oh, ow = size
+
+    def axis(length, count):
+        source = ((torch.arange(count, dtype=torch.float32) + 0.5) * (length / count) - 0.5).clamp(min=0)
+        low = source.floor().long().clamp(max=length - 1)
+        return low, (low + 1).clamp(max=length - 1), source - low.float()
+
+    y0, y1, wy = axis(h, oh)
+    x0, x1, wx = axis(w, ow)
+    wx, wy = wx.reshape(1, 1, 1, -1), wy.reshape(1, 1, -1, 1)
+    rows = value[:, :, y0], value[:, :, y1]
+    top = fma(a=rows[0][:, :, :, x1], b=wx, c=rows[0][:, :, :, x0] * (1 - wx))
+    bottom = fma(a=rows[1][:, :, :, x1], b=wx, c=rows[1][:, :, :, x0] * (1 - wx))
+    return fma(a=bottom, b=wy, c=top * (1 - wy))
+
+
 class VisionGraph(nn.Module):
-    def __init__(self, *, nodes, weights=None):
+    def __init__(self, *, nodes, weights=None, ordered=False):
         super().__init__()
+        if type(ordered) is not bool:
+            raise ValueError("ordered must be an explicit boolean")
+        self.ordered = ordered
+        if ordered:
+            from matting_phase5_numeric import ordered_tanh
+            from ocr_rec_numeric import PinnedSigmoid, ordered_convolution
+            self.ordered_convolution = ordered_convolution
+            self.ordered_tanh = ordered_tanh
+            self.pinned_sigmoid = PinnedSigmoid()
         if not isinstance(nodes, list) or not 2 <= len(nodes) <= 257:
             raise ValueError("invalid vision nodes")
         if weights is not None and (weights.dtype != np.float32 or weights.ndim != 1
@@ -65,7 +103,7 @@ class VisionGraph(nn.Module):
             inputs, target, shape, layer, count = [], None, None, None, 0
             params = {}
             if op == "DataV2":
-                if index or len(row) != 9 or row[6:] != ["4", "0", "0"]:
+                if index != len(self.input_shapes) or len(row) != 9 or row[6:] != ["4", "0", "0"]:
                     raise ValueError("unsupported input storage")
                 n, h, w, c = map(int, row[2:6])
                 if n != 1 or c != 3 or min(h, w) < 1 or max(h, w) > 512:
@@ -125,11 +163,30 @@ class VisionGraph(nn.Module):
                 inputs, target, params = [row[2]], row[3], {"mode": row[4].lower()}
                 n, c, h, w = self._shape(name=inputs[0])
                 shape = (n, c, h * 2, w * 2)
-            elif op == "Tanh":
+            elif op in {"Tanh", "Sigmoid"}:
                 if len(row) != 6 or row[4:] != ["4", "0"]:
                     raise ValueError("unsupported activation")
                 inputs, target = [row[2]], row[3]
                 shape = self._shape(name=inputs[0])
+            elif op == "SEScale":
+                # Per-channel gate: the second operand is a [N, C, 1, 1] tensor broadcast over H and W.
+                if len(row) != 8 or row[5:] != ["4", "0", "0"]:
+                    raise ValueError("unsupported channel scale")
+                inputs, target = row[2:4], row[4]
+                shape = self._shape(name=inputs[0])
+                if self._shape(name=inputs[1]) != (shape[0], shape[1], 1, 1):
+                    raise ValueError("channel scale gate must be a per-channel singleton")
+            elif op == "Upsample":
+                # Fractional bilinear resize; the audited flags are the half-pixel form (no corner alignment).
+                if len(row) != 8 or row[3:6] != ["linear", "0", "1"]:
+                    raise ValueError("unsupported fractional upsample")
+                factor = float(row[2])
+                if not math.isfinite(factor) or not 1 < factor <= 4:
+                    raise ValueError("unsupported upsample factor")
+                inputs, target = [row[6]], row[7]
+                n, c, h, w = self._shape(name=inputs[0])
+                shape = (n, c, math.floor(h * factor + 0.5), math.floor(w * factor + 0.5))
+                params = {"size": shape[2:]}
             elif op == "PoolingDown":
                 if len(row) not in (13, 14) or row[8:11] != ["4", "0", "AVE"]:
                     raise ValueError("unsupported pooling")
@@ -178,7 +235,7 @@ class VisionGraph(nn.Module):
                 self.layers[str(index)] = layer
             cursor += count
         self.output_shapes = {k: v for k, v in self.shapes.items() if k not in consumed}
-        if len(self.input_shapes) != 1 or not self.output_shapes:
+        if not self.input_shapes or not self.output_shapes:
             raise ValueError("missing graph inputs or outputs")
         if weights is not None and len(weights) != cursor:
             raise ValueError(f"unconsumed or missing weights: expected {cursor}, got {len(weights)}")
@@ -197,6 +254,8 @@ class VisionGraph(nn.Module):
         return result
 
     def upsample(self, *, value, mode):
+        if self.ordered and mode == "bilinear":
+            return separable_bilinear(value=value, size=(value.shape[2] * 2, value.shape[3] * 2))
         return F.interpolate(value, scale_factor=2, mode=mode,
                              align_corners=False if mode == "bilinear" else None)
 
@@ -216,7 +275,10 @@ class VisionGraph(nn.Module):
                 continue
             data = [values[k] for k in step["inputs"]]
             if op in {"Convolution", "DepthwiseSeparableConvolution"}:
-                value = self.layers[str(index)](data[0])
+                layer = self.layers[str(index)]
+                value = (self.ordered_convolution(value=data[0], weight=layer.weight, bias=layer.bias, stride=layer.stride,
+                                                  padding=layer.padding, groups=layer.groups)
+                         if self.ordered else layer(data[0]))
             elif op == "InnerProduct":
                 value = self.layers[str(index)](data[0].flatten(1))[:, :, None, None]
             elif op == "Eltwise":
@@ -230,7 +292,14 @@ class VisionGraph(nn.Module):
             elif op == "UpSampling":
                 value = self.upsample(value=data[0], mode=params["mode"])
             elif op == "Tanh":
-                value = data[0].tanh()
+                value = self.ordered_tanh(value=data[0]) if self.ordered else data[0].tanh()
+            elif op == "Sigmoid":
+                value = self.pinned_sigmoid(data[0]) if self.ordered else torch.sigmoid(data[0])
+            elif op == "SEScale":
+                value = data[0] * data[1]
+            elif op == "Upsample":
+                value = (separable_bilinear(value=data[0], size=params["size"]) if self.ordered
+                         else F.interpolate(data[0], size=params["size"], mode="bilinear", align_corners=False))
             elif op == "PoolingDown":
                 value = data[0].mean((2, 3), keepdim=True) if params["global"] else F.avg_pool2d(data[0], 2, 2)
             elif op == "OnnxOp1":
@@ -264,7 +333,7 @@ def load_model(*, path, expected_sha256=None, allow_unverified=False):
     profile = PROFILES.get(profile_name) if isinstance(profile_name, str) else None
     if profile is None or any(bundle.get(key) != profile[key] for key in ("source_sha256", "bm_sha256", "graph_sha256")):
         raise ValueError("unsupported source provenance")
-    if bundle.get("runtime_sha256") != RUNTIME_SHA256 or bundle.get("execution_profile") != EXECUTION_PROFILE:
+    if bundle.get("runtime_sha256") != RUNTIME_SHA256 or bundle.get("execution_profile") != execution_profile(profile=profile):
         raise ValueError("unsupported execution profile")
     text = bundle.get("graph_text")
     if not isinstance(text, str) or digest(data=text.encode()) != profile["graph_sha256"]:
@@ -274,8 +343,8 @@ def load_model(*, path, expected_sha256=None, allow_unverified=False):
     actual_state_sha = state_digest(state=bundle.get("state_dict"))
     if actual_state_sha != bundle.get("state_sha256") or actual_state_sha != profile.get("state_sha256"):
         raise ValueError("vision state digest mismatch")
-    model = VisionGraph(nodes=parse_graph(text=text))
-    if model.input_shapes != {"data": tuple(profile["input_shape"])} or model.output_shapes != {k: tuple(v) for k, v in profile["outputs"].items()}:
+    model = VisionGraph(nodes=parse_graph(text=text), ordered=ordered_execution(profile=profile))
+    if model.input_shapes != profile_input_shapes(profile=profile) or model.output_shapes != {k: tuple(v) for k, v in profile["outputs"].items()}:
         raise ValueError("vision schema mismatch")
     model.load_state_dict(bundle["state_dict"], strict=True)
     return model.eval()
