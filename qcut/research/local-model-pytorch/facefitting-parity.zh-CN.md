@@ -27,7 +27,7 @@
 原始文件：
 
 ```text
-/Users/peter/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Models/tt_facefitting_3d_v6.2_size4_md5054e6805e1f42ba6950a9ff678aedb49.model
+~/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Models/tt_facefitting_3d_v6.2_size4_md5054e6805e1f42ba6950a9ff678aedb49.model
 ```
 
 容器解析复用 `model_containers.py` 与 `container_scan.py`。只接受已审计源文件和内嵌 BM 的哈希。
@@ -64,7 +64,7 @@ BM 起点是原文件偏移 1,908，长度 2,394,434；arena 起点为原文件�
 最终目录：
 
 ```text
-/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/facefitting-20260919-r4/
+.local/jianying-model-pytorch/facefitting-20260919-r4/
 ```
 
 核心证据为 `report.json`、`native-runtime.json`、`oracle.log`、`facefitting.pt`。
