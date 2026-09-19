@@ -1,6 +1,100 @@
-# GRU 人像抠像：强制 CPU 对照与未通过项
+# GRU 人像抠像：Phase5 CPU 精度闭环与历史失败
 
 日期：2026-09-19。本记录只覆盖 `tt_matting_video_gru_v1.0.model`，不替换产品运行时。
+
+## Phase5：完整四输出严格门槛通过
+
+**新 CPU v3 profile 为 `native-parity-passed`。** 收尾时统一研究 `infer.py` 已通过
+`matting_validated.py` 注册新格式，严格固定完整包 SHA-256；内部才允许已验证 v3 加载，
+调用者不能靠改写 passed 标签绕过校验。旧 v1/v2 仍不注册，历史失败报告保留。
+共享 ONNX 导出明确拒绝该数值 profile，未接入产品抠像或导出路径。
+
+### 完整验证结果
+
+统一使用私有 Python 3.12 / PyTorch 2.10，强制同一 pinned arm64 CPU runtime。
+始终逐元素检查四路完整形状，`abs(actual-reference) <= 1e-4 + 1e-4*abs(reference)`，
+没有调宽容差、只测状态、裁边、忽略小概率值或修改最终 Softmax。
+
+| 新执行范围 | 结果 |
+| --- | --- |
+| 原始 FP16 参数展开 | 同原生重新校验 1,787,410 个参数；逐位一致 |
+| 单帧四输入/四输出 | 10/10 通过；6 个旧校准用例重跑，新增种子 7103/19019/65537 和非对称脉冲，40 个完整输出逐位一致 |
+| face 时序 | 60 个采样帧、57 个不同帧，完整重放，共 120/120 次四输出通过；所有输出逐位一致 |
+| body 时序 | 60 个不同帧，完整重放，共 120/120 次四输出通过；34 个状态张量存在微小数值差，不是正负零差异 |
+| 合计 | 250/250 次推理、1000/1000 组完整输出严格通过；966/1000 组逐位一致 |
+| 概率输出 | 250/250 个完整 `nn_3` 张量逐位一致；最大绝对差 0 |
+| 三组状态 | `Add_196` 最大绝对差 0；`Add_213` 为 `1.7881393432617188e-7`；`Add_230` 为 `2.980232238769531e-7` |
+| 独立反馈/reset/replay | 两端只反馈各自状态；第 0/30 帧清零，整段重放；原生输入 echo、实际状态链和落盘输出均再次核验 |
+| 新原生全图前缀 | face 和新 holdout 7103 各保留 200 个张量，400 组数值比较最大绝对差 0；不把这些重叠帧重复计入 250 |
+| 独立原尺寸算子图 | 3 组 Tanh、3 组 Sigmoid、4 组 resize，零值/ramp/两组新随机输入，共 40/40 组逐位一致 |
+| 新候选独立进程 | 1/2/4 线程各 18/18 次冻结输出逐位回放通过，合计 54；显式禁止 Python 访问源资产、原生库和启动子进程 |
+| 旧 v2 回归 | 1/2/4 线程各 6/6 次冻结输出逐位回放通过；这是保持旧行为，不是把旧时序失败改成通过 |
+| 合成单元测试 | 82/82 项通过，其中本阶段新增 31 项；无需 vendor 模型或运行时 |
+
+body 的 34 个不同状态张量共有 862 个不同的 FP32 值，均在原定门槛内。
+因此本阶段可称为**完整网络严格容差闭环**，不能称为所有状态完全 bit-exact。
+最初进度消息只核实了 face 的零误差，后续落盘全量核验发现 body 的小差异并已更正；
+机器报告 `final-r2/report.json` 是最终口径。
+
+### 实际修正
+
+1. 普通卷积按 spatial-major / channel-inner 顺序逐项 FP32 融合乘加。
+   1x1 密集卷积最后加 bias；非 1x1 和深度卷积先加 bias。复用原始权重，不作拟合或重训练。
+2. 最后一个 16-to-2 点卷积是四路 channel 归约，先算 `(lane0+lane1)+(lane2+lane3)`，
+   再加 bias，不能照搬前面密集卷积的线性累加顺序。
+3. Sigmoid 使用既有 matting exp 多项式、倒数估计和两步 Newton refinement。
+   Tanh 的第二次 refinement 乘积必须与最终 `-1` 融合，不能先把 reciprocal 舍入再减一。
+4. Tanh 的向量循环判断是严格 `< count-8`。即使总元素数能被 8 整除，仍留最后 8 个
+   **NHWC** 元素走标准 exp/divide；新 profile 用 FP64 exp 回转 FP32 表达这条尾部路径。
+   单独四输出门槛已通过，但不宣称该表达在所有输入/平台上都等价于系统 `expf`。
+5. 2x resize 的内部像素使用四项有序 FMA；底边和底角有不同乘法顺序，且 2-channel
+   与四对齐 channel 路径不同。40 组独立原尺寸算子图验证了该窄 profile，未推广为通用 resize。
+
+`matting_phase5_numeric.py` 仅表达此固定图的 CPU 数值约束；`matting_phase5_torch.py`
+把它接到同一个逐节点执行器。原生 disassembly、私有前缀和冻结张量只在忽略目录使用，
+没有把原始图、权重、二进制或反汇编加入仓库。共享 tracking/OCR 数值实现只读参考，未编辑。
+
+### 父任务交接
+
+私有根目录：`.local/jianying-model-pytorch/phase5-matting/`。
+
+- 最终聚合：`final-r2/report.json`；日志：`final-r2/unittest.log`。
+- 新 PT：`ordered-full-r1/matting-gru.pt`。
+- PT SHA-256：`8ebbc40d75faa48ff584f80401d2ac910d9377915bcfed2f506a308b062ba239`。
+- 格式：`qcut-private-matting-gru-cpu-v3`；profile：`arm64-ordered-conv-gates-resize-v1`。
+- 单帧/原始展开：`ordered-full-r1/report.json`；时序：`media-{face,body}-r1/report.json`。
+- 独立算子：`primitives-r1/report.json`；完整前缀：`trace-{face,holdout7103}-r1/report.json`。
+- 进程回放：`portable-replay-r1/report.json`；旧候选回归：`legacy-replay-r1/report.json`。
+- `face-local-r1`、`holdout509-local-r1` 是复用 Phase4 冻结 trace 的诊断，不是新原生调用。
+
+外层源 SHA 仍为 `101688825490be3704babc7ce49f6d002cdb4fe69e879556b4687ac9006f8596`；
+BM 为 `b0216fbfc8f2b810bdd9d7f384fc9b13f897104409c82eade8e83402189ef2f5`；
+runtime 为 `febfce4549cd6337c232c22ed00463a54cda7b255c4961426a33bfc78542b863`。
+最终报告保存原始/展开 arena、artifact、各报告及执行代码的哈希，且重新读取全部落盘
+四输出和独立反馈链，不只信任早期报告的 `passed` 字段。
+
+```python
+from matting_torch import load_model
+model = load_model(path=artifact_path, expected_sha256=artifact_sha256,
+                   allow_unverified=True)
+outputs = model(inputs)  # Explicit data/data1/data2/data3; complete four outputs.
+```
+
+复现单帧导出与检查，必须使用新的私有目录：
+
+```bash
+.local/jianying-model-pytorch/tflite/venv/bin/python \
+  research/local-model-pytorch/matting_cpu_export.py --ordered \
+  --out .local/jianying-model-pytorch/phase5-matting/fresh-full
+.local/jianying-model-pytorch/tflite/venv/bin/python -m unittest discover \
+  -s research/local-model-pytorch -p 'matting*test.py' -v
+```
+
+本轮主要证据约 2.3 GiB；收到磁盘余量提醒后停止新增大 trace/media，不删除既有工作。
+保留两组必要的全前缀证据及完整时序验证文件，其后只写小型 JSON/测试日志。
+该有序实现是精度参考而非实时优化：独立回放的 1/2/4 线程均值约 0.58/0.67/0.72 秒/帧。
+尚未验证 ONNX、Windows/x86、产品预处理/alpha 后处理、编辑器预览/导出、完整原容器直接
+强制 CPU 加载或 GPU parity；不从本报告推导这些能力已完成。
 
 ## Phase4：扩大真实时序，缩小数值反例
 
