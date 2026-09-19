@@ -42,7 +42,7 @@ def probe(*, run: Path, trace: Path, out: Path) -> dict[str, object]:
                 variants["ordered-default"] = ordered_convolution(value=value, conv=conv)
                 if conv.out_channels == 2:
                     variants["four-lane-pointwise"] = four_lane_pointwise(value=value, conv=conv)
-                if not metrics(actual=variants["ordered-default"], expected=native[target])["bitwise_equal"]:
+                if not metrics(actual=variants["ordered-default"], expected=native[target]).get("bitwise_equal"):
                     first = conv.groups == conv.in_channels == conv.out_channels or conv.kernel_size != (1, 1)
                     variants["ordered-opposite-bias"] = ordered_convolution(value=value, conv=conv, bias_first=not first)
                 if row[10] == "1":
@@ -65,8 +65,9 @@ def probe(*, run: Path, trace: Path, out: Path) -> dict[str, object]:
                       "baseline": metrics(actual=base, expected=native[target]), "variants": results}
             rows.append(record)
             print(json.dumps({"index": index, "tensor": target,
-                              "bitwise": [key for key, val in results.items() if val["bitwise_equal"]],
-                              "best_max_abs": min(val["max_abs"] for val in results.values())}), flush=True)
+                              "bitwise": [key for key, val in results.items() if val.get("bitwise_equal")],
+                              "best_max_abs": min((val["max_abs"] for val in results.values() if "max_abs" in val),
+                                                  default=None)}), flush=True)
     report = {"status": "diagnostic-only", "new_verified_networks": 0,
               "scope": "frozen Phase4 native inputs at each full-shape layer; no new native inference",
               "source_sha256": SOURCE_SHA256, "runtime_sha256": CPU_RUNTIME_SHA256,
