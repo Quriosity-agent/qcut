@@ -1,4 +1,4 @@
-"""Recover four hash-pinned FP32 networks and record full-output native evidence."""
+"""Recover hash-pinned FP32 vision networks and record full-output native evidence."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,7 @@ from bytenn_oracle import LIBRARY, PRIVATE, predict
 from classifier_export import compare_outputs
 from container_scan import decode_graph, runtime_graph_table
 from model_containers import bytenn_sections, inspect_container
+from vision_batch_profiles import execution_profile, input_shapes as profile_input_shapes, ordered_execution
 from vision_batch_torch import (EXECUTION_PROFILE, FORMAT, PROFILES, RUNTIME_SHA256,
                                 VisionGraph, digest, load_model, parse_graph, state_digest)
 
@@ -49,8 +50,8 @@ def recover(*, profile, out):
     if len(arena) < 8 or len(arena) % 4:
         raise ValueError("unsupported FP32 arena byte count")
     weights = np.frombuffer(arena[:-4], dtype="<f4").copy()
-    model = VisionGraph(nodes=parse_graph(text=text), weights=weights).eval()
-    if model.input_shapes != {"data": tuple(spec["input_shape"])} or model.output_shapes != {k: tuple(v) for k, v in spec["outputs"].items()}:
+    model = VisionGraph(nodes=parse_graph(text=text), weights=weights, ordered=ordered_execution(profile=spec)).eval()
+    if model.input_shapes != profile_input_shapes(profile=spec) or model.output_shapes != {k: tuple(v) for k, v in spec["outputs"].items()}:
         raise ValueError("recovered schema differs from audited dimensions")
     (out / "network.private.bm").write_bytes(bm)
     (out / "graph.private.txt").write_text(text)
@@ -58,23 +59,43 @@ def recover(*, profile, out):
     return source, model, text, details, digest(data=arena)
 
 
-def synthetic_cases(*, shape):
+def synthetic_cases(*, shape, seed_offset=0):
+    """One recipe per input; `seed_offset` keeps a second input's random tensors distinct."""
     cases = {"zeros": np.zeros(shape, np.float32), "ones": np.ones(shape, np.float32),
              "negative-ones": -np.ones(shape, np.float32),
              "ramp": np.linspace(-1, 1, np.prod(shape), dtype=np.float32).reshape(shape)}
     for seed in (17, 41):
-        cases[f"random-{seed}"] = np.random.default_rng(seed).uniform(-1, 1, shape).astype(np.float32)
+        cases[f"random-{seed}"] = np.random.default_rng(seed + seed_offset).uniform(-1, 1, shape).astype(np.float32)
     for seed in (509, 1709, 20260919):
-        cases[f"holdout-normal-{seed}"] = np.random.default_rng(seed).normal(0, 0.5, shape).astype(np.float32)
+        cases[f"holdout-normal-{seed}"] = np.random.default_rng(seed + seed_offset).normal(0, 0.5, shape).astype(np.float32)
     edge = np.zeros(shape, np.float32)
     edge[0, 0, 0, -1], edge[0, 1, -1, 0], edge[0, 2, shape[2] // 2, shape[3] // 3] = 1, -1, 0.5
     cases["holdout-asymmetric-impulse"] = edge
     return cases
 
 
-def media_cases(*, videos, shape, out):
+def synthetic_input_cases(*, shapes):
+    """Per-case input dicts covering every declared input of the network."""
+    per_input = {name: synthetic_cases(shape=shape, seed_offset=1000 * index)
+                 for index, (name, shape) in enumerate(shapes.items())}
+    names = next(iter(per_input.values()))
+    return {case: {name: per_input[name][case] for name in shapes} for case in names}
+
+
+def image_input(*, shapes):
+    """The spatial input real frames feed; other inputs are condition vectors."""
+    name = max(shapes, key=lambda key: shapes[key][2] * shapes[key][3])
+    if shapes[name][2] * shapes[name][3] < 2:
+        raise ValueError("network has no spatial image input for media cases")
+    return name
+
+
+def media_cases(*, videos, shapes, out):
     cases, records = {}, []
-    _, _, h, w = shape
+    image = image_input(shapes=shapes)
+    _, _, h, w = shapes[image]
+    # Research-only: condition inputs get a fixed mid-range value; product semantics are unverified.
+    conditions = {name: np.full(shape, 0.5, np.float32) for name, shape in shapes.items() if name != image}
     for index, video in enumerate(videos):
         video = Path(video).resolve()
         if not video.is_file():
@@ -94,23 +115,26 @@ def media_cases(*, videos, shape, out):
             source_sha = hashlib.file_digest(stream, "sha256").hexdigest()
         records.append({"path": str(video), "sha256": source_sha, "command": command,
                         "raw_sha256": digest(data=raw.read_bytes()), "frame_hashes": hashes,
-                        "preprocessing": "research-only RGB bilinear resize / 255; product preprocessing unverified"})
+                        "preprocessing": "research-only RGB bilinear resize / 255; product preprocessing unverified",
+                        "condition_inputs": {name: 0.5 for name in conditions}})
         for frame, value in enumerate(values):
-            cases[f"holdout-video-{index}-frame-{frame}"] = (value.transpose(2, 0, 1)[None].astype(np.float32) / 255)
+            cases[f"holdout-video-{index}-frame-{frame}"] = {
+                image: value.transpose(2, 0, 1)[None].astype(np.float32) / 255, **conditions}
     return cases, records
 
 
 def run_case(*, name, values, model, clone, out, oracle):
     directory = out / f"case-{name}"
     directory.mkdir()
-    inputs = {"data": torch.from_numpy(values)}
-    np.savez(directory / "inputs.npz", data=values)
+    inputs = {name: torch.from_numpy(value) for name, value in values.items()}
+    np.savez(directory / "inputs.npz", **values)
     with torch.inference_mode():
         actual = model(inputs)
         replay = clone(inputs)
     np.savez(directory / "pytorch.npz", **{k: v.numpy() for k, v in actual.items()})
     record = {"case": name, "holdout": name.startswith("holdout-"), "passed": False,
-              "input_npz": str(directory / "inputs.npz"), "input_sha256": digest(data=values.tobytes()),
+              "input_npz": str(directory / "inputs.npz"),
+              "input_sha256": digest(data=b"".join(values[name].tobytes() for name in sorted(values))),
               "roundtrip_exact": all(torch.equal(actual[k], replay[k]) for k in actual),
               "native": {"status": "not-run"}}
     if oracle:
@@ -132,7 +156,7 @@ def export(*, profile, out, oracle, videos=()):
     source, model, text, details, arena_sha = recover(profile=profile, out=out)
     spec = PROFILES[profile]
     bundle = {"format": FORMAT, "local_only": True, "profile": profile, "graph_text": text,
-              "execution_profile": EXECUTION_PROFILE, "runtime_sha256": RUNTIME_SHA256,
+              "execution_profile": execution_profile(profile=spec), "runtime_sha256": RUNTIME_SHA256,
               "state_dict": model.state_dict(), "state_sha256": state_digest(state=model.state_dict()),
               "verification_status": "candidate-native-unverified",
               **{key: spec[key] for key in ("source_sha256", "bm_sha256", "graph_sha256")}}
@@ -140,8 +164,9 @@ def export(*, profile, out, oracle, videos=()):
     torch.save(bundle, artifact)
     clone = load_model(path=artifact, allow_unverified=True)
     exact = all(torch.equal(value, clone.state_dict()[k]) for k, value in model.state_dict().items())
-    cases = synthetic_cases(shape=spec["input_shape"])
-    media, media_evidence = media_cases(videos=videos, shape=spec["input_shape"], out=out)
+    shapes = profile_input_shapes(profile=spec)
+    cases = synthetic_input_cases(shapes=shapes)
+    media, media_evidence = media_cases(videos=videos, shapes=shapes, out=out)
     cases.update(media)
     records = []
     report = {"format": FORMAT, "profile": profile, "status": "running", "source": str(source),
@@ -150,6 +175,7 @@ def export(*, profile, out, oracle, videos=()):
               "state_sha256": bundle["state_sha256"], "state_roundtrip_exact": exact,
               "parameter_count": model.parameter_count, "graph_recovery": details,
               "scope": "original-fixed-shape-full-terminal-tensor-comparison",
+              "execution_profile": execution_profile(profile=spec),
               "backend": "ByteNN enforced CPU / PyTorch CPU float32",
               "original_graph_unchanged": True, "original_arena_unchanged": True,
               "schema": {"inputs": model.input_shapes, "outputs": model.output_shapes,
