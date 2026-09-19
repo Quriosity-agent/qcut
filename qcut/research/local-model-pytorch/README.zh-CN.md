@@ -4,6 +4,7 @@
 
 ## 批次记录
 
+- [匀肤 GAN（yunfuhua）CPU 网络对拍](yunfuhua-parity.zh-CN.md)：盘点表 N14 的 `jypc_yunfuhua_gpucpu` 首次恢复；通用视觉解释器新增多输入、Sigmoid、SEScale、分数倍上采样与固定 CPU 数值 profile，原生对拍 10/10，主输出逐位一致；ONNX 与产品接入未做。
 - [第五阶段收尾与验收边界](PHASE5-20260919.zh-CN.md)：Windows/x86 合成 CI、无 Torch 视频分镜、编辑器接入、OCR 字表/CTC，以及 GRU/Bandou 新精度 profile。
 - [第四阶段：更多模型、ONNX 跨系统与媒体 E2E](PHASE4-20260919.zh-CN.md) 保留该阶段累计：21 个网络版本、16 个 PT 包、19 份 ONNX；产品接入仍另列。
 - [第三阶段：分类、OCR、跟踪与时序抠像](PHASE3-20260919.zh-CN.md) 保留当时数值校准与独立进程验证记录。
