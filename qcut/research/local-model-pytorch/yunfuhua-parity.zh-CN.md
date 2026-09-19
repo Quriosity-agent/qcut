@@ -109,6 +109,10 @@ profile 声明 `execution: ordered-fma` 时接受该 stamp，其余四个视觉 
 
 1. 同一容器格式的 `tt_face_extra_v15.0`（bytenn，头 `B`，量化存储字段 `2 7 4 13 2 5`）仍待恢复；
    `saliency_matting_v1.0` 已在同一分支完成，见 [saliency-matting-parity.zh-CN.md](saliency-matting-parity.zh-CN.md)。
+   对 `B` 图的探针（`.local/jianying-model-pytorch/face-extra-20260919-probe-b`）表明固定 CPU 运行库的 `CreateNet`
+   直接接受该图，只有 `SetInput` 报 `set_datasize 307200, blob_datasize 153600`：`1x160x160x3` 的输入 blob 每值 2 字节，
+   即存储类型 `2` 是 16 位定点、后一个字段是小数位数（输入 `2 6`）。要做对拍需要给 oracle 加 int16 定点输入/输出模式，
+   并在 PyTorch 侧仿真逐层定点累加与重量化；`Slice`/`Crop`/`Shuffle`/`Softmax` 在该图里的字段含义也要先用前缀探针确认。
 2. `tt_fsnew_base_jianying`、`tt_face_v11.2`、`tt_freid`、`tt_faceverify` 是带名字记录的结构化容器，
    载荷不是明文 bytenn 图，需要先弄清 `libcccreator` 加载时如何解包。
 3. 2 通道 `Tanh` 尾部规则、ONNX 数值适配器、真实素材与产品前处理、编辑器接入。
