@@ -12,6 +12,7 @@ from bytenn_oracle import LIBRARY, PRIVATE, predict
 from classifier_export import compare_outputs
 from container_scan import decode_graph, runtime_graph_table
 from model_containers import bytenn_sections, inspect_container
+from ocr_torch import widen_fp16
 from vision_batch_profiles import execution_profile, input_shapes as profile_input_shapes, ordered_execution
 from vision_batch_torch import (EXECUTION_PROFILE, FORMAT, PROFILES, RUNTIME_SHA256,
                                 VisionGraph, digest, load_model, parse_graph, state_digest)
@@ -47,15 +48,31 @@ def recover(*, profile, out):
         raise ValueError("decoded graph identity mismatch")
     section = bytenn_sections(data=bm, offset=0)["sections"][1]
     arena = bm[section["offset"]:section["offset"] + section["bytes"]]
-    if len(arena) < 8 or len(arena) % 4:
-        raise ValueError("unsupported FP32 arena byte count")
-    weights = np.frombuffer(arena[:-4], dtype="<f4").copy()
-    model = VisionGraph(nodes=parse_graph(text=text), weights=weights, ordered=ordered_execution(profile=spec)).eval()
+    nodes = parse_graph(text=text)
+    oracle_text, oracle_arena = text, arena
+    if spec.get("arena") == "fp16":
+        # Header-E arena: half-precision weights plus the uint32 graph stamp. CreateNet does
+        # not take an E graph directly; the runtime's CheckFp16AndConvertModel removes the E
+        # prefix and widens only the payload, keeping the stamp. widen_fp16 replicates that
+        # converter bit for bit (OCR fp16_decoder_proof), so the oracle runs the same D graph
+        # the runtime would, and the PyTorch copy shares the widened weights.
+        if not text.startswith("E\\n\n") or len(arena) != VisionGraph(nodes=nodes).parameter_count * 2 + 4:
+            raise ValueError("unsupported FP16 arena byte count")
+        weights = widen_fp16(bits=np.frombuffer(arena[:-4], dtype="<u2"))
+        oracle_text, oracle_arena = text[4:], weights.astype("<f4").tobytes() + arena[-4:]
+    else:
+        if len(arena) < 8 or len(arena) % 4:
+            raise ValueError("unsupported FP32 arena byte count")
+        weights = np.frombuffer(arena[:-4], dtype="<f4").copy()
+    model = VisionGraph(nodes=nodes, weights=weights, ordered=ordered_execution(profile=spec)).eval()
     if model.input_shapes != profile_input_shapes(profile=spec) or model.output_shapes != {k: tuple(v) for k, v in spec["outputs"].items()}:
         raise ValueError("recovered schema differs from audited dimensions")
     (out / "network.private.bm").write_bytes(bm)
-    (out / "graph.private.txt").write_text(text)
-    (out / "arena.private.bin").write_bytes(arena)
+    (out / "graph.private.txt").write_text(oracle_text)
+    (out / "arena.private.bin").write_bytes(oracle_arena)
+    if oracle_text is not text:
+        (out / "graph.original.private.txt").write_text(text)
+        (out / "arena.original.private.bin").write_bytes(arena)
     return source, model, text, details, digest(data=arena)
 
 
@@ -177,7 +194,10 @@ def export(*, profile, out, oracle, videos=()):
               "scope": "original-fixed-shape-full-terminal-tensor-comparison",
               "execution_profile": execution_profile(profile=spec),
               "backend": "ByteNN enforced CPU / PyTorch CPU float32",
-              "original_graph_unchanged": True, "original_arena_unchanged": True,
+              "original_graph_unchanged": spec.get("arena") != "fp16", "original_arena_unchanged": spec.get("arena") != "fp16",
+              "graph_transform": ("native CheckFp16AndConvertModel recipe: remove E-prefix, widen payload, retain stamp"
+                                  if spec.get("arena") == "fp16" else None),
+              "weight_decoding": "fp16 widened with the pinned ARM64 four-lane rule" if spec.get("arena") == "fp16" else "fp32 as stored",
               "schema": {"inputs": model.input_shapes, "outputs": model.output_shapes,
                          "layout": "NCHW", "dtype": "float32", "execution_memory": "contiguous NCHW"},
               "tolerance": {"atol": 1e-4, "rtol": 1e-4}, "media": media_evidence,
