@@ -8,7 +8,7 @@ import torch
 
 from container_scan import decode_graph, runtime_graph_table
 from model_containers import bytenn_sections
-from ocr_export import LIBRARY, RUNTIMES, compare, fresh_directory, read_native, run_oracle, sha, verify_fp16
+from ocr_export import LIBRARY, RUNTIMES, compare, fresh_directory, parity_status, read_native, run_oracle, sha, verify_fp16
 from ocr_rec_torch import (EXECUTION_PROFILE, VALIDATED_FORMAT, GRAPH_SHA256, INPUT_SHAPE,
                           SOURCE_SHA256, OCRRecognizer, load_validated_model, parse_graph)
 from ocr_torch import RUNTIME_SHA256, decode_arena
@@ -96,10 +96,13 @@ def export(*, out, quick, trace, oracle, selected_cases=None):
         except (OSError, ValueError) as error:
             case["reason"] = str(error)
     passed = state_exact and fp16["passed"] and native["fp16_expansion_exact"] and bool(cases) and all(case["passed"] for case in cases)
+    # --quick and --case runs are evidence for the selected cases only.
+    complete = not quick and selected_cases is None
     report = {"format": VALIDATED_FORMAT, "execution_profile": EXECUTION_PROFILE,
               "source": str(SOURCE), "source_sha256": SOURCE_SHA256,
               "artifact": str(artifact), "artifact_sha256": artifact_sha, "artifact_bytes": artifact.stat().st_size,
-              "status": "native-parity-passed" if passed else "verification-failed" if oracle else "native-unverified",
+              "status": parity_status(parity=passed, oracle=oracle, complete=complete),
+              "case_set": "complete" if complete else "partial",
               "backend": "CPU float32 PyTorch versus forced bytenn_cpu", "runtime_sha256": RUNTIME_SHA256,
               "scope": "complete 269-layer raw logits only; alphabet/CTC/preprocessing NOT verified",
               "original_topology_unchanged": True,
@@ -111,7 +114,7 @@ def export(*, out, quick, trace, oracle, selected_cases=None):
               "graph_recovery": graph_report, "weight_values": len(weights), "parameter_roundtrip_exact": state_exact,
               "native": native, "fp16_decoder_proof": fp16, "tolerance": {"atol": 1e-4, "rtol": 1e-4}, "cases": cases,
               "holdouts_passed": any(c["holdout"] for c in cases) and all(c["passed"] for c in cases if c["holdout"]),
-              "all_declared_outputs_verified": passed}
+              "all_declared_outputs_verified": passed and complete}
     (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return report
 
