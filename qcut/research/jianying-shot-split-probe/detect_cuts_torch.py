@@ -34,10 +34,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from torch_backbone import build as build_backbone  # noqa: E402
 from torch_predhead import PredHead  # noqa: E402
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "local-model-pytorch"))
+from shot_postprocess import CENTER_OFFSET, FIRST_SCORED_FRAME, WINDOW, cut_points  # noqa: E402
+
 HERE = pathlib.Path(__file__).resolve().parent
 FFMPEG = HERE.parent.parent / "electron" / "resources" / "ffmpeg" / "darwin-arm64" / "ffmpeg"
-WINDOW = 7
-CENTER_OFFSET = 3
 
 
 def progress(message):
@@ -80,10 +81,6 @@ def preprocess(frames_uint8):
     return x / 127.5 - 1.0
 
 
-FIRST_SCORED_FRAME = 7          # 引擎从喂入第 7 帧起才开始产出概率
-FLAT_EPS = 0.1                  # 反汇编里 0x2c46c40 处的 double 常数
-
-
 def resized_uint8(frames_uint8):
     """引擎 blit 节点的输出:96x96 RGB uint8(双线性、整帧拉伸)。"""
     x = torch.from_numpy(np.array(frames_uint8, dtype=np.uint8, copy=True)).float().permute(0, 3, 1, 2)
@@ -106,29 +103,6 @@ def frame_scores(backbone, head, frames_uint8, batch=64):
             progress(f"windows {f - FIRST_SCORED_FRAME + 1}/{max(0, len(feats) - FIRST_SCORED_FRAME)}")
     diffs = (small[1:] - small[:-1]).abs().mean(dim=(1, 2, 3))
     return scores, diffs.tolist()
-
-
-def cut_points(scores, diffs, threshold):
-    """照 libcccreator 后处理逐字实现:P 上的局部极大值 + 用像素差 Q 微调一帧。"""
-    centers = sorted(scores)
-    P = [scores[c] for c in centers]
-    Q = lambda k: diffs[k] if 0 <= k < len(diffs) else 0.0
-    cuts, carry = [], 0
-    for i in range(1, len(P) - 1):
-        rising = int(P[i - 1] < P[i]) | carry
-        carry = int(P[i] <= P[i + 1]) & rising
-        if P[i] <= P[i + 1] or not rising:
-            continue
-        if not P[i] > threshold:
-            carry = 0
-            continue
-        c = centers[i]
-        if abs(P[i] - P[i - 1]) < FLAT_EPS and Q(c - 1) > 2 * Q(c - 2):
-            c -= 1
-        elif abs(P[i] - P[i + 1]) < FLAT_EPS and Q(c) < 2 * Q(c + 1):
-            c += 1
-        cuts.append(c)
-    return cuts
 
 
 def main():
