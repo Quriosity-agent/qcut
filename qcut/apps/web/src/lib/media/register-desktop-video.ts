@@ -11,7 +11,16 @@ export async function registerDesktopVideo({
 	if (mediaItem.type !== "video" || !mediaItem.localPath) return mediaItem;
 	const desktop = platform();
 	if (!desktop.isElectron) return mediaItem;
-	const existing = await desktop.claude?.media.info(projectId, mediaItem.id);
+	const claude = desktop.claude;
+	if (!claude) {
+		// Without the media lookup we cannot tell whether localPath already is
+		// the project's own copy, and importing that onto itself unlinks the
+		// source first; refuse rather than risk deleting the only copy.
+		throw new Error(
+			"Cannot register video: the desktop media lookup bridge is unavailable"
+		);
+	}
+	const existing = await claude.media.info(projectId, mediaItem.id);
 	if (
 		existing &&
 		typeof existing === "object" &&
