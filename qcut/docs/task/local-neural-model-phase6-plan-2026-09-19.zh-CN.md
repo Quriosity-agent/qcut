@@ -3,7 +3,7 @@
 日期：2026-09-19。代码基线：`c4343a392ce2e7cfe4040e6ab9a069458448c2e9`。
 分支：`codex/local-neural-model-audit-20260919`；沿用 [PR #477](https://github.com/Quriosity-agent/qcut/pull/477)。
 
-**本轮只写计划，不修改运行代码、不启动新实验。本计划中的验收均未执行。后续每次只推进一个步骤，通过该步门槛并记录证据后，再开始下一步。当前唯一待开始项为 S1。**
+**初稿仅记录计划；当前已推进 S1 的普通桌面视频登记修复，定向测试通过，但真实 Electron 验收受启动错误阻塞。S1 尚未全部完成，不进入 S2。后续仍每次只推进一个步骤，证据通过后再继续。**
 
 ## 1. 基线与边界
 
@@ -32,7 +32,7 @@
 
 | 步骤 | 本步唯一交付 | 状态 | 进入条件 |
 | --- | --- | --- | --- |
-| S1 | 修复并验证编辑器媒体身份/路径链 | 待开始 | 文档就绪 |
+| S1 | 修复并验证编辑器媒体身份/路径链 | 登记修复已实现，真实验收待完成 | 文档就绪 |
 | S2 | 两项真实分镜 E2E 通过及截图、导出证据 | 未开始 | S1 通过 |
 | S3 | 编辑器取消真正终止后台推理 | 未开始 | S2 通过 |
 | S4 | Windows 私有回放与桌面部署验收 | 未开始 | S3 通过且受控 Windows 环境可用 |
@@ -49,7 +49,7 @@
 
 `claude-scene-handler.ts` 的 `resolveVideoForScene()` 调用 `getMediaInfo(projectId, mediaId)`。后者扫描项目 `media/` 与 `media/imported/`，生成文件型 ID，并兼容文件名匹配。前端传入时间线关联的 media ID。
 
-现有 E2E 在 Electron 启动后切换测试 `documents` 目录，因此需要同时核对导入时机、项目路径和 ID；**目前不能直接断定是 ID 不同或测试环境错误**。
+现有 E2E 在 Electron 启动后切换测试 `documents` 目录，仍需通过一次完整运行核对其时序。本轮源码确认的独立缺口是：普通文件输入走 `processMediaFiles()`，视频只写入临时路径和浏览器存储，`addMediaItem()` 未调用项目媒体导入；而场景 API 只扫描项目目录。不能只通过文件名 fallback 修复这条缺失登记的链。
 
 ### 实现顺序
 
@@ -208,6 +208,17 @@ bunx playwright test onnx-shot-split.e2e.ts --project=electron --workers=1 --ret
 
 | 步骤 | 实现 commit | 验收证据 | 结论 |
 | --- | --- | --- | --- |
-| 文档 | 本文件 | 核对当前源码入口与第五阶段报告；仅文档检查 | 计划已写，尚未开始实现 |
-| S1 | 无 | 无 | 下一步只查明并修复媒体解析链 |
+| 文档 | `b0aaeaf5c` | 核对当前源码入口与第五阶段报告 | 初稿完成 |
+| S1 | 本轮单文件提交 | 下方 S1 首次推进记录 | 登记代码和定向回归完成；真实验收未完成 |
 | S2–S8 | 无 | 无 | 未开始 |
+
+### S1 首次推进记录
+
+- 新增 `apps/web/src/lib/media/register-desktop-video.ts`，由 `addMediaItem()` 在对 UI 暴露条目前等待完成。沿用 project ID/media ID 和现有 `mediaImport.import`，不放宽场景检测的路径入口。
+- 将已有临时视频复制到项目 `media/imported/`，持久化新的 `localPath`。不用指向临时目录的 symlink；对已在目标位置的媒体跳过重复导入，防止底层 unlink 删除源自身。Web、非视频与无 localPath 的导入行为不变。
+- 本轮不自动迁移历史项目的未登记媒体，也未宣称完成重开、删除源文件及 Windows 权限矩阵；这些仍属于 S1 未验收项。
+- 新 helper 10 项、media-store 10 项、场景路由 32 项，合计 **52/52 通过**。前端类型检查、Vite 构建、Electron TypeScript 编译、新 helper/test 的 Biome 检查通过。
+- 追加一个 S1 真机冒烟用例：普通 UI 导入，按原 ID 查询项目媒体，检查落盘文件，再通过右键触发真实 ONNX。没有 mock 推理或成功状态。
+- 真实运行 **1 failed**，失败在 `electron.launch`，未进入媒体导入。启动日志报告 `ERR_MODULE_NOT_FOUND: packages/editor-core/src/color-providers.js`，由 `packages/editor-core/src/index.ts` 引用。按本轮限额停止该测试进程，没有转入编辑器打包修复；本次没有生成成功截图，不能称 `Media not found` 已获真实 E2E 验证。
+- 私有日志：`.local/jianying-model-pytorch/phase6-s1-{unit,types,build,electron-build,lint,e2e}.log`；E2E 目录 `phase6-s1-editor/`。本轮测试进程已结束，未操作用户项目。
+- 下一次仍停留 S1：先修复/校正 Electron 启动产物，执行新增的 S1 用例，补媒体身份、重开和错误场景证据；通过后再开启 S2。
