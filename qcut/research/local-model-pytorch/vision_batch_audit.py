@@ -133,7 +133,14 @@ def run_audit(*, reports, candidate_report, out):
     with (guard_out / "worker.log").open("w") as log:
         child = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--guard-worker", str(job_path), "--out", str(guard_out)],
                                stdout=log, stderr=subprocess.STDOUT, timeout=30)
-    guard = json.loads((guard_out / "guard-report.json").read_text())
+    guard_report = guard_out / "guard-report.json"
+    if guard_report.is_file():
+        guard = json.loads(guard_report.read_text())
+    else:
+        # The worker writes its report last; an early exit must fail the audit
+        # without discarding the loader checks already collected.
+        guard = {"passed": False, "checks": [], "blocked": [],
+                 "error": f"guard worker exited with {child.returncode} before writing guard-report.json"}
     mapping = [{"profile": item["profile"], "source_sha256": item["source_sha256"], "network_id": "main",
                 "verified_networks": 1, "verified_bundles": 1, "artifact_sha256": item["artifact_sha256"],
                 "report": str(path.resolve()), "schema": item["schema"],
