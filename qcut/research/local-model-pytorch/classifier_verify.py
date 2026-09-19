@@ -40,8 +40,12 @@ def verify(*, run, out):
         raise ValueError("standalone report requires a fresh empty directory")
     out.mkdir(parents=True, exist_ok=True)
     report = json.loads((run / "report.json").read_text())
-    if not report.get("cases"):
-        raise ValueError("missing frozen comparison cases")
+    # A failed native parity report still carries replayable frozen tensors;
+    # replaying them must never turn into a standalone pass.
+    if report.get("status") != "native-parity-passed":
+        raise ValueError("standalone replay requires a native-parity-passed source report")
+    if not report.get("cases") or not all(case.get("passed") is True for case in report["cases"]):
+        raise ValueError("missing or failed frozen comparison cases")
     original_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
