@@ -12,7 +12,7 @@
   在无头人像宿主里跑一次特效包，SDK 就会把它自己那把密钥交出来。改本地特效包的 `algorithmConfig.json` 节点
   （`face_verify`、`skeleton`、`matting`、`after_effect`、`expression_detect`、`object_detect` 等类型，
   以及 `face` 节点的 `face_attr_detect_ability`）可以触发更多家族，**共取得 7 把密钥**。
-- 由此打开 6 个包、恢复 **11 张网络**（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
+- 由此打开 6 个包、恢复 **12 张网络**（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
   浮点层最大 `6e-7`；`tt_matting_video` 的 fp32 图与两张人脸属性网络的浮点层误差为 0。
 - 运行库语义新增一条：旧格式 7 字段 `Eltwise` 行没有 ReLU 标志，运行库**总是**施加 ReLU（探针 micro-el2）。
 - 没有任何产品或编辑器接入。
@@ -32,6 +32,7 @@
 | `3541691d6ed8ef66` | tt_matting_video / video_v1（包内 BM v6，ByteNN 自解） | `plain` | 136 | 2,824,620 | 288×288×3 `[4, 0]` | `nn_3` | 全部 136 层浮点，最大 `0` |
 | `6eedcffec09ea24d` | tt_face_attribute_age / agenet（`USTQ` 压缩权重，运行时展开） | `USTQ` | 103 | 412,352 | 224×224×3 `[2, 7]` | `prob_gender` | 整数层 98/98 逐位一致；浮点层 5 层最大 `0` |
 | `0a884817f4f59147` | tt_face_attribute_exp / expnet（`F` 压缩权重，运行时展开） | `F` | 102 | 600,432 | 256×256×3 `[2, 7]` | `predict_attractive` | 整数层 89/89 逐位一致；浮点层 13 层最大 `0` |
+| `d41f5fd3b0b89cc6` | tt_face_extra_fast / extra（face 算法 espresso 路径，无需密钥） | `B` | 100 | 454,116 | 224×224×3 `[2, 6]` | `fc` | 整数层 107/107 逐位一致；浮点层 4 层最大 `4.8e-06` |
 
 `tt_skeletonlockon/single` 与人体包里从堆中切出的 192×144 热图网络是同一张图（sha 相同），此处作为交叉验证保留。
 
@@ -47,8 +48,8 @@
 
 | 文件 | 状态 |
 | --- | --- |
-| `tt_face_attribute_extra` | 仍缺密钥：7 把都被拒；需要能触发该属性算法的节点配置 |
-| `tt_face_extra_fast` | 不缺路：把 `face` 节点的 `face_extra_model_name` 指向它就会被 face 算法请求（日志可见），但那次宿主在加载中崩溃，参数组合还要再调；它走 face 算法的 espresso 路径，可以直接用 ByteNN 捕获器取图，不必拿密钥 |
+| `tt_face_extra_fast` | **已恢复**，而且根本不需要密钥：把 `face` 节点的 `face_extra_fast_model_name` 指向它并置 `face_fast_mode=1`，face 算法就会加载成功，图与 arena 由 ByteNN 捕获器从 espresso 路径直接取得（`face_extra_model_name` / `face_user_extra_model_name` / `face_extra_model_key` 三种写法分别是不触发或让宿主崩溃） |
+| `tt_face_attribute_extra` | 仍缺密钥。属性算法（type 46）由 `bach_expression_detect` + `expression_detect` + `object_detect` 三个节点一起出现时才创建，但在这个 SDK 版本里它**只请求 age 一个模型**：`face_attr_detect_ability` 取 255 / 4080 / 65280 / 65535 结果一致，都只加载 `ttfaceattrmodel/tt_face_attribute_age_v2.0.model`。`tt_face_attribute_exp` 与 age 共用密钥所以顺带打开，`extra` 的持有者没有被触发 |
 | `tt_body_detection_lockon` | **不是密钥问题**：SDK 自己加载它也失败（`algorithm type 18 ... failed: -4`），该包与当前 SDK 版本不匹配 |
 
 ## 安全边界
@@ -62,7 +63,8 @@
 `tail-20260920/`：`pkgcap-sticker`、`pkgcap-attr2`、`pkgcap-more`、`pkgcap-attr3`（拦截日志与密钥）、`effect-attr*`、`effect-more`（本地特效包）、
 `pkg/<模型>`（解出的 config/weight）、`collected-pkg/`（5 张网络 + `manifest.json`）、
 `parity-pkg-r2`、`parity-ae-seed41`、`parity-mv-seed41`、`parity-attr-seed41/509`、`parity-pkg-final509`、
-`init-matting_video`、`ustq-agenet`、`ustq-expnet`（创建后堆扫描）、`micro-el`、`micro-el2`（探针图）。
+`init-matting_video`、`ustq-agenet`、`ustq-expnet`（创建后堆扫描）、`bycap-fast-1..4`、`collected-fast`、
+`parity-fast-seed41/509`、`effect-*`（逐轮特效包）、`micro-el`、`micro-el2`（探针图）。
 
 ## 复现
 
