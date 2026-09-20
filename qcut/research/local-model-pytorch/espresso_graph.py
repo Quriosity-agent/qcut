@@ -129,12 +129,16 @@ def analyze(text):
                  bias=bool(bias), relu=bool(relu), weight=weight, bias_storage=bias_storage, storage=output,
                  shape=(n, 1, 1, co), packed=packed and weight["type"] == 2)
         elif op == "Eltwise":
+            # Legacy graphs omit the trailing ReLU flag.
+            if len(row) not in (7, 8):
+                raise ValueError(f"{name}: unsupported eltwise row")
             a, b, target = row[2:5]
             output = storage(row[5:7])
             if shape(a) != shape(b):
                 raise ValueError(f"{name}: eltwise shapes differ")
             shapes[target], descriptors[target] = shape(a), output
-            emit(row, op, name, [a, b], [target], relu=row[7] == "1", storage=output, shape=shape(a))
+            # A legacy row has no ReLU field and the runtime always applies it (probe micro-el2).
+            emit(row, op, name, [a, b], [target], relu=row[7] == "1" if len(row) == 8 else True, storage=output, shape=shape(a))
         elif op == "Concat":
             count = int(row[2])
             sources, target = row[3:3 + count], row[3 + count]
