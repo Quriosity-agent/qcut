@@ -4,7 +4,7 @@
 
 ## 批次记录
 
-- [SMASH 加密模型包：让厂商自己的读取器解包](smash-package-parity.zh-CN.md)：`liblens` 导出的 `ModelPackage` 读取器带包密钥即可解包；密钥按家族不同、不在库字符串里，用 dyld interpose 在宿主里由 SDK 自己交出；共 7 把密钥、6 个包、11 张网络两种子逐位一致（含 `tt_after_effect` 三张、`tt_matting_video` fp32 图与两张 `USTQ`/`F` 压缩权重的人脸属性网络，压缩 arena 由运行库展开后从堆里取回）；`tt_face_attribute_extra` 仍缺密钥，`tt_body_detection_lockon` 连 SDK 自己都加载失败。
+- [SMASH 加密模型包：让厂商自己的读取器解包](smash-package-parity.zh-CN.md)：`liblens` 导出的 `ModelPackage` 读取器带包密钥即可解包；密钥按家族不同、不在库字符串里，用 dyld interpose 在宿主里由 SDK 自己交出；共 7 把密钥、7 个包、12 张网络两种子逐位一致（含 `tt_after_effect` 三张、`tt_matting_video` fp32 图与两张 `USTQ`/`F` 压缩权重的人脸属性网络，压缩 arena 由运行库展开后从堆里取回）；`tt_face_extra_fast` 由 face 算法加载后直接捕获、无需密钥；只剩 `tt_face_attribute_extra` 缺密钥（属性算法在本 SDK 版本只请求 age），`tt_body_detection_lockon` 连 SDK 自己都加载失败。
 - [密文 BM 容器：用 ByteNN 自己解密再逐位对拍](bytenn-init-parity.zh-CN.md)：`nodehub_c3_300`、`tt_matting_large/v15/relight` 四个此前判为不可读的容器直接喂给 `EngineFactory::Create` + `Init(Config)`，运行库自行解密后从堆里切出图与 arena；三张定点网络两种子逐位一致，fp32 的 relight 全部 `≤1.3e-5`；新增膨胀深度卷积、float 路径与 softmax 分块规则；SMASH AES 包装的文件仍未打开。
 - [人脸 / 皮肤 / 人体 espresso 网络：捕获、精确 arena 与定点逐位对拍](face-espresso-parity.zh-CN.md)：四个加密人脸容器（fsnew / tt_face / face_extra / freid）、facefitting_3d、tt_skin_seg 与 tt_skeletonsquat 共 19 张网络在无头人像宿主里捕获，arena 按图戳、护页二分或戳窗口精确到字节；定点解释器 `espresso_fixed.py` 两种子下所有整数层逐位一致，规则见 [espresso-fixed-point.zh-CN.md](espresso-fixed-point.zh-CN.md)；两类定点 softmax 与 fp32 全连接累加顺序未固定；产品接入未做。
 - [显著性抠像（saliency_matting）CPU 对拍与 ONNX](saliency-matting-parity.zh-CN.md)：盘点表 N07 首次恢复；解释器新增 `E` 头 fp16 arena、dilated `Conv2D`、最大池化、通道 Slice、Mul、ReduceSum；原生对拍 10/10，ONNX 导出并对冻结原生输出回比 10/10；产品接入未做。
