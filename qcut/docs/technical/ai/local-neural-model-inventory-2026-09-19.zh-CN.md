@@ -55,14 +55,14 @@
 | N04 | `jy_compressShotDetectPredHead_new_v1.0_size0.bytenn` | 分镜时序预测头，现有实现含 GRU | N03/N04 组成一个分镜管线，但确实是两份网络资产 |
 | N05 | `tt_matting_video_gru` v1.0 | 人像抠像 `portrait-gru` | 私有剪映模型与运行库；可再融合 Apple Vision |
 | N06 | `video_saliency_seg_bce` v1.0 | 通用视频对象抠像 `video-object` | Bach、同模型 CoreML、实验宿主互操作都是同一模型的不同路径 |
-| N07 | `saliency_matting` v1.0 | `saliency-script` 显著性抠像 | **实验路径**；resolver 同时要求 A01 及 N06 等资产 |
-| N08 | `tt_fsnew_base_jianying` v2.0 | 基础人脸检测，供美颜及抠像自动路由采样 | 固定效果包动态加载；不是 QCut 自训模型 |
-| N09 | `tt_face` v11.2 | 人脸/关键点相关输入，多个人像包共享 | 不把每个美颜滑条计为独立模型 |
-| N10 | `tt_face_extra` v15.0 | 人脸细节与扩展关键点 | 逻辑名与物理文件版本可能不同，需保留 resolver 证据 |
-| N11 | `tt_freid` v2.0 | 人脸跨帧 ID，逐人美颜参数绑定 | 不等于已经接入跨镜头身份识别 `tt_faceverify` |
-| N12 | `tt_skin_seg` v5.1 | 皮肤掩膜、磨皮/肤色、模型驱动双 LUT 滤镜 | Metal 混合器独立，不意味着 skin mask 模型独立 |
-| N13 | `tt_skeletonsquat` v10.0 | 美体关键点与形变输入 | `body` 固定包；不要从此推导所有骨骼模型都已接入 |
-| N14 | `jypc_yunfuhua_gpucpu` v1.0 | 匀肤、丰盈 GAN | 两个控制共用 `skin-gan` 包，计一个模型家族 |
+| N07 | `saliency_matting` v1.0 | `saliency-script` 显著性抠像 | **实验路径**；resolver 同时要求 A01 及 N06 等资产；2026-09-19 已恢复为 PyTorch 并通过 CPU 原生对拍与 ONNX 回比（[记录](../../../research/local-model-pytorch/saliency-matting-parity.zh-CN.md)），脚本编排与产品前处理未验证 |
+| N08 | `tt_fsnew_base_jianying` v2.0 | 基础人脸检测，供美颜及抠像自动路由采样 | 固定效果包动态加载；不是 QCut 自训模型；2026-09-20 在无头人像宿主里捕获其 6 张子网（320 检测器、对齐、分类）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)），产品前处理与接入未验证 |
+| N09 | `tt_face` v11.2 | 人脸/关键点相关输入，多个人像包共享 | 不把每个美颜滑条计为独立模型；2026-09-20 捕获其 6 张子网（3 张与 N08 相同）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
+| N10 | `tt_face_extra` v15.0 | 人脸细节与扩展关键点 | 逻辑名与物理文件版本可能不同，需保留 resolver 证据；2026-09-20 捕获 mask/extra/iris 三张子网，所有整数层逐位对拍一致；浮点 softmax 头里 mask 两路逐位一致，extra 的两类 `prob2` 只在并列点差 `9.8e-4`（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
+| N11 | `tt_freid` v2.0 | 人脸跨帧 ID，逐人美颜参数绑定 | 不等于已经接入跨镜头身份识别 `tt_faceverify`；2026-09-20 捕获两张 112 网络并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)）；`tt_faceverify` 与人脸属性模型无可触发的特效包，未捕获 |
+| N12 | `tt_skin_seg` v5.1 | 皮肤掩膜、磨皮/肤色、模型驱动双 LUT 滤镜 | Metal 混合器独立，不意味着 skin mask 模型独立；2026-09-20 捕获其 224×128 的 `B` 图（127 层，Sigmoid 单通道掩膜）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)），产品前处理与接入未验证 |
+| N13 | `tt_skeletonsquat` v10.0 | 美体关键点与形变输入 | `body` 固定包；不要从此推导所有骨骼模型都已接入；2026-09-20 捕获其三张子网（224 vectormap、192×144 热图 int8、192×144 `B`）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
+| N14 | `jypc_yunfuhua_gpucpu` v1.0 | 匀肤、丰盈 GAN | 两个控制共用 `skin-gan` 包，计一个模型家族；2026-09-19 已恢复为 PyTorch 并通过 CPU 原生对拍（[记录](../../../research/local-model-pytorch/yunfuhua-parity.zh-CN.md)），产品前处理、GPU 路径与接入未验证 |
 | N15 | `newbandou` v1.0 | 祛斑祛痘神经修复 | `spot-acne` 包，另有 A02 脚本依赖 |
 
 可追溯代码：
@@ -85,7 +85,7 @@
 | A01 | `saliency_script_for_cc` v1.2 | 脚本编排包；不因扩展名是 `.model` 就计一个独立网络 |
 | A02 | `newbandou_remove_script` v1.0 | 祛斑祛痘后处理/脚本依赖，与 N15 分开登记，但不增加神经网络计数 |
 | A03 | `tt_facefitting1256` v2.0 | 美妆几何拟合包；本轮未拆内部网络与参数表，保守列为算法资产 |
-| A04 | `tt_facefitting_3d` v6.2 | 手动磨皮、手动祛痘依赖；同样未证明它是一份独立神经网络 |
+| A04 | `tt_facefitting_3d` v6.2 | 手动磨皮、手动祛痘依赖；2026-09-20 捕获其 212→512→512→442 的 fp32 全连接子网并对拍（相对误差 `≤2.6e-4`）（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
 | A05 | `bingo_objectTracking_v1.0.dat` | 当前 Bingo 运动跟踪桥直接传入此文件；已接入二进制跟踪，但本轮没有确认其内部神经网络结构 |
 
 S01 代码：[Vision 桥](../../../electron/jianying-person-cutout/native/vision-person-segmentation.mm)。
