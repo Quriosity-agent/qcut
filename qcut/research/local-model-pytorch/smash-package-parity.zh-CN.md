@@ -12,8 +12,8 @@
   在无头人像宿主里跑一次特效包，SDK 就会把它自己那把密钥交出来。改本地特效包的 `algorithmConfig.json` 节点
   （`face_verify`、`skeleton`、`matting`、`after_effect`、`expression_detect`、`object_detect` 等类型，
   以及 `face` 节点的 `face_attr_detect_ability`）可以触发更多家族，**共取得 7 把密钥**。
-- 由此打开 6 个包、恢复 9 张网络（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
-  浮点层最大 `6e-7`；`tt_matting_video` 的 fp32 图 136 层误差为 0。
+- 由此打开 6 个包、恢复 **11 张网络**（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
+  浮点层最大 `6e-7`；`tt_matting_video` 的 fp32 图与两张人脸属性网络的浮点层误差为 0。
 - 运行库语义新增一条：旧格式 7 字段 `Eltwise` 行没有 ReLU 标志，运行库**总是**施加 ReLU（探针 micro-el2）。
 - 没有任何产品或编辑器接入。
 
@@ -29,16 +29,26 @@
 | `12347479a31093f4` | tt_after_effect / base | `plain` | 64 | 134,076 | 224×224×3 `[1, 6]` | `blur_prob` | 整数层 55/55 逐位一致；浮点层 9 层最大 `6e-07` |
 | `7d4775cfb0dc4fe2` | tt_after_effect / meaningless | `plain` | 58 | 96,044 | 224×224×3 `[1, 6]` | `meaningless_prob` | 整数层 55/55 逐位一致；浮点层 3 层最大 `3e-07` |
 | `49a65167cb18bc1f` | tt_after_effect / portrait | `B` | 111 | 1,858,552 | 224×224×3 `[2, 6]` | `output` | 整数层 107/107 逐位一致；浮点层 4 层最大 `4.8e-07` |
-| `3541691d6ed8ef66` | tt_matting_video / video_v1（包内 BM v6，再由 ByteNN 自解） | `plain` | 136 | 2,824,620 | 288×288×3 `[4, 0]` | `nn_3` | 全部 136 层浮点，最大 `0` |
+| `3541691d6ed8ef66` | tt_matting_video / video_v1（包内 BM v6，ByteNN 自解） | `plain` | 136 | 2,824,620 | 288×288×3 `[4, 0]` | `nn_3` | 全部 136 层浮点，最大 `0` |
+| `6eedcffec09ea24d` | tt_face_attribute_age / agenet（`USTQ` 压缩权重，运行时展开） | `USTQ` | 103 | 412,352 | 224×224×3 `[2, 7]` | `prob_gender` | 整数层 98/98 逐位一致；浮点层 5 层最大 `0` |
+| `0a884817f4f59147` | tt_face_attribute_exp / expnet（`F` 压缩权重，运行时展开） | `F` | 102 | 600,432 | 256×256×3 `[2, 7]` | `predict_attractive` | 整数层 89/89 逐位一致；浮点层 13 层最大 `0` |
 
 `tt_skeletonlockon/single` 与人体包里从堆中切出的 192×144 热图网络是同一张图（sha 相同），此处作为交叉验证保留。
+
+## 压缩权重（`USTQ` / `F`）
+
+人脸属性两个包的图带压缩标记行，打包的权重比图自身的字节核算小得多（`agenet` 144,510 对 412,352）。
+运行库在 `CreateNet` 时把它展开，所以展开后的 arena 只存在于内存里：给捕获器加一个
+`QCUT_BYTENN_SCAN_AFTER_CREATE=1` 的创建后堆扫描，展开的 arena 就落在图戳窗口里，
+`espresso_package_collect.py --capture` 按核算长度取窗口后缀并交给运行库验证。去掉标记行后的图配上展开 arena，
+两个种子下全部逐位一致。压缩格式本身没有被复原，也不需要复原。
 
 ## 仍然打不开，以及为什么
 
 | 文件 | 状态 |
 | --- | --- |
-| `tt_face_attribute_age`、`tt_face_attribute_exp` | **已解包**，但图头是 `USTQ` / `F`（权重再压缩），本仓库的解释器还没有对应解码；运行库本身接受该图（`CreateNet` 返回 0，blob 形状可读），所以只差一个 arena 解码器就能对拍 |
-| `tt_face_attribute_extra`、`tt_face_extra_fast` | 仍缺密钥：7 把都被拒；需要能触发这两个算法的节点配置 |
+| `tt_face_attribute_extra` | 仍缺密钥：7 把都被拒；需要能触发该属性算法的节点配置 |
+| `tt_face_extra_fast` | 不缺路：把 `face` 节点的 `face_extra_model_name` 指向它就会被 face 算法请求（日志可见），但那次宿主在加载中崩溃，参数组合还要再调；它走 face 算法的 espresso 路径，可以直接用 ByteNN 捕获器取图，不必拿密钥 |
 | `tt_body_detection_lockon` | **不是密钥问题**：SDK 自己加载它也失败（`algorithm type 18 ... failed: -4`），该包与当前 SDK 版本不匹配 |
 
 ## 安全边界
@@ -51,7 +61,8 @@
 
 `tail-20260920/`：`pkgcap-sticker`、`pkgcap-attr2`、`pkgcap-more`、`pkgcap-attr3`（拦截日志与密钥）、`effect-attr*`、`effect-more`（本地特效包）、
 `pkg/<模型>`（解出的 config/weight）、`collected-pkg/`（5 张网络 + `manifest.json`）、
-`parity-pkg-r2`、`parity-ae-seed41`、`parity-mv-seed41`、`parity-pkg-final509`、`init-matting_video`、`micro-el`、`micro-el2`（探针图）。
+`parity-pkg-r2`、`parity-ae-seed41`、`parity-mv-seed41`、`parity-attr-seed41/509`、`parity-pkg-final509`、
+`init-matting_video`、`ustq-agenet`、`ustq-expnet`（创建后堆扫描）、`micro-el`、`micro-el2`（探针图）。
 
 ## 复现
 
