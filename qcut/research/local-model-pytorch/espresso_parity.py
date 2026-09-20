@@ -53,9 +53,13 @@ def compare(net_dir, out, seed, *, all_layers=True, reinfer=None):
             error = np.abs(mine["data"].astype(np.float64) - expected.astype(np.float64))
             worst = float(error.max())
             entry.update(max_abs=worst, max_rel=float((error / (np.abs(expected) + 1e-6)).max()))
-            # A non-finite blob is a failure, not a small error: NaN never compares greater than a
-            # threshold, so it would otherwise slip through every numeric check.
-            if not (np.isfinite(mine["data"]).all() and np.isfinite(expected).all() and np.isfinite(worst)):
+            # NaN never compares greater than a threshold, so a non-finite blob would otherwise slip
+            # through every numeric check. When the runtime itself overflows (dense heads fed with
+            # synthetic noise do), the blob is not comparable rather than wrong, and is reported
+            # separately so it can never be counted as a pass.
+            if not np.isfinite(expected).all():
+                entry["status"] = "native-nonfinite"
+            elif not (np.isfinite(mine["data"]).all() and np.isfinite(worst)):
                 entry["status"] = "nonfinite"
             else:
                 entry["status"] = "float"
@@ -88,12 +92,15 @@ def main():
             continue
         exact = sum(1 for e in report if e["status"] == "exact")
         floats = [e for e in report if e["status"] == "float"]
-        bad = [e for e in report if e["status"] not in ("exact", "float")]
+        skipped = [e for e in report if e["status"] == "native-nonfinite"]
+        bad = [e for e in report if e["status"] not in ("exact", "float", "native-nonfinite")]
         first_bad = bad[0] if bad else None
         worst_float = max((e["max_abs"] for e in floats if np.isfinite(e["max_abs"])), default=0.0)
-        print(f"{net_dir.name}: layers={len(report)} exact={exact} float={len(floats)} (max_abs={worst_float:.3g}) bad={len(bad)}"
+        print(f"{net_dir.name}: layers={len(report)} exact={exact} float={len(floats)} (max_abs={worst_float:.3g})"
+              + (f" native-nonfinite={len(skipped)}" if skipped else "") + f" bad={len(bad)}"
               + (f" first_bad={first_bad['blob']} {first_bad['status']} n={first_bad.get('mismatches')} max={first_bad.get('max_abs')}" if first_bad else ""))
-        summary[net_dir.name] = {"layers": len(report), "exact": exact, "float": len(floats), "bad": len(bad), "first_bad": first_bad, "worst_float": worst_float}
+        summary[net_dir.name] = {"layers": len(report), "exact": exact, "float": len(floats), "native_nonfinite": len(skipped),
+                                 "bad": len(bad), "first_bad": first_bad, "worst_float": worst_float}
         (args.out / net_dir.name / "parity.json").write_text(json.dumps(report, indent=1) + "\n")
         failed = failed or bool(bad)
     (args.out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n")
