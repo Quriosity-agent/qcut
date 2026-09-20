@@ -315,14 +315,23 @@ def run(text, arena, inputs, *, capture=None):
                 raise ValueError("only float multiply is verified")
             result = {layer["outputs"][0]: {"data": (source[0]["data"] * source[1]["data"]).astype(np.float32), "type": 4, "frac": 0}}
         elif op == "Softmax":
-            # exp(x - max) in float32. A float input is normalized by true division; a fixed-point input
-            # uses the hardware reciprocal estimate of the sum (FRECPE, no refinement), which is exact
-            # for the multi-class heads. The runtime's two-class fixed-point path is only approximated.
+            # A float input: exp(x - max) normalized by true division. A fixed-point input: float32 exp
+            # scaled by the hardware reciprocal estimate of the sum (FRECPE, no refinement). With more than
+            # two classes the exponent is taken relative to the maximum; the two-class kernel instead takes
+            # it relative to channel 0 and writes channel 1 as 1 - p0 (probes micro6/micro12; only exact
+            # ties differ, where the runtime's own exp(0) falls just below 1).
             value = dequantize(source[0])
-            exp = np.exp(value - value.max(axis=-1, keepdims=True)).astype(np.float32)
-            total = exp.sum(axis=-1, keepdims=True, dtype=np.float32)
-            scale = (1 / total) if source[0]["type"] == 4 else reciprocal_estimate(total)
-            result = {layer["outputs"][0]: {"data": (exp * scale).astype(np.float32), "type": 4, "frac": 0}}
+            if source[0]["type"] == 4:
+                exp = np.exp(value - value.max(axis=-1, keepdims=True)).astype(np.float32)
+                probabilities = exp / exp.sum(axis=-1, keepdims=True, dtype=np.float32)
+            elif value.shape[-1] == 2:
+                exp = np.exp(value - value[..., :1]).astype(np.float32)
+                first = (exp[..., :1] * reciprocal_estimate(exp.sum(axis=-1, keepdims=True, dtype=np.float32))).astype(np.float32)
+                probabilities = np.concatenate([first, (np.float32(1) - first).astype(np.float32)], axis=-1)
+            else:
+                exp = np.exp(value - value.max(axis=-1, keepdims=True)).astype(np.float32)
+                probabilities = exp * reciprocal_estimate(exp.sum(axis=-1, keepdims=True, dtype=np.float32))
+            result = {layer["outputs"][0]: {"data": probabilities.astype(np.float32), "type": 4, "frac": 0}}
         elif op == "Sigmoid":
             value = dequantize(source[0])
             result = {layer["outputs"][0]: {"data": (1 / (1 + np.exp(-value))).astype(np.float32), "type": 4, "frac": 0}}
