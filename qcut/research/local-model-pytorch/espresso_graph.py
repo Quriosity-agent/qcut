@@ -236,7 +236,8 @@ def main():
         actual = (graph_dir / "arena.bin").stat().st_size if (graph_dir / "arena.bin").exists() else None
         try:
             result = analyze(text)
-            print(json.dumps({"dir": graph_dir.name, "letter": result["letter"], "layers": len(result["layers"]) - 1,
+            layers = sum(1 for layer in result["layers"] if layer["op"] != "Input")
+            print(json.dumps({"dir": graph_dir.name, "letter": result["letter"], "layers": layers,
                               "predicted_arena": result["arena_bytes"], "actual_arena": actual,
                               "match": actual == result["arena_bytes"]}))
         except ValueError as error:
