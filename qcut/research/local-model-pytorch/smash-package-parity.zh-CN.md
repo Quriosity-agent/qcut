@@ -7,10 +7,13 @@
 
 - 解包不需要复原密钥算法：`liblens.dylib` 导出了厂商自己的读取器 `smash::package::ModelPackage`
   （`InitFromBuf` / `Extract(record, map<string,string>)`），构造函数收一个**包密钥**，解密由运行库自己完成。
-- 密钥按模型家族不同，不在库的字符串里。把 `ModelPackage` 的构造与 `Extract` 做 dyld interpose
-  （`libcccreator` → `liblens` 是跨库调用，能拦到），在无头人像宿主里跑一次特效包，SDK 就会把它自己那把密钥交出来。
-  本轮用改过 `algorithmConfig.json` 节点的本地特效包，额外触发了人脸校验与骨骼算法，共取得 3 把密钥。
-- 由此打开 3 个包、恢复 5 张网络（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**。
+- 密钥按模型家族不同，不在库的字符串里（48 位字母数字，`strings` 找不到，也不是"两半相加/异或"之类的简单混淆）。
+  把 `ModelPackage` 的构造与 `Extract` 做 dyld interpose（`libcccreator` → `liblens` 是跨库调用，能拦到），
+  在无头人像宿主里跑一次特效包，SDK 就会把它自己那把密钥交出来。改本地特效包的 `algorithmConfig.json` 节点
+  （`face_verify`、`skeleton`、`matting`、`after_effect`、`expression_detect`、`object_detect` 等类型，
+  以及 `face` 节点的 `face_attr_detect_ability`）可以触发更多家族，**共取得 7 把密钥**。
+- 由此打开 6 个包、恢复 9 张网络（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
+  浮点层最大 `6e-7`；`tt_matting_video` 的 fp32 图 136 层误差为 0。
 - 运行库语义新增一条：旧格式 7 字段 `Eltwise` 行没有 ReLU 标志，运行库**总是**施加 ReLU（探针 micro-el2）。
 - 没有任何产品或编辑器接入。
 
@@ -18,20 +21,25 @@
 
 | id | 包 / 记录 | 头 | 层数 | arena 字节 | 输入 (h×w×c, [type, frac]) | 输出 | 两种子对拍（41/509） |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `aff60c469d265fa8` | tt_faceverify.verify | `B` | 77 | 4,333,820 | 112×112×3 `[2, 7]` | `fc1` | 整数层 89/89 逐位一致 |
-| `43c68131874db50b` | tt_skeleton_v9.2.multi | `plain` | 96 | 140,476 | 224×224×3 `[1, 8]` | `stage1_L2` | 整数层 96/96 逐位一致 |
-| `b29001c40732357e` | tt_skeleton_v9.2.single | `plain` | 106 | 241,176 | 192×144×3 `[1, 8]` | `stage1_L2` | 整数层 127/127 逐位一致 |
-| `980877fab5b4e85e` | tt_skeletonlockon.multi | `plain` | 233 | 236,184 | 224×224×3 `[1, 6]` | `vectormap_output.0` | 整数层 239/239 逐位一致 |
-| `615cd22f5bbe3fca` | tt_skeletonlockon.single | `plain` | 215 | 227,672 | 192×144×3 `[1, 6]` | `output.0` | 整数层 218/218 逐位一致 |
+| `aff60c469d265fa8` | tt_faceverify / verify | `B` | 77 | 4,333,820 | 112×112×3 `[2, 7]` | `fc1` | 整数层 89/89 逐位一致；浮点层 1 层最大 `0` |
+| `43c68131874db50b` | tt_skeleton / multi | `plain` | 96 | 140,476 | 224×224×3 `[1, 8]` | `stage1_L2` | 整数层 96/96 逐位一致 |
+| `b29001c40732357e` | tt_skeleton / single | `plain` | 106 | 241,176 | 192×144×3 `[1, 8]` | `stage1_L2` | 整数层 127/127 逐位一致 |
+| `980877fab5b4e85e` | tt_skeletonlockon / multi | `plain` | 233 | 236,184 | 224×224×3 `[1, 6]` | `vectormap_output.0` | 整数层 239/239 逐位一致 |
+| `615cd22f5bbe3fca` | tt_skeletonlockon / single（与人体包同图） | `plain` | 215 | 227,672 | 192×144×3 `[1, 6]` | `output.0` | 整数层 218/218 逐位一致 |
+| `12347479a31093f4` | tt_after_effect / base | `plain` | 64 | 134,076 | 224×224×3 `[1, 6]` | `blur_prob` | 整数层 55/55 逐位一致；浮点层 9 层最大 `6e-07` |
+| `7d4775cfb0dc4fe2` | tt_after_effect / meaningless | `plain` | 58 | 96,044 | 224×224×3 `[1, 6]` | `meaningless_prob` | 整数层 55/55 逐位一致；浮点层 3 层最大 `3e-07` |
+| `49a65167cb18bc1f` | tt_after_effect / portrait | `B` | 111 | 1,858,552 | 224×224×3 `[2, 6]` | `output` | 整数层 107/107 逐位一致；浮点层 4 层最大 `4.8e-07` |
+| `3541691d6ed8ef66` | tt_matting_video / video_v1（包内 BM v6，再由 ByteNN 自解） | `plain` | 136 | 2,824,620 | 288×288×3 `[4, 0]` | `nn_3` | 全部 136 层浮点，最大 `0` |
 
 `tt_skeletonlockon/single` 与人体包里从堆中切出的 192×144 热图网络是同一张图（sha 相同），此处作为交叉验证保留。
 
-## 仍然打不开
+## 仍然打不开，以及为什么
 
-`tt_face_attribute_age/exp/extra`、`tt_face_extra_fast`、`tt_body_detection_lockon`、`tt_after_effect`、
-`tt_matting_video_v1.2`：这三把密钥都不接受（`InitFromBuf` 返回 -4），缓存里也没有能触发对应算法的特效包。
-人脸属性由 `face` 节点在开启 `face_attr_detect_ability` 时加载，但本轮改配置后 SDK 仍未请求这些模型，
-说明还需要正确的能力位或节点类型。路线是清楚的：**让 SDK 自己加载一次，密钥就会被记录下来**。
+| 文件 | 状态 |
+| --- | --- |
+| `tt_face_attribute_age`、`tt_face_attribute_exp` | **已解包**，但图头是 `USTQ` / `F`（权重再压缩），本仓库的解释器还没有对应解码；运行库本身接受该图（`CreateNet` 返回 0，blob 形状可读），所以只差一个 arena 解码器就能对拍 |
+| `tt_face_attribute_extra`、`tt_face_extra_fast` | 仍缺密钥：7 把都被拒；需要能触发这两个算法的节点配置 |
+| `tt_body_detection_lockon` | **不是密钥问题**：SDK 自己加载它也失败（`algorithm type 18 ... failed: -4`），该包与当前 SDK 版本不匹配 |
 
 ## 安全边界
 
@@ -41,9 +49,9 @@
 
 ## 证据目录（全部在 `.local/`，不进 Git）
 
-`tail-20260920/`：`pkgcap-sticker`、`pkgcap-attr2`（拦截日志与密钥）、`effect-attr`（本地特效包）、
+`tail-20260920/`：`pkgcap-sticker`、`pkgcap-attr2`、`pkgcap-more`、`pkgcap-attr3`（拦截日志与密钥）、`effect-attr*`、`effect-more`（本地特效包）、
 `pkg/<模型>`（解出的 config/weight）、`collected-pkg/`（5 张网络 + `manifest.json`）、
-`parity-pkg-r2`、`parity-pkg-seed509`、`micro-el`、`micro-el2`（探针图）。
+`parity-pkg-r2`、`parity-ae-seed41`、`parity-mv-seed41`、`parity-pkg-final509`、`init-matting_video`、`micro-el`、`micro-el2`（探针图）。
 
 ## 复现
 
