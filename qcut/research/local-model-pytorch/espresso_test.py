@@ -96,10 +96,11 @@ class RuleTest(unittest.TestCase):
         x = np.zeros((1, 9, 9, 4), dtype=np.int64)
         x[0, 4, 4, 0] = 64
         out = espresso_fixed.run(text, arena, {"data": (x, [1, 6])})["dw"]["data"][0, :, :, 0]
-        # kernel (kh, kw, c) with c innermost: channel 0 tap index t reads arena[t * 4]; y = 4 * (t + 1) * 64 >> 8 = t + 1
-        self.assertEqual(out[2, 2], 9)
-        self.assertEqual(out[6, 6], 1)
-        self.assertEqual(out[4, 4], 5)
+        # kernel (kh, kw, c) with c innermost: channel 0 tap t reads arena[t * 4] = 4 * (t + 1); with weight and
+        # input at six fraction bits and the output at six, y = 4 * (t + 1) * 64 >> 6 = 4 * (t + 1).
+        self.assertEqual(out[2, 2], 36)
+        self.assertEqual(out[6, 6], 4)
+        self.assertEqual(out[4, 4], 20)
         self.assertEqual(int((out != 0).sum()), 9)
 
     def test_float_blob_paths(self):
