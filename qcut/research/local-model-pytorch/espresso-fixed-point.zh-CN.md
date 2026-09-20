@@ -50,7 +50,7 @@
 | Sigmoid（float 输入） | float32 | 探针 L |
 | Softmax（float 输入） | `exp(x−max) / Σ` | 5 类/2 类全连接头误差 `≤2.3e-5` |
 | Softmax（定点输入） | `exp(x−max) × FRECPE(Σ)`（AArch64 8 位查表倒数估计，不做牛顿修正） | 4 类样本误差 `≤5e-7`，两张网络的 4 类 `prob` 逐位一致 |
-| Softmax（定点输入、两类） | 未复现：小概率端约 8 位有效数字、两类和恰为 1；最大值在通道 0 时 `p0 = FRECPE(1+exp(d))` 与样本一致，在通道 1 时不一致 | 探针曲线 `micro6/p1.npy`，误差 `≤2.6e-3` |
+| Softmax（定点输入、两类） | 指数相对**通道 0** 取：`p0 = exp(0) × FRECPE(exp(0) + exp(x1−x0))`，`p1 = 1 − p0`（不是相对最大值）；仅在 `x0 == x1` 的并列点上运行库自己的 `exp(0)` 略小于 1 使 FRECPE 落到 0.5，与 libm 差 `9.8e-4` | 探针曲线 `micro6/p1.npy`（4095 点 99.7% 逐位一致）、`micro12`（x0≠0 的 8 组全部逐位一致） |
 | ReInferShape(a, b) | 参数序为 (宽, 高) | 检测器 (576, 320) 后 blob 为 h=320, w=576 |
 
 ## 捕获相关的坑
@@ -63,3 +63,5 @@
   `mach_vm_read_overwrite` 拷贝；`8u*1024u*1024u*1024u` 在 32 位无符号里溢出为 0。
 - `TensorView.dims` 是 `(n, w, h, c)`；`GetWeightLen` 返回 "Not support"；`BYTENN::Decoder(uint8*, uint8*, int)`
   不是容器密码；一权重层的 12 位打包（半个三字节组）会让 `CreateNet` 失败，真实网络的核元素数都是偶数。
+- `Init(Config)` 收到的 config 块可能位于"报告可读但直接访问即 SIGBUS"的页（人体关键点包），捕获器里所有落盘都改走
+  `mach_vm_read_overwrite` 拷贝后再写。
