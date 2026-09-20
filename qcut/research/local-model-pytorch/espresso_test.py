@@ -103,6 +103,16 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(out[4, 4], 20)
         self.assertEqual(int((out != 0).sum()), 9)
 
+    def test_legacy_eltwise_applies_relu(self):
+        # Probe micro-el2: a seven-token row has no ReLU field and the runtime always applies it,
+        # while the eight-token form honours the flag.
+        values = {"a": (np.array([10, -20, 30, -60]).reshape(1, 2, 2, 1), [1, 6]),
+                  "b": (np.array([1, 2, -50, 4]).reshape(1, 2, 2, 1), [1, 6])}
+        legacy = espresso_fixed.run("2 1\na 1 2 2 1 1 6\nb 1 2 2 1 1 6\nEltwise sum a b sum 1 6\n", b"\0", values)
+        self.assertEqual(legacy["sum"]["data"].reshape(-1).tolist(), [11, 0, 0, 0])
+        plain = espresso_fixed.run("2 1\na 1 2 2 1 1 6\nb 1 2 2 1 1 6\nEltwise sum a b sum 1 6 0\n", b"\0", values)
+        self.assertEqual(plain["sum"]["data"].reshape(-1).tolist(), [11, -18, -20, -56])
+
     def test_float_blob_paths(self):
         text = "2 3\na 1 2 2 1 4 0\nb 1 2 2 1 4 0\nEltwise sum a b sum 4 0 1\nConcat cat 2 a b cat 4 0\nUpSampling up a up LINEAR\n"
         a = np.array([[0.5, -2.0], [1.0, 3.0]], dtype=np.float32).reshape(1, 2, 2, 1)
