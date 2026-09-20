@@ -11,8 +11,9 @@
   老格式网络用护页二分，少 1 字节即 SIGBUS）。清单在 `.local/jianying-model-pytorch/face-capture-20260920/collected/manifest.json`。
 - 定点解释器 `espresso_fixed.py` 对 18 张定点网络在两个随机种子（41/509）下**所有整数中间层与输出逐位一致**
   （面部 14 张另有种子 17）；人脸检测器在产品实际使用的动态尺寸 320×576 下同样逐位一致。
-- 浮点尾部（全连接 → softmax/sigmoid）最大绝对误差 `2.3e-5`；定点输入的多类 softmax 逐位一致；
-  定点输入的**两类** softmax 只做到 `≤2.6e-3`（运行库的两类路径未复现，见下）；`facefitting_3d` 的 fp32 MLP 相对误差 `≤2.6e-4`。
+- 浮点尾部（全连接 → softmax/sigmoid）最大绝对误差 `2.3e-5`；定点输入的多类 softmax 逐位一致；定点输入的**两类**
+  softmax 按通道 0 相对指数复现后，mask 网络两路概率逐位一致，extra 网络的 `prob2` 只剩并列点差 `9.8e-4`；
+  `facefitting_3d` 的 fp32 MLP 相对误差 `≤2.6e-4`。
 - 没有任何产品或编辑器接入；真实素材经产品前处理后的输出未验证。
 
 ## 容器为什么打不开，以及怎么拿到明文
@@ -81,8 +82,8 @@ int8 饱和到 −128..127，type-2 饱和到 ±2047；Eltwise 先对齐到较�
 
 - 输入为合成随机整数（在声明的小数位下覆盖 ±1.0 的范围）；三个种子；`espresso_parity.py` 逐层比较运行库
   `Extract` 出的每个中间 blob。
-- 两类定点 softmax（`extra` 与 `mask` 的 `prob2`）：运行库结果的小概率端只有约 8 位有效数字且两类和恰为 1，
-  在最大值落在通道 0 时 `p0 = FRECPE(1 + exp(d))` 与样本相符，落在通道 1 时公式不同，未复现，误差上界 `2.6e-3`。
+- 两类定点 softmax（`extra` 与 `mask` 的 `prob2`）：`p0 = FRECPE(1 + exp(x1 − x0))`、`p1 = 1 − p0`（指数相对通道 0 而非最大值），
+  4095 点探针曲线 99.7% 逐位一致；只有 `x0 == x1` 的并列点上运行库自己的 `exp(0)` 略小于 1，与 libm 差 `9.8e-4`。
 - fp32 全连接的累加顺序未固定（相对 `1e-5` 量级）；未做 ONNX 导出；未做产品前处理（人脸框、对齐仿射、归一化）。
 - 未能覆盖：`tt_faceverify`、`tt_face_attribute_age/exp/extra`、`facefitting1220/845/1256`。
 
