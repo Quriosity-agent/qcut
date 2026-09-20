@@ -51,7 +51,14 @@ def compare(net_dir, out, seed, *, all_layers=True, reinfer=None):
             entry["status"] = f"shape {mine['data'].shape} vs {expected.shape}"
         elif raw[0] == 4:
             error = np.abs(mine["data"].astype(np.float64) - expected.astype(np.float64))
-            entry.update(status="float", max_abs=float(error.max()), max_rel=float((error / (np.abs(expected) + 1e-6)).max()))
+            worst = float(error.max())
+            entry.update(max_abs=worst, max_rel=float((error / (np.abs(expected) + 1e-6)).max()))
+            # A non-finite blob is a failure, not a small error: NaN never compares greater than a
+            # threshold, so it would otherwise slip through every numeric check.
+            if not (np.isfinite(mine["data"]).all() and np.isfinite(expected).all() and np.isfinite(worst)):
+                entry["status"] = "nonfinite"
+            else:
+                entry["status"] = "float"
         else:
             if (mine["type"], mine["frac"]) != tuple(raw):
                 entry["status"] = f"descriptor {(mine['type'], mine['frac'])} vs {tuple(raw)}"
@@ -83,7 +90,7 @@ def main():
         floats = [e for e in report if e["status"] == "float"]
         bad = [e for e in report if e["status"] not in ("exact", "float")]
         first_bad = bad[0] if bad else None
-        worst_float = max((e["max_abs"] for e in floats), default=0.0)
+        worst_float = max((e["max_abs"] for e in floats if np.isfinite(e["max_abs"])), default=0.0)
         print(f"{net_dir.name}: layers={len(report)} exact={exact} float={len(floats)} (max_abs={worst_float:.3g}) bad={len(bad)}"
               + (f" first_bad={first_bad['blob']} {first_bad['status']} n={first_bad.get('mismatches')} max={first_bad.get('max_abs')}" if first_bad else ""))
         summary[net_dir.name] = {"layers": len(report), "exact": exact, "float": len(floats), "bad": len(bad), "first_bad": first_bad, "worst_float": worst_float}
