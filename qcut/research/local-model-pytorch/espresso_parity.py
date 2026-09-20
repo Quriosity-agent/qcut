@@ -70,12 +70,14 @@ def main():
     parser.add_argument("--reinfer", type=int, nargs=2, metavar=("H", "W"), help="run every net at this input extent (dynamic-shape graphs)")
     args = parser.parse_args()
     summary = {}
+    failed = False
     for net_dir in args.nets:
         try:
             report = compare(net_dir, args.out / net_dir.name, args.seed, reinfer=args.reinfer)
         except Exception as error:  # noqa: BLE001 - research harness, report and continue
             print(f"{net_dir.name}: ERROR {type(error).__name__}: {str(error)[:160]}")
             summary[net_dir.name] = {"error": str(error)[:200]}
+            failed = True
             continue
         exact = sum(1 for e in report if e["status"] == "exact")
         floats = [e for e in report if e["status"] == "float"]
@@ -86,7 +88,10 @@ def main():
               + (f" first_bad={first_bad['blob']} {first_bad['status']} n={first_bad.get('mismatches')} max={first_bad.get('max_abs')}" if first_bad else ""))
         summary[net_dir.name] = {"layers": len(report), "exact": exact, "float": len(floats), "bad": len(bad), "first_bad": first_bad, "worst_float": worst_float}
         (args.out / net_dir.name / "parity.json").write_text(json.dumps(report, indent=1) + "\n")
+        failed = failed or bool(bad)
     (args.out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n")
+    if failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
