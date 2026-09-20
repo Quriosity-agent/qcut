@@ -49,7 +49,8 @@ Pooling 7、Upsample 1、Slice 1、OnnxOp2 1、OnnxOp1 1、Sigmoid 1、PoolingDo
 
 `CreateNet` 不直接接受 `E` 头图（日志 `bytenn config error!!! D`）。运行库的
 `CheckFp16AndConvertModel` 会去掉 `E` 前缀、只扩展权重载荷并保留图戳；OCR 阶段已证明 `ocr_torch.widen_fp16`
-与原生 `BYTENN::float16buffer_to_float32buffer` 对全部 65,536 个半精度位型逐位相同。
+与原生 `BYTENN::float16buffer_to_float32buffer` 对全部 63,488 个有限半精度位型逐位相同（`widen_fp16` 拒绝
+指数位全为 1 的 2,048 个 inf/NaN 位型，本 arena 里也没有这类值）。
 本轮再用 `ocr_oracle.mm --widen` 按 1 MiB 分块扩展整个 arena（含 38,361 个次正规/零值），与 Python 结果**逐字节相同**。
 因此 `vision_batch_export.py` 对 `arena: fp16` 的 profile 把转换后的 `D` 图与扩展后的 arena 交给 oracle，
 原图与原 arena 另存为 `graph.original.private.txt` / `arena.original.private.bin`，报告写明
