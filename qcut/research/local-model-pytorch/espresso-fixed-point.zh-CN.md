@@ -11,6 +11,7 @@
   `<输入数> <层数>`，输入行是 `data n h w c type frac` 而非 `DataV2 … type frac …`。行尾可能带字面 `\n`。
 - 存储描述符 `(type, frac)`：type 1 = int8，2 = 16 位存储（值域 ±2047），4 = float32；frac 为小数位数。
 - 卷积行：`名 co kh kw sh sw ph pw bias relu  w_t w_f  b_t b_f  o_t o_f  in out`；`b_f = w_f + 输入 frac`。
+- `DilationSeparableConvolution 名 co kh kw dh dw sh sw ph pw bias relu  存储×3  in out`：膨胀深度可分离卷积，`pad = dilation` 时尺寸不变（探针 micro-dil）。
 - `Slice 名 in 1 1 K 2 out0 f0 out1 f1`、`ShuffleNet 名 2 inA inB 4 2 out0 f0 out1 f1`、`Shuffle 名 4 2 in out`、
   `Crop 名 oy ox oc oh ow oc' in out`、`Upsample 名 f linear 0 1 in out`、`Constant 名 <空> 0 n h w c out t f`、
   `OnnxOp1 名 Reshape in out t f n h w c 2`、`Pooling 名 kh kw sh sw ph pw t f MODE in out [GLOBAL]`。
@@ -34,6 +35,7 @@
 | --- | --- | --- |
 | 卷积 / 深度可分离 / 全连接式 1×1 | `acc32 = wrap32(Σ w·x + bias)`（int32 回绕，稠密与深度可分离都一样），`y = (acc32 + 2^(s-1)) >> s`（舍入加法本身**不**回绕，算术右移，`s = w_f + in_f − o_f`），ReLU，饱和到 int8 −128..127 或 type-2 ±2047 | 探针 B（半向上：0.5→1，−0.5→0，−1.5→−1）、E、W1–W3（ci=1024 极值、偏置 2,147,483,000 回绕成负）、W32（mask 网络的死通道）；人体热图网络偏置 −2^31 的通道证明舍入加法不回绕 |
 | 输入 | `data` 与超范围的中间 blob（见 ShuffleNet）都不钳制地参与乘法 | 探针 F2b、OOR-CV |
+| float 图（存储 `4 0`） | 卷积/全连接按 float32 累加（顺序未固定，~1e-5）；Eltwise/Concat/Slice 直接运算；`UpSampling LINEAR` 为 `(9a+3b+3c+d)/16`；平均池化为 float32 求和再除 | relight 网络 136 层全部 `≤1.3e-5` |
 | Eltwise | 输入移到较细的 frac 相加，再一次半向上重量化到输出 frac，ReLU，饱和 | 探针 EL（`[1,2,3,6]@7 + 1@6 → [1,1,1,2]@5`，逐输入模型给 `[1,2,2,3]`） |
 | Concat | frac 不同的输入半向上重量化到输出 frac 并饱和；frac 相同的输入原样透传（超范围值也不钳） | 探针 I、OOR-CC |
 | Slice | 前 K 通道 / 其余通道；frac 变化的一半重量化并饱和，不变的一半原样透传 | 探针 K/SL/SL2/OOR-SL |
@@ -48,10 +50,21 @@
 | Reshape / OnnxOp1 Reshape | 按 NCHW 逻辑序展平再按目标维度读回 | `Reshape_805` 四种候选只有 NCHW 序全对 |
 | InnerProduct | 输入反量化 `x/2^f`，float32 `x·Wᵀ + b`（累加顺序未固定） | 探针 L |
 | Sigmoid（float 输入） | float32 | 探针 L |
-| Softmax（float 输入） | `exp(x−max) / Σ` | 5 类/2 类全连接头误差 `≤2.3e-5` |
-| Softmax（定点输入） | `exp(x−max) × FRECPE(Σ)`（AArch64 8 位查表倒数估计，不做牛顿修正） | 4 类样本误差 `≤5e-7`，两张网络的 4 类 `prob` 逐位一致 |
-| Softmax（定点输入、两类） | 指数相对**通道 0** 取：`p0 = exp(0) × FRECPE(exp(0) + exp(x1−x0))`，`p1 = 1 − p0`（不是相对最大值）；仅在 `x0 == x1` 的并列点上运行库自己的 `exp(0)` 略小于 1 使 FRECPE 落到 0.5，与 libm 差 `9.8e-4` | 探针曲线 `micro6/p1.npy`（4095 点 99.7% 逐位一致）、`micro12`（x0≠0 的 8 组全部逐位一致） |
+| Softmax，SIMD 块像素（像素数按 4 分块的整块部分） | 两类（不论输入类型）：指数相对**通道 0** 取，`p0 = exp(0) × FRECPE(exp(0) + exp(x1−x0))`，`p1 = 1 − p0`；多类定点输入：`exp(x−max) × FRECPE(Σ)`（AArch64 8 位查表倒数估计，不做牛顿修正）；多类 float 输入：`exp(x−max) / Σ` | 探针曲线 `micro6/p1.npy`（4095 点 99.7% 逐位一致）、`micro12`、`micro-sm`（16×16 float 两类逐位一致，3/5 类真除法 `≤9e-7`）、relight 的 256×256 两类头逐位一致、两张 4 类 `prob` 逐位一致；仅两类并列点 `x0 == x1` 上运行库自己的 `exp(0)` 略小于 1，差 `9.8e-4` |
+| Softmax，标量尾像素（1×1 全连接头、1×2、2×1 等不足 4 像素的余数） | `exp(x−max) / Σ`，与类数、输入类型无关 | 探针 `micro-sm2`（1×1 的 2/3/4/5 类全部逐位或 `3e-8`），分类网 `prob` 回到 `1.2e-7` |
 | ReInferShape(a, b) | 参数序为 (宽, 高) | 检测器 (576, 320) 后 blob 为 h=320, w=576 |
+
+## 密文 BM 容器与 SMASH 包装
+
+- 文件里 `BM\0` 段为密文的容器（BM v2/v4：`nodehub_c3_300`、`tt_matting_large/relight/v15`、`mask`、`facefitting_3d`），运行库自己会解密：
+  把容器喂给公开的 `EngineFactory::Create()` + `Init(Config)`（`bytenn_init_host.mm`，Config 布局取自捕获到的 Init 参数块：
+  int32 forwardType、int32 threads、模型指针、uint32 长度、int32 缓冲标志，其余清零），注入捕获器后从堆里得到明文图与戳窗口，
+  `espresso_heap_carve.py` 按图核算长度切 arena 并用运行库验证。解密后 arena 长度与容器第二段长度相等，密文保长。
+- SMASH 自己的 `versioned-model-wrapper`（`tt_face_attribute_*`、`tt_faceverify`、`tt_skeleton*`、`tt_body_detection_lockon`、
+  `tt_after_effect`、`tt_matting_video_v1.2`、`tt_face_extra_fast`）是 AES：`smash::AES_DecryptWrapper(data, len, key, keylen, &out, &outlen)`
+  有导出，但密钥不在库的字符串里（88,063 个 8–64 字节字符串逐个试过，三种载荷起点都无命中）；`SK_InitModel/FromBuf`
+  对 `tt_skeleton_v9.2`/`tt_skeletonlockon` 报 "buf data len is far less"（不是该接口的包），枚举类型 1 还会段错误。
+  这些文件只剩"由能加载它们的产品路径触发后堆扫描"一条路。
 
 ## 捕获相关的坑
 
