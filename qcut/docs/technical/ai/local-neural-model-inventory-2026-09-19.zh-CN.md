@@ -138,6 +138,8 @@ A05 代码：[Bingo 桥](../../../research/jianying-tracking-probe/bingo-trackin
 | JianyingBasicVideo | 8 | 8 | 8 | 16,522,451 |
 | 合计 | **69** | **全局去重 64** | **69** | 不以总大小判断模型数量 |
 
+**2026-09-20 补充**：Filter 清单里四个不在 N 表、此前判为"密文 BM 容器"的神经文件已恢复并逐位对拍——`nodehub_c3_300_ilasdk`（C3 分类，`B` 图 174 层）、`tt_matting_large_v3.0`（`B` 图 140 层）、`tt_matting_v15.0`（int8 图 99 层，含膨胀深度卷积）、`tt_matting_relight_v1.0`（fp32 图 136 层，最大绝对误差 1.3e-5）。方法是把 BM 容器直接喂给 ByteNN 公开的 `EngineFactory::Create` + `Init(Config)`，运行库自行解密，再由捕获器从堆里取图与 arena（[记录](../../../research/local-model-pytorch/bytenn-init-parity.zh-CN.md)）。仍未恢复的是 SMASH 自带 AES 包装的 `tt_face_attribute_*`、`tt_faceverify`、`tt_face_extra_fast`、`tt_skeleton_v9.2`、`tt_skeletonlockon`、`tt_body_detection_lockon`、`tt_after_effect`、`tt_matting_video_v1.2`，以及音频容器与脚本/数据文件。
+
 边界说明：
 
 - Filter 中已有 GRU、saliency 和 single-object 等资产；跨目录统计必须去重。
