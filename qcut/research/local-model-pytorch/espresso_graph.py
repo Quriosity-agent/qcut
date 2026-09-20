@@ -102,6 +102,21 @@ def analyze(text):
                             packed=packed),
                  kernel=(kh, kw), stride=(sh, sw), pad=(ph, pw), bias=bool(bias), relu=bool(relu), weight=weight,
                  bias_storage=bias_storage, storage=output, shape=(n, oh, ow, co), packed=packed and weight["type"] == 2)
+        elif op == "DilationSeparableConvolution":
+            # co kh kw dh dw sh sw ph pw bias relu, storage, in out (probe micro-dil: dilation 2 keeps the extent).
+            co, kh, kw, dh, dw, sh, sw, ph, pw, bias, relu = map(int, row[2:13])
+            weight, bias_storage, output = storage(row[13:15]), storage(row[15:17]), storage(row[17:19])
+            source, target = row[19], row[20]
+            n, h, w, ci = shape(source)
+            if co != ci:
+                raise ValueError(f"{name}: dilated depthwise multiplier {co}/{ci}")
+            oh = (h + 2 * ph - dh * (kh - 1) - 1) // sh + 1
+            ow = (w + 2 * pw - dw * (kw - 1) - 1) // sw + 1
+            shapes[target], descriptors[target] = (n, oh, ow, co), output
+            emit(row, op, name, [source], [target],
+                 conv_bytes(co=co, ci=1, kh=kh, kw=kw, bias=bias, weight=weight, bias_storage=bias_storage, packed=packed),
+                 kernel=(kh, kw), stride=(sh, sw), pad=(ph, pw), dilation=(dh, dw), bias=bool(bias), relu=bool(relu),
+                 weight=weight, bias_storage=bias_storage, storage=output, shape=(n, oh, ow, co), packed=packed and weight["type"] == 2)
         elif op == "InnerProduct":
             co, bias, relu = map(int, row[2:5])
             weight, bias_storage, output = storage(row[5:7]), storage(row[7:9]), storage(row[9:11])
