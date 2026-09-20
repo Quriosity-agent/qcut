@@ -259,8 +259,9 @@ def run(text, arena, inputs, *, capture=None):
             # source scale to the scale of the half it lands in (probe SN).
             merged = np.concatenate([b["data"].astype(np.int64) for b in source], axis=3)
             fracs = np.concatenate([np.full(b["data"].shape[3], b["frac"]) for b in source])
-            shuffled = shuffle_lanes(merged, 2)
-            shuffled_fracs = shuffle_lanes(fracs.reshape(1, 1, 1, -1), 2).reshape(-1)
+            lanes = layer["groups"]  # the row's first parameter is the lane width (4 in every captured graph)
+            shuffled = shuffle_lanes(merged, 2, lanes)
+            shuffled_fracs = shuffle_lanes(fracs.reshape(1, 1, 1, -1), 2, lanes).reshape(-1)
             half = shuffled.shape[3] // 2
             result = {}
             for target, channels, channel_fracs in ((layer["outputs"][0], shuffled[..., :half], shuffled_fracs[:half]),
@@ -273,10 +274,11 @@ def run(text, arena, inputs, *, capture=None):
                 low, high = RANGE[storage["type"]]
                 if storage["type"] == 2:
                     # The int16 kernel clamps one side only, by lane, whether or not the half was rescaled:
-                    # channels 0-3 of every 8 keep the upper bound, channels 4-7 the lower bound (probes SN3/SN16/OOR-SN).
-                    lanes = np.arange(data.shape[3]) % 8 < 4
-                    data[..., lanes] = np.minimum(data[..., lanes], high)
-                    data[..., ~lanes] = np.maximum(data[..., ~lanes], low)
+                    # the first lane block of every pair keeps the upper bound, the second the lower bound
+                    # (channels 0-3 / 4-7 of every 8 with four-channel lanes; probes SN3/SN16/OOR-SN).
+                    upper = np.arange(data.shape[3]) % (2 * lanes) < lanes
+                    data[..., upper] = np.minimum(data[..., upper], high)
+                    data[..., ~upper] = np.maximum(data[..., ~upper], low)
                 else:
                     data = np.clip(data, low, high)
                 result[target] = {"data": data, "type": storage["type"], "frac": storage["fraction"]}
@@ -286,7 +288,12 @@ def run(text, arena, inputs, *, capture=None):
             result = {layer["outputs"][0]: pooling(layer, source[0])}
         elif op == "UpSampling":
             # LINEAR is the zero-padded x2 kernel; BILINEAR is the edge-clamped floored form (probe UPB).
-            result = {layer["outputs"][0]: upsample_linear(source[0], 2.0) if layer["mode"] == "BILINEAR" else upsample_x2(source[0])}
+            if layer["mode"] == "LINEAR":
+                result = {layer["outputs"][0]: upsample_x2(source[0])}
+            elif layer["mode"] == "BILINEAR":
+                result = {layer["outputs"][0]: upsample_linear(source[0], 2.0)}
+            else:
+                raise ValueError(f"unsupported UpSampling mode {layer['mode']}")
         elif op == "Upsample":
             result = {layer["outputs"][0]: upsample_linear(source[0], layer["factor"])}
         elif op == "Crop":
