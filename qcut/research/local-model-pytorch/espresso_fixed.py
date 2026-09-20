@@ -73,8 +73,9 @@ def decode_kernel(arena, offset, count, storage, packed):
     triples = np.frombuffer(arena, dtype=np.uint8, count=count * 3 // 2, offset=offset).reshape(-1, 3).astype(np.int64)
     first = (triples[:, 0] << 4) | (triples[:, 1] >> 4)
     second = ((triples[:, 1] & 0xF) << 8) | triples[:, 2]
+    # raw 4095 decodes to 2048 (probe D4095); the runtime does not clamp the kernel value.
     values = np.stack([first, second], axis=1).reshape(-1) - 2047
-    return np.minimum(values, 2047), offset + count * 3 // 2
+    return values, offset + count * 3 // 2
 
 
 def decode_bias(arena, offset, count, float_layer):
@@ -113,9 +114,10 @@ def convolution(layer, blob, arena):
     accumulator_frac = layer["weight"]["fraction"] + blob["frac"]
     if bias is not None:
         accumulated = accumulated + requantize(bias, layer["bias_storage"]["fraction"] - accumulator_frac)
-    # The runtime accumulates in int32: sums past 2^31 wrap before the requantizing shift.
+    # The runtime accumulates in int32 (sums past 2^31 wrap, probes W1-W3) and then applies a rounding
+    # shift whose intermediate does not wrap (an INT32_MIN bias on the heatmap net exposed the difference).
     shift = accumulator_frac - layer["storage"]["fraction"]
-    value = wrap32(wrap32(accumulated) + (1 << (shift - 1))) >> shift if shift > 0 else wrap32(accumulated) << (-shift)
+    value = (wrap32(accumulated) + (1 << (shift - 1))) >> shift if shift > 0 else wrap32(accumulated) << (-shift)
     if layer["relu"]:
         value = np.maximum(value, 0)
     return {"data": saturate(value, layer["storage"]["type"]), "type": layer["storage"]["type"], "frac": layer["storage"]["fraction"]}
@@ -241,13 +243,17 @@ def run(text, arena, inputs, *, capture=None):
                 value = np.maximum(value, 0)
             result = {layer["outputs"][0]: {"data": saturate(value, layer["storage"]["type"]), "type": layer["storage"]["type"], "frac": layer["storage"]["fraction"]}}
         elif op == "Concat":
-            parts = [rescale(b, layer["storage"]) for b in source]
+            # Inputs already at the output scale pass through unclamped (probe OOR-CC); others are rescaled.
+            parts = [b if b["frac"] == layer["storage"]["fraction"] else rescale(b, layer["storage"]) for b in source]
             result = {layer["outputs"][0]: {"data": np.concatenate([p["data"] for p in parts], axis=3), "type": layer["storage"]["type"], "frac": layer["storage"]["fraction"]}}
         elif op == "Slice":
             split = layer["split"]
-            first, second = layer["outputs"]
-            result = {first: rescale({"data": source[0]["data"][..., :split], "type": source[0]["type"], "frac": source[0]["frac"]}, graph["descriptors"][first]),
-                      second: rescale({"data": source[0]["data"][..., split:], "type": source[0]["type"], "frac": source[0]["frac"]}, graph["descriptors"][second])}
+            result = {}
+            for target, data in zip(layer["outputs"], (source[0]["data"][..., :split], source[0]["data"][..., split:])):
+                blob = {"data": data, "type": source[0]["type"], "frac": source[0]["frac"]}
+                storage = graph["descriptors"][target]
+                # Unscaled halves pass through unclamped (probe OOR-SL); scaled halves saturate (probe SL2).
+                result[target] = blob if blob["frac"] == storage["fraction"] else rescale(blob, storage)
         elif op == "ShuffleNet":
             # concat -> four-lane two-group shuffle -> halves; every channel is requantized from its own
             # source scale to the scale of the half it lands in (probe SN).
@@ -264,13 +270,23 @@ def run(text, arena, inputs, *, capture=None):
                 for frac in np.unique(channel_fracs):
                     mask = channel_fracs == frac
                     data[..., mask] = requantize(channels[..., mask], int(frac) - storage["fraction"])
-                result[target] = {"data": saturate(data, storage["type"]), "type": storage["type"], "frac": storage["fraction"]}
+                low, high = RANGE[storage["type"]]
+                if storage["type"] == 2:
+                    # The int16 kernel clamps one side only, by lane, whether or not the half was rescaled:
+                    # channels 0-3 of every 8 keep the upper bound, channels 4-7 the lower bound (probes SN3/SN16/OOR-SN).
+                    lanes = np.arange(data.shape[3]) % 8 < 4
+                    data[..., lanes] = np.minimum(data[..., lanes], high)
+                    data[..., ~lanes] = np.maximum(data[..., ~lanes], low)
+                else:
+                    data = np.clip(data, low, high)
+                result[target] = {"data": data, "type": storage["type"], "frac": storage["fraction"]}
         elif op == "Shuffle":
             result = {layer["outputs"][0]: {"data": shuffle_lanes(source[0]["data"], layer["parts"], layer["groups"]), "type": source[0]["type"], "frac": source[0]["frac"]}}
         elif op in ("Pooling", "PoolingDown"):
             result = {layer["outputs"][0]: pooling(layer, source[0])}
         elif op == "UpSampling":
-            result = {layer["outputs"][0]: upsample_x2(source[0])}
+            # LINEAR is the zero-padded x2 kernel; BILINEAR is the edge-clamped floored form (probe UPB).
+            result = {layer["outputs"][0]: upsample_linear(source[0], 2.0) if layer["mode"] == "BILINEAR" else upsample_x2(source[0])}
         elif op == "Upsample":
             result = {layer["outputs"][0]: upsample_linear(source[0], layer["factor"])}
         elif op == "Crop":
