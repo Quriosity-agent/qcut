@@ -18,7 +18,10 @@
 //      recorder dumps the config block and every BM container it points at.
 //   3. After such an Init returns, readable private memory is scanned for graph
 //      text, so a container the runtime decodes internally (packed BM v2) still
-//      leaves its plaintext graph in the capture directory.
+//      leaves its plaintext graph in the capture directory. Every stamp named by
+//      a found graph header is then searched for as well, and the bytes before
+//      each hit are dumped: a decoded arena ends with its graph's stamp, so the
+//      arena is carved offline from that window by the graph's own byte count.
 // In-place code patching of the intra-library entry points is not an option:
 // executing a modified page of the signed runtime kills the host (SIGBUS).
 //
@@ -54,6 +57,7 @@ constexpr size_t kModelDumpLimit = 256u * 1024u * 1024u;
 constexpr size_t kVtableSlots = 256;
 constexpr size_t kHeapRegionLimit = 512u * 1024u * 1024u;
 constexpr size_t kHeapWindow = 4u * 1024u * 1024u;
+constexpr size_t kStampWindow = 16u * 1024u * 1024u;
 
 std::mutex captureMutex;
 std::atomic<int> sequence{0};
@@ -134,18 +138,28 @@ std::string hex(const unsigned char *data, size_t size) {
 
 bool graphTextByte(unsigned char value) { return (value >= 32 && value < 127) || value == '\n' || value == '\r' || value == '\t'; }
 
-// Scan readable, non-shared, non-executable memory for graph text and dump each
-// distinct hit with a bounded window after it (the arena of a decoded packed
-// container follows its graph text). Regions are copied with
-// mach_vm_read_overwrite, which fails cleanly where a direct read would fault.
-void scanHeapForGraphs(const char *kind) {
-  static const char needle[] = "\nDataV2 ";
-  std::set<std::string> seen;
+// The stamp is the third field of the `<inputs> <layers> <stamp>` header line, after an optional letter line.
+bool headerStamp(const std::string &text, uint32_t *stamp) {
+  size_t cursor = 0;
+  for (int line = 0; line < 2 && cursor < text.size(); ++line) {
+    const size_t end = text.find('\n', cursor);
+    const std::string row = text.substr(cursor, end == std::string::npos ? std::string::npos : end - cursor);
+    cursor = end == std::string::npos ? text.size() : end + 1;
+    unsigned inputs = 0, layers = 0;
+    unsigned long long value = 0;
+    if (std::sscanf(row.c_str(), "%u %u %llu", &inputs, &layers, &value) == 3 && value <= 0xFFFFFFFFull) {
+      *stamp = static_cast<uint32_t>(value);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Copy every readable, non-shared, non-executable region and hand it to `visit`.
+template <typename Visit> void forEachRegion(Visit visit, size_t *scanned, int *regions, int *unreadable) {
   std::vector<unsigned char> copy;
   mach_vm_address_t cursor = 1;
-  size_t scanned = 0;
-  int hits = 0, regions = 0, unreadable = 0;
-  while (scanned < 8ull * 1024u * 1024u * 1024u) {
+  while (*scanned < 8ull * 1024u * 1024u * 1024u) {
     mach_vm_address_t start = 0;
     mach_vm_size_t size = 0;
     vm_region_basic_info_data_64_t info;
@@ -156,13 +170,27 @@ void scanHeapForGraphs(const char *kind) {
     mach_vm_size_t copied = 0;
     if (mach_vm_read_overwrite(mach_task_self(), start, size, reinterpret_cast<mach_vm_address_t>(copy.data()), &copied) != KERN_SUCCESS ||
         copied != size) {
-      ++unreadable;
+      ++*unreadable;
       continue;
     }
-    ++regions;
-    scanned += static_cast<size_t>(size);
-    const unsigned char *base = copy.data();
-    const unsigned char *end = base + copy.size();
+    ++*regions;
+    *scanned += static_cast<size_t>(size);
+    visit(start, copy.data(), copy.size());
+  }
+}
+
+// Scan readable, non-shared, non-executable memory for graph text and dump each
+// distinct hit with a bounded window after it (the arena of a decoded packed
+// container follows its graph text). Regions are copied with
+// mach_vm_read_overwrite, which fails cleanly where a direct read would fault.
+void scanHeapForGraphs(const char *kind) {
+  static const char needle[] = "\nDataV2 ";
+  std::set<std::string> seen;
+  std::set<uint32_t> stamps;
+  size_t scanned = 0;
+  int hits = 0, regions = 0, unreadable = 0;
+  forEachRegion([&](mach_vm_address_t start, const unsigned char *base, size_t size) {
+    const unsigned char *end = base + size;
     for (const unsigned char *hit = base; hit < end;) {
       hit = static_cast<const unsigned char *>(memmem(hit, static_cast<size_t>(end - hit), needle, sizeof needle - 1));
       if (!hit) break;
@@ -173,6 +201,8 @@ void scanHeapForGraphs(const char *kind) {
       std::string text(reinterpret_cast<const char *>(textStart), static_cast<size_t>(textEnd - textStart));
       hit = textEnd;
       if (text.size() < 64 || !seen.insert(text).second) continue;
+      uint32_t stamp = 0;
+      if (headerStamp(text, &stamp)) stamps.insert(stamp);
       const int index = sequence++;
       char name[64];
       std::snprintf(name, sizeof name, "%s-heap-graph", kind);
@@ -184,14 +214,41 @@ void scanHeapForGraphs(const char *kind) {
       writeMeta(index, name,
                 "text_address=" + std::to_string(start + static_cast<mach_vm_address_t>(textStart - base)) +
                     " region_start=" + std::to_string(start) + " region_bytes=" + std::to_string(size) +
-                    " window_bytes=" + std::to_string(window),
+                    " window_bytes=" + std::to_string(window) + " stamp=" + std::to_string(stamp),
                 text.size());
       ++hits;
     }
-  }
+  }, &scanned, &regions, &unreadable);
+  // Second pass: the bytes before every occurrence of a found stamp.
+  int stampHits = 0;
+  size_t scannedAgain = 0;
+  int regionsAgain = 0, unreadableAgain = 0;
+  forEachRegion([&](mach_vm_address_t start, const unsigned char *base, size_t size) {
+    for (uint32_t stamp : stamps) {
+      unsigned char bytes[4];
+      std::memcpy(bytes, &stamp, 4);
+      const unsigned char *end = base + size;
+      for (const unsigned char *hit = base; hit + 4 <= end && stampHits < 64;) {
+        hit = static_cast<const unsigned char *>(memmem(hit, static_cast<size_t>(end - hit), bytes, 4));
+        if (!hit) break;
+        const size_t window = static_cast<size_t>(hit + 4 - base) < kStampWindow ? static_cast<size_t>(hit + 4 - base) : kStampWindow;
+        const int index = sequence++;
+        char name[64];
+        std::snprintf(name, sizeof name, "%s-heap-stamp", kind);
+        writeBytes(capturePath(index, name, "bin"), hit + 4 - window, window);
+        writeMeta(index, name,
+                  "stamp=" + std::to_string(stamp) + " stamp_end_address=" + std::to_string(start + static_cast<mach_vm_address_t>(hit + 4 - base)) +
+                      " region_start=" + std::to_string(start) + " window_bytes=" + std::to_string(window),
+                  window);
+        ++stampHits;
+        hit += 4;
+      }
+    }
+  }, &scannedAgain, &regionsAgain, &unreadableAgain);
   writeMeta(sequence++, "heap-scan",
             std::string(kind) + " regions=" + std::to_string(regions) + " unreadable=" + std::to_string(unreadable) +
-                " scanned_bytes=" + std::to_string(scanned) + " hits=" + std::to_string(hits),
+                " scanned_bytes=" + std::to_string(scanned) + " hits=" + std::to_string(hits) + " stamps=" + std::to_string(stamps.size()) +
+                " stamp_hits=" + std::to_string(stampHits),
             0);
 }
 
@@ -245,7 +302,7 @@ int originalThrustorCreateNet(void *self, const std::string &graph, void *arena,
 // Legacy espresso API used directly by the SMASH face algorithms in libcccreator / liblens.
 int originalEspressoCreateNet(void *self, const std::string &graph, void *arena, std::vector<std::string> &names)
     asm("__ZN8espresso8Thrustor9CreateNetERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEPvRNS1_6vectorIS7_NS5_IS7_EEEE");
-int originalEspressoReInferShape(void *self, int height, int width) asm("__ZN8espresso8Thrustor12ReInferShapeEii");
+int originalEspressoReInferShape(void *self, int width, int height) asm("__ZN8espresso8Thrustor12ReInferShapeEii");
 }
 std::shared_ptr<BYTENN::ByteNNEngine> originalEngineCreate() asm("__ZN6BYTENN13EngineFactory6CreateEv");
 
@@ -313,15 +370,16 @@ int capturedEspressoCreateNet(void *self, const std::string &graph, void *arena,
   return originalEspressoCreateNet(self, graph, arena, names);
 }
 
-int capturedEspressoReInferShape(void *self, int height, int width) {
+int capturedEspressoReInferShape(void *self, int width, int height) {
   if (captureDirectory()) {
     std::lock_guard<std::mutex> lock(captureMutex);
+    // espresso::Thrustor::ReInferShape takes (width, height).
     writeMeta(sequence++, "espresso-reinfer",
-              "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " height=" + std::to_string(height) +
-                  " width=" + std::to_string(width),
+              "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " width=" + std::to_string(width) +
+                  " height=" + std::to_string(height),
               0);
   }
-  return originalEspressoReInferShape(self, height, width);
+  return originalEspressoReInferShape(self, width, height);
 }
 
 // --- Engine::Init recorders installed through a per-object vtable copy -------
