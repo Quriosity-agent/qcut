@@ -138,7 +138,7 @@ A05 代码：[Bingo 桥](../../../research/jianying-tracking-probe/bingo-trackin
 | JianyingBasicVideo | 8 | 8 | 8 | 16,522,451 |
 | 合计 | **69** | **全局去重 64** | **69** | 不以总大小判断模型数量 |
 
-**2026-09-20 补充**：Filter 清单里四个不在 N 表、此前判为"密文 BM 容器"的神经文件已恢复并逐位对拍——`nodehub_c3_300_ilasdk`（C3 分类，`B` 图 174 层）、`tt_matting_large_v3.0`（`B` 图 140 层）、`tt_matting_v15.0`（int8 图 99 层，含膨胀深度卷积）、`tt_matting_relight_v1.0`（fp32 图 136 层，最大绝对误差 1.3e-5）。方法是把 BM 容器直接喂给 ByteNN 公开的 `EngineFactory::Create` + `Init(Config)`，运行库自行解密，再由捕获器从堆里取图与 arena（[记录](../../../research/local-model-pytorch/bytenn-init-parity.zh-CN.md)）。仍未恢复的是 SMASH 自带 AES 包装的 `tt_face_attribute_*`、`tt_faceverify`、`tt_face_extra_fast`、`tt_skeleton_v9.2`、`tt_skeletonlockon`、`tt_body_detection_lockon`、`tt_after_effect`、`tt_matting_video_v1.2`，以及音频容器与脚本/数据文件。
+**2026-09-20 补充**：Filter 清单里四个不在 N 表、此前判为"密文 BM 容器"的神经文件已恢复并逐位对拍——`nodehub_c3_300_ilasdk`（C3 分类，`B` 图 174 层）、`tt_matting_large_v3.0`（`B` 图 140 层）、`tt_matting_v15.0`（int8 图 99 层，含膨胀深度卷积）、`tt_matting_relight_v1.0`（fp32 图 136 层，最大绝对误差 1.3e-5）。方法是把 BM 容器直接喂给 ByteNN 公开的 `EngineFactory::Create` + `Init(Config)`，运行库自行解密，再由捕获器从堆里取图与 arena（[记录](../../../research/local-model-pytorch/bytenn-init-parity.zh-CN.md)）。同日稍后，SMASH 自带 AES 包装的包也打开了一部分：`liblens` 导出厂商自己的读取器 `smash::package::ModelPackage`，只要带上该家族的包密钥即可解包，而密钥可以用 dyld interpose 在无头宿主里由 SDK 自己交出（[记录](../../../research/local-model-pytorch/smash-package-parity.zh-CN.md)）。已恢复并逐位对拍：`tt_faceverify`（112 人脸校验）、`tt_skeleton_v9.2`（multi/single 两张）、`tt_skeletonlockon`（multi/single 两张，其中 single 与人体包同图）。仍缺密钥、未恢复的是 `tt_face_attribute_age/exp/extra`、`tt_face_extra_fast`、`tt_body_detection_lockon`、`tt_after_effect`、`tt_matting_video_v1.2`，以及音频容器与脚本/数据文件。
 
 边界说明：
 
