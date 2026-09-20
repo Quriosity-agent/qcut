@@ -68,7 +68,10 @@ def trim_by_stamp(text, extent, stamp, graph_path, names, out):
         short.write_bytes(arena[:-8])
         code_short, created_short = probe(graph_path, short, names)
         short.unlink()
-        if code == 0 and created is not None and created["create"] == 0 and created_short is not None and created_short["create"] != 0:
+        # The shortened arena must be rejected: either the probe exits non-zero (possibly before
+        # printing JSON) or it reports a failed create.
+        control_failed = code_short != 0 or (created_short is not None and created_short["create"] != 0)
+        if code == 0 and created is not None and created["create"] == 0 and control_failed:
             return arena, created, "stamp"
         position = extent.find(needle, position + 1)
     (out / "arena.bin").unlink(missing_ok=True)
