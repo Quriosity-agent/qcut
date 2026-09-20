@@ -60,8 +60,8 @@
 | N09 | `tt_face` v11.2 | 人脸/关键点相关输入，多个人像包共享 | 不把每个美颜滑条计为独立模型；2026-09-20 捕获其 6 张子网（3 张与 N08 相同）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
 | N10 | `tt_face_extra` v15.0 | 人脸细节与扩展关键点 | 逻辑名与物理文件版本可能不同，需保留 resolver 证据；2026-09-20 捕获 mask/extra/iris 三张子网并通过定点逐位对拍（两类定点 softmax 头 `≤2.6e-3`）（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
 | N11 | `tt_freid` v2.0 | 人脸跨帧 ID，逐人美颜参数绑定 | 不等于已经接入跨镜头身份识别 `tt_faceverify`；2026-09-20 捕获两张 112 网络并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)）；`tt_faceverify` 与人脸属性模型无可触发的特效包，未捕获 |
-| N12 | `tt_skin_seg` v5.1 | 皮肤掩膜、磨皮/肤色、模型驱动双 LUT 滤镜 | Metal 混合器独立，不意味着 skin mask 模型独立 |
-| N13 | `tt_skeletonsquat` v10.0 | 美体关键点与形变输入 | `body` 固定包；不要从此推导所有骨骼模型都已接入 |
+| N12 | `tt_skin_seg` v5.1 | 皮肤掩膜、磨皮/肤色、模型驱动双 LUT 滤镜 | Metal 混合器独立，不意味着 skin mask 模型独立；2026-09-20 捕获其 224×128 的 `B` 图（127 层，Sigmoid 单通道掩膜）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)），产品前处理与接入未验证 |
+| N13 | `tt_skeletonsquat` v10.0 | 美体关键点与形变输入 | `body` 固定包；不要从此推导所有骨骼模型都已接入；2026-09-20 捕获其三张子网（224 vectormap、192×144 热图 int8、192×144 `B`）并通过定点逐位对拍（[记录](../../../research/local-model-pytorch/face-espresso-parity.zh-CN.md)） |
 | N14 | `jypc_yunfuhua_gpucpu` v1.0 | 匀肤、丰盈 GAN | 两个控制共用 `skin-gan` 包，计一个模型家族；2026-09-19 已恢复为 PyTorch 并通过 CPU 原生对拍（[记录](../../../research/local-model-pytorch/yunfuhua-parity.zh-CN.md)），产品前处理、GPU 路径与接入未验证 |
 | N15 | `newbandou` v1.0 | 祛斑祛痘神经修复 | `spot-acne` 包，另有 A02 脚本依赖 |
 
