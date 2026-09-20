@@ -11,9 +11,9 @@
   老格式网络用护页二分，少 1 字节即 SIGBUS）。清单在 `.local/jianying-model-pytorch/face-capture-20260920/collected/manifest.json`。
 - 定点解释器 `espresso_fixed.py` 对 18 张定点网络在两个随机种子（41/509）下**所有整数中间层与输出逐位一致**
   （面部 14 张另有种子 17）；人脸检测器在产品实际使用的动态尺寸 320×576 下同样逐位一致。
-- 浮点尾部（全连接 → softmax/sigmoid）最大绝对误差 `2.3e-5`；定点输入的多类 softmax 逐位一致；定点输入的**两类**
-  softmax 按通道 0 相对指数复现后，mask 网络两路概率逐位一致，extra 网络的 `prob2` 只剩并列点差 `9.8e-4`；
-  `facefitting_3d` 的 fp32 MLP 相对误差 `≤2.6e-4`。
+- 浮点层按来源分开统计：全连接 → softmax/sigmoid 的尾部最大绝对误差 `2.3e-5`；定点输入的多类 softmax 逐位一致；定点输入的
+  **两类** softmax 按通道 0 相对指数复现后，mask 网络两路概率逐位一致，extra 网络的 `prob2` 只剩并列点差 `9.8e-4`；
+  `facefitting_3d` 的 fp32 MLP 绝对误差 `≤4.2e-4`（相对 `≤2.6e-4`）。全表浮点层的真实最大绝对误差为 `0.00098`（extra 的 `prob2`）。
 - 没有任何产品或编辑器接入；真实素材经产品前处理后的输出未验证。
 
 ## 容器为什么打不开，以及怎么拿到明文
@@ -50,9 +50,9 @@ arena 长度不在调用参数里：带戳的图（`D`/`B`/无字母三段头）
 | `b91158956cb941c1` | ttface/align-120-B-int16-58 | `B` | 58 | 128,892 | stamp | 120×120×3 `[2, 6]` | `fc_landmark_s1`, `prob`, `fc_pitch`, `fc_yaw` | 整数层 51/51 逐位一致；浮点层 7 层最大 `2.3e-05` |
 | `16e18b7bf21646ed` | ttface/align-120-B-int16-79 | `B` | 79 | 356,816 | stamp | 120×120×3 `[2, 6]` | `fc_landmark_s1`, `prob`, `fc_pitch`, `fc_yaw` | 整数层 87/87 逐位一致；浮点层 7 层最大 `5.7e-06` |
 | `e96283032a6db00a` | ttface/detector-128-legacy-int8 | `plain` | 53 | 14,448 | guard-bisection | 128×128×3 `[1, 6]` | `rpn_bbox_pred/8s`, `rpn_bbox_pred/16s`, `rpn_bbox_pred/32s`, `rpn_cls_score/8s` … | 整数层 53/53 逐位一致；浮点层 0 层最大 `0` |
-| `7938cfc3abdb0934` | face_extra/extra-160-B-int16 | `B` | 154 | 372,984 | stamp | 160×160×3 `[2, 6]` | `fc`, `prob`, `prob2` | 整数层 152/152 逐位一致；浮点层 4 层最大 `0.0026` |
+| `7938cfc3abdb0934` | face_extra/extra-160-B-int16 | `B` | 154 | 372,984 | stamp | 160×160×3 `[2, 6]` | `fc`, `prob`, `prob2` | 整数层 152/152 逐位一致；浮点层 4 层最大 `0.00098` |
 | `d3d65bdc1ad0358d` | face_extra/iris-48-legacy-int16 | `plain` | 41 | 22,320 | guard-bisection | 48×48×3 `[2, 6]` | `pred_landmark` | 整数层 39/39 逐位一致；浮点层 2 层最大 `2.9e-06` |
-| `404585f86fe7f67e` | face_extra/mask-160-B-int16 | `B` | 120 | 231,444 | heap-window-stamp+bm-section-length | 160×160×3 `[2, 6]` | `prob`, `prob2` | 整数层 120/120 逐位一致；浮点层 2 层最大 `0.002` |
+| `404585f86fe7f67e` | face_extra/mask-160-B-int16 | `B` | 120 | 231,444 | heap-window-stamp+bm-section-length | 160×160×3 `[2, 6]` | `prob`, `prob2` | 整数层 120/120 逐位一致；浮点层 2 层最大 `0` |
 | `561c62426cd40bbc` | freid/a-112-B-int16 | `B` | 122 | 6,178,008 | stamp | 112×112×3 `[2, 7]` |  | 整数层 118/118 逐位一致；浮点层 4 层最大 `2.4e-07` |
 | `1fb696f5a079c76e` | freid/b-112-B-int16 | `B` | 122 | 6,178,008 | stamp | 112×112×3 `[2, 7]` |  | 整数层 118/118 逐位一致；浮点层 4 层最大 `8.1e-06` |
 | `e6c415d78641d3d6` | facefitting_3d/mlp-212-fp32 | `plain` | 6 | 2,393,840 | heap-stamp-window+graph-accounting | 1×1×212 `[4, 0]` | `Mul_9` | 整数层 0/0 逐位一致；浮点层 6 层最大 `0.00042` |
@@ -91,7 +91,7 @@ int8 饱和到 −128..127，type-2 饱和到 ±2047；Eltwise 先对齐到较�
 
 `face-capture-20260920/`：`captures-r2`（espresso 捕获 + 区段落盘）、`captures-r3`（含堆扫描）、
 `pkg-face-fitting3d(-r2)`、`pkg-skinseg-a/b`、`pkg-squat`（戳窗口）、`collected/`（19 张网络 + `manifest.json`）、
-`micro`…`micro11`（探针图）、`parity-final-seed41`、`parity-final-seed509`、`parity-seed41/509`（面部 14 张的早期轮次）、
+`micro`…`micro12`（探针图）、`parity-final2-seed41`、`parity-final2-seed509`（本表数据）、`parity-final-seed41/509` 与 `parity-seed41/509`（早期轮次）、
 `parity-r5-reinfer`（320×576）、`parity-fitting3d`。
 
 ## 复现
