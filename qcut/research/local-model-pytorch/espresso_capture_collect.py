@@ -50,20 +50,29 @@ def probe(graph, arena_spec, names):
 
 
 def trim_by_stamp(text, extent, stamp, graph_path, names, out):
+    """Cut the extent at the first stamp occurrence that the runtime accepts.
+
+    The extent is readable memory from the arena pointer, not a length-bounded
+    arena, so the four stamp bytes can occur by chance before the real terminator;
+    every occurrence is tried and the first one that passes both probes wins.
+    """
     needle = struct.pack("<I", stamp)
     position = extent.find(needle)
     if position < 0:
         raise ValueError("stamp not found in arena extent")
-    arena = extent[:position + 4]
-    (out / "arena.bin").write_bytes(arena)
-    code, created = probe(graph_path, out / "arena.bin", names)
-    short = out / "arena.short.bin"
-    short.write_bytes(arena[:-8])
-    code_short, created_short = probe(graph_path, short, names)
-    short.unlink()
-    if code != 0 or created is None or created["create"] != 0 or created_short is None or created_short["create"] == 0:
-        raise ValueError("stamp-trimmed arena did not verify")
-    return arena, created, "stamp"
+    while position >= 0:
+        arena = extent[:position + 4]
+        (out / "arena.bin").write_bytes(arena)
+        code, created = probe(graph_path, out / "arena.bin", names)
+        short = out / "arena.short.bin"
+        short.write_bytes(arena[:-8])
+        code_short, created_short = probe(graph_path, short, names)
+        short.unlink()
+        if code == 0 and created is not None and created["create"] == 0 and created_short is not None and created_short["create"] != 0:
+            return arena, created, "stamp"
+        position = extent.find(needle, position + 1)
+    (out / "arena.bin").unlink(missing_ok=True)
+    raise ValueError("no stamp occurrence yields an arena the runtime accepts")
 
 
 def trim_by_guard(extent_path, graph_path, names, out):
