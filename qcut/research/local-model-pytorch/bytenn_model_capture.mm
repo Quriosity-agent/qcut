@@ -87,10 +87,17 @@ std::vector<unsigned char> copyMemory(const void *data, size_t size) {
   return copy;
 }
 
-void writeBytes(const std::string &path, const void *data, size_t size) {
+// Writes what could be copied and returns that count, so callers can record a
+// short or failed dump instead of describing it with the requested size.
+size_t writeBytes(const std::string &path, const void *data, size_t size) {
   const std::vector<unsigned char> copy = copyMemory(data, size);
   std::ofstream output(path, std::ios::binary);
   output.write(reinterpret_cast<const char *>(copy.data()), static_cast<std::streamsize>(copy.size()));
+  return output ? copy.size() : 0;
+}
+
+std::string dumpDetail(size_t requested, size_t written) {
+  return written == requested ? std::string() : " requested=" + std::to_string(requested) + " written=" + std::to_string(written);
 }
 
 void writeMeta(int index, const char *kind, const std::string &detail, size_t size) {
@@ -129,8 +136,8 @@ void captureBuffer(const char *kind, const std::string &detail, const void *data
   if (!captureDirectory() || !data || !size) return;
   std::lock_guard<std::mutex> lock(captureMutex);
   const int index = sequence++;
-  writeBytes(capturePath(index, kind, "bin"), data, size);
-  writeMeta(index, kind, detail, size);
+  const size_t written = writeBytes(capturePath(index, kind, "bin"), data, size);
+  writeMeta(index, kind, detail + dumpDetail(size, written), written);
 }
 
 // A BM container declares its own byte length at offset 4.
@@ -275,10 +282,11 @@ void captureConfig(const char *kind, const void *config) {
   if (!captureDirectory() || !config) return;
   std::lock_guard<std::mutex> lock(captureMutex);
   const int index = sequence++;
-  const std::vector<unsigned char> block = copyMemory(config, mappedExtent(config, kConfigDumpLimit));
+  const size_t requested = mappedExtent(config, kConfigDumpLimit);
+  const std::vector<unsigned char> block = copyMemory(config, requested);
   const unsigned char *bytes = block.data();
   const size_t extent = block.size();
-  writeBytes(capturePath(index, kind, "bin"), config, extent);
+  const size_t written = writeBytes(capturePath(index, kind, "bin"), config, extent);
   std::ofstream words(capturePath(index, kind, "words.txt"));
   int models = 0;
   for (size_t offset = 0; offset + 8 <= extent; offset += 8) {
@@ -294,13 +302,13 @@ void captureConfig(const char *kind, const void *config) {
       if (length) {
         char name[64];
         std::snprintf(name, sizeof name, "%s-model-%d", kind, models++);
-        writeBytes(capturePath(index, name, "bin"), target, length);
-        words << "\tbm=" << length;
+        const size_t modelWritten = writeBytes(capturePath(index, name, "bin"), target, length);
+        words << "\tbm=" << length << (modelWritten == length ? "" : "\tpartial=" + std::to_string(modelWritten));
       }
     }
     words << "\n";
   }
-  writeMeta(index, kind, "models=" + std::to_string(models), extent);
+  writeMeta(index, kind, "models=" + std::to_string(models) + dumpDetail(requested, written), written);
 }
 
 }  // namespace
@@ -357,11 +365,13 @@ void captureThrustorNet(const char *kind, void *self, const std::string &graph, 
   if (!captureDirectory()) return;
   std::lock_guard<std::mutex> lock(captureMutex);
   const int index = sequence++;
-  writeBytes(capturePath(index, kind, "graph.txt"), graph.data(), graph.size());
+  const size_t graphWritten = writeBytes(capturePath(index, kind, "graph.txt"), graph.data(), graph.size());
   const size_t extent = mappedExtent(arena, kModelDumpLimit);
-  if (extent) writeBytes(capturePath(index, kind, "arena.bin"), arena, extent);
+  const size_t arenaWritten = extent ? writeBytes(capturePath(index, kind, "arena.bin"), arena, extent) : 0;
   std::string detail = "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " outputs=";
   for (const std::string &name : names) detail += name + ";";
+  if (graphWritten != graph.size()) detail += " graph" + dumpDetail(graph.size(), graphWritten);
+  detail += dumpDetail(extent, arenaWritten);
   mach_vm_address_t start = 0;
   mach_vm_size_t size = 0;
   vm_region_basic_info_data_64_t info;
@@ -372,10 +382,11 @@ void captureThrustorNet(const char *kind, void *self, const std::string &graph, 
               " arena_offset=" + std::to_string(address - start);
     if (dumpedRegions.insert(start).second) {
       const size_t regionExtent = mappedExtent(reinterpret_cast<const void *>(start), kModelDumpLimit);
-      writeBytes(capturePath(index, kind, "region.bin"), reinterpret_cast<const void *>(start), regionExtent);
+      const size_t regionWritten = writeBytes(capturePath(index, kind, "region.bin"), reinterpret_cast<const void *>(start), regionExtent);
+      if (regionWritten != regionExtent) detail += " region" + dumpDetail(regionExtent, regionWritten);
     }
   }
-  writeMeta(index, kind, detail, extent);
+  writeMeta(index, kind, detail, arenaWritten);
 }
 
 int capturedThrustorCreateNet(void *self, const std::string &graph, void *arena, std::vector<std::string> &names) {
