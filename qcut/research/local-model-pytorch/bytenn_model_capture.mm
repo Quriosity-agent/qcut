@@ -73,9 +73,24 @@ std::string capturePath(int index, const char *kind, const char *extension) {
   return name;
 }
 
+// Every dump goes through mach_vm_read_overwrite: a region that reports itself
+// readable can still fault on a direct access (the body-keypoint package's
+// config block did), and a kernel copy fails cleanly instead.
+std::vector<unsigned char> copyMemory(const void *data, size_t size) {
+  std::vector<unsigned char> copy(size);
+  mach_vm_size_t copied = 0;
+  if (!size || mach_vm_read_overwrite(mach_task_self(), reinterpret_cast<mach_vm_address_t>(data), size,
+                                      reinterpret_cast<mach_vm_address_t>(copy.data()), &copied) != KERN_SUCCESS) {
+    return {};
+  }
+  copy.resize(static_cast<size_t>(copied));
+  return copy;
+}
+
 void writeBytes(const std::string &path, const void *data, size_t size) {
+  const std::vector<unsigned char> copy = copyMemory(data, size);
   std::ofstream output(path, std::ios::binary);
-  output.write(static_cast<const char *>(data), static_cast<std::streamsize>(size));
+  output.write(reinterpret_cast<const char *>(copy.data()), static_cast<std::streamsize>(copy.size()));
 }
 
 void writeMeta(int index, const char *kind, const std::string &detail, size_t size) {
@@ -120,6 +135,7 @@ void captureBuffer(const char *kind, const std::string &detail, const void *data
 
 // A BM container declares its own byte length at offset 4.
 size_t bmContainerLength(const unsigned char *data, size_t extent) {
+  // `data` holds at least the 12-byte header; `extent` bounds the container length.
   if (extent < 12 || std::memcmp(data, "BM\0", 3) != 0 || data[3] < 2 || data[3] > 5) return 0;
   uint32_t length = 0;
   std::memcpy(&length, data + 4, sizeof length);
@@ -259,9 +275,10 @@ void captureConfig(const char *kind, const void *config) {
   if (!captureDirectory() || !config) return;
   std::lock_guard<std::mutex> lock(captureMutex);
   const int index = sequence++;
-  const auto *bytes = static_cast<const unsigned char *>(config);
-  const size_t extent = mappedExtent(bytes, kConfigDumpLimit);
-  writeBytes(capturePath(index, kind, "bin"), bytes, extent);
+  const std::vector<unsigned char> block = copyMemory(config, mappedExtent(config, kConfigDumpLimit));
+  const unsigned char *bytes = block.data();
+  const size_t extent = block.size();
+  writeBytes(capturePath(index, kind, "bin"), config, extent);
   std::ofstream words(capturePath(index, kind, "words.txt"));
   int models = 0;
   for (size_t offset = 0; offset + 8 <= extent; offset += 8) {
@@ -270,9 +287,10 @@ void captureConfig(const char *kind, const void *config) {
     words << offset << "\t0x" << std::hex << word << std::dec;
     const auto *target = reinterpret_cast<const unsigned char *>(word);
     const size_t targetExtent = word >= 0x100000000ull ? mappedExtent(target, kModelDumpLimit) : 0;
-    if (targetExtent) {
-      words << "\tmapped=" << targetExtent << "\thead=" << hex(target, targetExtent < 16 ? targetExtent : 16);
-      const size_t length = bmContainerLength(target, targetExtent);
+    const std::vector<unsigned char> head = targetExtent ? copyMemory(target, targetExtent < 16 ? targetExtent : 16) : std::vector<unsigned char>{};
+    if (!head.empty()) {
+      words << "\tmapped=" << targetExtent << "\thead=" << hex(head.data(), head.size());
+      const size_t length = bmContainerLength(head.data(), head.size() < 12 ? head.size() : targetExtent);
       if (length) {
         char name[64];
         std::snprintf(name, sizeof name, "%s-model-%d", kind, models++);
