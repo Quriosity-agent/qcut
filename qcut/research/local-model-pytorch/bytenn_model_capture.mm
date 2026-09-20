@@ -396,7 +396,13 @@ int capturedThrustorCreateNet(void *self, const std::string &graph, void *arena,
 
 int capturedEspressoCreateNet(void *self, const std::string &graph, void *arena, std::vector<std::string> &names) {
   captureThrustorNet("espresso", self, graph, arena, names);
-  return originalEspressoCreateNet(self, graph, arena, names);
+  const int result = originalEspressoCreateNet(self, graph, arena, names);
+  // A compressed arena (graph headers such as `USTQ`) is expanded during CreateNet, so the plain
+  // weights only exist afterwards; QCUT_BYTENN_SCAN_AFTER_CREATE asks for a heap sweep that picks
+  // the expanded buffer up through its trailing graph stamp.
+  const char *sweep = std::getenv("QCUT_BYTENN_SCAN_AFTER_CREATE");
+  if (sweep && *sweep == '1') scanHeapForGraphs("espresso-post");
+  return result;
 }
 
 int capturedEspressoReInferShape(void *self, int width, int height) {
