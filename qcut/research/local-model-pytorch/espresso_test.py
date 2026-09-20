@@ -74,11 +74,17 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(out["o1"]["data"].reshape(-1).tolist(), [100, -100, 2047, -3000, 100, -100, 4094, -2047])
         self.assertEqual(out["cat"]["data"].reshape(-1).tolist(), vals.reshape(-1).tolist() * 2)
 
-    def test_two_class_fixed_point_softmax(self):
-        # Probe micro12: x=(64,65)@6 -> p0 = 0.49511719 (frecpe of 1 + exp(1/64)), p1 = 1 - p0.
-        text = "1 1\ndata 1 1 1 2 2 6\nSoftmax sm data sm\n"
-        out = espresso_fixed.run(text, b"\0", {"data": (np.array([64, 65]).reshape(1, 1, 1, 2), [2, 6])})["sm"]["data"]
-        self.assertEqual(out.reshape(-1).tolist(), [0.4951171875, 0.5048828125])
+    def test_two_class_softmax_block_and_tail(self):
+        # Probe micro12: x=(64,65)@6 in a four-pixel block -> p0 = 0.49511719 (frecpe of 1 + exp(1/64)),
+        # p1 = 1 - p0; the same pair as a lone pixel takes the scalar path (true division, probe micro-sm2).
+        block = espresso_fixed.run("1 1\ndata 1 4 1 2 2 6\nSoftmax sm data sm\n", b"\0",
+                                   {"data": (np.tile(np.array([64, 65]).reshape(1, 1, 1, 2), (1, 4, 1, 1)), [2, 6])})["sm"]["data"]
+        self.assertEqual(block[0, 0, 0].tolist(), [0.4951171875, 0.5048828125])
+        tail = espresso_fixed.run("1 1\ndata 1 1 1 2 2 6\nSoftmax sm data sm\n", b"\0",
+                                  {"data": (np.array([64, 65]).reshape(1, 1, 1, 2), [2, 6])})["sm"]["data"]
+        expected = 1 / (1 + np.exp(np.float32(1 / 64)))
+        self.assertAlmostEqual(float(tail[0, 0, 0, 0]), float(expected), places=6)
+        self.assertNotEqual(float(tail[0, 0, 0, 0]), 0.4951171875)
 
     def test_shufflenet_int8_saturates(self):
         text = "2 1\na 1 1 1 8 1 3\nb 1 1 1 8 1 3\nShuffleNet sn 2 a b 4 2 o0 3 o1 4\n"
