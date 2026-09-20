@@ -4,7 +4,7 @@
 
 ## 批次记录
 
-- [人脸家族 espresso 网络：捕获、精确 arena 与定点逐位对拍](face-espresso-parity.zh-CN.md)：四个加密人脸容器（fsnew / tt_face / face_extra / freid）与 facefitting_3d 共 15 张网络在无头人像宿主里捕获，arena 按图戳或护页二分精确到字节；新的定点解释器 `espresso_fixed.py` 三种子下所有整数层逐位一致，规则见 [espresso-fixed-point.zh-CN.md](espresso-fixed-point.zh-CN.md)；两类定点 softmax 与 fp32 全连接累加顺序未固定；产品接入未做。
+- [人脸 / 皮肤 / 人体 espresso 网络：捕获、精确 arena 与定点逐位对拍](face-espresso-parity.zh-CN.md)：四个加密人脸容器（fsnew / tt_face / face_extra / freid）、facefitting_3d、tt_skin_seg 与 tt_skeletonsquat 共 19 张网络在无头人像宿主里捕获，arena 按图戳、护页二分或戳窗口精确到字节；定点解释器 `espresso_fixed.py` 两种子下所有整数层逐位一致，规则见 [espresso-fixed-point.zh-CN.md](espresso-fixed-point.zh-CN.md)；两类定点 softmax 与 fp32 全连接累加顺序未固定；产品接入未做。
 - [显著性抠像（saliency_matting）CPU 对拍与 ONNX](saliency-matting-parity.zh-CN.md)：盘点表 N07 首次恢复；解释器新增 `E` 头 fp16 arena、dilated `Conv2D`、最大池化、通道 Slice、Mul、ReduceSum；原生对拍 10/10，ONNX 导出并对冻结原生输出回比 10/10；产品接入未做。
 - [匀肤 GAN（yunfuhua）CPU 网络对拍](yunfuhua-parity.zh-CN.md)：盘点表 N14 的 `jypc_yunfuhua_gpucpu` 首次恢复；通用视觉解释器新增多输入、Sigmoid、SEScale、分数倍上采样与固定 CPU 数值 profile，原生对拍 10/10，主输出逐位一致；ONNX 与产品接入未做。
 - [第五阶段收尾与验收边界](PHASE5-20260919.zh-CN.md)：Windows/x86 合成 CI、无 Torch 视频分镜、编辑器接入、OCR 字表/CTC，以及 GRU/Bandou 新精度 profile。
