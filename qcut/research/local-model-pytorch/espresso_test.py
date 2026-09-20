@@ -86,6 +86,31 @@ class RuleTest(unittest.TestCase):
         self.assertAlmostEqual(float(tail[0, 0, 0, 0]), float(expected), places=6)
         self.assertNotEqual(float(tail[0, 0, 0, 0]), 0.4951171875)
 
+    def test_dilated_depthwise_accounting_and_extent(self):
+        # co kh kw dh dw sh sw ph pw bias relu (probe micro-dil): dilation 2 with pad 2 keeps the extent.
+        text = "1 1\ndata 1 9 9 4 1 6\nDilationSeparableConvolution dw 4 3 3 2 2 1 1 2 2 1 1 1 6 4 13 1 6 data dw\n"
+        result = espresso_graph.analyze(text)
+        self.assertEqual(result["shapes"]["dw"], (1, 9, 9, 4))
+        self.assertEqual(result["arena_bytes"], 4 * 9 + 4 * 4)
+        arena = np.array([4 * i for i in range(1, 10)] * 4, dtype=np.int8).reshape(9, 4, order="F").reshape(-1).tobytes() + np.zeros(4, "<i4").tobytes()
+        x = np.zeros((1, 9, 9, 4), dtype=np.int64)
+        x[0, 4, 4, 0] = 64
+        out = espresso_fixed.run(text, arena, {"data": (x, [1, 6])})["dw"]["data"][0, :, :, 0]
+        # kernel (kh, kw, c) with c innermost: channel 0 tap index t reads arena[t * 4]; y = 4 * (t + 1) * 64 >> 8 = t + 1
+        self.assertEqual(out[2, 2], 9)
+        self.assertEqual(out[6, 6], 1)
+        self.assertEqual(out[4, 4], 5)
+        self.assertEqual(int((out != 0).sum()), 9)
+
+    def test_float_blob_paths(self):
+        text = "2 3\na 1 2 2 1 4 0\nb 1 2 2 1 4 0\nEltwise sum a b sum 4 0 1\nConcat cat 2 a b cat 4 0\nUpSampling up a up LINEAR\n"
+        a = np.array([[0.5, -2.0], [1.0, 3.0]], dtype=np.float32).reshape(1, 2, 2, 1)
+        b = np.array([[1.0, 1.0], [-3.0, 0.25]], dtype=np.float32).reshape(1, 2, 2, 1)
+        out = espresso_fixed.run(text, b"\0", {"a": (a, [4, 0]), "b": (b, [4, 0])})
+        self.assertEqual(out["sum"]["data"].reshape(-1).tolist(), [1.5, 0.0, 0.0, 3.25])
+        self.assertEqual(out["cat"]["data"].shape, (1, 2, 2, 2))
+        self.assertAlmostEqual(float(out["up"]["data"][0, 1, 1, 0]), (9 * 0.5 + 3 * -2.0 + 3 * 1.0 + 3.0) / 16)
+
     def test_shufflenet_int8_saturates(self):
         text = "2 1\na 1 1 1 8 1 3\nb 1 1 1 8 1 3\nShuffleNet sn 2 a b 4 2 o0 3 o1 4\n"
         vals = np.array([100, -100, 64, -64, 127, -128, 30, -30]).reshape(1, 1, 1, 8)
