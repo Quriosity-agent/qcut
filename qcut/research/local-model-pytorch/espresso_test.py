@@ -44,8 +44,41 @@ class RuleTest(unittest.TestCase):
     def test_packed_kernel_decode(self):
         arena = bytes([0x12, 0x3A, 0xBC]) + bytes([0x00, 0x0F, 0xFF])
         values, cursor = espresso_fixed.decode_kernel(arena, 0, 4, {"type": 2, "fraction": 11}, True)
-        self.assertEqual(values.tolist(), [0x123 - 2047, 0xABC - 2047, -2047, 2047])
+        # raw 4095 decodes to 2048: the runtime does not clamp kernel values (probe D4095).
+        self.assertEqual(values.tolist(), [0x123 - 2047, 0xABC - 2047, -2047, 2048])
         self.assertEqual(cursor, 6)
+
+    def test_rounding_shift_after_a_single_wrap(self):
+        # INT32_MIN bias plus a small negative sum wraps to a large positive int32; the rounding
+        # shift must not wrap again (heatmap net, channel with bias -2^31).
+        text = "1 1\ndata 1 1 1 1 1 4\nConvolution conv 1 1 1 1 1 0 0 1 0 1 11 4 15 1 6 data conv\n"
+        arena = np.array([-99], dtype=np.int8).tobytes() + np.array([-(2**31)], dtype="<i4").tobytes()
+        out = espresso_fixed.run(text, arena, {"data": (np.array([1]).reshape(1, 1, 1, 1), [1, 4])})["conv"]["data"]
+        self.assertEqual(int(out.reshape(-1)[0]), 127)
+
+    def test_upsampling_modes(self):
+        text = "1 2\ndata 1 2 2 1 2 6\nUpSampling lin data lin LINEAR\nUpSampling bil data bil BILINEAR\n"
+        x = np.array([0, 64, -64, 127]).reshape(1, 2, 2, 1)
+        out = espresso_fixed.run(text, b"\0", {"data": (x, [2, 6])})
+        self.assertEqual(out["lin"]["data"][0, :, :, 0].tolist()[0], [0, 12, 36, 36])
+        self.assertEqual(out["bil"]["data"][0, :, :, 0].tolist()[0], [0, 16, 48, 64])
+
+    def test_shufflenet_int16_lane_clamp_and_concat_passthrough(self):
+        # Probe OOR-SN: the int16 ShuffleNet clamps channels 0-3 of each 8 from above and 4-7 from below,
+        # even without rescaling; Concat at the same scale passes out-of-range values through.
+        text = ("2 2\na 1 1 1 8 2 7\nb 1 1 1 8 2 7\nShuffleNet sn 2 a b 4 2 o0 7 o1 7\n"
+                "Concat cat 2 a b cat 2 7\n")
+        vals = np.array([3000, -4094, 2047, -2047, 100, -100, 4094, -3000]).reshape(1, 1, 1, 8)
+        out = espresso_fixed.run(text, b"\0", {"a": (vals, [2, 7]), "b": (vals, [2, 7])})
+        self.assertEqual(out["o0"]["data"].reshape(-1).tolist(), [2047, -4094, 2047, -2047, 3000, -2047, 2047, -2047])
+        self.assertEqual(out["o1"]["data"].reshape(-1).tolist(), [100, -100, 2047, -3000, 100, -100, 4094, -2047])
+        self.assertEqual(out["cat"]["data"].reshape(-1).tolist(), vals.reshape(-1).tolist() * 2)
+
+    def test_shufflenet_int8_saturates(self):
+        text = "2 1\na 1 1 1 8 1 3\nb 1 1 1 8 1 3\nShuffleNet sn 2 a b 4 2 o0 3 o1 4\n"
+        vals = np.array([100, -100, 64, -64, 127, -128, 30, -30]).reshape(1, 1, 1, 8)
+        out = espresso_fixed.run(text, b"\0", {"a": (vals, [1, 3]), "b": (vals, [1, 3])})
+        self.assertEqual(out["o1"]["data"].reshape(-1).tolist(), [127, -128, 60, -60, 127, -128, 60, -60])
 
     def test_int32_wrap(self):
         self.assertEqual(espresso_fixed.wrap32(np.array([2**31, -(2**31) - 1, 5])).tolist(), [-(2**31), 2**31 - 1, 5])
