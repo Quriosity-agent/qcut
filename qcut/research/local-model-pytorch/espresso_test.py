@@ -5,6 +5,7 @@ import numpy as np
 
 import espresso_fixed
 import espresso_graph
+import espresso_preprocess_probe
 
 INT8_GRAPH = "1 2\ndata 1 4 4 2 1 6\nConvolution conv 2 3 3 1 1 1 1 1 1 1 7 4 13 1 5 data conv\nDepthwiseSeparableConvolution dw 2 3 3 2 2 1 1 1 0 1 4 4 9 1 4 conv dw\n"
 PACKED_GRAPH = "B\n1 2 12345\nDataV2 data 1 4 4 2 2 6 0\nConvolution conv 2 3 3 1 1 1 1 1 1 2 11 4 17 2 7 data conv\nInnerProduct fc 3 1 0 4 0 4 0 4 0 conv fc\n"
@@ -112,6 +113,23 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(legacy["sum"]["data"].reshape(-1).tolist(), [11, 0, 0, 0])
         plain = espresso_fixed.run("2 1\na 1 2 2 1 1 6\nb 1 2 2 1 1 6\nEltwise sum a b sum 1 6 0\n", b"\0", values)
         self.assertEqual(plain["sum"]["data"].reshape(-1).tolist(), [11, -18, -20, -56])
+
+    def test_truncating_separable_bilinear(self):
+        # Two source columns [0, 255] to four: half-pixel centres give weights 0 (clamped), 1/4, 3/4 and 1
+        # (clamped); 7-bit weights and a truncating pass turn 255 * 32 / 128 = 63.75 into 63.
+        source = np.array([[[0.0], [255.0]]])
+        out = espresso_preprocess_probe.separable_bilinear_truncating(source, 4, 1)
+        self.assertEqual(out[0, :, 0].tolist(), [0.0, 63.0, 191.0, 255.0])
+
+    def test_face_detector_recipe_reduces_swaps_and_offsets(self):
+        # A 4x4 frame whose 2x2 blocks average to x.5 must round half up, come out as BGR and lose 128.
+        frame = np.zeros((4, 4, 3), dtype=np.uint8)
+        frame[..., 0] = [[10, 11, 20, 21], [11, 12, 21, 22], [30, 31, 40, 41], [31, 32, 41, 42]]  # R blocks mean 11, 21, 31, 41
+        frame[..., 2] = 200                                                                       # B constant
+        tensor = espresso_preprocess_probe.face_detector_tensor(frame, 2, 2, intermediate=(2, 2))
+        self.assertEqual(tensor.dtype, np.int8)
+        self.assertEqual(tensor[..., 0].tolist(), [[72, 72], [72, 72]])           # B - 128
+        self.assertEqual(tensor[..., 2].tolist(), [[-117, -107], [-97, -87]])   # round-half-up(R mean) - 128
 
     def test_float_blob_paths(self):
         text = "2 3\na 1 2 2 1 4 0\nb 1 2 2 1 4 0\nEltwise sum a b sum 4 0 1\nConcat cat 2 a b cat 4 0\nUpSampling up a up LINEAR\n"
