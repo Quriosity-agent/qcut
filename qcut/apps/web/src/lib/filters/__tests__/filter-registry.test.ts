@@ -72,20 +72,22 @@ describe("filter registry", () => {
 		expect(new Set(previewHashes).size).toBe(FILTER_PRESETS.length);
 	});
 
-	it("resolves every visible preset through the production LUT path", () => {
-		for (const preset of FILTER_PRESETS) {
-			const resolved = resolveColorFilterSettings({
-				settings: {
-					...structuredClone(DEFAULT_MEDIA_COLOR_SETTINGS),
-					filter: {
-						presetId: preset.id,
-						presetVersion: preset.version,
-						intensity: preset.defaultIntensity,
-					},
+	it.each(FILTER_PRESETS)("resolves $id through the production LUT path", ({
+		id,
+		version,
+		defaultIntensity,
+	}) => {
+		const resolved = resolveColorFilterSettings({
+			settings: {
+				...structuredClone(DEFAULT_MEDIA_COLOR_SETTINGS),
+				filter: {
+					presetId: id,
+					presetVersion: version,
+					intensity: defaultIntensity,
 				},
-			});
-			expect(resolved.lut.presetId).toBe(`filter:${preset.id}`);
-			expect(resolved.lut.cube?.values.length).toBe(17 ** 3 * 3);
-		}
+			},
+		});
+		expect(resolved.lut.presetId).toBe(`filter:${id}`);
+		expect(resolved.lut.cube?.values.length).toBe(17 ** 3 * 3);
 	});
 });

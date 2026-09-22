@@ -75,7 +75,6 @@ jobs:
 
       - name: Run tests with coverage
         run: cd apps/web && bunx vitest run --coverage
-        continue-on-error: true
 
       # The electron main-process suite (1400+ tests) was previously not run
       # anywhere in CI — regressions like a broken callModelApi path shipped

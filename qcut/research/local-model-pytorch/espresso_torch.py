@@ -1,222 +1,143 @@
-"""Strict executor for the nine Espresso operators observed in local models."""
-import collections
-import copy
+"""Readable PyTorch module for espresso graphs whose blobs are float32.
 
+`espresso_fixed.py` reproduces the runtime bit for bit in NumPy, including the fixed-point rules.
+Graphs whose storage descriptors are all `4 0` need none of that: every layer is ordinary float32
+arithmetic, so they can be expressed as an `nn.Module` and exported. The layer semantics are the
+ones the probes established (see espresso-fixed-point.zh-CN.md): a convolution is a plain conv
+with bias and optional ReLU, `Eltwise` adds, `Concat` joins channels, `UpSampling LINEAR` is the
+zero-padded half-pixel x2 kernel `(9a + 3b + 3c + d) / 16`, and a dense layer is a matmul.
+
+Softmax is the one place the export is not exact: on two classes the runtime takes the exponent
+relative to channel 0 and scales by the hardware reciprocal estimate, which has no ONNX
+equivalent, so this module offers the ordinary softmax and the caller reports the deviation.
+"""
+import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
 
-from espresso_archive import UnsupportedModel, conv_weight, tensor_blob
-
-FORMAT = "qcut-private-espresso-pytorch"
-VERSION = 1
-COMMON_FIELDS = set("type name bottom top debug_info weights attributes".split())
-PADDING_FIELDS = set("pad_l pad_r pad_t pad_b pad_mode pad_fill_mode pad_value stride_x stride_y".split())
-CONV_FIELDS = PADDING_FIELDS | set("C K Nx Ny n_groups n_parallel has_batch_norm has_biases blob_biases blob_weights blob_weights_f16 dilation_x dilation_y fused_relu fused_tanh".split())
-OP_FIELDS = {
-    "convolution": CONV_FIELDS,
-    "deconvolution": CONV_FIELDS | {"deconv_out_height", "deconv_out_width", "hint_fallback_from_metal"},
-    "activation": {"mode", "alpha", "beta"},
-    "elementwise": {"alpha", "beta", "operation", "fused_relu"},
-    "concat": {"axis"},
-    "upsample": set("mode align_corners is_legacy_mode use_fractional_scale_factors fractional_scaling_factor_x fractional_scaling_factor_y scaling_factor_x scaling_factor_y".split()),
-    "split_nd": {"nd_axis"} | {f"begin_{index}" for index in range(128)},
-    "load_constant": set("constant_blob n k h w nd_rank".split()),
-    "pool": PADDING_FIELDS | set("average_count_exclude_padding avg_or_max size_x size_y top_shape_style".split()),
-}
+from espresso_fixed import decode_bias, decode_kernel
+from espresso_graph import analyze
 
 
-def names(*, value):
-    return value.split(",") if value else []
+def zero_padded_upsample(value):
+    """Half-pixel bilinear x2 with zeros outside the image, as the runtime's LINEAR kernel does."""
+    weights = value.new_tensor([[1.0, 3.0], [3.0, 9.0]]) / 16.0
+    n, c, h, w = value.shape
+    padded = torch.nn.functional.pad(value, (1, 1, 1, 1))
+    out = value.new_zeros((n, c, 2 * h, 2 * w))
+    for dy in (0, 1):
+        for dx in (0, 1):
+            top = 0 if dy == 0 else 2
+            left = 0 if dx == 0 else 2
+            main = padded[:, :, 1:h + 1, 1:w + 1]
+            row = padded[:, :, top:top + h, 1:w + 1]
+            col = padded[:, :, 1:h + 1, left:left + w]
+            diag = padded[:, :, top:top + h, left:left + w]
+            out[:, :, dy::2, dx::2] = (9 * main + 3 * row + 3 * col + diag) / 16.0
+    return out
 
 
-def require(*, layer, key, values, default=0):
-    if layer.get(key, default) not in values:
-        raise UnsupportedModel(f"{layer['name']}: unsupported {key}={layer.get(key)}")
+class EspressoFloatGraph(nn.Module):
+    """Executes a float32 espresso graph; inputs and outputs are NCHW tensors."""
 
-
-def require_positive(*, layer, key, integer=False):
-    """Fields that _execute indexes directly must be present at construction time."""
-    value = layer.get(key)
-    valid = isinstance(value, int) if integer else isinstance(value, (int, float))
-    if isinstance(value, bool) or not valid or value <= 0:
-        raise UnsupportedModel(f"{layer['name']}: missing or invalid {key}={value}")
-
-
-def validate_layer(*, layer):
-    kind = layer["type"]
-    if kind not in OP_FIELDS:
-        raise UnsupportedModel(f"unsupported operator: {kind}")
-    unknown = set(layer) - COMMON_FIELDS - OP_FIELDS[kind]
-    if unknown:
-        raise UnsupportedModel(f"{layer['name']}: unknown fields {sorted(unknown)}")
-    if set(layer.get("attributes", {})) - {"is_output"}:
-        raise UnsupportedModel("unknown operator attributes")
-    if kind not in {"convolution", "deconvolution"} and layer.get("weights"):
-        raise UnsupportedModel("unexpected operator weights")
-    bottoms = names(value=layer["bottom"])
-    expected = 0 if kind == "load_constant" else 2 if kind == "elementwise" else 1
-    if kind != "concat" and len(bottoms) != expected:
-        raise ValueError(f"{kind}: invalid input arity")
-    if kind == "concat" and not bottoms:
-        raise ValueError("empty concat")
-    for key in ("fused_relu", "fused_tanh"):
-        require(layer=layer, key=key, values={0, 1})
-    if kind in {"convolution", "deconvolution", "pool"}:
-        for key in ("pad_mode", "pad_fill_mode", "pad_value", "has_batch_norm"):
-            require(layer=layer, key=key, values={0})
-        require(layer=layer, key="n_parallel", values={1}, default=1)
-    if kind in {"convolution", "deconvolution"}:
-        for key in ("K", "C", "Nx", "Ny", "n_groups"):
-            if not isinstance(layer[key], int) or not 0 < layer[key] <= 65536:
-                raise ValueError(f"invalid convolution dimension: {key}")
-        if layer["K"] % layer["n_groups"] or layer["C"] % layer["n_groups"]:
-            raise ValueError("invalid convolution groups")
-        parameter_count = layer["C"] * (layer["K"] // layer["n_groups"]) * layer["Nx"] * layer["Ny"]
-        if parameter_count > 64 * 1024 * 1024:
-            raise ValueError("convolution exceeds local conversion size limit")
-        if kind == "deconvolution" and not layer["K"] == layer["C"] == layer["n_groups"]:
-            raise UnsupportedModel("only observed depthwise deconvolutions are supported")
-    if kind == "elementwise":
-        require(layer=layer, key="operation", values={0, 1})
-        require(layer=layer, key="alpha", values={1}, default=1)
-        require(layer=layer, key="beta", values={0})
-    if kind == "activation":
-        require(layer=layer, key="mode", values={0, 3, 6})
-    if kind == "concat":
-        require(layer=layer, key="axis", values={1}, default=1)
-    if kind == "upsample":
-        require(layer=layer, key="mode", values={1})
-        for key in ("align_corners", "is_legacy_mode", "use_fractional_scale_factors"):
-            require(layer=layer, key=key, values={0})
-        for key in ("fractional_scaling_factor_x", "fractional_scaling_factor_y"):
-            require(layer=layer, key=key, values={1}, default=1)
-        for key in ("scaling_factor_x", "scaling_factor_y"):
-            require_positive(layer=layer, key=key)
-    if kind == "split_nd":
-        require(layer=layer, key="nd_axis", values={-3, 1})
-        if any(value != 0 for key, value in layer.items() if key.startswith("begin_")):
-            raise UnsupportedModel("nonzero split offsets")
-    if kind == "pool":
-        require(layer=layer, key="avg_or_max", values={1})
-        require(layer=layer, key="top_shape_style", values={2})
-        if any(layer.get("pad_" + edge, 0) for edge in ("l", "r", "t", "b")):
-            raise UnsupportedModel("padded pooling")
-        for key in ("size_x", "size_y", "stride_x", "stride_y"):
-            require_positive(layer=layer, key=key, integer=True)
-    if kind == "load_constant":
-        require(layer=layer, key="nd_rank", values={1, 4}, default=4)
-        if layer.get("nd_rank") == 1 and any(layer[key] != 1 for key in ("n", "k", "h", "w")):
-            raise UnsupportedModel("only scalar rank-1 constants are supported")
-
-
-class EspressoTorch(nn.Module):
-    def __init__(self, *, spec, blobs=None):
+    def __init__(self, *, text, arena):
         super().__init__()
-        if spec.get("quantization_profile", "espresso-u8-fma-f32-to-f16") != "espresso-u8-fma-f32-to-f16":
-            raise UnsupportedModel("unknown quantization profile")
-        self.spec = copy.deepcopy(spec)
-        self.ops = nn.ModuleDict()
-        available = set(spec["inputs"])
-        for index, layer in enumerate(spec["layers"]):
-            validate_layer(layer=layer)
-            bottoms = names(value=layer["bottom"])
-            tops = names(value=layer["top"])
-            if not tops or any(name not in available for name in bottoms):
-                raise ValueError(f"invalid graph dependency at {layer['name']}")
-            available.update(tops)
-            kind = layer["type"]
-            if kind in {"convolution", "deconvolution"}:
-                module_type = nn.ConvTranspose2d if kind == "deconvolution" else nn.Conv2d
-                module = module_type(layer["K"], layer["C"], (layer["Ny"], layer["Nx"]),
-                                     stride=(layer.get("stride_y", 1), layer.get("stride_x", 1)),
-                                     dilation=(layer.get("dilation_y", 1), layer.get("dilation_x", 1)),
-                                     groups=layer["n_groups"], bias=bool(layer.get("has_biases", 0)))
-                if blobs is not None:
-                    with torch.no_grad():
-                        module.weight.copy_(conv_weight(layer=layer, blobs=blobs))
-                        if module.bias is not None:
-                            module.bias.copy_(tensor_blob(blobs=blobs, key=layer["blob_biases"]))
-                self.ops[str(index)] = module
-            if kind == "load_constant":
-                shape = tuple(layer[key] for key in ("n", "k", "h", "w"))
-                value = torch.zeros(shape) if blobs is None else tensor_blob(
-                    blobs=blobs, key=layer["constant_blob"]).reshape(shape)
-                self.register_buffer(f"constant_{index}", value)
-        if any(name not in available for name in spec["outputs"]):
-            raise ValueError("missing graph output")
+        self.graph = analyze(text)
+        if any(layer.get("storage", {}).get("type", 4) != 4 for layer in self.graph["layers"]):
+            raise ValueError("this module only executes graphs whose blobs are float32")
+        # Layer names carry dots, which nn.ModuleDict rejects, so modules are keyed by index.
+        self.layers = nn.ModuleList()
+        self.slots = {}
+        self.constants = {}
+        self.input_names = [layer["name"] for layer in self.graph["layers"] if layer["op"] == "Input"]
+        self.output_name = self.graph["layers"][-1]["outputs"][0]
+        for layer in self.graph["layers"]:
+            op = layer["op"]
+            if op in ("Convolution", "DepthwiseSeparableConvolution", "DilationSeparableConvolution"):
+                self.slots[layer["name"]] = len(self.layers)
+                self.layers.append(self._convolution(layer, arena))
+            elif op == "InnerProduct":
+                self.slots[layer["name"]] = len(self.layers)
+                self.layers.append(self._dense(layer, arena))
+            elif op == "Constant":
+                count = int(np.prod(layer["shape"]))
+                values, _ = decode_kernel(arena, layer["arena_offset"], count, layer["storage"], False)
+                self.constants[layer["outputs"][0]] = torch.from_numpy(values.astype(np.float32).reshape(1, layer["shape"][3], 1, 1))
+            elif op not in ("Input", "Eltwise", "Concat", "UpSampling", "Softmax", "Sigmoid", "Mul"):
+                raise ValueError(f"unsupported float operator {op}")
 
-    def forward(self, inputs):
-        if set(inputs) != set(self.spec["inputs"]):
-            raise ValueError("input names do not match model schema")
-        for name, schema in self.spec["inputs"].items():
-            allowed = schema["allowed_shapes"] or [schema["shape"]]
-            if list(inputs[name].shape) not in allowed or inputs[name].dtype != torch.float32:
-                raise ValueError(f"input shape/dtype mismatch: {name}")
-        values = dict(inputs)
-        uses = collections.Counter(name for layer in self.spec["layers"] for name in names(value=layer["bottom"]))
-        uses.update(self.spec["outputs"])
-        for index, layer in enumerate(self.spec["layers"]):
-            bottoms, tops = names(value=layer["bottom"]), names(value=layer["top"])
-            args = [values[name] for name in bottoms]
-            result = self._execute(index=index, layer=layer, args=args)
-            results = result if isinstance(result, tuple) else (result,)
-            if len(results) != len(tops):
-                raise ValueError(f"output arity mismatch at {layer['name']}")
-            values.update(zip(tops, results, strict=True))
-            for name in bottoms:
-                uses[name] -= 1
-                if uses[name] == 0 and name not in tops:
-                    values.pop(name)
-        return {name: values[name] for name in self.spec["outputs"]}
+    def _convolution(self, layer, arena):
+        kh, kw = layer["kernel"]
+        co = layer["shape"][3]
+        depthwise = layer["op"] != "Convolution"
+        ci = self.graph["shapes"][layer["inputs"][0]][3]
+        count = co * (1 if depthwise else ci) * kh * kw
+        kernel, cursor = decode_kernel(arena, layer["arena_offset"], count, layer["weight"], False)
+        module = nn.Conv2d(ci, co, (kh, kw), layer["stride"], layer["pad"], layer.get("dilation", (1, 1)),
+                           ci if depthwise else 1, bias=layer["bias"])
+        # Dense kernels are stored (co, kh, kw, ci); depthwise ones (kh, kw, c).
+        weight = (kernel.reshape(kh, kw, co).transpose(2, 0, 1)[:, None] if depthwise
+                  else kernel.reshape(co, kh, kw, ci).transpose(0, 3, 1, 2))
+        with torch.no_grad():
+            module.weight.copy_(torch.from_numpy(weight.astype(np.float32).copy()))
+            if layer["bias"]:
+                module.bias.copy_(torch.from_numpy(decode_bias(arena, cursor, co, True).astype(np.float32)))
+        return module
 
-    def _execute(self, *, index, layer, args):
-        kind = layer["type"]
-        if kind in {"convolution", "deconvolution"}:
-            pad = tuple(layer.get("pad_" + edge, 0) for edge in ("l", "r", "t", "b"))
-            if kind == "convolution":
-                out = self.ops[str(index)](F.pad(args[0], pad))
+    def _dense(self, layer, arena):
+        n, h, w, c = self.graph["shapes"][layer["inputs"][0]]
+        features = h * w * c
+        co = layer["shape"][3]
+        kernel, cursor = decode_kernel(arena, layer["arena_offset"], co * features, layer["weight"], False)
+        module = nn.Linear(features, co, bias=layer["bias"])
+        with torch.no_grad():
+            module.weight.copy_(torch.from_numpy(kernel.reshape(co, features).astype(np.float32).copy()))
+            if layer["bias"]:
+                module.bias.copy_(torch.from_numpy(decode_bias(arena, cursor, co, True).astype(np.float32)))
+        return module
+
+    def forward(self, *inputs):
+        blobs = dict(zip(self.input_names, inputs))
+        for layer in self.graph["layers"]:
+            op, name = layer["op"], layer["name"]
+            if op == "Input":
+                continue
+            if op == "Constant":
+                blobs[layer["outputs"][0]] = self.constants[layer["outputs"][0]]
+                continue
+            sources = [blobs[key] if key in blobs else self.constants[key] for key in layer["inputs"]]
+            if op in ("Convolution", "DepthwiseSeparableConvolution", "DilationSeparableConvolution"):
+                value = self.layers[self.slots[name]](sources[0])
+                if layer["relu"]:
+                    value = torch.relu(value)
+            elif op == "InnerProduct":
+                value = self.layers[self.slots[name]](sources[0].flatten(1)).reshape(sources[0].shape[0], -1, 1, 1)
+                if layer["relu"]:
+                    value = torch.relu(value)
+            elif op == "Eltwise":
+                value = sources[0] + sources[1]
+                if layer["relu"]:
+                    value = torch.relu(value)
+            elif op == "Concat":
+                value = torch.cat(sources, dim=1)
+            elif op == "UpSampling":
+                if layer["mode"] != "LINEAR":
+                    raise ValueError(f"unsupported upsample mode {layer['mode']}")
+                value = zero_padded_upsample(sources[0])
+            elif op == "Softmax":
+                value = torch.softmax(sources[0], dim=1)
+            elif op == "Sigmoid":
+                value = torch.sigmoid(sources[0])
+            elif op == "Mul":
+                value = sources[0] * sources[1]
             else:
-                out = self.ops[str(index)](args[0])
-                left, right, top, bottom = pad
-                out = out[:, :, top:out.shape[2] - bottom, left:out.shape[3] - right]
-                if "deconv_out_height" in layer and list(out.shape[-2:]) != [layer["deconv_out_height"], layer["deconv_out_width"]]:
-                    raise ValueError("deconvolution output shape mismatch")
-        elif kind == "activation":
-            mode = layer["mode"]
-            out = F.relu(args[0]) if mode == 0 else torch.sigmoid(args[0]) if mode == 3 else args[0] * layer.get("alpha", 1) + layer.get("beta", 0)
-        elif kind == "elementwise":
-            if len(args) != 2:
-                raise ValueError("elementwise needs two operands")
-            out = args[0] + args[1] if layer["operation"] == 0 else args[0] * args[1]
-        elif kind == "concat":
-            out = torch.cat(args, dim=1)
-        elif kind == "upsample":
-            out = F.interpolate(args[0], scale_factor=(layer["scaling_factor_y"], layer["scaling_factor_x"]), mode="bilinear", align_corners=False)
-        elif kind == "pool":
-            out = F.max_pool2d(args[0], (layer["size_y"], layer["size_x"]), (layer["stride_y"], layer["stride_x"]), ceil_mode=True)
-        elif kind == "split_nd":
-            sizes = [self.spec["shapes"][name]["k"] for name in names(value=layer["top"])]
-            return torch.split(args[0], sizes, dim=1)
-        elif kind == "load_constant":
-            out = getattr(self, f"constant_{index}")
-        else:
-            raise UnsupportedModel(kind)
-        if layer.get("fused_relu"):
-            out = F.relu(out)
-        if layer.get("fused_tanh"):
-            out = torch.tanh(out)
-        return out
-
-    def bundle(self, *, provenance):
-        return {"format": FORMAT, "version": VERSION, "spec": self.spec,
-                "state_dict": self.state_dict(), "provenance": provenance}
+                raise ValueError(f"unsupported float operator {op}")
+            blobs[layer["outputs"][0]] = value
+        return blobs[self.output_name]
 
 
-def load_model(*, path):
-    bundle = torch.load(path, map_location="cpu", weights_only=True)
-    if bundle.get("format") != FORMAT or bundle.get("version") != VERSION:
-        raise ValueError("unsupported PyTorch bundle")
-    model = EspressoTorch(spec=bundle["spec"])
-    model.load_state_dict(bundle["state_dict"], strict=True)
-    return model.eval()
+def load(*, directory):
+    path = __import__("pathlib").Path(directory)
+    model = EspressoFloatGraph(text=(path / "graph.txt").read_text(), arena=(path / "arena.bin").read_bytes())
+    model.eval()
+    return model

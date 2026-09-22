@@ -10,13 +10,32 @@ Nothing here executes a network; it is the structural ground for byte-exact aren
 checks and for a later fixed-point re-implementation.
 """
 import json
+import math
 import sys
 from pathlib import Path
 
 ELEMENT_BYTES = {1: 1, 2: 2, 4: 4}
+MIN_ROW_TOKENS = {
+    "Convolution": 19, "DepthwiseSeparableConvolution": 19, "DilationSeparableConvolution": 21,
+    "InnerProduct": 13, "Eltwise": 7, "Concat": 3, "Slice": 11, "ShuffleNet": 3, "Shuffle": 6,
+    "Softmax": 4, "Sigmoid": 4, "Tanh": 4, "Relu": 4, "Pooling": 13, "PoolingDown": 13,
+    "UpSampling": 5, "Upsample": 8, "OnnxOp1": 11, "Reshape": 8, "Constant": 10,
+    "OnnxOp2": 8, "Crop": 10,
+}
+
+
+def require_tokens(*, row, minimum):
+    if len(row) < minimum:
+        raise ValueError(f"truncated row: expected at least {minimum} tokens, got {row}")
+
+
+def require_positive(*, values, context):
+    if any(value <= 0 or (isinstance(value, float) and not math.isfinite(value)) for value in values):
+        raise ValueError(f"{context}: expected positive finite values, got {values}")
 
 
 def storage(tokens):
+    require_tokens(row=tokens, minimum=2)
     kind, fraction = int(tokens[0]), int(tokens[1])
     if kind not in ELEMENT_BYTES or not 0 <= fraction <= 31:
         raise ValueError(f"unsupported storage {tokens}")
@@ -28,6 +47,8 @@ def parse(text):
     letter = ""
     if rows and len(rows[0]) == 1 and rows[0][0].isalpha():
         letter = rows.pop(0)[0]
+    if not rows:
+        raise ValueError("missing graph header")
     counts = rows.pop(0)
     if len(counts) not in (2, 3) or not all(v.isdecimal() for v in counts):
         raise ValueError(f"unsupported header {counts}")
@@ -71,11 +92,14 @@ def analyze(text):
 
     def emit(row, op, name, inputs, outputs, weight_bytes=0, **extra):
         nonlocal cursor
+        for target in outputs:
+            require_positive(values=shapes[target], context=f"{name} output shape")
         layers.append({"op": op, "name": name, "inputs": inputs, "outputs": outputs, "arena_offset": cursor,
                        "arena_bytes": weight_bytes, **extra})
         cursor += weight_bytes
 
     for row in graph["rows"][:graph["input_count"]]:
+        require_tokens(row=row, minimum=8 if row[0] == "DataV2" else 7)
         if row[0] == "DataV2":
             name, n, h, w, c = row[1], *map(int, row[2:6])
             desc = storage(row[6:8])
@@ -85,9 +109,11 @@ def analyze(text):
         shapes[name], descriptors[name] = (n, h, w, c), desc
         emit(row, "Input", name, [], [name], shape=(n, h, w, c), storage=desc)
     for row in graph["rows"][graph["input_count"]:]:
+        require_tokens(row=row, minimum=MIN_ROW_TOKENS.get(row[0], 2))
         op, name = row[0], row[1]
         if op in ("Convolution", "DepthwiseSeparableConvolution"):
             co, kh, kw, sh, sw, ph, pw, bias, relu = map(int, row[2:11])
+            require_positive(values=(co, kh, kw, sh, sw), context=name)
             weight, bias_storage, output = storage(row[11:13]), storage(row[13:15]), storage(row[15:17])
             source, target = row[17], row[18]
             n, h, w, ci = shape(source)
@@ -102,6 +128,22 @@ def analyze(text):
                             packed=packed),
                  kernel=(kh, kw), stride=(sh, sw), pad=(ph, pw), bias=bool(bias), relu=bool(relu), weight=weight,
                  bias_storage=bias_storage, storage=output, shape=(n, oh, ow, co), packed=packed and weight["type"] == 2)
+        elif op == "DilationSeparableConvolution":
+            # co kh kw dh dw sh sw ph pw bias relu, storage, in out (probe micro-dil: dilation 2 keeps the extent).
+            co, kh, kw, dh, dw, sh, sw, ph, pw, bias, relu = map(int, row[2:13])
+            require_positive(values=(co, kh, kw, dh, dw, sh, sw), context=name)
+            weight, bias_storage, output = storage(row[13:15]), storage(row[15:17]), storage(row[17:19])
+            source, target = row[19], row[20]
+            n, h, w, ci = shape(source)
+            if co != ci:
+                raise ValueError(f"{name}: dilated depthwise multiplier {co}/{ci}")
+            oh = (h + 2 * ph - dh * (kh - 1) - 1) // sh + 1
+            ow = (w + 2 * pw - dw * (kw - 1) - 1) // sw + 1
+            shapes[target], descriptors[target] = (n, oh, ow, co), output
+            emit(row, op, name, [source], [target],
+                 conv_bytes(co=co, ci=1, kh=kh, kw=kw, bias=bias, weight=weight, bias_storage=bias_storage, packed=packed),
+                 kernel=(kh, kw), stride=(sh, sw), pad=(ph, pw), dilation=(dh, dw), bias=bool(bias), relu=bool(relu),
+                 weight=weight, bias_storage=bias_storage, storage=output, shape=(n, oh, ow, co), packed=packed and weight["type"] == 2)
         elif op == "InnerProduct":
             co, bias, relu = map(int, row[2:5])
             weight, bias_storage, output = storage(row[5:7]), storage(row[7:9]), storage(row[9:11])
@@ -114,14 +156,20 @@ def analyze(text):
                  bias=bool(bias), relu=bool(relu), weight=weight, bias_storage=bias_storage, storage=output,
                  shape=(n, 1, 1, co), packed=packed and weight["type"] == 2)
         elif op == "Eltwise":
+            # Legacy graphs omit the trailing ReLU flag.
+            if len(row) not in (7, 8):
+                raise ValueError(f"{name}: unsupported eltwise row")
             a, b, target = row[2:5]
             output = storage(row[5:7])
             if shape(a) != shape(b):
                 raise ValueError(f"{name}: eltwise shapes differ")
             shapes[target], descriptors[target] = shape(a), output
-            emit(row, op, name, [a, b], [target], relu=row[7] == "1", storage=output, shape=shape(a))
+            # A legacy row has no ReLU field and the runtime always applies it (probe micro-el2).
+            emit(row, op, name, [a, b], [target], relu=row[7] == "1" if len(row) == 8 else True, storage=output, shape=shape(a))
         elif op == "Concat":
             count = int(row[2])
+            require_positive(values=(count,), context=name)
+            require_tokens(row=row, minimum=6 + count)
             sources, target = row[3:3 + count], row[3 + count]
             output = storage(row[4 + count:6 + count])
             first = shape(sources[0])
@@ -142,8 +190,11 @@ def analyze(text):
             emit(row, op, name, [source], [first, second], split=split, shape=shapes[first])
         elif op == "ShuffleNet":
             count = int(row[2])
+            require_positive(values=(count,), context=name)
+            require_tokens(row=row, minimum=9 + count)
             sources = row[3:3 + count]
             groups, parts = int(row[3 + count]), int(row[4 + count])
+            require_positive(values=(groups, parts), context=name)
             first, first_storage, second, second_storage = row[5 + count], int(row[6 + count]), row[7 + count], int(row[8 + count])
             n, h, w, _ = shape(sources[0])
             total = sum(shape(s)[3] for s in sources)
@@ -155,10 +206,14 @@ def analyze(text):
             emit(row, op, name, sources, [first, second], groups=groups, shape=shapes[first])
         elif op == "Shuffle":
             groups, parts, source, target = int(row[2]), int(row[3]), row[4], row[5]
+            require_positive(values=(groups, parts), context=name)
             shapes[target], descriptors[target] = shape(source), descriptors[source]
             emit(row, op, name, [source], [target], groups=groups, parts=parts, shape=shape(source))
         elif op in ("Softmax", "Sigmoid", "Tanh", "Relu"):
             source, target = row[2], row[3]
+            shape(source)
+            if len(row) == 5:
+                raise ValueError(f"{name}: incomplete storage descriptor")
             output = storage(row[4:6]) if len(row) >= 6 else descriptors[source]
             shapes[target], descriptors[target] = shape(source), output
             emit(row, op, name, [source], [target], storage=output, shape=shape(source))
@@ -166,6 +221,8 @@ def analyze(text):
             kh, kw, sh, sw, ph, pw = map(int, row[2:8])
             output, mode, source, target = storage(row[8:10]), row[10], row[11], row[12]
             is_global = len(row) > 13 and row[13] == "GLOBAL"
+            if not is_global:
+                require_positive(values=(kh, kw, sh, sw), context=name)
             n, h, w, c = shape(source)
             oh, ow = (1, 1) if is_global else ((h + 2 * ph - kh) // sh + 1, (w + 2 * pw - kw) // sw + 1)
             shapes[target], descriptors[target] = (n, oh, ow, c), output
@@ -179,7 +236,9 @@ def analyze(text):
         elif op == "Upsample":
             # factor mode p q, then in, out (the mode fields are recorded, not interpreted here).
             factor, mode, source, target = float(row[2]), row[3], row[6], row[7]
+            require_positive(values=(factor,), context=name)
             n, h, w, c = shape(source)
+            require_positive(values=(h * factor, w * factor), context=name)
             shapes[target] = (n, int(h * factor + 0.5), int(w * factor + 0.5), c)
             descriptors[target] = descriptors[source]
             emit(row, op, name, [source], [target], factor=factor, mode=mode, params=row[4:6], shape=shapes[target])

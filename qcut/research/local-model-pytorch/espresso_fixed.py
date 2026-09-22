@@ -90,7 +90,8 @@ def convolution(layer, blob, arena):
     ph, pw = layer["pad"]
     n, h, w, ci = blob["data"].shape
     co = layer["shape"][3]
-    depthwise = layer["op"] == "DepthwiseSeparableConvolution"
+    depthwise = layer["op"] in ("DepthwiseSeparableConvolution", "DilationSeparableConvolution")
+    dilation = layer.get("dilation", (1, 1))
     count_ci = 1 if depthwise else ci
     kernel, cursor = decode_kernel(arena, layer["arena_offset"], co * count_ci * kh * kw, layer["weight"], layer["packed"])
     float_layer = layer["weight"]["type"] == 4
@@ -102,7 +103,7 @@ def convolution(layer, blob, arena):
     else:
         weight = torch.from_numpy(kernel.reshape(co, kh, kw, ci).transpose(0, 3, 1, 2).astype(np.float64).copy())
     source = torch.from_numpy(blob["data"].transpose(0, 3, 1, 2).astype(np.float64).copy())
-    accumulated = F.conv2d(source, weight, None, (sh, sw), (ph, pw), 1, ci if depthwise else 1).numpy().transpose(0, 2, 3, 1)
+    accumulated = F.conv2d(source, weight, None, (sh, sw), (ph, pw), dilation, ci if depthwise else 1).numpy().transpose(0, 2, 3, 1)
     if float_layer:
         value = accumulated.astype(np.float32)
         if bias is not None:
@@ -153,6 +154,9 @@ def pooling(layer, blob):
         return {"data": windows.max(axis=(-2, -1)), "type": blob["type"], "frac": blob["frac"]}
     if layer["mode"] != "AVE":
         raise ValueError(f"unsupported pooling mode {layer['mode']}")
+    if blob["type"] == 4:
+        value = (windows.astype(np.float32).sum(axis=(-2, -1), dtype=np.float32) / np.float32(kh * kw)).astype(np.float32)
+        return {"data": value, "type": 4, "frac": 0}
     total = windows.astype(np.int64).sum(axis=(-2, -1))
     if layer["storage"]["type"] == 4:
         value = (total.astype(np.float32) / np.float32(kh * kw) / np.float32(2 ** blob["frac"])).astype(np.float32)
@@ -163,7 +167,21 @@ def pooling(layer, blob):
 
 
 def upsample_x2(blob):
-    """Half-pixel bilinear x2 with zero padding outside the image: (9a + 3b + 3c + d) >> 4."""
+    """Half-pixel bilinear x2 with zero padding outside the image: (9a + 3b + 3c + d) >> 4 (float blobs: / 16)."""
+    if blob["type"] == 4:
+        data = blob["data"].astype(np.float32)
+        n, h, w, c = data.shape
+        padded = np.zeros((n, h + 2, w + 2, c), dtype=np.float32)
+        padded[:, 1:-1, 1:-1] = data
+        out = np.zeros((n, 2 * h, 2 * w, c), dtype=np.float32)
+        for dy in (0, 1):
+            for dx in (0, 1):
+                main = padded[:, 1:h + 1, 1:w + 1]
+                row = padded[:, dy:h + dy, 1:w + 1] if dy == 0 else padded[:, 2:h + 2, 1:w + 1]
+                col = padded[:, 1:h + 1, dx:w + dx] if dx == 0 else padded[:, 1:h + 1, 2:w + 2]
+                diag = padded[:, (0 if dy == 0 else 2):(h if dy == 0 else h + 2), (0 if dx == 0 else 2):(w if dx == 0 else w + 2)]
+                out[:, dy::2, dx::2] = ((9 * main + 3 * row + 3 * col + diag) * np.float32(1 / 16)).astype(np.float32)
+        return {"data": out, "type": 4, "frac": 0}
     data = blob["data"].astype(np.int64)
     n, h, w, c = data.shape
     padded = np.zeros((n, h + 2, w + 2, c), dtype=np.int64)
@@ -211,6 +229,39 @@ def upsample_linear(blob, factor):
     return {"data": value, "type": blob["type"], "frac": blob["frac"]}
 
 
+def softmax(blob):
+    """The runtime walks pixels in SIMD blocks of four and finishes the remainder with scalar code.
+
+    Block pixels (probes micro-sm/micro-sm2, 4x4 and larger maps): two classes take the exponent relative
+    to channel 0, scale p0 by the hardware reciprocal estimate of the sum (FRECPE, no refinement) and write
+    p1 = 1 - p0; more classes take exp(x - max) scaled by FRECPE for a fixed-point input and by true
+    division for a float input. Remainder pixels (1x1 dense heads, 1x2, 2x1): exp(x - max) with true
+    division whatever the class count or input type. Only exact two-class ties differ, where the
+    runtime's own exp(0) falls just below 1.
+    """
+    value = dequantize(blob)
+    n, h, w, c = value.shape
+    flat = value.reshape(n, h * w, c)
+    pixels = h * w
+    block = pixels - pixels % 4
+    out = np.empty_like(flat, dtype=np.float32)
+    if block:
+        head = flat[:, :block]
+        if c == 2:
+            exp = np.exp(head - head[..., :1]).astype(np.float32)
+            first = (exp[..., :1] * reciprocal_estimate(exp.sum(axis=-1, keepdims=True, dtype=np.float32))).astype(np.float32)
+            out[:, :block] = np.concatenate([first, (np.float32(1) - first).astype(np.float32)], axis=-1)
+        else:
+            exp = np.exp(head - head.max(axis=-1, keepdims=True)).astype(np.float32)
+            total = exp.sum(axis=-1, keepdims=True, dtype=np.float32)
+            out[:, :block] = (exp / total if blob["type"] == 4 else exp * reciprocal_estimate(total)).astype(np.float32)
+    if block < pixels:
+        tail = flat[:, block:]
+        exp = np.exp(tail - tail.max(axis=-1, keepdims=True)).astype(np.float32)
+        out[:, block:] = (exp / exp.sum(axis=-1, keepdims=True, dtype=np.float32)).astype(np.float32)
+    return {"data": out.reshape(n, h, w, c), "type": 4, "frac": 0}
+
+
 def shuffle_lanes(data, groups, lanes=4):
     """`Shuffle lanes groups`: blocks of `lanes` channels are interleaved across `groups` halves (probe K)."""
     n, h, w, c = data.shape
@@ -230,10 +281,15 @@ def run(text, arena, inputs, *, capture=None):
             blobs[name] = {"data": np.asarray(array, dtype=np.float32 if raw[0] == 4 else np.int64), "type": int(raw[0]), "frac": int(raw[1])}
             continue
         source = [blobs[k] for k in layer["inputs"]]
-        if op in ("Convolution", "DepthwiseSeparableConvolution"):
+        if op in ("Convolution", "DepthwiseSeparableConvolution", "DilationSeparableConvolution"):
             result = {layer["outputs"][0]: convolution(layer, source[0], arena)}
         elif op == "InnerProduct":
             result = {layer["outputs"][0]: dense(layer, source[0], arena)}
+        elif op == "Eltwise" and all(b["type"] == 4 for b in source):
+            value = (source[0]["data"].astype(np.float32) + source[1]["data"].astype(np.float32)).astype(np.float32)
+            if layer["relu"]:
+                value = np.maximum(value, 0)
+            result = {layer["outputs"][0]: {"data": value, "type": 4, "frac": 0}}
         elif op == "Eltwise":
             # Both inputs are aligned to the finer input scale, added, then requantized once (probe EL).
             common = max(b["frac"] for b in source)
@@ -242,6 +298,8 @@ def run(text, arena, inputs, *, capture=None):
             if layer["relu"]:
                 value = np.maximum(value, 0)
             result = {layer["outputs"][0]: {"data": saturate(value, layer["storage"]["type"]), "type": layer["storage"]["type"], "frac": layer["storage"]["fraction"]}}
+        elif op == "Concat" and all(b["type"] == 4 for b in source):
+            result = {layer["outputs"][0]: {"data": np.concatenate([b["data"].astype(np.float32) for b in source], axis=3), "type": 4, "frac": 0}}
         elif op == "Concat":
             # Inputs already at the output scale pass through unclamped (probe OOR-CC); others are rescaled.
             parts = [b if b["frac"] == layer["storage"]["fraction"] else rescale(b, layer["storage"]) for b in source]
@@ -252,6 +310,9 @@ def run(text, arena, inputs, *, capture=None):
             for target, data in zip(layer["outputs"], (source[0]["data"][..., :split], source[0]["data"][..., split:])):
                 blob = {"data": data, "type": source[0]["type"], "frac": source[0]["frac"]}
                 storage = graph["descriptors"][target]
+                if blob["type"] == 4:
+                    result[target] = blob
+                    continue
                 # Unscaled halves pass through unclamped (probe OOR-SL); scaled halves saturate (probe SL2).
                 result[target] = blob if blob["frac"] == storage["fraction"] else rescale(blob, storage)
         elif op == "ShuffleNet":
@@ -322,23 +383,7 @@ def run(text, arena, inputs, *, capture=None):
                 raise ValueError("only float multiply is verified")
             result = {layer["outputs"][0]: {"data": (source[0]["data"] * source[1]["data"]).astype(np.float32), "type": 4, "frac": 0}}
         elif op == "Softmax":
-            # A float input: exp(x - max) normalized by true division. A fixed-point input: float32 exp
-            # scaled by the hardware reciprocal estimate of the sum (FRECPE, no refinement). With more than
-            # two classes the exponent is taken relative to the maximum; the two-class kernel instead takes
-            # it relative to channel 0 and writes channel 1 as 1 - p0 (probes micro6/micro12; only exact
-            # ties differ, where the runtime's own exp(0) falls just below 1).
-            value = dequantize(source[0])
-            if source[0]["type"] == 4:
-                exp = np.exp(value - value.max(axis=-1, keepdims=True)).astype(np.float32)
-                probabilities = exp / exp.sum(axis=-1, keepdims=True, dtype=np.float32)
-            elif value.shape[-1] == 2:
-                exp = np.exp(value - value[..., :1]).astype(np.float32)
-                first = (exp[..., :1] * reciprocal_estimate(exp.sum(axis=-1, keepdims=True, dtype=np.float32))).astype(np.float32)
-                probabilities = np.concatenate([first, (np.float32(1) - first).astype(np.float32)], axis=-1)
-            else:
-                exp = np.exp(value - value.max(axis=-1, keepdims=True)).astype(np.float32)
-                probabilities = exp * reciprocal_estimate(exp.sum(axis=-1, keepdims=True, dtype=np.float32))
-            result = {layer["outputs"][0]: {"data": probabilities.astype(np.float32), "type": 4, "frac": 0}}
+            result = {layer["outputs"][0]: softmax(source[0])}
         elif op == "Sigmoid":
             value = dequantize(source[0])
             result = {layer["outputs"][0]: {"data": (1 / (1 + np.exp(-value))).astype(np.float32), "type": 4, "frac": 0}}

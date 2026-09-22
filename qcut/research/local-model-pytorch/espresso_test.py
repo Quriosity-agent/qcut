@@ -5,12 +5,47 @@ import numpy as np
 
 import espresso_fixed
 import espresso_graph
+import espresso_preprocess_probe
 
 INT8_GRAPH = "1 2\ndata 1 4 4 2 1 6\nConvolution conv 2 3 3 1 1 1 1 1 1 1 7 4 13 1 5 data conv\nDepthwiseSeparableConvolution dw 2 3 3 2 2 1 1 1 0 1 4 4 9 1 4 conv dw\n"
 PACKED_GRAPH = "B\n1 2 12345\nDataV2 data 1 4 4 2 2 6 0\nConvolution conv 2 3 3 1 1 1 1 1 1 2 11 4 17 2 7 data conv\nInnerProduct fc 3 1 0 4 0 4 0 4 0 conv fc\n"
 
 
 class ParserTest(unittest.TestCase):
+    def test_malformed_headers_and_truncated_rows_raise_value_error(self):
+        graphs = ["", "B\n", "1 0\ndata 1 4", "1 1\ndata 1 4 4 1 1 6\nConvolution\n",
+                  "1 1\ndata 1 4 4 1 1 6\nOnnxOp1 reshape\n",
+                  "1 1\ndata 1 4 4 1 1 6\nSoftmax sm missing out\n",
+                  "1 1\ndata 1 4 4 1 1 6\nConcat cat 0 out 1 6\n",
+                  "1 1\ndata 1 4 4 1 1 6\nShuffleNet sn 2 data\n"]
+        for text in graphs:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                espresso_graph.analyze(text)
+
+    def test_every_operator_rejects_truncated_rows(self):
+        for op, minimum in espresso_graph.MIN_ROW_TOKENS.items():
+            for length in range(1, minimum):
+                row = " ".join([op] + ["1"] * (length - 1))
+                with self.subTest(op=op, length=length), self.assertRaises(ValueError):
+                    espresso_graph.analyze(f"1 1\ndata 1 4 4 1 1 6\n{row}\n")
+
+    def test_invalid_spatial_parameters_raise_value_error(self):
+        rows = [
+            ("Convolution cv 1 3 3 1 1 1 1 0 0 1 6 4 12 1 6 data out", range(2, 7)),
+            ("DilationSeparableConvolution dw 1 3 3 2 2 1 1 2 2 0 0 1 6 4 12 1 6 data out", range(2, 9)),
+            ("Pooling pool 3 3 1 1 1 1 1 6 MAX data out", range(2, 6)),
+        ]
+        for row, positions in rows:
+            for position in positions:
+                for value in ("0", "-1"):
+                    tokens = row.split()
+                    tokens[position] = value
+                    with self.subTest(row=row, position=position, value=value), self.assertRaises(ValueError):
+                        espresso_graph.analyze("1 1\ndata 1 9 9 1 1 6\n" + " ".join(tokens))
+        for factor in ("0", "-1", "nan", "inf", "1e308"):
+            with self.subTest(factor=factor), self.assertRaises(ValueError):
+                espresso_graph.analyze(f"1 1\ndata 1 9 9 1 1 6\nUpsample up {factor} linear 0 1 data out")
+
     def test_int8_accounting(self):
         result = espresso_graph.analyze(INT8_GRAPH)
         # conv: 2*2*9 int8 + 2 int32 bias; depthwise: 2*9 int8 + 2 int32 bias; no stamp.
@@ -74,11 +109,70 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(out["o1"]["data"].reshape(-1).tolist(), [100, -100, 2047, -3000, 100, -100, 4094, -2047])
         self.assertEqual(out["cat"]["data"].reshape(-1).tolist(), vals.reshape(-1).tolist() * 2)
 
-    def test_two_class_fixed_point_softmax(self):
-        # Probe micro12: x=(64,65)@6 -> p0 = 0.49511719 (frecpe of 1 + exp(1/64)), p1 = 1 - p0.
-        text = "1 1\ndata 1 1 1 2 2 6\nSoftmax sm data sm\n"
-        out = espresso_fixed.run(text, b"\0", {"data": (np.array([64, 65]).reshape(1, 1, 1, 2), [2, 6])})["sm"]["data"]
-        self.assertEqual(out.reshape(-1).tolist(), [0.4951171875, 0.5048828125])
+    def test_two_class_softmax_block_and_tail(self):
+        # Probe micro12: x=(64,65)@6 in a four-pixel block -> p0 = 0.49511719 (frecpe of 1 + exp(1/64)),
+        # p1 = 1 - p0; the same pair as a lone pixel takes the scalar path (true division, probe micro-sm2).
+        block = espresso_fixed.run("1 1\ndata 1 4 1 2 2 6\nSoftmax sm data sm\n", b"\0",
+                                   {"data": (np.tile(np.array([64, 65]).reshape(1, 1, 1, 2), (1, 4, 1, 1)), [2, 6])})["sm"]["data"]
+        self.assertEqual(block[0, 0, 0].tolist(), [0.4951171875, 0.5048828125])
+        tail = espresso_fixed.run("1 1\ndata 1 1 1 2 2 6\nSoftmax sm data sm\n", b"\0",
+                                  {"data": (np.array([64, 65]).reshape(1, 1, 1, 2), [2, 6])})["sm"]["data"]
+        expected = 1 / (1 + np.exp(np.float32(1 / 64)))
+        self.assertAlmostEqual(float(tail[0, 0, 0, 0]), float(expected), places=6)
+        self.assertNotEqual(float(tail[0, 0, 0, 0]), 0.4951171875)
+
+    def test_dilated_depthwise_accounting_and_extent(self):
+        # co kh kw dh dw sh sw ph pw bias relu (probe micro-dil): dilation 2 with pad 2 keeps the extent.
+        text = "1 1\ndata 1 9 9 4 1 6\nDilationSeparableConvolution dw 4 3 3 2 2 1 1 2 2 1 1 1 6 4 13 1 6 data dw\n"
+        result = espresso_graph.analyze(text)
+        self.assertEqual(result["shapes"]["dw"], (1, 9, 9, 4))
+        self.assertEqual(result["arena_bytes"], 4 * 9 + 4 * 4)
+        arena = np.array([4 * i for i in range(1, 10)] * 4, dtype=np.int8).reshape(9, 4, order="F").reshape(-1).tobytes() + np.zeros(4, "<i4").tobytes()
+        x = np.zeros((1, 9, 9, 4), dtype=np.int64)
+        x[0, 4, 4, 0] = 64
+        out = espresso_fixed.run(text, arena, {"data": (x, [1, 6])})["dw"]["data"][0, :, :, 0]
+        # kernel (kh, kw, c) with c innermost: channel 0 tap t reads arena[t * 4] = 4 * (t + 1); with weight and
+        # input at six fraction bits and the output at six, y = 4 * (t + 1) * 64 >> 6 = 4 * (t + 1).
+        self.assertEqual(out[2, 2], 36)
+        self.assertEqual(out[6, 6], 4)
+        self.assertEqual(out[4, 4], 20)
+        self.assertEqual(int((out != 0).sum()), 9)
+
+    def test_legacy_eltwise_applies_relu(self):
+        # Probe micro-el2: a seven-token row has no ReLU field and the runtime always applies it,
+        # while the eight-token form honours the flag.
+        values = {"a": (np.array([10, -20, 30, -60]).reshape(1, 2, 2, 1), [1, 6]),
+                  "b": (np.array([1, 2, -50, 4]).reshape(1, 2, 2, 1), [1, 6])}
+        legacy = espresso_fixed.run("2 1\na 1 2 2 1 1 6\nb 1 2 2 1 1 6\nEltwise sum a b sum 1 6\n", b"\0", values)
+        self.assertEqual(legacy["sum"]["data"].reshape(-1).tolist(), [11, 0, 0, 0])
+        plain = espresso_fixed.run("2 1\na 1 2 2 1 1 6\nb 1 2 2 1 1 6\nEltwise sum a b sum 1 6 0\n", b"\0", values)
+        self.assertEqual(plain["sum"]["data"].reshape(-1).tolist(), [11, -18, -20, -56])
+
+    def test_truncating_separable_bilinear(self):
+        # Two source columns [0, 255] to four: half-pixel centres give weights 0 (clamped), 1/4, 3/4 and 1
+        # (clamped); 7-bit weights and a truncating pass turn 255 * 32 / 128 = 63.75 into 63.
+        source = np.array([[[0.0], [255.0]]])
+        out = espresso_preprocess_probe.separable_bilinear_truncating(source, 4, 1)
+        self.assertEqual(out[0, :, 0].tolist(), [0.0, 63.0, 191.0, 255.0])
+
+    def test_face_detector_recipe_reduces_swaps_and_offsets(self):
+        # A 4x4 frame whose 2x2 blocks average to x.5 must round half up, come out as BGR and lose 128.
+        frame = np.zeros((4, 4, 3), dtype=np.uint8)
+        frame[..., 0] = [[10, 11, 20, 21], [11, 12, 21, 22], [30, 31, 40, 41], [31, 32, 41, 42]]  # R blocks mean 11, 21, 31, 41
+        frame[..., 2] = 200                                                                       # B constant
+        tensor = espresso_preprocess_probe.face_detector_tensor(frame, 2, 2, intermediate=(2, 2))
+        self.assertEqual(tensor.dtype, np.int8)
+        self.assertEqual(tensor[..., 0].tolist(), [[72, 72], [72, 72]])           # B - 128
+        self.assertEqual(tensor[..., 2].tolist(), [[-117, -107], [-97, -87]])   # round-half-up(R mean) - 128
+
+    def test_float_blob_paths(self):
+        text = "2 3\na 1 2 2 1 4 0\nb 1 2 2 1 4 0\nEltwise sum a b sum 4 0 1\nConcat cat 2 a b cat 4 0\nUpSampling up a up LINEAR\n"
+        a = np.array([[0.5, -2.0], [1.0, 3.0]], dtype=np.float32).reshape(1, 2, 2, 1)
+        b = np.array([[1.0, 1.0], [-3.0, 0.25]], dtype=np.float32).reshape(1, 2, 2, 1)
+        out = espresso_fixed.run(text, b"\0", {"a": (a, [4, 0]), "b": (b, [4, 0])})
+        self.assertEqual(out["sum"]["data"].reshape(-1).tolist(), [1.5, 0.0, 0.0, 3.25])
+        self.assertEqual(out["cat"]["data"].shape, (1, 2, 2, 2))
+        self.assertAlmostEqual(float(out["up"]["data"][0, 1, 1, 0]), (9 * 0.5 + 3 * -2.0 + 3 * 1.0 + 3.0) / 16)
 
     def test_shufflenet_int8_saturates(self):
         text = "2 1\na 1 1 1 8 1 3\nb 1 1 1 8 1 3\nShuffleNet sn 2 a b 4 2 o0 3 o1 4\n"

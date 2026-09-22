@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import {
 	mkdtemp,
 	mkdir,
@@ -14,6 +15,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const execute = promisify(execFile);
+const projectRoot = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"../.."
+);
 const directories: string[] = [];
 let bundle: string;
 const webp = Buffer.from(
@@ -42,7 +47,7 @@ beforeAll(async () => {
 			"--target=node",
 			`--outfile=${bundle}`,
 		],
-		{ cwd: process.cwd() }
+		{ cwd: projectRoot }
 	);
 });
 afterAll(async () => {

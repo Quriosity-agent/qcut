@@ -42,6 +42,8 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <algorithm>
+#include <sstream>
 #include <set>
 #include <string>
 #include <vector>
@@ -207,6 +209,7 @@ template <typename Visit> void forEachRegion(Visit visit, size_t *scanned, int *
 // container follows its graph text). Regions are copied with
 // mach_vm_read_overwrite, which fails cleanly where a direct read would fault.
 void scanHeapForGraphs(const char *kind) {
+  if (!captureDirectory()) return;
   static const char needle[] = "\nDataV2 ";
   std::set<std::string> seen;
   std::set<uint32_t> stamps;
@@ -329,6 +332,18 @@ int originalThrustorCreateNet(void *self, const std::string &graph, void *arena,
 int originalEspressoCreateNet(void *self, const std::string &graph, void *arena, std::vector<std::string> &names)
     asm("__ZN8espresso8Thrustor9CreateNetERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEPvRNS1_6vectorIS7_NS5_IS7_EEEE");
 int originalEspressoReInferShape(void *self, int width, int height) asm("__ZN8espresso8Thrustor12ReInferShapeEii");
+// Inference-time entry points, used to record the tensors the product actually feeds and reads.
+int originalEspressoSetInput(void *self, std::string name, void *data, int first, int second, int third)
+    asm("__ZN8espresso8Thrustor8SetInputENSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEEPviii");
+int originalEspressoInference(void *self) asm("__ZN8espresso8Thrustor9InferenceEv");
+struct TensorView {
+  void *data;
+  int32_t dims[4];  // n, w, h, c
+  int32_t raw[2];   // storage type, fraction bits
+};
+static_assert(sizeof(TensorView) == 32, "espresso::TensorView layout");
+TensorView originalEspressoExtract(void *self, const std::string &name)
+    asm("__ZN8espresso8Thrustor7ExtractERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE");
 }
 std::shared_ptr<BYTENN::ByteNNEngine> originalEngineCreate() asm("__ZN6BYTENN13EngineFactory6CreateEv");
 
@@ -394,9 +409,140 @@ int capturedThrustorCreateNet(void *self, const std::string &graph, void *arena,
   return originalThrustorCreateNet(self, graph, arena, names);
 }
 
+// --- Inference-time tensors ---------------------------------------------------
+//
+// QCUT_BYTENN_CAPTURE_IO=1 records, per network object, the input blobs as they
+// stand when Inference starts and every blob the caller extracts afterwards.
+// The inputs are read back through the engine's own Extract, so they are the
+// bytes the network consumes, not the caller's staging buffer.
+
+struct NetState {
+  std::vector<std::string> inputs;  // declared by the graph, plus whatever SetInput named
+  int inferences = 0;                // completed Inference calls
+};
+std::map<void *, NetState> netStates;
+
+bool captureIO() {
+  static const char *flag = std::getenv("QCUT_BYTENN_CAPTURE_IO");
+  return captureDirectory() && flag && *flag == '1';
+}
+
+// A graph row `DataV2 <name> ...` or legacy `<name> n h w c ...` declares an input.
+std::vector<std::string> graphInputNames(const std::string &graph) {
+  std::vector<std::string> names;
+  size_t position = 0;
+  bool first = true;
+  while (position < graph.size()) {
+    size_t end = graph.find('\n', position);
+    if (end == std::string::npos) end = graph.size();
+    const std::string line = graph.substr(position, end - position);
+    position = end + 1;
+    if (line.empty()) continue;
+    if (first) {  // optional storage marker line, then the header row
+      first = false;
+      if (line.find(' ') == std::string::npos) continue;
+      if (line.find_first_not_of("0123456789 ") == std::string::npos) continue;
+    }
+    if (line.find_first_not_of("0123456789 ") == std::string::npos) continue;  // header row
+    std::istringstream row(line);
+    std::string op, name;
+    row >> op >> name;
+    if (op == "DataV2" || op == "data") {
+      names.push_back(op == "DataV2" ? name : op);
+    } else {
+      break;  // inputs come first
+    }
+  }
+  return names;
+}
+
+size_t elementBytes(int type) { return type == 1 ? 1 : type == 2 ? 2 : type == 3 ? 2 : 4; }
+
+void remember(void *self, const std::string &name) {
+  NetState &state = netStates[self];
+  if (std::find(state.inputs.begin(), state.inputs.end(), name) == state.inputs.end()) state.inputs.push_back(name);
+}
+
+void recordTensor(const char *kind, void *self, const std::string &name, const TensorView &view, int inference) {
+  size_t count = 1;
+  for (int d : view.dims) count *= d > 0 ? static_cast<size_t>(d) : 0;
+  const size_t size = count * elementBytes(view.raw[0]);
+  std::string detail = "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " name=" + name +
+                       " inference=" + std::to_string(inference) + " dims=" + std::to_string(view.dims[0]) + "," +
+                       std::to_string(view.dims[1]) + "," + std::to_string(view.dims[2]) + "," + std::to_string(view.dims[3]) +
+                       " raw=" + std::to_string(view.raw[0]) + "," + std::to_string(view.raw[1]);
+  const int index = sequence++;
+  size_t written = 0;
+  if (view.data && size && size <= kModelDumpLimit) written = writeBytes(capturePath(index, kind, "bin"), view.data, size);
+  else detail += " skipped";
+  writeMeta(index, kind, detail + dumpDetail(size, written), written);
+}
+
+int capturedEspressoSetInput(void *self, std::string name, void *data, int first, int second, int third) {
+  if (captureIO()) {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    remember(self, name);
+    writeMeta(sequence++, "espresso-setinput",
+              "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " name=" + name + " data=" +
+                  std::to_string(reinterpret_cast<uintptr_t>(data)) + " args=" + std::to_string(first) + "," +
+                  std::to_string(second) + "," + std::to_string(third),
+              0);
+  }
+  return originalEspressoSetInput(self, std::move(name), data, first, second, third);
+}
+
+int capturedEspressoInference(void *self) {
+  int inference = 0;
+  if (captureIO()) {
+    std::vector<std::string> names;
+    {
+      std::lock_guard<std::mutex> lock(captureMutex);
+      NetState &state = netStates[self];
+      names = state.inputs;
+      inference = state.inferences;
+    }
+    for (const std::string &name : names) {
+      const TensorView view = originalEspressoExtract(self, name);
+      std::lock_guard<std::mutex> lock(captureMutex);
+      recordTensor("espresso-input", self, name, view, inference);
+    }
+  }
+  const int result = originalEspressoInference(self);
+  if (captureIO()) {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    netStates[self].inferences = inference + 1;
+    writeMeta(sequence++, "espresso-inference",
+              "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " inference=" + std::to_string(inference) +
+                  " rc=" + std::to_string(result),
+              0);
+  }
+  return result;
+}
+
+TensorView capturedEspressoExtract(void *self, const std::string &name) {
+  const TensorView view = originalEspressoExtract(self, name);
+  if (captureIO()) {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    recordTensor("espresso-output", self, name, view, netStates[self].inferences - 1);
+  }
+  return view;
+}
+
 int capturedEspressoCreateNet(void *self, const std::string &graph, void *arena, std::vector<std::string> &names) {
   captureThrustorNet("espresso", self, graph, arena, names);
-  return originalEspressoCreateNet(self, graph, arena, names);
+  if (captureIO()) {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    NetState &state = netStates[self];
+    state.inputs = graphInputNames(graph);
+    state.inferences = 0;
+  }
+  const int result = originalEspressoCreateNet(self, graph, arena, names);
+  // A compressed arena (graph headers such as `USTQ`) is expanded during CreateNet, so the plain
+  // weights only exist afterwards; QCUT_BYTENN_SCAN_AFTER_CREATE asks for a heap sweep that picks
+  // the expanded buffer up through its trailing graph stamp.
+  const char *sweep = std::getenv("QCUT_BYTENN_SCAN_AFTER_CREATE");
+  if (sweep && *sweep == '1') scanHeapForGraphs("espresso-post");
+  return result;
 }
 
 int capturedEspressoReInferShape(void *self, int width, int height) {
@@ -493,4 +639,7 @@ QCUT_INTERPOSE(capturedCreateNetFromFile, originalCreateNetFromFile)
 QCUT_INTERPOSE(capturedThrustorCreateNet, originalThrustorCreateNet)
 QCUT_INTERPOSE(capturedEspressoCreateNet, originalEspressoCreateNet)
 QCUT_INTERPOSE(capturedEspressoReInferShape, originalEspressoReInferShape)
+QCUT_INTERPOSE(capturedEspressoSetInput, originalEspressoSetInput)
+QCUT_INTERPOSE(capturedEspressoInference, originalEspressoInference)
+QCUT_INTERPOSE(capturedEspressoExtract, originalEspressoExtract)
 QCUT_INTERPOSE(capturedEngineCreate, originalEngineCreate)
