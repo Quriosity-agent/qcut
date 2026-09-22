@@ -19,6 +19,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 from espresso_graph import analyze
@@ -35,21 +36,26 @@ def probe(graph, arena, names):
     return run.returncode, (json.loads(match.group(0)) if match else None)
 
 
-def expanded_arena(*, text, capture_dirs, need, stamp, graph_path, names):
+def expanded_arena(*, capture_dirs, need, stamp, graph_path, names):
     """The expanded arena ends with the graph stamp; take the matching suffix a stamp window offers."""
     for directory in capture_dirs:
         for meta in sorted(directory.glob("*heap-stamp.json")):
-            detail = json.loads(meta.read_text())["detail"]
-            if f"stamp={stamp} " not in detail:
+            try:
+                detail = json.loads(meta.read_text())["detail"]
+                if not isinstance(detail, str) or f"stamp={stamp} " not in detail:
+                    continue
+                window = meta.with_suffix(".bin").read_bytes()
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError):
                 continue
-            window = (directory / meta.name.replace(".json", ".bin")).read_bytes()
             if len(window) < need:
                 continue
             candidate = window[-need:]
             trial = graph_path.parent / "arena.trial.bin"
             trial.write_bytes(candidate)
-            code, created = probe(graph_path, trial, names)
-            trial.unlink(missing_ok=True)
+            try:
+                code, created = probe(graph_path, trial, names)
+            finally:
+                trial.unlink(missing_ok=True)
             if code == 0 and created and created["create"] == 0:
                 return candidate, created
     return None, None
@@ -59,7 +65,12 @@ def collect(*, package_dirs, out, label, capture_dirs=()):
     out.mkdir(parents=True, exist_ok=True)
     manifest_path = out / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"nets": []}
-    known = {net["graph_sha256"] for net in manifest["nets"]}
+    # Older compressed entries hash the source marker, not the stored plain graph.
+    known = set()
+    for net in manifest["nets"]:
+        graph_file = out / net["id"] / "graph.txt"
+        digest = hashlib.sha256(graph_file.read_bytes()).hexdigest() if graph_file.exists() else net["graph_sha256"]
+        known.add((digest, net["arena_sha256"]))
     for directory in package_dirs:
         for config in sorted(directory.glob("*.config.bin")):
             record = config.name[: -len(".config.bin")]
@@ -71,52 +82,59 @@ def collect(*, package_dirs, out, label, capture_dirs=()):
             first = text.split("\n", 1)[0]
             # A leading all-letter line marks the weight encoding (`B`, `D`, `E`, `F`, `USTQ`, ...).
             marker = first if first.isalpha() and 1 <= len(first) <= 8 else ""
-            digest = hashlib.sha256(text.encode()).hexdigest()
-            if digest in known:
-                print(f"{directory.name}/{record}: already collected")
-                continue
             try:
                 graph = analyze(text)
             except ValueError as error:
                 print(f"{directory.name}/{record}: unsupported graph ({error})")
                 continue
             arena = weight.read_bytes()
-            net_dir = out / digest[:16]
-            net_dir.mkdir(exist_ok=True)
-            (net_dir / "graph.txt").write_text(text)
+            source_digest = hashlib.sha256(text.encode()).hexdigest()
             source_name = graph["layers"][0]["name"]
             last = graph["layers"][-1]["outputs"][0]
-            if graph["arena_bytes"] != len(arena):
-                if not marker:
-                    print(f"{directory.name}/{record}: accounting {graph['arena_bytes']} != arena {len(arena)}")
+            expanded = graph["arena_bytes"] != len(arena)
+            # Stage beside out so even a concurrent parity glob cannot see a rejected candidate.
+            with tempfile.TemporaryDirectory(prefix=".espresso-package-", dir=out.parent) as temporary:
+                stage = Path(temporary) / "network"
+                stage.mkdir()
+                if expanded:
+                    if not marker:
+                        print(f"{directory.name}/{record}: accounting {graph['arena_bytes']} != arena {len(arena)}")
+                        continue
+                    text = text.split("\n", 1)[1]
+                    (stage / "graph.txt").write_bytes(text.encode("utf-8"))
+                    arena, created = expanded_arena(capture_dirs=capture_dirs, need=graph["arena_bytes"],
+                                                    stamp=graph["stamp"], graph_path=stage / "graph.txt", names=[source_name, last])
+                    if arena is None:
+                        print(f"{directory.name}/{record}: {marker} arena is compressed and no capture window expanded it")
+                        continue
+                digest = hashlib.sha256(text.encode()).hexdigest()
+                arena_digest = hashlib.sha256(arena).hexdigest()
+                identity = (digest, arena_digest)
+                if identity in known:
+                    print(f"{directory.name}/{record}: already collected")
                     continue
-                # The runtime expands the packed payload while creating the net; the plain arena the
-                # accounting describes only exists afterwards, so the graph is stored without the marker.
-                (net_dir / "graph.txt").write_text(text.split("\n", 1)[1])
-                arena, created = expanded_arena(text=text, capture_dirs=capture_dirs, need=graph["arena_bytes"],
-                                                stamp=graph["stamp"], graph_path=net_dir / "graph.txt", names=[source_name, last])
-                if arena is None:
-                    print(f"{directory.name}/{record}: {marker} arena is compressed and no capture window expanded it")
-                    continue
-                (net_dir / "arena.bin").write_bytes(arena)
-            else:
-                (net_dir / "arena.bin").write_bytes(arena)
-                code, created = probe(net_dir / "graph.txt", net_dir / "arena.bin", [source_name, last])
-                if code != 0 or created is None or created["create"] != 0:
-                    print(f"{directory.name}/{record}: runtime rejected the pair")
-                    continue
+                (stage / "graph.txt").write_bytes(text.encode("utf-8"))
+                (stage / "arena.bin").write_bytes(arena)
+                if not expanded:
+                    code, created = probe(stage / "graph.txt", stage / "arena.bin", [source_name, last])
+                    if code != 0 or created is None or created["create"] != 0:
+                        print(f"{directory.name}/{record}: runtime rejected the pair")
+                        continue
+                net_dir = out / hashlib.sha256(f"{digest}:{arena_digest}".encode()).hexdigest()[:16]
+                stage.rename(net_dir)
             layers = sum(1 for layer in graph["layers"] if layer["op"] != "Input")
             manifest["nets"].append({
                 "id": net_dir.name, "label": f"{label}/{directory.name}.{record}", "graph_sha256": digest,
-                "graph_bytes": len(text), "arena_sha256": hashlib.sha256(arena).hexdigest(), "arena_bytes": len(arena),
-                "trim": f"package-reader+{marker}-expanded" if graph["arena_bytes"] != weight.stat().st_size else "package-reader",
+                "graph_bytes": len(text.encode()), "arena_sha256": arena_digest, "arena_bytes": len(arena),
+                "source_graph_sha256": source_digest,
+                "trim": f"package-reader+{marker}-expanded" if expanded else "package-reader",
                 "header": {"letter": graph["letter"] or "plain", "layers": layers, "stamp": graph["stamp"], "legacy": graph["stamp"] is None},
                 "default_in": created["default_in"],
                 "input": {"dims_nhwc": created["names"][0]["dims"], "raw": created["names"][0]["raw"]},
                 "outputs": {last: {"dims_nhwc": created["names"][1]["dims"], "raw": created["names"][1]["raw"]}},
                 "requested_outputs": [last], "sources": [f"{directory.name}/{record}"],
             })
-            known.add(digest)
+            known.add(identity)
             print(f"{net_dir.name} {directory.name}/{record}: {graph['letter'] or 'plain'} layers={layers} arena={len(arena)} in={created['names'][0]['dims']} {created['names'][0]['raw']} out={last}")
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
