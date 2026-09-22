@@ -11,7 +11,7 @@
   `<输入数> <层数>`，输入行是 `data n h w c type frac` 而非 `DataV2 … type frac …`。行尾可能带字面 `\n`。
 - 存储描述符 `(type, frac)`：type 1 = int8，2 = 16 位存储（值域 ±2047），4 = float32；frac 为小数位数。
 - 卷积行：`名 co kh kw sh sw ph pw bias relu  w_t w_f  b_t b_f  o_t o_f  in out`；`b_f = w_f + 输入 frac`。
-- `DilationSeparableConvolution 名 co kh kw dh dw sh sw ph pw bias relu  存储×3  in out`：膨胀深度可分离卷积，`pad = dilation` 时尺寸不变（探针 micro-dil）。
+- `DilationSeparableConvolution 名 co kh kw dh dw sh sw ph pw bias relu  存储×3  in out`：膨胀深度可分离卷积，在 **3×3 核、stride = 1** 时，`pad = dilation` 保持尺寸不变（探针 micro-dil）。对其他奇数核，stride = 1 时每个方向需 `pad = dilation × (kernel − 1) / 2`；例如 5×5 核需 `pad = 2 × dilation`。
 - `Slice 名 in 1 1 K 2 out0 f0 out1 f1`、`ShuffleNet 名 2 inA inB 4 2 out0 f0 out1 f1`、`Shuffle 名 4 2 in out`、
   `Crop 名 oy ox oc oh ow oc' in out`、`Upsample 名 f linear 0 1 in out`、`Constant 名 <空> 0 n h w c out t f`、
   `OnnxOp1 名 Reshape in out t f n h w c 2`、`Pooling 名 kh kw sh sw ph pw t f MODE in out [GLOBAL]`。
