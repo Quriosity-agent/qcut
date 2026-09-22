@@ -3,6 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { createAgentPointerCursorProvider } from "../screen-recording-handler/agent-pointer-cursor.js";
 import { CursorTelemetryRecorder } from "../screen-recording-handler/cursor-telemetry.js";
 
+const mockUIOHook = vi.hoisted(() => ({
+	on: vi.fn(),
+	off: vi.fn(),
+	start: vi.fn(),
+	stop: vi.fn(),
+}));
+
+// A real global input hook can terminate the worker on headless Linux.
+vi.mock("uiohook-napi", () => ({ uIOhook: mockUIOHook }));
+
 vi.mock("electron", () => ({
 	screen: {
 		getCursorScreenPoint: () => ({ x: 5, y: 6 }),
@@ -55,8 +65,8 @@ describe("createAgentPointerCursorProvider", () => {
 describe("CursorTelemetryRecorder with a provider", () => {
 	it("records provider samples tagged as agent instead of the OS cursor", async () => {
 		vi.useFakeTimers();
+		const recorder = new CursorTelemetryRecorder();
 		try {
-			const recorder = new CursorTelemetryRecorder();
 			let sample: { x: number; y: number; pressed: boolean } | null = {
 				x: 320,
 				y: 240,
@@ -66,10 +76,22 @@ describe("CursorTelemetryRecorder with a provider", () => {
 				{ x: 0, y: 0, width: 1920, height: 1080 },
 				{ provider: () => (sample ? { ...sample, source: "agent" } : null) }
 			);
+			await vi.dynamicImportSettled();
+			expect(mockUIOHook.start).toHaveBeenCalledOnce();
 			await vi.advanceTimersByTimeAsync(40);
 			sample = null;
 			await vi.advanceTimersByTimeAsync(40);
 			const data = recorder.stop();
+			expect(mockUIOHook.stop).toHaveBeenCalledOnce();
+			expect(mockUIOHook.off).toHaveBeenCalledWith(
+				"mousedown",
+				expect.any(Function)
+			);
+			expect(mockUIOHook.off).toHaveBeenCalledWith(
+				"mouseup",
+				expect.any(Function)
+			);
+			expect(vi.getTimerCount()).toBe(0);
 
 			const agentPoints = data.points.filter((point) => point.c === "agent");
 			const cursorPoints = data.points.filter((point) => point.c === undefined);
@@ -80,6 +102,7 @@ describe("CursorTelemetryRecorder with a provider", () => {
 			expect(cursorPoints.length).toBeGreaterThan(0);
 			expect(cursorPoints[0]).toEqual(expect.objectContaining({ x: 5, y: 6 }));
 		} finally {
+			recorder.stop();
 			vi.useRealTimers();
 		}
 	});
