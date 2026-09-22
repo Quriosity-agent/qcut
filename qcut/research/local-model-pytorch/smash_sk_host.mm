@@ -36,6 +36,11 @@ int main(int argc, char **argv) {
   NSData *bytes = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:argv[2]]];
   void *handle = nullptr;
   const int created = create(&handle);
+  if (created != 0 || !handle) {
+    fprintf(stderr, "SK_CreateHandle failed: %d (valid handle: %d)\n", created, handle != nullptr);
+    dlclose(library);
+    return 2;
+  }
   printf("{\"create\": %d, \"bytes\": %lu, \"types\": [", created, (unsigned long)[bytes length]);
   bool first = true;
   for (int type = 0; type <= maxType; ++type) {
