@@ -2,7 +2,7 @@
 //
 // `smash::package::ModelPackage` lives in liblens.dylib and the face/body
 // algorithms in libcccreator.dylib call it across the library boundary, so dyld
-// interposing sees every call. This library logs the constructor argument, the
+// interposing sees every call. This library logs the constructor object, the
 // init route and its result, and writes out every payload the reader returns
 // from Extract. Nothing is patched and no key is reconstructed: the runtime
 // decrypts its own packages, and this only observes the result.
@@ -57,7 +57,7 @@ int originalExtract(void *self, const std::string &name, std::map<std::string, s
 }
 
 void capturedConstruct(void *self, const std::string &argument) {
-  note("construct self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " argument=" + argument);
+  note("construct self=" + std::to_string(reinterpret_cast<uintptr_t>(self)));
   originalConstruct(self, argument);
 }
 
