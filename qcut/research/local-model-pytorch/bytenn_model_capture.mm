@@ -209,6 +209,7 @@ template <typename Visit> void forEachRegion(Visit visit, size_t *scanned, int *
 // container follows its graph text). Regions are copied with
 // mach_vm_read_overwrite, which fails cleanly where a direct read would fault.
 void scanHeapForGraphs(const char *kind) {
+  if (!captureDirectory()) return;
   static const char needle[] = "\nDataV2 ";
   std::set<std::string> seen;
   std::set<uint32_t> stamps;
