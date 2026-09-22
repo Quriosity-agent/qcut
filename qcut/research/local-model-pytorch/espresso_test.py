@@ -12,6 +12,40 @@ PACKED_GRAPH = "B\n1 2 12345\nDataV2 data 1 4 4 2 2 6 0\nConvolution conv 2 3 3 
 
 
 class ParserTest(unittest.TestCase):
+    def test_malformed_headers_and_truncated_rows_raise_value_error(self):
+        graphs = ["", "B\n", "1 0\ndata 1 4", "1 1\ndata 1 4 4 1 1 6\nConvolution\n",
+                  "1 1\ndata 1 4 4 1 1 6\nOnnxOp1 reshape\n",
+                  "1 1\ndata 1 4 4 1 1 6\nSoftmax sm missing out\n",
+                  "1 1\ndata 1 4 4 1 1 6\nConcat cat 0 out 1 6\n",
+                  "1 1\ndata 1 4 4 1 1 6\nShuffleNet sn 2 data\n"]
+        for text in graphs:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                espresso_graph.analyze(text)
+
+    def test_every_operator_rejects_truncated_rows(self):
+        for op, minimum in espresso_graph.MIN_ROW_TOKENS.items():
+            for length in range(1, minimum):
+                row = " ".join([op] + ["1"] * (length - 1))
+                with self.subTest(op=op, length=length), self.assertRaises(ValueError):
+                    espresso_graph.analyze(f"1 1\ndata 1 4 4 1 1 6\n{row}\n")
+
+    def test_invalid_spatial_parameters_raise_value_error(self):
+        rows = [
+            ("Convolution cv 1 3 3 1 1 1 1 0 0 1 6 4 12 1 6 data out", range(2, 7)),
+            ("DilationSeparableConvolution dw 1 3 3 2 2 1 1 2 2 0 0 1 6 4 12 1 6 data out", range(2, 9)),
+            ("Pooling pool 3 3 1 1 1 1 1 6 MAX data out", range(2, 6)),
+        ]
+        for row, positions in rows:
+            for position in positions:
+                for value in ("0", "-1"):
+                    tokens = row.split()
+                    tokens[position] = value
+                    with self.subTest(row=row, position=position, value=value), self.assertRaises(ValueError):
+                        espresso_graph.analyze("1 1\ndata 1 9 9 1 1 6\n" + " ".join(tokens))
+        for factor in ("0", "-1", "nan", "inf", "1e308"):
+            with self.subTest(factor=factor), self.assertRaises(ValueError):
+                espresso_graph.analyze(f"1 1\ndata 1 9 9 1 1 6\nUpsample up {factor} linear 0 1 data out")
+
     def test_int8_accounting(self):
         result = espresso_graph.analyze(INT8_GRAPH)
         # conv: 2*2*9 int8 + 2 int32 bias; depthwise: 2*9 int8 + 2 int32 bias; no stamp.
