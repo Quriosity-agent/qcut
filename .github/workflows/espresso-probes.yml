@@ -1,0 +1,47 @@
+name: Espresso probe regressions
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/**
+      - .github/workflows/espresso-probes.yml
+  push:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/**
+      - .github/workflows/espresso-probes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: espresso-probes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: qcut/research/local-model-pytorch
+
+jobs:
+  synthetic-regressions:
+    name: Espresso regressions (${{ matrix.runner }})
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.10'
+      - name: Install public synthetic-test dependencies
+        run: python -m pip install --only-binary=:all: numpy==2.3.5 Pillow==12.2.0
+      - name: Test parser, collector, fixed-point rules and native failure paths
+        run: python -m unittest espresso_test espresso_package_collect_test native_probe_test -v
