@@ -223,7 +223,7 @@ describe("TransitionsView", () => {
 	it("filters cards by search query", () => {
 		render(<TransitionsView />);
 
-		fireEvent.change(screen.getByLabelText("搜索转场"), {
+		fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
 			target: { value: "bright" },
 		});
 
@@ -265,7 +265,7 @@ describe("TransitionsView", () => {
 	it("applies a Transition Lab recipe through the normal timeline contract", () => {
 		selectAdjacentClips();
 		render(<TransitionsView />);
-		fireEvent.change(screen.getByLabelText("搜索转场"), {
+		fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
 			target: { value: "cube" },
 		});
 		selectCategory({ name: "转场实验室" });
@@ -310,9 +310,8 @@ describe("TransitionsView", () => {
 		}
 	});
 
-	it("keeps local Jianying transitions in the lab and applies them like native presets", async () => {
+	it("keeps local Jianying transitions in the lab with accurate source counts", async () => {
 		const restoreRuntime = installReadyJianyingRuntime();
-		selectAdjacentClips();
 
 		try {
 			await act(async () => {
@@ -349,6 +348,26 @@ describe("TransitionsView", () => {
 			expect(
 				screen.getByTestId("transition-card-lab-clean-dissolve")
 			).toBeVisible();
+		} finally {
+			restoreRuntime();
+		}
+	});
+
+	it("filters local Jianying transitions by category and applies them like native presets", async () => {
+		const restoreRuntime = installReadyJianyingRuntime();
+		selectAdjacentClips();
+
+		try {
+			await act(async () => {
+				render(<TransitionsView />);
+			});
+			fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
+				target: { value: "heart" },
+			});
+			selectCategory({ name: "转场实验室" });
+			const sources = within(
+				screen.getByRole("tablist", { name: "转场实验室来源" })
+			);
 
 			fireEvent.click(sources.getByRole("tab", { name: /本机剪映\s+520/ }));
 			fireEvent.click(
@@ -357,6 +376,9 @@ describe("TransitionsView", () => {
 					{ name: /幻灯片\s+40 个转场/ }
 				)
 			);
+			fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
+				target: { value: "" },
+			});
 			expect(screen.getByText("40 个转场")).toBeVisible();
 			expect(
 				screen.getByTestId("transition-card-jianying-local-heart")
@@ -392,7 +414,7 @@ describe("TransitionsView", () => {
 	it("shows the empty state when no presets match the search", () => {
 		render(<TransitionsView />);
 
-		fireEvent.change(screen.getByLabelText("搜索转场"), {
+		fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
 			target: { value: "zzzz-no-match" },
 		});
 
@@ -403,7 +425,7 @@ describe("TransitionsView", () => {
 	it("falls back selection to the first visible preset when filtered out", () => {
 		render(<TransitionsView />);
 
-		fireEvent.change(screen.getByLabelText("搜索转场"), {
+		fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
 			target: { value: "bright" },
 		});
 
@@ -452,7 +474,7 @@ describe("TransitionsView", () => {
 		);
 		vi.stubGlobal("fetch", mockFetch);
 		render(<TransitionsView />);
-		fireEvent.change(screen.getByLabelText("搜索转场"), {
+		fireEvent.change(screen.getByRole("textbox", { name: "搜索转场" }), {
 			target: { value: "Speed Trail" },
 		});
 
