@@ -40,9 +40,15 @@ describe("replaceFileExtension", () => {
 describe("export-output", () => {
 	let originalCreateObjectURL: typeof URL.createObjectURL;
 	let originalRevokeObjectURL: typeof URL.revokeObjectURL;
+	let anchorClickSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// FileReader uses setImmediate; only the download cleanup needs a fake clock.
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		anchorClickSpy = vi
+			.spyOn(HTMLAnchorElement.prototype, "click")
+			.mockImplementation(() => {});
 		originalCreateObjectURL = URL.createObjectURL;
 		originalRevokeObjectURL = URL.revokeObjectURL;
 
@@ -57,33 +63,44 @@ describe("export-output", () => {
 	});
 
 	afterEach(() => {
-		URL.createObjectURL = originalCreateObjectURL;
-		URL.revokeObjectURL = originalRevokeObjectURL;
-		delete (window as any).Capacitor;
-		delete (navigator as any).share;
-		delete (navigator as any).canShare;
+		try {
+			vi.runOnlyPendingTimers();
+		} finally {
+			vi.useRealTimers();
+			anchorClickSpy.mockRestore();
+			URL.createObjectURL = originalCreateObjectURL;
+			URL.revokeObjectURL = originalRevokeObjectURL;
+			delete (window as any).Capacitor;
+			delete (navigator as any).share;
+			delete (navigator as any).canShare;
+		}
 	});
 
 	describe("saveExportedVideo (browser fallback)", () => {
-		it("creates a download link and clicks it", async () => {
+		it("clicks a download link and releases it after the cleanup delay", async () => {
 			const blob = new Blob(["test"], { type: "video/mp4" });
-			const appendSpy = vi.spyOn(document.body, "appendChild");
-			const removeSpy = vi.spyOn(document.body, "removeChild");
 
 			const result = await saveExportedVideo(blob, "test.mp4");
 
 			expect(result.success).toBe(true);
 			expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
-			expect(appendSpy).toHaveBeenCalled();
+			expect(anchorClickSpy).toHaveBeenCalledOnce();
 
-			// Check the <a> element
-			const anchor = appendSpy.mock.calls[0][0] as HTMLAnchorElement;
-			expect(anchor.tagName).toBe("A");
-			expect(anchor.download).toBe("test.mp4");
-			expect(anchor.href).toContain("blob:test-url");
+			const anchor = document.querySelector<HTMLAnchorElement>(
+				'a[download="test.mp4"]'
+			);
+			expect(anchor?.href).toBe("blob:test-url");
+			expect(anchorClickSpy.mock.instances[0]).toBe(anchor);
 
-			appendSpy.mockRestore();
-			removeSpy.mockRestore();
+			vi.advanceTimersByTime(99);
+			expect(anchor?.isConnected).toBe(true);
+			expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(1);
+			expect(anchor?.isConnected).toBe(false);
+			expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith(
+				"blob:test-url"
+			);
 		});
 
 		it("returns success true for valid blob", async () => {
