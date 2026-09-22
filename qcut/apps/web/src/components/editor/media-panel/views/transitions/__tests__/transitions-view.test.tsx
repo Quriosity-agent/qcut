@@ -265,6 +265,9 @@ describe("TransitionsView", () => {
 	it("applies a Transition Lab recipe through the normal timeline contract", () => {
 		selectAdjacentClips();
 		render(<TransitionsView />);
+		fireEvent.change(screen.getByLabelText("搜索转场"), {
+			target: { value: "cube" },
+		});
 		selectCategory({ name: "转场实验室" });
 		fireEvent.doubleClick(
 			screen.getByTestId("transition-card-lab-cube-rotate")
