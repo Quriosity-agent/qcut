@@ -19,6 +19,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -38,9 +40,19 @@ template <typename T> T symbol(void *library, const char *name) {
   return reinterpret_cast<T>(value);
 }
 
-void writeFile(const std::string &path, const std::string &bytes) {
+bool writeFile(const std::string &path, const std::string &bytes) {
   std::ofstream out(path, std::ios::binary);
+  if (!out) {
+    fprintf(stderr, "cannot open payload: %s\n", path.c_str());
+    return false;
+  }
   out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  out.close();
+  if (!out) {
+    fprintf(stderr, "cannot write payload: %s\n", path.c_str());
+    return false;
+  }
+  return true;
 }
 
 std::string describe(const std::string &bytes) {
@@ -74,9 +86,23 @@ int main(int argc, char **argv) {
 
   const std::string path(argv[2]), directory(argv[3]);
   std::ifstream input(path, std::ios::binary | std::ios::ate);
-  std::string bytes(static_cast<size_t>(input.tellg()), '\0');
+  const std::streamoff size = input.tellg();
+  if (!input || size < 0 || size > std::numeric_limits<int>::max()) {
+    fprintf(stderr, "cannot read model or model exceeds InitFromBuf length: %s\n", path.c_str());
+    return 2;
+  }
+  std::string bytes(static_cast<size_t>(size), '\0');
   input.seekg(0);
-  input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  if (!input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()))) {
+    fprintf(stderr, "incomplete model read: %s\n", path.c_str());
+    return 2;
+  }
+  std::error_code directoryError;
+  std::filesystem::create_directories(directory, directoryError);
+  if (directoryError || !std::filesystem::is_directory(directory, directoryError)) {
+    fprintf(stderr, "cannot create output directory: %s\n", directory.c_str());
+    return 2;
+  }
   // The reader's constructor takes the package key the effect SDK passes it. The key belongs to
   // the vendor runtime, so it is never stored here: it comes from QCUT_SMASH_PACKAGE_KEY, which
   // the operator fills from a local capture (see smash_package_capture.mm).
@@ -100,10 +126,13 @@ int main(int argc, char **argv) {
   void *package = nullptr;
   int initialized = -1;
   size_t accepted = 0;
+  size_t tried = 0;
   for (size_t index = 0; index < keys.size(); ++index) {
     void *candidate = calloc(1, kObjectBytes);
     construct(candidate, keys[index]);
     const int result = initFromBuf(candidate, bytes.data(), static_cast<int>(bytes.size()));
+    initialized = result;
+    ++tried;
     if (result == 0) {
       package = candidate;
       initialized = 0;
@@ -112,11 +141,12 @@ int main(int argc, char **argv) {
     }
     free(candidate);
   }
-  printf("{\"keys_tried\": %zu, \"key_index\": %zu, ", keys.size(), accepted);
+  printf("{\"keys_tried\": %zu, ", tried);
   if (!package) {
     printf("\"init\": %d, \"records\": []}\n", initialized);
     return 1;
   }
+  printf("\"key_index\": %zu, ", accepted);
   std::string version;
   const int versioned = getVersion(package, version);
   printf("\"init\": %d, \"version_rc\": %d, \"version\": \"%s\", \"records\": [", initialized, versioned, version.c_str());
@@ -130,7 +160,11 @@ int main(int argc, char **argv) {
     bool firstEntry = true;
     for (const auto &entry : payloads) {
       const std::string file = directory + "/" + name + "." + entry.first + ".bin";
-      writeFile(file, entry.second);
+      if (!writeFile(file, entry.second)) {
+        release(package);
+        free(package);
+        return 2;
+      }
       printf("%s{\"key\": \"%s\", \"bytes\": %zu, \"head\": \"%s\"}", firstEntry ? "" : ", ", entry.first.c_str(),
              entry.second.size(), describe(entry.second).c_str());
       firstEntry = false;
@@ -140,5 +174,6 @@ int main(int argc, char **argv) {
   }
   printf("]}\n");
   release(package);
+  free(package);
   return initialized == 0 ? 0 : 1;
 }
