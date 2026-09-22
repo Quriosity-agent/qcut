@@ -17,6 +17,7 @@
 #include <cstring>
 #include <fstream>
 #include <memory>
+#include <limits>
 #include <vector>
 
 namespace BYTENN {
@@ -30,10 +31,17 @@ int main(int argc, char **argv) {
     return 2;
   }
   std::ifstream input(argv[1], std::ios::binary | std::ios::ate);
-  if (!input) return 2;
-  std::vector<unsigned char> model(static_cast<size_t>(input.tellg()));
+  const std::streamoff size = input.tellg();
+  if (!input || size < 0 || size > std::numeric_limits<uint32_t>::max()) {
+    fprintf(stderr, "cannot read container or container exceeds Config length: %s\n", argv[1]);
+    return 2;
+  }
+  std::vector<unsigned char> model(static_cast<size_t>(size));
   input.seekg(0);
-  input.read(reinterpret_cast<char *>(model.data()), static_cast<std::streamsize>(model.size()));
+  if (!input.read(reinterpret_cast<char *>(model.data()), static_cast<std::streamsize>(model.size()))) {
+    fprintf(stderr, "incomplete container read: %s\n", argv[1]);
+    return 2;
+  }
   std::shared_ptr<BYTENN::ByteNNEngine> engine = engineCreate();
   void **vtable = *reinterpret_cast<void ***>(engine.get());
   // Init(Config const&) is the slot whose symbol name says so. When the capture library
