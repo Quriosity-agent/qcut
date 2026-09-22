@@ -12,14 +12,19 @@
   在无头人像宿主里跑一次特效包，SDK 就会把它自己那把密钥交出来。改本地特效包的 `algorithmConfig.json` 节点
   （`face_verify`、`skeleton`、`matting`、`after_effect`、`expression_detect`、`object_detect` 等类型，
   以及 `face` 节点的 `face_attr_detect_ability`）可以触发更多家族，**共取得 7 把密钥**。
-- 由此打开 6 个包、恢复 **12 张网络**（其中 1 张与人体包里已恢复的同图），两个种子下**所有整数层与输出逐位一致**，
-  浮点层最大 `6e-7`；`tt_matting_video` 的 fp32 图最大 `2.0e-3`（两类 softmax 的硬件倒数估计，见下）。
+- 按下表源文件去重，已从 **8 个模型文件恢复 12 个网络**（其中 fast 走直接捕获路径，不依赖包密钥）。
+  两个种子下被比较的整数输出逐位一致；有限浮点输出最大 `2.0e-3`，来自 `tt_matting_video`。
+  age/exp 各有 3 个原生输出非有限，无法比较，不能称全部输出通过。文件数、网络数和输出 blob 数分别计数。
 - 运行库语义新增一条：旧格式 7 字段 `Eltwise` 行没有 ReLU 标志，运行库**总是**施加 ReLU（探针 micro-el2）。
 - 没有任何产品或编辑器接入。
 
 ## 网络清单
 
-| id | 包 / 记录 | 头 | 层数 | arena 字节 | 输入 (h×w×c, [type, frac]) | 输出 | 两种子对拍（41/509） |
+图层数取图头声明值，不含输入行；最后一列历史记录中的“整数层/浮点层”计的是被比较的**输出 blob**，
+不是图行。一层可以产生多个 blob，所以不能把两类数字直接相加核对。下表 ID 是历史捕获产物 ID；
+收集器现按存储图与 arena 的 SHA-256 组合去重，新收集目录 ID 包含二者，同图不同权重不会合并。
+
+| id | 包 / 记录 | 头 | 图层数（不含输入） | arena 字节 | 输入 (h×w×c, [type, frac]) | 输出 | 两种子对拍（输出 blob，41/509） |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `aff60c469d265fa8` | tt_faceverify / verify | `B` | 77 | 4,333,820 | 112×112×3 `[2, 7]` | `fc1` | 整数层 89/89 逐位一致；浮点层 1 层最大 `0` |
 | `43c68131874db50b` | tt_skeleton / multi | `plain` | 96 | 140,476 | 224×224×3 `[1, 8]` | `stage1_L2` | 整数层 96/96 逐位一致 |
@@ -34,7 +39,8 @@
 | `0a884817f4f59147` | tt_face_attribute_exp / expnet（`F` 压缩权重） | `F` | 102 | 600,432 | 256×256×3 `[2, 7]` | `predict_attractive` | 整数层 89/89 逐位一致；浮点层 10 层最大 `0`；3 层原生自身溢出，无法比较 |
 | `d41f5fd3b0b89cc6` | tt_face_extra_fast / extra（face 算法路径，无需密钥） | `B` | 100 | 454,116 | 224×224×3 `[2, 6]` | `fc` | 整数层 107/107 逐位一致；浮点层 4 层最大 `4.8e-06` |
 
-`tt_skeletonlockon/single` 与人体包里从堆中切出的 192×144 热图网络是同一张图（sha 相同），此处作为交叉验证保留。
+`tt_skeletonlockon/single` 与人体包里从堆中切出的 192×144 热图网络图文本 SHA 相同，但 arena SHA 不同，
+属于同结构的不同权重，不能仅按图去重，也不能把同图当作同一个源包。
 
 ## 压缩权重（`USTQ` / `F`）
 
@@ -42,7 +48,8 @@
 运行库在 `CreateNet` 时把它展开，所以展开后的 arena 只存在于内存里：给捕获器加一个
 `QCUT_BYTENN_SCAN_AFTER_CREATE=1` 的创建后堆扫描，展开的 arena 就落在图戳窗口里，
 `espresso_package_collect.py --capture` 按核算长度取窗口后缀并交给运行库验证。去掉标记行后的图配上展开 arena，
-两个种子下全部逐位一致。压缩格式本身没有被复原，也不需要复原。
+两个种子下有限输出的比较结果见表；age/exp 各有 3 个输出无法比较。当前 Espresso 解释器**不支持 USTQ/F
+压缩权重解码**，只支持重放厂商运行库已展开的图与 arena，不能直接离线读取原始压缩权重。
 
 ## 仍然打不开，以及为什么
 
@@ -79,14 +86,18 @@ ONNX 只有普通 softmax。差值与解释器里测到的同一常数一致，�
 
 ## 安全边界
 
-密钥属于厂商运行库，只保存在 `.local/jianying-model-pytorch/tail-20260920/package-keys.txt`（不进 Git，权限 600）。
+修复后的捕获器只记录构造对象，不再把构造参数写入 `calls.log`，也不新增密钥文件。
+历史 `pkgcap-*` 的 `calls.log` 曾包含包密钥，因此不能声称密钥只存在于一个文件。
+历史日志和 `.local/jianying-model-pytorch/tail-20260920/package-keys.txt` 都按敏感本地产物处理，不进 Git；
+操作者须对留存文件设置 `chmod 600`、父目录设置 `chmod 700`。本次代码修复不追溯修改或删除历史产物，
+也不声称已验证其现有权限。
 提交的宿主 `smash_package_host.mm` 从 `QCUT_SMASH_PACKAGE_KEY` / `QCUT_SMASH_PACKAGE_KEYS` 读取，仓库里没有任何密钥。
 解出的图与权重同样只在 `.local/`。
 
 ## 证据目录（全部在 `.local/`，不进 Git）
 
 `tail-20260920/`：`pkgcap-sticker`、`pkgcap-attr2`、`pkgcap-more`、`pkgcap-attr3`（拦截日志与密钥）、`effect-attr*`、`effect-more`（本地特效包）、
-`pkg/<模型>`（解出的 config/weight）、`collected-pkg/`（5 张网络 + `manifest.json`）、
+`pkg/<模型>`（解出的 config/weight）、`collected-pkg/`（12 个网络 + `manifest.json`）、
 `parity-pkg-r2`、`parity-ae-seed41`、`parity-mv-seed41`、`parity-attr-seed41/509`、`parity-pkg-final509`、
 `init-matting_video`、`ustq-agenet`、`ustq-expnet`（创建后堆扫描）、`bycap-fast-1..4`、`collected-fast`、
 `parity-fast-seed41/509`、`effect-*`（逐轮特效包）、`micro-el`、`micro-el2`（探针图）。
@@ -95,13 +106,13 @@ ONNX 只有普通 softmax。差值与解释器里测到的同一常数一致，�
 
 ```sh
 R="$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current"
-# 1. 观察 SDK 如何驱动读取器，取得该家族的包密钥
+# 1. 观察 SDK 如何驱动读取器；当前日志不记录密钥
 clang++ -std=c++17 -O1 -dynamiclib -fobjc-arc -framework Foundation -L"$R/Frameworks" -llens \
   -Wl,-rpath,"$R/Frameworks" research/local-model-pytorch/smash_package_capture.mm -o /tmp/pkgcap.dylib
 env -i PATH="$PATH" HOME="$HOME" DYLD_LIBRARY_PATH="$R/Frameworks" DYLD_INSERT_LIBRARIES=/tmp/pkgcap.dylib \
   QCUT_SMASH_CAPTURE_DIR=<dir> QCUT_FRAME_WIDTH=1280 QCUT_FRAME_HEIGHT=720 \
   electron/resources/bin/jianying-portrait-adjustment-host "$R" "$R/Models" <effect-package> < commands.tsv
-# 2. 用取得的密钥解包
+# 2. 用已有的私有密钥文件解包（步骤 1 不生成该文件）
 clang++ -std=c++17 -O1 -fobjc-arc -framework Foundation research/local-model-pytorch/smash_package_host.mm -o /tmp/pkg-host
 QCUT_SMASH_PACKAGE_KEYS=<keys.txt> DYLD_LIBRARY_PATH="$R/Frameworks" /tmp/pkg-host "$R/Frameworks/liblens.dylib" <model> <outdir> <record...>
 # 3. 收集并对拍
