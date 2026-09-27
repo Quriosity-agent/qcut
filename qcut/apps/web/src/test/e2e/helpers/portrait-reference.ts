@@ -104,9 +104,15 @@ export async function readPreview({ page }: { page: Page }) {
 				.getContext("2d")
 				?.getImageData(0, 0, canvas.width, canvas.height).data;
 			let opaque = 0;
+			let visible = 0;
 			if (data) {
 				for (let index = 3; index < data.length; index += 4) {
 					if (data[index] > 0) opaque += 1;
+					if (
+						data[index] > 16 &&
+						Math.max(data[index - 3], data[index - 2], data[index - 1]) > 16
+					)
+						visible += 1;
 				}
 			}
 			return {
@@ -114,6 +120,7 @@ export async function readPreview({ page }: { page: Page }) {
 				width: canvas.width,
 				height: canvas.height,
 				opaque,
+				visible,
 				commits: Number(canvas.dataset.renderedFrameCount ?? 0),
 			};
 		});
@@ -174,29 +181,33 @@ export function createPortraitReferenceCapture({ output }: { output: string }) {
 		await expect(page.getByTestId("color-preview-canvas")).toBeVisible({
 			timeout: 30_000,
 		});
-		await expect
-			.poll(
-				async () => {
-					const frame = await readPreview({ page });
-					return frame.opaque > 10_000 && frame.hash !== previousHash;
-				},
-				{ timeout: 30_000 }
-			)
-			.toBe(true);
 		let lastHash = "";
 		let repeats = 0;
+		let stableFrame: Awaited<ReturnType<typeof readPreview>> | undefined;
 		await expect
 			.poll(
 				async () => {
 					const frame = await readPreview({ page });
+					if (
+						frame.visible <= 10_000 ||
+						frame.commits === 0 ||
+						frame.hash === previousHash
+					) {
+						repeats = 0;
+						lastHash = "";
+						return repeats;
+					}
 					repeats = frame.hash === lastHash ? repeats + 1 : 0;
 					lastHash = frame.hash;
+					stableFrame = frame;
 					return repeats;
 				},
 				{ timeout: 30_000, intervals: [300] }
 			)
 			.toBeGreaterThanOrEqual(3);
-		const frame = await readPreview({ page });
+		// A second read can hit a resize clear after the stable frame was verified.
+		const frame = stableFrame;
+		if (!frame) throw new Error("No stable portrait frame captured");
 		await writeFile(path.join(output, `${name}-frame.png`), frame.png);
 		await page.screenshot({
 			path: path.join(output, `${name}-ui.png`),
