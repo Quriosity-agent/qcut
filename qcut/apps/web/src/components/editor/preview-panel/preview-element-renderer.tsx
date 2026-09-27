@@ -1174,6 +1174,7 @@ export function PreviewElementRenderer({
 							{usesPixelColor || isColorPickerTarget ? (
 								<ColorPreviewCanvas
 									sourceSelector={colorPreviewSourceSelector}
+									portraitRenderSize={canvasSize}
 									settings={visual.color}
 									masks={geometricMasks}
 									fitMode={visual.fitMode}
@@ -1506,6 +1507,10 @@ export function PreviewElementRenderer({
 								{usesPixelColor || isColorPickerTarget ? (
 									<ColorPreviewCanvas
 										sourceSelector='img[data-color-source="true"]'
+										portraitRenderSize={{
+											width: currentWidth,
+											height: currentHeight,
+										}}
 										settings={visual.color}
 										masks={visual.masks}
 										fitMode="contain"
@@ -1625,6 +1630,7 @@ export function PreviewElementRenderer({
 							{usesPixelColor || isColorPickerTarget ? (
 								<ColorPreviewCanvas
 									sourceSelector='img[data-color-source="true"]'
+									portraitRenderSize={canvasSize}
 									settings={visual.color}
 									masks={visual.masks}
 									fitMode="cover"
