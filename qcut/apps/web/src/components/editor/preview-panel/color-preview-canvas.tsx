@@ -10,7 +10,10 @@ import {
 	type BrowserColorGradeLayer,
 } from "@/lib/color/browser-color-rendering";
 import { subscribeColorDegradation } from "@/lib/color/color-degradation";
-import { colorPreviewCanvasSize } from "@/lib/color/color-preview-resolution";
+import {
+	colorPreviewCanvasSize,
+	portraitPreviewCanvasSize,
+} from "@/lib/color/color-preview-resolution";
 import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source-key";
 import { cn } from "@/lib/utils";
 import { useColorPickerStore } from "@/stores/editor/color-picker-store";
@@ -88,6 +91,7 @@ export function ColorPreviewCanvas({
 	filter,
 	additionalLayers = [],
 	portraitAdjustments,
+	portraitRenderSize,
 }: {
 	sourceSelector: string;
 	settings: MediaColorSettings;
@@ -97,7 +101,10 @@ export function ColorPreviewCanvas({
 	filter?: string;
 	additionalLayers?: BrowserColorGradeLayer[];
 	portraitAdjustments?: MediaPortraitAdjustments;
+	portraitRenderSize?: { width: number; height: number };
 }) {
+	const portraitWidth = portraitRenderSize?.width;
+	const portraitHeight = portraitRenderSize?.height;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const renderTailRef = useRef<Promise<void>>(Promise.resolve());
 	const colorPickerActive = useColorPickerStore((state) => state.active);
@@ -236,10 +243,19 @@ export function ColorPreviewCanvas({
 		let drawing = false;
 		let queuedDraw = false;
 		const resize = () => {
-			const size = colorPreviewCanvasSize({
-				width: parent.clientWidth,
-				height: parent.clientHeight,
-			});
+			// Native face detection must not change when the preview panel is resized.
+			const portraitSize = portraitAdjustments?.enabled
+				? portraitPreviewCanvasSize({
+						width: portraitWidth ?? 0,
+						height: portraitHeight ?? 0,
+					})
+				: null;
+			const size = portraitSize?.width
+				? portraitSize
+				: colorPreviewCanvasSize({
+						width: parent.clientWidth,
+						height: parent.clientHeight,
+					});
 			const width = Math.max(1, size.width);
 			const height = Math.max(1, size.height);
 			if (canvas.width !== width) canvas.width = width;
@@ -266,7 +282,10 @@ export function ColorPreviewCanvas({
 					const rendered = document.createElement("canvas");
 					rendered.width = canvas.width;
 					rendered.height = canvas.height;
-					const fittedContext = fitted.getContext("2d");
+					// Portrait fitting consumes these pixels; avoid GPU readback-dependent resizing.
+					const fittedContext = fitted.getContext("2d", {
+						willReadFrequently: Boolean(portraitAdjustments?.enabled),
+					});
 					const renderedContext = rendered.getContext("2d", {
 						willReadFrequently: true,
 					});
@@ -306,6 +325,9 @@ export function ColorPreviewCanvas({
 					}
 					outputContext.clearRect(0, 0, canvas.width, canvas.height);
 					outputContext.drawImage(rendered, 0, 0);
+					canvas.dataset.renderedFrameCount = String(
+						Number(canvas.dataset.renderedFrameCount ?? 0) + 1
+					);
 					canvas.dataset.renderedColorResources = renderedLayers
 						.flatMap(({ settings }) => {
 							const effect = settings.multiPass;
@@ -355,6 +377,7 @@ export function ColorPreviewCanvas({
 		observer.observe(parent);
 		const redraw = () => void draw();
 		source.addEventListener("loadeddata", redraw);
+		source.addEventListener("load", redraw);
 		source.addEventListener("seeked", redraw);
 		source.addEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
 		animationFrame = requestAnimationFrame(loop);
@@ -362,11 +385,20 @@ export function ColorPreviewCanvas({
 			cancelled = true;
 			observer.disconnect();
 			source.removeEventListener("loadeddata", redraw);
+			source.removeEventListener("load", redraw);
 			source.removeEventListener("seeked", redraw);
 			source.removeEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
 			cancelAnimationFrame(animationFrame);
 		};
-	}, [fitMode, frameSeed, portraitAdjustments, renderedLayers, sourceSelector]);
+	}, [
+		fitMode,
+		frameSeed,
+		portraitAdjustments,
+		portraitWidth,
+		portraitHeight,
+		renderedLayers,
+		sourceSelector,
+	]);
 	return (
 		<canvas
 			ref={canvasRef}
