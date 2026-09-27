@@ -43,7 +43,7 @@ vi.mock("../jianying-portrait-adjustment-runtime/package-resolver.js", () => ({
 
 import { createJianyingPortraitAdjustmentProvider } from "../jianying-portrait-adjustment-runtime/provider.js";
 
-describe("3D nose provider state", () => {
+describe("stateful portrait fitting provider", () => {
 	let provider: ReturnType<typeof createJianyingPortraitAdjustmentProvider>;
 	const hosts: {
 		render: ReturnType<typeof vi.fn>;
@@ -138,6 +138,53 @@ describe("3D nose provider state", () => {
 			request({ timestampSeconds: 0.5, pixels })
 		);
 		expect(reverse.rgba[0]).toBe(101);
+		expect(hosts).toHaveLength(2);
+	});
+	it("rebuilds smile fitting after an upstream mouth edit on the same frame", async () => {
+		const base = request();
+		await provider.render({
+			...base,
+			adjustments: { enabled: true, values: { face_adjust_Smile: 50 } },
+		});
+		const combinedRequest = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_Smile: 50, face_adjust_mouse_corner: -25 },
+			},
+		};
+		const warm = await provider.render(combinedRequest);
+		expect(hosts).toHaveLength(3);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		expect(warm.rgba[0]).toBe(102);
+		await provider.clear();
+		const cold = await provider.render(combinedRequest);
+		expect(cold.rgba).toEqual(warm.rgba);
+	});
+	it("freezes identical smile frames and preserves tracking for moving frames", async () => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { face_adjust_Smile: 50 } },
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts[0].render).toHaveBeenCalledTimes(1);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(102);
+		expect(hosts).toHaveLength(1);
+		const changed = await provider.render({
+			...base,
+			adjustments: { enabled: true, values: { face_adjust_Smile: -50 } },
+			timestampSeconds: 2 / 30,
+		});
+		expect(changed.rgba[0]).toBe(101);
 		expect(hosts).toHaveLength(2);
 	});
 	it("disables only the unavailable 3D control and refuses uncached rendering without its model", async () => {
