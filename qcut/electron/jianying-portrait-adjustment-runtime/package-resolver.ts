@@ -51,7 +51,7 @@ function requiredPackageFiles({
 	const script =
 		runtimePackage === "nose-3d"
 			? "Face3DSystem.lua"
-			: runtimePackage === "feature-tilt"
+			: runtimePackage === "feature-tilt" || runtimePackage === "smile"
 				? "FaceReshapeControlSystem.lua"
 				: null;
 	if (!script) return ["algorithmConfig.json"];
