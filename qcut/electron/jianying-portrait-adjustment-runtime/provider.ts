@@ -32,9 +32,9 @@ import { resolveJianyingPortraitMakeupCards } from "./makeup-resolver.js";
 import { resolveJianyingPortraitPackages } from "./package-resolver.js";
 import { missingJianyingNoseModels } from "./nose-models.js";
 import {
-	portraitNoseFrameAction,
-	type PortraitNoseFrameIdentity,
-} from "./nose-frame-state.js";
+	portraitFittingFrameAction,
+	type PortraitFittingFrameIdentity,
+} from "./fitting-frame-state.js";
 import {
 	bindDetectedPortraitFaces,
 	type NativeDetectedPortraitFace,
@@ -72,7 +72,7 @@ interface HostSession {
 	process: JianyingPortraitHostProcess;
 	trackIds?: ReadonlyMap<number, number>;
 	referenceFaces?: PortraitFaceGeometry[];
-	noseFrame?: PortraitNoseFrameIdentity & { output: Uint8Array };
+	fittingFrame?: PortraitFittingFrameIdentity & { output: Uint8Array };
 }
 
 interface DetectionSnapshot {
@@ -813,8 +813,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			if (!stage) return inputPath;
 			const outputPath = path.join(directory, `${requestId}-${index}.rgba`);
 			paths.push(outputPath);
-			const noseIdentity =
-				stage.runtimePackage === "nose-3d"
+			const fittingIdentity =
+				stage.runtimePackage === "nose-3d" || stage.runtimePackage === "smile"
 					? {
 							inputHash: frameHash({
 								rgba: new Uint8Array(await readFile(inputPath)),
@@ -823,21 +823,21 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 							timestampSeconds: requestedTimestamp,
 						}
 					: undefined;
-			const previousNoseFrame = sessions.get(stage.id)?.noseFrame;
-			const noseAction = noseIdentity
-				? portraitNoseFrameAction({
-						previous: previousNoseFrame,
-						current: noseIdentity,
+			const previousFittingFrame = sessions.get(stage.id)?.fittingFrame;
+			const fittingAction = fittingIdentity
+				? portraitFittingFrameAction({
+						previous: previousFittingFrame,
+						current: fittingIdentity,
 					})
 				: "render";
-			if (noseAction === "reuse" && previousNoseFrame) {
-				await writeFile(outputPath, previousNoseFrame.output);
-				previousNoseFrame.timestampSeconds = requestedTimestamp;
+			if (fittingAction === "reuse" && previousFittingFrame) {
+				await writeFile(outputPath, previousFittingFrame.output);
+				previousFittingFrame.timestampSeconds = requestedTimestamp;
 				return renderStage({ index: index + 1, inputPath: outputPath });
 			}
 			const session = await sessionForStage({
 				stage,
-				reset: noseAction === "reset",
+				reset: fittingAction === "reset",
 			});
 			let featureParameters = stage.featureParameters;
 			if (stage.targetFaceIds.length > 0) {
@@ -938,9 +938,9 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						throw new Error("剪映美颜美体返回了空画面");
 					}
 				}
-				if (noseIdentity) {
-					session.noseFrame = {
-						...noseIdentity,
+				if (fittingIdentity) {
+					session.fittingFrame = {
+						...fittingIdentity,
 						output: new Uint8Array(await readFile(outputPath)),
 					};
 				}
