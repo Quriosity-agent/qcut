@@ -36,9 +36,17 @@ const customKey = options.key;
 if (customKey && !/^face_adjust(?:_[A-Za-z0-9_]+)?$/.test(customKey)) {
 	throw new Error("Key must be a face_adjust parameter name");
 }
-const customValues: unknown = options.values
-	? JSON.parse(options.values)
-	: null;
+const valuesMessage =
+	"Values requires --key and a JSON array of 1-25 distinct finite numbers in [-100,100]";
+let customValues: unknown = null;
+if (options.values) {
+	try {
+		customValues = JSON.parse(options.values);
+	} catch {
+		// A raw SyntaxError would hide the documented contract from the caller.
+		throw new Error(valuesMessage);
+	}
+}
 if (
 	options.values &&
 	(!customKey ||
@@ -53,9 +61,7 @@ if (
 				Math.abs(value) > 100
 		))
 )
-	throw new Error(
-		"Values requires --key and a JSON array of 1-25 distinct finite numbers in [-100,100]"
-	);
+	throw new Error(valuesMessage);
 const output = path.resolve(options.output);
 const packagePath = path.resolve(options.package);
 const source = path.resolve(options.source);
