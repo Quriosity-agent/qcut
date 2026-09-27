@@ -1,4 +1,4 @@
-"""Compare genuine Jianying UI references with QCut's dedicated tilt route."""
+"""Compare genuine Jianying UI references with QCut portrait routes."""
 
 import argparse
 import hashlib
@@ -20,11 +20,12 @@ DIFF = REFERENCE.DIFF
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
+    parser.add_argument("--region", choices=["tilt", "mouth"], default="tilt")
     parser.add_argument("--font", type=Path, default=Path("/System/Library/Fonts/STHeiti Medium.ttc"))
     args = parser.parse_args()
-    shots = args.root / "full-face-audit/jianying"
-    native = args.root / "tilt-fix/native"
-    output = args.root / "tilt-fix/comparison"
+    shots = args.root / ("full-face-audit/jianying" if args.region == "tilt" else "mouth-fix/jianying")
+    native = args.root / f"{args.region}-fix/native"
+    output = args.root / f"{args.region}-fix/comparison"
     output.mkdir(parents=True, exist_ok=True)
     sources, rendered, records = {}, {}, []
 
@@ -47,6 +48,29 @@ def main():
             (100, "eye-tilt-max", "41-eye-tilt-plus100"),
         ]),
     ]
+    if args.region == "mouth":
+        baseline = "00-mouth-zero"
+        groups = [
+            ("smile-lips", "微笑唇", "face_adjust_mouse_corner", baseline, [
+                (-50, "smile-lips-minus50", "43-mouth-smile-lips-minus50"),
+                (50, "smile-lips-plus50", "44-mouth-smile-lips-plus50"),
+            ]),
+            ("smile", "笑容", "face_adjust_Smile", baseline, [
+                (-100, "smile-minus100", "45-mouth-smile-minus100"),
+                (100, "smile-plus100", "46-mouth-smile-plus100"),
+            ]),
+            ("size", "嘴大小", "face_adjust_ZoomMouth", baseline, [
+                (-50, "mouth-size-minus50", "47-mouth-size-minus50"),
+                (50, "mouth-size-plus50", "16-mouth-size-plus50"),
+            ]),
+            ("position", "嘴高低", "face_adjust_MoveMouth", baseline, [
+                (-50, "mouth-position-minus50", "48-mouth-position-minus50"),
+                (50, "mouth-position-plus50", "49-mouth-position-plus50"),
+            ]),
+            ("teeth", "白牙", "face_adjust_WhiteTeeth", baseline, [
+                (100, "white-teeth-100", "50-mouth-teeth-100"),
+            ]),
+        ]
     for group, title, key, baseline, cases in groups:
         base_j = load(filename=shots / f"{baseline}.png", screenshot=True)
         sheet_cases = []
@@ -72,9 +96,9 @@ def main():
                             "clippedFraction": {"jianying": float((magnitude_j * DIFF.DISPLAY_GAIN >= 255).mean()),
                                                 "qcut": float((magnitude_q * DIFF.DISPLAY_GAIN >= 255).mean())}})
         DIFF.create_sheet(cases=sheet_cases, rendered=rendered, output=output / f"{group}.png", font_path=args.font,
-                          title=f"{title}｜独立参数与专用效果包接入",
+                          title=f"{title}｜独立参数逐项对照",
                           provenance="QCut 列为正式 provider 输出；剪映列为界面截图，非同规格导出。只验证这张静态单人照片。")
-    report = {"gain": DIFF.DISPLAY_GAIN, "sigma": DIFF.BLUR_SIGMA, "sources": sources,
+    report = {"region": args.region, "gain": DIFF.DISPLAY_GAIN, "sigma": DIFF.BLUR_SIGMA, "sources": sources,
               "geometricRegistration": False, "perMapNormalization": False,
               "normalizedSize": DIFF.NORMALIZED_SIZE, "faceCrop": DIFF.FACE_RECT,
               "screenshotPlayerCrop": DIFF.PLAYER_RECT, "cases": records,
