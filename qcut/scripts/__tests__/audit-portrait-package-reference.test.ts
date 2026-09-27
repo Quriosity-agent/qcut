@@ -26,7 +26,10 @@ describe("portrait package diagnostic argument guards", () => {
 		const result = spawnSync(
 			"bun",
 			[
-				path.resolve("scripts/audit-portrait-package-reference.ts"),
+				path.resolve(
+					import.meta.dirname,
+					"../audit-portrait-package-reference.ts"
+				),
 				"--source",
 				"/missing-portrait-input",
 				"--output",
