@@ -86,6 +86,37 @@ const cases: Array<{
 	{ name: "40-eye-tilt-plus50", key: "face_adjust_EyeTilted", value: 50 },
 	{ name: "41-eye-tilt-plus100", key: "face_adjust_EyeTilted", value: 100 },
 	{ name: "42-tilt-reset" },
+	{
+		name: "43-mouth-smile-lips-minus50",
+		key: "face_adjust_mouse_corner",
+		value: -50,
+	},
+	{
+		name: "44-mouth-smile-lips-plus50",
+		key: "face_adjust_mouse_corner",
+		value: 50,
+	},
+	{ name: "45-mouth-smile-minus100", key: "face_adjust_Smile", value: -100 },
+	{ name: "46-mouth-smile-plus100", key: "face_adjust_Smile", value: 100 },
+	{ name: "47-mouth-size-minus50", key: "face_adjust_ZoomMouth", value: -50 },
+	{
+		name: "48-mouth-position-minus50",
+		key: "face_adjust_MoveMouth",
+		value: -50,
+	},
+	{ name: "49-mouth-position-plus50", key: "face_adjust_MoveMouth", value: 50 },
+	{ name: "50-mouth-teeth-100", key: "face_adjust_WhiteTeeth", value: 100 },
+	{
+		name: "51-mouth-legacy-corner-minus50",
+		key: "face_adjust_mouse_corner",
+		value: -50,
+	},
+	{
+		name: "52-mouth-legacy-corner-plus50",
+		key: "face_adjust_mouse_corner",
+		value: 50,
+	},
+	{ name: "53-mouth-final-reset" },
 ];
 
 await mkdir(output, { recursive: true });
