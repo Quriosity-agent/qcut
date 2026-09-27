@@ -14,6 +14,7 @@ const { values: options } = parseArgs({
 		output: { type: "string" },
 		package: { type: "string" },
 		key: { type: "string" },
+		values: { type: "string" },
 		frames: { type: "string", default: "2" },
 		width: { type: "string", default: "2160" },
 	},
@@ -32,9 +33,29 @@ if (!Number.isInteger(frames) || frames < 2 || frames > 120) {
 	throw new Error("Frames must be an integer between 2 and 120");
 }
 const customKey = options.key;
-if (customKey && !/^face_adjust_[A-Za-z0-9_]+$/.test(customKey)) {
+if (customKey && !/^face_adjust(?:_[A-Za-z0-9_]+)?$/.test(customKey)) {
 	throw new Error("Key must be a face_adjust parameter name");
 }
+const customValues: unknown = options.values
+	? JSON.parse(options.values)
+	: null;
+if (
+	options.values &&
+	(!customKey ||
+		!Array.isArray(customValues) ||
+		customValues.length === 0 ||
+		customValues.length > 25 ||
+		new Set(customValues).size !== customValues.length ||
+		customValues.some(
+			(value: unknown) =>
+				typeof value !== "number" ||
+				!Number.isFinite(value) ||
+				Math.abs(value) > 100
+		))
+)
+	throw new Error(
+		"Values requires --key and a JSON array of 1-25 distinct finite numbers in [-100,100]"
+	);
 const output = path.resolve(options.output);
 const packagePath = path.resolve(options.package);
 const source = path.resolve(options.source);
@@ -74,7 +95,15 @@ const featureSamples = [
 	{ name: "30-inner-corner-99", key: "face_adjust_inner_corner", value: 99 },
 ] as const;
 const samples = customKey
-	? featureSamples.slice(0, 3).map((sample) => ({ ...sample, key: customKey }))
+	? Array.isArray(customValues)
+		? customValues.map((value: number) => ({
+				name: `custom-${value}`,
+				key: customKey,
+				value,
+			}))
+		: featureSamples
+				.slice(0, 3)
+				.map((sample) => ({ ...sample, key: customKey }))
 	: featureSamples;
 const results: Array<Record<string, unknown>> = [];
 
