@@ -8,6 +8,7 @@ export const MEDIA_PORTRAIT_ADJUSTMENT_KEYS = [
 	"face_adjust_MoveNose",
 	"face_adjust_MoveMouth",
 	"face_adjust_MouthTilted",
+	"face_adjust_Smile",
 	"face_adjust_ZoomMouth",
 	"face_adjust_Chin",
 	"face_adjust_Forehead",
