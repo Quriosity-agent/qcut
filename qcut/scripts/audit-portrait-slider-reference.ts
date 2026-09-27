@@ -117,6 +117,13 @@ const cases: Array<{
 		value: 50,
 	},
 	{ name: "53-mouth-final-reset" },
+	{ name: "54-eye-bright-50", key: "face_adjust_BrightEye", value: 50 },
+	{ name: "55-eye-bright-100", key: "face_adjust_BrightEye", value: 100 },
+	{ name: "56-eye-spacing-minus50", key: "face_adjust_EyeSpacing", value: -50 },
+	{ name: "57-eye-position-minus50", key: "face_adjust_MoveEye", value: -50 },
+	{ name: "58-eye-position-plus50", key: "face_adjust_MoveEye", value: 50 },
+	{ name: "59-inner-corner-100", key: "face_adjust_inner_corner", value: 100 },
+	{ name: "60-eyes-final-reset" },
 ];
 
 await mkdir(output, { recursive: true });
