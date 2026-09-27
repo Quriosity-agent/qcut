@@ -16,6 +16,9 @@ describe("portrait package diagnostic argument guards", () => {
 			values: JSON.stringify(Array.from({ length: 26 }, (_, i) => i)),
 		},
 		{ key: "", values: "[50]" },
+		// Malformed JSON must report the documented contract, not a raw SyntaxError.
+		{ key: "face_adjust", values: "[50," },
+		{ key: "face_adjust", values: "not json" },
 	])("rejects $values before opening a source or native runtime", ({
 		key,
 		values,
