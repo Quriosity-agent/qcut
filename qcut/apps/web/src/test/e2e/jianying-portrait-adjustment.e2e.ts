@@ -615,7 +615,9 @@ test.describe("Jianying binary portrait adjustment", () => {
 		await openPortraitGroup({ panel, label: "五官精修" });
 		await expect(page.getByTestId("portrait-section-features")).toBeVisible();
 		await setAdjustment({ page, label: "大眼", value: 100 });
+		await selectFeatureCategory({ page, name: "鼻子" });
 		await setAdjustment({ page, label: "瘦鼻", value: 80 });
+		await selectFeatureCategory({ page, name: "嘴巴" });
 		await setAdjustment({ page, label: "嘴大小", value: 40 });
 		const commonFeatureHash = await waitForCanvasChange({
 			page,
