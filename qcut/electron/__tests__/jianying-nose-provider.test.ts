@@ -207,4 +207,62 @@ describe("stateful portrait fitting provider", () => {
 		);
 		expect(mocks.start).not.toHaveBeenCalled();
 	});
+	it("rebuilds face tracking after bright eyes changes its paused input", async () => {
+		const base = request();
+		await provider.render({
+			...base,
+			adjustments: { enabled: true, values: { face_adjust_EnlargeEye: 50 } },
+		});
+		const combined = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_EnlargeEye: 50, face_adjust_BrightEye: 100 },
+			},
+		};
+		const warm = await provider.render(combined);
+		expect(hosts).toHaveLength(3);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		expect(warm.rgba[0]).toBe(102);
+		const held = await provider.render({
+			...combined,
+			timestampSeconds: 1 / 30,
+		});
+		expect(held.rgba).toEqual(warm.rgba);
+		expect(hosts[1].render).toHaveBeenCalledTimes(1);
+		expect(hosts[2].render).toHaveBeenCalledTimes(1);
+		await provider.clear();
+		const cold = await provider.render(combined);
+		expect(cold.rgba).toEqual(warm.rgba);
+	});
+	it.each([
+		"face_adjust_EnlargeEye",
+		"face_adjust_BrightEye",
+	] as const)("keeps moving frames but resets %s parameter history", async (key) => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { [key]: 50 } },
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts[0].render).toHaveBeenCalledTimes(1);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(102);
+		expect(hosts).toHaveLength(1);
+		const changed = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+			adjustments: { enabled: true, values: { [key]: 100 } },
+		});
+		expect(changed.rgba[0]).toBe(101);
+		expect(hosts).toHaveLength(2);
+	});
 });
