@@ -3,7 +3,10 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { writeStorageJson } from "../main-ipc/storage-json.js";
+import {
+	removeStorageJson,
+	writeStorageJson,
+} from "../main-ipc/storage-json.js";
 
 describe("atomic project JSON storage", () => {
 	let directory: string;
@@ -71,6 +74,37 @@ describe("atomic project JSON storage", () => {
 		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
 			version: 11,
 		});
+		expect(await fs.readdir(directory)).toEqual(["project.json"]);
+	});
+	it("lets a deletion overlap a pending save without resurrecting the project", async () => {
+		// Hold the save inside rename so the deletion is requested while the write is in flight.
+		const rename = fs.rename.bind(fs);
+		let release: () => void = () => undefined;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		vi.spyOn(fs, "rename").mockImplementationOnce(async (from, to) => {
+			await held;
+			await rename(from, to);
+		});
+		const save = writeStorageJson({ filePath, data: { version: 1 } });
+		const remove = removeStorageJson({ filePath });
+		release();
+		await Promise.all([save, remove]);
+		await expect(fs.readFile(filePath, "utf8")).rejects.toMatchObject({
+			code: "ENOENT",
+		});
+		expect(await fs.readdir(directory)).toEqual([]);
+	});
+	it("queues a save requested after a deletion", async () => {
+		await removeStorageJson({ filePath });
+		await writeStorageJson({ filePath, data: { version: 2 } });
+		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
+			version: 2,
+		});
+	});
+	it("treats deleting a missing project as done", async () => {
+		await removeStorageJson({ filePath: path.join(directory, "absent.json") });
 		expect(await fs.readdir(directory)).toEqual(["project.json"]);
 	});
 	it("rejects unserializable values without touching the published file", async () => {
