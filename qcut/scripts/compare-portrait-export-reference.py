@@ -49,10 +49,14 @@ def main():
         delta_j = (samples(reference / f"jy-face-{name}-4k-20260927.png") - baseline_j).ravel()
         delta_q = (samples(native / f"{candidate}.png") - baseline_q).ravel()
         dot = np.dot(delta_j, delta_q)
+        # A candidate that leaves the crop unchanged makes both ratios undefined; report null
+        # rather than writing NaN, which is not valid JSON.
+        norm = np.linalg.norm(delta_j) * np.linalg.norm(delta_q)
+        energy = np.dot(delta_q, delta_q)
         metrics.append({
             "reference": name, "candidate": candidate,
-            "deltaCosine": float(dot / (np.linalg.norm(delta_j) * np.linalg.norm(delta_q))),
-            "leastSquaresGain": float(dot / np.dot(delta_q, delta_q)),
+            "deltaCosine": float(dot / norm) if norm else None,
+            "leastSquaresGain": float(dot / energy) if energy else None,
             "deltaMae": float(np.abs(delta_j - delta_q).mean()),
         })
 
