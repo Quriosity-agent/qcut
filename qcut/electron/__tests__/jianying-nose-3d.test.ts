@@ -13,7 +13,7 @@ import {
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,
 	JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER,
 } from "../jianying-portrait-adjustment-runtime/catalog.js";
-import { portraitNoseFrameAction } from "../jianying-portrait-adjustment-runtime/nose-frame-state.js";
+import { portraitFittingFrameAction } from "../jianying-portrait-adjustment-runtime/fitting-frame-state.js";
 import {
 	JIANYING_NOSE_3D_MODELS,
 	missingJianyingNoseModels,
@@ -158,12 +158,12 @@ describe("3D nose frame history", () => {
 		timestampSeconds: 1,
 	};
 	it("renders the first frame", () =>
-		expect(portraitNoseFrameAction({ current: previous })).toBe("render"));
+		expect(portraitFittingFrameAction({ current: previous })).toBe("render"));
 	it.each([
 		1, 1.033, 2,
 	])("reuses identical source pixels at timestamp %s", (timestampSeconds) => {
 		expect(
-			portraitNoseFrameAction({
+			portraitFittingFrameAction({
 				previous,
 				current: { ...previous, timestampSeconds },
 			})
@@ -176,12 +176,15 @@ describe("3D nose frame history", () => {
 		{ timestampSeconds: 2.1 },
 	])("resets on parameter changes, paused edits or seeks: %s", (change) => {
 		expect(
-			portraitNoseFrameAction({ previous, current: { ...previous, ...change } })
+			portraitFittingFrameAction({
+				previous,
+				current: { ...previous, ...change },
+			})
 		).toBe("reset");
 	});
 	it("keeps fitting history for adjacent moving frames", () => {
 		expect(
-			portraitNoseFrameAction({
+			portraitFittingFrameAction({
 				previous,
 				current: { ...previous, inputHash: "frame-b", timestampSeconds: 1.033 },
 			})
