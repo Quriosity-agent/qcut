@@ -20,10 +20,10 @@ DIFF = REFERENCE.DIFF
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
-    parser.add_argument("--region", choices=["tilt", "mouth"], default="tilt")
+    parser.add_argument("--region", choices=["tilt", "mouth", "eyes"], default="tilt")
     parser.add_argument("--font", type=Path, default=Path("/System/Library/Fonts/STHeiti Medium.ttc"))
     args = parser.parse_args()
-    shots = args.root / ("full-face-audit/jianying" if args.region == "tilt" else "mouth-fix/jianying")
+    shots = args.root / ("full-face-audit/jianying" if args.region == "tilt" else f"{args.region}-fix/jianying")
     native = args.root / f"{args.region}-fix/native"
     output = args.root / f"{args.region}-fix/comparison"
     output.mkdir(parents=True, exist_ok=True)
@@ -69,6 +69,35 @@ def main():
             ]),
             ("teeth", "白牙", "face_adjust_WhiteTeeth", baseline, [
                 (100, "white-teeth-100", "50-mouth-teeth-100"),
+            ]),
+        ]
+    if args.region == "eyes":
+        baseline = "00-eyes-zero"
+        groups = [
+            ("enlarge", "大眼", "face_adjust_EnlargeEye", baseline, [
+                (50, "enlarge-50", "01-eye-size-50"),
+                (100, "enlarge-100", "02-eye-size-100"),
+            ]),
+            ("bright", "亮眼", "face_adjust_BrightEye", baseline, [
+                (50, "bright-50", "54-eye-bright-50"),
+                (100, "bright-100", "55-eye-bright-100"),
+            ]),
+            ("spacing", "眼距", "face_adjust_EyeSpacing", baseline, [
+                (-50, "spacing-minus50", "56-eye-spacing-minus50"),
+                (50, "spacing-plus50", "06-eye-spacing-plus50"),
+            ]),
+            ("corner", "开眼角", "face_adjust_inner_corner", baseline, [
+                (50, "corner-50", "26-inner-corner-50"),
+                (100, "corner-100", "59-inner-corner-100"),
+            ]),
+            ("position", "眼高低", "face_adjust_MoveEye", baseline, [
+                (-50, "position-minus50", "57-eye-position-minus50"),
+                (50, "position-plus50", "58-eye-position-plus50"),
+            ]),
+            ("tilt", "眼倾斜", "face_adjust_EyeTilted", baseline, [
+                (-100, "tilt-minus100", "38-eye-tilt-minus100"),
+                (50, "tilt-plus50", "40-eye-tilt-plus50"),
+                (100, "tilt-plus100", "41-eye-tilt-plus100"),
             ]),
         ]
     for group, title, key, baseline, cases in groups:
