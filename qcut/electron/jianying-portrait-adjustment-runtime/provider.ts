@@ -814,7 +814,10 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			const outputPath = path.join(directory, `${requestId}-${index}.rgba`);
 			paths.push(outputPath);
 			const fittingIdentity =
-				stage.runtimePackage === "nose-3d" || stage.runtimePackage === "smile"
+				stage.runtimePackage === "nose-3d" ||
+				stage.runtimePackage === "smile" ||
+				stage.runtimePackage === "face" ||
+				stage.runtimePackage === "eye-details"
 					? {
 							inputHash: frameHash({
 								rgba: new Uint8Array(await readFile(inputPath)),
