@@ -20,7 +20,7 @@ export function PortraitRuntimeStatus({
 			className="flex items-center justify-between gap-2 border-b pb-3"
 			data-testid="jianying-portrait-runtime-status"
 		>
-			<div className="min-w-0">
+			<div className="min-w-0" title={status?.message}>
 				<div className="flex items-center gap-2 text-xs">
 					<span
 						className={cn(
@@ -28,23 +28,25 @@ export function PortraitRuntimeStatus({
 							ready ? "bg-emerald-500" : "bg-muted-foreground"
 						)}
 					/>
-					<span>
-						{locale === "zh" ? "剪映本机二进制" : "Jianying local binary"}
-					</span>
+					<span>{locale === "zh" ? "本地美颜" : "Local retouch"}</span>
 					{status?.offlineReady ? (
 						<span className="text-[10px] text-emerald-600 dark:text-emerald-400">
 							{locale === "zh" ? "离线就绪" : "Offline ready"}
 						</span>
 					) : null}
 				</div>
-				<p className="mt-1 truncate text-[10px] text-muted-foreground">
-					{loading
-						? locale === "zh"
-							? "正在检查运行时..."
-							: "Checking runtime..."
-						: (status?.message ??
-							(locale === "zh" ? "仅支持 macOS 桌面版" : "macOS desktop only"))}
-				</p>
+				{!ready || !status?.offlineReady || loading ? (
+					<p className="mt-1 break-words text-[10px] text-muted-foreground">
+						{loading
+							? locale === "zh"
+								? "正在检查运行时..."
+								: "Checking runtime..."
+							: (status?.message ??
+								(locale === "zh"
+									? "仅支持 macOS 桌面版"
+									: "macOS desktop only"))}
+					</p>
+				) : null}
 			</div>
 			<Button
 				type="button"
