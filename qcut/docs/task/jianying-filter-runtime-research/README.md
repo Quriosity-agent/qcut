@@ -57,6 +57,9 @@ QCut 当前 77 个控件、15 张美妆卡、多人/CLI E2E、离线状态和剩
 [qcut-retouch-gap-vs-jianying.zh.md](qcut-retouch-gap-vs-jianying.zh.md)。两份文档分别记录“剪映怎样做”与
 “QCut 已有什么、还差什么”，避免用 QCut 的实现反推剪映行为。
 
+2026-09-27 的眼部六项 UI 对齐、大眼/亮眼组合历史依赖修复、逐项灰度差分及真实编辑器验证见
+[眼部六项实测](beauty-eyes-parity-2026-09-27.zh.md)。本轮只验证静态单人照片，不作为动态视频或同规格剪映导出平价结论。
+
 剪映人物抠像的 GRU 输入、Alpha 后处理、真人 E2E，以及 GRU reset、人脸模型路由、未来帧预取、
 preview 模型与导出 mask cache 的宿主追踪见
 [portrait-matting-gru-parity-2026-08-27.zh.md](portrait-matting-gru-parity-2026-08-27.zh.md)；原生
