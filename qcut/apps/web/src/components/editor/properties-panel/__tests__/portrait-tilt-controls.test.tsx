@@ -45,7 +45,7 @@ describe("tilt controls", () => {
 		fireEvent.change(eye, { target: { value: "-120" } });
 		fireEvent.blur(eye);
 		expect(eye).toHaveValue("-100");
-		fireEvent.click(screen.getByRole("button", { name: "嘴巴", exact: true }));
+		fireEvent.click(screen.getByRole("button", { name: "嘴巴" }));
 		const mouth = screen.getByLabelText("嘴倾斜数值");
 		fireEvent.change(mouth, { target: { value: "50" } });
 		fireEvent.blur(mouth);
@@ -62,7 +62,7 @@ describe("tilt controls", () => {
 	it("disables both controls when their shared package is unavailable", () => {
 		render(<Harness ready={false} />);
 		expect(screen.getByLabelText("眼倾斜数值")).toBeDisabled();
-		fireEvent.click(screen.getByRole("button", { name: "嘴巴", exact: true }));
+		fireEvent.click(screen.getByRole("button", { name: "嘴巴" }));
 		expect(screen.getByLabelText("嘴倾斜数值")).toBeDisabled();
 	});
 });
