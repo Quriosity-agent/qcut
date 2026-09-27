@@ -2,7 +2,10 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { drawColorGradedSourceStack } from "@/lib/color/browser-color-rendering";
 import { DEFAULT_MEDIA_COLOR_SETTINGS } from "@/lib/color/color-properties";
-import type { MediaColorSettings } from "@/types/timeline";
+import type {
+	MediaColorSettings,
+	MediaPortraitAdjustments,
+} from "@/types/timeline";
 import { ColorPreviewCanvas } from "../color-preview-canvas";
 
 vi.mock("@/lib/color/browser-color-rendering", () => ({
@@ -43,7 +46,15 @@ const settings = ({
 		},
 	},
 });
-function view({ intensity }: { intensity: number }) {
+function view({
+	intensity,
+	portraitAdjustments,
+	portraitRenderSize,
+}: {
+	intensity: number;
+	portraitAdjustments?: MediaPortraitAdjustments;
+	portraitRenderSize?: { width: number; height: number };
+}) {
 	return (
 		<div>
 			<img src="test.png" alt="source" />
@@ -53,6 +64,8 @@ function view({ intensity }: { intensity: number }) {
 				masks={masks}
 				fitMode="fill"
 				frameSeed={0}
+				portraitAdjustments={portraitAdjustments}
+				portraitRenderSize={portraitRenderSize}
 			/>
 		</div>
 	);
@@ -97,7 +110,7 @@ beforeEach(() => {
 	}
 	Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
 		configurable: true,
-		value: function (this: HTMLCanvasElement) {
+		value: vi.fn(function (this: HTMLCanvasElement) {
 			return {
 				canvas: this,
 				clearRect: vi.fn(),
@@ -106,7 +119,7 @@ beforeEach(() => {
 						this.dataset.paintedIntensity = source.dataset.paintedIntensity;
 				}),
 			};
-		},
+		}),
 	});
 	vi.mocked(drawColorGradedSourceStack).mockImplementation(
 		({ context, layers }) => {
@@ -143,6 +156,53 @@ async function completePending({
 }
 
 describe("color preview async commits", () => {
+	it("uses logical dimensions only for enabled portrait processing", async () => {
+		const props = {
+			intensity: 10,
+			portraitAdjustments: {
+				enabled: true,
+				values: { face_adjust_inner_corner: 99 },
+			},
+			portraitRenderSize: { width: 1080, height: 1620 },
+		};
+		const { rerender } = render(view(props));
+		await completePending();
+		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(canvas).toHaveAttribute("width", "1080");
+		expect(canvas).toHaveAttribute("height", "1620");
+		expect(HTMLCanvasElement.prototype.getContext).toHaveBeenNthCalledWith(
+			1,
+			"2d",
+			{ willReadFrequently: true }
+		);
+		await act(async () =>
+			rerender(
+				view({
+					...props,
+					portraitAdjustments: { ...props.portraitAdjustments, enabled: false },
+				})
+			)
+		);
+		await completePending();
+		expect(canvas).toHaveAttribute("width", "480");
+		expect(canvas).toHaveAttribute("height", "270");
+	});
+	it("falls back to display dimensions when logical dimensions are unavailable", async () => {
+		render(
+			view({
+				intensity: 10,
+				portraitAdjustments: {
+					enabled: true,
+					values: { face_adjust_inner_corner: 99 },
+				},
+			})
+		);
+		await completePending();
+		expect(screen.getByTestId("color-preview-canvas")).toHaveAttribute(
+			"width",
+			"480"
+		);
+	});
 	it("serializes across effects and paints the latest intensity after a rapid paused update", async () => {
 		const { rerender } = render(view({ intensity: 0 }));
 		await completePending();

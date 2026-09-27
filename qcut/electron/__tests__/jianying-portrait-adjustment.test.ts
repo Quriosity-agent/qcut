@@ -18,9 +18,9 @@ import { buildJianyingPortraitRenderStages } from "../jianying-portrait-adjustme
 
 describe("Jianying portrait adjustment contract", () => {
 	it("covers base, advanced feature, skin, detail, and body controls", () => {
-		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(77);
+		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(81);
 		expect(jianyingPortraitControlsForGroup({ group: "face" })).toHaveLength(
-			67
+			71
 		);
 		expect(jianyingPortraitControlsForGroup({ group: "body" })).toHaveLength(
 			10
@@ -35,7 +35,7 @@ describe("Jianying portrait adjustment contract", () => {
 		).toHaveLength(3);
 		expect(
 			new Set(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.map(({ key }) => key)).size
-		).toBe(77);
+		).toBe(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.length);
 		// 匀肤与丰盈共用同一个 GAN 包。
 		expect(
 			jianyingPortraitControlsForRuntimePackage({

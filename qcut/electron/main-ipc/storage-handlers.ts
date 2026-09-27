@@ -7,6 +7,7 @@ import { ipcMain, app, type IpcMainInvokeEvent } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import type { MainIpcDeps } from "./types.js";
+import { removeStorageJson, writeStorageJson } from "./storage-json.js";
 
 export function registerStorageHandlers(deps: MainIpcDeps): void {
 	const { logger } = deps;
@@ -16,14 +17,13 @@ export function registerStorageHandlers(deps: MainIpcDeps): void {
 		async (
 			_event: IpcMainInvokeEvent,
 			key: string,
-			data: any
+			data: unknown
 		): Promise<void> => {
 			try {
 				const safeKey = path.basename(key);
 				const userDataPath = app.getPath("userData");
 				const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
-				await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-				await fs.promises.writeFile(filePath, JSON.stringify(data));
+				await writeStorageJson({ filePath, data });
 			} catch (error: unknown) {
 				logger.error(`[Storage] Failed to save key "${key}":`, error);
 				throw error;
@@ -60,14 +60,11 @@ export function registerStorageHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"storage:remove",
 		async (_event: IpcMainInvokeEvent, key: string): Promise<void> => {
-			try {
-				const safeKey = path.basename(key);
-				const userDataPath = app.getPath("userData");
-				const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
-				await fs.promises.unlink(filePath);
-			} catch (error: any) {
-				if (error.code !== "ENOENT") throw error;
-			}
+			const safeKey = path.basename(key);
+			const userDataPath = app.getPath("userData");
+			const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
+			// Queued behind any pending save for this project, so the deletion wins.
+			await removeStorageJson({ filePath });
 		}
 	);
 
@@ -102,7 +99,9 @@ export function registerStorageHandlers(deps: MainIpcDeps): void {
 			await Promise.all(
 				files
 					.filter((f) => f.endsWith(".json"))
-					.map((f) => fs.promises.unlink(path.join(projectsDir, f)))
+					.map((f) =>
+						removeStorageJson({ filePath: path.join(projectsDir, f) })
+					)
 			);
 		} catch (error: any) {
 			if (error.code !== "ENOENT") throw error;

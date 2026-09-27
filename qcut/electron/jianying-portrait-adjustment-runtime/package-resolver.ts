@@ -21,13 +21,17 @@ export interface JianyingPortraitPackageResolution {
 
 async function isReadableDirectory({
 	directory,
+	requiredFiles,
 }: {
 	directory: string;
+	requiredFiles: string[];
 }): Promise<boolean> {
 	try {
 		await Promise.all([
 			access(directory, constants.R_OK),
-			access(path.join(directory, "algorithmConfig.json"), constants.R_OK),
+			...requiredFiles.map((file) =>
+				access(path.join(directory, file), constants.R_OK)
+			),
 		]);
 		return true;
 	} catch {
@@ -37,6 +41,26 @@ async function isReadableDirectory({
 
 function installedCacheRoot() {
 	return path.join(os.homedir(), "Movies", "JianyingPro", "User Data", "Cache");
+}
+
+function requiredPackageFiles({
+	runtimePackage,
+}: {
+	runtimePackage: JianyingPortraitAdjustmentRuntimePackage;
+}): string[] {
+	const script =
+		runtimePackage === "nose-3d"
+			? "Face3DSystem.lua"
+			: runtimePackage === "feature-tilt" || runtimePackage === "smile"
+				? "FaceReshapeControlSystem.lua"
+				: null;
+	if (!script) return ["algorithmConfig.json"];
+	return [
+		"algorithmConfig.json",
+		"config.json",
+		"AmazingFeature/main.scene",
+		`AmazingFeature/lua/${script}`,
+	];
 }
 
 export async function resolveJianyingPortraitPackage({
@@ -71,7 +95,13 @@ export async function resolveJianyingPortraitPackage({
 			: [installedCandidate]),
 	];
 	for (const candidate of candidates) {
-		if (await isReadableDirectory({ directory: candidate.packagePath })) {
+		const requiredFiles = requiredPackageFiles({ runtimePackage });
+		if (
+			await isReadableDirectory({
+				directory: candidate.packagePath,
+				requiredFiles,
+			})
+		) {
 			return {
 				group: identity.group,
 				runtimePackage,

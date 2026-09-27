@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -37,15 +37,11 @@ export function PortraitCollapsibleGroup({
 				>
 					<span
 						className={cn(
-							"flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors",
-							active
-								? "border-cyan-500 bg-cyan-500 text-white"
-								: "border-muted-foreground/60 bg-muted/30"
+							"size-1.5 shrink-0 rounded-full transition-colors",
+							active ? "bg-cyan-500" : "bg-muted-foreground/40"
 						)}
 						aria-hidden="true"
-					>
-						{active ? <Check className="size-2.5" strokeWidth={3} /> : null}
-					</span>
+					/>
 					<span>{label}</span>
 					<ChevronDown
 						className={cn(
@@ -56,7 +52,7 @@ export function PortraitCollapsibleGroup({
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-				<div className="pb-5 pl-5 pt-2">{children}</div>
+				<div className="pb-3 pt-1">{children}</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);
