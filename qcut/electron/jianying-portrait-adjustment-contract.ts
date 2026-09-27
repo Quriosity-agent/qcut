@@ -21,6 +21,8 @@ export type JianyingPortraitAdjustmentCategory =
 export type JianyingPortraitAdjustmentRuntimePackage =
 	| "face"
 	| "features"
+	| "feature-tilt"
+	| "nose-3d"
 	| "eye-details"
 	| "skin-tone"
 	| "smooth"
@@ -43,9 +45,11 @@ export type MediaPortraitAdjustmentKey =
 	| "face_adjust_EyeSpacing"
 	| "face_adjust_EnlargeEye"
 	| "face_adjust_MoveEye"
+	| "face_adjust_EyeTilted"
 	| "face_adjust_Nose"
 	| "face_adjust_MoveNose"
 	| "face_adjust_MoveMouth"
+	| "face_adjust_MouthTilted"
 	| "face_adjust_ZoomMouth"
 	| "face_adjust_Chin"
 	| "face_adjust_Forehead"
@@ -70,6 +74,7 @@ export type MediaPortraitAdjustmentKey =
 	| "face_adjust_eye_position"
 	| "face_adjust_eye_distance"
 	| "face_adjust_nose"
+	| "face_adjust_3DNose_Big"
 	| "face_adjust_nose_bridge"
 	| "face_adjust_nose_position"
 	| "face_adjust_nose_root"
@@ -248,6 +253,7 @@ export interface JianyingPortraitAdjustmentPackageStatus {
 	group: JianyingPortraitAdjustmentGroup;
 	runtimePackage: JianyingPortraitAdjustmentRuntimePackage;
 	ready: boolean;
+	message?: string;
 	source: "qcut-private" | "jianying-installation" | "none";
 }
 
