@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
-import ffmpegPath from "ffmpeg-static";
 import {
 	createPortraitReferenceCapture,
 	preparePortraitReferenceProject,
@@ -13,11 +10,8 @@ import {
 	readPreview,
 	type ReferenceWindow,
 } from "./helpers/portrait-reference";
-import {
-	getMainWindow,
-	startElectronApp,
-	stubExportSaveDialog,
-} from "./helpers/electron-helpers";
+import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
+import { exportPortraitReference } from "./helpers/portrait-reference-export";
 
 const source = process.env.QCUT_REAL_PORTRAIT_IMAGE_PATH;
 const output = path.resolve(
@@ -341,63 +335,12 @@ test("single-slider native preview, tilt, 3D nose, classic compatibility, reopen
 			path: path.join(output, "15-combined-reopened-ui.png"),
 			animations: "disabled",
 		});
-		const exportPath = path.join(output, `tilt-nose-${Date.now()}.mp4`);
-		await stubExportSaveDialog({ electronApp: app, outputPath: exportPath });
-		await page.getByTestId("export-button").click();
-		const audio = page.getByRole("checkbox", {
-			name: "Include audio in export",
+		const { exportPath, decodedFrames } = await exportPortraitReference({
+			app,
+			page,
+			output,
+			name: "07-tilt-nose",
 		});
-		if (await audio.count()) await audio.uncheck();
-		await page.getByTestId("export-start-button").click();
-		await expect
-			.poll(
-				async () => (await stat(exportPath).catch(() => ({ size: 0 }))).size,
-				{ timeout: 180_000 }
-			)
-			.toBeGreaterThan(1_000);
-		await expect(page.getByTestId("export-progress-bar")).toHaveCount(0, {
-			timeout: 180_000,
-		});
-		await page.screenshot({
-			path: path.join(output, "07-export-ui.png"),
-			animations: "disabled",
-		});
-		if (!ffmpegPath) throw new Error("Missing FFmpeg for export verification");
-		const { stdout } = await promisify(execFile)(
-			ffmpegPath,
-			[
-				"-v",
-				"error",
-				"-xerror",
-				"-i",
-				exportPath,
-				"-map",
-				"0:v:0",
-				"-an",
-				"-f",
-				"framemd5",
-				"-",
-			],
-			{ timeout: 30_000 }
-		);
-		const decodedFrames = stdout
-			.split("\n")
-			.filter((line) => line.trim() && !line.startsWith("#")).length;
-		expect(decodedFrames).toBe(30);
-		await promisify(execFile)(
-			ffmpegPath,
-			[
-				"-y",
-				"-v",
-				"error",
-				"-i",
-				exportPath,
-				"-frames:v",
-				"1",
-				path.join(output, "export-frame.png"),
-			],
-			{ timeout: 30_000 }
-		);
 		await writeFile(
 			path.join(output, "report.json"),
 			JSON.stringify(
