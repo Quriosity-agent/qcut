@@ -78,6 +78,11 @@ export const JIANYING_PORTRAIT_PACKAGE_IDENTITIES = {
 		version: "73eaa893dad063f175650f9fcf144f0a",
 		group: "face",
 	},
+	smile: {
+		resourceId: "7406174614939880704",
+		version: "51d0a761ae1ce8c88b23fb414d009a91",
+		group: "face",
+	},
 	"nose-3d": {
 		resourceId: "7408077058544323874",
 		version: "d7c908c833ac8ffc0de910ec579ba339",
@@ -128,6 +133,7 @@ export const JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER = [
 	"face",
 	"features",
 	"feature-tilt",
+	"smile",
 	"nose-3d",
 	"makeup",
 	"body",
@@ -471,6 +477,18 @@ export const JIANYING_PORTRAIT_ADJUSTMENT_CATALOG = [
 		step: 1,
 	},
 	{
+		key: "face_adjust_WhiteTeeth",
+		group: "face",
+		section: "features",
+		category: "mouth",
+		runtimePackage: "teeth",
+		titleZh: "白牙",
+		titleEn: "Whiten teeth",
+		min: 0,
+		max: 100,
+		step: 1,
+	},
+	{
 		key: "face_adjust_ZoomMouth",
 		group: "face",
 		section: "features",
@@ -508,22 +526,34 @@ export const JIANYING_PORTRAIT_ADJUSTMENT_CATALOG = [
 		key: "face_adjust_MouthCorner",
 		group: "face",
 		section: "features",
-		category: "mouth",
-		titleZh: "嘴角",
-		titleEn: "Mouth corners",
+		category: "details",
+		titleZh: "嘴角（基础）",
+		titleEn: "Mouth corners (classic)",
 		min: 0,
 		max: 100,
 		step: 1,
 	},
 	{
-		key: "face_adjust_WhiteTeeth",
+		key: "face_adjust_mouse_corner",
 		group: "face",
 		section: "features",
 		category: "mouth",
-		runtimePackage: "teeth",
-		titleZh: "白牙",
-		titleEn: "Whiten teeth",
-		min: 0,
+		runtimePackage: "features",
+		titleZh: "微笑唇",
+		titleEn: "Smile lips",
+		min: -50,
+		max: 50,
+		step: 1,
+	},
+	{
+		key: "face_adjust_Smile",
+		group: "face",
+		section: "features",
+		category: "mouth",
+		runtimePackage: "smile",
+		titleZh: "笑容",
+		titleEn: "Smile",
+		min: -100,
 		max: 100,
 		step: 1,
 	},
@@ -750,6 +780,12 @@ export function buildJianyingPortraitFeatureParameters({
 	}
 	if (runtimePackage === "teeth") {
 		return JSON.stringify({ face_adjust: vectorFor("face_adjust_WhiteTeeth") });
+	}
+	// The smile package reuses SmallFace; keep its project value separate from short face.
+	if (runtimePackage === "smile") {
+		return JSON.stringify({
+			face_adjust_SmallFace: vectorFor("face_adjust_Smile"),
+		});
 	}
 	return JSON.stringify(
 		Object.fromEntries(
