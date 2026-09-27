@@ -8,7 +8,7 @@ import type {
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { cn } from "@/lib/utils";
-import { NumberControl } from "./visual-property-controls";
+import { PortraitNumberControl } from "./portrait-number-control";
 
 const CATEGORY_LABELS: Record<
 	JianyingPortraitAdjustmentCategory,
@@ -57,9 +57,12 @@ export function PortraitAdjustmentSection({
 	onInteractionEnd: () => void;
 }) {
 	const categories = useMemo(
-		() => [
-			...new Set(controls.map((control) => categoryForControl({ control }))),
-		],
+		() =>
+			(
+				Object.keys(CATEGORY_LABELS) as JianyingPortraitAdjustmentCategory[]
+			).filter((category) =>
+				controls.some((control) => categoryForControl({ control }) === category)
+			),
 		[controls]
 	);
 	const [selectedCategory, setSelectedCategory] =
@@ -88,7 +91,7 @@ export function PortraitAdjustmentSection({
 	};
 
 	return (
-		<div className="space-y-4" data-testid={`portrait-section-${section}`}>
+		<div className="space-y-2" data-testid={`portrait-section-${section}`}>
 			<div className="flex items-center justify-between gap-2">
 				{categories.length > 1 ? (
 					<div
@@ -130,7 +133,7 @@ export function PortraitAdjustmentSection({
 					<RotateCcw className="size-3.5" />
 				</Button>
 			</div>
-			<div className={cn("space-y-4", disabled && "opacity-50")}>
+			<div className={cn("space-y-1", disabled && "opacity-50")}>
 				{visibleControls.map((control) => {
 					const controlDisabled = disabled || !isControlReady(control);
 					return (
@@ -138,7 +141,8 @@ export function PortraitAdjustmentSection({
 							key={control.key}
 							className={cn(controlDisabled && "opacity-45")}
 						>
-							<NumberControl
+							<PortraitNumberControl
+								locale={locale}
 								label={locale === "zh" ? control.titleZh : control.titleEn}
 								value={adjustments.values[control.key] ?? 0}
 								min={control.min}
