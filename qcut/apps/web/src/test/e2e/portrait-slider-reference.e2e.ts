@@ -1,23 +1,22 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import ffmpegPath from "ffmpeg-static";
-import type { useEditorStore } from "../../stores/editor-store";
-import type { useMediaStore } from "../../stores/media-store";
-import type { useProjectStore } from "../../stores/project-store";
-import type { useTimelineStore } from "../../stores/timeline-store";
 import {
-	createTestProject,
+	createPortraitReferenceCapture,
+	preparePortraitReferenceProject,
+	readValues,
+	readPreview,
+	type ReferenceWindow,
+} from "./helpers/portrait-reference";
+import {
 	getMainWindow,
-	navigateToProjects,
 	startElectronApp,
 	stubExportSaveDialog,
-	uploadTestMedia,
 } from "./helpers/electron-helpers";
 
 const source = process.env.QCUT_REAL_PORTRAIT_IMAGE_PATH;
@@ -26,139 +25,9 @@ const output = path.resolve(
 		"output/playwright/portrait-slider-reference"
 );
 
-interface ReferenceWindow extends Window {
-	__editorStore: typeof useEditorStore;
-	__mediaStore: typeof useMediaStore;
-	__projectStore: typeof useProjectStore;
-	__timelineStore: typeof useTimelineStore;
-}
-
-async function readValues({ page }: { page: Page }) {
-	return page.evaluate(() => {
-		const timeline = (
-			window as unknown as ReferenceWindow
-		).__timelineStore.getState();
-		const element = timeline.tracks.flatMap((track) => track.elements)[0];
-		return element?.type === "media"
-			? element.portraitAdjustments?.values
-			: undefined;
-	});
-}
-
-async function readPreview({ page }: { page: Page }) {
-	const frame = await page
-		.getByTestId("color-preview-canvas")
-		.evaluate((node) => {
-			const canvas = node as HTMLCanvasElement;
-			const data = canvas
-				.getContext("2d")
-				?.getImageData(0, 0, canvas.width, canvas.height).data;
-			let opaque = 0;
-			if (data) {
-				for (let index = 3; index < data.length; index += 4) {
-					if (data[index] > 0) opaque += 1;
-				}
-			}
-			return {
-				url: canvas.toDataURL("image/png"),
-				width: canvas.width,
-				height: canvas.height,
-				opaque,
-				commits: Number(canvas.dataset.renderedFrameCount ?? 0),
-			};
-		});
-	const png = Buffer.from(frame.url.split(",")[1], "base64");
-	return {
-		...frame,
-		png,
-		hash: createHash("sha256").update(png).digest("hex"),
-	};
-}
-
-async function captureSource({ page, name }: { page: Page; name: string }) {
-	const data = await page
-		.getByTestId("color-preview-canvas")
-		.evaluate((node) => {
-			const source = node.parentElement?.querySelector("img");
-			if (!source) throw new Error("Missing portrait source image");
-			const preview = node as HTMLCanvasElement;
-			const canvas = document.createElement("canvas");
-			canvas.width = preview.width;
-			canvas.height = preview.height;
-			canvas
-				.getContext("2d", { willReadFrequently: true })
-				?.drawImage(source, 0, 0, canvas.width, canvas.height);
-			return {
-				url: canvas.toDataURL(),
-				sourceWidth: source.naturalWidth,
-				sourceHeight: source.naturalHeight,
-			};
-		});
-	await writeFile(
-		path.join(output, `${name}-input.png`),
-		Buffer.from(data.url.split(",")[1], "base64")
-	);
-	return { sourceWidth: data.sourceWidth, sourceHeight: data.sourceHeight };
-}
-
-async function changeAndCapture({
-	page,
-	label,
-	value,
-	name,
-	previousHash,
-}: {
-	page: Page;
-	label: string;
-	value: number;
-	name: string;
-	previousHash?: string;
-}) {
-	const input = page.getByLabel(`${label}数值`, { exact: true });
-	await input.fill(String(value));
-	await input.press("Tab");
-	await expect(input).toHaveValue(String(value));
-	await expect(page.getByTestId("color-preview-canvas")).toBeVisible({
-		timeout: 30_000,
-	});
-	await expect
-		.poll(
-			async () => {
-				const frame = await readPreview({ page });
-				return frame.opaque > 10_000 && frame.hash !== previousHash;
-			},
-			{ timeout: 30_000 }
-		)
-		.toBe(true);
-	let lastHash = "";
-	let repeats = 0;
-	await expect
-		.poll(
-			async () => {
-				const frame = await readPreview({ page });
-				repeats = frame.hash === lastHash ? repeats + 1 : 0;
-				lastHash = frame.hash;
-				return repeats;
-			},
-			{ timeout: 30_000, intervals: [300] }
-		)
-		.toBeGreaterThanOrEqual(3);
-	const frame = await readPreview({ page });
-	await writeFile(path.join(output, `${name}-frame.png`), frame.png);
-	await page.screenshot({
-		path: path.join(output, `${name}-ui.png`),
-		animations: "disabled",
-	});
-	return {
-		name,
-		label,
-		value,
-		hash: frame.hash,
-		width: frame.width,
-		height: frame.height,
-		values: await readValues({ page }),
-	};
-}
+const { captureSource, changeAndCapture } = createPortraitReferenceCapture({
+	output,
+});
 
 test("single-slider native preview, tilt, 3D nose, classic compatibility, reopen and export", async () => {
 	test.skip(
@@ -176,61 +45,10 @@ test("single-slider native preview, tilt, 3D nose, classic compatibility, reopen
 	const errors: string[] = [];
 	page.on("pageerror", (error) => errors.push(error.message));
 	try {
-		await page.setViewportSize({ width: 1800, height: 1100 });
-		// Keep the calibration canvas fixed; first-media auto sizing is asynchronous.
-		await page.evaluate(() =>
-			localStorage.setItem(
-				"qcut-app-settings",
-				JSON.stringify({
-					version: 1,
-					state: { autoCanvasFromFirstMedia: false },
-				})
-			)
-		);
-		await page.reload();
-		await navigateToProjects(page);
-		await createTestProject(page, `Portrait Slider Reference ${Date.now()}`);
-		await uploadTestMedia(page, source);
-		await page.evaluate(async () => {
-			const stores = window as unknown as ReferenceWindow;
-			const size = { width: 1080, height: 1620 };
-			stores.__editorStore.getState().setCanvasSize(size, "custom");
-			await stores.__projectStore
-				.getState()
-				.updateProjectCanvasSize(size, "custom");
-			const media = stores.__mediaStore.getState().mediaItems[0];
-			const timeline = stores.__timelineStore.getState();
-			const track = timeline.tracks.find(
-				(candidate) => candidate.isMain || candidate.type === "media"
-			);
-			if (!media || !track)
-				throw new Error("Missing imported portrait or track");
-			const elementId = timeline.addElementToTrack(track.id, {
-				type: "media",
-				mediaId: media.id,
-				name: media.name,
-				duration: 1,
-				startTime: 0,
-				trimStart: 0,
-				trimEnd: 0,
-			});
-			if (!elementId) throw new Error("Cannot insert portrait");
-			timeline.setSelectedElements([{ trackId: track.id, elementId }]);
+		const { features } = await preparePortraitReferenceProject({
+			page,
+			source,
 		});
-		await page
-			.getByTestId("media-properties")
-			.getByRole("tab", { name: "美颜美体", exact: true })
-			.click();
-		const panel = page.getByTestId("jianying-portrait-adjustments");
-		await expect(
-			page.getByTestId("jianying-portrait-runtime-status")
-		).toContainText("就绪", { timeout: 30_000 });
-		await panel.getByRole("switch", { name: "启用原版美颜美体" }).click();
-		await panel.getByRole("button", { name: "五官精修", exact: true }).click();
-		const features = page.getByTestId("portrait-section-features");
-		await expect(
-			features.getByRole("button", { name: "眼睛", exact: true })
-		).toHaveAttribute("aria-pressed", "true");
 		await page.screenshot({
 			path: path.join(output, "00-baseline-ui.png"),
 			animations: "disabled",
