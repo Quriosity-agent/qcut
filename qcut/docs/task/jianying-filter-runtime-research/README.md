@@ -63,6 +63,9 @@ QCut 当前 77 个控件、15 张美妆卡、多人/CLI E2E、离线状态和剩
 2026-09-28 的皮肤管理八项名称/顺序对齐、旧参数兼容、复位范围与真实编辑器测试见
 [皮肤管理 UI 验证](beauty-skin-ui-2026-09-28.zh.md)。UI 分组调整不等于八项算法效果已与剪映同值对齐。
 
+同日下颌骨旧策略开关的定位、修复、0/50/100 双端真实导出和其他控件回归见
+[下颌骨策略修复](beauty-jawbone-strategy-2026-09-28.zh.md)。单照片两档差分误差下降，不代表全部脸型或动态视频已对齐。
+
 剪映人物抠像的 GRU 输入、Alpha 后处理、真人 E2E，以及 GRU reset、人脸模型路由、未来帧预取、
 preview 模型与导出 mask cache 的宿主追踪见
 [portrait-matting-gru-parity-2026-08-27.zh.md](portrait-matting-gru-parity-2026-08-27.zh.md)；原生
