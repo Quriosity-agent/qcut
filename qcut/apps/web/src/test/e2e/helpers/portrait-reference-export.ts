@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { expect, type ElectronApplication, type Page } from "@playwright/test";
 import ffmpegPath from "ffmpeg-static";
+import { getFFprobePath } from "../../../../../../electron/ffmpeg/paths";
 import { stubExportSaveDialog } from "./electron-helpers";
 
 export async function exportPortraitReference({
@@ -11,11 +12,13 @@ export async function exportPortraitReference({
 	page,
 	output,
 	name,
+	expectedFrames = 30,
 }: {
 	app: ElectronApplication;
 	page: Page;
 	output: string;
 	name: string;
+	expectedFrames?: number;
 }) {
 	const exportPath = path.join(output, `${name}-${Date.now()}.mp4`);
 	await stubExportSaveDialog({ electronApp: app, outputPath: exportPath });
@@ -34,6 +37,26 @@ export async function exportPortraitReference({
 	});
 	if (!ffmpegPath) throw new Error("FFmpeg unavailable");
 	const run = promisify(execFile);
+	const probe = await run(
+		await getFFprobePath(),
+		[
+			"-v",
+			"error",
+			"-select_streams",
+			"v:0",
+			"-show_entries",
+			"stream=codec_name,width,height,pix_fmt,avg_frame_rate,duration,color_range,color_space,color_transfer,color_primaries",
+			"-of",
+			"json",
+			exportPath,
+		],
+		{ timeout: 30_000 }
+	);
+	const metadata = JSON.parse(probe.stdout) as {
+		streams: Array<Record<string, string | number>>;
+	};
+	const videoStream = metadata.streams[0];
+	if (!videoStream) throw new Error("Missing exported video stream");
 	const { stdout } = await run(
 		ffmpegPath,
 		[
@@ -54,7 +77,7 @@ export async function exportPortraitReference({
 	const decodedFrames = stdout
 		.split("\n")
 		.filter((line) => line.trim() && !line.startsWith("#")).length;
-	expect(decodedFrames).toBe(30);
+	expect(decodedFrames).toBe(expectedFrames);
 	await run(
 		ffmpegPath,
 		[
@@ -73,5 +96,5 @@ export async function exportPortraitReference({
 		path: path.join(output, `${name}-export-ui.png`),
 		animations: "disabled",
 	});
-	return { exportPath, decodedFrames };
+	return { exportPath, decodedFrames, videoStream };
 }
