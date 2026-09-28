@@ -82,7 +82,7 @@ def validate_references(*, manifest, source_hash):
     return references
 
 
-def render_sheet(*, title, rows, output, font, paired):
+def render_sheet(*, title, rows, output, font, paired, evidence_label=None):
     labels = (["原图 / 剪映零值", "剪映效果", "剪映灰度差分", "QCut 效果", "QCut 灰度差分"]
               if paired else ["原图 / QCut 零值", "QCut 效果", "QCut 灰度差分"])
     margin, gap, tile_width, tile_height = 24, 12, 288, 344
@@ -108,7 +108,7 @@ def render_sheet(*, title, rows, output, font, paired):
     bottom = sheet.height - footer
     text(x=margin, y=bottom + 8, content="各减各自零值图；RGB 绝对差均值，σ=0.6；不是内部蒙版或美观评分。", size=17)
     text(x=margin, y=bottom + 36,
-         content=("剪映为界面截图，QCut 为编辑器画布 PNG；不是同规格导出像素平价。"
+         content=evidence_label or ("剪映为界面截图，QCut 为编辑器画布 PNG；不是同规格导出像素平价。"
                   if paired else "剪映同档参照尚待采集；本图仅显示 QCut 实际编辑器输出。"), size=17)
     sheet.save(output)
 
