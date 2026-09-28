@@ -994,7 +994,12 @@ int runFilterHost(const FilterHostRequest& request) {
       &enableMetalAlgorithmInput, 0);
   const int parallelResult = symbols.configureAbValue(
       "enable_parallel_and_async_swing", &disableParallelAsyncSwing, 0);
-  if (asyncLoadResult != 0 || metalInputResult != 0 || parallelResult != 0) {
+  // The library defaults to the legacy jawbone strategy, not the UI reference.
+  const bool enableJawboneImprove = true;
+  const int jawboneResult = symbols.configureAbValue(
+      "face_distortion_jawbone_improve", &enableJawboneImprove, 0);
+  if (asyncLoadResult != 0 || metalInputResult != 0 || parallelResult != 0 ||
+      jawboneResult != 0) {
     throw std::runtime_error("failed to configure filter host AB values");
   }
 
