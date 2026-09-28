@@ -76,6 +76,8 @@ QCUT_PORTRAIT_EYE_E2E_OUTPUT=/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-2
 
 ## 后续实测：八项统一灰度差分
 
+后续进展：[三项同尺寸真实导出与零值链路修复](beauty-skin-export-2026-09-28.zh.md)。下文保留当时的截图实验及其限制，不能把截图测量比值当作最终导出算法增益。
+
 同日继续完成八项各 50/100 的剪映 UI 实测与 QCut 五列对照。灰度差分已完成；两端同规格无损导出校准仍未完成。本节不改变前述 UI 改动范围，也没有修改算法或强度曲线。
 
 剪映草稿 `QCut-Beauty-RealPeople-20260927`，人脸时间线 02，使用同一张 `face-ike-louie-natividad.jpg`。原文件 SHA-256：`cac833976bce18c2df0dc4533243a75bfd675e729b492b09ff057b0f3e5aceb2`。原始照片另复制到对照目录，原文件不修改。
