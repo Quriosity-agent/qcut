@@ -73,3 +73,64 @@ QCUT_PORTRAIT_EYE_E2E_OUTPUT=/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-2
 ```
 
 本轮是 UI 对齐和 macOS 静态单人功能验证，不是八项效果强度与剪映逐项同值平价，也未覆盖连续运动、多人、Windows 或独立分发。下一步结果对标仍需同输入、同数值、统一增益灰度差分及同规格导出。
+
+## 后续实测：八项统一灰度差分
+
+同日继续完成八项各 50/100 的剪映 UI 实测与 QCut 五列对照。灰度差分已完成；两端同规格无损导出校准仍未完成。本节不改变前述 UI 改动范围，也没有修改算法或强度曲线。
+
+剪映草稿 `QCut-Beauty-RealPeople-20260927`，人脸时间线 02，使用同一张 `face-ike-louie-natividad.jpg`。原文件 SHA-256：`cac833976bce18c2df0dc4533243a75bfd675e729b492b09ff057b0f3e5aceb2`。原始照片另复制到对照目录，原文件不修改。
+
+采集时只启用皮肤管理，每项先整组归零，再设置 50、100；保留数值框与完整界面证据。脸型、五官精修、美妆未启用，肤色为“无”。完成后归零并关闭皮肤组。清晰100采集时播放头曾移动，已回到0并重拍；输入为静态照片，没有用其它时间画面替换参照。
+
+### 文件与读图
+
+根目录仍为 `/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/`：
+
+- `jianying/`：真实剪映完整界面 JPEG、逐项零值、结束状态和 `manifest.json`。截图工具返回 JPEG 字节，保留原字节，不改名伪装成无损 PNG。
+- `editor-verified/`：前述真实 QCut 编辑器原尺寸输入、效果 PNG、UI 截图及 E2E 报告，没有拿独立探针代替编辑器结果。
+- `comparison/`：最终八张逐项 50/100 五列对照、两张100档总览，以及各案例完整画面图、浮点差分和源文件哈希。入口：[全部对照索引](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/README.md)。
+- `qcut-difference/`：采集剪映前先生成的 QCut 三列自检图，明确标注“剪映待采集”；最终双端结论以 `comparison/` 为准。
+
+五列从左到右是 **原图/剪映零值、剪映效果、剪映灰度差分、QCut效果、QCut灰度差分**。两端各自零值图均单独保存，不直接把 QCut 图减剪映原图。
+
+| 项目 | 50/100 对照图 | 100 档面部平均 RGB 变化：剪映 / QCut |
+| --- | --- | ---: |
+| 磨皮 | [smooth.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/smooth.png) | 2.514 / 1.794 |
+| 美白 | [whiten.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/whiten.png) | 8.100 / 8.040 |
+| 匀肤 | [even.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/even.png) | 2.040 / 1.771 |
+| 丰盈 | [plump.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/plump.png) | 4.383 / 4.072 |
+| 祛斑祛痘 | [blemish.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/blemish.png) | 3.663 / 2.591 |
+| 祛法令纹 | [folds.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/folds.png) | 0.327 / 0.284 |
+| 祛黑眼圈 | [circles.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/circles.png) | 0.231 / 0.183 |
+| 清晰 | [clarity.png](/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison/clarity.png) | 3.839 / 1.982 |
+
+上述数字是 0..255 RGB 单位的变化均值，不是质量分数、相似度百分比或可直接应用的 slider 增益。
+
+### 方法与限制
+
+剪映完整截图为 2034×1178，播放器裁切 `(867,79)-(1291,715)`，即424×636；QCut输入/效果为1080×1620。两端先统一为600×900，固定面部ROI为 `(70,195)-(535,750)`。
+
+灰度为 `mean(abs(Gaussian(result, 0.6) - Gaussian(ownZero, 0.6)), RGB) * 6`，超过255截断。不做几何配准，不逐图自动归一化；原始浮点幅度另存NPY。黑表示未变或变化很小，白表示变化较大，不表示“更好”、几何位移方向或算法内部蒙版。
+
+剪映重复归零图在面部ROI的平均RGB差小于0.001，未见明显零值漂移。完整画面灰度可能包含选脸框位置变化，五列图的固定面部ROI避开框线；不能拿完整图的框线当美颜影响范围。
+
+人工检查两张总览及局部图后的观察：
+
+1. 八项的主要变化位置基本对应：美白覆盖皮肤，匀肤/丰盈影响局部纹理，法令纹集中鼻翼至嘴角附近，黑眼圈集中下眼睑，清晰影响高频细节。
+2. 美白的范围与幅度较接近；磨皮、祛斑祛痘、清晰在当前截图测量中差异较明显。法令纹和黑眼圈的局部纹理分布仍不同，不能仅因“区域大致对上”判定平价。
+3. 祛斑祛痘在两端都大面积改变这张雀斑照片，靠近画面左侧眼睛/发丝处均可见局部青紫色异常。本例只能说明路径有响应和差异位置，不作为视觉质量验收。
+4. 截图缩放、JPEG压缩、预览采样分辨率与拟合状态仍可能影响差分。下一步先做同规格导出与原生输入/检测尺度核对，再定位算法强度差异；不按上表比值盲乘增益。
+
+### 复现与测试
+
+脚本复用既有灰度算法，校验16个独立参数档位、来源文件哈希、QCut输出哈希、截图尺寸与裁切边界；缺少完整剪映参照时只允许生成明确标注的QCut单端图。新增7项保护测试，连同既有差分/鼻部数学测试共18项通过。
+
+```bash
+python3 scripts/compare-portrait-skin-reference.py \
+  /Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/editor-verified \
+  /Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/comparison \
+  --references /Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/jianying/manifest.json
+python3 -m unittest discover -s scripts/__tests__ -p 'test_portrait_*.py'
+```
+
+本节只提交生成脚本、测试和记录，不提交真人图、剪映界面截图、私有资源、模型或二进制。
