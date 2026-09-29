@@ -71,7 +71,12 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 					: "neutral-after";
 			const expectedValues = value ? { face_adjust_ZoomJawbone: value } : {};
 			if (value) {
-				const previousHash = (await readPreview({ page })).hash;
+				// Neutral adjustments unmount the effect canvas entirely.
+				const hasPreviousFrame =
+					(await page.getByTestId("color-preview-canvas").count()) > 0;
+				const previousHash = hasPreviousFrame
+					? (await readPreview({ page })).hash
+					: undefined;
 				const preview = await capture.changeAndCapture({
 					page,
 					name,
