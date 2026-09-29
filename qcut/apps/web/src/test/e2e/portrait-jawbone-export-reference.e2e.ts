@@ -27,6 +27,9 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 	test.setTimeout(600_000);
 	if (!source) throw new Error("Missing portrait source");
 	await mkdir(output, { recursive: true });
+	const sourceSha256 = createHash("sha256")
+		.update(await readFile(source))
+		.digest("hex");
 	const app = await startElectronApp({
 		userDataDirectory: await mkdtemp(path.join(os.tmpdir(), "qcut-jawbone-")),
 	});
@@ -40,6 +43,7 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 		decodedFrames: number;
 		videoStream: Record<string, string | number>;
 	}> = [];
+	let reportFailure: Error | undefined;
 	try {
 		const page = await getMainWindow(app);
 		page.on("pageerror", (error) => errors.push(error.message));
@@ -142,9 +146,7 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 				JSON.stringify(
 					{
 						source,
-						sourceSha256: createHash("sha256")
-							.update(await readFile(source))
-							.digest("hex"),
+						sourceSha256,
 						hostOverride:
 							process.env.QCUT_JIANYING_PORTRAIT_ADJUSTMENT_HOST ?? null,
 						samples,
@@ -154,8 +156,15 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 					2
 				)
 			);
+		} catch (reportError) {
+			reportFailure =
+				reportError instanceof Error
+					? reportError
+					: new Error(String(reportError));
+			console.error("Could not save jawbone failure report", reportError);
 		} finally {
 			await app.close();
 		}
 	}
+	if (reportFailure) throw reportFailure;
 });
