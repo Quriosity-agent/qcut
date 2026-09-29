@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearSharedFrameCaches } from "@/lib/preview/shared-frame-cache";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack } from "@/types/timeline";
@@ -17,6 +17,62 @@ function imageData({ bytes }: { bytes: number }): ImageData {
 afterEach(() => clearSharedFrameCaches());
 
 describe("useFrameCache", () => {
+	it("does not traverse tracks for uncached indicator samples, but invalidates edited cached frames", () => {
+		const elements = vi.fn(() => []);
+		const track: TimelineTrack = {
+			id: "main",
+			name: "Main",
+			type: "media",
+			get elements() {
+				return elements();
+			},
+		};
+		const { result } = renderHook(() =>
+			useFrameCache({ namespace: "indicator" })
+		);
+		for (let time = 0; time < 2000; time++) {
+			expect(result.current.getRenderStatus(time, [track], [], null)).toBe(
+				"not-cached"
+			);
+		}
+		expect(elements).not.toHaveBeenCalled();
+		act(() =>
+			result.current.cacheFrame(1, imageData({ bytes: 8 }), [track], [], null)
+		);
+		expect(result.current.getRenderStatus(1, [track], [], null)).toBe("cached");
+		expect(elements).toHaveBeenCalled();
+		const edited: TimelineTrack = {
+			...track,
+			elements: [
+				{
+					id: "new",
+					type: "text",
+					name: "Text",
+					content: "Changed",
+					startTime: 0,
+					duration: 5,
+					trimStart: 0,
+					trimEnd: 0,
+					fontSize: 24,
+					fontFamily: "Arial",
+					color: "#ffffff",
+					backgroundColor: "transparent",
+					textAlign: "center",
+					fontWeight: "normal",
+					fontStyle: "normal",
+					textDecoration: "none",
+					x: 0,
+					y: 0,
+					rotation: 0,
+					opacity: 1,
+				},
+			],
+		};
+		expect(result.current.getRenderStatus(1, [edited], [], null)).toBe(
+			"not-cached"
+		);
+	});
+
 	it("isolates cached frames by cache identity", () => {
 		const tracks: TimelineTrack[] = [];
 		const mediaItems: MediaItem[] = [];
