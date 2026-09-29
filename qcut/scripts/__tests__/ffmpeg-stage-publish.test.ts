@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { mkdir, rename, rm } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publishFFmpegStage } from "../ffmpeg-stage-publish";
