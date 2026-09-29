@@ -1,6 +1,9 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TimelineHoverAxis } from "../timeline-hover-axis";
+import {
+	HOVER_PREVIEW_DELAY_MS,
+	TimelineHoverAxis,
+} from "../timeline-hover-axis";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { resetPlaybackStore } from "@/test/helpers/reset-playback-store";
 
@@ -45,9 +48,7 @@ function createRefs() {
 
 async function flushScrubFrame() {
 	await act(async () => {
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => resolve());
-		});
+		vi.advanceTimersByTime(HOVER_PREVIEW_DELAY_MS);
 	});
 }
 
@@ -74,11 +75,15 @@ function movePointer({
 
 describe("TimelineHoverAxis", () => {
 	beforeEach(() => {
+		vi.useFakeTimers();
 		resetPlaybackStore();
 		usePlaybackStore.getState().setDuration(10);
 	});
 
 	afterEach(() => {
+		cleanup();
+		vi.clearAllTimers();
+		vi.useRealTimers();
 		resetPlaybackStore();
 	});
 
@@ -160,6 +165,76 @@ describe("TimelineHoverAxis", () => {
 
 		unmount();
 
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+	});
+
+	it("moves the line continuously but renders only the latest settled frame", async () => {
+		render(<TimelineHoverAxis {...createRefs()} zoomLevel={1} />);
+		for (let index = 0; index < 60; index++) {
+			movePointer({ clientX: 324 + index * 2, clientY: 100 });
+			act(() => vi.advanceTimersByTime(16));
+			expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+		}
+		expect(screen.getByTestId("timeline-hover-axis").style.display).toBe("");
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeCloseTo(4.3666667);
+		expect(usePlaybackStore.getState().currentTime).toBe(0);
+	});
+
+	it.each([
+		"pointerdown",
+		"dragover",
+		"mouseleave",
+		"blur",
+	])("cancels pending hover on %s", async (event) => {
+		render(<TimelineHoverAxis {...createRefs()} zoomLevel={1} />);
+		movePointer({ clientX: 324, clientY: 100 });
+		act(() => {
+			const target =
+				event === "blur"
+					? window
+					: event === "mouseleave"
+						? document.documentElement
+						: document;
+			target.dispatchEvent(new Event(event));
+		});
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+	});
+
+	it("cancels pending work when playback starts even if it pauses before the deadline", async () => {
+		render(<TimelineHoverAxis {...createRefs()} zoomLevel={1} />);
+		movePointer({ clientX: 324, clientY: 100 });
+		act(() => {
+			usePlaybackStore.setState({ isPlaying: true });
+			usePlaybackStore.setState({ isPlaying: false });
+		});
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+	});
+
+	it("uses the latest zoom and scroll position under a stationary pointer", async () => {
+		const refs = createRefs();
+		const { rerender } = render(<TimelineHoverAxis {...refs} zoomLevel={1} />);
+		movePointer({ clientX: 324, clientY: 100 });
+		rerender(<TimelineHoverAxis {...refs} zoomLevel={2} />);
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(1);
+		act(() => {
+			refs.tracksScrollRef.current.scrollLeft = 100;
+			refs.tracksScrollRef.current.dispatchEvent(new Event("scroll"));
+		});
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(2);
+	});
+
+	it("does not leave a pending callback after unmount", async () => {
+		const { unmount } = render(
+			<TimelineHoverAxis {...createRefs()} zoomLevel={1} />
+		);
+		movePointer({ clientX: 324, clientY: 100 });
+		unmount();
+		await flushScrubFrame();
 		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
 	});
 });
