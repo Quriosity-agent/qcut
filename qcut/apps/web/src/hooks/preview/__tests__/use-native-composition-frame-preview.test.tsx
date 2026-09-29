@@ -1,10 +1,13 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { platform } from "@qcut/platform-core";
 import type { ActiveElement } from "@/components/editor/preview-panel/types";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import type { JianyingTextRuntimeRenderRequest } from "@/types/electron";
-import { extractStickerSources } from "@/lib/export-cli/sources";
+import {
+	extractStickerSources,
+	extractVideoSources,
+} from "@/lib/export-cli/sources";
 import { buildTimelineAssLayers } from "@/lib/export/export-engine-cli-text";
 import {
 	canUseNativeCompositionPreview,
@@ -437,6 +440,53 @@ describe("native composition frame preview", () => {
 			})
 		);
 		expect(result.current.url).toBe("blob:composition-preview");
+	});
+
+	it("omits distant clips before extraction while preserving layer order", async () => {
+		const props = hookProps();
+		props.tracks[0].elements = Array.from({ length: 600 }, (_, index) =>
+			mediaElement({ overrides: { id: `clip-${index}`, startTime: index * 5 } })
+		);
+		const { result } = renderHook(() =>
+			useNativeCompositionFramePreview(props)
+		);
+		await waitFor(() => expect(result.current.status).toBe("ready"));
+		const tracks = vi.mocked(extractVideoSources).mock.calls[0][0];
+		expect(tracks[0].elements).toHaveLength(600);
+		expect(
+			tracks[0].elements
+				.filter((element) => !element.hidden)
+				.map(({ id }) => id)
+		).toEqual(["clip-0"]);
+		expect(buildTimelineAssLayers).toHaveBeenCalledWith(
+			expect.objectContaining({ tracks })
+		);
+		expect(props.tracks[0].elements.every((element) => !element.hidden)).toBe(
+			true
+		);
+	});
+
+	it("does not send an obsolete composition after asynchronous extraction finishes", async () => {
+		const sources = await extractVideoSources([], [], null);
+		vi.mocked(extractVideoSources).mockClear();
+		let finish!: (value: typeof sources) => void;
+		vi.mocked(extractVideoSources).mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = resolve;
+			})
+		);
+		const props = hookProps();
+		const { result, rerender } = renderHook(
+			(input) => useNativeCompositionFramePreview(input),
+			{ initialProps: props }
+		);
+		await waitFor(() => expect(extractVideoSources).toHaveBeenCalledOnce());
+		rerender({ ...props, enabled: false });
+		await act(async () => {
+			finish(sources);
+		});
+		expect(renderVideoCompositionFramePreview).not.toHaveBeenCalled();
+		expect(result.current.status).toBe("idle");
 	});
 
 	it("renders only the active Jianying frame for paused composition", async () => {
