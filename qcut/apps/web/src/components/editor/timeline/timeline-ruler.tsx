@@ -12,6 +12,7 @@ import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TProject } from "@/types/project";
 import type { WordItem } from "@/types/word-timeline";
 import { TimelineWordLane } from "./timeline-word-lane";
+import { TimelineTimeMarkers } from "./timeline-time-markers";
 
 interface TimelineRulerProps {
 	duration: number;
@@ -107,7 +108,11 @@ export function TimelineRuler({
 					<BeatMarkers zoomLevel={zoomLevel} />
 
 					{/* Time markers */}
-					<TimeMarkers duration={duration} zoomLevel={zoomLevel} />
+					<TimelineTimeMarkers
+						duration={duration}
+						zoomLevel={zoomLevel}
+						scrollContainerRef={rulerScrollRef}
+					/>
 
 					{/* Bookmark markers */}
 					<BookmarkMarkers zoomLevel={zoomLevel} />
@@ -159,91 +164,6 @@ export function TimelineRuler({
 				</div>
 			</div>
 		</div>
-	);
-}
-
-/** Calculate appropriate time interval based on zoom level */
-function getTimeInterval(zoom: number, totalDuration: number) {
-	const pixelsPerSecond = TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoom;
-
-	// For very short durations, ensure we have enough markers to show progression
-	if (totalDuration <= 5) {
-		if (pixelsPerSecond >= 100) return 0.1;
-		if (pixelsPerSecond >= 50) return 0.25;
-		return 0.5;
-	}
-
-	// Standard intervals for longer content
-	if (pixelsPerSecond >= 200) return 0.1;
-	if (pixelsPerSecond >= 100) return 0.5;
-	if (pixelsPerSecond >= 50) return 1;
-	if (pixelsPerSecond >= 25) return 2;
-	if (pixelsPerSecond >= 12) return 5;
-	if (pixelsPerSecond >= 6) return 10;
-	return 30;
-}
-
-function formatTime(seconds: number, interval: number) {
-	const hours = Math.floor(seconds / 3600);
-	const minutes = Math.floor((seconds % 3600) / 60);
-	const secs = seconds % 60;
-
-	if (hours > 0) {
-		return `${hours}:${minutes.toString().padStart(2, "0")}:${Math.floor(secs).toString().padStart(2, "0")}`;
-	}
-	if (minutes > 0) {
-		return `${minutes}:${Math.floor(secs).toString().padStart(2, "0")}`;
-	}
-
-	if (interval >= 1) return `${Math.floor(secs)}s`;
-	if (interval >= 0.1) return `${secs.toFixed(1)}s`;
-	return `${secs.toFixed(2)}s`;
-}
-
-function TimeMarkers({
-	duration,
-	zoomLevel,
-}: {
-	duration: number;
-	zoomLevel: number;
-}) {
-	const interval = getTimeInterval(zoomLevel, duration);
-	const markerCount = Math.max(Math.ceil(duration / interval) + 1, 10);
-
-	return (
-		<>
-			{Array.from({ length: markerCount }, (_, i) => {
-				const time = i * interval;
-				if (time > duration) return null;
-
-				const isMainMarker =
-					time % (interval >= 1 ? Math.max(1, interval) : 1) === 0;
-
-				return (
-					<div
-						key={i}
-						className={`absolute top-0 h-4 ${
-							isMainMarker
-								? "border-l border-muted-foreground/40"
-								: "border-l border-muted-foreground/20"
-						}`}
-						style={{
-							left: `${time * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}px`,
-						}}
-					>
-						<span
-							className={`absolute top-1 left-1 text-[0.6rem] ${
-								isMainMarker
-									? "text-muted-foreground font-medium"
-									: "text-muted-foreground/70"
-							}`}
-						>
-							{formatTime(time, interval)}
-						</span>
-					</div>
-				);
-			}).filter(Boolean)}
-		</>
 	);
 }
 
