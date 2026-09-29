@@ -100,6 +100,11 @@ def mean_difference(*, left, right):
     return float(np.abs(np.asarray(left, dtype=np.float32) - np.asarray(right, dtype=np.float32)).mean())
 
 
+def comparison_fingerprints(*, directory, prefix):
+    return {kind: SKIN.fingerprint(path=directory / f"{prefix}-{kind}.png")
+            for kind in ("zero", "result")}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("qcut", type=Path)
@@ -148,6 +153,7 @@ def main():
                 difference, metrics = SKIN.save_side(
                     baseline=baseline, adjusted=result, output=directory, prefix=side
                 )
+                metrics["frames"] = comparison_fingerprints(directory=directory, prefix=side)
                 metrics["firstToMiddleMeanRGB"] = mean_difference(left=frame(directory=case, index=0), right=result)
                 metrics["middleToLastMeanRGB"] = mean_difference(left=result, right=frame(directory=case, index=149))
                 sides[side] = (baseline, result, difference)
