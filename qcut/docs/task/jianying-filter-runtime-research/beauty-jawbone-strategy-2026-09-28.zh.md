@@ -82,6 +82,8 @@ ROOT=/path/to/jawbone-gap
 QCUT_REAL_PORTRAIT_IMAGE_PATH="$SOURCE" \
 QCUT_PORTRAIT_JAWBONE_OUTPUT="$ROOT/qcut-current" \
   bunx playwright test portrait-jawbone-export-reference --workers=1 --reporter=line
+python3 scripts/fingerprint-portrait-exports.py \
+  "$ROOT/jianying/capture.json" "$ROOT/jianying/manifest.json"
 python3 scripts/compare-portrait-jawbone-exports.py \
   "$ROOT/qcut-before/report.json" "$ROOT/qcut-current/report.json" \
   "$ROOT/jianying/manifest.json" "$ROOT/comparison"
@@ -90,5 +92,7 @@ bun test electron/__tests__/jianying-portrait-adjustment.test.ts
 ```
 
 旧版对照需保留修复前编译的宿主，再通过 `QCUT_JIANYING_PORTRAIT_ADJUSTMENT_HOST` 指向它运行同一 E2E；不要为采集旧结果回滚当前工作区。剪映四档需真实操作导出，manifest 不能代替视频证据。
+
+剪映每次真实导出时，在 `capture.json` 记录 `source`、`sourceSha256`、`samples`（每项包含 `name`、`values`、`exportPath`）及 `errors`。立即运行上面的指纹命令生成新 manifest，它保留人工记录的参数并绑定视频字节，不验证这些参数是否真的应用于画面。QCut E2E 则在导出时直接记录 `exportSha256`。比较器在解码前拒绝缺失或不匹配的指纹；旧证据不再直接通过，也不应事后补哈希冒充采集时的绑定，应重新采集。指纹命令不会覆盖旧 manifest，也不会接受已绑定后发生变化的视频。
 
 原始照片、截图、导出视频、模型和第三方二进制仍只留本机，不提交 Git。尚未验证无遮挡正脸、更多脸型、真实运动、多人、其他运行库版本或 Windows/x86。流畅脸、下颌线、小脸及五种肤色色板的既有缺口没有被本修复解决。
