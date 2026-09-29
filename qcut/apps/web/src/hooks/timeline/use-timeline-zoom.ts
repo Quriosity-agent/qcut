@@ -45,7 +45,38 @@ export function useTimelineZoom({
 	containerRef,
 	isInTimeline = false,
 }: UseTimelineZoomProps): UseTimelineZoomReturn {
-	const [zoomLevel, setZoomLevel] = useState(1);
+	const [zoomLevel, commitZoomLevel] = useState(1);
+	const zoomLevelRef = useRef(1);
+	const zoomFrameRef = useRef<number | null>(null);
+	const setZoomLevel = useCallback(
+		(value: number | ((previous: number) => number)) => {
+			const next =
+				typeof value === "function" ? value(zoomLevelRef.current) : value;
+			if (!Number.isFinite(next)) return;
+			const bounded = Math.max(
+				MIN_TIMELINE_ZOOM,
+				Math.min(MAX_TIMELINE_ZOOM, next)
+			);
+			if (bounded === zoomLevelRef.current) return;
+			// Accumulate every input, but only lay out the timeline once per frame.
+			zoomLevelRef.current = bounded;
+			if (zoomFrameRef.current !== null) return;
+			zoomFrameRef.current = requestAnimationFrame(() => {
+				zoomFrameRef.current = null;
+				commitZoomLevel(zoomLevelRef.current);
+			});
+		},
+		[]
+	);
+
+	useEffect(
+		() => () => {
+			if (zoomFrameRef.current !== null)
+				cancelAnimationFrame(zoomFrameRef.current);
+			zoomFrameRef.current = null;
+		},
+		[]
+	);
 
 	useEffect(() => {
 		const handleKeyboardZoom = (event: Event) => {
@@ -56,25 +87,29 @@ export function useTimelineZoom({
 		window.addEventListener(TIMELINE_ZOOM_EVENT, handleKeyboardZoom);
 		return () =>
 			window.removeEventListener(TIMELINE_ZOOM_EVENT, handleKeyboardZoom);
-	}, []);
+	}, [setZoomLevel]);
 
-	const handleWheel = useCallback((e: React.WheelEvent) => {
-		// Only zoom if user is using pinch gesture (ctrlKey or metaKey is true)
-		if (e.ctrlKey || e.metaKey) {
-			e.preventDefault();
-			const delta = e.deltaY > 0 ? -0.15 : 0.15;
-			setZoomLevel((prev) =>
-				Math.max(MIN_TIMELINE_ZOOM, Math.min(MAX_TIMELINE_ZOOM, prev + delta))
-			);
-		}
-		// For horizontal scrolling (when shift is held or horizontal wheel movement),
-		// let the event bubble up to allow ScrollArea to handle it
-		else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-			// Don't prevent default - let ScrollArea handle horizontal scrolling
-			return;
-		}
-		// Otherwise, allow normal scrolling
-	}, []);
+	const handleWheel = useCallback(
+		(e: React.WheelEvent) => {
+			// Only zoom if user is using pinch gesture (ctrlKey or metaKey is true)
+			if (e.ctrlKey || e.metaKey) {
+				e.preventDefault();
+				if (e.deltaY === 0) return;
+				const delta = e.deltaY > 0 ? -0.15 : 0.15;
+				setZoomLevel((prev) =>
+					Math.max(MIN_TIMELINE_ZOOM, Math.min(MAX_TIMELINE_ZOOM, prev + delta))
+				);
+			}
+			// For horizontal scrolling (when shift is held or horizontal wheel movement),
+			// let the event bubble up to allow ScrollArea to handle it
+			else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+				// Don't prevent default - let ScrollArea handle horizontal scrolling
+				return;
+			}
+			// Otherwise, allow normal scrolling
+		},
+		[setZoomLevel]
+	);
 
 	// Prevent browser zooming in/out when in timeline
 	useEffect(() => {
@@ -123,10 +158,6 @@ export function useTimelineZoom({
 		});
 	}, []);
 
-	// Keep a ref to current zoom so pinch callback doesn't recreate mid-gesture
-	const zoomLevelRef = useRef(zoomLevel);
-	zoomLevelRef.current = zoomLevel;
-
 	const handlePointerMove = useCallback(
 		(e: React.PointerEvent) => {
 			const pointers = pointersRef.current;
@@ -138,6 +169,7 @@ export function useTimelineZoom({
 
 			const [p1, p2] = [...pointers.values()];
 			const currentDistance = getDistance(p1, p2);
+			if (currentDistance === 0) return;
 
 			if (initialPinchDistanceRef.current === null) {
 				initialPinchDistanceRef.current = currentDistance;
@@ -152,7 +184,7 @@ export function useTimelineZoom({
 			);
 			setZoomLevel(newZoom);
 		},
-		[getDistance]
+		[getDistance, setZoomLevel]
 	);
 
 	const handlePointerUp = useCallback((e: React.PointerEvent) => {
