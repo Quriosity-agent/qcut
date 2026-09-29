@@ -1,6 +1,8 @@
 import copy
 import importlib.util
+import json
 from pathlib import Path
+import tempfile
 import unittest
 
 SPEC = importlib.util.spec_from_file_location(
@@ -22,6 +24,38 @@ def improved():
 
 
 class JawboneExportTests(unittest.TestCase):
+    def test_binds_relative_and_absolute_exports_and_rejects_swapped_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "clip.mp4"
+            video.write_bytes(b"captured export")
+            fingerprint = MODULE.EXPORT.SKIN.fingerprint(path=video)["sha256"]
+            for path in (video.name, str(video)):
+                sample = {"name": "jawbone-50", "exportPath": path, "exportSha256": fingerprint}
+                self.assertEqual(MODULE.resolve_export(sample=sample, manifest_path=root / "report.json"), video)
+            for expected in (None, "", "incorrect"):
+                with self.subTest(expected=expected), self.assertRaisesRegex(ValueError, "fingerprint"):
+                    MODULE.resolve_export(sample={**sample, "exportSha256": expected}, manifest_path=root / "report.json")
+            video.write_bytes(b"swapped export")
+            with self.assertRaisesRegex(ValueError, "fingerprint"):
+                MODULE.resolve_export(sample=sample, manifest_path=root / "report.json")
+            video.unlink()
+            with self.assertRaises(FileNotFoundError):
+                MODULE.resolve_export(sample=sample, manifest_path=root / "report.json")
+
+    def test_rejected_metrics_never_write_or_overwrite_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "report.json"
+            rejected = {"metrics": improved()[:1]}
+            with self.assertRaises(ValueError):
+                MODULE.write_report(report=rejected, output=output)
+            self.assertFalse(output.exists())
+            accepted = {"metrics": improved()}
+            MODULE.write_report(report=accepted, output=output)
+            with self.assertRaises(ValueError):
+                MODULE.write_report(report=rejected, output=output)
+            self.assertEqual(json.loads(output.read_text()), accepted)
+
     def test_accepts_complete_isolated_matrix(self):
         self.assertEqual(len(MODULE.validate_manifest(manifest=manifest(), source_hash="same-source")), 4)
 
