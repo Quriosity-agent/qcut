@@ -233,12 +233,13 @@ export function useFrameCache({
 			const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
 			return cache.has({
 				key: frameTime,
-				timelineHash: getTimelineHash({
-					time,
-					tracks,
-					mediaItems,
-					activeProject,
-				}),
+				timelineHash: () =>
+					getTimelineHash({
+						time,
+						tracks,
+						mediaItems,
+						activeProject,
+					}),
 			})
 				? "cached"
 				: "not-cached";
