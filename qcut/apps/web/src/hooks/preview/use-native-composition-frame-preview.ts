@@ -18,6 +18,7 @@ import {
 	revokeObjectUrlAfterCommit,
 } from "./preview-frame-url";
 import { isLocalFontAssetReference } from "@/lib/fonts/local-font-runtime";
+import { selectNativePreviewTracks } from "@/lib/preview/native-preview-tracks";
 import {
 	collectJianyingTextFrameEntries,
 	validateJianyingTextRenderResult,
@@ -347,8 +348,13 @@ export function useNativeCompositionFramePreview({
 			previewUrlRef.current = undefined;
 			setState({ status: "rendering", timelineTime });
 			try {
-				const jianyingTextRequests = collectJianyingTextFrameEntries({
+				const frameTracks = selectNativePreviewTracks({
 					tracks,
+					timelineTime,
+					fps,
+				});
+				const jianyingTextRequests = collectJianyingTextFrameEntries({
+					tracks: frameTracks,
 					timelineTime,
 					requestId,
 					canvasWidth: Math.round(width),
@@ -378,7 +384,7 @@ export function useNativeCompositionFramePreview({
 					textRasterLayers,
 				] = await Promise.all([
 					extractVideoSources(
-						tracks,
+						frameTracks,
 						mediaItems,
 						null,
 						undefined,
@@ -386,7 +392,7 @@ export function useNativeCompositionFramePreview({
 						fps
 					),
 					extractImageSources(
-						tracks,
+						frameTracks,
 						mediaItems,
 						null,
 						undefined,
@@ -398,6 +404,7 @@ export function useNativeCompositionFramePreview({
 						requests: jianyingTextRequests,
 					}),
 				]);
+				if (cancelled) return;
 				if (videoSources.length === 0 && imageSources.length === 0) {
 					throw new Error("No local visual sources are available for preview");
 				}
@@ -413,7 +420,7 @@ export function useNativeCompositionFramePreview({
 						? runtimePlatform
 						: undefined;
 				const textAssLayers = buildTimelineAssLayers({
-					tracks,
+					tracks: frameTracks,
 					canvasWidth: Math.round(width),
 					canvasHeight: Math.round(height),
 					fps,
@@ -433,7 +440,7 @@ export function useNativeCompositionFramePreview({
 						backgroundColor,
 						videoSources,
 						videoTransitions: extractVideoTransitions({
-							tracks,
+							tracks: frameTracks,
 							mediaItems,
 							fps,
 						}),
