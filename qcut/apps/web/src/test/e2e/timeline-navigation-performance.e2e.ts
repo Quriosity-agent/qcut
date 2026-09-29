@@ -331,17 +331,23 @@ test("dense timeline hover and zoom stay bounded without changing the playhead",
 			await expect(
 				page.getByTestId("native-composition-preview-error")
 			).toHaveCount(0);
-			// Give the displayed frame's asynchronous cache capture time to complete.
-			await page.waitForTimeout(1500);
-			await page.evaluate(() => {
-				window.dispatchEvent(
-					new CustomEvent("playback-seek", { detail: { time: 4, scrub: true } })
-				);
-			});
-			await expect(page.getByTestId("preview-canvas")).toHaveAttribute(
-				"data-frame-cache-lookup",
-				"hit"
-			);
+			await expect
+				.poll(
+					async () => {
+						await page.evaluate(() => {
+							window.dispatchEvent(
+								new CustomEvent("playback-seek", {
+									detail: { time: 4, scrub: true },
+								})
+							);
+						});
+						return page
+							.getByTestId("preview-canvas")
+							.getAttribute("data-frame-cache-lookup");
+					},
+					{ timeout: 15_000, intervals: [250, 500, 1000] }
+				)
+				.toBe("hit");
 			cachePixels = await page
 				.getByTestId("preview-frame-cache-overlay")
 				.evaluate((node) => {
