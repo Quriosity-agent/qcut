@@ -8,6 +8,8 @@ import {
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 
+export const HOVER_PREVIEW_DELAY_MS = 100;
+
 interface TimelineHoverAxisProps {
 	timelineRef: React.RefObject<HTMLDivElement | null>;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
@@ -36,31 +38,36 @@ export function TimelineHoverAxis({
 	const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 	const visibleRef = useRef(false);
 	const [visible, setVisible] = useState(false);
-	// Publish at most one scrub time per animation frame: the line itself moves
-	// imperatively per mousemove, but each store write re-renders the preview,
-	// so fast pointer sweeps are coalesced to the latest hovered frame.
+	// A moving hover cursor must not enqueue full preview renders at display Hz.
 	const pendingScrubRef = useRef<number | null | undefined>(undefined);
-	const scrubFrameRef = useRef<number | null>(null);
+	const scrubTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const zoomRef = useRef(zoomLevel);
+	zoomRef.current = zoomLevel;
 
 	const cancelScheduledScrub = useCallback(() => {
 		pendingScrubRef.current = undefined;
-		if (scrubFrameRef.current !== null) {
-			cancelAnimationFrame(scrubFrameRef.current);
-			scrubFrameRef.current = null;
+		if (scrubTimerRef.current !== null) {
+			clearTimeout(scrubTimerRef.current);
+			scrubTimerRef.current = null;
 		}
 	}, []);
 
-	const scheduleScrub = useCallback((value: number | null) => {
-		pendingScrubRef.current = value;
-		if (scrubFrameRef.current !== null) return;
-		scrubFrameRef.current = requestAnimationFrame(() => {
-			scrubFrameRef.current = null;
-			const pending = pendingScrubRef.current;
-			pendingScrubRef.current = undefined;
-			if (pending === undefined) return;
-			usePlaybackStore.getState().setPreviewScrubTime(pending);
-		});
-	}, []);
+	const scheduleScrub = useCallback(
+		(value: number | null) => {
+			if (pendingScrubRef.current === value) return;
+			cancelScheduledScrub();
+			const playback = usePlaybackStore.getState();
+			if (value === null || playback.previewScrubTime === value) return;
+			pendingScrubRef.current = value;
+			scrubTimerRef.current = setTimeout(() => {
+				scrubTimerRef.current = null;
+				pendingScrubRef.current = undefined;
+				const latest = usePlaybackStore.getState();
+				if (!latest.isPlaying) latest.setPreviewScrubTime(value);
+			}, HOVER_PREVIEW_DELAY_MS);
+		},
+		[cancelScheduledScrub]
+	);
 
 	const hide = useCallback(() => {
 		lastPointRef.current = null;
@@ -96,7 +103,8 @@ export function TimelineHoverAxis({
 			}
 			const viewportRect = tracksViewport.getBoundingClientRect();
 			const contentX = clientX - viewportRect.left + tracksViewport.scrollLeft;
-			const pixelsPerSecond = TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
+			const pixelsPerSecond =
+				TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomRef.current;
 			const playback = usePlaybackStore.getState();
 			const fps = useProjectStore.getState().activeProject?.fps || 30;
 			const rawTime = Math.max(
@@ -118,14 +126,7 @@ export function TimelineHoverAxis({
 			// keeps the preview, so no scrub override is published.
 			scheduleScrub(playback.isPlaying ? null : time);
 		},
-		[
-			hide,
-			scheduleScrub,
-			timelineRef,
-			tracksScrollRef,
-			trackLabelsRef,
-			zoomLevel,
-		]
+		[hide, scheduleScrub, timelineRef, tracksScrollRef, trackLabelsRef]
 	);
 
 	useEffect(() => {
@@ -139,9 +140,17 @@ export function TimelineHoverAxis({
 		const handlePointerDown = () => hide();
 		const handleDragOver = () => hide();
 		const handleDocumentLeave = () => hide();
+		const handleVisibility = () => {
+			if (document.hidden) hide();
+		};
+		const unsubscribe = usePlaybackStore.subscribe((state, previous) => {
+			if (state.isPlaying && !previous.isPlaying) cancelScheduledScrub();
+		});
 		document.addEventListener("pointermove", handlePointerMove);
 		document.addEventListener("pointerdown", handlePointerDown, true);
 		document.addEventListener("dragover", handleDragOver);
+		window.addEventListener("blur", hide);
+		document.addEventListener("visibilitychange", handleVisibility);
 		document.documentElement.addEventListener(
 			"mouseleave",
 			handleDocumentLeave
@@ -150,6 +159,9 @@ export function TimelineHoverAxis({
 			document.removeEventListener("pointermove", handlePointerMove);
 			document.removeEventListener("pointerdown", handlePointerDown, true);
 			document.removeEventListener("dragover", handleDragOver);
+			window.removeEventListener("blur", hide);
+			document.removeEventListener("visibilitychange", handleVisibility);
+			unsubscribe();
 			document.documentElement.removeEventListener(
 				"mouseleave",
 				handleDocumentLeave
@@ -162,6 +174,7 @@ export function TimelineHoverAxis({
 	// Keep the line honest when the tracks scroll or the zoom level changes
 	// under a stationary pointer.
 	useEffect(() => {
+		zoomRef.current = zoomLevel;
 		const point = lastPointRef.current;
 		if (point) update(point.x, point.y);
 		const viewport = tracksScrollRef.current;
@@ -172,7 +185,7 @@ export function TimelineHoverAxis({
 		};
 		viewport.addEventListener("scroll", handleScroll);
 		return () => viewport.removeEventListener("scroll", handleScroll);
-	}, [tracksScrollRef, update]);
+	}, [tracksScrollRef, update, zoomLevel]);
 
 	return (
 		<div
