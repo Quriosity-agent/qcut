@@ -7,8 +7,11 @@ from pathlib import Path
 
 
 def sha256(*, path):
+    digest = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def bind_exports(*, manifest, directory):
@@ -39,7 +42,7 @@ def main():
     parser.add_argument("manifest", type=Path, help="Operator-recorded export labels and paths")
     parser.add_argument("output", type=Path, help="New fingerprinted manifest; must not exist")
     args = parser.parse_args()
-    report = bind_exports(manifest=json.loads(args.manifest.read_text()), directory=args.manifest.parent)
+    report = bind_exports(manifest=json.loads(args.manifest.read_text(encoding="utf-8")), directory=args.manifest.parent)
     with args.output.open("x", encoding="utf-8") as stream:
         stream.write(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 
