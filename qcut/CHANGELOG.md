@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- Keep timeline navigation responsive by coalescing hover previews, bounding visible ruler and caption work, and reducing redundant zoom updates.
+- Align portrait skin controls and improve blemish-removal and jawbone processing consistency between preview and export.
+
+### Fixed
+- Preserve quarter-second ruler labels and avoid stale or blank cached preview frames.
+- Retry transient Windows file locks when publishing verified FFmpeg binaries without hiding permanent failures.
+- Bind portrait comparison evidence to file hashes and make export cleanup and cross-platform regression tests more reliable.
+
 ## [2026.09.12.1] - 2026-09-12
 
 ### Added
