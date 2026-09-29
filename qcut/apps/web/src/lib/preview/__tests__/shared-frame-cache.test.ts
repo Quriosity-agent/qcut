@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	clearSharedFrameCaches,
 	getSharedFrameCache,
@@ -31,6 +31,40 @@ function createCache({
 afterEach(() => clearSharedFrameCaches());
 
 describe("SharedFrameCache", () => {
+	it("does not compute a lazy timeline hash for an empty cache slot", () => {
+		const cache = createCache();
+		const timelineHash = vi.fn(() => "frame");
+		expect(cache.has({ key: 1, timelineHash })).toBe(false);
+		expect(timelineHash).not.toHaveBeenCalled();
+	});
+
+	it("still validates hash and expiry for lazy cache candidates", () => {
+		const cache = createCache({ ttlMs: 10 });
+		cache.write({
+			key: 1,
+			imageData: imageData({ bytes: 8 }),
+			timelineHash: "frame",
+			currentTime: 1,
+			now: 100,
+		});
+		const timelineHash = vi.fn(() => "frame");
+		expect(cache.has({ key: 1, timelineHash, now: 101 })).toBe(true);
+		expect(timelineHash).toHaveBeenCalledTimes(1);
+		expect(cache.has({ key: 1, timelineHash: () => "changed", now: 102 })).toBe(
+			false
+		);
+		expect(cache.metrics.entries).toBe(0);
+		cache.write({
+			key: 1,
+			imageData: imageData({ bytes: 8 }),
+			timelineHash: "frame",
+			currentTime: 1,
+			now: 100,
+		});
+		expect(cache.has({ key: 1, timelineHash, now: 111 })).toBe(false);
+		expect(cache.metrics.evictions).toBe(1);
+	});
+
 	it("shares one store between consumers in the same project namespace", () => {
 		const first = getSharedFrameCache({
 			namespace: "project-a",
