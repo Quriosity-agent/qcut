@@ -63,12 +63,17 @@ E2E 使用隔离用户目录、真实照片及本地原生运行库，不 mock �
 
 ## 复现
 
+复现者需自行提供仓库外的真人素材与输出目录，替换以下占位变量；上方本地证据链接仅记录本次采集，不是仓库内的测试夹具。
+
 ```bash
 bun run build:electron
 cd apps/web && bun run build:electron && cd ../..
-QCUT_REAL_PORTRAIT_IMAGE_PATH=/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-27/sources/face-ike-louie-natividad.jpg \
-QCUT_PORTRAIT_SKIN_E2E_OUTPUT=/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/editor-verified \
-QCUT_PORTRAIT_EYE_E2E_OUTPUT=/Users/peter/Desktop/Jianying-Beauty-Test-2026-09-28/skin-ui/eye-regression \
+PORTRAIT_IMAGE=/path/to/face-ike-louie-natividad.jpg
+SKIN_E2E_OUTPUT=/path/to/skin-ui/editor-verified
+EYE_E2E_OUTPUT=/path/to/skin-ui/eye-regression
+QCUT_REAL_PORTRAIT_IMAGE_PATH="$PORTRAIT_IMAGE" \
+QCUT_PORTRAIT_SKIN_E2E_OUTPUT="$SKIN_E2E_OUTPUT" \
+QCUT_PORTRAIT_EYE_E2E_OUTPUT="$EYE_E2E_OUTPUT" \
   bunx playwright test portrait-skin-reference portrait-eye-reference --workers=1 --reporter=line
 ```
 
