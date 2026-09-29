@@ -55,15 +55,15 @@ test("dense timeline hover and zoom stay bounded without changing the playhead",
 			path.join(os.tmpdir(), "qcut-navigation-")
 		),
 	});
-	const page = await getMainWindow(app);
-	await page.setViewportSize({ width: 1920, height: 1018 });
-	const errors: string[] = [];
-	page.on("pageerror", (error) => errors.push(error.message));
-	const profiler =
-		process.env.QCUT_TIMELINE_PROFILE === "1"
-			? await page.context().newCDPSession(page)
-			: null;
 	try {
+		const page = await getMainWindow(app);
+		await page.setViewportSize({ width: 1920, height: 1018 });
+		const errors: string[] = [];
+		page.on("pageerror", (error) => errors.push(error.message));
+		const profiler =
+			process.env.QCUT_TIMELINE_PROFILE === "1"
+				? await page.context().newCDPSession(page)
+				: null;
 		await navigateToProjects(page);
 		await createTestProject(page, "Timeline navigation performance");
 		await importTestVideo(page);
