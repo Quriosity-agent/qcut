@@ -59,6 +59,21 @@ def validate_improvement(*, records):
             raise ValueError("Jawbone reference agreement did not improve at both strengths")
 
 
+def resolve_export(*, sample, manifest_path):
+    path = Path(sample["exportPath"])
+    if not path.is_absolute():
+        path = manifest_path.parent / path
+    expected = sample.get("exportSha256")
+    if not expected or expected != EXPORT.SKIN.fingerprint(path=path)["sha256"]:
+        raise ValueError(f"Export file fingerprint missing or mismatched: {sample['name']}")
+    return path
+
+
+def write_report(*, report, output):
+    validate_improvement(records=report["metrics"])
+    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("before", type=Path, help="Old QCut report.json")
@@ -78,9 +93,7 @@ def main():
     for side, samples in cases.items():
         decoded[side] = {}
         for name, sample in samples.items():
-            path = Path(sample["exportPath"])
-            if not path.is_absolute():
-                path = paths[side].parent / path
+            path = resolve_export(sample=sample, manifest_path=paths[side])
             directory = args.output / side / name
             decoded[side][name] = EXPORT.decode(source=path, output=directory)
         base = EXPORT.frame(directory=args.output / side / "neutral", index=60)
@@ -128,8 +141,7 @@ def main():
               "method": {"frame": 60, "gain": 6, "sigma": 0.6, "normalizedSize": [600, 900],
                          "roi": list(SHAPE.SKIN.DIFF.FACE_RECT), "losslessParity": False},
               "decoded": decoded, "diagnostics": diagnostics, "metrics": records}
-    (args.output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    validate_improvement(records=records)
+    write_report(report=report, output=args.output / "report.json")
     print(json.dumps({"metrics": records, "diagnostics": diagnostics}, indent=2))
 
 
