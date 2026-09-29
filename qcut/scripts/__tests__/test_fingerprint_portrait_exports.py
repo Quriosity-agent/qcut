@@ -1,8 +1,10 @@
 import copy
+import hashlib
 import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
     "fingerprint_exports", Path(__file__).parents[1] / "fingerprint-portrait-exports.py"
@@ -12,6 +14,15 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ExportFingerprintTests(unittest.TestCase):
+    def test_hashes_empty_and_multiple_chunks_without_python_311_apis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "export.mp4"
+            with patch.object(hashlib, "file_digest", create=True, side_effect=AssertionError("Python 3.11 API")):
+                for content in (b"", b"short", b"chunked export" * 200_000):
+                    with self.subTest(size=len(content)):
+                        path.write_bytes(content)
+                        self.assertEqual(MODULE.sha256(path=path), hashlib.sha256(content).hexdigest())
+
     def test_records_manual_capture_and_rejects_rebinding_changed_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
