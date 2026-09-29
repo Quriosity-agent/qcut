@@ -44,6 +44,25 @@ describe("visible timeline ruler ticks", () => {
 		expect(markers[1].main).toBe(false);
 	});
 
+	it.each([
+		{ zoomLevel: 1, labels: ["0.00s", "0.25s", "0.50s", "0.75s", "1.00s"] },
+		{ zoomLevel: 0.5, labels: ["0.0s", "0.5s", "1.0s"] },
+		{ zoomLevel: 4, labels: ["0.0s", "0.1s", "0.2s"] },
+	])("preserves fractional label precision at zoom $zoomLevel", ({
+		zoomLevel,
+		labels,
+	}) => {
+		const markers = getVisibleTimeMarkers({
+			duration: 1,
+			zoomLevel,
+			scrollLeft: 0,
+			width: 1000,
+		});
+		expect(markers.slice(0, labels.length).map(({ label }) => label)).toEqual(
+			labels
+		);
+	});
+
 	it("returns no ticks for hidden, invalid or out-of-range viewports", () => {
 		const input = { duration: 7200, zoomLevel: 1, scrollLeft: 0, width: 1000 };
 		for (const invalid of [
