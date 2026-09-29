@@ -2,6 +2,8 @@ import copy
 import importlib.util
 from pathlib import Path
 import unittest
+import tempfile
+from PIL import Image
 
 SPEC = importlib.util.spec_from_file_location(
     "blemish_revision", Path(__file__).parents[1] / "compare-portrait-blemish-revision.py"
@@ -11,6 +13,35 @@ SPEC.loader.exec_module(REVISION)
 
 
 class BlemishRevisionEvidenceTests(unittest.TestCase):
+    def test_frames_are_bound_to_the_producer_report(self):
+        producer_spec = importlib.util.spec_from_file_location(
+            "blemish_export_producer", Path(__file__).parents[1] / "compare-portrait-skin-exports.py"
+        )
+        producer = importlib.util.module_from_spec(producer_spec)
+        producer_spec.loader.exec_module(producer)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = root / "blemish-50"
+            case.mkdir()
+            for kind in ("zero", "result"):
+                Image.new("RGB", (600, 900), "red").save(case / f"qcut-{kind}.png")
+            frames = producer.comparison_fingerprints(directory=case, prefix="qcut")
+            report = {"samples": [{"key": "face_adjust_SpotAcne", "value": 50, "qcut": {"frames": frames}}]}
+            options = {"report": report, "directory": root, "value": 50, "side": "qcut", "kind": "result"}
+            image, record = REVISION.validated_frame(**options)
+            self.assertEqual(image.size, (600, 900))
+            self.assertEqual(record, frames["result"])
+            for invalid in ({}, {"samples": []}, {"samples": report["samples"] * 2},
+                            {"samples": [{"key": "face_adjust_SpotAcne", "value": 50}]}):
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    REVISION.validated_frame(**{**options, "report": invalid})
+            Image.new("RGB", (600, 900), "blue").save(case / "qcut-result.png")
+            with self.assertRaisesRegex(ValueError, "fingerprint"):
+                REVISION.validated_frame(**options)
+            (case / "qcut-result.png").unlink()
+            with self.assertRaises(FileNotFoundError):
+                REVISION.validated_frame(**options)
+
     def setUp(self):
         self.before = {
             "source": {"sha256": "a" * 64},
