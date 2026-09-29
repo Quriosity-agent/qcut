@@ -20,7 +20,31 @@ import { getTransitionPresetById } from "../transition-presets";
 
 const previewFixtures = vi.hoisted(() => ({
 	realPresetIds: new Set<string>(),
+	visiblePresetIds: new Set<string>(),
 }));
+
+vi.mock("../transition-virtualized-grid", async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import("../transition-virtualized-grid")>();
+	return {
+		...actual,
+		TransitionVirtualizedGrid: ({
+			presets,
+			...props
+		}: Parameters<typeof actual.TransitionVirtualizedGrid>[0]) => (
+			<actual.TransitionVirtualizedGrid
+				{...props}
+				presets={
+					previewFixtures.visiblePresetIds.size > 0
+						? presets.filter(({ id }) =>
+								previewFixtures.visiblePresetIds.has(id)
+							)
+						: presets
+				}
+			/>
+		),
+	};
+});
 
 vi.mock("../transition-preview", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../transition-preview")>();
@@ -193,6 +217,7 @@ function installReadyJianyingRuntime() {
 describe("TransitionsView", () => {
 	beforeEach(() => {
 		previewFixtures.realPresetIds.clear();
+		previewFixtures.visiblePresetIds.clear();
 		useTimelineStore.setState({
 			selectedElements: [],
 			_tracks: [],
@@ -312,6 +337,9 @@ describe("TransitionsView", () => {
 
 	it("keeps local Jianying transitions in the lab with accurate source counts", async () => {
 		const restoreRuntime = installReadyJianyingRuntime();
+		// Model a finite viewport; the source counts still use the full catalog.
+		previewFixtures.visiblePresetIds.add("jianying-local-3d-space");
+		previewFixtures.visiblePresetIds.add("lab-clean-dissolve");
 
 		try {
 			await act(async () => {
