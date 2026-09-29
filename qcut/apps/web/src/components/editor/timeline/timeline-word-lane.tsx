@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { RefObject } from "react";
+import { useTimelineViewport } from "@/hooks/timeline/use-timeline-viewport";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { cn } from "@/lib/utils";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
@@ -25,11 +26,6 @@ const WORD_STATE_CLASS: Record<WordFilterState, string> = {
 		"border-emerald-400/65 bg-emerald-500/30 text-emerald-50 hover:bg-emerald-500/45",
 };
 
-interface WordLaneViewport {
-	scrollLeft: number;
-	width: number;
-}
-
 export function TimelineWordLane({
 	scrollContainerRef,
 	words,
@@ -42,30 +38,8 @@ export function TimelineWordLane({
 	const selectedWordId = useWordTimelineStore((state) => state.selectedWordId);
 	const selectWord = useWordTimelineStore((state) => state.selectWord);
 	const setFilterState = useWordTimelineStore((state) => state.setFilterState);
-	const [viewport, setViewport] = useState<WordLaneViewport>({
-		scrollLeft: 0,
-		width: 0,
-	});
+	const viewport = useTimelineViewport({ scrollContainerRef });
 	const pixelsPerSecond = TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
-
-	useEffect(() => {
-		const container = scrollContainerRef.current;
-		if (!container) return;
-		const updateViewport = () => {
-			setViewport({
-				scrollLeft: container.scrollLeft,
-				width: container.clientWidth,
-			});
-		};
-		updateViewport();
-		container.addEventListener("scroll", updateViewport, { passive: true });
-		const resizeObserver = new ResizeObserver(updateViewport);
-		resizeObserver.observe(container);
-		return () => {
-			container.removeEventListener("scroll", updateViewport);
-			resizeObserver.disconnect();
-		};
-	}, [scrollContainerRef]);
 
 	const visibleWords = useMemo(
 		() =>

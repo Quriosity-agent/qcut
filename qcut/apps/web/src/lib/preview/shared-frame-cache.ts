@@ -38,6 +38,10 @@ interface WriteFrameOptions extends ReadFrameOptions {
 	currentTime: number;
 }
 
+interface CheckFrameOptions extends Omit<ReadFrameOptions, "timelineHash"> {
+	timelineHash: string | (() => string);
+}
+
 const stores = new Map<string, SharedFrameCache>();
 
 function frameByteLength({ imageData }: { imageData: ImageData }): number {
@@ -125,14 +129,17 @@ export class SharedFrameCache {
 		return entry.imageData;
 	}
 
-	has({ key, timelineHash, now = Date.now() }: ReadFrameOptions): boolean {
+	has({ key, timelineHash, now = Date.now() }: CheckFrameOptions): boolean {
 		const entry = this.entries.get(key);
 		if (!entry) return false;
+		// Cache indicators sample many empty times; only validate real candidates.
+		const expectedHash =
+			typeof timelineHash === "function" ? timelineHash() : timelineHash;
 		if (
 			now - entry.timestamp > this.ttlMs ||
-			entry.timelineHash !== timelineHash
+			entry.timelineHash !== expectedHash
 		) {
-			this.remove({ key, countEviction: entry.timelineHash === timelineHash });
+			this.remove({ key, countEviction: entry.timelineHash === expectedHash });
 			return false;
 		}
 		return true;

@@ -84,6 +84,9 @@ jobs:
           bunx vitest run electron/__tests__/
           electron/native-pipeline/cli/__tests__/cli-handlers-video-lab.test.ts
           electron/native-pipeline/cli/__tests__/cli-parse-video-lab.test.ts
+          scripts/__tests__/ffmpeg-stage-publish.test.ts
+          scripts/__tests__/ffmpeg-manifest.test.ts
+          scripts/__tests__/ffmpeg-verify.test.ts
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu'

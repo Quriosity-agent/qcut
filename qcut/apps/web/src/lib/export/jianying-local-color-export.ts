@@ -3,7 +3,6 @@ import type {
 	MediaElement,
 	TimelineTrack,
 } from "@/types/timeline";
-import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
 import { isNativeLocalEffectProvider } from "@qcut/editor-core";
 
 function requiresLocalColorRuntime({
@@ -53,11 +52,9 @@ function mediaRequiresLocalColorRuntime({
 	if (requiresLocalColorRuntime({ color: element.color })) return true;
 	if (filterStackRequiresLocalColorRuntime({ element })) return true;
 	if ((element.enhancements?.labEyeCorrection ?? 0) > 0) return true;
-	if (
-		hasMediaPortraitAdjustments({
-			adjustments: element.portraitAdjustments,
-		})
-	) {
+	// Zero is a calibration baseline: keep its resampling and encoding path
+	// identical to nonzero beauty values while the feature remains enabled.
+	if (element.portraitAdjustments?.enabled) {
 		return true;
 	}
 	return Boolean(

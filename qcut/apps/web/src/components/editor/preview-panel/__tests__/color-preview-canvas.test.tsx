@@ -156,6 +156,33 @@ async function completePending({
 }
 
 describe("color preview async commits", () => {
+	it("preserves blemish source detail before fitting without enlarging the displayed canvas", async () => {
+		Object.defineProperties(HTMLImageElement.prototype, {
+			naturalWidth: { configurable: true, get: () => 4000 },
+			naturalHeight: { configurable: true, get: () => 6000 },
+		});
+		render(
+			view({
+				intensity: 10,
+				portraitAdjustments: {
+					enabled: true,
+					values: { face_adjust_SpotAcne: 50 },
+				},
+				portraitRenderSize: { width: 1080, height: 1620 },
+			})
+		);
+		await completePending();
+		expect(drawColorGradedSourceStack).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: expect.objectContaining({ width: 2160, height: 3240 }),
+				width: 1080,
+				height: 1620,
+			})
+		);
+		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(canvas).toHaveAttribute("width", "1080");
+		expect(canvas).toHaveAttribute("height", "1620");
+	});
 	it("uses logical dimensions only for enabled portrait processing", async () => {
 		const props = {
 			intensity: 10,

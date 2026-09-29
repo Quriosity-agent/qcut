@@ -110,6 +110,50 @@ describe("Jianying local export selection", () => {
 		).toBe(false);
 	});
 
+	it.each([
+		{},
+		{ face_adjust_Smooth: 0 },
+	])("keeps enabled neutral beauty on the same renderer as active beauty: %j", (values) => {
+		const element = mediaElement({ portraitEnabled: true });
+		element.portraitAdjustments = { enabled: true, values };
+		expect(
+			requiresJianyingLocalColorExport({ tracks: tracks({ element }) })
+		).toBe(true);
+		element.portraitAdjustments.enabled = false;
+		expect(
+			requiresJianyingLocalColorExport({ tracks: tracks({ element }) })
+		).toBe(false);
+		element.portraitAdjustments = undefined;
+		expect(
+			requiresJianyingLocalColorExport({ tracks: tracks({ element }) })
+		).toBe(false);
+	});
+
+	it("preserves neutral beauty routing inside compound clips", () => {
+		const child = mediaElement({ portraitEnabled: true });
+		child.portraitAdjustments = { enabled: true, values: {} };
+		const element = mediaElement({ portraitEnabled: false });
+		element.compound = {
+			kind: "compound",
+			clips: [
+				{
+					id: "clip",
+					element: child,
+					layer: 0,
+					offset: 0,
+					sourceTrackId: "source",
+				},
+			],
+		};
+		expect(
+			requiresJianyingLocalColorExport({ tracks: tracks({ element }) })
+		).toBe(true);
+		child.portraitAdjustments.enabled = false;
+		expect(
+			requiresJianyingLocalColorExport({ tracks: tracks({ element }) })
+		).toBe(false);
+	});
+
 	it("tolerates a partial color object from a programmatic caller", () => {
 		// addElementToTrack stores caller-provided elements verbatim; only a
 		// project reload normalizes them. The policy walker must not crash on

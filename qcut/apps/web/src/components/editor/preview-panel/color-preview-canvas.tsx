@@ -15,6 +15,10 @@ import {
 	portraitPreviewCanvasSize,
 } from "@/lib/color/color-preview-resolution";
 import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source-key";
+import {
+	portraitProcessingSize,
+	portraitSourceDimensions,
+} from "@/lib/portrait/portrait-processing-size";
 import { cn } from "@/lib/utils";
 import { useColorPickerStore } from "@/stores/editor/color-picker-store";
 import { useColorPreviewStore } from "@/stores/editor/color-preview-store";
@@ -27,16 +31,6 @@ type ColorPreviewSource =
 
 /** Dispatched by canvas sources (the stabilized frame canvas) after each draw. */
 export const COLOR_PREVIEW_SOURCE_FRAME_EVENT = "qcut-frame";
-
-function sourceDimensions(source: ColorPreviewSource) {
-	if (source instanceof HTMLVideoElement) {
-		return { width: source.videoWidth, height: source.videoHeight };
-	}
-	if (source instanceof HTMLCanvasElement) {
-		return { width: source.width, height: source.height };
-	}
-	return { width: source.naturalWidth, height: source.naturalHeight };
-}
 
 /** Source time of the frame a canvas source currently shows. */
 function sourceTimestampSeconds(source: ColorPreviewSource): number {
@@ -60,7 +54,7 @@ function drawObjectFit({
 	height: number;
 	fitMode: "cover" | "contain" | "fill";
 }) {
-	const dimensions = sourceDimensions(source);
+	const dimensions = portraitSourceDimensions({ source });
 	if (dimensions.width <= 0 || dimensions.height <= 0) return false;
 	if (fitMode === "fill") {
 		context.drawImage(source, 0, 0, width, height);
@@ -276,9 +270,17 @@ export function ColorPreviewCanvas({
 					if (cancelled) return;
 					if (source instanceof HTMLVideoElement)
 						lastVideoTime = source.currentTime;
+					const dimensions = portraitSourceDimensions({ source });
+					const processing = portraitProcessingSize({
+						width: canvas.width,
+						height: canvas.height,
+						sourceWidth: dimensions.width,
+						sourceHeight: dimensions.height,
+						adjustments: portraitAdjustments,
+					});
 					const fitted = document.createElement("canvas");
-					fitted.width = canvas.width;
-					fitted.height = canvas.height;
+					fitted.width = processing.width;
+					fitted.height = processing.height;
 					const rendered = document.createElement("canvas");
 					rendered.width = canvas.width;
 					rendered.height = canvas.height;

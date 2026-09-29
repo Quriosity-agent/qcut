@@ -25,6 +25,7 @@ import {
 	type FFmpegTool,
 } from "./ffmpeg-manifest.js";
 import { verifyFFmpegBinaries } from "./ffmpeg-verify.js";
+import { publishFFmpegStage } from "./ffmpeg-stage-publish.js";
 
 interface StageReceipt {
 	fingerprint: string;
@@ -334,9 +335,10 @@ async function stageTarget({
 		});
 
 		const destinationRoot = join(STAGING_ROOT, targetKey);
-		await rm(destinationRoot, { recursive: true, force: true });
-		await mkdir(dirname(destinationRoot), { recursive: true });
-		await rename(tempTargetRoot, destinationRoot);
+		await publishFFmpegStage({
+			source: tempTargetRoot,
+			destination: destinationRoot,
+		});
 
 		const binaryPaths = await resolveBinaryPaths({ targetKey, target });
 		const binaryHashes: Record<FFmpegTool, string> = {

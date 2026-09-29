@@ -631,7 +631,8 @@ export function MediaPortraitProperties({
 								testId="portrait-group-skin"
 							>
 								<div className="space-y-5">
-									<div className="space-y-4 border-b border-border/70 pb-4">
+									<PortraitAdjustmentSection {...sectionProps("skin")} />
+									<div className="space-y-4 border-t border-border/70 pt-4">
 										<NumberControl
 											label={t("mediaProperties.relight")}
 											value={enhancements.relight}
@@ -655,7 +656,6 @@ export function MediaPortraitProperties({
 											onInteractionEnd={onInteractionEnd}
 										/>
 									</div>
-									<PortraitAdjustmentSection {...sectionProps("skin")} />
 								</div>
 							</PortraitCollapsibleGroup>
 							<PortraitCollapsibleGroup

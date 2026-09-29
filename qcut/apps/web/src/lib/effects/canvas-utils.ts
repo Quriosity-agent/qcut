@@ -31,6 +31,7 @@ export async function captureFrameToCanvas(
 	}
 
 	try {
+		const head = element.ownerDocument.head;
 		// Skip OffscreenCanvas with html2canvas due to compatibility issues
 		// html2canvas doesn't properly support canvas option with OffscreenCanvas
 
@@ -46,6 +47,11 @@ export async function captureFrameToCanvas(
 			useCORS: true,
 			// Preserve video frames and dynamic content
 			allowTaint: false,
+			// html2canvas clones the owner document, not just the requested surface.
+			ignoreElements: (candidate) =>
+				!head?.contains(candidate) &&
+				!candidate.contains(element) &&
+				!element.contains(candidate),
 			foreignObjectRendering: false, // Disable to avoid oklab color issues
 			// Important: preserve existing transforms and styles
 			onclone: (clonedDoc) => {

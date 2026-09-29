@@ -20,6 +20,10 @@ import {
 	renderJianyingLocalEffectPreview,
 } from "./jianying-local-effect-preview";
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
+import {
+	portraitProcessingSize,
+	portraitSourceDimensions,
+} from "@/lib/portrait/portrait-processing-size";
 import { isIndependentFilterProvider } from "@qcut/editor-core";
 
 const GRADE_MASK_CACHE_LIMIT = 8;
@@ -171,15 +175,28 @@ async function portraitAdjustedSource({
 	timestampSeconds?: number;
 }): Promise<CanvasImageSource> {
 	if (!hasMediaPortraitAdjustments({ adjustments })) return source;
+	const sourceSize = portraitSourceDimensions({ source });
+	const processing = portraitProcessingSize({
+		width,
+		height,
+		sourceWidth: sourceSize.width,
+		sourceHeight: sourceSize.height,
+		adjustments,
+	});
 	const canvas = document.createElement("canvas");
-	canvas.width = width;
-	canvas.height = height;
+	canvas.width = processing.width;
+	canvas.height = processing.height;
 	const context = canvas.getContext("2d", { willReadFrequently: true });
 	if (!context) throw new Error("Unable to create portrait adjustment canvas");
-	context.drawImage(source, 0, 0, width, height);
+	context.drawImage(source, 0, 0, processing.width, processing.height);
 	let sourceData: ImageData;
 	try {
-		sourceData = context.getImageData(0, 0, width, height);
+		sourceData = context.getImageData(
+			0,
+			0,
+			processing.width,
+			processing.height
+		);
 	} catch (cause) {
 		reportColorDegradation({
 			reason: "jianying-portrait-adjustment-fallback",

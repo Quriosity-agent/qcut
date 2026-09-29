@@ -50,4 +50,43 @@ describe("canvas frame capture", () => {
 		expect(mocks.html2canvas).toHaveBeenCalledOnce();
 		expect(getImageData).toHaveBeenCalledWith(0, 0, 100, 50);
 	});
+
+	it("prunes unrelated editor subtrees while preserving capture ancestors and styles", async () => {
+		const owner = document.implementation.createHTMLDocument("Capture");
+		owner.head.innerHTML =
+			'<style>.caption { color: red }</style><link rel="stylesheet" href="theme.css">';
+		owner.body.innerHTML =
+			'<main><aside><canvas></canvas></aside><section><div id="surface"><video></video><span class="caption">Hello</span></div><div id="controls"></div></section></main><div id="timeline"><span>Clip</span></div>';
+		const surface = owner.getElementById("surface")!;
+		mocks.html2canvas.mockResolvedValue({ getContext: () => null });
+		await captureFrameToCanvas(surface, { width: 100, height: 50 });
+		const options = mocks.html2canvas.mock.calls[0][1] as {
+			ignoreElements: (element: Element) => boolean;
+		};
+		for (const selector of [
+			"html",
+			"head",
+			"style",
+			"link",
+			"body",
+			"main",
+			"section",
+			"#surface",
+			"video",
+			".caption",
+		]) {
+			expect(options.ignoreElements(owner.querySelector(selector)!)).toBe(
+				false
+			);
+		}
+		for (const selector of [
+			"aside",
+			"aside canvas",
+			"#controls",
+			"#timeline",
+			"#timeline span",
+		]) {
+			expect(options.ignoreElements(owner.querySelector(selector)!)).toBe(true);
+		}
+	});
 });

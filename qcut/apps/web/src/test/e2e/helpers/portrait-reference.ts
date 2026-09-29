@@ -15,9 +15,11 @@ import type { useTimelineStore } from "../../../stores/timeline-store";
 export async function preparePortraitReferenceProject({
 	page,
 	source,
+	duration = 1,
 }: {
 	page: Page;
 	source: string;
+	duration?: number;
 }) {
 	await page.setViewportSize({ width: 1800, height: 1100 });
 	// Keep the calibration canvas fixed; first-media auto sizing is asynchronous.
@@ -34,7 +36,7 @@ export async function preparePortraitReferenceProject({
 	await navigateToProjects(page);
 	await createTestProject(page, `Portrait Slider Reference ${Date.now()}`);
 	await uploadTestMedia(page, source);
-	await page.evaluate(async () => {
+	await page.evaluate(async (duration) => {
 		const stores = window as unknown as ReferenceWindow;
 		const size = { width: 1080, height: 1620 };
 		stores.__editorStore.getState().setCanvasSize(size, "custom");
@@ -51,14 +53,14 @@ export async function preparePortraitReferenceProject({
 			type: "media",
 			mediaId: media.id,
 			name: media.name,
-			duration: 1,
+			duration,
 			startTime: 0,
 			trimStart: 0,
 			trimEnd: 0,
 		});
 		if (!elementId) throw new Error("Cannot insert portrait");
 		timeline.setSelectedElements([{ trackId: track.id, elementId }]);
-	});
+	}, duration);
 	await page
 		.getByTestId("media-properties")
 		.getByRole("tab", { name: "美颜美体", exact: true })
