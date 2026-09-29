@@ -8,6 +8,7 @@ import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
 	createPortraitReferenceCapture,
 	preparePortraitReferenceProject,
+	readPreview,
 	readValues,
 } from "./helpers/portrait-reference";
 import { exportPortraitReference } from "./helpers/portrait-reference-export";
@@ -29,18 +30,19 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 	const app = await startElectronApp({
 		userDataDirectory: await mkdtemp(path.join(os.tmpdir(), "qcut-jawbone-")),
 	});
-	const page = await getMainWindow(app);
 	const errors: string[] = [];
-	page.on("pageerror", (error) => errors.push(error.message));
 	const samples: Array<{
 		name: string;
 		values: Awaited<ReturnType<typeof readValues>>;
 		exportPath: string;
+		exportSha256: string;
 		frameSha256: string;
 		decodedFrames: number;
 		videoStream: Record<string, string | number>;
 	}> = [];
 	try {
+		const page = await getMainWindow(app);
+		page.on("pageerror", (error) => errors.push(error.message));
 		const { panel } = await preparePortraitReferenceProject({
 			page,
 			source,
@@ -69,11 +71,13 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 					: "neutral-after";
 			const expectedValues = value ? { face_adjust_ZoomJawbone: value } : {};
 			if (value) {
+				const previousHash = (await readPreview({ page })).hash;
 				const preview = await capture.changeAndCapture({
 					page,
 					name,
 					label: "下颌骨",
 					value,
+					previousHash,
 				});
 				expect(preview.values).toEqual(expectedValues);
 				expect([preview.width, preview.height]).toEqual([1080, 1620]);
@@ -106,7 +110,10 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 			const frameSha256 = createHash("sha256")
 				.update(await readFile(path.join(directory, "export-frame.png")))
 				.digest("hex");
-			samples.push({ name, values, ...exported, frameSha256 });
+			const exportSha256 = createHash("sha256")
+				.update(await readFile(exported.exportPath))
+				.digest("hex");
+			samples.push({ name, values, ...exported, exportSha256, frameSha256 });
 			await page
 				.getByRole("button", { name: "Close export dialog", exact: true })
 				.click();
@@ -117,28 +124,33 @@ test("jawbone exports isolate 50/100 and restore the neutral baseline", async ()
 		).toBe(3);
 		expect(errors).toEqual([]);
 	} catch (error) {
-		await page
-			.screenshot({ path: path.join(output, "failure-ui.png") })
+		errors.push(error instanceof Error ? error.message : String(error));
+		await app
+			.windows()[0]
+			?.screenshot({ path: path.join(output, "failure-ui.png") })
 			.catch(() => {});
 		throw error;
 	} finally {
-		await writeFile(
-			path.join(output, "report.json"),
-			JSON.stringify(
-				{
-					source,
-					sourceSha256: createHash("sha256")
-						.update(await readFile(source))
-						.digest("hex"),
-					hostOverride:
-						process.env.QCUT_JIANYING_PORTRAIT_ADJUSTMENT_HOST ?? null,
-					samples,
-					errors,
-				},
-				null,
-				2
-			)
-		);
-		await app.close();
+		try {
+			await writeFile(
+				path.join(output, "report.json"),
+				JSON.stringify(
+					{
+						source,
+						sourceSha256: createHash("sha256")
+							.update(await readFile(source))
+							.digest("hex"),
+						hostOverride:
+							process.env.QCUT_JIANYING_PORTRAIT_ADJUSTMENT_HOST ?? null,
+						samples,
+						errors,
+					},
+					null,
+					2
+				)
+			);
+		} finally {
+			await app.close();
+		}
 	}
 });
