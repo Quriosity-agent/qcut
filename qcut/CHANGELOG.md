@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.09.29.1] - 2026-09-29
+
 ### Improved
 - Keep timeline navigation responsive by coalescing hover previews, bounding visible ruler and caption work, and reducing redundant zoom updates.
 - Align portrait skin controls and improve blemish-removal and jawbone processing consistency between preview and export.
