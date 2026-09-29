@@ -40,7 +40,7 @@ function formatTime({
 	if (minutes > 0)
 		return `${minutes}:${Math.floor(secs).toString().padStart(2, "0")}`;
 	if (interval >= 1) return `${Math.floor(secs)}s`;
-	return `${secs.toFixed(interval >= 0.1 ? 1 : 2)}s`;
+	return `${secs.toFixed(interval === 0.25 || interval < 0.1 ? 2 : 1)}s`;
 }
 
 export function getVisibleTimeMarkers({
