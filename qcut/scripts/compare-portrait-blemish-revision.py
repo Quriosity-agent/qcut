@@ -43,6 +43,19 @@ def signed_delta(*, result, baseline):
     return samples(result) - samples(baseline)
 
 
+def validated_frame(*, report, directory, value, side, kind):
+    samples = [sample for sample in report.get("samples", [])
+               if sample.get("key") == "face_adjust_SpotAcne" and sample.get("value") == value]
+    if len(samples) != 1:
+        raise ValueError(f"Require one fingerprinted blemish sample at strength {value}")
+    expected = samples[0].get(side, {}).get("frames", {}).get(kind, {}).get("sha256")
+    path = directory / f"blemish-{value}" / f"{side}-{kind}.png"
+    actual = SKIN.fingerprint(path=path)
+    if not expected or actual["sha256"] != expected:
+        raise ValueError(f"Comparison PNG fingerprint missing or mismatched: {path}")
+    return SKIN.load_frame(path=path, expected_size=(600, 900)), actual
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("before", type=Path)
@@ -71,9 +84,10 @@ def main():
         for phase, directory in (("before", args.before), ("after", args.after)):
             for side in ("jianying", "qcut"):
                 for kind in ("zero", "result"):
-                    path = directory / f"blemish-{value}" / f"{side}-{kind}.png"
-                    sources.append(SKIN.fingerprint(path=path))
-                    frames[phase, side, kind] = SKIN.load_frame(path=path, expected_size=(600, 900))
+                    image, fingerprint = validated_frame(report=reports[phase], directory=directory,
+                                                         value=value, side=side, kind=kind)
+                    sources.append(fingerprint)
+                    frames[phase, side, kind] = image
         for kind in ("zero", "result"):
             if not np.array_equal(frames["before", "jianying", kind], frames["after", "jianying", kind]):
                 raise ValueError("Jianying reference pixels changed between revisions")
