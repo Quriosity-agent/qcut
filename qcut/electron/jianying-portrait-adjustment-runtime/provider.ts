@@ -817,7 +817,10 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				stage.runtimePackage === "nose-3d" ||
 				stage.runtimePackage === "smile" ||
 				stage.runtimePackage === "face" ||
-				stage.runtimePackage === "eye-details"
+				stage.runtimePackage === "eye-details" ||
+				stage.runtimePackage === "small-face" ||
+				stage.runtimePackage === "jawline" ||
+				stage.runtimePackage === "skin-gan"
 					? {
 							inputHash: frameHash({
 								rgba: new Uint8Array(await readFile(inputPath)),
@@ -936,6 +939,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						renderAttempt,
 						isOutputChanged: outputIsUsable,
 						maxAttempts: PORTRAIT_FRAME_MAX_RENDER_ATTEMPTS,
+						// GAN readback can be visible one pass before its fitted output is ready.
+						minAttempts: stage.runtimePackage === "skin-gan" ? 2 : 1,
 					});
 					if (!(await outputIsUsable())) {
 						throw new Error("剪映美颜美体返回了空画面");
