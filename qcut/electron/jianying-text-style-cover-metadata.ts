@@ -129,14 +129,16 @@ function compareRows({
 	return (right.timestamp ?? "").localeCompare(left.timestamp ?? "");
 }
 
-export async function resolveJianyingTextStyleCoverUrls({
+export async function resolveJianyingResourceCoverUrls({
 	databaseRoot,
 	references,
 }: {
 	databaseRoot: string;
-	references: JianyingTextStyleCatalogEntry[];
+	references: { resourceId: string; version: string }[];
 }) {
-	const requestedStyleIds = new Set(references.map(({ styleId }) => styleId));
+	const requestedStyleIds = new Set(
+		references.map(({ resourceId, version }) => `${resourceId}/${version}`)
+	);
 	const resourceIds = [
 		...new Set(
 			references
@@ -175,6 +177,24 @@ export async function resolveJianyingTextStyleCoverUrls({
 		if (coverUrl) covers.set(styleId, coverUrl);
 	}
 	return covers;
+}
+
+export function resolveJianyingTextStyleCoverUrls({
+	databaseRoot,
+	references,
+}: {
+	databaseRoot: string;
+	references: JianyingTextStyleCatalogEntry[];
+}) {
+	return resolveJianyingResourceCoverUrls({
+		databaseRoot,
+		references: references.map(({ resourceId, styleId }) => ({
+			resourceId,
+			version: styleId.startsWith(`${resourceId}/`)
+				? styleId.slice(resourceId.length + 1)
+				: "",
+		})),
+	});
 }
 
 export function attachJianyingTextStyleCoverUrls({
