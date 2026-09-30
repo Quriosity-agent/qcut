@@ -28,6 +28,7 @@ const groups = [
 	{ category: "mouth", label: "嘴巴" },
 	{ category: "brows", label: "眉毛" },
 ] as const;
+const makeupOnly = process.env.QCUT_PORTRAIT_MAKEUP_ONLY === "1";
 const makeupLabels = {
 	look: "套装",
 	lip: "口红",
@@ -43,7 +44,7 @@ const makeupLabels = {
 	freckles: "雀斑",
 };
 
-test("canonical features and every cached makeup card render, reset, resize, reopen and export", async () => {
+test("canonical features and selectable makeup cards render, reset, resize, reopen and export", async () => {
 	test.skip(
 		!source || !existsSync(source),
 		"Requires a real portrait and local native runtime"
@@ -76,7 +77,7 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 			source,
 			canvasSize,
 		});
-		await groups.reduce(async (previous, group) => {
+		await (makeupOnly ? [] : groups).reduce(async (previous, group) => {
 			await previous;
 			await features
 				.getByRole("button", { name: group.label, exact: true })
@@ -129,7 +130,9 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 		await panel.getByRole("button", { name: "五官精修", exact: true }).click();
 		await panel.getByRole("button", { name: "美妆", exact: true }).click();
 		const makeup = page.getByTestId("portrait-section-makeup");
-		await JIANYING_PORTRAIT_MAKEUP_CARDS.reduce(async (previous, card) => {
+		await JIANYING_PORTRAIT_MAKEUP_CARDS.filter(
+			({ legacyOnly }) => !legacyOnly
+		).reduce(async (previous, card) => {
 			await previous;
 			await makeup
 				.getByRole("tab", { name: makeupLabels[card.category], exact: true })
@@ -164,7 +167,7 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 			await button.click();
 			const sample = await capture.changeAndCapture({
 				page,
-				label: "强度",
+				label: "程度",
 				value: card.defaultIntensity,
 				name: card.id,
 			});
@@ -188,13 +191,13 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 				makeup: saved,
 			});
 			await makeup
-				.getByRole("button", { name: "重置强度", exact: true })
+				.getByRole("button", { name: "重置程度", exact: true })
 				.click();
 			await expect(page.getByTestId("color-preview-canvas")).toHaveCount(0);
 			await expect(button).toHaveAttribute("aria-pressed", "true");
 			const restored = await capture.changeAndCapture({
 				page,
-				label: "强度",
+				label: "程度",
 				value: card.defaultIntensity,
 				name: `${card.id}-restored`,
 			});
@@ -204,12 +207,56 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 		}, Promise.resolve());
 		await makeup.getByRole("tab", { name: "口红", exact: true }).click();
 		await makeup.getByRole("button", { name: "柔和粉", exact: true }).click();
-		await capture.changeAndCapture({
+		const lipPreview = await capture.changeAndCapture({
 			page,
-			label: "强度",
+			label: "程度",
 			value: 50,
 			name: "combined-lip",
 		});
+		const makeupLayouts: Array<Record<string, unknown>> = [];
+		await [
+			{ width: 1280, height: 800 },
+			{ width: 1800, height: 1100 },
+		].reduce(async (previous, viewport) => {
+			await previous;
+			await page.setViewportSize(viewport);
+			await makeup.getByLabel("程度数值", { exact: true }).hover();
+			await expect
+				.poll(async () => (await readPreview({ page })).hash)
+				.toBe(lipPreview.hash);
+			const layout = await makeup.evaluate((element) => {
+				const panel = element.getBoundingClientRect();
+				const buttons = Array.from(element.querySelectorAll("button"));
+				const cards = buttons.filter((button) =>
+					button.hasAttribute("aria-pressed")
+				);
+				return {
+					overflow: element.scrollWidth > element.clientWidth,
+					contained: buttons.every((button) => {
+						const rect = button.getBoundingClientRect();
+						return rect.left >= panel.left && rect.right <= panel.right + 1;
+					}),
+					thumbnailSizes: cards.map((card) => {
+						const rect = card.firstElementChild?.getBoundingClientRect();
+						return { width: rect?.width ?? 0, height: rect?.height ?? 0 };
+					}),
+				};
+			});
+			expect(layout.overflow).toBe(false);
+			expect(layout.contained).toBe(true);
+			expect(layout.thumbnailSizes).toHaveLength(3);
+			for (const size of layout.thumbnailSizes) {
+				expect(size.width).toBeGreaterThan(40);
+				expect(size.width).toBeLessThanOrEqual(65);
+				expect(Math.abs(size.width - size.height)).toBeLessThan(1);
+			}
+			const filename = `makeup-ui-${viewport.width}.png`;
+			await page.screenshot({
+				path: path.join(output, filename),
+				animations: "disabled",
+			});
+			makeupLayouts.push({ viewport, ...layout, filename });
+		}, Promise.resolve());
 		await panel.getByRole("button", { name: "五官精修", exact: true }).click();
 		await features.getByRole("button", { name: "鼻子", exact: true }).click();
 		const combined = await capture.changeAndCapture({
@@ -217,12 +264,40 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 			label: "小翘鼻",
 			value: 50,
 			name: "combined-nose-makeup",
+			previousHash: lipPreview.hash,
 		});
+		await capture.captureSource({ page, name: "combined-nose-makeup" });
 		await page.setViewportSize({ width: 1280, height: 800 });
 		await page.getByLabel("小翘鼻数值", { exact: true }).hover();
-		await expect
-			.poll(async () => (await readPreview({ page })).hash, { timeout: 30_000 })
-			.toBe(combined.hash);
+		try {
+			await expect
+				.poll(async () => (await readPreview({ page })).hash, {
+					timeout: 30_000,
+				})
+				.toBe(combined.hash);
+		} finally {
+			const resized = await readPreview({ page });
+			await writeFile(
+				path.join(output, "combined-resized-frame.png"),
+				resized.png
+			);
+			const resizedSource = await capture.captureSource({
+				page,
+				name: "combined-resized",
+			});
+			await writeFile(
+				path.join(output, "combined-resized.json"),
+				JSON.stringify({
+					expected: combined,
+					hash: resized.hash,
+					width: resized.width,
+					height: resized.height,
+					commits: resized.commits,
+					source: resizedSource,
+					values: await readValues({ page }),
+				})
+			);
+		}
 		await page.screenshot({
 			path: path.join(output, "compact-ui.png"),
 			animations: "disabled",
@@ -263,8 +338,10 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 						.update(await readFile(source))
 						.digest("hex"),
 					canvasSize,
+					mode: makeupOnly ? "makeup-only" : "features-and-makeup",
 					samples,
 					makeupSamples,
+					makeupLayouts,
 					combined,
 					exported,
 					errors,
