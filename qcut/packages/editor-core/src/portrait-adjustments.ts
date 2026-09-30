@@ -61,6 +61,8 @@ export const MEDIA_PORTRAIT_ADJUSTMENT_KEYS = [
 	"face_adjust_yunfu",
 	"face_adjust_fuling",
 	"face_adjust_lunkuopinghua",
+	"face_adjust_YouTaiFace",
+	"face_adjust_XiaHeXian",
 	"face_adjust_SpotAcne",
 	"face_adjust_WhiteTeeth",
 	"face_adjust_temple",
