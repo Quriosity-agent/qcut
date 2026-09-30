@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { loadImage } from "@napi-rs/canvas";
 import { expect, test } from "@playwright/test";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
 import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../electron/jianying-portrait-adjustment-runtime/makeup-catalog";
@@ -49,6 +50,14 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 	);
 	test.setTimeout(900_000);
 	if (!source) throw new Error("Missing portrait source");
+	const image = await loadImage(source);
+	const canvasSize = {
+		width: 1080,
+		height: Math.round((1080 * image.height) / image.width / 2) * 2,
+	};
+	if (canvasSize.height < 64 || canvasSize.height > 4096) {
+		throw new Error("Portrait aspect ratio outside reference bounds");
+	}
 	await mkdir(output, { recursive: true });
 	const userDataDirectory = await mkdtemp(
 		path.join(os.tmpdir(), "qcut-feature-makeup-")
@@ -65,7 +74,7 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 		const { panel, features } = await preparePortraitReferenceProject({
 			page,
 			source,
-			canvasSize: { width: 1080, height: 1080 },
+			canvasSize,
 		});
 		await groups.reduce(async (previous, group) => {
 			await previous;
@@ -100,7 +109,10 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 						previousHash: samples.at(-1)?.hash,
 					});
 					expect(sample.values).toEqual({ [control.key]: value });
-					expect([sample.width, sample.height]).toEqual([1080, 1080]);
+					expect([sample.width, sample.height]).toEqual([
+						canvasSize.width,
+						canvasSize.height,
+					]);
 					await capture.captureSource({ page, name: sample.name });
 					samples.push(sample);
 				}, Promise.resolve());
@@ -238,7 +250,8 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 		});
 		expect(exported.videoStream.codec_name).toBe("h264");
 		expect([exported.videoStream.width, exported.videoStream.height]).toEqual([
-			1080, 1080,
+			canvasSize.width,
+			canvasSize.height,
 		]);
 		expect(errors).toEqual([]);
 		await writeFile(
@@ -249,7 +262,7 @@ test("canonical features and every cached makeup card render, reset, resize, reo
 					sourceSha256: createHash("sha256")
 						.update(await readFile(source))
 						.digest("hex"),
-					canvasSize: { width: 1080, height: 1080 },
+					canvasSize,
 					samples,
 					makeupSamples,
 					combined,
