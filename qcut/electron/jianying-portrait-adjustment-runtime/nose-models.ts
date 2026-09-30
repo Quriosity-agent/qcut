@@ -1,5 +1,16 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
+
+export function isJianying3DNosePackage({
+	runtimePackage,
+}: {
+	runtimePackage: JianyingPortraitAdjustmentRuntimePackage;
+}): boolean {
+	return ["nose-3d", "nose-sculpt", "nose-upturned", "nose-hump"].includes(
+		runtimePackage
+	);
+}
 
 export const JIANYING_NOSE_3D_MODELS = [
 	"tt_face",
@@ -11,15 +22,23 @@ export const JIANYING_NOSE_3D_MODELS = [
 
 export async function missingJianyingNoseModels({
 	modelDirectory,
+	runtimePackage = "nose-3d",
 }: {
 	modelDirectory: string | null;
+	runtimePackage?: JianyingPortraitAdjustmentRuntimePackage;
 }): Promise<string[]> {
-	if (!modelDirectory) return [...JIANYING_NOSE_3D_MODELS];
+	if (!isJianying3DNosePackage({ runtimePackage })) return [];
+	const models = JIANYING_NOSE_3D_MODELS.map((model) =>
+		model === "tt_facefitting1220" && runtimePackage !== "nose-3d"
+			? "tt_facefitting1256"
+			: model
+	);
+	if (!modelDirectory) return models;
 	const entries = await readdir(modelDirectory, { withFileTypes: true }).catch(
 		() => []
 	);
 	const present = await Promise.all(
-		JIANYING_NOSE_3D_MODELS.map(async (model) => {
+		models.map(async (model) => {
 			const candidates = entries.filter(
 				(entry) =>
 					entry.isFile() &&
@@ -36,5 +55,5 @@ export async function missingJianyingNoseModels({
 			return sizes.some((size) => size > 0);
 		})
 	);
-	return JIANYING_NOSE_3D_MODELS.filter((_, index) => !present[index]);
+	return models.filter((_, index) => !present[index]);
 }
