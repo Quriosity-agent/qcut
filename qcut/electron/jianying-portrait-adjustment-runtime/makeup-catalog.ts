@@ -10,7 +10,6 @@ export interface JianyingPortraitMakeupCardDefinition {
 	parameterKey: string;
 	defaultIntensity: number;
 	kind: "dynamic" | "standalone";
-	thumbnailRelativePath: string;
 }
 
 export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
@@ -24,7 +23,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_whole",
 		defaultIntensity: 80,
 		kind: "standalone",
-		thumbnailRelativePath: "AmazingFeature/image/lip/lipClose.png",
 	},
 	{
 		id: "lip-soft-pink",
@@ -36,7 +34,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_lip_yunranColorRHF",
 		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/lip/default/lipClose.png",
 	},
 	{
 		id: "lip-coral-nude",
@@ -46,9 +43,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406181389613190435",
 		version: "e3ccb34c651dd1b57e6c2fb6532c6990",
 		parameterKey: "face_adjust_lip_shanhuluofen",
-		defaultIntensity: 60,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/lip_BlendModeColor/default/lipClose.png",
 	},
 	{
 		id: "blush-baby-pink",
@@ -58,9 +54,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406180986888654120",
 		version: "9591fdbc8cdd0806e91ffd334bdd5f7b",
 		parameterKey: "face_adjust_blusher_yingerfen",
-		defaultIntensity: 40,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/blusher/blusher.png",
 	},
 	{
 		id: "contour-mixed",
@@ -70,9 +65,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406181489412427060",
 		version: "6fe23753b9c46a79b6f617c054a3608e",
 		parameterKey: "face_adjust_stereo_fajixian",
-		defaultIntensity: 65,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/stereo/stereo.png",
 	},
 	{
 		id: "aegyo-natural",
@@ -82,9 +76,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406180908924996879",
 		version: "ca0e678b9394dd720b3c04379dfb48a3",
 		parameterKey: "face_adjust_eyemazing_ziran",
-		defaultIntensity: 60,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyeshadow/default/eyeshadow.png",
 	},
 	{
 		id: "brows-flow",
@@ -96,7 +89,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "eyebrow_adjust_BiaoZhun",
 		defaultIntensity: 70,
 		kind: "standalone",
-		thumbnailRelativePath: "AmazingFeature/image/wry_eyebrow_biaozhun.png",
 	},
 	{
 		id: "brows-fluffy",
@@ -108,7 +100,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_brow_rongrongmei",
 		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyebrow/eyebrow.png",
 	},
 	{
 		id: "lashes-natural-ii",
@@ -120,7 +111,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_eyelash_mashengganer",
 		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyelash/default/eyelash.png",
 	},
 	{
 		id: "eyeliner-natural",
@@ -130,9 +120,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406174938438044943",
 		version: "8ae3097fb95ca9006f57856fccd625be",
 		parameterKey: "face_adjust_eyeline_ziran",
-		defaultIntensity: 60,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyeline/eyeline.png",
 	},
 	{
 		id: "eyeliner-cat",
@@ -144,7 +133,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_eyeline_xiaoyemao",
 		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyeline/eyeline.png",
 	},
 	{
 		id: "eyeshadow-girl-pink",
@@ -154,9 +142,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7408077631049960744",
 		version: "1a234c85160694dd855f9cfe76a81145",
 		parameterKey: "face_adjust_eyeshadow_shaonvfen",
-		defaultIntensity: 60,
+		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/eyeshadow/default/eyeshadow.png",
 	},
 	{
 		id: "contacts-natural",
@@ -168,7 +155,6 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "face_adjust_pupil_yuansheng",
 		defaultIntensity: 80,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/pupil/pupil_normal.png",
 	},
 	{
 		id: "highlight-sweetheart",
@@ -178,9 +164,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406175318072888576",
 		version: "1fb1a0dfaaeadb313f4b3d3b96eaae0c",
 		parameterKey: "face_adjust_highlight_meishitianxin",
-		defaultIntensity: 60,
+		defaultIntensity: 70,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/highlight3d/highlight_khgp_1655297390.png",
 	},
 	{
 		id: "freckles-sunburn",
@@ -190,9 +175,8 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406174488410262784",
 		version: "547119e40339154d17eb93c62ee9433b",
 		parameterKey: "face_adjust_mask_jipusaiqueban",
-		defaultIntensity: 70,
+		defaultIntensity: 50,
 		kind: "dynamic",
-		thumbnailRelativePath: "image/mask3d/freckles.png",
 	},
 ] as const satisfies readonly JianyingPortraitMakeupCardDefinition[];
 
