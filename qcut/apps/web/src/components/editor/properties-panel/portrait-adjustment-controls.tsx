@@ -104,7 +104,7 @@ export function PortraitAdjustmentSection({
 								type="button"
 								variant={selectedCategory === category ? "secondary" : "text"}
 								size="sm"
-								className="h-7 px-3 text-[11px]"
+								className="h-6 min-w-12 rounded-full px-3 text-[11px]"
 								aria-pressed={selectedCategory === category}
 								disabled={disabled}
 								onClick={() => setSelectedCategory(category)}
