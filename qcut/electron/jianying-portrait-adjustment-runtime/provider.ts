@@ -494,6 +494,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				titleZh: card.titleZh,
 				titleEn: card.titleEn,
 				defaultIntensity: card.defaultIntensity,
+				...(card.legacyOnly ? { legacyOnly: true } : {}),
 				ready: Boolean(
 					packagePath && (card.kind === "standalone" || makeupBaseReady)
 				),
