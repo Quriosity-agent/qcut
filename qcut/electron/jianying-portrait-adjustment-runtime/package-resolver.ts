@@ -43,6 +43,18 @@ function installedCacheRoot() {
 	return path.join(os.homedir(), "Movies", "JianyingPro", "User Data", "Cache");
 }
 
+const PACKAGE_SCRIPTS: Partial<
+	Record<JianyingPortraitAdjustmentRuntimePackage, string>
+> = {
+	"nose-3d": "Face3DSystem.lua",
+	"nose-sculpt": "Masheng.lua",
+	"nose-upturned": "XiaoQiaoBi.lua",
+	"nose-hump": "Tuofeng.lua",
+	"brow-shape": "FaceReshapeControlSystem.lua",
+	"feature-tilt": "FaceReshapeControlSystem.lua",
+	smile: "FaceReshapeControlSystem.lua",
+};
+
 function requiredPackageFiles({
 	runtimePackage,
 }: {
@@ -66,12 +78,7 @@ function requiredPackageFiles({
 			"AmazingFeature_shadow/lua/makeup.lua",
 		];
 	}
-	const script =
-		runtimePackage === "nose-3d"
-			? "Face3DSystem.lua"
-			: runtimePackage === "feature-tilt" || runtimePackage === "smile"
-				? "FaceReshapeControlSystem.lua"
-				: null;
+	const script = PACKAGE_SCRIPTS[runtimePackage];
 	if (!script) return ["algorithmConfig.json"];
 	return [
 		"algorithmConfig.json",
