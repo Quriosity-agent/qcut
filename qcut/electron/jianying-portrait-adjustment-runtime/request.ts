@@ -308,7 +308,7 @@ function parseMakeupSelections({
 		if (
 			typeof selection.intensity !== "number" ||
 			!Number.isFinite(selection.intensity) ||
-			selection.intensity <= 0 ||
+			selection.intensity < 0 ||
 			selection.intensity > 100
 		) {
 			throw new Error(`剪映美妆强度无效: ${selection.cardId}`);
