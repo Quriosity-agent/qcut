@@ -47,19 +47,34 @@ export async function renderUntilOutputChanges({
 	renderAttempt,
 	isOutputChanged,
 	maxAttempts,
+	minAttempts = 1,
 	attempt = 1,
 }: {
 	renderAttempt: ({ attempt }: { attempt: number }) => Promise<void>;
 	isOutputChanged: () => Promise<boolean>;
 	maxAttempts: number;
+	minAttempts?: number;
 	attempt?: number;
 }): Promise<number> {
+	if (
+		!Number.isSafeInteger(minAttempts) ||
+		!Number.isSafeInteger(maxAttempts) ||
+		minAttempts < 1 ||
+		maxAttempts < minAttempts
+	) {
+		throw new Error("Invalid portrait render attempt bounds");
+	}
 	await renderAttempt({ attempt });
-	if ((await isOutputChanged()) || attempt >= maxAttempts) return attempt;
+	if (
+		((await isOutputChanged()) && attempt >= minAttempts) ||
+		attempt >= maxAttempts
+	)
+		return attempt;
 	return renderUntilOutputChanges({
 		renderAttempt,
 		isOutputChanged,
 		maxAttempts,
+		minAttempts,
 		attempt: attempt + 1,
 	});
 }
