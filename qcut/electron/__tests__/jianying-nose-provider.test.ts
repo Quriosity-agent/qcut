@@ -22,14 +22,27 @@ vi.mock("../jianying-filter-local-runtime/runtime-discovery.js", () => ({
 vi.mock("../jianying-portrait-adjustment-runtime/bridge-resolver.js", () => ({
 	resolveJianyingPortraitAdjustmentHost: async () => "/host",
 }));
-vi.mock("../jianying-portrait-adjustment-runtime/nose-models.js", () => ({
-	missingJianyingNoseModels: mocks.missingModels,
-}));
+vi.mock(
+	"../jianying-portrait-adjustment-runtime/nose-models.js",
+	async (importOriginal) => ({
+		...(await importOriginal<
+			typeof import("../jianying-portrait-adjustment-runtime/nose-models.js")
+		>()),
+		missingJianyingNoseModels: mocks.missingModels,
+	})
+);
 vi.mock("../jianying-portrait-adjustment-runtime/host-process.js", () => ({
 	startJianyingPortraitHostProcess: mocks.start,
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
-	resolveJianyingPortraitMakeupCards: async () => [],
+	resolveJianyingPortraitMakeupCards: async () =>
+		(
+			await import("../jianying-portrait-adjustment-runtime/makeup-catalog.js")
+		).JIANYING_PORTRAIT_MAKEUP_CARDS.map((card) => ({
+			card,
+			packagePath: `/makeup/${card.id}`,
+			source: "qcut-private",
+		})),
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/package-resolver.js", () => ({
 	resolveJianyingPortraitPackages: async () =>
@@ -188,7 +201,9 @@ describe("stateful portrait fitting provider", () => {
 		expect(hosts).toHaveLength(2);
 	});
 	it("disables only the unavailable 3D control and refuses uncached rendering without its model", async () => {
-		mocks.missingModels.mockResolvedValue(["tt_facefitting1220"]);
+		mocks.missingModels.mockImplementation(async ({ runtimePackage }) =>
+			runtimePackage === "nose-3d" ? ["tt_facefitting1220"] : []
+		);
 		const status = await provider.inspect();
 		expect(status.available).toBe(true);
 		expect(
@@ -206,6 +221,62 @@ describe("stateful portrait fitting provider", () => {
 			"tt_facefitting1220"
 		);
 		expect(mocks.start).not.toHaveBeenCalled();
+	});
+	it.each([
+		{ key: "face_adjust_MaShengNose", runtimePackage: "nose-sculpt" },
+		{ key: "face_adjust_XiaoQiaoBi", runtimePackage: "nose-upturned" },
+		{ key: "face_adjust_TuoFengNose", runtimePackage: "nose-hump" },
+		{ key: "eyebrow_adjust_BiaoZhun", runtimePackage: "brow-shape" },
+	])("holds $runtimePackage paused frames but advances moving input", async ({
+		key,
+		runtimePackage,
+	}) => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { [key]: 50 } },
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts[0].render).toHaveBeenCalledTimes(1);
+		expect(mocks.start).toHaveBeenCalledWith(
+			expect.objectContaining({ packagePath: `/packages/${runtimePackage}` })
+		);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(102);
+		expect(hosts).toHaveLength(1);
+		expect(hosts[0].render).toHaveBeenCalledTimes(2);
+	});
+	it("holds combined nose and makeup without freezing moving input", async () => {
+		const base = {
+			...request(),
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_XiaoQiaoBi: 50 },
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 50 } },
+			},
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts).toHaveLength(2);
+		for (const host of hosts) expect(host.render).toHaveBeenCalledTimes(1);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(104);
+		expect(hosts).toHaveLength(2);
+		for (const host of hosts) expect(host.render).toHaveBeenCalledTimes(2);
 	});
 	it("rebuilds face tracking after bright eyes changes its paused input", async () => {
 		const base = request();
