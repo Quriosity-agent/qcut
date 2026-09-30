@@ -98,6 +98,26 @@ export const JIANYING_PORTRAIT_PACKAGE_IDENTITIES = {
 		version: "d7c908c833ac8ffc0de910ec579ba339",
 		group: "face",
 	},
+	"nose-sculpt": {
+		resourceId: "7406179927055273250",
+		version: "e9b672ca3c8c3a21eed297586e4aafab",
+		group: "face",
+	},
+	"nose-upturned": {
+		resourceId: "7406180734387359010",
+		version: "b428316fa25cc1924b1a29e6394af149",
+		group: "face",
+	},
+	"nose-hump": {
+		resourceId: "7406018149583310114",
+		version: "fbb628af927c81ce06285991a1227dd3",
+		group: "face",
+	},
+	"brow-shape": {
+		resourceId: "7406174746829737231",
+		version: "07099f3faae54f150b43ab47e1b94521",
+		group: "face",
+	},
 	"eye-details": {
 		resourceId: "7408077446257331471",
 		version: "a5ff2cc5d18c0f1ba8803b2550be679d",
@@ -147,6 +167,10 @@ export const JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER = [
 	"feature-tilt",
 	"smile",
 	"nose-3d",
+	"nose-sculpt",
+	"nose-upturned",
+	"nose-hump",
+	"brow-shape",
 	"makeup",
 	"body",
 ] as const satisfies readonly JianyingPortraitAdjustmentRuntimePackage[];
