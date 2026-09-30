@@ -110,6 +110,28 @@ describe("stateful portrait fitting provider", () => {
 		adjustments: { enabled: true, values: { face_adjust_3DNose_Big: value } },
 	});
 
+	it("exposes legacy-only selection metadata without disabling its render package", async () => {
+		const status = await provider.inspect();
+		expect(
+			status.makeupCards.find(({ id }) => id === "brows-flow")
+		).toMatchObject({
+			legacyOnly: true,
+			ready: true,
+			defaultIntensity: 70,
+			source: "qcut-private",
+		});
+		expect(
+			status.makeupCards
+				.filter(({ legacyOnly }) => legacyOnly)
+				.map(({ id }) => id)
+		).toEqual(["brows-flow"]);
+		expect(
+			status.makeupCards.find(({ id }) => id === "brows-fluffy")
+		).not.toHaveProperty("legacyOnly");
+		expect(status.offlineReady).toBe(true);
+		expect(mocks.start).not.toHaveBeenCalled();
+	});
+
 	it("renders the dedicated package and freezes identical image frames without advancing fitting", async () => {
 		const first = await provider.render(request());
 		const next = await provider.render(request({ timestampSeconds: 1 / 30 }));
