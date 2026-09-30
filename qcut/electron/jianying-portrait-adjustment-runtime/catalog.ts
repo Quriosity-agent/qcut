@@ -22,7 +22,7 @@ export const JIANYING_PORTRAIT_PACKAGE_IDENTITIES = {
 		version: "d8d3201fa6c77f369501cf4baae130ab",
 		group: "face",
 	},
-	// 匀肤与丰盈共用同一个 GAN 包，两个键各自独立。
+	// Skin correction and contour flow share a GAN package with independent keys.
 	"skin-gan": {
 		resourceId: "7408077026705280256",
 		version: "74ded1bf06987b66866e6c2fc72a9e24",
@@ -237,6 +237,17 @@ export const JIANYING_PORTRAIT_ADJUSTMENT_CATALOG = [
 		step: 1,
 	},
 	{
+		key: "face_adjust_lunkuopinghua",
+		group: "face",
+		section: "face-shape",
+		runtimePackage: "skin-gan",
+		titleZh: "流畅脸",
+		titleEn: "Smooth contour",
+		min: 0,
+		max: 100,
+		step: 1,
+	},
+	{
 		key: "face_adjust_TotalFace",
 		group: "face",
 		section: "face-shape",
@@ -329,11 +340,11 @@ export const JIANYING_PORTRAIT_ADJUSTMENT_CATALOG = [
 	{
 		key: "face_adjust_temple",
 		group: "face",
-		section: "face-shape",
-		category: "common",
+		section: "features",
+		category: "details",
 		runtimePackage: "features",
-		titleZh: "流畅脸",
-		titleEn: "Smooth contour",
+		titleZh: "太阳穴（基础）",
+		titleEn: "Temples (legacy)",
 		min: 0,
 		max: 100,
 		step: 1,
