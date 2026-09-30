@@ -43,6 +43,7 @@ class FaceShapeReferenceTests(unittest.TestCase):
         self.assertEqual(len(samples), 26)
         self.assertEqual(len(reference["samples"]), 36)
         self.assertEqual(samples["narrow-face--50"]["values"], {"face_adjust_CutFace": -50})
+        self.assertEqual(samples["smooth-contour-50"]["values"], {"face_adjust_lunkuopinghua": 50})
 
     def test_missing_controls_remain_missing_and_short_face_is_not_small_face(self):
         controls = {item["slug"]: item for item in MODULE.reference_controls()}
@@ -79,6 +80,7 @@ class FaceShapeReferenceTests(unittest.TestCase):
     def test_rejects_combined_mislabeled_and_wrong_runtime_keys(self):
         editor, reference = reports()
         overrides = [
+            {"values": {"face_adjust_temple": 50}},
             {"values": {"face_adjust_temple": 50, "face_adjust_Chin": 25}},
             {"value": 100},
             {"values": {"face_adjust_jaw": 50}},
