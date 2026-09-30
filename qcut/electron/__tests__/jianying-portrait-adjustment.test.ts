@@ -18,9 +18,9 @@ import { buildJianyingPortraitRenderStages } from "../jianying-portrait-adjustme
 
 describe("Jianying portrait adjustment contract", () => {
 	it("covers base, advanced feature, skin, detail, and body controls", () => {
-		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(82);
+		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(84);
 		expect(jianyingPortraitControlsForGroup({ group: "face" })).toHaveLength(
-			72
+			74
 		);
 		expect(jianyingPortraitControlsForGroup({ group: "body" })).toHaveLength(
 			10
