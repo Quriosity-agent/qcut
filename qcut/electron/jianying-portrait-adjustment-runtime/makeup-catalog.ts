@@ -10,9 +10,12 @@ export interface JianyingPortraitMakeupCardDefinition {
 	parameterKey: string;
 	defaultIntensity: number;
 	kind: "dynamic" | "standalone";
+	legacyOnly?: boolean;
 }
 
-export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
+type MakeupCardCatalog = readonly JianyingPortraitMakeupCardDefinition[];
+
+export const JIANYING_PORTRAIT_MAKEUP_CARDS: MakeupCardCatalog = [
 	{
 		id: "look-oxygen",
 		category: "look",
@@ -89,6 +92,19 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		parameterKey: "eyebrow_adjust_BiaoZhun",
 		defaultIntensity: 70,
 		kind: "standalone",
+		// Geometric brow shaping; keep the mapping for saved makeup selections.
+		legacyOnly: true,
+	},
+	{
+		id: "brows-standard",
+		category: "brows",
+		titleZh: "标准眉",
+		titleEn: "Standard brows",
+		resourceId: "7406180431730707727",
+		version: "1826bb4815f127fb3168b67ed4e0fc71",
+		parameterKey: "face_adjust_brow_biaozhunmei",
+		defaultIntensity: 80,
+		kind: "dynamic",
 	},
 	{
 		id: "brows-fluffy",
@@ -98,6 +114,50 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		resourceId: "7406174643247123746",
 		version: "a983387e6a01d830b4c4f9cbc6607628",
 		parameterKey: "face_adjust_brow_rongrongmei",
+		defaultIntensity: 80,
+		kind: "dynamic",
+	},
+	{
+		id: "brows-wild",
+		category: "brows",
+		titleZh: "野生眉",
+		titleEn: "Wild brows",
+		resourceId: "7406181254669929763",
+		version: "2041638b555e988c0b6f13839b112659",
+		parameterKey: "face_adjust_brow_yeshengmeiii",
+		defaultIntensity: 80,
+		kind: "dynamic",
+	},
+	{
+		id: "brows-warrior",
+		category: "brows",
+		titleZh: "侠客眉",
+		titleEn: "Warrior brows",
+		resourceId: "7406174539454909730",
+		version: "8feebde948245fa77c49ead859794fb1",
+		parameterKey: "face_adjust_brow_xiakemei",
+		defaultIntensity: 80,
+		kind: "dynamic",
+	},
+	{
+		id: "brows-classical",
+		category: "brows",
+		titleZh: "古韵眉",
+		titleEn: "Classical brows",
+		resourceId: "7406175039264951592",
+		version: "212083cfb14f276308e23a3ee39a9034",
+		parameterKey: "face_adjust_brow_guyunmeifree",
+		defaultIntensity: 80,
+		kind: "dynamic",
+	},
+	{
+		id: "brows-soft",
+		category: "brows",
+		titleZh: "淡颜眉",
+		titleEn: "Soft brows",
+		resourceId: "7406174445548719394",
+		version: "ed8ca9399d3ef88ea59931f6f57885a1",
+		parameterKey: "face_adjust_brow_danyanmei",
 		defaultIntensity: 80,
 		kind: "dynamic",
 	},
@@ -178,7 +238,7 @@ export const JIANYING_PORTRAIT_MAKEUP_CARDS = [
 		defaultIntensity: 50,
 		kind: "dynamic",
 	},
-] as const satisfies readonly JianyingPortraitMakeupCardDefinition[];
+];
 
 const MAKEUP_CARD_BY_ID = new Map<string, JianyingPortraitMakeupCardDefinition>(
 	JIANYING_PORTRAIT_MAKEUP_CARDS.map((card) => [card.id, card])
