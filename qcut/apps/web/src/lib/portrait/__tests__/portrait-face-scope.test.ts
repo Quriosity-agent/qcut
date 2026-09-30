@@ -146,6 +146,28 @@ describe("portrait face scope", () => {
 		).toEqual(base);
 	});
 
+	it("clears a face's last makeup selection without resurrecting it from the original entry", () => {
+		const adjustments = {
+			...base,
+			makeup: { lip: { cardId: "lip-soft-pink", intensity: 20 } },
+			faces: [
+				{
+					...base.faces[0],
+					makeup: { lip: { cardId: "lip-soft-pink", intensity: 80 } },
+				},
+			],
+		};
+		const scope = faceScope({ trackId: 3 });
+		const edited = applyPortraitMakeup({
+			adjustments: projectPortraitAdjustments({ adjustments, scope }),
+			makeup: {},
+		});
+		const next = applyPortraitAdjustments({ adjustments, scope, edited });
+		expect(next.faces?.[0]?.values).toEqual({ face_adjust_Chin: -20 });
+		expect(next.faces?.[0]?.makeup).toBeUndefined();
+		expect(next.makeup).toEqual(adjustments.makeup);
+	});
+
 	it("keeps body values global and removes legacy per-face body values", () => {
 		const next = applyWholeFrameBodyAdjustments({
 			edited: {
