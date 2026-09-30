@@ -3,7 +3,7 @@
 		{
 			"slug": "smooth-contour",
 			"label": "流畅脸",
-			"key": "face_adjust_temple",
+			"key": "face_adjust_lunkuopinghua",
 			"values": [50, 100]
 		},
 		{ "slug": "small-face", "label": "小脸", "key": null, "values": [50, 100] },
