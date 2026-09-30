@@ -1,14 +1,15 @@
 import { Ban, Palette } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { JianyingPortraitMakeupCardStatus } from "@/types/electron";
 import type {
 	MediaPortraitAdjustments,
 	MediaPortraitMakeupCategory,
+	MediaPortraitMakeupSelection,
 } from "@/types/timeline";
 import { applyPortraitMakeup } from "@/lib/portrait/portrait-face-scope";
 import { cn } from "@/lib/utils";
-import { NumberControl } from "./visual-property-controls";
+import { PortraitNumberControl } from "./portrait-number-control";
 
 const MAKEUP_CATEGORY_LABELS: Record<
 	MediaPortraitMakeupCategory,
@@ -39,23 +40,26 @@ function MakeupCard({
 	locale,
 	onSelect,
 }: {
-	card: JianyingPortraitMakeupCardStatus;
+	card?: JianyingPortraitMakeupCardStatus;
 	disabled: boolean;
 	selected: boolean;
 	locale: string;
 	onSelect: () => void;
 }) {
-	const label = locale === "zh" ? card.titleZh : card.titleEn;
+	const isZh = locale === "zh";
+	const noneLabel = isZh ? "无" : "None";
+	const label = card ? (isZh ? card.titleZh : card.titleEn) : noneLabel;
 	return (
 		<button
 			type="button"
-			className="group min-w-0 text-center disabled:cursor-not-allowed disabled:opacity-40"
+			className="group w-full min-w-0 rounded-md text-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
 			aria-label={label}
+			title={label}
 			aria-pressed={selected}
-			disabled={disabled || !card.ready}
+			disabled={disabled || (card !== undefined && !card.ready)}
 			onClick={onSelect}
 			onKeyDown={(event) => event.stopPropagation()}
-			data-testid={`portrait-makeup-card-${card.id}`}
+			data-testid={`portrait-makeup-card-${card?.id ?? "none"}`}
 		>
 			<span
 				className={cn(
@@ -65,17 +69,22 @@ function MakeupCard({
 						: "border-border group-hover:border-muted-foreground/70"
 				)}
 			>
-				{card.thumbnailDataUrl ? (
+				{card?.thumbnailDataUrl ? (
 					<img
 						src={card.thumbnailDataUrl}
 						alt=""
 						className="size-full object-cover"
 					/>
+				) : card ? (
+					<Palette
+						aria-hidden="true"
+						className="size-5 text-muted-foreground"
+					/>
 				) : (
-					<Palette className="size-5 text-muted-foreground" />
+					<Ban aria-hidden="true" className="size-5 text-muted-foreground" />
 				)}
 			</span>
-			<span className="mt-1 block truncate text-[10px] text-muted-foreground">
+			<span className="mt-1 block h-4 truncate text-[10px] leading-4 text-muted-foreground">
 				{label}
 			</span>
 		</button>
@@ -99,135 +108,110 @@ export function PortraitMakeupControls({
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
 }) {
-	const availableCategories = useMemo(
-		() =>
-			MAKEUP_CATEGORIES.filter((category) =>
-				cards.some((card) => card.category === category)
-			),
-		[cards]
-	);
-	const [category, setCategory] = useState<MediaPortraitMakeupCategory>(
-		availableCategories[0] ?? "look"
-	);
-	useEffect(() => {
-		if (!availableCategories.includes(category)) {
-			setCategory(availableCategories[0] ?? "look");
-		}
-	}, [availableCategories, category]);
+	const [category, setCategory] = useState<MediaPortraitMakeupCategory>("look");
 	const categoryCards = cards.filter((card) => card.category === category);
 	const selection = adjustments.makeup?.[category];
 	const selectedCard = categoryCards.find(
 		(card) => card.id === selection?.cardId
 	);
+	const changeCategory = ({
+		nextSelection,
+	}: {
+		nextSelection?: MediaPortraitMakeupSelection;
+	}) => {
+		const makeup = nextSelection
+			? { ...adjustments.makeup, [category]: nextSelection }
+			: Object.fromEntries(
+					Object.entries(adjustments.makeup ?? {}).filter(
+						([currentCategory]) => currentCategory !== category
+					)
+				);
+		onChange(applyPortraitMakeup({ adjustments, makeup }));
+	};
 	const selectCard = ({ card }: { card: JianyingPortraitMakeupCardStatus }) => {
+		if (disabled || !card.ready || card.id === selection?.cardId) return;
 		onInteractionStart();
-		onChange(
-			applyPortraitMakeup({
-				adjustments,
-				makeup: {
-					...adjustments.makeup,
-					[category]: {
-						cardId: card.id,
-						intensity: card.defaultIntensity,
-					},
-				},
-			})
-		);
+		changeCategory({
+			nextSelection: { cardId: card.id, intensity: card.defaultIntensity },
+		});
 		onInteractionEnd();
 	};
 	const clearCategory = () => {
+		if (disabled || !selection) return;
 		onInteractionStart();
-		const makeup = Object.fromEntries(
-			Object.entries(adjustments.makeup ?? {}).filter(
-				([currentCategory]) => currentCategory !== category
-			)
-		);
-		onChange(applyPortraitMakeup({ adjustments, makeup }));
+		changeCategory({});
 		onInteractionEnd();
+	};
+	const changeIntensity = ({ intensity }: { intensity: number }) => {
+		if (disabled || !selectedCard?.ready || !selection) return;
+		changeCategory({
+			nextSelection: { ...selection, intensity },
+		});
 	};
 
 	return (
-		<div className="space-y-4" data-testid="portrait-section-makeup">
-			<div className="flex flex-wrap gap-1">
-				{availableCategories.map((item) => (
-					<Button
-						key={item}
-						type="button"
-						variant={item === category ? "secondary" : "text"}
-						size="sm"
-						className="h-7 px-3 text-[11px]"
-						aria-pressed={item === category}
-						disabled={disabled}
-						onClick={() => setCategory(item)}
-						onKeyDown={(event) => event.stopPropagation()}
-					>
-						{locale === "zh"
-							? MAKEUP_CATEGORY_LABELS[item].zh
-							: MAKEUP_CATEGORY_LABELS[item].en}
-					</Button>
-				))}
-			</div>
-			<div className="grid grid-cols-4 gap-2">
-				<button
-					type="button"
-					className="group min-w-0 text-center disabled:cursor-not-allowed disabled:opacity-40"
-					aria-label={locale === "zh" ? "无" : "None"}
-					aria-pressed={!selection}
-					disabled={disabled}
-					onClick={clearCategory}
-					onKeyDown={(event) => event.stopPropagation()}
-				>
-					<span
-						className={cn(
-							"flex aspect-square w-full items-center justify-center rounded-md border bg-background",
-							selection
-								? "border-border group-hover:border-muted-foreground/70"
-								: "border-cyan-500 ring-1 ring-cyan-500"
-						)}
-					>
-						<Ban className="size-5 text-muted-foreground" />
-					</span>
-					<span className="mt-1 block text-[10px] text-muted-foreground">
-						{locale === "zh" ? "无" : "None"}
-					</span>
-				</button>
-				{categoryCards.map((card) => (
+		<Tabs
+			value={category}
+			onValueChange={(value) =>
+				setCategory(value as MediaPortraitMakeupCategory)
+			}
+			className="min-w-0 space-y-3"
+			onKeyDown={(event) => event.stopPropagation()}
+			data-testid="portrait-section-makeup"
+		>
+			<TabsList
+				className="flex h-auto min-w-0 flex-wrap justify-start gap-1 rounded-none bg-transparent p-0"
+				aria-label={locale === "zh" ? "美妆分类" : "Makeup categories"}
+			>
+				{MAKEUP_CATEGORIES.map((item) => {
+					const label =
+						MAKEUP_CATEGORY_LABELS[item][locale === "zh" ? "zh" : "en"];
+					return (
+						<TabsTrigger
+							key={item}
+							type="button"
+							value={item}
+							title={label}
+							className="h-6 max-w-full min-w-14 rounded-full bg-secondary/60 px-3 py-0 text-[11px] text-muted-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+							disabled={disabled}
+						>
+							<span className="truncate">{label}</span>
+						</TabsTrigger>
+					);
+				})}
+			</TabsList>
+			<TabsContent value={category} className="min-w-0 space-y-3">
+				<div className="grid min-w-0 grid-cols-4 gap-2">
 					<MakeupCard
-						key={card.id}
-						card={card}
 						disabled={disabled}
-						selected={card.id === selection?.cardId}
+						selected={!selection}
 						locale={locale}
-						onSelect={() => selectCard({ card })}
+						onSelect={clearCategory}
 					/>
-				))}
-			</div>
-			{selectedCard && selection ? (
-				<NumberControl
+					{categoryCards.map((card) => (
+						<MakeupCard
+							key={card.id}
+							card={card}
+							disabled={disabled}
+							selected={card.id === selection?.cardId}
+							locale={locale}
+							onSelect={() => selectCard({ card })}
+						/>
+					))}
+				</div>
+				<PortraitNumberControl
 					label={locale === "zh" ? "强度" : "Intensity"}
-					value={selection.intensity}
-					min={1}
+					locale={locale}
+					value={selection?.intensity ?? 0}
+					min={0}
 					max={100}
 					step={1}
-					disabled={disabled || !selectedCard.ready}
-					onChange={(intensity) =>
-						onChange(
-							applyPortraitMakeup({
-								adjustments,
-								makeup: {
-									...adjustments.makeup,
-									[category]: {
-										cardId: selectedCard.id,
-										intensity,
-									},
-								},
-							})
-						)
-					}
+					disabled={disabled || !selectedCard?.ready}
+					onChange={(intensity) => changeIntensity({ intensity })}
 					onInteractionStart={onInteractionStart}
 					onInteractionEnd={onInteractionEnd}
 				/>
-			) : null}
-		</div>
+			</TabsContent>
+		</Tabs>
 	);
 }
