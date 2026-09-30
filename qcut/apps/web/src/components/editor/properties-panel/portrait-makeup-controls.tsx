@@ -63,7 +63,8 @@ function MakeupCard({
 		>
 			<span
 				className={cn(
-					"flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-muted/50 transition-colors",
+					"flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border transition-colors",
+					card ? "bg-muted/50" : "bg-background",
 					selected
 						? "border-cyan-500 ring-1 ring-cyan-500"
 						: "border-border group-hover:border-muted-foreground/70"
@@ -84,7 +85,7 @@ function MakeupCard({
 					<Ban aria-hidden="true" className="size-5 text-muted-foreground" />
 				)}
 			</span>
-			<span className="mt-1 block h-4 truncate text-[10px] leading-4 text-muted-foreground">
+			<span className="mt-1 block h-4 w-full min-w-0 truncate px-0.5 text-[11px] leading-4 text-muted-foreground">
 				{label}
 			</span>
 		</button>
@@ -109,8 +110,12 @@ export function PortraitMakeupControls({
 	onInteractionEnd: () => void;
 }) {
 	const [category, setCategory] = useState<MediaPortraitMakeupCategory>("look");
-	const categoryCards = cards.filter((card) => card.category === category);
 	const selection = adjustments.makeup?.[category];
+	const categoryCards = cards.filter(
+		(card) =>
+			card.category === category &&
+			(!card.legacyOnly || card.id === selection?.cardId)
+	);
 	const selectedCard = categoryCards.find(
 		(card) => card.id === selection?.cardId
 	);
@@ -129,7 +134,13 @@ export function PortraitMakeupControls({
 		onChange(applyPortraitMakeup({ adjustments, makeup }));
 	};
 	const selectCard = ({ card }: { card: JianyingPortraitMakeupCardStatus }) => {
-		if (disabled || !card.ready || card.id === selection?.cardId) return;
+		if (
+			disabled ||
+			!card.ready ||
+			card.legacyOnly ||
+			card.id === selection?.cardId
+		)
+			return;
 		onInteractionStart();
 		changeCategory({
 			nextSelection: { cardId: card.id, intensity: card.defaultIntensity },
@@ -160,7 +171,7 @@ export function PortraitMakeupControls({
 			data-testid="portrait-section-makeup"
 		>
 			<TabsList
-				className="flex h-auto min-w-0 flex-wrap justify-start gap-1 rounded-none bg-transparent p-0"
+				className="flex h-auto min-w-0 flex-wrap justify-start gap-x-2 gap-y-2 rounded-none bg-transparent p-0"
 				aria-label={locale === "zh" ? "美妆分类" : "Makeup categories"}
 			>
 				{MAKEUP_CATEGORIES.map((item) => {
@@ -172,16 +183,16 @@ export function PortraitMakeupControls({
 							type="button"
 							value={item}
 							title={label}
-							className="h-6 max-w-full min-w-14 rounded-full bg-secondary/60 px-3 py-0 text-[11px] text-muted-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none"
+							className="h-6 max-w-full min-w-13 shrink-0 rounded-full bg-foreground/10 px-3 py-0 text-[11px] font-normal text-muted-foreground data-[state=active]:bg-foreground/20 data-[state=active]:text-foreground data-[state=active]:shadow-none"
 							disabled={disabled}
 						>
-							<span className="truncate">{label}</span>
+							<span className="min-w-0 truncate">{label}</span>
 						</TabsTrigger>
 					);
 				})}
 			</TabsList>
 			<TabsContent value={category} className="min-w-0 space-y-3">
-				<div className="grid min-w-0 grid-cols-4 gap-2">
+				<div className="grid w-full min-w-0 max-w-[292px] grid-cols-4 gap-x-3 gap-y-2">
 					<MakeupCard
 						disabled={disabled}
 						selected={!selection}
@@ -200,7 +211,7 @@ export function PortraitMakeupControls({
 					))}
 				</div>
 				<PortraitNumberControl
-					label={locale === "zh" ? "强度" : "Intensity"}
+					label={locale === "zh" ? "程度" : "Intensity"}
 					locale={locale}
 					value={selection?.intensity ?? 0}
 					min={0}
