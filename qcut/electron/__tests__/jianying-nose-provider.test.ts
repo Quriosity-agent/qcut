@@ -238,6 +238,8 @@ describe("stateful portrait fitting provider", () => {
 	it.each([
 		"face_adjust_EnlargeEye",
 		"face_adjust_BrightEye",
+		"face_adjust_YouTaiFace",
+		"face_adjust_XiaHeXian",
 	] as const)("keeps moving frames but resets %s parameter history", async (key) => {
 		const base = {
 			...request(),
@@ -264,5 +266,68 @@ describe("stateful portrait fitting provider", () => {
 		});
 		expect(changed.rgba[0]).toBe(101);
 		expect(hosts).toHaveLength(2);
+	});
+	it.each([
+		"face_adjust_YouTaiFace",
+		"face_adjust_XiaHeXian",
+	] as const)("rebuilds %s after an upstream edit on a paused frame", async (key) => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { [key]: 50 } },
+		};
+		await provider.render(base);
+		const combined = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { [key]: 50, face_adjust_CutFace: -25 },
+			},
+		};
+		const warm = await provider.render(combined);
+		expect(hosts).toHaveLength(3);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		const held = await provider.render({
+			...combined,
+			timestampSeconds: 1 / 30,
+		});
+		expect(held.rgba).toEqual(warm.rgba);
+		await provider.clear();
+		const cold = await provider.render(combined);
+		expect(cold.rgba).toEqual(warm.rgba);
+	});
+	it("settles contour GAN before downstream fitting and freezes held frames", async () => {
+		const base = request();
+		await provider.render({
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_lunkuopinghua: 100 },
+			},
+		});
+		const combined = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: {
+					face_adjust_lunkuopinghua: 50,
+					face_adjust_CutFace: -25,
+					face_adjust_YouTaiFace: 25,
+					face_adjust_XiaHeXian: 50,
+				},
+			},
+		};
+		const warm = await provider.render(combined);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		expect(hosts[1].render).toHaveBeenCalledTimes(2);
+		expect(warm.rgba[0]).toBe(105);
+		const held = await provider.render({
+			...combined,
+			timestampSeconds: 1 / 30,
+		});
+		expect(held.rgba).toEqual(warm.rgba);
+		expect(hosts[1].render).toHaveBeenCalledTimes(2);
+		await provider.clear();
+		const cold = await provider.render(combined);
+		expect(cold.rgba).toEqual(warm.rgba);
 	});
 });
