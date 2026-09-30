@@ -280,6 +280,8 @@ export interface JianyingPortraitMakeupCardStatus {
 	titleZh: string;
 	titleEn: string;
 	defaultIntensity: number;
+	/** Retained for saved selections, not offered as a new makeup choice. */
+	legacyOnly?: boolean;
 	ready: boolean;
 	source: "qcut-private" | "jianying-installation" | "none";
 	thumbnailDataUrl?: string;
