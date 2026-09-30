@@ -5,6 +5,22 @@ import {
 } from "../portrait-adjustments.js";
 
 describe("media portrait adjustments", () => {
+	it("persists GAN contour independently of legacy temple values, including per-face entries", () => {
+		const adjustments = {
+			enabled: true,
+			values: { face_adjust_temple: 35, face_adjust_lunkuopinghua: 50 },
+			faces: [{ trackId: 2, values: { face_adjust_lunkuopinghua: 75 } }],
+		};
+		const normalized = normalizeMediaPortraitAdjustments({ adjustments });
+		expect(normalized).toEqual(adjustments);
+		expect(
+			normalizeMediaPortraitAdjustments({
+				adjustments: JSON.parse(JSON.stringify(normalized)),
+			})
+		).toEqual(adjustments);
+		expect(hasMediaPortraitAdjustments({ adjustments: normalized })).toBe(true);
+	});
+
 	it("keeps finite supported values and drops neutral or unknown input", () => {
 		const normalized = normalizeMediaPortraitAdjustments({
 			adjustments: {
