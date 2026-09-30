@@ -22,7 +22,7 @@ describe("portrait makeup resolution separates covers from render packages", () 
 	afterEach(() => vi.unstubAllEnvs());
 	it("does not scan cover databases or fetch images on the render path", async () => {
 		const cards = await resolveJianyingPortraitMakeupCards();
-		expect(cards).toHaveLength(15);
+		expect(cards).toHaveLength(20);
 		expect(cards.every(({ packagePath }) => packagePath !== null)).toBe(true);
 		expect(mocks.covers).not.toHaveBeenCalled();
 	});
