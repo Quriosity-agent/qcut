@@ -96,4 +96,32 @@ describe("Jianying portrait render readiness", () => {
 		expect(renderAttempt).toHaveBeenCalledTimes(4);
 		expect(isOutputChanged).toHaveBeenCalledTimes(4);
 	});
+	it("pumps the minimum passes even when GAN readback is already visible", async () => {
+		const renderAttempt = vi.fn(async () => undefined);
+		const attempts = await renderUntilOutputChanges({
+			renderAttempt,
+			isOutputChanged: async () => true,
+			maxAttempts: 3,
+			minAttempts: 2,
+		});
+		expect(attempts).toBe(2);
+		expect(renderAttempt).toHaveBeenCalledTimes(2);
+	});
+	it.each([
+		0,
+		4,
+		Number.NaN,
+		1.5,
+	])("rejects invalid minimum render passes: %s", async (minAttempts) => {
+		const renderAttempt = vi.fn(async () => undefined);
+		await expect(
+			renderUntilOutputChanges({
+				renderAttempt,
+				isOutputChanged: async () => true,
+				maxAttempts: 3,
+				minAttempts,
+			})
+		).rejects.toThrow("attempt bounds");
+		expect(renderAttempt).not.toHaveBeenCalled();
+	});
 });
