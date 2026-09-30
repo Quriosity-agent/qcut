@@ -18,9 +18,9 @@ import { buildJianyingPortraitRenderStages } from "../jianying-portrait-adjustme
 
 describe("Jianying portrait adjustment contract", () => {
 	it("covers base, advanced feature, skin, detail, and body controls", () => {
-		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(81);
+		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(82);
 		expect(jianyingPortraitControlsForGroup({ group: "face" })).toHaveLength(
-			71
+			72
 		);
 		expect(jianyingPortraitControlsForGroup({ group: "body" })).toHaveLength(
 			10
@@ -36,12 +36,15 @@ describe("Jianying portrait adjustment contract", () => {
 		expect(
 			new Set(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.map(({ key }) => key)).size
 		).toBe(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.length);
-		// 匀肤与丰盈共用同一个 GAN 包。
 		expect(
 			jianyingPortraitControlsForRuntimePackage({
 				runtimePackage: "skin-gan",
 			}).map(({ key }) => key)
-		).toEqual(["face_adjust_yunfu", "face_adjust_fuling"]);
+		).toEqual([
+			"face_adjust_yunfu",
+			"face_adjust_fuling",
+			"face_adjust_lunkuopinghua",
+		]);
 	});
 
 	it("uses dedicated package parameter shapes and selected face IDs", () => {
@@ -109,6 +112,7 @@ describe("Jianying portrait adjustment contract", () => {
 		).toEqual({
 			face_adjust_yunfu: [{ id: -1, intensity: 0.3 }],
 			face_adjust_fuling: [{ id: -1, intensity: 0.9 }],
+			face_adjust_lunkuopinghua: [{ id: -1, intensity: 0 }],
 		});
 	});
 
