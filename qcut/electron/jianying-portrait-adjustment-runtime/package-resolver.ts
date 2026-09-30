@@ -48,6 +48,24 @@ function requiredPackageFiles({
 }: {
 	runtimePackage: JianyingPortraitAdjustmentRuntimePackage;
 }): string[] {
+	if (runtimePackage === "small-face") {
+		return [
+			"algorithmConfig.json",
+			"config.json",
+			"AmazingFeature/main.scene",
+			"AmazingFeature/lua/reshape.lua",
+		];
+	}
+	if (runtimePackage === "jawline") {
+		return [
+			"algorithmConfig.json",
+			"config.json",
+			"AmazingFeature/main.scene",
+			"AmazingFeature/lua/FaceWarpXControl.lua",
+			"AmazingFeature_shadow/main.scene",
+			"AmazingFeature_shadow/lua/makeup.lua",
+		];
+	}
 	const script =
 		runtimePackage === "nose-3d"
 			? "Face3DSystem.lua"
