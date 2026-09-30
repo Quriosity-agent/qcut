@@ -121,7 +121,7 @@ Glover 成功报告的 `errors` 为空，diagnostics 仍记录字体及 app 资�
 
 ## 与剪映对照
 
-只有校准原图有同源剪映参照，因此只对它生成剪映五列图。
+第一阶段只有校准原图有同源剪映参照，因此当时只对它生成剪映五列图。
 使用历史 UI 截图、两端自身零值基线、600×900 归一化尺寸及既有面部 ROI。
 固定增益 6、sigma 0.6，无几何配准或逐图亮度拉伸，不是两端同规格导出精度验收。
 
@@ -133,21 +133,76 @@ Glover 成功报告的 `errors` 为空，diagnostics 仍记录字体及 app 资�
 小脸从缺少入口变为可配对，50/100 delta cosine 为 0.9745/0.9852；没有伪造“修复前误差下降”。
 流畅脸 50/100 delta MAE 为 2.0618/2.1432，仍有残差，不把拟合稳定当成视觉完全一致。
 
-其他人像用新 `create-portrait-face-shape-gallery.py` 生成原图、QCut、灰度差分三列图。
+第一阶段其他人像用新 `create-portrait-face-shape-gallery.py` 生成原图、QCut、灰度差分三列图。
 原尺寸 PNG 与复制的原始源图保留，全画幅计算差分，展示时等比留边。
-它们没有配套剪映结果，报告显式 `jianyingCompared: false`，不将相似脸型或 AI 图片当作参照。
+这些旧三列图没有配套剪映结果，报告显式 `jianyingCompared: false`，不改写旧报告为已配对。
 灰度显示改动幅度，不是位移方向、语义分割或美观评分。
 
 视觉检查覆盖小脸、下颌线五列图，三种新增人物高档位总览，窄窗口 UI 与真实导出解码首帧。
 小脸是多器官联合变形，不是仅缩小外轮廓。头盔素材的下颌线变化主要位于下颌附近，
 但流畅脸与小脸的差分也显示头盔边缘发生变化，不能保证遮挡物完全不受影响。
-没有同人物剪映导出参照前，不擅自加一层 mask 来冒充视觉对齐；这仍是下一轮的针对性验收项。
+没有同人物剪映导出参照前，不擅自加一层 mask 来冒充视觉对齐；同规格导出仍是针对性验收项。
 
 另保存两套面部放大图：Koch 固定裁切 `(440,90,810,460)`，Glover 为 `(250,220,850,950)`，
 坐标以 1080 宽编辑器画布为准。三列同裁切，仅改变展示，不改变全画幅差分、原始源图或原尺寸输出。
 
+### 第二阶段：三个人物真实剪映配对
+
+本轮实际操作剪映专业版，创建独立测试草稿 `9月30日`，不修改用户的 `9月26日` 草稿。
+时间线 04 为 Glover、05 为 Koch、06 为微笑 fixture；每条只放同源静止照片，时长五秒。
+13 项各两个档位，三个不同人物合计 **78 组**。这不是 QCut 三列图再贴上剪映名称。
+QCut 一侧复用上文已完成的真实编辑器 E2E 输出，本轮没有重复宣称新跑了 78 次 QCut E2E。
+
+每例保存两张剪映原始截图：美颜面板实际数值证据，以及切回“基础”页后的无青色选脸框效果图。
+原始截图是 CUA 返回的 JPEG 字节，按 `.jpg` 保存，不冒充无损 PNG；派生图为 PNG。
+每个人物记录源 SHA-256、全部截图 SHA-256、截图尺寸、播放器裁切、面部裁切、归零前后截图。
+源照片、参数隔离和哈希匹配后才配对；播放器边缘保留的白色素材选中框不进入面部 ROI。
+
+| 人物 | 剪映播放器尺寸 | 配对数 | 归零前后 RGB 平均差 | 面部 delta cosine 均值 | 面部 delta MAE 中位数 |
+| --- | --- | --- | --- | --- | --- |
+| 微笑 fixture | 579×579 | 26 | 0.0000 | 0.8607 | 0.8058 |
+| Koch | 463×579 | 26 | 0.0000 | 0.6897 | 0.8668 |
+| Glover | 463×579 | 26 | 0.0000 | 0.6911 | 2.5222 |
+
+QCut 原尺寸画布等比缩到剪映播放器原生裁切尺寸，再计算两边各自相对零值的变化。
+五列为“原图/剪映零值、剪映效果、剪映改动×6、QCut 效果、QCut 改动×6”。
+同一人物各列使用同一面部 ROI，同时提供全画幅版和复制的未经修饰原始照片。
+固定增益 6、sigma 0.6；不做几何配准，不逐张拉伸灰度，不混用别人的脸。
+delta 指标只测变化场残差，不是美观分数或相似度百分比，也不设为导出验收通过门槛。
+
+采集中特别修正了三类假结果：
+
+- 非负滑杆中点实际为 51；负向点实际为 -49。用数值微调到精确的 50 / -50，再保存面板证据。
+- 切换时间线后可能沿用旧选脸状态：参数数值正确，但效果图完全等于零值。
+  头盔组出现过此问题，重新激活正确的脸并重拍；最终 78 例均有实际非零像素变化。
+- 切“基础”再回美颜会重置面板滚动位置；直接复用三庭坐标会点错控件。
+  每例重新定位下庭/中庭/上庭，且播放头停在素材内部，排除片尾黑屏。
+
+`compare-portrait-face-shape-people.py` 拒绝源图不一致、未完成的编辑器报告、缺档位、
+重复档位、混合参数、错误实际值声明、哈希变化、尺寸/裁切异常、宽高比失真、黑屏、
+归零漂移和非零档位完全无像素变化。最后一项是要求复查选脸/预览，不自动判成算法失败。
+数值证据仍需目视核对；文件名和 manifest 声明不能代替面板数值、实际变化区域的复核。
+本轮 Python 脸型图册及对照测试 **33 项通过**，另实际运行三份完整图册生成命令通过。
+扩展到全部 `test_portrait*.py` 后 **69 项通过**；三套图册共 567 张 PNG 均可解码，HTML 本地链接无缺失。
+
+目视检查了三人物全部 13 项高档位总览及参数证据。轮廓变化的位置、方向整体接近；
+下颌线/下颌骨与短脸、三庭没有观察到明显串项。头盔边缘在两边的小脸、窄脸、上庭中均会变化，
+因此不能仅因 QCut 影响了头盔就追加遮罩并称作剪映对齐。
+仍有细节差异：剪映界面 JPEG 更软，QCut 画布更锐；Koch 的 QCut 差分有弱背景残差；
+流畅脸及 Glover 颧骨的变化场一致性相对较低。残差根因尚未用同规格导出隔离，不能全部归于算法。
+
+每人物提供 13 张双档位面部图、13 张全画幅图、5 张总览，以及数值证据和逐例原尺寸派生图。
+原始剪映采集清单位于 `face-controls/jianying-multi-people/<person>/manifest.json`；
+新图册为 `paired-front-smile/`、`paired-koch/`、`paired-glover/`，不覆盖旧 QCut-only 图册。
+
 ## 本地证据入口
 
+- [微笑人像：真实剪映/QCut 13 项对照](../../../output/beauty-kpop-v3-20260930/face-controls/paired-front-smile/index.html)
+- [Koch：真实剪映/QCut 13 项对照](../../../output/beauty-kpop-v3-20260930/face-controls/paired-koch/index.html)
+- [Glover：真实剪映/QCut 13 项对照](../../../output/beauty-kpop-v3-20260930/face-controls/paired-glover/index.html)
+- [微笑人像剪映实际数值](../../../output/beauty-kpop-v3-20260930/face-controls/paired-front-smile/parameter-proof.png)
+- [Koch 剪映实际数值](../../../output/beauty-kpop-v3-20260930/face-controls/paired-koch/parameter-proof.png)
+- [Glover 剪映实际数值](../../../output/beauty-kpop-v3-20260930/face-controls/paired-glover/parameter-proof.png)
 - [校准原图剪映对照图册](../../../output/beauty-kpop-v3-20260930/face-controls/comparison/index.html)
 - [小脸五列图](../../../output/beauty-kpop-v3-20260930/face-controls/comparison/small-face.png)
 - [下颌线五列图](../../../output/beauty-kpop-v3-20260930/face-controls/comparison/jawline.png)
@@ -173,6 +228,13 @@ QCUT_PORTRAIT_FACE_SHAPE_OUTPUT="$PWD/output/face-shape-repro" \
 
 python3 scripts/create-portrait-face-shape-gallery.py \
   output/face-shape-repro output/face-shape-gallery --title '真人脸型调节'
+
+python3 scripts/compare-portrait-face-shape-people.py \
+  output/beauty-kpop-v3-20260930/face-controls/editor-glover \
+  output/beauty-kpop-v3-20260930/face-controls/jianying-multi-people/glover/manifest.json \
+  output/face-shape-paired-repro --title '头盔人像：剪映/QCut'
+
+python3 -m unittest discover -s scripts/__tests__ -p 'test_portrait_face_shape*.py'
 
 bun scripts/audit-portrait-face-shape-state.ts \
   --source output/face-shape-repro/smooth-contour-50-input.png \
