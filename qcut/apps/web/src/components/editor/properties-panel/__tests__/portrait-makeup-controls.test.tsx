@@ -454,6 +454,65 @@ describe("portrait makeup controls", () => {
 		expect(observed.events).toEqual([]);
 	});
 
+	it.each([
+		{ scope: allScope, matchingIntensity: false },
+		{ scope: allScope, matchingIntensity: true },
+		{ scope: faceScope, matchingIntensity: false },
+		{ scope: faceScope, matchingIntensity: true },
+	])("commits a pending draft to the old category on tab click in $scope.mode scope (matching intensity: $matchingIntensity)", async ({
+		scope,
+		matchingIntensity,
+	}) => {
+		const observed = interactions();
+		const initial: MediaPortraitAdjustments = matchingIntensity
+			? {
+					...initialAdjustments,
+					makeup: {
+						...initialAdjustments.makeup,
+						lip: { cardId: "lip-soft-pink", intensity: 70 },
+					},
+					faces: initialAdjustments.faces?.map((face) =>
+						face.trackId === faceScope.trackId
+							? {
+									...face,
+									makeup: {
+										...face.makeup,
+										lip: { cardId: "lip-soft-pink", intensity: 90 },
+									},
+								}
+							: face
+					),
+				}
+			: initialAdjustments;
+		const projected = projectPortraitAdjustments({
+			adjustments: initial,
+			scope,
+		});
+		render(<Harness {...observed} initial={initial} scope={scope} />);
+		const input = screen.getByLabelText("程度数值");
+		await userEvent.click(input);
+		await userEvent.clear(input);
+		await userEvent.type(input, "42");
+		await userEvent.click(screen.getByRole("tab", { name: "口红" }));
+		expect(readAdjustments()).toEqual(
+			applyPortraitAdjustments({
+				adjustments: initial,
+				scope,
+				edited: {
+					...projected,
+					makeup: {
+						...projected.makeup,
+						look: { cardId: projected.makeup!.look!.cardId, intensity: 42 },
+					},
+				},
+			})
+		);
+		expect(screen.getByLabelText("程度数值")).toHaveValue(
+			String(projected.makeup?.lip?.intensity)
+		);
+		expect(observed.events).toEqual(["start", "change", "end"]);
+	});
+
 	it("clears only the active category through None", () => {
 		const observed = interactions();
 		render(<Harness {...observed} />);
