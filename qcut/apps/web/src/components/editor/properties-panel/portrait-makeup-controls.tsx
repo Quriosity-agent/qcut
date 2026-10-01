@@ -1,5 +1,5 @@
 import { Ban, Palette } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { JianyingPortraitMakeupCardStatus } from "@/types/electron";
 import type {
@@ -110,6 +110,7 @@ export function PortraitMakeupControls({
 	onInteractionEnd: () => void;
 }) {
 	const [category, setCategory] = useState<MediaPortraitMakeupCategory>("look");
+	const contentRef = useRef<HTMLDivElement>(null);
 	const selection = adjustments.makeup?.[category];
 	const categoryCards = cards.filter(
 		(card) =>
@@ -163,9 +164,17 @@ export function PortraitMakeupControls({
 	return (
 		<Tabs
 			value={category}
-			onValueChange={(value) =>
-				setCategory(value as MediaPortraitMakeupCategory)
-			}
+			onValueChange={(value) => {
+				// Radix switches on mouse-down, before the draft input's native blur.
+				const focusedControl = contentRef.current?.ownerDocument.activeElement;
+				if (
+					focusedControl instanceof HTMLElement &&
+					contentRef.current?.contains(focusedControl)
+				) {
+					focusedControl.blur();
+				}
+				setCategory(value as MediaPortraitMakeupCategory);
+			}}
 			className="min-w-0 space-y-3"
 			onKeyDown={(event) => event.stopPropagation()}
 			data-testid="portrait-section-makeup"
@@ -191,7 +200,11 @@ export function PortraitMakeupControls({
 					);
 				})}
 			</TabsList>
-			<TabsContent value={category} className="min-w-0 space-y-3">
+			<TabsContent
+				ref={contentRef}
+				value={category}
+				className="min-w-0 space-y-3"
+			>
 				<div className="grid w-full min-w-0 max-w-[292px] grid-cols-4 gap-x-3 gap-y-2">
 					<MakeupCard
 						disabled={disabled}
@@ -211,6 +224,7 @@ export function PortraitMakeupControls({
 					))}
 				</div>
 				<PortraitNumberControl
+					key={category}
 					label={locale === "zh" ? "程度" : "Intensity"}
 					locale={locale}
 					value={selection?.intensity ?? 0}
