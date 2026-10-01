@@ -1,4 +1,5 @@
 // @vitest-environment node
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveJianyingPortraitMakeupCards } from "../jianying-portrait-adjustment-runtime/makeup-resolver.js";
 
@@ -36,8 +37,12 @@ describe("portrait makeup resolution separates covers from render packages", () 
 		).toBe("data:image/png;base64,cover");
 		expect(mocks.covers).toHaveBeenCalledWith(
 			expect.objectContaining({
-				databaseRoots: ["/private/runtime/Cache/ressdk_db"],
-				cacheRoot: "/private/runtime/Cache/portrait-makeup-covers",
+				databaseRoots: [path.join("/private/runtime", "Cache", "ressdk_db")],
+				cacheRoot: path.join(
+					"/private/runtime",
+					"Cache",
+					"portrait-makeup-covers"
+				),
 			})
 		);
 	});
