@@ -37,13 +37,9 @@ def reference_controls():
     ]
 
 
-def validate_reports(*, editor, reference):
-    if editor["sourceSha256"] != reference["sourceSha256"]:
-        raise ValueError("Source images must match")
+def validate_editor_report(*, editor):
     if editor.get("errors") or not editor.get("reopenedHash") or not editor.get("exported"):
         raise ValueError("Require completed editor run, reopen and export evidence")
-    if reference["evidence"] != "ui-screenshot":
-        raise ValueError("This comparison is screenshot-level, not exported parity")
     expected = {f"{control['slug']}-{value}": (control["key"], value)
                 for control in editor_controls() for value in control["values"]}
     samples = {}
@@ -57,6 +53,15 @@ def validate_reports(*, editor, reference):
         samples[name] = sample
     if set(samples) != set(expected):
         raise ValueError("Missing editor case")
+    return samples
+
+
+def validate_reports(*, editor, reference):
+    if editor["sourceSha256"] != reference["sourceSha256"]:
+        raise ValueError("Source images must match")
+    samples = validate_editor_report(editor=editor)
+    if reference["evidence"] != "ui-screenshot":
+        raise ValueError("This comparison is screenshot-level, not exported parity")
     expected_refs = {(item["slug"], value) for item in reference_controls() for value in item["values"]}
     refs = [tuple(item) for item in reference["samples"]]
     if len(refs) != len(set(refs)) or set(refs) != expected_refs:

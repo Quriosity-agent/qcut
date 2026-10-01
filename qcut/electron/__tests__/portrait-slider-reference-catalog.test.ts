@@ -51,9 +51,9 @@ describe("portrait reference control identity", () => {
 		{ key: "face_adjust_EyeSpacing", category: "eyes" },
 		{ key: "face_adjust_inner_corner", category: "eyes" },
 		{ key: "face_adjust_Nose", category: "nose" },
-		{ key: "face_adjust_nose", category: "nose" },
+		{ key: "face_adjust_nose", category: "details" },
 		{ key: "face_adjust_ZoomMouth", category: "mouth" },
-	])("keeps $key in its anatomical group", ({ key, category }) => {
+	])("keeps $key in its canonical or legacy group", ({ key, category }) => {
 		expect(
 			JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.find(
 				(control) => control.key === key

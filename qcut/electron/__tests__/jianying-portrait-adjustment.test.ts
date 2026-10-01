@@ -17,10 +17,55 @@ import {
 import { buildJianyingPortraitRenderStages } from "../jianying-portrait-adjustment-runtime/stages.js";
 
 describe("Jianying portrait adjustment contract", () => {
+	it("matches versioned makeup metadata defaults without rewriting saved strengths", () => {
+		expect(
+			Object.fromEntries(
+				JIANYING_PORTRAIT_MAKEUP_CARDS.map(({ id, defaultIntensity }) => [
+					id,
+					defaultIntensity,
+				])
+			)
+		).toEqual({
+			"look-oxygen": 80,
+			"lip-soft-pink": 80,
+			"lip-coral-nude": 80,
+			"blush-baby-pink": 80,
+			"contour-mixed": 80,
+			"aegyo-natural": 80,
+			"brows-flow": 70,
+			"brows-standard": 80,
+			"brows-fluffy": 80,
+			"brows-wild": 80,
+			"brows-warrior": 80,
+			"brows-classical": 80,
+			"brows-soft": 80,
+			"lashes-natural-ii": 80,
+			"eyeliner-natural": 80,
+			"eyeliner-cat": 80,
+			"eyeshadow-girl-pink": 80,
+			"contacts-natural": 80,
+			"highlight-sweetheart": 70,
+			"freckles-sunburn": 50,
+		});
+		const parsed = parseJianyingPortraitRenderRequest({
+			request: {
+				width: 1,
+				height: 1,
+				rgba: new Uint8Array(4),
+				adjustments: {
+					enabled: true,
+					values: {},
+					makeup: { lip: { cardId: "lip-coral-nude", intensity: 60 } },
+				},
+			},
+		});
+		expect(parsed.adjustments.makeup?.lip?.intensity).toBe(60);
+	});
+
 	it("covers base, advanced feature, skin, detail, and body controls", () => {
-		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(81);
+		expect(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG).toHaveLength(90);
 		expect(jianyingPortraitControlsForGroup({ group: "face" })).toHaveLength(
-			71
+			80
 		);
 		expect(jianyingPortraitControlsForGroup({ group: "body" })).toHaveLength(
 			10
@@ -36,12 +81,90 @@ describe("Jianying portrait adjustment contract", () => {
 		expect(
 			new Set(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.map(({ key }) => key)).size
 		).toBe(JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.length);
-		// 匀肤与丰盈共用同一个 GAN 包。
 		expect(
 			jianyingPortraitControlsForRuntimePackage({
 				runtimePackage: "skin-gan",
 			}).map(({ key }) => key)
-		).toEqual(["face_adjust_yunfu", "face_adjust_fuling"]);
+		).toEqual([
+			"face_adjust_yunfu",
+			"face_adjust_fuling",
+			"face_adjust_lunkuopinghua",
+		]);
+	});
+
+	it("routes nose sculpting and eyebrow styles to their dedicated packages", () => {
+		const cases = [
+			["nose-sculpt", "face_adjust_MaShengNose"],
+			["nose-upturned", "face_adjust_XiaoQiaoBi"],
+			["nose-hump", "face_adjust_TuoFengNose"],
+			["brow-shape", "eyebrow_adjust_BiaoZhun"],
+			["brow-shape", "eyebrow_adjust_LiuYe"],
+			["brow-shape", "eyebrow_adjust_JianMei"],
+		] as const;
+		for (const [runtimePackage, key] of cases) {
+			const request = parseJianyingPortraitRenderRequest({
+				request: {
+					width: 1,
+					height: 1,
+					rgba: new Uint8Array(4),
+					adjustments: {
+						enabled: true,
+						values: { [key]: 50 },
+						faces: [{ trackId: 2, values: { [key]: 100 } }],
+					},
+				},
+			});
+			const stages = buildJianyingPortraitRenderStages({
+				request,
+				packages: [
+					{
+						runtimePackage,
+						group: "face",
+						packagePath: "/test/package",
+						source: "qcut-private",
+					},
+				],
+				makeupCards: [],
+			});
+			expect(stages).toHaveLength(1);
+			expect(stages[0]?.runtimePackage).toBe(runtimePackage);
+			expect(JSON.parse(stages[0]?.featureParameters ?? "{}")[key]).toEqual([
+				{ id: -1, intensity: 0.5 },
+				{ id: 2, intensity: 1 },
+			]);
+			expect(stages[0]?.targetFaceIds).toEqual([2]);
+		}
+	});
+
+	it("keeps zero-intensity makeup selected without requiring or rendering its package", () => {
+		const request = parseJianyingPortraitRenderRequest({
+			request: {
+				width: 1,
+				height: 1,
+				rgba: new Uint8Array(4),
+				adjustments: {
+					enabled: true,
+					values: {},
+					makeup: { lip: { cardId: "lip-soft-pink", intensity: 0 } },
+					faces: [
+						{
+							trackId: 2,
+							values: {},
+							makeup: { brows: { cardId: "brows-flow", intensity: 0 } },
+						},
+					],
+				},
+			},
+		});
+		expect(request.adjustments.makeup?.lip?.cardId).toBe("lip-soft-pink");
+		expect(request.adjustments.faces?.[0]?.makeup?.brows?.intensity).toBe(0);
+		expect(
+			buildJianyingPortraitRenderStages({
+				request,
+				packages: [],
+				makeupCards: [],
+			})
+		).toEqual([]);
 	});
 
 	it("uses dedicated package parameter shapes and selected face IDs", () => {
@@ -109,6 +232,7 @@ describe("Jianying portrait adjustment contract", () => {
 		).toEqual({
 			face_adjust_yunfu: [{ id: -1, intensity: 0.3 }],
 			face_adjust_fuling: [{ id: -1, intensity: 0.9 }],
+			face_adjust_lunkuopinghua: [{ id: -1, intensity: 0 }],
 		});
 	});
 

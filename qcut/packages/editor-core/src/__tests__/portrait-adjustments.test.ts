@@ -5,6 +5,65 @@ import {
 } from "../portrait-adjustments.js";
 
 describe("media portrait adjustments", () => {
+	it("round-trips every new nose and brow key including per-face values", () => {
+		const keys = [
+			"face_adjust_MaShengNose",
+			"face_adjust_XiaoQiaoBi",
+			"face_adjust_TuoFengNose",
+			"eyebrow_adjust_BiaoZhun",
+			"eyebrow_adjust_LiuYe",
+			"eyebrow_adjust_JianMei",
+		] as const;
+		const values = Object.fromEntries(keys.map((key) => [key, 50]));
+		const adjustments = {
+			enabled: true,
+			values,
+			faces: [{ trackId: 2, values }],
+		};
+		expect(
+			normalizeMediaPortraitAdjustments({
+				adjustments: JSON.parse(JSON.stringify(adjustments)),
+			})
+		).toEqual(adjustments);
+	});
+
+	it("preserves neutral makeup choices in saved projects without activating beauty", () => {
+		const adjustments = {
+			enabled: true,
+			values: {},
+			makeup: { lip: { cardId: "lip-soft-pink", intensity: 0 } },
+			faces: [
+				{
+					trackId: 2,
+					values: {},
+					makeup: { brows: { cardId: "brows-flow", intensity: 0 } },
+				},
+			],
+		};
+		const normalized = normalizeMediaPortraitAdjustments({
+			adjustments: JSON.parse(JSON.stringify(adjustments)),
+		});
+		expect(normalized).toEqual(adjustments);
+		expect(hasMediaPortraitAdjustments({ adjustments: normalized })).toBe(
+			false
+		);
+	});
+	it("persists GAN contour independently of legacy temple values, including per-face entries", () => {
+		const adjustments = {
+			enabled: true,
+			values: { face_adjust_temple: 35, face_adjust_lunkuopinghua: 50 },
+			faces: [{ trackId: 2, values: { face_adjust_lunkuopinghua: 75 } }],
+		};
+		const normalized = normalizeMediaPortraitAdjustments({ adjustments });
+		expect(normalized).toEqual(adjustments);
+		expect(
+			normalizeMediaPortraitAdjustments({
+				adjustments: JSON.parse(JSON.stringify(normalized)),
+			})
+		).toEqual(adjustments);
+		expect(hasMediaPortraitAdjustments({ adjustments: normalized })).toBe(true);
+	});
+
 	it("keeps finite supported values and drops neutral or unknown input", () => {
 		const normalized = normalizeMediaPortraitAdjustments({
 			adjustments: {

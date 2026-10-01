@@ -40,16 +40,27 @@ class FaceShapeReferenceTests(unittest.TestCase):
     def test_accepts_complete_matrix_with_bidirectional_controls(self):
         editor, reference = reports()
         samples = MODULE.validate_reports(editor=editor, reference=reference)
-        self.assertEqual(len(samples), 26)
+        self.assertEqual(len(samples), 28)
         self.assertEqual(len(reference["samples"]), 36)
         self.assertEqual(samples["narrow-face--50"]["values"], {"face_adjust_CutFace": -50})
+        self.assertEqual(samples["smooth-contour-50"]["values"], {"face_adjust_lunkuopinghua": 50})
 
-    def test_missing_controls_remain_missing_and_short_face_is_not_small_face(self):
+    def test_small_face_and_jawline_are_independent_and_skin_swatches_remain_missing(self):
         controls = {item["slug"]: item for item in MODULE.reference_controls()}
-        self.assertIsNone(controls["small-face"]["key"])
+        self.assertEqual(controls["small-face"]["key"], "face_adjust_YouTaiFace")
+        self.assertEqual(controls["jawline"]["key"], "face_adjust_XiaHeXian")
         self.assertEqual(controls["short-face"]["key"], "face_adjust_SmallFace")
-        self.assertEqual(sum(item["key"] is None for item in controls.values()), 6)
-        self.assertNotIn("small-face", [item["slug"] for item in MODULE.editor_controls()])
+        self.assertEqual(sum(item["key"] is None for item in controls.values()), 5)
+        self.assertIn("small-face", [item["slug"] for item in MODULE.editor_controls()])
+
+    def test_rejects_short_face_and_legacy_jaw_as_new_operator_evidence(self):
+        editor, reference = reports()
+        for name, key in [("small-face-50", "face_adjust_SmallFace"), ("jawline-50", "face_adjust_jaw")]:
+            invalid = copy.deepcopy(editor)
+            sample = next(item for item in invalid["samples"] if item["name"] == name)
+            sample["values"] = {key: 50}
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                MODULE.validate_reports(editor=invalid, reference=reference)
 
     def test_rejects_wrong_source_or_claimed_export_parity(self):
         editor, reference = reports()
@@ -79,6 +90,7 @@ class FaceShapeReferenceTests(unittest.TestCase):
     def test_rejects_combined_mislabeled_and_wrong_runtime_keys(self):
         editor, reference = reports()
         overrides = [
+            {"values": {"face_adjust_temple": 50}},
             {"values": {"face_adjust_temple": 50, "face_adjust_Chin": 25}},
             {"value": 100},
             {"values": {"face_adjust_jaw": 50}},

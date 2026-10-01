@@ -24,12 +24,18 @@ export type JianyingPortraitAdjustmentRuntimePackage =
 	| "feature-tilt"
 	| "smile"
 	| "nose-3d"
+	| "nose-sculpt"
+	| "nose-upturned"
+	| "nose-hump"
+	| "brow-shape"
 	| "eye-details"
 	| "skin-tone"
 	| "smooth"
 	| "whiten"
 	| "clarity"
 	| "skin-gan"
+	| "small-face"
+	| "jawline"
 	| "spot-acne"
 	| "teeth"
 	| "makeup"
@@ -77,6 +83,9 @@ export type MediaPortraitAdjustmentKey =
 	| "face_adjust_eye_distance"
 	| "face_adjust_nose"
 	| "face_adjust_3DNose_Big"
+	| "face_adjust_MaShengNose"
+	| "face_adjust_XiaoQiaoBi"
+	| "face_adjust_TuoFengNose"
 	| "face_adjust_nose_bridge"
 	| "face_adjust_nose_position"
 	| "face_adjust_nose_root"
@@ -88,6 +97,9 @@ export type MediaPortraitAdjustmentKey =
 	| "face_adjust_brow_tilt"
 	| "face_adjust_brow_width"
 	| "face_adjust_brow_distance"
+	| "eyebrow_adjust_BiaoZhun"
+	| "eyebrow_adjust_LiuYe"
+	| "eyebrow_adjust_JianMei"
 	| "face_adjust_mouse_width"
 	| "face_adjust_mouse_corner"
 	| "face_adjust_mouse"
@@ -103,6 +115,9 @@ export type MediaPortraitAdjustmentKey =
 	| "face_adjust_Clarity"
 	| "face_adjust_yunfu"
 	| "face_adjust_fuling"
+	| "face_adjust_lunkuopinghua"
+	| "face_adjust_YouTaiFace"
+	| "face_adjust_XiaHeXian"
 	| "face_adjust_SpotAcne"
 	| "face_adjust_WhiteTeeth"
 	| "face_adjust_temple"
@@ -265,6 +280,8 @@ export interface JianyingPortraitMakeupCardStatus {
 	titleZh: string;
 	titleEn: string;
 	defaultIntensity: number;
+	/** Retained for saved selections, not offered as a new makeup choice. */
+	legacyOnly?: boolean;
 	ready: boolean;
 	source: "qcut-private" | "jianying-installation" | "none";
 	thumbnailDataUrl?: string;

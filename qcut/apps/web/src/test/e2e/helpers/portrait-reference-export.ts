@@ -92,6 +92,7 @@ export async function exportPortraitReference({
 		],
 		{ timeout: 30_000 }
 	);
+	await page.bringToFront();
 	await page.screenshot({
 		path: path.join(output, `${name}-export-ui.png`),
 		animations: "disabled",

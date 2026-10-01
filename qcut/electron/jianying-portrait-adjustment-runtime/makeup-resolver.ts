@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { access, readFile, stat } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { jianyingFilterPrivateRuntimeCurrent } from "../jianying-filter-local-runtime/private-runtime.js";
@@ -7,6 +7,7 @@ import {
 	JIANYING_PORTRAIT_MAKEUP_CARDS,
 	type JianyingPortraitMakeupCardDefinition,
 } from "./makeup-catalog.js";
+import { resolveJianyingPortraitMakeupCovers } from "./makeup-covers.js";
 
 export interface JianyingPortraitMakeupCardResolution {
 	card: JianyingPortraitMakeupCardDefinition;
@@ -48,36 +49,6 @@ async function isReadableCardPackage({
 	}
 }
 
-function imageMimeType({ filePath }: { filePath: string }) {
-	switch (path.extname(filePath).toLowerCase()) {
-		case ".jpg":
-		case ".jpeg":
-			return "image/jpeg";
-		case ".webp":
-			return "image/webp";
-		default:
-			return "image/png";
-	}
-}
-
-async function readThumbnail({
-	card,
-	packagePath,
-}: {
-	card: JianyingPortraitMakeupCardDefinition;
-	packagePath: string;
-}) {
-	const filePath = path.join(packagePath, card.thumbnailRelativePath);
-	try {
-		const fileStats = await stat(filePath);
-		if (!fileStats.isFile() || fileStats.size > 768 * 1024) return undefined;
-		const bytes = await readFile(filePath);
-		return `data:${imageMimeType({ filePath })};base64,${bytes.toString("base64")}`;
-	} catch {
-		return undefined;
-	}
-}
-
 export async function resolveJianyingPortraitMakeupCard({
 	card,
 }: {
@@ -112,19 +83,38 @@ export async function resolveJianyingPortraitMakeupCard({
 		return {
 			card,
 			...candidate,
-			thumbnailDataUrl: await readThumbnail({
-				card,
-				packagePath: candidate.packagePath,
-			}),
 		};
 	}
 	return { card, packagePath: null, source: "none" };
 }
 
-export function resolveJianyingPortraitMakeupCards() {
-	return Promise.all(
+export async function resolveJianyingPortraitMakeupCards({
+	includeThumbnails = false,
+}: {
+	includeThumbnails?: boolean;
+} = {}) {
+	const cards = await Promise.all(
 		JIANYING_PORTRAIT_MAKEUP_CARDS.map((card) =>
 			resolveJianyingPortraitMakeupCard({ card })
 		)
 	);
+	if (!includeThumbnails) return cards;
+	const cache = path.join(jianyingFilterPrivateRuntimeCurrent(), "Cache");
+	const databaseRoots = [
+		path.join(cache, "ressdk_db"),
+		...(process.env.QCUT_JIANYING_DISABLE_USER_CACHE === "1"
+			? []
+			: [path.join(path.dirname(installedEffectRoot()), "ressdk_db")]),
+	];
+	const covers = await resolveJianyingPortraitMakeupCovers({
+		cards: cards
+			.filter(({ packagePath }) => packagePath !== null)
+			.map(({ card }) => card),
+		cacheRoot: path.join(cache, "portrait-makeup-covers"),
+		databaseRoots,
+	});
+	return cards.map((card) => ({
+		...card,
+		thumbnailDataUrl: covers.get(card.card.id),
+	}));
 }

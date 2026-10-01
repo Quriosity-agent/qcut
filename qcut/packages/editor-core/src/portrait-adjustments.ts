@@ -34,6 +34,9 @@ export const MEDIA_PORTRAIT_ADJUSTMENT_KEYS = [
 	"face_adjust_eye_distance",
 	"face_adjust_nose",
 	"face_adjust_3DNose_Big",
+	"face_adjust_MaShengNose",
+	"face_adjust_XiaoQiaoBi",
+	"face_adjust_TuoFengNose",
 	"face_adjust_nose_bridge",
 	"face_adjust_nose_position",
 	"face_adjust_nose_root",
@@ -45,6 +48,9 @@ export const MEDIA_PORTRAIT_ADJUSTMENT_KEYS = [
 	"face_adjust_brow_tilt",
 	"face_adjust_brow_width",
 	"face_adjust_brow_distance",
+	"eyebrow_adjust_BiaoZhun",
+	"eyebrow_adjust_LiuYe",
+	"eyebrow_adjust_JianMei",
 	"face_adjust_mouse_width",
 	"face_adjust_mouse_corner",
 	"face_adjust_mouse",
@@ -60,6 +66,9 @@ export const MEDIA_PORTRAIT_ADJUSTMENT_KEYS = [
 	"face_adjust_Clarity",
 	"face_adjust_yunfu",
 	"face_adjust_fuling",
+	"face_adjust_lunkuopinghua",
+	"face_adjust_YouTaiFace",
+	"face_adjust_XiaHeXian",
 	"face_adjust_SpotAcne",
 	"face_adjust_WhiteTeeth",
 	"face_adjust_temple",
@@ -590,7 +599,7 @@ function normalizeMakeupSelections({
 			!/^[a-z0-9-]{1,80}$/.test(selection.cardId) ||
 			typeof selection.intensity !== "number" ||
 			!Number.isFinite(selection.intensity) ||
-			selection.intensity <= 0
+			selection.intensity < 0
 		) {
 			continue;
 		}

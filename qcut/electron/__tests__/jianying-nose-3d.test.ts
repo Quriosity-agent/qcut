@@ -13,7 +13,10 @@ import {
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,
 	JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER,
 } from "../jianying-portrait-adjustment-runtime/catalog.js";
-import { portraitFittingFrameAction } from "../jianying-portrait-adjustment-runtime/fitting-frame-state.js";
+import {
+	portraitFittingFrameAction,
+	portraitPackageNeedsStableFrame,
+} from "../jianying-portrait-adjustment-runtime/fitting-frame-state.js";
 import {
 	JIANYING_NOSE_3D_MODELS,
 	missingJianyingNoseModels,
@@ -30,6 +33,27 @@ const packages = JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER.map(
 		source: "qcut-private" as const,
 	})
 );
+
+it("holds paused makeup, brow and 3D nose frames without freezing unrelated effects", () => {
+	for (const runtimePackage of [
+		"makeup",
+		"brow-shape",
+		"nose-3d",
+		"nose-sculpt",
+		"nose-upturned",
+		"nose-hump",
+	] as const) {
+		expect(portraitPackageNeedsStableFrame({ runtimePackage })).toBe(true);
+	}
+	for (const runtimePackage of [
+		"body",
+		"smooth",
+		"whiten",
+		"clarity",
+	] as const) {
+		expect(portraitPackageNeedsStableFrame({ runtimePackage })).toBe(false);
+	}
+});
 
 describe("3D nose routing", () => {
 	it("gives the canonical label to 3D without changing the classic operator", () => {

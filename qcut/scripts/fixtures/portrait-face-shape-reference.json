@@ -3,10 +3,15 @@
 		{
 			"slug": "smooth-contour",
 			"label": "流畅脸",
-			"key": "face_adjust_temple",
+			"key": "face_adjust_lunkuopinghua",
 			"values": [50, 100]
 		},
-		{ "slug": "small-face", "label": "小脸", "key": null, "values": [50, 100] },
+		{
+			"slug": "small-face",
+			"label": "小脸",
+			"key": "face_adjust_YouTaiFace",
+			"values": [50, 100]
+		},
 		{
 			"slug": "slim-face",
 			"label": "瘦脸",
@@ -22,7 +27,7 @@
 		{
 			"slug": "jawline",
 			"label": "下颌线",
-			"key": "face_adjust_jaw",
+			"key": "face_adjust_XiaHeXian",
 			"values": [50, 100]
 		},
 		{

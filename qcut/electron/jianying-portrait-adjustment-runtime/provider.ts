@@ -33,6 +33,7 @@ import { resolveJianyingPortraitPackages } from "./package-resolver.js";
 import { missingJianyingNoseModels } from "./nose-models.js";
 import {
 	portraitFittingFrameAction,
+	portraitPackageNeedsStableFrame,
 	type PortraitFittingFrameIdentity,
 } from "./fitting-frame-state.js";
 import {
@@ -451,25 +452,37 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			inspectJianyingFilterLocalRuntime({ refresh }),
 			resolveJianyingPortraitAdjustmentHost(),
 			resolveJianyingPortraitPackages(),
-			resolveJianyingPortraitMakeupCards(),
+			resolveJianyingPortraitMakeupCards({ includeThumbnails: true }),
 		]);
-		const missingNoseModels = await missingJianyingNoseModels({
-			modelDirectory: runtime.modelDirectory,
-		});
+		const missingModelsByPackage = new Map(
+			await Promise.all(
+				packages.map(
+					async ({ runtimePackage }) =>
+						[
+							runtimePackage,
+							await missingJianyingNoseModels({
+								modelDirectory: runtime.modelDirectory,
+								runtimePackage,
+							}),
+						] as const
+				)
+			)
+		);
 		const packageStatuses = packages.map(
-			({ group, runtimePackage, packagePath, source }) => ({
-				group,
-				runtimePackage,
-				ready:
-					Boolean(packagePath) &&
-					(runtimePackage !== "nose-3d" || missingNoseModels.length === 0),
-				source,
-				...(runtimePackage === "nose-3d" && missingNoseModels.length > 0
-					? {
-							message: `鼻大小缺少 3D 拟合模型: ${missingNoseModels.join(", ")}`,
-						}
-					: {}),
-			})
+			({ group, runtimePackage, packagePath, source }) => {
+				const missingModels = missingModelsByPackage.get(runtimePackage) ?? [];
+				return {
+					group,
+					runtimePackage,
+					ready: Boolean(packagePath) && missingModels.length === 0,
+					source,
+					...(missingModels.length > 0
+						? {
+								message: `鼻部缺少 3D 拟合模型: ${missingModels.join(", ")}`,
+							}
+						: {}),
+				};
+			}
 		);
 		const makeupBaseReady =
 			packageStatuses.find(({ runtimePackage }) => runtimePackage === "makeup")
@@ -481,6 +494,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				titleZh: card.titleZh,
 				titleEn: card.titleEn,
 				defaultIntensity: card.defaultIntensity,
+				...(card.legacyOnly ? { legacyOnly: true } : {}),
 				ready: Boolean(
 					packagePath && (card.kind === "standalone" || makeupBaseReady)
 				),
@@ -603,12 +617,17 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			packages,
 			makeupCards,
 		});
-		if (stages.some(({ runtimePackage }) => runtimePackage === "nose-3d")) {
-			const missing = await missingJianyingNoseModels({
-				modelDirectory: runtime.modelDirectory,
-			});
-			if (missing.length > 0)
-				throw new Error(`鼻大小缺少 3D 拟合模型: ${missing.join(", ")}`);
+		const missingModels = await Promise.all(
+			stages.map(({ runtimePackage }) =>
+				missingJianyingNoseModels({
+					modelDirectory: runtime.modelDirectory,
+					runtimePackage,
+				})
+			)
+		);
+		const missing = [...new Set(missingModels.flat())];
+		if (missing.length > 0) {
+			throw new Error(`鼻部缺少 3D 拟合模型: ${missing.join(", ")}`);
 		}
 		const activeGroups = activeJianyingPortraitGroups({ stages });
 		const frameworkDirectory = runtime.frameworkDirectory;
@@ -813,19 +832,17 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			if (!stage) return inputPath;
 			const outputPath = path.join(directory, `${requestId}-${index}.rgba`);
 			paths.push(outputPath);
-			const fittingIdentity =
-				stage.runtimePackage === "nose-3d" ||
-				stage.runtimePackage === "smile" ||
-				stage.runtimePackage === "face" ||
-				stage.runtimePackage === "eye-details"
-					? {
-							inputHash: frameHash({
-								rgba: new Uint8Array(await readFile(inputPath)),
-							}),
-							parameters: stage.featureParameters,
-							timestampSeconds: requestedTimestamp,
-						}
-					: undefined;
+			const fittingIdentity = portraitPackageNeedsStableFrame({
+				runtimePackage: stage.runtimePackage,
+			})
+				? {
+						inputHash: frameHash({
+							rgba: new Uint8Array(await readFile(inputPath)),
+						}),
+						parameters: stage.featureParameters,
+						timestampSeconds: requestedTimestamp,
+					}
+				: undefined;
 			const previousFittingFrame = sessions.get(stage.id)?.fittingFrame;
 			const fittingAction = fittingIdentity
 				? portraitFittingFrameAction({
@@ -936,6 +953,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						renderAttempt,
 						isOutputChanged: outputIsUsable,
 						maxAttempts: PORTRAIT_FRAME_MAX_RENDER_ATTEMPTS,
+						// GAN readback can be visible one pass before its fitted output is ready.
+						minAttempts: stage.runtimePackage === "skin-gan" ? 2 : 1,
 					});
 					if (!(await outputIsUsable())) {
 						throw new Error("剪映美颜美体返回了空画面");

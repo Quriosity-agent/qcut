@@ -22,14 +22,27 @@ vi.mock("../jianying-filter-local-runtime/runtime-discovery.js", () => ({
 vi.mock("../jianying-portrait-adjustment-runtime/bridge-resolver.js", () => ({
 	resolveJianyingPortraitAdjustmentHost: async () => "/host",
 }));
-vi.mock("../jianying-portrait-adjustment-runtime/nose-models.js", () => ({
-	missingJianyingNoseModels: mocks.missingModels,
-}));
+vi.mock(
+	"../jianying-portrait-adjustment-runtime/nose-models.js",
+	async (importOriginal) => ({
+		...(await importOriginal<
+			typeof import("../jianying-portrait-adjustment-runtime/nose-models.js")
+		>()),
+		missingJianyingNoseModels: mocks.missingModels,
+	})
+);
 vi.mock("../jianying-portrait-adjustment-runtime/host-process.js", () => ({
 	startJianyingPortraitHostProcess: mocks.start,
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
-	resolveJianyingPortraitMakeupCards: async () => [],
+	resolveJianyingPortraitMakeupCards: async () =>
+		(
+			await import("../jianying-portrait-adjustment-runtime/makeup-catalog.js")
+		).JIANYING_PORTRAIT_MAKEUP_CARDS.map((card) => ({
+			card,
+			packagePath: `/makeup/${card.id}`,
+			source: "qcut-private",
+		})),
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/package-resolver.js", () => ({
 	resolveJianyingPortraitPackages: async () =>
@@ -95,6 +108,28 @@ describe("stateful portrait fitting provider", () => {
 		timestampSeconds,
 		sourceKey: "test-portrait",
 		adjustments: { enabled: true, values: { face_adjust_3DNose_Big: value } },
+	});
+
+	it("exposes legacy-only selection metadata without disabling its render package", async () => {
+		const status = await provider.inspect();
+		expect(
+			status.makeupCards.find(({ id }) => id === "brows-flow")
+		).toMatchObject({
+			legacyOnly: true,
+			ready: true,
+			defaultIntensity: 70,
+			source: "qcut-private",
+		});
+		expect(
+			status.makeupCards
+				.filter(({ legacyOnly }) => legacyOnly)
+				.map(({ id }) => id)
+		).toEqual(["brows-flow"]);
+		expect(
+			status.makeupCards.find(({ id }) => id === "brows-fluffy")
+		).not.toHaveProperty("legacyOnly");
+		expect(status.offlineReady).toBe(true);
+		expect(mocks.start).not.toHaveBeenCalled();
 	});
 
 	it("renders the dedicated package and freezes identical image frames without advancing fitting", async () => {
@@ -188,7 +223,9 @@ describe("stateful portrait fitting provider", () => {
 		expect(hosts).toHaveLength(2);
 	});
 	it("disables only the unavailable 3D control and refuses uncached rendering without its model", async () => {
-		mocks.missingModels.mockResolvedValue(["tt_facefitting1220"]);
+		mocks.missingModels.mockImplementation(async ({ runtimePackage }) =>
+			runtimePackage === "nose-3d" ? ["tt_facefitting1220"] : []
+		);
 		const status = await provider.inspect();
 		expect(status.available).toBe(true);
 		expect(
@@ -206,6 +243,62 @@ describe("stateful portrait fitting provider", () => {
 			"tt_facefitting1220"
 		);
 		expect(mocks.start).not.toHaveBeenCalled();
+	});
+	it.each([
+		{ key: "face_adjust_MaShengNose", runtimePackage: "nose-sculpt" },
+		{ key: "face_adjust_XiaoQiaoBi", runtimePackage: "nose-upturned" },
+		{ key: "face_adjust_TuoFengNose", runtimePackage: "nose-hump" },
+		{ key: "eyebrow_adjust_BiaoZhun", runtimePackage: "brow-shape" },
+	])("holds $runtimePackage paused frames but advances moving input", async ({
+		key,
+		runtimePackage,
+	}) => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { [key]: 50 } },
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts[0].render).toHaveBeenCalledTimes(1);
+		expect(mocks.start).toHaveBeenCalledWith(
+			expect.objectContaining({ packagePath: `/packages/${runtimePackage}` })
+		);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(102);
+		expect(hosts).toHaveLength(1);
+		expect(hosts[0].render).toHaveBeenCalledTimes(2);
+	});
+	it("holds combined nose and makeup without freezing moving input", async () => {
+		const base = {
+			...request(),
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_XiaoQiaoBi: 50 },
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 50 } },
+			},
+		};
+		const first = await provider.render(base);
+		const held = await provider.render({ ...base, timestampSeconds: 1 / 30 });
+		expect(held.rgba).toEqual(first.rgba);
+		expect(hosts).toHaveLength(2);
+		for (const host of hosts) expect(host.render).toHaveBeenCalledTimes(1);
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const moving = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(moving.rgba[0]).toBe(104);
+		expect(hosts).toHaveLength(2);
+		for (const host of hosts) expect(host.render).toHaveBeenCalledTimes(2);
 	});
 	it("rebuilds face tracking after bright eyes changes its paused input", async () => {
 		const base = request();
@@ -238,6 +331,8 @@ describe("stateful portrait fitting provider", () => {
 	it.each([
 		"face_adjust_EnlargeEye",
 		"face_adjust_BrightEye",
+		"face_adjust_YouTaiFace",
+		"face_adjust_XiaHeXian",
 	] as const)("keeps moving frames but resets %s parameter history", async (key) => {
 		const base = {
 			...request(),
@@ -264,5 +359,68 @@ describe("stateful portrait fitting provider", () => {
 		});
 		expect(changed.rgba[0]).toBe(101);
 		expect(hosts).toHaveLength(2);
+	});
+	it.each([
+		"face_adjust_YouTaiFace",
+		"face_adjust_XiaHeXian",
+	] as const)("rebuilds %s after an upstream edit on a paused frame", async (key) => {
+		const base = {
+			...request(),
+			adjustments: { enabled: true, values: { [key]: 50 } },
+		};
+		await provider.render(base);
+		const combined = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { [key]: 50, face_adjust_CutFace: -25 },
+			},
+		};
+		const warm = await provider.render(combined);
+		expect(hosts).toHaveLength(3);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		const held = await provider.render({
+			...combined,
+			timestampSeconds: 1 / 30,
+		});
+		expect(held.rgba).toEqual(warm.rgba);
+		await provider.clear();
+		const cold = await provider.render(combined);
+		expect(cold.rgba).toEqual(warm.rgba);
+	});
+	it("settles contour GAN before downstream fitting and freezes held frames", async () => {
+		const base = request();
+		await provider.render({
+			...base,
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_lunkuopinghua: 100 },
+			},
+		});
+		const combined = {
+			...base,
+			adjustments: {
+				enabled: true,
+				values: {
+					face_adjust_lunkuopinghua: 50,
+					face_adjust_CutFace: -25,
+					face_adjust_YouTaiFace: 25,
+					face_adjust_XiaHeXian: 50,
+				},
+			},
+		};
+		const warm = await provider.render(combined);
+		expect(hosts[0].dispose).toHaveBeenCalledTimes(1);
+		expect(hosts[1].render).toHaveBeenCalledTimes(2);
+		expect(warm.rgba[0]).toBe(105);
+		const held = await provider.render({
+			...combined,
+			timestampSeconds: 1 / 30,
+		});
+		expect(held.rgba).toEqual(warm.rgba);
+		expect(hosts[1].render).toHaveBeenCalledTimes(2);
+		await provider.clear();
+		const cold = await provider.render(combined);
+		expect(cold.rgba).toEqual(warm.rgba);
 	});
 });

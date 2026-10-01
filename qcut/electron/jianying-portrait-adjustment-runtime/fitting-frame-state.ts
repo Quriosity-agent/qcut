@@ -1,4 +1,26 @@
 import { isPortraitTrackingDiscontinuity } from "./tracking-session.js";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
+import { isJianying3DNosePackage } from "./nose-models.js";
+
+export function portraitPackageNeedsStableFrame({
+	runtimePackage,
+}: {
+	runtimePackage: JianyingPortraitAdjustmentRuntimePackage;
+}): boolean {
+	return (
+		isJianying3DNosePackage({ runtimePackage }) ||
+		[
+			"smile",
+			"face",
+			"eye-details",
+			"small-face",
+			"jawline",
+			"skin-gan",
+			"makeup",
+			"brow-shape",
+		].includes(runtimePackage)
+	);
+}
 
 export interface PortraitFittingFrameIdentity {
 	inputHash: string;

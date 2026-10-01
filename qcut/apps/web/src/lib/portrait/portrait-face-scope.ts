@@ -160,7 +160,7 @@ export function applyPortraitAdjustments({
 						personBindingId: scope.personBindingId,
 						bindingAnchor: scope.bindingAnchor,
 						values: edited.values,
-						...(hasMakeup ? { makeup: edited.makeup } : {}),
+						makeup: hasMakeup ? edited.makeup : undefined,
 					},
 				]
 			: []),

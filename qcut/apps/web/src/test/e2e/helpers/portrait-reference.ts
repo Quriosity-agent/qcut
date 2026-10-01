@@ -16,10 +16,12 @@ export async function preparePortraitReferenceProject({
 	page,
 	source,
 	duration = 1,
+	canvasSize = { width: 1080, height: 1620 },
 }: {
 	page: Page;
 	source: string;
 	duration?: number;
+	canvasSize?: { width: number; height: number };
 }) {
 	await page.setViewportSize({ width: 1800, height: 1100 });
 	// Keep the calibration canvas fixed; first-media auto sizing is asynchronous.
@@ -36,31 +38,35 @@ export async function preparePortraitReferenceProject({
 	await navigateToProjects(page);
 	await createTestProject(page, `Portrait Slider Reference ${Date.now()}`);
 	await uploadTestMedia(page, source);
-	await page.evaluate(async (duration) => {
-		const stores = window as unknown as ReferenceWindow;
-		const size = { width: 1080, height: 1620 };
-		stores.__editorStore.getState().setCanvasSize(size, "custom");
-		await stores.__projectStore
-			.getState()
-			.updateProjectCanvasSize(size, "custom");
-		const media = stores.__mediaStore.getState().mediaItems[0];
-		const timeline = stores.__timelineStore.getState();
-		const track = timeline.tracks.find(
-			(candidate) => candidate.isMain || candidate.type === "media"
-		);
-		if (!media || !track) throw new Error("Missing imported portrait or track");
-		const elementId = timeline.addElementToTrack(track.id, {
-			type: "media",
-			mediaId: media.id,
-			name: media.name,
-			duration,
-			startTime: 0,
-			trimStart: 0,
-			trimEnd: 0,
-		});
-		if (!elementId) throw new Error("Cannot insert portrait");
-		timeline.setSelectedElements([{ trackId: track.id, elementId }]);
-	}, duration);
+	await page.evaluate(
+		async ({ duration, canvasSize }) => {
+			const stores = window as unknown as ReferenceWindow;
+			const size = canvasSize;
+			stores.__editorStore.getState().setCanvasSize(size, "custom");
+			await stores.__projectStore
+				.getState()
+				.updateProjectCanvasSize(size, "custom");
+			const media = stores.__mediaStore.getState().mediaItems[0];
+			const timeline = stores.__timelineStore.getState();
+			const track = timeline.tracks.find(
+				(candidate) => candidate.isMain || candidate.type === "media"
+			);
+			if (!media || !track)
+				throw new Error("Missing imported portrait or track");
+			const elementId = timeline.addElementToTrack(track.id, {
+				type: "media",
+				mediaId: media.id,
+				name: media.name,
+				duration,
+				startTime: 0,
+				trimStart: 0,
+				trimEnd: 0,
+			});
+			if (!elementId) throw new Error("Cannot insert portrait");
+			timeline.setSelectedElements([{ trackId: track.id, elementId }]);
+		},
+		{ duration, canvasSize }
+	);
 	await page
 		.getByTestId("media-properties")
 		.getByRole("tab", { name: "美颜美体", exact: true })
