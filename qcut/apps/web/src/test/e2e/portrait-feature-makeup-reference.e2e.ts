@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { loadImage } from "@napi-rs/canvas";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
 import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../electron/jianying-portrait-adjustment-runtime/makeup-catalog";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
@@ -44,6 +44,17 @@ const makeupLabels = {
 	freckles: "雀斑",
 };
 
+async function readMakeup({ page }: { page: Page }) {
+	return page.evaluate(() => {
+		const element = (window as unknown as ReferenceWindow).__timelineStore
+			.getState()
+			.tracks.flatMap((track) => track.elements)[0];
+		return element?.type === "media"
+			? element.portraitAdjustments?.makeup
+			: undefined;
+	});
+}
+
 test("canonical features and selectable makeup cards render, reset, resize, reopen and export", async () => {
 	test.skip(
 		!source || !existsSync(source),
@@ -52,6 +63,9 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 	test.setTimeout(900_000);
 	if (!source) throw new Error("Missing portrait source");
 	const image = await loadImage(source);
+	const sourceSha256 = createHash("sha256")
+		.update(await readFile(source))
+		.digest("hex");
 	const canvasSize = {
 		width: 1080,
 		height: Math.round((1080 * image.height) / image.width / 2) * 2,
@@ -71,6 +85,18 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 	const samples: Array<Awaited<ReturnType<typeof capture.changeAndCapture>>> =
 		[];
 	const makeupSamples: Array<Record<string, unknown>> = [];
+	const makeupLayouts: Array<Record<string, unknown>> = [];
+	const categoryDraft = {
+		look: { cardId: "look-oxygen", intensity: 42 },
+		lip: { cardId: "lip-soft-pink", intensity: 80 },
+	};
+	let categoryDraftVerified = false;
+	let completed = false;
+	let combined:
+		| Awaited<ReturnType<typeof capture.changeAndCapture>>
+		| undefined;
+	let exported: Awaited<ReturnType<typeof exportPortraitReference>> | undefined;
+	let reportFailure: Error | undefined;
 	try {
 		const { panel, features } = await preparePortraitReferenceProject({
 			page,
@@ -130,6 +156,30 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 		await panel.getByRole("button", { name: "五官精修", exact: true }).click();
 		await panel.getByRole("button", { name: "美妆", exact: true }).click();
 		const makeup = page.getByTestId("portrait-section-makeup");
+		await makeup.getByRole("tab", { name: "口红", exact: true }).click();
+		await makeup.getByRole("button", { name: "柔和粉", exact: true }).click();
+		await makeup.getByRole("tab", { name: "套装", exact: true }).click();
+		await makeup.getByRole("button", { name: "氧气感", exact: true }).click();
+		await makeup.getByLabel("程度数值", { exact: true }).fill("42");
+		await makeup.getByRole("tab", { name: "口红", exact: true }).click();
+		await expect.poll(() => readMakeup({ page })).toEqual(categoryDraft);
+		await expect(makeup.getByLabel("程度数值", { exact: true })).toHaveValue(
+			"80"
+		);
+		await capture.changeAndCapture({
+			page,
+			label: "程度",
+			value: 80,
+			name: "makeup-category-draft",
+		});
+		await makeup.getByRole("button", { name: "无", exact: true }).click();
+		await makeup.getByRole("tab", { name: "套装", exact: true }).click();
+		await expect(makeup.getByLabel("程度数值", { exact: true })).toHaveValue(
+			"42"
+		);
+		categoryDraftVerified = true;
+		await makeup.getByRole("button", { name: "无", exact: true }).click();
+		await expect(page.getByTestId("color-preview-canvas")).toHaveCount(0);
 		await JIANYING_PORTRAIT_MAKEUP_CARDS.filter(
 			({ legacyOnly }) => !legacyOnly
 		).reduce(async (previous, card) => {
@@ -172,14 +222,7 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 				name: card.id,
 			});
 			await capture.captureSource({ page, name: card.id });
-			const saved = await page.evaluate(() => {
-				const element = (window as unknown as ReferenceWindow).__timelineStore
-					.getState()
-					.tracks.flatMap((track) => track.elements)[0];
-				return element?.type === "media"
-					? element.portraitAdjustments?.makeup
-					: undefined;
-			});
+			const saved = await readMakeup({ page });
 			expect(saved).toEqual({
 				[card.category]: { cardId: card.id, intensity: card.defaultIntensity },
 			});
@@ -213,7 +256,6 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 			value: 50,
 			name: "combined-lip",
 		});
-		const makeupLayouts: Array<Record<string, unknown>> = [];
 		await [
 			{ width: 1280, height: 800 },
 			{ width: 1800, height: 1100 },
@@ -259,7 +301,7 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 		}, Promise.resolve());
 		await panel.getByRole("button", { name: "五官精修", exact: true }).click();
 		await features.getByRole("button", { name: "鼻子", exact: true }).click();
-		const combined = await capture.changeAndCapture({
+		combined = await capture.changeAndCapture({
 			page,
 			label: "小翘鼻",
 			value: 50,
@@ -317,7 +359,7 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 		await expect
 			.poll(async () => (await readPreview({ page })).hash, { timeout: 30_000 })
 			.toBe(combined.hash);
-		const exported = await exportPortraitReference({
+		exported = await exportPortraitReference({
 			app,
 			page,
 			output,
@@ -329,28 +371,46 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 			canvasSize.height,
 		]);
 		expect(errors).toEqual([]);
-		await writeFile(
-			path.join(output, "report.json"),
-			JSON.stringify(
-				{
-					source,
-					sourceSha256: createHash("sha256")
-						.update(await readFile(source))
-						.digest("hex"),
-					canvasSize,
-					mode: makeupOnly ? "makeup-only" : "features-and-makeup",
-					samples,
-					makeupSamples,
-					makeupLayouts,
-					combined,
-					exported,
-					errors,
-				},
-				null,
-				2
-			)
-		);
+		completed = true;
+	} catch (cause) {
+		errors.push(cause instanceof Error ? cause.message : String(cause));
+		await page
+			.screenshot({
+				path: path.join(output, "failure-ui.png"),
+				animations: "disabled",
+			})
+			.catch(() => {});
+		throw cause;
 	} finally {
-		await app.close();
+		try {
+			await writeFile(
+				path.join(output, "report.json"),
+				JSON.stringify(
+					{
+						source,
+						sourceSha256,
+						canvasSize,
+						mode: makeupOnly ? "makeup-only" : "features-and-makeup",
+						completed,
+						samples,
+						makeupSamples,
+						makeupLayouts,
+						categoryDraft,
+						categoryDraftVerified,
+						combined,
+						exported,
+						errors,
+					},
+					null,
+					2
+				)
+			);
+		} catch (cause) {
+			reportFailure = cause instanceof Error ? cause : new Error(String(cause));
+			console.error("Could not save feature/makeup evidence", cause);
+		} finally {
+			await app.close();
+		}
 	}
+	if (reportFailure) throw reportFailure;
 });
