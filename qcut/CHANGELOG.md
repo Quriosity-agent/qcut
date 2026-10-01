@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- Complete portrait face-shape, contour, nose, eye, mouth and brow controls with per-face editing and resets.
+- Align makeup categories, thumbnails and intensity controls with the Jianying reference workflow while retaining saved legacy selections.
+- Verify portrait rendering, project reopening and exports on multiple real-person reference images.
+
+### Fixed
+- Commit pending makeup intensity edits to the correct category when switching tabs, including equal-intensity and per-face cases.
+- Preserve partial portrait E2E reports and failure screenshots without hiding failed assertions.
+- Run backend model-routing tests in Node and use platform-native makeup cache paths in cross-platform tests.
+
 ## [2026.09.29.1] - 2026-09-29
 
 ### Improved
