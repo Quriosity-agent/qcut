@@ -167,6 +167,8 @@ E2E 改为在 `finally` 写报告，保留部分样本与原始异常，失败�
 
 首轮 Linux CI 的唯一失败套件为 `person-cutout-model-router.test.ts`：浏览器测试环境沿 provider → makeup resolver → 封面数据库导入链打包 `node:sqlite` 失败。相同错误本地复现后，为该纯后端套件明确指定 Node 环境；未改生产逻辑、未跳过断言，覆盖率模式下 13 个测试通过。
 
+首轮 Windows CI 还发现封面 resolver 测试硬编码 POSIX 路径，而实现返回正确的 Windows 分隔符。断言改为 `path.join`，保留私有数据库与封面缓存的完整路径检查；两处 CI 失败套件在本地同一覆盖率命令下合计 16 个测试通过，Windows 结果仍需等待远端重跑。
+
 本轮本地检查：52 个文件、395 个 Vitest 测试通过；12 个类型检查目标、四个改动代码文件的 Biome 检查通过。CI 结果须以 PR 最新提交的三平台检查为准，不以旧提交或本地结果替代。
 
 ## 尚未完成
