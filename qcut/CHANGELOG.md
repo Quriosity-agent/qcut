@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.01.1] - 2026-10-01
+
 ### Improved
 - Complete portrait face-shape, contour, nose, eye, mouth and brow controls with per-face editing and resets.
 - Align makeup categories, thumbnails and intensity controls with the Jianying reference workflow while retaining saved legacy selections.
