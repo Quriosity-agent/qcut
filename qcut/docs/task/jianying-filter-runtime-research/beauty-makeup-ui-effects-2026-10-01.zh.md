@@ -142,6 +142,33 @@ bunx --no-install playwright test \
 
 剪映配对仍只有 `front-smile` 的 19 款；另两张是 QCut 跨人物功能复测，不能写成三个人都与剪映同款同值对比完成。
 
+## PR #482 复查与回归
+
+### 分类切换时的数值草稿
+
+实际鼠标点击分类时，Radix 在 `mouse-down` 切换面板，比数值输入框的原生 `blur` 更早。尚未提交的程度草稿可能丢失，或落到新分类；旧、新分类程度相同时，复用输入组件还可能留下旧草稿。
+
+修复为切换分类前提交当前面板内已聚焦控件，并按分类重新挂载数值控件。四个先失败后通过的单测覆盖全部人脸、单独人脸，以及两分类程度相同、不同的组合；检查旧分类提交、新分类不变及交互事务结束。
+
+真人 Electron E2E 通过实际点击验证：套装「氧气感」输入 `42`，不按 Tab 而直接点口红分类；时间线保留 `look-oxygen:42`、`lip-soft-pink:80`，显示口红程度 `80`，切回套装仍为 `42`。分类截图等待非黑、稳定的实际渲染帧。
+
+最新复测目录：`output/beauty-kpop-v3-20260930/pr-482/makeup-category-draft-final/`。
+
+- `report.json`：`completed:true`、`categoryDraftVerified:true`、19 个美妆样本、无页面错误。
+- `makeup-category-draft-ui.png`、`makeup-category-draft-frame.png`：分类切换后的真实 UI 与渲染像素。
+- 两种窗口尺寸无溢出；保存退出重开后组合哈希一致；真实导出 1080×1080 H.264、BT.709、30 fps、1 秒，30 帧全部解码。
+- 本轮只复测第一张真人；前述另外两张的历史结果不算新代码的新增复测，也不算剪映双端导出精度证明。
+
+### 失败取证与 CI 环境
+
+E2E 改为在 `finally` 写报告，保留部分样本与原始异常，失败时保存 `failure-ui.png`；报告写入失败仍会关闭 Electron，成功路径不能吞掉写报告异常。
+
+在 `QCUT_JIANYING_DISABLE_USER_CACHE=1` 下实际运行资源缺失测试：标准眉卡片因缺少安装缓存被禁用，原断言失败、进程退出码为 `1`。`makeup-missing-resource-diagnostic/` 中保留截图、6 个已完成美妆样本及错误，`completed:false`，无组合导出结果。此为负向取证验证，不计作正常 E2E 通过。
+
+首轮 Linux CI 的唯一失败套件为 `person-cutout-model-router.test.ts`：浏览器测试环境沿 provider → makeup resolver → 封面数据库导入链打包 `node:sqlite` 失败。相同错误本地复现后，为该纯后端套件明确指定 Node 环境；未改生产逻辑、未跳过断言，覆盖率模式下 13 个测试通过。
+
+本轮本地检查：52 个文件、395 个 Vitest 测试通过；12 个类型检查目标、四个改动代码文件的 Biome 检查通过。CI 结果须以 PR 最新提交的三平台检查为准，不以旧提交或本地结果替代。
+
 ## 尚未完成
 
 - 其他分类完整素材库、下载管理和套装叠加的完整规则。
