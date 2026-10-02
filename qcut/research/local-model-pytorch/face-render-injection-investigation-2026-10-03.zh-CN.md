@@ -2,7 +2,7 @@
 
 日期：2026-10-03。分支：`codex/kpop-beauty-v6`。
 前置：[完整 Stage1 网络转换](face-alignment-heads-conversion-2026-10-03.zh-CN.md)已完成该段数值验收。
-本段是第二卡点的静态调查，**不是外部结果注入已完成**。
+本文先记录第二卡点的静态调查，再记录真实渲染边界的回放实验，**不是完整外部结果替换已完成**。
 后续已恢复需求结构并定位消费者，排除三个 `set_external_*algorithm*` 候选为人脸结果写入入口，见末节。
 
 ## 当前链路为什么还不能直接替换
@@ -184,3 +184,137 @@ cd research/local-model-pytorch
 内部推理旁路和跨帧生命周期验证。不能因为这七条路径不可用就断言所有入口都不存在；
 也不能把像素缓冲输入、MV 文件/JSON 输入或“有外部插件字符串”直接算作 FaceBuffer 注入成功。
 在此卡点通过前，不接产品独立分析后端，也不推进下一阶段的完整独立人脸分析链。
+
+## 继续推进：真实 Swing 消费边界与外部点位回放
+
+同日增加三个研究探针及一个测试文件。现在已经从静态符号推进到隔离进程里的真实效果渲染，
+但严格重复帧验收仍失败，不能把下面的局部消费证据等同于完整替换通过。
+没有修改产品 IPC、后端选择或已安装的厂商二进制，没有提交私有权重、效果包、原图或原始反汇编。
+
+### 找到的是哪条链
+
+产品的 `filter-probe.mm` 使用 SwingManager 的 indexed algorithm 列表，实际更新器是 `SwingAlgorithm`，
+内部经新 Bach AlgorithmManager/AlgorithmService 取得结果。
+以前独立 `filter-face-inspect.mm` 探针里的旧 `BachAlgorithmSystemGE` 不能直接代表这个产品消费者。
+
+```text
+原有 QCut 宿主的 RGBA / 滑杆 / 时间戳
+  -> SwingManager.seekFrame
+  -> SwingAlgorithm.update（原实现仍执行）
+  -> 新 Bach 图的 FaceBuffer
+  -> 本机研究回调：读取 / 同值回放 / 小幅移动眼部点位
+  -> 原有适配结果缓存与效果包
+  -> FaceReshapeLiquefy 原生渲染
+  -> 真实 RGBA 回读和 PNG / 灰度差分
+```
+
+`face_render_consumer_bridge.mm` 复用原宿主实现，只在自己创建的进程内替换 seek 的加载边界和单个
+algorithm 对象的 update 虚表槽。保留 RTTI 和其余虚表项，不修改库文件，也不附加到剪映进程。
+借用的点位在 seek 返回后恢复；回调错误在 seek 返回后报告，不把研究异常展开穿过厂商回调。
+
+### 恢复的版本限定约定
+
+下表仅适用于本文锁定的 arm64 UUID；不是稳定 SDK，也不能套到 Windows/x86。
+
+| 对象/调用 | 本版本约定 | 本轮用途 |
+| --- | --- | --- |
+| `SwingAlgorithm` | 构造虚表 `0x373bba0`，update 槽 `+0x20` 指向 `0x27823d0` | 在原 update 完成、效果消费前读取结果 |
+| AlgorithmSystemExtract 查询 | `0x16739ec` 接收两个 `uint64` 组成的 128 位需求值 | `{1,0}` 对应 face 类型 4，不是字符串参数 |
+| 已适配结果 | `algorithm_result_face_st`，虚表 `0x3654fd0` | 不是直接可替换的 `Bach::FaceBuffer` |
+| 原始结果查询 | `0x25e3af8(manager, graph, outputIndex, type)` | 从同一个 Swing 更新器取得借用的原始结果 |
+| `Bach::FaceBuffer` | 校验导出的 FaceBuffer 虚表；`+0x38/+0x40` 是最多 10 张脸的指针范围 | 读取和约束 face 数量 |
+| 人脸记录 | points 对象在 `+0x20`，track id 在 `+0x40` | 约束 106 个 XY float 与身份一致 |
+| points 对象 | begin/end 在 `+0x10/+0x18`，跨度必须为 848 字节 | 只替换点位，不重建整个 FaceBuffer |
+
+原始点位在本样本中为 `normalized-bottom-left`。不能将它们当成 640x480 算法尺寸的像素坐标，
+也不能把 Stage1 网络输出未经裁剪/旋转逆映射就直接放进去。本轮外部 JSON 来自原生结果快照，
+**还不是 PyTorch/ONNX 在产品运行时产生并直接送入渲染的结果**。
+
+### 回放协议与保护
+
+`face_render_consumer_probe.py` 先校验 core 和 AGFX 的 SHA-256/arm64 UUID，再编译独立子进程。
+AGFX SHA-256 为 `1b9493940eebda3b79d72b7308adf8abfbff56c9cfce9d7d73b31cd080453eee`，
+arm64 UUID 为 `57ECC10F-8BB8-319C-BA46-AF286E2EBD43`。
+编译前后和执行后核对源文件快照，不把中途改动的代码报告为已验证版本。
+
+外部 JSON 明确记录版本、图片哈希、尺寸、坐标系、微秒时间戳、track id 和每脸 106 点，
+再生成有长度限制的 `QCFACE1` 二进制协议。Python 与原生端都拒绝非有限值、越界坐标、重复身份、
+时间倒退、过多帧/脸、截断与尾随数据。运行时还检查每次更新的时间戳、face 数量、身份和最终消费数量。
+眼部实验只允许点位 52..63 的 X 小幅移动，最大绝对值 0.02；不改框、姿态、可见性或 mask。
+
+所有输出都放在 `.local/jianying-model-pytorch/` 的新目录。继承环境中的旧回放/扰动配置被隔离。
+`original` 模式只编译原产品宿主源文件，作为真正的无桥接对照；它没有被统计为“零次原生推理”。
+
+### 实际像素证据
+
+素材：1448x1086 的成年生成正面脸，图片 SHA-256
+`5c76fa2eb885de93c1d034b1918d61f94cdaf97a2e1b3f25ce4c68ba3c1b31f9`。
+使用 Features 包和 `face_adjust_eye`，不是这个包不识别的旧 `face_adjust_EnlargeEye` 参数。
+
+首个完整诊断目录为 `.local/jianying-model-pytorch/face-consumer-e2e-20261003-r5/`，
+含各模式的 RGBA、PNG、请求、日志、回放 JSON、版本/源码哈希、`report.json` 与 `comparison.png`。
+每种模式先固定 10 个预热请求，再导出 0、1/30、2/30、3/30 秒的四帧，不能靠挑选正常帧让整个验收通过。
+
+在该轮第 2、3 帧，原宿主、只读观察、update trace、重复 trace 和同值外部回放均逐像素一致。
+第 3 帧的受控实验结果如下；这些是**特定帧的消费证据**，不是跨帧全部通过：
+
+| 比较 | 改变像素 | 最大通道差 | 变化范围（左上原图像素坐标） |
+| --- | --- | --- | --- |
+| 原生美颜 vs 同值外部回放 | 0 | 0 | 无 |
+| 原生美颜 vs 眼部 X +0.01 | 24,607 | 31 | `[522,368,923,527]` |
+| 原生美颜 vs 眼部 X -0.01 | 24,713 | 26 | `[522,368,923,525]` |
+
+两种扰动都限制在从真实点位计算的眼部 ROI 内；灰度差分统一取 RGB 最大绝对差并乘 8，
+对比图顶部明确标记 `DIAGNOSTIC ONLY`。肉眼查看了真实输出和差分，不是把点画在原图上的叠加图。
+
+最终代码复跑的证据目录为 `.local/jianying-model-pytorch/face-consumer-e2e-20261003-r7/`：
+同值外部回放与原宿主四帧均逐像素一致，正负扰动第 3 帧的统计与上表一致；
+但 `original-repeat` 和 `trace` 各有对照帧不同，故整体仍为 `passed=false`、退出码 1。
+无脸对照、零强度效果对照通过；11 个原生坏数据/生命周期用例均正常拒绝，
+包括坏格式、尺寸、时间、数量、身份、坐标、未消费数据以及运行时 track id 不匹配。
+不把 SIGABRT 等信号退出算作正常拒绝；运行时身份不匹配已经验证从回调延后到 seek 返回后报告。
+新增 47 个协议/版本/源码/像素/错误处理测试通过，相关 PyTorch/ONNX 回归合计 374 个通过，无跳过。
+
+### 验收失败与已排除的猜测
+
+未桥接的 `original` 与 `original-repeat` 本身就不始终一致，有的输出完全等于原图，
+有的仅一部分眼部行更新。本轮尚未定位根因，不能直接断言是 GPU fence、模型精度或外部回放造成。
+
+- 固定 10 次预热没有消除波动。
+- 回读前额外调用 `RendererDevice::finish()` 没有解决；反汇编确认 `readImage` 本来就等待自己的队列。
+- 读取 Swing 使用的 GPDevice/RendererDevice，与宿主回读设备一致；对它再 finish 仍有未应用效果的帧。
+- 关闭 `EnableSwingSimplify` 的实验未产生有效宿主输出，不能当作已证明的缓存修复。
+- 将上一帧纹理保留到下一帧结束也没有解决，证据在 `face-consumer-e2e-20261003-r6/`。
+- 上述未经证明的生产宿主改动已撤掉，不能留一个“修复”标签掩盖未解决问题。
+
+`face_render_consumer_e2e.py` 保存所有重复/同值对照的差异；任意一个像素不同就记为失败，
+即使后续无脸、关闭效果和坏数据保护通过，最终仍写 `passed=false` 并以非零退出码结束。
+此外，静态图片的四帧自身必须稳定。关闭效果用明确的零强度参数：本包拒绝空 `{}`，
+不能把空参数失败误当成有效的关闭效果负对照。
+
+### 仍未通过的边界与下一步
+
+当前只替换原生借用结果里的 106 点，并没有建立独立拥有的完整 NativeFaceResult。
+trace 模式仍调用原 update，本样本每进程观察到 27 次 update；这不是已绕过推理，也不是完整网络调用计数。
+`external_injection_verified=false`、`native_analysis_bypassed=false` 保持不变。
+
+接下来仍按卡点顺序推进：
+
+1. 定位并修正原宿主重复帧不稳定的根因；以原生自身重复、同值回放和所有四帧稳定作为门槛，不放宽像素阈值。
+2. 恢复完整结果的构造、引用计数和适配缓存所有权，再验证真正的内部分析旁路。
+3. 将已验收的独立检测/裁剪/Stage1 输出映射进该协议；明确处理 Stage2、虹膜、姿态/fitting、遮罩等缺项。
+4. 验证真实多脸、侧脸、旋转/镜像、脸丢失恢复与分钟级视频，再接产品 IPC、预览和导出。
+
+复现真实诊断（从 `qcut/`；严格验收失败时保留证据并返回非零）：
+
+```bash
+python3 research/local-model-pytorch/face_render_consumer_e2e.py \
+  --runtime "$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current" \
+  --package "$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Cache/effect/7408077472211668276/f662ff9c955ee319f1ae03b2aa27df76" \
+  --image output/beauty-kpop-v6-20261002/source/kpop-front-original.png \
+  --out .local/jianying-model-pytorch/face-consumer-e2e-fresh
+
+cd research/local-model-pytorch
+../../.local/jianying-model-pytorch/face-heads-export122/bin/python \
+  -m unittest face_render_consumer_probe_test
+```
