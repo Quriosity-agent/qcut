@@ -147,6 +147,8 @@ SDK 的全排序/partial-sort 不是稳定排序；独立实现采用稳定输�
 
 纯黑图期望 0 张脸，当前原生模型输出 1 个整幅图像框；独立链复现了它。
 报告单独记录 `fixture_face_counts_match=false`，不拿数值一致掩盖语义失败。
+这是 `FaceDetectorModel` 子模块的结果，不等于完整剪映 GUI、分类校验或跟踪链也会保留它；
+后续阶段是否过滤这类候选还没有验收。
 本轮不擅自提高阈值或插入新过滤器，否则改变了对拍基线。
 产品接入前需要负样本、遮挡、小脸、多脸等检测正确性验收，以及明确误报抑制策略。
 
@@ -188,6 +190,11 @@ PYTHONPATH=research/local-model-pytorch \
 
 本地 133 个测试通过，C++ 桥接通过 `-Wall -Wextra -Werror` 语法检查。
 公开 CI 只覆盖合成代码、安全边界和回归，不包含私有模型对拍，也不证明完整迁移。
+
+[三平台 CI 36986273116](https://github.com/Quriosity-agent/qcut/actions/runs/36986273116)
+已在 `9f4359dd6afc02d12973fcdad33521e9c7fc817a` 通过：macOS 133 个通过；
+Windows/Linux 各 123 个通过、10 个既有 macOS 专用测试跳过。
+该 SHA 包含本轮全部代码和测试；之后仅补充本文的 CI 证据和检测子模块边界说明。
 
 ## 后续顺序
 
