@@ -1,8 +1,9 @@
 """Export a float32 espresso network to ONNX and check it against the frozen native outputs.
 
-Only graphs whose blobs are float32 are exportable: the fixed-point networks depend on rounding,
-int32 wraparound and one-sided lane clamps that standard ONNX operators cannot express, and a
-float approximation of them would not be the network the runtime runs.
+This exporter only supports float32 blobs. Integer graphs need explicit rounding, int32
+wraparound and lane-clamp semantics, not a floating-point approximation. The separate
+espresso_integer_export.py now handles a verified integer detection subset with standard
+ONNX operators; its coverage does not include every fixed-point operator or network.
 
 Even for a float graph one operator is approximated: on two classes the runtime's softmax takes
 the exponent relative to channel 0 and scales by the hardware reciprocal estimate, so the export
