@@ -17,6 +17,30 @@ PEOPLE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PEOPLE)
 GALLERY, DIFF = PEOPLE.GALLERY, PEOPLE.DIFF
 FINGERPRINT = PEOPLE.COMPARISON.SKIN.fingerprint
+METRICS = PEOPLE.COMPARISON.METRICS
+
+
+def paired_delta_metrics(*, baseline_j, result_j, baseline_q, result_q, crop):
+    frames = [baseline_j, result_j, baseline_q, result_q]
+    if any(frame.size != baseline_j.size for frame in frames):
+        raise ValueError("Metric frame dimensions must match")
+    if (not isinstance(crop, (list, tuple)) or len(crop) != 4
+            or any(type(value) is not int for value in crop)):
+        raise ValueError("Require an integer metric crop")
+    left, top, right, bottom = crop
+    width, height = baseline_j.size
+    if not (0 <= left < right <= width and 0 <= top < bottom <= height):
+        raise ValueError("Metric crop must be inside the frame")
+    delta_j = PEOPLE.change_pixels(frame=result_j, baseline=baseline_j)
+    delta_q = PEOPLE.change_pixels(frame=result_q, baseline=baseline_q)
+    return {
+        "fullFrame": METRICS.delta_metrics(reference=delta_j, candidate=delta_q),
+        "faceCrop": {
+            "crop": list(crop),
+            **METRICS.delta_metrics(reference=delta_j[top:bottom, left:right],
+                                    candidate=delta_q[top:bottom, left:right]),
+        },
+    }
 
 
 def isolated_parameters(*, sample):
@@ -122,6 +146,9 @@ def create_comparison(*, editor, manifest_path, output, title):
         records.append({"name": name, "parameters": isolated_parameters(sample=record),
                         "jianyingMeanRGBChange": float(magnitude_j.mean()),
                         "qcutMeanRGBChange": float(magnitude_q.mean()),
+                        "signedDeltaMetrics": paired_delta_metrics(
+                            baseline_j=baseline, result_j=result_j,
+                            baseline_q=base_q, result_q=result_q, crop=reference["displayCrop"]),
                         "qcutInputs": inputs, "reference": record})
     for index in range(0, len(rows), 3):
         PEOPLE.render_sheet(title=f"{title} · 对照 {index // 3 + 1}", rows=rows[index:index + 3],
@@ -131,6 +158,8 @@ def create_comparison(*, editor, manifest_path, output, title):
                "evidence": "ui-screenshot-vs-editor-canvas", "jianyingCompared": True,
                "pairedCases": len(refs), "unpairedEditorCases": sorted(set(samples) - set(refs)),
                "gain": DIFF.DISPLAY_GAIN, "sigma": DIFF.BLUR_SIGMA, "zeroDriftMeanRGB": drift,
+               "metricLimitation": "Signed baseline-subtracted RGB diagnostics, not a parity percentage. "
+                                   "JPEG encoding, preview sampling and runtime differences remain confounded.",
                "geometricRegistration": False, "perMapNormalization": False, "records": records}
     (output / "report.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     figures = "".join(
@@ -146,7 +175,7 @@ def create_comparison(*, editor, manifest_path, output, title):
         'figure{margin:32px 0}figcaption{font-size:22px}</style>'
         f'<h1>{html.escape(title)}</h1><p>同源、同项、同数值，统一灰度增益 ×6。'
         '各减各自零值，不做几何配准；界面截图对编辑器画布，不是导出精度验收。</p>'
-        '<p><a href="report.json">参数、哈希和未配对项</a></p>' + figures + '</html>\n')
+        '<p><a href="report.json">参数、哈希、带方向的差分指标和未配对项</a></p>' + figures + '</html>\n')
     return {"pairedCases": len(refs), "zeroDriftMeanRGB": drift, "output": str(output)}
 
 
