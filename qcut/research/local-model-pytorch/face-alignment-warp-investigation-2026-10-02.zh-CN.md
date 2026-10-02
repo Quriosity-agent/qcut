@@ -154,6 +154,11 @@ cd research/local-model-pytorch
 公开 CI 添加新测试模块；跨平台合成测试不需要原始库。
 私有原始 SDK 验证仍仅适用于锁定的 macOS arm64 版本，不能用 CI 绿色替代。
 
+CI 已完成：[Espresso probe regressions / 36995241425](https://github.com/Quriosity-agent/qcut/actions/runs/36995241425)。
+测试的代码/工作流 SHA 为 `559095de2310d887f280cdc76ae152235ac8e91a`；后续提交仅记录文档。
+macOS 180 个全部通过；Linux 与 Windows 各 180 个测试，跳过已有的 10 个 macOS 专用测试，
+其余通过，新增 26 个测试在三平台都执行。
+
 ## 下一段
 
 1. 捕获初始化和实际预测时的平均脸/参与拟合的点集，确认单位、点数和选择规则。
