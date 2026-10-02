@@ -24,7 +24,8 @@
 | 原始渲染输出 | 新运行的原生 oracle 与历史真实渲染捕获的 6 个输出头逐位一致 |
 | 无 PyTorch 运行 | 使用既有无 Torch 的隔离 Python 环境加载 ONNX，6 个头共 18,900 元素，差异 0 |
 | 可见证据 | 原帧、Native/PyTorch/ONNX 三尺度分类头及统一 ×6 灰度差分，已人工看图；三张差分全黑 |
-| 本地回归 | 5 个测试模块共 65 个测试通过，其中 23 个为本轮新增；三平台 CI 已接线，尚未以本轮 head 验证远端结果 |
+| 本地回归 | 5 个测试模块共 66 个测试通过，其中 23 个为本轮新增 |
+| 三平台公开 CI | macOS 66 个通过；Windows/Linux 各 56 个通过、10 个 macOS 原生探针按平台跳过；新转换测试均执行通过 |
 
 这里的“效果一致”严格指检测模型输出一致。尚未替换 QCut 编辑器的美颜后端，
 不能据此声称鼻子、眼角、磨皮或整张妆容图已经由独立模型完成且与剪映一致。
@@ -53,6 +54,12 @@ ONNX 中没有自定义算子域；使用整数 MatMul、Add、Mul、Mod、Div�
 每个文件绑定一个输入尺寸；没有把两个静态 profile 冒充任意动态尺寸支持。
 PyTorch `.pt2` 使用 `torch.export`；ONNX 为与现有工具一致仍使用固定版本的 legacy exporter，
 当前可运行但有弃用警告，后续再单独迁移 exporter。
+
+三平台 CI 的代码基线为 `b67f5681656e59c925e844a9c0a1afd5d138f954`，
+[运行 36972091213](https://github.com/Quriosity-agent/qcut/actions/runs/36972091213) 三个 job 均为 success。
+首轮 Windows 发现测试 fixture 的默认 CRLF 写入导致原始图哈希不同，现固定 fixture 的 ASCII 字节，
+并补了 LF/CRLF 不可混为同一哈希的回归；没有放宽真实图文件的字节哈希校验。
+公开 CI 不含私有权重，因此不能代替 Windows/Linux 的私有人脸模型验收。
 
 ## 证据和复现
 
