@@ -16,6 +16,7 @@ import torch
 
 import espresso_oracle
 from espresso_integer_torch import load
+from espresso_onnx_runtime import session
 from espresso_parity import synthetic_input
 from espresso_real_parity import meta_records, tensor
 
@@ -70,12 +71,6 @@ def capture_case(*, capture, graph_digest, descriptors):
     return complete[0]
 
 
-def session(*, path):
-    options = onnxruntime.SessionOptions()
-    options.intra_op_num_threads = 1
-    return onnxruntime.InferenceSession(str(path), sess_options=options, providers=["CPUExecutionProvider"])
-
-
 def export_onnx(*, model, inputs, path):
     torch.onnx.export(model, inputs, str(path), opset_version=18, dynamo=False,
                       input_names=list(model.input_names), output_names=list(model.output_names))
@@ -85,11 +80,11 @@ def export_onnx(*, model, inputs, path):
         raise ValueError("unexpected custom ONNX operator")
 
 
-def profile(*, network, inputs, out, prefix_output=None):
+def profile(*, network, inputs, out, prefix_output=None, loader=load):
     shapes = {name: tuple(value.shape) for name, (value, _) in inputs.items()}
-    model = load(directory=network, input_shapes=shapes, prefix_output=prefix_output)
+    model = loader(directory=network, input_shapes=shapes, prefix_output=prefix_output)
     names = [name for layer in model.execution_layers if layer["op"] != "Input" for name in layer["outputs"]]
-    diagnostic = load(directory=network, input_shapes=shapes, output_names=names, prefix_output=prefix_output)
+    diagnostic = loader(directory=network, input_shapes=shapes, output_names=names, prefix_output=prefix_output)
     args = tuple(torch.from_numpy(inputs[name][0].astype(np.int64)) for name in model.input_names)
     out.mkdir(parents=True, exist_ok=False)
     with torch.no_grad():
@@ -103,7 +98,7 @@ def profile(*, network, inputs, out, prefix_output=None):
             "names": names, "out": out}
 
 
-def evaluate(*, network, inputs, runner, out, captured=None):
+def evaluate(*, network, inputs, runner, out, captured=None, comparisons=None):
     model = runner["model"]
     descriptor = model.graph["descriptors"]
     shapes = {name: tuple(value.shape) for name, (value, _) in inputs.items()}
@@ -130,16 +125,17 @@ def evaluate(*, network, inputs, runner, out, captured=None):
     checks = {}
     for name in runner["names"]:
         expected, raw = native[name]
+        compare_output = compare if comparisons is None else comparisons.get(name, compare)
         checks[name] = {
-            "pytorch": compare(actual=pytorch[name].numpy(), expected=expected, descriptor=descriptor[name], raw=raw),
-            "onnx": compare(actual=onnx_all[name], expected=expected, descriptor=descriptor[name], raw=raw),
+            "pytorch": compare_output(actual=pytorch[name].numpy(), expected=expected, descriptor=descriptor[name], raw=raw),
+            "onnx": compare_output(actual=onnx_all[name], expected=expected, descriptor=descriptor[name], raw=raw),
         }
         if name in portable:
-            checks[name]["pytorch_reloaded"] = compare(actual=portable[name].numpy(), expected=expected, descriptor=descriptor[name], raw=raw)
-            checks[name]["onnx_terminal"] = compare(actual=onnx_outputs[name], expected=expected, descriptor=descriptor[name], raw=raw)
+            checks[name]["pytorch_reloaded"] = compare_output(actual=portable[name].numpy(), expected=expected, descriptor=descriptor[name], raw=raw)
+            checks[name]["onnx_terminal"] = compare_output(actual=onnx_outputs[name], expected=expected, descriptor=descriptor[name], raw=raw)
         if captured is not None and name in captured:
             original, original_raw = captured[name]
-            checks[name]["recorded_render"] = compare(actual=expected.astype(np.int64), expected=original,
+            checks[name]["recorded_render"] = compare_output(actual=expected if raw[0] == 4 else expected.astype(np.int64), expected=original,
                                                         descriptor=descriptor[name], raw=original_raw)
     if captured is not None and not set(model.output_names) <= set(captured):
         raise ValueError("real render capture is missing terminal detection heads")
