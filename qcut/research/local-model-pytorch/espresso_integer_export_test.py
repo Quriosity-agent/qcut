@@ -31,7 +31,7 @@ class IntegerEvidenceTest(unittest.TestCase):
 
     def capture(self, *, directory, inputs=True, outputs=True, bad_bytes=False, raw=(1, 6)):
         text = graph(rows=["Eltwise add data data output 1 6 0"], shape=(1, 1, 1, 1))
-        (directory / "000-espresso.graph.txt").write_text(text)
+        (directory / "000-espresso.graph.txt").write_bytes(text.encode("ascii"))
         (directory / "000-espresso.json").write_text(json.dumps({"index": 0, "kind": "espresso", "detail": "self=42"}))
         for index, kind, name, enabled in ((1, "espresso-input", "data", inputs), (2, "espresso-output", "output", outputs)):
             if not enabled:
@@ -75,6 +75,18 @@ class IntegerEvidenceTest(unittest.TestCase):
             (root / "003-espresso-input.bin").write_bytes(bytes([10]))
             with self.assertRaisesRegex(ValueError, "duplicate"):
                 capture_case(capture=root, graph_digest=digest, descriptors=descriptors)
+
+    def test_capture_fingerprint_uses_original_bytes_not_normalized_newlines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            digest, descriptors = self.capture(directory=root)
+            path = root / "000-espresso.graph.txt"
+            content = path.read_bytes().replace(b"\n", b"\r\n")
+            path.write_bytes(content)
+            with self.assertRaisesRegex(ValueError, "no complete"):
+                capture_case(capture=root, graph_digest=digest, descriptors=descriptors)
+            actual_digest = hashlib.sha256(content).hexdigest()
+            self.assertTrue(capture_case(capture=root, graph_digest=actual_digest, descriptors=descriptors)["inputs"])
 
     def test_output_cannot_escape_private_root(self):
         with tempfile.TemporaryDirectory() as directory:
