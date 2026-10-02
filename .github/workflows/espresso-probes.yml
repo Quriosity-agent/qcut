@@ -57,4 +57,5 @@ jobs:
         run: >-
           python -m unittest espresso_test espresso_package_collect_test native_probe_test
           espresso_integer_test espresso_integer_export_test face_geometry_test face_detector_test
-          face_alignment_input_test face_alignment_warp_test face_alignment_decode_test -v
+          face_alignment_input_test face_alignment_warp_test face_alignment_decode_test
+          face_alignment_tracking_test -v
