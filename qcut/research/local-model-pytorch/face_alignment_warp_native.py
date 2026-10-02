@@ -16,6 +16,7 @@ TRANSFORM = PREFIX + "22ImageTransformNewAlign"
 WARP_SYMBOL = PREFIX + "6module5fsnew12PreProcessor16ProcessWarpImageERKN9mobilecv23MatE15PixelFormatTypeRNS_22ImageTransformNewAlignEiib"
 FORMATS = {"RGBA": (0, 4), "BGRA": (1, 4), "BGR": (2, 3), "RGB": (3, 3)}
 BYTENN_SHA256 = "febfce4549cd6337c232c22ed00463a54cda7b255c4961426a33bfc78542b863"
+TRACKING_ANCHORS = (55, 58, 84, 90)
 
 
 def loaded_bytenn():
@@ -59,6 +60,16 @@ def point_vector(*, points):
     result.data, result.capacity, result.count = ct.addressof(result) + 16, 264, values.size
     ct.memmove(result.data, values.ctypes.data, values.nbytes)
     return result
+
+
+def validate_tracking(*, points, threshold=0.1):
+    values = validate_points(points=points)
+    if values.shape != (106, 2):
+        raise ValueError("tracking gate requires exactly 106 points")
+    if (isinstance(threshold, (bool, np.bool_)) or not isinstance(threshold, (int, float, np.floating))
+            or not np.isfinite(threshold) or not 0 <= threshold <= 1):
+        raise ValueError("finite tracking threshold in [0, 1] required")
+    return values, np.float32(threshold)
 
 
 def validate_fit(*, source, mean):
@@ -118,6 +129,12 @@ class NativeAlignmentWarp:
         self.to_warped = bind(name=TRANSFORM + "26tranformPoints2WarpedImageERKN9mobilecv23MatERS2_", count=3)
         self.warp_function = bind(name=TRANSFORM + "9warpImageERKN9mobilecv23MatERS2_RKNS1_5Size_IiEE", count=4)
         self.deallocate = bind(name="_ZN10AutoVectorIfLm264EE10deallocateEv", count=1)
+        self.get_anchor = getattr(native.library, TRANSFORM + "14getAlignAnchorERK10AutoVectorIfLm264EERN9mobilecv23VecIfLi4EEEiiii")
+        self.get_anchor.argtypes = [ct.c_void_p] * 3 + [ct.c_int] * 4
+        self.get_anchor.restype = None
+        self.check_transform = getattr(native.library, TRANSFORM + "18checkNeedTransformERK10AutoVectorIfLm264EEiiiif")
+        self.check_transform.argtypes = [ct.c_void_p] * 2 + [ct.c_int] * 4 + [ct.c_float]
+        self.check_transform.restype = ct.c_bool
         self.preprocess = getattr(native.library, WARP_SYMBOL)
         self.preprocess.argtypes = [ct.c_void_p, ct.c_void_p, ct.c_int, ct.c_void_p,
                                    ct.c_int, ct.c_int, ct.c_bool]
@@ -162,6 +179,30 @@ class NativeAlignmentWarp:
                 raise ValueError("native transform matrix is missing")
             result.append(validate_matrix(matrix=copy_mat(value=Mat.from_address(address), dtype=np.float32, channels=1)))
         return tuple(result)
+
+    def anchors(self, *, points):
+        self.require_open(fitted=False)
+        values, _ = validate_tracking(points=points)
+        vector, result = point_vector(points=values), (ct.c_float * 4)()
+        self.get_anchor(self.transform, ct.byref(vector), result, *TRACKING_ANCHORS)
+        anchors = np.ctypeslib.as_array(result).reshape(2, 2).copy()
+        if not np.isfinite(anchors).all():
+            raise ValueError("native tracking anchors are not finite")
+        return anchors
+
+    def needs_update(self, *, points, threshold=0.1):
+        self.require_open(fitted=False)
+        values, threshold = validate_tracking(points=points, threshold=threshold)
+        vector = point_vector(points=values)
+        return bool(self.check_transform(self.transform, ct.byref(vector), *TRACKING_ANCHORS, threshold))
+
+    def cached_points(self):
+        self.require_open()
+        value = PointVector.from_address(ct.addressof(self.transform) + 0x4F8)
+        if (value.data != ct.addressof(value) + 16 or not 212 <= value.capacity <= 264 or value.count != 212
+                or ct.c_bool.from_address(ct.addressof(self.transform) + 0x930).value is not True):
+            raise ValueError("validated 106-point fitted cache required")
+        return validate_points(points=np.ctypeslib.as_array(value.storage)[:212].reshape(106, 2)).copy()
 
     def fit(self, *, source, mean):
         self.require_open(fitted=False)
