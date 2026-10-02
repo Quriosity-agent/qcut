@@ -23,6 +23,8 @@ export async function exportPortraitReference({
 	const exportPath = path.join(output, `${name}-${Date.now()}.mp4`);
 	await stubExportSaveDialog({ electronApp: app, outputPath: exportPath });
 	await page.getByTestId("export-button").click();
+	await page.getByTestId("export-quality-select").getByRole("button").click();
+	await page.locator('button[role="radio"][id="1080p"]').check();
 	const audio = page.getByRole("checkbox", { name: "Include audio in export" });
 	if (await audio.count()) await audio.uncheck();
 	await page.getByTestId("export-start-button").click();
