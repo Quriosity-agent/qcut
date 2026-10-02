@@ -32,6 +32,35 @@ class FeatureMakeupTests(unittest.TestCase):
         _, refs = MODULE.validate_reference(editor=self.editor, reference=self.reference)
         self.assertEqual(len(refs), 2)
 
+    def test_pairs_non_square_exports_at_the_reported_canvas_size(self):
+        for width, height in [(1080, 810), (1080, 1350), (1440, 1080)]:
+            editor = copy.deepcopy(self.editor)
+            editor["canvasSize"] = {"width": width, "height": height}
+            editor["exported"]["videoStream"]["width"] = width
+            editor["exported"]["videoStream"]["height"] = height
+            with self.subTest(width=width, height=height):
+                _, refs = MODULE.validate_reference(editor=editor, reference=self.reference)
+                self.assertEqual(len(refs), 2)
+
+    def test_rejects_canvas_export_mismatch(self):
+        editor = {**self.editor, "canvasSize": {"width": 1080, "height": 810}}
+        with self.assertRaisesRegex(ValueError, "reference canvas dimensions"):
+            MODULE.validate_reference(editor=editor, reference=self.reference)
+
+    def test_rejects_invalid_canvas_dimensions(self):
+        for dimension in ["width", "height"]:
+            for value in [True, None, 810.0, 0, 63, 811, 4098]:
+                canvas = {"width": 1080, "height": 810, dimension: value}
+                editor = {**self.editor, "canvasSize": canvas}
+                with self.subTest(dimension=dimension, value=value), self.assertRaisesRegex(ValueError, "valid even"):
+                    MODULE.validate_reference(editor=editor, reference=self.reference)
+
+    def test_rejects_malformed_canvas_metadata(self):
+        for canvas in [None, [], "1080x810", {}, {"width": 1080}]:
+            editor = {**self.editor, "canvasSize": canvas}
+            with self.subTest(canvas=canvas), self.assertRaisesRegex(ValueError, "valid even"):
+                MODULE.validate_reference(editor=editor, reference=self.reference)
+
     def test_rejects_incomplete_export_and_runtime_error(self):
         for fields in [{"errors": ["render failed"]}, {"combined": {}},
                        {"exported": {"decodedFrames": 0}}]:
