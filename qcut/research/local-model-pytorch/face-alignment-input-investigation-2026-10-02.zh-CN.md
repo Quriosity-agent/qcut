@@ -110,6 +110,12 @@ fraction=6 的解释值为整数除以 64。本轮 196 组都验证了原始缓�
 - 本地 8 个公开回归模块共 154 个测试通过，21 个为新增；原有 ONNX exporter 有弃用警告。
   C++ 桥 `-Wall -Wextra -Werror -fsyntax-only` 通过。
 
+公开三平台 CI：[运行 36991184878](https://github.com/Quriosity-agent/qcut/actions/runs/36991184878)
+的三个 job 均为 success，测试代码/工作流基线为
+`9ccc90d401a39141cc322a4407aafa748fe13062`。后续仅增加研究文档。
+新增 21 个测试三平台均执行；Linux/Windows 跳过 10 个既有 macOS 原生边界测试。
+CI 使用公开合成数据，不携带私有模型，不能替代上述本地原始 SDK 对拍。
+
 每组 `stages.png` 有六列：原始 SDK 裁剪、原始 SDK 缩放、解释公式、缩放灰度差分 ×8、
 真实网络输入加回 128、输入灰度差分 ×8。
 已人工检查大脸 `case-192` 和线性放大 `case-002`，两类差分均全黑。
