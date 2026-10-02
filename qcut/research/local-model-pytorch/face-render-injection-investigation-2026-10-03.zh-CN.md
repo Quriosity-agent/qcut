@@ -318,3 +318,102 @@ cd research/local-model-pytorch
 ../../.local/jianying-model-pytorch/face-heads-export122/bin/python \
   -m unittest face_render_consumer_probe_test
 ```
+
+## 2026-10-03 后续：修复实际渲染设备的完成边界
+
+### 原因与修复
+
+前面读取 `SwingManager::getGPDevice()`，发现它与宿主回读设备一致，这个观察本身没错，
+但它不是此效果真正使用的内部 renderer。原生引擎还创建了另一个 Metal 渲染设备。
+两边通过友元纹理共享输出；等待回读设备不等于等待写入这张纹理的内部设备。
+
+本机实际记录：
+
+```text
+readback/Swing GPDevice: 0x8e0db9b00
+actual engine renderer: 0x8e0dba100
+active BEF context == SwingManager::getAmazer(): 0x8e1249c30
+```
+
+这些地址只是该进程里的观察值，不是程序常量。静态反汇编与同进程探针共同确认：
+
+- `SwingManager::getAmazer()` 是导出的 getter，返回 manager 的 Amazer 上下文。
+- `D6342ECD-5432-33F0-A2AD-0C28F5699994` 中的 `0x3f9fd8` 是 renderer getter 包装入口。
+- `libAGFX` 的 `RendererDevice::finish()` 等待其接收对象对应的 Metal 队列。
+- 之前额外等待 Metal 回读设备、等待 OpenGL，都没有解决此问题。
+- 启用 Metal 验证层改变时序，部分运行看似稳定，但重复测试仍失败，不能当作修复。
+
+`research/jianying-runtime-probe/filter-probe.mm` 现在在验证核心库 UUID 后取得该 getter，
+创建 session 时缓存实际 renderer，每次成功 seek 后先等待它，再返回图像回读/纹理释放流程。
+这是宿主使用的真实源文件，不只是实验桥接器。development host 的现有源码指纹会随之改变。
+
+没有改输入、滑杆参数、关键点、效果包或像素比较阈值；也没有通过 sleep、增加重试或丢弃坏帧验收。
+保留原有双 seek 的初始化流程。新增等待的目的，是完成生产者的 GPU 写入后再读取共享输出。
+
+### 真实对照结果
+
+相同图片、相同大眼参数 `face_adjust_eye: [{id: -1, intensity: 1.0}]`，
+与修复前已完整渲染的参考 RGBA 严格逐像素比较：
+
+| 实验 | 检查帧数 | 不一致帧数 | 结果 |
+| --- | ---: | ---: | --- |
+| 修复前：观察设备、不等待内部 renderer | 128 | 8 | 非零退出，保留失败帧 |
+| 隔离桥接器：等待内部 renderer，同时间戳 | 128 | 0 | 通过 |
+| 隔离桥接器：等待内部 renderer，连续时间戳 | 128 | 0 | 通过 |
+| 修复后的原宿主，连续时间戳 | 128 | 0 | 通过 |
+| 修复后的原宿主，零预热、连续时间戳 | 128 | 0 | 通过 |
+| 修复后的原宿主，零预热、同帧连续回放 | 512 | 0 | 通过 |
+| 相同修复源码，隔离桥接器撤掉宿主等待，零预热 | 128 | 6 | 非零退出，重新复现坏帧 |
+
+观察实验的坏帧既有漏效果，也有眼部只更新部分行。任意局部行差异都会失败；
+不能只判断输出不是黑帧，或只挑最后一帧。参考输出 SHA256 为
+`854da161becb1081a9e73ba430c2cddf1233ca5f30f7493033b069802aa1968c`，修复后没有改变该结果。
+
+完整 consumer E2E 两轮通过，证据分别位于：
+
+- `.local/jianying-model-pytorch/face-consumer-engine-fence-e2e-20261003-r1/`
+- `.local/jianying-model-pytorch/face-consumer-engine-fence-e2e-20261003-r2/`
+
+原宿主自身重复、只读观察、update trace、重复 trace、同值外部关键点回放，所有四帧均相等。
+正/负眼部偏移分别改变 24,607 / 24,713 个像素，差异边界仍在眼部 ROI 内；四帧各自一致。
+无脸对照、零强度效果和 11 个错误输入保护也通过。`comparison.png` 包含统一 gain=8 灰度差分，
+已实际查看，不以哈希或日志代替图像检查。
+
+### 可复现探针
+
+新增 `face_render_stability_probe.py`：逐条发送请求，等对应响应后立即检查该帧，
+每次复用一个 RGBA 输出文件；前 16 个失败帧保留 PNG 和统一 gain=8 灰度差分。
+报告记录每帧时间、哈希、差异像素/边界，以及编译源文件、运行库和宿主二进制的哈希。
+失败报告保持 `passed=false` 并非零退出；原生进程异常退出、响应错序、额外字段、超时都不能通过。
+
+```bash
+python3 research/local-model-pytorch/face_render_stability_probe.py \
+  --runtime "$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current" \
+  --package "$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Cache/effect/7408077472211668276/f662ff9c955ee319f1ae03b2aa27df76" \
+  --image output/beauty-kpop-v6-20261002/source/kpop-front-original.png \
+  --reference .local/jianying-model-pytorch/face-consumer-e2e-20261003-r7/original/frame-3.rgba \
+  --parameters '{"face_adjust_eye":[{"id":-1,"intensity":1.0}]}' \
+  --frames 128 --warmup 0 --advance-time --expect-change \
+  --out .local/jianying-model-pytorch/face-stability-fresh
+```
+
+输出目录必须是新的私有目录。默认 `--completion none` 编译真实产品宿主。
+`--completion observe` 编译隔离实验桥接器，故意撤掉宿主新增的等待，以复现竞态；
+`--completion wait` 同样撤掉宿主等待，再在实验 seek 边界等待实际内部设备。
+替换只发生在本宿主的符号解析处，不修改原生库内部函数；这两个实验模式不进入产品后端。
+
+`face_render_stability_probe_test.py` 新增 17 个测试，包含无符号差分溢出、Alpha-only、局部行错误、
+零预热、数量上下界、响应错序、EOF/超时/异常退出。与已有模型/几何/回放测试合跑：391 个通过。
+另外，美颜参数契约与私有素材 provenance 的 29 个 TypeScript 测试通过。
+
+### 验收边界与下一卡点
+
+本轮关闭的是上述 macOS arm64、固定版本、固定正脸样本的 GPU 完成边界卡点。
+旧 `9A8A8F6B-31C0-3DDC-85AC-5F11087D7965` profile 保持原行为，没有猜测或移植 renderer getter 偏移。
+这不是 Windows/x86 验收，也不是所有肤质、美妆、连续人物视频的产品 UI/预览/导出验收。
+等待会增加真实 GPU 完成所需的宿主耗时；当前先保证图像正确，尚未做异步回读性能优化。
+
+下一步仍是完整结果所有权：构造 QCut 自己拥有的 face buffer、适配缓存和引用计数，
+再证明可以跳过原生分析而正常渲染。当前 106 点外部回放依旧借用原生结果，原 update 依旧执行。
+`external_landmark_consumption_verified=true`，但 `external_injection_verified=false`、
+`native_analysis_bypassed=false` 不变；PyTorch/ONNX 尚未直接替代整帧原生分析链。
