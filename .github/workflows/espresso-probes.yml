@@ -56,4 +56,5 @@ jobs:
       - name: Test parser, integer exports, detector geometry and evidence gates
         run: >-
           python -m unittest espresso_test espresso_package_collect_test native_probe_test
-          espresso_integer_test espresso_integer_export_test face_geometry_test face_detector_test -v
+          espresso_integer_test espresso_integer_export_test face_geometry_test face_detector_test
+          face_alignment_input_test -v
