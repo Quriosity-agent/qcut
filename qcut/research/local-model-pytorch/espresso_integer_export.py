@@ -1,4 +1,4 @@
-"""Export integer detection graphs and gate every blob against the pinned native oracle.
+"""Export integer graphs or explicit prefixes, gated by the pinned native oracle.
 
 Artifacts and recovered weights stay private. A successful report means model-output
 parity, not that face-box decoding, alignment or makeup rendering has been migrated.
@@ -85,11 +85,11 @@ def export_onnx(*, model, inputs, path):
         raise ValueError("unexpected custom ONNX operator")
 
 
-def profile(*, network, inputs, out):
+def profile(*, network, inputs, out, prefix_output=None):
     shapes = {name: tuple(value.shape) for name, (value, _) in inputs.items()}
-    model = load(directory=network, input_shapes=shapes)
-    names = [name for layer in model.graph["layers"] if layer["op"] != "Input" for name in layer["outputs"]]
-    diagnostic = load(directory=network, input_shapes=shapes, output_names=names)
+    model = load(directory=network, input_shapes=shapes, prefix_output=prefix_output)
+    names = [name for layer in model.execution_layers if layer["op"] != "Input" for name in layer["outputs"]]
+    diagnostic = load(directory=network, input_shapes=shapes, output_names=names, prefix_output=prefix_output)
     args = tuple(torch.from_numpy(inputs[name][0].astype(np.int64)) for name in model.input_names)
     out.mkdir(parents=True, exist_ok=False)
     with torch.no_grad():
