@@ -33,4 +33,19 @@ describe("resolveExportResolution", () => {
 		expect(result.height % 2).toBe(0);
 		expect(result.label).toBe(`${result.width}×${result.height}`);
 	});
+
+	it("uses the short edge for four-to-three portrait reference canvases", () => {
+		expect(
+			resolveExportResolution({
+				quality: ExportQuality.HIGH,
+				aspectRatio: 4 / 3,
+			})
+		).toEqual({ width: 1440, height: 1080, label: "1440×1080" });
+		expect(
+			resolveExportResolution({
+				quality: ExportQuality.HIGH,
+				aspectRatio: 3 / 4,
+			})
+		).toEqual({ width: 1080, height: 1440, label: "1080×1440" });
+	});
 });
