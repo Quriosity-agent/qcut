@@ -37,11 +37,18 @@ def isolated_parameters(*, sample):
 def validate_reference(*, editor, reference):
     exported = editor.get("exported", {})
     stream = exported.get("videoStream", {})
+    canvas = editor.get("canvasSize", {"width": 1080, "height": 1080})
+    if not isinstance(canvas, dict):
+        raise ValueError("Require valid even reference canvas dimensions")
+    dimensions = [canvas.get("width"), canvas.get("height")]
+    if any(type(value) is not int or value < 64 or value > 4096 or value % 2
+           for value in dimensions):
+        raise ValueError("Require valid even reference canvas dimensions")
     if editor.get("errors") != [] or not editor.get("combined", {}).get("hash"):
         raise ValueError("Require a completed editor run without errors")
     if (exported.get("decodedFrames") != 30 or stream.get("codec_name") != "h264"
-            or [stream.get("width"), stream.get("height")] != [1080, 1080]):
-        raise ValueError("Require the decoded 1080-square combined export")
+            or [stream.get("width"), stream.get("height")] != dimensions):
+        raise ValueError("Require the decoded combined export at the reference canvas dimensions")
     if reference.get("evidence") != "ui-screenshot":
         raise ValueError("Require genuine UI screenshot references")
     if not editor.get("sourceSha256") or editor["sourceSha256"] != reference.get("sourceSha256"):
