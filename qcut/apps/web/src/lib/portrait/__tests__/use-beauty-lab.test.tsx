@@ -339,6 +339,17 @@ afterEach(() => {
 });
 
 describe("useBeautyLab draft and provenance", () => {
+	it.each([
+		"7408757645705776384",
+		null,
+	] as const)("preserves global skin selection %j in the isolated draft", async (skinToneResourceId) => {
+		const initial = { ...makeAdjustments(), skinToneResourceId };
+		const { result } = await mountLab({ initialAdjustments: initial });
+		expect(result.current.adjustments.skinToneResourceId).toBe(
+			skinToneResourceId
+		);
+		expect(result.current.adjustments.faces).toBeUndefined();
+	});
 	it("deeply isolates the enabled draft and does not mutate initial or incoming parameters", async () => {
 		const initial = makeAdjustments();
 		const snapshot = structuredClone(initial);
