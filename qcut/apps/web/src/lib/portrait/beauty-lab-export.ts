@@ -1,4 +1,9 @@
 import JSZip from "jszip";
+import {
+	BEAUTY_LAB_CANDIDATE_BACKEND,
+	BEAUTY_LAB_CANDIDATE_PROTOCOL,
+	type BeautyLabCandidateResult,
+} from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import {
 	compareBeautyLabFrames,
@@ -42,6 +47,7 @@ export async function exportBeautyLabComparison({
 	gain,
 	adjustments,
 	record,
+	candidateReport = null,
 }: {
 	input: BeautyLabFrame;
 	native: BeautyLabFrame | null;
@@ -49,9 +55,50 @@ export async function exportBeautyLabComparison({
 	gain: number;
 	adjustments: MediaPortraitAdjustments;
 	record: { caseId: string; frameIndex: number } | null;
+	candidateReport?: BeautyLabCandidateResult | null;
 }): Promise<Blob> {
 	if (!Number.isInteger(gain) || gain < 1 || gain > 32)
 		throw new Error("Invalid difference gain");
+	if (candidate && !record && !candidateReport)
+		throw new Error("Live candidate export requires request provenance");
+	if (
+		candidateReport &&
+		(record ||
+			!candidate ||
+			candidateReport.source !== "live-candidate" ||
+			candidateReport.protocol !== BEAUTY_LAB_CANDIDATE_PROTOCOL ||
+			candidateReport.backendId !== BEAUTY_LAB_CANDIDATE_BACKEND ||
+			candidateReport.width !== input.width ||
+			candidateReport.height !== input.height ||
+			candidateReport.width !== candidate.width ||
+			candidateReport.height !== candidate.height ||
+			!(candidateReport.rgba instanceof Uint8Array) ||
+			!(candidate.rgba instanceof Uint8Array) ||
+			candidateReport.rgba.byteLength !== candidate.rgba.byteLength ||
+			candidate.rgba.some(
+				(value, index) => value !== candidateReport.rgba[index]
+			))
+	) {
+		throw new Error("Candidate provenance does not match exported pixels");
+	}
+	if (candidateReport) {
+		const inputDigest = await crypto.subtle.digest(
+			"SHA-256",
+			new Uint8Array(input.rgba).buffer
+		);
+		const inputSha256 = Array.from(new Uint8Array(inputDigest), (value) =>
+			value.toString(16).padStart(2, "0")
+		).join("");
+		if (
+			candidateReport.inputSha256 !== inputSha256 ||
+			!/^[a-f0-9]{64}$/.test(candidateReport.requestFingerprint)
+		) {
+			throw new Error("Candidate provenance does not match the exported input");
+		}
+	}
+	const candidateProvenance = candidateReport
+		? (({ rgba: _rgba, ...metadata }) => metadata)(candidateReport)
+		: null;
 	const zip = new JSZip();
 	const frames = [{ name: "original", frame: input }];
 	if (native) frames.push({ name: "native", frame: native });
@@ -88,12 +135,19 @@ export async function exportBeautyLabComparison({
 				height: input.height,
 				gain,
 				adjustments,
-				mode: record ? "verified-offline-replay" : "native-live",
+				mode: record
+					? "verified-offline-replay"
+					: candidateReport
+						? "live-candidate"
+						: "native-live",
 				record,
-				nativeDependencies: true,
+				nativeDependencies: Boolean(
+					record || native || candidateReport?.nativeDependencies.length
+				),
+				candidateProvenance,
 				nativeResultPresent: native !== null,
 				candidateResultPresent: candidate !== null,
-				arbitraryFrameCandidateReady: false,
+				arbitraryFrameCandidateReady: candidateReport !== null,
 				comparisons,
 			},
 			null,
