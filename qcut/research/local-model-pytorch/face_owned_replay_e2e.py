@@ -42,14 +42,16 @@ def validate_external_events(*, events: list[dict], replay: dict, shift: float) 
         if (event.get("external_points") is not True or
                 event.get("source_points_unchanged") is not True or
                 event.get("owned_points_isolated") is not True or
+                type(event.get("timestamp_us")) is not int or
                 event.get("timestamp_us") != expected["timestamp_us"] or
+                event.get("faces") != len(expected["faces"]) or
                 event.get("eye_shift") != 0):
             raise RuntimeError("missing owned external replay isolation/timing evidence")
         applied = event.get("faces_applied")
         if not isinstance(applied, list) or len(applied) != len(expected["faces"]):
             raise RuntimeError("owned applied face count mismatch")
         for actual, source in zip(applied, expected["faces"], strict=True):
-            if actual.get("id") != source["id"]:
+            if not isinstance(actual, dict) or type(actual.get("id")) is not int or actual["id"] != source["id"]:
                 raise RuntimeError("owned replay identity was not preserved")
             coordinates = actual.get("points")
             if not isinstance(coordinates, list) or len(coordinates) != 106:
