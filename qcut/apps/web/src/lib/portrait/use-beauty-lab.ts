@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { readComparisonImage } from "@/components/editor/media-panel/views/adjustments/filter-comparison-input";
 import type {
+	BeautyLabCandidateRequest,
+	BeautyLabCandidateResult,
+	BeautyLabCandidateStatus,
 	BeautyLabResearchCase,
 	JianyingPortraitAdjustmentStatus,
 	JianyingPortraitDetectedFace,
+} from "@/types/electron";
+import {
+	BEAUTY_LAB_CANDIDATE_BACKEND,
+	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { captureJianyingPortraitDetectionFrame } from "./jianying-portrait-face-detection";
@@ -43,6 +50,10 @@ export function useBeautyLab({
 		null
 	);
 	const [cases, setCases] = useState<BeautyLabResearchCase[]>([]);
+	const [candidateStatus, setCandidateStatus] =
+		useState<BeautyLabCandidateStatus | null>(null);
+	const [candidateReport, setCandidateReport] =
+		useState<BeautyLabCandidateResult | null>(null);
 	const [adjustments, setAdjustments] = useState<MediaPortraitAdjustments>(() =>
 		draftFromTimeline({ adjustments: initialAdjustments })
 	);
@@ -54,11 +65,17 @@ export function useBeautyLab({
 		caseId: string;
 		frameIndex: number;
 	} | null>(null);
-	const [busy, setBusy] = useState<"load" | "render" | "detect" | null>(null);
+	const [busy, setBusy] = useState<
+		"load" | "render" | "candidate" | "detect" | null
+	>(null);
 	const [error, setError] = useState<string | null>(null);
 	const revision = useRef(0);
 	const sourceKey = useRef(`beauty-lab:${crypto.randomUUID()}`);
 	const captured = useRef(false);
+	const inputTiming = useRef<{
+		frameNumber: number;
+		timestampSeconds: number;
+	} | null>({ frameNumber: 0, timestampSeconds: 0 });
 
 	useEffect(() => {
 		let active = true;
@@ -78,6 +95,14 @@ export function useBeautyLab({
 			.catch((reason: unknown) => {
 				if (active) setError(String(reason));
 			});
+		void window.electronAPI?.beautyLab
+			?.inspectCandidate?.()
+			.then((value) => {
+				if (active) setCandidateStatus(value);
+			})
+			.catch((reason: unknown) => {
+				if (active) setError(String(reason));
+			});
 		return () => {
 			active = false;
 			revision.current++;
@@ -88,6 +113,7 @@ export function useBeautyLab({
 		revision.current++;
 		setNative(null);
 		setCandidate(null);
+		setCandidateReport(null);
 		setBusy(null);
 		setError(null);
 	}
@@ -95,12 +121,15 @@ export function useBeautyLab({
 	function replaceInput({
 		frame,
 		isCaptured = false,
+		timing = { frameNumber: 0, timestampSeconds: 0 },
 	}: {
 		frame: BeautyLabFrame | null;
 		isCaptured?: boolean;
+		timing?: { frameNumber: number; timestampSeconds: number } | null;
 	}) {
 		invalidate();
 		captured.current = isCaptured;
+		inputTiming.current = timing;
 		sourceKey.current = `beauty-lab:${crypto.randomUUID()}`;
 		setInput(frame);
 		setRecord(null);
@@ -150,6 +179,15 @@ export function useBeautyLab({
 					rgba: new Uint8Array(frame.source.data),
 				}),
 				isCaptured: true,
+				timing:
+					frame.timestampSeconds !== undefined &&
+					Number.isFinite(frame.timestampSeconds) &&
+					frame.timestampSeconds >= 0
+						? {
+								frameNumber: currentFrame,
+								timestampSeconds: frame.timestampSeconds,
+							}
+						: null,
 			});
 		} catch (reason) {
 			setError(String(reason));
@@ -196,6 +234,7 @@ export function useBeautyLab({
 				rgba: result.candidate,
 			});
 			captured.current = false;
+			inputTiming.current = null;
 			setFaces([]);
 			setRecord({ caseId, frameIndex });
 			setInput(original);
@@ -221,7 +260,10 @@ export function useBeautyLab({
 				...input,
 				adjustments: structuredClone(adjustments),
 				sourceKey: sourceKey.current,
-				frameNumber: 0,
+				frameNumber: inputTiming.current?.frameNumber ?? 0,
+				...(inputTiming.current
+					? { timestampSeconds: inputTiming.current.timestampSeconds }
+					: {}),
 			});
 			if (token !== revision.current) return;
 			if (
@@ -231,6 +273,68 @@ export function useBeautyLab({
 			)
 				throw new Error("Native output dimensions or provider changed");
 			setNative(checkedFrame({ ...result, name: "Native result" }));
+		} catch (reason) {
+			if (token === revision.current) setError(String(reason));
+		} finally {
+			if (token === revision.current) setBusy(null);
+		}
+	}
+
+	async function renderCandidate() {
+		if (
+			!input ||
+			record ||
+			busy ||
+			!candidateStatus?.available ||
+			!candidateStatus.backendVersion
+		)
+			return;
+		const timing = inputTiming.current;
+		if (!timing) {
+			setError("Candidate inference requires a known source timestamp");
+			return;
+		}
+		const token = ++revision.current;
+		const request: BeautyLabCandidateRequest = {
+			protocol: BEAUTY_LAB_CANDIDATE_PROTOCOL,
+			requestId: crypto.randomUUID(),
+			backendVersion: candidateStatus.backendVersion,
+			width: input.width,
+			height: input.height,
+			rgba: new Uint8Array(input.rgba),
+			adjustments: structuredClone(adjustments),
+			sourceKey: sourceKey.current,
+			...timing,
+		};
+		setCandidate(null);
+		setCandidateReport(null);
+		setBusy("candidate");
+		setError(null);
+		try {
+			const api = window.electronAPI?.beautyLab;
+			if (!api?.renderCandidate)
+				throw new Error("Candidate inference requires QCut Desktop");
+			const result = await api.renderCandidate(request);
+			if (token !== revision.current) return;
+			if (
+				result.protocol !== request.protocol ||
+				result.source !== "live-candidate" ||
+				result.backendId !== BEAUTY_LAB_CANDIDATE_BACKEND ||
+				result.backendVersion !== request.backendVersion ||
+				result.requestId !== request.requestId ||
+				result.sourceKey !== request.sourceKey ||
+				result.frameNumber !== request.frameNumber ||
+				result.timestampSeconds !== request.timestampSeconds ||
+				result.width !== request.width ||
+				result.height !== request.height
+			) {
+				throw new Error(
+					"Candidate output does not belong to the current input"
+				);
+			}
+			const frame = checkedFrame({ ...result, name: "Live candidate" });
+			setCandidate(frame);
+			setCandidateReport(result);
 		} catch (reason) {
 			if (token === revision.current) setError(String(reason));
 		} finally {
@@ -267,6 +371,8 @@ export function useBeautyLab({
 
 	return {
 		status,
+		candidateStatus,
+		candidateReport,
 		cases,
 		adjustments,
 		input,
@@ -281,6 +387,7 @@ export function useBeautyLab({
 		captureFrame,
 		loadRecord,
 		renderNative,
+		renderCandidate,
 		detectFaces,
 		leaveRecord,
 	};
