@@ -20,6 +20,7 @@ from face_alignment_warp_native import validate_matrix
 from face_geometry_native import mat_view
 from face_host_geometry_contract import associate_inferences, validate_sequence
 from face_host_geometry_replay import active_face
+from face_host_sampling_inputs import algorithm_frame
 import face_render_model_capture as capture
 import face_render_model_parity as parity
 import face_render_sequence_probe as sequence
@@ -67,6 +68,24 @@ def native_samples(*, warp, frame, face):
         raise ValueError("recorded native sampling control matrix changed")
     return {"native-fallback": warp.prepare(frame=frame, mode="RGBA", size=(120, 120), fused=False),
             "native-fused": warp.prepare(frame=frame, mode="RGBA", size=(120, 120), fused=True)}
+
+
+def synthetic_controls(*, warp):
+    frame = np.random.default_rng(173).integers(0, 256, (173, 211, 4), dtype=np.uint8)
+    transforms = ((0, 1, 0, 0), (0, 1, .5, -.5), (0, 1, -2.4, 3.6),
+                  (0, .5, 0, 0), (np.pi / 2, 1, 160, 0),
+                  (-.21, .83, -37.1, 8.3), (.19, 1.07, 4.2, -9.4))
+    cases = []
+    for angle, scale, tx, ty in transforms:
+        a, b = np.float32(np.cos(angle) * scale), np.float32(np.sin(angle) * scale)
+        forward = np.array([[a, -b, tx], [b, a, ty]], np.float32)
+        warp.set_matrix(matrix=forward)
+        actual = sample_bgr(frame=frame, forward=forward)
+        checks = {name: difference(actual=actual, expected=warp.prepare(
+            frame=frame, mode="RGBA", size=(120, 120), fused=flag))
+                  for name, flag in (("native-fallback", False), ("native-fused", True))}
+        cases.append(dict(forward=forward.tolist(), comparisons=checks))
+    return cases
 
 
 def visual(*, blocks, reference, output):
@@ -119,6 +138,7 @@ def run(*, args):
                                   for name in (Path(__file__).name, "face_host_geometry_contract.py",
                                                "face_host_geometry_replay.py", "face_render_model_parity.py",
                                                "face_alignment_sampling.py",
+                                               "face_host_sampling_inputs.py",
                                                "face_alignment_warp_native.py", "face_alignment_input_native.py",
                                                "face_detector_native.py", "face_geometry_native.py", "espresso_oracle.py")}
         root = args.capture.resolve(strict=True)
@@ -150,16 +170,7 @@ def run(*, args):
             actual = locked.json(path=root / f"geometry/prediction-{snapshot['index']}.json")
             if actual != snapshot or descriptor.get("prediction") != snapshot["index"] or association.get("prediction") != snapshot["index"]:
                 raise ValueError("actual sampling snapshot association changed")
-            expected_name = f"frame-{snapshot['index']}.rgba"
-            _, width, height, _, _ = snapshot["request"]
-            if descriptor.get("file") != expected_name or type(descriptor.get("bytes")) is not int or descriptor["bytes"] != width * height * 4:
-                raise ValueError("actual sampling frame descriptor mismatch")
-            parity.require_sha256(value=descriptor.get("sha256"))
-            data = locked.read(path=root / "geometry" / expected_name, maximum=width * height * 4,
-                               expected=descriptor.get("sha256"))
-            if len(data) != width * height * 4:
-                raise ValueError("actual sampling frame truncated")
-            frame = np.frombuffer(data, np.uint8).reshape(height, width, 4)
+            frame = algorithm_frame(root=root, snapshot=snapshot, descriptor=descriptor, locked=locked)
             selected = [item for item in association["inferences"] if item["size"] == 120]
             if len(selected) != 1:
                 raise ValueError("one actual sampling 120 inference required")
@@ -183,6 +194,10 @@ def run(*, args):
         locked.verify()
         if capture.inventory(capture=root / "capture") != evidence["captures"]:
             raise RuntimeError("actual sampling model inventory changed during control")
+        if warp is not None:
+            report["synthetic_controls"] = synthetic_controls(warp=warp)
+            report["synthetic_parity"] = all(check["exact"] for case in report["synthetic_controls"]
+                                             for check in case["comparisons"].values())
         parity.no_torch()
         report.update(completed=True, opencv_version="4.11.0", numpy_version=np.__version__,
                       native_control_called=args.native_control, fixture_sha256=locked.files,
