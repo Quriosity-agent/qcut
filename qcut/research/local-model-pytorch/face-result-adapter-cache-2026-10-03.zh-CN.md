@@ -4,7 +4,7 @@
 
 ## 固定版本
 
-- 路径：`/Users/peter/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Frameworks/libcccreator.dylib`
+- 路径：`$HOME/Library/Application Support/QCut/PrivateRuntimes/JianyingFilter/current/Frameworks/libcccreator.dylib`
 - SHA256：`0c39324edc0d8997d7c998c6a0867803b667fd40969e231a90ea502cc1e815b9`
 - arm64 UUID：`D6342ECD-5432-33F0-A2AD-0C28F5699994`
 - 地址都是此 image 的静态 VM 地址，不是可直接调用的已重定位进程地址。
