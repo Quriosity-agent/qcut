@@ -158,6 +158,17 @@ class DifferenceTests(unittest.TestCase):
 
 
 class NativeSampleTests(unittest.TestCase):
+    def test_synthetic_controls_use_seven_fixed_transforms_and_both_native_routes(self):
+        state = {}
+        warp = Mock()
+        warp.set_matrix.side_effect = lambda *, matrix: state.update(forward=matrix.copy())
+        warp.prepare.side_effect = lambda **kwargs: probe.sample_bgr(frame=kwargs["frame"], forward=state["forward"])
+        with patch("ctypes.CDLL", side_effect=AssertionError("vendor runtime forbidden")):
+            controls = probe.synthetic_controls(warp=warp)
+        self.assertEqual((len(controls), warp.set_matrix.call_count, warp.prepare.call_count), (7, 7, 14))
+        self.assertEqual([call.kwargs["fused"] for call in warp.prepare.call_args_list], [False, True] * 7)
+        self.assertTrue(all(check["exact"] for case in controls for check in case["comparisons"].values()))
+
     def test_forward_and_recorded_inverse_are_preserved_without_recomputing(self):
         face = dict(forward=[[1.25, 0.2, 4], [0, 0.75, -3]], inverse=[[0.7, -0.1, -2], [0.03, 1.3, 5]])
         original = deepcopy(face)
