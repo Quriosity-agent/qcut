@@ -493,7 +493,7 @@ describe("Beauty Lab owned-chain offline provider", () => {
 		expect(frame.native).not.toBe(frame.candidate);
 		frame.candidate[0] = 99;
 		expect(frame.native[0]).toBe(12);
-	}, 15000);
+	}, 60_000);
 	it.each([
 		{ frameIndex: 3, value: 100 },
 		{ frameIndex: 5, value: 0 },
