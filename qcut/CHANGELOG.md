@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add Beauty Lab controls, local presets, original/native/candidate comparisons and portable PNG/JSON/ZIP evidence exports.
+- Add bounded local face-model research tools for ONNX sampling, landmark alignment, temporal replay and native-renderer comparisons.
+
+### Improved
+- Validate Beauty Lab research records against source hashes, image integrity and candidate ownership before importing evidence.
+- Reduce comparison validation overhead with exact row-level RGBA checks and a bounded PNG decode fast path.
+
+### Fixed
+- Restore timeline portrait settings after importing read-only research cases and replace stale comparison ZIPs during export.
+- Isolate inherited native-probe environment settings and contain C++ exceptions at the Espresso C ABI boundary.
+
+### Limitations
+- Arbitrary-frame independent ONNX beauty processing remains unavailable. Historical research evidence requires recapture after source changes; private reference models, effect packages and vendor binaries are not bundled.
+
 ## [2026.10.01.1] - 2026-10-01
 
 ### Improved
