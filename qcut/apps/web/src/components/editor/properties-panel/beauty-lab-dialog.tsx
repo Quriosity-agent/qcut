@@ -37,6 +37,12 @@ interface BeautyLabProps {
 	initialAdjustments: MediaPortraitAdjustments;
 }
 
+const RESEARCH_CASE_NAMES: Record<string, string> = {
+	temporal: "人脸时序对照",
+	"qcut-export": "QCut 导出对照",
+	"owned-preprocess": "自有采样对照",
+};
+
 function BeautyLabWorkspace(props: BeautyLabProps) {
 	const { locale } = useTranslation();
 	const isZh = locale.startsWith("zh");
@@ -137,11 +143,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						</SelectItem>
 						{lab.cases.map((item) => (
 							<SelectItem key={item.id} value={item.id}>
-								{isZh
-									? item.id === "temporal"
-										? "人脸时序对照"
-										: "QCut 导出对照"
-									: item.name}
+								{isZh ? (RESEARCH_CASE_NAMES[item.id] ?? item.name) : item.name}
 							</SelectItem>
 						))}
 					</SelectContent>
