@@ -45,11 +45,29 @@ vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
 		})),
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/package-resolver.js", () => ({
-	resolveJianyingPortraitPackages: async () =>
+	resolveJianyingPortraitPackage: async ({
+		skinToneResourceId,
+	}: {
+		skinToneResourceId: string;
+	}) => ({
+		runtimePackage: "skin-tone",
+		skinToneResourceId,
+		group: "face",
+		packagePath: `/packages/${skinToneResourceId}`,
+		source: "qcut-private",
+	}),
+	resolveJianyingPortraitPackages: async ({
+		skinToneResourceId,
+	}: {
+		skinToneResourceId?: string;
+	} = {}) =>
 		JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER.map((runtimePackage) => ({
 			runtimePackage,
 			group: JIANYING_PORTRAIT_PACKAGE_IDENTITIES[runtimePackage].group,
-			packagePath: `/packages/${runtimePackage}`,
+			packagePath: `/packages/${runtimePackage === "skin-tone" && skinToneResourceId ? skinToneResourceId : runtimePackage}`,
+			...(runtimePackage === "skin-tone" && skinToneResourceId
+				? { skinToneResourceId }
+				: {}),
 			source: "qcut-private",
 		})),
 }));
@@ -93,6 +111,50 @@ describe("stateful portrait fitting provider", () => {
 		await provider.clear();
 	});
 	const rgba = new Uint8Array([100, 120, 140, 255, 100, 120, 140, 255]);
+	it("separates five skin resources in the preview cache and retires None despite stale warmth", async () => {
+		const { JIANYING_PORTRAIT_SKIN_TONES } = await import(
+			"../jianying-portrait-adjustment-runtime/skin-tone-catalog"
+		);
+		const render = ({
+			resourceId,
+		}: {
+			resourceId:
+				| (typeof JIANYING_PORTRAIT_SKIN_TONES)[number]["resourceId"]
+				| null;
+		}) =>
+			provider.render({
+				width: 2,
+				height: 1,
+				rgba,
+				sourceKey: "skin-cache",
+				adjustments: {
+					enabled: true,
+					skinToneResourceId: resourceId,
+					values: {
+						face_adjust_skin_Intensity: 60,
+						face_adjust_skin_ColdWarm: 25,
+					},
+				},
+			});
+		await JIANYING_PORTRAIT_SKIN_TONES.reduce(
+			async (previous, { resourceId }) => {
+				await previous;
+				await render({ resourceId });
+				expect(mocks.start).toHaveBeenLastCalledWith(
+					expect.objectContaining({ packagePath: `/packages/${resourceId}` })
+				);
+			},
+			Promise.resolve()
+		);
+		expect(hosts).toHaveLength(5);
+		await render({ resourceId: JIANYING_PORTRAIT_SKIN_TONES[4].resourceId });
+		expect(hosts).toHaveLength(5);
+		expect(hosts[4].render).toHaveBeenCalledTimes(1);
+		const none = await render({ resourceId: null });
+		expect(none.rgba).toEqual(rgba);
+		expect(none.activeGroups).toEqual([]);
+		expect(hosts[4].dispose).toHaveBeenCalledTimes(1);
+	});
 	const request = ({
 		value = -48,
 		timestampSeconds = 0,
