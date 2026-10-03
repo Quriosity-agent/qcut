@@ -45,6 +45,7 @@ export function PortraitAdjustmentSection({
 	onChange,
 	onInteractionStart,
 	onInteractionEnd,
+	readOnly = false,
 }: {
 	section: JianyingPortraitAdjustmentSection;
 	controls: JianyingPortraitAdjustmentControl[];
@@ -55,6 +56,7 @@ export function PortraitAdjustmentSection({
 	onChange: (adjustments: MediaPortraitAdjustments) => void;
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
+	readOnly?: boolean;
 }) {
 	const categories = useMemo(
 		() =>
@@ -76,7 +78,9 @@ export function PortraitAdjustmentSection({
 		(control) => categoryForControl({ control }) === selectedCategory
 	);
 	const resetLabel = locale === "zh" ? "重置本组" : "Reset group";
+	const editingDisabled = disabled || readOnly;
 	const reset = () => {
+		if (editingDisabled) return;
 		const sectionKeys = new Set<string>(controls.map(({ key }) => key));
 		onInteractionStart();
 		onChange({
@@ -126,16 +130,16 @@ export function PortraitAdjustmentSection({
 					className="size-7 shrink-0"
 					onClick={reset}
 					onKeyDown={(event) => event.stopPropagation()}
-					disabled={disabled}
+					disabled={editingDisabled}
 					aria-label={resetLabel}
 					title={resetLabel}
 				>
 					<RotateCcw className="size-3.5" />
 				</Button>
 			</div>
-			<div className={cn("space-y-1", disabled && "opacity-50")}>
+			<div className={cn("space-y-1", editingDisabled && "opacity-50")}>
 				{visibleControls.map((control) => {
-					const controlDisabled = disabled || !isControlReady(control);
+					const controlDisabled = editingDisabled || !isControlReady(control);
 					return (
 						<div
 							key={control.key}
@@ -149,7 +153,8 @@ export function PortraitAdjustmentSection({
 								max={control.max}
 								step={control.step}
 								disabled={controlDisabled}
-								onChange={(value) =>
+								onChange={(value) => {
+									if (controlDisabled) return;
 									onChange({
 										...adjustments,
 										enabled: true,
@@ -157,8 +162,8 @@ export function PortraitAdjustmentSection({
 											...adjustments.values,
 											[control.key]: value,
 										},
-									})
-								}
+									});
+								}}
 								onInteractionStart={onInteractionStart}
 								onInteractionEnd={onInteractionEnd}
 							/>
