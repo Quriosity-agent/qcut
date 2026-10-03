@@ -1,99 +1,24 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { loadImage } from "@napi-rs/canvas";
+import { expect, test, type Page } from "@playwright/test";
 import {
-	expect,
-	test,
-	type Page,
-	type ElectronApplication,
-} from "@playwright/test";
+	saveBeautyLabComparison as saveComparison,
+	verifyBeautyLabDifferencePNG as verifyDifferencePNG,
+} from "./helpers/beauty-lab-comparison";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
 	preparePortraitReferenceProject,
 	type ReferenceWindow,
 } from "./helpers/portrait-reference";
 
-async function verifyDifferencePNG({
-	zip,
-	name,
-	changedPixels,
-	width,
-	height,
-}: {
-	zip: JSZip;
-	name: string;
-	changedPixels: number;
-	width: number;
-	height: number;
-}) {
-	const bytes = await zip.file(name)!.async("nodebuffer");
-	const image = await loadImage(bytes);
-	expect([image.width, image.height]).toEqual([width, height]);
-	const canvas = createCanvas(width, height);
-	const context = canvas.getContext("2d");
-	context.drawImage(image, 0, 0);
-	const pixels = context.getImageData(0, 0, width, height).data;
-	let changed = 0;
-	let grayscaleOpaque = true;
-	for (let index = 0; index < pixels.length; index += 4) {
-		if (pixels[index] > 0) changed++;
-		if (
-			pixels[index] !== pixels[index + 1] ||
-			pixels[index] !== pixels[index + 2] ||
-			pixels[index + 3] !== 255
-		)
-			grayscaleOpaque = false;
-	}
-	expect(changed).toBe(changedPixels);
-	expect(grayscaleOpaque).toBe(true);
-}
-
 const source = process.env.QCUT_REAL_PORTRAIT_IMAGE_PATH;
 const output = path.resolve(
 	process.env.QCUT_BEAUTY_LAB_OUTPUT ?? "output/playwright/beauty-lab"
 );
-
-async function saveComparison({
-	app,
-	page,
-	destination,
-}: {
-	app: ElectronApplication;
-	page: Page;
-	destination: string;
-}) {
-	await rm(destination, { force: true });
-	await app.evaluate(({ BrowserWindow }, filename) => {
-		const window = BrowserWindow.getAllWindows()[0];
-		if (!window) throw new Error("Missing download window");
-		window.webContents.session.once("will-download", (_event, item) =>
-			item.setSavePath(filename)
-		);
-	}, destination);
-	await page
-		.getByTestId("beauty-lab-dialog")
-		.getByRole("button", { name: "导出对照 ZIP", exact: true })
-		.click();
-	let result: JSZip | undefined;
-	await expect
-		.poll(
-			async () => {
-				try {
-					result = await JSZip.loadAsync(await readFile(destination));
-					return true;
-				} catch {
-					return false;
-				}
-			},
-			{ timeout: 30_000 }
-		)
-		.toBe(true);
-	if (!result) throw new Error("Comparison ZIP not saved");
-	return result;
-}
 
 test("Beauty Lab ZIP replaces stale comparison evidence", async () => {
 	test.skip(
