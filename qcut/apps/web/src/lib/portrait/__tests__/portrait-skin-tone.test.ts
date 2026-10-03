@@ -13,6 +13,43 @@ describe("skin palette persistence", () => {
 	it.each([
 		"7408757645705776384",
 		null,
+	] as const)("applies global preset %j over legacy per-face skin settings", (skinToneResourceId) => {
+		const preset = createPortraitPreset({
+			adjustments: {
+				enabled: true,
+				skinToneResourceId,
+				values: {
+					face_adjust_skin_Intensity: 45,
+					face_adjust_skin_ColdWarm: -15,
+				},
+			},
+			scope: "face",
+		});
+		const result = applyPortraitPreset({
+			adjustments: {
+				enabled: true,
+				values: {},
+				faces: [
+					{ trackId: 0, values: { face_adjust_skin_Intensity: 90 } },
+					{
+						trackId: 1,
+						values: { face_adjust_eye: 25, face_adjust_skin_ColdWarm: 20 },
+					},
+				],
+			},
+			preset,
+		});
+		expect(result.skinToneResourceId).toBe(skinToneResourceId);
+		expect(result.faces).toEqual([
+			{ trackId: 1, values: { face_adjust_eye: 25 } },
+		]);
+		expect(result.values).toEqual(
+			skinToneResourceId === null ? {} : preset.values
+		);
+	});
+	it.each([
+		"7408757645705776384",
+		null,
 	] as const)("applies a preset's global skin selection %j without assigning it to one face", (skinToneResourceId) => {
 		const result = applyPortraitAdjustments({
 			adjustments: { enabled: true, values: { face_adjust_Smooth: 10 } },
@@ -76,7 +113,10 @@ describe("skin palette persistence", () => {
 				adjustments: { enabled: false, values: {} },
 				preset: imported,
 			})
-		).toEqual(adjustments);
+		).toEqual({
+			...adjustments,
+			values: skinToneResourceId === null ? {} : adjustments.values,
+		});
 	});
 	it("legacy presets clear explicit selection and keep the pink default", () => {
 		const preset = createPortraitPreset({
