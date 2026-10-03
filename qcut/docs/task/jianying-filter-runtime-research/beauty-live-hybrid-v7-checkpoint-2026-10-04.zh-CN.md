@@ -5,7 +5,115 @@
 PR：[484](https://github.com/Quriosity-agent/qcut/pull/484)。采用一文件、一提交、逐个 push。
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
 
-## 结论
+## 第二阶段：当前状态
+
+本节更新第一阶段的结论；后面的第一阶段记录保留历史复现信息，不能把旧报告当作当前源码验收。
+
+| 部分 | 已完成与证据 | 尚未完成 |
+| --- | --- | --- |
+| 五种肤色 | 真实资源 ID、包解析、全局参数、预设/项目保存、缓存键和色块 UI 已连接；最新构建三种人物各 20 项，共 60 组真实 Electron 用例通过 | 四种 LUT 仍来自本机剪映缓存，不是全部已收进 QCut 私有运行时；未重新操作剪映 UI 做基准 |
+| 笑脸多次 160 推理 | 依调用顺序和生命周期选择初始化；新眼睛/鼻子采集、ONNX、渲染、审计全部通过，共 300 heads、14 帧零像素差 | 这些序列仍使用原生 160 tensor；完整自有 160 裁剪探针仍是较窄的固定 profile |
+| 逐项验证驱动 | 产品 catalog 生成眼、鼻、下颌线、嘴、磨皮、口红用例；冻结来源、参数、运行库、模型、包、输入；保存失败阶段和统一增益 PNG | 六项全量 preflight 因所选私有运行时缺少 jawline 包而拒绝，不能声称六项全链已通过 |
+| 原图到 ONNX | 原始 RGBA -> staged-q11 -> 自有 120/160 输入 -> ONNX 的入口及严格来源检查已写好；93 项相关 CPU 测试通过 | 新真实 preprocessing 采集在 LLDB 启动阶段超时，完整新链验收尚未完成 |
+| 持续进程桥接 | 有限长度 Unix socket、会话/进程/预测绑定、调用入口参数观察、持续 ONNX、克隆结果交接原型；宿主/dylib 编译通过，65 项核心/协议测试通过 | 尚未完成真实宿主回调 -> worker -> 消费者渲染验收；没有注册产品实时 backend |
+
+### 两处初始化问题和修复
+
+笑脸 prediction 0、20 实际存在 `160 -> 120 -> 160`；prediction 24 又有一次后置 160 检测。
+旧代码把每次出现 160 都当成初始化，且审计器把每次预测限制为最多两次网络调用。
+
+现在仅当新的人脸身份确实需要 seed 时，选取同一网络、同一预测窗口中唯一位于 120 之前的 160。
+后置检测不重置现有人脸时序；不按坐标误差挑选结果，不从原生最后关键点生成候选。
+审计器允许第三次推理的条件限定为单活动人脸的 `160 -> 120 -> 160`，仍拒绝重复记录、
+重复 inference、错误 owner、两个前置候选和两个后置候选。采样和坐标容差仍为 0。
+
+实际重新采集的结果：
+
+| 新采集 | Heads | 最终 RGBA | 证据根目录 |
+| --- | --- | --- | --- |
+| K-pop 眼睛，原生 160 输入 | 135 | 7/7 完全一致 | `.local/jianying-model-pytorch/face-feature-campaign-kpop-20261004-r2/portrait-00-eye/temporal/campaign-00` |
+| 笑脸眼睛，原生 160 输入 | 150 | 7/7 完全一致 | `.local/jianying-model-pytorch/face-feature-campaign-smile-temporal-20261004-r2/campaign-00` |
+| 笑脸鼻子，原生 160 输入 | 150 | 7/7 完全一致 | `.local/jianying-model-pytorch/face-feature-campaign-smile-temporal-20261004-r2/campaign-01` |
+
+当前新验收共 21 帧、435 heads；不是 21 位人物，也不是所有功能已独立替代。
+笑脸两组共 48 次候选消费/恢复，四阶段各通过；源代码哈希和原始证据重新校验通过。
+两组完整耗时 47.26 秒包含研究采集/回放/审计，不能换算成产品预览帧率。
+原图/原生/候选/固定 8 倍灰度差分见 `face-feature-campaign-smile-comparison-20261004-r2/report.json`。
+
+### 肤色实际接线和回归
+
+`skinToneResourceId` 的五个允许值对应后文列出的真实 LUT 包。
+缺省字段保留历史粉白路径；`null` 表示明确的“无”，即使残留冷暖值也不重新激活效果。
+色块只作用于全局；不能伪装成逐人脸资源。选取色块会清理冲突的逐脸肤色值，但保留其它五官和美妆。
+单脸编辑中应用含全局肤色的预设时，肤色留在全局，其它参数仍写入所选人脸。
+全局应用预设也走同一清理逻辑：已用失败测试复现旧逐脸肤色残留造成冲突，再修复；其它逐脸五官保留。
+缺包时禁用对应色块，缓存键包含资源 ID。粉白优先保留旧包版本，避免旧项目静默换效果。
+首次启用使用目录默认强度 60，这是 QCut 的明确行为，不声称已验证剪映点击色块时的默认动作。
+
+新增桌面测试从 12 项扩展为 20 项：五种资源、None、选中但零强度、肤色与磨皮/大眼/口红组合，
+以及原有零效果、皮肤、脸型、眼鼻嘴眉和口红。每项实际点击 UI、处理、下载 ZIP 并独立解码校验。
+五种输出各不相同；显式粉白与旧粉白输出相同；None/零强度与原图相同；alpha 不变。
+灰度统一为 `min(255, 8 * max(abs(delta RGB)))`；这些原图差值是效果影响量，不是剪映/QCut 误差。
+
+最终预设修复后重新构建 web，重新执行三组桌面矩阵：
+
+| 素材 | 当前结果目录 | 结果 |
+| --- | --- | --- |
+| 正面 K-pop 肖像 | `output/playwright/beauty-v7-palette-kpop-r4` | 20/20，36.5s |
+| 正面笑脸 | `output/playwright/beauty-v7-palette-smile-r1` | 20/20，38.9s |
+| 户外男性人物帧 | `output/playwright/beauty-v7-palette-mature-r1` | 20/20，37.5s |
+
+每组包含 `report.json`、原图/结果/灰度 PNG、逐项 UI 截图和 ZIP，以及 390px 窄屏截图。
+三组均 `sourcePixelsVerified=true`、`pageErrors=[]`、`jianyingUiComparisonPerformed=false`。
+已目视检查笑脸暖白 UI、K-pop 窄屏和笑脸鼻子三方对照，后者原生/候选差分全黑。
+这里的 60 组是原生功能/导出验收，不是 60 组独立候选后端验收。
+
+### 仍保留的失败
+
+1. 第一轮笑脸渲染已完成，但旧的“两次推理”审计限制拒绝；保留 `face-feature-campaign-smile-20261004-r1`，没有改写为成功。
+2. 修复后的 K-pop temporal 四阶段通过，但后续 `preprocess` 的 LLDB 启动 300 秒超时，
+   没有生成 host 输出或裁剪 trace；其 aggregate `passed=false`，后四阶段 skipped。
+   路径：`face-feature-campaign-kpop-20261004-r2/portrait-00-eye/preprocess/report.json`。
+   独占 GPU 再试 `face-full-frame-owned-capture-20261004-r3` 仍在 300 秒超时，进程已清理。
+   新采样显示目标停在 dyld 的 `getOnDiskBinarySliceOffset -> mapFileReadOnly -> __open`，
+   debugserver 在等待进程事件；尚未进入宿主主函数/推理回调。这定位到启动文件打开阶段，
+   不能据此断言具体是文件系统、系统安全检查或调试器原因。样本保存在该目录，未生成新 trace。
+3. 完整任意画面、多人、真实分钟级视频、跨平台实时桥和效果渲染器独立替代仍未验收。
+4. worker 的真实 CPU ONNX 测试使用合成依赖，不能替代原生调用方对照；研究回调仍需要原生检测、
+   裁剪调用参数/逆矩阵、路由状态和渲染器。换素材/seek 要重启 host 和 worker，不是在旧时序状态上接着算。
+
+### 第二阶段复现入口
+
+- `research/local-model-pytorch/face_feature_campaign.md`：逐功能计划、冻结与执行方法。
+- `face_full_frame_owned_probe.py --capture NEW_PREPROCESS --root ONNX_ROOT --out NEW_OUTPUT`：只接受严格校验的新采集；CPU-only，不会渲染。
+- `face_live_worker_test.py`、`face_live_worker_protocol_test.py`：状态、取消、错序、超时、截断、JSON/像素上限测试。
+- `electron/__tests__/jianying-portrait-skin-tone-native.ts`：可选直接原生探针；不能替代真实桌面矩阵。
+
+广泛回归按依赖拆分执行：最终 Torch-free 主环境 1,469 项通过；ONNX/Torch 导出环境补跑 52 项、OpenCV 环境补跑 22 项。
+最初混跑有四个模块因缺依赖加载失败，已经在对应环境补跑，不计为忽略或通过。
+之后新增三推理审计测试 71 项定向回归、worker/core 65 项通过。这些运行有重叠，不叠加成唯一测试总数。
+最终产品侧定向 Vitest 共 42 文件、1,142 项通过，web 重建、先前 Electron 构建及 scoped Biome 通过。
+
+### 直接原生肤色探针
+
+当前 Bun 1.3.9 不支持此依赖链的 `node:sqlite`。使用 Node CommonJS bundle，不通过 ESM 执行含 `__dirname` 的宿主解析器：
+
+```sh
+bunx esbuild electron/__tests__/jianying-portrait-skin-tone-native.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/electron-audits/jianying-portrait-skin-tone-native.cjs
+node dist/electron-audits/jianying-portrait-skin-tone-native.cjs INPUT_IMAGE FRESH_OUTPUT_DIRECTORY
+```
+
+探针记录源图/LUT/结果 SHA-256，五种 LUT 各自结果、相对原图/粉白的固定 8 倍差分，
+并验证显式粉白与 legacy 相同、None/零强度不变、仅冷暖仍有作用、原图/LUT 未被修改。
+1448x1086 原图实测 9/9 通过：`output/beauty-v7-skin-tone-native-20261004-r3/report.json`。
+None 和 zero 的 `changedPixels=0`；仅冷暖 25 时改变 334,140 像素，最大通道差 7。
+初次 Bun 运行失败和 ESM 试运行失败未算入通过数；最终 CommonJS/Node 入口已实际跑通。
+
+接下来优先顺序：诊断/重试 LLDB preprocessing -> 原图输入链真实 ONNX 验收 -> 真实 live worker 渲染交接 ->
+逐项扩展独立采样 profile -> 真实动态长视频、多脸、seek/取消及预览/导出一致性。
+没有取消、修改或重标旧报告来源来放行；模型、包、私有素材、原生库和大体积结果不入 Git。
+
+## 第一阶段快照
 
 本轮推进了真实计算核心、当前源码取证、实验室接线和逐项 E2E；没有把离线回放注册成实时后端。
 
