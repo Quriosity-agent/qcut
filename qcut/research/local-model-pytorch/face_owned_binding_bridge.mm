@@ -26,6 +26,8 @@ struct RawBinding {
 };
 std::vector<RawBinding> bindings;
 double bindingShift = 0;
+std::vector<ReplayFrame> ownedReplay;
+std::size_t ownedReplayCursor = 0;
 
 std::uint64_t ownedConvert(void* adapter, void* context) {
   std::uint64_t result = 0;
@@ -63,10 +65,31 @@ std::uint64_t ownedConvert(void* adapter, void* context) {
     retain(source);
     originalOwner = std::make_unique<FaceOwner>(source, release);
     const auto faces = pointerSpan(duplicate, 0x38);
+    const auto sourceFaces = pointerSpan(source, 0x38);
+    const ReplayFrame* external = nullptr;
+    if (!ownedReplay.empty()) {
+      if (ownedReplayCursor >= ownedReplay.size() ||
+          ownedReplay[ownedReplayCursor].timestamp != seekTimestamp ||
+          ownedReplay[ownedReplayCursor].faces.size() != faces.count)
+        throw std::runtime_error("owned replay timing or face count mismatch");
+      external = &ownedReplay[ownedReplayCursor];
+    }
+    if (sourceFaces.count != faces.count)
+      throw std::runtime_error("owned replay source/clone count mismatch");
+    std::vector<PointRestore> originals;
     for (std::size_t index = 0; index < faces.count; ++index) {
       const void* face = field<void*>(reinterpret_cast<void*>(faces.begin), index * 8);
+      const void* sourceFace = field<void*>(reinterpret_cast<void*>(sourceFaces.begin), index * 8);
       const auto points = readLandmarks(face);
+      originals.push_back(readLandmarks(sourceFace));
+      if (points.destination == originals.back().destination)
+        throw std::runtime_error("owned replay landmark storage aliases source");
       auto shifted = points.coordinates;
+      if (external != nullptr) {
+        if (external->faces[index].id != field<int>(face, 0x40))
+          throw std::runtime_error("owned replay track id mismatch");
+        shifted = external->faces[index].coordinates;
+      }
       for (std::size_t point = 52; point <= 63; ++point) {
         const double value = shifted[point * 2] + bindingShift;
         if (!std::isfinite(value) || value < 0 || value > 1)
@@ -74,6 +97,9 @@ std::uint64_t ownedConvert(void* adapter, void* context) {
         shifted[point * 2] = static_cast<float>(value);
       }
       writeLandmarks(points.destination, shifted);
+      if (readLandmarks(sourceFace).coordinates != originals.back().coordinates ||
+          readLandmarks(face).coordinates != shifted)
+        throw std::runtime_error("owned replay write isolation failed");
     }
     // The adapted result may borrow clone children after the raw slot is restored.
     convertedClones.push_back(std::move(owner));
@@ -82,12 +108,25 @@ std::uint64_t ownedConvert(void* adapter, void* context) {
     if (raw(graph, 4) != duplicate)
       throw std::runtime_error("owning publisher did not replace raw result");
     result = adapters.at(adapter).original(adapter, context);
+    for (std::size_t index = 0; index < sourceFaces.count; ++index) {
+      const void* face = field<void*>(reinterpret_cast<void*>(sourceFaces.begin), index * 8);
+      if (readLandmarks(face).coordinates != originals[index].coordinates)
+        throw std::runtime_error("conversion changed original source landmarks");
+    }
     bindings.push_back({.graph = graph, .duplicate = duplicate, .source = std::move(originalOwner)});
     replaced = false;
+    if (external != nullptr) ++ownedReplayCursor;
     records << "{\"event\":\"owned_face_conversion\",\"faces\":" << faces.count
+            << ",\"timestamp_us\":" << seekTimestamp
             << ",\"eye_shift\":" << bindingShift
-            << ",\"raw_clone_verified\":true,\"original_restored\":false,"
-               "\"native_analysis_bypassed\":false}\n" << std::flush;
+            << ",\"external_points\":" << (external == nullptr ? "false" : "true")
+            << ",\"source_points_unchanged\":true,\"owned_points_isolated\":true,"
+               "\"raw_clone_verified\":true,\"original_restored\":false,"
+               "\"native_analysis_bypassed\":false,\"faces_before\":";
+    writeFaces(source);
+    records << ",\"faces_applied\":";
+    writeFaces(duplicate);
+    records << "}\n" << std::flush;
     return result;
   } catch (...) {
     if (replaced) publish(graph, 4, &source);
@@ -159,6 +198,15 @@ int main(int argc, char* argv[]) {
   if (pinned == nullptr) return 1;
   int result = 1;
   try {
+    if (const char* path = std::getenv("QCUT_FACE_BIND_REPLAY")) {
+      if (std::getenv("QCUT_FACE_REPLAY") != nullptr ||
+          std::getenv("QCUT_FACE_POINT_SHIFT") == nullptr ||
+          std::string(std::getenv("QCUT_FACE_POINT_SHIFT")) != "0")
+        throw std::runtime_error("owned replay forbids borrowed point overrides");
+      loadReplay(path, dimension("QCUT_FRAME_WIDTH"), dimension("QCUT_FRAME_HEIGHT"));
+      ownedReplay = std::move(replay);
+      replay.clear();
+    }
     if (const char* value = std::getenv("QCUT_FACE_BIND_EYE_SHIFT")) {
       std::size_t consumed = 0;
       bindingShift = std::stod(value, &consumed);
@@ -167,7 +215,10 @@ int main(int argc, char* argv[]) {
         throw std::runtime_error("invalid binding eye shift");
     }
     result = cloneAuditMain(argc, argv);
+    if (ownedReplayCursor != ownedReplay.size())
+      throw std::runtime_error("unconsumed owned replay frames");
   } catch (const std::exception& error) {
+    result = 1;
     std::cerr << "[research-error] " << error.what() << '\n';
   }
   // Host teardown destroys adapted caches before the final clone references.
