@@ -1,4 +1,4 @@
-"""Two fresh original hosts; exact corresponding RGBA comparison, not inference bypass.
+"""Two fresh hosts; original vs original or --owned binding, not inference bypass.
 Version-1 manifest frames contain image, timestamp, parameters, optional expect_change.
 Relative images resolve against the manifest; timestamps may repeat or go backwards.
 Only explicit nonzero expect_change controls must differ from input."""
@@ -115,12 +115,41 @@ def fresh_output(*, path: Path | None) -> Path:
     out.mkdir(mode=0o700)
     return out
 
-def source_snapshot() -> dict:
+def source_snapshot(*, owned: bool = False) -> dict:
     sources = consumer.source_snapshot(original=True)
+    if owned:
+        import face_owned_result_probe as ownership
+        sources.update(ownership.probe_sources())
     for name in (Path(__file__).name, "face_render_stability_probe.py",
                  "face_render_injection_inventory.py", "espresso_oracle.py"):
         sources[f"local-model-pytorch/{name}"] = hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
     return sources
+
+def validate_owned_events(*, data: bytes, minimum: int) -> dict:
+    events = [json.loads(line) for line in data.splitlines()]
+    if any(not isinstance(event, dict) for event in events):
+        raise RuntimeError("owned records must be JSON objects")
+    conversions = [event for event in events if event.get("event") == "owned_face_conversion"]
+    restorations = [event for event in events if event.get("event") == "owned_face_restored"]
+    if len(conversions) < minimum or len(conversions) != len(restorations):
+        raise RuntimeError("missing tested-seek owned conversion/restoration evidence")
+    if any(event.get("raw_clone_verified") is not True or event.get("original_restored") is not False or
+           event.get("native_analysis_bypassed") is not False or
+           not consumer.finite_number(value=event.get("eye_shift")) or event["eye_shift"] != 0 or
+           type(event.get("faces")) is not int or not 0 <= event["faces"] <= 10 for event in conversions):
+        raise RuntimeError("invalid same-value owned conversion evidence")
+    if any(event.get("original_restored") is not True or event.get("gpu_complete") is not True
+           for event in restorations):
+        raise RuntimeError("owned restoration lacks GPU-completion evidence")
+    pending = 0
+    for event in events:
+        if event.get("event") == "owned_face_conversion":
+            pending += 1
+        if event.get("event") == "owned_face_restored":
+            pending -= 1
+            if pending < 0:
+                raise RuntimeError("owned restoration preceded conversion")
+    return dict(owned_face_conversions=len(conversions), owned_face_restorations=len(restorations))
 
 def verify_runtime(*, runtime: Path) -> None:
     # Isolate the existing UUID guard so even its dwarfdump has an outer deadline.
@@ -154,7 +183,7 @@ def failure(*, report: dict, stage: str, error: object) -> None:
 
 def check_guards(*, report: dict, files: dict, runtime: Path | None) -> bool:
     previous = len(report["failures"])
-    checks = [("source guard", lambda: source_snapshot() == report["source_sha256"])]
+    checks = [("source guard", lambda: source_snapshot(owned=report.get("owned", False)) == report["source_sha256"])]
     checks.extend((f"file guard {path}", lambda path=path, identity=identity, limit=limit:
                    file_identity(path=path, limit=limit)[0] == identity)
                   for path, (identity, limit) in files.items())
@@ -169,9 +198,10 @@ def check_guards(*, report: dict, files: dict, runtime: Path | None) -> bool:
     return len(report["failures"]) == previous
 
 class BoundedHost(NativeHost):
-    def __init__(self, *, command: list[str], environment: dict[str, str], log: Path):
+    def __init__(self, *, command: list[str], environment: dict[str, str], log: Path, max_rows: int = 25):
         self.protocol_rows = []
         self.reader_error = None
+        self.max_rows = max_rows
         super().__init__(command=command, environment=environment, log=log)
 
     def render(self, **request) -> None:
@@ -197,7 +227,7 @@ class BoundedHost(NativeHost):
                     if "[research-error]" in line or line.startswith("[error]"):
                         raise RuntimeError("native error in host log")
                     if line.startswith("QCUT\t"):
-                        if len(self.protocol_rows) >= 25:
+                        if len(self.protocol_rows) >= getattr(self, "max_rows", 25):
                             raise RuntimeError("too many native protocol rows")
                         row = line.rstrip("\r\n")
                         self.protocol_rows.append(row)
@@ -216,25 +246,40 @@ def run_sequence(*, report: dict, frames: list[dict], out: Path, runtime: Path,
 
     directory = out / f"run-{run_index}"
     directory.mkdir(mode=0o700)
+    bootstrap = report.get("owned", False)
+    owned_host = bootstrap and run_index == 1
+    records = directory / "records.jsonl"
     environment = consumer.probe_environment(runtime=runtime, out=directory, width=width,
-        height=height, mode="original", eye_shift=0, has_replay=False)
+        height=height, mode="trace" if owned_host else "original", eye_shift=0, has_replay=False)
     allowed = {"QCUT_FRAME_WIDTH", "QCUT_FRAME_HEIGHT", "DYLD_LIBRARY_PATH"}
+    if owned_host:
+        allowed.update(("QCUT_TRACE_UPDATES", "QCUT_CONSUMER_RECORD", "QCUT_FACE_POINT_SHIFT"))
     environment = {key: value for key, value in environment.items()
                    if key in allowed or not key.startswith(("QCUT_", "DYLD_", "MTL_", "LD_PRELOAD"))}
-    command = [str(out / "host"), str(runtime), str(runtime / "Models"), str(package)]
+    command = [str(out / ("owned-host" if owned_host else "host")), str(runtime), str(runtime / "Models"), str(package)]
     entry = dict(command=command, environment={key: environment[key] for key in sorted(allowed)},
                  protocol_rows=[], frames=[], exit_code=None)
     report["runs"].append(entry)
     host = None
     try:
-        host = BoundedHost(command=command, environment=environment, log=directory / "host.log")
+        host = BoundedHost(command=command, environment=environment, log=directory / "host.log",
+                           max_rows=26 if bootstrap else 25)
         host.receive(request_id=None)
+        if bootstrap:
+            first = frames[0]
+            host.render(request_id="warmup-0", timestamp=first["timestamp"], input_path=out / "input-00.rgba",
+                        output_path=directory / "warmup.rgba",
+                        parameters=consumer.parameters_json(text=json.dumps(first["parameters"])))
+            if len(bounded_bytes(path=directory / "warmup.rgba", limit=width * height * 4)) != width * height * 4:
+                raise RuntimeError("bootstrap RGBA byte count mismatch")
+            entry["bootstrap_record_bytes"] = len(bounded_bytes(path=records, limit=LOG_LIMIT)) if owned_host else 0
         for index, frame in enumerate(frames):
             request_id = f"frame-{index:02d}"
             started, rendered = time.monotonic(), False
             detail = dict(index=index, request_id=request_id, passed=False)
             entry["frames"].append(detail)
             try:
+                trace_start = records.stat().st_size if owned_host else 0
                 output = directory / f"{request_id}.rgba"
                 host.render(request_id=request_id, timestamp=frame["timestamp"],
                     input_path=out / f"input-{index:02d}.rgba", output_path=output,
@@ -246,6 +291,10 @@ def run_sequence(*, report: dict, frames: list[dict], out: Path, runtime: Path,
                 detail["versus_input"] = metrics
                 Image.frombytes("RGBA", (width, height), pixels).save(output.with_suffix(".png"))
                 Image.frombytes("L", (width, height), gray).save(directory / f"{request_id}-input-gain8.png")
+                if owned_host:
+                    data = bounded_bytes(path=records, limit=LOG_LIMIT)
+                    detail["owned_record_span"] = [trace_start, len(data)]
+                    detail["owned_evidence"] = validate_owned_events(data=data[trace_start:], minimum=2)
                 if frame["expect_change"] and metrics["equal"]:
                     raise RuntimeError("nonzero-effect control did not differ from input")
                 detail["passed"] = True
@@ -269,16 +318,29 @@ def run_sequence(*, report: dict, frames: list[dict], out: Path, runtime: Path,
             entry["protocol_sha256"] = hashlib.sha256("\n".join(host.protocol_rows).encode()).hexdigest()
             if host.reader_error is not None:
                 failure(report=report, stage=f"run {run_index} log", error=host.reader_error)
-        expected = ["QCUT\tREADY\t1", *(f"QCUT\tRESULT\tframe-{index:02d}\t0" for index in range(len(frames)))]
+        expected = ["QCUT\tREADY\t1", *(["QCUT\tRESULT\twarmup-0\t0"] if bootstrap else []),
+                    *(f"QCUT\tRESULT\tframe-{index:02d}\t0" for index in range(len(frames)))]
         if entry["protocol_rows"] != expected:
             failure(report=report, stage=f"run {run_index} protocol", error=RuntimeError("incomplete or unexpected protocol"))
         for index in range(len(entry["frames"]), len(frames)):
             entry["frames"].append(dict(index=index, passed=False, skipped=True))
             failure(report=report, stage=f"run {run_index} frame {index}", error=RuntimeError("host aborted before request"))
+        if owned_host:
+            try:
+                data = bounded_bytes(path=records, limit=LOG_LIMIT)
+                entry["records_sha256"] = hashlib.sha256(data).hexdigest()
+                validate_owned_events(data=data, minimum=0)
+                evidence = [detail["owned_evidence"] for detail in entry["frames"]]
+                report.update(owned_result_rendered=True, **{key: sum(item[key] for item in evidence)
+                    for key in ("owned_face_conversions", "owned_face_restorations")})
+            except Exception as error:
+                failure(report=report, stage="owned evidence", error=error)
 
 def run(*, args: argparse.Namespace) -> dict:
+    owned = getattr(args, "owned", False)
     report = dict(passed=False, failures=[], runs=[], comparisons=[], frames=[],
-                  native_analysis_bypassed=False, mode="original", seeks_per_request=2,
+                  native_analysis_bypassed=False, mode="owned-sequence" if owned else "original",
+                  owned=owned, owned_result_rendered=False, bootstrap_requests_per_host=int(owned), seeks_per_request=2,
                   protocol_version=1, difference="min(255, 8 * max(abs(RGBA delta)))")
     try:
         out = fresh_output(path=args.out)
@@ -288,7 +350,7 @@ def run(*, args: argparse.Namespace) -> dict:
     report["out"] = str(out)
     files, runtime = {}, None
     try:
-        report["source_sha256"] = source_snapshot()
+        report["source_sha256"] = source_snapshot(owned=owned)
         if report["failures"]:
             raise ValueError("requested output refused; failure report is in a fresh private directory")
         manifest = consumer.protocol_path(path=args.manifest.absolute())
@@ -337,6 +399,12 @@ def run(*, args: argparse.Namespace) -> dict:
         identity, _ = file_identity(path=out / "host", limit=128 * 1024**2)
         files[out / "host"] = (identity, 128 * 1024**2)
         report["host_sha256"] = identity["sha256"]
+        if owned:
+            import face_owned_result_probe as ownership
+            ownership.compile_owned(output=out / "owned-host", binding=True)
+            identity, _ = file_identity(path=out / "owned-host", limit=128 * 1024**2)
+            files[out / "owned-host"] = (identity, 128 * 1024**2)
+            report["owned_host_sha256"] = identity["sha256"]
         for run_index in range(2):
             if not check_guards(report=report, files=files, runtime=runtime):
                 break
@@ -358,7 +426,7 @@ def run(*, args: argparse.Namespace) -> dict:
     finally:
         if "source_sha256" in report:
             check_guards(report=report, files=files, runtime=runtime)
-        report["passed"] = (not report["failures"] and len(report["runs"]) == 2 and
+        report["passed"] = (not report["failures"] and (not owned or report["owned_result_rendered"]) and len(report["runs"]) == 2 and
                             len(report["comparisons"]) == len(report["frames"]))
         (out / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return report
@@ -393,6 +461,7 @@ def main() -> int:
     for name in ("runtime", "package", "manifest", "out"):
         parser.add_argument(f"--{name}", type=Path)
     parser.add_argument("--expect-change", action="store_true")
+    parser.add_argument("--owned", action="store_true")
     args = parser.parse_args()
     report = run(args=args)
     print(json.dumps({key: report[key] for key in ("passed", "out", "failures")}, indent=2))
