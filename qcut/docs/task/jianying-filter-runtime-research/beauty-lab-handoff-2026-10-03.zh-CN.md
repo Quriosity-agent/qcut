@@ -5,7 +5,17 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`，Git 根目录是其上一级。先阅读此文档，不再继续旧 agent；本轮子任务已经收尾。
 
-最新检查点见下面“完整画面诊断与实验室接入”。新生成的 160/120 输入已贯通 ONNX、seed、平滑、坐标回映和实际 renderer，固定七帧最终 RGBA 零差，并能在实验室查看。完整画面到 algorithm RGBA 尚有 1 灰阶差，实时驱动仍未注册；不能把固定序列研究验收等同于任意画面产品后端接通。
+最新状态见下面“Review 修复与新源码周期”。修复前的 160/120 输入曾贯通 ONNX、seed、平滑、坐标回映和实际 renderer，固定七帧最终 RGBA 零差；此次环境隔离修改后，旧记录因源码哈希变化不再可供当前实验室加载，须重新采集。完整画面到 algorithm RGBA 尚有 1 灰阶差，实时驱动仍未注册；不能把固定序列研究验收等同于任意画面产品后端接通。
+
+## Review 修复与新源码周期
+
+按本轮 `/prit`、`/prtaskit` 处理 PR #483 的四条有效意见：C ABI 捕获预测/提取的 C++ 异常并返回 `-6`；探针清除继承的 `QCUT_*`/`DYLD_*`/`MTL_*`；结果适配器文档改用 `$HOME`；修正两份算子状态文档，说明后续已支持 Shuffle/ShuffleNet 和单侧 lane clamp，special Softmax 仍拒绝。
+
+**旧七帧、截图和 ZIP 是 `f21eb8ab9828ab47e92024db394ddacb51179e25` 的历史证据，不是本轮源码验收。** `face_render_consumer_probe.py` 在原始 50 source 保护范围内，修复后当前两个 Electron provider 的历史案例列表均为空；显式读取旧 owned 包报该文件 `SHA mismatch`，已实际验证。不要修改旧报告哈希、放宽来源/精度校验，或用原生输出替代候选结果。
+
+当前源码的 fresh 原生 owned-binding 测试在故意污染的继承环境下通过：同值控制、眼部 X +0.01/-0.01 三组各四帧，输出 SHA 和指标均与旧 R3 完全相同，三路 gain8 差分已查看。证据在 `.local/jianying-model-pytorch/face-owned-binding-review-20261003-r1/`。它不是 ONNX/UI 记录重建，也没有证明任意画面实时后端接通。
+
+本地受影响 Python 101、下游 Python 761、Espresso 对应 Python 277、Electron 568 项均通过，各组有重叠。C ABI 测试实际编译 C++ harness 并执行标准/非标准异常、两个提取异常和原有错误码；macOS 无跳过。新源码完整七帧/产品 E2E 仍待下列再采集顺序完成。
 
 ## 当前交付
 
@@ -149,7 +159,7 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 
 ## 下一步顺序
 
-1. 先看本轮新诊断/stack R3、CPU audit R2、UI export R2 及两组最终 E2E，再看 neutral capture R6、owned replay/render R4 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
+1. 先完成 review 修复后的新源码周期：fresh 中立 capture → 实际 ONNX replay → 原生 renderer → CPU audit → UI export → 重新 build/真实 Electron E2E；每步用新目录、保留旧失败及历史报告。不只刷新旧来源哈希。当前历史 neutral R6/replay R4/render R4/audit R2/UI R2 均不能作为新源码验收。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
 2. 下一卡点仍是完整画面到 algorithm RGBA：普通 CPU/Metal 均差 1 灰阶。先沿实际纹理 slot +0x48 交接追 producer，捕获真实描述/调用者，再独立重放缩放、格式、stride、旋转与解码 PTS。已打通下游保持回归，旧 50 source 及旧审计不变。
 3. 将 native detector/Rect/flags/matrix/identity/reset 等剩余依赖做成显式实时输入契约，再扩展新的格式/旋转/caller profile。当前两次相同几何的零差不能推广到任意画面。
 4. 对两个固定时序案例重验中间张量和最终像素，且观察中立性必须零差；然后将真实 driver 接到候选 provider，声明准确原生依赖并锁定 backendVersion。不要重新注入原生最终点以制造精度通过。
@@ -157,11 +167,11 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 6. 再补真实移动、侧脸、多人、无脸、分钟级视频与 Windows/x86。当前单张图/短导出不能证明这些场景。
 7. UI 未完项：剪映肤色色板尚未有完整的颜色选择协议；当前是已有肤色/冷暖滑杆。先确认 LUT/效果包与色板选择语义再接色块，不能画几个按钮当作已接通。手动笔刷/美体叠加层也尚未接实验室，不能共用编辑器的全局笔刷状态。只读研究记录可浏览数值分组，但美妆分类切换暂仍锁定，不影响普通输入的分类选择。
 
-每一步保持 single file / single commit / push，同一个 PR。CI、合并、发行只在用户下一次明确要求后进行。
+每一步保持 single file / single commit / push，同一个 PR。本轮用户已请求 review/CI 修复；合并和发行仍须用户另行明确要求。
 
 ## 复现命令
 
-在仓库的 `qcut/` 目录执行：
+在仓库的 `qcut/` 目录执行；当前须先完成新源码周期的记录重建及可信主进程路径更新，旧离线包会被拒绝，不能用本命令的旧目录声称重验通过：
 
 ```sh
 bun run build:electron
