@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from face_alignment_replay import LockedFiles
+from face_alignment_sampling import sample_bgr
 from face_alignment_warp_native import validate_matrix
 from face_geometry_native import mat_view
 from face_host_geometry_contract import associate_inferences, validate_sequence
@@ -117,6 +118,7 @@ def run(*, args):
         report["source_sha256"] = {name: digest(data=locked.read(path=Path(__file__).with_name(name)))
                                   for name in (Path(__file__).name, "face_host_geometry_contract.py",
                                                "face_host_geometry_replay.py", "face_render_model_parity.py",
+                                               "face_alignment_sampling.py",
                                                "face_alignment_warp_native.py", "face_alignment_input_native.py",
                                                "face_detector_native.py", "face_geometry_native.py", "espresso_oracle.py")}
         root = args.capture.resolve(strict=True)
@@ -169,8 +171,9 @@ def run(*, args):
             locked.read(path=Path(inputs[0]["path"]), expected=inputs[0]["sha256"], maximum=120 * 120 * 3 * 2)
             reference = recovered(tensor=parity.load_tensor(item=inputs[0]))
             face = active_face(snapshot=snapshot)
-            blocks = {f"opencv-{mode}": opencv_sample(frame=frame, inverse=face["inverse"], interpolation=mode)
-                      for mode in ("nearest", "linear")}
+            blocks = {"qcut-split-sampling": sample_bgr(frame=frame, forward=np.asarray(face["forward"], np.float32)),
+                      **{f"opencv-{mode}": opencv_sample(frame=frame, inverse=face["inverse"], interpolation=mode)
+                         for mode in ("nearest", "linear")}}
             if warp is not None:
                 blocks.update(native_samples(warp=warp, frame=frame, face=face))
             report["cases"].append(dict(prediction=snapshot["index"], inference=inference["inference"],
@@ -183,7 +186,8 @@ def run(*, args):
         parity.no_torch()
         report.update(completed=True, opencv_version="4.11.0", numpy_version=np.__version__,
                       native_control_called=args.native_control, fixture_sha256=locked.files,
-                      sampling_parity=all(case["comparisons"]["opencv-linear"]["exact"] for case in report["cases"]))
+                      sampling_parity=bool(report["cases"]) and all(
+                          case["comparisons"]["qcut-split-sampling"]["exact"] for case in report["cases"]))
     except Exception as error:
         report["failures"].append(f"{type(error).__name__}: {error}")
         raise
