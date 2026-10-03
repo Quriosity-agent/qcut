@@ -228,6 +228,8 @@ export interface MediaPortraitManualBody {
 
 export interface MediaPortraitAdjustments {
 	enabled: boolean;
+	/** Global skin LUT; absent keeps legacy pink, null explicitly disables it. */
+	skinToneResourceId?: MediaPortraitSkinToneResourceId | null;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
 	faceTarget?: MediaPortraitFaceTarget;
 	makeup?: Partial<
@@ -242,6 +244,23 @@ export interface MediaPortraitAdjustments {
 	faces?: MediaPortraitFaceAdjustments[];
 	manualRetouch?: { strokes: MediaPortraitManualRetouchStroke[] };
 	manualBody?: MediaPortraitManualBody;
+}
+
+export type MediaPortraitSkinToneResourceId =
+	| "7408757645705743616"
+	| "7408757645705760000"
+	| "7408757645705776384"
+	| "7408757645705792768"
+	| "7408757645705809152";
+
+export interface JianyingPortraitSkinToneStatus {
+	resourceId: MediaPortraitSkinToneResourceId;
+	titleZh: string;
+	titleEn: string;
+	color: string;
+	defaultIntensity: number;
+	ready: boolean;
+	source: "qcut-private" | "jianying-installation" | "none";
 }
 
 export interface JianyingPortraitAdjustmentControl {
@@ -296,6 +315,7 @@ export interface JianyingPortraitAdjustmentStatus {
 	catalog: JianyingPortraitAdjustmentControl[];
 	packages: JianyingPortraitAdjustmentPackageStatus[];
 	makeupCards: JianyingPortraitMakeupCardStatus[];
+	skinTones?: JianyingPortraitSkinToneStatus[];
 }
 
 export interface JianyingPortraitAdjustmentInspectRequest {
