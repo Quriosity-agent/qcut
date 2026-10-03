@@ -233,41 +233,45 @@ def stage1_input(*, network: dict, size: int, inference: int) -> dict:
     return inputs[0]
 
 
-def validate_replacement_inputs(*, replacement_inputs, network: dict) -> dict | None:
+def validate_replacement_inputs(*, replacement_inputs, network: dict, size: int = 120) -> dict | None:
+    if type(size) is not int or size not in (120, 160):
+        raise ValueError("typed 120/160 replacement profile required")
     if replacement_inputs is None:
         return None
     inferences = network["successful_inferences"]
     if (not isinstance(inferences, list) or not 1 <= len(inferences) <= 129 or
             any(type(value) is not int or not 0 <= value <= 128 for value in inferences) or
             len(set(inferences)) != len(inferences)):
-        raise ValueError("bounded unique actual 120 inference indices required")
+        raise ValueError(f"bounded unique actual {size} inference indices required")
     if type(replacement_inputs) is not dict or not 1 <= len(replacement_inputs) <= 129:
         raise ValueError("bounded replacement input dict required")
     replacements = {}
     for key, values in replacement_inputs.items():
-        if (type(key) is not tuple or len(key) != 2 or type(key[0]) is not int or key[0] != 120 or
+        if (type(key) is not tuple or len(key) != 2 or type(key[0]) is not int or key[0] != size or
                 type(key[1]) is not int or not 0 <= key[1] <= 128):
-            raise ValueError("replacement keys must be (120, typed inference integer)")
-        if (type(values) is not np.ndarray or values.dtype != np.dtype(np.int16) or
-                values.shape != (1, 120, 120, 3) or (values < -128).any() or (values > 127).any()):
-            raise ValueError("replacement requires bounded signed int16 [1,120,120,3] pixels")
+            raise ValueError(f"replacement keys must be ({size}, typed inference integer)")
+        dtype = np.dtype(np.int16 if size == 120 else np.int8)
+        if (type(values) is not np.ndarray or values.dtype != dtype or
+                values.shape != (1, size, size, 3) or (values < -128).any() or (values > 127).any()):
+            raise ValueError(f"replacement requires bounded signed {dtype.name} [1,{size},{size},3] pixels")
         # Freeze caller memory before identity checks and execution share the replacement.
         replacements[key] = values.copy(order="C")
         replacements[key].setflags(write=False)
-    if set(replacements) != {(120, inference) for inference in inferences}:
-        raise ValueError("replacement inputs must cover all actual 120 inferences without unknown keys")
+    if set(replacements) != {(size, inference) for inference in inferences}:
+        raise ValueError(f"replacement inputs must cover all actual {size} inferences without unknown keys")
     for key, values in replacements.items():
-        item = stage1_input(network=network, size=120, inference=key[1])
+        item = stage1_input(network=network, size=size, inference=key[1])
         actual = load_tensor(item=item)
         if actual.dtype != values.dtype or actual.shape != values.shape or actual.tobytes() != values.tobytes():
-            raise ValueError("independent 120 replacement input is not bit-exact with actual captured tensor")
+            raise ValueError(f"independent {size} replacement input is not bit-exact with actual captured tensor")
     return replacements
 
 
-def run(*, args: argparse.Namespace, replacement_inputs=None, expected_comparisons: int = 4) -> dict:
+def run(*, args: argparse.Namespace, replacement_inputs=None, expected_comparisons: int = 4, initialization_inputs=None) -> dict:
     out = fresh_output(path=args.out)
     report = dict(passed=False, native_inference_called=False, native_analysis_bypassed=False,
                   full_frame_geometry_independent=False, independent_120_sampling_input_used=False,
+                  independent_160_sampling_input_used=False,
                   model_outputs={}, failures=[])
     try:
         no_torch()
@@ -312,7 +316,9 @@ def run(*, args: argparse.Namespace, replacement_inputs=None, expected_compariso
             graph = analyze(graph_bytes.decode("utf-8"))
             names = model["terminal_names"]
             validate_graph(graph=graph, size=size, names=names, network=network)
-            replacements = validate_replacement_inputs(replacement_inputs=replacement_inputs, network=network) if size == 120 else None
+            replacements = (validate_replacement_inputs(replacement_inputs=replacement_inputs, network=network)
+                            if size == 120 else validate_replacement_inputs(
+                                replacement_inputs=initialization_inputs, network=network, size=160))
             checkers = comparisons(graph=graph)
             artifact = f"align-{size}/artifacts/model.onnx"
             path = root / artifact
@@ -341,7 +347,7 @@ def run(*, args: argparse.Namespace, replacement_inputs=None, expected_compariso
                     raise ValueError("recorded reference input provenance mismatch")
                 for inference in network["successful_inferences"]:
                     input_record = stage1_input(network=network, size=size, inference=inference)
-                    values = replacements[(120, inference)] if replacements is not None else load_tensor(item=input_record)
+                    values = replacements[(size, inference)] if replacements is not None else load_tensor(item=input_record)
                     if (values < -128).any() or (values > 127).any():
                         raise ValueError("Stage1 signed pixels out of range")
                     heads = select_heads(outputs=network["outputs"], inference=inference, names=names)
@@ -358,13 +364,14 @@ def run(*, args: argparse.Namespace, replacement_inputs=None, expected_compariso
                                       checks=checks, actual_input_sha256=input_record["sha256"],
                                       input_source="replacement_inputs" if replacements is not None else "captured_tensor",
                                       replacement_input_sha256=digest(data=values.tobytes()) if replacements is not None else None,
-                                      replacement_input_source=f"replacement_inputs[(120, {inference})]" if replacements is not None else None,
+                                      replacement_input_source=(f"{'replacement_inputs' if size == 120 else 'initialization_inputs'}[({size}, {inference})]"
+                                                                if replacements is not None else None),
                                       recorded_reference_input_equal=np.array_equal(values, reference),
                                       input_changed_elements=int(np.count_nonzero(values != reference))))
                 report["model_outputs"][str(size)] = dict(graph_sha256=model["graph_sha256"], onnx_sha256=file_digest,
                                                           successful_inferences=len(cases), cases=cases)
                 if replacements is not None:
-                    report["independent_120_sampling_input_used"] = len(cases) == len(replacements)
+                    report[f"independent_{size}_sampling_input_used"] = len(cases) == len(replacements)
             finally:
                 runner = None
         if inventory(capture=capture / "capture") != evidence or any(
