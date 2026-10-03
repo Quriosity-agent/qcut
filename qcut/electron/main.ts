@@ -89,6 +89,7 @@ import {
 	setupJianyingPortraitAdjustmentIPC,
 	type JianyingPortraitAdjustmentIPCController,
 } from "./jianying-portrait-adjustment-handler.js";
+import { setupBeautyLabIPC } from "./beauty-lab-handler.js";
 import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.js";
 import {
 	setupJianyingMotionTrackingIPC,
@@ -176,6 +177,7 @@ let independentFilterController: ReturnType<
 > | null = null;
 let jianyingPortraitAdjustmentController: JianyingPortraitAdjustmentIPCController | null =
 	null;
+let beautyLabController: ReturnType<typeof setupBeautyLabIPC> | null = null;
 let jianyingMotionTrackingController: JianyingMotionTrackingIPCController | null =
 	null;
 let jianyingBasicVideoController: JianyingBasicVideoIPCController | null = null;
@@ -1159,6 +1161,22 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 			],
 			["JianyingPersonCutoutIPC", setupJianyingPersonCutoutIPC],
 			[
+				"BeautyLabIPC",
+				() => {
+					const sourceRoot = app.isPackaged
+						? app.getAppPath()
+						: path.resolve(__dirname, "../..");
+					beautyLabController = setupBeautyLabIPC({
+						getMainWindow: () => mainWindow,
+						root: path.join(
+							sourceRoot,
+							".local/jianying-model-pytorch/face-temporal-campaign-20261003-r1"
+						),
+						currentSourceRoot: path.join(sourceRoot, "research"),
+					});
+				},
+			],
+			[
 				"JianyingMotionTrackingIPC",
 				() => {
 					jianyingMotionTrackingController = setupJianyingMotionTrackingIPC({
@@ -1358,6 +1376,8 @@ app.on("before-quit", () => {
 	jianyingFilterLabController = null;
 	jianyingPortraitAdjustmentController?.dispose();
 	jianyingPortraitAdjustmentController = null;
+	beautyLabController?.dispose();
+	beautyLabController = null;
 	jianyingMotionTrackingController?.dispose();
 	jianyingMotionTrackingController = null;
 	jianyingBasicVideoController?.dispose();
