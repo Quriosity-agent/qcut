@@ -2,6 +2,16 @@
 
 日期：2026-10-03。分支 `codex/kpop-beauty-v6`，继续 [PR #483](https://github.com/Quriosity-agent/qcut/pull/483)。工作目录 `/Users/peter/Desktop/code/qcut/qcut`。
 
+## Review 修复后的证据状态
+
+以下七帧 ONNX/renderer/UI 验收属于修复前的 `f21eb8ab9828ab47e92024db394ddacb51179e25`，不是当前源码的验收。此次修复 `face_render_consumer_probe.py` 的环境隔离，清除继承的 `QCUT_*`、`DYLD_*`、`MTL_*`，再显式加入本次探针参数；它属于原始 50 source 的哈希保护范围，旧 capture/replay/render/audit/UI 包因此失效。保留所有旧报告原字节和精度门槛，不改哈希伪造新验收。
+
+实际调用当前 Electron provider：历史 `temporal`/`qcut-export` 和 `owned-preprocess` 列表均为空，显式加载旧 owned 包被 `SHA mismatch: local-model-pytorch/face_render_consumer_probe.py` 拒绝。普通输入的原生处理不是此离线记录路径；任意画面 candidate 仍未接通。必须重新采集新源码周期的中立记录，再跑真实 ONNX replay、renderer、CPU audit、UI export 和 Electron E2E，才能恢复这些开发记录。
+
+另已用当前源码启动 fresh 原生宿主，故意继承不存在的 binding replay、错误 eye shift/wait/trace 参数：同值控制及眼部 X ±0.01 三组各四帧、各 18 次转换全部通过，帧 SHA 和指标逐项与旧 R3 完全相同。新证据为 `.local/jianying-model-pytorch/face-owned-binding-review-20261003-r1/report.json`，SHA-256 `6b9d4efacabf93989ec169d9b38479e654d4c92212449cf84ebeeb4b7b7cce64`；已查看三路原图/统一 gain8 差分。该测试证明环境修复未改变这组原生像素，**不替代新七帧 ONNX/UI 验收**。C ABI 另增加真实 C++ 编译执行的异常边界测试，预测/提取异常返回 `-6`，原有成功/错误码不变。
+
+本次本地回归：受影响探针组 101 项、下游组 761 项、Espresso CI 对应组 277 项、Electron 六组 568 项均通过；各组存在重叠，不累加为独立测试总数。当前没有重跑完整产品 E2E，也不以旧 E2E 代替当前源码证据。
+
 ## 本轮结论
 
 已把上一轮真实 ONNX/采样/点位/原生 renderer 的固定七帧证据接进美颜实验室，并补独立 CPU 审计、完整画面缩放诊断和真实只读调用栈。不是把离线帧注册为实时候选后端。
@@ -126,7 +136,7 @@ UI 文件位于：
 
 ## 复现
 
-从工作目录执行，输出必须使用新的未存在目录，不覆盖验收证据：
+以下命令描述修复前检查点的输入关系；当前源码直接复用这些旧记录会被哈希保护拒绝。先重新采集当前源码的 capture/replay/render，再替换输入目录。输出必须使用新的未存在目录，不覆盖验收证据：
 
 ```sh
 env PYTHONPATH=research/local-model-pytorch \
@@ -157,7 +167,7 @@ env QCUT_REAL_PORTRAIT_IMAGE_PATH=/Users/peter/Desktop/code/qcut/qcut/.local/jia
 
 ## 下一步
 
-先取得上游实际虚函数/纹理转换证据，解决 1 灰阶来源，再扩充格式/stride/旋转。原生 detector/caller 数据应成为明确实时输入契约，不能注入 native 最终点伪造自主关键点。
+先完成上述新源码周期的 capture → ONNX replay → renderer → audit → UI export → Electron E2E，不能给旧记录换哈希。然后取得上游实际虚函数/纹理转换证据，解决 1 灰阶来源，再扩充格式/stride/旋转。原生 detector/caller 数据应成为明确实时输入契约，不能注入 native 最终点伪造自主关键点。
 
 随后接真实任意帧 driver 到候选协议，锁定来源/时间/模型/运行库/效果包，逐阶段同输入对拍后开放实验室按钮，再验证预览/导出。最后扩展嘴/眼/鼻/眉/脸型/美妆/皮肤/美体及组合、多脸型/多人/侧脸/分钟级/Windows/x86。当前只有固定大眼 profile，不应据本轮七帧给其他 90 个参数盖精度通过章。
 
