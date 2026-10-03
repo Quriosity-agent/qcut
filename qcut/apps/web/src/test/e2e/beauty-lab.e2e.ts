@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
@@ -65,6 +65,7 @@ async function saveComparison({
 	page: Page;
 	destination: string;
 }) {
+	await rm(destination, { force: true });
 	await app.evaluate(({ BrowserWindow }, filename) => {
 		const window = BrowserWindow.getAllWindows()[0];
 		if (!window) throw new Error("Missing download window");
@@ -93,6 +94,61 @@ async function saveComparison({
 	if (!result) throw new Error("Comparison ZIP not saved");
 	return result;
 }
+
+test("Beauty Lab ZIP replaces stale comparison evidence", async () => {
+	test.skip(
+		!source || !existsSync(source),
+		"Requires an opaque portrait input"
+	);
+	test.setTimeout(120_000);
+	if (!source) throw new Error("Missing portrait input");
+	await mkdir(output, { recursive: true });
+	const userDataDirectory = await mkdtemp(
+		path.join(os.tmpdir(), "qcut-lab-zip-")
+	);
+	const app = await startElectronApp({ userDataDirectory });
+	try {
+		const page = await getMainWindow(app);
+		await preparePortraitReferenceProject({
+			page,
+			source,
+			canvasSize: { width: 640, height: 480 },
+		});
+		await page.getByTestId("beauty-lab-open").click();
+		const lab = page.getByTestId("beauty-lab-dialog");
+		await lab.getByLabel("实验室图片", { exact: true }).setInputFiles(source);
+		await expect(lab.getByRole("status", { name: "实验室状态" })).toContainText(
+			path.basename(source)
+		);
+		const destination = path.join(output, "stale-comparison.zip");
+		const stale = new JSZip().file("stale.txt", "prior output");
+		await writeFile(
+			destination,
+			await stale.generateAsync({ type: "nodebuffer" })
+		);
+		const zip = await saveComparison({ app, page, destination });
+		expect(zip.file("stale.txt")).toBeNull();
+		const report = JSON.parse(
+			await zip.file("comparison.json")!.async("string")
+		);
+		expect(report.inputName).toBe(path.basename(source));
+		expect(report.record).toBeNull();
+		expect(report.candidateResultPresent).toBe(false);
+		const original = await loadImage(
+			await zip.file("original.png")!.async("nodebuffer")
+		);
+		expect([original.width, original.height]).toEqual([
+			report.width,
+			report.height,
+		]);
+		await page.screenshot({
+			path: path.join(output, "stale-zip-replaced.png"),
+			animations: "disabled",
+		});
+	} finally {
+		await app.close();
+	}
+});
 
 async function timelineSnapshot({ page }: { page: Page }) {
 	return page.evaluate(() =>
