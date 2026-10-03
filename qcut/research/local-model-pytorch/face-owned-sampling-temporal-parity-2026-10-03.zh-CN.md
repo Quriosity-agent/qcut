@@ -17,6 +17,13 @@
 不是拟合修正，也不是复制最终返回点；未开启为编辑器默认后端。
 下面保留前一检查点的失败数值，标明历史记录，避免把不同轮次混成同一次成功。
 
+本次进一步移除了预测 `[0,20]` 的**原生关键点 seed 来源**。R12 中立采集 -> R9 owned
+初始化 producer -> R7 真实 renderer -> R7 审计全部通过，源码链从 49 增至 50。
+160 ONNX `fc_landmark_s1` 是绝对检测坐标：按实际 order 重排，**不叠加 120 mean**，
+使用实际 `detection_inverse` 做 double 中间运算并落到 float32。两个 106 点 seed 与原生
+pre-update `previous` 精确相同；后者仅作零容差参考，不能校正或替代候选。
+预测 1 仍依据真实 first 信号从 owned tracked 点重新初始化，其余帧持续推进 owned 历史。
+
 ```text
 QCut 原始画面 + 大眼参数
   -> QCut 自写研究宿主 + 原生检测/跟踪/实际几何
@@ -25,7 +32,7 @@ QCut 原始画面 + 大眼参数
   -> Torch-free ORT 1.22.1，120 Stage1 五头
   -> 自写 mean/order 解码 -> 逆矩阵映射 -> tracked 点
   -> 自写 Base 33+73 平滑与持续历史状态
-     [实际参数/初始化信号依赖原生；新脸初始化 seed 仍依赖原生]
+     [实际参数/初始化信号依赖原生；新脸 seed 来自 160 ONNX 绝对坐标逆映射]
   -> 自写 float32 归一化 -> replay -> QCut 隔离副本
   -> 原生 Adapter / 模型元数据 / 效果包 / GPU 渲染
   -> RGBA 结果、统一增益灰度差分
@@ -41,6 +48,10 @@ QCut 原始画面 + 大眼参数
 本地视频 fixture 及测试。主 agent 负责原生只读探针、实际状态验证、ONNX 集成、真实渲染、
 代码复查和逐文件提交推送。没有另建 branch、worktree 或 PR；没有让多个 agent 编辑同一文件。
 
+继续推进时再次隔离三个任务：160 初始化输入候选及测试、视频 SAR 显式策略及测试、
+有界批量 capture/replay/render/audit 工具及测试。主 agent 负责 owned seed 解码、时序集成、
+审计和真实验收；原生宿主串行运行，agent 不做 Git 操作，主 agent 逐文件 commit/push。
+
 | 当前验收 | 数量 | 结果 |
 | --- | ---: | --- |
 | 新观察器中立性 | 七帧、26 次预测 | 改变像素 0 |
@@ -48,13 +59,14 @@ QCut 原始画面 + 大眼参数
 | Torch-free ONNX 五头 | 135 项 | 原门槛通过 |
 | 自写 Stage1 / tracked | 24 组有效脸 | 精确相同 |
 | 自写平滑输出与状态检查 | 24 组有效脸 | current、必要的 previous/delta 精确相同 |
+| 自写 160 初始化 seed | 预测 0、20 | 106 点精确相同，不读取原生点作候选 |
 | 最终归一化点 | 22 组有效 conversion | 精确相同 |
 | 无脸 | 预测 18、19 | 空结果，清除历史，不发布旧点 |
 | 实际 owned 副本消费/恢复 | 24 次 | 全部完成 |
 | 真实效果候选 vs baseline | 七帧 | 不同像素 0，最大 RGBA 差 0 |
-| capture/producer/render 报告及源码链 | 49 份源码 | SHA 一致，审计 `pipeline_parity=true` |
+| capture/producer/render 报告及源码链 | 50 份源码 | SHA 一致，审计 `pipeline_parity=true` |
 
-当前对比图为 `face-host-geometry-sequence-render-20261003-r6/comparison-sheet.png`。
+当前对比图为 `face-host-geometry-sequence-render-20261003-r7/comparison-sheet.png`。
 已目视检查七行：原生 baseline、候选、统一 x8 灰度差分、原始输入。
 七张原尺寸 `frame-XX-diff-gain8.png` 全黑；非零效果也实际改变原图，不能用绕过效果冒充成功。
 之前移动、镜像、恢复、半强度的 41,522/42,185/39,659/20,532 个不同像素现在均为 0。
@@ -97,7 +109,7 @@ current = output
 小 scale、空向量、大小变化、非有限值和不支持的配置均有明确处理或拒绝。
 优化分支数学有合成测试，但本次真实验收走普通分支，不宣称优化分支跨平台 bit parity。
 
-### 没有隐藏的初始化依赖
+### 前一检查点的初始化依赖（R10/R8/R6，历史）
 
 预测 0 和恢复新脸 ID=1 的预测 20，仍需要原生 filter 的 `previous` 作为初始化 seed。
 该向量是本次更新之前的 current，不是最终 published/returned/consumer 点。
@@ -108,6 +120,32 @@ current = output
 因此 `native_smoothing_initialization_required=true`、seed predictions `[0,20]`，
 `native_analysis_bypassed=false`、`full_frame_geometry_independent=false` 保留。
 原生采集仍执行原始网络；ONNX 候选在独立 producer 生成，再由另一个真实宿主消费。
+
+### 当前 owned 初始化与尚未对齐的 160 输入
+
+当前使用显式 `--owned-smoothing --owned-initialization`，无 native seed fallback。
+缺 seed、旧脸/旧窗口 seed、重复 seed、错误类型、非有限值、参考不一致均拒绝，失败不推进历史。
+`owned_initialization_used=true`、`owned_smoothing_seed_predictions=[0,20]`、
+`native_smoothing_seed_predictions=[]`、`native_smoothing_seed_required=false`。
+`native_smoothing_initialization_required=true` 仍表示参数/first 信号等原生依赖，**不再表示点 seed**。
+
+160 输入不能直接套用已对齐的 120 affine sampler。对 R12 两个实际初始化窗口，
+`detection_forward` + split-quantized 160 采样候选 **0/2 exact**：各有
+**67,068 / 76,800** 个分量不同，最大整数差 **177**。这是预处理候选失败，不能推广成
+ONNX 网络转换失败；当前同一原生输入下 160 五头和 owned seed 均通过原门槛。
+
+锁定库的静态调用关系显示，`FaceAlignmentDet` 在 0x2d5f2c/0x2d5fd0 调用
+`ProcessDetectionImage`，然后于 0x2d6030..0x2d60d4 构造检测变换。
+受控子链此前已证明 resize 存在线性/最近邻分支，但尚未捕获真实宿主的裁剪参数、
+插值标志及中间像素，不能由“最终坐标逆映射正确”推断“输入也使用同一 affine warp”。
+这里只记录关系和地址，不提交厂商指令、表或包。
+
+`face_host_sampling_160_inputs.py` 严格检查窗口、身份、算法帧、int8 存储和所有实际输入。
+不匹配只生成失败诊断，不返回部分 replacement；不猜变换、不拟合、不拷贝捕获输入兜底。
+当前审计明确拒绝 `independent_160_sampling_input_used=true` 的未验收 route。
+实际 producer 加 `--independent-160-sampling` 亦已执行：退出 1、passed=false、无 `replay.json`，
+失败记录在 `face-host-geometry-sequence-replay-160-rejected-20261003-r1/`，未运行替代 ONNX 或渲染。
+下一步先增加只读预处理参数/中间缓冲区取证，再按真实 resize 路由实现独立输入。
 这证明候选数值和渲染相同，不是已经替换实时原生推理、取消重复分析或打通产品 IPC。
 
 ### 视频测试工具的范围
@@ -259,7 +297,12 @@ count/数组/索引/有限值/边界均严格验证，只有单有效脸可关�
 - `face_temporal_smoothing.py`：纯 NumPy 滤波数学及显式参数，不加载厂商运行库。
 - `face_temporal_smoothing_replay.py`：持续 owned 历史、实际初始化依赖及零容差状态检查。
 - `face_temporal_capture_audit.py`：报告 SHA、数量、ID、时间、阶段和初始化依赖的只读审计。
+- `face_host_initialization.py`：160 绝对坐标、实际逆矩阵和 owned seed 的严格解码。
+- `face_host_sampling_160_inputs.py`：160 实际窗口/输入逐字节门槛，目前只通过失败诊断，不启用替换。
+- `face_temporal_audit_metrics.py`：共享类型、零容差点位及像素报告检查。
+- `face_temporal_initialization_audit.py`：普通平滑转移、owned seed 来源和实际 160 窗口检查。
 - `face_temporal_video_fixture.py`：本地视频 decoded PTS 抽帧与可复现 manifest。
+- `face_temporal_campaign.py`：1-4 个显式七帧 manifest 的串行真实四阶段验收及失败记录。
 
 沿用 LockedFiles、严格 JSON、网络 inventory、副本回放与原宿主协议，不另写一套解析器。
 动态时间上限需显式选择：Python/原生均限 60,000,000 微秒；默认仍是 100,000 微秒。
@@ -279,13 +322,20 @@ count/数组/索引/有限值/边界均严格验证，只有单有效脸可关�
 - `face-host-geometry-sequence-replay-strict-20261003-r1/`：真实门槛拒绝，无 replay 文件。
 - `face-host-geometry-sequence-replay-20261003-r6/`：失败诊断、135 项头部与三层坐标报告。
 - `face-host-geometry-sequence-render-20261003-r4/`：七帧实际消费与 `comparison-sheet.png`。
-- `face-host-geometry-sequence-20261003-r10/`：当前发布向量、配置、平滑状态、中立采集。
-- `face-host-geometry-sequence-replay-20261003-r8/`：当前严格自写平滑 producer，`replay.json`。
-- `face-host-geometry-sequence-render-20261003-r6/`：当前七帧零差，原尺寸候选和 x8 灰度图。
-- `face-temporal-capture-audit-20261003-r6/`：当前三报告/49 源码链通过，仍无产品独立声明。
+- `face-host-geometry-sequence-20261003-r10/`：前一检查点发布向量、配置、平滑状态、中立采集。
+- `face-host-geometry-sequence-replay-20261003-r8/`：前一检查点自写平滑 producer，仍用原生 seed。
+- `face-host-geometry-sequence-render-20261003-r6/`：前一检查点七帧零差。
+- `face-temporal-capture-audit-20261003-r6/`：前一检查点三报告/49 源码链通过。
+- `face-host-geometry-sequence-20261003-r12/`：当前源码版本的中立采集，26 个实际预测。
+- `face-host-geometry-sequence-replay-20261003-r9/`：当前 owned seed + 自写连续平滑严格 producer。
+- `face-host-geometry-sequence-render-20261003-r7/`：当前七帧零差和 `comparison-sheet.png`。
+- `face-temporal-capture-audit-20261003-r7/`：当前三报告/50 源码链通过，点 seed 已独立。
+- `face-host-sampling-160-20261003-r1/`：当前两个 160 输入候选失败诊断，0/2 exact，不提交 raw 数据。
 - `face-temporal-video-fixture-smoke-20261003-r3/`：实际合成视频的七帧 PTS/图像证据。
 - `face-temporal-video-fixture-smoke-20261003-wide-r2/`：实际宽屏比例与黑边验证。
 - `face-temporal-video-fixture-editor-20261003-r1/`：QCut 一秒导出 SAR 门槛拒绝的历史记录。
+- `face-temporal-video-qcut-export-sar-assumed-20261003-r1/`：显式 SAR 假设的七帧抽取，效果强度 0，仅抽帧验证。
+- `face-temporal-video-qcut-export-eye100-20261003-r1/`：同一一秒 QCut 导出、七帧、大眼强度 1 的实际验收素材。
 
 旧失败/中间记录保留，不覆盖。运行目录为 `qcut/`，每次 `--out` 必须为新目录。
 使用已有锁定 RUNTIME/PACKAGE，动态 MANIFEST 为七帧 fixture 的 `manifest.json`：
@@ -301,7 +351,7 @@ count/数组/索引/有限值/边界均严格验证，只有单有效脸可关�
   research/local-model-pytorch/face_host_geometry_sequence_replay.py \
   --capture .local/jianying-model-pytorch/dynamic-capture-fresh \
   --root .local/jianying-model-pytorch/face-heads-20261003-stable-r2 \
-  --out .local/jianying-model-pytorch/dynamic-replay-fresh --owned-smoothing
+  --out .local/jianying-model-pytorch/dynamic-replay-fresh --owned-smoothing --owned-initialization
 
 .local/jianying-model-pytorch/face-warp-runtime-20261003/bin/python -B \
   research/local-model-pytorch/face_host_geometry_sequence_render.py \
@@ -323,23 +373,68 @@ count/数组/索引/有限值/边界均严格验证，只有单有效脸可关�
 不能把进程退出成功等同于诊断通过。真实零差需要联合 producer、renderer 和 audit。
 静态命令继续使用上一文档的 producer/E2E，producer 加 `--independent-sampling`。
 
+批量工具对每个 manifest 串行启动上述四阶段，最多四个，默认超时每阶段 900 秒、总计 7200 秒。
+脚本白名单、`shell=False`、显式 Python 环境、过滤继承环境、源/模型/包/原生库守卫、
+报告与 replay SHA 链全部验证。失败停止后续阶段并记录 skipped；诊断或 partial 不能变为 passed。
+需要精确七帧和 1448x1086，不能把 fixture 支持的最多 24 帧宣称为 renderer/audit 已支持。
+这只是批次组织，不是原生宿主并发：GPU/native 取证必须串行，修改源码会触发守卫拒绝。
+
+QCut 导出的视频 ffprobe 不提供 SAR。新增 `--assume-square-pixels` 是调用者显式假设，
+仅接受缺失、`N/A`、`0:1`，不接受已声明非方形、错误或 null 数据。
+原始 ffprobe JSON、调用参数、假设来源写入 `source.json`/报告；不伪造输入 metadata。
+只有实际采用假设时，scale 前增加 `setsar=1`。默认继续严格拒绝，不改变源视频。
+已抽取的一秒片共 30 帧，七帧 PTS 为 0/5/9/14/18/23/27（1/30 秒）；
+多数帧画面相同，**不代表真人运动、多脸、遮挡、分钟级或实时编辑器测试**。
+
+### 批量工具真实运行结果
+
+`face-temporal-campaign-20261003-r1/` 总计 47.62 秒，两组四阶段均 passed，
+`completed=true`、`pipeline_parity=true`，failures 为空：
+
+| 素材 | 预测/转换/五头 | owned seed | native 点 seed | 最终不同像素 | 非零效果 vs 输入 |
+| --- | --- | --- | --- | --- | --- |
+| 移动/镜像/无脸恢复/零/半强度七帧 | 26 / 24 / 135 | `[0,20]` | `[]` | 七帧均 0、max RGBA 0 | 有脸非零帧 42,469-44,022；无脸/零强度为 0 |
+| 一秒 QCut 导出抽出的七帧，大眼 1 | 26 / 24 / 135 | `[0]` | `[]` | 七帧均 0、max RGBA 0 | 每帧 41,141-42,224 |
+
+两组均逐阶段验证 50 个源哈希和实际报告链；源码与 committed Git 的 50 个文件亦独立复核一致。
+两张 `campaign-XX/render/comparison-sheet.png` 与 x8 灰度图保留在私有目录，已目视查看。
+新素材也通过 owned 初始化，但 160 原生输入、检测矩阵/表、初始化信号和效果渲染仍依赖原生。
+47.62 秒是这两组离线取证耗时，不是实时帧率或编辑器导出性能指标。
+
+在 `qcut/` 下，用显式路径重跑，每次换一个 fresh 输出目录：
+
+```bash
+.local/jianying-model-pytorch/face-warp-runtime-20261003/bin/python -B \
+  research/local-model-pytorch/face_temporal_campaign.py \
+  --base-capture .local/jianying-model-pytorch/face-render-model-capture-20261003-r5 \
+  --models-root .local/jianying-model-pytorch/face-heads-20261003-stable-r2 \
+  --runtime "$RUNTIME" --package "$PACKAGE" \
+  --warp-python .local/jianying-model-pytorch/face-warp-runtime-20261003/bin/python \
+  --ort-python .local/jianying-model-pytorch/face-heads-runtime122/bin/python \
+  --manifest .local/jianying-model-pytorch/face-sequence-fixture-20261003-r1/manifest.json \
+  --manifest .local/jianying-model-pytorch/face-temporal-video-qcut-export-eye100-20261003-r1/manifest.json \
+  --owned-initialization --stage-timeout 600 --deadline 1800 \
+  --out .local/jianying-model-pytorch/campaign-fresh
+```
+
 ## 回归与下一阶段
 
-当前 Python 主套件 **904**、采样套件 **22**，合计 **926 个通过，无跳过**；
-本次相比 838 增加 88。portrait/provenance TypeScript **29 个通过**。
+当前 Python 主回归 **958**、采样套件 **22**、批量工具 **19**，
+合计 **999 个通过，无跳过**；相比前一 926 检查点增加 73。
+portrait/provenance TypeScript **29 个通过**。
 包括完整五头采集、输入替换、no-face/recovery、实际时序窗口、失败诊断不校正、
 返回字段边界、Python/原生默认时间拒绝及显式扩展、宿主关闭与文件/源哈希守卫。
 真实七帧动态几何/像素门槛现已通过；不是多脸、长视频、编辑器产品验收或 CI 绿色声明。
 
 后续按以下顺序推进，不同时把所有原生模块替换掉：
 
-1. 替换当前 `[0,20]` 的原生初始化 seed 来源：追到 160 初始化输出/变换、初始化调用顺序；
-   先证明每个 seed 与实际原始对象一致，再取消该依赖，不能从最终输出反求 seed。
+1. 当前 `[0,20]` 点 seed 来源已替换并通过真实像素门槛；下一步先取证真实
+   `ProcessDetectionImage` 裁剪参数、插值标志、中间像素和 160 消费窗口，修复 0/2 的输入候选。
 2. 扩大真人移动、旋转、遮挡、多脸身份与分钟级材料，审计长期副本回收；
-   视频 SAR 不明时先查源编码/导出元数据，不猜测方形像素。
+   SAR 不明默认拒绝，需要显式调用者假设且完整记录，不能写成源数据已证明方形像素。
 3. 按实际激活配置逐项验证优化/Extra/Iris/缓存路由，不用普通分支通过覆盖所有 profile。
 4. 再逐步替换检测/接纳、160 采样、姿态拟合、Stage2/虹膜/遮罩，保留原生路径作对照。
 5. 五官形变、皮肤与美妆消费分别验证，之后接实时推理、产品 IPC、预览/导出和 Windows/x86。
 
-本轮没有合并、发布，也没有把研究资源打进安装包。普通平滑数学已能由自写实现替代，
-但原生初始化/其他几何与渲染依赖仍在；不是 UI 上有一个 ONNX 开关就算整个后端独立。
+本轮没有合并、发布，也没有把研究资源打进安装包。普通平滑数学及点 seed 解码已能由自写实现替代，
+但原生 160 输入/初始化参数信号/其他几何与渲染依赖仍在；不是 UI 上有一个 ONNX 开关就算整个后端独立。
