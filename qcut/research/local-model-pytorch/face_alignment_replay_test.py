@@ -322,7 +322,8 @@ class ReplayTest(unittest.TestCase):
         self.capture(image=image, points=np.full((106, 2), 0.5, np.float32))
         output = self.root / "out"
         with patch("espresso_oracle.private_path", side_effect=lambda *, path: Path(path)), patch.object(
-                replay, "infer", return_value=(arrays["raw"], {"onnxruntime": "synthetic"})):
+                replay, "infer", return_value=(arrays["raw"], {"onnxruntime": "synthetic"})), patch.object(
+                replay, "torch_imported", return_value=False):
             report = replay.run(root=self.paths["export"], reference=self.paths["reference"], decode_reference=self.paths["decode"],
                                 capture=self.paths["capture"], image=image, size=120, output=output)
         self.assertTrue(report["passed"])
@@ -340,7 +341,8 @@ class ReplayTest(unittest.TestCase):
         self.capture(image=image)
         output = self.root / "failed"
         with patch("espresso_oracle.private_path", side_effect=lambda *, path: Path(path)), patch.object(
-                replay, "infer", return_value=(arrays["raw"] + np.float32(1), {})):
+                replay, "infer", return_value=(arrays["raw"] + np.float32(1), {})), patch.object(
+                replay, "torch_imported", return_value=False):
             report = replay.run(root=self.paths["export"], reference=self.paths["reference"], decode_reference=self.paths["decode"],
                                 capture=self.paths["capture"], image=image, size=120, output=output)
         self.assertFalse(report["passed"])
@@ -349,10 +351,11 @@ class ReplayTest(unittest.TestCase):
         self.assertTrue((output / "report.json").is_file())
 
     def test_output_not_private_and_existing_output_rejected(self):
-        with self.assertRaisesRegex(ValueError, "private ignored"):
+        with patch.object(replay, "torch_imported", return_value=False), self.assertRaisesRegex(ValueError, "private ignored"):
             replay.run(root=self.root, reference=self.root, decode_reference=self.root, capture=self.root,
                        image=self.root, size=120, output=self.root / "public")
-        with patch("espresso_oracle.private_path", side_effect=lambda *, path: Path(path)):
+        with patch("espresso_oracle.private_path", side_effect=lambda *, path: Path(path)), patch.object(
+                replay, "torch_imported", return_value=False):
             with self.assertRaisesRegex(ValueError, "overwrite"):
                 replay.run(root=self.root, reference=self.root, decode_reference=self.root, capture=self.root,
                            image=self.root, size=120, output=self.root)
