@@ -13,6 +13,7 @@ import {
 } from "./helpers/portrait-reference";
 import {
 	auditBeautyLabNativeZip,
+	decodeBeautyLabFixture,
 	saveBeautyLabComparison,
 } from "./helpers/beauty-lab-comparison";
 
@@ -120,6 +121,7 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 	);
 	test.setTimeout(600_000);
 	if (!source) throw new Error("Missing portrait input");
+	const sourceBytes = await readFile(source);
 	await mkdir(output, { recursive: true });
 	const userDataDirectory = await mkdtemp(
 		path.join(os.tmpdir(), "qcut-beauty-matrix-")
@@ -130,6 +132,10 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 	let passed = false;
 	try {
 		const page = await getMainWindow(app);
+		const expectedOriginalPNG = await decodeBeautyLabFixture({
+			page,
+			bytes: sourceBytes,
+		});
 		page.on("pageerror", (error) => pageErrors.push(error.message));
 		await preparePortraitReferenceProject({
 			page,
@@ -170,7 +176,10 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 				page,
 				destination: path.join(output, `${sample.id}.zip`),
 			});
-			const report = await auditBeautyLabNativeZip({ zip });
+			const report = await auditBeautyLabNativeZip({
+				zip,
+				expectedOriginalPNG,
+			});
 			expect(report.gain).toBe(8);
 			expect(report.adjustments.values).toEqual(sample.values);
 			expect(report.adjustments.makeup ?? {}).toEqual(
@@ -217,6 +226,7 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 			animations: "disabled",
 		});
 		expect(pageErrors).toEqual([]);
+		expect((await readFile(source)).equals(sourceBytes)).toBe(true);
 		passed = true;
 	} finally {
 		await writeFile(
@@ -225,9 +235,8 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 				{
 					passed,
 					source,
-					sourceSha256: createHash("sha256")
-						.update(await readFile(source))
-						.digest("hex"),
+					sourceSha256: createHash("sha256").update(sourceBytes).digest("hex"),
+					sourcePixelsVerified: passed,
 					backend: "real-native",
 					arbitraryFrameCandidateReady: false,
 					jianyingUiComparisonPerformed: false,
