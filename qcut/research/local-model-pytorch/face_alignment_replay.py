@@ -34,6 +34,10 @@ UNRESOLVED = [
 ]
 
 
+def torch_imported():
+    return any(name == "torch" or name.startswith("torch.") for name in sys.modules)
+
+
 def strict_json(*, data):
     def pairs(items):
         result = {}
@@ -344,7 +348,7 @@ def infer(*, model, inputs, size):
 def run(*, root, reference, decode_reference, capture, image, size, output, capture_metadata=None, capture_records=None):
     if type(size) is not int or size not in (120, 160):
         raise ValueError("Stage1 profile must be 120 or 160")
-    if any(name == "torch" or name.startswith("torch.") for name in sys.modules):
+    if torch_imported():
         raise ValueError("replay producer must not import Torch")
     output = espresso_oracle.private_path(path=output)
     if output.exists():
@@ -370,7 +374,7 @@ def run(*, root, reference, decode_reference, capture, image, size, output, capt
     replay, diagnostics = produce_frames(capture=captured, points=points)
     payload = validate_replay(value=replay, width=replay["width"], height=replay["height"], image_hash=replay["image_sha256"])
     locked.verify()
-    if any(name == "torch" or name.startswith("torch.") for name in sys.modules):
+    if torch_imported():
         raise ValueError("replay producer imported Torch during inference")
     passed = all(check["within"] for check in checks.values())
     result = {"passed": passed, "passed_scope": "recorded Stage1 numerical gates and replay protocol only",
