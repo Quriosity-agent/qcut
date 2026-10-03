@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
@@ -142,6 +142,7 @@ test("Beauty Lab owned sampling checkpoint: seven real frames, grayscale, ZIP an
 			});
 		}
 		const destination = path.join(output, "owned-chain-comparison.zip");
+		await rm(destination, { force: true });
 		await app.evaluate(({ BrowserWindow }, filename) => {
 			BrowserWindow.getAllWindows()[0].webContents.session.once(
 				"will-download",
