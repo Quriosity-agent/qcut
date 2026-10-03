@@ -619,6 +619,10 @@ void installInitRecorders(void *engine) {
 
 }  // namespace
 
+extern "C" int qcut_bytenn_capture_sequence() {
+  return captureIO() ? sequence.load() : -1;
+}
+
 std::shared_ptr<BYTENN::ByteNNEngine> capturedEngineCreate() {
   std::shared_ptr<BYTENN::ByteNNEngine> engine = originalEngineCreate();
   installInitRecorders(engine.get());
