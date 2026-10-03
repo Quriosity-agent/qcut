@@ -35,6 +35,29 @@ def size_pair(*, value, zero=False):
         integer(value=item, minimum=0 if zero else 1, maximum=4096)
 
 
+def smoothing_states(*, value):
+    if not isinstance(value, list) or len(value) != 2:
+        raise ValueError("two explicit base smoothing partitions required")
+    for state, count in zip(value, (33, 73), strict=True):
+        if not isinstance(state, dict) or type(state.get("first")) is not bool:
+            raise ValueError("typed base smoothing state required")
+        if integer(value=state.get("count"), maximum=73) != count:
+            raise ValueError("base smoothing partition count mismatch")
+        for key, maximum in (("alpha", 1), ("scale", 2**20), ("escale", 32768)):
+            numbers(value=[state.get(key)], length=1, maximum=maximum)
+            if state[key] < 0:
+                raise ValueError("nonnegative base smoothing scalar required")
+        size_pair(value=[state.get("width"), state.get("height")])
+        for key, expected in (("current_xy", count * 2), ("previous_xy", count * 2),
+                              ("delta_x", count), ("delta_y", count)):
+            values = state.get(key)
+            if not isinstance(values, list) or len(values) not in ((expected,) if key == "current_xy" else (0, expected)):
+                raise ValueError("matching base smoothing vector required")
+            numbers(value=values, length=len(values), maximum=65536 if key.startswith("delta_") else 32768)
+        if len(state["delta_x"]) != len(state["delta_y"]) or (not state["first"] and len(state["delta_x"]) != count):
+            raise ValueError("initialized paired base smoothing history required")
+
+
 def validate_snapshot(*, row):
     if not isinstance(row, dict) or "error" in row:
         raise ValueError("geometry observer rejected native state")
@@ -109,6 +132,8 @@ def validate_snapshot(*, row):
         address = integer(value=face.get("alignment"), minimum=4096)
         if type(face.get("active")) is not bool:
             raise ValueError("typed geometry active bit required")
+        if "smoothing" in face:
+            smoothing_states(value=face["smoothing"])
         if "published" in face:
             published = face["published"]
             if not isinstance(published, dict):
