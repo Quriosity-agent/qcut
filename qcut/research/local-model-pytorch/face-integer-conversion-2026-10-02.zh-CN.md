@@ -49,8 +49,10 @@ ONNX 中没有自定义算子域；使用整数 MatMul、Add、Mul、Mod、Div�
 因此之前“定点网络无法用标准 ONNX 表达”的概括过强：本轮证明检测器的这个子集可以，
 但尚未证明所有定点网络都可以。
 
-当前支持 Input、普通/深度/膨胀深度卷积、Eltwise、Concat、Slice、LINEAR ×2 UpSampling。
-浮点头、特殊 Softmax、ShuffleNet 单边 lane 钳制、其他未知算子明确拒绝。
+本第一步的支持范围是 Input、普通/深度/膨胀深度卷积、Eltwise、Concat、Slice、LINEAR ×2 UpSampling。
+本步拒绝浮点头、特殊 Softmax、ShuffleNet 单边 lane 钳制及其他未知算子。后续
+[关键点整数骨干转换](face-alignment-backbone-conversion-2026-10-02.zh-CN.md) 已增加
+`Shuffle`/`ShuffleNet` 及单边 lane 钳制；不把本步的拒绝清单当成当前执行器的完整能力表。
 每个文件绑定一个输入尺寸；没有把两个静态 profile 冒充任意动态尺寸支持。
 PyTorch `.pt2` 使用 `torch.export`；ONNX 为与现有工具一致仍使用固定版本的 legacy exporter，
 当前可运行但有弃用警告，后续再单独迁移 exporter。
