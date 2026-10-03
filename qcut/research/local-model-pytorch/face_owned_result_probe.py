@@ -21,7 +21,7 @@ def validate_counts(*, frames: int, warmup: int) -> None:
 
 def probe_sources() -> dict[str, str]:
     sources = consumer.source_snapshot(original=False)
-    for name in ("face_owned_result_bridge.mm", "face_owned_result_probe.py",
+    for name in ("face_owned_result_bridge.mm", "face_owned_binding_bridge.mm", "face_owned_result_probe.py",
                  "face_render_stability_probe.py"):
         path = Path(__file__).with_name(name)
         sources[f"local-model-pytorch/{name}"] = digest(data=path.read_bytes())
@@ -29,8 +29,9 @@ def probe_sources() -> dict[str, str]:
     return sources
 
 
-def compile_owned(*, output: Path) -> None:
-    bridge = Path(__file__).with_name("face_owned_result_bridge.mm")
+def compile_owned(*, output: Path, binding: bool = False) -> None:
+    bridge = Path(__file__).with_name(
+        "face_owned_binding_bridge.mm" if binding else "face_owned_result_bridge.mm")
     sources = [bridge, *(path for path in consumer.source_files(original=True)
                          if path.name not in ("filter-host-main.mm", "filter-probe.mm"))]
     subprocess.run([
@@ -103,13 +104,14 @@ def run(*, args: argparse.Namespace) -> dict:
             if phase == "original":
                 consumer.compile_host(output=directory / "host", original=True)
             else:
-                compile_owned(output=directory / "host")
+                compile_owned(output=directory / "host", binding=args.binding)
             if probe_sources() != sources:
                 raise RuntimeError("ownership sources changed during compilation")
             environment = consumer.probe_environment(
                 runtime=runtime, out=directory, width=width, height=height,
                 mode="original" if phase == "original" else "trace",
                 eye_shift=0, has_replay=False)
+            environment.pop("QCUT_FACE_BIND_EYE_SHIFT", None)
             host = NativeHost(command=[str(directory / "host"), str(runtime),
                                        str(runtime / "Models"), str(package)],
                               environment=environment, log=directory / "host.log")
@@ -149,6 +151,16 @@ def run(*, args: argparse.Namespace) -> dict:
         events = [json.loads(line) for line in
                   (out / "clone-audit" / "records.jsonl").read_text().splitlines()]
         report.update(validate_audits(events=events, require_face=args.require_face))
+        if args.binding:
+            conversions = [event for event in events if event.get("event") == "owned_face_conversion"]
+            restorations = [event for event in events if event.get("event") == "owned_face_restored"]
+            if (not conversions or len(conversions) != len(restorations) or
+                    any(event.get("raw_clone_verified") is not True for event in conversions) or
+                    any(event.get("original_restored") is not True or
+                        event.get("gpu_complete") is not True for event in restorations)):
+                raise RuntimeError("owned clone was not consumed by FaceAdapter")
+            report.update(owned_result_rendered=True, owned_face_conversions=len(conversions),
+                          mode="owned-conversion")
         consumer.verify_library(runtime=runtime)
         if probe_sources() != sources or args.image.read_bytes() != source:
             raise RuntimeError("probe source or input changed during execution")
@@ -178,6 +190,7 @@ def main() -> None:
     parser.add_argument("--warmup", type=int, default=6)
     parser.add_argument("--require-face", action="store_true")
     parser.add_argument("--expect-change", action="store_true")
+    parser.add_argument("--binding", action="store_true")
     result = run(args=parser.parse_args())
     print(json.dumps({key: value for key, value in result.items() if key != "frames"}, indent=2))
 
