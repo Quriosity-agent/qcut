@@ -2,6 +2,8 @@
 
 日期：2026-10-03。分支：`codex/kpop-beauty-v6`，同一 PR #483。
 
+后续已将本轮自有 160 输入接入 ONNX/seed/平滑/坐标回映和实际 renderer，完整新 profile 七帧最终 RGBA 零差，见 [owned chain parity](face-preprocess-owned-chain-parity-2026-10-03.zh-CN.md)。下文保留本采样检查点当时的结论和边界；产品实时驱动仍未接通。
+
 ## 本检查点
 
 上一轮只静态定位了 matrix 之前的调用。本轮新增硬件断点 sidecar、串行原生基准对照和纯 CPU 自有采样重放；没有修改旧 50 个 provenance source、旧捕获、模型、运行库或效果包，也没有注册实时 candidate driver。
