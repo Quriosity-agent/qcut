@@ -523,6 +523,50 @@ describe("useBeautyLab draft and provenance", () => {
 	});
 
 	it.each([
+		{ source: "import" },
+		{ source: "capture" },
+	])("restores the timeline draft when $source replaces locked probe values", async ({
+		source,
+	}) => {
+		const initial = makeAdjustments();
+		initial.values.face_adjust_eye = 40;
+		const snapshot = structuredClone(initial);
+		const replay = makeResearchFrame();
+		replay.adjustments = {
+			enabled: true,
+			values: { face_adjust_eye: 100 },
+		};
+		load.mockResolvedValue(replay);
+		const { result } = await mountLab({ initialAdjustments: initial });
+		await act(async () => {
+			await result.current.loadRecord({ caseId: "front-smile", frameIndex: 2 });
+		});
+		expect(result.current.adjustments.values.face_adjust_eye).toBe(100);
+		if (source === "import") await importInput({ result });
+		if (source === "capture") act(() => result.current.captureFrame());
+		expect(result.current.record).toBeNull();
+		expect(result.current.native).toBeNull();
+		expect(result.current.candidate).toBeNull();
+		expect(result.current.adjustments).toEqual({
+			enabled: true,
+			values: initial.values,
+			makeup: initial.makeup,
+			faceTarget: { mode: "all" },
+			faces: undefined,
+		});
+		expect(result.current.adjustments.values).not.toBe(initial.values);
+		expect(result.current.adjustments.makeup).not.toBe(initial.makeup);
+		await act(async () => {
+			await result.current.renderNative();
+		});
+		expect(renderNative.mock.calls[0][0].adjustments).toEqual(
+			result.current.adjustments
+		);
+		expect(initial).toEqual(snapshot);
+		expect(replay.adjustments.values.face_adjust_eye).toBe(100);
+	});
+
+	it.each([
 		{ field: "source", value: "native-live" },
 		{ field: "sourceHashesVerified", value: false },
 		{ field: "nativeDependencies", value: false },
