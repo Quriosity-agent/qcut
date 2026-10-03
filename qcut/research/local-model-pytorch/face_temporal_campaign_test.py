@@ -189,9 +189,9 @@ class SyntheticCampaign:
         value.update(completed=True)
         if name in ("replay", "audit"):
             value.update(owned_initialization_used=self.args.owned_initialization,
-                         independent_160_sampling_input_used=self.args.independent_160_sampling,
+                         independent_160_sampling_input_used=False,
                          native_smoothing_seed_required=not self.args.owned_initialization,
-                         native_160_sampling_input_required=not self.args.independent_160_sampling,
+                         native_160_sampling_input_required=True,
                          native_smoothing_seed_predictions=[] if self.args.owned_initialization else [0, 20],
                          owned_smoothing_seed_predictions=[0, 20] if self.args.owned_initialization else [])
         if name == "replay":
@@ -331,20 +331,32 @@ class CampaignTests(unittest.TestCase):
                 self.assertFalse(campaign.run(args=fixture.args)["passed"])
             self.assertEqual(fixture.calls, [])
 
-    def test_independent_160_sampling_is_typed_dependent_and_forwarded(self):
-        for value, initialization, success in ((True, True, True), (True, False, False), (1, True, False)):
+    def test_independent_160_sampling_is_rejected_before_any_stage(self):
+        for value, initialization in ((True, True), (True, False), (1, True)):
             with self.subTest(value=value, initialization=initialization), tempfile.TemporaryDirectory() as directory:
                 fixture = SyntheticCampaign(root=Path(directory))
                 fixture.args.independent_160_sampling, fixture.args.owned_initialization = value, initialization
                 with fixture.patched():
                     report = campaign.run(args=fixture.args)
-                self.assertEqual(report["passed"], success, report["failures"])
-                if success:
-                    self.assertTrue(report["independent_160_sampling_requested"])
-                    self.assertIn("--independent-160-sampling", fixture.calls[1][0])
-                    self.assertIn("--owned-initialization", fixture.calls[1][0])
-                else:
-                    self.assertEqual(fixture.calls, [])
+                self.assertFalse(report["passed"])
+                self.assertFalse(report["completed"])
+                self.assertFalse(report["pipeline_parity"])
+                self.assertEqual(fixture.calls, [])
+                self.assertEqual(report["campaigns"], [])
+                expected = "unsupported" if value is True and initialization else "typed"
+                self.assertIn(expected, report["failures"][0])
+
+    def test_synthetic_audit_matches_the_real_supported_sampling_route(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = SyntheticCampaign(root=Path(directory))
+            fixture.args.owned_initialization = True
+            with fixture.patched():
+                report = campaign.run(args=fixture.args)
+            self.assertTrue(report["passed"], report["failures"])
+            audit = json.loads((fixture.args.out / "campaign-00/audit/report.json").read_text())
+            self.assertIs(audit["independent_160_sampling_input_used"], False)
+            self.assertIs(audit["native_160_sampling_input_required"], True)
+            self.assertNotIn("--independent-160-sampling", fixture.calls[1][0])
 
     def test_wrong_profile_counts_duplicates_and_dimensions_fail_before_subprocess(self):
         for target in ("zero", "five", "duplicate", "six_frames", "24_frames", "dimensions"):
