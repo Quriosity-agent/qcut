@@ -5,7 +5,7 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`，Git 根目录是其上一级。先阅读此文档，不再继续旧 agent；本轮子任务已经收尾。
 
-网络恢复后继续的最新检查点见下面“候选协议检查点”。实时驱动仍未注册；本次没有把未过门槛的采样器启用为产品后端。
+最新检查点见下面“实际 160 采样检查点”。已完成锁定 profile 的自有 source/crop/resize/int8 零差，但实时驱动仍未注册；不能把研究采样验收等同于任意画面产品后端接通。
 
 ## 当前交付
 
@@ -88,9 +88,24 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 - 本检查点：前端 381 项、主进程/原生回归 537 项，共 918 项通过。其中新增候选请求/结果边界 373 项、前端新增 87 项。Electron/Web 构建、TypeScript 与 Biome 通过。
 - 最终真实 Electron E2E 在 `output/playwright/beauty-lab-candidate-protocol-20261003-r3/` 通过（17.6 秒）：真实候选 IPC 不可用拒绝、原生处理、离线记录、ZIP/PNG、窄屏布局、时间线不变。原生大眼 40 仍改变 7,900 像素；时序记录原生→候选仍为 0 差，未引入像素误差。该目录保留 7 张截图和两个 ZIP；桌面与窄屏截图已人工查看。
 
-160 调查见 [actual 160 preprocessing](../../../research/local-model-pytorch/face-160-preprocess-next-probe-2026-10-03.zh-CN.md)。静态调用关系是 BGR 转换/旋转 → CropObjectRegion → resize → forward/inverse matrix → 160 predictor；矩阵在像素预处理之后构造，不是直接采样定义。已定位真实 call site、可变 Rect、target 字段、布尔分支、expansion 和返回 Mat；实际参数/中间像素尚未捕获。
+上一检查点的 160 调查见 [actual 160 preprocessing](../../../research/local-model-pytorch/face-160-preprocess-next-probe-2026-10-03.zh-CN.md)。静态调用关系是 BGR 转换/旋转 → CropObjectRegion → resize → forward/inverse matrix → 160 predictor；矩阵在像素预处理之后构造，不是直接采样定义。当时仅定位 call site、Rect、target、分支、expansion 和返回 Mat，尚未捕获实际值。
 
-该调查另跑 60 项 CPU 回归，旧 50 个 source 哈希仍匹配。两个 direct-affine 候选仍各有 67,068/76,800 个 int8 值不同，最大差 177，继续拒绝替换。新文档的硬件断点 sidecar 是待实现/待运行方案，不是已有 CLI 或新运行时验收。
+该调查另跑 60 项 CPU 回归，旧 50 个 source 哈希仍匹配。两个旧 direct-affine 候选仍各有 67,068/76,800 个 int8 值不同，最大差 177，继续拒绝替换。该旧方案及原审计没有修改；新捕获与自有采样见下面。
+
+## 实际 160 采样检查点
+
+详细证据、参数、边界和复现命令：[actual preprocessing parity](../../../research/local-model-pytorch/face-160-actual-preprocess-parity-2026-10-03.zh-CN.md)。本轮只新增 research 采集/重放源文件和测试，不改旧 50 source、模型、运行库、效果包或产品 candidate 能力声明。
+
+- `face_preprocess_memory.py`：有界 Mat/Rect/实际 caller 栈与字段读取。
+- `face_preprocess_lldb.py`：最多四个同时启用的硬件点，采集 source、crop-after、resize-return、Predict 前像素；只读，不用软件断点或目标函数求值。
+- `face_preprocess_probe.py`：旧源码/报告哈希锁定、两台串行 fresh host、七帧最终 RGBA 中立性、prediction/face-ID/network/window 关联。
+- `face_preprocess_replay.py`：实际 algorithm RGBA + pre-crop Rect/flags/expansion → 自有 BGR/crop/resize/int8。捕获像素只在生产之后做比较，不能输入生产函数。
+- 最终采集为 `.local/jianying-model-pytorch/face-160-preprocess-host-20261003-r6/`：26 predictions、34 callbacks、最大 4 个活动硬件点；七帧 `changed_pixels=0,max_delta=0`。
+- 最终自有重放为 `face-160-preprocess-replay-20261003-r5/`：prediction 0/20 的 source（921,600 值）、crop（230,187 值）、resize/int8（各 76,800 值）全部零差。两次是同一图和几何的冷启动/重获，非两个不同姿态样本。
+- 实际 pre-crop `[221,81,204,277]`、flags `[1,0,0]`、expansion `1.0` → post-crop `[185,81,277,277]` → nearest 160×160。不是通过 matrix 反解 ROI 来采样。
+- 本轮 CPU 回归 242 项通过（146 新测试 + 96 已有回归），没有重新跑产品 E2E/全仓库/CI；旧产品 E2E 不算新 driver 验收。三个子任务均已关闭，原生探针进程均已退出。
+- R5 采集曾 unexpected stop，被拒绝并保留失败记录；具体原因未定位。探针增加停止原因诊断，不自动继续、不退回软件断点；R6 完整通过。实验探针偶发停止仍是残余风险。
+- 仍需 native algorithm RGBA 生成、人脸框与 caller 参数；新 profile 尚未连接 ONNX/seed/时序/回映/renderer 的完整审计。任意画面驱动继续 `not-connected`；新研究门槛通过不自动启用实验室按钮。
 
 ## 代码入口
 
@@ -104,9 +119,9 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 
 ## 下一步顺序
 
-1. 先看最新 `output/playwright/beauty-lab-candidate-protocol-20261003-r3/e2e-report.json` 和 Git 状态。网络恢复后检查本地 HEAD 与远端 PR HEAD 一致；每个文件单独 commit 后 push，不改精度门槛。
-2. 候选接口已完成，driver 未注册。下一步按 160 调查文档新建只读 sidecar，在独占 native/GPU 时段捕获真实 source、裁剪前/后 Rect、flags、expansion、crop 像素、resize 返回像素及匹配的 predictor/NN window。库内直接 bl 不能只靠同名 DYLD_INTERPOSE；硬件断点不可用就记录阻塞，不改代码页。
-3. 逐阶段复现 BGR/旋转、裁剪扩框/截断/padding、resize、int8 输入转换；实际 160 tensor 必须全部 76,800 值相同，再接已验收 ONNX/seed/平滑/坐标回映。捕获值只作 oracle，不喂给候选。
+1. 先看最新 actual 160 capture R6 / replay R5 的 `report.json`、前一产品 E2E `output/playwright/beauty-lab-candidate-protocol-20261003-r3/e2e-report.json` 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
+2. 新建独立审计 profile，将本轮自有 160 tensor 接入已有 ONNX/seed/平滑/坐标回映重放；保持旧 50 source 及旧审计不变。不要用捕获 tensor 或 native 最终点作为生产输入。先验收中间张量，再重验相同 renderer 的最终 RGBA。
+3. 明确实时输入边界：当前仍用 native algorithm RGBA、pre-crop Rect/flags/expansion。再补完整画面缩放和新的格式/旋转/caller profile。当前两次相同几何的零差不能推广到任意画面。
 4. 对两个固定时序案例重验中间张量和最终像素，且观察中立性必须零差；然后将真实 driver 接到候选 provider，声明准确原生依赖并锁定 backendVersion。不要重新注入原生最终点以制造精度通过。
 5. 任意画面候选输出通过门槛后接实验室的真实候选处理按钮，再做预览/导出双链路。之后逐项增加脸型、鼻、嘴、眉、美妆、皮肤、美体及组合参数的对照样本。
 6. 再补真实移动、侧脸、多人、无脸、分钟级视频与 Windows/x86。当前单张图/短导出不能证明这些场景。
