@@ -146,10 +146,12 @@ def validate_inventory(*, evidence: dict) -> None:
         raise ValueError("capture inference total mismatch")
 
 
-def validate_capture(*, captured: dict) -> None:
+def validate_capture(*, captured: dict, expected_comparisons: int = 4) -> None:
+    if type(expected_comparisons) is not int or not 1 <= expected_comparisons <= 24:
+        raise ValueError("typed expected comparison count must be between 1 and 24")
     if (not isinstance(captured, dict) or captured.get("passed") is not True or
             captured.get("native_analysis_bypassed") is not False or
-            not isinstance(captured.get("comparisons"), list) or len(captured["comparisons"]) != 4 or
+            not isinstance(captured.get("comparisons"), list) or len(captured["comparisons"]) != expected_comparisons or
             any(not isinstance(item, dict) or item.get("equal") is not True for item in captured["comparisons"])):
         raise ValueError("passed pixel-neutral actual host capture required")
     validate_inventory(evidence=captured.get("captures"))
@@ -222,10 +224,51 @@ def validate_graph(*, graph: dict, size: int, names: list[str], network: dict) -
                 raise ValueError("captured tensor differs from graph shape or storage")
 
 
-def run(*, args: argparse.Namespace) -> dict:
+def stage1_input(*, network: dict, size: int, inference: int) -> dict:
+    inputs = [item for item in network["inputs"] if item["inference"] == inference]
+    if (len(inputs) != 1 or inputs[0]["name"] != "data" or
+            inputs[0]["dims_nwhc"] != [1, size, size, 3] or
+            inputs[0]["raw"] != [2 if size == 120 else 1, 6]):
+        raise ValueError("actual host Stage1 input storage mismatch")
+    return inputs[0]
+
+
+def validate_replacement_inputs(*, replacement_inputs, network: dict) -> dict | None:
+    if replacement_inputs is None:
+        return None
+    inferences = network["successful_inferences"]
+    if (not isinstance(inferences, list) or not 1 <= len(inferences) <= 129 or
+            any(type(value) is not int or not 0 <= value <= 128 for value in inferences) or
+            len(set(inferences)) != len(inferences)):
+        raise ValueError("bounded unique actual 120 inference indices required")
+    if type(replacement_inputs) is not dict or not 1 <= len(replacement_inputs) <= 129:
+        raise ValueError("bounded replacement input dict required")
+    replacements = {}
+    for key, values in replacement_inputs.items():
+        if (type(key) is not tuple or len(key) != 2 or type(key[0]) is not int or key[0] != 120 or
+                type(key[1]) is not int or not 0 <= key[1] <= 128):
+            raise ValueError("replacement keys must be (120, typed inference integer)")
+        if (type(values) is not np.ndarray or values.dtype != np.dtype(np.int16) or
+                values.shape != (1, 120, 120, 3) or (values < -128).any() or (values > 127).any()):
+            raise ValueError("replacement requires bounded signed int16 [1,120,120,3] pixels")
+        # Freeze caller memory before identity checks and execution share the replacement.
+        replacements[key] = values.copy(order="C")
+        replacements[key].setflags(write=False)
+    if set(replacements) != {(120, inference) for inference in inferences}:
+        raise ValueError("replacement inputs must cover all actual 120 inferences without unknown keys")
+    for key, values in replacements.items():
+        item = stage1_input(network=network, size=120, inference=key[1])
+        actual = load_tensor(item=item)
+        if actual.dtype != values.dtype or actual.shape != values.shape or actual.tobytes() != values.tobytes():
+            raise ValueError("independent 120 replacement input is not bit-exact with actual captured tensor")
+    return replacements
+
+
+def run(*, args: argparse.Namespace, replacement_inputs=None, expected_comparisons: int = 4) -> dict:
     out = fresh_output(path=args.out)
     report = dict(passed=False, native_inference_called=False, native_analysis_bypassed=False,
-                  full_frame_geometry_independent=False, model_outputs={}, failures=[])
+                  full_frame_geometry_independent=False, independent_120_sampling_input_used=False,
+                  model_outputs={}, failures=[])
     try:
         no_torch()
         import onnxruntime
@@ -235,9 +278,10 @@ def run(*, args: argparse.Namespace) -> dict:
         if onnxruntime.__version__ != "1.22.1":
             raise ValueError("Torch-free ORT 1.22.1 required")
         capture, root = (espresso_oracle.private_path(path=path) for path in (args.capture, args.root))
-        capture_bytes = bounded_bytes(path=capture / "report.json", limit=8 * 1024**2)
+        capture_limit = (8 if expected_comparisons == 4 else 32) * 1024**2
+        capture_bytes = bounded_bytes(path=capture / "report.json", limit=capture_limit)
         captured = load_report(data=capture_bytes)
-        validate_capture(captured=captured)
+        validate_capture(captured=captured, expected_comparisons=expected_comparisons)
         evidence = inventory(capture=capture / "capture")
         validate_inventory(evidence=evidence)
         if evidence != captured.get("captures"):
@@ -245,7 +289,8 @@ def run(*, args: argparse.Namespace) -> dict:
         exported_bytes = bounded_bytes(path=root / "summary.json", limit=16 * 1024**2)
         exported = load_report(data=exported_bytes)
         validate_export(exported=exported)
-        report.update(capture_sha256=digest(data=capture_bytes), export_summary_sha256=digest(data=exported_bytes),
+        report.update(expected_comparisons=expected_comparisons, capture_sha256=digest(data=capture_bytes),
+                      export_summary_sha256=digest(data=exported_bytes),
                       versions=dict(onnxruntime=onnxruntime.__version__, numpy=np.__version__),
                       source_sha256={name: digest(data=Path(__file__).with_name(name).read_bytes()) for name in (
                           Path(__file__).name, "face_render_model_capture.py", "face_alignment_heads_parity.py",
@@ -267,6 +312,7 @@ def run(*, args: argparse.Namespace) -> dict:
             graph = analyze(graph_bytes.decode("utf-8"))
             names = model["terminal_names"]
             validate_graph(graph=graph, size=size, names=names, network=network)
+            replacements = validate_replacement_inputs(replacement_inputs=replacement_inputs, network=network) if size == 120 else None
             checkers = comparisons(graph=graph)
             artifact = f"align-{size}/artifacts/model.onnx"
             path = root / artifact
@@ -294,12 +340,8 @@ def run(*, args: argparse.Namespace) -> dict:
                         digest(data=reference.tobytes()) != model["cases"]["recorded-face"]["input_sha256"]["data"]):
                     raise ValueError("recorded reference input provenance mismatch")
                 for inference in network["successful_inferences"]:
-                    inputs = [item for item in network["inputs"] if item["inference"] == inference]
-                    if (len(inputs) != 1 or inputs[0]["name"] != "data" or
-                            inputs[0]["dims_nwhc"] != [1, size, size, 3] or
-                            inputs[0]["raw"] != [2 if size == 120 else 1, 6]):
-                        raise ValueError("actual host Stage1 input storage mismatch")
-                    values = load_tensor(item=inputs[0])
+                    input_record = stage1_input(network=network, size=size, inference=inference)
+                    values = replacements[(120, inference)] if replacements is not None else load_tensor(item=input_record)
                     if (values < -128).any() or (values > 127).any():
                         raise ValueError("Stage1 signed pixels out of range")
                     heads = select_heads(outputs=network["outputs"], inference=inference, names=names)
@@ -313,17 +355,22 @@ def run(*, args: argparse.Namespace) -> dict:
                                                      descriptor=graph["descriptors"][name], raw=heads[name]["raw"])
                         np.save(out / f"size-{size}-infer-{inference:03d}-{name}.npy", output)
                     cases.append(dict(inference=inference, passed=all(item["passed"] for item in checks.values()),
-                                      checks=checks, actual_input_sha256=inputs[0]["sha256"],
+                                      checks=checks, actual_input_sha256=input_record["sha256"],
+                                      input_source="replacement_inputs" if replacements is not None else "captured_tensor",
+                                      replacement_input_sha256=digest(data=values.tobytes()) if replacements is not None else None,
+                                      replacement_input_source=f"replacement_inputs[(120, {inference})]" if replacements is not None else None,
                                       recorded_reference_input_equal=np.array_equal(values, reference),
                                       input_changed_elements=int(np.count_nonzero(values != reference))))
                 report["model_outputs"][str(size)] = dict(graph_sha256=model["graph_sha256"], onnx_sha256=file_digest,
                                                           successful_inferences=len(cases), cases=cases)
+                if replacements is not None:
+                    report["independent_120_sampling_input_used"] = len(cases) == len(replacements)
             finally:
                 runner = None
         if inventory(capture=capture / "capture") != evidence or any(
                 digest(data=bounded_bytes(path=path, limit=128 * 1024**2)) != expected for path, expected in all_files.items()):
             raise RuntimeError("actual model capture or ONNX artifact mutated during verification")
-        if (bounded_bytes(path=capture / "report.json", limit=8 * 1024**2) != capture_bytes or
+        if (bounded_bytes(path=capture / "report.json", limit=capture_limit) != capture_bytes or
                 bounded_bytes(path=root / "summary.json", limit=16 * 1024**2) != exported_bytes or
                 any(digest(data=Path(__file__).with_name(name).read_bytes()) != expected
                     for name, expected in report["source_sha256"].items())):
