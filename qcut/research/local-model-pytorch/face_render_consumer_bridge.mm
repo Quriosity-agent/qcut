@@ -164,6 +164,9 @@ std::uint64_t tracedUpdate(void* algorithm, void* input, void* segments,
     if (buffer == nullptr) return result;
     if (expected == nullptr || field<void*>(buffer, 0) != expected + 16)
       throw std::runtime_error("update result is not a FaceBuffer");
+#ifdef QCUT_FACE_RESULT_HOOK
+    inspectOwnedResult(buffer);
+#endif
     const auto begin = field<std::uintptr_t>(buffer, 0x38);
     const auto end = field<std::uintptr_t>(buffer, 0x40);
     if (end < begin || (end - begin) / 8 > 10 || (end - begin) % 8 != 0)
