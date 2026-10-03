@@ -121,6 +121,29 @@ class BoundaryTests(unittest.TestCase):
             with patch.object(fixture, "VIDEO_LIMIT", 4), self.assertRaises(ValueError):
                 fixture.video_identity(path=source)
 
+    def test_unspecified_sar_requires_opt_in_and_never_overrides_explicit_nonsquare(self):
+        for raw in ("missing", "N/A", "0:1"):
+            value = metadata()
+            if raw == "missing":
+                value["streams"][0].pop("sample_aspect_ratio")
+            else:
+                value["streams"][0]["sample_aspect_ratio"] = raw
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                fixture.video_metadata(value=value)
+            policy = fixture.video_metadata(value=value, assume_square_pixels=True)["sample_aspect_ratio"]
+            self.assertEqual(policy["raw"], None if raw == "missing" else raw)
+            self.assertEqual(policy["field_present"], raw != "missing")
+            self.assertEqual((policy["assumed_square_pixels"], policy["basis"]), (True, "caller-assumption"))
+        for raw in ("2:1", "16:15", "", None, True, 0):
+            value = metadata()
+            value["streams"][0]["sample_aspect_ratio"] = raw
+            for enabled in (False, True):
+                with self.subTest(raw=raw, enabled=enabled), self.assertRaises(ValueError):
+                    fixture.video_metadata(value=value, assume_square_pixels=enabled)
+        for flag in (1, 0, None, "true"):
+            with self.subTest(flag=flag), self.assertRaisesRegex(ValueError, "typed boolean"):
+                fixture.video_metadata(value=metadata(), assume_square_pixels=flag)
+
     def test_json_duplicate_nonfinite_not_object_limits_and_deadline(self):
         for data in (b'{"frames":[],"frames":[]}', b'{"duration":NaN}', b'[]', b'{oops'):
             commands = []
@@ -149,7 +172,7 @@ class BuildTests(unittest.TestCase):
             tool.chmod(0o700)
         self.args = argparse.Namespace(video=self.source, out=self.private / "fixture", start=0, end=1, count=7,
             width=1448, height=1086, parameter="face_adjust_eye", intensity=1, no_face=[],
-            ffmpeg=str(self.ffmpeg), ffprobe=str(self.ffprobe))
+            ffmpeg=str(self.ffmpeg), ffprobe=str(self.ffprobe), assume_square_pixels=False)
         self.probe_metadata, self.probe_frames = metadata(), decoded()
         self.failure = None
         self.image_size = None
@@ -219,6 +242,49 @@ class BuildTests(unittest.TestCase):
         self.assertIn("-noautorotate", command)
         self.assertEqual(command[command.index("-i") + 1], str(self.source))
         self.assertEqual(self.run.call_args.kwargs["timeout"], 180)
+
+    def test_missing_sar_default_rejects_and_explicit_assumption_is_audited_before_scale(self):
+        self.probe_metadata["streams"][0].pop("sample_aspect_ratio")
+        report = self.build()
+        self.assertFalse(report["passed"])
+        self.assertEqual(len(report["commands"]), 1)
+        self.assertNotIn("sample_aspect_ratio", report["source"]["ffprobe_metadata"]["streams"][0])
+        report = self.build(assume_square_pixels=True)
+        self.assertTrue(report["passed"], report["failures"])
+        self.assertEqual(report["sample_aspect_ratio_policy"], "caller-assumption")
+        audit = json.loads((Path(report["out"]) / "source.json").read_text())
+        self.assertEqual(audit, report["source"])
+        self.assertEqual(audit["sample_aspect_ratio"]["raw"], None)
+        self.assertTrue(audit["sample_aspect_ratio"]["assumed_square_pixels"])
+        command = report["commands"][-1]
+        filters = command[command.index("-vf") + 1]
+        self.assertIn(",setsar=1,scale=", filters)
+        self.assertEqual(filters.count("setsar=1"), 2)
+        self.probe_metadata["streams"][0]["sample_aspect_ratio"] = "1:1"
+        report = self.build(assume_square_pixels=True)
+        self.assertTrue(report["passed"])
+        self.assertFalse(report["source"]["sample_aspect_ratio"]["assumed_square_pixels"])
+        command = report["commands"][-1]
+        self.assertNotIn(",setsar=1,scale=", command[command.index("-vf") + 1])
+
+    def test_opt_in_strict_flag_remote_sources_nonsquare_and_mutation_stay_rejected(self):
+        for flag in (1, None, "true"):
+            with self.subTest(flag=flag), self.assertRaisesRegex(ValueError, "typed boolean"):
+                self.build(assume_square_pixels=flag)
+        self.run.assert_not_called()
+        with self.assertRaises(ValueError):
+            self.build(assume_square_pixels=True, video=Path("https://example.test/video.mp4"))
+        self.args.video = self.source
+        self.probe_metadata["streams"][0]["sample_aspect_ratio"] = "2:1"
+        report = self.build(assume_square_pixels=True)
+        self.assertFalse(report["passed"])
+        self.assertEqual(len(report["commands"]), 1)
+        self.probe_metadata["streams"][0].pop("sample_aspect_ratio")
+        self.failure = "source"
+        report = self.build(assume_square_pixels=True)
+        self.assertFalse(report["passed"])
+        self.assertIn("source video changed", report["failures"][0])
+        self.assertEqual([path.name for path in Path(report["out"]).iterdir()], ["report.json"])
 
     def test_zero_and_explicit_no_face_are_the_only_false_expect_change_controls(self):
         report = self.build(intensity=0)
@@ -303,6 +369,12 @@ class BuildTests(unittest.TestCase):
             self.assertEqual((args.width, args.height, args.count), (1448, 1086, 7))
             self.assertEqual(args.no_face, [3])
             self.assertEqual(args.ffmpeg, str(self.ffmpeg))
+            self.assertIs(args.assume_square_pixels, False)
+        with patch.object(fixture.sys, "argv", ["fixture", "--video", str(self.source), "--assume-square-pixels"]), \
+                patch.object(fixture, "build", return_value=dict(passed=True, out="private", failures=[])) as build, \
+                patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(fixture.main(), 0)
+            self.assertIs(build.call_args.kwargs["args"].assume_square_pixels, True)
 
 
 if __name__ == "__main__":
