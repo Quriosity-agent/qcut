@@ -21,6 +21,42 @@ import face_render_sequence_probe as probe
 def frame(**changes):
     return dict(image="photo.png", timestamp=0, parameters={"eye": [{"id": -1, "intensity": 1}]}, **changes)
 
+def owned_records(*, count=2):
+    conversion = dict(event="owned_face_conversion", faces=0, eye_shift=0,
+        raw_clone_verified=True, original_restored=False, native_analysis_bypassed=False)
+    restored = dict(event="owned_face_restored", original_restored=True, gpu_complete=True)
+    return b"".join((json.dumps(event) + "\n").encode() for _ in range(count) for event in (conversion, restored))
+
+
+class OwnedEvidenceTest(unittest.TestCase):
+    def test_empty_face_conversions_are_valid_and_counts_exclude_warmup(self):
+        evidence = probe.validate_owned_events(data=owned_records(), minimum=2)
+        self.assertEqual(evidence, dict(owned_face_conversions=2, owned_face_restorations=2))
+        probe.validate_owned_events(data=b"", minimum=0)
+        with self.assertRaises(RuntimeError):
+            probe.validate_owned_events(data=owned_records(count=1), minimum=2)
+
+    def test_false_flags_perturbation_bad_counts_and_malformed_json_fail(self):
+        for index, key, value in ((0, "raw_clone_verified", False), (0, "native_analysis_bypassed", True),
+                (0, "original_restored", True), (0, "eye_shift", .01), (0, "faces", True),
+                (1, "original_restored", False), (1, "gpu_complete", False)):
+            events = [json.loads(row) for row in owned_records().splitlines()]
+            events[index][key] = value
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                probe.validate_owned_events(data=b"\n".join(json.dumps(event).encode() for event in events), minimum=2)
+        for data in (b"[]\n", b"bad json", owned_records().splitlines()[0], b"\n".join(reversed(owned_records().splitlines()))):
+            with self.subTest(data=data), self.assertRaises((RuntimeError, ValueError)):
+                probe.validate_owned_events(data=data, minimum=2)
+
+    def test_owned_source_snapshot_merges_all_ownership_sources_lazily(self):
+        owned = SimpleNamespace(probe_sources=Mock(return_value={"owned-bridge": "owned-sha"}))
+        with patch.dict(sys.modules, {"face_owned_result_probe": owned}), \
+                patch.object(probe.consumer, "source_snapshot", return_value={"product-host": "sha"}):
+            snapshot = probe.source_snapshot(owned=True)
+        self.assertEqual(snapshot["owned-bridge"], "owned-sha")
+        self.assertIn("product-host", snapshot)
+        owned.probe_sources.assert_called_once()
+
 
 class ValidationTest(unittest.TestCase):
     def validate(self, *, frames, expect_change=False):
@@ -166,9 +202,10 @@ class GuardsTest(unittest.TestCase):
 
 
 class LoggingTest(unittest.TestCase):
-    def read(self, *, text, log_limit=probe.LOG_LIMIT):
+    def read(self, *, text, log_limit=probe.LOG_LIMIT, max_rows=25):
         host = probe.BoundedHost.__new__(probe.BoundedHost)
         host.protocol_rows, host.reader_error, host.rows = [], None, queue.Queue()
+        host.max_rows = max_rows
         host.process = Mock(stdout=io.StringIO(text))
         host.process.poll.return_value = None
         with tempfile.TemporaryDirectory() as temporary, patch.object(probe, "LOG_LIMIT", log_limit):
@@ -204,6 +241,10 @@ class LoggingTest(unittest.TestCase):
         timer.return_value.start.assert_called_once()
         timer.return_value.cancel.assert_called_once()
 
+    def test_owned_row_budget_includes_one_bootstrap_at_24_frames(self):
+        self.assertIsNone(self.read(text="QCUT\tREADY\t1\n" * 26, max_rows=26).reader_error)
+        self.assertIsInstance(self.read(text="QCUT\tREADY\t1\n" * 27, max_rows=26).reader_error, RuntimeError)
+
 
 class SequenceTest(unittest.TestCase):
     def setUp(self):
@@ -229,13 +270,16 @@ class SequenceTest(unittest.TestCase):
         self.pil.Image.frombytes.return_value = fake_image
         self.hosts = []
         self.outputs = lambda *, run_index, index, pixels: pixels
+        self.owned_events = lambda *, bootstrap: owned_records(count=1 if bootstrap else 2)
+        self.ownership = SimpleNamespace(compile_owned=Mock(side_effect=lambda **kw: kw["output"].write_bytes(b"owned-host")))
         for context in (patch.object(probe, "PRIVATE", self.root / "private"),
                         patch.object(probe, "source_snapshot", return_value={"source": "frozen"}),
                         patch.object(probe, "verify_runtime", return_value=None),
                         patch.object(probe.consumer, "compile_host", side_effect=lambda **kw: kw["output"].write_bytes(b"host")),
                         patch.object(probe, "BoundedHost", side_effect=self.host),
                         patch.dict(sys.modules, {"PIL": self.pil, "face_render_injection_inventory":
-                            SimpleNamespace(LIBRARY_SHA256="frozen-runtime", UUID="frozen-uuid")})):
+                            SimpleNamespace(LIBRARY_SHA256="frozen-runtime", UUID="frozen-uuid"),
+                            "face_owned_result_probe": self.ownership})):
             context.start()
             self.addCleanup(context.stop)
 
@@ -244,10 +288,16 @@ class SequenceTest(unittest.TestCase):
         host.process.poll.return_value = 0
         host.receive.side_effect = lambda **kw: host.protocol_rows.append("QCUT\tREADY\t1")
         run_index = len(self.hosts)
+        record = kwargs["environment"].get("QCUT_CONSUMER_RECORD")
+        if record:
+            Path(record).write_bytes(b"")
         def render(**request):
             index = int(request["request_id"].split("-")[-1])
             pixels = self.outputs(run_index=run_index, index=index, pixels=request["input_path"].read_bytes())
             request["output_path"].write_bytes(pixels)
+            if record:
+                with Path(record).open("ab") as stream:
+                    stream.write(self.owned_events(bootstrap=request["request_id"] == "warmup-0"))
             host.protocol_rows.append(f"QCUT\tRESULT\t{request['request_id']}\t0")
         host.render.side_effect = render
         self.hosts.append((host, kwargs))
@@ -383,6 +433,44 @@ class SequenceTest(unittest.TestCase):
         with patch.object(probe, "run", return_value=dict(passed=False, out="private", failures=[])), \
                 patch.object(sys, "argv", ["probe"]), patch("sys.stdout", new=io.StringIO()):
             self.assertEqual(probe.main(), 1)
+
+    def test_owned_compiler_bootstrap_arguments_trace_and_tested_seek_counts(self):
+        self.args.owned = True
+        frames = [{**frame(), "timestamp": 7.5}, frame()]
+        report = self.execute(frames=frames)
+        self.assertTrue(report["passed"], report["failures"])
+        self.ownership.compile_owned.assert_called_once_with(output=self.args.out / "owned-host", binding=True)
+        self.assertEqual(report["owned_face_conversions"], 4)
+        self.assertEqual(report["owned_face_restorations"], 4)
+        for host, kwargs in self.hosts:
+            self.assertEqual(host.render.call_count, 3)
+            warmup, first = [call.kwargs for call in host.render.call_args_list[:2]]
+            self.assertEqual(warmup["request_id"], "warmup-0")
+            for key in ("timestamp", "input_path", "parameters"):
+                self.assertEqual(warmup[key], first[key])
+            self.assertEqual(kwargs["max_rows"], 26)
+        environment = self.hosts[1][1]["environment"]
+        self.assertEqual(environment["QCUT_TRACE_UPDATES"], "1")
+        self.assertEqual(environment["QCUT_FACE_POINT_SHIFT"], "0")
+        self.assertTrue(environment["QCUT_CONSUMER_RECORD"].endswith("run-1/records.jsonl"))
+        self.assertTrue(self.hosts[0][1]["command"][0].endswith("/host"))
+        self.assertTrue(self.hosts[1][1]["command"][0].endswith("/owned-host"))
+
+    def test_owned_warmup_conversions_cannot_mask_missing_tested_conversions(self):
+        self.args.owned = True
+        self.owned_events = lambda *, bootstrap: owned_records(count=8 if bootstrap else 1)
+        report = self.execute(frames=[frame(), frame()])
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["owned_result_rendered"])
+        self.assertEqual(sum("tested-seek" in item["error"] for item in report["failures"]), 2)
+
+    def test_owned_bootstrap_failure_skips_tested_frames(self):
+        self.args.owned = True
+        self.outputs = Mock(side_effect=RuntimeError("bootstrap failed"))
+        report = self.execute(frames=[frame(), frame()])
+        self.assertFalse(report["passed"])
+        self.assertTrue(all(detail["skipped"] for run in report["runs"] for detail in run["frames"]))
+        self.assertTrue(all(host.render.call_count == 1 for host, _ in self.hosts))
 
 
 if __name__ == "__main__":
