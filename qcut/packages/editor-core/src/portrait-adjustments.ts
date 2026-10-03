@@ -200,6 +200,8 @@ export interface MediaPortraitManualBody {
 
 export interface MediaPortraitAdjustments {
 	enabled: boolean;
+	/** Global skin LUT; absent keeps legacy pink, null explicitly disables it. */
+	skinToneResourceId?: MediaPortraitSkinToneResourceId | null;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
 	faceTarget?: MediaPortraitFaceTarget;
 	makeup?: Partial<
@@ -221,6 +223,17 @@ export const DEFAULT_MEDIA_PORTRAIT_ADJUSTMENTS: MediaPortraitAdjustments = {
 	values: {},
 };
 
+export const MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS = [
+	"7408757645705743616",
+	"7408757645705760000",
+	"7408757645705776384",
+	"7408757645705792768",
+	"7408757645705809152",
+] as const;
+
+export type MediaPortraitSkinToneResourceId =
+	(typeof MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS)[number];
+
 export function normalizeMediaPortraitAdjustments({
 	adjustments,
 }: {
@@ -234,6 +247,14 @@ export function normalizeMediaPortraitAdjustments({
 		}
 	}
 	const faceTarget = normalizeFaceTarget({ target: adjustments?.faceTarget });
+	const skinToneResourceId = adjustments?.skinToneResourceId;
+	if (
+		skinToneResourceId !== undefined &&
+		skinToneResourceId !== null &&
+		!MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS.includes(skinToneResourceId)
+	) {
+		throw new Error("Unknown portrait skin tone resource");
+	}
 	const makeup = normalizeMakeupSelections({ selections: adjustments?.makeup });
 	const faces = normalizeFaceEntries({ entries: adjustments?.faces });
 	const manualRetouch = normalizeManualRetouch({
@@ -245,6 +266,7 @@ export function normalizeMediaPortraitAdjustments({
 	return {
 		enabled: adjustments?.enabled ?? false,
 		values,
+		...(skinToneResourceId === undefined ? {} : { skinToneResourceId }),
 		...(faceTarget ? { faceTarget } : {}),
 		...(Object.keys(makeup).length > 0 ? { makeup } : {}),
 		...(faces.length > 0 ? { faces } : {}),
@@ -619,7 +641,12 @@ export function hasMediaPortraitAdjustments({
 	if (!adjustments?.enabled) return false;
 	if (
 		MEDIA_PORTRAIT_ADJUSTMENT_KEYS.some(
-			(key) => (adjustments.values?.[key] ?? 0) !== 0
+			(key) =>
+				!(
+					adjustments.skinToneResourceId === null &&
+					(key === "face_adjust_skin_Intensity" ||
+						key === "face_adjust_skin_ColdWarm")
+				) && (adjustments.values?.[key] ?? 0) !== 0
 		)
 	) {
 		return true;
@@ -642,7 +669,12 @@ export function hasMediaPortraitAdjustments({
 	return (adjustments.faces ?? []).some(
 		(face) =>
 			MEDIA_PORTRAIT_ADJUSTMENT_KEYS.some(
-				(key) => (face.values?.[key] ?? 0) !== 0
+				(key) =>
+					!(
+						adjustments.skinToneResourceId === null &&
+						(key === "face_adjust_skin_Intensity" ||
+							key === "face_adjust_skin_ColdWarm")
+					) && (face.values?.[key] ?? 0) !== 0
 			) ||
 			MEDIA_PORTRAIT_MAKEUP_CATEGORIES.some(
 				(category) => (face.makeup?.[category]?.intensity ?? 0) > 0
