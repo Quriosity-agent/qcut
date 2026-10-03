@@ -60,11 +60,11 @@ def run(*, args):
         for key, value in (("capture", str(root)), ("candidate", str(candidate)), ("render", str(rendered))):
             audit.same(actual=proof.get(key), expected=value, label="export audit " + key)
         context = capture.load(root=root, locked=locked)
+        profile = probe.profile_report_paths(**probe.profile_report_arguments(evidence=context["evidence"]))
         files = dict(capture=root / "report.json", candidate=candidate.with_name("report.json"),
             render=rendered / "report.json", model=candidate.parent / "onnx/report.json",
             summary=models / "summary.json", originalCapture=context["original"] / "report.json",
-            originalReplay=probe.PRIVATE / probe.OLD_REPORTS["sequence_replay"] / "report.json",
-            originalRender=probe.PRIVATE / probe.OLD_REPORTS["sequence_render"] / "report.json",
+            originalReplay=profile["sequence_replay"], originalRender=profile["sequence_render"],
             originalAudit=Path(context["evidence"]["audit"]) / "report.json")
         for key, expected in (("capture", "capture_sha256"), ("candidate", "candidate_report_sha256"),
                               ("render", "render_report_sha256"), ("model", "model_report_sha256")):
