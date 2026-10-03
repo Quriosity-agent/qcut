@@ -1,7 +1,14 @@
 import { Blob as NodeBlob, Buffer } from "node:buffer";
+import { createHash, webcrypto } from "node:crypto";
 import JSZip from "jszip";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	BEAUTY_LAB_CANDIDATE_BACKEND,
+	BEAUTY_LAB_CANDIDATE_PROTOCOL,
+	type BeautyLabCandidateResult,
+} from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab-candidate-contract";
 import type { BeautyLabFrame } from "../beauty-lab-difference";
 import { exportBeautyLabComparison } from "../beauty-lab-export";
 
@@ -66,6 +73,37 @@ const options = {
 	record: { caseId: "front-smile", frameIndex: 2 },
 };
 
+function makeCandidateReport({
+	inputFrame = input,
+	candidateFrame = candidate,
+}: {
+	inputFrame?: BeautyLabFrame;
+	candidateFrame?: BeautyLabFrame;
+} = {}): BeautyLabCandidateResult {
+	return {
+		protocol: BEAUTY_LAB_CANDIDATE_PROTOCOL,
+		source: "live-candidate",
+		backendId: BEAUTY_LAB_CANDIDATE_BACKEND,
+		backendVersion: "test-only-stub-v1",
+		requestId: "test-only-request",
+		requestFingerprint: createHash("sha256")
+			.update("test-only-request")
+			.digest("hex"),
+		inputSha256: createHash("sha256").update(inputFrame.rgba).digest("hex"),
+		sourceKey: "beauty-lab:test-only-source",
+		frameNumber: 7,
+		timestampSeconds: 13.75,
+		width: candidateFrame.width,
+		height: candidateFrame.height,
+		rgba: candidateFrame.rgba.slice(),
+		nativeDependencies: ["effect-rendering"],
+		stageMetrics: BEAUTY_LAB_CANDIDATE_STAGES.map((id, index) => ({
+			id,
+			durationMs: index + 0.5,
+		})),
+	};
+}
+
 interface ComparisonManifest {
 	schema: string;
 	createdAt: string;
@@ -80,6 +118,7 @@ interface ComparisonManifest {
 	nativeResultPresent: boolean;
 	candidateResultPresent: boolean;
 	arbitraryFrameCandidateReady: boolean;
+	candidateProvenance: Omit<BeautyLabCandidateResult, "rgba"> | null;
 	comparisons: {
 		name: string;
 		changedPixels: number;
@@ -111,6 +150,7 @@ beforeEach(() => {
 	canvases.clear();
 	createImageData.mockClear();
 	vi.stubGlobal("Blob", NodeBlob);
+	vi.stubGlobal("crypto", webcrypto);
 	vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
 		getCanvasContext
 	);
@@ -153,6 +193,7 @@ describe("exportBeautyLabComparison ZIP", () => {
 			mode: "verified-offline-replay",
 			record: options.record,
 			nativeDependencies: true,
+			candidateProvenance: null,
 			arbitraryFrameCandidateReady: false,
 			nativeResultPresent: true,
 			candidateResultPresent: true,
@@ -232,6 +273,7 @@ describe("exportBeautyLabComparison ZIP", () => {
 		expect(manifest.mode).toBe("native-live");
 		expect(manifest.record).toBeNull();
 		expect(manifest.arbitraryFrameCandidateReady).toBe(false);
+		expect(manifest.candidateProvenance).toBeNull();
 		expect(manifest.nativeResultPresent).toBe(true);
 		expect(manifest.candidateResultPresent).toBe(false);
 		expect(manifest.comparisons).toHaveLength(1);
@@ -423,5 +465,274 @@ describe("exportBeautyLabComparison ZIP", () => {
 			"Canvas unavailable"
 		);
 		expect(draws).toHaveLength(0);
+	});
+});
+
+describe("exportBeautyLabComparison live candidate provenance", () => {
+	it("exports live metadata and stage metrics without RGBA, using the current input's WebCrypto digest", async () => {
+		const candidateReport = makeCandidateReport();
+		const before = JSON.stringify(candidateReport);
+		const digest = vi.spyOn(webcrypto.subtle, "digest");
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidateReport,
+			}),
+		});
+		const manifest = await readManifest({ zip });
+		const { rgba: reportPixels, ...provenance } = candidateReport;
+		expect(manifest).toMatchObject({
+			mode: "live-candidate",
+			record: null,
+			arbitraryFrameCandidateReady: true,
+			nativeDependencies: true,
+			nativeResultPresent: true,
+			candidateResultPresent: true,
+		});
+		expect(manifest.candidateProvenance).toEqual(provenance);
+		expect(manifest.candidateProvenance).not.toHaveProperty("rgba");
+		expect(manifest.candidateProvenance?.stageMetrics).toHaveLength(10);
+		expect(digest).toHaveBeenCalledTimes(1);
+		expect(digest.mock.calls[0][0]).toBe("SHA-256");
+		expect(new Uint8Array(digest.mock.calls[0][1] as ArrayBuffer)).toEqual(
+			input.rgba
+		);
+		expect(manifest.comparisons.map(({ name }) => name)).toEqual([
+			"original-native",
+			"original-candidate",
+			"native-candidate",
+		]);
+		expect(Object.keys(zip.files).sort()).toEqual([
+			"candidate.png",
+			"comparison.json",
+			"difference-native-candidate.png",
+			"difference-original-candidate.png",
+			"difference-original-native.png",
+			"native.png",
+			"original.png",
+		]);
+		expect(Array.from(draws[2].rgba)).toEqual(Array.from(reportPixels));
+		expect(JSON.stringify(candidateReport)).toBe(before);
+	});
+
+	it.each([
+		{ nativeDependencies: [] },
+		{ nativeDependencies: ["effect-rendering"] as const },
+	])("derives native dependencies from the report when no native baseline is exported ($nativeDependencies)", async ({
+		nativeDependencies,
+	}) => {
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				record: null,
+				native: null,
+				candidateReport: {
+					...makeCandidateReport(),
+					nativeDependencies: [...nativeDependencies],
+				},
+			}),
+		});
+		expect(await readManifest({ zip })).toMatchObject({
+			mode: "live-candidate",
+			arbitraryFrameCandidateReady: true,
+			nativeResultPresent: false,
+			candidateResultPresent: true,
+			nativeDependencies: nativeDependencies.length > 0,
+			candidateProvenance: { nativeDependencies: [...nativeDependencies] },
+		});
+		expect(zip.file("native.png")).toBeNull();
+		expect(zip.file("difference-native-candidate.png")).toBeNull();
+	});
+
+	it("hashes only the current RGBA view, not unrelated bytes in its backing buffer", async () => {
+		const backing = new Uint8Array([99, ...input.rgba, 88]);
+		const inputFrame = { ...input, rgba: backing.subarray(1, 5) };
+		const candidateReport = makeCandidateReport({ inputFrame });
+		expect(candidateReport.inputSha256).not.toBe(
+			createHash("sha256").update(backing).digest("hex")
+		);
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				input: inputFrame,
+				record: null,
+				candidateReport,
+			}),
+		});
+		expect((await readManifest({ zip })).candidateProvenance?.inputSha256).toBe(
+			createHash("sha256").update(input.rgba).digest("hex")
+		);
+		expect(backing).toEqual(new Uint8Array([99, ...input.rgba, 88]));
+	});
+
+	it.each([
+		{ candidateReport: undefined },
+		{ candidateReport: null },
+	])("rejects non-record candidate pixels with missing report $candidateReport before encoding", async ({
+		candidateReport,
+	}) => {
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidateReport,
+			})
+		).rejects.toThrow("requires request provenance");
+		expect(draws).toHaveLength(0);
+		expect(canvases.size).toBe(0);
+	});
+
+	it.each([
+		{ mismatch: "mixed record", record: options.record, candidate },
+		{ mismatch: "missing pixels", record: null, candidate: null },
+		{
+			mismatch: "mixed record without pixels",
+			record: options.record,
+			candidate: null,
+		},
+	])("rejects report with $mismatch", async ({ record, candidate }) => {
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record,
+				candidate,
+				candidateReport: makeCandidateReport(),
+			})
+		).rejects.toThrow("provenance does not match exported pixels");
+		expect(draws).toHaveLength(0);
+		expect(canvases.size).toBe(0);
+	});
+
+	it.each([
+		{ field: "protocol", value: "unknown-protocol" },
+		{ field: "backendId", value: "untrusted-provider" },
+		{ field: "source", value: "verified-offline-replay" },
+		{ field: "source", value: "native-live" },
+		{ field: "width", value: 2 },
+		{ field: "height", value: 2 },
+		{ field: "rgba", value: new Uint8Array(3) },
+		{ field: "rgba", value: new Uint8Array(5) },
+		{ field: "rgba", value: new Uint8Array([9, 0, 0, 255]) },
+		{ field: "rgba", value: new Uint8Array([8, 0, 0, 0]) },
+		{ field: "rgba", value: [8, 0, 0, 255] },
+	])("rejects corrupted report $field=$value before encoding", async ({
+		field,
+		value,
+	}) => {
+		const candidateReport = {
+			...makeCandidateReport(),
+			[field]: value,
+		} as unknown as BeautyLabCandidateResult;
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidateReport,
+			})
+		).rejects.toThrow("provenance does not match exported pixels");
+		expect(draws).toHaveLength(0);
+		expect(canvases.size).toBe(0);
+	});
+
+	it.each([
+		{ change: "red", rgba: new Uint8Array([9, 0, 0, 255]) },
+		{ change: "alpha", rgba: new Uint8Array([8, 0, 0, 0]) },
+		{ change: "short RGBA", rgba: new Uint8Array(3) },
+		{ change: "long RGBA", rgba: new Uint8Array(5) },
+	])("rejects candidate $change changed after reporting", async ({ rgba }) => {
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidate: { ...candidate, rgba },
+				candidateReport: makeCandidateReport(),
+			})
+		).rejects.toThrow("provenance does not match exported pixels");
+		expect(draws).toHaveLength(0);
+	});
+
+	it.each([
+		{ width: 2, height: 1 },
+		{ width: 1, height: 2 },
+	])("rejects candidate dimensions $width x $height independently of report dimensions", async ({
+		width,
+		height,
+	}) => {
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidate: { ...candidate, width, height, rgba: new Uint8Array(8) },
+				candidateReport: makeCandidateReport(),
+			})
+		).rejects.toThrow("provenance does not match exported pixels");
+		expect(draws).toHaveLength(0);
+	});
+
+	it("rejects a valid report from another input with identical dimensions", async () => {
+		const otherInput = makeFrame({ name: "different-source", red: 99 });
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				input: otherInput,
+				record: null,
+				candidateReport: makeCandidateReport(),
+			})
+		).rejects.toThrow("provenance does not match the exported input");
+		expect(draws).toHaveLength(0);
+		expect(canvases.size).toBe(0);
+	});
+
+	it("rejects matching report and candidate dimensions that differ from the current input", async () => {
+		const candidateFrame = { ...candidate, width: 2, rgba: new Uint8Array(8) };
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidate: candidateFrame,
+				candidateReport: makeCandidateReport({ candidateFrame }),
+			})
+		).rejects.toThrow("provenance does not match exported pixels");
+		expect(draws).toHaveLength(0);
+	});
+
+	it.each([
+		{ field: "inputSha256", value: "0".repeat(64) },
+		{ field: "inputSha256", value: "not-a-digest" },
+		{ field: "requestFingerprint", value: "" },
+		{ field: "requestFingerprint", value: "a".repeat(63) },
+		{ field: "requestFingerprint", value: "a".repeat(65) },
+		{ field: "requestFingerprint", value: "g".repeat(64) },
+		{ field: "requestFingerprint", value: "A".repeat(64) },
+	])("rejects invalid hash provenance $field=$value", async ({
+		field,
+		value,
+	}) => {
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidateReport: { ...makeCandidateReport(), [field]: value },
+			})
+		).rejects.toThrow("provenance does not match the exported input");
+		expect(draws).toHaveLength(0);
+		expect(canvases.size).toBe(0);
+	});
+
+	it("keeps record exports offline with null live provenance, even when replay pixels match native", async () => {
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				candidate: { ...candidate, rgba: native.rgba.slice() },
+				candidateReport: null,
+			}),
+		});
+		expect(await readManifest({ zip })).toMatchObject({
+			mode: "verified-offline-replay",
+			record: options.record,
+			arbitraryFrameCandidateReady: false,
+			candidateProvenance: null,
+		});
 	});
 });
