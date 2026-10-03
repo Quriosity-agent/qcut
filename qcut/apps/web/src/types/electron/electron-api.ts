@@ -46,6 +46,7 @@ import type { ElectronJianyingEffectOps } from "./api-jianying-effects";
 import type { ElectronJianyingTransitionOps } from "./api-jianying-transitions";
 import type { ElectronJianyingFilterLabOps } from "./api-jianying-filter-lab";
 import type { ElectronJianyingPortraitAdjustmentOps } from "./api-jianying-portrait-adjustment";
+import type { ElectronBeautyLabOps } from "./api-beauty-lab";
 import type { ElectronJianyingPersonCutoutOps } from "./api-jianying-person-cutout";
 import type { ElectronJianyingMotionTrackingOps } from "./api-jianying-motion-tracking";
 import type { ElectronJianyingBasicVideoOps } from "./api-jianying-basic-video";
@@ -105,6 +106,7 @@ export interface ElectronAPI
 		ElectronJianyingEffectOps,
 		ElectronJianyingFilterLabOps,
 		ElectronJianyingPortraitAdjustmentOps,
+		ElectronBeautyLabOps,
 		ElectronJianyingPersonCutoutOps,
 		ElectronJianyingMotionTrackingOps,
 		ElectronJianyingBasicVideoOps,
