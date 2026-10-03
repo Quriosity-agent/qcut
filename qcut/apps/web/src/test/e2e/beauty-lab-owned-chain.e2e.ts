@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
 import { expect, test } from "@playwright/test";
+import { resolveBeautyLabResearchPaths } from "../../../../../electron/beauty-lab-research-config";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
 	preparePortraitReferenceProject,
@@ -11,9 +12,11 @@ import {
 } from "./helpers/portrait-reference";
 
 const source = process.env.QCUT_REAL_PORTRAIT_IMAGE_PATH;
-const packageRoot = path.resolve(
-	".local/jianying-model-pytorch/beauty-owned-chain-ui-20261003-r2"
-);
+const packageRoot = resolveBeautyLabResearchPaths({
+	sourceRoot: path.resolve("."),
+	isPackaged: false,
+	environment: process.env,
+}).ownedChainRoot!;
 const output = path.resolve(
 	process.env.QCUT_BEAUTY_OWNED_CHAIN_OUTPUT ??
 		"output/playwright/beauty-lab-owned-chain"
