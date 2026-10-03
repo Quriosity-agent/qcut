@@ -148,6 +148,30 @@ NSDictionary* returnedResult(const void* output) {
   return @{@"count":@(count), @"faces":faces};
 }
 
+NSDictionary* publishedPoints(uintptr_t record) {
+  const auto begin = read<uintptr_t>(record + 0x38), end = read<uintptr_t>(record + 0x40);
+  const auto capacity = read<uintptr_t>(record + 0x48);
+  if (end < begin || capacity < end || capacity - begin > 512 * 8 ||
+      (end - begin) % 8 != 0 || (capacity - begin) % 8 != 0 ||
+      (begin == 0 && (end != 0 || capacity != 0)) || (begin != 0 && begin < 4096))
+    throw std::runtime_error("unsupported published point vector record=" + std::to_string(record) +
+      " begin=" + std::to_string(begin) + " end=" + std::to_string(end) + " capacity=" + std::to_string(capacity));
+  const auto storage = (end - begin) / 8;
+  if (storage != 0 && storage != 106 && storage != 280)
+    throw std::runtime_error("unsupported published point count");
+  const auto count = storage == 0 ? 0 : 106;
+  return @{@"record":@(record), @"count":@(count), @"storage_points":@(storage),
+    @"capacity_points":@((capacity - begin) / 8), @"points_xy":floats(begin, count * 2)};
+}
+
+NSDictionary* runtimeState(uintptr_t owner) {
+  return @{@"base_output_mode_bit":@((read<uint8_t>(owner + 0x7e5c) & 1) != 0),
+    @"optimized_output_bit":@((read<uint8_t>(owner + 0x7e63) & 1) != 0),
+    @"config_cache_mode":@(read<int>(owner + 0x7e74)),
+    @"cache_skip_bit":@((read<uint8_t>(owner + 0x777c) & 1) != 0),
+    @"cache_counter":@(read<int>(owner + 0x7790))};
+}
+
 void capture(void* handle, const void* pixels, const void* output, const char* api, int rc, int format, int width, int height,
              int stride, int rotation) noexcept {
   if (!directory()) return;
@@ -178,6 +202,7 @@ void capture(void* handle, const void* pixels, const void* output, const char* a
           face[@"active"] = @((read<uint8_t>(record + 8) & 1) != 0);
           face[@"id"] = @(read<int>(record + 0xc));
           face[@"tracking_id"] = @(read<int>(record + 0x10));
+          face[@"published"] = publishedPoints(record);
           [faces addObject:face];
         }
       }
@@ -197,7 +222,8 @@ void capture(void* handle, const void* pixels, const void* output, const char* a
       save(@{@"index":@(index), @"api":@(api), @"rc":@(rc), @"handle":@(owner),
         @"request":@[@(format), @(width), @(height), @(stride), @(rotation)], @"bytenn_sequence":@(neuralSequence),
         @"frame_file":@(frame.c_str()), @"frame_bytes":@(static_cast<size_t>(stride) * height),
-        @"predictors":predictors, @"faces":faces, @"tables":tables(base), @"returned_result":returnedResult(output)}, index);
+        @"predictors":predictors, @"faces":faces, @"tables":tables(base), @"returned_result":returnedResult(output),
+        @"runtime_state":runtimeState(owner)}, index);
     } catch (const std::exception& error) {
       try { save(@{@"index":@(index), @"error":@(error.what())}, index); } catch (...) {}
     }
