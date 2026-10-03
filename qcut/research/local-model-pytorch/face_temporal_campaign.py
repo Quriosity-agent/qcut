@@ -124,6 +124,7 @@ def prepare(*, args, locked):
     independent = getattr(args, "independent_160_sampling", False)
     require(condition=type(independent) is bool and (not independent or args.owned_initialization),
             message="typed independent-160-sampling requires owned-initialization")
+    require(condition=not independent, message="independent-160-sampling is unsupported by the campaign audit profile")
     bounded_integer(value=args.stage_timeout, minimum=1, maximum=3600)
     bounded_integer(value=args.deadline, minimum=1, maximum=14400)
     paths = {name: local_path(path=getattr(args, name), directory=True) for name in ("base_capture", "models_root", "runtime", "package")}
@@ -408,7 +409,8 @@ def main():
     parser.add_argument("--stage-timeout", type=int, default=900)
     parser.add_argument("--deadline", type=int, default=7200)
     parser.add_argument("--owned-initialization", action="store_true")
-    parser.add_argument("--independent-160-sampling", action="store_true")
+    parser.add_argument("--independent-160-sampling", action="store_true",
+                        help="currently rejected: the campaign audit profile does not verify this route")
     report = run(args=parser.parse_args())
     print(json.dumps({key: report[key] for key in ("completed", "passed", "pipeline_parity", "failures")}, allow_nan=False))
     return 0 if report["passed"] else 1
