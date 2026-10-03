@@ -1,8 +1,8 @@
 """Owned ordinary smoothing with explicit native initialization dependencies.
 
-Only native parameters, initialization signals and pre-update initialization
-seeds are consumed. Published/current points are reference checks, never a
-candidate correction. This does not bypass native detection or initialization.
+Native parameters and initialization signals remain required. Initialization
+can use an explicit owned 160-profile seed; the legacy native seed route is
+separate and recorded. Published/current points are reference checks only.
 """
 from __future__ import annotations
 
@@ -53,14 +53,17 @@ def state_checks(*, owned, observed, initialized):
 
 
 class TemporalReplay:
-    def __init__(self):
+    def __init__(self, *, owned_initialization=False):
+        if type(owned_initialization) is not bool:
+            raise ValueError("typed owned initialization policy required")
+        self.owned_initialization = owned_initialization
         self.state = None
         self.identity = None
         self.profile = None
         self.index = -1
         self.seen_ids = set()
 
-    def apply(self, *, snapshot, points):
+    def apply(self, *, snapshot, points, initialization_seed=None):
         validate_snapshot(row=snapshot)
         if snapshot["index"] != self.index + 1:
             raise ValueError("ordered contiguous temporal predictions required")
@@ -72,10 +75,10 @@ class TemporalReplay:
         if len(active) > 1:
             raise ValueError("multi-face temporal association remains unresolved")
         if not active:
-            if points is not None:
+            if points is not None or initialization_seed is not None:
                 raise ValueError("no-face prediction must not carry candidate points")
             self.state, self.identity, self.profile, self.index = None, None, None, snapshot["index"]
-            return None, dict(passed=True, mode="no-face", checks={}, native_seed_used=False)
+            return None, dict(passed=True, mode="no-face", checks={}, native_seed_used=False, owned_seed_used=False)
         face = active[0]
         if not isinstance(points, np.ndarray) or points.dtype != np.float32 or points.shape != (106, 2):
             raise ValueError("owned float32 106-point prediction required")
@@ -90,24 +93,35 @@ class TemporalReplay:
             raise ValueError("reactivated or reassigned face ID is unresolved")
         if self.state is not None and (new or profile != self.profile):
             raise ValueError("unobserved live identity/parameter transition rejected")
-        native_seed = new and not initialized
+        needs_seed = new and not initialized
+        if initialization_seed is not None and (not needs_seed or not self.owned_initialization):
+            raise ValueError("unexpected or undeclared owned initialization seed")
+        if needs_seed and self.owned_initialization and initialization_seed is None:
+            raise ValueError("owned initialization seed required; native fallback forbidden")
+        native_seed = needs_seed and not self.owned_initialization
+        owned_seed = needs_seed and self.owned_initialization
         if initialized:
             state = initialize(points=points, states=states)
             result, mode = points.copy(), "owned-input-initialization"
         else:
             state = self.state
             if state is None:
-                if any(len(item["previous_xy"]) != item["count"] * 2 for item in states):
-                    raise ValueError("explicit native pre-update initialization seed required")
-                seed = np.concatenate([xy(values=item["previous_xy"]) for item in states])
+                seed = initialization_seed
+                if native_seed:
+                    if any(len(item["previous_xy"]) != item["count"] * 2 for item in states):
+                        raise ValueError("explicit native pre-update initialization seed required")
+                    seed = np.concatenate([xy(values=item["previous_xy"]) for item in states])
+                if (not isinstance(seed, np.ndarray) or seed.dtype != np.float32 or seed.shape != (106, 2)):
+                    raise ValueError("owned float32 106-point initialization seed required")
                 state = initialize(points=seed, states=states)
             result, state = math.update_base(state=state, points=points, optimized=False)
-            mode = "native-initialization-seed" if native_seed else "owned-history-update"
+            mode = "native-initialization-seed" if native_seed else (
+                "owned-initialization-seed" if owned_seed else "owned-history-update")
         checks = state_checks(owned=state, observed=states, initialized=initialized)
         passed = all(check["exact"] for check in checks.values())
         if not passed:
             raise RuntimeError("owned temporal state differs; no reference correction")
         self.state, self.identity, self.profile, self.index = state, identity, profile, snapshot["index"]
         self.seen_ids.add(face["id"])
-        return result, dict(passed=passed, mode=mode, native_seed_used=native_seed,
+        return result, dict(passed=passed, mode=mode, native_seed_used=native_seed, owned_seed_used=owned_seed,
                             native_initialization_signal_required=True, checks=checks)
