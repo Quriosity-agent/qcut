@@ -5,6 +5,10 @@ import type {
 	MediaPortraitPersonBindingAnchor,
 } from "@/types/timeline";
 import type { JianyingPortraitDetectedFace } from "@/types/electron";
+import {
+	applyGlobalPortraitSkinTone,
+	withoutSkinToneValues,
+} from "./portrait-skin-tone";
 
 /**
  * Which adjustment set the panel is editing. `all` is the legacy whole-frame
@@ -119,6 +123,7 @@ export function projectPortraitAdjustments({
 	return {
 		...adjustments,
 		values: entry?.values ?? {},
+		skinToneResourceId: undefined,
 		...(entry?.makeup ? { makeup: entry.makeup } : { makeup: undefined }),
 	};
 }
@@ -138,6 +143,18 @@ export function applyPortraitAdjustments({
 	edited: MediaPortraitAdjustments;
 }): MediaPortraitAdjustments {
 	if (scope.mode === "all") return edited;
+	// A preset may include a global LUT while its other controls target one face.
+	if (edited.skinToneResourceId !== undefined) {
+		return applyPortraitAdjustments({
+			adjustments: applyGlobalPortraitSkinTone({ adjustments, edited }),
+			scope,
+			edited: {
+				...edited,
+				skinToneResourceId: undefined,
+				values: withoutSkinToneValues({ values: edited.values }),
+			},
+		});
+	}
 	const current = portraitFaceEntry({
 		adjustments,
 		personBindingId: scope.personBindingId,
