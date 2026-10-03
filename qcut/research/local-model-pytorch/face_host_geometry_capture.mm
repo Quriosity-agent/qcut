@@ -143,9 +143,16 @@ void capture(void* handle, const char* api, int rc, int format, int width, int h
         throw std::runtime_error("unsupported prediction result or face pool");
       NSMutableArray* faces = [NSMutableArray array];
       for (size_t slot = 0; slot < 10; ++slot) {
-        const auto object = read<uintptr_t>(begin + slot * 400);
+        const auto record = begin + slot * 400;
+        const auto object = read<uintptr_t>(record);
         NSDictionary* value = alignment(object, slot);
-        if (value) [faces addObject:value];
+        if (value) {
+          NSMutableDictionary* face = [value mutableCopy];
+          face[@"active"] = @((read<uint8_t>(record + 8) & 1) != 0);
+          face[@"id"] = @(read<int>(record + 0xc));
+          face[@"tracking_id"] = @(read<int>(record + 0x10));
+          [faces addObject:face];
+        }
       }
       NSMutableArray* predictors = [NSMutableArray array];
       for (const auto offset : {0x7878, 0x7898}) {
