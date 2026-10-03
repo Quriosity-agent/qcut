@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { expect, test, type Locator } from "@playwright/test";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
+import { JIANYING_PORTRAIT_SKIN_TONES } from "../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
 import type { MediaPortraitAdjustmentKey } from "../../../../../electron/jianying-portrait-adjustment-contract";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
@@ -21,6 +22,9 @@ interface MatrixCase {
 	id: string;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
 	lip?: boolean;
+	skinTone?: (typeof JIANYING_PORTRAIT_SKIN_TONES)[number];
+	clearSkinTone?: boolean;
+	expectUnchanged?: boolean;
 }
 
 const cases: MatrixCase[] = [
@@ -30,6 +34,24 @@ const cases: MatrixCase[] = [
 	{
 		id: "skin-tone",
 		values: { face_adjust_skin_Intensity: 60, face_adjust_skin_ColdWarm: 25 },
+	},
+	...JIANYING_PORTRAIT_SKIN_TONES.map((skinTone) => ({
+		id: `skin-${skinTone.resourceId}`,
+		values: { face_adjust_skin_Intensity: 60, face_adjust_skin_ColdWarm: 25 },
+		skinTone,
+	})),
+	{
+		id: "skin-none",
+		values: {},
+		skinTone: JIANYING_PORTRAIT_SKIN_TONES[0],
+		clearSkinTone: true,
+		expectUnchanged: true,
+	},
+	{
+		id: "skin-zero",
+		values: { face_adjust_skin_Intensity: 0 },
+		skinTone: JIANYING_PORTRAIT_SKIN_TONES[3],
+		expectUnchanged: true,
 	},
 	{ id: "jawbone", values: { face_adjust_ZoomJawbone: 60 } },
 	{ id: "chin", values: { face_adjust_Chin: 40 } },
@@ -46,6 +68,17 @@ const cases: MatrixCase[] = [
 			face_adjust_ZoomJawbone: 35,
 		},
 		lip: true,
+	},
+	{
+		id: "combined-skin",
+		values: {
+			face_adjust_Smooth: 30,
+			face_adjust_eye: 25,
+			face_adjust_skin_Intensity: 60,
+			face_adjust_skin_ColdWarm: -25,
+		},
+		lip: true,
+		skinTone: JIANYING_PORTRAIT_SKIN_TONES[3],
 	},
 ];
 const groupLabels = {
@@ -87,6 +120,22 @@ async function applyCase({
 	controls: Locator;
 	sample: MatrixCase;
 }) {
+	if (sample.skinTone) {
+		await openGroup({ controls, label: groupLabels.skin });
+		const palette = controls.getByTestId("portrait-skin-tone-palette");
+		const swatch = palette.getByRole("button", {
+			name: sample.skinTone.titleZh,
+			exact: true,
+		});
+		await expect(swatch).toBeEnabled();
+		await swatch.click();
+		await expect(swatch).toHaveAttribute("aria-pressed", "true");
+		if (sample.clearSkinTone) {
+			const none = palette.getByRole("button", { name: "无肤色", exact: true });
+			await none.click();
+			await expect(none).toHaveAttribute("aria-pressed", "true");
+		}
+	}
 	await Object.entries(sample.values).reduce(async (previous, [key, value]) => {
 		await previous;
 		const control = JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.find(
@@ -128,6 +177,7 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 	);
 	const app = await startElectronApp({ userDataDirectory });
 	const samples: Array<Record<string, unknown>> = [];
+	const resultHashes = new Map<string, string>();
 	const pageErrors: string[] = [];
 	let passed = false;
 	try {
@@ -182,16 +232,25 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 			});
 			expect(report.gain).toBe(8);
 			expect(report.adjustments.values).toEqual(sample.values);
+			expect(report.adjustments.skinToneResourceId).toBe(
+				sample.clearSkinTone ? null : sample.skinTone?.resourceId
+			);
 			expect(report.adjustments.makeup ?? {}).toEqual(
 				sample.lip ? { lip: { cardId: "lip-soft-pink", intensity: 80 } } : {}
 			);
-			if (sample.id === "zero")
+			if (sample.id === "zero" || sample.expectUnchanged)
 				expect(report.comparisons[0].changedPixels).toBe(0);
 			else
 				expect(report.comparisons[0].changedPixels, sample.id).toBeGreaterThan(
 					0
 				);
 			expect(report.comparisons[0].alphaMax).toBe(0);
+			resultHashes.set(
+				sample.id,
+				createHash("sha256")
+					.update(await zip.file("native.png")!.async("nodebuffer"))
+					.digest("hex")
+			);
 			await Promise.all(
 				["original", "native", "difference-original-native"].map(
 					async (name) => {
@@ -212,6 +271,16 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 			expect(await timeline()).toBe(before);
 			samples.push({ id: sample.id, ...report });
 		}, Promise.resolve());
+		expect(
+			new Set(
+				JIANYING_PORTRAIT_SKIN_TONES.map((tone) =>
+					resultHashes.get(`skin-${tone.resourceId}`)
+				)
+			).size
+		).toBe(5);
+		expect(resultHashes.get("skin-7408757645705760000")).toBe(
+			resultHashes.get("skin-tone")
+		);
 		await page.setViewportSize({ width: 390, height: 844 });
 		await expect
 			.poll(() =>
@@ -242,6 +311,7 @@ test("Beauty Lab real native matrix exports exact grayscale and isolated per-fea
 					jianyingUiComparisonPerformed: false,
 					expectedCases: cases.length,
 					samples,
+					resultHashes: Object.fromEntries(resultHashes),
 					pageErrors,
 				},
 				null,
