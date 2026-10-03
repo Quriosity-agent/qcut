@@ -23,6 +23,8 @@ def inputs():
         state["mode"] = "owned-initialization-seed"
         face = snapshot["faces"][0]
         inferred = next(item for item in association["inferences"] if item["size"] == 160)
+        tracking = next(item for item in association["inferences"] if item["size"] == 120)
+        inferred["record_index"], tracking["record_index"] = tracking["record_index"], inferred["record_index"]
         case["owned_initialization"] = dict(prediction=snapshot["index"], id=face["id"], slot=face["slot"],
             inference=inferred["inference"], network=inferred["network"], source="onnx-160-detection-backmap",
             passed=True, check=point_metric(), native_point_seed_used=False, native_detection_geometry_required=True)
@@ -30,6 +32,33 @@ def inputs():
 
 
 class InitializationAuditTests(unittest.TestCase):
+    def test_ordered_seed_proof_is_independently_recomputed(self):
+        from face_host_initialization import select_initialization
+        value = inputs()
+        snapshot = value["capture"]["geometry_snapshots"][0]
+        association = value["capture"]["prediction_inferences"][0]
+        proof = value["sequence_replay"]["cases"][0]["owned_initialization"]
+        _, selected = select_initialization(snapshot=snapshot, association=association)
+        proof.update(selected)
+        self.assertTrue(audit.audit_reports(**value)["passed"])
+        for key in selected:
+            changed = deepcopy(value)
+            target = changed["sequence_replay"]["cases"][0]["owned_initialization"]
+            target[key] = [] if key == "excluded_160_inferences" else "forged"
+            if key == "excluded_160_inferences":
+                target[key] = [True]
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                audit.audit_reports(**changed)
+
+    def test_posttracking_seed_is_rejected(self):
+        value = inputs()
+        association = value["capture"]["prediction_inferences"][0]
+        tracking = next(item for item in association["inferences"] if item["size"] == 120)
+        seed = next(item for item in association["inferences"] if item["size"] == 160)
+        seed["record_index"], tracking["record_index"] = tracking["record_index"], seed["record_index"]
+        with self.assertRaisesRegex(ValueError, "actual 160"):
+            audit.audit_reports(**value)
+
     def test_two_owned_seeds_remove_point_seed_dependency_but_not_native_inputs(self):
         value = inputs()
         original = deepcopy(value)
