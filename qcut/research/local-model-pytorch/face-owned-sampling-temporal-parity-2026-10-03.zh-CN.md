@@ -4,6 +4,12 @@
 沿用 [PR #483](https://github.com/Quriosity-agent/qcut/pull/483)，逐文件提交并推送。
 接续 [上一阶段实际几何验收](face-host-geometry-parity-2026-10-03.zh-CN.md)。
 
+## 历史源码周期声明
+
+本文的静态、R12/R9/R7 和批量 campaign 结果属于 PR #483 环境隔离修复前的源码周期，最晚对应 `f21eb8ab9828ab47e92024db394ddacb51179e25`。旧 50-source 审计只证明当时锁定的源码/报告；当前 `face_render_consumer_probe.py` 已修改，当前 provider 正确拒绝旧记录，不能以这些结果验证当前树。报告、哈希、失败记录和精度门槛原样保留。
+
+重新验收必须执行 fresh capture → 实际 ONNX replay → renderer → audit → UI export → Electron E2E；不只更新旧哈希。当前状态和复现前提见 [最新检查点](face-full-frame-and-beauty-lab-checkpoint-2026-10-03.zh-CN.md)。`face_temporal_campaign.py --independent-160-sampling` 现于 prepare 阶段明确拒绝，因为该 campaign 审计 profile 尚不验证此 route；后续实际预处理链使用独立工具和审计，不据此放宽旧 campaign profile。
+
 ## 本轮结论
 
 已经把上一轮仍依赖原生预处理的 **120 脸块采样**换成纯 NumPy 实现，接到 Torch-free ONNX、
@@ -52,7 +58,7 @@ QCut 原始画面 + 大眼参数
 有界批量 capture/replay/render/audit 工具及测试。主 agent 负责 owned seed 解码、时序集成、
 审计和真实验收；原生宿主串行运行，agent 不做 Git 操作，主 agent 逐文件 commit/push。
 
-| 当前验收 | 数量 | 结果 |
+| 当时验收（历史源码周期） | 数量 | 结果 |
 | --- | ---: | --- |
 | 新观察器中立性 | 七帧、26 次预测 | 改变像素 0 |
 | 自写 120 输入 | 25 份 | 逐字节相同 |
@@ -64,9 +70,9 @@ QCut 原始画面 + 大眼参数
 | 无脸 | 预测 18、19 | 空结果，清除历史，不发布旧点 |
 | 实际 owned 副本消费/恢复 | 24 次 | 全部完成 |
 | 真实效果候选 vs baseline | 七帧 | 不同像素 0，最大 RGBA 差 0 |
-| capture/producer/render 报告及源码链 | 50 份源码 | SHA 一致，审计 `pipeline_parity=true` |
+| capture/producer/render 报告及源码链 | 50 份源码 | 当时 SHA 一致，审计 `pipeline_parity=true`；不验证当前源码 |
 
-当前对比图为 `face-host-geometry-sequence-render-20261003-r7/comparison-sheet.png`。
+历史对比图为 `face-host-geometry-sequence-render-20261003-r7/comparison-sheet.png`。
 已目视检查七行：原生 baseline、候选、统一 x8 灰度差分、原始输入。
 七张原尺寸 `frame-XX-diff-gain8.png` 全黑；非零效果也实际改变原图，不能用绕过效果冒充成功。
 之前移动、镜像、恢复、半强度的 41,522/42,185/39,659/20,532 个不同像素现在均为 0。
@@ -326,10 +332,10 @@ count/数组/索引/有限值/边界均严格验证，只有单有效脸可关�
 - `face-host-geometry-sequence-replay-20261003-r8/`：前一检查点自写平滑 producer，仍用原生 seed。
 - `face-host-geometry-sequence-render-20261003-r6/`：前一检查点七帧零差。
 - `face-temporal-capture-audit-20261003-r6/`：前一检查点三报告/49 源码链通过。
-- `face-host-geometry-sequence-20261003-r12/`：当前源码版本的中立采集，26 个实际预测。
-- `face-host-geometry-sequence-replay-20261003-r9/`：当前 owned seed + 自写连续平滑严格 producer。
-- `face-host-geometry-sequence-render-20261003-r7/`：当前七帧零差和 `comparison-sheet.png`。
-- `face-temporal-capture-audit-20261003-r7/`：当前三报告/50 源码链通过，点 seed 已独立。
+- `face-host-geometry-sequence-20261003-r12/`：历史源码周期的中立采集，26 个实际预测。
+- `face-host-geometry-sequence-replay-20261003-r9/`：历史 owned seed + 自写连续平滑严格 producer。
+- `face-host-geometry-sequence-render-20261003-r7/`：历史七帧零差和 `comparison-sheet.png`。
+- `face-temporal-capture-audit-20261003-r7/`：历史三报告/50 源码链通过，点 seed 已独立；不验证当前源码。
 - `face-host-sampling-160-20261003-r1/`：当前两个 160 输入候选失败诊断，0/2 exact，不提交 raw 数据。
 - `face-temporal-video-fixture-smoke-20261003-r3/`：实际合成视频的七帧 PTS/图像证据。
 - `face-temporal-video-fixture-smoke-20261003-wide-r2/`：实际宽屏比例与黑边验证。
@@ -396,7 +402,7 @@ QCut 导出的视频 ffprobe 不提供 SAR。新增 `--assume-square-pixels` 是
 | 移动/镜像/无脸恢复/零/半强度七帧 | 26 / 24 / 135 | `[0,20]` | `[]` | 七帧均 0、max RGBA 0 | 有脸非零帧 42,469-44,022；无脸/零强度为 0 |
 | 一秒 QCut 导出抽出的七帧，大眼 1 | 26 / 24 / 135 | `[0]` | `[]` | 七帧均 0、max RGBA 0 | 每帧 41,141-42,224 |
 
-两组均逐阶段验证 50 个源哈希和实际报告链；源码与 committed Git 的 50 个文件亦独立复核一致。
+两组在当时源码周期逐阶段验证 50 个源哈希和实际报告链；当时源码与 committed Git 的 50 个文件亦独立复核一致。这是历史验收，不能作为当前树通过的证据。
 两张 `campaign-XX/render/comparison-sheet.png` 与 x8 灰度图保留在私有目录，已目视查看。
 新素材也通过 owned 初始化，但 160 原生输入、检测矩阵/表、初始化信号和效果渲染仍依赖原生。
 47.62 秒是这两组离线取证耗时，不是实时帧率或编辑器导出性能指标。
