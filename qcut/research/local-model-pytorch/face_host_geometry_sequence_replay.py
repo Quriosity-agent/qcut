@@ -24,10 +24,11 @@ import face_render_model_capture as capture
 import face_render_model_parity as parity
 import face_render_sequence_probe as sequence
 import face_temporal_smoothing_replay as smoothing
+import face_host_initialization as initialization
 from face_render_stability_probe import digest
 
 
-def decode_case(*, snapshot, raw, native_frame=None, require_exact=True, temporal=None):
+def decode_case(*, snapshot, raw, native_frame=None, require_exact=True, temporal=None, initialization_seed=None):
     if type(require_exact) is not bool:
         raise ValueError("typed dynamic geometry gate required")
     active = [face for face in snapshot["faces"] if face["active"]]
@@ -42,12 +43,14 @@ def decode_case(*, snapshot, raw, native_frame=None, require_exact=True, tempora
             raise ValueError("initialized warp is not the active face")
         case["checks"]["tracked"] = point_difference(actual=points, expected=first_points(value=face["tracked"]), tolerance=0)
         if temporal is not None:
-            points, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=points)
+            points, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=points, initialization_seed=initialization_seed)
+        elif initialization_seed is not None:
+            raise ValueError("owned initialization requires temporal replay")
         generated = [dict(id=face["id"], points=normalized(points=points, request=snapshot["request"]).tolist())]
     elif active:
         raise ValueError("active idle state reuse is unresolved; do not publish cached points")
     elif temporal is not None:
-        _, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=None)
+        _, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=None, initialization_seed=initialization_seed)
     if native_frame is not None:
         expected = native_frame["faces"]
         if len(expected) != len(generated):
@@ -100,7 +103,14 @@ def run(*, args):
                   final_consumer_parity=False, cases=[], failures=[])
     try:
         parity.no_torch()
-        temporal = smoothing.TemporalReplay() if getattr(args, "owned_smoothing", False) else None
+        owned_initialization = getattr(args, "owned_initialization", False)
+        independent_160 = getattr(args, "independent_160_sampling", False)
+        owned_smoothing = getattr(args, "owned_smoothing", False)
+        if any(type(value) is not bool for value in (owned_initialization, independent_160, owned_smoothing)):
+            raise ValueError("typed temporal producer policies required")
+        if owned_initialization and not owned_smoothing or independent_160 and not owned_initialization:
+            raise ValueError("owned initialization requires smoothing; independent 160 requires owned initialization")
+        temporal = smoothing.TemporalReplay(owned_initialization=owned_initialization) if owned_smoothing else None
         root = args.capture.resolve(strict=True)
         evidence = locked.json(path=root / "report.json")
         count = validate_dynamic(evidence=evidence)
@@ -121,7 +131,10 @@ def run(*, args):
                           "face_host_geometry_contract.py", "face_host_geometry_replay.py",
                           "face_host_geometry_output.py",
                           "face_render_model_parity.py", "face_alignment_replay.py", "face_geometry.py",
-                          "face_temporal_smoothing.py", "face_temporal_smoothing_replay.py")})
+                          "face_temporal_smoothing.py", "face_temporal_smoothing_replay.py", "face_host_initialization.py")})
+        if independent_160:
+            name = "face_host_sampling_160_inputs.py"
+            report["source_sha256"]["local-model-pytorch/" + name] = digest(data=locked.read(path=Path(__file__).with_name(name)))
         snapshots = validate_sequence(records=evidence["geometry_snapshots"], temporal=True)
         actual = validate_sequence(records=[locked.json(path=path) for path in (root / "geometry").glob("prediction-*.json")], temporal=True)
         if actual != snapshots or len(actual) != evidence["predictions"]:
@@ -135,11 +148,19 @@ def run(*, args):
         if associations != evidence["prediction_inferences"]:
             raise ValueError("actual dynamic neural window association changed")
         inputs, sampling = build_inputs(root=root, evidence=evidence, associations=associations, locked=locked, temporal=True)
+        initialization_inputs = None
+        if independent_160:
+            from face_host_sampling_160_inputs import build_inputs as build_160_inputs
+
+            initialization_inputs, report["initialization_sampling_cases"] = build_160_inputs(
+                root=root, evidence=evidence, associations=associations, locked=locked, temporal=True)
         model = parity.run(args=argparse.Namespace(capture=root, root=args.root, out=out / "onnx"),
-                           replacement_inputs=inputs, expected_comparisons=count)
+                           replacement_inputs=inputs, expected_comparisons=count, initialization_inputs=initialization_inputs)
         if (model.get("passed") is not True or model.get("independent_120_sampling_input_used") is not True or
                 model.get("capture_sha256") != report["capture_sha256"]):
             raise ValueError("dynamic ONNX lacks independent sampling or capture provenance")
+        if independent_160 and model.get("independent_160_sampling_input_used") is not True:
+            raise ValueError("dynamic ONNX lacks independently sampled 160 inputs")
         trace = locked.read(path=root / "observed/records.jsonl", maximum=sequence.LOG_LIMIT,
                             expected=evidence["runs"][1]["records_sha256"])
         observed.exact_events(data=trace, count=len(snapshots) - 2)
@@ -152,6 +173,7 @@ def run(*, args):
         for snapshot, association in zip(snapshots, associations, strict=True):
             selected = [item for item in association["inferences"] if item["size"] == 120]
             raw = None
+            seed, seed_proof = None, None
             if selected:
                 inference = selected[0]["inference"]
                 network = inventory["networks"][selected[0]["network"]]
@@ -159,8 +181,23 @@ def run(*, args):
                     raise ValueError("actual dynamic predictor differs from ONNX graph")
                 raw = np.load(io.BytesIO(locked.read(path=out / f"onnx/size-120-infer-{inference:03d}-fc_landmark_s1.npy",
                                                      maximum=1024**2)), allow_pickle=False).reshape(106, 2)
+            selected_160 = [item for item in association["inferences"] if item["size"] == 160]
+            if owned_initialization and selected_160:
+                if len(selected_160) != 1:
+                    raise ValueError("one actual 160 initialization inference required")
+                inference_160 = selected_160[0]
+                network = inventory["networks"][inference_160["network"]]
+                if network["graph_sha256"] != model["model_outputs"]["160"]["graph_sha256"]:
+                    raise ValueError("actual initialization predictor differs from ONNX graph")
+                head = np.load(io.BytesIO(locked.read(path=out / f"onnx/size-160-infer-{inference_160['inference']:03d}-fc_landmark_s1.npy",
+                                                      maximum=1024**2)), allow_pickle=False).reshape(106, 2)
+                seed, seed_proof = initialization.decode_seed(raw=head, snapshot=snapshot)
+                seed_proof.update(inference=inference_160["inference"], network=inference_160["network"])
             frame = native["frames"][snapshot["index"] - 2] if snapshot["index"] >= 2 else None
-            case, faces = decode_case(snapshot=snapshot, raw=raw, native_frame=frame, require_exact=False, temporal=temporal)
+            case, faces = decode_case(snapshot=snapshot, raw=raw, native_frame=frame, require_exact=False,
+                                      temporal=temporal, initialization_seed=seed)
+            if seed_proof is not None:
+                case["owned_initialization"] = seed_proof
             if "returned_result" in snapshot:
                 case["native_output_layers"] = output_layers(snapshot=snapshot, native_frame=frame)
             report["cases"].append(case)
@@ -187,9 +224,15 @@ def run(*, args):
         parity.no_torch()
         report.update(passed=exact, completed=True, geometry_exact=exact, diagnostic_only=not exact,
                       owned_temporal_smoothing_used=temporal is not None,
+                      owned_initialization_used=owned_initialization,
+                      independent_160_sampling_input_used=independent_160,
+                      native_160_sampling_input_required=not independent_160,
+                      native_smoothing_seed_required=temporal is not None and not owned_initialization,
                       native_smoothing_initialization_required=temporal is not None,
                       native_smoothing_seed_predictions=[case["prediction"] for case in report["cases"]
                           if case.get("temporal_smoothing", {}).get("native_seed_used")],
+                      owned_smoothing_seed_predictions=[case["prediction"] for case in report["cases"]
+                          if case.get("temporal_smoothing", {}).get("owned_seed_used")],
                       head_comparisons=model["head_comparisons"], replay_sha256=digest(data=data),
                       independent_120_sampling_input_used=True, sampling_cases=sampling, manifest_frames=count,
                       per_active_face_id_association_verified=True, fixture_sha256=dict(locked.files))
@@ -207,6 +250,8 @@ def main():
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--diagnostic", action="store_true")
     parser.add_argument("--owned-smoothing", action="store_true")
+    parser.add_argument("--owned-initialization", action="store_true")
+    parser.add_argument("--independent-160-sampling", action="store_true")
     report = run(args=parser.parse_args())
     print(json.dumps(dict(passed=report["passed"], predictions=len(report["cases"]), head_comparisons=report["head_comparisons"])))
 
