@@ -4,6 +4,10 @@
 沿用 [PR #483](https://github.com/Quriosity-agent/qcut/pull/483)。
 接续 [旧参考路径的失败证据](face-onnx-owned-replay-2026-10-03.zh-CN.md)。
 
+后续进展见 [独立采样与动态时序边界](face-owned-sampling-temporal-parity-2026-10-03.zh-CN.md)：
+120 自写采样已逐字节对齐并接到静态零像素差渲染；动态真实链仍在 tracked 到返回结果之间有差异。
+本文保留前阶段采样失败的历史记录，以后续报告为当前边界。
+
 ## 结论与适用范围
 
 本轮完成的不是整个美颜后端独立化，而是**实际几何条件下的 ONNX 关键点回放与渲染对齐**：
