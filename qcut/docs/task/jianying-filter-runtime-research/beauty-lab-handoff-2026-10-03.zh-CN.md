@@ -17,6 +17,12 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 本地受影响 Python 101、下游 Python 761、Espresso 对应 Python 277、Electron 568 项均通过，各组有重叠。C ABI 测试实际编译 C++ harness 并执行标准/非标准异常、两个提取异常和原有错误码；macOS 无跳过。新源码完整七帧/产品 E2E 仍待下列再采集顺序完成。
 
+重新审查 `c13f0171855b32ecc87d1402dcda6c51320e7720` 后再修四项：记录模式转导入/当前帧时恢复隔离的时间线草稿，避免只读 eye=100 泄漏到最大值 50 的产品参数；两个 E2E 在导出前删除旧目标 ZIP；campaign 在 prepare 阶段拒绝真实审计不支持的 `--independent-160-sampling`，合成报告不再谎报支持；旧 R12/R9/R7 文档明确标记历史来源周期。审计器及原精度门槛不放宽。
+
+本地新回归：前端七组 273 项、campaign/审计四组 56 项通过；真实 CLI 的未支持选项返回 1，`completed/passed/pipeline_parity=false`、`campaigns=[]`，未启动子阶段。主 CI 曾在七帧 provider 全量覆盖率测试超出旧 15 秒期限，本地覆盖率运行复现 19.1 秒；仅此用例改为 60 秒，所有断言/七帧/尺寸/哈希/像素校验保留，60 项覆盖率回归通过。
+
+新增真实 Electron “旧 ZIP 替换”专项 8.1 秒通过：先放可解码旧 ZIP，再触发当前输入下载，验证旧 marker 消失、新 JSON/PNG 及尺寸正确。截图 `output/playwright/beauty-lab-review-20261003-r1/stale-zip-replaced.png` 已查看。该专项只导出当前输入，不运行 ONNX/原生美颜处理或恢复历史回放；两组旧七帧/产品全链 E2E 仍待新来源周期，不能称为本轮已重验。
+
 ## 当前交付
 
 入口：编辑器选中图片/视频 → 属性 → 美颜美体 → 美颜实验室。
