@@ -116,7 +116,9 @@ def validate_snapshot(*, row):
         numbers(value=[face.get("tracking_scale")], length=1, maximum=1)
 
 
-def validate_sequence(*, records):
+def validate_sequence(*, records, temporal=False):
+    if type(temporal) is not bool:
+        raise ValueError("typed temporal geometry policy required")
     if not isinstance(records, list) or not 1 <= len(records) <= 64:
         raise ValueError("bounded nonempty geometry sequence required")
     for row in records:
@@ -126,14 +128,16 @@ def validate_sequence(*, records):
         raise ValueError("geometry sequence has gaps or duplicate indices")
     first = records[0]
     for previous, row in zip(records, records[1:]):
-        if (row["bytenn_sequence"] <= previous["bytenn_sequence"] or
+        marker_delta = row["bytenn_sequence"] - previous["bytenn_sequence"]
+        marker_changed = marker_delta < 0 if temporal else marker_delta <= 0
+        if (marker_changed or
                 any(row[key] != first[key] for key in ("handle", "predictors", "tables", "request"))):
             raise ValueError("geometry owner, tables or neural window changed")
     return records
 
 
-def associate_inferences(*, records, networks, metadata):
-    records = validate_sequence(records=records)
+def associate_inferences(*, records, networks, metadata, temporal=False):
+    records = validate_sequence(records=records, temporal=temporal)
     if not isinstance(networks, dict) or not isinstance(metadata, list) or not 1 <= len(metadata) <= 4096:
         raise ValueError("bounded neural inventory and metadata required")
     indices = set()
@@ -171,7 +175,10 @@ def associate_inferences(*, records, networks, metadata):
                     raise ValueError("failed inference in geometry window")
                 selected.append(dict(size=predictor["size"][0], network=identity,
                                      inference=int(item["fields"]["inference"]), record_index=item["index"]))
-        if len([item for item in selected if item["size"] == 120]) != 1:
+        count = len([item for item in selected if item["size"] == 120])
+        if temporal and count > 10:
+            raise ValueError("at most ten actual 120 inferences per temporal prediction")
+        if not temporal and count != 1:
             raise ValueError("one actual 120 inference per observed prediction required")
         associations.append(dict(prediction=row["index"], neural_window=[lower, upper], inferences=selected))
         lower = upper
