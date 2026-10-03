@@ -2,6 +2,8 @@
 import ctypes as ct
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -152,6 +154,47 @@ class NativeInputBoundaryTest(unittest.TestCase):
         oracle.detector.require_open.side_effect = ValueError("closed")
         with self.assertRaisesRegex(ValueError, "closed"):
             oracle.infer(pixels=np.zeros((120, 120, 3), np.uint8))
+
+
+class CompiledInputBridgeTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        compiler = shutil.which("clang++") or shutil.which("g++") or shutil.which("c++")
+        if compiler is None:
+            raise unittest.SkipTest("C++ compiler is unavailable")
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.binary = Path(temporary.name) / "input-bridge-test.exe"
+        subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+                        str(Path(__file__).with_name("face_alignment_input_bridge_test.cpp")),
+                        "-o", str(cls.binary)], check=True, capture_output=True, timeout=60)
+
+    def status(self, *, case):
+        result = subprocess.run([str(self.binary), case], check=True, capture_output=True,
+                                text=True, timeout=10)
+        self.assertEqual(result.stderr, "")
+        return int(result.stdout.strip())
+
+    def test_prediction_exceptions_return_errors_without_aborting(self):
+        for case in ("predict-standard", "predict-nonstandard"):
+            with self.subTest(case=case):
+                self.assertEqual(self.status(case=case), -6)
+
+    def test_both_extract_exceptions_return_errors_without_aborting(self):
+        for case in ("extract-data", "extract-landmarks"):
+            with self.subTest(case=case):
+                self.assertEqual(self.status(case=case), -6)
+
+    def test_success_and_native_status_are_preserved(self):
+        self.assertEqual(self.status(case="success"), 0)
+        self.assertEqual(self.status(case="native-status"), 73)
+
+    def test_existing_validation_errors_are_preserved(self):
+        for case, expected in (("predictor-null", -1), ("provider-null", -2),
+                               ("vtable-null", -3), ("empty-name", -4),
+                               ("long-name", -4), ("missing-data", -5)):
+            with self.subTest(case=case):
+                self.assertEqual(self.status(case=case), expected)
 
 
 class EntryCaptureTest(unittest.TestCase):
