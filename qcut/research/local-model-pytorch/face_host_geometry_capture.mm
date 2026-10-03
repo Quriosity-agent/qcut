@@ -138,7 +138,17 @@ std::string saveFrame(const void* pixels, int width, int height, int stride, siz
   return name;
 }
 
-void capture(void* handle, const void* pixels, const char* api, int rc, int format, int width, int height,
+NSDictionary* returnedResult(const void* output) {
+  const auto address = reinterpret_cast<uintptr_t>(output);
+  const int count = read<int>(address + 0x6ab8);
+  if (count < 0 || count > 10) throw std::runtime_error("unsupported returned face count");
+  NSMutableArray* faces = [NSMutableArray arrayWithCapacity:count];
+  for (int index = 0; index < count; ++index)
+    [faces addObject:@{@"index":@(index), @"points_xy":floats(address + index * 0x52c + 0x14, 212)}];
+  return @{@"count":@(count), @"faces":faces};
+}
+
+void capture(void* handle, const void* pixels, const void* output, const char* api, int rc, int format, int width, int height,
              int stride, int rotation) noexcept {
   if (!directory()) return;
   std::lock_guard<std::mutex> lock(mutex);
@@ -187,7 +197,7 @@ void capture(void* handle, const void* pixels, const char* api, int rc, int form
       save(@{@"index":@(index), @"api":@(api), @"rc":@(rc), @"handle":@(owner),
         @"request":@[@(format), @(width), @(height), @(stride), @(rotation)], @"bytenn_sequence":@(neuralSequence),
         @"frame_file":@(frame.c_str()), @"frame_bytes":@(static_cast<size_t>(stride) * height),
-        @"predictors":predictors, @"faces":faces, @"tables":tables(base)}, index);
+        @"predictors":predictors, @"faces":faces, @"tables":tables(base), @"returned_result":returnedResult(output)}, index);
     } catch (const std::exception& error) {
       try { save(@{@"index":@(index), @"error":@(error.what())}, index); } catch (...) {}
     }
@@ -197,7 +207,7 @@ void capture(void* handle, const void* pixels, const char* api, int rc, int form
 int observe(void* h, const void* pixels, int f, int w, int y, int stride, int rotation,
             void* args, void* output, Predict original, const char* api) {
   const int rc = original(h, pixels, f, w, y, stride, rotation, args, output);
-  capture(h, pixels, api, rc, f, w, y, stride, rotation);
+  capture(h, pixels, output, api, rc, f, w, y, stride, rotation);
   return rc;
 }
 
