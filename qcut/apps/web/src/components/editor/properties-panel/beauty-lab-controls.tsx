@@ -127,6 +127,8 @@ export function BeautyLabControls({
 		readOnly,
 		locale: portraitLocale,
 		isControlReady: draftControlReady,
+		skinTones: status?.skinTones,
+		allowSkinTone: scope.mode === "all",
 		onChange: section === "body" ? changeBody : changeFace,
 		onInteractionStart: draftInteraction,
 		onInteractionEnd: draftInteraction,
