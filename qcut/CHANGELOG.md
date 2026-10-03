@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.04.1] - 2026-10-03
+
 ### Added
 - Add Beauty Lab controls, local presets, original/native/candidate comparisons and portable PNG/JSON/ZIP evidence exports.
 - Add bounded local face-model research tools for ONNX sampling, landmark alignment, temporal replay and native-renderer comparisons.
