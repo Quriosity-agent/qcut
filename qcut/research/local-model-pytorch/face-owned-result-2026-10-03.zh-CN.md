@@ -4,7 +4,9 @@
 
 前置：[消费边界与 GPU 完成同步](face-render-injection-investigation-2026-10-03.zh-CN.md)。
 本轮从借用原生点位，推进到隔离宿主中创建、修改和释放完整 `FaceBuffer` 副本。
-**目前证明了副本隔离，不是渲染器已经使用副本，更不是 ONNX 已替换原生分析。**
+**本节初始审计仅证明副本隔离，不证明消费者绑定。**
+随后完成的大眼副本实际消费与正负扰动验证见
+[完整绑定的运行时验收](face-owned-binding-2026-10-03.zh-CN.md)；原生分析仍未被 ONNX 替换。
 
 ## 锁定的运行库
 
@@ -120,5 +122,5 @@ python3 research/local-model-pytorch/face_owned_result_probe.py \
 5. 可靠计数并禁用原生分析，再接 PyTorch/ONNX 的完整结构。只替换 106 点不等于这一步。
 6. 以上研究门槛通过后，再接产品 IPC、预览/导出，并单独验证 Windows/x86。
 
-当前报告明确保留 `owned_result_rendered=false`、`native_analysis_bypassed=false`。
+上述初始 clone-audit 报告明确保留 `owned_result_rendered=false`、`native_analysis_bypassed=false`。
 已经有独立可修改的完整副本；仍缺安全的消费者绑定、缓存刷新和独立分析生产者。
