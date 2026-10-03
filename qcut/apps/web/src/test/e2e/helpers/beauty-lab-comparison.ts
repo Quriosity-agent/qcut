@@ -58,6 +58,34 @@ async function decodePNG({ zip, name }: { zip: JSZip; name: string }) {
 	};
 }
 
+export async function decodeBeautyLabFixture({
+	page,
+	bytes,
+}: {
+	page: Page;
+	bytes: Buffer;
+}) {
+	const png = await page.evaluate(async (base64) => {
+		const bytes = Uint8Array.from(atob(base64), (character) =>
+			character.charCodeAt(0)
+		);
+		const bitmap = await createImageBitmap(new Blob([bytes]));
+		try {
+			const ratio = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
+			const canvas = document.createElement("canvas");
+			canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
+			canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
+			const context = canvas.getContext("2d", { colorSpace: "srgb" });
+			if (!context) throw new Error("Fixture decoder unavailable");
+			context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+			return canvas.toDataURL("image/png").split(",")[1];
+		} finally {
+			bitmap.close();
+		}
+	}, bytes.toString("base64"));
+	return Buffer.from(png, "base64");
+}
+
 export async function verifyBeautyLabDifferencePNG({
 	zip,
 	name,
@@ -89,7 +117,13 @@ export async function verifyBeautyLabDifferencePNG({
 	expect(grayscaleOpaque).toBe(true);
 }
 
-export async function auditBeautyLabNativeZip({ zip }: { zip: JSZip }) {
+export async function auditBeautyLabNativeZip({
+	zip,
+	expectedOriginalPNG,
+}: {
+	zip: JSZip;
+	expectedOriginalPNG: Buffer;
+}) {
 	const report = JSON.parse(await zip.file("comparison.json")!.async("string"));
 	expect(report).toMatchObject({
 		schema: "qcut-beauty-lab-comparison-v1",
@@ -112,6 +146,15 @@ export async function auditBeautyLabNativeZip({ zip }: { zip: JSZip }) {
 	for (const image of [original, native, difference]) {
 		expect([image.width, image.height]).toEqual([report.width, report.height]);
 	}
+	const fixtureZip = new JSZip().file("fixture.png", expectedOriginalPNG);
+	const fixture = await decodePNG({ zip: fixtureZip, name: "fixture.png" });
+	expect([original.width, original.height]).toEqual([
+		fixture.width,
+		fixture.height,
+	]);
+	expect(Buffer.from(original.pixels).equals(Buffer.from(fixture.pixels))).toBe(
+		true
+	);
 	let changedPixels = 0;
 	let rgbTotal = 0;
 	let rgbMax = 0;
