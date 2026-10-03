@@ -34,6 +34,9 @@ function draftFromTimeline({
 		enabled: true,
 		values: adjustments.values,
 		makeup: adjustments.makeup,
+		...(adjustments.skinToneResourceId !== undefined
+			? { skinToneResourceId: adjustments.skinToneResourceId }
+			: {}),
 	});
 }
 
