@@ -167,6 +167,9 @@ std::uint64_t tracedUpdate(void* algorithm, void* input, void* segments,
 #ifdef QCUT_FACE_RESULT_HOOK
     inspectOwnedResult(buffer);
 #endif
+#ifdef QCUT_FACE_BINDING_HOOK
+    inspectOwnedAdapter(algorithm);
+#endif
     const auto begin = field<std::uintptr_t>(buffer, 0x38);
     const auto end = field<std::uintptr_t>(buffer, 0x40);
     if (end < begin || (end - begin) / 8 > 10 || (end - begin) % 8 != 0)
@@ -339,12 +342,18 @@ int tracedSeek(void* manager, std::int64_t timestamp,
   try {
     const int result = originalSeek(manager, timestamp, input, output);
     restore();
+#ifdef QCUT_FACE_BINDING_HOOK
+    finishOwnedBinding(manager);
+#endif
     if (updateError) std::rethrow_exception(updateError);
     if (result != 0) throw std::runtime_error("native seek failed");
     inspectManager(manager);
     return result;
   } catch (...) {
     restore();
+#ifdef QCUT_FACE_BINDING_HOOK
+    finishOwnedBinding(manager);
+#endif
     throw;
   }
 }
