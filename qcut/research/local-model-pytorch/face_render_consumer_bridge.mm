@@ -57,7 +57,22 @@ Value readValue(std::ifstream& stream) {
   return value;
 }
 
+std::int64_t replayTimeLimit() {
+  const char* value = std::getenv("QCUT_FACE_REPLAY_MAX_TIME_US");
+  if (!value) return 100'000;
+  std::int64_t limit = 0;
+  if (!*value) throw std::runtime_error("invalid replay time limit");
+  for (const char* cursor = value; *cursor; ++cursor) {
+    if (*cursor < '0' || *cursor > '9') throw std::runtime_error("invalid replay time limit");
+    limit = limit * 10 + (*cursor - '0');
+    if (limit > 60'000'000) throw std::runtime_error("invalid replay time limit");
+  }
+  if (limit < 100'000) throw std::runtime_error("invalid replay time limit");
+  return limit;
+}
+
 void loadReplay(const char* path, int width, int height) {
+  const auto maximumTimestamp = replayTimeLimit();
   std::ifstream stream(path, std::ios::binary);
   const auto magic = readValue<std::array<char, 8>>(stream);
   if (magic != std::array<char, 8>{'Q', 'C', 'F', 'A', 'C', 'E', '1', '\0'} ||
@@ -69,7 +84,7 @@ void loadReplay(const char* path, int width, int height) {
   for (std::uint32_t index = 0; index < count; ++index) {
     ReplayFrame frame{.timestamp = readValue<std::int64_t>(stream), .faces = {}};
     const auto faceCount = readValue<std::uint32_t>(stream);
-    if (frame.timestamp < 0 || frame.timestamp > 100'000 ||
+    if (frame.timestamp < 0 || frame.timestamp > maximumTimestamp ||
         (!replay.empty() && frame.timestamp < replay.back().timestamp) || faceCount > 10)
       throw std::runtime_error("invalid replay timestamp or face count");
     std::set<int> ids;
