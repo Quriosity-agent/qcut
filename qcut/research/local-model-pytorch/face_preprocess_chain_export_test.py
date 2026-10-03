@@ -216,6 +216,23 @@ class ExportTests(unittest.TestCase):
         self.assertIs(saved["completed"], False)
         self.assertTrue(saved["failures"])
 
+    def test_explicit_fresh_profile_is_exported_without_historical_paths(self):
+        paths = {"sequence_replay": self.root / "fresh-replay/report.json",
+                 "sequence_render": self.root / "fresh-render/report.json"}
+        self.files.update(originalReplay=paths["sequence_replay"], originalRender=paths["sequence_render"])
+        self.persist()
+        self.context["evidence"].update(profile_reports={key: str(path) for key, path in paths.items()},
+            fixture_sha256={str(path): export.digest(data=path.read_bytes()) for path in paths.values()})
+        with patch.object(export.probe, "OLD_REPORTS", {key: "missing-history-" + key for key in paths}):
+            report = self.run_export()
+        self.assertTrue(report["passed"])
+        self.assertEqual((self.out / "reports/original-replay.json").read_bytes(), paths["sequence_replay"].read_bytes())
+        self.assertEqual((self.out / "reports/original-render.json").read_bytes(), paths["sequence_render"].read_bytes())
+
+    def test_unbound_explicit_profile_is_not_exported(self):
+        self.context["evidence"]["profile_reports"] = {key: "/unbound/report.json" for key in export.probe.OLD_REPORTS}
+        self.rejected()
+
     def test_complete_package_is_portable_byte_exact_and_excludes_private_models_runtime(self):
         before = {path: (path.stat().st_mtime_ns, path.read_bytes()) for path in self.fixture_paths}
         report = self.run_export()
