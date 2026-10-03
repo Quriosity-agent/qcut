@@ -18,7 +18,9 @@ def output_layers(*, snapshot, native_frame=None):
         raise ValueError("returned multi-face identity association is unresolved")
     if returned["count"] != len(active):
         raise ValueError("returned and active native face counts disagree")
-    result = dict(returned_faces=len(active), tracked_to_returned=[], returned_to_consumer=[])
+    published_observed = bool(snapshot["faces"]) and all("published" in face for face in snapshot["faces"])
+    result = dict(returned_faces=len(active), tracked_to_returned=[], returned_to_consumer=[],
+                  tracked_to_published=[], published_to_returned=[])
     if native_frame is not None:
         if (not isinstance(native_frame, dict) or not isinstance(native_frame.get("faces"), list) or
                 len(native_frame["faces"]) != len(active)):
@@ -27,6 +29,11 @@ def output_layers(*, snapshot, native_frame=None):
         points = np.asarray(returned["faces"][index]["points_xy"], np.float32).reshape(106, 2)
         result["tracked_to_returned"].append(point_difference(
             actual=first_points(value=face["tracked"]), expected=points, tolerance=0))
+        if "published" in face:
+            published = np.asarray(face["published"]["points_xy"], np.float32).reshape(106, 2)
+            result["tracked_to_published"].append(point_difference(
+                actual=first_points(value=face["tracked"]), expected=published, tolerance=0))
+            result["published_to_returned"].append(point_difference(actual=published, expected=points, tolerance=0))
         if native_frame is not None:
             reference = native_frame["faces"][index]
             if not isinstance(reference, dict) or type(reference.get("id")) is not int or reference["id"] != face["id"]:
@@ -35,6 +42,9 @@ def output_layers(*, snapshot, native_frame=None):
                 actual=normalized(points=points, request=snapshot["request"]),
                 expected=np.asarray(reference.get("points"), np.float32), tolerance=0))
     result.update(consumer_observed=native_frame is not None,
+                  published_observed=published_observed,
+                  published_to_returned_exact=(all(check["exact"] for check in result["published_to_returned"])
+                                              if published_observed else None),
                   post_tracking_changed=any(not check["exact"] for check in result["tracked_to_returned"]),
                   returned_to_consumer_exact=(all(check["exact"] for check in result["returned_to_consumer"])
                                               if native_frame is not None else None))
