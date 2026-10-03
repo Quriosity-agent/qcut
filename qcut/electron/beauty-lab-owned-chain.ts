@@ -18,6 +18,7 @@ import {
 	ownedChainSummarySchema,
 } from "./beauty-lab-owned-chain-evidence.js";
 import { verifyOwnedChainReports } from "./beauty-lab-owned-chain-verify.js";
+import { compareRgbaPixels } from "./beauty-lab-rgba-metrics.js";
 import {
 	MIB,
 	WIDTH,
@@ -190,34 +191,14 @@ export function createBeautyLabOwnedChainProvider({
 						bytes: png,
 						expected: frame.input_rgba_sha256,
 					});
-					let changedPixels = 0;
-					let maxDelta = 0;
-					let x0 = WIDTH;
-					let y0 = HEIGHT;
-					let x1 = 0;
-					let y1 = 0;
-					for (let offset = 0; offset < RGBA_BYTES; offset += 4) {
-						let changed = false;
-						for (let channel = 0; channel < 4; channel++) {
-							const delta = Math.abs(
-								native[offset + channel] - input[offset + channel]
-							);
-							maxDelta = Math.max(maxDelta, delta);
-							changed ||= delta !== 0;
-						}
-						if (!changed) continue;
-						changedPixels++;
-						const pixel = offset / 4;
-						const x = pixel % WIDTH;
-						const y = Math.floor(pixel / WIDTH);
-						x0 = Math.min(x0, x);
-						y0 = Math.min(y0, y);
-						x1 = Math.max(x1, x + 1);
-						y1 = Math.max(y1, y + 1);
-					}
+					const { changedPixels, maxDelta, bbox } = compareRgbaPixels({
+						actual: native,
+						expected: input,
+						width: WIDTH,
+						height: HEIGHT,
+					});
 					const comparison =
 						reports.render.comparisons[frame.index].versus_input;
-					const bbox = changedPixels ? [x0, y0, x1, y1] : null;
 					requireEvidence({
 						condition:
 							changedPixels === comparison.changed_pixels &&
