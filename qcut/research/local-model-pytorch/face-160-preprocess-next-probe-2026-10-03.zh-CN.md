@@ -2,6 +2,8 @@
 
 日期：2026-10-03。范围：`codex/kpop-beauty-v6` 的独立调查；Beauty Lab candidate backend / IPC / UI 由 parent 负责。
 
+后续检查点：本页保留静态调查时的证据边界。之后已实现并实际运行硬件断点 sidecar，自有 source/crop/resize/int8 在锁定两个生命周期调用上零差；最新结论、实际参数和仍需原生的部分见 [actual preprocessing parity](face-160-actual-preprocess-parity-2026-10-03.zh-CN.md)。不能把本页的“尚未执行”或矩阵反解假说当作最新运行结果。
+
 ## 结论与证据边界
 
 **本轮新增的是静态定位，不是新的运行时捕获。** 没有启动 native host、GPU、Jianying 或 renderer，没有调用 SDK，没有修改现有捕获、50 个 provenance source、app / binary / resources、Git 或 branch。只新增本文。
