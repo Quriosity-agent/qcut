@@ -44,6 +44,15 @@ def validate_snapshot(*, row):
     integer(value=row.get("bytenn_sequence"), minimum=1, maximum=4096)
     if row.get("api") != "FsNew_DoPredict":
         raise ValueError("only observed 106-point FsNew API supported")
+    if "runtime_state" in row:
+        state = row["runtime_state"]
+        if not isinstance(state, dict):
+            raise ValueError("native runtime state object required")
+        for key in ("base_output_mode_bit", "optimized_output_bit", "cache_skip_bit"):
+            if type(state.get(key)) is not bool:
+                raise ValueError("typed native runtime bit required")
+        for key in ("config_cache_mode", "cache_counter"):
+            integer(value=state.get(key), minimum=-(2**31), maximum=2**31 - 1)
     if "returned_result" in row:
         result = row["returned_result"]
         if not isinstance(result, dict):
@@ -91,7 +100,7 @@ def validate_snapshot(*, row):
     faces = row.get("faces")
     if not isinstance(faces, list) or len(faces) > 10:
         raise ValueError("bounded geometry face pool required")
-    slots, objects = set(), set()
+    slots, objects, published_pools = set(), set(), set()
     active_ids = set()
     for face in faces:
         if not isinstance(face, dict):
@@ -100,6 +109,24 @@ def validate_snapshot(*, row):
         address = integer(value=face.get("alignment"), minimum=4096)
         if type(face.get("active")) is not bool:
             raise ValueError("typed geometry active bit required")
+        if "published" in face:
+            published = face["published"]
+            if not isinstance(published, dict):
+                raise ValueError("published geometry object required")
+            integer(value=published.get("record"), minimum=4096)
+            pool = published["record"] - slot * 400
+            integer(value=pool, minimum=4096)
+            published_pools.add(pool)
+            if len(published_pools) > 1:
+                raise ValueError("published geometry pool identity changed")
+            count = integer(value=published.get("count"), maximum=106)
+            storage = integer(value=published.get("storage_points"), maximum=280)
+            integer(value=published.get("capacity_points"), minimum=storage, maximum=512)
+            if storage not in (0, 106, 280) or count != (106 if storage else 0):
+                raise ValueError("published storage and effective count mismatch")
+            if count not in (0, 106) or (face["active"] and count != 106):
+                raise ValueError("initialized published geometry count required")
+            numbers(value=published.get("points_xy"), length=count * 2)
         for key in ("id", "tracking_id"):
             integer(value=face.get(key), minimum=0 if face["active"] else -1, maximum=2**31 - 1)
         if face["active"]:
@@ -126,6 +153,8 @@ def validate_snapshot(*, row):
         if face["base_size"] != [120, 120]:
             raise ValueError("unsupported base geometry profile")
         numbers(value=[face.get("tracking_scale")], length=1, maximum=1)
+    if any("published" in face for face in faces) and not all("published" in face for face in faces):
+        raise ValueError("partial published geometry capture rejected")
 
 
 def validate_sequence(*, records, temporal=False):
