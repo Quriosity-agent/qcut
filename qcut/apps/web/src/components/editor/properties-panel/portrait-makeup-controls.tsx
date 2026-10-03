@@ -100,6 +100,7 @@ export function PortraitMakeupControls({
 	onChange,
 	onInteractionStart,
 	onInteractionEnd,
+	readOnly = false,
 }: {
 	cards: JianyingPortraitMakeupCardStatus[];
 	adjustments: MediaPortraitAdjustments;
@@ -108,9 +109,11 @@ export function PortraitMakeupControls({
 	onChange: (adjustments: MediaPortraitAdjustments) => void;
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
+	readOnly?: boolean;
 }) {
 	const [category, setCategory] = useState<MediaPortraitMakeupCategory>("look");
 	const contentRef = useRef<HTMLDivElement>(null);
+	const editingDisabled = disabled || readOnly;
 	const selection = adjustments.makeup?.[category];
 	const categoryCards = cards.filter(
 		(card) =>
@@ -136,7 +139,7 @@ export function PortraitMakeupControls({
 	};
 	const selectCard = ({ card }: { card: JianyingPortraitMakeupCardStatus }) => {
 		if (
-			disabled ||
+			editingDisabled ||
 			!card.ready ||
 			card.legacyOnly ||
 			card.id === selection?.cardId
@@ -149,13 +152,13 @@ export function PortraitMakeupControls({
 		onInteractionEnd();
 	};
 	const clearCategory = () => {
-		if (disabled || !selection) return;
+		if (editingDisabled || !selection) return;
 		onInteractionStart();
 		changeCategory({});
 		onInteractionEnd();
 	};
 	const changeIntensity = ({ intensity }: { intensity: number }) => {
-		if (disabled || !selectedCard?.ready || !selection) return;
+		if (editingDisabled || !selectedCard?.ready || !selection) return;
 		changeCategory({
 			nextSelection: { ...selection, intensity },
 		});
@@ -207,7 +210,7 @@ export function PortraitMakeupControls({
 			>
 				<div className="grid w-full min-w-0 max-w-[292px] grid-cols-4 gap-x-3 gap-y-2">
 					<MakeupCard
-						disabled={disabled}
+						disabled={editingDisabled}
 						selected={!selection}
 						locale={locale}
 						onSelect={clearCategory}
@@ -216,7 +219,7 @@ export function PortraitMakeupControls({
 						<MakeupCard
 							key={card.id}
 							card={card}
-							disabled={disabled}
+							disabled={editingDisabled}
 							selected={card.id === selection?.cardId}
 							locale={locale}
 							onSelect={() => selectCard({ card })}
@@ -231,10 +234,14 @@ export function PortraitMakeupControls({
 					min={0}
 					max={100}
 					step={1}
-					disabled={disabled || !selectedCard?.ready}
+					disabled={editingDisabled || !selectedCard?.ready}
 					onChange={(intensity) => changeIntensity({ intensity })}
-					onInteractionStart={onInteractionStart}
-					onInteractionEnd={onInteractionEnd}
+					onInteractionStart={() => {
+						if (!editingDisabled) onInteractionStart();
+					}}
+					onInteractionEnd={() => {
+						if (!editingDisabled) onInteractionEnd();
+					}}
 				/>
 			</TabsContent>
 		</Tabs>
