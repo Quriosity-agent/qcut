@@ -114,7 +114,25 @@ def number(*, value, name):
     return parsed
 
 
-def video_metadata(*, value):
+def assumption_flag(*, value):
+    if type(value) is not bool:
+        raise ValueError("assume_square_pixels must be a typed boolean")
+    return value
+
+
+def sar_policy(*, stream, assume_square_pixels):
+    enabled = assumption_flag(value=assume_square_pixels)
+    present, raw = "sample_aspect_ratio" in stream, stream.get("sample_aspect_ratio")
+    declared = raw == "1:1"
+    unspecified = not present or (isinstance(raw, str) and raw in ("N/A", "0:1"))
+    assumed = unspecified and enabled
+    if not declared and not assumed:
+        raise ValueError("square-pixel source required; only unspecified SAR permits explicit assumption")
+    return dict(field_present=present, raw=raw, assumption_requested=enabled, assumed_square_pixels=assumed,
+                effective="1:1", basis="caller-assumption" if assumed else "explicit-metadata")
+
+
+def video_metadata(*, value, assume_square_pixels=False):
     streams = value.get("streams")
     if not isinstance(streams, list) or len(streams) != 1 or not isinstance(streams[0], dict):
         raise ValueError("exactly one selected video stream required")
@@ -125,8 +143,7 @@ def video_metadata(*, value):
     container = value.get("format")
     if not isinstance(container, dict) or container.get("format_name") not in CONTAINERS:
         raise ValueError("standalone video container required; playlists are not source-locked")
-    if stream.get("sample_aspect_ratio") != "1:1":
-        raise ValueError("square-pixel source required for distortion-free scale and pad")
+    sample_aspect_ratio = sar_policy(stream=stream, assume_square_pixels=assume_square_pixels)
     time_base = stream.get("time_base")
     if not isinstance(time_base, str) or not re.fullmatch(r"[1-9][0-9]{0,9}/[1-9][0-9]{0,9}", time_base):
         raise ValueError("bounded positive rational video time_base required")
@@ -145,7 +162,8 @@ def video_metadata(*, value):
     if start_pts is not None:
         start = float(start_pts * Fraction(time_base))
     return dict(index=stream["index"], width=stream["width"], height=stream["height"],
-                duration=duration, duration_basis=basis, start_time=start, start_pts=start_pts, time_base=time_base)
+                duration=duration, duration_basis=basis, start_time=start, start_pts=start_pts, time_base=time_base,
+                sample_aspect_ratio=sample_aspect_ratio)
 
 
 def select_frames(*, value, metadata, requested):
@@ -189,10 +207,12 @@ def executable(*, value):
     return local_path(path=path)
 
 
-def extract(*, source, selected, width, height, ffmpeg, directory, commands):
+def extract(*, source, selected, width, height, ffmpeg, directory, commands, normalize_unspecified_sar=False):
+    normalize = assumption_flag(value=normalize_unspecified_sar)
     indices = sorted({frame["decoded_frame_index"] for frame in selected})
     selection = "+".join(f"eq(n,{index})" for index in indices)
-    filters = (f"select='{selection}',scale={width}:{height}:force_original_aspect_ratio=decrease,"
+    filters = (f"select='{selection}'," + ("setsar=1," if normalize else "") +
+               f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1")
     command = [str(ffmpeg), "-nostdin", "-hide_banner", "-loglevel", "error", "-n",
                "-protocol_whitelist", "file,pipe", "-noautorotate", "-i", str(source), "-map", "0:v:0",
@@ -211,6 +231,7 @@ def extract(*, source, selected, width, height, ffmpeg, directory, commands):
 def build(*, args):
     from PIL import Image
 
+    assume_square_pixels = assumption_flag(value=getattr(args, "assume_square_pixels", False))
     requested = requests(start=args.start, end=args.end, count=args.count)
     parameters = effect(parameter=args.parameter, intensity=args.intensity, no_face=args.no_face, count=args.count)
     sequence.validate_dimensions(width=args.width, height=args.height)
@@ -223,14 +244,18 @@ def build(*, args):
     out = sequence.fresh_output(path=args.out)
     report = dict(passed=False, native_runtime_used=False, no_face_inferred=False, commands=[],
                   selection_policy="first-decoded-frame-at-or-after-request", input_seeking_used=False,
-                  source=dict(path=str(source), **identity), source_sha256={str(path): row["sha256"]
+                  source=dict(path=str(source), assume_square_pixels_requested=assume_square_pixels, **identity),
+                  source_sha256={str(path): row["sha256"]
                   for path, row in guards.items()}, frames=[], failures=[], out=str(out))
     created = []
     try:
         prefix = [str(ffprobe), "-v", "error", "-protocol_whitelist", "file,pipe", "-select_streams", "v:0"]
-        metadata = video_metadata(value=command_json(command=[*prefix, "-show_entries",
+        raw_metadata = command_json(command=[*prefix, "-show_entries",
             "stream=index,width,height,duration,start_time,start_pts,time_base,sample_aspect_ratio:format=duration,format_name", "-of", "json", str(source)],
-            commands=report["commands"]))
+            commands=report["commands"])
+        report["source"]["ffprobe_metadata"] = raw_metadata
+        metadata = video_metadata(value=raw_metadata, assume_square_pixels=assume_square_pixels)
+        report["source"]["sample_aspect_ratio"] = metadata["sample_aspect_ratio"]
         if max(requested) >= metadata["duration"]:
             raise ValueError("requested seek is outside source video duration")
         decoded = command_json(command=[*prefix, "-read_intervals", f"%+{min(metadata['duration'], 61):.9f}",
@@ -238,10 +263,11 @@ def build(*, args):
             commands=report["commands"])
         selected = select_frames(value=decoded, metadata=metadata, requested=requested)
         report.update(video=metadata, width=args.width, height=args.height, requested_window=[args.start, args.end],
-                      sample_aspect_ratio_policy="square-pixels", rotation_policy="coded-no-autorotate")
+                      sample_aspect_ratio_policy=metadata["sample_aspect_ratio"]["basis"], rotation_policy="coded-no-autorotate")
         with tempfile.TemporaryDirectory(prefix="decode-", dir=out) as temporary:
             extracted = extract(source=source, selected=selected, width=args.width, height=args.height, ffmpeg=ffmpeg,
-                                directory=Path(temporary), commands=report["commands"])
+                                directory=Path(temporary), commands=report["commands"],
+                                normalize_unspecified_sar=metadata["sample_aspect_ratio"]["assumed_square_pixels"])
             frames, images = [], {}
             for index, frame in enumerate(selected):
                 data = sequence.file_identity(path=extracted[frame["decoded_frame_index"]], limit=sequence.IMAGE_LIMIT)[1]
@@ -294,6 +320,8 @@ def main():
     parser.add_argument("--no-face", type=int, nargs="*", default=[])
     parser.add_argument("--ffmpeg", default="ffmpeg")
     parser.add_argument("--ffprobe", default="ffprobe")
+    parser.add_argument("--assume-square-pixels", action="store_true",
+                        help="Explicitly assume SAR 1:1 only when ffprobe leaves SAR unspecified")
     try:
         report = build(args=parser.parse_args())
     except (ValueError, OSError) as error:
