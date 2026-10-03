@@ -22,13 +22,15 @@ from face_render_stability_probe import digest, frame_metrics, save_failure
 REPLAY_LIMIT = 1024**2
 
 
-def capture_replay(*, events: list[dict], width: int, height: int, image_hash: str) -> dict:
+def capture_replay(*, events: list[dict], width: int, height: int, image_hash: str,
+                   maximum_timestamp_us: int = 100_000) -> dict:
     conversions = [item for item in events if item.get("event") == "owned_face_conversion"]
     value = dict(version=1, coordinate_space=consumer.COORDINATE_SPACE,
                  width=width, height=height, image_sha256=image_hash,
                  frames=[dict(timestamp_us=item.get("timestamp_us"),
                               faces=item.get("faces_before")) for item in conversions])
-    consumer.validate_replay(value=value, width=width, height=height, image_hash=image_hash)
+    consumer.validate_replay(value=value, width=width, height=height, image_hash=image_hash,
+                             maximum_timestamp_us=maximum_timestamp_us)
     return value
 
 
