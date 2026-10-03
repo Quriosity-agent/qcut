@@ -415,9 +415,12 @@ int capturedThrustorCreateNet(void *self, const std::string &graph, void *arena,
 // stand when Inference starts and every blob the caller extracts afterwards.
 // The inputs are read back through the engine's own Extract, so they are the
 // bytes the network consumes, not the caller's staging buffer.
+// QCUT_BYTENN_CAPTURE_TERMINALS=1 also reads the five declared Stage1 heads
+// after successful Inference, including heads a rejecting caller never reads.
 
 struct NetState {
   std::vector<std::string> inputs;  // declared by the graph, plus whatever SetInput named
+  std::vector<std::string> terminalOutputs;
   int inferences = 0;                // completed Inference calls
 };
 std::map<void *, NetState> netStates;
@@ -425,6 +428,21 @@ std::map<void *, NetState> netStates;
 bool captureIO() {
   static const char *flag = std::getenv("QCUT_BYTENN_CAPTURE_IO");
   return captureDirectory() && flag && *flag == '1';
+}
+
+bool captureTerminals() {
+  static const char *flag = std::getenv("QCUT_BYTENN_CAPTURE_TERMINALS");
+  return captureIO() && flag && std::strcmp(flag, "1") == 0;
+}
+
+std::vector<std::string> stage1TerminalNames(const std::vector<std::string> &names) {
+  static const std::set<std::string> heads = {"fc_landmark_s1", "prob", "fc_pitch", "fc_yaw", "fc_visible"};
+  if (names.size() != heads.size()) return {};
+  std::set<std::string> seen;
+  for (const std::string &name : names) {
+    if (name.size() > 14 || !heads.count(name) || !seen.insert(name).second) return {};
+  }
+  return names;
 }
 
 // A graph row `DataV2 <name> ...` or legacy `<name> n h w c ...` declares an input.
@@ -493,12 +511,14 @@ int capturedEspressoSetInput(void *self, std::string name, void *data, int first
 
 int capturedEspressoInference(void *self) {
   int inference = 0;
+  std::vector<std::string> terminals;
   if (captureIO()) {
     std::vector<std::string> names;
     {
       std::lock_guard<std::mutex> lock(captureMutex);
       NetState &state = netStates[self];
       names = state.inputs;
+      if (captureTerminals()) terminals = state.terminalOutputs;
       inference = state.inferences;
     }
     for (const std::string &name : names) {
@@ -515,6 +535,13 @@ int capturedEspressoInference(void *self) {
               "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " inference=" + std::to_string(inference) +
                   " rc=" + std::to_string(result),
               0);
+  }
+  if (result == 0) {
+    for (const std::string &name : terminals) {
+      const TensorView view = originalEspressoExtract(self, name);
+      std::lock_guard<std::mutex> lock(captureMutex);
+      recordTensor("espresso-output", self, name, view, inference);
+    }
   }
   return result;
 }
@@ -534,6 +561,7 @@ int capturedEspressoCreateNet(void *self, const std::string &graph, void *arena,
     std::lock_guard<std::mutex> lock(captureMutex);
     NetState &state = netStates[self];
     state.inputs = graphInputNames(graph);
+    state.terminalOutputs = stage1TerminalNames(names);
     state.inferences = 0;
   }
   const int result = originalEspressoCreateNet(self, graph, arena, names);
