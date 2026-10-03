@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import JSZip from "jszip";
 import { expect, test } from "@playwright/test";
 import { resolveBeautyLabResearchPaths } from "../../../../../electron/beauty-lab-research-config";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
+import { saveBeautyLabComparison } from "./helpers/beauty-lab-comparison";
 import {
 	preparePortraitReferenceProject,
 	type ReferenceWindow,
@@ -144,30 +144,29 @@ test("Beauty Lab owned sampling checkpoint: seven real frames, grayscale, ZIP an
 				animations: "disabled",
 			});
 		}
-		const destination = path.join(output, "owned-chain-comparison.zip");
-		await rm(destination, { force: true });
-		await app.evaluate(({ BrowserWindow }, filename) => {
-			BrowserWindow.getAllWindows()[0].webContents.session.once(
-				"will-download",
-				(_event, item) => item.setSavePath(filename)
-			);
-		}, destination);
-		await lab
-			.getByRole("button", { name: "导出对照 ZIP", exact: true })
-			.click();
-		await expect.poll(() => existsSync(destination)).toBe(true);
-		let zip: JSZip | undefined;
-		await expect
-			.poll(async () => {
-				try {
-					zip = await JSZip.loadAsync(await readFile(destination));
-					return true;
-				} catch {
-					return false;
-				}
-			})
-			.toBe(true);
-		if (!zip) throw new Error("Missing exported ZIP");
+		const controls = lab.getByTestId("beauty-lab-controls");
+		await controls.getByRole("button", { name: "美妆", exact: true }).click();
+		const makeup = controls.getByTestId("portrait-section-makeup");
+		await makeup.getByRole("tab", { name: "口红", exact: true }).click();
+		await expect(
+			makeup.getByRole("tab", { name: "口红", exact: true })
+		).toHaveAttribute("aria-selected", "true");
+		await expect(
+			makeup.getByRole("button", { name: "柔和粉", exact: true })
+		).toBeDisabled();
+		await expect(
+			makeup.getByRole("button", { name: "无", exact: true })
+		).toBeDisabled();
+		await expect(makeup.getByLabel("程度数值", { exact: true })).toBeDisabled();
+		await page.screenshot({
+			path: path.join(output, "read-only-makeup.png"),
+			animations: "disabled",
+		});
+		const zip = await saveBeautyLabComparison({
+			app,
+			page,
+			destination: path.join(output, "owned-chain-comparison.zip"),
+		});
 		const report = JSON.parse(
 			await zip.file("comparison.json")!.async("string")
 		);
