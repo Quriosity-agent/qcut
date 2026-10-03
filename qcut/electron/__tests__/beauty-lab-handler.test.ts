@@ -1,0 +1,318 @@
+// @vitest-environment node
+import type { BrowserWindow, IpcMainInvokeEvent } from "electron";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	BEAUTY_LAB_LIST_CHANNEL,
+	BEAUTY_LAB_LOAD_CHANNEL,
+	type BeautyLabResearchCase,
+	type BeautyLabResearchFrame,
+} from "../beauty-lab-contract.js";
+import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+
+const { registrations, handle, removeHandler } = vi.hoisted(() => {
+	const registrations = new Map<
+		string,
+		(event: IpcMainInvokeEvent, request?: unknown) => unknown
+	>();
+	return {
+		registrations,
+		handle: vi.fn(
+			(
+				channel: string,
+				listener: (event: IpcMainInvokeEvent, request?: unknown) => unknown
+			) => {
+				if (registrations.has(channel))
+					throw new Error("Duplicate IPC registration");
+				registrations.set(channel, listener);
+			}
+		),
+		removeHandler: vi.fn((channel: string) => {
+			registrations.delete(channel);
+		}),
+	};
+});
+
+vi.mock("electron", () => ({ ipcMain: { handle, removeHandler } }));
+
+import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
+
+const cases: BeautyLabResearchCase[] = [
+	{ id: "temporal", name: "Temporal", frameCount: 7 },
+];
+const frame: BeautyLabResearchFrame = {
+	caseId: "temporal",
+	frameIndex: 0,
+	width: 1448,
+	height: 1086,
+	input: new Uint8Array([1, 2, 3, 255]),
+	native: new Uint8Array([4, 5, 6, 255]),
+	candidate: new Uint8Array([4, 5, 6, 255]),
+	adjustments: { enabled: true, values: { face_adjust_eye: 100 } },
+	source: "verified-offline-replay",
+	sourceHashesVerified: true,
+	nativeDependencies: true,
+};
+
+function context() {
+	const mainFrame = {};
+	const webContents = { isDestroyed: vi.fn(() => false), mainFrame };
+	const window = { isDestroyed: vi.fn(() => false), webContents };
+	const event = {
+		sender: webContents,
+		senderFrame: mainFrame,
+	} as unknown as IpcMainInvokeEvent;
+	return { window, event, mainWindow: window as unknown as BrowserWindow };
+}
+
+function provider() {
+	return {
+		list: vi.fn(async () => cases),
+		load: vi.fn(
+			async (_request: { caseId: string; frameIndex: number }) => frame
+		),
+	};
+}
+
+function invoke({
+	channel,
+	event,
+	request,
+}: {
+	channel: string;
+	event: IpcMainInvokeEvent;
+	request?: unknown;
+}): Promise<unknown> {
+	const listener = registrations.get(channel);
+	if (!listener) return Promise.reject(new Error("Missing IPC registration"));
+	return Promise.resolve().then(() => listener(event, request));
+}
+
+beforeEach(() => {
+	registrations.clear();
+	vi.clearAllMocks();
+});
+
+describe("Beauty Lab IPC", () => {
+	it("passes trusted calls and returns the provider's metadata and byte arrays unchanged", async () => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		expect(await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event })).toBe(
+			cases
+		);
+		expect(
+			await invoke({
+				channel: BEAUTY_LAB_LOAD_CHANNEL,
+				event,
+				request: { caseId: "temporal", frameIndex: 0 },
+			})
+		).toBe(frame);
+		expect(research.list).toHaveBeenCalledExactlyOnceWith();
+		expect(research.load).toHaveBeenCalledExactlyOnceWith({
+			caseId: "temporal",
+			frameIndex: 0,
+		});
+	});
+
+	it.each([
+		"missing-window",
+		"destroyed-window",
+		"destroyed-contents",
+		"foreign-sender",
+		"missing-frame",
+		"child-frame",
+	])("rejects %s for both channels before any provider work", async (failure) => {
+		const { event, window, mainWindow } = context();
+		const research = provider();
+		const untrusted = { ...event };
+		if (failure === "destroyed-window")
+			window.isDestroyed.mockReturnValue(true);
+		if (failure === "destroyed-contents")
+			window.webContents.isDestroyed.mockReturnValue(true);
+		if (failure === "foreign-sender")
+			untrusted.sender = {} as IpcMainInvokeEvent["sender"];
+		if (failure === "missing-frame") untrusted.senderFrame = null;
+		if (failure === "child-frame")
+			untrusted.senderFrame = {} as IpcMainInvokeEvent["senderFrame"];
+		setupBeautyLabIPC({
+			getMainWindow: () => (failure === "missing-window" ? null : mainWindow),
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		await expect(
+			invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event: untrusted })
+		).rejects.toThrow("trusted main window");
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_LOAD_CHANNEL,
+				event: untrusted,
+				request: { caseId: "temporal", frameIndex: 0 },
+			})
+		).rejects.toThrow("trusted main window");
+		expect(research.list).not.toHaveBeenCalled();
+		expect(research.load).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		undefined,
+		null,
+		true,
+		false,
+		0,
+		"temporal",
+		[],
+		["temporal", 0],
+		{},
+		{ caseId: 0, frameIndex: 0 },
+		{ caseId: "temporal" },
+		...[true, false, "0", null, NaN, Infinity, -Infinity, -1, 7, 0.5].map(
+			(frameIndex) => ({ caseId: "temporal", frameIndex })
+		),
+	])("rejects malformed request %j without calling the provider", async (request) => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		await expect(
+			invoke({ channel: BEAUTY_LAB_LOAD_CHANNEL, event, request })
+		).rejects.toThrow("Invalid Beauty Lab");
+		expect(research.load).not.toHaveBeenCalled();
+	});
+
+	it.each([0, 6])("accepts bounded frame index %s", async (frameIndex) => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		await invoke({
+			channel: BEAUTY_LAB_LOAD_CHANNEL,
+			event,
+			request: { caseId: "temporal", frameIndex },
+		});
+		expect(research.load).toHaveBeenCalledExactlyOnceWith({
+			caseId: "temporal",
+			frameIndex,
+		});
+	});
+
+	it.each([
+		"unknown",
+		"../campaign-00",
+		"/campaign-00",
+		"__proto__",
+	])("propagates whitelist rejection for %s", async (caseId) => {
+		const { event, mainWindow } = context();
+		const research = createBeautyLabResearchProvider({
+			root: "/nonexistent",
+			currentSourceRoot: "/nonexistent",
+		});
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_LOAD_CHANNEL,
+				event,
+				request: { caseId, frameIndex: 0 },
+			})
+		).rejects.toThrow("unknown case id");
+	});
+
+	it("rechecks the active window at invocation time", async () => {
+		const first = context();
+		const second = context();
+		let mainWindow = first.mainWindow;
+		const research = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		mainWindow = second.mainWindow;
+		await expect(
+			invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event: first.event })
+		).rejects.toThrow("trusted main window");
+		expect(
+			await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event: second.event })
+		).toBe(cases);
+	});
+
+	it("replaces previous handlers without duplicate registrations", async () => {
+		const { event, mainWindow } = context();
+		const first = provider();
+		const second = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: first,
+		});
+		const replacement = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: second,
+		});
+		await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event });
+		await invoke({
+			channel: BEAUTY_LAB_LOAD_CHANNEL,
+			event,
+			request: { caseId: "temporal", frameIndex: 0 },
+		});
+		expect(first.list).not.toHaveBeenCalled();
+		expect(first.load).not.toHaveBeenCalled();
+		expect(second.list).toHaveBeenCalledOnce();
+		expect(second.load).toHaveBeenCalledOnce();
+		replacement.dispose();
+		replacement.dispose();
+		expect(registrations.size).toBe(0);
+	});
+
+	it("does not let a stale controller dispose replacement handlers", async () => {
+		const { event, mainWindow } = context();
+		const first = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: provider(),
+		});
+		const second = provider();
+		const replacement = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: second,
+		});
+		first.dispose();
+		expect(await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event })).toBe(
+			cases
+		);
+		await invoke({
+			channel: BEAUTY_LAB_LOAD_CHANNEL,
+			event,
+			request: { caseId: "temporal", frameIndex: 0 },
+		});
+		expect(second.list).toHaveBeenCalledOnce();
+		expect(second.load).toHaveBeenCalledOnce();
+		replacement.dispose();
+		expect(registrations.size).toBe(0);
+	});
+});
