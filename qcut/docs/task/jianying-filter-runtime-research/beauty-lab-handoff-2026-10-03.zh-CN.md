@@ -5,7 +5,7 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`，Git 根目录是其上一级。先阅读此文档，不再继续旧 agent；本轮子任务已经收尾。
 
-最新检查点见下面“自有采样到实际渲染检查点”。新生成的 160/120 输入已贯通 ONNX、seed、平滑、坐标回映和实际 renderer，固定七帧最终 RGBA 零差。实时驱动仍未注册；不能把固定序列研究验收等同于任意画面产品后端接通。
+最新检查点见下面“完整画面诊断与实验室接入”。新生成的 160/120 输入已贯通 ONNX、seed、平滑、坐标回映和实际 renderer，固定七帧最终 RGBA 零差，并能在实验室查看。完整画面到 algorithm RGBA 尚有 1 灰阶差，实时驱动仍未注册；不能把固定序列研究验收等同于任意画面产品后端接通。
 
 ## 当前交付
 
@@ -46,8 +46,9 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 **新链路尚未接任意画面的实时推理。回放不是独立产品后端。** 完整画面形成 algorithm RGBA、检测/几何/路由和最终效果渲染仍依赖原生。最新研究链不再使用捕获的 160 tensor 或 native smoothing seed 生产点位，但这不代表 detector/身份/跟踪已独立。旧失败的 direct-affine 候选仍未启用。
 
-记录仅允许 `temporal`、`qcut-export`，每组 7 帧，固定 1448×1086。默认开发目录：
+记录仅允许 `temporal`、`qcut-export`、`owned-preprocess`，每组 7 帧，固定 1448×1086。前两组默认开发目录：
 `.local/jianying-model-pytorch/face-temporal-campaign-20261003-r1`；源码根目录为 `research`。
+新 `owned-preprocess` 开发目录为 `.local/jianying-model-pytorch/beauty-owned-chain-ui-20261003-r2`，发行包不启用该私有目录。
 Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../..` 定位，不能用 `app.getAppPath()` 拼开发数据路径。发行包没有这些私有记录时列表为空，不能把模型、运行库、效果包或原始素材加入 Git。
 
 研究探针的原始 `face_adjust_eye intensity=1` 对应 `/100` 展示值 100，超过产品精修滑杆最大值 50。记录模式只读，保留真实探针值并显式显示原始 intensity；只读控件范围可扩展以展示记录，不改变普通输入的范围或产品校验规则。禁止把 100 静默缩成 50 后声称相同参数。
@@ -120,6 +121,20 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 - 仍是同一正脸的 0–0.2 秒固定序列；不能宣称多人、侧脸、分钟级、其他格式/旋转或 Windows/x86 已通过。native algorithm RGBA、detector/Rect/flags/matrix/表/identity/reset、其余效果数据/渲染和模型/效果资产仍有依赖。
 - 本轮没有改前端，没有重新跑产品 Electron E2E、全仓库/CI 或发布。产品 candidate provider 的 `not-connected` 和禁用状态保留；新离线记录未冒充实时驱动。
 
+## 完整画面诊断与实验室接入
+
+详情、最终报告 SHA、静态调用关系与下一硬件点：[full frame / Beauty Lab checkpoint](../../../research/local-model-pytorch/face-full-frame-and-beauty-lab-checkpoint-2026-10-03.zh-CN.md)。本轮补齐独立复核、离线记录产品接入及上游诊断；没有把离线回放注册为实时 driver。
+
+- 新 CPU audit R2 复核 1,615 个文件、135 个原始输出头、24 次真实点位转换和七帧最终像素。旧 50 source 和精度门槛不改，模型/GPU不在审计器重跑。
+- 新 UI 导出 R2 绑定九报告、manifest/replay、七帧 PNG/RGBA 和 62 个当前 source。私有模型/运行库/效果包不入包；报告原字节保留。审计器源码、模型根目录、空 replay SHA 和晚期文件变化都校验。
+- Beauty Lab 新增“自有采样对照”，严格主窗口 IPC、固定相对文件、有界读取与全七帧复核。单元测试不提供 live backend，当前候选按钮仍禁用。
+- 新 full-frame sampler 不加载原生库：CPU控制 + 五种 Metal 输出，对 26 次 algorithm inputs 比较。最终 `face-full-frame-probe-20261003-r3/` 是诊断完成但 `sampling_parity=false,exact_modes=[]`；最大差 1，不放宽门槛。
+- 新真实 stack R3：26 次输入 SHA 与 R6 相同，七帧像素中立。已定位 BachImage data 在网络入口前生成；实际 resize/readback 未证明。下一点优先 `libcccreator +0x27855ac` 的实际虚函数 target，不能继续只截预测入口 stack。
+- 本轮相关 Python 757 + TypeScript 568 项通过，Electron/Web build、TypeScript 和改动 TS/TSX Biome 通过。两项真实 Electron E2E 39.9 秒通过；15 张 UI 截图、三个 ZIP，人工检查新对照正脸/无脸/窄屏及上游差分。
+- 七帧原生→新回放均零差；原图变化分别 `43893,43565,44022,0,43698,0,42469`。真实原生大眼 40 仍改变 7,900 像素，时间线未改变，pageErrors 为空。
+- 最终 UI 在 `output/playwright/beauty-lab-owned-chain-20261003-r2/` 和 `beauty-lab-regression-20261003-r4/`。neutral/replay/render 继续引用 R6/R4/R4，不把新 CPU 审计或 UI 读取误称为新一次推理。
+- 仍是同一正脸短序列及大眼效果，非其他 90 参数、多人/侧脸/分钟级/Windows 验收。所有子任务已收尾，实际宿主/LLDB/E2E 已退出。
+
 ## 代码入口
 
 - `apps/web/src/components/editor/properties-panel/beauty-lab-dialog.tsx`：弹窗与工具栏。
@@ -128,12 +143,14 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 - `beauty-lab-catalog.ts` / `beauty-lab-difference.ts` / `beauty-lab-export.ts`：目录、差分、ZIP。
 - `electron/beauty-lab-contract.ts` / `beauty-lab-handler.ts`：类型、IPC 来源与参数校验。
 - `beauty-lab-research.ts` / `beauty-lab-research-files.ts` / `beauty-lab-research-evidence.ts`：固定记录编排、安全文件读取、证据结构。
+- `beauty-lab-owned-chain.ts` / `beauty-lab-owned-chain-evidence.ts` / `beauty-lab-owned-chain-verify.ts`：新增 owned 记录文件、schema 和报告关联复核。
 - `apps/web/src/test/e2e/beauty-lab.e2e.ts`：真实运行时的可复现桌面测试。
+- `apps/web/src/test/e2e/beauty-lab-owned-chain.e2e.ts`：七帧 owned 记录、画布差分、ZIP、窄屏与隔离验证。
 
 ## 下一步顺序
 
-1. 先看最新 neutral capture R6、owned chain replay R4 / render R4 的 `report.json`、前一产品 E2E `output/playwright/beauty-lab-candidate-protocol-20261003-r3/e2e-report.json` 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
-2. 下一卡点是完整画面到 algorithm RGBA：确认缩放、格式、stride、旋转和真实解码 PTS，逐阶段捕获并独立重放。已打通的采样/ONNX/seed/平滑/坐标回映/renderer 保持回归；旧 50 source 及旧审计不变。
+1. 先看本轮新诊断/stack R3、CPU audit R2、UI export R2 及两组最终 E2E，再看 neutral capture R6、owned replay/render R4 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
+2. 下一卡点仍是完整画面到 algorithm RGBA：普通 CPU/Metal 均差 1 灰阶。先沿实际纹理 slot +0x48 交接追 producer，捕获真实描述/调用者，再独立重放缩放、格式、stride、旋转与解码 PTS。已打通下游保持回归，旧 50 source 及旧审计不变。
 3. 将 native detector/Rect/flags/matrix/identity/reset 等剩余依赖做成显式实时输入契约，再扩展新的格式/旋转/caller profile。当前两次相同几何的零差不能推广到任意画面。
 4. 对两个固定时序案例重验中间张量和最终像素，且观察中立性必须零差；然后将真实 driver 接到候选 provider，声明准确原生依赖并锁定 backendVersion。不要重新注入原生最终点以制造精度通过。
 5. 任意画面候选输出通过门槛后接实验室的真实候选处理按钮，再做预览/导出双链路。之后逐项增加脸型、鼻、嘴、眉、美妆、皮肤、美体及组合参数的对照样本。
@@ -159,4 +176,4 @@ bun x playwright test apps/web/src/test/e2e/beauty-lab.e2e.ts --reporter=line
 
 每次复测使用新的输出目录，避免 ZIP 下载完成轮询误读上次文件。最终验收目录不要覆盖。
 
-原生运行库不可用时该 E2E 不应当被假后端替代。常规无私有资产 CI 使用单元测试；真实原生验证需上述本机素材与运行时。Web 开发服务器目前为 `http://127.0.0.1:5173/`，浏览器只能看 UI/草稿，原生处理需 QCut Desktop。
+原生运行库不可用时该 E2E 不应当被假后端替代。常规无私有资产 CI 使用单元测试；真实原生验证需上述本机素材与运行时。本轮使用 app:// 已构建页面，没有启动 5173 开发服务器；原生处理需 QCut Desktop。新增两组串行 E2E 和 fresh 目录命令见最新检查点文档。
