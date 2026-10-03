@@ -30,6 +30,11 @@ def inactive_row():
     return row
 
 
+def returned_row(*, count=1):
+    return dict(geometry_row(), returned_result=dict(count=count, faces=[
+        dict(index=index, points_xy=[32768, -32768, 0, 0.5] * 53) for index in range(count)]))
+
+
 class ContractTests(unittest.TestCase):
     def association_fixture(self):
         rows = [geometry_row(index=index) for index in range(2)]
@@ -53,6 +58,62 @@ class ContractTests(unittest.TestCase):
         row = geometry_row()
         row["tables"]["base"][0] = 10**400
         with self.assertRaises(ValueError):
+            contract.validate_snapshot(row=row)
+
+    def test_returned_result_accepts_zero_one_ten_faces_and_absent_legacy_field(self):
+        for row in (geometry_row(), inactive_row()):
+            self.assertNotIn("returned_result", row)
+            contract.validate_snapshot(row=row)
+        for count in (0, 1, 10):
+            row = returned_row(count=count)
+            before = deepcopy(row)
+            with self.subTest(count=count):
+                contract.validate_snapshot(row=row)
+                self.assertEqual(row, before)
+
+    def test_returned_result_count_requires_bounded_integer(self):
+        for count in (True, False, -1, 11, 1.0, "1", None, 10**400):
+            row = returned_row()
+            row["returned_result"]["count"] = count
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "bounded typed"):
+                contract.validate_snapshot(row=row)
+
+    def test_returned_result_requires_object_and_matching_face_list(self):
+        result = returned_row()["returned_result"]
+        malformed = [None, False, [], "result", {}, dict(result, faces=None), dict(result, faces={}),
+                     dict(result, faces="faces"), dict(result, faces=tuple(result["faces"])),
+                     dict(result, faces=[]), dict(result, count=0), dict(result, count=10)]
+        for value in malformed:
+            row = dict(geometry_row(), returned_result=value)
+            with self.subTest(result=value), self.assertRaises(ValueError):
+                contract.validate_snapshot(row=row)
+
+    def test_returned_result_faces_require_ordered_unique_typed_indices(self):
+        for indices in ([1, 0], [0, 0], [0, 2], [False, 1], [0.0, 1], [-1, 1], [0, 10**400]):
+            row = returned_row(count=2)
+            for face, index in zip(row["returned_result"]["faces"], indices, strict=True):
+                face["index"] = index
+            with self.subTest(indices=indices), self.assertRaisesRegex(ValueError, "ordered returned"):
+                contract.validate_snapshot(row=row)
+        for face in (None, False, 1, [], "face", {}, {"points_xy": [0] * 212}):
+            row = returned_row()
+            row["returned_result"]["faces"] = [face]
+            with self.subTest(face=face), self.assertRaisesRegex(ValueError, "ordered returned"):
+                contract.validate_snapshot(row=row)
+
+    def test_returned_result_points_require_212_bounded_finite_numbers(self):
+        malformed = [None, [], [0] * 211, [0] * 213, (0,) * 212, [[0, 0]] * 106]
+        malformed.extend([[value] + [0] * 211 for value in
+                          (float("nan"), float("inf"), -float("inf"), True, False, 32769, -32769,
+                           10**400, -10**400, "0", None, [0])])
+        for points in malformed:
+            row = returned_row()
+            row["returned_result"]["faces"][0]["points_xy"] = points
+            with self.subTest(points=points), self.assertRaisesRegex(ValueError, "bounded finite geometry array"):
+                contract.validate_snapshot(row=row)
+        row = returned_row()
+        row["returned_result"]["faces"][0].pop("points_xy")
+        with self.assertRaisesRegex(ValueError, "bounded finite geometry array"):
             contract.validate_snapshot(row=row)
 
     def test_snapshot_addresses_and_pool_slots_cannot_alias(self):
