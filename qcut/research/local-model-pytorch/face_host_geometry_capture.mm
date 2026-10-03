@@ -122,7 +122,23 @@ void save(NSDictionary* value, size_t index) {
   if (!stream) throw std::runtime_error("geometry snapshot write failed");
 }
 
-void capture(void* handle, const char* api, int rc, int format, int width, int height,
+std::string saveFrame(const void* pixels, int width, int height, int stride, size_t index) {
+  if (width < 1 || width > 4096 || height < 1 || height > 4096 || stride != width * 4)
+    throw std::runtime_error("unsupported captured frame layout");
+  const size_t bytes = static_cast<size_t>(stride) * height;
+  std::vector<unsigned char> copy(bytes);
+  mach_vm_size_t copied = 0;
+  if (mach_vm_read_overwrite(mach_task_self(), reinterpret_cast<mach_vm_address_t>(pixels), bytes,
+      reinterpret_cast<mach_vm_address_t>(copy.data()), &copied) != KERN_SUCCESS || copied != bytes)
+    throw std::runtime_error("unreadable actual algorithm frame");
+  const auto name = "frame-" + std::to_string(index) + ".rgba";
+  std::ofstream stream(std::string(directory()) + "/" + name, std::ios::binary);
+  stream.write(reinterpret_cast<const char*>(copy.data()), copy.size());
+  if (!stream) throw std::runtime_error("actual algorithm frame write failed");
+  return name;
+}
+
+void capture(void* handle, const void* pixels, const char* api, int rc, int format, int width, int height,
              int stride, int rotation) noexcept {
   if (!directory()) return;
   std::lock_guard<std::mutex> lock(mutex);
@@ -137,6 +153,7 @@ void capture(void* handle, const char* api, int rc, int format, int width, int h
       const auto counter = reinterpret_cast<Counter>(dlsym(RTLD_DEFAULT, "qcut_bytenn_capture_sequence"));
       if (!counter || counter() < 0) throw std::runtime_error("missing neural capture sequence");
       const int neuralSequence = counter();
+      const auto frame = saveFrame(pixels, width, height, stride, index);
       const auto begin = read<uintptr_t>(owner + 0x7c00), end = read<uintptr_t>(owner + 0x7c08);
       const auto capacity = read<uintptr_t>(owner + 0x7c10);
       if (rc != 0 || !begin || end < begin || capacity < end || end - begin != 4000 || capacity - begin > 4000)
@@ -169,6 +186,7 @@ void capture(void* handle, const char* api, int rc, int format, int width, int h
       }
       save(@{@"index":@(index), @"api":@(api), @"rc":@(rc), @"handle":@(owner),
         @"request":@[@(format), @(width), @(height), @(stride), @(rotation)], @"bytenn_sequence":@(neuralSequence),
+        @"frame_file":@(frame.c_str()), @"frame_bytes":@(static_cast<size_t>(stride) * height),
         @"predictors":predictors, @"faces":faces, @"tables":tables(base)}, index);
     } catch (const std::exception& error) {
       try { save(@{@"index":@(index), @"error":@(error.what())}, index); } catch (...) {}
@@ -179,7 +197,7 @@ void capture(void* handle, const char* api, int rc, int format, int width, int h
 int observe(void* h, const void* pixels, int f, int w, int y, int stride, int rotation,
             void* args, void* output, Predict original, const char* api) {
   const int rc = original(h, pixels, f, w, y, stride, rotation, args, output);
-  capture(h, api, rc, f, w, y, stride, rotation);
+  capture(h, pixels, api, rc, f, w, y, stride, rotation);
   return rc;
 }
 
