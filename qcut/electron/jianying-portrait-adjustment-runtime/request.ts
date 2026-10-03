@@ -10,6 +10,10 @@ import type {
 } from "../jianying-portrait-adjustment-contract.js";
 import { jianyingPortraitControl } from "./catalog.js";
 import { jianyingPortraitMakeupCard } from "./makeup-catalog.js";
+import {
+	isPortraitSkinToneKey,
+	parsePortraitSkinToneResourceId,
+} from "./skin-tone-catalog.js";
 
 const MAX_FRAME_DIMENSION = 4096;
 const MAX_FRAME_PIXELS = 4096 * 4096;
@@ -265,6 +269,9 @@ function parseFaceEntries({
 		}
 		seenBindings.add(dedupeKey);
 		const makeup = parseMakeupSelections({ value: record.makeup });
+		if (record.skinToneResourceId !== undefined) {
+			throw new Error("Skin tone resource selection is global-only");
+		}
 		entries.push({
 			trackId,
 			...(personBindingId
@@ -559,6 +566,21 @@ export function parseJianyingPortraitRenderRequest({
 	const faceTarget = parseFaceTarget({ value: adjustments.faceTarget });
 	const makeup = parseMakeupSelections({ value: adjustments.makeup });
 	const faces = parseFaceEntries({ value: adjustments.faces });
+	const skinToneResourceId = parsePortraitSkinToneResourceId({
+		value: adjustments.skinToneResourceId,
+	});
+	if (
+		skinToneResourceId &&
+		faces?.some((face) =>
+			Object.entries(face.values).some(
+				([key, value]) => isPortraitSkinToneKey({ key }) && value !== 0
+			)
+		)
+	) {
+		throw new Error(
+			"Skin tone resource selection cannot be combined with per-face skin tone values"
+		);
+	}
 	const manualRetouch = parseManualRetouch({
 		value: adjustments.manualRetouch,
 	});
@@ -573,6 +595,7 @@ export function parseJianyingPortraitRenderRequest({
 		),
 		adjustments: {
 			enabled: adjustments.enabled,
+			...(skinToneResourceId === undefined ? {} : { skinToneResourceId }),
 			values: parseAdjustmentValues({ value: adjustments.values }),
 			...(faceTarget ? { faceTarget } : {}),
 			...(makeup ? { makeup } : {}),
