@@ -45,6 +45,7 @@ std::vector<ReplayFrame> replay;
 std::size_t replayCursor = 0;
 std::size_t nativeUpdateCalls = 0;
 std::thread::id seekThread;
+std::int64_t seekTimestamp = 0;
 std::exception_ptr updateError;
 void writeFaces(const void* buffer);
 
@@ -333,6 +334,7 @@ int tracedSeek(void* manager, std::int64_t timestamp,
                const jianying_probe::SwingDeviceTextureDataProbe* input,
                const jianying_probe::SwingDeviceTextureDataProbe* output) {
   seekThread = std::this_thread::get_id();
+  seekTimestamp = timestamp;
   updateError = nullptr;
   const auto restore = [] {
     for (auto entry = restorations.rbegin(); entry != restorations.rend(); ++entry)
