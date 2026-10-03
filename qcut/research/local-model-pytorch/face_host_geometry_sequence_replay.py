@@ -181,18 +181,18 @@ def run(*, args):
                     raise ValueError("actual dynamic predictor differs from ONNX graph")
                 raw = np.load(io.BytesIO(locked.read(path=out / f"onnx/size-120-infer-{inference:03d}-fc_landmark_s1.npy",
                                                      maximum=1024**2)), allow_pickle=False).reshape(106, 2)
-            selected_160 = [item for item in association["inferences"] if item["size"] == 160]
-            if owned_initialization and selected_160:
-                if len(selected_160) != 1:
-                    raise ValueError("one actual 160 initialization inference required")
-                inference_160 = selected_160[0]
+            if owned_initialization and initialization.initialization_required(
+                    snapshot=snapshot, prior_identity=temporal.identity):
+                inference_160, association_proof = initialization.select_initialization(
+                    snapshot=snapshot, association=association)
                 network = inventory["networks"][inference_160["network"]]
                 if network["graph_sha256"] != model["model_outputs"]["160"]["graph_sha256"]:
                     raise ValueError("actual initialization predictor differs from ONNX graph")
                 head = np.load(io.BytesIO(locked.read(path=out / f"onnx/size-160-infer-{inference_160['inference']:03d}-fc_landmark_s1.npy",
                                                       maximum=1024**2)), allow_pickle=False).reshape(106, 2)
                 seed, seed_proof = initialization.decode_seed(raw=head, snapshot=snapshot)
-                seed_proof.update(inference=inference_160["inference"], network=inference_160["network"])
+                seed_proof.update(inference=inference_160["inference"], network=inference_160["network"],
+                                  **association_proof)
             frame = native["frames"][snapshot["index"] - 2] if snapshot["index"] >= 2 else None
             case, faces = decode_case(snapshot=snapshot, raw=raw, native_frame=frame, require_exact=False,
                                       temporal=temporal, initialization_seed=seed)
