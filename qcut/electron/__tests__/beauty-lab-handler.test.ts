@@ -8,6 +8,11 @@ import {
 	type BeautyLabResearchFrame,
 } from "../beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+import {
+	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
+	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+	BEAUTY_LAB_CANDIDATE_PROTOCOL,
+} from "../beauty-lab-candidate-contract.js";
 
 const { registrations, handle, removeHandler } = vi.hoisted(() => {
 	const registrations = new Map<
@@ -93,6 +98,59 @@ beforeEach(() => {
 });
 
 describe("Beauty Lab IPC", () => {
+	it("exposes unavailable candidate capability without silently using replay or native", async () => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+		});
+		expect(
+			await invoke({ channel: BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL, event })
+		).toMatchObject({
+			protocol: BEAUTY_LAB_CANDIDATE_PROTOCOL,
+			available: false,
+			state: "not-connected",
+			backendVersion: null,
+		});
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+				event,
+				request: {},
+			})
+		).rejects.toThrow("backend unavailable");
+		expect(research.load).not.toHaveBeenCalled();
+		expect(research.list).not.toHaveBeenCalled();
+	});
+
+	it("passes candidate requests to the candidate provider, not the research loader", async () => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		const candidateProvider = {
+			inspect: vi.fn(),
+			render: vi.fn(async () => {
+				throw new Error("candidate-driver-test");
+			}),
+		};
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+			candidateProvider,
+		});
+		const request = { requestId: "test" };
+		await expect(
+			invoke({ channel: BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL, event, request })
+		).rejects.toThrow("candidate-driver-test");
+		expect(candidateProvider.render).toHaveBeenCalledExactlyOnceWith({
+			request,
+		});
+		expect(research.load).not.toHaveBeenCalled();
+	});
 	it("passes trusted calls and returns the provider's metadata and byte arrays unchanged", async () => {
 		const { event, mainWindow } = context();
 		const research = provider();
@@ -126,9 +184,10 @@ describe("Beauty Lab IPC", () => {
 		"foreign-sender",
 		"missing-frame",
 		"child-frame",
-	])("rejects %s for both channels before any provider work", async (failure) => {
+	])("rejects %s for all channels before any provider work", async (failure) => {
 		const { event, window, mainWindow } = context();
 		const research = provider();
+		const candidateProvider = { inspect: vi.fn(), render: vi.fn() };
 		const untrusted = { ...event };
 		if (failure === "destroyed-window")
 			window.isDestroyed.mockReturnValue(true);
@@ -144,10 +203,26 @@ describe("Beauty Lab IPC", () => {
 			root: "/unused",
 			currentSourceRoot: "/unused",
 			provider: research,
+			candidateProvider,
 		});
 		await expect(
 			invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event: untrusted })
 		).rejects.toThrow("trusted main window");
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
+				event: untrusted,
+			})
+		).rejects.toThrow("trusted main window");
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+				event: untrusted,
+				request: {},
+			})
+		).rejects.toThrow("trusted main window");
+		expect(candidateProvider.inspect).not.toHaveBeenCalled();
+		expect(candidateProvider.render).not.toHaveBeenCalled();
 		await expect(
 			invoke({
 				channel: BEAUTY_LAB_LOAD_CHANNEL,
@@ -302,6 +377,8 @@ describe("Beauty Lab IPC", () => {
 			provider: second,
 		});
 		first.dispose();
+		expect(registrations.has(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL)).toBe(true);
+		expect(registrations.has(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL)).toBe(true);
 		expect(await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event })).toBe(
 			cases
 		);
