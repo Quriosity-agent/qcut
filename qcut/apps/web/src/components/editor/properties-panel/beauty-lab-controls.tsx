@@ -293,7 +293,8 @@ export function BeautyLabControls({
 										ready: !disabled && !readOnly,
 									}))}
 									adjustments={scopedAdjustments}
-									disabled={disabled || readOnly}
+									disabled={disabled}
+									readOnly={readOnly}
 									locale={portraitLocale}
 									onChange={changeFace}
 									onInteractionStart={draftInteraction}

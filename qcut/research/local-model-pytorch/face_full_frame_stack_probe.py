@@ -27,7 +27,7 @@ def run(*, args):
         context = capture.load(root=args.capture.resolve(strict=True), locked=locked)
         evidence = context["evidence"]
         _, runtime, _, files, frames = probe.lock_profile(capture=context["original"],
-            audit=Path(evidence["audit"]), locked=locked)
+            audit=Path(evidence["audit"]), locked=locked, **probe.profile_report_arguments(evidence=evidence))
         for name in ("observed", "trace", "geometry", "capture"):
             (out / name).mkdir()
         directory = out / "observed"

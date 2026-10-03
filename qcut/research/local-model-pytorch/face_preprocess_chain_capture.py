@@ -33,7 +33,8 @@ def load(*, root, locked):
     audit = Path(evidence["audit"]).resolve(strict=True)
     if any(str(path / "report.json") not in fixtures for path in (original, audit)):
         raise ValueError("original capture and audit must be hash-bound")
-    previous, runtime, package, files, frames = probe.lock_profile(capture=original, audit=audit, locked=locked)
+    previous, runtime, package, files, frames = probe.lock_profile(capture=original, audit=audit, locked=locked,
+        **probe.profile_report_arguments(evidence=evidence))
     if (evidence.get("runtime") != str(runtime) or evidence.get("package") != str(package) or
             evidence.get("host_sha256") != previous["host_sha256"]):
         raise ValueError("preprocessing runtime/package/host differs from locked profile")
