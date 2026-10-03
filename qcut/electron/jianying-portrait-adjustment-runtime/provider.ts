@@ -29,7 +29,15 @@ import {
 	type JianyingPortraitHostProcess,
 } from "./host-process.js";
 import { resolveJianyingPortraitMakeupCards } from "./makeup-resolver.js";
-import { resolveJianyingPortraitPackages } from "./package-resolver.js";
+import {
+	resolveJianyingPortraitPackage,
+	resolveJianyingPortraitPackages,
+} from "./package-resolver.js";
+import {
+	JIANYING_PORTRAIT_SKIN_TONES,
+	JIANYING_PORTRAIT_SKIN_DEFAULT_INTENSITY,
+	isPortraitSkinToneKey,
+} from "./skin-tone-catalog.js";
 import { missingJianyingNoseModels } from "./nose-models.js";
 import {
 	portraitFittingFrameAction,
@@ -178,6 +186,11 @@ function requestedGroups({
 }): JianyingPortraitAdjustmentGroup[] {
 	const groups = new Set<JianyingPortraitAdjustmentGroup>();
 	for (const control of JIANYING_PORTRAIT_ADJUSTMENT_CATALOG) {
+		if (
+			request.adjustments.skinToneResourceId === null &&
+			isPortraitSkinToneKey({ key: control.key })
+		)
+			continue;
 		if ((request.adjustments.values[control.key] ?? 0) !== 0) {
 			groups.add(control.group);
 		}
@@ -197,6 +210,11 @@ function requestedGroups({
 	}
 	for (const face of request.adjustments.faces ?? []) {
 		for (const control of JIANYING_PORTRAIT_ADJUSTMENT_CATALOG) {
+			if (
+				request.adjustments.skinToneResourceId === null &&
+				isPortraitSkinToneKey({ key: control.key })
+			)
+				continue;
 			if ((face.values[control.key] ?? 0) !== 0) {
 				groups.add(control.group);
 			}
@@ -229,6 +247,9 @@ function frameCacheKey({
 		([left], [right]) => left.localeCompare(right)
 	);
 	hash.update(`\0makeup:${JSON.stringify(makeupEntries)}`);
+	if (request.adjustments.skinToneResourceId !== undefined) {
+		hash.update(`\0skin-tone:${request.adjustments.skinToneResourceId}`);
+	}
 	hash.update(
 		`\0manual:${JSON.stringify(request.adjustments.manualRetouch?.strokes ?? [])}`
 	);
@@ -502,11 +523,32 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
 			})
 		);
+		const skinTones = await Promise.all(
+			JIANYING_PORTRAIT_SKIN_TONES.map(async (tone) => {
+				const resolved = await resolveJianyingPortraitPackage({
+					runtimePackage: "skin-tone",
+					skinToneResourceId: tone.resourceId,
+				});
+				return {
+					resourceId: tone.resourceId,
+					titleZh: tone.titleZh,
+					titleEn: tone.titleEn,
+					color: tone.color,
+					defaultIntensity: JIANYING_PORTRAIT_SKIN_DEFAULT_INTENSITY,
+					ready:
+						Boolean(resolved.packagePath) &&
+						runtime.status.state === "ready" &&
+						Boolean(hostPath),
+					source: resolved.source,
+				};
+			})
+		);
 		const baseStatus = {
 			provider: "jianying-local-swing-v1" as const,
 			catalog: [...JIANYING_PORTRAIT_ADJUSTMENT_CATALOG],
 			packages: packageStatuses,
 			makeupCards: makeupCardStatuses,
+			skinTones,
 		};
 		if (runtime.status.state !== "ready") {
 			return {
@@ -528,6 +570,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		}
 		const hasRenderablePackage =
 			packageStatuses.some(({ ready }) => ready) ||
+			skinTones.some(({ ready }) => ready) ||
 			makeupCardStatuses.some(({ ready }) => ready);
 		if (!hasRenderablePackage) {
 			return {
@@ -540,14 +583,17 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		}
 		const allPackagesReady = packageStatuses.every(({ ready }) => ready);
 		const allCardsReady = makeupCardStatuses.every(({ ready }) => ready);
+		const allSkinTonesReady = skinTones.every(({ ready }) => ready);
 		const offlineReady =
 			allPackagesReady &&
 			allCardsReady &&
+			allSkinTonesReady &&
+			skinTones.every(({ source }) => source === "qcut-private") &&
 			runtime.status.runtimeSource === "qcut-private" &&
 			runtime.status.modelSource === "qcut-private" &&
 			packageStatuses.every(({ source }) => source === "qcut-private") &&
 			makeupCardStatuses.every(({ source }) => source === "qcut-private");
-		const fullyReady = allPackagesReady && allCardsReady;
+		const fullyReady = allPackagesReady && allCardsReady && allSkinTonesReady;
 		const unavailableMessage = packageStatuses.find(
 			({ message }) => message
 		)?.message;
@@ -601,7 +647,9 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		const [runtime, hostPath, packages, makeupCards] = await Promise.all([
 			inspectJianyingFilterLocalRuntime(),
 			resolveJianyingPortraitAdjustmentHost(),
-			resolveJianyingPortraitPackages(),
+			resolveJianyingPortraitPackages({
+				skinToneResourceId: request.adjustments.skinToneResourceId ?? undefined,
+			}),
 			resolveJianyingPortraitMakeupCards(),
 		]);
 		if (
