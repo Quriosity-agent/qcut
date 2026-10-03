@@ -10,8 +10,10 @@ import json
 import math
 from pathlib import Path
 
-from face_alignment_replay import LockedFiles, object_field, strict_json, valid_hash
+from face_alignment_replay import LockedFiles, object_field, strict_json
 from face_host_geometry_contract import integer, validate_sequence
+from face_temporal_audit_metrics import count, flag, hash_value, metric, number, pixels, require, rows
+from face_temporal_initialization_audit import INITIALIZATION_STAGE, SMOOTHING_STAGE, seed_summary, smoothing_case
 import face_render_consumer_probe as consumer
 import face_render_sequence_probe as sequence
 from face_render_stability_probe import digest
@@ -20,67 +22,6 @@ FRAME_COUNT, WARMUPS, SEEKS, PREDICTIONS, CONVERSIONS = 7, 6, 2, 26, 24
 REPORT_LIMIT, REPLAY_LIMIT = 32 * 1024**2, 1024**2
 STAGES = ("sampling", "stage1", "tracked", "tracked_to_returned", "returned_to_consumer", "normalized", "final_pixels")
 PUBLISHED_STAGES = ("tracked_to_published", "published_to_returned")
-SMOOTHING_STAGE = "owned_smoothing"
-
-
-def require(*, condition, message):
-    if not condition:
-        raise ValueError(message)
-
-
-def flag(*, row, key):
-    value = row.get(key)
-    require(condition=type(value) is bool, message=f"typed flag required: {key}")
-    return value
-
-
-def count(*, row, key, expected=None, maximum=4096):
-    value = integer(value=row.get(key), maximum=maximum)
-    require(condition=expected is None or value == expected, message=f"count mismatch: {key}")
-    return value
-
-
-def number(*, value, maximum=65536):
-    require(condition=type(value) in (int, float) and 0 <= value <= maximum and math.isfinite(value),
-            message="bounded finite nonnegative number required")
-    return value
-
-
-def hash_value(*, value):
-    require(condition=valid_hash(value=value), message="lowercase SHA256 required")
-    return value
-
-
-def rows(*, value, length):
-    require(condition=isinstance(value, list) and len(value) == length and all(isinstance(row, dict) for row in value),
-            message="bounded ordered report objects required")
-    return value
-
-
-def metric(*, value):
-    require(condition=isinstance(value, dict), message="point stage metric required")
-    exact, within = (flag(row=value, key=key) for key in ("exact", "within"))
-    errors = [number(value=value.get(key)) for key in ("max_abs", "mean_l2", "max_l2")]
-    count(row=value, key="worst_point_index", maximum=105)
-    require(condition=number(value=value.get("tolerance")) == 0 and within == exact
-            and exact == all(error == 0 for error in errors), message="strict zero-tolerance metric required")
-    return exact, errors[0]
-
-
-def pixels(*, row, width, height):
-    equal = flag(row=row, key="equal")
-    changed = count(row=row, key="changed_pixels", maximum=width * height)
-    delta = count(row=row, key="max_delta", maximum=255)
-    hash_value(value=row.get("sha256"))
-    bbox = row.get("bbox")
-    if equal:
-        require(condition=changed == delta == 0 and bbox is None, message="exact pixel metrics disagree")
-    else:
-        require(condition=changed > 0 and delta > 0 and isinstance(bbox, list) and len(bbox) == 4
-                and all(type(value) is int for value in bbox)
-                and 0 <= bbox[0] < bbox[2] <= width and 0 <= bbox[1] < bbox[3] <= height,
-                message="changed pixel metrics disagree")
-    return equal, delta
 
 
 def request_profile(*, frames):
@@ -147,40 +88,6 @@ def published_layers(*, snapshot, layer, stages, index):
     return observed
 
 
-def smoothing_case(*, snapshot, case, prior_identity, stages):
-    value = case.get("temporal_smoothing")
-    require(condition=isinstance(value, dict) and flag(row=value, key="passed"), message="passed owned smoothing evidence required")
-    seed = flag(row=value, key="native_seed_used")
-    active = [face for face in snapshot["faces"] if face["active"]]
-    checks = value.get("checks")
-    require(condition=isinstance(checks, dict), message="owned smoothing state metrics required")
-    if not active:
-        require(condition=value.get("mode") == "no-face" and not seed and not checks, message="no-face smoothing must clear history")
-        return None, False
-    face = active[0]
-    identity = (face["slot"], face["alignment"], face["id"])
-    states = face.get("smoothing")
-    require(condition=isinstance(states, list) and len(states) == 2, message="captured smoothing partitions required")
-    initialized = all(state["first"] for state in states)
-    require(condition=initialized == any(state["first"] for state in states), message="partial smoothing initialization rejected")
-    mode = "owned-input-initialization" if initialized else (
-        "owned-history-update" if identity == prior_identity else "native-initialization-seed")
-    require(condition=value.get("mode") == mode and seed == (mode == "native-initialization-seed")
-            and flag(row=value, key="native_initialization_signal_required"), message="owned smoothing transition/seed provenance differs")
-    routing = snapshot.get("runtime_state", {})
-    require(condition=routing.get("base_output_mode_bit") is False and routing.get("optimized_output_bit") is False
-            and type(routing.get("config_cache_mode")) is int and routing["config_cache_mode"] <= 0,
-            message="owned smoothing route differs")
-    require(condition=set(checks) == ({"current"} if initialized else {"current", "previous", "delta"}),
-            message="missing owned smoothing state checks")
-    results = [metric(value=check) for check in checks.values()]
-    exact = all(row[0] for row in results)
-    require(condition=value["passed"] == exact, message="owned smoothing aggregate differs")
-    add_stage(stages=stages, name=SMOOTHING_STAGE, index=snapshot["index"], exact=exact,
-              error=max(row[1] for row in results))
-    return identity, seed
-
-
 def sampling_window(*, capture, snapshot, association, sampling, used):
     index = snapshot["index"]
     count(row=association, key="prediction", expected=index)
@@ -239,6 +146,18 @@ def audit_reports(*, capture, sequence_replay, sequence_render, capture_sha256, 
     sources = source_hashes(reports=reports)
     owned_smoothing = (flag(row=sequence_replay, key="owned_temporal_smoothing_used")
                        if "owned_temporal_smoothing_used" in sequence_replay else False)
+    owned_initialization = (flag(row=sequence_replay, key="owned_initialization_used")
+                            if "owned_initialization_used" in sequence_replay else False)
+    if "independent_160_sampling_input_used" in sequence_replay:
+        require(condition=not flag(row=sequence_replay, key="independent_160_sampling_input_used"),
+                message="160 sampler route is not verified by this audit profile")
+    require(condition=not owned_initialization or owned_smoothing, message="owned initialization requires owned smoothing")
+    if owned_initialization:
+        require(condition=not flag(row=sequence_replay, key="native_smoothing_seed_required"),
+                message="owned initialization cannot require native point seeds")
+        require(condition=not flag(row=sequence_replay, key="independent_160_sampling_input_used")
+                and flag(row=sequence_replay, key="native_160_sampling_input_required"),
+                message="160 sampler route is not verified by this audit profile")
     if owned_smoothing:
         require(condition=flag(row=sequence_replay, key="native_smoothing_initialization_required"),
                 message="native smoothing initialization dependency must remain explicit")
@@ -286,9 +205,9 @@ def audit_reports(*, capture, sequence_replay, sequence_render, capture_sha256, 
                              maximum_timestamp_us=consumer.REPLAY_TIME_LIMIT_US)
     payload_frames = rows(value=replay_payload["frames"], length=CONVERSIONS)
     require(condition=[frame["timestamp_us"] for frame in payload_frames] == timing, message="replay timing differs from manifest")
-    stages, used, neural_count, gaps, no_face = {name: [] for name in (*STAGES, *PUBLISHED_STAGES, SMOOTHING_STAGE)}, set(), 0, [], []
+    stages, used, neural_count, gaps, no_face = {name: [] for name in (*STAGES, *PUBLISHED_STAGES, SMOOTHING_STAGE, INITIALIZATION_STAGE)}, set(), 0, [], []
     published_predictions = []
-    prior_identity, seed_predictions = None, []
+    prior_identity, seed_predictions, owned_seed_predictions = None, [], []
     lower = 0
     for index, (snapshot, association, sample, case, descriptor) in enumerate(zip(snapshots, associations, sampling, cases, descriptors, strict=True)):
         count(row=descriptor, key="prediction", expected=index)
@@ -341,17 +260,20 @@ def audit_reports(*, capture, sequence_replay, sequence_render, capture_sha256, 
         if published_layers(snapshot=snapshot, layer=layer, stages=stages, index=index):
             published_predictions.append(index)
         if owned_smoothing:
-            prior_identity, seeded = smoothing_case(snapshot=snapshot, case=case, prior_identity=prior_identity, stages=stages)
+            prior_identity, seeded, owned_seeded = smoothing_case(snapshot=snapshot, case=case,
+                prior_identity=prior_identity, stages=stages, association=association, owned_initialization=owned_initialization)
             if seeded:
                 seed_predictions.append(index)
+            if owned_seeded:
+                owned_seed_predictions.append(index)
         else:
-            require(condition="temporal_smoothing" not in case, message="undeclared owned smoothing evidence rejected")
+            require(condition="temporal_smoothing" not in case and "owned_initialization" not in case,
+                    message="undeclared owned smoothing evidence rejected")
     if owned_smoothing:
-        declared_seeds = sequence_replay.get("native_smoothing_seed_predictions")
-        require(condition=isinstance(declared_seeds, list) and len(declared_seeds) <= PREDICTIONS
-                and all(type(index) is int for index in declared_seeds)
-                and declared_seeds == seed_predictions
-                and len(published_predictions) == PREDICTIONS, message="owned smoothing seed/publication summary differs")
+        seed_summary(replay=sequence_replay, key="native_smoothing_seed_predictions", expected=seed_predictions, maximum=PREDICTIONS)
+        require(condition=len(published_predictions) == PREDICTIONS, message="owned smoothing seed/publication summary differs")
+    if owned_initialization or "owned_smoothing_seed_predictions" in sequence_replay:
+        seed_summary(replay=sequence_replay, key="owned_smoothing_seed_predictions", expected=owned_seed_predictions, maximum=PREDICTIONS)
     count(row=sequence_replay, key="head_comparisons", expected=neural_count * 5)
     require(condition=sequence_replay.get("post_tracking_gap_predictions") == gaps, message="post-tracking prediction summary disagrees")
     for index, (baseline, comparison) in enumerate(zip(rows(value=capture.get("comparisons"), length=FRAME_COUNT),
@@ -388,6 +310,8 @@ def audit_reports(*, capture, sequence_replay, sequence_render, capture_sha256, 
     required_stages = [name for name in STAGES if not owned_smoothing or name != "tracked_to_returned"]
     if owned_smoothing:
         required_stages.extend((SMOOTHING_STAGE, "published_to_returned"))
+    if owned_initialization:
+        required_stages.append(INITIALIZATION_STAGE)
     pipeline = pipeline and all(summaries[name]["compared"] > 0 and not summaries[name]["required_failed_indices"] for name in required_stages)
     return dict(completed=completed, pipeline_parity=bool(pipeline), passed=bool(pipeline),
                 audit_scope="recorded report links and metrics; no raw tensor or fresh native revalidation",
@@ -395,6 +319,9 @@ def audit_reports(*, capture, sequence_replay, sequence_render, capture_sha256, 
                 source_hashes_verified=False, source_count=len(sources), predictions=PREDICTIONS,
                 owned_temporal_smoothing_used=owned_smoothing, native_smoothing_initialization_required=owned_smoothing,
                 native_smoothing_seed_predictions=seed_predictions,
+                owned_initialization_used=owned_initialization, owned_smoothing_seed_predictions=owned_seed_predictions,
+                native_smoothing_seed_required=owned_smoothing and not owned_initialization,
+                native_160_sampling_input_required=True, independent_160_sampling_input_used=False,
                 conversions=CONVERSIONS, manifest_frames=FRAME_COUNT, head_comparisons=neural_count * 5,
                 no_face_predictions=no_face, published_observed_predictions=published_predictions, stages=summaries,
                 report_flags={name: {key: report.get(key) for key in ("passed", "completed", "diagnostic_only")}
