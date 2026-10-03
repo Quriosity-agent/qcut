@@ -12,6 +12,7 @@ from face_alignment_replay import LockedFiles, point_difference
 from face_geometry import reorder_landmarks
 from face_geometry_native import LIBRARY_SHA256
 from face_host_geometry_contract import associate_inferences, validate_sequence
+from face_host_sampling_inputs import build_inputs
 import face_owned_replay_e2e as owned
 import face_render_consumer_probe as consumer
 import face_render_model_capture as capture
@@ -89,7 +90,8 @@ def run(*, args):
     try:
         parity.no_torch()
         source_names = (Path(__file__).name, "face_host_geometry_contract.py", "face_alignment_replay.py",
-                        "face_geometry.py", "face_render_model_parity.py")
+                        "face_geometry.py", "face_render_model_parity.py", "face_alignment_sampling.py",
+                        "face_host_sampling_inputs.py")
         report["source_sha256"] = {name: digest(data=locked.read(path=Path(__file__).with_name(name)))
                                   for name in source_names}
         root = args.capture.resolve(strict=True)
@@ -107,7 +109,12 @@ def run(*, args):
                                              metadata=[capture.metadata(path=path) for path in (root / "capture").glob("*.json")])
         if associations != evidence.get("prediction_inferences"):
             raise ValueError("actual prediction/inference association changed")
-        model = parity.run(args=argparse.Namespace(capture=root, root=args.root, out=out / "onnx"))
+        replacement_inputs = None
+        if getattr(args, "independent_sampling", False):
+            replacement_inputs, report["sampling_cases"] = build_inputs(
+                root=root, evidence=evidence, associations=associations, locked=locked)
+        model = parity.run(args=argparse.Namespace(capture=root, root=args.root, out=out / "onnx"),
+                           replacement_inputs=replacement_inputs)
         if model.get("passed") is not True or model.get("capture_sha256") != digest(data=locked.read(path=root / "report.json")):
             raise ValueError("actual ONNX execution lacks geometry capture provenance")
         trace = locked.read(path=root / "observed/records.jsonl", maximum=sequence.LOG_LIMIT)
@@ -153,6 +160,7 @@ def run(*, args):
             raise RuntimeError("actual model tensors changed during decode")
         parity.no_torch()
         report.update(passed=True, head_comparisons=model["head_comparisons"],
+                      independent_120_sampling_input_used=model["independent_120_sampling_input_used"],
                       frame_width=evidence["width"], frame_height=evidence["height"],
                       algorithm_request=snapshots[0]["request"], fixture_sha256=locked.files,
                       per_prediction_inference_association_verified=True,
@@ -172,6 +180,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "root", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
+    parser.add_argument("--independent-sampling", action="store_true")
     report = run(args=parser.parse_args())
     print(json.dumps(dict(passed=report["passed"], predictions=len(report["cases"]),
                           normalized_exact=report["normalized_exact"])))
