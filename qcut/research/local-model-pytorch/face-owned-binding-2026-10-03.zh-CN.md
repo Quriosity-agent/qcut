@@ -97,11 +97,13 @@ python3 research/local-model-pytorch/face_owned_binding_e2e.py \
 ROI 必须对应实际输入，不是任意头像通用的常量。
 `face_owned_binding_e2e_test.py` 拒绝只有转换日志而没有像素变化、越界变化、缺少 restore/GPU completion、
 错误扰动方向或伪造 native bypass。静态 adapter trace 校验 145 个锚点和 35 个完整窗口。
-当前模型/宿主/协议回归合计 **458 项 Python 测试通过**；产品协议与 provenance 的 29 项 TypeScript 测试通过。
+加上后续连续换图的 owned 对照，模型/宿主/协议回归合计 **465 项 Python 测试通过**；
+产品协议与 provenance 的 29 项 TypeScript 测试通过。
 
 ## 接下来仍缺什么
 
-1. 将连续换图 manifest 用于原生对照与 owned binding，而不只比较两次原宿主。
+1. 连续换图 manifest 已用于原生对照与 owned binding：7 帧一致，14 次消费与 GPU 完成恢复，
+   见 [连续换图补充验收](face-render-sequence-2026-10-03.zh-CN.md)。继续扩展多脸和长序列。
 2. 将 PyTorch/ONNX 输出逐字段写入 owned 结果，并与原生同字段对比；缺少元数据就保留混合路径。
 3. 禁止并计数原生推理，证明该帧不再内部分析；当前报告明确为 `native_analysis_bypassed=false`。
 4. Stage2/240 点、虹膜、pose/fitting、非空 masks、多脸身份与遮挡，以及全部功能对齐。
