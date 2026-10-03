@@ -1173,6 +1173,12 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 							".local/jianying-model-pytorch/face-temporal-campaign-20261003-r1"
 						),
 						currentSourceRoot: path.join(sourceRoot, "research"),
+						ownedChainRoot: app.isPackaged
+							? undefined
+							: path.join(
+									sourceRoot,
+									".local/jianying-model-pytorch/beauty-owned-chain-ui-20261003-r2"
+								),
 					});
 				},
 			],
