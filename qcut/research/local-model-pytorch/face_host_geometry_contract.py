@@ -44,6 +44,18 @@ def validate_snapshot(*, row):
     integer(value=row.get("bytenn_sequence"), minimum=1, maximum=4096)
     if row.get("api") != "FsNew_DoPredict":
         raise ValueError("only observed 106-point FsNew API supported")
+    if "returned_result" in row:
+        result = row["returned_result"]
+        if not isinstance(result, dict):
+            raise ValueError("returned geometry result object required")
+        count = integer(value=result.get("count"), maximum=10)
+        faces = result.get("faces")
+        if not isinstance(faces, list) or len(faces) != count:
+            raise ValueError("returned geometry face count mismatch")
+        for index, face in enumerate(faces):
+            if not isinstance(face, dict) or type(face.get("index")) is not int or face["index"] != index:
+                raise ValueError("ordered returned geometry faces required")
+            numbers(value=face.get("points_xy"), length=212)
     request = row.get("request")
     if not isinstance(request, list) or len(request) != 5 or any(type(item) is not int for item in request):
         raise ValueError("typed geometry request required")
