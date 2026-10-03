@@ -90,6 +90,7 @@ import {
 	type JianyingPortraitAdjustmentIPCController,
 } from "./jianying-portrait-adjustment-handler.js";
 import { setupBeautyLabIPC } from "./beauty-lab-handler.js";
+import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
 import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.js";
 import {
 	setupJianyingMotionTrackingIPC,
@@ -1168,17 +1169,11 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 						: path.resolve(__dirname, "../..");
 					beautyLabController = setupBeautyLabIPC({
 						getMainWindow: () => mainWindow,
-						root: path.join(
+						...resolveBeautyLabResearchPaths({
 							sourceRoot,
-							".local/jianying-model-pytorch/face-temporal-campaign-20261003-r1"
-						),
-						currentSourceRoot: path.join(sourceRoot, "research"),
-						ownedChainRoot: app.isPackaged
-							? undefined
-							: path.join(
-									sourceRoot,
-									".local/jianying-model-pytorch/beauty-owned-chain-ui-20261003-r2"
-								),
+							isPackaged: app.isPackaged,
+							environment: process.env,
+						}),
 					});
 				},
 			],
