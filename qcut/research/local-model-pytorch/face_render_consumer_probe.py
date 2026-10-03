@@ -27,6 +27,7 @@ GRAPHICS_UUID = "57ECC10F-8BB8-319C-BA46-AF286E2EBD43"
 ENV_KEYS = (
     "QCUT_TRACE_UPDATES", "QCUT_FACE_POINT_SHIFT", "QCUT_FACE_REPLAY",
     "QCUT_CONSUMER_RECORD", "QCUT_CONSUMER_TRACE",
+    "QCUT_FACE_BIND_REPLAY", "QCUT_FACE_BIND_EYE_SHIFT", "QCUT_WAIT_ENGINE_RENDERER",
 )
 
 
@@ -186,7 +187,8 @@ def validate_host_log(*, log: str) -> None:
 
 def probe_environment(*, runtime: Path, out: Path, width: int, height: int,
                       mode: str, eye_shift: float, has_replay: bool) -> dict[str, str]:
-    environment = {key: value for key, value in os.environ.items() if key not in ENV_KEYS}
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith(("QCUT_", "DYLD_", "MTL_"))}
     environment.update({
         "QCUT_FRAME_WIDTH": str(width), "QCUT_FRAME_HEIGHT": str(height),
         "DYLD_LIBRARY_PATH": str(runtime / "Frameworks"),
