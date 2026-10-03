@@ -172,6 +172,34 @@ NSDictionary* runtimeState(uintptr_t owner) {
     @"cache_counter":@(read<int>(owner + 0x7790))};
 }
 
+NSArray* filterVector(uintptr_t address, size_t count, bool pairs) {
+  const auto begin = read<uintptr_t>(address), end = read<uintptr_t>(address + 8);
+  const auto capacity = read<uintptr_t>(address + 16);
+  const size_t stride = pairs ? 8 : 4;
+  if (end < begin || capacity < end || capacity - begin > 512 * stride ||
+      (end - begin) % stride != 0 || (capacity - begin) % stride != 0 ||
+      (begin == 0 && (end != 0 || capacity != 0)) || (begin != 0 && begin < 4096))
+    throw std::runtime_error("unsupported filter vector layout");
+  const auto length = (end - begin) / stride;
+  if (length != 0 && length != count) throw std::runtime_error("unsupported filter vector count");
+  return floats(begin, length * (pairs ? 2 : 1));
+}
+
+NSDictionary* filterState(uintptr_t address, int count) {
+  if (read<int>(address + 0x70) != count)
+    throw std::runtime_error("uninitialized base filter count");
+  const auto first = read<uint8_t>(address + 0x74);
+  if (first != 0 && first != 1) throw std::runtime_error("unsupported base filter first flag");
+  return @{@"count":@(count), @"first":@(first != 0),
+    @"alpha":@(read<float>(address + 0x60)), @"scale":@(read<float>(address + 0x78)),
+    @"escale":@(read<float>(address + 0x7c)),
+    @"width":@(read<int>(address + 0x98)), @"height":@(read<int>(address + 0x9c)),
+    @"current_xy":filterVector(address, count, true),
+    @"previous_xy":filterVector(address + 0x18, count, true),
+    @"delta_x":filterVector(address + 0x30, count, false),
+    @"delta_y":filterVector(address + 0x48, count, false)};
+}
+
 void capture(void* handle, const void* pixels, const void* output, const char* api, int rc, int format, int width, int height,
              int stride, int rotation) noexcept {
   if (!directory()) return;
@@ -203,6 +231,8 @@ void capture(void* handle, const void* pixels, const void* output, const char* a
           face[@"id"] = @(read<int>(record + 0xc));
           face[@"tracking_id"] = @(read<int>(record + 0x10));
           face[@"published"] = publishedPoints(record);
+          if ([face[@"active"] boolValue])
+            face[@"smoothing"] = @[filterState(object + 0x10, 33), filterState(object + 0x110, 73)];
           [faces addObject:face];
         }
       }
