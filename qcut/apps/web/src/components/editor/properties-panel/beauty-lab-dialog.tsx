@@ -63,6 +63,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 				gain,
 				adjustments: lab.adjustments,
 				record: lab.record,
+				candidateReport: lab.candidateReport,
 			});
 			const url = URL.createObjectURL(blob);
 			const anchor = document.createElement("a");
@@ -204,6 +205,27 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 					</Button>
 					<Button
 						type="button"
+						size="sm"
+						variant="outline"
+						disabled={
+							disabled ||
+							!lab.input ||
+							Boolean(lab.record) ||
+							!lab.candidateStatus?.available
+						}
+						title={lab.candidateStatus?.blockers.join(", ")}
+						onKeyDown={(event) => event.stopPropagation()}
+						onClick={() => void lab.renderCandidate()}
+					>
+						{lab.busy === "candidate" ? (
+							<Loader2 size={16} className="animate-spin" />
+						) : (
+							<FlaskConical size={16} />
+						)}
+						{isZh ? "候选处理" : "Render candidate"}
+					</Button>
+					<Button
+						type="button"
 						size="icon"
 						variant="outline"
 						disabled={disabled || !lab.input}
@@ -242,9 +264,13 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						? isZh
 							? "新链路：离线回放，仍含原生依赖"
 							: "Candidate: offline replay, native dependencies remain"
-						: isZh
-							? "新链路：任意画面推理未接入"
-							: "Candidate: arbitrary-frame inference not connected"}
+						: lab.candidateStatus?.available
+							? isZh
+								? "新链路：候选后端就绪"
+								: "Candidate: backend ready"
+							: isZh
+								? "新链路：任意画面推理未接入"
+								: "Candidate: arbitrary-frame inference not connected"}
 				</span>
 				{lab.input && (
 					<span>
@@ -329,10 +355,14 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 							isZh
 								? lab.record
 									? "新链路（离线回放）"
-									: "新链路（未接入）"
+									: lab.candidateReport
+										? "新链路（实时候选）"
+										: "新链路（未接入）"
 								: lab.record
 									? "Candidate (offline replay)"
-									: "Candidate (not connected)"
+									: lab.candidateReport
+										? "Candidate (live)"
+										: "Candidate (not connected)"
 						}
 					/>
 				</section>
