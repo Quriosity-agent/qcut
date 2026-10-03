@@ -72,8 +72,13 @@
 
 ## ONNX 导出
 
-只有浮点图可以如实导出：定点网络依赖舍入、int32 回绕与单边 lane 钳制，标准 ONNX 算子表达不了，
-导成浮点近似就不是运行库在跑的那张网络。已导出并用 onnxruntime 回比**冻结的原生输出**：
+本轮的 `espresso_onnx_export.py` 只支持浮点图：定点网络还需要显式复现舍入、int32 回绕与单边 lane 钳制，
+直接导成浮点近似就不是运行库在跑的那张网络。这不是所有定点网络都无法用标准 ONNX 表达的结论。
+2026-10-02 已用标准整数算子转换一个 109 层人脸检测器，并通过逐位对拍；见
+[第一步转换记录](face-integer-conversion-2026-10-02.zh-CN.md)。后续
+[关键点整数骨干转换](face-alignment-backbone-conversion-2026-10-02.zh-CN.md) 已补齐
+`Shuffle`/`ShuffleNet` 及单边 lane 钳制；整数执行器仍明确拒绝特殊 Softmax。
+以下仍是本轮浮点图导出、用 onnxruntime 回比**冻结原生输出**的结果：
 
 | 网络 | ONNX vs PyTorch | ONNX vs 原生 |
 | --- | --- | --- |

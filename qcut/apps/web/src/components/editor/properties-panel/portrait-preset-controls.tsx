@@ -36,6 +36,7 @@ export function PortraitPresetControls({
 	onOverwritePreset,
 	onExportPresets,
 	onImportPresets,
+	selectContentClassName,
 }: {
 	scope: PortraitPresetScope;
 	presets: SavedPortraitPreset[];
@@ -50,6 +51,7 @@ export function PortraitPresetControls({
 	onOverwritePreset: () => void;
 	onExportPresets: () => void;
 	onImportPresets: (file: File) => void;
+	selectContentClassName?: string;
 }) {
 	const [name, setName] = useState("");
 	const [renameTargetId, setRenameTargetId] = useState<string>();
@@ -94,7 +96,7 @@ export function PortraitPresetControls({
 							placeholder={isZh ? `${scopeName}预设` : `${scopeName} presets`}
 						/>
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent className={selectContentClassName}>
 						{presets.map((preset) => (
 							<SelectItem key={preset.id} value={preset.id}>
 								<span className="flex items-center gap-2">

@@ -56,6 +56,7 @@ import { PortraitManualBodyControls } from "./portrait-manual-body-controls";
 import { PortraitManualRetouchControls } from "./portrait-manual-retouch-controls";
 import { PortraitPresetControls } from "./portrait-preset-controls";
 import { PortraitRuntimeStatus } from "./portrait-runtime-status";
+import { BeautyLabDialog } from "./beauty-lab-dialog";
 import { NumberControl } from "./visual-property-controls";
 
 type PortraitPanelTab = "face" | "body" | "face-presets" | "body-presets";
@@ -565,6 +566,11 @@ export function MediaPortraitProperties({
 	return (
 		<PropertyGroup title={t("mediaProperties.tab.portrait")} defaultExpanded>
 			<div className="space-y-4" data-testid="jianying-portrait-adjustments">
+				<BeautyLabDialog
+					elementId={elementId}
+					currentFrame={currentFrame}
+					initialAdjustments={adjustments}
+				/>
 				<PortraitRuntimeStatus
 					status={status}
 					loading={loading}

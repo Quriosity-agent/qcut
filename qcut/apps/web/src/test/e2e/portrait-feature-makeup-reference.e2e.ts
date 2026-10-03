@@ -7,6 +7,7 @@ import { loadImage } from "@napi-rs/canvas";
 import { expect, test, type Page } from "@playwright/test";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
 import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../electron/jianying-portrait-adjustment-runtime/makeup-catalog";
+import { ExportQuality, resolveExportResolution } from "../../types/export";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
 	createPortraitReferenceCapture,
@@ -66,11 +67,12 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 	const sourceSha256 = createHash("sha256")
 		.update(await readFile(source))
 		.digest("hex");
-	const canvasSize = {
-		width: 1080,
-		height: Math.round((1080 * image.height) / image.width / 2) * 2,
-	};
-	if (canvasSize.height < 64 || canvasSize.height > 4096) {
+	const { width, height } = resolveExportResolution({
+		quality: ExportQuality.HIGH,
+		aspectRatio: image.width / image.height,
+	});
+	const canvasSize = { width, height };
+	if ([width, height].some((value) => value < 64 || value > 4096)) {
 		throw new Error("Portrait aspect ratio outside reference bounds");
 	}
 	await mkdir(output, { recursive: true });

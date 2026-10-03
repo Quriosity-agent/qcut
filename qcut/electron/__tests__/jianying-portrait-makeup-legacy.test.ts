@@ -32,14 +32,14 @@ describe("portrait brow makeup catalog and legacy compatibility", () => {
 		).toEqual(["标准眉", "绒绒眉", "野生眉", "侠客眉", "古韵眉", "淡颜眉"]);
 	});
 
-	it("has 20 unique mappings and 19 new selections, including six dynamic brow styles in native order", () => {
-		expect(JIANYING_PORTRAIT_MAKEUP_CARDS).toHaveLength(20);
+	it("has unique mappings and retains six dynamic brow styles in native order", () => {
+		expect(JIANYING_PORTRAIT_MAKEUP_CARDS).toHaveLength(29);
 		expect(
 			new Set(JIANYING_PORTRAIT_MAKEUP_CARDS.map(({ id }) => id)).size
-		).toBe(20);
+		).toBe(29);
 		expect(
 			JIANYING_PORTRAIT_MAKEUP_CARDS.filter(({ legacyOnly }) => !legacyOnly)
-		).toHaveLength(19);
+		).toHaveLength(28);
 		const brows = JIANYING_PORTRAIT_MAKEUP_CARDS.filter(
 			({ category }) => category === "brows"
 		);

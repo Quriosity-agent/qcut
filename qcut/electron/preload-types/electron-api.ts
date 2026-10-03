@@ -68,6 +68,7 @@ import type { JianyingEffectPreloadAPI } from "./api-types/jianying-effect-api";
 import type { JianyingTransitionPreloadAPI } from "./api-types/jianying-transition-api";
 import type { JianyingFilterLabPreloadAPI } from "./api-types/jianying-filter-lab-api";
 import type { JianyingPortraitAdjustmentPreloadAPI } from "./api-types/jianying-portrait-adjustment-api";
+import type { BeautyLabPreloadAPI } from "./api-types/beauty-lab-api";
 import type { JianyingPersonCutoutPreloadAPI } from "./api-types/jianying-person-cutout-api";
 import type { JianyingMotionTrackingPreloadAPI } from "./api-types/jianying-motion-tracking-api";
 import type { JianyingBasicVideoPreloadAPI } from "./api-types/jianying-basic-video-api";
@@ -128,6 +129,7 @@ export interface ElectronAPI
 		JianyingEffectPreloadAPI,
 		JianyingFilterLabPreloadAPI,
 		JianyingPortraitAdjustmentPreloadAPI,
+		BeautyLabPreloadAPI,
 		JianyingPersonCutoutPreloadAPI,
 		JianyingMotionTrackingPreloadAPI,
 		JianyingBasicVideoPreloadAPI,

@@ -40,6 +40,7 @@ struct FilterRuntimeProfile {
   std::string_view uuid;
   std::uintptr_t contextConstructorOffset;
   std::uintptr_t contextDestructorOffset;
+  std::uintptr_t rendererGetterOffset = 0;
 };
 
 [[nodiscard]] FilterRuntimeProfile filterRuntimeProfile(
@@ -57,6 +58,7 @@ struct FilterRuntimeProfile {
         .uuid = kPrivateFilterCoreUuid,
         .contextConstructorOffset = 0x3fb3bc,
         .contextDestructorOffset = 0x3fb3e8,
+        .rendererGetterOffset = 0x3f9fd8,
     };
   }
   throw std::runtime_error("unsupported libcccreator UUID " + uuid);
@@ -67,6 +69,8 @@ constexpr std::string_view kCreateSwingManager =
 constexpr std::string_view kDestroySwingManager = "bef_swing_manager_destroy";
 constexpr std::string_view kGetSwingManagerAmazer =
     "_ZNK13AmazingEngine12SwingManager9getAmazerEv";
+constexpr std::string_view kFinishRenderer =
+    "_ZN13AmazingEngine14RendererDevice6finishEv";
 constexpr std::string_view kSetManagerParameterBool =
     "bef_swing_manager_set_parameter_bool";
 constexpr std::string_view kSetManagerParameterInt =
@@ -149,6 +153,8 @@ struct FilterSymbols {
   CreateSwingManagerMethod createManager;
   HandleMethod destroyManager;
   GetObjectMethod getManagerAmazer;
+  GetObjectMethod getEngineRenderer;
+  ObjectMethod finishRenderer;
   SetBoolMethod setManagerParameterBool;
   SetNamedIntMethod setManagerParameterInt;
   SetIntMethod setManagerUpdateMode;
@@ -175,12 +181,28 @@ struct FilterSymbols {
 
 [[nodiscard]] FilterSymbols loadFilterSymbols(const fs::path& runtimeRoot) {
   void* core = openLibrary(runtimeRoot / "Frameworks" / "libcccreator.dylib");
+  const auto getAmazer =
+      resolveSymbol<GetObjectMethod>(core, kGetSwingManagerAmazer);
+  const auto profile =
+      filterRuntimeProfile(reinterpret_cast<const void*>(getAmazer));
+  GetObjectMethod getEngineRenderer = nullptr;
+  if (profile.rendererGetterOffset != 0) {
+    Dl_info image{};
+    if (dladdr(reinterpret_cast<const void*>(getAmazer), &image) == 0 ||
+        image.dli_fbase == nullptr) {
+      throw std::runtime_error("cannot identify engine renderer image");
+    }
+    getEngineRenderer = reinterpret_cast<GetObjectMethod>(
+        static_cast<unsigned char*>(image.dli_fbase) +
+        profile.rendererGetterOffset);
+  }
   return {
       .createManager =
           resolveSymbol<CreateSwingManagerMethod>(core, kCreateSwingManager),
       .destroyManager = resolveSymbol<HandleMethod>(core, kDestroySwingManager),
-      .getManagerAmazer =
-          resolveSymbol<GetObjectMethod>(core, kGetSwingManagerAmazer),
+      .getManagerAmazer = getAmazer,
+      .getEngineRenderer = getEngineRenderer,
+      .finishRenderer = resolveSymbol<ObjectMethod>(core, kFinishRenderer),
       .setManagerParameterBool =
           resolveSymbol<SetBoolMethod>(core, kSetManagerParameterBool),
       .setManagerParameterInt =
@@ -388,6 +410,11 @@ class FilterHostSession {
           symbols_.setVideoDeviceTexture(video_, &input);
       const int currentSeekResult = symbols_.seekManagerDeviceTextureWithData(
           manager_, timestamp, &inputData, &outputData);
+      if (currentSeekResult == 0 && engineRenderer_ != nullptr) {
+        // Swing owns another Metal queue; the readback device's fence cannot
+        // wait for its writes or protect its pooled resources from reuse.
+        symbols_.finishRenderer(engineRenderer_);
+      }
       if (currentTextureResult != 0) {
         textureResult = currentTextureResult;
       }
@@ -464,6 +491,14 @@ class FilterHostSession {
     }
     openGlContext_.makeCurrent();
     void* amazer = symbols_.getManagerAmazer(manager_);
+    if (symbols_.getEngineRenderer != nullptr) {
+      engineRenderer_ =
+          amazer == nullptr ? nullptr : symbols_.getEngineRenderer(amazer);
+      if (engineRenderer_ == nullptr) {
+        destroyHost();
+        throw std::runtime_error("filter host has no engine renderer");
+      }
+    }
     if (useBefContextScope_) {
       const FilterRuntimeProfile profile = filterRuntimeProfile(
           reinterpret_cast<const void*>(symbols_.getManagerAmazer));
@@ -537,6 +572,7 @@ class FilterHostSession {
 
   void destroyHost() {
     ready_ = false;
+    engineRenderer_ = nullptr;
     if (feature_ != nullptr) {
       std::cout << "[filter] feature destroy result = "
                 << symbols_.destroySegment(feature_) << '\n';
@@ -564,6 +600,7 @@ class FilterHostSession {
   int width_;
   int height_;
   void* graphicsDevice_;
+  void* engineRenderer_ = nullptr;
   void* manager_ = nullptr;
   void* video_ = nullptr;
   void* feature_ = nullptr;

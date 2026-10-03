@@ -110,6 +110,14 @@ import {
 	JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL,
 } from "./jianying-portrait-adjustment-contract.js";
 import {
+	BEAUTY_LAB_LIST_CHANNEL,
+	BEAUTY_LAB_LOAD_CHANNEL,
+} from "./beauty-lab-contract.js";
+import {
+	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
+	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+} from "./beauty-lab-candidate-contract.js";
+import {
 	JIANYING_PERSON_CUTOUT_INSPECT_CHANNEL,
 	JIANYING_PERSON_CUTOUT_CANCEL_CHANNEL,
 	JIANYING_PERSON_CUTOUT_PROGRESS_CHANNEL,
@@ -289,6 +297,15 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 				);
 			};
 		},
+	},
+	beautyLab: {
+		inspectCandidate: () =>
+			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL),
+		renderCandidate: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL, request),
+		listResearchCases: () => ipcRenderer.invoke(BEAUTY_LAB_LIST_CHANNEL),
+		loadResearchFrame: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_LOAD_CHANNEL, request),
 	},
 	jianyingPortraitAdjustment: {
 		inspect: (request) =>

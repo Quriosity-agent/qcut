@@ -14,6 +14,7 @@ export interface PortraitFaceDetection {
 interface PortraitDetectionFrame {
 	source: ImageData;
 	sourceKey?: string;
+	timestampSeconds?: number;
 }
 
 function previewRoot({ elementId }: { elementId: string }) {
@@ -99,6 +100,7 @@ export function captureJianyingPortraitDetectionFrame({
 	);
 	const video = root.querySelector<HTMLVideoElement>("video[data-video-id]");
 	const source = image ?? video;
+	const timestampSeconds = image ? 0 : video?.currentTime;
 	const sourceSelector = image
 		? 'img[data-color-source="true"]'
 		: video?.dataset.videoId
@@ -129,13 +131,18 @@ export function captureJianyingPortraitDetectionFrame({
 		rawFrame = drawPreviewSource({ root, source: video, ...targetSize });
 	}
 	if (rawFrame) {
-		return { source: rawFrame, ...(sourceKey ? { sourceKey } : {}) };
+		return {
+			source: rawFrame,
+			...(sourceKey ? { sourceKey } : {}),
+			...(timestampSeconds === undefined ? {} : { timestampSeconds }),
+		};
 	}
 	const context = canvas?.getContext("2d", { willReadFrequently: true });
 	if (canvas && context && canvas.width > 0 && canvas.height > 0) {
 		return {
 			source: context.getImageData(0, 0, canvas.width, canvas.height),
 			...(sourceKey ? { sourceKey } : {}),
+			...(timestampSeconds === undefined ? {} : { timestampSeconds }),
 		};
 	}
 	return null;
