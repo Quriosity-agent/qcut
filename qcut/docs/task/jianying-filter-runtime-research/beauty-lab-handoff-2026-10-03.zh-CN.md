@@ -5,7 +5,7 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`，Git 根目录是其上一级。先阅读此文档，不再继续旧 agent；本轮子任务已经收尾。
 
-最新检查点见下面“实际 160 采样检查点”。已完成锁定 profile 的自有 source/crop/resize/int8 零差，但实时驱动仍未注册；不能把研究采样验收等同于任意画面产品后端接通。
+最新检查点见下面“自有采样到实际渲染检查点”。新生成的 160/120 输入已贯通 ONNX、seed、平滑、坐标回映和实际 renderer，固定七帧最终 RGBA 零差。实时驱动仍未注册；不能把固定序列研究验收等同于任意画面产品后端接通。
 
 ## 当前交付
 
@@ -44,7 +44,7 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
   → 三路统一增益差分
 ```
 
-**新链路尚未接任意画面的实时推理。回放不是独立产品后端。** 原生分析、160 点输入及最终效果渲染仍有依赖。本轮没有扩大之前的模型精度结论，也没有启用不达标的独立 160 点采样候选。
+**新链路尚未接任意画面的实时推理。回放不是独立产品后端。** 完整画面形成 algorithm RGBA、检测/几何/路由和最终效果渲染仍依赖原生。最新研究链不再使用捕获的 160 tensor 或 native smoothing seed 生产点位，但这不代表 detector/身份/跟踪已独立。旧失败的 direct-affine 候选仍未启用。
 
 记录仅允许 `temporal`、`qcut-export`，每组 7 帧，固定 1448×1086。默认开发目录：
 `.local/jianying-model-pytorch/face-temporal-campaign-20261003-r1`；源码根目录为 `research`。
@@ -105,7 +105,20 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 - 实际 pre-crop `[221,81,204,277]`、flags `[1,0,0]`、expansion `1.0` → post-crop `[185,81,277,277]` → nearest 160×160。不是通过 matrix 反解 ROI 来采样。
 - 本轮 CPU 回归 242 项通过（146 新测试 + 96 已有回归），没有重新跑产品 E2E/全仓库/CI；旧产品 E2E 不算新 driver 验收。三个子任务均已关闭，原生探针进程均已退出。
 - R5 采集曾 unexpected stop，被拒绝并保留失败记录；具体原因未定位。探针增加停止原因诊断，不自动继续、不退回软件断点；R6 完整通过。实验探针偶发停止仍是残余风险。
-- 仍需 native algorithm RGBA 生成、人脸框与 caller 参数；新 profile 尚未连接 ONNX/seed/时序/回映/renderer 的完整审计。任意画面驱动继续 `not-connected`；新研究门槛通过不自动启用实验室按钮。
+- 该采样检查点当时尚未连接 ONNX/seed/时序/回映/renderer 的完整审计；后续对拍见下面。native algorithm RGBA 生成、人脸框与 caller 参数仍需原生，任意画面驱动继续 `not-connected`。
+
+## 自有采样到实际渲染检查点
+
+详细流程、指标、SHA、复现和依赖：[owned chain parity](../../../research/local-model-pytorch/face-preprocess-owned-chain-parity-2026-10-03.zh-CN.md)。本轮四个新模块分别负责采集证据、独立 160 输入、模型/点位 replay 和实际 renderer，复用旧算法而不修改旧 50 source 或精度门槛。
+
+- 原始 neutral capture 仍是 `face-160-preprocess-host-20261003-r6/`；新最终 replay 为 `face-preprocess-chain-replay-20261003-r4/`，新最终 renderer 为 `face-preprocess-chain-render-20261003-r4/`，均在 `.local/jianying-model-pytorch/`。
+- 160 两次输入与 120 全部输入都由自有采样生成，并且 ONNX 真正消费 replacement inputs；不是重复喂捕获 tensor。ORT 1.22.1、Torch-free，私有环境补 Pillow 12.2.0，未改产品依赖。
+- 120 模型 25 次 + 160 模型 2 次，共 135 个输出头比较通过原门槛；27 个 landmark head 精确相同。初始化 0/20、decode/tracked/temporal/normalized 点位均零差，没有 native final-point 校正。
+- 实际渲染外部点 24 次，恢复 24 次；七帧基准→候选 `changed_pixels=0,max_delta=0`。非零效果确实改动原图；无脸和零效果控制不变化。保存四列对比 PNG 和七张统一 gain8 灰度差分，已人工查看。
+- 新关联拒绝测试发现 size/inference/record_index 的 bool/float 类型和 marker-window 缺口；收尾测试另发现最终文件 guard 失败未撤销像素通过/完成标记。两者均已修复，空模型 SHA 必须拒绝，再跑实际模型及 renderer；最终证据以 R4 为准，不修改旧报告。
+- 最终 CPU 回归 611 项通过：155 新测试（输入桥 36、采集证据 44、replay 44、renderer 31）+ 456 已有相关回归。三个子任务已关闭，本轮实际模型/宿主进程已退出。
+- 仍是同一正脸的 0–0.2 秒固定序列；不能宣称多人、侧脸、分钟级、其他格式/旋转或 Windows/x86 已通过。native algorithm RGBA、detector/Rect/flags/matrix/表/identity/reset、其余效果数据/渲染和模型/效果资产仍有依赖。
+- 本轮没有改前端，没有重新跑产品 Electron E2E、全仓库/CI 或发布。产品 candidate provider 的 `not-connected` 和禁用状态保留；新离线记录未冒充实时驱动。
 
 ## 代码入口
 
@@ -119,9 +132,9 @@ Electron 从 `dist/electron/main.js` 启动时开发根目录由 `__dirname/../.
 
 ## 下一步顺序
 
-1. 先看最新 actual 160 capture R6 / replay R5 的 `report.json`、前一产品 E2E `output/playwright/beauty-lab-candidate-protocol-20261003-r3/e2e-report.json` 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
-2. 新建独立审计 profile，将本轮自有 160 tensor 接入已有 ONNX/seed/平滑/坐标回映重放；保持旧 50 source 及旧审计不变。不要用捕获 tensor 或 native 最终点作为生产输入。先验收中间张量，再重验相同 renderer 的最终 RGBA。
-3. 明确实时输入边界：当前仍用 native algorithm RGBA、pre-crop Rect/flags/expansion。再补完整画面缩放和新的格式/旋转/caller profile。当前两次相同几何的零差不能推广到任意画面。
+1. 先看最新 neutral capture R6、owned chain replay R4 / render R4 的 `report.json`、前一产品 E2E `output/playwright/beauty-lab-candidate-protocol-20261003-r3/e2e-report.json` 和 Git 状态。核对本地 HEAD 与远端 PR HEAD；每个文件单独 commit 后 push，不改精度门槛。
+2. 下一卡点是完整画面到 algorithm RGBA：确认缩放、格式、stride、旋转和真实解码 PTS，逐阶段捕获并独立重放。已打通的采样/ONNX/seed/平滑/坐标回映/renderer 保持回归；旧 50 source 及旧审计不变。
+3. 将 native detector/Rect/flags/matrix/identity/reset 等剩余依赖做成显式实时输入契约，再扩展新的格式/旋转/caller profile。当前两次相同几何的零差不能推广到任意画面。
 4. 对两个固定时序案例重验中间张量和最终像素，且观察中立性必须零差；然后将真实 driver 接到候选 provider，声明准确原生依赖并锁定 backendVersion。不要重新注入原生最终点以制造精度通过。
 5. 任意画面候选输出通过门槛后接实验室的真实候选处理按钮，再做预览/导出双链路。之后逐项增加脸型、鼻、嘴、眉、美妆、皮肤、美体及组合参数的对照样本。
 6. 再补真实移动、侧脸、多人、无脸、分钟级视频与 Windows/x86。当前单张图/短导出不能证明这些场景。
