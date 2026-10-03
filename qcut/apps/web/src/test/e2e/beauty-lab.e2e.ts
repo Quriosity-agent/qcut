@@ -181,6 +181,43 @@ test("Beauty Lab real native render, verified replay, controls, ZIP and responsi
 		await expect(lab.getByRole("status", { name: "实验室状态" })).toContainText(
 			path.basename(source)
 		);
+		await expect(
+			lab.getByRole("button", { name: "候选处理", exact: true })
+		).toBeDisabled();
+		const candidateCapability = await page.evaluate(async () => {
+			const api = window.electronAPI?.beautyLab;
+			if (!api) throw new Error("Missing Beauty Lab IPC");
+			const status = await api.inspectCandidate();
+			try {
+				await api.renderCandidate({
+					protocol: "qcut-beauty-lab-candidate-v1",
+					requestId: "e2e-disabled-candidate",
+					backendVersion: "unavailable-test",
+					width: 1,
+					height: 1,
+					rgba: new Uint8Array([0, 0, 0, 255]),
+					adjustments: { enabled: true, values: {} },
+					sourceKey: "e2e-disabled-candidate",
+					frameNumber: 0,
+					timestampSeconds: 0,
+				});
+				throw new Error("Unexpected candidate output from unavailable backend");
+			} catch (error) {
+				return { status, rejection: String(error) };
+			}
+		});
+		expect(candidateCapability.status).toMatchObject({
+			protocol: "qcut-beauty-lab-candidate-v1",
+			available: false,
+			state: "not-connected",
+			backendVersion: null,
+		});
+		expect(candidateCapability.status.blockers).toContain(
+			"independent-160-sampling-unverified"
+		);
+		expect(candidateCapability.rejection).toContain(
+			"Candidate backend unavailable"
+		);
 		const controls = lab.getByTestId("beauty-lab-controls");
 		await controls
 			.getByRole("button", { name: "五官精修", exact: true })
@@ -381,6 +418,7 @@ test("Beauty Lab real native render, verified replay, controls, ZIP and responsi
 					recordReport,
 					timelineUnchanged: true,
 					arbitraryFrameCandidateReady: false,
+					candidateCapability,
 					pageErrors: errors,
 				},
 				null,
