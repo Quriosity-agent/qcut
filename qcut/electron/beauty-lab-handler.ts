@@ -4,6 +4,11 @@ import {
 	BEAUTY_LAB_LOAD_CHANNEL,
 } from "./beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "./beauty-lab-research.js";
+import {
+	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
+	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+} from "./beauty-lab-candidate-contract.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
 
 let activeController: symbol | undefined;
 
@@ -12,11 +17,13 @@ export function setupBeautyLabIPC({
 	root,
 	currentSourceRoot,
 	provider = createBeautyLabResearchProvider({ root, currentSourceRoot }),
+	candidateProvider = createBeautyLabCandidateProvider(),
 }: {
 	getMainWindow: () => BrowserWindow | null;
 	root: string;
 	currentSourceRoot: string;
 	provider?: ReturnType<typeof createBeautyLabResearchProvider>;
+	candidateProvider?: ReturnType<typeof createBeautyLabCandidateProvider>;
 }) {
 	const token = Symbol("beauty-lab-controller");
 	activeController = token;
@@ -36,6 +43,19 @@ export function setupBeautyLabIPC({
 
 	ipcMain.removeHandler(BEAUTY_LAB_LIST_CHANNEL);
 	ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
+	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
+	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
+	ipcMain.handle(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL, (event) => {
+		assertTrusted({ event });
+		return candidateProvider.inspect();
+	});
+	ipcMain.handle(
+		BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
+		(event, request: unknown) => {
+			assertTrusted({ event });
+			return candidateProvider.render({ request });
+		}
+	);
 	ipcMain.handle(BEAUTY_LAB_LIST_CHANNEL, (event) => {
 		assertTrusted({ event });
 		return provider.list();
@@ -63,6 +83,8 @@ export function setupBeautyLabIPC({
 			activeController = undefined;
 			ipcMain.removeHandler(BEAUTY_LAB_LIST_CHANNEL);
 			ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
+			ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
+			ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
 		},
 	};
 }
