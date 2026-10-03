@@ -127,6 +127,7 @@ def render_host(*, entry, frames, out, runtime, package, host_path, byte_observe
     environment.pop("LD_PRELOAD", None)
     if entry["name"] == "observed":
         environment.update(DYLD_INSERT_LIBRARIES=f"{byte_observer}:{observer}", QCUT_BYTENN_CAPTURE_IO="1",
+                           QCUT_BYTENN_CAPTURE_TERMINALS="1",
                            QCUT_BYTENN_CAPTURE_DIR=str(out / "capture"), QCUT_FACE_GEOMETRY_DIR=str(out / "geometry"))
     entry.update(command=[str(host_path), str(runtime), str(runtime / "Models"), str(package)],
                  environment={key: value for key, value in environment.items() if key.startswith(("QCUT_", "DYLD_"))},
@@ -210,6 +211,7 @@ def run(*, args):
     report = dict(passed=False, native_analysis_bypassed=False, geometry_observer_only=True,
                   per_face_inference_association_verified=False, per_prediction_inference_association_verified=False,
                   observer_pixel_parity_verified=False, warmup_requests_per_host=WARMUPS, seeks_per_request=SEEKS,
+                  terminal_capture_enabled=True,
                   protocol_version=1, runs=[], comparisons=[], failures=[], out=str(out))
     locked, runtime = LockedFiles(), None
     try:
