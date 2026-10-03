@@ -199,6 +199,39 @@ class HostContractTests(unittest.TestCase):
         self.assertEqual(env["QCUT_FACE_POINT_SHIFT"], "-0.01")
         self.assertEqual(env["QCUT_FACE_REPLAY"], "/out/replay.bin")
 
+    def test_inherited_binding_loader_and_unknown_probe_settings_are_removed(self):
+        stale = {key: "stale" for key in (
+            "QCUT_FACE_BIND_REPLAY", "QCUT_FACE_BIND_EYE_SHIFT", "QCUT_WAIT_ENGINE_RENDERER",
+            "QCUT_FUTURE_PROBE", "DYLD_INSERT_LIBRARIES", "DYLD_FRAMEWORK_PATH",
+            "DYLD_LIBRARY_PATH", "MTL_CAPTURE_ENABLED", "QCUT_CONSUMER_TRACE")}
+        stale.update(PATH="safe-path", HOME="safe-home", LANG="safe-lang")
+        for mode in ("original", "read", "trace"):
+            with self.subTest(mode=mode), patch.dict(os.environ, stale, clear=True):
+                env = probe.probe_environment(runtime=Path("/runtime"), out=Path("/out"),
+                    width=100, height=80, mode=mode, eye_shift=0, has_replay=False)
+            self.assertEqual({key: env[key] for key in ("PATH", "HOME", "LANG")},
+                             {key: stale[key] for key in ("PATH", "HOME", "LANG")})
+            for key in stale.keys() - {"PATH", "HOME", "LANG", "DYLD_LIBRARY_PATH"}:
+                self.assertNotIn(key, env)
+            self.assertEqual(env["DYLD_LIBRARY_PATH"], "/runtime/Frameworks")
+            self.assertEqual(env["QCUT_FRAME_WIDTH"], "100")
+            self.assertEqual(env["QCUT_FRAME_HEIGHT"], "80")
+            if mode == "trace":
+                self.assertEqual(env["QCUT_TRACE_UPDATES"], "1")
+                self.assertEqual(env["QCUT_FACE_POINT_SHIFT"], "0")
+
+    def test_explicit_replay_overrides_inherited_paths_only(self):
+        with patch.dict(os.environ, {
+                "QCUT_FACE_REPLAY": "/foreign/replay.bin",
+                "QCUT_FACE_BIND_REPLAY": "/foreign/binding.bin",
+                "QCUT_FACE_BIND_EYE_SHIFT": "0.02", "QCUT_FACE_POINT_SHIFT": "0.02"}, clear=True):
+            env = probe.probe_environment(runtime=Path("/runtime"), out=Path("/out"),
+                width=100, height=80, mode="trace", eye_shift=-0.01, has_replay=True)
+        self.assertEqual(env["QCUT_FACE_REPLAY"], "/out/replay.bin")
+        self.assertEqual(env["QCUT_FACE_POINT_SHIFT"], "-0.01")
+        self.assertNotIn("QCUT_FACE_BIND_REPLAY", env)
+        self.assertNotIn("QCUT_FACE_BIND_EYE_SHIFT", env)
+
     def test_mode_guards(self):
         for mode in ("original", "read", "unknown"):
             with self.assertRaises(ValueError):
