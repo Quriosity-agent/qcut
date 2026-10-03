@@ -234,6 +234,31 @@ describe("BeautyLabResults", () => {
 		expect(screen.getAllByText("Changed")).toHaveLength(1);
 	});
 
+	it("shows a genuine native-candidate match without erasing changes from the original", () => {
+		const replay = {
+			...native,
+			name: "Matching replay",
+			rgba: native.rgba.slice(),
+		};
+		render(<BeautyLabResults {...props} candidate={replay} />);
+		flushComparisons();
+		for (const name of [
+			"Original → Native renderer",
+			"Original → QCut renderer",
+		]) {
+			expect(within(getFigure({ name })).getByText("1 / 1")).toBeVisible();
+		}
+		const match = within(
+			getFigure({ name: "Native renderer → QCut renderer" })
+		);
+		expect(match.getByText("0 / 1")).toBeVisible();
+		expect(match.getByText("0.000")).toBeVisible();
+		expect(match.getByRole("img")).toBeVisible();
+		expect(Array.from(putImageData.mock.calls[5][0].data)).toEqual([
+			0, 0, 0, 255,
+		]);
+	});
+
 	it("uses a stable original aspect ratio for populated, pending, and empty slots", () => {
 		const portrait = makeFrame({
 			name: "portrait",
