@@ -94,7 +94,36 @@ python3 research/local-model-pytorch/face_render_sequence_probe.py \
 
 ## 下一步
 
-同一个 manifest 应用于“完整外部结果绑定”的隔离宿主。
-先同值逐像素一致，再受控改变眼点验证消费；之后才禁用原生推理。
+同日已把相同 manifest 用于完整副本绑定，见以下补充。
+受控眼点扰动的运行时验证见 [owned binding](face-owned-binding-2026-10-03.zh-CN.md)；之后才禁用原生推理。
 多脸身份、240 点、遮罩、美妆、长视频、Windows/x86 与编辑器预览/导出尚未被本组测试覆盖。
 报告保留 `native_analysis_bypassed=false`，不要把两个原宿主一致写成 QCut 独立分析已完成。
+
+## 补充：原宿主与副本绑定的逐帧对照
+
+新增 `--owned`。run0 使用原宿主，run1 使用完整副本绑定宿主。
+两边都先执行一次相同图片、时间和参数的 bootstrap，保证真实验收帧开始前回调已安装，
+不会把初始化时尚未绑定的原生输出冒充副本消费。
+
+对每个测试帧分别记录 trace 字节区间；要求至少两次 owned conversion，
+同样数量的原结果恢复，以及 GPU completion。副本坐标必须保持同值，不能带入外部环境里的扰动值。
+source guard 覆盖绑定桥、所有权探针及两路二进制。默认不带 `--owned` 的原宿主重复性模式保持不变。
+
+真实输出目录：`.local/jianying-model-pytorch/face-sequence-owned-20261003-r1/`。
+使用上面的 7 帧 fixture：
+
+- 7 个对应帧全部逐像素一致，包括 alpha。
+- 14 次测试帧 owned conversion，14 次 GPU completion 后的恢复；每帧 2 次。
+- 平移、镜像、无脸、恢复、强度 0 和 0.5 全部通过。
+- 无脸与强度 0 对输入保持不变；其他显式非零控制具有实际效果。
+- `owned_result_rendered=true`，`native_analysis_bypassed=false`。
+
+```bash
+python3 research/local-model-pytorch/face_render_sequence_probe.py \
+  --runtime "$RUNTIME" --package "$PACKAGE" --manifest "$MANIFEST" \
+  --expect-change --owned --out .local/jianying-model-pytorch/face-sequence-owned-fresh
+```
+
+新增 7 项协议测试后，sequence 的 42 项测试在无 site-packages 环境通过。
+本轮完整模型/宿主/协议回归合计 465 项 Python 测试通过。
+这仍是短序列的同值副本消费测试，不是多脸、长视频或独立 ONNX 分析验收。
