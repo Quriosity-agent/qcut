@@ -23,10 +23,11 @@ import face_render_consumer_probe as consumer
 import face_render_model_capture as capture
 import face_render_model_parity as parity
 import face_render_sequence_probe as sequence
+import face_temporal_smoothing_replay as smoothing
 from face_render_stability_probe import digest
 
 
-def decode_case(*, snapshot, raw, native_frame=None, require_exact=True):
+def decode_case(*, snapshot, raw, native_frame=None, require_exact=True, temporal=None):
     if type(require_exact) is not bool:
         raise ValueError("typed dynamic geometry gate required")
     active = [face for face in snapshot["faces"] if face["active"]]
@@ -40,9 +41,13 @@ def decode_case(*, snapshot, raw, native_frame=None, require_exact=True):
         if face is not active[0]:
             raise ValueError("initialized warp is not the active face")
         case["checks"]["tracked"] = point_difference(actual=points, expected=first_points(value=face["tracked"]), tolerance=0)
+        if temporal is not None:
+            points, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=points)
         generated = [dict(id=face["id"], points=normalized(points=points, request=snapshot["request"]).tolist())]
     elif active:
         raise ValueError("active idle state reuse is unresolved; do not publish cached points")
+    elif temporal is not None:
+        _, case["temporal_smoothing"] = temporal.apply(snapshot=snapshot, points=None)
     if native_frame is not None:
         expected = native_frame["faces"]
         if len(expected) != len(generated):
@@ -95,6 +100,7 @@ def run(*, args):
                   final_consumer_parity=False, cases=[], failures=[])
     try:
         parity.no_torch()
+        temporal = smoothing.TemporalReplay() if getattr(args, "owned_smoothing", False) else None
         root = args.capture.resolve(strict=True)
         evidence = locked.json(path=root / "report.json")
         count = validate_dynamic(evidence=evidence)
@@ -114,7 +120,8 @@ def run(*, args):
                           Path(__file__).name, "face_host_sampling_inputs.py", "face_alignment_sampling.py",
                           "face_host_geometry_contract.py", "face_host_geometry_replay.py",
                           "face_host_geometry_output.py",
-                          "face_render_model_parity.py", "face_alignment_replay.py", "face_geometry.py")})
+                          "face_render_model_parity.py", "face_alignment_replay.py", "face_geometry.py",
+                          "face_temporal_smoothing.py", "face_temporal_smoothing_replay.py")})
         snapshots = validate_sequence(records=evidence["geometry_snapshots"], temporal=True)
         actual = validate_sequence(records=[locked.json(path=path) for path in (root / "geometry").glob("prediction-*.json")], temporal=True)
         if actual != snapshots or len(actual) != evidence["predictions"]:
@@ -153,7 +160,7 @@ def run(*, args):
                 raw = np.load(io.BytesIO(locked.read(path=out / f"onnx/size-120-infer-{inference:03d}-fc_landmark_s1.npy",
                                                      maximum=1024**2)), allow_pickle=False).reshape(106, 2)
             frame = native["frames"][snapshot["index"] - 2] if snapshot["index"] >= 2 else None
-            case, faces = decode_case(snapshot=snapshot, raw=raw, native_frame=frame, require_exact=False)
+            case, faces = decode_case(snapshot=snapshot, raw=raw, native_frame=frame, require_exact=False, temporal=temporal)
             if "returned_result" in snapshot:
                 case["native_output_layers"] = output_layers(snapshot=snapshot, native_frame=frame)
             report["cases"].append(case)
@@ -179,6 +186,10 @@ def run(*, args):
             raise RuntimeError("dynamic model capture mutated during production")
         parity.no_torch()
         report.update(passed=exact, completed=True, geometry_exact=exact, diagnostic_only=not exact,
+                      owned_temporal_smoothing_used=temporal is not None,
+                      native_smoothing_initialization_required=temporal is not None,
+                      native_smoothing_seed_predictions=[case["prediction"] for case in report["cases"]
+                          if case.get("temporal_smoothing", {}).get("native_seed_used")],
                       head_comparisons=model["head_comparisons"], replay_sha256=digest(data=data),
                       independent_120_sampling_input_used=True, sampling_cases=sampling, manifest_frames=count,
                       per_active_face_id_association_verified=True, fixture_sha256=dict(locked.files))
@@ -195,6 +206,7 @@ def main():
     for name in ("capture", "root", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--diagnostic", action="store_true")
+    parser.add_argument("--owned-smoothing", action="store_true")
     report = run(args=parser.parse_args())
     print(json.dumps(dict(passed=report["passed"], predictions=len(report["cases"]), head_comparisons=report["head_comparisons"])))
 
