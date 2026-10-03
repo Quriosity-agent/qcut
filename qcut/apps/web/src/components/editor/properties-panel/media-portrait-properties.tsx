@@ -554,6 +554,8 @@ export function MediaPortraitProperties({
 			disabled: nativeDisabled || !adjustments.enabled,
 			locale,
 			isControlReady,
+			skinTones: status?.skinTones,
+			allowSkinTone: scope.mode === "all",
 			onChange: wholeFrame
 				? (edited: MediaPortraitAdjustments) =>
 						onAdjustmentsChange(applyWholeFrameBodyAdjustments({ edited }))
