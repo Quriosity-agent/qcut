@@ -1,6 +1,6 @@
 # 美颜实验室交接与下一步
 
-更新：2026-10-03。分支：`codex/kpop-beauty-v6`。继续使用 PR #483：
+更新：2026-10-04。分支：`codex/kpop-beauty-v6`。继续使用 PR #483：
 https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并、不发布。
 
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`，Git 根目录是其上一级。先阅读此文档，不再继续旧 agent；本轮子任务已经收尾。
@@ -19,9 +19,25 @@ https://github.com/Quriosity-agent/qcut/pull/483 。不新建分支，不合并�
 
 重新审查 `c13f0171855b32ecc87d1402dcda6c51320e7720` 后再修四项：记录模式转导入/当前帧时恢复隔离的时间线草稿，避免只读 eye=100 泄漏到最大值 50 的产品参数；两个 E2E 在导出前删除旧目标 ZIP；campaign 在 prepare 阶段拒绝真实审计不支持的 `--independent-160-sampling`，合成报告不再谎报支持；旧 R12/R9/R7 文档明确标记历史来源周期。审计器及原精度门槛不放宽。
 
-本地新回归：前端七组 273 项、campaign/审计四组 56 项通过；真实 CLI 的未支持选项返回 1，`completed/passed/pipeline_parity=false`、`campaigns=[]`，未启动子阶段。主 CI 曾在七帧 provider 全量覆盖率测试超出旧 15 秒期限，本地覆盖率运行复现 19.1 秒；仅此用例改为 60 秒，所有断言/七帧/尺寸/哈希/像素校验保留，60 项覆盖率回归通过。
+本地新回归：前端七组 273 项、campaign/审计四组 56 项通过；真实 CLI 的未支持选项返回 1，`completed/passed/pipeline_parity=false`、`campaigns=[]`，未启动子阶段。主 CI 曾在七帧 provider 全量覆盖率测试超出旧 15 秒期限，本地覆盖率运行复现 19.1 秒；曾仅此用例改为 60 秒并通过本地 60 项回归，但随后三平台运行证明这不是充分修复。最终根因与恢复 15 秒设置见下面。
 
 新增真实 Electron “旧 ZIP 替换”专项 8.1 秒通过：先放可解码旧 ZIP，再触发当前输入下载，验证旧 marker 消失、新 JSON/PNG 及尺寸正确。截图 `output/playwright/beauty-lab-review-20261003-r1/stale-zip-replaced.png` 已查看。该专项只导出当前输入，不运行 ONNX/原生美颜处理或恢复历史回放；两组旧七帧/产品全链 E2E 仍待新来源周期，不能称为本轮已重验。
+
+## 覆盖率超时根因与性能修复
+
+`a21e0b3b8ff60df4348e229f5a31a98f611761f3` 的主 CI [37126828810](https://github.com/Quriosity-agent/qcut/actions/runs/37126828810) 并未全绿：Windows 完成，Linux 七项、macOS 两项同一 provider 测试超时，首项超过 60 秒。保留失败记录，不用旧 head 或部分平台通过代替最终验收。
+
+分段本地计时：fixture 41.0 ms、list 169.8 ms、load 161.3 ms、断言 16,446.9 ms。实际 `@vitest/expect` 的 `toBe` 在 `Object.is=false` 时生成深比较提示，即使断言带 `.not`，也遍历约 6 MB 的两个 typed array。改为布尔引用比较，仍保留逐字节结果相等和修改 candidate 不影响 native 的独立所有权证明；临时计时日志已移除，首项恢复原来的 `15_000` 期限。
+
+同时优化实际离线 provider，不降低任何证据门槛：
+
+- `beauty-lab-rgba-metrics.ts` 使用 Buffer 原生全字节比较跳过相同整帧/行；不同的行仍精确统计 RGBA 变化像素、最大差和半开 bbox，覆盖透明度、首末行、切片偏移及非对齐 backing storage。
+- `decodeInput` 对严格 RGBA8、固定尺寸、非交错、全部 filter=0 的 PNG 直接复制已解压行，避免 PDF 图像表示的 RGBA→RGB/Alpha→RGBA 往返。任何有滤波的行继续使用原解码库；CRC、inflate 上限、扫描行字节数和最终 decoded SHA 全部保留。
+- 新增 17 项像素统计和 8 项 PNG 回归，包括独立密集标量对拍、真实尺寸末位 Alpha、分段 IDAT、最后一行滤波、CRC/SHA、IEND 尾随数据、解压多/少一个字节拒绝。
+- 与 CI 相同的 Web 覆盖率配置下，四组 169 项在增加最后两项 PNG 边界测试前已通过（5.16 秒），首项七帧测试仅 492 ms。最后完整八组覆盖率回归 593 项通过；Electron 构建、改动文件 Biome 与 provenance check 通过。测试组有重叠，不与上面的总数相加。
+- 另对保存的七帧实际 PNG 用新解码与旧 PDF 解码逐字节比较，并将新指标与原 render 报告逐项对拍，均精确相同。**只验证读取/统计优化，不是当前研究记录验收、重新推理或新 native renderer 执行；旧来源周期仍被拒绝。**
+
+这些修复按单文件 commit、逐次 push。最终新 head 的主 CI 和增量 review 必须再次独立完成；不合并、不发布，不提前写 CI 全绿。
 
 ## 当前交付
 
