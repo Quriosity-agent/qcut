@@ -62,7 +62,13 @@ def protocol_path(*, path: Path) -> Path:
     return path
 
 
-def validate_replay(*, value: dict, width: int, height: int, image_hash: str) -> bytes:
+REPLAY_TIME_LIMIT_US = 60_000_000
+
+
+def validate_replay(*, value: dict, width: int, height: int, image_hash: str,
+                    maximum_timestamp_us: int = 100_000) -> bytes:
+    if type(maximum_timestamp_us) is not int or not 100_000 <= maximum_timestamp_us <= REPLAY_TIME_LIMIT_US:
+        raise ValueError("bounded typed replay time limit required")
     if not isinstance(value, dict) or type(value.get("version")) is not int or value.get("version") != 1:
         raise ValueError("unsupported replay version")
     if (value.get("coordinate_space") != COORDINATE_SPACE or
@@ -80,7 +86,7 @@ def validate_replay(*, value: dict, width: int, height: int, image_hash: str) ->
             raise ValueError("invalid replay frame")
         timestamp = frame.get("timestamp_us")
         faces = frame.get("faces")
-        if (type(timestamp) is not int or not max(0, previous) <= timestamp <= 100_000 or
+        if (type(timestamp) is not int or not max(0, previous) <= timestamp <= maximum_timestamp_us or
                 not isinstance(faces, list) or len(faces) > 10):
             raise ValueError("invalid replay timing or face count")
         previous = timestamp
