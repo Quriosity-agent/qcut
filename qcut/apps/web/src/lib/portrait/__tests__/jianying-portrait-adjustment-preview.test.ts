@@ -44,6 +44,7 @@ describe("Jianying portrait adjustment preview", () => {
 		const adjustments = {
 			enabled: true,
 			values: { face_adjust_TotalFace: 75 },
+			skinToneResourceId: "7408757645705776384",
 		} as const;
 		const result = await renderJianyingPortraitAdjustmentPreview({
 			source: imageData({ data: [10, 20, 30, 255] }),
@@ -73,7 +74,11 @@ describe("Jianying portrait adjustment preview", () => {
 		const source = imageData({ data: [10, 20, 30, 255] });
 		const result = await renderJianyingPortraitAdjustmentPreview({
 			source,
-			adjustments: { enabled: true, values: {} },
+			adjustments: {
+				enabled: true,
+				skinToneResourceId: null,
+				values: { face_adjust_skin_ColdWarm: 25 },
+			},
 		});
 		expect(result).toBe(source);
 		expect(render).not.toHaveBeenCalled();
