@@ -135,7 +135,9 @@ export function useBeautyLab({
 		setRecord(null);
 		setFaces([]);
 		setAdjustments((value) => ({
-			...value,
+			...(record
+				? draftFromTimeline({ adjustments: initialAdjustments })
+				: value),
 			faceTarget: { mode: "all" },
 			faces: undefined,
 		}));
