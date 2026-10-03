@@ -490,10 +490,11 @@ describe("Beauty Lab owned-chain offline provider", () => {
 		expect(Buffer.from(frame.input).equals(input)).toBe(true);
 		expect(Buffer.from(frame.native).equals(effect)).toBe(true);
 		expect(Buffer.from(frame.candidate).equals(effect)).toBe(true);
-		expect(frame.native).not.toBe(frame.candidate);
+		// Negated toBe generates a costly deep-equality hint for multi-megabyte arrays.
+		expect(frame.native === frame.candidate).toBe(false);
 		frame.candidate[0] = 99;
 		expect(frame.native[0]).toBe(12);
-	}, 60_000);
+	}, 15_000);
 	it.each([
 		{ frameIndex: 3, value: 100 },
 		{ frameIndex: 5, value: 0 },
