@@ -297,13 +297,29 @@ export function decodeInput({
 		condition: inflated.length === scanlineBytes,
 		message: "PNG scanline count differs",
 	});
-	const image = PNG.load(Uint8Array.from(bytes));
 	const rgba = new Uint8Array(RGBA_BYTES);
-	for (let pixel = 0; pixel < WIDTH * HEIGHT; pixel++) {
-		rgba[pixel * 4] = image.rgbChannel[pixel * 3];
-		rgba[pixel * 4 + 1] = image.rgbChannel[pixel * 3 + 1];
-		rgba[pixel * 4 + 2] = image.rgbChannel[pixel * 3 + 2];
-		rgba[pixel * 4 + 3] = image.alphaChannel?.[pixel] ?? 255;
+	const rowBytes = WIDTH * 4;
+	let unfiltered = true;
+	for (let row = 0; row < HEIGHT; row++) {
+		if (inflated[row * (rowBytes + 1)] !== 0) {
+			unfiltered = false;
+			break;
+		}
+	}
+	if (unfiltered) {
+		// Filter 0 is already RGBA; avoid splitting and rejoining millions of channels.
+		for (let row = 0; row < HEIGHT; row++) {
+			const start = row * (rowBytes + 1) + 1;
+			rgba.set(inflated.subarray(start, start + rowBytes), row * rowBytes);
+		}
+	} else {
+		const image = PNG.load(Uint8Array.from(bytes));
+		for (let pixel = 0; pixel < WIDTH * HEIGHT; pixel++) {
+			rgba[pixel * 4] = image.rgbChannel[pixel * 3];
+			rgba[pixel * 4 + 1] = image.rgbChannel[pixel * 3 + 1];
+			rgba[pixel * 4 + 2] = image.rgbChannel[pixel * 3 + 2];
+			rgba[pixel * 4 + 3] = image.alphaChannel?.[pixel] ?? 255;
+		}
 	}
 	requireEvidence({
 		condition: digest({ bytes: rgba }) === expected,
