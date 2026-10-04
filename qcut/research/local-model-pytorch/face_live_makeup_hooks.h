@@ -12,6 +12,13 @@ struct MakeupShadow { std::array<void*, 32> table{}; MakeupUpdate original = nul
 std::map<void*, MakeupShadow> liveMakeupSystems;
 size_t liveMakeupCalls = 0;
 
+uint64_t makeupThreadId() {
+  uint64_t id = 0;
+  if (pthread_threadid_np(nullptr, &id) != 0 || id == 0)
+    throw std::runtime_error("makeup thread identity unavailable");
+  return id;
+}
+
 void captureOwnedFeature(void* feature) {
   if (!liveMakeupTrace) return;
   if (!feature || liveFeature) throw std::runtime_error("makeup trace requires one fresh feature");
@@ -84,6 +91,8 @@ void tracedMakeupUpdate(void* system, double delta) {
       const auto& lease = *input->lease;
       const auto faces = pointerSpan(lease.duplicate, 0x38);
       const void* first = faces.count ? field<void*>(reinterpret_cast<void*>(faces.begin), 0) : nullptr;
+      const void* sourceFirst = input->originals.count
+          ? field<void*>(reinterpret_cast<void*>(input->originals.begin), 0) : nullptr;
       records << "{\"event\":\"live_makeup_publication\",\"prediction\":" << livePrediction
               << ",\"timestamp_us\":" << seekTimestamp << ",\"binding_id\":" << lease.bindingId
               << ",\"graph_id\":" << lease.graphId << ",\"graph\":" << reinterpret_cast<uintptr_t>(lease.graph)
@@ -91,6 +100,9 @@ void tracedMakeupUpdate(void* system, double delta) {
               << ",\"owned_buffer\":" << reinterpret_cast<uintptr_t>(lease.duplicate)
               << ",\"owned_base\":" << reinterpret_cast<uintptr_t>(first)
               << ",\"owned_points\":" << (first ? reinterpret_cast<uintptr_t>(readLandmarks(first).destination) : 0)
+              << ",\"source_base\":" << reinterpret_cast<uintptr_t>(sourceFirst)
+              << ",\"source_points\":" << (sourceFirst ? reinterpret_cast<uintptr_t>(readLandmarks(sourceFirst).destination) : 0)
+              << ",\"thread\":" << makeupThreadId() << ",\"face_id\":" << (first ? field<int>(first, 0x40) : -1)
               << ",\"faces\":" << faces.count
               << ",\"candidate_injected\":true,\"renderer_consumption\":false}\n" << std::flush;
     }
