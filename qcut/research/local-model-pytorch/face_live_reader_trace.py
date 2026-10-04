@@ -35,14 +35,14 @@ def observe(*, frame, location, prediction):
                 candidate_injected=False, observation="getter-entry-only")
 
 
-def install(*, debugger, target, core, callback):
+def install(*, debugger, target, core, callback, address=RAW_GETTER):
     command(debugger=debugger, text="target modules add " + json.dumps(core))
     modules = [module for module in target.modules if module.GetUUIDString() == CORE_UUID]
     if len(modules) != 1:
         raise ValueError("pinned face reader image required")
     before = target.GetNumBreakpoints()
     command(debugger=debugger,
-            text=f"breakpoint set --hardware -s libcccreator.dylib -a {RAW_GETTER:#x}")
+            text=f"breakpoint set --hardware -s libcccreator.dylib -a {address:#x}")
     if target.GetNumBreakpoints() != before + 1:
         raise ValueError("face reader breakpoint creation failed")
     point = target.GetBreakpointAtIndex(before)
