@@ -149,9 +149,12 @@ def heads_and_points(*, result, events):
     return head_count, len(faces), native_sizes
 
 
-def callbacks(*, worker, observer, records, timestamps, token, source_key):
+def callbacks(*, worker, observer, records, timestamps, token, source_key, cold_frame=False):
     count = len(timestamps)
-    require(condition=2 < count <= 60 and len(worker) == count, message="every internal prediction needs a worker result")
+    require(condition=type(cold_frame) is bool and
+            (count == 2 and timestamps == [0, 0] if cold_frame else 2 < count <= 60) and len(worker) == count,
+            message="every internal prediction needs a worker result within its audit scope")
+    bootstrap = 0 if cold_frame else 2
     groups = observer_groups(observer=observer, count=count)
     pid, version, head_count, point_groups, seeds = None, None, 0, 0, []
     for index, (row, events, timestamp) in enumerate(zip(worker, groups, timestamps, strict=True)):
@@ -212,7 +215,7 @@ def callbacks(*, worker, observer, records, timestamps, token, source_key):
             receipts.append(index)
         if kind == "live_owned_conversion":
             index = event.get("prediction")
-            require(condition=type(index) is int and index == len(converted) + 2 and index < count and
+            require(condition=type(index) is int and index == len(converted) + bootstrap and index < count and
                     receipts and receipts[-1] == index and pending is None and
                     event.get("timestamp_us") == timestamps[index] and
                     event.get("faces") == len(worker[index]["result"]["faces"]) and
@@ -227,13 +230,13 @@ def callbacks(*, worker, observer, records, timestamps, token, source_key):
                     message="owned restoration/completion mismatch")
             restored.append(pending)
             pending = None
-    require(condition=receipts == list(range(count)) and converted == restored == list(range(2, count)) and
+    require(condition=receipts == list(range(count)) and converted == restored == list(range(bootstrap, count)) and
             pending is None and seeds and point_groups, message="incomplete live callback/render coverage")
-    ownership_audit = validate_audits(events=records, require_face=True)
+    ownership_audit = validate_audits(events=records, require_face=True, require_live_consumers=cold_frame)
     stage_times = {stage: [row["result"]["stage_timings_ms"][stage] for row in worker] for stage in STAGES}
     return dict(predictions=count, native_pid=pid, backend_version=version, seed_predictions=seeds,
         owned_head_receipts=head_count, owned_point_groups=point_groups, conversions=len(converted),
-        restorations=len(restored), bootstrap_unrendered_predictions=[0, 1], clone_audit=ownership_audit,
+        restorations=len(restored), bootstrap_unrendered_predictions=list(range(bootstrap)), clone_audit=ownership_audit,
         stage_runtime_ms={key: dict(total=sum(values), p50=float(np.percentile(values, 50)),
                                    p95=float(np.percentile(values, 95))) for key, values in stage_times.items()},
         native_head_value_parity_verified=False, native_point_value_parity_verified=False,
