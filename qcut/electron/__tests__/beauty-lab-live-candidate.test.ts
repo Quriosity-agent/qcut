@@ -169,6 +169,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 	});
 	it("registers explicit static scope and retains native timing gaps", async () => {
 		const { provider, request } = await fixture();
+		expect(request.backendVersion).toMatch(/^audited-static-v4:[a-f0-9]{64}$/);
 		expect(provider.inspect()).toMatchObject({
 			available: true,
 			scope: "audited-single-static-frame",
@@ -206,6 +207,11 @@ describe("development static candidate registration (synthetic jobs only)", () =
 		expect(call.args).toContain(files.models);
 		expect(call.args).toContain(path.join(root, JOB_SCRIPT));
 		const requestPath = call.args[call.args.indexOf("--request") + 1];
+		expect(call.args.slice(0, 3)).toEqual([
+			"-B",
+			"-X",
+			`pycache_prefix=${path.join(path.dirname(requestPath), "python-cache")}`,
+		]);
 		const job = JSON.parse(await readFile(requestPath, "utf8"));
 		expect(job.parameters.face_adjust_eye).toEqual([
 			{ id: -1, intensity: 0.4 },
@@ -369,6 +375,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 			identity.version
 		);
 		await mkdir(packagePath, { recursive: true });
+		await writeFile(path.join(packagePath, "algorithmConfig.json"), "{}");
 		mocks.resolve.mockResolvedValue({
 			runtimePackage,
 			group: "face",
@@ -384,6 +391,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 				card.version
 			);
 			await mkdir(cardPath, { recursive: true });
+			await writeFile(path.join(cardPath, "algorithmConfig.json"), "{}");
 			mocks.makeup.mockResolvedValue({
 				card,
 				packagePath: cardPath,
@@ -444,6 +452,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 			identity.version
 		);
 		await mkdir(packagePath, { recursive: true });
+		await writeFile(path.join(packagePath, "algorithmConfig.json"), "{}");
 		mocks.resolve.mockResolvedValue({
 			runtimePackage: "features",
 			group: "face",
@@ -520,6 +529,27 @@ describe("development static candidate registration (synthetic jobs only)", () =
 		await writeFile(path.join(root, JOB_SCRIPT), "changed");
 		await expect(provider.render({ request })).rejects.toThrow(/changed/);
 		expect(mocks.run).not.toHaveBeenCalled();
+	});
+	it.each([
+		"model",
+		"runtime",
+		"package",
+	])("rejects changed %s bytes during the job", async (kind) => {
+		const { provider, request } = await fixture();
+		mocks.run.mockImplementation(async (args) => {
+			await successfulJob(args);
+			const target =
+				kind === "model"
+					? path.join(files.models, "align-120/artifacts/model.onnx")
+					: kind === "runtime"
+						? path.join(files.runtime, "Frameworks/liblens.dylib")
+						: path.join(files.packagePath, "algorithmConfig.json");
+			await writeFile(target, "changed after native audit");
+		});
+		await expect(provider.render({ request })).rejects.toThrow(
+			/inventory changed/
+		);
+		expect(provider.inspect().available).toBe(false);
 	});
 	it.each([
 		"timeout",
@@ -622,7 +652,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 				);
 			if (kind === "identity")
 				row.audit.callback_audit.backend_version = `dependency-core-v1:${"b".repeat(64)}`;
-			if (kind === "count") row.audit.callback_audit.predictions = 2;
+			if (kind === "count") row.audit.callback_audit.predictions = 1;
 			await writeFile(
 				path.join(row.directory, "audit/report.json"),
 				JSON.stringify(row.audit)
@@ -636,6 +666,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 		"dependencies_unchanged",
 		"live_callback_handoff_verified",
 		"single_frame_audit",
+		"cold_frame_audit",
 	])("rejects failed baseline audit %s", async (key) => {
 		const { provider, request } = await fixture();
 		mocks.run.mockImplementation(async (args) => {
