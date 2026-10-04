@@ -5,6 +5,137 @@
 PR：[484](https://github.com/Quriosity-agent/qcut/pull/484)。采用一文件、一提交、逐个 push。
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
 
+## 第三阶段：收尾验证与真实阻塞
+
+本节覆盖第二阶段的当前状态。**尚不能称为完整独立美颜后端，也没有启用产品候选按钮。**
+下列代码均在同一 PR，按单文件提交、逐次 push；私有模型、库、效果包、人物素材与大型报告不入 Git。
+
+### 已接上的代码
+
+1. `face_preprocess_chain_replay.py --original-frames` 从固定的原始 RGBA 生成算法画面与 120/160 输入，
+   再交 ONNX、自有解码/初始化/时序/归一化。原生算法画面只做相等性对照，不做输入生产者。
+   `render` 与 `audit` 同样增加显式 `--original-frames`，重算输入证明、检查模型消费哈希与逐字节渲染。
+   交叉审查补上启动渲染前的 head 文件哈希与关键点重算，缺失 head 或直接复制 oracle 点会先被拒绝。
+   默认旧模式不变；失败不会退回原生 tensor 或最后关键点。当前仍是固定单脸 profile，
+   检测框、调用几何、路由、表数据及效果渲染仍依赖原生。
+2. `face_live_bridge_probe.py` 串起新输入、独立原生 baseline、常驻 ONNX worker、
+   LLDB 入口观察、宿主回调、克隆关键点交接与 GPU 完成后的恢复审计。
+   默认只准备输入和编译；真正执行必须显式 `--execute-native --lease ...`。
+   逐帧 RGBA 容差为 0；只记 head 哈希并不等于 head 数值已和原生对齐。
+3. `face_live_bridge_response.h` 在原生访问前校验字典/数组/数字类型，区分 JSON 布尔与数字，
+   检查 token、PID、预测序号、时间戳、来源声明、106 个有限归一化 XY 点，拒绝错帧/错会话结果。
+   原生 Foundation 合同测试 58 项通过；完整 live host 也已编译。
+4. `face_native_process.py` 按 PID、启动时间和可执行路径跟踪 LLDB 后代。
+   debugserver 的目标可能另建进程组，旧 `killpg(lldbPID)` 不能保证清理它；
+   新实现同时处理脱离/重新挂到 PID 1 的已观察后代、PID 重用、超时与正常退出。
+   已用真正脱离父进程的 CPU 子进程回归，不是只 mock `kill`。
+   交叉审查还覆盖 xcrun -> LLDB 的根进程 exec；身份有歧义的后代不误杀，也不把未清理报告成成功。
+5. 六功能预检支持显式 `--effect-cache-root`，私有包优先、缓存只能使用同一资源 ID 与固定版本。
+   拒绝符号链接逃逸、根目录被替换及内容哈希漂移。下颌线从指定剪映缓存找到，
+   其余仍取私有运行时；没有自动复制或上传任何资源。
+
+### LLDB 启动阻塞的明确原因
+
+新的无参数宿主、旧的已成功宿主、最小 hello 程序在调试器下都停在启动阶段。
+系统日志在 `2026-10-04 11:27:45.775` 对诊断宿主 PID `33015` 给出：
+
+```text
+AUTHREQ_PROMPTING: service=kTCCServiceSystemPolicyDesktopFolder
+accessing identifier=host, pid=33015
+```
+
+这是 macOS 桌面文件夹授权等待，和之前采样到的 dyld `__open` 相符。
+尚未进入模型回调，不能把它记为 ONNX、裁剪或关键点数值失败。
+已请求用户亲自处理系统弹窗；不修改 TCC、不迁移程序绕过授权、不关闭系统保护。
+新的完整原图链与实时桥仍需要授权后的新采集，旧报告没有被改写成通过。
+等待期间的诊断宿主 PID 33015 已核验启动时间与路径后终止，复查不存在；没有留下等待授权的孤儿进程。
+
+CPU 准备记录：`.local/jianying-model-pytorch/face-live-bridge-prepared-20261004-r4/report.json`。
+其 `prepared=true, completed=true, passed=false`；`passed=false` 是因为没有执行 native，
+不是“编译通过所以实时通过”。报告保存三个编译命令、来源清单及精确重跑命令。
+零效果对照还必须相对原图零像素变化，不能因为 baseline/candidate 同样错误就算通过。
+
+六功能资源记录：
+
+- 私有目录缺下颌线：`face-feature-campaign-six-private-preflight-20261004-r1/report.json`。
+- 最终源码冻结后的显式缓存预检：`face-feature-campaign-six-cache-plan-20261004-r2/preflight-report.json`，六项通过，重新加载计划的 guards 通过。
+- 计划 SHA-256：`4999b74b2b4aeac8bb4fca6339e104180a70a1532e59b4a6c251a912f5f02edc`。
+- 预检报告 SHA-256：`22c5b1f6f08b3d6836f2920fba8dbcf17348934c357cfe5de0ab9b985e9d6a18`。
+- 锁定 282 份研究源码、7 份产品源码、5 个不同效果包目录；这只是资源可用性，不是效果 parity。
+- 旧 r1 计划与报告保持原样，不代表后续源码的验收。
+
+上述简写路径均在 `.local/jianying-model-pytorch/`。再改源码必须重建计划，不能给旧计划换哈希。
+
+### 产品缓存跳转修复
+
+真实视频序列发现：向前命中帧缓存再往回跳，缓存早退绕过了原生跟踪状态重置。
+首轮 `backward-after-cache-hit` 相对独立冷启动差 752 像素，最大通道差 8。
+现在每个 scope 保存最后实际渲染的 cache key；只有相同帧/参数的暂停重读保留状态，
+读取其它缓存结果时退役旧跟踪器。缓存像素不能伪装成跟踪器已经处理过该帧。
+同时覆盖同时间戳换参数、不同 source 交错、暂停复用及返回缓存后的逆向跳转。
+逐脸历史缓存不直接返回，而是走现有会话重映射，避免 A -> B -> 缓存 A 丢失人物绑定；
+完全相同的暂停请求仍可复用。多阶段渲染开始前使缓存状态标记失效，任何阶段失败都退役整个 scope，
+并等待失败宿主退出，避免上游已前进、下游失败后继续混用旧状态。两项问题均先用失败测试复现再修复。
+
+首轮与修复后记录分别在：
+`output/playwright/beauty-portrait-session-native-20261004-r1`、`...-r2`。
+修复后上述状态差异为 0，但该帧冷启动与原图相同，因此仍被标记 `effect-no-op`，没有算通过。
+这批源视频抽取帧 60--69，共 8 张不同画面、时间跨度 0.30 秒；不是分钟级验证。
+部分帧含手遮眼及背向人物，仍需将冷启动检测边界与跟踪状态问题分开验收。
+
+最终重跑绑定了 350 份源码、bundle、宿主、运行库、模型与效果包文件，结束时复核未改变：
+
+| 最终产品原生序列 | 结果 | 边界 |
+| --- | --- | --- |
+| `beauty-portrait-session-native-20261004-r4-pre-occlusion` | 52/52 | 源帧 52--61，3 张不同画面，跨度 0.30 秒 |
+| `beauty-portrait-session-native-20261004-r4` | 47/52 | 源帧 60--69，8 张不同画面，5 项冷启动无效果仍失败；重置基准差异全为 0 |
+
+目录均在 `output/playwright/`。两组均通过独立 worker 取消、进程组退出和临时目录清理。
+`clear()` 验证的是排空队列，不是产品 UI 取消或原生 abort API；时序诊断允许与独立冷启动不同，
+因此“52 项通过”不能改写成“52 帧全部与独立冷启动逐像素一致”。
+
+单独诊断见 `output/playwright/beauty-portrait-noop-diagnosis-20261004-r1/diagnosis.json`：
+源帧 60/69 的新识别各有 1 张脸；65/66/68 各为 0，67 与 66 的 RGBA 相同。
+绕过 provider 缓存直接调用 host，每帧 6 次命令、共 12 次 render pass，重复时间戳与递增时间戳都不能让
+65/66/68 生效；从 60 连续跟踪过来则能在这些帧持续改变像素。
+这支持“遮挡下冷启动获取不到脸”的解释，不是普通缓存命中或少一次预热造成。
+仍未证明渲染器内部全部检测条件，也没有通过调低检测阈值掩盖失败；下一步需研究前滚/轨迹恢复并实测，
+不能直接把当前无效果计作成功。
+
+缓存修复后的桌面矩阵也重新执行，而非只复用第二阶段截图：
+`output/playwright/beauty-v7-palette-kpop-r5`（20 项，39.8 秒），
+`output/playwright/beauty-v7-palette-smile-r2`（20 项，34.6 秒），
+`output/playwright/beauty-v7-palette-mature-r2`（20 项，34.8 秒），共 60 项。
+均真实点击、处理、导出 ZIP、逐像素校验统一 8 倍灰度、alpha 不变、时间线不变；没有新的剪映 UI 导出对照。
+已目视检查最新鼻子 UI 中差异集中于鼻部，以及 390px 组合效果灰度图。
+
+### 当前回归与继续条件
+
+- Torch-free 主环境 1,590 项通过，启用了本地 ONNX 模型的 smoke/state 测试，无跳过。
+- Torch/ONNX 依赖环境 72 项、OpenCV 环境 22 项通过；与主环境有重叠，不相加成唯一数量。
+- 产品定向 Vitest 46 文件、650 项通过；Electron 再次重建通过。
+- `bun run check-types` 全部工作区通过；定向 Biome 与 `git diff --check` 通过。
+- 初次混跑的两项 ONNX 缺依赖与两项源码数量断言失败已修复/在正确环境补跑。
+  导出证据清单由 62 增为 63，并明确验证新进程清理模块的哈希，没有放宽原始 50 源码 guard。
+
+授权后顺序：冻结源码 -> 新 temporal/capture baseline -> 新 preprocessing capture ->
+`replay --original-frames` -> `render --original-frames` -> `audit --original-frames` ->
+新 live bridge 执行。所有阶段必须写入新目录，不复用失败或源码已变的记录。
+之后再扩展实际分钟级连续视频、多人/遮挡、预览/导出、跨平台与候选后端注册。
+旧 UI 导出器仍只接受旧固定 profile；原图模式未完成真实验收前不能借旧 schema 对外宣称通过。
+
+### 完整完成的验收门槛
+
+| 未闭合项 | 下一步 | 通过条件 |
+| --- | --- | --- |
+| 新原图链 | 用户处理系统授权后重新采集、回放、渲染、审计 | 当次源码/素材绑定；输入、模型输出、关键点、RGBA 各层独立证明通过 |
+| 实时 ONNX 接管 | 显式启动 baseline/live 宿主与常驻 worker | 真实回调收到当前帧；消费/恢复收据完整；RGBA 零差；零效果对照也保持原图 |
+| 遮挡下冷启动 | 用独立参考验证源帧前滚/轨迹恢复，覆盖正反 seek | 不串人物、不复用过期状态；此前 5 项有明确修复证据，而非移除或降阈值 |
+| 产品候选接入 | 前三项通过后扩展证据 schema 并注册后端 | 编辑器预览/导出同链；缺资源或失败明确报错，不伪装候选通过 |
+| 广泛可用性 | 分钟级、多脸、遮挡、连续滑杆、取消/恢复及跨平台 | 独立记录正确性、资源清理和性能，不由短序列/静态图推断 |
+
+系统授权只解除第一处外部阻塞，并不自动满足其余验收；目前不能对外标为“彻底完成”。
+
 ## 第二阶段：当前状态
 
 本节更新第一阶段的结论；后面的第一阶段记录保留历史复现信息，不能把旧报告当作当前源码验收。
@@ -77,7 +208,8 @@ PR：[484](https://github.com/Quriosity-agent/qcut/pull/484)。采用一文件�
    独占 GPU 再试 `face-full-frame-owned-capture-20261004-r3` 仍在 300 秒超时，进程已清理。
    新采样显示目标停在 dyld 的 `getOnDiskBinarySliceOffset -> mapFileReadOnly -> __open`，
    debugserver 在等待进程事件；尚未进入宿主主函数/推理回调。这定位到启动文件打开阶段，
-   不能据此断言具体是文件系统、系统安全检查或调试器原因。样本保存在该目录，未生成新 trace。
+   当时尚不能区分文件系统、系统安全检查或调试器；第三阶段已用系统日志定位为桌面文件夹授权等待。
+   样本保存在该目录，未生成新 trace。旧进程组清理方式的局限也已在第三阶段修正。
 3. 完整任意画面、多人、真实分钟级视频、跨平台实时桥和效果渲染器独立替代仍未验收。
 4. worker 的真实 CPU ONNX 测试使用合成依赖，不能替代原生调用方对照；研究回调仍需要原生检测、
    裁剪调用参数/逆矩阵、路由状态和渲染器。换素材/seek 要重启 host 和 worker，不是在旧时序状态上接着算。
