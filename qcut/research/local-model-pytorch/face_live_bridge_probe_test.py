@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import socket
@@ -202,6 +203,36 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         native.assert_not_called()
         self.assertTrue((self.args.out / "report.json").is_file())
         self.assertIn("live-host", result["artifacts"])
+
+    def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
+        directory = self.root / "stable"
+        directory.mkdir()
+        host = directory / "live-host"
+        host.write_bytes(b"signed fixture")
+        self.args.stable_host = True
+        closed = []
+
+        @contextmanager
+        def lease(*, audit, cleanup):
+            yield directory
+            self.assertTrue(cleanup["completed"])
+            self.assertTrue((audit / "report.json").is_file())
+            closed.append(True)
+
+        def prepare(**kwargs):
+            kwargs["guard"].locked.read(path=host)
+            return dict(path=str(host), reused=True)
+
+        with mock.patch.object(probe.host_identity, "helper_lease", side_effect=lease), \
+                mock.patch.object(probe.host_identity, "prepare_host", side_effect=prepare):
+            result, _ = self.run_preparation()
+        self.assertTrue(result["completed"])
+        self.assertNotIn("live", result["compile_commands"])
+        self.assertNotIn("live-host", result["artifacts"])
+        self.assertIn(str(host), result["dependencies"]["files"])
+        self.assertEqual(result["host_identity"]["path"], str(host))
+        self.assertIn("--stable-host", result["command"])
+        self.assertEqual(closed, [True])
 
     def test_native_requires_explicit_lease_before_any_artifact(self):
         self.args.execute_native = True
