@@ -10,6 +10,7 @@ import type {
 } from "../jianying-portrait-adjustment-contract.js";
 import { jianyingPortraitControl } from "./catalog.js";
 import { jianyingPortraitMakeupCard } from "./makeup-catalog.js";
+import { parsePortraitSourcePreRoll } from "./source-preroll.js";
 import {
 	isPortraitSkinToneKey,
 	parsePortraitSkinToneResourceId,
@@ -585,7 +586,7 @@ export function parseJianyingPortraitRenderRequest({
 		value: adjustments.manualRetouch,
 	});
 	const manualBody = parseManualBody({ value: adjustments.manualBody });
-	return {
+	const parsed: JianyingPortraitAdjustmentRenderRequest = {
 		width,
 		height,
 		rgba: new Uint8Array(
@@ -607,4 +608,9 @@ export function parseJianyingPortraitRenderRequest({
 		...(typeof frameNumber === "number" ? { frameNumber } : {}),
 		...(timestampSeconds === undefined ? {} : { timestampSeconds }),
 	};
+	const sourcePreRoll = parsePortraitSourcePreRoll({
+		value: record.sourcePreRoll,
+		request: parsed,
+	});
+	return { ...parsed, ...(sourcePreRoll ? { sourcePreRoll } : {}) };
 }
