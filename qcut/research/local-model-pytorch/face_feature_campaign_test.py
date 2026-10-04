@@ -124,6 +124,15 @@ class CampaignTests(unittest.TestCase):
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 campaign.run(args=args)
 
+    def test_effect_cache_option_is_cpu_plan_configuration_only(self):
+        argv = ["campaign", "plan", *[item for name in ("runtime", "models-root", "warp-python", "ort-python", "bun", "out", "manifest")
+                                     for item in ("--" + name, str(self.root / name))],
+                "--effect-cache-root", str(self.root / "explicit-cache")]
+        with patch("sys.argv", argv), patch.object(plan, "build", return_value={}) as build, patch.object(campaign, "run") as native:
+            self.assertEqual(campaign.main(), 0)
+            self.assertEqual(build.call_args.kwargs["args"].effect_cache_root, self.root / "explicit-cache")
+            native.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
