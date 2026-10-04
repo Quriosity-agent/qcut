@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <unistd.h>
+#include "face_live_bridge_response.h"
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
@@ -24,14 +25,6 @@ std::vector<Binding> liveBindings;
 std::optional<ReplayFrame> livePending;
 int64_t livePrediction = -1;
 bool liveConsumed = true;
-
-int64_t liveInteger(id value, int64_t minimum, int64_t maximum) {
-  if (![value isKindOfClass:[NSNumber class]] || CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID() ||
-      !std::isfinite([value doubleValue]) || [value doubleValue] != [value longLongValue] ||
-      [value longLongValue] < minimum || [value longLongValue] > maximum)
-    throw std::runtime_error("invalid typed live integer");
-  return [value longLongValue];
-}
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
@@ -161,50 +154,19 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
   try {
     if (std::this_thread::get_id() != seekThread || updateError || size > 128 * 1024)
       throw std::runtime_error("unsupported live result thread/state/size");
-    id reply = [NSJSONSerialization JSONObjectWithData:[NSData dataWithBytes:bytes length:size] options:0 error:nil];
     NSString* token = @(std::getenv("QCUT_FACE_LIVE_TOKEN") ?: "");
-    if (![reply isKindOfClass:[NSDictionary class]] || ![reply[@"ok"] isEqual:@YES] ||
-        ![reply[@"token"] isEqual:token] || liveInteger(reply[@"pid"], 1, INT32_MAX) != getpid() ||
-        liveInteger(reply[@"timestamp_us"], 0, INT64_MAX) != seekTimestamp)
-      throw std::runtime_error("live response association mismatch");
-    const auto index = liveInteger(reply[@"prediction"], 0, 4095);
-    if (index != livePrediction + 1 || (livePrediction >= 2 && !liveConsumed))
-      throw std::runtime_error("live result duplicate/gap/unconsumed predecessor");
-    id result = reply[@"result"];
-    if (![result isKindOfClass:[NSDictionary class]] ||
-        ![result[@"source"] isEqual:@"dependency-fed-research-inference"] ||
-        ![result[@"native_final_point_input_used"] isEqual:@NO] ||
-        ![result[@"captured_tensor_input_used"] isEqual:@NO])
-      throw std::runtime_error("live result provenance missing");
-    id faces = result[@"faces"];
-    if (![faces isKindOfClass:[NSArray class]] || [faces count] > 1)
-      throw std::runtime_error("live single-face result required");
+    if (livePrediction >= 2 && !liveConsumed)
+      throw std::runtime_error("live result has unconsumed predecessor");
+    const auto response = qcut_live::parseResponse(bytes, size, token, getpid(), livePrediction + 1, seekTimestamp);
     ReplayFrame frame;
-    frame.timestamp = seekTimestamp;
-    for (id face in faces) {
-      ReplayFace item;
-      item.id = static_cast<int>(liveInteger(face[@"id"], 0, INT32_MAX));
-      id points = face[@"points"];
-      if (![points isKindOfClass:[NSArray class]] || [points count] != 106)
-        throw std::runtime_error("live 106 points required");
-      for (size_t i = 0; i < 106; ++i) {
-        id pair = points[i];
-        if (![pair isKindOfClass:[NSArray class]] || [pair count] != 2)
-          throw std::runtime_error("live XY pair required");
-        for (size_t axis = 0; axis < 2; ++axis) {
-          id number = pair[axis];
-          const double value = [number doubleValue];
-          if (![number isKindOfClass:[NSNumber class]] || !std::isfinite(value) || value < 0 || value > 1)
-            throw std::runtime_error("live normalized coordinate required");
-          item.coordinates[i * 2 + axis] = static_cast<float>(value);
-        }
-      }
-      frame.faces.push_back(item);
+    frame.timestamp = response.timestamp;
+    for (const auto& face : response.faces) {
+      frame.faces.push_back({face.id, face.points});
     }
     livePending = std::move(frame);
-    livePrediction = index;
+    livePrediction = response.prediction;
     liveConsumed = false;
-    records << "{\"event\":\"live_candidate_received\",\"prediction\":" << index
+    records << "{\"event\":\"live_candidate_received\",\"prediction\":" << livePrediction
             << ",\"timestamp_us\":" << seekTimestamp << "}\n" << std::flush;
   } catch (...) { updateError = std::current_exception(); }
 }
