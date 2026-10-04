@@ -121,6 +121,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"] = "1"
         if getattr(args, "publish_makeup_candidate", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"] = "1"
+        if getattr(args, "stage_makeup_render", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
@@ -168,6 +170,8 @@ def run(*, args):
         raise ValueError("makeup system observation requires cold-frame audit")
     if getattr(args, "publish_makeup_candidate", False) and not getattr(args, "trace_makeup_system", False):
         raise ValueError("makeup candidate publication requires explicit system observation")
+    if getattr(args, "stage_makeup_render", False) and not getattr(args, "publish_makeup_candidate", False):
+        raise ValueError("makeup render stages require explicit candidate publication")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -182,6 +186,7 @@ def run(*, args):
         single_frame_audit=single_frame, static_controls_audit=static_controls, temporal_sequence_acceptance=False,
         cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
         makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
+        makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -281,6 +286,7 @@ def run(*, args):
             *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
             *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
             *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
+            *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -302,6 +308,8 @@ def main():
                         help="cold-frame only: observe pinned makeup object dispatch, not consumption")
     parser.add_argument("--publish-makeup-candidate", action="store_true",
                         help="experimental owned publication; cannot pass the consumption acceptance gate")
+    parser.add_argument("--stage-makeup-render", action="store_true",
+                        help="experimental initialization/parameter/final-render receipts; requires publication")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
