@@ -72,6 +72,107 @@ async function saveConfig({ bytes }: { bytes: Buffer }) {
 	await saveAudit();
 }
 
+async function saveOutput({ rgba }: { rgba: Uint8Array }) {
+	const hash = digest({ data: rgba });
+	job.result.outputSha256 = hash;
+	job.audit.frames[0].sha256 = hash;
+	job.audit.frames[0].native_sha256 = hash;
+	job.audit.artifacts["live/frame-00.rgba"].sha256 = hash;
+	job.audit.artifacts["baseline/frame-00.rgba"].sha256 = hash;
+	await Promise.all([
+		...[
+			"candidate.rgba",
+			"audit/live/frame-00.rgba",
+			"audit/baseline/frame-00.rgba",
+		].map((name) => writeFile(path.join(input.directory, name), rgba)),
+		writeFile(
+			path.join(input.directory, "result.json"),
+			JSON.stringify(job.result)
+		),
+		saveAudit(),
+	]);
+}
+
+describe("live output RGBA counts and RGB activity", () => {
+	it.each([
+		"noop",
+		"alpha-only",
+	])("rejects %s output despite a positive reported change and matching hashes", async (kind) => {
+		const rgba = new Uint8Array(input.request.rgba);
+		if (kind === "alpha-only") {
+			rgba[3] = 0;
+			rgba[7] = 0;
+		}
+		await saveOutput({ rgba });
+		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
+			/original RGB pixels unchanged/
+		);
+	});
+
+	it.each([
+		1, 3,
+	])("rejects a false reported count of %s for two changed RGB pixels", async (count) => {
+		job.audit.frames[0].original_difference.changed_pixels = count;
+		await saveAudit();
+		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
+			/original RGBA change count/
+		);
+	});
+
+	it.each([
+		0, 1, 2,
+	])("accepts RGB channel %s plus an alpha-only pixel when the reported RGBA count is two", async (channel) => {
+		const rgba = new Uint8Array(input.request.rgba);
+		rgba[channel] = 42;
+		rgba[7] = 0;
+		job.audit.frames[0].original_difference.changed_pixels = 2;
+		await saveOutput({ rgba });
+		await expect(
+			readBeautyLabLiveCandidateResult(input)
+		).resolves.toHaveProperty("rgba", rgba);
+	});
+
+	it("counts several changed RGB channels in one pixel only once", async () => {
+		const rgba = new Uint8Array(input.request.rgba);
+		rgba.set([42, 42, 42], 0);
+		job.audit.frames[0].original_difference.changed_pixels = 1;
+		await saveOutput({ rgba });
+		await expect(
+			readBeautyLabLiveCandidateResult(input)
+		).resolves.toHaveProperty("rgba", rgba);
+	});
+
+	it("rejects a report that omits an alpha-only pixel from its RGBA change count", async () => {
+		const rgba = new Uint8Array(input.request.rgba);
+		rgba[0] = 42;
+		rgba[7] = 0;
+		job.audit.frames[0].original_difference.changed_pixels = 1;
+		await saveOutput({ rgba });
+		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
+			/original RGBA change count/
+		);
+	});
+
+	it("rejects a short input even when its digest matches the request and report", async () => {
+		const rgba = input.request.rgba.slice(0, 4);
+		const hash = digest({ data: rgba });
+		input.request.inputSha256 = hash;
+		job.result.inputSha256 = hash;
+		job.audit.input_frames[0].input_sha256 = hash;
+		await Promise.all([
+			writeFile(path.join(input.directory, "input.rgba"), rgba),
+			writeFile(
+				path.join(input.directory, "result.json"),
+				JSON.stringify(job.result)
+			),
+			saveAudit(),
+		]);
+		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
+			/truncated input pixels/
+		);
+	});
+});
+
 describe("live host receipt binding (synthetic files, no codesign or native launch)", () => {
 	it.each([
 		false,
@@ -362,11 +463,29 @@ describe("live host receipt binding (synthetic files, no codesign or native laun
 		42,
 		"/foreign/live-host",
 	])("rejects LLDB host %j even with a matching config hash", async (host) => {
+		const config = JSON.parse(await readFile(configPath, "utf8"));
 		await saveConfig({
-			bytes: Buffer.from(JSON.stringify({ host, token: "private-test-token" })),
+			bytes: Buffer.from(JSON.stringify({ ...config, host })),
 		});
 		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
 			"invalid live LLDB host binding"
+		);
+	});
+
+	it.each([
+		undefined,
+		null,
+		42,
+		"",
+		"short",
+		"x".repeat(513),
+		"foreign-private-launch-token",
+	])("rejects a missing, malformed or foreign config token %j without exposing it", async (token) => {
+		await saveConfig({
+			bytes: Buffer.from(JSON.stringify({ host: files.hostPath, token })),
+		});
+		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toEqual(
+			new Error("Beauty Lab research: invalid live LLDB host binding")
 		);
 	});
 
@@ -386,8 +505,9 @@ describe("live host receipt binding (synthetic files, no codesign or native laun
 	});
 
 	it("rejects launching the audit snapshot instead of the fixed cache host", async () => {
+		const config = JSON.parse(await readFile(configPath, "utf8"));
 		await saveConfig({
-			bytes: Buffer.from(JSON.stringify({ host: hostSnapshotPath })),
+			bytes: Buffer.from(JSON.stringify({ ...config, host: hostSnapshotPath })),
 		});
 		await expect(readBeautyLabLiveCandidateResult(input)).rejects.toThrow(
 			"invalid live LLDB host binding"
