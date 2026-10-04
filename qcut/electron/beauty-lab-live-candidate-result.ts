@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import {
 	BEAUTY_LAB_CANDIDATE_BACKEND,
@@ -9,9 +11,11 @@ import {
 import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
 	createSnapshot,
+	type PinnedRoot,
 	pinRoot,
 	readJson,
 	requireEvidence,
+	type Snapshot,
 } from "./beauty-lab-research-files.js";
 
 export const LIVE_NATIVE_STAGES = [
@@ -20,6 +24,32 @@ export const LIVE_NATIVE_STAGES = [
 	"effect-rendering",
 ] as const;
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
+const hostReceiptSchema = z
+	.object({
+		recipe: sha,
+		sha256: sha,
+		identity: z.string().regex(/^[A-F0-9]{40}$/),
+		signature: z
+			.object({
+				identifier: z.literal("com.qcut.beauty-lab.live-host"),
+				team: z.string().regex(/^[A-Za-z0-9]{10}$/),
+				cdhash: z.string().regex(/^[a-fA-F0-9]{40}$/),
+				requirement: z
+					.string()
+					.min(1)
+					.max(8192)
+					.regex(/\S/)
+					.regex(/^[^\0]+$/),
+			})
+			.strict(),
+	})
+	.strict();
+const hostIdentitySchema = hostReceiptSchema.extend({
+	path: z.string().min(1).max(4096),
+	reused: z.boolean(),
+	permission_granted_by_launcher: z.literal(false),
+	desktop_authorization: z.string().min(1).max(4096),
+});
 const workerVersion = z.string().regex(/^dependency-core-v1:[a-f0-9]{64}$/);
 const metric = z.union([
 	z
@@ -88,6 +118,7 @@ const auditSchema = z.object({
 	width: z.number(),
 	height: z.number(),
 	manifest: z.string(),
+	host_identity: hostIdentitySchema,
 	input_frames: z
 		.array(z.object({ input_sha256: sha, parameters: z.unknown() }))
 		.length(1),
@@ -120,8 +151,82 @@ const auditSchema = z.object({
 	}),
 });
 
+async function verifyLiveHostReceipt({
+	hostDirectory,
+	root,
+	snapshot,
+	audit,
+}: {
+	hostDirectory: string;
+	root: PinnedRoot;
+	snapshot: Snapshot;
+	audit: z.infer<typeof auditSchema>;
+}) {
+	requireEvidence({
+		condition: path.isAbsolute(hostDirectory),
+		message: "absolute live host directory required",
+	});
+	const hostRoot = await pinRoot({ root: hostDirectory });
+	const hostPath = path.join(hostDirectory, "live-host");
+	const receiptPath = path.join(hostDirectory, "receipt.json");
+	const host = audit.host_identity;
+	const receiptHash = audit.dependencies.files[receiptPath];
+	requireEvidence({
+		condition:
+			hostRoot.canonical === hostDirectory &&
+			host.path === hostPath &&
+			audit.dependencies.files[hostPath] === host.sha256 &&
+			typeof receiptHash === "string",
+		message: "live host path or dependency binding mismatch",
+	});
+	requireEvidence({
+		condition:
+			audit.artifacts["live-host.snapshot"]?.sha256 === host.sha256 &&
+			audit.artifacts["live-host-receipt.json"]?.sha256 === receiptHash,
+		message: "live host snapshot artifact binding mismatch",
+	});
+	// The shared cache may hold another build after Python releases its lease.
+	const { value: receipt } = await readJson({
+		snapshot,
+		root,
+		relativePath: "audit/live-host-receipt.json",
+		maximum: 16 * 1024,
+		expected: receiptHash,
+		schema: hostReceiptSchema,
+	});
+	requireEvidence({
+		condition: isDeepStrictEqual(receipt, {
+			recipe: host.recipe,
+			sha256: host.sha256,
+			identity: host.identity,
+			signature: host.signature,
+		}),
+		message: "live host signer or build receipt differs from audit",
+	});
+	await snapshot.read({
+		root,
+		relativePath: "audit/live-host.snapshot",
+		maximum: 32 * 1024 ** 2,
+		expected: host.sha256,
+	});
+	try {
+		await readJson({
+			snapshot,
+			root,
+			relativePath: "audit/lldb-config.json",
+			maximum: 128 * 1024,
+			expected: sha.parse(audit.artifacts["lldb-config.json"]?.sha256),
+			schema: z.object({ host: z.literal(hostPath) }),
+		});
+	} catch {
+		// JSON parse errors may echo the private launch token.
+		throw new Error("Beauty Lab research: invalid live LLDB host binding");
+	}
+}
+
 export async function readBeautyLabLiveCandidateResult({
 	directory,
+	hostDirectory,
 	request,
 	runtime,
 	packagePath,
@@ -131,6 +236,7 @@ export async function readBeautyLabLiveCandidateResult({
 	parameters,
 }: {
 	directory: string;
+	hostDirectory: string;
 	request: Parameters<BeautyLabCandidateBackend["render"]>[0];
 	runtime: string;
 	packagePath: string;
@@ -184,6 +290,7 @@ export async function readBeautyLabLiveCandidateResult({
 				JSON.stringify(parameters),
 		message: "fresh baseline audit request mismatch",
 	});
+	await verifyLiveHostReceipt({ hostDirectory, root, snapshot, audit });
 	requireEvidence({
 		condition:
 			new Set(result.nativeDependencies).size === 3 &&
