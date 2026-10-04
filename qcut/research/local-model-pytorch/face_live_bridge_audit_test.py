@@ -227,6 +227,28 @@ class FileAuditTests(unittest.TestCase):
         path.write_bytes(b'{"ok":true}\n')
         self.assertEqual(audit.json_lines(path=path), [dict(ok=True)])
 
+    def test_protocol_preserves_bounded_native_rejection_without_accepting_it(self):
+        prefix = b"QCUT\tREADY\t1\nQCUT\tRESULT\tframe-00\t0\n"
+        request = [dict(id="frame-00"), dict(id="frame-01")]
+        failure = b"QCUT\tRESULT\tframe-01\t1\tlive prediction missing or not consumed by renderer\n"
+        with self.assertRaisesRegex(ValueError, "frame-01.*not consumed by renderer"):
+            audit.protocol(data=prefix + failure, requests=request)
+        with self.assertRaises(ValueError) as result:
+            audit.protocol(data=prefix + b"QCUT\tRESULT\tframe-01\t1\t" + b"x" * 10000 + b"\n",
+                           requests=request)
+        self.assertLess(len(str(result.exception)), 600)
+        escaped = prefix + b"QCUT\tRESULT\tframe-01\t1\terror\x1b[31m\tmessage\n"
+        with self.assertRaises(ValueError) as result:
+            audit.protocol(data=escaped, requests=request)
+        self.assertNotIn("\x1b", str(result.exception))
+        self.assertIn("\\u001b", str(result.exception))
+
+    def test_protocol_does_not_attribute_foreign_or_out_of_order_error(self):
+        rows = [dict(id="frame-00"), dict(id="frame-01")]
+        for prefix in (b"", b"QCUT\tREADY\t1\n", b"QCUT\tREADY\t1\nQCUT\tRESULT\tforeign\t0\n"):
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(ValueError, "exactly once"):
+                audit.protocol(data=prefix + b"QCUT\tRESULT\tframe-01\t1\tnative failure\n", requests=rows)
+
     def test_exact_render_gate_no_tolerance_weakening(self):
         import hashlib
 
