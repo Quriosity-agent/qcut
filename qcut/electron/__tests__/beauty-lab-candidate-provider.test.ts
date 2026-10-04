@@ -341,6 +341,135 @@ describe("Beauty Lab candidate descriptors (unit stubs, not runtime evidence)", 
 });
 
 describe("Beauty Lab live candidate validation (unit stubs, not runtime evidence)", () => {
+	it.each([
+		null,
+		false,
+		1,
+		{},
+		"validate",
+	])("rejects a non-function raw request validator: %j", (validateRequest) => {
+		const { backend, render } = fixture();
+		expect(() =>
+			createBeautyLabCandidateProvider({
+				backend: {
+					...backend,
+					validateRequest,
+				} as unknown as BeautyLabCandidateBackend,
+			})
+		).toThrow(/request validator/);
+		expect(render).not.toHaveBeenCalled();
+	});
+	it("receives the raw request before normalization and identity computation", async () => {
+		const { backend, render } = fixture();
+		const request = {
+			...makeRequest(),
+			untrusted: true,
+			inputSha256: "forged",
+		};
+		const validateRequest = vi.fn<
+			NonNullable<BeautyLabCandidateBackend["validateRequest"]>
+		>(({ request: raw }) => {
+			expect(raw).toBe(request);
+			expect(raw).toHaveProperty("untrusted", true);
+			expect(raw).toHaveProperty("inputSha256", "forged");
+			expect(render).not.toHaveBeenCalled();
+		});
+		const provider = createBeautyLabCandidateProvider({
+			backend: { ...backend, validateRequest },
+		});
+		await provider.render({ request });
+		expect(validateRequest).toHaveBeenCalledExactlyOnceWith({ request });
+		const parsed = parseBeautyLabCandidateRequest({ request });
+		expect(render).toHaveBeenCalledExactlyOnceWith({
+			...parsed,
+			...beautyLabCandidateIdentity({ request: parsed }),
+		});
+	});
+	it("rejects raw input before even reading parser fields and recovers after validation failure", async () => {
+		const { backend, render } = fixture();
+		const readProtocol = vi.fn(() => {
+			throw new Error("Parser must not read rejected input");
+		});
+		const request = Object.defineProperty({}, "protocol", {
+			get: readProtocol,
+		});
+		const failure = new Error("Raw request denied");
+		const validateRequest =
+			vi.fn<NonNullable<BeautyLabCandidateBackend["validateRequest"]>>();
+		validateRequest.mockImplementationOnce(() => {
+			throw failure;
+		});
+		const provider = createBeautyLabCandidateProvider({
+			backend: { ...backend, validateRequest },
+		});
+		await expect(provider.render({ request })).rejects.toBe(failure);
+		expect(readProtocol).not.toHaveBeenCalled();
+		expect(render).not.toHaveBeenCalled();
+		await expect(
+			provider.render({ request: makeRequest() })
+		).resolves.toHaveProperty("source", "live-candidate");
+		expect(validateRequest).toHaveBeenCalledTimes(2);
+		expect(render).toHaveBeenCalledOnce();
+	});
+	it("pins the bound raw validator against backend mutation", async () => {
+		const { backend, render } = fixture();
+		const contexts: unknown[] = [];
+		backend.validateRequest = function ({ request }) {
+			contexts.push(this);
+			expect(request).toEqual(makeRequest());
+			throw new Error("Pinned validator denied request");
+		};
+		const provider = createBeautyLabCandidateProvider({ backend });
+		const replacement =
+			vi.fn<NonNullable<BeautyLabCandidateBackend["validateRequest"]>>();
+		backend.validateRequest = replacement;
+		await expect(provider.render({ request: makeRequest() })).rejects.toThrow(
+			/Pinned validator/
+		);
+		expect(contexts).toEqual([backend]);
+		expect(replacement).not.toHaveBeenCalled();
+		expect(render).not.toHaveBeenCalled();
+	});
+	it("keeps providers registered without a hook compatible after backend mutation", async () => {
+		const { backend, provider, render } = fixture();
+		const validateRequest = vi.fn(() => {
+			throw new Error("Late hook must not run");
+		});
+		backend.validateRequest = validateRequest;
+		await provider.render({ request: makeRequest() });
+		expect(validateRequest).not.toHaveBeenCalled();
+		expect(render).toHaveBeenCalledOnce();
+	});
+	it.each([
+		"blocked",
+		"disposed",
+		"busy",
+	])("does not call the raw validator when %s", async (state) => {
+		const { backend, render } = fixture();
+		const validateRequest =
+			vi.fn<NonNullable<BeautyLabCandidateBackend["validateRequest"]>>();
+		backend.validateRequest = validateRequest;
+		if (state === "blocked") backend.stages[0].parity = "blocked";
+		const provider = createBeautyLabCandidateProvider({ backend });
+		if (state === "disposed") await provider.dispose();
+		const release = deferred<void>();
+		let pending: ReturnType<typeof provider.render> | undefined;
+		if (state === "busy") {
+			render.mockImplementationOnce(async (request) => {
+				await release.promise;
+				return makeResult({ request });
+			});
+			pending = provider.render({ request: makeRequest() });
+			validateRequest.mockClear();
+		}
+		await expect(provider.render({ request: makeRequest() })).rejects.toThrow(
+			/unavailable|already running/
+		);
+		expect(validateRequest).not.toHaveBeenCalled();
+		expect(render).toHaveBeenCalledTimes(state === "busy" ? 1 : 0);
+		release.resolve({ value: undefined });
+		await pending;
+	});
 	it("accepts all-native descriptors and ten zero-duration measurements", async () => {
 		const native = [...BEAUTY_LAB_CANDIDATE_STAGES];
 		const { provider, render } = fixture({ native });

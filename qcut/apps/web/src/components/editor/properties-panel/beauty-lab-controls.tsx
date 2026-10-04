@@ -127,6 +127,8 @@ export function BeautyLabControls({
 		readOnly,
 		locale: portraitLocale,
 		isControlReady: draftControlReady,
+		skinTones: status?.skinTones,
+		allowSkinTone: scope.mode === "all",
 		onChange: section === "body" ? changeBody : changeFace,
 		onInteractionStart: draftInteraction,
 		onInteractionEnd: draftInteraction,
@@ -293,7 +295,8 @@ export function BeautyLabControls({
 										ready: !disabled && !readOnly,
 									}))}
 									adjustments={scopedAdjustments}
-									disabled={disabled || readOnly}
+									disabled={disabled}
+									readOnly={readOnly}
 									locale={portraitLocale}
 									onChange={changeFace}
 									onInteractionStart={draftInteraction}

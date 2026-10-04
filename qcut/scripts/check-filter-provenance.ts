@@ -21,12 +21,13 @@
  * See docs/task/jianying-filter-runtime-research/filter-parity-long-tail-plan.zh.md (FLP-008)
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const __dir = import.meta.dirname ?? import.meta.dir;
 const ROOT = resolve(__dir, "..");
+const GIT_PATH_BUFFER_LIMIT = 64 * 1024 * 1024;
 
 export interface ProvenanceViolation {
 	rule: string;
@@ -137,17 +138,29 @@ export function checkBuildManifest(build: {
 	return violations;
 }
 
-function main() {
+export function readTrackedPaths({ cwd }: { cwd: string }): string[] {
 	// Scan from the Git top level, not the qcut package directory: a private
 	// artifact committed outside qcut/ must fail the gate too.
-	const gitRoot = execSync("git rev-parse --show-toplevel", {
+	const rootOutput = execFileSync("git", ["rev-parse", "--show-toplevel"], {
 		encoding: "utf-8",
-		cwd: ROOT,
-	}).trim();
-	const tracked = execSync("git ls-files", { encoding: "utf-8", cwd: gitRoot })
-		.trim()
-		.split("\n")
+		cwd,
+	});
+	if (!rootOutput.endsWith("\n")) {
+		throw new Error("Git top-level path is not newline-terminated.");
+	}
+	// Remove Git's single LF, not whitespace belonging to the directory name.
+	const gitRoot = rootOutput.slice(0, -1);
+	return execFileSync("git", ["ls-files", "-z"], {
+		encoding: "utf-8",
+		cwd: gitRoot,
+		maxBuffer: GIT_PATH_BUFFER_LIMIT,
+	})
+		.split("\0")
 		.filter(Boolean);
+}
+
+function main() {
+	const tracked = readTrackedPaths({ cwd: ROOT });
 	const packageJson = JSON.parse(
 		readFileSync(resolve(ROOT, "package.json"), "utf-8")
 	) as { build?: { files?: unknown[]; extraResources?: unknown[] } };

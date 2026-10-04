@@ -42,11 +42,15 @@ def compile_owned(*, output: Path, binding: bool = False) -> None:
     ], check=True, timeout=180)
 
 
-def validate_audits(*, events: list[dict], require_face: bool) -> dict:
+def validate_audits(*, events: list[dict], require_face: bool,
+                    require_live_consumers: bool = False) -> dict:
     audits = [event for event in events if event.get("event") == "face_clone_audit"]
     updates = [event for event in events if event.get("event") == "algorithm_update"]
-    if not audits or len(audits) != len(updates):
-        raise RuntimeError("every native face update needs an ownership audit")
+    consumers = [event for event in events if event.get("event") == "live_owned_conversion"]
+    expected = consumers if require_live_consumers else updates
+    if not audits or len(audits) != len(expected):
+        raise RuntimeError("every face consumer needs an ownership audit" if require_live_consumers else
+                           "every native face update needs an ownership audit")
     primary_faces = 0
     for audit in audits:
         counts = audit.get("vector_counts")
@@ -66,7 +70,8 @@ def validate_audits(*, events: list[dict], require_face: bool) -> dict:
     if require_face and primary_faces == 0:
         raise RuntimeError("no primary face exercised the deep-copy contract")
     return {"audited_clones": len(audits), "primary_faces_audited": primary_faces,
-            "native_update_calls": len(updates), "native_analysis_bypassed": False}
+            "native_update_calls": len(updates), "native_analysis_bypassed": False,
+            "audit_basis": "live-owned-conversion" if require_live_consumers else "algorithm-update"}
 
 
 def run(*, args: argparse.Namespace) -> dict:

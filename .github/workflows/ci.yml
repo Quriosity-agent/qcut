@@ -87,6 +87,7 @@ jobs:
           scripts/__tests__/ffmpeg-stage-publish.test.ts
           scripts/__tests__/ffmpeg-manifest.test.ts
           scripts/__tests__/ffmpeg-verify.test.ts
+          scripts/__tests__/check-filter-provenance.test.ts
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu'

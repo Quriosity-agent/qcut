@@ -97,14 +97,16 @@ def sampling_window(*, capture, snapshot, association, sampling, used):
     lower, upper = [integer(value=value, maximum=4096) for value in window]
     require(condition=lower <= upper == snapshot["bytenn_sequence"], message="neural window upper marker differs")
     inferences = association.get("inferences")
-    require(condition=isinstance(inferences, list) and len(inferences) <= 2, message="single-face neural window required")
-    selected = []
+    require(condition=isinstance(inferences, list) and len(inferences) <= 3, message="bounded single-face neural window required")
+    selected, markers = [], set()
     for item in inferences:
         require(condition=isinstance(item, dict), message="typed inference descriptor required")
         size = count(row=item, key="size", maximum=160)
         require(condition=size in (120, 160), message="unsupported inference size")
         inference = count(row=item, key="inference", maximum=128)
         marker = count(row=item, key="record_index", maximum=4095)
+        require(condition=marker not in markers, message="inference record marker reused")
+        markers.add(marker)
         identity = str(snapshot["predictors"][0 if size == 120 else 1]["network"])
         require(condition=item.get("network") == identity and lower <= marker < upper, message="inference owner/window differs")
         key = (size, identity, inference)
@@ -113,6 +115,11 @@ def sampling_window(*, capture, snapshot, association, sampling, used):
         if size == 120:
             selected.append(item)
     require(condition=len(selected) <= 1, message="multiple 120 inferences unresolved")
+    if len(inferences) == 3:
+        ordered = sorted(inferences, key=lambda item: item["record_index"])
+        require(condition=[item["size"] for item in ordered] == [160, 120, 160]
+                and sum(face["active"] for face in snapshot["faces"]) == 1,
+                message="three-inference window requires one active face and pre/post-tracking detections")
     if not selected:
         require(condition=flag(row=sampling, key="idle") and sampling == dict(prediction=index, idle=True)
                 and not any(face["active"] for face in snapshot["faces"]), message="explicit idle no-face sampling required")

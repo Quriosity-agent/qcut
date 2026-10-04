@@ -31,6 +31,7 @@ export {
 	MEDIA_PORTRAIT_ADJUSTMENT_KEYS,
 	MEDIA_PORTRAIT_MAKEUP_CATEGORIES,
 	MEDIA_PORTRAIT_MANUAL_RETOUCH_TOOLS,
+	MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS,
 	normalizeMediaPortraitAdjustments,
 } from "./portrait-adjustments.js";
 export type {

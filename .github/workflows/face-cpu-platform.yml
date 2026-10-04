@@ -1,0 +1,84 @@
+name: Face owned CPU contracts
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/**
+      - qcut/scripts/check_face_cpu_platform.py
+      - qcut/scripts/__tests__/face_cpu_platform_test.py
+      - qcut/scripts/requirements-face-cpu-platform.txt
+      - .github/workflows/face-cpu-platform.yml
+  push:
+    branches: [master]
+    paths:
+      - qcut/research/local-model-pytorch/**
+      - qcut/scripts/check_face_cpu_platform.py
+      - qcut/scripts/__tests__/face_cpu_platform_test.py
+      - qcut/scripts/requirements-face-cpu-platform.txt
+      - .github/workflows/face-cpu-platform.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: face-cpu-platform-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: qcut
+
+jobs:
+  synthetic-contracts:
+    name: Face CPU contracts (${{ matrix.runner }}, ${{ matrix.architecture }})
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+            system: Linux
+            machine: x86_64
+          - runner: windows-2025
+            architecture: x64
+            system: Windows
+            machine: x86_64
+          - runner: macos-15
+            architecture: arm64
+            system: Darwin
+            machine: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.10'
+          architecture: ${{ matrix.architecture }}
+      - name: Install pinned public CPU dependencies without PyTorch
+        run: >-
+          python -m pip install --only-binary=:all:
+          -r scripts/requirements-face-cpu-platform.txt
+      - name: Test owned sampling, state and persistent worker contracts
+        run: >-
+          python -B scripts/check_face_cpu_platform.py
+          --out .local/face-cpu-platform/ci-${{ matrix.runner }}
+          --expected-system ${{ matrix.system }}
+          --expected-machine ${{ matrix.machine }}
+      - name: Upload synthetic contract metrics only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: face-cpu-contracts-${{ matrix.runner }}-${{ matrix.architecture }}
+          path: qcut/.local/face-cpu-platform/ci-${{ matrix.runner }}/report.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

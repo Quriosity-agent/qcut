@@ -4,6 +4,20 @@ import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../../electron/jiany
 import { beautyLabCatalogStatus } from "../beauty-lab-catalog";
 
 describe("Beauty Lab full draft catalog", () => {
+	it("keeps skin tone on the editor's two numeric controls without inventing palette presets", () => {
+		const status = beautyLabCatalogStatus({ status: null });
+		expect(
+			status.catalog
+				.filter(({ runtimePackage }) => runtimePackage === "skin-tone")
+				.map(({ key, min, max, step }) => ({ key, min, max, step }))
+		).toEqual([
+			{ key: "face_adjust_skin_Intensity", min: 0, max: 100, step: 1 },
+			{ key: "face_adjust_skin_ColdWarm", min: -50, max: 50, step: 1 },
+		]);
+		expect(status.available).toBe(false);
+		expect(status.offlineReady).toBe(false);
+	});
+
 	it("shows the real complete catalog without claiming native readiness", () => {
 		const status = beautyLabCatalogStatus({ status: null });
 		expect(status.available).toBe(false);

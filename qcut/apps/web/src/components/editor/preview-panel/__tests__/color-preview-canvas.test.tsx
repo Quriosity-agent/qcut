@@ -156,6 +156,46 @@ async function completePending({
 }
 
 describe("color preview async commits", () => {
+	it("binds video recovery to the current source and aborts it on unmount", async () => {
+		Object.defineProperties(HTMLVideoElement.prototype, {
+			readyState: { configurable: true, get: () => 2 },
+			videoWidth: { configurable: true, get: () => 854 },
+			videoHeight: { configurable: true, get: () => 480 },
+		});
+		const { container, unmount } = render(
+			<div>
+				<video src="blob:source-A" />
+				<ColorPreviewCanvas
+					sourceSelector="video"
+					settings={settings({ intensity: 10 })}
+					masks={masks}
+					fitMode="contain"
+					frameSeed={65}
+					portraitAdjustments={{
+						enabled: true,
+						values: { face_adjust_EnlargeEye: 60 },
+					}}
+				/>
+			</div>
+		);
+		await completePending();
+		const first = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(first.readPortraitSourcePreRoll).toBeTypeOf("function");
+		expect(first.sourceKey).toContain("source-A");
+		await act(async () => {
+			const video = container.querySelector("video")!;
+			video.src = "blob:source-B";
+			video.currentTime = 2.2;
+			video.dispatchEvent(new Event("seeked"));
+		});
+		await completePending();
+		const next = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(next.sourceKey).toContain("source-B");
+		expect(next.timestampSeconds).toBe(2.2);
+		expect(next.signal?.aborted).toBe(false);
+		unmount();
+		expect(next.signal?.aborted).toBe(true);
+	});
 	it("preserves blemish source detail before fitting without enlarging the displayed canvas", async () => {
 		Object.defineProperties(HTMLImageElement.prototype, {
 			naturalWidth: { configurable: true, get: () => 4000 },

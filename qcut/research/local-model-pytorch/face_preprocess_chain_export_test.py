@@ -136,6 +136,9 @@ class ExportTests(unittest.TestCase):
             originalReplay={"source_sha256": dict(old_items[20:40])},
             originalRender={"source_sha256": dict(old_items[40:])},
             originalAudit={"passed": True, "source_count": 50})
+        self.reports["capture"]["fixture_sha256"] = {
+            str(Path(export.probe.__file__).with_name(name).resolve()): export.digest(
+                data=Path(export.probe.__file__).with_name(name).read_bytes()) for name in export.probe.SOURCE_NAMES}
         self.files = dict(capture=self.capture_root / "report.json", candidate=self.candidate_root / "report.json",
             render=self.render_root / "report.json", model=self.candidate_root / "onnx/report.json", summary=self.models / "summary.json",
             originalCapture=self.original / "report.json", originalReplay=self.root / export.probe.OLD_REPORTS["sequence_replay"] / "report.json",
@@ -216,6 +219,74 @@ class ExportTests(unittest.TestCase):
         self.assertIs(saved["completed"], False)
         self.assertTrue(saved["failures"])
 
+    def original_mode(self):
+        self.proof.update(profile=export.chain.profile(stage="audit", original_frames=True),
+                          **export.chain.original_claims(completed=True))
+        proof = {"algorithm": "staged-q11", "synthetic": True}
+        self.proof["preprocessing"] = proof
+        for key, stage in (("candidate", "replay"), ("render", "render")):
+            names = (*export.chain.ORIGINAL_SOURCE_NAMES, *(("face_preprocess_chain_render.py",) if key == "render" else ()))
+            sources = export.chain.sources(names=names, locked=LockedFiles())
+            for name in sources:
+                self.write(path=self.source_root / name, data=Path(export.__file__).with_name(Path(name).name).read_bytes())
+            self.reports[key].update(profile=export.chain.profile(stage=stage, original_frames=True),
+                                    source_sha256=sources, **export.chain.original_claims(completed=True))
+        self.reports["candidate"]["preprocessing"] = deepcopy(proof)
+        self.reports["render"]["candidate_report_sha256"] = export.digest(data=encoded(value=self.reports["candidate"]))
+        self.persist()
+
+    def test_original_mode_requires_explicit_matching_audit_and_preserves_original_proof(self):
+        self.rejected(original_frames=True)
+        self.original_mode()
+        self.rejected()
+        report = self.run_export(original_frames=True)
+        self.assertEqual(report["profile"], "original-rgba-owned-chain-ui-export-v1")
+        package = json.loads((self.out / "index.json").read_bytes())
+        self.assertEqual(package["format"], "qcut-beauty-lab-original-rgba-owned-chain-v1")
+        self.assertEqual((self.out / "reports/chain-audit.json").read_bytes(), self.proof_path.read_bytes())
+        self.assertEqual(package["reports"]["chainAudit"], export.digest(data=self.proof_path.read_bytes()))
+        for name in (*export.chain.ORIGINAL_SOURCE_NAMES, "face_native_process.py", "face_preprocess_chain_audit.py"):
+            self.assertIn("local-model-pytorch/" + name, package["source_sha256"])
+        self.assertIs(report["arbitrary_frame_backend_connected"], False)
+        self.assertIs(report["product_parity_verified"], False)
+
+    def test_original_mode_rejects_relabelled_or_unbound_producer(self):
+        self.original_mode()
+        for key, patch_value in (("profile", "actual-preprocess-owned-chain-v1"),
+                                 ("native_algorithm_rgba_input_used", True), ("preprocessing", {}),
+                                 ("source_sha256", {})):
+            before = deepcopy(self.reports["candidate"])
+            self.reports["candidate"][key] = patch_value
+            self.persist()
+            with self.subTest(key=key):
+                self.rejected(original_frames=True)
+            self.reports["candidate"] = before
+
+    def test_new_exports_require_helper_hash_from_capture_not_current_source_alone(self):
+        name = str(Path(export.probe.__file__).with_name("face_native_process.py").resolve())
+        for replacement in (None, "f" * 64):
+            self.reports["capture"]["fixture_sha256"][name] = replacement
+            self.persist()
+            with self.subTest(replacement=replacement):
+                self.rejected()
+
+    def test_explicit_fresh_profile_is_exported_without_historical_paths(self):
+        paths = {"sequence_replay": self.root / "fresh-replay/report.json",
+                 "sequence_render": self.root / "fresh-render/report.json"}
+        self.files.update(originalReplay=paths["sequence_replay"], originalRender=paths["sequence_render"])
+        self.persist()
+        self.context["evidence"].update(profile_reports={key: str(path) for key, path in paths.items()},
+            fixture_sha256={str(path): export.digest(data=path.read_bytes()) for path in paths.values()})
+        with patch.object(export.probe, "OLD_REPORTS", {key: "missing-history-" + key for key in paths}):
+            report = self.run_export()
+        self.assertTrue(report["passed"])
+        self.assertEqual((self.out / "reports/original-replay.json").read_bytes(), paths["sequence_replay"].read_bytes())
+        self.assertEqual((self.out / "reports/original-render.json").read_bytes(), paths["sequence_render"].read_bytes())
+
+    def test_unbound_explicit_profile_is_not_exported(self):
+        self.context["evidence"]["profile_reports"] = {key: "/unbound/report.json" for key in export.probe.OLD_REPORTS}
+        self.rejected()
+
     def test_complete_package_is_portable_byte_exact_and_excludes_private_models_runtime(self):
         before = {path: (path.stat().st_mtime_ns, path.read_bytes()) for path in self.fixture_paths}
         report = self.run_export()
@@ -224,14 +295,17 @@ class ExportTests(unittest.TestCase):
         self.assertIs(report["diagnostic_only"], True)
         self.assertIs(report["arbitrary_frame_backend_connected"], False)
         self.assertIs(report["product_parity_verified"], False)
-        self.assertEqual(report["source_count"], 62)
+        self.assertEqual(report["source_count"], 63)
         self.assertEqual(report["frames"], 7)
         self.loader.assert_called_once()
         self.assertEqual(before, {path: (path.stat().st_mtime_ns, path.read_bytes()) for path in self.fixture_paths})
         package = json.loads((self.out / "index.json").read_bytes())
         self.assertEqual(package["format"], "qcut-beauty-lab-owned-chain-v1")
         self.assertEqual(report["index_sha256"], export.digest(data=(self.out / "index.json").read_bytes()))
-        self.assertEqual(len(package["source_sha256"]), 62)
+        self.assertEqual(len(package["source_sha256"]), 63)
+        cleanup_source = Path(export.__file__).with_name("face_native_process.py")
+        self.assertEqual(package["source_sha256"]["local-model-pytorch/face_native_process.py"],
+                         export.digest(data=cleanup_source.read_bytes()))
         self.assertEqual(list(package["source_sha256"]), sorted(package["source_sha256"]))
         self.assertTrue(all(not Path(name).is_absolute() and ".." not in Path(name).parts for name in package["source_sha256"]))
         expected_files = {"index.json", "report.json", "manifest.json", "replay.json"}
@@ -373,7 +447,7 @@ class ExportTests(unittest.TestCase):
         for path, expected in self.proof["fixture_sha256"].items():
             self.assertEqual(report["fixture_sha256"][path], expected)
         self.assertFalse((self.out / "private-fixtures").exists())
-        self.assertEqual(report["source_count"], 62)
+        self.assertEqual(report["source_count"], 63)
 
     def test_original_source_union_requires_exact_50_entries(self):
         for count in (49, 51):

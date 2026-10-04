@@ -15,6 +15,7 @@ import {
 	portraitPreviewCanvasSize,
 } from "@/lib/color/color-preview-resolution";
 import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source-key";
+import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import {
 	portraitProcessingSize,
 	portraitSourceDimensions,
@@ -216,22 +217,23 @@ export function ColorPreviewCanvas({
 		if (!canvas || !parent) return;
 		const source = parent.querySelector<ColorPreviewSource>(sourceSelector);
 		if (!source) return;
-		const sourceLocation =
-			source instanceof HTMLCanvasElement
-				? sourceSelector
-				: source.currentSrc || source.src || sourceSelector;
 		const elementId = parent.closest<HTMLElement>("[data-preview-element-id]")
 			?.dataset.previewElementId;
-		const sourceKey = portraitPreviewSourceKey({
-			elementId,
-			mediaId: source.dataset.colorSourceKey,
-			sourceSessionId: parent.closest<HTMLElement>(
-				"[data-portrait-source-session]"
-			)?.dataset.portraitSourceSession,
-			sourceLocation,
-			sourceSelector,
-		});
+		const getSourceKey = () =>
+			portraitPreviewSourceKey({
+				elementId,
+				mediaId: source.dataset.colorSourceKey,
+				sourceSessionId: parent.closest<HTMLElement>(
+					"[data-portrait-source-session]"
+				)?.dataset.portraitSourceSession,
+				sourceLocation:
+					source instanceof HTMLCanvasElement
+						? sourceSelector
+						: source.currentSrc || source.src || sourceSelector,
+				sourceSelector,
+			});
 		let cancelled = false;
+		const abortController = new AbortController();
 		let animationFrame = 0;
 		let lastVideoTime = -1;
 		let drawing = false;
@@ -268,8 +270,17 @@ export function ColorPreviewCanvas({
 			const operation = renderTailRef.current.then(async () => {
 				try {
 					if (cancelled) return;
+					const sourceKey = getSourceKey();
 					if (source instanceof HTMLVideoElement)
 						lastVideoTime = source.currentTime;
+					const timestampSeconds = sourceTimestampSeconds(source);
+					const readPortraitSourcePreRoll =
+						source instanceof HTMLVideoElement
+							? createPortraitSourcePreRollReader({
+									source: source.currentSrc || source.src,
+									fit: fitMode,
+								})
+							: undefined;
 					const dimensions = portraitSourceDimensions({ source });
 					const processing = portraitProcessingSize({
 						width: canvas.width,
@@ -315,8 +326,10 @@ export function ColorPreviewCanvas({
 						layers: renderedLayers,
 						frameSeed,
 						sourceKey,
-						timestampSeconds: sourceTimestampSeconds(source),
+						timestampSeconds,
 						portraitAdjustments,
+						readPortraitSourcePreRoll,
+						signal: abortController.signal,
 					});
 					if (cancelled) return;
 					if (
@@ -339,6 +352,7 @@ export function ColorPreviewCanvas({
 						})
 						.join(",");
 				} catch (error) {
+					if (abortController.signal.aborted) return;
 					const independent = renderedLayers.some(
 						({ settings }) =>
 							settings.multiPass?.enabled &&
@@ -385,6 +399,7 @@ export function ColorPreviewCanvas({
 		animationFrame = requestAnimationFrame(loop);
 		return () => {
 			cancelled = true;
+			abortController.abort();
 			observer.disconnect();
 			source.removeEventListener("loadeddata", redraw);
 			source.removeEventListener("load", redraw);

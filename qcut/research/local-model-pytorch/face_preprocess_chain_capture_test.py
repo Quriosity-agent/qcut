@@ -173,6 +173,20 @@ class LoadTests(unittest.TestCase):
         self.associate.assert_called_once_with(records=self.snapshots, networks=self.inventory["networks"],
                                                temporal=True, metadata=self.metadata)
 
+    def test_fresh_report_paths_are_hash_bound_and_forwarded(self):
+        paths = {key: Path("/synthetic/fresh") / (key + ".json") for key in capture.probe.OLD_REPORTS}
+        for key, path in paths.items():
+            self.files[path] = encoded(value={"role": key})
+            self.evidence["fixture_sha256"][str(path)] = capture.digest(data=self.files[path])
+        self.evidence["profile_reports"] = {key: str(path) for key, path in paths.items()}
+        self.load()
+        self.profile.assert_called_once_with(capture=self.original, audit=self.audit, locked=self.locked, **paths)
+
+    def test_unbound_fresh_report_path_is_rejected_before_profile(self):
+        self.evidence["profile_reports"] = {key: "/synthetic/unbound.json" for key in capture.probe.OLD_REPORTS}
+        self.reject(message="hash-bound")
+        self.profile.assert_not_called()
+
     def test_trace_protocol_and_each_bounded_pixel_pair_are_revalidated(self):
         self.load()
         self.validate_trace.assert_called_once_with(trace=self.trace, records=self.snapshots,

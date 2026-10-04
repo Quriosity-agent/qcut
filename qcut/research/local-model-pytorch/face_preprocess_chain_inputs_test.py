@@ -36,7 +36,7 @@ class ChainInputsTests(unittest.TestCase):
         self.addCleanup(loader.stop)
 
     def reset_fixture(self):
-        self.root = Path("/synthetic/preprocess-chain")
+        self.root = Path("/synthetic/preprocess-chain").absolute()
         self.files, self.frames, self.oracles = {}, {}, {}
         self.records, self.associations, self.events, self.descriptors = [], [], [], []
         inputs = []

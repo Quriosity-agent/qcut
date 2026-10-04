@@ -5,13 +5,12 @@ import argparse
 import json
 import os
 from pathlib import Path
-import signal
 import subprocess
 import sys
 
 import numpy as np
 
-from face_alignment_replay import LockedFiles, strict_json
+from face_alignment_replay import LockedFiles, strict_json, valid_hash
 from face_geometry_native import LIBRARY_SHA256
 from face_alignment_warp_native import BYTENN_SHA256
 from face_host_geometry_contract import associate_inferences
@@ -23,11 +22,13 @@ import face_render_model_capture as models
 import face_render_sequence_probe as sequence
 from face_render_stability_probe import digest, frame_metrics
 from face_temporal_capture_audit import source_hashes
+from face_native_process import ProcessTree
 
 PRIVATE = sequence.PRIVATE
 OLD_REPORTS = {"sequence_replay": "face-host-geometry-sequence-replay-20261003-r9",
                "sequence_render": "face-host-geometry-sequence-render-20261003-r7"}
-SOURCE_NAMES = ("face_preprocess_probe.py", "face_preprocess_lldb.py", "face_preprocess_memory.py")
+SOURCE_NAMES = ("face_preprocess_probe.py", "face_preprocess_lldb.py", "face_preprocess_memory.py",
+                "face_native_process.py")
 DEADLINE = 300
 SYSTEM_ENV_KEYS = {"HOME", "PATH", "TMPDIR", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE"}
 HOST_ENV_KEYS = {"QCUT_FRAME_WIDTH", "QCUT_FRAME_HEIGHT", "QCUT_TRACE_UPDATES", "QCUT_FACE_POINT_SHIFT",
@@ -38,14 +39,40 @@ def system_environment():
     return {key: value for key, value in os.environ.items() if key in SYSTEM_ENV_KEYS}
 
 
-def lock_profile(*, capture, audit, locked):
+def profile_report_paths(*, sequence_replay=None, sequence_render=None):
+    if (sequence_replay is None) != (sequence_render is None):
+        raise ValueError("both explicit replay and render reports are required")
+    if sequence_replay is None:
+        return {key: PRIVATE / name / "report.json" for key, name in OLD_REPORTS.items()}
+    return {"sequence_replay": Path(sequence_replay).resolve(strict=True),
+            "sequence_render": Path(sequence_render).resolve(strict=True)}
+
+
+def profile_report_arguments(*, evidence):
+    if "profile_reports" not in evidence:
+        return {}
+    paths, fixtures = evidence["profile_reports"], evidence.get("fixture_sha256")
+    if (not isinstance(paths, dict) or set(paths) != set(OLD_REPORTS) or
+            not isinstance(fixtures, dict) or any(not isinstance(path, str) or
+            not Path(path).is_absolute() or not valid_hash(value=fixtures.get(path)) for path in paths.values())):
+        raise ValueError("explicit profile reports must be complete absolute hash-bound fixtures")
+    return {key: Path(path) for key, path in paths.items()}
+
+
+def lock_profile(*, capture, audit, locked, sequence_replay=None, sequence_render=None):
     guard = locked.json(path=audit / "report.json")
-    if guard.get("passed") is not True or guard.get("source_count") != 50:
+    if (guard.get("passed") is not True or type(guard.get("source_count")) is not int or
+            guard["source_count"] != 50):
         raise ValueError("passed locked 50-source audit required")
+    identities = guard.get("report_sha256")
+    if not isinstance(identities, dict) or any(not valid_hash(value=identities.get(key))
+            for key in ("capture", "sequence_replay", "sequence_render")):
+        raise ValueError("valid audit-bound capture/replay/render hashes required")
     evidence = locked.json(path=capture / "report.json", expected=guard["report_sha256"]["capture"])
     reports = [evidence]
-    for key, name in OLD_REPORTS.items():
-        reports.append(locked.json(path=PRIVATE / name / "report.json", expected=guard["report_sha256"][key]))
+    paths = profile_report_paths(sequence_replay=sequence_replay, sequence_render=sequence_render)
+    for key, path in paths.items():
+        reports.append(locked.json(path=path, expected=guard["report_sha256"][key]))
     sources = source_hashes(reports=reports)
     if len(sources) != 50:
         raise ValueError("locked source union changed")
@@ -109,15 +136,11 @@ def bounded_process(*, command, environment, log, stdin=None):
     with log.open("xb") as stream:
         process = subprocess.Popen(command, env=environment, stdin=stdin or subprocess.DEVNULL,
                                    stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+        tree = ProcessTree(process=process)
         try:
-            code = process.wait(timeout=DEADLINE)
-        except BaseException:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait(timeout=10)
-            raise
+            code = tree.wait(timeout=DEADLINE)
+        finally:
+            tree.terminate()
     if log.stat().st_size > sequence.LOG_LIMIT:
         raise ValueError("process log exceeds bound")
     if code != 0:
@@ -209,9 +232,13 @@ def run(*, args):
                   product_parity_verified=False, native_analysis_bypassed=False, failures=[], comparisons=[])
     try:
         capture, audit = args.capture.resolve(strict=True), args.audit.resolve(strict=True)
-        previous, runtime, package, files, frames = lock_profile(capture=capture, audit=audit, locked=locked)
+        paths = profile_report_paths(sequence_replay=getattr(args, "sequence_replay", None),
+                                     sequence_render=getattr(args, "sequence_render", None))
+        previous, runtime, package, files, frames = lock_profile(capture=capture, audit=audit, locked=locked,
+            sequence_replay=paths["sequence_replay"], sequence_render=paths["sequence_render"])
         report.update(capture=str(capture), audit=str(audit), runtime=str(runtime), package=str(package),
-                      old_sources_verified=50, host_sha256=previous["host_sha256"])
+                      old_sources_verified=50, host_sha256=previous["host_sha256"],
+                      profile_reports={key: str(path) for key, path in paths.items()})
         for name in ("baseline", "observed", "trace", "geometry", "capture"):
             (out / name).mkdir()
         for name in ("baseline", "observed"):
@@ -288,6 +315,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "audit", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
+    for name in ("sequence-replay", "sequence-render"):
+        parser.add_argument(f"--{name}", type=Path, help="Explicit report.json bound by the original audit SHA")
     report = run(args=parser.parse_args())
     print(json.dumps(dict(passed=report["passed"], tensor_checks=report["tensor_checks"])))
 

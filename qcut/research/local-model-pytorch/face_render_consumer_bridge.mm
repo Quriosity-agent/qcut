@@ -270,7 +270,8 @@ void writeFaces(const void* buffer) {
   records << ']';
 }
 
-void inspectManager(void* manager) {
+template <typename Visitor>
+void visitManagerAlgorithms(void* manager, Visitor visit) {
   using Getter = void* (*)(void*);
   const auto getAlgorithms = jianying_probe::resolveSymbol<Getter>(core,
       "_ZN13AmazingEngine12SwingManager18getSwingAlgorithmsEv");
@@ -279,6 +280,26 @@ void inspectManager(void* manager) {
   if (jianying_probe::runtimeImageUuid(reinterpret_cast<void*>(getAlgorithms)) !=
       "D6342ECD-5432-33F0-A2AD-0C28F5699994")
     throw std::runtime_error("unverified consumer image UUID");
+  void* const list = getAlgorithms(manager);
+  void* node = field<void*>(list, 8);
+  std::set<void*> nodes;
+  while (node != list) {
+    if (nodes.size() >= 32 || !nodes.insert(node).second)
+      throw std::runtime_error("unbounded or cyclic Swing algorithm list");
+    visit(field<void*>(node, 0x10));
+    node = field<void*>(node, 8);
+  }
+  // Indexed algorithms are not part of the manager's primary list.
+  const auto* indexed = static_cast<const std::map<int, std::vector<void*>>*>(getIndexed(manager));
+  if (indexed->size() > 32) throw std::runtime_error("too many algorithm indices");
+  for (const auto& [index, algorithms] : *indexed) {
+    static_cast<void>(index);
+    if (algorithms.size() > 32) throw std::runtime_error("too many indexed algorithms");
+    for (void* algorithm : algorithms) visit(algorithm);
+  }
+}
+
+void inspectManager(void* manager) {
   const auto visit = [&](void* algorithm) {
     if (++observedAlgorithms[algorithm] > 64)
       throw std::runtime_error("bounded seek trace exceeded");
@@ -288,7 +309,7 @@ void inspectManager(void* manager) {
     const auto vtable = field<void*>(algorithm, 0);
     const auto extracted = field<void*>(algorithm, 0x70);
     Dl_info image{};
-    if (dladdr(reinterpret_cast<void*>(getAlgorithms), &image) == 0)
+    if (dladdr(reinterpret_cast<void*>(originalSeek), &image) == 0)
       throw std::runtime_error("missing pinned image base");
     using Lookup = void* (*)(void*, std::uint64_t, std::uint64_t);
     const auto lookup = reinterpret_cast<Lookup>(
@@ -326,23 +347,7 @@ void inspectManager(void* manager) {
     else writeFaces(rawFace);
     records << "}\n" << std::flush;
   };
-  void* const list = getAlgorithms(manager);
-  void* node = field<void*>(list, 8);
-  std::set<void*> nodes;
-  while (node != list) {
-    if (nodes.size() >= 32 || !nodes.insert(node).second)
-      throw std::runtime_error("unbounded or cyclic Swing algorithm list");
-    visit(field<void*>(node, 0x10));
-    node = field<void*>(node, 8);
-  }
-  // Indexed algorithms are not part of the manager's primary list.
-  const auto* indexed = static_cast<const std::map<int, std::vector<void*>>*>(getIndexed(manager));
-  if (indexed->size() > 32) throw std::runtime_error("too many algorithm indices");
-  for (const auto& [index, algorithms] : *indexed) {
-    static_cast<void>(index);
-    if (algorithms.size() > 32) throw std::runtime_error("too many indexed algorithms");
-    for (void* algorithm : algorithms) visit(algorithm);
-  }
+  visitManagerAlgorithms(manager, visit);
 }
 
 int tracedSeek(void* manager, std::int64_t timestamp,
@@ -357,6 +362,9 @@ int tracedSeek(void* manager, std::int64_t timestamp,
     restorations.clear();
   };
   try {
+#ifdef QCUT_FACE_PRE_SEEK_HOOK
+    prepareOwnedSeek(manager);
+#endif
     const int result = originalSeek(manager, timestamp, input, output);
     restore();
 #ifdef QCUT_FACE_BINDING_HOOK

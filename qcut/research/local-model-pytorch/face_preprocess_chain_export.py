@@ -32,19 +32,35 @@ def merge_sources(*, groups):
     return dict(sorted(result.items()))
 
 
+def capture_sources(*, evidence, locked):
+    result = chain.sources(names=probe.SOURCE_NAMES, locked=locked)
+    fixtures = evidence.get("fixture_sha256", {})
+    for relative, expected in result.items():
+        source = str(Path(probe.__file__).with_name(Path(relative).name).resolve())
+        audit.same(actual=fixtures.get(source), expected=expected, label="captured preprocessing source " + relative)
+    return result
+
+
 def run(*, args):
     out, locked = chain.sequence.fresh_output(path=args.out), LockedFiles()
     report = dict(profile="actual-preprocess-owned-chain-ui-export-v1", passed=False, completed=False,
         diagnostic_only=True, arbitrary_frame_backend_connected=False, product_parity_verified=False, failures=[])
     try:
+        original_frames = getattr(args, "original_frames", False)
+        expected_profile = chain.profile(stage="audit", original_frames=original_frames)
+        if original_frames:
+            report["profile"] = "original-rgba-owned-chain-ui-export-v1"
         proof_path = args.audit.resolve(strict=True)
         proof = locked.json(path=proof_path)
-        if proof.get("profile") != "actual-preprocess-owned-chain-audit-v1":
+        if proof.get("profile") != expected_profile:
             raise ValueError("recomputed fixed-profile chain audit required")
         audit.flags(evidence=proof, positive=("passed", "completed", "geometry_exact", "final_consumer_parity",
             "pixel_parity_verified", "external_replay_verified", "fixed_profile_only"),
             negative=("native_execution_performed", "inference_performed", "product_parity_verified",
-                      "arbitrary_frame_backend_connected", "independent_full_frame_preprocessing"))
+                      "arbitrary_frame_backend_connected", *(() if original_frames else ("independent_full_frame_preprocessing",))))
+        if original_frames:
+            for key, expected in chain.original_claims(completed=True).items():
+                audit.same(actual=proof.get(key), expected=expected, label="original-frame audit " + key)
         audit.fixtures(evidence=proof, locked=locked)
         audit.declared_sources(evidence=proof,
             expected=("local-model-pytorch/face_preprocess_chain_audit.py",), locked=locked)
@@ -60,16 +76,33 @@ def run(*, args):
         for key, value in (("capture", str(root)), ("candidate", str(candidate)), ("render", str(rendered))):
             audit.same(actual=proof.get(key), expected=value, label="export audit " + key)
         context = capture.load(root=root, locked=locked)
+        profile = probe.profile_report_paths(**probe.profile_report_arguments(evidence=context["evidence"]))
         files = dict(capture=root / "report.json", candidate=candidate.with_name("report.json"),
             render=rendered / "report.json", model=candidate.parent / "onnx/report.json",
             summary=models / "summary.json", originalCapture=context["original"] / "report.json",
-            originalReplay=probe.PRIVATE / probe.OLD_REPORTS["sequence_replay"] / "report.json",
-            originalRender=probe.PRIVATE / probe.OLD_REPORTS["sequence_render"] / "report.json",
+            originalReplay=profile["sequence_replay"], originalRender=profile["sequence_render"],
             originalAudit=Path(context["evidence"]["audit"]) / "report.json")
+        if original_frames:
+            files["chainAudit"] = proof_path
         for key, expected in (("capture", "capture_sha256"), ("candidate", "candidate_report_sha256"),
                               ("render", "render_report_sha256"), ("model", "model_report_sha256")):
             audit.chain_render.render.hashed(locked=locked, path=files[key], expected=proof[expected])
         reports = {key: locked.json(path=path) for key, path in files.items()}
+        extra = capture_sources(evidence=reports["capture"], locked=locked)
+        if original_frames:
+            for key, stage in (("candidate", "replay"), ("render", "render")):
+                audit.same(actual=reports[key].get("profile"), expected=chain.profile(stage=stage, original_frames=True),
+                           label="original-frame " + key + " profile")
+                for name, expected in chain.original_claims(completed=True).items():
+                    audit.same(actual=reports[key].get(name), expected=expected, label=key + " " + name)
+                audit.declared_sources(evidence=reports[key], expected=["local-model-pytorch/" + name for name in
+                    (*chain.ORIGINAL_SOURCE_NAMES, *(("face_preprocess_chain_render.py",) if key == "render" else ()))], locked=locked)
+            audit.same(actual=reports["candidate"].get("preprocessing"), expected=proof.get("preprocessing"),
+                       label="audited original-frame producer")
+            if not isinstance(proof.get("preprocessing"), dict):
+                raise ValueError("original-frame preprocessing proof required")
+            audit.same(actual=reports["render"].get("candidate_report_sha256"), expected=proof["candidate_report_sha256"],
+                       label="render producer binding")
         audit.chain_render.render.hashed(locked=locked, path=files["summary"],
             expected=reports["model"].get("export_summary_sha256"), maximum=16 * 1024**2)
         original = reports["originalCapture"]
@@ -79,16 +112,17 @@ def run(*, args):
         copied = {}
         for key, source in files.items():
             name = {"originalCapture": "original-capture", "originalReplay": "original-replay",
-                    "originalRender": "original-render", "originalAudit": "original-audit"}.get(key, key)
+                    "originalRender": "original-render", "originalAudit": "original-audit", "chainAudit": "chain-audit"}.get(key, key)
             copied[key] = copy_bytes(source=source, target=out / "reports" / (name + ".json"), locked=locked)
         sources = merge_sources(groups=[reports[key]["source_sha256"] for key in
             ("originalCapture", "originalReplay", "originalRender", "candidate", "render")])
         if len(merge_sources(groups=[reports[key]["source_sha256"] for key in
                 ("originalCapture", "originalReplay", "originalRender")])) != 50:
             raise ValueError("original 50-source guard differs")
-        extra = chain.sources(names=probe.SOURCE_NAMES, locked=locked)
         sources = merge_sources(groups=[sources, extra, {"local-model-pytorch/" + name: value
             for name, value in reports["model"]["source_sha256"].items()}])
+        if original_frames:
+            sources = merge_sources(groups=[sources, proof["source_sha256"]])
         rows = []
         for index, frame in enumerate(context["frames"]):
             comparison = reports["render"]["comparisons"][index]
@@ -101,7 +135,8 @@ def run(*, args):
                     target=out / f"frames/native-{suffix}.rgba", locked=locked, expected=comparison["baseline_sha256"]),
                 candidate_rgba_sha256=copy_bytes(source=rendered / f"frame-{suffix}.rgba",
                     target=out / f"frames/candidate-{suffix}.rgba", locked=locked, expected=comparison["sha256"])))
-        index = dict(format="qcut-beauty-lab-owned-chain-v1", reports=copied, source_sha256=sources, frames=rows,
+        index = dict(format="qcut-beauty-lab-original-rgba-owned-chain-v1" if original_frames else "qcut-beauty-lab-owned-chain-v1",
+            reports=copied, source_sha256=sources, frames=rows,
             manifest_sha256=copy_bytes(source=manifest, target=out / "manifest.json", locked=locked),
             replay_sha256=copy_bytes(source=candidate, target=out / "replay.json", locked=locked,
                                     expected=proof["replay_sha256"]))
@@ -123,6 +158,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "candidate", "render", "root", "audit", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
+    parser.add_argument("--original-frames", action="store_true", help="export the audited original-RGBA producer profile")
     report = run(args=parser.parse_args())
     print(json.dumps({key: report[key] for key in ("passed", "source_count", "frames", "index_sha256")}))
 

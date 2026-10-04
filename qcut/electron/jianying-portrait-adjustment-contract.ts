@@ -228,6 +228,8 @@ export interface MediaPortraitManualBody {
 
 export interface MediaPortraitAdjustments {
 	enabled: boolean;
+	/** Global skin LUT; absent keeps legacy pink, null explicitly disables it. */
+	skinToneResourceId?: MediaPortraitSkinToneResourceId | null;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
 	faceTarget?: MediaPortraitFaceTarget;
 	makeup?: Partial<
@@ -242,6 +244,23 @@ export interface MediaPortraitAdjustments {
 	faces?: MediaPortraitFaceAdjustments[];
 	manualRetouch?: { strokes: MediaPortraitManualRetouchStroke[] };
 	manualBody?: MediaPortraitManualBody;
+}
+
+export type MediaPortraitSkinToneResourceId =
+	| "7408757645705743616"
+	| "7408757645705760000"
+	| "7408757645705776384"
+	| "7408757645705792768"
+	| "7408757645705809152";
+
+export interface JianyingPortraitSkinToneStatus {
+	resourceId: MediaPortraitSkinToneResourceId;
+	titleZh: string;
+	titleEn: string;
+	color: string;
+	defaultIntensity: number;
+	ready: boolean;
+	source: "qcut-private" | "jianying-installation" | "none";
 }
 
 export interface JianyingPortraitAdjustmentControl {
@@ -296,6 +315,7 @@ export interface JianyingPortraitAdjustmentStatus {
 	catalog: JianyingPortraitAdjustmentControl[];
 	packages: JianyingPortraitAdjustmentPackageStatus[];
 	makeupCards: JianyingPortraitMakeupCardStatus[];
+	skinTones?: JianyingPortraitSkinToneStatus[];
 }
 
 export interface JianyingPortraitAdjustmentInspectRequest {
@@ -310,7 +330,20 @@ export interface JianyingPortraitAdjustmentRenderRequest {
 	sourceKey?: string;
 	frameNumber?: number;
 	timestampSeconds?: number;
+	sourcePreRoll?: JianyingPortraitSourcePreRoll;
 }
+
+export interface JianyingPortraitSourcePreRoll {
+	sourceKey: string;
+	/** Real preceding source frames, in presentation order, at target dimensions. */
+	frames: { timestampSeconds: number; rgba: Uint8Array }[];
+}
+
+export const PORTRAIT_SOURCE_PRE_ROLL_LIMITS = {
+	frames: 16,
+	seconds: 0.5,
+	bytes: 64 * 1024 * 1024,
+} as const;
 
 export interface JianyingPortraitAdjustmentRenderResult {
 	provider: "jianying-local-swing-v1";
@@ -318,6 +351,8 @@ export interface JianyingPortraitAdjustmentRenderResult {
 	height: number;
 	rgba: Uint8Array;
 	activeGroups: JianyingPortraitAdjustmentGroup[];
+	/** A face stage stayed unchanged; this is not a detector result or success claim. */
+	needsSourcePreRoll?: boolean;
 }
 
 export const JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL =

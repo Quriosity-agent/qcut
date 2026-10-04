@@ -202,6 +202,17 @@ export function buildJianyingPortraitRenderStages({
 }) {
 	const plan = buildPortraitFacePlan({ request });
 	const numericPackages = activeNumericPackages({ plan });
+	const selectedSkinTone = request.adjustments.skinToneResourceId;
+	if (selectedSkinTone) {
+		// Palette packages read only id 0/-1 and apply globally, never per-person.
+		numericPackages.delete("skin-tone");
+		if (
+			(request.adjustments.values.face_adjust_skin_Intensity ?? 0) !== 0 ||
+			(request.adjustments.values.face_adjust_skin_ColdWarm ?? 0) !== 0
+		) {
+			numericPackages.add("skin-tone");
+		}
+	}
 	const baseFaceId = plan[0]?.id ?? -1;
 	const selectedCards = selectedMakeupCards({ plan, makeupCards });
 	const standaloneCards = selectedCards.filter(
@@ -268,6 +279,31 @@ export function buildJianyingPortraitRenderStages({
 			continue;
 		}
 		if (runtimePackage === "manual-deformation") continue;
+		if (runtimePackage === "skin-tone" && selectedSkinTone === null) continue;
+		if (runtimePackage === "skin-tone" && selectedSkinTone) {
+			if (numericPackages.has(runtimePackage)) {
+				const resolved = packages.find(
+					(candidate) =>
+						candidate.runtimePackage === runtimePackage &&
+						candidate.skinToneResourceId === selectedSkinTone
+				);
+				if (!resolved?.packagePath)
+					throw new Error(`Skin tone package unavailable: ${selectedSkinTone}`);
+				stages.push({
+					id: `skin-tone:${selectedSkinTone}`,
+					group: "face",
+					runtimePackage,
+					packagePath: resolved.packagePath,
+					targetFaceIds: [],
+					featureParameters: buildJianyingPortraitFeatureParameters({
+						runtimePackage,
+						values: request.adjustments.values,
+						targetFaceId: -1,
+					}),
+				});
+			}
+			continue;
+		}
 		if (runtimePackage !== "makeup" && numericPackages.has(runtimePackage)) {
 			stages.push(
 				staticStage({

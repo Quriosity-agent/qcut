@@ -107,6 +107,57 @@ def fixture(*, diagnostic=False):
 
 
 class AuditTests(unittest.TestCase):
+    def test_pre_and_post_tracking_detections_are_counted_without_becoming_extra_seeds(self):
+        inputs = fixture()
+        marker = 0
+        for index, association in enumerate(inputs["capture"]["prediction_inferences"]):
+            items = association["inferences"]
+            if index in (0, 20):
+                tracking, detection = items
+                detection["inference"] = 0 if index == 0 else 2
+                items = [detection, tracking, dict(detection, inference=detection["inference"] + 1)]
+            if index == 24:
+                items = [*items, dict(size=160, inference=4, network="57344")]
+            lower = marker
+            for item in items:
+                item["record_index"] = marker
+                marker += 1
+            association.update(inferences=items, neural_window=[lower, marker])
+            inputs["capture"]["geometry_snapshots"][index]["bytenn_sequence"] = marker
+        inputs["sequence_replay"]["head_comparisons"] = 150
+        result = audit.audit_reports(**inputs)
+        self.assertTrue(result["pipeline_parity"])
+        self.assertEqual(result["head_comparisons"], 150)
+
+    def test_three_inference_window_rejects_ambiguity_and_duplicate_markers(self):
+        for failure in ("two-before", "two-after", "duplicate-marker", "duplicate-inference", "wrong-owner", "four", "no-face"):
+            inputs = fixture()
+            capture = inputs["capture"]
+            snapshot = capture["geometry_snapshots"][0]
+            association = capture["prediction_inferences"][0]
+            tracking, detection = association["inferences"]
+            items = [dict(detection, record_index=0), dict(tracking, record_index=1),
+                     dict(detection, inference=2, record_index=2)]
+            if failure == "two-before":
+                items[1]["record_index"], items[2]["record_index"] = 2, 1
+            elif failure == "two-after":
+                items[0]["record_index"], items[1]["record_index"] = 1, 0
+            elif failure == "duplicate-marker":
+                items[2]["record_index"] = 1
+            elif failure == "duplicate-inference":
+                items[2]["inference"] = items[0]["inference"]
+            elif failure == "wrong-owner":
+                items[2]["network"] = "65536"
+            elif failure == "four":
+                items.append(dict(detection, inference=3, record_index=3))
+            else:
+                snapshot["faces"][0]["active"] = False
+            association.update(inferences=items, neural_window=[0, len(items)])
+            snapshot["bytenn_sequence"] = len(items)
+            with self.subTest(failure=failure), self.assertRaises(ValueError):
+                audit.sampling_window(capture=capture, snapshot=snapshot, association=association,
+                                      sampling=inputs["sequence_replay"]["sampling_cases"][0], used=set())
+
     def test_all_exact_is_completed_and_pipeline_parity_without_independence_claim(self):
         inputs = fixture()
         original = deepcopy(inputs)

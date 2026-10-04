@@ -339,6 +339,17 @@ afterEach(() => {
 });
 
 describe("useBeautyLab draft and provenance", () => {
+	it.each([
+		"7408757645705776384",
+		null,
+	] as const)("preserves global skin selection %j in the isolated draft", async (skinToneResourceId) => {
+		const initial = { ...makeAdjustments(), skinToneResourceId };
+		const { result } = await mountLab({ initialAdjustments: initial });
+		expect(result.current.adjustments.skinToneResourceId).toBe(
+			skinToneResourceId
+		);
+		expect(result.current.adjustments.faces).toBeUndefined();
+	});
 	it("deeply isolates the enabled draft and does not mutate initial or incoming parameters", async () => {
 		const initial = makeAdjustments();
 		const snapshot = structuredClone(initial);
@@ -775,6 +786,45 @@ describe("useBeautyLab live candidate protocol with test-only stubs", () => {
 		expect(result.current).toBe(replay);
 		expect(result.current.candidateReport).toBeNull();
 		expect(renderCandidate).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ inspectionFails: false },
+		{ inspectionFails: true },
+	])("disables failed candidate retries after readiness refresh (inspectionFails=$inspectionFails)", async ({
+		inspectionFails,
+	}) => {
+		inspectCandidate.mockResolvedValue(candidateReady);
+		const { result } = await mountLab();
+		await importInput({ result });
+		await act(async () => {
+			await result.current.renderNative();
+		});
+		const native = result.current.native;
+		const blocked: BeautyLabCandidateStatus = {
+			...candidateReady,
+			available: false,
+			state: "blocked",
+			blockers: ["cleanup-unconfirmed-restart-required"],
+		};
+		if (inspectionFails)
+			inspectCandidate.mockRejectedValue(new Error("IPC unavailable"));
+		else inspectCandidate.mockResolvedValue(blocked);
+		renderCandidate.mockRejectedValue(new Error("cleanup unconfirmed"));
+		await act(async () => {
+			await result.current.renderCandidate();
+		});
+		expect(result.current.candidateStatus).toEqual(
+			inspectionFails ? null : blocked
+		);
+		expect(result.current.candidate).toBeNull();
+		expect(result.current.candidateReport).toBeNull();
+		expect(result.current.native).toBe(native);
+		expect(result.current.error).toContain("cleanup unconfirmed");
+		await act(async () => {
+			await result.current.renderCandidate();
+		});
+		expect(renderCandidate).toHaveBeenCalledTimes(1);
 	});
 
 	it("binds the request to current imported pixels, parameters and version while preserving the native baseline", async () => {

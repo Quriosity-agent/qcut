@@ -5,7 +5,9 @@ import type {
 } from "./beauty-lab-contract.js";
 import {
 	OWNED_CHAIN_CASE_ID,
+	OWNED_CHAIN_ORIGINAL_FORMAT,
 	OWNED_CHAIN_REPORT_FILES,
+	ownedChainAuditSchema,
 	ownedChainIndexSchema,
 	ownedChainCandidateSchema,
 	ownedChainCaptureSchema,
@@ -121,6 +123,20 @@ export function createBeautyLabOwnedChainProvider({
 			originalReplay: await readReport({ key: "originalReplay" }),
 			originalRender: await readReport({ key: "originalRender" }),
 			originalAudit: await readReport({ key: "originalAudit" }),
+			...(index.format === OWNED_CHAIN_ORIGINAL_FORMAT
+				? {
+						chainAudit: (
+							await readJson({
+								snapshot,
+								root: locations.root,
+								relativePath: "reports/chain-audit.json",
+								maximum: 16 * MIB,
+								schema: ownedChainAuditSchema,
+								expected: index.reports.chainAudit,
+							})
+						).value,
+					}
+				: {}),
 		};
 		const payload = (
 			await readJson({
@@ -234,13 +250,21 @@ export function createBeautyLabOwnedChainProvider({
 			Promise.resolve()
 		);
 		await snapshot.verify();
-		return selected;
+		return {
+			selected,
+			case: {
+				...CASE,
+				name:
+					index.format === OWNED_CHAIN_ORIGINAL_FORMAT
+						? "Original RGBA Owned Chain Research Replay"
+						: CASE.name,
+			},
+		};
 	};
 	return {
 		list: async () => {
 			try {
-				await inspect({});
-				return [{ ...CASE }];
+				return [(await inspect({})).case];
 			} catch {
 				return [];
 			}
@@ -258,7 +282,7 @@ export function createBeautyLabOwnedChainProvider({
 					frameIndex < 7,
 				message: "invalid owned-chain frame index",
 			});
-			const selected = await inspect({ selectedFrame: frameIndex });
+			const { selected } = await inspect({ selectedFrame: frameIndex });
 			if (!selected)
 				throw new Error("Beauty Lab research: owned-chain frame missing");
 			return selected;

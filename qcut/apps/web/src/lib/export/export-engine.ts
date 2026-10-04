@@ -227,6 +227,7 @@ export class ExportEngine {
 	private buildRenderContext(): RenderContext {
 		const renderIndex = this.getExportRenderIndex();
 		return {
+			signal: this.abortController?.signal,
 			ctx: this.ctx,
 			canvas: this.canvas,
 			tracks: this.tracks,

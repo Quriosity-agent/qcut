@@ -8,6 +8,8 @@ import type {
 import { renderFrame, type RenderContext } from "../export-engine-renderer";
 import { buildExportRenderIndex } from "../export-render-index";
 import type { SequentialVideoRegistry } from "../export-sequential-video-source";
+import * as portraitSource from "@/lib/portrait/portrait-source-preroll";
+import * as colorRendering from "@/lib/color/browser-color-rendering";
 
 interface DrawRecord {
 	alpha: number;
@@ -179,6 +181,28 @@ describe("export renderer clip transitions", () => {
 		return { context, ctx };
 	}
 
+	it("passes local source access, actual decoder time and cancellation to portrait rendering", async () => {
+		const reader = vi.fn(async () => undefined);
+		const open = vi
+			.spyOn(portraitSource, "createPortraitSourcePreRollReader")
+			.mockReturnValue(reader);
+		const draw = vi
+			.spyOn(colorRendering, "drawColorGradedSourceStack")
+			.mockResolvedValue();
+		const { context } = createRenderContext({ requests: [] });
+		context.signal = new AbortController().signal;
+		await renderFrame(context, 0.5);
+		expect(open).toHaveBeenCalledWith({ source: mediaItems[0].file });
+		expect(draw).toHaveBeenCalledWith(
+			expect.objectContaining({
+				readPortraitSourcePreRoll: reader,
+				signal: context.signal,
+				sourceKey: "video:a:m1",
+				timestampSeconds: expect.closeTo(0.5 + 1 / 60),
+			})
+		);
+		expect(reader).not.toHaveBeenCalled();
+	});
 	it("draws both clips inside the window with the presentation's alpha", async () => {
 		const requests: FrameRequest[] = [];
 		const { context, ctx } = createRenderContext({ requests });

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from face_temporal_audit_metrics import count, flag, metric, require
+from face_host_initialization import select_initialization
 
 SMOOTHING_STAGE, INITIALIZATION_STAGE = "owned_smoothing", "owned_initialization"
 
@@ -18,10 +19,17 @@ def initialization_case(*, snapshot, case, association, required):
     face = next(face for face in snapshot["faces"] if face["active"])
     for key, expected in (("prediction", snapshot["index"]), ("id", face["id"]), ("slot", face["slot"])):
         count(row=proof, key=key, expected=expected)
-    inferences = [item for item in association["inferences"] if item["size"] == 160]
-    require(condition=len(inferences) == 1, message="owned initialization must use actual 160 inference window")
-    count(row=proof, key="inference", expected=inferences[0]["inference"])
-    require(condition=proof.get("network") == inferences[0]["network"], message="owned initialization network differs")
+    inference, selection = select_initialization(snapshot=snapshot, association=association)
+    count(row=proof, key="inference", expected=inference["inference"])
+    require(condition=proof.get("network") == inference["network"], message="owned initialization network differs")
+    if selection["excluded_160_inferences"] or "association_mode" in proof:
+        require(condition=proof.get("association_mode") == selection["association_mode"],
+                message="explicit initialization ordering evidence required")
+        for key in ("seed_record_index", "tracking_record_index", "tracking_inference"):
+            count(row=proof, key=key, expected=selection[key])
+        excluded = proof.get("excluded_160_inferences")
+        require(condition=isinstance(excluded, list) and all(type(item) is int for item in excluded)
+                and excluded == selection["excluded_160_inferences"], message="excluded initialization candidates differ")
     exact, error = metric(value=proof.get("check"))
     require(condition=exact, message="owned initialization is not exact")
     return dict(index=snapshot["index"], exact=exact, max_abs=error, participating=True)

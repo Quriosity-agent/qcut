@@ -11,6 +11,7 @@ import type {
 	MediaPortraitMakeupSelection,
 	MediaPortraitManualBody,
 } from "@/types/timeline";
+import { applyGlobalPortraitSkinTone } from "./portrait-skin-tone";
 
 export const PORTRAIT_PRESET_STORAGE_KEY = "qcut-portrait-presets-v1";
 export const PORTRAIT_PRESETS_CHANGED_EVENT = "qcut:portrait-presets-changed";
@@ -37,6 +38,7 @@ export interface SavedPortraitPreset {
 		Record<MediaPortraitMakeupCategory, MediaPortraitMakeupSelection>
 	>;
 	manualBody?: MediaPortraitManualBody;
+	skinToneResourceId?: MediaPortraitAdjustments["skinToneResourceId"];
 }
 
 export function portraitAdjustmentKeyScope({
@@ -89,6 +91,7 @@ export function parsePortraitPreset({
 			faceTarget: candidate.faceTarget,
 			makeup: candidate.makeup,
 			manualBody: candidate.manualBody,
+			skinToneResourceId: candidate.skinToneResourceId,
 		},
 	});
 	return {
@@ -96,6 +99,10 @@ export function parsePortraitPreset({
 		name: candidate.name,
 		createdAt: candidate.createdAt,
 		scope: candidate.scope,
+		...(candidate.scope === "face" &&
+		normalized.skinToneResourceId !== undefined
+			? { skinToneResourceId: normalized.skinToneResourceId }
+			: {}),
 		...(isPortraitPresetThumbnail(candidate.thumbnailDataUrl)
 			? { thumbnailDataUrl: candidate.thumbnailDataUrl }
 			: {}),
@@ -158,6 +165,9 @@ export function createPortraitPreset({
 			`${scope === "face" ? "美颜" : "美体"}预设 ${new Date(createdAt).toLocaleString()}`,
 		scope,
 		createdAt,
+		...(scope === "face" && adjustments.skinToneResourceId !== undefined
+			? { skinToneResourceId: adjustments.skinToneResourceId }
+			: {}),
 		...(isPortraitPresetThumbnail(thumbnailDataUrl)
 			? { thumbnailDataUrl }
 			: {}),
@@ -181,6 +191,7 @@ export function hasPortraitPresetContent({
 }) {
 	return (
 		Object.keys(preset.values).length > 0 ||
+		preset.skinToneResourceId !== undefined ||
 		Object.keys(preset.makeup ?? {}).length > 0 ||
 		(preset.manualBody?.stretch?.intensity ?? 0) !== 0 ||
 		(preset.manualBody?.slim?.intensity ?? 0) !== 0 ||
@@ -203,9 +214,12 @@ export function applyPortraitPreset({
 	}
 	const mergedValues = { ...values, ...preset.values };
 	if (preset.scope === "face") {
-		return {
+		const applied: MediaPortraitAdjustments = {
 			enabled: true,
 			values: mergedValues,
+			...(preset.skinToneResourceId !== undefined
+				? { skinToneResourceId: preset.skinToneResourceId }
+				: {}),
 			...(preset.faceTarget ? { faceTarget: preset.faceTarget } : {}),
 			...(preset.makeup ? { makeup: preset.makeup } : {}),
 			// Presets are per-face-agnostic today; applying one must not delete
@@ -216,6 +230,10 @@ export function applyPortraitPreset({
 				: {}),
 			...(adjustments.manualBody ? { manualBody: adjustments.manualBody } : {}),
 		};
+		return applyGlobalPortraitSkinTone({
+			adjustments: applied,
+			edited: applied,
+		});
 	}
 	return {
 		...adjustments,

@@ -52,6 +52,22 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState<string | null>(null);
 	const disabled = Boolean(lab.busy || exporting);
+	const singleFrameAudit =
+		lab.candidateStatus?.scope === "audited-single-static-frame";
+	const candidateReadyLabel = singleFrameAudit
+		? isZh
+			? "新链路：单帧逐次核验 · 仍含原生依赖"
+			: "Candidate: audited static frames, native dependencies remain"
+		: isZh
+			? "新链路：候选后端就绪"
+			: "Candidate: backend ready";
+	const liveCandidateLabel = singleFrameAudit
+		? isZh
+			? "新链路（单帧核验）"
+			: "Candidate (static-frame audit)"
+		: isZh
+			? "新链路（实时候选）"
+			: "Candidate (live)";
 	const catalogStatus = beautyLabCatalogStatus({
 		status: lab.status,
 		recordedValues: lab.record ? lab.adjustments.values : undefined,
@@ -267,9 +283,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 							? "新链路：离线回放，仍含原生依赖"
 							: "Candidate: offline replay, native dependencies remain"
 						: lab.candidateStatus?.available
-							? isZh
-								? "新链路：候选后端就绪"
-								: "Candidate: backend ready"
+							? candidateReadyLabel
 							: isZh
 								? "新链路：任意画面推理未接入"
 								: "Candidate: arbitrary-frame inference not connected"}
@@ -358,12 +372,12 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 								? lab.record
 									? "新链路（离线回放）"
 									: lab.candidateReport
-										? "新链路（实时候选）"
+										? liveCandidateLabel
 										: "新链路（未接入）"
 								: lab.record
 									? "Candidate (offline replay)"
 									: lab.candidateReport
-										? "Candidate (live)"
+										? liveCandidateLabel
 										: "Candidate (not connected)"
 						}
 					/>

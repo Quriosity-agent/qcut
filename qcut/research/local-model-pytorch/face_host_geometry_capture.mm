@@ -263,7 +263,12 @@ void capture(void* handle, const void* pixels, const void* output, const char* a
 int observe(void* h, const void* pixels, int f, int w, int y, int stride, int rotation,
             void* args, void* output, Predict original, const char* api) {
   const int rc = original(h, pixels, f, w, y, stride, rotation, args, output);
+#ifdef QCUT_FACE_LIVE_PREDICTION
+  static_cast<void>(api);
+  qcutFaceLivePrediction(h, pixels, rc, f, w, y, stride, rotation);
+#else
   capture(h, pixels, output, api, rc, f, w, y, stride, rotation);
+#endif
   return rc;
 }
 

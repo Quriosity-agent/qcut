@@ -16,6 +16,12 @@ import {
 export interface BeautyLabCandidateBackend {
 	version: string;
 	stages: BeautyLabCandidateStage[];
+	scope?: BeautyLabCandidateStatus["scope"];
+	timingScope?: BeautyLabCandidateStatus["timingScope"];
+	dispose?: () => Promise<void>;
+	getBlocker?: () => string | undefined;
+	// Synchronous so raw validation and parsing cannot yield between snapshots.
+	validateRequest?: ({ request }: { request: unknown }) => undefined;
 	render: (
 		request: BeautyLabCandidateRequest & {
 			inputSha256: string;
@@ -48,11 +54,15 @@ function validateResult({
 	request,
 	identity,
 	nativeDependencies,
+	scope,
+	timingScope,
 }: {
 	result: BeautyLabCandidateResult;
 	request: BeautyLabCandidateRequest;
 	identity: ReturnType<typeof beautyLabCandidateIdentity>;
 	nativeDependencies: BeautyLabCandidateStageId[];
+	scope: BeautyLabCandidateBackend["scope"];
+	timingScope: BeautyLabCandidateBackend["timingScope"];
 }): BeautyLabCandidateResult {
 	if (
 		!result ||
@@ -65,7 +75,9 @@ function validateResult({
 		result.frameNumber !== request.frameNumber ||
 		result.timestampSeconds !== request.timestampSeconds ||
 		result.requestFingerprint !== identity.requestFingerprint ||
-		result.inputSha256 !== identity.inputSha256
+		result.inputSha256 !== identity.inputSha256 ||
+		result.scope !== scope ||
+		result.timingScope !== timingScope
 	) {
 		throw new Error(
 			"Candidate result does not belong to the current live request"
@@ -80,6 +92,24 @@ function validateResult({
 	) {
 		throw new Error("Invalid candidate output RGBA dimensions or storage");
 	}
+	const provenance = result.provenance;
+	if (
+		provenance !== undefined &&
+		(!provenance ||
+			scope !== "audited-single-static-frame" ||
+			[
+				provenance.auditSha256,
+				provenance.dependenciesSha256,
+				provenance.workerLogSha256,
+			].some(
+				(value) => typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)
+			) ||
+			typeof provenance.workerBackendVersion !== "string" ||
+			!/^dependency-core-v1:[a-f0-9]{64}$/.test(
+				provenance.workerBackendVersion
+			))
+	)
+		throw new Error("Invalid candidate provenance receipt");
 	const dependencies = result.nativeDependencies;
 	if (
 		!Array.isArray(dependencies) ||
@@ -100,9 +130,13 @@ function validateResult({
 			(metric) =>
 				!metric ||
 				!BEAUTY_LAB_CANDIDATE_STAGES.includes(metric.id) ||
-				typeof metric.durationMs !== "number" ||
-				!Number.isFinite(metric.durationMs) ||
-				metric.durationMs < 0
+				(metric.durationMs === null
+					? !nativeDependencies.includes(metric.id) ||
+						metric.unavailableReason !== "native-stage-not-instrumented"
+					: typeof metric.durationMs !== "number" ||
+						!Number.isFinite(metric.durationMs) ||
+						metric.durationMs < 0 ||
+						metric.unavailableReason !== undefined)
 		)
 	) {
 		throw new Error("Invalid candidate stage metrics");
@@ -112,6 +146,18 @@ function validateResult({
 		source: "live-candidate",
 		backendId: BEAUTY_LAB_CANDIDATE_BACKEND,
 		backendVersion: request.backendVersion,
+		...(scope === undefined ? {} : { scope }),
+		...(timingScope === undefined ? {} : { timingScope }),
+		...(provenance === undefined
+			? {}
+			: {
+					provenance: {
+						auditSha256: provenance.auditSha256,
+						dependenciesSha256: provenance.dependenciesSha256,
+						workerLogSha256: provenance.workerLogSha256,
+						workerBackendVersion: provenance.workerBackendVersion,
+					},
+				}),
 		requestId: request.requestId,
 		...identity,
 		sourceKey: request.sourceKey,
@@ -121,7 +167,15 @@ function validateResult({
 		height: request.height,
 		rgba: new Uint8Array(result.rgba),
 		nativeDependencies: [...nativeDependencies],
-		stageMetrics: metrics.map(({ id, durationMs }) => ({ id, durationMs })),
+		stageMetrics: metrics.map((metric) =>
+			metric.durationMs === null
+				? {
+						id: metric.id,
+						durationMs: null,
+						unavailableReason: metric.unavailableReason,
+					}
+				: { id: metric.id, durationMs: metric.durationMs }
+		),
 	};
 }
 
@@ -138,16 +192,48 @@ export function createBeautyLabCandidateProvider({
 		throw new Error("Invalid candidate backend version");
 	}
 	if (backend) validateStages({ stages: backend.stages });
+	if (
+		backend &&
+		((backend.scope !== undefined &&
+			backend.scope !== "audited-single-static-frame") ||
+			(backend.timingScope !== undefined &&
+				backend.timingScope !== "cumulative-owned-worker-including-warmup"))
+	) {
+		throw new Error("Invalid candidate evidence scope");
+	}
 	if (backend && typeof backend.render !== "function") {
 		throw new Error("Invalid candidate backend renderer");
 	}
+	if (backend?.dispose !== undefined && typeof backend.dispose !== "function") {
+		throw new Error("Invalid candidate backend disposer");
+	}
+	if (
+		backend?.getBlocker !== undefined &&
+		typeof backend.getBlocker !== "function"
+	) {
+		throw new Error("Invalid candidate backend blocker");
+	}
+	if (
+		backend?.validateRequest !== undefined &&
+		typeof backend.validateRequest !== "function"
+	) {
+		throw new Error("Invalid candidate backend request validator");
+	}
 	const version = backend?.version ?? null;
+	const scope = backend?.scope;
+	const timingScope = backend?.timingScope;
 	const execute = backend?.render.bind(backend);
+	const disposeBackend = backend?.dispose?.bind(backend);
+	const getBlocker = backend?.getBlocker?.bind(backend);
+	const validateRequest = backend?.validateRequest?.bind(backend);
 	const stages = structuredClone(backend?.stages ?? []);
 	const nativeDependencies = stages
 		.filter((stage) => stage.implementation === "native")
 		.map((stage) => stage.id);
 	let busy = false;
+	let disposed = false;
+	let disposal: Promise<void> | undefined;
+	let idle = Promise.resolve();
 
 	function inspect(): BeautyLabCandidateStatus {
 		const blockers = backend
@@ -158,10 +244,23 @@ export function createBeautyLabCandidateProvider({
 					"arbitrary-frame-backend-not-connected",
 					"independent-160-sampling-unverified",
 				];
+		if (disposed) blockers.push("candidate-backend-disposed");
+		const blocker = getBlocker?.();
+		if (blocker !== undefined) {
+			if (
+				typeof blocker !== "string" ||
+				!blocker.length ||
+				blocker.length > 512
+			)
+				throw new Error("Invalid candidate backend blocker");
+			blockers.push(blocker);
+		}
 		return {
 			protocol: BEAUTY_LAB_CANDIDATE_PROTOCOL,
 			backendId: BEAUTY_LAB_CANDIDATE_BACKEND,
 			backendVersion: version,
+			...(scope === undefined ? {} : { scope }),
+			...(timingScope === undefined ? {} : { timingScope }),
 			state: backend
 				? blockers.length
 					? "blocked"
@@ -181,27 +280,46 @@ export function createBeautyLabCandidateProvider({
 				`Candidate backend unavailable: ${status.blockers.join(", ")}`
 			);
 		}
+		validateRequest?.({ request });
 		const parsed = parseBeautyLabCandidateRequest({ request });
 		if (parsed.backendVersion !== status.backendVersion) {
 			throw new Error("Candidate backend version changed; inspect again");
 		}
 		const identity = beautyLabCandidateIdentity({ request: parsed });
 		busy = true;
+		let finish = () => {};
+		idle = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
 		try {
 			const result = await execute({
 				...structuredClone(parsed),
 				...identity,
 			});
+			if (disposed)
+				throw new Error("Candidate backend disposed during inference");
 			return validateResult({
 				result,
 				request: parsed,
 				identity,
 				nativeDependencies,
+				scope,
+				timingScope,
 			});
 		} finally {
 			busy = false;
+			finish();
 		}
 	}
 
-	return { inspect, render };
+	function dispose(): Promise<void> {
+		disposed = true;
+		disposal ??= Promise.all([
+			Promise.resolve().then(() => disposeBackend?.()),
+			idle,
+		]).then(() => {});
+		return disposal;
+	}
+
+	return { inspect, render, dispose };
 }

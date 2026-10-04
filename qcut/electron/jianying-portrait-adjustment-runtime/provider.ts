@@ -29,7 +29,15 @@ import {
 	type JianyingPortraitHostProcess,
 } from "./host-process.js";
 import { resolveJianyingPortraitMakeupCards } from "./makeup-resolver.js";
-import { resolveJianyingPortraitPackages } from "./package-resolver.js";
+import {
+	resolveJianyingPortraitPackage,
+	resolveJianyingPortraitPackages,
+} from "./package-resolver.js";
+import {
+	JIANYING_PORTRAIT_SKIN_TONES,
+	JIANYING_PORTRAIT_SKIN_DEFAULT_INTENSITY,
+	isPortraitSkinToneKey,
+} from "./skin-tone-catalog.js";
 import { missingJianyingNoseModels } from "./nose-models.js";
 import {
 	portraitFittingFrameAction,
@@ -62,6 +70,10 @@ import {
 	isPortraitTrackingDiscontinuity,
 } from "./tracking-session.js";
 import { createPortraitTrackingScopePool } from "./tracking-scope-pool.js";
+import {
+	canRecoverPortraitSource,
+	parsePortraitSourcePreRoll,
+} from "./source-preroll.js";
 
 const CACHE_LIMIT = 4;
 const MANUAL_RETOUCH_CACHE_VERSION = "v1";
@@ -74,6 +86,7 @@ interface HostSession {
 	trackIds?: ReadonlyMap<number, number>;
 	referenceFaces?: PortraitFaceGeometry[];
 	fittingFrame?: PortraitFittingFrameIdentity & { output: Uint8Array };
+	needsSourcePreRoll?: boolean;
 }
 
 interface DetectionSnapshot {
@@ -178,6 +191,11 @@ function requestedGroups({
 }): JianyingPortraitAdjustmentGroup[] {
 	const groups = new Set<JianyingPortraitAdjustmentGroup>();
 	for (const control of JIANYING_PORTRAIT_ADJUSTMENT_CATALOG) {
+		if (
+			request.adjustments.skinToneResourceId === null &&
+			isPortraitSkinToneKey({ key: control.key })
+		)
+			continue;
 		if ((request.adjustments.values[control.key] ?? 0) !== 0) {
 			groups.add(control.group);
 		}
@@ -197,6 +215,11 @@ function requestedGroups({
 	}
 	for (const face of request.adjustments.faces ?? []) {
 		for (const control of JIANYING_PORTRAIT_ADJUSTMENT_CATALOG) {
+			if (
+				request.adjustments.skinToneResourceId === null &&
+				isPortraitSkinToneKey({ key: control.key })
+			)
+				continue;
 			if ((face.values[control.key] ?? 0) !== 0) {
 				groups.add(control.group);
 			}
@@ -229,6 +252,9 @@ function frameCacheKey({
 		([left], [right]) => left.localeCompare(right)
 	);
 	hash.update(`\0makeup:${JSON.stringify(makeupEntries)}`);
+	if (request.adjustments.skinToneResourceId !== undefined) {
+		hash.update(`\0skin-tone:${request.adjustments.skinToneResourceId}`);
+	}
 	hash.update(
 		`\0manual:${JSON.stringify(request.adjustments.manualRetouch?.strokes ?? [])}`
 	);
@@ -502,11 +528,32 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				...(thumbnailDataUrl ? { thumbnailDataUrl } : {}),
 			})
 		);
+		const skinTones = await Promise.all(
+			JIANYING_PORTRAIT_SKIN_TONES.map(async (tone) => {
+				const resolved = await resolveJianyingPortraitPackage({
+					runtimePackage: "skin-tone",
+					skinToneResourceId: tone.resourceId,
+				});
+				return {
+					resourceId: tone.resourceId,
+					titleZh: tone.titleZh,
+					titleEn: tone.titleEn,
+					color: tone.color,
+					defaultIntensity: JIANYING_PORTRAIT_SKIN_DEFAULT_INTENSITY,
+					ready:
+						Boolean(resolved.packagePath) &&
+						runtime.status.state === "ready" &&
+						Boolean(hostPath),
+					source: resolved.source,
+				};
+			})
+		);
 		const baseStatus = {
 			provider: "jianying-local-swing-v1" as const,
 			catalog: [...JIANYING_PORTRAIT_ADJUSTMENT_CATALOG],
 			packages: packageStatuses,
 			makeupCards: makeupCardStatuses,
+			skinTones,
 		};
 		if (runtime.status.state !== "ready") {
 			return {
@@ -528,6 +575,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		}
 		const hasRenderablePackage =
 			packageStatuses.some(({ ready }) => ready) ||
+			skinTones.some(({ ready }) => ready) ||
 			makeupCardStatuses.some(({ ready }) => ready);
 		if (!hasRenderablePackage) {
 			return {
@@ -540,14 +588,17 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		}
 		const allPackagesReady = packageStatuses.every(({ ready }) => ready);
 		const allCardsReady = makeupCardStatuses.every(({ ready }) => ready);
+		const allSkinTonesReady = skinTones.every(({ ready }) => ready);
 		const offlineReady =
 			allPackagesReady &&
 			allCardsReady &&
+			allSkinTonesReady &&
+			skinTones.every(({ source }) => source === "qcut-private") &&
 			runtime.status.runtimeSource === "qcut-private" &&
 			runtime.status.modelSource === "qcut-private" &&
 			packageStatuses.every(({ source }) => source === "qcut-private") &&
 			makeupCardStatuses.every(({ source }) => source === "qcut-private");
-		const fullyReady = allPackagesReady && allCardsReady;
+		const fullyReady = allPackagesReady && allCardsReady && allSkinTonesReady;
 		const unavailableMessage = packageStatuses.find(
 			({ message }) => message
 		)?.message;
@@ -566,7 +617,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 	};
 
 	const renderNow = async (
-		request: JianyingPortraitAdjustmentRenderRequest
+		request: JianyingPortraitAdjustmentRenderRequest,
+		{ readCache = true, writeCache = true } = {}
 	): Promise<JianyingPortraitAdjustmentRenderResult> => {
 		const groups = requestedGroups({ request });
 		const requestedScope = [
@@ -585,23 +637,34 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			};
 		}
 		const cacheKey = frameCacheKey({ request });
-		const cached = cache.get(cacheKey);
+		const cached = readCache ? cache.get(cacheKey) : undefined;
+		const requestedFaceEntries = request.adjustments.faces ?? [];
 		if (cached) {
-			cache.delete(cacheKey);
-			cache.set(cacheKey, cached);
-			return {
-				provider: "jianying-local-swing-v1",
-				width: request.width,
-				height: request.height,
-				rgba: new Uint8Array(cached),
-				activeGroups: groups,
-			};
+			const scope = await trackingScopes.acquire({ scopeKey: requestedScope });
+			const matchesNativeState = scope.lastRenderedCacheKey === cacheKey;
+			// Per-face remapping needs the live tracker when replaying a historical edit.
+			if (matchesNativeState || requestedFaceEntries.length === 0) {
+				if (!matchesNativeState) {
+					await trackingScopes.retire({ scopeKey: requestedScope });
+				}
+				cache.delete(cacheKey);
+				cache.set(cacheKey, cached);
+				return {
+					provider: "jianying-local-swing-v1",
+					width: request.width,
+					height: request.height,
+					rgba: new Uint8Array(cached),
+					activeGroups: groups,
+				};
+			}
 		}
 
 		const [runtime, hostPath, packages, makeupCards] = await Promise.all([
 			inspectJianyingFilterLocalRuntime(),
 			resolveJianyingPortraitAdjustmentHost(),
-			resolveJianyingPortraitPackages(),
+			resolveJianyingPortraitPackages({
+				skinToneResourceId: request.adjustments.skinToneResourceId ?? undefined,
+			}),
 			resolveJianyingPortraitMakeupCards(),
 		]);
 		if (
@@ -633,7 +696,6 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		const frameworkDirectory = runtime.frameworkDirectory;
 		const modelDirectory = runtime.modelDirectory;
 		const requestedTimestamp = request.timestampSeconds ?? 0;
-		const requestedFaceEntries = request.adjustments.faces ?? [];
 		const renderFrameHash = frameHash({ rgba: request.rgba });
 		const canMapDetectedFaces = canMapPortraitDetection({
 			requestedFaceCount: requestedFaceEntries.length,
@@ -658,6 +720,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			});
 		}
 		const sessions = trackingScope.sessions;
+		const recoverableSource = canRecoverPortraitSource({ request });
+		trackingScope.lastRenderedCacheKey = null;
 		await retireInactiveSessions({ sessions, stages });
 		if (requestedFaceEntries.length > 0) {
 			if (!detectionSnapshot) {
@@ -855,6 +919,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				previousFittingFrame.timestampSeconds = requestedTimestamp;
 				return renderStage({ index: index + 1, inputPath: outputPath });
 			}
+			const coldSession = !sessions.has(stage.id) || fittingAction === "reset";
 			const session = await sessionForStage({
 				stage,
 				reset: fittingAction === "reset",
@@ -966,9 +1031,16 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						output: new Uint8Array(await readFile(outputPath)),
 					};
 				}
+				if (recoverableSource && stage.group === "face") {
+					const unchanged = (await readFile(outputPath)).equals(
+						await readFile(inputPath)
+					);
+					session.needsSourcePreRoll =
+						unchanged && (coldSession || session.needsSourcePreRoll === true);
+				}
 			} catch (cause) {
 				sessions.delete(stage.id);
-				void session.process.dispose().catch(() => undefined);
+				await session.process.dispose();
 				throw cause;
 			}
 			return renderStage({ index: index + 1, inputPath: outputPath });
@@ -981,20 +1053,57 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				throw new Error("剪映美颜美体返回了错误的像素数量");
 			}
 			trackingScope.lastTimestampSeconds = requestedTimestamp;
-			if (cache.size >= CACHE_LIMIT) {
+			trackingScope.lastRenderedCacheKey = cacheKey;
+			const needsSourcePreRoll = [...sessions.values()].some(
+				(session) => session.needsSourcePreRoll
+			);
+			if (writeCache && !needsSourcePreRoll && cache.size >= CACHE_LIMIT) {
 				const oldest = cache.keys().next().value;
 				if (oldest) cache.delete(oldest);
 			}
-			cache.set(cacheKey, output);
+			if (writeCache && !needsSourcePreRoll) cache.set(cacheKey, output);
 			return {
 				provider: "jianying-local-swing-v1",
 				width: request.width,
 				height: request.height,
 				rgba: new Uint8Array(output),
 				activeGroups,
+				...(needsSourcePreRoll ? { needsSourcePreRoll: true } : {}),
 			};
+		} catch (cause) {
+			await trackingScopes.retire({ scopeKey: requestedScope });
+			throw cause;
 		} finally {
 			await Promise.all(paths.map((filePath) => rm(filePath, { force: true })));
+		}
+	};
+
+	const renderWithSourcePreRoll = async (
+		request: JianyingPortraitAdjustmentRenderRequest
+	): Promise<JianyingPortraitAdjustmentRenderResult> => {
+		const preRoll = parsePortraitSourcePreRoll({
+			value: request.sourcePreRoll,
+			request,
+		});
+		if (!preRoll) return renderNow(request);
+		const scopeKey = [request.width, request.height, request.sourceKey].join(
+			"\0"
+		);
+		const { sourcePreRoll: _preRoll, ...target } = request;
+		await trackingScopes.retire({ scopeKey });
+		try {
+			// Replay is one queue operation: another source cannot interleave with recovery.
+			await preRoll.frames.reduce(async (previous, frame) => {
+				await previous;
+				await renderNow(
+					{ ...target, ...frame, frameNumber: undefined },
+					{ readCache: false, writeCache: false }
+				);
+			}, Promise.resolve());
+			return await renderNow(target, { readCache: false });
+		} catch (cause) {
+			await trackingScopes.retire({ scopeKey });
+			throw cause;
 		}
 	};
 
@@ -1096,7 +1205,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			return pending;
 		},
 		render: (request) => {
-			const pending = queue.then(() => renderNow(request));
+			const pending = queue.then(() => renderWithSourcePreRoll(request));
 			queue = pending.then(
 				() => undefined,
 				() => undefined

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { sha, FRAME_COUNT } from "./beauty-lab-research-evidence.js";
+import { jianyingPortraitControlsForRuntimePackage } from "./jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	WIDTH,
 	HEIGHT,
@@ -8,11 +9,28 @@ import {
 
 export const OWNED_CHAIN_CASE_ID = "owned-preprocess";
 export const OWNED_CHAIN_PACKAGE_FORMAT = "qcut-beauty-lab-owned-chain-v1";
+export const OWNED_CHAIN_ORIGINAL_FORMAT =
+	"qcut-beauty-lab-original-rgba-owned-chain-v1";
+export const OWNED_CHAIN_LEGACY_PROBE_SHA256 =
+	"4e40b69fc56d9961c52ec842f2ed92e99d383b87f047e4aad2daba5159ffbfea";
 export const OWNED_CHAIN_CAPTURE_SOURCES = [
 	"local-model-pytorch/face_preprocess_probe.py",
 	"local-model-pytorch/face_preprocess_lldb.py",
 	"local-model-pytorch/face_preprocess_memory.py",
+	"local-model-pytorch/face_native_process.py",
 ] as const;
+export const OWNED_CHAIN_ORIGINAL_SOURCES = [
+	"face_preprocess_chain_replay.py",
+	"face_preprocess_chain_capture.py",
+	"face_preprocess_chain_inputs.py",
+	"face_preprocess_replay.py",
+	"face_full_frame_owned.py",
+	"face_full_frame_owned_inputs.py",
+	"face_full_frame_quantization.py",
+	"face_full_frame_quantization_probe.py",
+	"face_alignment_sampling.py",
+	"face_host_sampling_inputs.py",
+].map((name) => `local-model-pytorch/${name}`);
 export const OWNED_CHAIN_REPORT_FILES = {
 	capture: "reports/capture.json",
 	candidate: "reports/candidate.json",
@@ -47,7 +65,7 @@ export const ownedChainSourceSchema = z.record(sha).refine((sources) => {
 // Exporter copies the original bytes to these fixed names, never rewrites the reports.
 export const ownedChainIndexSchema = z
 	.object({
-		format: z.literal(OWNED_CHAIN_PACKAGE_FORMAT),
+		format: z.enum([OWNED_CHAIN_PACKAGE_FORMAT, OWNED_CHAIN_ORIGINAL_FORMAT]),
 		reports: z
 			.object({
 				capture: sha,
@@ -59,6 +77,7 @@ export const ownedChainIndexSchema = z
 				originalReplay: sha,
 				originalRender: sha,
 				originalAudit: sha,
+				chainAudit: sha.optional(),
 			})
 			.strict(),
 		manifest_sha256: sha,
@@ -81,12 +100,22 @@ export const ownedChainIndexSchema = z
 				frames.every((frame, index) => frame.index === index)
 			),
 	})
-	.strict();
+	.strict()
+	.refine(
+		(value) =>
+			(value.format === OWNED_CHAIN_ORIGINAL_FORMAT) ===
+			(value.reports.chainAudit !== undefined)
+	);
 export type OwnedChainIndex = z.infer<typeof ownedChainIndexSchema>;
 
+const featureKeys = new Set<string>(
+	jianyingPortraitControlsForRuntimePackage({ runtimePackage: "features" }).map(
+		({ key }) => key
+	)
+);
 const parameters = z
-	.object({
-		face_adjust_eye: z
+	.record(
+		z
 			.array(
 				z
 					.object({
@@ -95,9 +124,17 @@ const parameters = z
 					})
 					.strict()
 			)
-			.length(1),
-	})
-	.strict();
+			.length(1)
+	)
+	.refine(
+		(value) =>
+			Boolean(value.face_adjust_eye) &&
+			Object.entries(value).every(
+				([key, entries]) =>
+					key === "face_adjust_eye" ||
+					(featureKeys.has(key) && entries[0].intensity === 0)
+			)
+	);
 const frame = z.object({
 	timestamp: z.number().finite().min(0).max(60),
 	parameters,
@@ -163,7 +200,7 @@ export const ownedChainOriginalAuditSchema = z.object({
 		.strict(),
 });
 const exactCheck = z.object({ exact: z.literal(true), max_abs: z.literal(0) });
-export const ownedChainCandidateSchema = z.object({
+const legacyCandidateSchema = z.object({
 	...completed,
 	profile: z.literal("actual-preprocess-owned-chain-v1"),
 	diagnostic_only: z.literal(false),
@@ -175,6 +212,7 @@ export const ownedChainCandidateSchema = z.object({
 	product_parity_verified: z.literal(false),
 	arbitrary_frame_backend_connected: z.literal(false),
 	independent_full_frame_preprocessing: z.literal(false),
+	original_rgba_input_used: z.literal(false).optional(),
 	independent_120_sampling_input_used: z.literal(true),
 	independent_160_sampling_input_used: z.literal(true),
 	owned_initialization_used: z.literal(true),
@@ -242,10 +280,12 @@ const versusInput = z.object({
 		.nullable(),
 	sha256: sha,
 });
-export const ownedChainRenderSchema = z.object({
+const legacyRenderSchema = z.object({
 	...completed,
 	...dimensions,
 	profile: z.literal("actual-preprocess-owned-chain-render-v1"),
+	original_rgba_input_used: z.literal(false).optional(),
+	independent_full_frame_preprocessing: z.literal(false).optional(),
 	native_analysis_bypassed: z.literal(false),
 	independent_inference_verified: z.literal(false),
 	product_parity_verified: z.literal(false),
@@ -283,6 +323,9 @@ const probabilityCheck = check.extend({
 });
 const headCase = z.object({
 	inference: z.number().int(),
+	actual_input_sha256: sha.optional(),
+	replacement_input_sha256: sha.optional(),
+	input_source: z.literal("replacement_inputs").optional(),
 	passed: z.literal(true),
 	checks: z
 		.object({
@@ -303,6 +346,129 @@ const modelOutput = z.object({
 	onnx_sha256: sha,
 	successful_inferences: z.number().int(),
 	cases: z.array(headCase),
+});
+const originalClaims = {
+	original_rgba_input_used: z.literal(true),
+	native_algorithm_rgba_required: z.literal(false),
+	native_algorithm_rgba_input_used: z.literal(false),
+	native_algorithm_rgba_oracle_required: z.literal(true),
+	independent_full_frame_preprocessing: z.literal(true),
+	fixed_profile_only: z.literal(true),
+};
+const algorithmRequest = z.tuple([
+	z.literal(0),
+	z.literal(640),
+	z.literal(480),
+	z.literal(2560),
+	z.literal(0),
+]);
+const originalInitialization =
+	legacyCandidateSchema.shape.initialization_sampling_cases
+		.innerType()
+		.element.extend({
+			inference: z.number().int().min(0).max(1),
+			algorithm_frame_sha256: sha,
+			generated_tensor_sha256: sha,
+		});
+export const ownedChainPreprocessingSchema = z.object({
+	algorithm: z.literal("staged-q11"),
+	source_size: z.tuple([z.literal(WIDTH), z.literal(HEIGHT)]),
+	source_stride: z.literal(WIDTH * 4),
+	request: algorithmRequest,
+	independent_full_frame_preprocessing: z.literal(true),
+	native_algorithm_rgba_input_used: z.literal(false),
+	native_algorithm_rgba_oracle_required: z.literal(true),
+	native_caller_parameters_required: z.literal(true),
+	arbitrary_frame_backend_connected: z.literal(false),
+	product_parity_verified: z.literal(false),
+	captured_tensor_input_used: z.literal(false),
+	original_rgba_input_used: z.literal(true),
+	generated_120_inputs: z.literal(25),
+	generated_160_inputs: z.literal(2),
+	source_frames: z
+		.array(
+			z.object({
+				index: z.number().int(),
+				path: z.string().min(1).max(4096),
+				original_rgba_sha256: sha,
+				generated_algorithm_sha256: sha,
+			})
+		)
+		.length(7),
+	observations: z
+		.array(
+			z.object({
+				prediction: z.number().int(),
+				frame_index: z.number().int(),
+				request: algorithmRequest,
+				algorithm_exact: z.literal(true),
+				original_rgba_sha256: sha,
+				generated_algorithm_sha256: sha,
+				oracle_sha256: sha,
+			})
+		)
+		.length(26),
+	sampling_cases: z
+		.array(
+			z.union([
+				z.object({ prediction: z.literal(19), idle: z.literal(true) }).strict(),
+				z.object({
+					prediction: z.number().int(),
+					inference: z.number().int(),
+					slot: z.literal(0),
+					active: z.boolean(),
+					sampling_exact: z.literal(true),
+					input_sha256: sha,
+					algorithm_frame_sha256: sha,
+					input_source: z.literal("original-rgba-staged-q11"),
+				}),
+			])
+		)
+		.length(26),
+	initialization_sampling_cases: z.array(originalInitialization).length(2),
+});
+export const ownedChainCandidateSchema = z.discriminatedUnion("profile", [
+	legacyCandidateSchema,
+	legacyCandidateSchema.extend({
+		profile: z.literal("original-rgba-owned-chain-v1"),
+		...originalClaims,
+		preprocessing: ownedChainPreprocessingSchema,
+		sampling_cases: ownedChainPreprocessingSchema.shape.sampling_cases,
+		initialization_sampling_cases:
+			ownedChainPreprocessingSchema.shape.initialization_sampling_cases,
+	}),
+]);
+export const ownedChainRenderSchema = z.discriminatedUnion("profile", [
+	legacyRenderSchema,
+	legacyRenderSchema.extend({
+		profile: z.literal("original-rgba-owned-chain-render-v1"),
+		...originalClaims,
+		candidate_report_sha256: sha,
+	}),
+]);
+export const ownedChainAuditSchema = z.object({
+	...completed,
+	...originalClaims,
+	profile: z.literal("original-rgba-owned-chain-audit-v1"),
+	geometry_exact: z.literal(true),
+	final_consumer_parity: z.literal(true),
+	pixel_parity_verified: z.literal(true),
+	external_replay_verified: z.literal(true),
+	native_execution_performed: z.literal(false),
+	inference_performed: z.literal(false),
+	product_parity_verified: z.literal(false),
+	arbitrary_frame_backend_connected: z.literal(false),
+	head_comparisons: z.literal(135),
+	normalized_conversions: z.literal(24),
+	capture_sha256: sha,
+	candidate_report_sha256: sha,
+	render_report_sha256: sha,
+	model_report_sha256: sha,
+	replay_sha256: sha,
+	source_sha256: ownedChainSourceSchema,
+	fixture_sha256: fixtureHashes,
+	preprocessing: ownedChainPreprocessingSchema,
+	comparisons: legacyRenderSchema.shape.comparisons,
 });
 export const ownedChainModelSchema = z.object({
 	...passed,

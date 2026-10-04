@@ -71,6 +71,7 @@ import type {
 import {
 	MEDIA_PORTRAIT_ADJUSTMENT_KEYS,
 	MEDIA_PORTRAIT_MAKEUP_CATEGORIES,
+	MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS,
 } from "@qcut/editor-core";
 import {
 	assertNoUnknownKeys,
@@ -849,6 +850,7 @@ const MEDIA_PORTRAIT_ADJUSTMENT_CONTAINER_KEYS =
 			makeup: true,
 			manualBody: true,
 			manualRetouch: true,
+			skinToneResourceId: true,
 			values: true,
 		},
 	});
@@ -2086,6 +2088,19 @@ export function validateMediaElement({
 			path: `${portraitPath}.values`,
 			value: portraitAdjustments.values,
 		});
+		const skinToneResourceId = portraitAdjustments.skinToneResourceId;
+		if (
+			skinToneResourceId !== undefined &&
+			skinToneResourceId !== null &&
+			!MEDIA_PORTRAIT_SKIN_TONE_RESOURCE_IDS.some(
+				(id) => id === skinToneResourceId
+			)
+		) {
+			throw validationIssue({
+				path: `${portraitPath}.skinToneResourceId`,
+				message: "Expected a known skin tone resource ID or null.",
+			});
+		}
 		if (portraitAdjustments.faceTarget !== undefined) {
 			validatePortraitFaceTarget({
 				path: `${portraitPath}.faceTarget`,

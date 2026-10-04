@@ -5,10 +5,14 @@ import type {
 	JianyingPortraitAdjustmentCategory,
 	JianyingPortraitAdjustmentControl,
 	JianyingPortraitAdjustmentSection,
+	JianyingPortraitAdjustmentStatus,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { cn } from "@/lib/utils";
 import { PortraitNumberControl } from "./portrait-number-control";
+import { PortraitSkinToneControls } from "./portrait-skin-tone-controls";
+import { selectPortraitSkinTone } from "@/lib/portrait/portrait-skin-tone";
+import { isPortraitSkinToneKey } from "../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
 
 const CATEGORY_LABELS: Record<
 	JianyingPortraitAdjustmentCategory,
@@ -46,6 +50,8 @@ export function PortraitAdjustmentSection({
 	onInteractionStart,
 	onInteractionEnd,
 	readOnly = false,
+	skinTones,
+	allowSkinTone = true,
 }: {
 	section: JianyingPortraitAdjustmentSection;
 	controls: JianyingPortraitAdjustmentControl[];
@@ -57,6 +63,8 @@ export function PortraitAdjustmentSection({
 	onInteractionStart: () => void;
 	onInteractionEnd: () => void;
 	readOnly?: boolean;
+	skinTones?: JianyingPortraitAdjustmentStatus["skinTones"];
+	allowSkinTone?: boolean;
 }) {
 	const categories = useMemo(
 		() =>
@@ -84,7 +92,9 @@ export function PortraitAdjustmentSection({
 		const sectionKeys = new Set<string>(controls.map(({ key }) => key));
 		onInteractionStart();
 		onChange({
-			...adjustments,
+			...(section === "skin" && allowSkinTone
+				? selectPortraitSkinTone({ adjustments })
+				: adjustments),
 			values: Object.fromEntries(
 				Object.entries(adjustments.values).filter(
 					([key]) => !sectionKeys.has(key)
@@ -139,34 +149,59 @@ export function PortraitAdjustmentSection({
 			</div>
 			<div className={cn("space-y-1", editingDisabled && "opacity-50")}>
 				{visibleControls.map((control) => {
-					const controlDisabled = editingDisabled || !isControlReady(control);
+					const skinControl = isPortraitSkinToneKey({ key: control.key });
+					const ready =
+						skinControl && adjustments.skinToneResourceId
+							? skinTones?.some(
+									(tone) =>
+										tone.resourceId === adjustments.skinToneResourceId &&
+										tone.ready
+								) === true
+							: isControlReady(control);
+					const controlDisabled =
+						editingDisabled ||
+						!ready ||
+						(skinControl &&
+							(!allowSkinTone || adjustments.skinToneResourceId === null));
 					return (
-						<div
-							key={control.key}
-							className={cn(controlDisabled && "opacity-45")}
-						>
-							<PortraitNumberControl
-								locale={locale}
-								label={locale === "zh" ? control.titleZh : control.titleEn}
-								value={adjustments.values[control.key] ?? 0}
-								min={control.min}
-								max={control.max}
-								step={control.step}
-								disabled={controlDisabled}
-								onChange={(value) => {
-									if (controlDisabled) return;
-									onChange({
-										...adjustments,
-										enabled: true,
-										values: {
-											...adjustments.values,
-											[control.key]: value,
-										},
-									});
-								}}
-								onInteractionStart={onInteractionStart}
-								onInteractionEnd={onInteractionEnd}
-							/>
+						<div key={control.key}>
+							{control.key === "face_adjust_skin_Intensity" &&
+							allowSkinTone &&
+							skinTones?.length ? (
+								<PortraitSkinToneControls
+									tones={skinTones}
+									adjustments={adjustments}
+									disabled={editingDisabled}
+									locale={locale}
+									onChange={onChange}
+									onInteractionStart={onInteractionStart}
+									onInteractionEnd={onInteractionEnd}
+								/>
+							) : null}
+							<div className={cn(controlDisabled && "opacity-45")}>
+								<PortraitNumberControl
+									locale={locale}
+									label={locale === "zh" ? control.titleZh : control.titleEn}
+									value={adjustments.values[control.key] ?? 0}
+									min={control.min}
+									max={control.max}
+									step={control.step}
+									disabled={controlDisabled}
+									onChange={(value) => {
+										if (controlDisabled) return;
+										onChange({
+											...adjustments,
+											enabled: true,
+											values: {
+												...adjustments.values,
+												[control.key]: value,
+											},
+										});
+									}}
+									onInteractionStart={onInteractionStart}
+									onInteractionEnd={onInteractionEnd}
+								/>
+							</div>
 						</div>
 					);
 				})}

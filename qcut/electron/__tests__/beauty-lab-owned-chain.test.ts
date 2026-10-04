@@ -10,7 +10,12 @@ import {
 	OWNED_CHAIN_PACKAGE_FORMAT,
 	OWNED_CHAIN_REPORT_FILES,
 	OWNED_CHAIN_CAPTURE_SOURCES,
+	OWNED_CHAIN_ORIGINAL_FORMAT,
+	OWNED_CHAIN_ORIGINAL_SOURCES,
+	OWNED_CHAIN_LEGACY_PROBE_SHA256,
 } from "../beauty-lab-owned-chain-evidence.js";
+import { verifyOwnedChainReports } from "../beauty-lab-owned-chain-verify.js";
+import { buildJianyingPortraitFeatureParameters } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import { WIDTH, HEIGHT, RGBA_BYTES } from "../beauty-lab-research-files.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -108,7 +113,17 @@ async function changeJson({
 		})
 	);
 }
-async function relink({ root }: { root: string }) {
+async function relink({
+	root,
+	legacyProbeHash,
+}: {
+	root: string;
+	legacyProbeHash?: string;
+}) {
+	const index = JSON.parse(
+		await fs.readFile(path.join(root, "index.json"), "utf8")
+	);
+	const originalFrames = index.format === OWNED_CHAIN_ORIGINAL_FORMAT;
 	const fileHash = async ({ filename }: { filename: string }) =>
 		digest({ bytes: await fs.readFile(path.join(root, filename)) });
 	const reportHash = ({
@@ -126,14 +141,28 @@ async function relink({ root }: { root: string }) {
 		patch: { report_sha256: originalLinks },
 	});
 	const originalFixtures = {
+		...(originalFrames
+			? Object.fromEntries(
+					frames.map((_, position) => [
+						`/historical/input-${position}.rgba`,
+						inputHash,
+					])
+				)
+			: {}),
 		"/historical/capture/report.json": originalLinks.capture,
 		"/historical/replay/report.json": originalLinks.sequence_replay,
 		"/historical/render/report.json": originalLinks.sequence_render,
 		"/historical/audit/report.json": await reportHash({ key: "originalAudit" }),
 		...Object.fromEntries(
-			OWNED_CHAIN_CAPTURE_SOURCES.map((relative) => [
+			OWNED_CHAIN_CAPTURE_SOURCES.filter(
+				(relative) =>
+					legacyProbeHash === undefined ||
+					!relative.endsWith("/face_native_process.py")
+			).map((relative) => [
 				`/historical/research/${relative}`,
-				sourceHash,
+				legacyProbeHash && relative.endsWith("/face_preprocess_probe.py")
+					? legacyProbeHash
+					: sourceHash,
 			])
 		),
 	};
@@ -161,7 +190,13 @@ async function relink({ root }: { root: string }) {
 	});
 	await changeJson({
 		filename: path.join(root, OWNED_CHAIN_REPORT_FILES.render),
-		patch: { capture_sha256, replay_sha256 },
+		patch: {
+			capture_sha256,
+			replay_sha256,
+			...(originalFrames
+				? { candidate_report_sha256: await reportHash({ key: "candidate" }) }
+				: {}),
+		},
 	});
 	const reports = await Object.keys(OWNED_CHAIN_REPORT_FILES).reduce(
 		(previous, name) =>
@@ -173,10 +208,232 @@ async function relink({ root }: { root: string }) {
 			})),
 		Promise.resolve({} as Record<string, string>)
 	);
+	if (originalFrames) {
+		await changeJson({
+			filename: path.join(root, "reports/chain-audit.json"),
+			patch: {
+				capture_sha256,
+				replay_sha256,
+				candidate_report_sha256: reports.candidate,
+				render_report_sha256: reports.render,
+				model_report_sha256: reports.model,
+				fixture_sha256: {
+					...originalFixtures,
+					...Object.fromEntries(
+						Object.entries(reports).map(([key, value]) => [
+							`/audited/${key}.json`,
+							value,
+						])
+					),
+				},
+			},
+		});
+		reports.chainAudit = await fileHash({
+			filename: "reports/chain-audit.json",
+		});
+	}
 	await changeJson({
 		filename: path.join(root, "index.json"),
 		patch: { reports, replay_sha256 },
 	});
+}
+
+async function originalFixture() {
+	const fixtureValue = await fixture();
+	const { root, currentSourceRoot } = fixtureValue;
+	const read = async ({
+		key,
+	}: {
+		key: keyof typeof OWNED_CHAIN_REPORT_FILES;
+	}) =>
+		JSON.parse(
+			await fs.readFile(path.join(root, OWNED_CHAIN_REPORT_FILES[key]), "utf8")
+		);
+	const candidate = await read({ key: "candidate" });
+	const rendered = await read({ key: "render" });
+	const model = await read({ key: "model" });
+	const original = await read({ key: "originalCapture" });
+	const claims = {
+		original_rgba_input_used: true,
+		native_algorithm_rgba_required: false,
+		native_algorithm_rgba_input_used: false,
+		native_algorithm_rgba_oracle_required: true,
+		independent_full_frame_preprocessing: true,
+		fixed_profile_only: true,
+	};
+	const request = [0, 640, 480, 2560, 0];
+	const initialization = candidate.initialization_sampling_cases.map(
+		(row: Record<string, unknown>, inference: number) => ({
+			...row,
+			inference,
+			algorithm_frame_sha256: graphHash,
+			generated_tensor_sha256: modelHash,
+		})
+	);
+	const sampling = Array.from({ length: 26 }, (_, prediction) =>
+		prediction === 19
+			? { prediction, idle: true }
+			: {
+					prediction,
+					inference: prediction < 19 ? prediction : prediction - 1,
+					slot: 0,
+					active: prediction !== 18,
+					sampling_exact: true,
+					input_sha256: modelHash,
+					algorithm_frame_sha256: graphHash,
+					input_source: "original-rgba-staged-q11",
+				}
+	);
+	const preprocessing = {
+		algorithm: "staged-q11",
+		source_size: [WIDTH, HEIGHT],
+		source_stride: WIDTH * 4,
+		request,
+		...claims,
+		native_caller_parameters_required: true,
+		arbitrary_frame_backend_connected: false,
+		product_parity_verified: false,
+		captured_tensor_input_used: false,
+		generated_120_inputs: 25,
+		generated_160_inputs: 2,
+		source_frames: frames.map((_, index) => ({
+			index,
+			path: `/historical/input-${index}.rgba`,
+			original_rgba_sha256: inputHash,
+			generated_algorithm_sha256: graphHash,
+		})),
+		observations: Array.from({ length: 26 }, (_, prediction) => ({
+			prediction,
+			frame_index: prediction < 14 ? 0 : Math.floor((prediction - 12) / 2),
+			request,
+			algorithm_exact: true,
+			original_rgba_sha256: inputHash,
+			generated_algorithm_sha256: graphHash,
+			oracle_sha256: graphHash,
+		})),
+		sampling_cases: sampling,
+		initialization_sampling_cases: initialization,
+	};
+	const sourceMap = ({ names }: { names: string[] }) =>
+		Object.fromEntries(names.map((name) => [name, sourceHash]));
+	const candidateSources = sourceMap({ names: OWNED_CHAIN_ORIGINAL_SOURCES });
+	const renderSources = {
+		...candidateSources,
+		"local-model-pytorch/face_preprocess_chain_render.py": sourceHash,
+	};
+	const auditSources = {
+		"local-model-pytorch/face_preprocess_chain_audit.py": sourceHash,
+	};
+	await Object.keys({ ...renderSources, ...auditSources }).reduce(
+		(previous, name) =>
+			previous.then(() =>
+				fs.writeFile(path.join(currentSourceRoot, name), "synthetic source")
+			),
+		Promise.resolve()
+	);
+	const newFrames = frames.map((frame, position) => ({
+		...frame,
+		parameters: JSON.parse(
+			buildJianyingPortraitFeatureParameters({
+				runtimePackage: "features",
+				values: {
+					face_adjust_eye: position === 5 ? 0 : position === 6 ? 20 : 40,
+				},
+			})
+		),
+	}));
+	const manifest = JSON.stringify({ version: 1, frames: newFrames });
+	const manifestHash = digest({ bytes: manifest });
+	await fs.writeFile(path.join(root, "manifest.json"), manifest);
+	await changeJson({
+		filename: path.join(root, "replay.json"),
+		patch: { image_sha256: manifestHash },
+	});
+	await changeJson({
+		filename: path.join(root, OWNED_CHAIN_REPORT_FILES.originalCapture),
+		patch: {
+			frames: newFrames,
+			fixture_sha256: { [original.manifest]: manifestHash },
+		},
+	});
+	await changeJson({
+		filename: path.join(root, OWNED_CHAIN_REPORT_FILES.candidate),
+		patch: {
+			...claims,
+			profile: "original-rgba-owned-chain-v1",
+			preprocessing,
+			source_sha256: candidateSources,
+			sampling_cases: sampling,
+			initialization_sampling_cases: initialization,
+		},
+	});
+	await changeJson({
+		filename: path.join(root, OWNED_CHAIN_REPORT_FILES.render),
+		patch: {
+			...claims,
+			profile: "original-rgba-owned-chain-render-v1",
+			source_sha256: renderSources,
+			frames: newFrames,
+		},
+	});
+	for (const size of ["120", "160"]) {
+		for (const row of model.model_outputs[size].cases)
+			Object.assign(row, {
+				actual_input_sha256: modelHash,
+				replacement_input_sha256: modelHash,
+				input_source: "replacement_inputs",
+			});
+	}
+	await changeJson({
+		filename: path.join(root, OWNED_CHAIN_REPORT_FILES.model),
+		patch: model,
+	});
+	await fs.writeFile(
+		path.join(root, "reports/chain-audit.json"),
+		JSON.stringify({
+			...completed,
+			...claims,
+			profile: "original-rgba-owned-chain-audit-v1",
+			preprocessing,
+			geometry_exact: true,
+			final_consumer_parity: true,
+			pixel_parity_verified: true,
+			external_replay_verified: true,
+			native_execution_performed: false,
+			inference_performed: false,
+			product_parity_verified: false,
+			arbitrary_frame_backend_connected: false,
+			head_comparisons: 135,
+			normalized_conversions: 24,
+			source_sha256: auditSources,
+			comparisons: rendered.comparisons,
+		})
+	);
+	const index = JSON.parse(
+		await fs.readFile(path.join(root, "index.json"), "utf8")
+	);
+	await changeJson({
+		filename: path.join(root, "index.json"),
+		patch: {
+			format: OWNED_CHAIN_ORIGINAL_FORMAT,
+			manifest_sha256: manifestHash,
+			source_sha256: {
+				...Object.fromEntries(
+					Object.entries(index.source_sha256).filter(
+						([key]) =>
+							![
+								"local-model-pytorch/chain.py",
+								"local-model-pytorch/render.py",
+							].includes(key)
+					)
+				),
+				...renderSources,
+				...auditSources,
+			},
+		},
+	});
+	await relink({ root });
+	return fixtureValue;
 }
 
 async function fixture() {
@@ -464,6 +721,191 @@ afterEach(async () => {
 });
 
 describe("Beauty Lab owned-chain offline provider", () => {
+	it.each([
+		OWNED_CHAIN_LEGACY_PROBE_SHA256,
+		sourceHash,
+	])("only the explicit historical probe hash allows the helper-free source closure: %s", async (probeHash) => {
+		const { root } = await fixture();
+		const indexFile = path.join(root, "index.json");
+		const before = JSON.parse(await fs.readFile(indexFile, "utf8"));
+		await changeJson({
+			filename: indexFile,
+			patch: {
+				source_sha256: {
+					...Object.fromEntries(
+						Object.entries(before.source_sha256).filter(
+							([name]) => !name.endsWith("/face_native_process.py")
+						)
+					),
+					"local-model-pytorch/face_preprocess_probe.py": probeHash,
+				},
+			},
+		});
+		await relink({ root, legacyProbeHash: probeHash });
+		const reports = await Object.entries(OWNED_CHAIN_REPORT_FILES).reduce(
+			(previous, [key, name]) =>
+				previous.then(async (value) => ({
+					...value,
+					[key]: JSON.parse(await fs.readFile(path.join(root, name), "utf8")),
+				})),
+			Promise.resolve({})
+		);
+		const verify = () =>
+			verifyOwnedChainReports({
+				index: JSON.parse(requireIndex),
+				payload: JSON.parse(requirePayload),
+				reports: reports as Parameters<
+					typeof verifyOwnedChainReports
+				>[0]["reports"],
+			});
+		const requireIndex = await fs.readFile(indexFile, "utf8");
+		const requirePayload = await fs.readFile(
+			path.join(root, "replay.json"),
+			"utf8"
+		);
+		if (probeHash === OWNED_CHAIN_LEGACY_PROBE_SHA256) {
+			expect(verify()["local-model-pytorch/face_preprocess_probe.py"]).toBe(
+				probeHash
+			);
+		} else expect(verify).toThrow("explicit legacy probe source");
+	});
+	it("loads the separately audited original-RGBA profile without claiming a live backend", async () => {
+		const { provider } = await originalFixture();
+		expect(await provider.list()).toEqual([
+			{
+				id: "owned-preprocess",
+				name: "Original RGBA Owned Chain Research Replay",
+				frameCount: 7,
+			},
+		]);
+		const frame = await provider.load({
+			caseId: "owned-preprocess",
+			frameIndex: 6,
+		});
+		expect(frame).toMatchObject({
+			source: "verified-offline-replay",
+			sourceHashesVerified: true,
+			nativeDependencies: true,
+			adjustments: { enabled: true, values: { face_adjust_eye: 20 } },
+		});
+		expect(Buffer.from(frame.native).equals(Buffer.from(frame.candidate))).toBe(
+			true
+		);
+	});
+	it.each([
+		"candidate",
+		"render",
+		"chain-audit",
+	])("rejects a relabelled original %s profile", async (name) => {
+		const { root, provider } = await originalFixture();
+		await changeJson({
+			filename: path.join(root, `reports/${name}.json`),
+			patch: { profile: "actual-preprocess-owned-chain-v1" },
+		});
+		await relink({ root });
+		await expect(
+			provider.load({ caseId: "owned-preprocess", frameIndex: 0 })
+		).rejects.toThrow();
+	});
+	it.each([
+		{ original_rgba_input_used: false },
+		{ independent_full_frame_preprocessing: false },
+		{ native_algorithm_rgba_input_used: true },
+		{ native_algorithm_rgba_oracle_required: false },
+		{ product_parity_verified: true },
+		{ arbitrary_frame_backend_connected: true },
+	])("rejects original-frame ownership overclaims or contradictions %j", async (patch) => {
+		const { root, provider } = await originalFixture();
+		await changeJson({
+			filename: path.join(root, "reports/candidate.json"),
+			patch,
+		});
+		await relink({ root });
+		await expect(
+			provider.load({ caseId: "owned-preprocess", frameIndex: 0 })
+		).rejects.toThrow();
+	});
+	it.each([
+		"input",
+		"observation",
+		"120",
+		"160",
+		"closure",
+		"audit",
+	])("rejects a rehashed broken original %s association", async (kind) => {
+		const { root, provider } = await originalFixture();
+		const candidateFile = path.join(root, "reports/candidate.json");
+		const candidate = JSON.parse(await fs.readFile(candidateFile, "utf8"));
+		const auditFile = path.join(root, "reports/chain-audit.json");
+		if (kind === "input")
+			candidate.preprocessing.source_frames[0].original_rgba_sha256 =
+				sourceHash;
+		if (kind === "observation")
+			candidate.preprocessing.observations[14].frame_index = 0;
+		if (kind === "120") {
+			candidate.preprocessing.sampling_cases[0].input_sha256 = sourceHash;
+			candidate.sampling_cases = candidate.preprocessing.sampling_cases;
+		}
+		if (kind === "160") {
+			candidate.preprocessing.initialization_sampling_cases[0].generated_tensor_sha256 =
+				sourceHash;
+			candidate.initialization_sampling_cases =
+				candidate.preprocessing.initialization_sampling_cases;
+		}
+		if (kind === "closure") candidate.source_sha256 = {};
+		await changeJson({ filename: candidateFile, patch: candidate });
+		await changeJson({
+			filename: auditFile,
+			patch: {
+				preprocessing: candidate.preprocessing,
+				...(kind === "audit" ? { normalized_conversions: 23 } : {}),
+			},
+		});
+		await relink({ root });
+		await expect(
+			provider.load({ caseId: "owned-preprocess", frameIndex: 0 })
+		).rejects.toThrow();
+	});
+	it.each([
+		false,
+		true,
+	])("requires capture-bound cleanup helper in current mode original=%s", async (originalFrames) => {
+		const { root, provider } = await (originalFrames
+			? originalFixture()
+			: fixture());
+		const captureFile = path.join(root, "reports/capture.json");
+		const capture = JSON.parse(await fs.readFile(captureFile, "utf8"));
+		capture.fixture_sha256 = Object.fromEntries(
+			Object.entries(capture.fixture_sha256).filter(
+				([name]) => !name.endsWith("/face_native_process.py")
+			)
+		);
+		await changeJson({ filename: captureFile, patch: capture });
+		const indexFile = path.join(root, "index.json");
+		const index = JSON.parse(await fs.readFile(indexFile, "utf8"));
+		await changeJson({
+			filename: indexFile,
+			patch: {
+				reports: {
+					...index.reports,
+					capture: digest({ bytes: await fs.readFile(captureFile) }),
+				},
+			},
+		});
+		await expect(
+			provider.load({ caseId: "owned-preprocess", frameIndex: 0 })
+		).rejects.toThrow();
+	});
+	it("does not accept a legacy package relabelled with the original format", async () => {
+		const { root, provider } = await fixture();
+		await changeJson({
+			filename: path.join(root, "index.json"),
+			patch: { format: OWNED_CHAIN_ORIGINAL_FORMAT },
+		});
+		await expect(
+			provider.load({ caseId: "owned-preprocess", frameIndex: 0 })
+		).rejects.toThrow();
+	});
 	it("lists the third case and verifies seven frames, nonzero effects and controls", async () => {
 		const { provider } = await fixture();
 		expect(await provider.list()).toEqual([

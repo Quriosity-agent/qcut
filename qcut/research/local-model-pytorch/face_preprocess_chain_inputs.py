@@ -10,6 +10,7 @@ import numpy as np
 from face_alignment_input_verify import difference
 from face_host_geometry_contract import validate_sequence
 from face_host_sampling_inputs import algorithm_frame
+from face_full_frame_owned import OwnedAlgorithmFrames
 from face_preprocess_probe import validate_trace
 from face_preprocess_replay import oracle_blob, prepare
 import face_render_model_parity as parity
@@ -38,9 +39,11 @@ def validate_associations(*, associations, snapshots):
         lower = upper
 
 
-def build_inputs(*, root, evidence, associations, locked):
+def build_inputs(*, root, evidence, associations, locked, owned_frames=None):
     if not isinstance(evidence, dict):
         raise ValueError("actual preprocessing evidence required")
+    if owned_frames is not None and type(owned_frames) is not OwnedAlgorithmFrames:
+        raise ValueError("exact-gated owned algorithm frame set required")
     snapshots = validate_sequence(records=evidence.get("geometry_snapshots"), temporal=True)
     validate_associations(associations=associations, snapshots=snapshots)
     cases = validate_trace(trace=evidence.get("trace"), records=snapshots, associations=associations)
@@ -59,8 +62,11 @@ def build_inputs(*, root, evidence, associations, locked):
     inputs, results = {}, []
     for case in cases:
         prediction, event = case["prediction"], case["event"]
-        frame = algorithm_frame(root=root, snapshot=snapshots[prediction],
-                                descriptor=descriptors[prediction], locked=locked)
+        if owned_frames is None:
+            frame = algorithm_frame(root=root, snapshot=snapshots[prediction],
+                                    descriptor=descriptors[prediction], locked=locked)
+        else:
+            frame = owned_frames.frame(snapshot=snapshots[prediction], descriptor=descriptors[prediction])
         produced = prepare(frame=frame, call=event["call"])
         checks = {stage: difference(actual=produced[stage], expected=oracle_blob(
             capture_dir=root, prediction=prediction, stage=stage, row=event[stage], locked=locked))

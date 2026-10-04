@@ -36,6 +36,7 @@ export function setupBeautyLabIPC({
 			})
 		: undefined;
 	const token = Symbol("beauty-lab-controller");
+	let disposal: Promise<void> | undefined;
 	activeController = token;
 	function assertTrusted({ event }: { event: IpcMainInvokeEvent }) {
 		const window = getMainWindow();
@@ -94,13 +95,16 @@ export function setupBeautyLabIPC({
 		).load({ caseId, frameIndex });
 	});
 	return {
-		dispose: () => {
-			if (activeController !== token) return;
-			activeController = undefined;
-			ipcMain.removeHandler(BEAUTY_LAB_LIST_CHANNEL);
-			ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
-			ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
-			ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
+		dispose: (): Promise<void> => {
+			if (activeController === token) {
+				activeController = undefined;
+				ipcMain.removeHandler(BEAUTY_LAB_LIST_CHANNEL);
+				ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
+				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
+				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
+			}
+			disposal ??= Promise.resolve().then(() => candidateProvider.dispose());
+			return disposal;
 		},
 	};
 }
