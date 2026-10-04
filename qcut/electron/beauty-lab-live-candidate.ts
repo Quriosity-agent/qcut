@@ -14,107 +14,22 @@ import {
 	LIVE_NATIVE_STAGES,
 	readBeautyLabLiveCandidateResult,
 } from "./beauty-lab-live-candidate-result.js";
+import {
+	createBeautyLabLiveSelectionResolver,
+	selectBeautyLabLiveRequest,
+} from "./beauty-lab-live-selection.js";
 import { checkPath, pinRoot } from "./beauty-lab-research-files.js";
 import {
 	hasJianyingFilterPrivateRuntime,
 	jianyingFilterPrivateRuntimeCurrent,
 } from "./jianying-filter-local-runtime/private-runtime.js";
-import {
-	buildJianyingPortraitFeatureParameters,
-	jianyingPortraitControl,
-	jianyingPortraitRuntimePackageForControl,
-} from "./jianying-portrait-adjustment-runtime/catalog.js";
-import { resolveJianyingPortraitPackage } from "./jianying-portrait-adjustment-runtime/package-resolver.js";
 
 const LOCAL = ".local/jianying-model-pytorch";
 const JOB = "research/local-model-pytorch/face_live_candidate_job.py";
 const MODELS = `${LOCAL}/face-heads-20261003-stable-r2`;
 const PYTHON = `${LOCAL}/face-heads-runtime122/bin/python`;
 const JOBS = `${LOCAL}/beauty-live-candidate-jobs`;
-const PACKAGE =
-	"Cache/effect/7408077472211668276/f662ff9c955ee319f1ae03b2aa27df76";
 const MAX_RGBA = 16 * 1024 ** 2;
-
-function parametersForRequest({
-	request,
-}: {
-	request: Parameters<BeautyLabCandidateBackend["render"]>[0];
-}) {
-	const { adjustments } = request;
-	const unsupported = Object.entries(adjustments).some(([key, value]) => {
-		if (
-			["enabled", "values", "faceTarget"].includes(key) ||
-			value === undefined
-		)
-			return false;
-		if (key === "faces") return !Array.isArray(value) || value.length > 0;
-		if (key === "makeup" || key === "manualBody")
-			return (
-				!value || typeof value !== "object" || Object.keys(value).length > 0
-			);
-		if (
-			key === "manualRetouch" &&
-			value &&
-			typeof value === "object" &&
-			"strokes" in value
-		) {
-			return (
-				Object.keys(value).length !== 1 ||
-				!Array.isArray(value.strokes) ||
-				value.strokes.length > 0
-			);
-		}
-		return true;
-	});
-	if (
-		!adjustments.enabled ||
-		unsupported ||
-		(adjustments.faceTarget !== undefined &&
-			adjustments.faceTarget.mode !== "all") ||
-		"sourcePreRoll" in request
-	) {
-		throw new Error(
-			"Live static candidate accepts global numeric face controls only"
-		);
-	}
-	const controls = Object.entries(adjustments.values).map(([key, value]) => {
-		const control = jianyingPortraitControl({ key });
-		if (
-			!control ||
-			(value !== 0 && control.group !== "face") ||
-			typeof value !== "number" ||
-			!Number.isFinite(value) ||
-			value < control.min ||
-			value > control.max
-		) {
-			throw new Error("Unsupported live static face control");
-		}
-		const runtimePackage = jianyingPortraitRuntimePackageForControl({
-			control,
-		});
-		if (value !== 0 && runtimePackage !== "features") {
-			throw new Error("Only the audited features package is supported");
-		}
-		return { runtimePackage, value };
-	});
-	const active = controls.filter(({ value }) => value !== 0);
-	const packages = new Set(active.map(({ runtimePackage }) => runtimePackage));
-	if (packages.size !== 1 || !active.length) {
-		throw new Error(
-			"Exactly one nonzero face package is required for a static audit"
-		);
-	}
-	const runtimePackage = active[0].runtimePackage;
-	return {
-		runtimePackage,
-		parameters: JSON.parse(
-			buildJianyingPortraitFeatureParameters({
-				runtimePackage,
-				values: adjustments.values,
-			})
-		) as unknown,
-	};
-}
 
 export async function createBeautyLabLiveCandidateBackend({
 	sourceRoot,
@@ -146,14 +61,23 @@ export async function createBeautyLabLiveCandidateBackend({
 		root: jianyingFilterPrivateRuntimeCurrent(),
 	});
 	const runtime = runtimeRoot.canonical;
+	const resolveSelection = createBeautyLabLiveSelectionResolver({
+		runtimeRoot,
+		allowProductCache:
+			env.QCUT_BEAUTY_LAB_LIVE_ALLOW_PRODUCT_CACHE === "1" &&
+			env.QCUT_JIANYING_DISABLE_USER_CACHE !== "1",
+	});
 	const models = await realpath(path.join(source.canonical, MODELS));
-	const version = `audited-static-v2:${snapshot.digest}`;
+	const version = `audited-static-v3:${snapshot.digest}`;
 	let disposed = false;
 	let blocker: string | undefined;
 	let active: { controller: AbortController; done: Promise<void> } | undefined;
 	return {
 		version,
 		getBlocker: () => blocker,
+		validateRequest: ({ request }) => {
+			selectBeautyLabLiveRequest({ request });
+		},
 		scope: "audited-single-static-frame",
 		timingScope: "cumulative-owned-worker-including-warmup",
 		stages: BEAUTY_LAB_CANDIDATE_STAGES.map((id) => ({
@@ -163,7 +87,7 @@ export async function createBeautyLabLiveCandidateBackend({
 				: "qcut",
 			parity: "accepted",
 			message:
-				"Per-request audited single static frame only; native full-frame RGBA, detection, geometry and renderer remain. No timeline, minute-scale or multi-face acceptance. Owned timings include warmup; native timings unavailable.",
+				"Per-request audited single static frame only; native full-frame RGBA, detection, geometry and renderer remain. Broader face/makeup selection is not package acceptance; unverified requests fail closed. No production, live-video, timeline or multi-face acceptance. Owned timings include warmup; native timings unavailable.",
 		})),
 		dispose: async () => {
 			disposed = true;
@@ -174,7 +98,7 @@ export async function createBeautyLabLiveCandidateBackend({
 			if (disposed) throw new Error("Live static backend disposed");
 			if (blocker) throw new Error(blocker);
 			if (active) throw new Error("Live static audit is already running");
-			const { runtimePackage, parameters } = parametersForRequest({ request });
+			const selection = selectBeautyLabLiveRequest({ request });
 			const parsed = parseBeautyLabCandidateRequest({ request });
 			const identity = beautyLabCandidateIdentity({ request: parsed });
 			if (
@@ -197,24 +121,8 @@ export async function createBeautyLabLiveCandidateBackend({
 			try {
 				await snapshot.verify();
 				controller.signal.throwIfAborted();
-				const resolved = await resolveJianyingPortraitPackage({
-					runtimePackage,
-				});
-				if (
-					!resolved.packagePath ||
-					resolved.group !== "face" ||
-					resolved.source !== "qcut-private" ||
-					resolved.runtimePackage !== "features"
-				)
-					throw new Error("Trusted face package unavailable");
-				const packagePath = await checkPath({
-					root: runtimeRoot,
-					relativePath: PACKAGE,
-				});
-				if ((await realpath(resolved.packagePath)) !== packagePath)
-					throw new Error(
-						"Resolved package differs from pinned private runtime package"
-					);
+				const { packagePath, parameters, additionalPackagePath } =
+					await resolveSelection({ selection });
 				await mkdir(path.join(source.canonical, JOBS), {
 					recursive: true,
 					mode: 0o700,
@@ -253,6 +161,9 @@ export async function createBeautyLabLiveCandidateBackend({
 						runtime,
 						"--package",
 						packagePath,
+						...(additionalPackagePath
+							? ["--additional-package", additionalPackagePath]
+							: []),
 						"--root",
 						models,
 						"--lease",
