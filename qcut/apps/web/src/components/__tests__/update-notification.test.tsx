@@ -118,6 +118,74 @@ describe("UpdateNotification", () => {
 		expect(queryNotification()).not.toBeInTheDocument();
 	});
 
+	it("stays hidden when startup state rejects and accepts later update events", async () => {
+		mocks.updates.getState.mockRejectedValueOnce(
+			new Error("No handler registered for 'get-update-state'")
+		);
+		const { unmount } = render(<UpdateNotification />);
+		await flushState();
+
+		expect(mocks.updates.getState).toHaveBeenCalledTimes(1);
+		expect(queryNotification()).not.toBeInTheDocument();
+		expect(mocks.toastError).not.toHaveBeenCalled();
+		expect(mocks.updates.downloadUpdate).not.toHaveBeenCalled();
+		expect(mocks.updates.installUpdate).not.toHaveBeenCalled();
+
+		act(() => {
+			mocks.listener?.({
+				...mocks.baseState,
+				phase: "available",
+				version: "2026.07.21.1",
+			});
+		});
+		expect(
+			await screen.findByText("QCut v2026.07.21.1 is available")
+		).toBeInTheDocument();
+
+		unmount();
+		expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ unmountBeforeRejection: false },
+		{ unmountBeforeRejection: true },
+	])("handles delayed startup rejection without replacing pushed state: %j", async ({
+		unmountBeforeRejection,
+	}) => {
+		let rejectState: ((error: Error) => void) | undefined;
+		mocks.updates.getState.mockImplementationOnce(
+			() =>
+				new Promise<PlatformUpdateState>((_resolve, reject) => {
+					rejectState = reject;
+				})
+		);
+		const { unmount } = render(<UpdateNotification />);
+		act(() => {
+			mocks.listener?.({
+				...mocks.baseState,
+				phase: "available",
+				version: "2026.07.21.1",
+			});
+		});
+		await screen.findByText("QCut v2026.07.21.1 is available");
+		if (unmountBeforeRejection) unmount();
+
+		await act(async () => {
+			rejectState?.(new Error("No handler registered for 'get-update-state'"));
+			await Promise.resolve();
+		});
+
+		expect(mocks.toastError).not.toHaveBeenCalled();
+		if (unmountBeforeRejection) {
+			expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
+			expect(queryNotification()).not.toBeInTheDocument();
+			return;
+		}
+		expect(screen.getByRole("alert")).toHaveTextContent(
+			"QCut v2026.07.21.1 is available"
+		);
+	});
+
 	it("offers to download an available update with its size", async () => {
 		renderWithState({
 			phase: "available",
