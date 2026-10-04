@@ -69,7 +69,8 @@ def run_job(*, args):
         parameters=request["parameters"], expect_change=True, label="current-request-static-audit")]))
     report = run(args=argparse.Namespace(runtime=args.runtime, package=args.package, root=args.root,
         manifest=manifest, out=directory / "audit", execute_native=True, lease=args.lease,
-        timeout=args.timeout, single_frame=True, stable_host=True))
+        timeout=args.timeout, single_frame=True, stable_host=True,
+        additional_packages=getattr(args, "additional_packages", [])))
     require(condition=report["passed"] is True and report["live_callback_handoff_verified"] is True and
         report["dependencies_unchanged"] is True and report["cleanup"]["completed"] is True,
         message="fresh live job did not pass: " + json.dumps(report["failures"]))
@@ -100,6 +101,7 @@ def main():
     for name in ("request", "runtime", "package", "root"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--lease", required=True)
+    parser.add_argument("--additional-package", dest="additional_packages", action="append", type=Path, default=[])
     parser.add_argument("--timeout", type=float, default=120)
     try:
         result = run_job(args=parser.parse_args())
