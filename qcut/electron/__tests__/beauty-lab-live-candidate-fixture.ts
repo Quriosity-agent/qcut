@@ -8,6 +8,13 @@ import {
 	type BeautyLabCandidateRequest,
 } from "../beauty-lab-candidate-contract.js";
 import { LIVE_NATIVE_STAGES } from "../beauty-lab-live-candidate-result.js";
+import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
+import {
+	captureBeautyLabLiveRequestDependencies,
+	type LiveExpectedDependencies,
+} from "../beauty-lab-live-candidate-inventory.js";
+import { captureBeautyLabLiveDependencies } from "../beauty-lab-live-candidate-provenance.js";
+import { pinRoot } from "../beauty-lab-research-files.js";
 
 export const OPT_IN = {
 	NODE_ENV: "development",
@@ -70,6 +77,8 @@ export async function setupFiles({ root }: { root: string }) {
 		mkdir(hostDirectory, { recursive: true }),
 		mkdir(path.dirname(path.join(root, JOB_SCRIPT)), { recursive: true }),
 		mkdir(packagePath, { recursive: true }),
+		mkdir(path.join(runtime, "Models"), { recursive: true }),
+		mkdir(path.join(runtime, "Frameworks"), { recursive: true }),
 		mkdir(path.join(root, "research/jianying-runtime-probe"), {
 			recursive: true,
 		}),
@@ -80,6 +89,22 @@ export async function setupFiles({ root }: { root: string }) {
 		writeFile(python, "synthetic; never executed"),
 		writeFile(hostPath, hostBytes),
 		writeFile(receiptPath, JSON.stringify(hostReceipt)),
+		writeFile(
+			path.join(runtime, "Models/face.model"),
+			"synthetic native model"
+		),
+		writeFile(path.join(packagePath, "algorithmConfig.json"), "{}"),
+		...[
+			"libcccreator.dylib",
+			"libAGFX.dylib",
+			"liblens.dylib",
+			"libbytenn.dylib",
+		].map((name) =>
+			writeFile(
+				path.join(runtime, "Frameworks", name),
+				`synthetic ${name}; never loaded`
+			)
+		),
 		writeFile(path.join(models, "summary.json"), "{}"),
 		writeFile(
 			path.join(models, "align-120/artifacts/model.onnx"),
@@ -137,12 +162,128 @@ export async function successfulJob({
 	const rgba = new Uint8Array(original).fill(42);
 	const outputSha256 = digest({ data: rgba });
 	const workerBackendVersion = `dependency-core-v1:${"a".repeat(64)}`;
+	const token = "synthetic-private-launch-token";
+	const sourceKey = "synthetic-native-source";
 	const workerLog = Buffer.from(
-		JSON.stringify({
-			ok: true,
-			result: { backend_version: workerBackendVersion },
-		}) + "\n"
+		[0, 1]
+			.map((prediction) =>
+				JSON.stringify({
+					ok: true,
+					token,
+					pid: 123,
+					prediction,
+					timestamp_us: 0,
+					stage_ownership: {
+						full_frame_rgba: "native",
+						detection: "native",
+						crop_caller_and_geometry: "native-live-observed",
+						sampling: "owned",
+						heads: "owned-onnx-cpu",
+						temporal: "owned",
+						acceptance_and_reset: "native",
+						renderer: "native-owned-clone-required",
+						native_analysis_bypassed: false,
+						live_parity_verified: false,
+						product_backend_registered: false,
+					},
+					result: {
+						backend_version: workerBackendVersion,
+						prediction,
+						frame_number: prediction,
+						timestamp_us: 0,
+						schema: "face-live-candidate-result-v1",
+						source: "dependency-fed-research-inference",
+						source_key: sourceKey,
+						algorithm_rgba_sha256: request.inputSha256,
+						dependency_sha256: "e".repeat(64),
+						algorithm_width: request.width,
+						algorithm_height: request.height,
+						faces: [
+							{ id: 0, points: Array.from({ length: 106 }, () => [0.5, 0.5]) },
+						],
+						native_final_point_input_used: false,
+						captured_tensor_input_used: false,
+						native_analysis_bypassed: false,
+						product_parity_verified: false,
+						candidate_parity_verified: false,
+						arbitrary_frame_backend_connected: false,
+					},
+				})
+			)
+			.join("\n") + "\n"
 	);
+	const records = [0, 1].flatMap((prediction) => [
+		{ event: "live_candidate_received", prediction, timestamp_us: 0 },
+		{
+			event: "face_clone_audit",
+			distinct_buffer: true,
+			initial_refcount: 0,
+			owned_refcount: 1,
+			source_refcount: 2,
+			vector_counts: [1, 0, 0, 0, 0, 1],
+			primary_metadata_equal: true,
+			primary_points_isolated: true,
+			native_analysis_bypassed: false,
+		},
+		{
+			event: "live_owned_conversion",
+			prediction,
+			timestamp_us: 0,
+			binding_id: prediction + 1,
+			graph_id: 1,
+			faces: 1,
+			conversion_scope: "native-seek",
+			source_points_unchanged: true,
+			candidate_source: "fresh-worker-inference",
+			native_analysis_bypassed: false,
+		},
+		...(prediction === 1
+			? [
+					{
+						event: "algorithm_update",
+						timestamp_us: 0,
+						native_update_call: 1,
+						eye_shift: 0,
+						external_points: false,
+					},
+				]
+			: []),
+		{
+			event: "live_owned_restored",
+			prediction,
+			timestamp_us: 0,
+			binding_id: prediction + 1,
+			graph_id: 1,
+			gpu_complete: true,
+			original_restored: true,
+		},
+	]);
+	const recordsLog = Buffer.from(
+		records.map((row) => JSON.stringify(row)).join("\n") + "\n"
+	);
+	const source = await pinRoot({ root: cwd });
+	const backend = await captureBeautyLabLiveDependencies({ source });
+	const dependencies = await captureBeautyLabLiveRequestDependencies({
+		source,
+		backendFiles: backend.files,
+		runtime: argument({ name: "--runtime" }),
+		models: argument({ name: "--root" }),
+		packagePath: argument({ name: "--package" }),
+		additionalPackagePath: args.includes("--additional-package")
+			? argument({ name: "--additional-package" })
+			: undefined,
+	});
+	const reportFiles = ({
+		files,
+	}: {
+		files: LiveExpectedDependencies["libraries"];
+	}) =>
+		Object.fromEntries(
+			Object.entries(files).map(([filename, file]) => [
+				filename,
+				{ sha256: file.sha256, identity: [filename, 1, 1, file.size, 0] },
+			])
+		);
 	const { parameters, ...identity } = request;
 	const result = {
 		...identity,
@@ -173,6 +314,8 @@ export async function successfulJob({
 		completed: true,
 		scope: "single-frame-native-dependent-live-audit",
 		single_frame_audit: true,
+		cold_frame_audit: true,
+		warmup_request_count: 0,
 		temporal_sequence_acceptance: false,
 		dependencies_unchanged: true,
 		native_execution_performed: true,
@@ -191,6 +334,8 @@ export async function successfulJob({
 		width: request.width,
 		height: request.height,
 		manifest: path.join(directory, "manifest.json"),
+		source_key: sourceKey,
+		token_sha256: digest({ data: Buffer.from(token) }),
 		host_identity: {
 			...hostReceipt,
 			path: hostPath,
@@ -199,6 +344,28 @@ export async function successfulJob({
 			desktop_authorization: "manual macOS allowance; synthetic test only",
 		},
 		input_frames: [{ input_sha256: request.inputSha256, parameters }],
+		requests: {
+			baseline: [
+				{
+					id: "frame-00",
+					frame: 0,
+					warmup: false,
+					timestamp: 0,
+					timestamp_us: 0,
+					output: path.join(directory, "audit/baseline/frame-00.rgba"),
+				},
+			],
+			live: [
+				{
+					id: "frame-00",
+					frame: 0,
+					warmup: false,
+					timestamp: 0,
+					timestamp_us: 0,
+					output: path.join(directory, "audit/live/frame-00.rgba"),
+				},
+			],
+		},
 		frames: [
 			{
 				frame: 0,
@@ -215,6 +382,7 @@ export async function successfulJob({
 			"live-host-receipt.json": { sha256: digest({ data: receiptBytes }) },
 			"lldb-config.json": { sha256: digest({ data: launchConfig }) },
 			"live/worker.jsonl": { sha256: digest({ data: workerLog }) },
+			"live/records.jsonl": { sha256: digest({ data: recordsLog }) },
 			"live/frame-00.rgba": { sha256: outputSha256 },
 			"baseline/frame-00.rgba": { sha256: outputSha256 },
 		},
@@ -223,10 +391,27 @@ export async function successfulJob({
 				[hostPath]: hostReceipt.sha256,
 				[receiptPath]: digest({ data: receiptBytes }),
 			},
-			libraries: {},
-			trees: [{ synthetic: true }],
+			libraries: reportFiles({ files: dependencies.expected.libraries }),
+			trees: dependencies.expected.trees.map((tree) => ({
+				...tree,
+				files: reportFiles({ files: tree.files }),
+			})),
 		},
-		callback_audit: { predictions: 1, backend_version: workerBackendVersion },
+		callback_audit: {
+			predictions: 2,
+			conversions: 2,
+			restorations: 2,
+			bootstrap_unrendered_predictions: [],
+			backend_version: workerBackendVersion,
+			native_pid: 123,
+			clone_audit: {
+				audited_clones: 2,
+				primary_faces_audited: 2,
+				native_update_calls: 1,
+				native_analysis_bypassed: false,
+				audit_basis: "live-owned-conversion",
+			},
+		},
 	};
 	await mkdir(path.join(directory, "audit/live"), { recursive: true });
 	await mkdir(path.join(directory, "audit/baseline"), { recursive: true });
@@ -235,6 +420,7 @@ export async function successfulJob({
 		writeFile(path.join(directory, "audit/live/frame-00.rgba"), rgba),
 		writeFile(path.join(directory, "audit/baseline/frame-00.rgba"), rgba),
 		writeFile(path.join(directory, "audit/live/worker.jsonl"), workerLog),
+		writeFile(path.join(directory, "audit/live/records.jsonl"), recordsLog),
 		writeFile(path.join(directory, "audit/live-host.snapshot"), hostBytes),
 		writeFile(
 			path.join(directory, "audit/live-host-receipt.json"),
@@ -244,5 +430,63 @@ export async function successfulJob({
 		writeFile(path.join(directory, "audit/report.json"), JSON.stringify(audit)),
 		writeFile(path.join(directory, "result.json"), JSON.stringify(result)),
 	]);
-	return { directory, request, result, audit };
+	return {
+		directory,
+		request,
+		result,
+		audit,
+		expectedDependencies: dependencies.expected,
+	};
+}
+
+export async function setupResultJob({ root }: { root: string }) {
+	const files = await setupFiles({ root });
+	const request = requestFor({
+		version: `audited-static-v4:${"d".repeat(64)}`,
+	});
+	const bound = { ...request, ...beautyLabCandidateIdentity({ request }) };
+	const directory = path.join(root, LOCAL, "beauty-live-candidate-jobs/static");
+	await mkdir(directory, { recursive: true });
+	const parameters = { face_adjust_eye: [{ id: -1, intensity: 0.4 }] };
+	const {
+		rgba,
+		adjustments: _adjustments,
+		protocol: _protocol,
+		...metadata
+	} = bound;
+	const requestPath = path.join(directory, "request.json");
+	await writeFile(path.join(directory, "input.rgba"), rgba);
+	await writeFile(requestPath, JSON.stringify({ ...metadata, parameters }));
+	const lease = "synthetic-receipt-test";
+	const job = await successfulJob({
+		cwd: root,
+		args: [
+			"--request",
+			requestPath,
+			"--runtime",
+			files.runtime,
+			"--package",
+			files.packagePath,
+			"--root",
+			files.models,
+			"--lease",
+			lease,
+		],
+	});
+	return {
+		files,
+		job,
+		input: {
+			directory,
+			hostDirectory: files.hostDirectory,
+			request: bound,
+			runtime: files.runtime,
+			packagePath: files.packagePath,
+			models: files.models,
+			lease,
+			manifest: path.join(directory, "manifest.json"),
+			parameters,
+			expectedDependencies: job.expectedDependencies,
+		},
+	};
 }
