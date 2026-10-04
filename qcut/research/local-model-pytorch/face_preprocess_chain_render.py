@@ -21,6 +21,40 @@ import face_render_consumer_probe as consumer
 import face_render_sequence_probe as sequence
 from face_render_stability_probe import digest
 
+MODEL_SOURCES = ("face_render_model_parity.py", "face_render_model_capture.py",
+                 "face_alignment_heads_parity.py", "face_alignment_replay.py",
+                 "espresso_onnx_runtime.py", "espresso_graph.py", "espresso_oracle.py",
+                 "face_render_sequence_probe.py", "face_render_consumer_probe.py",
+                 "face_render_stability_probe.py")
+
+
+def model_sources(*, model, locked):
+    values = model.get("source_sha256")
+    if not isinstance(values, dict) or set(values) != set(MODEL_SOURCES):
+        raise ValueError("complete model source inventory required")
+    render.sources(locked=locked, evidence=dict(source_sha256={
+        "local-model-pytorch/" + name: expected for name, expected in values.items()}))
+
+
+def verify_original_points(*, path, evidence, context, value, locked):
+    directory = path.parent / "onnx"
+    chain.parity.require_sha256(value=evidence.get("model_report_sha256"))
+    model = locked.json(path=directory / "report.json", expected=evidence["model_report_sha256"])
+    model_sources(model=model, locked=locked)
+    for size in (120, 160):
+        for case in model["model_outputs"][str(size)]["cases"]:
+            head = directory / f"size-{size}-infer-{case['inference']:03d}-fc_landmark_s1.npy"
+            expected = evidence["fixture_sha256"].get(str(head))
+            # Never backfill an omitted producer identity with a hash of today's file.
+            chain.parity.require_sha256(value=expected)
+            locked.array(path=head, shape=(1, 1, 1, 212), dtype="float32", expected=expected)
+    produced, cases = chain.produce(context=context, model=model, directory=directory, locked=locked)
+    for actual, expected, label in ((value, produced, "owned normalized replay"),
+                                    (evidence.get("cases"), cases, "owned geometry/smoothing")):
+        if json.dumps(actual, sort_keys=True, allow_nan=False) != json.dumps(expected, sort_keys=True, allow_nan=False):
+            raise ValueError(f"{label} differs from recomputed original-frame heads")
+    locked.verify()
+
 
 def load_candidate(*, path, context, locked, original_frames=False):
     evidence = locked.json(path=path.with_name("report.json"))
@@ -67,6 +101,8 @@ def load_candidate(*, path, context, locked, original_frames=False):
             if not point_difference(actual=np.asarray(face["points"], np.float32),
                                     expected=np.asarray(oracle["points"], np.float32), tolerance=0)["exact"]:
                 raise ValueError("candidate normalized points differ; diagnostic rendering is not accepted")
+    if original_frames:
+        verify_original_points(path=path, evidence=evidence, context=context, value=value, locked=locked)
     return value, payload
 
 
