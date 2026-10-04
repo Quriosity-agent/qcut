@@ -69,6 +69,25 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
             bundle.prepare_inputs(manifest=self.manifest, out=self.out,
                 guard=bundle.DependencyGuard(), single_frame=True)
 
+    def test_cold_frame_plan_has_no_repeated_input_and_scoped_host_opt_in(self):
+        self.frames = self.frames[:1]
+        self.write_manifest()
+        frames, _ = bundle.prepare_inputs(manifest=self.manifest, out=self.out,
+            guard=bundle.DependencyGuard(), single_frame=True)
+        rows, command = bundle.requests(frames=frames, directory=self.out, cold_frame=True)
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0]["warmup"])
+        self.assertEqual(rows[0]["id"], "frame-00")
+        self.assertNotIn("warmup-", command)
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            bundle.requests(frames=frames * 2, directory=self.out, cold_frame=True)
+        kwargs = dict(runtime=self.root, directory=self.out, width=8, height=8,
+                      live=True, socket=self.root / "private.sock", token="new", capture=self.root / "new.dylib")
+        self.assertEqual(bundle.host_environment(**kwargs, cold_frame=True)["QCUT_FACE_LIVE_COLD_FRAME"], "1")
+        self.assertNotIn("QCUT_FACE_LIVE_COLD_FRAME", bundle.host_environment(**kwargs))
+        with self.assertRaisesRegex(ValueError, "explicit single-frame"):
+            probe.run(args=argparse.Namespace(cold_frame=True, single_frame=False))
+
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
             self.frames[0]["timestamp"] = 1 if case == "bootstrap" else 0
