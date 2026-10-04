@@ -44,6 +44,22 @@ export async function setupFiles({ root }: { root: string }) {
 	const python = path.join(root, LOCAL, "face-heads-runtime122/bin/python");
 	const models = path.join(root, LOCAL, "face-heads-20261003-stable-r2");
 	const runtime = path.join(root, "synthetic-runtime");
+	const hostDirectory = path.join(root, LOCAL, "beauty-live-host");
+	const hostPath = path.join(hostDirectory, "live-host");
+	const receiptPath = path.join(hostDirectory, "receipt.json");
+	const hostBytes = Buffer.from("synthetic signed live host; never executed");
+	const hostReceipt = {
+		recipe: "c".repeat(64),
+		sha256: digest({ data: hostBytes }),
+		identity: "A".repeat(40),
+		signature: {
+			identifier: "com.qcut.beauty-lab.live-host",
+			team: "TESTTEAM01",
+			cdhash: "b".repeat(40),
+			requirement:
+				'identifier "com.qcut.beauty-lab.live-host" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: Synthetic Developer (TESTUSER01)" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */',
+		},
+	};
 	const packagePath = path.join(
 		runtime,
 		"Cache/effect/7408077472211668276/f662ff9c955ee319f1ae03b2aa27df76"
@@ -51,6 +67,7 @@ export async function setupFiles({ root }: { root: string }) {
 	await Promise.all([
 		mkdir(path.dirname(python), { recursive: true }),
 		mkdir(models, { recursive: true }),
+		mkdir(hostDirectory, { recursive: true }),
 		mkdir(path.dirname(path.join(root, JOB_SCRIPT)), { recursive: true }),
 		mkdir(packagePath, { recursive: true }),
 		mkdir(path.join(root, "research/jianying-runtime-probe"), {
@@ -61,6 +78,8 @@ export async function setupFiles({ root }: { root: string }) {
 	]);
 	await Promise.all([
 		writeFile(python, "synthetic; never executed"),
+		writeFile(hostPath, hostBytes),
+		writeFile(receiptPath, JSON.stringify(hostReceipt)),
 		writeFile(path.join(models, "summary.json"), "{}"),
 		writeFile(
 			path.join(models, "align-120/artifacts/model.onnx"),
@@ -80,13 +99,39 @@ export async function setupFiles({ root }: { root: string }) {
 		),
 	]);
 	await chmod(python, 0o700);
-	return { python, models, runtime, packagePath };
+	return {
+		python,
+		models,
+		runtime,
+		packagePath,
+		hostDirectory,
+		hostPath,
+		receiptPath,
+		hostReceipt,
+	};
 }
 
-export async function successfulJob({ args }: { args: string[] }) {
+export async function successfulJob({
+	args,
+	cwd,
+}: {
+	args: string[];
+	cwd: string;
+}) {
 	const argument = ({ name }: { name: string }) => args[args.indexOf(name) + 1];
 	const requestPath = argument({ name: "--request" });
 	const directory = path.dirname(requestPath);
+	const hostDirectory = path.join(cwd, LOCAL, "beauty-live-host");
+	const hostPath = path.join(hostDirectory, "live-host");
+	const receiptPath = path.join(hostDirectory, "receipt.json");
+	const hostBytes = await readFile(hostPath);
+	const receiptBytes = await readFile(receiptPath);
+	const hostReceipt = JSON.parse(receiptBytes.toString("utf8")) as Awaited<
+		ReturnType<typeof setupFiles>
+	>["hostReceipt"];
+	const launchConfig = Buffer.from(
+		JSON.stringify({ host: hostPath, token: "synthetic-private-launch-token" })
+	);
 	const request = JSON.parse(await readFile(requestPath, "utf8"));
 	const original = await readFile(path.join(directory, "input.rgba"));
 	const rgba = new Uint8Array(original).fill(42);
@@ -146,6 +191,13 @@ export async function successfulJob({ args }: { args: string[] }) {
 		width: request.width,
 		height: request.height,
 		manifest: path.join(directory, "manifest.json"),
+		host_identity: {
+			...hostReceipt,
+			path: hostPath,
+			reused: false,
+			permission_granted_by_launcher: false,
+			desktop_authorization: "manual macOS allowance; synthetic test only",
+		},
 		input_frames: [{ input_sha256: request.inputSha256, parameters }],
 		frames: [
 			{
@@ -159,11 +211,21 @@ export async function successfulJob({ args }: { args: string[] }) {
 			},
 		],
 		artifacts: {
+			"live-host.snapshot": { sha256: digest({ data: hostBytes }) },
+			"live-host-receipt.json": { sha256: digest({ data: receiptBytes }) },
+			"lldb-config.json": { sha256: digest({ data: launchConfig }) },
 			"live/worker.jsonl": { sha256: digest({ data: workerLog }) },
 			"live/frame-00.rgba": { sha256: outputSha256 },
 			"baseline/frame-00.rgba": { sha256: outputSha256 },
 		},
-		dependencies: { files: {}, libraries: {}, trees: [{ synthetic: true }] },
+		dependencies: {
+			files: {
+				[hostPath]: hostReceipt.sha256,
+				[receiptPath]: digest({ data: receiptBytes }),
+			},
+			libraries: {},
+			trees: [{ synthetic: true }],
+		},
 		callback_audit: { predictions: 1, backend_version: workerBackendVersion },
 	};
 	await mkdir(path.join(directory, "audit/live"), { recursive: true });
@@ -173,6 +235,12 @@ export async function successfulJob({ args }: { args: string[] }) {
 		writeFile(path.join(directory, "audit/live/frame-00.rgba"), rgba),
 		writeFile(path.join(directory, "audit/baseline/frame-00.rgba"), rgba),
 		writeFile(path.join(directory, "audit/live/worker.jsonl"), workerLog),
+		writeFile(path.join(directory, "audit/live-host.snapshot"), hostBytes),
+		writeFile(
+			path.join(directory, "audit/live-host-receipt.json"),
+			receiptBytes
+		),
+		writeFile(path.join(directory, "audit/lldb-config.json"), launchConfig),
 		writeFile(path.join(directory, "audit/report.json"), JSON.stringify(audit)),
 		writeFile(path.join(directory, "result.json"), JSON.stringify(result)),
 	]);
