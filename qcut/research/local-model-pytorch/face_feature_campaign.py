@@ -169,6 +169,8 @@ def main():
         prepare.add_argument("--" + name, required=True, type=Path)
     prepare.add_argument("--manifest", required=True, type=Path, action="append")
     prepare.add_argument("--feature", choices=planning.FEATURES, action="append")
+    prepare.add_argument("--effect-cache-root", type=Path,
+                         help="Explicit read-only Cache/effect root; exact pinned fallback after private runtime only")
     execute = sub.add_parser("run")
     for name in ("plan", "out"):
         execute.add_argument("--" + name, required=True, type=Path)
