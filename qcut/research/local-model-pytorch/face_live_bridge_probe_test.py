@@ -77,6 +77,29 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
             with self.subTest(case=case), self.assertRaises(ValueError):
                 bundle.prepare_inputs(manifest=self.manifest, out=self.out, guard=bundle.DependencyGuard())
 
+    def test_static_controls_preserve_one_original_and_distinct_parameters(self):
+        self.frames = [dict(self.frames[0], parameters=dict(eye=value)) for value in (20, 40)]
+        self.write_manifest()
+        frames, _ = bundle.prepare_inputs(manifest=self.manifest, out=self.out,
+            guard=bundle.DependencyGuard(), static_controls=True)
+        self.assertEqual(frames[0]["input_sha256"], frames[1]["input_sha256"])
+        self.assertNotEqual(frames[0]["parameters"], frames[1]["parameters"])
+
+    def test_static_controls_reject_changed_pixels_time_identical_parameters_and_scope_conflict(self):
+        for case in ("pixels", "timestamp", "parameters", "scope"):
+            self.frames = [dict(image="image-0.png", timestamp=0, parameters=dict(eye=value),
+                                expect_change=True) for value in (20, 40)]
+            if case == "pixels":
+                self.frames[1]["image"] = "image-1.png"
+            if case == "timestamp":
+                self.frames[1]["timestamp"] = 1
+            if case == "parameters":
+                self.frames[1]["parameters"] = dict(eye=20)
+            self.write_manifest()
+            with self.subTest(case=case), self.assertRaises(ValueError):
+                bundle.prepare_inputs(manifest=self.manifest, out=self.out,
+                    guard=bundle.DependencyGuard(), static_controls=True, single_frame=case == "scope")
+
     def test_source_guards_include_header_and_exclude_tests(self):
         source = self.root / "sources"
         source.mkdir()
@@ -239,6 +262,26 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lease"):
             probe.run(args=self.args)
         self.assertFalse(self.args.out.exists())
+
+    def test_static_matrix_scope_and_dynamic_package_are_explicit_and_hash_guarded(self):
+        self.frames = [dict(self.frames[0], parameters=dict(eye=value)) for value in (20, 40)]
+        self.write_manifest()
+        self.args.static_controls = True
+        card = self.root / "makeup-card"
+        card.mkdir()
+        (card / "config.json").write_text("{}")
+        self.args.additional_packages = [card]
+        result, native = self.run_preparation()
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["static_controls_audit"])
+        self.assertFalse(result["single_frame_audit"])
+        self.assertFalse(result["temporal_sequence_acceptance"])
+        self.assertEqual(result["scope"], "static-controls-native-dependent-live-audit")
+        self.assertIn("--static-controls", result["command"])
+        self.assertIn("--additional-package", result["command"])
+        self.assertEqual(result["additional_packages"], [str(card.resolve())])
+        self.assertIn(str((card / "config.json").resolve()), result["dependencies"]["trees"][0]["files"])
+        native.assert_not_called()
 
     def test_single_frame_preparation_reports_only_static_scope(self):
         self.frames = self.frames[:1]
