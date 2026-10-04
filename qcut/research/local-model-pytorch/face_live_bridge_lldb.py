@@ -1,7 +1,8 @@
 """Live read-only caller/order observer; actual entry registers, never cached crop.
 
-Three hardware breakpoints only. The native post-predict callback performs the
-pixel/geometry exchange and owned renderer handoff while the target runs.
+Three inference breakpoints; an optional fourth observes raw face getter stacks.
+The native post-predict callback performs the pixel/geometry exchange and owned
+renderer handoff. Getter observations never count as consumption receipts.
 """
 from __future__ import annotations
 
