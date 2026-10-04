@@ -43,6 +43,21 @@ class AuditTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no primary face"):
             self.validate(item=audit(faces=0))
 
+    def test_cold_consumer_audit_keeps_actual_update_count(self):
+        events = [audit(), {"event": "live_owned_conversion"}, {"event": "algorithm_update"},
+                  audit(), {"event": "live_owned_conversion"}]
+        result = probe.validate_audits(events=events, require_face=True, require_live_consumers=True)
+        self.assertEqual(result["audited_clones"], 2)
+        self.assertEqual(result["native_update_calls"], 1)
+        self.assertEqual(result["audit_basis"], "live-owned-conversion")
+        with self.assertRaises(RuntimeError):
+            probe.validate_audits(events=events, require_face=True)
+
+    def test_inspection_does_not_count_as_live_consumption(self):
+        with self.assertRaises(RuntimeError):
+            probe.validate_audits(events=[audit(), {"event": "live_inspection_conversion"}],
+                                  require_face=True, require_live_consumers=True)
+
     def test_missing_update_or_audit(self):
         for events in ([], [audit()], [{"event": "algorithm_update"}],
                        [audit(), audit(), {"event": "algorithm_update"}]):
