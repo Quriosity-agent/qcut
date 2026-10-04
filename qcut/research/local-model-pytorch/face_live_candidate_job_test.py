@@ -38,6 +38,7 @@ class StaticJobTests(unittest.TestCase):
     def native(self, *, args):
         self.assertTrue(args.single_frame)
         self.assertTrue(args.execute_native)
+        self.assertTrue(args.stable_host)
         manifest = json.loads(args.manifest.read_text())
         self.assertEqual(len(manifest["frames"]), 1)
         self.assertEqual(manifest["frames"][0]["timestamp"], 0)
