@@ -74,6 +74,18 @@ class StaticJobTests(unittest.TestCase):
             job.run_job(args=self.args)
         native.assert_not_called()
 
+    def test_dynamic_card_dependencies_reach_the_native_audit(self):
+        self.args.additional_packages = [self.directory / "explicit-card"]
+        native = self.native
+
+        def guarded(*, args):
+            self.assertEqual(args.additional_packages, self.args.additional_packages)
+            return native(args=args)
+
+        with mock.patch.object(job, "run", side_effect=guarded):
+            result = job.run_job(args=self.args)
+        self.assertFalse(result["native_baseline_used_as_output"])
+
     def test_wrong_input_hash_rejected_before_native(self):
         (self.directory / "input.rgba").write_bytes(bytes(len(self.input)))
         with mock.patch.object(job, "run") as native, self.assertRaisesRegex(ValueError, "hash mismatch"):
