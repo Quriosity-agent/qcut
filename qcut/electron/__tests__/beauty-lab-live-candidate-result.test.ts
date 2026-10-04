@@ -13,14 +13,12 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
 import { readBeautyLabLiveCandidateResult } from "../beauty-lab-live-candidate-result.js";
 import * as researchFiles from "../beauty-lab-research-files.js";
 import {
 	digest,
-	LOCAL,
-	requestFor,
 	setupFiles,
+	setupResultJob,
 	successfulJob,
 } from "./beauty-lab-live-candidate-fixture.js";
 
@@ -37,53 +35,12 @@ beforeEach(async () => {
 	root = await realpath(
 		await mkdtemp(path.join(os.tmpdir(), "qcut-live-host-receipt-"))
 	);
-	files = await setupFiles({ root });
-	const request = requestFor({
-		version: `audited-static-v2:${"d".repeat(64)}`,
-	});
-	const bound = { ...request, ...beautyLabCandidateIdentity({ request }) };
-	const directory = path.join(root, LOCAL, "beauty-live-candidate-jobs/static");
-	await mkdir(directory, { recursive: true });
-	const parameters = { face_adjust_eye: [{ id: -1, intensity: 0.4 }] };
-	const {
-		rgba,
-		adjustments: _adjustments,
-		protocol: _protocol,
-		...metadata
-	} = bound;
-	const requestPath = path.join(directory, "request.json");
-	await writeFile(path.join(directory, "input.rgba"), rgba);
-	await writeFile(requestPath, JSON.stringify({ ...metadata, parameters }));
-	job = await successfulJob({
-		cwd: root,
-		args: [
-			"--request",
-			requestPath,
-			"--runtime",
-			files.runtime,
-			"--package",
-			files.packagePath,
-			"--root",
-			files.models,
-			"--lease",
-			"synthetic-receipt-test",
-		],
-	});
+	({ files, job, input } = await setupResultJob({ root }));
+	const { directory } = input;
 	auditPath = path.join(directory, "audit/report.json");
 	configPath = path.join(directory, "audit/lldb-config.json");
 	hostSnapshotPath = path.join(directory, "audit/live-host.snapshot");
 	receiptSnapshotPath = path.join(directory, "audit/live-host-receipt.json");
-	input = {
-		directory,
-		hostDirectory: files.hostDirectory,
-		request: bound,
-		runtime: files.runtime,
-		packagePath: files.packagePath,
-		models: files.models,
-		lease: "synthetic-receipt-test",
-		manifest: path.join(directory, "manifest.json"),
-		parameters,
-	};
 });
 
 afterEach(async () => {
