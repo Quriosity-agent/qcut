@@ -21,11 +21,7 @@ import face_preprocess_chain_replay as chain
 import face_render_model_parity as parity
 from face_render_stability_probe import digest, frame_metrics
 
-MODEL_SOURCES = ("face_render_model_parity.py", "face_render_model_capture.py",
-                 "face_alignment_heads_parity.py", "face_alignment_replay.py",
-                 "espresso_onnx_runtime.py", "espresso_graph.py", "espresso_oracle.py",
-                 "face_render_sequence_probe.py", "face_render_consumer_probe.py",
-                 "face_render_stability_probe.py")
+MODEL_SOURCES = chain_render.MODEL_SOURCES
 
 
 def same(*, actual, expected, label):
@@ -66,11 +62,7 @@ def model_heads(*, directory, model_root, context, evidence, inputs, locked):
           negative=("native_inference_called", "native_analysis_bypassed", "full_frame_geometry_independent"))
     same(actual=report.get("expected_comparisons"), expected=7, label="model frame count")
     same(actual=report.get("capture_sha256"), expected=evidence["capture_sha256"], label="model capture linkage")
-    sources = report.get("source_sha256")
-    if not isinstance(sources, dict) or set(sources) != set(MODEL_SOURCES):
-        raise ValueError("complete model source inventory required")
-    chain_render.render.sources(locked=locked, evidence=dict(source_sha256={
-        "local-model-pytorch/" + name: expected for name, expected in sources.items()}))
+    chain_render.model_sources(model=report, locked=locked)
     parity.require_sha256(value=report.get("export_summary_sha256"))
     exported = locked.json(path=model_root / "summary.json", expected=report["export_summary_sha256"])
     parity.validate_export(exported=exported)
