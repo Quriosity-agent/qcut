@@ -72,6 +72,8 @@ class CloneLeaseScope {
     prediction_ = prediction;
     timestamp_ = timestamp;
     consumed_ = false;
+    initializationComplete_ = false;
+    restoredPublications_ = 0;
     open_ = true;
     finished_ = false;
   }
@@ -79,7 +81,17 @@ class CloneLeaseScope {
   bool injecting() const { return open_; }
   bool consumed() const { return consumed_; }
   bool requiresConsumption() const {
-    return prediction_ >= 0 && (requireEveryPrediction_ || prediction_ >= 2);
+    return prediction_ >= 0 && !initializationComplete_ && (requireEveryPrediction_ || prediction_ >= 2);
+  }
+  bool restoredPublication() const {
+    return !failure_ && finished_ && !open_ && leases_.empty() && restoredPublications_ > 0;
+  }
+  void acknowledgeInitialization() {
+    if (failure_) std::rethrow_exception(failure_);
+    if (!requireEveryPrediction_ || prediction_ != 0 || timestamp_ != 0 ||
+        initializationComplete_ || !restoredPublication())
+      throw std::runtime_error("initialization lacks unique restored cold publication");
+    initializationComplete_ = true;
   }
   void validateConsumption() const {
     if (prediction_ < 0 || (requiresConsumption() && !consumed_))
@@ -136,6 +148,7 @@ class CloneLeaseScope {
           throw std::runtime_error("live clone overwritten before GPU completion");
         }
         receipt(lease);
+        if (lease.published) ++restoredPublications_;
         entry = leases_.erase(entry);
       } catch (...) {
         if (!failure_) failure_ = std::current_exception();
@@ -157,6 +170,8 @@ class CloneLeaseScope {
   bool open_ = false;
   bool consumed_ = true;
   bool finished_ = true;
+  bool initializationComplete_ = false;
+  size_t restoredPublications_ = 0;
 };
 }
 
@@ -166,21 +181,28 @@ class CloneLeaseScope {
 #include <unistd.h>
 #include "face_live_bridge_response.h"
 #include "face_live_makeup_scene.h"
+#include "face_live_render_stage.h"
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
 void prepareOwnedSeek(void*);
 void captureOwnedFeature(void*);
+void observeOwnedSeekResult(int);
+void beginOwnedParameters(void*, const char*);
+void finishOwnedParameters(int);
+bool allowOwnedFrameOutput();
 }
 #define QCUT_FACE_BINDING_HOOK
 #define QCUT_FACE_PRE_SEEK_HOOK
 #define QCUT_FACE_FEATURE_HOOK
+#define QCUT_FACE_RENDER_STAGE_HOOK
 #define main liveConsumerMain
 #include "face_owned_result_bridge.mm"
 #undef main
 #undef QCUT_FACE_BINDING_HOOK
 #undef QCUT_FACE_PRE_SEEK_HOOK
 #undef QCUT_FACE_FEATURE_HOOK
+#undef QCUT_FACE_RENDER_STAGE_HOOK
 
 namespace {
 using Convert = uint64_t (*)(void*, void*);
@@ -195,102 +217,7 @@ int64_t livePrediction = -1;
 qcut_live::DeferredColdSetup liveColdSetup;
 int64_t liveColdSeekStartPrediction = -1;
 #include "face_live_owned_input.h"
-const bool liveMakeupTrace = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") ?: "") == "1";
-const bool liveMakeupPublish = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") ?: "") == "1";
-void* liveFeature = nullptr;
-void* liveSeekManager = nullptr;
-using MakeupUpdate = void (*)(void*, double);
-struct MakeupShadow { std::array<void*, 32> table{}; MakeupUpdate original = nullptr; };
-std::map<void*, MakeupShadow> liveMakeupSystems;
-size_t liveMakeupCalls = 0;
-
-void captureOwnedFeature(void* feature) {
-  if (!liveMakeupTrace) return;
-  if (!feature || liveFeature) throw std::runtime_error("makeup trace requires one fresh feature");
-  liveFeature = feature;
-}
-
-void* currentMakeupGraph() {
-  using Current = void* (*)();
-  using Getter = void* (*)(void*);
-  if (!liveSeekManager) throw std::runtime_error("makeup seek manager unavailable");
-  auto* base = static_cast<unsigned char*>(imageBase());
-  void* native = reinterpret_cast<Current>(base + 0x40422c)();
-  const auto wrapper = jianying_probe::resolveSymbol<Getter>(core,
-      "_ZNK13AmazingEngine12SwingManager9getAmazerEv")(liveSeekManager);
-  if (!native || !wrapper || native != reinterpret_cast<Getter>(base + 0x3f9d88)(wrapper))
-    throw std::runtime_error("makeup TLS context differs from current seek manager");
-  const auto table = field<void*>(native, 0);
-  const auto getter = field<void*>(table, 0x98);
-  if (imageOffset(table) != 0x3530c48 || imageOffset(getter) != 0x41d56c)
-    throw std::runtime_error("unverified makeup AE manager getter");
-  void* manager = reinterpret_cast<Getter>(getter)(native);
-  if (!manager) throw std::runtime_error("makeup AE manager unavailable");
-  void* graph = reinterpret_cast<Getter>(base + 0x407224)(manager);
-  if (!graph) throw std::runtime_error("makeup current graph unavailable");
-  return graph;
-}
-
-void tracedMakeupUpdate(void* system, double delta) {
-  try {
-    if (std::this_thread::get_id() != seekThread || updateError || !liveLeases.injecting() ||
-        !livePending || livePending->timestamp != seekTimestamp || ++liveMakeupCalls > 64)
-      throw std::runtime_error("makeup update outside bounded native prediction");
-    records << "{\"event\":\"live_makeup_update_enter\",\"prediction\":" << livePrediction
-            << ",\"timestamp_us\":" << seekTimestamp
-            << ",\"reader\":\"face-makeup-v2\",\"candidate_injected\":false,\"renderer_consumption\":false}\n"
-            << std::flush;
-    std::optional<OwnedLiveInput> input;
-    if (liveMakeupPublish) {
-      input = publishLiveInput(currentMakeupGraph());
-      const auto& lease = *input->lease;
-      const auto faces = pointerSpan(lease.duplicate, 0x38);
-      const void* first = faces.count ? field<void*>(reinterpret_cast<void*>(faces.begin), 0) : nullptr;
-      records << "{\"event\":\"live_makeup_publication\",\"prediction\":" << livePrediction
-              << ",\"timestamp_us\":" << seekTimestamp << ",\"binding_id\":" << lease.bindingId
-              << ",\"graph_id\":" << lease.graphId << ",\"graph\":" << reinterpret_cast<uintptr_t>(lease.graph)
-              << ",\"source_buffer\":" << reinterpret_cast<uintptr_t>(lease.source.get())
-              << ",\"owned_buffer\":" << reinterpret_cast<uintptr_t>(lease.duplicate)
-              << ",\"owned_base\":" << reinterpret_cast<uintptr_t>(first)
-              << ",\"owned_points\":" << (first ? reinterpret_cast<uintptr_t>(readLandmarks(first).destination) : 0)
-              << ",\"faces\":" << faces.count
-              << ",\"candidate_injected\":true,\"renderer_consumption\":false}\n" << std::flush;
-    }
-    liveMakeupSystems.at(system).original(system, delta);
-    if (input) input->validateSource();
-    records << "{\"event\":\"live_makeup_update_exit\",\"prediction\":" << livePrediction
-            << ",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
-  } catch (...) { updateError = std::current_exception(); }
-}
-
-void installMakeupObservers() {
-  if (!liveMakeupTrace) return;
-  using SceneGetter = void* (*)(const void*, int);
-  const auto getScene = jianying_probe::resolveSymbol<SceneGetter>(core,
-      "_ZNK13AmazingEngine14FeatureSegment8getSceneEi");
-  if (imageOffset(reinterpret_cast<void*>(getScene)) != 0x180b8ac)
-    throw std::runtime_error("unverified makeup scene getter");
-  const auto inventory = qcut_live::inspectMakeupScenes(reinterpret_cast<uintptr_t>(liveFeature),
-      [](uintptr_t address, void* out, size_t size) { return readMemory(reinterpret_cast<void*>(address), out, size); },
-      [](uintptr_t address) { return imageOffset(reinterpret_cast<void*>(address)); },
-      [&](uintptr_t feature, int index) { return reinterpret_cast<uintptr_t>(getScene(reinterpret_cast<void*>(feature), index)); });
-  for (uintptr_t address : inventory.makeup) {
-    void* system = reinterpret_cast<void*>(address);
-    if (liveMakeupSystems.contains(system)) throw std::runtime_error("duplicate makeup observer installation");
-    const auto table = field<unsigned char*>(system, 0);
-    auto& shadow = liveMakeupSystems[system];
-    if (!readMemory(table - 16, shadow.table.data(), sizeof(shadow.table)) ||
-        imageOffset(shadow.table[25]) != qcut_live::kMakeupV2Update)
-      throw std::runtime_error("unverified makeup observer vtable");
-    shadow.original = reinterpret_cast<MakeupUpdate>(shadow.table[25]);
-    shadow.table[25] = reinterpret_cast<void*>(tracedMakeupUpdate);
-    void* replacement = shadow.table.data() + 2;
-    std::memcpy(system, &replacement, sizeof(replacement));
-  }
-  records << "{\"event\":\"live_makeup_setup\",\"scenes\":" << inventory.scenes
-          << ",\"systems\":" << inventory.systems << ",\"makeup_systems\":" << inventory.makeup.size()
-          << ",\"renderer_consumption\":false}\n" << std::flush;
-}
+#include "face_live_makeup_hooks.h"
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
@@ -356,6 +283,12 @@ void prepareOwnedSeek(void* manager) {
   liveColdSetup.prepare(manager);
   liveSeekManager = manager;
   liveColdSeekStartPrediction = livePrediction;
+  if (liveMakeupStages) {
+    liveRenderStage.beginSeek(manager, seekTimestamp, livePrediction);
+    liveSeekResult.reset();
+    records << "{\"event\":\"live_render_stage_begin\",\"stage\":\"" << liveRenderStage.phase()
+            << "\",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
+  }
 }
 
 void prepareOwnedPrediction() {
@@ -413,6 +346,16 @@ void finishOwnedBinding(void* manager) {
     throw std::runtime_error("live prediction missing or not consumed by renderer");
   if (finished && !updateError) {
     if (!livePending) throw std::runtime_error("live prediction missing or not consumed by renderer");
+    if (liveMakeupStages && coldSeek) {
+      const bool initialization = liveRenderStage.initializing();
+      liveRenderStage.finishSeek(liveSeekResult.value_or(-1), liveLeases.restoredPublication(), liveLeases.consumed());
+      if (initialization) liveLeases.acknowledgeInitialization();
+      records << "{\"event\":\"live_render_stage_complete\",\"stage\":\""
+              << (initialization ? "initializing" : "rendering") << "\",\"prediction\":" << livePrediction
+              << ",\"timestamp_us\":" << seekTimestamp
+              << ",\"source_restored\":true,\"renderer_consumption\":"
+              << (liveLeases.consumed() ? "true" : "false") << "}\n" << std::flush;
+    }
     liveLeases.validateConsumption();
   }
 }
@@ -437,6 +380,7 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
     for (const auto& face : response.faces) {
       frame.faces.push_back({face.id, face.points});
     }
+    if (liveMakeupStages) liveRenderStage.prediction(response.prediction, response.timestamp);
     liveLeases.begin(response.prediction, response.timestamp);
     livePending = std::move(frame);
     livePrediction = response.prediction;
@@ -450,6 +394,7 @@ int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_COLD_FRAME") && !liveColdFrame) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") && (!liveMakeupTrace || !liveColdFrame)) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") && (!liveMakeupPublish || !liveMakeupTrace)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_STAGES") && (!liveMakeupStages || !liveMakeupPublish)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
