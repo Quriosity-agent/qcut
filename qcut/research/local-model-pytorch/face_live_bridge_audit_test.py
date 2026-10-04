@@ -13,13 +13,13 @@ import face_live_candidate_test as fixtures
 from face_live_worker import LiveWorker
 
 
-def receipts():
+def receipts(*, cold_frame=False):
     models = fixtures.FakeHeads()
     models.version = "dependency-core-v1:" + "a" * 64
     worker = LiveWorker(models=models, token=packets.TOKEN, source_key="synthetic-worker-source")
     replies, events, records = [], [], []
-    times = [0, 0, 33333, 33333]
-    for index in range(4):
+    times = [0, 0] if cold_frame else [0, 0, 33333, 33333]
+    for index in range(len(times)):
         mode = "seed-160" if index == 0 else "update"
         reply, _, _ = packets.feed(worker=worker, prediction=index, mode=mode, value=100 + index)
         replies.append(reply)
@@ -31,16 +31,17 @@ def receipts():
         events.append(dict(op="infer", prediction=index,
                            data=dict(size=120, network=packets.NETWORKS[120], detection_inverse=None)))
         records.append(dict(event="live_candidate_received", prediction=index, timestamp_us=times[index]))
-        if index >= 2:
+        if cold_frame or index >= 2:
+            if not cold_frame or index > 0:
+                records.append(dict(event="algorithm_update"))
             records.extend([
-                dict(event="algorithm_update"),
                 dict(event="face_clone_audit", vector_counts=[1, 0, 0, 0, 0, 0], distinct_buffer=True,
                      primary_metadata_equal=True, primary_points_isolated=True, initial_refcount=0,
                      owned_refcount=1, source_refcount=1, native_analysis_bypassed=False),
                 dict(event="live_owned_conversion", prediction=index, timestamp_us=times[index], faces=1,
                      source_points_unchanged=True, candidate_source="fresh-worker-inference", native_analysis_bypassed=False),
                 dict(event="live_owned_restored", prediction=index, gpu_complete=True, original_restored=True)])
-    observer = dict(passed=True, failures=[], observer_failures=[], predictions=4, events=events,
+    observer = dict(passed=True, failures=[], observer_failures=[], predictions=len(times), events=events,
                     callbacks=len(events), target_memory_written=False, software_breakpoints_used=False,
                     target_functions_evaluated=False)
     return dict(worker=replies, observer=observer, records=records, timestamps=times,
@@ -61,6 +62,42 @@ class CallbackAuditTests(unittest.TestCase):
         self.assertFalse(result["native_head_value_parity_verified"])
         self.assertFalse(result["native_point_value_parity_verified"])
         self.assertEqual(result["bootstrap_unrendered_predictions"], [0, 1])
+
+    def test_cold_frame_requires_every_prediction_to_reach_the_renderer(self):
+        data = receipts(cold_frame=True)
+        result = audit.callbacks(**data, cold_frame=True)
+        self.assertEqual(result["predictions"], 2)
+        self.assertEqual(result["conversions"], 2)
+        self.assertEqual(result["restorations"], 2)
+        self.assertEqual(result["bootstrap_unrendered_predictions"], [])
+        self.assertEqual(result["clone_audit"]["native_update_calls"], 1)
+        self.assertEqual(result["clone_audit"]["audit_basis"], "live-owned-conversion")
+        with self.assertRaises(ValueError):
+            audit.callbacks(**data)
+        for kind in ("live_owned_conversion", "live_owned_restored"):
+            changed = copy.deepcopy(data)
+            changed["records"] = [row for row in changed["records"]
+                                  if not (row["event"] == kind and row["prediction"] == 0)]
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                audit.callbacks(**changed, cold_frame=True)
+
+    def test_cold_frame_requires_two_real_clone_audits(self):
+        data = receipts(cold_frame=True)
+        cloned = [row for row in data["records"] if row["event"] == "face_clone_audit"]
+        for replacement in ([], cloned[:1], cloned + cloned[:1]):
+            changed = copy.deepcopy(data)
+            changed["records"] = [row for row in changed["records"] if row["event"] != "face_clone_audit"]
+            changed["records"].extend(replacement)
+            with self.subTest(count=len(replacement)), self.assertRaises(RuntimeError):
+                audit.callbacks(**changed, cold_frame=True)
+
+    def test_cold_frame_rejects_warmed_sequences_and_nonzero_time(self):
+        with self.assertRaises(ValueError):
+            audit.callbacks(**self.data, cold_frame=True)
+        data = receipts(cold_frame=True)
+        data["timestamps"] = [1, 1]
+        with self.assertRaises(ValueError):
+            audit.callbacks(**data, cold_frame=True)
 
     def test_missing_or_duplicated_worker_prediction_rejected(self):
         for rows in (self.data["worker"][:-1], self.data["worker"] + self.data["worker"][:1]):
