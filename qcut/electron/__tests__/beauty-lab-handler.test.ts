@@ -8,6 +8,7 @@ import {
 	type BeautyLabResearchFrame,
 } from "../beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
@@ -131,6 +132,7 @@ describe("Beauty Lab IPC", () => {
 		const research = provider();
 		const candidateProvider = {
 			inspect: vi.fn(),
+			dispose: vi.fn(async () => {}),
 			render: vi.fn(async () => {
 				throw new Error("candidate-driver-test");
 			}),
@@ -187,7 +189,11 @@ describe("Beauty Lab IPC", () => {
 	])("rejects %s for all channels before any provider work", async (failure) => {
 		const { event, window, mainWindow } = context();
 		const research = provider();
-		const candidateProvider = { inspect: vi.fn(), render: vi.fn() };
+		const candidateProvider = {
+			inspect: vi.fn(),
+			render: vi.fn(),
+			dispose: vi.fn(async () => {}),
+		};
 		const untrusted = { ...event };
 		if (failure === "destroyed-window")
 			window.isDestroyed.mockReturnValue(true);
@@ -356,8 +362,8 @@ describe("Beauty Lab IPC", () => {
 		expect(first.load).not.toHaveBeenCalled();
 		expect(second.list).toHaveBeenCalledOnce();
 		expect(second.load).toHaveBeenCalledOnce();
-		replacement.dispose();
-		replacement.dispose();
+		await replacement.dispose();
+		await replacement.dispose();
 		expect(registrations.size).toBe(0);
 	});
 
@@ -376,7 +382,7 @@ describe("Beauty Lab IPC", () => {
 			currentSourceRoot: "/unused",
 			provider: second,
 		});
-		first.dispose();
+		await first.dispose();
 		expect(registrations.has(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL)).toBe(true);
 		expect(registrations.has(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL)).toBe(true);
 		expect(await invoke({ channel: BEAUTY_LAB_LIST_CHANNEL, event })).toBe(
@@ -389,7 +395,60 @@ describe("Beauty Lab IPC", () => {
 		});
 		expect(second.list).toHaveBeenCalledOnce();
 		expect(second.load).toHaveBeenCalledOnce();
-		replacement.dispose();
+		await replacement.dispose();
+		expect(registrations.size).toBe(0);
+	});
+	it.each([
+		false,
+		true,
+	])("awaits candidate cleanup once even when stale=%s", async (stale) => {
+		const { mainWindow } = context();
+		let finish = () => {};
+		const pending = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		const candidateProvider = {
+			...createBeautyLabCandidateProvider(),
+			dispose: vi.fn(() => pending),
+		};
+		const options = {
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: provider(),
+		};
+		const first = setupBeautyLabIPC({ ...options, candidateProvider });
+		const replacement = stale ? setupBeautyLabIPC(options) : undefined;
+		const disposal = first.dispose();
+		expect(first.dispose()).toBe(disposal);
+		let settled = false;
+		void disposal.then(() => {
+			settled = true;
+		});
+		await Promise.resolve();
+		expect(candidateProvider.dispose).toHaveBeenCalledOnce();
+		expect(settled).toBe(false);
+		expect(registrations.size).toBe(stale ? 4 : 0);
+		finish();
+		await disposal;
+		expect(settled).toBe(true);
+		await replacement?.dispose();
+	});
+	it("returns cleanup failure to the quit barrier after removing handlers", async () => {
+		const { mainWindow } = context();
+		const controller = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: provider(),
+			candidateProvider: {
+				...createBeautyLabCandidateProvider(),
+				dispose: vi.fn(async () => {
+					throw new Error("cleanup failed");
+				}),
+			},
+		});
+		await expect(controller.dispose()).rejects.toThrow("cleanup failed");
 		expect(registrations.size).toBe(0);
 	});
 });
