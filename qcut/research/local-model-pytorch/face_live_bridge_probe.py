@@ -8,6 +8,7 @@ manually in macOS; this launcher never changes TCC or relocates executables.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import hashlib
 import json
 from pathlib import Path
@@ -23,6 +24,7 @@ from face_live_bridge_process import ProcessScope, cancellation_signals
 from face_temporal_campaign import file_fingerprint
 import face_live_bridge_bundle as bundle
 import face_live_bridge_audit as audit
+import face_live_host_identity as host_identity
 import face_render_sequence_probe as sequence
 
 
@@ -96,7 +98,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
                              stdout=live / "worker.stdout", stderr=live / "worker.stderr")
         scope.until(predicate=lambda: worker_ready(path=live / "worker.stdout", socket=socket),
                     process=worker, timeout=30)
-        config = dict(host=str(out / "live-host"), lens=str(args.runtime / "Frameworks/liblens.dylib"),
+        config = dict(host=report.get("host_identity", {}).get("path", str(out / "live-host")),
+            lens=str(args.runtime / "Frameworks/liblens.dylib"),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib"),
@@ -158,6 +161,7 @@ def run(*, args):
             "entry-crop-arguments-and-predictor-entry-inverse", "tracking-geometry-tables-reset",
             "metadata-masks-and-native-renderer"], render_tolerance=0, frames=[])
     guard, scope, models = bundle.DependencyGuard(), ProcessScope(directory=out), None
+    leases = ExitStack()
     try:
         with cancellation_signals(), scope:
             for key in ("runtime", "package", "root", "manifest"):
@@ -176,12 +180,22 @@ def run(*, args):
             report["models"] = models.provenance
             report["phase"] = "compile"
             report["compile_commands"] = bundle.compile_commands(runtime=args.runtime, out=out)
+            stable_host = getattr(args, "stable_host", False)
+            if stable_host:
+                report["phase"] = "stable-host-identity"
+                directory = leases.enter_context(host_identity.helper_lease(audit=out, cleanup=scope.cleanup))
+                report["host_identity"] = host_identity.prepare_host(directory=directory,
+                    runtime=args.runtime, scope=scope, out=out, guard=guard)
+                report["compile_commands"].pop("live")
+                report["phase"] = "compile"
             for name, command in report["compile_commands"].items():
                 process = scope.spawn(command=command, environment=bundle.system_environment(),
                                       stdout=out / f"compile-{name}.log")
                 scope.wait(process=process, timeout=180)
                 scope.finish(process=process)
             for name in ("baseline-host", "live-host", "live-capture.dylib"):
+                if stable_host and name == "live-host":
+                    continue
                 guard.locked.read(path=out / name, maximum=128 * 1024**2)
             guard.verify()
             models.verify()
@@ -225,8 +239,12 @@ def run(*, args):
             "--runtime", str(args.runtime), "--package", str(args.package), "--root", str(args.root),
             "--manifest", str(args.manifest), "--out", str(out) + "-rerun", "--timeout", str(args.timeout),
             *(["--single-frame"] if single_frame else []),
+            *(["--stable-host"] if getattr(args, "stable_host", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])])
-        bundle.write_json(path=out / "report.json", value=report)
+        try:
+            bundle.write_json(path=out / "report.json", value=report)
+        finally:
+            leases.close()
     return report
 
 
@@ -235,6 +253,8 @@ def main():
     for name in ("runtime", "package", "root", "manifest", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--execute-native", action="store_true")
+    parser.add_argument("--stable-host", action="store_true",
+                        help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--lease")
