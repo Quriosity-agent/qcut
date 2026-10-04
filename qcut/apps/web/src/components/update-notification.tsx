@@ -126,9 +126,14 @@ export function UpdateNotification() {
 		const updates = platform().updates;
 		const unsubscribe = updates.onStateChanged(applyState);
 		let active = true;
-		void updates.getState().then((snapshot) => {
-			if (active) applyState(snapshot);
-		});
+		void updates
+			.getState()
+			.then((snapshot) => {
+				if (active) applyState(snapshot);
+			})
+			.catch(() => {
+				// Startup can precede IPC registration; state events remain authoritative.
+			});
 
 		return () => {
 			active = false;
