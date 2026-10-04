@@ -237,6 +237,60 @@ describe("stateful portrait fitting provider", () => {
 		expect(reverse.rgba[0]).toBe(101);
 		expect(hosts).toHaveLength(2);
 	});
+	it("retires stale tracking after a cached forward seek before returning backwards", async () => {
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		await provider.render(request({ timestampSeconds: 1 }));
+		const forward = await provider.render(
+			request({ timestampSeconds: 1.1, pixels })
+		);
+		await provider.render(request({ timestampSeconds: 1.033 }));
+		const cached = await provider.render(
+			request({ timestampSeconds: 1.1, pixels })
+		);
+		expect(cached.rgba).toEqual(forward.rgba);
+		expect(hosts[1].dispose).toHaveBeenCalledOnce();
+		const afterCache = await provider.render(
+			request({ timestampSeconds: 1.05, pixels })
+		);
+		expect(hosts).toHaveLength(3);
+		await provider.clear();
+		const cold = await provider.render(
+			request({ timestampSeconds: 1.05, pixels })
+		);
+		expect(afterCache.rgba).toEqual(cold.rgba);
+	});
+	it("keeps native state for an exact paused cache hit and isolates another source", async () => {
+		const base = request({ timestampSeconds: 1 });
+		const first = await provider.render(base);
+		await provider.render({ ...base, sourceKey: "other-source" });
+		const cached = await provider.render(base);
+		expect(cached.rgba).toEqual(first.rgba);
+		expect(cached.rgba).not.toBe(first.rgba);
+		expect(hosts).toHaveLength(2);
+		for (const host of hosts) expect(host.dispose).not.toHaveBeenCalled();
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const next = await provider.render(
+			request({ timestampSeconds: 1.033, pixels })
+		);
+		expect(next.rgba[0]).toBe(102);
+		expect(hosts).toHaveLength(2);
+	});
+	it("retires cached parameter history even at the same timestamp", async () => {
+		const original = await provider.render(request());
+		await provider.render(request({ value: 25 }));
+		const cached = await provider.render(request());
+		expect(cached.rgba).toEqual(original.rgba);
+		expect(hosts[1].dispose).toHaveBeenCalledOnce();
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		const next = await provider.render(
+			request({ value: 25, timestampSeconds: 1 / 30, pixels })
+		);
+		expect(next.rgba[0]).toBe(101);
+		expect(hosts).toHaveLength(3);
+	});
 	it("rebuilds smile fitting after an upstream mouth edit on the same frame", async () => {
 		const base = request();
 		await provider.render({
