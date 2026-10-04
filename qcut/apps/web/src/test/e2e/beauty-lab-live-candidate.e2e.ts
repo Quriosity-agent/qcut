@@ -14,6 +14,7 @@ import {
 } from "./helpers/portrait-reference";
 
 const source = process.env.QCUT_REAL_PORTRAIT_IMAGE_PATH;
+const variant = process.env.QCUT_BEAUTY_LIVE_CASE ?? "eye";
 const output = path.resolve(
 	process.env.QCUT_BEAUTY_LIVE_OUTPUT ??
 		"output/playwright/beauty-lab-live-candidate"
@@ -62,13 +63,36 @@ test("Beauty Lab current-frame ONNX handoff, independent audit, ZIP and stale-re
 			scope: "audited-single-static-frame",
 		});
 		const controls = lab.getByTestId("beauty-lab-controls");
-		await controls
-			.getByRole("button", { name: "五官精修", exact: true })
-			.click();
-		await controls.getByRole("button", { name: "精修", exact: true }).click();
-		const eye = lab.getByLabel("眼睛大小（精修）数值", { exact: true });
-		await eye.fill("40");
-		await eye.press("Tab");
+		if (!["eye", "face-slim", "lip"].includes(variant))
+			throw new Error(`Unsupported live UI case: ${variant}`);
+		const group = controls.getByRole("button", {
+			name:
+				variant === "lip"
+					? "美妆"
+					: variant === "face-slim"
+						? "脸型"
+						: "五官精修",
+			exact: true,
+		});
+		if ((await group.getAttribute("aria-expanded")) === "false")
+			await group.click();
+		if (variant === "eye")
+			await controls.getByRole("button", { name: "精修", exact: true }).click();
+		if (variant === "lip") {
+			const makeup = controls.getByTestId("portrait-section-makeup");
+			await makeup.getByRole("tab", { name: "口红", exact: true }).click();
+			await makeup.getByRole("button", { name: "柔和粉", exact: true }).click();
+		}
+		const parameter = lab.getByLabel(
+			variant === "lip"
+				? "程度数值"
+				: variant === "face-slim"
+					? "瘦脸数值"
+					: "眼睛大小（精修）数值",
+			{ exact: true }
+		);
+		await parameter.fill(variant === "eye" ? "40" : "80");
+		await parameter.press("Tab");
 		await lab.getByRole("button", { name: "原生处理", exact: true }).click();
 		await expect(
 			lab.getByRole("img", { name: "原生结果", exact: true })
@@ -117,6 +141,16 @@ test("Beauty Lab current-frame ONNX handoff, independent audit, ZIP and stale-re
 		expect(report.candidateProvenance.inputSha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(report.candidateProvenance.stageMetrics).toHaveLength(10);
 		expect(report.gain).toBe(8);
+		if (variant === "lip")
+			expect(report.adjustments.makeup).toEqual({
+				lip: { cardId: "lip-soft-pink", intensity: 80 },
+			});
+		else
+			expect(report.adjustments.values).toEqual(
+				variant === "eye"
+					? { face_adjust_eye: 40 }
+					: { face_adjust_TotalFace: 80 }
+			);
 		expect(
 			report.comparisons.find(
 				(row: { name: string }) => row.name === "original-candidate"
@@ -160,8 +194,8 @@ test("Beauty Lab current-frame ONNX handoff, independent audit, ZIP and stale-re
 			animations: "disabled",
 		});
 		await page.setViewportSize({ width: 1440, height: 1000 });
-		await eye.fill("20");
-		await eye.press("Tab");
+		await parameter.fill("20");
+		await parameter.press("Tab");
 		await expect(
 			lab.getByRole("img", { name: "新链路（单帧核验）", exact: true })
 		).toHaveCount(0);
@@ -185,6 +219,7 @@ test("Beauty Lab current-frame ONNX handoff, independent audit, ZIP and stale-re
 			JSON.stringify(
 				{
 					passed: true,
+					variant,
 					scope: "audited-single-static-frame",
 					status,
 					comparison: report,
