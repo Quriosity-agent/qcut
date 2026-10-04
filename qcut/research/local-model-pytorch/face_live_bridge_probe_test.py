@@ -87,6 +87,8 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
         self.assertNotIn("QCUT_FACE_LIVE_COLD_FRAME", bundle.host_environment(**kwargs))
         with self.assertRaisesRegex(ValueError, "explicit single-frame"):
             probe.run(args=argparse.Namespace(cold_frame=True, single_frame=False))
+        with self.assertRaisesRegex(ValueError, "stage diagnostics require cold-frame"):
+            probe.run(args=argparse.Namespace(trace_stages=True))
         with self.assertRaisesRegex(ValueError, "makeup system observation requires cold-frame"):
             probe.run(args=argparse.Namespace(trace_makeup_system=True, cold_frame=False, single_frame=True))
         with self.assertRaisesRegex(ValueError, "publication requires explicit system observation"):
@@ -269,6 +271,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.args.stage_makeup_render = True
         self.args.trace_makeup_points = True
         self.args.consume_makeup_candidate = True
+        self.args.trace_stages = True
         result, native = self.run_preparation()
         self.assertTrue(result["prepared"])
         self.assertTrue(result["completed"])
@@ -276,12 +279,13 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertTrue(result["makeup_render_stage_research"])
         self.assertTrue(result["makeup_point_observation"])
         self.assertTrue(result["makeup_consumption_research"])
+        self.assertTrue(result["stage_diagnostics"])
         self.assertFalse(result["passed"])
         self.assertFalse(result["live_callback_handoff_verified"])
         self.assertFalse(result["product_backend_registered"])
         self.assertEqual(result["warmup_request_count"], 0)
         for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
-                       "--stage-makeup-render", "--trace-makeup-points", "--consume-makeup-candidate"):
+                       "--stage-makeup-render", "--trace-makeup-points", "--consume-makeup-candidate", "--trace-stages"):
             self.assertIn(option, result["command"])
         native.assert_not_called()
 
@@ -368,6 +372,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
                     scope=mock.Mock(), report=report)
         render.assert_not_called()
         self.assertNotIn("live_checks_completed", report)
+
 
     def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
         directory = self.root / "stable"
