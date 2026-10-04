@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 from PIL import Image
 
@@ -68,7 +69,7 @@ def run_job(*, args):
         parameters=request["parameters"], expect_change=True, label="current-request-static-audit")]))
     report = run(args=argparse.Namespace(runtime=args.runtime, package=args.package, root=args.root,
         manifest=manifest, out=directory / "audit", execute_native=True, lease=args.lease,
-        timeout=args.timeout, single_frame=True))
+        timeout=args.timeout, single_frame=True, stable_host=True))
     require(condition=report["passed"] is True and report["live_callback_handoff_verified"] is True and
         report["dependencies_unchanged"] is True and report["cleanup"]["completed"] is True,
         message="fresh live job did not pass: " + json.dumps(report["failures"]))
@@ -100,7 +101,11 @@ def main():
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--lease", required=True)
     parser.add_argument("--timeout", type=float, default=120)
-    result = run_job(args=parser.parse_args())
+    try:
+        result = run_job(args=parser.parse_args())
+    except Exception as error:
+        print("QCUT_LIVE_CANDIDATE_ERROR=" + json.dumps(dict(message=str(error)[:2000])), file=sys.stderr)
+        raise SystemExit(1) from error
     print(json.dumps(dict(passed=True, requestId=result["requestId"], scope=result["scope"])))
 
 
