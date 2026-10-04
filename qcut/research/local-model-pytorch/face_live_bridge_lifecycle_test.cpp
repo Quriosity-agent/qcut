@@ -26,7 +26,6 @@ struct Graph { void* raw = nullptr; };
 struct Receipt { int64_t prediction; uint64_t binding; uint64_t graph; bool converted; };
 
 struct Fixture {
-  qcut_live::CloneLeaseScope scope;
   int source = 1;
   int clone = 2;
   int replacement = 3;
@@ -34,6 +33,9 @@ struct Fixture {
   int fences = 0;
   int restores = 0;
   std::vector<Receipt> receipts;
+  qcut_live::CloneLeaseScope scope;
+
+  explicit Fixture(bool cold = false) : scope(cold) {}
 
   void bind(Graph& graph, bool converted = true) {
     graph.raw = &source;
@@ -71,6 +73,7 @@ void inspectionCannotLease() {
     require(!fixture.scope.injecting(), "inspection can inject after finish");
     rejects([&] { fixture.scope.requireGraph(&graph); }, "outside prediction scope");
     require(!fixture.scope.consumed(), "inspection claimed consumption");
+    fixture.scope.validateConsumption();
   }
   fixture.scope.begin(2, 0);
   fixture.bind(graph);
@@ -192,6 +195,102 @@ void boundedGraphsAndDuplicateConsumption() {
   require(fixture.sourceReleases == 10 && fixture.receipts.size() == 10,
           "bounded graph leases were not all drained");
 }
+
+void coldPredictionsHaveNoBootstrapExemption() {
+  Fixture fixture(true);
+  rejects([&] { fixture.scope.validateConsumption(); }, "missing or not consumed");
+  fixture.scope.begin(0, 0);
+  require(fixture.scope.requiresConsumption(), "cold prediction zero was exempted");
+  fixture.finish();
+  rejects([&] { fixture.scope.validateConsumption(); }, "missing or not consumed");
+  rejects([&] { fixture.scope.begin(1, 0); }, "unconsumed predecessor");
+  require(fixture.receipts.empty() && fixture.fences == 0,
+          "cold inspection fabricated consumption or a fence");
+}
+
+void coldFirstTwoPredictionsRestoreRealLeases() {
+  Fixture fixture(true);
+  Graph graph;
+  for (int64_t prediction : {0, 1}) {
+    fixture.sourceReleases = 0;
+    fixture.scope.begin(prediction, 0);
+    fixture.bind(graph);
+    fixture.finish();
+    fixture.scope.validateConsumption();
+    require(!fixture.scope.injecting(), "cold inspection could inject");
+    rejects([&] { fixture.scope.requireGraph(&graph); }, "outside prediction scope");
+    require(fixture.receipts.back().prediction == prediction &&
+            fixture.receipts.back().converted && graph.raw == &fixture.source,
+            "cold bootstrap lost its actual conversion/restoration receipt");
+  }
+  require(fixture.receipts.size() == 2 && fixture.fences == 2,
+          "cold predictions did not complete independently");
+}
+
+void coldPublicationAloneDoesNotConsume() {
+  Fixture fixture(true);
+  Graph graph;
+  fixture.scope.begin(0, 0);
+  fixture.bind(graph, false);
+  fixture.finish();
+  rejects([&] { fixture.scope.validateConsumption(); }, "missing or not consumed");
+  rejects([&] { fixture.scope.begin(1, 0); }, "unconsumed predecessor");
+  require(fixture.receipts.size() == 1 && !fixture.receipts.front().converted,
+          "cold publication counted as native consumption");
+}
+
+void coldSetupWaitsForWorkerAndRunsOnce() {
+  qcut_live::DeferredColdSetup setup;
+  int manager = 0, installs = 0;
+  bool algorithmsReady = false;
+  setup.prepare(&manager);
+  require(setup.active() && installs == 0, "pre-seek touched uncreated algorithms");
+  algorithmsReady = true;
+  const auto install = [&](void* received) {
+    require(algorithmsReady && received == &manager, "callback lost its ready manager");
+    ++installs;
+  };
+  require(setup.installForPrediction(0, install), "prediction zero did not install hooks");
+  require(setup.finish() && !setup.active() && !setup.finish(), "cold seek did not close once");
+  setup.prepare(&manager);
+  require(!setup.installForPrediction(1, install) && installs == 1,
+          "later prediction reinstalled cold hooks");
+  setup.finish();
+}
+
+void coldSetupReadinessFailureCannotWarmUpOrRetry() {
+  qcut_live::DeferredColdSetup setup;
+  int manager = 0, attempts = 0;
+  setup.prepare(&manager);
+  rejects([&] {
+    setup.installForPrediction(0, [&](void*) {
+      ++attempts;
+      throw std::runtime_error("cold callback algorithm list is empty");
+    });
+  }, "algorithm list is empty");
+  setup.finish();
+  rejects([&] { setup.prepare(&manager); }, "algorithm list is empty");
+  rejects([&] { setup.installForPrediction(1, [&](void*) { ++attempts; }); }, "algorithm list is empty");
+  require(attempts == 1, "failed cold setup silently retried after warming");
+}
+
+void coldSetupRejectsWrongBoundaryAndManager() {
+  int manager = 0, other = 0, installs = 0;
+  const auto install = [&](void*) { ++installs; };
+  qcut_live::DeferredColdSetup outside;
+  rejects([&] { outside.installForPrediction(0, install); }, "outside native seek");
+  qcut_live::DeferredColdSetup late;
+  late.prepare(&manager);
+  rejects([&] { late.installForPrediction(1, install); }, "prediction zero");
+  qcut_live::DeferredColdSetup changed;
+  changed.prepare(&manager);
+  changed.finish();
+  rejects([&] { changed.prepare(&other); }, "manager missing, changed or reentered");
+  qcut_live::DeferredColdSetup nested;
+  nested.prepare(&manager);
+  rejects([&] { nested.prepare(&manager); }, "manager missing, changed or reentered");
+  require(installs == 0, "invalid cold boundary installed hooks");
+}
 }
 
 int main() {
@@ -204,5 +303,11 @@ int main() {
   unpublishedLeaseAndMissingConsumer();
   independentGraphsDrainOnFailure();
   boundedGraphsAndDuplicateConsumption();
-  std::cout << "9 CPU-only clone lifecycle tests passed\n";
+  coldPredictionsHaveNoBootstrapExemption();
+  coldFirstTwoPredictionsRestoreRealLeases();
+  coldPublicationAloneDoesNotConsume();
+  coldSetupWaitsForWorkerAndRunsOnce();
+  coldSetupReadinessFailureCannotWarmUpOrRetry();
+  coldSetupRejectsWrongBoundaryAndManager();
+  std::cout << "15 CPU-only clone lifecycle tests passed\n";
 }
