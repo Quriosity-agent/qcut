@@ -68,9 +68,11 @@ def lock_dependencies(*, runtime, package, models, guard):
         guard.library(path=runtime / "Frameworks" / name, expected=expected)
 
 
-def prepare_inputs(*, manifest, out, guard, single_frame=False):
+def prepare_inputs(*, manifest, out, guard, single_frame=False, static_controls=False):
     from PIL import Image
 
+    if single_frame and static_controls:
+        raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     frames = sequence.validate_manifest(value=strict_json(data=guard.locked.read(
         path=manifest, maximum=sequence.MANIFEST_LIMIT)), base=manifest.parent, expect_change=True)
     if single_frame and len(frames) != 1:
@@ -92,7 +94,12 @@ def prepare_inputs(*, manifest, out, guard, single_frame=False):
         path.write_bytes(pixels)
         guard.locked.read(path=path, maximum=16 * 1024**2)
         frame.update(input=str(path), input_sha256=hashlib.sha256(pixels).hexdigest())
-    if not single_frame and len({frame["input_sha256"] for frame in frames}) < 2:
+    distinct_inputs = len({frame["input_sha256"] for frame in frames})
+    if static_controls:
+        parameters = {json.dumps(frame["parameters"], sort_keys=True) for frame in frames}
+        if distinct_inputs != 1 or len(parameters) < 2 or any(frame["timestamp"] != 0 for frame in frames):
+            raise ValueError("static-controls requires identical pixels, timestamp zero and distinct parameters")
+    elif not single_frame and distinct_inputs < 2:
         raise ValueError("live acceptance requires at least two distinct input frames")
     return frames, size
 
