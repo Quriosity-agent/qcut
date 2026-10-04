@@ -123,11 +123,12 @@ def on_breakpoint(frame, location, internal_dict):
         return True
 
 
-def process_diagnostics(*, process):
+def process_diagnostics(*, process, exited_state, no_stop_reason):
     stops = []
-    for index in range(min(process.GetNumThreads(), 64)):
+    thread_count = 0 if process.GetState() == exited_state else min(process.GetNumThreads(), 64)
+    for index in range(thread_count):
         thread = process.GetThreadAtIndex(index)
-        if thread.GetStopReason() == 0:
+        if thread.GetStopReason() in (0, no_stop_reason):
             continue
         frames = []
         for depth in range(min(thread.GetNumFrames(), 8)):
@@ -176,7 +177,8 @@ def run(*, debugger, config_path):
         if error.Fail():
             raise RuntimeError(error.GetCString())
         STATE.process = process
-        report.update(process_diagnostics(process=process))
+        report.update(process_diagnostics(process=process, exited_state=lldb.eStateExited,
+                                          no_stop_reason=lldb.eStopReasonNone))
         if STATE.failures or process.GetState() != lldb.eStateExited or process.GetExitStatus() != 0:
             raise RuntimeError(STATE.failures[-1] if STATE.failures else "live host stopped or failed")
         report["passed"] = True
