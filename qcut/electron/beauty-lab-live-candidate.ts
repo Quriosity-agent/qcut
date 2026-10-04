@@ -264,6 +264,7 @@ export async function createBeautyLabLiveCandidateBackend({
 				controller.signal.throwIfAborted();
 				const result = await readBeautyLabLiveCandidateResult({
 					directory,
+					hostDirectory: path.join(source.canonical, LOCAL, "beauty-live-host"),
 					request: bound,
 					runtime,
 					packagePath,
