@@ -7,6 +7,46 @@
 #include <utility>
 
 namespace qcut_live {
+class DeferredColdSetup {
+ public:
+  void prepare(void* manager) {
+    if (failure_) std::rethrow_exception(failure_);
+    if (!manager || (manager_ && manager_ != manager) || active_) {
+      failure_ = std::make_exception_ptr(std::runtime_error("cold seek manager missing, changed or reentered"));
+      std::rethrow_exception(failure_);
+    }
+    manager_ = manager;
+    active_ = true;
+  }
+
+  template <typename Install>
+  bool installForPrediction(int64_t prediction, Install install) {
+    if (failure_) std::rethrow_exception(failure_);
+    try {
+      if (!active_ || !manager_)
+        throw std::runtime_error("cold hook setup outside native seek");
+      if (installed_) return false;
+      if (prediction != 0)
+        throw std::runtime_error("cold hooks must be installed at prediction zero");
+      install(manager_);
+      installed_ = true;
+      return true;
+    } catch (...) {
+      failure_ = std::current_exception();
+      throw;
+    }
+  }
+
+  bool active() const { return active_; }
+  bool finish() { return std::exchange(active_, false); }
+
+ private:
+  void* manager_ = nullptr;
+  std::exception_ptr failure_;
+  bool active_ = false;
+  bool installed_ = false;
+};
+
 struct CloneLease {
   void* graph;
   void* duplicate;
@@ -21,10 +61,13 @@ struct CloneLease {
 
 class CloneLeaseScope {
  public:
+  explicit CloneLeaseScope(bool requireEveryPrediction = false)
+      : requireEveryPrediction_(requireEveryPrediction) {}
+
   void begin(int64_t prediction, int64_t timestamp) {
     if (failure_) std::rethrow_exception(failure_);
     if (!leases_.empty()) throw std::runtime_error("live result has undrained graph leases");
-    if (prediction_ >= 2 && !consumed_)
+    if (requiresConsumption() && !consumed_)
       throw std::runtime_error("live result has unconsumed predecessor");
     prediction_ = prediction;
     timestamp_ = timestamp;
@@ -35,6 +78,13 @@ class CloneLeaseScope {
 
   bool injecting() const { return open_; }
   bool consumed() const { return consumed_; }
+  bool requiresConsumption() const {
+    return prediction_ >= 0 && (requireEveryPrediction_ || prediction_ >= 2);
+  }
+  void validateConsumption() const {
+    if (prediction_ < 0 || (requiresConsumption() && !consumed_))
+      throw std::runtime_error("live prediction missing or not consumed by renderer");
+  }
 
   void requireGraph(void* graph) const {
     if (!open_ || !graph) throw std::runtime_error("live conversion outside prediction scope");
@@ -97,6 +147,7 @@ class CloneLeaseScope {
   }
 
  private:
+  const bool requireEveryPrediction_;
   std::map<void*, CloneLease> leases_;
   std::map<void*, uint64_t> graphIds_;
   std::exception_ptr failure_;
@@ -117,12 +168,15 @@ class CloneLeaseScope {
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
+void prepareOwnedSeek(void*);
 }
 #define QCUT_FACE_BINDING_HOOK
+#define QCUT_FACE_PRE_SEEK_HOOK
 #define main liveConsumerMain
 #include "face_owned_result_bridge.mm"
 #undef main
 #undef QCUT_FACE_BINDING_HOOK
+#undef QCUT_FACE_PRE_SEEK_HOOK
 
 namespace {
 using Convert = uint64_t (*)(void*, void*);
@@ -130,9 +184,12 @@ using Publish = void (*)(void*, int, void* const*);
 struct Adapter { std::array<void*, 18> table{}; Convert original = nullptr; };
 std::map<void*, Adapter> liveAdapters;
 std::vector<std::unique_ptr<FaceOwner>> liveClones;
-qcut_live::CloneLeaseScope liveLeases;
+const bool liveColdFrame = std::string(std::getenv("QCUT_FACE_LIVE_COLD_FRAME") ?: "") == "1";
+qcut_live::CloneLeaseScope liveLeases(liveColdFrame);
 std::optional<ReplayFrame> livePending;
 int64_t livePrediction = -1;
+qcut_live::DeferredColdSetup liveColdSetup;
+int64_t liveColdSeekStartPrediction = -1;
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
@@ -143,6 +200,8 @@ uint64_t liveConvert(void* adapter, void* context) {
     if (std::this_thread::get_id() != seekThread || updateError)
       throw std::runtime_error("unsupported live conversion thread or prior callback failure");
     if (!liveLeases.injecting()) {
+      if (liveColdSetup.active())
+        throw std::runtime_error("cold native conversion without active prediction");
       result = liveAdapters.at(adapter).original(adapter, context);
       records << "{\"event\":\"live_inspection_conversion\",\"prediction\":" << livePrediction
               << ",\"timestamp_us\":" << seekTimestamp
@@ -159,6 +218,13 @@ uint64_t liveConvert(void* adapter, void* context) {
     publish = reinterpret_cast<Publish>(static_cast<unsigned char*>(imageBase()) + 0xc157e8);
     source = raw(graph, 4);
     if (!source) throw std::runtime_error("live conversion has no FaceBuffer");
+    if (liveColdFrame && livePrediction == 0) {
+      const auto expected = static_cast<unsigned char*>(dlsym(core, "_ZTVN4Bach10FaceBufferE"));
+      if (!expected || field<void*>(source, 0) != expected + 16)
+        throw std::runtime_error("cold conversion result is not a FaceBuffer");
+      // The first update was already on-stack when its hook was installed.
+      inspectOwnedResult(source);
+    }
     const auto clone = jianying_probe::resolveSymbol<CloneFace>(core, "_ZNK4Bach10FaceBuffer5CloneEv");
     const auto retain = jianying_probe::resolveSymbol<ReferenceOperation>(core, "_ZNK13AmazingEngine7RefBase6retainEv");
     const auto release = jianying_probe::resolveSymbol<ReferenceOperation>(core, "_ZNK13AmazingEngine7RefBase7releaseEv");
@@ -217,7 +283,9 @@ void inspectOwnedAdapter(void* algorithm) {
   using Lookup = void* (*)(void*, const int*);
   const auto lookup = reinterpret_cast<Lookup>(static_cast<unsigned char*>(imageBase()) + 0x25dcd08);
   const int type = 4;
-  void* adapter = lookup(field<void*>(implementation, 0x658), &type);
+  void* registry = field<void*>(implementation, 0x658);
+  if (!registry) throw std::runtime_error("live face adapter registry unavailable");
+  void* adapter = lookup(registry, &type);
   if (!adapter) throw std::runtime_error("live face adapter unavailable");
   if (liveAdapters.contains(adapter)) return;
   void* table = field<void*>(adapter, 0);
@@ -232,7 +300,39 @@ void inspectOwnedAdapter(void* algorithm) {
   std::memcpy(adapter, &replacement, sizeof(replacement));
 }
 
+void prepareOwnedSeek(void* manager) {
+  if (!liveColdFrame) return;
+  if (!traceUpdates)
+    throw std::runtime_error("cold setup requires update tracing");
+  liveColdSetup.prepare(manager);
+  liveColdSeekStartPrediction = livePrediction;
+}
+
+void prepareOwnedPrediction() {
+  if (!liveColdFrame) return;
+  std::set<void*> algorithms;
+  const bool installed = liveColdSetup.installForPrediction(livePrediction, [&](void* manager) {
+    if (nativeUpdateCalls != 0)
+      throw std::runtime_error("cold setup missed the first native update");
+    visitManagerAlgorithms(manager, [&](void* algorithm) {
+      if (!algorithms.insert(algorithm).second) return;
+      if (algorithms.size() > 32)
+        throw std::runtime_error("too many cold setup algorithms");
+      // No lazy face lookup or raw-result read while prediction is still unwinding.
+      installUpdateTrace(algorithm);
+      inspectOwnedAdapter(algorithm);
+    });
+    if (algorithms.empty()) throw std::runtime_error("cold callback algorithm list is empty");
+  });
+  if (installed) {
+    records << "{\"event\":\"live_cold_setup\",\"algorithms\":" << algorithms.size()
+            << ",\"first_prediction\":0,\"setup_scope\":\"worker-result\","
+               "\"inspection_performed\":false,\"renderer_consumption\":false}\n" << std::flush;
+  }
+}
+
 void finishOwnedBinding(void* manager) {
+  const bool coldSeek = liveColdSetup.finish();
   const auto fence = [&] {
     using Getter = void* (*)(void*);
     const auto amazer = jianying_probe::resolveSymbol<Getter>(core, "_ZNK13AmazingEngine12SwingManager9getAmazerEv");
@@ -258,8 +358,12 @@ void finishOwnedBinding(void* manager) {
     if (updateError) std::rethrow_exception(updateError);
     throw;
   }
-  if (finished && !updateError && (!livePending || (livePrediction >= 2 && !liveLeases.consumed())))
+  if (coldSeek && !updateError && livePrediction <= liveColdSeekStartPrediction)
     throw std::runtime_error("live prediction missing or not consumed by renderer");
+  if (finished && !updateError) {
+    if (!livePending) throw std::runtime_error("live prediction missing or not consumed by renderer");
+    liveLeases.validateConsumption();
+  }
 }
 }
 
@@ -287,10 +391,12 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
     livePrediction = response.prediction;
     records << "{\"event\":\"live_candidate_received\",\"prediction\":" << livePrediction
             << ",\"timestamp_us\":" << seekTimestamp << "}\n" << std::flush;
+    prepareOwnedPrediction();
   } catch (...) { updateError = std::current_exception(); }
 }
 
 int main(int argc, char* argv[]) {
+  if (std::getenv("QCUT_FACE_LIVE_COLD_FRAME") && !liveColdFrame) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
