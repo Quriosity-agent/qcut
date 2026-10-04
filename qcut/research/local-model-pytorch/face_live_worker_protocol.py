@@ -2,15 +2,37 @@
 from __future__ import annotations
 
 import json
+import math
 import socket
 import struct
 import time
 
-from face_alignment_replay import strict_json
-
 HEADER = struct.Struct("!II")
 JSON_LIMIT = 128 * 1024
 PIXEL_LIMIT = 16 * 1024**2
+
+
+def decode_message(*, data):
+    def unique_fields(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("duplicate live JSON field")
+            result[key] = value
+        return result
+
+    def finite_number(value):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("non-finite live JSON number")
+        return number
+
+    # LLDB uses its own Python without the model environment's NumPy.
+    message = json.loads(data.decode("utf-8"), object_pairs_hook=unique_fields,
+                         parse_float=finite_number, parse_constant=finite_number)
+    if type(message) is not dict:
+        raise ValueError("live frame object required")
+    return message
 
 
 def receive_exact(*, connection, count, deadline):
@@ -33,9 +55,7 @@ def receive(*, connection, timeout):
     size, pixel_size = HEADER.unpack(receive_exact(connection=connection, count=HEADER.size, deadline=deadline))
     if not 1 <= size <= JSON_LIMIT or not 0 <= pixel_size <= PIXEL_LIMIT:
         raise ValueError("live frame exceeds JSON/pixel budgets")
-    message = strict_json(data=receive_exact(connection=connection, count=size, deadline=deadline))
-    if type(message) is not dict:
-        raise ValueError("live frame object required")
+    message = decode_message(data=receive_exact(connection=connection, count=size, deadline=deadline))
     pixels = receive_exact(connection=connection, count=pixel_size, deadline=deadline)
     return message, pixels
 
