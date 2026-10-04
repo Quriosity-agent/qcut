@@ -147,7 +147,10 @@ async function captureTree({
 				message: "dependency tree symlink rejected",
 			});
 			const filename = path.join(directory, child.name);
-			const relativePath = path.relative(root.canonical, filename);
+			const relativePath = path
+				.relative(root.canonical, filename)
+				.split(path.sep)
+				.join("/");
 			if (child.isDirectory())
 				return walk({ directory: await checkPath({ root, relativePath }) });
 			if (
