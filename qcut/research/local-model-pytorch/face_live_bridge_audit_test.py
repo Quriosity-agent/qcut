@@ -265,10 +265,19 @@ class FileAuditTests(unittest.TestCase):
         paths[2].write_bytes(bytes([2, 0, 0, 255]))
         with self.assertRaisesRegex(ValueError, "zero-tolerance"):
             audit.render_outputs(**kwargs)
+        measured = audit.render_outputs(**kwargs, require_equal=False)[0]
+        self.assertFalse(measured["equal"])
+        self.assertEqual(measured["changed_pixels"], 1)
+        self.assertEqual(measured["max_delta"], 1)
+        for policy in (None, 0, 1, "false", []):
+            with self.subTest(policy=policy), self.assertRaisesRegex(ValueError, "explicit render equality"):
+                audit.render_outputs(**kwargs, require_equal=policy)
         paths[1].write_bytes(source)
         paths[2].write_bytes(source)
         with self.assertRaisesRegex(ValueError, "effect control"):
             audit.render_outputs(**kwargs)
+        with self.assertRaisesRegex(ValueError, "effect control"):
+            audit.render_outputs(**kwargs, require_equal=False)
 
     def test_negative_effect_control_requires_zero_rgba_change(self):
         import hashlib
