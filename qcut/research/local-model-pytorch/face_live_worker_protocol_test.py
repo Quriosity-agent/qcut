@@ -155,9 +155,12 @@ class WorkerServiceTests(unittest.TestCase):
         self.assertEqual(self.errors, [])
         self.assertFalse(self.path.exists())
         rows = [json.loads(line) for line in self.log.getvalue().splitlines()]
-        self.assertEqual([row["prediction"] for row in rows], [0, 1])
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([row["ok"] for row in rows], [True, True, False])
+        self.assertEqual([row["prediction"] for row in rows[:2]], [0, 1])
+        self.assertEqual(rows[-1], dict(ok=False, error="RuntimeError: live session cancelled"))
         self.assertNotIn("pixels", self.log.getvalue())
-        self.assertIsNotNone(self.worker.error)
+        self.assertEqual(self.worker.error, rows[-1]["error"])
 
     def test_service_malformed_request_poison_and_socket_cleanup(self):
         self.start()
@@ -173,6 +176,9 @@ class WorkerServiceTests(unittest.TestCase):
         self.assertIsNotNone(self.worker.error)
         self.assertIsNone(self.worker.core.sequence)
         self.assertFalse(self.path.exists())
+        rows = [json.loads(line) for line in self.log.getvalue().splitlines()]
+        self.assertEqual(rows, [reply])
+        self.assertEqual(reply["error"], self.worker.error)
 
     def test_idle_deadline_closes_socket(self):
         self.start(timeout=0.03)
