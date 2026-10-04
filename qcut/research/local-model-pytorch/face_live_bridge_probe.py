@@ -119,6 +119,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         config_path = out / "lldb-config.json"
         if getattr(args, "trace_makeup_system", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"] = "1"
+        if getattr(args, "publish_makeup_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
@@ -129,6 +131,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         report["phase"] = "live-audit"
         report["live_protocol"] = audit.protocol(
             data=sequence.bounded_bytes(path=live / "host.stdout", limit=4 * 1024**2), requests=requests["live"])
+        audit.require(condition=not getattr(args, "publish_makeup_candidate", False),
+                      message="makeup publication alone cannot establish landmark consumption")
         for directory in (baseline, live):
             stderr = sequence.bounded_bytes(path=directory / "host.stderr", limit=4 * 1024**2)
             audit.require(condition=b"[research-error]" not in stderr, message="native host logged a research failure")
@@ -162,6 +166,8 @@ def run(*, args):
         raise ValueError("cold-frame requires explicit single-frame audit")
     if getattr(args, "trace_makeup_system", False) and not cold_frame:
         raise ValueError("makeup system observation requires cold-frame audit")
+    if getattr(args, "publish_makeup_candidate", False) and not getattr(args, "trace_makeup_system", False):
+        raise ValueError("makeup candidate publication requires explicit system observation")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -175,6 +181,7 @@ def run(*, args):
             "bounded-single-face-native-dependent-live-research"), failures=[],
         single_frame_audit=single_frame, static_controls_audit=static_controls, temporal_sequence_acceptance=False,
         cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
+        makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -273,6 +280,7 @@ def run(*, args):
             *(["--stable-host"] if getattr(args, "stable_host", False) else []),
             *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
             *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
+            *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -292,6 +300,8 @@ def main():
                         help="add one read-only hardware breakpoint; getter hits are not consumption evidence")
     parser.add_argument("--trace-makeup-system", action="store_true",
                         help="cold-frame only: observe pinned makeup object dispatch, not consumption")
+    parser.add_argument("--publish-makeup-candidate", action="store_true",
+                        help="experimental owned publication; cannot pass the consumption acceptance gate")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
