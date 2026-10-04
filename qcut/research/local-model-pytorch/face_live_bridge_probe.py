@@ -117,6 +117,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             socket=str(socket), token=token, stdin=str(live / "requests.tsv"), stdout=str(live / "host.stdout"),
             stderr=str(live / "host.stderr"), report=str(live / "observer.json"))
         config_path = out / "lldb-config.json"
+        if getattr(args, "trace_makeup_system", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
@@ -158,6 +160,8 @@ def run(*, args):
     cold_frame = getattr(args, "cold_frame", False)
     if cold_frame and not single_frame:
         raise ValueError("cold-frame requires explicit single-frame audit")
+    if getattr(args, "trace_makeup_system", False) and not cold_frame:
+        raise ValueError("makeup system observation requires cold-frame audit")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -268,6 +272,7 @@ def run(*, args):
             *(item for package in getattr(args, "additional_packages", []) for item in ("--additional-package", str(package))),
             *(["--stable-host"] if getattr(args, "stable_host", False) else []),
             *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
+            *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -285,6 +290,8 @@ def main():
                         help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
     parser.add_argument("--trace-face-readers", action="store_true",
                         help="add one read-only hardware breakpoint; getter hits are not consumption evidence")
+    parser.add_argument("--trace-makeup-system", action="store_true",
+                        help="cold-frame only: observe pinned makeup object dispatch, not consumption")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
