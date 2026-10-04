@@ -104,11 +104,14 @@ def prepare_inputs(*, manifest, out, guard, single_frame=False, static_controls=
     return frames, size
 
 
-def requests(*, frames, directory):
+def requests(*, frames, directory, cold_frame=False):
+    if cold_frame and len(frames) != 1:
+        raise ValueError("cold-frame audit requires exactly one frame")
+    warmups = 0 if cold_frame else WARMUPS
     rows = []
-    for index in range(WARMUPS + len(frames)):
-        warmup = index < WARMUPS
-        frame_index = 0 if warmup else index - WARMUPS
+    for index in range(warmups + len(frames)):
+        warmup = index < warmups
+        frame_index = 0 if warmup else index - warmups
         frame = frames[frame_index]
         name = f"warmup-{index}" if warmup else f"frame-{frame_index:02d}"
         output = consumer.protocol_path(path=directory / f"{name}.rgba")
@@ -136,7 +139,8 @@ def compile_commands(*, runtime, out):
             "-o", str(out / "live-capture.dylib")])
 
 
-def host_environment(*, runtime, directory, width, height, live=False, socket=None, token=None, capture=None):
+def host_environment(*, runtime, directory, width, height, live=False, socket=None, token=None, capture=None,
+                     cold_frame=False):
     env = system_environment()
     env.update(QCUT_FRAME_WIDTH=str(width), QCUT_FRAME_HEIGHT=str(height),
                DYLD_LIBRARY_PATH=str(runtime / "Frameworks"), QCUT_CONSUMER_RECORD=str(directory / "records.jsonl"))
@@ -145,4 +149,6 @@ def host_environment(*, runtime, directory, width, height, live=False, socket=No
             raise ValueError("live environment requires current session dependencies")
         env.update(QCUT_TRACE_UPDATES="1", QCUT_FACE_POINT_SHIFT="0", QCUT_FACE_LIVE_SOCKET=str(socket),
                    QCUT_FACE_LIVE_TOKEN=token, DYLD_INSERT_LIBRARIES=str(capture))
+        if cold_frame:
+            env["QCUT_FACE_LIVE_COLD_FRAME"] = "1"
     return env
