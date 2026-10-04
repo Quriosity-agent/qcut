@@ -10,6 +10,15 @@ import {
 } from "./beauty-lab-candidate-contract.js";
 import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
+	liveDependenciesSchema,
+	type LiveExpectedDependencies,
+	verifyBeautyLabLiveDependencyInventory,
+} from "./beauty-lab-live-candidate-inventory.js";
+import {
+	liveCallbackSchema,
+	verifyBeautyLabLiveReceipts,
+} from "./beauty-lab-live-candidate-receipts.js";
+import {
 	createSnapshot,
 	type PinnedRoot,
 	pinRoot,
@@ -50,7 +59,6 @@ const hostIdentitySchema = hostReceiptSchema.extend({
 	permission_granted_by_launcher: z.literal(false),
 	desktop_authorization: z.string().min(1).max(4096),
 });
-const workerVersion = z.string().regex(/^dependency-core-v1:[a-f0-9]{64}$/);
 const metric = z.union([
 	z
 		.object({
@@ -91,12 +99,22 @@ const resultSchema = z
 		timingScope: z.literal("cumulative-owned-worker-including-warmup"),
 	})
 	.strict();
+const coldFrameRequestSchema = z.object({
+	id: z.literal("frame-00"),
+	frame: z.literal(0),
+	warmup: z.literal(false),
+	timestamp: z.literal(0),
+	timestamp_us: z.literal(0),
+	output: z.string().min(1).max(4096),
+});
 const auditSchema = z.object({
 	schema: z.literal("face-live-bridge-probe-v1"),
 	passed: z.literal(true),
 	completed: z.literal(true),
 	scope: z.literal("single-frame-native-dependent-live-audit"),
 	single_frame_audit: z.literal(true),
+	cold_frame_audit: z.literal(true),
+	warmup_request_count: z.literal(0),
 	temporal_sequence_acceptance: z.literal(false),
 	dependencies_unchanged: z.literal(true),
 	native_execution_performed: z.literal(true),
@@ -118,10 +136,16 @@ const auditSchema = z.object({
 	width: z.number(),
 	height: z.number(),
 	manifest: z.string(),
+	source_key: z.string().min(1).max(512),
+	token_sha256: sha,
 	host_identity: hostIdentitySchema,
 	input_frames: z
 		.array(z.object({ input_sha256: sha, parameters: z.unknown() }))
 		.length(1),
+	requests: z.object({
+		baseline: z.array(coldFrameRequestSchema).length(1),
+		live: z.array(coldFrameRequestSchema).length(1),
+	}),
 	frames: z
 		.array(
 			z.object({
@@ -138,17 +162,8 @@ const auditSchema = z.object({
 		)
 		.length(1),
 	artifacts: z.record(z.object({ sha256: sha }).passthrough()),
-	dependencies: z
-		.object({
-			files: z.record(sha),
-			libraries: z.record(z.unknown()),
-			trees: z.array(z.unknown()).min(1).max(16),
-		})
-		.passthrough(),
-	callback_audit: z.object({
-		backend_version: workerVersion,
-		predictions: z.number().int().min(1).max(60),
-	}),
+	dependencies: liveDependenciesSchema,
+	callback_audit: liveCallbackSchema,
 });
 
 async function verifyLiveHostReceipt({
@@ -234,6 +249,7 @@ export async function readBeautyLabLiveCandidateResult({
 	lease,
 	manifest,
 	parameters,
+	expectedDependencies,
 }: {
 	directory: string;
 	hostDirectory: string;
@@ -244,6 +260,7 @@ export async function readBeautyLabLiveCandidateResult({
 	lease: string;
 	manifest: string;
 	parameters: unknown;
+	expectedDependencies: LiveExpectedDependencies;
 }): Promise<BeautyLabCandidateResult> {
 	const root = await pinRoot({ root: directory });
 	const snapshot = createSnapshot();
@@ -290,6 +307,18 @@ export async function readBeautyLabLiveCandidateResult({
 				JSON.stringify(parameters),
 		message: "fresh baseline audit request mismatch",
 	});
+	verifyBeautyLabLiveDependencyInventory({
+		dependencies: audit.dependencies,
+		expected: expectedDependencies,
+	});
+	requireEvidence({
+		condition: (["baseline", "live"] as const).every(
+			(phase) =>
+				audit.requests[phase][0].output ===
+				path.join(root.canonical, "audit", phase, "frame-00.rgba")
+		),
+		message: "cold-frame request output binding mismatch",
+	});
 	await verifyLiveHostReceipt({ hostDirectory, root, snapshot, audit });
 	requireEvidence({
 		condition:
@@ -317,29 +346,7 @@ export async function readBeautyLabLiveCandidateResult({
 		condition: typeof workerLogSha256 === "string",
 		message: "worker log digest required",
 	});
-	const workerLog = await snapshot.read({
-		root,
-		relativePath: "audit/live/worker.jsonl",
-		maximum: 8 * 1024 ** 2,
-		expected: workerLogSha256,
-	});
-	const rows = workerLog.toString("utf8").trim().split("\n");
-	requireEvidence({
-		condition: rows.length === audit.callback_audit.predictions,
-		message: "worker receipt count mismatch",
-	});
-	const workerRow = z.object({
-		ok: z.literal(true),
-		result: z.object({ backend_version: workerVersion }),
-	});
-	requireEvidence({
-		condition: rows.every(
-			(row) =>
-				workerRow.parse(JSON.parse(row)).result.backend_version ===
-				audit.callback_audit.backend_version
-		),
-		message: "worker identity differs from audit",
-	});
+	await verifyBeautyLabLiveReceipts({ root, snapshot, audit });
 	const maximum = request.width * request.height * 4;
 	const pixels = createSnapshot();
 	const rgba = await pixels.read({
