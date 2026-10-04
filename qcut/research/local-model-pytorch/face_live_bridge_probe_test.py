@@ -93,6 +93,12 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
             probe.run(args=argparse.Namespace(publish_makeup_candidate=True, cold_frame=True, single_frame=True))
         with self.assertRaisesRegex(ValueError, "render stages require explicit candidate publication"):
             probe.run(args=argparse.Namespace(stage_makeup_render=True, cold_frame=True, single_frame=True))
+        with self.assertRaisesRegex(ValueError, "XY observation requires explicit render stages"):
+            probe.run(args=argparse.Namespace(trace_makeup_points=True))
+        with self.assertRaisesRegex(ValueError, "share one hardware slot"):
+            probe.run(args=argparse.Namespace(trace_makeup_points=True, trace_face_readers=True,
+                stage_makeup_render=True, publish_makeup_candidate=True, trace_makeup_system=True,
+                cold_frame=True, single_frame=True))
 
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
@@ -259,17 +265,19 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.args.single_frame = self.args.cold_frame = True
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
         self.args.stage_makeup_render = True
+        self.args.trace_makeup_points = True
         result, native = self.run_preparation()
         self.assertTrue(result["prepared"])
         self.assertTrue(result["completed"])
         self.assertTrue(result["makeup_publication_research"])
         self.assertTrue(result["makeup_render_stage_research"])
+        self.assertTrue(result["makeup_point_observation"])
         self.assertFalse(result["passed"])
         self.assertFalse(result["live_callback_handoff_verified"])
         self.assertFalse(result["product_backend_registered"])
         self.assertEqual(result["warmup_request_count"], 0)
         for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
-                       "--stage-makeup-render"):
+                       "--stage-makeup-render", "--trace-makeup-points"):
             self.assertIn(option, result["command"])
         native.assert_not_called()
 
@@ -296,6 +304,26 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"], "1")
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"], "1")
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"], "1")
+
+    def test_read_proof_survives_final_host_rejection_without_becoming_render_success(self):
+        self.args.trace_makeup_points = True
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = self.args.stage_makeup_render = True
+        proof = dict(candidate_xy_reads_verified=True, renderer_consumption=False)
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.point_audit, "audit", return_value=proof) as audit_points, \
+                mock.patch.object(probe.audit, "protocol", side_effect=[{}, ValueError("final consumption missing")]):
+            with self.assertRaisesRegex(ValueError, "final consumption missing"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        audit_points.assert_called_once()
+        self.assertEqual(report["makeup_point_audit"], proof)
+        self.assertNotIn("live_checks_completed", report)
+        config = json.loads((self.out / "lldb-config.json").read_text())
+        self.assertTrue(config["trace_makeup_points"])
+        self.assertFalse(config["trace_face_readers"])
 
     def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
         directory = self.root / "stable"
