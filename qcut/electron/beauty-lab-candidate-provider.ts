@@ -20,6 +20,8 @@ export interface BeautyLabCandidateBackend {
 	timingScope?: BeautyLabCandidateStatus["timingScope"];
 	dispose?: () => Promise<void>;
 	getBlocker?: () => string | undefined;
+	// Synchronous so raw validation and parsing cannot yield between snapshots.
+	validateRequest?: ({ request }: { request: unknown }) => undefined;
 	render: (
 		request: BeautyLabCandidateRequest & {
 			inputSha256: string;
@@ -211,12 +213,19 @@ export function createBeautyLabCandidateProvider({
 	) {
 		throw new Error("Invalid candidate backend blocker");
 	}
+	if (
+		backend?.validateRequest !== undefined &&
+		typeof backend.validateRequest !== "function"
+	) {
+		throw new Error("Invalid candidate backend request validator");
+	}
 	const version = backend?.version ?? null;
 	const scope = backend?.scope;
 	const timingScope = backend?.timingScope;
 	const execute = backend?.render.bind(backend);
 	const disposeBackend = backend?.dispose?.bind(backend);
 	const getBlocker = backend?.getBlocker?.bind(backend);
+	const validateRequest = backend?.validateRequest?.bind(backend);
 	const stages = structuredClone(backend?.stages ?? []);
 	const nativeDependencies = stages
 		.filter((stage) => stage.implementation === "native")
@@ -271,6 +280,7 @@ export function createBeautyLabCandidateProvider({
 				`Candidate backend unavailable: ${status.blockers.join(", ")}`
 			);
 		}
+		validateRequest?.({ request });
 		const parsed = parseBeautyLabCandidateRequest({ request });
 		if (parsed.backendVersion !== status.backendVersion) {
 			throw new Error("Candidate backend version changed; inspect again");
