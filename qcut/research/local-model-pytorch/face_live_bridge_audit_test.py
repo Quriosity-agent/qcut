@@ -211,6 +211,42 @@ class FileAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "effect control"):
             audit.render_outputs(**kwargs)
 
+    def test_negative_effect_control_requires_zero_rgba_change(self):
+        import hashlib
+
+        source = bytes([10, 20, 30, 255])
+        paths = [self.root / name for name in ("input.rgba", "native.rgba", "live.rgba")]
+        for path in paths:
+            path.write_bytes(source)
+        frames = [dict(input=str(paths[0]), input_sha256=hashlib.sha256(source).hexdigest(), expect_change=False)]
+        request = dict(id="frame-00", frame=0, timestamp=0, timestamp_us=0, warmup=False)
+        kwargs = dict(baseline=[dict(request, output=str(paths[1]))], live=[dict(request, output=str(paths[2]))],
+                      frames=frames, width=1, height=1)
+        self.assertTrue(audit.render_outputs(**kwargs)[0]["equal"])
+        for channel in range(4):
+            changed = bytearray(source)
+            changed[channel] ^= 1
+            for path in paths[1:]:
+                path.write_bytes(changed)
+            with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "effect control"):
+                audit.render_outputs(**kwargs)
+
+    def test_effect_control_requires_explicit_boolean(self):
+        import hashlib
+
+        source = bytes([10, 20, 30, 255])
+        path = self.root / "control.rgba"
+        path.write_bytes(source)
+        frame = dict(input=str(path), input_sha256=hashlib.sha256(source).hexdigest())
+        request = dict(id="frame-00", frame=0, timestamp=0, timestamp_us=0, warmup=False, output=str(path))
+        for value in (None, 0, 1, "false", "true", []):
+            frame["expect_change"] = value
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "effect control"):
+                audit.render_outputs(baseline=[request], live=[request], frames=[frame], width=1, height=1)
+        frame.pop("expect_change")
+        with self.assertRaisesRegex(ValueError, "effect control"):
+            audit.render_outputs(baseline=[request], live=[request], frames=[frame], width=1, height=1)
+
 
 if __name__ == "__main__":
     unittest.main()
