@@ -241,14 +241,17 @@ class ExportTests(unittest.TestCase):
         self.assertIs(report["diagnostic_only"], True)
         self.assertIs(report["arbitrary_frame_backend_connected"], False)
         self.assertIs(report["product_parity_verified"], False)
-        self.assertEqual(report["source_count"], 62)
+        self.assertEqual(report["source_count"], 63)
         self.assertEqual(report["frames"], 7)
         self.loader.assert_called_once()
         self.assertEqual(before, {path: (path.stat().st_mtime_ns, path.read_bytes()) for path in self.fixture_paths})
         package = json.loads((self.out / "index.json").read_bytes())
         self.assertEqual(package["format"], "qcut-beauty-lab-owned-chain-v1")
         self.assertEqual(report["index_sha256"], export.digest(data=(self.out / "index.json").read_bytes()))
-        self.assertEqual(len(package["source_sha256"]), 62)
+        self.assertEqual(len(package["source_sha256"]), 63)
+        cleanup_source = Path(export.__file__).with_name("face_native_process.py")
+        self.assertEqual(package["source_sha256"]["local-model-pytorch/face_native_process.py"],
+                         export.digest(data=cleanup_source.read_bytes()))
         self.assertEqual(list(package["source_sha256"]), sorted(package["source_sha256"]))
         self.assertTrue(all(not Path(name).is_absolute() and ".." not in Path(name).parts for name in package["source_sha256"]))
         expected_files = {"index.json", "report.json", "manifest.json", "replay.json"}
@@ -390,7 +393,7 @@ class ExportTests(unittest.TestCase):
         for path, expected in self.proof["fixture_sha256"].items():
             self.assertEqual(report["fixture_sha256"][path], expected)
         self.assertFalse((self.out / "private-fixtures").exists())
-        self.assertEqual(report["source_count"], 62)
+        self.assertEqual(report["source_count"], 63)
 
     def test_original_source_union_requires_exact_50_entries(self):
         for count in (49, 51):
