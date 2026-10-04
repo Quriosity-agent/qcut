@@ -19,6 +19,7 @@ from face_preprocess_memory import unpack_detection_call
 from face_live_worker_protocol import exchange
 import face_live_reader_trace as reader_trace
 import face_live_makeup_point_trace as point_trace
+from face_live_extra_trace import ExtraTrace
 
 STATE = None
 POINTS = {"begin": 0x2c4dac, "call": 0x2ca3bc, "infer": 0x36b43c}
@@ -34,6 +35,7 @@ class Observer:
         self.caller = None
         self.reader_hits, self.reader_events = 0, []
         self.point_hits, self.point_events = 0, []
+        self.extra = None
 
     def read(self, *, address, size):
         import lldb
@@ -78,6 +80,8 @@ class Observer:
                 raise ValueError("unconsumed detection caller at prediction boundary")
             self.index += 1
             data = dict(owner=register(frame=frame, name="x0"))
+            if self.extra is not None:
+                self.extra.begin(prediction=self.index, owner=data["owner"], thread=tid)
         elif op == "call":
             if register(frame=frame, name="w3") != 160 or register(frame=frame, name="w4") != 160:
                 return
@@ -158,6 +162,18 @@ def on_point_breakpoint(frame, location, internal_dict):
         return True
 
 
+def on_extra_breakpoint(frame, location, internal_dict):
+    try:
+        if time.monotonic() - STATE.started > 240:
+            raise ValueError("Extra diagnostic budget exceeded")
+        STATE.process = frame.GetThread().GetProcess()
+        STATE.extra.observe(frame=frame, location=location, read=STATE.read)
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
 def process_diagnostics(*, process, exited_state, no_stop_reason):
     stops = []
     thread_count = 0 if process.GetState() == exited_state else min(process.GetNumThreads(), 64)
@@ -188,6 +204,8 @@ def run(*, debugger, config_path):
     try:
         if config.get("trace_makeup_points", False) and config.get("trace_face_readers", False):
             raise ValueError("getter and XY diagnostics share one hardware slot")
+        if config.get("trace_extra_stages", False) and not config.get("trace_makeup_points", False):
+            raise ValueError("Extra diagnostics require the makeup XY observer")
         debugger.SetAsync(False)
         target = debugger.CreateTarget(config["host"])
         if not target.IsValid() or not target.GetTriple().startswith("arm64"):
@@ -210,6 +228,12 @@ def run(*, debugger, config_path):
         if config.get("trace_makeup_points", False):
             point_trace.install(debugger=debugger, target=target, core=config["core"],
                                 callback=__name__ + ".on_point_breakpoint")
+            if config.get("trace_extra_stages", False):
+                STATE.extra = ExtraTrace(target=target,
+                    point_breakpoint=target.GetBreakpointAtIndex(target.GetNumBreakpoints() - 1),
+                    callback=__name__ + ".on_extra_breakpoint",
+                    inner_model=config.get("trace_extra_model", False),
+                    model_directory=Path(config["report"]).parent / "extra-model")
         info = lldb.SBLaunchInfo(config["arguments"])
         info.SetEnvironmentEntries([f"{key}={value}" for key,value in config["environment"].items()], False)
         info.SetLaunchFlags(info.GetLaunchFlags() & ~lldb.eLaunchFlagDisableASLR)
@@ -225,6 +249,8 @@ def run(*, debugger, config_path):
                                           no_stop_reason=lldb.eStopReasonNone))
         if STATE.failures or process.GetState() != lldb.eStateExited or process.GetExitStatus() != 0:
             raise RuntimeError(STATE.failures[-1] if STATE.failures else "live host stopped or failed")
+        if STATE.extra is not None and not STATE.extra.report()["complete"]:
+            raise ValueError("incomplete Extra call/return diagnostics")
         report["passed"] = True
     except Exception as error:
         report["failures"].append(f"{type(error).__name__}: {error}")
@@ -240,6 +266,8 @@ def run(*, debugger, config_path):
             if config.get("trace_makeup_points", False):
                 report["point_trace"] = dict(hits=STATE.point_hits, events=STATE.point_events,
                     renderer_consumption=False, target_memory_written=False)
+            if STATE.extra is not None:
+                report["extra_trace"] = STATE.extra.report()
         Path(config["report"]).write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     print(json.dumps(dict(passed=report["passed"], failures=report["failures"])))
 
