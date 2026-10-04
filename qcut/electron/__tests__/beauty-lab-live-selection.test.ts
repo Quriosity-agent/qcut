@@ -36,6 +36,11 @@ const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	makeup: vi.fn(),
 }));
+vi.mock("node:path", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:path")>();
+	// Isolate native join spies from path.posix on POSIX hosts.
+	return { ...actual, default: { ...actual.default } };
+});
 vi.mock("../jianying-filter-local-runtime/private-runtime.js", () => ({
 	jianyingFilterPrivateRuntimeCurrent: mocks.current,
 }));
@@ -283,7 +288,21 @@ async function resolver({ allowProductCache = false } = {}) {
 	});
 }
 
-describe("catalog-only package resolution (synthetic files; no GPU)", () => {
+const pathModes = [{ windows: false }, { windows: true }];
+describe.each(pathModes)("catalog paths (Windows: $windows)", ({ windows }) => {
+	beforeEach(() => {
+		if (!windows) return;
+		const nativeJoin = path.join;
+		vi.spyOn(path, "join").mockImplementation((...parts) => {
+			// Keep real filesystem checks while emulating Windows relative joins.
+			if (path.isAbsolute(parts[0] ?? "")) {
+				return nativeJoin(
+					...parts.map((part) => part.replaceAll("\\", path.sep))
+				);
+			}
+			return path.win32.join(...parts);
+		});
+	});
 	it("prefers private runtime over the normal product cache", async () => {
 		const identity = JIANYING_PORTRAIT_PACKAGE_IDENTITIES.features;
 		const expected = await install({ identity });
@@ -395,6 +414,9 @@ describe("catalog-only package resolution (synthetic files; no GPU)", () => {
 		"sibling-prefix",
 		"alias",
 		"traversal",
+		"backslash-traversal",
+		"drive-absolute",
+		"unc-absolute",
 		"file",
 		"wrong-group",
 		"wrong-runtime",
@@ -423,6 +445,12 @@ describe("catalog-only package resolution (synthetic files; no GPU)", () => {
 			resolution.packagePath = `${runtime}-outside/package`;
 		if (kind === "traversal")
 			resolution.packagePath = `${packagePath}/../${path.basename(packagePath)}`;
+		if (kind === "backslash-traversal")
+			resolution.packagePath = `${packagePath}\\..\\${path.basename(packagePath)}`;
+		if (kind === "drive-absolute")
+			resolution.packagePath = path.win32.join("Z:\\outside", "package");
+		if (kind === "unc-absolute")
+			resolution.packagePath = path.win32.join("\\\\server\\share", "package");
 		if (kind === "alias") {
 			resolution.packagePath = path.join(root, "alias");
 			await symlink(packagePath, resolution.packagePath);
