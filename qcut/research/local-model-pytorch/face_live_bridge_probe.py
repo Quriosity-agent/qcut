@@ -25,6 +25,7 @@ from face_temporal_campaign import file_fingerprint
 import face_live_bridge_bundle as bundle
 import face_live_bridge_audit as audit
 import face_live_makeup_point_audit as point_audit
+import face_live_makeup_render_audit as makeup_audit
 import face_live_host_identity as host_identity
 import face_render_sequence_probe as sequence
 
@@ -125,6 +126,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"] = "1"
         if getattr(args, "stage_makeup_render", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"] = "1"
+        if getattr(args, "consume_makeup_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
@@ -133,25 +136,44 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         report["live_process"] = scope.wait(process=debugger, timeout=args.timeout, companions=(worker,))
         scope.finish(process=debugger)
         report["phase"] = "live-audit"
-        if getattr(args, "trace_makeup_points", False):
+        consume_makeup = getattr(args, "consume_makeup_candidate", False)
+        if consume_makeup:
+            report["makeup_render_audit"] = makeup_audit.audit(
+                worker=audit.json_lines(path=live / "worker.jsonl"),
+                observer=strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2)),
+                records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
+        elif getattr(args, "trace_makeup_points", False):
             report["makeup_point_audit"] = point_audit.audit(
                 worker=audit.json_lines(path=live / "worker.jsonl"),
                 observer=strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2)),
                 records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
         report["live_protocol"] = audit.protocol(
             data=sequence.bounded_bytes(path=live / "host.stdout", limit=4 * 1024**2), requests=requests["live"])
-        audit.require(condition=not getattr(args, "publish_makeup_candidate", False),
+        audit.require(condition=not getattr(args, "publish_makeup_candidate", False) or consume_makeup,
                       message="makeup publication alone cannot establish landmark consumption")
         for directory in (baseline, live):
             stderr = sequence.bounded_bytes(path=directory / "host.stderr", limit=4 * 1024**2)
             audit.require(condition=b"[research-error]" not in stderr, message="native host logged a research failure")
         timestamps = [row["timestamp_us"] for row in requests["live"] for _ in range(2)]
         observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
-        report["callback_audit"] = audit.callbacks(worker=audit.json_lines(path=live / "worker.jsonl"),
-            observer=observer, records=audit.json_lines(path=live / "records.jsonl"), timestamps=timestamps,
-            token=token, source_key=source_key, cold_frame=report["cold_frame_audit"])
-        report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
-                                                frames=frames, width=width, height=height)
+        worker_rows, records = audit.json_lines(path=live / "worker.jsonl"), audit.json_lines(path=live / "records.jsonl")
+        if consume_makeup:
+            report["makeup_inference_audit"] = audit.inference(worker=worker_rows, observer=observer,
+                timestamps=timestamps, token=token, source_key=source_key, cold_frame=True)
+            audit.require(condition=report["makeup_inference_audit"]["seed_predictions"] == [0] and
+                          report["makeup_inference_audit"]["owned_point_groups"] == 2,
+                          message="makeup requires two fresh single-face predictions")
+            report["makeup_clone_audit"] = audit.validate_audits(events=records, require_face=True,
+                require_live_consumers=True, consumer_event="live_makeup_publication")
+            report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
+                frames=frames, width=width, height=height, require_equal=False)
+            audit.require(condition=len(report["frames"]) == 1 and report["frames"][0]["equal"] is True,
+                          message="zero-tolerance makeup render mismatch")
+        else:
+            report["callback_audit"] = audit.callbacks(worker=worker_rows, observer=observer, records=records,
+                timestamps=timestamps, token=token, source_key=source_key, cold_frame=report["cold_frame_audit"])
+            report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
+                                                    frames=frames, width=width, height=height)
         report["live_checks_completed"] = True
         scope.finish(process=worker)
 
@@ -184,6 +206,8 @@ def run(*, args):
             raise ValueError("makeup XY observation requires explicit render stages")
         if getattr(args, "trace_face_readers", False):
             raise ValueError("getter and XY diagnostics share one hardware slot")
+    if getattr(args, "consume_makeup_candidate", False) and not getattr(args, "trace_makeup_points", False):
+        raise ValueError("makeup consumption requires independent XY observation")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -200,6 +224,7 @@ def run(*, args):
         makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
         makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
         makeup_point_observation=getattr(args, "trace_makeup_points", False),
+        makeup_consumption_research=getattr(args, "consume_makeup_candidate", False),
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -301,6 +326,7 @@ def run(*, args):
             *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
             *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
             *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
+            *(["--consume-makeup-candidate"] if getattr(args, "consume_makeup_candidate", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -326,6 +352,8 @@ def main():
                         help="experimental initialization/parameter/final-render receipts; requires publication")
     parser.add_argument("--trace-makeup-points", action="store_true",
                         help="read-only primary XY load proof; replaces getter trace and requires render stages")
+    parser.add_argument("--consume-makeup-candidate", action="store_true",
+                        help="research-only pinned geometry consumer; requires independent XY observation")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
