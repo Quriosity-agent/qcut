@@ -20,6 +20,7 @@ import {
 	renderJianyingLocalEffectPreview,
 } from "./jianying-local-effect-preview";
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
+import type { PortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import {
 	portraitProcessingSize,
 	portraitSourceDimensions,
@@ -165,6 +166,8 @@ async function portraitAdjustedSource({
 	frameNumber,
 	sourceKey,
 	timestampSeconds,
+	readPortraitSourcePreRoll,
+	signal,
 }: {
 	source: CanvasImageSource;
 	width: number;
@@ -173,6 +176,8 @@ async function portraitAdjustedSource({
 	frameNumber?: number;
 	sourceKey?: string;
 	timestampSeconds?: number;
+	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
+	signal?: AbortSignal;
 }): Promise<CanvasImageSource> {
 	if (!hasMediaPortraitAdjustments({ adjustments })) return source;
 	const sourceSize = portraitSourceDimensions({ source });
@@ -210,6 +215,8 @@ async function portraitAdjustedSource({
 		frameNumber,
 		sourceKey,
 		timestampSeconds,
+		readSourcePreRoll: readPortraitSourcePreRoll,
+		signal,
 	});
 	if (!rendered) return source;
 	context.putImageData(rendered, 0, 0);
@@ -607,6 +614,8 @@ export async function drawColorGradedSourceStack({
 	sourceKey,
 	timestampSeconds,
 	portraitAdjustments,
+	readPortraitSourcePreRoll,
+	signal,
 }: {
 	context: CanvasRenderingContext2D;
 	source: CanvasImageSource;
@@ -619,6 +628,8 @@ export async function drawColorGradedSourceStack({
 	sourceKey?: string;
 	timestampSeconds?: number;
 	portraitAdjustments?: MediaPortraitAdjustments;
+	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
+	signal?: AbortSignal;
 }): Promise<void> {
 	const pixelWidth = Math.max(1, Math.round(Math.abs(width)));
 	const pixelHeight = Math.max(1, Math.round(Math.abs(height)));
@@ -630,6 +641,8 @@ export async function drawColorGradedSourceStack({
 		frameNumber: frameSeed,
 		sourceKey,
 		timestampSeconds,
+		readPortraitSourcePreRoll,
+		signal,
 	});
 	// With a single ungraded base layer the intermediate canvas contributes
 	// nothing, so draw straight onto the target exactly the way
