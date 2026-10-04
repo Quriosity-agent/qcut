@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 from pathlib import Path
 
@@ -44,6 +45,13 @@ def protocol(*, data, requests):
     text = data.decode("utf-8", errors="strict")
     rows = [line for line in text.splitlines() if line.startswith("QCUT\t")]
     expected = ["QCUT\tREADY\t1", *(f"QCUT\tRESULT\t{row['id']}\t0" for row in requests)]
+    for index, request in enumerate(requests, start=1):
+        if len(rows) <= index or rows[:index] != expected[:index]:
+            break
+        fields = rows[index].split("\t", 4)
+        if len(fields) == 5 and fields[:4] == ["QCUT", "RESULT", request["id"], "1"]:
+            detail = json.dumps(fields[4][:512], ensure_ascii=True)
+            raise ValueError(f"fresh host rejected request {request['id']}: {detail}")
     require(condition=rows == expected and "[research-error]" not in text,
             message="fresh host did not acknowledge every request exactly once")
     return dict(requests=len(requests), rows=rows)
