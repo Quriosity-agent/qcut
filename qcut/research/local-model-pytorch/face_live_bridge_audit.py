@@ -253,8 +253,10 @@ def render_outputs(*, baseline, live, frames, width, height):
             source = sequence.bounded_bytes(path=Path(frame["input"]), limit=width * height * 4)
             require(condition=hashlib.sha256(source).hexdigest() == frame["input_sha256"], message="original input changed")
             changed = frame_metrics(actual=raw[0], reference=source, width=width, height=height)
-            require(condition=not frame["expect_change"] or changed["changed_pixels"] > 0,
-                    message="effect control did not change original input")
+            expect_change = frame.get("expect_change")
+            require(condition=type(expect_change) is bool and
+                    (changed["changed_pixels"] > 0) is expect_change,
+                    message="effect control differs from expected original-pixel change")
             results.append(dict(frame=left["frame"], native_sha256=hashlib.sha256(raw[0]).hexdigest(),
                                 original_difference=changed, **metric))
         require(condition=metric["equal"] is True, message=f"zero-tolerance render mismatch: {left['id']}")
