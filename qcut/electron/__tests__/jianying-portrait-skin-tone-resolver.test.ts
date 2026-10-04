@@ -1,4 +1,5 @@
 // @vitest-environment node
+import path from "node:path";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { resolveJianyingPortraitPackage } from "../jianying-portrait-adjustment-runtime/package-resolver";
 import { JIANYING_PORTRAIT_SKIN_TONES } from "../jianying-portrait-adjustment-runtime/skin-tone-catalog";
@@ -28,18 +29,26 @@ describe("skin LUT package resolution", () => {
 		expect(result.skinToneResourceId).toBe(resourceId);
 		expect(result.source).toBe("qcut-private");
 		expect(result.packagePath).toBe(
-			`/private/runtime/Cache/effect/${resourceId}/${resourceId === "7408757645705760000" ? "c36221f2a2097535ce1a2f70cd9e0116" : version}`
+			path.join(
+				"/private/runtime",
+				"Cache",
+				"effect",
+				resourceId,
+				resourceId === "7408757645705760000"
+					? "c36221f2a2097535ce1a2f70cd9e0116"
+					: version
+			)
 		);
 		expect(
 			mocks.access.mock.calls.some(([name]) =>
-				name.endsWith("/AmazingFeature/image/filter_skin.png")
+				name.endsWith(path.join("AmazingFeature", "image", "filter_skin.png"))
 			)
 		).toBe(true);
 	});
 	it("allows the verified installed pink version only for explicit selection, not legacy fallback", async () => {
 		mocks.access.mockImplementation(async (name: string) => {
 			if (
-				name.startsWith("/private") ||
+				name.startsWith(path.join("/private/runtime", path.sep)) ||
 				!name.includes("74cd555080d70f9ccf3a1133a65f9f8d")
 			)
 				throw new Error("missing");
@@ -71,13 +80,14 @@ describe("skin LUT package resolution", () => {
 		).toMatchObject({ packagePath: null, source: "none" });
 		expect(
 			mocks.access.mock.calls.every(([name]) =>
-				name.startsWith("/private/runtime/")
+				name.startsWith(path.join("/private/runtime", path.sep))
 			)
 		).toBe(true);
 	});
 	it("does not report readiness for an incomplete LUT package", async () => {
 		mocks.access.mockImplementation(async (name: string) => {
-			if (name.endsWith("/temperature_min.png")) throw new Error("missing LUT");
+			if (path.basename(name) === "temperature_min.png")
+				throw new Error("missing LUT");
 		});
 		expect(
 			(
