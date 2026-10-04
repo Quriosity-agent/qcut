@@ -182,6 +182,7 @@ class CloneLeaseScope {
 #include "face_live_bridge_response.h"
 #include "face_live_makeup_scene.h"
 #include "face_live_render_stage.h"
+#include "face_live_makeup_geometry.h"
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
@@ -395,6 +396,7 @@ int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") && (!liveMakeupTrace || !liveColdFrame)) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") && (!liveMakeupPublish || !liveMakeupTrace)) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_STAGES") && (!liveMakeupStages || !liveMakeupPublish)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_CONSUME") && (!liveMakeupConsume || !liveMakeupStages)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
