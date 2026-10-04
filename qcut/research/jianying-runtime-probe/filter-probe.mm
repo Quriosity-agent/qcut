@@ -723,6 +723,9 @@ struct FilterFrameExecutionRequest {
   if (!request.sequenceRequest.nativeTextureFlags[2]) {
     convertBgraToRgba(renderedPixels);
   }
+#ifdef QCUT_FACE_RENDER_STAGE_HOOK
+  if (!allowOwnedFrameOutput()) return true;
+#endif
   writeRgbaFrame(request.outputPath, renderedPixels);
   return true;
 }
