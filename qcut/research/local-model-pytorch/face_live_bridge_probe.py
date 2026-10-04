@@ -24,6 +24,7 @@ from face_live_bridge_process import ProcessScope, cancellation_signals
 from face_temporal_campaign import file_fingerprint
 import face_live_bridge_bundle as bundle
 import face_live_bridge_audit as audit
+import face_live_makeup_point_audit as point_audit
 import face_live_host_identity as host_identity
 import face_render_sequence_probe as sequence
 
@@ -110,6 +111,7 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             lens=str(args.runtime / "Frameworks/liblens.dylib"),
             core=str(args.runtime / "Frameworks/libcccreator.dylib"),
             trace_face_readers=getattr(args, "trace_face_readers", False),
+            trace_makeup_points=getattr(args, "trace_makeup_points", False),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
@@ -131,6 +133,11 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         report["live_process"] = scope.wait(process=debugger, timeout=args.timeout, companions=(worker,))
         scope.finish(process=debugger)
         report["phase"] = "live-audit"
+        if getattr(args, "trace_makeup_points", False):
+            report["makeup_point_audit"] = point_audit.audit(
+                worker=audit.json_lines(path=live / "worker.jsonl"),
+                observer=strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2)),
+                records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
         report["live_protocol"] = audit.protocol(
             data=sequence.bounded_bytes(path=live / "host.stdout", limit=4 * 1024**2), requests=requests["live"])
         audit.require(condition=not getattr(args, "publish_makeup_candidate", False),
@@ -172,6 +179,11 @@ def run(*, args):
         raise ValueError("makeup candidate publication requires explicit system observation")
     if getattr(args, "stage_makeup_render", False) and not getattr(args, "publish_makeup_candidate", False):
         raise ValueError("makeup render stages require explicit candidate publication")
+    if getattr(args, "trace_makeup_points", False):
+        if not getattr(args, "stage_makeup_render", False):
+            raise ValueError("makeup XY observation requires explicit render stages")
+        if getattr(args, "trace_face_readers", False):
+            raise ValueError("getter and XY diagnostics share one hardware slot")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -187,6 +199,7 @@ def run(*, args):
         cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
         makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
         makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
+        makeup_point_observation=getattr(args, "trace_makeup_points", False),
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -287,6 +300,7 @@ def run(*, args):
             *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
             *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
             *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
+            *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -310,6 +324,8 @@ def main():
                         help="experimental owned publication; cannot pass the consumption acceptance gate")
     parser.add_argument("--stage-makeup-render", action="store_true",
                         help="experimental initialization/parameter/final-render receipts; requires publication")
+    parser.add_argument("--trace-makeup-points", action="store_true",
+                        help="read-only primary XY load proof; replaces getter trace and requires render stages")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
