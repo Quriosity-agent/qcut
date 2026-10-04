@@ -9,6 +9,7 @@ import {
 	parseBeautyLabCandidateRequest,
 } from "./beauty-lab-candidate-request.js";
 import { runBeautyLabLiveCandidateJob } from "./beauty-lab-live-candidate-process.js";
+import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab-live-candidate-inventory.js";
 import { captureBeautyLabLiveDependencies } from "./beauty-lab-live-candidate-provenance.js";
 import {
 	LIVE_NATIVE_STAGES,
@@ -68,7 +69,7 @@ export async function createBeautyLabLiveCandidateBackend({
 			env.QCUT_JIANYING_DISABLE_USER_CACHE !== "1",
 	});
 	const models = await realpath(path.join(source.canonical, MODELS));
-	const version = `audited-static-v3:${snapshot.digest}`;
+	const version = `audited-static-v4:${snapshot.digest}`;
 	let disposed = false;
 	let blocker: string | undefined;
 	let active: { controller: AbortController; done: Promise<void> } | undefined;
@@ -87,7 +88,7 @@ export async function createBeautyLabLiveCandidateBackend({
 				: "qcut",
 			parity: "accepted",
 			message:
-				"Per-request audited single static frame only; native full-frame RGBA, detection, geometry and renderer remain. Broader face/makeup selection is not package acceptance; unverified requests fail closed. No production, live-video, timeline or multi-face acceptance. Owned timings include warmup; native timings unavailable.",
+				"Per-request audited single cold static frame only, with zero warmup requests; native full-frame RGBA, detection, geometry and renderer remain. Broader face/makeup selection is not package acceptance; unverified requests fail closed. No production, live-video, timeline or multi-face acceptance. Owned timings cover both internal predictions; native timings unavailable.",
 		})),
 		dispose: async () => {
 			disposed = true;
@@ -123,6 +124,14 @@ export async function createBeautyLabLiveCandidateBackend({
 				controller.signal.throwIfAborted();
 				const { packagePath, parameters, additionalPackagePath } =
 					await resolveSelection({ selection });
+				const dependencies = await captureBeautyLabLiveRequestDependencies({
+					source,
+					backendFiles: snapshot.files,
+					runtime,
+					models,
+					packagePath,
+					additionalPackagePath,
+				});
 				await mkdir(path.join(source.canonical, JOBS), {
 					recursive: true,
 					mode: 0o700,
@@ -154,6 +163,8 @@ export async function createBeautyLabLiveCandidateBackend({
 					signal: controller.signal,
 					args: [
 						"-B",
+						"-X",
+						`pycache_prefix=${path.join(directory, "python-cache")}`,
 						path.join(source.canonical, JOB),
 						"--request",
 						path.join(directory, "request.json"),
@@ -183,7 +194,9 @@ export async function createBeautyLabLiveCandidateBackend({
 					lease,
 					manifest: path.join(directory, "manifest.json"),
 					parameters,
+					expectedDependencies: dependencies.expected,
 				});
+				await dependencies.verify();
 				await snapshot.verify();
 				controller.signal.throwIfAborted();
 				return result;
