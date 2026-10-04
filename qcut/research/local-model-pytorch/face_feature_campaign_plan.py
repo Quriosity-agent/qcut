@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 
 from PIL import Image
@@ -21,7 +22,8 @@ FEATURES = ("eye", "nose", "jaw", "mouth", "skin", "makeup")
 CONTROL_CHANGE = [True, True, True, False, True, False, True]
 CATALOG_SOURCES = [SCRIPT_ROOT / "face_feature_campaign_catalog.ts", *[
     REPO / "electron/jianying-portrait-adjustment-runtime" / name
-    for name in ("catalog.ts", "advanced-controls.ts", "makeup-catalog.ts")]]
+    for name in ("catalog.ts", "advanced-controls.ts", "makeup-catalog.ts", "package-resolver.ts",
+                 "provider.ts", "tracking-scope-pool.ts")]]
 
 
 def write_json(*, path, value):
@@ -36,8 +38,11 @@ def selection(*, values):
     return values
 
 
-def catalog(*, runtime, bun):
-    result = subprocess.run([str(bun), str(SCRIPT_ROOT / "face_feature_campaign_catalog.ts"), str(runtime)],
+def catalog(*, runtime, bun, effect_cache_root=None):
+    command = [str(bun), str(SCRIPT_ROOT / "face_feature_campaign_catalog.ts"), str(runtime)]
+    if effect_cache_root is not None:
+        command.append(str(configured_root(path=effect_cache_root)))
+    result = subprocess.run(command,
                             capture_output=True, timeout=30, check=True)
     driver.require(condition=len(result.stdout) <= sequence.MANIFEST_LIMIT, message="catalog output too large")
     rows = strict_json(data=result.stdout)
@@ -46,11 +51,55 @@ def catalog(*, runtime, bun):
     for row in rows:
         driver.require(condition=set(row["parameters"]) == {"active", "half", "zero"}
                        and row["hostPackage"] in row["packages"], message="feature package/levels missing")
-        for name in row["packages"]:
-            package = Path(name)
-            driver.require(condition=package.is_absolute() and package.is_relative_to(runtime / "Cache/effect"),
-                           message="feature package outside runtime cache")
+        validate_bindings(spec=row, runtime=runtime, effect_cache_root=effect_cache_root)
     return {row["id"]: row for row in rows}
+
+
+def configured_root(*, path):
+    path = Path(path)
+    driver.require(condition=path.is_absolute() and path.is_dir() and path.resolve(strict=True) == path,
+                   message="explicit cache root must be a canonical absolute directory without symlinks")
+    return sequence.consumer.protocol_path(path=path)
+
+
+def validate_bindings(*, spec, runtime, effect_cache_root=None, require_available=False):
+    bindings = spec.get("packageBindings")
+    driver.require(condition=isinstance(bindings, list) and 1 <= len(bindings) <= 2
+                   and [row.get("path") for row in bindings] == spec["packages"]
+                   and spec["hostPackage"] == spec["packages"][0], message="complete ordered package bindings required")
+    roots = {"private": runtime / "Cache/effect"}
+    if effect_cache_root is not None:
+        roots["effect-cache"] = configured_root(path=effect_cache_root)
+    for row in bindings:
+        driver.require(condition=isinstance(row.get("resourceId"), str) and re.fullmatch(r"[0-9]{1,32}", row["resourceId"])
+                       and isinstance(row.get("version"), str) and re.fullmatch(r"[0-9a-f]{32}", row["version"])
+                       and type(row.get("available")) is bool, message="pinned typed resource/version identity required")
+        selected = None
+        for source, root in roots.items():
+            candidate = root / row["resourceId"] / row["version"]
+            if not candidate.exists() and not candidate.is_symlink():
+                continue
+            driver.require(condition=candidate.is_dir() and candidate.resolve(strict=True) == candidate,
+                           message=f"pinned package resolves through symlink or is not a directory: {candidate}")
+            selected = dict(source=source, root=str(root), path=str(candidate), available=True)
+            break
+        expected = selected or dict(source="private", root=str(roots["private"]),
+            path=str(roots["private"] / row["resourceId"] / row["version"]), available=False)
+        driver.require(condition=all(row.get(key) == value for key, value in expected.items()),
+                       message="package binding differs from private-first pinned resolution")
+        if require_available:
+            driver.require(condition=selected is not None,
+                           message=f"missing pinned package {row['resourceId']}/{row['version']}; searched: {list(map(str, roots.values()))}")
+
+
+def root_identities(*, specs):
+    roots = {row["root"] for spec in specs for row in spec["packageBindings"]}
+    result = {}
+    for name in sorted(roots):
+        path = configured_root(path=Path(name))
+        info = path.stat()
+        result[name] = dict(device=info.st_dev, inode=info.st_ino)
+    return result
 
 
 def materialize(*, template, feature, locked):
@@ -75,8 +124,9 @@ def epoch(*, paths, packages, locked):
              driver.TreeGuard(root=paths["runtime"] / "Models")]
     for package in sorted(packages):
         root = Path(package)
-        driver.require(condition=root.resolve(strict=True).is_relative_to(paths["runtime"]),
-                       message="package resolves outside runtime")
+        allowed = [paths["runtime"] / "Cache/effect", *([paths["effect_cache_root"]] if "effect_cache_root" in paths else [])]
+        driver.require(condition=root.resolve(strict=True) == root and any(root.is_relative_to(parent) for parent in allowed),
+                       message="package resolves outside explicitly configured roots")
         trees.append(driver.TreeGuard(root=root))
     libraries = {}
     for name, expected in driver.RUNTIME_HASHES.items():
@@ -101,6 +151,8 @@ def build(*, args):
     driver.require(condition=len({path.resolve() for path in templates}) == len(templates), message="duplicate portrait manifest")
     paths = {key: driver.local_path(path=getattr(args, key), directory=key in ("runtime", "models_root"))
              for key in ("runtime", "models_root", "warp_python", "ort_python", "bun")}
+    if getattr(args, "effect_cache_root", None) is not None:
+        paths["effect_cache_root"] = configured_root(path=args.effect_cache_root)
     for key in ("warp_python", "ort_python", "bun"):
         driver.require(condition=os.access(paths[key], os.X_OK), message="executable tool required")
         locked.read(path=paths[key], maximum=driver.FILE_LIMIT)
@@ -109,7 +161,11 @@ def build(*, args):
             locked.read(path=config, maximum=65536)
     for source in CATALOG_SOURCES:
         locked.read(path=source, maximum=sequence.LOG_LIMIT)
-    choices = catalog(runtime=paths["runtime"], bun=paths["bun"])
+    choices = catalog(runtime=paths["runtime"], bun=paths["bun"], effect_cache_root=paths.get("effect_cache_root"))
+    specs = [choices[name] for name in features]
+    for spec in specs:
+        validate_bindings(spec=spec, runtime=paths["runtime"], effect_cache_root=paths.get("effect_cache_root"), require_available=True)
+    package_roots = root_identities(specs=specs)
     packages = {path for name in features for path in choices[name]["packages"]}
     trees, libraries = epoch(paths=paths, packages=packages, locked=locked)
     cases = []
@@ -123,19 +179,26 @@ def build(*, args):
                               input_kind="synthetic-seven-frame-controls", **{"spec": choices[name]}))
     driver.verify_guards(locked=locked, guards=trees, libraries=libraries)
     fingerprints = {name: driver.file_fingerprint(path=Path(name)) for name in locked.files}
-    plan = dict(format="face-feature-campaign-plan-v1", native_execution_performed=False,
+    plan = dict(format="face-feature-campaign-plan-v2", native_execution_performed=False,
                 candidate_parity=False, product_parity_verified=False, paths={key: str(value) for key, value in paths.items()},
-                cases=cases, locked_files=fingerprints,
+                cases=cases, locked_files=fingerprints, package_roots=package_roots,
                 trees=[dict(root=str(tree.root), source=tree.source, files=tree.files) for tree in trees],
                 libraries=libraries, dependencies=["native-detector", "native-algorithm-rgba", "native-caller-geometry",
                     "native-routing", "native-effect-renderer"],
                 scope="bounded still-derived controls, not live video or full backend independence")
+    verify_epoch(plan=plan)
     write_json(path=out / "plan.json", value=plan)
     return dict(plan=str(out / "plan.json"), sha256=digest(data=(out / "plan.json").read_bytes()),
                 cases=len(cases), features=features, source_files=sum(len(tree.files) for tree in trees if tree.source))
 
 
 def verify_epoch(*, plan):
+    if plan.get("format") == "face-feature-campaign-plan-v2":
+        specs = [case["spec"] for case in plan["cases"]]
+        paths = {key: Path(value) for key, value in plan["paths"].items()}
+        for spec in specs:
+            validate_bindings(spec=spec, runtime=paths["runtime"], effect_cache_root=paths.get("effect_cache_root"), require_available=True)
+        driver.require(condition=root_identities(specs=specs) == plan["package_roots"], message="resolved package root identity changed")
     for name, expected in plan["locked_files"].items():
         driver.require(condition=driver.file_fingerprint(path=Path(name)) == expected, message=f"locked asset/source changed: {name}")
     for tree in plan["trees"]:
@@ -149,7 +212,7 @@ def load(*, path, expected_sha256):
     driver.require(condition=valid_hash(value=expected_sha256), message="explicit SHA256 plan identity required")
     locked = LockedFiles()
     plan = strict_json(data=locked.read(path=path, maximum=16 * 1024**2, expected=expected_sha256))
-    driver.require(condition=plan.get("format") == "face-feature-campaign-plan-v1"
+    driver.require(condition=plan.get("format") == "face-feature-campaign-plan-v2"
                    and plan.get("native_execution_performed") is False and plan.get("candidate_parity") is False,
                    message="CPU-only campaign plan required")
     cases = plan.get("cases")
