@@ -99,6 +99,8 @@ export async function exportBeautyLabComparison({
 	const candidateProvenance = candidateReport
 		? (({ rgba: _rgba, ...metadata }) => metadata)(candidateReport)
 		: null;
+	const staticAuditReady =
+		candidateReport?.scope === "audited-single-static-frame";
 	const zip = new JSZip();
 	const frames = [{ name: "original", frame: input }];
 	if (native) frames.push({ name: "native", frame: native });
@@ -147,7 +149,9 @@ export async function exportBeautyLabComparison({
 				candidateProvenance,
 				nativeResultPresent: native !== null,
 				candidateResultPresent: candidate !== null,
-				arbitraryFrameCandidateReady: candidateReport !== null,
+				arbitraryFrameCandidateReady:
+					candidateReport !== null && candidateReport.scope === undefined,
+				...(staticAuditReady ? { staticAuditReady: true } : {}),
 				comparisons,
 			},
 			null,
