@@ -139,13 +139,16 @@ def timeout_context(*, out, phase):
 
 
 def run(*, args):
+    single_frame = getattr(args, "single_frame", False)
     if not 1 <= args.timeout <= 240:
         raise ValueError("native phase timeout must be between 1 and 240 seconds")
     if args.execute_native and (not args.lease or len(args.lease) > 160):
         raise ValueError("explicit parent GPU lease identifier required before native execution")
     out = sequence.fresh_output(path=args.out)
     report = dict(schema="face-live-bridge-probe-v1", passed=False, prepared=False, completed=False,
-        phase="prepare", scope="bounded-single-face-native-dependent-live-research", failures=[],
+        phase="prepare", scope=("single-frame-native-dependent-live-audit" if single_frame else
+            "bounded-single-face-native-dependent-live-research"), failures=[],
+        single_frame_audit=single_frame, temporal_sequence_acceptance=False,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -160,7 +163,8 @@ def run(*, args):
             for key in ("runtime", "package", "root", "manifest"):
                 setattr(args, key, getattr(args, key).resolve(strict=True))
             bundle.lock_dependencies(runtime=args.runtime, package=args.package, models=args.root, guard=guard)
-            frames, dimensions = bundle.prepare_inputs(manifest=args.manifest, out=out, guard=guard)
+            frames, dimensions = bundle.prepare_inputs(manifest=args.manifest, out=out, guard=guard,
+                                                       single_frame=single_frame)
             report.update(manifest=str(args.manifest), manifest_sha256=guard.locked.files[str(args.manifest)],
                           runtime=str(args.runtime), package=str(args.package), root=str(args.root),
                           width=dimensions[0], height=dimensions[1], input_frames=frames)
@@ -220,6 +224,7 @@ def run(*, args):
         report["command"] = shlex.join([sys.executable, "-B", str(Path(__file__).resolve()),
             "--runtime", str(args.runtime), "--package", str(args.package), "--root", str(args.root),
             "--manifest", str(args.manifest), "--out", str(out) + "-rerun", "--timeout", str(args.timeout),
+            *(["--single-frame"] if single_frame else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])])
         bundle.write_json(path=out / "report.json", value=report)
     return report
@@ -230,6 +235,8 @@ def main():
     for name in ("runtime", "package", "root", "manifest", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--execute-native", action="store_true")
+    parser.add_argument("--single-frame", action="store_true",
+                        help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--lease")
     parser.add_argument("--timeout", type=float, default=90)
     report = run(args=parser.parse_args())
