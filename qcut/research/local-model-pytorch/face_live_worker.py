@@ -183,7 +183,14 @@ def serve(*, worker, path, log, timeout):
                             log.flush()
                     except Exception as error:
                         worker.error = f"{type(error).__name__}: {error}"
-                        send(connection=connection, message=dict(ok=False, error=worker.error), timeout=1)
+                        failure = dict(ok=False, error=worker.error)
+                        log.write(json.dumps(failure, allow_nan=False) + "\n")
+                        log.flush()
+                        try:
+                            send(connection=connection, message=failure, timeout=1)
+                        except OSError:
+                            # A disconnected caller must not replace the original failure.
+                            pass
         finally:
             path.unlink(missing_ok=True)
 
