@@ -230,14 +230,52 @@ export async function capturePortraitAuditIdentity({
 	};
 }
 
-export function portraitProcessGroupExists({ pid }: { pid: number }) {
+interface ProcessControlDiagnostic {
+	pid: number;
+	pgid: number;
+	targetPid: number;
+	action: string;
+	signal: NodeJS.Signals | 0;
+	outcome: "ok" | "absent" | "error";
+	code?: string;
+	errno?: number;
+	message?: string;
+}
+
+function controlProcessGroup({
+	pid,
+	signal,
+	action,
+	diagnostics = [],
+}: {
+	pid: number;
+	signal: NodeJS.Signals | 0;
+	action: string;
+	diagnostics?: ProcessControlDiagnostic[];
+}) {
+	if (!Number.isSafeInteger(pid) || pid <= 1)
+		throw new Error("Invalid owned process group PID");
+	const operation = { pid, pgid: pid, targetPid: -pid, action, signal };
 	try {
-		process.kill(-pid, 0);
+		process.kill(-pid, signal);
+		diagnostics.push({ ...operation, outcome: "ok" });
 		return true;
 	} catch (cause) {
-		if ((cause as NodeJS.ErrnoException).code === "ESRCH") return false;
+		const error = cause as NodeJS.ErrnoException;
+		diagnostics.push({
+			...operation,
+			outcome: error.code === "ESRCH" ? "absent" : "error",
+			code: error.code,
+			errno: error.errno,
+			message: String(cause),
+		});
+		if (error.code === "ESRCH") return false;
 		throw cause;
 	}
+}
+
+export function portraitProcessGroupExists({ pid }: { pid: number }) {
+	return controlProcessGroup({ pid, signal: 0, action: "probe" });
 }
 
 export async function runBoundedPortraitWorker({
@@ -283,19 +321,72 @@ export async function runBoundedPortraitWorker({
 	let stderr = "";
 	let reason: "timeout" | "cancelled" | "abort-marker" | null = null;
 	const started = Date.now();
+	const diagnostics: ProcessControlDiagnostic[] = [];
+	const failures: unknown[] = [];
+	let rootClosed = false;
+	let exit: { code: number | null; signal: NodeJS.Signals | null } = {
+		code: null,
+		signal: null,
+	};
+	const closed = new Promise<typeof exit>((resolve, reject) => {
+		child.once("error", reject);
+		child.once("close", (code, exitSignal) => {
+			rootClosed = true;
+			exit = { code, signal: exitSignal };
+			resolve(exit);
+		});
+	});
+	let rejectControl: (cause: unknown) => void = () => {};
+	const controlFailure = new Promise<never>((_resolve, reject) => {
+		rejectControl = reject;
+	});
+	const recordFailure = (cause: unknown) => {
+		if (!failures.includes(cause)) failures.push(cause);
+	};
+	const action = ({
+		signal: groupSignal,
+		action: name,
+	}: {
+		signal: NodeJS.Signals | 0;
+		action: string;
+	}) =>
+		controlProcessGroup({
+			pid,
+			signal: groupSignal,
+			action: name,
+			diagnostics,
+		});
 	let killTimer: ReturnType<typeof setTimeout> | undefined;
-	const killGroup = ({ signal: groupSignal }: { signal: NodeJS.Signals }) => {
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+	const signalFromCallback = ({
+		signal: groupSignal,
+		action: name,
+	}: {
+		signal: NodeJS.Signals;
+		action: string;
+	}) => {
 		try {
-			process.kill(-pid, groupSignal);
+			action({ signal: groupSignal, action: name });
 		} catch (cause) {
-			if ((cause as NodeJS.ErrnoException).code !== "ESRCH") throw cause;
+			recordFailure(cause);
+			rejectControl(cause);
 		}
 	};
 	const stop = ({ cause }: { cause: NonNullable<typeof reason> }) => {
 		if (reason) return;
 		reason = cause;
-		killGroup({ signal: "SIGTERM" });
-		killTimer = setTimeout(() => killGroup({ signal: "SIGKILL" }), graceMs);
+		signalFromCallback({ signal: "SIGTERM", action: `${cause}-term` });
+		killTimer = setTimeout(
+			() => signalFromCallback({ signal: "SIGKILL", action: `${cause}-kill` }),
+			graceMs
+		);
+		closeTimer = setTimeout(
+			() =>
+				rejectControl(
+					new Error("Owned worker did not close after cancellation")
+				),
+			graceMs + 1000
+		);
 	};
 	const cancel = () => stop({ cause: "cancelled" });
 	signal?.addEventListener("abort", cancel, { once: true });
@@ -310,36 +401,69 @@ export async function runBoundedPortraitWorker({
 	const deadline = setTimeout(() => stop({ cause: "timeout" }), timeoutMs);
 	let processGroupGone = false;
 	try {
-		const exit = await new Promise<{
-			code: number | null;
-			signal: NodeJS.Signals | null;
-		}>((resolve, reject) => {
-			child.once("error", reject);
-			child.once("close", (code, exitSignal) =>
-				resolve({ code, signal: exitSignal })
-			);
-		});
+		await Promise.race([closed, controlFailure]);
 		// The worker can exit before its native grandchildren. Only its new group is owned here.
-		if (portraitProcessGroupExists({ pid })) {
-			killGroup({ signal: "SIGTERM" });
+		if (action({ signal: 0, action: "post-close-probe" })) {
+			action({ signal: "SIGTERM", action: "post-close-term" });
 			await new Promise((resolve) => setTimeout(resolve, graceMs));
-			killGroup({ signal: "SIGKILL" });
+			action({ signal: "SIGKILL", action: "post-close-kill" });
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
-		processGroupGone = !portraitProcessGroupExists({ pid });
-		return {
-			pid,
-			...exit,
-			reason,
-			elapsedMs: Date.now() - started,
-			stdout,
-			stderr,
-			processGroupGone,
-		};
+		processGroupGone = !action({ signal: 0, action: "verify-gone" });
+	} catch (cause) {
+		recordFailure(cause);
 	} finally {
 		clearTimeout(deadline);
 		if (killTimer) clearTimeout(killTimer);
+		if (closeTimer) clearTimeout(closeTimer);
 		signal?.removeEventListener("abort", cancel);
-		if (!processGroupGone) killGroup({ signal: "SIGKILL" });
+		if (!processGroupGone) {
+			try {
+				action({ signal: "SIGKILL", action: "final-cleanup-kill" });
+			} catch (cause) {
+				recordFailure(cause);
+			}
+			let reapTimer: ReturnType<typeof setTimeout> | undefined;
+			await Promise.race([
+				closed.catch(recordFailure),
+				new Promise((resolve) => {
+					reapTimer = setTimeout(resolve, graceMs + 100);
+				}),
+			]);
+			if (reapTimer) clearTimeout(reapTimer);
+			try {
+				processGroupGone = !action({
+					signal: 0,
+					action: "final-cleanup-probe",
+				});
+			} catch (cause) {
+				recordFailure(cause);
+			}
+		}
 	}
+	const result = {
+		pid,
+		...exit,
+		reason,
+		elapsedMs: Date.now() - started,
+		stdout,
+		stderr,
+		rootClosed,
+		processGroupGone,
+		diagnostics,
+	};
+	if (failures.length) {
+		const errors = failures.map((cause) => ({
+			message: String(cause),
+			stack: cause instanceof Error ? cause.stack : null,
+		}));
+		throw Object.assign(
+			new Error(
+				`Portrait worker process control failed: ${JSON.stringify({ pid, reason, diagnostics, errors })}`,
+				{ cause: failures[0] }
+			),
+			{ ...result, errors, cleanupErrors: failures.slice(1) }
+		);
+	}
+	return result;
 }
