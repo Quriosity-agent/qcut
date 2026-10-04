@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- Align skin-tone controls, original-frame portrait sampling, and preview/export settings across Beauty Lab and the editor.
+- Add bounded live native/ONNX comparison tools with cold-frame checks, owned-point consumption evidence, grayscale differences, and portable result exports.
+
+### Fixed
+- Validate comparison pixels, request identity, cancellation records, and dependency inventories before accepting local research results.
+- Use portable catalog paths and cover Windows cross-drive rejection behavior without weakening filesystem validation.
+- Bound portrait preroll decoding and handle missing tracks, invalid durations, exhausted history budgets, and late decoder results.
+
+### Limitations
+- The live ONNX candidate remains development-only and explicitly opt-in on macOS ARM64. It still relies on the native reference runtime for detection and rendering; dynamic, multi-face, makeup, and production cross-platform parity are not complete.
+- Private reference models, vendor runtime binaries, and effect packages are not bundled in this release.
+
 ## [2026.10.04.1] - 2026-10-03
 
 ### Added
