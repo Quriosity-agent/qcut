@@ -134,8 +134,11 @@ def validate_metadata(*, packet):
         raise ValueError("explicit algorithm RGBA SHA-256 required")
     route = packet["runtime_state"]
     fields(value=route, names=ROUTE)
-    if any(type(route[key]) is not type(value) or route[key] != value for key, value in ROUTE.items()):
-        raise ValueError("only uncached ordinary Base routing is supported")
+    expected_route = dict(ROUTE, base_output_mode_bit=route["base_output_mode_bit"] is True)
+    mismatches = [f"{key}: expected {value!r}, got {repr(route[key])[:100]}" for key, value in expected_route.items()
+                  if type(route[key]) is not type(value) or route[key] != value]
+    if mismatches:
+        raise ValueError("only uncached ordinary Base/Extra primary106 routing is supported; " + "; ".join(mismatches))
     if packet["face"] is not None:
         validate_face(face=packet["face"], width=packet["width"], height=packet["height"])
     return packet
