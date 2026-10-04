@@ -1,5 +1,6 @@
 // Opt-in post-predict dependency callback; no native point arrays are transmitted.
 #import <Foundation/Foundation.h>
+#include <CommonCrypto/CommonDigest.h>
 namespace {
 void qcutFaceLivePrediction(void*, const void*, int, int, int, int, int, int) noexcept;
 }
@@ -9,6 +10,8 @@ void qcutFaceLivePrediction(void*, const void*, int, int, int, int, int, int) no
 #include "face_live_bridge_socket.h"
 
 namespace {
+#include "face_live_stage_capture.h"
+
 NSDictionary* liveFilter(uintptr_t address, int count) {
   if (read<int>(address + 0x70) != count)
     throw std::runtime_error("unsupported live filter count");
@@ -78,6 +81,7 @@ void qcutFaceLivePrediction(void* handle, const void* pixels, int rc, int format
         throw std::runtime_error("cannot own live algorithm pixels");
       const char* token = std::getenv("QCUT_FACE_LIVE_TOKEN");
       if (!token || std::strlen(token) < 16) throw std::runtime_error("live session token missing");
+      captureLiveStages(owner, index, width, height, timestamp(), copy, token);
       NSDictionary* message = @{@"op":@"predict", @"token":@(token), @"pid":@(getpid()), @"prediction":@(index),
         @"data":@{@"owner":@(owner), @"width":@(width), @"height":@(height), @"stride":@(stride),
           @"format":@(format), @"orientation":@(rotation), @"runtime_state":runtimeState(owner),
