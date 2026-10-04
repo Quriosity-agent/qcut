@@ -49,18 +49,25 @@ def worker_ready(*, path, socket):
 
 def lldb_command(*, config):
     return ["xcrun", "lldb", "--batch", "--no-lldbinit", "-o",
-        "script import sys; sys.path.insert(0, " + json.dumps(str(bundle.HERE)) + ")", "-o",
+        "script import sys; sys.dont_write_bytecode = True; sys.pycache_prefix = " +
+        json.dumps(str(config.parent / "lldb-python-cache")) +
+        "; sys.path.insert(0, " + json.dumps(str(bundle.HERE)) + ")", "-o",
         "command script import " + json.dumps(str(bundle.HERE / "face_live_bridge_lldb.py")), "-o",
         "script face_live_bridge_lldb.run(debugger=lldb.debugger, config_path=" + json.dumps(str(config)) + ")",
         "-o", "quit"]
 
 
-def plans(*, frames, out):
+def python_command(*, script, cache, arguments):
+    # -B prevents writes, not reads; a fresh prefix excludes stale source-tree bytecode.
+    return [sys.executable, "-B", "-X", "pycache_prefix=" + str(cache), str(script), *arguments]
+
+
+def plans(*, frames, out, cold_frame=False):
     result = {}
     for phase in ("baseline", "live"):
         directory = out / phase
         directory.mkdir(mode=0o700)
-        rows, text = bundle.requests(frames=frames, directory=directory)
+        rows, text = bundle.requests(frames=frames, directory=directory, cold_frame=cold_frame)
         (directory / "requests.tsv").write_text(text)
         result[phase] = rows
     return result
@@ -91,9 +98,10 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         token = secrets.token_hex(32)
         source_key = "live-session:" + secrets.token_hex(16) + ":" + report["manifest_sha256"]
         live = out / "live"
-        worker_command = [sys.executable, "-B", str(bundle.HERE / "face_live_worker.py"),
+        worker_command = python_command(script=bundle.HERE / "face_live_worker.py",
+            cache=Path(temporary) / "python-cache", arguments=[
             "--root", str(args.root), "--socket", str(socket), "--log", str(live / "worker.jsonl"),
-            "--token", token, "--source-key", source_key, "--timeout", "120"]
+            "--token", token, "--source-key", source_key, "--timeout", "120"])
         worker = scope.spawn(command=worker_command, environment=bundle.system_environment(),
                              stdout=live / "worker.stdout", stderr=live / "worker.stderr")
         scope.until(predicate=lambda: worker_ready(path=live / "worker.stdout", socket=socket),
@@ -102,7 +110,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             lens=str(args.runtime / "Frameworks/liblens.dylib"),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
-                live=True, socket=socket, token=token, capture=out / "live-capture.dylib"),
+                live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
+                cold_frame=report["cold_frame_audit"]),
             socket=str(socket), token=token, stdin=str(live / "requests.tsv"), stdout=str(live / "host.stdout"),
             stderr=str(live / "host.stderr"), report=str(live / "observer.json"))
         config_path = out / "lldb-config.json"
@@ -123,7 +132,7 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
         report["callback_audit"] = audit.callbacks(worker=audit.json_lines(path=live / "worker.jsonl"),
             observer=observer, records=audit.json_lines(path=live / "records.jsonl"), timestamps=timestamps,
-            token=token, source_key=source_key)
+            token=token, source_key=source_key, cold_frame=report["cold_frame_audit"])
         report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
                                                 frames=frames, width=width, height=height)
         report["live_checks_completed"] = True
@@ -144,6 +153,9 @@ def timeout_context(*, out, phase):
 def run(*, args):
     single_frame = getattr(args, "single_frame", False)
     static_controls = getattr(args, "static_controls", False)
+    cold_frame = getattr(args, "cold_frame", False)
+    if cold_frame and not single_frame:
+        raise ValueError("cold-frame requires explicit single-frame audit")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -156,6 +168,7 @@ def run(*, args):
             "single-frame-native-dependent-live-audit" if single_frame else
             "bounded-single-face-native-dependent-live-research"), failures=[],
         single_frame_audit=single_frame, static_controls_audit=static_controls, temporal_sequence_acceptance=False,
+        cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -180,7 +193,7 @@ def run(*, args):
             report.update(manifest=str(args.manifest), manifest_sha256=guard.locked.files[str(args.manifest)],
                           runtime=str(args.runtime), package=str(args.package), root=str(args.root),
                           width=dimensions[0], height=dimensions[1], input_frames=frames)
-            requests = plans(frames=frames, out=out)
+            requests = plans(frames=frames, out=out, cold_frame=cold_frame)
             report["requests"] = requests
             for phase in ("baseline", "live"):
                 guard.locked.read(path=out / phase / "requests.tsv")
@@ -243,14 +256,16 @@ def run(*, args):
         report["passed"] = report["completed"] and report["live_checks_completed"]
         report["bounded_native_dependent_rgba_parity"] = report["passed"]
         report["live_callback_handoff_verified"] = report["passed"]
-        report["command"] = shlex.join([sys.executable, "-B", str(Path(__file__).resolve()),
+        report["command"] = shlex.join(python_command(script=Path(__file__).resolve(),
+            cache=Path(str(out) + "-rerun") / "python-cache", arguments=[
             "--runtime", str(args.runtime), "--package", str(args.package), "--root", str(args.root),
             "--manifest", str(args.manifest), "--out", str(out) + "-rerun", "--timeout", str(args.timeout),
             *(["--single-frame"] if single_frame else []),
+            *(["--cold-frame"] if cold_frame else []),
             *(["--static-controls"] if static_controls else []),
             *(item for package in getattr(args, "additional_packages", []) for item in ("--additional-package", str(package))),
             *(["--stable-host"] if getattr(args, "stable_host", False) else []),
-            *(["--execute-native", "--lease", args.lease] if args.execute_native else [])])
+            *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
         finally:
@@ -267,6 +282,8 @@ def main():
                         help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
+    parser.add_argument("--cold-frame", action="store_true",
+                        help="single-frame only: require owned handoff from first prediction with no repeated warmup")
     parser.add_argument("--static-controls", action="store_true",
                         help="audit different parameters on identical static pixels, not a video sequence")
     parser.add_argument("--additional-package", dest="additional_packages", action="append", type=Path, default=[],
