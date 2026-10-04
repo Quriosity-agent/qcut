@@ -1,7 +1,8 @@
 """Read-only CPU audit of the fixed captured preprocessing/ONNX/render chain.
 
-No inference or native renderer is run. Detector geometry, algorithm RGBA,
-routing, tables and effect rendering remain native dependencies of this profile.
+No inference or native renderer is run. --original-frames also recomputes the
+original-pixel producer. Detector geometry, routing, tables and effect rendering
+remain native dependencies; algorithm RGBA is then an equality oracle only.
 """
 from __future__ import annotations
 
@@ -125,15 +126,20 @@ def model_heads(*, directory, model_root, context, evidence, inputs, locked):
     return report
 
 
-def render_pixels(*, directory, context, value, payload, path, locked):
+def render_pixels(*, directory, context, value, payload, path, locked, original_frames=False):
     evidence = locked.json(path=directory / "report.json")
-    if evidence.get("profile") != "actual-preprocess-owned-chain-render-v1":
+    if evidence.get("profile") != chain.profile(stage="render", original_frames=original_frames):
         raise ValueError("fixed-profile actual render report required")
     flags(evidence=evidence, positive=("passed", "completed", "external_replay_verified", "pixel_parity_verified"),
           negative=("native_analysis_bypassed", "independent_inference_verified", "product_parity_verified", "arbitrary_frame_backend_connected"))
     fixtures(evidence=evidence, locked=locked)
     declared_sources(evidence=evidence, expected=["local-model-pytorch/" + name for name in
-        (*chain.SOURCE_NAMES, "face_preprocess_chain_render.py")], locked=locked)
+        (*chain.source_names(original_frames=original_frames), "face_preprocess_chain_render.py")], locked=locked)
+    if original_frames:
+        for key, expected in chain.original_claims(completed=True).items():
+            same(actual=evidence.get(key), expected=expected, label=f"render {key}")
+        same(actual=evidence.get("candidate_report_sha256"),
+             expected=locked.files[str(path.with_name("report.json"))], label="render producer report linkage")
     for key, expected in (("capture", str(context["root"])), ("candidate", str(path)),
                           ("capture_sha256", locked.files[str(context["root"] / "report.json")]),
                           ("replay_sha256", locked.files[str(path)]), ("runtime", str(context["runtime"])),
@@ -214,29 +220,43 @@ def run(*, args):
                   native_dependencies=["algorithm-rgba", "detector", "caller-geometry", "tables", "routing", "effect-renderer"],
                   failures=[])
     try:
+        original_frames = getattr(args, "original_frames", False)
+        report["profile"] = chain.profile(stage="audit", original_frames=original_frames)
+        if original_frames:
+            report.update(chain.original_claims(completed=False),
+                          native_dependencies=["detector", "caller-geometry", "tables", "routing", "effect-renderer"])
         report["source_sha256"] = chain.sources(names=(Path(__file__).name,), locked=locked)
         root, path, render_root, model_root = (item.resolve(strict=True) for item in
             (args.capture, args.candidate, args.render, args.root))
         context = capture.load(root=root, locked=locked)
-        value, payload = chain_render.load_candidate(path=path, context=context, locked=locked)
+        mode = dict(original_frames=True) if original_frames else {}
+        value, payload = chain_render.load_candidate(path=path, context=context, locked=locked, **mode)
         evidence = locked.json(path=path.with_name("report.json"))
         fixtures(evidence=evidence, locked=locked)
-        flags(evidence=evidence, positive=("native_algorithm_rgba_required", "native_caller_parameters_required", "native_smoothing_initialization_required"),
-              negative=("native_inference_called", "native_160_sampling_input_required", "independent_full_frame_preprocessing", "diagnostic_only"))
-        declared_sources(evidence=evidence, expected=["local-model-pytorch/" + name for name in chain.SOURCE_NAMES], locked=locked)
+        positive = ("native_caller_parameters_required", "native_smoothing_initialization_required")
+        negative = ("native_inference_called", "native_160_sampling_input_required", "diagnostic_only")
+        if not original_frames:
+            positive += ("native_algorithm_rgba_required",)
+            negative += ("independent_full_frame_preprocessing",)
+        flags(evidence=evidence, positive=positive, negative=negative)
+        declared_sources(evidence=evidence, expected=["local-model-pytorch/" + name for name in
+            chain.source_names(original_frames=original_frames)], locked=locked)
         same(actual=evidence.get("capture"), expected=str(root), label="producer capture path")
         same(actual=evidence.get("manifest_frames"), expected=7, label="manifest count")
         same(actual=evidence.get("owned_smoothing_seed_predictions"), expected=[0, 20], label="owned seed lifecycle")
         same(actual=evidence.get("native_smoothing_seed_predictions"), expected=[], label="native seed prohibition")
-        inputs, sampling = chain.build_120(root=root, evidence=context["evidence"], associations=context["associations"], locked=locked, temporal=True)
-        seeds, initialization = chain.build_160(root=root, evidence=context["evidence"], associations=context["associations"], locked=locked)
-        same(actual=evidence.get("sampling_cases"), expected=sampling, label="120 sampling")
-        same(actual=evidence.get("initialization_sampling_cases"), expected=initialization, label="160 sampling")
+        if original_frames:
+            inputs, seeds, proof = chain.verify_original_inputs(evidence=evidence, context=context, directory=path.parent, locked=locked)
+            report["preprocessing"] = proof
+        else:
+            inputs, seeds, proof = chain.sampling_inputs(context=context, locked=locked)
+        same(actual=evidence.get("sampling_cases"), expected=proof["sampling_cases"], label="120 sampling")
+        same(actual=evidence.get("initialization_sampling_cases"), expected=proof["initialization_sampling_cases"], label="160 sampling")
         model = model_heads(directory=path.parent, model_root=model_root, context=context, evidence=evidence, inputs={**inputs, **seeds}, locked=locked)
         produced, cases = chain.produce(context=context, model=model, directory=path.parent / "onnx", locked=locked)
         same(actual=value, expected=produced, label="owned normalized replay")
         same(actual=evidence.get("cases"), expected=cases, label="owned geometry/smoothing")
-        metrics = render_pixels(directory=render_root, context=context, value=value, payload=payload, path=path, locked=locked)
+        metrics = render_pixels(directory=render_root, context=context, value=value, payload=payload, path=path, locked=locked, **mode)
         report.update(passed=True, completed=True, geometry_exact=True, final_consumer_parity=True,
                       pixel_parity_verified=True, external_replay_verified=True, head_comparisons=135,
                       normalized_conversions=24, comparisons=metrics, capture=str(root), candidate=str(path), render=str(render_root),
@@ -244,6 +264,8 @@ def run(*, args):
                       candidate_report_sha256=locked.files[str(path.with_name("report.json"))],
                       render_report_sha256=locked.files[str(render_root / "report.json")],
                       model_report_sha256=locked.files[str(path.parent / "onnx/report.json")])
+        if original_frames:
+            report.update(chain.original_claims(completed=True))
     except Exception as error:
         report["failures"].append(f"{type(error).__name__}: {error}")
         raise
@@ -256,6 +278,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "candidate", "render", "root", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
+    parser.add_argument("--original-frames", action="store_true", help="audit the original-frame owned producer")
     report = run(args=parser.parse_args())
     print(json.dumps({key: report[key] for key in ("passed", "head_comparisons", "normalized_conversions", "pixel_parity_verified")}))
 
