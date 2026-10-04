@@ -108,6 +108,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
                     process=worker, timeout=30)
         config = dict(host=report.get("host_identity", {}).get("path", str(out / "live-host")),
             lens=str(args.runtime / "Frameworks/liblens.dylib"),
+            core=str(args.runtime / "Frameworks/libcccreator.dylib"),
+            trace_face_readers=getattr(args, "trace_face_readers", False),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
@@ -265,6 +267,7 @@ def run(*, args):
             *(["--static-controls"] if static_controls else []),
             *(item for package in getattr(args, "additional_packages", []) for item in ("--additional-package", str(package))),
             *(["--stable-host"] if getattr(args, "stable_host", False) else []),
+            *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -280,6 +283,8 @@ def main():
     parser.add_argument("--execute-native", action="store_true")
     parser.add_argument("--stable-host", action="store_true",
                         help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
+    parser.add_argument("--trace-face-readers", action="store_true",
+                        help="add one read-only hardware breakpoint; getter hits are not consumption evidence")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
