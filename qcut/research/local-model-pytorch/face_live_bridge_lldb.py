@@ -16,6 +16,7 @@ import time
 from face_preprocess_lldb import CALLERS, command, register, file_address
 from face_preprocess_memory import unpack_detection_call
 from face_live_worker_protocol import exchange
+import face_live_reader_trace as reader_trace
 
 STATE = None
 POINTS = {"begin": 0x2c4dac, "call": 0x2ca3bc, "infer": 0x36b43c}
@@ -29,6 +30,7 @@ class Observer:
         self.started = time.monotonic()
         self.process = None
         self.caller = None
+        self.reader_hits, self.reader_events = 0, []
 
     def read(self, *, address, size):
         import lldb
@@ -123,6 +125,20 @@ def on_breakpoint(frame, location, internal_dict):
         return True
 
 
+def on_reader_breakpoint(frame, location, internal_dict):
+    try:
+        STATE.reader_hits += 1
+        if STATE.reader_hits > reader_trace.MAX_HITS or time.monotonic() - STATE.started > 240:
+            raise ValueError("face reader diagnostic budget exceeded")
+        row = reader_trace.observe(frame=frame, location=location, prediction=STATE.index)
+        if row is not None:
+            STATE.reader_events.append(row)
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
 def process_diagnostics(*, process, exited_state, no_stop_reason):
     stops = []
     thread_count = 0 if process.GetState() == exited_state else min(process.GetNumThreads(), 64)
@@ -166,6 +182,9 @@ def run(*, debugger, config_path):
             if not point.IsHardware():
                 raise ValueError("live hardware breakpoint required")
             point.SetScriptCallbackFunction(__name__ + ".on_breakpoint")
+        if config.get("trace_face_readers", False):
+            reader_trace.install(debugger=debugger, target=target, core=config["core"],
+                                 callback=__name__ + ".on_reader_breakpoint")
         info = lldb.SBLaunchInfo(config["arguments"])
         info.SetEnvironmentEntries([f"{key}={value}" for key,value in config["environment"].items()], False)
         info.SetLaunchFlags(info.GetLaunchFlags() & ~lldb.eLaunchFlagDisableASLR)
@@ -190,6 +209,9 @@ def run(*, debugger, config_path):
         if STATE:
             report.update(events=STATE.events, predictions=STATE.index + 1, callbacks=STATE.callbacks,
                           observer_failures=STATE.failures)
+            if config.get("trace_face_readers", False):
+                report["reader_trace"] = dict(hits=STATE.reader_hits, events=STATE.reader_events,
+                    renderer_consumption=False, target_memory_written=False)
         Path(config["report"]).write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     print(json.dumps(dict(passed=report["passed"], failures=report["failures"])))
 
