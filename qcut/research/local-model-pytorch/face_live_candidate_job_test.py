@@ -37,6 +37,7 @@ class StaticJobTests(unittest.TestCase):
 
     def native(self, *, args):
         self.assertTrue(args.single_frame)
+        self.assertTrue(args.cold_frame)
         self.assertTrue(args.execute_native)
         self.assertTrue(args.stable_host)
         manifest = json.loads(args.manifest.read_text())
