@@ -14,21 +14,22 @@ import numpy as np
 from face_alignment_replay import LockedFiles, point_difference, strict_json
 import face_host_geometry_sequence_render as render
 import face_preprocess_chain_capture as capture
-from face_preprocess_chain_replay import SOURCE_NAMES, finish, sources
+import face_preprocess_chain_replay as chain
+from face_preprocess_chain_replay import finish, sources
 import face_owned_replay_e2e as owned
 import face_render_consumer_probe as consumer
 import face_render_sequence_probe as sequence
 from face_render_stability_probe import digest
 
 
-def load_candidate(*, path, context, locked):
+def load_candidate(*, path, context, locked, original_frames=False):
     evidence = locked.json(path=path.with_name("report.json"))
     required = ("passed", "completed", "geometry_exact", "final_consumer_parity",
                 "independent_120_sampling_input_used", "independent_160_sampling_input_used",
                 "owned_initialization_used", "owned_temporal_smoothing_used")
     forbidden = ("captured_tensor_input_used", "native_final_point_input_used", "native_smoothing_seed_required",
                  "native_analysis_bypassed", "product_parity_verified", "arbitrary_frame_backend_connected")
-    if (evidence.get("profile") != "actual-preprocess-owned-chain-v1" or
+    if (evidence.get("profile") != chain.profile(original_frames=original_frames) or
             any(evidence.get(key) is not True for key in required) or
             any(evidence.get(key) is not False for key in forbidden) or
             evidence.get("capture_sha256") != locked.files[str(context["root"] / "report.json")] or
@@ -43,6 +44,14 @@ def load_candidate(*, path, context, locked):
             raise ValueError("absolute candidate fixture identity required")
         render.hashed(locked=locked, path=Path(name), expected=expected)
     render.sources(locked=locked, evidence=evidence)
+    if original_frames:
+        expected_sources = {"local-model-pytorch/" + name for name in chain.ORIGINAL_SOURCE_NAMES}
+        if set(evidence["source_sha256"]) != expected_sources:
+            raise ValueError("complete original-frame producer source inventory required")
+        for name, expected in evidence["source_sha256"].items():
+            if fixtures.get(str((render.SOURCE_ROOT / name).resolve(strict=True))) != expected:
+                raise ValueError("original-frame source must also be a pinned producer fixture")
+        chain.verify_original_inputs(evidence=evidence, context=context, directory=path.parent, locked=locked)
     data = render.hashed(locked=locked, path=path, expected=evidence.get("replay_sha256"), maximum=owned.REPLAY_LIMIT)
     value = strict_json(data=data)
     reference = context["native"]
@@ -80,10 +89,18 @@ def run(*, args):
                   external_replay_verified=False, pixel_parity_verified=False,
                   comparisons=[], runs=[], failures=[])
     try:
+        original_frames = getattr(args, "original_frames", False)
+        report["profile"] = chain.profile(stage="render", original_frames=original_frames)
+        if original_frames:
+            report.update(chain.original_claims(completed=False))
         root = args.capture.resolve(strict=True)
         context = capture.load(root=root, locked=locked)
         path = args.candidate.resolve(strict=True)
-        value, payload = load_candidate(path=path, context=context, locked=locked)
+        mode = dict(original_frames=True) if original_frames else {}
+        value, payload = load_candidate(path=path, context=context, locked=locked, **mode)
+        if original_frames:
+            report.update(chain.original_claims(completed=True),
+                          candidate_report_sha256=locked.files[str(path.with_name("report.json"))])
         (out / "replay.bin").write_bytes(payload)
         locked.read(path=out / "replay.bin", maximum=owned.REPLAY_LIMIT)
         view = input_view(directory=out / "input-view", context=context, locked=locked)
@@ -92,10 +109,13 @@ def run(*, args):
                       runtime=str(context["runtime"]), package=str(context["package"]),
                       host_sha256=locked.files[str(context["host"])], width=1448, height=1086,
                       frames=[{key: item for key, item in frame.items() if key != "input"} for frame in context["frames"]],
-                      source_sha256=sources(names=(*SOURCE_NAMES, "face_preprocess_chain_render.py"), locked=locked),
+                      source_sha256=sources(names=(*chain.source_names(original_frames=original_frames),
+                                                   "face_preprocess_chain_render.py"), locked=locked),
                       warmup_requests_per_host=6, seeks_per_request=2)
         entry = dict(name="candidate")
         report["runs"].append(entry)
+        if original_frames:
+            locked.verify()
         render.render_host(entry=entry, out=out, capture=view, frames=context["frames"], value=value,
                            host_path=context["host"], runtime=context["runtime"], package=context["package"], locked=locked)
         report["external_replay_verified"] = True
@@ -114,6 +134,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "candidate", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
+    parser.add_argument("--original-frames", action="store_true", help="require the original-frame owned producer")
     report = run(args=parser.parse_args())
     print(json.dumps({key: report[key] for key in ("passed", "pixel_parity_verified", "external_replay_verified")}))
 
