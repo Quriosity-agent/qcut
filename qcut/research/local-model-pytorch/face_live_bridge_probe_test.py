@@ -91,6 +91,8 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
             probe.run(args=argparse.Namespace(trace_makeup_system=True, cold_frame=False, single_frame=True))
         with self.assertRaisesRegex(ValueError, "publication requires explicit system observation"):
             probe.run(args=argparse.Namespace(publish_makeup_candidate=True, cold_frame=True, single_frame=True))
+        with self.assertRaisesRegex(ValueError, "render stages require explicit candidate publication"):
+            probe.run(args=argparse.Namespace(stage_makeup_render=True, cold_frame=True, single_frame=True))
 
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
@@ -246,6 +248,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertFalse(result["native_execution_performed"])
         self.assertFalse(result["bounded_native_dependent_rgba_parity"])
+        self.assertFalse(result["makeup_render_stage_research"])
         native.assert_not_called()
         self.assertTrue((self.args.out / "report.json").is_file())
         self.assertIn("live-host", result["artifacts"])
@@ -255,20 +258,24 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.write_manifest()
         self.args.single_frame = self.args.cold_frame = True
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
+        self.args.stage_makeup_render = True
         result, native = self.run_preparation()
         self.assertTrue(result["prepared"])
         self.assertTrue(result["completed"])
         self.assertTrue(result["makeup_publication_research"])
+        self.assertTrue(result["makeup_render_stage_research"])
         self.assertFalse(result["passed"])
         self.assertFalse(result["live_callback_handoff_verified"])
         self.assertFalse(result["product_backend_registered"])
         self.assertEqual(result["warmup_request_count"], 0)
-        for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate"):
+        for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
+                       "--stage-makeup-render"):
             self.assertIn(option, result["command"])
         native.assert_not_called()
 
     def test_makeup_publication_cannot_pass_from_successful_host_protocol_alone(self):
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
+        self.args.stage_makeup_render = True
         scope = mock.Mock()
         report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
         with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b""), \
@@ -284,9 +291,11 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         baseline_env = scope.spawn.call_args_list[0].kwargs["environment"]
         self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_TRACE", baseline_env)
         self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_PUBLISH", baseline_env)
+        self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_STAGES", baseline_env)
         config = json.loads((self.out / "lldb-config.json").read_text())
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"], "1")
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"], "1")
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"], "1")
 
     def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
         directory = self.root / "stable"
