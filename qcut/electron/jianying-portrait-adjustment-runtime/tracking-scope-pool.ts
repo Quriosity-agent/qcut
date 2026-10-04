@@ -7,6 +7,7 @@ export interface PortraitTrackingScope<
 > {
 	sessions: Map<string, Session>;
 	lastTimestampSeconds: number | null;
+	lastRenderedCacheKey: string | null;
 }
 
 export function createPortraitTrackingScopePool<
@@ -39,6 +40,7 @@ export function createPortraitTrackingScopePool<
 		const created: PortraitTrackingScope<Session> = {
 			sessions: new Map(),
 			lastTimestampSeconds: null,
+			lastRenderedCacheKey: null,
 		};
 		scopes.set(scopeKey, created);
 		return created;
