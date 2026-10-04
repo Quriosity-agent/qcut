@@ -165,18 +165,22 @@ class CloneLeaseScope {
 #include <optional>
 #include <unistd.h>
 #include "face_live_bridge_response.h"
+#include "face_live_makeup_scene.h"
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
 void prepareOwnedSeek(void*);
+void captureOwnedFeature(void*);
 }
 #define QCUT_FACE_BINDING_HOOK
 #define QCUT_FACE_PRE_SEEK_HOOK
+#define QCUT_FACE_FEATURE_HOOK
 #define main liveConsumerMain
 #include "face_owned_result_bridge.mm"
 #undef main
 #undef QCUT_FACE_BINDING_HOOK
 #undef QCUT_FACE_PRE_SEEK_HOOK
+#undef QCUT_FACE_FEATURE_HOOK
 
 namespace {
 using Convert = uint64_t (*)(void*, void*);
@@ -190,6 +194,62 @@ std::optional<ReplayFrame> livePending;
 int64_t livePrediction = -1;
 qcut_live::DeferredColdSetup liveColdSetup;
 int64_t liveColdSeekStartPrediction = -1;
+const bool liveMakeupTrace = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") ?: "") == "1";
+void* liveFeature = nullptr;
+using MakeupUpdate = void (*)(void*, double);
+struct MakeupShadow { std::array<void*, 32> table{}; MakeupUpdate original = nullptr; };
+std::map<void*, MakeupShadow> liveMakeupSystems;
+size_t liveMakeupCalls = 0;
+
+void captureOwnedFeature(void* feature) {
+  if (!liveMakeupTrace) return;
+  if (!feature || liveFeature) throw std::runtime_error("makeup trace requires one fresh feature");
+  liveFeature = feature;
+}
+
+void tracedMakeupUpdate(void* system, double delta) {
+  try {
+    if (std::this_thread::get_id() != seekThread || updateError || !liveLeases.injecting() ||
+        !livePending || livePending->timestamp != seekTimestamp || ++liveMakeupCalls > 64)
+      throw std::runtime_error("makeup update outside bounded native prediction");
+    records << "{\"event\":\"live_makeup_update_enter\",\"prediction\":" << livePrediction
+            << ",\"timestamp_us\":" << seekTimestamp
+            << ",\"reader\":\"face-makeup-v2\",\"candidate_injected\":false,\"renderer_consumption\":false}\n"
+            << std::flush;
+    liveMakeupSystems.at(system).original(system, delta);
+    records << "{\"event\":\"live_makeup_update_exit\",\"prediction\":" << livePrediction
+            << ",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
+  } catch (...) { updateError = std::current_exception(); }
+}
+
+void installMakeupObservers() {
+  if (!liveMakeupTrace) return;
+  using SceneGetter = void* (*)(const void*, int);
+  const auto getScene = jianying_probe::resolveSymbol<SceneGetter>(core,
+      "_ZNK13AmazingEngine14FeatureSegment8getSceneEi");
+  if (imageOffset(reinterpret_cast<void*>(getScene)) != 0x180b8ac)
+    throw std::runtime_error("unverified makeup scene getter");
+  const auto inventory = qcut_live::inspectMakeupScenes(reinterpret_cast<uintptr_t>(liveFeature),
+      [](uintptr_t address, void* out, size_t size) { return readMemory(reinterpret_cast<void*>(address), out, size); },
+      [](uintptr_t address) { return imageOffset(reinterpret_cast<void*>(address)); },
+      [&](uintptr_t feature, int index) { return reinterpret_cast<uintptr_t>(getScene(reinterpret_cast<void*>(feature), index)); });
+  for (uintptr_t address : inventory.makeup) {
+    void* system = reinterpret_cast<void*>(address);
+    if (liveMakeupSystems.contains(system)) throw std::runtime_error("duplicate makeup observer installation");
+    const auto table = field<unsigned char*>(system, 0);
+    auto& shadow = liveMakeupSystems[system];
+    if (!readMemory(table - 16, shadow.table.data(), sizeof(shadow.table)) ||
+        imageOffset(shadow.table[25]) != qcut_live::kMakeupV2Update)
+      throw std::runtime_error("unverified makeup observer vtable");
+    shadow.original = reinterpret_cast<MakeupUpdate>(shadow.table[25]);
+    shadow.table[25] = reinterpret_cast<void*>(tracedMakeupUpdate);
+    void* replacement = shadow.table.data() + 2;
+    std::memcpy(system, &replacement, sizeof(replacement));
+  }
+  records << "{\"event\":\"live_makeup_setup\",\"scenes\":" << inventory.scenes
+          << ",\"systems\":" << inventory.systems << ",\"makeup_systems\":" << inventory.makeup.size()
+          << ",\"renderer_consumption\":false}\n" << std::flush;
+}
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
@@ -323,6 +383,7 @@ void prepareOwnedPrediction() {
       inspectOwnedAdapter(algorithm);
     });
     if (algorithms.empty()) throw std::runtime_error("cold callback algorithm list is empty");
+    installMakeupObservers();
   });
   if (installed) {
     records << "{\"event\":\"live_cold_setup\",\"algorithms\":" << algorithms.size()
@@ -397,6 +458,7 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
 
 int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_COLD_FRAME") && !liveColdFrame) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") && (!liveMakeupTrace || !liveColdFrame)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
