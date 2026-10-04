@@ -26,6 +26,7 @@ import face_live_bridge_bundle as bundle
 import face_live_bridge_audit as audit
 import face_live_makeup_point_audit as point_audit
 import face_live_makeup_render_audit as makeup_audit
+import face_live_stage_audit as stage_audit
 import face_live_host_identity as host_identity
 import face_render_sequence_probe as sequence
 
@@ -104,6 +105,10 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             cache=Path(temporary) / "python-cache", arguments=[
             "--root", str(args.root), "--socket", str(socket), "--log", str(live / "worker.jsonl"),
             "--token", token, "--source-key", source_key, "--timeout", "120"])
+        if getattr(args, "trace_stages", False):
+            for name in ("native-stages", "candidate-stages"):
+                (live / name).mkdir(mode=0o700)
+            worker_command.extend(["--trace-directory", str(live / "candidate-stages")])
         worker = scope.spawn(command=worker_command, environment=bundle.system_environment(),
                              stdout=live / "worker.stdout", stderr=live / "worker.stderr")
         scope.until(predicate=lambda: worker_ready(path=live / "worker.stdout", socket=socket),
@@ -120,6 +125,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             socket=str(socket), token=token, stdin=str(live / "requests.tsv"), stdout=str(live / "host.stdout"),
             stderr=str(live / "host.stderr"), report=str(live / "observer.json"))
         config_path = out / "lldb-config.json"
+        if getattr(args, "trace_stages", False):
+            config["environment"]["QCUT_FACE_LIVE_STAGE_DIR"] = str(live / "native-stages")
         if getattr(args, "trace_makeup_system", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"] = "1"
         if getattr(args, "publish_makeup_candidate", False):
@@ -157,9 +164,24 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         timestamps = [row["timestamp_us"] for row in requests["live"] for _ in range(2)]
         observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
         worker_rows, records = audit.json_lines(path=live / "worker.jsonl"), audit.json_lines(path=live / "records.jsonl")
-        if consume_makeup:
-            report["makeup_inference_audit"] = audit.inference(worker=worker_rows, observer=observer,
+        inference_summary = None
+        if consume_makeup or getattr(args, "trace_stages", False):
+            inference_summary = audit.inference(worker=worker_rows, observer=observer,
                 timestamps=timestamps, token=token, source_key=source_key, cold_frame=True)
+        if getattr(args, "trace_stages", False):
+            report["stage_inference_audit"] = inference_summary
+            snapshots = {}
+            for name in ("native", "candidate"):
+                directory = live / f"{name}-stages"
+                expected = [directory / f"{name}-{index}.json" for index in range(2)]
+                audit.require(condition=sorted(directory.iterdir()) == expected,
+                              message="exact cold stage diagnostic inventory required")
+                snapshots[name] = [strict_json(data=sequence.bounded_bytes(path=path, limit=1024**2))
+                                   for path in expected]
+            report["stage_audit"] = stage_audit.audit(**snapshots, worker=worker_rows,
+                                                     token=token, source_key=source_key)
+        if consume_makeup:
+            report["makeup_inference_audit"] = inference_summary
             audit.require(condition=report["makeup_inference_audit"]["seed_predictions"] == [0] and
                           report["makeup_inference_audit"]["owned_point_groups"] == 2,
                           message="makeup requires two fresh single-face predictions")
@@ -195,6 +217,8 @@ def run(*, args):
     cold_frame = getattr(args, "cold_frame", False)
     if cold_frame and not single_frame:
         raise ValueError("cold-frame requires explicit single-frame audit")
+    if getattr(args, "trace_stages", False) and not cold_frame:
+        raise ValueError("stage diagnostics require cold-frame audit")
     if getattr(args, "trace_makeup_system", False) and not cold_frame:
         raise ValueError("makeup system observation requires cold-frame audit")
     if getattr(args, "publish_makeup_candidate", False) and not getattr(args, "trace_makeup_system", False):
@@ -225,6 +249,7 @@ def run(*, args):
         makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
         makeup_point_observation=getattr(args, "trace_makeup_points", False),
         makeup_consumption_research=getattr(args, "consume_makeup_candidate", False),
+        stage_diagnostics=getattr(args, "trace_stages", False),
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -327,6 +352,7 @@ def run(*, args):
             *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
             *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
             *(["--consume-makeup-candidate"] if getattr(args, "consume_makeup_candidate", False) else []),
+            *(["--trace-stages"] if getattr(args, "trace_stages", False) else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -354,6 +380,8 @@ def main():
                         help="read-only primary XY load proof; replaces getter trace and requires render stages")
     parser.add_argument("--consume-makeup-candidate", action="store_true",
                         help="research-only pinned geometry consumer; requires independent XY observation")
+    parser.add_argument("--trace-stages", action="store_true",
+                        help="cold single-frame diagnostic snapshots; never sent as model inputs")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
