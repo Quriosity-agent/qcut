@@ -35,6 +35,7 @@ from face_geometry import reorder_landmarks
 from face_host_geometry_replay import decode_actual, map_double, normalized
 from face_live_candidate_contract import NATIVE_DEPENDENCIES, fields, smoothing_state, validate, validate_metadata
 from face_live_candidate_onnx import OnnxHeads, validate_heads
+from face_live_candidate_trace import stage_snapshot
 from face_preprocess_replay import prepare
 from face_temporal_smoothing import BaseState, LENS_SHA256, update, update_base
 
@@ -65,8 +66,11 @@ def measured(*, timings, name, function, **kwargs):
 
 
 class CandidateCore:
-    def __init__(self, *, models):
+    def __init__(self, *, models, stage_observer=None):
+        if stage_observer is not None and not callable(stage_observer):
+            raise TypeError("stage observer must be callable or None")
         self.models = models
+        self.stage_observer = stage_observer
         self.state = self.identity = self.profile = self.sequence = None
         self.seen_ids = set()
         self.busy = threading.Lock()
@@ -82,6 +86,8 @@ class CandidateCore:
     def _process(self, *, packet, rgba, check_output):
         started = time.perf_counter_ns()
         packet, rgba = validate(packet=packet, rgba=rgba)
+        if self.stage_observer is not None and packet["face"] is None:
+            raise ValueError("stage diagnostics require exactly one face")
         sequence = (packet["source_key"], packet["width"], packet["height"], packet["prediction"],
                     packet["frame_number"], packet["timestamp_us"])
         if self.sequence is None:
@@ -128,7 +134,7 @@ class CandidateCore:
             heads["120"] = measured(timings=timings, name="inference-120", function=self.models.infer,
                                     size=120, values=pixels)
             heads["120"] = validate_heads(outputs=heads["120"], size=120)
-            _, tracked = measured(timings=timings, name="decode-map-120", function=decode_actual,
+            decoded_120, tracked = measured(timings=timings, name="decode-map-120", function=decode_actual,
                 raw=heads["120"]["fc_landmark_s1"].reshape(106, 2),
                 snapshot={"tables": face["tables"]}, face=face)
             temporal_start = time.perf_counter_ns()
@@ -140,6 +146,7 @@ class CandidateCore:
             if mode != "reset-120":
                 points, state = update_primary(state=state, points=tracked, extra=extra)
             timings["temporal-smoothing"] += (time.perf_counter_ns() - temporal_start) / 1e6
+            smoothed = points
             points = measured(timings=timings, name="normalization", function=normalized,
                 points=points, request=[0, packet["width"], packet["height"], packet["stride"], 0])
             faces = [dict(id=face["id"], points=points.tolist())]
@@ -173,6 +180,11 @@ class CandidateCore:
                 raise ValueError("output checker must return None, never corrected points")
         self.models.verify()
         result["total_ms"] = (time.perf_counter_ns() - started) / 1e6
+        if self.stage_observer is not None:
+            snapshot = stage_snapshot(packet=packet, result=result, seed=seed,
+                decoded=decoded_120, mapped=tracked, smoothed=smoothed, normalized=points, state=state)
+            if self.stage_observer(snapshot=snapshot) is not None:
+                raise ValueError("stage observer must return None")
         # Commit only after inference, normalization and all provenance guards succeed.
         self.state, self.identity, self.profile, self.sequence = state, identity, profile, sequence
         if face is not None:
