@@ -5,7 +5,117 @@
 PR：[484](https://github.com/Quriosity-agent/qcut/pull/484)。采用一文件、一提交、逐个 push。
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
 
-## 第三阶段：收尾验证与真实阻塞
+## 第四阶段：授权后实跑、遮挡恢复与验收边界
+
+本节是最新状态；以下第二、三阶段保留为历史失败记录。
+**命令行授权后实跑成功，但 Electron 新建的 live-host 又单独触发桌面访问授权，真实候选按钮验收仍未完成。**
+本轮没有修改系统授权数据库、迁移宿主绕过权限或把旧失败报告改成通过。
+
+### 原图链与实时交接
+
+- 最小 LLDB 程序重新启动、退出和清理均成功。真实宿主随后进入模型回调，原先的桌面授权等待不再阻塞这次实测。
+- 首次新 live 运行暴露的是 LLDB Python 环境没有 NumPy。worker 协议层已改为纯标准库，
+  并用 `python -S` 验证调试器模块的导入；仍严格拒绝重复 JSON 键、非有限数、溢出及非 UTF-8 输入。
+- 新 live 报告 `face-live-bridge-native-20261004-r2/report.json`：26 次预测、61 次观察回调、
+  24 次克隆点交接与恢复；7 帧与独立新运行的原生基线逐字节一致。130 项是 head **哈希收据**，不是原生 head 数值比较。
+- 完整原图链 r4 从原始 RGBA 自产算法画面、120/160 网络输入，执行 ONNX、解码、初始化、平滑及归一化。
+  135 项 head 数值比较、24 次点转换和 7 帧最终 RGBA 对照通过；没有消费原生算法 RGBA 作为生产输入。
+  证据目录：`face-full-frame-owned-{capture,replay,render,audit}-20261004-r4`。
+- 原图链导入 Beauty Lab 后，真实 Electron E2E 的 2 项测试通过：逐一查看 7 帧、统一增益 x8 灰度差分、
+  ZIP 内容、移动视口、只读参数和时间线隔离。截图/报告：`output/playwright/beauty-original-owned-ui-20261004-r1`。
+  第 0 帧原图到效果改变 41,872 像素，候选到原生差异为 0；第 3 帧为有意的空白对照，不是丢图。
+
+上述 `face-*` 简写目录在 `.local/jianying-model-pytorch/`。
+这仍是固定单脸 profile：检测、调用几何、路由/表数据与效果渲染保留原生依赖。
+原图离线全链通过与 live 桥通过是两套不同证据；live 桥仍使用原生全帧预处理，不把两者拼成未实测的实时独立后端。
+
+### 五项遮挡冷启动恢复
+
+产品链增加显式 `needsSourcePreRoll`：检测不到脸且输出未变化时，读取同一视频实际历史帧，
+上限 16 帧、0.5 秒、64 MiB。退役旧跟踪器后按时间顺序回放，再处理原来的目标帧。
+不能拿当前帧重复冒充历史，不能跨 source，也不对逐脸身份、手动画笔或稳定源假装恢复成功。
+预览和导出都接入原始媒体解码入口；有取消、输入/参数快照和缓存约束。
+
+`output/playwright/beauty-portrait-acquisition-20261004-r2/report.json` 的五项均恢复：
+相对原图分别改变 719、753、753、868、868 像素，与正常顺序播放参考的像素差均为 0。
+同样目标帧的独立冷启动对照仍无效果，证明恢复来自真实历史而不是降低通过门槛。
+输入、冷启动、恢复、顺播及 x8 差分共 25 张 PNG 保留在该目录。来源和进程清理复核通过。
+注意 `portrait-motion-70.mkv` 是 **70 帧、约 2.33 秒**，不是 70 秒；不能拿它作分钟验收。
+
+真实产品 E2E：`output/playwright/portrait-source-preroll-20261004-r4/report.json` 通过。
+从原始 MKV 转为浏览器可解码的 MP4 后，走 Electron 时间线、真实媒体历史帧解码、IPC、原生渲染及 renderer-muxer 导出。
+没有注入预制历史帧或伪造 native 回包。预览改变 731 像素，导出编码前改变 747 像素，
+二者各自与对应解码路径的顺播参考差异均为 0；两条解码路径的输入不完全相同，不跨路径强行比较哈希。
+暂缓一份真实回包后跳到其它位置，旧请求没有补发历史恢复、没有覆盖新画面；该测试验证过期交付隔离，不声称取消原生算法执行。
+导出 854x480、30fps 的单帧 MP4 可解码；有损编码后的灰度平均差约 2.049、阈值 3，
+编码差异与原生恢复的零 RGBA 门限分开报告。来源/bundle 哈希复核未变，无 page error。
+截图：`cancelled-target-ui.png`、`recovered-target-ui.png`；原图/恢复/顺播/灰度 PNG 和 `recovered-target.mp4` 同目录。
+
+### 分钟与跨平台
+
+- 真实 `news.mp4` 长 103.994 秒，测试连续处理 1,800 帧、跨度 60.026633 秒，没有循环、补帧或抽样冒充连续运行。
+  独立第二遍的 1,800 帧全部一致，三项跳转/暂停/换源检查通过。
+  `.local/portrait-minute-plan-20261004-r1/native-r1/minute/report.json` 保留首轮结果。
+  这是原生产品链离线验收，不是 ONNX 候选的 30fps 实时性能证据。
+- r2 新运行再次通过上述分钟对照：1,336 帧有可见效果、464 帧无像素变化，重跑 1,800 帧无差异。
+  无效果帧全部计数，仅采样点做独立检测分类，未检测的无效果帧不擅自归因为无脸。
+  两遍加跳转等检查约 350 秒、worker 峰值 RSS 452,624,384 字节；不是实时帧率报告。
+- 首轮双脸测试的变化区域落在计算出的检测框外，失败报告 `native-r1/multiface/report.json` 保留。
+  原生 FaceBuffer 框以左下角为原点，RGBA 行以左上角为原点；测试 oracle 显式换算 y 后重新 native 运行，
+  没有扩大 ROI 或降低零误差门限。`native-r2/multiface/report.json` 的 A、B、A 重访、全脸、换源 A、零值对照均通过。
+  选 A 改变 6,461 像素，选 B 改变 2,833 像素；未选人脸和脸外变化均为 0。
+  这是双脸静态素材，不是自然多人视频，不证明遮挡/交叉后的动态身份稳定。
+  r2 目录仍位于 `.local/portrait-minute-plan-20261004-r1/`。
+- r2 总报告没有改成通过：分钟、静态多脸及 lifecycle 成功，但后续进程取消遇到 `EPERM`。
+  诊断补丁记录 PID/进程组/信号/操作/errno，并保留最初错误，避免 finally 的清理错误覆盖真正原因。
+  新的 `.local/portrait-cancellation-20261004-r2/attempt-{1,2,3}/report.json` 三次独立取消均通过：
+  原生 face 预热生效后排队 3 项再发 SIGTERM，worker 退出、进程组消失、临时目录删除、来源复核通过。
+  `EPERM` 未复现，因此不声称已确定其系统原因；旧 r2 失败不被新小范围试验改写。
+  这验证外部 worker/进程组取消，不是一个新增的原生 SDK abort API。
+- 公开 CPU/合成 ONNX 合同在 Windows x64、Linux x64、macOS ARM64 CI 均通过。
+  例如运行 [37173459821](https://github.com/Quriosity-agent/qcut/actions/runs/37173459821)。
+  Windows 明确不运行 Unix socket 与 libm 专用项；这不等于私有模型在三个平台已完成效果验收，
+  更不等于 Windows 原生美颜渲染已经可用。
+
+### 候选启用策略
+
+新增开发版显式选择的单帧核验入口：`QCUT_BEAUTY_LAB_LIVE_CANDIDATE=1`。
+每次使用当前原图和参数新建隔离任务，执行独立原生基线与 ONNX live 交接，只有本次零 RGBA 差异且来源/清理检查通过才返回候选像素。
+不读取旧报告代替本次处理，也不把 baseline 像素当 candidate 返回。
+门限为非打包版、macOS ARM64、开发/测试模式；全局 features 精修参数范围内使用。
+标记 `audited-single-static-frame`，不授权多脸、时间线、分钟候选或跨平台产品启用。
+原生阶段耗时未测得时返回 null 和原因；自有 worker 的耗时是包含 warmup 的累计值，不伪装成单帧延迟。
+
+真实候选按钮首轮失败记录：`beauty-live-candidate-jobs/static-gGYHAf/audit/report.json`。
+独立原生基线已完成；live-host PID 74869 在 2026-10-04 14:22:29（本地时间）被系统记录为
+`AUTHREQ_PROMPTING service=kTCCServiceSystemPolicyDesktopFolder`，调用栈停在 dyld `__open`，worker 尚未预测。
+它与之前命令行通过的宿主不是同一次调用，不能沿用授权成功的结论。
+取消后报告保守标记后代身份变化导致的清理不确定；后续进程检查确认该次 LLDB/debugserver/host/worker 已退出，
+但不把失败报告的 `cleanup.completed=false` 改写为 true。已请用户自行处理系统权限，未自动授权。
+UI 截图见 `docs/completed/test-results-raw/beauty-lab-live-candidate.-43fac-d-stale-result-invalidation-electron/test-failed-1.png`。
+候选没有显示旧图片，没有把原生结果回填为通过；目前仍不得宣称真实候选 UI E2E 成功。
+
+交叉审查后的防误报/清理补强：逐次读取并核验 baseline RGBA 本体；绑定 worker 收据与源码/ONNX 文件摘要；
+只接受固定私有运行时内的 features 包；任务启动后的任何失败令候选进入必须重启的 blocked 状态。
+前端失败后重新检查就绪状态；导出将单帧核验与任意帧就绪分开。退出应用会先取消并等待候选任务清理。
+相关 46 个测试文件、1,245 项 Vitest 全过；整个仓库类型检查与 Electron 构建通过。
+这些验证不代替尚待授权后的新 UI native 实跑。
+
+授权后的明确复测入口（使用新的输出目录，不覆盖 r1）：
+
+```sh
+QCUT_BEAUTY_LAB_LIVE_CANDIDATE=1 \
+QCUT_REAL_PORTRAIT_IMAGE_PATH="$PWD/.local/jianying-model-pytorch/face-live-validation-20261004-r1/fixtures/front-smile/eye/face.png" \
+QCUT_BEAUTY_LIVE_OUTPUT=output/playwright/beauty-live-candidate-ui-20261004-r2 \
+bunx playwright test beauty-lab-live-candidate.e2e.ts --project=electron --workers=1 --reporter=line
+```
+
+通过条件包括本次实时推理、新原生基线、实际 UI 图片、ZIP 身份、原生/候选零 RGBA 差异、
+修改参数后旧结果失效和时间线未变。失败后须结束并重启测试应用，不能在被锁定的旧后端上反复点击。
+仍未完成的验收不能自动放开：ONNX 分钟序列、自然多人运动/遮挡后的身份稳定、Windows/x86 原生渲染与私有模型整链。
+公开三平台合成 CPU 测试不包含这些私有资源，也没有对应原生硬件结果可供推定。
+
+## 第三阶段：收尾验证与真实阻塞（历史）
 
 本节覆盖第二阶段的当前状态。**尚不能称为完整独立美颜后端，也没有启用产品候选按钮。**
 下列代码均在同一 PR，按单文件提交、逐次 push；私有模型、库、效果包、人物素材与大型报告不入 Git。
