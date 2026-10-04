@@ -21,7 +21,7 @@ class ServerFailureTests(unittest.TestCase):
         server.__enter__.return_value = server
         server.accept.return_value = (connection, None)
         log = io.StringIO()
-        with tempfile.TemporaryDirectory(prefix="fw-", dir="/tmp") as root:
+        with tempfile.TemporaryDirectory(prefix="fw-") as root:
             path = Path(root) / "socket"
             with mock.patch("face_live_worker.socket.socket", return_value=server), \
                     mock.patch("face_live_worker.os.chmod"), \
