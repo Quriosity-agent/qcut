@@ -330,7 +330,20 @@ export interface JianyingPortraitAdjustmentRenderRequest {
 	sourceKey?: string;
 	frameNumber?: number;
 	timestampSeconds?: number;
+	sourcePreRoll?: JianyingPortraitSourcePreRoll;
 }
+
+export interface JianyingPortraitSourcePreRoll {
+	sourceKey: string;
+	/** Real preceding source frames, in presentation order, at target dimensions. */
+	frames: { timestampSeconds: number; rgba: Uint8Array }[];
+}
+
+export const PORTRAIT_SOURCE_PRE_ROLL_LIMITS = {
+	frames: 16,
+	seconds: 0.5,
+	bytes: 64 * 1024 * 1024,
+} as const;
 
 export interface JianyingPortraitAdjustmentRenderResult {
 	provider: "jianying-local-swing-v1";
@@ -338,6 +351,8 @@ export interface JianyingPortraitAdjustmentRenderResult {
 	height: number;
 	rgba: Uint8Array;
 	activeGroups: JianyingPortraitAdjustmentGroup[];
+	/** A face stage stayed unchanged; this is not a detector result or success claim. */
+	needsSourcePreRoll?: boolean;
 }
 
 export const JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL =
