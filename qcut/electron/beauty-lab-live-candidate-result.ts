@@ -225,13 +225,22 @@ async function verifyLiveHostReceipt({
 		expected: host.sha256,
 	});
 	try {
-		await readJson({
+		const { value: config } = await readJson({
 			snapshot,
 			root,
 			relativePath: "audit/lldb-config.json",
 			maximum: 128 * 1024,
 			expected: sha.parse(audit.artifacts["lldb-config.json"]?.sha256),
-			schema: z.object({ host: z.literal(hostPath) }),
+			schema: z.object({
+				host: z.literal(hostPath),
+				token: z.string().min(16).max(512),
+			}),
+		});
+		requireEvidence({
+			condition:
+				createHash("sha256").update(config.token).digest("hex") ===
+				audit.token_sha256,
+			message: "live LLDB token binding mismatch",
 		});
 	} catch {
 		// JSON parse errors may echo the private launch token.
@@ -355,11 +364,15 @@ export async function readBeautyLabLiveCandidateResult({
 		maximum,
 		expected: result.outputSha256,
 	});
-	await pixels.read({
+	const original = await pixels.read({
 		root,
 		relativePath: "input.rgba",
 		maximum,
 		expected: request.inputSha256,
+	});
+	requireEvidence({
+		condition: original.length === maximum,
+		message: "truncated input pixels",
 	});
 	await pixels.read({
 		root,
@@ -376,6 +389,26 @@ export async function readBeautyLabLiveCandidateResult({
 	requireEvidence({
 		condition: rgba.length === maximum,
 		message: "truncated candidate pixels",
+	});
+	let changedRgbaPixels = 0;
+	let changedRgbPixels = 0;
+	for (let offset = 0; offset < maximum; offset += 4) {
+		const rgbChanged =
+			rgba[offset] !== original[offset] ||
+			rgba[offset + 1] !== original[offset + 1] ||
+			rgba[offset + 2] !== original[offset + 2];
+		if (rgbChanged) changedRgbPixels += 1;
+		if (rgbChanged || rgba[offset + 3] !== original[offset + 3])
+			changedRgbaPixels += 1;
+	}
+	// Alpha-only changes do not establish beauty-effect activity.
+	requireEvidence({
+		condition: changedRgbPixels > 0,
+		message: "original RGB pixels unchanged",
+	});
+	requireEvidence({
+		condition: changedRgbaPixels === frame.original_difference.changed_pixels,
+		message: "original RGBA change count differs from audit",
 	});
 	await snapshot.verify();
 	await pixels.verify();
