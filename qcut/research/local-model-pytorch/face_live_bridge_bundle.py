@@ -68,11 +68,13 @@ def lock_dependencies(*, runtime, package, models, guard):
         guard.library(path=runtime / "Frameworks" / name, expected=expected)
 
 
-def prepare_inputs(*, manifest, out, guard):
+def prepare_inputs(*, manifest, out, guard, single_frame=False):
     from PIL import Image
 
     frames = sequence.validate_manifest(value=strict_json(data=guard.locked.read(
         path=manifest, maximum=sequence.MANIFEST_LIMIT)), base=manifest.parent, expect_change=True)
+    if single_frame and len(frames) != 1:
+        raise ValueError("single-frame audit requires exactly one input frame")
     if frames[0]["timestamp"] != 0:
         raise ValueError("the verified bootstrap profile starts at timestamp zero")
     if any(right["timestamp"] < left["timestamp"] for left, right in zip(frames, frames[1:])):
@@ -90,7 +92,7 @@ def prepare_inputs(*, manifest, out, guard):
         path.write_bytes(pixels)
         guard.locked.read(path=path, maximum=16 * 1024**2)
         frame.update(input=str(path), input_sha256=hashlib.sha256(pixels).hexdigest())
-    if len({frame["input_sha256"] for frame in frames}) < 2:
+    if not single_frame and len({frame["input_sha256"] for frame in frames}) < 2:
         raise ValueError("live acceptance requires at least two distinct input frames")
     return frames, size
 
