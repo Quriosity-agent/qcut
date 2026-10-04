@@ -87,6 +87,8 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
         self.assertNotIn("QCUT_FACE_LIVE_COLD_FRAME", bundle.host_environment(**kwargs))
         with self.assertRaisesRegex(ValueError, "explicit single-frame"):
             probe.run(args=argparse.Namespace(cold_frame=True, single_frame=False))
+        with self.assertRaisesRegex(ValueError, "makeup system observation requires cold-frame"):
+            probe.run(args=argparse.Namespace(trace_makeup_system=True, cold_frame=False, single_frame=True))
 
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
