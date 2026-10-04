@@ -118,6 +118,7 @@ interface ComparisonManifest {
 	nativeResultPresent: boolean;
 	candidateResultPresent: boolean;
 	arbitraryFrameCandidateReady: boolean;
+	staticAuditReady?: boolean;
 	candidateProvenance: Omit<BeautyLabCandidateResult, "rgba"> | null;
 	comparisons: {
 		name: string;
@@ -271,6 +272,7 @@ describe("exportBeautyLabComparison ZIP", () => {
 		]);
 		const manifest = await readManifest({ zip });
 		expect(manifest.mode).toBe("native-live");
+		expect(manifest).not.toHaveProperty("staticAuditReady");
 		expect(manifest.record).toBeNull();
 		expect(manifest.arbitraryFrameCandidateReady).toBe(false);
 		expect(manifest.candidateProvenance).toBeNull();
@@ -469,6 +471,52 @@ describe("exportBeautyLabComparison ZIP", () => {
 });
 
 describe("exportBeautyLabComparison live candidate provenance", () => {
+	it.each([
+		{ native },
+		{ native: null },
+	])("exports static-only readiness without promoting arbitrary-frame acceptance (native=$native)", async ({
+		native: baseline,
+	}) => {
+		const candidateReport: BeautyLabCandidateResult = {
+			...makeCandidateReport(),
+			scope: "audited-single-static-frame",
+			timingScope: "cumulative-owned-worker-including-warmup",
+			nativeDependencies: ["detection", "geometry", "effect-rendering"],
+			stageMetrics: BEAUTY_LAB_CANDIDATE_STAGES.map((id) =>
+				["detection", "geometry", "effect-rendering"].includes(id)
+					? {
+							id,
+							durationMs: null,
+							unavailableReason: "native-stage-not-instrumented",
+						}
+					: { id, durationMs: 1.25 }
+			),
+		};
+		const before = JSON.stringify(candidateReport);
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				native: baseline,
+				record: null,
+				candidateReport,
+			}),
+		});
+		const manifest = await readManifest({ zip });
+		expect(manifest).toMatchObject({
+			schema: "qcut-beauty-lab-comparison-v1",
+			mode: "live-candidate",
+			record: null,
+			arbitraryFrameCandidateReady: false,
+			staticAuditReady: true,
+			nativeResultPresent: baseline !== null,
+			candidateResultPresent: true,
+		});
+		const { rgba: _rgba, ...provenance } = candidateReport;
+		expect(manifest.candidateProvenance).toEqual(provenance);
+		expect(zip.file("candidate.png")).not.toBeNull();
+		expect(JSON.stringify(candidateReport)).toBe(before);
+	});
+
 	it("exports live metadata and stage metrics without RGBA, using the current input's WebCrypto digest", async () => {
 		const candidateReport = makeCandidateReport();
 		const before = JSON.stringify(candidateReport);
@@ -482,6 +530,7 @@ describe("exportBeautyLabComparison live candidate provenance", () => {
 		});
 		const manifest = await readManifest({ zip });
 		const { rgba: reportPixels, ...provenance } = candidateReport;
+		expect(manifest).not.toHaveProperty("staticAuditReady");
 		expect(manifest).toMatchObject({
 			mode: "live-candidate",
 			record: null,
@@ -728,7 +777,9 @@ describe("exportBeautyLabComparison live candidate provenance", () => {
 				candidateReport: null,
 			}),
 		});
-		expect(await readManifest({ zip })).toMatchObject({
+		const manifest = await readManifest({ zip });
+		expect(manifest).not.toHaveProperty("staticAuditReady");
+		expect(manifest).toMatchObject({
 			mode: "verified-offline-replay",
 			record: options.record,
 			arbitraryFrameCandidateReady: false,
