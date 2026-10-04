@@ -4,18 +4,26 @@ import { createPortraitSourcePreRollReader } from "../portrait-source-preroll";
 const mocks = vi.hoisted(() => ({
 	dispose: vi.fn(),
 	options: vi.fn(),
-	url: vi.fn(),
+	url: vi.fn<(url: string, options: { getRetryDelay: () => null }) => void>(),
+	blob: vi.fn(),
 	frames: [] as { timestamp: number; duration: number; pixel: number }[],
 	decode: true,
+	missingTrack: false,
+	missingContext: false,
+	decodeDelay: 0,
 	waitForTrack: false,
 	rejectTrack: null as ((error: Error) => void) | null,
 }));
 vi.mock("mediabunny", () => ({
 	ALL_FORMATS: [],
-	BlobSource: class {},
+	BlobSource: class {
+		constructor(blob: Blob) {
+			mocks.blob(blob);
+		}
+	},
 	UrlSource: class {
-		constructor(url: string) {
-			mocks.url(url);
+		constructor(url: string, options: { getRetryDelay: () => null }) {
+			mocks.url(url, options);
 		}
 	},
 	Input: class {
@@ -25,7 +33,9 @@ vi.mock("mediabunny", () => ({
 				await new Promise((_resolve, reject) => {
 					mocks.rejectTrack = reject;
 				});
-			return { canDecode: async () => mocks.decode };
+			return mocks.missingTrack
+				? null
+				: { canDecode: async () => mocks.decode };
 		}
 	},
 	CanvasSink: class {
@@ -33,15 +43,20 @@ vi.mock("mediabunny", () => ({
 			mocks.options(options);
 		}
 		async *canvases() {
+			if (mocks.decodeDelay)
+				await new Promise((resolve) => setTimeout(resolve, mocks.decodeDelay));
 			for (const frame of mocks.frames)
 				yield {
 					...frame,
 					canvas: {
-						getContext: () => ({
-							getImageData: () => ({
-								data: new Uint8ClampedArray([frame.pixel, 0, 0, 255]),
-							}),
-						}),
+						getContext: () =>
+							mocks.missingContext
+								? null
+								: {
+										getImageData: () => ({
+											data: new Uint8ClampedArray([frame.pixel, 0, 0, 255]),
+										}),
+									},
 					},
 				};
 		}
@@ -55,6 +70,9 @@ beforeEach(() => {
 		{ timestamp: 2, duration: 0.1, pixel: 20 },
 	];
 	mocks.decode = true;
+	mocks.missingTrack = false;
+	mocks.missingContext = false;
+	mocks.decodeDelay = 0;
 	mocks.waitForTrack = false;
 	mocks.rejectTrack = null;
 	mocks.dispose.mockImplementation(() => {
@@ -81,6 +99,8 @@ describe("portrait local causal decoder", () => {
 		).toEqual([1.8, 1.9]);
 		expect(result?.frames.map(({ rgba }) => rgba[0])).toEqual([18, 19]);
 		expect(result?.sourceKey).toBe("video:A");
+		expect(mocks.url.mock.calls[0][0]).toBe("blob:video-A");
+		expect(mocks.url.mock.calls[0][1].getRetryDelay()).toBeNull();
 		expect(mocks.options).toHaveBeenCalledWith({
 			width: 1,
 			height: 1,
@@ -132,6 +152,71 @@ describe("portrait local causal decoder", () => {
 				source: "app://local-media/video",
 			})!(target)
 		).toBeUndefined();
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it.each([
+		{ timestampSeconds: 0 },
+		{ timestampSeconds: -1 },
+		{ width: 10_000, height: 10_000 },
+	])("does not open an input without a usable history budget: %j", async (change) => {
+		const result = await createPortraitSourcePreRollReader({
+			source: "blob:video",
+		})!({ ...target, ...change });
+		expect(result).toBeUndefined();
+		expect(mocks.url).not.toHaveBeenCalled();
+		expect(mocks.dispose).not.toHaveBeenCalled();
+	});
+	it("reads a local Blob without creating a URL source", async () => {
+		const blob = new Blob(["synthetic video"], { type: "video/mp4" });
+		const result = await createPortraitSourcePreRollReader({ source: blob })!(
+			target
+		);
+		expect(result?.frames).toHaveLength(2);
+		expect(mocks.blob).toHaveBeenCalledWith(blob);
+		expect(mocks.url).not.toHaveBeenCalled();
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it("closes an input without a primary video track", async () => {
+		mocks.missingTrack = true;
+		expect(
+			await createPortraitSourcePreRollReader({ source: "blob:video" })!(target)
+		).toBeUndefined();
+		expect(mocks.options).not.toHaveBeenCalled();
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it("rejects unreadable canvas pixels and releases the input", async () => {
+		mocks.missingContext = true;
+		await expect(
+			createPortraitSourcePreRollReader({ source: "blob:video" })!(target)
+		).rejects.toThrow("Unable to read portrait source pre-roll pixels");
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it.each([
+		0,
+		-1,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+	])("does not retain frames with invalid duration %s", async (duration) => {
+		mocks.frames = [{ timestamp: 1.9, duration, pixel: 19 }];
+		expect(
+			await createPortraitSourcePreRollReader({ source: "blob:video" })!(target)
+		).toBeUndefined();
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it.each([
+		true,
+		false,
+	])("rejects a late decoder result with frames=%s", async (hasFrames) => {
+		vi.useFakeTimers();
+		mocks.decodeDelay = 10_001;
+		if (!hasFrames) mocks.frames = [];
+		const operation = createPortraitSourcePreRollReader({
+			source: "blob:video",
+		})!(target);
+		const rejected = expect(operation).rejects.toThrow("decode timed out");
+		await vi.waitFor(() => expect(mocks.options).toHaveBeenCalledOnce());
+		await vi.advanceTimersByTimeAsync(10_001);
+		await rejected;
 		expect(mocks.dispose).toHaveBeenCalledOnce();
 	});
 	it("does not open a decoder after cancellation", async () => {
