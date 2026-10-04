@@ -1,6 +1,12 @@
 import type { z } from "zod";
+import { isDeepStrictEqual } from "node:util";
+import { buildJianyingPortraitFeatureParameters } from "./jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	OWNED_CHAIN_CAPTURE_SOURCES,
+	OWNED_CHAIN_LEGACY_PROBE_SHA256,
+	OWNED_CHAIN_ORIGINAL_FORMAT,
+	OWNED_CHAIN_ORIGINAL_SOURCES,
+	ownedChainAuditSchema,
 	ownedChainCandidateSchema,
 	ownedChainCaptureSchema,
 	ownedChainModelSchema,
@@ -16,6 +22,7 @@ import {
 import { requireEvidence } from "./beauty-lab-research-files.js";
 
 export interface OwnedChainReports {
+	chainAudit?: z.infer<typeof ownedChainAuditSchema>;
 	capture: z.infer<typeof ownedChainCaptureSchema>;
 	candidate: z.infer<typeof ownedChainCandidateSchema>;
 	render: z.infer<typeof ownedChainRenderSchema>;
@@ -25,6 +32,146 @@ export interface OwnedChainReports {
 	originalReplay: z.infer<typeof ownedChainOriginalReportSchema>;
 	originalRender: z.infer<typeof ownedChainOriginalReportSchema>;
 	originalAudit: z.infer<typeof ownedChainOriginalAuditSchema>;
+}
+
+function verifyOriginalProducer({
+	index,
+	reports,
+}: {
+	index: OwnedChainIndex;
+	reports: OwnedChainReports;
+}) {
+	const { candidate, render, chainAudit: audit, model } = reports;
+	if (
+		candidate.profile !== "original-rgba-owned-chain-v1" ||
+		render.profile !== "original-rgba-owned-chain-render-v1" ||
+		!audit
+	) {
+		throw new Error(
+			"Beauty Lab research: original-frame profile/audit mismatch"
+		);
+	}
+	requireEvidence({
+		condition:
+			audit.capture_sha256 === index.reports.capture &&
+			audit.candidate_report_sha256 === index.reports.candidate &&
+			audit.render_report_sha256 === index.reports.render &&
+			audit.model_report_sha256 === index.reports.model &&
+			audit.replay_sha256 === index.replay_sha256 &&
+			render.candidate_report_sha256 === index.reports.candidate &&
+			isDeepStrictEqual(audit.preprocessing, candidate.preprocessing) &&
+			isDeepStrictEqual(audit.comparisons, render.comparisons) &&
+			isDeepStrictEqual(
+				candidate.sampling_cases,
+				candidate.preprocessing.sampling_cases
+			) &&
+			isDeepStrictEqual(
+				candidate.initialization_sampling_cases,
+				candidate.preprocessing.initialization_sampling_cases
+			),
+		message: "original-frame audit/producer binding differs",
+	});
+	for (const [sources, expected] of [
+		[candidate.source_sha256, OWNED_CHAIN_ORIGINAL_SOURCES],
+		[
+			render.source_sha256,
+			[
+				...OWNED_CHAIN_ORIGINAL_SOURCES,
+				"local-model-pytorch/face_preprocess_chain_render.py",
+			],
+		],
+		[
+			audit.source_sha256,
+			["local-model-pytorch/face_preprocess_chain_audit.py"],
+		],
+	] as const) {
+		requireEvidence({
+			condition: isDeepStrictEqual(
+				Object.keys(sources).sort(),
+				[...expected].sort()
+			),
+			message: "original-frame producer source closure differs",
+		});
+	}
+	const auditedFixtures = new Set(Object.values(audit.fixture_sha256));
+	for (const key of [
+		"capture",
+		"candidate",
+		"render",
+		"model",
+		"summary",
+	] as const) {
+		requireEvidence({
+			condition: auditedFixtures.has(index.reports[key]),
+			message: "original-frame audited fixture missing",
+		});
+	}
+	const proof = candidate.preprocessing;
+	for (const [position, source] of proof.source_frames.entries()) {
+		requireEvidence({
+			condition:
+				source.index === position &&
+				source.original_rgba_sha256 ===
+					index.frames[position].input_rgba_sha256 &&
+				candidate.fixture_sha256[source.path] === source.original_rgba_sha256 &&
+				audit.fixture_sha256[source.path] === source.original_rgba_sha256,
+			message: "original-frame input identity differs",
+		});
+	}
+	for (const [prediction, observation] of proof.observations.entries()) {
+		const frame = prediction < 14 ? 0 : Math.floor((prediction - 12) / 2);
+		const source = proof.source_frames[frame];
+		requireEvidence({
+			condition:
+				observation.prediction === prediction &&
+				observation.frame_index === frame &&
+				observation.original_rgba_sha256 === source.original_rgba_sha256 &&
+				observation.generated_algorithm_sha256 ===
+					source.generated_algorithm_sha256 &&
+				observation.oracle_sha256 === source.generated_algorithm_sha256,
+			message: "original-frame observation association differs",
+		});
+		const sample = proof.sampling_cases[prediction];
+		if ("idle" in sample) {
+			requireEvidence({
+				condition: prediction === 19,
+				message: "original-frame idle prediction differs",
+			});
+			continue;
+		}
+		const inference = prediction < 19 ? prediction : prediction - 1;
+		const head = model.model_outputs["120"].cases[inference];
+		requireEvidence({
+			condition:
+				prediction !== 19 &&
+				sample.prediction === prediction &&
+				sample.inference === inference &&
+				sample.active === (prediction !== 18) &&
+				sample.algorithm_frame_sha256 === source.generated_algorithm_sha256 &&
+				head?.input_source === "replacement_inputs" &&
+				head.actual_input_sha256 === sample.input_sha256 &&
+				head.replacement_input_sha256 === sample.input_sha256,
+			message: "original-frame 120 ONNX input differs",
+		});
+	}
+	for (const [
+		inference,
+		sample,
+	] of proof.initialization_sampling_cases.entries()) {
+		const prediction = inference === 0 ? 0 : 20;
+		const head = model.model_outputs["160"].cases[inference];
+		requireEvidence({
+			condition:
+				sample.prediction === prediction &&
+				sample.inference === inference &&
+				sample.algorithm_frame_sha256 ===
+					proof.observations[prediction].generated_algorithm_sha256 &&
+				head.input_source === "replacement_inputs" &&
+				head.actual_input_sha256 === sample.generated_tensor_sha256 &&
+				head.replacement_input_sha256 === sample.generated_tensor_sha256,
+			message: "original-frame 160 ONNX input differs",
+		});
+	}
 }
 
 function mergeSources({ groups }: { groups: Record<string, string>[] }) {
@@ -61,6 +208,16 @@ export function verifyOwnedChainReports({
 		originalCapture,
 		originalAudit,
 	} = reports;
+	const originalFrames = index.format === OWNED_CHAIN_ORIGINAL_FORMAT;
+	if (originalFrames) verifyOriginalProducer({ index, reports });
+	else
+		requireEvidence({
+			condition:
+				candidate.profile === "actual-preprocess-owned-chain-v1" &&
+				render.profile === "actual-preprocess-owned-chain-render-v1" &&
+				reports.chainAudit === undefined,
+			message: "legacy owned-chain profile mismatch",
+		});
 	const originalLinks = originalAudit.report_sha256;
 	requireEvidence({
 		condition:
@@ -113,15 +270,34 @@ export function verifyOwnedChainReports({
 	);
 	ownedChainSourceSchema.parse(modelSources);
 	const captureSources = Object.fromEntries(
-		OWNED_CHAIN_CAPTURE_SOURCES.map((relativePath) => {
+		OWNED_CHAIN_CAPTURE_SOURCES.flatMap((relativePath) => {
 			const matches = Object.entries(capture.fixture_sha256).filter(([label]) =>
 				label.endsWith(`/research/${relativePath}`)
 			);
+			if (
+				relativePath.endsWith("/face_native_process.py") &&
+				matches.length === 0 &&
+				!originalFrames
+			) {
+				const probe = Object.entries(capture.fixture_sha256).filter(([label]) =>
+					label.endsWith(
+						"/research/local-model-pytorch/face_preprocess_probe.py"
+					)
+				);
+				requireEvidence({
+					condition:
+						probe.length === 1 &&
+						probe[0][1] === OWNED_CHAIN_LEGACY_PROBE_SHA256,
+					message:
+						"missing cleanup helper requires explicit legacy probe source",
+				});
+				return [];
+			}
 			requireEvidence({
 				condition: matches.length === 1,
 				message: "owned-chain capture source hash missing or ambiguous",
 			});
-			return [relativePath, matches[0][1]];
+			return [[relativePath, matches[0][1]]];
 		})
 	);
 	const sources = mergeSources({
@@ -131,6 +307,7 @@ export function verifyOwnedChainReports({
 			candidate.source_sha256,
 			render.source_sha256,
 			modelSources,
+			...(reports.chainAudit ? [reports.chainAudit.source_sha256] : []),
 		],
 	});
 	const declared = mergeSources({ groups: [index.source_sha256] });
@@ -165,10 +342,30 @@ export function verifyOwnedChainReports({
 		const exported = index.frames[frameIndex];
 		const rendered = render.frames[frameIndex];
 		const comparison = render.comparisons[frameIndex];
-		const intensity = frameIndex === 5 ? 0 : frameIndex === 6 ? 0.5 : 1;
+		const baseIntensity = originalFrames
+			? originalCapture.frames[0].parameters.face_adjust_eye[0].intensity
+			: 1;
+		const intensity =
+			frameIndex === 5
+				? 0
+				: frameIndex === 6
+					? baseIntensity / 2
+					: baseIntensity;
+		const expectedParameters = originalFrames
+			? JSON.parse(
+					buildJianyingPortraitFeatureParameters({
+						runtimePackage: "features",
+						values: { face_adjust_eye: intensity * 100 },
+					})
+				)
+			: { face_adjust_eye: [{ id: -1, intensity }] };
 		const expectedChange = frameIndex !== 3 && frameIndex !== 5;
 		requireEvidence({
 			condition:
+				baseIntensity > 0 &&
+				baseIntensity <= 1 &&
+				isDeepStrictEqual(recorded.parameters, expectedParameters) &&
+				isDeepStrictEqual(rendered.parameters, expectedParameters) &&
 				recorded.label === labels[frameIndex] &&
 				recorded.expect_change === expectedChange &&
 				recorded.parameters.face_adjust_eye[0].intensity === intensity &&
