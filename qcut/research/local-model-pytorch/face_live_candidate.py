@@ -10,7 +10,9 @@ Modes supplied by the future native callback:
   seed-160: infer absolute detection seed, then update it with owned 120 points.
   reset-120: initialize both filters from owned tracked 120 points (no update).
   update: advance existing owned history. face=null clears history, emits [].
-Only ordinary uncached Base, packed orientation-0 RGBA and one face are supported.
+Only ordinary uncached Base/Extra primary106 temporal routes, packed orientation-0
+RGBA and one face are supported. Extra Stage2 geometry parity is unverified;
+Extra/iris/fitting/masks remain native, not owned inference or parity claims.
 Native geometry, acceptance, identities and reset signals remain dependencies.
 No native capture, GPU renderer, product registration or replay lookup occurs.
 """
@@ -34,10 +36,25 @@ from face_host_geometry_replay import decode_actual, map_double, normalized
 from face_live_candidate_contract import NATIVE_DEPENDENCIES, fields, smoothing_state, validate, validate_metadata
 from face_live_candidate_onnx import OnnxHeads, validate_heads
 from face_preprocess_replay import prepare
-from face_temporal_smoothing import update_base
+from face_temporal_smoothing import BaseState, LENS_SHA256, update, update_base
 
 STAGES = ("sampling-160", "inference-160", "decode-160", "map-160", "sampling-120",
           "inference-120", "decode-map-120", "temporal-smoothing", "normalization")
+
+
+def update_primary(*, state, points, extra):
+    """Pinned liblens primary106 temporal schedule, not Extra Stage2 geometry.
+
+    ExtraInfoSmoothOutput 0x37b880, caller 0x335038 with w7=false and
+    optimized=false: 73 at 0x37bc1c, 33 at 0x37bc44, 73 at 0x37bc5c.
+    Both 73 calls consume the same raw input, not the first filtered output.
+    BaseInfoSmoothOutput 0x37cc58 updates each partition once.
+    Extra init 0x37b304 and Base init 0x37b7e8 share the first33/last73 layout.
+    """
+    if extra:
+        _, last73 = update(state=state.last73, points=points[33:], optimized=False)
+        state = BaseState(first33=state.first33, last73=last73)
+    return update_base(state=state, points=points, optimized=False)
 
 
 def measured(*, timings, name, function, **kwargs):
@@ -77,13 +94,15 @@ class CandidateCore:
         timings = dict.fromkeys(STAGES, 0.0)
         stages_run, tensors, heads, faces = [], {}, {}, []
         face = packet["face"]
+        extra = packet["runtime_state"]["base_output_mode_bit"]
         state = identity = profile = None
         if face is not None:
             identity = (face["slot"], face["alignment"], face["id"])
-            profile = json.dumps(dict(smoothing=face["smoothing"], tables=face["tables"]), sort_keys=True)
+            profile = json.dumps(dict(smoothing=face["smoothing"], tables=face["tables"],
+                                      runtime_state=packet["runtime_state"]), sort_keys=True)
             mode = face["mode"]
             if self.state is not None and (identity != self.identity or profile != self.profile):
-                raise ValueError("unobserved identity/table/parameter transition; clear history first")
+                raise ValueError("unobserved identity/table/parameter/route transition; clear history first")
             if self.state is None and face["id"] in self.seen_ids:
                 raise ValueError("reactivated native face ID is unsupported")
             if (mode == "update" and self.state is None) or (mode == "seed-160" and self.state is not None):
@@ -119,7 +138,7 @@ class CandidateCore:
                                         parameters=face["smoothing"])
             points = tracked
             if mode != "reset-120":
-                points, state = update_base(state=state, points=tracked, optimized=False)
+                points, state = update_primary(state=state, points=tracked, extra=extra)
             timings["temporal-smoothing"] += (time.perf_counter_ns() - temporal_start) / 1e6
             points = measured(timings=timings, name="normalization", function=normalized,
                 points=points, request=[0, packet["width"], packet["height"], packet["stride"], 0])
@@ -137,6 +156,11 @@ class CandidateCore:
             heads={size: {name: dict(shape=list(value.shape), sha256=hashlib.sha256(value.tobytes()).hexdigest())
                           for name, value in output.items()} for size, output in heads.items()},
             stage_timings_ms=timings, stages_run=stages_run,
+            primary_smoothing=dict(route="ordinary-extra-primary106" if extra else "ordinary-base-primary106",
+                native_library_sha256=LENS_SHA256, evidence="pinned-arm64-static-disassembly",
+                native_output_entrypoint="0x37b880" if extra else "0x37cc58",
+                update_order=[73, 33, 73] if extra else [33, 73],
+                extra_stage2_geometry_parity_verified=False),
             total_ms=(time.perf_counter_ns() - started) / 1e6,
             native_dependencies=list(NATIVE_DEPENDENCIES), native_final_point_input_used=False,
             captured_tensor_input_used=False, native_analysis_bypassed=False,
