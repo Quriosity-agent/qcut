@@ -64,6 +64,7 @@ export async function captureBeautyLabLiveDependencies({
 	const sources = await sourceFiles({ source });
 	const snapshot = createSnapshot();
 	const hash = createHash("sha256");
+	const files: Record<string, string> = {};
 	await [
 		...sources,
 		...MODEL_FILES.map((file) => `${MODEL_ROOT}/${file}`),
@@ -74,6 +75,9 @@ export async function captureBeautyLabLiveDependencies({
 			relativePath,
 			maximum: 32 * 1024 ** 2,
 		});
+		files[path.join(source.canonical, relativePath)] = createHash("sha256")
+			.update(bytes)
+			.digest("hex");
 		hash
 			.update(relativePath)
 			.update("\0")
@@ -82,6 +86,7 @@ export async function captureBeautyLabLiveDependencies({
 	}, Promise.resolve());
 	return {
 		digest: hash.digest("hex"),
+		files: Object.freeze(files),
 		verify: async () => {
 			if (
 				JSON.stringify(await sourceFiles({ source })) !==
