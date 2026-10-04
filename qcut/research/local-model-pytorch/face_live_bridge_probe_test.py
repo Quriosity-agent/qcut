@@ -95,6 +95,8 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
             probe.run(args=argparse.Namespace(stage_makeup_render=True, cold_frame=True, single_frame=True))
         with self.assertRaisesRegex(ValueError, "XY observation requires explicit render stages"):
             probe.run(args=argparse.Namespace(trace_makeup_points=True))
+        with self.assertRaisesRegex(ValueError, "consumption requires independent XY observation"):
+            probe.run(args=argparse.Namespace(consume_makeup_candidate=True))
         with self.assertRaisesRegex(ValueError, "share one hardware slot"):
             probe.run(args=argparse.Namespace(trace_makeup_points=True, trace_face_readers=True,
                 stage_makeup_render=True, publish_makeup_candidate=True, trace_makeup_system=True,
@@ -266,18 +268,20 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
         self.args.stage_makeup_render = True
         self.args.trace_makeup_points = True
+        self.args.consume_makeup_candidate = True
         result, native = self.run_preparation()
         self.assertTrue(result["prepared"])
         self.assertTrue(result["completed"])
         self.assertTrue(result["makeup_publication_research"])
         self.assertTrue(result["makeup_render_stage_research"])
         self.assertTrue(result["makeup_point_observation"])
+        self.assertTrue(result["makeup_consumption_research"])
         self.assertFalse(result["passed"])
         self.assertFalse(result["live_callback_handoff_verified"])
         self.assertFalse(result["product_backend_registered"])
         self.assertEqual(result["warmup_request_count"], 0)
         for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
-                       "--stage-makeup-render", "--trace-makeup-points"):
+                       "--stage-makeup-render", "--trace-makeup-points", "--consume-makeup-candidate"):
             self.assertIn(option, result["command"])
         native.assert_not_called()
 
@@ -324,6 +328,46 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         config = json.loads((self.out / "lldb-config.json").read_text())
         self.assertTrue(config["trace_makeup_points"])
         self.assertFalse(config["trace_face_readers"])
+
+    def test_makeup_consumer_difference_is_retained_without_accepting_frame(self):
+        self.args.consume_makeup_candidate = self.args.trace_makeup_points = True
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = self.args.stage_makeup_render = True
+        proof = dict(renderer_consumption=True, product_parity_verified=False)
+        difference = dict(frame=0, equal=False, changed_pixels=3970)
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.makeup_audit, "audit", return_value=proof) as receipt, \
+                mock.patch.object(probe.audit, "protocol", return_value={}), \
+                mock.patch.object(probe.audit, "inference", return_value=dict(seed_predictions=[0], owned_point_groups=2)), \
+                mock.patch.object(probe.audit, "validate_audits", return_value={}), \
+                mock.patch.object(probe.audit, "render_outputs", return_value=[difference]) as render:
+            with self.assertRaisesRegex(ValueError, "zero-tolerance makeup render mismatch"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        receipt.assert_called_once()
+        self.assertEqual(report["makeup_render_audit"], proof)
+        self.assertEqual(report["frames"], [difference])
+        self.assertFalse(render.call_args.kwargs["require_equal"])
+        self.assertNotIn("live_checks_completed", report)
+        config = json.loads((self.out / "lldb-config.json").read_text())
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"], "1")
+
+    def test_makeup_consumer_cannot_skip_receipt_validation(self):
+        self.args.consume_makeup_candidate = self.args.trace_makeup_points = True
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.makeup_audit, "audit", side_effect=ValueError("bad geometry receipt")), \
+                mock.patch.object(probe.audit, "protocol", return_value={}), \
+                mock.patch.object(probe.audit, "render_outputs") as render:
+            with self.assertRaisesRegex(ValueError, "bad geometry receipt"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        render.assert_not_called()
+        self.assertNotIn("live_checks_completed", report)
 
     def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
         directory = self.root / "stable"
