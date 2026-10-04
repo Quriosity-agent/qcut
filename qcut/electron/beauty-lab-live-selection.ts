@@ -194,8 +194,11 @@ export function createBeautyLabLiveSelectionResolver({
 		} else if (resolution.source !== "qcut-private") {
 			throw new Error("Untrusted face package source");
 		}
+		// checkPath requires slash-separated relative paths on every platform.
 		const relativePath = identities
-			.map(({ resourceId, version }) => path.join(prefix, resourceId, version))
+			.map(({ resourceId, version }) =>
+				path.posix.join(prefix, resourceId, version)
+			)
 			.find((candidate) =>
 				[root.declared, root.canonical].some(
 					(base) => path.join(base, candidate) === resolution.packagePath
