@@ -632,21 +632,25 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		}
 		const cacheKey = frameCacheKey({ request });
 		const cached = cache.get(cacheKey);
+		const requestedFaceEntries = request.adjustments.faces ?? [];
 		if (cached) {
 			const scope = await trackingScopes.acquire({ scopeKey: requestedScope });
-			// Cached pixels do not restore the native tracker's temporal state.
-			if (scope.lastRenderedCacheKey !== cacheKey) {
-				await trackingScopes.retire({ scopeKey: requestedScope });
+			const matchesNativeState = scope.lastRenderedCacheKey === cacheKey;
+			// Per-face remapping needs the live tracker when replaying a historical edit.
+			if (matchesNativeState || requestedFaceEntries.length === 0) {
+				if (!matchesNativeState) {
+					await trackingScopes.retire({ scopeKey: requestedScope });
+				}
+				cache.delete(cacheKey);
+				cache.set(cacheKey, cached);
+				return {
+					provider: "jianying-local-swing-v1",
+					width: request.width,
+					height: request.height,
+					rgba: new Uint8Array(cached),
+					activeGroups: groups,
+				};
 			}
-			cache.delete(cacheKey);
-			cache.set(cacheKey, cached);
-			return {
-				provider: "jianying-local-swing-v1",
-				width: request.width,
-				height: request.height,
-				rgba: new Uint8Array(cached),
-				activeGroups: groups,
-			};
 		}
 
 		const [runtime, hostPath, packages, makeupCards] = await Promise.all([
@@ -686,7 +690,6 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		const frameworkDirectory = runtime.frameworkDirectory;
 		const modelDirectory = runtime.modelDirectory;
 		const requestedTimestamp = request.timestampSeconds ?? 0;
-		const requestedFaceEntries = request.adjustments.faces ?? [];
 		const renderFrameHash = frameHash({ rgba: request.rgba });
 		const canMapDetectedFaces = canMapPortraitDetection({
 			requestedFaceCount: requestedFaceEntries.length,
@@ -711,6 +714,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			});
 		}
 		const sessions = trackingScope.sessions;
+		trackingScope.lastRenderedCacheKey = null;
 		await retireInactiveSessions({ sessions, stages });
 		if (requestedFaceEntries.length > 0) {
 			if (!detectionSnapshot) {
@@ -1021,7 +1025,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				}
 			} catch (cause) {
 				sessions.delete(stage.id);
-				void session.process.dispose().catch(() => undefined);
+				await session.process.dispose();
 				throw cause;
 			}
 			return renderStage({ index: index + 1, inputPath: outputPath });
@@ -1047,6 +1051,9 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				rgba: new Uint8Array(output),
 				activeGroups,
 			};
+		} catch (cause) {
+			await trackingScopes.retire({ scopeKey: requestedScope });
+			throw cause;
 		} finally {
 			await Promise.all(paths.map((filePath) => rm(filePath, { force: true })));
 		}
