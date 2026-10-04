@@ -69,7 +69,7 @@ def run_job(*, args):
         parameters=request["parameters"], expect_change=True, label="current-request-static-audit")]))
     report = run(args=argparse.Namespace(runtime=args.runtime, package=args.package, root=args.root,
         manifest=manifest, out=directory / "audit", execute_native=True, lease=args.lease,
-        timeout=args.timeout, single_frame=True, stable_host=True,
+        timeout=args.timeout, single_frame=True, cold_frame=True, stable_host=True,
         additional_packages=getattr(args, "additional_packages", [])))
     require(condition=report["passed"] is True and report["live_callback_handoff_verified"] is True and
         report["dependencies_unchanged"] is True and report["cleanup"]["completed"] is True,
