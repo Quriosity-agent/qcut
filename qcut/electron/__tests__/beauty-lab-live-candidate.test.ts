@@ -17,6 +17,12 @@ import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provid
 import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
 import { createBeautyLabLiveCandidateBackend } from "../beauty-lab-live-candidate.js";
 import {
+	createBeautyLabLiveSelectionResolver,
+	selectBeautyLabLiveRequest,
+} from "../beauty-lab-live-selection.js";
+import { pinRoot } from "../beauty-lab-research-files.js";
+import { JIANYING_PORTRAIT_PACKAGE_IDENTITIES } from "../jianying-portrait-adjustment-runtime/catalog.js";
+import {
 	JOB_SCRIPT,
 	LOCAL,
 	OPT_IN,
@@ -30,6 +36,7 @@ const mocks = vi.hoisted(() => ({
 	installed: vi.fn(),
 	current: vi.fn(),
 	resolve: vi.fn(),
+	makeup: vi.fn(),
 }));
 vi.mock("../beauty-lab-live-candidate-process.js", () => ({
 	runBeautyLabLiveCandidateJob: mocks.run,
@@ -40,6 +47,9 @@ vi.mock("../jianying-filter-local-runtime/private-runtime.js", () => ({
 }));
 vi.mock("../jianying-portrait-adjustment-runtime/package-resolver.js", () => ({
 	resolveJianyingPortraitPackage: mocks.resolve,
+}));
+vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
+	resolveJianyingPortraitMakeupCard: mocks.makeup,
 }));
 
 let root: string;
@@ -61,6 +71,7 @@ beforeEach(async () => {
 	mocks.run.mockImplementation(successfulJob);
 });
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await rm(root, { recursive: true, force: true });
 });
 
@@ -223,7 +234,11 @@ describe("development static candidate registration (synthetic jobs only)", () =
 		{ enabled: true, values: { face_adjust_eye: Number.NaN } },
 		{ enabled: true, values: { face_adjust_eye: 101 } },
 		{ enabled: true, values: { body_adjust_SlimBody: 40 } },
-		{ enabled: true, values: { face_adjust_TotalFace: 40 } },
+		{
+			enabled: true,
+			values: { face_adjust_skin_Intensity: 40 },
+			skinToneResourceId: null,
+		},
 		{ enabled: true, values: { face_adjust_eye: 40, face_adjust_Smooth: 10 } },
 		{
 			enabled: true,
@@ -237,6 +252,14 @@ describe("development static candidate registration (synthetic jobs only)", () =
 			makeup: { lipstick: {} },
 		},
 		{ enabled: true, values: { face_adjust_eye: 40 }, manualRetouch: {} },
+		{ enabled: true, values: { face_adjust_eye: 40 }, ignored: undefined },
+		{
+			enabled: true,
+			values: {},
+			makeup: {
+				lip: { cardId: "lip-soft-pink", intensity: 40, path: "/forged" },
+			},
+		},
 		{
 			enabled: true,
 			values: { face_adjust_eye: 40 },
@@ -251,6 +274,206 @@ describe("development static candidate registration (synthetic jobs only)", () =
 				...beautyLabCandidateIdentity({ request: changed }),
 			})
 		).rejects.toThrow();
+		expect(mocks.run).not.toHaveBeenCalled();
+		expect(mocks.resolve).not.toHaveBeenCalled();
+		expect(mocks.makeup).not.toHaveBeenCalled();
+	});
+	it.each([
+		{ sourcePreRoll: undefined },
+		{ packagePath: "/forged" },
+		{
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_eye: 40 },
+				ignored: undefined,
+			},
+		},
+		{
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_eye: 40 },
+				faceTarget: { mode: "all", faceId: 0 },
+			},
+		},
+		{
+			adjustments: {
+				enabled: true,
+				values: {},
+				makeup: {
+					lip: { cardId: "lip-soft-pink", intensity: 40, path: "/forged" },
+				},
+			},
+		},
+		{
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_eye: 40 },
+				manualRetouch: {},
+			},
+		},
+		{
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_skin_Intensity: 40 },
+				skinToneResourceId: null,
+			},
+		},
+	])("rejects raw provider input before normalization can drop unsupported fields: %j", async (patch) => {
+		const { provider, request } = await fixture();
+		await expect(
+			provider.render({ request: { ...request, ...patch } })
+		).rejects.toThrow();
+		expect(mocks.run).not.toHaveBeenCalled();
+		expect(mocks.resolve).not.toHaveBeenCalled();
+		expect(mocks.makeup).not.toHaveBeenCalled();
+		expect(provider.inspect().available).toBe(true);
+	});
+	it.each([
+		{
+			label: "face",
+			adjustments: { enabled: true, values: { face_adjust_TotalFace: 40 } },
+		},
+		{
+			label: "scalar smooth",
+			adjustments: { enabled: true, values: { face_adjust_Smooth: 40 } },
+		},
+		{
+			label: "standalone makeup",
+			adjustments: {
+				enabled: true,
+				values: {},
+				makeup: { look: { cardId: "look-oxygen", intensity: 60 } },
+			},
+		},
+		{
+			label: "dynamic makeup",
+			adjustments: {
+				enabled: true,
+				values: {},
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 60 } },
+			},
+		},
+	])("keeps per-request audit mandatory for $label", async ({
+		adjustments,
+	}) => {
+		const { backend, provider, request } = await fixture();
+		request.adjustments = adjustments;
+		const selection = selectBeautyLabLiveRequest({ request });
+		const runtimePackage =
+			selection.kind === "numeric" ? selection.runtimePackage : "makeup";
+		const identity = JIANYING_PORTRAIT_PACKAGE_IDENTITIES[runtimePackage];
+		const packagePath = path.join(
+			files.runtime,
+			"Cache/effect",
+			identity.resourceId,
+			identity.version
+		);
+		await mkdir(packagePath, { recursive: true });
+		mocks.resolve.mockResolvedValue({
+			runtimePackage,
+			group: "face",
+			source: "qcut-private",
+			packagePath,
+		});
+		if (selection.kind === "makeup") {
+			const { card } = selection;
+			const cardPath = path.join(
+				files.runtime,
+				"Cache/effect",
+				card.resourceId,
+				card.version
+			);
+			await mkdir(cardPath, { recursive: true });
+			mocks.makeup.mockResolvedValue({
+				card,
+				packagePath: cardPath,
+				source: "qcut-private",
+			});
+		}
+		const resolveSelection = createBeautyLabLiveSelectionResolver({
+			runtimeRoot: await pinRoot({ root: files.runtime }),
+		});
+		const expected = await resolveSelection({ selection });
+		const result = await provider.render({ request });
+		expect(result.scope).toBe("audited-single-static-frame");
+		expect(backend.stages[0].message).toContain(
+			"unverified requests fail closed"
+		);
+		const { args } = mocks.run.mock.calls[0][0] as { args: string[] };
+		expect(args[args.indexOf("--package") + 1]).toBe(expected.packagePath);
+		const job = JSON.parse(
+			await readFile(args[args.indexOf("--request") + 1], "utf8")
+		);
+		expect(job.parameters).toEqual(expected.parameters);
+		if (expected.additionalPackagePath) {
+			expect(args[args.indexOf("--additional-package") + 1]).toBe(
+				expected.additionalPackagePath
+			);
+		} else {
+			expect(args).not.toContain("--additional-package");
+		}
+		mocks.run.mockImplementation(async (jobArgs) => {
+			const row = await successfulJob(jobArgs);
+			await writeFile(
+				path.join(row.directory, "audit/report.json"),
+				JSON.stringify({ ...row.audit, live_callback_handoff_verified: false })
+			);
+		});
+		await expect(provider.render({ request })).rejects.toThrow();
+		expect(provider.inspect().blockers).toContain(
+			"live-static-audit-failed-restart-required"
+		);
+		expect(mocks.run).toHaveBeenCalledTimes(2);
+	});
+	it.each([
+		{ optIn: undefined, disabled: undefined, allowed: false },
+		{ optIn: "true", disabled: undefined, allowed: false },
+		{ optIn: "1", disabled: "1", allowed: false },
+		{ optIn: "1", disabled: undefined, allowed: true },
+	])("gates normal cache fallback explicitly: %j", async ({
+		optIn,
+		disabled,
+		allowed,
+	}) => {
+		vi.spyOn(os, "homedir").mockReturnValue(root);
+		const identity = JIANYING_PORTRAIT_PACKAGE_IDENTITIES.features;
+		const packagePath = path.join(
+			root,
+			"Movies/JianyingPro/User Data/Cache/effect",
+			identity.resourceId,
+			identity.version
+		);
+		await mkdir(packagePath, { recursive: true });
+		mocks.resolve.mockResolvedValue({
+			runtimePackage: "features",
+			group: "face",
+			source: "jianying-installation",
+			packagePath,
+		});
+		const backend = await createBeautyLabLiveCandidateBackend({
+			sourceRoot: root,
+			isPackaged: false,
+			platform: "darwin",
+			arch: "arm64",
+			env: {
+				...OPT_IN,
+				QCUT_BEAUTY_LAB_LIVE_ALLOW_PRODUCT_CACHE: optIn,
+				QCUT_JIANYING_DISABLE_USER_CACHE: disabled,
+			},
+		});
+		if (!backend) throw new Error("Missing synthetic backend");
+		const provider = createBeautyLabCandidateProvider({ backend });
+		const pending = provider.render({
+			request: requestFor({ version: backend.version }),
+		});
+		if (allowed) {
+			await expect(pending).resolves.toHaveProperty(
+				"scope",
+				"audited-single-static-frame"
+			);
+			return;
+		}
+		await expect(pending).rejects.toThrow(/disabled/);
 		expect(mocks.run).not.toHaveBeenCalled();
 	});
 	it("allows test mode and empty UI metadata/zero-valued unrelated defaults", async () => {
