@@ -115,6 +115,12 @@ CPU 准备记录：`.local/jianying-model-pytorch/face-live-bridge-prepared-2026
 - Torch/ONNX 依赖环境 72 项、OpenCV 环境 22 项通过；与主环境有重叠，不相加成唯一数量。
 - 产品定向 Vitest 46 文件、650 项通过；Electron 再次重建通过。
 - `bun run check-types` 全部工作区通过；定向 Biome 与 `git diff --check` 通过。
+- 收尾发现远端 Ubuntu/Windows 的来源门禁在 `git ls-files` 触发 `ENOBUFS`：
+  15,029 个路径共 1,049,197 字节，超过原默认 1 MiB。已改为无 shell 的 Git 调用、
+  NUL 分隔和 64 MiB 有界缓冲，保留全仓库扫描及所有来源规则；超限/命令失败仍拒绝通过。
+  15 项测试通过，包括真实临时 Git 的超限清单、末尾违规项和中文/空格/换行路径。
+  Windows 不运行其文件系统不支持的 POSIX 名称用例，其余案例加入三平台 CI。
+  实际全仓库来源检查和脚本 TypeScript 检查通过；远端新 HEAD 仍需完成，不能据本地结果称 CI 全绿。
 - 初次混跑的两项 ONNX 缺依赖与两项源码数量断言失败已修复/在正确环境补跑。
   导出证据清单由 62 增为 63，并明确验证新进程清理模块的哈希，没有放宽原始 50 源码 guard。
 
