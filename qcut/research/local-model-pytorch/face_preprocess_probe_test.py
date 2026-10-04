@@ -3,10 +3,9 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
-import signal
 import subprocess
 import unittest
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 
@@ -361,9 +360,10 @@ class BoundedProcessTests(unittest.TestCase):
         self.stream = self.log.open.return_value.__enter__.return_value
         self.log.stat.return_value.st_size = probe.sequence.LOG_LIMIT
         self.process = Mock(pid=43210)
-        self.process.wait.return_value = 0
         self.popen = self.enterContext(patch.object(probe.subprocess, "Popen", return_value=self.process))
-        self.killpg = self.enterContext(patch.object(probe.os, "killpg"))
+        self.tree = Mock()
+        self.tree.wait.return_value = 0
+        self.tracker = self.enterContext(patch.object(probe, "ProcessTree", return_value=self.tree))
 
     def run_process(self, *, stdin=None):
         probe.bounded_process(command=["fake-host", "argument with spaces"], environment={"SAFE": "1"}, log=self.log, stdin=stdin)
@@ -373,8 +373,9 @@ class BoundedProcessTests(unittest.TestCase):
         self.log.open.assert_called_once_with("xb")
         self.popen.assert_called_once_with(["fake-host", "argument with spaces"], env={"SAFE": "1"},
             stdin=subprocess.DEVNULL, stdout=self.stream, stderr=subprocess.STDOUT, start_new_session=True)
-        self.process.wait.assert_called_once_with(timeout=probe.DEADLINE)
-        self.killpg.assert_not_called()
+        self.tracker.assert_called_once_with(process=self.process)
+        self.tree.wait.assert_called_once_with(timeout=probe.DEADLINE)
+        self.tree.terminate.assert_called_once()
 
     def test_explicit_stdin_preserved(self):
         stdin = Mock()
@@ -382,52 +383,43 @@ class BoundedProcessTests(unittest.TestCase):
         self.assertIs(self.popen.call_args.kwargs["stdin"], stdin)
 
     def test_nonzero_and_oversized_logs_rejected_after_reaping(self):
-        self.process.wait.return_value = 17
+        self.tree.wait.return_value = 17
         with self.assertRaisesRegex(RuntimeError, "failed: 17"):
             self.run_process()
-        self.process.wait.return_value = 0
+        self.tree.wait.return_value = 0
         self.log.stat.return_value.st_size += 1
         with self.assertRaisesRegex(ValueError, "log exceeds bound"):
             self.run_process()
-        self.killpg.assert_not_called()
+        self.assertEqual(self.tree.terminate.call_count, 2)
 
-    def test_timeout_and_interrupt_kill_process_group_then_reap(self):
+    def test_timeout_and_interrupt_cleanup_tracked_descendants(self):
         for error in (subprocess.TimeoutExpired("fake-host", probe.DEADLINE), KeyboardInterrupt()):
-            self.process.wait.side_effect = [error, -9]
-            self.process.wait.reset_mock()
-            self.killpg.reset_mock()
+            self.tree.wait.side_effect = error
+            self.tree.wait.reset_mock()
+            self.tree.terminate.reset_mock()
             with self.subTest(error=type(error).__name__), self.assertRaises(type(error)) as caught:
                 self.run_process()
             self.assertIs(caught.exception, error)
-            self.killpg.assert_called_once_with(43210, signal.SIGKILL)
-            self.assertEqual(self.process.wait.call_args_list, [call(timeout=probe.DEADLINE), call(timeout=10)])
+            self.tree.terminate.assert_called_once()
+            self.tree.wait.assert_called_once_with(timeout=probe.DEADLINE)
 
     def test_popen_failure_does_not_signal_unrelated_process(self):
         self.popen.side_effect = OSError("fake launch failed")
         with self.assertRaisesRegex(OSError, "fake launch failed"):
             self.run_process()
-        self.killpg.assert_not_called()
-        self.process.wait.assert_not_called()
+        self.tracker.assert_not_called()
 
     def test_exclusive_log_open_failure_does_not_launch(self):
         self.log.open.side_effect = FileExistsError("existing log")
         with self.assertRaises(FileExistsError):
             self.run_process()
         self.popen.assert_not_called()
-        self.killpg.assert_not_called()
+        self.tracker.assert_not_called()
 
-    def test_timeout_exit_race_still_reaps_and_preserves_original_error(self):
-        timeout = subprocess.TimeoutExpired("fake-host", probe.DEADLINE)
-        self.process.wait.side_effect = [timeout, 0]
-        self.killpg.side_effect = ProcessLookupError("process already exited")
-        try:
+    def test_cleanup_failure_is_not_reported_as_success(self):
+        self.tree.terminate.side_effect = RuntimeError("owned process survived")
+        with self.assertRaisesRegex(RuntimeError, "survived"):
             self.run_process()
-        except BaseException as error:
-            caught = error
-        else:
-            self.fail("timeout must be reported")
-        self.assertEqual(self.process.wait.call_args_list, [call(timeout=probe.DEADLINE), call(timeout=10)])
-        self.assertIs(caught, timeout)
 
 
 class EnvironmentTests(unittest.TestCase):
