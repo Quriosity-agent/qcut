@@ -429,16 +429,21 @@ describe("live host receipt binding (synthetic files, no codesign or native laun
 		"alias",
 		"normalized",
 	])("rejects a %s host root", async (kind) => {
-		let hostDirectory = path.relative(process.cwd(), files.hostDirectory);
+		let hostDirectory = "beauty-live-host";
 		if (kind === "alias") {
 			hostDirectory = path.join(root, "host-alias");
 			await symlink(files.hostDirectory, hostDirectory);
 		}
 		if (kind === "normalized")
 			hostDirectory = `${files.hostDirectory}/../beauty-live-host`;
+		if (kind === "relative") expect(path.isAbsolute(hostDirectory)).toBe(false);
 		await expect(
 			readBeautyLabLiveCandidateResult({ ...input, hostDirectory })
-		).rejects.toThrow();
+		).rejects.toThrow(
+			kind === "relative"
+				? "absolute live host directory required"
+				: "live host path or dependency binding mismatch"
+		);
 	});
 
 	it.each([
