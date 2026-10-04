@@ -383,9 +383,30 @@ int tracedSeek(void* manager, std::int64_t timestamp,
   }
 }
 
+#ifdef QCUT_FACE_FEATURE_HOOK
+using CreateObservedFeature = int (*)(void*, void**, const char*);
+CreateObservedFeature originalCreateFeature = nullptr;
+int tracedCreateFeature(void* video, void** feature, const char* path) {
+  const int result = originalCreateFeature(video, feature, path);
+  if (result == 0 && feature && *feature) captureOwnedFeature(*feature);
+  return result;
+}
+#endif
+
 template <typename Function>
 Function tracedResolve(void* handle, std::string_view name) {
   Function original = jianying_probe::resolveSymbol<Function>(handle, name);
+#ifdef QCUT_FACE_FEATURE_HOOK
+  if constexpr (std::is_same_v<Function, CreateObservedFeature>) {
+    if (name == "bef_swing_segment_video_create_feature") {
+      if (jianying_probe::runtimeImageUuid(reinterpret_cast<void*>(original)) !=
+          "D6342ECD-5432-33F0-A2AD-0C28F5699994")
+        throw std::runtime_error("unverified feature creator image UUID");
+      originalCreateFeature = original;
+      return tracedCreateFeature;
+    }
+  }
+#endif
   if constexpr (std::is_same_v<Function, Seek>) {
     if (name == "bef_swing_manager_seek_frame_device_texture_with_data") {
       if (jianying_probe::runtimeImageUuid(reinterpret_cast<void*>(original)) !=
