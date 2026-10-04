@@ -196,7 +196,9 @@ qcut_live::DeferredColdSetup liveColdSetup;
 int64_t liveColdSeekStartPrediction = -1;
 #include "face_live_owned_input.h"
 const bool liveMakeupTrace = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") ?: "") == "1";
+const bool liveMakeupPublish = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") ?: "") == "1";
 void* liveFeature = nullptr;
+void* liveSeekManager = nullptr;
 using MakeupUpdate = void (*)(void*, double);
 struct MakeupShadow { std::array<void*, 32> table{}; MakeupUpdate original = nullptr; };
 std::map<void*, MakeupShadow> liveMakeupSystems;
@@ -208,6 +210,27 @@ void captureOwnedFeature(void* feature) {
   liveFeature = feature;
 }
 
+void* currentMakeupGraph() {
+  using Current = void* (*)();
+  using Getter = void* (*)(void*);
+  if (!liveSeekManager) throw std::runtime_error("makeup seek manager unavailable");
+  auto* base = static_cast<unsigned char*>(imageBase());
+  void* native = reinterpret_cast<Current>(base + 0x40422c)();
+  const auto wrapper = jianying_probe::resolveSymbol<Getter>(core,
+      "_ZNK13AmazingEngine12SwingManager9getAmazerEv")(liveSeekManager);
+  if (!native || !wrapper || native != reinterpret_cast<Getter>(base + 0x3f9d88)(wrapper))
+    throw std::runtime_error("makeup TLS context differs from current seek manager");
+  const auto table = field<void*>(native, 0);
+  const auto getter = field<void*>(table, 0x98);
+  if (imageOffset(table) != 0x3530c48 || imageOffset(getter) != 0x41d56c)
+    throw std::runtime_error("unverified makeup AE manager getter");
+  void* manager = reinterpret_cast<Getter>(getter)(native);
+  if (!manager) throw std::runtime_error("makeup AE manager unavailable");
+  void* graph = reinterpret_cast<Getter>(base + 0x407224)(manager);
+  if (!graph) throw std::runtime_error("makeup current graph unavailable");
+  return graph;
+}
+
 void tracedMakeupUpdate(void* system, double delta) {
   try {
     if (std::this_thread::get_id() != seekThread || updateError || !liveLeases.injecting() ||
@@ -217,7 +240,24 @@ void tracedMakeupUpdate(void* system, double delta) {
             << ",\"timestamp_us\":" << seekTimestamp
             << ",\"reader\":\"face-makeup-v2\",\"candidate_injected\":false,\"renderer_consumption\":false}\n"
             << std::flush;
+    std::optional<OwnedLiveInput> input;
+    if (liveMakeupPublish) {
+      input = publishLiveInput(currentMakeupGraph());
+      const auto& lease = *input->lease;
+      const auto faces = pointerSpan(lease.duplicate, 0x38);
+      const void* first = faces.count ? field<void*>(reinterpret_cast<void*>(faces.begin), 0) : nullptr;
+      records << "{\"event\":\"live_makeup_publication\",\"prediction\":" << livePrediction
+              << ",\"timestamp_us\":" << seekTimestamp << ",\"binding_id\":" << lease.bindingId
+              << ",\"graph_id\":" << lease.graphId << ",\"graph\":" << reinterpret_cast<uintptr_t>(lease.graph)
+              << ",\"source_buffer\":" << reinterpret_cast<uintptr_t>(lease.source.get())
+              << ",\"owned_buffer\":" << reinterpret_cast<uintptr_t>(lease.duplicate)
+              << ",\"owned_base\":" << reinterpret_cast<uintptr_t>(first)
+              << ",\"owned_points\":" << (first ? reinterpret_cast<uintptr_t>(readLandmarks(first).destination) : 0)
+              << ",\"faces\":" << faces.count
+              << ",\"candidate_injected\":true,\"renderer_consumption\":false}\n" << std::flush;
+    }
     liveMakeupSystems.at(system).original(system, delta);
+    if (input) input->validateSource();
     records << "{\"event\":\"live_makeup_update_exit\",\"prediction\":" << livePrediction
             << ",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
   } catch (...) { updateError = std::current_exception(); }
@@ -314,6 +354,7 @@ void prepareOwnedSeek(void* manager) {
   if (!traceUpdates)
     throw std::runtime_error("cold setup requires update tracing");
   liveColdSetup.prepare(manager);
+  liveSeekManager = manager;
   liveColdSeekStartPrediction = livePrediction;
 }
 
@@ -408,6 +449,7 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
 int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_COLD_FRAME") && !liveColdFrame) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") && (!liveMakeupTrace || !liveColdFrame)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") && (!liveMakeupPublish || !liveMakeupTrace)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
