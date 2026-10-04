@@ -56,6 +56,40 @@ runtime model tree, both ONNX graphs, package trees, interpreters and input file
 Any source/asset identity change invalidates the plan. Regenerate to a new leaf
 after a coordinated freeze; never update old recorded hashes.
 
+### Explicit Read-Only Effect Cache
+
+The optional CPU-plan argument `--effect-cache-root` names an existing absolute
+`Cache/effect` directory supplied by the trusted caller. There is no automatic
+home-directory search. Resolution first checks the private runtime's exact
+resource/version; only when absent does it check the same resource/version
+under the explicit root. No alternate version, download, or asset copying is
+performed. An unsafe private path fails instead of falling back silently.
+
+For the six-feature availability preflight, omit feature filters and add:
+
+```sh
+--effect-cache-root '/Users/peter/Movies/JianyingPro/User Data/Cache/effect'
+```
+
+Use a fresh output leaf, for example `face-feature-campaign-six-cache-plan-r1`.
+Missing pinned assets fail planning honestly. A successful CPU plan proves
+availability and immutable identity only, not native execution or parity.
+
+New plans use format `face-feature-campaign-plan-v2` and record explicit package
+bindings, selected root directory identities, and every selected package file's
+hash/identity using the unchanged bounded TreeGuard. Roots and package paths
+cannot resolve through symlinks; package file escapes and directory symlinks
+remain forbidden. Before each stage the selection policy, root identities and
+package contents are rechecked. Unrelated cache packages are neither scanned
+nor authorized. Dynamic makeup keeps separately guarded host/card packages.
+Current provider, tracking-scope-pool and package-resolver sources are also
+hash-bound alongside the catalog sources; parent changes invalidate the plan.
+Old plans are retained unchanged; regenerate after the shared source freeze.
+
+Planning cannot grant GPU access or macOS desktop/debugger authorization. A TCC
+blocked LLDB launch remains a native-runtime blocker; this cache option neither
+changes that permission nor bypasses the preprocessing timeout/gates.
+
 Only after the parent explicitly grants GPU access AND confirms all source
 workers frozen, substitute the emitted SHA256 and run:
 
