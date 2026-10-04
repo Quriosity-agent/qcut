@@ -11,6 +11,7 @@ void qcutFaceLivePrediction(void*, const void*, int, int, int, int, int, int) no
 
 namespace {
 #include "face_live_stage_capture.h"
+#include "face_live_extra_capture.h"
 
 NSDictionary* liveFilter(uintptr_t address, int count) {
   if (read<int>(address + 0x70) != count)
@@ -60,11 +61,14 @@ void qcutFaceLivePrediction(void* handle, const void* pixels, int rc, int format
       if (!begin || end < begin || end - begin != 4000 || capacity < end || capacity - begin > 4000)
         throw std::runtime_error("unsupported live face pool");
       id face = [NSNull null];
+      id extra = nil;
       for (size_t slot = 0; slot < 10; ++slot) {
         const auto record = begin + slot * 400;
         if (!(read<uint8_t>(record + 8) & 1)) continue;
         if (face != [NSNull null]) throw std::runtime_error("live multi-face unsupported");
         face = liveFace(read<uintptr_t>(record), record, slot, base);
+        if (std::getenv("QCUT_FACE_LIVE_EXTRA_REFINEMENT"))
+          extra = liveExtraGeometry(owner, read<uintptr_t>(record), base);
       }
       NSMutableArray* predictors = [NSMutableArray array];
       for (const auto offset : {0x7878, 0x7898}) {
@@ -82,10 +86,16 @@ void qcutFaceLivePrediction(void* handle, const void* pixels, int rc, int format
       const char* token = std::getenv("QCUT_FACE_LIVE_TOKEN");
       if (!token || std::strlen(token) < 16) throw std::runtime_error("live session token missing");
       captureLiveStages(owner, index, width, height, timestamp(), copy, token);
-      NSDictionary* message = @{@"op":@"predict", @"token":@(token), @"pid":@(getpid()), @"prediction":@(index),
+      NSMutableDictionary* message = [@{@"op":@"predict", @"token":@(token), @"pid":@(getpid()), @"prediction":@(index),
         @"data":@{@"owner":@(owner), @"width":@(width), @"height":@(height), @"stride":@(stride),
           @"format":@(format), @"orientation":@(rotation), @"runtime_state":runtimeState(owner),
-          @"face":face, @"predictors":predictors, @"timestamp_us":@(timestamp())}};
+          @"face":face, @"predictors":predictors, @"timestamp_us":@(timestamp())}} mutableCopy];
+      if (std::getenv("QCUT_FACE_LIVE_EXTRA_REFINEMENT")) {
+        if (!extra) throw std::runtime_error("Extra refinement requires one active face");
+        NSMutableDictionary* data = [message[@"data"] mutableCopy];
+        data[@"extra_geometry"] = extra;
+        message[@"data"] = data;
+      }
       NSDictionary* reply = qcut_live::exchange(message, copy);
       NSData* bytes = [NSJSONSerialization dataWithJSONObject:reply options:0 error:nil];
       if (!bytes) throw std::runtime_error("cannot serialize live worker reply");
