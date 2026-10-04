@@ -56,8 +56,13 @@ class ProcessTree:
     def refresh(self):
         current = snapshot()
         root = current.get(self.process.pid)
-        if not self.owned and root is not None and self.process.poll() is None:
-            self.owned[root.pid] = root
+        if root is not None:
+            previous = self.owned.get(root.pid)
+            same_root = (not self.owned or
+                         previous is not None and previous.started == root.started)
+            # Only the unreaped Popen child can retain ownership across exec.
+            if same_root and self.process.poll() is None:
+                self.owned[root.pid] = root
         parents = {pid for pid, identity in self.owned.items()
                    if pid in current and identity.matches(other=current[pid])}
         while parents:
@@ -80,6 +85,13 @@ class ProcessTree:
                 raise subprocess.TimeoutExpired(self.process.args, timeout)
             time.sleep(min(0.1, remaining))
 
+    def ambiguous_descendants(self, *, current):
+        return {pid for pid, identity in self.owned.items()
+                if pid != self.process.pid and pid in current
+                and identity.started == current[pid].started
+                and identity.executable != current[pid].executable
+                and not current[pid].state.startswith("Z")}
+
     def terminate(self):
         # A debugserver target can have a new PGID and outlive the LLDB parent.
         try:
@@ -88,9 +100,11 @@ class ProcessTree:
             self.process.kill()
             self.process.wait(timeout=10)
             raise
+        ambiguous = self.ambiguous_descendants(current=current)
         root = current.get(self.process.pid)
         identity = self.owned.get(self.process.pid)
-        if root is not None and identity is not None and identity.matches(other=root):
+        # A group signal could include a descendant whose exec invalidated ownership.
+        if not ambiguous and root is not None and identity is not None and identity.matches(other=root):
             try:
                 if self.process.poll() is None and os.getpgid(root.pid) == root.pid:
                     os.killpg(root.pid, signal.SIGKILL)
@@ -99,8 +113,11 @@ class ProcessTree:
         self.process.kill()
         try:
             for pid, identity in reversed(tuple(self.owned.items())):
-                observed = snapshot().get(pid)
-                if observed is None or observed.state.startswith("Z") or not identity.matches(other=observed):
+                current = snapshot()
+                ambiguous.update(self.ambiguous_descendants(current=current))
+                observed = current.get(pid)
+                if (pid in ambiguous or observed is None or observed.state.startswith("Z")
+                        or not identity.matches(other=observed)):
                     continue
                 try:
                     os.kill(pid, signal.SIGKILL)
@@ -111,9 +128,13 @@ class ProcessTree:
         deadline = time.monotonic() + 3
         while True:
             current = snapshot()
+            ambiguous.update(self.ambiguous_descendants(current=current))
             remaining = [pid for pid, identity in self.owned.items() if pid in current
-                         and identity.matches(other=current[pid]) and not current[pid].state.startswith("Z")]
+                         and pid not in ambiguous and identity.matches(other=current[pid])
+                         and not current[pid].state.startswith("Z")]
             if not remaining:
+                if ambiguous:
+                    raise RuntimeError(f"ambiguous descendant identities during cleanup: {sorted(ambiguous)}")
                 return
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"owned processes survived cleanup: {remaining}")
