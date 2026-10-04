@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -18,6 +20,14 @@ from face_live_worker import LiveWorker, serve
 
 
 class FramingTests(unittest.TestCase):
+    def test_debugger_import_works_without_site_packages(self):
+        result = subprocess.run([sys.executable, "-S", "-c",
+            "import sys; import face_live_bridge_lldb; "
+            "assert 'numpy' not in sys.modules; "
+            "assert 'face_alignment_replay' not in sys.modules"],
+            cwd=Path(__file__).resolve().parent, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_real_socket_roundtrip_preserves_binary_pixels(self):
         sender, receiver = socket.socketpair()
         with sender, receiver:
@@ -54,7 +64,9 @@ class FramingTests(unittest.TestCase):
                 connection.recv.assert_called_once_with(protocol.HEADER.size)
 
     def test_json_duplicates_nan_scalar_and_truncated_json_rejected(self):
-        for data in (b'{"a":1,"a":2}', b'{"x":NaN}', b"[]", b"1", b"null", b"{", b"\xff"):
+        for data in (b'{"a":1,"a":2}', b'{"x":NaN}', b'{"x":[1e999]}', b'{"x":-Infinity}',
+                     b'{"nested":{"a":1,"a":2}}', b"[]", b"1", b"null", b"{", b"\xff",
+                     '{"x":1}'.encode("utf-16")):
             with self.subTest(data=data):
                 sender, receiver = socket.socketpair()
                 with sender, receiver:
