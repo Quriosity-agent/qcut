@@ -91,6 +91,9 @@ import {
 } from "./jianying-portrait-adjustment-handler.js";
 import { setupBeautyLabIPC } from "./beauty-lab-handler.js";
 import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
+import { createBeautyLabLiveCandidateBackend } from "./beauty-lab-live-candidate.js";
+import { createBeautyLabQuitGuard } from "./beauty-lab-quit.js";
 import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.js";
 import {
 	setupJianyingMotionTrackingIPC,
@@ -1163,12 +1166,20 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 			["JianyingPersonCutoutIPC", setupJianyingPersonCutoutIPC],
 			[
 				"BeautyLabIPC",
-				() => {
+				async () => {
 					const sourceRoot = app.isPackaged
 						? app.getAppPath()
 						: path.resolve(__dirname, "../..");
+					const backend = await createBeautyLabLiveCandidateBackend({
+						sourceRoot,
+						isPackaged: app.isPackaged,
+					}).catch((error: unknown) => {
+						logger.warn("Beauty Lab static audit unavailable:", String(error));
+						return undefined;
+					});
 					beautyLabController = setupBeautyLabIPC({
 						getMainWindow: () => mainWindow,
+						candidateProvider: createBeautyLabCandidateProvider({ backend }),
 						...resolveBeautyLabResearchPaths({
 							sourceRoot,
 							isPackaged: app.isPackaged,
@@ -1352,10 +1363,25 @@ if (process.platform === "darwin") {
 	});
 }
 
-app.on("before-quit", () => {
+const deferBeautyLabQuit = createBeautyLabQuitGuard({
+	resumeQuit: () => app.quit(),
+	onError: (error) => logger.warn("Beauty Lab cleanup failed:", String(error)),
+});
+
+app.on("before-quit", (event) => {
 	// A real quit is underway; the staged-update close prompt must not
 	// preventDefault the window teardown.
 	stagedUpdateVisibility?.setQuitting();
+	const beautyLab = beautyLabController;
+	if (
+		!isHeadlessRecorder &&
+		deferBeautyLabQuit({
+			event,
+			dispose: beautyLab ? () => beautyLab.dispose() : undefined,
+		})
+	) {
+		return;
+	}
 	if (claudeInstancePort !== null) {
 		removeClaudeInstanceInfo({ port: claudeInstancePort });
 		claudeInstancePort = null;
