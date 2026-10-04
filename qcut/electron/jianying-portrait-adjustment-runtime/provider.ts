@@ -633,6 +633,11 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		const cacheKey = frameCacheKey({ request });
 		const cached = cache.get(cacheKey);
 		if (cached) {
+			const scope = await trackingScopes.acquire({ scopeKey: requestedScope });
+			// Cached pixels do not restore the native tracker's temporal state.
+			if (scope.lastRenderedCacheKey !== cacheKey) {
+				await trackingScopes.retire({ scopeKey: requestedScope });
+			}
 			cache.delete(cacheKey);
 			cache.set(cacheKey, cached);
 			return {
@@ -1029,6 +1034,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				throw new Error("剪映美颜美体返回了错误的像素数量");
 			}
 			trackingScope.lastTimestampSeconds = requestedTimestamp;
+			trackingScope.lastRenderedCacheKey = cacheKey;
 			if (cache.size >= CACHE_LIMIT) {
 				const oldest = cache.keys().next().value;
 				if (oldest) cache.delete(oldest);
