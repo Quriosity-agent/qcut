@@ -76,6 +76,8 @@ void* currentMakeupGraph() {
   return graph;
 }
 
+#include "face_live_makeup_consumer.h"
+
 void tracedMakeupUpdate(void* system, double delta) {
   try {
     if (std::this_thread::get_id() != seekThread || updateError || !liveLeases.injecting() ||
@@ -86,6 +88,7 @@ void tracedMakeupUpdate(void* system, double delta) {
             << ",\"reader\":\"face-makeup-v2\",\"candidate_injected\":false,\"renderer_consumption\":false}\n"
             << std::flush;
     std::optional<OwnedLiveInput> input;
+    if (liveMakeupConsume && livePrediction == 1) installMakeupConsumers(system);
     if (liveMakeupPublish) {
       input = publishLiveInput(currentMakeupGraph());
       const auto& lease = *input->lease;
@@ -106,11 +109,41 @@ void tracedMakeupUpdate(void* system, double delta) {
               << ",\"faces\":" << faces.count
               << ",\"candidate_injected\":true,\"renderer_consumption\":false}\n" << std::flush;
     }
+    activeMakeupInput = input ? &*input : nullptr;
+    activeMakeupSystem = system;
+    if (liveMakeupConsume && livePrediction == 1) {
+      const auto faces = pointerSpan(input->lease->duplicate, 0x38);
+      if (faces.count != 1) throw std::runtime_error("makeup snapshot requires one face");
+      void* face = field<void*>(reinterpret_cast<void*>(faces.begin), 0);
+      activeMakeupSnapshot = MakeupSnapshot{face, readLandmarks(face), field<int>(face, 0x40)};
+    }
+    liveGeometryCalls = 0;
     liveMakeupSystems.at(system).original(system, delta);
+    if (liveMakeupConsume && livePrediction == 1) verifyMakeupSnapshot();
+    activeMakeupInput = nullptr;
+    activeMakeupSystem = nullptr;
+    activeMakeupSnapshot.reset();
+    restoreMakeupConsumers();
+    if (updateError) std::rethrow_exception(updateError);
     if (input) input->validateSource();
+    if (liveMakeupConsume && livePrediction == 1) {
+      if (!input || liveGeometryCalls != 1) throw std::runtime_error("missing final makeup geometry consumer");
+      const auto& lease = *input->lease;
+      liveLeases.converted(lease.graph);
+      records << "{\"event\":\"live_makeup_conversion\",\"prediction\":1,\"timestamp_us\":0"
+              << ",\"binding_id\":" << lease.bindingId << ",\"graph_id\":" << lease.graphId
+              << ",\"source_points_unchanged\":true,\"native_returned\":true,\"renderer_consumption\":true}\n"
+              << std::flush;
+    }
     records << "{\"event\":\"live_makeup_update_exit\",\"prediction\":" << livePrediction
             << ",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
-  } catch (...) { updateError = std::current_exception(); }
+  } catch (...) {
+    updateError = std::current_exception();
+    activeMakeupInput = nullptr;
+    activeMakeupSystem = nullptr;
+    activeMakeupSnapshot.reset();
+    try { restoreMakeupConsumers(); } catch (...) { }
+  }
 }
 
 void installMakeupObservers() {
