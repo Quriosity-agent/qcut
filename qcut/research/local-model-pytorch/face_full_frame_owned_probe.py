@@ -4,33 +4,14 @@ import json
 from pathlib import Path
 
 from face_alignment_replay import LockedFiles
-from face_full_frame_owned_inputs import build_inputs
+from face_full_frame_owned_inputs import build_inputs, model_input_proof
 import face_preprocess_chain_capture as capture
 import face_render_model_parity as parity
-from face_render_stability_probe import digest
 
 SOURCE_NAMES = ("face_full_frame_owned.py", "face_full_frame_owned_inputs.py", "face_full_frame_owned_probe.py",
                 "face_full_frame_quantization.py", "face_full_frame_quantization_probe.py",
                 "face_preprocess_chain_inputs.py", "face_preprocess_replay.py",
                 "face_alignment_sampling.py", "face_host_sampling_inputs.py", "face_preprocess_chain_capture.py")
-
-
-def model_input_proof(*, model, inputs, seeds):
-    for size, values in ((120, inputs), (160, seeds)):
-        if model.get(f"independent_{size}_sampling_input_used") is not True:
-            raise ValueError("ONNX did not consume both owned input maps")
-        cases = model["model_outputs"][str(size)]["cases"]
-        if (type(values) is not dict or not values or not isinstance(cases, list) or not cases or
-                any(not isinstance(case, dict) or type(case.get("inference")) is not int or
-                    not 0 <= case["inference"] <= 128 for case in cases)):
-            raise ValueError("nonempty typed bounded ONNX inference coverage required")
-        expected = {(size, case["inference"]) for case in cases}
-        if len(cases) != len(values) or expected != set(values):
-            raise ValueError("ONNX inference coverage differs from owned input maps")
-        for case in cases:
-            if (case.get("input_source") != "replacement_inputs" or case.get("passed") is not True or
-                    case.get("replacement_input_sha256") != digest(data=values[(size, case["inference"])].tobytes())):
-                raise ValueError("ONNX input identity differs from original-pixel producer")
 
 
 def run(*, capture_root, model_root, out):
