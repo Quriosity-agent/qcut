@@ -341,7 +341,15 @@ export function useBeautyLab({
 			setCandidate(frame);
 			setCandidateReport(result);
 		} catch (reason) {
-			if (token === revision.current) setError(String(reason));
+			if (token !== revision.current) return;
+			setError(String(reason));
+			setCandidateStatus(null);
+			const refreshed = await window.electronAPI?.beautyLab
+				?.inspectCandidate?.()
+				.catch(() => null);
+			if (token === revision.current && refreshed) {
+				setCandidateStatus(refreshed);
+			}
 		} finally {
 			if (token === revision.current) setBusy(null);
 		}
