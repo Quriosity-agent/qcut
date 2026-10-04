@@ -239,6 +239,50 @@ void coldPublicationAloneDoesNotConsume() {
           "cold publication counted as native consumption");
 }
 
+void initializationReceiptRequiresActualRestoredPublication() {
+  Fixture empty(true);
+  empty.scope.begin(0, 0);
+  empty.finish();
+  rejects([&] { empty.scope.acknowledgeInitialization(); }, "restored cold publication");
+  Fixture fixture(true);
+  Graph graph;
+  fixture.scope.begin(0, 0);
+  fixture.bind(graph, false);
+  rejects([&] { fixture.scope.acknowledgeInitialization(); }, "restored cold publication");
+  fixture.finish();
+  require(fixture.scope.restoredPublication(), "restored publication not available");
+  fixture.scope.acknowledgeInitialization();
+  require(!fixture.scope.consumed(), "initialization fabricated consumption");
+  fixture.scope.validateConsumption();
+  rejects([&] { fixture.scope.acknowledgeInitialization(); }, "restored cold publication");
+  fixture.scope.begin(1, 0);
+  require(fixture.scope.requiresConsumption() && !fixture.scope.restoredPublication(),
+          "initialization exemption leaked into final rendering");
+  fixture.sourceReleases = 0;
+  fixture.bind(graph, false);
+  fixture.finish();
+  rejects([&] { fixture.scope.acknowledgeInitialization(); }, "restored cold publication");
+  rejects([&] { fixture.scope.validateConsumption(); }, "missing or not consumed");
+}
+
+void initializationCannotAcceptWrongScopeOrFailedRestoration() {
+  for (const bool cold : {false, true}) {
+    Fixture fixture(cold);
+    Graph graph;
+    fixture.scope.begin(0, cold ? 1 : 0);
+    fixture.bind(graph, false);
+    fixture.finish();
+    rejects([&] { fixture.scope.acknowledgeInitialization(); }, "restored cold publication");
+  }
+  Fixture fixture(true);
+  Graph graph;
+  fixture.scope.begin(0, 0);
+  fixture.bind(graph, false);
+  rejects([&] { fixture.finish(false, true); }, "source restoration failed");
+  require(!fixture.scope.restoredPublication(), "failed restoration accepted");
+  rejects([&] { fixture.scope.acknowledgeInitialization(); }, "source restoration failed");
+}
+
 void coldSetupWaitsForWorkerAndRunsOnce() {
   qcut_live::DeferredColdSetup setup;
   int manager = 0, installs = 0;
@@ -306,8 +350,10 @@ int main() {
   coldPredictionsHaveNoBootstrapExemption();
   coldFirstTwoPredictionsRestoreRealLeases();
   coldPublicationAloneDoesNotConsume();
+  initializationReceiptRequiresActualRestoredPublication();
+  initializationCannotAcceptWrongScopeOrFailedRestoration();
   coldSetupWaitsForWorkerAndRunsOnce();
   coldSetupReadinessFailureCannotWarmUpOrRetry();
   coldSetupRejectsWrongBoundaryAndManager();
-  std::cout << "15 CPU-only clone lifecycle tests passed\n";
+  std::cout << "17 CPU-only clone lifecycle tests passed\n";
 }
