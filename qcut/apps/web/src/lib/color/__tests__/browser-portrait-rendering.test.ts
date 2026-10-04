@@ -114,4 +114,25 @@ describe("portrait source detail reaches the native renderer", () => {
 			expect.objectContaining({ source })
 		);
 	});
+	it("forwards the source decoder and cancellation through the color stack", async () => {
+		const signal = new AbortController().signal;
+		const readPortraitSourcePreRoll = vi.fn(async () => undefined);
+		await drawColorGradedSourceStack({
+			...args,
+			portraitAdjustments: {
+				enabled: true,
+				values: { face_adjust_EnlargeEye: 60 },
+			},
+			readPortraitSourcePreRoll,
+			signal,
+		});
+		expect(renderJianyingPortraitAdjustmentPreview).toHaveBeenCalledWith(
+			expect.objectContaining({
+				readSourcePreRoll: readPortraitSourcePreRoll,
+				signal,
+				timestampSeconds: 2,
+				sourceKey: args.sourceKey,
+			})
+		);
+	});
 });
