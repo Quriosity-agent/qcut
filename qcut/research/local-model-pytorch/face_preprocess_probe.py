@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import signal
 import subprocess
 import sys
 
@@ -23,11 +22,13 @@ import face_render_model_capture as models
 import face_render_sequence_probe as sequence
 from face_render_stability_probe import digest, frame_metrics
 from face_temporal_capture_audit import source_hashes
+from face_native_process import ProcessTree
 
 PRIVATE = sequence.PRIVATE
 OLD_REPORTS = {"sequence_replay": "face-host-geometry-sequence-replay-20261003-r9",
                "sequence_render": "face-host-geometry-sequence-render-20261003-r7"}
-SOURCE_NAMES = ("face_preprocess_probe.py", "face_preprocess_lldb.py", "face_preprocess_memory.py")
+SOURCE_NAMES = ("face_preprocess_probe.py", "face_preprocess_lldb.py", "face_preprocess_memory.py",
+                "face_native_process.py")
 DEADLINE = 300
 SYSTEM_ENV_KEYS = {"HOME", "PATH", "TMPDIR", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE"}
 HOST_ENV_KEYS = {"QCUT_FRAME_WIDTH", "QCUT_FRAME_HEIGHT", "QCUT_TRACE_UPDATES", "QCUT_FACE_POINT_SHIFT",
@@ -135,15 +136,11 @@ def bounded_process(*, command, environment, log, stdin=None):
     with log.open("xb") as stream:
         process = subprocess.Popen(command, env=environment, stdin=stdin or subprocess.DEVNULL,
                                    stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
+        tree = ProcessTree(process=process)
         try:
-            code = process.wait(timeout=DEADLINE)
-        except BaseException:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait(timeout=10)
-            raise
+            code = tree.wait(timeout=DEADLINE)
+        finally:
+            tree.terminate()
     if log.stat().st_size > sequence.LOG_LIMIT:
         raise ValueError("process log exceeds bound")
     if code != 0:
