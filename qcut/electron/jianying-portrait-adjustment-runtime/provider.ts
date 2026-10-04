@@ -70,6 +70,10 @@ import {
 	isPortraitTrackingDiscontinuity,
 } from "./tracking-session.js";
 import { createPortraitTrackingScopePool } from "./tracking-scope-pool.js";
+import {
+	canRecoverPortraitSource,
+	parsePortraitSourcePreRoll,
+} from "./source-preroll.js";
 
 const CACHE_LIMIT = 4;
 const MANUAL_RETOUCH_CACHE_VERSION = "v1";
@@ -82,6 +86,7 @@ interface HostSession {
 	trackIds?: ReadonlyMap<number, number>;
 	referenceFaces?: PortraitFaceGeometry[];
 	fittingFrame?: PortraitFittingFrameIdentity & { output: Uint8Array };
+	needsSourcePreRoll?: boolean;
 }
 
 interface DetectionSnapshot {
@@ -612,7 +617,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 	};
 
 	const renderNow = async (
-		request: JianyingPortraitAdjustmentRenderRequest
+		request: JianyingPortraitAdjustmentRenderRequest,
+		{ readCache = true, writeCache = true } = {}
 	): Promise<JianyingPortraitAdjustmentRenderResult> => {
 		const groups = requestedGroups({ request });
 		const requestedScope = [
@@ -631,7 +637,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			};
 		}
 		const cacheKey = frameCacheKey({ request });
-		const cached = cache.get(cacheKey);
+		const cached = readCache ? cache.get(cacheKey) : undefined;
 		const requestedFaceEntries = request.adjustments.faces ?? [];
 		if (cached) {
 			const scope = await trackingScopes.acquire({ scopeKey: requestedScope });
@@ -714,6 +720,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			});
 		}
 		const sessions = trackingScope.sessions;
+		const recoverableSource = canRecoverPortraitSource({ request });
 		trackingScope.lastRenderedCacheKey = null;
 		await retireInactiveSessions({ sessions, stages });
 		if (requestedFaceEntries.length > 0) {
@@ -912,6 +919,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				previousFittingFrame.timestampSeconds = requestedTimestamp;
 				return renderStage({ index: index + 1, inputPath: outputPath });
 			}
+			const coldSession = !sessions.has(stage.id) || fittingAction === "reset";
 			const session = await sessionForStage({
 				stage,
 				reset: fittingAction === "reset",
@@ -1023,6 +1031,13 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						output: new Uint8Array(await readFile(outputPath)),
 					};
 				}
+				if (recoverableSource && stage.group === "face") {
+					const unchanged = (await readFile(outputPath)).equals(
+						await readFile(inputPath)
+					);
+					session.needsSourcePreRoll =
+						unchanged && (coldSession || session.needsSourcePreRoll === true);
+				}
 			} catch (cause) {
 				sessions.delete(stage.id);
 				await session.process.dispose();
@@ -1039,23 +1054,56 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			}
 			trackingScope.lastTimestampSeconds = requestedTimestamp;
 			trackingScope.lastRenderedCacheKey = cacheKey;
-			if (cache.size >= CACHE_LIMIT) {
+			const needsSourcePreRoll = [...sessions.values()].some(
+				(session) => session.needsSourcePreRoll
+			);
+			if (writeCache && !needsSourcePreRoll && cache.size >= CACHE_LIMIT) {
 				const oldest = cache.keys().next().value;
 				if (oldest) cache.delete(oldest);
 			}
-			cache.set(cacheKey, output);
+			if (writeCache && !needsSourcePreRoll) cache.set(cacheKey, output);
 			return {
 				provider: "jianying-local-swing-v1",
 				width: request.width,
 				height: request.height,
 				rgba: new Uint8Array(output),
 				activeGroups,
+				...(needsSourcePreRoll ? { needsSourcePreRoll: true } : {}),
 			};
 		} catch (cause) {
 			await trackingScopes.retire({ scopeKey: requestedScope });
 			throw cause;
 		} finally {
 			await Promise.all(paths.map((filePath) => rm(filePath, { force: true })));
+		}
+	};
+
+	const renderWithSourcePreRoll = async (
+		request: JianyingPortraitAdjustmentRenderRequest
+	): Promise<JianyingPortraitAdjustmentRenderResult> => {
+		const preRoll = parsePortraitSourcePreRoll({
+			value: request.sourcePreRoll,
+			request,
+		});
+		if (!preRoll) return renderNow(request);
+		const scopeKey = [request.width, request.height, request.sourceKey].join(
+			"\0"
+		);
+		const { sourcePreRoll: _preRoll, ...target } = request;
+		await trackingScopes.retire({ scopeKey });
+		try {
+			// Replay is one queue operation: another source cannot interleave with recovery.
+			await preRoll.frames.reduce(async (previous, frame) => {
+				await previous;
+				await renderNow(
+					{ ...target, ...frame, frameNumber: undefined },
+					{ readCache: false, writeCache: false }
+				);
+			}, Promise.resolve());
+			return await renderNow(target, { readCache: false });
+		} catch (cause) {
+			await trackingScopes.retire({ scopeKey });
+			throw cause;
 		}
 	};
 
@@ -1157,7 +1205,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			return pending;
 		},
 		render: (request) => {
-			const pending = queue.then(() => renderNow(request));
+			const pending = queue.then(() => renderWithSourcePreRoll(request));
 			queue = pending.then(
 				() => undefined,
 				() => undefined
