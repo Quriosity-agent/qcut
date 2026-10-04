@@ -123,6 +123,24 @@ def on_breakpoint(frame, location, internal_dict):
         return True
 
 
+def process_diagnostics(*, process):
+    stops = []
+    for index in range(min(process.GetNumThreads(), 64)):
+        thread = process.GetThreadAtIndex(index)
+        if thread.GetStopReason() == 0:
+            continue
+        frames = []
+        for depth in range(min(thread.GetNumFrames(), 8)):
+            frame = thread.GetFrameAtIndex(depth)
+            frames.append(dict(pc=frame.GetPC(), symbol=(frame.GetFunctionName() or "")[:512]))
+        stops.append(dict(thread=thread.GetThreadID(), reason=thread.GetStopReason(),
+                          description=thread.GetStopDescription(1024), frames=frames))
+        if len(stops) == 8:
+            break
+    return dict(pid=process.GetProcessID(), state=process.GetState(),
+                exit_status=process.GetExitStatus(), unexpected_stops=stops)
+
+
 def run(*, debugger, config_path):
     import lldb
     global STATE
@@ -158,6 +176,7 @@ def run(*, debugger, config_path):
         if error.Fail():
             raise RuntimeError(error.GetCString())
         STATE.process = process
+        report.update(process_diagnostics(process=process))
         if STATE.failures or process.GetState() != lldb.eStateExited or process.GetExitStatus() != 0:
             raise RuntimeError(STATE.failures[-1] if STATE.failures else "live host stopped or failed")
         report["passed"] = True
