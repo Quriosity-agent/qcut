@@ -1,6 +1,6 @@
 """Live read-only caller/order observer; actual entry registers, never cached crop.
 
-Three inference breakpoints; an optional fourth observes raw face getter stacks.
+Three inference breakpoints; an optional fourth observes getter stacks or XY loads.
 The native post-predict callback performs the pixel/geometry exchange and owned
 renderer handoff. Getter observations never count as consumption receipts.
 """
@@ -18,6 +18,7 @@ from face_preprocess_lldb import CALLERS, command, register, file_address
 from face_preprocess_memory import unpack_detection_call
 from face_live_worker_protocol import exchange
 import face_live_reader_trace as reader_trace
+import face_live_makeup_point_trace as point_trace
 
 STATE = None
 POINTS = {"begin": 0x2c4dac, "call": 0x2ca3bc, "infer": 0x36b43c}
@@ -32,6 +33,7 @@ class Observer:
         self.process = None
         self.caller = None
         self.reader_hits, self.reader_events = 0, []
+        self.point_hits, self.point_events = 0, []
 
     def read(self, *, address, size):
         import lldb
@@ -140,6 +142,22 @@ def on_reader_breakpoint(frame, location, internal_dict):
         return True
 
 
+def on_point_breakpoint(frame, location, internal_dict):
+    try:
+        STATE.point_hits += 1
+        if STATE.point_hits > point_trace.MAX_HITS or time.monotonic() - STATE.started > 240:
+            raise ValueError("makeup point diagnostic budget exceeded")
+        STATE.process = frame.GetThread().GetProcess()
+        publication = point_trace.publication_scope(
+            path=Path(STATE.config["report"]).parent / "records.jsonl", prediction=STATE.index)
+        STATE.point_events.append(point_trace.observe(frame=frame, location=location,
+            prediction=STATE.index, read=STATE.read, publication=publication))
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
 def process_diagnostics(*, process, exited_state, no_stop_reason):
     stops = []
     thread_count = 0 if process.GetState() == exited_state else min(process.GetNumThreads(), 64)
@@ -162,11 +180,14 @@ def process_diagnostics(*, process, exited_state, no_stop_reason):
 def run(*, debugger, config_path):
     import lldb
     global STATE
+    STATE = None
     config = json.loads(Path(config_path).read_text())
     report = dict(passed=False, target_memory_written=False, software_breakpoints_used=False,
                   target_functions_evaluated=False, failures=[])
     process = None
     try:
+        if config.get("trace_makeup_points", False) and config.get("trace_face_readers", False):
+            raise ValueError("getter and XY diagnostics share one hardware slot")
         debugger.SetAsync(False)
         target = debugger.CreateTarget(config["host"])
         if not target.IsValid() or not target.GetTriple().startswith("arm64"):
@@ -186,6 +207,9 @@ def run(*, debugger, config_path):
         if config.get("trace_face_readers", False):
             reader_trace.install(debugger=debugger, target=target, core=config["core"],
                                  callback=__name__ + ".on_reader_breakpoint")
+        if config.get("trace_makeup_points", False):
+            point_trace.install(debugger=debugger, target=target, core=config["core"],
+                                callback=__name__ + ".on_point_breakpoint")
         info = lldb.SBLaunchInfo(config["arguments"])
         info.SetEnvironmentEntries([f"{key}={value}" for key,value in config["environment"].items()], False)
         info.SetLaunchFlags(info.GetLaunchFlags() & ~lldb.eLaunchFlagDisableASLR)
@@ -212,6 +236,9 @@ def run(*, debugger, config_path):
                           observer_failures=STATE.failures)
             if config.get("trace_face_readers", False):
                 report["reader_trace"] = dict(hits=STATE.reader_hits, events=STATE.reader_events,
+                    renderer_consumption=False, target_memory_written=False)
+            if config.get("trace_makeup_points", False):
+                report["point_trace"] = dict(hits=STATE.point_hits, events=STATE.point_events,
                     renderer_consumption=False, target_memory_written=False)
         Path(config["report"]).write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     print(json.dumps(dict(passed=report["passed"], failures=report["failures"])))
