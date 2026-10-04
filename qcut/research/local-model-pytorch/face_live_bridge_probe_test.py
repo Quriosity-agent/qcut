@@ -53,6 +53,21 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "backward seek"):
             bundle.prepare_inputs(manifest=self.manifest, out=self.out, guard=bundle.DependencyGuard())
 
+    def test_static_audit_is_explicit_and_does_not_fabricate_distinct_frames(self):
+        self.frames = self.frames[:1]
+        self.write_manifest()
+        frames, dimensions = bundle.prepare_inputs(manifest=self.manifest, out=self.out,
+            guard=bundle.DependencyGuard(), single_frame=True)
+        self.assertEqual(dimensions, (8, 8))
+        self.assertEqual(len(frames), 1)
+        rows, _ = bundle.requests(frames=frames, directory=self.out)
+        self.assertEqual(sum(not row["warmup"] for row in rows), 1)
+        self.frames.append(dict(self.frames[0]))
+        self.write_manifest()
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            bundle.prepare_inputs(manifest=self.manifest, out=self.out,
+                guard=bundle.DependencyGuard(), single_frame=True)
+
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
             self.frames[0]["timestamp"] = 1 if case == "bootstrap" else 0
@@ -193,6 +208,19 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lease"):
             probe.run(args=self.args)
         self.assertFalse(self.args.out.exists())
+
+    def test_single_frame_preparation_reports_only_static_scope(self):
+        self.frames = self.frames[:1]
+        self.write_manifest()
+        self.args.single_frame = True
+        result, native = self.run_preparation()
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["single_frame_audit"])
+        self.assertFalse(result["temporal_sequence_acceptance"])
+        self.assertFalse(result["product_backend_registered"])
+        self.assertEqual(result["scope"], "single-frame-native-dependent-live-audit")
+        self.assertIn("--single-frame", result["command"])
+        native.assert_not_called()
 
     def test_timeout_retains_evidence_without_permission_bypass_or_algorithm_claim(self):
         def timeout(**kwargs):
