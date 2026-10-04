@@ -38,6 +38,8 @@ export interface BeautyLabCandidateStatus {
 	available: boolean;
 	blockers: string[];
 	stages: BeautyLabCandidateStage[];
+	scope?: "audited-single-static-frame";
+	timingScope?: "cumulative-owned-worker-including-warmup";
 }
 
 export interface BeautyLabCandidateRequest {
@@ -53,10 +55,17 @@ export interface BeautyLabCandidateRequest {
 	timestampSeconds: number;
 }
 
-export interface BeautyLabCandidateStageMetric {
-	id: BeautyLabCandidateStageId;
-	durationMs: number;
-}
+export type BeautyLabCandidateStageMetric =
+	| {
+			id: BeautyLabCandidateStageId;
+			durationMs: number;
+			unavailableReason?: never;
+	  }
+	| {
+			id: BeautyLabCandidateStageId;
+			durationMs: null;
+			unavailableReason: "native-stage-not-instrumented";
+	  };
 
 export interface BeautyLabCandidateResult {
 	protocol: typeof BEAUTY_LAB_CANDIDATE_PROTOCOL;
@@ -74,6 +83,14 @@ export interface BeautyLabCandidateResult {
 	rgba: Uint8Array;
 	nativeDependencies: BeautyLabCandidateStageId[];
 	stageMetrics: BeautyLabCandidateStageMetric[];
+	scope?: "audited-single-static-frame";
+	timingScope?: "cumulative-owned-worker-including-warmup";
+	provenance?: {
+		auditSha256: string;
+		dependenciesSha256: string;
+		workerLogSha256: string;
+		workerBackendVersion: string;
+	};
 }
 
 export interface BeautyLabCandidateAPI {
