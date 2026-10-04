@@ -7,7 +7,11 @@ import {
 	JIANYING_PORTRAIT_RUNTIME_PACKAGE_ORDER,
 } from "../jianying-portrait-adjustment-runtime/catalog.js";
 
-const mocks = vi.hoisted(() => ({ start: vi.fn(), missingModels: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	start: vi.fn(),
+	missingModels: vi.fn(),
+	detectionPayload: "",
+}));
 vi.mock("../jianying-filter-local-runtime/runtime-discovery.js", () => ({
 	inspectJianyingFilterLocalRuntime: async () => ({
 		status: {
@@ -84,6 +88,7 @@ describe("stateful portrait fitting provider", () => {
 		vi.clearAllMocks();
 		hosts.length = 0;
 		mocks.missingModels.mockResolvedValue([]);
+		mocks.detectionPayload = JSON.stringify({ faces: [] });
 		mocks.start.mockImplementation(async () => {
 			let fittingUpdates = 0;
 			const host = {
@@ -98,7 +103,7 @@ describe("stateful portrait fitting provider", () => {
 						await writeFile(outputPath, pixels);
 					}
 				),
-				detect: vi.fn(async () => "[]"),
+				detect: vi.fn(async () => mocks.detectionPayload),
 				stroke: vi.fn(),
 				dispose: vi.fn(async () => undefined),
 			};
@@ -290,6 +295,83 @@ describe("stateful portrait fitting provider", () => {
 		);
 		expect(next.rgba[0]).toBe(101);
 		expect(hosts).toHaveLength(3);
+	});
+	it("preserves per-face mapping across A, B, cached A parameter toggles", async () => {
+		mocks.detectionPayload = JSON.stringify({
+			faces: [
+				{ trackId: 1, faceId: 1, freidTrackId: 1, rect: [0.2, 0.2, 0.4, 0.4] },
+			],
+		});
+		const base = { ...request(), frameNumber: 0 };
+		const detected = await provider.detect(base);
+		const render = ({ value, frame }: { value: number; frame: number }) => {
+			const pixels = new Uint8Array(rgba);
+			pixels[1] += frame;
+			return provider.render({
+				...base,
+				rgba: pixels,
+				frameNumber: frame,
+				timestampSeconds: frame / 30,
+				adjustments: {
+					enabled: true,
+					values: {},
+					faces: [
+						{
+							trackId: 1,
+							personBindingId: detected.faces[0].personBindingId,
+							values: { face_adjust_EnlargeEye: value },
+						},
+					],
+				},
+			});
+		};
+		await render({ value: 50, frame: 0 });
+		await render({ value: 50, frame: 1 });
+		await render({ value: 75, frame: 1 });
+		await render({ value: 50, frame: 1 });
+		await expect(render({ value: 50, frame: 2 })).resolves.toMatchObject({
+			activeGroups: ["face"],
+		});
+		expect(
+			JSON.parse(hosts.at(-1)!.render.mock.calls.at(-1)![0].featureParameters)
+		).toMatchObject({
+			face_adjust_EnlargeEye: [
+				{ id: -1, intensity: 0 },
+				{ id: 1, intensity: 0.5 },
+			],
+		});
+	});
+	it("retires every stage after partial render failure before serving cached frames", async () => {
+		const base = {
+			...request(),
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_EnlargeEye: 50 },
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 50 } },
+			},
+		};
+		const first = await provider.render(base);
+		hosts[1].render.mockRejectedValueOnce(new Error("downstream failed"));
+		const pixels = new Uint8Array(rgba);
+		pixels[1] += 2;
+		await expect(
+			provider.render({ ...base, rgba: pixels, timestampSeconds: 1 / 30 })
+		).rejects.toThrow("downstream failed");
+		expect(hosts[0].dispose).toHaveBeenCalledOnce();
+		expect(hosts[1].dispose).toHaveBeenCalledOnce();
+		expect((await provider.render(base)).rgba).toEqual(first.rgba);
+		const next = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		await provider.clear();
+		const cold = await provider.render({
+			...base,
+			rgba: pixels,
+			timestampSeconds: 2 / 30,
+		});
+		expect(next.rgba).toEqual(cold.rgba);
 	});
 	it("rebuilds smile fitting after an upstream mouth edit on the same frame", async () => {
 		const base = request();
