@@ -5,6 +5,10 @@ from unittest import mock
 from face_live_bridge_lldb import process_diagnostics
 
 
+def diagnostics(*, process):
+    return process_diagnostics(process=process, exited_state=10, no_stop_reason=1)
+
+
 class StopDiagnosticsTests(unittest.TestCase):
     def process(self, *, reason=5):
         frame = mock.Mock()
@@ -26,7 +30,7 @@ class StopDiagnosticsTests(unittest.TestCase):
 
     def test_preserves_original_stop_before_cleanup_kill(self):
         process, thread, frame = self.process()
-        result = process_diagnostics(process=process)
+        result = diagnostics(process=process)
         self.assertEqual(result["state"], 5)
         self.assertEqual(result["exit_status"], -1)
         self.assertEqual(result["unexpected_stops"], [dict(thread=7, reason=5,
@@ -41,7 +45,7 @@ class StopDiagnosticsTests(unittest.TestCase):
         process.GetNumThreads.return_value = 10000
         thread.GetNumFrames.return_value = 10000
         frame.GetFunctionName.return_value = "x" * 2000
-        result = process_diagnostics(process=process)
+        result = diagnostics(process=process)
         self.assertEqual(len(result["unexpected_stops"]), 8)
         self.assertEqual(process.GetThreadAtIndex.call_count, 8)
         for row in result["unexpected_stops"]:
@@ -49,12 +53,19 @@ class StopDiagnosticsTests(unittest.TestCase):
             self.assertEqual(len(row["frames"][0]["symbol"]), 512)
 
     def test_no_stop_does_not_read_stack_and_missing_symbol_is_safe(self):
-        process, thread, frame = self.process(reason=0)
-        self.assertEqual(process_diagnostics(process=process)["unexpected_stops"], [])
+        process, thread, frame = self.process(reason=1)
+        self.assertEqual(diagnostics(process=process)["unexpected_stops"], [])
         thread.GetFrameAtIndex.assert_not_called()
         thread.GetStopReason.return_value = 5
         frame.GetFunctionName.return_value = None
-        self.assertEqual(process_diagnostics(process=process)["unexpected_stops"][0]["frames"][0]["symbol"], "")
+        self.assertEqual(diagnostics(process=process)["unexpected_stops"][0]["frames"][0]["symbol"], "")
+
+    def test_exited_process_never_reports_invalid_final_thread_frames(self):
+        process, thread, _ = self.process()
+        process.GetState.return_value = 10
+        self.assertEqual(diagnostics(process=process)["unexpected_stops"], [])
+        process.GetNumThreads.assert_not_called()
+        thread.GetFrameAtIndex.assert_not_called()
 
 
 if __name__ == "__main__":
