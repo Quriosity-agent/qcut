@@ -66,24 +66,25 @@ def measured(*, timings, name, function, **kwargs):
 
 
 class CandidateCore:
-    def __init__(self, *, models, stage_observer=None):
+    def __init__(self, *, models, stage_observer=None, extra_refinement=None):
         if stage_observer is not None and not callable(stage_observer):
             raise TypeError("stage observer must be callable or None")
         self.models = models
         self.stage_observer = stage_observer
+        self.extra_refinement = extra_refinement
         self.state = self.identity = self.profile = self.sequence = None
         self.seen_ids = set()
         self.busy = threading.Lock()
 
-    def process(self, *, packet, rgba, check_output=None):
+    def process(self, *, packet, rgba, check_output=None, extra_geometry=None):
         if not self.busy.acquire(blocking=False):
             raise RuntimeError("one prediction at a time required")
         try:
-            return self._process(packet=packet, rgba=rgba, check_output=check_output)
+            return self._process(packet=packet, rgba=rgba, check_output=check_output, extra_geometry=extra_geometry)
         finally:
             self.busy.release()
 
-    def _process(self, *, packet, rgba, check_output):
+    def _process(self, *, packet, rgba, check_output, extra_geometry):
         started = time.perf_counter_ns()
         packet, rgba = validate(packet=packet, rgba=rgba)
         if self.stage_observer is not None and packet["face"] is None:
@@ -101,6 +102,11 @@ class CandidateCore:
         stages_run, tensors, heads, faces = [], {}, {}, []
         face = packet["face"]
         extra = packet["runtime_state"]["base_output_mode_bit"]
+        if (self.extra_refinement is None) != (extra_geometry is None):
+            raise ValueError("Extra geometry and explicit refiner must be paired")
+        if extra_geometry is not None and (not extra or face is None):
+            raise ValueError("Extra refinement requires one face on the Extra route")
+        extra_receipt = None
         state = identity = profile = None
         if face is not None:
             identity = (face["slot"], face["alignment"], face["id"])
@@ -137,14 +143,19 @@ class CandidateCore:
             decoded_120, tracked = measured(timings=timings, name="decode-map-120", function=decode_actual,
                 raw=heads["120"]["fc_landmark_s1"].reshape(106, 2),
                 snapshot={"tables": face["tables"]}, face=face)
+            refined = tracked
+            if self.extra_refinement is not None:
+                extra_started = time.perf_counter_ns()
+                refined, extra_receipt = self.extra_refinement.refine(rgba=rgba, geometry=extra_geometry)
+                extra_receipt["elapsed_ms"] = (time.perf_counter_ns() - extra_started) / 1e6
             temporal_start = time.perf_counter_ns()
             state = self.state
             if mode in ("seed-160", "reset-120"):
-                state = smoothing_state(points=seed if mode == "seed-160" else tracked,
+                state = smoothing_state(points=seed if mode == "seed-160" else refined,
                                         parameters=face["smoothing"])
-            points = tracked
+            points = refined
             if mode != "reset-120":
-                points, state = update_primary(state=state, points=tracked, extra=extra)
+                points, state = update_primary(state=state, points=refined, extra=extra)
             timings["temporal-smoothing"] += (time.perf_counter_ns() - temporal_start) / 1e6
             smoothed = points
             points = measured(timings=timings, name="normalization", function=normalized,
@@ -152,8 +163,12 @@ class CandidateCore:
             faces = [dict(id=face["id"], points=points.tolist())]
             stages_run.extend(("sampling-120", "inference-120", "decode-map-120",
                                "temporal-smoothing", "normalization"))
+        backend_version = self.models.version
+        if extra_receipt is not None:
+            backend_identity = backend_version + ":" + extra_receipt["backend_version"]
+            backend_version = "dependency-core-v1:" + hashlib.sha256(backend_identity.encode()).hexdigest()
         result = dict(schema="face-live-candidate-result-v1", source="dependency-fed-research-inference",
-            backend_version=self.models.version, source_key=packet["source_key"],
+            backend_version=backend_version, source_key=packet["source_key"],
             prediction=packet["prediction"], frame_number=packet["frame_number"],
             timestamp_us=packet["timestamp_us"], algorithm_rgba_sha256=packet["rgba_sha256"],
             dependency_sha256=hashlib.sha256(json.dumps(packet, sort_keys=True, allow_nan=False).encode()).hexdigest(),
@@ -174,6 +189,9 @@ class CandidateCore:
             native_callback_connected=False, arbitrary_frame_backend_connected=False,
             renderer_connected=False, product_parity_verified=False,
             candidate_parity_verified=False, dependency_origin="caller-supplied-unattested")
+        if extra_receipt is not None:
+            result["extra_refinement"] = extra_receipt
+            result["native_dependencies"].append("extra-inner-filter-crop-transforms-and-mean")
         if check_output is not None:
             # Auditors may reject, but cannot replace or mutate candidate coordinates.
             if check_output(result=copy.deepcopy(result)) is not None:
