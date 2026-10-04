@@ -27,6 +27,7 @@ import face_live_bridge_audit as audit
 import face_live_makeup_point_audit as point_audit
 import face_live_makeup_render_audit as makeup_audit
 import face_live_stage_audit as stage_audit
+import face_live_extra_audit as extra_audit
 import face_live_host_identity as host_identity
 import face_render_sequence_probe as sequence
 
@@ -109,6 +110,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             for name in ("native-stages", "candidate-stages"):
                 (live / name).mkdir(mode=0o700)
             worker_command.extend(["--trace-directory", str(live / "candidate-stages")])
+        if getattr(args, "extra_root", None) is not None:
+            worker_command.extend(["--extra-root", str(args.extra_root.resolve(strict=True))])
         worker = scope.spawn(command=worker_command, environment=bundle.system_environment(),
                              stdout=live / "worker.stdout", stderr=live / "worker.stderr")
         scope.until(predicate=lambda: worker_ready(path=live / "worker.stdout", socket=socket),
@@ -118,6 +121,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             core=str(args.runtime / "Frameworks/libcccreator.dylib"),
             trace_face_readers=getattr(args, "trace_face_readers", False),
             trace_makeup_points=getattr(args, "trace_makeup_points", False),
+            trace_extra_stages=getattr(args, "trace_extra_stages", False),
+            trace_extra_model=getattr(args, "trace_extra_model", False),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
@@ -135,6 +140,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"] = "1"
         if getattr(args, "consume_makeup_candidate", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"] = "1"
+        if getattr(args, "extra_root", None) is not None:
+            config["environment"]["QCUT_FACE_LIVE_EXTRA_REFINEMENT"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
@@ -164,6 +171,9 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         timestamps = [row["timestamp_us"] for row in requests["live"] for _ in range(2)]
         observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
         worker_rows, records = audit.json_lines(path=live / "worker.jsonl"), audit.json_lines(path=live / "records.jsonl")
+        if getattr(args, "extra_root", None) is not None:
+            report["extra_refinement_audit"] = extra_audit.audit(worker=worker_rows,
+                expected_version=report["extra_backend_version"])
         inference_summary = None
         if consume_makeup or getattr(args, "trace_stages", False):
             inference_summary = audit.inference(worker=worker_rows, observer=observer,
@@ -219,6 +229,14 @@ def run(*, args):
         raise ValueError("cold-frame requires explicit single-frame audit")
     if getattr(args, "trace_stages", False) and not cold_frame:
         raise ValueError("stage diagnostics require cold-frame audit")
+    if getattr(args, "trace_extra_stages", False) and not (getattr(args, "trace_stages", False) and
+            getattr(args, "consume_makeup_candidate", False)):
+        raise ValueError("Extra diagnostics require paired stages and makeup consumption")
+    if getattr(args, "trace_extra_model", False) and not getattr(args, "trace_extra_stages", False):
+        raise ValueError("Extra model diagnostics require boundary diagnostics")
+    if getattr(args, "extra_root", None) is not None and not (cold_frame and
+            getattr(args, "consume_makeup_candidate", False) and getattr(args, "trace_stages", False)):
+        raise ValueError("Extra refinement requires cold paired stages and makeup consumption")
     if getattr(args, "trace_makeup_system", False) and not cold_frame:
         raise ValueError("makeup system observation requires cold-frame audit")
     if getattr(args, "publish_makeup_candidate", False) and not getattr(args, "trace_makeup_system", False):
@@ -250,6 +268,9 @@ def run(*, args):
         makeup_point_observation=getattr(args, "trace_makeup_points", False),
         makeup_consumption_research=getattr(args, "consume_makeup_candidate", False),
         stage_diagnostics=getattr(args, "trace_stages", False),
+        extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
+        extra_model_diagnostics=getattr(args, "trace_extra_model", False),
+        extra_refinement_root=str(args.extra_root.resolve(strict=True)) if getattr(args, "extra_root", None) is not None else None,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -279,6 +300,12 @@ def run(*, args):
             for phase in ("baseline", "live"):
                 guard.locked.read(path=out / phase / "requests.tsv")
             models = OnnxHeads(root=args.root)
+            if getattr(args, "extra_root", None) is not None:
+                from face_extra_heads_onnx import ExtraHeads
+                extra_models = ExtraHeads(root=args.extra_root)
+                report["extra_backend_version"] = extra_models.version
+                guard.tree(directory=args.extra_root.resolve(strict=True))
+                report["native_dependencies"].append("extra-inner-filter-crop-transforms-and-mean")
             report["models"] = models.provenance
             report["phase"] = "compile"
             report["compile_commands"] = bundle.compile_commands(runtime=args.runtime, out=out)
@@ -353,6 +380,9 @@ def run(*, args):
             *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
             *(["--consume-makeup-candidate"] if getattr(args, "consume_makeup_candidate", False) else []),
             *(["--trace-stages"] if getattr(args, "trace_stages", False) else []),
+            *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
+            *(["--trace-extra-model"] if getattr(args, "trace_extra_model", False) else []),
+            *(["--extra-root", str(args.extra_root.resolve(strict=True))] if getattr(args, "extra_root", None) is not None else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -382,6 +412,12 @@ def main():
                         help="research-only pinned geometry consumer; requires independent XY observation")
     parser.add_argument("--trace-stages", action="store_true",
                         help="cold single-frame diagnostic snapshots; never sent as model inputs")
+    parser.add_argument("--trace-extra-stages", action="store_true",
+                        help="read-only Stage2 call/return copies; shares the makeup XY hardware slot")
+    parser.add_argument("--trace-extra-model", action="store_true",
+                        help="private Extra crop/model evidence; never used as candidate inputs")
+    parser.add_argument("--extra-root", type=Path,
+                        help="opt-in Extra ONNX refinement using native crop geometry, never native points")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",
