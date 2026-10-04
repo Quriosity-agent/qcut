@@ -79,6 +79,7 @@ import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
 import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
+import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import {
 	drawColorGradedSourceStack,
 	drawColorGradedSourceWithMasks,
@@ -253,6 +254,7 @@ function beginMediaTransitionLayer({
 
 /** Context passed to renderer functions */
 export interface RenderContext {
+	signal?: AbortSignal;
 	ctx: CanvasRenderingContext2D;
 	canvas: HTMLCanvasElement;
 	tracks: import("@/types/timeline").TimelineTrack[];
@@ -1068,6 +1070,14 @@ async function renderVideoAttempt(
 								}),
 							],
 							portraitAdjustments: visual.portraitAdjustments,
+							readPortraitSourcePreRoll:
+								(mediaElement.enhancements?.stabilization ?? 0) > 0
+									? undefined
+									: createPortraitSourcePreRollReader({
+											source:
+												mediaItem.file instanceof Blob ? mediaItem.file : url,
+										}),
+							signal: context.signal,
 							frameSeed: Math.round(
 								(element.startTime + timeOffset) * context.fps
 							),
