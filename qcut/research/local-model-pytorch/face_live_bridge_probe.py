@@ -29,6 +29,7 @@ import face_live_makeup_render_audit as makeup_audit
 import face_live_stage_audit as stage_audit
 import face_live_extra_audit as extra_audit
 import face_live_host_identity as host_identity
+import face_live_debugger as debugger_selection
 import face_render_sequence_probe as sequence
 
 
@@ -51,8 +52,8 @@ def worker_ready(*, path, socket):
     return True
 
 
-def lldb_command(*, config):
-    return ["xcrun", "lldb", "--batch", "--no-lldbinit", "-o",
+def lldb_command(*, config, executable=None):
+    return [*debugger_selection.command_prefix(executable=executable), "--batch", "--no-lldbinit", "-o",
         "script import sys; sys.dont_write_bytecode = True; sys.pycache_prefix = " +
         json.dumps(str(config.parent / "lldb-python-cache")) +
         "; sys.path.insert(0, " + json.dumps(str(bundle.HERE)) + ")", "-o",
@@ -145,7 +146,9 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
-        debugger = scope.spawn(command=lldb_command(config=config_path), environment=bundle.system_environment(),
+        selection = report.get("debugger", {})
+        debugger = scope.spawn(command=lldb_command(config=config_path, executable=selection.get("executable")),
+                               environment={**bundle.system_environment(), **selection.get("environment_overrides", {})},
                                stdout=live / "lldb.log")
         report["live_process"] = scope.wait(process=debugger, timeout=args.timeout, companions=(worker,))
         scope.finish(process=debugger)
@@ -283,6 +286,9 @@ def run(*, args):
     leases = ExitStack()
     try:
         with cancellation_signals(), scope:
+            report["debugger"] = debugger_selection.resolve_debugger(
+                executable=getattr(args, "lldb_executable", None),
+                debugserver=getattr(args, "debugserver", None), guard=guard)
             for key in ("runtime", "package", "root", "manifest"):
                 setattr(args, key, getattr(args, key).resolve(strict=True))
             bundle.lock_dependencies(runtime=args.runtime, package=args.package, models=args.root, guard=guard)
@@ -368,6 +374,8 @@ def run(*, args):
             cache=Path(str(out) + "-rerun") / "python-cache", arguments=[
             "--runtime", str(args.runtime), "--package", str(args.package), "--root", str(args.root),
             "--manifest", str(args.manifest), "--out", str(out) + "-rerun", "--timeout", str(args.timeout),
+            *(["--lldb-executable", str(args.lldb_executable)] if getattr(args, "lldb_executable", None) is not None else []),
+            *(["--debugserver", str(args.debugserver)] if getattr(args, "debugserver", None) is not None else []),
             *(["--single-frame"] if single_frame else []),
             *(["--cold-frame"] if cold_frame else []),
             *(["--static-controls"] if static_controls else []),
@@ -396,6 +404,8 @@ def main():
     for name in ("runtime", "package", "root", "manifest", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--execute-native", action="store_true")
+    parser.add_argument("--lldb-executable", type=Path, help="explicit hash-locked debugger; default remains xcrun lldb")
+    parser.add_argument("--debugserver", type=Path, help="explicit hash-locked debugserver; never changes developer defaults")
     parser.add_argument("--stable-host", action="store_true",
                         help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
     parser.add_argument("--trace-face-readers", action="store_true",
