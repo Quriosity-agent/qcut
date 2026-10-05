@@ -263,6 +263,39 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertTrue((self.args.out / "report.json").is_file())
         self.assertIn("live-host", result["artifacts"])
 
+    def test_explicit_debugger_is_guarded_and_reproduced_without_native_launch(self):
+        for name in ("lldb_executable", "debugserver"):
+            path = self.root / (name + " with spaces")
+            path.write_bytes(b"synthetic executable, not invoked")
+            path.chmod(0o700)
+            setattr(self.args, name, path)
+        result, native = self.run_preparation()
+        self.assertTrue(result["completed"])
+        self.assertFalse(result["passed"])
+        for name, option in (("lldb_executable", "--lldb-executable"), ("debugserver", "--debugserver")):
+            self.assertIn(option, result["command"])
+            self.assertIn(str(getattr(self.args, name)), result["command"])
+        self.assertIn("debugger", result)
+        native.assert_not_called()
+
+    def test_invalid_explicit_debugger_fails_before_compilation_or_execution(self):
+        self.args.lldb_executable = self.root / "missing-lldb"
+        result, native = self.run_preparation()
+        self.assertFalse(result["completed"])
+        self.assertFalse(result["prepared"])
+        self.assertNotIn("compile_commands", result)
+        self.assertFalse(result["native_execution_performed"])
+        native.assert_not_called()
+
+    def test_explicit_debugger_command_preserves_literal_argv(self):
+        path = self.root / "lldb ; literal $(command)"
+        path.write_bytes(b"fixture, never executed")
+        path.chmod(0o700)
+        default = probe.lldb_command(config=self.out / "lldb-config.json")
+        explicit = probe.lldb_command(config=self.out / "lldb-config.json", executable=path)
+        self.assertEqual(default[:2], ["xcrun", "lldb"])
+        self.assertEqual(explicit, [str(path.resolve()), *default[2:]])
+
     def test_makeup_publication_preparation_preserves_explicit_research_scope(self):
         self.frames = self.frames[:1]
         self.write_manifest()
@@ -294,6 +327,11 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.args.stage_makeup_render = True
         scope = mock.Mock()
         report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        executable = self.root / "alternate lldb"
+        executable.write_bytes(b"fixture, never executed")
+        executable.chmod(0o700)
+        report["debugger"] = dict(executable=str(executable.resolve()),
+                                 environment_overrides={"LLDB_DEBUGSERVER_PATH": "/explicit/server"})
         with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b""), \
                 mock.patch.object(probe.audit, "protocol", return_value=dict(passed=True)), \
                 mock.patch.object(probe.audit, "render_outputs") as render_outputs:
@@ -308,6 +346,10 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_TRACE", baseline_env)
         self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_PUBLISH", baseline_env)
         self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_STAGES", baseline_env)
+        self.assertNotIn("LLDB_DEBUGSERVER_PATH", baseline_env)
+        debugger_spawn = scope.spawn.call_args_list[-1].kwargs
+        self.assertEqual(debugger_spawn["command"][0], str(executable.resolve()))
+        self.assertEqual(debugger_spawn["environment"]["LLDB_DEBUGSERVER_PATH"], "/explicit/server")
         config = json.loads((self.out / "lldb-config.json").read_text())
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"], "1")
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"], "1")
