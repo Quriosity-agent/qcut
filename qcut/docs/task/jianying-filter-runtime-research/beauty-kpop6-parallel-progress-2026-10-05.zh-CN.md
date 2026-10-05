@@ -5,6 +5,10 @@
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
 前置：[Extra 精修与三张口红零差异](beauty-kpop6-extra-refinement-2026-10-05.zh-CN.md)。
 
+后续：[消费路由与剩余覆盖](beauty-kpop6-consumer-routing-2026-10-05.zh-CN.md)，
+包含 72 项补跑、下颌线三图通过、内层滤波逐位回放与 LLVM 下两次 24 帧通过。
+本文的“首批结果”保留为历史记录；新结果仍不构成完整独立或产品后端验收。
+
 ## 范围
 
 本轮将美妆覆盖、真实视频入口、内层裁剪几何取证拆给三个独立 agent，主线程集成和串行原生验证。
