@@ -1,7 +1,7 @@
 # beauty-6-kpop：口红原生读取路径检查点
 
 日期：2026-10-04。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 基线：`c2effe5dd9b6c5d72d555edd7930859653467e6b`，v2026.10.04.2。
 
 ## 本轮结论
@@ -207,7 +207,7 @@ SHA256 与 r4 相同。源数据、克隆生命周期、GPU 完成和失败恢�
 - 本轮未运行产品全量 CI、Electron UI 或跨平台验收，不宣称这些能力通过。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut/research/local-model-pytorch
+cd "$(git rev-parse --show-toplevel)/qcut/research/local-model-pytorch"
 ../../.local/jianying-model-pytorch/face-heads-runtime122/bin/python -B -m unittest \
   face_live_reader_trace_test face_live_bridge_lldb_test \
   face_live_bridge_probe_test face_live_bridge_audit_test \
