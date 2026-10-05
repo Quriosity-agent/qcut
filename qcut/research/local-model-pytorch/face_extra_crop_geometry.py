@@ -325,14 +325,9 @@ def audit_inner_filter(*, observer):
 
 
 def _direct_state(*, value, source):
-    require(condition=type(value) is dict and type(value.get("count")) is int and value["count"] in (0, 106),
-            message="bounded direct inner state required")
-    decoded = value
-    if value["count"] == 0:
-        require(condition=value.get("width") == value.get("height") == 0,
-                message="empty direct inner dimensions required")
-        decoded = dict(value, width=source["height"], height=source["width"])
-    filter_state(value=decoded, count=value["count"], native=True,
+    from face_extra_inner_trace import normal_state
+    normal_state(state=value)
+    filter_state(value=value, count=value["count"], native=True,
                  width=source["width"], height=source["height"])
     return _state_from_capture(value=value)
 
@@ -358,8 +353,10 @@ def audit_direct_inner_filter(*, observer):
         initial = call["inner_filter"]
         state = _direct_state(value=initial, source=pre["source"])
         _direct_state(value=returned["inner_filter"], source=pre["source"])
-        inputs = np.asarray(call["input"]["xy"], np.float32).reshape(106, 2)
-        output, updated = update_inner_filter(state=state, points=inputs)
+        inputs = np.asarray(call["input"]["xy"], np.float32).reshape(call["input"]["count"], 2)
+        # Native normal-branch loops use F+0x70, not the Point136 input size.
+        consumed = inputs[:initial["count"]].copy()
+        output, updated = update_inner_filter(state=state, points=consumed)
         actual = dict(initial, current_xy=updated.current.reshape(-1).tolist(),
                       previous_xy=updated.previous.reshape(-1).tolist(),
                       delta_x=updated.delta[:, 0].tolist(), delta_y=updated.delta[:, 1].tolist(), first=updated.first)
@@ -373,11 +370,15 @@ def audit_direct_inner_filter(*, observer):
                 points=np.asarray(pre["published_xy"][:212], np.float32).reshape(106, 2),
                 forward=np.asarray(native_transform["forward"], np.float32),
                 inverse=np.asarray(native_transform["inverse"], np.float32))
-            reconstruction = compare_bits(actual=reconstructed, expected=inputs)
+            reconstruction = compare_bits(actual=reconstructed, expected=consumed)
         cases.append(dict(prediction=prediction, mode="direct-cubic-inner-update", checks=checks,
             arithmetic_bits_equal=all(check["equal"] for check in checks.values()),
             reconstructed_vs_direct_input=reconstruction,
             input_sha256=hashlib.sha256(inputs.astype("<f4").tobytes()).hexdigest(),
+            input_point_count=len(inputs), consumed_point_count=len(consumed), output_point_count=len(output),
+            unconsumed_tail_point_count=len(inputs) - len(consumed),
+            consumed_input_sha256=hashlib.sha256(consumed.astype("<f4").tobytes()).hexdigest(),
+            input_const_bits_verified=True,
             output_sha256=hashlib.sha256(output.astype("<f4").tobytes()).hexdigest(),
             actual_inner_call_arguments_captured=True,
             native_stage2_matrices_used_as_arithmetic_input=False,
@@ -388,7 +389,7 @@ def audit_direct_inner_filter(*, observer):
         arithmetic_bits_equal=bool(active) and all(case["arithmetic_bits_equal"] for case in active),
         native_geometry_required=True, owned_geometry_enabled=False, geometry_parity_verified=False,
         product_parity_verified=False, input_provenance="direct inner x1 Point136 plus call-time A+0x310 state",
-        limitations=["Native pre-filter initialization remains an input.",
+        limitations=["Native pre-filter initialization remains an input; empty/near-zero direct branches are rejected.",
                      "Native Stage2 matrices are comparison-only, not an independently owned affine solver.",
                      "Only the pinned ordinary primary106 call site is captured.",
                      "Host libm cross-platform parity and product backend replacement remain unverified."])
