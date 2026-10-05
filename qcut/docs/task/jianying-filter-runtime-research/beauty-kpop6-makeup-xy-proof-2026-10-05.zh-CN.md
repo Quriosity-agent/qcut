@@ -1,7 +1,7 @@
 # beauty-6-kpop：美妆主 106 点真实读取证据
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 本轮起点：`cae2d173b4874b612f13e6f4788fab8831fb0e87`。
 前置记录：[初始化与最终渲染阶段协议](beauty-kpop6-render-stages-2026-10-05.zh-CN.md)。
 
@@ -122,7 +122,7 @@ jq -c '[.point_trace.events[].loaded_bits]' <run>/live/observer.json | shasum -a
 分钟级视频、多脸、Windows/x86 验收。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut/research/local-model-pytorch
+cd "$(git rev-parse --show-toplevel)/qcut/research/local-model-pytorch"
 ../../.local/jianying-model-pytorch/face-heads-runtime122/bin/python -B -m unittest \
   face_live_makeup_point_trace_test face_live_makeup_point_audit_test \
   face_live_bridge_probe_test face_live_bridge_audit_test \
