@@ -192,6 +192,17 @@ class MetadataTests(VideoFixture):
 
 
 class ExportTests(VideoFixture):
+    def test_manifest_uses_verified_enlarge_eye_package_key_not_legacy_alias(self):
+        self.args.eye_intensity = 0.8
+        report, _, native = self.export()
+        self.assertTrue(report["prepared"])
+        native.assert_not_called()
+        manifest = json.loads((self.args.out / "manifest.json").read_text())
+        for frame in manifest["frames"]:
+            self.assertEqual(frame["parameters"], {
+                "face_adjust_EnlargeEye": [{"id": -1, "intensity": 0.8}]})
+            self.assertTrue(frame["expect_change"])
+
     def test_default_export_is_fresh_private_manifest_compatible_and_not_native_preparation(self):
         report, decoder, native = self.export()
         self.assertTrue(report["prepared"])
