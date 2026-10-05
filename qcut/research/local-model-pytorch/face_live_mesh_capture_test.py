@@ -9,7 +9,7 @@ from face_live_mesh_abi import MESH_VPTR, VERTICES
 
 
 class MeshMemory:
-    def __init__(self):
+    def __init__(self, *, count=VERTICES, normals_count=None):
         self.memory = bytearray(4 * 1024**2)
         self.calls = []
         self.mesh, self.slide, self.face_id = 0x2000, 0x100000000, 7
@@ -20,11 +20,13 @@ class MeshMemory:
         self.put(address=self.mesh + 0x40, data=identity * 2)
         for channel, offset in (("vertices", 0x10), ("normals", 0x28)):
             vector, begin = self.vectors[channel], self.begins[channel]
+            channel_count = normals_count if channel == "normals" and normals_count is not None else count
+            size = channel_count * 12
             self.put(address=self.mesh + offset, data=struct.pack("<Q", vector))
             self.put(address=vector + 0x10,
-                     data=struct.pack("<3Q", begin, begin + capture.PAYLOAD_SIZE, begin + capture.PAYLOAD_SIZE))
-            payload = struct.pack(f"<{VERTICES * 3}f", *(
-                index / 4096 + (1 if channel == "normals" else 0) for index in range(VERTICES * 3)))
+                     data=struct.pack("<3Q", begin, begin + size, begin + size))
+            payload = struct.pack(f"<{channel_count * 3}f", *(
+                index / 4096 + (1 if channel == "normals" else 0) for index in range(channel_count * 3)))
             self.put(address=begin, data=payload)
 
     def put(self, *, address, data):
@@ -45,18 +47,19 @@ class MeshMemory:
         vector = getattr(value, channel)
         destination, reference, stack = ((0x40000, 0x6000, 0x8000) if channel == "vertices"
                                         else (0xA0000, 0x7000, 0x9000))
-        output = bytearray(VERTICES * stride)
-        for index in range(VERTICES):
+        count = vector.count
+        output = bytearray(count * stride)
+        for index in range(count):
             output[index * stride:index * stride + 12] = vector.data[index * 12:index * 12 + 12]
         self.put(address=destination, data=output)
         self.put(address=reference, data=struct.pack("<Q", vector.vector))
         self.put(address=stack, data=struct.pack("<Qi", destination, stride))
-        registers = dict(x8=vector.end, x9=stride, x10=destination + VERTICES * stride,
+        registers = dict(x8=vector.end, x9=stride, x10=destination + count * stride,
                          x11=0, x12=int.from_bytes(vector.data[-12:-4], "little"),
                          w13=int.from_bytes(vector.data[-4:], "little"), sp=stack,
-                         x19=0x5000, x21=reference, x23=reference, w20=0, w22=0, w25=VERTICES)
+                         x19=0x5000, x21=reference, x23=reference, w20=0, w22=0, w25=count)
         if channel == "normals":
-            registers["w22"] = VERTICES
+            registers["w22"] = count
         return value, registers, destination
 
 
@@ -140,7 +143,7 @@ class MeshCaptureTests(unittest.TestCase):
                 self.assertEqual(json.loads(message.split("; descriptor=", 1)[1]), dict(
                     channel="normals", pointer=vector, begin=begin, end=end, capacity=capacity,
                     count_bytes=end - begin, capacity_bytes=capacity - begin,
-                    expected_bytes=capture.PAYLOAD_SIZE))
+                    expected_bytes=list(capture.PAYLOAD_PROFILES)))
                 self.assertEqual(self.memory.calls, [(vector + 0x10, 24)])
 
     def test_snapshot_failure_identifies_bad_channel(self):
@@ -153,16 +156,63 @@ class MeshCaptureTests(unittest.TestCase):
         self.assertEqual(descriptor["count_bytes"], 0)
 
     def test_all_copied_bytes_and_last_loaded_registers_match(self):
+        for count in capture.VERTEX_PROFILES:
+            for channel in ("vertices", "normals"):
+                for stride in (12, 32, 256):
+                    with self.subTest(count=count, channel=channel, stride=stride):
+                        memory = MeshMemory(count=count)
+                        source, registers, _ = memory.copied(channel=channel, stride=stride)
+                        report = capture.whole_copy(reader=memory.reader(), registers=registers,
+                                                    channel=channel, source=source)
+                        self.assertEqual(report["vertices"], count)
+                        self.assertEqual(report["abi_family"], 1256)
+                        self.assertTrue(report["all_destination_bytes_equal"])
+                        self.assertTrue(report["final_loaded_registers_equal"])
+                        self.assertFalse(report["qcut_mesh_ownership_verified"])
+                        self.assertFalse(report["gpu_consumption_verified"])
+
+    def test_both_profiles_report_immutable_payload_derived_count(self):
+        for count in capture.VERTEX_PROFILES:
+            with self.subTest(count=count):
+                value = MeshMemory(count=count).snapshot()
+                report = capture.snapshot_report(value=value)
+                self.assertEqual(report["vertices"], count)
+                self.assertEqual(report["abi_family"], 1256)
+                for channel in ("vertices", "normals"):
+                    vector = getattr(value, channel)
+                    self.assertEqual(vector.count, len(vector.data) // 12)
+                    self.assertEqual(report["vectors"][channel]["count"], count)
+                    with self.assertRaises((dataclasses.FrozenInstanceError, AttributeError, TypeError)):
+                        vector.count = 4
+
+    def test_different_supported_channel_counts_still_fail(self):
+        for count, normals in ((1256, 1463), (1463, 1256)):
+            with self.subTest(count=count, normals=normals), self.assertRaisesRegex(ValueError, "count mismatch"):
+                MeshMemory(count=count, normals_count=normals).snapshot()
+
+    def test_nearby_and_oversize_counts_are_not_whitelisted(self):
+        for count in (0, 1200, 1255, 1257, 1462, 1464, 4096):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "profile"):
+                MeshMemory(count=count).snapshot()
+
+    def test_1463_copy_cannot_truncate_to_1256_or_hide_tail_changes(self):
         for channel in ("vertices", "normals"):
-            for stride in (12, 32, 256):
-                with self.subTest(channel=channel, stride=stride):
-                    source, registers, _ = self.memory.copied(channel=channel, stride=stride)
-                    report = capture.whole_copy(reader=self.memory.reader(), registers=registers,
-                                                channel=channel, source=source)
-                    self.assertTrue(report["all_destination_bytes_equal"])
-                    self.assertTrue(report["final_loaded_registers_equal"])
-                    self.assertFalse(report["qcut_mesh_ownership_verified"])
-                    self.assertFalse(report["gpu_consumption_verified"])
+            memory = MeshMemory(count=1463)
+            source, registers, destination = memory.copied(channel=channel)
+            count_register = "w25" if channel == "vertices" else "w22"
+            registers[count_register] = 1256
+            with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "incomplete"):
+                capture.whole_copy(reader=memory.reader(), registers=registers, channel=channel, source=source)
+            registers[count_register] = 1463
+            memory.put(address=destination + 1461 * 32, data=b"xxxx")
+            with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "full-copy"):
+                capture.whole_copy(reader=memory.reader(), registers=registers, channel=channel, source=source)
+
+    def test_snapshot_payload_cannot_be_mutable_or_unlisted(self):
+        vector = self.memory.snapshot().vertices
+        for data in (bytearray(vector.data), vector.data[:-12]):
+            with self.subTest(kind=type(data).__name__), self.assertRaisesRegex(ValueError, "immutable"):
+                dataclasses.replace(vector, data=data)
 
     def test_single_interior_bad_value_is_not_hidden_by_endpoints(self):
         source, registers, destination = self.memory.copied(channel="vertices")
