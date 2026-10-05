@@ -1,7 +1,7 @@
 # beauty-6-kpop：原生美妆消费闭环与真实口红差分
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 本轮起点：`1a19ef6bf5c80a4f5b69c2e7aa697b8b3740801c`。
 前置记录：[主 106 点读取证据](beauty-kpop6-makeup-xy-proof-2026-10-05.zh-CN.md)。
 
@@ -135,7 +135,7 @@ clone 深拷贝检查以两次 publication 关联，不能冒充两次 conversio
 没有执行产品全量 CI、Electron UI E2E、剪映 GUI 导出、分钟级、多脸或 Windows/x86 验收。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut/research/local-model-pytorch
+cd "$(git rev-parse --show-toplevel)/qcut/research/local-model-pytorch"
 ../../.local/jianying-model-pytorch/face-heads-runtime122/bin/python -B -m unittest \
   face_live_makeup_conversion_math_test face_live_makeup_render_audit_test \
   face_live_makeup_point_trace_test face_live_makeup_point_audit_test \
