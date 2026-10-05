@@ -1,4 +1,4 @@
-"""CPU-only Extra crop evidence audit, NOT an owned transform implementation.
+"""CPU-only Extra crop audit and bounded owned inner-filter arithmetic.
 
 Existing post-Stage2 matrices are native dependencies, not reconstructed inputs.
 Even a complete boundary snapshot does not establish the inner call arguments,
@@ -10,20 +10,54 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 
 from face_extra_crop_trace import CONFIG_BYTES, READ_BYTES, READ_CALLS, SCHEMA, TRANSFORMS
 from face_host_geometry_contract import integer, matrix, numbers
+from face_host_geometry_replay import map_double
 from face_live_extra_trace import CALL, RETURN, require
 from face_live_stage_audit import filter_state, metric
-from face_temporal_smoothing import LENS_SHA256
+from face_temporal_smoothing import FilterState, LENS_SHA256, _points
 
 
 IDENTITY = ("owner", "alignment", "runtime", "face_id", "configs", "face_config", "thread")
 DEPENDENCIES = ("extra.forward:A+0x1b10", "extra.inverse:A+0x1b70",
                 "stage2.forward:A+0x7d28", "stage2.inverse:A+0x7d88", "inner_filter:A+0x310")
+
+
+def update_inner_filter(*, state, points):
+    """GetCurrentPostitionNew 0x2d14a4, not the outer AvgFilter update.
+
+    Weight: exp(-pow(double(float32(abs(delta)/scale)), 3)), rounded to
+    float32 before the separate multiply/subtract/add instructions. Host libm
+    is used; cross-platform transcendental bit parity remains unverified.
+    """
+    require(condition=isinstance(state, FilterState), message="explicit inner FilterState required")
+    values = _points(values=points)
+    if not len(state.current) or not len(values):
+        return values.copy(), state
+    require(condition=len(values) == len(state.current), message="inner filter size changes unsupported")
+    if float(state.scale) < 1e-5:
+        output, delta, first = values.copy(), state.delta, state.first
+    else:
+        # Both first/non-first branches replace delta; there is no alpha EMA here.
+        delta = values - state.current
+        ratio = np.abs(delta) / state.scale
+        weights = np.asarray([math.exp(-math.pow(float(value), 3.0)) for value in ratio.flat],
+                             np.float32).reshape(values.shape)
+        output = state.current * weights + values * (np.float32(1) - weights)
+        first = False
+    updated = FilterState(current=output, previous=state.current, delta=delta,
+                          alpha=state.alpha, scale=state.scale, first=first)
+    return output.copy(), updated
+
+
+def inner_input_from_stage2(*, points, forward, inverse):
+    """Reproduce the two rounded mappings, retaining native affine dependencies."""
+    return map_double(points=map_double(points=points, inverse=forward), inverse=inverse)
 
 
 def compare_bits(*, actual, expected):
@@ -215,14 +249,91 @@ def audit_observer(*, observer):
                     "fresh independently reconstructed transform bit comparisons"])
 
 
+def _state_from_capture(*, value):
+    return FilterState(current=np.asarray(value["current_xy"], np.float32).reshape(-1, 2),
+        previous=np.asarray(value["previous_xy"], np.float32).reshape(-1, 2),
+        delta=np.column_stack((value["delta_x"], value["delta_y"])).astype(np.float32),
+        alpha=value["alpha"], scale=value["scale"], first=value["first"])
+
+
+def _inner_state_checks(*, actual, expected):
+    checks = {}
+    for key in ("current_xy", "previous_xy", "delta_x", "delta_y", "alpha", "scale", "escale"):
+        checks[key] = compare_bits(actual=np.atleast_1d(np.asarray(actual[key], np.float32)),
+                                  expected=np.atleast_1d(np.asarray(expected[key], np.float32)))
+    for key in ("first", "count", "width", "height"):
+        checks[key] = dict(equal=type(actual[key]) is type(expected[key]) and actual[key] == expected[key])
+    return checks
+
+
+def audit_inner_filter(*, observer):
+    """Compare independent filter math to native boundary states, never fit them.
+
+    Input reconstruction uses pre-Stage2 published106 and observed native
+    Stage2 transforms. The transforms are NOT owned and post-filter histories
+    are reference-only. Missing direct call captures remain a provenance gap.
+    """
+    audit_observer(observer=observer)
+    events = observer["extra_trace"]["events"]
+    cases = []
+    for prediction in range(2):
+        before, after = events[prediction * 2:prediction * 2 + 2]
+        pre, post = before.get("crop_geometry"), after.get("crop_geometry")
+        require(condition=pre is not None and post is not None, message="both crop snapshots required for replay")
+        config = pre["config_bytes"]
+        supported = (config["0x4"] & 1 and not any(config[key] & 1 for key in ("0xb", "0x20", "0x21")) and
+                     pre["face_modes"] == {"0x3c": 1, "0x68": 0} and pre["reset_byte"] == 0)
+        require(condition=supported, message="only captured ordinary primary106 Stage2 profile supported")
+        active = bool(config["0x0"] & 1 and not config["0xa"] & 1)
+        actual = dict(pre["inner_filter"])
+        input_hash = None
+        roundtrip = None
+        if active:
+            native_transform = post["transforms"]["stage2"]
+            require(condition=native_transform["ready"] is True, message="initialized native Stage2 transform required")
+            forward, inverse = (np.asarray(native_transform[key], np.float32) for key in ("forward", "inverse"))
+            model = after.get("extra_model")
+            if model is not None:
+                for key, value in (("stage2_forward", forward), ("stage2_inverse", inverse)):
+                    require(condition=compare_bits(actual=value, expected=np.asarray(model[key], np.float32))["equal"],
+                            message="native Stage2 matrix diagnostics disagree")
+            points = np.asarray(pre["published_xy"][:212], np.float32).reshape(106, 2)
+            inputs = inner_input_from_stage2(points=points, forward=forward, inverse=inverse)
+            _, state = update_inner_filter(state=_state_from_capture(value=actual), points=inputs)
+            actual.update(current_xy=state.current.reshape(-1).tolist(),
+                          previous_xy=state.previous.reshape(-1).tolist(),
+                          delta_x=state.delta[:, 0].tolist(), delta_y=state.delta[:, 1].tolist(), first=state.first)
+            input_hash = hashlib.sha256(inputs.astype("<f4").tobytes()).hexdigest()
+            roundtrip = compare_bits(actual=inputs, expected=points)
+        checks = _inner_state_checks(actual=actual, expected=post["inner_filter"])
+        cases.append(dict(prediction=prediction, mode="cubic-inner-update" if active else "config-bypass",
+            boundary_state_bits_equal=all(check["equal"] for check in checks.values()), checks=checks,
+            input_sha256=input_hash, roundtrip_vs_pre_published=roundtrip,
+            output_sha256=hashlib.sha256(np.asarray(actual["current_xy"], dtype="<f4").tobytes()).hexdigest(),
+            native_stage2_matrices_used=active, native_post_filter_state_used_as_input=False,
+            native_final_points_used_as_input=False, actual_inner_call_arguments_captured=False))
+    return dict(schema="face-extra-inner-filter-replay-v1", cases=cases,
+        boundary_state_bits_equal=all(case["boundary_state_bits_equal"] for case in cases),
+        native_geometry_required=True, owned_geometry_enabled=False, geometry_parity_verified=False,
+        product_parity_verified=False, input_provenance="pre-Stage2 published106 plus native Stage2 forward/inverse",
+        limitations=["No direct inner call input/output capture; F+0x4d branch byte is absent.",
+                     "Native Stage2 matrices and pre-filter initialization remain inputs.",
+                     "Only this ordinary profile is replayed; other routing is rejected.",
+                     "No affine solver, cache/rotation policy or product backend replacement."])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--observer", required=True, type=Path)
+    parser.add_argument("--replay-inner-filter", action="store_true")
     args = parser.parse_args()
     with args.observer.open("rb") as stream:
         payload = stream.read(4 * 1024**2 + 1)
     require(condition=len(payload) <= 4 * 1024**2, message="observer exceeds bounded JSON size")
-    report = audit_observer(observer=json.loads(payload))
+    observer = json.loads(payload)
+    report = audit_observer(observer=observer)
+    if args.replay_inner_filter:
+        report["inner_filter_substage"] = audit_inner_filter(observer=observer)
     report["observer_sha256"] = hashlib.sha256(payload).hexdigest()
     print(json.dumps(report, indent=2, allow_nan=False))
 
