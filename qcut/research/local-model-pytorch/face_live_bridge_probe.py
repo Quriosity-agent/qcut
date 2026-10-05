@@ -122,6 +122,7 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             core=str(args.runtime / "Frameworks/libcccreator.dylib"),
             trace_face_readers=getattr(args, "trace_face_readers", False),
             trace_makeup_points=getattr(args, "trace_makeup_points", False),
+            rotate_makeup_points=getattr(args, "rotate_makeup_points", False),
             trace_extra_stages=getattr(args, "trace_extra_stages", False),
             trace_extra_model=getattr(args, "trace_extra_model", False),
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
@@ -228,6 +229,8 @@ def run(*, args):
     single_frame = getattr(args, "single_frame", False)
     static_controls = getattr(args, "static_controls", False)
     cold_frame = getattr(args, "cold_frame", False)
+    if getattr(args, "rotate_makeup_points", False) and not getattr(args, "trace_makeup_points", False):
+        raise ValueError("point rotation requires the makeup XY observer")
     if cold_frame and not single_frame:
         raise ValueError("cold-frame requires explicit single-frame audit")
     if getattr(args, "trace_stages", False) and not cold_frame:
@@ -269,6 +272,7 @@ def run(*, args):
         makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
         makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
         makeup_point_observation=getattr(args, "trace_makeup_points", False),
+        makeup_point_rotation=getattr(args, "rotate_makeup_points", False),
         makeup_consumption_research=getattr(args, "consume_makeup_candidate", False),
         stage_diagnostics=getattr(args, "trace_stages", False),
         extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
@@ -386,6 +390,7 @@ def run(*, args):
             *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
             *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
             *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
+            *(["--rotate-makeup-points"] if getattr(args, "rotate_makeup_points", False) else []),
             *(["--consume-makeup-candidate"] if getattr(args, "consume_makeup_candidate", False) else []),
             *(["--trace-stages"] if getattr(args, "trace_stages", False) else []),
             *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
@@ -418,6 +423,8 @@ def main():
                         help="experimental initialization/parameter/final-render receipts; requires publication")
     parser.add_argument("--trace-makeup-points", action="store_true",
                         help="read-only primary XY load proof; replaces getter trace and requires render stages")
+    parser.add_argument("--rotate-makeup-points", action="store_true",
+                        help="alternate read-only load/store hardware locations within the fourth slot")
     parser.add_argument("--consume-makeup-candidate", action="store_true",
                         help="research-only pinned geometry consumer; requires independent XY observation")
     parser.add_argument("--trace-stages", action="store_true",
