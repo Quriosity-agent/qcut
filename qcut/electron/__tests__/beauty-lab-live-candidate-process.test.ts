@@ -2,6 +2,10 @@
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	beautyLabLiveJobFailure,
+	type BeautyLabLiveJobFailure,
+} from "../beauty-lab-live-candidate-failure.js";
 import { runBeautyLabLiveCandidateJob } from "../beauty-lab-live-candidate-process.js";
 
 const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
@@ -417,5 +421,82 @@ describe("bounded live candidate error protocol", () => {
 		child.emit("close", 0, null);
 		await pending;
 		expect(vi.getTimerCount()).toBe(0);
+	});
+});
+
+describe("structured failure kinds for restart decisions", () => {
+	async function failure({
+		pending,
+	}: {
+		pending: Promise<void>;
+	}): Promise<BeautyLabLiveJobFailure & { message: string }> {
+		const error = await pending.then(
+			() => {
+				throw new Error("Expected the job to fail");
+			},
+			(reason: unknown) => reason
+		);
+		// The thrown value stays a plain Error so existing callers see no change.
+		expect(Object.getPrototypeOf(error)).toBe(Error.prototype);
+		const classified = beautyLabLiveJobFailure({ error });
+		if (!classified) throw new Error("Unclassified job failure");
+		return { ...classified, message: (error as Error).message };
+	}
+
+	it("marks a cancellation before spawn as not started", async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const error = await failure({
+			pending: execute({ signal: controller.signal }),
+		});
+		expect(error).toMatchObject({ kind: "not-started", forced: false });
+		expect(mocks.spawn).not.toHaveBeenCalled();
+	});
+	it("keeps a cancellation unforced when Python closes within the grace period", async () => {
+		const controller = new AbortController();
+		const pending = execute({ signal: controller.signal });
+		controller.abort();
+		await vi.advanceTimersByTimeAsync(29_999);
+		child.emit("close", 1, null);
+		const error = await failure({ pending });
+		expect(error).toMatchObject({ kind: "cancelled", forced: false });
+		expect(child.kill.mock.calls).toEqual([["SIGTERM"]]);
+	});
+	it("marks a cancellation forced once SIGKILL replaces Python cleanup", async () => {
+		const controller = new AbortController();
+		const pending = execute({ signal: controller.signal });
+		controller.abort();
+		await vi.advanceTimersByTimeAsync(30_000);
+		child.emit("close", null, "SIGKILL");
+		const error = await failure({ pending });
+		expect(error).toMatchObject({ kind: "cancelled", forced: true });
+		expect(error.message).toMatch(/cleanup deadline exceeded/);
+	});
+	it.each([
+		{ code: 1, signal: null, kind: "exit-code" },
+		{ code: null, signal: "SIGSEGV", kind: "exit-signal" },
+	])("separates a self-reported exit from a signal death: $kind", async ({
+		code,
+		signal,
+		kind,
+	}) => {
+		const pending = execute();
+		child.emit("close", code, signal);
+		const error = await failure({ pending });
+		expect(error).toMatchObject({ kind, forced: false });
+	});
+	it.each([
+		{ trigger: "timeout", kind: "timeout" },
+		{ trigger: "output", kind: "output-budget" },
+		{ trigger: "spawn", kind: "process-error" },
+	])("labels $trigger failures as $kind", async ({ trigger, kind }) => {
+		const pending = execute();
+		if (trigger === "timeout") await vi.advanceTimersByTimeAsync(300_000);
+		if (trigger === "output")
+			child.stdout.emit("data", Buffer.alloc(1_100_000));
+		if (trigger === "spawn") child.emit("error", new Error("ENOENT"));
+		child.emit("close", 1, null);
+		const error = await failure({ pending });
+		expect(error).toMatchObject({ kind, forced: false });
 	});
 });
