@@ -126,6 +126,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             trace_extra_stages=getattr(args, "trace_extra_stages", False),
             trace_extra_model=getattr(args, "trace_extra_model", False),
             trace_mesh_points=getattr(args, "trace_mesh_points", False),
+            trace_mesh_matrices=getattr(args, "trace_mesh_matrices", False),
+            trace_reshape_points=getattr(args, "trace_reshape_points", None),
             cold_frame=report["cold_frame_audit"],
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
@@ -235,6 +237,12 @@ def run(*, args):
     single_frame = getattr(args, "single_frame", False)
     static_controls = getattr(args, "static_controls", False)
     cold_frame = getattr(args, "cold_frame", False)
+    if getattr(args, "trace_mesh_matrices", False) and not getattr(args, "trace_mesh_points", False):
+        raise ValueError("matrix tracing requires mesh copy diagnostics")
+    if getattr(args, "trace_reshape_points", None):
+        if args.trace_reshape_points not in ("v5", "v6") or not getattr(args, "publish_reshape_candidate", False) or any(
+                getattr(args, key, False) for key in ("trace_face_readers", "trace_mesh_points")):
+            raise ValueError("reshape point tracing requires exclusive explicit reshape publication")
     if getattr(args, "trace_mesh_points", False):
         conflicts = ("trace_face_readers", "trace_makeup_points", "rotate_makeup_points",
                      "consume_makeup_candidate", "trace_extra_stages", "trace_extra_model",
@@ -299,6 +307,8 @@ def run(*, args):
         extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
         extra_model_diagnostics=getattr(args, "trace_extra_model", False),
         mesh_copy_diagnostics=getattr(args, "trace_mesh_points", False),
+        mesh_matrix_diagnostics=getattr(args, "trace_mesh_matrices", False),
+        reshape_point_diagnostics=getattr(args, "trace_reshape_points", None),
         extra_refinement_root=str(args.extra_root) if getattr(args, "extra_root", None) is not None else None,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
@@ -425,6 +435,8 @@ def run(*, args):
             *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
             *(["--trace-extra-model"] if getattr(args, "trace_extra_model", False) else []),
             *(["--trace-mesh-points"] if getattr(args, "trace_mesh_points", False) else []),
+            *(["--trace-mesh-matrices"] if getattr(args, "trace_mesh_matrices", False) else []),
+            *(["--trace-reshape-points", args.trace_reshape_points] if getattr(args, "trace_reshape_points", None) else []),
             *(["--extra-root", str(args.extra_root)] if getattr(args, "extra_root", None) is not None else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
@@ -451,8 +463,12 @@ def main():
                         help="experimental owned publication; cannot pass the consumption acceptance gate")
     parser.add_argument("--publish-reshape-candidate", action="store_true",
                         help="exclusive cold-frame reshape publication diagnostics; not consumption proof")
+    parser.add_argument("--trace-reshape-points", choices=("v5", "v6"),
+                        help="read-only selected reshape conversion pass; final renderer remains unverified")
     parser.add_argument("--trace-mesh-points", action="store_true",
                         help="read-only native 1256 mesh copy diagnostics; not QCut mesh ownership")
+    parser.add_argument("--trace-mesh-matrices", action="store_true",
+                        help="read-only matrix CPU-property copies; requires mesh points, not GPU acceptance")
     parser.add_argument("--stage-makeup-render", action="store_true",
                         help="experimental initialization/parameter/final-render receipts; requires publication")
     parser.add_argument("--trace-makeup-points", action="store_true",
