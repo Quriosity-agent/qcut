@@ -125,6 +125,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             rotate_makeup_points=getattr(args, "rotate_makeup_points", False),
             trace_extra_stages=getattr(args, "trace_extra_stages", False),
             trace_extra_model=getattr(args, "trace_extra_model", False),
+            trace_mesh_points=getattr(args, "trace_mesh_points", False),
+            cold_frame=report["cold_frame_audit"],
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
@@ -142,6 +144,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"] = "1"
         if getattr(args, "consume_makeup_candidate", False):
             config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"] = "1"
+        if getattr(args, "publish_reshape_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_RESHAPE_PUBLISH"] = "1"
         if getattr(args, "extra_root", None) is not None:
             config["environment"]["QCUT_FACE_LIVE_EXTRA_REFINEMENT"] = "1"
         bundle.write_json(path=config_path, value=config)
@@ -167,6 +171,8 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
                 records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
         report["live_protocol"] = audit.protocol(
             data=sequence.bounded_bytes(path=live / "host.stdout", limit=4 * 1024**2), requests=requests["live"])
+        audit.require(condition=not getattr(args, "publish_reshape_candidate", False),
+                      message="reshape publication alone cannot establish landmark consumption")
         audit.require(condition=not getattr(args, "publish_makeup_candidate", False) or consume_makeup,
                       message="makeup publication alone cannot establish landmark consumption")
         for directory in (baseline, live):
@@ -229,6 +235,20 @@ def run(*, args):
     single_frame = getattr(args, "single_frame", False)
     static_controls = getattr(args, "static_controls", False)
     cold_frame = getattr(args, "cold_frame", False)
+    if getattr(args, "trace_mesh_points", False):
+        conflicts = ("trace_face_readers", "trace_makeup_points", "rotate_makeup_points",
+                     "consume_makeup_candidate", "trace_extra_stages", "trace_extra_model",
+                     "publish_reshape_candidate")
+        if not (single_frame and cold_frame and getattr(args, "stage_makeup_render", False)) or any(
+                getattr(args, name, False) for name in conflicts):
+            raise ValueError("mesh observation requires exclusive cold staged-makeup diagnostics")
+    if getattr(args, "publish_reshape_candidate", False):
+        conflicts = ("trace_makeup_system", "publish_makeup_candidate", "stage_makeup_render",
+                     "trace_makeup_points", "rotate_makeup_points", "consume_makeup_candidate",
+                     "trace_extra_stages", "trace_extra_model")
+        if not (single_frame and cold_frame) or static_controls or getattr(args, "extra_root", None) is not None or any(
+                getattr(args, name, False) for name in conflicts):
+            raise ValueError("reshape publication requires exclusive cold single-frame diagnostics")
     if getattr(args, "rotate_makeup_points", False) and not getattr(args, "trace_makeup_points", False):
         raise ValueError("point rotation requires the makeup XY observer")
     if cold_frame and not single_frame:
@@ -270,6 +290,7 @@ def run(*, args):
         single_frame_audit=single_frame, static_controls_audit=static_controls, temporal_sequence_acceptance=False,
         cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
         makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
+        reshape_publication_research=getattr(args, "publish_reshape_candidate", False),
         makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
         makeup_point_observation=getattr(args, "trace_makeup_points", False),
         makeup_point_rotation=getattr(args, "rotate_makeup_points", False),
@@ -277,6 +298,7 @@ def run(*, args):
         stage_diagnostics=getattr(args, "trace_stages", False),
         extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
         extra_model_diagnostics=getattr(args, "trace_extra_model", False),
+        mesh_copy_diagnostics=getattr(args, "trace_mesh_points", False),
         extra_refinement_root=str(args.extra_root.resolve(strict=True)) if getattr(args, "extra_root", None) is not None else None,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
@@ -388,6 +410,7 @@ def run(*, args):
             *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
             *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
             *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
+            *(["--publish-reshape-candidate"] if getattr(args, "publish_reshape_candidate", False) else []),
             *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
             *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
             *(["--rotate-makeup-points"] if getattr(args, "rotate_makeup_points", False) else []),
@@ -395,6 +418,7 @@ def run(*, args):
             *(["--trace-stages"] if getattr(args, "trace_stages", False) else []),
             *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
             *(["--trace-extra-model"] if getattr(args, "trace_extra_model", False) else []),
+            *(["--trace-mesh-points"] if getattr(args, "trace_mesh_points", False) else []),
             *(["--extra-root", str(args.extra_root.resolve(strict=True))] if getattr(args, "extra_root", None) is not None else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
@@ -419,6 +443,10 @@ def main():
                         help="cold-frame only: observe pinned makeup object dispatch, not consumption")
     parser.add_argument("--publish-makeup-candidate", action="store_true",
                         help="experimental owned publication; cannot pass the consumption acceptance gate")
+    parser.add_argument("--publish-reshape-candidate", action="store_true",
+                        help="exclusive cold-frame reshape publication diagnostics; not consumption proof")
+    parser.add_argument("--trace-mesh-points", action="store_true",
+                        help="read-only native 1256 mesh copy diagnostics; not QCut mesh ownership")
     parser.add_argument("--stage-makeup-render", action="store_true",
                         help="experimental initialization/parameter/final-render receipts; requires publication")
     parser.add_argument("--trace-makeup-points", action="store_true",
