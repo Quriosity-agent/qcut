@@ -1,7 +1,7 @@
 # beauty-6-kpop：美妆逐阶段诊断与 Extra 精修缺口
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 本轮起点：`36a160b4fecc115f4a1c17eb6a0290f463c9ae53`。
 前置记录：[美妆消费闭环与口红差分](beauty-kpop6-makeup-consumer-2026-10-05.zh-CN.md)。
 
@@ -149,8 +149,8 @@ arm64 UUID：`248872F2-7736-32A9-A48B-DC5DFEE20C99`。
 真实原生主证据为上述三例口红和一例大眼。`git diff --check` 通过。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut/research/local-model-pytorch
-QCUT_FACE_LIVE_MODEL_ROOT=/Users/peter/Desktop/code/qcut/qcut/.local/jianying-model-pytorch/face-heads-20261003-stable-r2 \
+cd "$(git rev-parse --show-toplevel)/qcut/research/local-model-pytorch"
+QCUT_FACE_LIVE_MODEL_ROOT=$PWD/../../.local/jianying-model-pytorch/face-heads-20261003-stable-r2 \
 ../../.local/jianying-model-pytorch/face-heads-runtime122/bin/python -B -m unittest \
   face_live_candidate_trace_test face_live_candidate_test face_live_candidate_extra_test \
   face_live_worker_test face_live_worker_trace_test face_live_worker_protocol_test \
