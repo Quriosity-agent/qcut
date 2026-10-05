@@ -666,6 +666,10 @@ bool renderFilterFrame(const GraphicsFrameResources& resources) {
       context->timestamp, context->stageDelayMilliseconds);
 }
 
+// A render that the stage hook suppresses leaves no file behind, so callers
+// must not treat it as a finished frame.
+enum class FilterFrameOutcome { kFailed, kSuppressed, kWritten };
+
 struct FilterFrameExecutionRequest {
   GraphicsProbeSession& graphics;
   RenderContext& context;
@@ -676,7 +680,7 @@ struct FilterFrameExecutionRequest {
   std::string_view label;
 };
 
-[[nodiscard]] bool renderAndWriteFilterFrame(
+[[nodiscard]] FilterFrameOutcome renderAndWriteFilterFrame(
     const FilterFrameExecutionRequest& request) {
   GraphicsFrameProbeResult frame = request.graphics.renderFrame({
       .renderer = renderFilterFrame,
@@ -705,7 +709,7 @@ struct FilterFrameExecutionRequest {
   if (!frame.rendered || renderedPixels.size() != request.frameBytes ||
       missingPreWaitReadback) {
     std::cout << "[filter] " << request.label << " failed\n";
-    return false;
+    return FilterFrameOutcome::kFailed;
   }
   if (request.sequenceRequest.postSeekDelayMilliseconds > 0) {
     std::size_t changedBytes = 0;
@@ -724,10 +728,10 @@ struct FilterFrameExecutionRequest {
     convertBgraToRgba(renderedPixels);
   }
 #ifdef QCUT_FACE_RENDER_STAGE_HOOK
-  if (!allowOwnedFrameOutput()) return true;
+  if (!allowOwnedFrameOutput()) return FilterFrameOutcome::kSuppressed;
 #endif
   writeRgbaFrame(request.outputPath, renderedPixels);
-  return true;
+  return FilterFrameOutcome::kWritten;
 }
 
 struct FilterHostFrameCommand {
@@ -978,7 +982,7 @@ FilterSequenceResult renderFilterSequence(
             .frameBytes = frameBytes,
             .outputPath = request.outputDirectory / filename,
             .label = frameLabel,
-        })) {
+        }) == FilterFrameOutcome::kWritten) {
       result.renderedFrames += 1;
     }
   }
@@ -1004,7 +1008,7 @@ FilterSequenceResult renderFilterSequence(
             .outputPath =
                 request.outputDirectory / "reseek-frame-0000.rgba",
             .label = "same-timestamp re-seek",
-        })) {
+        }) == FilterFrameOutcome::kWritten) {
       result.renderedFrames += 1;
     }
   }
@@ -1158,15 +1162,21 @@ int runFilterHost(const FilterHostRequest& request) {
               touchFeatureParameters(event, stroke.points[index]);
           if (!context.session->setFeatureParametersNow(
                   context.featureParameters) ||
-              !renderAndWriteFilterFrame(execution)) {
+              renderAndWriteFilterFrame(execution) ==
+                  FilterFrameOutcome::kFailed) {
             throw std::runtime_error("manual stroke event failed");
           }
         }
         context.featureParameters = stroke.featureParameters;
-        if (!context.session->setFeatureParametersNow(
-                stroke.featureParameters) ||
-            !renderAndWriteFilterFrame(execution)) {
-          throw std::runtime_error("manual stroke cache flush failed");
+        const FilterFrameOutcome flushOutcome =
+            context.session->setFeatureParametersNow(stroke.featureParameters)
+                ? renderAndWriteFilterFrame(execution)
+                : FilterFrameOutcome::kFailed;
+        if (flushOutcome != FilterFrameOutcome::kWritten) {
+          throw std::runtime_error(
+              flushOutcome == FilterFrameOutcome::kSuppressed
+                  ? "manual stroke final frame stayed suppressed"
+                  : "manual stroke cache flush failed");
         }
         std::cout << "QCUT\tRESULT\t" << requestId << "\t0\n" << std::flush;
         continue;
@@ -1187,11 +1197,17 @@ int runFilterHost(const FilterHostRequest& request) {
           .outputPath = command.outputPath,
           .label = requestId,
       };
-      const bool warmRendered = renderAndWriteFilterFrame(execution);
-      const bool finalRendered =
-          warmRendered && renderAndWriteFilterFrame(execution);
-      if (!finalRendered) {
-        throw std::runtime_error("filter host did not produce a frame");
+      const FilterFrameOutcome warmOutcome =
+          renderAndWriteFilterFrame(execution);
+      const FilterFrameOutcome finalOutcome =
+          warmOutcome == FilterFrameOutcome::kFailed
+              ? FilterFrameOutcome::kFailed
+              : renderAndWriteFilterFrame(execution);
+      if (finalOutcome != FilterFrameOutcome::kWritten) {
+        throw std::runtime_error(
+            finalOutcome == FilterFrameOutcome::kSuppressed
+                ? "filter host suppressed the final frame output"
+                : "filter host did not produce a frame");
       }
       std::cout << "QCUT\tRESULT\t" << requestId << "\t0\n" << std::flush;
     } catch (const std::exception& error) {
