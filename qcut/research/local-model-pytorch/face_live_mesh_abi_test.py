@@ -39,7 +39,8 @@ class MeshAbiTests(unittest.TestCase):
         self.assertFalse(report["runtime_consumption_verified"])
         self.assertFalse(report["qcut_mesh_ownership_verified"])
         self.assertEqual(report["buffer_type"], 16)
-        self.assertEqual(report["vertices"], 1256)
+        self.assertEqual(report["abi_family"], 1256)
+        self.assertNotIn("vertices", report)
 
     def test_wrong_uuid_rejected(self):
         image = SyntheticImage()
