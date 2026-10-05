@@ -2,6 +2,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_BACKEND,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_STAGES,
+	type BeautyLabCandidateCancelResult,
 	type BeautyLabCandidateRequest,
 	type BeautyLabCandidateResult,
 	type BeautyLabCandidateStage,
@@ -19,6 +20,8 @@ export interface BeautyLabCandidateBackend {
 	scope?: BeautyLabCandidateStatus["scope"];
 	timingScope?: BeautyLabCandidateStatus["timingScope"];
 	dispose?: () => Promise<void>;
+	// Aborts the active render only; that render still settles and decides any blocker.
+	cancel?: () => void;
 	getBlocker?: () => string | undefined;
 	// Synchronous so raw validation and parsing cannot yield between snapshots.
 	validateRequest?: ({ request }: { request: unknown }) => undefined;
@@ -207,6 +210,9 @@ export function createBeautyLabCandidateProvider({
 	if (backend?.dispose !== undefined && typeof backend.dispose !== "function") {
 		throw new Error("Invalid candidate backend disposer");
 	}
+	if (backend?.cancel !== undefined && typeof backend.cancel !== "function") {
+		throw new Error("Invalid candidate backend canceller");
+	}
 	if (
 		backend?.getBlocker !== undefined &&
 		typeof backend.getBlocker !== "function"
@@ -224,6 +230,7 @@ export function createBeautyLabCandidateProvider({
 	const timingScope = backend?.timingScope;
 	const execute = backend?.render.bind(backend);
 	const disposeBackend = backend?.dispose?.bind(backend);
+	const cancelBackend = backend?.cancel?.bind(backend);
 	const getBlocker = backend?.getBlocker?.bind(backend);
 	const validateRequest = backend?.validateRequest?.bind(backend);
 	const stages = structuredClone(backend?.stages ?? []);
@@ -231,6 +238,7 @@ export function createBeautyLabCandidateProvider({
 		.filter((stage) => stage.implementation === "native")
 		.map((stage) => stage.id);
 	let busy = false;
+	let activeRequestId: string | undefined;
 	let disposed = false;
 	let disposal: Promise<void> | undefined;
 	let idle = Promise.resolve();
@@ -287,6 +295,7 @@ export function createBeautyLabCandidateProvider({
 		}
 		const identity = beautyLabCandidateIdentity({ request: parsed });
 		busy = true;
+		activeRequestId = parsed.requestId;
 		let finish = () => {};
 		idle = new Promise<void>((resolve) => {
 			finish = resolve;
@@ -308,8 +317,35 @@ export function createBeautyLabCandidateProvider({
 			});
 		} finally {
 			busy = false;
+			activeRequestId = undefined;
 			finish();
 		}
+	}
+
+	function cancel({
+		request,
+	}: {
+		request: unknown;
+	}): BeautyLabCandidateCancelResult {
+		if (
+			!request ||
+			typeof request !== "object" ||
+			Array.isArray(request) ||
+			Object.keys(request).length !== 1 ||
+			typeof (request as Record<string, unknown>).requestId !== "string" ||
+			!/^[A-Za-z0-9._:-]{1,128}$/.test(
+				(request as { requestId: string }).requestId
+			)
+		) {
+			throw new Error("Invalid candidate cancellation request");
+		}
+		const { requestId } = request as { requestId: string };
+		// A stale or foreign ID must never abort whichever request is running now.
+		if (!busy || !cancelBackend || activeRequestId !== requestId) {
+			return { cancelled: false };
+		}
+		cancelBackend();
+		return { cancelled: true };
 	}
 
 	function dispose(): Promise<void> {
@@ -321,5 +357,5 @@ export function createBeautyLabCandidateProvider({
 		return disposal;
 	}
 
-	return { inspect, render, dispose };
+	return { inspect, render, cancel, dispose };
 }
