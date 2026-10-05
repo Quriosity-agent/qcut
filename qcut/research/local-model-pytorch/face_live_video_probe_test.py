@@ -81,6 +81,23 @@ class VideoFixture(unittest.TestCase):
 
 
 class CommandTests(VideoFixture):
+    def test_explicit_debugger_selection_is_forwarded_without_changing_default(self):
+        forwarded = probe.bridge_args(args=self.args, out=self.args.out)
+        self.assertIsNone(forwarded.lldb_executable)
+        self.assertIsNone(forwarded.debugserver)
+        self.args.lldb_executable = self.directory / "alternate lldb"
+        self.args.debugserver = self.directory / "explicit debugserver"
+        forwarded = probe.bridge_args(args=self.args, out=self.args.out)
+        self.assertEqual(forwarded.lldb_executable, self.args.lldb_executable)
+        self.assertEqual(forwarded.debugserver, self.args.debugserver)
+
+    def test_parser_accepts_explicit_debugger_paths_as_paths(self):
+        args = probe.parser().parse_args(["--source", str(self.source), "--out", str(self.args.out),
+            "--ffmpeg", str(self.executables[0]), "--ffprobe", str(self.executables[1]),
+            "--lldb-executable", "/tmp/alternate lldb", "--debugserver", "/tmp/debugserver"])
+        self.assertEqual(args.lldb_executable, Path("/tmp/alternate lldb"))
+        self.assertEqual(args.debugserver, Path("/tmp/debugserver"))
+
     def test_commands_are_argv_local_cpu_bounded_and_never_resample(self):
         commands = probe.commands(args=self.args, out=self.args.out)
         decode = commands["decode"]
