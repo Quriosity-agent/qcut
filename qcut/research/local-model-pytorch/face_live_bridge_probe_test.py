@@ -303,6 +303,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
         self.args.stage_makeup_render = True
         self.args.trace_makeup_points = True
+        self.args.rotate_makeup_points = True
         self.args.consume_makeup_candidate = True
         self.args.trace_stages = True
         result, native = self.run_preparation()
@@ -311,6 +312,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertTrue(result["makeup_publication_research"])
         self.assertTrue(result["makeup_render_stage_research"])
         self.assertTrue(result["makeup_point_observation"])
+        self.assertTrue(result["makeup_point_rotation"])
         self.assertTrue(result["makeup_consumption_research"])
         self.assertTrue(result["stage_diagnostics"])
         self.assertFalse(result["passed"])
@@ -318,7 +320,8 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertFalse(result["product_backend_registered"])
         self.assertEqual(result["warmup_request_count"], 0)
         for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
-                       "--stage-makeup-render", "--trace-makeup-points", "--consume-makeup-candidate", "--trace-stages"):
+                       "--stage-makeup-render", "--trace-makeup-points", "--rotate-makeup-points",
+                       "--consume-makeup-candidate", "--trace-stages"):
             self.assertIn(option, result["command"])
         native.assert_not_called()
 
