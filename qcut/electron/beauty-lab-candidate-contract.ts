@@ -4,6 +4,8 @@ export const BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL =
 	"beauty-lab:inspect-candidate";
 export const BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL =
 	"beauty-lab:render-candidate";
+export const BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL =
+	"beauty-lab:cancel-candidate";
 export const BEAUTY_LAB_CANDIDATE_PROTOCOL = "qcut-beauty-lab-candidate-v1";
 export const BEAUTY_LAB_CANDIDATE_BACKEND = "qcut-portrait-onnx-candidate-v1";
 
@@ -93,9 +95,22 @@ export interface BeautyLabCandidateResult {
 	};
 }
 
+export interface BeautyLabCandidateCancelRequest {
+	requestId: string;
+}
+
+export interface BeautyLabCandidateCancelResult {
+	// False when that request is no longer the one running; nothing was aborted.
+	cancelled: boolean;
+}
+
 export interface BeautyLabCandidateAPI {
 	inspectCandidate: () => Promise<BeautyLabCandidateStatus>;
 	renderCandidate: (
 		request: BeautyLabCandidateRequest
 	) => Promise<BeautyLabCandidateResult>;
+	// The render promise still settles; inspect afterwards for any restart blocker.
+	cancelCandidate?: (
+		request: BeautyLabCandidateCancelRequest
+	) => Promise<BeautyLabCandidateCancelResult>;
 }
