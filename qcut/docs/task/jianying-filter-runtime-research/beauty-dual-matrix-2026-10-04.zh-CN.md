@@ -4,6 +4,10 @@
 PR：[484](https://github.com/Quriosity-agent/qcut/pull/484)。
 工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
 
+> 2026-10-05 后续实测见[消费路由与完整美妆覆盖](beauty-kpop6-consumer-routing-2026-10-05.zh-CN.md)：
+> 美妆已逐项补跑，下颌线三图已通过，24 帧视频在显式 LLVM 调试器下两次通过。
+> 本文保留 10 月 4 日的失败快照，不代表当前全部仍失败；三维高光/雀斑、稳定性和产品化仍需验收。
+
 ## 比较对象与边界
 
 - 原生链：当前原图、当前产品参数、新启动的 QCut 原生宿主。
