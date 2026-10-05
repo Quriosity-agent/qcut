@@ -2,7 +2,7 @@
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
 起点：`ce2aeb1371d102e0ea5d19dd87b7d17f3b056c2f`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 前置：[Extra 精修与三张口红零差异](beauty-kpop6-extra-refinement-2026-10-05.zh-CN.md)。
 
 后续：[消费路由与剩余覆盖](beauty-kpop6-consumer-routing-2026-10-05.zh-CN.md)，
