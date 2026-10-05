@@ -104,15 +104,18 @@ class IsolatedMatrixTests(unittest.TestCase):
             cases=selected if selected is not None else [self.case["id"]], categories=categories, route=route)
 
     def test_debugger_selection_forwarded_per_case_without_altering_gates(self):
-        args = self.args(lldb_executable=self.root / "alternate lldb", debugserver=self.root / "debugserver")
+        args = self.args(lldb_executable=self.root / "alternate lldb", debugserver=self.root / "debugserver",
+                         rotate_makeup_points=True)
         selected = matrix.probe_arguments(args=args, case=self.case, directory=self.root / "case")
         self.assertEqual(selected.lldb_executable, args.lldb_executable)
         self.assertEqual(selected.debugserver, args.debugserver)
+        self.assertTrue(selected.rotate_makeup_points)
         self.assertTrue(selected.cold_frame)
         self.assertTrue(selected.single_frame)
         defaults = matrix.probe_arguments(args=self.args(), case=self.case, directory=self.root / "case")
         self.assertIsNone(defaults.lldb_executable)
         self.assertIsNone(defaults.debugserver)
+        self.assertFalse(defaults.rotate_makeup_points)
 
     def test_dry_prepares_inputs_but_never_calls_probe_or_claims_parity(self):
         result = matrix.run_matrix(args=self.args())
