@@ -88,6 +88,29 @@ class DirectMemoryTests(InnerMemoryFixture, unittest.TestCase):
         with self.assertRaises(ValueError):
             inner.point_vector(read=self.read, address=address, count=106)
 
+    def test_failed_descriptor_records_actual_values_without_accepting_heap_layout(self):
+        address, begin = self.sp + 0x1b68, 0xdead000
+        self.memory[address] = struct.pack("<2Q", begin, 306)
+        self.memory[address + 0x450] = struct.pack("<Q", 280)
+        self.reads.clear()
+        with self.assertRaises(ValueError) as raised:
+            inner.point_vector(read=self.read, address=address, count=106)
+        self.assertEqual(str(raised.exception),
+            f"unsupported inline Point136 AutoVector: address={address:#x}, begin={begin:#x}, "
+            "capacity=306, size=280, expected_count=106")
+        self.assertEqual(self.reads, [(address, 16), (address + 0x450, 8)])
+
+    def test_output_descriptor_failure_keeps_expected_zero_count(self):
+        address = self.sp + 0x1710
+        self.memory[address + 0x450] = struct.pack("<Q", 106)
+        self.reads.clear()
+        with self.assertRaises(ValueError) as raised:
+            inner.point_vector(read=self.read, address=address, count=0)
+        self.assertEqual(str(raised.exception),
+            f"unsupported inline Point136 AutoVector: address={address:#x}, begin={address + 16:#x}, "
+            "capacity=136, size=106, expected_count=0")
+        self.assertEqual(self.reads, [(address, 16), (address + 0x450, 8)])
+
     def test_count_does_not_read_spare_capacity(self):
         address = self.sp + 0x1b68
         self.reads.clear()
