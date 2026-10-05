@@ -1,14 +1,14 @@
 """Read-only direct inner-filter arguments, separate from Stage2 reconstruction.
 
 The Point136 AutoVector count is +0x450, NOT NewAlign float-vector +0x430.
-Only the inspected inline primary106 ABI is accepted; no target code executes.
+Accept inline106 and the observed heap280/capacity306 input, never arbitrary heaps.
 """
 from __future__ import annotations
 
 import struct
 
 from face_extra_crop_trace import BoundedReader, CONFIG_BYTES, READ_BYTES, READ_CALLS, inner_filter
-from face_filter_abi import LENS_SHA256
+from face_filter_abi import LENS_SHA256, STATE_ABI
 from face_host_geometry_contract import integer, numbers
 from face_live_extra_trace import context, floats, require, scalar
 from face_preprocess_memory import MAX_ADDRESS, checked_read
@@ -38,20 +38,64 @@ def route(*, crop):
     return None
 
 
-def point_vector(*, read, address, count):
+def vector_layout(*, address, begin, capacity, size, count, protected=()):
+    integer(value=address, minimum=4096, maximum=MAX_ADDRESS - 0x457)
+    require(condition=address % 8 == 0, message="aligned Point136 descriptor required")
+    for value in (begin, capacity, size):
+        integer(value=value, maximum=MAX_ADDRESS)
+    inline = size == (106 if count is None else count) and begin == address + 16 and size <= capacity <= 136
+    heap = count is None and size == 280 and capacity == 306 and begin != address + 16
+    require(condition=inline or heap,
+            message=f"unsupported inline Point136 AutoVector: address={address:#x}, begin={begin:#x}, "
+                    f"capacity={capacity}, size={size}, expected_count={count}")
+    integer(value=begin, minimum=4096, maximum=MAX_ADDRESS - capacity * 8 + 1)
+    require(condition=begin % 8 == 0, message="aligned Point136 payload required")
+    if heap:
+        require(condition=all(begin + capacity * 8 <= start or end <= begin for start, end in protected)
+                and (begin + capacity * 8 <= address or address + 0x458 <= begin),
+                message="heap Point136 storage aliases protected memory")
+
+
+def point_vector(*, read, address, count, protected=()):
     integer(value=address, minimum=4096, maximum=MAX_ADDRESS - 0x457)
     require(condition=address % 8 == 0, message="aligned Point136 descriptor required")
     begin, capacity = struct.unpack("<2Q", checked_read(read=read, address=address, size=16))
     size = scalar(read=read, address=address + 0x450, kind="<Q")
-    require(condition=size == count and begin == address + 16 and size <= capacity <= 136,
-            message=f"unsupported inline Point136 AutoVector: address={address:#x}, begin={begin:#x}, "
-                    f"capacity={capacity}, size={size}, expected_count={count}")
+    vector_layout(address=address, begin=begin, capacity=capacity, size=size, count=count, protected=protected)
     return dict(address=address, data=begin, capacity=capacity, count=size,
                 xy=[] if size == 0 else floats(read=read, address=begin, count=size * 2))
 
 
 def same_bits(*, left, right):
     return len(left) == len(right) and struct.pack(f"<{len(left)}f", *left) == struct.pack(f"<{len(right)}f", *right)
+
+
+def normal_state(*, state):
+    require(condition=type(state) is dict and type(state.get("count")) is int and state["count"] == 106
+            and type(state.get("current_xy")) is list and len(state["current_xy"]) == 212,
+            message="initialized primary106 direct inner state required")
+    numbers(value=[state.get("scale")], length=1, maximum=2**20)
+    require(condition=state["scale"] >= 1e-5, message="near-zero direct inner branch unsupported")
+
+
+def protected_regions(*, storage, state, filter_address, input_address, output_address):
+    require(condition=type(storage) is list and len(storage) == 4, message="four inner history descriptors required")
+    ranges = [(input_address, input_address + 0x458), (output_address, output_address + 0x458),
+              (filter_address, filter_address + 0xa0)]
+    for triple, name in zip(storage, ("current_xy", "previous_xy", "delta_x", "delta_y"), strict=True):
+        require(condition=type(triple) is list and len(triple) == 3, message="bounded inner history descriptor required")
+        require(condition=type(state.get(name)) is list and len(state[name]) in
+                (0, 212 if name.endswith("_xy") else 106), message="bounded inner history values required")
+        begin, end, capacity = triple
+        for value in triple:
+            integer(value=value, maximum=MAX_ADDRESS)
+        require(condition=begin <= end <= capacity and capacity - begin <= 4096 and
+                (capacity - begin) % 4 == 0 and end - begin == len(state[name]) * 4 and
+                ((begin == end == capacity == 0) or (begin >= 4096 and begin % 4 == 0)),
+                message="inner history storage does not match captured state")
+        if capacity > begin:
+            ranges.append((begin, capacity))
+    return ranges
 
 
 def _bound_context(*, read, scope, crop):
@@ -94,7 +138,15 @@ def capture(*, read, scope, crop, prediction, thread, event, registers, previous
     bounded = BoundedReader(read=read)
     reader = bounded.read
     _bound_context(read=reader, scope=scope, crop=crop)
-    inputs = point_vector(read=reader, address=input_address, count=106)
+    state = inner_filter(read=reader, alignment=scope["alignment"],
+                         width=crop["source"]["width"], height=crop["source"]["height"])
+    normal_state(state=state)
+    storage = [list(struct.unpack("<3Q", checked_read(read=reader,
+        address=scope["alignment"] + 0x310 + STATE_ABI[key], size=24)))
+        for key in ("current", "previous", "delta_x", "delta_y")]
+    protected = protected_regions(storage=storage, state=state, filter_address=scope["alignment"] + 0x310,
+                                  input_address=input_address, output_address=output_address)
+    inputs = point_vector(read=reader, address=input_address, count=None, protected=protected)
     outputs = point_vector(read=reader, address=output_address, count=0 if event == "call" else 106)
     if previous is not None:
         require(condition=all(inputs[key] == previous["input"][key] for key in ("address", "data", "capacity", "count"))
@@ -102,22 +154,21 @@ def capture(*, read, scope, crop, prediction, thread, event, registers, previous
                 message="const direct inner input changed")
         require(condition=all(outputs[key] == previous["output"][key] for key in ("address", "data", "capacity")),
                 message="direct inner output ownership changed")
-    state = inner_filter(read=reader, alignment=scope["alignment"],
-                         width=crop["source"]["width"], height=crop["source"]["height"])
     return dict(event=event, offset=CALL if event == "call" else RETURN, prediction=prediction,
         thread=thread, **scope, sp=sp, fp=fp, filter_address=scope["alignment"] + 0x310,
-        input=inputs, output=outputs, inner_filter=state,
+        input=inputs, output=outputs, inner_filter=state, filter_storage=storage, consumed_point_count=state["count"],
         read_budget=dict(bytes=bounded.bytes, calls=bounded.calls), **POLICY)
 
 
-def _vector_receipt(*, value, address, count):
+def _vector_receipt(*, value, address, count, protected=()):
     require(condition=type(value) is dict, message="direct Point136 receipt required")
     for key in ("address", "data", "count", "capacity"):
         integer(value=value.get(key), maximum=MAX_ADDRESS)
-    require(condition=value["address"] == address and value["data"] == address + 16 and
-            value["count"] == count and count <= value["capacity"] <= 136,
+    require(condition=value["address"] == address,
             message="direct Point136 receipt ownership mismatch")
-    numbers(value=value.get("xy"), length=count * 2)
+    vector_layout(address=address, begin=value["data"], capacity=value["capacity"], size=value["count"],
+                  count=count, protected=protected)
+    numbers(value=value.get("xy"), length=value["count"] * 2)
 
 
 def validate_receipt(*, receipt, before, after):
@@ -149,7 +200,12 @@ def validate_receipt(*, receipt, before, after):
         require(condition=type(row.get("filter_address")) is int and
                 row["filter_address"] == before["alignment"] + 0x310,
                 message="direct inner filter owner mismatch")
-        _vector_receipt(value=row.get("input"), address=row["sp"] + 0x1b68, count=106)
+        normal_state(state=row.get("inner_filter"))
+        require(condition=type(row.get("consumed_point_count")) is int and row["consumed_point_count"] == 106,
+                message="explicit primary106 consumption required")
+        protected = protected_regions(storage=row.get("filter_storage"), state=row["inner_filter"],
+            filter_address=row["filter_address"], input_address=row["sp"] + 0x1b68, output_address=row["sp"] + 0x1710)
+        _vector_receipt(value=row.get("input"), address=row["sp"] + 0x1b68, count=None, protected=protected)
         _vector_receipt(value=row.get("output"), address=row["sp"] + 0x1710, count=0 if event == "call" else 106)
         budget = row.get("read_budget")
         require(condition=type(budget) is dict, message="direct inner read budget required")
