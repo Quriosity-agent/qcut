@@ -145,7 +145,7 @@ def snapshot(*, read, scope, event, prediction, thread, base, source, input_para
         face_modes={hex(offset): scalar(read=reader, address=scope["face_config"] + offset, kind="<i")
                     for offset in (0x3c, 0x68)},
         face_bytes={hex(offset): scalar(read=reader, address=scope["face_config"] + offset, kind="<B")
-                    for offset in (0x44, 0x96)},
+                    for offset in (0x44, 0x4d, 0x96)},
         reset_byte=scalar(read=reader, address=scope["runtime"] + 0x114, kind="<B"),
         published_xy=points(read=reader, runtime=scope["runtime"]),
         tracked=matrix(read=reader, address=scope["alignment"] + 0xb08, columns=(106, 280)),
