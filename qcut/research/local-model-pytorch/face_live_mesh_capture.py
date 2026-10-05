@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import json
 import math
 import struct
 
@@ -62,14 +63,20 @@ def finite_payload(*, data):
     require(condition=all(math.isfinite(value) for value in values), message="nonfinite mesh payload")
 
 
-def vector_snapshot(*, reader, vector):
+def vector_snapshot(*, reader, vector, channel="unknown"):
     pointer(value=vector)
     header = reader.read(address=vector + 0x10, size=24)
     begin, end, capacity = struct.unpack("<3Q", header)
-    pointer(value=begin, alignment=4)
-    require(condition=end - begin == PAYLOAD_SIZE and end <= capacity < 2**53 and
-            capacity - begin <= 4096 * 12 and (capacity - begin) % 12 == 0,
-            message="mesh vector is not bounded 1256x3 float32")
+    descriptor = dict(channel=channel, pointer=vector, begin=begin, end=end, capacity=capacity,
+                      count_bytes=end - begin, capacity_bytes=capacity - begin,
+                      expected_bytes=PAYLOAD_SIZE)
+    try:
+        pointer(value=begin, alignment=4)
+        require(condition=end - begin == PAYLOAD_SIZE and end <= capacity < 2**53 and
+                capacity - begin <= 4096 * 12 and (capacity - begin) % 12 == 0,
+                message="mesh vector is not bounded 1256x3 float32")
+    except ValueError as error:
+        raise ValueError(f"{error}; descriptor=" + json.dumps(descriptor, separators=(",", ":"))) from error
     data = reader.read(address=begin, size=PAYLOAD_SIZE)
     finite_payload(data=data)
     require(condition=reader.read(address=vector + 0x10, size=24) == header,
@@ -91,7 +98,8 @@ def snapshot(*, reader, mesh, slide, face_id):
             message="not a pinned FaceMeshInfo")
     require(condition=struct.unpack_from("<i", header, FIELDS["face_id"])[0] == face_id,
             message="mesh face identity mismatch")
-    arrays = {name: vector_snapshot(reader=reader, vector=struct.unpack_from("<Q", header, FIELDS[name])[0])
+    arrays = {name: vector_snapshot(reader=reader, vector=struct.unpack_from("<Q", header, FIELDS[name])[0],
+                                   channel=name)
               for name in ("vertices", "normals")}
     require(condition=arrays["vertices"].end <= arrays["normals"].begin or
             arrays["normals"].end <= arrays["vertices"].begin, message="mesh channels alias")
