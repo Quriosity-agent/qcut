@@ -84,6 +84,7 @@ class ExtraTrace:
         self.events, self.pending, self.prediction = [], None, -1
         self.owner, self.thread = None, None
         self.inner_model, self.source, self.base = inner_model, None, None
+        self.inner_receipts, self.armed = [], None
         self.input_parameter = None
         self.model_directory = model_directory
         if inner_model:
@@ -94,7 +95,11 @@ class ExtraTrace:
         require(condition=sum(module.GetUUIDString() == LENS_UUID for module in target.modules) == 1,
                 message="pinned Extra image required")
         self.point.SetEnabled(False)
-        for name, offset in (("before", CALL), ("after", RETURN)):
+        boundaries = [("before", CALL), ("after", RETURN)]
+        if inner_model:
+            from face_extra_inner_trace import CALL as INNER_CALL, RETURN as INNER_RETURN
+            boundaries.extend((("inner_call", INNER_CALL), ("inner_return", INNER_RETURN)))
+        for name, offset in boundaries:
             before = target.GetNumBreakpoints()
             command(debugger=target.GetDebugger(),
                     text=f"breakpoint set --hardware --disable -s liblens.dylib -a {offset:#x}")
@@ -114,6 +119,7 @@ class ExtraTrace:
         active = sum(self.target.GetBreakpointAtIndex(index).IsEnabled()
                      for index in range(self.target.GetNumBreakpoints()))
         require(condition=active <= 4, message="Extra hardware breakpoint budget exceeded")
+        self.armed = name
 
     def begin(self, *, prediction, owner, thread):
         require(condition=self.pending is None and type(prediction) is int and
@@ -131,6 +137,11 @@ class ExtraTrace:
                 frame.GetThread().GetThreadID() == self.thread, message="unverified Extra thread/breakpoint")
         offset = file_address(address=frame.GetPCAddress())
         require(condition=len(self.events) < 4, message="Extra call budget exceeded")
+        if self.inner_model:
+            from face_extra_inner_trace import CALL as INNER_CALL, RETURN as INNER_RETURN
+            if offset in (INNER_CALL, INNER_RETURN):
+                self.observe_inner(frame=frame, location=location, read=read, offset=offset)
+                return
         if offset == CALL:
             require(condition=self.pending is None and len(self.events) == self.prediction * 2,
                     message="unexpected Extra call order")
@@ -155,6 +166,16 @@ class ExtraTrace:
             row["crop_geometry"] = crop_snapshot(read=read, scope=self.pending, event=name,
                 prediction=self.prediction, thread=self.thread, base=self.base,
                 source=self.source, input_parameter=self.input_parameter)
+            from face_extra_inner_trace import route
+            reason = route(crop=row["crop_geometry"])
+            if name == "before":
+                self.inner_receipts.append(dict(prediction=self.prediction, thread=self.thread,
+                    **self.pending, bypass_reason=reason, events=[], complete=False))
+            else:
+                receipt = self.inner_receipts[-1]
+                require(condition=self.armed == "after" and receipt["bypass_reason"] == reason and
+                        len(receipt["events"]) == (2 if reason is None else 0),
+                        message="missing direct inner return or changed bypass route")
         if name == "after":
             row["return_code"] = register(frame=frame, name="w0")
             if self.inner_model:
@@ -163,13 +184,44 @@ class ExtraTrace:
                     base=self.base, source=self.source, directory=self.model_directory, prediction=self.prediction)
         self.events.append(row)
         if name == "after":
+            if self.inner_model:
+                from face_extra_inner_trace import validate_receipt
+                validate_receipt(receipt=dict(self.inner_receipts[-1], complete=True),
+                                 before=self.events[-2], after=row)
+                self.inner_receipts[-1]["complete"] = True
             self.pending = None
             self.arm(name="points")
         else:
-            self.arm(name="after")
+            self.arm(name="inner_call" if self.inner_model and reason is None else "after")
+
+    def observe_inner(self, *, frame, location, read, offset):
+        from face_extra_inner_trace import CALL as INNER_CALL, capture
+        name = "inner_call" if offset == INNER_CALL else "inner_return"
+        require(condition=self.pending is not None and self.armed == name and
+                len(self.events) == self.prediction * 2 + 1 and
+                location.GetBreakpoint().GetID() == self.breakpoints[name].GetID(),
+                message="unexpected direct inner boundary")
+        receipt = self.inner_receipts[-1]
+        require(condition=receipt["bypass_reason"] is None and len(receipt["events"]) ==
+                (0 if name == "inner_call" else 1), message="unpaired or duplicate direct inner event")
+        keys = ("sp", "fp", "x0", "x1", "x2") if name == "inner_call" else ("sp", "fp")
+        row = capture(read=read, scope=self.pending, crop=self.events[-1]["crop_geometry"],
+            prediction=self.prediction, thread=self.thread,
+            event="call" if name == "inner_call" else "return",
+            registers={key: register(frame=frame, name=key) for key in keys},
+            previous=None if name == "inner_call" else receipt["events"][0])
+        receipt["events"].append(row)
+        self.arm(name="inner_return" if name == "inner_call" else "after")
 
     def report(self):
-        return dict(schema="face-live-extra-boundary-v1", events=self.events,
+        result = dict(schema="face-live-extra-boundary-v1", events=self.events,
                     complete=self.pending is None and self.prediction == 1 and len(self.events) == 4,
                     target_memory_written=False, native_points_sent_to_worker=False,
                     product_parity_verified=False)
+        if self.inner_model:
+            from face_extra_inner_trace import SCHEMA, LENS_SHA256, POLICY
+            complete = len(self.inner_receipts) == 2 and all(row["complete"] for row in self.inner_receipts)
+            result["complete"] = result["complete"] and complete
+            result["inner_filter_trace"] = dict(schema=SCHEMA, lens_sha256=LENS_SHA256,
+                complete=result["complete"], receipts=self.inner_receipts, **POLICY)
+        return result
