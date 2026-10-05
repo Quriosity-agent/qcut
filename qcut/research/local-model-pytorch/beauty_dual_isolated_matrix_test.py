@@ -545,6 +545,121 @@ class IsolatedMatrixTests(unittest.TestCase):
         self.assertEqual(matrix.main(argv=[*argv, "--route", "face", "--case", self.case["id"]]), 0)
         self.probe.assert_not_called()
 
+    def test_72_jobs_share_large_provenance_without_exceeding_report_reader_limit(self):
+        cases = [self.makeup(case_id=f"makeup-{index}-p80") for index in range(24)]
+        self.write_inputs(cases=cases, portraits=[dict(id=name, image=str(self.image)) for name in ("one", "two", "three")])
+        tree = dict(directory=str(self.root / "large-model"), source=False,
+            files={f"{self.root}/model-{index}-{'x' * 350}": dict(sha256="a" * 64,
+                identity=[f"/fixture/{'y' * 350}", 1, index, 100, 100]) for index in range(1500)})
+        self.assertGreater(len(json.dumps(tree, indent=2)) * 72, viewer.LIMIT)
+        original = matrix.bundle.DependencyGuard.evidence
+
+        def evidence(guard):
+            value = original(guard)
+            value["trees"].append(tree)
+            return value
+
+        with patch.object(matrix.bundle.DependencyGuard, "evidence", evidence):
+            result = self.execute(route="makeup", case=[case["id"] for case in cases], max_jobs=72)
+        self.assertTrue(result["passed"])
+        self.assertEqual(self.probe.call_count, 72)
+        self.assertEqual(len({row["audit_path"] for row in result["cases"]}), 72)
+        paths = {row["hash_provenance"]["trees"][-1]["snapshot"] for row in result["cases"]}
+        self.assertEqual(len(paths), 1)
+        receipt = result["cases"][0]["hash_provenance"]["trees"][-1]
+        self.assertEqual(receipt["sha256"], hashlib.sha256(Path(receipt["snapshot"]).read_bytes()).hexdigest())
+        self.assertEqual(receipt["files"], 1500)
+        self.assertLess((self.root / "out/matrix.json").stat().st_size, viewer.LIMIT)
+        report = viewer.generate(matrix=self.root / "out/matrix.json", out=self.root / "view72")
+        self.assertEqual(len(report["cases"]), 72)
+
+    def test_repeated_tree_snapshots_verify_once_without_ignoring_conflicts(self):
+        guards = [matrix.bundle.DependencyGuard(), matrix.bundle.DependencyGuard()]
+        for guard in guards:
+            guard.tree(directory=self.root / "source")
+        with patch.object(matrix.bundle.TreeGuard, "verify", autospec=True) as verify:
+            matrix.verify_guards(locked=matrix.LockedFiles(), guards=guards)
+            self.assertEqual(verify.call_count, 1)
+        guards[1].trees[0].files = {}
+        with self.assertRaisesRegex(ValueError, "tree changed between cases"):
+            matrix.verify_guards(locked=matrix.LockedFiles(), guards=guards)
+
+    def test_duplicate_input_digest_and_identity_must_both_match(self):
+        for kind in ("digest", "identity"):
+            guards = [matrix.bundle.DependencyGuard(), matrix.bundle.DependencyGuard()]
+            for guard in guards:
+                guard.locked.read(path=self.image)
+            if kind == "digest":
+                guards[1].locked.files[str(self.image)] = "f" * 64
+            else:
+                guards[1].locked.identities[str(self.image)] = ("different", 0, 0, 0, 0)
+            with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, "input changed between cases"):
+                matrix.verify_guards(locked=matrix.LockedFiles(), guards=guards)
+
+    def test_matrix_and_case_lock_overlap_must_keep_initial_identity(self):
+        locked, guard = matrix.LockedFiles(), matrix.bundle.DependencyGuard()
+        locked.read(path=self.image)
+        guard.locked.read(path=self.image)
+        guard.locked.identities[str(self.image)] = ("different", 0, 0, 0, 0)
+        with self.assertRaisesRegex(ValueError, "input changed between cases"):
+            matrix.verify_guards(locked=locked, guards=[guard])
+
+    def test_duplicate_library_fingerprints_must_match_and_verify_once(self):
+        guards = [matrix.bundle.DependencyGuard(), matrix.bundle.DependencyGuard()]
+        fingerprint = {"sha256": "a" * 64, "identity": ["library", 1, 2, 3, 4]}
+        for guard in guards:
+            guard.libraries["/synthetic/library"] = deepcopy(fingerprint)
+        with patch.object(matrix.bundle, "file_fingerprint", return_value=fingerprint) as verify:
+            matrix.verify_guards(locked=matrix.LockedFiles(), guards=guards)
+            self.assertEqual(verify.call_count, 1)
+        guards[1].libraries["/synthetic/library"]["sha256"] = "b" * 64
+        with self.assertRaisesRegex(ValueError, "library changed between cases"):
+            matrix.verify_guards(locked=matrix.LockedFiles(), guards=guards)
+
+    def test_snapshot_mutation_is_detected_before_following_native_launch(self):
+        self.write_inputs(portraits=[dict(id=name, image=str(self.image)) for name in ("one", "two")])
+
+        def prepare(**kwargs):
+            result = self.fake_prepare(**kwargs)
+            if self.prepare.call_count == 2:
+                next((self.root / "out/provenance").glob("*.json")).write_text("changed")
+            return result
+
+        self.prepare.side_effect = prepare
+        result = self.execute()
+        self.assertTrue(result["aborted"])
+        self.assertEqual(self.probe.call_count, 1)
+
+    def test_provenance_write_or_read_fault_preserves_cleanup_and_aborted_matrix(self):
+        for operation in ("write", "read"):
+            with self.subTest(operation=operation):
+                self.probe.reset_mock()
+                self.write_inputs(portraits=[dict(id=name, image=str(self.image)) for name in ("one", "two")])
+                original_write, original_read = matrix.bundle.write_json, matrix.LockedFiles.read
+
+                def write(*, path, value):
+                    if operation == "write" and path.parent.name == "provenance":
+                        raise OSError("injected snapshot write fault")
+                    return original_write(path=path, value=value)
+
+                def read(locked, *, path, **kwargs):
+                    if operation == "read" and Path(path).parent.name == "provenance":
+                        raise OSError("injected snapshot read fault")
+                    return original_read(locked, path=path, **kwargs)
+
+                out = self.root / f"out-{operation}"
+                with patch.object(matrix.bundle, "write_json", write), patch.object(matrix.LockedFiles, "read", read):
+                    result = self.execute(out=out)
+                self.assertTrue(result["aborted"])
+                self.assertFalse(result["passed"])
+                self.assertFalse(result["completed"])
+                self.assertTrue(result["cases"][0]["cleanup"]["completed"])
+                self.assertIn(f"snapshot {operation} fault", result["cases"][0]["error"])
+                self.assertEqual(result["cases"][1]["status"], "blocked")
+                self.assertEqual(self.probe.call_count, 1)
+                self.assertEqual(json.loads((out / "matrix.json").read_text()), json.loads(json.dumps(result)))
+                self.assertTrue((out / "progress-001.json").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
