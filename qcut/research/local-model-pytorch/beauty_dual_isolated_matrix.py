@@ -131,6 +131,7 @@ def probe_arguments(*, args, case, directory):
         execute_native=args.execute_native, lease=args.lease, stable_host=True, single_frame=True,
         cold_frame=True, static_controls=False, trace_stages=True, trace_face_readers=not makeup,
         lldb_executable=getattr(args, "lldb_executable", None), debugserver=getattr(args, "debugserver", None),
+        rotate_makeup_points=getattr(args, "rotate_makeup_points", False),
         trace_extra_model=False, extra_root=args.extra_root if makeup else None,
         additional_packages=[Path(path) for path in case["dependencies"] if path != case["package"]],
         **{key: makeup for key in MAKEUP_FLAGS})
@@ -395,6 +396,7 @@ def main(*, argv=None):
     parser.add_argument("--execute-native", action="store_true")
     parser.add_argument("--lldb-executable", type=Path)
     parser.add_argument("--debugserver", type=Path)
+    parser.add_argument("--rotate-makeup-points", action="store_true")
     parser.add_argument("--lease")
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--max-jobs", type=int, default=24)
