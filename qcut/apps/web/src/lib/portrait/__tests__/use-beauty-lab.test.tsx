@@ -1068,6 +1068,35 @@ describe("useBeautyLab live candidate protocol with test-only stubs", () => {
 	});
 });
 
+// Hook actions are recreated each render; a stale candidate settle may only clear
+// the pending marker, so compare the lab's data rather than the returned object.
+const LAB_DATA = [
+	"status",
+	"candidateStatus",
+	"candidateReport",
+	"cases",
+	"adjustments",
+	"input",
+	"native",
+	"candidate",
+	"faces",
+	"record",
+	"busy",
+	"error",
+] as const;
+
+function expectStaleCandidateSettled({
+	before,
+	after,
+}: {
+	before: ReturnType<typeof useBeautyLab>;
+	after: ReturnType<typeof useBeautyLab>;
+}) {
+	expect(before.candidateJob).toMatchObject({ cancelling: false });
+	expect(after.candidateJob).toBeNull();
+	for (const key of LAB_DATA) expect(after[key]).toBe(before[key]);
+}
+
 describe("useBeautyLab async revisions and cleanup", () => {
 	it.each(
 		ASYNC_OPERATIONS.flatMap(({ operation }) => [
@@ -1102,7 +1131,9 @@ describe("useBeautyLab async revisions and cleanup", () => {
 			if (outcome === "reject") job.reject(new Error(`stale ${operation}`));
 			await pending;
 		});
-		expect(result.current).toBe(latest);
+		if (operation === "candidate")
+			expectStaleCandidateSettled({ before: latest, after: result.current });
+		else expect(result.current).toBe(latest);
 		expect(result.current.native).toBeNull();
 		expect(result.current.candidate).toBeNull();
 		expect(result.current.candidateReport).toBeNull();
@@ -1187,7 +1218,7 @@ describe("useBeautyLab async revisions and cleanup", () => {
 			if (outcome === "reject") job.reject(new Error("stale candidate"));
 			await pending;
 		});
-		expect(result.current).toBe(latest);
+		expectStaleCandidateSettled({ before: latest, after: result.current });
 		expect(result.current.native).toBeNull();
 		expect(result.current.candidate).toBeNull();
 		expect(result.current.candidateReport).toBeNull();
