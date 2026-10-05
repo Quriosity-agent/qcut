@@ -1,7 +1,7 @@
 # beauty-6-kpop：美妆初始化与最终渲染阶段协议
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 本轮起点：`685099347f7c81f4751e50d2b229f4ba0490f30c`。
 前置记录：[口红读取与发布检查点](beauty-kpop6-makeup-reader-checkpoint-2026-10-04.zh-CN.md)。
 
@@ -111,7 +111,7 @@ reject: makeup final rendering lacks landmark consumption
 - 未进行本轮 Electron UI E2E、剪映 GUI 导出、分钟级、多脸、Windows/x86 或产品全量 CI 验收。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut
+cd "$(git rev-parse --show-toplevel)/qcut"
 xcrun clang++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined \
   research/local-model-pytorch/face_live_render_stage_test.cpp -o /tmp/qcut-render-stage-test
 /tmp/qcut-render-stage-test
