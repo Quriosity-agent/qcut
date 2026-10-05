@@ -53,7 +53,7 @@ def validate_image(*, image):
                 message="mesh Lua method binding changed")
     return dict(schema="face-live-mesh-abi-v1", uuid=CORE_UUID, sha256=CORE_SHA256,
                 buffer_type=BUFFER_TYPE, mesh_vptr=MESH_VPTR, fitting_vptr=FITTING_VPTR,
-                fields=dict(FIELDS), sites=dict(SITES), vertices=VERTICES,
+                fields=dict(FIELDS), sites=dict(SITES), abi_family=VERTICES,
                 evidence="pinned-binary-static-layout", runtime_consumption_verified=False,
                 qcut_mesh_ownership_verified=False)
 
