@@ -273,6 +273,8 @@ def audit_inner_filter(*, observer):
     Stage2 transforms. The transforms are NOT owned and post-filter histories
     are reference-only. Missing direct call captures remain a provenance gap.
     """
+    if type(observer) is dict and type(observer.get("extra_trace")) is dict and "inner_filter_trace" in observer["extra_trace"]:
+        return audit_direct_inner_filter(observer=observer)
     audit_observer(observer=observer)
     events = observer["extra_trace"]["events"]
     cases = []
@@ -322,17 +324,90 @@ def audit_inner_filter(*, observer):
                      "No affine solver, cache/rotation policy or product backend replacement."])
 
 
+def _direct_state(*, value, source):
+    require(condition=type(value) is dict and type(value.get("count")) is int and value["count"] in (0, 106),
+            message="bounded direct inner state required")
+    decoded = value
+    if value["count"] == 0:
+        require(condition=value.get("width") == value.get("height") == 0,
+                message="empty direct inner dimensions required")
+        decoded = dict(value, width=source["height"], height=source["width"])
+    filter_state(value=decoded, count=value["count"], native=True,
+                 width=source["width"], height=source["height"])
+    return _state_from_capture(value=value)
+
+
+def audit_direct_inner_filter(*, observer):
+    """Inputs are actual call arguments/pre-state; returns are comparison-only."""
+    from face_extra_inner_trace import validate_trace
+    audit_observer(observer=observer)
+    trace = observer["extra_trace"]
+    events = trace["events"]
+    receipts = validate_trace(trace=trace.get("inner_filter_trace"), events=events)
+    cases = []
+    for prediction, receipt in enumerate(receipts):
+        before, after = events[prediction * 2:prediction * 2 + 2]
+        pre, post = before["crop_geometry"], after["crop_geometry"]
+        if receipt["bypass_reason"] is not None:
+            checks = _inner_state_checks(actual=pre["inner_filter"], expected=post["inner_filter"])
+            cases.append(dict(prediction=prediction, mode="proven-bypass", reason=receipt["bypass_reason"],
+                actual_inner_call_arguments_captured=False, boundary_state_checks=checks,
+                bypass_state_unchanged=all(check["equal"] for check in checks.values())))
+            continue
+        call, returned = receipt["events"]
+        initial = call["inner_filter"]
+        state = _direct_state(value=initial, source=pre["source"])
+        _direct_state(value=returned["inner_filter"], source=pre["source"])
+        inputs = np.asarray(call["input"]["xy"], np.float32).reshape(106, 2)
+        output, updated = update_inner_filter(state=state, points=inputs)
+        actual = dict(initial, current_xy=updated.current.reshape(-1).tolist(),
+                      previous_xy=updated.previous.reshape(-1).tolist(),
+                      delta_x=updated.delta[:, 0].tolist(), delta_y=updated.delta[:, 1].tolist(), first=updated.first)
+        checks = _inner_state_checks(actual=actual, expected=returned["inner_filter"])
+        checks["output_xy"] = compare_bits(actual=output,
+            expected=np.asarray(returned["output"]["xy"], np.float32).reshape(106, 2))
+        native_transform = post["transforms"]["stage2"]
+        reconstruction = None
+        if native_transform["ready"]:
+            reconstructed = inner_input_from_stage2(
+                points=np.asarray(pre["published_xy"][:212], np.float32).reshape(106, 2),
+                forward=np.asarray(native_transform["forward"], np.float32),
+                inverse=np.asarray(native_transform["inverse"], np.float32))
+            reconstruction = compare_bits(actual=reconstructed, expected=inputs)
+        cases.append(dict(prediction=prediction, mode="direct-cubic-inner-update", checks=checks,
+            arithmetic_bits_equal=all(check["equal"] for check in checks.values()),
+            reconstructed_vs_direct_input=reconstruction,
+            input_sha256=hashlib.sha256(inputs.astype("<f4").tobytes()).hexdigest(),
+            output_sha256=hashlib.sha256(output.astype("<f4").tobytes()).hexdigest(),
+            actual_inner_call_arguments_captured=True,
+            native_stage2_matrices_used_as_arithmetic_input=False,
+            native_post_filter_state_used_as_input=False, native_final_points_used_as_input=False))
+    active = [case for case in cases if case["mode"] == "direct-cubic-inner-update"]
+    return dict(schema="face-extra-direct-inner-filter-replay-v1", cases=cases,
+        direct_capture_complete=True,
+        arithmetic_bits_equal=bool(active) and all(case["arithmetic_bits_equal"] for case in active),
+        native_geometry_required=True, owned_geometry_enabled=False, geometry_parity_verified=False,
+        product_parity_verified=False, input_provenance="direct inner x1 Point136 plus call-time A+0x310 state",
+        limitations=["Native pre-filter initialization remains an input.",
+                     "Native Stage2 matrices are comparison-only, not an independently owned affine solver.",
+                     "Only the pinned ordinary primary106 call site is captured.",
+                     "Host libm cross-platform parity and product backend replacement remain unverified."])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--observer", required=True, type=Path)
     parser.add_argument("--replay-inner-filter", action="store_true")
+    parser.add_argument("--replay-direct-inner-filter", action="store_true")
     args = parser.parse_args()
     with args.observer.open("rb") as stream:
         payload = stream.read(4 * 1024**2 + 1)
     require(condition=len(payload) <= 4 * 1024**2, message="observer exceeds bounded JSON size")
     observer = json.loads(payload)
     report = audit_observer(observer=observer)
-    if args.replay_inner_filter:
+    if args.replay_direct_inner_filter:
+        report["inner_filter_substage"] = audit_direct_inner_filter(observer=observer)
+    elif args.replay_inner_filter:
         report["inner_filter_substage"] = audit_inner_filter(observer=observer)
     report["observer_sha256"] = hashlib.sha256(payload).hexdigest()
     print(json.dumps(report, indent=2, allow_nan=False))
