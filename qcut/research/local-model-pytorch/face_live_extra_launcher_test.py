@@ -296,6 +296,8 @@ class ExtraDebuggerReportTests(unittest.TestCase):
                 state.failures, state.events, state.index, state.callbacks = [], [], 1, 6
                 state.point_hits, state.point_events = 2, []
                 state.rotation = None
+                state.reshape = None
+                state.mesh_matrix = None
                 state.callback_tail = []
                 extra = mock.Mock()
                 extra.report.return_value = dict(complete=complete, events=[], product_parity_verified=False)
