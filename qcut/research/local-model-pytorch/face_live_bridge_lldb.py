@@ -122,6 +122,8 @@ class Observer:
         self.rotation = None
         self.mesh = None
         self.mesh_callbacks = 0
+        self.matrix_callbacks = 0
+        self.reshape = None
         self.callback_tail = []
 
     def callback_entry(self, *, frame, location):
@@ -217,6 +219,8 @@ class Observer:
         self.events.append(dict(op=op, prediction=self.index, data=data))
         if op == "infer" and self.index == 1 and self.config.get("trace_mesh_points", False):
             self.mesh.SetEnabled(True)
+        if op == "infer" and self.index == 1 and self.config.get("trace_reshape_points"):
+            self.reshape.arm()
 
 
 def on_breakpoint(frame, location, internal_dict):
@@ -241,6 +245,32 @@ def on_mesh_breakpoint(frame, location, internal_dict):
             raise ValueError("mesh cold-frame diagnostic budget/scope exceeded")
         STATE.mesh.observe(frame=frame, location=location, prediction=STATE.index,
                            timestamp_us=0, face_id=0, read=STATE.read)
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
+def on_reshape_breakpoint(frame, location, internal_dict):
+    try:
+        from face_live_reshape_points import publication
+        if STATE.index != 1 or time.monotonic() - STATE.started > 240:
+            raise ValueError("reshape trace outside final cold prediction")
+        row = publication(path=Path(STATE.config["report"]).parent / "records.jsonl", prediction=STATE.index)
+        STATE.reshape.observe(frame=frame, location=location, publication=row, read=STATE.read)
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
+def on_matrix_breakpoint(frame, location, internal_dict):
+    try:
+        STATE.matrix_callbacks += 1
+        if STATE.matrix_callbacks > 64 or time.monotonic() - STATE.started > 240 or STATE.index != 1:
+            raise ValueError("matrix cold-frame diagnostic budget/scope exceeded")
+        STATE.mesh.observe_matrix(frame=frame, location=location, prediction=STATE.index,
+                                  timestamp_us=0, face_id=0)
         return False
     except Exception as error:
         STATE.failures.append(f"{type(error).__name__}: {error}")
@@ -342,6 +372,12 @@ def run(*, debugger, config_path):
                   target_functions_evaluated=False, failures=[])
     process, control_log = None, None
     try:
+        if config.get("trace_mesh_matrices", False) and not config.get("trace_mesh_points", False):
+            raise ValueError("matrix tracing requires mesh copy diagnostics")
+        if config.get("trace_reshape_points") and (config["trace_reshape_points"] not in ("v5", "v6") or
+                not config.get("cold_frame", False) or any(config.get(key, False) for key in
+                ("trace_face_readers", "trace_makeup_points", "trace_mesh_points", "trace_extra_stages"))):
+            raise ValueError("reshape point diagnostics require an exclusive cold hardware slot")
         if config.get("trace_mesh_points", False) and (not config.get("cold_frame", False) or any(
                 config.get(key, False) for key in ("trace_face_readers", "trace_makeup_points",
                     "rotate_makeup_points", "trace_extra_stages", "trace_extra_model"))):
@@ -381,8 +417,20 @@ def run(*, debugger, config_path):
         if config.get("trace_mesh_points", False):
             from face_live_mesh_trace import MeshTrace
             command(debugger=debugger, text="target modules add " + json.dumps(config["core"]))
-            STATE.mesh = MeshTrace(target=target, core=config["core"],
-                                   callback=__name__ + ".on_mesh_breakpoint")
+            if config.get("trace_mesh_matrices", False):
+                from face_live_mesh_matrix_bridge import MeshMatrixTrace
+                agfx = str(Path(config["core"]).with_name("libAGFX.dylib"))
+                command(debugger=debugger, text="target modules add " + json.dumps(agfx))
+                STATE.mesh = MeshMatrixTrace(target=target, core=config["core"], agfx=agfx,
+                    callback=__name__ + ".on_mesh_breakpoint", matrix_callback=__name__ + ".on_matrix_breakpoint")
+            else:
+                STATE.mesh = MeshTrace(target=target, core=config["core"],
+                                       callback=__name__ + ".on_mesh_breakpoint")
+        if config.get("trace_reshape_points"):
+            from face_live_reshape_trace import ReshapeTrace
+            command(debugger=debugger, text="target modules add " + json.dumps(config["core"]))
+            STATE.reshape = ReshapeTrace(target=target, core=config["core"], branch=config["trace_reshape_points"],
+                                         callback=__name__ + ".on_reshape_breakpoint")
         if config.get("trace_makeup_points", False):
             point_trace.install(debugger=debugger, target=target, core=config["core"],
                                 callback=__name__ + ".on_point_breakpoint")
@@ -418,6 +466,8 @@ def run(*, debugger, config_path):
             raise ValueError("incomplete makeup load/store rotation")
         if config.get("trace_mesh_points", False) and not STATE.mesh.report()["complete"]:
             raise ValueError("incomplete native mesh copy diagnostics")
+        if STATE.reshape is not None and not STATE.reshape.report()["complete"]:
+            raise ValueError("incomplete reshape point conversion diagnostics")
         report["passed"] = True
     except Exception as error:
         report["failures"].append(f"{type(error).__name__}: {error}")
@@ -439,6 +489,8 @@ def run(*, debugger, config_path):
                 report["point_rotation"] = STATE.rotation.report()
             if config.get("trace_mesh_points", False) and STATE.mesh is not None:
                 report["mesh_trace"] = STATE.mesh.report()
+            if STATE.reshape is not None:
+                report["reshape_trace"] = STATE.reshape.report()
         if "debugger_control_log" in report:
             try:
                 command(debugger=debugger, text="log disable lldb break step")
