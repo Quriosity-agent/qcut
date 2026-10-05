@@ -243,28 +243,55 @@ class ExtraDebuggerReportTests(unittest.TestCase):
                 lldb.SBLaunchInfo.return_value.GetLaunchFlags.return_value = 8
                 lldb.SBError.return_value.Fail.return_value = False
                 debugger.CreateTarget.return_value = target
+                debugger.GetVersionString.return_value = "LLDB Extra launcher fixture"
                 target.IsValid.return_value = True
                 target.GetTriple.return_value = "arm64-test"
                 target.Launch.return_value = process
                 process.GetState.return_value, process.GetExitStatus.return_value = 10, 0
                 process.GetProcessID.return_value = 123
                 process.GetNumThreads.return_value = 0
+                process.GetStopID.return_value = 12
                 state.failures, state.events, state.index, state.callbacks = [], [], 1, 6
                 state.point_hits, state.point_events = 2, []
+                state.callback_tail = []
                 extra = mock.Mock()
                 extra.report.return_value = dict(complete=complete, events=[], product_parity_verified=False)
-                breakpoints = []
-                def add_breakpoint(**kwargs):
+                breakpoints, commands = [], []
+
+                def add_breakpoint(*, address):
                     point = mock.Mock()
+                    point.GetID.return_value = len(breakpoints) + 1
                     point.IsHardware.return_value = True
+                    point.IsEnabled.return_value = True
+                    point.GetHitCount.return_value = 2
+                    point.GetNumLocations.return_value = 1
+                    location = point.GetLocationAtIndex.return_value
+                    location.GetID.return_value = 1
+                    location.IsEnabled.return_value = location.IsResolved.return_value = True
+                    location.GetHitCount.return_value = 2
+                    resolved = location.GetAddress.return_value
+                    resolved.IsValid.return_value = True
+                    resolved.GetLoadAddress.return_value = 0x100000000 + address
+                    resolved.GetFileAddress.return_value = address
+                    resolved.GetModule.return_value.GetUUIDString.return_value = "fixture-uuid"
+                    resolved.GetModule.return_value.GetFileSpec.return_value.GetFilename.return_value = "fixture.dylib"
                     breakpoints.append(point)
+
+                def command(*, debugger, text):
+                    commands.append(text)
+                    if text.startswith("breakpoint set --hardware "):
+                        add_breakpoint(address=int(text.split()[-1], 16))
+
+                def install_points(**kwargs):
+                    add_breakpoint(address=0x1000)
+
                 target.GetNumBreakpoints.side_effect = lambda: len(breakpoints)
                 target.GetBreakpointAtIndex.side_effect = breakpoints.__getitem__
                 with mock.patch.dict("sys.modules", {"lldb": lldb}), \
                         mock.patch.object(bridge, "STATE", None), mock.patch("builtins.print"), \
                         mock.patch.object(bridge, "Observer", return_value=state), \
-                        mock.patch.object(bridge, "command", side_effect=add_breakpoint), \
-                        mock.patch.object(bridge.point_trace, "install", side_effect=add_breakpoint), \
+                        mock.patch.object(bridge, "command", side_effect=command), \
+                        mock.patch.object(bridge.point_trace, "install", side_effect=install_points), \
                         mock.patch.object(bridge, "ExtraTrace", return_value=extra) as constructor:
                     bridge.run(debugger=debugger, config_path=path)
                 self.assertIs(constructor.call_args.kwargs["point_breakpoint"], breakpoints[-1])
@@ -272,11 +299,22 @@ class ExtraDebuggerReportTests(unittest.TestCase):
                 result = json.loads(report.read_text())
                 self.assertIs(result["passed"], complete)
                 self.assertEqual(result["extra_trace"], extra.report.return_value)
+                self.assertEqual(result["debugger_version"], "LLDB Extra launcher fixture")
+                self.assertEqual(result["callback_tail"], [])
+                self.assertEqual(result["stop_id"], 12)
+                self.assertEqual(result["breakpoints"]["count"], 4)
+                self.assertEqual(len(result["breakpoints"]["entries"]), 4)
+                self.assertTrue(all(row["hardware"] for row in result["breakpoints"]["entries"]))
+                self.assertEqual(commands[-1], "log disable lldb break step")
+                self.assertEqual(result["debugger_control_log"]["categories"], ["break", "step"])
                 self.assertFalse(result["target_memory_written"])
                 self.assertFalse(result["target_functions_evaluated"])
                 if not complete:
                     self.assertIn("incomplete Extra call/return diagnostics", result["failures"][0])
+                if complete:
+                    self.assertEqual(result["failures"], [])
                 process.Kill.assert_not_called()
+                process.Continue.assert_not_called()
 
 
 if __name__ == "__main__":
