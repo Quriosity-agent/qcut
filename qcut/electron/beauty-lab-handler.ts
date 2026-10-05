@@ -7,6 +7,7 @@ import { createBeautyLabResearchProvider } from "./beauty-lab-research.js";
 import { createBeautyLabOwnedChainProvider } from "./beauty-lab-owned-chain.js";
 import { OWNED_CHAIN_CASE_ID } from "./beauty-lab-owned-chain-evidence.js";
 import {
+	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 } from "./beauty-lab-candidate-contract.js";
@@ -56,6 +57,7 @@ export function setupBeautyLabIPC({
 	ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
 	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
 	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
+	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL);
 	ipcMain.handle(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL, (event) => {
 		assertTrusted({ event });
 		return candidateProvider.inspect();
@@ -65,6 +67,13 @@ export function setupBeautyLabIPC({
 		(event, request: unknown) => {
 			assertTrusted({ event });
 			return candidateProvider.render({ request });
+		}
+	);
+	ipcMain.handle(
+		BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
+		(event, request: unknown) => {
+			assertTrusted({ event });
+			return candidateProvider.cancel({ request });
 		}
 	);
 	ipcMain.handle(BEAUTY_LAB_LIST_CHANNEL, async (event) => {
@@ -102,6 +111,7 @@ export function setupBeautyLabIPC({
 				ipcMain.removeHandler(BEAUTY_LAB_LOAD_CHANNEL);
 				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
 				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
+				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL);
 			}
 			disposal ??= Promise.resolve().then(() => candidateProvider.dispose());
 			return disposal;
