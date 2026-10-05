@@ -183,6 +183,9 @@ class CloneLeaseScope {
 #include "face_live_makeup_scene.h"
 #include "face_live_render_stage.h"
 #include "face_live_makeup_geometry.h"
+#include "face_live_reshape_route.h"
+#include <CommonCrypto/CommonDigest.h>
+#include <sstream>
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
@@ -219,6 +222,7 @@ qcut_live::DeferredColdSetup liveColdSetup;
 int64_t liveColdSeekStartPrediction = -1;
 #include "face_live_owned_input.h"
 #include "face_live_makeup_hooks.h"
+#include "face_live_reshape_hooks.h"
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
@@ -284,7 +288,7 @@ void prepareOwnedSeek(void* manager) {
   liveColdSetup.prepare(manager);
   liveSeekManager = manager;
   liveColdSeekStartPrediction = livePrediction;
-  if (liveMakeupStages) {
+  if (liveOwnedStages) {
     liveRenderStage.beginSeek(manager, seekTimestamp, livePrediction);
     liveSeekResult.reset();
     records << "{\"event\":\"live_render_stage_begin\",\"stage\":\"" << liveRenderStage.phase()
@@ -304,10 +308,11 @@ void prepareOwnedPrediction() {
         throw std::runtime_error("too many cold setup algorithms");
       // No lazy face lookup or raw-result read while prediction is still unwinding.
       installUpdateTrace(algorithm);
-      inspectOwnedAdapter(algorithm);
+      if (!liveReshapePublish) inspectOwnedAdapter(algorithm);
     });
     if (algorithms.empty()) throw std::runtime_error("cold callback algorithm list is empty");
     installMakeupObservers();
+    installReshapeObservers();
   });
   if (installed) {
     records << "{\"event\":\"live_cold_setup\",\"algorithms\":" << algorithms.size()
@@ -340,14 +345,18 @@ void finishOwnedBinding(void* manager) {
                   << ",\"gpu_complete\":true,\"original_restored\":true}\n" << std::flush;
         });
   } catch (...) {
+    if (liveReshapePublish) {
+      try { restoreReshapeObservers(); } catch (...) { }
+    }
     if (updateError) std::rethrow_exception(updateError);
     throw;
   }
+  if (liveReshapePublish && (livePrediction == 1 || updateError)) restoreReshapeObservers();
   if (coldSeek && !updateError && livePrediction <= liveColdSeekStartPrediction)
     throw std::runtime_error("live prediction missing or not consumed by renderer");
   if (finished && !updateError) {
     if (!livePending) throw std::runtime_error("live prediction missing or not consumed by renderer");
-    if (liveMakeupStages && coldSeek) {
+    if (liveOwnedStages && coldSeek) {
       const bool initialization = liveRenderStage.initializing();
       liveRenderStage.finishSeek(liveSeekResult.value_or(-1), liveLeases.restoredPublication(), liveLeases.consumed());
       if (initialization) liveLeases.acknowledgeInitialization();
@@ -381,7 +390,7 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
     for (const auto& face : response.faces) {
       frame.faces.push_back({face.id, face.points});
     }
-    if (liveMakeupStages) liveRenderStage.prediction(response.prediction, response.timestamp);
+    if (liveOwnedStages) liveRenderStage.prediction(response.prediction, response.timestamp);
     liveLeases.begin(response.prediction, response.timestamp);
     livePending = std::move(frame);
     livePrediction = response.prediction;
@@ -397,6 +406,8 @@ int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") && (!liveMakeupPublish || !liveMakeupTrace)) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_STAGES") && (!liveMakeupStages || !liveMakeupPublish)) return 1;
   if (std::getenv("QCUT_FACE_LIVE_MAKEUP_CONSUME") && (!liveMakeupConsume || !liveMakeupStages)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_RESHAPE_PUBLISH") && (!liveReshapePublish || !liveColdFrame ||
+      liveMakeupTrace || liveMakeupPublish || liveMakeupStages || liveMakeupConsume)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
