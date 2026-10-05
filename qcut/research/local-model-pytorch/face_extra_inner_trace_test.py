@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 import face_extra_inner_trace as inner
+import face_extra_crop_trace as crop
 import face_live_extra_model_trace as model
 import face_live_extra_trace as trace
 from face_extra_crop_trace_test import CropMemoryFixture
@@ -31,6 +32,13 @@ class InnerMemoryFixture(CropMemoryFixture):
 
     def arguments(self):
         return dict(x0=self.filter, x1=self.sp + 0x1b68, x2=self.sp + 0x1710, sp=self.sp, fp=self.fp)
+
+    def heap_input(self, *, values=None):
+        address, data = self.sp + 0x1b68, 0xc0000
+        self.memory[address] = struct.pack("<2Q", data, 306)
+        self.memory[address + 0x450] = struct.pack("<Q", 280)
+        self.memory[data] = bytearray(struct.pack("<560f", *(values if values is not None else [i / 8 for i in range(560)])))
+        return data
 
     def direct(self, *, event="call", previous=None, registers=None):
         return inner.capture(read=self.read, scope=self.native_scope, crop=self.capture(),
@@ -173,6 +181,56 @@ class DirectMemoryTests(InnerMemoryFixture, unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "routing changed"):
             inner.capture(read=self.read, scope=self.native_scope, crop=crop, prediction=0,
                           thread=42, event="call", registers=self.arguments())
+
+    def test_observed_heap280_reads_only_560_floats_and_returns_inline106(self):
+        data = self.heap_input()
+        call = self.direct()
+        self.assertEqual((call["input"]["count"], call["input"]["capacity"]), (280, 306))
+        self.assertEqual(len(call["input"]["xy"]), 560)
+        self.assertIn((data, 2240), self.reads)
+        self.assertNotIn((data, 2448), self.reads)
+        self.assertEqual(call["consumed_point_count"], 106)
+        self.put_points(address=self.sp + 0x1710, count=106)
+        returned = self.direct(event="return", previous=call)
+        self.assertEqual(returned["input"], call["input"])
+        self.assertEqual((returned["output"]["count"], returned["output"]["capacity"]), (106, 136))
+
+    def test_heap_input_tail_is_const_even_when_not_consumed(self):
+        data = self.heap_input()
+        call = self.direct()
+        self.put_points(address=self.sp + 0x1710, count=106)
+        struct.pack_into("<f", self.memory[data], 212 * 4, 99)
+        with self.assertRaisesRegex(ValueError, "const direct inner input"):
+            self.direct(event="return", previous=call)
+
+    def test_heap_layout_capacity_count_alignment_overflow_and_aliases_rejected_before_payload(self):
+        address = self.sp + 0x1b68
+        for begin, capacity, count in ((0xc0000, 305, 280), (0xc0000, 307, 280),
+                (0xc0000, 306, 279), (0xc0000, 306, 106), (0xc0004, 306, 280),
+                (inner.MAX_ADDRESS - 7, 306, 280), (address + 16, 306, 280),
+                (self.sp + 0x1710 + 16, 306, 280), (self.filter, 306, 280),
+                (0x70000, 306, 280), (0x70000 - 2440, 306, 280)):
+            self.memory[address] = struct.pack("<2Q", begin, capacity)
+            self.memory[address + 0x450] = struct.pack("<Q", count)
+            self.reads.clear()
+            with self.subTest(begin=begin, capacity=capacity, count=count), self.assertRaises(ValueError):
+                self.direct()
+            self.assertNotIn((begin, 2240), self.reads)
+
+    def test_unimplemented_empty_or_near_zero_branch_fails_before_input_payload(self):
+        data = self.heap_input()
+        for scale in (0, 1e-6):
+            self.memory[self.filter + crop.STATE_ABI["scale"]] = struct.pack("<f", scale)
+            self.reads.clear()
+            with self.assertRaisesRegex(ValueError, "near-zero"):
+                self.direct()
+            self.assertNotIn((data, 2240), self.reads)
+        for key in ("count", "width", "height"):
+            self.memory[self.filter + crop.STATE_ABI[key]] = struct.pack("<i", 0)
+        for key in ("current", "previous", "delta_x", "delta_y"):
+            self.memory[self.filter + crop.STATE_ABI[key]] = bytes(24)
+        with self.assertRaisesRegex(ValueError, "initialized primary106"):
+            self.direct()
 
 
 class InnerTraceFixture(InnerMemoryFixture, TraceFixture):
