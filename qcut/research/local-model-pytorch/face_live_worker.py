@@ -25,11 +25,25 @@ from face_live_worker_protocol import receive, send
 
 
 class LiveWorker:
-    def __init__(self, *, models, token, source_key):
-        self.core = CandidateCore(models=models)
+    def __init__(self, *, models, token, source_key, trace_directory=None, extra_refinement=None):
+        self.trace_directory = trace_directory
+        self.extra_refinement = extra_refinement
+        options = {} if extra_refinement is None else dict(extra_refinement=extra_refinement)
+        if trace_directory is not None:
+            options["stage_observer"] = self.record_stages
+        self.core = CandidateCore(models=models, **options)
         self.token, self.source_key = token, source_key
         self.pending, self.pid, self.error = None, None, None
         self.index = -1
+
+    def record_stages(self, *, snapshot):
+        index = snapshot["prediction"]
+        if type(index) is not int or index not in (0, 1) or snapshot["timestamp_us"] != 0:
+            raise ValueError("candidate stage diagnostics require cold single-frame scope")
+        snapshot.update(pid=self.pid, token_sha256=hashlib.sha256(self.token.encode()).hexdigest())
+        with (self.trace_directory / f"candidate-{index}.json").open("x") as stream:
+            json.dump(snapshot, stream, allow_nan=False)
+            stream.write("\n")
 
     def dispatch(self, *, message, pixels=b""):
         if self.error is not None:
@@ -95,7 +109,8 @@ class LiveWorker:
         if op != "predict":
             raise ValueError("unsupported live operation; reset requires new processes")
         fields(value=data, names=("owner", "width", "height", "stride", "format", "orientation",
-                                  "runtime_state", "face", "predictors", "timestamp_us"))
+                                  "runtime_state", "face", "predictors", "timestamp_us",
+                                  *(("extra_geometry",) if self.extra_refinement is not None else ())))
         if data["owner"] != self.pending["owner"]:
             raise ValueError("post-prediction owner mismatch")
         for key in ("width", "height"):
@@ -150,7 +165,8 @@ class LiveWorker:
                       sha256=hashlib.sha256(rgba[:, :, :3][:, :, ::-1].tobytes()).hexdigest())
         if any(call["source"] != source for call in self.pending["calls"]):
             raise ValueError("live crop source does not match this prediction's algorithm RGBA")
-        result = self.core.process(packet=packet, rgba=rgba)
+        refinement = {} if self.extra_refinement is None else dict(extra_geometry=data["extra_geometry"])
+        result = self.core.process(packet=packet, rgba=rgba, **refinement)
         self.index, self.pending = index, None
         return dict(ok=True, token=self.token, pid=self.pid, prediction=index, timestamp_us=data["timestamp_us"],
                     initialization_proof=proof, result=result,
@@ -202,10 +218,21 @@ def main():
     parser.add_argument("--token", required=True)
     parser.add_argument("--source-key", required=True)
     parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--trace-directory", type=Path)
+    parser.add_argument("--extra-root", type=Path)
     args = parser.parse_args()
     if not 1 <= args.timeout <= 120 or not 16 <= len(args.token) <= 128:
         parser.error("bounded timeout and session token required")
-    worker = LiveWorker(models=OnnxHeads(root=args.root), token=args.token, source_key=args.source_key)
+    if args.trace_directory is not None and (not args.trace_directory.is_absolute() or
+            not args.trace_directory.is_dir() or any(args.trace_directory.iterdir())):
+        parser.error("candidate trace directory must be absolute, empty and pre-created")
+    extra_refinement = None
+    if args.extra_root is not None:
+        from face_extra_heads_onnx import ExtraHeads
+        from face_live_extra_refinement import ExtraRefinement
+        extra_refinement = ExtraRefinement(models=ExtraHeads(root=args.extra_root))
+    worker = LiveWorker(models=OnnxHeads(root=args.root), token=args.token, source_key=args.source_key,
+                        trace_directory=args.trace_directory, extra_refinement=extra_refinement)
     with args.log.open("x") as log:
         serve(worker=worker, path=args.socket, log=log, timeout=args.timeout)
     if worker.error:

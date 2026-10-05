@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 from pathlib import Path
 
@@ -44,6 +45,13 @@ def protocol(*, data, requests):
     text = data.decode("utf-8", errors="strict")
     rows = [line for line in text.splitlines() if line.startswith("QCUT\t")]
     expected = ["QCUT\tREADY\t1", *(f"QCUT\tRESULT\t{row['id']}\t0" for row in requests)]
+    for index, request in enumerate(requests, start=1):
+        if len(rows) <= index or rows[:index] != expected[:index]:
+            break
+        fields = rows[index].split("\t", 4)
+        if len(fields) == 5 and fields[:4] == ["QCUT", "RESULT", request["id"], "1"]:
+            detail = json.dumps(fields[4][:512], ensure_ascii=True)
+            raise ValueError(f"fresh host rejected request {request['id']}: {detail}")
     require(condition=rows == expected and "[research-error]" not in text,
             message="fresh host did not acknowledge every request exactly once")
     return dict(requests=len(requests), rows=rows)
@@ -149,12 +157,11 @@ def heads_and_points(*, result, events):
     return head_count, len(faces), native_sizes
 
 
-def callbacks(*, worker, observer, records, timestamps, token, source_key, cold_frame=False):
+def inference(*, worker, observer, timestamps, token, source_key, cold_frame=False):
     count = len(timestamps)
     require(condition=type(cold_frame) is bool and
             (count == 2 and timestamps == [0, 0] if cold_frame else 2 < count <= 60) and len(worker) == count,
             message="every internal prediction needs a worker result within its audit scope")
-    bootstrap = 0 if cold_frame else 2
     groups = observer_groups(observer=observer, count=count)
     pid, version, head_count, point_groups, seeds = None, None, 0, 0, []
     for index, (row, events, timestamp) in enumerate(zip(worker, groups, timestamps, strict=True)):
@@ -205,6 +212,19 @@ def callbacks(*, worker, observer, records, timestamps, token, source_key, cold_
                 crop_caller_and_geometry="native-live-observed", sampling="owned", heads="owned-onnx-cpu",
                 temporal="owned", acceptance_and_reset="native", renderer="native-owned-clone-required").items():
             require(condition=ownership.get(key) == expected, message="per-stage native dependencies mislabelled")
+    stage_times = {stage: [row["result"]["stage_timings_ms"][stage] for row in worker] for stage in STAGES}
+    return dict(predictions=count, native_pid=pid, backend_version=version, seed_predictions=seeds,
+        owned_head_receipts=head_count, owned_point_groups=point_groups,
+        stage_runtime_ms={key: dict(total=sum(values), p50=float(np.percentile(values, 50)),
+                                   p95=float(np.percentile(values, 95))) for key, values in stage_times.items()},
+        native_head_value_parity_verified=False, native_point_value_parity_verified=False,
+        head_receipts_are_hashes_not_native_comparisons=True)
+
+
+def callbacks(*, worker, observer, records, timestamps, token, source_key, cold_frame=False):
+    summary = inference(worker=worker, observer=observer, timestamps=timestamps, token=token,
+                        source_key=source_key, cold_frame=cold_frame)
+    count, bootstrap = len(timestamps), 0 if cold_frame else 2
     receipts, pending, converted, restored = [], None, [], []
     for event in records:
         kind = event.get("event")
@@ -231,19 +251,15 @@ def callbacks(*, worker, observer, records, timestamps, token, source_key, cold_
             restored.append(pending)
             pending = None
     require(condition=receipts == list(range(count)) and converted == restored == list(range(bootstrap, count)) and
-            pending is None and seeds and point_groups, message="incomplete live callback/render coverage")
+            pending is None and summary["seed_predictions"] and summary["owned_point_groups"],
+            message="incomplete live callback/render coverage")
     ownership_audit = validate_audits(events=records, require_face=True, require_live_consumers=cold_frame)
-    stage_times = {stage: [row["result"]["stage_timings_ms"][stage] for row in worker] for stage in STAGES}
-    return dict(predictions=count, native_pid=pid, backend_version=version, seed_predictions=seeds,
-        owned_head_receipts=head_count, owned_point_groups=point_groups, conversions=len(converted),
-        restorations=len(restored), bootstrap_unrendered_predictions=list(range(bootstrap)), clone_audit=ownership_audit,
-        stage_runtime_ms={key: dict(total=sum(values), p50=float(np.percentile(values, 50)),
-                                   p95=float(np.percentile(values, 95))) for key, values in stage_times.items()},
-        native_head_value_parity_verified=False, native_point_value_parity_verified=False,
-        head_receipts_are_hashes_not_native_comparisons=True)
+    return dict(**summary, conversions=len(converted), restorations=len(restored),
+                bootstrap_unrendered_predictions=list(range(bootstrap)), clone_audit=ownership_audit)
 
 
-def render_outputs(*, baseline, live, frames, width, height):
+def render_outputs(*, baseline, live, frames, width, height, require_equal=True):
+    require(condition=type(require_equal) is bool, message="explicit render equality policy required")
     require(condition=len(baseline) == len(live), message="render request inventory mismatch")
     results = []
     for left, right in zip(baseline, live, strict=True):
@@ -262,5 +278,6 @@ def render_outputs(*, baseline, live, frames, width, height):
                     message="effect control differs from expected original-pixel change")
             results.append(dict(frame=left["frame"], native_sha256=hashlib.sha256(raw[0]).hexdigest(),
                                 original_difference=changed, **metric))
-        require(condition=metric["equal"] is True, message=f"zero-tolerance render mismatch: {left['id']}")
+        if require_equal:
+            require(condition=metric["equal"] is True, message=f"zero-tolerance render mismatch: {left['id']}")
     return results

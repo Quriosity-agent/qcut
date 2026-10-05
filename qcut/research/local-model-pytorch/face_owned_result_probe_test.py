@@ -58,6 +58,19 @@ class AuditTests(unittest.TestCase):
             probe.validate_audits(events=[audit(), {"event": "live_inspection_conversion"}],
                                   require_face=True, require_live_consumers=True)
 
+    def test_makeup_publication_audit_does_not_claim_conversion(self):
+        events = [audit(), {"event": "live_makeup_publication"}, audit(), {"event": "live_makeup_publication"}]
+        result = probe.validate_audits(events=events, require_face=True, require_live_consumers=True,
+                                       consumer_event="live_makeup_publication")
+        self.assertEqual(result["audited_clones"], 2)
+        self.assertEqual(result["audit_basis"], "live-makeup-publication")
+        with self.assertRaises(RuntimeError):
+            probe.validate_audits(events=events, require_face=True, require_live_consumers=True)
+        for name, live in (("anything", True), ("live_makeup_publication", False)):
+            with self.subTest(name=name, live=live), self.assertRaises(ValueError):
+                probe.validate_audits(events=events, require_face=True, require_live_consumers=live,
+                                     consumer_event=name)
+
     def test_missing_update_or_audit(self):
         for events in ([], [audit()], [{"event": "algorithm_update"}],
                        [audit(), audit(), {"event": "algorithm_update"}]):

@@ -24,7 +24,12 @@ from face_live_bridge_process import ProcessScope, cancellation_signals
 from face_temporal_campaign import file_fingerprint
 import face_live_bridge_bundle as bundle
 import face_live_bridge_audit as audit
+import face_live_makeup_point_audit as point_audit
+import face_live_makeup_render_audit as makeup_audit
+import face_live_stage_audit as stage_audit
+import face_live_extra_audit as extra_audit
 import face_live_host_identity as host_identity
+import face_live_debugger as debugger_selection
 import face_render_sequence_probe as sequence
 
 
@@ -47,8 +52,8 @@ def worker_ready(*, path, socket):
     return True
 
 
-def lldb_command(*, config):
-    return ["xcrun", "lldb", "--batch", "--no-lldbinit", "-o",
+def lldb_command(*, config, executable=None):
+    return [*debugger_selection.command_prefix(executable=executable), "--batch", "--no-lldbinit", "-o",
         "script import sys; sys.dont_write_bytecode = True; sys.pycache_prefix = " +
         json.dumps(str(config.parent / "lldb-python-cache")) +
         "; sys.path.insert(0, " + json.dumps(str(bundle.HERE)) + ")", "-o",
@@ -102,12 +107,26 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             cache=Path(temporary) / "python-cache", arguments=[
             "--root", str(args.root), "--socket", str(socket), "--log", str(live / "worker.jsonl"),
             "--token", token, "--source-key", source_key, "--timeout", "120"])
+        if getattr(args, "trace_stages", False):
+            for name in ("native-stages", "candidate-stages"):
+                (live / name).mkdir(mode=0o700)
+            worker_command.extend(["--trace-directory", str(live / "candidate-stages")])
+        if getattr(args, "extra_root", None) is not None:
+            worker_command.extend(["--extra-root", str(args.extra_root.resolve(strict=True))])
         worker = scope.spawn(command=worker_command, environment=bundle.system_environment(),
                              stdout=live / "worker.stdout", stderr=live / "worker.stderr")
         scope.until(predicate=lambda: worker_ready(path=live / "worker.stdout", socket=socket),
                     process=worker, timeout=30)
         config = dict(host=report.get("host_identity", {}).get("path", str(out / "live-host")),
             lens=str(args.runtime / "Frameworks/liblens.dylib"),
+            core=str(args.runtime / "Frameworks/libcccreator.dylib"),
+            trace_face_readers=getattr(args, "trace_face_readers", False),
+            trace_makeup_points=getattr(args, "trace_makeup_points", False),
+            rotate_makeup_points=getattr(args, "rotate_makeup_points", False),
+            trace_extra_stages=getattr(args, "trace_extra_stages", False),
+            trace_extra_model=getattr(args, "trace_extra_model", False),
+            trace_mesh_points=getattr(args, "trace_mesh_points", False),
+            cold_frame=report["cold_frame_audit"],
             arguments=[str(args.runtime), str(args.runtime / "Models"), str(args.package)],
             environment=bundle.host_environment(runtime=args.runtime, directory=live, width=width, height=height,
                 live=True, socket=socket, token=token, capture=out / "live-capture.dylib",
@@ -115,26 +134,88 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             socket=str(socket), token=token, stdin=str(live / "requests.tsv"), stdout=str(live / "host.stdout"),
             stderr=str(live / "host.stderr"), report=str(live / "observer.json"))
         config_path = out / "lldb-config.json"
+        if getattr(args, "trace_stages", False):
+            config["environment"]["QCUT_FACE_LIVE_STAGE_DIR"] = str(live / "native-stages")
+        if getattr(args, "trace_makeup_system", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"] = "1"
+        if getattr(args, "publish_makeup_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"] = "1"
+        if getattr(args, "stage_makeup_render", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"] = "1"
+        if getattr(args, "consume_makeup_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"] = "1"
+        if getattr(args, "publish_reshape_candidate", False):
+            config["environment"]["QCUT_FACE_LIVE_RESHAPE_PUBLISH"] = "1"
+        if getattr(args, "extra_root", None) is not None:
+            config["environment"]["QCUT_FACE_LIVE_EXTRA_REFINEMENT"] = "1"
         bundle.write_json(path=config_path, value=config)
         report.update(source_key=source_key, token_sha256=hashlib.sha256(token.encode()).hexdigest())
         report["phase"] = "live-native-lldb"
-        debugger = scope.spawn(command=lldb_command(config=config_path), environment=bundle.system_environment(),
+        selection = report.get("debugger", {})
+        debugger = scope.spawn(command=lldb_command(config=config_path, executable=selection.get("executable")),
+                               environment={**bundle.system_environment(), **selection.get("environment_overrides", {})},
                                stdout=live / "lldb.log")
         report["live_process"] = scope.wait(process=debugger, timeout=args.timeout, companions=(worker,))
         scope.finish(process=debugger)
         report["phase"] = "live-audit"
+        consume_makeup = getattr(args, "consume_makeup_candidate", False)
+        if consume_makeup:
+            report["makeup_render_audit"] = makeup_audit.audit(
+                worker=audit.json_lines(path=live / "worker.jsonl"),
+                observer=strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2)),
+                records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
+        elif getattr(args, "trace_makeup_points", False):
+            report["makeup_point_audit"] = point_audit.audit(
+                worker=audit.json_lines(path=live / "worker.jsonl"),
+                observer=strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2)),
+                records=audit.json_lines(path=live / "records.jsonl"), token=token, source_key=source_key)
         report["live_protocol"] = audit.protocol(
             data=sequence.bounded_bytes(path=live / "host.stdout", limit=4 * 1024**2), requests=requests["live"])
+        audit.require(condition=not getattr(args, "publish_reshape_candidate", False),
+                      message="reshape publication alone cannot establish landmark consumption")
+        audit.require(condition=not getattr(args, "publish_makeup_candidate", False) or consume_makeup,
+                      message="makeup publication alone cannot establish landmark consumption")
         for directory in (baseline, live):
             stderr = sequence.bounded_bytes(path=directory / "host.stderr", limit=4 * 1024**2)
             audit.require(condition=b"[research-error]" not in stderr, message="native host logged a research failure")
         timestamps = [row["timestamp_us"] for row in requests["live"] for _ in range(2)]
         observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
-        report["callback_audit"] = audit.callbacks(worker=audit.json_lines(path=live / "worker.jsonl"),
-            observer=observer, records=audit.json_lines(path=live / "records.jsonl"), timestamps=timestamps,
-            token=token, source_key=source_key, cold_frame=report["cold_frame_audit"])
-        report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
-                                                frames=frames, width=width, height=height)
+        worker_rows, records = audit.json_lines(path=live / "worker.jsonl"), audit.json_lines(path=live / "records.jsonl")
+        if getattr(args, "extra_root", None) is not None:
+            report["extra_refinement_audit"] = extra_audit.audit(worker=worker_rows,
+                expected_version=report["extra_backend_version"])
+        inference_summary = None
+        if consume_makeup or getattr(args, "trace_stages", False):
+            inference_summary = audit.inference(worker=worker_rows, observer=observer,
+                timestamps=timestamps, token=token, source_key=source_key, cold_frame=True)
+        if getattr(args, "trace_stages", False):
+            report["stage_inference_audit"] = inference_summary
+            snapshots = {}
+            for name in ("native", "candidate"):
+                directory = live / f"{name}-stages"
+                expected = [directory / f"{name}-{index}.json" for index in range(2)]
+                audit.require(condition=sorted(directory.iterdir()) == expected,
+                              message="exact cold stage diagnostic inventory required")
+                snapshots[name] = [strict_json(data=sequence.bounded_bytes(path=path, limit=1024**2))
+                                   for path in expected]
+            report["stage_audit"] = stage_audit.audit(**snapshots, worker=worker_rows,
+                                                     token=token, source_key=source_key)
+        if consume_makeup:
+            report["makeup_inference_audit"] = inference_summary
+            audit.require(condition=report["makeup_inference_audit"]["seed_predictions"] == [0] and
+                          report["makeup_inference_audit"]["owned_point_groups"] == 2,
+                          message="makeup requires two fresh single-face predictions")
+            report["makeup_clone_audit"] = audit.validate_audits(events=records, require_face=True,
+                require_live_consumers=True, consumer_event="live_makeup_publication")
+            report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
+                frames=frames, width=width, height=height, require_equal=False)
+            audit.require(condition=len(report["frames"]) == 1 and report["frames"][0]["equal"] is True,
+                          message="zero-tolerance makeup render mismatch")
+        else:
+            report["callback_audit"] = audit.callbacks(worker=worker_rows, observer=observer, records=records,
+                timestamps=timestamps, token=token, source_key=source_key, cold_frame=report["cold_frame_audit"])
+            report["frames"] = audit.render_outputs(baseline=requests["baseline"], live=requests["live"],
+                                                    frames=frames, width=width, height=height)
         report["live_checks_completed"] = True
         scope.finish(process=worker)
 
@@ -154,8 +235,47 @@ def run(*, args):
     single_frame = getattr(args, "single_frame", False)
     static_controls = getattr(args, "static_controls", False)
     cold_frame = getattr(args, "cold_frame", False)
+    if getattr(args, "trace_mesh_points", False):
+        conflicts = ("trace_face_readers", "trace_makeup_points", "rotate_makeup_points",
+                     "consume_makeup_candidate", "trace_extra_stages", "trace_extra_model",
+                     "publish_reshape_candidate")
+        if not (single_frame and cold_frame and getattr(args, "stage_makeup_render", False)) or any(
+                getattr(args, name, False) for name in conflicts):
+            raise ValueError("mesh observation requires exclusive cold staged-makeup diagnostics")
+    if getattr(args, "publish_reshape_candidate", False):
+        conflicts = ("trace_makeup_system", "publish_makeup_candidate", "stage_makeup_render",
+                     "trace_makeup_points", "rotate_makeup_points", "consume_makeup_candidate",
+                     "trace_extra_stages", "trace_extra_model")
+        if not (single_frame and cold_frame) or static_controls or getattr(args, "extra_root", None) is not None or any(
+                getattr(args, name, False) for name in conflicts):
+            raise ValueError("reshape publication requires exclusive cold single-frame diagnostics")
+    if getattr(args, "rotate_makeup_points", False) and not getattr(args, "trace_makeup_points", False):
+        raise ValueError("point rotation requires the makeup XY observer")
     if cold_frame and not single_frame:
         raise ValueError("cold-frame requires explicit single-frame audit")
+    if getattr(args, "trace_stages", False) and not cold_frame:
+        raise ValueError("stage diagnostics require cold-frame audit")
+    if getattr(args, "trace_extra_stages", False) and not (getattr(args, "trace_stages", False) and
+            getattr(args, "consume_makeup_candidate", False)):
+        raise ValueError("Extra diagnostics require paired stages and makeup consumption")
+    if getattr(args, "trace_extra_model", False) and not getattr(args, "trace_extra_stages", False):
+        raise ValueError("Extra model diagnostics require boundary diagnostics")
+    if getattr(args, "extra_root", None) is not None and not (cold_frame and
+            getattr(args, "consume_makeup_candidate", False) and getattr(args, "trace_stages", False)):
+        raise ValueError("Extra refinement requires cold paired stages and makeup consumption")
+    if getattr(args, "trace_makeup_system", False) and not cold_frame:
+        raise ValueError("makeup system observation requires cold-frame audit")
+    if getattr(args, "publish_makeup_candidate", False) and not getattr(args, "trace_makeup_system", False):
+        raise ValueError("makeup candidate publication requires explicit system observation")
+    if getattr(args, "stage_makeup_render", False) and not getattr(args, "publish_makeup_candidate", False):
+        raise ValueError("makeup render stages require explicit candidate publication")
+    if getattr(args, "trace_makeup_points", False):
+        if not getattr(args, "stage_makeup_render", False):
+            raise ValueError("makeup XY observation requires explicit render stages")
+        if getattr(args, "trace_face_readers", False):
+            raise ValueError("getter and XY diagnostics share one hardware slot")
+    if getattr(args, "consume_makeup_candidate", False) and not getattr(args, "trace_makeup_points", False):
+        raise ValueError("makeup consumption requires independent XY observation")
     if single_frame and static_controls:
         raise ValueError("single-frame and static-controls scopes are mutually exclusive")
     if not 1 <= args.timeout <= 240:
@@ -169,6 +289,17 @@ def run(*, args):
             "bounded-single-face-native-dependent-live-research"), failures=[],
         single_frame_audit=single_frame, static_controls_audit=static_controls, temporal_sequence_acceptance=False,
         cold_frame_audit=cold_frame, warmup_request_count=0 if cold_frame else bundle.WARMUPS,
+        makeup_publication_research=getattr(args, "publish_makeup_candidate", False),
+        reshape_publication_research=getattr(args, "publish_reshape_candidate", False),
+        makeup_render_stage_research=getattr(args, "stage_makeup_render", False),
+        makeup_point_observation=getattr(args, "trace_makeup_points", False),
+        makeup_point_rotation=getattr(args, "rotate_makeup_points", False),
+        makeup_consumption_research=getattr(args, "consume_makeup_candidate", False),
+        stage_diagnostics=getattr(args, "trace_stages", False),
+        extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
+        extra_model_diagnostics=getattr(args, "trace_extra_model", False),
+        mesh_copy_diagnostics=getattr(args, "trace_mesh_points", False),
+        extra_refinement_root=str(args.extra_root) if getattr(args, "extra_root", None) is not None else None,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -181,6 +312,9 @@ def run(*, args):
     leases = ExitStack()
     try:
         with cancellation_signals(), scope:
+            report["debugger"] = debugger_selection.resolve_debugger(
+                executable=getattr(args, "lldb_executable", None),
+                debugserver=getattr(args, "debugserver", None), guard=guard)
             for key in ("runtime", "package", "root", "manifest"):
                 setattr(args, key, getattr(args, key).resolve(strict=True))
             bundle.lock_dependencies(runtime=args.runtime, package=args.package, models=args.root, guard=guard)
@@ -198,6 +332,18 @@ def run(*, args):
             for phase in ("baseline", "live"):
                 guard.locked.read(path=out / phase / "requests.tsv")
             models = OnnxHeads(root=args.root)
+            if getattr(args, "extra_root", None) is not None:
+                from face_extra_heads_onnx import ExtraHeads
+                # ExtraHeads.version hashes path strings and the worker loads the resolved root, so hash that
+                # same spelling here. Resolving hides a symlinked root from ExtraHeads, so reject it first.
+                if args.extra_root.is_symlink():
+                    raise ValueError("Extra root must be an existing nonsymlink directory")
+                args.extra_root = args.extra_root.resolve(strict=True)
+                report["extra_refinement_root"] = str(args.extra_root)
+                extra_models = ExtraHeads(root=args.extra_root)
+                report["extra_backend_version"] = extra_models.version
+                guard.tree(directory=args.extra_root)
+                report["native_dependencies"].append("extra-inner-filter-crop-transforms-and-mean")
             report["models"] = models.provenance
             report["phase"] = "compile"
             report["compile_commands"] = bundle.compile_commands(runtime=args.runtime, out=out)
@@ -260,11 +406,26 @@ def run(*, args):
             cache=Path(str(out) + "-rerun") / "python-cache", arguments=[
             "--runtime", str(args.runtime), "--package", str(args.package), "--root", str(args.root),
             "--manifest", str(args.manifest), "--out", str(out) + "-rerun", "--timeout", str(args.timeout),
+            *(["--lldb-executable", str(args.lldb_executable)] if getattr(args, "lldb_executable", None) is not None else []),
+            *(["--debugserver", str(args.debugserver)] if getattr(args, "debugserver", None) is not None else []),
             *(["--single-frame"] if single_frame else []),
             *(["--cold-frame"] if cold_frame else []),
             *(["--static-controls"] if static_controls else []),
             *(item for package in getattr(args, "additional_packages", []) for item in ("--additional-package", str(package))),
             *(["--stable-host"] if getattr(args, "stable_host", False) else []),
+            *(["--trace-face-readers"] if getattr(args, "trace_face_readers", False) else []),
+            *(["--trace-makeup-system"] if getattr(args, "trace_makeup_system", False) else []),
+            *(["--publish-makeup-candidate"] if getattr(args, "publish_makeup_candidate", False) else []),
+            *(["--publish-reshape-candidate"] if getattr(args, "publish_reshape_candidate", False) else []),
+            *(["--stage-makeup-render"] if getattr(args, "stage_makeup_render", False) else []),
+            *(["--trace-makeup-points"] if getattr(args, "trace_makeup_points", False) else []),
+            *(["--rotate-makeup-points"] if getattr(args, "rotate_makeup_points", False) else []),
+            *(["--consume-makeup-candidate"] if getattr(args, "consume_makeup_candidate", False) else []),
+            *(["--trace-stages"] if getattr(args, "trace_stages", False) else []),
+            *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
+            *(["--trace-extra-model"] if getattr(args, "trace_extra_model", False) else []),
+            *(["--trace-mesh-points"] if getattr(args, "trace_mesh_points", False) else []),
+            *(["--extra-root", str(args.extra_root)] if getattr(args, "extra_root", None) is not None else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
@@ -278,8 +439,36 @@ def main():
     for name in ("runtime", "package", "root", "manifest", "out"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     parser.add_argument("--execute-native", action="store_true")
+    parser.add_argument("--lldb-executable", type=Path, help="explicit hash-locked debugger; default remains xcrun lldb")
+    parser.add_argument("--debugserver", type=Path, help="explicit hash-locked debugserver; never changes developer defaults")
     parser.add_argument("--stable-host", action="store_true",
                         help="reuse a stable Apple Development-signed helper identity; does not grant permissions")
+    parser.add_argument("--trace-face-readers", action="store_true",
+                        help="add one read-only hardware breakpoint; getter hits are not consumption evidence")
+    parser.add_argument("--trace-makeup-system", action="store_true",
+                        help="cold-frame only: observe pinned makeup object dispatch, not consumption")
+    parser.add_argument("--publish-makeup-candidate", action="store_true",
+                        help="experimental owned publication; cannot pass the consumption acceptance gate")
+    parser.add_argument("--publish-reshape-candidate", action="store_true",
+                        help="exclusive cold-frame reshape publication diagnostics; not consumption proof")
+    parser.add_argument("--trace-mesh-points", action="store_true",
+                        help="read-only native 1256 mesh copy diagnostics; not QCut mesh ownership")
+    parser.add_argument("--stage-makeup-render", action="store_true",
+                        help="experimental initialization/parameter/final-render receipts; requires publication")
+    parser.add_argument("--trace-makeup-points", action="store_true",
+                        help="read-only primary XY load proof; replaces getter trace and requires render stages")
+    parser.add_argument("--rotate-makeup-points", action="store_true",
+                        help="alternate read-only load/store hardware locations within the fourth slot")
+    parser.add_argument("--consume-makeup-candidate", action="store_true",
+                        help="research-only pinned geometry consumer; requires independent XY observation")
+    parser.add_argument("--trace-stages", action="store_true",
+                        help="cold single-frame diagnostic snapshots; never sent as model inputs")
+    parser.add_argument("--trace-extra-stages", action="store_true",
+                        help="read-only Stage2 call/return copies; shares the makeup XY hardware slot")
+    parser.add_argument("--trace-extra-model", action="store_true",
+                        help="private Extra crop/model evidence; never used as candidate inputs")
+    parser.add_argument("--extra-root", type=Path,
+                        help="opt-in Extra ONNX refinement using native crop geometry, never native points")
     parser.add_argument("--single-frame", action="store_true",
                         help="audit one static input; never claims temporal sequence acceptance")
     parser.add_argument("--cold-frame", action="store_true",

@@ -87,6 +87,22 @@ class InputAndGuardTests(BundleFixture, unittest.TestCase):
         self.assertNotIn("QCUT_FACE_LIVE_COLD_FRAME", bundle.host_environment(**kwargs))
         with self.assertRaisesRegex(ValueError, "explicit single-frame"):
             probe.run(args=argparse.Namespace(cold_frame=True, single_frame=False))
+        with self.assertRaisesRegex(ValueError, "stage diagnostics require cold-frame"):
+            probe.run(args=argparse.Namespace(trace_stages=True))
+        with self.assertRaisesRegex(ValueError, "makeup system observation requires cold-frame"):
+            probe.run(args=argparse.Namespace(trace_makeup_system=True, cold_frame=False, single_frame=True))
+        with self.assertRaisesRegex(ValueError, "publication requires explicit system observation"):
+            probe.run(args=argparse.Namespace(publish_makeup_candidate=True, cold_frame=True, single_frame=True))
+        with self.assertRaisesRegex(ValueError, "render stages require explicit candidate publication"):
+            probe.run(args=argparse.Namespace(stage_makeup_render=True, cold_frame=True, single_frame=True))
+        with self.assertRaisesRegex(ValueError, "XY observation requires explicit render stages"):
+            probe.run(args=argparse.Namespace(trace_makeup_points=True))
+        with self.assertRaisesRegex(ValueError, "consumption requires independent XY observation"):
+            probe.run(args=argparse.Namespace(consume_makeup_candidate=True))
+        with self.assertRaisesRegex(ValueError, "share one hardware slot"):
+            probe.run(args=argparse.Namespace(trace_makeup_points=True, trace_face_readers=True,
+                stage_makeup_render=True, publish_makeup_candidate=True, trace_makeup_system=True,
+                cold_frame=True, single_frame=True))
 
     def test_nonzero_bootstrap_and_constant_frame_claims_rejected(self):
         for case in ("bootstrap", "same"):
@@ -242,9 +258,166 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertFalse(result["native_execution_performed"])
         self.assertFalse(result["bounded_native_dependent_rgba_parity"])
+        self.assertFalse(result["makeup_render_stage_research"])
         native.assert_not_called()
         self.assertTrue((self.args.out / "report.json").is_file())
         self.assertIn("live-host", result["artifacts"])
+
+    def test_explicit_debugger_is_guarded_and_reproduced_without_native_launch(self):
+        for name in ("lldb_executable", "debugserver"):
+            path = self.root / (name + " with spaces")
+            path.write_bytes(b"synthetic executable, not invoked")
+            path.chmod(0o700)
+            setattr(self.args, name, path)
+        result, native = self.run_preparation()
+        self.assertTrue(result["completed"])
+        self.assertFalse(result["passed"])
+        for name, option in (("lldb_executable", "--lldb-executable"), ("debugserver", "--debugserver")):
+            self.assertIn(option, result["command"])
+            self.assertIn(str(getattr(self.args, name)), result["command"])
+        self.assertIn("debugger", result)
+        native.assert_not_called()
+
+    def test_invalid_explicit_debugger_fails_before_compilation_or_execution(self):
+        self.args.lldb_executable = self.root / "missing-lldb"
+        result, native = self.run_preparation()
+        self.assertFalse(result["completed"])
+        self.assertFalse(result["prepared"])
+        self.assertNotIn("compile_commands", result)
+        self.assertFalse(result["native_execution_performed"])
+        native.assert_not_called()
+
+    def test_explicit_debugger_command_preserves_literal_argv(self):
+        path = self.root / "lldb ; literal $(command)"
+        path.write_bytes(b"fixture, never executed")
+        path.chmod(0o700)
+        default = probe.lldb_command(config=self.out / "lldb-config.json")
+        explicit = probe.lldb_command(config=self.out / "lldb-config.json", executable=path)
+        self.assertEqual(default[:2], ["xcrun", "lldb"])
+        self.assertEqual(explicit, [str(path.resolve()), *default[2:]])
+
+    def test_makeup_publication_preparation_preserves_explicit_research_scope(self):
+        self.frames = self.frames[:1]
+        self.write_manifest()
+        self.args.single_frame = self.args.cold_frame = True
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
+        self.args.stage_makeup_render = True
+        self.args.trace_makeup_points = True
+        self.args.rotate_makeup_points = True
+        self.args.consume_makeup_candidate = True
+        self.args.trace_stages = True
+        result, native = self.run_preparation()
+        self.assertTrue(result["prepared"])
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["makeup_publication_research"])
+        self.assertTrue(result["makeup_render_stage_research"])
+        self.assertTrue(result["makeup_point_observation"])
+        self.assertTrue(result["makeup_point_rotation"])
+        self.assertTrue(result["makeup_consumption_research"])
+        self.assertTrue(result["stage_diagnostics"])
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["live_callback_handoff_verified"])
+        self.assertFalse(result["product_backend_registered"])
+        self.assertEqual(result["warmup_request_count"], 0)
+        for option in ("--single-frame", "--cold-frame", "--trace-makeup-system", "--publish-makeup-candidate",
+                       "--stage-makeup-render", "--trace-makeup-points", "--rotate-makeup-points",
+                       "--consume-makeup-candidate", "--trace-stages"):
+            self.assertIn(option, result["command"])
+        native.assert_not_called()
+
+    def test_makeup_publication_cannot_pass_from_successful_host_protocol_alone(self):
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = True
+        self.args.stage_makeup_render = True
+        scope = mock.Mock()
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        executable = self.root / "alternate lldb"
+        executable.write_bytes(b"fixture, never executed")
+        executable.chmod(0o700)
+        report["debugger"] = dict(executable=str(executable.resolve()),
+                                 environment_overrides={"LLDB_DEBUGSERVER_PATH": "/explicit/server"})
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b""), \
+                mock.patch.object(probe.audit, "protocol", return_value=dict(passed=True)), \
+                mock.patch.object(probe.audit, "render_outputs") as render_outputs:
+            with self.assertRaisesRegex(ValueError, "publication alone cannot establish landmark consumption"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=scope, report=report)
+        self.assertEqual(report["phase"], "live-audit")
+        self.assertNotIn("live_checks_completed", report)
+        render_outputs.assert_not_called()
+        baseline_env = scope.spawn.call_args_list[0].kwargs["environment"]
+        self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_TRACE", baseline_env)
+        self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_PUBLISH", baseline_env)
+        self.assertNotIn("QCUT_FACE_LIVE_MAKEUP_STAGES", baseline_env)
+        self.assertNotIn("LLDB_DEBUGSERVER_PATH", baseline_env)
+        debugger_spawn = scope.spawn.call_args_list[-1].kwargs
+        self.assertEqual(debugger_spawn["command"][0], str(executable.resolve()))
+        self.assertEqual(debugger_spawn["environment"]["LLDB_DEBUGSERVER_PATH"], "/explicit/server")
+        config = json.loads((self.out / "lldb-config.json").read_text())
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_TRACE"], "1")
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"], "1")
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"], "1")
+
+    def test_read_proof_survives_final_host_rejection_without_becoming_render_success(self):
+        self.args.trace_makeup_points = True
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = self.args.stage_makeup_render = True
+        proof = dict(candidate_xy_reads_verified=True, renderer_consumption=False)
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.point_audit, "audit", return_value=proof) as audit_points, \
+                mock.patch.object(probe.audit, "protocol", side_effect=[{}, ValueError("final consumption missing")]):
+            with self.assertRaisesRegex(ValueError, "final consumption missing"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        audit_points.assert_called_once()
+        self.assertEqual(report["makeup_point_audit"], proof)
+        self.assertNotIn("live_checks_completed", report)
+        config = json.loads((self.out / "lldb-config.json").read_text())
+        self.assertTrue(config["trace_makeup_points"])
+        self.assertFalse(config["trace_face_readers"])
+
+    def test_makeup_consumer_difference_is_retained_without_accepting_frame(self):
+        self.args.consume_makeup_candidate = self.args.trace_makeup_points = True
+        self.args.trace_makeup_system = self.args.publish_makeup_candidate = self.args.stage_makeup_render = True
+        proof = dict(renderer_consumption=True, product_parity_verified=False)
+        difference = dict(frame=0, equal=False, changed_pixels=3970)
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.makeup_audit, "audit", return_value=proof) as receipt, \
+                mock.patch.object(probe.audit, "protocol", return_value={}), \
+                mock.patch.object(probe.audit, "inference", return_value=dict(seed_predictions=[0], owned_point_groups=2)), \
+                mock.patch.object(probe.audit, "validate_audits", return_value={}), \
+                mock.patch.object(probe.audit, "render_outputs", return_value=[difference]) as render:
+            with self.assertRaisesRegex(ValueError, "zero-tolerance makeup render mismatch"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        receipt.assert_called_once()
+        self.assertEqual(report["makeup_render_audit"], proof)
+        self.assertEqual(report["frames"], [difference])
+        self.assertFalse(render.call_args.kwargs["require_equal"])
+        self.assertNotIn("live_checks_completed", report)
+        config = json.loads((self.out / "lldb-config.json").read_text())
+        self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_CONSUME"], "1")
+
+    def test_makeup_consumer_cannot_skip_receipt_validation(self):
+        self.args.consume_makeup_candidate = self.args.trace_makeup_points = True
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                mock.patch.object(probe.audit, "json_lines", return_value=[]), \
+                mock.patch.object(probe.makeup_audit, "audit", side_effect=ValueError("bad geometry receipt")), \
+                mock.patch.object(probe.audit, "protocol", return_value={}), \
+                mock.patch.object(probe.audit, "render_outputs") as render:
+            with self.assertRaisesRegex(ValueError, "bad geometry receipt"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        render.assert_not_called()
+        self.assertNotIn("live_checks_completed", report)
+
 
     def test_stable_host_is_external_guarded_and_lease_outlives_cleanup_and_report(self):
         directory = self.root / "stable"

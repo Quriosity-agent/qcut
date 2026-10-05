@@ -72,6 +72,8 @@ class CloneLeaseScope {
     prediction_ = prediction;
     timestamp_ = timestamp;
     consumed_ = false;
+    initializationComplete_ = false;
+    restoredPublications_ = 0;
     open_ = true;
     finished_ = false;
   }
@@ -79,7 +81,17 @@ class CloneLeaseScope {
   bool injecting() const { return open_; }
   bool consumed() const { return consumed_; }
   bool requiresConsumption() const {
-    return prediction_ >= 0 && (requireEveryPrediction_ || prediction_ >= 2);
+    return prediction_ >= 0 && !initializationComplete_ && (requireEveryPrediction_ || prediction_ >= 2);
+  }
+  bool restoredPublication() const {
+    return !failure_ && finished_ && !open_ && leases_.empty() && restoredPublications_ > 0;
+  }
+  void acknowledgeInitialization() {
+    if (failure_) std::rethrow_exception(failure_);
+    if (!requireEveryPrediction_ || prediction_ != 0 || timestamp_ != 0 ||
+        initializationComplete_ || !restoredPublication())
+      throw std::runtime_error("initialization lacks unique restored cold publication");
+    initializationComplete_ = true;
   }
   void validateConsumption() const {
     if (prediction_ < 0 || (requiresConsumption() && !consumed_))
@@ -136,6 +148,7 @@ class CloneLeaseScope {
           throw std::runtime_error("live clone overwritten before GPU completion");
         }
         receipt(lease);
+        if (lease.published) ++restoredPublications_;
         entry = leases_.erase(entry);
       } catch (...) {
         if (!failure_) failure_ = std::current_exception();
@@ -157,6 +170,8 @@ class CloneLeaseScope {
   bool open_ = false;
   bool consumed_ = true;
   bool finished_ = true;
+  bool initializationComplete_ = false;
+  size_t restoredPublications_ = 0;
 };
 }
 
@@ -165,18 +180,33 @@ class CloneLeaseScope {
 #include <optional>
 #include <unistd.h>
 #include "face_live_bridge_response.h"
+#include "face_live_makeup_scene.h"
+#include "face_live_render_stage.h"
+#include "face_live_makeup_geometry.h"
+#include "face_live_reshape_route.h"
+#include <CommonCrypto/CommonDigest.h>
+#include <sstream>
 namespace {
 void inspectOwnedAdapter(void*);
 void finishOwnedBinding(void*);
 void prepareOwnedSeek(void*);
+void captureOwnedFeature(void*);
+void observeOwnedSeekResult(int);
+void beginOwnedParameters(void*, const char*);
+void finishOwnedParameters(int);
+bool allowOwnedFrameOutput();
 }
 #define QCUT_FACE_BINDING_HOOK
 #define QCUT_FACE_PRE_SEEK_HOOK
+#define QCUT_FACE_FEATURE_HOOK
+#define QCUT_FACE_RENDER_STAGE_HOOK
 #define main liveConsumerMain
 #include "face_owned_result_bridge.mm"
 #undef main
 #undef QCUT_FACE_BINDING_HOOK
 #undef QCUT_FACE_PRE_SEEK_HOOK
+#undef QCUT_FACE_FEATURE_HOOK
+#undef QCUT_FACE_RENDER_STAGE_HOOK
 
 namespace {
 using Convert = uint64_t (*)(void*, void*);
@@ -190,12 +220,12 @@ std::optional<ReplayFrame> livePending;
 int64_t livePrediction = -1;
 qcut_live::DeferredColdSetup liveColdSetup;
 int64_t liveColdSeekStartPrediction = -1;
+#include "face_live_owned_input.h"
+#include "face_live_makeup_hooks.h"
+#include "face_live_reshape_hooks.h"
 
 uint64_t liveConvert(void* adapter, void* context) {
   uint64_t result = 0;
-  void* graph = nullptr;
-  void* source = nullptr;
-  Publish publish = nullptr;
   try {
     if (std::this_thread::get_id() != seekThread || updateError)
       throw std::runtime_error("unsupported live conversion thread or prior callback failure");
@@ -208,63 +238,14 @@ uint64_t liveConvert(void* adapter, void* context) {
               << ",\"candidate_injected\":false,\"renderer_consumption\":false}\n" << std::flush;
       return result;
     }
-    if (!livePending ||
-        livePending->timestamp != seekTimestamp || liveClones.size() >= 128)
-      throw std::runtime_error("missing/stale live result or unsupported conversion state");
-    graph = field<void*>(context, 0x20);
-    liveLeases.requireGraph(graph);
-    using Raw = void* (*)(void*, int);
-    const auto raw = reinterpret_cast<Raw>(static_cast<unsigned char*>(imageBase()) + 0xc15cd4);
-    publish = reinterpret_cast<Publish>(static_cast<unsigned char*>(imageBase()) + 0xc157e8);
-    source = raw(graph, 4);
-    if (!source) throw std::runtime_error("live conversion has no FaceBuffer");
-    if (liveColdFrame && livePrediction == 0) {
-      const auto expected = static_cast<unsigned char*>(dlsym(core, "_ZTVN4Bach10FaceBufferE"));
-      if (!expected || field<void*>(source, 0) != expected + 16)
-        throw std::runtime_error("cold conversion result is not a FaceBuffer");
-      // The first update was already on-stack when its hook was installed.
-      inspectOwnedResult(source);
-    }
-    const auto clone = jianying_probe::resolveSymbol<CloneFace>(core, "_ZNK4Bach10FaceBuffer5CloneEv");
-    const auto retain = jianying_probe::resolveSymbol<ReferenceOperation>(core, "_ZNK13AmazingEngine7RefBase6retainEv");
-    const auto release = jianying_probe::resolveSymbol<ReferenceOperation>(core, "_ZNK13AmazingEngine7RefBase7releaseEv");
-    void* duplicate = clone(source);
-    if (!duplicate || duplicate == source) throw std::runtime_error("live clone allocation failed");
-    retain(duplicate);
-    auto owner = std::make_unique<FaceOwner>(duplicate, release);
-    retain(source);
-    std::shared_ptr<void> originalOwner(source, release);
-    const auto faces = pointerSpan(duplicate, 0x38), originals = pointerSpan(source, 0x38);
-    if (faces.count > 1 || originals.count != faces.count || faces.count != livePending->faces.size())
-      throw std::runtime_error("live/native face count mismatch");
-    std::vector<PointRestore> before;
-    for (size_t index = 0; index < faces.count; ++index) {
-      const void* face = field<void*>(reinterpret_cast<void*>(faces.begin), index * 8);
-      const void* original = field<void*>(reinterpret_cast<void*>(originals.begin), index * 8);
-      const auto destination = readLandmarks(face);
-      before.push_back(readLandmarks(original));
-      if (destination.destination == before.back().destination ||
-          field<int>(face, 0x40) != livePending->faces[index].id)
-        throw std::runtime_error("live clone aliases source or identity differs");
-      writeLandmarks(destination.destination, livePending->faces[index].coordinates);
-      if (readLandmarks(original).coordinates != before.back().coordinates ||
-          readLandmarks(face).coordinates != livePending->faces[index].coordinates)
-        throw std::runtime_error("live clone write isolation failed");
-    }
-    liveClones.push_back(std::move(owner));
-    const auto& lease = liveLeases.reserve(graph, duplicate, std::move(originalOwner));
-    publish(graph, 4, &duplicate);
-    if (raw(graph, 4) != duplicate) throw std::runtime_error("live clone publication failed");
-    liveLeases.published(graph);
+    void* graph = field<void*>(context, 0x20);
+    const auto input = publishLiveInput(graph);
     result = liveAdapters.at(adapter).original(adapter, context);
-    for (size_t index = 0; index < originals.count; ++index) {
-      const void* original = field<void*>(reinterpret_cast<void*>(originals.begin), index * 8);
-      if (readLandmarks(original).coordinates != before[index].coordinates)
-        throw std::runtime_error("live conversion changed native source landmarks");
-    }
+    input.validateSource();
     liveLeases.converted(graph);
+    const auto& lease = *input.lease;
     records << "{\"event\":\"live_owned_conversion\",\"prediction\":" << lease.prediction
-            << ",\"timestamp_us\":" << lease.timestamp << ",\"faces\":" << faces.count
+            << ",\"timestamp_us\":" << lease.timestamp << ",\"faces\":" << input.originals.count
             << ",\"binding_id\":" << lease.bindingId << ",\"graph_id\":" << lease.graphId
             << ",\"conversion_scope\":\"native-seek\""
             << ",\"source_points_unchanged\":true,\"candidate_source\":\"fresh-worker-inference\","
@@ -305,7 +286,14 @@ void prepareOwnedSeek(void* manager) {
   if (!traceUpdates)
     throw std::runtime_error("cold setup requires update tracing");
   liveColdSetup.prepare(manager);
+  liveSeekManager = manager;
   liveColdSeekStartPrediction = livePrediction;
+  if (liveOwnedStages) {
+    liveRenderStage.beginSeek(manager, seekTimestamp, livePrediction);
+    liveSeekResult.reset();
+    records << "{\"event\":\"live_render_stage_begin\",\"stage\":\"" << liveRenderStage.phase()
+            << "\",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
+  }
 }
 
 void prepareOwnedPrediction() {
@@ -320,9 +308,11 @@ void prepareOwnedPrediction() {
         throw std::runtime_error("too many cold setup algorithms");
       // No lazy face lookup or raw-result read while prediction is still unwinding.
       installUpdateTrace(algorithm);
-      inspectOwnedAdapter(algorithm);
+      if (!liveReshapePublish) inspectOwnedAdapter(algorithm);
     });
     if (algorithms.empty()) throw std::runtime_error("cold callback algorithm list is empty");
+    installMakeupObservers();
+    installReshapeObservers();
   });
   if (installed) {
     records << "{\"event\":\"live_cold_setup\",\"algorithms\":" << algorithms.size()
@@ -355,13 +345,27 @@ void finishOwnedBinding(void* manager) {
                   << ",\"gpu_complete\":true,\"original_restored\":true}\n" << std::flush;
         });
   } catch (...) {
+    if (liveReshapePublish) {
+      try { restoreReshapeObservers(); } catch (...) { }
+    }
     if (updateError) std::rethrow_exception(updateError);
     throw;
   }
+  if (liveReshapePublish && (livePrediction == 1 || updateError)) restoreReshapeObservers();
   if (coldSeek && !updateError && livePrediction <= liveColdSeekStartPrediction)
     throw std::runtime_error("live prediction missing or not consumed by renderer");
   if (finished && !updateError) {
     if (!livePending) throw std::runtime_error("live prediction missing or not consumed by renderer");
+    if (liveOwnedStages && coldSeek) {
+      const bool initialization = liveRenderStage.initializing();
+      liveRenderStage.finishSeek(liveSeekResult.value_or(-1), liveLeases.restoredPublication(), liveLeases.consumed());
+      if (initialization) liveLeases.acknowledgeInitialization();
+      records << "{\"event\":\"live_render_stage_complete\",\"stage\":\""
+              << (initialization ? "initializing" : "rendering") << "\",\"prediction\":" << livePrediction
+              << ",\"timestamp_us\":" << seekTimestamp
+              << ",\"source_restored\":true,\"renderer_consumption\":"
+              << (liveLeases.consumed() ? "true" : "false") << "}\n" << std::flush;
+    }
     liveLeases.validateConsumption();
   }
 }
@@ -386,6 +390,7 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
     for (const auto& face : response.faces) {
       frame.faces.push_back({face.id, face.points});
     }
+    if (liveOwnedStages) liveRenderStage.prediction(response.prediction, response.timestamp);
     liveLeases.begin(response.prediction, response.timestamp);
     livePending = std::move(frame);
     livePrediction = response.prediction;
@@ -397,6 +402,12 @@ extern "C" __attribute__((visibility("default"), used)) void qcut_face_live_resu
 
 int main(int argc, char* argv[]) {
   if (std::getenv("QCUT_FACE_LIVE_COLD_FRAME") && !liveColdFrame) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") && (!liveMakeupTrace || !liveColdFrame)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") && (!liveMakeupPublish || !liveMakeupTrace)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_STAGES") && (!liveMakeupStages || !liveMakeupPublish)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_MAKEUP_CONSUME") && (!liveMakeupConsume || !liveMakeupStages)) return 1;
+  if (std::getenv("QCUT_FACE_LIVE_RESHAPE_PUBLISH") && (!liveReshapePublish || !liveColdFrame ||
+      liveMakeupTrace || liveMakeupPublish || liveMakeupStages || liveMakeupConsume)) return 1;
   if (!std::getenv("QCUT_FACE_LIVE_TOKEN") || !std::getenv("QCUT_FACE_LIVE_SOCKET") ||
       std::getenv("QCUT_FACE_REPLAY") || std::getenv("QCUT_FACE_BIND_REPLAY") ||
       std::getenv("QCUT_FACE_BIND_EYE_SHIFT") ||
