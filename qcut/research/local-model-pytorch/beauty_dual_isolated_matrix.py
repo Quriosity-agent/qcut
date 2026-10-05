@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -197,9 +198,46 @@ def prepare_case(*, args, case, portrait, directory, guard):
 
 
 def verify_guards(*, locked, guards):
-    locked.verify()
+    combined, trees = bundle.DependencyGuard(), {}
+    combined.locked.files = dict(locked.files)
+    combined.locked.identities = dict(locked.identities)
     for guard in guards:
-        guard.verify()
+        for tree in guard.trees:
+            key = (str(tree.root), tree.source)
+            if key in trees:
+                require(condition=trees[key].files == tree.files, message="dependency tree changed between cases")
+            else:
+                trees[key] = tree
+                combined.trees.append(tree)
+        for name, sha in guard.locked.files.items():
+            if name in combined.locked.files:
+                require(condition=combined.locked.files[name] == sha and
+                        combined.locked.identities[name] == guard.locked.identities[name],
+                        message="locked input changed between cases")
+            combined.locked.files[name] = sha
+            combined.locked.identities[name] = guard.locked.identities[name]
+        for name, fingerprint in guard.libraries.items():
+            require(condition=name not in combined.libraries or combined.libraries[name] == fingerprint,
+                    message="native library changed between cases")
+            combined.libraries[name] = fingerprint
+    combined.verify()
+
+
+def provenance_receipt(*, guard, out, locked, snapshots):
+    evidence = guard.evidence()
+    trees = []
+    for tree in evidence["trees"]:
+        data = (json.dumps(tree, indent=2, allow_nan=False) + "\n").encode("utf-8")
+        sha = hashlib.sha256(data).hexdigest()
+        path = out / f"tree-{sha}.json"
+        if sha not in snapshots:
+            bundle.write_json(path=path, value=tree)
+            locked.read(path=path, maximum=32 * 1024**2, expected=sha)
+            snapshots.add(sha)
+        trees.append(dict(directory=tree["directory"], source=tree["source"], files=len(tree["files"]),
+                          snapshot=str(path), sha256=sha, bytes=len(data)))
+    # Full trees are shared hash-bound artifacts, keeping 72 rows below the report reader's limit.
+    return dict(evidence, trees=trees)
 
 
 def audit_outcome(*, report):
@@ -274,6 +312,9 @@ def run_matrix(*, args):
             result["cases"].append(row)
             jobs.append((case, portrait, directory, probe_args, row))
     bundle.write_json(path=out / "plan.json", value=result)
+    provenance = out / "provenance"
+    provenance.mkdir(mode=0o700)
+    snapshots = set()
     guards = []
     for index, (case, portrait, directory, probe_args, row) in enumerate(jobs):
         started = time.monotonic()
@@ -315,9 +356,16 @@ def run_matrix(*, args):
             row["failures"].append(dict(phase="matrix-provenance", error=str(error)))
             safe = False
         row["elapsed_seconds"] = time.monotonic() - started
-        row["hash_provenance"] = guard.evidence() if guard is not None else {}
+        try:
+            row["hash_provenance"] = provenance_receipt(guard=guard, out=provenance, locked=locked,
+                                                      snapshots=snapshots) if guard is not None else {}
+        except BaseException as error:
+            row.update(passed=False, status="failed", hash_provenance={},
+                       error=f"provenance artifact failed: {type(error).__name__}: {error}"[:2000])
+            row["failures"].append(dict(phase="provenance-artifact", error=row["error"]))
+            safe = False
         if not safe:
-            result.update(aborted=True, abort_reason="unsafe cleanup, unknown execution state, interruption or changed dependencies")
+            result.update(aborted=True, abort_reason="unsafe cleanup, unknown execution state, interruption or failed provenance")
             for remaining in result["cases"][index + 1:]:
                 remaining.update(status="blocked", error=result["abort_reason"])
         result["groups"].append({key: deepcopy(row[key]) for key in
