@@ -21,6 +21,7 @@ from face_live_worker_protocol import exchange
 import face_live_reader_trace as reader_trace
 import face_live_makeup_point_trace as point_trace
 from face_live_extra_trace import ExtraTrace
+from face_live_makeup_point_rotation import PointRotation
 
 STATE = None
 POINTS = {"begin": 0x2c4dac, "call": 0x2ca3bc, "infer": 0x36b43c}
@@ -118,6 +119,7 @@ class Observer:
         self.reader_hits, self.reader_events = 0, []
         self.point_hits, self.point_events = 0, []
         self.extra = None
+        self.rotation = None
         self.callback_tail = []
 
     def callback_entry(self, *, frame, location):
@@ -250,8 +252,22 @@ def on_point_breakpoint(frame, location, internal_dict):
         STATE.process = frame.GetThread().GetProcess()
         publication = point_trace.publication_scope(
             path=Path(STATE.config["report"]).parent / "records.jsonl", prediction=STATE.index)
-        STATE.point_events.append(point_trace.observe(frame=frame, location=location,
-            prediction=STATE.index, read=STATE.read, publication=publication))
+        row = point_trace.observe(frame=frame, location=location,
+            prediction=STATE.index, read=STATE.read, publication=publication)
+        STATE.point_events.append(row)
+        if STATE.config.get("rotate_makeup_points", False):
+            STATE.rotation.loaded(row=row)
+        return False
+    except Exception as error:
+        STATE.failures.append(f"{type(error).__name__}: {error}")
+        return True
+
+
+def on_point_store_breakpoint(frame, location, internal_dict):
+    try:
+        if time.monotonic() - STATE.started > 240:
+            raise ValueError("makeup store diagnostic budget exceeded")
+        STATE.rotation.observe(frame=frame, location=location, prediction=STATE.index, read=STATE.read)
         return False
     except Exception as error:
         STATE.failures.append(f"{type(error).__name__}: {error}")
@@ -313,6 +329,8 @@ def run(*, debugger, config_path):
             raise ValueError("getter and XY diagnostics share one hardware slot")
         if config.get("trace_extra_stages", False) and not config.get("trace_makeup_points", False):
             raise ValueError("Extra diagnostics require the makeup XY observer")
+        if config.get("rotate_makeup_points", False) and not config.get("trace_makeup_points", False):
+            raise ValueError("point rotation requires the makeup XY observer")
         debugger.SetAsync(False)
         report["debugger_version"] = debugger.GetVersionString()
         control_log = Path(config["report"]).with_name("debugger-control.log")
@@ -342,9 +360,14 @@ def run(*, debugger, config_path):
         if config.get("trace_makeup_points", False):
             point_trace.install(debugger=debugger, target=target, core=config["core"],
                                 callback=__name__ + ".on_point_breakpoint")
+            point = target.GetBreakpointAtIndex(target.GetNumBreakpoints() - 1)
+            if config.get("rotate_makeup_points", False):
+                STATE.rotation = PointRotation(target=target, load=point,
+                    callback=__name__ + ".on_point_store_breakpoint")
+                point = STATE.rotation
             if config.get("trace_extra_stages", False):
                 STATE.extra = ExtraTrace(target=target,
-                    point_breakpoint=target.GetBreakpointAtIndex(target.GetNumBreakpoints() - 1),
+                    point_breakpoint=point,
                     callback=__name__ + ".on_extra_breakpoint",
                     inner_model=config.get("trace_extra_model", False),
                     model_directory=Path(config["report"]).parent / "extra-model")
@@ -365,6 +388,8 @@ def run(*, debugger, config_path):
             raise RuntimeError(STATE.failures[-1] if STATE.failures else "live host stopped or failed")
         if STATE.extra is not None and not STATE.extra.report()["complete"]:
             raise ValueError("incomplete Extra call/return diagnostics")
+        if STATE.rotation is not None and not STATE.rotation.report()["complete"]:
+            raise ValueError("incomplete makeup load/store rotation")
         report["passed"] = True
     except Exception as error:
         report["failures"].append(f"{type(error).__name__}: {error}")
@@ -382,6 +407,8 @@ def run(*, debugger, config_path):
                     renderer_consumption=False, target_memory_written=False)
             if STATE.extra is not None:
                 report["extra_trace"] = STATE.extra.report()
+            if STATE.rotation is not None:
+                report["point_rotation"] = STATE.rotation.report()
         if "debugger_control_log" in report:
             try:
                 command(debugger=debugger, text="log disable lldb break step")
