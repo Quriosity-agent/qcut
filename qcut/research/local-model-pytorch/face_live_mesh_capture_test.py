@@ -1,5 +1,6 @@
 """CPU-only hostile-memory tests for native mesh inventory/copy evidence."""
 import dataclasses
+import json
 import struct
 import unittest
 
@@ -123,6 +124,33 @@ class MeshCaptureTests(unittest.TestCase):
             reader.read(address=0x10000, size=4)
         with self.assertRaisesRegex(ValueError, "budget"):
             self.memory.reader().read(address=0x10000, size=capture.MAX_READ + 4)
+
+    def test_bad_descriptor_records_exact_values_without_payload_read(self):
+        for begin, end, capacity in ((0x10000, 0x10000 + 1200 * 12, 0x10000 + 1200 * 12),
+                                    (0x10000, 0x10000 + capture.PAYLOAD_SIZE, 2**64 - 1),
+                                    (0x10000, 0xF000, 0x10000), (0, 0, 0)):
+            with self.subTest(begin=begin, end=end, capacity=capacity):
+                vector = self.memory.vectors["normals"]
+                self.memory.put(address=vector + 0x10, data=struct.pack("<3Q", begin, end, capacity))
+                self.memory.calls.clear()
+                with self.assertRaises(ValueError) as raised:
+                    capture.vector_snapshot(reader=self.memory.reader(), vector=vector, channel="normals")
+                message = str(raised.exception)
+                self.assertLess(len(message), 512)
+                self.assertEqual(json.loads(message.split("; descriptor=", 1)[1]), dict(
+                    channel="normals", pointer=vector, begin=begin, end=end, capacity=capacity,
+                    count_bytes=end - begin, capacity_bytes=capacity - begin,
+                    expected_bytes=capture.PAYLOAD_SIZE))
+                self.assertEqual(self.memory.calls, [(vector + 0x10, 24)])
+
+    def test_snapshot_failure_identifies_bad_channel(self):
+        vector = self.memory.vectors["normals"]
+        self.memory.put(address=vector + 0x18, data=struct.pack("<Q", self.memory.begins["normals"]))
+        with self.assertRaises(ValueError) as raised:
+            self.memory.snapshot()
+        descriptor = json.loads(str(raised.exception).split("; descriptor=", 1)[1])
+        self.assertEqual(descriptor["channel"], "normals")
+        self.assertEqual(descriptor["count_bytes"], 0)
 
     def test_all_copied_bytes_and_last_loaded_registers_match(self):
         for channel in ("vertices", "normals"):
