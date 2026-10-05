@@ -1,6 +1,12 @@
 """CPU-only bit comparisons and evidence gates; synthetic fixtures are not parity."""
 import copy
+from dataclasses import replace
+import hashlib
 import json
+import math
+import os
+from pathlib import Path
+import struct
 import unittest
 
 import numpy as np
@@ -8,6 +14,25 @@ import numpy as np
 import face_extra_crop_geometry as geometry
 from face_extra_crop_trace_test import CropMemoryFixture
 import face_live_extra_trace as boundary
+from face_temporal_smoothing import FilterState, update as outer_update
+
+
+def inner_state(*, current=None, scale=4, alpha=0.2):
+    return FilterState(current=np.zeros((1, 2), np.float32) if current is None else current,
+        previous=np.empty((0, 2), np.float32), delta=np.empty((0, 2), np.float32),
+        alpha=alpha, scale=scale, first=True)
+
+
+def rounded(*, value):
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def scalar_inner(*, old, new, scale):
+    delta = rounded(value=float(new) - float(old))
+    ratio = rounded(value=abs(delta) / float(scale))
+    weight = rounded(value=math.exp(-math.pow(ratio, 3.0)))
+    return rounded(value=rounded(value=float(old) * weight) +
+                   rounded(value=float(new) * rounded(value=1.0 - weight)))
 
 
 class AuditFixture(CropMemoryFixture):
@@ -252,6 +277,187 @@ class BitComparisonTests(unittest.TestCase):
                            ([0.0] * 480, True), ([0.0] * 480, 0), ([0.0] * 480, 4097)):
             with self.subTest(size=size), self.assertRaises(ValueError):
                 geometry.mean106(mean=mean, size=size)
+
+
+class InnerFilterTests(unittest.TestCase):
+    def test_analytic_cubic_weight_not_outer_square_root(self):
+        points = np.array([[8, 0]], np.float32)
+        state = inner_state()
+        output, updated = geometry.update_inner_filter(state=state, points=points)
+        weight = np.array([0x39afe108], np.uint32).view(np.float32)[0]
+        self.assertEqual(output[0, 0], np.float32(8) * (np.float32(1) - weight))
+        self.assertEqual(output[0, 1], 0)
+        self.assertFalse(updated.first)
+        self.assertFalse(np.array_equal(output, outer_update(state=state, points=points, optimized=False)[0]))
+
+    def test_first_and_nonfirst_replace_delta_without_alpha_blending(self):
+        points = np.array([[1, -2]], np.float32)
+        results = []
+        for alpha in (0, 0.2, 1):
+            for first in (True, False):
+                state = replace(inner_state(alpha=alpha), first=first, delta=np.array([[999, -999]], np.float32))
+                output, updated = geometry.update_inner_filter(state=state, points=points)
+                results.append(output)
+                self.assertTrue(geometry.compare_bits(actual=updated.delta, expected=points)["equal"])
+                self.assertEqual(updated.alpha, np.float32(alpha))
+                self.assertFalse(updated.first)
+        self.assertTrue(all(geometry.compare_bits(actual=item, expected=results[0])["equal"] for item in results))
+
+    def test_weighted_sum_cannot_be_reassociated_to_subtraction(self):
+        old = np.array([[-194.113525390625, 0]], np.float32)
+        points = np.array([[-194.29429626464844, 0]], np.float32)
+        output, _ = geometry.update_inner_filter(state=inner_state(current=old, scale=2.6666667461395264), points=points)
+        self.assertEqual(int(output[0, 0].view(np.uint32)), 3275889939)
+        wrong = points[0, 0] - (points[0, 0] - old[0, 0]) * np.float32(0.9996885061264038)
+        self.assertEqual(int(wrong.view(np.uint32)), 3275889940)
+
+    def test_multistep_106_points_match_scalar_float32_instruction_order(self):
+        rng = np.random.default_rng(20261005)
+        current = rng.uniform(-1000, 1000, (106, 2)).astype(np.float32)
+        state = inner_state(current=current, scale=2.6666667461395264)
+        for _ in range(5):
+            points = (current + rng.uniform(-8, 8, current.shape)).astype(np.float32)
+            expected = np.array([scalar_inner(old=old, new=new, scale=state.scale)
+                                 for old, new in zip(current.flat, points.flat, strict=True)], np.float32).reshape(106, 2)
+            output, updated = geometry.update_inner_filter(state=state, points=points)
+            self.assertTrue(geometry.compare_bits(actual=output, expected=expected)["equal"])
+            self.assertTrue(geometry.compare_bits(actual=updated.previous, expected=current)["equal"])
+            self.assertTrue(geometry.compare_bits(actual=updated.delta, expected=points-current)["equal"])
+            current, state = expected, updated
+
+    def test_scale_bypass_preserves_delta_and_first_but_advances_current_previous(self):
+        for first in (True, False):
+            state = replace(inner_state(scale=0), first=first, delta=np.array([[9, 10]], np.float32))
+            points = np.array([[-0.0, 4]], np.float32)
+            output, updated = geometry.update_inner_filter(state=state, points=points)
+            self.assertTrue(geometry.compare_bits(actual=output, expected=points)["equal"])
+            self.assertTrue(geometry.compare_bits(actual=updated.previous, expected=state.current)["equal"])
+            self.assertTrue(geometry.compare_bits(actual=updated.delta, expected=state.delta)["equal"])
+            self.assertIs(updated.first, first)
+
+    def test_scale_threshold_compares_promoted_float_to_double_constant(self):
+        lower = np.float32(1e-5)
+        upper = np.nextafter(lower, np.float32(1))
+        self.assertLess(float(lower), 1e-5)
+        self.assertGreater(float(upper), 1e-5)
+        for scale, expected_first in ((lower, True), (upper, False)):
+            _, state = geometry.update_inner_filter(state=inner_state(scale=scale), points=np.ones((1, 2), np.float32))
+            self.assertIs(state.first, expected_first)
+
+    def test_empty_input_or_state_does_not_advance_history(self):
+        empty = np.empty((0, 2), np.float32)
+        for state, points in ((inner_state(), empty), (inner_state(current=empty), np.ones((1, 2), np.float32))):
+            output, updated = geometry.update_inner_filter(state=state, points=points)
+            self.assertIs(updated, state)
+            self.assertTrue(geometry.compare_bits(actual=output, expected=points)["equal"])
+            self.assertFalse(np.shares_memory(output, points))
+
+    def test_zero_displacement_and_weight_underflow_remain_finite(self):
+        for old, points in ((np.array([[7, -8]], np.float32), np.array([[7, -8]], np.float32)),
+                            (np.array([[-32768, 32768]], np.float32), np.array([[32768, -32768]], np.float32))):
+            output, _ = geometry.update_inner_filter(state=inner_state(current=old), points=points)
+            self.assertTrue(geometry.compare_bits(actual=output, expected=points)["equal"])
+
+    def test_invalid_input_or_size_change_is_rejected_without_cast(self):
+        for points in ([[1, 2]], np.ones((1, 2), np.float64), np.ones((2, 2), np.float32),
+                       np.ones((107, 2), np.float32), np.ones((1, 3), np.float32),
+                       np.full((1, 2), np.nan, np.float32), np.full((1, 2), 32769, np.float32)):
+            with self.subTest(shape=np.shape(points)), self.assertRaises(ValueError):
+                geometry.update_inner_filter(state=inner_state(), points=points)
+        with self.assertRaises(ValueError):
+            geometry.update_inner_filter(state={}, points=np.ones((1, 2), np.float32))
+
+    def test_inputs_remain_unchanged_and_result_buffers_are_detached(self):
+        state = inner_state()
+        points = np.ones((1, 2), np.float32)
+        output, updated = geometry.update_inner_filter(state=state, points=points)
+        output[:] = 99
+        points[:] = 200
+        self.assertTrue(np.array_equal(state.current, np.zeros((1, 2), np.float32)))
+        self.assertFalse(np.array_equal(updated.current, output))
+        self.assertFalse(updated.current.flags.writeable)
+        self.assertFalse(np.shares_memory(updated.previous, state.current))
+
+
+R4_PATH = os.environ.get("QCUT_FACE_EXTRA_CROP_OBSERVER")
+
+
+@unittest.skipUnless(R4_PATH, "set QCUT_FACE_EXTRA_CROP_OBSERVER to the private r4 observer")
+class CapturedInnerFilterTests(unittest.TestCase):
+    def setUp(self):
+        payload = Path(R4_PATH).read_bytes()
+        self.assertEqual(hashlib.sha256(payload).hexdigest(),
+                         "c83f4f42802a164a547bb0bd6fb19e9da4c35a6877d35d7a06a35368ce14f017")
+        self.observer = json.loads(payload)
+
+    def test_actual_r4_bypass_and_636_coordinate_state_bits_match(self):
+        result = geometry.audit_inner_filter(observer=self.observer)
+        self.assertTrue(result["boundary_state_bits_equal"])
+        self.assertEqual([case["mode"] for case in result["cases"]], ["config-bypass", "cubic-inner-update"])
+        checks = result["cases"][1]["checks"]
+        self.assertEqual(sum(checks[key]["compared_values"] for key in
+                             ("current_xy", "previous_xy", "delta_x", "delta_y")), 636)
+        self.assertFalse(result["owned_geometry_enabled"])
+        self.assertFalse(result["geometry_parity_verified"])
+        self.assertFalse(result["cases"][1]["actual_inner_call_arguments_captured"])
+
+    def test_actual_r4_mapping_roundtrip_is_not_an_identity(self):
+        result = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.assertEqual(result["roundtrip_vs_pre_published"]["mismatched_values"], 5)
+        self.assertEqual(result["input_sha256"], "7dc2bfb159b5ca1c0a1e714228e75145c263b5941dbb8951e86a71fefa036e49")
+        self.assertEqual(result["output_sha256"], "51b4ae4b9eebaacd1210c3719dd9bc3ff52a170675aebc41505511c515a79cef")
+
+    def test_corrupt_post_filter_state_is_only_a_failed_reference_not_an_input(self):
+        expected = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.observer["extra_trace"]["events"][3]["crop_geometry"]["inner_filter"]["current_xy"][0] += 1
+        result = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.assertFalse(result["boundary_state_bits_equal"])
+        self.assertEqual(result["checks"]["current_xy"]["mismatched_values"], 1)
+        self.assertEqual(result["output_sha256"], expected["output_sha256"])
+        self.assertEqual(result["input_sha256"], expected["input_sha256"])
+
+    def test_final_published_points_and_extra_transform_do_not_feed_filter_math(self):
+        expected = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        row = self.observer["extra_trace"]["events"][3]
+        row["snapshot"]["published_xy"][0] += 10
+        row["crop_geometry"]["published_xy"][0] += 10
+        row["crop_geometry"]["transforms"]["extra"]["forward"][0][2] += 10
+        result = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.assertTrue(result["boundary_state_bits_equal"])
+        self.assertEqual(result["output_sha256"], expected["output_sha256"])
+
+    def test_changed_pre_crop_point_changes_computation_and_fails_comparison(self):
+        row = self.observer["extra_trace"]["events"][2]
+        row["snapshot"]["published_xy"][0] += 10
+        row["crop_geometry"]["published_xy"][0] += 10
+        result = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.assertFalse(result["boundary_state_bits_equal"])
+        self.assertFalse(result["checks"]["delta_x"]["equal"])
+
+    def test_inconsistent_native_matrix_observations_are_rejected(self):
+        row = self.observer["extra_trace"]["events"][3]
+        row["crop_geometry"]["transforms"]["stage2"]["forward"][0][2] += 1
+        with self.assertRaisesRegex(ValueError, "diagnostics disagree"):
+            geometry.audit_inner_filter(observer=self.observer)
+
+    def test_optimized_secondary_warp_and_other_face_modes_are_rejected(self):
+        original = copy.deepcopy(self.observer)
+        for key, field, value in (("config_bytes", "0xb", 1), ("config_bytes", "0x21", 1),
+                                  ("face_modes", "0x3c", 5), ("face_modes", "0x68", 1)):
+            self.observer = copy.deepcopy(original)
+            for row in self.observer["extra_trace"]["events"]:
+                row["snapshot"][key][field] = value
+                row["crop_geometry"][key][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "ordinary primary106"):
+                geometry.audit_inner_filter(observer=self.observer)
+
+    def test_post_state_first_and_parameter_mismatch_are_reported(self):
+        state = self.observer["extra_trace"]["events"][3]["crop_geometry"]["inner_filter"]
+        state["first"], state["alpha"] = True, 0.5
+        result = geometry.audit_inner_filter(observer=self.observer)["cases"][1]
+        self.assertFalse(result["boundary_state_bits_equal"])
+        self.assertFalse(result["checks"]["first"]["equal"])
+        self.assertFalse(result["checks"]["alpha"]["equal"])
 
 
 if __name__ == "__main__":
