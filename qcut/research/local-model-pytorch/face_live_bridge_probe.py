@@ -299,7 +299,7 @@ def run(*, args):
         extra_stage_diagnostics=getattr(args, "trace_extra_stages", False),
         extra_model_diagnostics=getattr(args, "trace_extra_model", False),
         mesh_copy_diagnostics=getattr(args, "trace_mesh_points", False),
-        extra_refinement_root=str(args.extra_root.resolve(strict=True)) if getattr(args, "extra_root", None) is not None else None,
+        extra_refinement_root=str(args.extra_root) if getattr(args, "extra_root", None) is not None else None,
         native_execution_performed=False, live_checks_completed=False, native_analysis_bypassed=False,
         product_backend_registered=False, arbitrary_frame_backend_connected=False,
         product_parity_verified=False, native_head_value_parity_verified=False,
@@ -334,9 +334,15 @@ def run(*, args):
             models = OnnxHeads(root=args.root)
             if getattr(args, "extra_root", None) is not None:
                 from face_extra_heads_onnx import ExtraHeads
+                # ExtraHeads.version hashes path strings and the worker loads the resolved root, so hash that
+                # same spelling here. Resolving hides a symlinked root from ExtraHeads, so reject it first.
+                if args.extra_root.is_symlink():
+                    raise ValueError("Extra root must be an existing nonsymlink directory")
+                args.extra_root = args.extra_root.resolve(strict=True)
+                report["extra_refinement_root"] = str(args.extra_root)
                 extra_models = ExtraHeads(root=args.extra_root)
                 report["extra_backend_version"] = extra_models.version
-                guard.tree(directory=args.extra_root.resolve(strict=True))
+                guard.tree(directory=args.extra_root)
                 report["native_dependencies"].append("extra-inner-filter-crop-transforms-and-mean")
             report["models"] = models.provenance
             report["phase"] = "compile"
@@ -419,7 +425,7 @@ def run(*, args):
             *(["--trace-extra-stages"] if getattr(args, "trace_extra_stages", False) else []),
             *(["--trace-extra-model"] if getattr(args, "trace_extra_model", False) else []),
             *(["--trace-mesh-points"] if getattr(args, "trace_mesh_points", False) else []),
-            *(["--extra-root", str(args.extra_root.resolve(strict=True))] if getattr(args, "extra_root", None) is not None else []),
+            *(["--extra-root", str(args.extra_root)] if getattr(args, "extra_root", None) is not None else []),
             *(["--execute-native", "--lease", args.lease] if args.execute_native else [])]))
         try:
             bundle.write_json(path=out / "report.json", value=report)
