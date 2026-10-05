@@ -71,6 +71,11 @@ def same_bits(*, left, right):
 
 
 def normal_state(*, state):
+    """Live gate until heap output/history ownership is captured for copy branches.
+
+    CPU branch math lives in face_extra_inner_math. Do not widen this gate alone:
+    shared crop snapshots still cap histories at106 and returns require inline106.
+    """
     require(condition=type(state) is dict and type(state.get("count")) is int and state["count"] == 106
             and type(state.get("current_xy")) is list and len(state["current_xy"]) == 212,
             message="initialized primary106 direct inner state required")
