@@ -48,7 +48,7 @@ def lock_binary(*, executable, guard):
                 size_bytes=before.st_size, identity=identity)
 
 
-def resolve_debugger(*, executable=None, debugserver=None, guard):
+def resolve_debugger(*, guard, executable=None, debugserver=None):
     frontend = lock_binary(executable=executable, guard=guard) if executable is not None else None
     server = lock_binary(executable=debugserver, guard=guard) if debugserver is not None else None
     overrides = {"LLDB_DEBUGSERVER_PATH": server["resolved_path"]} if server is not None else {}
