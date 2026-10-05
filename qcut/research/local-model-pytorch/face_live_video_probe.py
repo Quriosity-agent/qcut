@@ -314,7 +314,7 @@ def run(*, args):
                           timestamp_rebase="source PTS * time_base minus first source PTS * time_base",
                           covered_pts_span_seconds=frames[-1]["relative_seconds"])
             manifest = dict(version=1, frames=[dict(image=frame["image"], timestamp=frame["timestamp"],
-                parameters={"face_adjust_eye": [{"id": -1, "intensity": args.eye_intensity}]},
+                parameters={"face_adjust_EnlargeEye": [{"id": -1, "intensity": args.eye_intensity}]},
                 expect_change=True, label=f"source-frame-{frame['index']:02d}") for frame in frames])
             sequence.validate_manifest(value=manifest, base=out, expect_change=True)
             bundle.write_json(path=out / "manifest.json", value=manifest)
