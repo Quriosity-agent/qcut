@@ -44,7 +44,8 @@ def point_vector(*, read, address, count):
     begin, capacity = struct.unpack("<2Q", checked_read(read=read, address=address, size=16))
     size = scalar(read=read, address=address + 0x450, kind="<Q")
     require(condition=size == count and begin == address + 16 and size <= capacity <= 136,
-            message="unsupported inline Point136 AutoVector")
+            message=f"unsupported inline Point136 AutoVector: address={address:#x}, begin={begin:#x}, "
+                    f"capacity={capacity}, size={size}, expected_count={count}")
     return dict(address=address, data=begin, capacity=capacity, count=size,
                 xy=[] if size == 0 else floats(read=read, address=begin, count=size * 2))
 
