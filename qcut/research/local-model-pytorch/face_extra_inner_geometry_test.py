@@ -12,6 +12,8 @@ from face_extra_inner_trace_test import InnerTraceFixture
 
 
 class DirectAuditFixture(InnerTraceFixture):
+    use_heap_input = False
+
     def observer_payload(self):
         for address in (0x82000, 0x83000):
             self.memory[address] = struct.pack("<3f", 1, 0, 0)
@@ -21,7 +23,10 @@ class DirectAuditFixture(InnerTraceFixture):
         self.boundary(observer=observer, name="after")
         self.start(observer=observer, prediction=1, bypass=0)
         inputs = [i / 8 + (0.75 if i % 2 else -0.375) for i in range(212)]
-        self.put_points(address=self.sp + 0x1b68, count=106, values=inputs)
+        if self.use_heap_input:
+            self.heap_input(values=inputs + [1000 + i / 8 for i in range(348)])
+        else:
+            self.put_points(address=self.sp + 0x1b68, count=106, values=inputs)
         self.registers.update(self.arguments())
         self.boundary(observer=observer, name="inner_call")
         call = observer.inner_receipts[-1]["events"][0]
@@ -167,6 +172,67 @@ class DirectReplayTests(DirectAuditFixture, unittest.TestCase):
             self.payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"][0]["inner_filter"][key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
                 geometry.audit_direct_inner_filter(observer=self.payload)
+
+
+class HeapReplayTests(DirectAuditFixture, unittest.TestCase):
+    use_heap_input = True
+
+    def setUp(self):
+        super().setUp()
+        self.payload = self.observer_payload()
+
+    def test_full_input_hash_and_explicit_106_consumption(self):
+        import hashlib
+        case = geometry.audit_direct_inner_filter(observer=self.payload)["cases"][1]
+        inputs = self.payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"][0]["input"]["xy"]
+        self.assertTrue(case["arithmetic_bits_equal"])
+        self.assertEqual((case["input_point_count"], case["consumed_point_count"], case["output_point_count"],
+                          case["unconsumed_tail_point_count"]), (280, 106, 106, 174))
+        self.assertEqual(case["input_sha256"], hashlib.sha256(struct.pack("<560f", *inputs)).hexdigest())
+        self.assertEqual(case["consumed_input_sha256"], hashlib.sha256(struct.pack("<212f", *inputs[:212])).hexdigest())
+
+    def test_unconsumed_tail_changes_full_hash_not_arithmetic_or_consumed_hash(self):
+        expected = geometry.audit_direct_inner_filter(observer=self.payload)["cases"][1]
+        for row in self.payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"]:
+            row["input"]["xy"][212] += 10
+        actual = geometry.audit_direct_inner_filter(observer=self.payload)["cases"][1]
+        self.assertTrue(actual["arithmetic_bits_equal"])
+        self.assertNotEqual(actual["input_sha256"], expected["input_sha256"])
+        self.assertEqual(actual["consumed_input_sha256"], expected["consumed_input_sha256"])
+        self.assertEqual(actual["output_sha256"], expected["output_sha256"])
+
+    def test_return_tail_mutation_is_not_treated_as_ignored(self):
+        self.payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"][1]["input"]["xy"][559] += 1
+        with self.assertRaisesRegex(ValueError, "const input"):
+            geometry.audit_direct_inner_filter(observer=self.payload)
+
+    def test_return_output_and_state_remain_reference_only_for_heap_input(self):
+        expected = geometry.audit_direct_inner_filter(observer=self.payload)["cases"][1]
+        returned = self.payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"][1]
+        returned["output"]["xy"][0] += 1
+        returned["inner_filter"]["current_xy"][0] += 1
+        actual = geometry.audit_direct_inner_filter(observer=self.payload)["cases"][1]
+        self.assertFalse(actual["arithmetic_bits_equal"])
+        self.assertEqual(actual["input_sha256"], expected["input_sha256"])
+        self.assertEqual(actual["output_sha256"], expected["output_sha256"])
+
+    def test_heap_receipt_alias_capacity_and_unimplemented_branch_rejected(self):
+        original = copy.deepcopy(self.payload)
+        for kind in ("alias", "capacity", "near-zero", "empty", "consumed"):
+            payload = copy.deepcopy(original)
+            for row in payload["extra_trace"]["inner_filter_trace"]["receipts"][1]["events"]:
+                if kind == "alias":
+                    row["input"]["data"] = row["output"]["data"]
+                if kind == "capacity":
+                    row["input"]["capacity"] = 307
+                if kind == "near-zero":
+                    row["inner_filter"]["scale"] = 0
+                if kind == "empty":
+                    row["inner_filter"]["current_xy"] = []
+                if kind == "consumed":
+                    row["consumed_point_count"] = 280
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                geometry.audit_direct_inner_filter(observer=payload)
 
 
 if __name__ == "__main__":
