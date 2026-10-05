@@ -8,6 +8,7 @@ import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
 } from "./beauty-lab-candidate-request.js";
+import { beautyLabLiveFailureAllowsRetry } from "./beauty-lab-live-candidate-failure.js";
 import { runBeautyLabLiveCandidateJob } from "./beauty-lab-live-candidate-process.js";
 import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab-live-candidate-inventory.js";
 import { captureBeautyLabLiveDependencies } from "./beauty-lab-live-candidate-provenance.js";
@@ -95,6 +96,9 @@ export async function createBeautyLabLiveCandidateBackend({
 			active?.controller.abort(new Error("Live static audit cancelled"));
 			await active?.done;
 		},
+		cancel: () => {
+			active?.controller.abort(new Error("Live static audit cancelled"));
+		},
 		render: async (request) => {
 			if (disposed) throw new Error("Live static backend disposed");
 			if (blocker) throw new Error(blocker);
@@ -119,6 +123,9 @@ export async function createBeautyLabLiveCandidateBackend({
 				}),
 			};
 			let attempted = false;
+			let job:
+				| { directory: string; lease: string; verify: () => Promise<void> }
+				| undefined;
 			try {
 				await snapshot.verify();
 				controller.signal.throwIfAborted();
@@ -139,6 +146,14 @@ export async function createBeautyLabLiveCandidateBackend({
 				const jobs = await checkPath({ root: source, relativePath: JOBS });
 				const directory = await mkdtemp(path.join(jobs, "static-"));
 				const lease = `beauty-lab-static:${randomUUID()}`;
+				job = {
+					directory,
+					lease,
+					verify: async () => {
+						await dependencies.verify();
+						await snapshot.verify();
+					},
+				};
 				const bound = { ...parsed, ...identity };
 				const {
 					rgba: _rgba,
@@ -201,7 +216,11 @@ export async function createBeautyLabLiveCandidateBackend({
 				controller.signal.throwIfAborted();
 				return result;
 			} catch (error) {
-				if (attempted) blocker = "live-static-audit-failed-restart-required";
+				if (
+					attempted &&
+					!(job && (await beautyLabLiveFailureAllowsRetry({ error, ...job })))
+				)
+					blocker = "live-static-audit-failed-restart-required";
 				throw error;
 			} finally {
 				active = undefined;
