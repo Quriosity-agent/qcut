@@ -25,6 +25,12 @@ class CropObserverIntegrationTests(TraceFixture, unittest.TestCase):
         return trace.ExtraTrace(target=self.target, point_breakpoint=self.point,
             callback="test.on_extra", inner_model=True, model_directory=self.directory)
 
+    @staticmethod
+    def crop_receipt(**kwargs):
+        return dict(event=kwargs["event"], prediction=kwargs["prediction"], diagnostic_only=True,
+            config_bytes={hex(offset): int(offset in (0, 4, 0xa)) for offset in crop.CONFIG_BYTES},
+            face_modes={"0x3c": 1, "0x68": 0}, face_bytes={"0x4d": 0}, reset_byte=0)
+
     def test_debugger_import_needs_no_numpy_or_site_packages(self):
         source = "import sys; sys.path.insert(0, sys.argv[1]); import face_extra_crop_trace; " \
                  "assert 'numpy' not in sys.modules; assert 'PIL' not in sys.modules"
@@ -43,8 +49,7 @@ class CropObserverIntegrationTests(TraceFixture, unittest.TestCase):
         self.assertFalse(self.directory.exists())
 
     def test_call_arguments_survive_return_register_clobber_and_refresh_per_prediction(self):
-        with mock.patch.object(crop, "snapshot", side_effect=lambda **kwargs: dict(
-                event=kwargs["event"], prediction=kwargs["prediction"], diagnostic_only=True)) as capture, \
+        with mock.patch.object(crop, "snapshot", side_effect=self.crop_receipt) as capture, \
                 mock.patch.object(model, "snapshot", return_value=dict(diagnostic_only=True)) as inner:
             observer = self.enabled_observer()
             for prediction in range(2):
@@ -69,7 +74,7 @@ class CropObserverIntegrationTests(TraceFixture, unittest.TestCase):
 
     def assert_failed_capture(self, *, failure_at):
         with mock.patch.object(crop, "snapshot", side_effect=lambda **kwargs: (
-                self.fail_snapshot() if kwargs["event"] == failure_at else dict(diagnostic_only=True))), \
+                self.fail_snapshot() if kwargs["event"] == failure_at else self.crop_receipt(**kwargs))), \
                 mock.patch.object(model, "snapshot") as inner:
             observer = self.enabled_observer()
             self.begin(observer=observer)
