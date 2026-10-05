@@ -1,5 +1,9 @@
 import { spawn } from "node:child_process";
 import { stripVTControlCharacters } from "node:util";
+import {
+	createBeautyLabLiveJobError,
+	type BeautyLabLiveJobFailureKind,
+} from "./beauty-lab-live-candidate-failure.js";
 
 const OUTPUT_LIMIT = 1024 * 1024;
 const JOB_TIMEOUT_MS = 300_000;
@@ -88,7 +92,12 @@ export async function runBeautyLabLiveCandidateJob({
 	cwd: string;
 	signal?: AbortSignal;
 }): Promise<void> {
-	if (signal?.aborted) throw new Error("Live candidate job cancelled");
+	if (signal?.aborted)
+		throw createBeautyLabLiveJobError({
+			message: "Live candidate job cancelled",
+			kind: "not-started",
+			forced: false,
+		});
 	const env: NodeJS.ProcessEnv = { PYTHONDONTWRITEBYTECODE: "1" };
 	for (const key of [
 		"HOME",
@@ -110,33 +119,45 @@ export async function runBeautyLabLiveCandidateJob({
 			shell: false,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
-		let failure: Error | undefined;
+		let failure:
+			| { message: string; kind: BeautyLabLiveJobFailureKind }
+			| undefined;
+		let forced = false;
 		let received = 0;
 		const errorDetailReader = createErrorDetailReader();
 		let grace: ReturnType<typeof setTimeout> | undefined;
-		const stop = ({ error }: { error: Error }) => {
+		const stop = ({
+			message,
+			kind,
+		}: {
+			message: string;
+			kind: BeautyLabLiveJobFailureKind;
+		}) => {
 			if (failure) return;
-			failure = error;
+			failure = { message, kind };
 			// Python's SIGTERM handler runs its identity-bound native ProcessScope cleanup.
 			child.kill("SIGTERM");
 			grace = setTimeout(() => {
-				failure = new Error(
-					`${error.message}; Python cleanup deadline exceeded`
-				);
+				failure = {
+					message: `${message}; Python cleanup deadline exceeded`,
+					kind,
+				};
+				forced = true;
 				child.kill("SIGKILL");
 			}, CLEANUP_GRACE_MS);
 		};
 		const timer = setTimeout(
-			() => stop({ error: new Error("Live candidate job timed out") }),
+			() => stop({ message: "Live candidate job timed out", kind: "timeout" }),
 			JOB_TIMEOUT_MS
 		);
 		const cancel = () =>
-			stop({ error: new Error("Live candidate job cancelled") });
+			stop({ message: "Live candidate job cancelled", kind: "cancelled" });
 		const consume = ({ data }: { data: Buffer }) => {
 			received += data.byteLength;
 			if (received > OUTPUT_LIMIT)
 				stop({
-					error: new Error("Live candidate process output exceeded budget"),
+					message: "Live candidate process output exceeded budget",
+					kind: "output-budget",
 				});
 		};
 		child.stdout.on("data", (data: Buffer) => consume({ data }));
@@ -145,20 +166,26 @@ export async function runBeautyLabLiveCandidateJob({
 			if (!failure) errorDetailReader.consume({ data });
 		});
 		child.once("error", (error) => {
-			failure = error;
+			failure = { message: error.message, kind: "process-error" };
 		});
 		child.once("close", (code, exitSignal) => {
 			clearTimeout(timer);
 			if (grace) clearTimeout(grace);
 			signal?.removeEventListener("abort", cancel);
 			if (failure) {
-				reject(failure);
+				reject(createBeautyLabLiveJobError({ ...failure, forced }));
 				return;
 			}
 			if (code !== 0 || exitSignal) {
 				const detail = errorDetailReader.finish();
 				const reason = `Live candidate job failed (${code ?? exitSignal})`;
-				reject(new Error(detail ? `${reason}: ${detail}` : reason));
+				reject(
+					createBeautyLabLiveJobError({
+						message: detail ? `${reason}: ${detail}` : reason,
+						kind: exitSignal ? "exit-signal" : "exit-code",
+						forced: false,
+					})
+				);
 				return;
 			}
 			resolve();
