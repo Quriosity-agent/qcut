@@ -185,6 +185,48 @@ class ExtraLauncherTests(fixtures.BundleFixture, unittest.TestCase):
             else:
                 self.assertNotIn("QCUT_FACE_LIVE_EXTRA_REFINEMENT", config["environment"])
 
+    def test_missing_extra_root_still_writes_a_durable_report(self):
+        self.args.extra_root = self.root / "does-not-exist"
+        with mock.patch("face_extra_heads_onnx.ExtraHeads") as heads:
+            result, native = self.run_preparation()
+        heads.assert_not_called()
+        native.assert_not_called()
+        self.assertFalse(result["prepared"])
+        self.assertEqual(result["failures"][0]["phase"], "prepare")
+        self.assertIn("FileNotFoundError", result["failures"][0]["error"])
+        self.assertEqual(result["extra_refinement_root"], str(self.args.extra_root))
+        command = shlex.split(result["command"])
+        self.assertEqual(command[command.index("--extra-root") + 1], str(self.args.extra_root))
+        self.assertEqual(json.loads((self.args.out / "report.json").read_text())["failures"], result["failures"])
+
+    def test_extra_version_hashes_the_resolved_root_the_worker_receives(self):
+        # The fixture lives under /tmp, a symlink on macOS; the ".." detour differs textually as well.
+        models = self.root / "extra-models"
+        models.mkdir()
+        (self.root / "detour").mkdir()
+        self.args.extra_root = self.root / "detour" / ".." / "extra-models"
+        with mock.patch("face_extra_heads_onnx.ExtraHeads") as heads:
+            heads.return_value.version = "extra-heads-v1:resolved"
+            result, _ = self.run_preparation()
+        resolved = models.resolve(strict=True)
+        heads.assert_called_once_with(root=resolved)
+        self.assertEqual(result["extra_refinement_root"], str(resolved))
+        self.assertEqual(result["extra_backend_version"], "extra-heads-v1:resolved")
+        command = shlex.split(result["command"])
+        self.assertEqual(command[command.index("--extra-root") + 1], str(resolved))
+
+    def test_symlinked_extra_root_is_rejected_before_loading(self):
+        models = self.root / "extra-models"
+        models.mkdir()
+        link = self.root / "extra-link"
+        link.symlink_to(models, target_is_directory=True)
+        self.args.extra_root = link
+        with mock.patch("face_extra_heads_onnx.ExtraHeads") as heads:
+            result, _ = self.run_preparation()
+        heads.assert_not_called()
+        self.assertFalse(result["prepared"])
+        self.assertIn("nonsymlink", result["failures"][0]["error"])
+
 
 class ExtraCallbackTests(unittest.TestCase):
     def test_callback_uses_readonly_extra_observer_without_advancing_worker(self):
