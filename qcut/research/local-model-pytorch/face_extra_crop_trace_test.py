@@ -21,7 +21,7 @@ class CropMemoryFixture(MemoryFixture):
         self.memory[self.parameter + 0x18] = struct.pack("<2i", 2, 0)
         for offset in crop.CONFIG_BYTES:
             self.memory[self.registers["x3"] + offset] = bytes([int(offset in (0, 4))])
-        for offset in (0x44, 0x96):
+        for offset in (0x44, 0x4d, 0x96):
             self.memory[self.registers["x4"] + offset] = b"\0"
         for offset, value in ((0x3c, 1), (0x68, 0)):
             self.memory[self.registers["x4"] + offset] = struct.pack("<i", value)
