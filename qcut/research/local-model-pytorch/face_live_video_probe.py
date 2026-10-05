@@ -242,6 +242,7 @@ def bridge_args(*, args, out):
     return argparse.Namespace(runtime=args.runtime, package=args.package, root=args.root,
         manifest=out / "manifest.json", out=out / "bridge", timeout=args.timeout,
         execute_native=True, lease=args.lease, stable_host=args.stable_host,
+        lldb_executable=getattr(args, "lldb_executable", None), debugserver=getattr(args, "debugserver", None),
         single_frame=False, static_controls=False, cold_frame=False, extra_root=None)
 
 
@@ -362,6 +363,8 @@ def parser():
     modes.add_argument("--execute-native", action="store_true")
     result.add_argument("--lease")
     result.add_argument("--stable-host", action="store_true")
+    result.add_argument("--lldb-executable", type=Path)
+    result.add_argument("--debugserver", type=Path)
     result.add_argument("--frames", type=int, default=12)
     result.add_argument("--eye-intensity", type=float, default=0.4)
     result.add_argument("--decode-timeout", type=float, default=60)
