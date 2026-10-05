@@ -1,4 +1,5 @@
 import {
+	CircleStop,
 	Download,
 	FlaskConical,
 	ImagePlus,
@@ -61,6 +62,22 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 		: isZh
 			? "新链路：候选后端就绪"
 			: "Candidate: backend ready";
+	const restartRequired = lab.candidateStatus?.blockers.includes(
+		"live-static-audit-failed-restart-required"
+	);
+	const candidateStateLabel = lab.candidateJob
+		? isZh
+			? "新链路：上一次核验仍在运行"
+			: "Candidate: previous audit still running"
+		: restartRequired
+			? isZh
+				? "新链路：上次核验未能确认清理，需重启 QCut"
+				: "Candidate: last audit cleanup unverified, restart QCut"
+			: lab.candidateStatus?.available
+				? candidateReadyLabel
+				: isZh
+					? "新链路：任意画面推理未接入"
+					: "Candidate: arbitrary-frame inference not connected";
 	const liveCandidateLabel = singleFrameAudit
 		? isZh
 			? "新链路（单帧核验）"
@@ -229,6 +246,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 							disabled ||
 							!lab.input ||
 							Boolean(lab.record) ||
+							Boolean(lab.candidateJob) ||
 							!lab.candidateStatus?.available
 						}
 						title={lab.candidateStatus?.blockers.join(", ")}
@@ -242,6 +260,29 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						)}
 						{isZh ? "候选处理" : "Render candidate"}
 					</Button>
+					{lab.candidateJob && (
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={lab.candidateJob.cancelling}
+							onKeyDown={(event) => event.stopPropagation()}
+							onClick={() => void lab.cancelCandidate()}
+						>
+							{lab.candidateJob.cancelling ? (
+								<Loader2 size={16} className="animate-spin" />
+							) : (
+								<CircleStop size={16} />
+							)}
+							{lab.candidateJob.cancelling
+								? isZh
+									? "正在取消…"
+									: "Cancelling…"
+								: isZh
+									? "取消核验"
+									: "Cancel audit"}
+						</Button>
+					)}
 					<Button
 						type="button"
 						size="icon"
@@ -282,11 +323,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						? isZh
 							? "新链路：离线回放，仍含原生依赖"
 							: "Candidate: offline replay, native dependencies remain"
-						: lab.candidateStatus?.available
-							? candidateReadyLabel
-							: isZh
-								? "新链路：任意画面推理未接入"
-								: "Candidate: arbitrary-frame inference not connected"}
+						: candidateStateLabel}
 				</span>
 				{lab.input && (
 					<span>
