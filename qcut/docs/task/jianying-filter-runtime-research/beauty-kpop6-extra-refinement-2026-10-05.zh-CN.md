@@ -1,7 +1,7 @@
 # beauty-6-kpop：Extra ONNX 精修与口红零差异闭环
 
 日期：2026-10-05。分支：`beauty-6-kpop`。
-工作目录：`/Users/peter/Desktop/code/qcut/qcut`。
+工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 起点：`6c9e5d9a0c859f178c5263b6081dad939b4a8670`。
 前置记录：[逐阶段诊断与 Extra 缺口](beauty-kpop6-stage-divergence-2026-10-05.zh-CN.md)。
 
@@ -169,7 +169,7 @@ Extra 自主采样、推理和映射在这六次预测中约 13.9-15.1 ms。
 四个有效原生案例的 capture/host 编译、消费证明、点位和最终图像验收另计。
 
 ```bash
-cd /Users/peter/Desktop/code/qcut/qcut/research/local-model-pytorch
+cd "$(git rev-parse --show-toplevel)/qcut/research/local-model-pytorch"
 export QCUT_FACE_LIVE_MODEL_ROOT=$PWD/../../.local/jianying-model-pytorch/face-heads-20261003-stable-r2
 export QCUT_FACE_EXTRA_MODEL_ROOT=$PWD/../../.local/jianying-model-pytorch/face-extra-heads-20261005-r1
 export QCUT_FACE_EXTRA_REFERENCE_ROOT=$PWD/../../.local/jianying-model-pytorch/face-capture-20260920
