@@ -84,6 +84,7 @@ class ExtraTrace:
         self.events, self.pending, self.prediction = [], None, -1
         self.owner, self.thread = None, None
         self.inner_model, self.source, self.base = inner_model, None, None
+        self.input_parameter = None
         self.model_directory = model_directory
         if inner_model:
             require(condition=isinstance(model_directory, Path) and model_directory.is_absolute(),
@@ -137,6 +138,7 @@ class ExtraTrace:
             self.pending = context(read=read, registers=values, owner=self.owner)
             if self.inner_model:
                 self.source = register(frame=frame, name="x1")
+                self.input_parameter = register(frame=frame, name="x2")
                 self.base = frame.GetPC() - CALL
             name = "before"
         else:
@@ -148,6 +150,11 @@ class ExtraTrace:
             name = "after"
         row = dict(event=name, prediction=self.prediction, thread=self.thread, offset=offset,
                    **self.pending, snapshot=snapshot(read=read, scope=self.pending))
+        if self.inner_model:
+            from face_extra_crop_trace import snapshot as crop_snapshot
+            row["crop_geometry"] = crop_snapshot(read=read, scope=self.pending, event=name,
+                prediction=self.prediction, thread=self.thread, base=self.base,
+                source=self.source, input_parameter=self.input_parameter)
         if name == "after":
             row["return_code"] = register(frame=frame, name="w0")
             if self.inner_model:
