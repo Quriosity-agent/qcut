@@ -296,8 +296,7 @@ class DetailedDiagnosticsTests(StopFixture, unittest.TestCase):
 
 class LauncherDiagnosticsTests(StopFixture, unittest.TestCase):
     def setUp(self):
-        private = Path(__file__).resolve().parents[2] / ".local/jianying-model-pytorch"
-        temporary = tempfile.TemporaryDirectory(prefix="lldb-diagnostics-test-", dir=private)
+        temporary = tempfile.TemporaryDirectory(prefix="lldb-diagnostics-test-")
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
         self.fixture = self.rich_stop()
