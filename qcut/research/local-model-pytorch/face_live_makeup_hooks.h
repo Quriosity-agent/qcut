@@ -3,6 +3,8 @@
 const bool liveMakeupTrace = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_TRACE") ?: "") == "1";
 const bool liveMakeupPublish = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_PUBLISH") ?: "") == "1";
 const bool liveMakeupStages = std::string(std::getenv("QCUT_FACE_LIVE_MAKEUP_STAGES") ?: "") == "1";
+const bool liveReshapePublish = std::string(std::getenv("QCUT_FACE_LIVE_RESHAPE_PUBLISH") ?: "") == "1";
+const bool liveOwnedStages = liveMakeupStages || liveReshapePublish;
 qcut_live::MakeupRenderStage liveRenderStage;
 std::optional<int> liveSeekResult;
 void* liveFeature = nullptr;
@@ -20,20 +22,20 @@ uint64_t makeupThreadId() {
 }
 
 void captureOwnedFeature(void* feature) {
-  if (!liveMakeupTrace) return;
+  if (!liveMakeupTrace && !liveReshapePublish) return;
   if (!feature || liveFeature) throw std::runtime_error("makeup trace requires one fresh feature");
   liveFeature = feature;
-  if (liveMakeupStages) liveRenderStage.captureFeature(feature);
+  if (liveOwnedStages) liveRenderStage.captureFeature(feature);
 }
 
 void observeOwnedSeekResult(int result) {
-  if (!liveMakeupStages) return;
+  if (!liveOwnedStages) return;
   if (liveSeekResult) throw std::runtime_error("duplicate makeup seek result");
   liveSeekResult = result;
 }
 
 void beginOwnedParameters(void* feature, const char* parameters) {
-  if (!liveMakeupStages) return;
+  if (!liveOwnedStages) return;
   if (std::this_thread::get_id() != seekThread || !parameters ||
       ::strnlen(parameters, 128 * 1024) == 0 || ::strnlen(parameters, 128 * 1024) == 128 * 1024)
     throw std::runtime_error("invalid makeup parameter payload or thread");
@@ -41,7 +43,7 @@ void beginOwnedParameters(void* feature, const char* parameters) {
 }
 
 void finishOwnedParameters(int result) {
-  if (!liveMakeupStages) return;
+  if (!liveOwnedStages) return;
   liveRenderStage.endParameters(result);
   records << "{\"event\":\"live_feature_parameters_applied\",\"prediction\":" << livePrediction
           << ",\"timestamp_us\":" << seekTimestamp
@@ -49,7 +51,7 @@ void finishOwnedParameters(int result) {
 }
 
 bool allowOwnedFrameOutput() {
-  if (!liveMakeupStages || liveRenderStage.allowFrameOutput()) return true;
+  if (!liveOwnedStages || liveRenderStage.allowFrameOutput()) return true;
   records << "{\"event\":\"live_initialization_output_suppressed\",\"prediction\":" << livePrediction
           << ",\"timestamp_us\":" << seekTimestamp << ",\"renderer_consumption\":false}\n" << std::flush;
   return false;
