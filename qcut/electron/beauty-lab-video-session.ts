@@ -263,7 +263,9 @@ export function createBeautyLabVideoSession(
 					frame.frameNumber < firstFrame + plannedFrames,
 				message: "Export frames must arrive once, in order, within the plan",
 			});
-			if (flights.size >= maxInFlight) return { kind: "backpressure" };
+			// Completed frames waiting in `ready` still hold caller payloads.
+			if (flights.size + ready.size >= maxInFlight)
+				return { kind: "backpressure" };
 			counts.submitted += 1;
 			nextExportFrame += 1;
 			lastExportTimestamp = frame.timestampSeconds;
