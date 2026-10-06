@@ -241,6 +241,24 @@ describe("export sessions deliver every frame once, in order", () => {
 			/in order/
 		);
 	});
+	it("counts completed frames still waiting for delivery against the limit", () => {
+		const session = exporter();
+		const stalled = ticketOf(session.submit({ frame: frame(10), now: 0 }));
+		const later = ticketOf(session.submit({ frame: frame(11), now: 0 }));
+		// Frame 11 finishes first and waits for the stalled frame 10, so it still
+		// occupies a slot; frame 12 must not be accepted.
+		expect(delivered(session.complete({ ticket: later, now: 1 }))).toEqual([]);
+		expect(session.submit({ frame: frame(12), now: 2 })).toEqual({
+			kind: "backpressure",
+		});
+		expect(session.report().submitted).toBe(2);
+		expect(delivered(session.complete({ ticket: stalled, now: 3 }))).toEqual([
+			10, 11,
+		]);
+		expect(
+			ticketOf(session.submit({ frame: frame(12), now: 4 })).frameNumber
+		).toBe(12);
+	});
 	it("reorders out-of-order completions and closes after the plan", () => {
 		const session = exporter();
 		const tickets = [
