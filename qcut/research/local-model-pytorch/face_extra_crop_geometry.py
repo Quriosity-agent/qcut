@@ -10,12 +10,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 
 import numpy as np
 
 from face_extra_crop_trace import CONFIG_BYTES, READ_BYTES, READ_CALLS, SCHEMA, TRANSFORMS
+from face_extra_inner_math import cubic_points, replay_inner_filter
 from face_host_geometry_contract import integer, matrix, numbers
 from face_host_geometry_replay import map_double
 from face_live_extra_trace import CALL, RETURN, require
@@ -44,11 +44,7 @@ def update_inner_filter(*, state, points):
         output, delta, first = values.copy(), state.delta, state.first
     else:
         # Both first/non-first branches replace delta; there is no alpha EMA here.
-        delta = values - state.current
-        ratio = np.abs(delta) / state.scale
-        weights = np.asarray([math.exp(-math.pow(float(value), 3.0)) for value in ratio.flat],
-                             np.float32).reshape(values.shape)
-        output = state.current * weights + values * (np.float32(1) - weights)
+        output, delta = cubic_points(current=state.current, points=values, scale=state.scale)
         first = False
     updated = FilterState(current=output, previous=state.current, delta=delta,
                           alpha=state.alpha, scale=state.scale, first=first)
@@ -72,8 +68,33 @@ def mean106(*, mean, size):
     """Only the statically identified mean preparation, not similarity fitting."""
     numbers(value=mean, length=480)
     integer(value=size, minimum=1, maximum=4096)
+    return _scaled_mean106(mean=mean[:212], size=size)
+
+
+def _scaled_mean106(*, mean, size):
     values = np.asarray(mean, dtype=np.float32)[:212].reshape(106, 2)
     return (values.astype(np.float64) / 256.0 * size).astype(np.float32)
+
+
+def stage2_fit_inputs(*, published_xy, part_face_mean_xy):
+    """Only ordinary C+4=1/C+0x21=0 input preparation, not an affine solver.
+
+    At 0x2d7978 x0=A+0x7d28, x1=SP+0x1a18 (212 floats).
+    setMeanFace at0x2d795c supplies PartFaceMeanFace[0:212]/256*160, rounded once
+    after double arithmetic. Both buffers are XY-interleaved float32.
+    computeTransform 0x3ae2b8 recomputes from these two arrays, then stores
+    cached_xy/ready; old matrices are not preparation inputs. Mean provenance
+    and caller routing still need proof before any independent-geometry claim.
+    PartFaceMeanFace is0x5ddf88, NOT the existing crop snapshot's 480-float
+    ExtraInfoMeanFace at0x5dd088. No fallback to that unrelated mean is valid.
+    """
+    require(condition=type(published_xy) is list and len(published_xy) in (212, 560),
+            message="complete primary106 or published280 required")
+    numbers(value=published_xy, length=len(published_xy))
+    numbers(value=part_face_mean_xy, length=212)
+    source = np.asarray(published_xy[:212], np.float32).reshape(106, 2)
+    target = _scaled_mean106(mean=part_face_mean_xy, size=160)
+    return source, target
 
 
 def _flags(*, value, offsets):
@@ -351,15 +372,12 @@ def audit_direct_inner_filter(*, observer):
             continue
         call, returned = receipt["events"]
         initial = call["inner_filter"]
-        state = _direct_state(value=initial, source=pre["source"])
+        _direct_state(value=initial, source=pre["source"])
         _direct_state(value=returned["inner_filter"], source=pre["source"])
         inputs = np.asarray(call["input"]["xy"], np.float32).reshape(call["input"]["count"], 2)
         # Native normal-branch loops use F+0x70, not the Point136 input size.
         consumed = inputs[:initial["count"]].copy()
-        output, updated = update_inner_filter(state=state, points=consumed)
-        actual = dict(initial, current_xy=updated.current.reshape(-1).tolist(),
-                      previous_xy=updated.previous.reshape(-1).tolist(),
-                      delta_x=updated.delta[:, 0].tolist(), delta_y=updated.delta[:, 1].tolist(), first=updated.first)
+        output, actual = replay_inner_filter(state=initial, points=inputs)
         checks = _inner_state_checks(actual=actual, expected=returned["inner_filter"])
         checks["output_xy"] = compare_bits(actual=output,
             expected=np.asarray(returned["output"]["xy"], np.float32).reshape(106, 2))
@@ -389,7 +407,8 @@ def audit_direct_inner_filter(*, observer):
         arithmetic_bits_equal=bool(active) and all(case["arithmetic_bits_equal"] for case in active),
         native_geometry_required=True, owned_geometry_enabled=False, geometry_parity_verified=False,
         product_parity_verified=False, input_provenance="direct inner x1 Point136 plus call-time A+0x310 state",
-        limitations=["Native pre-filter initialization remains an input; empty/near-zero direct branches are rejected.",
+        limitations=["Native pre-filter initialization remains an input; empty/near-zero live capture is still rejected. "
+                     "Their CPU math is implemented separately but has no native branch capture parity yet.",
                      "Native Stage2 matrices are comparison-only, not an independently owned affine solver.",
                      "Only the pinned ordinary primary106 call site is captured.",
                      "Host libm cross-platform parity and product backend replacement remain unverified."])

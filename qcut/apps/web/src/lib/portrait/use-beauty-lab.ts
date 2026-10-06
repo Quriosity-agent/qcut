@@ -72,6 +72,15 @@ export function useBeautyLab({
 		"load" | "render" | "candidate" | "detect" | null
 	>(null);
 	const [error, setError] = useState<string | null>(null);
+	// A request stays pending until main settles it, even after the UI moved on.
+	const [candidateJob, setCandidateJob] = useState<{
+		requestId: string;
+		cancelling: boolean;
+	} | null>(null);
+	const pendingCandidate = useRef<{
+		requestId: string;
+		cancelRequested: boolean;
+	} | null>(null);
 	const revision = useRef(0);
 	const sourceKey = useRef(`beauty-lab:${crypto.randomUUID()}`);
 	const captured = useRef(false);
@@ -285,11 +294,19 @@ export function useBeautyLab({
 		}
 	}
 
+	async function refreshCandidateStatus() {
+		const refreshed = await window.electronAPI?.beautyLab
+			?.inspectCandidate?.()
+			.catch(() => null);
+		if (refreshed) setCandidateStatus(refreshed);
+	}
+
 	async function renderCandidate() {
 		if (
 			!input ||
 			record ||
 			busy ||
+			pendingCandidate.current ||
 			!candidateStatus?.available ||
 			!candidateStatus.backendVersion
 		)
@@ -311,6 +328,9 @@ export function useBeautyLab({
 			sourceKey: sourceKey.current,
 			...timing,
 		};
+		const pending = { requestId: request.requestId, cancelRequested: false };
+		pendingCandidate.current = pending;
+		setCandidateJob({ requestId: request.requestId, cancelling: false });
 		setCandidate(null);
 		setCandidateReport(null);
 		setBusy("candidate");
@@ -320,7 +340,8 @@ export function useBeautyLab({
 			if (!api?.renderCandidate)
 				throw new Error("Candidate inference requires QCut Desktop");
 			const result = await api.renderCandidate(request);
-			if (token !== revision.current) return;
+			// A cancelled request never shows pixels, even if main finished first.
+			if (token !== revision.current || pending.cancelRequested) return;
 			if (
 				result.protocol !== request.protocol ||
 				result.source !== "live-candidate" ||
@@ -341,17 +362,37 @@ export function useBeautyLab({
 			setCandidate(frame);
 			setCandidateReport(result);
 		} catch (reason) {
-			if (token !== revision.current) return;
-			setError(String(reason));
-			setCandidateStatus(null);
-			const refreshed = await window.electronAPI?.beautyLab
-				?.inspectCandidate?.()
-				.catch(() => null);
-			if (token === revision.current && refreshed) {
-				setCandidateStatus(refreshed);
+			if (token === revision.current) {
+				if (!pending.cancelRequested) setError(String(reason));
+				setCandidateStatus(null);
 			}
+			// Even a stale or cancelled failure may have latched a restart blocker.
+			await refreshCandidateStatus();
 		} finally {
+			if (pendingCandidate.current === pending) {
+				pendingCandidate.current = null;
+				setCandidateJob(null);
+			}
 			if (token === revision.current) setBusy(null);
+		}
+	}
+
+	async function cancelCandidate() {
+		const pending = pendingCandidate.current;
+		if (!pending || pending.cancelRequested) return;
+		pending.cancelRequested = true;
+		setCandidateJob({ requestId: pending.requestId, cancelling: true });
+		try {
+			const api = window.electronAPI?.beautyLab;
+			if (!api?.cancelCandidate)
+				throw new Error("Candidate cancellation requires QCut Desktop");
+			// cancelled=false means main already finished; renderCandidate still settles it.
+			await api.cancelCandidate({ requestId: pending.requestId });
+		} catch (reason) {
+			if (pendingCandidate.current !== pending) return;
+			pending.cancelRequested = false;
+			setCandidateJob({ requestId: pending.requestId, cancelling: false });
+			setError(String(reason));
 		}
 	}
 
@@ -401,6 +442,8 @@ export function useBeautyLab({
 		loadRecord,
 		renderNative,
 		renderCandidate,
+		candidateJob,
+		cancelCandidate,
 		detectFaces,
 		leaveRecord,
 	};

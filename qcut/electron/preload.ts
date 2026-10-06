@@ -114,6 +114,7 @@ import {
 	BEAUTY_LAB_LOAD_CHANNEL,
 } from "./beauty-lab-contract.js";
 import {
+	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 } from "./beauty-lab-candidate-contract.js";
@@ -303,6 +304,8 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL),
 		renderCandidate: (request) =>
 			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL, request),
+		cancelCandidate: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL, request),
 		listResearchCases: () => ipcRenderer.invoke(BEAUTY_LAB_LIST_CHANNEL),
 		loadResearchFrame: (request) =>
 			ipcRenderer.invoke(BEAUTY_LAB_LOAD_CHANNEL, request),

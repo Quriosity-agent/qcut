@@ -10,6 +10,7 @@ import {
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
 import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
 import {
+	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
@@ -153,6 +154,36 @@ describe("Beauty Lab IPC", () => {
 		});
 		expect(research.load).not.toHaveBeenCalled();
 	});
+	it("passes trusted cancellations to the candidate provider unchanged", async () => {
+		const { event, mainWindow } = context();
+		const research = provider();
+		const candidateProvider = {
+			inspect: vi.fn(),
+			render: vi.fn(),
+			cancel: vi.fn(() => ({ cancelled: true })),
+			dispose: vi.fn(async () => {}),
+		};
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+			candidateProvider,
+		});
+		const request = { requestId: "test" };
+		expect(
+			await invoke({
+				channel: BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
+				event,
+				request,
+			})
+		).toEqual({ cancelled: true });
+		expect(candidateProvider.cancel).toHaveBeenCalledExactlyOnceWith({
+			request,
+		});
+		expect(candidateProvider.render).not.toHaveBeenCalled();
+		expect(research.load).not.toHaveBeenCalled();
+	});
 	it("passes trusted calls and returns the provider's metadata and byte arrays unchanged", async () => {
 		const { event, mainWindow } = context();
 		const research = provider();
@@ -192,6 +223,7 @@ describe("Beauty Lab IPC", () => {
 		const candidateProvider = {
 			inspect: vi.fn(),
 			render: vi.fn(),
+			cancel: vi.fn(),
 			dispose: vi.fn(async () => {}),
 		};
 		const untrusted = { ...event };
@@ -227,8 +259,16 @@ describe("Beauty Lab IPC", () => {
 				request: {},
 			})
 		).rejects.toThrow("trusted main window");
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
+				event: untrusted,
+				request: { requestId: "test" },
+			})
+		).rejects.toThrow("trusted main window");
 		expect(candidateProvider.inspect).not.toHaveBeenCalled();
 		expect(candidateProvider.render).not.toHaveBeenCalled();
+		expect(candidateProvider.cancel).not.toHaveBeenCalled();
 		await expect(
 			invoke({
 				channel: BEAUTY_LAB_LOAD_CHANNEL,
@@ -428,7 +468,7 @@ describe("Beauty Lab IPC", () => {
 		await Promise.resolve();
 		expect(candidateProvider.dispose).toHaveBeenCalledOnce();
 		expect(settled).toBe(false);
-		expect(registrations.size).toBe(stale ? 4 : 0);
+		expect(registrations.size).toBe(stale ? 5 : 0);
 		finish();
 		await disposal;
 		expect(settled).toBe(true);
