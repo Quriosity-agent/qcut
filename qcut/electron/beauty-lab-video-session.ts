@@ -131,7 +131,9 @@ export function createBeautyLabVideoSession(
 				firstFrame >= 0 &&
 				plannedFrames !== undefined &&
 				Number.isSafeInteger(plannedFrames) &&
-				plannedFrames >= 1),
+				plannedFrames >= 1 &&
+				// The last required frame number must stay a safe integer.
+				plannedFrames - 1 <= Number.MAX_SAFE_INTEGER - firstFrame),
 		message: "Export sessions require an exact planned frame range",
 	});
 	let sourceKey = options.sourceKey;
