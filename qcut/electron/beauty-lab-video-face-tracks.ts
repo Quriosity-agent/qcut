@@ -2,7 +2,8 @@
  * Stable multi-face identities for Beauty Lab video sessions.
  *
  * Track IDs only ever increase, so temporal state can never move from one person
- * to another. A track that misses frames keeps its ID through a bounded grace
+ * to another. A track that misses frames (including frames skipped between
+ * updates) keeps its ID through a bounded grace
  * period (occlusion) but restarts its temporal state when it returns; past the
  * grace period it retires and a returning face gets a new ID. A new generation
  * (seek or source change) retires every track.
@@ -26,7 +27,8 @@ export interface BeautyLabFaceAssignment {
 interface Track {
 	id: number;
 	box: BeautyLabFaceBox;
-	missed: number;
+	// Frame number of the last matched (or creating) detection.
+	lastFrame: number;
 }
 
 function validBox({ box }: { box: BeautyLabFaceBox }) {
@@ -61,6 +63,73 @@ export function faceBoxIoU({
 		intersection /
 		(left.width * left.height + right.width * right.height - intersection)
 	);
+}
+
+/**
+ * Maps each track (by index) to a detection index, or undefined if unmatched.
+ *
+ * Greedy first (best overlap, then older track, then lower detection index),
+ * then every still-unmatched track tries to re-route a competing track onto
+ * another eligible detection. Re-routing only ever adds matches, so the result
+ * is a maximum-cardinality assignment that keeps the greedy overlap choices
+ * wherever no re-route is needed.
+ */
+function matchTracks({
+	tracks,
+	detections,
+	minIoU,
+}: {
+	tracks: Track[];
+	detections: BeautyLabFaceBox[];
+	minIoU: number;
+}): Array<number | undefined> {
+	const options = tracks.map((track) =>
+		detections
+			.flatMap((box, detection) => {
+				const iou = faceBoxIoU({ left: track.box, right: box });
+				return iou >= minIoU ? [{ detection, iou }] : [];
+			})
+			.sort(
+				(left, right) =>
+					right.iou - left.iou || left.detection - right.detection
+			)
+	);
+	const matches: Array<number | undefined> = tracks.map(() => undefined);
+	const holders = new Map<number, number>();
+	const claim = (index: number, detection: number) => {
+		matches[index] = detection;
+		holders.set(detection, index);
+		return true;
+	};
+	const pairs = options
+		.flatMap((row, index) => row.map((option) => ({ index, ...option })))
+		.sort(
+			(left, right) =>
+				right.iou - left.iou ||
+				left.index - right.index ||
+				left.detection - right.detection
+		);
+	for (const { index, detection } of pairs) {
+		if (matches[index] === undefined && !holders.has(detection))
+			claim(index, detection);
+	}
+	const reroute = (index: number, visited: Set<number>): boolean => {
+		for (const { detection } of options[index]) {
+			if (!holders.has(detection)) return claim(index, detection);
+		}
+		for (const { detection } of options[index]) {
+			if (visited.has(detection)) continue;
+			visited.add(detection);
+			const holder = holders.get(detection);
+			if (holder !== undefined && reroute(holder, visited))
+				return claim(index, detection);
+		}
+		return false;
+	};
+	for (const index of tracks.keys()) {
+		if (matches[index] === undefined) reroute(index, new Set());
+	}
+	return matches;
 }
 
 export function createBeautyLabFaceTracker({
@@ -124,46 +193,37 @@ export function createBeautyLabFaceTracker({
 					"Face tracking frames must increase within a generation"
 				);
 			lastFrame = frameNumber;
-			const pairs: Array<{ track: Track; detection: number; iou: number }> = [];
-			for (const track of tracks) {
-				for (const [detection, box] of detections.entries()) {
-					const iou = faceBoxIoU({ left: track.box, right: box });
-					if (iou >= minIoU) pairs.push({ track, detection, iou });
-				}
-			}
-			// Deterministic greedy matching: best overlap, then older track, then lower index.
-			pairs.sort(
-				(left, right) =>
-					right.iou - left.iou ||
-					left.track.id - right.track.id ||
-					left.detection - right.detection
+			// Frames skipped between updates were missed too, so a track already
+			// past its grace period retires before it can claim a detection.
+			const expired = tracks.filter(
+				(track) => frameNumber - track.lastFrame - 1 > maxMissedFrames
 			);
-			const matchedTracks = new Set<number>();
+			for (const track of expired) ended.push(track.id);
+			tracks = tracks.filter((track) => !expired.includes(track));
+			const matches = matchTracks({ tracks, detections, minIoU });
 			const matchedDetections = new Set<number>();
 			const assignments: BeautyLabFaceAssignment[] = [];
-			for (const { track, detection } of pairs) {
-				if (matchedTracks.has(track.id) || matchedDetections.has(detection))
-					continue;
-				matchedTracks.add(track.id);
+			for (const [index, track] of tracks.entries()) {
+				const detection = matches[index];
+				if (detection === undefined) continue;
 				matchedDetections.add(detection);
 				assignments.push({
 					trackId: track.id,
 					detection,
 					isNew: false,
-					resetTemporalState: track.missed > 0,
+					resetTemporalState: frameNumber - track.lastFrame > 1,
 				});
 				track.box = { ...detections[detection] };
-				track.missed = 0;
+				track.lastFrame = frameNumber;
 			}
 			const survivors: Track[] = [];
-			for (const track of tracks) {
-				if (matchedTracks.has(track.id)) {
+			for (const [index, track] of tracks.entries()) {
+				if (
+					matches[index] !== undefined ||
+					frameNumber - track.lastFrame <= maxMissedFrames
+				)
 					survivors.push(track);
-					continue;
-				}
-				track.missed += 1;
-				if (track.missed > maxMissedFrames) ended.push(track.id);
-				else survivors.push(track);
+				else ended.push(track.id);
 			}
 			tracks = survivors;
 			let overflow = 0;
@@ -175,7 +235,7 @@ export function createBeautyLabFaceTracker({
 				}
 				const id = nextId;
 				nextId += 1;
-				tracks.push({ id, box: { ...box }, missed: 0 });
+				tracks.push({ id, box: { ...box }, lastFrame: frameNumber });
 				assignments.push({
 					trackId: id,
 					detection,
