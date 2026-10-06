@@ -68,7 +68,7 @@ interface Flight {
 
 const LATENCY_SAMPLES = 4096;
 
-function require({
+function invariant({
 	condition,
 	message,
 }: {
@@ -86,7 +86,7 @@ function percentile({ sorted, rank }: { sorted: number[]; rank: number }) {
 }
 
 function validFrame({ frame }: { frame: BeautyLabVideoFrame }) {
-	require({
+	invariant({
 		condition:
 			Number.isSafeInteger(frame.frameNumber) &&
 			frame.frameNumber >= 0 &&
@@ -109,7 +109,7 @@ export function createBeautyLabVideoSession(
 		firstFrame = 0,
 		plannedFrames,
 	} = options;
-	require({
+	invariant({
 		condition:
 			/^[A-Za-z0-9._:-]{1,128}$/.test(sessionId) &&
 			/^[A-Za-z0-9._:-]{1,256}$/.test(options.sourceKey) &&
@@ -124,7 +124,7 @@ export function createBeautyLabVideoSession(
 			maxConsecutiveFailures >= 1,
 		message: "Invalid video session options",
 	});
-	require({
+	invariant({
 		condition:
 			mode === "preview" ||
 			(Number.isSafeInteger(firstFrame) &&
@@ -164,7 +164,7 @@ export function createBeautyLabVideoSession(
 	let lastDeliveryAt: number | undefined;
 
 	function requireRunning() {
-		require({
+		invariant({
 			condition: state === "running",
 			message: `Video session is ${state}`,
 		});
@@ -255,7 +255,7 @@ export function createBeautyLabVideoSession(
 		requireRunning();
 		validFrame({ frame });
 		if (mode === "export") {
-			require({
+			invariant({
 				condition:
 					frame.frameNumber === nextExportFrame &&
 					frame.timestampSeconds > lastExportTimestamp &&
@@ -372,7 +372,7 @@ export function createBeautyLabVideoSession(
 		tick,
 		seek: () => {
 			requireRunning();
-			require({
+			invariant({
 				condition: mode === "preview",
 				message: "Export sessions cannot seek",
 			});
@@ -381,7 +381,7 @@ export function createBeautyLabVideoSession(
 		},
 		changeSource: ({ sourceKey: next }: { sourceKey: string }) => {
 			requireRunning();
-			require({
+			invariant({
 				condition: mode === "preview" && /^[A-Za-z0-9._:-]{1,256}$/.test(next),
 				message: "Only preview sessions may change to a valid source",
 			});
@@ -397,7 +397,7 @@ export function createBeautyLabVideoSession(
 		// Worker slots stay reserved until every ticket, stale or not, has settled.
 		drained: () => flights.size === 0,
 		close: () => {
-			require({
+			invariant({
 				condition: flights.size === 0,
 				message: "Close requires every dispatched frame to settle",
 			});
