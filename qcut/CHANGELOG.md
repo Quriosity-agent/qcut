@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.06.1] - 2026-10-06
+
 ### Improved
 - Add a cancel button to Beauty Lab candidate verification. A cancelled or cleanly failed audit can be retried without restarting QCut, but only when its own cleanup receipt proves every task was reaped; any other failure still requires a restart.
 - Classify candidate process failures (not started, cancelled, timeout, output limit, process error, exit code, signal) and record whether a forced kill was needed.
