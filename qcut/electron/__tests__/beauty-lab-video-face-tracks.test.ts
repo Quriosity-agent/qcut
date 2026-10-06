@@ -68,6 +68,71 @@ describe("stable face identities", () => {
 			{ trackId: 1, detection: 0, isNew: false, resetTemporalState: true },
 		]);
 	});
+	it("restarts state when frames were skipped within the grace period", () => {
+		const faces = tracker();
+		faces.update({ generation: 0, frameNumber: 0, detections: [box(0.1)] });
+		const back = faces.update({
+			generation: 0,
+			frameNumber: 3,
+			detections: [box(0.1)],
+		});
+		expect(back.ended).toEqual([]);
+		expect(back.assignments).toEqual([
+			{ trackId: 1, detection: 0, isNew: false, resetTemporalState: true },
+		]);
+	});
+	it("retires a track whose skipped frames exceed the grace period", () => {
+		const faces = tracker();
+		faces.update({ generation: 0, frameNumber: 0, detections: [box(0.1)] });
+		const back = faces.update({
+			generation: 0,
+			frameNumber: 4,
+			detections: [box(0.1)],
+		});
+		expect(back.ended).toEqual([1]);
+		expect(back.assignments).toEqual([
+			{ trackId: 2, detection: 0, isNew: true, resetTemporalState: true },
+		]);
+		expect(faces.activeTrackIds()).toEqual([2]);
+	});
+	it("matches every eligible face before reporting overflow", () => {
+		const faces = tracker({ maxTracks: 2 });
+		faces.update({
+			generation: 0,
+			frameNumber: 0,
+			detections: [box(0.2), box(0.32)],
+		});
+		// Greedy overlap alone gives detection 0 to track 1, stranding track 2
+		// (which only overlaps detection 0) and overflowing detection 1.
+		const result = faces.update({
+			generation: 0,
+			frameNumber: 1,
+			detections: [box(0.23), box(0.13)],
+		});
+		expect(result.overflow).toBe(0);
+		expect(result.ended).toEqual([]);
+		expect(result.assignments).toEqual([
+			{ trackId: 2, detection: 0, isNew: false, resetTemporalState: false },
+			{ trackId: 1, detection: 1, isNew: false, resetTemporalState: false },
+		]);
+	});
+	it("keeps the best overlap when no re-route is needed", () => {
+		const faces = tracker({ maxTracks: 2 });
+		faces.update({
+			generation: 0,
+			frameNumber: 0,
+			detections: [box(0.2), box(0.32)],
+		});
+		const result = faces.update({
+			generation: 0,
+			frameNumber: 1,
+			detections: [box(0.21), box(0.33)],
+		});
+		expect(result.assignments).toEqual([
+			{ trackId: 1, detection: 0, isNew: false, resetTemporalState: false },
+			{ trackId: 2, detection: 1, isNew: false, resetTemporalState: false },
+		]);
+	});
 	it("retires a face after the grace period and never reuses its ID", () => {
 		const faces = tracker({ maxMissedFrames: 1 });
 		faces.update({ generation: 0, frameNumber: 0, detections: [box(0.1)] });
