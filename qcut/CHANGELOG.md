@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- Add a cancel button to Beauty Lab candidate verification. A cancelled or cleanly failed audit can be retried without restarting QCut, but only when its own cleanup receipt proves every task was reaped; any other failure still requires a restart.
+- Classify candidate process failures (not started, cancelled, timeout, output limit, process error, exit code, signal) and record whether a forced kill was needed.
+- Add a bounded video session protocol and stable, never-reused multi-face track IDs for Beauty Lab candidates, with in-order export backpressure and frame-gap-aware track retirement.
+- Extend the Beauty Lab native research tools with opt-in reshape and mesh-matrix hardware diagnostics that fail closed on incomplete evidence.
+
+### Limitations
+- The live candidate backend remains development-only and is not a production timeline backend; no verification gate was loosened.
+- The new live candidate interaction end-to-end test is written but has not been run.
+- Small-face point consumption, 3D takeover, and independent geometry are unchanged in this release.
+- Private reference models, vendor runtime binaries, and effect packages are not bundled in this release.
+
 ## [2026.10.05.1] - 2026-10-05
 
 ### Improved
