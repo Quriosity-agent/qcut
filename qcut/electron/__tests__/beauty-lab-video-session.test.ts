@@ -311,6 +311,14 @@ describe("export sessions deliver every frame once, in order", () => {
 			{ kind: "session-failed", reason: "frame 10: frame timed out" },
 		]);
 	});
+	it("rejects a plan whose last frame number is not a safe integer", () => {
+		expect(() =>
+			exporter({ firstFrame: Number.MAX_SAFE_INTEGER - 1, plannedFrames: 3 })
+		).toThrow(/planned frame range/);
+		expect(() =>
+			exporter({ firstFrame: Number.MAX_SAFE_INTEGER - 2, plannedFrames: 3 })
+		).not.toThrow();
+	});
 	it("never seeks, changes source or runs without a plan", () => {
 		const session = exporter();
 		expect(() => session.seek()).toThrow(/cannot seek/);
