@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+- Beauty Lab can now render a photo through a separate independent engine alongside the native runtime, keep both results, compare their pixels, and export a verified comparison ZIP. Independent rendering never falls back to the native provider.
+- The independent engine supports 32 numeric face controls and 28 makeup cards, with source-hash verification, cancellation, process-tree cleanup, and stale-result protection.
+- Add a real-provider comparison matrix for research, with original/native/independent/difference images, parameter and hash receipts, and resumable checkpoints that re-verify saved pixels.
+- Add a bounded research API for processing frame sequences with the independent engine (not yet part of timeline or video export).
+
+### Fixed
+- The signed native beauty host now resolves its libraries next to the executable instead of relying on DYLD environment variables, and rejects tampered cache entries or redirected links.
+- Python bytecode is no longer written into packaged source resources when the independent worker runs.
+
+### Limitations
+- The independent engine handles one opaque still photo (max edge 1280). It matches the native result within 1 RGB level in 105 of 124 tested cases; extreme settings can still differ noticeably, so native parity is not established.
+- Rendering and export from the packaged app window remain unverified.
+- Private runtimes, models, and the Python environment are not bundled; the independent engine needs them provisioned externally.
+
 ## [2026.10.06.1] - 2026-10-06
 
 ### Improved
