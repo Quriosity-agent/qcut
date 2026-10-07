@@ -1,5 +1,6 @@
 import type { MediaPortraitAdjustments } from "./jianying-portrait-adjustment-contract.js";
 import type { BeautyLabCandidateAPI } from "./beauty-lab-candidate-contract.js";
+import type { BeautyLabIndependentAPI } from "./beauty-lab-independent-contract.js";
 
 export const BEAUTY_LAB_LIST_CHANNEL = "beauty-lab:list-research-cases";
 export const BEAUTY_LAB_LOAD_CHANNEL = "beauty-lab:load-research-frame";
@@ -24,7 +25,9 @@ export interface BeautyLabResearchFrame {
 	nativeDependencies: true;
 }
 
-export interface BeautyLabAPI extends BeautyLabCandidateAPI {
+export interface BeautyLabAPI
+	extends BeautyLabCandidateAPI,
+		BeautyLabIndependentAPI {
 	listResearchCases: () => Promise<BeautyLabResearchCase[]>;
 	loadResearchFrame: (request: {
 		caseId: string;
