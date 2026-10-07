@@ -62,20 +62,7 @@ def warp_coordinates(*, coordinates, steps, radial_profile="linear"):
     if coordinates.ndim != 2 or coordinates.shape[1] != 2 or len(coordinates) > 16777216:
         raise ValueError("bounded coordinate pairs required")
     result = finite_array(value=coordinates, shape=coordinates.shape, name="coordinates").copy()
-    if not isinstance(steps, dict) or set(steps) != {"start", "end", "action", "strength", "radius"}:
-        raise ValueError("explicit deformation step fields required")
-    if radial_profile not in ("linear", "quadratic"):
-        raise ValueError("unsupported radial falloff")
-    radii = np.asarray(steps["radius"])
-    if radii.ndim != 1:
-        raise ValueError("one-dimensional deformation radii required")
-    count = len(radii)
-    if not 1 <= count <= 40:
-        raise ValueError("one to forty deformation steps required")
-    for name, value in steps.items():
-        finite_array(value=value, shape=(count, 2) if name in ("start", "end") else (count,), name=name)
-    if np.any(steps["radius"] <= 0) or not np.isin(steps["action"], (0, 1, 2)).all():
-        raise ValueError("invalid deformation action or radius")
+    validate_steps(steps=steps, radial_profile=radial_profile)
     for start, end, action, strength, radius in zip(steps["start"], steps["end"], steps["action"], steps["strength"], steps["radius"]):
         center = start if action == 0 else end
         relative = result - center
@@ -98,3 +85,21 @@ def warp_coordinates(*, coordinates, steps, radial_profile="linear"):
     if not np.isfinite(result).all():
         raise ValueError("deformation produced nonfinite coordinates")
     return result
+
+
+def validate_steps(*, steps, radial_profile):
+    if not isinstance(steps, dict) or set(steps) != {"start", "end", "action", "strength", "radius"}:
+        raise ValueError("explicit deformation step fields required")
+    if radial_profile not in ("linear", "quadratic"):
+        raise ValueError("unsupported radial falloff")
+    radii = np.asarray(steps["radius"])
+    if radii.ndim != 1:
+        raise ValueError("one-dimensional deformation radii required")
+    count = len(radii)
+    if not 1 <= count <= 40:
+        raise ValueError("one to forty deformation steps required")
+    for name, value in steps.items():
+        finite_array(value=value, shape=(count, 2) if name in ("start", "end") else (count,), name=name)
+    if np.any(steps["radius"] <= 0) or not np.isin(steps["action"], (0, 1, 2)).all():
+        raise ValueError("invalid deformation action or radius")
+    return count
