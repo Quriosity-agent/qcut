@@ -315,6 +315,24 @@
 		"nodeGypRebuild": false,
 		"extraResources": [
 			{
+				"from": "research/independent-beauty",
+				"to": "independent-beauty",
+				"filter": [
+					"**/*",
+					"!runtime",
+					"!runtime/**/*",
+					"!research/.venv",
+					"!research/.venv/**/*",
+					"!output",
+					"!output/**/*",
+					"!build",
+					"!build/**/*",
+					"!**/__pycache__/**/*",
+					"!**/*.pyc",
+					"!.gitignore"
+				]
+			},
+			{
 				"from": "electron/resources/local-models/shot",
 				"to": "local-models/shot",
 				"filter": [
