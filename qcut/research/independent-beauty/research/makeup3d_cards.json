@@ -1,38 +1,38 @@
 {
-  "highlight-sweetheart": {
-    "package": "7406175318072888576/1fb1a0dfaaeadb313f4b3d3b96eaae0c",
-    "texture": "image/highlight3d/highlight_khgp_1655297390.png",
-    "files": {
-      "LuaRTTI.MarkGen.lua": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754",
-      "config.json": "e27959e8c7f6245f269bb873b1e09331a6c2a093f744d1a2acf04400e360ddcc",
-      "image/highlight3d/highlight_khgp_1655297390.png": "d72c99897ebb0ba72a77346a8c26c0b155bfcb92092bfd08d380b19e0aaec0e4",
-      "image/highlight3d/highlight_khgp_1655297390.png.meta": "148811823e7dcb464ebb0a4862592056e77d74d9681a138d1ad9eafe3e56cdff",
-      "lua/makeup.lua": "d17e1f07d888d91f79afc135019eacd53fa53e4c0c1c16bf4ec3cf2b60356ec3",
-      "makeup.prefab": "d0cf789981d52b6ccab89d4277e5a34b43a2883df9571ea40174b8e0ca111367",
-      "material/Highlight.material": "f80377e3485b4360f3efdaf3d9fdaf91035832c90ac2418f01d05b7570066da0",
-      "shaders/face3d-0-7c45/gles2/ca3e.frag": "be863db84b7416c77b8e79d6b4dbb6d8d496121d7668430ae238ccf97da79e99",
-      "shaders/face3d-0-7c45/gles2/ca3e.vert": "86dbf51d41f47c182c8c8ed8955f2238edeed990a879627324ea5f7860dc0c3a",
-      "shaders/face3d-0-7c45/metal/ca3e.frag": "92a20607a5b412d92da393f400335800b0bbab473857f0c5834c572c6478e587",
-      "shaders/face3d-0-7c45/metal/ca3e.vert": "983ecd178c9e4a02df799140acc5758ff817303000c66224683be35e01520fea",
-      "xshader/face3d.xshader": "becd3e03984c29d20357a1dc7469bf3e76c6180faf29f870221be08b319257f5"
-    }
-  },
-  "freckles-sunburn": {
-    "package": "7406174488410262784/547119e40339154d17eb93c62ee9433b",
-    "texture": "image/mask3d/freckles.png",
-    "files": {
-      "LuaRTTI.MarkGen.lua": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754",
-      "config.json": "8b850766e7a13ea8477e39e7610b1491fed6e78c9e955684e1d1e11261f71d8e",
-      "image/mask3d/freckles.png": "b5de19667c6d493f4d5bb8a1c80ab0ee2f988ab4eb87f642696bb2dd5292d1ef",
-      "image/mask3d/freckles.png.meta": "de530aaade433f89a5e49ea8ac61f84801f898dc02e8ca187b7e0a401897b76c",
-      "lua/makeup.lua": "d17e1f07d888d91f79afc135019eacd53fa53e4c0c1c16bf4ec3cf2b60356ec3",
-      "makeup.prefab": "6363e4188dfaa247234743cc9587f2dd199e36e2c326996d95d13c183bd8e406",
-      "material/Freckles.material": "b8d4b4d9b62656ef189287844d3b2dfc61749a60901073130c416b0b5aacb029",
-      "shaders/face3d-0-fc8e/gles2/2c08.frag": "be863db84b7416c77b8e79d6b4dbb6d8d496121d7668430ae238ccf97da79e99",
-      "shaders/face3d-0-fc8e/gles2/2c08.vert": "86dbf51d41f47c182c8c8ed8955f2238edeed990a879627324ea5f7860dc0c3a",
-      "shaders/face3d-0-fc8e/metal/2c08.frag": "92a20607a5b412d92da393f400335800b0bbab473857f0c5834c572c6478e587",
-      "shaders/face3d-0-fc8e/metal/2c08.vert": "983ecd178c9e4a02df799140acc5758ff817303000c66224683be35e01520fea",
-      "xshader/face3d.xshader": "bc905019ade77c91b414adfddde592e8d47ca40e5c2349b37a65eacc9bd07dae"
-    }
-  }
+	"highlight-sweetheart": {
+		"package": "7406175318072888576/1fb1a0dfaaeadb313f4b3d3b96eaae0c",
+		"texture": "image/highlight3d/highlight_khgp_1655297390.png",
+		"files": {
+			"LuaRTTI.MarkGen.lua": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754",
+			"config.json": "e27959e8c7f6245f269bb873b1e09331a6c2a093f744d1a2acf04400e360ddcc",
+			"image/highlight3d/highlight_khgp_1655297390.png": "d72c99897ebb0ba72a77346a8c26c0b155bfcb92092bfd08d380b19e0aaec0e4",
+			"image/highlight3d/highlight_khgp_1655297390.png.meta": "148811823e7dcb464ebb0a4862592056e77d74d9681a138d1ad9eafe3e56cdff",
+			"lua/makeup.lua": "d17e1f07d888d91f79afc135019eacd53fa53e4c0c1c16bf4ec3cf2b60356ec3",
+			"makeup.prefab": "d0cf789981d52b6ccab89d4277e5a34b43a2883df9571ea40174b8e0ca111367",
+			"material/Highlight.material": "f80377e3485b4360f3efdaf3d9fdaf91035832c90ac2418f01d05b7570066da0",
+			"shaders/face3d-0-7c45/gles2/ca3e.frag": "be863db84b7416c77b8e79d6b4dbb6d8d496121d7668430ae238ccf97da79e99",
+			"shaders/face3d-0-7c45/gles2/ca3e.vert": "86dbf51d41f47c182c8c8ed8955f2238edeed990a879627324ea5f7860dc0c3a",
+			"shaders/face3d-0-7c45/metal/ca3e.frag": "92a20607a5b412d92da393f400335800b0bbab473857f0c5834c572c6478e587",
+			"shaders/face3d-0-7c45/metal/ca3e.vert": "983ecd178c9e4a02df799140acc5758ff817303000c66224683be35e01520fea",
+			"xshader/face3d.xshader": "becd3e03984c29d20357a1dc7469bf3e76c6180faf29f870221be08b319257f5"
+		}
+	},
+	"freckles-sunburn": {
+		"package": "7406174488410262784/547119e40339154d17eb93c62ee9433b",
+		"texture": "image/mask3d/freckles.png",
+		"files": {
+			"LuaRTTI.MarkGen.lua": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754",
+			"config.json": "8b850766e7a13ea8477e39e7610b1491fed6e78c9e955684e1d1e11261f71d8e",
+			"image/mask3d/freckles.png": "b5de19667c6d493f4d5bb8a1c80ab0ee2f988ab4eb87f642696bb2dd5292d1ef",
+			"image/mask3d/freckles.png.meta": "de530aaade433f89a5e49ea8ac61f84801f898dc02e8ca187b7e0a401897b76c",
+			"lua/makeup.lua": "d17e1f07d888d91f79afc135019eacd53fa53e4c0c1c16bf4ec3cf2b60356ec3",
+			"makeup.prefab": "6363e4188dfaa247234743cc9587f2dd199e36e2c326996d95d13c183bd8e406",
+			"material/Freckles.material": "b8d4b4d9b62656ef189287844d3b2dfc61749a60901073130c416b0b5aacb029",
+			"shaders/face3d-0-fc8e/gles2/2c08.frag": "be863db84b7416c77b8e79d6b4dbb6d8d496121d7668430ae238ccf97da79e99",
+			"shaders/face3d-0-fc8e/gles2/2c08.vert": "86dbf51d41f47c182c8c8ed8955f2238edeed990a879627324ea5f7860dc0c3a",
+			"shaders/face3d-0-fc8e/metal/2c08.frag": "92a20607a5b412d92da393f400335800b0bbab473857f0c5834c572c6478e587",
+			"shaders/face3d-0-fc8e/metal/2c08.vert": "983ecd178c9e4a02df799140acc5758ff817303000c66224683be35e01520fea",
+			"xshader/face3d.xshader": "bc905019ade77c91b414adfddde592e8d47ca40e5c2349b37a65eacc9bd07dae"
+		}
+	}
 }
