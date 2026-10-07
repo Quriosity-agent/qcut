@@ -1,11 +1,89 @@
 [
-  {"name":"TotalFace","title":"瘦脸","min":0,"max":100,"eventScale":1},
-  {"name":"CutFace","title":"窄脸","min":-50,"max":50,"eventScale":2,"degree":11,"negative":0.2,"positive":-0.2},
-  {"name":"ZoomCheekbone","title":"颧骨","min":0,"max":100,"eventScale":1.5,"degree":14,"negative":0,"positive":-0.2},
-  {"name":"ZoomJawbone","title":"下颌骨","min":0,"max":100,"eventScale":0.675,"degree":13,"negative":0,"positive":-0.2},
-  {"name":"SmallFace","title":"短脸","min":0,"max":100,"eventScale":1,"degree":12,"negative":0,"positive":-0.07},
-  {"name":"VFace","title":"V 脸","min":0,"max":100,"eventScale":1,"degree":21,"negative":0,"positive":-1.4},
-  {"name":"Chin","title":"下巴长短","min":-50,"max":50,"eventScale":2,"degree":8,"negative":0.14,"positive":-0.2},
-  {"name":"Forehead","title":"发际线","min":-50,"max":50,"eventScale":4,"degree":9,"negative":0.2,"positive":-0.2},
-  {"name":"ChinSharp","title":"尖下巴","min":0,"max":100,"eventScale":1,"degree":18,"negative":0.2,"positive":-0.2}
+	{
+		"name": "TotalFace",
+		"title": "瘦脸",
+		"min": 0,
+		"max": 100,
+		"eventScale": 1
+	},
+	{
+		"name": "CutFace",
+		"title": "窄脸",
+		"min": -50,
+		"max": 50,
+		"eventScale": 2,
+		"degree": 11,
+		"negative": 0.2,
+		"positive": -0.2
+	},
+	{
+		"name": "ZoomCheekbone",
+		"title": "颧骨",
+		"min": 0,
+		"max": 100,
+		"eventScale": 1.5,
+		"degree": 14,
+		"negative": 0,
+		"positive": -0.2
+	},
+	{
+		"name": "ZoomJawbone",
+		"title": "下颌骨",
+		"min": 0,
+		"max": 100,
+		"eventScale": 0.675,
+		"degree": 13,
+		"negative": 0,
+		"positive": -0.2
+	},
+	{
+		"name": "SmallFace",
+		"title": "短脸",
+		"min": 0,
+		"max": 100,
+		"eventScale": 1,
+		"degree": 12,
+		"negative": 0,
+		"positive": -0.07
+	},
+	{
+		"name": "VFace",
+		"title": "V 脸",
+		"min": 0,
+		"max": 100,
+		"eventScale": 1,
+		"degree": 21,
+		"negative": 0,
+		"positive": -1.4
+	},
+	{
+		"name": "Chin",
+		"title": "下巴长短",
+		"min": -50,
+		"max": 50,
+		"eventScale": 2,
+		"degree": 8,
+		"negative": 0.14,
+		"positive": -0.2
+	},
+	{
+		"name": "Forehead",
+		"title": "发际线",
+		"min": -50,
+		"max": 50,
+		"eventScale": 4,
+		"degree": 9,
+		"negative": 0.2,
+		"positive": -0.2
+	},
+	{
+		"name": "ChinSharp",
+		"title": "尖下巴",
+		"min": 0,
+		"max": 100,
+		"eventScale": 1,
+		"degree": 18,
+		"negative": 0.2,
+		"positive": -0.2
+	}
 ]
