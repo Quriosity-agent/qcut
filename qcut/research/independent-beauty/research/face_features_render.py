@@ -12,7 +12,8 @@ from face_metal import render
 from face_shape_assets import load_assets as load_shape
 from facefitting_image import decode_image
 from facefitting_infer import native_images
-from features_geometry import apply_eye_support
+from features_assets import load_assets as load_corners
+from features_geometry import apply_feature_geometry
 from slimface_detection import single_face_prediction
 from slimface_mesh import generate_degree_mesh
 from slimface_mesh_assets import load_assets as load_mesh
@@ -20,7 +21,7 @@ from slimface_render import validate_rgba
 from youtai_assets import load_assets as load_organs
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSET_NAMES = ('slimface-mesh-v1.npz', 'face-shape-v1.npz', 'youtai-v1.npz')
+ASSET_NAMES = ('slimface-mesh-v1.npz', 'face-shape-v1.npz', 'youtai-v1.npz', 'features-corners-v1.npz')
 MODEL_NAMES = ('face-detector-dynamic.onnx', 'face-align-120.onnx', 'face-align-160.onnx',
                'alignment-assets-v1.npz', 'skin-seg-224x128.onnx', 'saliency-matting-640.onnx')
 
@@ -35,7 +36,10 @@ def build_face_feature_mesh(*, prediction, size, controls, runtime):
     mesh = generate_degree_mesh(points=points, intensity=0, size=size, assets=assets,
         degrees=degrees, shape_assets=shape_assets, organ_assets=organ_assets,
         **{name: prediction['consumer_pose'][name] for name in ('yaw', 'pitch')})
-    return apply_eye_support(mesh=mesh, points=points, degrees=degrees, size=size)
+    corners = load_corners(path=runtime / 'research' / ASSET_NAMES[3]) if degrees[15] != 0 else None
+    return apply_feature_geometry(mesh=mesh, points=points, degrees=degrees, size=size,
+        mesh_assets=assets, organ_assets=organ_assets, corner_assets=corners,
+        pitch=prediction['consumer_pose']['pitch'])
 
 
 def render_rgba(*, rgba, controls, runtime):
