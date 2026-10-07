@@ -40,7 +40,14 @@ beforeEach(async () => {
 	);
 });
 afterEach(async () => {
-	await rm(directory, { recursive: true, force: true });
+	// Windows releases a killed worker's cwd handle after the process exits, so
+	// let rm retry the transient EBUSY instead of failing the lifetime tests.
+	await rm(directory, {
+		recursive: true,
+		force: true,
+		maxRetries: 10,
+		retryDelay: 100,
+	});
 });
 
 function setup({
