@@ -1,13 +1,11 @@
 """Packed two-coordinate texture transport for independent local face deformation."""
 import math
 from numbers import Real
+from pathlib import Path
 
 import numpy as np
 
-from liquefy_geometry import warp_coordinates
-from mesh_field import interpolate_field
-from mesh_texture import sample_texture
-from m4_texture import linear_samples as m4_samples
+from liquefy_metal import render as render_metal
 from slimface_render import validate_rgba
 
 F = np.float32
@@ -33,42 +31,20 @@ def decode_coordinates(*, texture):
     return normalized[..., (0, 2)] + normalized[..., (1, 3)] / F(255)
 
 
-def render_local(*, rgba, support, triangles, steps, intensity, mask=None, mask_uv=None, radial_profile="linear"):
+def render_local(*, rgba, support, triangles, steps, intensity, mask=None, mask_uv=None, radial_profile="linear", runtime=None):
     validate_rgba(rgba=rgba)
     if isinstance(intensity, (bool, np.bool_)) or not isinstance(intensity, Real) or not math.isfinite(intensity) or not 0 <= intensity <= 1.3:
         raise ValueError("bounded positive local intensity required")
     if intensity == 0:
         return rgba.copy(), {"identity": True}
-    height, width = rgba.shape[:2]
-    uv = support['uv']
-    warped = warp_coordinates(coordinates=uv * np.array([width, height], np.float32), steps=steps, radial_profile=radial_profile)
-    displacement = (warped / np.array([width, height], np.float32) - uv) * F(intensity)
-    values = np.column_stack((uv + displacement, uv)) if mask is None else np.column_stack((uv + displacement, uv, mask_uv))
-    field, covered = interpolate_field(positions=uv * F(SIZE), values=values,
-                                       triangles=triangles, size=(SIZE, SIZE))
-    if not covered.all():
-        raise ValueError("local deformation support did not cover the coordinate texture")
-    if mask is not None:
-        validate_rgba(rgba=mask)
-        coords = field[:, :, 4:].reshape(-1, 2).copy()
-        sampled = m4_samples(rgba=mask, coordinates=coords * [mask.shape[1], mask.shape[0]])[:, 0]
-        transported = ((F(1) - sampled.reshape(SIZE, SIZE, 1)) * field[:, :, 2:4]
-                       + sampled.reshape(SIZE, SIZE, 1) * field[:, :, :2])
-    else:
-        transported = field[:, :, :2]
-    # RGBA8 stores two 16-bit coordinates, including the neutral rounding residual.
-    neutral = decode_coordinates(texture=encode_coordinates(coordinates=np.array([.5, .5], np.float32)))
-    packed = encode_coordinates(coordinates=((neutral + transported) - field[:, :, 2:4]).astype(np.float32))
-    y, x = np.mgrid[:height, :width]
-    normalized = np.stack(((x + .5) / width, F(1) - (y + .5) / height), axis=-1).reshape(-1, 2)
-    interpolated = sample_packed(texture=packed, coordinates=normalized.astype(np.float32))
-    delta = interpolated - F(.5)
-    delta = np.sign(delta) * np.maximum(np.abs(delta) - F(1 / 65536), F(0))
-    source = normalized + delta
-    source[:, 1] = 1 - source[:, 1]
-    output = sample_texture(rgba=rgba, coordinates=source * [width, height]).reshape(rgba.shape)
+    output, receipt = render_metal(rgba=rgba, support=support, triangles=triangles,
+        steps=steps, intensity=float(intensity), radial_profile=radial_profile,
+        mask=np.full((1, 1, 4), 255, np.uint8) if mask is None else mask,
+        mask_uv=support['uv'] if mask is None else mask_uv,
+        runtime=runtime or Path(__file__).resolve().parents[1]/'runtime')
     return output, {"identity": False, "coordinateTextureSize": SIZE,
-                    "coveredCoordinatePixels": int(covered.sum()), "triangles": len(triangles)}
+                    "coveredCoordinatePixels": receipt['coveredCoordinatePixels'],
+                    "triangles": len(triangles), "metal": receipt}
 
 
 def sample_packed(*, texture, coordinates):
