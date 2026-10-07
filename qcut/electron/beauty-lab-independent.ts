@@ -293,6 +293,7 @@ export function createBeautyLabIndependentProvider({
 						!["PYTHONPATH", "PYTHONHOME"].includes(key)
 				)
 			);
+			cleanEnvironment.PYTHONDONTWRITEBYTECODE = "1";
 			cleanEnvironment.PATH = [
 				path.dirname(await resolveBun()),
 				cleanEnvironment.PATH ?? "/usr/bin:/bin:/usr/sbin:/sbin",
