@@ -1,9 +1,24 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.4.3/schema.json",
 	"extends": ["ultracite/react"],
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
 
 	"files": {
-		"includes": ["**", "!.claude/skills", "!.agent/skills", "!skills"]
+		"includes": [
+			"**",
+			"!.claude/skills",
+			"!.agent/skills",
+			"!skills",
+			"!!.reference-repos",
+			"!!packages/nexusai-website",
+			"!!research/independent-beauty/runtime",
+			"!!research/independent-beauty/research/.venv",
+			"!!research/independent-beauty/output"
+		]
 	},
 
 	"overrides": [

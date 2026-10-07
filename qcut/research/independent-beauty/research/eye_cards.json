@@ -1,0 +1,266 @@
+{
+	"aegyo-doll": {
+		"package": "7406174836470435107/ddec788c25c5898131588abc5852b23e",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "f189b9e5d35b650fe5fb5f0ce5490c10e2734426d424143b1606444421857ffe"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"aegyo-natural": {
+		"package": "7406180908924996879/ca0e678b9394dd720b3c04379dfb48a3",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "0495076c8682d46cd5b816f8297e21eb09ec69082fb89fdc7d53f837969a1bdf"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"aegyo-born": {
+		"package": "7406181438145580288/0946881a933ddcf5d46d2148ec4f1eeb",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "19d1a7aeee4944649a2378c7cc2bdb0ffb007dc51664ac61f6eb1419cbc6f611"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"aegyo-bittersweet": {
+		"package": "7406180529726344463/88de63139cbef0e7aa78bb3c34148378",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "a2882cce10a5a97b3bb5b6f6d85e4ca0133986d0313c00ec8109634b4b41a805"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"aegyo-peach": {
+		"package": "7406173948041252131/face184b4f48bdbf68dfe3b6b0d79c39",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "b79fbc9a8eb07f3570494a05488ba0d67a07268f15bca043fc967de3d6b30e5b"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"aegyo-campus": {
+		"package": "7406174769218997544/1c91f21149f2daea1f77972f88dbf7df",
+		"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+		"meshSha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6",
+		"material": "material/eyeshadow/default.material",
+		"materialSha256": "9ef7abcff877b383208505954e208a566854b0547b078b3ac4136331720b6109",
+		"prefabSha256": "95fab362985796e790cba36848ec2dfecaf6660ffa915fb11df99553f5f02d4c",
+		"defines": [
+			"AMAZING_USE_BLENDMODE_SCREEN_FORREFLECT",
+			"AMAZING_USE_REFLECT",
+			"AMAZING_USE_SUCAI",
+			"AMAZING_USE_BLENDMODE_MUTIPLAY"
+		],
+		"layers": [
+			{
+				"path": "image/eyeshadow/default/eyeshadow.png",
+				"mode": "multiply",
+				"sha256": "6a0288acf189c39e6a0aa89bf099790d61d236b7b38ee70ada21968bba647226"
+			},
+			{
+				"path": "image/eyeshadow/default/eyeshadowScreen.png",
+				"mode": "screen",
+				"sha256": "dcd881f799d1cb254b41addb92b8b04a025a51cedcae75d7eea2c2d47a39e81f"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-natural": {
+		"package": "7406174938438044943/8ae3097fb95ca9006f57856fccd625be",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "9b800043c260492c7a302cea5ec275ee250425ef8b59ffa4c351bf9cb56b7c9d"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-cat": {
+		"package": "7406174561663782159/743f9d928016a361227154fa946b763b",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "1974337557eee1f4e822567ecaf831abe56872a747894a0b8cf411c7ae45d383"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-playful": {
+		"package": "7406179874521632035/71795027dd763624788b67517cfa3048",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "2d49d7107c1771feb52d67cbf37373fcf402dc455f4cb9a34a80f54e32788ea5"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-alluring": {
+		"package": "7406180977199942947/6a7185c6d0ab4ad1b9e46853f9ce926e",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "292796197d8cdfc2c49013d3ecab9b924fed164db5a0b7cef7700f03fbd85057"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-detached": {
+		"package": "7406174933820198196/8f8b7b5d3ee885ba1d4f83b597b8ccf8",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "ccba9d23e8a6df4fcfb7719d1403d505787ce53ffb4f38ad999bc9079a5b8e87"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	},
+	"eyeliner-warrior": {
+		"package": "7406174026269199668/064da06e9def650032c089de7cfdfcb7",
+		"mesh": "mesh/eyeline_faceu_mesh.mesh",
+		"meshSha256": "1361ce26cfc35919d048ac3b644277d556bf61db8b8cad099b9b9629a6149b49",
+		"material": "material/Eyeline.material",
+		"materialSha256": "c52afccff0bd9df3096ca0ed874de125fad1ec6de75d4d24f4fdded905cd581b",
+		"prefabSha256": "fb7a0e9e87b37f6945519f5c80459031caf6aec646583cebc0d1cdbb81f8d68c",
+		"defines": ["AMAZING_USE_SUCAI", "AMAZING_USE_BLENDMODE_MUTIPLAY"],
+		"layers": [
+			{
+				"path": "image/eyeline/eyeline.png",
+				"mode": "multiply",
+				"sha256": "490e7f0d767011c146c3b39d32b9a2afb3abef8ce4ad12d34279755dd97005ad"
+			}
+		],
+		"contentSha256": "2c3f5e353b5e8e08b97315d9e6e3906e8780039007ef9b3d70587a0a5498c6a6"
+	}
+}

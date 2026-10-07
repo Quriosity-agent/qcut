@@ -1,0 +1,1400 @@
+{
+	"shapes": {
+		"data0": [1, 3, 320, 320],
+		"data1": [1, 3, 1, 1],
+		"Conv_0": [1, 16, 160, 160],
+		"Conv_2": [1, 32, 160, 160],
+		"Conv_4": [1, 32, 80, 80],
+		"Conv_6": [1, 32, 80, 80],
+		"Conv_7": [1, 56, 80, 80],
+		"Conv_9": [1, 56, 40, 40],
+		"Conv_11": [1, 48, 40, 40],
+		"Conv_12": [1, 112, 40, 40],
+		"Conv_14": [1, 112, 20, 20],
+		"Conv_16": [1, 96, 20, 20],
+		"Conv_17": [1, 192, 20, 20],
+		"Conv_19": [1, 192, 20, 20],
+		"Conv_21": [1, 96, 20, 20],
+		"Add_22": [1, 96, 20, 20],
+		"Conv_23": [1, 224, 20, 20],
+		"Conv_25": [1, 224, 10, 10],
+		"Conv_27": [1, 128, 10, 10],
+		"Conv_28": [1, 288, 10, 10],
+		"Conv_30": [1, 288, 5, 5],
+		"Conv_32": [1, 128, 5, 5],
+		"Conv_33": [1, 288, 5, 5],
+		"Conv_35": [1, 288, 5, 5],
+		"Conv_37": [1, 128, 5, 5],
+		"Add_38": [1, 128, 5, 5],
+		"Conv_39": [1, 288, 5, 5],
+		"Conv_41": [1, 288, 3, 3],
+		"Conv_43": [1, 128, 3, 3],
+		"head.mul_cond_conv1.0": [1, 128, 1, 1],
+		"Sigmoid_45": [1, 128, 1, 1],
+		"Upsample_47": [1, 128, 5, 5],
+		"Conv_48": [1, 224, 5, 5],
+		"Conv_50": [1, 224, 5, 5],
+		"Conv_52": [1, 128, 5, 5],
+		"Add_53": [1, 128, 5, 5],
+		"Mul_54": [1, 128, 5, 5],
+		"Add_55": [1, 128, 5, 5],
+		"head.mul_cond_conv2.0": [1, 128, 1, 1],
+		"Sigmoid_58": [1, 128, 1, 1],
+		"Upsample_60": [1, 128, 10, 10],
+		"Conv_61": [1, 192, 10, 10],
+		"Conv_63": [1, 192, 10, 10],
+		"Conv_65": [1, 128, 10, 10],
+		"Add_66": [1, 128, 10, 10],
+		"Mul_67": [1, 128, 10, 10],
+		"Add_68": [1, 128, 10, 10],
+		"head.mul_cond_conv3.0": [1, 96, 1, 1],
+		"Sigmoid_71": [1, 96, 1, 1],
+		"Upsample_73": [1, 128, 20, 20],
+		"Conv_74": [1, 64, 20, 20],
+		"Conv_76": [1, 64, 20, 20],
+		"Conv_78": [1, 96, 20, 20],
+		"Mul_79": [1, 96, 20, 20],
+		"Add_80": [1, 96, 20, 20],
+		"head.mul_cond_conv4.0": [1, 48, 1, 1],
+		"Sigmoid_83": [1, 48, 1, 1],
+		"Upsample_85": [1, 96, 40, 40],
+		"Conv_86": [1, 48, 40, 40],
+		"Conv_88": [1, 48, 40, 40],
+		"Conv_90": [1, 48, 40, 40],
+		"Mul_91": [1, 48, 40, 40],
+		"Add_92": [1, 48, 40, 40],
+		"head.mul_cond_conv5.0": [1, 32, 1, 1],
+		"Sigmoid_95": [1, 32, 1, 1],
+		"Upsample_97": [1, 48, 80, 80],
+		"Conv_98": [1, 24, 80, 80],
+		"Conv_100": [1, 24, 80, 80],
+		"Conv_102": [1, 32, 80, 80],
+		"Mul_103": [1, 32, 80, 80],
+		"Add_104": [1, 32, 80, 80],
+		"head.mul_cond_conv6.0": [1, 16, 1, 1],
+		"Sigmoid_107": [1, 16, 1, 1],
+		"Upsample_109": [1, 32, 160, 160],
+		"Conv_110": [1, 16, 160, 160],
+		"Conv_112": [1, 16, 160, 160],
+		"Conv_114": [1, 16, 160, 160],
+		"Mul_115": [1, 16, 160, 160],
+		"Add_116": [1, 16, 160, 160],
+		"Upsample_119": [1, 16, 320, 320],
+		"Conv_120": [1, 8, 320, 320],
+		"Conv_122": [1, 8, 320, 320],
+		"Conv_124": [1, 4, 320, 320],
+		"Conv_125": [1, 2, 320, 320],
+		"Tanh_126": [1, 4, 320, 320],
+		"Tanh_127": [1, 2, 320, 320]
+	},
+	"steps": [
+		{
+			"op": "DataV2",
+			"inputs": [],
+			"output": "data0",
+			"params": {}
+		},
+		{
+			"op": "DataV2",
+			"inputs": [],
+			"output": "data1",
+			"params": {}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data0"],
+			"output": "Conv_0",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_0"],
+			"output": "Conv_2",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_2"],
+			"output": "Conv_4",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_4"],
+			"output": "Conv_6",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_6"],
+			"output": "Conv_7",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_7"],
+			"output": "Conv_9",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_9"],
+			"output": "Conv_11",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_11"],
+			"output": "Conv_12",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_12"],
+			"output": "Conv_14",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_14"],
+			"output": "Conv_16",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_16"],
+			"output": "Conv_17",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_17"],
+			"output": "Conv_19",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_19"],
+			"output": "Conv_21",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Conv_16", "Conv_21"],
+			"output": "Add_22",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Add_22"],
+			"output": "Conv_23",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_23"],
+			"output": "Conv_25",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_25"],
+			"output": "Conv_27",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_27"],
+			"output": "Conv_28",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_28"],
+			"output": "Conv_30",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_30"],
+			"output": "Conv_32",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_32"],
+			"output": "Conv_33",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_33"],
+			"output": "Conv_35",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_35"],
+			"output": "Conv_37",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Conv_32", "Conv_37"],
+			"output": "Add_38",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Add_38"],
+			"output": "Conv_39",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_39"],
+			"output": "Conv_41",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_41"],
+			"output": "Conv_43",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv1.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv1.0"],
+			"output": "Sigmoid_45",
+			"params": {}
+		},
+		{
+			"op": "Upsample",
+			"inputs": ["Conv_43"],
+			"output": "Upsample_47",
+			"params": {
+				"size": [5, 5]
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_47"],
+			"output": "Conv_48",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_48"],
+			"output": "Conv_50",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_50"],
+			"output": "Conv_52",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Upsample_47", "Conv_52"],
+			"output": "Add_53",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Add_53", "Sigmoid_45"],
+			"output": "Mul_54",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_54", "Add_38"],
+			"output": "Add_55",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv2.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv2.0"],
+			"output": "Sigmoid_58",
+			"params": {}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_55"],
+			"output": "Upsample_60",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_60"],
+			"output": "Conv_61",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_61"],
+			"output": "Conv_63",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_63"],
+			"output": "Conv_65",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Upsample_60", "Conv_65"],
+			"output": "Add_66",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Add_66", "Sigmoid_58"],
+			"output": "Mul_67",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_67", "Conv_27"],
+			"output": "Add_68",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv3.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv3.0"],
+			"output": "Sigmoid_71",
+			"params": {}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_68"],
+			"output": "Upsample_73",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_73"],
+			"output": "Conv_74",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_74"],
+			"output": "Conv_76",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_76"],
+			"output": "Conv_78",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Conv_78", "Sigmoid_71"],
+			"output": "Mul_79",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_79", "Add_22"],
+			"output": "Add_80",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv4.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv4.0"],
+			"output": "Sigmoid_83",
+			"params": {}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_80"],
+			"output": "Upsample_85",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_85"],
+			"output": "Conv_86",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_86"],
+			"output": "Conv_88",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_88"],
+			"output": "Conv_90",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Conv_90", "Sigmoid_83"],
+			"output": "Mul_91",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_91", "Conv_11"],
+			"output": "Add_92",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv5.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv5.0"],
+			"output": "Sigmoid_95",
+			"params": {}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_92"],
+			"output": "Upsample_97",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_97"],
+			"output": "Conv_98",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_98"],
+			"output": "Conv_100",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_100"],
+			"output": "Conv_102",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Conv_102", "Sigmoid_95"],
+			"output": "Mul_103",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_103", "Conv_6"],
+			"output": "Add_104",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["data1"],
+			"output": "head.mul_cond_conv6.0",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Sigmoid",
+			"inputs": ["head.mul_cond_conv6.0"],
+			"output": "Sigmoid_107",
+			"params": {}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_104"],
+			"output": "Upsample_109",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_109"],
+			"output": "Conv_110",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_110"],
+			"output": "Conv_112",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_112"],
+			"output": "Conv_114",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "SEScale",
+			"inputs": ["Conv_114", "Sigmoid_107"],
+			"output": "Mul_115",
+			"params": {}
+		},
+		{
+			"op": "Eltwise",
+			"inputs": ["Mul_115", "Conv_0"],
+			"output": "Add_116",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "UpSampling",
+			"inputs": ["Add_116"],
+			"output": "Upsample_119",
+			"params": {
+				"mode": "bilinear"
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Upsample_119"],
+			"output": "Conv_120",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "DepthwiseSeparableConvolution",
+			"inputs": ["Conv_120"],
+			"output": "Conv_122",
+			"params": {
+				"relu": true
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_122"],
+			"output": "Conv_124",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Convolution",
+			"inputs": ["Conv_122"],
+			"output": "Conv_125",
+			"params": {
+				"relu": false
+			}
+		},
+		{
+			"op": "Tanh",
+			"inputs": ["Conv_124"],
+			"output": "Tanh_126",
+			"params": {}
+		},
+		{
+			"op": "Tanh",
+			"inputs": ["Conv_125"],
+			"output": "Tanh_127",
+			"params": {}
+		}
+	],
+	"weights": {
+		"2": {
+			"path": "weight-2.half",
+			"bias": "weight-2-bias.half",
+			"co": 16,
+			"ci": 3,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": false,
+			"pathSha256": "cebc4ba0da17e0677022303b6c73b04b31859b39b4846335fe008df9011d7602",
+			"biasSha256": "befae844a19514d5bc3466a64db859463ffbcf57fca64a325b8acef2ca3c2030"
+		},
+		"3": {
+			"path": "weight-3.half",
+			"bias": "weight-3-bias.half",
+			"co": 32,
+			"ci": 16,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "c3664c3ae11571d09523b96bedea4f9899cf8a88d1488e03acc10bb87700da30",
+			"biasSha256": "7a4d2c7e25d79dea81bd557c39243c3f3ed9a9b8af7965278b9ebf1428ab5ee1"
+		},
+		"4": {
+			"path": "weight-4.half",
+			"bias": "weight-4-bias.half",
+			"co": 32,
+			"ci": 32,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "3b6be62b1562dbb83f8176549c61b1caf7379c93c0c2315b1d4a24566d85ef69",
+			"biasSha256": "09c090a5547b914d72f4a766f03ac8555173af001b5fc5bbf41c38934c74dd7d"
+		},
+		"5": {
+			"path": "weight-5.half",
+			"bias": "weight-5-bias.half",
+			"co": 32,
+			"ci": 32,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "70cfa1e25a43a94621372706291a3e8666f4d0bd96e8e1f023ff3c8f85936977",
+			"biasSha256": "2e2267964f1d14c5d0d64050150d7a43fd5b3712389f8bdbf227fd7c3d18a02d"
+		},
+		"6": {
+			"path": "weight-6.half",
+			"bias": "weight-6-bias.half",
+			"co": 56,
+			"ci": 32,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "cd128f1e2c0b30521bc1c0c7e970e0cb7cd6a4a3c430636174116a0c4751b882",
+			"biasSha256": "a356417faaeb8ce8c451f99a2a8b49222f85fcfbb536f4a554261bd7e05c5da6"
+		},
+		"7": {
+			"path": "weight-7.half",
+			"bias": "weight-7-bias.half",
+			"co": 56,
+			"ci": 56,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "ad59b5cf0cf94d4b81220c1000330f7a86dcc4de4c165f76a882d71c4e4a4752",
+			"biasSha256": "7dcbfb6e527dd33ab14f05ddaaf084b7d3fb41f633d70ff36cf67c225a2f23f5"
+		},
+		"8": {
+			"path": "weight-8.half",
+			"bias": "weight-8-bias.half",
+			"co": 48,
+			"ci": 56,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "03792cf698480525ec4b614ae7b39ec1eae8947dd1f273570c3159fa230da70e",
+			"biasSha256": "a602ef84ae6a0727d62c2e0be413bdd903b4419c996507ff385f52cf40ed97ed"
+		},
+		"9": {
+			"path": "weight-9.half",
+			"bias": "weight-9-bias.half",
+			"co": 112,
+			"ci": 48,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "2cb81966821518d8f95eec85cb87faa937eacaf6b1ba467a8deeab1767271a27",
+			"biasSha256": "ddf86e7ab9e8da92b467d5385b4f03834e101afdcac97ca386cf54d039936ba1"
+		},
+		"10": {
+			"path": "weight-10.half",
+			"bias": "weight-10-bias.half",
+			"co": 112,
+			"ci": 112,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "64bf578f7c94ee65201151a4fc3b602748ddcf5b0d1fcffd72dbd2ee348b8775",
+			"biasSha256": "9274b2686ece2b7c600fd6511a4b0555ed34c3bbd4c7cfa8bf96efc9c413d644"
+		},
+		"11": {
+			"path": "weight-11.half",
+			"bias": "weight-11-bias.half",
+			"co": 96,
+			"ci": 112,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "755cda3e1b760d7f64d5e455c0a8e7719cf812f764a6f6a3472bb734482bba25",
+			"biasSha256": "91311781334caa9d92b25c4ddfe6d82967f17ddac80a1b6b9ad746120c88302b"
+		},
+		"12": {
+			"path": "weight-12.half",
+			"bias": "weight-12-bias.half",
+			"co": 192,
+			"ci": 96,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "834a3c412d5bdc39b3849d4dac46b74bb606e3a0f746e9a85a439281dfa6156a",
+			"biasSha256": "20d15fb954365982e9301e7a8ec59878a8f296589fbb7472ca5da746b34b88c8"
+		},
+		"13": {
+			"path": "weight-13.half",
+			"bias": "weight-13-bias.half",
+			"co": 192,
+			"ci": 192,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "17cd9ffc5702cb1124fb3bd1b50933f9b2b037c71d2d7d7fe7be2ae4bdbabc0a",
+			"biasSha256": "30d499ba320b17ac8081d14adcaf4cc6aa5a975b9b454bc6b00508e616b54ba5"
+		},
+		"14": {
+			"path": "weight-14.half",
+			"bias": "weight-14-bias.half",
+			"co": 96,
+			"ci": 192,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "6edc29f70899c28c790cbaebcf5bd17f5774531f7dedc15c40806651c8fdaa0b",
+			"biasSha256": "b600126c316aace487ff319012542b0bfb2d8ce34638b283821d577aa0673b6f"
+		},
+		"16": {
+			"path": "weight-16.half",
+			"bias": "weight-16-bias.half",
+			"co": 224,
+			"ci": 96,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "f6574f7d5b37f134ef528f009a81135424f54d0f09d6d843f6bf53cf7ad66996",
+			"biasSha256": "39424e6e6d435d208c2d2a3dd4b76a405fa020354032175b8b6082882f12572f"
+		},
+		"17": {
+			"path": "weight-17.half",
+			"bias": "weight-17-bias.half",
+			"co": 224,
+			"ci": 224,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "7f3b6647359411ed6a69e3f57552ee58eb7c3e8dcf2c36b37b2682997fbb3c2c",
+			"biasSha256": "91de8b9814b21dc265265c6a5b18b0719b7ecddcc7f3879eab5db15971fd34a1"
+		},
+		"18": {
+			"path": "weight-18.half",
+			"bias": "weight-18-bias.half",
+			"co": 128,
+			"ci": 224,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "ee03dee12cb8d83d06e0310db4e381ad3eaf1db406ee4308da3004c2ce4d4d39",
+			"biasSha256": "26c5ad9b76a162883b1dea21a203088ce35474ecba79edff2fc4b80f91cfa4be"
+		},
+		"19": {
+			"path": "weight-19.half",
+			"bias": "weight-19-bias.half",
+			"co": 288,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "befafdd7b67c9606d122ad059719c705d1d1b83546ee0a02c488c648f9f12985",
+			"biasSha256": "e4517a2d9e8ea0c68b5e7cb2d54f36b4d92926e8abbdf4ac9a04df8ef2eb6ed3"
+		},
+		"20": {
+			"path": "weight-20.half",
+			"bias": "weight-20-bias.half",
+			"co": 288,
+			"ci": 288,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "bc1841900836e26a8b5b7bc2d19b256af7866cd260efcb3566ae39898a8e22b8",
+			"biasSha256": "63d6000de076d0a844bc15574a40de9589ba64999de5b7d5c34ec9024b572400"
+		},
+		"21": {
+			"path": "weight-21.half",
+			"bias": "weight-21-bias.half",
+			"co": 128,
+			"ci": 288,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "31cd6430a8d62b52001934c3ae3632571250d554199a7bf257a627c389831738",
+			"biasSha256": "65f86404f6cff95b3da9176cfbeed593463e6c472e1287028edddd6469827b42"
+		},
+		"22": {
+			"path": "weight-22.half",
+			"bias": "weight-22-bias.half",
+			"co": 288,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "c3d8cae90d6026fb835837f73f65102fbd1ea1d11f16b886396b5e0917ee3288",
+			"biasSha256": "1f57897755a5a8b832a317f5c9fc4642a3fda08a023f60e45ddb0dee31089cb9"
+		},
+		"23": {
+			"path": "weight-23.half",
+			"bias": "weight-23-bias.half",
+			"co": 288,
+			"ci": 288,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "41a07b58ea6e309c7b5e30c73044cfeefe0e827928162dec262f8150c4381328",
+			"biasSha256": "b2b2412ebadb287f41f38180821dac7b722ead9458ec60cb1a04277594d3fd53"
+		},
+		"24": {
+			"path": "weight-24.half",
+			"bias": "weight-24-bias.half",
+			"co": 128,
+			"ci": 288,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "191890b113bb5fcb8bcd30e32147bb2007932462428e0b0a03d21f93df4cc5d8",
+			"biasSha256": "4d14c7f987c8f36037be1dc35b38903d8bade927011bf8038365d5114dea80b8"
+		},
+		"26": {
+			"path": "weight-26.half",
+			"bias": "weight-26-bias.half",
+			"co": 288,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "ba48588f451d7b90ff091ecefef6c7e9ece5e79453c3166f6c57278dc452b250",
+			"biasSha256": "5900c20683cb4d53b21f89034f51dab590caab059c837ef1d14b7d10eb5d85e4"
+		},
+		"27": {
+			"path": "weight-27.half",
+			"bias": "weight-27-bias.half",
+			"co": 288,
+			"ci": 288,
+			"kernel": 3,
+			"stride": 2,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "99b9792f6a47a7348503ad01dfd7f041d6b453a8bff8322395245d02f4531ad7",
+			"biasSha256": "54453b91219b52941ac2962f68da877f7af3e79be895b4467380a57e83565459"
+		},
+		"28": {
+			"path": "weight-28.half",
+			"bias": "weight-28-bias.half",
+			"co": 128,
+			"ci": 288,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "4da02fad56d6c91cb95a42d629f630f57f77463c70c508210238871de10de236",
+			"biasSha256": "e4d6a2a79ec28badbbed57da2eee692954517e991735e944f02ddf59a4eb2505"
+		},
+		"29": {
+			"path": "weight-29.half",
+			"bias": "weight-29-bias.half",
+			"co": 128,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "6c67c64ebc73fdad567c8f1938b294cd3433b4180462da36977b1caed964a1f9",
+			"biasSha256": "78f64221631d86f33bd0997e98e5fdeb2a3d466b7f3740099713ad1a6902aaf9"
+		},
+		"32": {
+			"path": "weight-32.half",
+			"bias": "weight-32-bias.half",
+			"co": 224,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "cabd35f638d48be6a7ff1e09fa5276694a0fdcf9e5d4f7417850febda86bed1c",
+			"biasSha256": "e6dbdf59fc1b518d01e979d1e5495028e6b9e7c5a9db3579c66f54999a99af0e"
+		},
+		"33": {
+			"path": "weight-33.half",
+			"bias": "weight-33-bias.half",
+			"co": 224,
+			"ci": 224,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "166da8e1738001eb46ddeab0c2a404be146c2ab322812d8fe23c80faf47bf947",
+			"biasSha256": "dff7eca6bfcbe2cc6e658bda914eaed38b2d2c92046949eb9bae2fd697a1d807"
+		},
+		"34": {
+			"path": "weight-34.half",
+			"bias": "weight-34-bias.half",
+			"co": 128,
+			"ci": 224,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "00df063eb331dd395c42e323b56d25843115b9506de6db0cc02d43c1c74a6ade",
+			"biasSha256": "880d8a187873ad8b56b77274b6ec7cf866df9d1f99dcd609fc6cd02e5f8bb975"
+		},
+		"38": {
+			"path": "weight-38.half",
+			"bias": "weight-38-bias.half",
+			"co": 128,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "00191f1e16ee1a2afd7ef086a72829a0c4b3059219b511e825e447d09c7f4d59",
+			"biasSha256": "e6da5a0f5a41ec4f6ca4bbd3d972b41ac592cd486d52c9ba05954f46efadefdf"
+		},
+		"41": {
+			"path": "weight-41.half",
+			"bias": "weight-41-bias.half",
+			"co": 192,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "ea307445903aea544d31dc2ff565f65e7221e408e5d9b6943a6872b17679832b",
+			"biasSha256": "1f6ab825f4b71b3ee92038c078161a3b4c197a9fd0f4ade008809cbc8705cc89"
+		},
+		"42": {
+			"path": "weight-42.half",
+			"bias": "weight-42-bias.half",
+			"co": 192,
+			"ci": 192,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "5a9a74c2abe9b7b8054be6fc67ea024145086272379f0fcf8d688d597bb2a731",
+			"biasSha256": "b3658eff52f501e280886161f02efc9b295a3c909a98c65bf2dc4ea2d2fb8dbc"
+		},
+		"43": {
+			"path": "weight-43.half",
+			"bias": "weight-43-bias.half",
+			"co": 128,
+			"ci": 192,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "8aab3d3ac47681061f72b3bcf358d645b29f111cff8b0a82fc80aa15cf06cb9a",
+			"biasSha256": "fb49d2783c9c60cccca0836ec6c834a8ca8d99c6b4e39e16ef96ae17a2b90777"
+		},
+		"47": {
+			"path": "weight-47.half",
+			"bias": "weight-47-bias.half",
+			"co": 96,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "c8210667ac93522c2e9e7ecd8f45212a44297f66cfe36e565167c0a190a6781f",
+			"biasSha256": "c66b864431dab0840f2f3db796d5e1f0e912e9f61dc013edae08d3daeaa38263"
+		},
+		"50": {
+			"path": "weight-50.half",
+			"bias": "weight-50-bias.half",
+			"co": 64,
+			"ci": 128,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "19b01e8208a4dc1b6732827166cbe59e90fc85116c652be812ea0ba9b8a7f287",
+			"biasSha256": "71df7c244a39e391bdb8a7b0f4e2fd05cc226eeeed9fe7e9563a40d68047d978"
+		},
+		"51": {
+			"path": "weight-51.half",
+			"bias": "weight-51-bias.half",
+			"co": 64,
+			"ci": 64,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "5b78ea06a617cdf628a496742679bcc1e8b8fbed8d17bc44514528674ea2a302",
+			"biasSha256": "f17daac64d19404cff8d3962a8d38dbf5e8922897ca24bfb1a0170f93af90f49"
+		},
+		"52": {
+			"path": "weight-52.half",
+			"bias": "weight-52-bias.half",
+			"co": 96,
+			"ci": 64,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "c4b614351d41bf87f956fda876617815f930a9f8101479a2895d8c83ee11539a",
+			"biasSha256": "6fc89d7a06435a7493e77ded287df04ad60ab9b2181dc4de3369de1a2141f5ef"
+		},
+		"55": {
+			"path": "weight-55.half",
+			"bias": "weight-55-bias.half",
+			"co": 48,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "ca817e99d7d5e90d8255307031be3305ec98be6fce60209b4e91a4287b0b9faa",
+			"biasSha256": "60692b858962979b3c553d3b94eda12bc30143f88489978e22fabfe613042084"
+		},
+		"58": {
+			"path": "weight-58.half",
+			"bias": "weight-58-bias.half",
+			"co": 48,
+			"ci": 96,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "51a12a0b5e60cc7e10dae3d8f5e09445fcca6b61665fe1f74c0b3c94e491d93a",
+			"biasSha256": "1079e4dc43b1a6a24ca4b08128ecc6f9ea2d0f91dad7641af1d6f47477b8e702"
+		},
+		"59": {
+			"path": "weight-59.half",
+			"bias": "weight-59-bias.half",
+			"co": 48,
+			"ci": 48,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "6b6f46e6acf524b5b1171fd692e470e3a01e23653697f4a5ce586f3cf5fbd3e5",
+			"biasSha256": "99dbb64d1b8013a6c738b7905bc1eda9718ec06e02e54f0ce9cda4a249f0201a"
+		},
+		"60": {
+			"path": "weight-60.half",
+			"bias": "weight-60-bias.half",
+			"co": 48,
+			"ci": 48,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "f8ca9a69894c120f897606b02393d1ee4baec1ce3e7a7a9479d2b83cafbb0478",
+			"biasSha256": "8ba242f71a2620baddd5301eb881b2798ced611f998f9a5085b1aa76c3e6802a"
+		},
+		"63": {
+			"path": "weight-63.half",
+			"bias": "weight-63-bias.half",
+			"co": 32,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "c0a96eb2a589add89ca0cad768f97771d20b24887d626510faa6a0085b15df92",
+			"biasSha256": "0c51a07bdd517d5ce4c974176ea22f68248ca85518be6a9dece5e148f2f21390"
+		},
+		"66": {
+			"path": "weight-66.half",
+			"bias": "weight-66-bias.half",
+			"co": 24,
+			"ci": 48,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "e609fe8165fe8caf187718ec73b18650c810b6c124fedd7d7aa5256aea875cdf",
+			"biasSha256": "b4be43c892faddac125e1b61cff7379096213acfc9b926ae2daabe8c47296926"
+		},
+		"67": {
+			"path": "weight-67.half",
+			"bias": "weight-67-bias.half",
+			"co": 24,
+			"ci": 24,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "c05574ec0585539c6cb751b1b772aa4b3908169ab38d1df8805671ee6cfa1937",
+			"biasSha256": "b67f8007d64febda3dc230984a4211204b7ed1b41e8823c653fe8e00dc5b7663"
+		},
+		"68": {
+			"path": "weight-68.half",
+			"bias": "weight-68-bias.half",
+			"co": 32,
+			"ci": 24,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "4e2e4d142fe5baba13cb19ba529dbc0e55fc4afcabb11ad6ab7bd3c227702571",
+			"biasSha256": "9e93ec6e197b564b4be3bb1fd3c041a9e5d8b18dfbbabc00d53ab73caca86ef6"
+		},
+		"71": {
+			"path": "weight-71.half",
+			"bias": "weight-71-bias.half",
+			"co": 16,
+			"ci": 3,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "e8a4a8cfff1c2af5628cd4b0b0f8eaed3c935a8e9ba5cf8cafc3a65dc75ba30b",
+			"biasSha256": "66a15fe64d62f4b0fb0e7fc5abeb800edb274fc0fc0def74ed5566633fd50bb7"
+		},
+		"74": {
+			"path": "weight-74.half",
+			"bias": "weight-74-bias.half",
+			"co": 16,
+			"ci": 32,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "6a56d66f49e5617c735c13e9cf18aae7b8969857a3d2227869406eff5df8901d",
+			"biasSha256": "208b6ccd7d9028d925faa7008576d749353521de1e60d17b63b902b2e9a94d3e"
+		},
+		"75": {
+			"path": "weight-75.half",
+			"bias": "weight-75-bias.half",
+			"co": 16,
+			"ci": 16,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "648d096fa0c07df0262faf71e2b3cef4212471201505fad8d7346365c5f2b344",
+			"biasSha256": "c74f22c4b5bd79251611ead9ffc0f608830a18c8ab4ae39d5d76b4ad9261009c"
+		},
+		"76": {
+			"path": "weight-76.half",
+			"bias": "weight-76-bias.half",
+			"co": 16,
+			"ci": 16,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "357abdcfc61ed04b1bd58f19db1c63c4c989d41ca4a40afde4a9ddb59fb206c3",
+			"biasSha256": "3c2766c535a4008f85323e02d868e6c3b7a0a81f68d4085851e193f6c0ab334c"
+		},
+		"80": {
+			"path": "weight-80.half",
+			"bias": "weight-80-bias.half",
+			"co": 8,
+			"ci": 16,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "5cbbfcf47b2c0ec73409b7d26fc5fb3928f8b18e0ecd5c1c92b5549cc4b3f285",
+			"biasSha256": "02243d27c94bb6964eff1fca095c793829468855bf98d6f023d2284ef0b797bf"
+		},
+		"81": {
+			"path": "weight-81.half",
+			"bias": "weight-81-bias.half",
+			"co": 8,
+			"ci": 8,
+			"kernel": 3,
+			"stride": 1,
+			"pad": 1,
+			"depth": true,
+			"pathSha256": "ad30ed09f89c8b4e9c431935e6b7ec7a18623504cdf6929504fa3deb790bbadd",
+			"biasSha256": "a080c8cf6f7a45127db1d90e3d732240c700ab13b107dfe2523c8fcac1501efa"
+		},
+		"82": {
+			"path": "weight-82.half",
+			"bias": "weight-82-bias.half",
+			"co": 4,
+			"ci": 8,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "1e209802476749c626e35ad3521b35c863581ed7fabda9c0eff6b115647147e3",
+			"biasSha256": "afc6e353e084aa63835b0f0b915172dbb918c15cf84c0b3c90d6d0c24281ed78"
+		},
+		"83": {
+			"path": "weight-83.half",
+			"bias": "weight-83-bias.half",
+			"co": 2,
+			"ci": 8,
+			"kernel": 1,
+			"stride": 1,
+			"pad": 0,
+			"depth": false,
+			"pathSha256": "2a6b429fbc31a78be690e2af972bc669b0102dc586ed1176cbb728e65bd42ef3",
+			"biasSha256": "c946203808267d42ccfa6b283915906553b62de95f32af24e4834cff2e331fab"
+		}
+	},
+	"model": {
+		"filename": "jypc_yunfuhua_gpucpu_v1.0_size0_md52fb34821a520d7c79c38d93a494cfe00.model",
+		"sha256": "ff86b484516a6e1333e4678492e5c92ec5f423ab8e596968c53f7d2589a624d4",
+		"bytes": 1957789,
+		"bmOffset": 3664,
+		"bmSha256": "5c0d3dc4c230ea12a7affebcb7ecafde8c7a446bec7a5c2e2e1492c91c1a6f99",
+		"arenaOffset": 5833,
+		"arenaBytes": 1948284,
+		"arenaSha256": "cb1209663d1ba44588ac469d5c8b14006bd91b505317510ffae7d93669b54e30"
+	},
+	"mask": {
+		"path": "Cache/effect/7408077026705280256/74ded1bf06987b66866e6c2fc72a9e24/AmazingFeature/image/blurmask.png",
+		"sha256": "240fe6d8b95ac4d9d0943eb55bbd20c74cbcf78af5a4b265a297a6f8fbb53b1d"
+	}
+}

@@ -38,11 +38,16 @@ vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
 }));
 
 const RESTART = "live-static-audit-failed-restart-required";
+// Dependency capture before launch can exceed vi.waitFor's 1s default on slow
+// runners; let the configured test timeout be the only bound.
+const JOB_START = { timeout: 30_000 };
 let root: string;
 let files: Awaited<ReturnType<typeof setupFiles>>;
 
 beforeEach(async () => {
-	vi.clearAllMocks();
+	// Reset (not just clear) so an unconsumed mockImplementationOnce from a
+	// failed test cannot leak into the next one.
+	vi.resetAllMocks();
 	root = await realpath(
 		await mkdtemp(path.join(os.tmpdir(), "qcut-static-retry-"))
 	);
@@ -149,7 +154,7 @@ describe("cancelling the running static audit", () => {
 			failingJob({ kind: "cancelled", waitForAbort: true })
 		);
 		const pending = provider.render({ request });
-		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce(), JOB_START);
 		expect(
 			provider.cancel({ request: { requestId: request.requestId } })
 		).toEqual({ cancelled: true });
@@ -184,7 +189,7 @@ describe("cancelling the running static audit", () => {
 			failingJob({ kind: "cancelled", forced: true, waitForAbort: true })
 		);
 		const pending = provider.render({ request });
-		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce(), JOB_START);
 		provider.cancel({ request: { requestId: request.requestId } });
 		await expect(pending).rejects.toThrow(/cancelled/);
 		expect(provider.inspect().blockers).toContain(RESTART);

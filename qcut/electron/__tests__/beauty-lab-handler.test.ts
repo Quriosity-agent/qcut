@@ -41,6 +41,13 @@ const { registrations, handle, removeHandler } = vi.hoisted(() => {
 
 vi.mock("electron", () => ({ ipcMain: { handle, removeHandler } }));
 
+import {
+	BEAUTY_LAB_INDEPENDENT_INSPECT,
+	BEAUTY_LAB_INDEPENDENT_RENDER,
+	BEAUTY_LAB_INDEPENDENT_CANCEL,
+} from "../beauty-lab-independent-contract";
+import { createBeautyLabIndependentProvider } from "../beauty-lab-independent";
+
 import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
 
 const cases: BeautyLabResearchCase[] = [
@@ -266,6 +273,15 @@ describe("Beauty Lab IPC", () => {
 				request: { requestId: "test" },
 			})
 		).rejects.toThrow("trusted main window");
+		for (const channel of [
+			BEAUTY_LAB_INDEPENDENT_INSPECT,
+			BEAUTY_LAB_INDEPENDENT_RENDER,
+			BEAUTY_LAB_INDEPENDENT_CANCEL,
+		]) {
+			await expect(
+				invoke({ channel, event: untrusted, request: {} })
+			).rejects.toThrow("trusted main window");
+		}
 		expect(candidateProvider.inspect).not.toHaveBeenCalled();
 		expect(candidateProvider.render).not.toHaveBeenCalled();
 		expect(candidateProvider.cancel).not.toHaveBeenCalled();
@@ -468,7 +484,7 @@ describe("Beauty Lab IPC", () => {
 		await Promise.resolve();
 		expect(candidateProvider.dispose).toHaveBeenCalledOnce();
 		expect(settled).toBe(false);
-		expect(registrations.size).toBe(stale ? 5 : 0);
+		expect(registrations.size).toBe(stale ? 8 : 0);
 		finish();
 		await disposal;
 		expect(settled).toBe(true);
@@ -490,5 +506,73 @@ describe("Beauty Lab IPC", () => {
 		});
 		await expect(controller.dispose()).rejects.toThrow("cleanup failed");
 		expect(registrations.size).toBe(0);
+	});
+});
+
+describe("independent Beauty Lab IPC", () => {
+	it("dispatches only to the independent provider and awaits its disposal", async () => {
+		const { event, mainWindow } = context();
+		const owned = {
+			...createBeautyLabIndependentProvider({ engineRoot: "/unused" }),
+			inspect: vi.fn(async () => ({
+				available: false,
+				provider: "qcut-independent-photo-v1" as const,
+				message: "test",
+				controls: [],
+				makeupCards: [],
+			})),
+			render: vi.fn(async () => {
+				throw new Error("owned-only");
+			}),
+			cancel: vi.fn(() => ({ cancelled: true })),
+			dispose: vi.fn(async () => {}),
+		};
+		const research = provider();
+		const controller = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: research,
+			independentProvider: owned,
+		});
+		expect(
+			await invoke({ channel: BEAUTY_LAB_INDEPENDENT_INSPECT, event })
+		).toMatchObject({ available: false });
+		await expect(
+			invoke({ channel: BEAUTY_LAB_INDEPENDENT_RENDER, event, request: {} })
+		).rejects.toThrow("owned-only");
+		expect(
+			await invoke({
+				channel: BEAUTY_LAB_INDEPENDENT_CANCEL,
+				event,
+				request: { requestId: "one" },
+			})
+		).toEqual({ cancelled: true });
+		expect(owned.cancel).toHaveBeenCalledWith({
+			request: { requestId: "one" },
+		});
+		expect(research.load).not.toHaveBeenCalled();
+		await controller.dispose();
+		await controller.dispose();
+		expect(owned.dispose).toHaveBeenCalledOnce();
+		expect(registrations.size).toBe(0);
+	});
+	it("fails clearly if the independent provider is not connected", async () => {
+		const { event, mainWindow } = context();
+		setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: provider(),
+		});
+		for (const channel of [
+			BEAUTY_LAB_INDEPENDENT_INSPECT,
+			BEAUTY_LAB_INDEPENDENT_RENDER,
+			BEAUTY_LAB_INDEPENDENT_CANCEL,
+		]) {
+			await expect(invoke({ channel, event, request: {} })).rejects.toThrow(
+				"not connected"
+			);
+		}
 	});
 });

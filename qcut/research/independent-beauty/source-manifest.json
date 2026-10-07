@@ -1,0 +1,1690 @@
+{
+	"schemaVersion": 1,
+	"sourceRepository": "https://github.com/donghaozhang/qcut-beauty-standalone",
+	"sourceCommit": "24d3dcf179d6c6871d1566725c341358661d98ca",
+	"scope": "independent static photo engine; no native runtime, models or fixtures copied",
+	"files": [
+		{
+			"path": "research/affine_linear.py",
+			"bytes": 1849,
+			"sha256": "e6c5a9014118c4f5891f88552e7d4f784858054dfdd1ae16e5e0783353c201f1",
+			"sourceSha256": "e6c5a9014118c4f5891f88552e7d4f784858054dfdd1ae16e5e0783353c201f1"
+		},
+		{
+			"path": "research/algorithm_frame.py",
+			"bytes": 4020,
+			"sha256": "2138aa24ffa7d8cafe588c38f1960e6c5ebf3dca23aec96a65cb956a394b5d14",
+			"sourceSha256": "2138aa24ffa7d8cafe588c38f1960e6c5ebf3dca23aec96a65cb956a394b5d14"
+		},
+		{
+			"path": "research/align160_heads_contract.py",
+			"bytes": 497,
+			"sha256": "8b5b18e4e76f66e11cc42928c987743b62ae06dd3de23055d2ca3cd52a306ab6",
+			"sourceSha256": "8b5b18e4e76f66e11cc42928c987743b62ae06dd3de23055d2ca3cd52a306ab6"
+		},
+		{
+			"path": "research/align160_infer.py",
+			"bytes": 3395,
+			"sha256": "0a8a6a5c8342c9e9ebc0addee3907738ddf841dd18c0d08f0805e9b4c184bfac",
+			"sourceSha256": "0a8a6a5c8342c9e9ebc0addee3907738ddf841dd18c0d08f0805e9b4c184bfac"
+		},
+		{
+			"path": "research/align160_prepare.py",
+			"bytes": 3774,
+			"sha256": "81b6837bee8a3c36044e432c3f2b4cac816eeeb94add1182220c63c299b52d72",
+			"sourceSha256": "81b6837bee8a3c36044e432c3f2b4cac816eeeb94add1182220c63c299b52d72"
+		},
+		{
+			"path": "research/alignment_assets.py",
+			"bytes": 3521,
+			"sha256": "9efa5efedfe953af8d8826cc8d447803d3d9b3b23b0b120c8fb81aeba371811c",
+			"sourceSha256": "9efa5efedfe953af8d8826cc8d447803d3d9b3b23b0b120c8fb81aeba371811c"
+		},
+		{
+			"path": "research/alignment_crop_transform.py",
+			"bytes": 2897,
+			"sha256": "f344dd5d027d08ff633373ac35f5bc4e5ea8f7624577990930d4f3ad36ec44b7",
+			"sourceSha256": "f344dd5d027d08ff633373ac35f5bc4e5ea8f7624577990930d4f3ad36ec44b7"
+		},
+		{
+			"path": "research/alignment_decode.py",
+			"bytes": 3108,
+			"sha256": "690ad122cf1ae8fb2a214713c3395c9da9abeb7814c1735e3e320b000e417606",
+			"sourceSha256": "690ad122cf1ae8fb2a214713c3395c9da9abeb7814c1735e3e320b000e417606"
+		},
+		{
+			"path": "research/alignment_infer.py",
+			"bytes": 4242,
+			"sha256": "2264c520f5b54a245178e8ed117b04eae8e1b215ac461a29ebd30cd3f3ab2614",
+			"sourceSha256": "2264c520f5b54a245178e8ed117b04eae8e1b215ac461a29ebd30cd3f3ab2614"
+		},
+		{
+			"path": "research/alignment_photo.py",
+			"bytes": 4731,
+			"sha256": "f39a328e4ce86e639a632fbea8c8d00185444f034c9037886b714966a4e6745b",
+			"sourceSha256": "f39a328e4ce86e639a632fbea8c8d00185444f034c9037886b714966a4e6745b"
+		},
+		{
+			"path": "research/alignment_sampling.py",
+			"bytes": 3281,
+			"sha256": "a7f56d772a293a9b6de414c1a097beaada8b6bff8c94a10bab69df48bba89d2e",
+			"sourceSha256": "a7f56d772a293a9b6de414c1a097beaada8b6bff8c94a10bab69df48bba89d2e"
+		},
+		{
+			"path": "research/alignment_sequence.py",
+			"bytes": 11945,
+			"sha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5",
+			"sourceSha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5"
+		},
+		{
+			"path": "research/alignment_sequence_run.py",
+			"bytes": 6391,
+			"sha256": "b3b3948bbd28f974158a48ecf1c291071beff24822b8c036825609dcd62ce9bb",
+			"sourceSha256": "b3b3948bbd28f974158a48ecf1c291071beff24822b8c036825609dcd62ce9bb"
+		},
+		{
+			"path": "research/alignment_temporal.py",
+			"bytes": 7186,
+			"sha256": "af7f1ed9a3a9c23f3e7c3cab25694df8a35f94234e5b5368a2046df12018e9f9",
+			"sourceSha256": "af7f1ed9a3a9c23f3e7c3cab25694df8a35f94234e5b5368a2046df12018e9f9"
+		},
+		{
+			"path": "research/alignment_transform.py",
+			"bytes": 5692,
+			"sha256": "aa7fa4961ac66c3f05cea8fbec283e8701c948accce09e7c6c5ace1fd8c3a723",
+			"sourceSha256": "aa7fa4961ac66c3f05cea8fbec283e8701c948accce09e7c6c5ace1fd8c3a723"
+		},
+		{
+			"path": "research/brow_assets.py",
+			"bytes": 4642,
+			"sha256": "55189a5e0e95a29fc827545c36d4b9ef2484987cac4a7c0b9419f957732ec924",
+			"sourceSha256": "55189a5e0e95a29fc827545c36d4b9ef2484987cac4a7c0b9419f957732ec924"
+		},
+		{
+			"path": "research/brow_render.py",
+			"bytes": 4108,
+			"sha256": "fc563d438afdd7a1e0ad3f86a0f43aef597c8ac14c185c91e5fc4deb30f3747e",
+			"sourceSha256": "fc563d438afdd7a1e0ad3f86a0f43aef597c8ac14c185c91e5fc4deb30f3747e"
+		},
+		{
+			"path": "research/consumer_points.py",
+			"bytes": 1052,
+			"sha256": "dc9126a8773e40ce07e76dc530861f707c4ab342b4e6a22d32ea16c656a3f39a",
+			"sourceSha256": "dc9126a8773e40ce07e76dc530861f707c4ab342b4e6a22d32ea16c656a3f39a"
+		},
+		{
+			"path": "research/consumer_pose.py",
+			"bytes": 839,
+			"sha256": "55a5177bf267557ba22ec7042396af8ecc2432becf4a0bb430ec1c918ebafddc",
+			"sourceSha256": "55a5177bf267557ba22ec7042396af8ecc2432becf4a0bb430ec1c918ebafddc"
+		},
+		{
+			"path": "research/contacts_assets.py",
+			"bytes": 2780,
+			"sha256": "589e87d469dc37a1eaeb2b1f9b8f73301ad7bee72717ab139955a5303b96bdab",
+			"sourceSha256": "589e87d469dc37a1eaeb2b1f9b8f73301ad7bee72717ab139955a5303b96bdab"
+		},
+		{
+			"path": "research/contacts_card.json",
+			"bytes": 975,
+			"sha256": "e8209f44103ae587f29e15f96224ba824ba7b1f652b9b4ab1d834d4f19bfe04f",
+			"sourceSha256": "f69b4739de9b5df0986a031b3d8fd505b0a7410925b09ceefa508e8d9e72729f"
+		},
+		{
+			"path": "research/contacts_geometry.py",
+			"bytes": 852,
+			"sha256": "a089f3396321567627415fc37e86ad4ef444af0879591f730c161ca91fa3714d",
+			"sourceSha256": "a089f3396321567627415fc37e86ad4ef444af0879591f730c161ca91fa3714d"
+		},
+		{
+			"path": "research/contacts_layers.py",
+			"bytes": 3160,
+			"sha256": "ff87bebbcc0f822268dcb9ecc7188a778a154e7f8ca4896a5fa2657289afa666",
+			"sourceSha256": "ff87bebbcc0f822268dcb9ecc7188a778a154e7f8ca4896a5fa2657289afa666"
+		},
+		{
+			"path": "research/contacts_render.py",
+			"bytes": 3739,
+			"sha256": "414d761815dad540ff8a57e011e133af9e6e5b21537bd8a247e4028d417aa143",
+			"sourceSha256": "414d761815dad540ff8a57e011e133af9e6e5b21537bd8a247e4028d417aa143"
+		},
+		{
+			"path": "research/detection_geometry.py",
+			"bytes": 2283,
+			"sha256": "0abd0f71d543a35bd65cd84fce6f5d5d66df489391fdad5ae12fedfb5bf22805",
+			"sourceSha256": "0abd0f71d543a35bd65cd84fce6f5d5d66df489391fdad5ae12fedfb5bf22805"
+		},
+		{
+			"path": "research/dynamic_makeup_controls.py",
+			"bytes": 1978,
+			"sha256": "d6150a3961ddcaedbc8b65389225c0f73df4131b859aa67aa091e2cc2a76bd67",
+			"sourceSha256": "d6150a3961ddcaedbc8b65389225c0f73df4131b859aa67aa091e2cc2a76bd67"
+		},
+		{
+			"path": "research/dynamic_makeup_passes.py",
+			"bytes": 2591,
+			"sha256": "aec6b408241dad5b94925578ea781aad6f65c259eb4872e326533d0e2144320b",
+			"sourceSha256": "aec6b408241dad5b94925578ea781aad6f65c259eb4872e326533d0e2144320b"
+		},
+		{
+			"path": "research/dynamic_makeup_render.py",
+			"bytes": 5061,
+			"sha256": "e75d18507d87dfb0e48ae84721d843600b6cbca1916ed6335c4d28b63c610064",
+			"sourceSha256": "e75d18507d87dfb0e48ae84721d843600b6cbca1916ed6335c4d28b63c610064"
+		},
+		{
+			"path": "research/extra_assets.py",
+			"bytes": 2927,
+			"sha256": "75c405547fe3ee7d975a40f3872ebf8845b58915b1ab19c209160ea3cded3843",
+			"sourceSha256": "75c405547fe3ee7d975a40f3872ebf8845b58915b1ab19c209160ea3cded3843"
+		},
+		{
+			"path": "research/extra_geometry.py",
+			"bytes": 3188,
+			"sha256": "29a46711c36f7b44e4d353588e6a6a67e727afd6dcca577a89327201119ec165",
+			"sourceSha256": "29a46711c36f7b44e4d353588e6a6a67e727afd6dcca577a89327201119ec165"
+		},
+		{
+			"path": "research/extra_infer.py",
+			"bytes": 2024,
+			"sha256": "ce7fb0ae81678af533fa5656381328d136e2b314cb3e5c23e1b228346831441c",
+			"sourceSha256": "ce7fb0ae81678af533fa5656381328d136e2b314cb3e5c23e1b228346831441c"
+		},
+		{
+			"path": "research/extra_photo.py",
+			"bytes": 6296,
+			"sha256": "2a2087b6c857fe6a3a23060efeac095199707af155990f11f6d5a474b9ba402c",
+			"sourceSha256": "2a2087b6c857fe6a3a23060efeac095199707af155990f11f6d5a474b9ba402c"
+		},
+		{
+			"path": "research/extra_sampling.py",
+			"bytes": 1968,
+			"sha256": "1bcc95564d68299960b8a65b6f2ba68ae01bac7ed9ef6645165ee58d2f28ba9b",
+			"sourceSha256": "1bcc95564d68299960b8a65b6f2ba68ae01bac7ed9ef6645165ee58d2f28ba9b"
+		},
+		{
+			"path": "research/eye_assets.py",
+			"bytes": 3687,
+			"sha256": "9f189f068baf65af3cf1cffdbfd4c9b9da74f33fef8e71fa0f981bc5d6fc9b17",
+			"sourceSha256": "9f189f068baf65af3cf1cffdbfd4c9b9da74f33fef8e71fa0f981bc5d6fc9b17"
+		},
+		{
+			"path": "research/eye_cards.json",
+			"bytes": 10892,
+			"sha256": "ab41db7b8adcfdebeaaf10db8ee6847491f18677d940aa5599b99948788b5cb2",
+			"sourceSha256": "f34cb61b30aa9b4cd0687cd713fd3b3a99d8dfeba64ff45e0fcd8fcb4299c6e3"
+		},
+		{
+			"path": "research/eye_metal_layers.py",
+			"bytes": 1090,
+			"sha256": "2f7e16a307365f7647ab6d6dfd3e4aed8dc43fd236a8c1925345d83acba5b57f",
+			"sourceSha256": "2f7e16a307365f7647ab6d6dfd3e4aed8dc43fd236a8c1925345d83acba5b57f"
+		},
+		{
+			"path": "research/eye_render.py",
+			"bytes": 1818,
+			"sha256": "c407dd96e14682bd319897431627fb96cc09269b3c6c54b63cda3fc1ba30446b",
+			"sourceSha256": "c407dd96e14682bd319897431627fb96cc09269b3c6c54b63cda3fc1ba30446b"
+		},
+		{
+			"path": "research/eye_support.py",
+			"bytes": 5348,
+			"sha256": "df109a51493596ca4d586c40bc44a5ac05e6eb79d1c2e82019d59e280b46ff3d",
+			"sourceSha256": "df109a51493596ca4d586c40bc44a5ac05e6eb79d1c2e82019d59e280b46ff3d"
+		},
+		{
+			"path": "research/eye_trig.py",
+			"bytes": 633,
+			"sha256": "7820fe8444e2d0b425775ad8250659e86978e8bfa8e7c10568261805f757b4fe",
+			"sourceSha256": "7820fe8444e2d0b425775ad8250659e86978e8bfa8e7c10568261805f757b4fe"
+		},
+		{
+			"path": "research/face-shape-controls.json",
+			"bytes": 1307,
+			"sha256": "b11f45a4261a481057fcee893cc4cb208a3ed2c2010c2a82f3e2285c4dd1d2b9",
+			"sourceSha256": "05adfccf48d668ba21b9243bd4832e88d5cb3df52f55394829097ad670806c55"
+		},
+		{
+			"path": "research/face_detection.py",
+			"bytes": 2967,
+			"sha256": "aafec85107876664bc82ef14c0602c5e5583a47729a0a5f42ac7509fb86c02d7",
+			"sourceSha256": "aafec85107876664bc82ef14c0602c5e5583a47729a0a5f42ac7509fb86c02d7"
+		},
+		{
+			"path": "research/face_features_controls.py",
+			"bytes": 1980,
+			"sha256": "3c4da0023a3da1a6c7a422cd91c2d805819d247c2327fac28b90fd1436e3e0a8",
+			"sourceSha256": "3c4da0023a3da1a6c7a422cd91c2d805819d247c2327fac28b90fd1436e3e0a8"
+		},
+		{
+			"path": "research/face_features_render.py",
+			"bytes": 6570,
+			"sha256": "e9c0e7a039cbf01935f51e9846e06c52b89503a58f093ba7cfbf1e245d867be4",
+			"sourceSha256": "e9c0e7a039cbf01935f51e9846e06c52b89503a58f093ba7cfbf1e245d867be4"
+		},
+		{
+			"path": "research/face_metal.py",
+			"bytes": 3567,
+			"sha256": "fd525c2d38592274fe0c47622b2b5d04eba196b1c0f616b9be02e6481078aec5",
+			"sourceSha256": "fd525c2d38592274fe0c47622b2b5d04eba196b1c0f616b9be02e6481078aec5"
+		},
+		{
+			"path": "research/face_metal.swift",
+			"bytes": 7623,
+			"sha256": "babb2493113d779c3ff7dbcc8416e7c8c1d951d60f8789ab61fc66a09e3cb4be",
+			"sourceSha256": "babb2493113d779c3ff7dbcc8416e7c8c1d951d60f8789ab61fc66a09e3cb4be"
+		},
+		{
+			"path": "research/face_shape_assets.py",
+			"bytes": 2971,
+			"sha256": "88132196827aea5fb198f4292bf950eb5d31ea9ee1008b408b3dcc6875d0c53a",
+			"sourceSha256": "88132196827aea5fb198f4292bf950eb5d31ea9ee1008b408b3dcc6875d0c53a"
+		},
+		{
+			"path": "research/face_shape_contour.py",
+			"bytes": 2103,
+			"sha256": "ecb002afac565c80620bbe85227cd13b883bd3c051185b2549282c4caf472e10",
+			"sourceSha256": "ecb002afac565c80620bbe85227cd13b883bd3c051185b2549282c4caf472e10"
+		},
+		{
+			"path": "research/face_shape_controls.py",
+			"bytes": 2188,
+			"sha256": "112220cfd439ff7f610d0ed7d7d640ad7ee3b67ef363cbd6dad49330f172d1e7",
+			"sourceSha256": "112220cfd439ff7f610d0ed7d7d640ad7ee3b67ef363cbd6dad49330f172d1e7"
+		},
+		{
+			"path": "research/facefitting1256_frontend.py",
+			"bytes": 2656,
+			"sha256": "79c4b6052d4064becc00c08338ae6b0ec4f69269507d5607e88d17a5aafefc4f",
+			"sourceSha256": "79c4b6052d4064becc00c08338ae6b0ec4f69269507d5607e88d17a5aafefc4f"
+		},
+		{
+			"path": "research/facefitting1256_geometry.py",
+			"bytes": 2056,
+			"sha256": "7289df091ebb370c75d039d145a3603b94503e7a2b9d8e7fb7e2bd0ef9614ddf",
+			"sourceSha256": "7289df091ebb370c75d039d145a3603b94503e7a2b9d8e7fb7e2bd0ef9614ddf"
+		},
+		{
+			"path": "research/facefitting1256_model.py",
+			"bytes": 2577,
+			"sha256": "96d644a1a9ef746a9a39f2765c76464600f5e66c7927ae8fe3d6f005cc4732cc",
+			"sourceSha256": "96d644a1a9ef746a9a39f2765c76464600f5e66c7927ae8fe3d6f005cc4732cc"
+		},
+		{
+			"path": "research/facefitting1256_photo.py",
+			"bytes": 2629,
+			"sha256": "a32f6c90ad93e1c8f9cc9a7a892daa2e4208c163cc42d0af219a4a3834e70340",
+			"sourceSha256": "a32f6c90ad93e1c8f9cc9a7a892daa2e4208c163cc42d0af219a4a3834e70340"
+		},
+		{
+			"path": "research/facefitting1256_solver.py",
+			"bytes": 2961,
+			"sha256": "106f8e9bae544a93a975f75ef1b746ccde43efd6084fc96a1bc6708edef0470a",
+			"sourceSha256": "106f8e9bae544a93a975f75ef1b746ccde43efd6084fc96a1bc6708edef0470a"
+		},
+		{
+			"path": "research/facefitting_export.py",
+			"bytes": 1879,
+			"sha256": "0582b30955f623f2221d2e4cffec7169ce85fc820fa994ac0217258d36797686",
+			"sourceSha256": "0582b30955f623f2221d2e4cffec7169ce85fc820fa994ac0217258d36797686"
+		},
+		{
+			"path": "research/facefitting_geometry.py",
+			"bytes": 4637,
+			"sha256": "399ad7d3927370e745e673ad16a4407383a3d6dad80075cb55f970c0c6b8d51e",
+			"sourceSha256": "399ad7d3927370e745e673ad16a4407383a3d6dad80075cb55f970c0c6b8d51e"
+		},
+		{
+			"path": "research/facefitting_image.py",
+			"bytes": 1285,
+			"sha256": "365bba9559609651ece204c3ad3ae77163ee18293cf5540eabb5de2e11d240ab",
+			"sourceSha256": "365bba9559609651ece204c3ad3ae77163ee18293cf5540eabb5de2e11d240ab"
+		},
+		{
+			"path": "research/facefitting_infer.py",
+			"bytes": 6316,
+			"sha256": "e50f0c5d5778b9effada264090074f0c4ee880dbf86fdfcf08b4955f56804563",
+			"sourceSha256": "e50f0c5d5778b9effada264090074f0c4ee880dbf86fdfcf08b4955f56804563"
+		},
+		{
+			"path": "research/facefitting_input.py",
+			"bytes": 5220,
+			"sha256": "7ce3f1f7d0d3a4993fdcf987659955852ca89c2a77b379ae90a07a1c833d25a5",
+			"sourceSha256": "7ce3f1f7d0d3a4993fdcf987659955852ca89c2a77b379ae90a07a1c833d25a5"
+		},
+		{
+			"path": "research/facefitting_model.py",
+			"bytes": 2638,
+			"sha256": "4b7b7777101ccfee205c3ee6b28a7293c269019c2072bee4f3eecd42c1971865",
+			"sourceSha256": "4b7b7777101ccfee205c3ee6b28a7293c269019c2072bee4f3eecd42c1971865"
+		},
+		{
+			"path": "research/facefitting_output.py",
+			"bytes": 3125,
+			"sha256": "088dec263de36a79aefbb5501778a19f0d9d91581a39d7a7c813a4696acf245e",
+			"sourceSha256": "088dec263de36a79aefbb5501778a19f0d9d91581a39d7a7c813a4696acf245e"
+		},
+		{
+			"path": "research/facefitting_pose.py",
+			"bytes": 2414,
+			"sha256": "4e96937cf9b73ce0e210cfc539f53342d38e222a3878cd7f14e1a833f14cd847",
+			"sourceSha256": "4e96937cf9b73ce0e210cfc539f53342d38e222a3878cd7f14e1a833f14cd847"
+		},
+		{
+			"path": "research/facefitting_solver.py",
+			"bytes": 7237,
+			"sha256": "67fad859994255b2634a83312b7b1a0b64422f4972c2b42c40764052a705c2d0",
+			"sourceSha256": "67fad859994255b2634a83312b7b1a0b64422f4972c2b42c40764052a705c2d0"
+		},
+		{
+			"path": "research/features_assets.py",
+			"bytes": 2323,
+			"sha256": "dcf049b17e67b556d1290df9f8e1d66309e951c7f8f9e563cc6f72980571936f",
+			"sourceSha256": "dcf049b17e67b556d1290df9f8e1d66309e951c7f8f9e563cc6f72980571936f"
+		},
+		{
+			"path": "research/features_controls.py",
+			"bytes": 2766,
+			"sha256": "fd2cb66a523ba697d7eda21db4817f01864f2c31a67347208ec1242999e5e953",
+			"sourceSha256": "fd2cb66a523ba697d7eda21db4817f01864f2c31a67347208ec1242999e5e953"
+		},
+		{
+			"path": "research/features_geometry.py",
+			"bytes": 6451,
+			"sha256": "d978a7cd8effe8c452b150668ac1cf2f5c315243b77b804a333d7ea604dd68ac",
+			"sourceSha256": "d978a7cd8effe8c452b150668ac1cf2f5c315243b77b804a333d7ea604dd68ac"
+		},
+		{
+			"path": "research/features_render.py",
+			"bytes": 6256,
+			"sha256": "4f37d342b9a9f3cd8a3b0ddee35f4910bbcf789aee831fefa81baced247ae9b6",
+			"sourceSha256": "4f37d342b9a9f3cd8a3b0ddee35f4910bbcf789aee831fefa81baced247ae9b6"
+		},
+		{
+			"path": "research/flow_base.py",
+			"bytes": 5958,
+			"sha256": "3170f2b227cbe88988957df3f492cf5a3a63c2736223e1d61669e2fc5fb86c71",
+			"sourceSha256": "3170f2b227cbe88988957df3f492cf5a3a63c2736223e1d61669e2fc5fb86c71"
+		},
+		{
+			"path": "research/flowgan_assets.py",
+			"bytes": 3821,
+			"sha256": "a899b51439905fab8746535f38128c55b39e51bcfc192dcba275a65e985c8662",
+			"sourceSha256": "fff052906586fde0930e178c2ff3f3030a1aa0563980a346e3bf9040bcbf4bff"
+		},
+		{
+			"path": "research/flowgan_frame.py",
+			"bytes": 2040,
+			"sha256": "300f0dfaccc9e1e10d9cda4d950ab85e3c53e5480bd544f26dd9ba4aa5e0d5d0",
+			"sourceSha256": "300f0dfaccc9e1e10d9cda4d950ab85e3c53e5480bd544f26dd9ba4aa5e0d5d0"
+		},
+		{
+			"path": "research/flowgan_frame.swift",
+			"bytes": 4819,
+			"sha256": "31d1928ec4b799064bdaa14217e04fd2a926eea0a334d5f35a2c18d7ff6eb18b",
+			"sourceSha256": "31d1928ec4b799064bdaa14217e04fd2a926eea0a334d5f35a2c18d7ff6eb18b"
+		},
+		{
+			"path": "research/flowgan_graph.json",
+			"bytes": 31849,
+			"sha256": "c00bd644061a50b6673275bc19417351cae5e0a3b442b4abf8ebe8df2f1e2fca",
+			"sourceSha256": "2e4e23eeed32dd815b625234d2abce55a828d55f37e5773fd2e2ccfa2b8de5ee"
+		},
+		{
+			"path": "research/flowgan_metal.py",
+			"bytes": 4338,
+			"sha256": "12d8a5f21391b93e79aa76021573c2f3fa7cfe6a76836f819554693ecbb8ac90",
+			"sourceSha256": "12d8a5f21391b93e79aa76021573c2f3fa7cfe6a76836f819554693ecbb8ac90"
+		},
+		{
+			"path": "research/flowgan_metal.swift",
+			"bytes": 20543,
+			"sha256": "0449f9cbc5f278facff94b6225894e32805c7df8f0694ab03fc1692488ea85e4",
+			"sourceSha256": "0449f9cbc5f278facff94b6225894e32805c7df8f0694ab03fc1692488ea85e4"
+		},
+		{
+			"path": "research/flowgan_render.py",
+			"bytes": 3026,
+			"sha256": "995d4d38e1402fd48196d0b7e8cc32e5420cd714f53ccf521a44a0d83cdc60db",
+			"sourceSha256": "995d4d38e1402fd48196d0b7e8cc32e5420cd714f53ccf521a44a0d83cdc60db"
+		},
+		{
+			"path": "research/gan_compute.metal",
+			"bytes": 5662,
+			"sha256": "87a31319ee6d3090f36208aaf4469c6423f7a53bbfa1148578b3947e47ed7513",
+			"sourceSha256": "87a31319ee6d3090f36208aaf4469c6423f7a53bbfa1148578b3947e47ed7513"
+		},
+		{
+			"path": "research/independent-pipeline-catalog.json",
+			"bytes": 14075,
+			"sha256": "baff1699c16130053b69d7cf89c9f75202fcda77a2ae1d4511d010abb9cb2fd6",
+			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8"
+		},
+		{
+			"path": "research/independent_pipeline.py",
+			"bytes": 19221,
+			"sha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec",
+			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
+		},
+		{
+			"path": "research/iris_assets.py",
+			"bytes": 2550,
+			"sha256": "539c16f1c938892e5874a166a8fdd84a639079d97a16daba46d8c1458bd59bf9",
+			"sourceSha256": "539c16f1c938892e5874a166a8fdd84a639079d97a16daba46d8c1458bd59bf9"
+		},
+		{
+			"path": "research/iris_geometry.py",
+			"bytes": 2696,
+			"sha256": "8b60745bdfec461f12012993d255f339716ff54deadbd591d0b90b30c7161978",
+			"sourceSha256": "8b60745bdfec461f12012993d255f339716ff54deadbd591d0b90b30c7161978"
+		},
+		{
+			"path": "research/iris_infer.py",
+			"bytes": 2044,
+			"sha256": "a9cab8b60ed51690f650e9ae4e2a514cb2c57b746af5b62efe632fb4e89909d6",
+			"sourceSha256": "a9cab8b60ed51690f650e9ae4e2a514cb2c57b746af5b62efe632fb4e89909d6"
+		},
+		{
+			"path": "research/iris_photo.py",
+			"bytes": 4175,
+			"sha256": "3e41c45ef13902cd7e30f5c630a3b1fa54630769ad7e1e050e4b11ef00d8e4a3",
+			"sourceSha256": "3e41c45ef13902cd7e30f5c630a3b1fa54630769ad7e1e050e4b11ef00d8e4a3"
+		},
+		{
+			"path": "research/iris_solver.py",
+			"bytes": 3999,
+			"sha256": "4b55cf5350a463976228936171204ed5244b717753b2a12dcb06761429801006",
+			"sourceSha256": "4b55cf5350a463976228936171204ed5244b717753b2a12dcb06761429801006"
+		},
+		{
+			"path": "research/jawline_assets.py",
+			"bytes": 4293,
+			"sha256": "4d65acc790e5643cf2d161cd37c90166396cac90d87d8e422654cbde6f38d276",
+			"sourceSha256": "4d65acc790e5643cf2d161cd37c90166396cac90d87d8e422654cbde6f38d276"
+		},
+		{
+			"path": "research/jawline_card.json",
+			"bytes": 5134,
+			"sha256": "34b01a9e4505b6e5f01a0fbd2e9af3b135e89b8a7c2f77524df23722bb8076e7",
+			"sourceSha256": "3b592cece8407356a9e279c43b8d69584b1bb8a446a74e1056f75ea6169eafd5"
+		},
+		{
+			"path": "research/jawline_layers.py",
+			"bytes": 1455,
+			"sha256": "b3f433f19fb7f11f54ed21b5fb465ad5b0e9a6b7a57761a5eedb4c308a37213f",
+			"sourceSha256": "b3f433f19fb7f11f54ed21b5fb465ad5b0e9a6b7a57761a5eedb4c308a37213f"
+		},
+		{
+			"path": "research/jawline_mapping.py",
+			"bytes": 3119,
+			"sha256": "5cb3b6240ea8e70331ed2d867756882dfba5237a1b5f79191254b2a469518631",
+			"sourceSha256": "5cb3b6240ea8e70331ed2d867756882dfba5237a1b5f79191254b2a469518631"
+		},
+		{
+			"path": "research/jawline_render.py",
+			"bytes": 4211,
+			"sha256": "ebf7c182b0fae15773e8d8b61853c2a0aade1ee497066f98549b4e436741246e",
+			"sourceSha256": "ebf7c182b0fae15773e8d8b61853c2a0aade1ee497066f98549b4e436741246e"
+		},
+		{
+			"path": "research/jawline_smooth.py",
+			"bytes": 1598,
+			"sha256": "a172d7fb04aede161bf980e48e1623d5842ef7f714ae285c67042d196df9b29b",
+			"sourceSha256": "a172d7fb04aede161bf980e48e1623d5842ef7f714ae285c67042d196df9b29b"
+		},
+		{
+			"path": "research/jawline_support.py",
+			"bytes": 6650,
+			"sha256": "c813a355d30ea75cb30c09db84ddde73fe4d65f7afe6db613a6420e80201722b",
+			"sourceSha256": "c813a355d30ea75cb30c09db84ddde73fe4d65f7afe6db613a6420e80201722b"
+		},
+		{
+			"path": "research/jawline_warp.py",
+			"bytes": 5507,
+			"sha256": "bcd6e4d5040de33b33b5bf823af3a3cbf87df3433cc8765d77756ea888e53308",
+			"sourceSha256": "bcd6e4d5040de33b33b5bf823af3a3cbf87df3433cc8765d77756ea888e53308"
+		},
+		{
+			"path": "research/lashes_assets.py",
+			"bytes": 1411,
+			"sha256": "8ac83610df0f99085f75c062adada70a67538d5d057a55726074d395332a3155",
+			"sourceSha256": "8ac83610df0f99085f75c062adada70a67538d5d057a55726074d395332a3155"
+		},
+		{
+			"path": "research/lashes_geometry.py",
+			"bytes": 3274,
+			"sha256": "67f7bea49dffe55afd562ff41139900f83de171cd4ceae62b4763c7a0730d444",
+			"sourceSha256": "67f7bea49dffe55afd562ff41139900f83de171cd4ceae62b4763c7a0730d444"
+		},
+		{
+			"path": "research/lashes_render.py",
+			"bytes": 1655,
+			"sha256": "3f313a2397cae658e4ff8fa1be2637ca1bade4f1ddcd294d56027bd6d96f87d5",
+			"sourceSha256": "3f313a2397cae658e4ff8fa1be2637ca1bade4f1ddcd294d56027bd6d96f87d5"
+		},
+		{
+			"path": "research/lip_assets.py",
+			"bytes": 5246,
+			"sha256": "6470f4e977a510274974b45af0afe8358f4c4567099feb26a70c538f854b740e",
+			"sourceSha256": "6470f4e977a510274974b45af0afe8358f4c4567099feb26a70c538f854b740e"
+		},
+		{
+			"path": "research/lip_render.py",
+			"bytes": 6612,
+			"sha256": "515c84005ff84ba7c8da07a1411c5cce8833c34973d39cd5f148b9a2f7a28588",
+			"sourceSha256": "515c84005ff84ba7c8da07a1411c5cce8833c34973d39cd5f148b9a2f7a28588"
+		},
+		{
+			"path": "research/liquefy_assets.py",
+			"bytes": 5061,
+			"sha256": "cecafae640adfa80fdfa7b7cff6ad31b72fd2446a3cc1553ea2809b9d9a92cf5",
+			"sourceSha256": "cecafae640adfa80fdfa7b7cff6ad31b72fd2446a3cc1553ea2809b9d9a92cf5"
+		},
+		{
+			"path": "research/liquefy_combination_render.py",
+			"bytes": 3306,
+			"sha256": "afa90533e96cf4b40940b5816d19a62262235f5aeb13e4ae13ee581a1a515302",
+			"sourceSha256": "afa90533e96cf4b40940b5816d19a62262235f5aeb13e4ae13ee581a1a515302"
+		},
+		{
+			"path": "research/liquefy_geometry.py",
+			"bytes": 5601,
+			"sha256": "d3ca6f51f0999de740045c14cf50d32d8dd3ba67bd0464c2adbd73488496e088",
+			"sourceSha256": "d3ca6f51f0999de740045c14cf50d32d8dd3ba67bd0464c2adbd73488496e088"
+		},
+		{
+			"path": "research/liquefy_mesh.py",
+			"bytes": 4072,
+			"sha256": "e8046a0245bcbf081b0a0b829f0391ec7dc0a0aa0d7cfd3bc214ff71bd28a9b2",
+			"sourceSha256": "e8046a0245bcbf081b0a0b829f0391ec7dc0a0aa0d7cfd3bc214ff71bd28a9b2"
+		},
+		{
+			"path": "research/liquefy_metal.py",
+			"bytes": 4830,
+			"sha256": "a8af0ebc4528e56f498651f9c51fce487c1198ce44f514d9cbb79b5ea6dd64fe",
+			"sourceSha256": "a8af0ebc4528e56f498651f9c51fce487c1198ce44f514d9cbb79b5ea6dd64fe"
+		},
+		{
+			"path": "research/liquefy_metal.swift",
+			"bytes": 14675,
+			"sha256": "225f87784db245b280713c706514037b0ff13b33a05b08256a5b236206d543b9",
+			"sourceSha256": "225f87784db245b280713c706514037b0ff13b33a05b08256a5b236206d543b9"
+		},
+		{
+			"path": "research/liquefy_pose.py",
+			"bytes": 2183,
+			"sha256": "5220c73d1da76d8b9dc10f9da1c6d052decc4454b8eb7596c63125018770d8ff",
+			"sourceSha256": "5220c73d1da76d8b9dc10f9da1c6d052decc4454b8eb7596c63125018770d8ff"
+		},
+		{
+			"path": "research/liquefy_render.py",
+			"bytes": 7490,
+			"sha256": "d21568d0c8b02f20f197bf8fa0cc6fcf87226eb0cb19850456a3b1660bfc95e5",
+			"sourceSha256": "d21568d0c8b02f20f197bf8fa0cc6fcf87226eb0cb19850456a3b1660bfc95e5"
+		},
+		{
+			"path": "research/liquefy_texture.py",
+			"bytes": 3149,
+			"sha256": "1f2490173a7809f2a252b233aee66abebf23937db345c219c8ed2ce5fd90604e",
+			"sourceSha256": "1f2490173a7809f2a252b233aee66abebf23937db345c219c8ed2ce5fd90604e"
+		},
+		{
+			"path": "research/look_assets.py",
+			"bytes": 2548,
+			"sha256": "a9d03791a735639b9f18967eea0685317fabaca25f2a31d0dcbaf13c88dce958",
+			"sourceSha256": "a9d03791a735639b9f18967eea0685317fabaca25f2a31d0dcbaf13c88dce958"
+		},
+		{
+			"path": "research/look_layers.py",
+			"bytes": 3552,
+			"sha256": "fad6b1e8307940a40d80a915d45ed4480f7e2742fede36062f9b0bd6c46cf938",
+			"sourceSha256": "fad6b1e8307940a40d80a915d45ed4480f7e2742fede36062f9b0bd6c46cf938"
+		},
+		{
+			"path": "research/look_oxygen_card.json",
+			"bytes": 15923,
+			"sha256": "ff925051ecf7a83cda6745cb71ca57d99396370a992d6cd002b2babdf0c8c039",
+			"sourceSha256": "89cabc71b58ed9461c0a4c238dfdef24f25fd4d95d573848576dd209b521ef59"
+		},
+		{
+			"path": "research/look_render.py",
+			"bytes": 3497,
+			"sha256": "c1381061b5f434045d3e5b6124d8fe929beefee44c922722d15230c3ba85e305",
+			"sourceSha256": "c1381061b5f434045d3e5b6124d8fe929beefee44c922722d15230c3ba85e305"
+		},
+		{
+			"path": "research/m4_texture.py",
+			"bytes": 2616,
+			"sha256": "bfc31063e4e30d4bf3672c1f1e9ad0f864504aec1415c69f12b60d428a459512",
+			"sourceSha256": "bfc31063e4e30d4bf3672c1f1e9ad0f864504aec1415c69f12b60d428a459512"
+		},
+		{
+			"path": "research/makeup248_assets.py",
+			"bytes": 5267,
+			"sha256": "acb746f1a1eddf84088ca5f0f4ab31c77eb2a383c4d389dd6fe780c5dc31e00d",
+			"sourceSha256": "acb746f1a1eddf84088ca5f0f4ab31c77eb2a383c4d389dd6fe780c5dc31e00d"
+		},
+		{
+			"path": "research/makeup248_layers.py",
+			"bytes": 1189,
+			"sha256": "776fbc621f5237fc8f682b7993ae75ccf9e7313163f07497c37cc33fff52babf",
+			"sourceSha256": "776fbc621f5237fc8f682b7993ae75ccf9e7313163f07497c37cc33fff52babf"
+		},
+		{
+			"path": "research/makeup248_render.py",
+			"bytes": 1857,
+			"sha256": "b899bde7626e0bd8ee0f6bb662df4db0861c0f32e4ed8fc12122aa8c1fe21b53",
+			"sourceSha256": "b899bde7626e0bd8ee0f6bb662df4db0861c0f32e4ed8fc12122aa8c1fe21b53"
+		},
+		{
+			"path": "research/makeup3d_cards.json",
+			"bytes": 2798,
+			"sha256": "b93e1611e6f0f567a0f82dbb396c09d71d1b1f1868d32769fbeb9800baf5c143",
+			"sourceSha256": "bcd3ed5e452bbf27b50644dc4f53f727a786bd0ad41f2f700c7f6333a11016dd"
+		},
+		{
+			"path": "research/makeup3d_metal.py",
+			"bytes": 3125,
+			"sha256": "3005b12332489748dff19b9e0cd5ac1f88e53a2a9e181374b30c242ce6a2a65f",
+			"sourceSha256": "3005b12332489748dff19b9e0cd5ac1f88e53a2a9e181374b30c242ce6a2a65f"
+		},
+		{
+			"path": "research/makeup3d_metal.swift",
+			"bytes": 10963,
+			"sha256": "3f000e880594f6d2f964836d10de8bfbd3b77b6ca54cdbe77aee2eb73e5fd812",
+			"sourceSha256": "3f000e880594f6d2f964836d10de8bfbd3b77b6ca54cdbe77aee2eb73e5fd812"
+		},
+		{
+			"path": "research/makeup3d_render.py",
+			"bytes": 3762,
+			"sha256": "ae769bc5950caf5c44f59abacc0ba41e880800e9bfd98fcc5384daafad63ab22",
+			"sourceSha256": "ae769bc5950caf5c44f59abacc0ba41e880800e9bfd98fcc5384daafad63ab22"
+		},
+		{
+			"path": "research/makeup_blend.py",
+			"bytes": 3952,
+			"sha256": "ff6bf69ab5faeb009493c0962cd43393beba32fa470adcfc8f2c655e0001f5ce",
+			"sourceSha256": "ff6bf69ab5faeb009493c0962cd43393beba32fa470adcfc8f2c655e0001f5ce"
+		},
+		{
+			"path": "research/makeup_geometry.py",
+			"bytes": 3981,
+			"sha256": "3d5cb285b3e0078c7b005e2ec8c45c953cef9fa247122068eac3bd61c901a9aa",
+			"sourceSha256": "3d5cb285b3e0078c7b005e2ec8c45c953cef9fa247122068eac3bd61c901a9aa"
+		},
+		{
+			"path": "research/makeup_layers.py",
+			"bytes": 2744,
+			"sha256": "0a3d748bf1b78c05d9d75d60c35202ae77ac61624224283d512571e3c82bde5a",
+			"sourceSha256": "0a3d748bf1b78c05d9d75d60c35202ae77ac61624224283d512571e3c82bde5a"
+		},
+		{
+			"path": "research/makeup_mesh_assets.py",
+			"bytes": 1445,
+			"sha256": "9600a0a0e9d90a21a2d4b78b733709b4e880436e81a9ae53bac6daf869330155",
+			"sourceSha256": "9600a0a0e9d90a21a2d4b78b733709b4e880436e81a9ae53bac6daf869330155"
+		},
+		{
+			"path": "research/makeup_metal.py",
+			"bytes": 4546,
+			"sha256": "8a45315ebf183ea973b504de2b55beacf705976c45bae944886b4ce229a8cb9b",
+			"sourceSha256": "8a45315ebf183ea973b504de2b55beacf705976c45bae944886b4ce229a8cb9b"
+		},
+		{
+			"path": "research/makeup_metal.swift",
+			"bytes": 12651,
+			"sha256": "fb725bf65468f26ea14a390849e83fc6c934109feb16f04e76449a4760b5f465",
+			"sourceSha256": "fb725bf65468f26ea14a390849e83fc6c934109feb16f04e76449a4760b5f465"
+		},
+		{
+			"path": "research/makeup_mls.py",
+			"bytes": 2488,
+			"sha256": "d8f1c96f2b3c047eca28578bbf658506b75876f7a98407bb57681a91982ec6e5",
+			"sourceSha256": "d8f1c96f2b3c047eca28578bbf658506b75876f7a98407bb57681a91982ec6e5"
+		},
+		{
+			"path": "research/makeup_photo.py",
+			"bytes": 2742,
+			"sha256": "bc8deb410e07fe5891c9e84085dc1ef1ab49021162c4bf1d0b5b19bf71d632f1",
+			"sourceSha256": "bc8deb410e07fe5891c9e84085dc1ef1ab49021162c4bf1d0b5b19bf71d632f1"
+		},
+		{
+			"path": "research/makeup_pigment_pass.py",
+			"bytes": 1339,
+			"sha256": "720aa2d295d7d12dc0c4ff5f255c458d544607415eac2cdab5ff3f031e0e4a2b",
+			"sourceSha256": "720aa2d295d7d12dc0c4ff5f255c458d544607415eac2cdab5ff3f031e0e4a2b"
+		},
+		{
+			"path": "research/mesh_field.py",
+			"bytes": 2656,
+			"sha256": "157a6e341a3f3c8d8d34f48d6d7c02ac29d709f1e34ae3f1230ce63aaf43c36b",
+			"sourceSha256": "157a6e341a3f3c8d8d34f48d6d7c02ac29d709f1e34ae3f1230ce63aaf43c36b"
+		},
+		{
+			"path": "research/mesh_raster.py",
+			"bytes": 5930,
+			"sha256": "ed5764c5eb6adfdd47eeec51db74817073fbf39aff54517159cd0b061dd0b686",
+			"sourceSha256": "ed5764c5eb6adfdd47eeec51db74817073fbf39aff54517159cd0b061dd0b686"
+		},
+		{
+			"path": "research/mesh_texture.py",
+			"bytes": 1276,
+			"sha256": "ad8ada130b6d74ed54206afa646e20c55f00133f91be8c008debf407ae8b18bc",
+			"sourceSha256": "ad8ada130b6d74ed54206afa646e20c55f00133f91be8c008debf407ae8b18bc"
+		},
+		{
+			"path": "research/mouth_state.py",
+			"bytes": 1249,
+			"sha256": "bc753196aa4a8c5dae02f238fe6d0dff9b5d4d7130edec686acd7c646a45689d",
+			"sourceSha256": "bc753196aa4a8c5dae02f238fe6d0dff9b5d4d7130edec686acd7c646a45689d"
+		},
+		{
+			"path": "research/nh_assets.py",
+			"bytes": 1699,
+			"sha256": "6dbb41b5655652d3ff63a7c22053e8a048049e42bf2b1374cd34f299668b1f07",
+			"sourceSha256": "6dbb41b5655652d3ff63a7c22053e8a048049e42bf2b1374cd34f299668b1f07"
+		},
+		{
+			"path": "research/nh_geometry.py",
+			"bytes": 2243,
+			"sha256": "2b9206876ca45a870a2126c0a6501f6aad9be66ec5321c893805df3d5b460744",
+			"sourceSha256": "2b9206876ca45a870a2126c0a6501f6aad9be66ec5321c893805df3d5b460744"
+		},
+		{
+			"path": "research/portrait_features_render.py",
+			"bytes": 5334,
+			"sha256": "8a76b316eef0c70361e6b55456b39b0cc8c1fc5cd40fe98a6c22a351408636dc",
+			"sourceSha256": "8a76b316eef0c70361e6b55456b39b0cc8c1fc5cd40fe98a6c22a351408636dc"
+		},
+		{
+			"path": "research/setup.sh",
+			"bytes": 647,
+			"sha256": "d78003e20f7cf73761e3c99a54423c08fd9538b854fa95c58951cbfdb255bcbc",
+			"sourceSha256": "d78003e20f7cf73761e3c99a54423c08fd9538b854fa95c58951cbfdb255bcbc"
+		},
+		{
+			"path": "research/shadow_assets.py",
+			"bytes": 1497,
+			"sha256": "3ab21b1582123c0c7242a3454beb86cad432f2299066af10eb5c652f51ce26bf",
+			"sourceSha256": "3ab21b1582123c0c7242a3454beb86cad432f2299066af10eb5c652f51ce26bf"
+		},
+		{
+			"path": "research/shadow_render.py",
+			"bytes": 1479,
+			"sha256": "bc90e263b62cb6959c5790a4b6419d001effbe8e624f227763022b29a3da7e85",
+			"sourceSha256": "bc90e263b62cb6959c5790a4b6419d001effbe8e624f227763022b29a3da7e85"
+		},
+		{
+			"path": "research/skin_gan_math.py",
+			"bytes": 525,
+			"sha256": "c7365148a2d38a161474bf3df7a1e5e1b413b88022bd98346da149a4a380eabd",
+			"sourceSha256": "c7365148a2d38a161474bf3df7a1e5e1b413b88022bd98346da149a4a380eabd"
+		},
+		{
+			"path": "research/skin_gan_render.py",
+			"bytes": 3394,
+			"sha256": "f83bbc221d113a9984b62e8dbbc2afd73de3dc9619a4080e3af3a716e8d34d6e",
+			"sourceSha256": "f83bbc221d113a9984b62e8dbbc2afd73de3dc9619a4080e3af3a716e8d34d6e"
+		},
+		{
+			"path": "research/skin_mask_export.py",
+			"bytes": 14171,
+			"sha256": "edfac56e81c021fefc95fa77132e789bca82e8c35d256a765d27d96738572737",
+			"sourceSha256": "edfac56e81c021fefc95fa77132e789bca82e8c35d256a765d27d96738572737"
+		},
+		{
+			"path": "research/skin_mask_frontend.py",
+			"bytes": 5510,
+			"sha256": "90a340c6ef863d7886a849b21b9acc7b83b979129011ae1e32701ed590a11048",
+			"sourceSha256": "90a340c6ef863d7886a849b21b9acc7b83b979129011ae1e32701ed590a11048"
+		},
+		{
+			"path": "research/skin_mask_sequence.py",
+			"bytes": 6932,
+			"sha256": "494ceaa18244120c8e0e6f07b9f01f7a1203067027bd36c65087776c7ed8205a",
+			"sourceSha256": "494ceaa18244120c8e0e6f07b9f01f7a1203067027bd36c65087776c7ed8205a"
+		},
+		{
+			"path": "research/slimface_consumer_input.py",
+			"bytes": 2152,
+			"sha256": "6f6c3cd9c48c2daaa8c9ec72f8e16aecd0e5192fcd04894865a6e19ad6c87eff",
+			"sourceSha256": "6f6c3cd9c48c2daaa8c9ec72f8e16aecd0e5192fcd04894865a6e19ad6c87eff"
+		},
+		{
+			"path": "research/slimface_detection.py",
+			"bytes": 804,
+			"sha256": "71d19912382750d79d289a05fcf4e36e1385b1c35e5277e205b4ef4576f78046",
+			"sourceSha256": "71d19912382750d79d289a05fcf4e36e1385b1c35e5277e205b4ef4576f78046"
+		},
+		{
+			"path": "research/slimface_geometry.py",
+			"bytes": 3998,
+			"sha256": "b8f60eda56362981e9549a7caa7958330d3dfa092e389739257ee96f80979d0c",
+			"sourceSha256": "b8f60eda56362981e9549a7caa7958330d3dfa092e389739257ee96f80979d0c"
+		},
+		{
+			"path": "research/slimface_mesh.py",
+			"bytes": 10472,
+			"sha256": "c77d4f7689b12b1d2c3e0605c0468ddb82d71c132cc34e2998362cf87979691d",
+			"sourceSha256": "c77d4f7689b12b1d2c3e0605c0468ddb82d71c132cc34e2998362cf87979691d"
+		},
+		{
+			"path": "research/slimface_mesh_assets.py",
+			"bytes": 6513,
+			"sha256": "22f9cc5462a4523bc4f224dedd8da2803434c693ae4553a86ee534844ce7e5bc",
+			"sourceSha256": "22f9cc5462a4523bc4f224dedd8da2803434c693ae4553a86ee534844ce7e5bc"
+		},
+		{
+			"path": "research/slimface_mesh_landmarks.py",
+			"bytes": 5179,
+			"sha256": "ba4e0f50894fb458135250012e0cb620a6be3749d3cf566b9b49743eb56833a8",
+			"sourceSha256": "ba4e0f50894fb458135250012e0cb620a6be3749d3cf566b9b49743eb56833a8"
+		},
+		{
+			"path": "research/slimface_mesh_organs.py",
+			"bytes": 4222,
+			"sha256": "626715951b8d94bfbcba660cf9b7096c3b27255ae5e1521e363380c095349e2e",
+			"sourceSha256": "626715951b8d94bfbcba660cf9b7096c3b27255ae5e1521e363380c095349e2e"
+		},
+		{
+			"path": "research/slimface_mesh_render.py",
+			"bytes": 7382,
+			"sha256": "5868f597829a0231263825b2e34e77ce383651ab17a7203e398ed9d4617bf9cb",
+			"sourceSha256": "5868f597829a0231263825b2e34e77ce383651ab17a7203e398ed9d4617bf9cb"
+		},
+		{
+			"path": "research/slimface_render.py",
+			"bytes": 3219,
+			"sha256": "2c729f9ff72d46b32a01180582eb258f80b2217809ef308e1fc0d10b0acc8070",
+			"sourceSha256": "2c729f9ff72d46b32a01180582eb258f80b2217809ef308e1fc0d10b0acc8070"
+		},
+		{
+			"path": "research/smooth_assets.py",
+			"bytes": 2977,
+			"sha256": "dd1be9ffec7f2d16694a8b1b48852b708addcc5d75cbc4890a734758101692de",
+			"sourceSha256": "dd1be9ffec7f2d16694a8b1b48852b708addcc5d75cbc4890a734758101692de"
+		},
+		{
+			"path": "research/smooth_geometry.py",
+			"bytes": 1896,
+			"sha256": "c0baa9a0b871bdae96952aa63d3ca3bc0af8ce0465100d3f9f3dbf39cac733c0",
+			"sourceSha256": "c0baa9a0b871bdae96952aa63d3ca3bc0af8ce0465100d3f9f3dbf39cac733c0"
+		},
+		{
+			"path": "research/smooth_math.py",
+			"bytes": 5619,
+			"sha256": "c6bad273ea5e88cf8394f9693bea169910d328c6775c83139622b1a3f633ed70",
+			"sourceSha256": "c6bad273ea5e88cf8394f9693bea169910d328c6775c83139622b1a3f633ed70"
+		},
+		{
+			"path": "research/smooth_metal.py",
+			"bytes": 3811,
+			"sha256": "681b6f79474500ccdd9253091e87eaf93512d5c1d70175cdaecf6cedd0e93aac",
+			"sourceSha256": "681b6f79474500ccdd9253091e87eaf93512d5c1d70175cdaecf6cedd0e93aac"
+		},
+		{
+			"path": "research/smooth_metal.swift",
+			"bytes": 18805,
+			"sha256": "c0037a28e91eeb7754040af0797ef05a7c5df347c9243f31a0c10b5609591bec",
+			"sourceSha256": "c0037a28e91eeb7754040af0797ef05a7c5df347c9243f31a0c10b5609591bec"
+		},
+		{
+			"path": "research/smooth_render.py",
+			"bytes": 4098,
+			"sha256": "a2943d00e7cb63da722c3d2947406b5fb5594bbfa1c1f89b94426667bf779d7b",
+			"sourceSha256": "a2943d00e7cb63da722c3d2947406b5fb5594bbfa1c1f89b94426667bf779d7b"
+		},
+		{
+			"path": "research/softpink_assets.py",
+			"bytes": 3633,
+			"sha256": "67d43f7e71282e1ddfdfb6cf59bf0ffe994c58d03bd22d4562f7592dd14f53f9",
+			"sourceSha256": "67d43f7e71282e1ddfdfb6cf59bf0ffe994c58d03bd22d4562f7592dd14f53f9"
+		},
+		{
+			"path": "research/softpink_render.py",
+			"bytes": 2027,
+			"sha256": "3e36c9bc6a77f27134bdf6549f75ee8c60aae3747f078b75875f5c8e2c43e3b4",
+			"sourceSha256": "3e36c9bc6a77f27134bdf6549f75ee8c60aae3747f078b75875f5c8e2c43e3b4"
+		},
+		{
+			"path": "research/spot_acne_assets.py",
+			"bytes": 2236,
+			"sha256": "2fbb1799338c7eb73810b694fd0342763426b7189eb32d412b4bcd5786c26f04",
+			"sourceSha256": "2fbb1799338c7eb73810b694fd0342763426b7189eb32d412b4bcd5786c26f04"
+		},
+		{
+			"path": "research/spot_acne_crop.py",
+			"bytes": 4370,
+			"sha256": "166ed699f43fdae79be860f9e3a65c4b8cdd8e9bb0cbd4a17475e7c7b8ec1e8b",
+			"sourceSha256": "166ed699f43fdae79be860f9e3a65c4b8cdd8e9bb0cbd4a17475e7c7b8ec1e8b"
+		},
+		{
+			"path": "research/spot_acne_crop.swift",
+			"bytes": 5302,
+			"sha256": "c5bb27e2fdffebee773ba59083d458c6cb1335db44077c4e0a54f400c1e32c39",
+			"sourceSha256": "c5bb27e2fdffebee773ba59083d458c6cb1335db44077c4e0a54f400c1e32c39"
+		},
+		{
+			"path": "research/spot_acne_export.py",
+			"bytes": 8265,
+			"sha256": "b3c25bbf028b3957089b608d979d5f11ae31cfd0d00fbd7fc05928f4a6f95168",
+			"sourceSha256": "b3c25bbf028b3957089b608d979d5f11ae31cfd0d00fbd7fc05928f4a6f95168"
+		},
+		{
+			"path": "research/spot_acne_geometry.py",
+			"bytes": 231,
+			"sha256": "fa49eb38fe497647445f8f23a7e20fed74c5caae45b7b0fac257325b15972d46",
+			"sourceSha256": "fa49eb38fe497647445f8f23a7e20fed74c5caae45b7b0fac257325b15972d46"
+		},
+		{
+			"path": "research/spot_acne_metal.py",
+			"bytes": 3146,
+			"sha256": "c6a2bba8690a9aa6ec8dc7b73cfce3aece4cb4eb5bb156a3d86dbffa53e4e416",
+			"sourceSha256": "c6a2bba8690a9aa6ec8dc7b73cfce3aece4cb4eb5bb156a3d86dbffa53e4e416"
+		},
+		{
+			"path": "research/spot_acne_metal.swift",
+			"bytes": 6946,
+			"sha256": "c058bfa038c32bf43e96cc27ea72e7c57acbefcd8b42c5ac2a158a7b9e038b7f",
+			"sourceSha256": "c058bfa038c32bf43e96cc27ea72e7c57acbefcd8b42c5ac2a158a7b9e038b7f"
+		},
+		{
+			"path": "research/spot_acne_network.py",
+			"bytes": 2475,
+			"sha256": "6377a3e137b7476d11b1d2537537f3727ab9c2e8c9b16ffeb75954692fe39240",
+			"sourceSha256": "6377a3e137b7476d11b1d2537537f3727ab9c2e8c9b16ffeb75954692fe39240"
+		},
+		{
+			"path": "research/spot_acne_network.swift",
+			"bytes": 8622,
+			"sha256": "b935341fdafe6125b6d4b0054c9d7b4f69d9fee686ecae52173115c30cfc9ce7",
+			"sourceSha256": "b935341fdafe6125b6d4b0054c9d7b4f69d9fee686ecae52173115c30cfc9ce7"
+		},
+		{
+			"path": "research/spot_acne_render.py",
+			"bytes": 3209,
+			"sha256": "cc343c555f56db3db0e298e9432bbd4ea453495269eaa40cc2f8dd98c064b0e7",
+			"sourceSha256": "cc343c555f56db3db0e298e9432bbd4ea453495269eaa40cc2f8dd98c064b0e7"
+		},
+		{
+			"path": "research/tests/gan_compute_probe.swift",
+			"bytes": 2662,
+			"sha256": "b208add6cff86293f4ea3d0e73231564b5d23d13a774da95e68769abe7c4ee46",
+			"sourceSha256": "b208add6cff86293f4ea3d0e73231564b5d23d13a774da95e68769abe7c4ee46"
+		},
+		{
+			"path": "research/tests/test_affine_linear.py",
+			"bytes": 1835,
+			"sha256": "267b23879c28d337a35798ed5cd885e8b162206287fb4c01e2da39a629ae8686",
+			"sourceSha256": "267b23879c28d337a35798ed5cd885e8b162206287fb4c01e2da39a629ae8686"
+		},
+		{
+			"path": "research/tests/test_align160_infer.py",
+			"bytes": 6430,
+			"sha256": "a76ecc7312f2945d2208b165bfe9e9fef88c5f46451f98cf7ddd1daa63696110",
+			"sourceSha256": "a76ecc7312f2945d2208b165bfe9e9fef88c5f46451f98cf7ddd1daa63696110"
+		},
+		{
+			"path": "research/tests/test_align160_prepare.py",
+			"bytes": 4782,
+			"sha256": "1220edcfbb291b59181d601a0e8f30aace2423812b31705045f0483dc19cb374",
+			"sourceSha256": "1220edcfbb291b59181d601a0e8f30aace2423812b31705045f0483dc19cb374"
+		},
+		{
+			"path": "research/tests/test_alignment_chain.py",
+			"bytes": 12000,
+			"sha256": "a823ad5f4742ca909198834aa7dde74a0915f87c8b569586fe281814925e6745",
+			"sourceSha256": "a823ad5f4742ca909198834aa7dde74a0915f87c8b569586fe281814925e6745"
+		},
+		{
+			"path": "research/tests/test_alignment_crop_transform.py",
+			"bytes": 4711,
+			"sha256": "63f39cb207e104af70fe936e11b51cc80bff5de521b4572c32617a4ab6884370",
+			"sourceSha256": "63f39cb207e104af70fe936e11b51cc80bff5de521b4572c32617a4ab6884370"
+		},
+		{
+			"path": "research/tests/test_alignment_transform.py",
+			"bytes": 11363,
+			"sha256": "b39c52c7c4ccb8dbdbc2486cd4ece1cab2a26c5c0ac874991f6d1d9bc8e58f37",
+			"sourceSha256": "b39c52c7c4ccb8dbdbc2486cd4ece1cab2a26c5c0ac874991f6d1d9bc8e58f37"
+		},
+		{
+			"path": "research/tests/test_brow_render.py",
+			"bytes": 1658,
+			"sha256": "7674e89926ff23b405e4e9b9c41755507b362d9f8f36a252e4e2231daf554096",
+			"sourceSha256": "7674e89926ff23b405e4e9b9c41755507b362d9f8f36a252e4e2231daf554096"
+		},
+		{
+			"path": "research/tests/test_consumer_points.py",
+			"bytes": 2638,
+			"sha256": "074a5761a85fb135b504261e8ec1534d5381fdaa87abdb54edbb2c56b1d4f575",
+			"sourceSha256": "074a5761a85fb135b504261e8ec1534d5381fdaa87abdb54edbb2c56b1d4f575"
+		},
+		{
+			"path": "research/tests/test_consumer_pose.py",
+			"bytes": 4094,
+			"sha256": "0b968f9fecef8d149eff21dae391cea2828d52e293e5614e351699814bbeac9c",
+			"sourceSha256": "0b968f9fecef8d149eff21dae391cea2828d52e293e5614e351699814bbeac9c"
+		},
+		{
+			"path": "research/tests/test_contacts_geometry.py",
+			"bytes": 2474,
+			"sha256": "668576d1abe0d19e14adcda144bc5706b24ca7b1a6a987c64f9cccbc990dfb71",
+			"sourceSha256": "668576d1abe0d19e14adcda144bc5706b24ca7b1a6a987c64f9cccbc990dfb71"
+		},
+		{
+			"path": "research/tests/test_contacts_render.py",
+			"bytes": 1697,
+			"sha256": "65676600ac9d59adc923408f09df43395500999e4e3bb69fb9b8233b19e4f5e3",
+			"sourceSha256": "65676600ac9d59adc923408f09df43395500999e4e3bb69fb9b8233b19e4f5e3"
+		},
+		{
+			"path": "research/tests/test_detection_geometry.py",
+			"bytes": 9598,
+			"sha256": "67203190e21bee8545fe6e398409914e61b3a4dc3c97d4d3ff33fe5a82c3d282",
+			"sourceSha256": "67203190e21bee8545fe6e398409914e61b3a4dc3c97d4d3ff33fe5a82c3d282"
+		},
+		{
+			"path": "research/tests/test_dynamic_makeup_controls.py",
+			"bytes": 2551,
+			"sha256": "302f37b5a102822250815a06895fbcd753269031c1dfe02f5384725d0b39767e",
+			"sourceSha256": "302f37b5a102822250815a06895fbcd753269031c1dfe02f5384725d0b39767e"
+		},
+		{
+			"path": "research/tests/test_dynamic_makeup_metal.py",
+			"bytes": 7108,
+			"sha256": "827a6ebb32f15f27599c60eeaa0fd9a0caf71bcd1e6754ed2e01a4ef2fd9e999",
+			"sourceSha256": "827a6ebb32f15f27599c60eeaa0fd9a0caf71bcd1e6754ed2e01a4ef2fd9e999"
+		},
+		{
+			"path": "research/tests/test_dynamic_makeup_passes.py",
+			"bytes": 7824,
+			"sha256": "74aaea37dca20eee34fd396346f85c69291d8b73d8a598c71d54c58652837110",
+			"sourceSha256": "74aaea37dca20eee34fd396346f85c69291d8b73d8a598c71d54c58652837110"
+		},
+		{
+			"path": "research/tests/test_dynamic_makeup_render.py",
+			"bytes": 12568,
+			"sha256": "51ba44ac237483067aa604a5c806a25cae83d34c75ed0c7282de448f2b3827a7",
+			"sourceSha256": "d544061156cadc4004425829f30aaca2eca40f5de7089f78ecea02e1914536a6"
+		},
+		{
+			"path": "research/tests/test_extra_alignment.py",
+			"bytes": 5197,
+			"sha256": "ba053d43db306bad70c102b3ea2ca95508e54bb1602407bd81ab1e1e450109b4",
+			"sourceSha256": "ba053d43db306bad70c102b3ea2ca95508e54bb1602407bd81ab1e1e450109b4"
+		},
+		{
+			"path": "research/tests/test_extra_assets.py",
+			"bytes": 986,
+			"sha256": "b054746f110e811bbab3c1a3d360d57b51cae71e30cc8db6f5f30754e04931a7",
+			"sourceSha256": "b054746f110e811bbab3c1a3d360d57b51cae71e30cc8db6f5f30754e04931a7"
+		},
+		{
+			"path": "research/tests/test_extra_geometry.py",
+			"bytes": 2511,
+			"sha256": "77aa61c8d232d160b228ef8cdd7c52cad598a967ef560dca0c77efd098dd7a13",
+			"sourceSha256": "77aa61c8d232d160b228ef8cdd7c52cad598a967ef560dca0c77efd098dd7a13"
+		},
+		{
+			"path": "research/tests/test_eye_geometry.py",
+			"bytes": 4418,
+			"sha256": "1c182d9e133451bbdef7bf3f94aa976f598b3601628767133082e7be443ca1ee",
+			"sourceSha256": "1c182d9e133451bbdef7bf3f94aa976f598b3601628767133082e7be443ca1ee"
+		},
+		{
+			"path": "research/tests/test_eye_metal_layers.py",
+			"bytes": 3648,
+			"sha256": "20f0e6f12ee9e39f608c26a1965c50f02db81712e14110aa838446f5a2e9b1d4",
+			"sourceSha256": "20f0e6f12ee9e39f608c26a1965c50f02db81712e14110aa838446f5a2e9b1d4"
+		},
+		{
+			"path": "research/tests/test_face_features_controls.py",
+			"bytes": 3177,
+			"sha256": "58b8afbfc8ad33c3048d0366cec1f1ef1b9337b79e174541d990ea3986363a54",
+			"sourceSha256": "58b8afbfc8ad33c3048d0366cec1f1ef1b9337b79e174541d990ea3986363a54"
+		},
+		{
+			"path": "research/tests/test_face_features_render.py",
+			"bytes": 6680,
+			"sha256": "2deaa1e2f861b36813b6048f4ef480f52021c047c395fd5e93e1a3ac1f0061ac",
+			"sourceSha256": "2deaa1e2f861b36813b6048f4ef480f52021c047c395fd5e93e1a3ac1f0061ac"
+		},
+		{
+			"path": "research/tests/test_face_metal.py",
+			"bytes": 2893,
+			"sha256": "0d2d6cf261a3eafdf12f2943efc9456fc6c6d9af1ceba1cbb957e1b9d1a1e100",
+			"sourceSha256": "0d2d6cf261a3eafdf12f2943efc9456fc6c6d9af1ceba1cbb957e1b9d1a1e100"
+		},
+		{
+			"path": "research/tests/test_face_shape.py",
+			"bytes": 8679,
+			"sha256": "70e09fb94c2fa1b65c5d46347313efa9466886285688d58cf2254c9cfde90554",
+			"sourceSha256": "70e09fb94c2fa1b65c5d46347313efa9466886285688d58cf2254c9cfde90554"
+		},
+		{
+			"path": "research/tests/test_facefitting1256_frontend.py",
+			"bytes": 6279,
+			"sha256": "4deb6d2e649b93cf47c81d6322d0b3e701d1fcc2a92e27b1b01ca526293b7857",
+			"sourceSha256": "4deb6d2e649b93cf47c81d6322d0b3e701d1fcc2a92e27b1b01ca526293b7857"
+		},
+		{
+			"path": "research/tests/test_facefitting_geometry.py",
+			"bytes": 4254,
+			"sha256": "198875ca59af13814724bc8c9a7dc998cb4199c3c88d4e0538fb5ce62c24696d",
+			"sourceSha256": "198875ca59af13814724bc8c9a7dc998cb4199c3c88d4e0538fb5ce62c24696d"
+		},
+		{
+			"path": "research/tests/test_facefitting_image.py",
+			"bytes": 1957,
+			"sha256": "59f6d3d151e299ad8d20ae3c4b0b4d4a632b7570c4240d1156342b1d99ea3685",
+			"sourceSha256": "59f6d3d151e299ad8d20ae3c4b0b4d4a632b7570c4240d1156342b1d99ea3685"
+		},
+		{
+			"path": "research/tests/test_facefitting_input.py",
+			"bytes": 2529,
+			"sha256": "c74810bc90ad0b093c3c36ce88ea38d8a7ac6a9deccef1997000561bd719c52c",
+			"sourceSha256": "c74810bc90ad0b093c3c36ce88ea38d8a7ac6a9deccef1997000561bd719c52c"
+		},
+		{
+			"path": "research/tests/test_facefitting_output.py",
+			"bytes": 4448,
+			"sha256": "dbc34fca140d0d2ebb2f114e731d0e26b68157127256ac8d22b5eedbf34dba23",
+			"sourceSha256": "dbc34fca140d0d2ebb2f114e731d0e26b68157127256ac8d22b5eedbf34dba23"
+		},
+		{
+			"path": "research/tests/test_facefitting_solver.py",
+			"bytes": 4982,
+			"sha256": "919309c07e80328b2700d4e081990022b29103faf1be33a432529b6ae7758110",
+			"sourceSha256": "919309c07e80328b2700d4e081990022b29103faf1be33a432529b6ae7758110"
+		},
+		{
+			"path": "research/tests/test_features_assets.py",
+			"bytes": 985,
+			"sha256": "23fa2a493d6370d332389858a78c40bb26679a22dfee36dc15a71b9290f7b5fc",
+			"sourceSha256": "23fa2a493d6370d332389858a78c40bb26679a22dfee36dc15a71b9290f7b5fc"
+		},
+		{
+			"path": "research/tests/test_features_controls.py",
+			"bytes": 3218,
+			"sha256": "551538fee96ce29fd80f0646bae16eb1c30ea47beb7cbeca6c1ed78e32d31f4d",
+			"sourceSha256": "551538fee96ce29fd80f0646bae16eb1c30ea47beb7cbeca6c1ed78e32d31f4d"
+		},
+		{
+			"path": "research/tests/test_features_geometry.py",
+			"bytes": 6327,
+			"sha256": "de65d82375a9071fb31ae44359834466e20599a29722c0e73b678117a31fbfe3",
+			"sourceSha256": "de65d82375a9071fb31ae44359834466e20599a29722c0e73b678117a31fbfe3"
+		},
+		{
+			"path": "research/tests/test_features_render.py",
+			"bytes": 3440,
+			"sha256": "fa48e3d9fd513acf8c5b959e80483c2dcc99bdf1c5e9ae155fb4929af276c3df",
+			"sourceSha256": "fa48e3d9fd513acf8c5b959e80483c2dcc99bdf1c5e9ae155fb4929af276c3df"
+		},
+		{
+			"path": "research/tests/test_flowgan.py",
+			"bytes": 7516,
+			"sha256": "aea5b1b762012899d7fcfbddd8bb86944c2430d4560b1ecee8f2f629ca72b248",
+			"sourceSha256": "aea5b1b762012899d7fcfbddd8bb86944c2430d4560b1ecee8f2f629ca72b248"
+		},
+		{
+			"path": "research/tests/test_independent_pipeline.py",
+			"bytes": 16142,
+			"sha256": "e12057a20f376c07db392705a8eb7f50c512ddb577327ff4d01199cfbcffc967",
+			"sourceSha256": "e12057a20f376c07db392705a8eb7f50c512ddb577327ff4d01199cfbcffc967"
+		},
+		{
+			"path": "research/tests/test_iris_geometry.py",
+			"bytes": 2038,
+			"sha256": "d9c1ad7d4c250542d5416c022d59b84e3ae9efc4cda0516084ce08a1bdaa1d4f",
+			"sourceSha256": "d9c1ad7d4c250542d5416c022d59b84e3ae9efc4cda0516084ce08a1bdaa1d4f"
+		},
+		{
+			"path": "research/tests/test_iris_solver.py",
+			"bytes": 1452,
+			"sha256": "202bb99e517df0fa68de4e4f30d05fc8a9615514c1b4dae06fb51f91080dda2b",
+			"sourceSha256": "202bb99e517df0fa68de4e4f30d05fc8a9615514c1b4dae06fb51f91080dda2b"
+		},
+		{
+			"path": "research/tests/test_jawline.py",
+			"bytes": 11328,
+			"sha256": "35b61b0ae06d0401e6131e842059fe6347b53142be53d9ac042fb19b2f53773c",
+			"sourceSha256": "35b61b0ae06d0401e6131e842059fe6347b53142be53d9ac042fb19b2f53773c"
+		},
+		{
+			"path": "research/tests/test_jawline_smooth.py",
+			"bytes": 2830,
+			"sha256": "1f022f3699335adf2ecc5a2223abfc7434a6c6081a784efb046f610f9d51cc4a",
+			"sourceSha256": "1f022f3699335adf2ecc5a2223abfc7434a6c6081a784efb046f610f9d51cc4a"
+		},
+		{
+			"path": "research/tests/test_lip_render.py",
+			"bytes": 1804,
+			"sha256": "2a0d5fa847f455dc7f214c5ae6cbb597eaa884f94a06c507aa916d9dc2c8f5ca",
+			"sourceSha256": "2a0d5fa847f455dc7f214c5ae6cbb597eaa884f94a06c507aa916d9dc2c8f5ca"
+		},
+		{
+			"path": "research/tests/test_liquefy_combination_render.py",
+			"bytes": 4465,
+			"sha256": "2a872d34c520c1b829d9268b9982ade972963a19b47aa1b261c27ca53c285e52",
+			"sourceSha256": "2a872d34c520c1b829d9268b9982ade972963a19b47aa1b261c27ca53c285e52"
+		},
+		{
+			"path": "research/tests/test_liquefy_geometry.py",
+			"bytes": 3564,
+			"sha256": "11aead5fb1ea4c2e45252c0cb8e229c70b718b56b562739cc065ab6a47b055a2",
+			"sourceSha256": "11aead5fb1ea4c2e45252c0cb8e229c70b718b56b562739cc065ab6a47b055a2"
+		},
+		{
+			"path": "research/tests/test_liquefy_metal.py",
+			"bytes": 7458,
+			"sha256": "0e82807d18a95d4121505645a55e9063860e56acdc1ee4cae7d94e8a098ce4be",
+			"sourceSha256": "0e82807d18a95d4121505645a55e9063860e56acdc1ee4cae7d94e8a098ce4be"
+		},
+		{
+			"path": "research/tests/test_liquefy_pose.py",
+			"bytes": 1902,
+			"sha256": "f33cb3d853eeae411a51a6e4b7cbbdae8ed8d8003d9c4a9488546f45179a1a2d",
+			"sourceSha256": "f33cb3d853eeae411a51a6e4b7cbbdae8ed8d8003d9c4a9488546f45179a1a2d"
+		},
+		{
+			"path": "research/tests/test_liquefy_render.py",
+			"bytes": 1810,
+			"sha256": "87368c004e36e9a0581bb123bf16867441d0010459c729017d56a52f5cdb9810",
+			"sourceSha256": "87368c004e36e9a0581bb123bf16867441d0010459c729017d56a52f5cdb9810"
+		},
+		{
+			"path": "research/tests/test_liquefy_texture.py",
+			"bytes": 3305,
+			"sha256": "f194e08a256099fadf98ce7b7e751ac48d835c502b4671089b4f1ef0da55c434",
+			"sourceSha256": "f194e08a256099fadf98ce7b7e751ac48d835c502b4671089b4f1ef0da55c434"
+		},
+		{
+			"path": "research/tests/test_look_render.py",
+			"bytes": 1839,
+			"sha256": "eca8b71dcaa83433becb3dca4140fc24b943eb4f84875768266433cbdd31bb4a",
+			"sourceSha256": "eca8b71dcaa83433becb3dca4140fc24b943eb4f84875768266433cbdd31bb4a"
+		},
+		{
+			"path": "research/tests/test_m4_texture.py",
+			"bytes": 1936,
+			"sha256": "dc661fa97678a0549d8154b6a1d63c0c65403e9226d435c2161256537cd38b18",
+			"sourceSha256": "dc661fa97678a0549d8154b6a1d63c0c65403e9226d435c2161256537cd38b18"
+		},
+		{
+			"path": "research/tests/test_makeup248_layers.py",
+			"bytes": 3278,
+			"sha256": "532c71a0c6ba6b756e0336ebf129633d48b7896f2ecc7d9156a5bc93c903b0ff",
+			"sourceSha256": "532c71a0c6ba6b756e0336ebf129633d48b7896f2ecc7d9156a5bc93c903b0ff"
+		},
+		{
+			"path": "research/tests/test_makeup248_render.py",
+			"bytes": 2824,
+			"sha256": "1790f5a2859a4ab8506259fa289390f33064a4a3932c96651cf121dc511a73b1",
+			"sourceSha256": "1790f5a2859a4ab8506259fa289390f33064a4a3932c96651cf121dc511a73b1"
+		},
+		{
+			"path": "research/tests/test_makeup3d.py",
+			"bytes": 7337,
+			"sha256": "8c6ccaf6ce98b93051add5eb4528a159d104d0c2116d26e26b6b8d9b3e6c84b4",
+			"sourceSha256": "8c6ccaf6ce98b93051add5eb4528a159d104d0c2116d26e26b6b8d9b3e6c84b4"
+		},
+		{
+			"path": "research/tests/test_makeup_blend.py",
+			"bytes": 3479,
+			"sha256": "e3a73f087ce45f08c96a14f5243ccbc0245e650579fb522228c834687bf4ae5c",
+			"sourceSha256": "e3a73f087ce45f08c96a14f5243ccbc0245e650579fb522228c834687bf4ae5c"
+		},
+		{
+			"path": "research/tests/test_makeup_geometry.py",
+			"bytes": 2699,
+			"sha256": "c6736fff5ee8a1b4bc6d569922fb26fe61e77f19605d22d7f83a23bc0479d2b7",
+			"sourceSha256": "c6736fff5ee8a1b4bc6d569922fb26fe61e77f19605d22d7f83a23bc0479d2b7"
+		},
+		{
+			"path": "research/tests/test_makeup_mesh_assets.py",
+			"bytes": 1444,
+			"sha256": "8af8fb319a6a7d22c0dee17955677a4a5729a0a2ca9cab556db45a196e233a69",
+			"sourceSha256": "8af8fb319a6a7d22c0dee17955677a4a5729a0a2ca9cab556db45a196e233a69"
+		},
+		{
+			"path": "research/tests/test_makeup_metal.py",
+			"bytes": 5509,
+			"sha256": "533941b1cd9707d7a3d364de7396a8895532287ab1233b0592bba43c41abb493",
+			"sourceSha256": "7ee7c8a052995e7febd3054b13e7e216e8668e6f33212d9332279f813347604e"
+		},
+		{
+			"path": "research/tests/test_makeup_mls.py",
+			"bytes": 2039,
+			"sha256": "c1dde48985c51e43cd25fce3c386f7762bb6eb94dd6fdf2cf94ff5d791cda341",
+			"sourceSha256": "c1dde48985c51e43cd25fce3c386f7762bb6eb94dd6fdf2cf94ff5d791cda341"
+		},
+		{
+			"path": "research/tests/test_mesh_raster.py",
+			"bytes": 8123,
+			"sha256": "984d442704b7b7b2ac41169bfdc8c265673eb6affbcdbde36eb6242686317021",
+			"sourceSha256": "984d442704b7b7b2ac41169bfdc8c265673eb6affbcdbde36eb6242686317021"
+		},
+		{
+			"path": "research/tests/test_mesh_texture.py",
+			"bytes": 1292,
+			"sha256": "662a6cee49097aedc1c000f7b70d3d44e50917804301278cbf79dae3be7985b0",
+			"sourceSha256": "662a6cee49097aedc1c000f7b70d3d44e50917804301278cbf79dae3be7985b0"
+		},
+		{
+			"path": "research/tests/test_mouth_state.py",
+			"bytes": 3031,
+			"sha256": "575031a36263eff0d9512b8a39ed08345fc2919d8c60ec39872af31972b4f958",
+			"sourceSha256": "575031a36263eff0d9512b8a39ed08345fc2919d8c60ec39872af31972b4f958"
+		},
+		{
+			"path": "research/tests/test_nh_geometry.py",
+			"bytes": 1512,
+			"sha256": "08d2e9e619973a3de6392973a10fb0fb975af6465b939ad4de4c42c9af6ccd69",
+			"sourceSha256": "08d2e9e619973a3de6392973a10fb0fb975af6465b939ad4de4c42c9af6ccd69"
+		},
+		{
+			"path": "research/tests/test_portrait_package_lifecycle.py",
+			"bytes": 9257,
+			"sha256": "faf855be13aa196aa8ad27d348dab5dffb9d5fffb348722155b4d165c2b1462e",
+			"sourceSha256": "faf855be13aa196aa8ad27d348dab5dffb9d5fffb348722155b4d165c2b1462e"
+		},
+		{
+			"path": "research/tests/test_skin_mask_export.py",
+			"bytes": 5573,
+			"sha256": "9c82543ed8a2c7404ec8e276e177f08b15bff2f087a57878c13693fff867cfaf",
+			"sourceSha256": "9c82543ed8a2c7404ec8e276e177f08b15bff2f087a57878c13693fff867cfaf"
+		},
+		{
+			"path": "research/tests/test_skin_mask_frontend.py",
+			"bytes": 3641,
+			"sha256": "d47c29b9f7af9c7547c7fed1747d124beaacecc86d4a352680d6a3f4b069f490",
+			"sourceSha256": "d47c29b9f7af9c7547c7fed1747d124beaacecc86d4a352680d6a3f4b069f490"
+		},
+		{
+			"path": "research/tests/test_skin_mask_sequence.py",
+			"bytes": 5941,
+			"sha256": "ac2846597cd2cc31c8b032f12197ccb011399d8b744d12d10e9befb95a10e3d0",
+			"sourceSha256": "ac2846597cd2cc31c8b032f12197ccb011399d8b744d12d10e9befb95a10e3d0"
+		},
+		{
+			"path": "research/tests/test_slimface_consumer_input.py",
+			"bytes": 4995,
+			"sha256": "a5b100e1bdd816b9b188f8ad1669b30e6cd34e1cd61940f0d4069eabed293829",
+			"sourceSha256": "a5b100e1bdd816b9b188f8ad1669b30e6cd34e1cd61940f0d4069eabed293829"
+		},
+		{
+			"path": "research/tests/test_slimface_detection.py",
+			"bytes": 2123,
+			"sha256": "921e14688a94503da2da5ab5360c6d54c448be73bf27b7f8ff40f86e609c169a",
+			"sourceSha256": "921e14688a94503da2da5ab5360c6d54c448be73bf27b7f8ff40f86e609c169a"
+		},
+		{
+			"path": "research/tests/test_slimface_mesh.py",
+			"bytes": 6601,
+			"sha256": "55aecd04e8f100fce805af81fe2957a12bcef7b3c1baf9817d75cfc101c8a7cd",
+			"sourceSha256": "55aecd04e8f100fce805af81fe2957a12bcef7b3c1baf9817d75cfc101c8a7cd"
+		},
+		{
+			"path": "research/tests/test_smooth.py",
+			"bytes": 10341,
+			"sha256": "878962524701dd393ab0e5eba9f7151bbc3677daeba9e237b4b43db50e0436a8",
+			"sourceSha256": "878962524701dd393ab0e5eba9f7151bbc3677daeba9e237b4b43db50e0436a8"
+		},
+		{
+			"path": "research/tests/test_smooth_gpu_coordinates.py",
+			"bytes": 2981,
+			"sha256": "c8ba29822a7739055810012c7d8a92cdc0f7c606fcc3e9404dcc83b240f6c97f",
+			"sourceSha256": "c8ba29822a7739055810012c7d8a92cdc0f7c606fcc3e9404dcc83b240f6c97f"
+		},
+		{
+			"path": "research/tests/test_spot_acne_network.py",
+			"bytes": 8883,
+			"sha256": "3361498448dce44561d1362cb8b00980c1aafd27af458d89628d534aea8d0f96",
+			"sourceSha256": "3361498448dce44561d1362cb8b00980c1aafd27af458d89628d534aea8d0f96"
+		},
+		{
+			"path": "research/tests/test_whiten.py",
+			"bytes": 8200,
+			"sha256": "9a17e0a318b0a6ea4a2faa33b1ccda0b64e13d05a1a6ef320d3c77427542b215",
+			"sourceSha256": "9a17e0a318b0a6ea4a2faa33b1ccda0b64e13d05a1a6ef320d3c77427542b215"
+		},
+		{
+			"path": "research/tests/test_worker_alignment.py",
+			"bytes": 7965,
+			"sha256": "7c2e5d5689d669ba847b82bba3fdcfb02e07c3610793d1b9324922ef7c6be2d2",
+			"sourceSha256": "7c2e5d5689d669ba847b82bba3fdcfb02e07c3610793d1b9324922ef7c6be2d2"
+		},
+		{
+			"path": "research/tests/test_youtai.py",
+			"bytes": 7597,
+			"sha256": "8464414e6071c4a56ae0fee5151ae3fce0aff6168f2af77d246232f2efc23cc1",
+			"sourceSha256": "8464414e6071c4a56ae0fee5151ae3fce0aff6168f2af77d246232f2efc23cc1"
+		},
+		{
+			"path": "research/vendor/LICENSE.opencv-svd.txt",
+			"bytes": 1923,
+			"sha256": "ddbd4ce279ddc5cdae7e9ec639c98298ee7eac45f280fa32bb0c1d8124bd2c76",
+			"sourceSha256": "ddbd4ce279ddc5cdae7e9ec639c98298ee7eac45f280fa32bb0c1d8124bd2c76"
+		},
+		{
+			"path": "research/vendor/espresso_preprocess_probe.py",
+			"bytes": 10643,
+			"sha256": "0bd717bcbf24c3106fa518d4eb854db2493600f8b241b866720fd74d82bf97f1",
+			"sourceSha256": "0bd717bcbf24c3106fa518d4eb854db2493600f8b241b866720fd74d82bf97f1"
+		},
+		{
+			"path": "research/vendor/face_detector.py",
+			"bytes": 8047,
+			"sha256": "2cb7ae65dcadfe319aa873ec01e0afad82b5bd7508b906e70179e849b2785cd7",
+			"sourceSha256": "2cb7ae65dcadfe319aa873ec01e0afad82b5bd7508b906e70179e849b2785cd7"
+		},
+		{
+			"path": "research/vendor/face_geometry.py",
+			"bytes": 4926,
+			"sha256": "617a54ea2f2ad8ffe2670e890b71a37f4345e3b870e09e3183f78b190ffda587",
+			"sourceSha256": "617a54ea2f2ad8ffe2670e890b71a37f4345e3b870e09e3183f78b190ffda587"
+		},
+		{
+			"path": "research/vendor/owned_prepare.py",
+			"bytes": 3484,
+			"sha256": "eb8021e97b21dabf131751058e3bb7fa5e45667f4065c9fc490dbc6b5eb65794",
+			"sourceSha256": "eb8021e97b21dabf131751058e3bb7fa5e45667f4065c9fc490dbc6b5eb65794"
+		},
+		{
+			"path": "research/whiten_assets.py",
+			"bytes": 2989,
+			"sha256": "c1553ea6f1cccfde7fa0b26aaeb8e271ca6b3173ab9fc186d99aa3b61f13401a",
+			"sourceSha256": "c1553ea6f1cccfde7fa0b26aaeb8e271ca6b3173ab9fc186d99aa3b61f13401a"
+		},
+		{
+			"path": "research/whiten_math.py",
+			"bytes": 3155,
+			"sha256": "86de928433510105395b1e1fbd073e82f30bd39136386ebf84997bd1b68bacd4",
+			"sourceSha256": "86de928433510105395b1e1fbd073e82f30bd39136386ebf84997bd1b68bacd4"
+		},
+		{
+			"path": "research/whiten_metal.py",
+			"bytes": 3195,
+			"sha256": "9e7644b43623a532f5d16f16e52bca15cd81e0c357c3c5638d15741582cd0f0a",
+			"sourceSha256": "9e7644b43623a532f5d16f16e52bca15cd81e0c357c3c5638d15741582cd0f0a"
+		},
+		{
+			"path": "research/whiten_metal.swift",
+			"bytes": 7643,
+			"sha256": "ba76d1796f2d4eb9528e0c81d043f15831faaf6905ecabe232e96fbf5594cc68",
+			"sourceSha256": "ba76d1796f2d4eb9528e0c81d043f15831faaf6905ecabe232e96fbf5594cc68"
+		},
+		{
+			"path": "research/whiten_render.py",
+			"bytes": 3618,
+			"sha256": "5da69b535d73639a0d76ee9d2625f449fdf235febd59c07d084c9e64659c90f1",
+			"sourceSha256": "5da69b535d73639a0d76ee9d2625f449fdf235febd59c07d084c9e64659c90f1"
+		},
+		{
+			"path": "research/worker.py",
+			"bytes": 7208,
+			"sha256": "0975f1364176362f61e2dff8509a0aa5d97d794823a70d06bc30ff86f2127771",
+			"sourceSha256": "0975f1364176362f61e2dff8509a0aa5d97d794823a70d06bc30ff86f2127771"
+		},
+		{
+			"path": "research/youtai_assets.py",
+			"bytes": 5053,
+			"sha256": "977c5f5951857a233a6b4948bd39d1beb3714b0e76b2b073c3c63b5070e2312c",
+			"sourceSha256": "977c5f5951857a233a6b4948bd39d1beb3714b0e76b2b073c3c63b5070e2312c"
+		},
+		{
+			"path": "research/youtai_organs.py",
+			"bytes": 5368,
+			"sha256": "51a4fad37d3a7cb923855a0c5a86ae4381b777e3169fdfc07b8d9c68d31a918c",
+			"sourceSha256": "51a4fad37d3a7cb923855a0c5a86ae4381b777e3169fdfc07b8d9c68d31a918c"
+		},
+		{
+			"path": "research/youtai_render.py",
+			"bytes": 5562,
+			"sha256": "a838bc695ecfe9910cac4882ecb219bd9103f3365dd03027c8242b3326cf5b7f",
+			"sourceSha256": "a838bc695ecfe9910cac4882ecb219bd9103f3365dd03027c8242b3326cf5b7f"
+		},
+		{
+			"path": "src/independent-pipeline-plan.test.ts",
+			"bytes": 7923,
+			"sha256": "5d8e3456c7d27e7045bd238b01f986fcd62b04e2967c45340c4f4a0a81d75ad2",
+			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b"
+		},
+		{
+			"path": "src/independent-pipeline-plan.ts",
+			"bytes": 7199,
+			"sha256": "27ad6bb19b8962bca0f7563b419c6c57841d476963faa831f3e6e3629b0fa4b5",
+			"sourceSha256": "2bf366f114733507b6ead363871f4a76088be292630c8574f28f780dfeb3ff7b"
+		},
+		{
+			"path": "web/detail-view-model.js",
+			"bytes": 2641,
+			"sha256": "253eead9103fe24488c869f55f93ec89f5dbde5df61ac8924dafdf52907adec3",
+			"sourceSha256": "ecf5888f83d2e46d0efa1e42653d2118868f77ad265894571908131d221fa3e8"
+		},
+		{
+			"path": "web/detail-view-model.test.js",
+			"bytes": 4655,
+			"sha256": "92eaafd8258875c719c77c991530155b0db908ce33ac0f19894f7f380d0f49e7",
+			"sourceSha256": "70b6bedc13bdc8edc06803239074455030920e434f4cbdf6db3594399d01acd0"
+		}
+	],
+	"generatedFiles": [
+		{
+			"path": "src/runtime.ts",
+			"bytes": 118,
+			"sha256": "4a9ebcd8ebf5af0d1a3c24b7881260a83bcc5cebc20f0a4a27aeb9ed281f2468"
+		}
+	],
+	"importPatches": [
+		{
+			"path": "research/contacts_card.json",
+			"sourceSha256": "f69b4739de9b5df0986a031b3d8fd505b0a7410925b09ceefa508e8d9e72729f",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/eye_cards.json",
+			"sourceSha256": "f34cb61b30aa9b4cd0687cd713fd3b3a99d8dfeba64ff45e0fcd8fcb4299c6e3",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/face-shape-controls.json",
+			"sourceSha256": "05adfccf48d668ba21b9243bd4832e88d5cb3df52f55394829097ad670806c55",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/flowgan_graph.json",
+			"sourceSha256": "2e4e23eeed32dd815b625234d2abce55a828d55f37e5773fd2e2ccfa2b8de5ee",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/independent-pipeline-catalog.json",
+			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/jawline_card.json",
+			"sourceSha256": "3b592cece8407356a9e279c43b8d69584b1bb8a446a74e1056f75ea6169eafd5",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/look_oxygen_card.json",
+			"sourceSha256": "89cabc71b58ed9461c0a4c238dfdef24f25fd4d95d573848576dd209b521ef59",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/makeup3d_cards.json",
+			"sourceSha256": "bcd3ed5e452bbf27b50644dc4f53f727a786bd0ad41f2f700c7f6333a11016dd",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "src/independent-pipeline-plan.test.ts",
+			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "src/independent-pipeline-plan.ts",
+			"sourceSha256": "2bf366f114733507b6ead363871f4a76088be292630c8574f28f780dfeb3ff7b",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "web/detail-view-model.js",
+			"sourceSha256": "ecf5888f83d2e46d0efa1e42653d2118868f77ad265894571908131d221fa3e8",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "web/detail-view-model.test.js",
+			"sourceSha256": "70b6bedc13bdc8edc06803239074455030920e434f4cbdf6db3594399d01acd0",
+			"reason": "QCut Biome formatting only; imported behavior unchanged"
+		},
+		{
+			"path": "research/flowgan_assets.py",
+			"sourceSha256": "fff052906586fde0930e178c2ff3f3030a1aa0563980a346e3bf9040bcbf4bff",
+			"reason": "Re-pin identical FlowGAN JSON architecture after QCut formatting"
+		},
+		{
+			"path": "research/tests/test_dynamic_makeup_render.py",
+			"sourceSha256": "d544061156cadc4004425829f30aaca2eca40f5de7089f78ecea02e1914536a6",
+			"reason": "Resolve macOS temporary directory and runtime symlink aliases"
+		},
+		{
+			"path": "research/tests/test_makeup_metal.py",
+			"sourceSha256": "7ee7c8a052995e7febd3054b13e7e216e8668e6f33212d9332279f813347604e",
+			"reason": "Use validated dynamic pigment ordering in the GPU fixture"
+		}
+	],
+	"sourceWorkingTreeStatus": [
+		" M research/dynamic_makeup_controls.py",
+		" M research/dynamic_makeup_passes.py",
+		" M research/dynamic_makeup_render.py",
+		" M research/independent-pipeline-2026-10-07.md",
+		" M research/independent-pipeline-catalog.json",
+		" M research/liquefy_metal.py",
+		" M research/liquefy_metal.swift",
+		" M research/liquefy_render.py",
+		" M research/makeup_metal.swift",
+		" M research/probes/independent_pipeline_probe.py",
+		" M research/probes/shared_pipeline_gallery.py",
+		" M research/tests/test_dynamic_makeup_metal.py",
+		" M research/tests/test_dynamic_makeup_passes.py",
+		" M research/tests/test_dynamic_makeup_render.py",
+		" M research/tests/test_independent_pipeline_probe.py",
+		" M research/tests/test_liquefy_metal.py",
+		" M research/tests/test_shared_pipeline_gallery.py",
+		" M src/independent-pipeline-plan.test.ts",
+		"?? research/dynamic-makeup-verification-2026-10-07.md",
+		"?? research/liquefy-package-lifecycle-2026-10-07.md",
+		"?? research/liquefy_combination_render.py",
+		"?? research/portrait_features_render.py",
+		"?? research/probes/dynamic_makeup_pixel_probe.py",
+		"?? research/probes/liquefy_lifecycle_probe.py",
+		"?? research/probes/liquefy_order_probe.py",
+		"?? research/probes/liquefy_package_probe.py",
+		"?? research/tests/test_dynamic_makeup_pixel_probe.py",
+		"?? research/tests/test_liquefy_combination_render.py",
+		"?? research/tests/test_portrait_package_lifecycle.py"
+	],
+	"previousSourceCommit": "24d3dcf179d6c6871d1566725c341358661d98ca"
+}

@@ -12,6 +12,12 @@ import {
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 } from "./beauty-lab-candidate-contract.js";
 import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
+import {
+	BEAUTY_LAB_INDEPENDENT_INSPECT,
+	BEAUTY_LAB_INDEPENDENT_RENDER,
+	BEAUTY_LAB_INDEPENDENT_CANCEL,
+} from "./beauty-lab-independent-contract.js";
+import type { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
 
 let activeController: symbol | undefined;
 
@@ -22,6 +28,7 @@ export function setupBeautyLabIPC({
 	ownedChainRoot,
 	provider = createBeautyLabResearchProvider({ root, currentSourceRoot }),
 	candidateProvider = createBeautyLabCandidateProvider(),
+	independentProvider,
 }: {
 	getMainWindow: () => BrowserWindow | null;
 	root: string;
@@ -29,6 +36,7 @@ export function setupBeautyLabIPC({
 	ownedChainRoot?: string;
 	provider?: ReturnType<typeof createBeautyLabResearchProvider>;
 	candidateProvider?: ReturnType<typeof createBeautyLabCandidateProvider>;
+	independentProvider?: ReturnType<typeof createBeautyLabIndependentProvider>;
 }) {
 	const ownedChain = ownedChainRoot
 		? createBeautyLabOwnedChainProvider({
@@ -58,6 +66,33 @@ export function setupBeautyLabIPC({
 	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
 	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
 	ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL);
+	for (const channel of [
+		BEAUTY_LAB_INDEPENDENT_INSPECT,
+		BEAUTY_LAB_INDEPENDENT_RENDER,
+		BEAUTY_LAB_INDEPENDENT_CANCEL,
+	])
+		ipcMain.removeHandler(channel);
+	ipcMain.handle(BEAUTY_LAB_INDEPENDENT_INSPECT, (event) => {
+		assertTrusted({ event });
+		if (!independentProvider)
+			throw new Error("Independent photo engine is not connected");
+		return independentProvider.inspect();
+	});
+	ipcMain.handle(BEAUTY_LAB_INDEPENDENT_RENDER, (event, request: unknown) => {
+		assertTrusted({ event });
+		if (!independentProvider)
+			throw new Error("Independent photo engine is not connected");
+		return independentProvider.render({ request });
+	});
+	ipcMain.handle(
+		BEAUTY_LAB_INDEPENDENT_CANCEL,
+		(event, request: { requestId: string }) => {
+			assertTrusted({ event });
+			if (!independentProvider)
+				throw new Error("Independent photo engine is not connected");
+			return independentProvider.cancel({ request });
+		}
+	);
 	ipcMain.handle(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL, (event) => {
 		assertTrusted({ event });
 		return candidateProvider.inspect();
@@ -112,8 +147,17 @@ export function setupBeautyLabIPC({
 				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL);
 				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL);
 				ipcMain.removeHandler(BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL);
+				for (const channel of [
+					BEAUTY_LAB_INDEPENDENT_INSPECT,
+					BEAUTY_LAB_INDEPENDENT_RENDER,
+					BEAUTY_LAB_INDEPENDENT_CANCEL,
+				])
+					ipcMain.removeHandler(channel);
 			}
-			disposal ??= Promise.resolve().then(() => candidateProvider.dispose());
+			disposal ??= Promise.all([
+				candidateProvider.dispose(),
+				independentProvider?.dispose(),
+			]).then(() => {});
 			return disposal;
 		},
 	};

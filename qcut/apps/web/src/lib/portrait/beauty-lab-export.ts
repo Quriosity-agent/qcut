@@ -3,6 +3,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_BACKEND,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	type BeautyLabCandidateResult,
+	type BeautyLabIndependentResult,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import {
@@ -10,6 +11,8 @@ import {
 	validateBeautyLabFrame,
 	type BeautyLabFrame,
 } from "./beauty-lab-difference";
+
+import { validateIndependentBeautyResult } from "./beauty-lab-independent-result";
 
 async function encodeFrame({
 	frame,
@@ -48,6 +51,8 @@ export async function exportBeautyLabComparison({
 	adjustments,
 	record,
 	candidateReport = null,
+	independent = null,
+	independentReport = null,
 }: {
 	input: BeautyLabFrame;
 	native: BeautyLabFrame | null;
@@ -56,6 +61,8 @@ export async function exportBeautyLabComparison({
 	adjustments: MediaPortraitAdjustments;
 	record: { caseId: string; frameIndex: number } | null;
 	candidateReport?: BeautyLabCandidateResult | null;
+	independent?: BeautyLabFrame | null;
+	independentReport?: BeautyLabIndependentResult | null;
 }): Promise<Blob> {
 	if (!Number.isInteger(gain) || gain < 1 || gain > 32)
 		throw new Error("Invalid difference gain");
@@ -96,6 +103,20 @@ export async function exportBeautyLabComparison({
 			throw new Error("Candidate provenance does not match the exported input");
 		}
 	}
+	if (
+		Boolean(independent) !== Boolean(independentReport) ||
+		(record && independent)
+	)
+		throw new Error("Independent export requires live provenance");
+	if (independent && independentReport)
+		await validateIndependentBeautyResult({
+			input,
+			frame: independent,
+			result: independentReport,
+		});
+	const independentProvenance = independentReport
+		? (({ rgba: _rgba, png: _png, ...metadata }) => metadata)(independentReport)
+		: null;
 	const candidateProvenance = candidateReport
 		? (({ rgba: _rgba, ...metadata }) => metadata)(candidateReport)
 		: null;
@@ -105,10 +126,13 @@ export async function exportBeautyLabComparison({
 	const frames = [{ name: "original", frame: input }];
 	if (native) frames.push({ name: "native", frame: native });
 	if (candidate) frames.push({ name: "candidate", frame: candidate });
+	if (independent) frames.push({ name: "independent", frame: independent });
 	const comparisons = [
 		{ name: "original-native", reference: input, candidate: native },
 		{ name: "original-candidate", reference: input, candidate },
 		{ name: "native-candidate", reference: native, candidate },
+		{ name: "original-independent", reference: input, candidate: independent },
+		{ name: "native-independent", reference: native, candidate: independent },
 	].flatMap((pair) => {
 		if (!pair.reference || !pair.candidate) return [];
 		const result = compareBeautyLabFrames({
@@ -122,7 +146,10 @@ export async function exportBeautyLabComparison({
 	const encoded = await Promise.all(
 		frames.map(async ({ name, frame }) => ({
 			name,
-			bytes: await encodeFrame({ frame }),
+			bytes:
+				name === "independent" && independentReport
+					? new Uint8Array(independentReport.png)
+					: await encodeFrame({ frame }),
 		}))
 	);
 	for (const { name, bytes } of encoded) zip.file(`${name}.png`, bytes);
@@ -141,12 +168,17 @@ export async function exportBeautyLabComparison({
 					? "verified-offline-replay"
 					: candidateReport
 						? "live-candidate"
-						: "native-live",
+						: independentReport
+							? "independent-live"
+							: "native-live",
 				record,
 				nativeDependencies: Boolean(
 					record || native || candidateReport?.nativeDependencies.length
 				),
 				candidateProvenance,
+				...(independentProvenance
+					? { independentProvenance, independentResultPresent: true }
+					: {}),
 				nativeResultPresent: native !== null,
 				candidateResultPresent: candidate !== null,
 				arbitraryFrameCandidateReady:

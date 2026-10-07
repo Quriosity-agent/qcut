@@ -1,0 +1,14 @@
+{
+	"package": "7406181207551069440/8c4a50efd7b603235abbb1b315704e8d",
+	"files": {
+		"mesh/pupil_main_faceu_mesh.mesh": "137f0b0e7ccb881f75d7b696e45f585aa95b83e6718616d908cadb6138ab3cea",
+		"mesh/pupil_cutoff_faceu_mesh.mesh": "6193b50c3ec2d1e06a123f67ccdadceb540bdbf1a8fb4b0b92402dabdb1d3f9e",
+		"material/Pupil.material": "9fabba3d27d423601ee26916dc8b4c576a15931a3a684b9e946918c5eaa15cc6",
+		"material/PupilCutoff.material": "d46460794f87ef4340906c701c8af88a93e704bcf13c151fb7e351552176060c",
+		"makeup.prefab": "7b1a836bd3ddd1c750e04c93dc93663a0f11fd9f34d92733b4b36b1f724d81fc",
+		"image/pupil/pupil_normal.png": "62660888be99df667fd683da3fae5ae13924578a13b112029213429f26159f27",
+		"image/pupil/pupil_screen.png": "e3792367e6e575d08bf0e6731288e5482ef90ab5c22f4adc010824528899eefc",
+		"image/pupil/pupil_mask.png": "1d92065d246931a45962c3f3ab2d3faf531553cb657d273de8287dd4201f0545"
+	},
+	"contentSha256": "cfed8aaeb6ece86383383573e82d7417a903a060a5a9ccc9d63932edb50a69ed"
+}

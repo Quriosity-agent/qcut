@@ -19,6 +19,8 @@ import {
 	type BeautyLabFrame,
 } from "./beauty-lab-difference";
 
+import { useBeautyLabIndependent } from "./use-beauty-lab-independent";
+
 function checkedFrame(frame: BeautyLabFrame): BeautyLabFrame {
 	validateBeautyLabFrame({ frame });
 	return frame;
@@ -69,7 +71,7 @@ export function useBeautyLab({
 		frameIndex: number;
 	} | null>(null);
 	const [busy, setBusy] = useState<
-		"load" | "render" | "candidate" | "detect" | null
+		"load" | "render" | "candidate" | "independent" | "detect" | null
 	>(null);
 	const [error, setError] = useState<string | null>(null);
 	// A request stays pending until main settles it, even after the UI moved on.
@@ -88,6 +90,17 @@ export function useBeautyLab({
 		frameNumber: number;
 		timestampSeconds: number;
 	} | null>({ frameNumber: 0, timestampSeconds: 0 });
+
+	const independent = useBeautyLabIndependent({
+		input,
+		adjustments,
+		locked: Boolean(record),
+		busy: Boolean(busy || candidateJob),
+		revision,
+		sourceKey,
+		onBusy: setBusy,
+		onError: setError,
+	});
 
 	useEffect(() => {
 		let active = true;
@@ -124,6 +137,7 @@ export function useBeautyLab({
 	function invalidate() {
 		revision.current++;
 		setNative(null);
+		independent.clear();
 		setCandidate(null);
 		setCandidateReport(null);
 		setBusy(null);
@@ -263,8 +277,19 @@ export function useBeautyLab({
 	}
 
 	async function renderNative() {
-		if (!input || record || busy || !status?.available) return;
-		invalidate();
+		if (
+			!input ||
+			record ||
+			busy ||
+			candidateJob ||
+			independent.job ||
+			!status?.available
+		)
+			return;
+		setNative(null);
+		setCandidate(null);
+		setCandidateReport(null);
+		setError(null);
 		const token = revision.current;
 		setBusy("render");
 		try {
@@ -307,6 +332,7 @@ export function useBeautyLab({
 			record ||
 			busy ||
 			pendingCandidate.current ||
+			independent.job ||
 			!candidateStatus?.available ||
 			!candidateStatus.backendVersion
 		)
@@ -424,6 +450,7 @@ export function useBeautyLab({
 	}
 
 	return {
+		independent,
 		status,
 		candidateStatus,
 		candidateReport,

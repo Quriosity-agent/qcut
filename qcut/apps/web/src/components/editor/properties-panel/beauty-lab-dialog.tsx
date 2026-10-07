@@ -1,4 +1,8 @@
 import {
+	BeautyLabIndependentActions,
+	BeautyLabIndependentStatus,
+} from "./beauty-lab-independent-actions";
+import {
 	CircleStop,
 	Download,
 	FlaskConical,
@@ -50,9 +54,16 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 	const lab = useBeautyLab(props);
 	const fileRef = useRef<HTMLInputElement>(null);
 	const [gain, setGain] = useState(8);
+	const [resultView, setResultView] = useState<"independent" | "candidate">(
+		"independent"
+	);
+	const showIndependent =
+		!lab.record && (resultView === "independent" || !lab.candidate);
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState<string | null>(null);
-	const disabled = Boolean(lab.busy || exporting);
+	const disabled = Boolean(
+		lab.busy || exporting || lab.independent.job || lab.candidateJob
+	);
 	const singleFrameAudit =
 		lab.candidateStatus?.scope === "audited-single-static-frame";
 	const candidateReadyLabel = singleFrameAudit
@@ -76,8 +87,8 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 			: lab.candidateStatus?.available
 				? candidateReadyLabel
 				: isZh
-					? "新链路：任意画面推理未接入"
-					: "Candidate: arbitrary-frame inference not connected";
+					? "混合候选核验：未启用"
+					: "Hybrid audit: unavailable";
 	const liveCandidateLabel = singleFrameAudit
 		? isZh
 			? "新链路（单帧核验）"
@@ -87,6 +98,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 			: "Candidate (live)";
 	const catalogStatus = beautyLabCatalogStatus({
 		status: lab.status,
+		independentStatus: lab.independent.status,
 		recordedValues: lab.record ? lab.adjustments.values : undefined,
 	});
 
@@ -103,6 +115,8 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 				adjustments: lab.adjustments,
 				record: lab.record,
 				candidateReport: lab.candidateReport,
+				independent: lab.independent.frame,
+				independentReport: lab.independent.report,
 			});
 			const url = URL.createObjectURL(blob);
 			const anchor = document.createElement("a");
@@ -238,6 +252,13 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						)}
 						{isZh ? "原生处理" : "Render native"}
 					</Button>
+					<BeautyLabIndependentActions
+						lab={lab.independent}
+						onSelect={() => setResultView("independent")}
+						disabled={disabled}
+						isZh={isZh}
+					/>
+
 					<Button
 						type="button"
 						size="sm"
@@ -251,14 +272,17 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 						}
 						title={lab.candidateStatus?.blockers.join(", ")}
 						onKeyDown={(event) => event.stopPropagation()}
-						onClick={() => void lab.renderCandidate()}
+						onClick={() => {
+							setResultView("candidate");
+							void lab.renderCandidate();
+						}}
 					>
 						{lab.busy === "candidate" ? (
 							<Loader2 size={16} className="animate-spin" />
 						) : (
 							<FlaskConical size={16} />
 						)}
-						{isZh ? "候选处理" : "Render candidate"}
+						{isZh ? "混合候选核验" : "Audit hybrid candidate"}
 					</Button>
 					{lab.candidateJob && (
 						<Button
@@ -325,6 +349,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 							: "Candidate: offline replay, native dependencies remain"
 						: candidateStateLabel}
 				</span>
+				<BeautyLabIndependentStatus lab={lab.independent} isZh={isZh} />
 				{lab.input && (
 					<span>
 						{lab.input.name} · {lab.input.width} × {lab.input.height}
@@ -392,7 +417,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 					<BeautyLabResults
 						input={lab.input}
 						native={lab.native}
-						candidate={lab.candidate}
+						candidate={showIndependent ? lab.independent.frame : lab.candidate}
 						gain={gain}
 						locale={locale}
 						nativeLabel={
@@ -405,17 +430,21 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 									: "Native result"
 						}
 						candidateLabel={
-							isZh
-								? lab.record
-									? "新链路（离线回放）"
-									: lab.candidateReport
-										? liveCandidateLabel
-										: "新链路（未接入）"
-								: lab.record
-									? "Candidate (offline replay)"
-									: lab.candidateReport
-										? liveCandidateLabel
-										: "Candidate (not connected)"
+							showIndependent
+								? isZh
+									? "自研结果"
+									: "Independent result"
+								: isZh
+									? lab.record
+										? "新链路（离线回放）"
+										: lab.candidateReport
+											? liveCandidateLabel
+											: "自研结果（待处理）"
+									: lab.record
+										? "Candidate (offline replay)"
+										: lab.candidateReport
+											? liveCandidateLabel
+											: "Independent result (pending)"
 						}
 					/>
 				</section>

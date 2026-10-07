@@ -88,6 +88,10 @@ jobs:
           scripts/__tests__/ffmpeg-manifest.test.ts
           scripts/__tests__/ffmpeg-verify.test.ts
           scripts/__tests__/check-filter-provenance.test.ts
+          scripts/__tests__/stage-independent-beauty.test.ts
+          scripts/__tests__/beauty-lab-matrix.test.ts
+          scripts/__tests__/beauty-lab-matrix-checkpoint.test.ts
+          scripts/__tests__/beauty-lab-matrix-providers.test.ts
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu'

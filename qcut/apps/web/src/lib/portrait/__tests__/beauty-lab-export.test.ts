@@ -6,6 +6,8 @@ import {
 	BEAUTY_LAB_CANDIDATE_BACKEND,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	type BeautyLabCandidateResult,
+	type BeautyLabIndependentResult,
+	BEAUTY_LAB_INDEPENDENT_PROVIDER,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab-candidate-contract";
@@ -785,5 +787,87 @@ describe("exportBeautyLabComparison live candidate provenance", () => {
 			arbitraryFrameCandidateReady: false,
 			candidateProvenance: null,
 		});
+	});
+});
+
+function makeIndependentReport(): BeautyLabIndependentResult {
+	return {
+		provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
+		requestId: "owned-test",
+		sourceKey: "photo-test",
+		width: 1,
+		height: 1,
+		rgba: candidate.rgba.slice(),
+		png: PNG_BYTES.slice(),
+		inputSha256: createHash("sha256").update(input.rgba).digest("hex"),
+		outputSha256: createHash("sha256").update(candidate.rgba).digest("hex"),
+		report: {
+			passed: true,
+			nativeInputsUsed: false,
+			nativeGeometryUsed: false,
+			nativeFallbackUsed: false,
+			nativeProductParityVerified: false,
+			outputPngSha256: createHash("sha256").update(PNG_BYTES).digest("hex"),
+		},
+	};
+}
+describe("independent export provenance", () => {
+	it("exports both rendered paths, pairwise differences and bounded independent provenance", async () => {
+		const zip = await openArchive({
+			blob: await exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidate: null,
+				independent: candidate,
+				independentReport: makeIndependentReport(),
+			}),
+		});
+		expect(Object.keys(zip.files).sort()).toEqual([
+			"comparison.json",
+			"difference-native-independent.png",
+			"difference-original-independent.png",
+			"difference-original-native.png",
+			"independent.png",
+			"native.png",
+			"original.png",
+		]);
+		const manifest = await readManifest({ zip });
+		expect(manifest).toMatchObject({
+			independentResultPresent: true,
+			nativeResultPresent: true,
+			independentProvenance: {
+				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
+				report: { nativeInputsUsed: false, nativeProductParityVerified: false },
+			},
+		});
+		const provenance = (
+			manifest as unknown as { independentProvenance: Record<string, unknown> }
+		).independentProvenance;
+		expect(provenance).not.toHaveProperty("rgba");
+		expect(provenance).not.toHaveProperty("png");
+	});
+	it.each([
+		"wrong-input",
+		"wrong-output",
+		"private-native",
+		"missing-report",
+	])("rejects %s before PNG encoding", async (failure) => {
+		const independentReport = makeIndependentReport();
+		if (failure === "wrong-input")
+			independentReport.inputSha256 = "0".repeat(64);
+		if (failure === "wrong-output") independentReport.rgba[0] = 1;
+		if (failure === "private-native")
+			independentReport.report.nativeInputsUsed = true;
+		await expect(
+			exportBeautyLabComparison({
+				...options,
+				record: null,
+				candidate: null,
+				independent: candidate,
+				independentReport:
+					failure === "missing-report" ? null : independentReport,
+			})
+		).rejects.toThrow(/Independent/);
+		expect(draws).toHaveLength(0);
 	});
 });
