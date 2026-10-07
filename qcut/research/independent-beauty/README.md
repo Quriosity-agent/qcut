@@ -10,7 +10,7 @@ Requires macOS, Xcode command-line tools, Bun, and Python 3.12 with the versions
 
 For this machine's development validation, the ignored `runtime` and `research/.venv` symlinks refer to the existing standalone installation. New machines must provision their own runtime. Override paths with `QCUT_INDEPENDENT_BEAUTY_RUNTIME`, `QCUT_INDEPENDENT_BEAUTY_PYTHON`, and optionally `QCUT_INDEPENDENT_BEAUTY_BUN`.
 
-Packaged builds copy the source tree to `resources/independent-beauty`. The external runtime defaults to `<QCut userData>/PrivateRuntimes/IndependentBeauty/current` and Python to its `.venv/bin/python`. Bundling rules exclude models, environments, output, caches and compiled hosts. A signed arm64 directory build was produced and its 262 source pins and independent zero/composite rendering were verified with this machine’s external payload. The signed native host failed to resolve `@rpath/libAGFX.dylib`; packaged window startup and fresh-machine installation remain unverified.
+Packaged builds run `beforePack`, verify source hashes, reject symlinks/private artifact paths and copy only the 262 pinned source files plus their manifest to generated `build/independent-beauty`. Electron Builder copies that curated directory to `resources/independent-beauty`; it does not include the research directory directly. The external runtime defaults to `<QCut userData>/PrivateRuntimes/IndependentBeauty/current` and Python to its `.venv/bin/python`. Bundling rules exclude models, environments, output, caches and compiled hosts. A signed arm64 directory build was produced and its 262 source pins and independent zero/composite rendering were verified with this machine’s external payload. A second unsigned directory package using the generated resource pipeline also rendered both real providers (maximum RGB difference 1 on the composite sample). The signed native host failed to resolve `@rpath/libAGFX.dylib`; packaged window startup and fresh-machine installation remain unverified.
 
 ## Interface and scope
 
@@ -33,7 +33,7 @@ bunx esbuild scripts/beauty-lab-photo-probe.ts --bundle --platform=node --format
 node dist/electron-audits/beauty-lab-photo-probe.cjs <photo> <new-output-directory>
 ```
 
-Python: 486 passed without skips. Bun snapshot tests: 17 passed. QCut regression, matrix and sequence tests: 307 passed across 11 files. The expanded verification record is `docs/task/jianying-filter-runtime-research/beauty-kpop8-gap-expansion-2026-10-08.zh-CN.md`; the initial dual-path audit remains a historical record.
+Python: 486 passed without skips. Bun snapshot tests: 17 passed. QCut regression, matrix and sequence tests: 340 passed across 13 files (including 18 staging and 15 provenance checks). The expanded verification record is `docs/task/jianying-filter-runtime-research/beauty-kpop8-gap-expansion-2026-10-08.zh-CN.md`; the initial dual-path audit remains a historical record.
 
 When changing imported code, update the manifest deliberately and preserve upstream identity and the adaptation reason. Do not bypass source verification to load an untracked renderer.
 
