@@ -1,4 +1,9 @@
 import { QCUT_FILTER_COMPARE } from "./qcut-independent-filter/comparison-contract.js";
+import {
+	BEAUTY_LAB_INDEPENDENT_INSPECT,
+	BEAUTY_LAB_INDEPENDENT_RENDER,
+	BEAUTY_LAB_INDEPENDENT_CANCEL,
+} from "./beauty-lab-independent-contract.js";
 /**
  * Electron preload script that exposes a secure API to the renderer process.
  * Uses contextBridge to safely expose IPC methods without exposing the full Electron API.
@@ -300,6 +305,12 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 		},
 	},
 	beautyLab: {
+		inspectIndependent: () =>
+			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_INSPECT),
+		renderIndependent: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_RENDER, request),
+		cancelIndependent: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_CANCEL, request),
 		inspectCandidate: () =>
 			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL),
 		renderCandidate: (request) =>
