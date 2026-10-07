@@ -55,6 +55,7 @@ function setup({
 			(async ({ args, environment }) => {
 				expect(environment).not.toHaveProperty("DYLD_LIBRARY_PATH");
 				expect(environment).not.toHaveProperty("PYTHONPATH");
+				expect(environment.PYTHONDONTWRITEBYTECODE).toBe("1");
 				const file = ({ flag }: { flag: string }) =>
 					args[args.indexOf(flag) + 1];
 				const adjustments = JSON.parse(
@@ -101,6 +102,7 @@ function setup({
 			PATH: process.env.PATH,
 			DYLD_LIBRARY_PATH: "private",
 			PYTHONPATH: "private",
+			PYTHONDONTWRITEBYTECODE: "0",
 		},
 		runJob,
 	});
