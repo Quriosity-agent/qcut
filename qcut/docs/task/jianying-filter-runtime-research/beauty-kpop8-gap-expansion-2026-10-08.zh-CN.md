@@ -81,6 +81,8 @@ HEAD `84f0440fe0fbaf829265a828130e3d55bb8af7a5` 的 Linux／macOS lint 通过，
 
 编译后的 beforePack hook 实际调用通过；重新构建未签名 arm64 directory 包 `.local/beauty-gap-resource-package/`，包内核验 262 源码项、两个真实 provider 出图成功，组合最大 RGB 差 1、MAE 0.0002306273。证据 `.local/jianying-parity/beauty-8-packaged-photo-unsigned-r3/receipt.json`。这验证当前资源 staging 路线，**不能替代签名包验收**；签名原生宿主加载错误和包内窗口未验收仍保留。
 
+包内复合探针还发现子 Python 进程会生成 `__pycache__`。主进程已有 `-B`，现在 provider 额外强制继承 `PYTHONDONTWRITEBYTECODE=1`，覆盖外部环境中的 `0`；回归测试验证该覆盖。重建未签名包 `.local/beauty-gap-resource-package-r2/` 后，两路出图再次通过；运行后目录仍精确只有 263 个文件（262 个源码固定项 + manifest），所有源码哈希不变、没有字节码缓存。证据 `.local/jianying-parity/beauty-8-packaged-photo-unsigned-r4/receipt.json`。这避免未来运行污染已签名应用资源，仍未替代签名包运行验收。
+
 ## 验证与复现
 
 - Python 486 项全部通过，无跳过；Bun 规划器／纯界面模型 17 项通过。
