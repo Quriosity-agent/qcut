@@ -1,821 +1,689 @@
 {
-  "version": 1,
-  "controls": [
-    {
-      "name": "TotalFace",
-      "title": "瘦脸",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "CutFace",
-      "title": "窄脸",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "ZoomCheekbone",
-      "title": "颧骨",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "ZoomJawbone",
-      "title": "下颌骨",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "SmallFace",
-      "title": "短脸",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "VFace",
-      "title": "V 脸",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "Chin",
-      "title": "下巴长短",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "Forehead",
-      "title": "发际线",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "ChinSharp",
-      "title": "尖下巴",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "face-features"
-    },
-    {
-      "name": "Smooth",
-      "title": "磨皮",
-      "min": 0,
-      "max": 100,
-      "group": "skin",
-      "stage": "smooth"
-    },
-    {
-      "name": "Whiten",
-      "title": "美白",
-      "min": 0,
-      "max": 100,
-      "group": "skin",
-      "stage": "whiten"
-    },
-    {
-      "name": "SpotAcne",
-      "title": "祛斑祛痘",
-      "min": 0,
-      "max": 100,
-      "group": "skin",
-      "stage": "spot-acne"
-    },
-    {
-      "name": "yunfu",
-      "title": "匀肤",
-      "min": 0,
-      "max": 100,
-      "group": "skin",
-      "stage": "skin-gan"
-    },
-    {
-      "name": "fuling",
-      "title": "丰盈",
-      "min": 0,
-      "max": 100,
-      "group": "skin",
-      "stage": "skin-gan"
-    },
-    {
-      "name": "underjaw",
-      "title": "双下巴",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-underjaw"
-    },
-    {
-      "name": "pointy_chin",
-      "title": "尖下巴（局部）",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-pointy_chin"
-    },
-    {
-      "name": "cheekbone",
-      "title": "颧骨（局部）",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-cheekbone"
-    },
-    {
-      "name": "upper_atrium",
-      "title": "上庭",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-upper_atrium"
-    },
-    {
-      "name": "mid_atrium",
-      "title": "中庭",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-mid_atrium"
-    },
-    {
-      "name": "lower_atrium",
-      "title": "下庭",
-      "min": -50,
-      "max": 50,
-      "group": "face",
-      "stage": "local-lower_atrium"
-    },
-    {
-      "name": "XiaHeXian",
-      "title": "下颌线（阴影与形变）",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "jawline"
-    },
-    {
-      "name": "lunkuopinghua",
-      "title": "流畅脸（轮廓平滑）",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "skin-gan"
-    },
-    {
-      "name": "YouTaiFace",
-      "title": "小脸（五官联动）",
-      "min": 0,
-      "max": 100,
-      "group": "face",
-      "stage": "small-face"
-    },
-    {
-      "name": "EnlargeEye",
-      "title": "大眼",
-      "min": 0,
-      "max": 100,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "EyeSpacing",
-      "title": "眼距",
-      "min": -50,
-      "max": 50,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "MoveEye",
-      "title": "眼高低",
-      "min": -50,
-      "max": 50,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "Nose",
-      "title": "瘦鼻",
-      "min": 0,
-      "max": 100,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "MoveNose",
-      "title": "鼻位移",
-      "min": -50,
-      "max": 50,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "ZoomMouth",
-      "title": "嘴大小",
-      "min": -50,
-      "max": 50,
-      "group": "features",
-      "stage": "face-features"
-    },
-    {
-      "name": "MoveMouth",
-      "title": "嘴高低",
-      "min": -50,
-      "max": 50,
-      "group": "features",
-      "stage": "face-features"
-    }
-  ],
-  "stages": [
-    {
-      "id": "smooth",
-      "kind": "scalar",
-      "script": "smooth_render.py",
-      "controls": [
-        "Smooth"
-      ],
-      "bindings": [
-        {
-          "name": "Smooth",
-          "flag": "--strength",
-          "scale": 0.01
-        }
-      ]
-    },
-    {
-      "id": "whiten",
-      "kind": "scalar",
-      "script": "whiten_render.py",
-      "controls": [
-        "Whiten"
-      ],
-      "bindings": [
-        {
-          "name": "Whiten",
-          "flag": "--strength",
-          "scale": 0.01
-        }
-      ]
-    },
-    {
-      "id": "spot-acne",
-      "kind": "scalar",
-      "script": "spot_acne_render.py",
-      "controls": [
-        "SpotAcne"
-      ],
-      "bindings": [
-        {
-          "name": "SpotAcne",
-          "flag": "--intensity",
-          "scale": 1
-        }
-      ]
-    },
-    {
-      "id": "skin-gan",
-      "kind": "gan",
-      "script": "skin_gan_render.py",
-      "controls": [
-        "yunfu",
-        "fuling",
-        "lunkuopinghua"
-      ],
-      "bindings": [
-        {
-          "name": "yunfu",
-          "flag": "--yunfu",
-          "scale": 1
-        },
-        {
-          "name": "fuling",
-          "flag": "--fuling",
-          "scale": 1
-        },
-        {
-          "name": "lunkuopinghua",
-          "flag": "--contour",
-          "scale": 1
-        }
-      ]
-    },
-    {
-      "id": "local-underjaw",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "underjaw"
-      ]
-    },
-    {
-      "id": "local-pointy_chin",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "pointy_chin"
-      ]
-    },
-    {
-      "id": "local-cheekbone",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "cheekbone"
-      ]
-    },
-    {
-      "id": "local-upper_atrium",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "upper_atrium"
-      ]
-    },
-    {
-      "id": "local-mid_atrium",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "mid_atrium"
-      ]
-    },
-    {
-      "id": "local-lower_atrium",
-      "kind": "controls",
-      "script": "liquefy_render.py",
-      "controls": [
-        "lower_atrium"
-      ]
-    },
-    {
-      "id": "face-features",
-      "kind": "controls",
-      "script": "face_features_render.py",
-      "controls": [
-        "TotalFace",
-        "CutFace",
-        "ZoomCheekbone",
-        "ZoomJawbone",
-        "SmallFace",
-        "VFace",
-        "Chin",
-        "Forehead",
-        "ChinSharp",
-        "EnlargeEye",
-        "EyeSpacing",
-        "MoveEye",
-        "Nose",
-        "MoveNose",
-        "ZoomMouth",
-        "MoveMouth"
-      ]
-    },
-    {
-      "id": "small-face",
-      "kind": "scalar",
-      "script": "youtai_render.py",
-      "controls": [
-        "YouTaiFace"
-      ],
-      "bindings": [
-        {
-          "name": "YouTaiFace",
-          "flag": "--intensity",
-          "scale": 1
-        }
-      ]
-    },
-    {
-      "id": "jawline",
-      "kind": "scalar",
-      "script": "jawline_render.py",
-      "controls": [
-        "XiaHeXian"
-      ],
-      "bindings": [
-        {
-          "name": "XiaHeXian",
-          "flag": "--intensity",
-          "scale": 1
-        }
-      ]
-    }
-  ],
-  "makeup": [
-    {
-      "id": "lip-coral-nude",
-      "title": "珊瑚裸粉口红",
-      "category": "lip",
-      "min": 0,
-      "max": 100,
-      "script": "lip_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--texture-state",
-        "Auto"
-      ]
-    },
-    {
-      "id": "lip-soft-pink",
-      "title": "淡粉口红",
-      "category": "lip",
-      "min": 0,
-      "max": 100,
-      "script": "softpink_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "lip-soft-pink"
-      ]
-    },
-    {
-      "id": "brows-standard",
-      "title": "标准眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-standard"
-      ]
-    },
-    {
-      "id": "brows-fluffy",
-      "title": "绒绒眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-fluffy"
-      ]
-    },
-    {
-      "id": "brows-wild",
-      "title": "野生眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-wild"
-      ]
-    },
-    {
-      "id": "brows-warrior",
-      "title": "侠客眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-warrior"
-      ]
-    },
-    {
-      "id": "brows-classical",
-      "title": "古韵眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-classical"
-      ]
-    },
-    {
-      "id": "brows-soft",
-      "title": "淡颜眉",
-      "category": "brows",
-      "min": 0,
-      "max": 100,
-      "script": "brow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "brows-soft"
-      ]
-    },
-    {
-      "id": "blush-baby-pink",
-      "title": "淡粉腮红",
-      "category": "blush",
-      "min": 0,
-      "max": 100,
-      "script": "makeup248_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "blush-baby-pink"
-      ]
-    },
-    {
-      "id": "contour-mixed",
-      "title": "混血修容",
-      "category": "contour",
-      "min": 0,
-      "max": 100,
-      "script": "makeup248_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "contour-mixed"
-      ]
-    },
-    {
-      "id": "aegyo-doll",
-      "title": "娃娃卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-doll"
-      ]
-    },
-    {
-      "id": "aegyo-natural",
-      "title": "自然卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-natural"
-      ]
-    },
-    {
-      "id": "aegyo-born",
-      "title": "妈生卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-born"
-      ]
-    },
-    {
-      "id": "aegyo-bittersweet",
-      "title": "甜丧卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-bittersweet"
-      ]
-    },
-    {
-      "id": "aegyo-peach",
-      "title": "桃花卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-peach"
-      ]
-    },
-    {
-      "id": "aegyo-campus",
-      "title": "校花卧蚕",
-      "category": "aegyo",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "aegyo-campus"
-      ]
-    },
-    {
-      "id": "eyeliner-natural",
-      "title": "自然眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-natural"
-      ]
-    },
-    {
-      "id": "eyeliner-cat",
-      "title": "小野猫眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-cat"
-      ]
-    },
-    {
-      "id": "eyeliner-playful",
-      "title": "俏皮眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-playful"
-      ]
-    },
-    {
-      "id": "eyeliner-alluring",
-      "title": "妩媚眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-alluring"
-      ]
-    },
-    {
-      "id": "eyeliner-detached",
-      "title": "厌世眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-detached"
-      ]
-    },
-    {
-      "id": "eyeliner-warrior",
-      "title": "侠客眼线",
-      "category": "eyeliner",
-      "min": 0,
-      "max": 100,
-      "script": "eye_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeliner-warrior"
-      ]
-    },
-    {
-      "id": "lashes-natural-ii",
-      "title": "妈生感 II 睫毛",
-      "category": "lashes",
-      "min": 0,
-      "max": 100,
-      "script": "lashes_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "lashes-natural-ii"
-      ]
-    },
-    {
-      "id": "eyeshadow-girl-pink",
-      "title": "少女粉眼影",
-      "category": "eyeshadow",
-      "min": 0,
-      "max": 100,
-      "script": "shadow_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "eyeshadow-girl-pink"
-      ]
-    },
-    {
-      "id": "look-oxygen",
-      "title": "清透氧气妆",
-      "category": "look",
-      "min": 0,
-      "max": 100,
-      "script": "look_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "look-oxygen"
-      ]
-    },
-    {
-      "id": "highlight-sweetheart",
-      "title": "甜心高光（3D）",
-      "category": "highlight",
-      "min": 0,
-      "max": 100,
-      "script": "makeup3d_render.py",
-      "flag": "--intensity",
-      "scale": 1,
-      "parameters": [
-        "--card",
-        "highlight-sweetheart"
-      ]
-    },
-    {
-      "id": "freckles-sunburn",
-      "title": "晒伤雀斑（3D）",
-      "category": "freckles",
-      "min": 0,
-      "max": 100,
-      "script": "makeup3d_render.py",
-      "flag": "--intensity",
-      "scale": 1,
-      "parameters": [
-        "--card",
-        "freckles-sunburn"
-      ]
-    },
-    {
-      "id": "contacts-natural",
-      "title": "原生美瞳",
-      "category": "contacts",
-      "min": 0,
-      "max": 100,
-      "script": "contacts_render.py",
-      "flag": "--strength",
-      "scale": 0.01,
-      "parameters": [
-        "--card",
-        "contacts-natural"
-      ]
-    }
-  ],
-  "limitations": [
-    "单人不透明图片，最长边1280",
-    "所有阶段使用自研渲染；仍需本机私有模型和材质",
-    "每阶段从上阶段结果重新推导关键点与蒙版",
-    "固定顺序组合，不保证任意组合与原生像素一致",
-    "视频、多脸及其他GPU未验收"
-  ]
+	"version": 1,
+	"controls": [
+		{
+			"name": "TotalFace",
+			"title": "瘦脸",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "CutFace",
+			"title": "窄脸",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "ZoomCheekbone",
+			"title": "颧骨",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "ZoomJawbone",
+			"title": "下颌骨",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "SmallFace",
+			"title": "短脸",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "VFace",
+			"title": "V 脸",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "Chin",
+			"title": "下巴长短",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "Forehead",
+			"title": "发际线",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "ChinSharp",
+			"title": "尖下巴",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "Smooth",
+			"title": "磨皮",
+			"min": 0,
+			"max": 100,
+			"group": "skin",
+			"stage": "smooth"
+		},
+		{
+			"name": "Whiten",
+			"title": "美白",
+			"min": 0,
+			"max": 100,
+			"group": "skin",
+			"stage": "whiten"
+		},
+		{
+			"name": "SpotAcne",
+			"title": "祛斑祛痘",
+			"min": 0,
+			"max": 100,
+			"group": "skin",
+			"stage": "spot-acne"
+		},
+		{
+			"name": "yunfu",
+			"title": "匀肤",
+			"min": 0,
+			"max": 100,
+			"group": "skin",
+			"stage": "skin-gan"
+		},
+		{
+			"name": "fuling",
+			"title": "丰盈",
+			"min": 0,
+			"max": 100,
+			"group": "skin",
+			"stage": "skin-gan"
+		},
+		{
+			"name": "underjaw",
+			"title": "双下巴",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "pointy_chin",
+			"title": "尖下巴（局部）",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "cheekbone",
+			"title": "颧骨（局部）",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "upper_atrium",
+			"title": "上庭",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "mid_atrium",
+			"title": "中庭",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "lower_atrium",
+			"title": "下庭",
+			"min": -50,
+			"max": 50,
+			"group": "face",
+			"stage": "face-features"
+		},
+		{
+			"name": "XiaHeXian",
+			"title": "下颌线（阴影与形变）",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "jawline"
+		},
+		{
+			"name": "lunkuopinghua",
+			"title": "流畅脸（轮廓平滑）",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "skin-gan"
+		},
+		{
+			"name": "YouTaiFace",
+			"title": "小脸（五官联动）",
+			"min": 0,
+			"max": 100,
+			"group": "face",
+			"stage": "small-face"
+		},
+		{
+			"name": "EnlargeEye",
+			"title": "大眼",
+			"min": 0,
+			"max": 100,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "EyeSpacing",
+			"title": "眼距",
+			"min": -50,
+			"max": 50,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "MoveEye",
+			"title": "眼高低",
+			"min": -50,
+			"max": 50,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "Nose",
+			"title": "瘦鼻",
+			"min": 0,
+			"max": 100,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "MoveNose",
+			"title": "鼻位移",
+			"min": -50,
+			"max": 50,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "ZoomMouth",
+			"title": "嘴大小",
+			"min": -50,
+			"max": 50,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "MoveMouth",
+			"title": "嘴高低",
+			"min": -50,
+			"max": 50,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "MouthCorner",
+			"title": "嘴角（基础）",
+			"min": 0,
+			"max": 100,
+			"group": "features",
+			"stage": "face-features"
+		},
+		{
+			"name": "CornerEye",
+			"title": "眼角扩张（基础）",
+			"min": 0,
+			"max": 100,
+			"group": "features",
+			"stage": "face-features"
+		}
+	],
+	"stages": [
+		{
+			"id": "smooth",
+			"kind": "scalar",
+			"script": "smooth_render.py",
+			"controls": ["Smooth"],
+			"bindings": [{ "name": "Smooth", "flag": "--strength", "scale": 0.01 }]
+		},
+		{
+			"id": "whiten",
+			"kind": "scalar",
+			"script": "whiten_render.py",
+			"controls": ["Whiten"],
+			"bindings": [{ "name": "Whiten", "flag": "--strength", "scale": 0.01 }]
+		},
+		{
+			"id": "spot-acne",
+			"kind": "scalar",
+			"script": "spot_acne_render.py",
+			"controls": ["SpotAcne"],
+			"bindings": [{ "name": "SpotAcne", "flag": "--intensity", "scale": 1 }]
+		},
+		{
+			"id": "skin-gan",
+			"kind": "gan",
+			"script": "skin_gan_render.py",
+			"controls": ["yunfu", "fuling", "lunkuopinghua"],
+			"bindings": [
+				{ "name": "yunfu", "flag": "--yunfu", "scale": 1 },
+				{ "name": "fuling", "flag": "--fuling", "scale": 1 },
+				{ "name": "lunkuopinghua", "flag": "--contour", "scale": 1 }
+			]
+		},
+		{
+			"id": "face-features",
+			"kind": "controls",
+			"script": "portrait_features_render.py",
+			"controls": [
+				"TotalFace",
+				"CutFace",
+				"ZoomCheekbone",
+				"ZoomJawbone",
+				"SmallFace",
+				"VFace",
+				"Chin",
+				"Forehead",
+				"ChinSharp",
+				"EnlargeEye",
+				"EyeSpacing",
+				"MoveEye",
+				"Nose",
+				"MoveNose",
+				"ZoomMouth",
+				"MoveMouth",
+				"MouthCorner",
+				"CornerEye",
+				"underjaw",
+				"pointy_chin",
+				"cheekbone",
+				"upper_atrium",
+				"mid_atrium",
+				"lower_atrium"
+			]
+		},
+		{
+			"id": "small-face",
+			"kind": "scalar",
+			"script": "youtai_render.py",
+			"controls": ["YouTaiFace"],
+			"bindings": [{ "name": "YouTaiFace", "flag": "--intensity", "scale": 1 }]
+		},
+		{
+			"id": "jawline",
+			"kind": "scalar",
+			"script": "jawline_render.py",
+			"controls": ["XiaHeXian"],
+			"bindings": [{ "name": "XiaHeXian", "flag": "--intensity", "scale": 1 }]
+		}
+	],
+	"makeup": [
+		{
+			"id": "lip-coral-nude",
+			"title": "珊瑚裸粉口红",
+			"category": "lip",
+			"min": 0,
+			"max": 100,
+			"script": "lip_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--texture-state", "Auto"]
+		},
+		{
+			"id": "lip-soft-pink",
+			"title": "淡粉口红",
+			"category": "lip",
+			"min": 0,
+			"max": 100,
+			"script": "softpink_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "lip-soft-pink"]
+		},
+		{
+			"id": "brows-standard",
+			"title": "标准眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-standard"]
+		},
+		{
+			"id": "brows-fluffy",
+			"title": "绒绒眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-fluffy"]
+		},
+		{
+			"id": "brows-wild",
+			"title": "野生眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-wild"]
+		},
+		{
+			"id": "brows-warrior",
+			"title": "侠客眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-warrior"]
+		},
+		{
+			"id": "brows-classical",
+			"title": "古韵眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-classical"]
+		},
+		{
+			"id": "brows-soft",
+			"title": "淡颜眉",
+			"category": "brows",
+			"min": 0,
+			"max": 100,
+			"script": "brow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "brows-soft"]
+		},
+		{
+			"id": "blush-baby-pink",
+			"title": "淡粉腮红",
+			"category": "blush",
+			"min": 0,
+			"max": 100,
+			"script": "makeup248_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "blush-baby-pink"]
+		},
+		{
+			"id": "contour-mixed",
+			"title": "混血修容",
+			"category": "contour",
+			"min": 0,
+			"max": 100,
+			"script": "makeup248_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "contour-mixed"]
+		},
+		{
+			"id": "aegyo-doll",
+			"title": "娃娃卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-doll"]
+		},
+		{
+			"id": "aegyo-natural",
+			"title": "自然卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-natural"]
+		},
+		{
+			"id": "aegyo-born",
+			"title": "妈生卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-born"]
+		},
+		{
+			"id": "aegyo-bittersweet",
+			"title": "甜丧卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-bittersweet"]
+		},
+		{
+			"id": "aegyo-peach",
+			"title": "桃花卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-peach"]
+		},
+		{
+			"id": "aegyo-campus",
+			"title": "校花卧蚕",
+			"category": "aegyo",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "aegyo-campus"]
+		},
+		{
+			"id": "eyeliner-natural",
+			"title": "自然眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-natural"]
+		},
+		{
+			"id": "eyeliner-cat",
+			"title": "小野猫眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-cat"]
+		},
+		{
+			"id": "eyeliner-playful",
+			"title": "俏皮眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-playful"]
+		},
+		{
+			"id": "eyeliner-alluring",
+			"title": "妩媚眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-alluring"]
+		},
+		{
+			"id": "eyeliner-detached",
+			"title": "厌世眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-detached"]
+		},
+		{
+			"id": "eyeliner-warrior",
+			"title": "侠客眼线",
+			"category": "eyeliner",
+			"min": 0,
+			"max": 100,
+			"script": "eye_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeliner-warrior"]
+		},
+		{
+			"id": "lashes-natural-ii",
+			"title": "妈生感 II 睫毛",
+			"category": "lashes",
+			"min": 0,
+			"max": 100,
+			"script": "lashes_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "lashes-natural-ii"]
+		},
+		{
+			"id": "eyeshadow-girl-pink",
+			"title": "少女粉眼影",
+			"category": "eyeshadow",
+			"min": 0,
+			"max": 100,
+			"script": "shadow_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "eyeshadow-girl-pink"]
+		},
+		{
+			"id": "look-oxygen",
+			"title": "清透氧气妆",
+			"category": "look",
+			"min": 0,
+			"max": 100,
+			"script": "look_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "look-oxygen"]
+		},
+		{
+			"id": "highlight-sweetheart",
+			"title": "甜心高光（3D）",
+			"category": "highlight",
+			"min": 0,
+			"max": 100,
+			"script": "makeup3d_render.py",
+			"flag": "--intensity",
+			"scale": 1,
+			"parameters": ["--card", "highlight-sweetheart"]
+		},
+		{
+			"id": "freckles-sunburn",
+			"title": "晒伤雀斑（3D）",
+			"category": "freckles",
+			"min": 0,
+			"max": 100,
+			"script": "makeup3d_render.py",
+			"flag": "--intensity",
+			"scale": 1,
+			"parameters": ["--card", "freckles-sunburn"]
+		},
+		{
+			"id": "contacts-natural",
+			"title": "原生美瞳",
+			"category": "contacts",
+			"min": 0,
+			"max": 100,
+			"script": "contacts_render.py",
+			"flag": "--strength",
+			"scale": 0.01,
+			"parameters": ["--card", "contacts-natural"]
+		}
+	],
+	"limitations": [
+		"单人不透明图片，最长边1280",
+		"所有阶段使用自研渲染；仍需本机私有模型和材质",
+		"每阶段从上阶段结果重新推导关键点与蒙版",
+		"固定顺序组合，不保证任意组合与原生像素一致",
+		"视频、多脸及其他GPU未验收",
+		"通用脸型与五官先调整，局部轮廓再处理；支持的22款妆容可共享一次检测叠加，其他妆容组合仍待验收。",
+		"MouthCorner 与 CornerEye 是基础嘴角／眼角扩张，真正内眼角、眼睛倾斜和嘴巴倾斜尚未开放。"
+	],
+	"makeupGroups": [
+		{
+			"id": "dynamic-pigments",
+			"script": "dynamic_makeup_render.py",
+			"cards": [
+				"lip-soft-pink",
+				"brows-standard",
+				"brows-fluffy",
+				"brows-wild",
+				"brows-warrior",
+				"brows-classical",
+				"brows-soft",
+				"blush-baby-pink",
+				"contour-mixed",
+				"aegyo-doll",
+				"aegyo-natural",
+				"aegyo-born",
+				"aegyo-bittersweet",
+				"aegyo-peach",
+				"aegyo-campus",
+				"eyeliner-natural",
+				"eyeliner-cat",
+				"eyeliner-playful",
+				"eyeliner-alluring",
+				"eyeliner-detached",
+				"eyeliner-warrior",
+				"eyeshadow-girl-pink"
+			]
+		}
+	]
 }
