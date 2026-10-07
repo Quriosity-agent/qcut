@@ -1,278 +1,278 @@
 {
-  "package": "7406174119940721935/1ec0e8e3d3145339e34dc072b884f235",
-  "contentSha256": "c9a33036c398520a595dbb9538c9c002b75b5847d6984d3f7f06bf74cd9fe685",
-  "layers": [
-    {
-      "name": "Brow",
-      "mesh": "mesh/brow_faceu_mesh.mesh",
-      "material": "material/Brow_MATERIAL.material",
-      "vertices": 248,
-      "stride": 6,
-      "uvOffset": 4,
-      "indices": 1113,
-      "textures": [
-        {
-          "path": "image/eyebrow/eyebrow.png",
-          "mode": "multiply",
-          "decodedSha256": "8d0a268eb70910ac678624b0abac553efb25f572f77930f3ccc5025c0f3e34ac"
-        }
-      ]
-    },
-    {
-      "name": "Eyeshadow",
-      "mesh": "mesh/eyeshadow_faceu_mesh.mesh",
-      "material": "material/Eyeshadow_MATERIAL.material",
-      "vertices": 174,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1002,
-      "textures": [
-        {
-          "path": "image/eyeshadow/eyeshadow.png",
-          "mode": "multiply",
-          "decodedSha256": "69a5cb5d7a08ea045324063eab9ed84b1b8f3ba8d221622ae23bf7947a9283b6"
-        },
-        {
-          "path": "image/eyeshadow/eyeshadowScreen.png",
-          "mode": "screen",
-          "decodedSha256": "5b4a97decc57a48382234b6f23e27a26357ea1855d3c052ff4db94e6f91e37ee"
-        }
-      ]
-    },
-    {
-      "name": "Eyeline",
-      "mesh": "mesh/eyeline_faceu_mesh.mesh",
-      "material": "material/Eyeline_MATERIAL.material",
-      "vertices": 174,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1002,
-      "textures": [
-        {
-          "path": "image/eyeline/eyeline.png",
-          "mode": "multiply",
-          "decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
-        }
-      ]
-    },
-    {
-      "name": "Eyemazing",
-      "mesh": "mesh/eyemazing_faceu_mesh.mesh",
-      "material": "material/Eyemazing_MATERIAL.material",
-      "vertices": 174,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1002,
-      "textures": [
-        {
-          "path": "image/eyemazing/eyemazing.png",
-          "mode": "multiply",
-          "decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
-        },
-        {
-          "path": "image/eyemazing/eyemazingScreen.png",
-          "mode": "screen",
-          "decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
-        }
-      ]
-    },
-    {
-      "name": "Eyelash",
-      "mesh": "mesh/eyelash_faceu_mesh.mesh",
-      "material": "material/Eyelash_MATERIAL.material",
-      "vertices": 174,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1002,
-      "textures": [
-        {
-          "path": "image/eyelash/eyelash.png",
-          "mode": "multiply",
-          "decodedSha256": "9238f5041e3bc5ffde0159019e9372d0329b6e8b0eb4f1c4ae1d7eec9a3c4732"
-        }
-      ]
-    },
-    {
-      "name": "Cutoff",
-      "mesh": "mesh/pupil_cutoff_faceu_mesh.mesh",
-      "material": "material/PupilCutoff_MATERIAL.material",
-      "vertices": 174,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1002,
-      "textures": [
-        {
-          "path": "image/pupil/pupilMask.png",
-          "mode": "normal",
-          "decodedSha256": "3c8a561918022b873ca594b07351a496219120d6bfd213384e8cf8654640ef67"
-        }
-      ]
-    },
-    {
-      "name": "Pupil",
-      "mesh": "mesh/pupil_main_faceu_mesh.mesh",
-      "material": "material/Pupil_MATERIAL.material",
-      "vertices": 78,
-      "stride": 6,
-      "uvOffset": 3,
-      "indices": 342,
-      "textures": [
-        {
-          "path": "image/pupil/pupilBlend.png",
-          "mode": "normal",
-          "decodedSha256": "d1741d25c34906890722929d843e4971a3afcf82b53ef257c3c8f5027a7b0103"
-        }
-      ]
-    },
-    {
-      "name": "Stereo",
-      "mesh": "mesh/stereo_faceu_mesh.mesh",
-      "material": "material/Stereo_MATERIAL.material",
-      "vertices": 248,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1113,
-      "textures": [
-        {
-          "path": "image/stereo/stereo.png",
-          "mode": "soft-light",
-          "decodedSha256": "468c6476632cd39e30e71a3c2242632dfbcfb3c9e4fcf75a2346037c5363144c"
-        }
-      ]
-    },
-    {
-      "name": "Blusher",
-      "mesh": "mesh/blusher_faceu_mesh.mesh",
-      "material": "material/Blusher_MATERIAL.material",
-      "vertices": 248,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1113,
-      "textures": [
-        {
-          "path": "image/blusher/blusher.png",
-          "mode": "multiply",
-          "decodedSha256": "dec3f65ad53d056ce3f30b140e16ce3780b907fbc6a0cd355f45fe40dce503b4"
-        },
-        {
-          "path": "image/blusher/highlight.png",
-          "mode": "normal",
-          "decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
-        }
-      ]
-    },
-    {
-      "name": "Lip",
-      "mesh": "mesh/lips_keypoint_faceu_mesh.mesh",
-      "material": "material/Lip_MATERIAL.material",
-      "vertices": 248,
-      "stride": 4,
-      "uvOffset": 2,
-      "indices": 1113,
-      "textures": [
-        {
-          "path": "image/lip/lipClose.png",
-          "mode": "multiply",
-          "decodedSha256": "78762c0a176f768bb95522c2c1a057d0e22702ea52e232930ddf31fbf7be2ad3"
-        },
-        {
-          "path": "image/lip/lipGloss.png",
-          "mode": "normal",
-          "decodedSha256": "26c85d70e2d997282524fdab8f5a73420daeca1e2a2cddb988b7e01bdb872a1e"
-        }
-      ]
-    }
-  ],
-  "files": {
-    "AmazingFeature/content.json": "0669de323ba67f574e25e3bdfee2a4f83728e9cd816daadd2ca377e3ca85befc",
-    "AmazingFeature/image/blusher/blusher.png": "3cf77f98037f0d8f778db8c517aa0f60a08738d0dc7a8bf3e9ee3aee8cf08ef6",
-    "AmazingFeature/image/blusher/blusher.png.meta": "130732bc41e0e85c186cfc65f32c6a3622fe94cac361cef5b2d4f14c51c3d017",
-    "AmazingFeature/image/blusher/highlight.png": "e26b1e0e8a0275dd22d1b09bd28425ac7432c47ef8e79d0d27e6cf2ff928a86d",
-    "AmazingFeature/image/blusher/highlight.png.meta": "d735ec8f605c7f7bc6d3babc4646c0f0a4af1058bce3906312e1ed4112e33edf",
-    "AmazingFeature/image/empty.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
-    "AmazingFeature/image/empty.png.meta": "7f4ba2cec4b9032c94fbefe300b586ae3b8b29dcc67b392a80d0b45c067df133",
-    "AmazingFeature/image/eyebrow/eyebrow.png": "6a53acf78c6ac56bba1d73fd115559284c667f2c9a590e78a62f35de8ba5d491",
-    "AmazingFeature/image/eyebrow/eyebrow.png.meta": "99fcefac8b74c0897967d7d4ddb14720f2395049de7b25c477873f33dc312f8a",
-    "AmazingFeature/image/eyelash/eyelash.png": "481386a14ed445db84427ae69c70370d26b83447445ef132e6add9ef5b42df28",
-    "AmazingFeature/image/eyelash/eyelash.png.meta": "24b11c3560ac44e7633a39c74618f31c534b21093b0101af44d0e2c8f763681c",
-    "AmazingFeature/image/eyeline/eyeline.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
-    "AmazingFeature/image/eyeline/eyeline.png.meta": "ad1b151f5c4b5c8e489d1409f053c7748cc2c6434e99cb82b67a12bb72e9fed7",
-    "AmazingFeature/image/eyemazing/eyemazing.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
-    "AmazingFeature/image/eyemazing/eyemazing.png.meta": "7dab2675e2cd34021f2dd6369b3170c8b756e1caacaf482eec8d41c7b844bdae",
-    "AmazingFeature/image/eyemazing/eyemazingScreen.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
-    "AmazingFeature/image/eyemazing/eyemazingScreen.png.meta": "a08898148abee2439bbfa9af55058c2ebeb727d9cb4ede86147215cbe69eac12",
-    "AmazingFeature/image/eyeshadow/eyeshadow.png": "7051c17acdce9c72a3bdfa816643845f279cccc8b9da4537eeaf93fe8447de63",
-    "AmazingFeature/image/eyeshadow/eyeshadow.png.meta": "621218b73dfece6c1b6c9e2845a1ab38c17603222deac821dd552aba2c4dc9ff",
-    "AmazingFeature/image/eyeshadow/eyeshadowScreen.png": "b7acaa9055a8ea3ea3fd2503db71344288d85616ea9bbc3f984a5310593467ae",
-    "AmazingFeature/image/eyeshadow/eyeshadowScreen.png.meta": "645b32ca80c03ca3438c99ac00412deaa9223aadf426d2593f67fdaa18f01310",
-    "AmazingFeature/image/lip/lipClose.png": "b9791dab5ac36781392e0219b8d203c8fd6f5cbd838c841fde8afd9de8d65170",
-    "AmazingFeature/image/lip/lipClose.png.meta": "196222019d0c44dd4f145d866d2f00a1ecae23411b5a3a017acaf623d1883936",
-    "AmazingFeature/image/lip/lipGloss.png": "5e089839901766b2c29ffac024901e96c5f3e1dbb5aef249daa2a62ad350d280",
-    "AmazingFeature/image/lip/lipGloss.png.meta": "03fd08b2e6e27ed874fe3aeb0b37096dcc908b259fca94cac1a84e5887a57055",
-    "AmazingFeature/image/lip/lipOpen.png": "3f0d74f501308bc9f437c4c8dfeb11174d7563a7653d7a091a2dc330674112eb",
-    "AmazingFeature/image/lip/lipOpen.png.meta": "b259e929c436444e319d6d1cb8778b6208e47237a693a1244b3af0d5955b4d7e",
-    "AmazingFeature/image/pupil/pupilBlend.png": "b49fc5f990a8f7407a30b36b46dd0a5cf38dc2c96d3ae921682c030f4bc9dc87",
-    "AmazingFeature/image/pupil/pupilBlend.png.meta": "8551c9ab0a1f7fa9166c9de8f98069de2622822d616cf3d8d20471f49496adeb",
-    "AmazingFeature/image/pupil/pupilMask.png": "1d92065d246931a45962c3f3ab2d3faf531553cb657d273de8287dd4201f0545",
-    "AmazingFeature/image/pupil/pupilMask.png.meta": "1a27872585e09bbc8a39ec5418fdb4fcd24e157638a2aa430f6f20b7628c071d",
-    "AmazingFeature/image/stereo/stereo.png": "6a4c7dbb5f8d819e8d85977ed56f43fb25e01b39ed17e88c17cc547055e72561",
-    "AmazingFeature/image/stereo/stereo.png.meta": "31526f3273708c5711899c66566abd5522843c5c9ece0aa8485a62d8f1f820e8",
-    "AmazingFeature/lua/makeup.lua": "4ae8cdc9cc61c4ed95d1fc1f60735e9bcaa1c7b93db8b44524a9bcd6e2a4c8a9",
-    "AmazingFeature/main.scene": "44b65f9732172b8339ce45ee8b77f592aba73da51fcdc4b5d57823dd7cbc1270",
-    "AmazingFeature/material/Blusher_MATERIAL.material": "6c299e435190ab73e50b4cd4211196d2ecf2431185635d771e0548487f5c4599",
-    "AmazingFeature/material/Brow_MATERIAL.material": "767f7129bf5cc087568d18fe2e0b44521994058b407dc78abffd63a0a3123b5f",
-    "AmazingFeature/material/Eyelash_MATERIAL.material": "4d67b9e42ae47a649acee7cc31f8dbc53f623b5a98f710f6025cef248c244364",
-    "AmazingFeature/material/Eyeline_MATERIAL.material": "cdd8cf55ef29e3cbe115f2a70fc37a7d0589f7c04de10e46783c589cac82d4e4",
-    "AmazingFeature/material/Eyemazing_MATERIAL.material": "29f9aaf1baa284d911bc59ac70333fc0c92a42d7ef818daf99ea715be2d916ab",
-    "AmazingFeature/material/Eyeshadow_MATERIAL.material": "bff2ecf6543dfd850c85af3a104da6a38ece6e79936ddd5909dc306337becc87",
-    "AmazingFeature/material/Lip_MATERIAL.material": "4cc562bbd205ee588e52e48c0cbddfe7805fa57dcbe17103e2d7f3ca1a7c6dc2",
-    "AmazingFeature/material/PupilCutoff_MATERIAL.material": "db0f0b0b55ffe07b8a61882190a4ddab477030b2472ffb2c26d435c5df97bbe0",
-    "AmazingFeature/material/Pupil_MATERIAL.material": "b0bb94c37babd93024eaba076791aa33637282f1ee564a0b6a8a9642bf0348b6",
-    "AmazingFeature/material/Stereo_MATERIAL.material": "6f822342ba589461267f889cd9d8aeddb768f95a2d9a85e6c021828f85b1d345",
-    "AmazingFeature/mesh/blusher_faceu_mesh.mesh": "687623d93fd70f53b17413ac79d60f0ba562f9e73ef4302dfecb50510a239195",
-    "AmazingFeature/mesh/brow_faceu_mesh.mesh": "e02eea82a356039ef6ceb9d2c52240c3a48afa15177c43da66b817a47b5d37b7",
-    "AmazingFeature/mesh/eyelash_faceu_mesh.mesh": "16e96e9935637eb38df54517b5a5fd18f250104e14fd1414b12cd429c2a194ff",
-    "AmazingFeature/mesh/eyeline_faceu_mesh.mesh": "eb566a40c61a0834f2805a46148774ac9bd10cca3f6d03511ccb6e7084a7b6e5",
-    "AmazingFeature/mesh/eyemazing_faceu_mesh.mesh": "0bfc91f451fd5112195143b61c867b09fe989ab40f9663abc00163a4333b98be",
-    "AmazingFeature/mesh/eyeshadow_faceu_mesh.mesh": "9177dab0b1d19a71a5d1f32e7d5e78977c28fed5cb2ccb45743d60a49c3ca3e9",
-    "AmazingFeature/mesh/lips_keypoint_faceu_mesh.mesh": "a5171da3caff6f2050fe3a6a906747b23e62ab3640017827fcb4ce53d7cbc4c9",
-    "AmazingFeature/mesh/pupil_cutoff_faceu_mesh.mesh": "66420072cacd409b93af9b940258de33f483c63bc0d9ef4a5f90c1959680b751",
-    "AmazingFeature/mesh/pupil_main_faceu_mesh.mesh": "9844726ef216733d9482f9f2f3d23e03adc42858e64235e23a68615143a10487",
-    "AmazingFeature/mesh/stereo_faceu_mesh.mesh": "f4204d4fa7befacdae767944e8165c1b22ce3aa1dd3ba78bd247112bcd22980b",
-    "AmazingFeature/rt/outputTex.rt": "88c1080507286ef8a1780a90b6ce4d571c52a3da7db8bdd4dd178cb6134cb207",
-    "AmazingFeature/scene.config": "95316277dd41be96ee8c8db42cef31806d1afeda6a9a670603afdaafbd117a67",
-    "AmazingFeature/shaders/brow_faceu_xshader-0-7310/gles2/8359.frag": "98faf02298777a18e6894cae412f2d4a4f6294db1ca263c0dfa532870cde7b9f",
-    "AmazingFeature/shaders/brow_faceu_xshader-0-7310/gles2/8359.vert": "d3798c5ed9707fc6ee026a76dbbc13bb25f98cbcb15bc7a277bc63235d8f4bc7",
-    "AmazingFeature/shaders/brow_faceu_xshader-0-7310/metal/8359.frag": "488b5c3dba9927f7b955da8ca9b8b6a4fd4a7e3876d71f39514103049e4a30da",
-    "AmazingFeature/shaders/brow_faceu_xshader-0-7310/metal/8359.vert": "1ac80aa03547d6157698d4c952bc6c9732ae8ce5b44bbf7cbeb69c9521ecb484",
-    "AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/gles2/bb4b.frag": "0f7fa085f218cdf15bb2b5d721790dfc2f1f3f9cb950a27332cbfb80a4fcef9f",
-    "AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/gles2/bb4b.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
-    "AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/metal/bb4b.frag": "0ede877d15cd1fb3e18817387c7d4b39f2c58462d81f74be268be3423a822d8c",
-    "AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/metal/bb4b.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
-    "AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/gles2/a4d2.frag": "208dc29af16fb3d19345f2e8c8a9e54150fc62a5415cf72deafb1a7978c36942",
-    "AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/gles2/a4d2.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
-    "AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/metal/a4d2.frag": "01d56ca13dc069d1e92cefaad429f81d9232403c93221a381dd2410acad1173e",
-    "AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/metal/a4d2.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
-    "AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/gles2/f4dd.frag": "e82c5511879a6822972ba67af0ff9725c23e2ed963c7c9cd5914b367b822dcaf",
-    "AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/gles2/f4dd.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
-    "AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/metal/f4dd.frag": "b175fa1931298980330528fe65749c7167e7b8518e56e8ee0f8ba38929b174a9",
-    "AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/metal/f4dd.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
-    "AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/gles2/7237.frag": "22e983dd1223efefb6003acb9480b148d547bf9e4622c09b0353a30a4b9d12d9",
-    "AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/gles2/7237.vert": "3bc49b5692e2f20a57046cca46e9b3038d64c5f89336c7a839b0159b3ee3bb52",
-    "AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/metal/7237.frag": "0c7eb88c4847fb3e42473aa287dd934e5450dd9844c7c7c2034ae388952298a5",
-    "AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/metal/7237.vert": "3369f28cedc60947ad62a5cfa06c8211f482f53370e15271cdf4be1b912e111f",
-    "AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/gles2/ee07.frag": "ca5d13ab26e0b1084350edfeec757744f576619ecec5dead5f0131aedbbf4999",
-    "AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/gles2/ee07.vert": "9f458cd8042b9409198fb95583d24970449bfef2b844b15e40ac54bf2c99f25b",
-    "AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/metal/ee07.frag": "f2909731a77667c06b2d6722b40d71fe544bc5c71b9b0bb81d7429cc863369cf",
-    "AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/metal/ee07.vert": "0b82caf946efe85a81ce1871bec026dcc5be74909c82079a5fa9a83a63c6b86e",
-    "AmazingFeature/sticker.config": "57f8db0d37752e1fdc3f9ae0c885021920907bba3300d7767bfc6e5b4bae0138",
-    "AmazingFeature/xshader/brow_faceu_xshader.xshader": "fb574c49fd7ac1e1604d483adbf3c0cc48e1d20417ecb58315ae4691a723bac4",
-    "AmazingFeature/xshader/eye_part_faceu_xshader.xshader": "ea7f6ce0f549aa015d65b68b3f849cf9004c2c35a0b24f71c0f54a8f91902f49",
-    "AmazingFeature/xshader/lips_keypoint_faceu_xshader.xshader": "5aa58607f50d3368800cb2570569f821b5786bf081c7aaf21f9613d533bf8300",
-    "AmazingFeature/xshader/mask_faceu_xshader.xshader": "f7173747d7e6a4637641bced8a345aa57677de47baff9b13d3e0af50072fe7b4",
-    "AmazingFeature/xshader/pupil_cutoff_faceu_xshader.xshader": "4403c386fce3ff62d2548c6f44474465b3b8048c9314cc138e8d51d81d50d298",
-    "AmazingFeature/xshader/pupil_main_faceu_xshader.xshader": "7765118a477a6bf0894292170ba7bdc7ac543fd4a70c1dc3bf2044c317d55620",
-    "algorithmConfig.json": "313f4f6cbfa25316750d00a2d72c1433d2f9f5691c20ec02486a93bdf3bc56f0",
-    "config.json": "2f957ce6dbc0ea2bbc30d081f7c540671d9201215ba28c7c4b3e9217963e316a"
-  }
+	"package": "7406174119940721935/1ec0e8e3d3145339e34dc072b884f235",
+	"contentSha256": "c9a33036c398520a595dbb9538c9c002b75b5847d6984d3f7f06bf74cd9fe685",
+	"layers": [
+		{
+			"name": "Brow",
+			"mesh": "mesh/brow_faceu_mesh.mesh",
+			"material": "material/Brow_MATERIAL.material",
+			"vertices": 248,
+			"stride": 6,
+			"uvOffset": 4,
+			"indices": 1113,
+			"textures": [
+				{
+					"path": "image/eyebrow/eyebrow.png",
+					"mode": "multiply",
+					"decodedSha256": "8d0a268eb70910ac678624b0abac553efb25f572f77930f3ccc5025c0f3e34ac"
+				}
+			]
+		},
+		{
+			"name": "Eyeshadow",
+			"mesh": "mesh/eyeshadow_faceu_mesh.mesh",
+			"material": "material/Eyeshadow_MATERIAL.material",
+			"vertices": 174,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1002,
+			"textures": [
+				{
+					"path": "image/eyeshadow/eyeshadow.png",
+					"mode": "multiply",
+					"decodedSha256": "69a5cb5d7a08ea045324063eab9ed84b1b8f3ba8d221622ae23bf7947a9283b6"
+				},
+				{
+					"path": "image/eyeshadow/eyeshadowScreen.png",
+					"mode": "screen",
+					"decodedSha256": "5b4a97decc57a48382234b6f23e27a26357ea1855d3c052ff4db94e6f91e37ee"
+				}
+			]
+		},
+		{
+			"name": "Eyeline",
+			"mesh": "mesh/eyeline_faceu_mesh.mesh",
+			"material": "material/Eyeline_MATERIAL.material",
+			"vertices": 174,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1002,
+			"textures": [
+				{
+					"path": "image/eyeline/eyeline.png",
+					"mode": "multiply",
+					"decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+				}
+			]
+		},
+		{
+			"name": "Eyemazing",
+			"mesh": "mesh/eyemazing_faceu_mesh.mesh",
+			"material": "material/Eyemazing_MATERIAL.material",
+			"vertices": 174,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1002,
+			"textures": [
+				{
+					"path": "image/eyemazing/eyemazing.png",
+					"mode": "multiply",
+					"decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+				},
+				{
+					"path": "image/eyemazing/eyemazingScreen.png",
+					"mode": "screen",
+					"decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+				}
+			]
+		},
+		{
+			"name": "Eyelash",
+			"mesh": "mesh/eyelash_faceu_mesh.mesh",
+			"material": "material/Eyelash_MATERIAL.material",
+			"vertices": 174,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1002,
+			"textures": [
+				{
+					"path": "image/eyelash/eyelash.png",
+					"mode": "multiply",
+					"decodedSha256": "9238f5041e3bc5ffde0159019e9372d0329b6e8b0eb4f1c4ae1d7eec9a3c4732"
+				}
+			]
+		},
+		{
+			"name": "Cutoff",
+			"mesh": "mesh/pupil_cutoff_faceu_mesh.mesh",
+			"material": "material/PupilCutoff_MATERIAL.material",
+			"vertices": 174,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1002,
+			"textures": [
+				{
+					"path": "image/pupil/pupilMask.png",
+					"mode": "normal",
+					"decodedSha256": "3c8a561918022b873ca594b07351a496219120d6bfd213384e8cf8654640ef67"
+				}
+			]
+		},
+		{
+			"name": "Pupil",
+			"mesh": "mesh/pupil_main_faceu_mesh.mesh",
+			"material": "material/Pupil_MATERIAL.material",
+			"vertices": 78,
+			"stride": 6,
+			"uvOffset": 3,
+			"indices": 342,
+			"textures": [
+				{
+					"path": "image/pupil/pupilBlend.png",
+					"mode": "normal",
+					"decodedSha256": "d1741d25c34906890722929d843e4971a3afcf82b53ef257c3c8f5027a7b0103"
+				}
+			]
+		},
+		{
+			"name": "Stereo",
+			"mesh": "mesh/stereo_faceu_mesh.mesh",
+			"material": "material/Stereo_MATERIAL.material",
+			"vertices": 248,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1113,
+			"textures": [
+				{
+					"path": "image/stereo/stereo.png",
+					"mode": "soft-light",
+					"decodedSha256": "468c6476632cd39e30e71a3c2242632dfbcfb3c9e4fcf75a2346037c5363144c"
+				}
+			]
+		},
+		{
+			"name": "Blusher",
+			"mesh": "mesh/blusher_faceu_mesh.mesh",
+			"material": "material/Blusher_MATERIAL.material",
+			"vertices": 248,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1113,
+			"textures": [
+				{
+					"path": "image/blusher/blusher.png",
+					"mode": "multiply",
+					"decodedSha256": "dec3f65ad53d056ce3f30b140e16ce3780b907fbc6a0cd355f45fe40dce503b4"
+				},
+				{
+					"path": "image/blusher/highlight.png",
+					"mode": "normal",
+					"decodedSha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+				}
+			]
+		},
+		{
+			"name": "Lip",
+			"mesh": "mesh/lips_keypoint_faceu_mesh.mesh",
+			"material": "material/Lip_MATERIAL.material",
+			"vertices": 248,
+			"stride": 4,
+			"uvOffset": 2,
+			"indices": 1113,
+			"textures": [
+				{
+					"path": "image/lip/lipClose.png",
+					"mode": "multiply",
+					"decodedSha256": "78762c0a176f768bb95522c2c1a057d0e22702ea52e232930ddf31fbf7be2ad3"
+				},
+				{
+					"path": "image/lip/lipGloss.png",
+					"mode": "normal",
+					"decodedSha256": "26c85d70e2d997282524fdab8f5a73420daeca1e2a2cddb988b7e01bdb872a1e"
+				}
+			]
+		}
+	],
+	"files": {
+		"AmazingFeature/content.json": "0669de323ba67f574e25e3bdfee2a4f83728e9cd816daadd2ca377e3ca85befc",
+		"AmazingFeature/image/blusher/blusher.png": "3cf77f98037f0d8f778db8c517aa0f60a08738d0dc7a8bf3e9ee3aee8cf08ef6",
+		"AmazingFeature/image/blusher/blusher.png.meta": "130732bc41e0e85c186cfc65f32c6a3622fe94cac361cef5b2d4f14c51c3d017",
+		"AmazingFeature/image/blusher/highlight.png": "e26b1e0e8a0275dd22d1b09bd28425ac7432c47ef8e79d0d27e6cf2ff928a86d",
+		"AmazingFeature/image/blusher/highlight.png.meta": "d735ec8f605c7f7bc6d3babc4646c0f0a4af1058bce3906312e1ed4112e33edf",
+		"AmazingFeature/image/empty.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
+		"AmazingFeature/image/empty.png.meta": "7f4ba2cec4b9032c94fbefe300b586ae3b8b29dcc67b392a80d0b45c067df133",
+		"AmazingFeature/image/eyebrow/eyebrow.png": "6a53acf78c6ac56bba1d73fd115559284c667f2c9a590e78a62f35de8ba5d491",
+		"AmazingFeature/image/eyebrow/eyebrow.png.meta": "99fcefac8b74c0897967d7d4ddb14720f2395049de7b25c477873f33dc312f8a",
+		"AmazingFeature/image/eyelash/eyelash.png": "481386a14ed445db84427ae69c70370d26b83447445ef132e6add9ef5b42df28",
+		"AmazingFeature/image/eyelash/eyelash.png.meta": "24b11c3560ac44e7633a39c74618f31c534b21093b0101af44d0e2c8f763681c",
+		"AmazingFeature/image/eyeline/eyeline.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
+		"AmazingFeature/image/eyeline/eyeline.png.meta": "ad1b151f5c4b5c8e489d1409f053c7748cc2c6434e99cb82b67a12bb72e9fed7",
+		"AmazingFeature/image/eyemazing/eyemazing.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
+		"AmazingFeature/image/eyemazing/eyemazing.png.meta": "7dab2675e2cd34021f2dd6369b3170c8b756e1caacaf482eec8d41c7b844bdae",
+		"AmazingFeature/image/eyemazing/eyemazingScreen.png": "525395c550b72851bee477e1a44bd3360890aadaaa7d2fc43fe4bf86361f1da5",
+		"AmazingFeature/image/eyemazing/eyemazingScreen.png.meta": "a08898148abee2439bbfa9af55058c2ebeb727d9cb4ede86147215cbe69eac12",
+		"AmazingFeature/image/eyeshadow/eyeshadow.png": "7051c17acdce9c72a3bdfa816643845f279cccc8b9da4537eeaf93fe8447de63",
+		"AmazingFeature/image/eyeshadow/eyeshadow.png.meta": "621218b73dfece6c1b6c9e2845a1ab38c17603222deac821dd552aba2c4dc9ff",
+		"AmazingFeature/image/eyeshadow/eyeshadowScreen.png": "b7acaa9055a8ea3ea3fd2503db71344288d85616ea9bbc3f984a5310593467ae",
+		"AmazingFeature/image/eyeshadow/eyeshadowScreen.png.meta": "645b32ca80c03ca3438c99ac00412deaa9223aadf426d2593f67fdaa18f01310",
+		"AmazingFeature/image/lip/lipClose.png": "b9791dab5ac36781392e0219b8d203c8fd6f5cbd838c841fde8afd9de8d65170",
+		"AmazingFeature/image/lip/lipClose.png.meta": "196222019d0c44dd4f145d866d2f00a1ecae23411b5a3a017acaf623d1883936",
+		"AmazingFeature/image/lip/lipGloss.png": "5e089839901766b2c29ffac024901e96c5f3e1dbb5aef249daa2a62ad350d280",
+		"AmazingFeature/image/lip/lipGloss.png.meta": "03fd08b2e6e27ed874fe3aeb0b37096dcc908b259fca94cac1a84e5887a57055",
+		"AmazingFeature/image/lip/lipOpen.png": "3f0d74f501308bc9f437c4c8dfeb11174d7563a7653d7a091a2dc330674112eb",
+		"AmazingFeature/image/lip/lipOpen.png.meta": "b259e929c436444e319d6d1cb8778b6208e47237a693a1244b3af0d5955b4d7e",
+		"AmazingFeature/image/pupil/pupilBlend.png": "b49fc5f990a8f7407a30b36b46dd0a5cf38dc2c96d3ae921682c030f4bc9dc87",
+		"AmazingFeature/image/pupil/pupilBlend.png.meta": "8551c9ab0a1f7fa9166c9de8f98069de2622822d616cf3d8d20471f49496adeb",
+		"AmazingFeature/image/pupil/pupilMask.png": "1d92065d246931a45962c3f3ab2d3faf531553cb657d273de8287dd4201f0545",
+		"AmazingFeature/image/pupil/pupilMask.png.meta": "1a27872585e09bbc8a39ec5418fdb4fcd24e157638a2aa430f6f20b7628c071d",
+		"AmazingFeature/image/stereo/stereo.png": "6a4c7dbb5f8d819e8d85977ed56f43fb25e01b39ed17e88c17cc547055e72561",
+		"AmazingFeature/image/stereo/stereo.png.meta": "31526f3273708c5711899c66566abd5522843c5c9ece0aa8485a62d8f1f820e8",
+		"AmazingFeature/lua/makeup.lua": "4ae8cdc9cc61c4ed95d1fc1f60735e9bcaa1c7b93db8b44524a9bcd6e2a4c8a9",
+		"AmazingFeature/main.scene": "44b65f9732172b8339ce45ee8b77f592aba73da51fcdc4b5d57823dd7cbc1270",
+		"AmazingFeature/material/Blusher_MATERIAL.material": "6c299e435190ab73e50b4cd4211196d2ecf2431185635d771e0548487f5c4599",
+		"AmazingFeature/material/Brow_MATERIAL.material": "767f7129bf5cc087568d18fe2e0b44521994058b407dc78abffd63a0a3123b5f",
+		"AmazingFeature/material/Eyelash_MATERIAL.material": "4d67b9e42ae47a649acee7cc31f8dbc53f623b5a98f710f6025cef248c244364",
+		"AmazingFeature/material/Eyeline_MATERIAL.material": "cdd8cf55ef29e3cbe115f2a70fc37a7d0589f7c04de10e46783c589cac82d4e4",
+		"AmazingFeature/material/Eyemazing_MATERIAL.material": "29f9aaf1baa284d911bc59ac70333fc0c92a42d7ef818daf99ea715be2d916ab",
+		"AmazingFeature/material/Eyeshadow_MATERIAL.material": "bff2ecf6543dfd850c85af3a104da6a38ece6e79936ddd5909dc306337becc87",
+		"AmazingFeature/material/Lip_MATERIAL.material": "4cc562bbd205ee588e52e48c0cbddfe7805fa57dcbe17103e2d7f3ca1a7c6dc2",
+		"AmazingFeature/material/PupilCutoff_MATERIAL.material": "db0f0b0b55ffe07b8a61882190a4ddab477030b2472ffb2c26d435c5df97bbe0",
+		"AmazingFeature/material/Pupil_MATERIAL.material": "b0bb94c37babd93024eaba076791aa33637282f1ee564a0b6a8a9642bf0348b6",
+		"AmazingFeature/material/Stereo_MATERIAL.material": "6f822342ba589461267f889cd9d8aeddb768f95a2d9a85e6c021828f85b1d345",
+		"AmazingFeature/mesh/blusher_faceu_mesh.mesh": "687623d93fd70f53b17413ac79d60f0ba562f9e73ef4302dfecb50510a239195",
+		"AmazingFeature/mesh/brow_faceu_mesh.mesh": "e02eea82a356039ef6ceb9d2c52240c3a48afa15177c43da66b817a47b5d37b7",
+		"AmazingFeature/mesh/eyelash_faceu_mesh.mesh": "16e96e9935637eb38df54517b5a5fd18f250104e14fd1414b12cd429c2a194ff",
+		"AmazingFeature/mesh/eyeline_faceu_mesh.mesh": "eb566a40c61a0834f2805a46148774ac9bd10cca3f6d03511ccb6e7084a7b6e5",
+		"AmazingFeature/mesh/eyemazing_faceu_mesh.mesh": "0bfc91f451fd5112195143b61c867b09fe989ab40f9663abc00163a4333b98be",
+		"AmazingFeature/mesh/eyeshadow_faceu_mesh.mesh": "9177dab0b1d19a71a5d1f32e7d5e78977c28fed5cb2ccb45743d60a49c3ca3e9",
+		"AmazingFeature/mesh/lips_keypoint_faceu_mesh.mesh": "a5171da3caff6f2050fe3a6a906747b23e62ab3640017827fcb4ce53d7cbc4c9",
+		"AmazingFeature/mesh/pupil_cutoff_faceu_mesh.mesh": "66420072cacd409b93af9b940258de33f483c63bc0d9ef4a5f90c1959680b751",
+		"AmazingFeature/mesh/pupil_main_faceu_mesh.mesh": "9844726ef216733d9482f9f2f3d23e03adc42858e64235e23a68615143a10487",
+		"AmazingFeature/mesh/stereo_faceu_mesh.mesh": "f4204d4fa7befacdae767944e8165c1b22ce3aa1dd3ba78bd247112bcd22980b",
+		"AmazingFeature/rt/outputTex.rt": "88c1080507286ef8a1780a90b6ce4d571c52a3da7db8bdd4dd178cb6134cb207",
+		"AmazingFeature/scene.config": "95316277dd41be96ee8c8db42cef31806d1afeda6a9a670603afdaafbd117a67",
+		"AmazingFeature/shaders/brow_faceu_xshader-0-7310/gles2/8359.frag": "98faf02298777a18e6894cae412f2d4a4f6294db1ca263c0dfa532870cde7b9f",
+		"AmazingFeature/shaders/brow_faceu_xshader-0-7310/gles2/8359.vert": "d3798c5ed9707fc6ee026a76dbbc13bb25f98cbcb15bc7a277bc63235d8f4bc7",
+		"AmazingFeature/shaders/brow_faceu_xshader-0-7310/metal/8359.frag": "488b5c3dba9927f7b955da8ca9b8b6a4fd4a7e3876d71f39514103049e4a30da",
+		"AmazingFeature/shaders/brow_faceu_xshader-0-7310/metal/8359.vert": "1ac80aa03547d6157698d4c952bc6c9732ae8ce5b44bbf7cbeb69c9521ecb484",
+		"AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/gles2/bb4b.frag": "0f7fa085f218cdf15bb2b5d721790dfc2f1f3f9cb950a27332cbfb80a4fcef9f",
+		"AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/gles2/bb4b.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
+		"AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/metal/bb4b.frag": "0ede877d15cd1fb3e18817387c7d4b39f2c58462d81f74be268be3423a822d8c",
+		"AmazingFeature/shaders/eye_part_faceu_xshader-0-cdc7/metal/bb4b.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
+		"AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/gles2/a4d2.frag": "208dc29af16fb3d19345f2e8c8a9e54150fc62a5415cf72deafb1a7978c36942",
+		"AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/gles2/a4d2.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
+		"AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/metal/a4d2.frag": "01d56ca13dc069d1e92cefaad429f81d9232403c93221a381dd2410acad1173e",
+		"AmazingFeature/shaders/lips_keypoint_faceu_xshader-0-da1b/metal/a4d2.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
+		"AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/gles2/f4dd.frag": "e82c5511879a6822972ba67af0ff9725c23e2ed963c7c9cd5914b367b822dcaf",
+		"AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/gles2/f4dd.vert": "e4174fca2fb828acc6f48938fc7d1b2192db8704ae95b95c7158f77646c93dfe",
+		"AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/metal/f4dd.frag": "b175fa1931298980330528fe65749c7167e7b8518e56e8ee0f8ba38929b174a9",
+		"AmazingFeature/shaders/mask_faceu_xshader-0-ecb2/metal/f4dd.vert": "cc31bceb43ae86f26ee891defa17fc6ececa88dbcb1baa1ba60ef8186a939620",
+		"AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/gles2/7237.frag": "22e983dd1223efefb6003acb9480b148d547bf9e4622c09b0353a30a4b9d12d9",
+		"AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/gles2/7237.vert": "3bc49b5692e2f20a57046cca46e9b3038d64c5f89336c7a839b0159b3ee3bb52",
+		"AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/metal/7237.frag": "0c7eb88c4847fb3e42473aa287dd934e5450dd9844c7c7c2034ae388952298a5",
+		"AmazingFeature/shaders/pupil_cutoff_faceu_xshader-0-8663/metal/7237.vert": "3369f28cedc60947ad62a5cfa06c8211f482f53370e15271cdf4be1b912e111f",
+		"AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/gles2/ee07.frag": "ca5d13ab26e0b1084350edfeec757744f576619ecec5dead5f0131aedbbf4999",
+		"AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/gles2/ee07.vert": "9f458cd8042b9409198fb95583d24970449bfef2b844b15e40ac54bf2c99f25b",
+		"AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/metal/ee07.frag": "f2909731a77667c06b2d6722b40d71fe544bc5c71b9b0bb81d7429cc863369cf",
+		"AmazingFeature/shaders/pupil_main_faceu_xshader-0-e7fb/metal/ee07.vert": "0b82caf946efe85a81ce1871bec026dcc5be74909c82079a5fa9a83a63c6b86e",
+		"AmazingFeature/sticker.config": "57f8db0d37752e1fdc3f9ae0c885021920907bba3300d7767bfc6e5b4bae0138",
+		"AmazingFeature/xshader/brow_faceu_xshader.xshader": "fb574c49fd7ac1e1604d483adbf3c0cc48e1d20417ecb58315ae4691a723bac4",
+		"AmazingFeature/xshader/eye_part_faceu_xshader.xshader": "ea7f6ce0f549aa015d65b68b3f849cf9004c2c35a0b24f71c0f54a8f91902f49",
+		"AmazingFeature/xshader/lips_keypoint_faceu_xshader.xshader": "5aa58607f50d3368800cb2570569f821b5786bf081c7aaf21f9613d533bf8300",
+		"AmazingFeature/xshader/mask_faceu_xshader.xshader": "f7173747d7e6a4637641bced8a345aa57677de47baff9b13d3e0af50072fe7b4",
+		"AmazingFeature/xshader/pupil_cutoff_faceu_xshader.xshader": "4403c386fce3ff62d2548c6f44474465b3b8048c9314cc138e8d51d81d50d298",
+		"AmazingFeature/xshader/pupil_main_faceu_xshader.xshader": "7765118a477a6bf0894292170ba7bdc7ac543fd4a70c1dc3bf2044c317d55620",
+		"algorithmConfig.json": "313f4f6cbfa25316750d00a2d72c1433d2f9f5691c20ec02486a93bdf3bc56f0",
+		"config.json": "2f957ce6dbc0ea2bbc30d081f7c540671d9201215ba28c7c4b3e9217963e316a"
+	}
 }
