@@ -39,8 +39,8 @@ def transform_eyes(*, source, target, degrees, pitch, mesh_assets, assets):
     if abs(float(amount)) > .001:
         delta = (result[0] - result[33]) * F(.25) * amount
         result[:68] += np.array([delta[1], -delta[0]], np.float32)
-    return space_eyes(source=eyes(points=source, reference=source, assets=mesh_assets),
-                      target=result, intensity=0, assets=mesh_assets, spacing_degree=degrees[0])
+    return space_eyes(source=result, target=result, intensity=0,
+                      assets=mesh_assets, spacing_degree=degrees[0])
 
 
 def transform_nose(*, source, target, degrees, yaw, assets):
