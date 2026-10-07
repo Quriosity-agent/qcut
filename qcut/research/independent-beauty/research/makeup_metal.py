@@ -66,6 +66,11 @@ def render(*, rgba, passes, runtime):
             specification.append({key: entry[key] for key in ('name', 'modes', 'pupil', 'cutoff', 'strength')} | {
                 'vertices': str(vp), 'indices': str(ip), 'vertexCount': len(vertices),
                 'indexCount': triangles.size, 'textures': textures})
+            if 'customColor' in entry:
+                color = np.asarray(entry['customColor'])
+                if color.shape != (3,) or not np.isfinite(color).all() or np.any((color < 0) | (color > 1)):
+                    raise ValueError('finite unit RGB custom pigment color required')
+                specification[-1]['customColor'] = color.tolist()
         output = directory/'output.rgba'
         request = {'width': rgba.shape[1], 'height': rgba.shape[0], 'input': str(directory/'input.rgba'),
             'output': str(output), 'passes': specification}
