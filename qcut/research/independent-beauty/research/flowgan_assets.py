@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 
 SCHEMA = Path(__file__).with_name('flowgan_graph.json')
-SCHEMA_SHA256 = '2e4e23eeed32dd815b625234d2abce55a828d55f37e5773fd2e2ccfa2b8de5ee'
+SCHEMA_SHA256 = 'c00bd644061a50b6673275bc19417351cae5e0a3b442b4abf8ebe8df2f1e2fca'
 
 
 def digest(*, data):
