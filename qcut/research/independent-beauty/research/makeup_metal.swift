@@ -18,6 +18,7 @@ struct PassSpec: Decodable {
     let pupil: Bool
     let cutoff: Bool
     let strength: Float
+    let customColor: [Float]?
 }
 struct Request: Decodable {
     let width: Int
@@ -44,7 +45,7 @@ let shaderSource = """
 #include <metal_stdlib>
 using namespace metal;
 struct Vertex { float2 p; float2 uv; float weight; float padding[3]; };
-struct Uniform { float2 projectionScale; float strength; uint mode0; uint mode1; uint layers; uint pupil; uint cutoff; };
+struct Uniform { float2 projectionScale; float strength; uint mode0; uint mode1; uint layers; uint pupil; uint cutoff; float4 customColor; };
 struct Varying { float4 p [[position]]; float2 base; float2 uv; float weight; };
 vertex Varying vertexMain(uint index [[vertex_id]],constant Vertex* vertices [[buffer(0)]],constant Uniform& u [[buffer(1)]]) {
     Vertex v=vertices[index]; Varying o;
@@ -66,7 +67,9 @@ fragment float4 fragmentMain(Varying v [[stage_in]],constant Uniform& u [[buffer
     constexpr sampler s(coord::normalized,address::clamp_to_edge,filter::linear);
     if(u.cutoff)return pigment0.sample(s,v.uv);
     float4 src=base.sample(s,float2(v.base.x,1-v.base.y));
-    float3 color=layer(src.rgb,pigment0.sample(s,v.uv),u.strength,u.mode0);
+    float4 pigment=pigment0.sample(s,v.uv);
+    if(u.customColor.w!=0) pigment.rgb=u.customColor.rgb*pigment.a;
+    float3 color=layer(src.rgb,pigment,u.strength,u.mode0);
     if(u.layers==2)color=layer(color,pigment1.sample(s,v.uv),u.strength,u.mode1);
     if(u.pupil)color=mix(src.rgb,color,v.weight*mask.sample(s,float2(v.base.x,1-v.base.y)).r);
     return float4(color,src.a);
@@ -82,7 +85,15 @@ func run() throws {
     let request = try JSONDecoder().decode(Request.self, from: Data(contentsOf: requestURL))
     try require((1...1280).contains(request.width) && (1...1280).contains(request.height), "bounded image dimensions required")
     let order = request.passes.map(\.name)
-    try require(order == ["Brow", "Eyeshadow", "Eyeline", "Eyemazing", "Eyelash", "Cutoff", "Pupil", "Stereo", "Blusher", "Lip"] || order == ["Stereo"] || order == ["Blusher"] || order == ["Eyeline"] || order == ["Eyemazing"], "pinned pigment layer order required")
+    let dynamicOrder = ["Stereo", "Blusher", "Brow", "Eyeline", "Eyeshadow", "Eyemazing", "Lip"]
+    let dynamic = !order.isEmpty && order == dynamicOrder.filter { order.contains($0) }
+    try require(order == ["Brow", "Eyeshadow", "Eyeline", "Eyemazing", "Eyelash", "Cutoff", "Pupil", "Stereo", "Blusher", "Lip"] || dynamic || order == ["Stereo"] || order == ["Eyeline"] || order == ["Eyemazing"], "pinned pigment layer order required")
+    if dynamic {
+        let dynamicModes: [String: [UInt32]] = ["Stereo": [3], "Blusher": [1, 0], "Brow": [1], "Eyeshadow": [1, 2], "Eyeline": [1], "Eyemazing": [1, 2], "Lip": [1]]
+        for pass in request.passes {
+            try require(pass.modes == dynamicModes[pass.name], "pinned dynamic pigment blend required")
+        }
+    }
     if order == ["Eyeline"] {
         try require(request.passes[0].modes == [1] && request.passes[0].textures.count == 1, "pinned single eyeliner blend required")
     }
@@ -119,6 +130,9 @@ func run() throws {
     var mask = try texture(request.width, request.height)
     for pass in request.passes {
         try require(pass.strength.isFinite && (0...1).contains(pass.strength), "finite unit pigment strength required")
+        if let color = pass.customColor {
+            try require(pass.name == "Lip" && color.count == 3 && color.allSatisfy { $0.isFinite && (0...1).contains($0) }, "bounded custom lip color required")
+        }
         let expectedVertices = pass.name == "Pupil" ? 78 : ["Brow", "Stereo", "Blusher", "Lip"].contains(pass.name) ? 248 : 174
         let expectedIndices = expectedVertices == 78 ? 342 : expectedVertices == 248 ? 1113 : 1002
         try require(pass.vertexCount == expectedVertices && pass.indexCount == expectedIndices, "pinned pigment mesh cardinality required")
@@ -146,7 +160,8 @@ func run() throws {
         encoder.setRenderPipelineState(pipeline)
         encoder.setCullMode(.none)
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        let uniforms: [UInt32] = [Float(2.0/Double(request.width)).bitPattern, Float(-2.0/Double(request.height)).bitPattern, pass.strength.bitPattern, pass.modes[0], pass.modes.count > 1 ? pass.modes[1] : 0, UInt32(pass.textures.count), pass.pupil ? 1 : 0, pass.cutoff ? 1 : 0]
+        let color = pass.customColor ?? [0, 0, 0]
+        let uniforms: [UInt32] = [Float(2.0/Double(request.width)).bitPattern, Float(-2.0/Double(request.height)).bitPattern, pass.strength.bitPattern, pass.modes[0], pass.modes.count > 1 ? pass.modes[1] : 0, UInt32(pass.textures.count), pass.pupil ? 1 : 0, pass.cutoff ? 1 : 0, color[0].bitPattern, color[1].bitPattern, color[2].bitPattern, pass.customColor == nil ? 0 : Float(1).bitPattern]
         uniforms.withUnsafeBytes {
             encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 1)
             encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 1)
