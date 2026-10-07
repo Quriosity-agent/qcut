@@ -22,11 +22,6 @@ export default defineConfig({
 			path.resolve(rootDir, "src/test/setup-radix-patches.ts"),
 			path.resolve(rootDir, "src/test/setup.ts"),
 		],
-		include: [
-			"**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"../../electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"../../electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-		],
 		exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
 		coverage: {
 			provider: "v8",
@@ -34,7 +29,25 @@ export default defineConfig({
 			reportsDirectory: "./coverage",
 			exclude: ["src/test/", "*.config.*", "**/*.d.ts", "src/routeTree.gen.ts"],
 		},
-		environmentMatchGlobs: [["**/electron/**", "node"]],
+		// Vitest 4 removed environmentMatchGlobs; projects are its replacement.
+		// Main-process tests need real Node built-ins, so they run in node.
+		projects: [
+			{
+				extends: true,
+				test: { name: "dom", include: ["**/*.{test,spec}.?(c|m)[jt]s?(x)"] },
+			},
+			{
+				extends: true,
+				test: {
+					name: "node",
+					include: [
+						"../../electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+						"../../electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+					],
+					environment: "node",
+				},
+			},
+		],
 		isolate: true,
 		pool: "forks",
 		// Windows CI runners are roughly an order of magnitude slower than the
