@@ -73,10 +73,18 @@
 
 尚缺：签名宿主的确定性动态库加载方案、包内实际 UI 进出图和导出、新机器外部 payload／Python 安装、notarization。未放宽签名安全权限来掩盖失败。
 
+## CI 来源问题与源码资源 staging 修复
+
+HEAD `84f0440fe0fbaf829265a828130e3d55bb8af7a5` 的 Linux／macOS lint 通过，随后 `no-research-in-build` 检查拒绝了直接打包 research 目录。本轮没有修改或削弱该规则。
+
+新增 `stage-independent-beauty.ts` 和 `beforePack.ts`：只读取 262 个固定源码项及 manifest，验证每项 SHA-256／字节数，拒绝路径穿越、重复项、软链接、非源代码扩展、环境／runtime／模型目录及来源规则已禁止的私有文件名。验证全部通过后替换生成目录 `build/independent-beauty`；未跟踪文件及旧输出不进入新目录。保留源码许可证，原生库和模型仍在外部。打包配置改为引用此生成目录，普通 Electron 构建也编译 beforePack／afterPack hook。现有来源检查本机通过，新增测试纳入 CI。
+
+编译后的 beforePack hook 实际调用通过；重新构建未签名 arm64 directory 包 `.local/beauty-gap-resource-package/`，包内核验 262 源码项、两个真实 provider 出图成功，组合最大 RGB 差 1、MAE 0.0002306273。证据 `.local/jianying-parity/beauty-8-packaged-photo-unsigned-r3/receipt.json`。这验证当前资源 staging 路线，**不能替代签名包验收**；签名原生宿主加载错误和包内窗口未验收仍保留。
+
 ## 验证与复现
 
 - Python 486 项全部通过，无跳过；Bun 规划器／纯界面模型 17 项通过。
-- QCut provider／IPC／hook／取消／导出／结果组件、矩阵及连续帧 307 项通过，共 11 个文件。
+- QCut provider／IPC／hook／取消／导出／结果组件、矩阵及连续帧 340 项通过，共 13 个文件（含 18 项源码 staging 和 15 项来源规则测试）。
 - Electron／Web TypeScript 检查通过，完整 Web + Electron 构建通过，矩阵／视频探针构建通过。
 - 全库 `bun run lint:clean` 无错误；仍有既有 warning／info。Biome 遵守 Git ignore，并显式排除环境／模型输出、参考仓库及 Git 子模块，避免跨软链接检查外部资源。
 - 新断点校验已经对 124 个真实已保存案例执行续跑，所有输出、参数和指标重验证成功。
