@@ -74,3 +74,43 @@ describe("Beauty Lab full draft catalog", () => {
 		expect(recorded.available).toBe(false);
 	});
 });
+
+describe("independent draft catalog availability", () => {
+	const capability = {
+		available: true,
+		provider: "qcut-independent-photo-v1" as const,
+		message: "test",
+		controls: [],
+		makeupCards: [JIANYING_PORTRAIT_MAKEUP_CARDS[0].id],
+	};
+	it("allows independent makeup selection without claiming native readiness", () => {
+		const status = beautyLabCatalogStatus({
+			status: null,
+			independentStatus: capability,
+		});
+		expect(status.available).toBe(false);
+		expect(status.offlineReady).toBe(false);
+		expect(status.makeupCards[0]).toMatchObject({
+			ready: true,
+			source: "none",
+		});
+		expect(status.makeupCards.slice(1).every(({ ready }) => !ready)).toBe(true);
+	});
+	it("does not enable independent cards when its runtime is unavailable", () => {
+		const status = beautyLabCatalogStatus({
+			status: null,
+			independentStatus: { ...capability, available: false },
+		});
+		expect(status.makeupCards.every(({ ready }) => !ready)).toBe(true);
+	});
+	it("keeps native capability immutable when independent selection enables a card", () => {
+		const native = beautyLabCatalogStatus({ status: null });
+		const status = beautyLabCatalogStatus({
+			status: native,
+			independentStatus: capability,
+		});
+		expect(status.makeupCards[0].ready).toBe(true);
+		expect(native.makeupCards[0].ready).toBe(false);
+		expect(status.available).toBe(false);
+	});
+});
