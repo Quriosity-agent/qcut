@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -68,6 +69,33 @@ class MakeupMetalTests(unittest.TestCase):
     def test_transparent_active_input_is_rejected(self):
         with self.assertRaises(ValueError):
             render(rgba=np.zeros((2, 2, 4), np.uint8), passes=[], runtime=Path('missing'))
+
+    def test_shared_dynamic_gpu_uses_custom_color_and_fixed_order(self):
+        rgba = np.full((2, 2, 4), 128, np.uint8)
+        rgba[..., 3] = 255
+        entries = [entry for entry in self.passes(darken=True) if entry['name'] in ('Brow', 'Blusher', 'Lip')]
+        entries[1]['textures'] = [np.zeros((1, 1, 4), np.uint8)] * 2
+        entries[1]['modes'] = [1, 0]
+        entries[2]['modes'] = [1]
+        entries[2]['customColor'] = [1., .5, 0.]
+        entries.sort(key=lambda entry: ('Blusher', 'Brow', 'Lip').index(entry['name']))
+        with tempfile.TemporaryDirectory() as temporary:
+            result, receipt = render(rgba=rgba, passes=entries, runtime=Path(temporary))
+            np.testing.assert_array_equal(result, np.broadcast_to(np.array([64, 48, 32, 255], np.uint8), rgba.shape))
+            self.assertEqual(receipt['layers'], ['Blusher', 'Brow', 'Lip'])
+            with self.assertRaises(subprocess.CalledProcessError):
+                render(rgba=rgba, passes=entries[::-1], runtime=Path(temporary))
+
+    def test_custom_pigment_color_rejects_invalid_vectors_and_nonlip_dispatch(self):
+        rgba = np.full((2, 2, 4), 255, np.uint8)
+        entry = self.passes()[-1]
+        entry['modes'] = [1]
+        with tempfile.TemporaryDirectory() as temporary:
+            for color in ([1, 0], [1, 0, float('nan')], [1, 0, 1.1], [-.1, 0, 0]):
+                with self.assertRaises(ValueError):
+                    render(rgba=rgba, passes=[entry | {'customColor': color}], runtime=Path(temporary))
+            with self.assertRaises(subprocess.CalledProcessError):
+                render(rgba=rgba, passes=[entry | {'name': 'Brow', 'customColor': [1, .5, 0]}], runtime=Path(temporary))
 
 
 if __name__ == '__main__':
