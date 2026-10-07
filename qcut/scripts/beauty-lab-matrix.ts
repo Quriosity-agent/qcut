@@ -3,8 +3,10 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
 import { z } from "zod";
-import { createBeautyLabIndependentProvider } from "../electron/beauty-lab-independent";
-import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider";
+import {
+	beautyMatrixOptions,
+	beautyMatrixProviders,
+} from "./beauty-lab-matrix-providers";
 import { readBeautyMatrixCheckpoint } from "./beauty-lab-matrix-checkpoint";
 import { matrixSelection } from "./beauty-lab-matrix-cases";
 import { beautyPixelDifference } from "./beauty-lab-matrix-metrics";
@@ -45,23 +47,15 @@ export interface BeautyMatrixRow {
 const digest = ({ bytes }: { bytes: Uint8Array }) =>
 	createHash("sha256").update(bytes).digest("hex");
 async function main() {
-	const [configurationPath, outputPath, resume, ...extra] =
-		process.argv.slice(2);
-	if (
-		!configurationPath ||
-		!outputPath ||
-		extra.length ||
-		(resume && resume !== "--resume")
-	)
-		throw new Error(
-			"Usage: node <compiled matrix> <configuration.json> <new-output-directory> [--resume]"
-		);
+	const { configurationPath, outputPath, resume, packagedApp } =
+		beautyMatrixOptions({ argv: process.argv.slice(2) });
 	const configBytes = await readFile(configurationPath);
 	const config = configurationSchema.parse(JSON.parse(configBytes.toString()));
 	if (new Set(config.inputs.map(({ id }) => id)).size !== config.inputs.length)
 		throw new Error("Duplicate input IDs");
 	const directory = path.resolve(outputPath);
-	const engineRoot = path.resolve("research/independent-beauty");
+	const { engineRoot, executionIdentity, owned, native } =
+		await beautyMatrixProviders({ packagedApp });
 	const sourceManifestSha256 = digest({
 		bytes: await readFile(path.join(engineRoot, "source-manifest.json")),
 	});
@@ -72,13 +66,16 @@ async function main() {
 		const previous = JSON.parse(await readFile(metadataPath, "utf8")) as {
 			sourceManifestSha256: string;
 			configurationSha256: string;
+			executionIdentity?: unknown;
 		};
 		if (
 			previous.sourceManifestSha256 !== sourceManifestSha256 ||
-			previous.configurationSha256 !== configurationSha256
+			previous.configurationSha256 !== configurationSha256 ||
+			JSON.stringify(previous.executionIdentity) !==
+				JSON.stringify(executionIdentity)
 		)
 			throw new Error(
-				"Resume requires identical configuration and pinned engine source"
+				"Resume requires identical configuration, engine source and execution identity"
 			);
 	}
 	await writeFile(
@@ -88,6 +85,7 @@ async function main() {
 				config,
 				sourceManifestSha256,
 				configurationSha256,
+				executionIdentity,
 				nativeProductParityVerified: false,
 				videoVerified: false,
 			},
@@ -95,8 +93,6 @@ async function main() {
 			2
 		)
 	);
-	const owned = createBeautyLabIndependentProvider({ engineRoot });
-	const native = createJianyingPortraitAdjustmentProvider();
 	const rows: BeautyMatrixRow[] = [];
 	try {
 		const [ownedStatus, nativeStatus] = await Promise.all([
@@ -166,6 +162,7 @@ async function main() {
 					{
 						summary,
 						sourceManifestSha256,
+						executionIdentity,
 						inputs: inputs.map(({ rgba: _rgba, ...input }) => input),
 						rows,
 						nativeProductParityVerified: false,
