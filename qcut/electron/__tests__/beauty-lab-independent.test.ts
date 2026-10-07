@@ -100,6 +100,8 @@ function setup({
 		platform: "darwin",
 		environment: {
 			PATH: process.env.PATH,
+			// Pin the planner executable so the suite never depends on the host's bun install.
+			QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
 			DYLD_LIBRARY_PATH: "private",
 			PYTHONPATH: "private",
 			PYTHONDONTWRITEBYTECODE: "0",
