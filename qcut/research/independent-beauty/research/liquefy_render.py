@@ -53,39 +53,54 @@ def validate_controls(*, values):
     return result
 
 
-def render_control(*, rgba, control, value, points, yaw_radians, assets, runtime):
+def active_controls(*, controls):
+    return [key for key in CONTROLS if abs(controls.get(key, 0) / 100 * 2
+            * (1.3 if key in ('upper_atrium', 'mid_atrium') else 1)) > .001]
+
+
+def build_control_pass(*, rgba, control, value, points, yaw_radians, assets, runtime, support=None, mean_uv=None):
     positive = value > 0
     records = assets[f'{control}_{"positive" if positive else "negative"}']
     height,width=rgba.shape[:2]
-    support = generate_support(points=points,yaw_radians=yaw_radians,assets=assets)
+    if support is None:
+        support = generate_support(points=points,yaw_radians=yaw_radians,assets=assets)
     steps=build_steps(points=points,records=records,size=[width,height],yaw_radians=yaw_radians)
     yaw_degrees = np.float32(np.float32(yaw_radians * np.float32(180)) / np.float32(np.pi))
     steps['strength']=adjust_strength(points=points,steps=steps,
         parameters=np.array([yaw_degrees,width,height,20,45,-.1,0,1],np.float32),exponent=float(assets['side_exponent']))
     intensity = abs(value/100*2)
-    mask,mean_uv=None,None
+    mask=None
     if control in MASKS:
         positive_branch = positive if control=='cheekbone' else not positive
         sign='Pos' if positive_branch else 'Neg'
         entity=MASKS[control]
         suffix=sign[0] if control=='cheekbone' else sign
         mask=read_mask(path=runtime/'Cache/effect'/PACKAGE/'texture'/f'{entity}_{suffix}_mask.png')
-        mean_uv=generate_support(points=assets['mean_points'],yaw_radians=0,assets=assets)['uv']
+        if mean_uv is None:
+            mean_uv=generate_support(points=assets['mean_points'],yaw_radians=0,assets=assets)['uv']
         if control in ('upper_atrium','mid_atrium'):
             intensity*=1.3
         if control=='upper_atrium':
             intensity*=.6
         if control=='lower_atrium' and positive_branch:
             intensity*=.8
-    return render_local(rgba=rgba,support=support,triangles=assets['triangles'],steps=steps,intensity=intensity,
-        mask=mask,mask_uv=mean_uv,radial_profile='quadratic' if mask is not None else 'linear')
+    return {'support': support, 'triangles': assets['triangles'], 'steps': steps, 'intensity': intensity,
+        'mask': np.full((1, 1, 4), 255, np.uint8) if mask is None else mask,
+        'mask_uv': support['uv'] if mask is None else mean_uv,
+        'radial_profile': 'quadratic' if mask is not None else 'linear'}
+
+
+def render_control(*, rgba, control, value, points, yaw_radians, assets, runtime):
+    specification = build_control_pass(rgba=rgba, control=control, value=value, points=points,
+        yaw_radians=yaw_radians, assets=assets, runtime=runtime)
+    return render_local(rgba=rgba, runtime=runtime, **specification)
 
 
 def run(*, rgba, controls, runtime, assets_path, output, report):
     started=time.monotonic()
     validate_rgba(rgba=rgba)
     controls=validate_controls(values=controls)
-    active=[key for key in CONTROLS if abs(controls[key]/100*2*(1.3 if key in ('upper_atrium','mid_atrium') else 1))>.001]
+    active=active_controls(controls=controls)
     if len(active)>1:
         raise ValueError('single-control local deformation acceptance only; combinations are not verified')
     prediction=None
