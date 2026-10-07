@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
+import { materializePortraitHostLaunch } from "./host-launch-layout.js";
 
 const HOST_READY_TIMEOUT_MS = 30_000;
 const HOST_RENDER_TIMEOUT_MS = 30_000;
@@ -175,20 +176,21 @@ export function encodeJianyingPortraitHostStrokeCommand({
 export async function startJianyingPortraitHostProcess(
 	options: StartJianyingPortraitHostProcessOptions
 ): Promise<JianyingPortraitHostProcess> {
+	const environment = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("DYLD_"))
+	);
+	const executable = await materializePortraitHostLaunch({
+		hostPath: options.hostPath,
+		frameworkDirectory: options.frameworkDirectory,
+	});
 	const child: ChildProcessWithoutNullStreams = spawn(
-		options.hostPath,
+		executable,
 		[options.runtimeRoot, options.modelDirectory, options.packagePath],
 		{
 			env: {
-				...process.env,
+				...environment,
 				QCUT_FRAME_WIDTH: String(options.width),
 				QCUT_FRAME_HEIGHT: String(options.height),
-				DYLD_LIBRARY_PATH: [
-					options.frameworkDirectory,
-					process.env.DYLD_LIBRARY_PATH,
-				]
-					.filter(Boolean)
-					.join(":"),
 			},
 			stdio: ["pipe", "pipe", "pipe"],
 		}
