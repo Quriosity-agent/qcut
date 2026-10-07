@@ -18,6 +18,10 @@ DEFINITIONS = (
      'degree': 7, 'eventScale': 7, 'negative': .12, 'positive': -.12},
     {'name': 'MoveMouth', 'title': '嘴高低', 'min': -50, 'max': 50,
      'degree': 6, 'eventScale': 2, 'negative': .36, 'positive': -.36},
+    {'name': 'MouthCorner', 'title': '嘴角（基础）', 'min': 0, 'max': 100,
+     'degree': 15, 'eventScale': 1, 'negative': 0, 'positive': -.12},
+    {'name': 'CornerEye', 'title': '眼角扩张（基础）', 'min': 0, 'max': 100,
+     'degree': 16, 'eventScale': 2, 'negative': 0, 'positive': -.2},
 )
 BY_NAME = {entry['name']: entry for entry in DEFINITIONS}
 
