@@ -2,6 +2,8 @@
 
 2026-10-07。分支 `beauty-8-kpop` 从 `beauty-7-kpop` 的 `a466330e7969a1bc236a7923f2631921d5a61561` 创建。本轮把独立引擎源码拷入 QCut，并在美颜实验室接通原生、自研各自处理、保留结果、差分和导出。提交与推送状态以 Git 为准，PR 状态以 GitHub 为准。
 
+本文保留首次快照的历史数据。后续 32 控制、共享几何／美妆、124 组矩阵、连续帧和签名包核验见 [缺口推进记录](beauty-kpop8-gap-expansion-2026-10-08.zh-CN.md)。
+
 ## 路径边界
 
 - **原生处理**：原有 `jianyingPortraitAdjustment.render` → `createJianyingPortraitAdjustmentProvider` → 本机原生宿主与实际效果运行库。返回 `jianying-local-swing-v1`，未改接为自研。
