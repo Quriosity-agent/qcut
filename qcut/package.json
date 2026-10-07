@@ -86,7 +86,7 @@
 		"dogfood:daytona-worker": "bun run scripts/daytona-worker-dogfood.ts",
 		"check-types": "bun scripts/check-types.ts",
 		"postinstall": "bun run setup-ffmpeg && bun run setup-opencv && bun scripts/patch-node-pty.ts",
-		"build:electron": "cd electron && bun x tsc && bun x esbuild ../electron/preload.ts --bundle --platform=node --outfile=../dist/electron/preload.js --external:electron && bun x esbuild ../electron/editor-core-tracking-runtime.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/editor-core-tracking-runtime.js && bun x esbuild ../electron/jianying-text-runtime/reference.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-text-runtime/reference.js && bun x esbuild ../packages/jianying-draft-export/src/index.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-draft-export-runtime.js && bun x esbuild ../packages/jianying-draft-import/src/index.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-draft-import-runtime.js && bun ../scripts/generate-filter-lab-cubes.ts",
+		"build:electron": "cd electron && bun x tsc && bun x esbuild ../electron/preload.ts --bundle --platform=node --outfile=../dist/electron/preload.js --external:electron && bun x esbuild ../electron/editor-core-tracking-runtime.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/editor-core-tracking-runtime.js && bun x esbuild ../electron/jianying-text-runtime/reference.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-text-runtime/reference.js && bun x esbuild ../packages/jianying-draft-export/src/index.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-draft-export-runtime.js && bun x esbuild ../packages/jianying-draft-import/src/index.ts --bundle --platform=node --format=cjs --outfile=../dist/electron/jianying-draft-import-runtime.js && bun ../scripts/generate-filter-lab-cubes.ts && bun run --cwd .. compile-afterpack",
 		"build:electron:watch": "cd electron && bun x tsc --watch",
 		"audit:jianying-font-rendering": "bun x esbuild electron/jianying-font-render-audit.ts --bundle --platform=node --format=cjs --outfile=dist/electron-audits/jianying-font-render-audit.cjs --external:electron --external:fontkit && electron dist/electron-audits/jianying-font-render-audit.cjs",
 		"lint": "npx ultracite@latest lint",
@@ -99,7 +99,7 @@
 		"dist:win": "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries && bun run stage-rife-binaries && bun run stage-local-model-shot && electron-builder --win --publish never -c.win.forceCodeSigning=false && bun run verify:packaged-dependencies",
 		"dist:dir": "bun run stage:all-binaries && electron-builder --dir --publish never",
 		"dist:win:unsigned": "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries && bun run stage-rife-binaries && electron-builder --win --publish never --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg && bun run verify:packaged-rife && bun run verify:packaged-aicp",
-		"compile-afterpack": "mkdir -p dist/scripts && bun build scripts/afterPack.ts --outfile=dist/scripts/afterPack.js --target=node --format=cjs",
+		"compile-afterpack": "mkdir -p dist/scripts && bun build scripts/afterPack.ts --outfile=dist/scripts/afterPack.js --target=node --format=cjs && bun build scripts/beforePack.ts --outfile=dist/scripts/beforePack.js --target=node --format=cjs",
 		"dist:win:release": "bun run compile-afterpack && bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries && bun run stage-rife-binaries && electron-builder --win --publish never --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg && bun run verify:packaged-rife && bun run verify:packaged-aicp",
 		"dist:win:fast": "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries && bun run stage-rife-binaries && electron-builder --win --publish never --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
 		"dist:mac": "bun run compile-afterpack && bun run stage:all-binaries && electron-builder --mac --publish never && bun run verify:packaged-dependencies && bun run verify:packaged-jianying-runtime-bridges && bun run build:mac-dmg && bun run verify:packaged-ffmpeg && bun run verify:packaged-rife && bun run verify:packaged-aicp",
@@ -177,6 +177,7 @@
 		"appId": "com.qcut.videoeditor",
 		"productName": "QCut AI Video Editor",
 		"copyright": "Copyright © 2024 QCut Team",
+		"beforePack": "./dist/scripts/beforePack.js",
 		"afterPack": "./dist/scripts/afterPack.js",
 		"directories": {
 			"output": "dist-electron",
@@ -315,7 +316,7 @@
 		"nodeGypRebuild": false,
 		"extraResources": [
 			{
-				"from": "research/independent-beauty",
+				"from": "build/independent-beauty",
 				"to": "independent-beauty",
 				"filter": [
 					"**/*",
