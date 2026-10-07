@@ -18,6 +18,11 @@ def build_pass(*, positions, assets, layers, package, strength, name):
     vertices[:, 4] = 1
     textures = [premultiply_rgba8(rgba=load_texture(path=package/layer['path'],
         sha256=layer['sha256'], premultiply=False)) for layer in layers]
-    return {'name': name, 'vertices': vertices, 'triangles': assets['triangles'],
+    result = {'name': name, 'vertices': vertices, 'triangles': assets['triangles'],
         'textures': textures, 'modes': [MODES[layer['mode']] for layer in layers],
         'pupil': False, 'cutoff': False, 'strength': float(strength)}
+    if any(layer.get('customColor') for layer in layers):
+        if len(layers) != 1 or name != 'Lip':
+            raise ValueError('custom pigment color requires one lip texture')
+        result['customColor'] = assets['custom_color'].tolist()
+    return result
