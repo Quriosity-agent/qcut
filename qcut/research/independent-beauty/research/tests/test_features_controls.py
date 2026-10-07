@@ -9,10 +9,11 @@ from features_controls import DEFINITIONS, feature_degrees, features_active, nor
 
 
 class FeaturesControlTests(unittest.TestCase):
-    def test_all_seven_bindings_have_distinct_organ_degrees(self):
+    def test_all_nine_bindings_have_distinct_organ_degrees(self):
         expected = {'EnlargeEye': (1, .14), 'EyeSpacing': (0, .36), 'MoveEye': (3, -.3),
                     'Nose': (4, -.14), 'MoveNose': (5, -.14),
-                    'ZoomMouth': (7, -.42), 'MoveMouth': (6, -.36)}
+                    'ZoomMouth': (7, -.42), 'MoveMouth': (6, -.36),
+                    'MouthCorner': (15, -.12), 'CornerEye': (16, -.4)}
         self.assertEqual({entry['name'] for entry in DEFINITIONS}, set(expected))
         for definition in DEFINITIONS:
             index, value = expected[definition['name']]
@@ -21,7 +22,10 @@ class FeaturesControlTests(unittest.TestCase):
             self.assertEqual(degrees[index], np.float32(value))
             self.assertEqual(degrees[20], 2)
             self.assertEqual(np.count_nonzero(degrees), 2)
-            np.testing.assert_array_equal(degrees[8:20], np.zeros(12, np.float32))
+            other_shape = degrees[8:20].copy()
+            if index in (15, 16):
+                other_shape[index - 8] = 0
+            np.testing.assert_array_equal(other_shape, np.zeros(12, np.float32))
 
     def test_signed_controls_reverse_the_transform_without_face_degrees(self):
         expected = {'EyeSpacing': (0, -.36), 'MoveEye': (3, .3), 'MoveNose': (5, .14),
@@ -41,6 +45,7 @@ class FeaturesControlTests(unittest.TestCase):
     def test_bad_names_types_nonfinite_and_ranges_rejected(self):
         invalid = [[], None, {'MouthSize': 50}, {'EnlargeEye': True}, {'EnlargeEye': '50'},
                    {'Nose': -1}, {'EnlargeEye': 101}, {'MoveEye': 51}, {'ZoomMouth': -51},
+                   {'MouthCorner': -1}, {'CornerEye': 101},
                    {'EyeSpacing': np.nan}, {'MoveNose': np.inf}, {'MoveMouth': np.bool_(False)}]
         for values in invalid:
             with self.subTest(values=values), self.assertRaises(ValueError):
