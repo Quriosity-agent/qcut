@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.08.1] - 2026-10-07
+
 ### Improved
 - Beauty Lab can now render a photo through a separate independent engine alongside the native runtime, keep both results, compare their pixels, and export a verified comparison ZIP. Independent rendering never falls back to the native provider.
 - The independent engine supports 32 numeric face controls and 28 makeup cards, with source-hash verification, cancellation, process-tree cleanup, and stale-result protection.
