@@ -20,6 +20,7 @@ const SOURCE_RELATIVE_PATHS = [
 	"research/jianying-runtime-probe/filter-probe.mm",
 ] as const;
 
+const HOST_RPATH = "@executable_path/Frameworks";
 const pendingResolutions = new Map<boolean, Promise<string | null>>();
 
 async function isExecutable({ filePath }: { filePath: string }) {
@@ -80,6 +81,10 @@ export async function compileJianyingPortraitAdjustmentHost({
 			"IOSurface",
 			"-framework",
 			"OpenGL",
+			"-Xlinker",
+			"-rpath",
+			"-Xlinker",
+			HOST_RPATH,
 			"-o",
 			outputPath,
 		],
@@ -101,6 +106,7 @@ async function compileDevelopmentHost({
 		fingerprint.update(await readFile(source));
 	}
 	fingerprint.update(process.arch);
+	fingerprint.update(HOST_RPATH);
 	const version = fingerprint.digest("hex").slice(0, 16);
 	return compileJianyingPortraitAdjustmentHost({
 		projectRoot,
