@@ -146,8 +146,8 @@ def allowed_scripts(*, catalog):
     if not isinstance(catalog, dict) or type(catalog.get('version')) is not int or catalog['version'] != 1:
         raise ValueError('unsupported pipeline catalog')
     scripts = set()
-    for section in ('stages', 'makeup'):
-        entries = catalog.get(section)
+    for section in ('stages', 'makeup', 'makeupGroups'):
+        entries = catalog.get(section, [] if section == 'makeupGroups' else None)
         if not isinstance(entries, list):
             raise ValueError(f'pipeline catalog lacks {section}')
         for entry in entries:
