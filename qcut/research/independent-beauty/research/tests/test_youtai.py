@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from youtai_assets import load_assets
 from youtai_organs import transform_eyes, transform_mouth, transform_nose
 from youtai_render import run, validate_intensity
+from slimface_mesh_organs import space_eyes
 
 
 class YouTaiTests(unittest.TestCase):
@@ -74,6 +75,35 @@ class YouTaiTests(unittest.TestCase):
             transform_eyes(source=source, target=target, degrees=degrees, pitch=0, mesh_assets={}, assets=assets)
         np.testing.assert_array_equal(target[52], [1, -1])
         np.testing.assert_array_equal(source[52], [1, 1])
+
+    def test_eye_spacing_falloff_uses_enlarged_eye_centers(self):
+        source = np.zeros((106, 2), np.float32)
+        source[74], source[77] = [10, 10], [30, 10]
+        target = source.copy()
+        degrees = np.zeros(23, np.float32)
+        degrees[1], degrees[0] = .14, .44
+        mesh_assets = {'left_eye_spacing': np.array([1]), 'right_eye_spacing': np.array([34])}
+        assets = {'constants': np.zeros(4), 'eye_zoom': np.array([[74, 1, 0], [77, -1, 0]], np.float32),
+                  'eye_expand': np.empty((0, 3), np.float32)}
+
+        def make_eye_support(*, points, reference, assets):
+            result = np.zeros((78, 2), np.float32)
+            result[0], result[33] = points[74], points[77]
+            result[1], result[34] = points[74] + [-5, 2], points[77] + [5, 2]
+            return result
+
+        with patch('youtai_organs.eyes', side_effect=make_eye_support):
+            result = transform_eyes(source=source, target=target, degrees=degrees,
+                pitch=0, mesh_assets=mesh_assets, assets=assets)
+        before_spacing = make_eye_support(points=target, reference=source, assets=mesh_assets)
+        expected = space_eyes(source=before_spacing, target=before_spacing.copy(),
+            intensity=0, assets=mesh_assets, spacing_degree=degrees[0])
+        wrong_radius = make_eye_support(points=source, reference=source, assets=mesh_assets)
+        wrong = space_eyes(source=wrong_radius, target=before_spacing.copy(),
+            intensity=0, assets=mesh_assets, spacing_degree=degrees[0])
+        np.testing.assert_array_equal(result, expected)
+        self.assertGreater(float(np.max(np.abs(result - wrong))), .0001)
+        np.testing.assert_array_equal(source[[74, 77]], [[10, 10], [30, 10]])
 
     def test_degenerate_active_mouth_fails(self):
         degrees = np.zeros(23, np.float32)
