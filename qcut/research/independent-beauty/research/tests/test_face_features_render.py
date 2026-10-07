@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from face_features_render import ASSET_NAMES, MODEL_NAMES, build_face_feature_mesh, render_rgba, run
 from face_features_controls import combined_degrees
 from features_render import build_feature_mesh
+from test_slimface_mesh import fixture
 
 
 class FaceFeaturesRenderTests(unittest.TestCase):
@@ -80,10 +81,8 @@ class FaceFeaturesRenderTests(unittest.TestCase):
 
     def test_existing_features_mesh_matches_combined_renderer_with_original_points(self):
         runtime = Path(__file__).resolve().parents[2] / 'runtime'
-        points_path = Path(__file__).resolve().parents[2] / 'output/features-pixels-20261007-r2/003-lisa/owned.json'
-        if not points_path.is_file():
-            self.skipTest('Historical portrait geometry fixture is not distributed')
-        prediction = json.loads(points_path.read_text())['alignment']
+        points, _ = fixture()
+        prediction = {'points': points.tolist(), 'consumer_pose': {'yaw': 0, 'pitch': 0}}
         original = json.loads(json.dumps(prediction))
         for controls in ({'EnlargeEye': 70, 'Nose': 60, 'ZoomMouth': -20},
                          {'EyeSpacing': -50, 'MoveEye': 50, 'MoveMouth': -25}):
