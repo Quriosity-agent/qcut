@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Remove the unused QAgent development tool (`packages/qagent`) and its scripts from the repository. It was never part of the QCut app, so installed builds are unaffected.
+
+### Fixed
+- Main-process, script and platform tests run in the Node test environment again; a Vitest 4 upgrade had silently moved them into a browser-like environment.
+- Make a Beauty Lab live-candidate test robust on slow Windows CI runners.
+
 ## [2026.10.08.2] - 2026-10-08
 
 ### Fixed
