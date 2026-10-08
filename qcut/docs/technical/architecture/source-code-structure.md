@@ -620,8 +620,6 @@ Core application bootstrap files:
 - `routeTree.gen.ts` - Generated TanStack Router tree
 - `App.tsx` - Main application component
 - `globals.css` - Global CSS styles
-- `env.ts` - Environment configuration
-- `env.client.ts` - Client-side environment
 - `main.tsx` - Application entry point
 
 ### Electron Integration
