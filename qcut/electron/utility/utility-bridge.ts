@@ -383,7 +383,7 @@ function getWindow(): BrowserWindow | null {
 	return BrowserWindow.getAllWindows()[0] ?? null;
 }
 
-/** Resolve QCut MCP server entry point (mirrors pty-handler logic). */
+/** Resolve the QCut MCP server entry point. */
 function resolveQcutMcpServerEntry(): string | null {
 	const candidates = [
 		path.resolve(__dirname, "mcp", "qcut-mcp-server.js"),
