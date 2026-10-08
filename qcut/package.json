@@ -527,7 +527,6 @@
 		"electron-updater": "^6.8.3",
 		"extract-zip": "2.0.1",
 		"fontkit": "2.0.4",
-		"gif.js": "^0.2.0",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
 		"next": "^16.0.0",
