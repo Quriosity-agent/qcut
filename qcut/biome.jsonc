@@ -72,7 +72,6 @@
 				"**/temp/**",
 				"**/tmp/**",
 				"packages/video-agent-skill/**",
-				"packages/qagent/**",
 				"docs/completed/**",
 				"**/routeTree.gen.ts",
 				".agents/**",

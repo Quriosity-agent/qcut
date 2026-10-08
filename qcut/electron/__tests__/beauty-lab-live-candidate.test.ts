@@ -52,6 +52,9 @@ vi.mock("../jianying-portrait-adjustment-runtime/makeup-resolver.js", () => ({
 	resolveJianyingPortraitMakeupCard: mocks.makeup,
 }));
 
+// Dependency capture before launch can exceed vi.waitFor's 1s default on slow
+// runners; let the configured test timeout be the only bound.
+const JOB_START = { timeout: 30_000 };
 let root: string;
 let files: Awaited<ReturnType<typeof setupFiles>>;
 beforeEach(async () => {
@@ -105,7 +108,7 @@ describe("development static candidate registration (synthetic jobs only)", () =
 		const pending = expect(provider.render({ request })).rejects.toThrow(
 			/cancelled/
 		);
-		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledOnce(), JOB_START);
 		const signal = mocks.run.mock.calls[0][0].signal as AbortSignal;
 		let finished = false;
 		const disposal = provider.dispose().then(() => {

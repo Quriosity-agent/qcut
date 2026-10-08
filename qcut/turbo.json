@@ -36,10 +36,6 @@
 		"aicp:test": {
 			"inputs": ["packages/video-agent-skill/**"],
 			"cache": false
-		},
-		"qagent:build": {
-			"inputs": ["packages/qagent/**"],
-			"cache": false
 		}
 	}
 }

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlatformCapability } from "@qcut/platform-core";
 import { createDesktopAdapter } from "../index";

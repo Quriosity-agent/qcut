@@ -5,6 +5,28 @@ import path from "node:path";
 
 const webRoot = path.resolve(__dirname, "apps/web");
 
+// Main-process, script and platform tests need real Node built-ins (e.g.
+// node:sqlite), so they run in the node environment; everything else is DOM.
+const nodeTests = [
+	"electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"electron/native-pipeline/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"electron/pi-agent/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"scripts/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/platform-core/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/platform-desktop/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+];
+const domTests = [
+	"apps/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/platform-web/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/editor-core/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/jianying-draft-export/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	"packages/jianying-draft-import/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+	// Scoped to qcut-cityfilm: sibling skills (e.g. qcut-vlog) use bun:test,
+	// which Vitest cannot resolve.
+	".agents/skills/qcut-toolkit/qcut-cityfilm/scripts/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+];
+
 export default defineConfig({
 	plugins: [react()],
 	test: {
@@ -21,23 +43,6 @@ export default defineConfig({
 			path.resolve(webRoot, "src/test/setup-radix-patches.ts"),
 			path.resolve(webRoot, "src/test/setup.ts"),
 		],
-		include: [
-			"apps/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"electron/native-pipeline/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"electron/pi-agent/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"scripts/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/platform-core/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/platform-desktop/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/platform-web/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/editor-core/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/jianying-draft-export/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			"packages/jianying-draft-import/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-			// Scoped to qcut-cityfilm: sibling skills (e.g. qcut-vlog) use bun:test,
-			// which Vitest cannot resolve.
-			".agents/skills/qcut-toolkit/qcut-cityfilm/scripts/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-		],
 		exclude: ["**/node_modules/**", "**/dist/**", "**/tests/e2e/**"],
 		coverage: {
 			provider: "v8",
@@ -50,11 +55,13 @@ export default defineConfig({
 				"apps/web/src/routeTree.gen.ts",
 			],
 		},
-		environmentMatchGlobs: [
-			["**/electron/**", "node"],
-			["scripts/**", "node"],
-			["packages/platform-core/**", "node"],
-			["packages/platform-desktop/**", "node"],
+		// Vitest 4 removed environmentMatchGlobs; projects are its replacement.
+		projects: [
+			{ extends: true, test: { name: "dom", include: domTests } },
+			{
+				extends: true,
+				test: { name: "node", include: nodeTests, environment: "node" },
+			},
 		],
 		isolate: true,
 		pool: "forks",

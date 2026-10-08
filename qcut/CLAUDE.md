@@ -64,7 +64,6 @@ qcut/
 │   ├── auth/                # @qcut/auth
 │   ├── db/                  # @qcut/db
 │   ├── license-server/      # License management service
-│   ├── qagent/              # AI agent orchestration (separate build)
 │   └── video-agent-skill/   # Git submodule: AICP source, tests, YAML pipelines
 ├── electron/                # Electron main process
 │   ├── main.ts              # Main process entry
@@ -89,7 +88,6 @@ qcut/
 | IPC Handlers | `electron/*-handler.ts` (22 files) |
 | Claude HTTP API | `electron/claude/claude-http-server.ts` |
 | Native Pipeline CLI | `electron/native-pipeline/cli/cli.ts` |
-| Agent Config | `qagent.yaml` |
 
 ## Code Standards
 
