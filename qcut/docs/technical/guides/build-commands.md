@@ -161,9 +161,6 @@ bun run release:promote   # Promote prerelease to stable
 | `aicp:list-models` | List available AICP models |
 | `submodule:init` | Initialize git submodules |
 | `submodule:update` | Update git submodules to latest remote |
-| `qagent:build` | Build QAgent packages |
-| `qagent:init` | Install and build QAgent |
-| `qagent:setup` | Setup QAgent (alias for qagent:init) |
 | `dev:web` | Start web app dev server only |
 | `build:web` | Build web app only |
 | `electron:prod` | Run Electron in production mode (alias) |
