@@ -225,8 +225,8 @@ bun run electron    # starts the built app
 For development with hot reload, run the Vite dev server and Electron in two terminals:
 
 ```bash
-bun dev               # terminal 1: Vite dev server on http://localhost:5173
-bun run electron:dev  # terminal 2: Electron in development mode
+bun run --cwd apps/web dev  # terminal 1: Vite dev server on http://localhost:5173
+bun run electron:dev        # terminal 2: Electron in development mode
 ```
 
 `electron:dev` loads the dev server and the compiled main process, so run `bun run build` once first and rerun `bun run build:electron` after changing files under `electron/`.
