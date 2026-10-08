@@ -31,7 +31,6 @@ const CODEX_SKILLS = [
 	"linear-cli",
 	"native-cli",
 	"pr-comments",
-	"qagent",
 	"qcut-toolkit",
 ];
 const CODEX_OPENAI_METADATA: Record<
@@ -71,12 +70,6 @@ const CODEX_OPENAI_METADATA: Record<
 		shortDescription: "Export and fix GitHub PR review comments",
 		defaultPrompt:
 			"Use this skill to export GitHub PR review comments, preprocess review feedback, and address actionable CodeRabbit, Gemini, Devin, or human review comments.",
-	},
-	qagent: {
-		displayName: "QAgent",
-		shortDescription: "Orchestrate parallel QCut development agents",
-		defaultPrompt:
-			"Use QAgent to spawn agents, check session status, manage PR work, handle CI failures, or batch-process QCut development tasks.",
 	},
 	"qcut-toolkit": {
 		displayName: "QCut Toolkit",
