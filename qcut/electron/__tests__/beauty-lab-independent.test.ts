@@ -11,6 +11,8 @@ import {
 } from "../beauty-lab-independent";
 import type { BeautyLabIndependentRequest } from "../beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
+import { verifyIndependentBeautyEnvironment } from "../beauty-lab-runtime-environment";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],
@@ -53,9 +55,42 @@ afterEach(async () => {
 function setup({
 	mutate,
 	run,
+	environment = {
+		PATH: process.env.PATH,
+		QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
+		DYLD_LIBRARY_PATH: "private",
+		PYTHONPATH: "private",
+		PYTHONDONTWRITEBYTECODE: "0",
+	},
+	verifyRuntime = vi
+		.fn<typeof verifyIndependentBeautyRuntime>()
+		.mockResolvedValue({
+			profile: "fixture",
+			verifiedFiles: 1,
+			verifiedBytes: 1,
+		}),
+	verifyEnvironment = vi
+		.fn<typeof verifyIndependentBeautyEnvironment>()
+		.mockResolvedValue({
+			pythonVersion: "3.12",
+			packages: {
+				onnxruntime: "1.22.1",
+				onnx: "1.19.0",
+				numpy: "2.5.3",
+				pillow: "12.2.0",
+				"opencv-python-headless": "4.12.0.88",
+			},
+			cpuInferenceVerified: true,
+			compilerExecutionVerified: true,
+			metalShaderVerified: true,
+			gpuRenderVerified: false,
+		}),
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
 	run?: typeof runIndependentBeautyJob;
+	environment?: NodeJS.ProcessEnv;
+	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
+	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 } = {}) {
 	const runJob = vi.fn<typeof runIndependentBeautyJob>(
 		run ??
@@ -105,20 +140,143 @@ function setup({
 		runtimeRoot: directory,
 		python: process.execPath,
 		platform: "darwin",
-		environment: {
-			PATH: process.env.PATH,
-			// Pin the planner executable so the suite never depends on the host's bun install.
-			QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
-			DYLD_LIBRARY_PATH: "private",
-			PYTHONPATH: "private",
-			PYTHONDONTWRITEBYTECODE: "0",
-		},
+		environment,
 		runJob,
+		verifyRuntime,
+		verifyEnvironment,
 	});
-	return { provider, runJob };
+	return { provider, runJob, verifyEnvironment, verifyRuntime, environment };
 }
 
 describe("independent photo provider", () => {
+	it("reuses successful probes across availability and rendering while checking payload each time", async () => {
+		const { provider, verifyEnvironment, verifyRuntime } = setup();
+		expect((await provider.inspect()).available).toBe(true);
+		expect((await provider.inspect()).available).toBe(true);
+		await provider.render({ request });
+		expect(verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(verifyRuntime).toHaveBeenCalledTimes(3);
+	});
+	it("blocks changed payload and sources even after successful environment probes", async () => {
+		const { provider, verifyEnvironment, verifyRuntime, runJob } = setup();
+		expect((await provider.inspect()).available).toBe(true);
+		vi.mocked(verifyRuntime).mockRejectedValueOnce(
+			new Error("changed payload")
+		);
+		await expect(provider.render({ request })).rejects.toThrow(
+			"changed payload"
+		);
+		await writeFile(
+			path.join(directory, "source-manifest.json"),
+			JSON.stringify({
+				files: [{ path: "missing.py", sha256: "a".repeat(64) }],
+				generatedFiles: [],
+			})
+		);
+		expect((await provider.inspect()).available).toBe(false);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(runJob).not.toHaveBeenCalled();
+	});
+	it("invalidates successful probes when the resolved Bun changes", async () => {
+		const { provider, verifyEnvironment, environment } = setup();
+		await provider.inspect();
+		const nextBun = path.join(directory, "next-bun");
+		await writeFile(nextBun, "fixture", { mode: 0o755 });
+		environment.QCUT_INDEPENDENT_BEAUTY_BUN = nextBun;
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+		expect(verifyEnvironment).toHaveBeenLastCalledWith(
+			expect.objectContaining({ bun: nextBun })
+		);
+	});
+	it("invalidates successful probes when source manifest identity changes", async () => {
+		const { provider, verifyEnvironment } = setup();
+		await provider.inspect();
+		await writeFile(
+			path.join(directory, "source-manifest.json"),
+			JSON.stringify({ files: [], generatedFiles: [] }, null, 2)
+		);
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it.each([
+		{ key: "DEVELOPER_DIR" },
+		{ key: "SDKROOT" },
+	])("invalidates probes when $key changes", async ({ key }) => {
+		const { provider, verifyEnvironment, environment } = setup();
+		await provider.inspect();
+		environment[key] = "/changed-toolchain";
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it("retries failed probes instead of caching unavailable status", async () => {
+		const { provider, verifyEnvironment } = setup();
+		vi.mocked(verifyEnvironment).mockRejectedValueOnce(
+			new Error("dependency missing")
+		);
+		expect((await provider.inspect()).available).toBe(false);
+		expect((await provider.inspect()).available).toBe(true);
+		await provider.inspect();
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it("keeps probe caches local to each provider", async () => {
+		const first = setup(),
+			second = setup();
+		await first.provider.inspect();
+		await second.provider.inspect();
+		expect(first.verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(second.verifyEnvironment).toHaveBeenCalledTimes(1);
+	});
+	it("cancels the environment probe before dispatching an image job", async () => {
+		let probing: () => void = () => {};
+		const started = new Promise<void>((resolve) => {
+			probing = resolve;
+		});
+		const verifyEnvironment = vi
+			.fn<typeof verifyIndependentBeautyEnvironment>()
+			.mockImplementation(
+				({ signal }) =>
+					new Promise((_, reject) => {
+						probing();
+						const cancel = () => reject(new Error("environment cancelled"));
+						if (signal?.aborted) cancel();
+						else signal?.addEventListener("abort", cancel, { once: true });
+					})
+			);
+		const { provider, runJob } = setup({ verifyEnvironment });
+		const pending = provider.render({ request });
+		const rejected = expect(pending).rejects.toThrow("environment cancelled");
+		await started;
+		await provider.cancel({ request: { requestId: request.requestId } });
+		await rejected;
+		expect(runJob).not.toHaveBeenCalled();
+	});
+	it("blocks rendering when Python imports or Metal capability checks fail", async () => {
+		const verifyEnvironment = vi
+			.fn<typeof verifyIndependentBeautyEnvironment>()
+			.mockRejectedValue(new Error("numpy version mismatch"));
+		const { provider, runJob } = setup({ verifyEnvironment });
+		expect(await provider.inspect()).toMatchObject({
+			available: false,
+			message: expect.stringContaining("numpy version mismatch"),
+		});
+		await expect(provider.render({ request })).rejects.toThrow(
+			"numpy version mismatch"
+		);
+		expect(runJob).not.toHaveBeenCalled();
+	});
+	it("reports missing payload and blocks dispatch before rendering", async () => {
+		const verifyRuntime = vi
+			.fn<typeof verifyIndependentBeautyRuntime>()
+			.mockRejectedValue(new Error("Missing Cache whitening LUT"));
+		const { provider, runJob } = setup({ verifyRuntime });
+		expect(await provider.inspect()).toMatchObject({
+			available: false,
+			message: expect.stringContaining("Missing Cache"),
+		});
+		await expect(provider.render({ request })).rejects.toThrow("Missing Cache");
+		expect(runJob).not.toHaveBeenCalled();
+	});
 	it("reserves the job before asynchronous validation so immediate cancellation works", async () => {
 		const { provider, runJob } = setup();
 		const job = provider.render({ request });

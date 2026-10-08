@@ -49,7 +49,6 @@
 		"jsdom": "^28.1.0",
 		"madge": "^8.0.0",
 		"patch-package": "^8.0.1",
-		"pdf-lib": "^1.17.1",
 		"pptxgenjs": "^4.0.1",
 		"playwright": "^1.58.2",
 		"rollup-plugin-visualizer": "^6.0.5",
@@ -514,6 +513,7 @@
 		]
 	},
 	"dependencies": {
+		"pdf-lib": "^1.17.1",
 		"@ffmpeg/core": "^0.12.10",
 		"@ffmpeg/ffmpeg": "^0.12.15",
 		"@ffmpeg/util": "^0.12.2",

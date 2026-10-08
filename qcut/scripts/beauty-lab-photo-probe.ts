@@ -2,15 +2,19 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
-import { createBeautyLabIndependentProvider } from "../electron/beauty-lab-independent";
-import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider";
+import {
+	beautyMatrixOptions,
+	beautyMatrixProviders,
+} from "./beauty-lab-matrix-providers";
 
 async function main() {
-	const [imagePath, outputPath, ...extra] = process.argv.slice(2);
-	if (!imagePath || !outputPath || extra.length)
-		throw new Error(
-			"Usage: node <compiled-beauty-lab-photo-probe.cjs> <image> <new-output-directory>"
-		);
+	const {
+		configurationPath: imagePath,
+		outputPath,
+		resume,
+		packagedApp,
+	} = beautyMatrixOptions({ argv: process.argv.slice(2) });
+	if (resume) throw new Error("Photo probe requires a new output directory");
 	const directory = path.resolve(outputPath);
 	await mkdir(directory, { recursive: false });
 	const image = await loadImage(path.resolve(imagePath));
@@ -36,10 +40,9 @@ async function main() {
 			canvas.toBuffer("image/png")
 		);
 	}
-	const owned = createBeautyLabIndependentProvider({
-		engineRoot: path.resolve("research/independent-beauty"),
+	const { owned, native, executionIdentity } = await beautyMatrixProviders({
+		packagedApp,
 	});
-	const native = createJianyingPortraitAdjustmentProvider();
 	try {
 		const [independentStatus, nativeStatus] = await Promise.all([
 			owned.inspect(),
@@ -103,6 +106,7 @@ async function main() {
 		const difference = new Uint8Array(rgba.length);
 		let total = 0,
 			maximum = 0,
+			maximumAlpha = 0,
 			changed = 0;
 		for (let index = 0; index < rgba.length; index += 4) {
 			let pixelChanged = false;
@@ -116,6 +120,10 @@ async function main() {
 				difference[index + channel] = Math.min(255, delta * 4);
 			}
 			difference[index + 3] = 255;
+			maximumAlpha = Math.max(
+				maximumAlpha,
+				Math.abs(result.rgba[index + 3] - baseline.rgba[index + 3])
+			);
 			if (pixelChanged) changed++;
 		}
 		await Promise.all([
@@ -130,6 +138,7 @@ async function main() {
 				path.join(directory, "comparison.json"),
 				JSON.stringify(
 					{
+						executionIdentity,
 						adjustments,
 						width,
 						height,
@@ -142,6 +151,7 @@ async function main() {
 						zeroIdentity: true,
 						meanRGB: total / (width * height * 3),
 						maximumRGB: maximum,
+						maximumAlpha,
 						changedPixels: changed,
 					},
 					null,
