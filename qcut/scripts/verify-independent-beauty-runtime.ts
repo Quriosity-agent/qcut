@@ -2,11 +2,22 @@ import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { verifyIndependentBeautyRuntime } from "../electron/beauty-lab-runtime-payload";
+import { verifyIndependentBeautyEnvironment } from "../electron/beauty-lab-runtime-environment";
 
 async function main() {
-	const [runtimePath, enginePath, ...extra] = process.argv.slice(2);
-	if (!runtimePath || !enginePath || extra.length)
-		throw new Error("Usage: <audit> <external runtime> <engine source root>");
+	const [runtimePath, enginePath, python, bun, ...extra] =
+		process.argv.slice(2);
+	if (
+		!runtimePath ||
+		!enginePath ||
+		Boolean(python) !== Boolean(bun) ||
+		extra.length
+	)
+		throw new Error(
+			"Usage: <audit> <external runtime> <engine source root> [<Python executable> <Bun executable>]"
+		);
+	if (python && process.platform !== "darwin")
+		throw new Error("Environment audit requires macOS");
 	const [runtimeRoot, engineRoot] = await Promise.all([
 		realpath(runtimePath),
 		realpath(enginePath),
@@ -19,6 +30,14 @@ async function main() {
 		runtimeRoot,
 		sourceManifestSha256: createHash("sha256").update(manifest).digest("hex"),
 	});
+	const capabilities =
+		python && bun
+			? await verifyIndependentBeautyEnvironment({
+					python: path.resolve(python),
+					bun: path.resolve(bun),
+					cwd: engineRoot,
+				})
+			: null;
 	console.log(
 		JSON.stringify(
 			{
@@ -27,7 +46,8 @@ async function main() {
 				...result,
 				milliseconds: performance.now() - start,
 				pixelsRendered: false,
-				pythonEnvironmentVerified: false,
+				pythonEnvironmentVerified: capabilities !== null,
+				capabilities,
 			},
 			null,
 			2
