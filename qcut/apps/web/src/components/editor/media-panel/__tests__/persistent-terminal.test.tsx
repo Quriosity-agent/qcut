@@ -49,10 +49,6 @@ vi.mock("../views/sounds", () => ({
 	SoundsView: () => <div data-testid="sounds-view" />,
 }));
 
-vi.mock("../views/nano-edit", () => ({
-	default: () => <div data-testid="nano-edit-view" />,
-}));
-
 vi.mock("../views/draw", () => ({
 	default: () => <div data-testid="draw-view" />,
 }));
