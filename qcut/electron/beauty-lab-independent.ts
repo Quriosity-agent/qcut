@@ -19,6 +19,7 @@ import {
 	type BeautyLabIndependentResult,
 } from "./beauty-lab-independent-contract.js";
 import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
+import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
 
 const requestSchema = z
 	.object({
@@ -119,6 +120,7 @@ export function createBeautyLabIndependentProvider({
 	platform = process.platform,
 	environment = process.env,
 	runJob = runIndependentBeautyJob,
+	verifyRuntime = verifyIndependentBeautyRuntime,
 }: {
 	engineRoot: string;
 	runtimeRoot?: string;
@@ -126,6 +128,7 @@ export function createBeautyLabIndependentProvider({
 	platform?: NodeJS.Platform;
 	environment?: NodeJS.ProcessEnv;
 	runJob?: typeof runIndependentBeautyJob;
+	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 }) {
 	let active:
 		| { id: string; controller: AbortController; done: Promise<void> }
@@ -209,10 +212,10 @@ export function createBeautyLabIndependentProvider({
 				throw new Error(
 					"Independent photo engine requires macOS and an active provider"
 				);
+			const sourceManifestSha256 = await verifySources();
 			await Promise.all([
 				access(python, constants.X_OK),
-				access(path.join(runtimeRoot, "research")),
-				verifySources(),
+				verifyRuntime({ runtimeRoot, sourceManifestSha256 }),
 				resolveBun(),
 			]);
 			const inventory = await catalog();
