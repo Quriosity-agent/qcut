@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.08.3] - 2026-10-08
+
 ### Changed
 - Remove the unused QAgent development tool (`packages/qagent`) and its scripts from the repository. It was never part of the QCut app, so installed builds are unaffected.
 
