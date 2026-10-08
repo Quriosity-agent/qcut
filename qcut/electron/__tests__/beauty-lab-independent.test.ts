@@ -55,6 +55,13 @@ afterEach(async () => {
 function setup({
 	mutate,
 	run,
+	environment = {
+		PATH: process.env.PATH,
+		QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
+		DYLD_LIBRARY_PATH: "private",
+		PYTHONPATH: "private",
+		PYTHONDONTWRITEBYTECODE: "0",
+	},
 	verifyRuntime = vi
 		.fn<typeof verifyIndependentBeautyRuntime>()
 		.mockResolvedValue({
@@ -81,6 +88,7 @@ function setup({
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
 	run?: typeof runIndependentBeautyJob;
+	environment?: NodeJS.ProcessEnv;
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 } = {}) {
@@ -132,22 +140,93 @@ function setup({
 		runtimeRoot: directory,
 		python: process.execPath,
 		platform: "darwin",
-		environment: {
-			PATH: process.env.PATH,
-			// Pin the planner executable so the suite never depends on the host's bun install.
-			QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
-			DYLD_LIBRARY_PATH: "private",
-			PYTHONPATH: "private",
-			PYTHONDONTWRITEBYTECODE: "0",
-		},
+		environment,
 		runJob,
 		verifyRuntime,
 		verifyEnvironment,
 	});
-	return { provider, runJob };
+	return { provider, runJob, verifyEnvironment, verifyRuntime, environment };
 }
 
 describe("independent photo provider", () => {
+	it("reuses successful probes across availability and rendering while checking payload each time", async () => {
+		const { provider, verifyEnvironment, verifyRuntime } = setup();
+		expect((await provider.inspect()).available).toBe(true);
+		expect((await provider.inspect()).available).toBe(true);
+		await provider.render({ request });
+		expect(verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(verifyRuntime).toHaveBeenCalledTimes(3);
+	});
+	it("blocks changed payload and sources even after successful environment probes", async () => {
+		const { provider, verifyEnvironment, verifyRuntime, runJob } = setup();
+		expect((await provider.inspect()).available).toBe(true);
+		vi.mocked(verifyRuntime).mockRejectedValueOnce(
+			new Error("changed payload")
+		);
+		await expect(provider.render({ request })).rejects.toThrow(
+			"changed payload"
+		);
+		await writeFile(
+			path.join(directory, "source-manifest.json"),
+			JSON.stringify({
+				files: [{ path: "missing.py", sha256: "a".repeat(64) }],
+				generatedFiles: [],
+			})
+		);
+		expect((await provider.inspect()).available).toBe(false);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(runJob).not.toHaveBeenCalled();
+	});
+	it("invalidates successful probes when the resolved Bun changes", async () => {
+		const { provider, verifyEnvironment, environment } = setup();
+		await provider.inspect();
+		const nextBun = path.join(directory, "next-bun");
+		await writeFile(nextBun, "fixture", { mode: 0o755 });
+		environment.QCUT_INDEPENDENT_BEAUTY_BUN = nextBun;
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+		expect(verifyEnvironment).toHaveBeenLastCalledWith(
+			expect.objectContaining({ bun: nextBun })
+		);
+	});
+	it("invalidates successful probes when source manifest identity changes", async () => {
+		const { provider, verifyEnvironment } = setup();
+		await provider.inspect();
+		await writeFile(
+			path.join(directory, "source-manifest.json"),
+			JSON.stringify({ files: [], generatedFiles: [] }, null, 2)
+		);
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it.each([
+		{ key: "DEVELOPER_DIR" },
+		{ key: "SDKROOT" },
+	])("invalidates probes when $key changes", async ({ key }) => {
+		const { provider, verifyEnvironment, environment } = setup();
+		await provider.inspect();
+		environment[key] = "/changed-toolchain";
+		expect((await provider.inspect()).available).toBe(true);
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it("retries failed probes instead of caching unavailable status", async () => {
+		const { provider, verifyEnvironment } = setup();
+		vi.mocked(verifyEnvironment).mockRejectedValueOnce(
+			new Error("dependency missing")
+		);
+		expect((await provider.inspect()).available).toBe(false);
+		expect((await provider.inspect()).available).toBe(true);
+		await provider.inspect();
+		expect(verifyEnvironment).toHaveBeenCalledTimes(2);
+	});
+	it("keeps probe caches local to each provider", async () => {
+		const first = setup(),
+			second = setup();
+		await first.provider.inspect();
+		await second.provider.inspect();
+		expect(first.verifyEnvironment).toHaveBeenCalledTimes(1);
+		expect(second.verifyEnvironment).toHaveBeenCalledTimes(1);
+	});
 	it("cancels the environment probe before dispatching an image job", async () => {
 		let probing: () => void = () => {};
 		const started = new Promise<void>((resolve) => {
