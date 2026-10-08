@@ -17,7 +17,7 @@
   <p>
     <a href="https://github.com/Quriosity-agent/qcut/releases/latest"><img src="https://img.shields.io/github/v/release/Quriosity-agent/qcut?label=latest" alt="Latest QCut release" /></a>
     <a href="qcut/LICENSE"><img src="https://img.shields.io/badge/license-MIT-18b8b8" alt="MIT license" /></a>
-    <a href="https://deepwiki.com/Quriosity-agent/qcut"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
+    <a href="https://deepwiki.com/Quriosity-agent/qcut"><img src="https://img.shields.io/badge/Ask-DeepWiki-1f6feb" alt="Ask DeepWiki" /></a>
   </p>
 </div>
 
