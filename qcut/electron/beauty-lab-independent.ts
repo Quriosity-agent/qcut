@@ -140,6 +140,7 @@ export function createBeautyLabIndependentProvider({
 		| { id: string; controller: AbortController; done: Promise<void> }
 		| undefined;
 	let disposed = false;
+	let verifiedEnvironmentKey: string | null = null;
 	async function resolveBun() {
 		const candidates = [
 			environment.QCUT_INDEPENDENT_BEAUTY_BUN,
@@ -224,13 +225,25 @@ export function createBeautyLabIndependentProvider({
 				verifyRuntime({ runtimeRoot, sourceManifestSha256 }),
 				resolveBun(),
 			]);
-			await verifyEnvironment({
+			const environmentKey = JSON.stringify([
 				python,
 				bun,
-				cwd: engineRoot,
-				environment,
-				signal,
-			});
+				sourceManifestSha256,
+				environment.DEVELOPER_DIR,
+				environment.SDKROOT,
+			]);
+			if (verifiedEnvironmentKey !== environmentKey) {
+				verifiedEnvironmentKey = null;
+				await verifyEnvironment({
+					python,
+					bun,
+					cwd: engineRoot,
+					environment,
+					signal,
+				});
+				signal?.throwIfAborted();
+				verifiedEnvironmentKey = environmentKey;
+			}
 			const inventory = await catalog();
 			return {
 				available: true,
