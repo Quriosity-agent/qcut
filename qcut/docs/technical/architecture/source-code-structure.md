@@ -669,7 +669,6 @@ All Electron code is 100% TypeScript:
 - `release-notes-utils.ts` - Release notes utilities
 
 **Terminal & Skills:**
-- `pty-handler.ts` - PTY terminal session management
 - `pty-spawn-diagnostics.ts` - PTY spawn diagnostics
 - `skills-handler.ts` - AI skills file operations
 - `skills-sync-handler.ts` - Skills synchronization
