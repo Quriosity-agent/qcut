@@ -185,18 +185,9 @@ export default defineConfig(({ mode }) => {
 						//   return 'editor-core';
 						// }
 
-						// Form and validation libraries
-						if (
-							id.includes("react-hook-form") ||
-							id.includes("zod") ||
-							id.includes("@hookform")
-						) {
+						// Validation library
+						if (id.includes("zod")) {
 							return "vendor-forms";
-						}
-
-						// Charts and data visualization
-						if (id.includes("recharts") || id.includes("embla-carousel")) {
-							return "vendor-charts";
 						}
 
 						// Motion and animation libraries
