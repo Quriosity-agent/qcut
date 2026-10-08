@@ -162,11 +162,7 @@ docs/pr-comments/*
 !docs/pr-comments/README.md
 .tmp/
 
-# QAgent (packages/qagent) build artifacts
 *.tsbuildinfo
-packages/qagent/**/.next/
-packages/qagent/**/dist/
-packages/qagent/packages/web/screenshots/
 *-context.md
 
 # Local comic workspace
