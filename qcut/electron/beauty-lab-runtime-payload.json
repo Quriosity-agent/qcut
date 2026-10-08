@@ -1,0 +1,1797 @@
+{
+	"schemaVersion": 1,
+	"profile": "qcut-independent-photo-v1-20261008",
+	"sourceManifestSha256": "27728858fe1687c540657977bc31a570146dbdd0e789448f142a10569b9a2750",
+	"files": [
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/config.json",
+			"bytes": 959,
+			"sha256": "5fd6712eea3eb73152258769822e1eccb8f100953b4c21c100154596b7bd47a3"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/image/eyebrow/eyebrow.png",
+			"bytes": 55982,
+			"sha256": "723ded2a0f605f3386d785460f05bc1fb55b3b5a3010383531a719ef8a165298"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "4a15396f88ecdbdee96d7393effe8c3b94fa72fc1a651c001f3c07595b5ff2cb"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/shaders/brow_faceu_xshader-0-d651/gles2/cc77.frag",
+			"bytes": 7479,
+			"sha256": "4c4b55a987a880dc50929321a1fba5ffebf6aef11a67b1bd4150ce6bd4cbab64"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/shaders/brow_faceu_xshader-0-d651/gles2/cc77.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/shaders/brow_faceu_xshader-0-d651/metal/cc77.frag",
+			"bytes": 14705,
+			"sha256": "b001b54c5706236f0981e2e88824f3be044a9ceedae5e5064113e2fad4463d1d"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/shaders/brow_faceu_xshader-0-d651/metal/cc77.vert",
+			"bytes": 1350,
+			"sha256": "e5286698c1ba5d4e8e36b1fc6fe830b27edd1bba3e445ca2a92aeca8f9770ca7"
+		},
+		{
+			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "1d71a8e78208459a7767a2fd0956a814ea9d5f2d81f73310152737872eea6eac"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/config.json",
+			"bytes": 958,
+			"sha256": "f0fc3a2be53b5cd018928b8fd83c80eb4bd885126a9742946f07f1815939c4c1"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/image/eyebrow/eyebrow.png",
+			"bytes": 68417,
+			"sha256": "d9e2602cb599227bfe501d4b80247833a1b9a0b4d1ecd8b79ee74dd7258dc92d"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "f8e35091f8b2b2635fe4f32086af743d38498d204edd74a229957f36320b047a"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/shaders/brow_faceu_xshader-0-e662/gles2/bade.frag",
+			"bytes": 7479,
+			"sha256": "4c4b55a987a880dc50929321a1fba5ffebf6aef11a67b1bd4150ce6bd4cbab64"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/shaders/brow_faceu_xshader-0-e662/gles2/bade.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/shaders/brow_faceu_xshader-0-e662/metal/bade.frag",
+			"bytes": 14705,
+			"sha256": "b001b54c5706236f0981e2e88824f3be044a9ceedae5e5064113e2fad4463d1d"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/shaders/brow_faceu_xshader-0-e662/metal/bade.vert",
+			"bytes": 1350,
+			"sha256": "e5286698c1ba5d4e8e36b1fc6fe830b27edd1bba3e445ca2a92aeca8f9770ca7"
+		},
+		{
+			"path": "Cache/effect/7406174539454909730/8feebde948245fa77c49ead859794fb1/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "6180c582ae144b97f20e05346feb8bfc9c00dd0eaf35d2709f5f0a87928a9513"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/config.json",
+			"bytes": 961,
+			"sha256": "94b188415f6605b226cdd7a6b8beb2b031d78ef999109a8d7df9f792b5b09a69"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/image/eyebrow/eyebrow.png",
+			"bytes": 78988,
+			"sha256": "043734fcbf992b1f3801f19a04a3d986f6779e52c0690e910ef6fc26699d9ae3"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "b3b5e4c0d9475a221f077592e38f70b08e3192920c80d93a1cc0817387c1c48a"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/shaders/brow_faceu_xshader-0-8d3c/gles2/b892.frag",
+			"bytes": 7479,
+			"sha256": "4c4b55a987a880dc50929321a1fba5ffebf6aef11a67b1bd4150ce6bd4cbab64"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/shaders/brow_faceu_xshader-0-8d3c/gles2/b892.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/shaders/brow_faceu_xshader-0-8d3c/metal/b892.frag",
+			"bytes": 14705,
+			"sha256": "b001b54c5706236f0981e2e88824f3be044a9ceedae5e5064113e2fad4463d1d"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/shaders/brow_faceu_xshader-0-8d3c/metal/b892.vert",
+			"bytes": 1350,
+			"sha256": "e5286698c1ba5d4e8e36b1fc6fe830b27edd1bba3e445ca2a92aeca8f9770ca7"
+		},
+		{
+			"path": "Cache/effect/7406174643247123746/a983387e6a01d830b4c4f9cbc6607628/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "1a2f03573a9869b28740458188ea6353f1008f5ad5ad3a83cf73d6ee7419f31f"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/config.json",
+			"bytes": 962,
+			"sha256": "7da607b36642a735cdc78610fb0809af3f9fc32ef63f777e1f8e6dd78b3d90a6"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/image/eyebrow/eyebrow.png",
+			"bytes": 67269,
+			"sha256": "320996123d6a724b66a4fe23cf31eb02b6aded26eb6ae3e88e5051be6c0e4d20"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "3bc298427937b616dabf066063e1248d88f8fd27689a6a414a01af5ca47d8ab4"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/shaders/brow_faceu_xshader-0-259c/gles2/e58d.frag",
+			"bytes": 7479,
+			"sha256": "4c4b55a987a880dc50929321a1fba5ffebf6aef11a67b1bd4150ce6bd4cbab64"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/shaders/brow_faceu_xshader-0-259c/gles2/e58d.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/shaders/brow_faceu_xshader-0-259c/metal/e58d.frag",
+			"bytes": 14705,
+			"sha256": "b001b54c5706236f0981e2e88824f3be044a9ceedae5e5064113e2fad4463d1d"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/shaders/brow_faceu_xshader-0-259c/metal/e58d.vert",
+			"bytes": 1350,
+			"sha256": "e5286698c1ba5d4e8e36b1fc6fe830b27edd1bba3e445ca2a92aeca8f9770ca7"
+		},
+		{
+			"path": "Cache/effect/7406175039264951592/212083cfb14f276308e23a3ee39a9034/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "db9a6dad257198293b1fed114c98a9d3d188207783ccff5305001511d4ffac9e"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/config.json",
+			"bytes": 965,
+			"sha256": "3941b51a81581cb0cf6c1fe86d48e2b5dd9473bd7f6b88bd6f68f8c403fb18f5"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/image/eyelash/default/eyelash.png",
+			"bytes": 26082,
+			"sha256": "73b11857c0386fdff1c63adbc3ca977a56e15c393124e26b1c1d3b56c86fff67"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/image/eyelash/default/eyelash.png.meta",
+			"bytes": 389,
+			"sha256": "3027565f1195ada37407fb6e31920262f6515f9644b05f52a0d6ccf5acce3b40"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/lua/makeup.lua",
+			"bytes": 7340,
+			"sha256": "825b9ee46ad1ecda0a2373e618ae1013ffa74479c73c5d36739b92c94bb81fe5"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/makeup.prefab",
+			"bytes": 1935,
+			"sha256": "6bdaa98eea44bfa92f3bdc8ba9e558a6845a9433207ef8987c96dada60385b49"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/material/eyelash/default.material",
+			"bytes": 958,
+			"sha256": "af63ae72e48562ea5f5adb17168b84359bc0869f3b80e8cfd182ddbdec45cb4f"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/mesh/eyelash_faceu_mesh.mesh",
+			"bytes": 51292,
+			"sha256": "176c7b9169e89d5ada55f9b7c92d7aae7e8dc00b4700898a7e4df7dc183bc6ce"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/shaders/eye_part_faceu_xshader-0-19ab/gles2/ff25.frag",
+			"bytes": 10676,
+			"sha256": "0b7039d89dfa7f1e5d2bc6b432dfd3cda7f25110b9e7c15574df90e40ac6186c"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/shaders/eye_part_faceu_xshader-0-19ab/gles2/ff25.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/shaders/eye_part_faceu_xshader-0-19ab/metal/ff25.frag",
+			"bytes": 18703,
+			"sha256": "99cabf9e009b34f59a8b9cad5e0be9043a37010fc44aff5722d5612915aaba8d"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/shaders/eye_part_faceu_xshader-0-19ab/metal/ff25.vert",
+			"bytes": 1050,
+			"sha256": "e195d6bac001a2ed0224bf3d910594c01e15764d9d9eac6d6f43600a36002bb2"
+		},
+		{
+			"path": "Cache/effect/7406175199361649920/2334785805777457e48251169bf65b10/xshader/eye_part_faceu_xshader.xshader",
+			"bytes": 3952,
+			"sha256": "d799b292412ce8652100f0928e05fa9acd592b04faa8935c3342eef59a7b7360"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/config.json",
+			"bytes": 961,
+			"sha256": "e885758e1612a97a6f2c23da1b03df1c60d5040c3c4ba31e84f5c05e015ef87d"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/image/eyebrow/eyebrow.png",
+			"bytes": 45798,
+			"sha256": "6a9e2edc706d73e1cf970065725f9456d7b456442d191794d13f55165eebb58a"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "78d628c5f1b7811039e4959ff290a80681fb8ecac1f2e88167dfb9d0fad035d6"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/shaders/brow_faceu_xshader-0-9cd9/gles2/dcd5.frag",
+			"bytes": 7478,
+			"sha256": "d0a2aeab856aecdd12391b38104f4055bac4761c2b095c05c0c69ce63c19ec77"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/shaders/brow_faceu_xshader-0-9cd9/gles2/dcd5.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/shaders/brow_faceu_xshader-0-9cd9/metal/dcd5.frag",
+			"bytes": 14706,
+			"sha256": "72a11d812e0dc9a2e6b7a8ede81109255375d7d57129701b5a81ed77cf050dba"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/shaders/brow_faceu_xshader-0-9cd9/metal/dcd5.vert",
+			"bytes": 1351,
+			"sha256": "0d07fc8825d0eb0616ef9f15f695e4073382aa3960c408e3287dc30856468f02"
+		},
+		{
+			"path": "Cache/effect/7406180431730707727/1826bb4815f127fb3168b67ed4e0fc71/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "f06ef3a0aa95d015594b46338f74872e5c8844a1df330cb9383f487254e63f51"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/config.json",
+			"bytes": 2395,
+			"sha256": "acfa368908c574e16782fd8c8f040a091d0eb6e900466687ea741f4d91152650"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/image/blusher/blusher.png",
+			"bytes": 206958,
+			"sha256": "fd8a1559f951d5347e89ad8b401164f67c7585eb7b9a60f893ddccbde7034ca6"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/image/blusher/blusher.png.meta",
+			"bytes": 389,
+			"sha256": "64b026326e201f4edd7c2b8512b39586ad68db28fde5492c1453fede0d82e668"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/image/blusher/highlight.png",
+			"bytes": 3526,
+			"sha256": "1cb846c3b8d24fd6e7f2d6b2d63fb96cbc21aa41cf68403a140c124ce3eb75dd"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/image/blusher/highlight.png.meta",
+			"bytes": 389,
+			"sha256": "690e8a3edb1c06e87f56ef85167466ab31b414597de0a3dc6ee6a556ea343b2b"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/lua/makeup.lua",
+			"bytes": 7340,
+			"sha256": "825b9ee46ad1ecda0a2373e618ae1013ffa74479c73c5d36739b92c94bb81fe5"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/makeup.prefab",
+			"bytes": 1387,
+			"sha256": "37ac27f799ab49aa5f9677fb43267c15998d7149b2af9b677753600b52b3518f"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/material/Blusher_MATERIAL.material",
+			"bytes": 1110,
+			"sha256": "5ffa96b9f59f9b3661817a3d10bdbe629e1a418de8b916fa415a576924827ce4"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/mesh/blusher_faceu_mesh.mesh",
+			"bytes": 65402,
+			"sha256": "c4a9032cee7ef536aedc0aee7c10ff3020b47c53f867a018e7b38c0211690d2d"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/shaders/mask_faceu_xshader-0-9cba/gles2/0196.frag",
+			"bytes": 9927,
+			"sha256": "4f83977cc7fbb45a552d9b68a7f9f454e045113a6bcab32dcbf7dda202dac17d"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/shaders/mask_faceu_xshader-0-9cba/gles2/0196.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/shaders/mask_faceu_xshader-0-9cba/metal/0196.frag",
+			"bytes": 18704,
+			"sha256": "f2c87a0618850ec19e3049351a4cabeaf67a5badd9ed143f07e57b3eb2dd9c96"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/shaders/mask_faceu_xshader-0-9cba/metal/0196.vert",
+			"bytes": 1088,
+			"sha256": "447e3988cf96e94a03185fcc1798d620402b4b711d78d0f17f211af0f9c28538"
+		},
+		{
+			"path": "Cache/effect/7406180986888654120/9591fdbc8cdd0806e91ffd334bdd5f7b/xshader/mask_faceu_xshader.xshader",
+			"bytes": 3932,
+			"sha256": "3fbdd14aee64c0aa3403c4d92c4190314cabaeecd2769b2d44ad909853190e30"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/config.json",
+			"bytes": 962,
+			"sha256": "d54f22de43f425d70c34bd7b3df28939cb3caa03629d754c76bb848da6c9df26"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/image/eyebrow/eyebrow.png",
+			"bytes": 70262,
+			"sha256": "9d5513b484ef9626a396823535dd5773b0655ab27a5a427409c2d7ef2cb29628"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/image/eyebrow/eyebrow.png.meta",
+			"bytes": 389,
+			"sha256": "2df6db184e7c75f1cffc9f09f54fb76cf8124ca247e08c0142d1d7dbb37e1d2e"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/lua/makeup.lua",
+			"bytes": 13612,
+			"sha256": "65736fab7c2626daf058d30bbcc64e4ae99b10612985d759b320ce051dffe96c"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/makeup.prefab",
+			"bytes": 1984,
+			"sha256": "df7e70abca8744abd7221d21de3638e9997fd7c23498bd66a43f401940740480"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/material/Brow.material",
+			"bytes": 1091,
+			"sha256": "9ee15b28be2d6822f33dea3c1b3a6774d7e9db3aebf32a8653c8484d1aaa1931"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/mesh/brow_faceu_mesh.mesh",
+			"bytes": 85345,
+			"sha256": "d6eb1c5a2a70ccf4dca85458ba58229725f8de4dcc76ed49eab64732bd6b9fc4"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/shaders/brow_faceu_xshader-0-2cdf/gles2/5c12.frag",
+			"bytes": 7479,
+			"sha256": "4c4b55a987a880dc50929321a1fba5ffebf6aef11a67b1bd4150ce6bd4cbab64"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/shaders/brow_faceu_xshader-0-2cdf/gles2/5c12.vert",
+			"bytes": 739,
+			"sha256": "cafcfb2635ceba24f7b02ddcfd1a1c19e749ef6db51cdaa2b7dd87f313d34a84"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/shaders/brow_faceu_xshader-0-2cdf/metal/5c12.frag",
+			"bytes": 14705,
+			"sha256": "b001b54c5706236f0981e2e88824f3be044a9ceedae5e5064113e2fad4463d1d"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/shaders/brow_faceu_xshader-0-2cdf/metal/5c12.vert",
+			"bytes": 1350,
+			"sha256": "e5286698c1ba5d4e8e36b1fc6fe830b27edd1bba3e445ca2a92aeca8f9770ca7"
+		},
+		{
+			"path": "Cache/effect/7406181254669929763/2041638b555e988c0b6f13839b112659/xshader/brow_faceu_xshader.xshader",
+			"bytes": 2602,
+			"sha256": "363a8a82f8c282433790ff293b7297af89e05184be41818f03814ad08ed4dde8"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/config.json",
+			"bytes": 961,
+			"sha256": "c754a07b1f8b3d9dfc877806ff01832ac426fabadd022af3ba60cdbde5949172"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeColor/default/lipClose.png",
+			"bytes": 2253,
+			"sha256": "e817aa84198147565e54dbbe3aa2cd44f55510600546587606ae386fbb29d324"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeColor/default/lipClose.png.meta",
+			"bytes": 389,
+			"sha256": "ff29ed4ee9be083fbbfd8a172615c248ce50641490732f6ca52db0436daaec40"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeColor/default/lipOpen.png",
+			"bytes": 2253,
+			"sha256": "fe85684330209ad8c106a53745fda3ba2c21918d4738e36d47a2444be10e0c90"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeColor/default/lipOpen.png.meta",
+			"bytes": 389,
+			"sha256": "a65a408363a1e604e5384deb56f5e6c2ccd03c08327694e25af33fb09954333c"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeMultiply/default/lipClose.png",
+			"bytes": 11098,
+			"sha256": "b889ec253fc6bb32579c39facec61678431a53e5da827c5076591c934f4efe13"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeMultiply/default/lipClose.png.meta",
+			"bytes": 389,
+			"sha256": "93491d82616ca5c9c13f0c1c4c74766c9c6c57b79c9bc77519af651c6193590d"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeMultiply/default/lipOpen.png",
+			"bytes": 10975,
+			"sha256": "a96bde54ddc810318cd1ba9769f7f4843eed4f54c0993cec5638f51b034352ce"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeMultiply/default/lipOpen.png.meta",
+			"bytes": 389,
+			"sha256": "bb163c8e4f7f6ecf924bc6a0809a695e9f2146c72213125607a4d8f9feb0f324"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeScreen/default/lipClose.png",
+			"bytes": 2253,
+			"sha256": "52c83682fa56643ab687807eeb9b67b4594a714f36cf853913bb2ab9c1ac51ba"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeScreen/default/lipClose.png.meta",
+			"bytes": 389,
+			"sha256": "50433870c64c8ad7363530117af4e70a2cd9e0061923afd41a8301f516150dd7"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeScreen/default/lipOpen.png",
+			"bytes": 2253,
+			"sha256": "56add7d582ebbd5b2a97dece74b574d451f332d453107111d431979e3f2c7542"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/image/lip_BlendModeScreen/default/lipOpen.png.meta",
+			"bytes": 389,
+			"sha256": "db32ff5ffbd3c7b7b23cb319622e8f236409763d2935a73922230ba3b143b157"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/makeup.prefab",
+			"bytes": 6473,
+			"sha256": "cb06bc3c33fb9fc70348509673f93a0f92a336e735489006414c828125e9c9d1"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/material/lip_BlendModeColor/default.material",
+			"bytes": 1347,
+			"sha256": "fd15d72071dc0c57aee5bcdf09729d33747c2fae18dc56d3694c72a6ad954da4"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/material/lip_BlendModeMultiply/default.material",
+			"bytes": 1365,
+			"sha256": "838b2a88dfe75e6606c268a887e3d58b6df0143d7b3dfb2e6442b045c13d6174"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/material/lip_BlendModeScreen/default.material",
+			"bytes": 1353,
+			"sha256": "60ddfe848ad55cbb9936b3ac46d0a20667052920d9919bf1bd57310c8bb68197"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/mesh/lips_keypoint_faceu_mesh.mesh",
+			"bytes": 65408,
+			"sha256": "33e1202aaeab77f97afe356dff866ed6aadb8f218b02b42087b574b98b2cca8b"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/gles2/9aa9.frag",
+			"bytes": 10819,
+			"sha256": "68dda49d7f2ae14c820243af3993a9ae60864531c41a42f8e565015ff5af649b"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/gles2/9aa9.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/lips_keypoint_faceu_xshader-0-b7ce/gles2/eeb0.frag",
+			"bytes": 12861,
+			"sha256": "3cf12582b5d267e6a3e7a0e62ec153fffbb30e7f8bcd84f36e8d44c15a28d13d"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/lips_keypoint_faceu_xshader-0-b7ce/metal/eeb0.frag",
+			"bytes": 21575,
+			"sha256": "9e5f1680912196152603c43d247da062a293a7e82cb3f20726798b6a2661ce86"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/metal/9aa9.frag",
+			"bytes": 19200,
+			"sha256": "f0b333b8c88d10dba25f6dc33098771e9d1ec6b71064eb318d6f5b21e3735eb1"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/shaders/metal/9aa9.vert",
+			"bytes": 1088,
+			"sha256": "447e3988cf96e94a03185fcc1798d620402b4b711d78d0f17f211af0f9c28538"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/xshader/lip_BlendModeColor/lips_keypoint_faceu_xshader.xshader",
+			"bytes": 3875,
+			"sha256": "6a4597746499f67a4a572019e968a4c932e420fa05b9bf4f9f93762c6c2f98de"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/xshader/lip_BlendModeMultiply/lips_keypoint_faceu_xshader.xshader",
+			"bytes": 3743,
+			"sha256": "94b230cc57b99d8563637f63f62d19b7561f217b9e3661556111e59ef5cc2900"
+		},
+		{
+			"path": "Cache/effect/7406181389613190435/e3ccb34c651dd1b57e6c2fb6532c6990/xshader/lip_BlendModeScreen/lips_keypoint_faceu_xshader.xshader",
+			"bytes": 3743,
+			"sha256": "33aa9a6b5a87864dceb7117f6fbbe51056d71e5ba2daf87156875b53df17a4ae"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/config.json",
+			"bytes": 2394,
+			"sha256": "683a397f3afe414dfb7a40f119815562660c12f37b3f257495db3dd7ac8a8910"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/image/stereo/stereo.png",
+			"bytes": 350356,
+			"sha256": "0840dd3b3a98f19a6adea11ed1e2f00727b9c4450cea9356b923d54c177439ff"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/image/stereo/stereo.png.meta",
+			"bytes": 389,
+			"sha256": "fc4d43e68e92735501b81fcf665cebb06d9415f4b515609fb2370dad9ff06722"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/lua/makeup.lua",
+			"bytes": 7340,
+			"sha256": "825b9ee46ad1ecda0a2373e618ae1013ffa74479c73c5d36739b92c94bb81fe5"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/makeup.prefab",
+			"bytes": 1379,
+			"sha256": "28de7130ac8b2159af2661864a757489eff76468dd001977d0c6445815f44c42"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/material/Stereo_MATERIAL.material",
+			"bytes": 944,
+			"sha256": "4562c281136130121b1471b3822fb76568f876ed330905efb90858ea43695910"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/mesh/stereo_faceu_mesh.mesh",
+			"bytes": 65401,
+			"sha256": "e0788d6136216a8bb86ab8c429873fc7e071a636c1db14e1a58395930acf0aa8"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/shaders/mask_faceu_xshader-0-d796/gles2/808f.frag",
+			"bytes": 9931,
+			"sha256": "f738af689d884ace8c84dacfe05bbc251bf61f5ff9d099b88129692e969af19b"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/shaders/mask_faceu_xshader-0-d796/gles2/808f.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/shaders/mask_faceu_xshader-0-d796/metal/808f.frag",
+			"bytes": 18708,
+			"sha256": "0a79503367f35a0efecdc9e1df8bc2da9e4f2a49814423229e7926f013cb9f47"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/shaders/mask_faceu_xshader-0-d796/metal/808f.vert",
+			"bytes": 1088,
+			"sha256": "447e3988cf96e94a03185fcc1798d620402b4b711d78d0f17f211af0f9c28538"
+		},
+		{
+			"path": "Cache/effect/7406181489412427060/6fe23753b9c46a79b6f617c054a3608e/xshader/mask_faceu_xshader.xshader",
+			"bytes": 3932,
+			"sha256": "6fcb8c8fb45453f079df7481324ed58e6dce7767d2f18cb92a85d2215c18fe0a"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/LuaRTTI.MarkGen.lua",
+			"bytes": 0,
+			"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/algorithmConfig.json",
+			"bytes": 1327,
+			"sha256": "70d9601464e31804c74424d8e32e221dc17df7b36851bf9c1aa252fde0fadf9d"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/content.json",
+			"bytes": 142,
+			"sha256": "43645f7d06d1897e7e98f85f430339b3b95495dc89a69c3bd3eb03f890d935d2"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/image/filter.png",
+			"bytes": 231595,
+			"sha256": "289889aaa35ca6507b98dad44d0939ce97ac18f640864e09bfe494ad4d72a02e"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/image/filter.png.meta",
+			"bytes": 389,
+			"sha256": "3c1b72ac41af470c642795e8ee63b5b66a9a99bb2bb4b11e4809cde0945343e2"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/lua/ModeScript.lua",
+			"bytes": 1018,
+			"sha256": "b64ab5606477bf8ff35d17fb8d36d7a1686db6a957e040cf9e54e42dc0cd7d7c"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/main.scene",
+			"bytes": 2180,
+			"sha256": "c0286536a898567d62e10cbe719aca70020c7a2226b3dcc39a0764a0119f7e52"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/material/filter.material",
+			"bytes": 791,
+			"sha256": "ddef1be007b9efb5ed71c38687acb2d296df7c20bbaa2256620d2a00b20111d3"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/mesh/Quad.mesh",
+			"bytes": 1255,
+			"sha256": "6f67b10e9e7738ca70e5fb49e26ebd76d98e9b4673bd61fa5209b119c63fdb48"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/rt/outputTex.rt",
+			"bytes": 567,
+			"sha256": "7b75a61e32e73854184c732f246f3d87c113a5fd4488b4a000f14db54c5137da"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/gles2/a43a.frag",
+			"bytes": 1655,
+			"sha256": "8f0d769dc11c2d67d799fefc0177341e914dc96ae42e86d53e46fe816e6b2ca2"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/gles2/a43a.vert",
+			"bytes": 199,
+			"sha256": "f7341267ceff103685cb3c4bfe0dade605a346d860771f8d41aa402d8b869ebf"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.frag",
+			"bytes": 2001,
+			"sha256": "e228bdda76f34af2e48fcd755ee1baee75b1169a4b6b7fef60f6c1e79ebc74e0"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.frag.ios.metallib",
+			"bytes": 5099,
+			"sha256": "5a43d1d3f10901c7886b5469d9f6d052ab9556a87eaf60dd20625d7af26763b3"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.frag.mac.metallib",
+			"bytes": 5403,
+			"sha256": "ae491e775fd8afb6268634d8f0e360d328e3b710ae09d3dc36ece427c60edd52"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.vert",
+			"bytes": 579,
+			"sha256": "0a9ffa64a963a6b2a998a86c9f25ebcb9262ff2366e4d15ccdc0ba3cbade8a6a"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.vert.ios.metallib",
+			"bytes": 3155,
+			"sha256": "f18bd927c3c5db3307e54868021802db932df1512b1cbefb7c949d33a06b1456"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/shaders/filtter-0-ec4f/metal/a43a.vert.mac.metallib",
+			"bytes": 3395,
+			"sha256": "823c8c32a020f0326393593a39bfe77ed4e80654654fe0460da6b03ed8e9eeb6"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/sticker.config",
+			"bytes": 261,
+			"sha256": "661d3f6bf978a3d8ba193566c404a6fe61895dfb7952f232033fa5aa7a2fa9d5"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/AmazingFeature_3/xshader/filtter.xshader",
+			"bytes": 3581,
+			"sha256": "80f40d51adec4c540b796a4871c43a05cef617e41325f43c54db4fc4695896e8"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/algorithmConfig.json",
+			"bytes": 1233,
+			"sha256": "4b50cc04d1090e9a7e83b2dcded015955e230a16ea94a3111302ade863864c24"
+		},
+		{
+			"path": "Cache/effect/7408028287785602319/8615dc8c263df7e22740b76b0ac497f8/config.json",
+			"bytes": 442,
+			"sha256": "59b54c37cd1f5fa40fcec3143b46e18da5021050f74e01f8177a2bc3b1ef304b"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/config.json",
+			"bytes": 963,
+			"sha256": "3311079c465734760e8863eb293a557d1283524aa98a0ee16fea5371b84ca267"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/image/lip/default/lipClose.png",
+			"bytes": 8635,
+			"sha256": "9212f5b19e03021bc92e41a06a0ebaaf9bff2bb2b5cd82ba95fc8a83b4dff830"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/image/lip/default/lipClose.png.meta",
+			"bytes": 389,
+			"sha256": "40fa68b0e682f01a237a017a1333a5885a52270192e000c8b4be57612c031962"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/image/lip/default/lipOpen.png",
+			"bytes": 9464,
+			"sha256": "fc70378d3b5a418075ca40568ed3a08aff9bca318baf8db0e8eff7305be1b801"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/image/lip/default/lipOpen.png.meta",
+			"bytes": 389,
+			"sha256": "37149508a1520dfbe00d71b9483dd8ccf308b793c0536fdda411d76c1882d3ad"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/lua/makeup.lua",
+			"bytes": 7340,
+			"sha256": "825b9ee46ad1ecda0a2373e618ae1013ffa74479c73c5d36739b92c94bb81fe5"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/makeup.prefab",
+			"bytes": 1935,
+			"sha256": "34bbc12551ae7de3df42b39add027564eb431dad4d75d0a170d157c5f6dc9a38"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/material/lip/default.material",
+			"bytes": 1310,
+			"sha256": "665f17f93ce5580456dd70227b06796a5ecea958e7a9ca2ced96473f66ba95b5"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/mesh/lips_keypoint_faceu_mesh.mesh",
+			"bytes": 65408,
+			"sha256": "71fd0b733a1cbe8f30ad625a4e7379c846eab48f95318d567588784774a45bd7"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/shaders/gles2/a628.frag",
+			"bytes": 10819,
+			"sha256": "68dda49d7f2ae14c820243af3993a9ae60864531c41a42f8e565015ff5af649b"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/shaders/gles2/a628.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/shaders/metal/a628.frag",
+			"bytes": 19200,
+			"sha256": "f0b333b8c88d10dba25f6dc33098771e9d1ec6b71064eb318d6f5b21e3735eb1"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/shaders/metal/a628.vert",
+			"bytes": 1088,
+			"sha256": "447e3988cf96e94a03185fcc1798d620402b4b711d78d0f17f211af0f9c28538"
+		},
+		{
+			"path": "Cache/effect/7408076694126365992/3ff9996e22120348c34b3abbed86712c/xshader/lips_keypoint_faceu_xshader.xshader",
+			"bytes": 3743,
+			"sha256": "f045fe903b9ebb988419fcdd2cf911d279ba42dbbbfee3fde4a562ac1f535aef"
+		},
+		{
+			"path": "Cache/effect/7408077026705280256/74ded1bf06987b66866e6c2fc72a9e24/AmazingFeature/image/blurmask.png",
+			"bytes": 44507,
+			"sha256": "240fe6d8b95ac4d9d0943eb55bbd20c74cbcf78af5a4b265a297a6f8fbb53b1d"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/LuaRTTI.MarkGen.lua",
+			"bytes": 0,
+			"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/content.json",
+			"bytes": 172,
+			"sha256": "918f7bbc55eea6c3e8129452ea297ad46d2593fc38b48b75d5ec4d9963ec1c19"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/lua/reshape.lua",
+			"bytes": 13130,
+			"sha256": "4df28846bcb7e0f5d52506c9f4d6cd0edd78cdf075bcddc7fceea695f22716a6"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/main.scene",
+			"bytes": 55529,
+			"sha256": "be36c59eb69e49fa04a2d2317deac8d667871f9d90a40e0a601d01c83e8c5e03"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/material/faceMaterial0.material",
+			"bytes": 781,
+			"sha256": "f46bb289c4155b96a70411da8ebae252301b8be4f3ef4ca04cb4097cf6e8b995"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/rt/outputTex.rt",
+			"bytes": 567,
+			"sha256": "d7a88a339519cb5389e43359180ebe5c9bfbe530e49409743b600b0701b3d837"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/scene.config",
+			"bytes": 326,
+			"sha256": "6584b8b1f9aa9b12695740403aa8ee16fc99fc79c2678aefe5310d0640b2b7a4"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/gles2/8b81.frag",
+			"bytes": 144,
+			"sha256": "95fa84eab1997804a7e57c53906417d2c79708aedec5d7524741d3353a2d0cc3"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/gles2/8b81.vert",
+			"bytes": 166,
+			"sha256": "2b2723721699376c32e8dff54a5d9181ae8f85574ea671d18a083daab378b6c9"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.frag",
+			"bytes": 440,
+			"sha256": "1a460c59665f0ce0543305d616f6559797b04eb7fb5d91e93847964603360590"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.frag.ios.metallib",
+			"bytes": 3835,
+			"sha256": "72e475388458fd1ca8b2050455b55e066c839124043bb8169d343a48f6a0d05b"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.frag.mac.metallib",
+			"bytes": 4155,
+			"sha256": "a6bc255ef74b5d62ff516bc545f550c1174c755ac16ce4eb17eff7bb3c8b5c91"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.vert",
+			"bytes": 537,
+			"sha256": "2a800446b4ab1b5013f3921ed261503b457d7e4f564f8ffda5ee484177ce88ac"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.vert.ios.metallib",
+			"bytes": 3123,
+			"sha256": "ec55342f0f176c10c4a704f4ff3a9a252c985288d6d3928f6a161d80214207bc"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/shaders/Fdxshader-0-befd/metal/8b81.vert.mac.metallib",
+			"bytes": 3363,
+			"sha256": "9b7dd202839c128d7bbd1d1e80dc0cec8bea8204f51f5a6fa72e6a4082737bbb"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/sticker.config",
+			"bytes": 284,
+			"sha256": "de8a89d228e8f992334b358b9762614fd1d2ad5d9af30c6cfa0cec4507318179"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/AmazingFeature/xshader/Fdxshader.xshader",
+			"bytes": 3309,
+			"sha256": "ce956842cf4d93caf594e390e7494d3c9b10e5bb958e3ddea213f3c411cd9458"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/algorithmConfig.json",
+			"bytes": 1188,
+			"sha256": "35a213e74c85d0f16236e570920b032c1b6c3d1ac3276e25f296c0f946a89c08"
+		},
+		{
+			"path": "Cache/effect/7408077448513998114/aa4932200616e291a252039a3aac7232/config.json",
+			"bytes": 397,
+			"sha256": "1b960e44791087884198a1db1e962ad57e2e150381b30ec3f7372b0fb1e8f981"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/LuaRTTI.MarkGen.lua",
+			"bytes": 158,
+			"sha256": "f2660fa70cf92cb5046a44e9364e861f6deb9311ece7ad060188038c627cf754"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/config.json",
+			"bytes": 964,
+			"sha256": "5e188868d500bcdb07f4fe1a7b870c7b338d59b71667530ddf15858d3a279bbb"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/image/eyeshadow/default/eyeshadow.png",
+			"bytes": 64452,
+			"sha256": "d321a574722209a20e90d4a2e06a178b4ff7be8c94e6b8392b49c7139ef835a4"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/image/eyeshadow/default/eyeshadow.png.meta",
+			"bytes": 389,
+			"sha256": "755071c6fa637c1c81bc367e82c8ba6099017a4828c8275eb5cb597de437ee4f"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/image/eyeshadow/default/eyeshadowScreen.png",
+			"bytes": 13851,
+			"sha256": "4560c48cc274bc888c373ce305e53285308b08023d851c1c85c9e6ad96052404"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/image/eyeshadow/default/eyeshadowScreen.png.meta",
+			"bytes": 389,
+			"sha256": "57fa943a8279fc4505cd6eae3c0492f75264ffe1cee90309f271a69901a1496a"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/lua/makeup.lua",
+			"bytes": 7340,
+			"sha256": "825b9ee46ad1ecda0a2373e618ae1013ffa74479c73c5d36739b92c94bb81fe5"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/makeup.prefab",
+			"bytes": 1969,
+			"sha256": "ae593ed56c3249f15d587d292fc9f0366ba6b6f443f7432ad971162364c1e042"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/material/eyeshadow/default.material",
+			"bytes": 1144,
+			"sha256": "fe1fc9bab945c57f5f0204f1b6221aca218c430958fb33861aa4afd4fc3a0e57"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/mesh/eyeshadow_faceu_mesh.mesh",
+			"bytes": 51294,
+			"sha256": "52d3d05868f5fb0c46dd06715be78722560984c704d9a899428a6d001fce39b6"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/shaders/eye_part_faceu_xshader-0-8a78/gles2/5434.frag",
+			"bytes": 10676,
+			"sha256": "0b7039d89dfa7f1e5d2bc6b432dfd3cda7f25110b9e7c15574df90e40ac6186c"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/shaders/eye_part_faceu_xshader-0-8a78/gles2/5434.vert",
+			"bytes": 535,
+			"sha256": "96ca09106a66055d2040069806965b88b710942a569c3af6caceb0eaf4fad5ee"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/shaders/eye_part_faceu_xshader-0-8a78/metal/5434.frag",
+			"bytes": 18703,
+			"sha256": "99cabf9e009b34f59a8b9cad5e0be9043a37010fc44aff5722d5612915aaba8d"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/shaders/eye_part_faceu_xshader-0-8a78/metal/5434.vert",
+			"bytes": 1050,
+			"sha256": "e195d6bac001a2ed0224bf3d910594c01e15764d9d9eac6d6f43600a36002bb2"
+		},
+		{
+			"path": "Cache/effect/7408077631049960744/1a234c85160694dd855f9cfe76a81145/xshader/eye_part_faceu_xshader.xshader",
+			"bytes": 3952,
+			"sha256": "1e711cbc77a505e333244e412069cec6575f0bec8cb099b5ae983b82fc7dc0f7"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/content.json",
+			"bytes": 146,
+			"sha256": "e1b37b81569baaa954ce735b99d7457d27d118fb0156a8cc914cee9ed5124690"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/image/brighten.png",
+			"bytes": 27547,
+			"sha256": "5f65dafab75103b6c0adbc1f433cacce0eb02915e779c5edb5278f4f2f479016"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/image/brighten.png.meta",
+			"bytes": 389,
+			"sha256": "2fd59cc35d671fa3bec5ec6a928cac8427307480cd9a295c3da1d863864c5e47"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/image/faceMask.png",
+			"bytes": 26646,
+			"sha256": "129c26e3327133493900780c01a22732294f8963849d700d05440a749fa3fb2b"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/image/faceMask.png.meta",
+			"bytes": 389,
+			"sha256": "df903116b7fce2fa6bef40a61c8743d9b28c513bba4488982aea4f4cb031fe7c"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/lua/SmoothV12.lua",
+			"bytes": 6431,
+			"sha256": "bcae265d489cdccefeb68e8a68adaab65dd49530e0b7c166cff0f66899214e3e"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/main.scene",
+			"bytes": 3485,
+			"sha256": "89fc790bd9dd5bb00fa42a8e40ec5e864a485225b965e017f47a2e067835f4eb"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blend.material",
+			"bytes": 858,
+			"sha256": "29d6e880d2c39f6803ca4009541e05f10c25936f3ae0b90731ae987dfadffe07"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blend2.material",
+			"bytes": 910,
+			"sha256": "5e563741c5e69e4b0ba1c0f07b8d32d67185555ccec3d0e42d2c3b35797ef861"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blur1.material",
+			"bytes": 821,
+			"sha256": "80aedf241c5d80efbef80735a11d2e18ffc93cc2511d39e01196a2f0a6af399c"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blur2.material",
+			"bytes": 811,
+			"sha256": "2b5dee2e71ace96e601111bfec71232411093b10ed47e849ad285ccee712bc31"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blur3.material",
+			"bytes": 826,
+			"sha256": "b814d7a07a67691776e25e67088b62bc5b6a0304166df16a12769a666edaff42"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/blur4.material",
+			"bytes": 826,
+			"sha256": "0fd2d8013aefd517612b7404d9bdffd6ae6a4147d78c174f088e460f3717de19"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/hsv.material",
+			"bytes": 793,
+			"sha256": "afc114714f3e1b2f98a4f1f2c2ff928a0b9d9b81dfee1d0f26e78918dc5f6dab"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/material/makeup.material",
+			"bytes": 881,
+			"sha256": "e9daa203fe0b56e4d3672815bfd7be1ff9cc9b3e133b728b77fea395a8d63f46"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/mesh/Face145_mesh.mesh",
+			"bytes": 27588,
+			"sha256": "7307103c77869f302bbd0fbdf65b1e5109c6275b960388c487a90500f2dbab03"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/mesh/Triangle.mesh",
+			"bytes": 1017,
+			"sha256": "74d045fc0eece906ca05c6535e6e5f36601917ce709a50ddcbd36de28d5e61df"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/rt/blend.rt",
+			"bytes": 638,
+			"sha256": "36c9e32218d35ccbaea3921f9d1b69f6cf47f18f60a1e2c4363d8c1cebc19715"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/rt/blur1.rt",
+			"bytes": 638,
+			"sha256": "9882def1bfbc23b040347c0bbb7d6ef4c705ac5fc0b3460ccf1c72fb42e32a57"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/rt/blur2.rt",
+			"bytes": 638,
+			"sha256": "495daecebdd8e1dd92dc22d1423c2d3155c1d261037e185b3bffbbe335e702e4"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/rt/outputTex.rt",
+			"bytes": 636,
+			"sha256": "c1ad6c1b97d0f3acfc2eeb67450e7d7f02f080f5def44ca06bf025067013d7b0"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/rt/skinMask.rt",
+			"bytes": 638,
+			"sha256": "b4b4fcb3707b79557dce10da84dc0c39a9cada3ec967093b59ad11873dde6ccb"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/scene.config",
+			"bytes": 283,
+			"sha256": "3fca94711ec9c7db9f031a1f0693108f013eb4e49742faa429a506ec1f635a0c"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend-0-e533/gles2/3bb3.frag",
+			"bytes": 1704,
+			"sha256": "f297445da26eeb0138b369dba318de50771159602231d39989a143c227a11f16"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend-0-e533/gles2/3bb3.vert",
+			"bytes": 176,
+			"sha256": "25116196d66f47131c4cef6cbed269e91acea5767fe80a01a3a9d93831e5be4f"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend-0-e533/metal/3bb3.frag",
+			"bytes": 2567,
+			"sha256": "cd510a8ea32f5c1291045c32674a934ae84e73d071e040954719e1ff09689c69"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend-0-e533/metal/3bb3.vert",
+			"bytes": 539,
+			"sha256": "7c65b9372237dd33bea2ee8951eac0b9de19968138c40d596669b50b4cb088f5"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend2-0-d7c3/gles2/5430.frag",
+			"bytes": 1988,
+			"sha256": "16d0be00ccc1d105fd663c0baaec984878d270730cca243beb049b6f10036eb3"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend2-0-d7c3/gles2/5430.vert",
+			"bytes": 247,
+			"sha256": "0813210bd1a2a30a889438fd022c0dccffb5c9a732fc5834bb19d95cf5273a43"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend2-0-d7c3/metal/5430.frag",
+			"bytes": 2281,
+			"sha256": "6287800dacc0285b14f970338a28572f9474e340eb5516b62dae921053411ca2"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blend2-0-d7c3/metal/5430.vert",
+			"bytes": 626,
+			"sha256": "82098a468f1483c612dced5f0e0d5a60448b05d421b470cda11faad7af2ae020"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur1-0-cd89/gles2/26e0.frag",
+			"bytes": 3982,
+			"sha256": "0420733db2db85609d69752fdaae6b94503891850870ebdc3fd1f416f5b71f92"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur1-0-cd89/gles2/26e0.vert",
+			"bytes": 937,
+			"sha256": "6dabe47b5896354f7613acf36d86eaf7167da72a57d3912a7bf69fc6765cdc4a"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur1-0-cd89/metal/26e0.frag",
+			"bytes": 4899,
+			"sha256": "7820145b6ce51b25be8fa9688aff4a26730a886cd68b939ba09ed5c667365681"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur1-0-cd89/metal/26e0.vert",
+			"bytes": 1520,
+			"sha256": "2c25ba6557acc0cd19cee5d18b23e81e7d03a3c35f6355ca8ee2f4fd5f3037cc"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur2-0-957f/gles2/d870.frag",
+			"bytes": 4109,
+			"sha256": "2c69d8bc006900fcc97e08df72c50ba66a49c7432c92e00efb1e29384679a9bf"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur2-0-957f/gles2/d870.vert",
+			"bytes": 939,
+			"sha256": "a825d92d2a109f0d0d4eb3c784d55a30b27239ad5e22cdaa4db9f96cc3da0b8a"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur2-0-957f/metal/d870.frag",
+			"bytes": 4977,
+			"sha256": "ab4833e7f74170d489e4dce35247b01ef84e5e447d07ab144eaceaa252d46c6b"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur2-0-957f/metal/d870.vert",
+			"bytes": 1520,
+			"sha256": "2c25ba6557acc0cd19cee5d18b23e81e7d03a3c35f6355ca8ee2f4fd5f3037cc"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur3-0-3321/gles2/be13.frag",
+			"bytes": 6514,
+			"sha256": "a1481937a81fcd4c4ce52292be4053071201b83f94ebc9c45b4fad6aa022747b"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur3-0-3321/gles2/be13.vert",
+			"bytes": 170,
+			"sha256": "df43b3646b915ea8bcab60412f286d03cd2e54484c7c6d1ad01b819448f4ddc0"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur3-0-3321/metal/be13.frag",
+			"bytes": 15003,
+			"sha256": "1e2532ad870e48726844b007841cabccbaa9167ef29702546f2c412e8aa3594c"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur3-0-3321/metal/be13.vert",
+			"bytes": 539,
+			"sha256": "7c65b9372237dd33bea2ee8951eac0b9de19968138c40d596669b50b4cb088f5"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur4-0-168a/gles2/b598.frag",
+			"bytes": 6513,
+			"sha256": "2336a4928f9627a99c7c04d14b45038f0c320abd28920888b68e8680499ed86a"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur4-0-168a/gles2/b598.vert",
+			"bytes": 171,
+			"sha256": "7787f8ff9599748c7e390e0f1b426791ad44a9216df40ec6153d018eb84f0448"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur4-0-168a/metal/b598.frag",
+			"bytes": 15003,
+			"sha256": "1e2532ad870e48726844b007841cabccbaa9167ef29702546f2c412e8aa3594c"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/blur4-0-168a/metal/b598.vert",
+			"bytes": 539,
+			"sha256": "7c65b9372237dd33bea2ee8951eac0b9de19968138c40d596669b50b4cb088f5"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/hsv-0-034f/gles2/0632.frag",
+			"bytes": 2041,
+			"sha256": "75cdd48b52c5359ce6ce645ee2e48ba14764735791b80de5678b803f91c3918d"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/hsv-0-034f/gles2/0632.vert",
+			"bytes": 233,
+			"sha256": "1a68918a6444dd5b654e9df5cfd576347cfd5ef6590f2717bc1361b7c83be1a8"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/hsv-0-034f/metal/0632.frag",
+			"bytes": 2763,
+			"sha256": "28226e640cca77cb2f1070d09bf2d8a864f9e0e1c40545f34d04a84485a60ebc"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/hsv-0-034f/metal/0632.vert",
+			"bytes": 619,
+			"sha256": "783542e8ed507200e03ac018ebadeb6f9ec1a297b1354111fdf45f1b851be940"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/makeup-0-bcc9/gles2/cc8d.frag",
+			"bytes": 221,
+			"sha256": "7698a8709af822bbfe3692a21a232fc2e7f619158002c72559014c397bf37b4f"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/makeup-0-bcc9/gles2/cc8d.vert",
+			"bytes": 258,
+			"sha256": "63bfdd33d60b00dc3c4cb52118b1f799d181248d0611cbefd1bbeb47a1eadeaf"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/makeup-0-bcc9/metal/cc8d.frag",
+			"bytes": 577,
+			"sha256": "55c610996e8f35cf07a16bac7841c11abeae6200192eba0144129114af46f422"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/shaders/makeup-0-bcc9/metal/cc8d.vert",
+			"bytes": 712,
+			"sha256": "012f6d9fec8776c45dcd7f586dd83bf47fd889b87b114b2e2a8ea1484640c104"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/sticker.config",
+			"bytes": 259,
+			"sha256": "068a15e602b33ca16fbeee37996c40214f0c4c9e1a6221db72fde48dcb0dd095"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blend.xshader",
+			"bytes": 2446,
+			"sha256": "9907f7f11694373f80e6e6550d6c363933ae66e504f474ce731f0ae958a71442"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blend2.xshader",
+			"bytes": 2454,
+			"sha256": "4b4df7c5ad7c1074d854f6a281cc55cc992a2b376362f23503eb0622926cee8d"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blur1.xshader",
+			"bytes": 2446,
+			"sha256": "22a041b816f9b3febf6d0a99bd130c8980eaae799ee1e25eae99ecb05fe7597d"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blur2.xshader",
+			"bytes": 2446,
+			"sha256": "fb153e9f37f3828fb85534f68cb5aa27d15eed5e61f5349c50591eb11c9a4b42"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blur3.xshader",
+			"bytes": 2446,
+			"sha256": "2194619aa41ed61bd7e373e81b12f3d1fc90e92023f7d5bd0aa2bd272e008abf"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/blur4.xshader",
+			"bytes": 2446,
+			"sha256": "746d5f6839ef10b19910f900c8fbef9dabf7205000456c595ae3ac2108d735b1"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/hsv.xshader",
+			"bytes": 2419,
+			"sha256": "633a4da8bd2ea28590437580436efc283773dd1614bc1a4ca13771a45e9acc42"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/AmazingFeature/xshader/makeup.xshader",
+			"bytes": 2854,
+			"sha256": "270e296f5a06e0106b374d68d1ea7af236903acc25aed7ab9a80bcd6eb33876f"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/algorithmConfig.json",
+			"bytes": 1190,
+			"sha256": "49680a645f6674ce965f9eef125f53d054e4cd8612cd21b570dbf8aa74251542"
+		},
+		{
+			"path": "Cache/effect/7408077820116667700/b000f31572be3e5f9fd195d7bba37968/config.json",
+			"bytes": 407,
+			"sha256": "05c0717ddb663e358ca1222303dc551555a8a7a69f8e0daf3cc39a41b03a5515"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/LuaRTTI.MarkGen.lua",
+			"bytes": 0,
+			"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/content.json",
+			"bytes": 195,
+			"sha256": "894b19dc1e9c4bdadf32915bb79651145897880866e2dcc3ccc36be54386ace0"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/image/blurmask.png",
+			"bytes": 44507,
+			"sha256": "240fe6d8b95ac4d9d0943eb55bbd20c74cbcf78af5a4b265a297a6f8fbb53b1d"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/image/blurmask.png.meta",
+			"bytes": 389,
+			"sha256": "8e4c79e8df74d239070dc9627254c8a4b9c04c6277ea8acdee8887306a99bb72"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/js-meta.json",
+			"bytes": 317,
+			"sha256": "d0d0085e61187278bf28363b706779d098adfad4473473946b3cc7472f59a6a5"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/lua-meta.json",
+			"bytes": 2,
+			"sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/lua/global.lua",
+			"bytes": 9090,
+			"sha256": "083835a4fbe604d6765acaa22097722898ed71a238961742ff7b1201906ecc4d"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/main.scene",
+			"bytes": 2081,
+			"sha256": "a42c3b318c82618d1ab3175923aadc1d98a6a5070b68ad760ae505f6628011d1"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/material/gan.material",
+			"bytes": 751,
+			"sha256": "d48789ab1c40b1bdb3d38bad102cf7c4bfe2a4d8dcf6c6438b9fbabb5ba01451"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/mesh/Quad.mesh",
+			"bytes": 1279,
+			"sha256": "2e3b1faf2239e16e5ebcdbca877e473d272a1b8781256ecaed4bd773bc993801"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/rt/outputTex.rt",
+			"bytes": 636,
+			"sha256": "d6dda8704b4f0e4ac61fe70bbb3983830f235e7e4280a76497888f357b8fa8a9"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/shaders/gan-0-2139/gles2/5ae3.frag",
+			"bytes": 558,
+			"sha256": "f245fea6fdd3b59a88c3526ca9d1bf91a9b1997366072c2d7c70ceab95fa42e0"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/shaders/gan-0-2139/gles2/5ae3.vert",
+			"bytes": 300,
+			"sha256": "751d9723be78541d6301606d41f7994dcfab6d8b53d36f2b36fa64d3d05fd36c"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/shaders/gan-0-2139/metal/5ae3.frag",
+			"bytes": 988,
+			"sha256": "210906ea4692cefe2393816ad19357b53260d23f40c9dd4b3c4213f030ee8c8b"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/shaders/gan-0-2139/metal/5ae3.vert",
+			"bytes": 786,
+			"sha256": "779216c3a64f26823e232f52efb9bf0e4cf5578f46bd976b4609ae2c76dd0fc2"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/sticker.config",
+			"bytes": 241,
+			"sha256": "1a524969fc63ce051e56af315cfa1f9e1b6c5086bc1dac4a2cbb06ebe7bca6ac"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/AmazingFeature/xshader/gan.xshader",
+			"bytes": 3042,
+			"sha256": "f1cf1d29c327fd24cf8c4618cd94cc87b03e63e10a5d240191c8b4e1a9cdc787"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/algorithmConfig.json",
+			"bytes": 2936,
+			"sha256": "81098a65385156bc4cf771f4dcb63090f206067b9abf0eaac43bfd163ac19344"
+		},
+		{
+			"path": "Cache/effect/7442228961163088434/e8b424917121b52fc69cba119274cc47/config.json",
+			"bytes": 466,
+			"sha256": "f4aa2f397bfb89c9664280007de2c362264c865d1a44ef9eb5327b23a5606672"
+		},
+		{
+			"path": "Models/jypc_yunfuhua_gpucpu_v1.0_size0_md52fb34821a520d7c79c38d93a494cfe00.model",
+			"bytes": 1957789,
+			"sha256": "ff86b484516a6e1333e4678492e5c92ec5f423ab8e596968c53f7d2589a624d4"
+		},
+		{
+			"path": "Models/newbandou_v1.0_size0_md5bb66e26e632c60d1dff15a1ceec50d4f.model",
+			"bytes": 8011522,
+			"sha256": "11f3a90604b6ccdc95f9dbd150884e05e0b9eafed098ad62f1112d949b8916cf"
+		},
+		{
+			"path": "research/aegyo-bittersweet-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/aegyo-born-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/aegyo-campus-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/aegyo-doll-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/aegyo-natural-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/aegyo-peach-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/alignment-assets-v1.npz",
+			"bytes": 2286,
+			"sha256": "383a85b488649789968bdb46df581ceea86d27532d7a915f604fe5deb2459a21"
+		},
+		{
+			"path": "research/blush-baby-pink-v1.npz",
+			"bytes": 5316,
+			"sha256": "38a2752b5ee9674bbf35253abb525e3ec4a5b8a0c89fc01acaa6fe8588379d47"
+		},
+		{
+			"path": "research/brow-v1.npz",
+			"bytes": 5048,
+			"sha256": "e9426e42456b29f43b8ee82cf993126b5c41717c58b71caf028eb5f30d19c3d6"
+		},
+		{
+			"path": "research/contacts-natural-v1.npz",
+			"bytes": 6042,
+			"sha256": "2d3cc9c6dff20af374692788839460c4de9af8bcf9ef4506b92fa7e4038ce65d"
+		},
+		{
+			"path": "research/contour-mixed-v1.npz",
+			"bytes": 5316,
+			"sha256": "38a2752b5ee9674bbf35253abb525e3ec4a5b8a0c89fc01acaa6fe8588379d47"
+		},
+		{
+			"path": "research/extra-means-v1.npz",
+			"bytes": 3272,
+			"sha256": "99de009395ea7611885a383339b93e8c47d953c37b6839aea58dcfb0a8bdceda"
+		},
+		{
+			"path": "research/eyeliner-alluring-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeliner-cat-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeliner-detached-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeliner-natural-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeliner-playful-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeliner-warrior-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/eyeshadow-girl-pink-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/face-align-120.onnx",
+			"bytes": 2460958,
+			"sha256": "26b5c79a46478896bb91d9693dd114c2374d7b64b0e0b64245f77cf6289d5364"
+		},
+		{
+			"path": "research/face-align-160.onnx",
+			"bytes": 2451456,
+			"sha256": "45e3499295914247ab3a74fc080cf82c9cdecc82592224580a775838a5410174"
+		},
+		{
+			"path": "research/face-detector-dynamic.onnx",
+			"bytes": 1749659,
+			"sha256": "4733751ec48c8dc5f8ca3fe3fbbfaa87c7f1393be5fba1d02320e4e71faa749a"
+		},
+		{
+			"path": "research/face-extra-160.onnx",
+			"bytes": 3176862,
+			"sha256": "eb807d75672d09ce3566ebd6397ae3004d6a7ea5796584cc1352fd5a72a95956"
+		},
+		{
+			"path": "research/face-iris-48.onnx",
+			"bytes": 607124,
+			"sha256": "665d7d9beb664594ced038cc68d04f03b7687aa58aa782715176724d62a80b3c"
+		},
+		{
+			"path": "research/face-shape-v1.npz",
+			"bytes": 3098,
+			"sha256": "f4fac74b7718cd1a32d87d30a8a104cc5c672d48060f3cf10ea6b034f2b8c1f0"
+		},
+		{
+			"path": "research/features-corners-v1.npz",
+			"bytes": 518,
+			"sha256": "085dd7786f6d322285b9b2bf9d3a3a92249a07eb9e83c5dd0b61f906438f3979"
+		},
+		{
+			"path": "research/iris-mean-v1.npy",
+			"bytes": 288,
+			"sha256": "70f9300d6d6aa70b5d0452c88dd32f7e6e80aa6dc770cae7df1a4e7daa27587f"
+		},
+		{
+			"path": "research/jawline-v1.npz",
+			"bytes": 27300,
+			"sha256": "807b19b222a34aedc4d3848b14ce6be3e3fa582f6db05ec88d9422c9c12265da"
+		},
+		{
+			"path": "research/lashes-natural-ii-v1.npz",
+			"bytes": 4502,
+			"sha256": "ca9e95709d1e7d1b37280c789a59d388d1e0b5b6575d465293f7e545cf5db334"
+		},
+		{
+			"path": "research/lashes-template-v1.npy",
+			"bytes": 824,
+			"sha256": "a440dbaa33e1f31c9a165257e0a65d1e0458d28083ee0db19ac82352a8c6351c"
+		},
+		{
+			"path": "research/lip-soft-pink-v1.npz",
+			"bytes": 5584,
+			"sha256": "4c74331cfde00908e29f3c9ba9872e7d2bcbca0264aced09c1708b58f8ccbb9d"
+		},
+		{
+			"path": "research/lip-v1.npz",
+			"bytes": 10158,
+			"sha256": "187a0552cca41827f6b2aa4ce66611f61802f88f6ba57e3f00dcf98b33c4d061"
+		},
+		{
+			"path": "research/liquefy-v1.npz",
+			"bytes": 46458,
+			"sha256": "d1563f265d8f39b15152f83b54826c49f8744c2eda1890849794c8303bcafbbc"
+		},
+		{
+			"path": "research/look-oxygen-v1.npz",
+			"bytes": 43588,
+			"sha256": "770e334e77c8b929e827d6160c629e4b3d33ba607c6e0ebadf9accf604806cf5"
+		},
+		{
+			"path": "research/nh-mean-v1.npy",
+			"bytes": 976,
+			"sha256": "eb8fff94c5f0f298cac6832c140aede9706fa5f92789151d184c1038a7dea548"
+		},
+		{
+			"path": "research/saliency-matting-640.onnx",
+			"bytes": 14161275,
+			"sha256": "3efb0fcb26c8324091df2ca3761906894d1e790b097741a2c97d78301e329c32"
+		},
+		{
+			"path": "research/skin-mask-integer-128x128.contract.json",
+			"bytes": 835,
+			"sha256": "8804f31cfd223a2eb287e566f5e78721c12c8c22366bdc6804ea50806e47ff33"
+		},
+		{
+			"path": "research/skin-mask-integer-128x128.onnx",
+			"bytes": 1961883,
+			"sha256": "cef47e7fba5edc8afb0780177e1271d6e725e264cff788599a9ee2206b499457"
+		},
+		{
+			"path": "research/skin-mask-integer-128x144.contract.json",
+			"bytes": 835,
+			"sha256": "4c5081f7dfe999880ef68cf40896294ee56ec71cb7c45b7f1ea4e29b071e98db"
+		},
+		{
+			"path": "research/skin-mask-integer-128x144.onnx",
+			"bytes": 1961883,
+			"sha256": "3630081f7bedab245d3f3b8fbd6c19108dc900735a980bca2541a7cdc1c42765"
+		},
+		{
+			"path": "research/skin-mask-integer-128x160.contract.json",
+			"bytes": 835,
+			"sha256": "84ba49e081a3a925232e5ba0bab6354ec6375daeb9b1c19ed4b5d70c0cf65e00"
+		},
+		{
+			"path": "research/skin-mask-integer-128x160.onnx",
+			"bytes": 1961883,
+			"sha256": "5ae1ee6c1daff7f9646d69719db4cbc936e2c06140ef73e17ab0aac360d92471"
+		},
+		{
+			"path": "research/skin-mask-integer-128x176.contract.json",
+			"bytes": 835,
+			"sha256": "9431f36dcdd39e848bb7f5c44ca661ab3b3ee1baf37b2ba8d4759be38659876d"
+		},
+		{
+			"path": "research/skin-mask-integer-128x176.onnx",
+			"bytes": 1961883,
+			"sha256": "035c68972f7358f91554f957c623621b703b79c3e01e3d7bdf504b046639c425"
+		},
+		{
+			"path": "research/skin-mask-integer-224x128.contract.json",
+			"bytes": 835,
+			"sha256": "fe150f7732f9e1249e8bff0578fe72c59843e81025f73f92e1c3d94a995a44cc"
+		},
+		{
+			"path": "research/skin-mask-integer-224x128.onnx",
+			"bytes": 1961883,
+			"sha256": "72b9ca7246061c474dcb85aa937a9294eec5441832ff97561e9877c6f337f0db"
+		},
+		{
+			"path": "research/skin-seg-224x128.onnx",
+			"bytes": 4194437,
+			"sha256": "b7e5af532338819f98c10b6e79ae42fb425d5c6b58b161f6be02ba57a2af13f2"
+		},
+		{
+			"path": "research/slimface-mesh-v1.npz",
+			"bytes": 8200,
+			"sha256": "e4bd308dfd818f47b226aeab00df4b1c95909d5517ccc02d9db1e73eff2fc1ab"
+		},
+		{
+			"path": "research/spot-acne-private-model/arena.bin",
+			"bytes": 7996180,
+			"sha256": "6b318af6d358caf4e7bcf3dc85015d1b076afedd9086d0b1a255e2a2d53f9729"
+		},
+		{
+			"path": "research/spot-acne-private-model/graph.private.txt",
+			"bytes": 11317,
+			"sha256": "dd1d38695aa8c6d2f3945915e1f1cefe046e772e1ecde65ce501f31736de0393"
+		},
+		{
+			"path": "research/spot-acne-private-model/model.contract.json",
+			"bytes": 35259,
+			"sha256": "a2a441012008400e3148b5aa114ab11e698ef792bdc91ca396b6257a553237b0"
+		},
+		{
+			"path": "research/spot-acne-private-model/source.bm",
+			"bytes": 8007642,
+			"sha256": "d83a7198afee5f9466720d3c64687fdf285cc58c5fa11d9a2d86face3400b36f"
+		},
+		{
+			"path": "research/youtai-v1.npz",
+			"bytes": 5452,
+			"sha256": "d34571a65470a42d13c3823a067d830aaa5a2d9fe8f2bfe94a56f85d01491e13"
+		}
+	]
+}

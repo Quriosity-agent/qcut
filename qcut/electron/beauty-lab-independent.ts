@@ -19,6 +19,11 @@ import {
 	type BeautyLabIndependentResult,
 } from "./beauty-lab-independent-contract.js";
 import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
+import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
+import {
+	independentBeautyEnvironment,
+	verifyIndependentBeautyEnvironment,
+} from "./beauty-lab-runtime-environment.js";
 
 const requestSchema = z
 	.object({
@@ -119,6 +124,8 @@ export function createBeautyLabIndependentProvider({
 	platform = process.platform,
 	environment = process.env,
 	runJob = runIndependentBeautyJob,
+	verifyRuntime = verifyIndependentBeautyRuntime,
+	verifyEnvironment = verifyIndependentBeautyEnvironment,
 }: {
 	engineRoot: string;
 	runtimeRoot?: string;
@@ -126,11 +133,14 @@ export function createBeautyLabIndependentProvider({
 	platform?: NodeJS.Platform;
 	environment?: NodeJS.ProcessEnv;
 	runJob?: typeof runIndependentBeautyJob;
+	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
+	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 }) {
 	let active:
 		| { id: string; controller: AbortController; done: Promise<void> }
 		| undefined;
 	let disposed = false;
+	let verifiedEnvironmentKey: string | null = null;
 	async function resolveBun() {
 		const candidates = [
 			environment.QCUT_INDEPENDENT_BEAUTY_BUN,
@@ -203,18 +213,37 @@ export function createBeautyLabIndependentProvider({
 		);
 		return hash({ bytes: manifestBytes });
 	}
-	async function inspect() {
+	async function inspect({ signal }: { signal?: AbortSignal } = {}) {
 		try {
 			if (platform !== "darwin" || disposed)
 				throw new Error(
 					"Independent photo engine requires macOS and an active provider"
 				);
-			await Promise.all([
+			const sourceManifestSha256 = await verifySources();
+			const [, , bun] = await Promise.all([
 				access(python, constants.X_OK),
-				access(path.join(runtimeRoot, "research")),
-				verifySources(),
+				verifyRuntime({ runtimeRoot, sourceManifestSha256 }),
 				resolveBun(),
 			]);
+			const environmentKey = JSON.stringify([
+				python,
+				bun,
+				sourceManifestSha256,
+				environment.DEVELOPER_DIR,
+				environment.SDKROOT,
+			]);
+			if (verifiedEnvironmentKey !== environmentKey) {
+				verifiedEnvironmentKey = null;
+				await verifyEnvironment({
+					python,
+					bun,
+					cwd: engineRoot,
+					environment,
+					signal,
+				});
+				signal?.throwIfAborted();
+				verifiedEnvironmentKey = environmentKey;
+			}
 			const inventory = await catalog();
 			return {
 				available: true,
@@ -253,7 +282,7 @@ export function createBeautyLabIndependentProvider({
 		active = job;
 		let directory: string | undefined;
 		try {
-			const status = await inspect();
+			const status = await inspect({ signal: job.controller.signal });
 			if (!status.available) throw new Error(status.message);
 			const validated = independentBeautyAdjustments({
 				request: input,
@@ -286,14 +315,7 @@ export function createBeautyLabIndependentProvider({
 					JSON.stringify(validated.adjustments)
 				),
 			]);
-			const cleanEnvironment = Object.fromEntries(
-				Object.entries(environment).filter(
-					([key]) =>
-						!key.startsWith("DYLD_") &&
-						!["PYTHONPATH", "PYTHONHOME"].includes(key)
-				)
-			);
-			cleanEnvironment.PYTHONDONTWRITEBYTECODE = "1";
+			const cleanEnvironment = independentBeautyEnvironment({ environment });
 			cleanEnvironment.PATH = [
 				path.dirname(await resolveBun()),
 				cleanEnvironment.PATH ?? "/usr/bin:/bin:/usr/sbin:/sbin",
