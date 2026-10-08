@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.08.2] - 2026-10-08
+
 ### Fixed
 - Fix Beauty Lab PNG decoding in production packages by including its required codec dependency.
 
