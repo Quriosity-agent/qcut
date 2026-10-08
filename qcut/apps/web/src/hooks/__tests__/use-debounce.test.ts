@@ -1,6 +1,15 @@
-import { describe, it, expect } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 import { useDebounce } from "@/hooks/use-debounce";
+
+// Fake timers keep these assertions independent of runner speed (real-time
+// waits flaked on slow Windows CI runners).
+beforeEach(() => {
+	vi.useFakeTimers();
+});
+afterEach(() => {
+	vi.useRealTimers();
+});
 
 describe("useDebounce", () => {
 	it("returns initial value immediately", () => {
@@ -8,32 +17,27 @@ describe("useDebounce", () => {
 		expect(result.current).toBe("initial");
 	});
 
-	it("debounces value changes", async () => {
+	it("debounces value changes", () => {
 		const { result, rerender } = renderHook(
 			({ value, delay }) => useDebounce(value, delay),
 			{ initialProps: { value: "initial", delay: 50 } }
 		);
 
+		rerender({ value: "updated", delay: 50 });
 		expect(result.current).toBe("initial");
 
-		// Change value
 		act(() => {
-			rerender({ value: "updated", delay: 50 });
+			vi.advanceTimersByTime(49);
 		});
-
-		// Value should not change immediately
 		expect(result.current).toBe("initial");
 
-		// Wait for debounce to complete - increase timeout
-		await waitFor(
-			() => {
-				expect(result.current).toBe("updated");
-			},
-			{ timeout: 200 }
-		);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(result.current).toBe("updated");
 	});
 
-	it("works with complex objects", async () => {
+	it("works with complex objects", () => {
 		const initialObject = { count: 0, text: "hello" };
 		const updatedObject = { count: 1, text: "world" };
 
@@ -44,35 +48,30 @@ describe("useDebounce", () => {
 
 		expect(result.current).toEqual(initialObject);
 
+		rerender({ value: updatedObject, delay: 30 });
 		act(() => {
-			rerender({ value: updatedObject, delay: 30 });
+			vi.advanceTimersByTime(30);
 		});
-
-		// Wait for debounce
-		await waitFor(
-			() => {
-				expect(result.current).toEqual(updatedObject);
-			},
-			{ timeout: 200 }
-		);
+		expect(result.current).toEqual(updatedObject);
 	});
 
-	it("handles delay changes", async () => {
+	it("handles delay changes", () => {
 		const { result, rerender } = renderHook(
 			({ value, delay }) => useDebounce(value, delay),
 			{ initialProps: { value: "initial", delay: 100 } }
 		);
 
-		act(() => {
-			rerender({ value: "updated", delay: 25 });
-		});
+		rerender({ value: "updated", delay: 25 });
 
-		// New delay should be respected - increase timeout for safety
-		await waitFor(
-			() => {
-				expect(result.current).toBe("updated");
-			},
-			{ timeout: 100 }
-		);
+		// The new, shorter delay applies to the pending update.
+		act(() => {
+			vi.advanceTimersByTime(24);
+		});
+		expect(result.current).toBe("initial");
+
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(result.current).toBe("updated");
 	});
 });

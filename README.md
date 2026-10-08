@@ -17,7 +17,7 @@
   <p>
     <a href="https://github.com/Quriosity-agent/qcut/releases/latest"><img src="https://img.shields.io/github/v/release/Quriosity-agent/qcut?label=latest" alt="Latest QCut release" /></a>
     <a href="qcut/LICENSE"><img src="https://img.shields.io/badge/license-MIT-18b8b8" alt="MIT license" /></a>
-    <a href="https://deepwiki.com/Quriosity-agent/qcut"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
+    <a href="https://deepwiki.com/Quriosity-agent/qcut"><img src="https://img.shields.io/badge/Ask-DeepWiki-1f6feb" alt="Ask DeepWiki" /></a>
   </p>
 </div>
 
@@ -190,7 +190,7 @@ Generate video from text, images, or avatars, compare supported AI models, and a
 | --- | --- |
 | Editing | Multitrack timeline, trim and split, text and text animations, captions, stickers, filters, transitions, masks, speed controls, portrait retouching with per-face adjustments, project covers, live preview |
 | AI media | Text-to-image, text-to-video, image-to-video, speech, music, voice cloning, avatars and presenters, transcription, translation, and media analysis |
-| Automation | 280-command QCut CLI with JSON envelopes, Codex Plugin, Claude Code Plugin, editor inspection and control, compose manifests that build editable projects |
+| Automation | 285-command QCut CLI with JSON envelopes, Codex Plugin, Claude Code Plugin, editor inspection and control, compose manifests that build editable projects |
 | Media workflow | Searchable media workspace, sound and sticker libraries, project organization, guarded Jianying Professional draft import, local filter, effect, text, and sticker labs |
 | Desktop | Windows, macOS, and Linux builds with native file access, bundled FFmpeg processing, and a QCut-owned Metal filter renderer on macOS |
 
@@ -208,8 +208,8 @@ QCut is local-first, not “every feature is offline.”
 
 ### Requirements
 
-- [Bun](https://bun.sh/)
-- Node.js 18 or newer
+- [Bun](https://bun.sh/) 1.3.10 (pinned in `qcut/package.json`)
+- Node.js 20.19+ or 22.12+ (required by Vite 7)
 - Git
 
 ### Run the desktop app
@@ -218,8 +218,18 @@ QCut is local-first, not “every feature is offline.”
 git clone https://github.com/Quriosity-agent/qcut.git
 cd qcut/qcut
 bun install
-bun run electron:dev
+bun run build       # builds the web app and the Electron main process into dist/
+bun run electron    # starts the built app
 ```
+
+For development with hot reload, run the Vite dev server and Electron in two terminals:
+
+```bash
+bun run --cwd apps/web dev  # terminal 1: Vite dev server on http://localhost:5173
+bun run electron:dev        # terminal 2: Electron in development mode
+```
+
+`electron:dev` loads the dev server and the compiled main process, so run `bun run build` once first and rerun `bun run build:electron` after changing files under `electron/`.
 
 ### Create distribution packages
 
