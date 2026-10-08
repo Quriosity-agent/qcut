@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Remove about 27,000 lines of unused code and 24 unused dependencies, including abandoned editor experiments (the old Nano-edit tools, effect templates, Zip export, the WebCodecs/GIF export path and an old Remotion timeline element). None of it was reachable from the app, so features are unchanged.
+
+### Fixed
+- Fix the README's build-from-source steps, Node.js/Bun requirements and broken DeepWiki badge.
+- Make a debounce test deterministic so it no longer fails intermittently on slow CI runners.
+
 ## [2026.10.08.3] - 2026-10-08
 
 ### Changed
