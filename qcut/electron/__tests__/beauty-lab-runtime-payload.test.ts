@@ -58,7 +58,10 @@ describe("independent runtime payload", () => {
 			createHash("sha256")
 				.update(
 					await readFile(
-						path.resolve("research/independent-beauty/source-manifest.json")
+						new URL(
+							"../../research/independent-beauty/source-manifest.json",
+							import.meta.url
+						)
 					)
 				)
 				.digest("hex")
