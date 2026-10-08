@@ -12,6 +12,7 @@ import {
 import type { BeautyLabIndependentRequest } from "../beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
 import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
+import { verifyIndependentBeautyEnvironment } from "../beauty-lab-runtime-environment";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],
@@ -61,10 +62,27 @@ function setup({
 			verifiedFiles: 1,
 			verifiedBytes: 1,
 		}),
+	verifyEnvironment = vi
+		.fn<typeof verifyIndependentBeautyEnvironment>()
+		.mockResolvedValue({
+			pythonVersion: "3.12",
+			packages: {
+				onnxruntime: "1.22.1",
+				onnx: "1.19.0",
+				numpy: "2.5.3",
+				pillow: "12.2.0",
+				"opencv-python-headless": "4.12.0.88",
+			},
+			cpuInferenceVerified: true,
+			compilerExecutionVerified: true,
+			metalShaderVerified: true,
+			gpuRenderVerified: false,
+		}),
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
 	run?: typeof runIndependentBeautyJob;
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
+	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 } = {}) {
 	const runJob = vi.fn<typeof runIndependentBeautyJob>(
 		run ??
@@ -124,11 +142,50 @@ function setup({
 		},
 		runJob,
 		verifyRuntime,
+		verifyEnvironment,
 	});
 	return { provider, runJob };
 }
 
 describe("independent photo provider", () => {
+	it("cancels the environment probe before dispatching an image job", async () => {
+		let probing: () => void = () => {};
+		const started = new Promise<void>((resolve) => {
+			probing = resolve;
+		});
+		const verifyEnvironment = vi
+			.fn<typeof verifyIndependentBeautyEnvironment>()
+			.mockImplementation(
+				({ signal }) =>
+					new Promise((_, reject) => {
+						probing();
+						const cancel = () => reject(new Error("environment cancelled"));
+						if (signal?.aborted) cancel();
+						else signal?.addEventListener("abort", cancel, { once: true });
+					})
+			);
+		const { provider, runJob } = setup({ verifyEnvironment });
+		const pending = provider.render({ request });
+		const rejected = expect(pending).rejects.toThrow("environment cancelled");
+		await started;
+		await provider.cancel({ request: { requestId: request.requestId } });
+		await rejected;
+		expect(runJob).not.toHaveBeenCalled();
+	});
+	it("blocks rendering when Python imports or Metal capability checks fail", async () => {
+		const verifyEnvironment = vi
+			.fn<typeof verifyIndependentBeautyEnvironment>()
+			.mockRejectedValue(new Error("numpy version mismatch"));
+		const { provider, runJob } = setup({ verifyEnvironment });
+		expect(await provider.inspect()).toMatchObject({
+			available: false,
+			message: expect.stringContaining("numpy version mismatch"),
+		});
+		await expect(provider.render({ request })).rejects.toThrow(
+			"numpy version mismatch"
+		);
+		expect(runJob).not.toHaveBeenCalled();
+	});
 	it("reports missing payload and blocks dispatch before rendering", async () => {
 		const verifyRuntime = vi
 			.fn<typeof verifyIndependentBeautyRuntime>()
