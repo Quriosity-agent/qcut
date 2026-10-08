@@ -11,6 +11,7 @@ import {
 } from "../beauty-lab-independent";
 import type { BeautyLabIndependentRequest } from "../beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],
@@ -53,9 +54,17 @@ afterEach(async () => {
 function setup({
 	mutate,
 	run,
+	verifyRuntime = vi
+		.fn<typeof verifyIndependentBeautyRuntime>()
+		.mockResolvedValue({
+			profile: "fixture",
+			verifiedFiles: 1,
+			verifiedBytes: 1,
+		}),
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
 	run?: typeof runIndependentBeautyJob;
+	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 } = {}) {
 	const runJob = vi.fn<typeof runIndependentBeautyJob>(
 		run ??
@@ -114,11 +123,24 @@ function setup({
 			PYTHONDONTWRITEBYTECODE: "0",
 		},
 		runJob,
+		verifyRuntime,
 	});
 	return { provider, runJob };
 }
 
 describe("independent photo provider", () => {
+	it("reports missing payload and blocks dispatch before rendering", async () => {
+		const verifyRuntime = vi
+			.fn<typeof verifyIndependentBeautyRuntime>()
+			.mockRejectedValue(new Error("Missing Cache whitening LUT"));
+		const { provider, runJob } = setup({ verifyRuntime });
+		expect(await provider.inspect()).toMatchObject({
+			available: false,
+			message: expect.stringContaining("Missing Cache"),
+		});
+		await expect(provider.render({ request })).rejects.toThrow("Missing Cache");
+		expect(runJob).not.toHaveBeenCalled();
+	});
 	it("reserves the job before asynchronous validation so immediate cancellation works", async () => {
 		const { provider, runJob } = setup();
 		const job = provider.render({ request });
