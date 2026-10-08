@@ -31,19 +31,16 @@ function failureReason({ error }: { error: unknown }) {
 	return error.message;
 }
 
-export async function verifyIndependentBeautyRuntime({
-	runtimeRoot,
+export function independentBeautyRuntimeProfile({
 	sourceManifestSha256,
 	requirements = profile,
 }: {
-	runtimeRoot: string;
 	sourceManifestSha256: string;
 	requirements?: unknown;
 }) {
 	const parsed = profileSchema.parse(requirements);
 	if (parsed.sourceManifestSha256 !== sourceManifestSha256)
 		throw new Error("Independent runtime profile does not match engine source");
-	const root = await realpath(runtimeRoot);
 	const paths = new Set<string>();
 	for (const file of parsed.files) {
 		const segments = file.path.split("/");
@@ -59,6 +56,23 @@ export async function verifyIndependentBeautyRuntime({
 			throw new Error(`Invalid independent runtime profile path: ${file.path}`);
 		paths.add(file.path);
 	}
+	return parsed;
+}
+
+export async function verifyIndependentBeautyRuntime({
+	runtimeRoot,
+	sourceManifestSha256,
+	requirements = profile,
+}: {
+	runtimeRoot: string;
+	sourceManifestSha256: string;
+	requirements?: unknown;
+}) {
+	const parsed = independentBeautyRuntimeProfile({
+		sourceManifestSha256,
+		requirements,
+	});
+	const root = await realpath(runtimeRoot);
 	const failures: string[] = [];
 	let next = 0;
 	async function verifyNext(): Promise<void> {
