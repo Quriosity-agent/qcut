@@ -46,7 +46,6 @@ Located in `src/components/editor/**/`:
 - camera-selector.test.tsx
 - moyin-round11.test.tsx, moyin-round21.test.tsx, moyin-round22.test.tsx, moyin-round25.test.tsx, moyin-view.test.tsx
 - component-browser.test.tsx (Remotion)
-- markdown-editor-panel.test.tsx
 - ResizeHandles.test.ts, StickerElement.test.ts (stickers overlay)
 - remotion-element-analysis.test.tsx, remotion-sequences.test.tsx, timeline-drag-handlers.test.ts, timeline-toolbar.test.tsx, track-icon.test.tsx (timeline)
 
@@ -61,7 +60,6 @@ Located in `src/hooks/__tests__/`:
 - use-debounce.test.ts, use-debounce-callback.test.ts
 - use-mobile.test.tsx
 - use-project-folder.test.ts
-- use-toast.test.ts, use-toast-advanced.test.ts
 
 #### Store Tests (17 files)
 Located in `src/stores/__tests__/`:
@@ -104,7 +102,7 @@ Located in `src/lib/**/`:
 - export-cli/sources: audio-detection.test.ts, audio-sources.test.ts
 - export: remotion-export-wiring.test.ts
 - filmstrip: filmstrip-cache.test.ts, filmstrip-extractor.test.ts
-- moyin: character-bible.test.ts, presets.test.ts, script-parser.test.ts, storyboard.test.ts, utils.test.ts
+- moyin: presets.test.ts, script-parser.test.ts, storyboard.test.ts
 - remotion: component-loader-analysis.test.ts, component-loader.test.ts, component-validator.test.ts, compositor.test.ts, duration-calculator.test.ts, dynamic-loader.test.ts, export-engine-remotion.test.ts, keyframe-converter.test.ts, player-wrapper-trim.test.ts, pre-renderer.test.ts, schema-parser.test.ts, sequence-analysis-service.test.ts, sequence-parser.test.ts, sync-manager.test.ts, types.test.ts
 - remotion/built-in: templates.test.tsx, fade-in-text.test.tsx, text-components.test.tsx, typewriter.test.tsx, transitions.test.tsx
 - text2image-models: text2image-models.test.ts
