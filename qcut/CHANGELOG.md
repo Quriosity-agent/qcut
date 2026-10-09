@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Remove about 9,400 more lines of unused code, tests and configuration, found by checking what the production build actually loads: the old toast notification system, unused Moyin library modules, editor components that were no longer shown, duplicate re-export files and four unused pipeline helpers. None of it was reachable from the app, so features are unchanged.
+- Remove the web app's duplicate database configuration and migrations (`packages/db` remains the single source), the old Next.js Docker web service with its Redis services, and 10 unused dependencies.
+
+### Fixed
+- Update the contributor guide and technical docs to describe the current desktop development flow and the single-row media panel navigation.
+
 ## [2026.10.09.1] - 2026-10-08
 
 ### Changed
