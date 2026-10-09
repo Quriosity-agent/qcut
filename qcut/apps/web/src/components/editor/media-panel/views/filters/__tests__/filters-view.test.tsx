@@ -7,7 +7,7 @@ import {
 	type SavedColorPreset,
 } from "@/lib/color/color-presets";
 import { DEFAULT_MEDIA_COLOR_SETTINGS } from "@/lib/color/color-properties";
-import { FILTER_FAVORITES_STORAGE_KEY } from "@/lib/filters/filter-favorites";
+import { LEGACY_FILTER_FAVORITES_STORAGE_KEY } from "@/stores/asset-library-store";
 import { FILTER_PRESETS } from "@/lib/filters/filter-registry";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineStore } from "@/stores/timeline/types";
@@ -475,7 +475,9 @@ describe("FiltersView", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Favorite Vivid" }));
 
 		expect(
-			JSON.parse(localStorage.getItem(FILTER_FAVORITES_STORAGE_KEY) ?? "[]")
+			JSON.parse(
+				localStorage.getItem(LEGACY_FILTER_FAVORITES_STORAGE_KEY) ?? "[]"
+			)
 		).toEqual(["vivid"]);
 
 		fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
@@ -492,7 +494,9 @@ describe("FiltersView", () => {
 			screen.getByText("Favorite filters appear here.")
 		).toBeInTheDocument();
 		expect(
-			JSON.parse(localStorage.getItem(FILTER_FAVORITES_STORAGE_KEY) ?? "[]")
+			JSON.parse(
+				localStorage.getItem(LEGACY_FILTER_FAVORITES_STORAGE_KEY) ?? "[]"
+			)
 		).toEqual([]);
 	});
 

@@ -13,7 +13,7 @@ vi.mock("@/config/features", () => ({
 	isFeatureEnabled: () => true,
 }));
 
-import { useEffectsStore } from "../../stores/effects-store";
+import { useEffectsStore } from "../../stores/ai/effects-store";
 
 describe("Debug Effects Store", () => {
 	let effectsStore: ReturnType<typeof useEffectsStore.getState>;

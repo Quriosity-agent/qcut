@@ -40,7 +40,7 @@ const EffectsView = lazy(() =>
 			})
 );
 
-/** Root media panel component that renders the group bar, tab bar, and active tab view. */
+/** Root media panel component that renders the group navigation, tab bar, and active tab view. */
 export function MediaPanel() {
 	const activeTab = useMediaPanelStore((state) => state.activeTab);
 	const activeGroup = useMediaPanelStore((state) => state.activeGroup);

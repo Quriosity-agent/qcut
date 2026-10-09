@@ -62,7 +62,7 @@ Base UI components built on Radix UI primitives:
 - `dialog.tsx`, `alert-dialog.tsx`, `sheet.tsx` - Modal interfaces
 - `dropdown-menu.tsx`, `context-menu.tsx`, `menubar.tsx` - Menu systems
 - `table.tsx`, `tabs.tsx`, `card.tsx` - Layout components
-- `toast.tsx`, `toaster.tsx`, `sonner.tsx` - Notification system
+- `sonner.tsx` - Notification system
 
 **Interactive Components:**
 - `accordion.tsx`, `collapsible.tsx` - Expandable content
@@ -140,7 +140,6 @@ Core video editor interface:
 - `drag-overlay.tsx` - Drag overlay component
 - `export-all-button.tsx` - Export all button
 - `folder-item.tsx`, `folder-tree.tsx` - Folder navigation
-- `group-bar.tsx` - Group bar component
 - `import-skill-dialog.tsx` - Skill import dialog
 - `skill-card.tsx` - Skill card display
 
@@ -224,7 +223,6 @@ Core video editor interface:
 - `markdown-overlay.tsx` - Markdown overlay rendering on canvas
 
 **Panels (`panels/`) - 1 file:**
-- `markdown-editor-panel.tsx` - Markdown editor panel
 
 **Effects System:**
 - `effect-chain-manager.tsx` - Effect chain management
@@ -526,7 +524,6 @@ Custom React hooks, organized into domain subdirectories:
 - `use-infinite-scroll.ts` - Infinite scrolling support
 - `use-async-module-loading.tsx` - Dynamic module loading
 - `use-mobile.tsx` - Mobile device detection
-- `use-toast.ts` - Toast notification system
 - `use-debounce.ts` - Debounce functionality
 - `use-drag-drop.ts` - Drag and drop interactions
 - `use-editor-actions.ts` - Core editor operations
@@ -810,14 +807,14 @@ All Electron code is 100% TypeScript:
 - `editor-handlers-media.ts`, `editor-handlers-remotion.ts`
 - `editor-handlers-timeline.ts`, `project-commands.ts`
 
-*`native-pipeline/execution/`* — Pipeline execution engine (6 files):
-- `chain-parser.ts`, `config-loader.ts`, `executor.ts`
-- `parallel-executor.ts`, `step-executors.ts`, `validators.ts`
+*`native-pipeline/execution/`* — Pipeline execution engine (5 files):
+- `chain-parser.ts`, `executor.ts`, `openrouter-media-content.ts`
+- `parallel-executor.ts`, `step-executors.ts`
 
-*`native-pipeline/infra/`* — Infrastructure utilities (8 files):
-- `api-caller.ts`, `cost-calculator.ts`, `file-manager.ts`
-- `key-manager.ts`, `platform-logger.ts`, `registry.ts`
-- `stream-emitter.ts`, `xdg-paths.ts`
+*`native-pipeline/infra/`* — Infrastructure utilities (12 files):
+- `api-caller.ts`, `api-provider-urls.ts`, `cost-calculator.ts`, `credit-estimator.ts`
+- `debug-stream.ts`, `element-store.ts`, `imarouter-assets.ts`, `key-manager.ts`
+- `proxy-client.ts`, `registry.ts`, `stream-emitter.ts`, `xdg-paths.ts`
 
 *`native-pipeline/output/`* — Output generation (4 files):
 - `errors.ts`, `grid-generator.ts`, `output-utils.ts`, `srt-generator.ts`

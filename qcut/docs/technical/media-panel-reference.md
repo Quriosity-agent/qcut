@@ -6,7 +6,7 @@ This document provides a comprehensive overview of all 18 tabs registered in the
 
 ## Tab Grouping Architecture
 
-The media panel uses a two-level navigation system: **groups** (top bar) and **tabs** (second bar). Groups are defined in `store.ts` via `tabGroups` and rendered by `GroupBar`. The Edit group additionally has **sub-groups** that split its tabs into two categories.
+The media panel has one navigation row, rendered by `StandardEditorNavigation`: buttons for the standard editor tabs (`STANDARD_EDITOR_TABS` in `store.ts`) and a **More** dropdown that switches to the AI Assist, AI Create and Agents workspaces. Those workspaces add a second row, `TabBar`, with the active group's tabs. Groups are defined in `store.ts` via `tabGroups`. The Edit group additionally has **sub-groups** that split its tabs into two categories.
 
 ### Groups
 
@@ -28,10 +28,10 @@ The Edit group has two sub-groups, toggled via a segmented control above the tab
 
 ### Navigation Flow
 
-1. **GroupBar** (`group-bar.tsx`) renders four group buttons at the top
-2. Selecting a group switches to the last-used tab within that group
-3. **TabBar** (`tabbar.tsx`) renders the tabs for the active group
-4. For the Edit group, a sub-group toggle appears above the tab icons
+1. **StandardEditorNavigation** (`standard-editor-navigation.tsx`) renders the standard editor tabs and the **More** workspace dropdown
+2. Choosing a workspace switches to the last-used tab within that group
+3. **TabBar** (`tabbar.tsx`) renders the active group's tabs in the AI Assist, AI Create and Agents workspaces
+4. In AI Assist (the Edit group's `ai-edit` sub-group), a sub-group toggle appears above the tab icons
 5. State is managed by `useMediaPanelStore` in `store.ts`
 
 ---
@@ -599,7 +599,7 @@ Each panel typically has an associated Zustand store for state management:
 ### Tab Configuration
 Panel tabs are configured in:
 - **Tab & group definitions:** `apps/web/src/components/editor/media-panel/store.ts`
-- **Group bar rendering:** `apps/web/src/components/editor/media-panel/group-bar.tsx`
+- **Group navigation:** `apps/web/src/components/editor/media-panel/standard-editor-navigation.tsx`
 - **Tab bar rendering:** `apps/web/src/components/editor/media-panel/tabbar.tsx`
 - **View mapping:** `apps/web/src/components/editor/media-panel/index.tsx`
 

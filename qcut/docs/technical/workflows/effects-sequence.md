@@ -90,7 +90,7 @@ sequenceDiagram
 ### useEffectsStore (ES)
 Main Zustand store for effect state management.
 
-Located at `stores/ai/effects-store.ts` (re-exported from `stores/effects-store.ts`).
+Located at `stores/ai/effects-store.ts`.
 
 **State:**
 ```typescript

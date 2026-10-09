@@ -74,13 +74,13 @@ bun run build:electron        # Compile electron/*.ts to dist/electron/*.js
 bun run build:electron:watch  # Watch mode for development
 ```
 
-### Database (apps/web)
+### Database (packages/db)
 ```bash
-cd apps/web
+cd packages/db
 bun run db:generate     # Generate Drizzle migrations
 bun run db:migrate      # Run migrations
-bun run db:push:local   # Push to local DB (development)
-bun run db:push:prod    # Push to production DB
+bun run db:push         # Push the schema to DATABASE_URL
+bun run db:studio       # Open Drizzle Studio
 ```
 
 ### Release Management
@@ -196,10 +196,6 @@ bun run release:promote   # Promote prerelease to stable
 | `test:coverage` | Coverage report |
 | `test:watch` | Watch mode tests |
 | `test:ui:dev` | UI + watch mode |
-| `db:generate` | Generate Drizzle migrations |
-| `db:migrate` | Run migrations |
-| `db:push:local` | Push to local database |
-| `db:push:prod` | Push to production database |
 
 ## Common Issues
 
