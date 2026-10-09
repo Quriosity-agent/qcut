@@ -160,10 +160,9 @@ GMI_API_KEY             # GMI Cloud (Veo Lite, SkyReels)
 # during the migration beta for the three AICP-vocab keys (FAL / Gemini /
 # OpenRouter) but is not an independent precedence tier.
 
-# Legacy — read by packages/db, packages/auth and the Docker setup, not by the Electron app
+# Legacy — read by packages/db and packages/auth, not by the Electron app
 DATABASE_URL            # PostgreSQL
 BETTER_AUTH_SECRET      # Auth
-UPSTASH_REDIS_REST_URL  # Redis
 ```
 
 ## When Working on Features
