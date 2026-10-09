@@ -28,7 +28,7 @@ The Edit group has two sub-groups, toggled via a segmented control above the tab
 
 ### Navigation Flow
 
-1. **GroupBar** (`group-bar.tsx`) renders four group buttons at the top
+1. **StandardEditorNavigation** (`standard-editor-navigation.tsx`) switches between groups
 2. Selecting a group switches to the last-used tab within that group
 3. **TabBar** (`tabbar.tsx`) renders the tabs for the active group
 4. For the Edit group, a sub-group toggle appears above the tab icons
@@ -599,7 +599,7 @@ Each panel typically has an associated Zustand store for state management:
 ### Tab Configuration
 Panel tabs are configured in:
 - **Tab & group definitions:** `apps/web/src/components/editor/media-panel/store.ts`
-- **Group bar rendering:** `apps/web/src/components/editor/media-panel/group-bar.tsx`
+- **Group navigation:** `apps/web/src/components/editor/media-panel/standard-editor-navigation.tsx`
 - **Tab bar rendering:** `apps/web/src/components/editor/media-panel/tabbar.tsx`
 - **View mapping:** `apps/web/src/components/editor/media-panel/index.tsx`
 
