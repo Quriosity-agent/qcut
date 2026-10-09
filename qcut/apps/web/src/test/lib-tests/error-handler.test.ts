@@ -6,7 +6,7 @@ import {
 	handleAIServiceError,
 	ErrorCategory,
 	ErrorSeverity,
-} from "../../lib/error-handler";
+} from "../../lib/debug/error-handler";
 
 // Hoist mock fns so they're available when vi.mock factory runs (hoisted to top)
 const { mockToast, mockToastError, mockToastWarning } = vi.hoisted(() => ({
