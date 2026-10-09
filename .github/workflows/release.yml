@@ -64,6 +64,7 @@ jobs:
     runs-on: windows-latest
     env:
       FFMPEG_STAGE_TARGETS: win32-x64
+      AICP_STAGE_TARGETS: win32-x64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -125,6 +126,13 @@ jobs:
         timeout-minutes: 25
         run: bun run stage-rife-binaries
 
+      - name: Stage AICP binary
+        # Packaged mode refuses system/Python fallbacks, so the legacy pipeline
+        # and CLI key commands need the bundled binary. The download has no
+        # retry; this cap fails a stalled fetch instead of hanging the job.
+        timeout-minutes: 10
+        run: bun run stage-aicp-binaries
+
       - name: Build Electron application
         run: |
           npx electron-builder --win --publish never --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -136,6 +144,9 @@ jobs:
 
       - name: Verify packaged RIFE host
         run: bun run verify:packaged-rife
+
+      - name: Verify packaged AICP binary
+        run: bun run verify:packaged-aicp
 
       - name: Verify update artifacts
         run: bun run verify:update-artifacts -- --manifest latest.yml
@@ -163,6 +174,8 @@ jobs:
     timeout-minutes: 45
     env:
       FFMPEG_STAGE_TARGETS: darwin-arm64,darwin-x64
+      # The mac package is arm64-only and nothing prunes foreign AICP targets.
+      AICP_STAGE_TARGETS: darwin-arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -252,6 +265,13 @@ jobs:
         timeout-minutes: 25
         run: bun run stage-rife-binaries
 
+      - name: Stage AICP binary
+        # Packaged mode refuses system/Python fallbacks, so the legacy pipeline
+        # and CLI key commands need the bundled binary. The download has no
+        # retry; this cap fails a stalled fetch instead of hanging the job.
+        timeout-minutes: 10
+        run: bun run stage-aicp-binaries
+
       - name: Build Electron application
         run: |
           rm -rf dist-electron
@@ -276,6 +296,9 @@ jobs:
 
       - name: Verify packaged RIFE host
         run: bun run verify:packaged-rife
+
+      - name: Verify packaged AICP binary
+        run: bun run verify:packaged-aicp
 
       - name: Build macOS DMG (custom hdiutil-based, sidesteps dmg-builder Tahoe bug)
         run: bun run build:mac-dmg
@@ -306,6 +329,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       FFMPEG_STAGE_TARGETS: linux-x64
+      AICP_STAGE_TARGETS: linux-x64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -396,6 +420,13 @@ jobs:
         timeout-minutes: 25
         run: bun run stage-rife-binaries
 
+      - name: Stage AICP binary
+        # Packaged mode refuses system/Python fallbacks, so the legacy pipeline
+        # and CLI key commands need the bundled binary. The download has no
+        # retry; this cap fails a stalled fetch instead of hanging the job.
+        timeout-minutes: 10
+        run: bun run stage-aicp-binaries
+
       - name: Build Electron application
         run: |
           npx electron-builder --linux --publish never --config.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -407,6 +438,9 @@ jobs:
 
       - name: Verify packaged RIFE host
         run: bun run verify:packaged-rife
+
+      - name: Verify packaged AICP binary
+        run: bun run verify:packaged-aicp
 
       - name: Verify update artifacts
         run: bun run verify:update-artifacts -- --manifest latest-linux.yml

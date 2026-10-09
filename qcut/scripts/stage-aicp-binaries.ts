@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { runVersionWithTimeoutRetry } from "./verify-packaged-aicp.ts";
 
 interface StageTarget {
 	platform: string;
@@ -26,13 +26,6 @@ interface AicpPlatformManifestEntry {
 	downloadUrl?: string;
 }
 
-interface VersionCheckResult {
-	exitCode: number | null;
-	stdout: string;
-	stderr: string;
-	error: string;
-}
-
 interface StagedBinary {
 	path: string;
 	downloaded: boolean;
@@ -50,7 +43,6 @@ const DEFAULT_STAGE_TARGETS = [
 	"win32-x64",
 	"linux-x64",
 ];
-const VERSION_CHECK_TIMEOUT_MS = 30_000;
 const MIN_BINARY_SIZE_BYTES = 1_000_000;
 const MANIFEST_PATH = join(process.cwd(), "resources", "bin", "manifest.json");
 const STAGING_ROOT = join(
@@ -164,69 +156,6 @@ async function computeSha256({
 			`Failed to compute sha256 for ${filePath}: ${getErrorMessage({ error })}`
 		);
 	}
-}
-
-async function runVersionCheck({
-	binaryPath,
-}: {
-	binaryPath: string;
-}): Promise<VersionCheckResult> {
-	return new Promise((resolve) => {
-		try {
-			const proc = spawn(binaryPath, ["--version"], {
-				windowsHide: true,
-				stdio: ["ignore", "pipe", "pipe"],
-			});
-
-			let stdout = "";
-			let stderr = "";
-
-			const timeout = setTimeout(() => {
-				proc.kill();
-				resolve({
-					exitCode: null,
-					stdout,
-					stderr,
-					error: `timed out after ${VERSION_CHECK_TIMEOUT_MS}ms`,
-				});
-			}, VERSION_CHECK_TIMEOUT_MS);
-
-			proc.stdout?.on("data", (chunk: Buffer) => {
-				stdout += chunk.toString();
-			});
-
-			proc.stderr?.on("data", (chunk: Buffer) => {
-				stderr += chunk.toString();
-			});
-
-			proc.on("close", (exitCode: number | null) => {
-				clearTimeout(timeout);
-				resolve({
-					exitCode,
-					stdout,
-					stderr,
-					error: "",
-				});
-			});
-
-			proc.on("error", (error: Error) => {
-				clearTimeout(timeout);
-				resolve({
-					exitCode: null,
-					stdout,
-					stderr,
-					error: error.message,
-				});
-			});
-		} catch (error: unknown) {
-			resolve({
-				exitCode: null,
-				stdout: "",
-				stderr: "",
-				error: getErrorMessage({ error }),
-			});
-		}
-	});
 }
 
 function resolveDownloadUrl({
@@ -411,8 +340,9 @@ async function stageTarget({
 			return;
 		}
 
-		const versionCheck = await runVersionCheck({
+		const { result: versionCheck } = await runVersionWithTimeoutRetry({
 			binaryPath: stagedBinary.path,
+			log: (message) => console.log(`[stage-aicp] ${target.key}: ${message}`),
 		});
 		if (versionCheck.error || versionCheck.exitCode !== 0) {
 			throw new Error(
@@ -420,8 +350,9 @@ async function stageTarget({
 			);
 		}
 
-		const firstLine = (versionCheck.stdout.split(/\r?\n/)[0] ?? "").trim();
-		console.log(`[stage-aicp] ${target.key} version: ${firstLine}`);
+		console.log(
+			`[stage-aicp] ${target.key} version: ${versionCheck.firstLine}`
+		);
 	} catch (error: unknown) {
 		throw new Error(
 			`Failed to stage target ${target.key}: ${getErrorMessage({ error })}`
