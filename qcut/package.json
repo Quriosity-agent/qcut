@@ -46,7 +46,6 @@
 		"husky": "^9.1.7",
 		"jsdom": "^28.1.0",
 		"madge": "^8.0.0",
-		"patch-package": "^8.0.1",
 		"pptxgenjs": "^4.0.1",
 		"playwright": "^1.58.2",
 		"rollup-plugin-visualizer": "^6.0.5",
