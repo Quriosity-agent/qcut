@@ -25,6 +25,7 @@ import crypto from "crypto";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { toPackageVersion } from "../electron/update-version.ts";
+import { VERSION_CHECK_DEADLINE_MS as AICP_VERSION_CHECK_DEADLINE_MS } from "./verify-packaged-aicp.ts";
 
 type ReleaseType = "stable" | "alpha" | "beta" | "rc" | "promote";
 const RELEASE_TYPES: ReleaseType[] = [
@@ -441,11 +442,11 @@ function buildElectronApp(): void {
 		process.stdout.write("⚠️  FFmpeg verification failed (non-fatal)\n");
 	}
 	try {
-		// Must exceed verify-packaged-aicp's VERSION_TIMEOUT_MS (30s) so the
-		// script's own deadline stays authoritative; margin covers bun startup.
+		// Outlasts every --version attempt the verifier may make so its own
+		// deadline stays authoritative; margin covers bun startup.
 		execSync("bun run verify:packaged-aicp", {
 			stdio: "inherit",
-			timeout: 45_000,
+			timeout: AICP_VERSION_CHECK_DEADLINE_MS + 15_000,
 		});
 	} catch {
 		process.stdout.write("⚠️  AICP verification skipped (non-fatal)\n");
