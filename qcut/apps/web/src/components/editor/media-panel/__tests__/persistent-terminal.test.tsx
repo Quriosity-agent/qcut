@@ -5,10 +5,6 @@ import { useMediaPanelStore } from "../store";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { mockElectronAPI, setupElectronMock } from "@/test/mocks/electron";
 
-vi.mock("../group-bar", () => ({
-	GroupBar: () => <div data-testid="group-bar" />,
-}));
-
 vi.mock("../tabbar", () => ({
 	TabBar: () => <div data-testid="tab-bar" />,
 }));
