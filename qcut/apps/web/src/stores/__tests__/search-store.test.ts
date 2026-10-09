@@ -141,13 +141,16 @@ describe("search-store", () => {
 			useSearchStore.getState().setQuery("world");
 		});
 
-		await act(async () => {
+		act(() => {
 			useSearchStore.getState().navigateToResult(0);
-			// Wait for dynamic import to resolve
-			await new Promise((r) => setTimeout(r, 10));
 		});
 
-		expect(mockSetCurrentTime).toHaveBeenCalledWith(0.9); // word timestamp
+		// The seek runs after a lazy import of the playback store, which can
+		// outlast any fixed sleep on a loaded CI runner.
+		await vi.waitFor(
+			() => expect(mockSetCurrentTime).toHaveBeenCalledWith(0.9), // word timestamp
+			{ timeout: 5000 }
+		);
 		expect(useSearchStore.getState().selectedResultIndex).toBe(0);
 	});
 
