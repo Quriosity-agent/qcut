@@ -6,12 +6,9 @@ Thank you for your interest in contributing to QCut! This document provides guid
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/) (v18 or later)
-- [Bun](https://bun.sh/docs/installation)
+- [Node.js](https://nodejs.org/en/) 20.19+ or 22.12+ (required by Vite 7)
+- [Bun](https://bun.sh/docs/installation) 1.3.10
   (for `npm` alternative)
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-
-> **Note:** Docker is optional, but it's essential for running the local database and Redis services. If you're planning to contribute to frontend features, you can skip the Docker setup. If you have followed the steps below in [Setup](#setup), you're all set to go!
 
 ### Setup
 
@@ -66,69 +63,29 @@ If you're unsure whether your idea falls into the preview category, feel free to
 
 ### Local Development
 
-1. Start the database and Redis services:
+1. Install dependencies from the `qcut/` directory:
 
    ```bash
-   # From project root
-   docker-compose up -d
+   bun install
    ```
 
-2. Navigate to the web app directory:
+2. Optionally copy `apps/web/.env.example` to `apps/web/.env.local` to set `VITE_*` options. AI provider keys can also be added later in the app's API key settings.
+
+3. Build once, then start the desktop app:
 
    ```bash
-   cd apps/web
+   bun run build
+   bun run electron
    ```
 
-3. Copy `.env.example` to `.env.local`:
+4. For hot reload, run the Vite dev server and Electron in two terminals:
 
    ```bash
-   # Unix/Linux/Mac
-   cp .env.example .env.local
-
-   # Windows Command Prompt
-   copy .env.example .env.local
-
-   # Windows PowerShell
-   Copy-Item .env.example .env.local
+   bun run --cwd apps/web dev  # terminal 1: Vite dev server
+   bun run electron:dev        # terminal 2: Electron in development mode
    ```
 
-4. Configure required environment variables in `.env.local`:
-
-   **Required Variables:**
-
-   ```bash
-   # Database (matches docker-compose.yaml)
-   DATABASE_URL="postgresql://qcut:qcutthegoat@localhost:5432/qcut"
-
-   # Generate a secure secret for Better Auth
-   BETTER_AUTH_SECRET="your-generated-secret-here"
-   NEXT_PUBLIC_BETTER_AUTH_URL="http://localhost:3000"
-
-   # Redis (matches docker-compose.yaml)
-   UPSTASH_REDIS_REST_URL="http://localhost:8079"
-   UPSTASH_REDIS_REST_TOKEN="example_token"
-
-   # Development
-   NODE_ENV="development"
-   ```
-
-   **Generate BETTER_AUTH_SECRET:**
-
-   ```bash
-   # Unix/Linux/Mac
-   openssl rand -base64 32
-
-   # Windows PowerShell (simple method)
-   [System.Web.Security.Membership]::GeneratePassword(32, 0)
-
-   # Cross-platform (using Node.js)
-   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-   # Or use an online generator: https://generate-secret.vercel.app/32
-   ```
-
-5. Run database migrations: `bun run db:migrate`
-6. Start the development server: `bun run dev`
+   Rerun `bun run build:electron` after changing files under `electron/`.
 
 ## How to Contribute
 
