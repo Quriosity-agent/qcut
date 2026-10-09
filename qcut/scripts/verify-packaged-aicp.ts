@@ -214,15 +214,15 @@ function runBinaryVersion({
  * budget only when the previous launch timed out. Any other outcome — success,
  * spawn error, non-zero exit — is returned as-is for the caller to judge.
  */
-async function runVersionWithTimeoutRetry({
+export async function runVersionWithTimeoutRetry({
 	binaryPath,
-	attemptTimeoutsMs,
-	killGraceMs,
+	attemptTimeoutsMs = VERSION_ATTEMPT_TIMEOUTS_MS,
+	killGraceMs = KILL_GRACE_MS,
 	log,
 }: {
 	binaryPath: string;
-	attemptTimeoutsMs: readonly number[];
-	killGraceMs: number;
+	attemptTimeoutsMs?: readonly number[];
+	killGraceMs?: number;
 	log: (message: string) => void;
 }): Promise<{ result: RunBinaryResult; attempt: number }> {
 	for (const [index, timeoutMs] of attemptTimeoutsMs.entries()) {
@@ -236,7 +236,7 @@ async function runVersionWithTimeoutRetry({
 			return { result, attempt };
 		}
 		log(
-			`⏳ AICP --version timed out after ${timeoutMs}ms on attempt ${attempt}/${attemptTimeoutsMs.length} (a freshly signed binary's first launch can stall on macOS trust validation); retrying with ${attemptTimeoutsMs[attempt]}ms`
+			`⏳ AICP --version timed out after ${timeoutMs}ms on attempt ${attempt}/${attemptTimeoutsMs.length} (a fresh binary's first launch can stall on OS trust validation or antivirus scanning); retrying with ${attemptTimeoutsMs[attempt]}ms`
 		);
 	}
 	throw new Error("No AICP --version attempts configured");
