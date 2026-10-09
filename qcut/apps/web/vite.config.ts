@@ -71,12 +71,10 @@ export default defineConfig(({ mode }) => {
 				},
 			},
 			// Exclude remotion packages from optimization to prevent double bundling
-			// Exclude @fal-ai/client to prevent initialization issues in Electron
 			exclude: [
 				"remotion",
 				"@remotion/player",
 				"@remotion/renderer",
-				"@fal-ai/client",
 				"@ffmpeg/ffmpeg",
 			],
 		},
@@ -147,14 +145,6 @@ export default defineConfig(({ mode }) => {
 							return "vendor-ffmpeg";
 						}
 
-						// AI Features - FAL.ai client (node_modules only)
-						if (
-							id.includes("node_modules/@fal-ai/client") ||
-							id.includes("node_modules/fal-ai")
-						) {
-							return "vendor-ai";
-						}
-
 						// Export functionality kept in main bundle to avoid React component issues
 						// if (id.includes('export-engine') || id.includes('export-dialog') ||
 						//     id.includes('/lib/export-')) {
@@ -203,16 +193,6 @@ export default defineConfig(({ mode }) => {
 							id.includes("remark")
 						) {
 							return "vendor-markdown";
-						}
-
-						// Authentication and database
-						if (
-							id.includes("better-auth") ||
-							id.includes("drizzle") ||
-							id.includes("@qcut/auth") ||
-							id.includes("@qcut/db")
-						) {
-							return "vendor-auth";
 						}
 
 						// Everything else stays in main chunk
