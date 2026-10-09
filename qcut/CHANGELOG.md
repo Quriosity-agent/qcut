@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Include the AI Content Pipeline (AICP) binary in the published Windows, macOS and Linux installers. Installers built since AICP bundling began in February had shipped without it, so the legacy pipeline (`QCUT_NATIVE_PIPELINE=false`) and running the app with `set-key`, `check-keys` or `delete-key` reported that the binary was missing. The default AI pipeline was not affected. Each installer carries only its own platform's AICP binary, adding about 45 MB.
+- Make the release build's AICP check tolerate a slow first launch of the freshly signed binary: it now allows 90 seconds, retries once only after a timeout, and fails if the binary reports a different version than the one QCut pins.
+- Fix a timing-dependent search test that could fail on a busy CI machine.
+
 ## [2026.10.10.1] - 2026-10-09
 
 ### Changed
