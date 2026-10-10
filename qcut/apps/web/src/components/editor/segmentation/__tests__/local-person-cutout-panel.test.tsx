@@ -26,7 +26,7 @@ vi.mock("@/stores/ai/segmentation-store", () => ({
 	}),
 }));
 
-vi.mock("../PersonCutoutSettings", () => ({
+vi.mock("../person-cutout-settings", () => ({
 	PersonCutoutSettings: () => <div data-testid="person-cutout-settings" />,
 }));
 

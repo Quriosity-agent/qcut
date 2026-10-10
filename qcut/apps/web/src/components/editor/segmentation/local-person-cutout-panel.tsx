@@ -27,7 +27,7 @@ import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 import type { MediaStore } from "@/stores/media/media-store-types";
 import type { MediaMaskTrackingSample } from "@/lib/video/media-mask-tracking";
 import { CutoutTaskStatus, type CutoutTaskPhase } from "./cutout-task-status";
-import { PersonCutoutSettings } from "./PersonCutoutSettings";
+import { PersonCutoutSettings } from "./person-cutout-settings";
 
 interface LocalPersonCutoutPanelProps {
 	projectId: string;
