@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MediaKeyframeNav } from "../media/media-keyframe-nav";
+import { MediaKeyframeNav } from "../media-keyframe-nav";
 
 describe("MediaKeyframeNav", () => {
 	it("seeks to the nearest previous and next keyframes across the covered properties", () => {
