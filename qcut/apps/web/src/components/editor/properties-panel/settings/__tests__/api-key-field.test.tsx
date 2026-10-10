@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@/test/test-utils";
 import { render } from "@/test/test-utils";
-import { ApiKeyField, KeySourceBadge } from "../settings/api-key-field";
-import { PRECEDENCE_ONE_LINERS } from "../settings/api-key-precedence";
+import { ApiKeyField, KeySourceBadge } from "../api-key-field";
+import { PRECEDENCE_ONE_LINERS } from "../api-key-precedence";
 
 function renderApiKeyField({
 	value = "abc",
