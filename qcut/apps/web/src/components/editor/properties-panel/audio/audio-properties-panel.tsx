@@ -32,7 +32,7 @@ import {
 } from "@/stores/editor/properties-panel-store";
 import { analyzeMediaLoudness } from "@/lib/audio/audio-loudness-analysis";
 import { AudioBasicSettings } from "./audio-basic-settings";
-import { AudioVoiceSettings } from "../audio-voice-settings";
+import { AudioVoiceSettings } from "./audio-voice-settings";
 import { AudioEffectSettings } from "./audio-effect-settings";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useAudioAiActions } from "../use-audio-ai-actions";
