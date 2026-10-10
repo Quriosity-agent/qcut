@@ -13,7 +13,7 @@ import {
 import {
 	ColorCurveEditor,
 	type ColorCurveBackground,
-} from "./color-curve-editor";
+} from "./color/color-curve-editor";
 import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,

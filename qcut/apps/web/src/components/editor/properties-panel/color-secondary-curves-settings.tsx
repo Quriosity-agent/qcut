@@ -21,7 +21,7 @@ import { requestPreviewColor } from "@/stores/editor/color-picker-store";
 import {
 	ColorCurveEditor,
 	type ColorCurveBackground,
-} from "./color-curve-editor";
+} from "./color/color-curve-editor";
 import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,
