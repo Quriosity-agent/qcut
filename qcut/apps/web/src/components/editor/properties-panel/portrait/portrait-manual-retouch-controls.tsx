@@ -8,7 +8,7 @@ import type {
 } from "@/types/timeline";
 import { cn } from "@/lib/utils";
 import { usePortraitManualRetouchStore } from "@/stores/editor/portrait-manual-retouch-store";
-import { NumberControl } from "./visual-property-controls";
+import { NumberControl } from "../visual-property-controls";
 
 function RetouchIconButton({
 	active = false,
