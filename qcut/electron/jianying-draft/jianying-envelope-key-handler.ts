@@ -48,7 +48,7 @@ import {
 	type EnvelopeStoreResultDto,
 	type JianyingEnvelopeErrorCode,
 	type JianyingEnvelopeResultDto,
-} from "./jianying-draft/jianying-envelope-key-contract.js";
+} from "./jianying-envelope-key-contract.js";
 
 const IMPORT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_PAYLOAD_BYTES = 256 * 1024 * 1024;

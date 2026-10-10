@@ -31,7 +31,7 @@ vi.mock("electron", () => ({
 import {
 	setupJianyingEnvelopeKeyIPC,
 	type JianyingEnvelopeKeyIPCController,
-} from "../jianying-envelope-key-handler.js";
+} from "../jianying-draft/jianying-envelope-key-handler.js";
 
 /**
  * JYI-011 acceptance: key unavailable, rotation, delete, purge — and

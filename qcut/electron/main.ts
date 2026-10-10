@@ -69,7 +69,7 @@ import { resolveLicenseServerCspOrigins } from "./license-server-csp.js";
 import {
 	setupJianyingEnvelopeKeyIPC,
 	type JianyingEnvelopeKeyIPCController,
-} from "./jianying-envelope-key-handler.js";
+} from "./jianying-draft/jianying-envelope-key-handler.js";
 import {
 	setupJianyingDraftImportIPC,
 	type JianyingDraftImportIPCController,
