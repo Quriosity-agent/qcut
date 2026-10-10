@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
-import { PortraitNumberControl } from "../portrait/portrait-number-control";
+import { PortraitNumberControl } from "../portrait-number-control";
 
 function Harness({
 	initial = 0,
