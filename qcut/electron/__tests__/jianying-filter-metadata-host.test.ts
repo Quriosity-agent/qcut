@@ -6,7 +6,7 @@ import {
 	runJianyingFilterMetadataScan,
 	runScanWithFallback,
 	type JianyingFilterMetadataChild,
-} from "../jianying-filter-metadata-host";
+} from "../jianying-filter/jianying-filter-metadata-host";
 import {
 	deserializeJianyingFilterMetadataScan,
 	serializeJianyingFilterMetadataScan,

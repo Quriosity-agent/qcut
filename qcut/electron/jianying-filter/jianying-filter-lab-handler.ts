@@ -29,7 +29,7 @@ import {
 	type JianyingFilterVerification,
 } from "./jianying-filter-lab-contract.js";
 import { readJianyingFilterVerifications } from "../jianying-filter-verification-store.js";
-import { createJianyingFilterMetadataResolvers } from "../jianying-filter-metadata-host.js";
+import { createJianyingFilterMetadataResolvers } from "./jianying-filter-metadata-host.js";
 import {
 	findJianyingFilterCategories,
 	findJianyingFilterTitle,

@@ -10,12 +10,12 @@ import {
 	type JianyingFilterCategoryCatalog,
 	type JianyingFilterKnownCatalog,
 	type JianyingFilterMetadataScan,
-} from "./jianying-filter-metadata.js";
+} from "../jianying-filter-metadata.js";
 import {
 	deserializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataChildMessage,
-} from "./jianying-filter-metadata-transfer.js";
-import type { JianyingLutReference } from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../jianying-filter-metadata-transfer.js";
+import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
 
 const SCAN_TIMEOUT_MS = 60_000;
 
@@ -51,7 +51,7 @@ async function forkMetadataChild(): Promise<JianyingFilterMetadataChild> {
 	// non-Electron tooling) never touch the electron binding.
 	const { utilityProcess } = await import("electron");
 	return utilityProcess.fork(
-		join(__dirname, "jianying-filter-metadata-process.js")
+		join(__dirname, "..", "jianying-filter-metadata-process.js")
 	);
 }
 
