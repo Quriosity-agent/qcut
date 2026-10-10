@@ -13,7 +13,7 @@ import type { BeautyLabFrame } from "@/lib/portrait/beauty-lab-difference";
 import {
 	BeautyLabResults,
 	type BeautyLabResultsProps,
-} from "../beauty-lab-results";
+} from "../beauty-lab/beauty-lab-results";
 
 function makeFrame({
 	name,
