@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { MediaPropertyKeyframe } from "@/types/timeline";
-import { SpeedCurveEditor } from "../speed-curve-editor";
+import { SpeedCurveEditor } from "../media/speed-curve-editor";
 
 function keyframe(
 	overrides: Partial<MediaPropertyKeyframe> & { id: string; frame: number }
