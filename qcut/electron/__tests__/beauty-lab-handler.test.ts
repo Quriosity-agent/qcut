@@ -14,7 +14,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 
 const { registrations, handle, removeHandler } = vi.hoisted(() => {
 	const registrations = new Map<

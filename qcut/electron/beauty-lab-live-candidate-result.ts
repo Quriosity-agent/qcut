@@ -7,7 +7,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateResult,
-} from "./beauty-lab-candidate-contract.js";
+} from "./beauty-lab/beauty-lab-candidate-contract.js";
 import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
 	liveDependenciesSchema,

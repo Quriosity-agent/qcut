@@ -122,7 +122,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
-} from "./beauty-lab-candidate-contract.js";
+} from "./beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	JIANYING_PERSON_CUTOUT_INSPECT_CHANNEL,
 	JIANYING_PERSON_CUTOUT_CANCEL_CHANNEL,

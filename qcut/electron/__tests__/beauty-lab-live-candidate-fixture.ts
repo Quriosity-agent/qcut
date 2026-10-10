@@ -6,7 +6,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import { LIVE_NATIVE_STAGES } from "../beauty-lab-live-candidate-result.js";
 import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
 import {

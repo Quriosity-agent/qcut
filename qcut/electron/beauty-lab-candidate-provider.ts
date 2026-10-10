@@ -8,7 +8,7 @@ import {
 	type BeautyLabCandidateStage,
 	type BeautyLabCandidateStageId,
 	type BeautyLabCandidateStatus,
-} from "./beauty-lab-candidate-contract.js";
+} from "./beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,

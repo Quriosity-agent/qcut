@@ -8,7 +8,7 @@ import {
 import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 
 const { registrations, ownedFactory, ownedList, ownedLoad } = vi.hoisted(
 	() => ({

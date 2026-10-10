@@ -6,7 +6,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateRequest,
 	type BeautyLabCandidateResult,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	createBeautyLabCandidateProvider,
 	type BeautyLabCandidateBackend,

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { BEAUTY_LAB_CANDIDATE_STAGES } from "./beauty-lab-candidate-contract.js";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "./beauty-lab/beauty-lab-candidate-contract.js";
 import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
 	beautyLabCandidateIdentity,

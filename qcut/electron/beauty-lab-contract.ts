@@ -1,5 +1,5 @@
 import type { MediaPortraitAdjustments } from "./jianying-portrait-adjustment-contract.js";
-import type { BeautyLabCandidateAPI } from "./beauty-lab-candidate-contract.js";
+import type { BeautyLabCandidateAPI } from "./beauty-lab/beauty-lab-candidate-contract.js";
 import type { BeautyLabIndependentAPI } from "./beauty-lab-independent-contract.js";
 
 export const BEAUTY_LAB_LIST_CHANNEL = "beauty-lab:list-research-cases";

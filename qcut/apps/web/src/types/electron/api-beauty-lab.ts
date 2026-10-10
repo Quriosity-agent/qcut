@@ -23,9 +23,9 @@ export type {
 	BeautyLabCandidateStage,
 	BeautyLabCandidateStageId,
 	BeautyLabCandidateStatus,
-} from "../../../../../electron/beauty-lab-candidate-contract";
+} from "../../../../../electron/beauty-lab/beauty-lab-candidate-contract";
 
 export {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_BACKEND,
-} from "../../../../../electron/beauty-lab-candidate-contract";
+} from "../../../../../electron/beauty-lab/beauty-lab-candidate-contract";

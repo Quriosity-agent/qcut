@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	type BeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,

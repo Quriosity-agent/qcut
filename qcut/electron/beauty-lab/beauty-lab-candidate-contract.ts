@@ -1,4 +1,4 @@
-import type { MediaPortraitAdjustments } from "./jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
 
 export const BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL =
 	"beauty-lab:inspect-candidate";

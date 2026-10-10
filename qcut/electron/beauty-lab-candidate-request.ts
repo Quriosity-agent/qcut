@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	type BeautyLabCandidateRequest,
-} from "./beauty-lab-candidate-contract.js";
+} from "./beauty-lab/beauty-lab-candidate-contract.js";
 import { parseJianyingPortraitRenderRequest } from "./jianying-portrait-adjustment-runtime/request.js";
 
 export function parseBeautyLabCandidateRequest({
