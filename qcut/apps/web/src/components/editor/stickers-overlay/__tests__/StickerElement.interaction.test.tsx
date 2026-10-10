@@ -40,7 +40,7 @@ vi.mock("../resize-handles", () => ({
 	ResizeHandles: () => <div data-testid="resize-handles" />,
 }));
 
-vi.mock("../StickerControls", () => ({
+vi.mock("../sticker-controls", () => ({
 	StickerControls: () => <div data-testid="sticker-controls" />,
 	SimpleStickerControls: () => <div data-testid="simple-sticker-controls" />,
 }));

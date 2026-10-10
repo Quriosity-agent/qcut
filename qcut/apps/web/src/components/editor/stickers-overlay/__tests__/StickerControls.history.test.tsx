@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps, ReactNode } from "react";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import { StickerControls } from "../StickerControls";
+import { StickerControls } from "../sticker-controls";
 
 const mocks = vi.hoisted(() => ({
 	addElementToTrack: vi.fn(),

@@ -6,7 +6,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { OverlaySticker } from "@/types/sticker-overlay";
 import type { StickerElement, TimelineTrack } from "@/types/timeline";
-import { StickerControls } from "../StickerControls";
+import { StickerControls } from "../sticker-controls";
 
 vi.mock("@/components/ui/button", () => ({
 	Button: ({

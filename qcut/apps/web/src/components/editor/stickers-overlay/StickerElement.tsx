@@ -23,7 +23,7 @@ import { useStickerDrag } from "./hooks/useStickerDrag";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { ResizeHandles } from "./resize-handles";
-import { StickerControls, SimpleStickerControls } from "./StickerControls";
+import { StickerControls, SimpleStickerControls } from "./sticker-controls";
 import type { OverlaySticker } from "@/types/sticker-overlay";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { StickerElement as TimelineStickerElement } from "@/types/timeline";
