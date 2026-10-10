@@ -14,7 +14,7 @@ import {
 import {
 	deserializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataChildMessage,
-} from "../jianying-filter-metadata-transfer.js";
+} from "./jianying-filter-metadata-transfer.js";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
 
 const SCAN_TIMEOUT_MS = 60_000;
