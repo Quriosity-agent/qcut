@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@/test/test-utils";
-import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
-import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
-import { JIANYING_PORTRAIT_SKIN_TONES } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
+import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
+import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
+import { JIANYING_PORTRAIT_SKIN_TONES } from "../../../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 
 function Harness({
