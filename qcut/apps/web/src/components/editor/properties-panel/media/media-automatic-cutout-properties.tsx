@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CloudTaskStatus } from "@/components/editor/cloud-task-status";
-import { LocalPersonCutoutPanel } from "@/components/editor/segmentation/LocalPersonCutoutPanel";
+import { LocalPersonCutoutPanel } from "@/components/editor/segmentation/local-person-cutout-panel";
 import {
 	CutoutTaskStatus,
 	isActiveCutoutPhase,

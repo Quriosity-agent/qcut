@@ -44,7 +44,7 @@ import { ObjectList } from "./ObjectList";
 import { PromptToolbar } from "./PromptToolbar";
 import { SegmentationCanvas } from "./SegmentationCanvas";
 import { ImageUploader } from "./image-uploader";
-import { LocalPersonCutoutPanel } from "./LocalPersonCutoutPanel";
+import { LocalPersonCutoutPanel } from "./local-person-cutout-panel";
 
 type SegmentationTaskResult =
 	| {
