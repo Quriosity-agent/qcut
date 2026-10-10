@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { useSearchStore } from "@/stores/search-store";
 import { useProjectStore } from "@/stores/project-store";
 import type { PersistedTranscription } from "@qcut/editor-core";
-import { SearchResultItem } from "./SearchResultItem";
+import { SearchResultItem } from "./search-result-item";
 
 /** Debounce delay for search input (ms). */
 const DEBOUNCE_MS = 300;
