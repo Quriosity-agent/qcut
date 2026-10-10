@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type {
 	BeautyLabResearchCase,
 	BeautyLabResearchFrame,
-} from "./beauty-lab-contract.js";
+} from "./beauty-lab/beauty-lab-contract.js";
 import {
 	FRAME_COUNT,
 	auditSchema,

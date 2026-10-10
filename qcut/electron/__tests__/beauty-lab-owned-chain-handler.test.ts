@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "../beauty-lab-contract.js";
+} from "../beauty-lab/beauty-lab-contract.js";
 import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,

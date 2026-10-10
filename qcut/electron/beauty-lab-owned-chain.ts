@@ -2,7 +2,7 @@ import { lstat } from "node:fs/promises";
 import type {
 	BeautyLabResearchCase,
 	BeautyLabResearchFrame,
-} from "./beauty-lab-contract.js";
+} from "./beauty-lab/beauty-lab-contract.js";
 import {
 	OWNED_CHAIN_CASE_ID,
 	OWNED_CHAIN_ORIGINAL_FORMAT,

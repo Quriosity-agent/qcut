@@ -117,7 +117,7 @@ import {
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "./beauty-lab-contract.js";
+} from "./beauty-lab/beauty-lab-contract.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,

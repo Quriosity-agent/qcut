@@ -2,7 +2,7 @@ import { ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "./beauty-lab-contract.js";
+} from "./beauty-lab/beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "./beauty-lab-research.js";
 import { createBeautyLabOwnedChainProvider } from "./beauty-lab-owned-chain.js";
 import { OWNED_CHAIN_CASE_ID } from "./beauty-lab-owned-chain-evidence.js";

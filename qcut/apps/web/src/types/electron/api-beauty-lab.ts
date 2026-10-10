@@ -1,4 +1,4 @@
-import type { BeautyLabAPI } from "../../../../../electron/beauty-lab-contract";
+import type { BeautyLabAPI } from "../../../../../electron/beauty-lab/beauty-lab-contract";
 
 export interface ElectronBeautyLabOps {
 	beautyLab?: BeautyLabAPI;
@@ -15,7 +15,7 @@ export type {
 	BeautyLabAPI,
 	BeautyLabResearchCase,
 	BeautyLabResearchFrame,
-} from "../../../../../electron/beauty-lab-contract";
+} from "../../../../../electron/beauty-lab/beauty-lab-contract";
 
 export type {
 	BeautyLabCandidateRequest,

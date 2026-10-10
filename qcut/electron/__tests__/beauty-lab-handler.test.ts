@@ -6,7 +6,7 @@ import {
 	BEAUTY_LAB_LOAD_CHANNEL,
 	type BeautyLabResearchCase,
 	type BeautyLabResearchFrame,
-} from "../beauty-lab-contract.js";
+} from "../beauty-lab/beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
 import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
