@@ -6,7 +6,7 @@
 
 ## 结论
 
-10 月 8 日照片矩阵的 19 项残差中，有 18 项不是自研算法的差异，而是测试方式造成的。
+10 月 8 日照片矩阵的 19 项残差已全部消除：18 项是测试方式造成的；剩下 1 项是自研磨皮与原生有 4 个像素差 1 级，经后续阶段放大所致，已通过回移上游修正解决。最终 **124/124 组最大 RGB 差 ≤1**，其中 95 组逐像素一致。
 
 - 同一张输入的所有用例共用一个 `sourceKey`，时间戳都是 0。原生 provider 因此把后一个用例当作同一来源的继续渲染，沿用了上一次的人脸跟踪状态。自研每次都独立处理。
 - 每个用例改用独立的 `sourceKey` 后，用同一份配置重跑 124 组：**123 组最大 RGB 差 ≤1**，其中原 18 项里 17 项逐像素一致，`skin-gan-shape` 最大差 1。
@@ -57,6 +57,38 @@ provider 里有一份稳定帧名单 `portraitPackageNeedsStableFrame`：鼻部 
 
 暂停时拖动这些滑块会慢 4–5 倍。这是编辑器的体验取舍，等产品决定后再改。
 
+## skin-shape-lip：磨皮回移
+
+`portrait-01--skin-shape-lip` 包含美白 45、磨皮 30、瘦脸 35、瘦鼻 25 和珊瑚裸粉口红 40。两路都冷启动后拆解：
+
+| 组合 | 最大 RGB 差 |
+| --- | ---: |
+| 只开磨皮 / 磨皮 + 美白 | 1 |
+| 完整组合去掉磨皮 | 1 |
+| 磨皮 + 瘦脸 / 磨皮 + 瘦鼻 / 磨皮 + 口红 | 7 / 6 / 4 |
+| 完整组合 | 18 |
+
+原因是一条放大链：
+
+1. 自研磨皮与原生只差 4 个像素，每个像素一个通道差 1 级。
+2. 后续阶段在磨皮后的图上重新检测人脸，两边都是如此。实验证实：用原生磨皮结果作输入时，自研瘦脸与原生逐像素一致。
+3. 量化检测网络把这 4 个像素的差异放大：106 个关键点全部移动，平均 0.54、最大 1.36 像素。
+4. 依赖关键点的瘦脸、瘦鼻、口红又把它放大到 18 级。
+
+独立版仓库在快照基线 `24d3dcf` 之后修正过 `research/smooth_metal.swift`：
+
+- `e028391`：固定平滑邻域图；
+- `65c1044`：对齐原生输出的光栅方向；
+- `b56477d`：在插值前而不是插值后翻转皮肤坐标。
+
+这三个提交回移到 QCut 快照后，同一照片的磨皮与原生逐像素一致。`b56477d` 的回执字符串一段因上下文不同改为手工应用。`source-manifest.json` 更新了该文件的哈希，并在 `importPatches` 记录来源。外置运行库清单的 `sourceManifestSha256` 绑定到新的 manifest，资源本身没有变化。
+
+回移后重跑 124 组：
+
+- 只有 2 组自研输出改变：`control-Smooth-100` 最大差从 1 降为 0；`skin-shape-lip` 从 18 降为 1，只剩 58 个像素差 1 级。
+- 原生输出全部不变。
+- 验证：独立引擎 Python 486 项与 Bun 17 项通过，美颜实验室 Electron 测试通过，本机外置运行库在新绑定下预检通过（358 个文件）。
+
 ## 端到端验证
 
 用包含本修复的构建跑美颜实验室 E2E，输入是 240×320 真人照片，后台模式：
@@ -68,7 +100,7 @@ provider 里有一份稳定帧名单 `portraitPackageNeedsStableFrame`：鼻部 
 
 ## 证据与复现
 
-本机证据目录 `.local/jianying-parity/beauty-lab-cold-native-20261011-r1/`：`matrix.json`、`run.json`、`index.html` 及逐组两路图片。私有运行库、模型和肖像不提交。配置取自 `.local/jianying-parity/beauty-8-gap-matrix-r2/run.json` 的 `config`。
+本机证据目录 `.local/jianying-parity/beauty-lab-cold-native-20261011-r1/`（冷启动）和 `.local/jianying-parity/beauty-lab-smooth-backport-20261011-r1/`（冷启动加磨皮回移）：`matrix.json`、`run.json`、`index.html` 及逐组两路图片。私有运行库、模型和肖像不提交。配置取自 `.local/jianying-parity/beauty-8-gap-matrix-r2/run.json` 的 `config`。
 
 ```sh
 bunx esbuild scripts/beauty-lab-matrix.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/electron-audits/beauty-lab-matrix.cjs
@@ -79,6 +111,5 @@ node dist/electron-audits/beauty-lab-matrix.cjs <config.json> <new-output-direct
 
 ## 仍未完成
 
-- `skin-shape-lip` 的真实残差。它包含 Smooth 30。签名窗口验收用的同组合不含 Smooth，最大差在 1 以内。下一步先确认是否只有「磨皮与其他效果组合」时才出现。
 - 编辑器暂停预览的确定性（见上文取舍）。
 - 独立视频接入时间线／导出、干净 Mac 安装与 notarization、研究项 P1–P3，状态不变。
