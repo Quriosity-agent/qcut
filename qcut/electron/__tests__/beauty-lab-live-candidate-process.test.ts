@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	beautyLabLiveJobFailure,
 	type BeautyLabLiveJobFailure,
-} from "../beauty-lab-live-candidate-failure.js";
+} from "../beauty-lab/beauty-lab-live-candidate-failure.js";
 import { runBeautyLabLiveCandidateJob } from "../beauty-lab-live-candidate-process.js";
 
 const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));

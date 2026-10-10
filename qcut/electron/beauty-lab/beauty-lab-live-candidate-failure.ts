@@ -3,7 +3,7 @@ import {
 	createSnapshot,
 	pinRoot,
 	readJson,
-} from "./beauty-lab-research-files.js";
+} from "../beauty-lab-research-files.js";
 
 export type BeautyLabLiveJobFailureKind =
 	| "not-started"

@@ -3,7 +3,7 @@ import { stripVTControlCharacters } from "node:util";
 import {
 	createBeautyLabLiveJobError,
 	type BeautyLabLiveJobFailureKind,
-} from "./beauty-lab-live-candidate-failure.js";
+} from "./beauty-lab/beauty-lab-live-candidate-failure.js";
 
 const OUTPUT_LIMIT = 1024 * 1024;
 const JOB_TIMEOUT_MS = 300_000;
