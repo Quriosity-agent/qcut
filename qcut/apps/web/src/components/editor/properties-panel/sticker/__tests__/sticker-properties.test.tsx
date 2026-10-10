@@ -10,7 +10,7 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineStore } from "@/stores/timeline/types";
 import type { OverlaySticker } from "@/types/sticker-overlay";
 import type { MediaElement, StickerElement } from "@/types/timeline";
-import { StickerProperties } from "../sticker/sticker-properties";
+import { StickerProperties } from "../sticker-properties";
 
 vi.mock("@/components/ui/select", () => ({
 	Select: ({
