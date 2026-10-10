@@ -10,7 +10,7 @@ import {
 	type UpdateStickerProperties,
 } from "./sticker-property-types";
 import { PERSPECTIVE_FIELDS } from "./visual-property-controls";
-import { MaskIconButton } from "./media-mask-controls";
+import { MaskIconButton } from "./media/media-mask-controls";
 
 export function StickerDeformationProperties({
 	onInteractionEnd,

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { MediaMask, MediaMaskKeyframeProperty } from "@/types/timeline";
-import { MaskIconButton } from "./media-mask-controls";
+import { MaskIconButton } from "./media/media-mask-controls";
 import { PropertyItemLabel } from "./property-item";
 
 function formatNumericDraft({

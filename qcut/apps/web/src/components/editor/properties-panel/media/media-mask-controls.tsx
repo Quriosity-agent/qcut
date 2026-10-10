@@ -10,7 +10,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { PropertyItemLabel } from "./property-item";
+import { PropertyItemLabel } from "../property-item";
 
 export function MaskIconButton({
 	label,

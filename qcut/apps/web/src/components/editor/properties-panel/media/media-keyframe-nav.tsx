@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Diamond } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { MaskIconButton } from "../media-mask-controls";
+import { MaskIconButton } from "./media-mask-controls";
 
 /**
  * Previous / toggle / next keyframe controls for one or more properties that

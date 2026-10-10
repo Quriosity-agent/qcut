@@ -27,7 +27,7 @@ import {
 	upsertMediaMaskKeyframe,
 } from "@/lib/video/media-mask-stack";
 import { useMaskEditorStore } from "@/stores/editor/mask-editor-store";
-import { MaskNumberControl } from "./media-mask-controls";
+import { MaskNumberControl } from "./media/media-mask-controls";
 import { MediaMaskLayerList } from "./media-mask-layer-list";
 import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
 import { MediaMaskStrokeProperties } from "./media-mask-stroke-properties";
