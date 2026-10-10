@@ -33,7 +33,7 @@ vi.mock("electron", () => ({
 vi.mock("../beauty-lab-owned-chain.js", () => ({
 	createBeautyLabOwnedChainProvider: ownedFactory,
 }));
-import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
+import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";
 
 function context() {
 	const mainFrame = {};

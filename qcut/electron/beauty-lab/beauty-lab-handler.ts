@@ -2,22 +2,22 @@ import { ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "./beauty-lab/beauty-lab-contract.js";
-import { createBeautyLabResearchProvider } from "./beauty-lab-research.js";
-import { createBeautyLabOwnedChainProvider } from "./beauty-lab-owned-chain.js";
-import { OWNED_CHAIN_CASE_ID } from "./beauty-lab-owned-chain-evidence.js";
+} from "./beauty-lab-contract.js";
+import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+import { createBeautyLabOwnedChainProvider } from "../beauty-lab-owned-chain.js";
+import { OWNED_CHAIN_CASE_ID } from "../beauty-lab-owned-chain-evidence.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
-} from "./beauty-lab/beauty-lab-candidate-contract.js";
-import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
+} from "./beauty-lab-candidate-contract.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "./beauty-lab-independent-contract.js";
-import type { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
+} from "../beauty-lab-independent-contract.js";
+import type { createBeautyLabIndependentProvider } from "../beauty-lab-independent.js";
 
 let activeController: symbol | undefined;
 

@@ -48,7 +48,7 @@ import {
 } from "../beauty-lab-independent-contract";
 import { createBeautyLabIndependentProvider } from "../beauty-lab-independent";
 
-import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
+import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";
 
 const cases: BeautyLabResearchCase[] = [
 	{ id: "temporal", name: "Temporal", frameCount: 7 },
