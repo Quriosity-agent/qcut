@@ -90,7 +90,7 @@ import {
 	type JianyingPortraitAdjustmentIPCController,
 } from "./jianying-portrait-adjustment-handler.js";
 import { setupBeautyLabIPC } from "./beauty-lab/beauty-lab-handler.js";
-import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
+import { resolveBeautyLabResearchPaths } from "./beauty-lab/beauty-lab-research-config.js";
 import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import { createBeautyLabIndependentProvider } from "./beauty-lab/beauty-lab-independent.js";
 import { createBeautyLabLiveCandidateBackend } from "./beauty-lab/beauty-lab-live-candidate.js";

@@ -5,7 +5,7 @@ import {
 	BEAUTY_LAB_OWNED_RUN_ENV,
 	BEAUTY_LAB_RESEARCH_RUN_ENV,
 	resolveBeautyLabResearchPaths,
-} from "../beauty-lab-research-config.js";
+} from "../beauty-lab/beauty-lab-research-config.js";
 
 const sourceRoot = path.resolve("workspace");
 const privateRoot = path.join(sourceRoot, ".local/jianying-model-pytorch");
