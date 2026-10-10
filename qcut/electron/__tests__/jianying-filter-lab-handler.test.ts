@@ -33,7 +33,7 @@ vi.mock("electron", () => ({
 	ipcMain: { handle: mockHandle, removeHandler: mockRemoveHandler },
 }));
 
-import { setupJianyingFilterLabIPC } from "../jianying-filter-lab-handler.js";
+import { setupJianyingFilterLabIPC } from "../jianying-filter/jianying-filter-lab-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};

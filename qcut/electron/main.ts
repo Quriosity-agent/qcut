@@ -84,7 +84,7 @@ import { setupJianyingTransitionIPC } from "./jianying-transition-handler.js";
 import {
 	setupJianyingFilterLabIPC,
 	type JianyingFilterLabIPCController,
-} from "./jianying-filter-lab-handler.js";
+} from "./jianying-filter/jianying-filter-lab-handler.js";
 import {
 	setupJianyingPortraitAdjustmentIPC,
 	type JianyingPortraitAdjustmentIPCController,

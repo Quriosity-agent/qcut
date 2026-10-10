@@ -5,7 +5,7 @@ import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
 	tiledReferencesFromPackages,
-} from "./jianying-filter/jianying-filter-lab-catalog.js";
+} from "./jianying-filter-lab-catalog.js";
 import {
 	JIANYING_FILTER_LAB_BACKUP_LOCAL_RUNTIME_CHANNEL,
 	JIANYING_FILTER_LAB_LIST_CHANNEL,
@@ -27,30 +27,30 @@ import {
 	type JianyingFilterLabThumbnailResult,
 	type JianyingFilterRuntimeBackupResult,
 	type JianyingFilterVerification,
-} from "./jianying-filter/jianying-filter-lab-contract.js";
-import { readJianyingFilterVerifications } from "./jianying-filter-verification-store.js";
-import { createJianyingFilterMetadataResolvers } from "./jianying-filter-metadata-host.js";
+} from "./jianying-filter-lab-contract.js";
+import { readJianyingFilterVerifications } from "../jianying-filter-verification-store.js";
+import { createJianyingFilterMetadataResolvers } from "../jianying-filter-metadata-host.js";
 import {
 	findJianyingFilterCategories,
 	findJianyingFilterTitle,
 	type JianyingFilterCategoryCatalog,
 	type JianyingFilterKnownCatalog,
 	type JianyingKnownFilter,
-} from "./jianying-filter-metadata.js";
+} from "../jianying-filter-metadata.js";
 import {
 	downloadJianyingFilterPackage,
 	type JianyingFilterDownloadResult,
-} from "./jianying-filter/jianying-filter-download.js";
+} from "./jianying-filter-download.js";
 import {
 	inspectJianyingFilterPackages,
 	type JianyingFilterPackageSummary,
-} from "./jianying-filter-package-inspector.js";
-import type { JianyingFilterCacheWatcher } from "./jianying-filter/jianying-filter-cache-watcher.js";
+} from "../jianying-filter-package-inspector.js";
+import type { JianyingFilterCacheWatcher } from "./jianying-filter-cache-watcher.js";
 import {
 	readJianyingFilterThumbnail,
 	type JianyingFilterThumbnail,
 	type JianyingFilterThumbnailSource,
-} from "./jianying-filter-thumbnail-cache.js";
+} from "../jianying-filter-thumbnail-cache.js";
 import {
 	jianyingEffectCacheRoot,
 	listJianyingLutReferences,
@@ -60,27 +60,27 @@ import {
 	type FilterLabCube,
 	type JianyingLutEntry,
 	type JianyingLutReference,
-} from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../native-pipeline/filters/filter-lab-lut.js";
 import {
 	loadTiledLutCube,
 	resolveTiledLutPackagePath,
-} from "./native-pipeline/filters/filter-lab-tiled-lut.js";
-import { selectJianyingFilterCacheRoot } from "./native-pipeline/filters/filter-lab-package-path.js";
+} from "../native-pipeline/filters/filter-lab-tiled-lut.js";
+import { selectJianyingFilterCacheRoot } from "../native-pipeline/filters/filter-lab-package-path.js";
 import {
 	JIANYING_NATIVE_PORTRAIT_PROFILES,
 	resolveJianyingNativePortraitPackagePath,
-} from "./native-pipeline/filters/filter-lab-native-portrait.js";
+} from "../native-pipeline/filters/filter-lab-native-portrait.js";
 import {
 	JIANYING_NATIVE_FACE_REGION_PROFILES,
 	resolveJianyingNativeFaceRegionPackagePath,
-} from "./native-pipeline/filters/filter-lab-native-face-region.js";
-import { resolveJianyingNativeSwingPackagePath } from "./native-pipeline/filters/filter-lab-native-swing.js";
+} from "../native-pipeline/filters/filter-lab-native-face-region.js";
+import { resolveJianyingNativeSwingPackagePath } from "../native-pipeline/filters/filter-lab-native-swing.js";
 import {
 	loadJianyingMultiPassRecipe,
 	resolveMultiPassPackagePath,
 	type FilterLabMultiPassRecipe,
 	type JianyingFilterMultiPassRenderer,
-} from "./native-pipeline/filters/filter-lab-multi-pass.js";
+} from "../native-pipeline/filters/filter-lab-multi-pass.js";
 import {
 	parseFilterLabListRequest,
 	parseFilterLabLocalRuntimeRequest,
@@ -90,19 +90,19 @@ import {
 	parseFilterLabRendererRequest,
 	parseFilterLabThumbnailRequest,
 	parseFilterLabDownloadRequest,
-} from "./jianying-filter-lab-request.js";
-import { loadJianyingFilterLabRenderer } from "./jianying-filter-multi-pass-loader.js";
-import { loadJianyingFilterNativeSwingRenderer } from "./jianying-filter-native-swing-loader.js";
+} from "../jianying-filter-lab-request.js";
+import { loadJianyingFilterLabRenderer } from "../jianying-filter-multi-pass-loader.js";
+import { loadJianyingFilterNativeSwingRenderer } from "../jianying-filter-native-swing-loader.js";
 import {
 	createJianyingFilterLocalProvider,
 	type JianyingFilterLocalProvider,
-} from "./jianying-filter-local-runtime/provider.js";
+} from "../jianying-filter-local-runtime/provider.js";
 import {
 	createJianyingFilterSwingProvider,
 	type JianyingFilterSwingProvider,
-} from "./jianying-filter-swing-runtime/provider.js";
-import { backupJianyingFilterRuntime } from "./jianying-filter-local-runtime/runtime-backup.js";
-import { inspectJianyingFilterLocalRuntime } from "./jianying-filter-local-runtime/runtime-discovery.js";
+} from "../jianying-filter-swing-runtime/provider.js";
+import { backupJianyingFilterRuntime } from "../jianying-filter-local-runtime/runtime-backup.js";
+import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
 
 const MAX_EDITOR_LUT_SIZE = 65;
 
