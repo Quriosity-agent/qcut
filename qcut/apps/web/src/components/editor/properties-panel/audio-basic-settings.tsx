@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { AudioChannelMode, AudioDenoiseSettings } from "@/types/timeline";
-import { AudioSeparationSettings } from "./audio-ai-voice-settings";
+import { AudioSeparationSettings } from "./audio/audio-ai-voice-settings";
 import {
 	AudioPitchSettings,
 	AudioVoiceEnhancementSettings,
