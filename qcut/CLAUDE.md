@@ -68,7 +68,9 @@ qcut/
 ├── electron/                # Electron main process
 │   ├── main.ts              # Main process entry
 │   ├── preload.ts           # Renderer bridge
-│   ├── *-handler.ts         # IPC handlers (22 handler files)
+│   ├── *-handler.ts         # IPC handlers for core features
+│   ├── jianying-*/          # Jianying interop, one folder per feature (contract + handler + runtime)
+│   ├── beauty-lab/          # Beauty Lab providers, contracts and handler
 │   ├── claude/              # Claude integration handlers
 │   └── native-pipeline/     # TypeScript CLI pipeline (AICP, ViMax)
 ├── scripts/                 # Build and utility scripts
@@ -85,7 +87,7 @@ qcut/
 | Timeline Store | `apps/web/src/stores/timeline-store.ts` |
 | AI Video | `apps/web/src/lib/ai-video/index.ts` |
 | Electron Main | `electron/main.ts` |
-| IPC Handlers | `electron/*-handler.ts` (22 files) |
+| IPC Handlers | `electron/*-handler.ts`, plus `electron/jianying-*/` and `electron/beauty-lab/` |
 | Claude HTTP API | `electron/claude/claude-http-server.ts` |
 | Native Pipeline CLI | `electron/native-pipeline/cli/cli.ts` |
 
