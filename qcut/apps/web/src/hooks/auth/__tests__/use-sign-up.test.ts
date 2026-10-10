@@ -17,7 +17,7 @@ vi.mock("@/stores/license-store", () => ({
 	) => selector({ checkLicense: mockCheckLicense }),
 }));
 
-import { useSignUp } from "../useSignUp";
+import { useSignUp } from "../use-sign-up";
 
 describe("useSignUp", () => {
 	let mockLicenseApi: Record<string, ReturnType<typeof vi.fn>>;
