@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
-import { isAudioClipSelection } from "../audio/audio-clip-selection";
+import { isAudioClipSelection } from "../audio-clip-selection";
 
 const element: TimelineElement = {
 	id: "clip",
