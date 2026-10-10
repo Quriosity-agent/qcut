@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
-import { ApiKeysPrecedenceInfo } from "../settings/api-keys-precedence-info";
+import { ApiKeysPrecedenceInfo } from "../api-keys-precedence-info";
 
 describe("ApiKeysPrecedenceInfo", () => {
 	it("is collapsed by default", () => {
