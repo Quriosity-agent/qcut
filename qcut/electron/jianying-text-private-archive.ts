@@ -7,7 +7,7 @@ import {
 	summarizePrivateArchiveContainer,
 	syncPrivateArchiveContainer,
 	type PrivateArchiveContainerSummary,
-} from "./jianying-text-private-archive-files.js";
+} from "./jianying-text/jianying-text-private-archive-files.js";
 
 const ARCHIVE_SCHEMA_VERSION = 3;
 const SOURCE_CONTAINER_NAMES = ["artistEffect", "effect", "ressdk_db"] as const;

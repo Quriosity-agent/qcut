@@ -1,6 +1,6 @@
 import { cp, lstat, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 
 export interface PrivateArchiveContainerSummary {
 	fileCount: number;
