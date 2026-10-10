@@ -31,7 +31,7 @@ import { MaskNumberControl } from "./media-mask-controls";
 import { MediaMaskLayerList } from "./media-mask-layer-list";
 import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
 import { MediaMaskStrokeProperties } from "./media-mask-stroke-properties";
-import { MediaMaskTransformControls } from "../media-mask-transform-controls";
+import { MediaMaskTransformControls } from "./media-mask-transform-controls";
 import {
 	changeMediaMaskShape,
 	createMaskForShape,

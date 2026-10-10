@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createMediaMask } from "@/lib/video/media-mask-stack";
 import type { MediaMask, MediaMaskKeyframeProperty } from "@/types/timeline";
-import { MediaMaskTransformControls } from "../media-mask-transform-controls";
+import { MediaMaskTransformControls } from "../media/media-mask-transform-controls";
 
 type NumericChange = (options: {
 	updates: Partial<Record<MediaMaskKeyframeProperty, number>>;
