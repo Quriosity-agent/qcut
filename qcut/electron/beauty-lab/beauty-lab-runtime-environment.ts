@@ -1,4 +1,4 @@
-import { runIndependentBeautyJob } from "./beauty-lab/beauty-lab-independent-process.js";
+import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
 
 export const independentBeautyPythonPackages = {
 	onnxruntime: "1.22.1",

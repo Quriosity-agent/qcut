@@ -14,7 +14,7 @@ import {
 	independentBeautyEnvironment,
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
-} from "./beauty-lab-runtime-environment.js";
+} from "./beauty-lab/beauty-lab-runtime-environment.js";
 import {
 	independentBeautyRuntimeProfile,
 	verifyIndependentBeautyRuntime,

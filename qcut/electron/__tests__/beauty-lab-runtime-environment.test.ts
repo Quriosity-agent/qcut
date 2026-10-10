@@ -6,7 +6,7 @@ import {
 	independentBeautyEnvironment,
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
-} from "../beauty-lab-runtime-environment";
+} from "../beauty-lab/beauty-lab-runtime-environment";
 
 describe("independent runtime environment", () => {
 	it("keeps package pins aligned with the source-bound setup", async () => {

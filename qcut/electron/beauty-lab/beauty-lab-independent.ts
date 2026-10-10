@@ -23,7 +23,7 @@ import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload.js
 import {
 	independentBeautyEnvironment,
 	verifyIndependentBeautyEnvironment,
-} from "../beauty-lab-runtime-environment.js";
+} from "./beauty-lab-runtime-environment.js";
 
 const requestSchema = z
 	.object({
