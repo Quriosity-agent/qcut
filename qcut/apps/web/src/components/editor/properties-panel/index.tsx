@@ -43,7 +43,7 @@ import {
 } from "@/stores/screen-recording-store";
 import { TransitionProperties } from "./transition-properties";
 import { AdjustmentProperties } from "./adjustment-properties";
-import { StickerProperties } from "./sticker-properties";
+import { StickerProperties } from "./sticker/sticker-properties";
 import { useTranslation } from "@/lib/i18n";
 
 export function PropertiesPanel() {

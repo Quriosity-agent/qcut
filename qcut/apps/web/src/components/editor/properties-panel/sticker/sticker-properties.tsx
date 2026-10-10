@@ -27,11 +27,11 @@ import {
 	type StickerElement,
 	type StickerKeyframeProperty,
 } from "@/types/timeline";
-import { StickerAnimationProperties } from "./sticker/sticker-animation-properties";
-import { StickerBasicProperties } from "./sticker/sticker-basic-properties";
-import { StickerDeformationProperties } from "./sticker/sticker-deformation-properties";
-import type { UpdateStickerProperties } from "./sticker-property-types";
-import { StickerTrackingProperties } from "./sticker-tracking-properties";
+import { StickerAnimationProperties } from "./sticker-animation-properties";
+import { StickerBasicProperties } from "./sticker-basic-properties";
+import { StickerDeformationProperties } from "./sticker-deformation-properties";
+import type { UpdateStickerProperties } from "../sticker-property-types";
+import { StickerTrackingProperties } from "../sticker-tracking-properties";
 
 const DEFAULT_PERSPECTIVE: MediaPerspective = {
 	...DEFAULT_TIMELINE_STICKER_VISUAL.perspective,
