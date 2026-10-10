@@ -19,7 +19,7 @@ import {
 	TextGroupProperties,
 	TextProperties,
 	type TextGroupSelection,
-} from "./text-properties";
+} from "./text/text-properties";
 import { PanelTabs } from "./panel-tabs";
 import { useExportStore } from "@/stores/export-store";
 import { ExportPanelContent } from "./export-panel-content";

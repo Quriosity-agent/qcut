@@ -5,7 +5,7 @@ import {
 	parseTextGroupDraftContents,
 	updateTextGroupSlotContents,
 	type TextGroupSelection,
-} from "../text-properties";
+} from "../text/text-properties";
 
 function createTextSelection({
 	content,

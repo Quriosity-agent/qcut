@@ -68,8 +68,8 @@ import {
 	PropertyItemLabel,
 	PropertyItemValue,
 	PropertyGroup,
-} from "./property-item";
-import { KeyframeEditor } from "./keyframe-editor";
+} from "../property-item";
+import { KeyframeEditor } from "../keyframe-editor";
 import { buildCursorTextTrackingKeyframes } from "@/lib/text/cursor-text-tracking";
 import { useSpeechAvatarGeneration } from "@/hooks/use-speech-avatar-generation";
 import { useTranslation } from "@/lib/i18n";
@@ -80,9 +80,9 @@ import {
 	TEXT_PRESET_NAME_KEYS,
 	TEXT_REWRITE_MODE_KEYS,
 	TEXT_VERTICAL_ALIGN_LABEL_KEYS,
-} from "./text/text-properties-i18n";
-import { TextAnimationProperties } from "./text/text-animation-properties";
-import { JianyingFontLabDialog } from "./text/jianying-font-lab-dialog";
+} from "./text-properties-i18n";
+import { TextAnimationProperties } from "./text-animation-properties";
+import { JianyingFontLabDialog } from "./jianying-font-lab-dialog";
 import type { JianyingTextRuntimeStatus } from "@/types/electron";
 
 type TextUpdates = Parameters<
