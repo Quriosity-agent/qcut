@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CoverTextLayout } from "./jianying-cover-layout.js";
+import type { CoverTextLayout } from "../jianying-cover-layout.js";
 
 export const JIANYING_COVER_CATEGORIES = [
 	{ id: "default", zh: "默认", en: "Default" },

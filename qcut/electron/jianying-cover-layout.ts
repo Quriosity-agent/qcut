@@ -2,7 +2,7 @@ import { z } from "zod";
 import type {
 	CoverCachedEntry,
 	CoverCatalog,
-} from "./jianying-cover-contract.js";
+} from "./jianying-cover/jianying-cover-contract.js";
 import type { JianyingFontLabFontSummary } from "./jianying-font-lab-contract.js";
 import type { JianyingTextRuntimeReference } from "./jianying-text-runtime-contract.js";
 import {

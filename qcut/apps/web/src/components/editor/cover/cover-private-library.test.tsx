@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { CoverPrivateLibrary } from "./cover-private-library";
 import { loadPrivateCoverLibrary } from "@/lib/cover/private-cover-library";
-import type { CoverLibraryResult } from "../../../../../../electron/jianying-cover-contract";
+import type { CoverLibraryResult } from "../../../../../../electron/jianying-cover/jianying-cover-contract";
 
 vi.mock("@/lib/i18n", () => ({ useTranslation: () => ({ locale: "zh" }) }));
 vi.mock("@/lib/cover/private-cover-library", () => ({

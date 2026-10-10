@@ -28,7 +28,7 @@ import {
 	type CoverCatalog,
 	type CoverLibraryResult,
 	type CoverDependencyResolver,
-} from "./jianying-cover-contract.js";
+} from "./jianying-cover/jianying-cover-contract.js";
 
 const MAX_FILE_BYTES = 200_000_000;
 const templateSchema = z

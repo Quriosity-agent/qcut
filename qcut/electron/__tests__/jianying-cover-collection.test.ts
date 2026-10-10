@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
 	CoverCachedEntry,
 	CoverObservation,
-} from "../jianying-cover-contract";
+} from "../jianying-cover/jianying-cover-contract";
 import {
 	coverCollectionFingerprint,
 	mergeCoverObservations,

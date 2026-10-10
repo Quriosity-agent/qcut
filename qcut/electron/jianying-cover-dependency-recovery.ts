@@ -3,7 +3,7 @@ import path from "node:path";
 import type {
 	CoverDependencyResolver,
 	CoverDependencySource,
-} from "./jianying-cover-contract.js";
+} from "./jianying-cover/jianying-cover-contract.js";
 import { findJianyingLocalPackagesByHash } from "./jianying-text-runtime/local-package-index.js";
 import {
 	findJianyingTextResourceCatalogCandidates,

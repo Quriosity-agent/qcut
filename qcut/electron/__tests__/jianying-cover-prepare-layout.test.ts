@@ -17,7 +17,7 @@ import type {
 	CoverCachedFile,
 	CoverCachedEntry,
 	CoverCatalog,
-} from "../jianying-cover-contract";
+} from "../jianying-cover/jianying-cover-contract";
 import { coverLayoutFixture } from "./fixtures/cover-layout";
 
 vi.mock("../jianying-font-lab-catalog", () => ({

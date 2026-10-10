@@ -12,7 +12,7 @@ import path from "node:path";
 import {
 	JIANYING_COVER_CATEGORIES,
 	type CoverObservation,
-} from "../jianying-cover-contract";
+} from "../jianying-cover/jianying-cover-contract";
 import {
 	backupCoverCatalog,
 	cacheJianyingCovers,

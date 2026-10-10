@@ -10,7 +10,7 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import type { CoverCachedEntry } from "./jianying-cover-contract.js";
+import type { CoverCachedEntry } from "./jianying-cover/jianying-cover-contract.js";
 import type {
 	CoverLayoutText,
 	CoverTextLayout,

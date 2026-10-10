@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	JIANYING_COVER_LIST_CHANNEL,
 	JIANYING_COVER_LAYOUT_CHANNEL,
-} from "../jianying-cover-contract.js";
+} from "../jianying-cover/jianying-cover-contract.js";
 
 const { handle, list, prepare } = vi.hoisted(() => ({
 	handle: vi.fn(),

@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
 	coverCachedEntrySchema,
 	type CoverLibraryResult,
-} from "../../../../../electron/jianying-cover-contract";
+} from "../../../../../electron/jianying-cover/jianying-cover-contract";
 
 const resultSchema = z.object({
 	entries: z.array(

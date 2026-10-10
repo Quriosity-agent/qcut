@@ -5,7 +5,7 @@ import {
 	coverObservationsSchema,
 	type CoverCachedEntry,
 	type CoverObservation,
-} from "../jianying-cover-contract.js";
+} from "./jianying-cover-contract.js";
 
 export const coverVerificationSchema = z.object({
 	packageHash: z.string().regex(/^[a-f0-9]{32}$/),
