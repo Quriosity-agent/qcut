@@ -116,7 +116,7 @@ import {
 import {
 	setupJianyingTextRuntimeIPC,
 	type JianyingTextRuntimeIPCController,
-} from "./jianying-text-runtime-handler.js";
+} from "./jianying-text-runtime/jianying-text-runtime-handler.js";
 import {
 	setupJianyingSameProfileWritebackIPC,
 	type JianyingSameProfileWritebackIPCController,

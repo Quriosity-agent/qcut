@@ -6,15 +6,15 @@ import {
 	type JianyingTextRuntimeInspectRequest,
 	type JianyingTextRuntimeRenderRequest,
 	type JianyingTextRuntimeStatus,
-} from "./jianying-text-runtime/jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	JianyingTextPackageError,
 	resolveJianyingTextPackage,
-} from "./jianying-text-runtime/package-resolver.js";
-import { normalizeJianyingTextRuntimeReference } from "./jianying-text-runtime/reference.js";
-import { cancelJianyingTextRender } from "./jianying-text-runtime/render-process.js";
-import { renderJianyingText } from "./jianying-text-runtime/render.js";
-import { inspectJianyingTextRuntime } from "./jianying-text-runtime/runtime-discovery.js";
+} from "./package-resolver.js";
+import { normalizeJianyingTextRuntimeReference } from "./reference.js";
+import { cancelJianyingTextRender } from "./render-process.js";
+import { renderJianyingText } from "./render.js";
+import { inspectJianyingTextRuntime } from "./runtime-discovery.js";
 
 export interface JianyingTextRuntimeIPCController {
 	dispose: () => void;
