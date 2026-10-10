@@ -36,14 +36,14 @@ export { ObjectList } from "./ObjectList";
 export { PromptToolbar } from "./PromptToolbar";
 export { SegmentationCanvas } from "./SegmentationCanvas";
 export { MaskOverlay } from "./MaskOverlay";
-export { ImageUploader } from "./ImageUploader";
+export { ImageUploader } from "./image-uploader";
 export { SegmentationControls } from "./SegmentationControls";
 
 // Import components for main panel
 import { ObjectList } from "./ObjectList";
 import { PromptToolbar } from "./PromptToolbar";
 import { SegmentationCanvas } from "./SegmentationCanvas";
-import { ImageUploader } from "./ImageUploader";
+import { ImageUploader } from "./image-uploader";
 import { LocalPersonCutoutPanel } from "./LocalPersonCutoutPanel";
 
 type SegmentationTaskResult =
