@@ -4,7 +4,7 @@ import path from "node:path";
 import type {
 	JianyingTextAnimationLabSummary,
 	JianyingTextStyleLabStyleSummary,
-} from "../../jianying-text-style-lab-contract.js";
+} from "../../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextAnimationReferences,
 	JianyingTextAnimationSlot,

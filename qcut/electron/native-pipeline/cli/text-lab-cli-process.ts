@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextStyleLabListResult,
-} from "../../jianying-text-style-lab-contract.js";
+} from "../../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,

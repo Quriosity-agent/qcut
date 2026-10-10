@@ -7,7 +7,7 @@ import type {
 	JianyingFlowerCategoryDefinition,
 	JianyingFlowerCategoryGroupDefinition,
 } from "./jianying-flower-taxonomy.js";
-import type { JianyingTextAnimationLabListResult } from "../jianying-text-style-lab-contract.js";
+import type { JianyingTextAnimationLabListResult } from "./jianying-text-style-lab-contract.js";
 import type { JianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,

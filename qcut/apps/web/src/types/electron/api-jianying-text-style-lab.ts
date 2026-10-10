@@ -15,9 +15,9 @@ export type {
 	JianyingTextStyleLabStyleSummary,
 	JianyingTextStylePackageKind,
 	JianyingTextStyleQcutApproximation,
-} from "../../../../../electron/jianying-text-style-lab-contract";
+} from "../../../../../electron/jianying-text/jianying-text-style-lab-contract";
 
-import type { JianyingTextStyleLabAPI } from "../../../../../electron/jianying-text-style-lab-contract";
+import type { JianyingTextStyleLabAPI } from "../../../../../electron/jianying-text/jianying-text-style-lab-contract";
 
 export interface ElectronJianyingTextStyleLabOps {
 	jianyingTextStyleLab?: JianyingTextStyleLabAPI;

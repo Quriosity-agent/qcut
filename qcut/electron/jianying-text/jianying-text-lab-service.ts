@@ -12,7 +12,7 @@ import { buildJianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextStyleLabListResult,
-} from "../jianying-text-style-lab-contract.js";
+} from "./jianying-text-style-lab-contract.js";
 import {
 	compareStyleSummaries,
 	normalizeResolvedMetadata,

@@ -14,7 +14,7 @@ import {
 	buildJianyingTextStyleCatalog,
 	type JianyingTextStyleCatalog,
 } from "../../electron/jianying-text/jianying-text-style-lab-catalog.js";
-import type { JianyingTextStylePackageKind } from "../../electron/jianying-text-style-lab-contract.js";
+import type { JianyingTextStylePackageKind } from "../../electron/jianying-text/jianying-text-style-lab-contract.js";
 
 const PACKAGE_KINDS = [
 	"TextStyle",

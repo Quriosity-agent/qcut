@@ -11,7 +11,7 @@ import {
 	type JianyingTextAnimationLabListResult,
 	type JianyingTextStyleLabCoverResult,
 	type JianyingTextStyleLabListResult,
-} from "../jianying-text-style-lab-contract.js";
+} from "../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextStyleCatalog,
 	JianyingTextStyleCatalogEntry,

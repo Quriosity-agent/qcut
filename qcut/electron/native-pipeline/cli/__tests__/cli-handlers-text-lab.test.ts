@@ -6,7 +6,7 @@ import type { JianyingTextRuntimeRenderRequest } from "../../../jianying-text-ru
 import type {
 	JianyingTextAnimationLabSummary,
 	JianyingTextStyleLabStyleSummary,
-} from "../../../jianying-text-style-lab-contract";
+} from "../../../jianying-text/jianying-text-style-lab-contract";
 import {
 	handleTextLabAnimations,
 	handleTextLabList,

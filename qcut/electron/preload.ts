@@ -151,7 +151,7 @@ import {
 	JIANYING_TEXT_ANIMATION_LAB_LIST_CHANNEL,
 	JIANYING_TEXT_STYLE_LAB_COVER_CHANNEL,
 	JIANYING_TEXT_STYLE_LAB_LIST_CHANNEL,
-} from "./jianying-text-style-lab-contract.js";
+} from "./jianying-text/jianying-text-style-lab-contract.js";
 import {
 	JIANYING_TEXT_RUNTIME_CANCEL_CHANNEL,
 	JIANYING_TEXT_RUNTIME_INSPECT_CHANNEL,

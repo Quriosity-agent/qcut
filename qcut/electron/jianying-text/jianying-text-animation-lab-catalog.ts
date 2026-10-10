@@ -7,7 +7,7 @@ import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-r
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextAnimationLabSummary,
-} from "../jianying-text-style-lab-contract.js";
+} from "./jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextAnimationReference,
 	JianyingTextAnimationSlot,

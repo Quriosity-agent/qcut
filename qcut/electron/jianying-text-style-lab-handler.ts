@@ -11,7 +11,7 @@ import {
 	type JianyingTextStyleLabCoverResult,
 	type JianyingTextStyleLabListRequest,
 	type JianyingTextStyleLabListResult,
-} from "./jianying-text-style-lab-contract.js";
+} from "./jianying-text/jianying-text-style-lab-contract.js";
 import { buildJianyingTextAnimationCatalog } from "./jianying-text/jianying-text-animation-lab-catalog.js";
 import type { JianyingCachedImage } from "./jianying-shared/jianying-image-cache.js";
 import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text/jianying-text-private-archive.js";
