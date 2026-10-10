@@ -36,7 +36,7 @@ import {
 	type JianyingTextPackageOwnership,
 } from "./jianying-text/jianying-text-package-ownership.js";
 import { isDiscoverableJianyingTextCatalogEntry } from "./jianying-text-style-discovery.js";
-import { readJianyingTextStyleCoverImage } from "./jianying-text-style-cover-cache.js";
+import { readJianyingTextStyleCoverImage } from "./jianying-text/jianying-text-style-cover-cache.js";
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
