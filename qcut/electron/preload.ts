@@ -81,7 +81,7 @@ import {
 	CAPCUT_8_1_MIGRATION_COMMIT_CHANNEL,
 	CAPCUT_8_1_MIGRATION_INSTALL_CHANNEL,
 	CAPCUT_8_1_MIGRATION_PLAN_CHANNEL,
-} from "./jianying-draft-export-contract.js";
+} from "./jianying-draft/jianying-draft-export-contract.js";
 import {
 	JIANYING_EFFECT_COVER_CHANNEL,
 	JIANYING_EFFECT_DOWNLOAD_CHANNEL,

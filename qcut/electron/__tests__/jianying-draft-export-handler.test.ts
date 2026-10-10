@@ -7,7 +7,7 @@ import {
 	CAPCUT_8_1_MIGRATION_COMMIT_CHANNEL,
 	CAPCUT_8_1_MIGRATION_INSTALL_CHANNEL,
 	CAPCUT_8_1_MIGRATION_PLAN_CHANNEL,
-} from "../jianying-draft-export-contract.js";
+} from "../jianying-draft/jianying-draft-export-contract.js";
 
 // The handler composes these with path.join, so the expectations have to as
 // well: hardcoded forward slashes pass on POSIX and fail on Windows.

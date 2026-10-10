@@ -25,7 +25,7 @@ import {
 	type JianyingDraftExportErrorCode,
 	type JianyingDraftExportErrorDto,
 	type JianyingDraftExportResultDto,
-} from "./jianying-draft-export-contract.js";
+} from "./jianying-draft/jianying-draft-export-contract.js";
 
 const MAX_ERROR_MESSAGE_LENGTH = 16_384;
 const MAX_ERROR_DETAIL_COUNT = 256;

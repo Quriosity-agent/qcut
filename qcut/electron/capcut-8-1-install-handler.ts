@@ -2,7 +2,7 @@ import { isAbsolute } from "node:path";
 import type {
 	CapCut81MigrationInstallDto,
 	CapCut81MigrationInstallRequestDto,
-} from "./jianying-draft-export-contract.js";
+} from "./jianying-draft/jianying-draft-export-contract.js";
 import type { CapCut81TargetAppGuard } from "./capcut-8-1-install-guard.js";
 
 const MAX_CONTENT_MIRROR_COUNT = 100_000;
