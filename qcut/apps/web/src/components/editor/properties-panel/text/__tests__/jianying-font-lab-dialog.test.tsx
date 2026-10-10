@@ -25,7 +25,7 @@ vi.mock("@/lib/fonts/local-font-runtime", async (importOriginal) => {
 	return { ...actual, ...runtimeMocks };
 });
 
-import { JianyingFontLabDialog } from "../text/jianying-font-lab-dialog";
+import { JianyingFontLabDialog } from "../jianying-font-lab-dialog";
 
 function createFont({ index }: { index: number }): JianyingFontLabFontSummary {
 	const hash = index.toString(16).padStart(64, "0");
