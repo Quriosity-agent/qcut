@@ -9,7 +9,7 @@ import {
 	collectJianyingScriptComponentRoles,
 	jianyingProjectStoreRootForPackageRoot,
 	type JianyingProjectWordArtEvidence,
-} from "./jianying-text-local-ownership-evidence.js";
+} from "./jianying-text/jianying-text-local-ownership-evidence.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,

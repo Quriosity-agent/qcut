@@ -1,15 +1,15 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {
 	asJianyingRecord,
 	detectJianyingTextPackageKind,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
-} from "./jianying-text-package-metadata.js";
-import type { JianyingTextRuntimeDependencyRole } from "./jianying-text-runtime-contract.js";
-import { collectJianyingScriptResourceReferences } from "./jianying-text-runtime/script-resource-policy.js";
+} from "../jianying-text-package-metadata.js";
+import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime-contract.js";
+import { collectJianyingScriptResourceReferences } from "../jianying-text-runtime/script-resource-policy.js";
 
 const MAXIMUM_PACKAGE_COUNT = 5000;
 const MAXIMUM_DRAFT_METADATA_FILES = 2000;
