@@ -8,7 +8,7 @@ import {
 	readJianyingFilterVerificationRecords,
 	readJianyingFilterVerifications,
 	saveJianyingFilterVerification,
-} from "../jianying-filter-verification-store.js";
+} from "../jianying-filter/jianying-filter-verification-store.js";
 
 const tempDirectories: string[] = [];
 

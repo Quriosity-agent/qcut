@@ -13,7 +13,7 @@ import type {
 	resolveJianyingFilterCategories,
 	resolveJianyingFilterTitles,
 } from "../../jianying-filter/jianying-filter-metadata.js";
-import { saveJianyingFilterVerification } from "../../jianying-filter-verification-store.js";
+import { saveJianyingFilterVerification } from "../../jianying-filter/jianying-filter-verification-store.js";
 import {
 	compareCubes,
 	frameColours,

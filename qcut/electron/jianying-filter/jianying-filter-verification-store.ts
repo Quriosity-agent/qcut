@@ -16,7 +16,7 @@ import type {
 	JianyingFilterVerification,
 	JianyingFilterVerificationReferenceKind,
 	JianyingFilterVerificationStatus,
-} from "./jianying-filter/jianying-filter-lab-contract.js";
+} from "./jianying-filter-lab-contract.js";
 
 /**
  * Schema v2 (FLP-004): records key on resourceId + version + inputDigest so

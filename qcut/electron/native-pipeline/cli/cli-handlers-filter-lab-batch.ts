@@ -18,7 +18,7 @@ import { readFile } from "node:fs/promises";
 import {
 	readJianyingFilterVerificationRecords,
 	saveJianyingFilterVerification,
-} from "../../jianying-filter-verification-store.js";
+} from "../../jianying-filter/jianying-filter-verification-store.js";
 import type { JianyingFilterCatalogExport } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import {
 	buildFilterLabCoverageReport,
