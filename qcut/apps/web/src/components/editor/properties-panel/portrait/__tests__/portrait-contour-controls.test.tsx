@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
+import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
 import { fireEvent, render, screen } from "@/test/test-utils";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
+import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
 
 function Harness({ ready = true }: { ready?: boolean }) {
 	const [adjustments, onChange] = useState<MediaPortraitAdjustments>({
