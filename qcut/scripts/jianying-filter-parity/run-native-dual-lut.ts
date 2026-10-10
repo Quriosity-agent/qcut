@@ -19,7 +19,7 @@ import {
 	resolveJianyingNativePortraitPackagePath,
 } from "../../electron/native-pipeline/filters/filter-lab-native-portrait.js";
 import { saveJianyingFilterVerification } from "../../electron/jianying-filter-verification-store.js";
-import type { JianyingFilterVerificationStatus } from "../../electron/jianying-filter-lab-contract.js";
+import type { JianyingFilterVerificationStatus } from "../../electron/jianying-filter/jianying-filter-lab-contract.js";
 import {
 	compareUiMaskSequence,
 	loadUiMaskManifest,

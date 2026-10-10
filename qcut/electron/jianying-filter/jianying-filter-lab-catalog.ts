@@ -4,7 +4,7 @@ import type {
 	JianyingFilterLabListResult,
 	JianyingFilterLabLutSummary,
 	JianyingFilterVerification,
-} from "../jianying-filter-lab-contract.js";
+} from "./jianying-filter-lab-contract.js";
 import {
 	selectVerificationForCard,
 	type JianyingFilterVerificationCandidates,

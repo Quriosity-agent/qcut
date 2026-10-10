@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { JianyingFilterLabRenderLocalEffectResult } from "../jianying-filter-lab-contract.js";
+import type { JianyingFilterLabRenderLocalEffectResult } from "../jianying-filter/jianying-filter-lab-contract.js";
 import type { JianyingFilterLocalRuntimeInspection } from "../jianying-filter-local-runtime/runtime-discovery.js";
 import { resolveJianyingPortraitAdjustmentHost } from "../jianying-portrait-adjustment-runtime/bridge-resolver.js";
 import {

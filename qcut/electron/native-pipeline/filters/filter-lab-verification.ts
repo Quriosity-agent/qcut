@@ -6,7 +6,7 @@ import { getFFmpegPath } from "../../ffmpeg/paths.js";
 import type {
 	JianyingFilterVerification,
 	JianyingFilterVerificationStatus,
-} from "../../jianying-filter-lab-contract.js";
+} from "../../jianying-filter/jianying-filter-lab-contract.js";
 import {
 	measureFilterLabFrames,
 	measureFilterLabMasks,

@@ -4,7 +4,7 @@ import type { JianyingKnownFilter } from "./jianying-filter-metadata.js";
 import type {
 	JianyingFilterCacheStatus,
 	JianyingFilterImplementation,
-} from "./jianying-filter-lab-contract.js";
+} from "./jianying-filter/jianying-filter-lab-contract.js";
 import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
 import {
 	jianyingEffectCacheRoot,

@@ -9,7 +9,7 @@
  * badge uses.
  */
 import { selectVerificationForCard } from "../../jianying-filter-verification-gate.js";
-import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter-lab-contract.js";
+import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter/jianying-filter-lab-contract.js";
 
 export interface FilterLabCoverageCard {
 	resourceId: string;

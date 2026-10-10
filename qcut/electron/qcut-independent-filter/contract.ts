@@ -2,7 +2,7 @@ import type { FilterComparisonAPI } from "./comparison-contract.js";
 import type {
 	JianyingFilterLabLoadRendererResult,
 	JianyingFilterLabRenderLocalEffectRequest,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 
 export const QCUT_FILTER_LOAD = "qcut-independent-filter:load";
 export const QCUT_FILTER_RENDER = "qcut-independent-filter:render";

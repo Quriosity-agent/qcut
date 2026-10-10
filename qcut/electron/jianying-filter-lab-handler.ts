@@ -27,7 +27,7 @@ import {
 	type JianyingFilterLabThumbnailResult,
 	type JianyingFilterRuntimeBackupResult,
 	type JianyingFilterVerification,
-} from "./jianying-filter-lab-contract.js";
+} from "./jianying-filter/jianying-filter-lab-contract.js";
 import { readJianyingFilterVerifications } from "./jianying-filter-verification-store.js";
 import { createJianyingFilterMetadataResolvers } from "./jianying-filter-metadata-host.js";
 import {

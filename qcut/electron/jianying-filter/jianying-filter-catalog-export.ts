@@ -20,7 +20,7 @@ import {
 import type {
 	JianyingFilterImplementation,
 	JianyingFilterVerificationStatus,
-} from "../jianying-filter-lab-contract.js";
+} from "./jianying-filter-lab-contract.js";
 import {
 	findJianyingFilterTitle,
 	scanJianyingFilterMetadata,

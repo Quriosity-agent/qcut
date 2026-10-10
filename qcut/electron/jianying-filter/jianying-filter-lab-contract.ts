@@ -1,4 +1,4 @@
-import type { JianyingLutRole } from "./native-pipeline/filters/filter-lab-lut.js";
+import type { JianyingLutRole } from "../native-pipeline/filters/filter-lab-lut.js";
 
 export const JIANYING_FILTER_LAB_LIST_CHANNEL = "jianying-filter-lab:list";
 export const JIANYING_FILTER_LAB_LOAD_CHANNEL = "jianying-filter-lab:load";

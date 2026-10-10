@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type {
 	JianyingFilterLabRenderLocalEffectResult,
 	JianyingFilterLocalRuntimeStatus,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
 import {
 	createJianyingFilterSwingRenderSession,

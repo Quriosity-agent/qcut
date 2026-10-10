@@ -7,7 +7,7 @@ import type {
 	JianyingFilterLabRenderLocalEffectRequest,
 	JianyingFilterLabRenderLocalPortraitRequest,
 	JianyingFilterLabThumbnailRequest,
-} from "./jianying-filter-lab-contract.js";
+} from "./jianying-filter/jianying-filter-lab-contract.js";
 
 const LUT_ID_PATTERN = /^[A-Za-z0-9._/-]{1,256}$/;
 const RESOURCE_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;

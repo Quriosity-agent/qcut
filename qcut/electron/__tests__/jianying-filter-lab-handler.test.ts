@@ -16,7 +16,7 @@ import {
 	type JianyingFilterLabListResult,
 	type JianyingFilterLabLoadResult,
 	type JianyingFilterLabLoadRendererResult,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 import type {
 	JianyingLutEntry,
 	JianyingLutReference,

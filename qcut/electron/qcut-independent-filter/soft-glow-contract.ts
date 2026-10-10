@@ -1,4 +1,4 @@
-import type { JianyingFilterLabLoadRendererResult } from "../jianying-filter-lab-contract.js";
+import type { JianyingFilterLabLoadRendererResult } from "../jianying-filter/jianying-filter-lab-contract.js";
 import type {
 	IndependentFilterIdentity,
 	IndependentFilterRequest,
