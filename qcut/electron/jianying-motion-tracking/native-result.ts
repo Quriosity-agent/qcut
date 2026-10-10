@@ -1,7 +1,7 @@
 import type {
 	JianyingMotionTrackingDirection,
 	JianyingMotionTrackingSample,
-} from "../jianying-motion-tracking-contract.js";
+} from "./jianying-motion-tracking-contract.js";
 import { JIANYING_MOTION_TRACKING_ROUTE } from "./runtime-assets.js";
 
 function parseNullableNumber({ value }: { value: unknown }) {

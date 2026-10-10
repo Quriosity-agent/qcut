@@ -135,7 +135,7 @@ import {
 	JIANYING_MOTION_TRACKING_INSPECT_CHANNEL,
 	JIANYING_MOTION_TRACKING_PROGRESS_CHANNEL,
 	JIANYING_MOTION_TRACKING_TRACK_CHANNEL,
-} from "./jianying-motion-tracking-contract.js";
+} from "./jianying-motion-tracking/jianying-motion-tracking-contract.js";
 import {
 	JIANYING_BASIC_VIDEO_CANCEL_CHANNEL,
 	JIANYING_BASIC_VIDEO_DEFLICKER_CHANNEL,

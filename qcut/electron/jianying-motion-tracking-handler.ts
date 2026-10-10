@@ -7,7 +7,7 @@ import {
 	JIANYING_MOTION_TRACKING_TRACK_CHANNEL,
 	type JianyingMotionTrackingCancelRequest,
 	type JianyingMotionTrackingRequest,
-} from "./jianying-motion-tracking-contract.js";
+} from "./jianying-motion-tracking/jianying-motion-tracking-contract.js";
 import {
 	inspectJianyingMotionTracking,
 	trackWithJianyingMotionRuntime,
