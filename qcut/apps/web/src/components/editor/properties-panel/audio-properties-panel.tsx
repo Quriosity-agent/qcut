@@ -33,7 +33,7 @@ import {
 import { analyzeMediaLoudness } from "@/lib/audio/audio-loudness-analysis";
 import { AudioBasicSettings } from "./audio/audio-basic-settings";
 import { AudioVoiceSettings } from "./audio-voice-settings";
-import { AudioEffectSettings } from "./audio-effect-settings";
+import { AudioEffectSettings } from "./audio/audio-effect-settings";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useAudioAiActions } from "./use-audio-ai-actions";
 import { AudioLyricsSettings } from "./audio-lyrics-settings";
