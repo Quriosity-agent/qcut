@@ -32,7 +32,7 @@ import { useMediaStore } from "@/stores/media/media-store";
 import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 
 // Export individual components
-export { ObjectList } from "./ObjectList";
+export { ObjectList } from "./object-list";
 export { PromptToolbar } from "./PromptToolbar";
 export { SegmentationCanvas } from "./SegmentationCanvas";
 export { MaskOverlay } from "./mask-overlay";
@@ -40,7 +40,7 @@ export { ImageUploader } from "./image-uploader";
 export { SegmentationControls } from "./SegmentationControls";
 
 // Import components for main panel
-import { ObjectList } from "./ObjectList";
+import { ObjectList } from "./object-list";
 import { PromptToolbar } from "./PromptToolbar";
 import { SegmentationCanvas } from "./SegmentationCanvas";
 import { ImageUploader } from "./image-uploader";
