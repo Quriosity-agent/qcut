@@ -6,7 +6,7 @@ import type { JianyingFlowerResourceMetadata } from "./jianying-text/jianying-fl
 import type {
 	JianyingFlowerCategoryDefinition,
 	JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-flower-taxonomy.js";
+} from "./jianying-text/jianying-flower-taxonomy.js";
 import type { JianyingTextAnimationLabListResult } from "./jianying-text-style-lab-contract.js";
 import type { JianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog.js";
 import {

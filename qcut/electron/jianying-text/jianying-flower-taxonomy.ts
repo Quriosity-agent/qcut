@@ -1,4 +1,4 @@
-import type { JianyingTextStyleCategoryId } from "./jianying-text-style-lab-contract.js";
+import type { JianyingTextStyleCategoryId } from "../jianying-text-style-lab-contract.js";
 
 export const JIANYING_FLOWER_CATEGORIES = [
 	{ id: "popular", label: "热门", sourceId: "10721", groupId: "charts" },

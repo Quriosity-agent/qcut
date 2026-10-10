@@ -10,7 +10,7 @@ import {
 	resolveJianyingFlowerTaxonomy,
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "../jianying-flower-taxonomy.js";
+} from "./jianying-flower-taxonomy.js";
 import type { JianyingTextStyleCategoryId } from "../jianying-text-style-lab-contract.js";
 
 const SQLITE_PARAMETER_LIMIT = 900;

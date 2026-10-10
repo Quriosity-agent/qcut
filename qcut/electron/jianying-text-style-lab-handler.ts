@@ -18,7 +18,7 @@ import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text-private-ar
 import {
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-flower-taxonomy.js";
+} from "./jianying-text/jianying-flower-taxonomy.js";
 import {
 	resolveJianyingFlowerCatalogMetadata,
 	type JianyingFlowerCatalogMetadata,

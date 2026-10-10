@@ -3,7 +3,7 @@ import {
 	JIANYING_FLOWER_CATEGORY_GROUPS,
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-flower-taxonomy.js";
+} from "./jianying-text/jianying-flower-taxonomy.js";
 import type {
 	JianyingFlowerCatalogMetadata,
 	JianyingFlowerResourceMetadata,
