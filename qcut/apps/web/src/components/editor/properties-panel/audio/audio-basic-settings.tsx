@@ -5,7 +5,7 @@ import {
 	AudioModuleSection,
 	AudioNumberControl,
 	activateButtonFromKeyboard,
-} from "../audio-property-controls";
+} from "./audio-property-controls";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { Activity, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";

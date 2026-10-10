@@ -19,7 +19,7 @@ import {
 	loadCustomAudioPresets,
 	persistCustomAudioPresets,
 } from "@/lib/audio/audio-presets";
-import { activateButtonFromKeyboard } from "../audio-property-controls";
+import { activateButtonFromKeyboard } from "./audio-property-controls";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useTranslation, type TranslationKey } from "@/lib/i18n";
 import { AUDIO_PRESET_NAME_KEYS } from "./audio-properties-i18n";

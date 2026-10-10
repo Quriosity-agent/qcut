@@ -4,7 +4,7 @@ import {
 	AudioKeyframedControl,
 	AudioModuleSection,
 	AudioToggleRow,
-} from "./audio-property-controls";
+} from "./audio/audio-property-controls";
 import type { AudioSettingsEditorBindings } from "./audio/audio-properties-types";
 import { useTranslation } from "@/lib/i18n";
 

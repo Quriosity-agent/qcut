@@ -10,7 +10,7 @@ import {
 	AudioModuleSection,
 	AudioNumberControl,
 	activateButtonFromKeyboard,
-} from "../audio-property-controls";
+} from "./audio-property-controls";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useTranslation } from "@/lib/i18n";
 import { AUDIO_STEM_LABEL_KEYS } from "./audio-properties-i18n";

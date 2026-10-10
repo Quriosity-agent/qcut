@@ -13,7 +13,7 @@ import type {
 	MediaAudioSettings,
 	MediaElement,
 } from "@/types/timeline";
-import { AudioNumberControl } from "../audio-property-controls";
+import { AudioNumberControl } from "./audio-property-controls";
 import { useTranslation } from "@/lib/i18n";
 
 export interface AudioBatchSelection {
