@@ -9,7 +9,7 @@ import {
 	readJianyingTextLabSnapshot,
 	writeJianyingTextLabSnapshot,
 	type JianyingTextLabSnapshot,
-} from "../jianying-text-lab-snapshot-cache.js";
+} from "../jianying-text/jianying-text-lab-snapshot-cache.js";
 
 const RESOURCE_ID = "7405879107424111910";
 const PACKAGE_HASH = "a".repeat(32);

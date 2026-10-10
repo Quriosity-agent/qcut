@@ -2,19 +2,19 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { JianyingFlowerResourceMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
+import type { JianyingFlowerResourceMetadata } from "./jianying-flower-resource-metadata.js";
 import type {
 	JianyingFlowerCategoryDefinition,
 	JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-text/jianying-flower-taxonomy.js";
-import type { JianyingTextAnimationLabListResult } from "./jianying-text-style-lab-contract.js";
-import type { JianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog.js";
+} from "./jianying-flower-taxonomy.js";
+import type { JianyingTextAnimationLabListResult } from "../jianying-text-style-lab-contract.js";
+import type { JianyingTextStyleCatalog } from "../jianying-text-style-lab-catalog.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "./jianying-text-package-metadata.js";
-import type { JianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
-import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../jianying-text-package-metadata.js";
+import type { JianyingTextPackageOwnership } from "../jianying-text-package-ownership.js";
+import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 
 /**
  * On-disk snapshot of the fully-resolved text lab catalogs, so app restarts

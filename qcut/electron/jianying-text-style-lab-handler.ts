@@ -56,7 +56,7 @@ import {
 	readJianyingTextLabSnapshot,
 	writeJianyingTextLabSnapshot,
 	type JianyingTextLabSnapshot,
-} from "./jianying-text-lab-snapshot-cache.js";
+} from "./jianying-text/jianying-text-lab-snapshot-cache.js";
 
 interface TextStyleLabCatalog {
 	catalog: JianyingTextStyleCatalog;
