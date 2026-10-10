@@ -18,12 +18,12 @@ import {
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TextAnimationsV1, TextElement } from "@/types/timeline";
-import { TextAnimationPresetGrid } from "./text/text-animation-preset-grid";
+import { TextAnimationPresetGrid } from "./text-animation-preset-grid";
 import {
 	getSelectedTextAnimationPresetForProperties,
 	resolveTextAnimationsForProperties,
-} from "./text/text-animation-properties-compat";
-import { NumberControl } from "./visual-property-controls";
+} from "./text-animation-properties-compat";
+import { NumberControl } from "../visual-property-controls";
 
 const PHASE_LABEL_KEYS = {
 	entrance: "textProperties.animationPhase.entrance",

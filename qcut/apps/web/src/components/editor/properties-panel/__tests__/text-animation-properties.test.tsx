@@ -5,7 +5,7 @@ import {
 	TEXT_ANIMATION_PRESETS,
 } from "@/lib/text/text-animation-presets";
 import type { TextElement } from "@/types/timeline";
-import { TextAnimationProperties } from "../text-animation-properties";
+import { TextAnimationProperties } from "../text/text-animation-properties";
 
 const storeMocks = vi.hoisted(() => ({
 	pause: vi.fn(),

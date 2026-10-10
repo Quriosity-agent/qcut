@@ -81,7 +81,7 @@ import {
 	TEXT_REWRITE_MODE_KEYS,
 	TEXT_VERTICAL_ALIGN_LABEL_KEYS,
 } from "./text-properties-i18n";
-import { TextAnimationProperties } from "./text-animation-properties";
+import { TextAnimationProperties } from "./text/text-animation-properties";
 import { JianyingFontLabDialog } from "./text/jianying-font-lab-dialog";
 import type { JianyingTextRuntimeStatus } from "@/types/electron";
 
