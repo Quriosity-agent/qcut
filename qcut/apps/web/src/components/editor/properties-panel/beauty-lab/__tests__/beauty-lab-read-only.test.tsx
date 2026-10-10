@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { beautyLabCatalogStatus } from "@/lib/portrait/beauty-lab-catalog";
 import { fireEvent, render, screen, within } from "@/test/test-utils";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { BeautyLabControls } from "../beauty-lab/beauty-lab-controls";
-import { PortraitMakeupControls } from "../portrait/portrait-makeup-controls";
+import { BeautyLabControls } from "../beauty-lab-controls";
+import { PortraitMakeupControls } from "../../portrait/portrait-makeup-controls";
 
 const categories = [
 	{ category: "look", zh: "套装", en: "Looks" },
