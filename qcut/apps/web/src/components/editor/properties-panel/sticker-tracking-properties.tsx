@@ -29,7 +29,7 @@ import {
 	PropertyItemValue,
 } from "./property-item";
 import type { UpdateStickerProperties } from "./sticker-property-types";
-import { StickerPlanarTrackingProperties } from "./sticker-planar-tracking-properties";
+import { StickerPlanarTrackingProperties } from "./sticker/sticker-planar-tracking-properties";
 
 const NONE_TARGET = "none";
 
