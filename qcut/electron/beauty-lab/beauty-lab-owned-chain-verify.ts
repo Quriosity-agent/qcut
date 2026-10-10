@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { isDeepStrictEqual } from "node:util";
-import { buildJianyingPortraitFeatureParameters } from "./jianying-portrait-adjustment-runtime/catalog.js";
+import { buildJianyingPortraitFeatureParameters } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	OWNED_CHAIN_CAPTURE_SOURCES,
 	OWNED_CHAIN_LEGACY_PROBE_SHA256,
@@ -18,8 +18,8 @@ import {
 	ownedChainSourceSchema,
 	ownedChainSummarySchema,
 	type OwnedChainIndex,
-} from "./beauty-lab/beauty-lab-owned-chain-evidence.js";
-import { requireEvidence } from "./beauty-lab-research-files.js";
+} from "./beauty-lab-owned-chain-evidence.js";
+import { requireEvidence } from "../beauty-lab-research-files.js";
 
 export interface OwnedChainReports {
 	chainAudit?: z.infer<typeof ownedChainAuditSchema>;
