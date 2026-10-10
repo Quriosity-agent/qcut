@@ -93,7 +93,7 @@ import {
 } from "../visual-property-controls";
 import { MediaAlignmentToolbar } from "./media-alignment-toolbar";
 import { MediaKeyframeNav } from "./media-keyframe-nav";
-import { MediaWarpSection } from "../media-warp-section";
+import { MediaWarpSection } from "./media-warp-section";
 import {
 	DenoiseSection,
 	QuickEnhanceSection,
