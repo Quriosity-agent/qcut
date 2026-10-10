@@ -4,7 +4,7 @@ import {
 	type PinnedRoot,
 	type Snapshot,
 	requireEvidence,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const integer = z.number().int().safe().nonnegative();

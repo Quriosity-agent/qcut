@@ -20,7 +20,7 @@ import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
 } from "./beauty-lab-live-selection.js";
-import { checkPath, pinRoot } from "../beauty-lab-research-files.js";
+import { checkPath, pinRoot } from "./beauty-lab-research-files.js";
 import {
 	hasJianyingFilterPrivateRuntime,
 	jianyingFilterPrivateRuntimeCurrent,

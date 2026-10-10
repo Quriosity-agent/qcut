@@ -19,7 +19,7 @@ import {
 	ownedChainSummarySchema,
 	type OwnedChainIndex,
 } from "./beauty-lab-owned-chain-evidence.js";
-import { requireEvidence } from "../beauty-lab-research-files.js";
+import { requireEvidence } from "./beauty-lab-research-files.js";
 
 export interface OwnedChainReports {
 	chainAudit?: z.infer<typeof ownedChainAuditSchema>;

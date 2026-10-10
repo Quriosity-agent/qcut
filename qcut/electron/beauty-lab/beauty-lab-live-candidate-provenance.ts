@@ -5,7 +5,7 @@ import {
 	checkPath,
 	createSnapshot,
 	type PinnedRoot,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 const SOURCE_TREES = [
 	"research/local-model-pytorch",

@@ -22,8 +22,8 @@ async function main() {
 	if (typeof research.createBeautyLabResearchProvider !== "function")
 		throw new Error("Missing packaged Beauty Lab research provider");
 	const { decodeInput, WIDTH, HEIGHT, RGBA_BYTES } = load(
-		path.join(asar, "electron/beauty-lab-research-files.js")
-	) as typeof import("../electron/beauty-lab-research-files");
+		path.join(asar, "electron/beauty-lab/beauty-lab-research-files.js")
+	) as typeof import("../electron/beauty-lab/beauty-lab-research-files");
 	const { createCanvas, ImageData } = load(
 		"@napi-rs/canvas"
 	) as typeof import("@napi-rs/canvas");

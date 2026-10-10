@@ -16,7 +16,11 @@ import {
 } from "../beauty-lab/beauty-lab-owned-chain-evidence.js";
 import { verifyOwnedChainReports } from "../beauty-lab/beauty-lab-owned-chain-verify.js";
 import { buildJianyingPortraitFeatureParameters } from "../jianying-portrait-adjustment-runtime/catalog.js";
-import { WIDTH, HEIGHT, RGBA_BYTES } from "../beauty-lab-research-files.js";
+import {
+	WIDTH,
+	HEIGHT,
+	RGBA_BYTES,
+} from "../beauty-lab/beauty-lab-research-files.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs/promises")>();

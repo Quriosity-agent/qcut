@@ -25,7 +25,7 @@ import {
 	readJson,
 	requireEvidence,
 	type Snapshot,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 export const LIVE_NATIVE_STAGES = [
 	"detection",

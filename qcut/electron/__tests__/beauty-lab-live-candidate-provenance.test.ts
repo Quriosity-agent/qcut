@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { captureBeautyLabLiveDependencies } from "../beauty-lab/beauty-lab-live-candidate-provenance.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 import { JOB_SCRIPT, setupFiles } from "./beauty-lab-live-candidate-fixture.js";
 
 let root: string;

@@ -14,7 +14,7 @@ import {
 	type LiveExpectedDependencies,
 } from "../beauty-lab/beauty-lab-live-candidate-inventory.js";
 import { captureBeautyLabLiveDependencies } from "../beauty-lab/beauty-lab-live-candidate-provenance.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 
 export const OPT_IN = {
 	NODE_ENV: "development",

@@ -31,7 +31,7 @@ import {
 	decodeInput,
 	pinRoot,
 	requireEvidence,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 const CASE: BeautyLabResearchCase = {
 	id: OWNED_CHAIN_CASE_ID,

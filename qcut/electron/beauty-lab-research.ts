@@ -28,7 +28,7 @@ import {
 	safeRelativePath,
 	type PinnedRoot,
 	type Snapshot,
-} from "./beauty-lab-research-files.js";
+} from "./beauty-lab/beauty-lab-research-files.js";
 
 const CASES = [
 	{

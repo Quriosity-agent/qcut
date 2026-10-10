@@ -9,7 +9,7 @@ import {
 	pinRoot,
 	type PinnedRoot,
 	requireEvidence,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 const MIB = 1024 ** 2;
 const sha = z.string().regex(/^[a-f0-9]{64}$/);

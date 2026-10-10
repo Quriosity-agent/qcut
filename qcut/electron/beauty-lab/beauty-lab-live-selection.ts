@@ -6,7 +6,7 @@ import {
 	checkPath,
 	pinRoot,
 	type PinnedRoot,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,

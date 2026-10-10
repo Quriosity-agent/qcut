@@ -5,7 +5,7 @@ import {
 	WIDTH,
 	HEIGHT,
 	safeRelativePath,
-} from "../beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 export const OWNED_CHAIN_CASE_ID = "owned-preprocess";
 export const OWNED_CHAIN_PACKAGE_FORMAT = "qcut-beauty-lab-owned-chain-v1";
