@@ -22,7 +22,7 @@ import { TextAnimationPresetGrid } from "./text/text-animation-preset-grid";
 import {
 	getSelectedTextAnimationPresetForProperties,
 	resolveTextAnimationsForProperties,
-} from "./text-animation-properties-compat";
+} from "./text/text-animation-properties-compat";
 import { NumberControl } from "./visual-property-controls";
 
 const PHASE_LABEL_KEYS = {
