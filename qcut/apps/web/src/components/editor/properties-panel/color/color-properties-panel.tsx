@@ -54,7 +54,7 @@ import { ColorLutSettings } from "./color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color-management-settings";
 import { ColorMaskSettings } from "./color-mask-settings";
 import { ColorPresetControls } from "./color-preset-controls";
-import { ColorScopesPanel } from "../color-scopes-panel";
+import { ColorScopesPanel } from "./color-scopes-panel";
 import { ColorSmartSettingsPanel } from "../color-smart-settings";
 import { ColorWheelSettingsPanel } from "../color-wheel-settings";
 import { MediaMaskProperties } from "../media-mask-properties";
