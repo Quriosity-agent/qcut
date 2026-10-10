@@ -2,13 +2,13 @@ import { z } from "zod";
 import type {
 	CoverCachedEntry,
 	CoverCatalog,
-} from "./jianying-cover/jianying-cover-contract.js";
-import type { JianyingFontLabFontSummary } from "./jianying-font-lab-contract.js";
-import type { JianyingTextRuntimeReference } from "./jianying-text-runtime-contract.js";
+} from "./jianying-cover-contract.js";
+import type { JianyingFontLabFontSummary } from "../jianying-font-lab-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
 import {
 	coverDependencyReferences,
 	identifyCoverDependency,
-} from "./jianying-cover/jianying-cover-dependencies.js";
+} from "./jianying-cover-dependencies.js";
 
 const color = z.string().regex(/^(#[a-f\d]{6})?$/i);
 const finite = z.number().finite();

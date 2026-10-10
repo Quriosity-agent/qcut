@@ -18,7 +18,7 @@ import {
 	describeCoverDependencies,
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
-} from "./jianying-cover-layout.js";
+} from "./jianying-cover/jianying-cover-layout.js";
 export { coverDependencyReferences } from "./jianying-cover/jianying-cover-dependencies.js";
 import {
 	coverCatalogSchema,

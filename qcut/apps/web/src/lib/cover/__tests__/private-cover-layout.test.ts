@@ -8,7 +8,7 @@ import { applyPrivateCoverTextLayout } from "../private-cover-layout";
 import {
 	parseCoverTextLayout,
 	type CoverTextLayout,
-} from "../../../../../../electron/jianying-cover-layout";
+} from "../../../../../../electron/jianying-cover/jianying-cover-layout";
 import { coverLayoutFixture } from "../../../../../../electron/__tests__/fixtures/cover-layout";
 
 const canvas = { width: 1280, height: 720, backgroundColor: "#000000" };

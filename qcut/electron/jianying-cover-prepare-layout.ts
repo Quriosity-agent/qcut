@@ -8,7 +8,7 @@ import {
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
 	type CoverTextLayout,
-} from "./jianying-cover-layout.js";
+} from "./jianying-cover/jianying-cover-layout.js";
 import {
 	retainCoverLayoutFont,
 	retainCoverLayoutWordArt,
