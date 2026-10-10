@@ -24,7 +24,7 @@ import {
 	AudioPitchSettings,
 	AudioVoiceEnhancementSettings,
 } from "../audio-voice-processing-settings";
-import { AudioLevelMeter } from "../audio-level-meter";
+import { AudioLevelMeter } from "./audio-level-meter";
 import { useTranslation } from "@/lib/i18n";
 
 function denoiseStatusText({
