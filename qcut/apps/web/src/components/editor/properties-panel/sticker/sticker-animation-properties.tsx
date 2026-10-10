@@ -16,12 +16,12 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
-import { clamp, type UpdateStickerProperties } from "./sticker-property-types";
+} from "../property-item";
+import { clamp, type UpdateStickerProperties } from "../sticker-property-types";
 import {
 	CLIP_ANIMATION_OPTIONS,
 	NumberControl,
-} from "./visual-property-controls";
+} from "../visual-property-controls";
 
 const LOOP_ANIMATION_OPTIONS = [
 	["none", "stickerProperties.loop.none"],

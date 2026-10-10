@@ -27,7 +27,7 @@ import {
 	type StickerElement,
 	type StickerKeyframeProperty,
 } from "@/types/timeline";
-import { StickerAnimationProperties } from "./sticker-animation-properties";
+import { StickerAnimationProperties } from "./sticker/sticker-animation-properties";
 import { StickerBasicProperties } from "./sticker-basic-properties";
 import { StickerDeformationProperties } from "./sticker-deformation-properties";
 import type { UpdateStickerProperties } from "./sticker-property-types";
