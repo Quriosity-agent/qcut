@@ -27,7 +27,7 @@ import type { CaptionStyleScope } from "@/stores/timeline/types";
 import type { CaptionElement, SubtitleStyle } from "@/types/timeline";
 import { useTranslation, type TranslationKey } from "@/lib/i18n";
 import { CaptionListTab } from "./caption-list-tab";
-import { CaptionTextTab } from "../caption-text-tab";
+import { CaptionTextTab } from "./caption-text-tab";
 
 const TAB_CLASS =
 	"h-9 min-w-0 rounded-none border-b-2 border-transparent px-1 text-[10px] data-[state=active]:border-primary data-[state=active]:bg-transparent";
