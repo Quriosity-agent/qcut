@@ -4,7 +4,7 @@ import { TRANSLATIONS } from "@/lib/i18n/translations";
 import { TEXT_ANIMATION_PRESETS } from "@/lib/text/text-animation-presets";
 import { TextAnimationPresetGrid } from "../text/text-animation-preset-grid";
 
-vi.mock("../use-text-animation-preview", () => ({
+vi.mock("../text/use-text-animation-preview", () => ({
 	useTextAnimationPreview: ({ active }: { active: boolean }) =>
 		active ? 0.75 : 0.55,
 }));
