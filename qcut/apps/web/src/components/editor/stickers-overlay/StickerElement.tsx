@@ -22,7 +22,7 @@ import { debugLog } from "@/lib/debug/debug-config";
 import { useStickerDrag } from "./hooks/useStickerDrag";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { ResizeHandles } from "./ResizeHandles";
+import { ResizeHandles } from "./resize-handles";
 import { StickerControls, SimpleStickerControls } from "./StickerControls";
 import type { OverlaySticker } from "@/types/sticker-overlay";
 import type { MediaItem } from "@/stores/media/media-store-types";

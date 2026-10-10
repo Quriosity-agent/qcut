@@ -36,7 +36,7 @@ vi.mock("../hooks/useStickerDrag", () => ({
 	}),
 }));
 
-vi.mock("../ResizeHandles", () => ({
+vi.mock("../resize-handles", () => ({
 	ResizeHandles: () => <div data-testid="resize-handles" />,
 }));
 
