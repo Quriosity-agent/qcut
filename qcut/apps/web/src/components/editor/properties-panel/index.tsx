@@ -32,7 +32,7 @@ import { RemotionProperties } from "./remotion-properties";
 import { HyperframesProperties } from "./hyperframes-properties";
 import { EFFECTS_ENABLED } from "@/config/features";
 import { MarkdownProperties } from "./markdown-properties";
-import { CaptionProperties } from "./caption-properties";
+import { CaptionProperties } from "./caption/caption-properties";
 import { ProjectInfoView } from "./project-info-view";
 import { BackgroundView } from "./background-view";
 import { PropertyGroup } from "./property-item";
