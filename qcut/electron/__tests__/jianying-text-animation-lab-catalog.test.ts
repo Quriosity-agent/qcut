@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	buildJianyingTextAnimationCatalog,
 	listJianyingTextAnimationCatalogCandidates,
-} from "../jianying-text-animation-lab-catalog.js";
+} from "../jianying-text/jianying-text-animation-lab-catalog.js";
 
 const VALID_RESOURCE_ID = "7168819879183651359";
 const MISSING_RESOURCE_ID = "7179135028343870012";

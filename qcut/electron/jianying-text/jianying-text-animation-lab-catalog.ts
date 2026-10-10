@@ -2,25 +2,25 @@ import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
-import { listJianyingResourceDatabasePaths } from "./jianying-shared/jianying-resource-database.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-resource-database.js";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextAnimationLabSummary,
-} from "./jianying-text-style-lab-contract.js";
+} from "../jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextAnimationReference,
 	JianyingTextAnimationSlot,
-} from "./jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "./jianying-text-package-metadata.js";
+} from "../jianying-text-package-metadata.js";
 import {
 	JianyingTextAnimationPackageError,
 	resolveJianyingTextAnimations,
-} from "./jianying-text-runtime/animation-package-resolver.js";
+} from "../jianying-text-runtime/animation-package-resolver.js";
 
 const MAXIMUM_LOCAL_PACKAGE_COUNT = 5000;
 const PACKAGE_SCAN_CONCURRENCY = 8;

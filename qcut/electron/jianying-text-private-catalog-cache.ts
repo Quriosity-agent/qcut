@@ -4,7 +4,7 @@ import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
 import {
 	listJianyingTextAnimationCatalogCandidates,
 	type JianyingTextAnimationCatalogCandidate,
-} from "./jianying-text-animation-lab-catalog.js";
+} from "./jianying-text/jianying-text-animation-lab-catalog.js";
 import {
 	listJianyingFlowerCatalogPackageReferences,
 	type JianyingFlowerCatalogPackageReference,
