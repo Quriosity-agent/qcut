@@ -15,7 +15,7 @@ import {
 	type Jianying113ProjectExportSelectionDto,
 	type JianyingProjectExportErrorCode,
 	type JianyingProjectExportResultDto,
-} from "./jianying-project-export-contract.js";
+} from "./jianying-draft/jianying-project-export-contract.js";
 import {
 	createJianyingTargetAppGuard,
 	JianyingAppRunningError,

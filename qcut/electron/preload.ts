@@ -184,7 +184,7 @@ import {
 import {
 	JIANYING_11_3_PROJECT_EXPORT_CHOOSE_CHANNEL,
 	JIANYING_11_3_PROJECT_EXPORT_COMMIT_CHANNEL,
-} from "./jianying-project-export-contract.js";
+} from "./jianying-draft/jianying-project-export-contract.js";
 import {
 	QCUT_AUDIO_RUNTIME_CACHE_STATS_CHANNEL,
 	QCUT_AUDIO_RUNTIME_CANCEL_CHANNEL,
