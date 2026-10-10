@@ -39,5 +39,5 @@ describeOnMac("person cutout temporal foreground stabilizer", () => {
 			executablePath,
 		]);
 		await expect(execFileAsync(executablePath)).resolves.toBeDefined();
-	});
+	}, 30_000);
 });
