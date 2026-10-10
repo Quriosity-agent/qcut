@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
-import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group";
+import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
 
 function GroupHarness({ active = false }: { active?: boolean }) {
 	const [open, setOpen] = useState(false);
