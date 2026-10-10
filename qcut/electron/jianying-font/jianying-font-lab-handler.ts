@@ -9,7 +9,7 @@ import {
 	type JianyingFontLabListRequest,
 	type JianyingFontLabListResult,
 	type JianyingFontLabLoadResult,
-} from "./jianying-font/jianying-font-lab-contract.js";
+} from "./jianying-font-lab-contract.js";
 import {
 	buildJianyingFontCatalog,
 	inspectJianyingFontBytes,
@@ -19,7 +19,7 @@ import {
 	toJianyingFontLoadResult,
 	type JianyingFontCatalog,
 	type JianyingFontCatalogEntry,
-} from "./jianying-font/jianying-font-lab-catalog.js";
+} from "./jianying-font-lab-catalog.js";
 
 const MAXIMUM_INSPECTION_TEXT_LENGTH = 4096;
 

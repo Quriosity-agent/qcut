@@ -108,7 +108,7 @@ import { watchJianyingFilterCaches } from "./jianying-filter/jianying-filter-cac
 import {
 	setupJianyingFontLabIPC,
 	type JianyingFontLabIPCController,
-} from "./jianying-font-lab-handler.js";
+} from "./jianying-font/jianying-font-lab-handler.js";
 import {
 	setupJianyingTextStyleLabIPC,
 	type JianyingTextStyleLabIPCController,

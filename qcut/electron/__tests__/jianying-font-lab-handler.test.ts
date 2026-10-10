@@ -23,7 +23,7 @@ vi.mock("electron", () => ({
 	ipcMain: { handle: mockHandle, removeHandler: mockRemoveHandler },
 }));
 
-import { setupJianyingFontLabIPC } from "../jianying-font-lab-handler.js";
+import { setupJianyingFontLabIPC } from "../jianying-font/jianying-font-lab-handler.js";
 
 const FONT_ID = `sha256:${"a".repeat(64)}`;
 
