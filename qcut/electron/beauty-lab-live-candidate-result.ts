@@ -17,7 +17,7 @@ import {
 import {
 	liveCallbackSchema,
 	verifyBeautyLabLiveReceipts,
-} from "./beauty-lab-live-candidate-receipts.js";
+} from "./beauty-lab/beauty-lab-live-candidate-receipts.js";
 import {
 	createSnapshot,
 	type PinnedRoot,
