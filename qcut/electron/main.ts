@@ -112,7 +112,7 @@ import {
 import {
 	setupJianyingTextStyleLabIPC,
 	type JianyingTextStyleLabIPCController,
-} from "./jianying-text-style-lab-handler.js";
+} from "./jianying-text/jianying-text-style-lab-handler.js";
 import {
 	setupJianyingTextRuntimeIPC,
 	type JianyingTextRuntimeIPCController,

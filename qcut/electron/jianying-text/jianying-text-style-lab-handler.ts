@@ -11,52 +11,52 @@ import {
 	type JianyingTextStyleLabCoverResult,
 	type JianyingTextStyleLabListRequest,
 	type JianyingTextStyleLabListResult,
-} from "./jianying-text/jianying-text-style-lab-contract.js";
-import { buildJianyingTextAnimationCatalog } from "./jianying-text/jianying-text-animation-lab-catalog.js";
-import type { JianyingCachedImage } from "./jianying-shared/jianying-image-cache.js";
-import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text/jianying-text-private-archive.js";
+} from "./jianying-text-style-lab-contract.js";
+import { buildJianyingTextAnimationCatalog } from "./jianying-text-animation-lab-catalog.js";
+import type { JianyingCachedImage } from "../jianying-shared/jianying-image-cache.js";
+import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
 import {
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-text/jianying-flower-taxonomy.js";
+} from "./jianying-flower-taxonomy.js";
 import {
 	resolveJianyingFlowerCatalogMetadata,
 	type JianyingFlowerCatalogMetadata,
 	type JianyingFlowerResourceMetadata,
-} from "./jianying-text/jianying-flower-resource-metadata.js";
+} from "./jianying-flower-resource-metadata.js";
 import {
 	buildJianyingTextStyleCatalog,
 	isValidJianyingTextStyleId,
 	readJianyingTextStyleCover,
 	type JianyingTextStyleCatalog,
 	type JianyingTextStyleCatalogEntry,
-} from "./jianying-text/jianying-text-style-lab-catalog.js";
+} from "./jianying-text-style-lab-catalog.js";
 import {
 	resolveJianyingTextPackageOwnership,
 	type JianyingTextPackageOwnership,
-} from "./jianying-text/jianying-text-package-ownership.js";
-import { isDiscoverableJianyingTextCatalogEntry } from "./jianying-text/jianying-text-style-discovery.js";
-import { readJianyingTextStyleCoverImage } from "./jianying-text/jianying-text-style-cover-cache.js";
+} from "./jianying-text-package-ownership.js";
+import { isDiscoverableJianyingTextCatalogEntry } from "./jianying-text-style-discovery.js";
+import { readJianyingTextStyleCoverImage } from "./jianying-text-style-cover-cache.js";
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
-} from "./jianying-text/jianying-text-style-cover-metadata.js";
-import { readJianyingTextStyleGeneratedCover } from "./jianying-text/jianying-text-style-generated-cover.js";
-import { classifyLocalJianyingTextStyles } from "./jianying-text-style-local-categories.js";
+} from "./jianying-text-style-cover-metadata.js";
+import { readJianyingTextStyleGeneratedCover } from "./jianying-text-style-generated-cover.js";
+import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";
 import {
 	compareStyleSummaries,
 	normalizeResolvedMetadata,
 	summarizeCategories,
 	summarizeCategoryGroups,
 	summarizeEntry,
-} from "./jianying-text-style-lab-summary.js";
+} from "../jianying-text-style-lab-summary.js";
 import {
 	computeJianyingTextLabFingerprint,
 	JIANYING_TEXT_LAB_SNAPSHOT_SCHEMA_VERSION,
 	readJianyingTextLabSnapshot,
 	writeJianyingTextLabSnapshot,
 	type JianyingTextLabSnapshot,
-} from "./jianying-text/jianying-text-lab-snapshot-cache.js";
+} from "./jianying-text-lab-snapshot-cache.js";
 
 interface TextStyleLabCatalog {
 	catalog: JianyingTextStyleCatalog;

@@ -37,7 +37,7 @@ vi.mock("../jianying-text/jianying-text-private-archive.js", () => ({
 	}),
 }));
 
-import { setupJianyingTextStyleLabIPC } from "../jianying-text-style-lab-handler.js";
+import { setupJianyingTextStyleLabIPC } from "../jianying-text/jianying-text-style-lab-handler.js";
 
 const STYLE_ID = `7405879107424111910/${"a".repeat(32)}`;
 const SCRIPT_STYLE_ID = `7328639616670649634/${"b".repeat(32)}`;
