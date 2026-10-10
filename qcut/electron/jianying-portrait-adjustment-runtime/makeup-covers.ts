@@ -1,4 +1,4 @@
-import { readJianyingCachedImage } from "../jianying-image-cache.js";
+import { readJianyingCachedImage } from "../jianying-shared/jianying-image-cache.js";
 import { resolveJianyingResourceCoverUrls } from "../jianying-text-style-cover-metadata.js";
 import type { JianyingPortraitMakeupCardDefinition } from "./makeup-catalog.js";
 

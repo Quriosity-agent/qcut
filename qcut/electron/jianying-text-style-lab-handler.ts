@@ -13,7 +13,7 @@ import {
 	type JianyingTextStyleLabListResult,
 } from "./jianying-text-style-lab-contract.js";
 import { buildJianyingTextAnimationCatalog } from "./jianying-text-animation-lab-catalog.js";
-import type { JianyingCachedImage } from "./jianying-image-cache.js";
+import type { JianyingCachedImage } from "./jianying-shared/jianying-image-cache.js";
 import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
 import {
 	type JianyingFlowerCategoryDefinition,

@@ -1,7 +1,7 @@
 import {
 	readJianyingCachedImage,
 	type JianyingCachedImage,
-} from "./jianying-image-cache.js";
+} from "./jianying-shared/jianying-image-cache.js";
 
 const TEXT_STYLE_COVER_CACHE_VERSION = 3;
 

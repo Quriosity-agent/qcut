@@ -1,7 +1,7 @@
 import {
 	readJianyingCachedImage,
 	type JianyingImageMimeType,
-} from "../jianying-image-cache.js";
+} from "../jianying-shared/jianying-image-cache.js";
 
 export interface JianyingFilterThumbnailSource {
 	resourceId: string;

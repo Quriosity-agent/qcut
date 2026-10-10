@@ -5,7 +5,7 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import {
 	readJianyingCachedImage,
 	type JianyingCachedImage,
-} from "./jianying-image-cache.js";
+} from "./jianying-shared/jianying-image-cache.js";
 import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
 import { renderJianyingText } from "./jianying-text-runtime/render.js";
 
