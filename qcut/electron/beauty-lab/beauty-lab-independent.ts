@@ -17,13 +17,13 @@ import {
 	BEAUTY_LAB_INDEPENDENT_PROVIDER,
 	type BeautyLabIndependentRequest,
 	type BeautyLabIndependentResult,
-} from "./beauty-lab/beauty-lab-independent-contract.js";
-import { runIndependentBeautyJob } from "./beauty-lab/beauty-lab-independent-process.js";
-import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
+} from "./beauty-lab-independent-contract.js";
+import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload.js";
 import {
 	independentBeautyEnvironment,
 	verifyIndependentBeautyEnvironment,
-} from "./beauty-lab-runtime-environment.js";
+} from "../beauty-lab-runtime-environment.js";
 
 const requestSchema = z
 	.object({

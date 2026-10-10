@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { createBeautyLabIndependentProvider } from "../electron/beauty-lab-independent";
+import { createBeautyLabIndependentProvider } from "../electron/beauty-lab/beauty-lab-independent";
 import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider";
 
 export function beautyMatrixOptions({ argv }: { argv: string[] }) {
@@ -86,7 +86,7 @@ export async function beautyMatrixProviders({
 	const asar = path.join(resources, "app.asar");
 	const independentModule = path.join(
 		asar,
-		"electron/beauty-lab-independent.js"
+		"electron/beauty-lab/beauty-lab-independent.js"
 	);
 	const nativeModule = path.join(
 		asar,
@@ -110,7 +110,7 @@ export async function beautyMatrixProviders({
 	);
 	const independent = load(
 		independentModule
-	) as typeof import("../electron/beauty-lab-independent");
+	) as typeof import("../electron/beauty-lab/beauty-lab-independent");
 	const native = load(
 		nativeModule
 	) as typeof import("../electron/jianying-portrait-adjustment-runtime/provider");

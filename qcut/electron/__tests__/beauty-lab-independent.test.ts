@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createBeautyLabIndependentProvider,
 	independentBeautyAdjustments,
-} from "../beauty-lab-independent";
+} from "../beauty-lab/beauty-lab-independent";
 import type { BeautyLabIndependentRequest } from "../beauty-lab/beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
 import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
