@@ -13,7 +13,7 @@ import { app } from "electron";
 import type {
 	JianyingEffectPreviewRequest,
 	JianyingEffectPreviewResult,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 import { getFFmpegPath } from "../ffmpeg/paths.js";
 import { ensureQCutManagedEffectPackage } from "./download.js";
 import {

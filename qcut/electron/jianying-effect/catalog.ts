@@ -8,7 +8,7 @@ import type {
 	JianyingEffectAdjustParameter,
 	JianyingEffectCategory,
 	JianyingEffectDefinition,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 import {
 	type CatalogItem,
 	type CatalogRow,

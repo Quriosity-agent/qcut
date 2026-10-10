@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
-import type { JianyingEffectCoverResult } from "../jianying-effect-contract.js";
+import type { JianyingEffectCoverResult } from "./jianying-effect-contract.js";
 import { findJianyingEffectCatalogItem } from "./catalog.js";
 
 /**

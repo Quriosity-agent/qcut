@@ -5,7 +5,7 @@ import type {
 	JianyingEffectCategory,
 	JianyingEffectDefinition,
 	JianyingEffectPanel,
-} from "../../jianying-effect-contract.js";
+} from "../../jianying-effect/jianying-effect-contract.js";
 import { discoverJianyingEffectLibrary } from "../../jianying-effect/catalog.js";
 import { ensureQCutManagedEffectPackage } from "../../jianying-effect/download.js";
 import { renderJianyingEffectClip } from "../../jianying-effect/render.js";

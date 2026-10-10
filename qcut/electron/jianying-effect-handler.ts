@@ -15,7 +15,7 @@ import {
 	type JianyingEffectPreviewRequest,
 	type JianyingEffectRenderRequest,
 	type JianyingEffectRenderResult,
-} from "./jianying-effect-contract.js";
+} from "./jianying-effect/jianying-effect-contract.js";
 import { getJianyingEffectCover } from "./jianying-effect/cover-cache.js";
 import {
 	downloadJianyingEffectPackage,

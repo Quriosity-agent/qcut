@@ -88,7 +88,7 @@ import {
 	JIANYING_EFFECT_PREVIEW_CHANNEL,
 	JIANYING_EFFECT_RENDER_CHANNEL,
 	JIANYING_EFFECT_STATUS_CHANNEL,
-} from "./jianying-effect-contract.js";
+} from "./jianying-effect/jianying-effect-contract.js";
 import {
 	JIANYING_TRANSITION_INSPECT_CHANNEL,
 	JIANYING_TRANSITION_PREVIEW_CHANNEL,
