@@ -79,7 +79,7 @@ import {
 } from "./color/color-properties-panel";
 import { MediaTrackingProperties } from "./media-tracking-properties";
 import { MediaAIProperties } from "./media/media-ai-properties";
-import { MediaLabProperties } from "./media-lab-properties";
+import { MediaLabProperties } from "./media/media-lab-properties";
 import { MediaPortraitProperties } from "./media-portrait-properties";
 import {
 	planExperimentalCameraTracking,

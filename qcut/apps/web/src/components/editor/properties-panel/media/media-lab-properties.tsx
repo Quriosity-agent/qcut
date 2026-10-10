@@ -14,8 +14,8 @@ import {
 	PropertyGroup,
 	PropertyItem,
 	PropertyItemLabel,
-} from "./property-item";
-import { NumberControl } from "./visual-property-controls";
+} from "../property-item";
+import { NumberControl } from "../visual-property-controls";
 
 const SMART_ACTIONS = [
 	["mediaProperties.lab.smartMotion", "smart-motion"],
