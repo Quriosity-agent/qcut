@@ -48,7 +48,7 @@ import {
 } from "@/lib/video/video-timing";
 import { ColorBasicSettings } from "./color-basic-settings";
 import { ColorCurvesSettings } from "./color-curves-settings";
-import { ColorSecondaryCurvesSettings } from "../color-secondary-curves-settings";
+import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
 import { ColorHslSettings } from "./color-hsl-settings";
 import { ColorLutSettings } from "./color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color-management-settings";

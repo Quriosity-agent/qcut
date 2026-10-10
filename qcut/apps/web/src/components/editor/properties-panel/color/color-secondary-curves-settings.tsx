@@ -21,13 +21,13 @@ import { requestPreviewColor } from "@/stores/editor/color-picker-store";
 import {
 	ColorCurveEditor,
 	type ColorCurveBackground,
-} from "./color/color-curve-editor";
+} from "./color-curve-editor";
 import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "./color/color-property-controls";
-import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
+} from "./color-property-controls";
+import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 type CurveInput = "hue" | "luminance" | "saturation";
 

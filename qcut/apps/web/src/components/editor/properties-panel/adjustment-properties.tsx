@@ -42,7 +42,7 @@ import { ColorHslSettings } from "./color/color-hsl-settings";
 import { ColorLutSettings } from "./color/color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color/color-management-settings";
 import { ColorMaskSettings } from "./color/color-mask-settings";
-import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
+import { ColorSecondaryCurvesSettings } from "./color/color-secondary-curves-settings";
 import { ColorWheelSettingsPanel } from "./color-wheel-settings";
 import { MediaMaskProperties } from "./media-mask-properties";
 
