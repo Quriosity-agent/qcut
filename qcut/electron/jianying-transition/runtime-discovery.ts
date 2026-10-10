@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import {
 	JIANYING_TRANSITIONS,
 	type JianyingTransitionRuntimeStatus,
-} from "../jianying-transition-contract.js";
+} from "./jianying-transition-contract.js";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {
 	findQCutProjectRoot,

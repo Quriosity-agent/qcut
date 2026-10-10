@@ -1,7 +1,7 @@
 import type {
 	JianyingTransitionId,
 	JianyingTransitionRuntimeKind,
-} from "./jianying-transition/jianying-transition-catalog.js";
+} from "./jianying-transition-catalog.js";
 
 export {
 	JIANYING_TRANSITION_GROUPS,
@@ -11,7 +11,7 @@ export {
 	type JianyingTransitionCatalogEntry,
 	type JianyingTransitionGroup,
 	type JianyingTransitionId,
-} from "./jianying-transition/jianying-transition-catalog.js";
+} from "./jianying-transition-catalog.js";
 
 export const JIANYING_TRANSITION_INSPECT_CHANNEL =
 	"jianying-transition:inspect";

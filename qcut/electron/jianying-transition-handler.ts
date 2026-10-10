@@ -10,7 +10,7 @@ import {
 	type JianyingTimelinePreviewRequest,
 	type JianyingTransitionPreviewRequest,
 	type JianyingTransitionRenderRequest,
-} from "./jianying-transition-contract.js";
+} from "./jianying-transition/jianying-transition-contract.js";
 import {
 	renderJianyingTimelineTransitions,
 	renderJianyingTransition,

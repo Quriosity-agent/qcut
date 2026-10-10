@@ -12,7 +12,7 @@ import {
 	type JianyingTransitionDefinition,
 	type JianyingTransitionRenderRequest,
 	type JianyingTransitionRenderResult,
-} from "../jianying-transition-contract.js";
+} from "./jianying-transition-contract.js";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
 import {
 	inspectJianyingTransitionRuntime,
