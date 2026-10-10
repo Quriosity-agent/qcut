@@ -1,5 +1,5 @@
-import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
-import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../../electron/jianying-portrait-adjustment-runtime/makeup-catalog";
+import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
+import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/makeup-catalog";
 import { Button } from "@/components/ui/button";
 import type { useBeautyLabIndependent } from "@/lib/portrait/use-beauty-lab-independent";
 

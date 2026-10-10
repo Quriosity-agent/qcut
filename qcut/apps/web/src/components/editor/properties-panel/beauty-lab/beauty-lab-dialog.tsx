@@ -1,7 +1,7 @@
 import {
 	BeautyLabIndependentActions,
 	BeautyLabIndependentStatus,
-} from "../beauty-lab-independent-actions";
+} from "./beauty-lab-independent-actions";
 import {
 	CircleStop,
 	Download,
