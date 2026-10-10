@@ -50,7 +50,7 @@ import type {
 } from "@/types/timeline";
 import { PropertyGroup, PropertyItemLabel } from "../property-item";
 import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
-import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
+import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group";
 import { PortraitMakeupControls } from "../portrait-makeup-controls";
 import { PortraitManualBodyControls } from "../portrait-manual-body-controls";
 import { PortraitManualRetouchControls } from "../portrait-manual-retouch-controls";

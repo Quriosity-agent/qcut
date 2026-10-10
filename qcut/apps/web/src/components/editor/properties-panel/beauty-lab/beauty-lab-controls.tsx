@@ -24,7 +24,7 @@ import type {
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { BeautyLabPresets } from "./beauty-lab-presets";
 import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
-import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
+import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group";
 import { PortraitMakeupControls } from "../portrait-makeup-controls";
 
 export interface BeautyLabControlsProps {
