@@ -34,7 +34,7 @@ import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 // Export individual components
 export { ObjectList } from "./object-list";
 export { PromptToolbar } from "./prompt-toolbar";
-export { SegmentationCanvas } from "./SegmentationCanvas";
+export { SegmentationCanvas } from "./segmentation-canvas";
 export { MaskOverlay } from "./mask-overlay";
 export { ImageUploader } from "./image-uploader";
 export { SegmentationControls } from "./SegmentationControls";
@@ -42,7 +42,7 @@ export { SegmentationControls } from "./SegmentationControls";
 // Import components for main panel
 import { ObjectList } from "./object-list";
 import { PromptToolbar } from "./prompt-toolbar";
-import { SegmentationCanvas } from "./SegmentationCanvas";
+import { SegmentationCanvas } from "./segmentation-canvas";
 import { ImageUploader } from "./image-uploader";
 import { LocalPersonCutoutPanel } from "./local-person-cutout-panel";
 
