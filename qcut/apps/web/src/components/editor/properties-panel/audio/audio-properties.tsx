@@ -4,8 +4,8 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
-import { AudioPropertiesPanel } from "./audio/audio-properties-panel";
+} from "../property-item";
+import { AudioPropertiesPanel } from "./audio-properties-panel";
 import { getMediaTimelineDuration } from "@/lib/video/video-timing";
 
 export function AudioProperties({
