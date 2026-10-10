@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MediaMaskStrokeProperties } from "../media-mask-stroke-properties";
+import { MediaMaskStrokeProperties } from "../media/media-mask-stroke-properties";
 
 describe("MediaMaskStrokeProperties", () => {
 	it("applies only presets backed by preview and export implementations", () => {

@@ -2,7 +2,7 @@ import type { MediaMaskStroke, MediaMaskStrokeStyle } from "@/types/timeline";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { PropertyItemLabel } from "./property-item";
+import { PropertyItemLabel } from "../property-item";
 
 const STROKE_PRESETS: Array<{
 	style: MediaMaskStrokeStyle;
