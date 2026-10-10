@@ -1,24 +1,24 @@
 import { lstat, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {
 	listJianyingTextAnimationCatalogCandidates,
 	type JianyingTextAnimationCatalogCandidate,
-} from "./jianying-text/jianying-text-animation-lab-catalog.js";
+} from "./jianying-text-animation-lab-catalog.js";
 import {
 	listJianyingFlowerCatalogPackageReferences,
 	type JianyingFlowerCatalogPackageReference,
-} from "./jianying-text/jianying-flower-resource-metadata.js";
-import type { QCutJianyingTextPrivateArchive } from "./jianying-text/jianying-text-private-archive.js";
-import type { JianyingTextResourceCatalogCandidate } from "./jianying-text-runtime/resource-catalog.js";
+} from "./jianying-flower-resource-metadata.js";
+import type { QCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
+import type { JianyingTextResourceCatalogCandidate } from "../jianying-text-runtime/resource-catalog.js";
 import {
 	extractValidatedJianyingResourceArchive,
 	installJianyingTextCatalogCandidate,
 	JIANYING_PRIVATE_CATALOG_ARCHIVE_FILE_NAME,
 	type JianyingPrivateCatalogPackageRole,
 	type JianyingTextResourceRecoveryResult,
-} from "./jianying-text-runtime/resource-recovery-installer.js";
-import { calculateJianyingResourceArchiveMd5 } from "./jianying-text-runtime/resource-recovery-archive.js";
+} from "../jianying-text-runtime/resource-recovery-installer.js";
+import { calculateJianyingResourceArchiveMd5 } from "../jianying-text-runtime/resource-recovery-archive.js";
 
 const MANIFEST_SCHEMA_VERSION = 1;
 const MANIFEST_FILE_NAME = "catalog-cache-manifest.json";
