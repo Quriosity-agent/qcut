@@ -27,19 +27,19 @@ import {
 	upsertMediaMaskKeyframe,
 } from "@/lib/video/media-mask-stack";
 import { useMaskEditorStore } from "@/stores/editor/mask-editor-store";
-import { MaskNumberControl } from "./media/media-mask-controls";
-import { MediaMaskLayerList } from "./media/media-mask-layer-list";
-import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
-import { MediaMaskStrokeProperties } from "./media-mask-stroke-properties";
-import { MediaMaskTransformControls } from "./media-mask-transform-controls";
+import { MaskNumberControl } from "./media-mask-controls";
+import { MediaMaskLayerList } from "./media-mask-layer-list";
+import { MediaMaskTrackingControls } from "../media-mask-tracking-controls";
+import { MediaMaskStrokeProperties } from "../media-mask-stroke-properties";
+import { MediaMaskTransformControls } from "../media-mask-transform-controls";
 import {
 	changeMediaMaskShape,
 	createMaskForShape,
 	MASK_PROPERTY_FALLBACKS,
 	type AddableMaskType,
-} from "./media-mask-shapes";
-import { MediaMaskShapeGrid } from "./media-mask-shape-grid";
-import { PropertyItemLabel } from "./property-item";
+} from "../media-mask-shapes";
+import { MediaMaskShapeGrid } from "../media-mask-shape-grid";
+import { PropertyItemLabel } from "../property-item";
 
 export function MediaMaskProperties({
 	elementId,

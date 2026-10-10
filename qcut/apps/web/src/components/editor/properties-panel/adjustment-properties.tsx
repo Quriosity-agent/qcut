@@ -44,7 +44,7 @@ import { ColorManagementSettingsPanel } from "./color/color-management-settings"
 import { ColorMaskSettings } from "./color/color-mask-settings";
 import { ColorSecondaryCurvesSettings } from "./color/color-secondary-curves-settings";
 import { ColorWheelSettingsPanel } from "./color/color-wheel-settings";
-import { MediaMaskProperties } from "./media-mask-properties";
+import { MediaMaskProperties } from "./media/media-mask-properties";
 
 function curveShapeSamples({
 	property,
