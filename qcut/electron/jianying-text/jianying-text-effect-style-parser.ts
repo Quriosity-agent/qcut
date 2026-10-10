@@ -8,16 +8,16 @@ import type {
 	JianyingEffectStyleManifest,
 	JianyingEffectStyleRenderType,
 	JianyingEffectStyleTextureResource,
-} from "./jianying-text/jianying-text-effect-style-contract.js";
+} from "./jianying-text-effect-style-contract.js";
 import {
 	asJianyingRecord,
 	detectJianyingTextPackageKind,
 	readBoundedJianyingTextJson,
-} from "./jianying-text-package-metadata.js";
+} from "../jianying-text-package-metadata.js";
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDiagnostic,
-} from "./jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime-contract.js";
 
 interface TextureInspection extends JianyingEffectStyleTextureResource {
 	size?: number;

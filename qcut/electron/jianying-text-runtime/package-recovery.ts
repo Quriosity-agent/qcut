@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { JianyingEffectStyleInspection } from "../jianying-text/jianying-text-effect-style-contract.js";
-import { parseJianyingEffectStylePackage } from "../jianying-text-effect-style-parser.js";
+import { parseJianyingEffectStylePackage } from "../jianying-text/jianying-text-effect-style-parser.js";
 import type {
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyStatus,
