@@ -15,15 +15,15 @@ import {
 	type JianyingEffectPreviewRequest,
 	type JianyingEffectRenderRequest,
 	type JianyingEffectRenderResult,
-} from "./jianying-effect/jianying-effect-contract.js";
-import { getJianyingEffectCover } from "./jianying-effect/cover-cache.js";
+} from "./jianying-effect-contract.js";
+import { getJianyingEffectCover } from "./cover-cache.js";
 import {
 	downloadJianyingEffectPackage,
 	ensureQCutManagedEffectPackage,
-} from "./jianying-effect/download.js";
-import { getJianyingEffectPreview } from "./jianying-effect/preview-cache.js";
-import { renderJianyingEffectClip } from "./jianying-effect/render.js";
-import { inspectJianyingEffectRuntime } from "./jianying-effect/runtime-discovery.js";
+} from "./download.js";
+import { getJianyingEffectPreview } from "./preview-cache.js";
+import { renderJianyingEffectClip } from "./render.js";
+import { inspectJianyingEffectRuntime } from "./runtime-discovery.js";
 
 const PREVIEW_ERROR_MESSAGE =
 	"本机剪映特效预览生成失败，请检查本机运行时与素材包。";

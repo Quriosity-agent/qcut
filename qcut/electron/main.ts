@@ -78,7 +78,7 @@ import {
 	setupJianyingDraftExportIPC,
 	type JianyingDraftExportIPCController,
 } from "./jianying-draft/jianying-draft-export-handler.js";
-import { setupJianyingEffectIPC } from "./jianying-effect-handler.js";
+import { setupJianyingEffectIPC } from "./jianying-effect/jianying-effect-handler.js";
 import { setupIndependentFilterIPC } from "./qcut-independent-filter/ipc.js";
 import { setupJianyingTransitionIPC } from "./jianying-transition-handler.js";
 import {
