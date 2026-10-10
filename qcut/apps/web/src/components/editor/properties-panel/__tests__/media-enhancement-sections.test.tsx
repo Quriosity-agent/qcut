@@ -8,7 +8,7 @@ import {
 	QuickEnhanceSection,
 	StabilizationSection,
 	SuperResolutionSection,
-} from "../media-enhancement-sections";
+} from "../media/media-enhancement-sections";
 
 describe("enhancement sections", () => {
 	it("switches stabilization on at the recommended level and off to zero", () => {

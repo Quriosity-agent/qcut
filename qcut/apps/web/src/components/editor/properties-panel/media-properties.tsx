@@ -99,7 +99,7 @@ import {
 	QuickEnhanceSection,
 	StabilizationSection,
 	SuperResolutionSection,
-} from "./media-enhancement-sections";
+} from "./media/media-enhancement-sections";
 
 type MediaUpdates = Parameters<
 	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]

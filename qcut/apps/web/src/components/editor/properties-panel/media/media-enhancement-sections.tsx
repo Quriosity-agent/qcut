@@ -23,8 +23,8 @@ import {
 	PropertyGroup,
 	PropertyItem,
 	PropertyItemLabel,
-} from "./property-item";
-import { NumberControl } from "./visual-property-controls";
+} from "../property-item";
+import { NumberControl } from "../visual-property-controls";
 
 // Jianying-style enhancement sections for the visual → basic sub-tab. Every
 // toggle binds to `MediaEnhancements`, which the FFmpeg export path already
