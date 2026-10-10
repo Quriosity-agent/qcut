@@ -1,13 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
+import { qcutStandaloneUserDataRoot } from "../jianying-effect/user-data-paths.js";
 import {
 	isPrivateArchiveDirectory,
 	summarizePrivateArchiveContainer,
 	syncPrivateArchiveContainer,
 	type PrivateArchiveContainerSummary,
-} from "./jianying-text/jianying-text-private-archive-files.js";
+} from "./jianying-text-private-archive-files.js";
 
 const ARCHIVE_SCHEMA_VERSION = 3;
 const SOURCE_CONTAINER_NAMES = ["artistEffect", "effect", "ressdk_db"] as const;

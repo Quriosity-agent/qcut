@@ -1,4 +1,4 @@
-import { ensureQCutJianyingTextPrivateArchive } from "../electron/jianying-text-private-archive.js";
+import { ensureQCutJianyingTextPrivateArchive } from "../electron/jianying-text/jianying-text-private-archive.js";
 
 const archive = await ensureQCutJianyingTextPrivateArchive({ refresh: true });
 

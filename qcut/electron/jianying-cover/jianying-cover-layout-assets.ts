@@ -21,7 +21,7 @@ import {
 	retainPrivateJianyingFont,
 	jianyingPrivateFontRoot,
 } from "../jianying-font/jianying-font-private-cache.js";
-import { getQCutJianyingTextPrivateArchiveRoot } from "../jianying-text-private-archive.js";
+import { getQCutJianyingTextPrivateArchiveRoot } from "../jianying-text/jianying-text-private-archive.js";
 import {
 	detectJianyingTextPackageKind,
 	readJianyingTextTemplateDuration,
