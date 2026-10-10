@@ -40,7 +40,7 @@ vi.mock("@/hooks/media/use-async-media-store", () => ({
 	useAsyncMediaItems: () => ({ mediaItems: [] }),
 }));
 
-vi.mock("@/hooks/useElectron", () => ({
+vi.mock("@/hooks/use-electron", () => ({
 	useElectron: () => ({ isElectron: () => true }),
 }));
 

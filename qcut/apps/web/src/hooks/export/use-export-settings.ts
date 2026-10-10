@@ -12,7 +12,7 @@ import {
 	type ExportFrameRate,
 	type ExportEngineSelection,
 } from "@/types/export";
-import { useElectron } from "@/hooks/useElectron";
+import { useElectron } from "@/hooks/use-electron";
 import { platform } from "@qcut/platform-core";
 // Export engine factory and types will be imported dynamically when needed
 import { debugLog, debugWarn } from "@/lib/debug/debug-config";

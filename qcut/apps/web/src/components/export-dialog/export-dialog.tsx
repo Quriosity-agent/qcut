@@ -9,7 +9,7 @@ import { ExportCanvas, ExportCanvasRef } from "@/components/export-canvas";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Download, X, Square } from "lucide-react";
-import { useElectron } from "@/hooks/useElectron";
+import { useElectron } from "@/hooks/use-electron";
 import {
 	extractCaptionSegments,
 	saveCaptions,
