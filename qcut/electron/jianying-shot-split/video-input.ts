@@ -7,7 +7,7 @@
 import { execFile } from "node:child_process";
 import { access, stat } from "node:fs/promises";
 import { promisify } from "node:util";
-import type { JianyingShotSplitSampling } from "../jianying-shot-split-contract.js";
+import type { JianyingShotSplitSampling } from "./jianying-shot-split-contract.js";
 
 const execFileAsync = promisify(execFile);
 const MIN_FPS = 1;

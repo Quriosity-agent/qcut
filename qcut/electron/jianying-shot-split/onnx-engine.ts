@@ -7,7 +7,7 @@ import {
 	type JianyingShotSplitProgress,
 	type JianyingShotSplitRequest,
 	type JianyingShotSplitResult,
-} from "../jianying-shot-split-contract.js";
+} from "./jianying-shot-split-contract.js";
 import { shotBoundariesFromPredictResult } from "./bridge-output.js";
 import {
 	parseOnnxShotOutput,

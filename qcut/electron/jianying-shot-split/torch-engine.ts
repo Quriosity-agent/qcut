@@ -17,7 +17,7 @@ import {
 	type JianyingShotSplitResult,
 	type JianyingShotSplitSampling,
 	type JianyingShotSplitTorchStatus,
-} from "../jianying-shot-split-contract.js";
+} from "./jianying-shot-split-contract.js";
 import { shotBoundariesFromPredictResult } from "./bridge-output.js";
 import { findShotSplitProjectRoot } from "./bridge-resolver.js";
 import { shotSplitAbortError } from "./process-pipeline.js";

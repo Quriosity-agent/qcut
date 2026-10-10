@@ -4,7 +4,7 @@
  * points and shot ranges.
  */
 
-import type { JianyingShotSplitShot } from "../jianying-shot-split-contract.js";
+import type { JianyingShotSplitShot } from "./jianying-shot-split-contract.js";
 
 export interface ShotSplitBridgeOutput {
 	eofStatus: number;

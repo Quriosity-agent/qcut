@@ -18,7 +18,7 @@ import {
 	type JianyingShotSplitEngine,
 	type JianyingShotSplitResult,
 	type JianyingShotSplitStatus,
-} from "../../jianying-shot-split-contract.js";
+} from "../../jianying-shot-split/jianying-shot-split-contract.js";
 import { compareShotSplitResults } from "../../jianying-shot-split/compare.js";
 import {
 	detectShotsWithJianyingRuntime,
