@@ -6,15 +6,15 @@ import {
 	type BrowserWindow,
 	type IpcMainInvokeEvent,
 } from "electron";
-import { getFFprobePath } from "./ffmpeg/paths.js";
+import { getFFprobePath } from "../ffmpeg/paths.js";
 import {
 	type CapCut81MigrationRuntimeInstaller,
 	createCommittedCapCut81BundleInstaller,
-} from "./capcut-8-1-install-handler.js";
+} from "../capcut-8-1-install-handler.js";
 import {
 	type CapCut81TargetAppGuard,
 	createCapCut81TargetAppGuard,
-} from "./capcut-8-1-install-guard.js";
+} from "../capcut-8-1-install-guard.js";
 import {
 	CAPCUT_8_1_MIGRATION_COMMIT_CHANNEL,
 	CAPCUT_8_1_MIGRATION_INSTALL_CHANNEL,
@@ -25,7 +25,7 @@ import {
 	type JianyingDraftExportErrorCode,
 	type JianyingDraftExportErrorDto,
 	type JianyingDraftExportResultDto,
-} from "./jianying-draft/jianying-draft-export-contract.js";
+} from "./jianying-draft-export-contract.js";
 
 const MAX_ERROR_MESSAGE_LENGTH = 16_384;
 const MAX_ERROR_DETAIL_COUNT = 256;
@@ -167,7 +167,7 @@ async function resolveTrustedFfprobePath(): Promise<string> {
 }
 
 async function loadBundledRuntime(): Promise<unknown> {
-	const runtimePath = join(__dirname, "jianying-draft-export-runtime.js");
+	const runtimePath = join(__dirname, "..", "jianying-draft-export-runtime.js");
 	return import(runtimePath);
 }
 

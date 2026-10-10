@@ -139,7 +139,7 @@ describe("checkTrackedPaths", () => {
 	it("passes legitimate interop source and research docs", () => {
 		expect(
 			checkTrackedPaths([
-				"electron/jianying-draft-export-handler.ts",
+				"electron/jianying-draft/jianying-draft-export-handler.ts",
 				"electron/jianying-filter-metadata.ts",
 				"apps/web/src/lib/filters/jianying-parity/film-presets.ts",
 				"docs/task/jianying-filter-runtime-research/current-coverage.zh.md",

@@ -51,7 +51,7 @@ vi.mock("../ffmpeg/paths.js", () => ({
 	getFFprobePath: vi.fn(async () => "/trusted/ffprobe"),
 }));
 
-import { setupJianyingDraftExportIPC } from "../jianying-draft-export-handler.js";
+import { setupJianyingDraftExportIPC } from "../jianying-draft/jianying-draft-export-handler.js";
 
 interface MockWindowContext {
 	event: IpcMainInvokeEvent;
