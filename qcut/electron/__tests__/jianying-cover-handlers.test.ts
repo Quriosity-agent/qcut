@@ -15,7 +15,7 @@ vi.mock("electron", () => ({ ipcMain: { handle } }));
 vi.mock("../jianying-cover-private-cache.js", () => ({
 	listPrivateCovers: list,
 }));
-vi.mock("../jianying-cover-prepare-layout.js", () => ({
+vi.mock("../jianying-cover/jianying-cover-prepare-layout.js", () => ({
 	preparePrivateCoverTextLayout: prepare,
 }));
 import { registerJianyingCoverHandlers } from "../main-ipc/jianying-cover-handlers.js";

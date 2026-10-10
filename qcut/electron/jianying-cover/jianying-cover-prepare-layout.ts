@@ -3,16 +3,16 @@ import {
 	coverCacheRoot,
 	readCoverCatalog,
 	verifyCoverFile,
-} from "./jianying-cover-private-cache.js";
+} from "../jianying-cover-private-cache.js";
 import {
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
 	type CoverTextLayout,
-} from "./jianying-cover/jianying-cover-layout.js";
+} from "./jianying-cover-layout.js";
 import {
 	retainCoverLayoutFont,
 	retainCoverLayoutWordArt,
-} from "./jianying-cover/jianying-cover-layout-assets.js";
+} from "./jianying-cover-layout-assets.js";
 
 export const coverLayoutRequestSchema = z
 	.object({ packageHash: z.string().regex(/^[a-f\d]{32}$/) })

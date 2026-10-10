@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 import { listPrivateCovers } from "../../electron/jianying-cover-private-cache";
-import { preparePrivateCoverTextLayout } from "../../electron/jianying-cover-prepare-layout";
+import { preparePrivateCoverTextLayout } from "../../electron/jianying-cover/jianying-cover-prepare-layout";
 import { readPrivateCoverFont } from "../../electron/jianying-cover/jianying-cover-font";
 import type { IncomingMessage } from "node:http";
 
