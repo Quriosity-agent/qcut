@@ -8,7 +8,7 @@ import {
 	readFontkitMetadata,
 } from "../jianying-font/jianying-font-lab-catalog.js";
 import { makeJianyingFontBrowserCompatible } from "../jianying-font/jianying-font-browser-compatibility.js";
-import type { JianyingFontLabFontSummary } from "../jianying-font-lab-contract.js";
+import type { JianyingFontLabFontSummary } from "../jianying-font/jianying-font-lab-contract.js";
 
 export const privateCoverFontRequestSchema = z
 	.object({

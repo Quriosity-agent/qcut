@@ -146,7 +146,7 @@ import {
 	JIANYING_FONT_LAB_INSPECT_CHANNEL,
 	JIANYING_FONT_LAB_LIST_CHANNEL,
 	JIANYING_FONT_LAB_LOAD_CHANNEL,
-} from "./jianying-font-lab-contract.js";
+} from "./jianying-font/jianying-font-lab-contract.js";
 import {
 	JIANYING_TEXT_ANIMATION_LAB_LIST_CHANNEL,
 	JIANYING_TEXT_STYLE_LAB_COVER_CHANNEL,

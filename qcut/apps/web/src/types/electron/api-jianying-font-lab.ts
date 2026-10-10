@@ -1,4 +1,4 @@
-import type { JianyingFontLabAPI } from "../../../../../electron/jianying-font-lab-contract";
+import type { JianyingFontLabAPI } from "../../../../../electron/jianying-font/jianying-font-lab-contract";
 
 export interface ElectronJianyingFontLabOps {
 	jianyingFontLab?: JianyingFontLabAPI;
@@ -16,4 +16,4 @@ export type {
 	JianyingFontLabLoadResult,
 	JianyingFontLabMissingGlyph,
 	JianyingFontSourceKind,
-} from "../../../../../electron/jianying-font-lab-contract";
+} from "../../../../../electron/jianying-font/jianying-font-lab-contract";

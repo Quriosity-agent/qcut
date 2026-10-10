@@ -2,7 +2,7 @@ import type {
 	JianyingFontLabAPI,
 	JianyingFontLabInspectResult,
 	JianyingFontLabLoadResult,
-} from "../../../../../electron/jianying-font-lab-contract";
+} from "../../../../../electron/jianying-font/jianying-font-lab-contract";
 
 async function requestFont({
 	request,

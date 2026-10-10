@@ -3,7 +3,7 @@ import type {
 	CoverCachedEntry,
 	CoverCatalog,
 } from "./jianying-cover-contract.js";
-import type { JianyingFontLabFontSummary } from "../jianying-font-lab-contract.js";
+import type { JianyingFontLabFontSummary } from "../jianying-font/jianying-font-lab-contract.js";
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
 import {
 	coverDependencyReferences,

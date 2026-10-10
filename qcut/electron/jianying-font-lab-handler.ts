@@ -9,7 +9,7 @@ import {
 	type JianyingFontLabListRequest,
 	type JianyingFontLabListResult,
 	type JianyingFontLabLoadResult,
-} from "./jianying-font-lab-contract.js";
+} from "./jianying-font/jianying-font-lab-contract.js";
 import {
 	buildJianyingFontCatalog,
 	inspectJianyingFontBytes,
