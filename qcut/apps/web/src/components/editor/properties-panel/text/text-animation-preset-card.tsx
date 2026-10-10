@@ -22,7 +22,7 @@ import {
 } from "@/lib/text/text-animation-preset-preview";
 import { cn } from "@/lib/utils";
 import { useTextAnimationPreview } from "../use-text-animation-preview";
-import { TextAnimationProjectivePresetPreview } from "../text-animation-projective-preset-preview";
+import { TextAnimationProjectivePresetPreview } from "./text-animation-projective-preset-preview";
 
 const PROJECTIVE_PRESET_IDS = new Set(["flip-3d", "cylinder-3d", "jitter-3d"]);
 
