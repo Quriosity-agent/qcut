@@ -91,7 +91,7 @@ import {
 } from "./jianying-portrait-adjustment-handler.js";
 import { setupBeautyLabIPC } from "./beauty-lab-handler.js";
 import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
-import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
 import { createBeautyLabLiveCandidateBackend } from "./beauty-lab-live-candidate.js";
 import { createBeautyLabQuitGuard } from "./beauty-lab-quit.js";

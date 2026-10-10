@@ -8,7 +8,7 @@ import {
 	type BeautyLabResearchFrame,
 } from "../beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
-import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,

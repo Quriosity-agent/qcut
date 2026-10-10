@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	createBeautyLabLiveJobError,
 	type BeautyLabLiveJobFailureKind,

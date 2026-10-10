@@ -8,11 +8,11 @@ import {
 	type BeautyLabCandidateStage,
 	type BeautyLabCandidateStageId,
 	type BeautyLabCandidateStatus,
-} from "./beauty-lab/beauty-lab-candidate-contract.js";
+} from "./beauty-lab-candidate-contract.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "./beauty-lab-candidate-request.js";
+} from "../beauty-lab-candidate-request.js";
 
 export interface BeautyLabCandidateBackend {
 	version: string;

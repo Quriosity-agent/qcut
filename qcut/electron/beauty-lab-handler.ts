@@ -11,7 +11,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 } from "./beauty-lab/beauty-lab-candidate-contract.js";
-import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,

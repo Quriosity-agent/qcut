@@ -10,7 +10,7 @@ import {
 import {
 	createBeautyLabCandidateProvider,
 	type BeautyLabCandidateBackend,
-} from "../beauty-lab-candidate-provider.js";
+} from "../beauty-lab/beauty-lab-candidate-provider.js";
 import { requestFor } from "./beauty-lab-live-candidate-fixture.js";
 
 function fixture({

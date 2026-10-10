@@ -8,7 +8,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateResult,
 } from "./beauty-lab/beauty-lab-candidate-contract.js";
-import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
+import type { BeautyLabCandidateBackend } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	liveDependenciesSchema,
 	type LiveExpectedDependencies,
