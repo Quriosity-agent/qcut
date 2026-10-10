@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { readPrivateCoverFont } from "../jianying-cover/jianying-cover-font";
 
-vi.mock("../jianying-font-lab-catalog", () => ({
+vi.mock("../jianying-font/jianying-font-lab-catalog", () => ({
 	readFontkitMetadata: () => ({
 		familyName: "Fixture",
 		fullName: "Fixture",

@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { JianyingFontCatalog } from "../jianying-font-lab-catalog.js";
+import type { JianyingFontCatalog } from "../jianying-font/jianying-font-lab-catalog.js";
 import { resolveJianyingTextRuntimeFont } from "../jianying-text-runtime/font-resolver.js";
 
 function catalog({

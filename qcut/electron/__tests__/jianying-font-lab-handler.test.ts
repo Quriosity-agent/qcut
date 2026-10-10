@@ -12,7 +12,7 @@ import {
 import type {
 	JianyingFontCatalog,
 	JianyingFontCatalogEntry,
-} from "../jianying-font-lab-catalog.js";
+} from "../jianying-font/jianying-font-lab-catalog.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),

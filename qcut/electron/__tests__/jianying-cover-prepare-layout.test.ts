@@ -20,7 +20,7 @@ import type {
 } from "../jianying-cover/jianying-cover-contract";
 import { coverLayoutFixture } from "./fixtures/cover-layout";
 
-vi.mock("../jianying-font-lab-catalog", () => ({
+vi.mock("../jianying-font/jianying-font-lab-catalog", () => ({
 	readFontkitMetadata: () => ({
 		familyName: "Fixture",
 		fullName: "Fixture Regular",

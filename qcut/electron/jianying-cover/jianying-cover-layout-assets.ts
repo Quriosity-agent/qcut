@@ -16,7 +16,7 @@ import type {
 	CoverTextLayout,
 } from "./jianying-cover-layout.js";
 import { verifyCoverFile } from "./jianying-cover-private-cache.js";
-import { readFontkitMetadata } from "../jianying-font-lab-catalog.js";
+import { readFontkitMetadata } from "../jianying-font/jianying-font-lab-catalog.js";
 import {
 	retainPrivateJianyingFont,
 	jianyingPrivateFontRoot,

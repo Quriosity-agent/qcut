@@ -19,7 +19,7 @@ import {
 	toJianyingFontLoadResult,
 	type JianyingFontCatalog,
 	type JianyingFontCatalogEntry,
-} from "./jianying-font-lab-catalog.js";
+} from "./jianying-font/jianying-font-lab-catalog.js";
 
 const MAXIMUM_INSPECTION_TEXT_LENGTH = 4096;
 

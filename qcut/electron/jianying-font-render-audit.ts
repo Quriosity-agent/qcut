@@ -6,7 +6,7 @@ import {
 	buildJianyingFontCatalog,
 	readVerifiedJianyingFontBytes,
 	type JianyingFontCatalogEntry,
-} from "./jianying-font-lab-catalog.js";
+} from "./jianying-font/jianying-font-lab-catalog.js";
 
 const AUDIT_SCHEME = "qcut-font-audit";
 const AUDIT_ORIGIN = `${AUDIT_SCHEME}://app`;

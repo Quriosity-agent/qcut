@@ -2,20 +2,20 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
-import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
+import { qcutStandaloneUserDataRoot } from "../jianying-effect/user-data-paths.js";
 import { create, type Font, type FontCollection } from "fontkit";
 import type {
 	JianyingFontFormat,
 	JianyingFontLabFontSummary,
 	JianyingFontLabInspectResult,
 	JianyingFontSourceKind,
-} from "./jianying-font-lab-contract.js";
-import { makeJianyingFontBrowserCompatible } from "./jianying-font/jianying-font-browser-compatibility.js";
+} from "../jianying-font-lab-contract.js";
+import { makeJianyingFontBrowserCompatible } from "./jianying-font-browser-compatibility.js";
 import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,
 	retainPrivateJianyingFont,
-} from "./jianying-font-private-cache.js";
+} from "../jianying-font-private-cache.js";
 
 const MAXIMUM_FONT_BYTES = 128 * 1024 * 1024;
 const FONT_FILE_PATTERN = /\.(?:otf|ttf)$/i;

@@ -1,7 +1,7 @@
 import {
 	buildJianyingFontCatalog,
 	readVerifiedJianyingFontBytes,
-} from "../../jianying-font-lab-catalog.js";
+} from "../../jianying-font/jianying-font-lab-catalog.js";
 import { loadTextLabCatalogDefault } from "../cli/text-lab-cli-process.js";
 import type { JianyingTextRuntimeReference } from "../../jianying-text-runtime-contract.js";
 import { resolveStyleFromCLI } from "../subtitle/style-presets.js";

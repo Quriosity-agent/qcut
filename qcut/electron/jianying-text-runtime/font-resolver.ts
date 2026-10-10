@@ -15,7 +15,7 @@ import {
 	buildJianyingFontCatalog,
 	type JianyingFontCatalog,
 	isValidJianyingFontId,
-} from "../jianying-font-lab-catalog.js";
+} from "../jianying-font/jianying-font-lab-catalog.js";
 import type { JianyingTextRuntimeDiagnostic } from "../jianying-text-runtime-contract.js";
 import {
 	jianyingPrivateFontRoot,
