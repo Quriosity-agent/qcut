@@ -45,7 +45,7 @@ import {
 	PropertyItemValue,
 } from "../property-item";
 import { PlanarTrackingDirectionControl } from "./planar-tracking-direction-control";
-import type { UpdateStickerProperties } from "../sticker-property-types";
+import type { UpdateStickerProperties } from "./sticker-property-types";
 
 export function StickerPlanarTrackingProperties({
 	canvasSize,

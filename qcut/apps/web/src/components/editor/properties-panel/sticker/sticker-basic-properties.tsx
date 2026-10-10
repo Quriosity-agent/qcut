@@ -20,7 +20,7 @@ import {
 	clamp,
 	type StickerKeyframeControls,
 	type UpdateStickerProperties,
-} from "../sticker-property-types";
+} from "./sticker-property-types";
 import { IconButton, NumberControl } from "../visual-property-controls";
 
 export function StickerBasicProperties({

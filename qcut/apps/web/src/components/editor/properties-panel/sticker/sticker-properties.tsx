@@ -30,7 +30,7 @@ import {
 import { StickerAnimationProperties } from "./sticker-animation-properties";
 import { StickerBasicProperties } from "./sticker-basic-properties";
 import { StickerDeformationProperties } from "./sticker-deformation-properties";
-import type { UpdateStickerProperties } from "../sticker-property-types";
+import type { UpdateStickerProperties } from "./sticker-property-types";
 import { StickerTrackingProperties } from "../sticker-tracking-properties";
 
 const DEFAULT_PERSPECTIVE: MediaPerspective = {

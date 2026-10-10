@@ -17,7 +17,7 @@ import {
 	PropertyItemLabel,
 	PropertyItemValue,
 } from "../property-item";
-import { clamp, type UpdateStickerProperties } from "../sticker-property-types";
+import { clamp, type UpdateStickerProperties } from "./sticker-property-types";
 import {
 	CLIP_ANIMATION_OPTIONS,
 	NumberControl,
