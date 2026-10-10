@@ -26,7 +26,7 @@ vi.mock("../jianying-motion-tracking/runtime.js", () => ({
 	trackWithJianyingMotionRuntime: trackRuntime,
 }));
 
-import { setupJianyingMotionTrackingIPC } from "../jianying-motion-tracking-handler.js";
+import { setupJianyingMotionTrackingIPC } from "../jianying-motion-tracking/jianying-motion-tracking-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};

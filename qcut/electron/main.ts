@@ -99,7 +99,7 @@ import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.j
 import {
 	setupJianyingMotionTrackingIPC,
 	type JianyingMotionTrackingIPCController,
-} from "./jianying-motion-tracking-handler.js";
+} from "./jianying-motion-tracking/jianying-motion-tracking-handler.js";
 import {
 	setupJianyingBasicVideoIPC,
 	type JianyingBasicVideoIPCController,
