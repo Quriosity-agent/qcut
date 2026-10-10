@@ -40,7 +40,7 @@ import { readJianyingTextStyleCoverImage } from "./jianying-text/jianying-text-s
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
-} from "./jianying-text-style-cover-metadata.js";
+} from "./jianying-text/jianying-text-style-cover-metadata.js";
 import { readJianyingTextStyleGeneratedCover } from "./jianying-text-style-generated-cover.js";
 import { classifyLocalJianyingTextStyles } from "./jianying-text-style-local-categories.js";
 import {

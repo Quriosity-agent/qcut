@@ -8,7 +8,7 @@ import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-c
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
-} from "../jianying-text-style-cover-metadata.js";
+} from "../jianying-text/jianying-text-style-cover-metadata.js";
 
 const temporaryDirectories: string[] = [];
 
