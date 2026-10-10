@@ -26,7 +26,7 @@ vi.mock("@/stores/timeline/timeline-store", () => ({
 	): T => selector({ clearSelectedElements: mocks.clearSelectedElements }),
 }));
 
-vi.mock("../hooks/useStickerDrag", () => ({
+vi.mock("../hooks/use-sticker-drag", () => ({
 	useStickerDrag: () => ({
 		isDragging: false,
 		handleMouseDown: mocks.handleMouseDown,

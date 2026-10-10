@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import { useStickerDrag } from "../hooks/useStickerDrag";
+import { useStickerDrag } from "../hooks/use-sticker-drag";
 
 const sticker: OverlaySticker = {
 	id: "sticker-1",

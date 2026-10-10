@@ -19,7 +19,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug/debug-config";
-import { useStickerDrag } from "./hooks/useStickerDrag";
+import { useStickerDrag } from "./hooks/use-sticker-drag";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { ResizeHandles } from "./resize-handles";
