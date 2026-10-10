@@ -12,7 +12,7 @@ import {
 import {
 	retainCoverLayoutFont,
 	retainCoverLayoutWordArt,
-} from "./jianying-cover-layout-assets.js";
+} from "./jianying-cover/jianying-cover-layout-assets.js";
 
 export const coverLayoutRequestSchema = z
 	.object({ packageHash: z.string().regex(/^[a-f\d]{32}$/) })

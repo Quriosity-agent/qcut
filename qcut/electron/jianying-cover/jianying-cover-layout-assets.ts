@@ -10,22 +10,22 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import type { CoverCachedEntry } from "./jianying-cover/jianying-cover-contract.js";
+import type { CoverCachedEntry } from "./jianying-cover-contract.js";
 import type {
 	CoverLayoutText,
 	CoverTextLayout,
-} from "./jianying-cover-layout.js";
-import { verifyCoverFile } from "./jianying-cover-private-cache.js";
-import { readFontkitMetadata } from "./jianying-font-lab-catalog.js";
+} from "../jianying-cover-layout.js";
+import { verifyCoverFile } from "../jianying-cover-private-cache.js";
+import { readFontkitMetadata } from "../jianying-font-lab-catalog.js";
 import {
 	retainPrivateJianyingFont,
 	jianyingPrivateFontRoot,
-} from "./jianying-font-private-cache.js";
-import { getQCutJianyingTextPrivateArchiveRoot } from "./jianying-text-private-archive.js";
+} from "../jianying-font-private-cache.js";
+import { getQCutJianyingTextPrivateArchiveRoot } from "../jianying-text-private-archive.js";
 import {
 	detectJianyingTextPackageKind,
 	readJianyingTextTemplateDuration,
-} from "./jianying-text-package-metadata.js";
+} from "../jianying-text-package-metadata.js";
 
 type Dependency = CoverCachedEntry["dependencies"][number];
 

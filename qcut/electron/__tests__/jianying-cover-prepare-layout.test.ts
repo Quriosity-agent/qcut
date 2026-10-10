@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { preparePrivateCoverTextLayout } from "../jianying-cover-prepare-layout";
-import { retainCoverLayoutWordArt } from "../jianying-cover-layout-assets";
+import { retainCoverLayoutWordArt } from "../jianying-cover/jianying-cover-layout-assets";
 import { listPrivateCovers } from "../jianying-cover-private-cache";
 import type {
 	CoverCachedFile,
