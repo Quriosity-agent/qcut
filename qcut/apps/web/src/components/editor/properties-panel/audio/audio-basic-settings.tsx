@@ -23,7 +23,7 @@ import { AudioSeparationSettings } from "./audio-ai-voice-settings";
 import {
 	AudioPitchSettings,
 	AudioVoiceEnhancementSettings,
-} from "../audio-voice-processing-settings";
+} from "./audio-voice-processing-settings";
 import { AudioLevelMeter } from "./audio-level-meter";
 import { useTranslation } from "@/lib/i18n";
 
