@@ -2,7 +2,7 @@ import { Ban, Check } from "lucide-react";
 import type { JianyingPortraitAdjustmentStatus } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { selectPortraitSkinTone } from "@/lib/portrait/portrait-skin-tone";
-import { JIANYING_PORTRAIT_LEGACY_SKIN_RESOURCE_ID } from "../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
+import { JIANYING_PORTRAIT_LEGACY_SKIN_RESOURCE_ID } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
 import { cn } from "@/lib/utils";
 
 export function PortraitSkinToneControls({

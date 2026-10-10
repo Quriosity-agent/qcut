@@ -10,7 +10,7 @@ import type {
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { cn } from "@/lib/utils";
 import { PortraitNumberControl } from "./portrait-number-control";
-import { PortraitSkinToneControls } from "../portrait-skin-tone-controls";
+import { PortraitSkinToneControls } from "./portrait-skin-tone-controls";
 import { selectPortraitSkinTone } from "@/lib/portrait/portrait-skin-tone";
 import { isPortraitSkinToneKey } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
 
