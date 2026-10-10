@@ -334,3 +334,90 @@ describe("portrait causal recovery provider", () => {
 		expect(mocks.start).not.toHaveBeenCalled();
 	});
 });
+
+describe("portrait fresh tracking for still photos", () => {
+	let provider: ReturnType<typeof createJianyingPortraitAdjustmentProvider>;
+	let started: number;
+	let disposals: ReturnType<typeof vi.fn>[];
+	// Local face shaping is not a stable-frame package, so its tracker persists by default.
+	function still({
+		forehead,
+		freshTracking,
+	}: {
+		forehead: number;
+		freshTracking?: boolean;
+	}): JianyingPortraitAdjustmentRenderRequest {
+		return {
+			width: 1,
+			height: 1,
+			rgba: new Uint8Array([80, 90, 100, 255]),
+			sourceKey: "beauty-lab:photo",
+			frameNumber: 0,
+			timestampSeconds: 0,
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_upper_atrium: forehead },
+			},
+			...(freshTracking === undefined ? {} : { freshTracking }),
+		};
+	}
+	beforeEach(() => {
+		vi.clearAllMocks();
+		started = 0;
+		disposals = [];
+		// Like the native runtime, each host session refines its tracker with every render.
+		mocks.start.mockImplementation(async () => {
+			started += 1;
+			let renders = 0;
+			const dispose = vi.fn(async () => {});
+			disposals.push(dispose);
+			return {
+				dispose,
+				render: async ({
+					inputPath,
+					outputPath,
+				}: JianyingPortraitHostRenderCommand) => {
+					const pixels = await readFile(inputPath);
+					pixels[1] = 100 + renders;
+					renders += 1;
+					await writeFile(outputPath, pixels);
+				},
+				detect: vi.fn(async () => JSON.stringify({ faces: [] })),
+				stroke: vi.fn(),
+			};
+		});
+		provider = createJianyingPortraitAdjustmentProvider();
+	});
+	afterEach(async () => {
+		await provider.clear();
+	});
+	it("reuses the warm tracker for the same still source by default", async () => {
+		await provider.render(still({ forehead: 25 }));
+		const second = await provider.render(still({ forehead: 50 }));
+		expect(started).toBe(1);
+		expect(second.rgba[1]).toBe(101);
+	});
+	it("starts every fresh-tracking render from a cold tracker", async () => {
+		await provider.render(still({ forehead: 25, freshTracking: true }));
+		const second = await provider.render(
+			still({ forehead: 50, freshTracking: true })
+		);
+		expect(started).toBe(2);
+		expect(disposals[0]).toHaveBeenCalledOnce();
+		expect(second.rgba[1]).toBe(100);
+	});
+	it("keeps the flag through parsing and rejects non-boolean values", () => {
+		const fresh = still({ forehead: 25, freshTracking: true });
+		expect(parseJianyingPortraitRenderRequest({ request: fresh })).toEqual(
+			fresh
+		);
+		expect(
+			parseJianyingPortraitRenderRequest({ request: still({ forehead: 25 }) })
+		).not.toHaveProperty("freshTracking");
+		expect(() =>
+			parseJianyingPortraitRenderRequest({
+				request: { ...still({ forehead: 25 }), freshTracking: "yes" },
+			})
+		).toThrow("跟踪重置");
+	});
+});
