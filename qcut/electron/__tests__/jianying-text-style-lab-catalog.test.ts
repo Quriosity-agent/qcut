@@ -8,7 +8,7 @@ import {
 	isValidJianyingTextStyleId,
 	readJianyingTextStyleCover,
 } from "../jianying-text-style-lab-catalog.js";
-import { isDiscoverableJianyingTextCatalogEntry } from "../jianying-text-style-discovery.js";
+import { isDiscoverableJianyingTextCatalogEntry } from "../jianying-text/jianying-text-style-discovery.js";
 import type { JianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 
 const temporaryDirectories: string[] = [];
