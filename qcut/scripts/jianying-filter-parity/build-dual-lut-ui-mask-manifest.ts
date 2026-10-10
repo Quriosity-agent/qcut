@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { inspectJianyingFilterPackages } from "../../electron/jianying-filter-package-inspector.js";
+import { inspectJianyingFilterPackages } from "../../electron/jianying-filter/jianying-filter-package-inspector.js";
 import { inspectJianyingFilterLocalRuntime } from "../../electron/jianying-filter-local-runtime/runtime-discovery.js";
 import {
 	jianyingEffectCacheRoot,

@@ -3,7 +3,7 @@ import type {
 	JianyingFilterCatalogCard,
 	JianyingFilterCatalogExport,
 } from "../jianying-filter/jianying-filter-catalog-export.js";
-import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
+import { inspectJianyingFilterPackages } from "../jianying-filter/jianying-filter-package-inspector.js";
 import { tiledReferencesFromPackages } from "../jianying-filter/jianying-filter-lab-catalog.js";
 import {
 	jianyingFilterCacheRoots,

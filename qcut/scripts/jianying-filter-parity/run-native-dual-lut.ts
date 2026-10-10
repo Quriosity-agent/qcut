@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { getFFmpegPath, getFFprobePath } from "../../electron/ffmpeg/paths.js";
-import { inspectJianyingFilterPackages } from "../../electron/jianying-filter-package-inspector.js";
+import { inspectJianyingFilterPackages } from "../../electron/jianying-filter/jianying-filter-package-inspector.js";
 import type { JianyingKnownFilter } from "../../electron/jianying-filter/jianying-filter-metadata.js";
 import {
 	createJianyingFilterLocalRenderSession,

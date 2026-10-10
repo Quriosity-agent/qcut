@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { JianyingKnownFilter } from "../jianying-filter/jianying-filter-metadata.js";
-import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
+import { inspectJianyingFilterPackages } from "../jianying-filter/jianying-filter-package-inspector.js";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
 
 const temporaryRoots: string[] = [];

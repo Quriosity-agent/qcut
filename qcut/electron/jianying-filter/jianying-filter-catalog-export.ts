@@ -31,7 +31,7 @@ import { JIANYING_NATIVE_FACE_REGION_PROFILES } from "../native-pipeline/filters
 import {
 	inspectJianyingFilterPackages,
 	type JianyingFilterPackageSummary,
-} from "../jianying-filter-package-inspector.js";
+} from "./jianying-filter-package-inspector.js";
 import { readJianyingFilterVerifications } from "../jianying-filter-verification-store.js";
 import {
 	listJianyingLutReferences,

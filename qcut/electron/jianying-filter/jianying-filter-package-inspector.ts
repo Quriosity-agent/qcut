@@ -1,38 +1,38 @@
 import { readdir } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import type { JianyingKnownFilter } from "./jianying-filter/jianying-filter-metadata.js";
+import type { JianyingKnownFilter } from "./jianying-filter-metadata.js";
 import type {
 	JianyingFilterCacheStatus,
 	JianyingFilterImplementation,
-} from "./jianying-filter/jianying-filter-lab-contract.js";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
+} from "./jianying-filter-lab-contract.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {
 	jianyingEffectCacheRoot,
 	qcutManagedFilterPackageRoot,
 	type JianyingLutReference,
-} from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../native-pipeline/filters/filter-lab-lut.js";
 import {
 	inspectDualTiledLutRenderer,
 	inspectTiledLutRenderer,
 	type JianyingDualTiledLutRenderer,
 	type JianyingTiledLutRenderer,
-} from "./native-pipeline/filters/filter-lab-tiled-lut.js";
+} from "../native-pipeline/filters/filter-lab-tiled-lut.js";
 import {
 	inspectJianyingMultiPassRenderer,
 	type JianyingFilterMultiPassRenderer,
-} from "./native-pipeline/filters/filter-lab-multi-pass.js";
+} from "../native-pipeline/filters/filter-lab-multi-pass.js";
 import {
 	inspectJianyingNativePortraitRenderer,
 	type JianyingNativePortraitRenderer,
-} from "./native-pipeline/filters/filter-lab-native-portrait.js";
+} from "../native-pipeline/filters/filter-lab-native-portrait.js";
 import {
 	inspectJianyingNativeFaceRegionRenderer,
 	type JianyingNativeFaceRegionRenderer,
-} from "./native-pipeline/filters/filter-lab-native-face-region.js";
+} from "../native-pipeline/filters/filter-lab-native-face-region.js";
 import {
 	inspectJianyingNativeSwingRenderer,
 	type JianyingNativeSwingRenderer,
-} from "./native-pipeline/filters/filter-lab-native-swing.js";
+} from "../native-pipeline/filters/filter-lab-native-swing.js";
 
 const PACKAGE_CONTAINERS = ["artistEffect", "effect"] as const;
 const MAX_PACKAGE_FILES = 5000;
