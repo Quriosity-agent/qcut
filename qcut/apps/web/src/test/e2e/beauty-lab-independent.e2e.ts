@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
@@ -234,5 +234,6 @@ test("Beauty Lab independent render keeps zero identity, native parity and its o
 		expect(errors).toEqual([]);
 	} finally {
 		await app.close();
+		await rm(userDataDirectory, { recursive: true, force: true });
 	}
 });
