@@ -14,7 +14,7 @@ import { useMediaStore } from "@/stores/media/media-store";
 import { useAssetLibraryStore } from "@/stores/asset-library-store";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
-import { JIANYING_TRANSITIONS } from "../../../../../../../../../electron/jianying-transition-catalog";
+import { JIANYING_TRANSITIONS } from "../../../../../../../../../electron/jianying-transition/jianying-transition-catalog";
 import { TransitionsView } from "../index";
 import { getTransitionPresetById } from "../transition-presets";
 

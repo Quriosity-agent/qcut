@@ -1,4 +1,4 @@
-import { resolveJianyingTransition } from "../../../../../electron/jianying-transition-catalog";
+import { resolveJianyingTransition } from "../../../../../electron/jianying-transition/jianying-transition-catalog";
 import type { TimelineTrack } from "@/types/timeline";
 import type { VideoTransitionInput } from "../export-cli/types";
 

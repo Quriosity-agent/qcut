@@ -2,7 +2,7 @@ import {
 	JIANYING_TRANSITION_GROUPS,
 	JIANYING_TRANSITIONS,
 	type JianyingTransitionDefinition,
-} from "../../../../../../../../electron/jianying-transition-catalog";
+} from "../../../../../../../../electron/jianying-transition/jianying-transition-catalog";
 import {
 	defineTransitionPreset,
 	type TransitionPreset,

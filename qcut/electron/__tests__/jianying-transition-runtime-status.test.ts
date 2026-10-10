@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JIANYING_TRANSITIONS } from "../jianying-transition-catalog.js";
+import { JIANYING_TRANSITIONS } from "../jianying-transition/jianying-transition-catalog.js";
 import { buildJianyingRuntimeStatus } from "../jianying-transition/runtime-discovery.js";
 
 function allLocalPackagePaths(): Map<string, string> {

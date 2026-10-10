@@ -6,7 +6,7 @@ import {
 	buildJianyingOutputPath,
 	partitionJianyingTransitions,
 } from "../export-engine-cli-jianying";
-import { resolveJianyingTransition } from "../../../../../../electron/jianying-transition-catalog";
+import { resolveJianyingTransition } from "../../../../../../electron/jianying-transition/jianying-transition-catalog";
 
 function transition({
 	presetId,

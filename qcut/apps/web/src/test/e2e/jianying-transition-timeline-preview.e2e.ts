@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { JIANYING_TRANSITIONS } from "../../../../../electron/jianying-transition-catalog";
+import { JIANYING_TRANSITIONS } from "../../../../../electron/jianying-transition/jianying-transition-catalog";
 import {
 	createTestProject,
 	expect,

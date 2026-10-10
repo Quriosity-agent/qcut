@@ -5,7 +5,7 @@ import type {
 	MediaElement,
 	TimelineTrack,
 } from "@/types/timeline";
-import { resolveJianyingTransition } from "../../../../../../electron/jianying-transition-catalog";
+import { resolveJianyingTransition } from "../../../../../../electron/jianying-transition/jianying-transition-catalog";
 
 const mocks = vi.hoisted(() => ({
 	add: vi.fn(async () => {}),

@@ -20,7 +20,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { JIANYING_TRANSITIONS } from "../../electron/jianying-transition-catalog";
+import { JIANYING_TRANSITIONS } from "../../electron/jianying-transition/jianying-transition-catalog";
 import { resolveJianyingTransitionBridge } from "../../electron/jianying-transition/bridge-resolver";
 import { inspectJianyingTransitionRuntime } from "../../electron/jianying-transition/runtime-discovery";
 import { mapWithConcurrency } from "../../electron/lib/map-with-concurrency";

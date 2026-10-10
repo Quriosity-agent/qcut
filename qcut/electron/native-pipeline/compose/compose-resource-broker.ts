@@ -1,7 +1,7 @@
 import {
 	JIANYING_TRANSITIONS,
 	type JianyingTransitionDefinition,
-} from "../../jianying-transition-catalog.js";
+} from "../../jianying-transition/jianying-transition-catalog.js";
 import { inspectJianyingTransitionRuntime } from "../../jianying-transition/runtime-discovery.js";
 import { resolveStickerLabRootOverride } from "../cli/sticker-lab-root.js";
 import {

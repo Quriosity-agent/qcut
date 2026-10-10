@@ -5,7 +5,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { getFFmpegPath, getFFprobePath } from "../../electron/ffmpeg/paths";
-import { JIANYING_TRANSITIONS } from "../../electron/jianying-transition-catalog";
+import { JIANYING_TRANSITIONS } from "../../electron/jianying-transition/jianying-transition-catalog";
 import { mapWithConcurrency } from "../../electron/lib/map-with-concurrency";
 
 const projectRoot = path.resolve(import.meta.dir, "../..");

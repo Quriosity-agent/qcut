@@ -1,12 +1,12 @@
-import { JIANYING_AI_CORE_TRANSITIONS } from "./jianying-transition/catalog-ai-core.js";
-import { JIANYING_DECORATIVE_TRANSITIONS } from "./jianying-transition/catalog-decorative.js";
-import { JIANYING_EFFECT_TRANSITIONS } from "./jianying-transition/catalog-effects.js";
-import { JIANYING_TRANSITION_GROUPS } from "./jianying-transition/catalog-groups.js";
-import { JIANYING_MOTION_TRANSITIONS } from "./jianying-transition/catalog-motion.js";
+import { JIANYING_AI_CORE_TRANSITIONS } from "./catalog-ai-core.js";
+import { JIANYING_DECORATIVE_TRANSITIONS } from "./catalog-decorative.js";
+import { JIANYING_EFFECT_TRANSITIONS } from "./catalog-effects.js";
+import { JIANYING_TRANSITION_GROUPS } from "./catalog-groups.js";
+import { JIANYING_MOTION_TRANSITIONS } from "./catalog-motion.js";
 import type {
 	JianyingTransitionDefinition,
 	JianyingTransitionGroup,
-} from "./jianying-transition/catalog-types.js";
+} from "./catalog-types.js";
 
 /** Public metadata only; no Jianying binaries or effect packages are bundled. */
 export { JIANYING_TRANSITION_GROUPS };
@@ -16,7 +16,7 @@ export type {
 	JianyingTransitionGroup,
 	JianyingTransitionPreview,
 	JianyingTransitionRuntimeKind,
-} from "./jianying-transition/catalog-types.js";
+} from "./catalog-types.js";
 
 export const JIANYING_TRANSITIONS: readonly JianyingTransitionDefinition[] = [
 	...JIANYING_AI_CORE_TRANSITIONS,
