@@ -22,9 +22,9 @@ import {
 	updateMediaMaskInStack,
 } from "@/lib/video/media-mask-stack";
 import type { MediaMask, MediaMaskBlendMode } from "@/types/timeline";
-import { MaskIconButton } from "./media/media-mask-controls";
-import { MASK_SHAPES } from "./media-mask-shapes";
-import { PropertyItemLabel } from "./property-item";
+import { MaskIconButton } from "./media-mask-controls";
+import { MASK_SHAPES } from "../media-mask-shapes";
+import { PropertyItemLabel } from "../property-item";
 
 export function MediaMaskLayerList({
 	masks,

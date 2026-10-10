@@ -28,7 +28,7 @@ import {
 } from "@/lib/video/media-mask-stack";
 import { useMaskEditorStore } from "@/stores/editor/mask-editor-store";
 import { MaskNumberControl } from "./media/media-mask-controls";
-import { MediaMaskLayerList } from "./media-mask-layer-list";
+import { MediaMaskLayerList } from "./media/media-mask-layer-list";
 import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
 import { MediaMaskStrokeProperties } from "./media-mask-stroke-properties";
 import { MediaMaskTransformControls } from "./media-mask-transform-controls";
