@@ -175,7 +175,7 @@ async function loadListMetadata({
 	// runtime — keeping them out of the try below is what lets injected
 	// resolvers work where the sqlite-backed module cannot load.
 	const { findJianyingFilterCategories, findJianyingFilterTitle } =
-		await import("../../jianying-filter-metadata-lookup.js");
+		await import("../../jianying-filter/jianying-filter-metadata-lookup.js");
 	if (deps.resolveCategories && deps.resolveTitles) {
 		try {
 			const [catalog, titles] = await Promise.all([

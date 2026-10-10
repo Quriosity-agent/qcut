@@ -1,4 +1,4 @@
-import type { JianyingLutReference } from "./native-pipeline/filters/filter-lab-lut.js";
+import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
 
 /**
  * Resolved category catalog. Declared here rather than beside the sqlite
