@@ -20,7 +20,7 @@ vi.mock("@/lib/stickers/sticker-runtime-renderer", () => ({
 	renderStickerRuntimeFrame: mocks.renderFrame,
 }));
 
-import { StickerRuntimeCanvas } from "../StickerRuntimeCanvas";
+import { StickerRuntimeCanvas } from "../sticker-runtime-canvas";
 
 const descriptor: StickerRuntimeDescriptor = {
 	kind: "png-sequence",

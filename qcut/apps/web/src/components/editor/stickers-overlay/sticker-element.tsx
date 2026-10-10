@@ -35,7 +35,7 @@ import { getStickerClipAnimationState } from "@/lib/stickers/sticker-clip-animat
 import { buildCssPerspectiveTransform } from "@/lib/video/video-perspective";
 import { DEFAULT_MEDIA_PERSPECTIVE } from "@/lib/video/video-properties";
 import { resolveStickerRuntimeDescriptor } from "@/lib/stickers/sticker-runtime-timeline";
-import { StickerRuntimeCanvas } from "./StickerRuntimeCanvas";
+import { StickerRuntimeCanvas } from "./sticker-runtime-canvas";
 import { STICKER_RUNTIME_EXPORT_ERROR_CODE } from "../../../../../../electron/types/sticker-runtime-export-policy";
 
 interface StickerElementProps {
