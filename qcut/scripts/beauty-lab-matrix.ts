@@ -215,11 +215,13 @@ async function main() {
 					}
 					await mkdir(path.join(directory, id), { recursive: true });
 					const started = performance.now();
+					// Every case is an independent still photo. A key shared across cases lets the
+					// native provider continue tracking from the previous case's render.
 					const source = {
 						width: input.width,
 						height: input.height,
 						rgba: input.rgba,
-						sourceKey: `matrix-${input.id}`,
+						sourceKey: `matrix-${input.id}-${test.id}`,
 					};
 					const pair = await Promise.allSettled([
 						owned.render({
