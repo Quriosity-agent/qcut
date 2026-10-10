@@ -5,22 +5,22 @@ import type {
 	JianyingTextStyleFillKind,
 	JianyingTextStylePackageKind,
 	JianyingTextStyleQcutApproximation,
-} from "./jianying-text-style-lab-contract.js";
-import { createJianyingRuntimePackageCapabilities } from "./jianying-text/jianying-text-effect-capabilities.js";
-import { parseJianyingEffectStylePackage } from "./jianying-text/jianying-text-effect-style-parser.js";
+} from "../jianying-text-style-lab-contract.js";
+import { createJianyingRuntimePackageCapabilities } from "./jianying-text-effect-capabilities.js";
+import { parseJianyingEffectStylePackage } from "./jianying-text-effect-style-parser.js";
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDiagnostic,
 	JianyingTextRuntimeReference,
-} from "./jianying-text-runtime/jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	detectJianyingTextPackageKind,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
 	readJianyingTextTemplateDuration,
-} from "./jianying-text/jianying-text-package-metadata.js";
-import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";
+} from "./jianying-text-package-metadata.js";
+import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 
 const MAXIMUM_PACKAGE_COUNT = 5000;
 const MAXIMUM_COVER_BYTES = 8 * 1024 * 1024;

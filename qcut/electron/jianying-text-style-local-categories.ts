@@ -7,7 +7,7 @@ import type {
 	JianyingFlowerCategoryGroupDefinition,
 } from "./jianying-text/jianying-flower-taxonomy.js";
 import type { JianyingTextStyleCategoryId } from "./jianying-text-style-lab-contract.js";
-import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
+import type { JianyingTextStyleCatalogEntry } from "./jianying-text/jianying-text-style-lab-catalog.js";
 import type { JianyingTextPackageOwnership } from "./jianying-text/jianying-text-package-ownership.js";
 
 const LOCAL_CATEGORY_GROUP_ID = "qcut-local";

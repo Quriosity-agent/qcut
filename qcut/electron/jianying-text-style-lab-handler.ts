@@ -30,7 +30,7 @@ import {
 	readJianyingTextStyleCover,
 	type JianyingTextStyleCatalog,
 	type JianyingTextStyleCatalogEntry,
-} from "./jianying-text-style-lab-catalog.js";
+} from "./jianying-text/jianying-text-style-lab-catalog.js";
 import {
 	resolveJianyingTextPackageOwnership,
 	type JianyingTextPackageOwnership,

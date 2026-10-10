@@ -7,7 +7,7 @@ import {
 	buildJianyingTextStyleCatalog,
 	isValidJianyingTextStyleId,
 	readJianyingTextStyleCover,
-} from "../jianying-text-style-lab-catalog.js";
+} from "../jianying-text/jianying-text-style-lab-catalog.js";
 import { isDiscoverableJianyingTextCatalogEntry } from "../jianying-text/jianying-text-style-discovery.js";
 import type { JianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 

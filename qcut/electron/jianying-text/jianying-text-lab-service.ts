@@ -8,7 +8,7 @@ import {
 	resolveJianyingTextStyleCoverUrls,
 } from "./jianying-text-style-cover-metadata.js";
 import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";
-import { buildJianyingTextStyleCatalog } from "../jianying-text-style-lab-catalog.js";
+import { buildJianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog.js";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextStyleLabListResult,

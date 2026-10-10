@@ -15,7 +15,7 @@ import {
 import type {
 	JianyingTextStyleCatalog,
 	JianyingTextStyleCatalogEntry,
-} from "../jianying-text-style-lab-catalog.js";
+} from "../jianying-text/jianying-text-style-lab-catalog.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
 import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
-import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
+import type { JianyingTextStyleCatalogEntry } from "../jianying-text/jianying-text-style-lab-catalog.js";
 import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";
 import type { JianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 
