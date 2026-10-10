@@ -52,7 +52,7 @@ import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings"
 import { ColorHslSettings } from "./color/color-hsl-settings";
 import { ColorLutSettings } from "./color/color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color/color-management-settings";
-import { ColorMaskSettings } from "./color-mask-settings";
+import { ColorMaskSettings } from "./color/color-mask-settings";
 import { ColorPresetControls } from "./color-preset-controls";
 import { ColorScopesPanel } from "./color-scopes-panel";
 import { ColorSmartSettingsPanel } from "./color-smart-settings";
