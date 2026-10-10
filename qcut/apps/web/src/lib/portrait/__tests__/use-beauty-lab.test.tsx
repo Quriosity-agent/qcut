@@ -158,6 +158,7 @@ describe("useBeautyLab draft and provenance", () => {
 			frameNumber: 0,
 			timestampSeconds: 0,
 			sourceKey: expect.stringMatching(/^beauty-lab:/),
+			freshTracking: true,
 		});
 		expect(request.adjustments).not.toBe(parameters);
 		expect(request.adjustments.values).not.toBe(parameters.values);
