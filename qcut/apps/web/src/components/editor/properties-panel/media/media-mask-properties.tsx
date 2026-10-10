@@ -38,7 +38,7 @@ import {
 	MASK_PROPERTY_FALLBACKS,
 	type AddableMaskType,
 } from "../media-mask-shapes";
-import { MediaMaskShapeGrid } from "../media-mask-shape-grid";
+import { MediaMaskShapeGrid } from "./media-mask-shape-grid";
 import { PropertyItemLabel } from "../property-item";
 
 export function MediaMaskProperties({

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createMediaMask } from "@/lib/video/media-mask-stack";
 import { changeMediaMaskShape, MASK_SHAPES } from "../media-mask-shapes";
-import { MediaMaskShapeGrid } from "../media-mask-shape-grid";
+import { MediaMaskShapeGrid } from "../media/media-mask-shape-grid";
 
 describe("MediaMaskShapeGrid", () => {
 	it("shows every mask shape without opening a menu", () => {
