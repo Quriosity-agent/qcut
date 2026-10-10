@@ -11,7 +11,7 @@ import {
 	ENVELOPE_STATUS_CHANNEL,
 	ENVELOPE_STORE_CHANNEL,
 	type JianyingEnvelopeResultDto,
-} from "../jianying-envelope-key-contract.js";
+} from "../jianying-draft/jianying-envelope-key-contract.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),

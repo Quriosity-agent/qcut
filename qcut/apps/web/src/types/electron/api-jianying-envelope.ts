@@ -1,4 +1,4 @@
-import type { JianyingEnvelopeAPI } from "../../../../../electron/jianying-envelope-key-contract";
+import type { JianyingEnvelopeAPI } from "../../../../../electron/jianying-draft/jianying-envelope-key-contract";
 
 export interface ElectronJianyingEnvelopeOps {
 	jianyingEnvelope?: JianyingEnvelopeAPI;
@@ -14,4 +14,4 @@ export type {
 	JianyingEnvelopeAPI,
 	JianyingEnvelopeErrorDto,
 	JianyingEnvelopeResultDto,
-} from "../../../../../electron/jianying-envelope-key-contract";
+} from "../../../../../electron/jianying-draft/jianying-envelope-key-contract";

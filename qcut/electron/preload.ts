@@ -164,7 +164,7 @@ import {
 	ENVELOPE_ROTATE_CHANNEL,
 	ENVELOPE_STATUS_CHANNEL,
 	ENVELOPE_STORE_CHANNEL,
-} from "./jianying-envelope-key-contract.js";
+} from "./jianying-draft/jianying-envelope-key-contract.js";
 import {
 	JIANYING_IMPORT_CHOOSE_DIRECTORY_CHANNEL,
 	JIANYING_IMPORT_COMMIT_CHANNEL,
