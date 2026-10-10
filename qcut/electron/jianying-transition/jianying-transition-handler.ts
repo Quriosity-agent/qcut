@@ -10,18 +10,18 @@ import {
 	type JianyingTimelinePreviewRequest,
 	type JianyingTransitionPreviewRequest,
 	type JianyingTransitionRenderRequest,
-} from "./jianying-transition/jianying-transition-contract.js";
+} from "./jianying-transition-contract.js";
 import {
 	renderJianyingTimelineTransitions,
 	renderJianyingTransition,
-} from "./jianying-transition/render.js";
-import { inspectJianyingTransitionRuntime } from "./jianying-transition/runtime-discovery.js";
-import { getJianyingTransitionPreview } from "./jianying-transition/preview-cache.js";
-import { getJianyingTimelineTransitionPreview } from "./jianying-transition/timeline-preview-cache.js";
+} from "./render.js";
+import { inspectJianyingTransitionRuntime } from "./runtime-discovery.js";
+import { getJianyingTransitionPreview } from "./preview-cache.js";
+import { getJianyingTimelineTransitionPreview } from "./timeline-preview-cache.js";
 import {
 	authorizeJianyingTimelinePreviewRequest,
 	registerJianyingTimelinePreviewSource,
-} from "./jianying-transition/preview-source-authorization.js";
+} from "./preview-source-authorization.js";
 
 const PREVIEW_ERROR_MESSAGE =
 	"本机剪映转场预览生成失败，请检查本机运行时与资源包。";
