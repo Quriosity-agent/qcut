@@ -245,7 +245,7 @@ See `REFERENCE.md` for endpoint mappings.
 | Key storage & fallback | `electron/api-key-handler.ts` |
 | AICP spawn + key injection | `electron/ai-pipeline-handler.ts` |
 | Binary manager | `electron/binary-manager.ts` |
-| Settings UI (key source badges) | `apps/web/src/components/editor/properties-panel/settings-view.tsx` |
+| Settings UI (key source badges) | `apps/web/src/components/editor/properties-panel/settings/settings-view.tsx` |
 | CLI key delegation | `electron/main.ts` (CLI_KEY_COMMANDS block) |
 | Binary manifest | `resources/bin/manifest.json` |
 | Video analysis handler | `electron/claude/claude-analyze-handler.ts` |
