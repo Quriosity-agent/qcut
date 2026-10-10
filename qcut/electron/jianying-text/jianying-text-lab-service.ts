@@ -1,25 +1,25 @@
-import { buildJianyingTextAnimationCatalog } from "./jianying-text/jianying-text-animation-lab-catalog.js";
-import { resolveJianyingFlowerCatalogMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
-import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
-import { resolveJianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
-import { isDiscoverableJianyingTextCatalogEntry } from "./jianying-text-style-discovery.js";
+import { buildJianyingTextAnimationCatalog } from "./jianying-text-animation-lab-catalog.js";
+import { resolveJianyingFlowerCatalogMetadata } from "./jianying-flower-resource-metadata.js";
+import { ensureQCutJianyingTextPrivateArchive } from "../jianying-text-private-archive.js";
+import { resolveJianyingTextPackageOwnership } from "../jianying-text-package-ownership.js";
+import { isDiscoverableJianyingTextCatalogEntry } from "../jianying-text-style-discovery.js";
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
-} from "./jianying-text-style-cover-metadata.js";
-import { classifyLocalJianyingTextStyles } from "./jianying-text-style-local-categories.js";
-import { buildJianyingTextStyleCatalog } from "./jianying-text-style-lab-catalog.js";
+} from "../jianying-text-style-cover-metadata.js";
+import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";
+import { buildJianyingTextStyleCatalog } from "../jianying-text-style-lab-catalog.js";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextStyleLabListResult,
-} from "./jianying-text-style-lab-contract.js";
+} from "../jianying-text-style-lab-contract.js";
 import {
 	compareStyleSummaries,
 	normalizeResolvedMetadata,
 	summarizeCategories,
 	summarizeCategoryGroups,
 	summarizeEntry,
-} from "./jianying-text-style-lab-summary.js";
+} from "../jianying-text-style-lab-summary.js";
 
 export interface QCutJianyingTextLabCatalog {
 	styles: JianyingTextStyleLabListResult;

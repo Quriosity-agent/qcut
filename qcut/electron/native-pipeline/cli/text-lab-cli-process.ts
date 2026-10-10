@@ -101,11 +101,14 @@ export async function loadTextLabCatalogDefault(): Promise<TextLabCatalog> {
 				__dirname,
 				"..",
 				"..",
+				"jianying-text",
 				"jianying-text-lab-service.js"
 			),
 		});
 	}
-	const service = await import("../../jianying-text-lab-service.js");
+	const service = await import(
+		"../../jianying-text/jianying-text-lab-service.js"
+	);
 	return service.buildQCutJianyingTextLabCatalog();
 }
 
