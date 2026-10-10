@@ -37,7 +37,7 @@ export { PromptToolbar } from "./prompt-toolbar";
 export { SegmentationCanvas } from "./segmentation-canvas";
 export { MaskOverlay } from "./mask-overlay";
 export { ImageUploader } from "./image-uploader";
-export { SegmentationControls } from "./SegmentationControls";
+export { SegmentationControls } from "./segmentation-controls";
 
 // Import components for main panel
 import { ObjectList } from "./object-list";
