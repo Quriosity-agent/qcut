@@ -7,7 +7,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import type { TimelineElement, CaptionElement } from "@/types/timeline";
 import { ScrollArea } from "../../ui/scroll-area";
 import { AudioProperties } from "./audio-properties";
-import { isAudioClipSelection } from "./audio-clip-selection";
+import { isAudioClipSelection } from "./audio/audio-clip-selection";
 import {
 	AudioMultiSelectionProperties,
 	type AudioBatchSelection,
