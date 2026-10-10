@@ -26,7 +26,7 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { CaptionStyleScope } from "@/stores/timeline/types";
 import type { CaptionElement, SubtitleStyle } from "@/types/timeline";
 import { useTranslation, type TranslationKey } from "@/lib/i18n";
-import { CaptionListTab } from "./caption-list-tab";
+import { CaptionListTab } from "./caption/caption-list-tab";
 import { CaptionTextTab } from "./caption-text-tab";
 
 const TAB_CLASS =
