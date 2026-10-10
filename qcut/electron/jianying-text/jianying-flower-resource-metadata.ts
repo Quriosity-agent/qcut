@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { listJianyingResourceDatabasePaths } from "../jianying-resource-database.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-resource-database.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,

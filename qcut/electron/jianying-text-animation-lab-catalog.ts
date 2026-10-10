@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
-import { listJianyingResourceDatabasePaths } from "./jianying-resource-database.js";
+import { listJianyingResourceDatabasePaths } from "./jianying-shared/jianying-resource-database.js";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextAnimationLabSummary,

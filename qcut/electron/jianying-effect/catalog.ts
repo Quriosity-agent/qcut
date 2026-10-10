@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { listJianyingResourceDatabasePaths } from "../jianying-resource-database.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-resource-database.js";
 import type {
 	JianyingEffectAdjustParameter,
 	JianyingEffectCategory,
