@@ -5,7 +5,7 @@ import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-ca
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "./jianying-text-package-metadata.js";
+} from "./jianying-text/jianying-text-package-metadata.js";
 
 const SQLITE_PARAMETER_LIMIT = 900;
 

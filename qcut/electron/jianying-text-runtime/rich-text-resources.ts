@@ -1,5 +1,5 @@
 import path from "node:path";
-import { JIANYING_TEXT_RESOURCE_ID_PATTERN } from "../jianying-text-package-metadata.js";
+import { JIANYING_TEXT_RESOURCE_ID_PATTERN } from "../jianying-text/jianying-text-package-metadata.js";
 
 const EFFECT_STYLE_TAG_PATTERN = /<effectStyle\b[^>]*>/g;
 

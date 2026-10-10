@@ -19,7 +19,7 @@ import {
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
 	readJianyingTextTemplateDuration,
-} from "./jianying-text-package-metadata.js";
+} from "./jianying-text/jianying-text-package-metadata.js";
 import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";
 
 const MAXIMUM_PACKAGE_COUNT = 5000;

@@ -14,7 +14,7 @@ import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
-} from "./jianying-text-package-metadata.js";
+} from "./jianying-text/jianying-text-package-metadata.js";
 import type { JianyingTextStylePackageKind } from "./jianying-text-style-lab-contract.js";
 import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
 import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";

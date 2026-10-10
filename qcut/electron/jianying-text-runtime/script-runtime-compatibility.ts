@@ -1,4 +1,4 @@
-import { asJianyingRecord } from "../jianying-text-package-metadata.js";
+import { asJianyingRecord } from "../jianying-text/jianying-text-package-metadata.js";
 
 const CUSTOM_CONTOUR_POLYGON_SHAPE_TYPE = 4;
 

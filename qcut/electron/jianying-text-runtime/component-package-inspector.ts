@@ -7,7 +7,7 @@ import type { JianyingTextEffectCapabilities } from "../jianying-text-runtime-co
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 
 const MAXIMUM_PACKAGE_ENTRIES = 8192;
 const MAXIMUM_SIGNAL_FILE_BYTES = 512 * 1024;

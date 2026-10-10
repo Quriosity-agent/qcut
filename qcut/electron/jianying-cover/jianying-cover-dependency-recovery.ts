@@ -19,7 +19,7 @@ import { identifyCoverDependency } from "./jianying-cover-dependencies.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 
 async function hasExtractedWordArt({ packagePath }: { packagePath: string }) {
 	const checks = await Promise.all(

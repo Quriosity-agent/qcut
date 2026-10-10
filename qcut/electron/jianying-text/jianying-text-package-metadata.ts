@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { JianyingTextStylePackageKind } from "./jianying-text-style-lab-contract.js";
+import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
 
 export const JIANYING_TEXT_RESOURCE_ID_PATTERN = /^\d{1,32}$/;
 export const JIANYING_TEXT_PACKAGE_HASH_PATTERN = /^[a-f0-9]{32}$/i;

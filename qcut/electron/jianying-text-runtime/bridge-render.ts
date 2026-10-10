@@ -11,7 +11,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import type { JianyingTextRuntimeRenderStrategy } from "../jianying-text-runtime-contract.js";
-import { readBoundedJianyingTextJson } from "../jianying-text-package-metadata.js";
+import { readBoundedJianyingTextJson } from "../jianying-text/jianying-text-package-metadata.js";
 import type { ResolvedJianyingTextPackage } from "./package-resolver.js";
 import type { ResolvedJianyingTextAnimation } from "./animation-package-resolver.js";
 import {

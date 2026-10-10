@@ -1,4 +1,4 @@
-import { asJianyingRecord } from "../jianying-text-package-metadata.js";
+import { asJianyingRecord } from "../jianying-text/jianying-text-package-metadata.js";
 import { splitJianyingTextGraphemes } from "./graphemes.js";
 
 export interface JianyingCaptionWordTiming {

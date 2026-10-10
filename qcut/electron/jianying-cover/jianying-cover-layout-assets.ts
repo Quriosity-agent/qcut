@@ -25,7 +25,7 @@ import { getQCutJianyingTextPrivateArchiveRoot } from "../jianying-text-private-
 import {
 	detectJianyingTextPackageKind,
 	readJianyingTextTemplateDuration,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 
 type Dependency = CoverCachedEntry["dependencies"][number];
 

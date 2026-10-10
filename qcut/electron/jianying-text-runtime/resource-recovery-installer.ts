@@ -26,7 +26,7 @@ import type {
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import type { JianyingTextResourceCatalogCandidate } from "./resource-catalog.js";
 import { findJianyingPackageFontFile } from "./package-font-files.js";
 import {

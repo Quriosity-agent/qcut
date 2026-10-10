@@ -7,7 +7,7 @@ import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "./jianying-text-package-metadata.js";
 import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime-contract.js";
 import { collectJianyingScriptResourceReferences } from "../jianying-text-runtime/script-resource-policy.js";
 

@@ -16,7 +16,7 @@ import {
 	asJianyingRecord,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "../jianying-text-package-metadata.js";
+} from "./jianying-text-package-metadata.js";
 import {
 	JianyingTextAnimationPackageError,
 	resolveJianyingTextAnimations,

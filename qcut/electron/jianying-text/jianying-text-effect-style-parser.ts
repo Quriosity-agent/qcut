@@ -13,7 +13,7 @@ import {
 	asJianyingRecord,
 	detectJianyingTextPackageKind,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "./jianying-text-package-metadata.js";
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDiagnostic,

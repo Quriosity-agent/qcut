@@ -16,7 +16,7 @@ import {
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
 	readJianyingTextTemplateDuration,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import { findQCutJianyingTextPrivateArchive } from "../jianying-text-private-archive.js";
 import {
 	createJianyingRuntimePackageCapabilities,

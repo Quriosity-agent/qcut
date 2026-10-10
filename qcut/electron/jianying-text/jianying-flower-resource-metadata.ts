@@ -5,7 +5,7 @@ import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-r
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "../jianying-text-package-metadata.js";
+} from "./jianying-text-package-metadata.js";
 import {
 	resolveJianyingFlowerTaxonomy,
 	type JianyingFlowerCategoryDefinition,
