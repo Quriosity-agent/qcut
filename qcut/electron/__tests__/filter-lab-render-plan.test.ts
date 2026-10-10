@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
 import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
-import { loadJianyingFilterLabRenderer } from "../jianying-filter-multi-pass-loader.js";
+import { loadJianyingFilterLabRenderer } from "../jianying-filter/jianying-filter-multi-pass-loader.js";
 import { materializeVideoCubeLut } from "../ffmpeg/color-lut-file.js";
 import {
 	listJianyingLutReferences,
@@ -19,7 +19,7 @@ vi.mock("../jianying-filter-package-inspector.js", () => ({
 vi.mock("../jianying-filter-local-runtime/runtime-discovery.js", () => ({
 	inspectJianyingFilterLocalRuntime: vi.fn(),
 }));
-vi.mock("../jianying-filter-multi-pass-loader.js", () => ({
+vi.mock("../jianying-filter/jianying-filter-multi-pass-loader.js", () => ({
 	loadJianyingFilterLabRenderer: vi.fn(),
 }));
 vi.mock("../ffmpeg/color-lut-file.js", async (importOriginal) => ({

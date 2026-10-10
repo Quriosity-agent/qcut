@@ -1,9 +1,9 @@
-import type { JianyingFilterLabLoadRendererResult } from "./jianying-filter/jianying-filter-lab-contract.js";
+import type { JianyingFilterLabLoadRendererResult } from "./jianying-filter-lab-contract.js";
 import type {
 	FilterLabMultiPassRecipe,
 	JianyingFilterMultiPassRenderer,
-} from "./native-pipeline/filters/filter-lab-multi-pass.js";
-import { supportsJianyingNativeMultiPass } from "./jianying-filter-local-runtime/package-preparer.js";
+} from "../native-pipeline/filters/filter-lab-multi-pass.js";
+import { supportsJianyingNativeMultiPass } from "../jianying-filter-local-runtime/package-preparer.js";
 
 export async function loadJianyingFilterLabRenderer({
 	cacheRoot,
