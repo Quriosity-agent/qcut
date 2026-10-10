@@ -7,7 +7,7 @@ vi.mock("@/components/editor/properties-panel/update-settings-section", () => ({
 }));
 
 vi.mock(
-	"@/components/editor/properties-panel/codex-plugin-update-section",
+	"@/components/editor/properties-panel/settings/codex-plugin-update-section",
 	() => ({
 		CodexPluginUpdateSection: () => (
 			<div data-testid="plugin-update-controls" />
