@@ -36,7 +36,7 @@ import { AudioVoiceSettings } from "./audio-voice-settings";
 import { AudioEffectSettings } from "./audio/audio-effect-settings";
 import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useAudioAiActions } from "./use-audio-ai-actions";
-import { AudioLyricsSettings } from "./audio-lyrics-settings";
+import { AudioLyricsSettings } from "./audio/audio-lyrics-settings";
 import { MediaSpeedProperties } from "./media-speed-properties";
 import { BeatDetectionPanel } from "./beat-detection-panel";
 import { Button } from "@/components/ui/button";

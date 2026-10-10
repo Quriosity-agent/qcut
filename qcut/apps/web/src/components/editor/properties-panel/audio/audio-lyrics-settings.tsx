@@ -29,8 +29,8 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useWordTimelineStore } from "@/stores/timeline/word-timeline-store";
 import type { AudioLyricsWord, MediaElement } from "@/types/timeline";
 import { WORD_FILTER_STATE, type WordItem } from "@/types/word-timeline";
-import type { AudioSettingsEditorBindings } from "./audio-properties-types";
-import { activateButtonFromKeyboard } from "./audio-property-controls";
+import type { AudioSettingsEditorBindings } from "../audio-properties-types";
+import { activateButtonFromKeyboard } from "../audio-property-controls";
 import { useTranslation, type TranslationKey } from "@/lib/i18n";
 
 const AUDIO_STATUS_KEYS: Partial<Record<string, TranslationKey>> = {
