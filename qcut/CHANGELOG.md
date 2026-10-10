@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.10.3] - 2026-10-10
+
 ### Changed
 - Reorganize the source tree so it is easier to find your way around: the properties panel's 114 files are now grouped into audio, color, media, portrait, sticker, text, caption, Beauty Lab and settings folders; 117 Jianying and Beauty Lab files in the desktop main process moved from one flat folder into per-feature folders; and 31 files were renamed to the project's kebab-case convention. Files only moved, so features are unchanged.
 
