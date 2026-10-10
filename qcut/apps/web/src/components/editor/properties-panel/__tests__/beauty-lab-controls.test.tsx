@@ -8,7 +8,7 @@ import {
 	BeautyLabControls,
 	type BeautyLabControlsProps,
 } from "../beauty-lab/beauty-lab-controls";
-import { BEAUTY_LAB_PRESET_STORAGE_KEY } from "../beauty-lab-presets";
+import { BEAUTY_LAB_PRESET_STORAGE_KEY } from "../beauty-lab/beauty-lab-presets";
 
 const nativeStatus = beautyLabCatalogStatus({ status: null });
 const initial: MediaPortraitAdjustments = {
