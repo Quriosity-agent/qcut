@@ -12,7 +12,7 @@ import {
 	AudioMultiSelectionProperties,
 	type AudioBatchSelection,
 } from "./audio/audio-multi-selection-properties";
-import { MediaProperties } from "./media-properties";
+import { MediaProperties } from "./media/media-properties";
 import { VideoMultiSelectionProperties } from "./video-multi-selection-properties";
 import type { MediaBatchSelection } from "@/lib/video/media-batch-properties";
 import {

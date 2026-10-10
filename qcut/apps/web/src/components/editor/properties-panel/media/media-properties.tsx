@@ -62,25 +62,25 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
-import { KeyframeEditor } from "./keyframe-editor";
-import { MediaMaskProperties } from "./media/media-mask-properties";
-import { MediaAutomaticCutoutProperties } from "./media/media-automatic-cutout-properties";
-import { MediaChromaKeyProperties } from "./media/media-chroma-key-properties";
-import { MediaCustomCutoutProperties } from "./media/media-custom-cutout-properties";
+} from "../property-item";
+import { KeyframeEditor } from "../keyframe-editor";
+import { MediaMaskProperties } from "./media-mask-properties";
+import { MediaAutomaticCutoutProperties } from "./media-automatic-cutout-properties";
+import { MediaChromaKeyProperties } from "./media-chroma-key-properties";
+import { MediaCustomCutoutProperties } from "./media-custom-cutout-properties";
 import {
 	AudioPropertiesPanel,
 	defaultAudioUpdates,
-} from "./audio/audio-properties-panel";
-import { MediaSpeedProperties } from "./media-speed-properties";
+} from "../audio/audio-properties-panel";
+import { MediaSpeedProperties } from "../media-speed-properties";
 import {
 	ColorPropertiesPanel,
 	defaultColorUpdates,
-} from "./color/color-properties-panel";
-import { MediaTrackingProperties } from "./media-tracking-properties";
-import { MediaAIProperties } from "./media/media-ai-properties";
-import { MediaLabProperties } from "./media/media-lab-properties";
-import { MediaPortraitProperties } from "./media/media-portrait-properties";
+} from "../color/color-properties-panel";
+import { MediaTrackingProperties } from "../media-tracking-properties";
+import { MediaAIProperties } from "./media-ai-properties";
+import { MediaLabProperties } from "./media-lab-properties";
+import { MediaPortraitProperties } from "./media-portrait-properties";
 import {
 	planExperimentalCameraTracking,
 	planExperimentalSmartCrop,
@@ -90,16 +90,16 @@ import {
 	CLIP_ANIMATION_OPTIONS,
 	IconButton,
 	NumberControl,
-} from "./visual-property-controls";
-import { MediaAlignmentToolbar } from "./media/media-alignment-toolbar";
-import { MediaKeyframeNav } from "./media/media-keyframe-nav";
-import { MediaWarpSection } from "./media-warp-section";
+} from "../visual-property-controls";
+import { MediaAlignmentToolbar } from "./media-alignment-toolbar";
+import { MediaKeyframeNav } from "./media-keyframe-nav";
+import { MediaWarpSection } from "../media-warp-section";
 import {
 	DenoiseSection,
 	QuickEnhanceSection,
 	StabilizationSection,
 	SuperResolutionSection,
-} from "./media/media-enhancement-sections";
+} from "./media-enhancement-sections";
 
 type MediaUpdates = Parameters<
 	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]
