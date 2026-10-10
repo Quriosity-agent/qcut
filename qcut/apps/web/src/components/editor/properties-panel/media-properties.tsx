@@ -76,7 +76,7 @@ import { MediaSpeedProperties } from "./media-speed-properties";
 import {
 	ColorPropertiesPanel,
 	defaultColorUpdates,
-} from "./color-properties-panel";
+} from "./color/color-properties-panel";
 import { MediaTrackingProperties } from "./media-tracking-properties";
 import { MediaAIProperties } from "./media-ai-properties";
 import { MediaLabProperties } from "./media-lab-properties";

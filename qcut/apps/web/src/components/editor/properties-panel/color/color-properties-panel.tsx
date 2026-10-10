@@ -46,19 +46,19 @@ import {
 	getMediaTimelineDuration,
 	mapMediaTimelineTime,
 } from "@/lib/video/video-timing";
-import { ColorBasicSettings } from "./color/color-basic-settings";
-import { ColorCurvesSettings } from "./color/color-curves-settings";
-import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
-import { ColorHslSettings } from "./color/color-hsl-settings";
-import { ColorLutSettings } from "./color/color-lut-settings";
-import { ColorManagementSettingsPanel } from "./color/color-management-settings";
-import { ColorMaskSettings } from "./color/color-mask-settings";
-import { ColorPresetControls } from "./color/color-preset-controls";
-import { ColorScopesPanel } from "./color-scopes-panel";
-import { ColorSmartSettingsPanel } from "./color-smart-settings";
-import { ColorWheelSettingsPanel } from "./color-wheel-settings";
-import { MediaMaskProperties } from "./media-mask-properties";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+import { ColorBasicSettings } from "./color-basic-settings";
+import { ColorCurvesSettings } from "./color-curves-settings";
+import { ColorSecondaryCurvesSettings } from "../color-secondary-curves-settings";
+import { ColorHslSettings } from "./color-hsl-settings";
+import { ColorLutSettings } from "./color-lut-settings";
+import { ColorManagementSettingsPanel } from "./color-management-settings";
+import { ColorMaskSettings } from "./color-mask-settings";
+import { ColorPresetControls } from "./color-preset-controls";
+import { ColorScopesPanel } from "../color-scopes-panel";
+import { ColorSmartSettingsPanel } from "../color-smart-settings";
+import { ColorWheelSettingsPanel } from "../color-wheel-settings";
+import { MediaMaskProperties } from "../media-mask-properties";
+import type { ColorSettingsEditorBindings } from "../color-properties-types";
 
 type MediaUpdates = Parameters<
 	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]
