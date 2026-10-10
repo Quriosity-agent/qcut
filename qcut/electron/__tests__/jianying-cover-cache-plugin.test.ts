@@ -16,7 +16,7 @@ vi.mock("../jianying-cover-private-cache", () => ({
 vi.mock("../jianying-cover-prepare-layout", () => ({
 	preparePrivateCoverTextLayout: services.prepare,
 }));
-vi.mock("../jianying-cover-font", () => ({
+vi.mock("../jianying-cover/jianying-cover-font", () => ({
 	readPrivateCoverFont: services.font,
 }));
 

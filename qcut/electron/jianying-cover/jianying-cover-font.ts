@@ -2,13 +2,13 @@ import { z } from "zod";
 import {
 	readPrivateJianyingFont,
 	jianyingPrivateFontRoot,
-} from "./jianying-font-private-cache.js";
+} from "../jianying-font-private-cache.js";
 import {
 	inspectJianyingFontBytes,
 	readFontkitMetadata,
-} from "./jianying-font-lab-catalog.js";
-import { makeJianyingFontBrowserCompatible } from "./jianying-font-browser-compatibility.js";
-import type { JianyingFontLabFontSummary } from "./jianying-font-lab-contract.js";
+} from "../jianying-font-lab-catalog.js";
+import { makeJianyingFontBrowserCompatible } from "../jianying-font-browser-compatibility.js";
+import type { JianyingFontLabFontSummary } from "../jianying-font-lab-contract.js";
 
 export const privateCoverFontRequestSchema = z
 	.object({
