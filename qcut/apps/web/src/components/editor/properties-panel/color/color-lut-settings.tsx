@@ -22,8 +22,8 @@ import {
 import {
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "./color-property-controls";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+} from "../color-property-controls";
+import type { ColorSettingsEditorBindings } from "../color-properties-types";
 
 const LUT_KEYFRAME_PROPERTIES = [
 	"lut.intensity",

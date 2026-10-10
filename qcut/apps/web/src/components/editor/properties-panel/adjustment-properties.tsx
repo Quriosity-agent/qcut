@@ -39,7 +39,7 @@ import type { ColorSettingsEditorBindings } from "./color-properties-types";
 import { ColorBasicSettings } from "./color/color-basic-settings";
 import { ColorCurvesSettings } from "./color/color-curves-settings";
 import { ColorHslSettings } from "./color/color-hsl-settings";
-import { ColorLutSettings } from "./color-lut-settings";
+import { ColorLutSettings } from "./color/color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color-management-settings";
 import { ColorMaskSettings } from "./color-mask-settings";
 import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
