@@ -13,8 +13,8 @@ import {
 	BEAUTY_LAB_PRESET_STORAGE_KEY,
 	BeautyLabPresets,
 	type BeautyLabPresetsProps,
-} from "../beauty-lab/beauty-lab-presets";
-import { PortraitPresetControls } from "../portrait/portrait-preset-controls";
+} from "../beauty-lab-presets";
+import { PortraitPresetControls } from "../../portrait/portrait-preset-controls";
 
 const initial: MediaPortraitAdjustments = {
 	enabled: false,
