@@ -27,8 +27,8 @@ import {
 	resumeActiveMaskTracking,
 } from "@/lib/segmentation/mask-tracking-runtime";
 import { updateMediaMaskInStack } from "@/lib/video/media-mask-stack";
-import { PropertyGroup } from "./property-item";
-import { MediaMaskTrackingControls } from "./media/media-mask-tracking-controls";
+import { PropertyGroup } from "../property-item";
+import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
 
 function correctionCount({ mask }: { mask: MediaMask }): number {
 	return mask.tracking?.correctedFrames?.length ?? 0;
