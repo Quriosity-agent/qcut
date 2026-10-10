@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	findJianyingResourceTitle,
 	resolveJianyingResourceTitles,
-} from "../jianying-resource-titles.js";
+} from "../jianying-shared/jianying-resource-titles.js";
 
 const temporaryDirectories: string[] = [];
 
