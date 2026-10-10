@@ -28,7 +28,7 @@ import {
 	coverCacheRoot,
 	readCoverCatalog,
 	verifyCoverCatalog,
-} from "../electron/jianying-cover-private-cache";
+} from "../electron/jianying-cover/jianying-cover-private-cache";
 import { preparePrivateCoverTextLayout } from "../electron/jianying-cover/jianying-cover-prepare-layout";
 import { createCoverDependencyResolver } from "../electron/jianying-cover/jianying-cover-dependency-recovery";
 

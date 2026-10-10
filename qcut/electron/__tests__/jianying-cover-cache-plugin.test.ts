@@ -10,7 +10,7 @@ const services = vi.hoisted(() => ({
 	prepare: vi.fn(),
 	font: vi.fn(),
 }));
-vi.mock("../jianying-cover-private-cache", () => ({
+vi.mock("../jianying-cover/jianying-cover-private-cache", () => ({
 	listPrivateCovers: services.list,
 }));
 vi.mock("../jianying-cover/jianying-cover-prepare-layout", () => ({

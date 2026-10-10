@@ -11,15 +11,15 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
+import { qcutStandaloneUserDataRoot } from "../jianying-effect/user-data-paths.js";
 import { z } from "zod";
-import { coverDependencyReferences } from "./jianying-cover/jianying-cover-dependencies.js";
+import { coverDependencyReferences } from "./jianying-cover-dependencies.js";
 import {
 	describeCoverDependencies,
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
-} from "./jianying-cover/jianying-cover-layout.js";
-export { coverDependencyReferences } from "./jianying-cover/jianying-cover-dependencies.js";
+} from "./jianying-cover-layout.js";
+export { coverDependencyReferences } from "./jianying-cover-dependencies.js";
 import {
 	coverCatalogSchema,
 	coverObservationsSchema,
@@ -28,7 +28,7 @@ import {
 	type CoverCatalog,
 	type CoverLibraryResult,
 	type CoverDependencyResolver,
-} from "./jianying-cover/jianying-cover-contract.js";
+} from "./jianying-cover-contract.js";
 
 const MAX_FILE_BYTES = 200_000_000;
 const templateSchema = z

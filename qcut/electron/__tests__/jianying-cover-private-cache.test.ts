@@ -21,7 +21,7 @@ import {
 	listPrivateCovers,
 	readCoverCatalog,
 	verifyCoverCatalog,
-} from "../jianying-cover-private-cache";
+} from "../jianying-cover/jianying-cover-private-cache";
 
 const roots: string[] = [];
 const packageHash = "a".repeat(32);

@@ -9,7 +9,7 @@ import {
 	coverEntryFiles,
 	readCoverCatalog,
 	verifyCoverCatalog,
-} from "../electron/jianying-cover-private-cache";
+} from "../electron/jianying-cover/jianying-cover-private-cache";
 
 const { values } = parseArgs({
 	options: {

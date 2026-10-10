@@ -12,7 +12,7 @@ const { handle, list, prepare } = vi.hoisted(() => ({
 	prepare: vi.fn(),
 }));
 vi.mock("electron", () => ({ ipcMain: { handle } }));
-vi.mock("../jianying-cover-private-cache.js", () => ({
+vi.mock("../jianying-cover/jianying-cover-private-cache.js", () => ({
 	listPrivateCovers: list,
 }));
 vi.mock("../jianying-cover/jianying-cover-prepare-layout.js", () => ({

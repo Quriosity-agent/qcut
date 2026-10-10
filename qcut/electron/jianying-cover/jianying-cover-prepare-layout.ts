@@ -3,7 +3,7 @@ import {
 	coverCacheRoot,
 	readCoverCatalog,
 	verifyCoverFile,
-} from "../jianying-cover-private-cache.js";
+} from "./jianying-cover-private-cache.js";
 import {
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
