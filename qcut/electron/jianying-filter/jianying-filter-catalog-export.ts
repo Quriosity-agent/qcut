@@ -16,27 +16,27 @@
 import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
-} from "./jianying-filter-lab-catalog.js";
+} from "../jianying-filter-lab-catalog.js";
 import type {
 	JianyingFilterImplementation,
 	JianyingFilterVerificationStatus,
-} from "./jianying-filter-lab-contract.js";
+} from "../jianying-filter-lab-contract.js";
 import {
 	findJianyingFilterTitle,
 	scanJianyingFilterMetadata,
 	type JianyingFilterMetadataScan,
-} from "./jianying-filter-metadata.js";
-import { JIANYING_NATIVE_PORTRAIT_PROFILES } from "./native-pipeline/filters/filter-lab-native-portrait.js";
-import { JIANYING_NATIVE_FACE_REGION_PROFILES } from "./native-pipeline/filters/filter-lab-native-face-region.js";
+} from "../jianying-filter-metadata.js";
+import { JIANYING_NATIVE_PORTRAIT_PROFILES } from "../native-pipeline/filters/filter-lab-native-portrait.js";
+import { JIANYING_NATIVE_FACE_REGION_PROFILES } from "../native-pipeline/filters/filter-lab-native-face-region.js";
 import {
 	inspectJianyingFilterPackages,
 	type JianyingFilterPackageSummary,
-} from "./jianying-filter-package-inspector.js";
-import { readJianyingFilterVerifications } from "./jianying-filter-verification-store.js";
+} from "../jianying-filter-package-inspector.js";
+import { readJianyingFilterVerifications } from "../jianying-filter-verification-store.js";
 import {
 	listJianyingLutReferences,
 	type JianyingLutReference,
-} from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../native-pipeline/filters/filter-lab-lut.js";
 
 /** Matches the editor's own preview limit (MAX_EDITOR_LUT_SIZE). */
 const MAX_EXPORT_LUT_SIZE = 65;

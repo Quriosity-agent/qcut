@@ -6,7 +6,7 @@ import {
 	supportsIndependentLut,
 } from "../qcut-independent-filter/lut-catalog.js";
 import { encodeIndependentCube } from "../qcut-independent-filter/lut-data.js";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import { createIndependentFilterSession } from "../qcut-independent-filter/session.js";
 
 const card: JianyingFilterCatalogCard = {

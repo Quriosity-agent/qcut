@@ -19,7 +19,7 @@ import {
 	readJianyingFilterVerificationRecords,
 	saveJianyingFilterVerification,
 } from "../../jianying-filter-verification-store.js";
-import type { JianyingFilterCatalogExport } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogExport } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import {
 	buildFilterLabCoverageReport,
 	type FilterLabCoverageRecord,

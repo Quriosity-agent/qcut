@@ -6,7 +6,7 @@ import {
 	RefreshCw,
 	Search,
 } from "lucide-react";
-import type { JianyingFilterCatalogCard } from "../../../../../../../../electron/jianying-filter-catalog-export";
+import type { JianyingFilterCatalogCard } from "../../../../../../../../electron/jianying-filter/jianying-filter-catalog-export";
 import type { JianyingFilterLab } from "./jianying-filter-lab";
 import { JianyingFilterLabControls } from "./jianying-filter-lab-controls";
 import { useJianyingFilterThumbnail } from "./use-jianying-filter-thumbnail";

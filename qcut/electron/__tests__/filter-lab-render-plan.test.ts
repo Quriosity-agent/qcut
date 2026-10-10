@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
 import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
 import { loadJianyingFilterLabRenderer } from "../jianying-filter-multi-pass-loader.js";

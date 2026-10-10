@@ -44,7 +44,7 @@ export interface IndependentFilterAPI extends FilterComparisonAPI {
 	list: (request?: {
 		refresh?: boolean;
 	}) => Promise<
-		import("../jianying-filter-catalog-export.js").JianyingFilterCatalogExport
+		import("../jianying-filter/jianying-filter-catalog-export.js").JianyingFilterCatalogExport
 	>;
 	render: (
 		request: IndependentFilterRequest

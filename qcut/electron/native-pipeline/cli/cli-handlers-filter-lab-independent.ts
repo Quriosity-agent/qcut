@@ -20,7 +20,7 @@ import {
 	QCUT_FOG_RESOURCE,
 	QCUT_FOG_VERSION,
 } from "../../qcut-independent-filter/contract.js";
-import type { JianyingFilterCatalogExport } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogExport } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import type { FilterLabRenderPlan } from "../filters/filter-lab-render-plan.js";
 import { handleFilterLabRender } from "./cli-handlers-filter-lab-render.js";
 import { exportCatalogDefault } from "./cli-handlers-filter-lab-catalog.js";

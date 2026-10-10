@@ -16,7 +16,7 @@ import {
 } from "../qcut-independent-filter/graph-profiles.js";
 import { selectIndependentCatalog } from "../qcut-independent-filter/lut-catalog.js";
 import { independentLutSettings } from "../qcut-independent-filter/contract.js";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import { createIndependentFilterSession } from "../qcut-independent-filter/session.js";
 
 const identityText = [

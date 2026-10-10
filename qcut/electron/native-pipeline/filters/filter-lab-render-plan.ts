@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import type { JianyingFilterCatalogCard } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import { resolveJianyingFilterSwingCompatibility } from "../../jianying-filter-swing-runtime/compatibility.js";
 import {
 	buildJianyingFilterLabCatalog,

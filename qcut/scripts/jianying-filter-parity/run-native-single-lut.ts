@@ -17,7 +17,7 @@ import { verifyFilterLabParity } from "../../electron/native-pipeline/filters/fi
 import { startJianyingFilterHostProcess } from "../../electron/jianying-filter-local-runtime/host-process.js";
 import { inspectJianyingFilterLocalRuntime } from "../../electron/jianying-filter-local-runtime/runtime-discovery.js";
 import { saveJianyingFilterVerification } from "../../electron/jianying-filter-verification-store.js";
-import type { JianyingFilterCatalogCard } from "../../electron/jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../../electron/jianying-filter/jianying-filter-catalog-export.js";
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_CONCURRENCY = 3;

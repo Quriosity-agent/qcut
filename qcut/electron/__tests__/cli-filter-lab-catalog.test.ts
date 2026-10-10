@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
-import type { JianyingFilterCatalogExport } from "../jianying-filter-catalog-export";
+import type { JianyingFilterCatalogExport } from "../jianying-filter/jianying-filter-catalog-export";
 import { handleFilterLabCatalog } from "../native-pipeline/cli/cli-handlers-filter-lab-catalog";
 
 function fakeCatalog(): JianyingFilterCatalogExport {

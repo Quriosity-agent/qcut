@@ -13,7 +13,7 @@
  * initialization is never raced.
  */
 
-import type { JianyingFilterCatalogExport } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogExport } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import { exportCatalogDefault } from "../cli/cli-handlers-filter-lab-catalog.js";
 import {
 	resolveFilterLabRenderPlan,

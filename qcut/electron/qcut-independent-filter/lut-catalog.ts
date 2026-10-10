@@ -2,7 +2,7 @@ import { dirname } from "node:path";
 import type {
 	JianyingFilterCatalogCard,
 	JianyingFilterCatalogExport,
-} from "../jianying-filter-catalog-export.js";
+} from "../jianying-filter/jianying-filter-catalog-export.js";
 import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
 import { tiledReferencesFromPackages } from "../jianying-filter-lab-catalog.js";
 import {
@@ -104,10 +104,10 @@ export function selectIndependentCatalog({
 }
 
 async function exportCatalog(): Promise<JianyingFilterCatalogExport> {
-	const specifier = "../jianying-filter-catalog-export.js";
+	const specifier = "../jianying-filter/jianying-filter-catalog-export.js";
 	const exporter = (await import(
 		specifier
-	)) as typeof import("../jianying-filter-catalog-export.js");
+	)) as typeof import("../jianying-filter/jianying-filter-catalog-export.js");
 	return exporter.exportJianyingFilterCatalog();
 }
 
