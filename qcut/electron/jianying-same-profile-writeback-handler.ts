@@ -20,7 +20,7 @@ import {
 	type CapCut81WritebackRecoveryDto,
 	type CapCut81WritebackResultDto,
 	type CapCut81WritebackSelectionDto,
-} from "./jianying-same-profile-writeback-contract.js";
+} from "./jianying-draft/jianying-same-profile-writeback-contract.js";
 
 const DEFAULT_CAPCUT_APP_PATH = "/Applications/CapCut.app";
 const MAX_CONTENT_BYTES = 64 * 1024 * 1024;

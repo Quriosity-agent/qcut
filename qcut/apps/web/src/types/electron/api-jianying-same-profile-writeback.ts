@@ -1,4 +1,4 @@
-import type { JianyingSameProfileWritebackAPI } from "../../../../../electron/jianying-same-profile-writeback-contract";
+import type { JianyingSameProfileWritebackAPI } from "../../../../../electron/jianying-draft/jianying-same-profile-writeback-contract";
 
 export interface ElectronJianyingSameProfileWritebackOps {
 	jianyingSameProfileWriteback?: JianyingSameProfileWritebackAPI;
@@ -14,4 +14,4 @@ export type {
 	CapCut81WritebackResultDto,
 	CapCut81WritebackSelectionDto,
 	JianyingSameProfileWritebackAPI,
-} from "../../../../../electron/jianying-same-profile-writeback-contract";
+} from "../../../../../electron/jianying-draft/jianying-same-profile-writeback-contract";

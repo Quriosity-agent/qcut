@@ -180,7 +180,7 @@ import {
 	CAPCUT_8_1_WRITEBACK_CHOOSE_DIRECTORY_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_COMMIT_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_RECOVER_CHANNEL,
-} from "./jianying-same-profile-writeback-contract.js";
+} from "./jianying-draft/jianying-same-profile-writeback-contract.js";
 import {
 	JIANYING_11_3_PROJECT_EXPORT_CHOOSE_CHANNEL,
 	JIANYING_11_3_PROJECT_EXPORT_COMMIT_CHANNEL,
