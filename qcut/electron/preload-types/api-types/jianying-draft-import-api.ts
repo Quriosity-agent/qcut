@@ -1,4 +1,4 @@
-import type { JianyingDraftImportAPI } from "../../jianying-draft-import-contract";
+import type { JianyingDraftImportAPI } from "../../jianying-draft/jianying-draft-import-contract";
 
 export interface JianyingDraftImportPreloadAPI {
 	jianyingDraftImport: JianyingDraftImportAPI;

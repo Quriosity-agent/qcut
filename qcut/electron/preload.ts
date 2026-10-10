@@ -175,7 +175,7 @@ import {
 	JIANYING_IMPORT_MEDIA_CHUNK_CHANNEL,
 	JIANYING_IMPORT_MEDIA_RELEASE_CHANNEL,
 	JIANYING_IMPORT_PLAN_CHANNEL,
-} from "./jianying-draft-import-contract.js";
+} from "./jianying-draft/jianying-draft-import-contract.js";
 import {
 	CAPCUT_8_1_WRITEBACK_CHOOSE_DIRECTORY_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_COMMIT_CHANNEL,

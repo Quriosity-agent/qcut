@@ -27,7 +27,7 @@ import {
 	JIANYING_IMPORT_PLAN_CHANNEL,
 	type JianyingDraftImportErrorCode,
 	type JianyingDraftImportResultDto,
-} from "./jianying-draft-import-contract.js";
+} from "./jianying-draft/jianying-draft-import-contract.js";
 
 interface ImportSessionLike {
 	inspect(options: { input: unknown }): Promise<unknown>;
