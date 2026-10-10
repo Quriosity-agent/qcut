@@ -67,7 +67,7 @@ import { KeyframeEditor } from "./keyframe-editor";
 import { MediaMaskProperties } from "./media-mask-properties";
 import { MediaAutomaticCutoutProperties } from "./media/media-automatic-cutout-properties";
 import { MediaChromaKeyProperties } from "./media/media-chroma-key-properties";
-import { MediaCustomCutoutProperties } from "./media-custom-cutout-properties";
+import { MediaCustomCutoutProperties } from "./media/media-custom-cutout-properties";
 import {
 	AudioPropertiesPanel,
 	defaultAudioUpdates,
