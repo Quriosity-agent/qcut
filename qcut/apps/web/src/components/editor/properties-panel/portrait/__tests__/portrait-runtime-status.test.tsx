@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/test-utils";
 import type { JianyingPortraitAdjustmentStatus } from "@/types/electron";
-import { PortraitRuntimeStatus } from "../portrait/portrait-runtime-status";
+import { PortraitRuntimeStatus } from "../portrait-runtime-status";
 
 const ready: JianyingPortraitAdjustmentStatus = {
 	state: "ready",
