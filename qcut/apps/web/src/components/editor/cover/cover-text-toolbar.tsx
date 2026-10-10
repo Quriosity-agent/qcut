@@ -15,7 +15,7 @@ import { useTranslation } from "@/lib/i18n";
 import { CoverTool } from "./cover-tool";
 import { CoverTextStyleControls } from "./cover-text-style-controls";
 import { CoverTextGeometry } from "./cover-text-geometry";
-import { JianyingFontLabDialog } from "../properties-panel/jianying-font-lab-dialog";
+import { JianyingFontLabDialog } from "../properties-panel/text/jianying-font-lab-dialog";
 
 export function CoverTextToolbar({
 	layer,

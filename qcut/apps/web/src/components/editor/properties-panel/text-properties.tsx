@@ -82,7 +82,7 @@ import {
 	TEXT_VERTICAL_ALIGN_LABEL_KEYS,
 } from "./text-properties-i18n";
 import { TextAnimationProperties } from "./text-animation-properties";
-import { JianyingFontLabDialog } from "./jianying-font-lab-dialog";
+import { JianyingFontLabDialog } from "./text/jianying-font-lab-dialog";
 import type { JianyingTextRuntimeStatus } from "@/types/electron";
 
 type TextUpdates = Parameters<

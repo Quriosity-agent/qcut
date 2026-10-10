@@ -30,7 +30,7 @@ import {
 } from "@/lib/fonts/local-font-runtime";
 import type { JianyingFontLabFontSummary } from "@/types/electron";
 import type { TextFontAssetReference } from "@/types/timeline";
-import { useJianyingFontLab } from "./use-jianying-font-lab";
+import { useJianyingFontLab } from "../use-jianying-font-lab";
 
 const ALL_SOURCES = "all";
 const TRIAL_FONT_COUNT = 5;
