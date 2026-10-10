@@ -9,7 +9,7 @@ import {
 import type {
 	JianyingEffectStyleInspection,
 	JianyingEffectStyleManifest,
-} from "../jianying-text-effect-style-contract.js";
+} from "../jianying-text/jianying-text-effect-style-contract.js";
 import { parseJianyingEffectStylePackage } from "../jianying-text-effect-style-parser.js";
 import type {
 	JianyingTextEffectCapabilities,

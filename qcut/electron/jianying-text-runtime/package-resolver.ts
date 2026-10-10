@@ -9,7 +9,7 @@ import type {
 	JianyingTextRuntimePackageKind,
 	JianyingTextRuntimeReference,
 } from "../jianying-text-runtime-contract.js";
-import type { JianyingEffectStyleManifest } from "../jianying-text-effect-style-contract.js";
+import type { JianyingEffectStyleManifest } from "../jianying-text/jianying-text-effect-style-contract.js";
 import {
 	detectJianyingTextPackageKind,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,

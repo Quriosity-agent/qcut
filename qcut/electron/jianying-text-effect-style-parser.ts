@@ -8,7 +8,7 @@ import type {
 	JianyingEffectStyleManifest,
 	JianyingEffectStyleRenderType,
 	JianyingEffectStyleTextureResource,
-} from "./jianying-text-effect-style-contract.js";
+} from "./jianying-text/jianying-text-effect-style-contract.js";
 import {
 	asJianyingRecord,
 	detectJianyingTextPackageKind,
