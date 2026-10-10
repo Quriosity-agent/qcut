@@ -331,6 +331,11 @@ export interface JianyingPortraitAdjustmentRenderRequest {
 	frameNumber?: number;
 	timestampSeconds?: number;
 	sourcePreRoll?: JianyingPortraitSourcePreRoll;
+	/**
+	 * Start from a cold face tracker. Still-photo comparisons set this so a render never
+	 * depends on the edits rendered before it for the same source.
+	 */
+	freshTracking?: boolean;
 }
 
 export interface JianyingPortraitSourcePreRoll {
