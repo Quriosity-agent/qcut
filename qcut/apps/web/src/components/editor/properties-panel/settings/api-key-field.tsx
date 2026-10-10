@@ -13,7 +13,7 @@ import type { ApiKeyStatusSource, KeySource } from "@qcut/platform-core";
 import {
 	PRECEDENCE_BADGE_LABELS,
 	PRECEDENCE_ONE_LINERS,
-} from "../api-key-precedence";
+} from "./api-key-precedence";
 import { PropertyGroup } from "../property-item";
 
 interface ApiKeyFieldProps {
