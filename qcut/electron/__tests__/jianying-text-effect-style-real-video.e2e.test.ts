@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
-import type { JianyingTextRuntimePackageKind } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimePackageKind } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPackage } from "../jianying-text-runtime/package-resolver.js";
 import { inspectJianyingTextRuntime } from "../jianying-text-runtime/runtime-discovery.js";
 import { renderJianyingText } from "../jianying-text-runtime/render.js";

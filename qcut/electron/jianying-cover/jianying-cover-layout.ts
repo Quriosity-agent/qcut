@@ -4,7 +4,7 @@ import type {
 	CoverCatalog,
 } from "./jianying-cover-contract.js";
 import type { JianyingFontLabFontSummary } from "../jianying-font/jianying-font-lab-contract.js";
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	coverDependencyReferences,
 	identifyCoverDependency,

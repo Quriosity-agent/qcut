@@ -6,7 +6,7 @@ import {
 	type JianyingTextRuntimeInspectRequest,
 	type JianyingTextRuntimeRenderRequest,
 	type JianyingTextRuntimeStatus,
-} from "./jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	JianyingTextPackageError,
 	resolveJianyingTextPackage,

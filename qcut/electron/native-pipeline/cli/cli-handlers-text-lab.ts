@@ -10,7 +10,7 @@ import type {
 	JianyingTextAnimationSlot,
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
-} from "../../jianying-text-runtime-contract.js";
+} from "../../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPreviewFilename } from "../../jianying-text-runtime/cache-path.js";
 import type {
 	CLIRunOptions,

@@ -3,7 +3,7 @@ import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
-import type { JianyingTextEffectCapabilities } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextEffectCapabilities } from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,

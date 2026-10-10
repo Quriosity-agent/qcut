@@ -11,7 +11,7 @@ import type {
 import type {
 	JianyingTextAnimationReference,
 	JianyingTextAnimationSlot,
-} from "../jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,

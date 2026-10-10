@@ -8,7 +8,7 @@ import type {
 import type {
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
-} from "../../jianying-text-runtime-contract.js";
+} from "../../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 export interface TextLabCatalog {
 	styles: JianyingTextStyleLabListResult;

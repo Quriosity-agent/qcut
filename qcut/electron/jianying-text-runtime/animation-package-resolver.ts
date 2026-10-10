@@ -12,7 +12,7 @@ import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyRole,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,

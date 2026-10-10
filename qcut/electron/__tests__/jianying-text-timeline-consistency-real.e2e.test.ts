@@ -4,7 +4,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { beforeAll, describe, expect, it } from "vitest";
 import { getFFmpegPath } from "../ffmpeg/paths.js";
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { renderJianyingText } from "../jianying-text-runtime/render.js";
 import {
 	cancelJianyingTextRender,

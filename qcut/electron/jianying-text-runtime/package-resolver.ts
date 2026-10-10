@@ -8,7 +8,7 @@ import type {
 	JianyingTextRuntimeDiagnostic,
 	JianyingTextRuntimePackageKind,
 	JianyingTextRuntimeReference,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import type { JianyingEffectStyleManifest } from "../jianying-text/jianying-text-effect-style-contract.js";
 import {
 	detectJianyingTextPackageKind,

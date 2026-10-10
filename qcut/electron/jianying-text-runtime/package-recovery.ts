@@ -5,7 +5,7 @@ import type {
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyStatus,
 	JianyingTextRuntimeReference,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	JianyingTextAnimationPackageError,
 	resolveJianyingTextAnimations,

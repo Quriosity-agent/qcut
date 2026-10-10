@@ -2,7 +2,7 @@ import type {
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyRole,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 
 function dependencyLabel({
 	role,

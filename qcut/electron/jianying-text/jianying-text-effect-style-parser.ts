@@ -17,7 +17,7 @@ import {
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 interface TextureInspection extends JianyingEffectStyleTextureResource {
 	size?: number;

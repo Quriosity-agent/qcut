@@ -1,4 +1,4 @@
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 export const JIANYING_SCRIPT_INFO_STICKER_CORPUS = [
 	{

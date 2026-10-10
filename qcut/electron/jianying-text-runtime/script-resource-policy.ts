@@ -1,4 +1,4 @@
-import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeDependencyRole } from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,

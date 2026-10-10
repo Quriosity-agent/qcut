@@ -1,7 +1,7 @@
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 export type JianyingEffectStyleRenderType =
 	| "gradient"

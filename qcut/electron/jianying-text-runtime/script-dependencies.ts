@@ -15,7 +15,7 @@ import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDependencyStatus,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	detectJianyingTextPackageKind,
 	readBoundedJianyingTextJson,

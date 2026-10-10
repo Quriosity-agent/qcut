@@ -84,12 +84,12 @@ export interface JianyingTextStyleLabStyleSummary {
 	innerShadowCount: number;
 	shadowCount: number;
 	textureLayerCount: number;
-	capabilities: import("./jianying-text-runtime-contract.js").JianyingTextEffectCapabilities;
-	diagnostics: import("./jianying-text-runtime-contract.js").JianyingTextRuntimeDiagnostic[];
+	capabilities: import("./jianying-text-runtime/jianying-text-runtime-contract.js").JianyingTextEffectCapabilities;
+	diagnostics: import("./jianying-text-runtime/jianying-text-runtime-contract.js").JianyingTextRuntimeDiagnostic[];
 	hasCover: boolean;
 	compatibility: JianyingTextStyleCompatibility;
 	approximation?: JianyingTextStyleQcutApproximation;
-	runtimeReference?: import("./jianying-text-runtime-contract.js").JianyingTextRuntimeReference;
+	runtimeReference?: import("./jianying-text-runtime/jianying-text-runtime-contract.js").JianyingTextRuntimeReference;
 }
 
 export interface JianyingTextStyleLabListRequest {
@@ -120,9 +120,9 @@ export interface JianyingTextAnimationLabSummary {
 	resourceId: string;
 	packageHash: string;
 	title?: string;
-	slot: import("./jianying-text-runtime-contract.js").JianyingTextAnimationSlot;
+	slot: import("./jianying-text-runtime/jianying-text-runtime-contract.js").JianyingTextAnimationSlot;
 	duration: number;
-	capabilities: import("./jianying-text-runtime-contract.js").JianyingTextEffectCapabilities;
+	capabilities: import("./jianying-text-runtime/jianying-text-runtime-contract.js").JianyingTextEffectCapabilities;
 }
 
 export interface JianyingTextAnimationLabListRequest {

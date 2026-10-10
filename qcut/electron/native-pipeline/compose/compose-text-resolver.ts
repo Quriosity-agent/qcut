@@ -3,7 +3,7 @@ import {
 	readVerifiedJianyingFontBytes,
 } from "../../jianying-font/jianying-font-lab-catalog.js";
 import { loadTextLabCatalogDefault } from "../cli/text-lab-cli-process.js";
-import type { JianyingTextRuntimeReference } from "../../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveStyleFromCLI } from "../subtitle/style-presets.js";
 import type { ComposePatchOperation } from "./compose-protocol.js";
 

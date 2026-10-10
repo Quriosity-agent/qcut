@@ -156,7 +156,7 @@ import {
 	JIANYING_TEXT_RUNTIME_CANCEL_CHANNEL,
 	JIANYING_TEXT_RUNTIME_INSPECT_CHANNEL,
 	JIANYING_TEXT_RUNTIME_RENDER_CHANNEL,
-} from "./jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	ENVELOPE_DELETE_CHANNEL,
 	ENVELOPE_PURGE_CHANNEL,

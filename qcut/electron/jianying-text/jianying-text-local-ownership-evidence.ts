@@ -8,7 +8,7 @@ import {
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
 } from "./jianying-text-package-metadata.js";
-import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { collectJianyingScriptResourceReferences } from "../jianying-text-runtime/script-resource-policy.js";
 
 const MAXIMUM_PACKAGE_COUNT = 5000;

@@ -22,7 +22,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import type {
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyRole,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,

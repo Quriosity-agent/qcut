@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { renderJianyingText } from "../jianying-text-runtime/render.js";
 import { resolveJianyingTextBridgeEnvironment } from "../jianying-text-runtime/bridge-render.js";
-import type { JianyingTextRuntimeRenderRequest } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeRenderRequest } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 const request: JianyingTextRuntimeRenderRequest = {
 	requestId: "color-test",

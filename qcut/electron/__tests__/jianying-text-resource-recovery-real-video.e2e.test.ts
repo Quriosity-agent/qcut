@@ -3,7 +3,7 @@ import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	JianyingTextPackageError,
 	resolveJianyingTextPackage,
