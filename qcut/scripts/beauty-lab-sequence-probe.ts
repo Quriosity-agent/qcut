@@ -6,7 +6,7 @@ import { createBeautyLabIndependentProvider } from "../electron/beauty-lab-indep
 import {
 	processIndependentBeautySequence,
 	type IndependentBeautySequenceFrame,
-} from "../electron/beauty-lab-independent-sequence";
+} from "../electron/beauty-lab/beauty-lab-independent-sequence";
 import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider";
 import { beautyPixelDifference } from "./beauty-lab-matrix-metrics";
 
