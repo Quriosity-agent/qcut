@@ -32,7 +32,7 @@ vi.mock("electron", () => ({
 import {
 	setupJianyingDraftImportIPC,
 	type JianyingDraftImportIPCController,
-} from "../jianying-draft-import-handler.js";
+} from "../jianying-draft/jianying-draft-import-handler.js";
 
 /** JYI-012 acceptance (IPC side): trusted transport over the runtime. */
 

@@ -73,7 +73,7 @@ import {
 import {
 	setupJianyingDraftImportIPC,
 	type JianyingDraftImportIPCController,
-} from "./jianying-draft-import-handler.js";
+} from "./jianying-draft/jianying-draft-import-handler.js";
 import {
 	setupJianyingDraftExportIPC,
 	type JianyingDraftExportIPCController,

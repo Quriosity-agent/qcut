@@ -27,7 +27,7 @@ import {
 	JIANYING_IMPORT_PLAN_CHANNEL,
 	type JianyingDraftImportErrorCode,
 	type JianyingDraftImportResultDto,
-} from "./jianying-draft/jianying-draft-import-contract.js";
+} from "./jianying-draft-import-contract.js";
 
 interface ImportSessionLike {
 	inspect(options: { input: unknown }): Promise<unknown>;
@@ -182,7 +182,7 @@ async function loadInstalledJianyingEffectCapabilities(): Promise<
 	// effect catalog) out of the module's static dependency graph — a static
 	// import there breaks the vite bundler used by the vitest suites.
 	const { discoverJianyingEffectLibrary } = await import(
-		"./jianying-effect/catalog.js"
+		"../jianying-effect/catalog.js"
 	);
 	const library = await discoverJianyingEffectLibrary();
 	const capabilities = new Map<string, LocalJianyingEffectCapability>();
@@ -204,7 +204,7 @@ async function loadInstalledJianyingEffectCapabilities(): Promise<
 }
 
 async function loadBundledImportRuntime(): Promise<unknown> {
-	const runtimePath = join(__dirname, "jianying-draft-import-runtime.js");
+	const runtimePath = join(__dirname, "..", "jianying-draft-import-runtime.js");
 	return import(runtimePath);
 }
 
