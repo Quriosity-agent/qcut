@@ -18,7 +18,7 @@ import {
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TextAnimationsV1, TextElement } from "@/types/timeline";
-import { TextAnimationPresetGrid } from "./text-animation-preset-grid";
+import { TextAnimationPresetGrid } from "./text/text-animation-preset-grid";
 import {
 	getSelectedTextAnimationPresetForProperties,
 	resolveTextAnimationsForProperties,

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { TranslationKey } from "@/lib/i18n";
 import type { TextAnimationPresetDefinition } from "@/lib/text/text-animation-presets";
-import { TextAnimationPresetCard } from "./text/text-animation-preset-card";
+import { TextAnimationPresetCard } from "./text-animation-preset-card";
 
 export function TextAnimationPresetGrid({
 	ariaLabel,
