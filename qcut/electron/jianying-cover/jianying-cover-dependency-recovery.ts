@@ -3,23 +3,23 @@ import path from "node:path";
 import type {
 	CoverDependencyResolver,
 	CoverDependencySource,
-} from "./jianying-cover/jianying-cover-contract.js";
-import { findJianyingLocalPackagesByHash } from "./jianying-text-runtime/local-package-index.js";
+} from "./jianying-cover-contract.js";
+import { findJianyingLocalPackagesByHash } from "../jianying-text-runtime/local-package-index.js";
 import {
 	findJianyingTextResourceCatalogCandidates,
 	type JianyingTextResourceCatalogCandidate,
-} from "./jianying-text-runtime/resource-catalog.js";
+} from "../jianying-text-runtime/resource-catalog.js";
 import {
 	extractValidatedJianyingResourceArchive,
 	installJianyingTextCatalogCandidate,
 	isTrustedJianyingResourceUrl,
-} from "./jianying-text-runtime/resource-recovery-installer.js";
-import { downloadJianyingFilterPackage } from "./jianying-filter-download.js";
-import { identifyCoverDependency } from "./jianying-cover/jianying-cover-dependencies.js";
+} from "../jianying-text-runtime/resource-recovery-installer.js";
+import { downloadJianyingFilterPackage } from "../jianying-filter-download.js";
+import { identifyCoverDependency } from "./jianying-cover-dependencies.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "./jianying-text-package-metadata.js";
+} from "../jianying-text-package-metadata.js";
 
 async function hasExtractedWordArt({ packagePath }: { packagePath: string }) {
 	const checks = await Promise.all(

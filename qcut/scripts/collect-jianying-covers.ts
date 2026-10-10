@@ -30,7 +30,7 @@ import {
 	verifyCoverCatalog,
 } from "../electron/jianying-cover-private-cache";
 import { preparePrivateCoverTextLayout } from "../electron/jianying-cover-prepare-layout";
-import { createCoverDependencyResolver } from "../electron/jianying-cover-dependency-recovery";
+import { createCoverDependencyResolver } from "../electron/jianying-cover/jianying-cover-dependency-recovery";
 
 const { values } = parseArgs({
 	options: {

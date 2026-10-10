@@ -40,7 +40,9 @@ if (values.verify) {
 	);
 	const resolveDependency = values.recover
 		? (
-				await import("../electron/jianying-cover-dependency-recovery")
+				await import(
+					"../electron/jianying-cover/jianying-cover-dependency-recovery"
+				)
 			).createCoverDependencyResolver({
 				cacheRoots: [textCache, sourceRoot],
 				databaseRoots: [

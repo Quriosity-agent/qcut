@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createCoverDependencyResolver } from "../jianying-cover-dependency-recovery";
+import { createCoverDependencyResolver } from "../jianying-cover/jianying-cover-dependency-recovery";
 import { identifyCoverDependency } from "../jianying-cover/jianying-cover-dependencies";
 import { findJianyingLocalPackagesByHash } from "../jianying-text-runtime/local-package-index";
 import { findJianyingTextResourceCatalogCandidates } from "../jianying-text-runtime/resource-catalog";
