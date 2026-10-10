@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPackage } from "../jianying-text-runtime/package-resolver.js";
 
 const RESOURCE_ID = "7328639616670649634";

@@ -9,7 +9,7 @@ import {
 } from "../qcut-independent-filter/graph-data.js";
 import { INDEPENDENT_INVARIANT_PROFILES } from "../qcut-independent-filter/graph-profiles-invariant.js";
 import { selectIndependentCatalog } from "../qcut-independent-filter/lut-catalog.js";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 
 function invariantCard({
 	index = 0,

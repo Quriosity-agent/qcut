@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exportPersonCutoutVideo } from "@/lib/segmentation/person-cutout-export";
 import { useCloudTaskStore } from "@/stores/cloud-task-store";
-import { LocalPersonCutoutPanel } from "../LocalPersonCutoutPanel";
+import { LocalPersonCutoutPanel } from "../local-person-cutout-panel";
 
 const segmentationState = vi.hoisted(() => ({
 	personCutoutSettings: {},
@@ -26,7 +26,7 @@ vi.mock("@/stores/ai/segmentation-store", () => ({
 	}),
 }));
 
-vi.mock("../PersonCutoutSettings", () => ({
+vi.mock("../person-cutout-settings", () => ({
 	PersonCutoutSettings: () => <div data-testid="person-cutout-settings" />,
 }));
 

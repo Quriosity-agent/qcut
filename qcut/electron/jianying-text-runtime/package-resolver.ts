@@ -8,20 +8,20 @@ import type {
 	JianyingTextRuntimeDiagnostic,
 	JianyingTextRuntimePackageKind,
 	JianyingTextRuntimeReference,
-} from "../jianying-text-runtime-contract.js";
-import type { JianyingEffectStyleManifest } from "../jianying-text-effect-style-contract.js";
+} from "./jianying-text-runtime-contract.js";
+import type { JianyingEffectStyleManifest } from "../jianying-text/jianying-text-effect-style-contract.js";
 import {
 	detectJianyingTextPackageKind,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
 	readJianyingTextTemplateDuration,
-} from "../jianying-text-package-metadata.js";
-import { findQCutJianyingTextPrivateArchive } from "../jianying-text-private-archive.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
+import { findQCutJianyingTextPrivateArchive } from "../jianying-text/jianying-text-private-archive.js";
 import {
 	createJianyingRuntimePackageCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 import {
 	JianyingTextAnimationPackageError,

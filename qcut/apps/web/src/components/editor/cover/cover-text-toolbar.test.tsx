@@ -23,7 +23,7 @@ const font: TextFontAssetReference = {
 vi.mock("@/lib/i18n", () => ({
 	useTranslation: () => ({ t: (key: string) => key, locale: "zh" }),
 }));
-vi.mock("../properties-panel/jianying-font-lab-dialog", () => ({
+vi.mock("../properties-panel/text/jianying-font-lab-dialog", () => ({
 	JianyingFontLabDialog: ({
 		onApply,
 		disabled,

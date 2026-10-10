@@ -3,7 +3,7 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readBeautyLabLiveCandidateResult } from "../beauty-lab-live-candidate-result.js";
+import { readBeautyLabLiveCandidateResult } from "../beauty-lab/beauty-lab-live-candidate-result.js";
 import { digest, setupResultJob } from "./beauty-lab-live-candidate-fixture.js";
 
 let root: string;

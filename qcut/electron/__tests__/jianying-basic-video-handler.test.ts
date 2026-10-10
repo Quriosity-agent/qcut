@@ -7,7 +7,7 @@ import {
 	JIANYING_BASIC_VIDEO_INSPECT_CHANNEL,
 	JIANYING_BASIC_VIDEO_PROGRESS_CHANNEL,
 	type JianyingDeflickerRequest,
-} from "../jianying-basic-video-contract.js";
+} from "../jianying-basic-video-runtime/jianying-basic-video-contract.js";
 
 const { deflickerRuntime, inspectRuntime, mockHandle, mockRemoveHandler } =
 	vi.hoisted(() => ({
@@ -26,7 +26,7 @@ vi.mock("../jianying-basic-video-runtime/runtime.js", () => ({
 	inspectJianyingBasicVideo: inspectRuntime,
 }));
 
-import { setupJianyingBasicVideoIPC } from "../jianying-basic-video-handler.js";
+import { setupJianyingBasicVideoIPC } from "../jianying-basic-video-runtime/jianying-basic-video-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};

@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
+import type { JianyingTextStyleCatalogEntry } from "../jianying-text/jianying-text-style-lab-catalog.js";
 import {
 	attachJianyingTextStyleCoverUrls,
 	resolveJianyingTextStyleCoverUrls,
-} from "../jianying-text-style-cover-metadata.js";
+} from "../jianying-text/jianying-text-style-cover-metadata.js";
 
 const temporaryDirectories: string[] = [];
 

@@ -10,13 +10,13 @@ const services = vi.hoisted(() => ({
 	prepare: vi.fn(),
 	font: vi.fn(),
 }));
-vi.mock("../jianying-cover-private-cache", () => ({
+vi.mock("../jianying-cover/jianying-cover-private-cache", () => ({
 	listPrivateCovers: services.list,
 }));
-vi.mock("../jianying-cover-prepare-layout", () => ({
+vi.mock("../jianying-cover/jianying-cover-prepare-layout", () => ({
 	preparePrivateCoverTextLayout: services.prepare,
 }));
-vi.mock("../jianying-cover-font", () => ({
+vi.mock("../jianying-cover/jianying-cover-font", () => ({
 	readPrivateCoverFont: services.font,
 }));
 

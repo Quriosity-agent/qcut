@@ -2,9 +2,9 @@ import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import {
 	JIANYING_COVER_LIST_CHANNEL,
 	JIANYING_COVER_LAYOUT_CHANNEL,
-} from "../jianying-cover-contract.js";
-import { listPrivateCovers } from "../jianying-cover-private-cache.js";
-import { preparePrivateCoverTextLayout } from "../jianying-cover-prepare-layout.js";
+} from "../jianying-cover/jianying-cover-contract.js";
+import { listPrivateCovers } from "../jianying-cover/jianying-cover-private-cache.js";
+import { preparePrivateCoverTextLayout } from "../jianying-cover/jianying-cover-prepare-layout.js";
 import type { MainIpcDeps } from "./types.js";
 
 export function registerJianyingCoverHandlers({

@@ -2,11 +2,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
-import type { JianyingTextRuntimeRenderRequest } from "../../../jianying-text-runtime-contract";
+import type { JianyingTextRuntimeRenderRequest } from "../../../jianying-text-runtime/jianying-text-runtime-contract";
 import type {
 	JianyingTextAnimationLabSummary,
 	JianyingTextStyleLabStyleSummary,
-} from "../../../jianying-text-style-lab-contract";
+} from "../../../jianying-text/jianying-text-style-lab-contract";
 import {
 	handleTextLabAnimations,
 	handleTextLabList,

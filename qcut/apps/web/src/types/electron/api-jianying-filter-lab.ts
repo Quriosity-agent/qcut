@@ -7,7 +7,7 @@ import type {
 	JianyingFilterLabAPI,
 	JianyingFilterLabCube,
 	JianyingFilterLabLoadRendererResult,
-} from "../../../../../electron/jianying-filter-lab-contract";
+} from "../../../../../electron/jianying-filter/jianying-filter-lab-contract";
 
 import type { IndependentFilterAPI } from "../../../../../electron/qcut-independent-filter/contract";
 
@@ -18,7 +18,7 @@ export interface ElectronJianyingFilterLabOps {
 
 /**
  * Compile-time parity guard: `JianyingFilterLabCube`
- * (electron/jianying-filter-lab-contract.ts) and `ColorCubeLut`
+ * (electron/jianying-filter/jianying-filter-lab-contract.ts) and `ColorCubeLut`
  * (packages/editor-core/src/types/color.ts, re-exported via
  * `@/types/timeline`) are independent declarations kept structurally
  * identical by convention — the filter-lab onApply handoff assigns one to
@@ -64,7 +64,7 @@ export type {
 	JianyingFilterVerification,
 	JianyingFilterVerificationStatus,
 	JianyingLutRole,
-} from "../../../../../electron/jianying-filter-lab-contract";
+} from "../../../../../electron/jianying-filter/jianying-filter-lab-contract";
 
 export type {
 	FilterComparisonResult,

@@ -142,7 +142,7 @@ export interface ElectronAPI
 		JianyingProjectExportPreloadAPI {
 	platform: NodeJS.Platform;
 	isElectron: boolean;
-	jianyingCover?: import("../jianying-cover-contract").JianyingCoverAPI;
+	jianyingCover?: import("../jianying-cover/jianying-cover-contract").JianyingCoverAPI;
 
 	// Claude Code Integration API
 	claude?: ClaudeMediaAPI &

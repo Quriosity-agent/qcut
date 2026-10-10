@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter-lab-request.js";
+import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter/jianying-filter-lab-request.js";
 import {
 	loadIndependentFogLut,
 	validateIndependentFilterIdentity,

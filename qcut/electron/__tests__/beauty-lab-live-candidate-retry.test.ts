@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	createBeautyLabLiveJobError,
 	type BeautyLabLiveJobFailureKind,
-} from "../beauty-lab-live-candidate-failure.js";
-import { createBeautyLabLiveCandidateBackend } from "../beauty-lab-live-candidate.js";
+} from "../beauty-lab/beauty-lab-live-candidate-failure.js";
+import { createBeautyLabLiveCandidateBackend } from "../beauty-lab/beauty-lab-live-candidate.js";
 import {
 	OPT_IN,
 	requestFor,
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	makeup: vi.fn(),
 }));
-vi.mock("../beauty-lab-live-candidate-process.js", () => ({
+vi.mock("../beauty-lab/beauty-lab-live-candidate-process.js", () => ({
 	runBeautyLabLiveCandidateJob: mocks.run,
 }));
 vi.mock("../jianying-filter-local-runtime/private-runtime.js", () => ({

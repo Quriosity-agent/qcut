@@ -1,8 +1,8 @@
-import type { JianyingTextRuntimeDependencyRole } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeDependencyRole } from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import { collectJianyingRichTextFontIds } from "./rich-text-fonts.js";
 import { collectJianyingRichTextEffectStyleIds } from "./rich-text-resources.js";
 

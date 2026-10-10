@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { listJianyingResourceDatabasePaths } from "../jianying-resource-database.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-resource-database.js";
 
 const temporaryDirectories: string[] = [];
 

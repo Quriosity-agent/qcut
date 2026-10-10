@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseJianyingEffectStylePackage } from "../jianying-text-effect-style-parser.js";
+import { parseJianyingEffectStylePackage } from "../jianying-text/jianying-text-effect-style-parser.js";
 
 const RESOURCE_ID = "7328648540438154511";
 const temporaryDirectories: string[] = [];

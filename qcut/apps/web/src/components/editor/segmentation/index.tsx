@@ -32,19 +32,19 @@ import { useMediaStore } from "@/stores/media/media-store";
 import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 
 // Export individual components
-export { ObjectList } from "./ObjectList";
-export { PromptToolbar } from "./PromptToolbar";
-export { SegmentationCanvas } from "./SegmentationCanvas";
-export { MaskOverlay } from "./MaskOverlay";
-export { ImageUploader } from "./ImageUploader";
-export { SegmentationControls } from "./SegmentationControls";
+export { ObjectList } from "./object-list";
+export { PromptToolbar } from "./prompt-toolbar";
+export { SegmentationCanvas } from "./segmentation-canvas";
+export { MaskOverlay } from "./mask-overlay";
+export { ImageUploader } from "./image-uploader";
+export { SegmentationControls } from "./segmentation-controls";
 
 // Import components for main panel
-import { ObjectList } from "./ObjectList";
-import { PromptToolbar } from "./PromptToolbar";
-import { SegmentationCanvas } from "./SegmentationCanvas";
-import { ImageUploader } from "./ImageUploader";
-import { LocalPersonCutoutPanel } from "./LocalPersonCutoutPanel";
+import { ObjectList } from "./object-list";
+import { PromptToolbar } from "./prompt-toolbar";
+import { SegmentationCanvas } from "./segmentation-canvas";
+import { ImageUploader } from "./image-uploader";
+import { LocalPersonCutoutPanel } from "./local-person-cutout-panel";
 
 type SegmentationTaskResult =
 	| {

@@ -13,12 +13,12 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
+import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
 import {
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
-} from "../beauty-lab-runtime-environment";
-import { installIndependentBeautyRuntime } from "../beauty-lab-runtime-install";
+} from "../beauty-lab/beauty-lab-runtime-environment";
+import { installIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-install";
 
 let root: string;
 let sourceRoot: string;

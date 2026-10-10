@@ -17,7 +17,7 @@ vi.mock("@tanstack/react-router", () => ({
 	),
 }));
 
-vi.mock("@/hooks/auth/useLogin", () => ({
+vi.mock("@/hooks/auth/use-login", () => ({
 	useLogin: () => ({
 		email: "",
 		setEmail: vi.fn(),

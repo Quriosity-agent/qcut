@@ -4,13 +4,13 @@ import path from "node:path";
 import type {
 	JianyingTextAnimationLabSummary,
 	JianyingTextStyleLabStyleSummary,
-} from "../../jianying-text-style-lab-contract.js";
+} from "../../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextAnimationReferences,
 	JianyingTextAnimationSlot,
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
-} from "../../jianying-text-runtime-contract.js";
+} from "../../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPreviewFilename } from "../../jianying-text-runtime/cache-path.js";
 import type {
 	CLIRunOptions,

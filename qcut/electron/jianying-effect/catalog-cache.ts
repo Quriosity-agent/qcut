@@ -5,7 +5,7 @@ import type {
 	JianyingEffectAdjustParameter,
 	JianyingEffectCategory,
 	JianyingEffectPanel,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 import type { CatalogItem } from "./catalog-parsing.js";
 
 const CACHE_SCHEMA_VERSION = 1;

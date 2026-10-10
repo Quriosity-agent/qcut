@@ -1,4 +1,4 @@
-import type { JianyingTextRuntimeAPI } from "../../../../../electron/jianying-text-runtime-contract";
+import type { JianyingTextRuntimeAPI } from "../../../../../electron/jianying-text-runtime/jianying-text-runtime-contract";
 
 export interface ElectronJianyingTextRuntimeOps {
 	jianyingTextRuntime?: JianyingTextRuntimeAPI;
@@ -19,4 +19,4 @@ export type {
 	JianyingTextRuntimeState,
 	JianyingTextRuntimeStatus,
 	JianyingTextRuntimeTransform,
-} from "../../../../../electron/jianying-text-runtime-contract";
+} from "../../../../../electron/jianying-text-runtime/jianying-text-runtime-contract";

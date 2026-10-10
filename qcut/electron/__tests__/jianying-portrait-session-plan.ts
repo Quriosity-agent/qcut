@@ -2,8 +2,8 @@ import type {
 	JianyingPortraitAdjustmentRenderRequest,
 	JianyingPortraitAdjustmentRenderResult,
 	MediaPortraitAdjustments,
-} from "../jianying-portrait-adjustment-contract";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics";
+} from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
+import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics";
 import { JIANYING_PORTRAIT_SKIN_TONES } from "../jianying-portrait-adjustment-runtime/skin-tone-catalog";
 
 export interface PortraitSessionProvider {

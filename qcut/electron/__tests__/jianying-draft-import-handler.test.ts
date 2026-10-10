@@ -12,7 +12,7 @@ import {
 	JIANYING_IMPORT_MEDIA_RELEASE_CHANNEL,
 	JIANYING_IMPORT_PLAN_CHANNEL,
 	type JianyingDraftImportResultDto,
-} from "../jianying-draft-import-contract.js";
+} from "../jianying-draft/jianying-draft-import-contract.js";
 
 const { mockHandle, mockRemoveHandler, mockShowOpenDialog } = vi.hoisted(
 	() => ({
@@ -32,7 +32,7 @@ vi.mock("electron", () => ({
 import {
 	setupJianyingDraftImportIPC,
 	type JianyingDraftImportIPCController,
-} from "../jianying-draft-import-handler.js";
+} from "../jianying-draft/jianying-draft-import-handler.js";
 
 /** JYI-012 acceptance (IPC side): trusted transport over the runtime. */
 

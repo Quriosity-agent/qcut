@@ -1,4 +1,4 @@
-import type { JianyingTextRuntimeContentBounds } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeContentBounds } from "./jianying-text-runtime-contract.js";
 import {
 	jianyingTextFitMargin,
 	nextJianyingTextFitValue,

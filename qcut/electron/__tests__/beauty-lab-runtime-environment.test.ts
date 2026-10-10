@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
-import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
+import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
 import {
 	independentBeautyEnvironment,
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
-} from "../beauty-lab-runtime-environment";
+} from "../beauty-lab/beauty-lab-runtime-environment";
 
 describe("independent runtime environment", () => {
 	it("keeps package pins aligned with the source-bound setup", async () => {

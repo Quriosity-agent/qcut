@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { materializeVideoCubeLut } from "../../electron/ffmpeg/color-lut-file.js";
 import { getFFmpegPath } from "../../electron/ffmpeg/paths.js";
-import { saveJianyingFilterVerification } from "../../electron/jianying-filter-verification-store.js";
+import { saveJianyingFilterVerification } from "../../electron/jianying-filter/jianying-filter-verification-store.js";
 import {
 	listJianyingLutReferences,
 	loadJianyingLut,

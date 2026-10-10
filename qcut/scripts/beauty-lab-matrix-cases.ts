@@ -3,7 +3,7 @@ import type {
 	MediaPortraitAdjustmentKey,
 	MediaPortraitAdjustments,
 	MediaPortraitMakeupCategory,
-} from "../electron/jianying-portrait-adjustment-contract";
+} from "../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 
 export interface BeautyMatrixCase {
 	id: string;

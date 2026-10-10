@@ -13,7 +13,7 @@ import {
 	faceSpecificity,
 	fixedGainDifference,
 } from "./jianying-portrait-acceptance-metrics";
-import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-contract";
+import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import {
 	minuteSeekHistory,
 	runMinuteSeekAcceptance,

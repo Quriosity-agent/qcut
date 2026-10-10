@@ -20,7 +20,7 @@ import type {
 	ExportEngineType,
 } from "@/lib/export/export-engine-factory";
 import { toast } from "sonner";
-import { useElectron } from "@/hooks/useElectron";
+import { useElectron } from "@/hooks/use-electron";
 import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 import { lockForExport, unlockFromExport } from "@/lib/media/blob-manager";
 import { saveExportedVideo } from "@/lib/export/export-output";

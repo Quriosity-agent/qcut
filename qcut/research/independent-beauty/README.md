@@ -40,7 +40,7 @@ The adapter checks input shape, parameter bounds, provider/request/source identi
 mkdir -p research/independent-beauty/output
 research/independent-beauty/research/.venv/bin/python -B -m unittest discover -s research/independent-beauty/research/tests -q
 bun test ./research/independent-beauty/src ./research/independent-beauty/web
-bunx vitest run electron/__tests__/beauty-lab-independent.test.ts electron/__tests__/beauty-lab-handler.test.ts apps/web/src/lib/portrait/__tests__/use-beauty-lab-independent.test.tsx apps/web/src/lib/portrait/__tests__/use-beauty-lab.test.tsx apps/web/src/lib/portrait/__tests__/use-beauty-lab-cancel.test.tsx apps/web/src/lib/portrait/__tests__/beauty-lab-export.test.ts apps/web/src/lib/portrait/__tests__/beauty-lab-catalog.test.ts apps/web/src/components/editor/properties-panel/__tests__/beauty-lab-results.test.tsx
+bunx vitest run electron/__tests__/beauty-lab-independent.test.ts electron/__tests__/beauty-lab-handler.test.ts apps/web/src/lib/portrait/__tests__/use-beauty-lab-independent.test.tsx apps/web/src/lib/portrait/__tests__/use-beauty-lab.test.tsx apps/web/src/lib/portrait/__tests__/use-beauty-lab-cancel.test.tsx apps/web/src/lib/portrait/__tests__/beauty-lab-export.test.ts apps/web/src/lib/portrait/__tests__/beauty-lab-catalog.test.ts apps/web/src/components/editor/properties-panel/beauty-lab/__tests__/beauty-lab-results.test.tsx
 bunx esbuild scripts/beauty-lab-photo-probe.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/electron-audits/beauty-lab-photo-probe.cjs
 node dist/electron-audits/beauty-lab-photo-probe.cjs <photo> <new-output-directory>
 ```

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { JianyingEffectCategory } from "../jianying-effect-contract.js";
+import type { JianyingEffectCategory } from "../jianying-effect/jianying-effect-contract.js";
 import type { CatalogItem } from "../jianying-effect/catalog-parsing.js";
 import {
 	mergeQCutEffectCatalog,

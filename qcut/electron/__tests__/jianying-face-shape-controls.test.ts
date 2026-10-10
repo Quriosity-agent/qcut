@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeMediaPortraitAdjustments } from "../../packages/editor-core/src/portrait-adjustments.js";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_ADJUSTMENT_CATALOG,

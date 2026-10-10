@@ -10,7 +10,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_PROVIDER,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab-candidate-contract";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab/beauty-lab-candidate-contract";
 import type { BeautyLabFrame } from "../beauty-lab-difference";
 import { exportBeautyLabComparison } from "../beauty-lab-export";
 

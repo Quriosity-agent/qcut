@@ -2,7 +2,7 @@ import type {
 	JianyingEffectAdjustParameter,
 	JianyingEffectCategory,
 	JianyingEffectPanel,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 
 /**
  * Pure catalog parsing, kept free of `node:sqlite` so it can be unit tested —

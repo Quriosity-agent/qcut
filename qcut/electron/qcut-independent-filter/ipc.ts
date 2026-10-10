@@ -1,7 +1,7 @@
 import { QCUT_FILTER_COMPARE } from "./comparison-contract.js";
 import { createFogComparison } from "./comparison.js";
 import { ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
-import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter-lab-request.js";
+import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter/jianying-filter-lab-request.js";
 import { validateIndependentFilterIdentity } from "./assets.js";
 import {
 	QCUT_FILTER_LOAD,

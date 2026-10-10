@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import {
 	decodeVfCube,
 	jianyingFilterCacheRoots,

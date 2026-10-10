@@ -36,7 +36,7 @@ const { jianyingModelDirectories, jianyingModelDirectory } = require(
 );
 const { getFFmpegPath } = require(path.join(DIST, "ffmpeg/paths.js"));
 const { listJianyingResourceDatabasePaths } = require(
-	path.join(DIST, "jianying-resource-database.js")
+	path.join(DIST, "jianying-shared", "jianying-resource-database.js")
 );
 
 const REF_ROOT = path.join(REPO, ".local/jianying-effect-references");

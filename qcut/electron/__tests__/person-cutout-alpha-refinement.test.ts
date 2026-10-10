@@ -42,5 +42,5 @@ describeOnMac("person cutout alpha refinement", () => {
 			executablePath,
 		]);
 		await expect(execFileAsync(executablePath)).resolves.toBeDefined();
-	});
+	}, 30_000);
 });

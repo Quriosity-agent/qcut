@@ -7,7 +7,7 @@ import type {
 	JianyingMotionTrackingRequest,
 	JianyingMotionTrackingResult,
 	JianyingMotionTrackingStatus,
-} from "../jianying-motion-tracking-contract.js";
+} from "./jianying-motion-tracking-contract.js";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
 import { resolveJianyingMotionTrackingBridge } from "./bridge-resolver.js";
 import { validateNativeTrackingResult } from "./native-result.js";

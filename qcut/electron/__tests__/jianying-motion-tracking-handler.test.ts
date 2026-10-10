@@ -7,7 +7,7 @@ import {
 	JIANYING_MOTION_TRACKING_PROGRESS_CHANNEL,
 	JIANYING_MOTION_TRACKING_TRACK_CHANNEL,
 	type JianyingMotionTrackingRequest,
-} from "../jianying-motion-tracking-contract.js";
+} from "../jianying-motion-tracking/jianying-motion-tracking-contract.js";
 
 const { inspectRuntime, mockHandle, mockRemoveHandler, trackRuntime } =
 	vi.hoisted(() => ({
@@ -26,7 +26,7 @@ vi.mock("../jianying-motion-tracking/runtime.js", () => ({
 	trackWithJianyingMotionRuntime: trackRuntime,
 }));
 
-import { setupJianyingMotionTrackingIPC } from "../jianying-motion-tracking-handler.js";
+import { setupJianyingMotionTrackingIPC } from "../jianying-motion-tracking/jianying-motion-tracking-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};

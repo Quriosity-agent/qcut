@@ -15,12 +15,12 @@ import {
 	buildJianyingFontCatalog,
 	type JianyingFontCatalog,
 	isValidJianyingFontId,
-} from "../jianying-font-lab-catalog.js";
-import type { JianyingTextRuntimeDiagnostic } from "../jianying-text-runtime-contract.js";
+} from "../jianying-font/jianying-font-lab-catalog.js";
+import type { JianyingTextRuntimeDiagnostic } from "./jianying-text-runtime-contract.js";
 import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,
-} from "../jianying-font-private-cache.js";
+} from "../jianying-font/jianying-font-private-cache.js";
 
 const FONT_CACHE_EXTENSIONS = ["otf", "ttf"] as const;
 const MAXIMUM_FONT_BYTES = 128 * 1024 * 1024;

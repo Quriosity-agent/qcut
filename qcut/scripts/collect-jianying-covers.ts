@@ -21,16 +21,16 @@ import {
 	planCoverCollectionBatches,
 	summarizeCoverCollection,
 	type CoverVerification,
-} from "../electron/jianying-cover-collection";
+} from "../electron/jianying-cover/jianying-cover-collection";
 import {
 	backupCoverCatalog,
 	cacheJianyingCovers,
 	coverCacheRoot,
 	readCoverCatalog,
 	verifyCoverCatalog,
-} from "../electron/jianying-cover-private-cache";
-import { preparePrivateCoverTextLayout } from "../electron/jianying-cover-prepare-layout";
-import { createCoverDependencyResolver } from "../electron/jianying-cover-dependency-recovery";
+} from "../electron/jianying-cover/jianying-cover-private-cache";
+import { preparePrivateCoverTextLayout } from "../electron/jianying-cover/jianying-cover-prepare-layout";
+import { createCoverDependencyResolver } from "../electron/jianying-cover/jianying-cover-dependency-recovery";
 
 const { values } = parseArgs({
 	options: {

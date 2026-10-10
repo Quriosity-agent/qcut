@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
-import type { MediaPortraitAdjustments } from "../electron/jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider.js";
 
 const { values: options } = parseArgs({

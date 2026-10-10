@@ -1,4 +1,4 @@
-import type { JianyingPortraitAdjustmentAPI } from "../../../../../electron/jianying-portrait-adjustment-contract";
+import type { JianyingPortraitAdjustmentAPI } from "../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import type {
 	MediaPortraitAdjustmentKey,
 	MediaPortraitAdjustments,
@@ -6,7 +6,7 @@ import type {
 import type {
 	MediaPortraitAdjustmentKey as ElectronPortraitAdjustmentKey,
 	MediaPortraitAdjustments as ElectronPortraitAdjustments,
-} from "../../../../../electron/jianying-portrait-adjustment-contract";
+} from "../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 
 export interface ElectronJianyingPortraitAdjustmentOps {
 	jianyingPortraitAdjustment?: JianyingPortraitAdjustmentAPI;
@@ -48,4 +48,4 @@ export type {
 	JianyingPortraitDetectedFace,
 	JianyingPortraitMakeupCardStatus,
 	MediaPortraitFaceAdjustments,
-} from "../../../../../electron/jianying-portrait-adjustment-contract";
+} from "../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";

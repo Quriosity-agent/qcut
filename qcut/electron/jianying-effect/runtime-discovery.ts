@@ -4,7 +4,7 @@ import type {
 	JianyingEffectDefinition,
 	JianyingEffectRuntimeState,
 	JianyingEffectRuntimeStatus,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 import { discoverJianyingEffectLibrary } from "./catalog.js";
 
 export interface JianyingEffectRuntimeInspection {

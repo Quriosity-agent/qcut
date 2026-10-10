@@ -13,14 +13,14 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
-import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
-import { createBeautyLabLiveCandidateBackend } from "../beauty-lab-live-candidate.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
+import { beautyLabCandidateIdentity } from "../beauty-lab/beauty-lab-candidate-request.js";
+import { createBeautyLabLiveCandidateBackend } from "../beauty-lab/beauty-lab-live-candidate.js";
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
-} from "../beauty-lab-live-selection.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+} from "../beauty-lab/beauty-lab-live-selection.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 import { JIANYING_PORTRAIT_PACKAGE_IDENTITIES } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	JOB_SCRIPT,
@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	makeup: vi.fn(),
 }));
-vi.mock("../beauty-lab-live-candidate-process.js", () => ({
+vi.mock("../beauty-lab/beauty-lab-live-candidate-process.js", () => ({
 	runBeautyLabLiveCandidateJob: mocks.run,
 }));
 vi.mock("../jianying-filter-local-runtime/private-runtime.js", () => ({

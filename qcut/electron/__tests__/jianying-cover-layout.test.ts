@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	parseCoverTextLayout,
 	describeCoverDependencies,
-} from "../jianying-cover-layout";
-import type { CoverCachedEntry } from "../jianying-cover-contract";
+} from "../jianying-cover/jianying-cover-layout";
+import type { CoverCachedEntry } from "../jianying-cover/jianying-cover-contract";
 import { coverLayoutFixture } from "./fixtures/cover-layout";
 
 describe("cover text layout graph", () => {

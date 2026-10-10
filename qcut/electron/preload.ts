@@ -3,7 +3,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "./beauty-lab-independent-contract.js";
+} from "./beauty-lab/beauty-lab-independent-contract.js";
 /**
  * Electron preload script that exposes a secure API to the renderer process.
  * Uses contextBridge to safely expose IPC methods without exposing the full Electron API.
@@ -22,7 +22,7 @@ import type { AudioSettings } from "./ffmpeg/audio-settings";
 import {
 	JIANYING_COVER_LIST_CHANNEL,
 	JIANYING_COVER_LAYOUT_CHANNEL,
-} from "./jianying-cover-contract";
+} from "./jianying-cover/jianying-cover-contract";
 import {
 	QCUT_FILTER_LOAD,
 	QCUT_FILTER_RENDER,
@@ -81,14 +81,14 @@ import {
 	CAPCUT_8_1_MIGRATION_COMMIT_CHANNEL,
 	CAPCUT_8_1_MIGRATION_INSTALL_CHANNEL,
 	CAPCUT_8_1_MIGRATION_PLAN_CHANNEL,
-} from "./jianying-draft-export-contract.js";
+} from "./jianying-draft/jianying-draft-export-contract.js";
 import {
 	JIANYING_EFFECT_COVER_CHANNEL,
 	JIANYING_EFFECT_DOWNLOAD_CHANNEL,
 	JIANYING_EFFECT_PREVIEW_CHANNEL,
 	JIANYING_EFFECT_RENDER_CHANNEL,
 	JIANYING_EFFECT_STATUS_CHANNEL,
-} from "./jianying-effect-contract.js";
+} from "./jianying-effect/jianying-effect-contract.js";
 import {
 	JIANYING_TRANSITION_INSPECT_CHANNEL,
 	JIANYING_TRANSITION_PREVIEW_CHANNEL,
@@ -96,7 +96,7 @@ import {
 	JIANYING_TRANSITION_RENDER_CHANNEL,
 	JIANYING_TRANSITION_RENDER_TIMELINE_CHANNEL,
 	JIANYING_TRANSITION_TIMELINE_PREVIEW_CHANNEL,
-} from "./jianying-transition-contract.js";
+} from "./jianying-transition/jianying-transition-contract.js";
 import {
 	JIANYING_FILTER_LAB_BACKUP_LOCAL_RUNTIME_CHANNEL,
 	JIANYING_FILTER_LAB_CHANGED_CHANNEL,
@@ -108,55 +108,55 @@ import {
 	JIANYING_FILTER_LAB_RENDER_LOCAL_PORTRAIT_CHANNEL,
 	JIANYING_FILTER_LAB_THUMBNAIL_CHANNEL,
 	JIANYING_FILTER_LAB_DOWNLOAD_CHANNEL,
-} from "./jianying-filter-lab-contract.js";
+} from "./jianying-filter/jianying-filter-lab-contract.js";
 import {
 	JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL,
-} from "./jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "./beauty-lab-contract.js";
+} from "./beauty-lab/beauty-lab-contract.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
-} from "./beauty-lab-candidate-contract.js";
+} from "./beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	JIANYING_PERSON_CUTOUT_INSPECT_CHANNEL,
 	JIANYING_PERSON_CUTOUT_CANCEL_CHANNEL,
 	JIANYING_PERSON_CUTOUT_PROGRESS_CHANNEL,
 	JIANYING_PERSON_CUTOUT_RELEASE_CHANNEL,
 	JIANYING_PERSON_CUTOUT_RENDER_CHANNEL,
-} from "./jianying-person-cutout-contract.js";
+} from "./jianying-person-cutout/jianying-person-cutout-contract.js";
 import {
 	JIANYING_MOTION_TRACKING_CANCEL_CHANNEL,
 	JIANYING_MOTION_TRACKING_INSPECT_CHANNEL,
 	JIANYING_MOTION_TRACKING_PROGRESS_CHANNEL,
 	JIANYING_MOTION_TRACKING_TRACK_CHANNEL,
-} from "./jianying-motion-tracking-contract.js";
+} from "./jianying-motion-tracking/jianying-motion-tracking-contract.js";
 import {
 	JIANYING_BASIC_VIDEO_CANCEL_CHANNEL,
 	JIANYING_BASIC_VIDEO_DEFLICKER_CHANNEL,
 	JIANYING_BASIC_VIDEO_INSPECT_CHANNEL,
 	JIANYING_BASIC_VIDEO_PROGRESS_CHANNEL,
-} from "./jianying-basic-video-contract.js";
+} from "./jianying-basic-video-runtime/jianying-basic-video-contract.js";
 import {
 	JIANYING_FONT_LAB_INSPECT_CHANNEL,
 	JIANYING_FONT_LAB_LIST_CHANNEL,
 	JIANYING_FONT_LAB_LOAD_CHANNEL,
-} from "./jianying-font-lab-contract.js";
+} from "./jianying-font/jianying-font-lab-contract.js";
 import {
 	JIANYING_TEXT_ANIMATION_LAB_LIST_CHANNEL,
 	JIANYING_TEXT_STYLE_LAB_COVER_CHANNEL,
 	JIANYING_TEXT_STYLE_LAB_LIST_CHANNEL,
-} from "./jianying-text-style-lab-contract.js";
+} from "./jianying-text/jianying-text-style-lab-contract.js";
 import {
 	JIANYING_TEXT_RUNTIME_CANCEL_CHANNEL,
 	JIANYING_TEXT_RUNTIME_INSPECT_CHANNEL,
 	JIANYING_TEXT_RUNTIME_RENDER_CHANNEL,
-} from "./jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	ENVELOPE_DELETE_CHANNEL,
 	ENVELOPE_PURGE_CHANNEL,
@@ -164,7 +164,7 @@ import {
 	ENVELOPE_ROTATE_CHANNEL,
 	ENVELOPE_STATUS_CHANNEL,
 	ENVELOPE_STORE_CHANNEL,
-} from "./jianying-envelope-key-contract.js";
+} from "./jianying-draft/jianying-envelope-key-contract.js";
 import {
 	JIANYING_IMPORT_CHOOSE_DIRECTORY_CHANNEL,
 	JIANYING_IMPORT_COMMIT_CHANNEL,
@@ -175,16 +175,16 @@ import {
 	JIANYING_IMPORT_MEDIA_CHUNK_CHANNEL,
 	JIANYING_IMPORT_MEDIA_RELEASE_CHANNEL,
 	JIANYING_IMPORT_PLAN_CHANNEL,
-} from "./jianying-draft-import-contract.js";
+} from "./jianying-draft/jianying-draft-import-contract.js";
 import {
 	CAPCUT_8_1_WRITEBACK_CHOOSE_DIRECTORY_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_COMMIT_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_RECOVER_CHANNEL,
-} from "./jianying-same-profile-writeback-contract.js";
+} from "./jianying-draft/jianying-same-profile-writeback-contract.js";
 import {
 	JIANYING_11_3_PROJECT_EXPORT_CHOOSE_CHANNEL,
 	JIANYING_11_3_PROJECT_EXPORT_COMMIT_CHANNEL,
-} from "./jianying-project-export-contract.js";
+} from "./jianying-draft/jianying-project-export-contract.js";
 import {
 	QCUT_AUDIO_RUNTIME_CACHE_STATS_CHANNEL,
 	QCUT_AUDIO_RUNTIME_CANCEL_CHANNEL,

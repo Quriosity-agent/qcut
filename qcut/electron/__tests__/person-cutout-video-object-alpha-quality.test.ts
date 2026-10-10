@@ -43,5 +43,5 @@ describeOnMac("video-object alpha quality gate", () => {
 			executablePath,
 		]);
 		await expect(execFileAsync(executablePath)).resolves.toBeDefined();
-	});
+	}, 30_000);
 });

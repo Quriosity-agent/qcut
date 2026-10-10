@@ -6,7 +6,7 @@ import {
 	type BeautyLabVideoSettleResult,
 	type BeautyLabVideoSubmitResult,
 	type BeautyLabVideoTicket,
-} from "../beauty-lab-video-session.js";
+} from "../beauty-lab/beauty-lab-video-session.js";
 
 const FPS = 30;
 

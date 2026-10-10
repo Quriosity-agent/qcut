@@ -1,4 +1,4 @@
-import type { JianyingEffectAPI } from "../../../../../electron/jianying-effect-contract";
+import type { JianyingEffectAPI } from "../../../../../electron/jianying-effect/jianying-effect-contract";
 
 export interface ElectronJianyingEffectOps {
 	jianyingEffects?: JianyingEffectAPI;
@@ -22,4 +22,4 @@ export type {
 	JianyingEffectRenderResult,
 	JianyingEffectRuntimeState,
 	JianyingEffectRuntimeStatus,
-} from "../../../../../electron/jianying-effect-contract";
+} from "../../../../../electron/jianying-effect/jianying-effect-contract";

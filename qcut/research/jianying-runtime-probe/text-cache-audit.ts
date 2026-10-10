@@ -2,19 +2,19 @@ import {
 	getDefaultJianyingFlowerDatabaseRoot,
 	resolveJianyingFlowerResourceMetadata,
 	type JianyingFlowerResourceMetadata,
-} from "../../electron/jianying-flower-resource-metadata.js";
+} from "../../electron/jianying-text/jianying-flower-resource-metadata.js";
 import {
 	resolveJianyingTextPackageOwnership,
 	type JianyingTextPackageOwnership,
 	type JianyingTextPackageOwnershipKind,
 	type JianyingTextPackageOwnershipMatch,
-} from "../../electron/jianying-text-package-ownership.js";
-import { isDiscoverableJianyingTextCatalogEntry } from "../../electron/jianying-text-style-discovery.js";
+} from "../../electron/jianying-text/jianying-text-package-ownership.js";
+import { isDiscoverableJianyingTextCatalogEntry } from "../../electron/jianying-text/jianying-text-style-discovery.js";
 import {
 	buildJianyingTextStyleCatalog,
 	type JianyingTextStyleCatalog,
-} from "../../electron/jianying-text-style-lab-catalog.js";
-import type { JianyingTextStylePackageKind } from "../../electron/jianying-text-style-lab-contract.js";
+} from "../../electron/jianying-text/jianying-text-style-lab-catalog.js";
+import type { JianyingTextStylePackageKind } from "../../electron/jianying-text/jianying-text-style-lab-contract.js";
 
 const PACKAGE_KINDS = [
 	"TextStyle",

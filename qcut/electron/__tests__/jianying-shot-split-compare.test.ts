@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JianyingShotSplitResult } from "../jianying-shot-split-contract.js";
+import type { JianyingShotSplitResult } from "../jianying-shot-split/jianying-shot-split-contract.js";
 import { compareShotSplitResults } from "../jianying-shot-split/compare.js";
 
 function result(

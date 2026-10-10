@@ -8,7 +8,7 @@ import {
 	getDefaultJianyingFontSearchRoots,
 	readVerifiedJianyingFontBytes,
 	summarizeJianyingFontCatalog,
-} from "../jianying-font-lab-catalog.js";
+} from "../jianying-font/jianying-font-lab-catalog.js";
 
 const temporaryDirectories: string[] = [];
 

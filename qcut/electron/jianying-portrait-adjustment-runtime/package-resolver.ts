@@ -6,7 +6,7 @@ import type {
 	JianyingPortraitAdjustmentGroup,
 	JianyingPortraitAdjustmentRuntimePackage,
 	MediaPortraitSkinToneResourceId,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import { jianyingFilterPrivateRuntimeCurrent } from "../jianying-filter-local-runtime/private-runtime.js";
 import {
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,

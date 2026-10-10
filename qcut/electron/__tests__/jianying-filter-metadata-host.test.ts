@@ -6,13 +6,13 @@ import {
 	runJianyingFilterMetadataScan,
 	runScanWithFallback,
 	type JianyingFilterMetadataChild,
-} from "../jianying-filter-metadata-host";
+} from "../jianying-filter/jianying-filter-metadata-host";
 import {
 	deserializeJianyingFilterMetadataScan,
 	serializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataChildMessage,
-} from "../jianying-filter-metadata-transfer";
-import type { JianyingFilterMetadataScan } from "../jianying-filter-metadata";
+} from "../jianying-filter/jianying-filter-metadata-transfer";
+import type { JianyingFilterMetadataScan } from "../jianying-filter/jianying-filter-metadata";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut";
 
 function createReference({ resourceId }: { resourceId: string }) {

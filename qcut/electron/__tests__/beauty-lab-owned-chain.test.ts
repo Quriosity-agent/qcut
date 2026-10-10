@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabOwnedChainProvider } from "../beauty-lab-owned-chain.js";
+import { createBeautyLabOwnedChainProvider } from "../beauty-lab/beauty-lab-owned-chain.js";
 import {
 	OWNED_CHAIN_PACKAGE_FORMAT,
 	OWNED_CHAIN_REPORT_FILES,
@@ -13,10 +13,14 @@ import {
 	OWNED_CHAIN_ORIGINAL_FORMAT,
 	OWNED_CHAIN_ORIGINAL_SOURCES,
 	OWNED_CHAIN_LEGACY_PROBE_SHA256,
-} from "../beauty-lab-owned-chain-evidence.js";
-import { verifyOwnedChainReports } from "../beauty-lab-owned-chain-verify.js";
+} from "../beauty-lab/beauty-lab-owned-chain-evidence.js";
+import { verifyOwnedChainReports } from "../beauty-lab/beauty-lab-owned-chain-verify.js";
 import { buildJianyingPortraitFeatureParameters } from "../jianying-portrait-adjustment-runtime/catalog.js";
-import { WIDTH, HEIGHT, RGBA_BYTES } from "../beauty-lab-research-files.js";
+import {
+	WIDTH,
+	HEIGHT,
+	RGBA_BYTES,
+} from "../beauty-lab/beauty-lab-research-files.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs/promises")>();

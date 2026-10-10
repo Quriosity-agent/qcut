@@ -1,12 +1,12 @@
 import { dirname } from "node:path";
-import type { JianyingFilterCatalogCard } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import { resolveJianyingFilterSwingCompatibility } from "../../jianying-filter-swing-runtime/compatibility.js";
 import {
 	buildJianyingFilterLabCatalog,
 	tiledReferencesFromPackages,
-} from "../../jianying-filter-lab-catalog.js";
-import { inspectJianyingFilterPackages } from "../../jianying-filter-package-inspector.js";
-import { loadJianyingFilterLabRenderer } from "../../jianying-filter-multi-pass-loader.js";
+} from "../../jianying-filter/jianying-filter-lab-catalog.js";
+import { inspectJianyingFilterPackages } from "../../jianying-filter/jianying-filter-package-inspector.js";
+import { loadJianyingFilterLabRenderer } from "../../jianying-filter/jianying-filter-multi-pass-loader.js";
 import {
 	inspectJianyingFilterLocalRuntime,
 	type JianyingFilterLocalRuntimeInspection,

@@ -6,7 +6,7 @@ import type {
 	JianyingFilterLabFaceObservation,
 	JianyingFilterLabRenderLocalEffectResult,
 	JianyingFilterLabRenderLocalPortraitResult,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 import {
 	startJianyingFilterHostProcess,
 	type JianyingFilterHostProcess,

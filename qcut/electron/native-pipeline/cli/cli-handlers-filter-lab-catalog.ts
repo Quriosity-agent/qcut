@@ -16,7 +16,7 @@
 import type {
 	JianyingFilterCatalogCard,
 	JianyingFilterCatalogExport,
-} from "../../jianying-filter-catalog-export.js";
+} from "../../jianying-filter/jianying-filter-catalog-export.js";
 import {
 	strataKeyFor,
 	stratifiedSample,
@@ -79,6 +79,7 @@ async function exportCatalogViaBunChild(): Promise<JianyingFilterCatalogExport> 
 			__dirname,
 			"..",
 			"..",
+			"jianying-filter",
 			"jianying-filter-catalog-export.js"
 		),
 	};
@@ -105,10 +106,10 @@ async function exportCatalogViaBunChild(): Promise<JianyingFilterCatalogExport> 
  */
 export async function exportCatalogDefault(): Promise<JianyingFilterCatalogExport> {
 	try {
-		const specifier = "../../jianying-filter-catalog-export.js";
+		const specifier = "../../jianying-filter/jianying-filter-catalog-export.js";
 		const exporter = (await import(
 			specifier
-		)) as typeof import("../../jianying-filter-catalog-export.js");
+		)) as typeof import("../../jianying-filter/jianying-filter-catalog-export.js");
 		return await exporter.exportJianyingFilterCatalog();
 	} catch (error) {
 		// In-process import only fails under bun (no node:sqlite there).

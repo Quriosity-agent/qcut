@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
-import type { MediaPortraitAdjustmentKey } from "../electron/jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustmentKey } from "../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider.js";
 import { resolveJianyingPortraitPackages } from "../electron/jianying-portrait-adjustment-runtime/package-resolver.js";
 

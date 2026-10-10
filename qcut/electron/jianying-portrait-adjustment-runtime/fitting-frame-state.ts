@@ -1,5 +1,5 @@
 import { isPortraitTrackingDiscontinuity } from "./tracking-session.js";
-import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "./jianying-portrait-adjustment-contract.js";
 import { isJianying3DNosePackage } from "./nose-models.js";
 
 export function portraitPackageNeedsStableFrame({

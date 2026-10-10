@@ -8,11 +8,11 @@ import {
 	type JianyingFontLabInspectResult,
 	type JianyingFontLabListResult,
 	type JianyingFontLabLoadResult,
-} from "../jianying-font-lab-contract.js";
+} from "../jianying-font/jianying-font-lab-contract.js";
 import type {
 	JianyingFontCatalog,
 	JianyingFontCatalogEntry,
-} from "../jianying-font-lab-catalog.js";
+} from "../jianying-font/jianying-font-lab-catalog.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock("electron", () => ({
 	ipcMain: { handle: mockHandle, removeHandler: mockRemoveHandler },
 }));
 
-import { setupJianyingFontLabIPC } from "../jianying-font-lab-handler.js";
+import { setupJianyingFontLabIPC } from "../jianying-font/jianying-font-lab-handler.js";
 
 const FONT_ID = `sha256:${"a".repeat(64)}`;
 

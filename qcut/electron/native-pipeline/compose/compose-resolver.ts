@@ -4,7 +4,7 @@ import { createReadStream } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { promisify } from "node:util";
-import type { JianyingFilterCatalogExport } from "../../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogExport } from "../../jianying-filter/jianying-filter-catalog-export.js";
 import { getFFprobePath } from "../../ffmpeg/paths.js";
 import { exportCatalogDefault } from "../cli/cli-handlers-filter-lab-catalog.js";
 import { resolveFilterLabRenderPlan } from "../filters/filter-lab-render-plan.js";

@@ -6,7 +6,7 @@ import type {
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
 	JianyingTextRuntimeRenderStrategy,
-} from "../../electron/jianying-text-runtime-contract";
+} from "../../electron/jianying-text-runtime/jianying-text-runtime-contract";
 import { readVideoMetadata, runCommand } from "./transition-parity-media";
 import { buildTextCompositeCommand } from "./text-parity-composite";
 import type {

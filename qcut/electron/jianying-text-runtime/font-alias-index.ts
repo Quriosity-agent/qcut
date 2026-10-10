@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 
 const INDEX_TTL_MS = 60_000;

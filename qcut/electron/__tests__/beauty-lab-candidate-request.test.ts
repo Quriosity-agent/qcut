@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	type BeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-request.js";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-request.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request.js";
 
 function makeRequest({

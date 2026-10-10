@@ -7,7 +7,7 @@ import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../jianying-portrait-adjustment-
 import { resolveJianyingPortraitMakeupCovers } from "../jianying-portrait-adjustment-runtime/makeup-covers.js";
 
 const metadata = vi.hoisted(() => ({ resolve: vi.fn() }));
-vi.mock("../jianying-text-style-cover-metadata.js", () => ({
+vi.mock("../jianying-text/jianying-text-style-cover-metadata.js", () => ({
 	resolveJianyingResourceCoverUrls: metadata.resolve,
 }));
 

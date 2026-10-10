@@ -2,12 +2,12 @@ import { createHash } from "node:crypto";
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
-import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text-effect-capabilities.js";
-import type { JianyingTextEffectCapabilities } from "../jianying-text-runtime-contract.js";
+import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
+import type { JianyingTextEffectCapabilities } from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 
 const MAXIMUM_PACKAGE_ENTRIES = 8192;
 const MAXIMUM_SIGNAL_FILE_BYTES = 512 * 1024;

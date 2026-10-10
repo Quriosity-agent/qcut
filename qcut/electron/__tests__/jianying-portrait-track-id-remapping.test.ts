@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	matchPortraitTrackIds,
 	matchPortraitTrackIdsDetailed,

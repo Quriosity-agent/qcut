@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { readPrivateCoverFont } from "../jianying-cover-font";
+import { readPrivateCoverFont } from "../jianying-cover/jianying-cover-font";
 
-vi.mock("../jianying-font-lab-catalog", () => ({
+vi.mock("../jianying-font/jianying-font-lab-catalog", () => ({
 	readFontkitMetadata: () => ({
 		familyName: "Fixture",
 		fullName: "Fixture",
@@ -25,7 +25,7 @@ vi.mock("../jianying-font-lab-catalog", () => ({
 		missing: text === "ok" ? [] : ["测"],
 	}),
 }));
-vi.mock("../jianying-font-browser-compatibility", () => ({
+vi.mock("../jianying-font/jianying-font-browser-compatibility", () => ({
 	makeJianyingFontBrowserCompatible: ({ bytes }: { bytes: Buffer }) => bytes,
 }));
 

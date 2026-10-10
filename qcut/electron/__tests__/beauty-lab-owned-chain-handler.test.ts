@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
 	BEAUTY_LAB_LOAD_CHANNEL,
-} from "../beauty-lab-contract.js";
+} from "../beauty-lab/beauty-lab-contract.js";
 import {
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 
 const { registrations, ownedFactory, ownedList, ownedLoad } = vi.hoisted(
 	() => ({
@@ -30,10 +30,10 @@ vi.mock("electron", () => ({
 		) => registrations.set(channel, listener),
 	},
 }));
-vi.mock("../beauty-lab-owned-chain.js", () => ({
+vi.mock("../beauty-lab/beauty-lab-owned-chain.js", () => ({
 	createBeautyLabOwnedChainProvider: ownedFactory,
 }));
-import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
+import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";
 
 function context() {
 	const mainFrame = {};

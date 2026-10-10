@@ -10,7 +10,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { JianyingShotSplitSampling } from "../jianying-shot-split-contract.js";
+import type { JianyingShotSplitSampling } from "./jianying-shot-split-contract.js";
 import { parseShotSplitProgressLine } from "./bridge-output.js";
 import { buildShotSplitDecodeArguments, fpsText } from "./video-input.js";
 

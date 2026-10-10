@@ -8,7 +8,7 @@ import {
 	WIDTH,
 	HEIGHT,
 	RGBA_BYTES,
-} from "../beauty-lab-research-files.js";
+} from "../beauty-lab/beauty-lab-research-files.js";
 
 const input = Buffer.alloc(RGBA_BYTES, 11);
 input[0] = 255;

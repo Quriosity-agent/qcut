@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type {
 	JianyingTextAnimationSlot,
 	JianyingTextRuntimeReference,
-} from "../jianying-text-runtime-contract.js";
+} from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPackage } from "../jianying-text-runtime/package-resolver.js";
 import { renderJianyingText } from "../jianying-text-runtime/render.js";
 import { inspectJianyingTextRuntime } from "../jianying-text-runtime/runtime-discovery.js";

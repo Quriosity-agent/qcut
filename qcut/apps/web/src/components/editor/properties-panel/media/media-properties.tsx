@@ -1,0 +1,1501 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+	FlipHorizontal2,
+	FlipVertical2,
+	Link2,
+	RotateCcw,
+	Unlink2,
+} from "lucide-react";
+import type {
+	MediaElement,
+	MediaEnhancements,
+	MediaKeyframeProperty,
+	MediaMask,
+	MediaMaskTrackingDirection,
+	MediaPropertyKeyframe,
+} from "@/types/timeline";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { useProjectStore } from "@/stores/project-store";
+import { useMediaStore } from "@/stores/media/media-store";
+import { useSegmentationStore } from "@/stores/ai/segmentation-store";
+import { useMediaPanelStore } from "@/components/editor/media-panel/store";
+import { createObjectURL } from "@/lib/media/blob-manager";
+import { requestSelectedVideoUpscale } from "@/lib/ai-video/selected-upscale-source";
+import { useTranslation } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/translations";
+import type { JianyingMotionTrackingStatus } from "@/types/electron/api-jianying-motion-tracking";
+import { generateUUID } from "@/lib/utils";
+import { useMediaKeyframeShortcuts } from "@/hooks/keyboard/use-media-keyframe-shortcuts";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { EasingType, Keyframe } from "@/lib/remotion/keyframe-converter";
+import {
+	DEFAULT_MEDIA_CHROMA_KEY,
+	DEFAULT_MEDIA_CROP,
+	DEFAULT_MEDIA_ENHANCEMENTS,
+	DEFAULT_MEDIA_MASK,
+	DEFAULT_MEDIA_PERSPECTIVE,
+	DEFAULT_MEDIA_PORTRAIT_ADJUSTMENTS,
+	MEDIA_KEYFRAME_PROPERTIES,
+	getMediaKeyframeValue,
+	getMediaPropertyValue,
+	resolveMediaVisualProperties,
+	upsertMediaKeyframe,
+} from "@/lib/video/video-properties";
+import { getMediaTimelineDuration } from "@/lib/video/video-timing";
+import { runJianyingMotionTracking } from "@/lib/video/jianying-motion-tracking-controller";
+import { exportJianyingPrivateDeflicker } from "@/lib/video/jianying-private-deflicker-client";
+import { DEFAULT_MEDIA_CUSTOM_CUTOUT } from "@/lib/video/media-custom-cutout";
+import {
+	PropertyGroup,
+	PropertyItem,
+	PropertyItemLabel,
+	PropertyItemValue,
+} from "../property-item";
+import { KeyframeEditor } from "../keyframe-editor";
+import { MediaMaskProperties } from "./media-mask-properties";
+import { MediaAutomaticCutoutProperties } from "./media-automatic-cutout-properties";
+import { MediaChromaKeyProperties } from "./media-chroma-key-properties";
+import { MediaCustomCutoutProperties } from "./media-custom-cutout-properties";
+import {
+	AudioPropertiesPanel,
+	defaultAudioUpdates,
+} from "../audio/audio-properties-panel";
+import { MediaSpeedProperties } from "./media-speed-properties";
+import {
+	ColorPropertiesPanel,
+	defaultColorUpdates,
+} from "../color/color-properties-panel";
+import { MediaTrackingProperties } from "./media-tracking-properties";
+import { MediaAIProperties } from "./media-ai-properties";
+import { MediaLabProperties } from "./media-lab-properties";
+import { MediaPortraitProperties } from "./media-portrait-properties";
+import {
+	planExperimentalCameraTracking,
+	planExperimentalSmartCrop,
+	planExperimentalSmartMotion,
+} from "@/lib/video/media-lab-smart-tools";
+import {
+	CLIP_ANIMATION_OPTIONS,
+	IconButton,
+	NumberControl,
+} from "../visual-property-controls";
+import { MediaAlignmentToolbar } from "./media-alignment-toolbar";
+import { MediaKeyframeNav } from "./media-keyframe-nav";
+import { MediaWarpSection } from "./media-warp-section";
+import {
+	DenoiseSection,
+	QuickEnhanceSection,
+	StabilizationSection,
+	SuperResolutionSection,
+} from "./media-enhancement-sections";
+
+type MediaUpdates = Parameters<
+	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]
+>[2];
+
+const BLEND_MODE_OPTIONS = [
+	["normal", "mediaProperties.blend.normal"],
+	["multiply", "mediaProperties.blend.multiply"],
+	["screen", "mediaProperties.blend.screen"],
+	["overlay", "mediaProperties.blend.overlay"],
+	["darken", "mediaProperties.blend.darken"],
+	["lighten", "mediaProperties.blend.lighten"],
+] as const satisfies ReadonlyArray<readonly [string, TranslationKey]>;
+
+const FIT_MODE_OPTIONS = [
+	["cover", "mediaProperties.fit.cover"],
+	["contain", "mediaProperties.fit.contain"],
+	["fill", "mediaProperties.fit.fill"],
+] as const satisfies ReadonlyArray<readonly [string, TranslationKey]>;
+
+const CROP_SIDE_LABELS = {
+	top: "mediaProperties.crop.top",
+	right: "mediaProperties.crop.right",
+	bottom: "mediaProperties.crop.bottom",
+	left: "mediaProperties.crop.left",
+} as const satisfies Record<string, TranslationKey>;
+
+const CROP_KEYFRAME_PROPERTY = {
+	top: "cropTop",
+	right: "cropRight",
+	bottom: "cropBottom",
+	left: "cropLeft",
+} as const satisfies Record<string, MediaKeyframeProperty>;
+
+const VISUAL_PROPERTY_TABS = ["basic", "cutout", "mask", "portrait"] as const;
+type VisualPropertyTab = (typeof VISUAL_PROPERTY_TABS)[number];
+type MediaPropertiesTab =
+	| VisualPropertyTab
+	| "audio"
+	| "speed"
+	| "animation"
+	| "tracking"
+	| "adjustments"
+	| "ai";
+
+function requestedPropertiesTab({ tab }: { tab: string }): MediaPropertiesTab {
+	if (tab === "crop" || tab === "perspective") return "basic";
+	if (tab === "advanced") return "mask";
+	if (tab === "beauty") return "portrait";
+	if (
+		[
+			...VISUAL_PROPERTY_TABS,
+			"audio",
+			"speed",
+			"animation",
+			"tracking",
+			"adjustments",
+			"ai",
+		].includes(tab as MediaPropertiesTab)
+	) {
+		return tab as MediaPropertiesTab;
+	}
+	return "basic";
+}
+
+export function MediaProperties({
+	element,
+	trackId,
+}: {
+	element: MediaElement;
+	trackId: string;
+}) {
+	const { t } = useTranslation();
+	const updateMediaElement = useTimelineStore(
+		(state) => state.updateMediaElement
+	);
+	const replaceElementMedia = useTimelineStore(
+		(state) => state.replaceElementMedia
+	);
+	const pushHistory = useTimelineStore((state) => state.pushHistory);
+	const canvasSize = useEditorStore((state) => state.canvasSize);
+	const currentTime = usePlaybackStore((state) => state.currentTime);
+	const seek = usePlaybackStore((state) => state.seek);
+	const fps = useProjectStore((state) => state.activeProject?.fps ?? 30);
+	const mediaItem = useMediaStore((state) =>
+		state.mediaItems.find((item) => item.id === element.mediaId)
+	);
+	const setActiveMediaTab = useMediaPanelStore((state) => state.setActiveTab);
+	const setSegmentationMode = useSegmentationStore((state) => state.setMode);
+	const setSegmentationSource = useSegmentationStore(
+		(state) => state.setSourceVideo
+	);
+	const setSegmentationPrompt = useSegmentationStore(
+		(state) => state.setTextPrompt
+	);
+	const setSegmentationBackend = useSegmentationStore(
+		(state) => state.setVideoBackend
+	);
+	const setMaskTrackingRequest = useSegmentationStore(
+		(state) => state.setTrackingRequest
+	);
+	const [keyframeProperty, setKeyframeProperty] =
+		useState<MediaKeyframeProperty>("x");
+	const [activePropertiesTab, setActivePropertiesTab] =
+		useState<MediaPropertiesTab>("basic");
+	const [cropExpanded, setCropExpanded] = useState(false);
+	const [keyframesExpanded, setKeyframesExpanded] = useState(false);
+	const [motionTrackingStatus, setMotionTrackingStatus] =
+		useState<JianyingMotionTrackingStatus | null>(null);
+	const [motionTrackingStatusLoading, setMotionTrackingStatusLoading] =
+		useState(false);
+	const [privateDeflickerBusy, setPrivateDeflickerBusy] = useState(false);
+	const [privateDeflickerStatus, setPrivateDeflickerStatus] = useState("");
+	const motionTrackingApi = window.electronAPI?.jianyingMotionTracking;
+	const interactionActive = useRef(false);
+	const panelRef = useRef<HTMLDivElement>(null);
+	// The panel edits stored values even while a section is switched off;
+	// renderers resolve the same element with the toggles applied.
+	const visual = resolveMediaVisualProperties(element, {
+		applySectionToggles: false,
+	});
+	const timelineDuration = getMediaTimelineDuration(element, fps);
+	const localTrackingMask = visual.masks.find((mask) => {
+		const source = mask.tracking?.source;
+		return (
+			(source === "mediapipe" || source === "optical-flow") &&
+			mask.tracking?.status === "ready" &&
+			(mask.keyframes?.centerX?.length ?? 0) > 0 &&
+			(mask.keyframes?.centerY?.length ?? 0) > 0
+		);
+	});
+	const refreshMotionTrackingStatus = useCallback(async () => {
+		if (!motionTrackingApi) {
+			setMotionTrackingStatus(null);
+			setMotionTrackingStatusLoading(false);
+			return;
+		}
+		setMotionTrackingStatusLoading(true);
+		try {
+			setMotionTrackingStatus(await motionTrackingApi.inspect());
+		} catch (error) {
+			setMotionTrackingStatus({
+				available: false,
+				localOnly: true,
+				message:
+					error instanceof Error ? error.message : "无法检查本机运动跟踪运行时",
+				offlineReady: false,
+				platformSupported: false,
+				route: "jianying-bingo-object-tracking-11.3.0",
+			});
+		} finally {
+			setMotionTrackingStatusLoading(false);
+		}
+	}, [motionTrackingApi]);
+
+	useEffect(() => {
+		const handleOpenPropertiesTab = (event: Event) => {
+			const detail = (event as CustomEvent).detail as
+				| {
+						elementId?: string;
+						tab?: string;
+						scrollTo?: string;
+				  }
+				| undefined;
+			if (detail?.elementId !== element.id || !detail.tab) return;
+			setActivePropertiesTab(requestedPropertiesTab({ tab: detail.tab }));
+			if (detail.scrollTo === "crop") {
+				setCropExpanded(true);
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						panelRef.current
+							?.querySelector('[data-testid="media-crop-controls"]')
+							?.scrollIntoView({ block: "center", behavior: "smooth" });
+					});
+				});
+			}
+			if (detail.scrollTo === "lut") {
+				requestAnimationFrame(() => {
+					document
+						.querySelector('[data-testid="color-module-lut"]')
+						?.scrollIntoView({ block: "center", behavior: "smooth" });
+				});
+			}
+		};
+		window.addEventListener(
+			"qcut:open-media-properties-tab",
+			handleOpenPropertiesTab
+		);
+		return () =>
+			window.removeEventListener(
+				"qcut:open-media-properties-tab",
+				handleOpenPropertiesTab
+			);
+	}, [element.id]);
+
+	useEffect(() => {
+		if (!activePropertiesTab || !element.id) return;
+		panelRef.current
+			?.closest<HTMLElement>("[data-radix-scroll-area-viewport]")
+			?.scrollTo({ top: 0, behavior: "auto" });
+	}, [activePropertiesTab, element.id]);
+
+	useEffect(() => {
+		if (activePropertiesTab !== "tracking") return;
+		void refreshMotionTrackingStatus();
+	}, [activePropertiesTab, refreshMotionTrackingStatus]);
+
+	const update = (updates: MediaUpdates, history = true) =>
+		updateMediaElement(trackId, element.id, updates, history);
+	const beginInteraction = () => {
+		if (interactionActive.current) return;
+		interactionActive.current = true;
+		pushHistory();
+	};
+	const endInteraction = () => {
+		interactionActive.current = false;
+	};
+	const updateLive = (updates: MediaUpdates) => update(updates, false);
+	const keyframesFor = ({ property }: { property: MediaKeyframeProperty }) =>
+		element.keyframes?.[property] ?? [];
+	const currentPropertyValue = ({
+		property,
+	}: {
+		property: MediaKeyframeProperty;
+	}) => getMediaKeyframeValue({ element, property, currentTime, fps });
+	const setPropertyKeyframesFor = ({
+		property,
+		keyframes,
+	}: {
+		property: MediaKeyframeProperty;
+		keyframes: MediaPropertyKeyframe[];
+	}) =>
+		update({
+			keyframes: {
+				...element.keyframes,
+				[property]: keyframes,
+			},
+		});
+	const updateNumericProperties = ({
+		updates,
+		values,
+		history = false,
+	}: {
+		updates: MediaUpdates;
+		values: Partial<Record<MediaKeyframeProperty, number>>;
+		history?: boolean;
+	}) => {
+		let nextKeyframes = element.keyframes;
+		let keyframesChanged = false;
+		for (const [property, value] of Object.entries(values) as Array<
+			[MediaKeyframeProperty, number]
+		>) {
+			const keyframes = keyframesFor({ property });
+			if (keyframes.length === 0) continue;
+			const existing = keyframes.find((item) => item.frame === currentFrame);
+			nextKeyframes = {
+				...nextKeyframes,
+				[property]: upsertMediaKeyframe({
+					keyframes,
+					keyframe: {
+						id: existing?.id ?? `media-keyframe-${property}-${Date.now()}`,
+						frame: currentFrame,
+						value,
+						easing: existing?.easing ?? "linear",
+					},
+				}),
+			};
+			keyframesChanged = true;
+		}
+		update(
+			keyframesChanged ? { ...updates, keyframes: nextKeyframes } : updates,
+			history
+		);
+	};
+	const isKeyframedHere = ({ property }: { property: MediaKeyframeProperty }) =>
+		keyframesFor({ property }).some((item) => item.frame === currentFrame);
+	const togglePropertyKeyframes = ({
+		values,
+	}: {
+		values: Partial<Record<MediaKeyframeProperty, number>>;
+	}) => {
+		const properties = Object.keys(values) as MediaKeyframeProperty[];
+		if (properties.length === 0) return;
+		const removeCurrentFrame = properties.every((property) =>
+			isKeyframedHere({ property })
+		);
+		const nextKeyframes = { ...element.keyframes };
+		for (const property of properties) {
+			const keyframes = keyframesFor({ property });
+			const existing = keyframes.find((item) => item.frame === currentFrame);
+			nextKeyframes[property] = removeCurrentFrame
+				? keyframes.filter((item) => item.frame !== currentFrame)
+				: upsertMediaKeyframe({
+						keyframes,
+						keyframe: {
+							id: existing?.id ?? `media-keyframe-${property}-${Date.now()}`,
+							frame: currentFrame,
+							value: values[property]!,
+							easing: existing?.easing ?? "linear",
+						},
+					});
+		}
+		setKeyframeProperty(properties[0]);
+		update({ keyframes: nextKeyframes });
+	};
+	const resetNumericProperties = ({
+		updates,
+		properties,
+	}: {
+		updates: MediaUpdates;
+		properties: MediaKeyframeProperty[];
+	}) => {
+		const keyframes = { ...element.keyframes };
+		for (const property of properties) keyframes[property] = [];
+		update({ ...updates, keyframes });
+	};
+
+	const setScale = (axis: "x" | "y", percent: number) => {
+		const value = Math.max(0.01, percent / 100);
+		if (visual.maintainAspectRatio) {
+			updateNumericProperties({
+				updates: { scaleX: value, scaleY: value },
+				values: { scaleX: value, scaleY: value },
+			});
+			return;
+		}
+		updateNumericProperties({
+			updates: axis === "x" ? { scaleX: value } : { scaleY: value },
+			values: axis === "x" ? { scaleX: value } : { scaleY: value },
+		});
+	};
+
+	const alignX = (alignment: "left" | "center" | "right") => {
+		const offset =
+			((currentPropertyValue({ property: "scaleX" }) - 1) * canvasSize.width) /
+			2;
+		const x =
+			alignment === "left" ? offset : alignment === "right" ? -offset : 0;
+		updateNumericProperties({
+			updates: { x },
+			values: { x },
+			history: true,
+		});
+	};
+	const alignY = (alignment: "top" | "center" | "bottom") => {
+		const offset =
+			((currentPropertyValue({ property: "scaleY" }) - 1) * canvasSize.height) /
+			2;
+		const y =
+			alignment === "top" ? offset : alignment === "bottom" ? -offset : 0;
+		updateNumericProperties({
+			updates: { y },
+			values: { y },
+			history: true,
+		});
+	};
+
+	const resetTransform = () =>
+		resetNumericProperties({
+			updates: {
+				x: 0,
+				y: 0,
+				rotation: 0,
+				scaleX: 1,
+				scaleY: 1,
+				maintainAspectRatio: true,
+				flipHorizontal: false,
+				flipVertical: false,
+			},
+			properties: ["x", "y", "scaleX", "scaleY", "rotation"],
+		});
+	const resetAll = () =>
+		update({
+			x: 0,
+			y: 0,
+			rotation: 0,
+			scaleX: 1,
+			scaleY: 1,
+			maintainAspectRatio: true,
+			flipHorizontal: false,
+			flipVertical: false,
+			opacity: 1,
+			blendMode: "normal",
+			fitMode: "cover",
+			crop: { ...DEFAULT_MEDIA_CROP },
+			perspective: { ...DEFAULT_MEDIA_PERSPECTIVE },
+			animationInType: "none",
+			animationInDuration: 0.5,
+			animationOutType: "none",
+			animationOutDuration: 0.5,
+			comboAnimationType: "none",
+			comboAnimationIntensity: 0.5,
+			...defaultColorUpdates(),
+			mask: { ...DEFAULT_MEDIA_MASK },
+			customCutout: { ...DEFAULT_MEDIA_CUSTOM_CUTOUT, strokes: [] },
+			chromaKey: { ...DEFAULT_MEDIA_CHROMA_KEY },
+			enhancements: { ...DEFAULT_MEDIA_ENHANCEMENTS },
+			portraitAdjustments: {
+				...DEFAULT_MEDIA_PORTRAIT_ADJUSTMENTS,
+				values: {},
+			},
+			...defaultAudioUpdates(),
+			playbackRate: 1,
+			speedKeyframes: [],
+			reverse: false,
+			freezeFrameTime: undefined,
+			freezeFrameDuration: 0,
+			preservePitch: true,
+			frameInterpolation: "none",
+			keyframes: {},
+		});
+	const openSegmentation = ({
+		backend,
+		prompt,
+	}: {
+		backend: "local-person" | "sam3";
+		prompt: string;
+	}) => {
+		if (mediaItem?.file) {
+			const sourceUrl =
+				mediaItem.url || createObjectURL(mediaItem.file, "media-properties-ai");
+			setSegmentationSource(mediaItem.file, sourceUrl);
+			setSegmentationMode("video");
+			setSegmentationBackend(backend);
+			setSegmentationPrompt(prompt);
+		}
+		setActiveMediaTab("segmentation");
+	};
+	const updateEnhancements = (
+		enhancements: MediaEnhancements,
+		history = true
+	) => update({ enhancements }, history);
+	const seekToFrame = (frame: number) => seek(element.startTime + frame / fps);
+	const openAIUpscale = () => {
+		if (mediaItem?.file) requestSelectedVideoUpscale({ file: mediaItem.file });
+		setActiveMediaTab("upscale");
+	};
+
+	const propertyKeyframes = element.keyframes?.[keyframeProperty] ?? [];
+	const durationInFrames = Math.max(1, Math.round(timelineDuration * fps));
+	const currentFrame = Math.min(
+		durationInFrames,
+		Math.max(0, Math.round((currentTime - element.startTime) * fps))
+	);
+	useMediaKeyframeShortcuts({
+		currentTime,
+		currentFrame,
+		element,
+		fps,
+		keyframeProperty,
+		onExpandKeyframes: () => setKeyframesExpanded(true),
+		onOpenBasic: () => setActivePropertiesTab("basic"),
+		trackId,
+	});
+	const setPropertyKeyframes = (keyframes: MediaPropertyKeyframe[]) =>
+		setPropertyKeyframesFor({ property: keyframeProperty, keyframes });
+	const addKeyframe = (frame: number, value: unknown) => {
+		const existing = propertyKeyframes.find((item) => item.frame === frame);
+		setPropertyKeyframes(
+			upsertMediaKeyframe({
+				keyframes: propertyKeyframes,
+				keyframe: {
+					id:
+						existing?.id ??
+						(typeof crypto !== "undefined" && "randomUUID" in crypto
+							? crypto.randomUUID()
+							: `media-keyframe-${Date.now()}`),
+					frame,
+					value: Number(value),
+					easing: existing?.easing ?? "linear",
+				},
+			})
+		);
+	};
+	const updateKeyframe = (
+		id: string,
+		frame: number,
+		value: unknown,
+		easing: EasingType = "linear"
+	) =>
+		setPropertyKeyframes(
+			upsertMediaKeyframe({
+				keyframes: propertyKeyframes,
+				keyframe: { id, frame, value: Number(value), easing },
+			})
+		);
+	const deleteKeyframe = (id: string) =>
+		setPropertyKeyframes(propertyKeyframes.filter((item) => item.id !== id));
+	const startMaskTracking = ({
+		mask,
+		direction,
+	}: {
+		mask: MediaMask;
+		direction: MediaMaskTrackingDirection;
+	}) => {
+		if (!mask.id) return;
+		setMaskTrackingRequest({
+			requestId: `mask-tracking-${generateUUID()}`,
+			elementId: element.id,
+			maskId: mask.id,
+			direction,
+			anchorFrame: currentFrame,
+		});
+		openSegmentation({
+			backend: mask.type === "person" ? "local-person" : "sam3",
+			prompt: mask.type === "person" ? "" : (mask.name ?? "object"),
+		});
+	};
+	const startJianyingMotionTracking = async ({
+		mask,
+		direction,
+	}: {
+		mask: MediaMask;
+		direction: MediaMaskTrackingDirection;
+	}) => {
+		if (!mask.id) return;
+		if (!motionTrackingApi) return;
+		const sourcePath =
+			mediaItem?.localPath ??
+			(mediaItem?.file
+				? window.electronAPI?.getPathForFile(mediaItem.file)
+				: "") ??
+			"";
+		await runJianyingMotionTracking({
+			api: motionTrackingApi,
+			currentFrame,
+			direction,
+			elementId: element.id,
+			fps,
+			maskId: mask.id,
+			sourcePath,
+			trackId,
+		});
+	};
+	const applySmartLabAction = ({
+		action,
+	}: {
+		action: "smart-motion" | "smart-crop" | "camera-tracking";
+	}) => {
+		if (!localTrackingMask) {
+			setActivePropertiesTab("tracking");
+			return;
+		}
+		const params = {
+			mask: localTrackingMask,
+			canvasWidth: canvasSize.width,
+			canvasHeight: canvasSize.height,
+			clipDuration: timelineDuration,
+			fps,
+		};
+		const plan =
+			action === "smart-motion"
+				? planExperimentalSmartMotion(params)
+				: action === "smart-crop"
+					? planExperimentalSmartCrop(params)
+					: planExperimentalCameraTracking(params);
+		if (Object.keys(plan.keyframes).length === 0) return;
+		update({
+			...plan.baseTransformUpdates,
+			...(action === "camera-tracking"
+				? {}
+				: { maintainAspectRatio: true, fitMode: "cover" as const }),
+			keyframes: {
+				...element.keyframes,
+				...plan.keyframes,
+			},
+		});
+		setKeyframeProperty("x");
+		setKeyframesExpanded(true);
+	};
+	const applyPrivateDeflicker = async () => {
+		if (!mediaItem || privateDeflickerBusy) return;
+		const strength = Math.round(visual.enhancements.labDeflicker ?? 0);
+		if (strength < 1) {
+			toast.error(t("mediaProperties.lab.privateDeflickerSetStrength"));
+			return;
+		}
+		setPrivateDeflickerBusy(true);
+		setPrivateDeflickerStatus(
+			t("mediaProperties.lab.privateDeflickerPreparing")
+		);
+		try {
+			const result = await exportJianyingPrivateDeflicker({
+				file: mediaItem.file,
+				sourcePath: mediaItem.localPath,
+				strength,
+				onProgress: ({ status }) => setPrivateDeflickerStatus(status),
+			});
+			setPrivateDeflickerStatus(
+				t("mediaProperties.lab.privateDeflickerReplacing")
+			);
+			const replacement = await replaceElementMedia(
+				trackId,
+				element.id,
+				result.file,
+				{ localPath: result.runtime.outputPath }
+			);
+			if (!replacement.success) {
+				throw new Error(replacement.error ?? "无法替换时间线视频");
+			}
+			update(
+				{
+					enhancements: {
+						...visual.enhancements,
+						labDeflicker: 0,
+					},
+				},
+				false
+			);
+			setPrivateDeflickerStatus(
+				t("mediaProperties.lab.privateDeflickerComplete")
+			);
+			toast.success(
+				result.runtime.cacheHit
+					? t("mediaProperties.lab.privateDeflickerCacheHit")
+					: t("mediaProperties.lab.privateDeflickerComplete")
+			);
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t("mediaProperties.lab.privateDeflickerFailed");
+			setPrivateDeflickerStatus(message);
+			toast.error(message);
+		} finally {
+			setPrivateDeflickerBusy(false);
+		}
+	};
+	const isVisualTab = VISUAL_PROPERTY_TABS.includes(
+		activePropertiesTab as VisualPropertyTab
+	);
+	return (
+		<div
+			ref={panelRef}
+			className="w-full min-w-0 space-y-4 overflow-x-hidden"
+			data-testid="media-properties"
+		>
+			<div className="sticky top-0 z-20 space-y-2 bg-background pb-2">
+				<div className="flex items-center justify-between gap-3">
+					<div className="min-w-0">
+						<p className="truncate text-sm font-medium">{element.name}</p>
+						<p className="text-[11px] text-muted-foreground">
+							{timelineDuration.toFixed(2)}s
+						</p>
+					</div>
+					<Button type="button" variant="outline" size="sm" onClick={resetAll}>
+						<RotateCcw className="mr-2 size-3.5" />
+						{t("mediaProperties.resetAll")}
+					</Button>
+				</div>
+
+				<Tabs
+					value={isVisualTab ? "visual" : activePropertiesTab}
+					onValueChange={(value) =>
+						setActivePropertiesTab(
+							value === "visual" ? "basic" : (value as MediaPropertiesTab)
+						)
+					}
+				>
+					<TabsList
+						className="grid h-8 w-full grid-cols-7 gap-0.5 rounded-sm p-0.5"
+						data-testid="media-properties-primary-tabs"
+					>
+						<TabsTrigger value="visual" className="min-w-0 px-1 text-[10px]">
+							{t("mediaProperties.tab.visual")}
+						</TabsTrigger>
+						<TabsTrigger value="audio" className="min-w-0 px-1 text-[10px]">
+							{t("mediaProperties.tab.audio")}
+						</TabsTrigger>
+						<TabsTrigger
+							value="speed"
+							className="min-w-0 px-1 text-[10px]"
+							data-testid="media-properties-tab-speed"
+						>
+							{t("mediaProperties.tab.speed")}
+						</TabsTrigger>
+						<TabsTrigger
+							value="animation"
+							className="min-w-0 px-1 text-[10px]"
+							aria-label={t("mediaProperties.tab.animation")}
+							title={t("mediaProperties.tab.animation")}
+						>
+							{t("mediaProperties.tab.animationShort")}
+						</TabsTrigger>
+						<TabsTrigger value="tracking" className="min-w-0 px-1 text-[10px]">
+							{t("mediaProperties.tab.tracking")}
+						</TabsTrigger>
+						<TabsTrigger
+							value="adjustments"
+							className="min-w-0 px-1 text-[10px]"
+						>
+							{t("mediaProperties.tab.adjustments")}
+						</TabsTrigger>
+						<TabsTrigger
+							value="ai"
+							className="min-w-0 px-1 text-[10px]"
+							aria-label={t("mediaProperties.tab.ai")}
+							title={t("mediaProperties.tab.ai")}
+						>
+							{t("mediaProperties.tab.aiShort")}
+						</TabsTrigger>
+					</TabsList>
+				</Tabs>
+
+				{isVisualTab ? (
+					<Tabs
+						value={activePropertiesTab}
+						onValueChange={(value) =>
+							setActivePropertiesTab(value as VisualPropertyTab)
+						}
+					>
+						<TabsList
+							className="grid h-8 w-full grid-cols-4 gap-0.5 rounded-sm p-0.5"
+							data-testid="media-properties-visual-tabs"
+						>
+							<TabsTrigger value="basic" className="px-1 text-xs">
+								{t("mediaProperties.tab.basic")}
+							</TabsTrigger>
+							<TabsTrigger value="cutout" className="px-1 text-xs">
+								{t("mediaProperties.tab.cutout")}
+							</TabsTrigger>
+							<TabsTrigger value="mask" className="px-1 text-xs">
+								{t("mediaProperties.tab.mask")}
+							</TabsTrigger>
+							<TabsTrigger value="portrait" className="px-1 text-xs">
+								{t("mediaProperties.tab.portrait")}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+				) : null}
+			</div>
+
+			<Tabs value={activePropertiesTab}>
+				<TabsContent value="basic" className="mt-4 space-y-4">
+					<MediaAlignmentToolbar onAlignX={alignX} onAlignY={alignY} />
+					<PropertyGroup
+						title={t("mediaProperties.positionAndSize")}
+						defaultExpanded
+					>
+						<div className="space-y-4">
+							<div className="flex items-center justify-between">
+								<PropertyItemLabel>
+									{t("mediaProperties.maintainAspectRatio")}
+								</PropertyItemLabel>
+								<div className="flex items-center gap-2">
+									{visual.maintainAspectRatio ? (
+										<Link2 className="size-3.5 text-primary" />
+									) : (
+										<Unlink2 className="size-3.5 text-muted-foreground" />
+									)}
+									<Switch
+										checked={visual.maintainAspectRatio}
+										onCheckedChange={(checked) =>
+											update({
+												maintainAspectRatio: checked,
+												...(checked ? { scaleY: visual.scaleX } : {}),
+											})
+										}
+									/>
+								</div>
+							</div>
+							<NumberControl
+								label={t(
+									visual.maintainAspectRatio
+										? "mediaProperties.scale"
+										: "mediaProperties.horizontalScale"
+								)}
+								value={currentPropertyValue({ property: "scaleX" }) * 100}
+								min={1}
+								max={400}
+								suffix="%"
+								onChange={(value) => setScale("x", value)}
+								keyframed={
+									visual.maintainAspectRatio
+										? isKeyframedHere({ property: "scaleX" }) &&
+											isKeyframedHere({ property: "scaleY" })
+										: isKeyframedHere({ property: "scaleX" })
+								}
+								onToggleKeyframe={() =>
+									togglePropertyKeyframes({
+										values: visual.maintainAspectRatio
+											? {
+													scaleX: currentPropertyValue({
+														property: "scaleX",
+													}),
+													scaleY: currentPropertyValue({
+														property: "scaleY",
+													}),
+												}
+											: {
+													scaleX: currentPropertyValue({
+														property: "scaleX",
+													}),
+												},
+									})
+								}
+								onInteractionStart={beginInteraction}
+								onInteractionEnd={endInteraction}
+							/>
+							{visual.maintainAspectRatio ? null : (
+								<NumberControl
+									label={t("mediaProperties.verticalScale")}
+									value={currentPropertyValue({ property: "scaleY" }) * 100}
+									min={1}
+									max={400}
+									suffix="%"
+									onChange={(value) => setScale("y", value)}
+									keyframed={isKeyframedHere({ property: "scaleY" })}
+									onToggleKeyframe={() =>
+										togglePropertyKeyframes({
+											values: {
+												scaleY: currentPropertyValue({
+													property: "scaleY",
+												}),
+											},
+										})
+									}
+									onInteractionStart={beginInteraction}
+									onInteractionEnd={endInteraction}
+								/>
+							)}
+							<NumberControl
+								label={t("mediaProperties.positionX")}
+								value={currentPropertyValue({ property: "x" })}
+								min={-canvasSize.width}
+								max={canvasSize.width}
+								onChange={(x) =>
+									updateNumericProperties({ updates: { x }, values: { x } })
+								}
+								keyframed={isKeyframedHere({ property: "x" })}
+								onToggleKeyframe={() =>
+									togglePropertyKeyframes({
+										values: { x: currentPropertyValue({ property: "x" }) },
+									})
+								}
+								onInteractionStart={beginInteraction}
+								onInteractionEnd={endInteraction}
+							/>
+							<NumberControl
+								label={t("mediaProperties.positionY")}
+								value={currentPropertyValue({ property: "y" })}
+								min={-canvasSize.height}
+								max={canvasSize.height}
+								onChange={(y) =>
+									updateNumericProperties({ updates: { y }, values: { y } })
+								}
+								keyframed={isKeyframedHere({ property: "y" })}
+								onToggleKeyframe={() =>
+									togglePropertyKeyframes({
+										values: { y: currentPropertyValue({ property: "y" }) },
+									})
+								}
+								onInteractionStart={beginInteraction}
+								onInteractionEnd={endInteraction}
+							/>
+							<NumberControl
+								label={t("mediaProperties.rotation")}
+								value={currentPropertyValue({ property: "rotation" })}
+								min={-180}
+								max={180}
+								suffix="°"
+								onChange={(rotation) =>
+									updateNumericProperties({
+										updates: { rotation },
+										values: { rotation },
+									})
+								}
+								keyframed={isKeyframedHere({ property: "rotation" })}
+								onToggleKeyframe={() =>
+									togglePropertyKeyframes({
+										values: {
+											rotation: currentPropertyValue({ property: "rotation" }),
+										},
+									})
+								}
+								onInteractionStart={beginInteraction}
+								onInteractionEnd={endInteraction}
+							/>
+
+							<div className="flex items-center gap-2">
+								<IconButton
+									label={t("mediaProperties.flipHorizontal")}
+									active={visual.flipHorizontal}
+									onClick={() =>
+										update({ flipHorizontal: !visual.flipHorizontal })
+									}
+								>
+									<FlipHorizontal2 className="size-4" />
+								</IconButton>
+								<IconButton
+									label={t("mediaProperties.flipVertical")}
+									active={visual.flipVertical}
+									onClick={() => update({ flipVertical: !visual.flipVertical })}
+								>
+									<FlipVertical2 className="size-4" />
+								</IconButton>
+								<Button
+									type="button"
+									variant="text"
+									size="sm"
+									className="ml-auto"
+									onClick={resetTransform}
+								>
+									<RotateCcw className="mr-2 size-3.5" />
+									{t("mediaProperties.resetTransform")}
+								</Button>
+							</div>
+						</div>
+					</PropertyGroup>
+
+					<PropertyGroup
+						title={t("mediaProperties.blend")}
+						defaultExpanded
+						testId="media-blend-section"
+						enabled={element.blendEnabled !== false}
+						enableLabel={t("mediaProperties.enableSection", {
+							label: t("mediaProperties.blend"),
+						})}
+						onEnabledChange={(checked) => update({ blendEnabled: checked })}
+						resetLabel={t("mediaProperties.resetSection", {
+							label: t("mediaProperties.blend"),
+						})}
+						onReset={() =>
+							resetNumericProperties({
+								updates: { opacity: 1, blendMode: "normal" },
+								properties: ["opacity"],
+							})
+						}
+						headerActions={
+							<MediaKeyframeNav
+								label={t("mediaProperties.opacity")}
+								frames={keyframesFor({ property: "opacity" }).map(
+									(keyframe) => keyframe.frame
+								)}
+								currentFrame={currentFrame}
+								keyframed={isKeyframedHere({ property: "opacity" })}
+								onToggle={() =>
+									togglePropertyKeyframes({
+										values: {
+											opacity: currentPropertyValue({ property: "opacity" }),
+										},
+									})
+								}
+								onSeekFrame={seekToFrame}
+								testId="media-blend-keyframes"
+							/>
+						}
+					>
+						<div className="space-y-4">
+							<NumberControl
+								label={t("mediaProperties.opacity")}
+								value={currentPropertyValue({ property: "opacity" }) * 100}
+								min={0}
+								max={100}
+								suffix="%"
+								onChange={(percent) => {
+									const opacity = percent / 100;
+									updateNumericProperties({
+										updates: { opacity },
+										values: { opacity },
+									});
+								}}
+								onInteractionStart={beginInteraction}
+								onInteractionEnd={endInteraction}
+							/>
+							<PropertyItem>
+								<PropertyItemLabel>
+									{t("mediaProperties.blendMode")}
+								</PropertyItemLabel>
+								<PropertyItemValue>
+									<Select
+										value={visual.blendMode}
+										onValueChange={(blendMode) =>
+											update({
+												blendMode: blendMode as MediaElement["blendMode"],
+											})
+										}
+									>
+										<SelectTrigger
+											className="h-8 text-xs"
+											aria-label={t("mediaProperties.blendMode")}
+										>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{BLEND_MODE_OPTIONS.map(([mode, labelKey]) => (
+												<SelectItem key={mode} value={mode}>
+													{t(labelKey)}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</PropertyItemValue>
+							</PropertyItem>
+						</div>
+					</PropertyGroup>
+
+					<PropertyGroup
+						title={t("mediaProperties.cropAndFit")}
+						defaultExpanded={false}
+						expanded={cropExpanded}
+						onExpandedChange={setCropExpanded}
+					>
+						<div className="space-y-4" data-testid="media-crop-controls">
+							<div className="grid grid-cols-3 gap-1">
+								{FIT_MODE_OPTIONS.map(([mode, labelKey]) => (
+									<Button
+										key={mode}
+										type="button"
+										variant={visual.fitMode === mode ? "default" : "outline"}
+										size="sm"
+										onClick={() => update({ fitMode: mode })}
+									>
+										{t(labelKey)}
+									</Button>
+								))}
+							</div>
+							{(["top", "right", "bottom", "left"] as const).map((side) => {
+								const property = CROP_KEYFRAME_PROPERTY[side];
+								return (
+									<NumberControl
+										key={side}
+										label={t(CROP_SIDE_LABELS[side])}
+										value={currentPropertyValue({ property }) * 100}
+										min={0}
+										max={95}
+										suffix="%"
+										onChange={(percent) => {
+											const value = percent / 100;
+											updateNumericProperties({
+												updates: {
+													crop: { ...visual.crop, [side]: value },
+												},
+												values: { [property]: value },
+											});
+										}}
+										keyframed={isKeyframedHere({ property })}
+										onToggleKeyframe={() =>
+											togglePropertyKeyframes({
+												values: {
+													[property]: currentPropertyValue({ property }),
+												},
+											})
+										}
+										onInteractionStart={beginInteraction}
+										onInteractionEnd={endInteraction}
+									/>
+								);
+							})}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() =>
+									resetNumericProperties({
+										updates: { crop: { ...DEFAULT_MEDIA_CROP } },
+										properties: Object.values(CROP_KEYFRAME_PROPERTY),
+									})
+								}
+							>
+								<RotateCcw className="mr-2 size-3.5" />
+								{t("mediaProperties.resetCrop")}
+							</Button>
+						</div>
+					</PropertyGroup>
+
+					<MediaWarpSection
+						element={element}
+						perspective={visual.perspective}
+						currentFrame={currentFrame}
+						keyframesFor={keyframesFor}
+						isKeyframedHere={isKeyframedHere}
+						currentPropertyValue={currentPropertyValue}
+						togglePropertyKeyframes={togglePropertyKeyframes}
+						updateNumericProperties={updateNumericProperties}
+						resetNumericProperties={resetNumericProperties}
+						update={update}
+						onSeekFrame={seekToFrame}
+						onInteractionStart={beginInteraction}
+						onInteractionEnd={endInteraction}
+					/>
+
+					{mediaItem?.type === "video" ? (
+						<StabilizationSection
+							enhancements={visual.enhancements}
+							onChange={updateEnhancements}
+							mediaItem={mediaItem}
+						/>
+					) : null}
+
+					<QuickEnhanceSection
+						enhancements={visual.enhancements}
+						onChange={updateEnhancements}
+					/>
+
+					<SuperResolutionSection
+						enhancements={visual.enhancements}
+						onChange={updateEnhancements}
+						onOpenAIUpscale={openAIUpscale}
+					/>
+
+					<DenoiseSection
+						enhancements={visual.enhancements}
+						onChange={updateEnhancements}
+						onInteractionStart={beginInteraction}
+						onInteractionEnd={endInteraction}
+					/>
+
+					{mediaItem?.type === "video" ? (
+						<MediaLabProperties
+							enhancements={visual.enhancements}
+							hasLocalTracking={Boolean(localTrackingMask)}
+							privateDeflickerBusy={privateDeflickerBusy}
+							privateDeflickerEnabled={Boolean(
+								window.electronAPI?.jianyingBasicVideo &&
+									(visual.enhancements.labDeflicker ?? 0) > 0
+							)}
+							privateDeflickerStatus={privateDeflickerStatus}
+							onChange={updateEnhancements}
+							onApplyPrivateDeflicker={() => {
+								void applyPrivateDeflicker();
+							}}
+							onApplySmartAction={applySmartLabAction}
+							onInteractionStart={beginInteraction}
+							onInteractionEnd={endInteraction}
+						/>
+					) : null}
+				</TabsContent>
+
+				<TabsContent value="animation" className="mt-4 space-y-4">
+					<PropertyGroup
+						title={t("mediaProperties.clipAnimation")}
+						defaultExpanded
+					>
+						<div className="space-y-4">
+							{(
+								[
+									[
+										"mediaProperties.animation.in",
+										"animationInType",
+										"animationInDuration",
+									],
+									[
+										"mediaProperties.animation.out",
+										"animationOutType",
+										"animationOutDuration",
+									],
+								] as const
+							).map(([labelKey, typeKey, durationKey]) => (
+								<div key={labelKey} className="space-y-3">
+									<PropertyItem>
+										<PropertyItemLabel>
+											{t("mediaProperties.animation.label", {
+												name: t(labelKey),
+											})}
+										</PropertyItemLabel>
+										<PropertyItemValue>
+											<Select
+												value={visual[typeKey]}
+												onValueChange={(value) =>
+													update({ [typeKey]: value } as MediaUpdates)
+												}
+											>
+												<SelectTrigger className="h-8 text-xs">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{CLIP_ANIMATION_OPTIONS.map(
+														([value, optionLabelKey]) => (
+															<SelectItem key={value} value={value}>
+																{t(optionLabelKey)}
+															</SelectItem>
+														)
+													)}
+												</SelectContent>
+											</Select>
+										</PropertyItemValue>
+									</PropertyItem>
+									{visual[typeKey] === "none" ? null : (
+										<NumberControl
+											label={t("mediaProperties.animation.duration", {
+												name: t(labelKey),
+											})}
+											value={visual[durationKey]}
+											min={0.1}
+											max={5}
+											step={0.1}
+											suffix="s"
+											onChange={(value) =>
+												updateLive({ [durationKey]: value } as MediaUpdates)
+											}
+											onInteractionStart={beginInteraction}
+											onInteractionEnd={endInteraction}
+										/>
+									)}
+								</div>
+							))}
+						</div>
+					</PropertyGroup>
+
+					<PropertyGroup
+						title={t("mediaProperties.comboAnimation")}
+						defaultExpanded
+					>
+						<div className="space-y-4">
+							<PropertyItem>
+								<PropertyItemLabel>
+									{t("mediaProperties.motion")}
+								</PropertyItemLabel>
+								<PropertyItemValue>
+									<Select
+										value={visual.comboAnimationType}
+										onValueChange={(value) =>
+											update({
+												comboAnimationType:
+													value as MediaElement["comboAnimationType"],
+											})
+										}
+									>
+										<SelectTrigger className="h-8 text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="none">
+												{t("mediaProperties.animation.none")}
+											</SelectItem>
+											<SelectItem value="pulse">
+												{t("mediaProperties.motion.pulse")}
+											</SelectItem>
+											<SelectItem value="drift">
+												{t("mediaProperties.motion.drift")}
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</PropertyItemValue>
+							</PropertyItem>
+							{visual.comboAnimationType === "none" ? null : (
+								<NumberControl
+									label={t("mediaProperties.intensity")}
+									value={visual.comboAnimationIntensity * 100}
+									min={0}
+									max={100}
+									suffix="%"
+									onChange={(value) =>
+										updateLive({ comboAnimationIntensity: value / 100 })
+									}
+									onInteractionStart={beginInteraction}
+									onInteractionEnd={endInteraction}
+								/>
+							)}
+						</div>
+					</PropertyGroup>
+				</TabsContent>
+
+				<TabsContent value="adjustments" className="mt-4">
+					<ColorPropertiesPanel
+						element={element}
+						trackId={trackId}
+						onTrack={startMaskTracking}
+					/>
+				</TabsContent>
+
+				<TabsContent value="audio" className="mt-4">
+					<AudioPropertiesPanel element={element} trackId={trackId} />
+				</TabsContent>
+
+				<TabsContent value="speed" className="mt-4">
+					<MediaSpeedProperties element={element} trackId={trackId} />
+				</TabsContent>
+
+				<TabsContent value="tracking" className="mt-4">
+					<MediaTrackingProperties
+						elementId={element.id}
+						masks={visual.masks}
+						currentFrame={currentFrame}
+						onChange={(masks, history = true) => update({ masks }, history)}
+						onTrack={startMaskTracking}
+						onTrackMotion={
+							motionTrackingApi
+								? (request) => {
+										void startJianyingMotionTracking(request);
+									}
+								: undefined
+						}
+						onOpenMasks={() => setActivePropertiesTab("mask")}
+						motionTrackingStatus={motionTrackingStatus}
+						motionTrackingStatusLoading={motionTrackingStatusLoading}
+						onRefreshMotionTrackingStatus={() => {
+							void refreshMotionTrackingStatus();
+						}}
+					/>
+				</TabsContent>
+
+				<TabsContent value="mask" className="mt-4">
+					<MediaMaskProperties
+						elementId={element.id}
+						masks={visual.masks}
+						currentFrame={currentFrame}
+						onChange={(masks, history = true) => update({ masks }, history)}
+						onInteractionStart={beginInteraction}
+						onInteractionEnd={endInteraction}
+						onTrack={startMaskTracking}
+					/>
+				</TabsContent>
+
+				<TabsContent value="cutout" className="mt-4 space-y-4">
+					<MediaAutomaticCutoutProperties element={element} />
+					<MediaCustomCutoutProperties element={element} trackId={trackId} />
+					<MediaChromaKeyProperties element={element} trackId={trackId} />
+				</TabsContent>
+
+				<TabsContent value="portrait" className="mt-4">
+					<MediaPortraitProperties
+						elementId={element.id}
+						currentFrame={currentFrame}
+						enhancements={visual.enhancements}
+						adjustments={visual.portraitAdjustments}
+						onEnhancementsChange={(enhancements) =>
+							updateLive({ enhancements })
+						}
+						onAdjustmentsChange={(portraitAdjustments) =>
+							updateLive({ portraitAdjustments })
+						}
+						onInteractionStart={beginInteraction}
+						onInteractionEnd={endInteraction}
+					/>
+				</TabsContent>
+
+				<TabsContent value="ai" className="mt-4">
+					<MediaAIProperties
+						element={element}
+						trackId={trackId}
+						onOpenUpscale={openAIUpscale}
+						onOpenVideoTools={() => setActiveMediaTab("ai")}
+					/>
+				</TabsContent>
+			</Tabs>
+
+			{activePropertiesTab === "basic" ? (
+				<PropertyGroup
+					title={t("mediaProperties.keyframes")}
+					defaultExpanded={false}
+					expanded={keyframesExpanded}
+					onExpandedChange={setKeyframesExpanded}
+				>
+					<div className="space-y-4">
+						<PropertyItem>
+							<PropertyItemLabel>
+								{t("mediaProperties.property")}
+							</PropertyItemLabel>
+							<PropertyItemValue>
+								<Select
+									value={keyframeProperty}
+									onValueChange={(value) =>
+										setKeyframeProperty(value as MediaKeyframeProperty)
+									}
+								>
+									<SelectTrigger
+										className="h-8 text-xs"
+										aria-label={t("mediaProperties.keyframeProperty")}
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{MEDIA_KEYFRAME_PROPERTIES.map((property) => (
+											<SelectItem key={property.value} value={property.value}>
+												{property.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</PropertyItemValue>
+						</PropertyItem>
+						<KeyframeEditor
+							propName={keyframeProperty}
+							propLabel={
+								MEDIA_KEYFRAME_PROPERTIES.find(
+									(property) => property.value === keyframeProperty
+								)?.label ?? keyframeProperty
+							}
+							propType="number"
+							keyframes={propertyKeyframes as Keyframe[]}
+							durationInFrames={durationInFrames}
+							fps={fps}
+							currentFrame={currentFrame}
+							currentValueWhenEmpty={getMediaPropertyValue(
+								element,
+								keyframeProperty
+							)}
+							onKeyframeAdd={addKeyframe}
+							onKeyframeUpdate={updateKeyframe}
+							onKeyframeDelete={deleteKeyframe}
+						/>
+					</div>
+				</PropertyGroup>
+			) : null}
+		</div>
+	);
+}

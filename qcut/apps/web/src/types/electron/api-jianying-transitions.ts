@@ -1,4 +1,4 @@
-import type { JianyingTransitionAPI } from "../../../../../electron/jianying-transition-contract";
+import type { JianyingTransitionAPI } from "../../../../../electron/jianying-transition/jianying-transition-contract";
 
 export interface ElectronJianyingTransitionOps {
 	jianyingTransitions?: JianyingTransitionAPI;
@@ -17,4 +17,4 @@ export type {
 	JianyingTimelineRenderResult,
 	JianyingTimelineTransitionSpec,
 	JianyingTransitionRuntimeStatus,
-} from "../../../../../electron/jianying-transition-contract";
+} from "../../../../../electron/jianying-transition/jianying-transition-contract";

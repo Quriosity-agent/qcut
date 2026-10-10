@@ -1,4 +1,4 @@
-import { buildJianyingFontCatalog } from "../../jianying-font-lab-catalog.js";
+import { buildJianyingFontCatalog } from "../../jianying-font/jianying-font-lab-catalog.js";
 import { loadTextLabCatalogDefault } from "../cli/text-lab-cli-process.js";
 import { exportCatalogDefault } from "../cli/cli-handlers-filter-lab-catalog.js";
 import type { ComposeAssetReference } from "./compose-protocol.js";

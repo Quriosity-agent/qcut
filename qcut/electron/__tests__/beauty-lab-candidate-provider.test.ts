@@ -8,15 +8,15 @@ import {
 	type BeautyLabCandidateResult,
 	type BeautyLabCandidateStage,
 	type BeautyLabCandidateStageId,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	createBeautyLabCandidateProvider,
 	type BeautyLabCandidateBackend,
-} from "../beauty-lab-candidate-provider.js";
+} from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-request.js";
+} from "../beauty-lab/beauty-lab-candidate-request.js";
 
 type BackendRequest = Parameters<BeautyLabCandidateBackend["render"]>[0];
 

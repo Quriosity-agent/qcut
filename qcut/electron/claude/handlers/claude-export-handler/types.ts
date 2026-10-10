@@ -3,7 +3,7 @@
  * @module electron/claude/handlers/claude-export-handler/types
  */
 
-import type { JianyingTextRuntimeReference } from "../../../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../../../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 export const EXPORT_JOB_STATUS = {
 	queued: "queued",

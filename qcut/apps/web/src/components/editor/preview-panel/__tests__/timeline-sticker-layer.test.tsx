@@ -15,7 +15,7 @@ vi.mock("@/stores/stickers-overlay-store", () => ({
 	): T => selector({ overlayStickers: new Map<string, never>() }),
 }));
 
-vi.mock("@/components/editor/stickers-overlay/StickerElement", () => ({
+vi.mock("@/components/editor/stickers-overlay/sticker-element", () => ({
 	StickerElement: ({
 		renderMode,
 		sticker,

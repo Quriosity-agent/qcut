@@ -14,7 +14,7 @@ import {
 	ensureQCutJianyingTextPrivateArchive,
 	findQCutJianyingTextPrivateArchive,
 	getQCutJianyingTextPrivateArchiveRoot,
-} from "../jianying-text-private-archive.js";
+} from "../jianying-text/jianying-text-private-archive.js";
 
 async function writeFixture({
 	filePath,

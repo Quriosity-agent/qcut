@@ -8,7 +8,7 @@ import {
 	listJianyingFlowerCatalogPackageReferences,
 	resolveJianyingFlowerCatalogMetadata,
 	resolveJianyingFlowerResourceMetadata,
-} from "../jianying-flower-resource-metadata.js";
+} from "../jianying-text/jianying-flower-resource-metadata.js";
 
 const temporaryDirectories: string[] = [];
 

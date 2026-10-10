@@ -9,7 +9,7 @@ import {
 	coverEntryFiles,
 	readCoverCatalog,
 	verifyCoverCatalog,
-} from "../electron/jianying-cover-private-cache";
+} from "../electron/jianying-cover/jianying-cover-private-cache";
 
 const { values } = parseArgs({
 	options: {
@@ -40,7 +40,9 @@ if (values.verify) {
 	);
 	const resolveDependency = values.recover
 		? (
-				await import("../electron/jianying-cover-dependency-recovery")
+				await import(
+					"../electron/jianying-cover/jianying-cover-dependency-recovery"
+				)
 			).createCoverDependencyResolver({
 				cacheRoots: [textCache, sourceRoot],
 				databaseRoots: [

@@ -10,7 +10,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { JianyingKnownFilter } from "../jianying-filter-metadata.js";
+import type { JianyingKnownFilter } from "../jianying-filter/jianying-filter-metadata.js";
 import {
 	backupJianyingFilterRuntime,
 	jianyingFilterRuntimeBackupTestUtils,

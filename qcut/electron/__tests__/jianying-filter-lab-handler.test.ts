@@ -16,12 +16,12 @@ import {
 	type JianyingFilterLabListResult,
 	type JianyingFilterLabLoadResult,
 	type JianyingFilterLabLoadRendererResult,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 import type {
 	JianyingLutEntry,
 	JianyingLutReference,
 } from "../native-pipeline/filters/filter-lab-lut.js";
-import type { JianyingFilterPackageSummary } from "../jianying-filter-package-inspector.js";
+import type { JianyingFilterPackageSummary } from "../jianying-filter/jianying-filter-package-inspector.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock("electron", () => ({
 	ipcMain: { handle: mockHandle, removeHandler: mockRemoveHandler },
 }));
 
-import { setupJianyingFilterLabIPC } from "../jianying-filter-lab-handler.js";
+import { setupJianyingFilterLabIPC } from "../jianying-filter/jianying-filter-lab-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};

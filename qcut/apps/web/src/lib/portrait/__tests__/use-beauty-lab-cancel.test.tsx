@@ -13,7 +13,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_BACKEND,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 } from "@/types/electron";
-import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab-candidate-contract";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab/beauty-lab-candidate-contract";
 import { useBeautyLab } from "../use-beauty-lab";
 
 vi.mock(

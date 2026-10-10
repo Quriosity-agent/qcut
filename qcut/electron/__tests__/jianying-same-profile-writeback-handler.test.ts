@@ -4,7 +4,7 @@ import {
 	CAPCUT_8_1_WRITEBACK_CHOOSE_DIRECTORY_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_COMMIT_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_RECOVER_CHANNEL,
-} from "../jianying-same-profile-writeback-contract.js";
+} from "../jianying-draft/jianying-same-profile-writeback-contract.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("electron", () => ({
 	},
 }));
 
-import { setupJianyingSameProfileWritebackIPC } from "../jianying-same-profile-writeback-handler.js";
+import { setupJianyingSameProfileWritebackIPC } from "../jianying-draft/jianying-same-profile-writeback-handler.js";
 
 interface MockWindowContext {
 	event: IpcMainInvokeEvent;

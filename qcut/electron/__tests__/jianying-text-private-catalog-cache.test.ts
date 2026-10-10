@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { verifyQCutJianyingTextCatalogCache } from "../jianying-text-private-catalog-cache.js";
-import type { QCutJianyingTextPrivateArchive } from "../jianying-text-private-archive.js";
+import { verifyQCutJianyingTextCatalogCache } from "../jianying-text/jianying-text-private-catalog-cache.js";
+import type { QCutJianyingTextPrivateArchive } from "../jianying-text/jianying-text-private-archive.js";
 import { JIANYING_PRIVATE_CATALOG_ARCHIVE_FILE_NAME } from "../jianying-text-runtime/resource-recovery-installer.js";
 
 const temporaryDirectories: string[] = [];

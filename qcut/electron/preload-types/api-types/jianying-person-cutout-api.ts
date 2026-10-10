@@ -1,4 +1,4 @@
-import type { JianyingPersonCutoutAPI } from "../../jianying-person-cutout-contract";
+import type { JianyingPersonCutoutAPI } from "../../jianying-person-cutout/jianying-person-cutout-contract";
 
 export interface JianyingPersonCutoutPreloadAPI {
 	jianyingPersonCutout?: JianyingPersonCutoutAPI;

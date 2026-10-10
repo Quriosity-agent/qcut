@@ -59,7 +59,7 @@ export interface ColorLutSettings {
 
 /**
  * Long-tail per-pass texture semantics. Structurally mirrors
- * `JianyingFilterLabPassTraits` in electron/jianying-filter-lab-contract.ts
+ * `JianyingFilterLabPassTraits` in electron/jianying-filter/jianying-filter-lab-contract.ts
  * (the contract's compile-time parity guard asserts assignability); keep
  * the two in sync. Absent fields mean the full-resolution RGBA8 defaults
  * every currently verified recipe uses.

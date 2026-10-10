@@ -238,7 +238,7 @@ describe("pass traits (FLP-002)", () => {
 
 	it("serializes observed traits through the renderer loader untouched", async () => {
 		const { loadJianyingFilterLabRenderer } = await import(
-			"../jianying-filter-multi-pass-loader"
+			"../jianying-filter/jianying-filter-multi-pass-loader"
 		);
 		const renderer: JianyingFilterMultiPassRenderer = {
 			kind: "fog-lut",

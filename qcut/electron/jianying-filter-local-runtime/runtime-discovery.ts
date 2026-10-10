@@ -4,7 +4,7 @@ import { access, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { JianyingFilterLocalRuntimeStatus } from "../jianying-filter-lab-contract.js";
+import type { JianyingFilterLocalRuntimeStatus } from "../jianying-filter/jianying-filter-lab-contract.js";
 import { resolveJianyingFilterLocalBridge } from "./bridge-resolver.js";
 import {
 	hasJianyingFilterPrivateRuntime,

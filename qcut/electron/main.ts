@@ -69,62 +69,62 @@ import { resolveLicenseServerCspOrigins } from "./license-server-csp.js";
 import {
 	setupJianyingEnvelopeKeyIPC,
 	type JianyingEnvelopeKeyIPCController,
-} from "./jianying-envelope-key-handler.js";
+} from "./jianying-draft/jianying-envelope-key-handler.js";
 import {
 	setupJianyingDraftImportIPC,
 	type JianyingDraftImportIPCController,
-} from "./jianying-draft-import-handler.js";
+} from "./jianying-draft/jianying-draft-import-handler.js";
 import {
 	setupJianyingDraftExportIPC,
 	type JianyingDraftExportIPCController,
-} from "./jianying-draft-export-handler.js";
-import { setupJianyingEffectIPC } from "./jianying-effect-handler.js";
+} from "./jianying-draft/jianying-draft-export-handler.js";
+import { setupJianyingEffectIPC } from "./jianying-effect/jianying-effect-handler.js";
 import { setupIndependentFilterIPC } from "./qcut-independent-filter/ipc.js";
-import { setupJianyingTransitionIPC } from "./jianying-transition-handler.js";
+import { setupJianyingTransitionIPC } from "./jianying-transition/jianying-transition-handler.js";
 import {
 	setupJianyingFilterLabIPC,
 	type JianyingFilterLabIPCController,
-} from "./jianying-filter-lab-handler.js";
+} from "./jianying-filter/jianying-filter-lab-handler.js";
 import {
 	setupJianyingPortraitAdjustmentIPC,
 	type JianyingPortraitAdjustmentIPCController,
-} from "./jianying-portrait-adjustment-handler.js";
-import { setupBeautyLabIPC } from "./beauty-lab-handler.js";
-import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
-import { createBeautyLabCandidateProvider } from "./beauty-lab-candidate-provider.js";
-import { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
-import { createBeautyLabLiveCandidateBackend } from "./beauty-lab-live-candidate.js";
-import { createBeautyLabQuitGuard } from "./beauty-lab-quit.js";
-import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.js";
+} from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-handler.js";
+import { setupBeautyLabIPC } from "./beauty-lab/beauty-lab-handler.js";
+import { resolveBeautyLabResearchPaths } from "./beauty-lab/beauty-lab-research-config.js";
+import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
+import { createBeautyLabIndependentProvider } from "./beauty-lab/beauty-lab-independent.js";
+import { createBeautyLabLiveCandidateBackend } from "./beauty-lab/beauty-lab-live-candidate.js";
+import { createBeautyLabQuitGuard } from "./beauty-lab/beauty-lab-quit.js";
+import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout/jianying-person-cutout-handler.js";
 import {
 	setupJianyingMotionTrackingIPC,
 	type JianyingMotionTrackingIPCController,
-} from "./jianying-motion-tracking-handler.js";
+} from "./jianying-motion-tracking/jianying-motion-tracking-handler.js";
 import {
 	setupJianyingBasicVideoIPC,
 	type JianyingBasicVideoIPCController,
-} from "./jianying-basic-video-handler.js";
-import { watchJianyingFilterCaches } from "./jianying-filter-cache-watcher.js";
+} from "./jianying-basic-video-runtime/jianying-basic-video-handler.js";
+import { watchJianyingFilterCaches } from "./jianying-filter/jianying-filter-cache-watcher.js";
 import {
 	setupJianyingFontLabIPC,
 	type JianyingFontLabIPCController,
-} from "./jianying-font-lab-handler.js";
+} from "./jianying-font/jianying-font-lab-handler.js";
 import {
 	setupJianyingTextStyleLabIPC,
 	type JianyingTextStyleLabIPCController,
-} from "./jianying-text-style-lab-handler.js";
+} from "./jianying-text/jianying-text-style-lab-handler.js";
 import {
 	setupJianyingTextRuntimeIPC,
 	type JianyingTextRuntimeIPCController,
-} from "./jianying-text-runtime-handler.js";
+} from "./jianying-text-runtime/jianying-text-runtime-handler.js";
 import {
 	setupJianyingSameProfileWritebackIPC,
 	type JianyingSameProfileWritebackIPCController,
-} from "./jianying-same-profile-writeback-handler.js";
+} from "./jianying-draft/jianying-same-profile-writeback-handler.js";
 import {
 	setupJianyingProjectExportIPC,
 	type JianyingProjectExportIPCController,
-} from "./jianying-project-export-handler.js";
+} from "./jianying-draft/jianying-project-export-handler.js";
 
 // Type definitions
 interface ReleaseNote {

@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createBeautyLabIndependentProvider,
 	independentBeautyAdjustments,
-} from "../beauty-lab-independent";
-import type { BeautyLabIndependentRequest } from "../beauty-lab-independent-contract";
-import { runIndependentBeautyJob } from "../beauty-lab-independent-process";
-import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
-import { verifyIndependentBeautyEnvironment } from "../beauty-lab-runtime-environment";
+} from "../beauty-lab/beauty-lab-independent";
+import type { BeautyLabIndependentRequest } from "../beauty-lab/beauty-lab-independent-contract";
+import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
+import { verifyIndependentBeautyEnvironment } from "../beauty-lab/beauty-lab-runtime-environment";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],

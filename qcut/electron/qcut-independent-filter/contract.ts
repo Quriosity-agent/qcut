@@ -2,7 +2,7 @@ import type { FilterComparisonAPI } from "./comparison-contract.js";
 import type {
 	JianyingFilterLabLoadRendererResult,
 	JianyingFilterLabRenderLocalEffectRequest,
-} from "../jianying-filter-lab-contract.js";
+} from "../jianying-filter/jianying-filter-lab-contract.js";
 
 export const QCUT_FILTER_LOAD = "qcut-independent-filter:load";
 export const QCUT_FILTER_RENDER = "qcut-independent-filter:render";
@@ -44,7 +44,7 @@ export interface IndependentFilterAPI extends FilterComparisonAPI {
 	list: (request?: {
 		refresh?: boolean;
 	}) => Promise<
-		import("../jianying-filter-catalog-export.js").JianyingFilterCatalogExport
+		import("../jianying-filter/jianying-filter-catalog-export.js").JianyingFilterCatalogExport
 	>;
 	render: (
 		request: IndependentFilterRequest

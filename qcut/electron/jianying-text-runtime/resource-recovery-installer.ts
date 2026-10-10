@@ -22,11 +22,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import type {
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyRole,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import type { JianyingTextResourceCatalogCandidate } from "./resource-catalog.js";
 import { findJianyingPackageFontFile } from "./package-font-files.js";
 import {

@@ -4,7 +4,7 @@ import path from "node:path";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 
 const HOST_CACHE_TTL_MS = 5_000;

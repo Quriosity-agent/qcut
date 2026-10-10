@@ -15,7 +15,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { JianyingKnownFilter } from "../jianying-filter-metadata.js";
+import type { JianyingKnownFilter } from "../jianying-filter/jianying-filter-metadata.js";
 import { JIANYING_PORTRAIT_MAKEUP_CARDS } from "../jianying-portrait-adjustment-runtime/makeup-catalog.js";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {

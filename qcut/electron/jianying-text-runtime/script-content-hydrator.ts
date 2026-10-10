@@ -1,5 +1,5 @@
 import path from "node:path";
-import { asJianyingRecord } from "../jianying-text-package-metadata.js";
+import { asJianyingRecord } from "../jianying-text/jianying-text-package-metadata.js";
 import { hydrateJianyingRichTextFontPaths } from "./rich-text-fonts.js";
 import { replaceJianyingRichTextEffectStylePaths } from "./rich-text-resources.js";
 import { filterJianyingScriptRuntimeCompatibleChildren } from "./script-runtime-compatibility.js";

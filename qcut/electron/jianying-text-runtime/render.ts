@@ -7,7 +7,7 @@ import type {
 	JianyingTextRuntimeRenderResult,
 	JianyingTextRuntimeRenderStrategy,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import { getFFmpegPath } from "../ffmpeg/paths.js";
 import {
 	renderEditableJianyingScriptSequence,

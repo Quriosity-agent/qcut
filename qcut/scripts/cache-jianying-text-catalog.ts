@@ -1,8 +1,8 @@
 import {
 	cacheQCutJianyingTextCatalog,
 	verifyQCutJianyingTextCatalogCache,
-} from "../electron/jianying-text-private-catalog-cache.js";
-import { ensureQCutJianyingTextPrivateArchive } from "../electron/jianying-text-private-archive.js";
+} from "../electron/jianying-text/jianying-text-private-catalog-cache.js";
+import { ensureQCutJianyingTextPrivateArchive } from "../electron/jianying-text/jianying-text-private-archive.js";
 
 function parseConcurrency() {
 	const option = process.argv.find((argument) =>

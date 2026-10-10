@@ -6,7 +6,7 @@ import path from "node:path";
 import { expect, test, type Locator } from "@playwright/test";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
 import { JIANYING_PORTRAIT_SKIN_TONES } from "../../../../../electron/jianying-portrait-adjustment-runtime/skin-tone-catalog";
-import type { MediaPortraitAdjustmentKey } from "../../../../../electron/jianying-portrait-adjustment-contract";
+import type { MediaPortraitAdjustmentKey } from "../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import {
 	preparePortraitReferenceProject,

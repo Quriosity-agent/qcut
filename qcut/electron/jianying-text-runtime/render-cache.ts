@@ -3,7 +3,7 @@ import path from "node:path";
 import type {
 	JianyingTextRuntimeContentBounds,
 	JianyingTextRuntimeRenderStrategy,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 
 export const JIANYING_TEXT_RENDER_CACHE_SCHEMA_VERSION = 23;

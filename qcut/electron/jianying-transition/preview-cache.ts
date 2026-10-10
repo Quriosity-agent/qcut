@@ -5,8 +5,8 @@ import { app } from "electron";
 import type {
 	JianyingTransitionPreviewRequest,
 	JianyingTransitionPreviewResult,
-} from "../jianying-transition-contract.js";
-import { resolveJianyingTransition } from "../jianying-transition-contract.js";
+} from "./jianying-transition-contract.js";
+import { resolveJianyingTransition } from "./jianying-transition-contract.js";
 import { getFFmpegPath } from "../ffmpeg/paths.js";
 import { renderJianyingTransition } from "./render.js";
 import {

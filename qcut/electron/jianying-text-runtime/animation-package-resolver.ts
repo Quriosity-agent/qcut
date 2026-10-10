@@ -4,7 +4,7 @@ import path from "node:path";
 import {
 	createEmptyJianyingTextEffectCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import type {
 	JianyingTextAnimationReference,
 	JianyingTextAnimationReferences,
@@ -12,13 +12,13 @@ import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextResourceRecoveryFailureReason,
 	JianyingTextRuntimeDependencyRole,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	asJianyingRecord,
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import {
 	inspectJianyingTextComponentPackage,
 	type JianyingTextComponentManifest,

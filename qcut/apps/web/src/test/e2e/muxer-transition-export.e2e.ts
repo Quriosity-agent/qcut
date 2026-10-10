@@ -13,7 +13,7 @@ import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { resolveJianyingTransition } from "../../../../../electron/jianying-transition-catalog";
+import { resolveJianyingTransition } from "../../../../../electron/jianying-transition/jianying-transition-catalog";
 import { uploadTestMedia } from "./helpers/e2e-panel-helpers";
 import { createTestProject, expect } from "./helpers/electron-helpers";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";

@@ -1,7 +1,7 @@
 import {
 	JIANYING_TRANSITION_GROUPS,
 	type JianyingTransitionGroup,
-} from "../../../../../../../../electron/jianying-transition-catalog";
+} from "../../../../../../../../electron/jianying-transition/jianying-transition-catalog";
 import { JIANYING_LOCAL_TRANSITION_PRESETS } from "./transition-jianying-local-presets";
 import { TRANSITION_LAB_PRESETS } from "./transition-lab-presets";
 import type { TransitionPreset } from "./transition-preset-types";

@@ -5,11 +5,11 @@
  *
  * Pure functions only — callers supply catalog cards and store records.
  * Which record counts for a card is decided by the shared gate in
- * electron/jianying-filter-verification-gate.ts, the same one the catalog
+ * electron/jianying-filter/jianying-filter-verification-gate.ts, the same one the catalog
  * badge uses.
  */
-import { selectVerificationForCard } from "../../jianying-filter-verification-gate.js";
-import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter-lab-contract.js";
+import { selectVerificationForCard } from "../../jianying-filter/jianying-filter-verification-gate.js";
+import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter/jianying-filter-lab-contract.js";
 
 export interface FilterLabCoverageCard {
 	resourceId: string;

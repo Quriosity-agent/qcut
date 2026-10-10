@@ -12,8 +12,8 @@
 import type {
 	resolveJianyingFilterCategories,
 	resolveJianyingFilterTitles,
-} from "../../jianying-filter-metadata.js";
-import { saveJianyingFilterVerification } from "../../jianying-filter-verification-store.js";
+} from "../../jianying-filter/jianying-filter-metadata.js";
+import { saveJianyingFilterVerification } from "../../jianying-filter/jianying-filter-verification-store.js";
 import {
 	compareCubes,
 	frameColours,
@@ -132,7 +132,13 @@ async function loadListMetadataViaBunChild({
 		size: entry.size,
 	}));
 	const input = {
-		modulePath: join(__dirname, "..", "..", "jianying-filter-metadata.js"),
+		modulePath: join(
+			__dirname,
+			"..",
+			"..",
+			"jianying-filter",
+			"jianying-filter-metadata.js"
+		),
 		references,
 	};
 	const { stdout } = await promisify(execFile)(
@@ -175,7 +181,7 @@ async function loadListMetadata({
 	// runtime — keeping them out of the try below is what lets injected
 	// resolvers work where the sqlite-backed module cannot load.
 	const { findJianyingFilterCategories, findJianyingFilterTitle } =
-		await import("../../jianying-filter-metadata-lookup.js");
+		await import("../../jianying-filter/jianying-filter-metadata-lookup.js");
 	if (deps.resolveCategories && deps.resolveTitles) {
 		try {
 			const [catalog, titles] = await Promise.all([
@@ -199,10 +205,10 @@ async function loadListMetadata({
 		// dynamic one, which bun pre-resolves while parsing the CLI entry graph)
 		// of the node:sqlite-backed metadata module would break every pipeline
 		// command under bun, not just this one.
-		const specifier = "../../jianying-filter-metadata.js";
+		const specifier = "../../jianying-filter/jianying-filter-metadata.js";
 		const metadata = (await import(
 			specifier
-		)) as typeof import("../../jianying-filter-metadata.js");
+		)) as typeof import("../../jianying-filter/jianying-filter-metadata.js");
 		const resolveCategories =
 			deps.resolveCategories ?? metadata.resolveJianyingFilterCategories;
 		const resolveTitles =

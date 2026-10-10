@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { JianyingShotSplitResult } from "../../../jianying-shot-split-contract.js";
+import type { JianyingShotSplitResult } from "../../../jianying-shot-split/jianying-shot-split-contract.js";
 import {
 	type AnalyzeShotsDependencies,
 	buildAnalyzeShotsBothReport,

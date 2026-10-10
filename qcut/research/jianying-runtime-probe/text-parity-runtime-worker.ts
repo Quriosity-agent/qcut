@@ -5,7 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import type {
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
-} from "../../electron/jianying-text-runtime-contract";
+} from "../../electron/jianying-text-runtime/jianying-text-runtime-contract";
 import { renderJianyingText } from "../../electron/jianying-text-runtime/render";
 
 function argumentValue({

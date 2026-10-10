@@ -14,8 +14,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
-} from "../beauty-lab-live-selection.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+} from "../beauty-lab/beauty-lab-live-selection.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_ADJUSTMENT_CATALOG,

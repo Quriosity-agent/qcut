@@ -2,7 +2,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { JianyingTextRuntimeReference } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import { resolveJianyingTextPackage } from "../jianying-text-runtime/package-resolver.js";
 import { renderJianyingText } from "../jianying-text-runtime/render.js";
 import {

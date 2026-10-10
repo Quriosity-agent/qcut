@@ -10,17 +10,17 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { preparePrivateCoverTextLayout } from "../jianying-cover-prepare-layout";
-import { retainCoverLayoutWordArt } from "../jianying-cover-layout-assets";
-import { listPrivateCovers } from "../jianying-cover-private-cache";
+import { preparePrivateCoverTextLayout } from "../jianying-cover/jianying-cover-prepare-layout";
+import { retainCoverLayoutWordArt } from "../jianying-cover/jianying-cover-layout-assets";
+import { listPrivateCovers } from "../jianying-cover/jianying-cover-private-cache";
 import type {
 	CoverCachedFile,
 	CoverCachedEntry,
 	CoverCatalog,
-} from "../jianying-cover-contract";
+} from "../jianying-cover/jianying-cover-contract";
 import { coverLayoutFixture } from "./fixtures/cover-layout";
 
-vi.mock("../jianying-font-lab-catalog", () => ({
+vi.mock("../jianying-font/jianying-font-lab-catalog", () => ({
 	readFontkitMetadata: () => ({
 		familyName: "Fixture",
 		fullName: "Fixture Regular",

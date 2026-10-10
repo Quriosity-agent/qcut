@@ -3,7 +3,7 @@ import {
 	JIANYING_TRANSITION_GROUPS,
 	JIANYING_TRANSITIONS,
 	resolveJianyingTransition,
-} from "../../jianying-transition-catalog.js";
+} from "../../jianying-transition/jianying-transition-catalog.js";
 import { renderJianyingTransition } from "../../jianying-transition/render.js";
 import { inspectJianyingTransitionRuntime } from "../../jianying-transition/runtime-discovery.js";
 import type {

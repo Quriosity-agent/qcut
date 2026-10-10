@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import { GoogleIcon } from "@/components/icons";
 import { AppUpdateButton } from "@/components/app-update-button";
-import { useLogin } from "@/hooks/auth/useLogin";
+import { useLogin } from "@/hooks/auth/use-login";
 
 const LoginPageComponent = () => {
 	const navigate = useNavigate();

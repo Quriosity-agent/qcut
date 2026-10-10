@@ -20,7 +20,7 @@ import type {
 	JianyingPortraitAdjustmentRenderResult,
 	JianyingPortraitAdjustmentStatus,
 	MediaPortraitManualRetouchStroke,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
 import { resolveJianyingPortraitAdjustmentHost } from "./bridge-resolver.js";
 import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "./catalog.js";

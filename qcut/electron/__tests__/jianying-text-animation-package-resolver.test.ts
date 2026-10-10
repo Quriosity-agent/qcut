@@ -10,7 +10,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { JianyingTextAnimationReferences } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextAnimationReferences } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import {
 	JianyingTextAnimationPackageError,
 	resolveJianyingTextAnimations,

@@ -5,7 +5,7 @@ import { access, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { JianyingTextRuntimeStatus } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeStatus } from "./jianying-text-runtime-contract.js";
 import {
 	materializeJianyingTextRuntimeBridge,
 	resolveJianyingTextRuntimeBridge,

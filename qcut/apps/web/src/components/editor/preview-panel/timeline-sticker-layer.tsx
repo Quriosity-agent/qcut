@@ -1,5 +1,5 @@
 import { useMemo, useRef, type RefObject } from "react";
-import { StickerElement as InteractiveStickerElement } from "@/components/editor/stickers-overlay/StickerElement";
+import { StickerElement as InteractiveStickerElement } from "@/components/editor/stickers-overlay/sticker-element";
 import { resolveTimelineStickerVisualAtTime } from "@/lib/stickers/timeline-sticker-visual";
 import { usePlanarTrackingSidecar } from "@/lib/tracking/use-planar-tracking-sidecar";
 import type { MediaItem } from "@/stores/media/media-store-types";

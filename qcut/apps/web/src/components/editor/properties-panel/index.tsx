@@ -6,24 +6,24 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import type { TimelineElement, CaptionElement } from "@/types/timeline";
 import { ScrollArea } from "../../ui/scroll-area";
-import { AudioProperties } from "./audio-properties";
-import { isAudioClipSelection } from "./audio-clip-selection";
+import { AudioProperties } from "./audio/audio-properties";
+import { isAudioClipSelection } from "./audio/audio-clip-selection";
 import {
 	AudioMultiSelectionProperties,
 	type AudioBatchSelection,
-} from "./audio-multi-selection-properties";
-import { MediaProperties } from "./media-properties";
+} from "./audio/audio-multi-selection-properties";
+import { MediaProperties } from "./media/media-properties";
 import { VideoMultiSelectionProperties } from "./video-multi-selection-properties";
 import type { MediaBatchSelection } from "@/lib/video/media-batch-properties";
 import {
 	TextGroupProperties,
 	TextProperties,
 	type TextGroupSelection,
-} from "./text-properties";
+} from "./text/text-properties";
 import { PanelTabs } from "./panel-tabs";
 import { useExportStore } from "@/stores/export-store";
 import { ExportPanelContent } from "./export-panel-content";
-import { SettingsView } from "./settings-view";
+import { SettingsView } from "./settings/settings-view";
 import { PanelView } from "@/types/panel";
 import { useEffectsStore } from "@/stores/ai/effects-store";
 import { EffectsProperties } from "./effects-properties";
@@ -32,7 +32,7 @@ import { RemotionProperties } from "./remotion-properties";
 import { HyperframesProperties } from "./hyperframes-properties";
 import { EFFECTS_ENABLED } from "@/config/features";
 import { MarkdownProperties } from "./markdown-properties";
-import { CaptionProperties } from "./caption-properties";
+import { CaptionProperties } from "./caption/caption-properties";
 import { ProjectInfoView } from "./project-info-view";
 import { BackgroundView } from "./background-view";
 import { PropertyGroup } from "./property-item";
@@ -43,7 +43,7 @@ import {
 } from "@/stores/screen-recording-store";
 import { TransitionProperties } from "./transition-properties";
 import { AdjustmentProperties } from "./adjustment-properties";
-import { StickerProperties } from "./sticker-properties";
+import { StickerProperties } from "./sticker/sticker-properties";
 import { useTranslation } from "@/lib/i18n";
 
 export function PropertiesPanel() {

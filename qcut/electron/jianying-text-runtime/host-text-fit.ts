@@ -1,4 +1,4 @@
-import type { JianyingTextRuntimePackageKind } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimePackageKind } from "./jianying-text-runtime-contract.js";
 import { nextJianyingTextFitValue } from "./alpha-fit.js";
 
 export interface JianyingHostTextAlphaBounds {

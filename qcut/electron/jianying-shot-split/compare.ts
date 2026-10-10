@@ -8,7 +8,7 @@ import type {
 	JianyingShotSplitComparison,
 	JianyingShotSplitCutMatch,
 	JianyingShotSplitResult,
-} from "../jianying-shot-split-contract.js";
+} from "./jianying-shot-split-contract.js";
 
 export const SHOT_SPLIT_COMPARE_TOLERANCE_FRAMES = 1;
 

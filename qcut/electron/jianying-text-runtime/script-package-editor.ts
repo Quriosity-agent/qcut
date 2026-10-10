@@ -15,7 +15,7 @@ import path from "node:path";
 import {
 	asJianyingRecord,
 	DEFAULT_JIANYING_TEXT_TEMPLATE_DURATION,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import { injectJianyingCaptionTiming } from "./script-caption-timing.js";
 import { hydrateJianyingScriptContent } from "./script-content-hydrator.js";
 import { splitJianyingTextGraphemes } from "./graphemes.js";

@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
-import { createBeautyLabIndependentProvider } from "../electron/beauty-lab-independent";
+import { createBeautyLabIndependentProvider } from "../electron/beauty-lab/beauty-lab-independent";
 import {
 	processIndependentBeautySequence,
 	type IndependentBeautySequenceFrame,
-} from "../electron/beauty-lab-independent-sequence";
+} from "../electron/beauty-lab/beauty-lab-independent-sequence";
 import { createJianyingPortraitAdjustmentProvider } from "../electron/jianying-portrait-adjustment-runtime/provider";
 import { beautyPixelDifference } from "./beauty-lab-matrix-metrics";
 

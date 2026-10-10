@@ -5,21 +5,21 @@ import path from "node:path";
 import {
 	createJianyingRuntimePackageCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import type {
 	JianyingEffectStyleInspection,
 	JianyingEffectStyleManifest,
-} from "../jianying-text-effect-style-contract.js";
-import { parseJianyingEffectStylePackage } from "../jianying-text-effect-style-parser.js";
+} from "../jianying-text/jianying-text-effect-style-contract.js";
+import { parseJianyingEffectStylePackage } from "../jianying-text/jianying-text-effect-style-parser.js";
 import type {
 	JianyingTextEffectCapabilities,
 	JianyingTextRuntimeDependencyStatus,
 	JianyingTextRuntimeDiagnostic,
-} from "../jianying-text-runtime-contract.js";
+} from "./jianying-text-runtime-contract.js";
 import {
 	detectJianyingTextPackageKind,
 	readBoundedJianyingTextJson,
-} from "../jianying-text-package-metadata.js";
+} from "../jianying-text/jianying-text-package-metadata.js";
 import {
 	inspectJianyingTextComponentPackage,
 	type JianyingTextComponentManifest,

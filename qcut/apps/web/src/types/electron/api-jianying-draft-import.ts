@@ -1,4 +1,4 @@
-import type { JianyingDraftImportAPI } from "../../../../../electron/jianying-draft-import-contract";
+import type { JianyingDraftImportAPI } from "../../../../../electron/jianying-draft/jianying-draft-import-contract";
 
 export interface ElectronJianyingDraftImportOps {
 	jianyingDraftImport?: JianyingDraftImportAPI;
@@ -23,4 +23,4 @@ export type {
 	JianyingDraftImportAPI,
 	JianyingDraftImportErrorDto,
 	JianyingDraftImportResultDto,
-} from "../../../../../electron/jianying-draft-import-contract";
+} from "../../../../../electron/jianying-draft/jianying-draft-import-contract";

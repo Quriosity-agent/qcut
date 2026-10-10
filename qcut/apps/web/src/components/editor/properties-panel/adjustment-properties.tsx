@@ -35,16 +35,16 @@ import type {
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
-import { ColorBasicSettings } from "./color-basic-settings";
-import { ColorCurvesSettings } from "./color-curves-settings";
-import { ColorHslSettings } from "./color-hsl-settings";
-import { ColorLutSettings } from "./color-lut-settings";
-import { ColorManagementSettingsPanel } from "./color-management-settings";
-import { ColorMaskSettings } from "./color-mask-settings";
-import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
-import { ColorWheelSettingsPanel } from "./color-wheel-settings";
-import { MediaMaskProperties } from "./media-mask-properties";
+import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
+import { ColorBasicSettings } from "./color/color-basic-settings";
+import { ColorCurvesSettings } from "./color/color-curves-settings";
+import { ColorHslSettings } from "./color/color-hsl-settings";
+import { ColorLutSettings } from "./color/color-lut-settings";
+import { ColorManagementSettingsPanel } from "./color/color-management-settings";
+import { ColorMaskSettings } from "./color/color-mask-settings";
+import { ColorSecondaryCurvesSettings } from "./color/color-secondary-curves-settings";
+import { ColorWheelSettingsPanel } from "./color/color-wheel-settings";
+import { MediaMaskProperties } from "./media/media-mask-properties";
 
 function curveShapeSamples({
 	property,

@@ -4,7 +4,7 @@ import {
 	JIANYING_TRANSITIONS,
 	getJianyingTransitionCount,
 	resolveJianyingTransition,
-} from "../jianying-transition-catalog.js";
+} from "../jianying-transition/jianying-transition-catalog.js";
 
 describe("Jianying transition catalog", () => {
 	it("keeps the public Transition Lab catalog complete and unique", () => {

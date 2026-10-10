@@ -1,4 +1,4 @@
-import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter-lab-contract.js";
+import type { JianyingFilterVerificationReferenceKind } from "../../jianying-filter/jianying-filter-lab-contract.js";
 
 export const FILTER_LAB_REFERENCE_KINDS = [
 	"jianying-ui",

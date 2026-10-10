@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
 import { selectIndependentCatalog } from "../qcut-independent-filter/lut-catalog.js";
 import { resolveIndependentFilterPlan } from "../native-pipeline/cli/cli-handlers-filter-lab-independent.js";
 import { createFilterLabNativeFrameRenderer } from "../native-pipeline/filters/filter-lab-native-frame-renderer.js";

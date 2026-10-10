@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { JianyingFilterCatalogCard } from "../jianying-filter-catalog-export.js";
-import { inspectJianyingFilterPackages } from "../jianying-filter-package-inspector.js";
+import type { JianyingFilterCatalogCard } from "../jianying-filter/jianying-filter-catalog-export.js";
+import { inspectJianyingFilterPackages } from "../jianying-filter/jianying-filter-package-inspector.js";
 import { inspectJianyingFilterLocalRuntime } from "../jianying-filter-local-runtime/runtime-discovery.js";
-import { loadJianyingFilterLabRenderer } from "../jianying-filter-multi-pass-loader.js";
+import { loadJianyingFilterLabRenderer } from "../jianying-filter/jianying-filter-multi-pass-loader.js";
 import { materializeVideoCubeLut } from "../ffmpeg/color-lut-file.js";
 import {
 	listJianyingLutReferences,
@@ -13,13 +13,13 @@ import {
 import { loadTiledLutCube } from "../native-pipeline/filters/filter-lab-tiled-lut.js";
 import { resolveFilterLabRenderPlan } from "../native-pipeline/filters/filter-lab-render-plan.js";
 
-vi.mock("../jianying-filter-package-inspector.js", () => ({
+vi.mock("../jianying-filter/jianying-filter-package-inspector.js", () => ({
 	inspectJianyingFilterPackages: vi.fn(),
 }));
 vi.mock("../jianying-filter-local-runtime/runtime-discovery.js", () => ({
 	inspectJianyingFilterLocalRuntime: vi.fn(),
 }));
-vi.mock("../jianying-filter-multi-pass-loader.js", () => ({
+vi.mock("../jianying-filter/jianying-filter-multi-pass-loader.js", () => ({
 	loadJianyingFilterLabRenderer: vi.fn(),
 }));
 vi.mock("../ffmpeg/color-lut-file.js", async (importOriginal) => ({

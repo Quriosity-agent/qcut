@@ -3,7 +3,7 @@ import { Ban, Check, AlertTriangle, RefreshCw, Type } from "lucide-react";
 import {
 	JIANYING_COVER_CATEGORIES,
 	type CoverLibraryResult,
-} from "../../../../../../electron/jianying-cover-contract";
+} from "../../../../../../electron/jianying-cover/jianying-cover-contract";
 import { loadPrivateCoverLibrary } from "@/lib/cover/private-cover-library";
 import { useTranslation } from "@/lib/i18n";
 import { activateCoverControl } from "./cover-tool";

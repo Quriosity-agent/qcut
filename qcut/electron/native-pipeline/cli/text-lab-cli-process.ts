@@ -4,11 +4,11 @@ import { promisify } from "node:util";
 import type {
 	JianyingTextAnimationLabListResult,
 	JianyingTextStyleLabListResult,
-} from "../../jianying-text-style-lab-contract.js";
+} from "../../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextRuntimeRenderRequest,
 	JianyingTextRuntimeRenderResult,
-} from "../../jianying-text-runtime-contract.js";
+} from "../../jianying-text-runtime/jianying-text-runtime-contract.js";
 
 export interface TextLabCatalog {
 	styles: JianyingTextStyleLabListResult;
@@ -101,11 +101,14 @@ export async function loadTextLabCatalogDefault(): Promise<TextLabCatalog> {
 				__dirname,
 				"..",
 				"..",
+				"jianying-text",
 				"jianying-text-lab-service.js"
 			),
 		});
 	}
-	const service = await import("../../jianying-text-lab-service.js");
+	const service = await import(
+		"../../jianying-text/jianying-text-lab-service.js"
+	);
 	return service.buildQCutJianyingTextLabCatalog();
 }
 

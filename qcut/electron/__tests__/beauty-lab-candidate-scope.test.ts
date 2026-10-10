@@ -6,11 +6,11 @@ import {
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateResult,
 	type BeautyLabCandidateStageMetric,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 import {
 	createBeautyLabCandidateProvider,
 	type BeautyLabCandidateBackend,
-} from "../beauty-lab-candidate-provider.js";
+} from "../beauty-lab/beauty-lab-candidate-provider.js";
 import { requestFor } from "./beauty-lab-live-candidate-fixture.js";
 
 function fixture({

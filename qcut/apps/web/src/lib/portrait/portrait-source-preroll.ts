@@ -1,7 +1,7 @@
 import {
 	PORTRAIT_SOURCE_PRE_ROLL_LIMITS,
 	type JianyingPortraitSourcePreRoll,
-} from "../../../../../electron/jianying-portrait-adjustment-contract";
+} from "../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 
 export type PortraitSourcePreRollReader = ({
 	width,

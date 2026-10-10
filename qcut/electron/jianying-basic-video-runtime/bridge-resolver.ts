@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { withAtomicPublishLock } from "../jianying-person-cutout/atomic-publish-lock.js";
-import { JIANYING_PRIVATE_DEFLICKER_ROUTE } from "../jianying-basic-video-contract.js";
+import { JIANYING_PRIVATE_DEFLICKER_ROUTE } from "./jianying-basic-video-contract.js";
 
 const execFileAsync = promisify(execFile);
 const MINIMUM_HOST_BYTES = 4096;

@@ -10,8 +10,8 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { captureBeautyLabLiveRequestDependencies } from "../beauty-lab-live-candidate-inventory.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+import { captureBeautyLabLiveRequestDependencies } from "../beauty-lab/beauty-lab-live-candidate-inventory.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 import { digest, setupFiles } from "./beauty-lab-live-candidate-fixture.js";
 
 vi.mock("node:path", async (importOriginal) => {

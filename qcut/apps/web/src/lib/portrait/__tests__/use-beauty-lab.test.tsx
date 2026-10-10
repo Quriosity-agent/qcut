@@ -19,7 +19,7 @@ import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab-candidate-contract";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "../../../../../../electron/beauty-lab/beauty-lab-candidate-contract";
 import { captureJianyingPortraitDetectionFrame } from "../jianying-portrait-face-detection";
 import { useBeautyLab } from "../use-beauty-lab";
 

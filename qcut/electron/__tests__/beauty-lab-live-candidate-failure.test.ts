@@ -15,7 +15,7 @@ import {
 	beautyLabLiveJobFailure,
 	createBeautyLabLiveJobError,
 	type BeautyLabLiveJobFailureKind,
-} from "../beauty-lab-live-candidate-failure.js";
+} from "../beauty-lab/beauty-lab-live-candidate-failure.js";
 
 const LEASE = "beauty-lab-static:synthetic-lease";
 let directory: string;

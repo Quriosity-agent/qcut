@@ -5,7 +5,7 @@ import path from "node:path";
 import type {
 	JianyingEffectAdjustValue,
 	JianyingEffectDefinition,
-} from "../jianying-effect-contract.js";
+} from "./jianying-effect-contract.js";
 import { getFFmpegPath } from "../ffmpeg/paths.js";
 import { buildJianyingRawDecodeFilter } from "../jianying-transition/video-filters.js";
 import { jianyingModelDirectory } from "./model-directory.js";

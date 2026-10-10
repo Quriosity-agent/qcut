@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFile, writeFile } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import type { JianyingPortraitHostRenderCommand } from "../jianying-portrait-adjustment-runtime/host-process.js";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request.js";
 import {

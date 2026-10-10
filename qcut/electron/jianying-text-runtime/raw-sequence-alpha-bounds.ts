@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import type { JianyingTextRuntimeContentBounds } from "../jianying-text-runtime-contract.js";
+import type { JianyingTextRuntimeContentBounds } from "./jianying-text-runtime-contract.js";
 
 const BYTES_PER_PIXEL = 4;
 const ALPHA_BYTE_OFFSET = 3;

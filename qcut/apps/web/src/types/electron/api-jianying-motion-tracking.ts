@@ -1,4 +1,4 @@
-import type { JianyingMotionTrackingAPI } from "../../../../../electron/jianying-motion-tracking-contract";
+import type { JianyingMotionTrackingAPI } from "../../../../../electron/jianying-motion-tracking/jianying-motion-tracking-contract";
 
 export interface ElectronJianyingMotionTrackingOps {
 	jianyingMotionTracking?: JianyingMotionTrackingAPI;
@@ -13,4 +13,4 @@ export type {
 	JianyingMotionTrackingResult,
 	JianyingMotionTrackingSample,
 	JianyingMotionTrackingStatus,
-} from "../../../../../electron/jianying-motion-tracking-contract";
+} from "../../../../../electron/jianying-motion-tracking/jianying-motion-tracking-contract";

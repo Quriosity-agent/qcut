@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	JIANYING_COVER_LIST_CHANNEL,
 	JIANYING_COVER_LAYOUT_CHANNEL,
-} from "../jianying-cover-contract.js";
+} from "../jianying-cover/jianying-cover-contract.js";
 
 const { handle, list, prepare } = vi.hoisted(() => ({
 	handle: vi.fn(),
@@ -12,10 +12,10 @@ const { handle, list, prepare } = vi.hoisted(() => ({
 	prepare: vi.fn(),
 }));
 vi.mock("electron", () => ({ ipcMain: { handle } }));
-vi.mock("../jianying-cover-private-cache.js", () => ({
+vi.mock("../jianying-cover/jianying-cover-private-cache.js", () => ({
 	listPrivateCovers: list,
 }));
-vi.mock("../jianying-cover-prepare-layout.js", () => ({
+vi.mock("../jianying-cover/jianying-cover-prepare-layout.js", () => ({
 	preparePrivateCoverTextLayout: prepare,
 }));
 import { registerJianyingCoverHandlers } from "../main-ipc/jianying-cover-handlers.js";

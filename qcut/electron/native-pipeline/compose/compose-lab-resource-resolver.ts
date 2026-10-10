@@ -4,7 +4,7 @@ import { basename, extname, join } from "node:path";
 import {
 	JIANYING_TRANSITIONS,
 	type JianyingTransitionDefinition,
-} from "../../jianying-transition-catalog.js";
+} from "../../jianying-transition/jianying-transition-catalog.js";
 import {
 	inspectJianyingTransitionRuntime,
 	type JianyingRuntimeInspection,

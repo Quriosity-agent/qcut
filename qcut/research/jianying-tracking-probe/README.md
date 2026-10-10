@@ -427,7 +427,7 @@ frameIndex     求解器使用的离散帧号
 
 - `apps/web/src/lib/stickers/sticker-tracking.ts`
 - `apps/web/src/lib/stickers/sticker-tracking-export.ts`
-- `apps/web/src/components/editor/properties-panel/sticker-tracking-properties.tsx`
+- `apps/web/src/components/editor/properties-panel/sticker/sticker-tracking-properties.tsx`
 - `apps/web/src/lib/stickers/__tests__/sticker-tracking.test.ts`
 - `apps/web/src/lib/stickers/__tests__/sticker-tracking-export.test.ts`
 - `packages/editor-core/src/types/timeline.ts`

@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
-import type { JianyingTimelinePreviewRequest } from "../jianying-transition-contract.js";
+import type { JianyingTimelinePreviewRequest } from "./jianying-transition-contract.js";
 
 const MAX_REGISTERED_PREVIEW_SOURCES = 10_000;
 const registeredPreviewSources = new Set<string>();

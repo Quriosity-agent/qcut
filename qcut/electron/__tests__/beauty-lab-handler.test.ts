@@ -6,15 +6,15 @@ import {
 	BEAUTY_LAB_LOAD_CHANNEL,
 	type BeautyLabResearchCase,
 	type BeautyLabResearchFrame,
-} from "../beauty-lab-contract.js";
-import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
-import { createBeautyLabCandidateProvider } from "../beauty-lab-candidate-provider.js";
+} from "../beauty-lab/beauty-lab-contract.js";
+import { createBeautyLabResearchProvider } from "../beauty-lab/beauty-lab-research.js";
+import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_RENDER_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
-} from "../beauty-lab-candidate-contract.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
 
 const { registrations, handle, removeHandler } = vi.hoisted(() => {
 	const registrations = new Map<
@@ -45,10 +45,10 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "../beauty-lab-independent-contract";
-import { createBeautyLabIndependentProvider } from "../beauty-lab-independent";
+} from "../beauty-lab/beauty-lab-independent-contract";
+import { createBeautyLabIndependentProvider } from "../beauty-lab/beauty-lab-independent";
 
-import { setupBeautyLabIPC } from "../beauty-lab-handler.js";
+import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";
 
 const cases: BeautyLabResearchCase[] = [
 	{ id: "temporal", name: "Temporal", frameCount: 7 },

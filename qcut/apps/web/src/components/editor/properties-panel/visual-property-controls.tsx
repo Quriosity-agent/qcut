@@ -17,7 +17,7 @@ import {
 	PropertyItemLabel,
 	PropertyItemValue,
 } from "./property-item";
-import { MaskIconButton } from "./media-mask-controls";
+import { MaskIconButton } from "./media/media-mask-controls";
 
 interface NumberControlProps {
 	label: string;

@@ -5,7 +5,7 @@ import type {
 	JianyingPortraitAdjustmentRuntimePackage,
 	MediaPortraitManualBodyTool,
 	MediaPortraitManualRetouchStroke,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,

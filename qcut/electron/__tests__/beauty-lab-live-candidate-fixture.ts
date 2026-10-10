@@ -6,15 +6,15 @@ import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-contract.js";
-import { LIVE_NATIVE_STAGES } from "../beauty-lab-live-candidate-result.js";
-import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
+} from "../beauty-lab/beauty-lab-candidate-contract.js";
+import { LIVE_NATIVE_STAGES } from "../beauty-lab/beauty-lab-live-candidate-result.js";
+import { beautyLabCandidateIdentity } from "../beauty-lab/beauty-lab-candidate-request.js";
 import {
 	captureBeautyLabLiveRequestDependencies,
 	type LiveExpectedDependencies,
-} from "../beauty-lab-live-candidate-inventory.js";
-import { captureBeautyLabLiveDependencies } from "../beauty-lab-live-candidate-provenance.js";
-import { pinRoot } from "../beauty-lab-research-files.js";
+} from "../beauty-lab/beauty-lab-live-candidate-inventory.js";
+import { captureBeautyLabLiveDependencies } from "../beauty-lab/beauty-lab-live-candidate-provenance.js";
+import { pinRoot } from "../beauty-lab/beauty-lab-research-files.js";
 
 export const OPT_IN = {
 	NODE_ENV: "development",

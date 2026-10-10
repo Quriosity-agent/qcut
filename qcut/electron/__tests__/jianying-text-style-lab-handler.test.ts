@@ -11,11 +11,11 @@ import {
 	type JianyingTextAnimationLabListResult,
 	type JianyingTextStyleLabCoverResult,
 	type JianyingTextStyleLabListResult,
-} from "../jianying-text-style-lab-contract.js";
+} from "../jianying-text/jianying-text-style-lab-contract.js";
 import type {
 	JianyingTextStyleCatalog,
 	JianyingTextStyleCatalogEntry,
-} from "../jianying-text-style-lab-catalog.js";
+} from "../jianying-text/jianying-text-style-lab-catalog.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock("electron", () => ({
 // The private archive only exists on an authorized developer machine. Failing
 // here keeps these tests hermetic: every dependency that would reach it must be
 // injected, so the suite behaves the same on CI as it does locally.
-vi.mock("../jianying-text-private-archive.js", () => ({
+vi.mock("../jianying-text/jianying-text-private-archive.js", () => ({
 	ensureQCutJianyingTextPrivateArchive: vi.fn(async () => {
 		throw new Error(
 			"QCut 尚未建立花字私有备份，且没有找到可导入的剪映花字缓存。"
@@ -37,7 +37,7 @@ vi.mock("../jianying-text-private-archive.js", () => ({
 	}),
 }));
 
-import { setupJianyingTextStyleLabIPC } from "../jianying-text-style-lab-handler.js";
+import { setupJianyingTextStyleLabIPC } from "../jianying-text/jianying-text-style-lab-handler.js";
 
 const STYLE_ID = `7405879107424111910/${"a".repeat(32)}`;
 const SCRIPT_STYLE_ID = `7328639616670649634/${"b".repeat(32)}`;

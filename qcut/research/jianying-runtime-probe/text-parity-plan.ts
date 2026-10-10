@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { JianyingTextRuntimePackageKind } from "../../electron/jianying-text-runtime-contract";
+import type { JianyingTextRuntimePackageKind } from "../../electron/jianying-text-runtime/jianying-text-runtime-contract";
 
 export const TEXT_PARITY_PROGRESS_STOPS = [0, 0.25, 0.5, 0.75, 1] as const;
 

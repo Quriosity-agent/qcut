@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import type {
 	JianyingEffectCategory,
 	JianyingEffectDefinition,
-} from "../../../jianying-effect-contract";
+} from "../../../jianying-effect/jianying-effect-contract";
 import type { JianyingEffectRuntimeInspection } from "../../../jianying-effect/runtime-discovery";
 import {
 	handleEffectLabDoctor,

@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { buildVideoColorMultiPassGraph } from "../../electron/ffmpeg/color-multi-pass-filter.js";
 import type { VideoColorMultiPassSettings } from "../../electron/ffmpeg/color-settings.js";
 import { getFFmpegPath } from "../../electron/ffmpeg/paths.js";
-import { inspectJianyingFilterPackages } from "../../electron/jianying-filter-package-inspector.js";
+import { inspectJianyingFilterPackages } from "../../electron/jianying-filter/jianying-filter-package-inspector.js";
 import {
 	loadJianyingMultiPassRecipe,
 	type FilterLabMultiPassRecipe,

@@ -3,8 +3,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { getFFmpegPath, getFFprobePath } from "../../electron/ffmpeg/paths.js";
-import { inspectJianyingFilterPackages } from "../../electron/jianying-filter-package-inspector.js";
-import type { JianyingKnownFilter } from "../../electron/jianying-filter-metadata.js";
+import { inspectJianyingFilterPackages } from "../../electron/jianying-filter/jianying-filter-package-inspector.js";
+import type { JianyingKnownFilter } from "../../electron/jianying-filter/jianying-filter-metadata.js";
 import {
 	createJianyingFilterLocalRenderSession,
 	type JianyingFilterLocalRenderResult,
@@ -18,8 +18,8 @@ import {
 	JIANYING_NATIVE_PORTRAIT_PROFILES,
 	resolveJianyingNativePortraitPackagePath,
 } from "../../electron/native-pipeline/filters/filter-lab-native-portrait.js";
-import { saveJianyingFilterVerification } from "../../electron/jianying-filter-verification-store.js";
-import type { JianyingFilterVerificationStatus } from "../../electron/jianying-filter-lab-contract.js";
+import { saveJianyingFilterVerification } from "../../electron/jianying-filter/jianying-filter-verification-store.js";
+import type { JianyingFilterVerificationStatus } from "../../electron/jianying-filter/jianying-filter-lab-contract.js";
 import {
 	compareUiMaskSequence,
 	loadUiMaskManifest,
