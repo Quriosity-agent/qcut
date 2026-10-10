@@ -9,7 +9,7 @@ import {
 	readJianyingTextStyleCover,
 } from "../jianying-text-style-lab-catalog.js";
 import { isDiscoverableJianyingTextCatalogEntry } from "../jianying-text-style-discovery.js";
-import type { JianyingTextPackageOwnership } from "../jianying-text-package-ownership.js";
+import type { JianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 
 const temporaryDirectories: string[] = [];
 const PNG_BYTES = Buffer.from([

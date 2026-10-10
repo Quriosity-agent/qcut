@@ -2,22 +2,22 @@ import { constants } from "node:fs";
 import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { getDefaultJianyingFlowerDatabaseRoot } from "./jianying-text/jianying-flower-resource-metadata.js";
-import { listJianyingResourceDatabasePaths } from "./jianying-shared/jianying-resource-database.js";
+import { getDefaultJianyingFlowerDatabaseRoot } from "./jianying-flower-resource-metadata.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-shared/jianying-resource-database.js";
 import {
 	collectJianyingProjectWordArtEvidence,
 	collectJianyingScriptComponentRoles,
 	jianyingProjectStoreRootForPackageRoot,
 	type JianyingProjectWordArtEvidence,
-} from "./jianying-text/jianying-text-local-ownership-evidence.js";
+} from "./jianying-text-local-ownership-evidence.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
 	readBoundedJianyingTextJson,
-} from "./jianying-text/jianying-text-package-metadata.js";
-import type { JianyingTextStylePackageKind } from "./jianying-text-style-lab-contract.js";
-import { mapWithConcurrency } from "./lib/map-with-concurrency.js";
-import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";
+} from "./jianying-text-package-metadata.js";
+import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
+import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
+import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 
 export type JianyingTextPackageOwnershipKind =
 	| "flower"

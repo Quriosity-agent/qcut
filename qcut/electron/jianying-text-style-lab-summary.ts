@@ -14,7 +14,7 @@ import type {
 	JianyingTextStyleLabStyleSummary,
 } from "./jianying-text-style-lab-contract.js";
 import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
-import type { JianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
+import type { JianyingTextPackageOwnership } from "./jianying-text/jianying-text-package-ownership.js";
 
 export function summarizeEntry({
 	entry,

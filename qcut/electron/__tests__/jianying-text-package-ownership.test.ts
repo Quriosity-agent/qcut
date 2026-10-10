@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveJianyingTextPackageOwnership } from "../jianying-text-package-ownership.js";
+import { resolveJianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 
 const temporaryDirectories: string[] = [];
 

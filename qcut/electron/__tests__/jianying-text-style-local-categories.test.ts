@@ -4,7 +4,7 @@ import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jian
 import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
 import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
 import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";
-import type { JianyingTextPackageOwnership } from "../jianying-text-package-ownership.js";
+import type { JianyingTextPackageOwnership } from "../jianying-text/jianying-text-package-ownership.js";
 
 function catalogEntry({
 	packageKind,

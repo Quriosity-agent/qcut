@@ -1,5 +1,5 @@
 import type { JianyingFlowerResourceMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
-import type { JianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
+import type { JianyingTextPackageOwnership } from "./jianying-text/jianying-text-package-ownership.js";
 import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
 
 export function isDiscoverableJianyingTextCatalogEntry({

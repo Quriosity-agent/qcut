@@ -8,7 +8,7 @@ import {
 	type JianyingTextPackageOwnership,
 	type JianyingTextPackageOwnershipKind,
 	type JianyingTextPackageOwnershipMatch,
-} from "../../electron/jianying-text-package-ownership.js";
+} from "../../electron/jianying-text/jianying-text-package-ownership.js";
 import { isDiscoverableJianyingTextCatalogEntry } from "../../electron/jianying-text-style-discovery.js";
 import {
 	buildJianyingTextStyleCatalog,
