@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	prefersReducedMotion,
 	useTextAnimationPreview,
-} from "../text/use-text-animation-preview";
+} from "../use-text-animation-preview";
 
 describe("useTextAnimationPreview", () => {
 	afterEach(() => {
