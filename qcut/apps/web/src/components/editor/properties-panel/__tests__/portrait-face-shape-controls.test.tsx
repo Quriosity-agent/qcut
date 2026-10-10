@@ -4,7 +4,7 @@ import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../elect
 import matrix from "../../../../../../../scripts/fixtures/portrait-face-shape-reference.json";
 import { fireEvent, render, screen } from "@/test/test-utils";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
+import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
 
 function Harness({
 	missingPackage,

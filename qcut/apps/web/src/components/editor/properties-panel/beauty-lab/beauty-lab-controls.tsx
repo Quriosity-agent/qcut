@@ -23,7 +23,7 @@ import type {
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { BeautyLabPresets } from "./beauty-lab-presets";
-import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
+import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
 import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
 import { PortraitMakeupControls } from "../portrait-makeup-controls";
 
