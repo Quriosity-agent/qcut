@@ -4,11 +4,11 @@
  * large cache) runs here so the Electron main thread stays responsive; the
  * main-process side lives in jianying-filter-metadata-host.ts.
  */
-import { scanJianyingFilterMetadata } from "./jianying-filter-metadata.js";
+import { scanJianyingFilterMetadata } from "../jianying-filter-metadata.js";
 import {
 	serializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataScanRequest,
-} from "./jianying-filter-metadata-transfer.js";
+} from "../jianying-filter-metadata-transfer.js";
 
 // Electron augments `process` with `parentPort` inside a utility process,
 // but the base Node.js types don't include it.

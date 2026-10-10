@@ -51,7 +51,7 @@ async function forkMetadataChild(): Promise<JianyingFilterMetadataChild> {
 	// non-Electron tooling) never touch the electron binding.
 	const { utilityProcess } = await import("electron");
 	return utilityProcess.fork(
-		join(__dirname, "..", "jianying-filter-metadata-process.js")
+		join(__dirname, "jianying-filter-metadata-process.js")
 	);
 }
 
