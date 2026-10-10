@@ -5,7 +5,7 @@ import {
 } from "./beauty-lab-contract.js";
 import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
 import { createBeautyLabOwnedChainProvider } from "../beauty-lab-owned-chain.js";
-import { OWNED_CHAIN_CASE_ID } from "../beauty-lab-owned-chain-evidence.js";
+import { OWNED_CHAIN_CASE_ID } from "./beauty-lab-owned-chain-evidence.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
 	BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL,

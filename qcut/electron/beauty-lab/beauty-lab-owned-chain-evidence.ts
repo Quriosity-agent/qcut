@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { sha, FRAME_COUNT } from "./beauty-lab-research-evidence.js";
-import { jianyingPortraitControlsForRuntimePackage } from "./jianying-portrait-adjustment-runtime/catalog.js";
+import { sha, FRAME_COUNT } from "../beauty-lab-research-evidence.js";
+import { jianyingPortraitControlsForRuntimePackage } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	WIDTH,
 	HEIGHT,
 	safeRelativePath,
-} from "./beauty-lab-research-files.js";
+} from "../beauty-lab-research-files.js";
 
 export const OWNED_CHAIN_CASE_ID = "owned-preprocess";
 export const OWNED_CHAIN_PACKAGE_FORMAT = "qcut-beauty-lab-owned-chain-v1";

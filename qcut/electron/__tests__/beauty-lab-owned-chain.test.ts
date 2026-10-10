@@ -13,7 +13,7 @@ import {
 	OWNED_CHAIN_ORIGINAL_FORMAT,
 	OWNED_CHAIN_ORIGINAL_SOURCES,
 	OWNED_CHAIN_LEGACY_PROBE_SHA256,
-} from "../beauty-lab-owned-chain-evidence.js";
+} from "../beauty-lab/beauty-lab-owned-chain-evidence.js";
 import { verifyOwnedChainReports } from "../beauty-lab-owned-chain-verify.js";
 import { buildJianyingPortraitFeatureParameters } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import { WIDTH, HEIGHT, RGBA_BYTES } from "../beauty-lab-research-files.js";

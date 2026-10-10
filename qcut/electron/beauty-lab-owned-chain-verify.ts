@@ -18,7 +18,7 @@ import {
 	ownedChainSourceSchema,
 	ownedChainSummarySchema,
 	type OwnedChainIndex,
-} from "./beauty-lab-owned-chain-evidence.js";
+} from "./beauty-lab/beauty-lab-owned-chain-evidence.js";
 import { requireEvidence } from "./beauty-lab-research-files.js";
 
 export interface OwnedChainReports {

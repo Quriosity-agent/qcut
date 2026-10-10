@@ -9,7 +9,7 @@ import {
 	OWNED_CHAIN_ORIGINAL_FORMAT,
 	ownedChainIndexSchema,
 	ownedChainRenderSchema,
-} from "../../../../../electron/beauty-lab-owned-chain-evidence";
+} from "../../../../../electron/beauty-lab/beauty-lab-owned-chain-evidence";
 import { resolveBeautyLabResearchPaths } from "../../../../../electron/beauty-lab-research-config";
 import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
 import { saveBeautyLabComparison } from "./helpers/beauty-lab-comparison";
