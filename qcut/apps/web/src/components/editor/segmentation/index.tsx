@@ -35,7 +35,7 @@ import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 export { ObjectList } from "./ObjectList";
 export { PromptToolbar } from "./PromptToolbar";
 export { SegmentationCanvas } from "./SegmentationCanvas";
-export { MaskOverlay } from "./MaskOverlay";
+export { MaskOverlay } from "./mask-overlay";
 export { ImageUploader } from "./image-uploader";
 export { SegmentationControls } from "./SegmentationControls";
 
