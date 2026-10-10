@@ -29,7 +29,7 @@ import {
 import { useMaskEditorStore } from "@/stores/editor/mask-editor-store";
 import { MaskNumberControl } from "./media-mask-controls";
 import { MediaMaskLayerList } from "./media-mask-layer-list";
-import { MediaMaskTrackingControls } from "../media-mask-tracking-controls";
+import { MediaMaskTrackingControls } from "./media-mask-tracking-controls";
 import { MediaMaskStrokeProperties } from "./media-mask-stroke-properties";
 import { MediaMaskTransformControls } from "../media-mask-transform-controls";
 import {

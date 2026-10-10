@@ -11,8 +11,8 @@ import {
 	Wrench,
 } from "lucide-react";
 import type { MediaMask, MediaMaskTrackingDirection } from "@/types/timeline";
-import { MaskIconButton } from "./media/media-mask-controls";
-import { PropertyItemLabel } from "./property-item";
+import { MaskIconButton } from "./media-mask-controls";
+import { PropertyItemLabel } from "../property-item";
 
 function trackingStatus(mask: MediaMask) {
 	if (mask.tracking?.status === "processing") {
