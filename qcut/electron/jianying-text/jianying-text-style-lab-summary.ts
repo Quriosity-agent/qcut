@@ -3,18 +3,18 @@ import {
 	JIANYING_FLOWER_CATEGORY_GROUPS,
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-text/jianying-flower-taxonomy.js";
+} from "./jianying-flower-taxonomy.js";
 import type {
 	JianyingFlowerCatalogMetadata,
 	JianyingFlowerResourceMetadata,
-} from "./jianying-text/jianying-flower-resource-metadata.js";
+} from "./jianying-flower-resource-metadata.js";
 import type {
 	JianyingTextStyleLabCategoryGroupSummary,
 	JianyingTextStyleLabCategorySummary,
 	JianyingTextStyleLabStyleSummary,
-} from "./jianying-text/jianying-text-style-lab-contract.js";
-import type { JianyingTextStyleCatalogEntry } from "./jianying-text/jianying-text-style-lab-catalog.js";
-import type { JianyingTextPackageOwnership } from "./jianying-text/jianying-text-package-ownership.js";
+} from "./jianying-text-style-lab-contract.js";
+import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
+import type { JianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
 
 export function summarizeEntry({
 	entry,

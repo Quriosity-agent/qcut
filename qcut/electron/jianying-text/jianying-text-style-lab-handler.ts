@@ -49,7 +49,7 @@ import {
 	summarizeCategories,
 	summarizeCategoryGroups,
 	summarizeEntry,
-} from "../jianying-text-style-lab-summary.js";
+} from "./jianying-text-style-lab-summary.js";
 import {
 	computeJianyingTextLabFingerprint,
 	JIANYING_TEXT_LAB_SNAPSHOT_SCHEMA_VERSION,

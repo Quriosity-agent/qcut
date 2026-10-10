@@ -19,7 +19,7 @@ import {
 	summarizeCategories,
 	summarizeCategoryGroups,
 	summarizeEntry,
-} from "../jianying-text-style-lab-summary.js";
+} from "./jianying-text-style-lab-summary.js";
 
 export interface QCutJianyingTextLabCatalog {
 	styles: JianyingTextStyleLabListResult;
