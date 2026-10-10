@@ -5,7 +5,7 @@ import {
 	registerActiveMaskTrackingRuntime,
 } from "@/lib/segmentation/mask-tracking-runtime";
 import { createMediaMask } from "@/lib/video/media-mask-stack";
-import { MediaTrackingProperties } from "../media/media-tracking-properties";
+import { MediaTrackingProperties } from "../media-tracking-properties";
 
 describe("MediaTrackingProperties", () => {
 	afterEach(() => {
