@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	makeup: vi.fn(),
 }));
-vi.mock("../beauty-lab-live-candidate-process.js", () => ({
+vi.mock("../beauty-lab/beauty-lab-live-candidate-process.js", () => ({
 	runBeautyLabLiveCandidateJob: mocks.run,
 }));
 vi.mock("../jianying-filter-local-runtime/private-runtime.js", () => ({

@@ -6,7 +6,7 @@ import {
 	beautyLabLiveJobFailure,
 	type BeautyLabLiveJobFailure,
 } from "../beauty-lab/beauty-lab-live-candidate-failure.js";
-import { runBeautyLabLiveCandidateJob } from "../beauty-lab-live-candidate-process.js";
+import { runBeautyLabLiveCandidateJob } from "../beauty-lab/beauty-lab-live-candidate-process.js";
 
 const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
