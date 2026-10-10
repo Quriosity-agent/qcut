@@ -15,7 +15,7 @@ import {
 	isTrustedJianyingResourceUrl,
 } from "./jianying-text-runtime/resource-recovery-installer.js";
 import { downloadJianyingFilterPackage } from "./jianying-filter-download.js";
-import { identifyCoverDependency } from "./jianying-cover-dependencies.js";
+import { identifyCoverDependency } from "./jianying-cover/jianying-cover-dependencies.js";
 import {
 	asJianyingRecord,
 	readBoundedJianyingTextJson,

@@ -8,7 +8,7 @@ import type { JianyingTextRuntimeReference } from "./jianying-text-runtime-contr
 import {
 	coverDependencyReferences,
 	identifyCoverDependency,
-} from "./jianying-cover-dependencies.js";
+} from "./jianying-cover/jianying-cover-dependencies.js";
 
 const color = z.string().regex(/^(#[a-f\d]{6})?$/i);
 const finite = z.number().finite();

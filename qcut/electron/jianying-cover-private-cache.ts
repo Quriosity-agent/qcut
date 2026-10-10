@@ -13,13 +13,13 @@ import {
 import path from "node:path";
 import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
 import { z } from "zod";
-import { coverDependencyReferences } from "./jianying-cover-dependencies.js";
+import { coverDependencyReferences } from "./jianying-cover/jianying-cover-dependencies.js";
 import {
 	describeCoverDependencies,
 	parseCoverTextLayout,
 	resolveCoverLayoutFontDependency,
 } from "./jianying-cover-layout.js";
-export { coverDependencyReferences } from "./jianying-cover-dependencies.js";
+export { coverDependencyReferences } from "./jianying-cover/jianying-cover-dependencies.js";
 import {
 	coverCatalogSchema,
 	coverObservationsSchema,
