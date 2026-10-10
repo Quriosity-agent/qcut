@@ -21,7 +21,7 @@ import { findQCutJianyingTextPrivateArchive } from "../jianying-text-private-arc
 import {
 	createJianyingRuntimePackageCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 import {
 	JianyingTextAnimationPackageError,

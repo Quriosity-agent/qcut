@@ -4,7 +4,7 @@ import path from "node:path";
 import {
 	createEmptyJianyingTextEffectCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import type {
 	JianyingTextAnimationReference,
 	JianyingTextAnimationReferences,

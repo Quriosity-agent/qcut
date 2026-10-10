@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text-effect-capabilities.js";
+import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
 import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
 import { readJianyingTextStyleGeneratedCover } from "../jianying-text-style-generated-cover.js";
 import type { renderJianyingText } from "../jianying-text-runtime/render.js";

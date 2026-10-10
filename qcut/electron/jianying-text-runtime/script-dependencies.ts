@@ -5,7 +5,7 @@ import path from "node:path";
 import {
 	createJianyingRuntimePackageCapabilities,
 	mergeJianyingTextEffectCapabilities,
-} from "../jianying-text-effect-capabilities.js";
+} from "../jianying-text/jianying-text-effect-capabilities.js";
 import type {
 	JianyingEffectStyleInspection,
 	JianyingEffectStyleManifest,

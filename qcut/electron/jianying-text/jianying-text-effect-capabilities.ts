@@ -1,5 +1,5 @@
-import type { JianyingEffectStyleManifest } from "./jianying-text-effect-style-contract.js";
-import type { JianyingTextEffectCapabilities } from "./jianying-text-runtime-contract.js";
+import type { JianyingEffectStyleManifest } from "../jianying-text-effect-style-contract.js";
+import type { JianyingTextEffectCapabilities } from "../jianying-text-runtime-contract.js";
 
 const EMPTY_EFFECT_CAPABILITIES: JianyingTextEffectCapabilities = {
 	staticTexture: false,

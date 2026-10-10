@@ -6,7 +6,7 @@ import type {
 	JianyingTextStylePackageKind,
 	JianyingTextStyleQcutApproximation,
 } from "./jianying-text-style-lab-contract.js";
-import { createJianyingRuntimePackageCapabilities } from "./jianying-text-effect-capabilities.js";
+import { createJianyingRuntimePackageCapabilities } from "./jianying-text/jianying-text-effect-capabilities.js";
 import { parseJianyingEffectStylePackage } from "./jianying-text-effect-style-parser.js";
 import type {
 	JianyingTextEffectCapabilities,

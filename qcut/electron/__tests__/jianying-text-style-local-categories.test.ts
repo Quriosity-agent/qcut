@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text-effect-capabilities.js";
+import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
 import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
 import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
 import { classifyLocalJianyingTextStyles } from "../jianying-text-style-local-categories.js";

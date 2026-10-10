@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { createJianyingTextCacheAuditReport } from "../../research/jianying-runtime-probe/text-cache-audit.js";
-import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text-effect-capabilities.js";
+import { createEmptyJianyingTextEffectCapabilities } from "../jianying-text/jianying-text-effect-capabilities.js";
 import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
 import type { JianyingTextStylePackageKind } from "../jianying-text-style-lab-contract.js";
 
