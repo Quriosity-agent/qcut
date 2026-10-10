@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
-import { MediaLabProperties } from "../media/media-lab-properties";
+import { MediaLabProperties } from "../media-lab-properties";
 
 function renderLab({
 	hasLocalTracking = false,
