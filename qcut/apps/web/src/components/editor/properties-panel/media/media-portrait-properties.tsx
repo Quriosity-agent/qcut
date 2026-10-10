@@ -48,16 +48,16 @@ import type {
 	MediaPortraitAdjustments,
 	MediaPortraitManualBodyTool,
 } from "@/types/timeline";
-import { PropertyGroup, PropertyItemLabel } from "./property-item";
-import { PortraitAdjustmentSection } from "./portrait-adjustment-controls";
-import { PortraitCollapsibleGroup } from "./portrait-collapsible-group";
-import { PortraitMakeupControls } from "./portrait-makeup-controls";
-import { PortraitManualBodyControls } from "./portrait-manual-body-controls";
-import { PortraitManualRetouchControls } from "./portrait-manual-retouch-controls";
-import { PortraitPresetControls } from "./portrait-preset-controls";
-import { PortraitRuntimeStatus } from "./portrait-runtime-status";
-import { BeautyLabDialog } from "./beauty-lab/beauty-lab-dialog";
-import { NumberControl } from "./visual-property-controls";
+import { PropertyGroup, PropertyItemLabel } from "../property-item";
+import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
+import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
+import { PortraitMakeupControls } from "../portrait-makeup-controls";
+import { PortraitManualBodyControls } from "../portrait-manual-body-controls";
+import { PortraitManualRetouchControls } from "../portrait-manual-retouch-controls";
+import { PortraitPresetControls } from "../portrait-preset-controls";
+import { PortraitRuntimeStatus } from "../portrait-runtime-status";
+import { BeautyLabDialog } from "../beauty-lab/beauty-lab-dialog";
+import { NumberControl } from "../visual-property-controls";
 
 type PortraitPanelTab = "face" | "body" | "face-presets" | "body-presets";
 type FacePanelSection =
