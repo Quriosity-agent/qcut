@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.11.2] - 2026-10-10
+
 ### Fixed
 - Beauty Lab native results no longer depend on what you rendered before. Each native comparison now starts from a fresh face tracker. Before, re-rendering the same photo after an edit could drift by up to 56 RGB levels in face-shaping areas, which showed up as differences against the independent engine that were not real.
 - Beauty Lab's independent smoothing now matches native smoothing pixel for pixel. It brings in three upstream fixes from the standalone engine, so all 124 cases of the photo comparison matrix are within one RGB level, 95 of them identical.
