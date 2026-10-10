@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { shouldInvalidateJianyingFilterCache } from "../jianying-filter-cache-watcher";
+import { shouldInvalidateJianyingFilterCache } from "../jianying-filter/jianying-filter-cache-watcher";
 
 describe("Jianying filter cache watcher", () => {
 	it("reacts to downloaded filter package changes", () => {

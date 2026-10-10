@@ -45,7 +45,7 @@ import {
 	inspectJianyingFilterPackages,
 	type JianyingFilterPackageSummary,
 } from "./jianying-filter-package-inspector.js";
-import type { JianyingFilterCacheWatcher } from "./jianying-filter-cache-watcher.js";
+import type { JianyingFilterCacheWatcher } from "./jianying-filter/jianying-filter-cache-watcher.js";
 import {
 	readJianyingFilterThumbnail,
 	type JianyingFilterThumbnail,

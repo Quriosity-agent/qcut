@@ -1,6 +1,6 @@
 import { watch, type FSWatcher } from "node:fs";
 import { dirname, join } from "node:path";
-import { jianyingEffectCacheRoot } from "./native-pipeline/filters/filter-lab-lut.js";
+import { jianyingEffectCacheRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 
 const CHANGE_DEBOUNCE_MS = 250;
 const SQLITE_RUNTIME_SUFFIXES = ["-shm", "-wal", "-journal"];
