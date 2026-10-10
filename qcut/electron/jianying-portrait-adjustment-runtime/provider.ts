@@ -1085,10 +1085,15 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			value: request.sourcePreRoll,
 			request,
 		});
-		if (!preRoll) return renderNow(request);
 		const scopeKey = [request.width, request.height, request.sourceKey].join(
 			"\0"
 		);
+		if (!preRoll) {
+			// Packages outside the stable-frame list refine the previous render's tracker, so a
+			// cold request retires it first to match a first render.
+			if (request.freshTracking) await trackingScopes.retire({ scopeKey });
+			return renderNow(request);
+		}
 		const { sourcePreRoll: _preRoll, ...target } = request;
 		await trackingScopes.retire({ scopeKey });
 		try {
