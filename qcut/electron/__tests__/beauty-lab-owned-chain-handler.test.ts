@@ -30,7 +30,7 @@ vi.mock("electron", () => ({
 		) => registrations.set(channel, listener),
 	},
 }));
-vi.mock("../beauty-lab-owned-chain.js", () => ({
+vi.mock("../beauty-lab/beauty-lab-owned-chain.js", () => ({
 	createBeautyLabOwnedChainProvider: ownedFactory,
 }));
 import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";

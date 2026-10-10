@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabOwnedChainProvider } from "../beauty-lab-owned-chain.js";
+import { createBeautyLabOwnedChainProvider } from "../beauty-lab/beauty-lab-owned-chain.js";
 import {
 	OWNED_CHAIN_PACKAGE_FORMAT,
 	OWNED_CHAIN_REPORT_FILES,

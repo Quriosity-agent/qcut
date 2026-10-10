@@ -2,7 +2,7 @@ import { lstat } from "node:fs/promises";
 import type {
 	BeautyLabResearchCase,
 	BeautyLabResearchFrame,
-} from "./beauty-lab/beauty-lab-contract.js";
+} from "./beauty-lab-contract.js";
 import {
 	OWNED_CHAIN_CASE_ID,
 	OWNED_CHAIN_ORIGINAL_FORMAT,
@@ -18,9 +18,9 @@ import {
 	ownedChainPayloadSchema,
 	ownedChainRenderSchema,
 	ownedChainSummarySchema,
-} from "./beauty-lab/beauty-lab-owned-chain-evidence.js";
-import { verifyOwnedChainReports } from "./beauty-lab/beauty-lab-owned-chain-verify.js";
-import { compareRgbaPixels } from "./beauty-lab-rgba-metrics.js";
+} from "./beauty-lab-owned-chain-evidence.js";
+import { verifyOwnedChainReports } from "./beauty-lab-owned-chain-verify.js";
+import { compareRgbaPixels } from "../beauty-lab-rgba-metrics.js";
 import {
 	MIB,
 	WIDTH,
@@ -31,7 +31,7 @@ import {
 	decodeInput,
 	pinRoot,
 	requireEvidence,
-} from "./beauty-lab-research-files.js";
+} from "../beauty-lab-research-files.js";
 
 const CASE: BeautyLabResearchCase = {
 	id: OWNED_CHAIN_CASE_ID,
