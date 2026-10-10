@@ -26,7 +26,7 @@ import { useEffectsStore } from "@/stores/ai/effects-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { MediaElement, MediaPropertyKeyframe } from "@/types/timeline";
 import { SpeedCurveEditor } from "./speed-curve-editor";
-import { SpeedCurvePresetCard } from "../speed-curve-preset-card";
+import { SpeedCurvePresetCard } from "./speed-curve-preset-card";
 import {
 	createSpeedPresetKeyframes,
 	getSpeedCurvePreset,
