@@ -17,7 +17,7 @@ import {
 	perspectiveCornerOffsetPercent,
 } from "../preview-panel/media-perspective-geometry";
 import { PERSPECTIVE_PROPERTIES } from "../preview-panel/media-transform-update";
-import { MediaKeyframeNav } from "./media-keyframe-nav";
+import { MediaKeyframeNav } from "./media/media-keyframe-nav";
 import { PropertyGroup } from "./property-item";
 import { PERSPECTIVE_FIELDS } from "./visual-property-controls";
 
