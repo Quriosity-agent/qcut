@@ -5,9 +5,9 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import {
 	readJianyingCachedImage,
 	type JianyingCachedImage,
-} from "./jianying-shared/jianying-image-cache.js";
-import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
-import { renderJianyingText } from "./jianying-text-runtime/render.js";
+} from "../jianying-shared/jianying-image-cache.js";
+import type { JianyingTextStyleCatalogEntry } from "../jianying-text-style-lab-catalog.js";
+import { renderJianyingText } from "../jianying-text-runtime/render.js";
 
 const COVER_SIZE = 256;
 const COVER_FRAME_COUNT = 3;
