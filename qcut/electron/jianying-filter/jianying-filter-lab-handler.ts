@@ -90,7 +90,7 @@ import {
 	parseFilterLabRendererRequest,
 	parseFilterLabThumbnailRequest,
 	parseFilterLabDownloadRequest,
-} from "../jianying-filter-lab-request.js";
+} from "./jianying-filter-lab-request.js";
 import { loadJianyingFilterLabRenderer } from "../jianying-filter-multi-pass-loader.js";
 import { loadJianyingFilterNativeSwingRenderer } from "../jianying-filter-native-swing-loader.js";
 import {

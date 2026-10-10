@@ -3,7 +3,7 @@ import type {
 	IndependentFilterIdentity,
 	IndependentFilterRequest,
 } from "./contract.js";
-import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter-lab-request.js";
+import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter/jianying-filter-lab-request.js";
 
 export const SOFT_GLOW_RESOURCE = "7447126702137904420";
 export const SOFT_GLOW_VERSION = "9673f80b8e2f5a07f02f9ce1130b784a";

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolveIndependentFilterHost } from "./bridge.js";
 import { release } from "node:os";
-import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter-lab-request.js";
+import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter/jianying-filter-lab-request.js";
 import {
 	loadIndependentFogLut,
 	resolveIndependentFogLut,
