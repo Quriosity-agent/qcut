@@ -141,7 +141,7 @@ import {
 	JIANYING_BASIC_VIDEO_DEFLICKER_CHANNEL,
 	JIANYING_BASIC_VIDEO_INSPECT_CHANNEL,
 	JIANYING_BASIC_VIDEO_PROGRESS_CHANNEL,
-} from "./jianying-basic-video-contract.js";
+} from "./jianying-basic-video-runtime/jianying-basic-video-contract.js";
 import {
 	JIANYING_FONT_LAB_INSPECT_CHANNEL,
 	JIANYING_FONT_LAB_LIST_CHANNEL,

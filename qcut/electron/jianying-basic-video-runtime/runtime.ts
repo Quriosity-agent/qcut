@@ -7,8 +7,8 @@ import type {
 	JianyingBasicVideoStatus,
 	JianyingDeflickerRequest,
 	JianyingDeflickerResult,
-} from "../jianying-basic-video-contract.js";
-import { JIANYING_PRIVATE_DEFLICKER_ROUTE } from "../jianying-basic-video-contract.js";
+} from "./jianying-basic-video-contract.js";
+import { JIANYING_PRIVATE_DEFLICKER_ROUTE } from "./jianying-basic-video-contract.js";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
 import { resolveJianyingDeflickerHost } from "./bridge-resolver.js";
 import { runDeflickerPipeline } from "./process-pipeline.js";

@@ -1,4 +1,4 @@
-import type { JianyingBasicVideoAPI } from "../../../../../electron/jianying-basic-video-contract";
+import type { JianyingBasicVideoAPI } from "../../../../../electron/jianying-basic-video-runtime/jianying-basic-video-contract";
 
 export interface ElectronJianyingBasicVideoOps {
 	jianyingBasicVideo?: JianyingBasicVideoAPI;
@@ -10,4 +10,4 @@ export type {
 	JianyingBasicVideoStatus,
 	JianyingDeflickerRequest,
 	JianyingDeflickerResult,
-} from "../../../../../electron/jianying-basic-video-contract";
+} from "../../../../../electron/jianying-basic-video-runtime/jianying-basic-video-contract";
