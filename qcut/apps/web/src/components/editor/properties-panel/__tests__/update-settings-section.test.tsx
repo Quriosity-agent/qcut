@@ -66,7 +66,7 @@ vi.mock("@qcut/platform-core", async (importOriginal) => {
 	};
 });
 
-import { UpdateSettingsSection } from "../update-settings-section";
+import { UpdateSettingsSection } from "../settings/update-settings-section";
 
 beforeEach(() => {
 	vi.clearAllMocks();

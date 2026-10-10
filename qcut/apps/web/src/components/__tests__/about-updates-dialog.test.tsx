@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
 import { useLocaleStore } from "@/stores/locale-store";
 
-vi.mock("@/components/editor/properties-panel/update-settings-section", () => ({
-	UpdateSettingsSection: () => <div data-testid="app-update-controls" />,
-}));
+vi.mock(
+	"@/components/editor/properties-panel/settings/update-settings-section",
+	() => ({
+		UpdateSettingsSection: () => <div data-testid="app-update-controls" />,
+	})
+);
 
 vi.mock(
 	"@/components/editor/properties-panel/settings/codex-plugin-update-section",

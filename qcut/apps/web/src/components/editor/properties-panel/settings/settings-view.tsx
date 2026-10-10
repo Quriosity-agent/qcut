@@ -3,7 +3,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiKeysView } from "./api-keys-view";
 import { CodexPluginUpdateSection } from "./codex-plugin-update-section";
-import { UpdateSettingsSection } from "../update-settings-section";
+import { UpdateSettingsSection } from "./update-settings-section";
 import { LanguageSelector } from "@/components/language-selector";
 import { useTranslation } from "@/lib/i18n";
 

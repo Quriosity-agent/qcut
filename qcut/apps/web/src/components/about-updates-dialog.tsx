@@ -8,7 +8,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { CodexPluginUpdateSection } from "@/components/editor/properties-panel/settings/codex-plugin-update-section";
-import { UpdateSettingsSection } from "@/components/editor/properties-panel/update-settings-section";
+import { UpdateSettingsSection } from "@/components/editor/properties-panel/settings/update-settings-section";
 import { useAppVersion } from "@/hooks/use-app-version";
 import { useTranslation } from "@/lib/i18n";
 
