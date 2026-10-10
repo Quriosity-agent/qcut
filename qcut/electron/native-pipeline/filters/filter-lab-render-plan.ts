@@ -4,7 +4,7 @@ import { resolveJianyingFilterSwingCompatibility } from "../../jianying-filter-s
 import {
 	buildJianyingFilterLabCatalog,
 	tiledReferencesFromPackages,
-} from "../../jianying-filter-lab-catalog.js";
+} from "../../jianying-filter/jianying-filter-lab-catalog.js";
 import { inspectJianyingFilterPackages } from "../../jianying-filter-package-inspector.js";
 import { loadJianyingFilterLabRenderer } from "../../jianying-filter-multi-pass-loader.js";
 import {

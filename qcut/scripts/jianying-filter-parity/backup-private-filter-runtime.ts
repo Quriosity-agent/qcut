@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
-} from "../../electron/jianying-filter-lab-catalog.js";
+} from "../../electron/jianying-filter/jianying-filter-lab-catalog.js";
 import { scanJianyingFilterMetadata } from "../../electron/jianying-filter-metadata.js";
 import { inspectJianyingFilterPackages } from "../../electron/jianying-filter-package-inspector.js";
 import { backupJianyingFilterRuntime } from "../../electron/jianying-filter-local-runtime/runtime-backup.js";

@@ -4,7 +4,7 @@ import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
 	tiledReferencesFromPackages,
-} from "../jianying-filter-lab-catalog.js";
+} from "../jianying-filter/jianying-filter-lab-catalog.js";
 import type { JianyingFilterKnownCatalog } from "../jianying-filter-metadata.js";
 import type { JianyingFilterPackageSummary } from "../jianying-filter-package-inspector.js";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";

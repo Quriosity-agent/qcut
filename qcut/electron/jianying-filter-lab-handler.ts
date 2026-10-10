@@ -5,7 +5,7 @@ import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
 	tiledReferencesFromPackages,
-} from "./jianying-filter-lab-catalog.js";
+} from "./jianying-filter/jianying-filter-lab-catalog.js";
 import {
 	JIANYING_FILTER_LAB_BACKUP_LOCAL_RUNTIME_CHANNEL,
 	JIANYING_FILTER_LAB_LIST_CHANNEL,

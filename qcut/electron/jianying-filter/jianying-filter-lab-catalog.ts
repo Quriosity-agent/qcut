@@ -4,23 +4,23 @@ import type {
 	JianyingFilterLabListResult,
 	JianyingFilterLabLutSummary,
 	JianyingFilterVerification,
-} from "./jianying-filter-lab-contract.js";
+} from "../jianying-filter-lab-contract.js";
 import {
 	selectVerificationForCard,
 	type JianyingFilterVerificationCandidates,
-} from "./jianying-filter-verification-gate.js";
+} from "../jianying-filter-verification-gate.js";
 import type {
 	JianyingFilterKnownCatalog,
 	JianyingKnownFilter,
-} from "./jianying-filter-metadata.js";
-import type { JianyingFilterPackageSummary } from "./jianying-filter-package-inspector.js";
-import type { JianyingLutReference } from "./native-pipeline/filters/filter-lab-lut.js";
-import { selectJianyingFilterCacheRoot } from "./native-pipeline/filters/filter-lab-package-path.js";
+} from "../jianying-filter-metadata.js";
+import type { JianyingFilterPackageSummary } from "../jianying-filter-package-inspector.js";
+import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
+import { selectJianyingFilterCacheRoot } from "../native-pipeline/filters/filter-lab-package-path.js";
 import {
 	createTiledLutId,
 	type JianyingTiledLutRenderer,
 	resolveTiledLutPath,
-} from "./native-pipeline/filters/filter-lab-tiled-lut.js";
+} from "../native-pipeline/filters/filter-lab-tiled-lut.js";
 
 interface TiledRendererRole {
 	renderer: JianyingTiledLutRenderer;

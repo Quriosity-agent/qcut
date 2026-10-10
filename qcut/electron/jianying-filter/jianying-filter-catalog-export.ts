@@ -16,7 +16,7 @@
 import {
 	buildJianyingFilterLabCatalog,
 	mergeKnownFiltersWithReferences,
-} from "../jianying-filter-lab-catalog.js";
+} from "./jianying-filter-lab-catalog.js";
 import type {
 	JianyingFilterImplementation,
 	JianyingFilterVerificationStatus,
