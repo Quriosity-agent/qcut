@@ -13,15 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTranslation } from "@/lib/i18n";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import { PropertyGroup, PropertyItemLabel } from "./property-item";
+import { PropertyGroup, PropertyItemLabel } from "../property-item";
 import {
 	alignedPosition,
 	aspectSizeUpdates,
 	clamp,
 	type StickerKeyframeControls,
 	type UpdateStickerProperties,
-} from "./sticker-property-types";
-import { IconButton, NumberControl } from "./visual-property-controls";
+} from "../sticker-property-types";
+import { IconButton, NumberControl } from "../visual-property-controls";
 
 export function StickerBasicProperties({
 	canvasSize,
