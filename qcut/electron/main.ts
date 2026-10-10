@@ -120,7 +120,7 @@ import {
 import {
 	setupJianyingSameProfileWritebackIPC,
 	type JianyingSameProfileWritebackIPCController,
-} from "./jianying-same-profile-writeback-handler.js";
+} from "./jianying-draft/jianying-same-profile-writeback-handler.js";
 import {
 	setupJianyingProjectExportIPC,
 	type JianyingProjectExportIPCController,

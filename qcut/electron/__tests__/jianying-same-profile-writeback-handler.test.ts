@@ -19,7 +19,7 @@ vi.mock("electron", () => ({
 	},
 }));
 
-import { setupJianyingSameProfileWritebackIPC } from "../jianying-same-profile-writeback-handler.js";
+import { setupJianyingSameProfileWritebackIPC } from "../jianying-draft/jianying-same-profile-writeback-handler.js";
 
 interface MockWindowContext {
 	event: IpcMainInvokeEvent;

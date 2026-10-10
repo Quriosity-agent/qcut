@@ -10,7 +10,7 @@ import {
 import {
 	type CapCut81TargetAppGuard,
 	createCapCut81TargetAppGuard,
-} from "./capcut-8-1-install-guard.js";
+} from "../capcut-8-1-install-guard.js";
 import {
 	CAPCUT_8_1_WRITEBACK_CHOOSE_DIRECTORY_CHANNEL,
 	CAPCUT_8_1_WRITEBACK_COMMIT_CHANNEL,
@@ -20,7 +20,7 @@ import {
 	type CapCut81WritebackRecoveryDto,
 	type CapCut81WritebackResultDto,
 	type CapCut81WritebackSelectionDto,
-} from "./jianying-draft/jianying-same-profile-writeback-contract.js";
+} from "./jianying-same-profile-writeback-contract.js";
 
 const DEFAULT_CAPCUT_APP_PATH = "/Applications/CapCut.app";
 const MAX_CONTENT_BYTES = 64 * 1024 * 1024;
@@ -257,7 +257,7 @@ function toErrorDto({ error }: { error: unknown }): {
 }
 
 async function loadBundledRuntime(): Promise<unknown> {
-	return import(join(__dirname, "jianying-draft-export-runtime.js"));
+	return import(join(__dirname, "..", "jianying-draft-export-runtime.js"));
 }
 
 function getRuntimeFunction({
