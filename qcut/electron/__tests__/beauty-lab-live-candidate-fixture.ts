@@ -13,7 +13,7 @@ import {
 	captureBeautyLabLiveRequestDependencies,
 	type LiveExpectedDependencies,
 } from "../beauty-lab/beauty-lab-live-candidate-inventory.js";
-import { captureBeautyLabLiveDependencies } from "../beauty-lab-live-candidate-provenance.js";
+import { captureBeautyLabLiveDependencies } from "../beauty-lab/beauty-lab-live-candidate-provenance.js";
 import { pinRoot } from "../beauty-lab-research-files.js";
 
 export const OPT_IN = {

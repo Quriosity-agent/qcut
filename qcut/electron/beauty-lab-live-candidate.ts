@@ -11,7 +11,7 @@ import {
 import { beautyLabLiveFailureAllowsRetry } from "./beauty-lab/beauty-lab-live-candidate-failure.js";
 import { runBeautyLabLiveCandidateJob } from "./beauty-lab/beauty-lab-live-candidate-process.js";
 import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab/beauty-lab-live-candidate-inventory.js";
-import { captureBeautyLabLiveDependencies } from "./beauty-lab-live-candidate-provenance.js";
+import { captureBeautyLabLiveDependencies } from "./beauty-lab/beauty-lab-live-candidate-provenance.js";
 import {
 	LIVE_NATIVE_STAGES,
 	readBeautyLabLiveCandidateResult,
