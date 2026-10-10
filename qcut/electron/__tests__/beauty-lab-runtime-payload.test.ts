@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import profile from "../beauty-lab-runtime-payload.json";
-import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
 
 let directory: string;
 const sourceManifestSha256 = "a".repeat(64);

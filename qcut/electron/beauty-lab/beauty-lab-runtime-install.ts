@@ -18,7 +18,7 @@ import {
 import {
 	independentBeautyRuntimeProfile,
 	verifyIndependentBeautyRuntime,
-} from "../beauty-lab-runtime-payload.js";
+} from "./beauty-lab-runtime-payload.js";
 
 export async function installIndependentBeautyRuntime({
 	sourceRoot,

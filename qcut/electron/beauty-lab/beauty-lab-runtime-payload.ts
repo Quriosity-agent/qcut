@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import profile from "./beauty-lab-runtime-payload.json";
+import profile from "../beauty-lab-runtime-payload.json";
 
 const profileSchema = z.object({
 	schemaVersion: z.literal(1),

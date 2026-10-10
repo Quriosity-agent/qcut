@@ -11,7 +11,7 @@ import {
 } from "../beauty-lab/beauty-lab-independent";
 import type { BeautyLabIndependentRequest } from "../beauty-lab/beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
-import { verifyIndependentBeautyRuntime } from "../beauty-lab-runtime-payload";
+import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
 import { verifyIndependentBeautyEnvironment } from "../beauty-lab/beauty-lab-runtime-environment";
 
 const catalog = {

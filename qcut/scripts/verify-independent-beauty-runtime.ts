@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
-import { verifyIndependentBeautyRuntime } from "../electron/beauty-lab-runtime-payload";
+import { verifyIndependentBeautyRuntime } from "../electron/beauty-lab/beauty-lab-runtime-payload";
 import { verifyIndependentBeautyEnvironment } from "../electron/beauty-lab/beauty-lab-runtime-environment";
 
 async function main() {
