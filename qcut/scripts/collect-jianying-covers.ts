@@ -21,7 +21,7 @@ import {
 	planCoverCollectionBatches,
 	summarizeCoverCollection,
 	type CoverVerification,
-} from "../electron/jianying-cover-collection";
+} from "../electron/jianying-cover/jianying-cover-collection";
 import {
 	backupCoverCatalog,
 	cacheJianyingCovers,

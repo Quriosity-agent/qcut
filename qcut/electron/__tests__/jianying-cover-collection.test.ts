@@ -8,7 +8,7 @@ import {
 	mergeCoverObservations,
 	planCoverCollectionBatches,
 	summarizeCoverCollection,
-} from "../jianying-cover-collection";
+} from "../jianying-cover/jianying-cover-collection";
 
 const observation: CoverObservation = {
 	packageHash: "a".repeat(32),
