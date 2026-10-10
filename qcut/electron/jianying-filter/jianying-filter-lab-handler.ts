@@ -50,7 +50,7 @@ import {
 	readJianyingFilterThumbnail,
 	type JianyingFilterThumbnail,
 	type JianyingFilterThumbnailSource,
-} from "../jianying-filter-thumbnail-cache.js";
+} from "./jianying-filter-thumbnail-cache.js";
 import {
 	jianyingEffectCacheRoot,
 	listJianyingLutReferences,

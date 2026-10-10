@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readJianyingFilterThumbnail } from "../jianying-filter-thumbnail-cache.js";
+import { readJianyingFilterThumbnail } from "../jianying-filter/jianying-filter-thumbnail-cache.js";
 
 const PNG_BYTES = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
