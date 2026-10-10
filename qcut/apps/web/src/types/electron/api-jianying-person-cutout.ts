@@ -1,4 +1,4 @@
-import type { JianyingPersonCutoutAPI } from "../../../../../electron/jianying-person-cutout-contract";
+import type { JianyingPersonCutoutAPI } from "../../../../../electron/jianying-person-cutout/jianying-person-cutout-contract";
 
 export interface ElectronJianyingPersonCutoutOps {
 	jianyingPersonCutout?: JianyingPersonCutoutAPI;
@@ -11,4 +11,4 @@ export type {
 	JianyingPersonCutoutStatus,
 	TemattingBlendImplementation,
 	TemattingOutputBlendImplementation,
-} from "../../../../../electron/jianying-person-cutout-contract";
+} from "../../../../../electron/jianying-person-cutout/jianying-person-cutout-contract";

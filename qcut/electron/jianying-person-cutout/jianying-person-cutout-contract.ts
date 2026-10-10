@@ -1,13 +1,13 @@
 import type {
 	TemattingNativeMetalCanaryStatus,
 	TemattingOutputBlendImplementation,
-} from "./jianying-person-cutout/tematting-blend.js";
+} from "./tematting-blend.js";
 import type {
 	PersonCutoutModelRoute,
 	PersonCutoutPipelineId,
 	PersonCutoutProviderId,
 	PersonCutoutRefinementProvider,
-} from "./jianying-person-cutout/pipeline-descriptor.js";
+} from "./pipeline-descriptor.js";
 
 export const JIANYING_PERSON_CUTOUT_INSPECT_CHANNEL =
 	"jianying-person-cutout:inspect";
@@ -94,4 +94,4 @@ export interface JianyingPersonCutoutAPI {
 export type {
 	TemattingBlendImplementation,
 	TemattingOutputBlendImplementation,
-} from "./jianying-person-cutout/tematting-blend.js";
+} from "./tematting-blend.js";

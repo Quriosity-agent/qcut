@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import type {
 	JianyingPersonCutoutRenderResult,
 	JianyingPersonCutoutStatus,
-} from "../jianying-person-cutout-contract.js";
+} from "./jianying-person-cutout-contract.js";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/utils.js";
 import {
 	createPersonCutoutAbortError,

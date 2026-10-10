@@ -129,7 +129,7 @@ import {
 	JIANYING_PERSON_CUTOUT_PROGRESS_CHANNEL,
 	JIANYING_PERSON_CUTOUT_RELEASE_CHANNEL,
 	JIANYING_PERSON_CUTOUT_RENDER_CHANNEL,
-} from "./jianying-person-cutout-contract.js";
+} from "./jianying-person-cutout/jianying-person-cutout-contract.js";
 import {
 	JIANYING_MOTION_TRACKING_CANCEL_CHANNEL,
 	JIANYING_MOTION_TRACKING_INSPECT_CHANNEL,

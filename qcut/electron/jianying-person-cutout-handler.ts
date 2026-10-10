@@ -8,7 +8,7 @@ import {
 	type JianyingPersonCutoutCancelRequest,
 	type JianyingPersonCutoutReleaseRequest,
 	type JianyingPersonCutoutRenderRequest,
-} from "./jianying-person-cutout-contract.js";
+} from "./jianying-person-cutout/jianying-person-cutout-contract.js";
 import {
 	inspectJianyingPersonCutout,
 	releaseJianyingPersonCutout,
