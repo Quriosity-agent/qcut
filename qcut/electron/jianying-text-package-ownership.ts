@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { getDefaultJianyingFlowerDatabaseRoot } from "./jianying-flower-resource-metadata.js";
+import { getDefaultJianyingFlowerDatabaseRoot } from "./jianying-text/jianying-flower-resource-metadata.js";
 import { listJianyingResourceDatabasePaths } from "./jianying-resource-database.js";
 import {
 	collectJianyingProjectWordArtEvidence,

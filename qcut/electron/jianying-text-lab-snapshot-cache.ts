@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { JianyingFlowerResourceMetadata } from "./jianying-flower-resource-metadata.js";
+import type { JianyingFlowerResourceMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
 import type {
 	JianyingFlowerCategoryDefinition,
 	JianyingFlowerCategoryGroupDefinition,

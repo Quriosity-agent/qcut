@@ -7,7 +7,7 @@ import {
 import type {
 	JianyingFlowerCatalogMetadata,
 	JianyingFlowerResourceMetadata,
-} from "./jianying-flower-resource-metadata.js";
+} from "./jianying-text/jianying-flower-resource-metadata.js";
 import type {
 	JianyingTextStyleLabCategoryGroupSummary,
 	JianyingTextStyleLabCategorySummary,

@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { listJianyingResourceDatabasePaths } from "./jianying-resource-database.js";
-import type { JianyingFlowerResourceMetadata } from "./jianying-flower-resource-metadata.js";
+import type { JianyingFlowerResourceMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
 import type { JianyingTextStyleCatalogEntry } from "./jianying-text-style-lab-catalog.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,

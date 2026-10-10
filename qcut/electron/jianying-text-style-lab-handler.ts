@@ -23,7 +23,7 @@ import {
 	resolveJianyingFlowerCatalogMetadata,
 	type JianyingFlowerCatalogMetadata,
 	type JianyingFlowerResourceMetadata,
-} from "./jianying-flower-resource-metadata.js";
+} from "./jianying-text/jianying-flower-resource-metadata.js";
 import {
 	buildJianyingTextStyleCatalog,
 	isValidJianyingTextStyleId,

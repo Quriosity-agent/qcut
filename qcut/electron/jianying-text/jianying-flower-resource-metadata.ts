@@ -1,17 +1,17 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { listJianyingResourceDatabasePaths } from "./jianying-resource-database.js";
+import { listJianyingResourceDatabasePaths } from "../jianying-resource-database.js";
 import {
 	JIANYING_TEXT_PACKAGE_HASH_PATTERN,
 	JIANYING_TEXT_RESOURCE_ID_PATTERN,
-} from "./jianying-text-package-metadata.js";
+} from "../jianying-text-package-metadata.js";
 import {
 	resolveJianyingFlowerTaxonomy,
 	type JianyingFlowerCategoryDefinition,
 	type JianyingFlowerCategoryGroupDefinition,
-} from "./jianying-flower-taxonomy.js";
-import type { JianyingTextStyleCategoryId } from "./jianying-text-style-lab-contract.js";
+} from "../jianying-flower-taxonomy.js";
+import type { JianyingTextStyleCategoryId } from "../jianying-text-style-lab-contract.js";
 
 const SQLITE_PARAMETER_LIMIT = 900;
 

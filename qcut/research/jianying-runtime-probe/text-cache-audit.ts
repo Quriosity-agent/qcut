@@ -2,7 +2,7 @@ import {
 	getDefaultJianyingFlowerDatabaseRoot,
 	resolveJianyingFlowerResourceMetadata,
 	type JianyingFlowerResourceMetadata,
-} from "../../electron/jianying-flower-resource-metadata.js";
+} from "../../electron/jianying-text/jianying-flower-resource-metadata.js";
 import {
 	resolveJianyingTextPackageOwnership,
 	type JianyingTextPackageOwnership,

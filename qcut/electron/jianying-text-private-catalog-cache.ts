@@ -8,7 +8,7 @@ import {
 import {
 	listJianyingFlowerCatalogPackageReferences,
 	type JianyingFlowerCatalogPackageReference,
-} from "./jianying-flower-resource-metadata.js";
+} from "./jianying-text/jianying-flower-resource-metadata.js";
 import type { QCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
 import type { JianyingTextResourceCatalogCandidate } from "./jianying-text-runtime/resource-catalog.js";
 import {

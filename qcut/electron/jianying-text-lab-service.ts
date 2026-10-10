@@ -1,5 +1,5 @@
 import { buildJianyingTextAnimationCatalog } from "./jianying-text-animation-lab-catalog.js";
-import { resolveJianyingFlowerCatalogMetadata } from "./jianying-flower-resource-metadata.js";
+import { resolveJianyingFlowerCatalogMetadata } from "./jianying-text/jianying-flower-resource-metadata.js";
 import { ensureQCutJianyingTextPrivateArchive } from "./jianying-text-private-archive.js";
 import { resolveJianyingTextPackageOwnership } from "./jianying-text-package-ownership.js";
 import { isDiscoverableJianyingTextCatalogEntry } from "./jianying-text-style-discovery.js";
