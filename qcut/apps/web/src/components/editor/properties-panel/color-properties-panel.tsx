@@ -53,7 +53,7 @@ import { ColorHslSettings } from "./color/color-hsl-settings";
 import { ColorLutSettings } from "./color/color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color/color-management-settings";
 import { ColorMaskSettings } from "./color/color-mask-settings";
-import { ColorPresetControls } from "./color-preset-controls";
+import { ColorPresetControls } from "./color/color-preset-controls";
 import { ColorScopesPanel } from "./color-scopes-panel";
 import { ColorSmartSettingsPanel } from "./color-smart-settings";
 import { ColorWheelSettingsPanel } from "./color-wheel-settings";
