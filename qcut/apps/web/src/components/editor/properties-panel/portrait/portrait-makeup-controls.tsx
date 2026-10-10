@@ -9,7 +9,7 @@ import type {
 } from "@/types/timeline";
 import { applyPortraitMakeup } from "@/lib/portrait/portrait-face-scope";
 import { cn } from "@/lib/utils";
-import { PortraitNumberControl } from "./portrait-number-control";
+import { PortraitNumberControl } from "../portrait-number-control";
 
 const MAKEUP_CATEGORY_LABELS: Record<
 	MediaPortraitMakeupCategory,

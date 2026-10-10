@@ -9,7 +9,7 @@ import {
 import { fireEvent, render, screen } from "@/test/test-utils";
 import type { JianyingPortraitMakeupCardStatus } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { PortraitMakeupControls } from "../portrait-makeup-controls";
+import { PortraitMakeupControls } from "../portrait/portrait-makeup-controls";
 
 const categoryLabels = {
 	zh: [

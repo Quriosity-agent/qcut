@@ -25,7 +25,7 @@ import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { BeautyLabPresets } from "./beauty-lab-presets";
 import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
 import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group";
-import { PortraitMakeupControls } from "../portrait-makeup-controls";
+import { PortraitMakeupControls } from "../portrait/portrait-makeup-controls";
 
 export interface BeautyLabControlsProps {
 	status: JianyingPortraitAdjustmentStatus | null;
