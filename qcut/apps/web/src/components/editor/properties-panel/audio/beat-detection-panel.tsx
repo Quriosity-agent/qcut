@@ -14,7 +14,7 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
+} from "../property-item";
 import { useBeatDetection } from "@/hooks/use-beat-detection";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";

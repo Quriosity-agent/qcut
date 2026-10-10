@@ -38,7 +38,7 @@ import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { useAudioAiActions } from "../use-audio-ai-actions";
 import { AudioLyricsSettings } from "./audio-lyrics-settings";
 import { MediaSpeedProperties } from "../media-speed-properties";
-import { BeatDetectionPanel } from "../beat-detection-panel";
+import { BeatDetectionPanel } from "./beat-detection-panel";
 import { Button } from "@/components/ui/button";
 import {
 	selectAudioPreviewBypassed,
