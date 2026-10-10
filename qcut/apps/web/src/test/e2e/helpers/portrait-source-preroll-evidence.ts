@@ -90,7 +90,7 @@ export async function runtimeIdentity() {
 	const builtFiles = [
 		"dist/electron/main.js",
 		"dist/electron/preload.js",
-		"dist/electron/jianying-portrait-adjustment-handler.js",
+		"dist/electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-handler.js",
 		"dist/electron/jianying-portrait-adjustment-runtime/provider.js",
 		"dist/electron/jianying-portrait-adjustment-runtime/source-preroll.js",
 		"dist/electron/jianying-portrait-adjustment-runtime/tracking-scope-pool.js",

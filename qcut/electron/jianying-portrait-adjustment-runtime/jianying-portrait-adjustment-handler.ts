@@ -4,13 +4,13 @@ import {
 	JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL,
-} from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
-import { createJianyingPortraitAdjustmentProvider } from "./jianying-portrait-adjustment-runtime/provider.js";
+} from "./jianying-portrait-adjustment-contract.js";
+import { createJianyingPortraitAdjustmentProvider } from "./provider.js";
 import {
 	parseJianyingPortraitDetectRequest,
 	parseJianyingPortraitInspectRequest,
 	parseJianyingPortraitRenderRequest,
-} from "./jianying-portrait-adjustment-runtime/request.js";
+} from "./request.js";
 
 export interface JianyingPortraitAdjustmentIPCController {
 	dispose: () => void;
