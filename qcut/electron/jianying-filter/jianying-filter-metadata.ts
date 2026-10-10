@@ -6,13 +6,13 @@ import { DatabaseSync } from "node:sqlite";
 export {
 	findJianyingFilterCategories,
 	findJianyingFilterTitle,
-} from "./jianying-filter/jianying-filter-metadata-lookup.js";
-export type { JianyingFilterCategoryCatalog } from "./jianying-filter/jianying-filter-metadata-lookup.js";
-import type { JianyingFilterCategoryCatalog } from "./jianying-filter/jianying-filter-metadata-lookup.js";
+} from "./jianying-filter-metadata-lookup.js";
+export type { JianyingFilterCategoryCatalog } from "./jianying-filter-metadata-lookup.js";
+import type { JianyingFilterCategoryCatalog } from "./jianying-filter-metadata-lookup.js";
 import {
 	jianyingEffectCacheRoot,
 	type JianyingLutReference,
-} from "./native-pipeline/filters/filter-lab-lut.js";
+} from "../native-pipeline/filters/filter-lab-lut.js";
 
 interface FilterMetadataRow {
 	resourceId: string | null;

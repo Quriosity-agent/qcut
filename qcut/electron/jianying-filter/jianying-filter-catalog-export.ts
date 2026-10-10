@@ -25,7 +25,7 @@ import {
 	findJianyingFilterTitle,
 	scanJianyingFilterMetadata,
 	type JianyingFilterMetadataScan,
-} from "../jianying-filter-metadata.js";
+} from "./jianying-filter-metadata.js";
 import { JIANYING_NATIVE_PORTRAIT_PROFILES } from "../native-pipeline/filters/filter-lab-native-portrait.js";
 import { JIANYING_NATIVE_FACE_REGION_PROFILES } from "../native-pipeline/filters/filter-lab-native-face-region.js";
 import {

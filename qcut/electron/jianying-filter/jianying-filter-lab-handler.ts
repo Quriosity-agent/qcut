@@ -36,7 +36,7 @@ import {
 	type JianyingFilterCategoryCatalog,
 	type JianyingFilterKnownCatalog,
 	type JianyingKnownFilter,
-} from "../jianying-filter-metadata.js";
+} from "./jianying-filter-metadata.js";
 import {
 	downloadJianyingFilterPackage,
 	type JianyingFilterDownloadResult,

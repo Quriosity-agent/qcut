@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import type { JianyingKnownFilter } from "./jianying-filter-metadata.js";
+import type { JianyingKnownFilter } from "./jianying-filter/jianying-filter-metadata.js";
 import type {
 	JianyingFilterCacheStatus,
 	JianyingFilterImplementation,

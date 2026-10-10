@@ -4,7 +4,7 @@ import type {
 	JianyingFilterCategoryCatalog,
 	resolveJianyingFilterCategories,
 	resolveJianyingFilterTitles,
-} from "../jianying-filter-metadata";
+} from "../jianying-filter/jianying-filter-metadata";
 import {
 	handleFilterLabCompare,
 	handleFilterLabList,

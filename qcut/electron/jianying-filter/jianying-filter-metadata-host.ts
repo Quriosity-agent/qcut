@@ -10,7 +10,7 @@ import {
 	type JianyingFilterCategoryCatalog,
 	type JianyingFilterKnownCatalog,
 	type JianyingFilterMetadataScan,
-} from "../jianying-filter-metadata.js";
+} from "./jianying-filter-metadata.js";
 import {
 	deserializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataChildMessage,

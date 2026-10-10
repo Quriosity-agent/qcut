@@ -12,7 +12,7 @@ import {
 	serializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataChildMessage,
 } from "../jianying-filter/jianying-filter-metadata-transfer";
-import type { JianyingFilterMetadataScan } from "../jianying-filter-metadata";
+import type { JianyingFilterMetadataScan } from "../jianying-filter/jianying-filter-metadata";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut";
 
 function createReference({ resourceId }: { resourceId: string }) {

@@ -140,7 +140,7 @@ describe("checkTrackedPaths", () => {
 		expect(
 			checkTrackedPaths([
 				"electron/jianying-draft/jianying-draft-export-handler.ts",
-				"electron/jianying-filter-metadata.ts",
+				"electron/jianying-filter/jianying-filter-metadata.ts",
 				"apps/web/src/lib/filters/jianying-parity/film-presets.ts",
 				"docs/task/jianying-filter-runtime-research/current-coverage.zh.md",
 				"research/jianying-runtime-probe/filter-probe.mm",

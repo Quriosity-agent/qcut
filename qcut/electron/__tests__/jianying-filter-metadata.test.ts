@@ -11,7 +11,7 @@ import {
 	resolveJianyingFilterCategories,
 	resolveJianyingFilterTitles,
 	scanJianyingFilterMetadata,
-} from "../jianying-filter-metadata";
+} from "../jianying-filter/jianying-filter-metadata";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut";
 
 function createReference({

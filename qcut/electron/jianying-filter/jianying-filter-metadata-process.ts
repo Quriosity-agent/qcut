@@ -4,7 +4,7 @@
  * large cache) runs here so the Electron main thread stays responsive; the
  * main-process side lives in jianying-filter-metadata-host.ts.
  */
-import { scanJianyingFilterMetadata } from "../jianying-filter-metadata.js";
+import { scanJianyingFilterMetadata } from "./jianying-filter-metadata.js";
 import {
 	serializeJianyingFilterMetadataScan,
 	type JianyingFilterMetadataScanRequest,

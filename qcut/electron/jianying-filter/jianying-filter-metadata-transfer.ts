@@ -6,7 +6,7 @@
 import type {
 	JianyingFilterKnownCatalog,
 	JianyingFilterMetadataScan,
-} from "../jianying-filter-metadata.js";
+} from "./jianying-filter-metadata.js";
 import type { JianyingLutReference } from "../native-pipeline/filters/filter-lab-lut.js";
 
 export interface JianyingFilterMetadataScanRequest {
