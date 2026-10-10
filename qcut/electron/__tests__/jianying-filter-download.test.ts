@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { downloadJianyingFilterPackage } from "../jianying-filter-download.js";
+import { downloadJianyingFilterPackage } from "../jianying-filter/jianying-filter-download.js";
 import type { JianyingKnownFilter } from "../jianying-filter-metadata.js";
 
 let workspace = "";

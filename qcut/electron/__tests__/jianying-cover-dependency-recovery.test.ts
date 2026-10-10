@@ -11,7 +11,7 @@ import {
 	installJianyingTextCatalogCandidate,
 	isTrustedJianyingResourceUrl,
 } from "../jianying-text-runtime/resource-recovery-installer";
-import { downloadJianyingFilterPackage } from "../jianying-filter-download";
+import { downloadJianyingFilterPackage } from "../jianying-filter/jianying-filter-download";
 
 vi.mock("../jianying-text-runtime/local-package-index", () => ({
 	findJianyingLocalPackagesByHash: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock("../jianying-text-runtime/resource-recovery-installer", () => ({
 	extractValidatedJianyingResourceArchive: vi.fn(),
 	isTrustedJianyingResourceUrl: vi.fn(),
 }));
-vi.mock("../jianying-filter-download", () => ({
+vi.mock("../jianying-filter/jianying-filter-download", () => ({
 	downloadJianyingFilterPackage: vi.fn(),
 }));
 

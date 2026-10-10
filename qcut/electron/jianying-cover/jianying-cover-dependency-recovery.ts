@@ -14,7 +14,7 @@ import {
 	installJianyingTextCatalogCandidate,
 	isTrustedJianyingResourceUrl,
 } from "../jianying-text-runtime/resource-recovery-installer.js";
-import { downloadJianyingFilterPackage } from "../jianying-filter-download.js";
+import { downloadJianyingFilterPackage } from "../jianying-filter/jianying-filter-download.js";
 import { identifyCoverDependency } from "./jianying-cover-dependencies.js";
 import {
 	asJianyingRecord,

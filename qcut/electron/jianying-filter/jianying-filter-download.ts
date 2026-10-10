@@ -5,9 +5,9 @@ import path from "node:path";
 // on Windows (runners or user machines), where the download feature and its
 // tests were failing with spawn ENOENT.
 import JSZip from "jszip";
-import type { JianyingKnownFilter } from "./jianying-filter-metadata.js";
-import { findUnsafeZipEntries } from "./jianying-effect/catalog-parsing.js";
-import { qcutManagedFilterPackageRoot } from "./native-pipeline/filters/filter-lab-lut.js";
+import type { JianyingKnownFilter } from "../jianying-filter-metadata.js";
+import { findUnsafeZipEntries } from "../jianying-effect/catalog-parsing.js";
+import { qcutManagedFilterPackageRoot } from "../native-pipeline/filters/filter-lab-lut.js";
 
 /** Filter packages observed so far are well under 1 MB; this bounds a rogue response. */
 const MAX_PACKAGE_BYTES = 200 * 1024 * 1024;

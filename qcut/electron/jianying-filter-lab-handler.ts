@@ -40,7 +40,7 @@ import {
 import {
 	downloadJianyingFilterPackage,
 	type JianyingFilterDownloadResult,
-} from "./jianying-filter-download.js";
+} from "./jianying-filter/jianying-filter-download.js";
 import {
 	inspectJianyingFilterPackages,
 	type JianyingFilterPackageSummary,

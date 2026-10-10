@@ -5,7 +5,7 @@
  *
  * Two roots are read: Jianying's own cache, populated when the user applies a
  * filter there, and QCut's managed root, populated by an explicit user-invoked
- * download (see electron/jianying-filter-download.ts). Jianying's cache is
+ * download (see electron/jianying-filter/jianying-filter-download.ts). Jianying's cache is
  * read-only to QCut — downloads never write into another application's data.
  * No LUT is copied into QCut's source or bundled with it; values are decoded
  * on demand for local scoring or an editor session.
