@@ -13,7 +13,7 @@ import {
 	liveDependenciesSchema,
 	type LiveExpectedDependencies,
 	verifyBeautyLabLiveDependencyInventory,
-} from "./beauty-lab-live-candidate-inventory.js";
+} from "./beauty-lab/beauty-lab-live-candidate-inventory.js";
 import {
 	liveCallbackSchema,
 	verifyBeautyLabLiveReceipts,

@@ -12,7 +12,7 @@ import { beautyLabCandidateIdentity } from "../beauty-lab/beauty-lab-candidate-r
 import {
 	captureBeautyLabLiveRequestDependencies,
 	type LiveExpectedDependencies,
-} from "../beauty-lab-live-candidate-inventory.js";
+} from "../beauty-lab/beauty-lab-live-candidate-inventory.js";
 import { captureBeautyLabLiveDependencies } from "../beauty-lab-live-candidate-provenance.js";
 import { pinRoot } from "../beauty-lab-research-files.js";
 
