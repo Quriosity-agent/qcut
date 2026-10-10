@@ -217,7 +217,8 @@ export async function fixture({ both = false }: { both?: boolean } = {}) {
 					),
 					fs.writeFile(path.join(directory, "render/replay.bin"), binary),
 				]);
-				await fs.link(
+				// A copy, not a link: candidate-mutation tests must leave the baseline intact.
+				await fs.copyFile(
 					path.join(directory, "probe/baseline/frame-00.rgba"),
 					path.join(directory, "render/frame-00.rgba")
 				);
