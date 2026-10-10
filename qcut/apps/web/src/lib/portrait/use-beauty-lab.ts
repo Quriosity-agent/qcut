@@ -303,6 +303,8 @@ export function useBeautyLab({
 				...(inputTiming.current
 					? { timestampSeconds: inputTiming.current.timestampSeconds }
 					: {}),
+				// Each comparison is a still photo: never inherit the previous render's tracker.
+				freshTracking: true,
 			});
 			if (token !== revision.current) return;
 			if (
