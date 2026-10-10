@@ -8,7 +8,7 @@ import {
 	createBeautyLabLiveJobError,
 	type BeautyLabLiveJobFailureKind,
 } from "../beauty-lab/beauty-lab-live-candidate-failure.js";
-import { createBeautyLabLiveCandidateBackend } from "../beauty-lab-live-candidate.js";
+import { createBeautyLabLiveCandidateBackend } from "../beauty-lab/beauty-lab-live-candidate.js";
 import {
 	OPT_IN,
 	requestFor,

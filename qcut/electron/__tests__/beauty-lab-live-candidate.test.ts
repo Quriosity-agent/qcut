@@ -15,7 +15,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import { beautyLabCandidateIdentity } from "../beauty-lab/beauty-lab-candidate-request.js";
-import { createBeautyLabLiveCandidateBackend } from "../beauty-lab-live-candidate.js";
+import { createBeautyLabLiveCandidateBackend } from "../beauty-lab/beauty-lab-live-candidate.js";
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,

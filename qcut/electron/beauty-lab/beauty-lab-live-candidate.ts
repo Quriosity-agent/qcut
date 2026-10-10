@@ -2,29 +2,29 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { BEAUTY_LAB_CANDIDATE_STAGES } from "./beauty-lab/beauty-lab-candidate-contract.js";
-import type { BeautyLabCandidateBackend } from "./beauty-lab/beauty-lab-candidate-provider.js";
+import { BEAUTY_LAB_CANDIDATE_STAGES } from "./beauty-lab-candidate-contract.js";
+import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "./beauty-lab/beauty-lab-candidate-request.js";
-import { beautyLabLiveFailureAllowsRetry } from "./beauty-lab/beauty-lab-live-candidate-failure.js";
-import { runBeautyLabLiveCandidateJob } from "./beauty-lab/beauty-lab-live-candidate-process.js";
-import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab/beauty-lab-live-candidate-inventory.js";
-import { captureBeautyLabLiveDependencies } from "./beauty-lab/beauty-lab-live-candidate-provenance.js";
+} from "./beauty-lab-candidate-request.js";
+import { beautyLabLiveFailureAllowsRetry } from "./beauty-lab-live-candidate-failure.js";
+import { runBeautyLabLiveCandidateJob } from "./beauty-lab-live-candidate-process.js";
+import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab-live-candidate-inventory.js";
+import { captureBeautyLabLiveDependencies } from "./beauty-lab-live-candidate-provenance.js";
 import {
 	LIVE_NATIVE_STAGES,
 	readBeautyLabLiveCandidateResult,
-} from "./beauty-lab/beauty-lab-live-candidate-result.js";
+} from "./beauty-lab-live-candidate-result.js";
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
-} from "./beauty-lab-live-selection.js";
-import { checkPath, pinRoot } from "./beauty-lab-research-files.js";
+} from "../beauty-lab-live-selection.js";
+import { checkPath, pinRoot } from "../beauty-lab-research-files.js";
 import {
 	hasJianyingFilterPrivateRuntime,
 	jianyingFilterPrivateRuntimeCurrent,
-} from "./jianying-filter-local-runtime/private-runtime.js";
+} from "../jianying-filter-local-runtime/private-runtime.js";
 
 const LOCAL = ".local/jianying-model-pytorch";
 const JOB = "research/local-model-pytorch/face_live_candidate_job.py";
