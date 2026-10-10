@@ -1,5 +1,5 @@
-import { PRECEDENCE_TIERS } from "./settings/api-key-precedence";
-import { PropertyGroup } from "./property-item";
+import { PRECEDENCE_TIERS } from "./api-key-precedence";
+import { PropertyGroup } from "../property-item";
 
 export function ApiKeysPrecedenceInfo() {
 	return (
