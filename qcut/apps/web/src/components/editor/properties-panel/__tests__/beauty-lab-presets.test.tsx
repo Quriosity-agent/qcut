@@ -14,7 +14,7 @@ import {
 	BeautyLabPresets,
 	type BeautyLabPresetsProps,
 } from "../beauty-lab/beauty-lab-presets";
-import { PortraitPresetControls } from "../portrait-preset-controls";
+import { PortraitPresetControls } from "../portrait/portrait-preset-controls";
 
 const initial: MediaPortraitAdjustments = {
 	enabled: false,

@@ -12,7 +12,7 @@ import {
 	type SavedPortraitPreset,
 } from "@/lib/portrait/portrait-presets";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { PortraitPresetControls } from "../portrait-preset-controls";
+import { PortraitPresetControls } from "../portrait/portrait-preset-controls";
 
 export const BEAUTY_LAB_PRESET_STORAGE_KEY = "qcut-beauty-lab-presets-v1";
 const LAB_PRESETS_CHANGED_EVENT = "qcut:beauty-lab-presets-changed";

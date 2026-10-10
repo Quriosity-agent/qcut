@@ -54,7 +54,7 @@ import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group
 import { PortraitMakeupControls } from "../portrait/portrait-makeup-controls";
 import { PortraitManualBodyControls } from "../portrait/portrait-manual-body-controls";
 import { PortraitManualRetouchControls } from "../portrait/portrait-manual-retouch-controls";
-import { PortraitPresetControls } from "../portrait-preset-controls";
+import { PortraitPresetControls } from "../portrait/portrait-preset-controls";
 import { PortraitRuntimeStatus } from "../portrait-runtime-status";
 import { BeautyLabDialog } from "../beauty-lab/beauty-lab-dialog";
 import { NumberControl } from "../visual-property-controls";
