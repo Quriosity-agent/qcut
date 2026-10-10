@@ -19,7 +19,7 @@ import { createBeautyLabLiveCandidateBackend } from "../beauty-lab/beauty-lab-li
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
-} from "../beauty-lab-live-selection.js";
+} from "../beauty-lab/beauty-lab-live-selection.js";
 import { pinRoot } from "../beauty-lab-research-files.js";
 import { JIANYING_PORTRAIT_PACKAGE_IDENTITIES } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {

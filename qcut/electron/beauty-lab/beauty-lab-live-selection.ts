@@ -6,26 +6,26 @@ import {
 	checkPath,
 	pinRoot,
 	type PinnedRoot,
-} from "./beauty-lab-research-files.js";
-import type { JianyingPortraitAdjustmentRuntimePackage } from "./jianying-portrait-adjustment-contract.js";
+} from "../beauty-lab-research-files.js";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,
 	jianyingPortraitControl,
 	jianyingPortraitRuntimePackageForControl,
-} from "./jianying-portrait-adjustment-runtime/catalog.js";
+} from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	buildJianyingDynamicMakeupParameters,
 	buildJianyingStandaloneMakeupParameters,
 	JIANYING_PORTRAIT_MAKEUP_CARDS,
 	jianyingPortraitMakeupCard,
-} from "./jianying-portrait-adjustment-runtime/makeup-catalog.js";
-import { resolveJianyingPortraitMakeupCard } from "./jianying-portrait-adjustment-runtime/makeup-resolver.js";
-import { resolveJianyingPortraitPackage } from "./jianying-portrait-adjustment-runtime/package-resolver.js";
+} from "../jianying-portrait-adjustment-runtime/makeup-catalog.js";
+import { resolveJianyingPortraitMakeupCard } from "../jianying-portrait-adjustment-runtime/makeup-resolver.js";
+import { resolveJianyingPortraitPackage } from "../jianying-portrait-adjustment-runtime/package-resolver.js";
 import {
 	JIANYING_PORTRAIT_SKIN_TONES,
 	parsePortraitSkinToneResourceId,
-} from "./jianying-portrait-adjustment-runtime/skin-tone-catalog.js";
+} from "../jianying-portrait-adjustment-runtime/skin-tone-catalog.js";
 
 const adjustmentsSchema = z
 	.object({
