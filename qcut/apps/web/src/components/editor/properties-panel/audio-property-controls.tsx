@@ -18,7 +18,7 @@ import type {
 import { AUDIO_KEYFRAME_DEFINITIONS } from "@/lib/audio/audio-properties";
 import { getAudioKeyframePropertyValue } from "@/lib/audio/audio-keyframe-properties";
 import { useTranslation } from "@/lib/i18n";
-import { AUDIO_KEYFRAME_LABEL_KEYS } from "./audio-properties-i18n";
+import { AUDIO_KEYFRAME_LABEL_KEYS } from "./audio/audio-properties-i18n";
 
 export function activateButtonFromKeyboard({
 	event,
