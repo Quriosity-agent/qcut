@@ -406,6 +406,15 @@ describe("portrait fresh tracking for still photos", () => {
 		expect(disposals[0]).toHaveBeenCalledOnce();
 		expect(second.rgba[1]).toBe(100);
 	});
+	it("ignores a cached warm render of the same edit", async () => {
+		await provider.render(still({ forehead: 25 }));
+		const warm = await provider.render(still({ forehead: 50 }));
+		expect(warm.rgba[1]).toBe(101);
+		const fresh = await provider.render(
+			still({ forehead: 50, freshTracking: true })
+		);
+		expect(fresh.rgba[1]).toBe(100);
+	});
 	it("keeps the flag through parsing and rejects non-boolean values", () => {
 		const fresh = still({ forehead: 25, freshTracking: true });
 		expect(parseJianyingPortraitRenderRequest({ request: fresh })).toEqual(
