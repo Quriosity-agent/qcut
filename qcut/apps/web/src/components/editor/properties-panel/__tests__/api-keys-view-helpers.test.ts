@@ -3,7 +3,10 @@ import type {
 	PlatformApiKeyStatus,
 	PlatformApiKeysStatus,
 } from "@qcut/platform-core";
-import { countShadowedAppSaves, getShadowedBy } from "../api-keys-view";
+import {
+	countShadowedAppSaves,
+	getShadowedBy,
+} from "../settings/api-keys-view";
 
 // A status object as returned by the IPC bridge in the wild. The shape is
 // permissive — older Electron builds (pre `computeKeyStatus`) and certain

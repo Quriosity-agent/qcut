@@ -16,8 +16,8 @@ import {
 	ErrorCategory,
 	ErrorSeverity,
 } from "@/lib/debug/error-handler";
-import { ApiKeyField, KeySourceBadge } from "./settings/api-key-field";
-import { ApiKeysPrecedenceInfo } from "./settings/api-keys-precedence-info";
+import { ApiKeyField, KeySourceBadge } from "./api-key-field";
+import { ApiKeysPrecedenceInfo } from "./api-keys-precedence-info";
 
 type EditableApiKeyField =
 	| "anthropicApiKey"
