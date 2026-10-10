@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createJianyingTargetAppGuard,
 	JianyingAppRunningError,
-} from "../jianying-target-app-guard.js";
+} from "../jianying-draft/jianying-target-app-guard.js";
 
 const guardContext = {
 	outputParentDirectory: "/exports",

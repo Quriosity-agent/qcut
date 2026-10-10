@@ -11,7 +11,7 @@ import {
 	JIANYING_11_3_PROJECT_EXPORT_PROFILE_IDS,
 	type Jianying113ProjectExportCommitDto,
 } from "../jianying-draft/jianying-project-export-contract.js";
-import { JianyingAppRunningError } from "../jianying-target-app-guard.js";
+import { JianyingAppRunningError } from "../jianying-draft/jianying-target-app-guard.js";
 
 const { mockHandle, mockRemoveHandler } = vi.hoisted(() => ({
 	mockHandle: vi.fn(),

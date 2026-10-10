@@ -20,7 +20,7 @@ import {
 	createJianyingTargetAppGuard,
 	JianyingAppRunningError,
 	type JianyingTargetAppGuard,
-} from "../jianying-target-app-guard.js";
+} from "./jianying-target-app-guard.js";
 
 const DEFAULT_JIANYING_APP_PATH = "/Applications/VideoFusion-macOS.app";
 const MAX_CONTENT_BYTES = 64 * 1024 * 1024;
