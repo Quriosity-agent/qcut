@@ -7,17 +7,17 @@ import {
 	BEAUTY_LAB_CANDIDATE_PROTOCOL,
 	BEAUTY_LAB_CANDIDATE_STAGES,
 	type BeautyLabCandidateResult,
-} from "./beauty-lab/beauty-lab-candidate-contract.js";
-import type { BeautyLabCandidateBackend } from "./beauty-lab/beauty-lab-candidate-provider.js";
+} from "./beauty-lab-candidate-contract.js";
+import type { BeautyLabCandidateBackend } from "./beauty-lab-candidate-provider.js";
 import {
 	liveDependenciesSchema,
 	type LiveExpectedDependencies,
 	verifyBeautyLabLiveDependencyInventory,
-} from "./beauty-lab/beauty-lab-live-candidate-inventory.js";
+} from "./beauty-lab-live-candidate-inventory.js";
 import {
 	liveCallbackSchema,
 	verifyBeautyLabLiveReceipts,
-} from "./beauty-lab/beauty-lab-live-candidate-receipts.js";
+} from "./beauty-lab-live-candidate-receipts.js";
 import {
 	createSnapshot,
 	type PinnedRoot,
@@ -25,7 +25,7 @@ import {
 	readJson,
 	requireEvidence,
 	type Snapshot,
-} from "./beauty-lab-research-files.js";
+} from "../beauty-lab-research-files.js";
 
 export const LIVE_NATIVE_STAGES = [
 	"detection",

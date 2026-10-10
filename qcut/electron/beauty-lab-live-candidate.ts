@@ -15,7 +15,7 @@ import { captureBeautyLabLiveDependencies } from "./beauty-lab/beauty-lab-live-c
 import {
 	LIVE_NATIVE_STAGES,
 	readBeautyLabLiveCandidateResult,
-} from "./beauty-lab-live-candidate-result.js";
+} from "./beauty-lab/beauty-lab-live-candidate-result.js";
 import {
 	createBeautyLabLiveSelectionResolver,
 	selectBeautyLabLiveRequest,
