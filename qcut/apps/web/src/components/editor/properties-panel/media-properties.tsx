@@ -65,7 +65,7 @@ import {
 } from "./property-item";
 import { KeyframeEditor } from "./keyframe-editor";
 import { MediaMaskProperties } from "./media-mask-properties";
-import { MediaAutomaticCutoutProperties } from "./media-automatic-cutout-properties";
+import { MediaAutomaticCutoutProperties } from "./media/media-automatic-cutout-properties";
 import { MediaChromaKeyProperties } from "./media-chroma-key-properties";
 import { MediaCustomCutoutProperties } from "./media-custom-cutout-properties";
 import {

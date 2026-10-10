@@ -29,7 +29,7 @@ import { useSegmentationStore } from "@/stores/ai/segmentation-store";
 import { useCloudTaskStore } from "@/stores/cloud-task-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { MediaElement } from "@/types/timeline";
-import { PropertyGroup, PropertyItemLabel } from "./property-item";
+import { PropertyGroup, PropertyItemLabel } from "../property-item";
 
 type AutomaticCutoutMode = "person" | "object";
 
