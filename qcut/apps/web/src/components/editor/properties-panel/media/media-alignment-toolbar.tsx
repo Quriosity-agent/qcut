@@ -7,7 +7,7 @@ import {
 	AlignVerticalJustifyStart,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { IconButton } from "./visual-property-controls";
+import { IconButton } from "../visual-property-controls";
 
 /**
  * Canvas alignment row shown at the top of the basic sub-tab. Distribute

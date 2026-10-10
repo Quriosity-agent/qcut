@@ -91,7 +91,7 @@ import {
 	IconButton,
 	NumberControl,
 } from "./visual-property-controls";
-import { MediaAlignmentToolbar } from "./media-alignment-toolbar";
+import { MediaAlignmentToolbar } from "./media/media-alignment-toolbar";
 import { MediaKeyframeNav } from "./media-keyframe-nav";
 import { MediaWarpSection } from "./media-warp-section";
 import {
