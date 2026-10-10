@@ -20,7 +20,7 @@ import type { JianyingTextRuntimeDiagnostic } from "../jianying-text-runtime-con
 import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,
-} from "../jianying-font-private-cache.js";
+} from "../jianying-font/jianying-font-private-cache.js";
 
 const FONT_CACHE_EXTENSIONS = ["otf", "ttf"] as const;
 const MAXIMUM_FONT_BYTES = 128 * 1024 * 1024;

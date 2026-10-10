@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
 	readPrivateJianyingFont,
 	jianyingPrivateFontRoot,
-} from "../jianying-font-private-cache.js";
+} from "../jianying-font/jianying-font-private-cache.js";
 import {
 	inspectJianyingFontBytes,
 	readFontkitMetadata,

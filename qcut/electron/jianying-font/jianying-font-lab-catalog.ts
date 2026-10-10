@@ -15,7 +15,7 @@ import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,
 	retainPrivateJianyingFont,
-} from "../jianying-font-private-cache.js";
+} from "./jianying-font-private-cache.js";
 
 const MAXIMUM_FONT_BYTES = 128 * 1024 * 1024;
 const FONT_FILE_PATTERN = /\.(?:otf|ttf)$/i;

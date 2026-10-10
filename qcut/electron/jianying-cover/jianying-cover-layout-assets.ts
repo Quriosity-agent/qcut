@@ -20,7 +20,7 @@ import { readFontkitMetadata } from "../jianying-font/jianying-font-lab-catalog.
 import {
 	retainPrivateJianyingFont,
 	jianyingPrivateFontRoot,
-} from "../jianying-font-private-cache.js";
+} from "../jianying-font/jianying-font-private-cache.js";
 import { getQCutJianyingTextPrivateArchiveRoot } from "../jianying-text-private-archive.js";
 import {
 	detectJianyingTextPackageKind,

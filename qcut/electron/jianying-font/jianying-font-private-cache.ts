@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { qcutStandaloneUserDataRoot } from "./jianying-effect/user-data-paths.js";
-import type { JianyingFontFormat } from "./jianying-font/jianying-font-lab-contract.js";
+import { qcutStandaloneUserDataRoot } from "../jianying-effect/user-data-paths.js";
+import type { JianyingFontFormat } from "./jianying-font-lab-contract.js";
 
 /** QCut-owned private font store under the platform user-data directory. */
 export function jianyingPrivateFontRoot() {

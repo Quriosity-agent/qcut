@@ -8,7 +8,7 @@ import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,
 	retainPrivateJianyingFont,
-} from "../jianying-font-private-cache.js";
+} from "../jianying-font/jianying-font-private-cache.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs/promises")>();
