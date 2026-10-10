@@ -25,8 +25,8 @@ import { useProjectStore } from "@/stores/project-store";
 import { useEffectsStore } from "@/stores/ai/effects-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { MediaElement, MediaPropertyKeyframe } from "@/types/timeline";
-import { SpeedCurveEditor } from "./speed-curve-editor";
-import { SpeedCurvePresetCard } from "./speed-curve-preset-card";
+import { SpeedCurveEditor } from "../speed-curve-editor";
+import { SpeedCurvePresetCard } from "../speed-curve-preset-card";
 import {
 	createSpeedPresetKeyframes,
 	getSpeedCurvePreset,
@@ -45,7 +45,7 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
+} from "../property-item";
 import { type TranslationKey, useTranslation } from "@/lib/i18n";
 import { getEffectPresetById } from "@/lib/effects/effect-catalog";
 import { collectTimelineBeats } from "@/lib/audio/timeline-beats";

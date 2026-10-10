@@ -72,7 +72,7 @@ import {
 	AudioPropertiesPanel,
 	defaultAudioUpdates,
 } from "../audio/audio-properties-panel";
-import { MediaSpeedProperties } from "../media-speed-properties";
+import { MediaSpeedProperties } from "./media-speed-properties";
 import {
 	ColorPropertiesPanel,
 	defaultColorUpdates,

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MediaElement } from "@/types/timeline";
-import { MediaSpeedProperties } from "../media-speed-properties";
+import { MediaSpeedProperties } from "../media/media-speed-properties";
 
 // Radix Select reads these on open; jsdom implements none of them.
 Element.prototype.scrollIntoView ??= () => undefined;
