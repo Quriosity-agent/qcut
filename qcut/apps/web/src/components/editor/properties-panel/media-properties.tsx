@@ -71,7 +71,7 @@ import { MediaCustomCutoutProperties } from "./media-custom-cutout-properties";
 import {
 	AudioPropertiesPanel,
 	defaultAudioUpdates,
-} from "./audio-properties-panel";
+} from "./audio/audio-properties-panel";
 import { MediaSpeedProperties } from "./media-speed-properties";
 import {
 	ColorPropertiesPanel,
