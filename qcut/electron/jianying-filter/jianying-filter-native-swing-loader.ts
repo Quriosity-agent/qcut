@@ -1,5 +1,5 @@
-import type { JianyingFilterLabLoadRendererResult } from "./jianying-filter/jianying-filter-lab-contract.js";
-import type { JianyingNativeSwingRenderer } from "./native-pipeline/filters/filter-lab-native-swing.js";
+import type { JianyingFilterLabLoadRendererResult } from "./jianying-filter-lab-contract.js";
+import type { JianyingNativeSwingRenderer } from "../native-pipeline/filters/filter-lab-native-swing.js";
 
 export function loadJianyingFilterNativeSwingRenderer({
 	filterTitle,
