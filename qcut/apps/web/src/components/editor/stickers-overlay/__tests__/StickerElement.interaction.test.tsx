@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import { StickerElement } from "../StickerElement";
+import { StickerElement } from "../sticker-element";
 
 const mocks = vi.hoisted(() => ({
 	clearSelectedElements: vi.fn(),
