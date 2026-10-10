@@ -11,7 +11,7 @@ vi.mock("@/stores/editor/playback-store", () => ({
 	},
 }));
 
-import { SearchPanel } from "../SearchPanel";
+import { SearchPanel } from "../search-panel";
 import { useSearchStore } from "@/stores/search-store";
 
 function makeTranscription(

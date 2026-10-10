@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { SearchPanel } from "./search/SearchPanel";
+import { SearchPanel } from "./search/search-panel";
 import { SemanticSearchPanel } from "./search/SemanticSearchPanel";
 
 type SearchMode = "text" | "visual";
