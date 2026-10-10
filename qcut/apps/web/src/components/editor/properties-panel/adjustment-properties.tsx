@@ -37,7 +37,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { ColorSettingsEditorBindings } from "./color-properties-types";
 import { ColorBasicSettings } from "./color/color-basic-settings";
-import { ColorCurvesSettings } from "./color-curves-settings";
+import { ColorCurvesSettings } from "./color/color-curves-settings";
 import { ColorHslSettings } from "./color-hsl-settings";
 import { ColorLutSettings } from "./color-lut-settings";
 import { ColorManagementSettingsPanel } from "./color-management-settings";

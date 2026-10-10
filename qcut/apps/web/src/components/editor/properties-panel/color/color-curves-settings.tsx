@@ -13,13 +13,13 @@ import {
 import {
 	ColorCurveEditor,
 	type ColorCurveBackground,
-} from "./color/color-curve-editor";
+} from "./color-curve-editor";
 import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "./color-property-controls";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+} from "../color-property-controls";
+import type { ColorSettingsEditorBindings } from "../color-properties-types";
 
 type CurveChannel = "master" | "red" | "green" | "blue";
 

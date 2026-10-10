@@ -47,7 +47,7 @@ import {
 	mapMediaTimelineTime,
 } from "@/lib/video/video-timing";
 import { ColorBasicSettings } from "./color/color-basic-settings";
-import { ColorCurvesSettings } from "./color-curves-settings";
+import { ColorCurvesSettings } from "./color/color-curves-settings";
 import { ColorSecondaryCurvesSettings } from "./color-secondary-curves-settings";
 import { ColorHslSettings } from "./color-hsl-settings";
 import { ColorLutSettings } from "./color-lut-settings";
