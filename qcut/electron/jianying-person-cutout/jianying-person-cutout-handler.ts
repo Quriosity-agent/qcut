@@ -8,12 +8,12 @@ import {
 	type JianyingPersonCutoutCancelRequest,
 	type JianyingPersonCutoutReleaseRequest,
 	type JianyingPersonCutoutRenderRequest,
-} from "./jianying-person-cutout/jianying-person-cutout-contract.js";
+} from "./jianying-person-cutout-contract.js";
 import {
 	inspectJianyingPersonCutout,
 	releaseJianyingPersonCutout,
 	renderJianyingPersonCutout,
-} from "./jianying-person-cutout/runtime.js";
+} from "./runtime.js";
 
 export function setupJianyingPersonCutoutIPC() {
 	const activeTasks = new Map<string, AbortController>();
