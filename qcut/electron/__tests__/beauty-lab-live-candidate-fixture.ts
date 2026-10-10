@@ -8,7 +8,7 @@ import {
 	type BeautyLabCandidateRequest,
 } from "../beauty-lab/beauty-lab-candidate-contract.js";
 import { LIVE_NATIVE_STAGES } from "../beauty-lab-live-candidate-result.js";
-import { beautyLabCandidateIdentity } from "../beauty-lab-candidate-request.js";
+import { beautyLabCandidateIdentity } from "../beauty-lab/beauty-lab-candidate-request.js";
 import {
 	captureBeautyLabLiveRequestDependencies,
 	type LiveExpectedDependencies,

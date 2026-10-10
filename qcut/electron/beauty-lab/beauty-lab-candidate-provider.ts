@@ -12,7 +12,7 @@ import {
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-request.js";
+} from "./beauty-lab-candidate-request.js";
 
 export interface BeautyLabCandidateBackend {
 	version: string;

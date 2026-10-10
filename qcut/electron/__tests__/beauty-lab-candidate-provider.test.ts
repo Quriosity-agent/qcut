@@ -16,7 +16,7 @@ import {
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "../beauty-lab-candidate-request.js";
+} from "../beauty-lab/beauty-lab-candidate-request.js";
 
 type BackendRequest = Parameters<BeautyLabCandidateBackend["render"]>[0];
 

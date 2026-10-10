@@ -7,7 +7,7 @@ import type { BeautyLabCandidateBackend } from "./beauty-lab/beauty-lab-candidat
 import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
-} from "./beauty-lab-candidate-request.js";
+} from "./beauty-lab/beauty-lab-candidate-request.js";
 import { beautyLabLiveFailureAllowsRetry } from "./beauty-lab-live-candidate-failure.js";
 import { runBeautyLabLiveCandidateJob } from "./beauty-lab-live-candidate-process.js";
 import { captureBeautyLabLiveRequestDependencies } from "./beauty-lab-live-candidate-inventory.js";
