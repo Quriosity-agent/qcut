@@ -6,7 +6,7 @@ import {
 import {
 	BEAUTY_LAB_INDEPENDENT_PROVIDER,
 	type BeautyLabIndependentRequest,
-} from "../beauty-lab-independent-contract";
+} from "../beauty-lab/beauty-lab-independent-contract";
 
 const frame = ({
 	timestampSeconds = 0,

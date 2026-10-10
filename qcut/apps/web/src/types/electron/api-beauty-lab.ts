@@ -8,8 +8,8 @@ export type {
 	BeautyLabIndependentRequest,
 	BeautyLabIndependentResult,
 	BeautyLabIndependentStatus,
-} from "../../../../../electron/beauty-lab-independent-contract";
-export { BEAUTY_LAB_INDEPENDENT_PROVIDER } from "../../../../../electron/beauty-lab-independent-contract";
+} from "../../../../../electron/beauty-lab/beauty-lab-independent-contract";
+export { BEAUTY_LAB_INDEPENDENT_PROVIDER } from "../../../../../electron/beauty-lab/beauty-lab-independent-contract";
 
 export type {
 	BeautyLabAPI,

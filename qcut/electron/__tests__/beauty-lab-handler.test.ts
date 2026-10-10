@@ -45,7 +45,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "../beauty-lab-independent-contract";
+} from "../beauty-lab/beauty-lab-independent-contract";
 import { createBeautyLabIndependentProvider } from "../beauty-lab-independent";
 
 import { setupBeautyLabIPC } from "../beauty-lab/beauty-lab-handler.js";

@@ -3,7 +3,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "./beauty-lab-independent-contract.js";
+} from "./beauty-lab/beauty-lab-independent-contract.js";
 /**
  * Electron preload script that exposes a secure API to the renderer process.
  * Uses contextBridge to safely expose IPC methods without exposing the full Electron API.

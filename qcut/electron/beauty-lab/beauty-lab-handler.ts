@@ -16,7 +16,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
-} from "../beauty-lab-independent-contract.js";
+} from "./beauty-lab-independent-contract.js";
 import type { createBeautyLabIndependentProvider } from "../beauty-lab-independent.js";
 
 let activeController: symbol | undefined;

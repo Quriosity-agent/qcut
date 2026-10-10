@@ -17,7 +17,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_PROVIDER,
 	type BeautyLabIndependentRequest,
 	type BeautyLabIndependentResult,
-} from "./beauty-lab-independent-contract.js";
+} from "./beauty-lab/beauty-lab-independent-contract.js";
 import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
 import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
 import {
