@@ -7,11 +7,11 @@ import {
 	JIANYING_BASIC_VIDEO_PROGRESS_CHANNEL,
 	type JianyingBasicVideoCancelRequest,
 	type JianyingDeflickerRequest,
-} from "./jianying-basic-video-runtime/jianying-basic-video-contract.js";
+} from "./jianying-basic-video-contract.js";
 import {
 	deflickerWithJianyingRuntime,
 	inspectJianyingBasicVideo,
-} from "./jianying-basic-video-runtime/runtime.js";
+} from "./runtime.js";
 
 export interface JianyingBasicVideoIPCController {
 	dispose: () => void;

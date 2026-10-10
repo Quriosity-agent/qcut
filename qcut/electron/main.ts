@@ -103,7 +103,7 @@ import {
 import {
 	setupJianyingBasicVideoIPC,
 	type JianyingBasicVideoIPCController,
-} from "./jianying-basic-video-handler.js";
+} from "./jianying-basic-video-runtime/jianying-basic-video-handler.js";
 import { watchJianyingFilterCaches } from "./jianying-filter-cache-watcher.js";
 import {
 	setupJianyingFontLabIPC,

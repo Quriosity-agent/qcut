@@ -26,7 +26,7 @@ vi.mock("../jianying-basic-video-runtime/runtime.js", () => ({
 	inspectJianyingBasicVideo: inspectRuntime,
 }));
 
-import { setupJianyingBasicVideoIPC } from "../jianying-basic-video-handler.js";
+import { setupJianyingBasicVideoIPC } from "../jianying-basic-video-runtime/jianying-basic-video-handler.js";
 
 function createWindowContext() {
 	const mainFrame = {};
