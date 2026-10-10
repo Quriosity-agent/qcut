@@ -4,7 +4,7 @@ import {
 	type BeautyLabFaceBox,
 	createBeautyLabFaceTracker,
 	faceBoxIoU,
-} from "../beauty-lab-video-face-tracks.js";
+} from "../beauty-lab/beauty-lab-video-face-tracks.js";
 
 function box(x: number, y = 0.2, size = 0.2): BeautyLabFaceBox {
 	return { x, y, width: size, height: size };
