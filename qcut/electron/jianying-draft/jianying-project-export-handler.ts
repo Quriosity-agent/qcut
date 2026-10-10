@@ -15,12 +15,12 @@ import {
 	type Jianying113ProjectExportSelectionDto,
 	type JianyingProjectExportErrorCode,
 	type JianyingProjectExportResultDto,
-} from "./jianying-draft/jianying-project-export-contract.js";
+} from "./jianying-project-export-contract.js";
 import {
 	createJianyingTargetAppGuard,
 	JianyingAppRunningError,
 	type JianyingTargetAppGuard,
-} from "./jianying-target-app-guard.js";
+} from "../jianying-target-app-guard.js";
 
 const DEFAULT_JIANYING_APP_PATH = "/Applications/VideoFusion-macOS.app";
 const MAX_CONTENT_BYTES = 64 * 1024 * 1024;
@@ -235,7 +235,7 @@ function toErrorDto({ error }: { error: unknown }): {
 }
 
 async function loadBundledRuntime(): Promise<unknown> {
-	return import(join(__dirname, "jianying-draft-export-runtime.js"));
+	return import(join(__dirname, "..", "jianying-draft-export-runtime.js"));
 }
 
 function parseRuntime({

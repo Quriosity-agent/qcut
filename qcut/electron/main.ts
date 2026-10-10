@@ -124,7 +124,7 @@ import {
 import {
 	setupJianyingProjectExportIPC,
 	type JianyingProjectExportIPCController,
-} from "./jianying-project-export-handler.js";
+} from "./jianying-draft/jianying-project-export-handler.js";
 
 // Type definitions
 interface ReleaseNote {

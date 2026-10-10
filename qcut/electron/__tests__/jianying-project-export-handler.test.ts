@@ -26,7 +26,7 @@ vi.mock("electron", () => ({
 	},
 }));
 
-import { setupJianyingProjectExportIPC } from "../jianying-project-export-handler.js";
+import { setupJianyingProjectExportIPC } from "../jianying-draft/jianying-project-export-handler.js";
 
 interface MockWindowContext {
 	event: IpcMainInvokeEvent;
