@@ -94,7 +94,7 @@ import { resolveBeautyLabResearchPaths } from "./beauty-lab-research-config.js";
 import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import { createBeautyLabIndependentProvider } from "./beauty-lab/beauty-lab-independent.js";
 import { createBeautyLabLiveCandidateBackend } from "./beauty-lab/beauty-lab-live-candidate.js";
-import { createBeautyLabQuitGuard } from "./beauty-lab-quit.js";
+import { createBeautyLabQuitGuard } from "./beauty-lab/beauty-lab-quit.js";
 import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout-handler.js";
 import {
 	setupJianyingMotionTrackingIPC,

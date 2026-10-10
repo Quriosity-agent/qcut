@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createBeautyLabQuitGuard } from "../beauty-lab-quit";
+import { createBeautyLabQuitGuard } from "../beauty-lab/beauty-lab-quit";
 
 describe("Beauty Lab quit cleanup", () => {
 	it("waits for cleanup and coalesces repeated quit requests", async () => {
