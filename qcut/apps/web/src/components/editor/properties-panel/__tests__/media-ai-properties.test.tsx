@@ -38,7 +38,7 @@ vi.mock("@/stores/project-store", () => ({
 	) => selector({ activeProject: { fps: 30 } }),
 }));
 
-import { MediaAIProperties } from "../media-ai-properties";
+import { MediaAIProperties } from "../media/media-ai-properties";
 
 const ELEMENT: MediaElement = {
 	id: "clip-1",

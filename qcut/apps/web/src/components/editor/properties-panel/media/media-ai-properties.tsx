@@ -29,7 +29,7 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
+} from "../property-item";
 
 function activateButton({
 	event,
