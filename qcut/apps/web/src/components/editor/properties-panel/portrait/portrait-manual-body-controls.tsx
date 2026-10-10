@@ -9,7 +9,7 @@ import type {
 	MediaPortraitManualBody,
 	MediaPortraitManualBodyTool,
 } from "@/types/timeline";
-import { NumberControl } from "./visual-property-controls";
+import { NumberControl } from "../visual-property-controls";
 
 const TOOLS = ["stretch", "slim", "zoom"] as const;
 
