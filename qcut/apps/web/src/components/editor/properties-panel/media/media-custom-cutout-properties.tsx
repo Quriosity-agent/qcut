@@ -13,7 +13,7 @@ import {
 	CutoutTaskStatus,
 	isActiveCutoutPhase,
 	type CutoutTaskPhase,
-} from "@/components/editor/segmentation/CutoutTaskStatus";
+} from "@/components/editor/segmentation/cutout-task-status";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CloudTaskStatus } from "@/components/editor/cloud-task-status";

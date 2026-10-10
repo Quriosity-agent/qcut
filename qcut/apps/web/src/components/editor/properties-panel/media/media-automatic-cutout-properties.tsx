@@ -10,7 +10,7 @@ import {
 	CutoutTaskStatus,
 	isActiveCutoutPhase,
 	type CutoutTaskPhase,
-} from "@/components/editor/segmentation/CutoutTaskStatus";
+} from "@/components/editor/segmentation/cutout-task-status";
 import {
 	attachGeneratedMask,
 	failGeneratedMaskTracking,

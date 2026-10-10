@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CutoutTaskStatus } from "../CutoutTaskStatus";
+import { CutoutTaskStatus } from "../cutout-task-status";
 
 describe("CutoutTaskStatus", () => {
 	it("shows active progress, elapsed time, and cancellation", () => {

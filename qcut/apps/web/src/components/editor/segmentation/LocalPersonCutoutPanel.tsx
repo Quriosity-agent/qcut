@@ -26,7 +26,7 @@ import { useMediaStore } from "@/stores/media/media-store";
 import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 import type { MediaStore } from "@/stores/media/media-store-types";
 import type { MediaMaskTrackingSample } from "@/lib/video/media-mask-tracking";
-import { CutoutTaskStatus, type CutoutTaskPhase } from "./CutoutTaskStatus";
+import { CutoutTaskStatus, type CutoutTaskPhase } from "./cutout-task-status";
 import { PersonCutoutSettings } from "./PersonCutoutSettings";
 
 interface LocalPersonCutoutPanelProps {
