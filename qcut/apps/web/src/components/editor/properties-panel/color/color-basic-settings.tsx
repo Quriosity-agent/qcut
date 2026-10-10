@@ -7,7 +7,7 @@ import {
 import {
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "../color-property-controls";
+} from "./color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 const BASIC_PROPERTY_GROUPS: Array<{

@@ -12,7 +12,7 @@ import {
 import {
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "../color-property-controls";
+} from "./color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 const RANGE_COLORS: Record<ColorHslRangeName, string> = {

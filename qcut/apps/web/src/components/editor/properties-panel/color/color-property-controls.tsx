@@ -20,7 +20,7 @@ import {
 	COLOR_KEYFRAME_DEFINITIONS,
 	getColorPropertyValue,
 } from "@/lib/color/color-properties";
-import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 export function ColorIconButton({
 	label,

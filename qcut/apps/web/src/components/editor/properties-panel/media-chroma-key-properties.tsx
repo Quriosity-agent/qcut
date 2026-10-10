@@ -26,7 +26,7 @@ import {
 	ColorIconButton,
 	ColorModuleSection,
 	ColorNumberControl,
-} from "./color-property-controls";
+} from "./color/color-property-controls";
 
 type MediaUpdates = Parameters<
 	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]

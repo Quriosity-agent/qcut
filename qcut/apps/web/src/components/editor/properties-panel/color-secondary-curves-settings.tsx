@@ -26,7 +26,7 @@ import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "./color-property-controls";
+} from "./color/color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
 
 type CurveInput = "hue" | "luminance" | "saturation";

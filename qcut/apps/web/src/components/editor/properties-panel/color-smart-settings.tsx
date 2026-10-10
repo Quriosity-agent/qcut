@@ -18,7 +18,7 @@ import {
 	ColorKeyframedControl,
 	ColorModuleSection,
 	ColorToggleRow,
-} from "./color-property-controls";
+} from "./color/color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
 
 export function ColorSmartSettingsPanel({

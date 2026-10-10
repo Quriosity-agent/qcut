@@ -10,7 +10,7 @@ import { DEFAULT_MEDIA_COLOR_SETTINGS } from "@/lib/color/color-properties";
 import {
 	ColorModuleSection,
 	ColorNumberControl,
-} from "../color-property-controls";
+} from "./color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 const COLOR_SPACES: Array<{ value: ColorSpace; label: string }> = [

@@ -18,7 +18,7 @@ import {
 	ColorCurveKeyframeControls,
 	ColorKeyframedControl,
 	ColorModuleSection,
-} from "../color-property-controls";
+} from "./color-property-controls";
 import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 type CurveChannel = "master" | "red" | "green" | "blue";
