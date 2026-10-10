@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import type { BeautyLabIndependentResult } from "./beauty-lab-independent-contract";
 import type { createBeautyLabIndependentProvider } from "./beauty-lab-independent";
 

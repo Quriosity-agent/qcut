@@ -7,7 +7,7 @@ import type { ElectronApplication, Page } from "@playwright/test";
 import type {
 	JianyingPortraitAdjustmentRenderRequest as RenderRequest,
 	JianyingPortraitAdjustmentRenderResult as RenderResult,
-} from "../../../../../../electron/jianying-portrait-adjustment-contract";
+} from "../../../../../../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import { getFFmpegPath } from "../../../../../../electron/ffmpeg/paths";
 import type { ReferenceWindow } from "./portrait-reference";
 
@@ -75,7 +75,7 @@ export async function prepareBrowserFixture({
 
 export async function runtimeIdentity() {
 	const sourceFiles = [
-		"electron/jianying-portrait-adjustment-contract.ts",
+		"electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.ts",
 		"electron/jianying-portrait-adjustment-runtime/provider.ts",
 		"electron/jianying-portrait-adjustment-runtime/tracking-scope-pool.ts",
 		"electron/jianying-portrait-adjustment-runtime/source-preroll.ts",

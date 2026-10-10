@@ -1,6 +1,6 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "./jianying-portrait-adjustment-contract.js";
 
 export function isJianying3DNosePackage({
 	runtimePackage,

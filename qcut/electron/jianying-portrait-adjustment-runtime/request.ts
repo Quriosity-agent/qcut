@@ -7,7 +7,7 @@ import type {
 	MediaPortraitManualBody,
 	MediaPortraitManualRetouchStroke,
 	MediaPortraitMakeupCategory,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import { jianyingPortraitControl } from "./catalog.js";
 import { jianyingPortraitMakeupCard } from "./makeup-catalog.js";
 import { parsePortraitSourcePreRoll } from "./source-preroll.js";

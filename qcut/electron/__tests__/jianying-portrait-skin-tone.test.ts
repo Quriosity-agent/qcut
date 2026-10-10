@@ -10,7 +10,7 @@ import { JIANYING_PORTRAIT_SKIN_TONES } from "../jianying-portrait-adjustment-ru
 import { JIANYING_PORTRAIT_PACKAGE_IDENTITIES } from "../jianying-portrait-adjustment-runtime/catalog";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request";
 import { buildJianyingPortraitRenderStages } from "../jianying-portrait-adjustment-runtime/stages";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import type { JianyingPortraitPackageResolution } from "../jianying-portrait-adjustment-runtime/package-resolver";
 
 const values = {

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_ADJUSTMENT_CATALOG,

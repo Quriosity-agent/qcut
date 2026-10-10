@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
 import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import { createJianyingPortraitAdjustmentProvider } from "../jianying-portrait-adjustment-runtime/provider";
 import { resolveJianyingPortraitPackage } from "../jianying-portrait-adjustment-runtime/package-resolver";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request";

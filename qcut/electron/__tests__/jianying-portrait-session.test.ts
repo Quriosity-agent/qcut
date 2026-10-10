@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portrait-adjustment-contract";
+import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract";
 import {
 	buildPortraitSessionPlan,
 	runPortraitSessionPlan,

@@ -1,4 +1,4 @@
-import type { MediaPortraitMakeupCategory } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitMakeupCategory } from "./jianying-portrait-adjustment-contract.js";
 
 export interface JianyingPortraitMakeupCardDefinition {
 	id: string;

@@ -7,7 +7,7 @@ import {
 	pinRoot,
 	type PinnedRoot,
 } from "./beauty-lab-research-files.js";
-import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitAdjustmentRuntimePackage } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	buildJianyingPortraitFeatureParameters,
 	JIANYING_PORTRAIT_PACKAGE_IDENTITIES,

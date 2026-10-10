@@ -4,7 +4,7 @@ import type {
 	JianyingPortraitAdjustmentRuntimePackage,
 	JianyingPortraitAdjustmentSection,
 	MediaPortraitAdjustmentKey,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 
 function faceControl({
 	key,

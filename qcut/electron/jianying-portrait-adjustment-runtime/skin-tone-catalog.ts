@@ -1,4 +1,4 @@
-import type { MediaPortraitSkinToneResourceId } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitSkinToneResourceId } from "./jianying-portrait-adjustment-contract.js";
 
 // beauty_panels.ini skinColor/skinColorNew and the matching cached packages.
 export const JIANYING_PORTRAIT_SKIN_TONES = [

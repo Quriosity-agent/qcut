@@ -3,7 +3,7 @@ import type {
 	JianyingPortraitAdjustmentGroup,
 	JianyingPortraitAdjustmentRuntimePackage,
 	MediaPortraitAdjustmentKey,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import { JIANYING_PORTRAIT_ADVANCED_CONTROLS } from "./advanced-controls.js";
 
 export const JIANYING_PORTRAIT_PACKAGE_IDENTITIES = {

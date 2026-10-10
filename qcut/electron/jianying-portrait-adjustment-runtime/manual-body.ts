@@ -1,7 +1,7 @@
 import type {
 	MediaPortraitManualBody,
 	MediaPortraitManualBodyTool,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 
 export const DEFAULT_JIANYING_MANUAL_BODY = {
 	stretch: {

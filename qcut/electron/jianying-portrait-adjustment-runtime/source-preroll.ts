@@ -2,7 +2,7 @@ import {
 	PORTRAIT_SOURCE_PRE_ROLL_LIMITS,
 	type JianyingPortraitAdjustmentRenderRequest,
 	type JianyingPortraitSourcePreRoll,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 
 export function canRecoverPortraitSource({
 	request,

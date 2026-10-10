@@ -9,7 +9,7 @@ import {
 	beautyLabCandidateIdentity,
 	parseBeautyLabCandidateRequest,
 } from "../beauty-lab/beauty-lab-candidate-request.js";
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request.js";
 
 function makeRequest({

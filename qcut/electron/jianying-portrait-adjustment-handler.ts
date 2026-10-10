@@ -4,7 +4,7 @@ import {
 	JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL,
-} from "./jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import { createJianyingPortraitAdjustmentProvider } from "./jianying-portrait-adjustment-runtime/provider.js";
 import {
 	parseJianyingPortraitDetectRequest,

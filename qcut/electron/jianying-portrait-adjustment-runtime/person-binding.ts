@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
 	JianyingPortraitAdjustmentDetectRequest,
 	JianyingPortraitDetectedFace,
-} from "../jianying-portrait-adjustment-contract.js";
+} from "./jianying-portrait-adjustment-contract.js";
 import {
 	matchPortraitTrackIdsDetailed,
 	type PortraitFaceGeometry,

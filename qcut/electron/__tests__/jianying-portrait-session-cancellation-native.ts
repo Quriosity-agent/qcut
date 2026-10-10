@@ -45,7 +45,9 @@ async function main() {
 				path.resolve(
 					"electron/__tests__/jianying-portrait-session-cancellation-native.ts"
 				),
-				path.resolve("electron/jianying-portrait-adjustment-contract.ts"),
+				path.resolve(
+					"electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.ts"
+				),
 				path.resolve("electron/beauty-lab/beauty-lab-rgba-metrics.ts"),
 				path.resolve(
 					"electron/jianying-filter-local-runtime/runtime-discovery.ts"

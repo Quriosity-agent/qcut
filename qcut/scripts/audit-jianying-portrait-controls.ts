@@ -11,7 +11,7 @@ import {
 import type {
 	JianyingPortraitAdjustmentControl,
 	MediaPortraitAdjustments,
-} from "../electron/jianying-portrait-adjustment-contract.js";
+} from "../electron/jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	JIANYING_PORTRAIT_ADJUSTMENT_CATALOG,
 	jianyingPortraitRuntimePackageForControl,

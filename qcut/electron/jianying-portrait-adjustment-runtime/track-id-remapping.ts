@@ -1,4 +1,4 @@
-import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-contract.js";
+import type { JianyingPortraitDetectedFace } from "./jianying-portrait-adjustment-contract.js";
 
 export type PortraitFaceGeometry = Pick<
 	JianyingPortraitDetectedFace,

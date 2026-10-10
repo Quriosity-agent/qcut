@@ -1,4 +1,4 @@
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import type { BeautyLabCandidateAPI } from "./beauty-lab-candidate-contract.js";
 import type { BeautyLabIndependentAPI } from "./beauty-lab-independent-contract.js";
 

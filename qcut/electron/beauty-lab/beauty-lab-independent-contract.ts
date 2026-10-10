@@ -1,4 +1,4 @@
-import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract.js";
+import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 
 export const BEAUTY_LAB_INDEPENDENT_INSPECT = "beauty-lab:inspect-independent";
 export const BEAUTY_LAB_INDEPENDENT_RENDER = "beauty-lab:render-independent";
