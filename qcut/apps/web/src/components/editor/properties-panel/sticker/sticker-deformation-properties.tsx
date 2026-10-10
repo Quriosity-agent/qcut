@@ -3,14 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/lib/i18n";
 import type { MediaPerspective } from "@/types/timeline";
-import { PropertyGroup } from "./property-item";
+import { PropertyGroup } from "../property-item";
 import {
 	clamp,
 	type StickerKeyframeControls,
 	type UpdateStickerProperties,
-} from "./sticker-property-types";
-import { PERSPECTIVE_FIELDS } from "./visual-property-controls";
-import { MaskIconButton } from "./media/media-mask-controls";
+} from "../sticker-property-types";
+import { PERSPECTIVE_FIELDS } from "../visual-property-controls";
+import { MaskIconButton } from "../media/media-mask-controls";
 
 export function StickerDeformationProperties({
 	onInteractionEnd,
