@@ -15,7 +15,7 @@ import type {
 	StickerPropertyKeyframe,
 	TimelineTrack,
 } from "@/types/timeline";
-import { StickerProperties } from "../sticker/sticker-properties";
+import { StickerProperties } from "../sticker-properties";
 
 vi.mock("@/components/ui/select", () => ({
 	Select: ({
