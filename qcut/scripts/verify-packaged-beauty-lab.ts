@@ -17,8 +17,8 @@ async function main() {
 	const asar = path.join(app, "Contents/Resources/app.asar");
 	const load = createRequire(path.join(asar, "package.json"));
 	const research = load(
-		path.join(asar, "electron/beauty-lab-research.js")
-	) as typeof import("../electron/beauty-lab-research");
+		path.join(asar, "electron/beauty-lab/beauty-lab-research.js")
+	) as typeof import("../electron/beauty-lab/beauty-lab-research");
 	if (typeof research.createBeautyLabResearchProvider !== "function")
 		throw new Error("Missing packaged Beauty Lab research provider");
 	const { decodeInput, WIDTH, HEIGHT, RGBA_BYTES } = load(

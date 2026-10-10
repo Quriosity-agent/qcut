@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+import { createBeautyLabResearchProvider } from "../beauty-lab/beauty-lab-research.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs/promises")>();

@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type {
 	BeautyLabResearchCase,
 	BeautyLabResearchFrame,
-} from "./beauty-lab/beauty-lab-contract.js";
+} from "./beauty-lab-contract.js";
 import {
 	FRAME_COUNT,
 	auditSchema,
@@ -13,7 +13,7 @@ import {
 	renderSchema,
 	replaySchema,
 	sha,
-} from "./beauty-lab/beauty-lab-research-evidence.js";
+} from "./beauty-lab-research-evidence.js";
 import {
 	HEIGHT,
 	MIB,
@@ -28,7 +28,7 @@ import {
 	safeRelativePath,
 	type PinnedRoot,
 	type Snapshot,
-} from "./beauty-lab/beauty-lab-research-files.js";
+} from "./beauty-lab-research-files.js";
 
 const CASES = [
 	{

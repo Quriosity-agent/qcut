@@ -7,7 +7,7 @@ import {
 	type BeautyLabResearchCase,
 	type BeautyLabResearchFrame,
 } from "../beauty-lab/beauty-lab-contract.js";
-import { createBeautyLabResearchProvider } from "../beauty-lab-research.js";
+import { createBeautyLabResearchProvider } from "../beauty-lab/beauty-lab-research.js";
 import { createBeautyLabCandidateProvider } from "../beauty-lab/beauty-lab-candidate-provider.js";
 import {
 	BEAUTY_LAB_CANDIDATE_CANCEL_CHANNEL,
