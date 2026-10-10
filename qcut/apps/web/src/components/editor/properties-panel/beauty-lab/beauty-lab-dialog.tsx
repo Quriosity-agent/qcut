@@ -1,7 +1,7 @@
 import {
 	BeautyLabIndependentActions,
 	BeautyLabIndependentStatus,
-} from "./beauty-lab-independent-actions";
+} from "../beauty-lab-independent-actions";
 import {
 	CircleStop,
 	Download,
@@ -33,8 +33,8 @@ import { beautyLabCatalogStatus } from "@/lib/portrait/beauty-lab-catalog";
 import { exportBeautyLabComparison } from "@/lib/portrait/beauty-lab-export";
 import { useBeautyLab } from "@/lib/portrait/use-beauty-lab";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { BeautyLabControls } from "./beauty-lab/beauty-lab-controls";
-import { BeautyLabResults } from "./beauty-lab-results";
+import { BeautyLabControls } from "./beauty-lab-controls";
+import { BeautyLabResults } from "../beauty-lab-results";
 
 interface BeautyLabProps {
 	elementId: string;
