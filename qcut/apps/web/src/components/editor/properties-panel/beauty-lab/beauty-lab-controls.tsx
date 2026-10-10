@@ -22,10 +22,10 @@ import type {
 	JianyingPortraitDetectedFace,
 } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { BeautyLabPresets } from "./beauty-lab-presets";
-import { PortraitAdjustmentSection } from "./portrait-adjustment-controls";
-import { PortraitCollapsibleGroup } from "./portrait-collapsible-group";
-import { PortraitMakeupControls } from "./portrait-makeup-controls";
+import { BeautyLabPresets } from "../beauty-lab-presets";
+import { PortraitAdjustmentSection } from "../portrait-adjustment-controls";
+import { PortraitCollapsibleGroup } from "../portrait-collapsible-group";
+import { PortraitMakeupControls } from "../portrait-makeup-controls";
 
 export interface BeautyLabControlsProps {
 	status: JianyingPortraitAdjustmentStatus | null;
