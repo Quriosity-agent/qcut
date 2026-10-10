@@ -9,16 +9,16 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { runIndependentBeautyJob } from "./beauty-lab/beauty-lab-independent-process.js";
+import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
 import {
 	independentBeautyEnvironment,
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
-} from "./beauty-lab/beauty-lab-runtime-environment.js";
+} from "./beauty-lab-runtime-environment.js";
 import {
 	independentBeautyRuntimeProfile,
 	verifyIndependentBeautyRuntime,
-} from "./beauty-lab-runtime-payload.js";
+} from "../beauty-lab-runtime-payload.js";
 
 export async function installIndependentBeautyRuntime({
 	sourceRoot,

@@ -18,7 +18,7 @@ import {
 	independentBeautyPythonPackages,
 	verifyIndependentBeautyEnvironment,
 } from "../beauty-lab/beauty-lab-runtime-environment";
-import { installIndependentBeautyRuntime } from "../beauty-lab-runtime-install";
+import { installIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-install";
 
 let root: string;
 let sourceRoot: string;

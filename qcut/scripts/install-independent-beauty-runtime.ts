@@ -1,4 +1,4 @@
-import { installIndependentBeautyRuntime } from "../electron/beauty-lab-runtime-install";
+import { installIndependentBeautyRuntime } from "../electron/beauty-lab/beauty-lab-runtime-install";
 
 async function main() {
 	const [sourceRoot, engineRoot, destination, basePython, uv, bun, ...extra] =
