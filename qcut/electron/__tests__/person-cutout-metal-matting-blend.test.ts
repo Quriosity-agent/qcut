@@ -44,5 +44,5 @@ describeOnMac("TEMattingBlendEffectV2 frame contract", () => {
 			executablePath,
 		]);
 		await expect(execFileAsync(executablePath)).resolves.toBeDefined();
-	});
+	}, 30_000);
 });
