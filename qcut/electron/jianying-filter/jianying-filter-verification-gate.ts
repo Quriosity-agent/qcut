@@ -12,7 +12,7 @@
  * 3. dual-lut mask downgrade — a dual-LUT card is only as verified as its
  *    mask evidence: without maskEdgeMae the result reports as unverified.
  */
-import type { JianyingFilterVerification } from "./jianying-filter/jianying-filter-lab-contract.js";
+import type { JianyingFilterVerification } from "./jianying-filter-lab-contract.js";
 
 export const UNVERIFIED_VERIFICATION: JianyingFilterVerification = {
 	status: "unverified",

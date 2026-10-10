@@ -8,7 +8,7 @@ import type {
 import {
 	selectVerificationForCard,
 	type JianyingFilterVerificationCandidates,
-} from "../jianying-filter-verification-gate.js";
+} from "./jianying-filter-verification-gate.js";
 import type {
 	JianyingFilterKnownCatalog,
 	JianyingKnownFilter,

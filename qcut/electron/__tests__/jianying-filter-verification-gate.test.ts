@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { selectVerificationForCard } from "../jianying-filter-verification-gate";
+import { selectVerificationForCard } from "../jianying-filter/jianying-filter-verification-gate";
 
 describe("selectVerificationForCard", () => {
 	it("selects the latest record for the card's exact version", () => {
