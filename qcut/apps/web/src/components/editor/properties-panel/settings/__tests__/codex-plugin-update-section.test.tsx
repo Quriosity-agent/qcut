@@ -44,7 +44,7 @@ vi.mock("@qcut/platform-core", async (importOriginal) => {
 	};
 });
 
-import { CodexPluginUpdateSection } from "../settings/codex-plugin-update-section";
+import { CodexPluginUpdateSection } from "../codex-plugin-update-section";
 
 beforeEach(() => {
 	vi.clearAllMocks();
