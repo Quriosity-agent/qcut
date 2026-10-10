@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { JianyingPortraitDetectedFace } from "../jianying-portrait-adjustment-contract";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics";
+import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics";
 
 export function fixedGainDifference({
 	actual,

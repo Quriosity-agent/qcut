@@ -70,7 +70,7 @@ async function prepare({
 		...runtimeSources,
 		...[
 			"electron/jianying-portrait-adjustment-contract.ts",
-			"electron/beauty-lab-rgba-metrics.ts",
+			"electron/beauty-lab/beauty-lab-rgba-metrics.ts",
 			"electron/jianying-filter-local-runtime/runtime-discovery.ts",
 			"electron/__tests__/jianying-portrait-session-plan.ts",
 			"electron/__tests__/jianying-portrait-session-process.ts",

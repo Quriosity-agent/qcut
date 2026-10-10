@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics";
+import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics";
 import type { MediaPortraitAdjustments } from "../jianying-portrait-adjustment-contract";
 import { createJianyingPortraitAdjustmentProvider } from "../jianying-portrait-adjustment-runtime/provider";
 import { resolveJianyingPortraitPackage } from "../jianying-portrait-adjustment-runtime/package-resolver";

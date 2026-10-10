@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics.js";
+import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics.js";
 
 describe("Beauty Lab exact RGBA metrics", () => {
 	it("returns zero metrics for identical bytes without mutating inputs", () => {

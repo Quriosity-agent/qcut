@@ -20,7 +20,7 @@ import {
 	ownedChainSummarySchema,
 } from "./beauty-lab-owned-chain-evidence.js";
 import { verifyOwnedChainReports } from "./beauty-lab-owned-chain-verify.js";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics.js";
+import { compareRgbaPixels } from "./beauty-lab-rgba-metrics.js";
 import {
 	MIB,
 	WIDTH,

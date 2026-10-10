@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { PORTRAIT_SOURCE_PRE_ROLL_LIMITS } from "../jianying-portrait-adjustment-contract";
 import { parseJianyingPortraitRenderRequest } from "../jianying-portrait-adjustment-runtime/request";
-import { compareRgbaPixels } from "../beauty-lab-rgba-metrics";
+import { compareRgbaPixels } from "../beauty-lab/beauty-lab-rgba-metrics";
 import type { PortraitSessionProvider } from "./jianying-portrait-session-plan";
 import {
 	rgbaHash,
