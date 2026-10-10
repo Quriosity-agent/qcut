@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Add an end-to-end test for Beauty Lab's independent photo engine. It renders a real portrait with both engines and checks three things: zero settings leave the photo untouched, the two results match within one RGB level, and the exported comparison ZIP carries the engine's own image. Five oversized Beauty Lab test files were also split into shared fixtures and smaller files. Beauty Lab itself behaves exactly as before.
+
+### Fixed
+- A Beauty Lab research test fixture hard-linked the candidate frame to its baseline. Two tests that corrupt the candidate were therefore rejected on the baseline instead. The fixture now copies the frame, so those tests check the candidate itself.
+
 ## [2026.10.10.3] - 2026-10-10
 
 ### Changed
