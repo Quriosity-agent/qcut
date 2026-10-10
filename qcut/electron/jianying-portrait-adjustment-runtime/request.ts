@@ -564,6 +564,10 @@ export function parseJianyingPortraitRenderRequest({
 	) {
 		throw new Error("剪映美颜美体时间戳无效");
 	}
+	const freshTracking = record.freshTracking;
+	if (freshTracking !== undefined && typeof freshTracking !== "boolean") {
+		throw new Error("剪映美颜美体跟踪重置标记无效");
+	}
 	const faceTarget = parseFaceTarget({ value: adjustments.faceTarget });
 	const makeup = parseMakeupSelections({ value: adjustments.makeup });
 	const faces = parseFaceEntries({ value: adjustments.faces });
@@ -607,6 +611,7 @@ export function parseJianyingPortraitRenderRequest({
 		...(sourceKey === undefined ? {} : { sourceKey }),
 		...(typeof frameNumber === "number" ? { frameNumber } : {}),
 		...(timestampSeconds === undefined ? {} : { timestampSeconds }),
+		...(freshTracking ? { freshTracking } : {}),
 	};
 	const sourcePreRoll = parsePortraitSourcePreRoll({
 		value: record.sourcePreRoll,

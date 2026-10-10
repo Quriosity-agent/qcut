@@ -924,8 +924,8 @@
 		},
 		{
 			"path": "research/smooth_metal.swift",
-			"bytes": 18805,
-			"sha256": "c0037a28e91eeb7754040af0797ef05a7c5df347c9243f31a0c10b5609591bec",
+			"bytes": 19395,
+			"sha256": "fa84368db92e15a4e536cace97ed2f988887b8cbc122b3f52395951d89fdd1c3",
 			"sourceSha256": "c0037a28e91eeb7754040af0797ef05a7c5df347c9243f31a0c10b5609591bec"
 		},
 		{
@@ -1653,6 +1653,11 @@
 			"path": "research/tests/test_makeup_metal.py",
 			"sourceSha256": "7ee7c8a052995e7febd3054b13e7e216e8668e6f33212d9332279f813347604e",
 			"reason": "Use validated dynamic pigment ordering in the GPU fixture"
+		},
+		{
+			"path": "research/smooth_metal.swift",
+			"sourceSha256": "c0037a28e91eeb7754040af0797ef05a7c5df347c9243f31a0c10b5609591bec",
+			"reason": "Backport upstream e028391, 65c1044 and b56477d: fixed smoothing neighbor graph, native output raster orientation, and skin coordinates reflected before interpolation, so smoothing matches native output"
 		}
 	],
 	"sourceWorkingTreeStatus": [

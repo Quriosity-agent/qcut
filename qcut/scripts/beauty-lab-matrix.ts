@@ -29,6 +29,8 @@ const configurationSchema = z.object({
 		.min(1),
 });
 type Metrics = ReturnType<typeof beautyPixelDifference>["metrics"];
+// Every case renders the native path from a cold tracker; see the per-case source key below.
+const NATIVE_TRACKING = "cold-per-case";
 export interface BeautyMatrixRow {
 	id: string;
 	inputId: string;
@@ -67,15 +69,18 @@ async function main() {
 			sourceManifestSha256: string;
 			configurationSha256: string;
 			executionIdentity?: unknown;
+			nativeTracking?: string;
 		};
 		if (
 			previous.sourceManifestSha256 !== sourceManifestSha256 ||
 			previous.configurationSha256 !== configurationSha256 ||
+			// Older runs shared one source key per input, so their native rows were warm renders.
+			previous.nativeTracking !== NATIVE_TRACKING ||
 			JSON.stringify(previous.executionIdentity) !==
 				JSON.stringify(executionIdentity)
 		)
 			throw new Error(
-				"Resume requires identical configuration, engine source and execution identity"
+				"Resume requires identical configuration, engine source, execution identity and native tracking method"
 			);
 	}
 	await writeFile(
@@ -86,6 +91,7 @@ async function main() {
 				sourceManifestSha256,
 				configurationSha256,
 				executionIdentity,
+				nativeTracking: NATIVE_TRACKING,
 				nativeProductParityVerified: false,
 				videoVerified: false,
 			},
@@ -215,11 +221,13 @@ async function main() {
 					}
 					await mkdir(path.join(directory, id), { recursive: true });
 					const started = performance.now();
+					// Every case is an independent still photo. A key shared across cases lets the
+					// native provider continue tracking from the previous case's render.
 					const source = {
 						width: input.width,
 						height: input.height,
 						rgba: input.rgba,
-						sourceKey: `matrix-${input.id}`,
+						sourceKey: `matrix-${input.id}-${test.id}`,
 					};
 					const pair = await Promise.allSettled([
 						owned.render({

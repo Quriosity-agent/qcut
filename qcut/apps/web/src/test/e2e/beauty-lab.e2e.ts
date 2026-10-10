@@ -163,7 +163,7 @@ test("Beauty Lab real native render, verified replay, controls, ZIP and responsi
 			path.basename(source)
 		);
 		await expect(
-			lab.getByRole("button", { name: "候选处理", exact: true })
+			lab.getByRole("button", { name: "混合候选核验", exact: true })
 		).toBeDisabled();
 		const candidateCapability = await page.evaluate(async () => {
 			const api = window.electronAPI?.beautyLab;
@@ -232,7 +232,7 @@ test("Beauty Lab real native render, verified replay, controls, ZIP and responsi
 			)
 			.toBeGreaterThan(100);
 		await expect(lab.getByRole("status", { name: "实验室状态" })).toContainText(
-			"任意画面推理未接入"
+			"混合候选核验：未启用"
 		);
 		await page.screenshot({
 			path: path.join(output, "01-native-eyes-desktop.png"),

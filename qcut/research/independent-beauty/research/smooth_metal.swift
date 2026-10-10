@@ -22,13 +22,13 @@ func require(_ condition: Bool, _ message: String) throws {
 let shaderSource = """
 #include <metal_stdlib>
 using namespace metal;
-struct Pixel { float4 position [[position]]; float2 uv; };
+struct Pixel { float4 position [[position]]; float2 uv; float2 skinUv; };
 struct LinePixel { float4 position [[position]]; float2 uv; float4 pair1; float4 pair2; float4 pair3; float4 pair4; };
 struct FrameInput { float3 position [[attribute(0)]]; float2 uv [[attribute(1)]]; };
 struct Settings { float strength; float hasFace; float widthStep; float heightStep; };
 vertex Pixel frameVertex(FrameInput input [[stage_in]]) {
     Pixel o; o.position=float4(input.position.xy,(input.position.z+1)*0.5,1);
-    o.uv=input.uv; return o;
+    o.uv=input.uv; o.skinUv=float2(input.uv.x,1-input.uv.y); return o;
 }
 vertex LinePixel lineVertex(FrameInput input [[stage_in]],constant float2& direction [[buffer(0)]]) {
     LinePixel o; o.position=float4(input.position.xy,(input.position.z+1)*0.5,1); o.uv=input.uv;
@@ -40,7 +40,7 @@ vertex LinePixel lineVertex(FrameInput input [[stage_in]],constant float2& direc
 }
 vertex Pixel faceVertex(uint index [[vertex_id]],constant float4* vertices [[buffer(0)]],constant float2& scale [[buffer(1)]]) {
     float4 v=vertices[index]; Pixel o;
-    o.position=float4(v.xy*scale+float2(-1,1),0.5,1); o.uv=v.zw; return o;
+    o.position=float4(v.xy*scale+float2(-1,1),0.5,1); o.uv=v.zw; o.skinUv=v.zw; return o;
 }
 constexpr sampler sampleEdge(coord::normalized,address::clamp_to_edge,filter::linear);
 fragment float4 facePixel(Pixel p [[stage_in]],texture2d<float> face [[texture(0)]]) {
@@ -59,7 +59,7 @@ float2 hueAndValue(float3 c) {
 fragment float4 controlPixel(Pixel p [[stage_in]],constant Settings& u [[buffer(0)]],
     texture2d<float> source [[texture(0)]],texture2d<float> skin [[texture(1)]],texture2d<float> face [[texture(2)]]) {
     float2 sourceUv=float2(p.uv.x,1-p.uv.y);
-    float alpha=skin.sample(sampleEdge,sourceUv).a;
+    float alpha=skin.sample(sampleEdge,p.skinUv).a;
     if(u.hasFace==0)return float4(0,0,alpha,alpha*u.strength);
     float2 hsv=hueAndValue(source.sample(sampleEdge,sourceUv).rgb);
     float coverage=((hsv.x>=0.1f&&hsv.x<=0.89f)||hsv.y<=0.3f)?0.0f:1.0f;
@@ -132,10 +132,13 @@ fragment float4 broadPixel(Pixel p [[stage_in]],constant Settings& u [[buffer(0)
     if(control.sample(sampleEdge,p.uv).a<=0.1f)return float4(center,1);
     const float2 ring[4]={float2(5,0),float2(0,5),float2(3,4),float2(4,3)};
     float4 total=0;
+    // Fixed sample coordinates must fold before RGBA8 rounding.
+    #pragma clang loop unroll(full)
     for(uint radius=0;radius<3;++radius) {
         float2 unit=float2(u.widthStep,u.heightStep)*0.45f;
         float2 stepSize=radius<2?unit*0.6f:unit;
         float coordinateScale=radius==0?1.0f:radius==1?2.0f:4.0f;
+        #pragma clang loop unroll(full)
         for(uint spoke=0;spoke<4;++spoke) {
             float2 delta=stepSize*(ring[spoke]*coordinateScale);
             includeColor(total,center,source,p.uv+delta,u.hasFace);
@@ -158,7 +161,7 @@ fragment float4 outputPixel(Pixel p [[stage_in]],texture2d<float> source [[textu
     float4 original=source.sample(sampleEdge,sourceUv), color=corrected.sample(sampleEdge,p.uv);
     float3 first=broad.sample(sampleEdge,p.uv).rgb, second=repeated.sample(sampleEdge,p.uv).rgb;
     float4 mask=control.sample(sampleEdge,p.uv);
-    float alpha=skin.sample(sampleEdge,sourceUv).a;
+    float alpha=skin.sample(sampleEdge,p.skinUv).a;
     float varianceGate=1-color.a/(color.a+0.5f);
     float area=(mask.g>=0.005f?mask.b:alpha)*alpha*varianceGate;
     float3 detail=(color.rgb-first)/2+0.5f;
@@ -221,7 +224,7 @@ func run() throws {
         }
         return try device.makeRenderPipelineState(descriptor:d)
     }
-    func read(_ image: MTLTexture,_ path: String) throws {
+    func read(_ image: MTLTexture,_ path: String,_ rowsAreBottomToTop: Bool = true) throws {
         var data=Data(count:image.width*image.height*4)
         data.withUnsafeMutableBytes {image.getBytes($0.baseAddress!,bytesPerRow:image.width*4,from:MTLRegionMake2D(0,0,image.width,image.height),mipmapLevel:0)}
         var imageRows=Data(count:data.count)
@@ -229,7 +232,7 @@ func run() throws {
             let rowBytes=image.width*4
             for y in 0..<image.height {
                 memcpy(destination.baseAddress!.advanced(by:y*rowBytes),
-                    source.baseAddress!.advanced(by:(image.height-1-y)*rowBytes),rowBytes)
+                    source.baseAddress!.advanced(by:(rowsAreBottomToTop ? image.height-1-y : y)*rowBytes),rowBytes)
             }
         }}
         try imageRows.write(to:URL(fileURLWithPath:path))
@@ -243,7 +246,9 @@ func run() throws {
         guard let encoder=command.makeRenderCommandEncoder(descriptor:render) else {throw RenderError(description:"encoder allocation failed")}
         let isLine=name=="horizontalPixel" || name=="verticalPixel"
         encoder.setRenderPipelineState(try pipeline(name,mesh != nil ? "faceVertex":isLine ? "lineVertex":"frameVertex")); encoder.setCullMode(.none)
-        encoder.setViewport(MTLViewport(originX:0,originY:Double(target.height),width:Double(target.width),height:-Double(target.height),znear:0,zfar:1))
+        let isOutput=name=="outputPixel"
+        // Mirroring the final raster and flipping its bytes changes UNORM rounding.
+        encoder.setViewport(MTLViewport(originX:0,originY:isOutput ? 0:Double(target.height),width:Double(target.width),height:isOutput ? Double(target.height):-Double(target.height),znear:0,zfar:1))
         if isLine {
             let direction:[Float]=name=="horizontalPixel" ? [settings[2],0]:[0,settings[3]]
             direction.withUnsafeBytes {encoder.setVertexBytes($0.baseAddress!,length:$0.count,index:0)}
@@ -269,7 +274,7 @@ func run() throws {
         if let error=command.error {throw error}
         try require(command.status == .completed,"GPU smoothing pass did not complete")
         stageNames.append(name)
-        if request.stages {try read(target,request.output+"."+String(stageNames.count)+"."+name+".rgba")}
+        if request.stages {try read(target,request.output+"."+String(stageNames.count)+"."+name+".rgba",!isOutput)}
     }
     let mask=try texture(reducedWidth,reducedHeight)
     let u:[Float]=[request.strength,request.mesh == nil ? 0:1,1/Float(reducedWidth),1/Float(reducedHeight)]
@@ -289,7 +294,7 @@ func run() throws {
     try draw("broadPixel",repeated,[broad,control],second)
     let result=try texture(width,height)
     try draw("outputPixel",result,[source,corrected,broad,repeated,control,skin],u)
-    try read(result,output.path)
+    try read(result,output.path,false)
     let images=(0..<_dyld_image_count()).map {String(cString:_dyld_get_image_name($0))}
     let forbidden=["libcccreator","liblens","libAGFX","libbytenn","/runtime/Frameworks/","/JianyingPro.app/"]
     let privateImages=images.filter {path in forbidden.contains {path.contains($0)}}
@@ -297,8 +302,10 @@ func run() throws {
     let receipt:[String:Any]=["gpu":device.name,"private_native_images":privateImages,"images":images,
         "stages":stageNames,"reducedSize":[reducedWidth,reducedHeight],"hasFace":request.mesh != nil,
         "pixelFormat":"RGBA8Unorm","skinCoordinate":"source-u,source-v-top-zero",
-        "skinReflectionStage":"fragment-after-interpolation",
-        "framebufferRows":"image-bottom-to-top","outputRows":"image-top-to-bottom",
+        "skinReflectionStage":"vertex-before-interpolation",
+        "framebufferRows":"intermediates-bottom-to-top,final-top-to-bottom","outputRows":"image-top-to-bottom",
+        "outputViewport":"positive-height",
+        "broadSampling":"compile-time-fixed-36-neighbors",
         "lineOffsetStage":"vertex-before-interpolation","originalReflectionStage":"fragment-after-interpolation"]
     try JSONSerialization.data(withJSONObject:receipt,options:[.prettyPrinted,.sortedKeys]).write(to:URL(fileURLWithPath:request.output+".json"))
 }

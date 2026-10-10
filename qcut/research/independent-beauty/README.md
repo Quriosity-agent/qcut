@@ -66,7 +66,7 @@ Use Node 25 for these probes: the native provider requires `node:sqlite`, unavai
 
 The bounded sequence API processes at most 300 frames with output acknowledgement, strict dimensions/timestamps and cancellation. It is a research utility and is not wired into QCut timeline/export or the independent photo UI. It does not validate tracking or temporal parity.
 
-Current evidence: 124 paired photo renders, 105 within maximum RGB difference 1, 19 residual cases and zero render failures. All 28 single makeup cases passed that bound on one full-suite portrait. A 24-frame real-video sequence completed, maximum RGB difference 9 and mean per-frame RGB MAE 0.0627358. These are scoped sample results, not general product parity.
+Current evidence: 124 paired photo renders, all 124 within maximum RGB difference 1 (95 pixel-identical) and zero render failures. The last residual (`skin-shape-lip`) came from four one-level smoothing differences that later landmark detection amplified; the backported upstream smoothing fixes recorded in `source-manifest.json` remove it. The matrix gives every case its own source key so the native path starts from a cold tracker. The earlier 105/19 result reused one key per input, and 18 of those residuals were warm native renders, not independent-engine differences; see `docs/task/jianying-filter-runtime-research/beauty-lab-cold-native-2026-10-11.zh-CN.md`. All 28 single makeup cases passed that bound on one full-suite portrait. A 24-frame real-video sequence completed, maximum RGB difference 9 and mean per-frame RGB MAE 0.0627358. These are scoped sample results, not general product parity.
 
 ## Signed package audit
 
