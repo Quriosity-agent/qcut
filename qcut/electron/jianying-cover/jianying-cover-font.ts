@@ -7,7 +7,7 @@ import {
 	inspectJianyingFontBytes,
 	readFontkitMetadata,
 } from "../jianying-font-lab-catalog.js";
-import { makeJianyingFontBrowserCompatible } from "../jianying-font-browser-compatibility.js";
+import { makeJianyingFontBrowserCompatible } from "../jianying-font/jianying-font-browser-compatibility.js";
 import type { JianyingFontLabFontSummary } from "../jianying-font-lab-contract.js";
 
 export const privateCoverFontRequestSchema = z

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { makeJianyingFontBrowserCompatible } from "../jianying-font-browser-compatibility.js";
+import { makeJianyingFontBrowserCompatible } from "../jianying-font/jianying-font-browser-compatibility.js";
 
 const SFNT_HEADER_BYTES = 12;
 const SFNT_TABLE_RECORD_BYTES = 16;

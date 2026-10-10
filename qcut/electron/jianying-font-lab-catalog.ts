@@ -10,7 +10,7 @@ import type {
 	JianyingFontLabInspectResult,
 	JianyingFontSourceKind,
 } from "./jianying-font-lab-contract.js";
-import { makeJianyingFontBrowserCompatible } from "./jianying-font-browser-compatibility.js";
+import { makeJianyingFontBrowserCompatible } from "./jianying-font/jianying-font-browser-compatibility.js";
 import {
 	jianyingPrivateFontRoot,
 	readPrivateJianyingFont,

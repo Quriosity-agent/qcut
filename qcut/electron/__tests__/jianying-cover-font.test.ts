@@ -25,7 +25,7 @@ vi.mock("../jianying-font-lab-catalog", () => ({
 		missing: text === "ok" ? [] : ["测"],
 	}),
 }));
-vi.mock("../jianying-font-browser-compatibility", () => ({
+vi.mock("../jianying-font/jianying-font-browser-compatibility", () => ({
 	makeJianyingFontBrowserCompatible: ({ bytes }: { bytes: Buffer }) => bytes,
 }));
 
