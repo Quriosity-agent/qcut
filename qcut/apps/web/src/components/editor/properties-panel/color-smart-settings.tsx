@@ -19,7 +19,7 @@ import {
 	ColorModuleSection,
 	ColorToggleRow,
 } from "./color-property-controls";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
 
 export function ColorSmartSettingsPanel({
 	bindings,

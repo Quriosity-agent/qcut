@@ -35,7 +35,7 @@ import type {
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
 import { ColorBasicSettings } from "./color/color-basic-settings";
 import { ColorCurvesSettings } from "./color/color-curves-settings";
 import { ColorHslSettings } from "./color/color-hsl-settings";

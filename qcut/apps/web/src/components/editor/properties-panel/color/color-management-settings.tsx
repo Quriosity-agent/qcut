@@ -11,7 +11,7 @@ import {
 	ColorModuleSection,
 	ColorNumberControl,
 } from "../color-property-controls";
-import type { ColorSettingsEditorBindings } from "../color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 const COLOR_SPACES: Array<{ value: ColorSpace; label: string }> = [
 	{ value: "auto", label: "自动" },

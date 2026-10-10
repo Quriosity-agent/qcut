@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { MediaMask } from "@/types/timeline";
 import { DEFAULT_MEDIA_COLOR_SETTINGS } from "@/lib/color/color-properties";
 import { ColorModuleSection, ColorToggleRow } from "../color-property-controls";
-import type { ColorSettingsEditorBindings } from "../color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 export function ColorMaskSettings({
 	bindings,

@@ -22,7 +22,7 @@ import {
 	ColorKeyframedControl,
 	ColorModuleSection,
 } from "./color-property-controls";
-import type { ColorSettingsEditorBindings } from "./color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color/color-properties-types";
 
 type WheelName = "shadows" | "midtones" | "highlights" | "offset";
 type WheelChannel = "r" | "g" | "b";

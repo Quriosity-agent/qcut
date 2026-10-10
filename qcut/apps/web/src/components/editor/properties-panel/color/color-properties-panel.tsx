@@ -58,7 +58,7 @@ import { ColorScopesPanel } from "../color-scopes-panel";
 import { ColorSmartSettingsPanel } from "../color-smart-settings";
 import { ColorWheelSettingsPanel } from "../color-wheel-settings";
 import { MediaMaskProperties } from "../media-mask-properties";
-import type { ColorSettingsEditorBindings } from "../color-properties-types";
+import type { ColorSettingsEditorBindings } from "./color-properties-types";
 
 type MediaUpdates = Parameters<
 	ReturnType<typeof useTimelineStore.getState>["updateMediaElement"]
