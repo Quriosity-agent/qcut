@@ -27,9 +27,9 @@ import {
 	PropertyItem,
 	PropertyItemLabel,
 	PropertyItemValue,
-} from "./property-item";
-import type { UpdateStickerProperties } from "./sticker/sticker-property-types";
-import { StickerPlanarTrackingProperties } from "./sticker/sticker-planar-tracking-properties";
+} from "../property-item";
+import type { UpdateStickerProperties } from "./sticker-property-types";
+import { StickerPlanarTrackingProperties } from "./sticker-planar-tracking-properties";
 
 const NONE_TARGET = "none";
 
