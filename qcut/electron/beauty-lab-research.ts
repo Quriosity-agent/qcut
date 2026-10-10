@@ -13,7 +13,7 @@ import {
 	renderSchema,
 	replaySchema,
 	sha,
-} from "./beauty-lab-research-evidence.js";
+} from "./beauty-lab/beauty-lab-research-evidence.js";
 import {
 	HEIGHT,
 	MIB,

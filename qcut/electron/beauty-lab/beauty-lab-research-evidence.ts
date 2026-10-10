@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HEIGHT, WIDTH } from "./beauty-lab-research-files.js";
+import { HEIGHT, WIDTH } from "../beauty-lab-research-files.js";
 
 export const FRAME_COUNT = 7;
 export const sha = z.string().regex(/^[a-f0-9]{64}$/);

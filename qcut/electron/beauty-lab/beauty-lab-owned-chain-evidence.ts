@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sha, FRAME_COUNT } from "../beauty-lab-research-evidence.js";
+import { sha, FRAME_COUNT } from "./beauty-lab-research-evidence.js";
 import { jianyingPortraitControlsForRuntimePackage } from "../jianying-portrait-adjustment-runtime/catalog.js";
 import {
 	WIDTH,
