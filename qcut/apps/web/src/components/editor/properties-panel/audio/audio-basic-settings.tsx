@@ -5,8 +5,8 @@ import {
 	AudioModuleSection,
 	AudioNumberControl,
 	activateButtonFromKeyboard,
-} from "./audio-property-controls";
-import type { AudioSettingsEditorBindings } from "./audio-properties-types";
+} from "../audio-property-controls";
+import type { AudioSettingsEditorBindings } from "../audio-properties-types";
 import { Activity, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -19,12 +19,12 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { AudioChannelMode, AudioDenoiseSettings } from "@/types/timeline";
-import { AudioSeparationSettings } from "./audio/audio-ai-voice-settings";
+import { AudioSeparationSettings } from "./audio-ai-voice-settings";
 import {
 	AudioPitchSettings,
 	AudioVoiceEnhancementSettings,
-} from "./audio-voice-processing-settings";
-import { AudioLevelMeter } from "./audio-level-meter";
+} from "../audio-voice-processing-settings";
+import { AudioLevelMeter } from "../audio-level-meter";
 import { useTranslation } from "@/lib/i18n";
 
 function denoiseStatusText({
