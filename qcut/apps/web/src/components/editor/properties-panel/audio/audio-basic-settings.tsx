@@ -6,7 +6,7 @@ import {
 	AudioNumberControl,
 	activateButtonFromKeyboard,
 } from "../audio-property-controls";
-import type { AudioSettingsEditorBindings } from "../audio-properties-types";
+import type { AudioSettingsEditorBindings } from "./audio-properties-types";
 import { Activity, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

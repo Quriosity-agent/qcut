@@ -1,4 +1,4 @@
-import type { AudioSettingsEditorBindings } from "./audio-properties-types";
+import type { AudioSettingsEditorBindings } from "./audio/audio-properties-types";
 import { AudioVoiceConversionSettings } from "./audio/audio-ai-voice-settings";
 import { AudioVoicePresetControls } from "./audio/audio-preset-controls";
 

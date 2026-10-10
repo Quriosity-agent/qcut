@@ -5,7 +5,7 @@ import {
 	AudioModuleSection,
 	AudioToggleRow,
 } from "./audio-property-controls";
-import type { AudioSettingsEditorBindings } from "./audio-properties-types";
+import type { AudioSettingsEditorBindings } from "./audio/audio-properties-types";
 import { useTranslation } from "@/lib/i18n";
 
 function keyframedProps({
