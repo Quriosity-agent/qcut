@@ -6,7 +6,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { MASK_SHAPES, type AddableMaskType } from "../media-mask-shapes";
+import { MASK_SHAPES, type AddableMaskType } from "./media-mask-shapes";
 
 export function MediaMaskShapeGrid({
 	selectedType,
