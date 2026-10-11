@@ -831,6 +831,7 @@ export async function renderImage(
 						}),
 					],
 					portraitAdjustments: visual.portraitAdjustments,
+					signal: context.signal,
 					frameSeed: Math.round(currentTime * context.fps),
 					sourceKey: `image:${element.id}:${mediaItem.id}`,
 					timestampSeconds: 0,
