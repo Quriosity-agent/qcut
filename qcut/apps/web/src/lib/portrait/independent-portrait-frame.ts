@@ -6,6 +6,27 @@ import {
 import { INDEPENDENT_PORTRAIT_MAX_EDGE } from "./portrait-processing-size";
 
 /**
+ * Engine failures arrive wrapped by IPC around a Python traceback; keep only
+ * what the user can act on.
+ */
+export function independentPortraitErrorMessage({ error }: { error: unknown }) {
+	const text = error instanceof Error ? error.message : String(error);
+	// The pinned skin model has no profile for some aspect ratios, e.g. 9:16.
+	if (text.includes("unverified skin segmentation profile"))
+		return "自研美颜的磨皮、美白暂不支持这个画面比例（例如竖屏 9:16），可改用原生，或使用 16:9、3:4 等画布";
+	const exceptions = [
+		// Tracebacks arrive JSON-escaped, so lines end in a literal "\n".
+		...text.matchAll(/(?:^|\s|\\n)([A-Z]\w*(?:Error|Exception)): ([^\\"\n]+)/g),
+	];
+	const last = exceptions.at(-1);
+	if (last) return `自研美颜引擎出错：${last[1]}: ${last[2].trim()}`;
+	return text.replace(
+		/^Error invoking remote method '[^']+': (?:Error: )?/,
+		""
+	);
+}
+
+/**
  * Processes one timeline frame with the independent portrait engine.
  *
  * There is no native fallback: an unsupported edit, a missing engine or a
@@ -42,13 +63,20 @@ export async function renderIndependentPortraitFrame({
 	};
 	signal?.addEventListener("abort", cancel, { once: true });
 	try {
-		const result = await api.renderIndependentFrame({
-			requestId,
-			width,
-			height,
-			rgba,
-			adjustments: converted.adjustments,
-		});
+		const result = await api
+			.renderIndependentFrame({
+				requestId,
+				width,
+				height,
+				rgba,
+				adjustments: converted.adjustments,
+			})
+			.catch((error: unknown) => {
+				signal?.throwIfAborted();
+				throw new Error(independentPortraitErrorMessage({ error }), {
+					cause: error,
+				});
+			});
 		signal?.throwIfAborted();
 		if (
 			result.requestId !== requestId ||
