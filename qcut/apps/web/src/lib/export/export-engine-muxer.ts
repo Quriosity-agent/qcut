@@ -24,6 +24,7 @@ import {
 import { isJianyingTimelineRendererAvailable } from "./export-engine-cli-jianying";
 import { applyJianyingTransitionsToRenderedVideo } from "./export-muxer-jianying-pass";
 import { destroyExportCompositor } from "./export-engine-renderer";
+import { prepareIndependentPortraitExport } from "./export-independent-portrait";
 
 // Progress callback type
 type ProgressCallback = (progress: number, status: string) => void;
@@ -98,6 +99,9 @@ export class ExportEngineMuxer extends ExportEngine {
 				);
 			}
 
+			const independentPortrait = await prepareIndependentPortraitExport({
+				tracks: this.tracks,
+			});
 			await this.prepareStabilization(progressCallback);
 			// Dynamic import to avoid loading mediabunny on desktop
 			const {
@@ -235,7 +239,9 @@ export class ExportEngineMuxer extends ExportEngine {
 				const progress = 2 + (frame / totalFrames) * 90;
 				progressCallback?.(
 					progress,
-					`Encoding frame ${frame + 1}/${totalFrames}`
+					independentPortrait.clips > 0
+						? `Encoding frame ${frame + 1}/${totalFrames} · 自研美颜约 10 秒一帧，已处理的帧直接复用`
+						: `Encoding frame ${frame + 1}/${totalFrames}`
 				);
 				reportExportFrameProgress({
 					progressPercent: progress,
