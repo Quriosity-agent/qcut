@@ -198,8 +198,16 @@ export interface MediaPortraitManualBody {
 	zoom?: MediaPortraitManualBodyZoom;
 }
 
+/** Which renderer processes a clip's portrait adjustments. */
+export type MediaPortraitEngine = "native" | "independent";
+
 export interface MediaPortraitAdjustments {
 	enabled: boolean;
+	/**
+	 * Absent means native. Normalize stores only "independent", so projects
+	 * that never chose an engine keep their stored shape byte-identical.
+	 */
+	engine?: MediaPortraitEngine;
 	/** Global skin LUT; absent keeps legacy pink, null explicitly disables it. */
 	skinToneResourceId?: MediaPortraitSkinToneResourceId | null;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
@@ -265,6 +273,9 @@ export function normalizeMediaPortraitAdjustments({
 	});
 	return {
 		enabled: adjustments?.enabled ?? false,
+		...(adjustments?.engine === "independent"
+			? { engine: "independent" as const }
+			: {}),
 		values,
 		...(skinToneResourceId === undefined ? {} : { skinToneResourceId }),
 		...(faceTarget ? { faceTarget } : {}),
