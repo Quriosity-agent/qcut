@@ -109,7 +109,7 @@ describe("portrait engine control", () => {
 			},
 		});
 		expect(screen.getByTestId("portrait-engine-note")).toHaveTextContent(
-			"约 10 秒一帧"
+			"每帧约 3–12 秒"
 		);
 		await waitFor(() =>
 			expect(screen.getByTestId("portrait-engine-issue")).toHaveTextContent(
