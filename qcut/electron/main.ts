@@ -92,7 +92,7 @@ import {
 import { setupBeautyLabIPC } from "./beauty-lab/beauty-lab-handler.js";
 import { resolveBeautyLabResearchPaths } from "./beauty-lab/beauty-lab-research-config.js";
 import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
-import { createBeautyLabIndependentProvider } from "./beauty-lab/beauty-lab-independent.js";
+import { createIndependentBeautyServices } from "./beauty-lab/beauty-lab-independent-services.js";
 import { createBeautyLabLiveCandidateBackend } from "./beauty-lab/beauty-lab-live-candidate.js";
 import { createBeautyLabQuitGuard } from "./beauty-lab/beauty-lab-quit.js";
 import { setupJianyingPersonCutoutIPC } from "./jianying-person-cutout/jianying-person-cutout-handler.js";
@@ -1181,32 +1181,12 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 					beautyLabController = setupBeautyLabIPC({
 						getMainWindow: () => mainWindow,
 						candidateProvider: createBeautyLabCandidateProvider({ backend }),
-						independentProvider: createBeautyLabIndependentProvider({
-							engineRoot: app.isPackaged
-								? path.join(process.resourcesPath, "independent-beauty")
-								: path.join(sourceRoot, "research/independent-beauty"),
-							runtimeRoot:
-								process.env.QCUT_INDEPENDENT_BEAUTY_RUNTIME ??
-								(app.isPackaged
-									? path.join(
-											app.getPath("userData"),
-											"PrivateRuntimes/IndependentBeauty/current"
-										)
-									: path.join(
-											sourceRoot,
-											"research/independent-beauty/runtime"
-										)),
-							python:
-								process.env.QCUT_INDEPENDENT_BEAUTY_PYTHON ??
-								(app.isPackaged
-									? path.join(
-											app.getPath("userData"),
-											"PrivateRuntimes/IndependentBeauty/current/.venv/bin/python"
-										)
-									: path.join(
-											sourceRoot,
-											"research/independent-beauty/research/.venv/bin/python"
-										)),
+						...createIndependentBeautyServices({
+							sourceRoot,
+							isPackaged: app.isPackaged,
+							resourcesPath: process.resourcesPath,
+							userDataPath: app.getPath("userData"),
+							environment: process.env,
 						}),
 						...resolveBeautyLabResearchPaths({
 							sourceRoot,

@@ -2,6 +2,8 @@ import type { MediaPortraitAdjustments } from "@/types/timeline";
 
 const MAX_PROCESSING_DIMENSION = 4096;
 const MAX_PROCESSING_PIXELS = 3840 * 2160;
+/** Longest edge the independent portrait engine accepts. */
+export const INDEPENDENT_PORTRAIT_MAX_EDGE = 1280;
 
 export function portraitSourceDimensions({
 	source,
@@ -34,6 +36,16 @@ export function portraitProcessingSize({
 	adjustments?: MediaPortraitAdjustments;
 }) {
 	const base = { width, height };
+	if (adjustments?.engine === "independent") {
+		// Larger frames are processed at this size and scaled back up when drawn.
+		const longest = Math.max(width, height);
+		if (!(longest > INDEPENDENT_PORTRAIT_MAX_EDGE)) return base;
+		const scale = INDEPENDENT_PORTRAIT_MAX_EDGE / longest;
+		return {
+			width: Math.max(1, Math.round(width * scale)),
+			height: Math.max(1, Math.round(height * scale)),
+		};
+	}
 	const hasBlemishRemoval =
 		adjustments?.enabled &&
 		((adjustments.values.face_adjust_SpotAcne ?? 0) > 0 ||

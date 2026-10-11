@@ -37,6 +37,7 @@ export {
 export type {
 	MediaPortraitAdjustmentKey,
 	MediaPortraitAdjustments,
+	MediaPortraitEngine,
 	MediaPortraitFaceAdjustments,
 	MediaPortraitFaceTarget,
 	MediaPortraitMakeupCategory,

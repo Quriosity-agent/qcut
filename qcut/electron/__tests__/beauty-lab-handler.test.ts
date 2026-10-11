@@ -45,6 +45,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
+	BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
 } from "../beauty-lab/beauty-lab-independent-contract";
 import { createBeautyLabIndependentProvider } from "../beauty-lab/beauty-lab-independent";
 
@@ -484,7 +485,7 @@ describe("Beauty Lab IPC", () => {
 		await Promise.resolve();
 		expect(candidateProvider.dispose).toHaveBeenCalledOnce();
 		expect(settled).toBe(false);
-		expect(registrations.size).toBe(stale ? 8 : 0);
+		expect(registrations.size).toBe(stale ? 9 : 0);
 		finish();
 		await disposal;
 		expect(settled).toBe(true);
@@ -527,6 +528,14 @@ describe("independent Beauty Lab IPC", () => {
 			cancel: vi.fn(() => ({ cancelled: true })),
 			dispose: vi.fn(async () => {}),
 		};
+		const frame = {
+			requestId: "frame",
+			width: 1,
+			height: 1,
+			rgba: new Uint8Array(4),
+			cached: true,
+		};
+		const frames = { render: vi.fn(async () => frame) };
 		const research = provider();
 		const controller = setupBeautyLabIPC({
 			getMainWindow: () => mainWindow,
@@ -534,6 +543,17 @@ describe("independent Beauty Lab IPC", () => {
 			currentSourceRoot: "/unused",
 			provider: research,
 			independentProvider: owned,
+			independentFrames: frames,
+		});
+		expect(
+			await invoke({
+				channel: BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+				event,
+				request: { requestId: "frame" },
+			})
+		).toBe(frame);
+		expect(frames.render).toHaveBeenCalledWith({
+			request: { requestId: "frame" },
 		});
 		expect(
 			await invoke({ channel: BEAUTY_LAB_INDEPENDENT_INSPECT, event })
@@ -569,6 +589,7 @@ describe("independent Beauty Lab IPC", () => {
 			BEAUTY_LAB_INDEPENDENT_INSPECT,
 			BEAUTY_LAB_INDEPENDENT_RENDER,
 			BEAUTY_LAB_INDEPENDENT_CANCEL,
+			BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
 		]) {
 			await expect(invoke({ channel, event, request: {} })).rejects.toThrow(
 				"not connected"

@@ -5,6 +5,8 @@ export interface ElectronBeautyLabOps {
 }
 
 export type {
+	BeautyLabIndependentFrameRequest,
+	BeautyLabIndependentFrameResult,
 	BeautyLabIndependentRequest,
 	BeautyLabIndependentResult,
 	BeautyLabIndependentStatus,

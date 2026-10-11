@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
 	MediaColorSettings,
@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useColorPickerStore } from "@/stores/editor/color-picker-store";
 import { useColorPreviewStore } from "@/stores/editor/color-preview-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { isIndependentFilterProvider } from "@qcut/editor-core";
 
 type ColorPreviewSource =
@@ -102,6 +103,7 @@ export function ColorPreviewCanvas({
 	const portraitHeight = portraitRenderSize?.height;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const renderTailRef = useRef<Promise<void>>(Promise.resolve());
+	const [independentPending, setIndependentPending] = useState(false);
 	const colorPickerActive = useColorPickerStore((state) => state.active);
 	const completeColorPick = useColorPickerStore((state) => state.complete);
 	const previewBypassed = useColorPreviewStore((state) => state.bypassed);
@@ -234,6 +236,16 @@ export function ColorPreviewCanvas({
 			});
 		let cancelled = false;
 		const abortController = new AbortController();
+		// The independent engine needs seconds per frame, so moving
+		// sources show the original while the timeline plays and process the
+		// frame once paused. A seek or play abandons the frame in progress.
+		const independent = portraitAdjustments?.engine === "independent";
+		const movingSource = !(source instanceof HTMLImageElement);
+		let frameController = new AbortController();
+		const abandonIndependentFrame = () => {
+			frameController.abort();
+			frameController = new AbortController();
+		};
 		let animationFrame = 0;
 		let lastVideoTime = -1;
 		let drawing = false;
@@ -268,8 +280,16 @@ export function ColorPreviewCanvas({
 			drawing = true;
 			// Effect cleanup cancels commits, but cannot cancel an IPC frame already running.
 			const operation = renderTailRef.current.then(async () => {
+				const frameSignal = AbortSignal.any([
+					abortController.signal,
+					frameController.signal,
+				]);
 				try {
 					if (cancelled) return;
+					const framePortrait =
+						independent && movingSource && usePlaybackStore.getState().isPlaying
+							? undefined
+							: portraitAdjustments;
 					const sourceKey = getSourceKey();
 					if (source instanceof HTMLVideoElement)
 						lastVideoTime = source.currentTime;
@@ -287,7 +307,7 @@ export function ColorPreviewCanvas({
 						height: canvas.height,
 						sourceWidth: dimensions.width,
 						sourceHeight: dimensions.height,
-						adjustments: portraitAdjustments,
+						adjustments: framePortrait,
 					});
 					const fitted = document.createElement("canvas");
 					fitted.width = processing.width;
@@ -297,7 +317,7 @@ export function ColorPreviewCanvas({
 					rendered.height = canvas.height;
 					// Portrait fitting consumes these pixels; avoid GPU readback-dependent resizing.
 					const fittedContext = fitted.getContext("2d", {
-						willReadFrequently: Boolean(portraitAdjustments?.enabled),
+						willReadFrequently: Boolean(framePortrait?.enabled),
 					});
 					const renderedContext = rendered.getContext("2d", {
 						willReadFrequently: true,
@@ -316,21 +336,45 @@ export function ColorPreviewCanvas({
 						})
 					)
 						return;
-					await drawColorGradedSourceStack({
-						context: renderedContext,
-						source: fitted,
-						x: 0,
-						y: 0,
-						width: canvas.width,
-						height: canvas.height,
-						layers: renderedLayers,
-						frameSeed,
-						sourceKey,
-						timestampSeconds,
-						portraitAdjustments,
-						readPortraitSourcePreRoll,
-						signal: abortController.signal,
-					});
+					const drawStack = (adjustments?: MediaPortraitAdjustments) =>
+						drawColorGradedSourceStack({
+							context: renderedContext,
+							source: fitted,
+							x: 0,
+							y: 0,
+							width: canvas.width,
+							height: canvas.height,
+							layers: renderedLayers,
+							frameSeed,
+							sourceKey,
+							timestampSeconds,
+							portraitAdjustments: adjustments,
+							readPortraitSourcePreRoll,
+							signal: frameSignal,
+						});
+					if (framePortrait?.engine !== "independent") {
+						await drawStack(framePortrait);
+					} else {
+						const pendingTimer = setTimeout(
+							() => setIndependentPending(true),
+							300
+						);
+						try {
+							await drawStack(framePortrait);
+						} catch (error) {
+							if (frameSignal.aborted) throw error;
+							// No native fallback: say why, then show the original frame.
+							toast.error("自研美颜处理失败，已显示原始画面", {
+								description:
+									error instanceof Error ? error.message : String(error),
+								id: "qcut-independent-portrait-failed",
+							});
+							await drawStack(undefined);
+						} finally {
+							clearTimeout(pendingTimer);
+							setIndependentPending(false);
+						}
+					}
 					if (cancelled) return;
 					if (
 						rendered.width !== canvas.width ||
@@ -352,8 +396,8 @@ export function ColorPreviewCanvas({
 						})
 						.join(",");
 				} catch (error) {
-					if (abortController.signal.aborted) return;
-					const independent = renderedLayers.some(
+					if (frameSignal.aborted) return;
+					const independentFilter = renderedLayers.some(
 						({ settings }) =>
 							settings.multiPass?.enabled &&
 							isIndependentFilterProvider(
@@ -361,7 +405,7 @@ export function ColorPreviewCanvas({
 							)
 					);
 					// The color layer reports the failure; retain the last good preview.
-					if (!independent) throw error;
+					if (!independentFilter) throw error;
 				} finally {
 					drawing = false;
 					if (queuedDraw && !cancelled) {
@@ -392,18 +436,29 @@ export function ColorPreviewCanvas({
 		});
 		observer.observe(parent);
 		const redraw = () => void draw();
+		const redrawSeek = () => {
+			if (independent) abandonIndependentFrame();
+			void draw();
+		};
 		source.addEventListener("loadeddata", redraw);
 		source.addEventListener("load", redraw);
-		source.addEventListener("seeked", redraw);
+		source.addEventListener("seeked", redrawSeek);
 		source.addEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
+		const unsubscribePlayback =
+			independent && movingSource
+				? usePlaybackStore.subscribe((state, previous) => {
+						if (state.isPlaying !== previous.isPlaying) redrawSeek();
+					})
+				: () => {};
 		animationFrame = requestAnimationFrame(loop);
 		return () => {
 			cancelled = true;
 			abortController.abort();
+			unsubscribePlayback();
 			observer.disconnect();
 			source.removeEventListener("loadeddata", redraw);
 			source.removeEventListener("load", redraw);
-			source.removeEventListener("seeked", redraw);
+			source.removeEventListener("seeked", redrawSeek);
 			source.removeEventListener(COLOR_PREVIEW_SOURCE_FRAME_EVENT, redraw);
 			cancelAnimationFrame(animationFrame);
 		};
@@ -417,29 +472,39 @@ export function ColorPreviewCanvas({
 		sourceSelector,
 	]);
 	return (
-		<canvas
-			ref={canvasRef}
-			className={cn(
-				"absolute inset-0 size-full",
-				colorPickerActive
-					? "pointer-events-auto z-20 cursor-crosshair"
-					: "pointer-events-none"
-			)}
-			style={{ filter }}
-			data-testid="color-preview-canvas"
-			onPointerDown={(event) => {
-				if (!colorPickerActive) return;
-				if (
-					!samplePreviewColor({
-						clientX: event.clientX,
-						clientY: event.clientY,
-					})
-				) {
-					return;
-				}
-				event.preventDefault();
-				event.stopPropagation();
-			}}
-		/>
+		<>
+			<canvas
+				ref={canvasRef}
+				className={cn(
+					"absolute inset-0 size-full",
+					colorPickerActive
+						? "pointer-events-auto z-20 cursor-crosshair"
+						: "pointer-events-none"
+				)}
+				style={{ filter }}
+				data-testid="color-preview-canvas"
+				onPointerDown={(event) => {
+					if (!colorPickerActive) return;
+					if (
+						!samplePreviewColor({
+							clientX: event.clientX,
+							clientY: event.clientY,
+						})
+					) {
+						return;
+					}
+					event.preventDefault();
+					event.stopPropagation();
+				}}
+			/>
+			{independentPending ? (
+				<div
+					className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-black/65 px-2 py-1 text-[11px] text-white"
+					data-testid="independent-portrait-pending"
+				>
+					自研美颜处理中（每帧约 3–12 秒）
+				</div>
+			) : null}
+		</>
 	);
 }

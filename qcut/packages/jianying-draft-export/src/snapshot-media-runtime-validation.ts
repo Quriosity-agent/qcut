@@ -845,6 +845,7 @@ const MEDIA_PORTRAIT_ADJUSTMENT_CONTAINER_KEYS =
 	createAllowedKeySet<MediaPortraitAdjustments>({
 		keys: {
 			enabled: true,
+			engine: true,
 			faces: true,
 			faceTarget: true,
 			makeup: true,
@@ -2099,6 +2100,17 @@ export function validateMediaElement({
 			throw validationIssue({
 				path: `${portraitPath}.skinToneResourceId`,
 				message: "Expected a known skin tone resource ID or null.",
+			});
+		}
+		const engine = portraitAdjustments.engine;
+		if (
+			engine !== undefined &&
+			engine !== "native" &&
+			engine !== "independent"
+		) {
+			throw validationIssue({
+				path: `${portraitPath}.engine`,
+				message: "Expected native or independent.",
 			});
 		}
 		if (portraitAdjustments.faceTarget !== undefined) {
