@@ -240,7 +240,7 @@ export class ExportEngineMuxer extends ExportEngine {
 				progressCallback?.(
 					progress,
 					independentPortrait.clips > 0
-						? `Encoding frame ${frame + 1}/${totalFrames} · 自研美颜约 10 秒一帧，已处理的帧直接复用`
+						? `Encoding frame ${frame + 1}/${totalFrames} · 自研美颜每帧约 3–12 秒，已处理的帧直接复用`
 						: `Encoding frame ${frame + 1}/${totalFrames}`
 				);
 				reportExportFrameProgress({
