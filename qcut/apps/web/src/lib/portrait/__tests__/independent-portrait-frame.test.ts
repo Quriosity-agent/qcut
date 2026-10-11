@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BeautyLabIndependentFrameRequest } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
-import { renderIndependentPortraitFrame } from "../independent-portrait-frame";
+import {
+	independentPortraitErrorMessage,
+	renderIndependentPortraitFrame,
+} from "../independent-portrait-frame";
 
 const adjustments: MediaPortraitAdjustments = {
 	enabled: true,
@@ -153,5 +156,41 @@ describe("independent portrait frame", () => {
 				adjustments,
 			})
 		).rejects.toThrow("桌面版");
+	});
+
+	it("explains engine failures instead of showing the traceback", async () => {
+		renderIndependentFrame.mockRejectedValueOnce(
+			new Error(
+				`Error invoking remote method 'beauty-lab:render-independent-frame': Error: Independent worker failed (1): {"passed": false, "error": "Traceback (most recent call last):\\n  File \\"skin_mask_frontend.py\\", line 66, in predict_skin_mask\\n    raise ValueError(\\"unverified skin segmentation profile\\")\\nValueError: unverified skin segmentation profile\\n"}`
+			)
+		);
+		await expect(
+			renderIndependentPortraitFrame({
+				source: frame({ alpha: [255, 255] }),
+				adjustments,
+			})
+		).rejects.toThrow("暂不支持这个画面比例");
+	});
+});
+
+describe("independent portrait error message", () => {
+	it("keeps the final Python exception", () => {
+		expect(
+			independentPortraitErrorMessage({
+				error: new Error(
+					'Independent worker failed (1): {"error": "Traceback\\n  File \\"a.py\\"\\nKeyError: missing\\nRuntimeError: landmark model failed\\n"}'
+				),
+			})
+		).toBe("自研美颜引擎出错：RuntimeError: landmark model failed");
+	});
+
+	it("drops the IPC wrapper from QCut's own errors", () => {
+		expect(
+			independentPortraitErrorMessage({
+				error: new Error(
+					"Error invoking remote method 'beauty-lab:render-independent-frame': Error: Independent beauty does not support face_adjust_BrightEye"
+				),
+			})
+		).toBe("Independent beauty does not support face_adjust_BrightEye");
 	});
 });
