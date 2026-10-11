@@ -92,8 +92,8 @@ async function decodePng({
 }
 
 /**
- * Disk cache of processed independent frames. The engine needs about ten
- * seconds a frame, so re-exporting an unchanged timeline, or returning to a
+ * Disk cache of processed independent frames. The engine needs seconds per
+ * frame, so re-exporting an unchanged timeline, or returning to a
  * frame already processed while paused, reads the stored output instead.
  * Least recently used entries are evicted once the cache passes `maxBytes`.
  */
