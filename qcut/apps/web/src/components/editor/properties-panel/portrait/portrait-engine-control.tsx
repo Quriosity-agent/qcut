@@ -53,7 +53,7 @@ function issueText({
 
 /**
  * Chooses which engine processes the clip's portrait edits. Independent
- * runs without the native runtime but needs about ten seconds a frame, so the
+ * runs without the native runtime but needs seconds per frame, so the
  * panel says what that means for playback and export, and lists edits the
  * engine cannot run instead of quietly rendering them natively.
  */
@@ -143,8 +143,8 @@ export function PortraitEngineControl({
 				<div className="space-y-1 rounded-sm border border-border/70 bg-muted/30 px-2.5 py-2 text-[11px] text-muted-foreground">
 					<p data-testid="portrait-engine-note">
 						{isZh
-							? "约 10 秒一帧：播放时显示原画面，暂停后显示处理结果；导出逐帧处理，已处理的帧会缓存，重复导出直接复用。处理分辨率最长边 1280。"
-							: "About 10 s a frame: playback shows the original and a paused frame shows the result; export processes every frame and reuses cached frames. Processed at up to 1280 px on the long edge."}
+							? "每帧约 3–12 秒，参数越多越慢：播放时显示原画面，暂停后显示处理结果；导出逐帧处理，已处理的帧会缓存，重复导出直接复用。处理分辨率最长边 1280；竖屏 9:16 画面暂不支持磨皮和美白。"
+							: "About 3–12 s a frame, slower with more edits: playback shows the original and a paused frame shows the result; export processes every frame and reuses cached frames. Processed at up to 1280 px on the long edge; smoothing and whitening do not support 9:16 vertical frames yet."}
 					</p>
 					{runtimeMessage ? (
 						<p
