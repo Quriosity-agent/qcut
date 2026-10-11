@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.11.3] - 2026-10-11
+
 ### Improved
 - Timeline clips can now process their portrait edits with the independent beauty engine. Each clip picks 原生 (Native) or 自研 (Independent) in its portrait panel, and Native stays the default. A paused preview shows the independent result while playback shows the original frame. Export processes every frame with progress and cancel, and keeps processed frames in a disk cache so a second export reuses them. The engine can be chosen and configured on a machine without the native runtime.
 - Edits the independent engine cannot run are never rendered natively instead: the panel names them, the preview explains why and shows the original frame, and export stops before the first frame.
