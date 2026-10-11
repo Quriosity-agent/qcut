@@ -16,8 +16,10 @@ import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
+	BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
 } from "./beauty-lab-independent-contract.js";
 import type { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
+import type { createIndependentFrameRenderer } from "./beauty-lab-independent-frames.js";
 
 let activeController: symbol | undefined;
 
@@ -29,6 +31,7 @@ export function setupBeautyLabIPC({
 	provider = createBeautyLabResearchProvider({ root, currentSourceRoot }),
 	candidateProvider = createBeautyLabCandidateProvider(),
 	independentProvider,
+	independentFrames,
 }: {
 	getMainWindow: () => BrowserWindow | null;
 	root: string;
@@ -36,7 +39,11 @@ export function setupBeautyLabIPC({
 	ownedChainRoot?: string;
 	provider?: ReturnType<typeof createBeautyLabResearchProvider>;
 	candidateProvider?: ReturnType<typeof createBeautyLabCandidateProvider>;
-	independentProvider?: ReturnType<typeof createBeautyLabIndependentProvider>;
+	independentProvider?: Pick<
+		ReturnType<typeof createBeautyLabIndependentProvider>,
+		"inspect" | "render" | "cancel" | "dispose"
+	>;
+	independentFrames?: ReturnType<typeof createIndependentFrameRenderer>;
 }) {
 	const ownedChain = ownedChainRoot
 		? createBeautyLabOwnedChainProvider({
@@ -70,6 +77,7 @@ export function setupBeautyLabIPC({
 		BEAUTY_LAB_INDEPENDENT_INSPECT,
 		BEAUTY_LAB_INDEPENDENT_RENDER,
 		BEAUTY_LAB_INDEPENDENT_CANCEL,
+		BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
 	])
 		ipcMain.removeHandler(channel);
 	ipcMain.handle(BEAUTY_LAB_INDEPENDENT_INSPECT, (event) => {
@@ -84,6 +92,15 @@ export function setupBeautyLabIPC({
 			throw new Error("Independent photo engine is not connected");
 		return independentProvider.render({ request });
 	});
+	ipcMain.handle(
+		BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+		(event, request: unknown) => {
+			assertTrusted({ event });
+			if (!independentFrames)
+				throw new Error("Independent photo engine is not connected");
+			return independentFrames.render({ request });
+		}
+	);
 	ipcMain.handle(
 		BEAUTY_LAB_INDEPENDENT_CANCEL,
 		(event, request: { requestId: string }) => {
@@ -151,6 +168,7 @@ export function setupBeautyLabIPC({
 					BEAUTY_LAB_INDEPENDENT_INSPECT,
 					BEAUTY_LAB_INDEPENDENT_RENDER,
 					BEAUTY_LAB_INDEPENDENT_CANCEL,
+					BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
 				])
 					ipcMain.removeHandler(channel);
 			}
