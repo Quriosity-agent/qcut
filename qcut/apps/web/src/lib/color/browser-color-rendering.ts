@@ -20,6 +20,7 @@ import {
 	renderJianyingLocalEffectPreview,
 } from "./jianying-local-effect-preview";
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
+import { renderIndependentPortraitFrame } from "@/lib/portrait/independent-portrait-frame";
 import type { PortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import {
 	portraitProcessingSize,
@@ -209,15 +210,23 @@ async function portraitAdjustedSource({
 		});
 		return source;
 	}
-	const rendered = await renderJianyingPortraitAdjustmentPreview({
-		source: sourceData,
-		adjustments,
-		frameNumber,
-		sourceKey,
-		timestampSeconds,
-		readSourcePreRoll: readPortraitSourcePreRoll,
-		signal,
-	});
+	// The independent engine never falls back to native; its errors propagate.
+	const rendered =
+		adjustments?.engine === "independent"
+			? await renderIndependentPortraitFrame({
+					source: sourceData,
+					adjustments,
+					signal,
+				})
+			: await renderJianyingPortraitAdjustmentPreview({
+					source: sourceData,
+					adjustments,
+					frameNumber,
+					sourceKey,
+					timestampSeconds,
+					readSourcePreRoll: readPortraitSourcePreRoll,
+					signal,
+				});
 	if (!rendered) return source;
 	context.putImageData(rendered, 0, 0);
 	return canvas;
