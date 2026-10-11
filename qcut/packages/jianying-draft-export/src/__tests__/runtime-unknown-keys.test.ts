@@ -423,6 +423,7 @@ function createNormalizedSnapshot({
 						},
 						portraitAdjustments: {
 							enabled: true,
+							engine: "independent",
 							faces: [
 								{
 									trackId: 1,
@@ -681,6 +682,21 @@ describe("snapshot runtime property allowlists", () => {
 					Object.assign(element.portraitAdjustments.values, {
 						face_adjust_BrightEyes: 30,
 					});
+				},
+			},
+			{
+				expectedPath:
+					"$.snapshot.tracks[0].elements[0].portraitAdjustments.engine",
+				mutate: (value) => {
+					const element = value.tracks[0]?.elements[0];
+					if (
+						!element ||
+						element.type !== "media" ||
+						!element.portraitAdjustments
+					) {
+						throw new Error("Expected portrait adjustments.");
+					}
+					Object.assign(element.portraitAdjustments, { engine: "jianying" });
 				},
 			},
 			{
