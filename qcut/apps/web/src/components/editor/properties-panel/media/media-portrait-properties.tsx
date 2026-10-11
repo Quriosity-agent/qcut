@@ -264,6 +264,12 @@ export function MediaPortraitProperties({
 		[readyPackages]
 	);
 	const nativeDisabled = loading || !status?.available;
+	// The independent engine feeds on the same slider/makeup values but runs
+	// without the native runtime, so those controls only wait for the status
+	// check; native-only tools (face targeting, manual retouch/body) keep the
+	// native gate.
+	const independentEngine = adjustments.engine === "independent";
+	const valueControlsDisabled = independentEngine ? loading : nativeDisabled;
 	const hasSectionValue = useCallback(
 		({ section }: { section: JianyingPortraitAdjustmentSection }) =>
 			(controlsBySection.get(section) ?? []).some(
@@ -434,7 +440,7 @@ export function MediaPortraitProperties({
 			section,
 			controls: controlsBySection.get(section) ?? [],
 			adjustments: wholeFrame ? adjustments : scopedAdjustments,
-			disabled: nativeDisabled || !adjustments.enabled,
+			disabled: valueControlsDisabled || !adjustments.enabled,
 			locale,
 			isControlReady,
 			skinTones: status?.skinTones,
@@ -468,7 +474,7 @@ export function MediaPortraitProperties({
 					</PropertyItemLabel>
 					<Switch
 						checked={adjustments.enabled}
-						disabled={nativeDisabled}
+						disabled={valueControlsDisabled}
 						aria-label={
 							locale === "zh"
 								? "启用原版美颜美体"
@@ -482,7 +488,7 @@ export function MediaPortraitProperties({
 				<PortraitEngineControl
 					adjustments={adjustments}
 					nativeStatus={status}
-					disabled={nativeDisabled}
+					disabled={loading}
 					locale={locale}
 					onChange={onAdjustmentsChange}
 				/>
@@ -590,7 +596,7 @@ export function MediaPortraitProperties({
 								<PortraitMakeupControls
 									cards={status?.makeupCards ?? []}
 									adjustments={scopedAdjustments}
-									disabled={nativeDisabled || !adjustments.enabled}
+									disabled={valueControlsDisabled || !adjustments.enabled}
 									locale={locale}
 									onChange={onScopedAdjustmentsChange}
 									onInteractionStart={onInteractionStart}
@@ -672,7 +678,7 @@ export function MediaPortraitProperties({
 								scope={tab === "body-presets" ? "body" : "face"}
 								presets={scopedPresets}
 								selectedPresetId={selectedPresetId}
-								disabled={nativeDisabled}
+								disabled={valueControlsDisabled}
 								locale={locale}
 								onSelectedPresetChange={setSelectedPresetId}
 								onApplyPreset={applySelectedPreset}
