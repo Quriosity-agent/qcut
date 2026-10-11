@@ -132,3 +132,46 @@ describe("blemish processing resolution", () => {
 		).toEqual(dimensions);
 	});
 });
+
+describe("independent processing resolution", () => {
+	const independent: MediaPortraitAdjustments = {
+		enabled: true,
+		engine: "independent",
+		values: { face_adjust_SpotAcne: 100 },
+	};
+	it.each([
+		[
+			{ width: 1920, height: 1080 },
+			{ width: 1280, height: 720 },
+		],
+		[
+			{ width: 1080, height: 1920 },
+			{ width: 720, height: 1280 },
+		],
+		[
+			{ width: 3840, height: 2160 },
+			{ width: 1280, height: 720 },
+		],
+	])("fits %j within the engine's 1280 edge", (size, expected) => {
+		expect(
+			portraitProcessingSize({
+				...size,
+				sourceWidth: 4000,
+				sourceHeight: 6000,
+				adjustments: independent,
+			})
+		).toEqual(expected);
+	});
+
+	it("never upsamples, even for blemish removal", () => {
+		expect(
+			portraitProcessingSize({
+				width: 640,
+				height: 360,
+				sourceWidth: 1920,
+				sourceHeight: 1080,
+				adjustments: independent,
+			})
+		).toEqual({ width: 640, height: 360 });
+	});
+});
