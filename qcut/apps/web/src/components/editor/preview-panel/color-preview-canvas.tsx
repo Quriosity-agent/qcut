@@ -236,7 +236,7 @@ export function ColorPreviewCanvas({
 			});
 		let cancelled = false;
 		const abortController = new AbortController();
-		// The independent engine needs about ten seconds a frame, so moving
+		// The independent engine needs seconds per frame, so moving
 		// sources show the original while the timeline plays and process the
 		// frame once paused. A seek or play abandons the frame in progress.
 		const independent = portraitAdjustments?.engine === "independent";
@@ -502,7 +502,7 @@ export function ColorPreviewCanvas({
 					className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-black/65 px-2 py-1 text-[11px] text-white"
 					data-testid="independent-portrait-pending"
 				>
-					自研美颜处理中（约 10 秒一帧）
+					自研美颜处理中（每帧约 3–12 秒）
 				</div>
 			) : null}
 		</>
