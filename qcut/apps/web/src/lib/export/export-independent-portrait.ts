@@ -26,7 +26,7 @@ function independentPortraitElements({
 
 /**
  * Checks every clip that uses the independent portrait engine before the first
- * frame renders. The engine needs about ten seconds a frame, so a missing
+ * frame renders. The engine needs seconds per frame, so a missing
  * engine or an unsupported edit must stop the export now, not minutes in.
  * Returns how many clips use it so progress can say why export is slow.
  */
