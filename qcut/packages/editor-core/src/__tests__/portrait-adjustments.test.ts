@@ -296,4 +296,28 @@ describe("media portrait adjustments", () => {
 			once
 		);
 	});
+
+	it("stores only the independent engine choice", () => {
+		const independent = normalizeMediaPortraitAdjustments({
+			adjustments: {
+				enabled: true,
+				engine: "independent",
+				values: { face_adjust_Whiten: 20 },
+			},
+		});
+		expect(independent).toEqual({
+			enabled: true,
+			engine: "independent",
+			values: { face_adjust_Whiten: 20 },
+		});
+		expect(
+			normalizeMediaPortraitAdjustments({ adjustments: independent })
+		).toEqual(independent);
+		// Native is the default, so an explicit choice leaves no stored key.
+		expect(
+			normalizeMediaPortraitAdjustments({
+				adjustments: { enabled: true, engine: "native", values: {} },
+			})
+		).toEqual({ enabled: true, values: {} });
+	});
 });
