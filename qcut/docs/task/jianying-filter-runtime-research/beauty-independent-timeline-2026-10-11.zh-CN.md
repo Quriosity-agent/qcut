@@ -3,6 +3,7 @@
 日期：2026-10-11。分支：`beauty-video-timeline`，起点 `8a9e44ffd`（v2026.10.11.2）。
 工作目录：仓库内的 `qcut/`（本文其余路径均以它为基准）。
 前置记录：[原生冷启动对照与残差更正](beauty-lab-cold-native-2026-10-11.zh-CN.md)。
+交接与下一步：[交接文档](beauty-independent-timeline-handoff-2026-10-11.zh-CN.md)。
 
 ## 结论
 
