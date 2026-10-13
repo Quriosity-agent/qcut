@@ -16,6 +16,7 @@ import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { debugLog } from "@/lib/debug/debug-config";
 import { useProjectStore } from "@/stores/project-store";
+import { useExportStore } from "@/stores/export-store";
 import { useMcpAppStore } from "@/stores/mcp-app-store";
 import {
 	FullscreenPreview,
@@ -88,6 +89,8 @@ import {
 	canUseNativeCompositionPreview,
 	useNativeCompositionFramePreview,
 } from "@/hooks/preview/use-native-composition-frame-preview";
+import { useCanvasCompositionFramePreview } from "@/hooks/preview/use-canvas-composition-frame-preview";
+import { createCanvasCompositionPreviewPlan } from "@/lib/preview/canvas-composition-frame";
 import { usePlaybackHealthPreviewQuality } from "@/hooks/preview/use-playback-health-preview-quality";
 import { useCachedPreviewFrame } from "@/hooks/preview/use-cached-preview-frame";
 import { buildPreviewFrameCacheIdentity } from "@/lib/preview/preview-quality";
@@ -156,6 +159,10 @@ export function PreviewPanel() {
 	const displayTime =
 		!isPlaying && previewScrubTime !== null ? previewScrubTime : currentTime;
 	const { activeProject } = useProjectStore();
+	const isExporting = useExportStore((state) => state.progress.isExporting);
+	const hasOverlayStickers = useStickersOverlayStore(
+		(state) => state.overlayStickers.size > 0
+	);
 	const { canvasSize } = useEditorStore();
 	const maskEditorActive = useMaskEditorStore((state) => state.isEditing);
 	const colorPickerActive = useColorPickerStore((state) => state.active);
@@ -747,7 +754,48 @@ export function PreviewPanel() {
 				Boolean(selected.element.jianyingTextStyle)
 			);
 		});
+	const canvasCompositionPlan = useMemo(
+		() =>
+			createCanvasCompositionPreviewPlan({
+				tracks: renderTracks,
+				mediaItems,
+				width: canvasSize.width,
+				height: canvasSize.height,
+				fps: activeProject?.fps ?? 30,
+			}),
+		[
+			renderTracks,
+			mediaItems,
+			canvasSize.width,
+			canvasSize.height,
+			activeProject?.fps,
+		]
+	);
+	const canvasCompositionEnabled =
+		Boolean(canvasCompositionPlan) &&
+		!isPlaying &&
+		!isExporting &&
+		previewMode === "video" &&
+		activeProject?.backgroundType !== "blur" &&
+		!maskEditorActive &&
+		!colorPickerActive &&
+		!stickerInteractionActive &&
+		!dragState.isDragging &&
+		!hasOverlayStickers &&
+		effectsRenderingByElementId.size === 0 &&
+		!zoomPreviewActive &&
+		!cursorOverlayPreviewActive &&
+		recordingBackground.type === "none";
+	const canvasCompositionPreview = useCanvasCompositionFramePreview({
+		enabled: canvasCompositionEnabled,
+		plan: canvasCompositionPlan,
+		currentTime: displayTime,
+		totalDuration,
+		backgroundColor: activeProject?.backgroundColor,
+	});
 	const compositionPreviewEnabled =
+		!canvasCompositionEnabled &&
+		!isExporting &&
 		!isPlaying &&
 		previewMode === "video" &&
 		activeProject?.backgroundType !== "blur" &&
@@ -774,6 +822,12 @@ export function PreviewPanel() {
 		fps: activeProject?.fps ?? 30,
 		backgroundColor: activeProject?.backgroundColor,
 	});
+	const exactCompositionPreview = canvasCompositionEnabled
+		? canvasCompositionPreview
+		: nativeCompositionPreview;
+	const exactCompositionTestId = canvasCompositionEnabled
+		? "canvas-composition-preview"
+		: "native-composition-preview";
 	const selectedMediaTargets = useMemo<SelectedMediaTransformTarget[]>(() => {
 		return selectedElements.flatMap(({ trackId, elementId }) => {
 			const active = activeElements.find(
@@ -1271,6 +1325,21 @@ export function PreviewPanel() {
 											) : null}
 											{renderJianyingTimelineOverlay()}
 											{cursorOverlay}
+											{canvasCompositionPreview.status === "ready" &&
+											canvasCompositionPreview.url ? (
+												<img
+													src={canvasCompositionPreview.url}
+													alt=""
+													className="pointer-events-none absolute inset-0 z-40 size-full object-fill"
+													data-canvas-composition-preview="ready"
+													data-frame={canvasCompositionPreview.frame}
+													data-time-seconds={
+														canvasCompositionPreview.timeSeconds
+													}
+													data-width={canvasCompositionPreview.width}
+													data-height={canvasCompositionPreview.height}
+												/>
+											) : null}
 										</div>
 									);
 									return hasBg ? (
@@ -1301,24 +1370,24 @@ export function PreviewPanel() {
 								data-testid="preview-frame-cache-overlay"
 								data-visible={isCachedFrameVisible}
 							/>
-							{nativeCompositionPreview.status === "rendering" ? (
+							{exactCompositionPreview.status === "rendering" ? (
 								<div
 									className="pointer-events-none absolute right-2 top-2 z-[60] flex size-7 items-center justify-center rounded-sm bg-background/85 text-foreground shadow-sm"
 									title="Rendering exact composition preview"
-									data-testid="native-composition-preview-loading"
+									data-testid={`${exactCompositionTestId}-loading`}
 								>
 									<LoaderCircle className="size-4 animate-spin">
 										<title>Rendering exact composition preview</title>
 									</LoaderCircle>
 								</div>
-							) : nativeCompositionPreview.status === "error" ? (
+							) : exactCompositionPreview.status === "error" ? (
 								<div
 									className="pointer-events-none absolute right-2 top-2 z-[60] flex size-7 items-center justify-center rounded-sm bg-destructive/85 text-destructive-foreground shadow-sm"
 									title={
-										nativeCompositionPreview.error ??
+										exactCompositionPreview.error ??
 										"Exact composition preview failed"
 									}
-									data-testid="native-composition-preview-error"
+									data-testid={`${exactCompositionTestId}-error`}
 								>
 									<TriangleAlert className="size-4">
 										<title>Exact composition preview failed</title>
