@@ -1,4 +1,5 @@
 """Original photo to dynamic pigments sharing one Extra248 inference."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def render_rgba(*, rgba, selections, runtime):
     selections = normalize_selections(selections=selections)
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque dynamic makeup photo required')
     runtime = Path(runtime).resolve()
     started = time.monotonic()
