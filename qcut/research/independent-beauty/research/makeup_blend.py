@@ -69,9 +69,11 @@ def blend_rgb(*, base, pigment, mode):
 
 def _compose_original_tiles(*, base, pigment, strength, mode, opacity):
     pigment = np.asarray(pigment)
+    # The budget counts decoded RGBA8 source bytes, not float32 blend-buffer storage.
+    source_rgba8_bytes = base.size * np.dtype(np.uint8).itemsize
     if (base.dtype != F or pigment.dtype != F or base.ndim != 3 or base.shape[-1] != 4
             or base.shape != pigment.shape or min(base.shape[:2]) < 1 or max(base.shape[:2]) > 4096
-            or base.size > frame_byte_limit()):
+            or source_rgba8_bytes > frame_byte_limit()):
         raise ValueError('bounded original float32 RGBA image and matching pigment required')
     output = np.empty_like(base)
     # Blends reduce over color channels only; row tiles preserve each pixel's operation order.
