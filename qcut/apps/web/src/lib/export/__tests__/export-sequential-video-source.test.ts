@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MediaItem } from "@/stores/media/media-store-types";
+import { createFrameRenderQueue } from "../export-render-queue";
 
 const mediabunnyMocks = vi.hoisted(() => ({
 	openCalls: 0,
@@ -64,6 +66,7 @@ import {
 	SequentialVideoRegistry,
 	setSequentialDecodeDisabled,
 } from "../export-sequential-video-source";
+import { getExportFrameSampleTime } from "../export-video-frame-seek";
 
 function frameIndex(frame: { canvas: unknown } | null): number | null {
 	return frame ? (frame.canvas as { __frame: number }).__frame : null;
@@ -76,6 +79,7 @@ describe("SequentialVideoFrameSource", () => {
 		mediabunnyMocks.nextCalls = 0;
 		mediabunnyMocks.disposed = 0;
 		mediabunnyMocks.canDecode = true;
+		mediabunnyMocks.frameDuration = 1 / 30;
 		setSequentialDecodeDisabled(false);
 	});
 
@@ -131,18 +135,64 @@ describe("SequentialVideoFrameSource", () => {
 		expect(mediabunnyMocks.iteratorStarts).toHaveLength(1);
 	});
 
-	it("prefers the newer frame within epsilon below a boundary", async () => {
+	it("holds the previous frame half a millisecond before a boundary", async () => {
 		const source = await SequentialVideoFrameSource.open({
 			blob: new Blob(["x"]),
 		});
 		const d = 1 / 30;
-		// 0.5ms below frame 6's start — inside the epsilon window where float
-		// noise around an intended boundary landing must resolve stably.
+		// Sub-millisecond offsets occur between real source and output cadences;
+		// they are presentation time, not floating-point noise.
 		const frame = await source!.frameAt(6 * d - 0.0005);
-		expect(frameIndex(frame)).toBe(6);
+		expect(frameIndex(frame)).toBe(5);
 		// Mid-frame requests are untouched by the boundary bias.
 		const mid = await source!.frameAt(6 * d + d / 2);
 		expect(frameIndex(mid)).toBe(6);
+	});
+
+	it.each([
+		{ outputFrame: 7, speed: 1, sourceTime: 0.25, expectedFrame: 5 },
+		{ outputFrame: 7, speed: 2, sourceTime: 0.5, expectedFrame: 11 },
+		{ outputFrame: 22, speed: 1, sourceTime: 0.75, expectedFrame: 17 },
+	])("keeps 23.976fps frame $expectedFrame at source time $sourceTime in a 30fps export", async ({
+		outputFrame,
+		speed,
+		sourceTime,
+		expectedFrame,
+	}) => {
+		mediabunnyMocks.frameDuration = 1001 / 24_000;
+		const source = await SequentialVideoFrameSource.open({
+			blob: new Blob(["x"]),
+		});
+		await source!.frameAt(0);
+		const sampleTime =
+			getExportFrameSampleTime({
+				frameRate: 30,
+				frameStartTime: outputFrame / 30,
+			}) * speed;
+		expect(sampleTime).toBeCloseTo(sourceTime, 12);
+		const frame = await source!.frameAt(sampleTime);
+		expect(frameIndex(frame)).toBe(expectedFrame);
+		expect(frame!.timestamp).toBeLessThanOrEqual(sampleTime);
+		expect(frame!.timestamp + frame!.duration).toBeGreaterThan(sampleTime);
+		expect(mediabunnyMocks.iteratorStarts).toHaveLength(1);
+	});
+
+	it("keeps 2x frame boundaries stable with floating-point arithmetic noise", async () => {
+		mediabunnyMocks.frameDuration = 1001 / 24_000;
+		const source = await SequentialVideoFrameSource.open({
+			blob: new Blob(["x"]),
+		});
+		await source!.frameAt(0);
+		for (const index of [0, 1, 2, 3, 4]) {
+			const sampleTime =
+				getExportFrameSampleTime({
+					frameRate: 24_000 / 1001,
+					frameStartTime: (index * 1001) / 24_000,
+				}) * 2;
+			const frame = await source!.frameAt(sampleTime - Number.EPSILON);
+			expect(frameIndex(frame)).toBe(2 * index + 1);
+		}
+		expect(mediabunnyMocks.iteratorStarts).toHaveLength(1);
 	});
 
 	it("holds the final frame past the end of the stream", async () => {
@@ -182,6 +232,10 @@ describe("SequentialVideoRegistry", () => {
 		setSequentialDecodeDisabled(false);
 	});
 
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	function mediaItem(id: string) {
 		return { id, file: new Blob(["media"]) } as never;
 	}
@@ -200,6 +254,39 @@ describe("SequentialVideoRegistry", () => {
 		const disposedBefore = mediabunnyMocks.disposed;
 		await registry.disposeAll();
 		expect(mediabunnyMocks.disposed).toBe(disposedBefore + 2);
+	});
+
+	it.each([
+		{ bytes: "", fetchExpected: true },
+		{ bytes: "local video bytes", fetchExpected: false },
+	])("fetches the playable URL only for an empty placeholder file ($fetchExpected)", async ({
+		bytes,
+		fetchExpected,
+	}) => {
+		const registry = new SequentialVideoRegistry();
+		const file = new File([bytes], "video.mp4", { type: "video/mp4" });
+		const downloaded = new Blob(["downloaded video"]);
+		const fetchMedia = vi.fn(async () => ({
+			ok: true,
+			blob: async () => downloaded,
+		}));
+		vi.stubGlobal("fetch", fetchMedia);
+		const open = vi.spyOn(SequentialVideoFrameSource, "open");
+		try {
+			const source = await registry.getOrOpen({
+				id: "url-backed",
+				url: "app://local-media/video",
+				file,
+			} as MediaItem);
+			expect(source).not.toBeNull();
+			expect(fetchMedia).toHaveBeenCalledTimes(fetchExpected ? 1 : 0);
+			expect(open).toHaveBeenCalledWith({
+				blob: fetchExpected ? downloaded : file,
+			});
+		} finally {
+			open.mockRestore();
+			await registry.disposeAll();
+		}
 	});
 
 	it("keeps one decoder per lane so overlapping clips never share", async () => {
@@ -244,5 +331,103 @@ describe("SequentialVideoRegistry", () => {
 		expect(mediabunnyMocks.openCalls).toBe(0);
 		setSequentialDecodeDisabled(false);
 		expect(await registry.getOrOpen(mediaItem("m1"))).not.toBeNull();
+	});
+
+	it.each([
+		"headers",
+		"body",
+	] as const)("cancels a stalled fetch at %s and releases the frame queue for the next render", async (phase) => {
+		const registry = new SequentialVideoRegistry();
+		const enqueue = createFrameRenderQueue();
+		const controller = new AbortController();
+		const cancelled = new Error("Preview replaced during media load");
+		let stopNetwork: (error: Error) => void = () => {};
+		const network = new Promise<Blob>((_resolve, reject) => {
+			stopNetwork = reject;
+		});
+		const fetchMedia = vi.fn(async (_url: string, options?: RequestInit) => {
+			options?.signal?.addEventListener("abort", () => {
+				stopNetwork(cancelled);
+			});
+			if (phase === "headers") await network;
+			return { ok: true, blob: () => network };
+		});
+		vi.stubGlobal("fetch", fetchMedia);
+		const first = enqueue({
+			signal: controller.signal,
+			render: async () => {
+				await registry.getOrOpen(
+					{ id: "remote", url: "https://media.test/stalled.mp4" } as MediaItem,
+					"clip",
+					{ signal: controller.signal }
+				);
+			},
+		}).catch((error: unknown) => error);
+		const nextRender = vi.fn(async () => {
+			const source = await registry.getOrOpen(mediaItem("remote"), "clip");
+			expect(frameIndex(await source!.frameAt(0))).toBe(0);
+		});
+		const next = enqueue({ render: nextRender });
+		try {
+			await vi.waitFor(() => expect(fetchMedia).toHaveBeenCalledOnce());
+			controller.abort(cancelled);
+			await vi.waitFor(() => expect(nextRender).toHaveBeenCalledOnce(), {
+				timeout: 1000,
+			});
+			expect(await first).toBe(cancelled);
+			expect(fetchMedia).toHaveBeenCalledWith(
+				"https://media.test/stalled.mp4",
+				{ signal: controller.signal }
+			);
+			await next;
+			expect(mediabunnyMocks.openCalls).toBe(1);
+		} finally {
+			stopNetwork(cancelled);
+			await Promise.all([first, next, registry.disposeAll()]);
+		}
+	});
+
+	it("does not fetch or reuse an open decoder for an already cancelled request", async () => {
+		const registry = new SequentialVideoRegistry();
+		const controller = new AbortController();
+		const cancelled = new Error("Cancelled before loading");
+		const fetchMedia = vi.fn();
+		vi.stubGlobal("fetch", fetchMedia);
+		await registry.getOrOpen(mediaItem("m1"));
+		controller.abort(cancelled);
+		await expect(
+			registry.getOrOpen(mediaItem("m1"), undefined, {
+				signal: controller.signal,
+			})
+		).rejects.toBe(cancelled);
+		expect(fetchMedia).not.toHaveBeenCalled();
+		expect(mediabunnyMocks.openCalls).toBe(1);
+		await registry.disposeAll();
+	});
+
+	it("disposes a decoder opened after cancellation instead of publishing it", async () => {
+		const registry = new SequentialVideoRegistry();
+		const controller = new AbortController();
+		const cancelled = new Error("Cancelled while decoder opened");
+		const source = await SequentialVideoFrameSource.open({ blob: new Blob() });
+		const open = vi
+			.spyOn(SequentialVideoFrameSource, "open")
+			.mockImplementationOnce(async () => {
+				controller.abort(cancelled);
+				return source;
+			});
+		const disposedBefore = mediabunnyMocks.disposed;
+		try {
+			await expect(
+				registry.getOrOpen(mediaItem("m1"), "clip", {
+					signal: controller.signal,
+				})
+			).rejects.toBe(cancelled);
+			expect(mediabunnyMocks.disposed).toBe(disposedBefore + 1);
+			await registry.disposeAll();
+			expect(mediabunnyMocks.disposed).toBe(disposedBefore + 1);
+		} finally {
+			open.mockRestore();
+		}
 	});
 });
