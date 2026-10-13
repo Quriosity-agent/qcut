@@ -192,6 +192,7 @@ export async function renderCanvasCompositionFrame({
 		backgroundColor,
 		signal,
 		strictMediaErrors: true,
+		isolatedCompositor: true,
 		renderIndex: plan.renderIndex,
 		sequentialVideo,
 	};
