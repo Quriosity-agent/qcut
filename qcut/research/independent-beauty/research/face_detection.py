@@ -1,6 +1,8 @@
 """Owned fresh-photo detector; dynamic integer ONNX, no native box inputs."""
 import hashlib
 
+from independent_session_cache import cpu_session
+
 import numpy as np
 import onnxruntime as ort
 
@@ -19,10 +21,7 @@ class Detector:
         self.sha256 = hashlib.sha256(data).hexdigest()
         if self.sha256 != MODEL_SHA256:
             raise ValueError("unsupported dynamic detector model identity")
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = options.inter_op_num_threads = 1
-        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-        self.session = ort.InferenceSession(data, sess_options=options, providers=["CPUExecutionProvider"])
+        self.session = cpu_session(data=data, optimize=False)
         inputs, outputs = self.session.get_inputs(), self.session.get_outputs()
         if (len(inputs) != 1 or inputs[0].name != "data" or inputs[0].type != "tensor(int64)"
                 or len(inputs[0].shape) != 4 or inputs[0].shape[0] != 1 or inputs[0].shape[3] != 3
