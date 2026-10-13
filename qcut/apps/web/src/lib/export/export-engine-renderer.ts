@@ -734,7 +734,6 @@ async function renderMediaElement(
 	} catch (error) {
 		rethrowIndependentPortraitExportError({
 			error,
-			adjustments: (element as MediaElement).portraitAdjustments,
 			signal: context.signal,
 		});
 		debugError(`[ExportEngine] Failed to render ${element.id}:`, error);
@@ -891,7 +890,6 @@ export async function renderImage(
 			} catch (error) {
 				rethrowIndependentPortraitExportError({
 					error,
-					adjustments: visual.portraitAdjustments,
 					signal: context.signal,
 				});
 				debugError(
@@ -939,7 +937,6 @@ export async function renderVideo(
 		} catch (error) {
 			rethrowIndependentPortraitExportError({
 				error,
-				adjustments: (element as MediaElement).portraitAdjustments,
 				signal: context.signal,
 			});
 			lastError = error as Error;
@@ -1168,7 +1165,6 @@ async function renderVideoAttempt(
 				} catch (error) {
 					rethrowIndependentPortraitExportError({
 						error,
-						adjustments: visual.portraitAdjustments,
 						signal: context.signal,
 					});
 					debugError(
