@@ -2,13 +2,14 @@
 import numpy as np
 
 from slimface_geometry import SlimFaceField
+from render_resolution import frame_byte_limit
 
 
 def validate_rgba(*, rgba):
     if not isinstance(rgba, np.ndarray) or rgba.dtype != np.uint8 or rgba.ndim != 3 or rgba.shape[2] != 4:
         raise ValueError("expected uint8 HxWx4 RGBA")
     height, width = rgba.shape[:2]
-    if min(height, width) < 1 or max(height, width) > 4096 or rgba.nbytes > 16 * 1024 * 1024:
+    if min(height, width) < 1 or max(height, width) > 4096 or rgba.nbytes > frame_byte_limit():
         raise ValueError("image exceeds the analysis-frame budget")
 
 
