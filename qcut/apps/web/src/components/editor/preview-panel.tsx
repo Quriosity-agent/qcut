@@ -40,6 +40,7 @@ import { EFFECTS_ENABLED } from "@/config/features";
 import {
 	PreviewBlurBackground,
 	PreviewElementRenderer,
+	shouldSuppressDomPortraitPreview,
 } from "./preview-panel/preview-element-renderer";
 import { TimelineStickerInteractionLayer } from "./preview-panel/timeline-sticker-layer";
 import {
@@ -793,6 +794,10 @@ export function PreviewPanel() {
 		totalDuration,
 		backgroundColor: activeProject?.backgroundColor,
 	});
+	const suppressDomPortraitPreview = shouldSuppressDomPortraitPreview({
+		canvasCompositionEnabled,
+		status: canvasCompositionPreview.status,
+	});
 	const compositionPreviewEnabled =
 		!canvasCompositionEnabled &&
 		!isExporting &&
@@ -1088,6 +1093,7 @@ export function PreviewPanel() {
 							elementData.element.id
 						)}
 						compositionPreviewEnabled={compositionPreviewEnabled}
+						suppressDomPortraitPreview={suppressDomPortraitPreview}
 						hideJianyingTextFallback={
 							jianyingPlaybackStatuses.get(elementData.element.id) ===
 								"ready" ||
@@ -1109,6 +1115,7 @@ export function PreviewPanel() {
 			activeTransitionPreview.statesByElementId,
 			canvasSize,
 			compositionPreviewEnabled,
+			suppressDomPortraitPreview,
 			currentMediaElement,
 			displayTime,
 			dragState,
