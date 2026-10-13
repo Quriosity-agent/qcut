@@ -1,4 +1,5 @@
 """Independent whole-frame skin segmentation for the pinned portrait packages."""
+from render_resolution import source_edge_limit
 import hashlib
 import json
 from pathlib import Path
@@ -7,18 +8,21 @@ import numpy as np
 
 from algorithm_frame import resize_rgba, validate_frame
 from facefitting_infer import native_images
+from independent_session_cache import cpu_session
 
 MODELS = {
     (128, 128): "cef47e7fba5edc8afb0780177e1271d6e725e264cff788599a9ee2206b499457",
     (128, 144): "3630081f7bedab245d3f3b8fbd6c19108dc900735a980bca2541a7cdc1c42765",
     (128, 160): "5ae1ee6c1daff7f9646d69719db4cbc936e2c06140ef73e17ab0aac360d92471",
     (128, 176): "035c68972f7358f91554f957c623621b703b79c3e01e3d7bdf504b046639c425",
+    (128, 224): "16b80e9f444dc85f3987e495146ae36fbafb8bf5254882e8001feed2dbf3a6b9",
+    (128, 240): "74b48d9cf3fd0af7f535221c1bcbef892bf5dccc32fe28788e138a1cd6f50589",
     (224, 128): "72b9ca7246061c474dcb85aa937a9294eec5441832ff97561e9877c6f337f0db",
 }
 
 
 def algorithm_size(*, width, height):
-    if any(type(value) is not int or not 16 <= value <= 1280 for value in (width, height)):
+    if any(type(value) is not int or not 16 <= value <= source_edge_limit() for value in (width, height)):
         raise ValueError("bounded original photo dimensions required")
     scale = min(1.0, 640.0 / max(width, height))
     return int(width * scale), int(height * scale)
@@ -73,10 +77,7 @@ def predict_skin_mask(*, rgba, runtime):
         raise ValueError("profile-matched skin model identity required")
     if ort.__version__ != "1.22.1":
         raise ValueError("locked ONNX Runtime 1.22.1 required")
-    options = ort.SessionOptions()
-    options.intra_op_num_threads = options.inter_op_num_threads = 1
-    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-    session = ort.InferenceSession(data, sess_options=options, providers=["CPUExecutionProvider"])
+    session = cpu_session(data=data, optimize=False)
     inputs, outputs = session.get_inputs(), session.get_outputs()
     if (len(inputs) != 1 or inputs[0].name != "data" or inputs[0].type != "tensor(int64)"
             or inputs[0].shape != list(tensor.shape) or len(outputs) != 1 or outputs[0].name != "prob"
