@@ -17,6 +17,8 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from render_resolution import RESOLUTION_ENV, resolution_mode
+from face_selection_reference import bind_reference, reference_from_receipt, write_reference
+from source_face_confirmation import evidence_receipt, validate_stage_confirmation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +26,7 @@ MAX_JSON_BYTES = 1024 * 1024
 MAX_RECEIPT_BYTES = 16 * 1024 * 1024
 MAX_STAGES = 64
 TRANSPORT_FLAGS = {'--image', '--rgba', '--width', '--height', '--runtime', '--output',
-                   '--report', '--points', '--assets', '--shape-assets', '--max-edge', '--resolution'}
+                   '--report', '--points', '--assets', '--shape-assets', '--max-edge', '--resolution', '--face-reference', '--source-evidence'}
 FORBIDDEN_IMAGE_TOKENS = ('libcccreator', 'libbytenn', 'liblens', 'libagfx',
                           '/runtime/frameworks/', '/jianyingpro.app/')
 FORBIDDEN_RECEIPT_FLAGS = {'fixedLandmarks', 'fixed_landmarks', 'nativeGeometryUsed',
@@ -273,7 +275,7 @@ def _publish(*, png, receipt, output, report):
 
 
 def run(*, image, runtime, output, report, plan=None, request=None, resolution='preview',
-        stage_runner=None, runtime_receipt=None):
+        stage_runner=None, runtime_receipt=None, source_evidence=None):
     started = time.monotonic()
     if (plan is None) == (request is None):
         raise ValueError('provide exactly one plan or request JSON file')
@@ -283,6 +285,8 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
     original_file_hash = sha256(data=image.read_bytes())
     mode = resolution_mode(mode=resolution)
     original = read_rgba(path=image, resolution=mode)
+    source_evidence = Path(source_evidence).absolute() if source_evidence is not None else None
+    source_receipt = evidence_receipt(path=source_evidence, rgba=original) if source_evidence is not None else None
     supplied = read_json(path=specification)
     catalog_path = ROOT / 'research/independent-pipeline-catalog.json'
     planner_path = ROOT / 'src/independent-pipeline-plan.ts'
@@ -310,6 +314,11 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
         current = directory / 'original.png'
         Image.fromarray(original).save(current)
         current_rgba = original
+        original_rgba_hash = sha256(data=original.tobytes())
+        establish_identity = (len(canonical['stages']) > 1
+                              and canonical['stages'][0]['script'] == 'portrait_features_render.py'
+                              and any(stage['script'] == 'lip_render.py' for stage in canonical['stages'][1:]))
+        face_reference = None
         for index, stage in enumerate(canonical['stages']):
             source, runtime_arguments = renderer_arguments(script=stage['script'], runtime=runtime)
             source_key = str(source.relative_to(ROOT))
@@ -320,12 +329,24 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
             destination, stage_report = directory / f'stage-{index:02d}.png', directory / f'stage-{index:02d}.json'
             command = [sys.executable, str(source), '--image', str(current), *stage['parameters'],
                        *runtime_arguments, '--output', str(destination), '--report', str(stage_report)]
+            stage_reference = None
+            stage_evidence = source_evidence if index == 0 and stage['script'] == 'portrait_features_render.py' else None
+            if stage_evidence is not None:
+                command.extend(['--source-evidence', str(stage_evidence)])
+            if face_reference is not None and stage['script'] == 'lip_render.py':
+                stage_reference = bind_reference(reference=face_reference, rgba=current_rgba,
+                                                 source_sha256=original_rgba_hash)
+                reference_path = directory / f'face-reference-{index:02d}.json'
+                write_reference(reference=stage_reference, path=reference_path)
+                command.extend(['--face-reference', str(reference_path)])
             stage_started = time.monotonic()
             if stage_runner is None:
                 subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, timeout=120, check=True)
             else:
                 stage_runner(stage=stage, source=source, image=current, runtime=runtime,
-                             output=destination, report=stage_report)
+                             output=destination, report=stage_report,
+                             **({'source_evidence': stage_evidence} if stage_evidence is not None else {}),
+                             **({'face_reference': stage_reference} if stage_reference is not None else {}))
             rendered = read_rgba(path=destination, resolution=mode)
             if rendered.shape != original.shape:
                 raise ValueError('stage changed the original image dimensions')
@@ -336,11 +357,21 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
             if (receipt_hash(receipt=stage_receipt, camel='inputRgbaSha256', snake='input_rgba_sha256') != input_hash
                     or receipt_hash(receipt=stage_receipt, camel='outputRgbaSha256', snake='output_rgba_sha256') != output_hash):
                 raise ValueError('stage receipt RGBA hash chain mismatch')
+            validate_stage_confirmation(receipt=stage_receipt,
+                                        source_receipt=source_receipt if stage_evidence is not None else None,
+                                        source_sha256=original_rgba_hash)
+            if index == 0 and establish_identity:
+                face_reference = reference_from_receipt(receipt=stage_receipt, source_sha256=original_rgba_hash,
+                                                        width=original.shape[1], height=original.shape[0],
+                                                        source_manifest_sha256=source_receipt['manifestSha256'] if source_receipt else None)
             rows.append({**stage, 'command': command, 'execution': 'resident' if stage_runner else 'subprocess',
                          'milliseconds': round((time.monotonic() - stage_started) * 1000),
                          'inputRgbaSha256': input_hash, 'outputRgbaSha256': output_hash,
                          'inputPngSha256': sha256(data=current.read_bytes()), 'outputPngSha256': sha256(data=destination.read_bytes()),
                          'loadedImageInventories': inventories, 'recomputedGeometryAfterPriorStage': True,
+                         'faceIdentityAssociation': ('same-photo-reference' if stage_reference is not None
+                                                     else 'original-reference' if index == 0 and face_reference is not None
+                                                     else 'not-applied'),
                          'receipt': stage_receipt})
             current, current_rgba = destination, rendered
         if any(sha256(data=(ROOT / name).read_bytes()) != identity for name, identity in sources.items()):
@@ -362,12 +393,19 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
                    'outputPngSha256': sha256(data=current.read_bytes()), 'independence': isolation,
                    'sourceIdentity': sources, 'plannerCommand': planner_command,
                    'zeroParametersIdentity': not rows, 'recomputedGeometryAfterPriorStage': True,
+                   'samePhotoFaceIdentity': (None if face_reference is None else {
+                       'reference': face_reference.as_dict(), 'scope': 'original-portrait-features-to-lip',
+                       'appliedStageIds': [row['id'] for row in rows if row['faceIdentityAssociation'] == 'same-photo-reference']}),
                    'fixedLandmarks': False, 'nativeGeometryUsed': False, 'nativeInputsUsed': False,
                    'nativeFallbackUsed': False, 'nativeProductParityVerified': False,
                    'videoVerified': False, 'intermediatesRetained': False,
                    'milliseconds': round((time.monotonic() - started) * 1000)}
         if runtime_receipt is not None:
             receipt['residentRuntime'] = runtime_receipt()
+        if source_receipt is not None:
+            if evidence_receipt(path=source_evidence, rgba=original) != source_receipt:
+                raise ValueError('source evidence manifest changed during pipeline execution')
+            receipt['sourceEvidence'] = source_receipt
         _publish(png=current, receipt=receipt, output=output, report=report)
     return receipt
 
@@ -382,11 +420,12 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--resolution', choices=('preview', 'original'), default='preview')
+    parser.add_argument('--source-evidence', type=Path)
     arguments = parser.parse_args()
     try:
         receipt = run(image=arguments.image, plan=arguments.plan, request=arguments.request,
                       runtime=arguments.runtime, output=arguments.output, report=arguments.report,
-                      resolution=arguments.resolution)
+                      resolution=arguments.resolution, source_evidence=arguments.source_evidence)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         detail = error.stderr.decode(errors='replace')[-4096:] if isinstance(error, subprocess.CalledProcessError) and error.stderr else str(error)
         print(json.dumps({'passed': False, 'error': detail}, ensure_ascii=False), file=sys.stderr)
