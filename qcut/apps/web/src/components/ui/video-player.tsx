@@ -21,6 +21,7 @@ import {
 	createObjectURL,
 } from "@/lib/media/blob-manager";
 import { useMediaAudioPreview } from "@/lib/audio/use-media-audio-preview";
+import { getExportFrameSampleTime } from "@/lib/export/export-video-frame-seek";
 
 interface VideoPlayerProps {
 	videoId?: string;
@@ -42,6 +43,7 @@ interface VideoPlayerProps {
 	trackMuted?: boolean;
 	previewGain?: number;
 	sourceTimeOffset?: number;
+	frameRate?: number;
 	/**
 	 * Fresh timeline time from the preview panel (boundary-crossing
 	 * playbackTime / smoothTime). The playback store's currentTime freezes
@@ -57,17 +59,20 @@ function getVideoPlaybackRate({
 	clipStartTime,
 	timelineTime,
 	playbackSpeed,
+	fps,
 }: {
 	timingElement?: MediaElement;
 	clipPlaybackRate: number;
 	clipStartTime: number;
 	timelineTime: number;
 	playbackSpeed: number;
+	fps?: number;
 }): number {
 	const timingRate = timingElement
 		? mapMediaTimelineTime({
 				element: timingElement,
 				localTimelineTime: timelineTime - clipStartTime,
+				fps,
 			}).playbackRate
 		: clipPlaybackRate;
 	return Math.min(
@@ -100,6 +105,7 @@ export function VideoPlayer({
 	trackMuted = false,
 	previewGain = 1,
 	sourceTimeOffset = 0,
+	frameRate,
 	timelineTime,
 }: VideoPlayerProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -121,7 +127,7 @@ export function VideoPlayer({
 	}, [effectiveTimelineTime]);
 
 	const timelineDuration = timingElement
-		? getMediaTimelineDuration(timingElement)
+		? getMediaTimelineDuration(timingElement, frameRate)
 		: clipDuration - trimStart - trimEnd;
 	const clipRangeStart = playbackWindow?.startTime ?? clipStartTime;
 	const clipEndTime =
@@ -159,19 +165,26 @@ export function VideoPlayer({
 		!requiresManualTiming && (timingElement?.speedKeyframes?.length ?? 0) > 0;
 	const getVideoTime = useCallback(
 		(timelineTime: number) => {
+			const localTimelineTime = timelineTime - clipStartTime;
+			// Sample inside the output frame, while transforms keep the playhead time.
+			const sampleTime =
+				!usePlaybackStore.getState().isPlaying && frameRate !== undefined
+					? getExportFrameSampleTime({
+							frameRate: frameRate,
+							frameStartTime: Math.max(0, localTimelineTime),
+						})
+					: localTimelineTime;
 			if (!timingElement) {
 				const sourceTime = Math.max(
 					trimStart,
-					Math.min(
-						clipDuration - trimEnd,
-						timelineTime - clipStartTime + trimStart
-					)
+					Math.min(clipDuration - trimEnd, sampleTime + trimStart)
 				);
 				return Math.max(0, sourceTime - sourceTimeOffset);
 			}
 			const sourceTime = getMediaSourcePlaybackTime({
 				element: timingElement,
-				localTimelineTime: timelineTime - clipStartTime,
+				localTimelineTime: sampleTime,
+				fps: frameRate,
 			});
 			return Math.max(0, sourceTime - sourceTimeOffset);
 		},
@@ -182,6 +195,7 @@ export function VideoPlayer({
 			clipDuration,
 			clipStartTime,
 			sourceTimeOffset,
+			frameRate,
 		]
 	);
 	const reportPresentedFrame = useCallback(
@@ -241,10 +255,18 @@ export function VideoPlayer({
 				clipStartTime,
 				timelineTime,
 				playbackSpeed,
+				fps: frameRate,
 			});
 			if (syncPosition) video.currentTime = getVideoTime(timelineTime);
 		},
-		[clipPlaybackRate, clipStartTime, getVideoTime, speed, timingElement]
+		[
+			clipPlaybackRate,
+			clipStartTime,
+			getVideoTime,
+			frameRate,
+			speed,
+			timingElement,
+		]
 	);
 
 	// A seek can mount this player after the playback-seek event has fired.
@@ -341,6 +363,7 @@ export function VideoPlayer({
 					clipStartTime,
 					timelineTime,
 					playbackSpeed: usePlaybackStore.getState().speed,
+					fps: frameRate,
 				});
 				if (Math.abs(video.playbackRate - rate) > 0.001) {
 					video.playbackRate = rate;
@@ -415,6 +438,7 @@ export function VideoPlayer({
 		timingElement,
 		getVideoTime,
 		syncVideoTiming,
+		frameRate,
 		videoId,
 	]);
 
