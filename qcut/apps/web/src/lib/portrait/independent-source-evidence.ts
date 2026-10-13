@@ -180,8 +180,9 @@ export function createIndependentSourceEvidenceReader({
 			return await Promise.race([decode(), interrupted]);
 		} catch (error) {
 			signal?.throwIfAborted();
+			const reason = error instanceof Error ? error.message : String(error);
 			return unavailable({
-				reason: error instanceof Error ? error.message : String(error),
+				reason: reason || "Source evidence decode failed",
 			});
 		} finally {
 			clearTimeout(timeout);
