@@ -2,8 +2,25 @@ import type { MediaPortraitAdjustments } from "@/types/timeline";
 
 const MAX_PROCESSING_DIMENSION = 4096;
 const MAX_PROCESSING_PIXELS = 3840 * 2160;
-/** Longest edge the independent portrait engine accepts. */
-export const INDEPENDENT_PORTRAIT_MAX_EDGE = 1280;
+export const INDEPENDENT_PORTRAIT_MAX_EDGE = MAX_PROCESSING_DIMENSION;
+export const INDEPENDENT_PORTRAIT_MAX_PIXELS = MAX_PROCESSING_PIXELS;
+
+export function independentPortraitDimensionsValid({
+	width,
+	height,
+}: {
+	width: number;
+	height: number;
+}) {
+	return (
+		[width, height].every(
+			(value) =>
+				Number.isInteger(value) &&
+				value > 0 &&
+				value <= INDEPENDENT_PORTRAIT_MAX_EDGE
+		) && width * height <= INDEPENDENT_PORTRAIT_MAX_PIXELS
+	);
+}
 
 export function portraitSourceDimensions({
 	source,
@@ -37,13 +54,17 @@ export function portraitProcessingSize({
 }) {
 	const base = { width, height };
 	if (adjustments?.engine === "independent") {
-		// Larger frames are processed at this size and scaled back up when drawn.
-		const longest = Math.max(width, height);
-		if (!(longest > INDEPENDENT_PORTRAIT_MAX_EDGE)) return base;
-		const scale = INDEPENDENT_PORTRAIT_MAX_EDGE / longest;
+		if (![width, height].every((value) => Number.isFinite(value) && value > 0))
+			return base;
+		const scale = Math.min(
+			1,
+			INDEPENDENT_PORTRAIT_MAX_EDGE / Math.max(width, height),
+			Math.sqrt(INDEPENDENT_PORTRAIT_MAX_PIXELS / (width * height))
+		);
+		if (scale === 1) return base;
 		return {
-			width: Math.max(1, Math.round(width * scale)),
-			height: Math.max(1, Math.round(height * scale)),
+			width: Math.max(1, Math.floor(width * scale)),
+			height: Math.max(1, Math.floor(height * scale)),
 		};
 	}
 	const hasBlemishRemoval =
