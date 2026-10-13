@@ -66,9 +66,44 @@ afterEach(() => {
 });
 
 describe("independent portrait export preflight", () => {
+	it.each([
+		{ width: 0, height: 1080 },
+		{ width: 1920, height: Number.NaN },
+		{ width: 1920.5, height: 1080 },
+	])("stops invalid dimensions before inspecting or rendering: %j", async (size) => {
+		await expect(
+			prepareIndependentPortraitExport({
+				...size,
+				tracks: tracks({
+					elements: [
+						clip({ name: "portrait", portraitAdjustments: independent }),
+					],
+				}),
+			})
+		).rejects.toThrow("有效的画面尺寸");
+		expect(inspectIndependent).not.toHaveBeenCalled();
+	});
+	it.each([
+		{ width: 1080, height: 1920 },
+		{ width: 2160, height: 3840 },
+		{ width: 7680, height: 4320 },
+	])("accepts HD and bounded larger output canvases: %j", async (size) => {
+		await expect(
+			prepareIndependentPortraitExport({
+				...size,
+				tracks: tracks({
+					elements: [
+						clip({ name: "portrait", portraitAdjustments: independent }),
+					],
+				}),
+			})
+		).resolves.toEqual({ clips: 1 });
+	});
 	it("skips the engine check when no clip uses it", async () => {
 		await expect(
 			prepareIndependentPortraitExport({
+				width: 1920,
+				height: 1080,
 				tracks: tracks({
 					elements: [
 						clip({
@@ -89,6 +124,8 @@ describe("independent portrait export preflight", () => {
 	it("counts independent clips, including compound children", async () => {
 		await expect(
 			prepareIndependentPortraitExport({
+				width: 1920,
+				height: 1080,
 				tracks: tracks({
 					elements: [
 						clip({ name: "top", portraitAdjustments: independent }),
@@ -115,6 +152,8 @@ describe("independent portrait export preflight", () => {
 		});
 		await expect(
 			prepareIndependentPortraitExport({
+				width: 1920,
+				height: 1080,
 				tracks: tracks({
 					elements: [clip({ name: "top", portraitAdjustments: independent })],
 				}),
@@ -125,6 +164,8 @@ describe("independent portrait export preflight", () => {
 	it("names the clip whose edits the engine cannot run", async () => {
 		await expect(
 			prepareIndependentPortraitExport({
+				width: 1920,
+				height: 1080,
 				tracks: tracks({
 					elements: [
 						clip({
