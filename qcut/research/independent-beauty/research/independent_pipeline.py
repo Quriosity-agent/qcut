@@ -16,13 +16,15 @@ import time
 import numpy as np
 from PIL import Image, ImageOps
 
+from render_resolution import RESOLUTION_ENV, resolution_mode
+
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 1024 * 1024
 MAX_RECEIPT_BYTES = 16 * 1024 * 1024
 MAX_STAGES = 64
 TRANSPORT_FLAGS = {'--image', '--rgba', '--width', '--height', '--runtime', '--output',
-                   '--report', '--points', '--assets', '--shape-assets', '--max-edge'}
+                   '--report', '--points', '--assets', '--shape-assets', '--max-edge', '--resolution'}
 FORBIDDEN_IMAGE_TOKENS = ('libcccreator', 'libbytenn', 'liblens', 'libagfx',
                           '/runtime/frameworks/', '/jianyingpro.app/')
 FORBIDDEN_RECEIPT_FLAGS = {'fixedLandmarks', 'fixed_landmarks', 'nativeGeometryUsed',
@@ -35,6 +37,13 @@ ASSET_ARGUMENTS = {
     'lip_render.py': [('--assets', 'lip-v1.npz')],
     'liquefy_render.py': [('--assets', 'liquefy-v1.npz')],
 }
+ORIGINAL_RENDERERS = frozenset({
+    'smooth_render.py', 'whiten_render.py', 'spot_acne_render.py', 'skin_gan_render.py',
+    'portrait_features_render.py', 'youtai_render.py', 'jawline_render.py',
+    'lip_render.py', 'softpink_render.py', 'brow_render.py', 'makeup248_render.py',
+    'eye_render.py', 'lashes_render.py', 'shadow_render.py', 'look_render.py',
+    'makeup3d_render.py', 'contacts_render.py', 'dynamic_makeup_render.py',
+})
 
 
 def sha256(*, data):
@@ -73,12 +82,14 @@ def read_json(*, path, limit=MAX_JSON_BYTES):
     return parse_json(data=path.read_bytes(), limit=limit)
 
 
-def read_rgba(*, path):
+def read_rgba(*, path, resolution='preview'):
+    mode = resolution_mode(mode=resolution)
+    limit = 4096 if mode == 'original' else 1280
     with Image.open(path) as source:
         if getattr(source, 'n_frames', 1) != 1:
             raise ValueError('a single still image is required')
-        if min(source.size) < 1 or max(source.size) > 1280:
-            raise ValueError('pipeline requires image dimensions at most 1280; resizing is not performed')
+        if min(source.size) < 1 or max(source.size) > limit:
+            raise ValueError(f'pipeline requires image dimensions at most {limit}; resizing is not performed')
         oriented = ImageOps.exif_transpose(source)
         rgba = np.array(oriented.convert('RGBA'), dtype=np.uint8)
     if np.any(rgba[..., 3] != 255):
@@ -261,7 +272,8 @@ def _publish(*, png, receipt, output, report):
         raise
 
 
-def run(*, image, runtime, output, report, plan=None, request=None):
+def run(*, image, runtime, output, report, plan=None, request=None, resolution='preview',
+        stage_runner=None, runtime_receipt=None):
     started = time.monotonic()
     if (plan is None) == (request is None):
         raise ValueError('provide exactly one plan or request JSON file')
@@ -269,7 +281,8 @@ def run(*, image, runtime, output, report, plan=None, request=None):
     specification = Path(plan if plan is not None else request).absolute()
     _fresh_paths(image=image, specification=specification, output=output, report=report)
     original_file_hash = sha256(data=image.read_bytes())
-    original = read_rgba(path=image)
+    mode = resolution_mode(mode=resolution)
+    original = read_rgba(path=image, resolution=mode)
     supplied = read_json(path=specification)
     catalog_path = ROOT / 'research/independent-pipeline-catalog.json'
     planner_path = ROOT / 'src/independent-pipeline-plan.ts'
@@ -278,7 +291,10 @@ def run(*, image, runtime, output, report, plan=None, request=None):
     if plan is not None:
         validate_plan(plan=supplied, scripts=scripts)
     environment = clean_environment(runtime=runtime)
-    sources = {str(path.relative_to(ROOT)): sha256(data=path.read_bytes()) for path in (catalog_path, planner_path)}
+    environment[RESOLUTION_ENV] = mode
+    resolution_path = ROOT / 'research/render_resolution.py'
+    sources = {str(path.relative_to(ROOT)): sha256(data=path.read_bytes())
+               for path in (catalog_path, planner_path, resolution_path)}
     isolation = process_inventory()
     verify_isolation(receipt={'independence': isolation}, runtime=runtime)
     rows = []
@@ -289,6 +305,8 @@ def run(*, image, runtime, output, report, plan=None, request=None):
         validate_plan(plan=canonical, scripts=scripts)
         if plan is not None and not _same_json(left=canonical, right=supplied):
             raise ValueError('supplied plan differs from the canonical independent plan')
+        if mode == 'original' and any(stage['script'] not in ORIGINAL_RENDERERS for stage in canonical['stages']):
+            raise ValueError('an active renderer has no original-resolution contract')
         current = directory / 'original.png'
         Image.fromarray(original).save(current)
         current_rgba = original
@@ -302,8 +320,13 @@ def run(*, image, runtime, output, report, plan=None, request=None):
             destination, stage_report = directory / f'stage-{index:02d}.png', directory / f'stage-{index:02d}.json'
             command = [sys.executable, str(source), '--image', str(current), *stage['parameters'],
                        *runtime_arguments, '--output', str(destination), '--report', str(stage_report)]
-            subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, timeout=120, check=True)
-            rendered = read_rgba(path=destination)
+            stage_started = time.monotonic()
+            if stage_runner is None:
+                subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, timeout=120, check=True)
+            else:
+                stage_runner(stage=stage, source=source, image=current, runtime=runtime,
+                             output=destination, report=stage_report)
+            rendered = read_rgba(path=destination, resolution=mode)
             if rendered.shape != original.shape:
                 raise ValueError('stage changed the original image dimensions')
             stage_receipt = read_json(path=stage_report, limit=MAX_RECEIPT_BYTES)
@@ -313,7 +336,9 @@ def run(*, image, runtime, output, report, plan=None, request=None):
             if (receipt_hash(receipt=stage_receipt, camel='inputRgbaSha256', snake='input_rgba_sha256') != input_hash
                     or receipt_hash(receipt=stage_receipt, camel='outputRgbaSha256', snake='output_rgba_sha256') != output_hash):
                 raise ValueError('stage receipt RGBA hash chain mismatch')
-            rows.append({**stage, 'command': command, 'inputRgbaSha256': input_hash, 'outputRgbaSha256': output_hash,
+            rows.append({**stage, 'command': command, 'execution': 'resident' if stage_runner else 'subprocess',
+                         'milliseconds': round((time.monotonic() - stage_started) * 1000),
+                         'inputRgbaSha256': input_hash, 'outputRgbaSha256': output_hash,
                          'inputPngSha256': sha256(data=current.read_bytes()), 'outputPngSha256': sha256(data=destination.read_bytes()),
                          'loadedImageInventories': inventories, 'recomputedGeometryAfterPriorStage': True,
                          'receipt': stage_receipt})
@@ -327,6 +352,11 @@ def run(*, image, runtime, output, report, plan=None, request=None):
         receipt = {'scope': 'original-photo-independent-canonical-stage-chain', 'version': 1, 'passed': True,
                    'plan': canonical, 'adjustments': canonical['adjustments'], 'stages': rows, 'source': str(image),
                    'sourceSha256': original_file_hash, 'width': original.shape[1], 'height': original.shape[0],
+                   'resolutionMode': mode, 'originalDimensions': [original.shape[1], original.shape[0]],
+                   'analysisDimensions': ([int(original.shape[1]*min(1, 640/max(original.shape[:2]))),
+                                           int(original.shape[0]*min(1, 640/max(original.shape[:2])))] if rows else None),
+                   'outputDimensions': [current_rgba.shape[1], current_rgba.shape[0]],
+                   'noOutputUpscaling': True,
                    'runtime': str(runtime), 'output': str(output), 'inputRgbaSha256': sha256(data=original.tobytes()),
                    'outputRgbaSha256': sha256(data=current_rgba.tobytes()),
                    'outputPngSha256': sha256(data=current.read_bytes()), 'independence': isolation,
@@ -336,6 +366,8 @@ def run(*, image, runtime, output, report, plan=None, request=None):
                    'nativeFallbackUsed': False, 'nativeProductParityVerified': False,
                    'videoVerified': False, 'intermediatesRetained': False,
                    'milliseconds': round((time.monotonic() - started) * 1000)}
+        if runtime_receipt is not None:
+            receipt['residentRuntime'] = runtime_receipt()
         _publish(png=current, receipt=receipt, output=output, report=report)
     return receipt
 
@@ -349,10 +381,12 @@ def main():
     parser.add_argument('--runtime', type=Path, default=ROOT / 'runtime')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--resolution', choices=('preview', 'original'), default='preview')
     arguments = parser.parse_args()
     try:
         receipt = run(image=arguments.image, plan=arguments.plan, request=arguments.request,
-                      runtime=arguments.runtime, output=arguments.output, report=arguments.report)
+                      runtime=arguments.runtime, output=arguments.output, report=arguments.report,
+                      resolution=arguments.resolution)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         detail = error.stderr.decode(errors='replace')[-4096:] if isinstance(error, subprocess.CalledProcessError) and error.stderr else str(error)
         print(json.dumps({'passed': False, 'error': detail}, ensure_ascii=False), file=sys.stderr)
