@@ -57,7 +57,7 @@ def interleaved_face(*, rgba, face, model_root, means, model, alignment_assets, 
     return {**base,'extraPasses':[first,last],'extraPoints':points.tolist()}
 
 
-def predict_extra_photo(*, rgba, model_root, fitting_history=False, interleave_alignment=False):
+def predict_extra_photo(*, rgba, model_root, fitting_history=False, interleave_alignment=False, face_reference=None):
     if type(fitting_history) is not bool or type(interleave_alignment) is not bool:
         raise ValueError("typed fitting history and alignment lifecycle required")
     if fitting_history and interleave_alignment:
@@ -67,7 +67,7 @@ def predict_extra_photo(*, rgba, model_root, fitting_history=False, interleave_a
         from alignment_infer import Stage1
         means=load_assets(path=model_root/'extra-means-v1.npz')
         model=ExtraHeads(model=model_root/'face-extra-160.onnx')
-        selected=single_face_prediction(rgba=rgba,predictor=partial(interleaved_face,model_root=model_root,
+        selected=single_face_prediction(rgba=rgba,face_reference=face_reference,predictor=partial(interleaved_face,model_root=model_root,
             means=means,model=model,alignment_assets=alignment_assets(path=model_root/'alignment-assets-v1.npz'),
             alignment_models={side:Stage1(size=side,model=model_root/f'face-align-{side}.onnx') for side in (120,160)}))
         base={key:value for key,value in selected.items() if key not in ('extraPasses','extraPoints')}
@@ -75,7 +75,7 @@ def predict_extra_photo(*, rgba, model_root, fitting_history=False, interleave_a
         points=np.asarray(selected['extraPoints'],np.float32)
         return extra_receipt(base=base,passes=passes,points=points,
             fitting_history=fitting_history,interleave_alignment=True)
-    base=single_face_prediction(rgba=rgba)
+    base=single_face_prediction(rgba=rgba,face_reference=face_reference)
     primary=np.asarray(base['algorithm_points'],np.float32)
     seed=np.asarray(base['seed_algorithm_points'],np.float32)
     means=load_assets(path=model_root/'extra-means-v1.npz')
