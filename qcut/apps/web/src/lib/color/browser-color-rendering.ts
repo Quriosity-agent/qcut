@@ -22,6 +22,11 @@ import {
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
 import { renderIndependentPortraitFrame } from "@/lib/portrait/independent-portrait-frame";
 import type { PortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
+import type { IndependentPortraitSourceEvidenceReader } from "@/lib/portrait/independent-source-evidence";
+import {
+	NativePortraitSourceWindowError,
+	type PortraitTemporalOptions,
+} from "@/lib/portrait/portrait-temporal-policy";
 import {
 	portraitProcessingSize,
 	portraitSourceDimensions,
@@ -168,6 +173,8 @@ async function portraitAdjustedSource({
 	sourceKey,
 	timestampSeconds,
 	readPortraitSourcePreRoll,
+	readIndependentSourceEvidence,
+	portraitTemporalMode,
 	signal,
 }: {
 	source: CanvasImageSource;
@@ -178,8 +185,9 @@ async function portraitAdjustedSource({
 	sourceKey?: string;
 	timestampSeconds?: number;
 	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
+	readIndependentSourceEvidence?: IndependentPortraitSourceEvidenceReader;
 	signal?: AbortSignal;
-}): Promise<CanvasImageSource> {
+} & PortraitTemporalOptions): Promise<CanvasImageSource> {
 	if (!hasMediaPortraitAdjustments({ adjustments })) return source;
 	const sourceSize = portraitSourceDimensions({ source });
 	const processing = portraitProcessingSize({
@@ -204,7 +212,11 @@ async function portraitAdjustedSource({
 			processing.height
 		);
 	} catch (cause) {
-		if (adjustments?.engine === "independent") throw cause;
+		if (
+			adjustments?.engine === "independent" ||
+			portraitTemporalMode === "source-window"
+		)
+			throw cause;
 		reportColorDegradation({
 			reason: "jianying-portrait-adjustment-fallback",
 			detail: cause instanceof Error ? cause.message : String(cause),
@@ -217,6 +229,8 @@ async function portraitAdjustedSource({
 			? await renderIndependentPortraitFrame({
 					source: sourceData,
 					adjustments,
+					timestampSeconds,
+					readSourceEvidence: readIndependentSourceEvidence,
 					signal,
 				})
 			: await renderJianyingPortraitAdjustmentPreview({
@@ -226,9 +240,14 @@ async function portraitAdjustedSource({
 					sourceKey,
 					timestampSeconds,
 					readSourcePreRoll: readPortraitSourcePreRoll,
+					portraitTemporalMode,
 					signal,
 				});
-	if (!rendered) return source;
+	if (!rendered) {
+		if (portraitTemporalMode === "source-window")
+			throw new Error("Portrait source-window render returned no pixels");
+		return source;
+	}
 	context.putImageData(rendered, 0, 0);
 	return canvas;
 }
@@ -625,6 +644,8 @@ export async function drawColorGradedSourceStack({
 	timestampSeconds,
 	portraitAdjustments,
 	readPortraitSourcePreRoll,
+	readIndependentSourceEvidence,
+	portraitTemporalMode,
 	signal,
 }: {
 	context: CanvasRenderingContext2D;
@@ -639,8 +660,9 @@ export async function drawColorGradedSourceStack({
 	timestampSeconds?: number;
 	portraitAdjustments?: MediaPortraitAdjustments;
 	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
+	readIndependentSourceEvidence?: IndependentPortraitSourceEvidenceReader;
 	signal?: AbortSignal;
-}): Promise<void> {
+} & PortraitTemporalOptions): Promise<void> {
 	const pixelWidth = Math.max(1, Math.round(Math.abs(width)));
 	const pixelHeight = Math.max(1, Math.round(Math.abs(height)));
 	const adjustedSource = await portraitAdjustedSource({
@@ -652,7 +674,17 @@ export async function drawColorGradedSourceStack({
 		sourceKey,
 		timestampSeconds,
 		readPortraitSourcePreRoll,
+		readIndependentSourceEvidence,
+		portraitTemporalMode,
 		signal,
+	}).catch((cause: unknown) => {
+		if (
+			portraitTemporalMode === "source-window" &&
+			!signal?.aborted &&
+			!(cause instanceof NativePortraitSourceWindowError)
+		)
+			throw new NativePortraitSourceWindowError({ cause });
+		throw cause;
 	});
 	// With a single ungraded base layer the intermediate canvas contributes
 	// nothing, so draw straight onto the target exactly the way
