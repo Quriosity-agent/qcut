@@ -1,4 +1,5 @@
 """Owned 106-to-145 smoothing mask geometry in original image coordinates."""
+from render_resolution import source_edge_limit
 import numpy as np
 
 from alignment_transform import points106
@@ -10,7 +11,7 @@ def positions(*, normalized, size, forehead):
     points106(points=normalized)
     if (normalized.dtype != F or (normalized < 0).any() or (normalized > 1).any()
             or not isinstance(size, (tuple, list)) or len(size) != 2
-            or any(type(value) is not int or not 1 <= value <= 1280 for value in size)
+            or any(type(value) is not int or not 1 <= value <= source_edge_limit() for value in size)
             or not isinstance(forehead, np.ndarray) or forehead.dtype != F or forehead.shape != (11, 2)
             or not np.isfinite(forehead).all() or np.abs(forehead).max() > 4):
         raise ValueError('normalized float32 landmarks, bounded frame and forehead coefficients required')

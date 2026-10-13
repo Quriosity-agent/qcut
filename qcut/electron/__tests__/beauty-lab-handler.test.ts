@@ -535,7 +535,11 @@ describe("independent Beauty Lab IPC", () => {
 			rgba: new Uint8Array(4),
 			cached: true,
 		};
-		const frames = { render: vi.fn(async () => frame) };
+		const frames = {
+			render: vi.fn(async () => frame),
+			cancel: vi.fn(() => ({ cancelled: false })),
+			dispose: vi.fn(),
+		};
 		const research = provider();
 		const controller = setupBeautyLabIPC({
 			getMainWindow: () => mainWindow,
@@ -571,10 +575,29 @@ describe("independent Beauty Lab IPC", () => {
 		expect(owned.cancel).toHaveBeenCalledWith({
 			request: { requestId: "one" },
 		});
+		expect(frames.cancel).toHaveBeenCalledWith({
+			request: { requestId: "one" },
+		});
+		frames.cancel.mockReturnValue({ cancelled: true });
+		owned.cancel.mockReturnValue({ cancelled: false });
+		expect(
+			await invoke({
+				channel: BEAUTY_LAB_INDEPENDENT_CANCEL,
+				event,
+				request: { requestId: "during-cache" },
+			})
+		).toEqual({ cancelled: true });
+		expect(owned.cancel).toHaveBeenLastCalledWith({
+			request: { requestId: "during-cache" },
+		});
 		expect(research.load).not.toHaveBeenCalled();
 		await controller.dispose();
 		await controller.dispose();
 		expect(owned.dispose).toHaveBeenCalledOnce();
+		expect(frames.dispose).toHaveBeenCalledOnce();
+		expect(frames.dispose.mock.invocationCallOrder[0]).toBeLessThan(
+			owned.dispose.mock.invocationCallOrder[0]
+		);
 		expect(registrations.size).toBe(0);
 	});
 	it("fails clearly if the independent provider is not connected", async () => {

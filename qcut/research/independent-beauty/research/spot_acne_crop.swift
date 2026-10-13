@@ -6,6 +6,7 @@ struct Request: Decodable {
   let width: Int
   let height: Int
   let affine: [Float]
+  let resolutionMode: String?
 }
 struct CropError: Error, CustomStringConvertible { let description: String }
 func require(_ condition: Bool, _ message: String) throws {
@@ -35,7 +36,12 @@ func run() throws {
   let data = try Data(contentsOf: url)
   try require(data.count <= 4096, "bounded crop request required")
   let request = try JSONDecoder().decode(Request.self, from: data)
-  try require((16...1280).contains(request.width) && (16...1280).contains(request.height), "bounded image required")
+  let resolutionMode = request.resolutionMode ?? "preview"
+  try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+  let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+  try require((16...maxSourceEdge).contains(request.width) && (16...maxSourceEdge).contains(request.height), "bounded source frame dimensions required")
+  let sourceRgbaBytes = request.width*request.height*4
+  try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
   try require(request.affine.count == 6 && request.affine.allSatisfy { $0.isFinite && abs($0) <= 32768 }, "finite owned affine required")
   let pixels = try Data(contentsOf: directory.appendingPathComponent("input.rgba"))
   try require(pixels.count == request.width*request.height*4, "RGBA byte count mismatch")
@@ -82,7 +88,7 @@ func run() throws {
   let privateImages = images.filter { forbidden.contains(URL(fileURLWithPath: $0).lastPathComponent) }
   try require(privateImages.isEmpty, "private native image in independent crop")
   try output.write(to: directory.appendingPathComponent("crop.f32"))
-  let receipt: [String: Any] = ["gpu": device.name, "private_native_images": privateImages,
+  let receipt: [String: Any] = ["resolutionMode":resolutionMode,"sourceFrameSize":[request.width,request.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu": device.name, "private_native_images": privateImages,
     "images": images, "size": [512, 512], "channels": 4, "pixelFormat": "RGBA32Float",
     "warpMath": "fast", "sampling": "integer-destination, rounded-nearest-source"]
   try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys]).write(to: directory.appendingPathComponent("gpu.json"))

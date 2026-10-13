@@ -101,6 +101,8 @@ export class ExportEngineMuxer extends ExportEngine {
 
 			const independentPortrait = await prepareIndependentPortraitExport({
 				tracks: this.tracks,
+				width: this.canvas.width,
+				height: this.canvas.height,
 			});
 			await this.prepareStabilization(progressCallback);
 			// Dynamic import to avoid loading mediabunny on desktop
@@ -240,7 +242,7 @@ export class ExportEngineMuxer extends ExportEngine {
 				progressCallback?.(
 					progress,
 					independentPortrait.clips > 0
-						? `Encoding frame ${frame + 1}/${totalFrames} · 自研美颜每帧约 3–12 秒，已处理的帧直接复用`
+						? `Encoding frame ${frame + 1}/${totalFrames} · 自研美颜逐帧处理，已缓存的帧直接复用`
 						: `Encoding frame ${frame + 1}/${totalFrames}`
 				);
 				reportExportFrameProgress({

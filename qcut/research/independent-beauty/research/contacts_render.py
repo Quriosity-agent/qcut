@@ -1,4 +1,5 @@
 """Original opaque photo to an independently inferred and rendered natural contacts PNG."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -32,7 +33,7 @@ def run(*, rgba, card, strength, runtime, output, report):
     result = rgba.copy()
     diagnostics = {'identity': True}
     if strength > .001:
-        if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+        if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
             raise ValueError('active contacts acceptance requires a bounded opaque photo')
         prediction = predict_iris_photo(rgba=rgba, model_root=runtime/'research')
         extra = original_pixels(points=np.asarray(prediction['extraAlgorithmPoints'], np.float32),

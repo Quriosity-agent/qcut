@@ -1,4 +1,5 @@
 """Own system-Metal transport for a single fitted classical makeup mesh."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 from pathlib import Path
@@ -16,7 +17,7 @@ SOURCE = Path(__file__).with_suffix('.swift')
 def render(*, rgba, mesh, pigment, intensity, highlight, runtime):
     validate_rgba(rgba=rgba)
     validate_rgba(rgba=pigment)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque classical makeup photo required')
     if type(highlight) is not bool or not 0 <= intensity <= 100:
         raise ValueError('bounded classical makeup parameters required')
@@ -44,11 +45,13 @@ def render(*, rgba, mesh, pigment, intensity, highlight, runtime):
             'input': str(directory/'input.rgba'), 'vertices': str(directory/'vertices'),
             'indices': str(directory/'indices'), 'uniforms': str(directory/'uniforms'),
             'pigment': {'path': str(directory/'pigment'), 'width': pigment.shape[1], 'height': pigment.shape[0]}}
+        request.update(gpu_request_fields())
         (directory/'request.json').write_text(json.dumps(request, allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
                        capture_output=True, text=True, check=True, timeout=30)
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output)+'.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if (receipt['private_native_images'] or hashlib.sha256(host.read_bytes()).hexdigest() != host_identity
             or hashlib.sha256(SOURCE.read_bytes()).hexdigest() != source_identity):
         raise ValueError('independent classical makeup host integrity failed')

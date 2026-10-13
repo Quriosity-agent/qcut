@@ -4,7 +4,59 @@ import {
 	independentPortraitRequest,
 } from "@/lib/portrait/independent-portrait-adjustments";
 import { resolveMediaVisualProperties } from "@/lib/video/video-properties";
-import type { MediaElement, TimelineTrack } from "@/types/timeline";
+import {
+	independentPortraitDimensionsValid,
+	portraitProcessingSize,
+} from "@/lib/portrait/portrait-processing-size";
+import type {
+	MediaElement,
+	MediaPortraitAdjustments,
+	TimelineTrack,
+} from "@/types/timeline";
+
+class IndependentPortraitExportError extends Error {
+	constructor({ cause }: { cause: unknown }) {
+		super(cause instanceof Error ? cause.message : String(cause), { cause });
+		this.name = "IndependentPortraitExportError";
+	}
+}
+
+export function rethrowIndependentPortraitExportError({
+	error,
+	adjustments,
+	signal,
+}: {
+	error: unknown;
+	adjustments?: MediaPortraitAdjustments;
+	signal?: AbortSignal;
+}) {
+	signal?.throwIfAborted();
+	if (error instanceof IndependentPortraitExportError) throw error;
+	if (
+		adjustments?.engine === "independent" &&
+		hasMediaPortraitAdjustments({ adjustments })
+	)
+		throw new IndependentPortraitExportError({ cause: error });
+}
+
+export async function drawPortraitExportFrame({
+	draw,
+	adjustments,
+	signal,
+}: {
+	draw: () => Promise<void>;
+	adjustments?: MediaPortraitAdjustments;
+	signal?: AbortSignal;
+}) {
+	try {
+		signal?.throwIfAborted();
+		await draw();
+		signal?.throwIfAborted();
+	} catch (error) {
+		rethrowIndependentPortraitExportError({ error, adjustments, signal });
+		throw error;
+	}
+}
 
 function independentPortraitElements({
 	elements,
@@ -26,14 +78,16 @@ function independentPortraitElements({
 
 /**
  * Checks every clip that uses the independent portrait engine before the first
- * frame renders. The engine needs seconds per frame, so a missing
- * engine or an unsupported edit must stop the export now, not minutes in.
- * Returns how many clips use it so progress can say why export is slow.
+ * frame renders, before initializing encoders or processing any clip.
  */
 export async function prepareIndependentPortraitExport({
 	tracks,
+	width,
+	height,
 }: {
 	tracks: readonly TimelineTrack[];
+	width: number;
+	height: number;
 }): Promise<{ clips: number }> {
 	const elements = independentPortraitElements({
 		elements: tracks.flatMap((track) =>
@@ -43,14 +97,31 @@ export async function prepareIndependentPortraitExport({
 		),
 	});
 	if (elements.length === 0) return { clips: 0 };
+	if (
+		![width, height].every((value) => Number.isSafeInteger(value) && value > 0)
+	)
+		throw new Error("自研美颜导出需要有效的画面尺寸");
 	const inspect = window.electronAPI?.beautyLab?.inspectIndependent;
 	if (!inspect) throw new Error("自研美颜需要 QCut 桌面版");
 	const status = await inspect();
 	if (!status.available)
 		throw new Error(`自研美颜引擎不可用：${status.message}`);
 	for (const element of elements) {
+		const adjustments =
+			resolveMediaVisualProperties(element).portraitAdjustments;
+		const processingSize = portraitProcessingSize({
+			width,
+			height,
+			sourceWidth: width,
+			sourceHeight: height,
+			adjustments,
+		});
+		if (!independentPortraitDimensionsValid(processingSize))
+			throw new Error(
+				`片段「${element.name}」无法使用自研美颜处理当前画面尺寸`
+			);
 		const converted = independentPortraitRequest({
-			adjustments: resolveMediaVisualProperties(element).portraitAdjustments,
+			adjustments,
 			support: status,
 		});
 		if ("issue" in converted)

@@ -100,7 +100,7 @@ describe("portrait engine control", () => {
 		expect(onChange).toHaveBeenLastCalledWith({ enabled: true, values: {} });
 	});
 
-	it("states the speed and lists edits the engine cannot run by name", async () => {
+	it("explains initialization and resolution limits and names unsupported edits", async () => {
 		renderControl({
 			adjustments: {
 				enabled: true,
@@ -109,7 +109,16 @@ describe("portrait engine control", () => {
 			},
 		});
 		expect(screen.getByTestId("portrait-engine-note")).toHaveTextContent(
-			"每帧约 3–12 秒"
+			"首次处理需要初始化"
+		);
+		expect(screen.getByTestId("portrait-engine-note")).toHaveTextContent(
+			"导出可保留 1080p 和 4K 横竖屏处理尺寸"
+		);
+		expect(screen.getByTestId("portrait-engine-note")).toHaveTextContent(
+			"暂停预览最长边 1920"
+		);
+		expect(screen.getByTestId("portrait-engine-note")).not.toHaveTextContent(
+			"3–12"
 		);
 		await waitFor(() =>
 			expect(screen.getByTestId("portrait-engine-issue")).toHaveTextContent(

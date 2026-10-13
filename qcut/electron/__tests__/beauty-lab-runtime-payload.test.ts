@@ -68,8 +68,18 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(262);
-		expect(profile.files).toHaveLength(358);
+		).toBe(270);
+		expect(profile.files).toHaveLength(362);
+		expect(
+			profile.files.some(
+				({ path: name }) => name === "research/skin-mask-integer-128x224.onnx"
+			)
+		).toBe(true);
+		expect(
+			profile.files.some(
+				({ path: name }) => name === "research/skin-mask-integer-128x240.onnx"
+			)
+		).toBe(true);
 		expect(
 			profile.files.some(({ path: name }) => name.startsWith("Frameworks/"))
 		).toBe(false);

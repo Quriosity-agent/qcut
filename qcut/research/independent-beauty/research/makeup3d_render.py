@@ -1,4 +1,5 @@
 """Original photo to independently fitted highlighter or freckles PNG."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -36,7 +37,7 @@ def run(*, rgba, card, intensity, runtime, output, report):
     started = time.monotonic()
     validate_rgba(rgba=rgba)
     intensity = validate_intensity(intensity=intensity)
-    if card not in CARDS or max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if card not in CARDS or max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque classical makeup card photo required')
     fitting, gpu, result = None, None, rgba.copy()
     if intensity > 0:

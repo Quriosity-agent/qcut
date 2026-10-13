@@ -1,4 +1,5 @@
 """Own bounded RGBA8 Metal layer host, compiled from the adjacent public source."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 import os
@@ -39,7 +40,7 @@ def build_host(*, runtime, source=SOURCE, prefix='makeup-metal'):
 
 def render(*, rgba, passes, runtime):
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque Metal photo required')
     host, environment, identity = build_host(runtime=runtime)
     binary_identity = hashlib.sha256(host.read_bytes()).hexdigest()
@@ -74,11 +75,13 @@ def render(*, rgba, passes, runtime):
         output = directory/'output.rgba'
         request = {'width': rgba.shape[1], 'height': rgba.shape[0], 'input': str(directory/'input.rgba'),
             'output': str(output), 'passes': specification}
+        request.update(gpu_request_fields())
         (directory/'request.json').write_text(json.dumps(request, allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=30)
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output)+'.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if receipt['private_native_images'] or hashlib.sha256(host.read_bytes()).hexdigest() != binary_identity:
         raise ValueError('independent Metal host integrity failed')
     return result, receipt | {'sourceSha256': identity, 'hostSha256': binary_identity}

@@ -1,4 +1,5 @@
 """Original photo -> owned skin inference -> owned whitening Metal -> PNG."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -19,7 +20,7 @@ def render_image(*, image, strength, runtime, max_edge=1280):
     strength = unit_scalar(value=strength, name='whitening strength')
     decoded = decode_image(image=image, max_edge=max_edge)
     rgba = decoded['rgba']
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque whitening photo required')
     diagnostics = {}
     assets = None

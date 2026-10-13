@@ -1,4 +1,5 @@
 """Prepare the jawline renderer's 238 support points from owned Extra106."""
+from render_resolution import source_edge_limit
 import ctypes
 from functools import lru_cache
 import math
@@ -54,7 +55,7 @@ def adjust_yaw(*, points, size, yaw):
 def prepare(*, points, size, yaw, pitch, assets):
     if (not isinstance(points, np.ndarray) or points.dtype != F or points.shape != (106, 2)
             or not np.isfinite(points).all() or np.abs(points).max() > 32768
-            or len(size) != 2 or any(type(value) is not int or not 1 <= value <= 1280 for value in size)
+            or len(size) != 2 or any(type(value) is not int or not 1 <= value <= source_edge_limit() for value in size)
             or not np.isfinite([yaw, pitch]).all() or abs(yaw) > math.pi or not 0 <= pitch <= math.pi):
         raise ValueError('bounded Extra106 and nonnegative consumer pitch required; negative-pitch correction is unverified')
     points = adjust_yaw(points=points, size=size, yaw=yaw)

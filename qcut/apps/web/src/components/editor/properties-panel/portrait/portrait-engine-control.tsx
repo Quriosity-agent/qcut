@@ -20,6 +20,7 @@ const SCOPE_LABELS = {
 	faces: { zh: "单人或分人物设置", en: "per-person settings" },
 	"manual-retouch": { zh: "手动精修", en: "manual retouch" },
 	"manual-body": { zh: "手动美体", en: "manual body" },
+	"skin-tone": { zh: "肤色资源", en: "skin tone resources" },
 } as const;
 
 function issueText({
@@ -143,8 +144,8 @@ export function PortraitEngineControl({
 				<div className="space-y-1 rounded-sm border border-border/70 bg-muted/30 px-2.5 py-2 text-[11px] text-muted-foreground">
 					<p data-testid="portrait-engine-note">
 						{isZh
-							? "每帧约 3–12 秒，参数越多越慢：播放时显示原画面，暂停后显示处理结果；导出逐帧处理，已处理的帧会缓存，重复导出直接复用。处理分辨率最长边 1280；竖屏 9:16 画面暂不支持磨皮和美白。"
-							: "About 3–12 s a frame, slower with more edits: playback shows the original and a paused frame shows the result; export processes every frame and reuses cached frames. Processed at up to 1280 px on the long edge; smoothing and whitening do not support 9:16 vertical frames yet."}
+							? "首次处理需要初始化；后续帧复用已加载的引擎，耗时取决于尺寸和调节项。播放时显示原画面，暂停后显示处理结果；导出逐帧处理并复用已缓存的帧。暂停预览最长边 1920；导出可保留 1080p 和 4K 横竖屏处理尺寸，超过最长边 4096 或 829 万像素时按比例缩小处理。"
+							: "The first frame initializes the engine; later frames reuse it. Processing time depends on dimensions and edits. Playback shows the original, paused frames show the result, and export processes each frame and reuses cached results. Paused previews use up to 1920 px on the longest edge. Export retains landscape and portrait 1080p and 4K processing dimensions; larger frames are fitted within 4096 px and 8.29 MP."}
 					</p>
 					{runtimeMessage ? (
 						<p

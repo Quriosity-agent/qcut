@@ -6,6 +6,8 @@ export const BEAUTY_LAB_INDEPENDENT_CANCEL = "beauty-lab:cancel-independent";
 export const BEAUTY_LAB_INDEPENDENT_RENDER_FRAME =
 	"beauty-lab:render-independent-frame";
 export const BEAUTY_LAB_INDEPENDENT_PROVIDER = "qcut-independent-photo-v1";
+export const INDEPENDENT_BEAUTY_MAX_EDGE = 4096;
+export const INDEPENDENT_BEAUTY_MAX_PIXELS = 3840 * 2160;
 
 export interface BeautyLabIndependentStatus {
 	available: boolean;

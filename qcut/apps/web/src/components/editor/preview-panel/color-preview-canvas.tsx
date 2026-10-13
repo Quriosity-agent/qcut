@@ -375,7 +375,7 @@ export function ColorPreviewCanvas({
 							setIndependentPending(false);
 						}
 					}
-					if (cancelled) return;
+					if (cancelled || frameSignal.aborted) return;
 					if (
 						rendered.width !== canvas.width ||
 						rendered.height !== canvas.height
@@ -502,7 +502,7 @@ export function ColorPreviewCanvas({
 					className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-black/65 px-2 py-1 text-[11px] text-white"
 					data-testid="independent-portrait-pending"
 				>
-					自研美颜处理中（每帧约 3–12 秒）
+					自研美颜处理中…
 				</div>
 			) : null}
 		</>

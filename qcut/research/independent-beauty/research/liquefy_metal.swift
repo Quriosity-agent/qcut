@@ -19,6 +19,7 @@ struct Request: Decodable {
     let input: String
     let passes: [LocalPass]
     let output: String
+    let resolutionMode: String?
 }
 struct RenderError: Error, CustomStringConvertible {
     let description: String
@@ -111,7 +112,12 @@ func run() throws {
     let requestSize=try FileManager.default.attributesOfItem(atPath:requestURL.path)[.size] as? NSNumber
     try require((requestSize?.intValue ?? Int.max)<=32768, "bounded local request required")
     let request=try JSONDecoder().decode(Request.self,from:Data(contentsOf:requestURL))
-    try require((1...1280).contains(request.width) && (1...1280).contains(request.height), "bounded image dimensions required")
+    let resolutionMode = request.resolutionMode ?? "preview"
+    try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+    let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+    try require((1...maxSourceEdge).contains(request.width) && (1...maxSourceEdge).contains(request.height), "bounded source frame dimensions required")
+    let sourceRgbaBytes = request.width*request.height*4
+    try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
     try require((1...6).contains(request.passes.count), "one to six local passes required")
     let outputURL=URL(fileURLWithPath:request.output).resolvingSymlinksInPath()
     try require(outputURL.deletingLastPathComponent()==root, "private output directory required")
@@ -208,7 +214,7 @@ func run() throws {
     let forbidden=["libcccreator.dylib","liblens.dylib","libAGFX.dylib","libbytenn.dylib"]
     let privateImages=names.filter { forbidden.contains(URL(fileURLWithPath:$0).lastPathComponent) }
     try require(privateImages.isEmpty,"independent local Metal process loaded private libraries")
-    let receipt:[String:Any]=["gpu":device.name,"images":names,"private_native_images":privateImages,"pixelFormat":"RGBA8Unorm","coordinateTextureSize":512,"coveredCoordinatePixels":512*512,"coordinatePassCount":request.passes.count,"photoSamplePassCount":1,"coveredPhotoPixels":request.width*request.height,"photoTransport":"fullscreen-raster-fragment"]
+    let receipt:[String:Any]=["resolutionMode":resolutionMode,"sourceFrameSize":[request.width,request.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu":device.name,"images":names,"private_native_images":privateImages,"pixelFormat":"RGBA8Unorm","coordinateTextureSize":512,"coveredCoordinatePixels":512*512,"coordinatePassCount":request.passes.count,"photoSamplePassCount":1,"coveredPhotoPixels":request.width*request.height,"photoTransport":"fullscreen-raster-fragment"]
     try JSONSerialization.data(withJSONObject:receipt,options:[.prettyPrinted,.sortedKeys]).write(to:URL(fileURLWithPath:request.output+".json"))
 }
 do { try run() }

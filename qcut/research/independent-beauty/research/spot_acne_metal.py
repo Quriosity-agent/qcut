@@ -1,4 +1,5 @@
 """Owned crop camera and bounded SpotAcne texture composite transport."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 from pathlib import Path
@@ -34,7 +35,7 @@ def camera(*, crop):
 def render(*, rgba, network, crop, intensity, runtime):
     validate_rgba(rgba=rgba)
     if (not np.isfinite(intensity) or not 0 < intensity <= 100
-            or max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255)
+            or max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255)
             or not isinstance(network, np.ndarray) or network.dtype != F or network.shape != (512, 512, 4)
             or not np.isfinite(network).all() or np.any(np.abs(network) > 1)):
         raise ValueError('bounded opaque photo and owned SpotAcne network output required')
@@ -48,11 +49,13 @@ def render(*, rgba, network, crop, intensity, runtime):
         network.astype('<f4').tofile(directory/'network.f32')
         mask.tofile(directory/'mask.rgba')
         (directory/'request.json').write_text(json.dumps(dict(width=rgba.shape[1], height=rgba.shape[0],
-            mvp=matrix.T.reshape(-1).tolist(), intensity=float(F(intensity/100))), allow_nan=False))
+            mvp=matrix.T.reshape(-1).tolist(), intensity=float(F(intensity/100)),
+            **gpu_request_fields()), allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=60)
         data = (directory/'output.rgba').read_bytes()
         receipt = json.loads((directory/'gpu.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if (len(data) != rgba.nbytes or receipt['private_native_images']
             or hashlib.sha256(host.read_bytes()).hexdigest() != host_sha
             or hashlib.sha256(SOURCE.read_bytes()).hexdigest() != source_sha):

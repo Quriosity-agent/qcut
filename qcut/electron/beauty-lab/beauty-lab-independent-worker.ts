@@ -1,0 +1,235 @@
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
+import { z } from "zod";
+
+const replySchema = z.discriminatedUnion("ok", [
+	z.object({ id: z.string(), ok: z.literal(true) }).strict(),
+	z
+		.object({ id: z.string(), ok: z.literal(false), error: z.string() })
+		.strict(),
+]);
+const MAX_MESSAGE_BYTES = 64 * 1024;
+const MAX_DIAGNOSTIC_BYTES = 256 * 1024;
+
+interface WorkerRequest {
+	image: string;
+	request: string;
+	output: string;
+	report: string;
+}
+
+interface RunningRequest {
+	id: string;
+	resolve: () => void;
+	reject: (error: Error) => void;
+	cleanup: () => void;
+}
+
+interface WorkerState {
+	child: ChildProcessWithoutNullStreams;
+	identity: string;
+	closed: Promise<void>;
+	pending?: RunningRequest;
+	failure?: Error;
+	idle?: ReturnType<typeof setTimeout>;
+}
+
+/** Serial JSONL transport; failed or cancelled jobs discard the whole process tree. */
+export function createIndependentBeautyWorker({
+	python,
+	engineRoot,
+	runtimeRoot,
+	idleMs = 60_000,
+}: {
+	python: string;
+	engineRoot: string;
+	runtimeRoot: string;
+	idleMs?: number;
+}) {
+	let current: WorkerState | undefined;
+	let disposed = false;
+	let busy = false;
+
+	function stop({ state, error }: { state: WorkerState; error: Error }) {
+		state.failure ??= error;
+		clearTimeout(state.idle);
+		if (!state.child.pid) return;
+		try {
+			process.kill(-state.child.pid, "SIGKILL");
+		} catch {
+			state.child.kill("SIGKILL");
+		}
+	}
+
+	function start({
+		identity,
+		environment,
+	}: {
+		identity: string;
+		environment: NodeJS.ProcessEnv;
+	}) {
+		const child = spawn(
+			python,
+			[
+				"-B",
+				path.join(engineRoot, "research/independent_worker.py"),
+				"--runtime",
+				runtimeRoot,
+			],
+			{ cwd: engineRoot, env: environment, detached: true, stdio: "pipe" }
+		);
+		let close = () => {};
+		const state: WorkerState = {
+			child,
+			identity,
+			closed: new Promise<void>((resolve) => {
+				close = resolve;
+			}),
+		};
+		current = state;
+		let stdout = "";
+		let diagnostic = "";
+		let diagnosticBytes = 0;
+		const decoder = new StringDecoder("utf8");
+		child.stdout.on("data", (data: Buffer) => {
+			if (state.failure) return;
+			stdout += decoder.write(data);
+			if (Buffer.byteLength(stdout) > MAX_MESSAGE_BYTES) {
+				stop({
+					state,
+					error: new Error("Independent worker response budget exceeded"),
+				});
+				return;
+			}
+			let newline = stdout.indexOf("\n");
+			while (newline >= 0) {
+				const line = stdout.slice(0, newline);
+				stdout = stdout.slice(newline + 1);
+				try {
+					const reply = replySchema.parse(JSON.parse(line));
+					const pending = state.pending;
+					if (!pending || reply.id !== pending.id)
+						throw new Error("Independent worker response identity mismatch");
+					if (!reply.ok) throw new Error(reply.error);
+					state.pending = undefined;
+					pending.cleanup();
+					pending.resolve();
+					diagnostic = "";
+					diagnosticBytes = 0;
+					state.idle = setTimeout(() => {
+						stop({ state, error: new Error("Independent worker idle") });
+					}, idleMs);
+					state.idle.unref();
+				} catch (error) {
+					stop({
+						state,
+						error: error instanceof Error ? error : new Error(String(error)),
+					});
+					return;
+				}
+				newline = stdout.indexOf("\n");
+			}
+		});
+		child.stderr.on("data", (data: Buffer) => {
+			diagnosticBytes += data.byteLength;
+			diagnostic = (diagnostic + data.toString("utf8")).slice(-2048);
+			if (diagnosticBytes > MAX_DIAGNOSTIC_BYTES)
+				stop({
+					state,
+					error: new Error("Independent worker diagnostic budget exceeded"),
+				});
+		});
+		child.stdin.on("error", (error) => stop({ state, error }));
+		child.on("error", (error) => stop({ state, error }));
+		child.on("exit", () => {
+			// The parent can exit while a renderer still holds the group's pipes.
+			stop({
+				state,
+				error: state.failure ?? new Error("Independent worker exited"),
+			});
+		});
+		child.on("close", (code) => {
+			clearTimeout(state.idle);
+			if (current === state) current = undefined;
+			const pending = state.pending;
+			state.pending = undefined;
+			pending?.cleanup();
+			pending?.reject(
+				state.failure ??
+					new Error(`Independent worker failed (${code}): ${diagnostic}`)
+			);
+			close();
+		});
+		return state;
+	}
+
+	async function run({
+		request,
+		sourceIdentity,
+		environment,
+		signal,
+		timeoutMs,
+	}: {
+		request: WorkerRequest;
+		sourceIdentity: string;
+		environment: NodeJS.ProcessEnv;
+		signal: AbortSignal;
+		timeoutMs: number;
+	}) {
+		if (disposed || busy)
+			throw new Error("Independent worker busy or disposed");
+		signal.throwIfAborted();
+		const id = randomUUID();
+		const message = `${JSON.stringify({ id, ...request })}\n`;
+		if (Buffer.byteLength(message) > MAX_MESSAGE_BYTES)
+			throw new Error("Independent worker request budget exceeded");
+		busy = true;
+		try {
+			const identity = JSON.stringify([sourceIdentity, environment]);
+			if (current && (current.failure || current.identity !== identity)) {
+				stop({
+					state: current,
+					error: new Error("Independent worker environment changed"),
+				});
+				await current.closed;
+			}
+			signal.throwIfAborted();
+			if (disposed) throw new Error("Independent worker disposed");
+			const state = current ?? start({ identity, environment });
+			clearTimeout(state.idle);
+			await new Promise<void>((resolve, reject) => {
+				const abort = () =>
+					stop({ state, error: new Error("Independent beauty cancelled") });
+				const timer = setTimeout(() => {
+					stop({ state, error: new Error("Independent beauty timed out") });
+				}, timeoutMs);
+				state.pending = {
+					id,
+					resolve,
+					reject,
+					cleanup: () => {
+						clearTimeout(timer);
+						signal.removeEventListener("abort", abort);
+					},
+				};
+				signal.addEventListener("abort", abort, { once: true });
+				if (signal.aborted) abort();
+				else state.child.stdin.write(message);
+			});
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function dispose() {
+		disposed = true;
+		if (!current) return;
+		const state = current;
+		stop({ state, error: new Error("Independent worker disposed") });
+		await state.closed;
+	}
+
+	return { run, dispose };
+}

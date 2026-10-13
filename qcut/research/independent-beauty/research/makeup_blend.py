@@ -3,14 +3,17 @@ from numbers import Real
 
 import numpy as np
 
+from render_resolution import frame_byte_limit, resolution_mode
+
 F = np.float32
 MODES = ("normal", "multiply", "screen", "overlay", "soft-light", "add", "color")
+MAX_BLEND_ELEMENTS = 16777216
 
 
 def rgba_array(*, value):
     array = np.asarray(value)
     if (array.dtype != np.float32 or not 1 <= array.ndim <= 3 or array.shape[-1] != 4
-            or array.size > 16777216 or not np.isfinite(array).all()
+            or array.size > MAX_BLEND_ELEMENTS or not np.isfinite(array).all()
             or np.any(array < 0) or np.any(array > 1)
             or np.any(array[..., :3] > array[..., 3:4] + F(1e-6))):
         raise ValueError("bounded float32 premultiplied RGBA required")
@@ -64,7 +67,26 @@ def blend_rgb(*, base, pigment, mode):
     raise ValueError("unsupported pigment blend mode")
 
 
+def _compose_original_tiles(*, base, pigment, strength, mode, opacity):
+    pigment = np.asarray(pigment)
+    # The budget counts decoded RGBA8 source bytes, not float32 blend-buffer storage.
+    source_rgba8_bytes = base.size * np.dtype(np.uint8).itemsize
+    if (base.dtype != F or pigment.dtype != F or base.ndim != 3 or base.shape[-1] != 4
+            or base.shape != pigment.shape or min(base.shape[:2]) < 1 or max(base.shape[:2]) > 4096
+            or source_rgba8_bytes > frame_byte_limit()):
+        raise ValueError('bounded original float32 RGBA image and matching pigment required')
+    output = np.empty_like(base)
+    # Blends reduce over color channels only; row tiles preserve each pixel's operation order.
+    for start in range(0, base.shape[0], 256):
+        block = slice(start, start+256)
+        output[block] = compose(base=base[block], pigment=pigment[block], strength=strength, mode=mode, opacity=opacity)
+    return output
+
+
 def compose(*, base, pigment, strength, mode, opacity=1):
+    if (resolution_mode() == 'original' and isinstance(base, np.ndarray)
+            and base.ndim == 3 and base.size > MAX_BLEND_ELEMENTS):
+        return _compose_original_tiles(base=base, pigment=pigment, strength=strength, mode=mode, opacity=opacity)
     base, pigment = rgba_array(value=base), rgba_array(value=pigment)
     if base.shape != pigment.shape:
         raise ValueError("matching base and pigment dimensions required")

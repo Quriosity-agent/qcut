@@ -7,6 +7,7 @@ struct Request: Decodable {
   let height: Int
   let targetWidth: Int
   let targetHeight: Int
+  let resolutionMode: String?
 }
 struct FrameError: Error, CustomStringConvertible { let description: String }
 func require(_ condition: Bool, _ message: String) throws {
@@ -33,9 +34,13 @@ func run() throws {
   let data = try Data(contentsOf: path)
   try require(data.count <= 4096, "bounded NH image request required")
   let r = try JSONDecoder().decode(Request.self, from: data)
-  try require((1...1280).contains(r.width) && (1...1280).contains(r.height)
-    && (16...640).contains(r.targetWidth) && (16...640).contains(r.targetHeight),
-    "bounded NH image dimensions required")
+  let resolutionMode = r.resolutionMode ?? "preview"
+  try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+  let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+  try require((1...maxSourceEdge).contains(r.width) && (1...maxSourceEdge).contains(r.height), "bounded source frame dimensions required")
+  let sourceRgbaBytes = r.width*r.height*4
+  try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
+  try require((16...640).contains(r.targetWidth) && (16...640).contains(r.targetHeight), "bounded NH target dimensions required")
   let pixels = try Data(contentsOf: root.appendingPathComponent("input.rgba"))
   try require(pixels.count == r.width*r.height*4, "NH input byte count mismatch")
   guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue(),
@@ -86,7 +91,7 @@ func run() throws {
   let privateImages = images.filter { forbidden.contains(URL(fileURLWithPath: $0).lastPathComponent) }
   try require(privateImages.isEmpty, "independent NH image host loaded private effect libraries")
   try output.write(to: root.appendingPathComponent("output.rgba"))
-  let receipt: [String: Any] = ["gpu": device.name, "images": images,
+  let receipt: [String: Any] = ["resolutionMode":resolutionMode,"sourceFrameSize":[r.width,r.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu": device.name, "images": images,
     "private_native_images": privateImages, "pixelFormat": "RGBA8Unorm", "mipmapped": false]
   try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys]).write(
     to: root.appendingPathComponent("output.rgba.json"))

@@ -139,4 +139,34 @@ describe("independent portrait request", () => {
 			})
 		).toEqual({ issue: { code: "scope", selections: ["faces"] } });
 	});
+
+	it("allows a selected skin tone while both strengths are neutral", () => {
+		expect(
+			independentPortraitRequest({
+				adjustments: {
+					...base,
+					skinToneResourceId: "7408757645705743616",
+					values: {
+						...base.values,
+						face_adjust_skin_Intensity: 0,
+						face_adjust_skin_ColdWarm: 0,
+					},
+				},
+				support,
+			})
+		).toEqual(independentPortraitRequest({ adjustments: base, support }));
+	});
+
+	it("refuses an active skin tone resource instead of silently dropping it", () => {
+		expect(
+			independentPortraitRequest({
+				adjustments: {
+					...base,
+					skinToneResourceId: "7408757645705743616",
+					values: { ...base.values, face_adjust_skin_Intensity: 20 },
+				},
+				support,
+			})
+		).toEqual({ issue: { code: "scope", selections: ["skin-tone"] } });
+	});
 });

@@ -156,6 +156,50 @@ async function completePending({
 }
 
 describe("color preview async commits", () => {
+	it("does not commit an old frame when seeking during asynchronous post-processing", async () => {
+		Object.defineProperties(HTMLVideoElement.prototype, {
+			readyState: { configurable: true, get: () => 2 },
+			videoWidth: { configurable: true, get: () => 854 },
+			videoHeight: { configurable: true, get: () => 480 },
+		});
+		const { container } = render(
+			<div>
+				<video src="blob:source" />
+				<ColorPreviewCanvas
+					sourceSelector="video"
+					settings={settings({ intensity: 10 })}
+					masks={masks}
+					fitMode="contain"
+					frameSeed={0}
+					portraitAdjustments={{
+						enabled: true,
+						engine: "independent",
+						values: { face_adjust_Whiten: 40 },
+					}}
+				/>
+			</div>
+		);
+		await act(async () => {});
+		const first = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		await act(async () => {
+			const video = container.querySelector("video")!;
+			video.currentTime = 1.5;
+			video.dispatchEvent(new Event("seeked"));
+		});
+		expect(first.signal?.aborted).toBe(true);
+		await act(async () => pending.shift()!());
+		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(canvas.dataset.renderedFrameCount).toBeUndefined();
+		expect(canvas.dataset.paintedIntensity).toBeUndefined();
+		await completePending();
+		expect(canvas.dataset.renderedFrameCount).toBe("1");
+		expect(canvas.dataset.paintedIntensity).toBe("10");
+		expect(
+			vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0]
+				.timestampSeconds
+		).toBe(1.5);
+	});
+
 	it("binds video recovery to the current source and aborts it on unmount", async () => {
 		Object.defineProperties(HTMLVideoElement.prototype, {
 			readyState: { configurable: true, get: () => 2 },

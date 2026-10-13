@@ -1,4 +1,5 @@
 """Independent face then local package lifecycle for the 24 supported geometry controls."""
+from render_resolution import source_edge_limit
 import argparse
 from collections.abc import Mapping
 import hashlib
@@ -32,7 +33,7 @@ def split_controls(*, values):
 def render_rgba(*, rgba, controls, runtime):
     common, local = split_controls(values=controls)
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque portrait package photo required')
     common_active = controls_active(values=common)
     local_active = bool(active_controls(controls=local))

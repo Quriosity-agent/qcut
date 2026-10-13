@@ -1,4 +1,5 @@
 """Bounded own Metal whitening host and process-integrity receipts."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import ctypes as ct
 import hashlib
 import json
@@ -38,7 +39,7 @@ def render(*, rgba, lut, mask_texture, strength, runtime):
     validate_lut(lut=lut)
     validate_rgba(rgba=mask_texture)
     strength = unit_scalar(value=strength, name='whitening strength')
-    if max(rgba.shape[:2]) > 1280 or max(mask_texture.shape[:2]) > 512:
+    if max(rgba.shape[:2]) > source_edge_limit() or max(mask_texture.shape[:2]) > 512:
         raise ValueError('bounded whitening photo and skin texture required')
     if strength == 0:
         return rgba.copy(), {'private_native_images': [], 'zeroStrengthIdentity': True}
@@ -54,6 +55,7 @@ def render(*, rgba, lut, mask_texture, strength, runtime):
         output = directory / 'output.rgba'
         request = {'textures': specifications, 'strength': float(strength), 'output': str(output)}
         request_path = directory / 'request.json'
+        request.update(gpu_request_fields())
         request_path.write_text(json.dumps(request, allow_nan=False))
         subprocess.run([str(host), str(request_path)], env=environment,
                        capture_output=True, text=True, check=True, timeout=30)
@@ -61,6 +63,7 @@ def render(*, rgba, lut, mask_texture, strength, runtime):
             raise ValueError('whitening Metal output byte count mismatch')
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output) + '.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if receipt['private_native_images'] or hashlib.sha256(host.read_bytes()).hexdigest() != host_identity:
         raise ValueError('independent whitening Metal host integrity failed')
     return result, receipt | {'sourceSha256': source_identity, 'hostSha256': host_identity}

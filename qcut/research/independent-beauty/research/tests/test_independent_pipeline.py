@@ -14,6 +14,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import independent_pipeline as pipeline
+import render_resolution
 
 
 FAKE_RENDERER = '''import argparse, hashlib, json, os, sys
@@ -82,6 +83,7 @@ class PipelineTests(unittest.TestCase):
                         {'script': 'slimface_mesh_render.py'}], 'makeup': []}
         (self.root / 'research/independent-pipeline-catalog.json').write_text(json.dumps(self.catalog))
         (self.root / 'src/independent-pipeline-plan.ts').write_text('// pure planner fixture\n')
+        (self.root / 'research/render_resolution.py').write_bytes(Path(render_resolution.__file__).read_bytes())
         for name in ('first_render.py', 'second_render.py', 'slimface_mesh_render.py'):
             (self.root / 'research' / name).write_text(FAKE_RENDERER)
         self.canonical = {'version': 1, 'adjustments': {'values': {}, 'makeup': {}}, 'stages': []}

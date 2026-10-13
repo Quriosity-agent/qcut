@@ -15,10 +15,13 @@ import { createCanvas, ImageData, loadImage } from "@napi-rs/canvas";
 import { z } from "zod";
 import {
 	BEAUTY_LAB_INDEPENDENT_PROVIDER,
+	INDEPENDENT_BEAUTY_MAX_EDGE,
+	INDEPENDENT_BEAUTY_MAX_PIXELS,
 	type BeautyLabIndependentRequest,
 	type BeautyLabIndependentResult,
 } from "./beauty-lab-independent-contract.js";
-import { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
+import type { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
+import { createIndependentBeautyWorker } from "./beauty-lab-independent-worker.js";
 import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
 import {
 	independentBeautyEnvironment,
@@ -29,8 +32,8 @@ const requestSchema = z
 	.object({
 		requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
 		sourceKey: z.string().min(1).max(256),
-		width: z.number().int().min(1).max(1280),
-		height: z.number().int().min(1).max(1280),
+		width: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
+		height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		rgba: z.instanceof(Uint8Array),
 		adjustments: z
 			.object({
@@ -58,7 +61,11 @@ const requestSchema = z
 			})
 			.strict(),
 	})
-	.strict();
+	.strict()
+	.refine(
+		({ width, height }) => width * height <= INDEPENDENT_BEAUTY_MAX_PIXELS,
+		"Independent frame exceeds the pixel budget"
+	);
 const hash = ({ bytes }: { bytes: Uint8Array }) =>
 	createHash("sha256").update(bytes).digest("hex");
 const catalogSchema = z.object({
@@ -123,7 +130,7 @@ export function createBeautyLabIndependentProvider({
 	python = path.join(engineRoot, "research/.venv/bin/python"),
 	platform = process.platform,
 	environment = process.env,
-	runJob = runIndependentBeautyJob,
+	runJob,
 	verifyRuntime = verifyIndependentBeautyRuntime,
 	verifyEnvironment = verifyIndependentBeautyEnvironment,
 }: {
@@ -136,6 +143,11 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 }) {
+	const worker = createIndependentBeautyWorker({
+		python,
+		engineRoot,
+		runtimeRoot,
+	});
 	let active:
 		| { id: string; controller: AbortController; done: Promise<void> }
 		| undefined;
@@ -249,7 +261,7 @@ export function createBeautyLabIndependentProvider({
 				available: true,
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				message:
-					"Single opaque photo, max edge 1280; composite native parity unverified",
+					"Single opaque photo, max edge 4096 / 8,294,400 pixels; resident rendering, general native parity unverified",
 				controls: inventory.controls.map(({ name }) => `face_adjust_${name}`),
 				makeupCards: inventory.makeup.map(({ id }) => id),
 			};
@@ -320,7 +332,7 @@ export function createBeautyLabIndependentProvider({
 				path.dirname(await resolveBun()),
 				cleanEnvironment.PATH ?? "/usr/bin:/bin:/usr/sbin:/sbin",
 			].join(path.delimiter);
-			await runJob({
+			const execution = {
 				python,
 				cwd: engineRoot,
 				environment: cleanEnvironment,
@@ -340,20 +352,41 @@ export function createBeautyLabIndependentProvider({
 					"--report",
 					path.join(directory, "owned.json"),
 				],
-			});
+			};
+			if (Math.max(input.width, input.height) > 1280)
+				execution.args.push("--resolution", "original");
+			if (runJob) await runJob(execution);
+			else
+				await worker.run({
+					request: {
+						image: path.join(directory, "input.png"),
+						request: path.join(directory, "request.json"),
+						output: path.join(directory, "owned.png"),
+						report: path.join(directory, "owned.json"),
+					},
+					sourceIdentity: manifestSha256,
+					environment: cleanEnvironment,
+					signal: job.controller.signal,
+					timeoutMs: execution.timeoutMs,
+				});
 			job.controller.signal.throwIfAborted();
 			const budgets = await Promise.all([
 				stat(path.join(directory, "owned.png")),
 				stat(path.join(directory, "owned.json")),
 			]);
-			if (budgets.some((file) => !file.isFile() || file.size > 16 * 1024 ** 2))
+			if (
+				budgets.some(
+					(file, index) =>
+						!file.isFile() || file.size > (index === 0 ? 64 : 16) * 1024 ** 2
+				)
+			)
 				throw new Error("Independent output budget exceeded");
 			const [png, source] = await Promise.all([
 				readFile(path.join(directory, "owned.png")),
 				readFile(path.join(directory, "owned.json"), "utf8"),
 			]);
 			if (
-				png.length > 16 * 1024 ** 2 ||
+				png.length > 64 * 1024 ** 2 ||
 				source.length > 16 * 1024 ** 2 ||
 				png.length < 33 ||
 				png.toString("hex", 0, 8) !== "89504e470d0a1a0a" ||
@@ -442,6 +475,7 @@ export function createBeautyLabIndependentProvider({
 		disposed = true;
 		active?.controller.abort();
 		await active?.done;
+		await worker.dispose();
 	}
 	return { inspect, render, cancel, dispose };
 }

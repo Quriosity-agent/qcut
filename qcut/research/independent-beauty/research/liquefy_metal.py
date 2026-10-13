@@ -1,4 +1,5 @@
 """Independent system-Metal transport for a bounded packed local displacement mesh."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 from pathlib import Path
@@ -47,7 +48,7 @@ def render(*, rgba, support, triangles, steps, intensity, radial_profile, mask_u
 
 def render_passes(*, rgba, passes, runtime):
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280:
+    if max(rgba.shape[:2]) > source_edge_limit():
         raise ValueError('bounded local Metal image required')
     if not isinstance(passes, list) or not 1 <= len(passes) <= 6:
         raise ValueError('one to six ordered local Metal passes required')
@@ -71,11 +72,13 @@ def render_passes(*, rgba, passes, runtime):
         output = directory/'output.rgba'
         request = {'width': rgba.shape[1], 'height': rgba.shape[0],
             'input': str(directory/'input.rgba'), 'passes': requests, 'output': str(output)}
+        request.update(gpu_request_fields())
         (directory/'request.json').write_text(json.dumps(request, allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=30)
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output)+'.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if (receipt['private_native_images'] or hashlib.sha256(host.read_bytes()).hexdigest() != binary_identity
             or hashlib.sha256(SOURCE.read_bytes()).hexdigest() != identity):
         raise ValueError('independent local Metal host integrity failed')

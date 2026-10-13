@@ -1,6 +1,8 @@
 """Hash-bound private Extra model on the CPU; no vendor native library."""
 import hashlib
 
+from independent_session_cache import cpu_session
+
 import numpy as np
 
 MODEL_SHA256='eb807d75672d09ce3566ebd6397ae3004d6a7ea5796584cc1352fd5a72a95956'
@@ -15,8 +17,7 @@ class ExtraHeads:
         data=model.read_bytes()
         if hashlib.sha256(data).hexdigest()!=MODEL_SHA256:
             raise ValueError('Extra model identity mismatch')
-        options=ort.SessionOptions();options.intra_op_num_threads=1;options.inter_op_num_threads=1
-        self.runner=ort.InferenceSession(data,sess_options=options,providers=['CPUExecutionProvider'])
+        self.runner = cpu_session(data=data, optimize=True)
         inputs,outputs=self.runner.get_inputs(),self.runner.get_outputs()
         if (len(inputs)!=1 or len(outputs)!=1 or inputs[0].name!='data' or inputs[0].type!='tensor(int64)'
                 or inputs[0].shape!=[1,160,160,3] or outputs[0].name!='fc'

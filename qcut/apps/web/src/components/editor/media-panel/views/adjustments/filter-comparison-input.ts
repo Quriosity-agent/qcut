@@ -25,9 +25,17 @@ export function comparisonTestImage(): ComparisonInput {
 
 export async function readComparisonImage({
 	file,
+	maxEdge = 640,
+	maxPixels = 40_000_000,
 }: {
 	file: File;
+	maxEdge?: number;
+	maxPixels?: number;
 }): Promise<ComparisonInput> {
+	if (
+		![maxEdge, maxPixels].every((value) => Number.isInteger(value) && value > 0)
+	)
+		throw new RangeError("图片处理尺寸限制必须为正整数。");
 	if (
 		!["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
 		file.size > 20 * 1024 * 1024
@@ -43,9 +51,20 @@ export async function readComparisonImage({
 		) {
 			throw new Error("图片尺寸无效或超过 4000 万像素。");
 		}
-		const ratio = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
-		const width = Math.max(1, Math.round(bitmap.width * ratio));
-		const height = Math.max(1, Math.round(bitmap.height * ratio));
+		const ratio = Math.min(
+			1,
+			maxEdge / Math.max(bitmap.width, bitmap.height),
+			Math.sqrt(maxPixels / (bitmap.width * bitmap.height))
+		);
+		const roundedWidth = Math.max(1, Math.round(bitmap.width * ratio));
+		const roundedHeight = Math.max(1, Math.round(bitmap.height * ratio));
+		const exceedsPixelLimit = roundedWidth * roundedHeight > maxPixels;
+		const width = exceedsPixelLimit
+			? Math.max(1, Math.floor(bitmap.width * ratio))
+			: roundedWidth;
+		const height = exceedsPixelLimit
+			? Math.max(1, Math.floor(bitmap.height * ratio))
+			: roundedHeight;
 		const canvas = document.createElement("canvas");
 		canvas.width = width;
 		canvas.height = height;
@@ -59,7 +78,13 @@ export async function readComparisonImage({
 					"本轮对照需要不透明图片，请选择 JPEG 或不含透明区域的图片。"
 				);
 		}
-		return { name: file.name, width, height, rgba, resized: ratio < 1 };
+		return {
+			name: file.name,
+			width,
+			height,
+			rgba,
+			resized: width !== bitmap.width || height !== bitmap.height,
+		};
 	} finally {
 		bitmap.close();
 	}

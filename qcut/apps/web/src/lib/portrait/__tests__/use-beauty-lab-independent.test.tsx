@@ -116,6 +116,34 @@ async function workspace() {
 	return hook;
 }
 describe("native and independent lab paths", () => {
+	it("imports Beauty Lab photos with the HD processing limits", async () => {
+		await workspace();
+		expect(readComparisonImage).toHaveBeenCalledWith({
+			file: image,
+			maxEdge: 4096,
+			maxPixels: 3840 * 2160,
+		});
+	});
+	it("allows zero-strength unsupported edits and sends the same normalized request as timeline", async () => {
+		const hook = await workspace();
+		act(() =>
+			hook.result.current.changeAdjustments({
+				enabled: true,
+				values: { face_adjust_Nose: 30, face_adjust_Whiten: 0 },
+				faces: [{ trackId: 1, values: { face_adjust_Nose: 0 } }],
+				makeup: { blush: { cardId: "native-only", intensity: 0 } },
+				manualRetouch: { strokes: [] },
+			})
+		);
+		expect(hook.result.current.independent.blocker).toBeNull();
+		await act(async () => {
+			await hook.result.current.independent.render();
+		});
+		expect(independent.mock.calls[0][0].adjustments).toEqual({
+			enabled: true,
+			values: { face_adjust_Nose: 30 },
+		});
+	});
 	it("blocks unsupported active selections while keeping native usable", async () => {
 		const hook = await workspace();
 		act(() =>

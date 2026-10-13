@@ -6,6 +6,11 @@ import type {
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import type { BeautyLabFrame } from "./beauty-lab-difference";
 import { validateIndependentBeautyResult } from "./beauty-lab-independent-result";
+import {
+	independentPortraitIssueMessage,
+	independentPortraitRequest,
+} from "./independent-portrait-adjustments";
+import { independentPortraitDimensionsValid } from "./portrait-processing-size";
 
 interface IndependentBlocker {
 	code: "runtime" | "input" | "record" | "dimensions" | "unsupported" | "scope";
@@ -65,16 +70,10 @@ export function useBeautyLabIndependent({
 		};
 	}, [onError]);
 
-	const unsupported = status
-		? Object.entries(adjustments.values)
-				.filter(([key, value]) => value !== 0 && !status.controls.includes(key))
-				.map(([key]) => key)
-		: [];
-	const unsupportedMakeup = status
-		? Object.values(adjustments.makeup ?? {})
-				.filter(({ cardId }) => !status.makeupCards.includes(cardId))
-				.map(({ cardId }) => cardId)
-		: [];
+	const converted = independentPortraitRequest({
+		adjustments,
+		...(status ? { support: status } : {}),
+	});
 	function selectionIssue(): IndependentBlocker | null {
 		if (!status?.available)
 			return {
@@ -88,29 +87,16 @@ export function useBeautyLabIndependent({
 			};
 		if (locked)
 			return { code: "record", message: "Offline records are read-only" };
-		if (input.width > 1280 || input.height > 1280)
+		if (!independentPortraitDimensionsValid(input))
 			return {
 				code: "dimensions",
-				message: "Independent photos require maximum edge ≤1280",
-			};
-		const selections = [...unsupported, ...unsupportedMakeup];
-		if (selections.length)
-			return {
-				code: "unsupported",
-				selections,
-				message: `Independent does not support: ${selections.join(", ")}`,
-			};
-		const scopedOrManual =
-			adjustments.faceTarget?.mode === "single" ||
-			adjustments.faces?.length ||
-			adjustments.skinToneResourceId ||
-			Object.keys(adjustments.manualBody ?? {}).length ||
-			adjustments.manualRetouch?.strokes.length;
-		if (scopedOrManual)
-			return {
-				code: "scope",
 				message:
-					"Independent supports a single-face photo with all-faces selection; manual edits and skin tones require native processing",
+					"Independent photos require positive integer dimensions, maximum edge ≤4096 and at most 8,294,400 pixels",
+			};
+		if ("issue" in converted)
+			return {
+				...converted.issue,
+				message: independentPortraitIssueMessage({ issue: converted.issue }),
 			};
 		return null;
 	}
@@ -128,6 +114,7 @@ export function useBeautyLabIndependent({
 			onError(blocker);
 			return;
 		}
+		if ("issue" in converted) return;
 		const token = ++revision.current;
 		const request = {
 			requestId: crypto.randomUUID(),
@@ -135,7 +122,7 @@ export function useBeautyLabIndependent({
 			width: input.width,
 			height: input.height,
 			rgba: new Uint8Array(input.rgba),
-			adjustments: structuredClone(adjustments),
+			adjustments: structuredClone(converted.adjustments),
 		};
 		const current = { requestId: request.requestId, cancelled: false };
 		pending.current = current;

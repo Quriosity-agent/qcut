@@ -1,4 +1,5 @@
 """Transport owned smoothing meshes and textures into the public Metal graph."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 from pathlib import Path
@@ -31,7 +32,7 @@ def render(*, rgba, skin, face, cube, strength, runtime, mesh=None, retain_stage
     strength = unit_scalar(value=strength, name='smoothing strength')
     for value in (rgba, skin, face, cube):
         validate_rgba(rgba=value)
-    if (max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255)
+    if (max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255)
             or max(skin.shape[:2]) > 512 or face.shape != (256, 256, 4)
             or cube.shape != (512, 512, 4) or type(retain_stages) is not bool):
         raise ValueError('bounded opaque source and pinned smoothing texture sizes required')
@@ -55,11 +56,13 @@ def render(*, rgba, skin, face, cube, strength, runtime, mesh=None, retain_stage
                 request['mesh'][name] = str(path)
         output = directory/'output.rgba'
         request.update(strength=float(strength), output=str(output), stages=retain_stages)
+        request.update(gpu_request_fields())
         (directory/'request.json').write_text(json.dumps(request, allow_nan=False)+'\n')
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=60)
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output)+'.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
         stages = {}
         if retain_stages:
             for path in directory.glob('output.rgba.*.rgba'):

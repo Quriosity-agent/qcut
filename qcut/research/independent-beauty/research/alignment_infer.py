@@ -1,6 +1,8 @@
 """Hash-pinned CPU Stage1 sessions shared by detection and tracking."""
 import hashlib
 
+from independent_session_cache import cpu_session
+
 import numpy as np
 
 from align160_heads_contract import GATES, HEAD_CHANNELS, MODEL_SHA256
@@ -50,10 +52,7 @@ class Stage1:
         data = model.read_bytes()
         if hashlib.sha256(data).hexdigest() != self.expected:
             raise ValueError("unsupported Stage1 model")
-        options = ort.SessionOptions()
-        options.intra_op_num_threads, options.inter_op_num_threads = 1, 1
-        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-        self.runner = ort.InferenceSession(data, sess_options=options, providers=["CPUExecutionProvider"])
+        self.runner = cpu_session(data=data, optimize=False)
         inputs, outputs = self.runner.get_inputs(), self.runner.get_outputs()
         if (len(inputs) != 1 or inputs[0].name != "data" or inputs[0].shape != [1, size, size, 3]
                 or inputs[0].type != "tensor(int64)" or [value.name for value in outputs] != list(self.channels)

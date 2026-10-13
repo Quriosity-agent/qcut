@@ -1,6 +1,8 @@
 """Pupil pigment opacity, interpolated opening weight and eye cutoff in one blend."""
 import numpy as np
 
+from render_resolution import source_edge_limit
+
 from contacts_assets import SPEC
 from makeup_blend import compose, unit_scalar
 from makeup_layers import load_texture
@@ -13,7 +15,7 @@ F = np.float32
 
 def weights(*, positions, triangles, size):
     if (not isinstance(size, tuple) or len(size) != 2
-            or any(type(side) is not int or not 1 <= side <= 1280 for side in size)
+            or any(type(side) is not int or not 1 <= side <= source_edge_limit() for side in size)
             or not isinstance(positions, np.ndarray) or positions.dtype != np.float32
             or positions.shape != (78, 3) or not np.isfinite(positions).all()):
         raise ValueError('bounded pupil78 field and integer image dimensions required')
@@ -32,8 +34,8 @@ def render(*, rgba, pupil, eyes, assets, package, strength):
     validate_rgba(rgba=rgba)
     strength = unit_scalar(value=strength, name='pupil opacity')
     size = (rgba.shape[1], rgba.shape[0])
-    if max(size) > 1280 or np.any(rgba[..., 3] != 255):
-        raise ValueError('opaque pupil photo with maximum edge 1280 required')
+    if max(size) > source_edge_limit() or np.any(rgba[..., 3] != 255):
+        raise ValueError('opaque pupil photo within the selected resolution budget required')
     base = rgba.astype(F)/F(255)
     color = base
     diagnostics = []

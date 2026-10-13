@@ -2,7 +2,7 @@ import Foundation
 import MachO
 import Metal
 
-struct Request: Decodable { let width: Int, height: Int; let mvp: [Float]; let intensity: Float }
+struct Request: Decodable { let width: Int, height: Int; let mvp: [Float]; let intensity: Float; let resolutionMode: String? }
 struct CompositeError: Error, CustomStringConvertible { let description: String }
 func require(_ test: Bool, _ message: String) throws { if !test { throw CompositeError(description: message) } }
 
@@ -34,8 +34,13 @@ func run() throws {
     let size=try FileManager.default.attributesOfItem(atPath:url.path)[.size] as? NSNumber
     try require((size?.intValue ?? Int.max)<4096,"bounded request required")
     let request=try JSONDecoder().decode(Request.self,from:Data(contentsOf:url))
-    try require((1...1280).contains(request.width) && (1...1280).contains(request.height)
-        && request.mvp.count == 16 && request.mvp.allSatisfy{$0.isFinite && abs($0)<=32768}
+    let resolutionMode = request.resolutionMode ?? "preview"
+    try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+    let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+    try require((1...maxSourceEdge).contains(request.width) && (1...maxSourceEdge).contains(request.height), "bounded source frame dimensions required")
+    let sourceRgbaBytes = request.width*request.height*4
+    try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
+    try require(request.mvp.count == 16 && request.mvp.allSatisfy{$0.isFinite && abs($0)<=32768}
         && request.intensity.isFinite && request.intensity>0 && request.intensity<=1,"bounded composite parameters required")
     func read(_ name: String,_ count: Int) throws -> Data {
         let file=root.appendingPathComponent(name).resolvingSymlinksInPath()
@@ -85,7 +90,7 @@ func run() throws {
     let privateImages=images.filter{forbidden.contains(URL(fileURLWithPath:$0).lastPathComponent)}
     try require(privateImages.isEmpty,"independent composite loaded private effect libraries")
     try output.write(to:root.appendingPathComponent("output.rgba"))
-    let receipt:[String:Any]=["gpu":device.name,"images":images,"private_native_images":privateImages,
+    let receipt:[String:Any]=["resolutionMode":resolutionMode,"sourceFrameSize":[request.width,request.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu":device.name,"images":images,"private_native_images":privateImages,
         "pixelFormat":"RGBA8Unorm","networkNormalization":"half-fma","screenUv":"vertex-interpolated"]
     try JSONSerialization.data(withJSONObject:receipt,options:[.sortedKeys]).write(to:root.appendingPathComponent("gpu.json"))
 }

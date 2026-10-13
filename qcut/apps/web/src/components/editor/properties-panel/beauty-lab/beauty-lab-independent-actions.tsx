@@ -33,7 +33,8 @@ function independentIssueLabel({
 	if (!isZh) return issue.message;
 	if (issue.code === "input") return "请导入照片后使用自研处理";
 	if (issue.code === "record") return "离线记录只能查看";
-	if (issue.code === "dimensions") return "自研照片最长边不能超过 1280 像素";
+	if (issue.code === "dimensions")
+		return "自研照片需要有效尺寸，最长边不超过 4096，总像素不超过 8294400";
 	if (issue.code === "scope")
 		return "自研需选择全部人脸模式的单人照片；手动精修、美体与肤色请用原生处理";
 	return issue.message;
@@ -100,8 +101,8 @@ export function BeautyLabIndependentStatus({
 			<span title={lab.status?.message}>
 				{lab.status?.available
 					? isZh
-						? `自研就绪 · ${lab.status.controls.length} 项调节 / ${lab.status.makeupCards.length} 款美妆 · 单人照片 ≤1280`
-						: "Independent ready · single-face photos ≤1280"
+						? `自研就绪 · ${lab.status.controls.length} 项调节 / ${lab.status.makeupCards.length} 款美妆 · 单人照片 ≤4096 / 829 万像素`
+						: "Independent ready · single-face photos ≤4096 / 8.29 MP"
 					: isZh
 						? "自研未就绪"
 						: "Independent unavailable"}
