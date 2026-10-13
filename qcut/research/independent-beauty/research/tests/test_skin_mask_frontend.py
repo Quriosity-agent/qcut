@@ -1,11 +1,14 @@
+import os
 import sys
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from skin_mask_frontend import algorithm_size, segmentation_size, prepare_skin_tensor, alpha_texture, predict_skin_mask
+from render_resolution import RESOLUTION_ENV
+from skin_mask_frontend import MODELS, algorithm_size, segmentation_size, prepare_skin_tensor, alpha_texture, predict_skin_mask
 
 
 class SkinMaskFrontendTests(unittest.TestCase):
@@ -20,6 +23,38 @@ class SkinMaskFrontendTests(unittest.TestCase):
         self.assertEqual(segmentation_size(width=640, height=479), (176, 128))
         self.assertEqual(segmentation_size(width=640, height=640), (128, 128))
         self.assertEqual(segmentation_size(width=640, height=360), (224, 128))
+
+    def test_vertical_preview_and_hd_keep_portrait_orientation(self):
+        for width, height, mode, analysis in ((360, 640, 'preview', [360, 640]),
+                                              (1080, 1920, 'original', [360, 640]),
+                                              (2160, 3840, 'original', [360, 640])):
+            with self.subTest(size=(width, height)), patch.dict(os.environ, {RESOLUTION_ENV: mode}):
+                rgba = np.empty((height, width, 4), np.uint8)
+                rgba[:] = [17, 128, 255, 255]
+                tensor, receipt = prepare_skin_tensor(rgba=rgba)
+                self.assertEqual(receipt['algorithmSize'], analysis)
+                self.assertEqual(receipt['maskSize'], [128, 224])
+                self.assertEqual(tensor.shape, (1, 224, 128, 3))
+                np.testing.assert_array_equal(tensor, np.broadcast_to([127, 0, -111], tensor.shape))
+                self.assertIn((128, 224), MODELS)
+
+    def test_non_square_pixel_cover_frame_selects_128_by_240_profile(self):
+        with patch.dict(os.environ, {RESOLUTION_ENV: 'original'}):
+            rgba = np.full((1977, 1080, 4), 255, np.uint8)
+            tensor, receipt = prepare_skin_tensor(rgba=rgba)
+        self.assertEqual(receipt['algorithmSize'], [349, 640])
+        self.assertEqual(receipt['maskSize'], [128, 240])
+        self.assertEqual(tensor.shape, (1, 240, 128, 3))
+        self.assertIn((128, 240), MODELS)
+
+    def test_supported_preview_preprocessing_is_exact_in_original_mode(self):
+        rgba = np.random.default_rng(831).integers(0, 256, (640, 479, 4), dtype=np.uint8)
+        with patch.dict(os.environ, {RESOLUTION_ENV: 'preview'}):
+            preview, preview_receipt = prepare_skin_tensor(rgba=rgba)
+        with patch.dict(os.environ, {RESOLUTION_ENV: 'original'}):
+            original, original_receipt = prepare_skin_tensor(rgba=rgba)
+        np.testing.assert_array_equal(original, preview)
+        self.assertEqual(original_receipt, preview_receipt)
 
     def test_network_long_side_caps_extreme_aspects(self):
         self.assertEqual(segmentation_size(width=16, height=640), (128, 256))
