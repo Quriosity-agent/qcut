@@ -163,13 +163,17 @@ function createStickerPreparationPool({
 }
 
 /** Get or create the screen recording export compositor. */
-function getExportCompositor(
-	canvas: HTMLCanvasElement
-): ScreenRecordingExportCompositor | null {
+function getExportCompositor({
+	canvas,
+	isolated = false,
+}: {
+	canvas: HTMLCanvasElement;
+	isolated?: boolean;
+}): ScreenRecordingExportCompositor | null {
 	const state = useScreenRecordingEnhancementStore.getState();
 	if (!hasActiveEnhancements(state)) return null;
 
-	if (!exportCompositor) {
+	if (!exportCompositor || isolated) {
 		const webcamState = useWebcamOverlayStore.getState();
 		const figureState = useFigureAnnotationsStore.getState();
 
@@ -198,8 +202,10 @@ function getExportCompositor(
 			figureAnnotations: [...figureState.annotations.values()],
 			zoomMotionBlur: state.zoomMotionBlur,
 		};
-		exportCompositor = new ScreenRecordingExportCompositor(config);
+		const compositor = new ScreenRecordingExportCompositor(config);
 		exportProfiler.count("compositor-create");
+		if (isolated) return compositor;
+		exportCompositor = compositor;
 	}
 	return exportCompositor;
 }
@@ -267,6 +273,7 @@ function beginMediaTransitionLayer({
 export interface RenderContext {
 	signal?: AbortSignal;
 	strictMediaErrors?: boolean;
+	isolatedCompositor?: boolean;
 	ctx: CanvasRenderingContext2D;
 	canvas: HTMLCanvasElement;
 	tracks: import("@/types/timeline").TimelineTrack[];
@@ -380,24 +387,34 @@ async function renderFrameUnlocked({
 	);
 
 	// Apply screen recording enhancement compositing (cursor, zoom, background)
-	const compositor = getExportCompositor(canvas);
+	const compositor = getExportCompositor({
+		canvas,
+		isolated: context.isolatedCompositor,
+	});
 	if (compositor) {
-		// Reuse a single offscreen canvas for frame capture across all frames
-		if (
-			!compositorFrameCanvas ||
-			compositorFrameCanvas.width !== canvas.width ||
-			compositorFrameCanvas.height !== canvas.height
-		) {
-			compositorFrameCanvas = document.createElement("canvas");
-			compositorFrameCanvas.width = canvas.width;
-			compositorFrameCanvas.height = canvas.height;
-			compositorFrameCtx = compositorFrameCanvas.getContext("2d");
-		}
-		if (compositorFrameCtx) {
-			compositorFrameCtx.drawImage(canvas, 0, 0);
-			// Clear and re-render with compositor
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			compositor.renderFrame(ctx, compositorFrameCanvas, currentTime * 1000);
+		try {
+			// Reuse a single offscreen canvas for frame capture across all frames
+			if (
+				!compositorFrameCanvas ||
+				compositorFrameCanvas.width !== canvas.width ||
+				compositorFrameCanvas.height !== canvas.height
+			) {
+				compositorFrameCanvas = document.createElement("canvas");
+				compositorFrameCanvas.width = canvas.width;
+				compositorFrameCanvas.height = canvas.height;
+				compositorFrameCtx = compositorFrameCanvas.getContext("2d");
+			}
+			if (compositorFrameCtx) {
+				compositorFrameCtx.drawImage(canvas, 0, 0);
+				// Clear and re-render with compositor
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				compositor.renderFrame(ctx, compositorFrameCanvas, currentTime * 1000);
+			}
+		} finally {
+			if (context.isolatedCompositor) {
+				compositor.destroy();
+				exportProfiler.count("compositor-destroy");
+			}
 		}
 	}
 }
