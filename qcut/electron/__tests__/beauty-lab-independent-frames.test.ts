@@ -9,6 +9,7 @@ import {
 	createIndependentFrameCache,
 	independentFrameCacheKey,
 } from "../beauty-lab/beauty-lab-independent-frame-cache";
+import { createIndependentRenderQueue } from "../beauty-lab/beauty-lab-independent-queue";
 import {
 	createIndependentFrameRenderer,
 	independentEngineSha256,
@@ -65,6 +66,14 @@ function engine() {
 	};
 }
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((complete) => {
+		resolve = complete;
+	});
+	return { promise, resolve };
+}
+
 describe("independent frame cache key", () => {
 	const base = {
 		engineSha256: "a".repeat(64),
@@ -103,6 +112,191 @@ describe("independent frame cache key", () => {
 });
 
 describe("independent frame renderer", () => {
+	it("settles cancellation promptly while the shared queue drains cleanup before the latest seek", async () => {
+		const stopped = deferred<void>();
+		const cleanup = deferred<void>();
+		const rendered = engine();
+		const provider = {
+			inspect: vi.fn(),
+			render: vi.fn(async ({ request: sent }: { request: unknown }) => {
+				if ((sent as { requestId: string }).requestId === request.requestId) {
+					await stopped.promise;
+					await cleanup.promise;
+					throw new Error("Independent beauty cancelled");
+				}
+				return rendered.render({ request: sent });
+			}),
+			cancel: vi.fn(() => {
+				stopped.resolve();
+				return { cancelled: true };
+			}),
+			dispose: vi.fn(async () => {}),
+		};
+		const queue = createIndependentRenderQueue({ provider });
+		const cache = {
+			read: vi.fn(async () => null),
+			write: vi.fn(async () => {}),
+		};
+		const renderer = createIndependentFrameRenderer({
+			provider: queue,
+			cache,
+			engineSha256: async () => "a".repeat(64),
+		});
+		const first = expect(renderer.render({ request })).rejects.toThrow(
+			"cancelled"
+		);
+		await vi.waitFor(() => expect(provider.render).toHaveBeenCalledOnce());
+		renderer.cancel({ request: { requestId: request.requestId } });
+		queue.cancel({ request: { requestId: request.requestId } });
+		await first;
+
+		const intermediateRequest = { ...request, requestId: "intermediate-seek" };
+		const intermediate = expect(
+			renderer.render({ request: intermediateRequest })
+		).rejects.toThrow("cancelled");
+		await vi.waitFor(() => expect(cache.read).toHaveBeenCalledTimes(2));
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(provider.render).toHaveBeenCalledOnce();
+		renderer.cancel({ request: { requestId: intermediateRequest.requestId } });
+		queue.cancel({ request: { requestId: intermediateRequest.requestId } });
+		await intermediate;
+
+		const latest = renderer.render({
+			request: { ...request, requestId: "latest-seek" },
+		});
+		await vi.waitFor(() => expect(cache.read).toHaveBeenCalledTimes(3));
+		expect(provider.render).toHaveBeenCalledOnce();
+		cleanup.resolve();
+		await expect(latest).resolves.toMatchObject({
+			requestId: "latest-seek",
+			cached: false,
+		});
+		expect(provider.render).toHaveBeenCalledTimes(2);
+		expect(provider.cancel).toHaveBeenCalledOnce();
+		expect(cache.write).toHaveBeenCalledOnce();
+		await queue.dispose();
+	});
+
+	it.each([
+		{ name: "miss", cached: null },
+		{ name: "hit", cached: output },
+	])("cancels a delayed cache $name before rendering or publishing", async ({
+		cached,
+	}) => {
+		const provider = engine();
+		const lookup = deferred<Uint8Array | null>();
+		const cache = {
+			read: vi.fn(() => lookup.promise),
+			write: vi.fn(async () => {}),
+		};
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache,
+			engineSha256: async () => "a".repeat(64),
+		});
+		const rejected = expect(renderer.render({ request })).rejects.toThrow(
+			"cancelled"
+		);
+		await vi.waitFor(() => expect(cache.read).toHaveBeenCalledOnce());
+		expect(
+			renderer.cancel({ request: { requestId: request.requestId } })
+		).toEqual({ cancelled: true });
+		await rejected;
+		lookup.resolve(cached);
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(provider.render).not.toHaveBeenCalled();
+		expect(cache.write).not.toHaveBeenCalled();
+		cache.read.mockResolvedValue(null);
+		await expect(
+			renderer.render({ request: { ...request, requestId: "after-cancel" } })
+		).resolves.toMatchObject({ cached: false });
+		expect(provider.render).toHaveBeenCalledOnce();
+	});
+
+	it("cancels during engine identity lookup without starting cache or render work", async () => {
+		const identity = deferred<string>();
+		const provider = engine();
+		const cache = {
+			read: vi.fn(async () => null),
+			write: vi.fn(async () => {}),
+		};
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache,
+			engineSha256: () => identity.promise,
+		});
+		const rejected = expect(renderer.render({ request })).rejects.toThrow(
+			"cancelled"
+		);
+		renderer.cancel({ request: { requestId: request.requestId } });
+		await rejected;
+		identity.resolve("a".repeat(64));
+		expect(cache.read).not.toHaveBeenCalled();
+		expect(provider.render).not.toHaveBeenCalled();
+	});
+
+	it("discards a late engine result without starting a cache write", async () => {
+		const result = deferred<BeautyLabIndependentResult>();
+		const provider = { render: vi.fn(() => result.promise) };
+		const cache = {
+			read: vi.fn(async () => null),
+			write: vi.fn(async () => {}),
+		};
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache,
+			engineSha256: async () => "a".repeat(64),
+		});
+		const rejected = expect(renderer.render({ request })).rejects.toThrow(
+			"cancelled"
+		);
+		await vi.waitFor(() => expect(provider.render).toHaveBeenCalledOnce());
+		renderer.cancel({ request: { requestId: request.requestId } });
+		await rejected;
+		result.resolve(await engine().render({ request }));
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(cache.write).not.toHaveBeenCalled();
+	});
+
+	it("invalidates pending cache hits before disposal and rejects later work", async () => {
+		const lookup = deferred<Uint8Array | null>();
+		const provider = engine();
+		const cache = {
+			read: vi.fn(() => lookup.promise),
+			write: vi.fn(async () => {}),
+		};
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache,
+			engineSha256: async () => "a".repeat(64),
+		});
+		const rejected = expect(renderer.render({ request })).rejects.toThrow(
+			"disposed"
+		);
+		await vi.waitFor(() => expect(cache.read).toHaveBeenCalledOnce());
+		renderer.dispose();
+		await rejected;
+		lookup.resolve(output);
+		await expect(renderer.render({ request })).rejects.toThrow("disposed");
+		expect(provider.render).not.toHaveBeenCalled();
+	});
+
+	it("rejects duplicate pending ids while preserving the first request", async () => {
+		const lookup = deferred<Uint8Array | null>();
+		const renderer = createIndependentFrameRenderer({
+			provider: engine(),
+			cache: { read: () => lookup.promise, write: async () => {} },
+			engineSha256: async () => "a".repeat(64),
+		});
+		const first = renderer.render({ request });
+		await expect(renderer.render({ request })).rejects.toThrow("Duplicate");
+		expect(renderer.cancel({ request: { requestId: "unknown" } })).toEqual({
+			cancelled: false,
+		});
+		lookup.resolve(output);
+		await expect(first).resolves.toMatchObject({ cached: true });
+	});
+
 	it("runs the engine once, then serves the same frame from disk", async () => {
 		const provider = engine();
 		const renderer = createIndependentFrameRenderer({
