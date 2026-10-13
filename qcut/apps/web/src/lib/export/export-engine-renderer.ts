@@ -103,6 +103,10 @@ import {
 	type LocalFinalVideoExportOutput,
 } from "../../../../../electron/types/restricted-media-export-policy";
 import { isStickerRuntimeExportError } from "../../../../../electron/types/sticker-runtime-export-policy";
+import {
+	drawPortraitExportFrame,
+	rethrowIndependentPortraitExportError,
+} from "./export-independent-portrait";
 
 let exportCompositor: ScreenRecordingExportCompositor | null = null;
 let compositorFrameCanvas: HTMLCanvasElement | null = null;
@@ -728,6 +732,11 @@ async function renderMediaElement(
 			);
 		}
 	} catch (error) {
+		rethrowIndependentPortraitExportError({
+			error,
+			adjustments: (element as MediaElement).portraitAdjustments,
+			signal: context.signal,
+		});
 		debugError(`[ExportEngine] Failed to render ${element.id}:`, error);
 	}
 }
@@ -812,29 +821,34 @@ export async function renderImage(
 	// The group layer owns the element opacity when a transition is active.
 	const drawVisual = layer.active ? { ...visual, opacity: 1 } : visual;
 	const drawImage = () =>
-		drawWithMediaTransform({
-			ctx,
-			visual: drawVisual,
-			bounds: { x, y, width, height },
+		drawPortraitExportFrame({
+			adjustments: visual.portraitAdjustments,
+			signal: context.signal,
 			draw: () =>
-				drawColorGradedSourceStack({
-					context: ctx,
-					source: img,
-					x,
-					y,
-					width,
-					height,
-					layers: [
-						{ settings: visual.color, masks: visual.masks },
-						...mediaFilterStackLayers({
-							filterStack: (element as MediaElement).filterStack,
+				drawWithMediaTransform({
+					ctx,
+					visual: drawVisual,
+					bounds: { x, y, width, height },
+					draw: () =>
+						drawColorGradedSourceStack({
+							context: ctx,
+							source: img,
+							x,
+							y,
+							width,
+							height,
+							layers: [
+								{ settings: visual.color, masks: visual.masks },
+								...mediaFilterStackLayers({
+									filterStack: (element as MediaElement).filterStack,
+								}),
+							],
+							portraitAdjustments: visual.portraitAdjustments,
+							signal: context.signal,
+							frameSeed: Math.round(currentTime * context.fps),
+							sourceKey: `image:${element.id}:${mediaItem.id}`,
+							timestampSeconds: 0,
 						}),
-					],
-					portraitAdjustments: visual.portraitAdjustments,
-					signal: context.signal,
-					frameSeed: Math.round(currentTime * context.fps),
-					sourceKey: `image:${element.id}:${mediaItem.id}`,
-					timestampSeconds: 0,
 				}),
 		});
 
@@ -854,17 +868,20 @@ export async function renderImage(
 
 				if (enabledEffects.length > 0) {
 					ctx.save();
-					const mergedParams = mergeEffectParameters(
-						...enabledEffects.map((e) => e.parameters)
-					);
-					debugLog(
-						"🔨 EXPORT ENGINE: Applying effects to image canvas:",
-						mergedParams
-					);
-					applyEffectsToCanvas(ctx, mergedParams);
-					await drawImage();
-					applyAdvancedCanvasEffects(ctx, mergedParams);
-					ctx.restore();
+					try {
+						const mergedParams = mergeEffectParameters(
+							...enabledEffects.map((e) => e.parameters)
+						);
+						debugLog(
+							"🔨 EXPORT ENGINE: Applying effects to image canvas:",
+							mergedParams
+						);
+						applyEffectsToCanvas(ctx, mergedParams);
+						await drawImage();
+						applyAdvancedCanvasEffects(ctx, mergedParams);
+					} finally {
+						ctx.restore();
+					}
 				} else {
 					debugLog(
 						`🚫 EXPORT ENGINE: No enabled effects for image element ${element.id}, drawing normally`
@@ -872,6 +889,11 @@ export async function renderImage(
 					await drawImage();
 				}
 			} catch (error) {
+				rethrowIndependentPortraitExportError({
+					error,
+					adjustments: visual.portraitAdjustments,
+					signal: context.signal,
+				});
 				debugError(
 					`❌ EXPORT ENGINE: Effects failed for image element ${element.id}:`,
 					error
@@ -915,6 +937,11 @@ export async function renderVideo(
 			);
 			return;
 		} catch (error) {
+			rethrowIndependentPortraitExportError({
+				error,
+				adjustments: (element as MediaElement).portraitAdjustments,
+				signal: context.signal,
+			});
 			lastError = error as Error;
 			if (attempt < maxRetries) {
 				debugWarn(
@@ -1052,38 +1079,45 @@ async function renderVideoAttempt(
 		const drawVisual = layer.active ? { ...visual, opacity: 1 } : visual;
 		const drawVideo = () =>
 			exportProfiler.time("video-draw", async () =>
-				drawWithMediaTransform({
-					ctx,
-					visual: drawVisual,
-					bounds: { x, y, width, height },
+				drawPortraitExportFrame({
+					adjustments: visual.portraitAdjustments,
+					signal: context.signal,
 					draw: () =>
-						drawColorGradedSourceStack({
-							context: ctx,
-							source: resolvedSource,
-							x,
-							y,
-							width,
-							height,
-							layers: [
-								{ settings: visual.color, masks: visual.masks },
-								...mediaFilterStackLayers({
-									filterStack: (element as MediaElement).filterStack,
-								}),
-							],
-							portraitAdjustments: visual.portraitAdjustments,
-							readPortraitSourcePreRoll:
-								(mediaElement.enhancements?.stabilization ?? 0) > 0
-									? undefined
-									: createPortraitSourcePreRollReader({
-											source:
-												mediaItem.file instanceof Blob ? mediaItem.file : url,
+						drawWithMediaTransform({
+							ctx,
+							visual: drawVisual,
+							bounds: { x, y, width, height },
+							draw: () =>
+								drawColorGradedSourceStack({
+									context: ctx,
+									source: resolvedSource,
+									x,
+									y,
+									width,
+									height,
+									layers: [
+										{ settings: visual.color, masks: visual.masks },
+										...mediaFilterStackLayers({
+											filterStack: (element as MediaElement).filterStack,
 										}),
-							signal: context.signal,
-							frameSeed: Math.round(
-								(element.startTime + timeOffset) * context.fps
-							),
-							sourceKey: `video:${element.id}:${mediaItem.id}`,
-							timestampSeconds: sourceTimestamp,
+									],
+									portraitAdjustments: visual.portraitAdjustments,
+									readPortraitSourcePreRoll:
+										(mediaElement.enhancements?.stabilization ?? 0) > 0
+											? undefined
+											: createPortraitSourcePreRollReader({
+													source:
+														mediaItem.file instanceof Blob
+															? mediaItem.file
+															: url,
+												}),
+									signal: context.signal,
+									frameSeed: Math.round(
+										(element.startTime + timeOffset) * context.fps
+									),
+									sourceKey: `video:${element.id}:${mediaItem.id}`,
+									timestampSeconds: sourceTimestamp,
+								}),
 						}),
 				})
 			);
@@ -1111,17 +1145,20 @@ async function renderVideoAttempt(
 						}
 
 						ctx.save();
-						const mergedParams = mergeEffectParameters(
-							...activeEffects.map((e) => e.parameters)
-						);
-						debugLog(
-							"🔨 EXPORT ENGINE: Applying effects to video canvas:",
-							mergedParams
-						);
-						applyEffectsToCanvas(ctx, mergedParams);
-						await drawVideo();
-						applyAdvancedCanvasEffects(ctx, mergedParams);
-						ctx.restore();
+						try {
+							const mergedParams = mergeEffectParameters(
+								...activeEffects.map((e) => e.parameters)
+							);
+							debugLog(
+								"🔨 EXPORT ENGINE: Applying effects to video canvas:",
+								mergedParams
+							);
+							applyEffectsToCanvas(ctx, mergedParams);
+							await drawVideo();
+							applyAdvancedCanvasEffects(ctx, mergedParams);
+						} finally {
+							ctx.restore();
+						}
 					} else {
 						debugLog(
 							`🚫 EXPORT ENGINE: No effects found for video element ${element.id}, drawing normally`
@@ -1129,6 +1166,11 @@ async function renderVideoAttempt(
 						await drawVideo();
 					}
 				} catch (error) {
+					rethrowIndependentPortraitExportError({
+						error,
+						adjustments: visual.portraitAdjustments,
+						signal: context.signal,
+					});
 					debugError(
 						`❌ EXPORT ENGINE: Video effects failed for element ${element.id}:`,
 						error
