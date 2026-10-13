@@ -31,7 +31,7 @@ const entrySchema = z
 
 /**
  * Everything that decides an independent frame: the engine build, the frame
- * size, the adjustments and the input pixels. Adjustment keys are sorted so
+ * size, the adjustments, input pixels and ordered source evidence. Keys are sorted so
  * equal edits hash equally whatever order the UI wrote them in.
  */
 export function independentFrameCacheKey({
@@ -41,6 +41,7 @@ export function independentFrameCacheKey({
 	values,
 	makeup,
 	rgba,
+	sourceEvidenceSha256,
 }: {
 	engineSha256: string;
 	width: number;
@@ -48,6 +49,7 @@ export function independentFrameCacheKey({
 	values: Record<string, number>;
 	makeup: Record<string, { cardId: string; intensity: number }>;
 	rgba: Uint8Array;
+	sourceEvidenceSha256?: string;
 }) {
 	const sorted = <T>(record: Record<string, T>) =>
 		Object.entries(record).sort(([left], [right]) =>
@@ -60,6 +62,7 @@ export function independentFrameCacheKey({
 				engineSha256,
 				width,
 				height,
+				sourceEvidenceSha256,
 				values: sorted(values),
 				makeup: sorted(makeup).map(([category, selection]) => [
 					category,
