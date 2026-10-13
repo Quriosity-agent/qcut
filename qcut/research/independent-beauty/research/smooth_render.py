@@ -1,4 +1,5 @@
 """Original photo to owned FACE145, skin inference and eight-pass smoothing PNG."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -21,7 +22,7 @@ def render_image(*, image, strength, runtime, retain_stages=False):
     strength = unit_scalar(value=strength, name='smoothing strength')
     decoded = decode_image(image=image, max_edge=1280)
     rgba = decoded['rgba']
-    if max(rgba.shape[:2]) > 1280:
+    if max(rgba.shape[:2]) > source_edge_limit():
         raise ValueError('bounded smoothing photo required')
     result, diagnostics, stages = rgba.copy(), {}, {}
     if strength > .001:
