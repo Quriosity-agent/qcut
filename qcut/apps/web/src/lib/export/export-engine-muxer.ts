@@ -25,6 +25,7 @@ import { isJianyingTimelineRendererAvailable } from "./export-engine-cli-jianyin
 import { applyJianyingTransitionsToRenderedVideo } from "./export-muxer-jianying-pass";
 import { destroyExportCompositor } from "./export-engine-renderer";
 import { prepareIndependentPortraitExport } from "./export-independent-portrait";
+import { captureExportFrameEvidence } from "./export-frame-evidence";
 
 // Progress callback type
 type ProgressCallback = (progress: number, status: string) => void;
@@ -195,6 +196,13 @@ export class ExportEngineMuxer extends ExportEngine {
 				await exportProfiler.time("render-frame", () =>
 					this.renderFrame(currentTime)
 				);
+				await captureExportFrameEvidence({
+					canvas: this.canvas,
+					frameIndex: frame,
+					timeSeconds: currentTime,
+					fps,
+					signal: this.abortController.signal,
+				});
 
 				// Issue this frame's BT.709 I420 conversion, let the GPU work
 				// while the encoder finishes the previous frame, then collect
