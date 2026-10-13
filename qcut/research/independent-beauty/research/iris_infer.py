@@ -1,6 +1,8 @@
 """Hash-bound private integer iris48 model with float32 20-point output."""
 import hashlib
 
+from independent_session_cache import cpu_session
+
 import numpy as np
 
 MODEL_SHA256 = '665d7d9beb664594ced038cc68d04f03b7687aa58aa782715176724d62a80b3c'
@@ -15,9 +17,7 @@ class IrisHeads:
         data = model.read_bytes()
         if hashlib.sha256(data).hexdigest() != MODEL_SHA256:
             raise ValueError('private iris model identity mismatch')
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = options.inter_op_num_threads = 1
-        self.runner = ort.InferenceSession(data, sess_options=options, providers=['CPUExecutionProvider'])
+        self.runner = cpu_session(data=data, optimize=True)
         inputs, outputs = self.runner.get_inputs(), self.runner.get_outputs()
         if (len(inputs) != 1 or len(outputs) != 1 or inputs[0].name != 'data'
                 or inputs[0].type != 'tensor(int64)' or inputs[0].shape != [1, 48, 48, 3]
