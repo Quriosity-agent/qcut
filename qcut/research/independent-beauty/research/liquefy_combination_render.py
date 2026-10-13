@@ -1,4 +1,5 @@
 """One local package prediction, ordered packed coordinate passes and one photo sample."""
+from render_resolution import source_edge_limit
 import hashlib
 from pathlib import Path
 
@@ -18,7 +19,7 @@ PASS_ORDER = ('cheekbone', 'mid_atrium', 'lower_atrium', 'pointy_chin', 'underja
 def render_rgba(*, rgba, controls, runtime):
     controls = validate_controls(values=controls)
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque local package photo required')
     runtime = Path(runtime).resolve()
     active = set(active_controls(controls=controls))
