@@ -251,7 +251,88 @@ describe("portrait local causal decoder", () => {
 		const operation = createPortraitSourcePreRollReader({
 			source: "blob:video",
 		})!({ ...target, signal: controller.signal });
-		const rejected = expect(operation).rejects.toThrow("input disposed");
+		const rejected = expect(operation).rejects.toThrow(
+			reason === "deadline" ? "decode timed out" : /abort/i
+		);
+		await vi.waitFor(() => expect(mocks.rejectTrack).not.toBeNull());
+		if (reason === "abort") controller.abort();
+		else await vi.advanceTimersByTimeAsync(10_000);
+		await rejected;
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+	it("distinguishes a successful empty history from an unsupported decoder", async () => {
+		const reader = createPortraitSourcePreRollReader({ source: "blob:video" })!;
+		expect(
+			await reader({ ...target, timestampSeconds: 0, strict: true })
+		).toEqual({ sourceKey: target.sourceKey, frames: [] });
+		mocks.frames = [];
+		expect(await reader({ ...target, strict: true })).toEqual({
+			sourceKey: target.sourceKey,
+			frames: [],
+		});
+		mocks.decode = false;
+		await expect(reader({ ...target, strict: true })).rejects.toThrow(
+			"cannot be decoded"
+		);
+		mocks.decode = true;
+		mocks.missingTrack = true;
+		await expect(reader({ ...target, strict: true })).rejects.toThrow(
+			"cannot be decoded"
+		);
+	});
+	it.each([
+		{ width: 0 },
+		{ height: Number.NaN },
+		{ timestampSeconds: -1 },
+		{ width: 10_000, height: 10_000 },
+	])("rejects invalid strict history requests: %j", async (change) => {
+		await expect(
+			createPortraitSourcePreRollReader({ source: "blob:video" })!({
+				...target,
+				...change,
+				strict: true,
+			})
+		).rejects.toThrow("Invalid portrait source-window");
+		expect(mocks.url).not.toHaveBeenCalled();
+	});
+	it("rejects malformed timing in strict mode instead of silently dropping history", async () => {
+		mocks.frames[0].duration = 0;
+		await expect(
+			createPortraitSourcePreRollReader({ source: "blob:video" })!({
+				...target,
+				strict: true,
+			})
+		).rejects.toThrow("invalid timing");
+	});
+	it("bounds 4K portrait history to two original frames", async () => {
+		const result = await createPortraitSourcePreRollReader({
+			source: "blob:video",
+		})!({
+			...target,
+			width: 2160,
+			height: 3840,
+			strict: true,
+		});
+		expect(result?.frames).toHaveLength(2);
+	});
+	it.each([
+		"abort",
+		"deadline",
+	])("settles %s even when decoder disposal cannot resolve its promise", async (reason) => {
+		vi.useFakeTimers();
+		mocks.waitForTrack = true;
+		mocks.dispose.mockImplementation(() => {});
+		const controller = new AbortController();
+		const operation = createPortraitSourcePreRollReader({
+			source: "blob:video",
+		})!({
+			...target,
+			strict: true,
+			signal: controller.signal,
+		});
+		const rejected = expect(operation).rejects.toThrow(
+			reason === "deadline" ? "decode timed out" : /abort/i
+		);
 		await vi.waitFor(() => expect(mocks.rejectTrack).not.toBeNull());
 		if (reason === "abort") controller.abort();
 		else await vi.advanceTimersByTimeAsync(10_000);
