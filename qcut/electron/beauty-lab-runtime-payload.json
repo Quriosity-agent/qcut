@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"profile": "qcut-independent-photo-v1-20261008",
-	"sourceManifestSha256": "925e392b3cf97da8a2791bb76a405ce833b126ac68d1bc4373c805bbc40719a0",
+	"sourceManifestSha256": "b33ca3ae2e87bbf45fd19eb9f94e3e3ea9ffe40f2989186f569eb1fe874be1d9",
 	"files": [
 		{
 			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/LuaRTTI.MarkGen.lua",
@@ -1747,6 +1747,26 @@
 			"path": "research/skin-mask-integer-128x176.onnx",
 			"bytes": 1961883,
 			"sha256": "035c68972f7358f91554f957c623621b703b79c3e01e3d7bdf504b046639c425"
+		},
+		{
+			"path": "research/skin-mask-integer-128x224.contract.json",
+			"bytes": 835,
+			"sha256": "79a9592a890a3075f64fb9e96be6778e0ca049c5173109cb237c62d656b0eacb"
+		},
+		{
+			"path": "research/skin-mask-integer-128x224.onnx",
+			"bytes": 1961883,
+			"sha256": "16b80e9f444dc85f3987e495146ae36fbafb8bf5254882e8001feed2dbf3a6b9"
+		},
+		{
+			"path": "research/skin-mask-integer-128x240.contract.json",
+			"bytes": 835,
+			"sha256": "b3bcd5f5837ea2e2e8bbb7390d198e4ec4bacc61e721be66881a6d52369f33f7"
+		},
+		{
+			"path": "research/skin-mask-integer-128x240.onnx",
+			"bytes": 1961883,
+			"sha256": "74b48d9cf3fd0af7f535221c1bcbef892bf5dccc32fe28788e138a1cd6f50589"
 		},
 		{
 			"path": "research/skin-mask-integer-224x128.contract.json",
