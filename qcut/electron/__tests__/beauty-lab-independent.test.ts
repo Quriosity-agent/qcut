@@ -128,6 +128,18 @@ function setup({
 						{ inputRgbaSha256: inputHash, outputRgbaSha256: outputHash },
 					],
 				};
+				if (args.includes("--source-evidence")) {
+					const manifest = await readFile(file({ flag: "--source-evidence" }));
+					const evidence = JSON.parse(manifest.toString()) as {
+						policy: string;
+						status: string;
+					};
+					report.sourceEvidence = {
+						manifestSha256: hash({ bytes: manifest }),
+						policy: evidence.policy,
+						status: evidence.status,
+					};
+				}
 				mutate?.(report);
 				await Promise.all([
 					writeFile(file({ flag: "--output" }), png),
@@ -149,6 +161,55 @@ function setup({
 }
 
 describe("independent photo provider", () => {
+	it("binds a source sidecar to the worker result and removes its private files", async () => {
+		const { provider, runJob } = setup();
+		const sourceEvidence = {
+			policy: "single-face-bidirectional-v1" as const,
+			status: "available" as const,
+			targetTimestampSeconds: 1,
+			frames: [0.92, 0.96, 1.04, 1.08].map((timestampSeconds) => ({
+				timestampSeconds,
+				rgba: request.rgba,
+			})),
+		};
+		const result = await provider.render({
+			request: { ...request, sourceEvidence },
+		});
+		expect(result.report.sourceEvidence).toMatchObject({
+			policy: sourceEvidence.policy,
+			status: "available",
+		});
+		const args = runJob.mock.calls[0][0].args;
+		const sidecar = args[args.indexOf("--source-evidence") + 1];
+		expect(path.basename(sidecar)).toBe("source-evidence.json");
+		await expect(readFile(sidecar)).rejects.toMatchObject({ code: "ENOENT" });
+		await expect(
+			readFile(path.join(path.dirname(sidecar), "source-evidence-0.rgba"))
+		).rejects.toMatchObject({ code: "ENOENT" });
+	});
+	it("rejects a result bound to another source sidecar", async () => {
+		const { provider } = setup({
+			mutate: (report) => {
+				report.sourceEvidence = {
+					manifestSha256: "wrong",
+					policy: "single-face-bidirectional-v1",
+					status: "unavailable",
+				};
+			},
+		});
+		await expect(
+			provider.render({
+				request: {
+					...request,
+					sourceEvidence: {
+						policy: "single-face-bidirectional-v1",
+						status: "unavailable",
+						reason: "insufficient-neighbors",
+					},
+				},
+			})
+		).rejects.toThrow(/receipt mismatch/);
+	});
 	it("accepts full HD pixels without reducing the frame dimensions", () => {
 		const rgba = new Uint8Array(1080 * 1920 * 4).fill(255);
 		const validated = independentBeautyAdjustments({
@@ -418,12 +479,15 @@ describe("independent photo provider", () => {
 		expect(runJob).not.toHaveBeenCalled();
 	});
 	it("blocks concurrent work and cancels only the current request, then permits retry", async () => {
+		let evidencePath = "";
 		let entered = () => {};
 		const started = new Promise<void>((resolve) => {
 			entered = resolve;
 		});
 		const { provider, runJob } = setup({
-			run: async ({ signal }) => {
+			run: async ({ signal, args }) => {
+				evidencePath = args[args.indexOf("--source-evidence") + 1];
+				await readFile(evidencePath);
 				entered();
 				await new Promise<void>((_resolve, reject) =>
 					signal.addEventListener(
@@ -434,7 +498,20 @@ describe("independent photo provider", () => {
 				);
 			},
 		});
-		const job = provider.render({ request });
+		const job = provider.render({
+			request: {
+				...request,
+				sourceEvidence: {
+					policy: "single-face-bidirectional-v1",
+					status: "available",
+					targetTimestampSeconds: 1,
+					frames: [0.92, 0.96, 1.04, 1.08].map((timestampSeconds) => ({
+						timestampSeconds,
+						rgba: request.rgba,
+					})),
+				},
+			},
+		});
 		const outcome = expect(job).rejects.toThrow("cancelled");
 		await started;
 		await expect(provider.render({ request })).rejects.toThrow("busy");
@@ -445,6 +522,12 @@ describe("independent photo provider", () => {
 			cancelled: true,
 		});
 		await outcome;
+		await expect(readFile(evidencePath)).rejects.toMatchObject({
+			code: "ENOENT",
+		});
+		await expect(
+			readFile(path.join(path.dirname(evidencePath), "source-evidence-0.rgba"))
+		).rejects.toMatchObject({ code: "ENOENT" });
 		expect(await provider.inspect()).toMatchObject({ available: true });
 		expect(runJob).toHaveBeenCalledOnce();
 		await provider.dispose();
