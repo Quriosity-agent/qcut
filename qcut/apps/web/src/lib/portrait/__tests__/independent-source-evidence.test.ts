@@ -196,6 +196,20 @@ describe("independent bidirectional source evidence", () => {
 		expect(mocks.dispose).toHaveBeenCalledOnce();
 	});
 
+	it.each([
+		new Error(""),
+		"",
+	])("keeps unavailable evidence valid for an empty decoder error: %j", async (error) => {
+		mocks.open.mockImplementationOnce(() => {
+			throw error;
+		});
+		await expect(reader()(target)).resolves.toMatchObject({
+			status: "unavailable",
+			reason: "Source evidence decode failed",
+		});
+		expect(mocks.dispose).toHaveBeenCalledOnce();
+	});
+
 	it("limits malicious or malformed streams with repeated source timestamps", async () => {
 		mocks.frames = Array.from({ length: 257 }, () => ({
 			timestamp: 1.8,
