@@ -7,13 +7,45 @@ import {
 	DEFAULT_MEDIA_CHROMA_KEY,
 } from "@/lib/video/video-properties";
 import { DEFAULT_MEDIA_CUSTOM_CUTOUT } from "@/lib/video/media-custom-cutout";
-import { renderFrame } from "@/lib/export/export-engine-renderer";
+import {
+	renderFrame,
+	type RenderContext,
+} from "@/lib/export/export-engine-renderer";
+import { buildExportRenderIndex } from "@/lib/export/export-render-index";
+import type { ExportCompositorConfig } from "@/lib/screen-recording/export-compositor";
+import { useScreenRecordingEnhancementStore } from "@/stores/screen-recording-store";
 import {
 	createCanvasCompositionPreviewPlan,
 	renderCanvasCompositionFrame,
 } from "../canvas-composition-frame";
 
-const mocks = vi.hoisted(() => ({ disposeAll: vi.fn(async () => {}) }));
+const mocks = vi.hoisted(() => ({
+	disposeAll: vi.fn(async () => {}),
+	compositors: [] as Array<{
+		config: ExportCompositorConfig;
+		renderFrame: ReturnType<typeof vi.fn>;
+		destroy: ReturnType<typeof vi.fn>;
+	}>,
+	compositorFailure: false,
+}));
+vi.mock("@/lib/screen-recording/export-compositor", () => ({
+	ScreenRecordingExportCompositor: class {
+		declare config: ExportCompositorConfig;
+		declare renderFrame: ReturnType<typeof vi.fn>;
+		declare destroy: ReturnType<typeof vi.fn>;
+		constructor(config: ExportCompositorConfig) {
+			const compositor = {
+				config,
+				renderFrame: vi.fn(() => {
+					if (mocks.compositorFailure) throw new Error("Compositor failed");
+				}),
+				destroy: vi.fn(),
+			};
+			Object.assign(this, compositor);
+			mocks.compositors.push(this);
+		}
+	},
+}));
 vi.mock("@/lib/export/export-engine-renderer", () => ({
 	renderFrame: vi.fn(async () => {}),
 }));
@@ -64,6 +96,9 @@ function fixture() {
 }
 
 describe("canvas composition preview", () => {
+	let actualRenderer:
+		| typeof import("@/lib/export/export-engine-renderer")
+		| undefined;
 	const originalContext = Object.getOwnPropertyDescriptor(
 		HTMLCanvasElement.prototype,
 		"getContext"
@@ -74,6 +109,11 @@ describe("canvas composition preview", () => {
 	);
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.compositors = [];
+		mocks.compositorFailure = false;
+		useScreenRecordingEnhancementStore.setState(
+			useScreenRecordingEnhancementStore.getInitialState()
+		);
 		vi.mocked(renderFrame).mockResolvedValue();
 		Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
 			configurable: true,
@@ -86,6 +126,10 @@ describe("canvas composition preview", () => {
 		});
 	});
 	afterEach(() => {
+		actualRenderer?.destroyExportCompositor();
+		useScreenRecordingEnhancementStore.setState(
+			useScreenRecordingEnhancementStore.getInitialState()
+		);
 		if (originalContext)
 			Object.defineProperty(
 				HTMLCanvasElement.prototype,
@@ -98,6 +142,118 @@ describe("canvas composition preview", () => {
 				"toBlob",
 				originalBlob
 			);
+	});
+
+	async function setupCompositorRenderer() {
+		actualRenderer = await vi.importActual<
+			typeof import("@/lib/export/export-engine-renderer")
+		>("@/lib/export/export-engine-renderer");
+		vi.mocked(renderFrame).mockImplementation(actualRenderer.renderFrame);
+		Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+			configurable: true,
+			value: vi.fn(() => ({
+				clearRect: vi.fn(),
+				fillRect: vi.fn(),
+				drawImage: vi.fn(),
+			})),
+		});
+		useScreenRecordingEnhancementStore.setState({
+			speedRegions: [{ id: "speed", startMs: 0, endMs: 1000, speed: 2 }],
+		});
+		return actualRenderer;
+	}
+
+	function emptyPlan({ width, height }: { width: number; height: number }) {
+		const input = { ...fixture(), width, height, tracks: [], mediaItems: [] };
+		return {
+			...input,
+			renderIndex: buildExportRenderIndex({
+				...input,
+				canvasWidth: width,
+				canvasHeight: height,
+			}),
+		};
+	}
+
+	it("uses fresh compositor settings and dimensions for each paused preview", async () => {
+		await setupCompositorRenderer();
+		await renderCanvasCompositionFrame({
+			plan: emptyPlan({ width: 640, height: 360 }),
+			frame: 1,
+			signal: new AbortController().signal,
+		});
+		const speedRegions = [{ id: "changed", startMs: 0, endMs: 2000, speed: 3 }];
+		useScreenRecordingEnhancementStore.setState({ speedRegions });
+		await renderCanvasCompositionFrame({
+			plan: emptyPlan({ width: 1080, height: 1920 }),
+			frame: 2,
+			signal: new AbortController().signal,
+		});
+		expect(mocks.compositors).toHaveLength(2);
+		expect(mocks.compositors[0].config).toMatchObject({
+			outputWidth: 640,
+			outputHeight: 360,
+			speedRegions: [{ id: "speed", speed: 2 }],
+		});
+		expect(mocks.compositors[1].config).toMatchObject({
+			outputWidth: 1080,
+			outputHeight: 1920,
+			speedRegions,
+		});
+		for (const compositor of mocks.compositors)
+			expect(compositor.destroy).toHaveBeenCalledOnce();
+	});
+
+	it("destroys an isolated compositor when its draw fails", async () => {
+		await setupCompositorRenderer();
+		mocks.compositorFailure = true;
+		await expect(
+			renderCanvasCompositionFrame({
+				plan: emptyPlan({ width: 640, height: 360 }),
+				frame: 1,
+				signal: new AbortController().signal,
+			})
+		).rejects.toThrow("Compositor failed");
+		expect(mocks.compositors[0].destroy).toHaveBeenCalledOnce();
+	});
+
+	it("keeps the export compositor alive across preview rendering and PNG encoding", async () => {
+		const renderer = await setupCompositorRenderer();
+		const canvas = document.createElement("canvas");
+		canvas.width = 1280;
+		canvas.height = 720;
+		const context: RenderContext = {
+			canvas,
+			ctx: canvas.getContext("2d")!,
+			tracks: [],
+			mediaItems: [],
+			videoCache: new Map(),
+			usedImages: new Set(),
+			fps: 30,
+		};
+		await renderer.renderFrame(context, 1);
+		let encode: BlobCallback | undefined;
+		Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", {
+			configurable: true,
+			value: (callback: BlobCallback) => {
+				encode = callback;
+			},
+		});
+		const preview = renderCanvasCompositionFrame({
+			plan: emptyPlan({ width: 640, height: 360 }),
+			frame: 1,
+			signal: new AbortController().signal,
+		});
+		await vi.waitFor(() => expect(encode).toBeDefined());
+		await renderer.renderFrame(context, 2);
+		encode?.(new Blob(["preview"]));
+		await preview;
+		await renderer.renderFrame(context, 3);
+		expect(mocks.compositors).toHaveLength(2);
+		expect(mocks.compositors[0].renderFrame).toHaveBeenCalledTimes(3);
+		expect(mocks.compositors[0].destroy).not.toHaveBeenCalled();
+		expect(mocks.compositors[1].renderFrame).toHaveBeenCalledOnce();
+		expect(mocks.compositors[1].destroy).toHaveBeenCalledOnce();
 	});
 
 	it("uses the export transition index, full resolution, sequential decoder and cancellation signal", async () => {
