@@ -18,6 +18,8 @@ import sys
 import time
 from pathlib import Path
 
+from independent_session_cache import cpu_session
+
 import numpy as np
 import onnxruntime as ort
 from PIL import Image
@@ -49,12 +51,8 @@ ASSUMPTIONS = {
 
 
 def session(name):
-    options = ort.SessionOptions()
-    options.intra_op_num_threads, options.inter_op_num_threads = 1, 1
-    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
     path = MODELS / name
-    return ort.InferenceSession(path.read_bytes(), sess_options=options,
-                                providers=["CPUExecutionProvider"])
+    return cpu_session(data=path.read_bytes(), optimize=False)
 
 
 SESSIONS = {
