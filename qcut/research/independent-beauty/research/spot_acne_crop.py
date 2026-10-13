@@ -1,4 +1,5 @@
 """Original photo to an independent 512-square crop; no spot/acne inference."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import argparse
 import hashlib
 import json
@@ -31,7 +32,7 @@ def run(*, rgba, runtime, output, phase='stabilized'):
     validate_rgba(rgba=rgba)
     if type(phase) is not str or phase not in ('seed', 'reset', 'stabilized'):
         raise ValueError('known crop phase required')
-    if np.any(rgba[..., 3] != 255) or max(rgba.shape[:2]) > 1280 or output.exists():
+    if np.any(rgba[..., 3] != 255) or max(rgba.shape[:2]) > source_edge_limit() or output.exists():
         raise ValueError('bounded opaque original and fresh crop directory required')
     prediction = predict(rgba=rgba, model_root=runtime/'research', stabilized=phase in ('seed', 'stabilized'),
                          still_profile='spot-acne')
@@ -44,11 +45,12 @@ def run(*, rgba, runtime, output, phase='stabilized'):
         directory = Path(temporary)
         rgba.tofile(directory/'input.rgba')
         (directory/'request.json').write_text(json.dumps({'width': rgba.shape[1], 'height': rgba.shape[0],
-            'affine': matrix.reshape(-1).tolist()}, allow_nan=False))
+            'affine': matrix.reshape(-1).tolist(), **gpu_request_fields()}, allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=60)
         pixels = (directory/'crop.f32').read_bytes()
         gpu = json.loads((directory/'gpu.json').read_text())
+        verify_gpu_resolution(receipt=gpu, rgba=rgba)
     values = np.frombuffer(pixels, '<f4').reshape(512, 512, 4)
     if (gpu['private_native_images'] or not np.isfinite(values).all()
             or hashlib.sha256(SOURCE.read_bytes()).hexdigest() != source_sha
