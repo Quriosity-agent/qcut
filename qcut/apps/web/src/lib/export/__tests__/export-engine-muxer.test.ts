@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { SequentialVideoRegistry } from "../export-sequential-video-source";
+import type { SequentialVideoFrameSource } from "../export-sequential-video-source";
 
 // Mock mediabunny before importing the engine
 const mockAdd = vi.fn().mockResolvedValue(undefined);
@@ -183,6 +185,7 @@ describe("ExportEngineMuxer", () => {
 
 	it("can be constructed with standard export engine arguments", () => {
 		const { canvas } = createMockCanvas();
+		const getContext = vi.spyOn(canvas, "getContext");
 		const engine = new ExportEngineMuxer(
 			canvas,
 			{
@@ -197,6 +200,113 @@ describe("ExportEngineMuxer", () => {
 			2
 		);
 		expect(engine).toBeDefined();
+		expect(getContext).toHaveBeenNthCalledWith(1, "2d", {
+			willReadFrequently: false,
+			alpha: true,
+			desynchronized: false,
+		});
+	});
+
+	it("preserves preview alpha and desynchronization with the shared composition hint", () => {
+		const { canvas } = createMockCanvas();
+		const getContext = vi.spyOn(canvas, "getContext");
+		new ExportEngineMuxer(
+			canvas,
+			{
+				format: "mp4",
+				quality: "720p",
+				filename: "preview.mp4",
+				width: 1280,
+				height: 720,
+				purpose: "preview",
+			},
+			[],
+			[],
+			2
+		);
+		expect(getContext).toHaveBeenNthCalledWith(1, "2d", {
+			willReadFrequently: false,
+			alpha: false,
+			desynchronized: true,
+		});
+	});
+
+	it.each([
+		false,
+		true,
+	])("paints the project background behind contained video with crop=%s", async (cropped) => {
+		const { canvas, mockCtx } = createMockCanvas(4, 4);
+		const source = document.createElement("canvas");
+		source.width = 4;
+		source.height = 2;
+		const decoder = vi
+			.spyOn(SequentialVideoRegistry.prototype, "getOrOpen")
+			.mockResolvedValue({
+				frameAt: async () => ({ canvas: source, timestamp: 0, duration: 1 }),
+				dispose: async () => {},
+			} as unknown as SequentialVideoFrameSource);
+		const backgrounds: Array<{
+			color: string | CanvasGradient | CanvasPattern;
+			bounds: number[];
+		}> = [];
+		vi.mocked(mockCtx.fillRect).mockImplementation((...bounds) => {
+			backgrounds.push({ color: mockCtx.fillStyle, bounds });
+		});
+		try {
+			const engine = new ExportEngineMuxer(
+				canvas,
+				{
+					format: "mp4",
+					quality: "720p",
+					filename: "background.mp4",
+					width: 4,
+					height: 4,
+					backgroundColor: "#14283c",
+				},
+				[
+					{
+						id: "track",
+						name: "Video",
+						type: "media",
+						elements: [
+							{
+								id: "clip",
+								name: "Clip",
+								type: "media",
+								mediaId: "video",
+								startTime: 0,
+								duration: 1,
+								trimStart: 0,
+								trimEnd: 0,
+								fitMode: "contain",
+								...(cropped
+									? { crop: { left: 0.25, right: 0, top: 0, bottom: 0 } }
+									: {}),
+							},
+						],
+					},
+				],
+				[
+					{
+						id: "video",
+						name: "Video",
+						type: "video",
+						file: new File(["source"], "source.mp4"),
+						url: "blob:source",
+					},
+				],
+				1
+			);
+			await engine.renderFrame(0);
+			expect(backgrounds).toEqual([{ color: "#14283c", bounds: [0, 0, 4, 4] }]);
+			expect(mockCtx.drawImage).toHaveBeenCalledWith(source, 0, 1, 4, 2);
+			if (cropped) expect(mockCtx.rect).toHaveBeenCalledWith(1, 0, 3, 4);
+			expect(
+				vi.mocked(mockCtx.fillRect).mock.invocationCallOrder[0]
+			).toBeLessThan(vi.mocked(mockCtx.drawImage).mock.invocationCallOrder[0]);
+		} finally {
+			decoder.mockRestore();
+		}
 	});
 
 	it("exports a Blob using mediabunny pipeline", async () => {
