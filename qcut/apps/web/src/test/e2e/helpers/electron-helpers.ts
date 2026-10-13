@@ -587,8 +587,10 @@ export async function createTestProject(
  */
 export async function startElectronApp({
 	userDataDirectory,
+	colorProfile,
 }: {
 	userDataDirectory?: string;
+	colorProfile?: "srgb";
 } = {}) {
 	// The editor HTTP API always requires a bearer token. Fix one in this
 	// worker's environment so helpers that read QCUT_API_TOKEN match the app.
@@ -598,6 +600,7 @@ export async function startElectronApp({
 		args: [
 			"dist/electron/main.js",
 			...(userDataDirectory ? [`--user-data-dir=${userDataDirectory}`] : []),
+			...(colorProfile ? [`--force-color-profile=${colorProfile}`] : []),
 		],
 		env: {
 			...process.env,
