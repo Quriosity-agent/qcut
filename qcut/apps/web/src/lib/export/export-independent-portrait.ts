@@ -1,4 +1,5 @@
 import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
+import { NativePortraitSourceWindowError } from "@/lib/portrait/portrait-temporal-policy";
 import {
 	independentPortraitIssueMessage,
 	independentPortraitRequest,
@@ -31,6 +32,7 @@ export function rethrowIndependentPortraitExportError({
 	signal?: AbortSignal;
 }) {
 	signal?.throwIfAborted();
+	if (error instanceof NativePortraitSourceWindowError) throw error;
 	if (error instanceof IndependentPortraitExportError) throw error;
 	if (
 		adjustments?.engine === "independent" &&
