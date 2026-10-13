@@ -124,6 +124,94 @@ class WorkerAlignmentTests(unittest.TestCase):
         self.assertNotEqual(first["points"], second["points"])
         self.assertEqual(first, repeated)
 
+    def test_classified_non_face_rejected_before_output_coordinates(self):
+        self.heads[120]["fc_landmark_s1"].fill(400)
+        self.heads[120]["prob"].fill(.999)
+        with self.assertRaisesRegex(ValueError, "photo candidate rejected"):
+            self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8),
+                                  {"box": [80, 120, 180, 240]})
+
+    def test_photo_normalizes_only_accepted_final_points(self):
+        import alignment_sequence
+        with patch.object(alignment_sequence, "normalized", wraps=alignment_sequence.normalized) as normalize:
+            result = self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8),
+                                           {"box": [80, 120, 180, 240]})
+        normalize.assert_not_called()
+        self.assertEqual(len(result["normalized_points"]), 106)
+
+    def test_warm_classification_cannot_replace_final_acceptance_policy(self):
+        warm = {name: values.copy() for name, values in self.heads[120].items()}
+        warm["prob"].fill(.999)
+        self.models[120].infer.side_effect = [warm, self.heads[120]]
+        result = self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8),
+                                      {"box": [80, 120, 180, 240]})
+        self.assertEqual(result["prob"], self.heads[120]["prob"].reshape(-1).tolist())
+
+    def test_seed_rejection_precedes_pathological_reset_without_relaxing_affine_bounds(self):
+        from alignment_photo import RejectedPhotoFace
+        from alignment_sequence import Sequence
+        from alignment_transform import fit
+        target = np.random.default_rng(64).uniform(40, 120, (106, 2)).astype(np.float32)
+        collapsed = target / np.float32(64) + np.array([308, 575], np.float32)
+        with self.assertRaisesRegex(ValueError, "bounded float32 forward affine"):
+            fit(source=collapsed, target=target)
+        original = Sequence.process
+
+        def pathological_reset(engine, **kwargs):
+            if kwargs["index"] == 1:
+                fit(source=collapsed, target=target)
+            return original(engine, **kwargs)
+
+        for probability, rejected in ((.993, True), (.5, False), (.1, False)):
+            self.heads[160]["prob"].fill(probability)
+            with self.subTest(probability=probability), patch.object(Sequence, "process", autospec=True, side_effect=pathological_reset) as process:
+                with self.assertRaises(ValueError) as caught:
+                    self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8), {"box": [80, 120, 180, 240]})
+                self.assertEqual(isinstance(caught.exception, RejectedPhotoFace), rejected)
+                self.assertEqual(process.call_count, 1 if rejected else 2)
+
+    def test_rejected_seed_does_not_enter_extra_refinement(self):
+        from alignment_photo import RejectedPhotoFace
+        from extra_photo import interleaved_face
+        self.heads[160]["prob"].fill(.993)
+        with patch("extra_photo.extra_pass", side_effect=AssertionError("Extra must not run")) as extra:
+            with self.assertRaises(RejectedPhotoFace):
+                interleaved_face(rgba=np.full((640, 426, 4), 128, np.uint8),
+                    face={"box": [80, 120, 180, 240], "algorithm_box": [80, 120, 180, 240]},
+                    model_root=Path("unused"), means={}, model=Mock(),
+                    alignment_assets=self.assets, alignment_models=self.models)
+            extra.assert_not_called()
+
+    def test_valid_seed_boundary_preserves_points_and_sampling(self):
+        pixels = np.full((640, 426, 4), 128, np.uint8)
+        face = {"box": [80, 120, 180, 240]}
+        first = self.worker.landmarks(pixels, face)
+        self.heads[160]["prob"].fill(.5)
+        boundary = self.worker.landmarks(pixels, face)
+        for key in ("points", "algorithm_points", "normalized_points", "input_tensor_sha256", "seed_tensor_sha256"):
+            self.assertEqual(first[key], boundary[key])
+        self.assertEqual(boundary["prediction_sizes"], [160, 120, 120])
+
+    def test_invalid_seed_probability_is_fatal_before_reset(self):
+        from alignment_photo import RejectedPhotoFace
+        from alignment_sequence import Sequence
+        for probability in (np.nan, np.inf, -1, 2, "invalid"):
+            self.heads[160]["prob"] = np.array([probability])
+            with self.subTest(probability=probability), patch.object(Sequence, "process", autospec=True, side_effect=Sequence.process) as process:
+                with self.assertRaises((ValueError, TypeError)) as caught:
+                    self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8), {"box": [80, 120, 180, 240]})
+                self.assertNotIsInstance(caught.exception, RejectedPhotoFace)
+                self.assertEqual(process.call_count, 1)
+
+    def test_accepted_nonfinite_or_outside_points_remain_errors(self):
+        for value in (400, np.nan):
+            with self.subTest(value=value):
+                self.heads[120]["fc_landmark_s1"].fill(value)
+                with self.assertRaises(ValueError) as caught:
+                    self.worker.landmarks(np.full((640, 426, 4), 128, np.uint8),
+                                          {"box": [80, 120, 180, 240]})
+                self.assertNotIn("photo candidate rejected", str(caught.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
