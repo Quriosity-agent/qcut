@@ -12,6 +12,7 @@ import {
 	beginClipTransitionLayer,
 	buildExportClipTransitionPlan,
 	classifyCanvasClipTransition,
+	destroyClipTransitionLayer,
 	parseClipTransitionClipPath,
 } from "../export-clip-transitions";
 
@@ -364,6 +365,50 @@ describe("beginClipTransitionLayer", () => {
 			canvasHeight: size.height,
 		});
 	}
+
+	it("uses the composition hint when allocating and recreating a transition group", () => {
+		const group = mockContext(size);
+		function mockGetContext(contextId: "2d"): CanvasRenderingContext2D | null;
+		function mockGetContext(contextId: "webgpu"): GPUCanvasContext | null;
+		function mockGetContext(
+			contextId: string
+		): CanvasRenderingContext2D | GPUCanvasContext | null {
+			return contextId === "2d" ? group : null;
+		}
+		const getContext = vi
+			.spyOn(HTMLCanvasElement.prototype, "getContext")
+			.mockImplementation(mockGetContext);
+		const draw = () => {
+			const layer = beginClipTransitionLayer({
+				ctx: mockContext(size),
+				...size,
+				presentation: presentation({
+					overrides: { type: "dissolve" },
+					role: "to",
+					progress: 0.5,
+				}),
+				anchor: { x: 0, y: 0 },
+			});
+			expect(layer.active).toBe(true);
+			layer.finish();
+		};
+		destroyClipTransitionLayer();
+		try {
+			draw();
+			draw();
+			expect(getContext).toHaveBeenCalledExactlyOnceWith("2d", {
+				willReadFrequently: false,
+			});
+			destroyClipTransitionLayer();
+			draw();
+			expect(getContext).toHaveBeenNthCalledWith(2, "2d", {
+				willReadFrequently: false,
+			});
+		} finally {
+			destroyClipTransitionLayer();
+			getContext.mockRestore();
+		}
+	});
 
 	it("draws untouched layers straight onto the export canvas", () => {
 		const main = mockContext(size);
