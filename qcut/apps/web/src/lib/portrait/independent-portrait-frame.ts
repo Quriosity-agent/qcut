@@ -3,7 +3,7 @@ import {
 	independentPortraitIssueMessage,
 	independentPortraitRequest,
 } from "./independent-portrait-adjustments";
-import { INDEPENDENT_PORTRAIT_MAX_EDGE } from "./portrait-processing-size";
+import { independentPortraitDimensionsValid } from "./portrait-processing-size";
 
 /**
  * Engine failures arrive wrapped by IPC around a Python traceback; keep only
@@ -11,9 +11,8 @@ import { INDEPENDENT_PORTRAIT_MAX_EDGE } from "./portrait-processing-size";
  */
 export function independentPortraitErrorMessage({ error }: { error: unknown }) {
 	const text = error instanceof Error ? error.message : String(error);
-	// The pinned skin model has no profile for some aspect ratios, e.g. 9:16.
 	if (text.includes("unverified skin segmentation profile"))
-		return "自研美颜的磨皮、美白暂不支持这个画面比例（例如竖屏 9:16），可改用原生，或使用 16:9、3:4 等画布";
+		return "自研美颜的磨皮、美白暂不支持这个画面比例，可改用原生，或使用 16:9、9:16、3:4 等画布";
 	const exceptions = [
 		// Tracebacks arrive JSON-escaped, so lines end in a literal "\n".
 		...text.matchAll(/(?:^|\s|\\n)([A-Z]\w*(?:Error|Exception)): ([^\\"\n]+)/g),
@@ -49,8 +48,10 @@ export async function renderIndependentPortraitFrame({
 			independentPortraitIssueMessage({ issue: converted.issue })
 		);
 	const { width, height } = source;
-	if (Math.max(width, height) > INDEPENDENT_PORTRAIT_MAX_EDGE)
-		throw new Error("自研美颜处理尺寸超过最长边 1280");
+	if (!independentPortraitDimensionsValid({ width, height }))
+		throw new Error(
+			"自研美颜需要有效画面尺寸，最长边不超过 4096，总像素不超过 8294400"
+		);
 	const api = window.electronAPI?.beautyLab;
 	if (!api?.renderIndependentFrame || !api.cancelIndependent)
 		throw new Error("自研美颜需要 QCut 桌面版");
