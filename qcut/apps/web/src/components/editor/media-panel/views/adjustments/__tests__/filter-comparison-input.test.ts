@@ -57,12 +57,45 @@ describe("comparison image preparation", () => {
 		).rejects.toThrow("PNG");
 	});
 	it.each([
-		{ width: 1080, height: 1920, expectedWidth: 1080, expectedHeight: 1920 },
-		{ width: 3840, height: 2160, expectedWidth: 3840, expectedHeight: 2160 },
-		{ width: 4096, height: 4096, expectedWidth: 2880, expectedHeight: 2880 },
-	])("honors Beauty Lab HD limits without changing filter defaults: %j", async ({
+		{
+			width: 1080,
+			height: 1920,
+			maxPixels: 3840 * 2160,
+			expectedWidth: 1080,
+			expectedHeight: 1920,
+		},
+		{
+			width: 3840,
+			height: 2160,
+			maxPixels: 3840 * 2160,
+			expectedWidth: 3840,
+			expectedHeight: 2160,
+		},
+		{
+			width: 4096,
+			height: 4096,
+			maxPixels: 3840 * 2160,
+			expectedWidth: 2880,
+			expectedHeight: 2880,
+		},
+		{
+			width: 10,
+			height: 10,
+			maxPixels: 100,
+			expectedWidth: 10,
+			expectedHeight: 10,
+		},
+		{
+			width: 10,
+			height: 10,
+			maxPixels: 99,
+			expectedWidth: 9,
+			expectedHeight: 9,
+		},
+	])("honors pixel limits and reports actual dimension changes: %j", async ({
 		width,
 		height,
+		maxPixels,
 		expectedWidth,
 		expectedHeight,
 	}) => {
@@ -86,14 +119,14 @@ describe("comparison image preparation", () => {
 		const result = await readComparisonImage({
 			file: new File(["image"], "test.png", { type: "image/png" }),
 			maxEdge: 4096,
-			maxPixels: 3840 * 2160,
+			maxPixels,
 		});
 		expect(result).toMatchObject({
 			width: expectedWidth,
 			height: expectedHeight,
 			resized: width !== expectedWidth || height !== expectedHeight,
 		});
-		expect(result.width * result.height).toBeLessThanOrEqual(3840 * 2160);
+		expect(result.width * result.height).toBeLessThanOrEqual(maxPixels);
 		expect(drawImage).toHaveBeenCalledWith(
 			bitmap,
 			0,
