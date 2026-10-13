@@ -1,4 +1,5 @@
 import { platform } from "@qcut/platform-core";
+import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import {
 	extractImageSources,
@@ -275,6 +276,14 @@ export function canUseNativeCompositionPreview({
 		) {
 			return false;
 		}
+		// FFmpeg composition sources do not contain the portrait renderer's output.
+		if (
+			hasMediaPortraitAdjustments({
+				adjustments: active.element.portraitAdjustments,
+			})
+		) {
+			return false;
+		}
 		hasVisualMedia = true;
 		hasVisualEdits ||= hasMediaVisualEdits(active.element);
 	}
@@ -520,5 +529,5 @@ export function useNativeCompositionFramePreview({
 		[]
 	);
 
-	return state;
+	return enabled ? state : { status: "idle" };
 }
