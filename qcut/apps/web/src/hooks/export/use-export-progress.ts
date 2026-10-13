@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useExportStore } from "@/stores/export-store";
+import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import { playCompletionChime } from "@/lib/audio/completion-chime";
@@ -96,6 +97,8 @@ export function useExportProgress() {
 			propagateErrors?: boolean;
 		}
 	) => {
+		const backgroundColor =
+			useProjectStore.getState().activeProject?.backgroundColor ?? "#000000";
 		// Reset any previous errors
 		setError(null);
 		resetExport();
@@ -224,6 +227,7 @@ export function useExportProgress() {
 					filename: exportSettings.filename,
 					frameRate: exportSettings.frameRate,
 					outputPath: exportSettings.outputPath,
+					backgroundColor,
 					includeAudio: exportSettings.includeAudio,
 					audioCodec: exportSettings.audioCodec,
 					audioBitrate: exportSettings.audioBitrate,
