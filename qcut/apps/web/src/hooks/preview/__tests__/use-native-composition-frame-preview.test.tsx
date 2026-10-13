@@ -335,6 +335,55 @@ describe("native composition frame preview", () => {
 		).toBe(false);
 	});
 
+	it.each([
+		"native",
+		"independent",
+	] as const)("keeps %s face shaping and makeup on the portrait renderer during crop and transitions", (engine) => {
+		for (const portraitAdjustments of [
+			{ enabled: true, engine, values: { face_adjust_TotalFace: 25 } },
+			{
+				enabled: true,
+				engine,
+				values: {},
+				makeup: { lip: { cardId: "lip-coral-nude", intensity: 35 } },
+			},
+		]) {
+			expect(
+				canUseNativeCompositionPreview({
+					activeElements: [
+						activeVideo(),
+						activeVideo({
+							overrides: {
+								portraitAdjustments,
+								crop: { top: 0, left: 0.1, right: 0, bottom: 0 },
+							},
+						}),
+					],
+					hasActiveTransition: true,
+				})
+			).toBe(false);
+		}
+	});
+
+	it("retains composition preview for disabled and neutral portrait settings", () => {
+		for (const portraitAdjustments of [
+			{ enabled: false, values: { face_adjust_TotalFace: 25 } },
+			{ enabled: true, values: { face_adjust_TotalFace: 0 } },
+			{
+				enabled: true,
+				values: {},
+				makeup: { lip: { cardId: "lip-coral-nude", intensity: 0 } },
+			},
+		]) {
+			expect(
+				canUseNativeCompositionPreview({
+					activeElements: [activeVideo({ overrides: { portraitAdjustments } })],
+					hasActiveTransition: true,
+				})
+			).toBe(true);
+		}
+	});
+
 	it("keeps canonical text animations on the live preview renderer", () => {
 		expect(
 			canUseNativeCompositionPreview({
@@ -648,5 +697,62 @@ describe("native composition frame preview", () => {
 		);
 		rerender({ currentTime: 0.8 });
 		await waitFor(() => expect(cancelVideoFramePreview).toHaveBeenCalled());
+	});
+
+	it("removes a ready composition in the first render after portrait activation", async () => {
+		const disabledStates: string[] = [];
+		const props = hookProps();
+		const { result, rerender } = renderHook(
+			({ enabled }) => {
+				const state = useNativeCompositionFramePreview({ ...props, enabled });
+				if (!enabled) disabledStates.push(state.status);
+				return state;
+			},
+			{ initialProps: { enabled: true } }
+		);
+		await waitFor(() => expect(result.current.status).toBe("ready"));
+		rerender({ enabled: false });
+		expect(disabledStates.length).toBeGreaterThan(0);
+		expect(disabledStates.every((status) => status === "idle")).toBe(true);
+		expect(result.current.url).toBeUndefined();
+	});
+
+	it("discards an in-flight composition after portrait activation", async () => {
+		let complete:
+			| ((value: {
+					requestId: string;
+					pngData: Uint8Array;
+					timelineTime: number;
+					cacheHit: boolean;
+			  }) => void)
+			| undefined;
+		renderVideoCompositionFramePreview.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					complete = resolve;
+				})
+		);
+		const props = hookProps();
+		const { result, rerender } = renderHook(
+			({ enabled }) => useNativeCompositionFramePreview({ ...props, enabled }),
+			{ initialProps: { enabled: true } }
+		);
+		await waitFor(() =>
+			expect(renderVideoCompositionFramePreview).toHaveBeenCalledTimes(1)
+		);
+		const request = renderVideoCompositionFramePreview.mock.calls[0][0];
+		rerender({ enabled: false });
+		expect(cancelVideoFramePreview).toHaveBeenCalledWith(request.requestId);
+		await act(async () => {
+			if (!complete) throw new Error("Composition request did not start");
+			complete({
+				requestId: request.requestId,
+				pngData: new Uint8Array([137, 80, 78, 71]),
+				timelineTime: 0.4,
+				cacheHit: false,
+			});
+		});
+		expect(result.current).toEqual({ status: "idle" });
+		expect(createObjectURL).not.toHaveBeenCalled();
 	});
 });
