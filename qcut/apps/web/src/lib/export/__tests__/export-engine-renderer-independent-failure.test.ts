@@ -6,6 +6,7 @@ import type { SequentialVideoRegistry } from "../export-sequential-video-source"
 import { renderFrame, type RenderContext } from "../export-engine-renderer";
 import { rethrowIndependentPortraitExportError } from "../export-independent-portrait";
 import * as mediaProperties from "@/lib/video/video-properties";
+import * as canvasEffects from "@/lib/effects/effects-utils";
 
 const effects = vi.hoisted(() => ({ enabled: true }));
 
@@ -134,6 +135,9 @@ function fixture({
 		naturalHeight: 2,
 		complete: true,
 	} as HTMLImageElement;
+	const decode = vi.fn(async () => ({
+		frameAt: async () => ({ canvas, timestamp: 0, duration: 1 / 30 }),
+	}));
 	const context: RenderContext = {
 		ctx,
 		canvas,
@@ -145,13 +149,11 @@ function fixture({
 		usedImages: new Set(),
 		imageCache: new Map([[mediaItem.url as string, Promise.resolve(image)]]),
 		sequentialVideo: {
-			getOrOpen: vi.fn(async () => ({
-				frameAt: async () => ({ canvas, timestamp: 0, duration: 1 / 30 }),
-			})),
+			getOrOpen: decode,
 			disposeAll: vi.fn(async () => {}),
 		} as unknown as SequentialVideoRegistry,
 	};
-	return { context, ctx };
+	return { context, ctx, decode };
 }
 
 let provider: ReturnType<typeof vi.fn>;
@@ -189,6 +191,63 @@ afterEach(() => {
 });
 
 describe("independent portrait export failure", () => {
+	it("retries a transient decoder failure before applying independent beauty", async () => {
+		const { context, ctx, decode } = fixture({ type: "video" });
+		decode.mockRejectedValueOnce(new Error("sequential decode unavailable"));
+		await expect(renderFrame(context, 0)).resolves.toBeUndefined();
+		expect(decode).toHaveBeenCalledTimes(2);
+		expect(provider).toHaveBeenCalledOnce();
+		expect(ctx.drawImage).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		"image",
+		"video",
+	] as const)("still applies independent beauty when unrelated %s effects fail", async (type) => {
+		const { context, ctx } = fixture({ type });
+		const applyEffects = vi
+			.spyOn(canvasEffects, "applyEffectsToCanvas")
+			.mockImplementationOnce(() => {
+				throw new Error("generic effect unavailable");
+			});
+		await expect(renderFrame(context, 0)).resolves.toBeUndefined();
+		expect(applyEffects).toHaveBeenCalledOnce();
+		expect(provider).toHaveBeenCalledOnce();
+		expect(ctx.drawImage).toHaveBeenCalledOnce();
+		expect(vi.mocked(ctx.save).mock.calls.length).toBe(
+			vi.mocked(ctx.restore).mock.calls.length
+		);
+	});
+
+	it("retains unrelated image-load failure handling for independent clips", async () => {
+		const { context, ctx } = fixture({ type: "image" });
+		context.imageCache?.set(
+			"blob:portrait-image",
+			Promise.reject(new Error("image failed to load"))
+		);
+		await expect(renderFrame(context, 0)).resolves.toBeUndefined();
+		expect(provider).not.toHaveBeenCalled();
+		expect(ctx.drawImage).not.toHaveBeenCalled();
+	});
+
+	it("does not retry a decoder failure after cancellation", async () => {
+		const controller = new AbortController();
+		const { context, ctx, decode } = fixture({
+			type: "video",
+			signal: controller.signal,
+		});
+		decode.mockImplementationOnce(async () => {
+			controller.abort(new Error("Export cancelled during decode"));
+			throw new Error("decoder unavailable");
+		});
+		await expect(renderFrame(context, 0)).rejects.toThrow(
+			"Export cancelled during decode"
+		);
+		expect(decode).toHaveBeenCalledOnce();
+		expect(provider).not.toHaveBeenCalled();
+		expect(ctx.drawImage).not.toHaveBeenCalled();
+	});
+
 	it("propagates an animated independent failure with generic effects disabled", async () => {
 		effects.enabled = false;
 		const { context, ctx } = fixture({ type: "video" });
