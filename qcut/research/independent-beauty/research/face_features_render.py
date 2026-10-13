@@ -43,7 +43,7 @@ def build_face_feature_mesh(*, prediction, size, controls, runtime):
         pitch=prediction['consumer_pose']['pitch'])
 
 
-def render_rgba(*, rgba, controls, runtime):
+def render_rgba(*, rgba, controls, runtime, source_evidence=None):
     controls = normalize_controls(values=controls)
     validate_rgba(rgba=rgba)
     if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
@@ -56,7 +56,7 @@ def render_rgba(*, rgba, controls, runtime):
         from worker import MODELS
         if MODELS.resolve() != (runtime / 'research').resolve():
             raise ValueError('face and features runtime must match the configured face model directory')
-        prediction = single_face_prediction(rgba=rgba)
+        prediction = single_face_prediction(rgba=rgba, **({'source_evidence': source_evidence} if source_evidence is not None else {}))
         mesh = build_face_feature_mesh(prediction=prediction, size=[rgba.shape[1], rgba.shape[0]],
                                        controls=controls, runtime=runtime)
         vertices = np.column_stack((mesh['clip_positions'], mesh['texcoords']))
