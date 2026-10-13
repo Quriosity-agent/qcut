@@ -702,8 +702,8 @@
 		},
 		{
 			"path": "research/makeup_blend.py",
-			"bytes": 5103,
-			"sha256": "c3fb83f0e88304a7b8ec2c9d435f24c42d49eb25e5d5926f14eb5a8b75d654cc",
+			"bytes": 5263,
+			"sha256": "46bd490a7030bcc360d2811445113e283a04a9d12079a05c027b45ad96e74d74",
 			"sourceSha256": "ff6bf69ab5faeb009493c0962cd43393beba32fa470adcfc8f2c655e0001f5ce"
 		},
 		{
@@ -1332,8 +1332,8 @@
 		},
 		{
 			"path": "research/tests/test_makeup_blend.py",
-			"bytes": 4690,
-			"sha256": "65d16cb2b372de1bffd060c51ac651aa77f097eccd763edc043b00f5863371a9",
+			"bytes": 7162,
+			"sha256": "97a58209125e97753be0a03d6e8d9694dcd9beb98779d1cde0be82c68977bb44",
 			"sourceSha256": "e3a73f087ce45f08c96a14f5243ccbc0245e650579fb522228c834687bf4ae5c"
 		},
 		{
@@ -1765,201 +1765,135 @@
 			"upstreamCommits": [
 				{
 					"commit": "4ceb2d5e929be006396e0fe6945553900bcd22a4",
-					"files": [
-						"research/contacts_layers.py"
-					]
+					"files": ["research/contacts_layers.py"]
 				},
 				{
 					"commit": "8cb3203c856e0ccc2203ec8f4c4a12a8b0bbea46",
-					"files": [
-						"research/contacts_render.py"
-					]
+					"files": ["research/contacts_render.py"]
 				},
 				{
 					"commit": "b935792c0b53e6993ff7e96dc87254520d24b03d",
-					"files": [
-						"research/dynamic_makeup_render.py"
-					]
+					"files": ["research/dynamic_makeup_render.py"]
 				},
 				{
 					"commit": "89f0ce15db6888056a6f6ee6a91f96038b7c2b4f",
-					"files": [
-						"research/face_features_render.py"
-					]
+					"files": ["research/face_features_render.py"]
 				},
 				{
 					"commit": "56a0006f69f8caa2848f7abb303865e2745963f3",
-					"files": [
-						"research/facefitting_image.py"
-					]
+					"files": ["research/facefitting_image.py"]
 				},
 				{
 					"commit": "3f8828e80d71f69466fb0765fe48728d54d66fb2",
-					"files": [
-						"research/flowgan_frame.py"
-					]
+					"files": ["research/flowgan_frame.py"]
 				},
 				{
 					"commit": "43806efbbcd262f0a654321bc703c5840e0a06e8",
-					"files": [
-						"research/flowgan_frame.swift"
-					]
+					"files": ["research/flowgan_frame.swift"]
 				},
 				{
 					"commit": "cb7b88c4b0f1eacd80e3e159f9bb6f3c0026f4a7",
-					"files": [
-						"research/flowgan_metal.py"
-					]
+					"files": ["research/flowgan_metal.py"]
 				},
 				{
 					"commit": "3f8087258df0b9291fa36f939031727293698c42",
-					"files": [
-						"research/flowgan_metal.swift"
-					]
+					"files": ["research/flowgan_metal.swift"]
 				},
 				{
 					"commit": "585bfc25c0e92241339dcd2ba682f2d6c8720498",
-					"files": [
-						"research/flowgan_render.py"
-					]
+					"files": ["research/flowgan_render.py"]
 				},
 				{
 					"commit": "58e192c1ac39857d897fb2dc9fd4e6bbff75cfbc",
-					"files": [
-						"research/jawline_render.py"
-					]
+					"files": ["research/jawline_render.py"]
 				},
 				{
 					"commit": "576a2f68a8400d1f5bb41ba98571be4d8c8445c6",
-					"files": [
-						"research/jawline_support.py"
-					]
+					"files": ["research/jawline_support.py"]
 				},
 				{
 					"commit": "3971c3f0cd9e74cda8d6d31bf89873c613128839",
-					"files": [
-						"research/liquefy_combination_render.py"
-					]
+					"files": ["research/liquefy_combination_render.py"]
 				},
 				{
 					"commit": "b56e03a651d2b52e5308bcfa8f2419aafc552d4d",
-					"files": [
-						"research/look_render.py"
-					]
+					"files": ["research/look_render.py"]
 				},
 				{
 					"commit": "14e1fa8356353e99c73e9f6b85b9669b15b54728",
-					"files": [
-						"research/makeup3d_metal.py"
-					]
+					"files": ["research/makeup3d_metal.py"]
 				},
 				{
 					"commit": "af1670106f17ee11c65c69ccacf26f49344d403e",
-					"files": [
-						"research/makeup3d_metal.swift"
-					]
+					"files": ["research/makeup3d_metal.swift"]
 				},
 				{
 					"commit": "c02de1d67a908f0c8d7e419c436cd742a825872f",
-					"files": [
-						"research/makeup3d_render.py"
-					]
+					"files": ["research/makeup3d_render.py"]
 				},
 				{
 					"commit": "c1ccaa1ea36c60c2fdbd60718b6d50b430c34f07",
-					"files": [
-						"research/makeup_blend.py"
-					]
+					"files": ["research/makeup_blend.py"]
 				},
 				{
 					"commit": "31c5b7892b08e33dce1b979cd5a2434a7ec10e47",
-					"files": [
-						"research/render_resolution.py"
-					]
+					"files": ["research/render_resolution.py"]
 				},
 				{
 					"commit": "8eecdf2822bd923a9ea48dba94774e2bedf6e1b9",
-					"files": [
-						"research/skin_gan_render.py"
-					]
+					"files": ["research/skin_gan_render.py"]
 				},
 				{
 					"commit": "f8f7fc699b94b0068baf54210282fc09c2296981",
-					"files": [
-						"research/skin_mask_frontend.py"
-					]
+					"files": ["research/skin_mask_frontend.py"]
 				},
 				{
 					"commit": "0d6378141ef2cd677f0865856c81caff7bb2763d",
-					"files": [
-						"research/slimface_render.py"
-					]
+					"files": ["research/slimface_render.py"]
 				},
 				{
 					"commit": "3cf1152b292828cf7222be859d58fb8d4e23e65d",
-					"files": [
-						"research/smooth_geometry.py"
-					]
+					"files": ["research/smooth_geometry.py"]
 				},
 				{
 					"commit": "9ed7aa640bf96ca0864de037c9043962ce6a3392",
-					"files": [
-						"research/smooth_metal.py"
-					]
+					"files": ["research/smooth_metal.py"]
 				},
 				{
 					"commit": "bdfad8ab384ad05e7d1dd0fc7a573e2707eca330",
-					"files": [
-						"research/smooth_render.py"
-					]
+					"files": ["research/smooth_render.py"]
 				},
 				{
 					"commit": "701753ce7407f566e4c27711e166255513b994af",
-					"files": [
-						"research/spot_acne_crop.py"
-					]
+					"files": ["research/spot_acne_crop.py"]
 				},
 				{
 					"commit": "14fd81112769c185fa140fb1195eabb4579f1366",
-					"files": [
-						"research/spot_acne_crop.swift"
-					]
+					"files": ["research/spot_acne_crop.swift"]
 				},
 				{
 					"commit": "2217143bfff7dfac48149726f34e0bc742bab1a8",
-					"files": [
-						"research/spot_acne_metal.py"
-					]
+					"files": ["research/spot_acne_metal.py"]
 				},
 				{
 					"commit": "65403631f8ef56d4623d9a6e1fc7ae0d9e96943f",
-					"files": [
-						"research/spot_acne_render.py"
-					]
+					"files": ["research/spot_acne_render.py"]
 				},
 				{
 					"commit": "982f95cee015064bb5ee38c1324b45afc3f71034",
-					"files": [
-						"research/whiten_metal.py"
-					]
+					"files": ["research/whiten_metal.py"]
 				},
 				{
 					"commit": "a82fe55a6ff0c705cef19ef91f2c11d1a58d28fe",
-					"files": [
-						"research/whiten_metal.swift"
-					]
+					"files": ["research/whiten_metal.swift"]
 				},
 				{
 					"commit": "864678f41c6e0efd6e4f012cb20272b76f547e77",
-					"files": [
-						"research/whiten_render.py"
-					]
+					"files": ["research/whiten_render.py"]
 				},
 				{
 					"commit": "63ff26e5a1d5bef064023fbe216594fec5b57de5",
-					"files": [
-						"research/youtai_render.py"
-					]
+					"files": ["research/youtai_render.py"]
 				},
 				{
 					"commit": "d1e6bf171a871f9d705e13d9b441aac1a7f7c69a",
@@ -1999,16 +1933,12 @@
 				},
 				{
 					"commit": "b7714d95b8281f6f4a497bc8db8c67a01449ca66",
-					"files": [
-						"research/tests/test_render_resolution.py"
-					],
+					"files": ["research/tests/test_render_resolution.py"],
 					"test": true
 				},
 				{
 					"commit": "e21326eddf0c0f20587a2c7278043cf3436a9165",
-					"files": [
-						"research/tests/test_metal_original_resolution.py"
-					],
+					"files": ["research/tests/test_metal_original_resolution.py"],
 					"test": true
 				}
 			]
@@ -2031,6 +1961,13 @@
 					"sha256": "b3bcd5f5837ea2e2e8bbb7390d198e4ec4bacc61e721be66881a6d52369f33f7"
 				}
 			]
+		},
+		{
+			"files": [
+				"research/makeup_blend.py",
+				"research/tests/test_makeup_blend.py"
+			],
+			"reason": "PR #498 review: express the tiled makeup limit in decoded RGBA8 bytes; preserve UHD float32 working buffers and pixel arithmetic; cover exact byte and portrait/landscape UHD boundaries"
 		}
 	],
 	"sourceWorkingTreeStatus": [
