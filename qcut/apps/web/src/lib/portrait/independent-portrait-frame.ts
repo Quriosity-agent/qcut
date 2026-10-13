@@ -4,6 +4,7 @@ import {
 	independentPortraitRequest,
 } from "./independent-portrait-adjustments";
 import { independentPortraitDimensionsValid } from "./portrait-processing-size";
+import type { IndependentPortraitSourceEvidenceReader } from "./independent-source-evidence";
 
 /**
  * Engine failures arrive wrapped by IPC around a Python traceback; keep only
@@ -35,10 +36,14 @@ export function independentPortraitErrorMessage({ error }: { error: unknown }) {
 export async function renderIndependentPortraitFrame({
 	source,
 	adjustments,
+	timestampSeconds,
+	readSourceEvidence,
 	signal,
 }: {
 	source: ImageData;
 	adjustments: MediaPortraitAdjustments;
+	timestampSeconds?: number;
+	readSourceEvidence?: IndependentPortraitSourceEvidenceReader;
 	signal?: AbortSignal;
 }): Promise<ImageData> {
 	signal?.throwIfAborted();
@@ -58,6 +63,11 @@ export async function renderIndependentPortraitFrame({
 	// The engine takes opaque frames; letterboxed preview borders are restored below.
 	const rgba = new Uint8Array(source.data);
 	for (let index = 3; index < rgba.length; index += 4) rgba[index] = 255;
+	const sourceEvidence =
+		readSourceEvidence && timestampSeconds !== undefined
+			? await readSourceEvidence({ width, height, timestampSeconds, signal })
+			: undefined;
+	signal?.throwIfAborted();
 	const requestId = `timeline-${crypto.randomUUID()}`;
 	const cancel = () => {
 		void api.cancelIndependent?.({ requestId }).catch(() => {});
@@ -71,6 +81,7 @@ export async function renderIndependentPortraitFrame({
 				height,
 				rgba,
 				adjustments: converted.adjustments,
+				...(sourceEvidence ? { sourceEvidence } : {}),
 			})
 			.catch((error: unknown) => {
 				signal?.throwIfAborted();

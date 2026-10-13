@@ -5,6 +5,10 @@ from alignment_crop_transform import crop_matrices
 from vendor.face_geometry import reorder_landmarks
 
 
+class OutOfFrameLandmarks(ValueError):
+    """Finite landmarks cannot be represented within the image coordinate contract."""
+
+
 def map_affine(*, points, inverse):
     if (not isinstance(points, np.ndarray) or points.dtype != np.float32 or points.shape != (106, 2)
             or not isinstance(inverse, np.ndarray) or inverse.dtype != np.float32 or inverse.shape != (2, 3)
@@ -54,5 +58,5 @@ def normalized(*, points, size):
     # H-y rounds before the multiply; 1-y/H changes the consumer's bits.
     result[:, 1] = (np.float32(size[1]) - points[:, 1]) * reciprocal[1]
     if (result < 0).any() or (result > 1).any():
-        raise ValueError("normalized points outside frame; clipping prohibited")
+        raise OutOfFrameLandmarks("normalized points outside frame; clipping prohibited")
     return result

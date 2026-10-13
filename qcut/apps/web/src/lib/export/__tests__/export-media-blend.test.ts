@@ -25,6 +25,9 @@ function createContext() {
 		translate: vi.fn(),
 		rotate: vi.fn(),
 		scale: vi.fn(),
+		beginPath: vi.fn(),
+		rect: vi.fn(),
+		clip: vi.fn(),
 		get globalAlpha() {
 			return state.globalAlpha;
 		},
@@ -80,6 +83,7 @@ describe("media blend mode in canvas export", () => {
 			ctx,
 			visual: { ...IDENTITY, blendMode: "screen" },
 			bounds: BOUNDS,
+			canvasSize: { width: 1920, height: 1080 },
 			draw: () => {
 				compositeDuringDraw = state.globalCompositeOperation;
 			},

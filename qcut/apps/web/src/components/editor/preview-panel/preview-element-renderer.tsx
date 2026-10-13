@@ -106,6 +106,17 @@ import {
 } from "@/lib/effects/effect-audio-reactive-state";
 import type { BrowserColorGradeLayer } from "@/lib/color/browser-color-rendering";
 import { mediaFilterStackLayers } from "@/lib/color/color-filter-stack";
+import type { CanvasCompositionPreviewState } from "@/hooks/preview/use-canvas-composition-frame-preview";
+
+export function shouldSuppressDomPortraitPreview({
+	canvasCompositionEnabled,
+	status,
+}: {
+	canvasCompositionEnabled: boolean;
+	status: CanvasCompositionPreviewState["status"];
+}): boolean {
+	return canvasCompositionEnabled && status !== "error";
+}
 
 interface ElementResizeParams {
 	elementId: string;
@@ -129,6 +140,7 @@ interface PreviewElementRendererProps {
 	transitionState?: ClipTransitionPreviewState;
 	audioCrossfadeState?: AudioCrossfadePreviewState;
 	compositionPreviewEnabled: boolean;
+	suppressDomPortraitPreview?: boolean;
 	hideJianyingTextFallback: boolean;
 	additionalColorLayers: BrowserColorGradeLayer[];
 	onTextPointerDown: (
@@ -275,6 +287,7 @@ export function PreviewElementRenderer({
 	transitionState,
 	audioCrossfadeState,
 	compositionPreviewEnabled,
+	suppressDomPortraitPreview = false,
 	hideJianyingTextFallback,
 	additionalColorLayers,
 	onTextPointerDown,
@@ -315,6 +328,9 @@ export function PreviewElementRenderer({
 					fps: activeProject?.fps ?? 30,
 				})
 			: undefined;
+	const previewPortraitAdjustments = suppressDomPortraitPreview
+		? undefined
+		: previewMediaVisual?.portraitAdjustments;
 	const isCurrentMediaElement =
 		elementData.element.id === currentMediaElement?.element.id;
 	const generatedPreviewMask = previewMediaVisual?.masks.find(
@@ -940,7 +956,7 @@ export function PreviewElementRenderer({
 				const usesPixelColor =
 					hasMediaColorEdits({ settings: visual.color }) ||
 					hasMediaPortraitAdjustments({
-						adjustments: visual.portraitAdjustments,
+						adjustments: previewPortraitAdjustments,
 					}) ||
 					filterStackLayers.length > 0 ||
 					additionalColorLayers.length > 0;
@@ -1135,6 +1151,7 @@ export function PreviewElementRenderer({
 								videoId={sourceVideoId}
 								sourceTimeOffset={previewSource.sourceTimeOffset}
 								timelineTime={currentTime}
+								frameRate={activeProject?.fps ?? 30}
 								style={{
 									objectFit: visual.fitMode,
 									filter: combinedFilter || undefined,
@@ -1186,7 +1203,7 @@ export function PreviewElementRenderer({
 										...filterStackLayers,
 										...additionalColorLayers,
 									]}
-									portraitAdjustments={visual.portraitAdjustments}
+									portraitAdjustments={previewPortraitAdjustments}
 								/>
 							) : null}
 							<PortraitManualBodyOverlay elementId={element.id} />
@@ -1364,7 +1381,7 @@ export function PreviewElementRenderer({
 				const usesPixelColor =
 					hasMediaColorEdits({ settings: visual.color }) ||
 					hasMediaPortraitAdjustments({
-						adjustments: visual.portraitAdjustments,
+						adjustments: previewPortraitAdjustments,
 					}) ||
 					filterStackLayers.length > 0 ||
 					additionalColorLayers.length > 0;
@@ -1522,7 +1539,7 @@ export function PreviewElementRenderer({
 											...filterStackLayers,
 											...additionalColorLayers,
 										]}
-										portraitAdjustments={visual.portraitAdjustments}
+										portraitAdjustments={previewPortraitAdjustments}
 									/>
 								) : null}
 								<PortraitManualBodyOverlay elementId={element.id} />
@@ -1642,7 +1659,7 @@ export function PreviewElementRenderer({
 										...filterStackLayers,
 										...additionalColorLayers,
 									]}
-									portraitAdjustments={visual.portraitAdjustments}
+									portraitAdjustments={previewPortraitAdjustments}
 								/>
 							) : null}
 							<PortraitManualBodyOverlay elementId={element.id} />

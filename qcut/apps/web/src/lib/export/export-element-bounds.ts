@@ -1,4 +1,5 @@
 import type { TimelineElement } from "@/types/timeline";
+import { mediaObjectFitBounds } from "../media/media-object-fit-bounds";
 
 /** Calculate element bounds using the same object-fit semantics as preview. */
 export function calculateElementBounds(
@@ -8,35 +9,30 @@ export function calculateElementBounds(
 	canvasWidth: number,
 	canvasHeight: number
 ): { x: number; y: number; width: number; height: number } {
+	if (element.type === "media")
+		return mediaObjectFitBounds({
+			sourceWidth: mediaWidth,
+			sourceHeight: mediaHeight,
+			canvasWidth,
+			canvasHeight,
+			fitMode: element.fitMode ?? "cover",
+		});
 	const canvasAspect = canvasWidth / canvasHeight;
 	const mediaAspect = mediaWidth / mediaHeight;
-	const isMedia = element.type === "media";
 
 	let width: number;
 	let height: number;
 
-	if (isMedia && element.fitMode === "fill") {
+	const isSmaller = mediaWidth <= canvasWidth && mediaHeight <= canvasHeight;
+	if (isSmaller) {
+		width = mediaWidth;
+		height = mediaHeight;
+	} else if (mediaAspect > canvasAspect) {
 		width = canvasWidth;
-		height = canvasHeight;
-	} else if (isMedia) {
-		const scale =
-			(element.fitMode ?? "cover") === "cover"
-				? Math.max(canvasWidth / mediaWidth, canvasHeight / mediaHeight)
-				: Math.min(canvasWidth / mediaWidth, canvasHeight / mediaHeight);
-		width = mediaWidth * scale;
-		height = mediaHeight * scale;
+		height = width / mediaAspect;
 	} else {
-		const isSmaller = mediaWidth <= canvasWidth && mediaHeight <= canvasHeight;
-		if (isSmaller) {
-			width = mediaWidth;
-			height = mediaHeight;
-		} else if (mediaAspect > canvasAspect) {
-			width = canvasWidth;
-			height = width / mediaAspect;
-		} else {
-			width = canvasHeight * mediaAspect;
-			height = canvasHeight;
-		}
+		width = canvasHeight * mediaAspect;
+		height = canvasHeight;
 	}
 
 	const x = (canvasWidth - width) / 2;

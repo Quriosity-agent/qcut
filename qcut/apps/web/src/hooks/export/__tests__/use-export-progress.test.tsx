@@ -10,6 +10,7 @@ const exportMocks = vi.hoisted(() => ({
 	lockForExport: vi.fn(),
 	saveExportedVideo: vi.fn(),
 	unlockFromExport: vi.fn(),
+	projectState: { activeProject: { backgroundColor: "#14283c" } },
 }));
 
 const tracks: TimelineTrack[] = [
@@ -34,6 +35,10 @@ const tracks: TimelineTrack[] = [
 
 vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: () => ({ tracks }),
+}));
+
+vi.mock("@/stores/project-store", () => ({
+	useProjectStore: { getState: () => exportMocks.projectState },
 }));
 
 vi.mock("@/hooks/media/use-async-media-store", () => ({
@@ -79,6 +84,40 @@ describe("useExportProgress automation cancellation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		useExportStore.getState().resetExport();
+		exportMocks.projectState.activeProject.backgroundColor = "#14283c";
+	});
+
+	it("snapshots the project background before asynchronous export preparation", async () => {
+		exportMocks.engineExport.mockResolvedValue(new Blob(["video"]));
+		exportMocks.createEngine.mockResolvedValue({
+			cancel: exportMocks.cancel,
+			export: exportMocks.engineExport,
+		});
+		const { result } = renderHook(() => useExportProgress());
+		await act(async () => {
+			const exported = result.current.handleExport(
+				document.createElement("canvas"),
+				1,
+				{
+					engineType: "auto",
+					filename: "background.mp4",
+					format: "mp4",
+					frameRate: 30,
+					quality: "720p",
+					resolution: { height: 1280, width: 720 },
+				}
+			);
+			exportMocks.projectState.activeProject.backgroundColor = "#ffffff";
+			await exported;
+		});
+		expect(exportMocks.createEngine).toHaveBeenCalledWith(
+			expect.any(HTMLCanvasElement),
+			expect.objectContaining({ backgroundColor: "#14283c" }),
+			tracks,
+			[],
+			1,
+			undefined
+		);
 	});
 
 	it("rejects a cancelled automation export after UI cleanup", async () => {

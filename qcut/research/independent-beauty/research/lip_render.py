@@ -63,7 +63,7 @@ def render_lip(*, rgba, points, assets, runtime, strength, texture_state='Close'
         'changedPixelCount': int(np.count_nonzero(np.any(result != rgba, axis=-1)))}
 
 
-def run(*, rgba, strength, runtime, assets_path, texture_state, output, report):
+def run(*, rgba, strength, runtime, assets_path, texture_state, output, report, face_reference=None):
     started = time.monotonic()
     validate_rgba(rgba=rgba)
     unit_scalar(value=strength, name='lip strength')
@@ -74,7 +74,8 @@ def run(*, rgba, strength, runtime, assets_path, texture_state, output, report):
     prediction = None
     selection = None
     if strength > .001:
-        prediction = predict_extra_photo(rgba=rgba, model_root=runtime/'research', interleave_alignment=True)
+        prediction = predict_extra_photo(rgba=rgba, model_root=runtime/'research', interleave_alignment=True,
+                                         face_reference=face_reference)
         points = original_pixels(points=np.asarray(prediction['points'], np.float32),
             algorithm_size=prediction['algorithmSize'], image_size=(rgba.shape[1], rgba.shape[0]))
         assets = load_assets(path=assets_path)
@@ -110,8 +111,11 @@ if __name__ == '__main__':
     parser.add_argument('--assets', type=Path, default=Path(__file__).resolve().parents[1]/'runtime/research/lip-v1.npz')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--face-reference', type=Path)
     args = parser.parse_args()
     if args.output.exists() or args.report.exists() or args.output.resolve() == args.report.resolve():
         parser.error('fresh distinct PNG and receipt paths required')
+    from face_selection_reference import read_reference
     run(rgba=decode_image(image=args.image, max_edge=1280)['rgba'], strength=args.strength, runtime=args.runtime,
-        assets_path=args.assets, texture_state=args.texture_state, output=args.output, report=args.report)
+        assets_path=args.assets, texture_state=args.texture_state, output=args.output, report=args.report,
+        face_reference=read_reference(path=args.face_reference) if args.face_reference else None)

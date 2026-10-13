@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
+import { renderIndependentPortraitFrame } from "@/lib/portrait/independent-portrait-frame";
 import { drawMediaSourceWithMasks } from "@/lib/video/media-mask-canvas";
 import {
 	drawColorGradedSourceStack,
 	drawColorGradedSourceWithMasks,
 } from "../browser-color-rendering";
 import { DEFAULT_MEDIA_COLOR_SETTINGS } from "../color-properties";
+import { NativePortraitSourceWindowError } from "@/lib/portrait/portrait-temporal-policy";
 
 vi.mock("@/lib/portrait/jianying-portrait-adjustment-preview", () => ({
 	renderJianyingPortraitAdjustmentPreview: vi.fn(),
+}));
+vi.mock("@/lib/portrait/independent-portrait-frame", () => ({
+	renderIndependentPortraitFrame: vi.fn(async ({ source }) => source),
 }));
 vi.mock("@/lib/video/media-mask-canvas", () => ({
 	drawMediaSourceWithMasks: vi.fn(),
@@ -124,15 +129,76 @@ describe("portrait source detail reaches the native renderer", () => {
 				values: { face_adjust_EnlargeEye: 60 },
 			},
 			readPortraitSourcePreRoll,
+			portraitTemporalMode: "source-window",
 			signal,
 		});
 		expect(renderJianyingPortraitAdjustmentPreview).toHaveBeenCalledWith(
 			expect.objectContaining({
 				readSourcePreRoll: readPortraitSourcePreRoll,
+				portraitTemporalMode: "source-window",
 				signal,
 				timestampSeconds: 2,
 				sourceKey: args.sourceKey,
 			})
 		);
+	});
+	it("passes independent evidence the processed source dimensions and actual source timestamp", async () => {
+		const readIndependentSourceEvidence = vi.fn(async () => ({
+			policy: "single-face-bidirectional-v1" as const,
+			status: "unavailable" as const,
+			reason: "End of source",
+		}));
+		const signal = new AbortController().signal;
+		await drawColorGradedSourceStack({
+			...args,
+			width: 1080,
+			height: 1920,
+			portraitAdjustments: {
+				enabled: true,
+				engine: "independent",
+				values: { face_adjust_TotalFace: 25 },
+			},
+			readIndependentSourceEvidence,
+			signal,
+		});
+		expect(renderIndependentPortraitFrame).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: expect.objectContaining({ width: 1080, height: 1920 }),
+				readSourceEvidence: readIndependentSourceEvidence,
+				timestampSeconds: 2,
+				signal,
+			})
+		);
+		expect(renderJianyingPortraitAdjustmentPreview).not.toHaveBeenCalled();
+	});
+	it("never draws the original after a source-window renderer returns no pixels", async () => {
+		vi.mocked(renderJianyingPortraitAdjustmentPreview).mockResolvedValue(null);
+		await expect(
+			drawColorGradedSourceStack({
+				...args,
+				portraitAdjustments: {
+					enabled: true,
+					values: { face_adjust_TotalFace: 25 },
+				},
+				portraitTemporalMode: "source-window",
+			})
+		).rejects.toBeInstanceOf(NativePortraitSourceWindowError);
+		expect(drawMediaSourceWithMasks).not.toHaveBeenCalled();
+	});
+	it("wraps pixel read failures so the export cannot silently replace a native frame", async () => {
+		context.getImageData.mockImplementationOnce(() => {
+			throw new Error("readback failed");
+		});
+		await expect(
+			drawColorGradedSourceStack({
+				...args,
+				portraitAdjustments: {
+					enabled: true,
+					values: { face_adjust_TotalFace: 25 },
+				},
+				portraitTemporalMode: "source-window",
+			})
+		).rejects.toBeInstanceOf(NativePortraitSourceWindowError);
+		expect(drawMediaSourceWithMasks).not.toHaveBeenCalled();
 	});
 });

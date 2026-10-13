@@ -7,6 +7,9 @@ import { renderFrame, type RenderContext } from "../export-engine-renderer";
 import { rethrowIndependentPortraitExportError } from "../export-independent-portrait";
 import * as mediaProperties from "@/lib/video/video-properties";
 import * as canvasEffects from "@/lib/effects/effects-utils";
+import * as colorRendering from "@/lib/color/browser-color-rendering";
+import { NativePortraitSourceWindowError } from "@/lib/portrait/portrait-temporal-policy";
+import * as sourceEvidence from "@/lib/portrait/independent-source-evidence";
 
 const effects = vi.hoisted(() => ({ enabled: true }));
 
@@ -158,9 +161,19 @@ function fixture({
 
 let provider: ReturnType<typeof vi.fn>;
 let cancel: ReturnType<typeof vi.fn>;
+const readSourceEvidence = vi.fn(async () => ({
+	policy: "single-face-bidirectional-v1" as const,
+	status: "unavailable" as const,
+	reason: "Fixture has no neighboring source frames",
+}));
 
 beforeEach(() => {
 	effects.enabled = true;
+	readSourceEvidence.mockClear();
+	vi.spyOn(
+		sourceEvidence,
+		"createIndependentSourceEvidenceReader"
+	).mockReturnValue(readSourceEvidence);
 	vi.stubGlobal("ImageData", FrameData);
 	provider = vi.fn(async (request: BeautyLabIndependentFrameRequest) => ({
 		requestId: request.requestId,
@@ -191,6 +204,73 @@ afterEach(() => {
 });
 
 describe("independent portrait export failure", () => {
+	it("binds independent neighbor evidence to decoded PTS rather than the timeline sample clock", async () => {
+		const signal = new AbortController().signal;
+		const { context, decode } = fixture({ type: "video", signal });
+		decode.mockResolvedValueOnce({
+			frameAt: async () => ({
+				canvas: context.canvas,
+				timestamp: 0.125,
+				duration: 1 / 24,
+			}),
+		});
+		await renderFrame(context, 0.15);
+		expect(
+			sourceEvidence.createIndependentSourceEvidenceReader
+		).toHaveBeenCalledWith({ source: context.mediaItems[0].file });
+		expect(readSourceEvidence).toHaveBeenCalledWith({
+			width: 2,
+			height: 2,
+			timestampSeconds: 0.125,
+			signal,
+		});
+		expect(provider.mock.calls[0][0]).toMatchObject({
+			sourceEvidence: {
+				status: "unavailable",
+				policy: "single-face-bidirectional-v1",
+			},
+		});
+	});
+
+	it("does not attach video neighbor evidence to a still photo", async () => {
+		const { context } = fixture({ type: "image" });
+		await renderFrame(context, 0);
+		expect(
+			sourceEvidence.createIndependentSourceEvidenceReader
+		).not.toHaveBeenCalled();
+		expect(readSourceEvidence).not.toHaveBeenCalled();
+		expect(provider.mock.calls[0][0]).not.toHaveProperty("sourceEvidence");
+	});
+
+	it("keeps deterministic native history failures fatal without retry or an original-frame fallback", async () => {
+		const { context, ctx } = fixture({ type: "video" });
+		const element = context.tracks[0].elements[0] as MediaElement;
+		element.portraitAdjustments = {
+			enabled: true,
+			engine: "native",
+			values: { face_adjust_TotalFace: 25 },
+			faceTarget: { mode: "all" },
+		};
+		const failure = new NativePortraitSourceWindowError({
+			cause: new Error("source history decode failed"),
+		});
+		const draw = vi
+			.spyOn(colorRendering, "drawColorGradedSourceStack")
+			.mockRejectedValue(failure);
+		await expect(renderFrame(context, 0)).rejects.toBe(failure);
+		expect(draw).toHaveBeenCalledOnce();
+		expect(draw).toHaveBeenCalledWith(
+			expect.objectContaining({
+				portraitTemporalMode: "source-window",
+			})
+		);
+		expect(ctx.drawImage).not.toHaveBeenCalled();
+		expect(ctx.fillText).not.toHaveBeenCalled();
+		expect(
+			sourceEvidence.createIndependentSourceEvidenceReader
+		).not.toHaveBeenCalled();
+	});
+
 	it("retries a transient decoder failure before applying independent beauty", async () => {
 		const { context, ctx, decode } = fixture({ type: "video" });
 		decode.mockRejectedValueOnce(new Error("sequential decode unavailable"));

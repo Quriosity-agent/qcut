@@ -1,3 +1,4 @@
+import { decodeBrowserAudioSource } from "./browser-audio-source-decoder";
 import { exportProfiler } from "@/lib/export/export-profiler";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
@@ -103,10 +104,10 @@ export async function decodeBrowserAudioExportClips({
 	clips: BrowserAudioExportClip[];
 	onDecodeError?: (message: string, error: unknown) => void;
 }): Promise<DecodedBrowserAudioExportClip[]> {
-	const decodedByMediaId = new Map<string, Promise<AudioBuffer>>();
+	const decodedByMediaId = new Map<string, Promise<AudioBuffer | null>>();
 	const decode = ({
 		mediaItem,
-	}: BrowserAudioExportClip): Promise<AudioBuffer> => {
+	}: BrowserAudioExportClip): Promise<AudioBuffer | null> => {
 		const existing = decodedByMediaId.get(mediaItem.id);
 		if (existing) return existing;
 		const pending = exportProfiler
@@ -114,7 +115,7 @@ export async function decodeBrowserAudioExportClips({
 			.then((bytes) => {
 				exportProfiler.count("audio-source-bytes", bytes.byteLength);
 				return exportProfiler.time("audio-decode-data", () =>
-					context.decodeAudioData(bytes.slice(0))
+					decodeBrowserAudioSource({ context, bytes })
 				);
 			});
 		decodedByMediaId.set(mediaItem.id, pending);
@@ -124,13 +125,20 @@ export async function decodeBrowserAudioExportClips({
 	const decoded = await Promise.all(
 		clips.map(async (clip) => {
 			try {
-				return { ...clip, buffer: await decode(clip) };
+				const buffer = await decode(clip);
+				if (!buffer) {
+					if (clip.mediaItem.type === "video") return null;
+					throw new Error(
+						`Audio source has no audio track: ${clip.mediaItem.name}`
+					);
+				}
+				return { ...clip, buffer };
 			} catch (error) {
 				onDecodeError(
 					`[BrowserAudioExport] Failed to decode ${clip.mediaItem.name}`,
 					error
 				);
-				return null;
+				throw error;
 			}
 		})
 	);

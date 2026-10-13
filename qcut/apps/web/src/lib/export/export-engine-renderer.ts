@@ -57,6 +57,7 @@ import {
 	getExportFrameSampleTime,
 	seekExportVideoFrame,
 } from "./export-video-frame-seek";
+import { loadExportVideo } from "./export-video-load";
 import { stripMarkdownSyntax } from "@/lib/markdown";
 import {
 	getCaptionAnimationState,
@@ -80,6 +81,8 @@ import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
+import { createIndependentSourceEvidenceReader } from "@/lib/portrait/independent-source-evidence";
+import { canUseNativePortraitSourceWindow } from "@/lib/portrait/portrait-temporal-policy";
 import {
 	drawColorGradedSourceStack,
 	drawColorGradedSourceWithMasks,
@@ -107,6 +110,10 @@ import {
 	drawPortraitExportFrame,
 	rethrowIndependentPortraitExportError,
 } from "./export-independent-portrait";
+import { createFrameRenderQueue } from "./export-render-queue";
+
+// Preview and export share transition scratch canvases across awaited draws.
+const enqueueFrameRender = createFrameRenderQueue();
 
 let exportCompositor: ScreenRecordingExportCompositor | null = null;
 let compositorFrameCanvas: HTMLCanvasElement | null = null;
@@ -156,13 +163,17 @@ function createStickerPreparationPool({
 }
 
 /** Get or create the screen recording export compositor. */
-function getExportCompositor(
-	canvas: HTMLCanvasElement
-): ScreenRecordingExportCompositor | null {
+function getExportCompositor({
+	canvas,
+	isolated = false,
+}: {
+	canvas: HTMLCanvasElement;
+	isolated?: boolean;
+}): ScreenRecordingExportCompositor | null {
 	const state = useScreenRecordingEnhancementStore.getState();
 	if (!hasActiveEnhancements(state)) return null;
 
-	if (!exportCompositor) {
+	if (!exportCompositor || isolated) {
 		const webcamState = useWebcamOverlayStore.getState();
 		const figureState = useFigureAnnotationsStore.getState();
 
@@ -191,8 +202,10 @@ function getExportCompositor(
 			figureAnnotations: [...figureState.annotations.values()],
 			zoomMotionBlur: state.zoomMotionBlur,
 		};
-		exportCompositor = new ScreenRecordingExportCompositor(config);
+		const compositor = new ScreenRecordingExportCompositor(config);
 		exportProfiler.count("compositor-create");
+		if (isolated) return compositor;
+		exportCompositor = compositor;
 	}
 	return exportCompositor;
 }
@@ -259,6 +272,8 @@ function beginMediaTransitionLayer({
 /** Context passed to renderer functions */
 export interface RenderContext {
 	signal?: AbortSignal;
+	strictMediaErrors?: boolean;
+	isolatedCompositor?: boolean;
 	ctx: CanvasRenderingContext2D;
 	canvas: HTMLCanvasElement;
 	tracks: import("@/types/timeline").TimelineTrack[];
@@ -286,6 +301,19 @@ export async function renderFrame(
 	context: RenderContext,
 	currentTime: number
 ): Promise<void> {
+	return enqueueFrameRender({
+		signal: context.signal,
+		render: () => renderFrameUnlocked({ context, currentTime }),
+	});
+}
+
+async function renderFrameUnlocked({
+	context,
+	currentTime,
+}: {
+	context: RenderContext;
+	currentTime: number;
+}): Promise<void> {
 	const { ctx, canvas } = context;
 
 	// Clear canvas
@@ -359,24 +387,34 @@ export async function renderFrame(
 	);
 
 	// Apply screen recording enhancement compositing (cursor, zoom, background)
-	const compositor = getExportCompositor(canvas);
+	const compositor = getExportCompositor({
+		canvas,
+		isolated: context.isolatedCompositor,
+	});
 	if (compositor) {
-		// Reuse a single offscreen canvas for frame capture across all frames
-		if (
-			!compositorFrameCanvas ||
-			compositorFrameCanvas.width !== canvas.width ||
-			compositorFrameCanvas.height !== canvas.height
-		) {
-			compositorFrameCanvas = document.createElement("canvas");
-			compositorFrameCanvas.width = canvas.width;
-			compositorFrameCanvas.height = canvas.height;
-			compositorFrameCtx = compositorFrameCanvas.getContext("2d");
-		}
-		if (compositorFrameCtx) {
-			compositorFrameCtx.drawImage(canvas, 0, 0);
-			// Clear and re-render with compositor
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			compositor.renderFrame(ctx, compositorFrameCanvas, currentTime * 1000);
+		try {
+			// Reuse a single offscreen canvas for frame capture across all frames
+			if (
+				!compositorFrameCanvas ||
+				compositorFrameCanvas.width !== canvas.width ||
+				compositorFrameCanvas.height !== canvas.height
+			) {
+				compositorFrameCanvas = document.createElement("canvas");
+				compositorFrameCanvas.width = canvas.width;
+				compositorFrameCanvas.height = canvas.height;
+				compositorFrameCtx = compositorFrameCanvas.getContext("2d");
+			}
+			if (compositorFrameCtx) {
+				compositorFrameCtx.drawImage(canvas, 0, 0);
+				// Clear and re-render with compositor
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				compositor.renderFrame(ctx, compositorFrameCanvas, currentTime * 1000);
+			}
+		} finally {
+			if (context.isolatedCompositor) {
+				compositor.destroy();
+				exportProfiler.count("compositor-destroy");
+			}
 		}
 	}
 }
@@ -736,6 +774,7 @@ async function renderMediaElement(
 			error,
 			signal: context.signal,
 		});
+		if (context.strictMediaErrors) throw error;
 		debugError(`[ExportEngine] Failed to render ${element.id}:`, error);
 	}
 }
@@ -828,6 +867,7 @@ export async function renderImage(
 					ctx,
 					visual: drawVisual,
 					bounds: { x, y, width, height },
+					canvasSize: canvas,
 					draw: () =>
 						drawColorGradedSourceStack({
 							context: ctx,
@@ -969,6 +1009,7 @@ async function renderVideoAttempt(
 	const url = mediaItem.url as string; // Guaranteed non-null by renderVideo guard
 
 	try {
+		context.signal?.throwIfAborted();
 		const mediaElement = element as MediaElement;
 		// Inside a transition window the incoming clip is sampled before its
 		// start and the outgoing clip past its end; the source-time mapping
@@ -996,20 +1037,25 @@ async function renderVideoAttempt(
 		let sourceWidth = 0;
 		let sourceHeight = 0;
 		let sourceTimestamp = seekTime;
+		let hasDecodedSourceTimestamp = false;
 		if (context.sequentialVideo && mediaElement.reverse !== true) {
 			const provider = await context.sequentialVideo.getOrOpen(
 				mediaItem,
-				element.id
+				element.id,
+				{ signal: context.signal }
 			);
+			context.signal?.throwIfAborted();
 			if (provider) {
 				const frame = await exportProfiler.time("video-decode", () =>
 					provider.frameAt(seekTime)
 				);
+				context.signal?.throwIfAborted();
 				if (frame && frame.canvas.width > 0 && frame.canvas.height > 0) {
 					source = frame.canvas as CanvasImageSource;
 					sourceWidth = frame.canvas.width;
 					sourceHeight = frame.canvas.height;
 					sourceTimestamp = frame.timestamp;
+					hasDecodedSourceTimestamp = true;
 				}
 			}
 		}
@@ -1017,17 +1063,13 @@ async function renderVideoAttempt(
 		if (!source) {
 			let video = videoCache.get(url);
 			if (!video) {
-				video = document.createElement("video");
-				video.src = url;
-				video.crossOrigin = "anonymous";
-
-				await new Promise<void>((resolve, reject) => {
-					video!.onloadeddata = () => resolve();
-					video!.onerror = () => reject(new Error("Failed to load video"));
+				video = await loadExportVideo({
+					url,
+					signal: context.signal,
 				});
-
 				videoCache.set(url, video);
 			}
+			context.signal?.throwIfAborted();
 			await exportProfiler.time("video-seek", () =>
 				seekExportVideoFrame({
 					frameRate: context.fps,
@@ -1035,6 +1077,7 @@ async function renderVideoAttempt(
 					video,
 				})
 			);
+			context.signal?.throwIfAborted();
 			source = video;
 			sourceWidth = video.videoWidth;
 			sourceHeight = video.videoHeight;
@@ -1074,6 +1117,26 @@ async function renderVideoAttempt(
 		const ctx = layer.ctx;
 		// The group layer owns the element opacity when a transition is active.
 		const drawVisual = layer.active ? { ...visual, opacity: 1 } : visual;
+		const readPortraitSourcePreRoll =
+			(mediaElement.enhancements?.stabilization ?? 0) > 0
+				? undefined
+				: createPortraitSourcePreRollReader({
+						source:
+							mediaItem.file instanceof Blob && mediaItem.file.size > 0
+								? mediaItem.file
+								: url,
+					});
+		const readIndependentSourceEvidence =
+			visual.portraitAdjustments?.engine === "independent" &&
+			hasDecodedSourceTimestamp &&
+			(mediaElement.enhancements?.stabilization ?? 0) === 0
+				? createIndependentSourceEvidenceReader({
+						source:
+							mediaItem.file instanceof Blob && mediaItem.file.size > 0
+								? mediaItem.file
+								: url,
+					})
+				: undefined;
 		const drawVideo = () =>
 			exportProfiler.time("video-draw", async () =>
 				drawPortraitExportFrame({
@@ -1084,6 +1147,7 @@ async function renderVideoAttempt(
 							ctx,
 							visual: drawVisual,
 							bounds: { x, y, width, height },
+							canvasSize: canvas,
 							draw: () =>
 								drawColorGradedSourceStack({
 									context: ctx,
@@ -1099,15 +1163,16 @@ async function renderVideoAttempt(
 										}),
 									],
 									portraitAdjustments: visual.portraitAdjustments,
-									readPortraitSourcePreRoll:
-										(mediaElement.enhancements?.stabilization ?? 0) > 0
-											? undefined
-											: createPortraitSourcePreRollReader({
-													source:
-														mediaItem.file instanceof Blob
-															? mediaItem.file
-															: url,
-												}),
+									portraitTemporalMode:
+										readPortraitSourcePreRoll &&
+										canUseNativePortraitSourceWindow({
+											adjustments: visual.portraitAdjustments,
+											stabilization: mediaElement.enhancements?.stabilization,
+										})
+											? "source-window"
+											: "recovery",
+									readPortraitSourcePreRoll,
+									readIndependentSourceEvidence,
 									signal: context.signal,
 									frameSeed: Math.round(
 										(element.startTime + timeOffset) * context.fps

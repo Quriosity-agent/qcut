@@ -40,17 +40,25 @@ def stage_parameters(*, script, parameters):
     return result
 
 
-def run_stage(*, stage, source, image, runtime, output, report):
+def run_stage(*, stage, source, image, runtime, output, report, face_reference=None, source_evidence=None):
     script = stage['script']
     parameters = stage_parameters(script=script, parameters=stage['parameters'])
     module = importlib.import_module(script.removesuffix('.py'))
     if Path(module.__file__).resolve() != source.resolve():
         raise ValueError('resident renderer module does not match its verified source')
     arguments = {'runtime': runtime, 'output': output, 'report': report, **parameters}
+    if source_evidence is not None:
+        if script != 'portrait_features_render.py':
+            raise ValueError('renderer has no source evidence contract')
+        arguments['source_evidence'] = source_evidence
     if script in IMAGE_PARAMETERS:
         arguments['image'] = image
     else:
         arguments['rgba'] = decode_image(image=image, max_edge=source_edge_limit())['rgba']
     if script == 'lip_render.py':
         arguments['assets_path'] = runtime / 'research/lip-v1.npz'
+        if face_reference is not None:
+            arguments['face_reference'] = face_reference
+    elif face_reference is not None:
+        raise ValueError('renderer has no same-photo face identity contract')
     module.run(**arguments)

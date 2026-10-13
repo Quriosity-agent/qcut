@@ -969,7 +969,9 @@ export class CLIExportEngine extends ExportEngine {
 			videoTransitions: qcutTransitions,
 			videoInput,
 			backgroundColor:
-				useProjectStore.getState().activeProject?.backgroundColor ?? "#000000",
+				this.settings.backgroundColor ??
+				useProjectStore.getState().activeProject?.backgroundColor ??
+				"#000000",
 		});
 
 		logExportConfiguration(exportOptions, {

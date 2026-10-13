@@ -52,7 +52,10 @@ def tracking_parameters(*, face):
 
 
 class Sequence:
-    def __init__(self, *, model_root, models=None):
+    def __init__(self, *, model_root, models=None, normalize_output=True):
+        if type(normalize_output) is not bool:
+            raise ValueError("typed normalized-output policy required")
+        self.normalize_output = normalize_output
         self.models = ({size: Stage1(size=size, model=model_root / f"face-align-{size}.onnx") for size in (120, 160)}
                        if models is None else models.copy())
         if set(self.models) != {120, 160}:
@@ -172,7 +175,8 @@ class Sequence:
         points = tracked.copy()
         if mode != "reset-120":
             points, state = update_base(state=state, points=tracked, optimized=False)
-        result.update(stage1=stage, tracked=tracked, points=points, normalized=normalized(points=points, size=size))
+        result.update(stage1=stage, tracked=tracked, points=points,
+                      normalized=normalized(points=points, size=size) if self.normalize_output else None)
         self.state, self.identity, self.profile, self.index = state, identity, copy.deepcopy(profile), index
         self.decode_profile = decode_profile
         self.transform, self.tracking_state = transform, tracking_state

@@ -7,6 +7,10 @@ import {
 	MAX_BROWSER_AUDIO_AUTOMATION_POINTS,
 } from "../browser-audio-automation";
 import { renderBrowserTimelineAudio } from "../browser-audio-export";
+import { decodeBrowserAudioSource } from "../browser-audio-source-decoder";
+vi.mock("../browser-audio-source-decoder", () => ({
+	decodeBrowserAudioSource: vi.fn(),
+}));
 import { collectBrowserAudioExportClips } from "../browser-audio-export-clips";
 
 function mediaElement({
@@ -109,26 +113,17 @@ describe("browser audio export", () => {
 		).toEqual([]);
 	});
 
-	it("treats a video without decodable audio as a silent timeline", async () => {
-		const decodeAudioData = vi.fn(async () => {
-			throw new DOMException("Unable to decode audio data", "EncodingError");
-		});
-		vi.stubGlobal(
-			"OfflineAudioContext",
-			class {
-				decodeAudioData = decodeAudioData;
-			}
-		);
-
+	it("treats a video with no audio track as a silent timeline", async () => {
+		vi.mocked(decodeBrowserAudioSource).mockResolvedValue(null);
+		vi.stubGlobal("OfflineAudioContext", class {});
 		const result = await renderBrowserTimelineAudio({
 			tracks: [track({ element: mediaElement() })],
 			mediaItems: [mediaItem({ id: "original", type: "video" })],
 			totalDuration: 2,
 			fps: 30,
 		});
-
 		expect(result).toBeNull();
-		expect(decodeAudioData).toHaveBeenCalledOnce();
+		expect(decodeBrowserAudioSource).toHaveBeenCalledOnce();
 	});
 
 	it("turns dB, fades, balance, and effect keyframes into automation", () => {

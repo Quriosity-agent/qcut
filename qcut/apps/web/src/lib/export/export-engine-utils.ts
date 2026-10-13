@@ -1,6 +1,7 @@
 import {
 	buildCompositionPlan,
 	type MediaBlendMode,
+	type MediaCrop,
 	type TimelineElement,
 	type TimelineTrack,
 } from "@/types/timeline";
@@ -102,6 +103,7 @@ export interface MediaTransformVisual {
 	opacity: number;
 	/** Element blend mode; undefined and "normal" both mean source-over. */
 	blendMode?: MediaBlendMode;
+	crop?: MediaCrop;
 }
 
 /**
@@ -142,6 +144,8 @@ export function isIdentityMediaTransform({
 		!visual.flipHorizontal &&
 		!visual.flipVertical &&
 		visual.opacity === 1 &&
+		(!visual.crop ||
+			Object.values(visual.crop).every((inset) => inset === 0)) &&
 		canvasCompositeForBlendMode({ blendMode: visual.blendMode }) === undefined
 	);
 }
@@ -151,18 +155,20 @@ export function isIdentityMediaTransform({
  * semantics exactly: the element's bounds center moves to
  * (boundsCenter + x/y), rotation is clockwise-positive degrees about that
  * center (canvas and CSS agree in y-down space), flips ride the scale sign,
- * and opacity multiplies into globalAlpha. Identity transforms skip the
- * save/restore entirely so untouched exports stay byte-stable.
+ * and opacity multiplies into globalAlpha. The preview clips its canvas-sized
+ * inner element before the outer transform, even for overflowing cover media.
  */
 export async function drawWithMediaTransform({
 	ctx,
 	visual,
 	bounds,
+	canvasSize,
 	draw,
 }: {
 	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 	visual: MediaTransformVisual;
 	bounds: { x: number; y: number; width: number; height: number };
+	canvasSize: { width: number; height: number };
 	draw: () => Promise<void> | void;
 }): Promise<void> {
 	if (isIdentityMediaTransform({ visual })) {
@@ -180,6 +186,15 @@ export async function drawWithMediaTransform({
 			visual.scaleY * (visual.flipVertical ? -1 : 1)
 		);
 		ctx.translate(-centerX, -centerY);
+		const crop = visual.crop ?? { top: 0, right: 0, bottom: 0, left: 0 };
+		ctx.beginPath();
+		ctx.rect(
+			canvasSize.width * crop.left,
+			canvasSize.height * crop.top,
+			canvasSize.width * (1 - crop.left - crop.right),
+			canvasSize.height * (1 - crop.top - crop.bottom)
+		);
+		ctx.clip();
 		ctx.globalAlpha *= Math.min(1, Math.max(0, visual.opacity));
 		const composite = canvasCompositeForBlendMode({
 			blendMode: visual.blendMode,

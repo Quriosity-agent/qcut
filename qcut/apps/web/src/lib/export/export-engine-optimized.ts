@@ -231,7 +231,7 @@ export class OptimizedExportEngine extends ExportEngine {
 		renderCtx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
 
 		// Fill with background color
-		renderCtx.fillStyle = "#000000";
+		renderCtx.fillStyle = this.settings.backgroundColor ?? "#000000";
 		renderCtx.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
 
 		// Get active elements with optimized lookup
@@ -387,6 +387,7 @@ export class OptimizedExportEngine extends ExportEngine {
 					ctx,
 					visual: this.resolveMediaVisual(element, currentTime),
 					bounds,
+					canvasSize: this.canvas,
 					draw: () =>
 						ctx.drawImage(
 							preloadedImg,
@@ -477,6 +478,7 @@ export class OptimizedExportEngine extends ExportEngine {
 						ctx,
 						visual: this.resolveMediaVisual(element, currentTime),
 						bounds,
+						canvasSize: this.canvas,
 						draw: () =>
 							ctx.drawImage(
 								img,
@@ -568,6 +570,7 @@ export class OptimizedExportEngine extends ExportEngine {
 					element.startTime + timeOffset
 				),
 				bounds: { x, y, width, height },
+				canvasSize: this.canvas,
 				draw: () => ctx.drawImage(video, x, y, width, height),
 			});
 

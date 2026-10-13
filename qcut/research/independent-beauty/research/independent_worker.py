@@ -21,12 +21,12 @@ REQUEST_PATHS = ('image', 'request', 'output', 'report')
 
 def validate_request(*, request):
     if (not isinstance(request, dict)
-            or not {'id', *REQUEST_PATHS} <= set(request) <= {'id', *REQUEST_PATHS, 'resolution'}):
+            or not {'id', *REQUEST_PATHS} <= set(request) <= {'id', *REQUEST_PATHS, 'resolution', 'source_evidence'}):
         raise ValueError('resident request requires id and four explicit paths')
     identifier = request['id']
     if not isinstance(identifier, str) or not 1 <= len(identifier) <= 128 or any(ord(char) < 32 for char in identifier):
         raise ValueError('bounded printable request id required')
-    for name in REQUEST_PATHS:
+    for name in (*REQUEST_PATHS, *(['source_evidence'] if 'source_evidence' in request else [])):
         value = request[name]
         if not isinstance(value, str) or not value or '\x00' in value or len(value) > 8192 or not Path(value).is_absolute():
             raise ValueError('bounded absolute resident paths required')
@@ -67,6 +67,7 @@ def serve(*, runtime, input_stream, output_stream, render=run):
                     render(image=request['image'], request=request['request'], runtime=runtime,
                            output=request['output'], report=request['report'], resolution=mode,
                            stage_runner=run_stage,
+                           **({'source_evidence': Path(request['source_evidence'])} if 'source_evidence' in request else {}),
                            runtime_receipt=lambda: {'pid': os.getpid(), 'completedJobsBefore': completed,
                                                     'sessionCache': cache.snapshot()})
                 completed += 1

@@ -10,16 +10,13 @@ import {
 	type BrowserColorGradeLayer,
 } from "@/lib/color/browser-color-rendering";
 import { subscribeColorDegradation } from "@/lib/color/color-degradation";
+import { prepareColorPreviewInput } from "@/lib/color/color-preview-input";
 import {
 	colorPreviewCanvasSize,
 	portraitPreviewCanvasSize,
 } from "@/lib/color/color-preview-resolution";
 import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source-key";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
-import {
-	portraitProcessingSize,
-	portraitSourceDimensions,
-} from "@/lib/portrait/portrait-processing-size";
 import { cn } from "@/lib/utils";
 import { useColorPickerStore } from "@/stores/editor/color-picker-store";
 import { useColorPreviewStore } from "@/stores/editor/color-preview-store";
@@ -41,41 +38,6 @@ function sourceTimestampSeconds(source: ColorPreviewSource): number {
 		return Number(source.dataset.sourceTime ?? 0) || 0;
 	}
 	return 0;
-}
-
-function drawObjectFit({
-	context,
-	source,
-	width,
-	height,
-	fitMode,
-}: {
-	context: CanvasRenderingContext2D;
-	source: ColorPreviewSource;
-	width: number;
-	height: number;
-	fitMode: "cover" | "contain" | "fill";
-}) {
-	const dimensions = portraitSourceDimensions({ source });
-	if (dimensions.width <= 0 || dimensions.height <= 0) return false;
-	if (fitMode === "fill") {
-		context.drawImage(source, 0, 0, width, height);
-		return true;
-	}
-	const scale =
-		fitMode === "cover"
-			? Math.max(width / dimensions.width, height / dimensions.height)
-			: Math.min(width / dimensions.width, height / dimensions.height);
-	const drawWidth = dimensions.width * scale;
-	const drawHeight = dimensions.height * scale;
-	context.drawImage(
-		source,
-		(width - drawWidth) / 2,
-		(height - drawHeight) / 2,
-		drawWidth,
-		drawHeight
-	);
-	return true;
 }
 
 export function ColorPreviewCanvas({
@@ -294,56 +256,46 @@ export function ColorPreviewCanvas({
 					if (source instanceof HTMLVideoElement)
 						lastVideoTime = source.currentTime;
 					const timestampSeconds = sourceTimestampSeconds(source);
+					const prepared = prepareColorPreviewInput({
+						source,
+						canvasSize: { width: canvas.width, height: canvas.height },
+						portraitRenderSize:
+							portraitWidth && portraitHeight
+								? { width: portraitWidth, height: portraitHeight }
+								: undefined,
+						fitMode,
+						adjustments: framePortrait,
+					});
+					if (!prepared) return;
+					let portraitStatus = prepared.portraitActive ? "applied" : "bypassed";
 					const readPortraitSourcePreRoll =
 						source instanceof HTMLVideoElement
 							? createPortraitSourcePreRollReader({
 									source: source.currentSrc || source.src,
-									fit: fitMode,
+									fit: prepared.preRollFit,
 								})
 							: undefined;
-					const dimensions = portraitSourceDimensions({ source });
-					const processing = portraitProcessingSize({
-						width: canvas.width,
-						height: canvas.height,
-						sourceWidth: dimensions.width,
-						sourceHeight: dimensions.height,
-						adjustments: framePortrait,
-					});
-					const fitted = document.createElement("canvas");
-					fitted.width = processing.width;
-					fitted.height = processing.height;
 					const rendered = document.createElement("canvas");
 					rendered.width = canvas.width;
 					rendered.height = canvas.height;
-					// Portrait fitting consumes these pixels; avoid GPU readback-dependent resizing.
-					const fittedContext = fitted.getContext("2d", {
-						willReadFrequently: Boolean(framePortrait?.enabled),
-					});
 					const renderedContext = rendered.getContext("2d", {
 						willReadFrequently: true,
 					});
 					const outputContext = canvas.getContext("2d", {
 						willReadFrequently: true,
 					});
-					if (!fittedContext || !renderedContext || !outputContext) return;
-					if (
-						!drawObjectFit({
-							context: fittedContext,
-							source,
-							width: fitted.width,
-							height: fitted.height,
-							fitMode,
-						})
-					)
-						return;
+					if (!renderedContext || !outputContext) return;
+					const { logicalSize, bounds } = prepared.geometry;
+					// Keep engine pixels at export resolution; only the finished preview is scaled.
+					renderedContext.scale(
+						canvas.width / logicalSize.width,
+						canvas.height / logicalSize.height
+					);
 					const drawStack = (adjustments?: MediaPortraitAdjustments) =>
 						drawColorGradedSourceStack({
 							context: renderedContext,
-							source: fitted,
-							x: 0,
-							y: 0,
-							width: canvas.width,
-							height: canvas.height,
+							source: prepared.source,
+							...bounds,
 							layers: renderedLayers,
 							frameSeed,
 							sourceKey,
@@ -363,6 +315,7 @@ export function ColorPreviewCanvas({
 							await drawStack(framePortrait);
 						} catch (error) {
 							if (frameSignal.aborted) throw error;
+							portraitStatus = "fallback";
 							// No native fallback: say why, then show the original frame.
 							toast.error("自研美颜处理失败，已显示原始画面", {
 								description:
@@ -384,6 +337,17 @@ export function ColorPreviewCanvas({
 					}
 					outputContext.clearRect(0, 0, canvas.width, canvas.height);
 					outputContext.drawImage(rendered, 0, 0);
+					canvas.dataset.renderedSourceTimestampSeconds =
+						String(timestampSeconds);
+					canvas.dataset.renderedFrameSeed = String(frameSeed);
+					canvas.dataset.renderedPortraitStatus = portraitStatus;
+					canvas.dataset.renderedPortraitEngine =
+						portraitStatus === "applied"
+							? (framePortrait?.engine ?? "native")
+							: "none";
+					canvas.dataset.renderedPortraitGeometry = JSON.stringify(
+						prepared.geometry
+					);
 					canvas.dataset.renderedFrameCount = String(
 						Number(canvas.dataset.renderedFrameCount ?? 0) + 1
 					);

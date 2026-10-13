@@ -10,7 +10,27 @@ from alignment_sequence import Sequence, describe
 from detection_geometry import algorithm_size
 from consumer_pose import total_face_pose
 from consumer_points import total_face_points
-from alignment_decode import normalized
+from alignment_decode import OutOfFrameLandmarks, normalized
+
+
+class RejectedPhotoFace(ValueError):
+    """A detector candidate failed the photo acceptance contract."""
+
+
+class RejectedPhotoGeometry(RejectedPhotoFace):
+    """A classified candidate has landmarks outside the image; no clipping is allowed."""
+
+
+def validate_photo_probabilities(*, probabilities):
+    if any(not np.isfinite(value) or not 0 <= value <= 1 for value in probabilities):
+        raise ValueError("finite photo classification probabilities required")
+    if any(value > .5 for value in probabilities):
+        raise RejectedPhotoFace(f"photo candidate rejected: prob0={probabilities}")
+
+
+def validate_photo_acceptance(*, warm, result):
+    validate_photo_probabilities(probabilities=[warm["heads"][160]["prob"].reshape(-1)[0],
+                                               result["heads"][120]["prob"].reshape(-1)[0]])
 
 
 def start_photo(*, rgba, box, model_root, assets, models, expansion, flags, algorithm_box=None):
@@ -32,16 +52,23 @@ def start_photo(*, rgba, box, model_root, assets, models, expansion, flags, algo
     face = {"identity": (0, 4096, 0), "mode": "seed-160", "order": assets["order"], "mean": assets["mean"],
             "smoothing": [{**profile, "escale": 10} for _ in range(2)],
             "tracking_smoothing": {**profile, "escale": 3}, "initialization": {"call": call}}
-    engine = Sequence(model_root=model_root, models=models)
+    # Warm points feed tracking; only accepted final points become consumer coordinates.
+    engine = Sequence(model_root=model_root, models=models, normalize_output=False)
     warm = engine.process(rgba=rgba, size=size, index=0, face=face)
+    # Seed rejection is final; the warm 120 classification can still change after Extra.
+    validate_photo_probabilities(probabilities=[warm["heads"][160]["prob"].reshape(-1)[0]])
     return engine, warm, {**face, "mode": "reset-120", "initialization": None}, size
 
 
 def describe_photo(*, warm, result, size, original_size, algorithm_box_preserved):
+    validate_photo_acceptance(warm=warm, result=result)
     width, height = original_size
     heads = result["heads"][120]
     crop = warm["seed_crop"]
-    points = total_face_points(points=result["points"], algorithm_size=size, original_size=(width, height))
+    try:
+        points = total_face_points(points=result["points"], algorithm_size=size, original_size=(width, height))
+    except OutOfFrameLandmarks as error:
+        raise RejectedPhotoGeometry("photo candidate landmarks outside frame; clipping prohibited") from error
     provenance = describe(result=result)
     seed_provenance = describe(result=warm)
     yaw = float(heads["fc_yaw"].reshape(-1)[0])

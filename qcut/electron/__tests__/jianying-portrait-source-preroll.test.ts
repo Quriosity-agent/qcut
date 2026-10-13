@@ -284,6 +284,39 @@ describe("portrait causal recovery provider", () => {
 		await provider.render(recovered());
 		expect(commands).toHaveLength(count + 3);
 	});
+	it("does not let a cached target from different history poison an explicit window", async () => {
+		const warm = await provider.render(recovered());
+		expect(warm.rgba[1]).toBe(91);
+		const differentHistory = recovered();
+		differentHistory.sourcePreRoll!.frames[0].rgba[0] = 30;
+		const cold = await provider.render(differentHistory);
+		expect(cold.rgba[1]).toBe(90);
+		expect((await provider.render(recovered())).rgba).toEqual(warm.rgba);
+	});
+	it("rebuilds the same results for out-of-order, repeated and first-frame targets", async () => {
+		const early = recovered();
+		early.timestampSeconds = 1.2;
+		early.sourcePreRoll!.frames = [
+			{ timestampSeconds: 1, rgba: new Uint8Array([30, 20, 30, 255]) },
+			{ timestampSeconds: 1.1, rgba: new Uint8Array([40, 50, 60, 255]) },
+		];
+		const first = { ...request(), timestampSeconds: 0, freshTracking: true };
+		const targets = [
+			recovered(),
+			early,
+			recovered(),
+			recovered(),
+			first,
+			early,
+		];
+		const results = await Promise.all(
+			targets.map((target) => provider.render(target))
+		);
+		expect(results.map((result) => result.rgba[1])).toEqual([
+			91, 90, 91, 91, 90, 90,
+		]);
+		expect(mocks.start).toHaveBeenCalledTimes(targets.length);
+	});
 	it("serializes other sources after the complete replay and does not share acquisition", async () => {
 		const [result, other] = await Promise.all([
 			provider.render(recovered()),

@@ -293,6 +293,14 @@ async function previewCommits({ page }: { page: Page }) {
 async function engineChange({ page }: { page: Page }) {
 	return page.getByTestId("color-preview-canvas").evaluate((node) => {
 		const canvas = node as HTMLCanvasElement;
+		const geometryJson = canvas.dataset.renderedPortraitGeometry;
+		if (!geometryJson) throw new Error("Missing committed portrait geometry");
+		const geometry = JSON.parse(geometryJson) as {
+			sourceSize: { width: number; height: number };
+			logicalSize: { width: number; height: number };
+			bounds: { x: number; y: number; width: number; height: number };
+			processing: { width: number; height: number };
+		};
 		const video = canvas.parentElement?.querySelector("video");
 		if (!video) throw new Error("Missing preview source video");
 		const cover = Math.max(
@@ -345,6 +353,9 @@ async function engineChange({ page }: { page: Page }) {
 			changed,
 			total: canvas.width * canvas.height,
 			canvas: [canvas.width, canvas.height],
+			geometry,
+			portraitStatus: canvas.dataset.renderedPortraitStatus,
+			portraitEngine: canvas.dataset.renderedPortraitEngine,
 		};
 	});
 }
@@ -546,10 +557,27 @@ test("resident independent portrait engine: vertical HD preview, identical cache
 		expect(beforePlayback).toBeGreaterThan(0);
 		const paused = await engineChange({ page });
 		expect(paused.changed).toBeGreaterThan(200);
+		expect(paused.portraitStatus).toBe("applied");
+		expect(paused.portraitEngine).toBe("independent");
+		expect(paused.geometry.logicalSize).toEqual({ width: 1080, height: 1920 });
+		expect(paused.geometry.processing).toEqual(
+			portraitProcessingSize({
+				width: Math.round(paused.geometry.bounds.width),
+				height: Math.round(paused.geometry.bounds.height),
+				sourceWidth: paused.geometry.sourceSize.width,
+				sourceHeight: paused.geometry.sourceSize.height,
+				adjustments: {
+					enabled: true,
+					engine: "independent",
+					values: { face_adjust_Smooth: 40, face_adjust_Whiten: 45 },
+				},
+			})
+		);
 		expect(
 			(await cacheEntries({ cache })).some(
 				(entry) =>
-					entry.width === paused.canvas[0] && entry.height === paused.canvas[1]
+					entry.width === paused.geometry.processing.width &&
+					entry.height === paused.geometry.processing.height
 			)
 		).toBe(true);
 		await page.screenshot({

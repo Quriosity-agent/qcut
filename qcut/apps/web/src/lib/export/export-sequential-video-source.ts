@@ -35,8 +35,8 @@ interface MediabunnyInputHandle {
 
 /** Forward gap beyond which restarting (keyframe seek) beats decoding through. */
 const RESTART_GAP_SECONDS = 1;
-/** Small tolerance for float timestamp comparisons. */
-const TIME_EPSILON_SECONDS = 0.001;
+/** Float noise only: millisecond tolerances select future frames across cadences. */
+const TIME_EPSILON_SECONDS = 0.000_000_1;
 /** Pooled canvases: current + lookahead + one margin. */
 const CANVAS_POOL_SIZE = 3;
 
@@ -198,8 +198,10 @@ export class SequentialVideoRegistry {
 	 */
 	getOrOpen(
 		mediaItem: MediaItem,
-		lane?: string
+		lane?: string,
+		{ signal }: { signal?: AbortSignal } = {}
 	): Promise<SequentialVideoFrameSource | null> {
+		if (signal?.aborted) return Promise.reject(signal.reason);
 		if (sequentialDecodeDisabled) return Promise.resolve(null);
 		const key = lane ? `${mediaItem.id}#${lane}` : mediaItem.id;
 		this.useTick += 1;
@@ -208,15 +210,25 @@ export class SequentialVideoRegistry {
 		if (existing) return existing;
 		this.evictBeyondCapacity();
 		const opened = (async () => {
-			const blob = await resolveMediaBlob(mediaItem);
+			const blob = await resolveMediaBlob({ mediaItem, signal });
+			signal?.throwIfAborted();
 			if (!blob) return null;
 			const source = await SequentialVideoFrameSource.open({ blob });
+			if (signal?.aborted) {
+				await source?.dispose();
+				signal.throwIfAborted();
+			}
 			exportProfiler.count(
 				source ? "sequential-video-open" : "sequential-video-fallback"
 			);
 			return source;
 		})();
 		this.sources.set(key, opened);
+		void opened.catch(() => {
+			if (this.sources.get(key) !== opened) return;
+			this.sources.delete(key);
+			this.lastUse.delete(key);
+		});
 		return opened;
 	}
 
@@ -263,14 +275,26 @@ export class SequentialVideoRegistry {
 	}
 }
 
-async function resolveMediaBlob(mediaItem: MediaItem): Promise<Blob | null> {
-	if (mediaItem.file instanceof Blob) return mediaItem.file;
+async function resolveMediaBlob({
+	mediaItem,
+	signal,
+}: {
+	mediaItem: MediaItem;
+	signal?: AbortSignal;
+}): Promise<Blob | null> {
+	signal?.throwIfAborted();
+	if (mediaItem.file instanceof Blob && mediaItem.file.size > 0)
+		return mediaItem.file;
 	if (!mediaItem.url) return null;
 	try {
-		const response = await fetch(mediaItem.url);
+		const response = await fetch(mediaItem.url, { signal });
+		signal?.throwIfAborted();
 		if (!response.ok) return null;
-		return await response.blob();
+		const blob = await response.blob();
+		signal?.throwIfAborted();
+		return blob;
 	} catch {
+		signal?.throwIfAborted();
 		return null;
 	}
 }

@@ -91,6 +91,26 @@ describe("independent frame cache key", () => {
 			})
 		);
 	});
+	it("separates temporal evidence from a still-frame key", () => {
+		const key = independentFrameCacheKey(base);
+		expect(
+			independentFrameCacheKey({
+				...base,
+				sourceEvidenceSha256: "a".repeat(64),
+			})
+		).not.toBe(key);
+		expect(
+			independentFrameCacheKey({
+				...base,
+				sourceEvidenceSha256: "a".repeat(64),
+			})
+		).not.toBe(
+			independentFrameCacheKey({
+				...base,
+				sourceEvidenceSha256: "b".repeat(64),
+			})
+		);
+	});
 	it("changes with the engine, the edit and the pixels", () => {
 		const key = independentFrameCacheKey(base);
 		expect(
@@ -108,6 +128,163 @@ describe("independent frame cache key", () => {
 				rgba: new Uint8Array([11, 20, 30, 255, 40, 50, 60, 255]),
 			})
 		).not.toBe(key);
+	});
+});
+
+describe("independent source evidence cache isolation", () => {
+	function evidence() {
+		return {
+			policy: "single-face-bidirectional-v1" as const,
+			status: "available" as const,
+			targetTimestampSeconds: 1,
+			frames: [0.92, 0.96, 1.04, 1.08].map((timestampSeconds) => ({
+				timestampSeconds,
+				rgba: input.slice(),
+			})),
+		};
+	}
+	it("reuses identical neighbors but never an absent or changed history", async () => {
+		const provider = engine();
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256: async () => "engine",
+		});
+		const first = await renderer.render({ request });
+		const sourceEvidence = evidence();
+		const withHistory = await renderer.render({
+			request: { ...request, sourceEvidence },
+		});
+		const repeated = await renderer.render({
+			request: { ...request, sourceEvidence: structuredClone(sourceEvidence) },
+		});
+		sourceEvidence.frames[0].rgba[0] = 80;
+		const changed = await renderer.render({
+			request: { ...request, sourceEvidence },
+		});
+		const unavailable = await renderer.render({
+			request: {
+				...request,
+				sourceEvidence: {
+					policy: "single-face-bidirectional-v1",
+					status: "unavailable",
+					reason: "insufficient-neighbors",
+				},
+			},
+		});
+		expect([
+			first.cached,
+			withHistory.cached,
+			repeated.cached,
+			changed.cached,
+			unavailable.cached,
+		]).toEqual([false, false, true, false, false]);
+		expect(provider.render).toHaveBeenCalledTimes(4);
+	});
+	it("snapshots history pixels before waiting for engine identity", async () => {
+		const identity = deferred<string>();
+		const provider = engine();
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256: () => identity.promise,
+		});
+		const sourceEvidence = evidence();
+		const pending = renderer.render({
+			request: { ...request, sourceEvidence },
+		});
+		sourceEvidence.frames[0].rgba[0] = 99;
+		identity.resolve("engine");
+		await pending;
+		expect(provider.render.mock.calls[0][0].request).toMatchObject({
+			sourceEvidence: {
+				frames: [
+					{ timestampSeconds: 0.92, rgba: input },
+					...evidence().frames.slice(1),
+				],
+			},
+		});
+	});
+	it("copies only visible pixels and snapshots edits before waiting", async () => {
+		const pixels = () => {
+			const backing = new Uint8Array(1024 * 1024);
+			const view = backing.subarray(128, 128 + input.length);
+			view.set(input);
+			return view;
+		};
+		const identity = deferred<string>();
+		const provider = engine();
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256: () => identity.promise,
+		});
+		const sourceEvidence = evidence();
+		for (const frame of sourceEvidence.frames) frame.rgba = pixels();
+		const submitted = {
+			...request,
+			rgba: pixels(),
+			adjustments: structuredClone(request.adjustments),
+			sourceEvidence,
+		};
+		const pending = renderer.render({ request: submitted });
+		submitted.rgba.fill(99);
+		submitted.sourceEvidence.frames[0].rgba.fill(99);
+		submitted.adjustments.values.face_adjust_Whiten = 99;
+		submitted.adjustments.makeup.lip.intensity = 99;
+		identity.resolve("engine");
+		await pending;
+		const sent = provider.render.mock.calls[0][0].request as typeof submitted;
+		expect(sent.rgba).toEqual(input);
+		expect(sent.rgba.buffer.byteLength).toBe(input.length);
+		expect(sent.adjustments).toEqual(request.adjustments);
+		for (const frame of sent.sourceEvidence.frames) {
+			expect(frame.rgba).toEqual(input);
+			expect(frame.rgba.buffer.byteLength).toBe(input.length);
+		}
+	});
+	it.each([
+		"target",
+		"neighbor",
+		"shared target",
+		"shared neighbor",
+		"budget",
+	])("rejects invalid %s payloads before snapshotting", async (kind) => {
+		const submitted = {
+			...request,
+			rgba: input.slice(),
+			sourceEvidence: evidence(),
+		};
+		if (kind === "target") submitted.rgba = new Uint8Array(1024 * 1024);
+		if (kind === "neighbor")
+			submitted.sourceEvidence.frames[0].rgba = new Uint8Array(1024 * 1024);
+		if (kind === "shared target")
+			submitted.rgba = new Uint8Array(new SharedArrayBuffer(input.length));
+		if (kind === "shared neighbor")
+			submitted.sourceEvidence.frames[0].rgba = new Uint8Array(
+				new SharedArrayBuffer(input.length)
+			);
+		if (kind === "budget") {
+			submitted.width = 4096;
+			submitted.height = 1025;
+			submitted.rgba = new Uint8Array(submitted.width * submitted.height * 4);
+		}
+		const provider = engine();
+		const engineSha256 = vi.fn(async () => "engine");
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256,
+		});
+		const snapshot = vi.spyOn(globalThis, "structuredClone");
+		try {
+			await expect(renderer.render({ request: submitted })).rejects.toThrow();
+			expect(snapshot.mock.calls.length).toBe(0);
+			expect(engineSha256).not.toHaveBeenCalled();
+			expect(provider.render).not.toHaveBeenCalled();
+		} finally {
+			snapshot.mockRestore();
+		}
 	});
 });
 

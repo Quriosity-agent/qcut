@@ -141,6 +141,7 @@ async function drawClipFrame({
 		ctx,
 		visual,
 		bounds,
+		canvasSize,
 		draw: () =>
 			ctx.drawImage(
 				media.source,

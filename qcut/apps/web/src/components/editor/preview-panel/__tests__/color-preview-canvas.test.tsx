@@ -50,20 +50,30 @@ function view({
 	intensity,
 	portraitAdjustments,
 	portraitRenderSize,
+	fitMode = "fill",
+	sourceSelector = "img",
+	frameSeed = 0,
 }: {
 	intensity: number;
 	portraitAdjustments?: MediaPortraitAdjustments;
 	portraitRenderSize?: { width: number; height: number };
+	fitMode?: "cover" | "contain" | "fill";
+	sourceSelector?: "img" | "video";
+	frameSeed?: number;
 }) {
 	return (
 		<div>
-			<img src="test.png" alt="source" />
+			{sourceSelector === "img" ? (
+				<img src="test.png" alt="source" />
+			) : (
+				<video src="blob:source" />
+			)}
 			<ColorPreviewCanvas
-				sourceSelector="img"
+				sourceSelector={sourceSelector}
 				settings={settings({ intensity })}
 				masks={masks}
-				fitMode="fill"
-				frameSeed={0}
+				fitMode={fitMode}
+				frameSeed={frameSeed}
 				portraitAdjustments={portraitAdjustments}
 				portraitRenderSize={portraitRenderSize}
 			/>
@@ -114,6 +124,7 @@ beforeEach(() => {
 			return {
 				canvas: this,
 				clearRect: vi.fn(),
+				scale: vi.fn(),
 				drawImage: vi.fn((source: CanvasImageSource) => {
 					if (source instanceof HTMLCanvasElement)
 						this.dataset.paintedIntensity = source.dataset.paintedIntensity;
@@ -156,6 +167,138 @@ async function completePending({
 }
 
 describe("color preview async commits", () => {
+	it.each([
+		{ fitMode: "cover" as const, width: 1080, height: 1977, x: 0, y: -28.5 },
+		{
+			fitMode: "contain" as const,
+			width: (360 * 1920) / 659,
+			height: 1920,
+			x: (1080 - (360 * 1920) / 659) / 2,
+			y: 0,
+		},
+		{ fitMode: "fill" as const, width: 1080, height: 1920, x: 0, y: 0 },
+	])("renders the full display-pixel video source before $fitMode clipping", async ({
+		fitMode,
+		...bounds
+	}) => {
+		Object.defineProperties(HTMLVideoElement.prototype, {
+			readyState: { configurable: true, get: () => 2 },
+			videoWidth: { configurable: true, get: () => 360 },
+			videoHeight: { configurable: true, get: () => 659 },
+		});
+		const portraitAdjustments: MediaPortraitAdjustments = {
+			enabled: true,
+			engine: "independent",
+			values: { face_adjust_Whiten: 45 },
+		};
+		const { container } = render(
+			view({
+				intensity: 10,
+				fitMode,
+				sourceSelector: "video",
+				portraitAdjustments,
+				portraitRenderSize: { width: 1080, height: 1920 },
+			})
+		);
+		await completePending();
+		const call = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(call.source).toBe(container.querySelector("video"));
+		expect(call.portraitAdjustments).toBe(portraitAdjustments);
+		for (const key of ["x", "y", "width", "height"] as const)
+			expect(call[key]).toBeCloseTo(bounds[key]);
+		expect(screen.getByTestId("color-preview-canvas")).toHaveAttribute(
+			"data-rendered-portrait-status",
+			"applied"
+		);
+	});
+
+	it("keeps UHD engine input at logical resolution while limiting display pixels", async () => {
+		Object.defineProperties(HTMLImageElement.prototype, {
+			naturalWidth: { configurable: true, get: () => 2160 },
+			naturalHeight: { configurable: true, get: () => 3840 },
+		});
+		const { container } = render(
+			view({
+				intensity: 10,
+				fitMode: "cover",
+				portraitAdjustments: {
+					enabled: true,
+					engine: "independent",
+					values: { face_adjust_Whiten: 45 },
+				},
+				portraitRenderSize: { width: 2160, height: 3840 },
+			})
+		);
+		await completePending();
+		const call = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(call.source).toBe(container.querySelector("img"));
+		expect(call).toMatchObject({ x: 0, y: 0, width: 2160, height: 3840 });
+		expect(call.context.scale).toHaveBeenCalledWith(0.5, 0.5);
+		expect(screen.getByTestId("color-preview-canvas")).toHaveAttribute(
+			"width",
+			"1080"
+		);
+	});
+
+	it("commits only the current resolved portrait settings and frame metadata", async () => {
+		const initial: MediaPortraitAdjustments = {
+			enabled: true,
+			engine: "independent",
+			values: { face_adjust_Whiten: 20 },
+		};
+		const next = { ...initial, values: { face_adjust_Whiten: 80 } };
+		const props = {
+			intensity: 10,
+			portraitAdjustments: initial,
+			portraitRenderSize: { width: 1080, height: 1920 },
+			frameSeed: 15,
+		};
+		const { rerender } = render(view(props));
+		await act(async () => {});
+		const first = vi.mocked(drawColorGradedSourceStack).mock.calls[0][0];
+		await act(async () =>
+			rerender(view({ ...props, portraitAdjustments: next, frameSeed: 30 }))
+		);
+		expect(first.signal?.aborted).toBe(true);
+		await act(async () => pending.shift()!());
+		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(canvas.dataset.renderedFrameSeed).toBeUndefined();
+		await completePending();
+		const latest = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(latest.portraitAdjustments).toBe(next);
+		expect(latest.frameSeed).toBe(30);
+		expect(canvas.dataset.renderedFrameSeed).toBe("30");
+		expect(canvas.dataset.renderedSourceTimestampSeconds).toBe("0");
+		expect(JSON.parse(canvas.dataset.renderedPortraitGeometry!)).toMatchObject({
+			logicalSize: { width: 1080, height: 1920 },
+			processing: { width: 1080, height: 1920 },
+		});
+	});
+
+	it("marks an original-frame fallback instead of reporting a portrait render", async () => {
+		vi.mocked(drawColorGradedSourceStack).mockRejectedValueOnce(
+			new Error("Independent worker failed")
+		);
+		render(
+			view({
+				intensity: 10,
+				portraitAdjustments: {
+					enabled: true,
+					engine: "independent",
+					values: { face_adjust_Whiten: 45 },
+				},
+			})
+		);
+		await completePending();
+		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(canvas.dataset.renderedPortraitStatus).toBe("fallback");
+		expect(canvas.dataset.renderedPortraitEngine).toBe("none");
+		expect(
+			vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0]
+				.portraitAdjustments
+		).toBeUndefined();
+	});
+
 	it("does not commit an old frame when seeking during asynchronous post-processing", async () => {
 		Object.defineProperties(HTMLVideoElement.prototype, {
 			readyState: { configurable: true, get: () => 2 },
@@ -245,7 +388,7 @@ describe("color preview async commits", () => {
 			naturalWidth: { configurable: true, get: () => 4000 },
 			naturalHeight: { configurable: true, get: () => 6000 },
 		});
-		render(
+		const { container } = render(
 			view({
 				intensity: 10,
 				portraitAdjustments: {
@@ -256,14 +399,13 @@ describe("color preview async commits", () => {
 			})
 		);
 		await completePending();
-		expect(drawColorGradedSourceStack).toHaveBeenCalledWith(
-			expect.objectContaining({
-				source: expect.objectContaining({ width: 2160, height: 3240 }),
-				width: 1080,
-				height: 1620,
-			})
-		);
+		const call = vi.mocked(drawColorGradedSourceStack).mock.calls.at(-1)![0];
+		expect(call.source).toBe(container.querySelector("img"));
+		expect(call).toMatchObject({ width: 1080, height: 1620 });
 		const canvas = screen.getByTestId("color-preview-canvas");
+		expect(JSON.parse(canvas.dataset.renderedPortraitGeometry!)).toMatchObject({
+			processing: { width: 2160, height: 3240 },
+		});
 		expect(canvas).toHaveAttribute("width", "1080");
 		expect(canvas).toHaveAttribute("height", "1620");
 	});

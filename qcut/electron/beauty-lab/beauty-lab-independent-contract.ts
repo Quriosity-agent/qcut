@@ -8,6 +8,23 @@ export const BEAUTY_LAB_INDEPENDENT_RENDER_FRAME =
 export const BEAUTY_LAB_INDEPENDENT_PROVIDER = "qcut-independent-photo-v1";
 export const INDEPENDENT_BEAUTY_MAX_EDGE = 4096;
 export const INDEPENDENT_BEAUTY_MAX_PIXELS = 3840 * 2160;
+export const INDEPENDENT_SOURCE_EVIDENCE_POLICY =
+	"single-face-bidirectional-v1";
+export const INDEPENDENT_SOURCE_EVIDENCE_MAX_BYTES = 64 * 1024 ** 2;
+export const INDEPENDENT_SOURCE_EVIDENCE_MAX_SECONDS = 0.5;
+
+export type BeautyLabIndependentSourceEvidence =
+	| {
+			policy: typeof INDEPENDENT_SOURCE_EVIDENCE_POLICY;
+			status: "available";
+			targetTimestampSeconds: number;
+			frames: Array<{ timestampSeconds: number; rgba: Uint8Array }>;
+	  }
+	| {
+			policy: typeof INDEPENDENT_SOURCE_EVIDENCE_POLICY;
+			status: "unavailable";
+			reason: string;
+	  };
 
 export interface BeautyLabIndependentStatus {
 	available: boolean;
@@ -22,6 +39,7 @@ export interface BeautyLabIndependentRequest {
 	width: number;
 	height: number;
 	rgba: Uint8Array;
+	sourceEvidence?: BeautyLabIndependentSourceEvidence;
 	adjustments: MediaPortraitAdjustments;
 }
 export interface BeautyLabIndependentResult {
@@ -36,12 +54,13 @@ export interface BeautyLabIndependentResult {
 	outputSha256: string;
 	report: Record<string, unknown>;
 }
-/** A timeline frame: no photo identity, only the adjustments the engine runs. */
+/** Content-addressed timeline input; neighbors may resolve ambiguous face detections. */
 export interface BeautyLabIndependentFrameRequest {
 	requestId: string;
 	width: number;
 	height: number;
 	rgba: Uint8Array;
+	sourceEvidence?: BeautyLabIndependentSourceEvidence;
 	adjustments: {
 		enabled: true;
 		values: Record<string, number>;

@@ -27,6 +27,12 @@ import {
 	independentBeautyEnvironment,
 	verifyIndependentBeautyEnvironment,
 } from "./beauty-lab-runtime-environment.js";
+import {
+	independentSourceEvidenceSchema,
+	independentSourceEvidenceIdentity,
+	writeIndependentSourceEvidence,
+	verifyIndependentSourceEvidenceReceipt,
+} from "./beauty-lab-independent-source-evidence.js";
 
 const requestSchema = z
 	.object({
@@ -35,6 +41,7 @@ const requestSchema = z
 		width: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		rgba: z.instanceof(Uint8Array),
+		sourceEvidence: independentSourceEvidenceSchema.optional(),
 		adjustments: z
 			.object({
 				enabled: z.literal(true),
@@ -91,6 +98,7 @@ export function independentBeautyAdjustments({
 	for (let index = 3; index < parsed.rgba.length; index += 4)
 		if (parsed.rgba[index] !== 255)
 			throw new Error("Independent beauty requires an opaque photo");
+	independentSourceEvidenceIdentity(parsed);
 	const values: Record<string, number> = {};
 	for (const [key, value] of Object.entries(parsed.adjustments.values)) {
 		const name = key.startsWith("face_adjust_") ? key.slice(12) : key;
@@ -327,6 +335,14 @@ export function createBeautyLabIndependentProvider({
 					JSON.stringify(validated.adjustments)
 				),
 			]);
+			const sourceEvidence = await writeIndependentSourceEvidence({
+				directory,
+				sourceEvidence: input.sourceEvidence,
+				width: input.width,
+				height: input.height,
+				rgba: input.rgba,
+				signal: job.controller.signal,
+			});
 			const cleanEnvironment = independentBeautyEnvironment({ environment });
 			cleanEnvironment.PATH = [
 				path.dirname(await resolveBun()),
@@ -355,6 +371,8 @@ export function createBeautyLabIndependentProvider({
 			};
 			if (Math.max(input.width, input.height) > 1280)
 				execution.args.push("--resolution", "original");
+			if (sourceEvidence)
+				execution.args.push("--source-evidence", sourceEvidence.path);
 			if (runJob) await runJob(execution);
 			else
 				await worker.run({
@@ -363,6 +381,7 @@ export function createBeautyLabIndependentProvider({
 						request: path.join(directory, "request.json"),
 						output: path.join(directory, "owned.png"),
 						report: path.join(directory, "owned.json"),
+						...(sourceEvidence ? { source_evidence: sourceEvidence.path } : {}),
 					},
 					sourceIdentity: manifestSha256,
 					environment: cleanEnvironment,
@@ -395,6 +414,10 @@ export function createBeautyLabIndependentProvider({
 			)
 				throw new Error("Invalid independent PNG budget or dimensions");
 			const report = JSON.parse(source) as Record<string, unknown>;
+			verifyIndependentSourceEvidenceReceipt({
+				expected: sourceEvidence,
+				receipt: report.sourceEvidence,
+			});
 			const decoded = await loadImage(png);
 			canvas.getContext("2d").drawImage(decoded, 0, 0);
 			const rgba = new Uint8Array(

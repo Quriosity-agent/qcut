@@ -80,6 +80,70 @@ describe("independent portrait frame", () => {
 		expect(Array.from(output.data)).toEqual([90, 80, 70, 255, 5, 5, 5, 0]);
 	});
 
+	it.each([
+		"available",
+		"unavailable",
+	] as const)("passes explicit %s source evidence without changing target pixels", async (status) => {
+		const evidence =
+			status === "available"
+				? {
+						policy: "single-face-bidirectional-v1" as const,
+						status,
+						targetTimestampSeconds: 2,
+						frames: [1.8, 1.9, 2.1, 2.2].map((timestampSeconds) => ({
+							timestampSeconds,
+							rgba: new Uint8Array(8).fill(255),
+						})),
+					}
+				: {
+						policy: "single-face-bidirectional-v1" as const,
+						status,
+						reason: "Insufficient distinct source frames",
+					};
+		const readSourceEvidence = vi.fn(async () => evidence);
+		const signal = new AbortController().signal;
+		const output = await renderIndependentPortraitFrame({
+			source: frame({ alpha: [255, 0] }),
+			adjustments,
+			timestampSeconds: 2,
+			readSourceEvidence,
+			signal,
+		});
+		expect(readSourceEvidence).toHaveBeenCalledWith({
+			width: 2,
+			height: 1,
+			timestampSeconds: 2,
+			signal,
+		});
+		expect(renderIndependentFrame.mock.calls[0][0]).toMatchObject({
+			rgba: new Uint8Array([10, 20, 30, 255, 0, 0, 0, 255]),
+			sourceEvidence: evidence,
+		});
+		expect(Array.from(output.data)).toEqual([90, 80, 70, 255, 5, 5, 5, 0]);
+	});
+
+	it("does not start IPC after cancellation while collecting source evidence", async () => {
+		const controller = new AbortController();
+		const readSourceEvidence = vi.fn(async () => {
+			controller.abort(new Error("Seek superseded"));
+			return {
+				policy: "single-face-bidirectional-v1" as const,
+				status: "unavailable" as const,
+				reason: "Cancelled decode",
+			};
+		});
+		await expect(
+			renderIndependentPortraitFrame({
+				source: frame({ alpha: [255, 255] }),
+				adjustments,
+				timestampSeconds: 2,
+				readSourceEvidence,
+				signal: controller.signal,
+			})
+		).rejects.toThrow("Seek superseded");
+		expect(renderIndependentFrame).not.toHaveBeenCalled();
+	});
+
 	it("cancels the engine job when the caller aborts", async () => {
 		let release!: () => void;
 		renderIndependentFrame.mockImplementationOnce(

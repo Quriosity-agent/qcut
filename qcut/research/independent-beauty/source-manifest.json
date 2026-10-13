@@ -48,8 +48,8 @@
 		},
 		{
 			"path": "research/alignment_decode.py",
-			"bytes": 3108,
-			"sha256": "690ad122cf1ae8fb2a214713c3395c9da9abeb7814c1735e3e320b000e417606",
+			"bytes": 3245,
+			"sha256": "daba103023933078aff3245dcafddaf7c09d0711040f4c112e9239550a078eed",
 			"sourceSha256": "690ad122cf1ae8fb2a214713c3395c9da9abeb7814c1735e3e320b000e417606"
 		},
 		{
@@ -60,8 +60,8 @@
 		},
 		{
 			"path": "research/alignment_photo.py",
-			"bytes": 4731,
-			"sha256": "f39a328e4ce86e639a632fbea8c8d00185444f034c9037886b714966a4e6745b",
+			"bytes": 6103,
+			"sha256": "1cf93c7cc946c093d0a2b359b40db01a55ec6682698117e25d2a32717145ec40",
 			"sourceSha256": "f39a328e4ce86e639a632fbea8c8d00185444f034c9037886b714966a4e6745b"
 		},
 		{
@@ -72,8 +72,8 @@
 		},
 		{
 			"path": "research/alignment_sequence.py",
-			"bytes": 11945,
-			"sha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5",
+			"bytes": 12193,
+			"sha256": "f3ed59e15a83540f12907c40961b2450616e75de023a9de3a90de0e61d727f46",
 			"sourceSha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5"
 		},
 		{
@@ -192,8 +192,8 @@
 		},
 		{
 			"path": "research/extra_photo.py",
-			"bytes": 6296,
-			"sha256": "2a2087b6c857fe6a3a23060efeac095199707af155990f11f6d5a474b9ba402c",
+			"bytes": 6377,
+			"sha256": "0e3d2d838da108b4b8f0c448babfdb023cc79a30b4d2f740d85363b881d49d07",
 			"sourceSha256": "2a2087b6c857fe6a3a23060efeac095199707af155990f11f6d5a474b9ba402c"
 		},
 		{
@@ -258,8 +258,8 @@
 		},
 		{
 			"path": "research/face_features_render.py",
-			"bytes": 6633,
-			"sha256": "5526cef19154bbcacb9e77ed0d547c50e525d45673ee9c5b47defeaca80ae9c1",
+			"bytes": 6736,
+			"sha256": "7b6999583ef0cf5c517a1b9e9ea12ef66297fa290c41f871ca17df0c10ede2c1",
 			"sourceSha256": "e9c0e7a039cbf01935f51e9846e06c52b89503a58f093ba7cfbf1e245d867be4"
 		},
 		{
@@ -462,8 +462,8 @@
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 21491,
-			"sha256": "bbfddaf8252ca5587c549202975231a86bc5c12f5f4972f5d88b5c22572d03c5",
+			"bytes": 24953,
+			"sha256": "7d8d0b9334501b4c96e1416ae48b9f8bfb639934b2595e1ad72c63f882c4979c",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -570,8 +570,8 @@
 		},
 		{
 			"path": "research/lip_render.py",
-			"bytes": 6612,
-			"sha256": "515c84005ff84ba7c8da07a1411c5cce8833c34973d39cd5f148b9a2f7a28588",
+			"bytes": 6914,
+			"sha256": "fffb38551770fa9c4f7da3c0996913db50a1e4b55bc6fd191b3963487e4de1a1",
 			"sourceSha256": "515c84005ff84ba7c8da07a1411c5cce8833c34973d39cd5f148b9a2f7a28588"
 		},
 		{
@@ -582,8 +582,8 @@
 		},
 		{
 			"path": "research/liquefy_combination_render.py",
-			"bytes": 3369,
-			"sha256": "04160f8838baae436bf091c322f0366d8f1f73f97dc445e49d347c8c59deaff0",
+			"bytes": 3472,
+			"sha256": "fe5b91815d0414db50e46ed3d32e6160b10841778f5c2bad091087104304e3c3",
 			"sourceSha256": "afa90533e96cf4b40940b5816d19a62262235f5aeb13e4ae13ee581a1a515302"
 		},
 		{
@@ -792,8 +792,8 @@
 		},
 		{
 			"path": "research/portrait_features_render.py",
-			"bytes": 5397,
-			"sha256": "bf8534ee23d3694ace72c86b842285550d594aa4da7bb9859a278b05d0cd5b88",
+			"bytes": 5829,
+			"sha256": "435cfb52d61aff986c5e23f032aa08d8fcd5a231be1f3df9bf52b38c84732827",
 			"sourceSha256": "8a76b316eef0c70361e6b55456b39b0cc8c1fc5cd40fe98a6c22a351408636dc"
 		},
 		{
@@ -852,8 +852,8 @@
 		},
 		{
 			"path": "research/slimface_detection.py",
-			"bytes": 804,
-			"sha256": "71d19912382750d79d289a05fcf4e36e1385b1c35e5277e205b4ef4576f78046",
+			"bytes": 1896,
+			"sha256": "c9591a6fa3a36bc41944462f6ce501eec0820ba529f11b79227c2bfdfbe51f3c",
 			"sourceSha256": "71d19912382750d79d289a05fcf4e36e1385b1c35e5277e205b4ef4576f78046"
 		},
 		{
@@ -1230,8 +1230,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_pipeline.py",
-			"bytes": 16280,
-			"sha256": "4d8f270f9845eba1b4e4d82cc884339158c64564709f33429dff911cd5b34110",
+			"bytes": 23730,
+			"sha256": "a632ab5aeaf46fbd7af1b781fe974478b16cfa63dc0aabb4a48abf7d50a26fda",
 			"sourceSha256": "e12057a20f376c07db392705a8eb7f50c512ddb577327ff4d01199cfbcffc967"
 		},
 		{
@@ -1386,8 +1386,8 @@
 		},
 		{
 			"path": "research/tests/test_portrait_package_lifecycle.py",
-			"bytes": 9257,
-			"sha256": "faf855be13aa196aa8ad27d348dab5dffb9d5fffb348722155b4d165c2b1462e",
+			"bytes": 10568,
+			"sha256": "c54a3a34e5449842f90a1cf443b3f5112873eccbaa7488c980676e46576aa0bf",
 			"sourceSha256": "faf855be13aa196aa8ad27d348dab5dffb9d5fffb348722155b4d165c2b1462e"
 		},
 		{
@@ -1416,8 +1416,8 @@
 		},
 		{
 			"path": "research/tests/test_slimface_detection.py",
-			"bytes": 2123,
-			"sha256": "921e14688a94503da2da5ab5360c6d54c448be73bf27b7f8ff40f86e609c169a",
+			"bytes": 6344,
+			"sha256": "901748df248a347274e368b02468b1149bee92879047df5f1aef261d3748f0fc",
 			"sourceSha256": "921e14688a94503da2da5ab5360c6d54c448be73bf27b7f8ff40f86e609c169a"
 		},
 		{
@@ -1452,8 +1452,8 @@
 		},
 		{
 			"path": "research/tests/test_worker_alignment.py",
-			"bytes": 7965,
-			"sha256": "7c2e5d5689d669ba847b82bba3fdcfb02e07c3610793d1b9324922ef7c6be2d2",
+			"bytes": 13269,
+			"sha256": "5c6b2972a8550b242fa11325effc086116c781c101bb1b8f584e007922895862",
 			"sourceSha256": "7c2e5d5689d669ba847b82bba3fdcfb02e07c3610793d1b9324922ef7c6be2d2"
 		},
 		{
@@ -1584,13 +1584,13 @@
 		},
 		{
 			"path": "research/independent_stage_runner.py",
-			"bytes": 2530,
-			"sha256": "c893666630c511af5140a65720400d6fc0c58cc0123df33c31fc1c2dcea33549"
+			"bytes": 3000,
+			"sha256": "34b5281cdd636228ca21ddb0c6f2144ef67bcf205e9690cfc632fe6adf3883bc"
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 4134,
-			"sha256": "b2c05f1c91307e1c8f1bf2351576a887c40a0d2a7c340a77a7fd0148eebe0623"
+			"bytes": 4346,
+			"sha256": "af4ec7b12c47768bef7ae614ffb4c21f0d71f9af2145d72b8fa0bedf2231e537"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -1604,8 +1604,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_worker.py",
-			"bytes": 7284,
-			"sha256": "00bfc8811f96ca748ad5bd499561e96ad77428788ca6bfcd418f0025b7aab320"
+			"bytes": 10914,
+			"sha256": "469b9f5b43a53a5b990102ec76e04e6646cad623fa6cec211b0c9bf4c121b593"
 		},
 		{
 			"path": "research/tests/test_metal_original_resolution.py",
@@ -1616,6 +1616,31 @@
 			"path": "research/tests/test_render_resolution.py",
 			"bytes": 5001,
 			"sha256": "d0d0f9240e7b322be7c0c82ebc7bd7753da8a5d06c7fe92846538780b83a2ec1"
+		},
+		{
+			"path": "research/face_selection_reference.py",
+			"bytes": 9490,
+			"sha256": "a7109d7c5d5634e019f6906340629cd17f599fa1fe7abdec73f8b58b4c8144a4"
+		},
+		{
+			"path": "research/tests/test_face_selection_reference.py",
+			"bytes": 8752,
+			"sha256": "057e84b7230b8954cfd8bca150faac8bc55c6646a145b04cade1fb70b6031469"
+		},
+		{
+			"path": "research/tests/test_face_identity_no_effect.py",
+			"bytes": 6741,
+			"sha256": "479846f86f661adae9904db50e524d3ba4a5a53ee74aff3d6ad45c083c1a3f41"
+		},
+		{
+			"path": "research/source_face_confirmation.py",
+			"bytes": 10435,
+			"sha256": "e62584c5aebeaab91678f650f9d1a3234844ffb96a836b3e869c1702377905da"
+		},
+		{
+			"path": "research/tests/test_source_face_confirmation.py",
+			"bytes": 13453,
+			"sha256": "f5482a17cf22fd8bb848965ccb5d2a3ce5b7e618c2b5153e8d61b42219e6a962"
 		}
 	],
 	"importPatches": [
@@ -1968,6 +1993,72 @@
 				"research/tests/test_makeup_blend.py"
 			],
 			"reason": "PR #498 review: express the tiled makeup limit in decoded RGBA8 bytes; preserve UHD float32 working buffers and pixel arithmetic; cover exact byte and portrait/landscape UHD boundaries"
+		},
+		{
+			"files": [
+				"research/alignment_sequence.py",
+				"research/alignment_photo.py",
+				"research/slimface_detection.py",
+				"research/tests/test_worker_alignment.py",
+				"research/tests/test_slimface_detection.py"
+			],
+			"reason": "Defer fresh-photo coordinate normalization until seed and final classification acceptance; reject only typed non-face candidates during single-face selection, retaining strict accepted-coordinate and runtime error checks."
+		},
+		{
+			"files": [
+				"research/alignment_decode.py",
+				"research/alignment_photo.py",
+				"research/tests/test_slimface_detection.py"
+			],
+			"reason": "Reject only typed out-of-frame photo candidates after classification without clipping or changing valid coordinates; preserve fatal malformed-model errors and exactly-one-valid-face selection after Extra refinement."
+		},
+		{
+			"files": [
+				"research/alignment_photo.py",
+				"research/tests/test_worker_alignment.py"
+			],
+			"reason": "Apply the existing mandatory seed160 prob0<=0.5 photo acceptance immediately after warm initialization, before reset120 or Extra refinement; preserve warm120 acceptance, affine safety bounds, valid pixels and fatal invalid-probability errors."
+		},
+		{
+			"files": [
+				"research/face_selection_reference.py",
+				"research/independent_pipeline.py",
+				"research/independent_stage_runner.py",
+				"research/slimface_detection.py",
+				"research/extra_photo.py",
+				"research/lip_render.py",
+				"research/tests/test_face_selection_reference.py",
+				"research/tests/test_independent_pipeline.py",
+				"research/tests/test_independent_worker.py"
+			],
+			"reason": "Bind later lipstick candidate association to immutable original-photo Base106 identity from the first strict single-face portrait stage; recompute all current landmarks and reject missing or ambiguous matches, preserving original multi-face rejection, numerical safety and standalone behavior. Explicit stage RGBA hash transport is shared by resident and subprocess dispatch; no temporal/global face state."
+		},
+		{
+			"files": [
+				"research/face_selection_reference.py",
+				"research/independent_pipeline.py",
+				"research/tests/test_independent_pipeline.py",
+				"research/tests/test_face_identity_no_effect.py"
+			],
+			"reason": "Preserve the existing no-effect behavior of subthreshold portrait controls before lipstick: only a fully verified original-RGBA identity receipt may omit a reference, or yield to a later original-input local-package alignment. Malformed/missing alignment remains fatal; active original references and rendering geometry remain unchanged."
+		},
+		{
+			"files": [
+				"research/face_features_render.py",
+				"research/independent_pipeline.py",
+				"research/liquefy_combination_render.py",
+				"research/portrait_features_render.py",
+				"research/slimface_detection.py",
+				"research/tests/test_independent_pipeline.py",
+				"research/tests/test_portrait_package_lifecycle.py",
+				"research/independent_stage_runner.py",
+				"research/independent_worker.py",
+				"research/tests/test_independent_worker.py",
+				"research/face_selection_reference.py",
+				"research/source_face_confirmation.py",
+				"research/tests/test_source_face_confirmation.py"
+			],
+			"reason": "Add request-bound bidirectional source evidence only for multiple accepted candidates in the first original-input portrait package. Require four distinct neighboring source timestamps, independently strict single-face neighbors and unique unanimous geometric association; preserve current landmarks and all sole-candidate pixels. Bind exact manifest bytes and raw RGBA hashes across subprocess/resident dispatch and subsequent same-photo lipstick identity. Missing or ambiguous support fails closed; transient second-person correctness remains explicitly unverified."
 		}
 	],
 	"sourceWorkingTreeStatus": [

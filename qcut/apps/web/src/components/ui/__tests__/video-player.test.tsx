@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QCUT_VIDEO_FRAME_EVENT } from "@/lib/preview/preview-health-events";
 import type { MediaElement } from "@/types/timeline";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
+import {
+	getMediaSourcePlaybackTime,
+	getMediaTimelineDuration,
+	mapMediaTimelineTime,
+} from "@/lib/video/video-timing";
 import { VideoPlayer } from "../video-player";
 
 vi.mock("@/stores/editor/playback-store", async () => {
@@ -53,6 +58,127 @@ describe("VideoPlayer", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it("samples the same source frame as export without shifting timeline keyframes", () => {
+		const element = media({ overrides: { playbackRate: 1 } });
+		usePlaybackStore.setState({ currentTime: 11 });
+		const { container } = render(
+			<VideoPlayer
+				videoSource={{ type: "remote", src: "https://fal.media/video.mp4" }}
+				clipStartTime={element.startTime}
+				trimStart={0}
+				trimEnd={0}
+				clipDuration={element.duration}
+				timingElement={element}
+				frameRate={30}
+			/>
+		);
+		const video = container.querySelector("video")!;
+		fireEvent.loadedMetadata(video);
+		expect(video.currentTime).toBeCloseTo(1 + 0.5 / 30, 8);
+		expect(Math.floor(video.currentTime * (24_000 / 1001))).toBe(24);
+		expect(usePlaybackStore.getState().currentTime).toBe(11);
+		act(() => {
+			window.dispatchEvent(
+				new CustomEvent("playback-seek", { detail: { time: 11.5 } })
+			);
+		});
+		expect(video.currentTime).toBeCloseTo(1.5 + 0.5 / 30, 8);
+	});
+
+	it("applies paused sampling before speed mapping and clamps incoming transition time", () => {
+		const element = media();
+		usePlaybackStore.setState({ currentTime: 9.8 });
+		const { container } = render(
+			<VideoPlayer
+				videoSource={{ type: "remote", src: "https://fal.media/video.mp4" }}
+				clipStartTime={element.startTime}
+				trimStart={0}
+				trimEnd={0}
+				clipDuration={element.duration}
+				timingElement={element}
+				frameRate={30}
+				playbackWindow={{ startTime: 9.75, endTime: 10.25 }}
+			/>
+		);
+		const video = container.querySelector("video")!;
+		fireEvent.loadedMetadata(video);
+		expect(video.currentTime).toBeCloseTo(1 / 30, 8);
+		act(() => {
+			usePlaybackStore.setState({ isPlaying: true });
+			window.dispatchEvent(
+				new CustomEvent("playback-seek", { detail: { time: 10.1 } })
+			);
+		});
+		expect(video.currentTime).toBeCloseTo(0.2, 8);
+	});
+
+	it.each([
+		24, 60,
+	])("uses the same %ifps speed curve for position, rate and clip range", (fps) => {
+		const element = media({
+			overrides: {
+				duration: 6,
+				playbackRate: 1,
+				speedKeyframes: [
+					{ id: "slow", frame: 0, value: 1, easing: "linear" },
+					{ id: "fast", frame: 60, value: 3, easing: "linear" },
+				],
+			},
+		});
+		usePlaybackStore.setState({ currentTime: 11, isPlaying: true });
+		const { container } = render(
+			<VideoPlayer
+				videoSource={{ type: "remote", src: "https://fal.media/video.mp4" }}
+				clipStartTime={element.startTime}
+				trimStart={0}
+				trimEnd={0}
+				clipDuration={element.duration}
+				timingElement={element}
+				frameRate={fps}
+			/>
+		);
+		const video = container.querySelector("video")!;
+		fireEvent.loadedMetadata(video);
+		const timing = mapMediaTimelineTime({ element, localTimelineTime: 1, fps });
+		expect(video.currentTime).toBeCloseTo(timing.sourceTime, 8);
+		expect(video.playbackRate).toBeCloseTo(timing.playbackRate, 8);
+		act(() => {
+			window.dispatchEvent(
+				new CustomEvent("playback-update", { detail: { time: 10.75 } })
+			);
+		});
+		expect(video.playbackRate).toBeCloseTo(
+			mapMediaTimelineTime({ element, localTimelineTime: 0.75, fps })
+				.playbackRate,
+			8
+		);
+		act(() => {
+			usePlaybackStore.setState({ isPlaying: false });
+		});
+		expect(video.currentTime).toBeCloseTo(
+			getMediaSourcePlaybackTime({
+				element,
+				localTimelineTime: 1 + 0.5 / fps,
+				fps,
+			}),
+			8
+		);
+		const projectEnd = getMediaTimelineDuration(element, fps);
+		const defaultEnd = getMediaTimelineDuration(element);
+		const betweenEnds = element.startTime + (projectEnd + defaultEnd) / 2;
+		const play = vi.mocked(HTMLMediaElement.prototype.play);
+		play.mockClear();
+		act(() => {
+			usePlaybackStore.setState({ currentTime: betweenEnds, isPlaying: true });
+		});
+		fireEvent.canPlay(video);
+		if (projectEnd > defaultEnd) {
+			expect(play).toHaveBeenCalled();
+		} else {
+			expect(play).not.toHaveBeenCalled();
+		}
 	});
 
 	it("restores clip time and speed after metadata resets the video", () => {

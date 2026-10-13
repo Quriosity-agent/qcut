@@ -43,6 +43,7 @@ export interface ExportSettings {
 	height: number;
 	aspectRatio?: number;
 	frameRate?: ExportFrameRate;
+	backgroundColor?: string;
 	outputPath?: string;
 	purpose?: ExportPurpose; // Optional, defaults to FINAL
 }

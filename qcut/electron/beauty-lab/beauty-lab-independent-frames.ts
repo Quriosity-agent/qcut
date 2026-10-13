@@ -15,6 +15,10 @@ import {
 	type createIndependentFrameCache,
 	independentFrameCacheKey,
 } from "./beauty-lab-independent-frame-cache.js";
+import {
+	independentSourceEvidenceSchema,
+	independentSourceEvidenceIdentity,
+} from "./beauty-lab-independent-source-evidence.js";
 
 /** Timeline frames carry no photo identity; the cache keys them by content. */
 export const INDEPENDENT_TIMELINE_SOURCE_KEY = "timeline-frame";
@@ -25,6 +29,7 @@ const frameRequestSchema = z
 		width: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		rgba: z.instanceof(Uint8Array),
+		sourceEvidence: independentSourceEvidenceSchema.optional(),
 		adjustments: z
 			.object({
 				enabled: z.literal(true),
@@ -119,9 +124,32 @@ export function createIndependentFrameRenderer({
 		request: unknown;
 	}): Promise<BeautyLabIndependentFrameResult> {
 		if (disposed) throw new Error("Independent frame renderer disposed");
-		const input = frameRequestSchema.parse(request);
-		if (input.rgba.length !== input.width * input.height * 4)
+		const parsed = frameRequestSchema.parse(request);
+		if (
+			parsed.rgba.buffer instanceof SharedArrayBuffer ||
+			parsed.rgba.length !== parsed.width * parsed.height * 4
+		)
 			throw new Error("Invalid independent frame RGBA");
+		const evidenceIdentity = independentSourceEvidenceIdentity(parsed);
+		const sourceEvidence = parsed.sourceEvidence;
+		// Cloning a typed-array view also clones its entire backing buffer.
+		const input = {
+			...parsed,
+			rgba: new Uint8Array(parsed.rgba),
+			adjustments: structuredClone(parsed.adjustments),
+			sourceEvidence:
+				sourceEvidence?.status === "available"
+					? {
+							...sourceEvidence,
+							frames: sourceEvidence.frames.map(
+								({ timestampSeconds, rgba }) => ({
+									timestampSeconds,
+									rgba: new Uint8Array(rgba),
+								})
+							),
+						}
+					: sourceEvidence,
+		};
 		const { requestId, width, height } = input;
 		if (pending.has(requestId))
 			throw new Error("Duplicate independent frame request id");
@@ -139,6 +167,7 @@ export function createIndependentFrameRenderer({
 				values: input.adjustments.values,
 				makeup: input.adjustments.makeup ?? {},
 				rgba: input.rgba,
+				sourceEvidenceSha256: evidenceIdentity?.manifestSha256,
 			});
 			const cached = await waitForFrameOperation({
 				signal,

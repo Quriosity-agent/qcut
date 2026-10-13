@@ -30,7 +30,8 @@ def split_controls(*, values):
     return common, local
 
 
-def render_rgba(*, rgba, controls, runtime):
+def render_rgba(*, rgba, controls, runtime, source_evidence=None):
+    evidence_arguments = {'source_evidence': source_evidence} if source_evidence is not None else {}
     common, local = split_controls(values=controls)
     validate_rgba(rgba=rgba)
     if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
@@ -38,12 +39,13 @@ def render_rgba(*, rgba, controls, runtime):
     common_active = controls_active(values=common)
     local_active = bool(active_controls(controls=local))
     if not local_active:
-        return face_features_render.render_rgba(rgba=rgba, controls=common, runtime=runtime)
+        return face_features_render.render_rgba(rgba=rgba, controls=common, runtime=runtime, **evidence_arguments)
     package_receipts = {}
     result = rgba
     if common_active:
-        result, package_receipts['face'] = face_features_render.render_rgba(rgba=result, controls=common, runtime=runtime)
-    result, package_receipts['features'] = liquefy_combination_render.render_rgba(rgba=result, controls=local, runtime=runtime)
+        result, package_receipts['face'] = face_features_render.render_rgba(rgba=result, controls=common, runtime=runtime, **evidence_arguments)
+    result, package_receipts['features'] = liquefy_combination_render.render_rgba(rgba=result, controls=local, runtime=runtime,
+        **(evidence_arguments if not common_active else {}))
     independence = native_images()
     if independence['private_native_images']:
         raise ValueError('independent portrait package renderer loaded private effect libraries')
@@ -65,16 +67,16 @@ def render_rgba(*, rgba, controls, runtime):
     return result, receipt
 
 
-def render_image(*, image, controls, runtime, max_edge=1280):
+def render_image(*, image, controls, runtime, max_edge=1280, source_evidence=None):
     decoded = decode_image(image=image, max_edge=max_edge)
-    result, receipt = render_rgba(rgba=decoded['rgba'], controls=controls, runtime=runtime)
+    result, receipt = render_rgba(rgba=decoded['rgba'], controls=controls, runtime=runtime, source_evidence=source_evidence)
     return result, receipt | {'image': str(image), 'sourceSha256': hashlib.sha256(Path(image).read_bytes()).hexdigest()}
 
 
-def run(*, image, output, report, controls, runtime, max_edge=1280):
+def run(*, image, output, report, controls, runtime, max_edge=1280, source_evidence=None):
     if output.exists() or report.exists() or output.resolve() == report.resolve():
         raise ValueError('fresh distinct portrait PNG and report paths required')
-    result, receipt = render_image(image=image, controls=controls, runtime=runtime, max_edge=max_edge)
+    result, receipt = render_image(image=image, controls=controls, runtime=runtime, max_edge=max_edge, source_evidence=source_evidence)
     output.parent.mkdir(parents=True, exist_ok=True)
     report.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(result).save(output)
@@ -90,8 +92,9 @@ if __name__ == '__main__':
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--runtime', type=Path, default=ROOT / 'runtime')
     parser.add_argument('--max-edge', type=int, default=1280)
+    parser.add_argument('--source-evidence', type=Path)
     args = parser.parse_args()
     receipt = run(image=args.image, controls=args.controls, runtime=args.runtime, output=args.output,
-        report=args.report, max_edge=args.max_edge)
+        report=args.report, max_edge=args.max_edge, source_evidence=args.source_evidence)
     print(json.dumps({'controls': receipt['controls'], 'changedPixelCount': receipt['changedPixelCount'],
         'private_native_images': receipt['independence']['private_native_images']}))

@@ -20,6 +20,7 @@
 
 import type { MediaItem } from "@/stores/media/media-store-types";
 import { exportProfiler } from "./export-profiler";
+import { COMPOSITION_CANVAS_CONTEXT_SETTINGS } from "./composition-canvas-context";
 import type { ClipTransition, TimelineTrack } from "@/types/timeline";
 import {
 	buildClipTransitionCssFilter,
@@ -362,7 +363,9 @@ function getLayerContext({
 		layerCanvas = document.createElement("canvas");
 		layerCanvas.width = width;
 		layerCanvas.height = height;
-		layerCtx = layerCanvas.getContext("2d");
+		layerCtx = layerCanvas.getContext("2d", {
+			...COMPOSITION_CANVAS_CONTEXT_SETTINGS,
+		});
 	}
 	return layerCtx;
 }
