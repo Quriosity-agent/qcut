@@ -1,4 +1,5 @@
 """Original photo to one independently detected face, one shared mesh and one PNG."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -45,7 +46,7 @@ def build_face_feature_mesh(*, prediction, size, controls, runtime):
 def render_rgba(*, rgba, controls, runtime):
     controls = normalize_controls(values=controls)
     validate_rgba(rgba=rgba)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque face and features photo required')
     runtime = Path(runtime).resolve()
     active = controls_active(values=controls)
