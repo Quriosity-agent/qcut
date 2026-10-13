@@ -7,6 +7,7 @@ import type {
 } from "@/types/timeline";
 import { renderFrame, type RenderContext } from "../export-engine-renderer";
 import { buildExportRenderIndex } from "../export-render-index";
+import { destroyClipTransitionLayer } from "../export-clip-transitions";
 import type { SequentialVideoRegistry } from "../export-sequential-video-source";
 import * as portraitSource from "@/lib/portrait/portrait-source-preroll";
 import * as colorRendering from "@/lib/color/browser-color-rendering";
@@ -137,6 +138,7 @@ describe("export renderer clip transitions", () => {
 	let groupContexts: RecordingContext[];
 
 	beforeEach(() => {
+		destroyClipTransitionLayer();
 		groupContexts = [];
 		vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
 			function (this: HTMLCanvasElement) {
@@ -227,6 +229,63 @@ describe("export renderer clip transitions", () => {
 		expect(group?.draws).toEqual([
 			{ alpha: 1, source: expect.objectContaining({ mediaId: "m2" }) },
 		]);
+	});
+
+	it("clips resolved crop keyframes inside the wipe group without changing the source bounds", async () => {
+		const { context, ctx } = createRenderContext({ requests: [] });
+		context.tracks = [
+			{
+				...tracks[0],
+				elements: tracks[0].elements.map((element) =>
+					element.type === "media" && element.id === "b"
+						? ({
+								...element,
+								keyframes: {
+									cropLeft: [
+										{ id: "crop-start", frame: 0, value: 0, easing: "linear" },
+										{ id: "crop-end", frame: 30, value: 0.4, easing: "linear" },
+									],
+								},
+							} satisfies MediaElement)
+						: element
+				),
+				transitions: [{ ...dissolve, type: "wipe", direction: "left" }],
+			},
+		];
+		context.renderIndex = buildExportRenderIndex({
+			tracks: context.tracks,
+			mediaItems,
+			fps: 30,
+			canvasWidth: canvas.width,
+			canvasHeight: canvas.height,
+		});
+		const draw = vi
+			.spyOn(colorRendering, "drawColorGradedSourceStack")
+			.mockImplementation(
+				async ({ context: target, source, x, y, width, height }) => {
+					target.drawImage(source, x, y, width, height);
+				}
+			);
+		await renderFrame(context, 2.25);
+		const group = groupContexts.find((candidate) => candidate.draws.length > 0);
+		const leftInset = (320 * 0.4 * 8) / 30;
+		expect(group?.rect).toHaveBeenCalledWith(
+			expect.closeTo(leftInset),
+			0,
+			expect.closeTo(320 - leftInset),
+			180
+		);
+		expect(group?.clip).toHaveBeenCalledOnce();
+		expect(ctx.clip).toHaveBeenCalledOnce();
+		expect(draw).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				x: 0,
+				y: 0,
+				width: 320,
+				height: 180,
+				source: expect.objectContaining({ mediaId: "m2" }),
+			})
+		);
 	});
 
 	it("holds the outgoing clip's last frame after the cut", async () => {
