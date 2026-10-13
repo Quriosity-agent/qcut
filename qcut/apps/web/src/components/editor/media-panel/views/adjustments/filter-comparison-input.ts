@@ -78,7 +78,13 @@ export async function readComparisonImage({
 					"本轮对照需要不透明图片，请选择 JPEG 或不含透明区域的图片。"
 				);
 		}
-		return { name: file.name, width, height, rgba, resized: ratio < 1 };
+		return {
+			name: file.name,
+			width,
+			height,
+			rgba,
+			resized: width !== bitmap.width || height !== bitmap.height,
+		};
 	} finally {
 		bitmap.close();
 	}
