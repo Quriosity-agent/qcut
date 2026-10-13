@@ -1135,6 +1135,7 @@ export function PreviewElementRenderer({
 								videoId={sourceVideoId}
 								sourceTimeOffset={previewSource.sourceTimeOffset}
 								timelineTime={currentTime}
+								frameRate={activeProject?.fps ?? 30}
 								style={{
 									objectFit: visual.fitMode,
 									filter: combinedFilter || undefined,
