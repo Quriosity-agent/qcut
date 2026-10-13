@@ -1,4 +1,5 @@
 """Original photo to independent skin-GAN PNG with an owned control vector."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -20,7 +21,7 @@ def run(*, rgba, runtime, output, report, yunfu=0, fuling=0, contour=0):
     started = time.monotonic()
     validate_rgba(rgba=rgba)
     strengths, vector, flow_enabled = controls(yunfu=yunfu, fuling=fuling, contour=contour)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque skin-GAN photo required')
     prediction, gpu, result = None, None, rgba.copy()
     active_strength = max(strengths.values())
