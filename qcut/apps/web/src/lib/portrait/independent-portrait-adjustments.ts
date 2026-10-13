@@ -6,7 +6,9 @@ export type IndependentPortraitIssue =
 	| { code: "unsupported"; selections: string[] }
 	| {
 			code: "scope";
-			selections: Array<"faces" | "manual-retouch" | "manual-body">;
+			selections: Array<
+				"faces" | "manual-retouch" | "manual-body" | "skin-tone"
+			>;
 	  };
 
 /** What the installed engine supports, from `beautyLab.inspectIndependent`. */
@@ -50,7 +52,8 @@ export function independentPortraitRequest({
 }):
 	| { adjustments: BeautyLabIndependentFrameRequest["adjustments"] }
 	| { issue: IndependentPortraitIssue } {
-	const scope: Array<"faces" | "manual-retouch" | "manual-body"> = [];
+	const scope: Array<"faces" | "manual-retouch" | "manual-body" | "skin-tone"> =
+		[];
 	if (
 		adjustments.faceTarget?.mode === "single" ||
 		(adjustments.faces ?? []).some((face) => faceHasEdits({ face }))
@@ -64,6 +67,12 @@ export function independentPortraitRequest({
 		)
 	)
 		scope.push("manual-body");
+	if (
+		adjustments.skinToneResourceId &&
+		((adjustments.values.face_adjust_skin_Intensity ?? 0) !== 0 ||
+			(adjustments.values.face_adjust_skin_ColdWarm ?? 0) !== 0)
+	)
+		scope.push("skin-tone");
 	if (scope.length > 0) return { issue: { code: "scope", selections: scope } };
 
 	const values: Record<string, number> = {};
@@ -112,6 +121,7 @@ export function independentPortraitIssueMessage({
 		faces: "单人或分人物设置",
 		"manual-retouch": "手动精修",
 		"manual-body": "手动美体",
+		"skin-tone": "肤色资源",
 	} as const;
 	return `自研美颜只能对全部人脸统一处理，请先清除：${issue.selections
 		.map((selection) => labels[selection])
