@@ -18,6 +18,7 @@ interface WorkerRequest {
 	request: string;
 	output: string;
 	report: string;
+	source_evidence?: string;
 }
 
 interface RunningRequest {
