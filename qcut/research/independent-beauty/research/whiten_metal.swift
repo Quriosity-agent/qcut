@@ -11,6 +11,7 @@ struct Request: Decodable {
     let textures: [TextureSpec]
     let strength: Float
     let output: String
+    let resolutionMode: String?
 }
 struct RenderError: Error, CustomStringConvertible {
     let description: String
@@ -62,7 +63,12 @@ func run() throws {
     try require(request.textures.count == 3, "source, color cube and skin texture required")
     try require(request.strength.isFinite && (0...1).contains(request.strength), "finite unit whitening strength required")
     let source = request.textures[0]
-    try require((1...1280).contains(source.width) && (1...1280).contains(source.height), "bounded source dimensions required")
+    let resolutionMode = request.resolutionMode ?? "preview"
+    try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+    let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+    try require((1...maxSourceEdge).contains(source.width) && (1...maxSourceEdge).contains(source.height), "bounded source frame dimensions required")
+    let sourceRgbaBytes = source.width*source.height*4
+    try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
     try require(request.textures[1].width == 512 && request.textures[1].height == 512, "512-square color cube required")
     try require((1...512).contains(request.textures[2].width) && (1...512).contains(request.textures[2].height), "bounded skin dimensions required")
     let outputURL = URL(fileURLWithPath: request.output).resolvingSymlinksInPath()
@@ -120,7 +126,7 @@ func run() throws {
     let forbidden = ["libcccreator", "liblens", "libAGFX", "libbytenn", "/runtime/Frameworks/", "/JianyingPro.app/"]
     let privateImages = images.filter { path in forbidden.contains { path.contains($0) } }
     try require(privateImages.isEmpty, "independent Metal process loaded private effect libraries")
-    let receipt: [String: Any] = ["gpu": device.name,"images": images,"private_native_images": privateImages,
+    let receipt: [String: Any] = ["resolutionMode":resolutionMode,"sourceFrameSize":[source.width,source.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu": device.name,"images": images,"private_native_images": privateImages,
         "pixelFormat": "RGBA8Unorm","vertexUv": "v=1-at-image-top","sourceRows": "image-top-to-bottom",
         "maskCoordinate": "native-u,1-native-v","lutInterpolation": "64-cube-trilinear"]
     try JSONSerialization.data(withJSONObject: receipt,options: [.prettyPrinted,.sortedKeys]).write(to: URL(fileURLWithPath: request.output+".json"))
