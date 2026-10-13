@@ -1,4 +1,5 @@
 """Bounded independent Metal FlowGAN transport and crop-camera construction."""
+from render_resolution import gpu_request_fields, source_edge_limit, verify_gpu_resolution
 import hashlib
 import json
 from pathlib import Path
@@ -44,7 +45,7 @@ def control_vector_values(*, intensity, control_vector=None):
 def render(*, rgba, prediction, intensity, runtime, control_vector=None, flow_enabled=True):
     validate_rgba(rgba=rgba)
     if (not np.isfinite(intensity) or not 0 < intensity <= 100
-            or max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255)):
+            or max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255)):
         raise ValueError('bounded active opaque FlowGAN photo required')
     vector = control_vector_values(intensity=intensity, control_vector=control_vector)
     if not isinstance(flow_enabled, bool):
@@ -67,6 +68,7 @@ def render(*, rgba, prediction, intensity, runtime, control_vector=None, flow_en
             request['controlVector'] = vector.tolist()
         if not flow_enabled:
             request['flowEnabled'] = False
+        request.update(gpu_request_fields())
         (directory/'request.json').write_text(json.dumps(request, allow_nan=False))
         subprocess.run([str(host), str(directory/'request.json')], env=environment,
             capture_output=True, text=True, check=True, timeout=60)
@@ -75,6 +77,7 @@ def render(*, rgba, prediction, intensity, runtime, control_vector=None, flow_en
             raise ValueError('FlowGAN output byte count mismatch')
         result = np.fromfile(output, np.uint8).reshape(rgba.shape)
         receipt = json.loads(Path(str(output)+'.json').read_text())
+        verify_gpu_resolution(receipt=receipt, rgba=rgba)
     if (receipt['private_native_images'] or hashlib.sha256(host.read_bytes()).hexdigest() != binary_identity
             or hashlib.sha256(SOURCE.read_bytes()).hexdigest() != identity):
         raise ValueError('independent FlowGAN host integrity failed')
