@@ -123,13 +123,44 @@ describe("independent portrait frame", () => {
 		expect(renderIndependentFrame).not.toHaveBeenCalled();
 	});
 
-	it("rejects frames above the engine's 1280 edge", async () => {
+	it("rejects frames above the engine's 4096 edge", async () => {
 		await expect(
 			renderIndependentPortraitFrame({
-				source: new ImageData(1281, 1),
+				source: new ImageData(4097, 1),
 				adjustments,
 			})
-		).rejects.toThrow("1280");
+		).rejects.toThrow("4096");
+	});
+
+	it("preserves a 1080p vertical frame without resizing or changing pixel bytes", async () => {
+		const source = new ImageData(1080, 1920);
+		source.data.fill(127);
+		renderIndependentFrame.mockImplementationOnce(
+			async (request: BeautyLabIndependentFrameRequest) => ({
+				...request,
+				rgba: request.rgba.slice(),
+				cached: false,
+			})
+		);
+		const output = await renderIndependentPortraitFrame({
+			source,
+			adjustments,
+		});
+		expect(output.width).toBe(source.width);
+		expect(output.height).toBe(source.height);
+		expect(
+			output.data.every((value, index) => value === source.data[index])
+		).toBe(true);
+	});
+
+	it("rejects a frame above the pixel budget before IPC", async () => {
+		await expect(
+			renderIndependentPortraitFrame({
+				source: new ImageData(4096, 2160),
+				adjustments,
+			})
+		).rejects.toThrow("8294400");
+		expect(renderIndependentFrame).not.toHaveBeenCalled();
 	});
 
 	it("rejects a result that belongs to another frame", async () => {
