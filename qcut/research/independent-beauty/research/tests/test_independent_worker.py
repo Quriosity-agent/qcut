@@ -85,6 +85,35 @@ class WorkerTests(unittest.TestCase):
         self.serve(rows=[self.request, self.request | {'resolution': 'preview'}], render=render)
         self.assertEqual([call.kwargs['resolution'] for call in render.call_args_list], ['original', 'preview'])
 
+    def test_source_evidence_is_optional_bounded_and_does_not_leak_after_failure(self):
+        path = self.root / 'source-evidence.json'
+        render = Mock(side_effect=[InterruptedError('cancelled'), None])
+        responses = self.serve(rows=[self.request | {'source_evidence': str(path)}, self.request], render=render)
+        self.assertEqual([row['ok'] for row in responses], [False, True])
+        self.assertEqual(render.call_args_list[0].kwargs['source_evidence'], path)
+        self.assertNotIn('source_evidence', render.call_args_list[1].kwargs)
+        for value in (None, '../source-evidence.json', '/tmp/' + 'x' * 8192):
+            with self.assertRaises(ValueError):
+                worker.validate_request(request=self.request | {'source_evidence': value})
+
+    def test_dispatch_source_evidence_only_to_portrait_stage(self):
+        path = self.root / 'source-evidence.json'
+        for script in ('portrait_features_render.py', 'whiten_render.py'):
+            module = Mock(__file__=str(self.root / script))
+            arguments = {'stage': {'script': script, 'parameters': []}, 'source': self.root / script,
+                         'image': self.image, 'runtime': self.root, 'output': self.root / 'out.png',
+                         'report': self.root / 'out.json'}
+            with patch.object(stages.importlib, 'import_module', return_value=module):
+                if script == 'portrait_features_render.py':
+                    stages.run_stage(**arguments, source_evidence=path)
+                    stages.run_stage(**arguments)
+                    self.assertEqual(module.run.call_args_list[0].kwargs['source_evidence'], path)
+                    self.assertNotIn('source_evidence', module.run.call_args_list[1].kwargs)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'source evidence contract'):
+                        stages.run_stage(**arguments, source_evidence=path)
+                    module.run.assert_not_called()
+
     def test_catalog_renderers_have_explicit_resident_contracts(self):
         catalog = pipeline.read_json(path=pipeline.ROOT / 'research/independent-pipeline-catalog.json')
         self.assertEqual(pipeline.allowed_scripts(catalog=catalog),
@@ -97,6 +126,27 @@ class WorkerTests(unittest.TestCase):
                                    ('whiten_render.py', ['--strength', '0.1', '--strength', '0.5'])]:
             with self.subTest(script=script, parameters=parameters), self.assertRaises(ValueError):
                 stages.stage_parameters(script=script, parameters=parameters)
+
+    def test_dispatch_forwards_only_explicit_lip_identity_and_does_not_retain_it(self):
+        module = Mock(__file__=str(self.root / 'lip_render.py'))
+        reference = object()
+        arguments = {'stage': {'script': 'lip_render.py', 'parameters': ['--strength', '0.35', '--texture-state', 'Auto']},
+                     'source': self.root / 'lip_render.py', 'image': self.image, 'runtime': self.root,
+                     'output': self.root / 'out.png', 'report': self.root / 'out.json'}
+        with patch.object(stages.importlib, 'import_module', return_value=module):
+            stages.run_stage(**arguments, face_reference=reference)
+            stages.run_stage(**arguments)
+        self.assertIs(module.run.call_args_list[0].kwargs['face_reference'], reference)
+        self.assertNotIn('face_reference', module.run.call_args_list[1].kwargs)
+        np.testing.assert_array_equal(module.run.call_args_list[0].kwargs['rgba'], np.array(Image.open(self.image)))
+
+    def test_dispatch_rejects_reference_for_renderers_without_an_identity_contract(self):
+        module = Mock(__file__=str(self.root / 'whiten_render.py'))
+        with patch.object(stages.importlib, 'import_module', return_value=module), self.assertRaisesRegex(ValueError, 'identity contract'):
+            stages.run_stage(stage={'script': 'whiten_render.py', 'parameters': ['--strength', '0.2']},
+                             source=self.root / 'whiten_render.py', image=self.image, runtime=self.root,
+                             output=self.root / 'out.png', report=self.root / 'out.json', face_reference=object())
+        module.run.assert_not_called()
 
     @unittest.skipUnless(sys.platform == 'darwin' and shutil.which('bun'), 'real planner requires macOS/Bun')
     def test_real_worker_two_jobs_match_one_shot_pixels_and_recover_after_invalid_plan(self):
