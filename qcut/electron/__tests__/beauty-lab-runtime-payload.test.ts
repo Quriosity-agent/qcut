@@ -68,7 +68,16 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(270);
+		).toBe(275);
+		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
+			expect.arrayContaining([
+				"research/face_selection_reference.py",
+				"research/source_face_confirmation.py",
+				"research/tests/test_face_identity_no_effect.py",
+				"research/tests/test_face_selection_reference.py",
+				"research/tests/test_source_face_confirmation.py",
+			])
+		);
 		expect(profile.files).toHaveLength(362);
 		expect(
 			profile.files.some(
