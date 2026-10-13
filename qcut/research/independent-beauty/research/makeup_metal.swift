@@ -26,12 +26,16 @@ struct Request: Decodable {
     let input: String
     let output: String
     let passes: [PassSpec]
+    let resolutionMode: String?
 }
 struct RenderError: Error, CustomStringConvertible {
     let description: String
 }
 func require(_ condition: Bool, _ message: String) throws {
     if !condition { throw RenderError(description: message) }
+}
+func requireTextureDimensions(_ specification: TextureSpec, maxEdge: Int = 2048) throws {
+    try require((1...maxEdge).contains(specification.width) && (1...maxEdge).contains(specification.height), "bounded pigment dimensions required")
 }
 func readBytes(_ path: String, _ count: Int, _ root: URL) throws -> Data {
     let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
@@ -83,7 +87,12 @@ func run() throws {
     let size = try FileManager.default.attributesOfItem(atPath: requestURL.path)[.size] as? NSNumber
     try require((size?.intValue ?? Int.max) <= 65536, "bounded render request required")
     let request = try JSONDecoder().decode(Request.self, from: Data(contentsOf: requestURL))
-    try require((1...1280).contains(request.width) && (1...1280).contains(request.height), "bounded image dimensions required")
+    let resolutionMode = request.resolutionMode ?? "preview"
+    try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+    let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+    try require((1...maxSourceEdge).contains(request.width) && (1...maxSourceEdge).contains(request.height), "bounded source frame dimensions required")
+    let sourceRgbaBytes = request.width*request.height*4
+    try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
     let order = request.passes.map(\.name)
     let dynamicOrder = ["Stereo", "Blusher", "Brow", "Eyeline", "Eyeshadow", "Eyemazing", "Lip"]
     let dynamic = !order.isEmpty && order == dynamicOrder.filter { order.contains($0) }
@@ -99,6 +108,9 @@ func run() throws {
     }
     if order == ["Eyemazing"] {
         try require(request.passes[0].modes == [1, 2] && request.passes[0].textures.count == 2, "pinned single aegyo blend required")
+    }
+    for pass in request.passes {
+        for specification in pass.textures { try requireTextureDimensions(specification) }
     }
     let outputURL = URL(fileURLWithPath: request.output).resolvingSymlinksInPath()
     try require(outputURL.deletingLastPathComponent() == root, "private output prefix required")
@@ -119,14 +131,14 @@ func run() throws {
         guard let result = device.makeTexture(descriptor: descriptor) else { throw RenderError(description: "Metal texture allocation failed") }
         return result
     }
-    func load(_ specification: TextureSpec) throws -> MTLTexture {
-        try require((1...2048).contains(specification.width) && (1...2048).contains(specification.height), "bounded pigment dimensions required")
+    func load(_ specification: TextureSpec, maxEdge: Int = 2048) throws -> MTLTexture {
+        try requireTextureDimensions(specification, maxEdge: maxEdge)
         let data = try readBytes(specification.path, specification.width*specification.height*4, root)
         let result = try texture(specification.width, specification.height)
         data.withUnsafeBytes { result.replace(region: MTLRegionMake2D(0, 0, specification.width, specification.height), mipmapLevel: 0, withBytes: $0.baseAddress!, bytesPerRow: specification.width*4) }
         return result
     }
-    var current = try load(TextureSpec(path: request.input, width: request.width, height: request.height))
+    var current = try load(TextureSpec(path: request.input, width: request.width, height: request.height), maxEdge: maxSourceEdge)
     var mask = try texture(request.width, request.height)
     for pass in request.passes {
         try require(pass.strength.isFinite && (0...1).contains(pass.strength), "finite unit pigment strength required")
@@ -185,7 +197,7 @@ func run() throws {
     let forbidden = ["libcccreator.dylib", "liblens.dylib", "libAGFX.dylib", "libbytenn.dylib"]
     let privateImages = imageNames.filter { forbidden.contains(URL(fileURLWithPath: $0).lastPathComponent) }
     try require(privateImages.isEmpty, "independent Metal process loaded private effect libraries")
-    let receipt: [String: Any] = ["gpu": device.name, "images": imageNames, "private_native_images": privateImages, "pixelFormat": "RGBA8Unorm", "layers": order]
+    let receipt: [String: Any] = ["resolutionMode":resolutionMode,"sourceFrameSize":[request.width,request.height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu": device.name, "images": imageNames, "private_native_images": privateImages, "pixelFormat": "RGBA8Unorm", "layers": order]
     try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys]).write(to: URL(fileURLWithPath: request.output+".json"))
 }
 
