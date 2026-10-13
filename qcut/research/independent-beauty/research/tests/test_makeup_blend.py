@@ -1,11 +1,14 @@
+import os
 import sys
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from makeup_blend import MODES, compose
+from render_resolution import RESOLUTION_ENV
 
 
 class MakeupBlendTests(unittest.TestCase):
@@ -47,6 +50,23 @@ class MakeupBlendTests(unittest.TestCase):
             self.assertEqual(result[0, 3], .75)
             np.testing.assert_array_equal(result[1], [0, 0, 0, 0])
             self.assertTrue(np.all(result[:, :3] <= result[:, 3:4] + 1e-7))
+
+    def test_original_row_tiles_are_exact_and_validate_later_tiles(self):
+        rng = np.random.default_rng(159)
+        base = rng.random((513, 31, 4), dtype=np.float32)
+        pigment = rng.random(base.shape, dtype=np.float32)
+        base[..., :3] *= base[..., 3:4]
+        pigment[..., :3] *= pigment[..., 3:4]
+        for mode in MODES:
+            with self.subTest(mode=mode), patch.dict(os.environ, {RESOLUTION_ENV: 'preview'}):
+                expected = compose(base=base, pigment=pigment, strength=.7, mode=mode, opacity=.8)
+            with patch.dict(os.environ, {RESOLUTION_ENV: 'original'}), patch('makeup_blend.MAX_BLEND_ELEMENTS', 32768):
+                actual = compose(base=base, pigment=pigment, strength=.7, mode=mode, opacity=.8)
+            np.testing.assert_array_equal(actual, expected)
+        pigment[512, 0, 0] = np.nan
+        with patch.dict(os.environ, {RESOLUTION_ENV: 'original'}), patch('makeup_blend.MAX_BLEND_ELEMENTS', 32768):
+            with self.assertRaisesRegex(ValueError, 'premultiplied RGBA'):
+                compose(base=base, pigment=pigment, strength=.7, mode='normal')
 
     def test_invalid_parameters_fail(self):
         base = np.array([[.2, .3, .4, 1]], np.float32)
