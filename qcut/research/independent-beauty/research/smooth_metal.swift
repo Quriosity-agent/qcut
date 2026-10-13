@@ -13,6 +13,7 @@ struct Request: Decodable {
     let strength: Float
     let output: String
     let stages: Bool
+    let resolutionMode: String?
 }
 struct RenderError: Error, CustomStringConvertible { let description: String }
 func require(_ condition: Bool, _ message: String) throws {
@@ -182,7 +183,12 @@ func run() throws {
     try require((size?.intValue ?? Int.max)<=8192,"bounded smoothing request required")
     let request=try JSONDecoder().decode(Request.self,from: Data(contentsOf: requestURL))
     let width=request.source.width, height=request.source.height
-    try require((1...1280).contains(width)&&(1...1280).contains(height),"bounded source dimensions required")
+    let resolutionMode = request.resolutionMode ?? "preview"
+    try require(["preview", "original"].contains(resolutionMode), "preview or original resolution mode required")
+    let maxSourceEdge = resolutionMode == "original" ? 4096 : 1280
+    try require((1...maxSourceEdge).contains(width) && (1...maxSourceEdge).contains(height), "bounded source frame dimensions required")
+    let sourceRgbaBytes = width*height*4
+    try require(sourceRgbaBytes <= 64*1024*1024, "bounded source RGBA byte count required")
     try require(request.strength.isFinite&&(0...1).contains(request.strength),"unit smoothing strength required")
     try require(request.cube.width==512&&request.cube.height==512,"512-square smoothing cube required")
     try require(request.face.width==256&&request.face.height==256,"256-square face mask required")
@@ -299,7 +305,7 @@ func run() throws {
     let forbidden=["libcccreator","liblens","libAGFX","libbytenn","/runtime/Frameworks/","/JianyingPro.app/"]
     let privateImages=images.filter {path in forbidden.contains {path.contains($0)}}
     try require(privateImages.isEmpty,"independent smoothing loaded private effect libraries")
-    let receipt:[String:Any]=["gpu":device.name,"private_native_images":privateImages,"images":images,
+    let receipt:[String:Any]=["resolutionMode":resolutionMode,"sourceFrameSize":[width,height],"sourceRgbaBytes":sourceRgbaBytes,"maxSourceEdge":maxSourceEdge,"gpu":device.name,"private_native_images":privateImages,"images":images,
         "stages":stageNames,"reducedSize":[reducedWidth,reducedHeight],"hasFace":request.mesh != nil,
         "pixelFormat":"RGBA8Unorm","skinCoordinate":"source-u,source-v-top-zero",
         "skinReflectionStage":"vertex-before-interpolation",
