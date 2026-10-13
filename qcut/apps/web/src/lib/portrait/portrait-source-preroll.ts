@@ -9,12 +9,14 @@ export type PortraitSourcePreRollReader = ({
 	timestampSeconds,
 	sourceKey,
 	signal,
+	strict,
 }: {
 	width: number;
 	height: number;
 	timestampSeconds: number;
 	sourceKey: string;
 	signal?: AbortSignal;
+	strict?: boolean;
 }) => Promise<JianyingPortraitSourcePreRoll | undefined>;
 
 function isLocalVideoUrl({ url }: { url: string }) {
@@ -29,38 +31,93 @@ export function createPortraitSourcePreRollReader({
 	fit?: "fill" | "cover" | "contain";
 }): PortraitSourcePreRollReader | undefined {
 	if (typeof source === "string" && !isLocalVideoUrl({ url: source })) return;
-	return async ({ width, height, timestampSeconds, sourceKey, signal }) => {
+	return async ({
+		width,
+		height,
+		timestampSeconds,
+		sourceKey,
+		signal,
+		strict,
+	}) => {
 		signal?.throwIfAborted();
+		const validDimensions = [width, height].every(
+			(value) => Number.isSafeInteger(value) && value > 0
+		);
 		const maximumFrames = Math.min(
 			PORTRAIT_SOURCE_PRE_ROLL_LIMITS.frames,
 			Math.floor(PORTRAIT_SOURCE_PRE_ROLL_LIMITS.bytes / (width * height * 4))
 		);
-		if (maximumFrames < 1 || timestampSeconds <= 0) return;
-		const { ALL_FORMATS, BlobSource, CanvasSink, Input, UrlSource } =
-			await import("mediabunny");
-		signal?.throwIfAborted();
-		const input = new Input({
-			formats: ALL_FORMATS,
-			source:
-				typeof source === "string"
-					? new UrlSource(source, { getRetryDelay: () => null })
-					: new BlobSource(source),
-		});
+		if (
+			!validDimensions ||
+			maximumFrames < 1 ||
+			!Number.isFinite(timestampSeconds) ||
+			timestampSeconds < 0
+		) {
+			if (strict)
+				throw new Error(
+					"Invalid portrait source-window dimensions, timestamp or memory budget"
+				);
+			return;
+		}
+		if (timestampSeconds === 0)
+			return strict ? { sourceKey, frames: [] } : undefined;
 		let disposed = false;
-		let timedOut = false;
+		let disposeInput: (() => void) | undefined;
+		let stopped: unknown;
 		const dispose = () => {
 			if (disposed) return;
 			disposed = true;
-			input.dispose();
+			disposeInput?.();
 		};
-		const timeout = setTimeout(() => {
-			timedOut = true;
+		const assertActive = () => {
+			signal?.throwIfAborted();
+			if (stopped) throw stopped;
+		};
+		let rejectInterrupted: (reason: unknown) => void = () => {};
+		const interrupted = new Promise<never>((_resolve, reject) => {
+			rejectInterrupted = reject;
+		});
+		const stop = ({ reason }: { reason: unknown }) => {
+			stopped = reason;
+			rejectInterrupted(reason);
 			dispose();
-		}, 10_000);
-		signal?.addEventListener("abort", dispose, { once: true });
-		try {
+		};
+		const abort = () =>
+			stop({
+				reason:
+					signal?.reason ??
+					new DOMException("Portrait source decode aborted", "AbortError"),
+			});
+		const timeout = setTimeout(
+			() =>
+				stop({
+					reason: new Error("Portrait source pre-roll decode timed out"),
+				}),
+			10_000
+		);
+		signal?.addEventListener("abort", abort, { once: true });
+		const decode = async () => {
+			const { ALL_FORMATS, BlobSource, CanvasSink, Input, UrlSource } =
+				await import("mediabunny");
+			assertActive();
+			const input = new Input({
+				formats: ALL_FORMATS,
+				source:
+					typeof source === "string"
+						? new UrlSource(source, { getRetryDelay: () => null })
+						: new BlobSource(source),
+			});
+			disposeInput = () => input.dispose();
 			const track = await input.getPrimaryVideoTrack();
-			if (!track || !(await track.canDecode())) return;
+			assertActive();
+			if (!track || !(await track.canDecode())) {
+				if (strict)
+					throw new Error(
+						"Portrait source-window video track cannot be decoded"
+					);
+				return;
+			}
+			assertActive();
 			const sink = new CanvasSink(track, {
 				width,
 				height,
@@ -75,26 +132,30 @@ export function createPortraitSourcePreRollReader({
 			);
 			let decoded = 0;
 			for await (const frame of sink.canvases(start, timestampSeconds)) {
-				signal?.throwIfAborted();
-				if (timedOut)
-					throw new Error("Portrait source pre-roll decode timed out");
+				assertActive();
 				if (++decoded > 256)
 					throw new Error("Portrait source pre-roll decode limit exceeded");
-				// currentTime can lie inside the target frame; never replay that frame as history.
+				if (
+					!Number.isFinite(frame.timestamp) ||
+					!Number.isFinite(frame.duration) ||
+					frame.duration <= 0
+				) {
+					if (strict)
+						throw new Error("Portrait source-window frame has invalid timing");
+					continue;
+				}
+				// A seek inside the target frame must not replay that frame as history.
 				if (
 					frame.timestamp < start ||
 					frame.timestamp >= timestampSeconds ||
-					!Number.isFinite(frame.duration) ||
-					frame.duration <= 0 ||
 					frame.timestamp + frame.duration > timestampSeconds + 1e-6
 				)
 					continue;
 				const context = frame.canvas.getContext("2d", {
 					willReadFrequently: true,
 				});
-				if (!context || !("getImageData" in context)) {
+				if (!context || !("getImageData" in context))
 					throw new Error("Unable to read portrait source pre-roll pixels");
-				}
 				const rgba = context.getImageData(0, 0, width, height).data;
 				frames.push({
 					timestampSeconds: frame.timestamp,
@@ -102,13 +163,14 @@ export function createPortraitSourcePreRollReader({
 				});
 				if (frames.length > maximumFrames) frames.shift();
 			}
-			signal?.throwIfAborted();
-			if (timedOut)
-				throw new Error("Portrait source pre-roll decode timed out");
-			return frames.length ? { sourceKey, frames } : undefined;
+			assertActive();
+			return frames.length || strict ? { sourceKey, frames } : undefined;
+		};
+		try {
+			return await Promise.race([decode(), interrupted]);
 		} finally {
 			clearTimeout(timeout);
-			signal?.removeEventListener("abort", dispose);
+			signal?.removeEventListener("abort", abort);
 			dispose();
 		}
 	};
