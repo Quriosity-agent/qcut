@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import {
+	independentPortraitDimensionsValid,
 	portraitProcessingSize,
 	portraitSourceDimensions,
 } from "../portrait-processing-size";
@@ -140,19 +141,11 @@ describe("independent processing resolution", () => {
 		values: { face_adjust_SpotAcne: 100 },
 	};
 	it.each([
-		[
-			{ width: 1920, height: 1080 },
-			{ width: 1280, height: 720 },
-		],
-		[
-			{ width: 1080, height: 1920 },
-			{ width: 720, height: 1280 },
-		],
-		[
-			{ width: 3840, height: 2160 },
-			{ width: 1280, height: 720 },
-		],
-	])("fits %j within the engine's 1280 edge", (size, expected) => {
+		{ width: 1920, height: 1080 },
+		{ width: 1080, height: 1920 },
+		{ width: 3840, height: 2160 },
+		{ width: 2160, height: 3840 },
+	])("preserves HD and 4K frame pixels: %j", (size) => {
 		expect(
 			portraitProcessingSize({
 				...size,
@@ -160,7 +153,36 @@ describe("independent processing resolution", () => {
 				sourceHeight: 6000,
 				adjustments: independent,
 			})
-		).toEqual(expected);
+		).toEqual(size);
+	});
+
+	it.each([
+		{ width: 4096, height: 4096 },
+		{ width: 7680, height: 4320 },
+		{ width: 6000, height: 1000 },
+		{ width: 1000, height: 6000 },
+	])("bounds larger frames by both edge and pixel budgets: %j", (size) => {
+		const processed = portraitProcessingSize({
+			...size,
+			sourceWidth: size.width,
+			sourceHeight: size.height,
+			adjustments: independent,
+		});
+		expect(independentPortraitDimensionsValid(processed)).toBe(true);
+		expect(
+			Math.abs(processed.width / processed.height - size.width / size.height)
+		).toBeLessThan(0.01);
+	});
+
+	it.each([
+		{ width: 0, height: 1080 },
+		{ width: Number.NaN, height: 1080 },
+		{ width: Number.POSITIVE_INFINITY, height: 1080 },
+		{ width: 12.5, height: 1080 },
+		{ width: 4097, height: 1 },
+		{ width: 4096, height: 4096 },
+	])("rejects invalid or oversized independent dimensions: %j", (size) => {
+		expect(independentPortraitDimensionsValid(size)).toBe(false);
 	});
 
 	it("never upsamples, even for blemish removal", () => {
