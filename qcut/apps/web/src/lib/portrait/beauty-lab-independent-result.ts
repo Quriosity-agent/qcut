@@ -31,7 +31,7 @@ export async function validateIndependentBeautyResult({
 	if (
 		!(result.png instanceof Uint8Array) ||
 		result.png.length < 33 ||
-		result.png.length > 16 * 1024 ** 2
+		result.png.length > 64 * 1024 ** 2
 	)
 		throw new Error("Independent PNG invalid");
 	const header = new DataView(
