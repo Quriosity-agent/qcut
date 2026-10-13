@@ -20,6 +20,10 @@ import {
 } from "./beauty-lab-difference";
 
 import { useBeautyLabIndependent } from "./use-beauty-lab-independent";
+import {
+	INDEPENDENT_PORTRAIT_MAX_EDGE,
+	INDEPENDENT_PORTRAIT_MAX_PIXELS,
+} from "./portrait-processing-size";
 
 function checkedFrame(frame: BeautyLabFrame): BeautyLabFrame {
 	validateBeautyLabFrame({ frame });
@@ -186,7 +190,11 @@ export function useBeautyLab({
 		const token = revision.current;
 		setBusy("load");
 		try {
-			const frame = await readComparisonImage({ file });
+			const frame = await readComparisonImage({
+				file,
+				maxEdge: INDEPENDENT_PORTRAIT_MAX_EDGE,
+				maxPixels: INDEPENDENT_PORTRAIT_MAX_PIXELS,
+			});
 			if (token === revision.current) replaceInput({ frame });
 		} catch (reason) {
 			if (token === revision.current) setError(String(reason));
