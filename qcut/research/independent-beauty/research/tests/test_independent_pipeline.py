@@ -29,6 +29,8 @@ parser.add_argument('--assets')
 parser.add_argument('--shape-assets')
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--report', type=Path, required=True)
+parser.add_argument('--face-reference', type=Path)
+parser.add_argument('--source-evidence', type=Path)
 parser.add_argument('--delta', type=int, default=1)
 parser.add_argument('--mode', default='good')
 arguments = parser.parse_args()
@@ -37,6 +39,9 @@ result = rgba.copy()
 result[0, 0, 0] += arguments.delta
 hash_rgba = lambda value: hashlib.sha256(value.tobytes()).hexdigest()
 receipt = dict(inputRgbaSha256=hash_rgba(rgba), outputRgbaSha256=hash_rgba(result),
+    scope='original-photo-independent-face-and-features-one-mesh', predictionCount=1,
+    alignment=dict(points=np.column_stack((np.linspace(1,3,106),np.linspace(1,2,106))).tolist(),
+                   prob=[.1], seed_prob=[.1], acceptance_policy='research-seed-and-120-prob0<=0.5'),
     fixedLandmarks=False, nativeGeometryUsed=False, nativeInputsUsed=False,
     independence=dict(private_native_images=[], loaded_images=[sys.executable]),
     gpu=dict(images=['/System/Library/Frameworks/Metal.framework/Metal'], private_native_images=[]),
@@ -44,7 +49,16 @@ receipt = dict(inputRgbaSha256=hash_rgba(rgba), outputRgbaSha256=hash_rgba(resul
     models=os.environ.get('BEAUTY_RESEARCH_MODELS'), assets=arguments.assets,
     shapeAssets=arguments.shape_assets,
     dyld=[name for name in os.environ if name.startswith('DYLD_')])
+if arguments.source_evidence:
+    receipt['sourceEvidencePath'] = str(arguments.source_evidence)
+if arguments.face_reference:
+    receipt['faceReference'] = json.loads(arguments.face_reference.read_text())
+    assert receipt['faceReference']['inputRgbaSha256'] == hash_rgba(rgba)
 mode = arguments.mode
+if mode == 'no-effect':
+    result = rgba.copy()
+    receipt.update(outputRgbaSha256=hash_rgba(result), predictionCount=0, meshPassCount=0, changedPixelCount=0,
+                   alignment=None, zeroControlsIdentity=True, decodedSize=[rgba.shape[1],rgba.shape[0]])
 if mode == 'input-hash': receipt['inputRgbaSha256'] = '0' * 64
 if mode == 'output-hash': receipt['outputRgbaSha256'] = '0' * 64
 if mode == 'cpu-private': receipt['independence']['private_native_images'] = ['/private/libcccreator.dylib']
@@ -61,6 +75,7 @@ if mode == 'snake':
 Image.fromarray(result).save(arguments.output)
 arguments.report.write_text(json.dumps(receipt))
 if mode == 'exit': raise SystemExit(9)
+if mode == 'evidence-change': arguments.source_evidence.write_text(arguments.source_evidence.read_text() + ' ')
 if mode == 'source-change': Path(__file__).write_text(Path(__file__).read_text() + '\\n')
 '''
 
@@ -100,10 +115,10 @@ class PipelineTests(unittest.TestCase):
         self.canonical['stages'].append({'id': f'stage-{index}', 'script': script, 'kind': 'scalar',
             'controls': {'test': delta}, 'parameters': ['--delta', str(delta), '--mode', mode]})
 
-    def execute(self, *, supplied=None, request=False):
+    def execute(self, *, supplied=None, request=False, source_evidence=None):
         self.plan_path.write_text(json.dumps(self.canonical if supplied is None else supplied))
         return pipeline.run(image=self.image, runtime=self.runtime, output=self.output, report=self.report,
-                            **{('request' if request else 'plan'): self.plan_path})
+                            source_evidence=source_evidence, **{('request' if request else 'plan'): self.plan_path})
 
     def assert_clean_failure(self, *, supplied=None):
         with self.assertRaises((ValueError, subprocess.CalledProcessError)):
@@ -182,11 +197,117 @@ class PipelineTests(unittest.TestCase):
 
     def test_transport_and_fixed_point_flags_rejected_even_in_plan(self):
         self.add_stage()
-        for parameter in ('--image', '--output=/tmp/result.png', '--report', '--points', '--runtime', '--assets'):
+        for parameter in ('--image', '--output=/tmp/result.png', '--report', '--points', '--runtime', '--assets', '--face-reference', '--source-evidence'):
             with self.subTest(parameter=parameter):
                 supplied = copy.deepcopy(self.canonical)
                 supplied['stages'][0]['parameters'].append(parameter)
                 self.assert_clean_failure(supplied=supplied)
+
+    def add_identity_renderers(self):
+        for script in ('portrait_features_render.py', 'lip_render.py'):
+            (self.root / 'research' / script).write_text(FAKE_RENDERER)
+            self.catalog['stages'].append({'script': script})
+        (self.root / 'research/independent-pipeline-catalog.json').write_text(json.dumps(self.catalog))
+
+    def source_sidecar(self):
+        path = self.root / 'source-evidence.json'
+        path.write_text(json.dumps({'schemaVersion': 1, 'policy': 'single-face-bidirectional-v1',
+            'status': 'unavailable', 'reason': 'no neighboring decoded frames', 'width': 5, 'height': 4,
+            'targetRgbaSha256': pipeline.sha256(data=self.rgba.tobytes())}))
+        return path
+
+    def test_source_manifest_is_bound_to_report_and_only_original_portrait_stage(self):
+        self.add_identity_renderers()
+        for scripts in ([], ['portrait_features_render.py', 'lip_render.py'],
+                        ['first_render.py', 'portrait_features_render.py', 'lip_render.py']):
+            self.canonical['stages'] = []
+            self.output.unlink(missing_ok=True)
+            self.report.unlink(missing_ok=True)
+            for script in scripts:
+                self.add_stage(script=script)
+            path = self.source_sidecar()
+            receipt = self.execute(source_evidence=path)
+            self.assertEqual(receipt['sourceEvidence'], {'manifestSha256': pipeline.sha256(data=path.read_bytes()),
+                'policy': 'single-face-bidirectional-v1', 'status': 'unavailable'})
+            forwarded = [row['receipt'].get('sourceEvidencePath') for row in receipt['stages']]
+            self.assertEqual(forwarded, [str(path) if index == 0 and script == 'portrait_features_render.py' else None
+                                        for index, script in enumerate(scripts)])
+
+    def test_manifest_change_after_render_does_not_publish_any_output(self):
+        self.add_identity_renderers()
+        self.add_stage(script='portrait_features_render.py', mode='evidence-change')
+        with self.assertRaisesRegex(ValueError, 'manifest changed'):
+            self.execute(source_evidence=self.source_sidecar())
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+    def test_subprocess_chain_transports_original_identity_and_current_input_hash(self):
+        self.add_identity_renderers()
+        self.add_stage(script='portrait_features_render.py')
+        self.add_stage(script='lip_render.py')
+        receipt = self.execute()
+        first, second = receipt['stages']
+        reference = second['receipt']['faceReference']
+        self.assertEqual(reference['sourceRgbaSha256'], receipt['inputRgbaSha256'])
+        self.assertEqual(reference['inputRgbaSha256'], first['outputRgbaSha256'])
+        self.assertEqual(reference['points'], first['receipt']['alignment']['points'])
+        self.assertEqual(second['faceIdentityAssociation'], 'same-photo-reference')
+        self.assertEqual(receipt['samePhotoFaceIdentity']['appliedStageIds'], ['stage-1'])
+        self.assertFalse(Path(second['command'][second['command'].index('--face-reference') + 1]).exists())
+
+    def test_verified_no_effect_portrait_keeps_lip_on_its_original_single_face_path(self):
+        self.add_identity_renderers()
+        self.add_stage(script='portrait_features_render.py', mode='no-effect')
+        self.add_stage(script='lip_render.py', delta=2)
+        receipt = self.execute()
+        self.assertIsNone(receipt['samePhotoFaceIdentity'])
+        self.assertEqual([row['faceIdentityAssociation'] for row in receipt['stages']], ['not-applied', 'not-applied'])
+        self.assertNotIn('faceReference', receipt['stages'][1]['receipt'])
+        expected = self.rgba.copy()
+        expected[0, 0, 0] += 2
+        np.testing.assert_array_equal(pipeline.read_rgba(path=self.output), expected)
+
+    def test_resident_chain_cancellation_does_not_retain_reference_in_next_job(self):
+        self.add_identity_renderers()
+        self.add_stage(script='portrait_features_render.py')
+        self.add_stage(script='lip_render.py')
+        self.plan_path.write_text(json.dumps(self.canonical))
+        observed = []
+
+        def runner(**arguments):
+            reference = arguments.get('face_reference')
+            observed.append(reference)
+            if reference is not None:
+                raise InterruptedError('cancelled before lip render')
+            command = [sys.executable, str(arguments['source']), '--image', str(arguments['image']),
+                       '--output', str(arguments['output']), '--report', str(arguments['report'])]
+            subprocess.run(command, capture_output=True, check=True)
+
+        with self.assertRaises(InterruptedError):
+            pipeline.run(image=self.image, runtime=self.runtime, output=self.output, report=self.report,
+                         plan=self.plan_path, stage_runner=runner)
+        self.assertIsNone(observed[0])
+        self.assertEqual(observed[1].source_sha256, pipeline.sha256(data=self.rgba.tobytes()))
+        self.assertFalse(self.output.exists())
+        self.canonical['stages'] = self.canonical['stages'][1:]
+        self.plan_path.write_text(json.dumps(self.canonical))
+        receipt = pipeline.run(image=self.image, runtime=self.runtime, output=self.output, report=self.report,
+                               plan=self.plan_path, stage_runner=runner)
+        self.assertIsNone(observed[-1])
+        self.assertIsNone(receipt['samePhotoFaceIdentity'])
+
+    def test_single_stage_and_skin_first_chain_do_not_add_original_face_detection(self):
+        self.add_identity_renderers()
+        for scripts in (['lip_render.py'], ['portrait_features_render.py'], ['first_render.py', 'lip_render.py']):
+            self.canonical['stages'] = []
+            self.output.unlink(missing_ok=True)
+            self.report.unlink(missing_ok=True)
+            for script in scripts:
+                self.add_stage(script=script)
+            with patch.object(pipeline, 'reference_from_receipt', side_effect=AssertionError('no new detection')):
+                receipt = self.execute()
+            self.assertIsNone(receipt['samePhotoFaceIdentity'])
+            self.assertTrue(all(row['faceIdentityAssociation'] == 'not-applied' for row in receipt['stages']))
 
     def test_stage_integrity_failures_leave_no_outputs_or_temporary_directory(self):
         for mode in ('input-hash', 'output-hash', 'cpu-private', 'gpu-private', 'gpu-private-list',
