@@ -18,6 +18,7 @@ import {
 	type ExportRenderIndex,
 } from "./export-render-index";
 import { SequentialVideoRegistry } from "./export-sequential-video-source";
+import { COMPOSITION_CANVAS_CONTEXT_SETTINGS } from "./composition-canvas-context";
 import { assertLocalFinalVideoExportAllowed } from "../../../../../electron/types/restricted-media-export-policy";
 import {
 	assertLocalMp4EngineNotRequired,
@@ -150,7 +151,7 @@ export class ExportEngine {
 		// Progressive canvas quality based on export purpose
 		const isPreview = settings.purpose === ExportPurpose.PREVIEW;
 		const canvasOptions: CanvasRenderingContext2DSettings = {
-			willReadFrequently: true,
+			...COMPOSITION_CANVAS_CONTEXT_SETTINGS,
 			alpha: !isPreview,
 			desynchronized: isPreview,
 		};
@@ -236,6 +237,7 @@ export class ExportEngine {
 			imageCache: this.imageCache,
 			usedImages: this.usedImages,
 			fps: this.fps,
+			backgroundColor: this.settings.backgroundColor,
 			finalVideoOutput: resolveLocalFinalVideoExportOutput({
 				format: this.settings.format,
 				isElectron: platform().isElectron,
