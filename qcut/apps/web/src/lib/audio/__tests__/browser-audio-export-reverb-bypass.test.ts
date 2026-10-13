@@ -4,6 +4,15 @@ import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { DEFAULT_MEDIA_AUDIO_SETTINGS } from "../audio-properties";
 import { renderBrowserTimelineAudio } from "../browser-audio-export";
 
+vi.mock("../browser-audio-source-decoder", () => ({
+	decodeBrowserAudioSource: vi.fn(async () => ({
+		duration: 2,
+		length: 96_000,
+		numberOfChannels: 2,
+		sampleRate: 48_000,
+	})),
+}));
+
 interface FactoryCounts {
 	convolver: number;
 	delay: number;
@@ -52,12 +61,6 @@ function stubOfflineContext({ counts }: { counts: FactoryCounts }) {
 			destination = audioNode();
 			length = 48_000 * 2;
 			sampleRate = 48_000;
-			decodeAudioData = vi.fn(async () => ({
-				duration: 2,
-				length: 96_000,
-				numberOfChannels: 2,
-				sampleRate: 48_000,
-			}));
 			createBuffer = vi.fn(() => ({
 				duration: 2,
 				getChannelData: () => new Float32Array(96_000),
