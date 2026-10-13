@@ -1,19 +1,21 @@
 ---
-version: "2026.10.13.1"
-date: "2026-10-13"
+version: "2026.10.14.1"
+date: "2026-10-14"
 channel: "stable"
 ---
 
-# QCut v2026.10.13.1
+# QCut v2026.10.14.1
 
 ### Improved
-- Independent beauty keeps its renderer and CPU model sessions ready between frames. Measured warm renders of a 541×640 portrait on Apple M4 Pro are 4.75–7.38 times faster than restarting the same engine for every frame, with identical output bytes and without reusing rendered frames.
-- Independent photo and video processing supports up to 4096 pixels on the longest edge and 8,294,400 pixels total. Updated smoothing and whitening profiles support vertical portraits, including 9:16 frames.
+- Supported paused timeline previews now use the export compositor with the same source frame, animated transforms, crop, background and transitions. A 1080×1920, 12-second fixture combines face shape, eye adjustments and lip makeup with keyframes, crop and dissolve; 33 sampled native, independent and original paused-preview/pre-encode export Canvas pairs differ by at most one RGB level with identical alpha.
+- Independent compound beauty uses four real neighboring source frames to confirm ambiguous face selection and preserves the selected identity through later makeup stages.
 
 ### Fixed
-- Cancelling an independent render or encountering a worker crash stops the current export, reports the failure, and allows the next request to start a fresh worker. Failed exports no longer save black frames; unrelated decoder and effect errors retain their existing retry and fallback behavior.
-- Cancelled cache operations and stale preview requests no longer publish a result after a newer request takes over.
+- Stop hidden DOM previews from repeating portrait work while the canvas composition preview is active; restore the existing preview fallback if canvas rendering fails.
+- Isolate preview compositor settings and lifetime from exports, so previewing speed regions cannot leave stale settings in the next preview or export.
+- Copy only visible frame/evidence bytes after validating dimensions and memory budgets, and retain usable source evidence when decoder errors have an empty message.
+- Decode export audio from source presentation timestamps. The measured 12-second AAC fixture now retains its full duration instead of losing about 0.49 seconds.
 
-### Runtime update and limitations
-- The independent engine currently requires macOS. Existing independent-engine installations require the updated external runtime with four additional model and contract files. Private models and native binaries are supplied separately.
-- A non-square-pixel video case still differs from native smoothing and whitening by up to 5 RGB levels. Real-time playback, long-video stability, full-effect 4K photo acceptance, and preview/export pixel parity remain unverified.
+### Limitations
+- This verifies sampled paused previews and the Muxer export path. Continuous playback, true multi-person/occlusion acceptance, long-session memory and temporal flicker remain separate work. Native and independent rendering are not claimed to be algorithmically identical.
+- The measured speech MP4 still has a fixed approximately 56 ms audio offset; compensation for processing-graph and AAC priming delays, and full three-mode speech acceptance, remain unfinished.
