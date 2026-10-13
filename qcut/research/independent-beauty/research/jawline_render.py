@@ -1,4 +1,5 @@
 """Original photo to independent shadow and jawline-warp Metal passes."""
+from render_resolution import source_edge_limit
 import argparse
 import hashlib
 import json
@@ -28,7 +29,7 @@ def run(*, rgba, intensity, runtime, output, report):
     started = time.monotonic()
     validate_rgba(rgba=rgba)
     intensity = validate_intensity(intensity=intensity)
-    if max(rgba.shape[:2]) > 1280 or np.any(rgba[..., 3] != 255):
+    if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque jawline photo required')
     prediction, gpu, pose, coverage = None, None, None, None
     result = rgba.copy()
