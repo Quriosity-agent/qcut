@@ -94,6 +94,23 @@ class PortraitPackageLifecycleTests(unittest.TestCase):
         self.assertEqual(receipt['sharedLocalPredictionCount'], 1)
         self.assertEqual(receipt['photoSamplePassCount'], 1)
 
+    def test_source_evidence_reaches_only_the_first_original_input_prediction(self):
+        evidence_path = Path('/owned/source-evidence.json')
+        for controls, expected in (({'TotalFace': 25}, [('face', True)]),
+                                   ({'TotalFace': .0001, 'underjaw': 25}, [('features', True)]),
+                                   ({'TotalFace': 25, 'underjaw': 25}, [('face', True), ('features', False)])):
+            calls = []
+            def render(*, local=False, **arguments):
+                calls.append(('features' if local else 'face', 'source_evidence' in arguments))
+                if 'source_evidence' in arguments:
+                    self.assertEqual(arguments['source_evidence'], evidence_path)
+                return arguments['rgba'], package_receipt(source=arguments['rgba'], result=arguments['rgba'], local=local)
+            with patch('portrait_features_render.face_features_render.render_rgba', side_effect=render), \
+                    patch('portrait_features_render.liquefy_combination_render.render_rgba',
+                          side_effect=lambda **arguments: render(local=True, **arguments)):
+                render_rgba(rgba=self.rgba, controls=controls, runtime=self.runtime, source_evidence=evidence_path)
+            self.assertEqual(calls, expected)
+
     def test_zero_and_subthreshold_packages_need_no_models_or_gpu(self):
         for controls in ({}, {'TotalFace': 0, 'underjaw': 0},
                          {'TotalFace': .1, 'MoveEye': -.01, 'upper_atrium': .01}):
