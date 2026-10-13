@@ -204,6 +204,7 @@ async function portraitAdjustedSource({
 			processing.height
 		);
 	} catch (cause) {
+		if (adjustments?.engine === "independent") throw cause;
 		reportColorDegradation({
 			reason: "jianying-portrait-adjustment-fallback",
 			detail: cause instanceof Error ? cause.message : String(cause),
