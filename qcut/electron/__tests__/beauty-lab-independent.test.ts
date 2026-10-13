@@ -149,6 +149,27 @@ function setup({
 }
 
 describe("independent photo provider", () => {
+	it("accepts full HD pixels without reducing the frame dimensions", () => {
+		const rgba = new Uint8Array(1080 * 1920 * 4).fill(255);
+		const validated = independentBeautyAdjustments({
+			request: { ...request, width: 1080, height: 1920, rgba },
+			catalog,
+		});
+		expect(validated.request.width).toBe(1080);
+		expect(validated.request.height).toBe(1920);
+		expect(validated.request.rgba.byteLength).toBe(rgba.byteLength);
+	});
+	it.each([
+		{ width: 4097, height: 1 },
+		{ width: 4096, height: 2160 },
+	])("rejects oversized frames before environment checks: %j", async (dimensions) => {
+		const { provider, verifyEnvironment, runJob } = setup();
+		await expect(
+			provider.render({ request: { ...request, ...dimensions } })
+		).rejects.toThrow();
+		expect(verifyEnvironment).not.toHaveBeenCalled();
+		expect(runJob).not.toHaveBeenCalled();
+	});
 	it("reuses successful probes across availability and rendering while checking payload each time", async () => {
 		const { provider, verifyEnvironment, verifyRuntime } = setup();
 		expect((await provider.inspect()).available).toBe(true);
