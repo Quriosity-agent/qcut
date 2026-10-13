@@ -16,7 +16,7 @@ from slimface_render import validate_rgba
 PASS_ORDER = ('cheekbone', 'mid_atrium', 'lower_atrium', 'pointy_chin', 'underjaw', 'upper_atrium')
 
 
-def render_rgba(*, rgba, controls, runtime):
+def render_rgba(*, rgba, controls, runtime, source_evidence=None):
     controls = validate_controls(values=controls)
     validate_rgba(rgba=rgba)
     if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
@@ -30,7 +30,7 @@ def render_rgba(*, rgba, controls, runtime):
         from worker import MODELS
         if MODELS.resolve() != (runtime / 'research').resolve():
             raise ValueError('local package runtime must match the configured face model directory')
-        prediction = single_face_prediction(rgba=rgba)
+        prediction = single_face_prediction(rgba=rgba, **({'source_evidence': source_evidence} if source_evidence is not None else {}))
         points = np.asarray(prediction['normalized_points'], np.float32)
         yaw = np.float32(-np.float32(prediction['yaw']) * np.float32(np.pi / 180))
         assets = load_assets(path=runtime / 'research/liquefy-v1.npz')
