@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.14.1] - 2026-10-14
+
 ### Improved
-- Supported paused timeline previews now use the export compositor with the same source frame, animated transforms, crop, background and transitions. A 1080×1920, 12-second fixture combines face shape, eye adjustments and lip makeup with keyframes, crop and dissolve; 33 sampled native, independent and original preview/export pairs differ by at most one RGB level with identical alpha.
+- Supported paused timeline previews now use the export compositor with the same source frame, animated transforms, crop, background and transitions. A 1080×1920, 12-second fixture combines face shape, eye adjustments and lip makeup with keyframes, crop and dissolve; 33 sampled native, independent and original paused-preview/pre-encode export Canvas pairs differ by at most one RGB level with identical alpha.
 - Independent compound beauty uses four real neighboring source frames to confirm ambiguous face selection and preserves the selected identity through later makeup stages.
 
 ### Fixed
@@ -19,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Limitations
 - This verifies sampled paused previews and the Muxer export path. Continuous playback, true multi-person/occlusion acceptance, long-session memory and temporal flicker remain separate work. Native and independent rendering are not claimed to be algorithmically identical.
-- The measured speech MP4 still has a fixed approximately 56 ms audio offset; compensation for AAC priming and full three-mode speech acceptance remain unfinished.
+- The measured speech MP4 still has a fixed approximately 56 ms audio offset; compensation for processing-graph and AAC priming delays, and full three-mode speech acceptance, remain unfinished.
 
 ## [2026.10.13.1] - 2026-10-13
 
