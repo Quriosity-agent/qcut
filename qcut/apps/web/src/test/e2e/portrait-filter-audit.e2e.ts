@@ -179,7 +179,7 @@ async function createTimelineClips({
 }) {
 	return page.evaluate(
 		({ fileNames }) => {
-			const editorWindow = window as FilterAuditWindow;
+			const editorWindow = window as unknown as FilterAuditWindow;
 			const mediaItems = editorWindow.__mediaStore.getState().mediaItems;
 			const timeline = editorWindow.__timelineStore.getState();
 			const track = timeline.tracks.find(
@@ -227,7 +227,7 @@ async function selectClip({
 }) {
 	await page.evaluate(
 		({ trackId, elementId, time }) => {
-			const editorWindow = window as FilterAuditWindow;
+			const editorWindow = window as unknown as FilterAuditWindow;
 			editorWindow.__timelineStore
 				.getState()
 				.setSelectedElements([{ trackId, elementId }]);
@@ -311,7 +311,9 @@ async function canvasMetrics({ page }: { page: Page }): Promise<CanvasMetrics> {
 
 async function activeFilterId({ page }: { page: Page }) {
 	return page.evaluate(() => {
-		const timeline = (window as FilterAuditWindow).__timelineStore.getState();
+		const timeline = (
+			window as unknown as FilterAuditWindow
+		).__timelineStore.getState();
 		const selected = timeline.selectedElements[0];
 		const track = timeline.tracks.find(
 			(candidate) => candidate.id === selected?.trackId
