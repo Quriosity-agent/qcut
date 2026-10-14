@@ -347,6 +347,8 @@ function audioOperation({
 		trimEnd: trimEnd > 0 ? trimEnd : undefined,
 		fadeIn: audio.fadeIn > 0 ? audio.fadeIn : undefined,
 		fadeOut: audio.fadeOut > 0 ? audio.fadeOut : undefined,
+		volumeKeyframes:
+			audio.volumeKeyframes.length > 0 ? audio.volumeKeyframes : undefined,
 	};
 }
 
@@ -388,6 +390,9 @@ export function compileComposeManifestToPatch({
 			trimStart: layout.trimStart,
 			trimEnd: layout.trimEnd,
 			sourceDuration: layout.sourceDuration,
+			...(layout.clip.volumeKeyframes.length > 0
+				? { volumeKeyframes: layout.clip.volumeKeyframes }
+				: {}),
 		});
 		if (layout.clip.filters.length > 0) {
 			operations.push({
