@@ -299,7 +299,10 @@ export async function runRestrictedStickerLifecycle({
 		expect(videoEvidence.sizeBytes).toBeGreaterThan(1_000);
 		expect(
 			await reopenedPage.evaluate(
-				() => (window as StickerLabHarnessWindow).__exportStore.getState().error
+				() =>
+					(
+						window as unknown as StickerLabHarnessWindow
+					).__exportStore.getState().error
 			)
 		).toBeNull();
 		await reopenedPage.screenshot({
