@@ -8,9 +8,13 @@ import {
 	test,
 } from "./helpers/electron-helpers";
 
+// Screenshots go to the ignored output folder; set
+// QCUT_E2E_UPDATE_DOCS_EVIDENCE=1 to refresh the committed reference images.
 const evidenceDirectory = path.resolve(
 	process.cwd(),
-	"docs/task/jianying-video-basic-panel-reference/evidence"
+	process.env.QCUT_E2E_UPDATE_DOCS_EVIDENCE === "1"
+		? "docs/task/jianying-video-basic-panel-reference/evidence"
+		: "output/playwright/media-lab-properties"
 );
 
 async function clickWithPointer({
