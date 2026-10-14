@@ -7,8 +7,8 @@ import type { Page } from "playwright";
 import type {
 	LocalStickerLabDiscovery,
 	LocalStickerLabReference,
+	StickerLabAPI,
 } from "../../../../../../electron/preload-types/api-types/sticker-lab-api";
-import type { ElectronAPI } from "../../../../../../electron/preload-types/electron-api";
 import type { StickerVideoEvidenceProfile } from "./exported-sticker-video-evidence";
 
 const RUNTIME_BATCH_PATTERN = /-batch-19-v2$/;
@@ -144,7 +144,7 @@ export async function discoverPrivateRealRuntimeCase({
 	runtimeCase: PrivateRealRuntimeCase;
 }> {
 	const discovery = await page.evaluate(async () => {
-		const electronAPI = (window as unknown as { electronAPI?: ElectronAPI })
+		const electronAPI = (window as unknown as { electronAPI?: StickerLabAPI })
 			.electronAPI;
 		const stickerLab = electronAPI?.stickerLab;
 		if (!stickerLab)
