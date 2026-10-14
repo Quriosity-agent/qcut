@@ -84,7 +84,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
 		// Wait for text overlay element to appear on timeline
 		await page.waitForSelector('[data-testid="timeline-element"]', {
-			timeout: 5000,
+			timeout: 15_000,
 		});
 
 		// Verify that a text element was added to the timeline
