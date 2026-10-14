@@ -6,6 +6,9 @@
 
 import { test, expect } from "./helpers/electron-helpers";
 
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Simple Navigation Test", () => {
 	test("should navigate to projects page successfully", async ({ page }) => {
 		// The page fixture automatically navigates to projects page
