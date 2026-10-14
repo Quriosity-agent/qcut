@@ -17,12 +17,19 @@ export const COMPOSE_VOLUME_DB_MIN = -60;
 export const COMPOSE_VOLUME_DB_MAX = 12;
 export const MAX_COMPOSE_VOLUME_KEYFRAMES = 64;
 
+/**
+ * Issues with an operation's `volumeKeyframes`. Keyframes set the whole level,
+ * so they cannot be combined with a `volume` other than 1: targets would
+ * otherwise disagree on which one wins.
+ */
 export function validateComposeVolumeKeyframes({
 	keyframes,
+	volume,
 	path,
 	operationId,
 }: {
 	keyframes: unknown;
+	volume: unknown;
 	path: string;
 	operationId: string;
 }): ComposeValidationIssue[] {
@@ -42,6 +49,16 @@ export function validateComposeVolumeKeyframes({
 		];
 	}
 	const issues: ComposeValidationIssue[] = [];
+	if (keyframes.length > 0 && volume !== undefined && volume !== 1) {
+		issues.push({
+			severity: "error",
+			code: "invalid-range",
+			path: `${path}.volume`,
+			operationId,
+			message:
+				"volumeKeyframes set the whole level; leave volume at 1 or fold it into the keyframes.",
+		});
+	}
 	for (const [index, keyframe] of keyframes.entries()) {
 		const { time, volumeDb } = (keyframe ??
 			{}) as Partial<ComposeVolumeKeyframe>;
