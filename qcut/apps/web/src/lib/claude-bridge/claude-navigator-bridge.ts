@@ -29,8 +29,8 @@ function debugError(...args: unknown[]): void {
 export const PROJECT_OPEN_TIMEOUT_MS = 20_000;
 
 /**
- * Resolves once the editor has really opened `projectId`: the project store
- * holds it as the active project and the window still shows its editor
+ * Resolves once the editor has really opened `projectId`: its media,
+ * timeline and stickers have loaded and the window still shows its editor
  * route. Changing the hash only asks the router to navigate; the editor
  * then loads the project, and a missing project is replaced by a new one.
  */
@@ -46,8 +46,7 @@ export function waitForProjectOpen({
 		window.location.hash === editorHash ||
 		window.location.hash.startsWith(`${editorHash}?`);
 	const isOpen = () =>
-		onEditorRoute() &&
-		useProjectStore.getState().activeProject?.id === projectId;
+		onEditorRoute() && useProjectStore.getState().loadedProjectId === projectId;
 	return new Promise((resolve) => {
 		const finish = (result: { navigated: boolean; error?: string }) => {
 			clearTimeout(timer);
