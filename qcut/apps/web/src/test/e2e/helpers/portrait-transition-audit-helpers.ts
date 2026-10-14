@@ -113,7 +113,7 @@ export async function createTransitionSeam({
 }): Promise<SeamReference> {
 	return page.evaluate(
 		({ fromFileName, toFileName, duration }) => {
-			const editorWindow = window as TransitionAuditWindow;
+			const editorWindow = window as unknown as TransitionAuditWindow;
 			const mediaItems = editorWindow.__mediaStore.getState().mediaItems;
 			const timeline = editorWindow.__timelineStore.getState();
 			const track = timeline.tracks.find(
@@ -168,7 +168,7 @@ export async function selectTransitionSeam({
 	seam: SeamReference;
 }) {
 	await page.evaluate(({ trackId, fromElementId, toElementId }) => {
-		(window as TransitionAuditWindow).__timelineStore
+		(window as unknown as TransitionAuditWindow).__timelineStore
 			.getState()
 			.setSelectedElements([
 				{ trackId, elementId: fromElementId },
@@ -185,7 +185,9 @@ async function seekToTransitionSeam({
 	seam: SeamReference;
 }) {
 	await page.evaluate(({ cutTime }) => {
-		(window as TransitionAuditWindow).__playbackStore.getState().seek(cutTime);
+		(window as unknown as TransitionAuditWindow).__playbackStore
+			.getState()
+			.seek(cutTime);
 	}, seam);
 }
 
@@ -198,7 +200,7 @@ async function readActiveTransition({
 }): Promise<TransitionAuditState | undefined> {
 	return page.evaluate(({ trackId, fromElementId, toElementId }) => {
 		const timeline = (
-			window as TransitionAuditWindow
+			window as unknown as TransitionAuditWindow
 		).__timelineStore.getState();
 		const track = timeline.tracks.find((candidate) => candidate.id === trackId);
 		return track?.transitions?.find(
