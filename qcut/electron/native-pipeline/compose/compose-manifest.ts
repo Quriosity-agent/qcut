@@ -91,7 +91,7 @@ const audioSchema = z.object({
 	volumeKeyframes: volumeKeyframesSchema,
 });
 
-const composeManifestSchema = z
+export const composeManifestSchema = z
 	.object({
 		schemaVersion: z.literal(1),
 		canvas: z
