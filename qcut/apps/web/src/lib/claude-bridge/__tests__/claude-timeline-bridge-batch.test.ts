@@ -438,4 +438,58 @@ describe("Claude timeline batch audio fades", () => {
 			failedCount: 3,
 		});
 	});
+
+	it("adds media with volume keyframes and rejects malformed audio", async () => {
+		const { batchHandler, sendResponse } = setupAddHandler();
+		await batchHandler({
+			requestId: "request-audio",
+			projectId: "project-1",
+			elements: [
+				{
+					...baseAudio,
+					duration: 10,
+					volume: 0.5,
+					audio: {
+						keyframes: {
+							volumeDb: [
+								{ frame: 60, value: -18 },
+								{ frame: 0, value: 0 },
+							],
+						},
+					},
+				},
+				{
+					...baseAudio,
+					duration: 10,
+					audio: { keyframes: { volumeDb: [{ frame: -1, value: 0 }] } },
+				},
+			],
+		});
+
+		expect(sendResponse).toHaveBeenCalledWith("request-audio", {
+			added: [
+				{ index: 0, success: true, elementId: "element-1" },
+				{
+					index: 1,
+					success: false,
+					error:
+						"audio.keyframes.volumeDb[0].frame must be a whole number of frames >= 0",
+				},
+			],
+			failedCount: 1,
+		});
+		expect(storeMocks.state.addElementToTrack).toHaveBeenCalledTimes(1);
+		const [, stored] = storeMocks.state.addElementToTrack.mock.calls[0];
+		expect(stored).toMatchObject({
+			volume: 0.5,
+			audio: {
+				keyframes: {
+					volumeDb: [
+						{ id: "volumeDb-0", frame: 0, value: 0, easing: "linear" },
+						{ id: "volumeDb-60", frame: 60, value: -18, easing: "linear" },
+					],
+				},
+			},
+		});
+	});
 });
