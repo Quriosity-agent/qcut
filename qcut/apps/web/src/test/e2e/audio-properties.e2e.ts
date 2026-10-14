@@ -71,13 +71,16 @@ test.describe("Professional audio properties", () => {
 				.getState()
 				.tracks.find((candidate: any) => candidate.type === "audio");
 			const source = track.elements[0];
-			store
-				.getState()
-				.addElementToTrack(
-					track.id,
-					{ ...source, startTime: source.startTime + source.duration },
-					{ pushHistory: true, selectElement: false }
-				);
+			store.getState().addElementToTrack(
+				track.id,
+				// A fresh id: the store rejects a second element with the same id.
+				{
+					...source,
+					id: undefined,
+					startTime: source.startTime + source.duration,
+				},
+				{ pushHistory: true, selectElement: false }
+			);
 		});
 		const clips = page.locator(
 			'[data-testid="timeline-track"][data-track-type="audio"] [data-testid="timeline-element"]'
@@ -123,7 +126,7 @@ test.describe("Professional audio properties", () => {
 		});
 		await expect(
 			page.getByTestId("audio-multi-selection-properties")
-		).toContainText("2 audio clips");
+		).toContainText("2 个音频片段");
 
 		await page.evaluate(() => {
 			const store = (window as any).__timelineStore;
@@ -213,9 +216,9 @@ test.describe("Professional audio properties", () => {
 		});
 
 		const denoiseModule = panel.getByTestId("audio-module-denoise");
-		await panel.getByLabel("启用降噪").click();
+		await panel.getByLabel("启用音频降噪").click();
 		await denoiseModule.locator("summary").click();
-		await denoiseModule.getByLabel("AI 人声降噪").click();
+		await denoiseModule.getByLabel("QCut 本地人声降噪").click();
 		await expect(
 			denoiseModule.getByRole("button", { name: "开始处理" })
 		).toBeVisible();
@@ -231,7 +234,7 @@ test.describe("Professional audio properties", () => {
 			.locator("summary")
 			.click();
 		await setAudioNumber({ page, label: "清晰度", value: 35 });
-		await panel.getByLabel("启用音调").click();
+		await panel.getByLabel("启用变调").click();
 		await panel.getByTestId("audio-module-pitch").locator("summary").click();
 		await setAudioNumber({ page, label: "音调", value: 3 });
 		await page.mouse.move(4, 4);
@@ -270,10 +273,13 @@ test.describe("Professional audio properties", () => {
 		});
 
 		await panel.getByRole("tab", { name: "变速" }).click();
-		await expect(panel.getByTestId("audio-speed-preserve-pitch")).toContainText(
-			"已开启"
-		);
-		await setAudioNumber({ page, label: "倍速", value: 2 });
+		// Speed changes keep the pitch by default: the 声音变调 switch is off.
+		await expect(
+			panel
+				.getByTestId("audio-speed-preserve-pitch")
+				.getByTestId("speed-pitch-shift")
+		).not.toBeChecked();
+		await setAudioNumber({ page, label: "倍数", value: 2 });
 		await panel.screenshot({
 			path: path.join(outputDir, "06-audio-speed.png"),
 			animations: "disabled",
@@ -443,7 +449,7 @@ test.describe("Professional audio properties", () => {
 		await clip.click();
 		await page.getByTestId("panel-tab-properties").click();
 		const panel = page.getByTestId("audio-properties-panel");
-		await panel.getByLabel("启用音调").click();
+		await panel.getByLabel("启用变调").click();
 		await panel.getByTestId("audio-module-pitch").locator("summary").click();
 		await setAudioNumber({ page, label: "音调", value: 7 });
 		await expect(panel.getByLabel("保留共振峰")).toBeChecked();
