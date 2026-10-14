@@ -78,7 +78,7 @@ describe("Claude portrait adjustment bridge", () => {
 			pushHistory: true,
 		});
 
-		expect(updated).toBe(true);
+		expect(updated.applied).toBe(true);
 		expect(storeMocks.state.pushHistory).toHaveBeenCalledOnce();
 		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledWith(
 			"track",
@@ -112,7 +112,10 @@ describe("Claude portrait adjustment bridge", () => {
 			pushHistory: false,
 		});
 
-		expect(updated).toBe(false);
+		expect(updated).toEqual({
+			applied: false,
+			error: "portraitAdjustments must be an object",
+		});
 		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
 	});
 });
