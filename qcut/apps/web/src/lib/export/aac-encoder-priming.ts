@@ -69,10 +69,22 @@ export function locatePrimingFrames({
 	return best;
 }
 
-/** Mirrors mediabunny's encoder config for `codec: "aac"`. */
+/**
+ * Mirrors mediabunny's `buildAudioCodecString` for `codec: "aac"`, so the probe
+ * measures the same profile the export encodes with.
+ */
+export function aacCodecString({
+	sampleRate,
+	numberOfChannels,
+}: Pick<AacPrimingConfig, "sampleRate" | "numberOfChannels">): string {
+	if (sampleRate > 24_000) return "mp4a.40.2"; // AAC-LC
+	// HE-AAC v2 (SBR + PS) for stereo, v1 (SBR) for mono.
+	return numberOfChannels >= 2 ? "mp4a.40.29" : "mp4a.40.5";
+}
+
 function aacEncoderConfig(config: AacPrimingConfig): AudioEncoderConfig {
 	return {
-		codec: config.sampleRate <= 24_000 ? "mp4a.40.5" : "mp4a.40.2",
+		codec: aacCodecString(config),
 		sampleRate: config.sampleRate,
 		numberOfChannels: config.numberOfChannels,
 		bitrate: config.bitrate,
