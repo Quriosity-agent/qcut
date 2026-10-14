@@ -80,6 +80,7 @@ export async function resetCanvasCounter({
 			| {
 					bySize: Record<string, number>;
 					sampleStacks: string[];
+					stackBySize: Record<string, string>;
 					total: number;
 			  }
 			| undefined;
@@ -106,6 +107,7 @@ export async function readCanvasCounter({
 			| {
 					bySize: Record<string, number>;
 					sampleStacks: string[];
+					stackBySize: Record<string, string>;
 					total: number;
 			  }
 			| undefined;
