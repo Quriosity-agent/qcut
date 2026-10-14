@@ -161,24 +161,31 @@ test.describe("Preview quality proxy playback", () => {
 
 		await page.getByTestId("preview-play-button").click();
 		await expect(page.getByTestId("preview-pause-button")).toBeVisible();
-		await page.evaluate(() => {
-			for (let index = 0; index < 5; index++) {
-				window.dispatchEvent(
-					new CustomEvent("qcut-video-frame", {
-						detail: {
-							videoId: "e2e-video",
-							isActivePlaybackFrame: true,
-							intervalMs: 95,
-							mediaTime: index / 10,
-							presentedFrames: index + 1,
-						},
-					})
-				);
-			}
-		});
-		await expect(page.getByTestId("preview-quality-button")).toContainText(
-			"低清画质"
-		);
+		// Frames in the first second of playback are ignored as warm-up, so keep
+		// reporting stalled frames until the preview drops to low quality.
+		await expect
+			.poll(
+				async () => {
+					await page.evaluate(() => {
+						for (let index = 0; index < 5; index++) {
+							window.dispatchEvent(
+								new CustomEvent("qcut-video-frame", {
+									detail: {
+										videoId: "e2e-video",
+										isActivePlaybackFrame: true,
+										intervalMs: 95,
+										mediaTime: index / 10,
+										presentedFrames: index + 1,
+									},
+								})
+							);
+						}
+					});
+					return page.getByTestId("preview-quality-button").textContent();
+				},
+				{ timeout: 5_000 }
+			)
+			.toContain("低清画质");
 		await page.getByTestId("preview-quality-button").click();
 		await expect(page.getByTestId("preview-runtime-quality-reason")).toHaveText(
 			"视频解码帧出现停顿"
