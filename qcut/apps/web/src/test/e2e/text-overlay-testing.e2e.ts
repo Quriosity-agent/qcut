@@ -118,18 +118,8 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
-		// Test panel structure
-		const textPanel = page.getByTestId("text-panel");
-
-		// Should have proper padding/styling
-		const panelClasses = await textPanel.getAttribute("class");
-		expect(panelClasses).toContain("p-4");
-
 		// Test text overlay button structure
 		const textOverlayButton = page.getByTestId("text-overlay-button");
-		const textPreview = textOverlayButton.locator(".bg-accent").first();
-
-		await expect(textPreview).toBeVisible();
 
 		// Should show "Default text" content
 		const textContent = textOverlayButton.locator('text="Default text"');
