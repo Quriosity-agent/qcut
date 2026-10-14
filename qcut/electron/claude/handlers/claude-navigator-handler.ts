@@ -13,6 +13,18 @@ import { claudeLog } from "../utils/logger.js";
 
 const HANDLER_NAME = "Navigator";
 const REQUEST_TIMEOUT_MS = 5000;
+/**
+ * The renderer answers an open request only once the project has loaded, and
+ * gives up itself after 20 s; this leaves room for that answer to arrive.
+ */
+export const NAVIGATION_TIMEOUT_MS = 25_000;
+
+export interface NavigateToProjectResult {
+	navigated: boolean;
+	projectId: string;
+	/** Why the editor did not open the project, when `navigated` is false. */
+	error?: string;
+}
 
 export interface NavigatorProject {
 	id: string;
@@ -67,23 +79,24 @@ export async function requestProjectsFromRenderer(
 export async function requestNavigateToProject(
 	win: BrowserWindow,
 	projectId: string
-): Promise<{ navigated: boolean; projectId: string }> {
+): Promise<NavigateToProjectResult> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
 		const requestId = generateId("req");
 
+		// Outlasts the HTTP route's own 504 so callers get that answer.
 		const timeout = setTimeout(() => {
 			if (resolved) return;
 			resolved = true;
 			ipcMain.removeListener("claude:navigator:open:response", handler);
 			reject(new Error("Timeout waiting for navigation confirmation"));
-		}, REQUEST_TIMEOUT_MS);
+		}, NAVIGATION_TIMEOUT_MS + 1000);
 
 		const handler = (
 			_event: IpcMainEvent,
 			data: {
 				requestId: string;
-				result: { navigated: boolean; projectId: string };
+				result: NavigateToProjectResult;
 			}
 		) => {
 			if (data.requestId !== requestId || resolved) return;
