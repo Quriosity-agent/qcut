@@ -3,7 +3,8 @@
  * editor API/CLI checks and quick export gates. Each spec needs no private
  * runtime, real-media fixture or recording permission, and finishes within a
  * few minutes. Every test gets its own profile and API port, so the set runs
- * beside an open QCut.
+ * beside an open QCut. Timing-sensitive performance checks such as
+ * preview-quality-proxy (frame cache, decode timing) stay out of the set.
  */
 export const E2E_SMOKE_SPECS = [
 	"aspect-ratio-cli.e2e.ts",
@@ -26,7 +27,6 @@ export const E2E_SMOKE_SPECS = [
 	"multi-media-management-part1.e2e.ts",
 	"multi-media-management-part2.e2e.ts",
 	"p2-content-ecosystem.e2e.ts",
-	"preview-quality-proxy.e2e.ts",
 	"project-folder-sync.e2e.ts",
 	"project-workflow-part1.e2e.ts",
 	"project-workflow-part2.e2e.ts",
