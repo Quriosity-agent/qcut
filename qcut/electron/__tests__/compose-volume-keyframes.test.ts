@@ -354,6 +354,38 @@ describe("compose volume keyframes", () => {
 		);
 	});
 
+	it("rejects a patch sound that sets both a volume and keyframes", () => {
+		const issuesFor = ({ volume }: { volume: number }) =>
+			validateComposePatch({
+				snapshot: snapshot({ fps: 30 }),
+				patch: patchWith({
+					operations: [
+						{
+							kind: "add-sound-effect",
+							id: "sound:1",
+							startTime: 0,
+							duration: 2,
+							volume,
+							asset: {
+								provider: "local",
+								assetType: "sound",
+								assetId: "fx",
+							},
+							volumeKeyframes: DUCK,
+						},
+					],
+				}),
+			}).filter(({ severity }) => severity === "error");
+
+		expect(issuesFor({ volume: 0.5 })).toContainEqual(
+			expect.objectContaining({
+				path: "operations.0.volume",
+				operationId: "sound:1",
+			})
+		);
+		expect(issuesFor({ volume: 1 })).toEqual([]);
+	});
+
 	it("plans keyframes as editor audio settings on sounds and clips", () => {
 		const plan = timelineManifestFromComposePatch({
 			projectId: "project-1",
