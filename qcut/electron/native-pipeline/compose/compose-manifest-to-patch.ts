@@ -31,6 +31,7 @@ import type {
 	ComposePatchOperation,
 	ComposeSnapshot,
 } from "./compose-protocol.js";
+import { volumeKeyframesFrom } from "./compose-volume-keyframes.js";
 
 export interface ComposeManifestSourceInfo {
 	/** Probed media duration in seconds; ignored for images. */
@@ -391,7 +392,14 @@ export function compileComposeManifestToPatch({
 			trimEnd: layout.trimEnd,
 			sourceDuration: layout.sourceDuration,
 			...(layout.clip.volumeKeyframes.length > 0
-				? { volumeKeyframes: layout.clip.volumeKeyframes }
+				? {
+						// Manifest times count from trim.in; the element starts
+						// after its inbound transition handle.
+						volumeKeyframes: volumeKeyframesFrom({
+							keyframes: layout.clip.volumeKeyframes,
+							offset: layout.trimStart - layout.clip.trim.in,
+						}),
+					}
 				: {}),
 		});
 		if (layout.clip.filters.length > 0) {
