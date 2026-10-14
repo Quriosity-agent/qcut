@@ -125,7 +125,7 @@ async function installExportBlobCapture({ page }: { page: Page }) {
 
 			const globalWindow = window as WindowWithExportCapture;
 			const electronAPI = (
-				window as Window & { electronAPI?: ElectronAPIWithExport }
+				window as unknown as { electronAPI?: ElectronAPIWithExport }
 			).electronAPI;
 
 			if (!globalWindow.__qcutCreateObjectURLOriginal) {
@@ -262,7 +262,9 @@ async function validateCapturedExportHasAudioAndVideo({
 					) => Promise<string>;
 				};
 				ffmpeg?: {
-					readOutputFile?: (path: string) => Promise<Uint8Array | null>;
+					readOutputFile?: (
+						path: string
+					) => Promise<Uint8Array<ArrayBuffer> | null>;
 					extractAudio?: (options: {
 						format?: string;
 						videoPath: string;
@@ -273,13 +275,13 @@ async function validateCapturedExportHasAudioAndVideo({
 				};
 			};
 
-			type WindowWithCapture = Window & {
+			type WindowWithCapture = Omit<Window, "electronAPI"> & {
 				__qcutCapturedExportBlob?: Blob | null;
 				__qcutLastExportOutputPath?: string | null;
 				electronAPI?: ElectronAPIForValidation;
 			};
 
-			const globalWindow = window as WindowWithCapture;
+			const globalWindow = window as unknown as WindowWithCapture;
 			const electronAPI = globalWindow.electronAPI;
 			let exportBlob = globalWindow.__qcutCapturedExportBlob;
 			const cliOutputPath = globalWindow.__qcutLastExportOutputPath;
