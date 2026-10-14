@@ -125,6 +125,8 @@ test.describe("Text visual audit", () => {
 			path: path.join(stateDir, "text-animation-loop-presets.png"),
 			animations: "disabled",
 		});
+		// Keyframes live on the 文本 tab; the 动画 tab is still open here.
+		await properties.getByTestId("text-panel-tab-text").click();
 		await properties.getByTestId("text-keyframes-group-toggle").click();
 		await properties.getByTestId("keyframe-add-current").click();
 		await expect(properties.getByTestId("keyframe-count")).toContainText("1");
