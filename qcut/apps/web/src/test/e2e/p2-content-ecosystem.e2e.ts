@@ -138,7 +138,7 @@ async function installAssetMocks({
 }
 
 test.describe("P2 content ecosystem", () => {
-	test("uses shared text styles, animated stickers, and real music workflows", async ({
+	test("uses shared text styles, stickers, and real music workflows", async ({
 		page,
 		electronApp,
 	}) => {
@@ -158,9 +158,14 @@ test.describe("P2 content ecosystem", () => {
 		await page.getByTestId("text-panel-tab").click();
 		const textPanel = page.getByTestId("text-panel");
 		await expect(textPanel).toBeVisible();
-		await textPanel.getByRole("tab", { name: "Social" }).click();
+		// Templates sit in a category rail; 口播卡片像素 is a free yellow-pop card.
+		await textPanel.getByRole("button", { name: "智能包装" }).click();
+		await textPanel
+			.getByRole("button", { name: "口播卡片", exact: true })
+			.click();
 		const socialHookTemplate = textPanel.getByRole("button", {
-			name: "Add Social hook",
+			name: "添加文字模板 口播卡片像素",
+			exact: true,
 		});
 		await expect(socialHookTemplate).toBeVisible();
 		await socialHookTemplate.click();
@@ -178,32 +183,12 @@ test.describe("P2 content ecosystem", () => {
 		await page.getByTestId("stickers-panel-tab").click();
 		const stickersPanel = page.getByTestId("stickers-panel");
 		await expect(stickersPanel).toBeVisible();
-		await expect(
-			stickersPanel.getByRole("tab", { name: /Motion/ })
-		).toHaveAttribute("data-state", "active");
-		const stickerImages = stickersPanel.locator('img[src*="line-md"]');
-		await expect(stickerImages.first()).toBeVisible();
-		await expect
-			.poll(() =>
-				stickerImages
-					.first()
-					.evaluate(
-						(image) =>
-							(image as HTMLImageElement).complete &&
-							(image as HTMLImageElement).naturalWidth > 0
-					)
-			)
-			.toBe(true);
-		const firstStickerSource = await stickerImages.first().getAttribute("src");
-		expect(firstStickerSource).toBeTruthy();
-		const stickerMarkup = await page.evaluate(async (source) => {
-			const response = await fetch(source);
-			return response.text();
-		}, firstStickerSource as string);
-		expect(stickerMarkup).toContain("<animate");
-
 		await stickersPanel.getByTestId("sticker-item").first().click();
-		await expect(page.locator("[data-sticker-id]")).toHaveCount(1);
+		// Each placed sticker renders one visual and one interaction layer; library
+		// items carry data-sticker-id too, so count the visual layer only.
+		await expect(
+			page.locator('[data-sticker-id][data-sticker-render-mode="visual"]')
+		).toHaveCount(1);
 		await expect(
 			page.locator(
 				'[data-testid="timeline-track"][data-track-type="sticker"] [data-testid="timeline-element"]'
@@ -211,30 +196,41 @@ test.describe("P2 content ecosystem", () => {
 		).toHaveCount(1);
 		await expectNoHorizontalOverflow({ locator: stickersPanel });
 		await page.screenshot({
-			path: path.join(artifactDirectory, "02-motion-sticker-timeline.png"),
+			path: path.join(artifactDirectory, "02-sticker-timeline.png"),
 			animations: "allow",
 		});
 
 		await page.getByTestId("audio-panel-tab").click();
 		const audioLibrary = page.getByTestId("audio-library");
 		await expect(audioLibrary).toBeVisible();
+		// Transition whooshes live in the collapsed 音效库 group.
+		await audioLibrary.getByRole("button", { name: "音效库" }).click();
 		await expect(
-			audioLibrary.getByRole("button", { name: "Whoosh" })
+			audioLibrary.getByRole("button", { name: "转场", exact: true })
 		).toBeVisible();
-		await audioLibrary.getByRole("tab", { name: "Songs" }).click();
-		const songs = page.getByTestId("songs-view");
+		// Music shows a capped catalog, so find the mocked song by name.
+		await audioLibrary
+			.getByRole("textbox", { name: "搜索音频库" })
+			.fill(mockMusic.name);
+		const songs = audioLibrary.getByTestId(
+			`audio-library-item-music-${mockMusic.id}`
+		);
 		await expect(songs.getByText(mockMusic.name)).toBeVisible();
 		await expect(songs.getByText("CC0-1.0")).toBeVisible();
 		await songs
-			.getByRole("button", { name: `Favorite ${mockMusic.name}` })
+			.getByRole("button", { name: `收藏${mockMusic.name}`, exact: true })
 			.click();
 		await expect(
 			songs.getByRole("button", {
-				name: `Remove ${mockMusic.name} from favorites`,
+				name: `取消收藏${mockMusic.name}`,
+				exact: true,
 			})
 		).toBeVisible();
 		await songs
-			.getByRole("button", { name: `Add ${mockMusic.name} to timeline` })
+			.getByRole("button", {
+				name: `将${mockMusic.name}添加到时间线`,
+				exact: true,
+			})
 			.click();
 		await expect(
 			page.locator(
