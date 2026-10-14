@@ -282,7 +282,7 @@ describe("Claude media timing bridge", () => {
 			pushHistory: true,
 		});
 
-		expect(updated).toBe(true);
+		expect(updated.applied).toBe(true);
 		expect(storeMocks.state.pushHistory).toHaveBeenCalledOnce();
 		expect(storeMocks.state.updateMediaTiming).toHaveBeenCalledWith(
 			"track",
@@ -314,7 +314,7 @@ describe("Claude media timing bridge", () => {
 			pushHistory: false,
 		});
 
-		expect(updated).toBe(true);
+		expect(updated.applied).toBe(true);
 		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledWith(
 			"track",
 			"clip",
