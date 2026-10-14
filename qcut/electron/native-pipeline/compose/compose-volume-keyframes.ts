@@ -82,6 +82,52 @@ export function sortedVolumeKeyframes({
 	return [...keyframes].sort((left, right) => left.time - right.time);
 }
 
+/** The envelope's level at `time`; `keyframes` must be sorted. */
+function volumeDbAt({
+	keyframes,
+	time,
+}: {
+	keyframes: ComposeVolumeKeyframe[];
+	time: number;
+}): number {
+	const nextIndex = keyframes.findIndex((keyframe) => keyframe.time > time);
+	if (nextIndex === 0) return keyframes[0].volumeDb;
+	const previous =
+		keyframes[(nextIndex < 0 ? keyframes.length : nextIndex) - 1];
+	if (nextIndex < 0) return previous.volumeDb;
+	const next = keyframes[nextIndex];
+	return (
+		previous.volumeDb +
+		((next.volumeDb - previous.volumeDb) * (time - previous.time)) /
+			(next.time - previous.time)
+	);
+}
+
+/**
+ * Keyframes counted from `offset` seconds into the item, for an editor element
+ * that trims that much more off the item's head (a transition handle). Any
+ * keyframe at or before the new start becomes one keyframe holding the level
+ * there, so the envelope sounds the same.
+ */
+export function volumeKeyframesFrom({
+	keyframes,
+	offset,
+}: {
+	keyframes: readonly ComposeVolumeKeyframe[];
+	offset: number;
+}): ComposeVolumeKeyframe[] {
+	const sorted = sortedVolumeKeyframes({ keyframes });
+	if (offset <= 0) return sorted;
+	const later = sorted
+		.filter((keyframe) => keyframe.time > offset)
+		.map((keyframe) => ({ ...keyframe, time: keyframe.time - offset }));
+	if (later.length === sorted.length) return later;
+	return [
+		{ time: 0, volumeDb: volumeDbAt({ keyframes: sorted, time: offset }) },
+		...later,
+	];
+}
+
 function decimal({ value }: { value: number }): string {
 	return Number(value.toFixed(6)).toString();
 }
