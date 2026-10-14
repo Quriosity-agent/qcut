@@ -460,6 +460,41 @@ describe("ExportEngineMuxer", () => {
 		expect(mockAdd).toHaveBeenCalledWith(audio);
 	});
 
+	it("still exports, unshifted, when the priming cannot be measured", async () => {
+		const { canvas } = createMockCanvas();
+		const audio = { duration: 0.1, numberOfChannels: 2, sampleRate: 48_000 };
+		mockRenderTimelineAudio.mockResolvedValueOnce(audio);
+		mockMeasurePriming.mockRejectedValueOnce(
+			new Error("AAC encoding is not supported")
+		);
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const engine = new ExportEngineMuxer(
+			canvas,
+			{
+				format: "mp4",
+				quality: "720p",
+				filename: "test.mp4",
+				width: 1280,
+				height: 720,
+			},
+			[],
+			[],
+			0.1
+		);
+
+		await expect(engine.export()).resolves.toBeInstanceOf(Blob);
+
+		expect(mockAudioSourceCtor).toHaveBeenCalledWith(
+			{ codec: "aac", bitrate: 128_000 },
+			{ startTimestamp: -0 }
+		);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining("AAC encoder priming not measured"),
+			expect.any(Error)
+		);
+		warn.mockRestore();
+	});
+
 	it("uses correct bitrate for quality preset", async () => {
 		const { canvas } = createMockCanvas(1920, 1080);
 
