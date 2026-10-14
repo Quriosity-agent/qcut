@@ -83,7 +83,7 @@ test("exports, restores, and deletes a custom template through cloud sync", asyn
 	const syncButton = page.getByTestId("user-library-sync");
 	await expect(syncButton).toBeEnabled();
 	await syncButton.click();
-	await expect(syncButton).toHaveAttribute("aria-label", "模板和预设已同步");
+	await expect(syncButton).toHaveAttribute("aria-label", "个人资源库已同步");
 	await expect
 		.poll(async () => {
 			const document = await timelineTemplateDocument({ page });
