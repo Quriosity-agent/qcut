@@ -9,10 +9,12 @@ import {
 	test,
 } from "./helpers/electron-helpers";
 
-const transition = JIANYING_TRANSITIONS.find(
+const foundTransition = JIANYING_TRANSITIONS.find(
 	(candidate) => candidate.id === "jianying-local-3d-space"
 );
-if (!transition) throw new Error("Missing 3D Space transition metadata");
+if (!foundTransition) throw new Error("Missing 3D Space transition metadata");
+// Re-bound after the guard so the hoisted helpers below see a defined entry.
+const transition = foundTransition;
 
 interface ExposedEditorWindow extends Window {
 	__mediaStore: {
