@@ -33,6 +33,21 @@ describe("editor project readiness", () => {
 		expect(get).toHaveBeenCalledWith("/api/claude/timeline/promo");
 	});
 
+	it("passes on the editor's reason when the project did not open", async () => {
+		const get = vi.fn();
+		const post = vi.fn(async () => ({
+			navigated: false,
+			projectId: "promo",
+			error: "The editor left project promo for #/editor/new-project",
+		}));
+		const client = { get, post } as unknown as EditorApiClient;
+
+		await expect(
+			ensureEditorProjectReady({ client, projectId: "promo", timeoutMs: 200 })
+		).rejects.toThrow("The editor left project promo for #/editor/new-project");
+		expect(get).not.toHaveBeenCalled();
+	});
+
 	it("does not navigate when the caller only checks an active project", async () => {
 		const get = vi.fn(async (url: string) => {
 			if (url === "/api/claude/navigator/projects") {
