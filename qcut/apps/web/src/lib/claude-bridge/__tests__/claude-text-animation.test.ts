@@ -178,7 +178,7 @@ describe("Claude text animation bridge", () => {
 			pushHistory: true,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		expect(storeMocks.state.updateTextElement).toHaveBeenCalledWith(
 			"text-track",
 			"title",
@@ -234,7 +234,7 @@ describe("Claude text animation bridge", () => {
 			pushHistory: true,
 		});
 
-		expect(updated).toBe(false);
+		expect(updated.applied).toBe(false);
 		expect(storeMocks.state.pushHistory).not.toHaveBeenCalled();
 		expect(storeMocks.state.updateElementStartTime).not.toHaveBeenCalled();
 		expect(storeMocks.state.updateTextElement).not.toHaveBeenCalled();
