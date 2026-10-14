@@ -24,6 +24,42 @@ import {
 import { reverseAudioBuffer } from "./audio-buffer-transform";
 import { exportProfiler } from "@/lib/export/export-profiler";
 
+/**
+ * Chromium's DynamicsCompressorNode delays its input by a fixed 6 ms
+ * lookahead whatever its settings (288 frames at 48 kHz, measured). Every
+ * clip passes through two of them, the compressor and the limiter in
+ * `scheduleClip`, so the mix renders that much longer and drops the leading
+ * frames, which puts each sound back on its timeline position.
+ */
+const DYNAMICS_LOOKAHEAD_SECONDS = 0.006;
+const CLIP_DYNAMICS_STAGES = 2;
+
+/** Copies `length` frames that start `frames` into `buffer`. */
+function dropLeadingFrames({
+	context,
+	buffer,
+	frames,
+	length,
+}: {
+	context: OfflineAudioContext;
+	buffer: AudioBuffer;
+	frames: number;
+	length: number;
+}): AudioBuffer {
+	const aligned = context.createBuffer(
+		buffer.numberOfChannels,
+		length,
+		buffer.sampleRate
+	);
+	for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+		aligned.copyToChannel(
+			buffer.getChannelData(channel).subarray(frames, frames + length),
+			channel
+		);
+	}
+	return aligned;
+}
+
 function scheduleParameter({
 	parameter,
 	points,
@@ -350,9 +386,12 @@ export async function renderBrowserTimelineAudio({
 		"audio-unique-sources",
 		new Set(clips.map(({ mediaItem }) => mediaItem.id)).size
 	);
+	const frames = Math.max(1, Math.ceil(totalDuration * sampleRate));
+	const latencyFrames =
+		CLIP_DYNAMICS_STAGES * Math.round(DYNAMICS_LOOKAHEAD_SECONDS * sampleRate);
 	const context = new OfflineAudioContext(
 		2,
-		Math.max(1, Math.ceil(totalDuration * sampleRate)),
+		frames + latencyFrames,
 		sampleRate
 	);
 	const decodedClips = await exportProfiler.time("audio-decode", () =>
@@ -393,7 +432,13 @@ export async function renderBrowserTimelineAudio({
 			)
 		)
 	);
-	return exportProfiler.time("audio-offline-render", () =>
+	const rendered = await exportProfiler.time("audio-offline-render", () =>
 		context.startRendering()
 	);
+	return dropLeadingFrames({
+		context,
+		buffer: rendered,
+		frames: latencyFrames,
+		length: frames,
+	});
 }
