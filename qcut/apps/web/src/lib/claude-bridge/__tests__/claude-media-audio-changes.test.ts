@@ -114,8 +114,60 @@ describe("parseClaudeMediaAudioChanges", () => {
 		}
 	});
 
+	it("deep-merges nested groups and keeps the fields it was not given", () => {
+		const element = {
+			...music,
+			audio: parseClaudeMediaAudioChanges({
+				element: music,
+				value: { repair: { deHum: { frequencyHz: 60 } } },
+			}),
+		} as MediaElement;
+
+		const audio = parseClaudeMediaAudioChanges({
+			element,
+			value: { repair: { deHum: { enabled: true } } },
+		});
+
+		expect(audio.repair.deHum).toEqual({
+			enabled: true,
+			frequencyHz: 60,
+			harmonics: 4,
+		});
+		expect(audio.repair.deEsser).toEqual(element.audio?.repair.deEsser);
+	});
+
 	it.each([
 		["a non-object", "loud", "audio must be an object"],
+		[
+			"a boolean sent as a string",
+			{ enabled: "false" },
+			"audio.enabled must be true or false",
+		],
+		[
+			"a number sent as a string",
+			{ compressor: { ratio: "4" } },
+			"audio.compressor.ratio must be a number",
+		],
+		[
+			"a misspelled setting",
+			{ compresor: { enabled: true } },
+			'Unknown audio setting "audio.compresor"',
+		],
+		[
+			"a setting the processing pipeline owns",
+			{ separation: { stemMediaIds: { vocals: "media-1" } } },
+			'Unknown audio setting "audio.separation.stemMediaIds"',
+		],
+		[
+			"an inherited keyframe property name",
+			{ keyframes: { toString: [{ frame: 0, value: 1 }] } },
+			'Unknown audio keyframe property "toString"',
+		],
+		[
+			"a __proto__ keyframe property from JSON",
+			JSON.parse('{"keyframes":{"__proto__":[{"frame":0,"value":1}]}}'),
+			'Unknown audio keyframe property "__proto__"',
+		],
 		[
 			"an unknown property",
 			{ keyframes: { loudness: [] } },
