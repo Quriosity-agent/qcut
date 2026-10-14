@@ -78,7 +78,9 @@ A manifest (conventionally `*.qcut-compose.json`) is one JSON object. Relative
 | `overlays[]` | No, ≤ 50 | Stickers: `{type: "sticker", source, start, duration, transform {x, y, scale, rotation}, opacity, fadeIn, fadeOut}`; `x`/`y` place the sticker's centre, -1..1 from edge to edge (`y` -1 is the top); `scale` is its width as a fraction of the canvas's shorter side |
 | `audio[]` | No, ≤ 50 | `{type: "sound-effect", source, start, trim, volume, fadeIn, fadeOut, volumeKeyframes[]}`; music beds use the same type |
 
-Image clips need `trim.out`: it sets how long the still shows.
+Image clips need `trim.out`: it sets how long the still shows. Stickers
+(`overlays`) render headless only for now; `compose project --target editor`
+rejects a manifest that has them.
 
 **Volume over time.** `volumeKeyframes` on a clip or an `audio` entry is a list
 of `{time, volumeDb}`: seconds from the item's first used second (`trim.in`)
