@@ -37,7 +37,7 @@ export async function importPortraitAuditFixtures({
 		.poll(
 			() =>
 				page.evaluate(() =>
-					(window as ThumbnailWindow).__mediaStore
+					(window as unknown as ThumbnailWindow).__mediaStore
 						.getState()
 						.mediaItems.every(
 							(item) => item.thumbnailUrl?.startsWith("data:image/") === true
