@@ -18,6 +18,7 @@ import { timelineManifestFromComposePatch } from "../native-pipeline/compose/com
 import {
 	editorVolumeAudio,
 	volumeEnvelopeFilters,
+	volumeKeyframesFrom,
 } from "../native-pipeline/compose/compose-volume-keyframes.js";
 
 const execFileAsync = promisify(execFile);
@@ -238,6 +239,57 @@ describe("compose volume keyframes", () => {
 				},
 			})
 		).toThrow();
+	});
+
+	it("re-bases clip keyframes past the inbound transition handle", () => {
+		expect(volumeKeyframesFrom({ keyframes: DUCK, offset: 0 })).toEqual(DUCK);
+		// Nothing at or before the new start: only the times move.
+		expect(
+			volumeKeyframesFrom({
+				keyframes: [{ time: 1, volumeDb: -6 }],
+				offset: 0.25,
+			})
+		).toEqual([{ time: 0.75, volumeDb: -6 }]);
+
+		const { patch } = compileComposeManifestToPatch({
+			manifest: parseComposeManifest({
+				value: {
+					schemaVersion: 1,
+					clips: [
+						{ id: "a", source: "a.mp4" },
+						{
+							id: "b",
+							source: "b.mp4",
+							volumeKeyframes: [
+								{ time: 0, volumeDb: -12 },
+								{ time: 1, volumeDb: 0 },
+							],
+						},
+					],
+					transitions: [{ between: ["a", "b"], duration: 0.5 }],
+				},
+			}),
+			manifestSha256: "a".repeat(64),
+			projectId: "project-1",
+			snapshot: snapshot({ fps: 30 }),
+			sources: {
+				"a.mp4": { durationSeconds: 5, mediaKind: "video" },
+				"b.mp4": { durationSeconds: 5, mediaKind: "video" },
+			},
+			createdAt: CREATED_AT,
+		});
+		const clipB = patch.operations.filter(
+			({ kind }) => kind === "insert-media-clip"
+		)[1];
+		// The element starts 0.25 s (half the crossfade) into clip b, where
+		// the ramp has already reached -9 dB.
+		expect(clipB).toMatchObject({
+			trimStart: 0.25,
+			volumeKeyframes: [
+				{ time: 0, volumeDb: -9 },
+				{ time: 0.75, volumeDb: 0 },
+			],
+		});
 	});
 
 	it("carries keyframes from the manifest onto patch operations", () => {
