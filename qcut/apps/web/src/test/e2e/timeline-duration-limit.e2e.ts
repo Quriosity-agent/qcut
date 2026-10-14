@@ -86,7 +86,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
 				requestAnimationFrame(() => {
 					resolve({
 						tracksScrollLeft: tracksContainer.scrollLeft,
-						rulerScrollLeft: rulerContainer.scrollLeft,
+						rulerScrollLeft: rulerContainer?.scrollLeft,
 						tracksScrollWidth: tracksContainer.scrollWidth,
 						scrolledPast128s: tracksContainer.scrollLeft > 6400,
 						// Calculate what time position we're at
