@@ -56,6 +56,13 @@ export {
 	type ComposeValidationSeverity,
 } from "./compose-validation.js";
 export {
+	COMPOSE_VOLUME_DB_MAX,
+	COMPOSE_VOLUME_DB_MIN,
+	MAX_COMPOSE_VOLUME_KEYFRAMES,
+	validateComposeVolumeKeyframes,
+	type ComposeVolumeKeyframe,
+} from "./compose-volume-keyframes.js";
+export {
 	countComposeOperations,
 	mergeComposePatches,
 } from "./compose-patch-merge.js";
