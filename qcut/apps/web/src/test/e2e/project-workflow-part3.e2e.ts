@@ -1,5 +1,8 @@
 import { test, expect, createTestProject } from "./helpers/electron-helpers";
 
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Project Persistence & Export (Subtask 1C)", () => {
 	test("should handle project persistence", async ({ page }) => {
 		// Setup: Create project and navigate to editor
