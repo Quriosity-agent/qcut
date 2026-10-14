@@ -11,6 +11,9 @@ import {
 	navigateToProjects,
 } from "./helpers/electron-helpers";
 
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Editor Navigation Test", () => {
 	test("should detect existing project on projects page", async ({ page }) => {
 		// Ensure we're on projects page. Anchor on the "Studio" heading, which is
