@@ -67,7 +67,7 @@ interface AuditWindow extends Window {
 
 async function createOrientationClips({ page }: { page: Page }) {
 	return page.evaluate(() => {
-		const editorWindow = window as AuditWindow;
+		const editorWindow = window as unknown as AuditWindow;
 		const media = editorWindow.__mediaStore.getState().mediaItems;
 		const timeline = editorWindow.__timelineStore.getState();
 		const track = timeline.tracks.find(
@@ -127,7 +127,7 @@ async function capturePreview({
 }) {
 	await page.evaluate(
 		({ selectedTrackId, selectedElementId, seekTime }) => {
-			const editorWindow = window as AuditWindow;
+			const editorWindow = window as unknown as AuditWindow;
 			editorWindow.__timelineStore
 				.getState()
 				.setSelectedElements([
@@ -186,7 +186,7 @@ test.describe("Real portrait media import audit", () => {
 		});
 
 		const mediaItems = await page.evaluate(() =>
-			(window as AuditWindow).__mediaStore
+			(window as unknown as AuditWindow).__mediaStore
 				.getState()
 				.mediaItems.map((item) => ({
 					name: item.name,
