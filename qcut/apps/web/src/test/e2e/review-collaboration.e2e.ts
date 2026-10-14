@@ -1,5 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import ffmpegStaticPath from "ffmpeg-static";
 import type { Page } from "@playwright/test";
 import type { ReviewPackage } from "@qcut/editor-core/collaboration";
 import {
@@ -19,10 +22,36 @@ const artifactDirectory = path.resolve(
 	process.cwd(),
 	"output/playwright/review-collaboration"
 );
-const videoFixture = path.resolve(
+const sampleVideo = path.resolve(
 	process.cwd(),
-	"apps/web/src/test/e2e/fixtures/media/sample-video-browser.mp4"
+	"apps/web/src/test/e2e/fixtures/media/sample-video.mp4"
 );
+
+/**
+ * The committed sample is H.264 4:4:4, which a browser <video> cannot play,
+ * so the public review page gets a 4:2:0 copy made at run time.
+ */
+async function browserVideoFixture(): Promise<string> {
+	if (!ffmpegStaticPath) throw new Error("ffmpeg-static is unavailable");
+	const directory = path.join(tmpdir(), "qcut-e2e-review");
+	await mkdir(directory, { recursive: true });
+	const outputPath = path.join(directory, "sample-video-browser.mp4");
+	execFileSync(ffmpegStaticPath, [
+		"-y",
+		"-loglevel",
+		"error",
+		"-i",
+		sampleVideo,
+		"-c:v",
+		"libx264",
+		"-pix_fmt",
+		"yuv420p",
+		"-movflags",
+		"+faststart",
+		outputPath,
+	]);
+	return outputPath;
+}
 const reviewToken = "e2e-review-token-123456789";
 const reviewShareUrl = `https://qcut.app/#/review/${reviewToken}`;
 
@@ -115,7 +144,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 		"同步并复制链接"
 	);
 	await page
-		.getByRole("textbox", { name: "Review comment", exact: true })
+		.getByRole("textbox", { name: "输入这个时间点的修改意见", exact: true })
 		.fill("开头节奏再快一点");
 	await page.getByRole("button", { name: "添加评论" }).click();
 	await expect(page.getByText("开头节奏再快一点")).toBeVisible();
@@ -152,7 +181,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 
 	await installHttpsMediaFixture({
 		electronApp,
-		fixturePath: videoFixture,
+		fixturePath: await browserVideoFixture(),
 		mediaUrl: "https://cdn.qcut.test/review-video.mp4",
 	});
 	await page.evaluate((token) => {
