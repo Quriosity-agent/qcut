@@ -15,7 +15,7 @@ import type { ReferenceWindow } from "./portrait-reference";
 export type PortraitCompositePass = "original" | "native" | "independent";
 export const COMPOSITE_WIDTH = 1080;
 export const COMPOSITE_HEIGHT = 1920;
-export const COMPOSITE_FPS = 30;
+export const COMPOSITE_FPS: ClaudeLocalVideoExportRequest["frameRate"] = 30;
 export const COMPOSITE_SECONDS = Number(
 	process.env.QCUT_PORTRAIT_COMPOSITE_SECONDS ?? 12
 );
@@ -23,7 +23,7 @@ export const COMPOSITE_TOTAL_FRAMES = Math.round(
 	COMPOSITE_SECONDS * COMPOSITE_FPS
 );
 export const COMPOSITE_TRANSITION_SECONDS = Math.min(1, COMPOSITE_SECONDS / 2);
-export const COMPOSITE_FIT =
+export const COMPOSITE_FIT: "contain" | "cover" =
 	process.env.QCUT_PORTRAIT_COMPOSITE_FIT === "contain" ? "contain" : "cover";
 const configuredSamples = process.env.QCUT_PORTRAIT_COMPOSITE_SAMPLES;
 export const COMPOSITE_SAMPLES = [
