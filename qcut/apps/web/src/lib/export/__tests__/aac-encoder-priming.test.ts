@@ -48,7 +48,7 @@ function stubWebCodecs({
 }: {
 	priming: number;
 	supported?: boolean;
-	encoders: { count: number };
+	encoders: { count: number; codecs?: string[] };
 }) {
 	vi.stubGlobal(
 		"AudioData",
@@ -75,8 +75,9 @@ function stubWebCodecs({
 			) {
 				encoders.count += 1;
 			}
-			configure() {
+			configure(config: { codec: string }) {
 				this.state = "configured";
+				encoders.codecs?.push(config.codec);
 			}
 			encode(data: { samples: Float32Array }) {
 				this.input = data.samples;
@@ -144,5 +145,19 @@ describe("measureAacEncoderPriming", () => {
 		vi.unstubAllGlobals();
 		stubWebCodecs({ priming: 1024, encoders });
 		await expect(measureAacEncoderPriming(config)).resolves.toBe(1024);
+	});
+
+	it("probes the AAC profile mediabunny encodes with", async () => {
+		const encoders = { count: 0, codecs: [] as string[] };
+		stubWebCodecs({ priming: 2048, encoders });
+		for (const config of [
+			{ sampleRate: 22_050, numberOfChannels: 2, bitrate: 48_000 },
+			{ sampleRate: 22_050, numberOfChannels: 1, bitrate: 48_000 },
+			{ sampleRate: 32_000, numberOfChannels: 2, bitrate: 48_000 },
+		]) {
+			await measureAacEncoderPriming(config);
+		}
+
+		expect(encoders.codecs).toEqual(["mp4a.40.29", "mp4a.40.5", "mp4a.40.2"]);
 	});
 });
