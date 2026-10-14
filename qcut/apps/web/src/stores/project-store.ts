@@ -69,6 +69,12 @@ export class NotFoundError extends Error {
 
 interface ProjectStore {
 	activeProject: TProject | null;
+	/**
+	 * The active project once its media, timeline and stickers have loaded.
+	 * `activeProject` is set before the timeline loads, and saving in that
+	 * window would store the cleared timeline.
+	 */
+	loadedProjectId: string | null;
 	savedProjects: TProject[];
 	projectFolders: ProjectFolder[];
 	isLoading: boolean;
@@ -137,6 +143,7 @@ interface ProjectStore {
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
 	activeProject: null,
+	loadedProjectId: null,
 	savedProjects: [],
 	projectFolders: [],
 	isLoading: true,
@@ -268,7 +275,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			audioMix: createDefaultProjectAudioMixSettings(),
 		};
 
-		set({ activeProject: newProject });
+		set({ activeProject: newProject, loadedProjectId: newProject.id });
 
 		try {
 			await storageService.saveProject({ project: newProject });
@@ -306,6 +313,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			media: [...mediaStore.mediaItems],
 			timeline: [...timelineStore._tracks],
 			activeProject: get().activeProject,
+			loadedProjectId: get().loadedProjectId,
 		};
 
 		try {
@@ -331,7 +339,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 					audioMix: project.audioMix,
 				}),
 			};
-			set({ activeProject: normalizedProject });
+			set({ activeProject: normalizedProject, loadedProjectId: null });
 
 			// Apply per-project timeline behavior toggles with deterministic
 			// defaults for legacy projects (QTL-005).
@@ -366,6 +374,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			// Regenerate project.json on every load to ensure freshness
 			platform().projectJson?.write(id);
 
+			set({ loadedProjectId: id });
 			debugLog(`[ProjectStore] Project loading complete: ${id}`);
 		} catch (error) {
 			// Rollback to previous state if we had a project open
@@ -373,7 +382,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			if (backup.activeProject) {
 				debugLog("[ProjectStore] Restoring backup state");
 				// Restore previous project
-				set({ activeProject: backup.activeProject });
+				set({
+					activeProject: backup.activeProject,
+					loadedProjectId: backup.loadedProjectId,
+				});
 				// Restore timeline tracks
 				if (backup.timeline.length > 0) {
 					timelineStore.restoreTracks(backup.timeline);
@@ -555,7 +567,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			// If we deleted the active project, close it and clear data
 			const { activeProject } = get();
 			if (activeProject?.id === id) {
-				set({ activeProject: null });
+				set({ activeProject: null, loadedProjectId: null });
 				const mediaStore = (await getMediaStore()).useMediaStore.getState();
 				const { useTimelineStore } = await import("./timeline-store");
 				const timelineStore = useTimelineStore.getState();
@@ -571,7 +583,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 	},
 
 	closeProject: async () => {
-		set({ activeProject: null });
+		set({ activeProject: null, loadedProjectId: null });
 
 		// Clear data from stores when closing project
 		const mediaStore = (await getMediaStore()).useMediaStore.getState();
