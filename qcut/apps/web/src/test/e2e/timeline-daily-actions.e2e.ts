@@ -63,7 +63,7 @@ interface TimelineActionWindow extends Window {
 async function mediaTimelineState({ page }: { page: Page }) {
 	return await page.evaluate(() => {
 		const timeline = (
-			window as TimelineActionWindow
+			window as unknown as TimelineActionWindow
 		).__timelineStore.getState();
 		const mediaTrack = timeline.tracks.find((track) => track.type === "media");
 		if (!mediaTrack) throw new Error("Expected a media track");
@@ -96,7 +96,7 @@ async function createAdjacentRealVideoClips({ page }: { page: Page }) {
 	await addImportedClipToTimeline({ page });
 	return await page.evaluate(() => {
 		const timeline = (
-			window as TimelineActionWindow
+			window as unknown as TimelineActionWindow
 		).__timelineStore.getState();
 		const mediaTrack = timeline.tracks.find((track) => track.type === "media");
 		const first = mediaTrack?.elements[0];
@@ -116,7 +116,9 @@ async function createAdjacentRealVideoClips({ page }: { page: Page }) {
 		if (!secondId) throw new Error("Failed to create following clip");
 		timeline.selectElement(mediaTrack.id, first.id);
 		const splitTime = first.startTime + Math.min(1, visibleDuration / 2);
-		(window as TimelineActionWindow).__playbackStore.getState().seek(splitTime);
+		(window as unknown as TimelineActionWindow).__playbackStore
+			.getState()
+			.seek(splitTime);
 		return {
 			trackId: mediaTrack.id,
 			firstId: first.id,
@@ -133,7 +135,7 @@ async function createLinkedMultiTrackVideoClips({ page }: { page: Page }) {
 	await addImportedClipToTimeline({ page });
 	return await page.evaluate(() => {
 		const timeline = (
-			window as TimelineActionWindow
+			window as unknown as TimelineActionWindow
 		).__timelineStore.getState();
 		const mainTrack = timeline.tracks.find((track) => track.type === "media");
 		const first = mainTrack?.elements[0];
@@ -207,7 +209,7 @@ async function createLinkedMultiTrackVideoClips({ page }: { page: Page }) {
 async function linkedMultiTrackState({ page }: { page: Page }) {
 	return await page.evaluate(() => {
 		const timeline = (
-			window as TimelineActionWindow
+			window as unknown as TimelineActionWindow
 		).__timelineStore.getState();
 		return timeline.tracks
 			.filter((track) => track.type === "media")
@@ -359,7 +361,7 @@ test.describe("Timeline daily action toolbar", () => {
 
 		const followingStartBeforeDelete = await page.evaluate(({ secondId }) => {
 			const timeline = (
-				window as TimelineActionWindow
+				window as unknown as TimelineActionWindow
 			).__timelineStore.getState();
 			return timeline.tracks
 				.find((track) => track.type === "media")
