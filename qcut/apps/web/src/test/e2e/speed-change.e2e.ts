@@ -93,7 +93,9 @@ async function addClips({ page }: { page: Page }) {
 	await mediaItem.dragTo(timelineTrack);
 	await expect(page.getByTestId("timeline-element").first()).toBeVisible();
 	await page.evaluate(() => {
-		const timeline = (window as SpeedHarnessWindow).__timelineStore.getState();
+		const timeline = (
+			window as unknown as SpeedHarnessWindow
+		).__timelineStore.getState();
 		const track = timeline.tracks.find(
 			(candidate) => candidate.type === "media"
 		);
@@ -117,7 +119,9 @@ async function addClips({ page }: { page: Page }) {
 
 async function speedState({ page }: { page: Page }) {
 	return await page.evaluate(() => {
-		const timeline = (window as SpeedHarnessWindow).__timelineStore.getState();
+		const timeline = (
+			window as unknown as SpeedHarnessWindow
+		).__timelineStore.getState();
 		const track = timeline.tracks.find(
 			(candidate) => candidate.type === "media"
 		);
