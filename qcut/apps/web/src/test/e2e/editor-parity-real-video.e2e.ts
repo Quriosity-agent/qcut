@@ -114,7 +114,9 @@ test.describe("Editor parity with real video", () => {
 		await expect(firstClip).toBeVisible();
 		await firstClip.click();
 		await page.evaluate((duration) => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const track = timeline.tracks.find(
 				(candidate) => candidate.type === "media"
 			);
@@ -127,7 +129,9 @@ test.describe("Editor parity with real video", () => {
 				0,
 				Math.max(0, element.duration - duration)
 			);
-			(window as HarnessWindow).__playbackStore.getState().seek(0.75);
+			(window as unknown as HarnessWindow).__playbackStore
+				.getState()
+				.seek(0.75);
 		}, validationDuration);
 		await expect(page.getByRole("button", { name: /^Video:/ })).toBeVisible({
 			timeout: 15_000,
@@ -240,7 +244,9 @@ test.describe("Editor parity with real video", () => {
 		await expect(chromaKeyToggle).toBeChecked();
 		await visualTabs.getByRole("tab", { name: "蒙版", exact: true }).click();
 		const maskState = await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const source = timeline.tracks
 				.find((track) => track.type === "media")
 				?.elements.at(0);
@@ -269,7 +275,9 @@ test.describe("Editor parity with real video", () => {
 		});
 
 		const duplicated = await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const track = timeline.tracks.find(
 				(candidate) => candidate.type === "media"
 			);
@@ -321,7 +329,9 @@ test.describe("Editor parity with real video", () => {
 			.poll(
 				() =>
 					page.evaluate(({ firstId, secondId }) => {
-						const elements = (window as HarnessWindow).__timelineStore
+						const elements = (
+							window as unknown as HarnessWindow
+						).__timelineStore
 							.getState()
 							.tracks.flatMap((track) => track.elements);
 						return elements
@@ -343,7 +353,7 @@ test.describe("Editor parity with real video", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(() => {
-					const element = (window as HarnessWindow).__timelineStore
+					const element = (window as unknown as HarnessWindow).__timelineStore
 						.getState()
 						.tracks.flatMap((track) => track.elements)
 						.find((candidate) => candidate.compound);
@@ -362,7 +372,7 @@ test.describe("Editor parity with real video", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(({ secondId }) => {
-					const container = (window as HarnessWindow).__timelineStore
+					const container = (window as unknown as HarnessWindow).__timelineStore
 						.getState()
 						.tracks.flatMap((track) => track.elements)
 						.find((element) => element.compound?.kind === "multicam");
@@ -379,7 +389,9 @@ test.describe("Editor parity with real video", () => {
 		await menuItem({ menu, label: "拆分多机位片段" }).click();
 		await expect(page.getByTestId("timeline-element")).toHaveCount(2);
 		await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const mediaSelections = timeline.tracks.flatMap((track) =>
 				track.elements
 					.filter((element) => element.type === "media")
@@ -399,7 +411,9 @@ test.describe("Editor parity with real video", () => {
 		});
 
 		await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const captionTrackId = timeline.addTrack("captions");
 			const captionId = timeline.addElementToTrack(captionTrackId, {
 				type: "captions",
@@ -443,7 +457,9 @@ test.describe("Editor parity with real video", () => {
 			{ name: "end", time: 4.8 },
 		]) {
 			await page.evaluate((time) => {
-				(window as HarnessWindow).__playbackStore.getState().seek(time);
+				(window as unknown as HarnessWindow).__playbackStore
+					.getState()
+					.seek(time);
 			}, reference.time);
 			await page.waitForTimeout(500);
 			await previewCanvas.screenshot({
@@ -452,11 +468,15 @@ test.describe("Editor parity with real video", () => {
 			});
 		}
 		await page.evaluate(() => {
-			(window as HarnessWindow).__playbackStore.getState().seek(0.75);
+			(window as unknown as HarnessWindow).__playbackStore
+				.getState()
+				.seek(0.75);
 		});
 
 		await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			for (const track of timeline.tracks) {
 				const compound = track.elements.find(
 					(element) => element.compound?.kind === "compound"
