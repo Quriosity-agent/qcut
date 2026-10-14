@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, type TestInfo } from "@playwright/test";
+import type { StickerLabAPI } from "../../../../../../electron/preload-types/api-types/sticker-lab-api";
 import type { ElectronApplication } from "playwright";
 import {
 	inspectAndPreserveLocalStickerVideo,
@@ -374,12 +375,19 @@ export async function runTrueCliCachedStickerExport({
 		const firstPage = firstRun.page;
 		await expect
 			.poll(
-				() => firstPage.evaluate(() => Boolean(window.electronAPI?.stickerLab)),
+				() =>
+					firstPage.evaluate(() =>
+						Boolean(
+							(window as unknown as { electronAPI?: StickerLabAPI }).electronAPI
+								?.stickerLab
+						)
+					),
 				{ timeout: 30_000, intervals: [100, 250, 500] }
 			)
 			.toBe(true);
 		const cacheDiscovery = await firstPage.evaluate(async () => {
-			const stickerLab = window.electronAPI?.stickerLab;
+			const stickerLab = (window as unknown as { electronAPI?: StickerLabAPI })
+				.electronAPI?.stickerLab;
 			if (!stickerLab) throw new Error("Sticker Lab desktop bridge is missing");
 			const discovery = await stickerLab.discoverLocalReferences({});
 			return {
