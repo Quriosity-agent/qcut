@@ -36,6 +36,7 @@ never committed to the repository and are never uploaded by these commands.
 | `compose apply` | `--snapshot --patch` | `--project-id` | Validate a ComposePatch and apply it to the running editor atomically |
 | `compose render` | — | `--config`, `--output`, `--dry-run`, `--force`, `--snapshot --patch`, `--target`, `--verify-frames` | Render a multi-clip edit with Filter Lab cards, crossfades, stickers, and sound effects |
 | `compose project` | `--config` | `--project-dir`, `--target editor`, `--name`, `--project-id`, `--force`, `--no-verify` | Package a portable compose bundle, or build an editable QCut project through the running editor |
+| `compose schema` | — | — | Print the manifest format: every field with its type, default, and meaning, plus an example |
 
 Patch workflow against the running editor:
 
@@ -58,6 +59,63 @@ qcut compose project --config edit.qcut-compose.json --project-dir ./qcut-compos
 editor, applies the manifest, and re-opens the project to verify what was
 persisted. Element `duration` in a manifest is the source duration; the visible
 length is `duration - trimStart - trimEnd`.
+
+### Manifest format
+
+`qcut compose schema` prints every field with its type, default, and meaning,
+plus a working example (`--json` for the same data as JSON). The CLI's list is
+checked against the validator, so trust it over this summary if they differ.
+
+A manifest (conventionally `*.qcut-compose.json`) is one JSON object. Relative
+`source` paths resolve from the manifest's folder.
+
+| Field | Required | What it holds |
+| --- | --- | --- |
+| `schemaVersion` | Yes | Always `1` |
+| `canvas` | No | `{width, height, fps}`, default 1280×720 at 30 fps; the headless output frame |
+| `clips[]` | Yes, 1–8 | Main-track clips played back to back: `id` (unique), `source` (video or image), `trim` `{in, out}` in source seconds, `filters[]` of `{resourceId, intensity 0–100}` Filter Lab cards, `volumeKeyframes[]` |
+| `transitions[]` | No, ≤ 7 | `{between: [clipId, clipId], preset: "crossfade", duration}`; the two clips must be adjacent and the edit gets shorter by `duration` |
+| `overlays[]` | No, ≤ 50 | Stickers: `{type: "sticker", source, start, duration, transform {x, y, scale, rotation}, opacity, fadeIn, fadeOut}`; `x`/`y` place the sticker's centre, -1..1 from edge to edge (`y` -1 is the top); `scale` is its width as a fraction of the canvas's shorter side |
+| `audio[]` | No, ≤ 50 | `{type: "sound-effect", source, start, trim, volume, fadeIn, fadeOut, volumeKeyframes[]}`; music beds use the same type |
+
+Image clips need `trim.out`: it sets how long the still shows.
+
+**Volume over time.** `volumeKeyframes` on a clip or an `audio` entry is a list
+of `{time, volumeDb}`: seconds from the item's first used second (`trim.in`)
+and a level from -60 to 12 dB, 0 meaning unchanged. The level moves linearly in
+dB between keyframes and holds before the first and after the last. Keyframes
+are the item's whole level, so an `audio` entry with keyframes must leave
+`volume` at 1. Headless renders and editor projects play the same envelope; in
+the editor the keyframes appear as the clip's volume keyframes.
+
+```json
+{
+  "schemaVersion": 1,
+  "canvas": { "width": 1920, "height": 1080, "fps": 30 },
+  "clips": [
+    { "id": "intro", "source": "media/intro.mp4", "trim": { "in": 1, "out": 7 },
+      "filters": [{ "resourceId": "7524288987129810214", "intensity": 70 }] },
+    { "id": "interview", "source": "media/interview.mp4", "trim": { "in": 0, "out": 12 } }
+  ],
+  "transitions": [{ "between": ["intro", "interview"], "duration": 0.5 }],
+  "overlays": [
+    { "type": "sticker", "source": "stickers/logo.png", "start": 0.5, "duration": 4,
+      "transform": { "x": 0.7, "y": -0.7, "scale": 0.15 }, "fadeIn": 0.3, "fadeOut": 0.3 }
+  ],
+  "audio": [
+    { "type": "sound-effect", "source": "audio/music.mp3", "start": 0,
+      "trim": { "in": 0, "out": 17.5 }, "fadeOut": 1.5,
+      "volumeKeyframes": [
+        { "time": 0, "volumeDb": 0 }, { "time": 5.5, "volumeDb": 0 },
+        { "time": 6.5, "volumeDb": -18 }, { "time": 16, "volumeDb": -18 },
+        { "time": 17, "volumeDb": -6 }
+      ] }
+  ]
+}
+```
+
+The music ducks under the interview, which starts at 5.5 s because the 0.5 s
+crossfade overlaps the 6 s intro.
 
 ## `filter-lab` — cached filters and parity
 
