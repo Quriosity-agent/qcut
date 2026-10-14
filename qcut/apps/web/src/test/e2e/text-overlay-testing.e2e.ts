@@ -5,6 +5,9 @@ import {
 	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Text Overlay Testing (Subtask 3B)", () => {
 	test("should access text panel and interact with text overlay button", async ({
 		page,
