@@ -171,7 +171,7 @@ path, or use a public/network URL that the model provider can read.
 | `gen` | Generate images, videos, avatars, speech, music, and voices | `gen image -t "A cat"` |
 | `analyze` | Analyze, index, transcribe, translate, and query media | `analyze transcribe -i audio.mp3 --srt` |
 | `edit` | Autoclip, upscale, motion, subtitles, cleanup, portrait, deflicker, stickers, sound search | `edit upscale --image img.png` |
-| `compose` | Snapshot, plan, validate, apply, render, and package multi-resource edits | `compose render --config edit.qcut-compose.json --output final.mp4` |
+| `compose` | Snapshot, plan, validate, apply, render, and package multi-resource edits; `compose schema` prints the manifest format | `compose render --config edit.qcut-compose.json --output final.mp4` |
 | `filter-lab` | Browse, render, stack, and verify locally cached filters; QCut's own Metal renderer | `filter-lab render-independent --resource-id <id> -i in.png --output out.png` |
 | `effect-lab` | Search and render locally cached video effects | `effect-lab render --effect "胶片框" --input in.mp4 --output out.mp4` |
 | `text-lab` | Browse and render cached flower text and text animations | `text-lab animations --slot loop --json` |
@@ -276,6 +276,7 @@ qcut flow run -c pipeline.yaml -i "A sunset" --no-confirm
 qcut system cost -m veo3 -d 8s
 qcut record --record-duration 10 -o demo.mp4   # standalone screen recording, no editor needed
 qcut filter-lab catalog-independent --json      # filters QCut's own Metal renderer supports
+qcut compose schema --json                       # manifest fields, defaults, and an example
 qcut compose validate --config edit.qcut-compose.json --json
 qcut draft inspect --draft "~/Movies/JianyingPro Drafts/my-draft" --json
 qcut update --check --json
