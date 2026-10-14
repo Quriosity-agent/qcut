@@ -25,6 +25,65 @@ function debugError(...args: unknown[]): void {
 	console.error(PREFIX, ...args);
 }
 
+/** Stays under the main process's navigation timeout so a slow load is reported, not dropped. */
+export const PROJECT_OPEN_TIMEOUT_MS = 20_000;
+
+/**
+ * Resolves once the editor has really opened `projectId`: the project store
+ * holds it as the active project and the window still shows its editor
+ * route. Changing the hash only asks the router to navigate; the editor
+ * then loads the project, and a missing project is replaced by a new one.
+ */
+export function waitForProjectOpen({
+	projectId,
+	timeoutMs = PROJECT_OPEN_TIMEOUT_MS,
+}: {
+	projectId: string;
+	timeoutMs?: number;
+}): Promise<{ navigated: boolean; error?: string }> {
+	const editorHash = `#/editor/${projectId}`;
+	const onEditorRoute = () =>
+		window.location.hash === editorHash ||
+		window.location.hash.startsWith(`${editorHash}?`);
+	const isOpen = () =>
+		onEditorRoute() &&
+		useProjectStore.getState().activeProject?.id === projectId;
+	return new Promise((resolve) => {
+		const finish = (result: { navigated: boolean; error?: string }) => {
+			clearTimeout(timer);
+			unsubscribe();
+			window.removeEventListener("hashchange", onHashChange);
+			resolve(result);
+		};
+		const onHashChange = () => {
+			if (!onEditorRoute()) {
+				finish({
+					navigated: false,
+					error: `The editor left project ${projectId} for ${window.location.hash || "#/"}`,
+				});
+				return;
+			}
+			if (isOpen()) finish({ navigated: true });
+		};
+		const unsubscribe = useProjectStore.subscribe(() => {
+			if (isOpen()) finish({ navigated: true });
+		});
+		window.addEventListener("hashchange", onHashChange);
+		const timer = setTimeout(
+			() =>
+				finish({
+					navigated: false,
+					error: `The editor did not finish opening project ${projectId} within ${timeoutMs / 1000}s`,
+				}),
+			timeoutMs
+		);
+		// Already open: the hash assignment that follows will not fire hashchange.
+		queueMicrotask(() => {
+			if (isOpen()) finish({ navigated: true });
+		});
+	});
+}
+
 /**
  * Register navigation handlers with the Claude Navigator API to respond to project list and open requests.
  *
@@ -87,39 +146,41 @@ export function setupClaudeNavigatorBridge(): void {
 			try {
 				debugLog("Received navigate request:", data.projectId);
 
-				const projectStore = useProjectStore.getState();
-
 				// Ensure projects are loaded so we can validate
-				if (!projectStore.isInitialized) {
-					await projectStore.loadAllProjects();
+				if (!useProjectStore.getState().isInitialized) {
+					await useProjectStore.getState().loadAllProjects();
 				}
 
-				const project = projectStore.savedProjects.find(
-					(p) => p.id === data.projectId
-				);
+				const project = useProjectStore
+					.getState()
+					.savedProjects.find((p) => p.id === data.projectId);
 
 				if (!project) {
 					debugWarn("Project not found:", data.projectId);
 					navAPI.sendOpenResponse(data.requestId, {
 						navigated: false,
 						projectId: data.projectId,
+						error: `Project ${data.projectId} does not exist`,
 					});
 					return;
 				}
 
+				const opened = waitForProjectOpen({ projectId: data.projectId });
 				// Navigate using hash routing (TanStack Router uses createHashHistory)
 				window.location.hash = `#/editor/${data.projectId}`;
+				const result = await opened;
 
 				navAPI.sendOpenResponse(data.requestId, {
-					navigated: true,
+					...result,
 					projectId: data.projectId,
 				});
-				debugLog("Navigation initiated:", data.projectId);
+				debugLog("Navigation finished:", data.projectId, result);
 			} catch (error) {
 				debugError("Failed to navigate:", error);
 				navAPI.sendOpenResponse(data.requestId, {
 					navigated: false,
 					projectId: data.projectId,
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
