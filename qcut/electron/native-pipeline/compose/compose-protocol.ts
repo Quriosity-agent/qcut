@@ -740,6 +740,7 @@ function validateSoundSettings({
 	issues.push(
 		...validateComposeVolumeKeyframes({
 			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
 			path,
 			operationId: operation.id,
 		})
@@ -884,6 +885,7 @@ function validateInsertMediaClip({
 	issues.push(
 		...validateComposeVolumeKeyframes({
 			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
 			path,
 			operationId: operation.id,
 		})
