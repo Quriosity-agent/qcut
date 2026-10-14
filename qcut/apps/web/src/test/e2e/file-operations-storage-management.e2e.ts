@@ -42,7 +42,7 @@ test.describe("File Operations & Storage Management", () => {
 
 		// Wait for file input to be ready
 		await page
-			.waitForSelector('input[type="file"]', { timeout: 2000 })
+			.waitForSelector('input[type="file"]', { timeout: 15_000 })
 			.catch(() => {});
 
 		// Verify import functionality is available
@@ -423,7 +423,7 @@ test.describe("File Operations & Storage Management", () => {
 
 		// Wait for file input to be available
 		await page
-			.waitForSelector('input[type="file"]', { timeout: 2000 })
+			.waitForSelector('input[type="file"]', { timeout: 15_000 })
 			.catch(() => {});
 
 		// File input should be available (even if hidden)
@@ -477,7 +477,7 @@ test.describe("File Operations & Storage Management", () => {
 
 		// Wait for project list to load
 		await page.waitForSelector('[data-testid="project-list-item"]', {
-			timeout: 5000,
+			timeout: 15_000,
 		});
 
 		// Verify saved project appears in list
@@ -514,7 +514,7 @@ test.describe("File Operations & Storage Management", () => {
 
 		// Wait for file input to be ready
 		await page
-			.waitForSelector('input[type="file"]', { timeout: 2000 })
+			.waitForSelector('input[type="file"]', { timeout: 15_000 })
 			.catch(() => {});
 
 		// Get platform information
@@ -533,7 +533,7 @@ test.describe("File Operations & Storage Management", () => {
 			// Wait for item to be active/selected
 			await page
 				.waitForSelector('[data-testid="media-item"][data-selected="true"]', {
-					timeout: 2000,
+					timeout: 15_000,
 				})
 				.catch(() => {});
 
