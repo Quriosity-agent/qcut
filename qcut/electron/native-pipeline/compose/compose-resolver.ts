@@ -253,10 +253,8 @@ function requireTimelineBounds({
 		if (overlay.start + overlay.duration > duration + 0.05) {
 			throw new Error(`Sticker ${overlay.source} ends after the timeline.`);
 		}
-		const { x, y, scale } = overlay.transform;
-		if (x + scale <= 0 || y + scale <= 0 || x >= 1 || y >= 1) {
-			throw new Error(`Sticker ${overlay.source} is outside the canvas.`);
-		}
+		// transform.x/y place the centre within -1..1 (edge to edge), so at
+		// least half of every sticker is on the canvas.
 	}
 	for (const item of audio) {
 		if (item.audio.start + item.duration > duration + 0.05) {

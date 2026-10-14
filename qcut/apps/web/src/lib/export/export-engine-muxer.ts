@@ -26,6 +26,7 @@ import { applyJianyingTransitionsToRenderedVideo } from "./export-muxer-jianying
 import { destroyExportCompositor } from "./export-engine-renderer";
 import { prepareIndependentPortraitExport } from "./export-independent-portrait";
 import { captureExportFrameEvidence } from "./export-frame-evidence";
+import { measureAacEncoderPriming } from "./aac-encoder-priming";
 
 // Progress callback type
 type ProgressCallback = (progress: number, status: string) => void;
@@ -161,10 +162,30 @@ export class ExportEngineMuxer extends ExportEngine {
 			let audioSource: InstanceType<typeof AudioBufferSource> | null = null;
 
 			if (audioData) {
-				audioSource = new AudioBufferSource({
-					codec: "aac",
-					bitrate: audioBitrate,
-				});
+				// A failed measurement must not fail the export: without it the
+				// audio starts as late as it did before priming was handled.
+				const primingFrames = await exportProfiler
+					.time("audio-priming", () =>
+						measureAacEncoderPriming({
+							sampleRate: audioData.sampleRate,
+							numberOfChannels: audioData.numberOfChannels,
+							bitrate: audioBitrate,
+						})
+					)
+					.catch((error: unknown) => {
+						console.warn(
+							"[ExportEngineMuxer] AAC encoder priming not measured; audio may start late:",
+							error
+						);
+						return 0;
+					});
+				// Starting the timeline before zero by the encoder's priming
+				// puts the first real sample at zero; mediabunny records the
+				// negative section as an edit list that players skip.
+				audioSource = new AudioBufferSource(
+					{ codec: "aac", bitrate: audioBitrate },
+					{ startTimestamp: -primingFrames / audioData.sampleRate }
+				);
 				output.addAudioTrack(audioSource);
 			}
 

@@ -10,6 +10,10 @@ import {
 	setupClaudeNavigatorBridge,
 } from "@/lib/claude-bridge/claude-navigator-bridge";
 import {
+	cleanupClaudeProjectSettingsBridge,
+	setupClaudeProjectSettingsBridge,
+} from "@/lib/claude-bridge/claude-project-settings-bridge";
+import {
 	cleanupClaudeScreenRecordingBridge,
 	setupClaudeScreenRecordingBridge,
 } from "@/lib/claude-bridge/claude-screen-recording-bridge";
@@ -99,6 +103,11 @@ export function setupClaudeBridgeLifecycle({
 		onError,
 	});
 	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup project settings bridge",
+		step: setupClaudeProjectSettingsBridge,
+		onError,
+	});
+	runBridgeStep({
 		message: "[ClaudeBridge] Failed to setup navigator bridge",
 		step: setupClaudeNavigatorBridge,
 		onError,
@@ -178,6 +187,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup project bridge",
 			step: cleanupClaudeProjectBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup project settings bridge",
+			step: cleanupClaudeProjectSettingsBridge,
 			onError,
 		});
 		runBridgeStep({

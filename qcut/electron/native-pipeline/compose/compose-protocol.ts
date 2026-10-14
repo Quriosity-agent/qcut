@@ -5,6 +5,10 @@
  * behavioral equivalence against the editor-core source of truth.
  */
 import { createHash } from "node:crypto";
+import {
+	type ComposeVolumeKeyframe,
+	validateComposeVolumeKeyframes,
+} from "./compose-volume-keyframes.js";
 
 export const COMPOSE_PROTOCOL_VERSION = 1;
 
@@ -191,6 +195,8 @@ export interface ComposeAddSoundEffectOperation
 	fadeIn?: number;
 	fadeOut?: number;
 	playbackRate?: number;
+	/** Level over time from the sound's start; replaces `volume`. */
+	volumeKeyframes?: ComposeVolumeKeyframe[];
 }
 
 export interface ComposeUpdateMediaZoomOperation
@@ -229,6 +235,8 @@ export interface ComposeInsertMediaClipOperation
 	volume?: number;
 	playbackRate?: number;
 	fitMode?: "contain" | "cover" | "fill";
+	/** Level over time from the clip's start; replaces `volume`. */
+	volumeKeyframes?: ComposeVolumeKeyframe[];
 }
 
 export interface ComposeFilterStep {
@@ -729,6 +737,14 @@ function validateSoundSettings({
 	path: string;
 	issues: ComposeValidationIssue[];
 }): void {
+	issues.push(
+		...validateComposeVolumeKeyframes({
+			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
+			path,
+			operationId: operation.id,
+		})
+	);
 	if (
 		!Number.isFinite(operation.volume) ||
 		operation.volume < 0 ||
@@ -866,6 +882,14 @@ function validateInsertMediaClip({
 	path: string;
 	issues: ComposeValidationIssue[];
 }): void {
+	issues.push(
+		...validateComposeVolumeKeyframes({
+			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
+			path,
+			operationId: operation.id,
+		})
+	);
 	// Deserialized patches can carry arbitrary shapes; issues, not throws.
 	if (typeof operation.asset !== "object" || operation.asset === null) {
 		issues.push({

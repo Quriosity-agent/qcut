@@ -330,6 +330,12 @@ export interface ClaudeElement
 	portraitAdjustments?: unknown;
 	/** Untrusted local video enhancement JSON; normalized by the renderer bridge. */
 	enhancements?: unknown;
+	/**
+	 * Untrusted partial MediaAudioSettings for media elements, including
+	 * time-varying `keyframes` (e.g. `volumeDb`); merged and validated by the
+	 * renderer bridge.
+	 */
+	audio?: unknown;
 	masks?: Record<string, unknown>[];
 	backgroundColor?: string;
 	textColor?: string;

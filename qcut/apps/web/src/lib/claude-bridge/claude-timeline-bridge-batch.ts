@@ -21,6 +21,7 @@ import type {
 	ClaudeTimelineBridgeSharedUtils,
 } from "./claude-timeline-bridge";
 import { applyElementChanges } from "./claude-timeline-bridge-elements";
+import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import {
 	assertTimelineProjectActive,
 	readRequiredTimelineProjectId,
@@ -228,6 +229,19 @@ export function setupBatchHandlers({
 							const colorLabel = parseTimelineColorLabel({
 								value: element.colorLabel,
 							});
+							const audioLevels = {
+								...(typeof element.volume === "number"
+									? { volume: element.volume }
+									: {}),
+								...resolveClaudeAudioFades({ element }),
+							};
+							const audio =
+								element.audio === undefined
+									? undefined
+									: parseClaudeMediaAudioChanges({
+											element: audioLevels,
+											value: element.audio,
+										});
 							createdElementId = timelineStore.addElementToTrack(
 								element.trackId,
 								{
@@ -244,10 +258,8 @@ export function setupBatchHandlers({
 									trimEnd:
 										typeof element.trimEnd === "number" ? element.trimEnd : 0,
 									...(colorLabel ? { colorLabel } : {}),
-									...(typeof element.volume === "number"
-										? { volume: element.volume }
-										: {}),
-									...resolveClaudeAudioFades({ element }),
+									...audioLevels,
+									...(audio ? { audio } : {}),
 									...getClaudeMediaTimingProperties({ element }),
 								},
 								addOptions
@@ -493,12 +505,12 @@ export function setupBatchHandlers({
 						update.changes && typeof update.changes === "object"
 							? update.changes
 							: update;
-					const success = applyElementChanges({
+					const { applied, error } = applyElementChanges({
 						elementId: update.elementId,
 						changes,
 						pushHistory: false,
 					});
-					if (success) {
+					if (applied) {
 						updatedCount++;
 						results.push({ index, success: true });
 						continue;
@@ -508,7 +520,7 @@ export function setupBatchHandlers({
 					results.push({
 						index,
 						success: false,
-						error: `Element not found: ${update.elementId}`,
+						error: error ?? `Element not found: ${update.elementId}`,
 					});
 				}
 

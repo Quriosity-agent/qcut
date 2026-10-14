@@ -117,6 +117,7 @@ export const COMMAND_GROUPS: CommandGroup[] = [
 			apply: "compose-apply",
 			render: "compose-render",
 			project: "compose-project",
+			schema: "compose-schema",
 		},
 	},
 	{

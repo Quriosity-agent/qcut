@@ -17,6 +17,10 @@ import {
 	cleanupQCutJianyingProjectExportBridge,
 	setupQCutJianyingProjectExportBridge,
 } from "@/lib/claude-bridge/qcut-jianying-project-export-bridge";
+import {
+	cleanupClaudeProjectSettingsBridge,
+	setupClaudeProjectSettingsBridge,
+} from "@/lib/claude-bridge/claude-project-settings-bridge";
 import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge/claude-bridge-lifecycle";
 
 vi.mock("@/lib/claude-bridge/claude-timeline-bridge", () => ({
@@ -24,6 +28,10 @@ vi.mock("@/lib/claude-bridge/claude-timeline-bridge", () => ({
 	setupClaudeProjectBridge: vi.fn(),
 	cleanupClaudeTimelineBridge: vi.fn(),
 	cleanupClaudeProjectBridge: vi.fn(),
+}));
+vi.mock("@/lib/claude-bridge/claude-project-settings-bridge", () => ({
+	setupClaudeProjectSettingsBridge: vi.fn(),
+	cleanupClaudeProjectSettingsBridge: vi.fn(),
 }));
 vi.mock("@/lib/claude-bridge/claude-transaction-bridge", () => ({
 	setupClaudeTransactionBridge: vi.fn(),
@@ -49,6 +57,7 @@ describe("setupClaudeBridgeLifecycle", () => {
 		expect(setupClaudeTransactionBridge).toHaveBeenCalledTimes(1);
 		expect(setupClaudeTimelineBridge).toHaveBeenCalledTimes(1);
 		expect(setupClaudeProjectBridge).toHaveBeenCalledTimes(1);
+		expect(setupClaudeProjectSettingsBridge).toHaveBeenCalledTimes(1);
 		expect(setupQCutJianyingProjectImportBridge).toHaveBeenCalledTimes(1);
 		expect(setupQCutJianyingProjectExportBridge).toHaveBeenCalledTimes(1);
 
@@ -57,6 +66,7 @@ describe("setupClaudeBridgeLifecycle", () => {
 		expect(cleanupClaudeTransactionBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupClaudeTimelineBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupClaudeProjectBridge).toHaveBeenCalledTimes(1);
+		expect(cleanupClaudeProjectSettingsBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupQCutJianyingProjectImportBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupQCutJianyingProjectExportBridge).toHaveBeenCalledTimes(1);
 	});

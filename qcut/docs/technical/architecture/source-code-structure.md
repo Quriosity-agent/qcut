@@ -518,7 +518,7 @@ Custom React hooks, organized into domain subdirectories:
 
 **`hooks/` (root)** — General-purpose hooks (15 files):
 - `use-ai-pipeline.ts` - AI pipeline integration
-- `use-claude-project-updates.ts` - Claude project update handling
+- `use-project-canvas-sync.ts` - Keeps the editor canvas in step with the active project
 - `use-project-folder.ts` - Project folder management
 - `use-skill-runner.ts` - Skill execution hook
 - `use-infinite-scroll.ts` - Infinite scrolling support

@@ -397,8 +397,22 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:timeline:update-element": ed(
 		"editor:timeline:update-element",
-		"Update timeline element",
-		[PID, EID, DATA_REQ]
+		"Update timeline element (incl. media volume over time)",
+		[
+			PID,
+			EID,
+			f(
+				"--data",
+				"string",
+				"JSON changes (@file/inline/-). On media, `audio` merges into the clip's audio settings; audio.keyframes.<property> replaces that property's keyframes ([] removes them). volumeDb keyframes are {frame, value, easing?}: frames at the project rate from the clip's start, value in dB (-60..12)",
+				{ required: true }
+			),
+		],
+		[
+			`qcut-pipeline editor:timeline:update-element --project-id <id> --element-id <id> --data '{"startTime":2}' --json`,
+			// At 30 fps: down to -18 dB by 1 s, hold until 5 s, back to 0 dB at 6 s.
+			`qcut-pipeline editor:timeline:update-element --project-id <id> --element-id <music-id> --data '{"audio":{"keyframes":{"volumeDb":[{"frame":0,"value":0},{"frame":30,"value":-18},{"frame":150,"value":-18},{"frame":180,"value":0}]}}}' --json`,
+		]
 	),
 	"editor:timeline:batch-update": ed(
 		"editor:timeline:batch-update",

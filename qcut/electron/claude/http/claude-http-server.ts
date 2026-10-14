@@ -54,6 +54,7 @@ import {
 	type WindowAccessor,
 } from "./claude-http-shared-routes.js";
 import {
+	NAVIGATION_TIMEOUT_MS,
 	requestProjectsFromRenderer,
 	requestNavigateToProject,
 } from "../handlers/claude-navigator-handler.js";
@@ -408,10 +409,15 @@ export function startClaudeHTTPServer(
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
 		const win = getWindow();
+		// The renderer replies once the project has loaded, or with the reason
+		// it did not, so this waits for the whole open rather than the request.
 		return await Promise.race([
 			requestNavigateToProject(win, req.body.projectId),
 			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					NAVIGATION_TIMEOUT_MS
+				)
 			),
 		]);
 	});

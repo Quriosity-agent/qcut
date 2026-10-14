@@ -216,6 +216,12 @@ describe("compose protocol mirror stays equivalent to editor-core", () => {
 					trimStart: 1,
 					trimEnd: 1,
 					sourceDuration: 12,
+					volume: 0.5,
+					volumeKeyframes: [
+						{ time: 0, volumeDb: 0 },
+						{ time: -1, volumeDb: 0 },
+						{ time: 1, volumeDb: 40 },
+					],
 				},
 				{
 					kind: "set-media-filter-stack",
@@ -265,6 +271,16 @@ describe("compose protocol mirror stays equivalent to editor-core", () => {
 				snapshot: snapshot as unknown as CoreComposeSnapshot,
 				patch: patch as unknown as CoreComposePatch,
 			})
+		);
+		expect(mirrorIssues.map((issue) => issue.path)).toEqual(
+			expect.arrayContaining([
+				"operations.1.volume",
+				"operations.1.volumeKeyframes.1",
+				"operations.1.volumeKeyframes.2",
+			])
+		);
+		expect(mirrorIssues.map((issue) => issue.path)).not.toContain(
+			"operations.1.volumeKeyframes.0"
 		);
 	});
 });

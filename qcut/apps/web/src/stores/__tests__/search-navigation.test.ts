@@ -76,12 +76,18 @@ describe("search navigation", () => {
 		expect(results).toHaveLength(1);
 		expect(results[0].wordTimestamp).toBe(2.1);
 
-		await act(async () => {
+		act(() => {
 			useSearchStore.getState().navigateToResult(0);
-			await new Promise((r) => setTimeout(r, 10));
 		});
 
-		expect(mockSetCurrentTime).toHaveBeenCalledWith(2.1);
+		// The seek runs after a lazy import of the playback store, which can
+		// outlast any fixed sleep on a loaded runner.
+		await vi.waitFor(
+			() => expect(mockSetCurrentTime).toHaveBeenCalledWith(2.1),
+			{
+				timeout: 5000,
+			}
+		);
 	});
 
 	it("falls back to segment timestamp when no word match", async () => {
@@ -95,13 +101,17 @@ describe("search navigation", () => {
 		expect(results).toHaveLength(1);
 		expect(results[0].wordTimestamp).toBeUndefined();
 
-		await act(async () => {
+		act(() => {
 			useSearchStore.getState().navigateToResult(0);
-			await new Promise((r) => setTimeout(r, 10));
 		});
 
 		// Falls back to segment start
-		expect(mockSetCurrentTime).toHaveBeenCalledWith(1.0);
+		await vi.waitFor(
+			() => expect(mockSetCurrentTime).toHaveBeenCalledWith(1.0),
+			{
+				timeout: 5000,
+			}
+		);
 	});
 
 	it("navigates through multiple results sequentially", async () => {
@@ -122,17 +132,17 @@ describe("search navigation", () => {
 		expect(useSearchStore.getState().results).toHaveLength(3);
 
 		// Navigate through all results
+		const seeks = [1.0, 5.0, 10.0];
 		for (let i = 0; i < 3; i++) {
-			await act(async () => {
+			act(() => {
 				useSearchStore.getState().navigateToResult(i);
-				await new Promise((r) => setTimeout(r, 10));
 			});
 			expect(useSearchStore.getState().selectedResultIndex).toBe(i);
+			await vi.waitFor(
+				() => expect(mockSetCurrentTime).toHaveBeenLastCalledWith(seeks[i]),
+				{ timeout: 5000 }
+			);
 		}
-
-		// Verify the last seek was to the third segment
-		const lastCall = mockSetCurrentTime.mock.calls.at(-1);
-		expect(lastCall![0]).toBe(10.0);
 	});
 
 	it("does nothing for out-of-bounds index", async () => {

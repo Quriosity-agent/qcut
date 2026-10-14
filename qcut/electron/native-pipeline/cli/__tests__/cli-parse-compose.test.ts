@@ -55,4 +55,14 @@ describe("compose CLI registration", () => {
 			"string"
 		);
 	});
+
+	it("parses the manifest format command", () => {
+		expect(parseCliArgs(["compose", "schema", "--json"])).toMatchObject({
+			command: "compose-schema",
+			json: true,
+		});
+		expect(getCommand("compose-validate")?.flags[0].description).toContain(
+			"qcut compose schema"
+		);
+	});
 });

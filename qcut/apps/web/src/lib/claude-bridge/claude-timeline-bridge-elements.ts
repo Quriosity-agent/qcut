@@ -10,6 +10,7 @@ import type {
 } from "@/types/timeline";
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
+import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
 	findTrackByElementId,
@@ -59,6 +60,12 @@ function timelineElementFromTransport({ candidate }: { candidate: unknown }): {
 	return { element, projectId };
 }
 
+/** Whether an element update applied, and why not when it did not. */
+export interface ElementChangesResult {
+	applied: boolean;
+	error?: string;
+}
+
 export const applyElementChanges = ({
 	elementId,
 	changes,
@@ -67,7 +74,7 @@ export const applyElementChanges = ({
 	elementId: string;
 	changes: Partial<ClaudeElement>;
 	pushHistory: boolean;
-}): boolean => {
+}): ElementChangesResult => {
 	try {
 		const timelineStore = useTimelineStore.getState();
 		const track = findTrackByElementId(timelineStore.tracks, elementId);
@@ -76,7 +83,7 @@ export const applyElementChanges = ({
 				"[ClaudeTimelineBridge] Could not find track for element:",
 				elementId
 			);
-			return false;
+			return { applied: false, error: `Element not found: ${elementId}` };
 		}
 
 		const element = track.elements.find(
@@ -87,13 +94,17 @@ export const applyElementChanges = ({
 				"[ClaudeTimelineBridge] Could not find element in resolved track:",
 				elementId
 			);
-			return false;
+			return { applied: false, error: `Element not found: ${elementId}` };
 		}
 		// Validate up front: a malformed stack must fail the whole update
 		// before any state (history, timing, trims) has been touched.
 		const parsedFilterStack =
 			changes.filterStack !== undefined
 				? parseClaudeMediaFilterStack({ value: changes.filterStack })
+				: undefined;
+		const parsedAudio =
+			changes.audio !== undefined && element.type === "media"
+				? parseClaudeMediaAudioChanges({ element, value: changes.audio })
 				: undefined;
 		const updatesColorLabel = Object.hasOwn(changes, "colorLabel");
 		const colorLabel = updatesColorLabel
@@ -313,6 +324,9 @@ export const applyElementChanges = ({
 				}
 				mediaUpdates.keyframes = changes.keyframes as MediaElement["keyframes"];
 			}
+			if (parsedAudio !== undefined) {
+				mediaUpdates.audio = parsedAudio;
+			}
 			if (parsedFilterStack !== undefined) {
 				mediaUpdates.filterStack = parsedFilterStack;
 			}
@@ -412,13 +426,16 @@ export const applyElementChanges = ({
 			}
 		}
 
-		return true;
+		return { applied: true };
 	} catch (error) {
 		debugError(
 			"[ClaudeTimelineBridge] Failed to apply element changes:",
 			error
 		);
-		return false;
+		return {
+			applied: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
 };
 
@@ -503,12 +520,12 @@ export function setupElementHandlers({
 	claudeAPI.onUpdateElement((data: any) => {
 		try {
 			debugLog("[ClaudeTimelineBridge] Updating element:", data.elementId);
-			const updated = applyElementChanges({
+			const { applied } = applyElementChanges({
 				elementId: data.elementId,
 				changes: data.changes,
 				pushHistory: true,
 			});
-			if (!updated) {
+			if (!applied) {
 				return;
 			}
 			debugLog("[ClaudeTimelineBridge] Updated element:", data.elementId);

@@ -142,6 +142,7 @@ async function prepareClip({
 			height: resolved.loaded.manifest.canvas.height,
 			fps: resolved.loaded.manifest.canvas.fps,
 			hasAudio: item.media.hasAudio,
+			volumeKeyframes: item.clip.volumeKeyframes,
 		}),
 		signal,
 	});

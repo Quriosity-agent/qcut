@@ -1,3 +1,5 @@
+import type { ComposeVolumeKeyframe } from "./compose-volume-keyframes.js";
+
 export const COMPOSE_PROTOCOL_VERSION = 1;
 
 export type ComposeProtocolVersion = typeof COMPOSE_PROTOCOL_VERSION;
@@ -250,6 +252,8 @@ export interface ComposeAddSoundEffectOperation
 	fadeIn?: number;
 	fadeOut?: number;
 	playbackRate?: number;
+	/** Level over time from the sound's start; replaces `volume`. */
+	volumeKeyframes?: ComposeVolumeKeyframe[];
 }
 
 export interface ComposeUpdateMediaZoomOperation
@@ -288,6 +292,8 @@ export interface ComposeInsertMediaClipOperation
 	volume?: number;
 	playbackRate?: number;
 	fitMode?: "contain" | "cover" | "fill";
+	/** Level over time from the clip's start; replaces `volume`. */
+	volumeKeyframes?: ComposeVolumeKeyframe[];
 }
 
 export interface ComposeFilterStep {

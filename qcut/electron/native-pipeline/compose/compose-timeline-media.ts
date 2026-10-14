@@ -19,6 +19,7 @@ import {
 	type LanedElement,
 } from "./compose-timeline-lanes.js";
 import type { ComposeSkippedOperation } from "./compose-timeline-manifest.js";
+import { editorVolumeAudio } from "./compose-volume-keyframes.js";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -50,9 +51,11 @@ function mediaClipPath({
 function mediaClipElement({
 	operation,
 	mediaAlias,
+	fps,
 }: {
 	operation: ComposeInsertMediaClipOperation;
 	mediaAlias: string;
+	fps: number;
 }): JsonRecord {
 	return {
 		alias: operation.id,
@@ -69,6 +72,14 @@ function mediaClipElement({
 		...(operation.playbackRate !== undefined
 			? { playbackRate: operation.playbackRate }
 			: {}),
+		...(operation.volumeKeyframes?.length
+			? {
+					audio: editorVolumeAudio({
+						keyframes: operation.volumeKeyframes,
+						fps,
+					}),
+				}
+			: {}),
 	};
 }
 
@@ -76,11 +87,14 @@ export function planComposeMediaClips({
 	operations,
 	bindings,
 	mainVideoTrackId,
+	fps,
 }: {
 	operations: readonly ComposePatchOperation[];
 	bindings: ComposeEditorAssetBindings;
 	/** Existing main track to reuse; omitted creates a fresh media track. */
 	mainVideoTrackId?: string;
+	/** Project frame rate for the clips' volume keyframes. */
+	fps: number;
 }): ComposeMediaClipPlan {
 	const media: JsonRecord[] = [];
 	const mainElements: JsonRecord[] = [];
@@ -105,7 +119,7 @@ export function planComposeMediaClips({
 			path: source.path,
 			...(source.filename ? { filename: source.filename } : {}),
 		});
-		const element = mediaClipElement({ operation, mediaAlias });
+		const element = mediaClipElement({ operation, mediaAlias, fps });
 		if (operation.trackRole === "main-video") {
 			mainElements.push(element);
 		} else {

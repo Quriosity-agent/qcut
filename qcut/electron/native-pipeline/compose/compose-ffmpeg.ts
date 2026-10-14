@@ -3,6 +3,10 @@ import { promisify } from "node:util";
 import { getFFmpegPath } from "../../ffmpeg/paths.js";
 import type { ComposeOverlay, ComposeTransition } from "./compose-manifest.js";
 import type { ResolvedComposeAudio } from "./compose-resolver.js";
+import {
+	type ComposeVolumeKeyframe,
+	volumeEnvelopeFilters,
+} from "./compose-volume-keyframes.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -43,6 +47,7 @@ export function buildComposeNormalizeArgs({
 	height,
 	fps,
 	hasAudio,
+	volumeKeyframes = [],
 }: {
 	input: string;
 	output: string;
@@ -52,6 +57,7 @@ export function buildComposeNormalizeArgs({
 	height: number;
 	fps: number;
 	hasAudio: boolean;
+	volumeKeyframes?: readonly ComposeVolumeKeyframe[];
 }): string[] {
 	const durationText = ffmpegNumber({ value: duration });
 	const args = ["-i", input];
@@ -80,6 +86,7 @@ export function buildComposeNormalizeArgs({
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",
+		...(hasAudio ? volumeEnvelopeFilters({ keyframes: volumeKeyframes }) : []),
 		`apad=pad_dur=${durationText}`,
 		`atrim=duration=${durationText}[aout]`,
 	].join(",");
@@ -233,17 +240,18 @@ function buildStickerFilter({
 	item,
 	inputIndex,
 	index,
-	canvasWidth,
+	canvasShortSide,
 }: {
 	item: MaterializedComposeOverlay;
 	inputIndex: number;
 	index: number;
-	canvasWidth: number;
+	canvasShortSide: number;
 }): string {
 	const { overlay } = item;
 	const filters = [
 		`[${inputIndex}:v:0]format=rgba`,
-		`scale=${Math.max(1, Math.round(canvasWidth * overlay.transform.scale))}:-1`,
+		// Width is a fraction of the canvas's short side, as in the editor.
+		`scale=${Math.max(1, Math.round(canvasShortSide * overlay.transform.scale))}:-1`,
 	];
 	if (overlay.transform.rotation !== 0) {
 		filters.push(
@@ -285,7 +293,10 @@ function buildSoundFilter({
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",
-		`volume=${ffmpegNumber({ value: item.audio.volume })}`,
+		// Keyframes carry the whole level, so they replace the fixed volume.
+		...(item.audio.volumeKeyframes.length > 0
+			? volumeEnvelopeFilters({ keyframes: item.audio.volumeKeyframes })
+			: [`volume=${ffmpegNumber({ value: item.audio.volume })}`]),
 	];
 	if (item.audio.fadeIn > 0) {
 		filters.push(
@@ -350,14 +361,20 @@ export function buildComposeFinishingArgs({
 					item,
 					inputIndex: index + 1,
 					index,
-					canvasWidth,
+					canvasShortSide: Math.min(canvasWidth, canvasHeight),
 				})
 			);
 			const outputLabel = `basev${index + 1}`;
-			const x = Math.round(item.overlay.transform.x * canvasWidth);
-			const y = Math.round(item.overlay.transform.y * canvasHeight);
+			// transform.x/y place the sticker's centre, -1..1 edge to edge, as
+			// in the editor; the overlay offsets by its own (rotated) size.
+			const centerX = ffmpegNumber({
+				value: ((1 + item.overlay.transform.x) / 2) * canvasWidth,
+			});
+			const centerY = ffmpegNumber({
+				value: ((1 + item.overlay.transform.y) / 2) * canvasHeight,
+			});
 			filters.push(
-				`[${videoLabel}][sticker${index}]overlay=x=${x}:y=${y}:eof_action=pass:repeatlast=0:enable='between(t,${ffmpegNumber({ value: item.overlay.start })},${ffmpegNumber({ value: item.overlay.start + item.overlay.duration })})'[${outputLabel}]`
+				`[${videoLabel}][sticker${index}]overlay=x=${centerX}-overlay_w/2:y=${centerY}-overlay_h/2:eof_action=pass:repeatlast=0:enable='between(t,${ffmpegNumber({ value: item.overlay.start })},${ffmpegNumber({ value: item.overlay.start + item.overlay.duration })})'[${outputLabel}]`
 			);
 			videoLabel = outputLabel;
 		}

@@ -60,6 +60,34 @@ qcut editor:timeline:update-element \
   --changes '{"startTime":5,"duration":15}'
 ```
 
+### Volume over time (media clips)
+
+`audio` on a media element merges into its audio settings, the same ones the
+editor's audio panel edits. `audio.keyframes.volumeDb` replaces the clip's
+volume keyframes; `[]` or `null` removes them. Each keyframe is
+`{frame, value, easing?}`:
+
+- `frame`: whole frames at the project frame rate, counted from the clip's
+  start on the timeline (not the source file).
+- `value`: level in dB, clamped to -60..12. 0 leaves the clip unchanged.
+- `easing`: `linear` (default), `easeIn`, `easeOut`, `easeInOut`, or `spring`.
+
+Before the first keyframe and after the last, the level holds. Keyframes are
+the clip's whole level, so they take over from a fixed `volume`.
+
+```bash
+# Duck music under a voice at 30 fps: down to -18 dB by 1 s, hold until 5 s,
+# back to 0 dB at 6 s.
+qcut editor:timeline:update-element \
+  --project-id <id> \
+  --element-id <music-element-id> \
+  --changes '{"audio":{"keyframes":{"volumeDb":[{"frame":0,"value":0},{"frame":30,"value":-18},{"frame":150,"value":-18},{"frame":180,"value":0}]}}}'
+```
+
+Malformed audio (a fractional frame, an unknown keyframe property, a missing
+value) fails the update with the reason, and nothing about the element
+changes. `batch-add` accepts the same `audio` object on media elements.
+
 ### Batch update elements (max 50)
 
 ```bash

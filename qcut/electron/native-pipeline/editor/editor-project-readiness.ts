@@ -32,9 +32,12 @@ export async function ensureEditorProjectReady({
 		const navigation = await client.post<{
 			navigated?: boolean;
 			projectId?: string;
+			error?: string;
 		}>("/api/claude/navigator/open", { projectId });
 		if (navigation.navigated === false) {
-			throw new Error(`QCut could not open project '${projectId}'`);
+			throw new Error(
+				navigation.error ?? `QCut could not open project '${projectId}'`
+			);
 		}
 		opened = true;
 	}

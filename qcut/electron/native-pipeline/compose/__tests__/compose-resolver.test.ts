@@ -109,7 +109,7 @@ describe("compose resolver", () => {
 		).rejects.toThrow(/adjacent clips/);
 	});
 
-	it("rejects a sticker that is completely outside the canvas", async () => {
+	it("accepts a sticker centred on the canvas edge", async () => {
 		await expect(
 			resolveComposeProject({
 				loaded: loaded({
@@ -122,7 +122,7 @@ describe("compose resolver", () => {
 								source: "badge.png",
 								start: 0,
 								duration: 1,
-								transform: { x: 1, y: 0, scale: 0.2 },
+								transform: { x: 1, y: -1, scale: 0.2 },
 							},
 						],
 					},
@@ -130,6 +130,8 @@ describe("compose resolver", () => {
 				signal: new AbortController().signal,
 				dependencies: dependencies(),
 			})
-		).rejects.toThrow(/outside the canvas/);
+		).resolves.toMatchObject({
+			overlays: [{ overlay: { transform: { x: 1, y: -1 } } }],
+		});
 	});
 });

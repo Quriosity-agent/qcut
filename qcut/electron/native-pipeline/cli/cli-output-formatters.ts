@@ -356,6 +356,32 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 		return;
 	}
 
+	if (command === "compose-schema") {
+		const data = result.data as {
+			fields: Array<{
+				path: string;
+				type: string;
+				required?: boolean;
+				default?: unknown;
+				description: string;
+			}>;
+			example: unknown;
+		};
+		console.log("\nCompose manifest fields (schemaVersion 1):\n");
+		for (const field of data.fields) {
+			const presence = field.required
+				? "required"
+				: field.default === undefined
+					? "optional"
+					: `default ${JSON.stringify(field.default)}`;
+			console.log(`  ${field.path}  (${field.type}; ${presence})`);
+			console.log(`      ${field.description}`);
+		}
+		console.log("\nExample:\n");
+		console.log(JSON.stringify(data.example, null, 2));
+		return;
+	}
+
 	// Editor commands: print data as formatted JSON or raw markdown
 	if (command.startsWith("editor:")) {
 		if (

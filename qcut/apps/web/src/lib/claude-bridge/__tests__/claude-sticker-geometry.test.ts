@@ -529,7 +529,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: true,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		expect(timelineStore.pushHistory).toHaveBeenCalledOnce();
 		expect(updateStickerElement).toHaveBeenCalledWith(
 			"sticker-track",
@@ -563,7 +563,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: false,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		const updates = updateStickerElement.mock.calls[0][2];
 		expect(updates).toMatchObject({
 			mediaId: "m2",
@@ -586,7 +586,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: false,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		expect(updateStickerElement.mock.calls[0][2]).toMatchObject({
 			mediaId: "m2",
 			stickerRuntime: undefined,
@@ -630,7 +630,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: false,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		expect(updateStickerElement.mock.calls[0][2]).toMatchObject({
 			mediaId: "m2",
 			stickerAssetId: "custom_m2",
@@ -671,7 +671,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: false,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied.applied).toBe(true);
 		expect(updateStickerElement.mock.calls[0][2]).toMatchObject({
 			mediaId: "m2",
 			stickerRuntime: replacementRuntime,
@@ -690,7 +690,7 @@ describe("Claude sticker geometry", () => {
 			pushHistory: false,
 		});
 
-		expect(applied).toBe(false);
+		expect(applied.applied).toBe(false);
 		expect(updateStickerElement).not.toHaveBeenCalled();
 	});
 });

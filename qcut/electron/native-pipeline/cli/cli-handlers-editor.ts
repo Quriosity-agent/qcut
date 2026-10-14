@@ -499,9 +499,22 @@ async function handleNavigatorCommand(
 					error: "Missing --project-id",
 				};
 			}
-			const data = await client.post("/api/claude/navigator/open", {
+			const data = await client.post<{
+				navigated?: boolean;
+				error?: string;
+			}>("/api/claude/navigator/open", {
 				projectId: options.projectId,
 			});
+			// The editor answers only after the project has loaded, so false
+			// means the window is not showing it.
+			if (data?.navigated === false) {
+				return {
+					success: false,
+					error:
+						data.error ?? `QCut could not open project '${options.projectId}'`,
+					data,
+				};
+			}
 			if (!options.waitReady) return { success: true, data };
 			const readiness = await ensureEditorProjectReady({
 				client,

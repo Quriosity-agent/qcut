@@ -284,7 +284,7 @@ export interface PlatformClaudeNavigatorAPI {
 	): void;
 	sendOpenResponse(
 		requestId: string,
-		result: { navigated: boolean; projectId: string }
+		result: { navigated: boolean; projectId: string; error?: string }
 	): void;
 	removeListeners(): void;
 }

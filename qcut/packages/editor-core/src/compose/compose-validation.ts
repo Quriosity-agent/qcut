@@ -10,6 +10,7 @@ import {
 	type ComposeSnapshotMedia,
 	type ComposeUpsertTransitionOperation,
 } from "./compose-types.js";
+import { validateComposeVolumeKeyframes } from "./compose-volume-keyframes.js";
 
 export type ComposeValidationSeverity = "error" | "warning" | "info";
 
@@ -338,6 +339,14 @@ function validateSoundSettings({
 	path: string;
 	issues: ComposeValidationIssue[];
 }): void {
+	issues.push(
+		...validateComposeVolumeKeyframes({
+			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
+			path,
+			operationId: operation.id,
+		})
+	);
 	if (
 		!Number.isFinite(operation.volume) ||
 		operation.volume < 0 ||
@@ -487,6 +496,14 @@ function validateInsertMediaClip({
 	path: string;
 	issues: ComposeValidationIssue[];
 }): void {
+	issues.push(
+		...validateComposeVolumeKeyframes({
+			keyframes: operation.volumeKeyframes,
+			volume: operation.volume,
+			path,
+			operationId: operation.id,
+		})
+	);
 	// Deserialized patches can carry arbitrary shapes; issues, not throws.
 	if (typeof operation.asset !== "object" || operation.asset === null) {
 		issues.push({

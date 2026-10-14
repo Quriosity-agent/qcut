@@ -71,7 +71,7 @@ describe("Claude caption update bridge", () => {
 			pushHistory: false,
 		});
 
-		expect(updated).toBe(true);
+		expect(updated.applied).toBe(true);
 		expect(storeMocks.state.updateCaptionElement).toHaveBeenCalledWith(
 			"captions-track",
 			"caption",

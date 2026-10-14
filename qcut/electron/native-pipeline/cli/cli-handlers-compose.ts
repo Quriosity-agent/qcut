@@ -1,6 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { loadComposeManifest } from "../compose/compose-manifest.js";
+import {
+	COMPOSE_MANIFEST_EXAMPLE,
+	COMPOSE_MANIFEST_FIELDS,
+} from "../compose/compose-manifest-reference.js";
 import { createComposeProject } from "../compose/compose-project.js";
 import { renderResolvedComposeProject } from "../compose/compose-render.js";
 import {
@@ -39,6 +43,18 @@ const DEFAULT_DEPENDENCIES: ComposeHandlerDependencies = {
 	createProject: createComposeProject,
 	resolvePatchAssets: resolveComposePatchAssets,
 };
+
+/** `compose schema`: the manifest format, for writing a manifest by hand. */
+export function handleComposeSchema(): CLIResult {
+	return {
+		success: true,
+		data: {
+			schemaVersion: 1,
+			fields: COMPOSE_MANIFEST_FIELDS,
+			example: COMPOSE_MANIFEST_EXAMPLE,
+		},
+	};
+}
 
 function errorMessage({ error }: { error: unknown }): string {
 	return error instanceof Error ? error.message : String(error);

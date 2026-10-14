@@ -99,14 +99,64 @@ describe("compose FFmpeg compiler", () => {
 						volume: 0.5,
 						fadeIn: 0,
 						fadeOut: 0.1,
+						volumeKeyframes: [],
 					},
 				},
 			],
 		});
 		const command = args.join(" ");
 
-		expect(command).toContain("overlay=x=64:y=72");
+		// Centre at ((1 + x) / 2, (1 + y) / 2) of the canvas and width 25% of
+		// the 360 px short side, as in the editor.
+		expect(command).toContain("scale=90:-1");
+		expect(command).toContain("overlay=x=352-overlay_w/2:y=216-overlay_h/2");
+		expect(command).toContain("volume=0.5");
 		expect(command).toContain("adelay=1000:all=1");
 		expect(command).toContain("amix=inputs=2");
+	});
+
+	it("gives a keyframed sound its envelope instead of a fixed volume", () => {
+		const command = buildComposeFinishingArgs({
+			input: "timeline.mp4",
+			output: "final.mp4",
+			duration: 4,
+			canvasWidth: 640,
+			canvasHeight: 360,
+			fps: 30,
+			overlays: [],
+			audio: [
+				{
+					sourcePath: "music.wav",
+					duration: 4,
+					identity: { sha256: "b".repeat(64), bytes: 10 },
+					media: {
+						duration: 4,
+						width: 0,
+						height: 0,
+						frameRate: 0,
+						hasVideo: false,
+						hasAudio: true,
+					},
+					audio: {
+						type: "sound-effect",
+						source: "music.wav",
+						start: 0,
+						trim: { in: 0 },
+						volume: 1,
+						fadeIn: 0,
+						fadeOut: 0,
+						volumeKeyframes: [
+							{ time: 1, volumeDb: 0 },
+							{ time: 2, volumeDb: -18 },
+						],
+					},
+				},
+			],
+		}).join(" ");
+
+		expect(command).toContain(
+			"asetnsamples=n=256:p=0,volume='pow(10,(if(lt(t,1),0,if(lt(t,2),0+(-18)*(t-1)/1,-18)))/20)':eval=frame"
+		);
+		expect(command).not.toContain("volume=1,");
 	});
 });
