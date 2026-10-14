@@ -61,13 +61,16 @@ function stubOfflineContext({ counts }: { counts: FactoryCounts }) {
 			destination = audioNode();
 			length = 48_000 * 2;
 			sampleRate = 48_000;
-			createBuffer = vi.fn(() => ({
-				duration: 2,
-				getChannelData: () => new Float32Array(96_000),
-				length: 96_000,
-				numberOfChannels: 2,
-				sampleRate: 48_000,
-			}));
+			createBuffer = vi.fn(
+				(numberOfChannels = 2, length = 96_000, sampleRate = 48_000) => ({
+					copyToChannel: vi.fn(),
+					duration: length / sampleRate,
+					getChannelData: () => new Float32Array(length),
+					length,
+					numberOfChannels,
+					sampleRate,
+				})
+			);
 			createBufferSource = vi.fn(() => audioNode());
 			createBiquadFilter = vi.fn(() => audioNode());
 			createDynamicsCompressor = vi.fn(() => audioNode());
@@ -86,6 +89,7 @@ function stubOfflineContext({ counts }: { counts: FactoryCounts }) {
 			});
 			startRendering = vi.fn(async () => ({
 				duration: 2,
+				getChannelData: () => new Float32Array(96_000),
 				length: 96_000,
 				numberOfChannels: 2,
 				sampleRate: 48_000,
