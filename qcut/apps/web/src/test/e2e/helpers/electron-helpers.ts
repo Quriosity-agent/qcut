@@ -616,12 +616,14 @@ export async function createTestProject(
 	page: Page,
 	projectName = "E2E Test Project"
 ) {
+	// Generous waits: on a loaded machine the projects page can take well over
+	// 5 s to render, and a short timeout here fails every spec that uses it.
 	await page.waitForSelector(
 		'[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]',
-		{ state: "attached", timeout: 5000 }
+		{ state: "attached", timeout: 30_000 }
 	);
 
-	await page.waitForLoadState("domcontentloaded", { timeout: 3000 });
+	await page.waitForLoadState("domcontentloaded", { timeout: 30_000 });
 
 	const emptyStateButton = page.getByTestId("new-project-button-empty-state");
 	const hasEmptyState = (await emptyStateButton.count()) > 0;
