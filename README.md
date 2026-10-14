@@ -93,13 +93,14 @@ See the [QCut plugin documentation](qcut/plugins/qcut/README.md) for setup, diag
 
 ## QCut CLI
 
-Every QCut build ships a structured command-line interface. It has 285 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`; the one exception is an async job, which answers `{ "status": "pending", "jobId": ... }` for you to poll), and `--help --json` works at the root, group, command, and flag level.
+Every QCut build ships a structured command-line interface. It has 286 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`; the one exception is an async job, which answers `{ "status": "pending", "jobId": ... }` for you to poll), and `--help --json` works at the root, group, command, and flag level.
 
 ```bash
 qcut --help --json                                   # groups, commands, global flags
 qcut gen image -t "A cinematic portrait" --json      # generate media
 qcut analyze transcribe -i interview.mp4 --srt       # transcribe to SRT
 qcut editor timeline export --project-id <id> --json # inspect a running editor
+qcut compose schema                                  # manifest fields, defaults, and an example
 qcut compose render --config edit.qcut-compose.json --output final.mp4
 qcut filter-lab catalog-independent --json           # filters QCut's own Metal renderer supports
 ```
@@ -110,7 +111,7 @@ qcut filter-lab catalog-independent --json           # filters QCut's own Metal 
 | `gen` | Images, video, avatars, speech, music, voice conversion and cloning |
 | `analyze` | Video analysis and review, scene indexing, transcription, translation, consistency checks |
 | `edit` | AutoClip, upscaling, motion transfer, subtitles, audio cleanup, portrait presets, deflicker, sticker and sound search |
-| `compose` | Snapshot, plan, validate, apply, render, and package multi-resource edits from a manifest |
+| `compose` | Snapshot, plan, validate, apply, render, and package multi-resource edits from a manifest; `compose schema` documents the manifest format |
 | `filter-lab`, `effect-lab`, `text-lab`, `sticker-lab`, `transition` | Local labs that browse, render, and verify filters, effects, flower text, sticker references, and transitions from caches on the same machine; nothing third-party is bundled |
 | `draft` | Guarded import, verification, and export of Jianying Professional drafts |
 | `flow` | YAML pipelines and ViMax idea-to-video, script-to-video, and novel-to-movie stages |
@@ -190,7 +191,7 @@ Generate video from text, images, or avatars, compare supported AI models, and a
 | --- | --- |
 | Editing | Multitrack timeline, trim and split, text and text animations, captions, stickers, filters, transitions, masks, speed controls, portrait retouching with per-face adjustments, project covers, live preview |
 | AI media | Text-to-image, text-to-video, image-to-video, speech, music, voice cloning, avatars and presenters, transcription, translation, and media analysis |
-| Automation | 285-command QCut CLI with JSON envelopes, Codex Plugin, Claude Code Plugin, editor inspection and control, compose manifests that build editable projects |
+| Automation | 286-command QCut CLI with JSON envelopes, Codex Plugin, Claude Code Plugin, editor inspection and control, compose manifests that build editable projects |
 | Media workflow | Searchable media workspace, sound and sticker libraries, project organization, guarded Jianying Professional draft import, local filter, effect, text, and sticker labs |
 | Desktop | Windows, macOS, and Linux builds with native file access, bundled FFmpeg processing, and a QCut-owned Metal filter renderer on macOS |
 
