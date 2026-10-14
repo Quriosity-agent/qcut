@@ -17,6 +17,9 @@ import {
  * Test suite for Project Creation & Media Import (Subtask 1A)
  * Covers basic project setup and media import workflows.
  */
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Project Creation & Media Import (Subtask 1A)", () => {
 	/**
 	 * Tests complete project creation and media import workflow.
