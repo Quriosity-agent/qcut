@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.14.2] - 2026-10-14
+
 ### Improved
 - Clips can change volume over time through the editor API and CLI, for example to duck music under speech. `editor timeline update-element` accepts `audio.keyframes.volumeDb`, and `batch-add` accepts the same object on new media clips. Compose manifests take `volumeKeyframes` on clips and sounds; headless renders and editable projects play the same envelope.
 - `qcut compose schema` prints every compose manifest field with its type, default and meaning, plus a worked example. The `--config` help points to it, and the bundled CLI skill documents the manifest format.
