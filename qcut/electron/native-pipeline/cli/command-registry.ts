@@ -114,7 +114,12 @@ export const CATEGORIES: CategoryDef[] = [
 	{
 		name: "composition",
 		label: "Timeline Composition",
-		commands: ["compose-validate", "compose-render", "compose-project"],
+		commands: [
+			"compose-schema",
+			"compose-validate",
+			"compose-render",
+			"compose-project",
+		],
 	},
 	{
 		name: "analysis",
@@ -289,6 +294,9 @@ export const CATEGORIES: CategoryDef[] = [
 
 // ─── Non-Editor Commands ─────────────────────────────────────────────
 
+const MANIFEST_CONFIG_DESCRIPTION =
+	"QCut compose manifest JSON path (format: `qcut compose schema`)";
+
 const CORE_COMMANDS: Record<string, CommandDef> = {
 	"compose-snapshot": {
 		name: "compose-snapshot",
@@ -341,13 +349,21 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"qcut compose plan --job-id saved-job-id --output patch.json --json",
 		],
 	},
+	"compose-schema": {
+		name: "compose-schema",
+		description:
+			"Print the compose manifest format: every field with its type, default, and meaning, plus an example",
+		category: "composition",
+		flags: [],
+		examples: ["qcut compose schema", "qcut compose schema --json"],
+	},
 	"compose-validate": {
 		name: "compose-validate",
 		description:
 			"Manifest mode (--config) resolves local resources; patch mode (--snapshot --patch) checks a ComposePatch against its snapshot",
 		category: "composition",
 		flags: [
-			f("--config", "string", "QCut compose manifest JSON path", {
+			f("--config", "string", MANIFEST_CONFIG_DESCRIPTION, {
 				short: "-c",
 			}),
 			f("--output", "string", "Optional compose-lock JSON output path"),
@@ -383,7 +399,7 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"Render a multi-clip edit with Filter Lab cards, crossfades, stickers, and sound effects",
 		category: "composition",
 		flags: [
-			f("--config", "string", "QCut compose manifest JSON path", {
+			f("--config", "string", MANIFEST_CONFIG_DESCRIPTION, {
 				short: "-c",
 			}),
 			f("--output", "string", "Output MP4 path"),
@@ -413,7 +429,7 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"Package a portable compose bundle, or build an editable QCut project through the running editor (--target editor)",
 		category: "composition",
 		flags: [
-			f("--config", "string", "QCut compose manifest JSON path", {
+			f("--config", "string", MANIFEST_CONFIG_DESCRIPTION, {
 				short: "-c",
 				required: true,
 			}),
