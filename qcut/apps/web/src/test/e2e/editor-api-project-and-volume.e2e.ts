@@ -379,24 +379,35 @@ test.describe("editor API: project open, settings, and clip volume", () => {
 		expect(built.code, built.output).toBe(0);
 
 		const timeline = await page.evaluate(() => {
+			type VolumeKeyframe = { frame: number; value: number };
+			type HarnessElement = {
+				startTime: number;
+				audio?: { keyframes?: { volumeDb?: VolumeKeyframe[] } };
+			};
+			type KeyframedElement = HarnessElement & {
+				audio: { keyframes: { volumeDb: VolumeKeyframe[] } };
+			};
 			const harness = window as unknown as {
-				__timelineStore: { getState: () => any };
-				__projectStore: { getState: () => any };
+				__timelineStore: {
+					getState: () => { tracks: Array<{ elements: HarnessElement[] }> };
+				};
+				__projectStore: {
+					getState: () => { activeProject?: { fps: number } | null };
+				};
 			};
 			const elements = harness.__timelineStore
 				.getState()
-				.tracks.flatMap((track: { elements: any[] }) => track.elements);
+				.tracks.flatMap((track) => track.elements);
 			return {
 				fps: harness.__projectStore.getState().activeProject?.fps as number,
 				keyframed: elements
-					.filter((element) => element.audio?.keyframes?.volumeDb)
+					.filter((element): element is KeyframedElement =>
+						Boolean(element.audio?.keyframes?.volumeDb)
+					)
 					.sort((left, right) => left.startTime - right.startTime)
 					.map((element) => ({
-						startTime: element.startTime as number,
-						volumeDb: element.audio.keyframes.volumeDb as Array<{
-							frame: number;
-							value: number;
-						}>,
+						startTime: element.startTime,
+						volumeDb: element.audio.keyframes.volumeDb,
 					})),
 			};
 		});
