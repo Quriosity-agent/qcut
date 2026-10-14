@@ -26,9 +26,13 @@ export async function assertScreenshot(
 	page: Page,
 	name: string
 ): Promise<void> {
-	const masks: Locator[] = [];
-	const terminal = page.getByTestId("pty-terminal-view");
-	if ((await terminal.count()) > 0) masks.push(terminal);
+	// Content that differs between runs or releases: the live terminal, the
+	// app version, and the project file path (a per-test profile directory).
+	const masks: Locator[] = [
+		page.getByTestId("pty-terminal-view"),
+		page.getByTestId("app-version"),
+		page.getByTestId("project-file-location"),
+	];
 
 	await expect(page).toHaveScreenshot(`${name}.png`, {
 		fullPage: false,
