@@ -3,9 +3,17 @@ import type { TProject } from "@/types/project";
 import { useProjectStore } from "@/stores/project-store";
 import { waitForProjectOpen } from "../claude-navigator-bridge";
 
-function setActiveProject({ id }: { id: string | null }) {
+/** Mirrors loadProject: the project becomes active first, loaded last. */
+function setActiveProject({
+	id,
+	loaded = true,
+}: {
+	id: string | null;
+	loaded?: boolean;
+}) {
 	useProjectStore.setState({
 		activeProject: id ? ({ id } as TProject) : null,
+		loadedProjectId: id && loaded ? id : null,
 	});
 }
 
@@ -33,6 +41,11 @@ describe("waitForProjectOpen", () => {
 		});
 
 		await changeHash({ hash: "#/editor/p1" });
+		expect(settled).toBe(false);
+
+		// Active but still loading its timeline: not open yet.
+		setActiveProject({ id: "p1", loaded: false });
+		await Promise.resolve();
 		expect(settled).toBe(false);
 
 		setActiveProject({ id: "p1" });
