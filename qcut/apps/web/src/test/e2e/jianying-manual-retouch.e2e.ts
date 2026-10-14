@@ -178,7 +178,7 @@ async function hasNativeMaskCache({ root }: { root: string }) {
 	const directories = entries.filter((entry) => entry.isDirectory());
 	const files = await Promise.all(
 		directories.map(async (directory) =>
-			readdir(path.join(root, directory.name)).catch(() => [])
+			readdir(path.join(root, directory.name)).catch((): string[] => [])
 		)
 	);
 	return files.some(
