@@ -156,6 +156,7 @@ import {
 import {
 	handleComposeProject,
 	handleComposeRender,
+	handleComposeSchema,
 	handleComposeValidate,
 } from "../cli-handlers-compose.js";
 import {
@@ -220,6 +221,7 @@ export const HANDLER_MAP: Record<string, CommandHandler> = {
 	"compose-validate": wrapOPS(handleComposeValidate),
 	"compose-render": wrapOPS(handleComposeRender),
 	"compose-project": wrapOPS(handleComposeProject),
+	"compose-schema": wrap0(handleComposeSchema),
 	"video-lab-deflicker": wrapOPS(handleVideoLabDeflicker),
 	"instances-list": wrap(handleInstancesCommand),
 	"instances-use": wrap(handleInstancesCommand),
