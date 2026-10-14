@@ -479,10 +479,18 @@ export function MediaTransformOverlay({
 		};
 	}, [flushPendingUpdates]);
 
+	// `kind` decides which fields are written back (see mutationFromSnapshot),
+	// so crop edits must say "crop" or their values are dropped.
 	const applySnapshotChange = useCallback(
-		({ items }: { items: MediaTransformSnapshot[] }) => {
+		({
+			items,
+			kind = "drag",
+		}: {
+			items: MediaTransformSnapshot[];
+			kind?: InteractionKind;
+		}) => {
 			const interaction: InteractionState = {
-				kind: "drag",
+				kind,
 				items: snapshots,
 				targets,
 				bounds,
@@ -630,6 +638,7 @@ export function MediaTransformOverlay({
 			if (!delta) return;
 			event.preventDefault();
 			applySnapshotChange({
+				kind: "crop",
 				items: [
 					{
 						...singleItem,
@@ -650,6 +659,7 @@ export function MediaTransformOverlay({
 	const resetCrop = useCallback(() => {
 		if (!singleItem) return;
 		applySnapshotChange({
+			kind: "crop",
 			items: [{ ...singleItem, crop: { ...DEFAULT_MEDIA_CROP } }],
 		});
 	}, [applySnapshotChange, singleItem]);
