@@ -352,7 +352,7 @@ test.describe("Professional audio properties", () => {
 		const previewAudio = page.locator('audio[data-audio-preview="web-audio"]');
 		await expect
 			.poll(() =>
-				previewAudio.evaluate((audio) => ({
+				previewAudio.evaluate((audio: HTMLAudioElement) => ({
 					mode: audio.dataset.audioPreview,
 					gain: Number(audio.dataset.audioPreviewGain),
 					volume: audio.volume,
@@ -376,7 +376,7 @@ test.describe("Professional audio properties", () => {
 		await panel.getByTestId("audio-preview-bypass").click();
 		await expect
 			.poll(() =>
-				previewAudio.evaluate((audio) => ({
+				previewAudio.evaluate((audio: HTMLAudioElement) => ({
 					effects: audio.dataset.audioPreviewEffects,
 					pitch: audio.dataset.audioPreviewPitch,
 				}))
