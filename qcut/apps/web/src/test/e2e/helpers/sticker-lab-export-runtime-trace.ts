@@ -6,6 +6,7 @@ import {
 	type DirectGifRuntimeDescriptor,
 } from "@qcut/editor-core/sticker-lab";
 import { expect, type TestInfo } from "@playwright/test";
+import type { StickerLabAPI } from "../../../../../../electron/preload-types/api-types/sticker-lab-api";
 import type { Page } from "playwright";
 import type { StratifiedStickerSourceReference } from "./sticker-lab-source-frame-evidence";
 import type { StratifiedStickerSample } from "./sticker-lab-stratified-samples";
@@ -111,7 +112,10 @@ export async function installStickerExportRuntimeTrace({
 			return Reflect.apply(originalClearRect, this, [x, y, width, height]);
 		};
 
-		CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+		CanvasRenderingContext2D.prototype.drawImage = function (
+			this: CanvasRenderingContext2D,
+			...args: unknown[]
+		) {
 			const source = args[0] as CanvasImageSource;
 			const sourceKind = source.constructor.name;
 			const candidate = source as CanvasImageSource & {
@@ -191,7 +195,9 @@ export async function readStickerSourceRuntimeFrameHashes({
 					rootPath,
 					stickerId,
 				}) => {
-					const stickerLab = window.electronAPI?.stickerLab;
+					const stickerLab = (
+						window as unknown as { electronAPI?: StickerLabAPI }
+					).electronAPI?.stickerLab;
 					if (!stickerLab) throw new Error("Sticker Lab bridge is unavailable");
 					const fingerprintSource = (window as StickerExportRuntimeTraceWindow)
 						.__stickerExportRuntimeFingerprintSource;
