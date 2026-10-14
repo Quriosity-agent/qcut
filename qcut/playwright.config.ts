@@ -21,7 +21,9 @@ export default defineConfig({
 	use: {
 		trace: "on-first-retry",
 		screenshot: "only-on-failure",
-		video: "on",
+		// No `video`: it only records pages Playwright opens itself, never the
+		// Electron app. The fixture's `captureScreenshotVideo` option records
+		// the app instead (QCUT_E2E_SCREEN_VIDEO=1).
 	},
 
 	projects: [
