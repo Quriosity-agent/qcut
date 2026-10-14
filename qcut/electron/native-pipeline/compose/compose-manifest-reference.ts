@@ -203,7 +203,8 @@ export const COMPOSE_MANIFEST_FIELDS: readonly ComposeManifestField[] = [
 		path: "overlays",
 		type: "array, at most 50",
 		default: [],
-		description: "Stickers over the video.",
+		description:
+			"Stickers over the video. Headless renders only for now: `compose project --target editor` rejects manifests with overlays.",
 	},
 	{
 		path: "overlays[].type",
