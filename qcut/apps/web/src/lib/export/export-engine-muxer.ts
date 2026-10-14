@@ -162,13 +162,23 @@ export class ExportEngineMuxer extends ExportEngine {
 			let audioSource: InstanceType<typeof AudioBufferSource> | null = null;
 
 			if (audioData) {
-				const primingFrames = await exportProfiler.time("audio-priming", () =>
-					measureAacEncoderPriming({
-						sampleRate: audioData.sampleRate,
-						numberOfChannels: audioData.numberOfChannels,
-						bitrate: audioBitrate,
-					})
-				);
+				// A failed measurement must not fail the export: without it the
+				// audio starts as late as it did before priming was handled.
+				const primingFrames = await exportProfiler
+					.time("audio-priming", () =>
+						measureAacEncoderPriming({
+							sampleRate: audioData.sampleRate,
+							numberOfChannels: audioData.numberOfChannels,
+							bitrate: audioBitrate,
+						})
+					)
+					.catch((error: unknown) => {
+						console.warn(
+							"[ExportEngineMuxer] AAC encoder priming not measured; audio may start late:",
+							error
+						);
+						return 0;
+					});
 				// Starting the timeline before zero by the encoder's priming
 				// puts the first real sample at zero; mediabunny records the
 				// negative section as an edit list that players skip.
