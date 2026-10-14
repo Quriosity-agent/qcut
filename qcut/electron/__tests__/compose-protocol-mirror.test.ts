@@ -216,6 +216,7 @@ describe("compose protocol mirror stays equivalent to editor-core", () => {
 					trimStart: 1,
 					trimEnd: 1,
 					sourceDuration: 12,
+					volume: 0.5,
 					volumeKeyframes: [
 						{ time: 0, volumeDb: 0 },
 						{ time: -1, volumeDb: 0 },
@@ -273,6 +274,7 @@ describe("compose protocol mirror stays equivalent to editor-core", () => {
 		);
 		expect(mirrorIssues.map((issue) => issue.path)).toEqual(
 			expect.arrayContaining([
+				"operations.1.volume",
 				"operations.1.volumeKeyframes.1",
 				"operations.1.volumeKeyframes.2",
 			])
