@@ -136,6 +136,7 @@ export function ProjectInfoView() {
 						className="break-all text-left hover:underline"
 						title={t("editor.projectInfo.reveal")}
 						onClick={handleRevealProjectFile}
+						data-testid="project-file-location"
 					>
 						{projectFilePath}
 					</button>
