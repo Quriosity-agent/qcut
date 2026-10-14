@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
+import {
+	COMPOSE_VOLUME_DB_MAX,
+	COMPOSE_VOLUME_DB_MIN,
+	MAX_COMPOSE_VOLUME_KEYFRAMES,
+	sortedVolumeKeyframes,
+} from "./compose-volume-keyframes.js";
 
 const filterSchema = z.object({
 	resourceId: z
@@ -24,11 +30,27 @@ const trimSchema = z
 		}
 	});
 
+/** Level in dB over time, from the item's start; replaces a fixed `volume`. */
+const volumeKeyframesSchema = z
+	.array(
+		z.object({
+			time: z.number().min(0),
+			volumeDb: z
+				.number()
+				.min(COMPOSE_VOLUME_DB_MIN)
+				.max(COMPOSE_VOLUME_DB_MAX),
+		})
+	)
+	.max(MAX_COMPOSE_VOLUME_KEYFRAMES)
+	.default([])
+	.transform((keyframes) => sortedVolumeKeyframes({ keyframes }));
+
 const clipSchema = z.object({
 	id: z.string().trim().min(1).max(80),
 	source: z.string().trim().min(1),
 	trim: trimSchema.default({ in: 0 }),
 	filters: z.array(filterSchema).max(16).default([]),
+	volumeKeyframes: volumeKeyframesSchema,
 });
 
 const transitionSchema = z.object({
@@ -66,6 +88,7 @@ const audioSchema = z.object({
 	volume: z.number().min(0).max(4).default(1),
 	fadeIn: z.number().min(0).max(5).default(0),
 	fadeOut: z.number().min(0).max(5).default(0),
+	volumeKeyframes: volumeKeyframesSchema,
 });
 
 const composeManifestSchema = z
@@ -94,6 +117,16 @@ const composeManifestSchema = z
 				});
 			}
 			ids.add(clip.id);
+		}
+		for (const [index, audio] of manifest.audio.entries()) {
+			if (audio.volumeKeyframes.length > 0 && audio.volume !== 1) {
+				context.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"volumeKeyframes set the whole level in dB; drop volume or fold it into the keyframes",
+					path: ["audio", index, "volume"],
+				});
+			}
 		}
 		for (const [index, overlay] of manifest.overlays.entries()) {
 			if (overlay.fadeIn + overlay.fadeOut > overlay.duration) {
