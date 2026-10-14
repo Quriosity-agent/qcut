@@ -46,6 +46,7 @@ async function buildVideoFromScreenshotFrames({
 			);
 			return false;
 		}
+		const ffmpegPath: string = ffmpegStaticPath;
 
 		const inputPatternPath = pathResolve(frameDirectoryPath, "frame-%06d.png");
 		const ffmpegArgs = [
@@ -71,7 +72,7 @@ async function buildVideoFromScreenshotFrames({
 		const stderrLines: Array<string> = [];
 
 		await new Promise<void>((resolve, reject) => {
-			const ffmpegProcess = spawn(ffmpegStaticPath, ffmpegArgs, {
+			const ffmpegProcess = spawn(ffmpegPath, ffmpegArgs, {
 				stdio: ["ignore", "ignore", "pipe"],
 			});
 
@@ -134,7 +135,11 @@ export interface ElectronFixtures {
 	electronApp: ElectronApplication;
 	/** The main window page instance */
 	page: Page;
-	/** Encode a low-frame-rate video of the test from Playwright screenshots. */
+	/**
+	 * Encode a low-frame-rate video of the test from Playwright screenshots
+	 * taken every 500 ms. Off by default because of its cost; turn it on for a
+	 * run with QCUT_E2E_SCREEN_VIDEO=1 or per spec with `test.use`.
+	 */
 	captureScreenshotVideo: boolean;
 	/**
 	 * UI language the test runs in. QCut defaults to Chinese, so specs that
@@ -277,12 +282,10 @@ export async function cleanupDatabase(page: Page) {
 
 		try {
 			await page.evaluate(async () => {
-				// @ts-expect-error - electronAPI is exposed via preload
 				if (window.electronAPI?.storage?.clear) {
 					console.log(
 						"📂 Clearing Electron file system storage (project .json files)..."
 					);
-					// @ts-expect-error
 					await window.electronAPI.storage.clear();
 					console.log("✅ Electron file system storage cleared");
 				}
@@ -332,7 +335,10 @@ export async function cleanupDatabase(page: Page) {
 }
 
 export const test = base.extend<ElectronFixtures>({
-	captureScreenshotVideo: [true, { option: true }],
+	captureScreenshotVideo: [
+		process.env.QCUT_E2E_SCREEN_VIDEO === "1",
+		{ option: true },
+	],
 	appLocale: ["zh", { option: true }],
 	appIsolation: [
 		// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
