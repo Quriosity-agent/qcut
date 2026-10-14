@@ -18,6 +18,9 @@ import {
  * Test suite for File Operations & Storage Management (Test #5A)
  * Covers subtasks 5A.1 through 5A.8 from the E2E testing priority document.
  */
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("File Operations & Storage Management", () => {
 	// Remove manual lifecycle hooks; fixtures provide { electronApp, page } per test.
 
