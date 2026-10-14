@@ -29,6 +29,7 @@ No code file longer than 800 lines, longer consider a new code file
 | Dist (Windows) | `bun run dist:win` |
 | E2E tests (visible) | `bun run test:e2e` |
 | E2E tests (invisible) | `bun run test:e2e:bg` |
+| E2E smoke set | `bun run test:e2e:smoke` |
 
 ## Project Overview
 
