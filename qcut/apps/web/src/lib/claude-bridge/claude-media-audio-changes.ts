@@ -2,12 +2,14 @@
  * Audio changes for media elements sent through the editor API
  * (`editor:timeline:update-element --changes '{"audio": {...}}'`).
  *
- * The value is a partial `MediaAudioSettings`: each settings group merges
- * into the element's current settings, and `keyframes` replaces the listed
- * properties' keyframes (`[]` or `null` removes them). Keyframe frames count
- * from the element's start at the project frame rate, the same as the
- * editor's own audio keyframes. Values outside a property's range are
- * clamped; malformed input throws, so the caller sees why nothing applied.
+ * The value is a partial `MediaAudioSettings`: settings groups merge, at any
+ * depth, into the element's current settings, and `keyframes` replaces the
+ * listed properties' keyframes (`[]` or `null` removes them). Keyframe frames
+ * count from the element's start at the project frame rate, the same as the
+ * editor's own audio keyframes. Keyframe values outside a property's range
+ * are clamped. Malformed input throws, so the caller sees why nothing
+ * applied: an unknown setting, or a value whose type differs from the
+ * setting's current one (`"false"` for a boolean).
  *
  * @module lib/claude-bridge/claude-media-audio-changes
  */
@@ -91,7 +93,7 @@ function mergeKeyframes({
 	}
 	const merged: Record<string, MediaPropertyKeyframe[]> = { ...current };
 	for (const [property, keyframes] of Object.entries(value)) {
-		if (!(property in AUDIO_KEYFRAME_DEFINITIONS)) {
+		if (!Object.hasOwn(AUDIO_KEYFRAME_DEFINITIONS, property)) {
 			throw new Error(
 				`Unknown audio keyframe property "${property}". Known: ${Object.keys(AUDIO_KEYFRAME_DEFINITIONS).join(", ")}`
 			);
@@ -108,6 +110,69 @@ function mergeKeyframes({
 	return merged;
 }
 
+/**
+ * `change` merged into `current`, a setting the element already has. Objects
+ * merge key by key and must only name existing settings; lists are replaced,
+ * each item merged onto the item at its index (or the first one); anything
+ * else must have the current value's type.
+ */
+function mergedSetting({
+	path,
+	current,
+	change,
+}: {
+	path: string;
+	current: unknown;
+	change: unknown;
+}): unknown {
+	if (isPlainObject(current)) {
+		if (!isPlainObject(change)) throw new Error(`${path} must be an object`);
+		const merged: Record<string, unknown> = { ...current };
+		for (const [key, value] of Object.entries(change)) {
+			if (!Object.hasOwn(current, key)) {
+				throw new Error(
+					`Unknown audio setting "${path}.${key}". Known: ${Object.keys(current).join(", ")}`
+				);
+			}
+			merged[key] = mergedSetting({
+				path: `${path}.${key}`,
+				current: current[key],
+				change: value,
+			});
+		}
+		return merged;
+	}
+	if (Array.isArray(current)) {
+		if (!Array.isArray(change)) throw new Error(`${path} must be an array`);
+		if (current.length === 0) {
+			throw new Error(`${path} cannot be set through the editor API`);
+		}
+		return change.map((item, index) =>
+			mergedSetting({
+				path: `${path}[${index}]`,
+				current: current[index] ?? current[0],
+				change: item,
+			})
+		);
+	}
+	if (typeof current === "boolean" && typeof change !== "boolean") {
+		throw new Error(`${path} must be true or false`);
+	}
+	if (
+		typeof current === "number" &&
+		(typeof change !== "number" || !Number.isFinite(change))
+	) {
+		throw new Error(`${path} must be a number`);
+	}
+	if (typeof current === "string" && typeof change !== "string") {
+		throw new Error(`${path} must be a string`);
+	}
+	if (current === undefined || current === null) {
+		throw new Error(`${path} cannot be set through the editor API`);
+	}
+	return change;
+}
+
 /** The element's audio settings after `value` is applied, normalized. */
 export function parseClaudeMediaAudioChanges({
 	element,
@@ -117,22 +182,18 @@ export function parseClaudeMediaAudioChanges({
 	value: unknown;
 }): MediaAudioSettings {
 	if (!isPlainObject(value)) throw new Error("audio must be an object");
-	const current = normalizeMediaAudioSettings({ element });
-	const merged: Record<string, unknown> = { ...current };
-	for (const [key, change] of Object.entries(value)) {
-		if (key === "keyframes") {
-			merged.keyframes = mergeKeyframes({
-				current: current.keyframes,
-				value: change,
-			});
-			continue;
-		}
-		const existing = merged[key];
-		merged[key] =
-			isPlainObject(existing) && isPlainObject(change)
-				? { ...existing, ...change }
-				: change;
-	}
+	const { keyframes: currentKeyframes, ...currentSettings } =
+		normalizeMediaAudioSettings({ element });
+	const { keyframes, ...settings } = value;
+	const merged = mergedSetting({
+		path: "audio",
+		current: currentSettings,
+		change: settings,
+	}) as Record<string, unknown>;
+	merged.keyframes =
+		keyframes === undefined
+			? currentKeyframes
+			: mergeKeyframes({ current: currentKeyframes, value: keyframes });
 	return normalizeMediaAudioSettings({
 		element: { ...element, audio: merged as unknown as MediaAudioSettings },
 	});
