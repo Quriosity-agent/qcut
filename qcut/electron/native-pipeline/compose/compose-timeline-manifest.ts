@@ -12,6 +12,7 @@ import {
 	MAIN_VIDEO_TRACK_ALIAS,
 	planComposeMediaClips,
 } from "./compose-timeline-media.js";
+import { editorVolumeAudio } from "./compose-volume-keyframes.js";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -230,10 +231,13 @@ export function timelineManifestFromComposePatch({
 	const media: JsonRecord[] = [];
 	const updates: JsonRecord[] = [];
 	const transitions: JsonRecord[] = [];
+	// Editor keyframes count project frames from each element's start.
+	const fps = snapshot?.project.fps ?? 30;
 	const mediaPlan = planComposeMediaClips({
 		operations: patch.operations,
 		bindings,
 		mainVideoTrackId,
+		fps,
 	});
 	const plannedOperationIds: string[] = [...mediaPlan.plannedOperationIds];
 	const plannedTransitionOperationIds: string[] = [];
@@ -387,6 +391,14 @@ export function timelineManifestFromComposePatch({
 							: {}),
 						...(operation.playbackRate !== undefined
 							? { playbackRate: operation.playbackRate }
+							: {}),
+						...(operation.volumeKeyframes?.length
+							? {
+									audio: editorVolumeAudio({
+										keyframes: operation.volumeKeyframes,
+										fps,
+									}),
+								}
 							: {}),
 					},
 				});
