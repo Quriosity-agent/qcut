@@ -3,6 +3,10 @@ import { promisify } from "node:util";
 import { getFFmpegPath } from "../../ffmpeg/paths.js";
 import type { ComposeOverlay, ComposeTransition } from "./compose-manifest.js";
 import type { ResolvedComposeAudio } from "./compose-resolver.js";
+import {
+	type ComposeVolumeKeyframe,
+	volumeEnvelopeFilters,
+} from "./compose-volume-keyframes.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -43,6 +47,7 @@ export function buildComposeNormalizeArgs({
 	height,
 	fps,
 	hasAudio,
+	volumeKeyframes = [],
 }: {
 	input: string;
 	output: string;
@@ -52,6 +57,7 @@ export function buildComposeNormalizeArgs({
 	height: number;
 	fps: number;
 	hasAudio: boolean;
+	volumeKeyframes?: readonly ComposeVolumeKeyframe[];
 }): string[] {
 	const durationText = ffmpegNumber({ value: duration });
 	const args = ["-i", input];
@@ -80,6 +86,7 @@ export function buildComposeNormalizeArgs({
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",
+		...(hasAudio ? volumeEnvelopeFilters({ keyframes: volumeKeyframes }) : []),
 		`apad=pad_dur=${durationText}`,
 		`atrim=duration=${durationText}[aout]`,
 	].join(",");
@@ -285,7 +292,10 @@ function buildSoundFilter({
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",
-		`volume=${ffmpegNumber({ value: item.audio.volume })}`,
+		// Keyframes carry the whole level, so they replace the fixed volume.
+		...(item.audio.volumeKeyframes.length > 0
+			? volumeEnvelopeFilters({ keyframes: item.audio.volumeKeyframes })
+			: [`volume=${ffmpegNumber({ value: item.audio.volume })}`]),
 	];
 	if (item.audio.fadeIn > 0) {
 		filters.push(
