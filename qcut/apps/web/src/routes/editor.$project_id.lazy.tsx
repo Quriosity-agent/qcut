@@ -14,7 +14,7 @@ import { debugError, debugLog } from "@/lib/debug/debug-config";
 import { useSkillsStore } from "@/stores/skills-store";
 import { cleanupPtyOnEditorExit } from "@/lib/debug/pty-session-cleanup";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
-import { useClaudeProjectUpdates } from "@/hooks/use-claude-project-updates";
+import { useProjectCanvasSync } from "@/hooks/use-project-canvas-sync";
 import { useGapGeneration } from "@/hooks/timeline/use-gap-generation";
 import { useEditorEntryDefaults } from "@/hooks/use-editor-entry-defaults";
 import "@/lib/debug/ios-console-bridge"; // iPad console log capture (auto-gates behind DEV)
@@ -45,7 +45,7 @@ function EditorPage() {
 		usePtyTerminalStore();
 
 	useEditorEntryDefaults({ projectId: project_id });
-	useClaudeProjectUpdates({ projectId: project_id });
+	useProjectCanvasSync({ projectId: project_id });
 
 	useEffect(() => {
 		return () => {
