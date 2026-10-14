@@ -91,7 +91,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 
 	await createTestProject(page, "Review Collaboration E2E");
 	const project = await page.evaluate(() => {
-		const harness = window as ReviewHarnessWindow;
+		const harness = window as unknown as ReviewHarnessWindow;
 		const activeProject = harness.__projectStore.getState().activeProject;
 		if (!activeProject) throw new Error("Expected an active project");
 		return activeProject;
@@ -128,7 +128,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await page.reload();
 	await waitForProjectLoad(page);
 	await page.evaluate(() => {
-		const harness = window as ReviewHarnessWindow;
+		const harness = window as unknown as ReviewHarnessWindow;
 		Object.defineProperty(navigator, "clipboard", {
 			configurable: true,
 			value: {
@@ -170,7 +170,8 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await expect
 		.poll(() =>
 			page.evaluate(
-				() => (window as ReviewHarnessWindow).__copiedReviewLink ?? ""
+				() =>
+					(window as unknown as ReviewHarnessWindow).__copiedReviewLink ?? ""
 			)
 		)
 		.toContain(reviewToken);
@@ -191,7 +192,9 @@ test("syncs a review link and collaborates on the public video page", async ({
 	const video = page.getByTestId("public-review-video");
 	await expect(video).toBeVisible();
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThan(0);
 	await expect(page.getByTestId("public-review-duration")).toHaveText(
 		"00:00:05:00"
@@ -223,10 +226,14 @@ test("syncs a review link and collaborates on the public video page", async ({
 		"00:00:02:15"
 	);
 	await expect
-		.poll(() => video.evaluate((element) => element.currentTime))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.currentTime)
+		)
 		.toBeCloseTo(2.5, 1);
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThanOrEqual(2);
 	await page.getByLabel("Reviewer name").fill("导演");
 	await page
@@ -237,7 +244,9 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await expect(page.getByTestId("public-review-version")).toContainText("v3");
 	await expect(page.getByRole("button", { name: "添加评论" })).toBeDisabled();
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThanOrEqual(2);
 	await waitForStablePaint({ page });
 	await page.screenshot({
