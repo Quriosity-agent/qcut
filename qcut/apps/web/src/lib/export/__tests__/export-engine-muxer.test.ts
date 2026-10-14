@@ -10,6 +10,9 @@ const mockAddVideoTrack = vi.fn();
 const mockAddAudioTrack = vi.fn();
 const mockVideoSourceCtor = vi.fn();
 const mockVideoSampleCtor = vi.fn();
+const mockAudioSourceCtor = vi.fn();
+const mockRenderTimelineAudio = vi.fn().mockResolvedValue(null);
+const mockMeasurePriming = vi.fn().mockResolvedValue(0);
 
 vi.mock("mediabunny", () => {
 	class MockOutput {
@@ -35,6 +38,9 @@ vi.mock("mediabunny", () => {
 		}
 	}
 	class MockAudioBufferSource {
+		constructor(...args: any[]) {
+			mockAudioSourceCtor(...args);
+		}
 		add = mockAdd;
 	}
 	return {
@@ -118,6 +124,14 @@ vi.mock("@/stores/ai/effects-store", () => ({
 vi.mock("@/lib/stickers/sticker-export-helper", () => ({
 	preloadStickerImages: vi.fn().mockResolvedValue(undefined),
 	renderStickersToCanvas: vi.fn(),
+}));
+
+vi.mock("@/lib/audio/browser-audio-export", () => ({
+	renderBrowserTimelineAudio: mockRenderTimelineAudio,
+}));
+
+vi.mock("../aac-encoder-priming", () => ({
+	measureAacEncoderPriming: mockMeasurePriming,
 }));
 
 vi.mock("@/types/export", () => ({
@@ -408,6 +422,42 @@ describe("ExportEngineMuxer", () => {
 
 		// Clean up first export
 		await first;
+	});
+
+	it("starts the AAC track before zero by the encoder's priming", async () => {
+		const { canvas } = createMockCanvas();
+		const audio = { duration: 0.1, numberOfChannels: 2, sampleRate: 48_000 };
+		mockRenderTimelineAudio.mockResolvedValueOnce(audio);
+		mockMeasurePriming.mockResolvedValueOnce(2112);
+		const engine = new ExportEngineMuxer(
+			canvas,
+			{
+				format: "mp4",
+				quality: "720p",
+				filename: "test.mp4",
+				width: 1280,
+				height: 720,
+			},
+			[],
+			[],
+			0.1
+		);
+
+		await engine.export();
+
+		expect(mockMeasurePriming).toHaveBeenCalledWith({
+			sampleRate: 48_000,
+			numberOfChannels: 2,
+			bitrate: 128_000,
+		});
+		// mediabunny turns the negative start into an edit list that skips the
+		// priming, so the first real sample plays at zero.
+		expect(mockAudioSourceCtor).toHaveBeenCalledWith(
+			{ codec: "aac", bitrate: 128_000 },
+			{ startTimestamp: -2112 / 48_000 }
+		);
+		expect(mockAddAudioTrack).toHaveBeenCalledOnce();
+		expect(mockAdd).toHaveBeenCalledWith(audio);
 	});
 
 	it("uses correct bitrate for quality preset", async () => {
