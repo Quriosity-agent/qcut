@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, type Page, type TestInfo } from "@playwright/test";
+import type { StickerLabAPI } from "../../../../../../electron/preload-types/api-types/sticker-lab-api";
 import type { ElectronApplication } from "playwright";
 import { readLocalReference } from "../../../../../../electron/native-pipeline/stickers/local-reference-catalog/index";
 import { resolveStickerGeometry } from "../../../lib/stickers/sticker-geometry";
@@ -500,7 +501,8 @@ export async function runStratifiedRealCacheStickerExports({
 		await installStickerExportRuntimeTrace({ page });
 		await waitForEditorApiHealth({ apiPort });
 		const discovery = await page.evaluate(async () => {
-			const stickerLab = window.electronAPI?.stickerLab;
+			const stickerLab = (window as unknown as { electronAPI?: StickerLabAPI })
+				.electronAPI?.stickerLab;
 			if (!stickerLab) throw new Error("Sticker Lab desktop bridge is missing");
 			return stickerLab.discoverLocalReferences({});
 		});
