@@ -190,8 +190,8 @@ test.describe("Local person cutout", () => {
 					source: "mediapipe",
 				},
 			});
-			expect(exported.attachedMask.centerKeyframes).toBeGreaterThan(1);
-			expect(exported.attachedMask.sizeKeyframes).toBeGreaterThan(1);
+			expect(exported.attachedMask?.centerKeyframes).toBeGreaterThan(1);
+			expect(exported.attachedMask?.sizeKeyframes).toBeGreaterThan(1);
 			await panel.screenshot({
 				path: testInfo.outputPath("person-cutout-export.png"),
 				animations: "disabled",
