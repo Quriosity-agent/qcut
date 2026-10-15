@@ -331,9 +331,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			}) as Promise<ClaudeTrackOperationResponse>,
 		/** Reads or changes the mixer through main. */
 		mutateAudioMix: (request) =>
-			requestFromMain("audio-mix-operation", {
-				request,
-			}) as Promise<ClaudeAudioMixResponse>,
+			requestFromMain(
+				"audio-mix-operation",
+				{ request },
+				// Main waits up to two minutes for a loudness render.
+				request.action === "measure-loudness" ? { timeoutMs: 125_000 } : {}
+			) as Promise<ClaudeAudioMixResponse>,
 		/** Starts a transactional timeline mutation. */
 		beginTransaction: (request) =>
 			requestFromMain("transaction:begin", { request }) as Promise<Transaction>,
