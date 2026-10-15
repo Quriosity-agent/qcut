@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import ffmpegStaticPath from "ffmpeg-static";
@@ -29,28 +29,33 @@ const sampleVideo = path.resolve(
 
 /**
  * The committed sample is H.264 4:4:4, which a browser <video> cannot play,
- * so the public review page gets a 4:2:0 copy made at run time.
+ * so the public review page gets a 4:2:0 copy made at run time. Each run
+ * converts into its own directory, removed once `use` has read the file.
  */
-async function browserVideoFixture(): Promise<string> {
+async function withBrowserVideoFixture<T>(
+	use: (fixturePath: string) => Promise<T>
+): Promise<T> {
 	if (!ffmpegStaticPath) throw new Error("ffmpeg-static is unavailable");
-	const directory = path.join(tmpdir(), "qcut-e2e-review");
-	await mkdir(directory, { recursive: true });
-	const outputPath = path.join(directory, "sample-video-browser.mp4");
-	execFileSync(ffmpegStaticPath, [
-		"-y",
-		"-loglevel",
-		"error",
-		"-i",
-		sampleVideo,
-		"-c:v",
-		"libx264",
-		"-pix_fmt",
-		"yuv420p",
-		"-movflags",
-		"+faststart",
-		outputPath,
-	]);
-	return outputPath;
+	const directory = await mkdtemp(path.join(tmpdir(), "qcut-e2e-review-"));
+	try {
+		const outputPath = path.join(directory, "sample-video-browser.mp4");
+		execFileSync(ffmpegStaticPath, [
+			"-loglevel",
+			"error",
+			"-i",
+			sampleVideo,
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			"-movflags",
+			"+faststart",
+			outputPath,
+		]);
+		return await use(outputPath);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
 }
 const reviewToken = "e2e-review-token-123456789";
 const reviewShareUrl = `https://qcut.app/#/review/${reviewToken}`;
@@ -180,11 +185,14 @@ test("syncs a review link and collaborates on the public video page", async ({
 		animations: "disabled",
 	});
 
-	await installHttpsMediaFixture({
-		electronApp,
-		fixturePath: await browserVideoFixture(),
-		mediaUrl: "https://cdn.qcut.test/review-video.mp4",
-	});
+	// The fixture reads the file into memory, so the copy can go afterwards.
+	await withBrowserVideoFixture((fixturePath) =>
+		installHttpsMediaFixture({
+			electronApp,
+			fixturePath,
+			mediaUrl: "https://cdn.qcut.test/review-video.mp4",
+		})
+	);
 	await page.evaluate((token) => {
 		window.location.hash = `#/review/${token}`;
 	}, reviewToken);
