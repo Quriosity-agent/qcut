@@ -10,6 +10,10 @@
  * loading counts as not open: saving before its timeline loads would store
  * the cleared timeline.
  *
+ * The other direction matters too: changes made inside the editor are
+ * mirrored into the open project's `project.qcut`, so the CLI reads the
+ * canvas and frame rate the editor actually renders.
+ *
  * @module lib/claude-bridge/claude-project-settings-bridge
  */
 
@@ -77,6 +81,42 @@ export function mergeProjectSettings({
  */
 const pendingByProject = new Map<string, ClaudeProjectSettingsUpdate>();
 let unsubscribeProjectStore: (() => void) | null = null;
+/** What was last written to project.qcut, so unchanged state is not rewritten. */
+let lastMirroredSettings: string | null = null;
+
+/**
+ * Writes the open project's canvas, frame rate and background into its
+ * project.qcut whenever they change in the editor (the canvas picker, the
+ * first clip fitting the canvas). `editor:project:settings` and project.json
+ * read that file, so without this they report a size the editor no longer
+ * renders. `broadcast: false` keeps the write from echoing back here.
+ */
+function mirrorOpenProjectSettings({
+	projectApi,
+	project,
+	loadedProjectId,
+}: {
+	projectApi: PlatformClaudeProjectAPI;
+	project: TProject | null;
+	loadedProjectId: string | null;
+}): void {
+	if (!project || loadedProjectId !== project.id) return;
+	if (typeof projectApi.updateSettings !== "function") return;
+	const settings = {
+		width: project.canvasSize.width,
+		height: project.canvasSize.height,
+		...(project.fps ? { fps: project.fps } : {}),
+		backgroundColor: project.backgroundColor,
+	};
+	const key = JSON.stringify([project.id, settings]);
+	if (key === lastMirroredSettings) return;
+	lastMirroredSettings = key;
+	projectApi
+		.updateSettings(project.id, settings, { broadcast: false })
+		.catch((error) => {
+			console.error("[ClaudeProjectSettingsBridge] Mirror failed:", error);
+		});
+}
 
 async function applyToActiveProject({
 	settings,
@@ -130,8 +170,14 @@ export function setupClaudeProjectSettingsBridge(): void {
 	}
 	if (!projectApi?.onUpdated) return;
 
+	const api = projectApi;
 	unsubscribeProjectStore?.();
 	unsubscribeProjectStore = useProjectStore.subscribe((state) => {
+		mirrorOpenProjectSettings({
+			projectApi: api,
+			project: state.activeProject,
+			loadedProjectId: state.loadedProjectId,
+		});
 		const projectId = state.loadedProjectId;
 		const settings = projectId ? pendingByProject.get(projectId) : undefined;
 		if (!projectId || !settings) return;
@@ -157,4 +203,5 @@ export function cleanupClaudeProjectSettingsBridge(): void {
 	unsubscribeProjectStore?.();
 	unsubscribeProjectStore = null;
 	pendingByProject.clear();
+	lastMirroredSettings = null;
 }
