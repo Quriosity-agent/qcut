@@ -149,6 +149,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			PID,
 			f("--items", "string", "JSON array of items"),
 			f("--sources", "string", "Comma-separated file paths"),
+			f(
+				"--append-to-track",
+				"string",
+				"Also lay the imported video/audio end to end at the end of this track"
+			),
 		]
 	),
 	"editor:media:extract-frame": ed(
