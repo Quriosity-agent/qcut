@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	AudioMixBusError,
 	createAudioBus,
+	mergeAudioBusPatch,
 	mergeTrackAudioPatch,
 	removeAudioBus,
 	updateAudioBus,
@@ -88,6 +89,47 @@ describe("mixer patches", () => {
 			gainDb: 0,
 			q: 1,
 		});
+	});
+});
+
+describe("automation patches", () => {
+	it("replaces a curve, keeps the other, and removes one with null", () => {
+		const settings = mergeTrackAudioPatch({
+			settings: createDefaultTrackAudioSettings(),
+			patch: {
+				automation: {
+					gainDb: [{ time: 1, value: -3 }],
+					pan: [
+						{ time: 0, value: -1 },
+						{ time: 2, value: 1 },
+					],
+				},
+			},
+		});
+		const replaced = mergeTrackAudioPatch({
+			settings,
+			patch: { automation: { gainDb: [{ time: 5, value: 0 }] } },
+		});
+		expect(replaced.automation).toEqual({
+			gainDb: [{ time: 5, value: 0 }],
+			pan: [
+				{ time: 0, value: -1 },
+				{ time: 2, value: 1 },
+			],
+		});
+		const cleared = mergeTrackAudioPatch({
+			settings: replaced,
+			patch: { automation: { gainDb: null, pan: null } },
+		});
+		expect(cleared.automation).toBeUndefined();
+	});
+
+	it("gives a bus a curve the same way", () => {
+		const bus = mergeAudioBusPatch({
+			bus: createDefaultAudioMixBus({ id: "music", name: "Music" }),
+			patch: { automation: { pan: [{ time: 1, value: 0.5 }] } },
+		});
+		expect(bus.automation).toEqual({ pan: [{ time: 1, value: 0.5 }] });
 	});
 });
 
