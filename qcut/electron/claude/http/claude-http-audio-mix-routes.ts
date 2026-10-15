@@ -8,12 +8,15 @@
  *   PATCH  /api/claude/mix/:projectId/buses/:busId
  *   DELETE /api/claude/mix/:projectId/buses/:busId
  *   POST   /api/claude/mix/:projectId/loudness   (renders, then measures)
+ *   POST   /api/claude/mix/:projectId/stems      { outputDir, fileNamePrefix? }: one WAV per bus
  *
  * Each answers with the mix read back from the editor.
  *
  * @module electron/claude/http/claude-http-audio-mix-routes
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type {
 	ClaudeAudioMixRequest,
 	ClaudeAudioMixResponse,
@@ -68,7 +71,11 @@ export function registerAudioMixRoutes({
 				result.error ?? "The mixer change failed"
 			);
 		}
-		if (request.action !== "get" && request.action !== "measure-loudness") {
+		if (
+			request.action !== "get" &&
+			request.action !== "measure-loudness" &&
+			request.action !== "render-stems"
+		) {
 			onChanged({ projectId: request.projectId });
 		}
 		return result;
@@ -135,6 +142,29 @@ export function registerAudioMixRoutes({
 			projectId: req.params.projectId,
 		});
 		return { projectId: req.params.projectId, ...loudness };
+	});
+
+	router.post("/api/claude/mix/:projectId/stems", async (req) => {
+		const outputDir =
+			typeof req.body?.outputDir === "string" ? req.body.outputDir.trim() : "";
+		if (!outputDir || !path.isAbsolute(outputDir)) {
+			throw new HttpError(400, "outputDir must be an absolute folder path");
+		}
+		const fileNamePrefix =
+			typeof req.body?.fileNamePrefix === "string"
+				? req.body.fileNamePrefix
+				: "";
+		if (/[\\/]/.test(fileNamePrefix)) {
+			throw new HttpError(400, "fileNamePrefix cannot contain a folder");
+		}
+		await fs.promises.mkdir(outputDir, { recursive: true });
+		const { stems } = await run(req, {
+			action: "render-stems",
+			projectId: req.params.projectId,
+			outputDir,
+			fileNamePrefix,
+		});
+		return { projectId: req.params.projectId, outputDir, stems: stems ?? [] };
 	});
 
 	router.delete("/api/claude/mix/:projectId/buses/:busId", async (req) => {
