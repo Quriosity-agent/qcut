@@ -107,6 +107,46 @@ describe("mixer request checks", () => {
 		);
 	});
 
+	it("takes curves as points in range, and null to remove one", () => {
+		expect(
+			readTrackAudioPatch({
+				automation: {
+					gainDb: [
+						{ time: 2.5, value: -10 },
+						{ time: 3, value: -30 },
+					],
+					pan: null,
+				},
+			})
+		).toEqual({
+			automation: {
+				gainDb: [
+					{ time: 2.5, value: -10 },
+					{ time: 3, value: -30 },
+				],
+				pan: null,
+			},
+		});
+		expect(
+			message(() =>
+				readTrackAudioPatch({
+					automation: { gainDb: [{ time: 1, value: 20 }] },
+				})
+			)
+		).toBe("automation.gainDb[0].value must be between -60 and 12 (got 20)");
+		expect(
+			message(() =>
+				readBusPatch({ automation: { pan: [{ time: -1, value: 0 }] } })
+			)
+		).toBe("automation.pan[0].time must be seconds on the timeline, 0 or more");
+		expect(
+			message(() => readBusPatch({ automation: { volume: [] } }))
+		).toContain("Unknown field automation.volume");
+		expect(message(() => readBusPatch({ automation: { gainDb: "up" } }))).toBe(
+			"automation.gainDb must be a list of {time, value} points, or null to remove the curve"
+		);
+	});
+
 	it("needs a name for a new bus, and a safe id that is not master", () => {
 		expect(
 			message(() => readBusPatch({ gainDb: -3 }, { creating: true }))
