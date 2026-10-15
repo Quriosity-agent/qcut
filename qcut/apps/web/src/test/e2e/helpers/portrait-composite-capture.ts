@@ -6,18 +6,14 @@ import { getMediaSourcePlaybackTime } from "../../../lib/video/video-timing";
 import { getExportFrameSampleTime } from "../../../lib/export/export-video-frame-seek";
 import type { MediaElement } from "../../../types/timeline";
 import {
-	COMPOSITE_FPS,
-	COMPOSITE_HEIGHT,
-	COMPOSITE_SAMPLES,
-	COMPOSITE_SECONDS,
-	COMPOSITE_TRANSITION_SECONDS,
-	COMPOSITE_WIDTH,
+	COMPOSITE_SETTINGS,
 	type CompositeEvidenceWindow,
-	type PortraitCompositePass,
+	type CompositeEvidencePass,
+	type CompositeSettings,
 } from "./portrait-composite-project";
 
 export interface CapturedExportFrame {
-	pass: PortraitCompositePass;
+	pass: CompositeEvidencePass;
 	frameIndex: number;
 	timeSeconds: number;
 	fps: number;
@@ -39,15 +35,19 @@ export async function installCompositeExportCapture({
 	page,
 	output,
 	frames,
+	settings = COMPOSITE_SETTINGS,
+	allowedPasses = ["original", "native", "independent"],
 }: {
 	page: Page;
 	output: string;
 	frames: CapturedExportFrame[];
+	settings?: CompositeSettings;
+	allowedPasses?: CompositeEvidencePass[];
 }) {
 	await page.exposeFunction(
 		"__savePortraitCompositeFrame",
 		async (input: {
-			pass: PortraitCompositePass;
+			pass: CompositeEvidencePass;
 			frameIndex: number;
 			timeSeconds: number;
 			fps: number;
@@ -56,11 +56,11 @@ export async function installCompositeExportCapture({
 			png: string;
 		}) => {
 			if (
-				!["original", "native", "independent"].includes(input.pass) ||
-				!COMPOSITE_SAMPLES.includes(input.frameIndex) ||
-				input.width !== COMPOSITE_WIDTH ||
-				input.height !== COMPOSITE_HEIGHT ||
-				input.fps !== COMPOSITE_FPS ||
+				!allowedPasses.includes(input.pass) ||
+				!settings.samples.includes(input.frameIndex) ||
+				input.width !== settings.width ||
+				input.height !== settings.height ||
+				input.fps !== settings.fps ||
 				!input.png.startsWith("data:image/png;base64,") ||
 				input.png.length > 64 * 1024 * 1024
 			)
@@ -92,9 +92,11 @@ export async function installCompositeExportCapture({
 export async function armCompositeCapture({
 	page,
 	pass,
+	settings = COMPOSITE_SETTINGS,
 }: {
 	page: Page;
-	pass: PortraitCompositePass;
+	pass: CompositeEvidencePass;
+	settings?: CompositeSettings;
 }) {
 	await page.evaluate(
 		({ pass, frameIndices }) => {
@@ -114,7 +116,7 @@ export async function armCompositeCapture({
 				},
 			};
 		},
-		{ pass, frameIndices: COMPOSITE_SAMPLES }
+		{ pass, frameIndices: settings.samples }
 	);
 }
 
@@ -123,16 +125,18 @@ export async function captureCompositePreview({
 	output,
 	pass,
 	frameIndex,
+	settings = COMPOSITE_SETTINGS,
 }: {
 	page: Page;
 	output: string;
-	pass: PortraitCompositePass;
+	pass: CompositeEvidencePass;
 	frameIndex: number;
+	settings?: CompositeSettings;
 }) {
-	const timeSeconds = frameIndex / COMPOSITE_FPS;
+	const timeSeconds = frameIndex / settings.fps;
 	const inTransition =
-		timeSeconds >= (COMPOSITE_SECONDS - COMPOSITE_TRANSITION_SECONDS) / 2 &&
-		timeSeconds < (COMPOSITE_SECONDS + COMPOSITE_TRANSITION_SECONDS) / 2;
+		timeSeconds >= (settings.seconds - settings.transitionSeconds) / 2 &&
+		timeSeconds < (settings.seconds + settings.transitionSeconds) / 2;
 	const expectedLayers = inTransition ? 2 : 1;
 	await page.mouse.move(10, 10);
 	await page.evaluate((time) => {
@@ -154,10 +158,10 @@ export async function captureCompositePreview({
 			getMediaSourcePlaybackTime({
 				element,
 				localTimelineTime: getExportFrameSampleTime({
-					frameRate: COMPOSITE_FPS,
+					frameRate: settings.fps,
 					frameStartTime: Math.max(0, timeSeconds - element.startTime),
 				}),
-				fps: COMPOSITE_FPS,
+				fps: settings.fps,
 			}),
 		])
 	);
@@ -213,8 +217,8 @@ export async function captureCompositePreview({
 									);
 								}),
 							{
-								width: COMPOSITE_WIDTH,
-								height: COMPOSITE_HEIGHT,
+								width: settings.width,
+								height: settings.height,
 								frame: frameIndex,
 							}
 						);
@@ -337,8 +341,8 @@ export async function captureCompositePreview({
 			})),
 		};
 	});
-	expect(layers.box.width).toBeCloseTo(COMPOSITE_WIDTH, 4);
-	expect(layers.box.height).toBeCloseTo(COMPOSITE_HEIGHT, 4);
+	expect(layers.box.width).toBeCloseTo(settings.width, 4);
+	expect(layers.box.height).toBeCloseTo(settings.height, 4);
 	expect(layers.box.x).toBeCloseTo(Math.round(layers.box.x), 4);
 	expect(layers.box.y).toBeCloseTo(Math.round(layers.box.y), 4);
 	const name = frameName({ prefix: "preview", frameIndex });
