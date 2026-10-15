@@ -58,6 +58,18 @@ export const MIXER_EN_TRANSLATIONS = {
 	"mixer.loudnessTarget":
 		"Online platforms: about -14 LUFS, true peak ≤ -1 dBTP",
 	"mixer.loudestShortTerm": "Loudest 3 s",
+	"mixer.automation": "Automation",
+	"mixer.automationOf": "{{name}} automation",
+	"mixer.levelCurve": "Level curve",
+	"mixer.panCurve": "Pan curve",
+	"mixer.addPointAtPlayhead": "Add at playhead",
+	"mixer.clearCurve": "Clear curve",
+	"mixer.noPoints": "No points: the fader's value applies.",
+	"mixer.pointTime": "Time (s)",
+	"mixer.pointValue": "Value",
+	"mixer.removePoint": "Remove point",
+	"mixer.automatedLevel": "Level follows its curve: edit it under automation",
+	"mixer.automatedPan": "Pan follows its curve: edit it under automation",
 } as const;
 
 export const MIXER_ZH_TRANSLATIONS: Record<
@@ -120,4 +132,16 @@ export const MIXER_ZH_TRANSLATIONS: Record<
 	"mixer.measured": "整片混音（与导出一致）",
 	"mixer.loudnessTarget": "网络平台：约 -14 LUFS，真峰值不超过 -1 dBTP",
 	"mixer.loudestShortTerm": "最响的 3 秒",
+	"mixer.automation": "自动化",
+	"mixer.automationOf": "{{name}} 自动化",
+	"mixer.levelCurve": "音量曲线",
+	"mixer.panCurve": "声像曲线",
+	"mixer.addPointAtPlayhead": "在播放头处加点",
+	"mixer.clearCurve": "清除曲线",
+	"mixer.noPoints": "没有点：使用推子的值。",
+	"mixer.pointTime": "时间（秒）",
+	"mixer.pointValue": "数值",
+	"mixer.removePoint": "删除点",
+	"mixer.automatedLevel": "音量跟随曲线：在自动化里修改",
+	"mixer.automatedPan": "声像跟随曲线：在自动化里修改",
 };
