@@ -22,6 +22,10 @@ import {
 } from "../cli/project-json-builder.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
 import { appendImportedMedia } from "./editor-media-append.js";
+import {
+	type ProjectCreateSettings,
+	resolveProjectCreateSettings,
+} from "./editor-project-create-settings.js";
 import { assertRestrictedMediaExportAllowed } from "../../types/restricted-media-export-policy.js";
 
 type ProgressFn = (progress: {
@@ -526,19 +530,43 @@ async function projectCreate(
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	const name = opts.name || opts.newName || "New Project";
-	const data = await client.post<{
+	// Resolved first, so a bad flag or unreadable --match-media file fails
+	// before a project exists.
+	let settings: ProjectCreateSettings;
+	try {
+		settings = await resolveProjectCreateSettings({
+			width: opts.width,
+			height: opts.height,
+			fps: opts.fps,
+			matchMedia: opts.matchMedia,
+		});
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+	const created = await client.post<{
 		projectId?: string;
 		id?: string;
 		[key: string]: unknown;
 	}>("/api/claude/project/create", { name });
-	const projectId = data.projectId ?? data.id;
-	if ((opts.open || opts.waitReady) && !projectId) {
+	const projectId = created.projectId ?? created.id;
+	const wantsSettings = Object.keys(settings).length > 0;
+	if ((opts.open || opts.waitReady || wantsSettings) && !projectId) {
 		return {
 			success: false,
 			error: "Project created, but QCut did not return its project ID",
-			data,
+			data: created,
 		};
 	}
+	if (projectId && wantsSettings) {
+		await client.patch(
+			`/api/claude/project/${encodeURIComponent(projectId)}/settings`,
+			settings
+		);
+	}
+	const data = wantsSettings ? { ...created, settings } : created;
 	let readiness;
 	if (projectId && (opts.open || opts.waitReady)) {
 		readiness = await ensureEditorProjectReady({
