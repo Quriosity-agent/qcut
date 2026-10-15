@@ -84,6 +84,71 @@ describe("parseMediaProbe", () => {
 		).toEqual({ duration: 4.5, width: 1920, height: 1080, fps: 29.97 });
 	});
 
+	it("reads a WebM picture length from its DURATION tag, not the audio tail", () => {
+		expect(
+			parseMediaProbe({
+				stdout: probeJson({
+					streams: [
+						{
+							codec_type: "video",
+							width: 320,
+							height: 240,
+							avg_frame_rate: "24/1",
+							tags: { DURATION: "00:00:01.709000000" },
+						},
+						{
+							codec_type: "audio",
+							tags: { DURATION: "00:00:01.798000000" },
+						},
+					],
+					formatDuration: "1.798000",
+				}),
+				type: "video",
+			})
+		).toEqual({ duration: 1.709, width: 320, height: 240, fps: 24 });
+	});
+
+	it("counts frames when the video stream states no length", () => {
+		expect(
+			parseMediaProbe({
+				stdout: probeJson({
+					streams: [
+						{
+							codec_type: "video",
+							width: 1280,
+							height: 720,
+							avg_frame_rate: "24/1",
+							nb_frames: "409",
+						},
+						{ codec_type: "audio" },
+					],
+					formatDuration: "17.056",
+				}),
+				type: "video",
+			}).duration
+		).toBeCloseTo(409 / 24, 9);
+	});
+
+	it("leaves the length unknown rather than take an audio-extended container", () => {
+		expect(
+			parseMediaProbe({
+				stdout: probeJson({
+					streams: [
+						{
+							codec_type: "video",
+							width: 1280,
+							height: 720,
+							avg_frame_rate: "24/1",
+						},
+						{ codec_type: "audio" },
+					],
+					formatDuration: "17.056",
+				}),
+				type: "video",
+			})
+		).toEqual({ width: 1280, height: 720, fps: 24 });
+	});
+
 	it("reads audio length and image size", () => {
 		expect(
 			parseMediaProbe({
