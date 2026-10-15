@@ -22,6 +22,10 @@ import {
 import * as path from "node:path";
 import { resolveQCutRuntimeEndpoint } from "../claude/runtime-endpoint.js";
 import {
+	ensureMainWindow,
+	getMainWindowState,
+} from "../main-window-recovery.js";
+import {
 	getProjectPath,
 	getProjectsRootPath,
 } from "../claude/utils/helpers.js";
@@ -490,8 +494,17 @@ async function handleMainRequest(
 		return { path: rootPath };
 	}
 
-	const win = getWindow();
-	if (!win) throw new Error("No active window");
+	// Informational: answered whether or not a window is open.
+	if (channel === "window:state") {
+		return getMainWindowState();
+	}
+	if (channel === "windows:list") {
+		return describeEditorWindows();
+	}
+
+	// Everything below talks to the editor, so a closed window is reopened
+	// rather than failing the request.
+	const win = await ensureMainWindow();
 	const windowFor = (request?: { windowId?: number }) =>
 		resolveEditorWindow({ windowId: request?.windowId, fallback: () => win });
 	const controllerFor = (request?: { windowId?: number }) =>
@@ -621,10 +634,6 @@ async function handleMainRequest(
 
 		case "playback-diagnostics:reset": {
 			return resetPlaybackDiagnosticsInRenderer(win);
-		}
-
-		case "windows:list": {
-			return describeEditorWindows();
 		}
 
 		case "pointer:state": {
