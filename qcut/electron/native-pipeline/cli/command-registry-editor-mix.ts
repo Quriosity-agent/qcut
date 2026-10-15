@@ -135,6 +135,12 @@ export function createAudioMixEditorCommands({
 			"Remove a bus; its tracks go back to the master",
 			[projectId, f("--bus-id", "string", "Bus ID", { required: true })]
 		),
+		"editor:mix:loudness": ed(
+			"editor:mix:loudness",
+			"Render the mix as an export would and measure integrated LUFS, loudest short-term and momentary LUFS, and true peak",
+			[projectId],
+			["qcut editor mix loudness --project-id <id> --json"]
+		),
 		"editor:mix:master-set": ed(
 			"editor:mix:master-set",
 			"Change the master's level, pan, mute or effects",
