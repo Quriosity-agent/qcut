@@ -55,16 +55,24 @@ export function LevelFader({
 	label,
 	value,
 	testId,
+	disabled = false,
+	disabledReason,
 	...handlers
 }: MixGestureHandlers & {
 	label: string;
 	value: number;
 	testId: string;
+	/** The value follows a curve: shown, not editable here. */
+	disabled?: boolean;
+	disabledReason?: string;
 }) {
 	const gesture = useMixGesture(handlers);
 	const [draft, setDraft] = useState<string | null>(null);
 	const commitDraft = () => {
-		if (draft === null) return;
+		if (draft === null || disabled) {
+			setDraft(null);
+			return;
+		}
 		const next = Number(draft);
 		setDraft(null);
 		if (!Number.isFinite(next)) return;
@@ -74,9 +82,18 @@ export function LevelFader({
 		);
 	};
 	return (
-		<div className="flex min-w-0 items-center gap-1.5" data-testid={testId}>
+		<div
+			className={cn(
+				"flex min-w-0 items-center gap-1.5",
+				disabled && "opacity-70"
+			)}
+			data-testid={testId}
+			data-automated={disabled || undefined}
+			title={disabledReason}
+		>
 			<Slider
 				aria-label={label}
+				disabled={disabled}
 				className="min-w-12 flex-1"
 				value={[value]}
 				min={MIN_LEVEL_DB}
@@ -85,14 +102,18 @@ export function LevelFader({
 				onPointerDown={gesture.onPointerDown}
 				onValueChange={gesture.onValueChange}
 				onValueCommit={gesture.onValueCommit}
-				onDoubleClick={() => handlers.onChange(0, false)}
+				onDoubleClick={() => {
+					if (!disabled) handlers.onChange(0, false);
+				}}
 			/>
 			<Input
 				aria-label={label}
+				readOnly={disabled}
 				className="h-6 w-14 rounded-sm px-1 text-right text-[11px] tabular-nums"
 				data-testid={`${testId}-value`}
 				value={draft ?? formatLevel(value)}
 				onFocus={(event) => {
+					if (disabled) return;
 					setDraft(value.toFixed(1));
 					event.currentTarget.select();
 				}}
@@ -116,17 +137,31 @@ export function PanControl({
 	label,
 	value,
 	testId,
+	disabled = false,
+	disabledReason,
 	...handlers
 }: MixGestureHandlers & {
 	label: string;
 	value: number;
 	testId: string;
+	/** The value follows a curve: shown, not editable here. */
+	disabled?: boolean;
+	disabledReason?: string;
 }) {
 	const gesture = useMixGesture(handlers);
 	return (
-		<div className="flex min-w-0 items-center gap-1.5" data-testid={testId}>
+		<div
+			className={cn(
+				"flex min-w-0 items-center gap-1.5",
+				disabled && "opacity-70"
+			)}
+			data-testid={testId}
+			data-automated={disabled || undefined}
+			title={disabledReason}
+		>
 			<Slider
 				aria-label={label}
+				disabled={disabled}
 				className="min-w-10 flex-1"
 				value={[value]}
 				min={-1}
@@ -135,7 +170,9 @@ export function PanControl({
 				onPointerDown={gesture.onPointerDown}
 				onValueChange={gesture.onValueChange}
 				onValueCommit={gesture.onValueCommit}
-				onDoubleClick={() => handlers.onChange(0, false)}
+				onDoubleClick={() => {
+					if (!disabled) handlers.onChange(0, false);
+				}}
 			/>
 			<span className="w-8 text-right text-[10px] tabular-nums text-muted-foreground">
 				{formatPan(value)}
