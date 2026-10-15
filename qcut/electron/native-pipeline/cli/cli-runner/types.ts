@@ -555,6 +555,10 @@ export interface CLIRunOptions {
 	solo?: boolean;
 	/** Mixer: also write one WAV per bus (editor:export:start) */
 	stems?: boolean;
+	/** Mixer automation: which curve, gainDb or pan */
+	param?: string;
+	/** Mixer automation: the curve as JSON or @file */
+	points?: string;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
