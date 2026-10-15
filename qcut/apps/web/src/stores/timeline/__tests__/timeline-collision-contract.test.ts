@@ -438,6 +438,80 @@ describe("timeline collision contract", () => {
 			expect(onRejected).toHaveBeenCalledWith('Track "Main" is locked');
 		});
 
+		it("reports every other reason an add is refused", () => {
+			const cases = [
+				{
+					trackId: "missing",
+					element: { ...newElementData, startTime: 6 },
+					reason: "Track not found: missing",
+				},
+				{
+					trackId: "main",
+					element: { ...newElementData, mediaId: "", startTime: 6 },
+					reason: "Media element must have mediaId",
+				},
+			];
+			for (const { trackId, element, reason } of cases) {
+				const onRejected = vi.fn();
+				const result = useTimelineStore
+					.getState()
+					.addElementToTrack(trackId, element, { onRejected });
+				expect(result).toBeNull();
+				expect(onRejected).toHaveBeenCalledWith(reason);
+			}
+
+			setTracks([
+				...baseTracks(),
+				{ id: "text", name: "Text", type: "text", elements: [] },
+				{ id: "notes", name: "Notes", type: "markdown", elements: [] },
+			]);
+			const textRefusal = vi.fn();
+			useTimelineStore.getState().addElementToTrack(
+				"text",
+				{
+					type: "text",
+					name: "Title",
+					content: "",
+					startTime: 0,
+					duration: 2,
+					trimStart: 0,
+					trimEnd: 0,
+				} as never,
+				{ onRejected: textRefusal }
+			);
+			expect(textRefusal).toHaveBeenCalledWith(
+				"Text element must have content"
+			);
+
+			const markdownRefusal = vi.fn();
+			useTimelineStore.getState().addElementToTrack(
+				"notes",
+				{
+					type: "markdown",
+					name: "Notes",
+					startTime: 0,
+					duration: 2,
+					trimStart: 0,
+					trimEnd: 0,
+				} as never,
+				{ onRejected: markdownRefusal }
+			);
+			expect(markdownRefusal).toHaveBeenCalledWith(
+				"Markdown element must have markdownContent"
+			);
+
+			const wrongLane = vi.fn();
+			useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"text",
+					{ ...newElementData, startTime: 0 },
+					{ onRejected: wrongLane }
+				);
+			expect(wrongLane).toHaveBeenCalledOnce();
+			expect(useTimelineStore.getState().history).toHaveLength(0);
+		});
+
 		it("does not call onRejected for a successful add", () => {
 			const onRejected = vi.fn();
 			const result = useTimelineStore
