@@ -531,18 +531,14 @@ async function timelineMove(
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	if (!opts.elementId) return { success: false, error: "Missing --element-id" };
 
-	// The command's flag is --time, which parses into seekTime as a string;
-	// reading startTime here silently dropped the requested position, so the
-	// move only ever changed tracks.
-	const rawTargetTime = (opts as CLIRunOptions & { seekTime?: number | string })
-		.seekTime;
-	const targetTimeInput = rawTargetTime ?? opts.startTime;
-	const targetTime =
-		typeof targetTimeInput === "string"
-			? Number.parseFloat(targetTimeInput)
-			: targetTimeInput;
+	// The command's flag is --time (seekTime); reading startTime alone once
+	// dropped the requested position, so the move only ever changed tracks.
+	const { time: targetTime, error: timeError } = readTimeFlag(
+		opts.seekTime ?? opts.startTime
+	);
+	if (timeError) return { success: false, error: timeError };
 
-	const hasTargetTime = targetTime !== undefined && !Number.isNaN(targetTime);
+	const hasTargetTime = targetTime !== undefined;
 	if (!opts.toTrack && !hasTargetTime) {
 		return {
 			success: false,
@@ -560,6 +556,27 @@ async function timelineMove(
 		body
 	);
 	return { success: true, data };
+}
+
+/**
+ * `--time` as seconds. The parsers pass text that is not a number through
+ * unchanged, so "15oops" is refused here instead of being read as 15.
+ */
+function readTimeFlag(value: number | string | undefined): {
+	time?: number;
+	error?: string;
+} {
+	if (value === undefined) return {};
+	const time =
+		typeof value === "string"
+			? value.trim() === ""
+				? Number.NaN
+				: Number(value)
+			: value;
+	if (Number.isFinite(time) && time >= 0) return { time };
+	return {
+		error: `--time must be a number of seconds, 0 or more (got "${value}")`,
+	};
 }
 
 /** Handle timeline arrange. */
@@ -679,15 +696,11 @@ async function timelineSeek(
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 
-	const rawSeekTime = (opts as CLIRunOptions & { seekTime?: number | string })
-		.seekTime;
-	const seekTimeInput = rawSeekTime ?? opts.startTime;
-	const seekTime =
-		typeof seekTimeInput === "string"
-			? Number.parseFloat(seekTimeInput)
-			: seekTimeInput;
-
-	if (seekTime === undefined || Number.isNaN(seekTime)) {
+	const { time: seekTime, error: timeError } = readTimeFlag(
+		opts.seekTime ?? opts.startTime
+	);
+	if (timeError) return { success: false, error: timeError };
+	if (seekTime === undefined) {
 		return { success: false, error: "Missing --time" };
 	}
 
