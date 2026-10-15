@@ -36,6 +36,7 @@ import {
 	CLI_VERSION,
 	findHelpParam,
 	isEditorArea,
+	listEditorAreas,
 	printCommandHelp,
 	printCommandHelpJson,
 	printEditorAreaHelp,
@@ -158,15 +159,29 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 	}
 
 	// `editor timeline` / `editor:timeline` name an area, not a command: list
-	// its actions instead of calling the name unknown.
+	// its actions instead of calling the name unknown. Without --help the
+	// command is still incomplete, so it fails (as JSON under --json).
 	const editorArea = /^editor:([a-z0-9-]+)$/.exec(command)?.[1];
 	if (editorArea && !COMMANDS.includes(command) && isEditorArea(editorArea)) {
-		printEditorAreaHelp(editorArea, { json: argv.includes("--json") });
 		const askedForHelp = argv.includes("--help") || argv.includes("-h");
-		if (!askedForHelp) {
-			console.error(`Missing action for "editor ${editorArea}".`);
+		const json = argv.includes("--json");
+		if (askedForHelp) {
+			printEditorAreaHelp(editorArea, { json });
+			process.exit(0);
 		}
-		process.exit(askedForHelp ? 0 : 2);
+		const message = `Missing action for "editor ${editorArea}". Run "qcut editor ${editorArea} --help" to list its actions.`;
+		if (json) {
+			jsonError(message, "cli:missing-action", {
+				area: editorArea,
+				actions:
+					listEditorAreas().find(({ area }) => area === editorArea)?.actions ??
+					[],
+			});
+		} else {
+			printEditorAreaHelp(editorArea);
+			console.error(message);
+		}
+		process.exit(2);
 	}
 
 	if (!COMMANDS.includes(command)) {
@@ -1031,10 +1046,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				? undefined
 				: parseFloat(values["split-time"] as string)
 			: undefined,
+		// Text that is not a number passes through for the command to refuse;
+		// parseFloat would read "15oops" as 15.
 		seekTime: values.time
-			? Number.isNaN(parseFloat(values.time as string))
-				? undefined
-				: parseFloat(values.time as string)
+			? (parseFiniteCliNumber({ value: values.time }) ??
+				(values.time as string))
 			: undefined,
 		startTime: values["start-time"]
 			? Number.isNaN(parseFloat(values["start-time"] as string))
@@ -1343,6 +1359,7 @@ export async function main(
 			args: sessionArgv,
 			options: {
 				json: { type: "boolean", default: false },
+				flat: { type: "boolean", default: false },
 				quiet: { type: "boolean", short: "q", default: false },
 				verbose: { type: "boolean", short: "v", default: false },
 				"skip-health": { type: "boolean", default: false },
@@ -1361,6 +1378,7 @@ export async function main(
 		});
 		const baseOptions: Partial<CLIRunOptions> = {
 			json: sessionValues.json as boolean,
+			flat: sessionValues.flat as boolean,
 			quiet: sessionValues.quiet as boolean,
 			verbose: sessionValues.verbose as boolean,
 			skipHealth: sessionValues["skip-health"] as boolean,
