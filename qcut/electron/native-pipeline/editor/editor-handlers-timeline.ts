@@ -18,6 +18,12 @@ import {
 	timelineSelectByColor,
 } from "./editor-handlers-timeline-color.js";
 
+import {
+	TRACK_AUDIO_ACTIONS,
+	handleAudioMixCommand,
+	handleTrackAudioCommand,
+} from "./editor-handlers-audio-mix.js";
+
 type ProgressFn = (progress: {
 	stage: string;
 	percent: number;
@@ -72,6 +78,16 @@ export async function handleTimelineEditingCommand(
 		if (module === "track") {
 			return await dispatchTrack(client, action, options);
 		}
+		if (module === "mix") {
+			const projectId = await resolveProjectId(client, options);
+			if (!projectId) {
+				return {
+					success: false,
+					error: "No active project; pass --project-id",
+				};
+			}
+			return await handleAudioMixCommand({ client, projectId, opts: options });
+		}
 		if (module === "element" && action === "patch") {
 			const projectId = await resolveProjectId(client, options);
 			return timelineUpdateElement(client, { ...options, projectId });
@@ -106,6 +122,10 @@ async function dispatchTrack(
 		return { success: false, error: "No active project; pass --project-id" };
 	}
 	const basePath = `/api/claude/timeline/${encodeURIComponent(projectId)}`;
+
+	if (TRACK_AUDIO_ACTIONS.has(action)) {
+		return handleTrackAudioCommand({ client, action, projectId, opts });
+	}
 
 	if (action === "list") {
 		const timeline = await client.get<{
@@ -197,7 +217,7 @@ async function dispatchTrack(
 
 	return {
 		success: false,
-		error: `Unknown track action: ${action}. Available: list, create, update, move, delete`,
+		error: `Unknown track action: ${action}. Available: list, create, update, move, delete, audio-get, audio-set, mute, solo`,
 	};
 }
 
