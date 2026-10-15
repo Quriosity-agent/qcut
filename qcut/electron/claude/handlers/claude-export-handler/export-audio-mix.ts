@@ -52,6 +52,7 @@ function readBus(
 		muted: bus?.muted === true,
 		solo: bus?.solo === true,
 		effects: bus?.effects ?? neutralEffects(),
+		...(bus?.automation ? { automation: bus.automation } : {}),
 	};
 }
 
@@ -78,6 +79,7 @@ export function audioMixConfigFromTimeline(
 				solo: audio?.solo === true,
 				busId: audio?.busId ?? MASTER_BUS_ID,
 				effects: audio?.effects ?? neutralEffects(),
+				...(audio?.automation ? { automation: audio.automation } : {}),
 				ducking: audio?.ducking ?? {
 					enabled: false,
 					sourceTrackIds: [],
