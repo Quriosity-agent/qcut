@@ -3,7 +3,13 @@ import { useEditorStore } from "@/stores/editor/editor-store";
 import { useMediaStore } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 import type { TProject } from "@/types/project";
+import { handleError } from "@/lib/debug/error-handler";
 import { fitCanvasToFirstMedia } from "../first-media-canvas";
+
+vi.mock("@/lib/debug/error-handler", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@/lib/debug/error-handler")>()),
+	handleError: vi.fn(),
+}));
 
 function project(canvasMode: TProject["canvasMode"]): TProject {
 	return {
@@ -63,5 +69,30 @@ describe("fitCanvasToFirstMedia", () => {
 		await fitCanvasToFirstMedia({ mediaId: "portrait-clip" });
 
 		expect(updateProjectFps).not.toHaveBeenCalled();
+	});
+
+	it("leaves the canvas alone for a clip without a picture", async () => {
+		useMediaStore.setState({
+			mediaItems: [{ id: "song", name: "song.mp3", type: "audio" }] as never,
+		});
+		useProjectStore.setState({ activeProject: project("preset") });
+		await fitCanvasToFirstMedia({ mediaId: "song" });
+
+		expect(updateProjectCanvasSize).not.toHaveBeenCalled();
+	});
+
+	it("reports a failed save instead of throwing", async () => {
+		updateProjectCanvasSize.mockRejectedValueOnce(new Error("quota exceeded"));
+		useProjectStore.setState({ activeProject: project("preset") });
+
+		await expect(
+			fitCanvasToFirstMedia({ mediaId: "portrait-clip" })
+		).resolves.toBeUndefined();
+		expect(handleError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "quota exceeded" }),
+			expect.objectContaining({
+				operation: "Set canvas size from first element",
+			})
+		);
 	});
 });
