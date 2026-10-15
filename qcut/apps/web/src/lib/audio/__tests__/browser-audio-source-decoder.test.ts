@@ -81,6 +81,7 @@ function setup({ type = "video" }: { type?: "video" | "audio" } = {}) {
 			file: { size: 2, arrayBuffer: async () => new ArrayBuffer(2) },
 		} as unknown as MediaItem,
 		element: { id: "clip", mediaId: "source" } as MediaElement,
+		trackId: "track",
 	};
 	return { context, clip, decodeAudioData, createBuffer };
 }
