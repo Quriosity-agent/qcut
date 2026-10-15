@@ -27,6 +27,8 @@ import {
 import { cn } from "@/lib/utils";
 import { markTrackMixUndoPoint, setTrackMix } from "@/stores/audio-mix-actions";
 import { useAudioMeterStore } from "@/stores/editor/audio-meter-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { automationValueAt } from "@/lib/audio/audio-mix-automation";
 import type { AudioMixBusSettings, TimelineTrack } from "@/types/timeline";
 import {
 	LetterToggle,
@@ -34,6 +36,7 @@ import {
 	LevelMeter,
 	PanControl,
 } from "./mixer-controls";
+import { MixAutomationPopover } from "./mixer-automation-editor";
 import { MixDuckingEditor } from "./mixer-ducking-editor";
 import { MixEffectsEditor } from "./mixer-effects-editor";
 
@@ -76,11 +79,22 @@ export function TrackMixControls({
 	const output = buses.some((bus) => bus.id === settings.busId)
 		? settings.busId
 		: MASTER_AUDIO_BUS_ID;
+	const playhead = usePlaybackStore((state) => state.currentTime);
+	const levelCurve = settings.automation?.gainDb;
+	const panCurve = settings.automation?.pan;
 	return (
 		<div className="space-y-1.5">
 			<LevelFader
 				label={t("mixer.levelOf", { name })}
-				value={settings.gainDb}
+				value={
+					levelCurve?.length
+						? automationValueAt({ points: levelCurve, time: playhead })
+						: settings.gainDb
+				}
+				disabled={Boolean(levelCurve?.length)}
+				disabledReason={
+					levelCurve?.length ? t("mixer.automatedLevel") : undefined
+				}
 				testId={`${testIdPrefix}-level`}
 				onGestureStart={markTrackMixUndoPoint}
 				onChange={(gainDb, inGesture) =>
@@ -91,7 +105,15 @@ export function TrackMixControls({
 				<div className="min-w-0 flex-1">
 					<PanControl
 						label={t("mixer.panOf", { name })}
-						value={settings.pan}
+						value={
+							panCurve?.length
+								? automationValueAt({ points: panCurve, time: playhead })
+								: settings.pan
+						}
+						disabled={Boolean(panCurve?.length)}
+						disabledReason={
+							panCurve?.length ? t("mixer.automatedPan") : undefined
+						}
 						testId={`${testIdPrefix}-pan`}
 						onGestureStart={markTrackMixUndoPoint}
 						onChange={(pan, inGesture) =>
@@ -123,6 +145,15 @@ export function TrackMixControls({
 						))}
 					</SelectContent>
 				</Select>
+				<MixAutomationPopover
+					automation={settings.automation}
+					fixed={{ gainDb: settings.gainDb, pan: settings.pan }}
+					name={name}
+					testId={`${testIdPrefix}-automation`}
+					onChange={(automation) =>
+						changeTrack({ trackId: track.id, patch: { automation } })
+					}
+				/>
 			</div>
 		</div>
 	);
