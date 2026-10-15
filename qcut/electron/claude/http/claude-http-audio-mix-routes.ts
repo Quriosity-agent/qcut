@@ -7,6 +7,7 @@
  *   POST   /api/claude/mix/:projectId/buses
  *   PATCH  /api/claude/mix/:projectId/buses/:busId
  *   DELETE /api/claude/mix/:projectId/buses/:busId
+ *   POST   /api/claude/mix/:projectId/loudness   (renders, then measures)
  *
  * Each answers with the mix read back from the editor.
  *
@@ -67,7 +68,9 @@ export function registerAudioMixRoutes({
 				result.error ?? "The mixer change failed"
 			);
 		}
-		if (request.action !== "get") onChanged({ projectId: request.projectId });
+		if (request.action !== "get" && request.action !== "measure-loudness") {
+			onChanged({ projectId: request.projectId });
+		}
 		return result;
 	}
 
@@ -124,6 +127,14 @@ export function registerAudioMixRoutes({
 					: mix?.buses.find((bus) => bus.id === req.params.busId),
 			mix,
 		};
+	});
+
+	router.post("/api/claude/mix/:projectId/loudness", async (req) => {
+		const { loudness } = await run(req, {
+			action: "measure-loudness",
+			projectId: req.params.projectId,
+		});
+		return { projectId: req.params.projectId, ...loudness };
 	});
 
 	router.delete("/api/claude/mix/:projectId/buses/:busId", async (req) => {
