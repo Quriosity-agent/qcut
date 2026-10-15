@@ -648,7 +648,18 @@ export function createExtraEditorCommands({
 		"editor:screenshot:capture": ed(
 			"editor:screenshot:capture",
 			"Take a screenshot of QCut window",
-			[f("--filename", "string", "Output filename")]
+			[
+				f(
+					"--filename",
+					"string",
+					"File name inside QCut's recordings folder (~/Movies/QCut Recordings)"
+				),
+				f(
+					"--output",
+					"string",
+					"Save the screenshot at this path instead (.png added when missing)"
+				),
+			]
 		),
 	};
 }
