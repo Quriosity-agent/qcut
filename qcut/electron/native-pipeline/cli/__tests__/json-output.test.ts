@@ -72,4 +72,32 @@ describe("CLI JSON stdout", () => {
 			data: { data: { rows: "x".repeat(500_000) } },
 		});
 	});
+
+	it("prints only the command's payload with --flat", () => {
+		const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+		emitJsonResult(
+			"editor:media:list",
+			{ success: true, data: [{ id: "clip-7", duration: 16.041667 }] },
+			{ command_id: "test", duration_ms: 5 },
+			{ flat: true }
+		);
+		expect(JSON.parse(String(write.mock.calls[0]?.[0]))).toEqual([
+			{ id: "clip-7", duration: 16.041667 },
+		]);
+	});
+
+	it("keeps the error envelope with --flat", () => {
+		const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+		emitJsonResult(
+			"editor:media:list",
+			{ success: false, error: "No active window" },
+			undefined,
+			{ flat: true }
+		);
+		expect(JSON.parse(String(write.mock.calls[0]?.[0]))).toEqual({
+			status: "error",
+			error: "No active window",
+			code: "editor:media:list:failed",
+		});
+	});
 });
