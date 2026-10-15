@@ -378,6 +378,120 @@ describe("Claude HTTP Server - Timeline", () => {
 		);
 	});
 
+	it("PATCH .../tracks/:trackId sets a track colour on its own", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(
+			timelineHandler.requestTrackOperationFromRenderer
+		).mockResolvedValueOnce({ success: true, trackId: "track-1", tracks: [] });
+
+		const res = await fetch("/api/claude/timeline/proj_123/tracks/track-1", {
+			method: "PATCH",
+			body: JSON.stringify({ colorLabel: "none" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(
+			timelineHandler.requestTrackOperationFromRenderer
+		).toHaveBeenCalledWith(
+			mockWindow,
+			expect.objectContaining({
+				action: "update",
+				trackId: "track-1",
+				colorLabel: null,
+			}),
+			expect.any(String)
+		);
+	});
+
+	it("refuses a colour the editor does not offer", async () => {
+		const res = await fetch("/api/claude/timeline/proj_123/tracks/track-1", {
+			method: "PATCH",
+			body: JSON.stringify({ colorLabel: "teal" }),
+		});
+
+		expect(res.status).toBe(400);
+		expect(res.body.error).toContain(
+			"colorLabel must be one of: violet, blue, green, yellow, red, rose, orange, mango"
+		);
+	});
+
+	it("POST .../color-label colours a track's clips and reports the result", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(
+			timelineHandler.requestTrackOperationFromRenderer
+		).mockResolvedValueOnce({
+			success: true,
+			updatedCount: 3,
+			skipped: [{ elementId: "ghost", reason: "not on the timeline" }],
+			tracks: [],
+		});
+
+		const res = await fetch("/api/claude/timeline/proj_123/color-label", {
+			method: "POST",
+			body: JSON.stringify({ trackId: "guns", colorLabel: "red" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			updatedCount: 3,
+			skipped: [{ elementId: "ghost", reason: "not on the timeline" }],
+		});
+		expect(
+			timelineHandler.requestTrackOperationFromRenderer
+		).toHaveBeenCalledWith(
+			mockWindow,
+			expect.objectContaining({
+				action: "color-clips",
+				trackId: "guns",
+				colorLabel: "red",
+			}),
+			expect.any(String)
+		);
+	});
+
+	it("POST .../color-label needs clips and a colour", async () => {
+		const noColour = await fetch("/api/claude/timeline/proj_123/color-label", {
+			method: "POST",
+			body: JSON.stringify({ trackId: "guns" }),
+		});
+		expect(noColour.status).toBe(400);
+
+		const noTarget = await fetch("/api/claude/timeline/proj_123/color-label", {
+			method: "POST",
+			body: JSON.stringify({ colorLabel: "red" }),
+		});
+		expect(noTarget.status).toBe(400);
+		expect(noTarget.body.error).toContain("Give 'trackId' or 'elementIds'");
+	});
+
+	it("POST .../selection by colour returns what the editor selected", async () => {
+		const send = vi.fn();
+		const mockWindow = createMockWindow(send);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(
+			timelineHandler.requestSelectionFromRenderer
+		).mockResolvedValueOnce([
+			{ trackId: "ambience", elementId: "wind" },
+		] as never);
+
+		const res = await fetch("/api/claude/timeline/proj_123/selection", {
+			method: "POST",
+			body: JSON.stringify({ colorLabel: "green" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			selected: 1,
+			elements: [{ trackId: "ambience", elementId: "wind" }],
+		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:selectElements",
+			expect.objectContaining({ colorLabel: "green" })
+		);
+	});
+
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/split validates splitTime", async () => {
 		const res = await fetch(
 			"/api/claude/timeline/proj_123/elements/element_abc/split",
