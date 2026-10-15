@@ -222,6 +222,24 @@ describe("bus and master commands", () => {
 		});
 	});
 
+	it("waits for the editor to render the mix before measuring loudness", async () => {
+		const { client, post } = fakeClient();
+		post.mockResolvedValueOnce({
+			projectId: "p1",
+			integratedLufs: -14,
+		} as never);
+		const result = await run(client, "editor:mix:loudness");
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/mix/p1/loudness",
+			{},
+			{ timeout: 150_000 }
+		);
+		expect(result).toEqual({
+			success: true,
+			data: { projectId: "p1", integratedLufs: -14 },
+		});
+	});
+
 	it("says what to pass when nothing would change", async () => {
 		const { client } = fakeClient();
 		expect(await run(client, "editor:mix:master-set")).toEqual({
