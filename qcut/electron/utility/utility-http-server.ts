@@ -57,6 +57,7 @@ import type {
 	ClaudeRangeDeleteResponse,
 	AutoEditJob,
 } from "../types/claude-api.js";
+import type { ClaudeAudioMixResponse } from "../types/claude-audio-mix-api.js";
 import {
 	SCREEN_RECORDING_CAPTURE_MODES,
 	SCREEN_RECORDING_QUALITY_PRESETS,
@@ -328,6 +329,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			requestFromMain("track-operation", {
 				request,
 			}) as Promise<ClaudeTrackOperationResponse>,
+		/** Reads or changes the mixer through main. */
+		mutateAudioMix: (request) =>
+			requestFromMain("audio-mix-operation", {
+				request,
+			}) as Promise<ClaudeAudioMixResponse>,
 		/** Starts a transactional timeline mutation. */
 		beginTransaction: (request) =>
 			requestFromMain("transaction:begin", { request }) as Promise<Transaction>,
