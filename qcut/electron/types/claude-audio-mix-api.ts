@@ -37,6 +37,28 @@ export interface ClaudeAudioEffects {
 	limiter: { enabled: boolean; ceilingDb: number; releaseMs: number };
 }
 
+/** A point on an automation curve: a value at a time (seconds) on the timeline. */
+export interface ClaudeAudioAutomationPoint {
+	time: number;
+	value: number;
+}
+
+/**
+ * Level (dB) and pan curves over timeline time. A curve with points replaces
+ * the fixed value: straight lines between points (in dB for level), holding
+ * before the first point and after the last.
+ */
+export interface ClaudeMixAutomation {
+	gainDb?: ClaudeAudioAutomationPoint[];
+	pan?: ClaudeAudioAutomationPoint[];
+}
+
+/** Curves to set: each one given replaces the old one, null removes it. */
+export interface ClaudeMixAutomationPatch {
+	gainDb?: ClaudeAudioAutomationPoint[] | null;
+	pan?: ClaudeAudioAutomationPoint[] | null;
+}
+
 export interface ClaudeAudioDucking {
 	enabled: boolean;
 	sourceTrackIds: string[];
@@ -58,6 +80,7 @@ export interface ClaudeTrackAudioSettings {
 		defaultDuration: number;
 		curve: string;
 	};
+	automation?: ClaudeMixAutomation;
 }
 
 export interface ClaudeAudioMixBus {
@@ -68,6 +91,7 @@ export interface ClaudeAudioMixBus {
 	muted: boolean;
 	solo: boolean;
 	effects: ClaudeAudioEffects;
+	automation?: ClaudeMixAutomation;
 }
 
 export interface ClaudeTrackAudioMix {
@@ -104,6 +128,7 @@ export interface ClaudeTrackAudioPatch {
 	muted?: boolean;
 	ducking?: Partial<ClaudeAudioDucking>;
 	effects?: ClaudeAudioEffectsPatch;
+	automation?: ClaudeMixAutomationPatch;
 }
 
 export interface ClaudeAudioBusPatch {
@@ -113,6 +138,7 @@ export interface ClaudeAudioBusPatch {
 	muted?: boolean;
 	solo?: boolean;
 	effects?: ClaudeAudioEffectsPatch;
+	automation?: ClaudeMixAutomationPatch;
 }
 
 /** Loudness of the rendered mix (ITU-R BS.1770-4 / EBU R 128). */
