@@ -105,6 +105,7 @@ import {
 } from "../claude-operation-log.js";
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
+import { describeRefusedMove } from "./timeline-move-refusal.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -1378,22 +1379,25 @@ export function registerSharedRoutes(
 			if (placed.trackId === undefined) {
 				return { moved: true, verified: false };
 			}
-			if (placed.trackId !== req.body.toTrackId) {
-				throw new HttpError(
-					409,
-					`The editor refused the move: a track plays one element at a time, and the target span on ${req.body.toTrackId} is occupied. The element is still on ${placed.trackId} at ${placed.startTime}s.`
-				);
-			}
 			// A move within one track keeps the track id, so the requested time is
 			// the only evidence that the placement was refused.
-			if (
-				typeof req.body.newStartTime === "number" &&
-				Math.abs(placed.startTime - req.body.newStartTime) >
-					MOVE_START_TIME_TOLERANCE_SECONDS
-			) {
+			const refused =
+				placed.trackId !== req.body.toTrackId ||
+				(typeof req.body.newStartTime === "number" &&
+					Math.abs(placed.startTime - req.body.newStartTime) >
+						MOVE_START_TIME_TOLERANCE_SECONDS);
+			if (refused) {
 				throw new HttpError(
 					409,
-					`The editor refused the move: a track plays one element at a time, and ${req.body.newStartTime}s on ${placed.trackId} is occupied. The element is still at ${placed.startTime}s.`
+					describeRefusedMove({
+						timeline,
+						elementId: req.params.elementId,
+						toTrackId: req.body.toTrackId,
+						startTime:
+							typeof req.body.newStartTime === "number"
+								? req.body.newStartTime
+								: undefined,
+					})
 				);
 			}
 			return {
