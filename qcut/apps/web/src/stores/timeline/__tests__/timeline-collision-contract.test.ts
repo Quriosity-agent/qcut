@@ -407,6 +407,65 @@ describe("timeline collision contract", () => {
 		});
 	});
 
+	describe("refusal reasons", () => {
+		it("tells the caller which clip blocks an add and where it fits", () => {
+			const onRejected = vi.fn();
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 3 },
+					{ onRejected }
+				);
+			expect(result).toBeNull();
+			expect(onRejected).toHaveBeenCalledWith(
+				'3s–5s on track "Main" overlaps "b" (2s–4s). A track plays one element at a time; the next free start for this 2s clip is 6s.'
+			);
+		});
+
+		it("says the track is locked rather than occupied", () => {
+			const tracks = baseTracks();
+			tracks[0].locked = true;
+			setTracks(tracks);
+			const onRejected = vi.fn();
+			useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 6 },
+					{ onRejected }
+				);
+			expect(onRejected).toHaveBeenCalledWith('Track "Main" is locked');
+		});
+
+		it("does not call onRejected for a successful add", () => {
+			const onRejected = vi.fn();
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 6 },
+					{ onRejected }
+				);
+			expect(result).not.toBeNull();
+			expect(onRejected).not.toHaveBeenCalled();
+		});
+
+		it("reports whether updateElementStartTime moved the element", () => {
+			const store = useTimelineStore.getState();
+			expect(store.updateElementStartTime("main", "a", 3)).toBe(false);
+			expect(store.updateElementStartTime("main", "c", 6)).toBe(true);
+			expect(store.updateElementStartTime("main", "missing", 6)).toBe(false);
+
+			const tracks = baseTracks();
+			tracks[0].locked = true;
+			setTracks(tracks);
+			expect(
+				useTimelineStore.getState().updateElementStartTime("main", "c", 6)
+			).toBe(false);
+		});
+	});
+
 	describe("separateAudio stacking", () => {
 		it("stacks a new audio lane when the existing one is occupied there", () => {
 			const tracks: TimelineTrack[] = [
