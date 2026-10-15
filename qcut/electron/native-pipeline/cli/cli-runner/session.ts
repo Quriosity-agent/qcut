@@ -310,6 +310,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				replace: { type: "boolean", default: false },
 				poll: { type: "boolean", default: false },
 				json: { type: "boolean", default: false },
+				flat: { type: "boolean", default: false },
 				"negative-prompt": { type: "string" },
 				"voice-id": { type: "string" },
 				// sticker options
@@ -473,6 +474,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.replace) result.replace = true;
 		if (values.poll) result.poll = true;
 		if (values.json) result.json = true;
+		if (values.flat) result.flat = true;
 		if (values.time) {
 			result.seekTime = Number.isNaN(parseFloat(values.time as string))
 				? undefined
@@ -633,9 +635,12 @@ export async function runSession(
 			}
 
 			if (output === "json") {
-				emitJsonResult(options.command, result, {
-					sessionDuration: (Date.now() - startTime) / 1000,
-				});
+				emitJsonResult(
+					options.command,
+					result,
+					{ sessionDuration: (Date.now() - startTime) / 1000 },
+					{ flat: options.flat }
+				);
 			} else if (result.success) {
 				if (result.outputPath) {
 					process.stderr.write(`Output: ${result.outputPath}\n`);
