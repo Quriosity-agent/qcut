@@ -20,6 +20,8 @@ export const AUDIO_MIX_PARSE_OPTIONS = {
 	solo: { type: "boolean" },
 	"no-solo": { type: "boolean" },
 	stems: { type: "boolean" },
+	param: { type: "string" },
+	points: { type: "string" },
 } as const;
 
 type AudioMixOptions = Pick<
@@ -34,6 +36,8 @@ type AudioMixOptions = Pick<
 	| "mute"
 	| "solo"
 	| "stems"
+	| "param"
+	| "points"
 >;
 
 /** A number, NaN when the text is not one (the handler names the flag). */
@@ -63,6 +67,8 @@ export function readAudioMixOptions(
 		mute: readSwitch(values.mute, values["no-mute"]),
 		solo: readSwitch(values.solo, values["no-solo"]),
 		stems: values.stems === true ? true : undefined,
+		param: values.param as string | undefined,
+		points: values.points as string | undefined,
 	};
 	return Object.fromEntries(
 		Object.entries(options).filter(([, value]) => value !== undefined)
