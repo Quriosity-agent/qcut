@@ -262,6 +262,27 @@ describe("mixer routes", () => {
 		expect(result).toMatchObject({ busId: "sfx", bus: { id: "sfx" } });
 	});
 
+	it("measures loudness without marking the project changed", async () => {
+		const loudness = {
+			integratedLufs: -14.2,
+			maxShortTermLufs: -11.8,
+			maxMomentaryLufs: -9.5,
+			truePeakDbtp: -1.1,
+			samplePeakDb: -1.3,
+			durationSeconds: 92,
+		};
+		const mutate = vi.fn(async () => ({ success: true, loudness }));
+		const { call, onChanged } = routes(mutate);
+		expect(
+			await call("POST /api/claude/mix/:projectId/loudness", { projectId: "p" })
+		).toEqual({ projectId: "p", ...loudness });
+		expect(mutate).toHaveBeenCalledWith(
+			{ action: "measure-loudness", projectId: "p" },
+			undefined
+		);
+		expect(onChanged).not.toHaveBeenCalled();
+	});
+
 	it("says the mixer is unavailable when the editor cannot reach it", async () => {
 		const { call } = routes(undefined);
 		await expect(
