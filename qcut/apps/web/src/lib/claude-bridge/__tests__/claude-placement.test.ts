@@ -105,6 +105,13 @@ describe("resolveClaudePlacement", () => {
 				fps: 24,
 			})
 		).toThrow("Element not found for after: ghost");
+		expect(() =>
+			resolveClaudePlacement({
+				element: { after: "", duration: 2 },
+				tracks,
+				fps: 24,
+			})
+		).toThrow("after must be an element id");
 	});
 
 	it("converts whole frames at the project frame rate", () => {
