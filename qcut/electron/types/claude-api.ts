@@ -1,6 +1,10 @@
 /** Shared type definitions for Claude Code Integration API. */
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import type { StickerLabRestrictedMediaMetadata } from "./sticker-lab-media-metadata.js";
+import type {
+	ClaudeAudioMixBus,
+	ClaudeTrackAudioSettings,
+} from "./claude-audio-mix-api.js";
 
 // Response Types
 
@@ -83,6 +87,8 @@ export interface ClaudeTimeline {
 	 * explicit target projectId must compare it against this value.
 	 */
 	projectId?: string;
+	/** The project's buses and master; each audio track names its bus. */
+	audioMix?: { master: ClaudeAudioMixBus; buses: ClaudeAudioMixBus[] };
 }
 
 export interface ClaudeTrack {
@@ -98,6 +104,9 @@ export interface ClaudeTrack {
 	locked?: boolean;
 	/** Default colour for clips on this track that set none of their own. */
 	colorLabel?: string;
+	muted?: boolean;
+	/** Mixer settings of a track that carries audio. */
+	audio?: ClaudeTrackAudioSettings;
 }
 
 export interface ClaudeTransition {
