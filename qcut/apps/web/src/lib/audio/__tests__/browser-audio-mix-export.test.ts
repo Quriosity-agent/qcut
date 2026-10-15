@@ -170,6 +170,31 @@ describe("export audio mix", () => {
 		expect(voicePath).toEqual([...strip, "delay", ...toDestination]);
 	});
 
+	it("builds only the stem bus's tracks, through a neutral master", () => {
+		const mix = resolveExportAudioMix({
+			tracks: [track("guns", { busId: "sfx" }), track("voice", { gainDb: -3 })],
+			audioMix: {
+				...withBus,
+				master: { ...withBus.master, gainDb: -6 },
+			},
+		});
+		if (!mix) throw new Error("expected a mix");
+		const { context, nodes } = fakeContext();
+		const inputs = buildExportAudioMix({
+			context,
+			mix,
+			duckingSources: new Map(),
+			lookaheadSeconds: 0.006,
+			clipStages: 2,
+			stemBusId: "sfx",
+		});
+		expect([...inputs.keys()]).toEqual(["guns"]);
+		// The first gain stages built are the master's input and makeup; its
+		// level stage follows them and stays at unity for a stem.
+		const masterLevel = nodes.filter((node) => node.kind === "gain")[2];
+		expect((masterLevel.gain as ReturnType<typeof param>).value).toBe(1);
+	});
+
 	it("measures the editor meter's level: RMS of the mono mix over 2048 samples", () => {
 		const sampleRate = 48_000;
 		const length = sampleRate;
