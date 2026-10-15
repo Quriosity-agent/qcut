@@ -267,6 +267,8 @@ export interface TimelineStore {
 			pushHistory?: boolean;
 			selectElement?: boolean;
 			collision?: "reject" | "insert" | "overwrite";
+			/** Receives the reason when the add is refused (null is returned). */
+			onRejected?: (reason: string) => void;
 		}
 	) => string | null;
 	addTextGroupAtTime: (input: {
@@ -302,13 +304,16 @@ export interface TimelineStore {
 		duration: number,
 		pushHistory?: boolean
 	) => void;
-	/** Update the start time of an element */
+	/**
+	 * Update the start time of an element (and its group). Returns false when
+	 * the move is refused: a locked track, a missing element, or a collision.
+	 */
 	updateElementStartTime: (
 		trackId: string,
 		elementId: string,
 		startTime: number,
 		pushHistory?: boolean
-	) => void;
+	) => boolean;
 	slipElement: (input: {
 		trackId: string;
 		elementId: string;
