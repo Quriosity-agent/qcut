@@ -11,6 +11,7 @@ import {
 } from "@/lib/audio/audio-mix-settings";
 import { resolveAudioMixRouting } from "@/lib/audio/audio-mix-routing";
 import { measureProjectMixLoudness } from "@/lib/audio/project-mix-loudness";
+import { renderProjectMixStems } from "@/lib/audio/project-mix-stems";
 import {
 	AudioMixActionError,
 	carriesAudio,
@@ -141,6 +142,14 @@ async function applyAudioMixOperation(
 			return answer({
 				reroutedTrackIds: await removeMixBus({ busId: request.busId }),
 			});
+		case "render-stems":
+			return {
+				success: true,
+				stems: await renderProjectMixStems({
+					outputDir: request.outputDir,
+					fileNamePrefix: request.fileNamePrefix,
+				}),
+			};
 		case "measure-loudness": {
 			const loudness = await measureProjectMixLoudness();
 			if (!loudness) refuse("invalid", "The timeline has no audio to measure");
