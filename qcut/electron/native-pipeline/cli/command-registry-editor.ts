@@ -462,11 +462,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"number",
 			"Target time in seconds (omit to keep the current one)"
 		),
-		f("--to-track", "string", "Target track", { required: true }),
-		f("--ripple", "boolean", "Ripple edit", { default: false }),
-		f("--cross-track-ripple", "boolean", "Cross-track ripple", {
-			default: false,
-		}),
+		f(
+			"--to-track",
+			"string",
+			"Target track (omit to stay on the current one); give this, --time, or both"
+		),
 	]),
 	"editor:timeline:arrange": ed(
 		"editor:timeline:arrange",
