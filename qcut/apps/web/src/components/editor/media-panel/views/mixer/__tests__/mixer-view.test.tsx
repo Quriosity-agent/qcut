@@ -112,6 +112,28 @@ describe("mixer panel", () => {
 		expect(trackAudio("guns")?.audio?.busId).toBe(busId);
 	});
 
+	it("writes a level curve from the automation editor and greys the fader out", async () => {
+		render(<MixerView />);
+		await act(async () => {
+			fireEvent.click(screen.getByTestId("mixer-track-guns-automation"));
+		});
+		await act(async () => {
+			fireEvent.click(
+				await screen.findByTestId(
+					"mixer-track-guns-automation-editor-gainDb-add"
+				)
+			);
+		});
+		expect(trackAudio("guns")?.audio?.automation).toEqual({
+			gainDb: [{ time: 0, value: 0 }],
+		});
+		expect(
+			screen
+				.getByTestId("mixer-track-guns-level")
+				.getAttribute("data-automated")
+		).toBe("true");
+	});
+
 	it("sets the master's level and saves it", async () => {
 		render(<MixerView />);
 		await act(async () => {
