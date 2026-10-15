@@ -1209,6 +1209,8 @@ export interface TimelineTrack {
 	hidden?: boolean;
 	locked?: boolean;
 	isMain?: boolean;
+	/** Default colour for clips on this track that set no colorLabel of their own. */
+	colorLabel?: string;
 }
 
 // ---------------------------------------------------------------------------
