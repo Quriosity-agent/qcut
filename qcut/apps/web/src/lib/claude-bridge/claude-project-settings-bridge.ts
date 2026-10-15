@@ -81,8 +81,46 @@ export function mergeProjectSettings({
  */
 const pendingByProject = new Map<string, ClaudeProjectSettingsUpdate>();
 let unsubscribeProjectStore: (() => void) | null = null;
-/** What was last written to project.qcut, so unchanged state is not rewritten. */
+/** What project.qcut is known to hold, so unchanged state is not rewritten. */
 let lastMirroredSettings: string | null = null;
+
+interface MirrorWrite {
+	projectApi: PlatformClaudeProjectAPI;
+	projectId: string;
+	settings: ClaudeProjectSettingsUpdate;
+	key: string;
+}
+
+/** The newest state, waiting for the write in flight to finish. */
+let queuedMirror: MirrorWrite | null = null;
+let mirrorInFlight = false;
+
+/**
+ * Writes one state at a time, always the newest. Overlapping writes could
+ * finish out of order and leave an older canvas in project.qcut. A state
+ * counts as mirrored only once its write succeeds, so a failed write is tried
+ * again on the next store change.
+ */
+async function drainMirrorQueue(): Promise<void> {
+	mirrorInFlight = true;
+	try {
+		while (queuedMirror) {
+			const next = queuedMirror;
+			queuedMirror = null;
+			if (next.key === lastMirroredSettings) continue;
+			try {
+				await next.projectApi.updateSettings(next.projectId, next.settings, {
+					broadcast: false,
+				});
+				lastMirroredSettings = next.key;
+			} catch (error) {
+				console.error("[ClaudeProjectSettingsBridge] Mirror failed:", error);
+			}
+		}
+	} finally {
+		mirrorInFlight = false;
+	}
+}
 
 /**
  * Writes the open project's canvas, frame rate and background into its
@@ -109,13 +147,11 @@ function mirrorOpenProjectSettings({
 		backgroundColor: project.backgroundColor,
 	};
 	const key = JSON.stringify([project.id, settings]);
-	if (key === lastMirroredSettings) return;
-	lastMirroredSettings = key;
-	projectApi
-		.updateSettings(project.id, settings, { broadcast: false })
-		.catch((error) => {
-			console.error("[ClaudeProjectSettingsBridge] Mirror failed:", error);
-		});
+	// While a write is in flight even a known state is queued: it may need to
+	// overwrite what that write is putting there.
+	if (!mirrorInFlight && key === lastMirroredSettings) return;
+	queuedMirror = { projectApi, projectId: project.id, settings, key };
+	if (!mirrorInFlight) void drainMirrorQueue();
 }
 
 async function applyToActiveProject({
@@ -204,4 +240,5 @@ export function cleanupClaudeProjectSettingsBridge(): void {
 	unsubscribeProjectStore = null;
 	pendingByProject.clear();
 	lastMirroredSettings = null;
+	queuedMirror = null;
 }
