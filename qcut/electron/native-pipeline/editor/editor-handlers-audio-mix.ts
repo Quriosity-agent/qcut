@@ -4,7 +4,8 @@
  * - `editor:track:audio-get|audio-set|mute|solo` read or change one audio
  *   track's mixer settings;
  * - `editor:mix:export|bus-list|bus-create|bus-set|bus-remove|master-set`
- *   read the whole mix or change its buses and master.
+ *   read the whole mix or change its buses and master;
+ * - `editor:mix:loudness` renders the mix and measures its loudness.
  *
  * The editor checks every value and answers with what it now holds, which is
  * what these commands print.
@@ -261,6 +262,15 @@ export async function handleAudioMixCommand({
 				);
 				return { success: true, data: { projectId, bus } };
 			}
+			case "loudness": {
+				const loudness = await client.post(
+					`${path}/loudness`,
+					{},
+					// The editor renders the whole mix before measuring.
+					{ timeout: 150_000 }
+				);
+				return { success: true, data: loudness };
+			}
 			case "bus-remove": {
 				const busId = opts.busId?.trim();
 				if (!busId) return { success: false, error: "Missing --bus-id" };
@@ -280,7 +290,7 @@ export async function handleAudioMixCommand({
 			default:
 				return {
 					success: false,
-					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set`,
+					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set, loudness`,
 				};
 		}
 	} catch (error) {
