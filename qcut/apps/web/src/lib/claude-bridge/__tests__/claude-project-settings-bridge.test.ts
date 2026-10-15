@@ -229,4 +229,69 @@ describe("Claude project settings bridge", () => {
 
 		expect(projectApi.updateSettings).not.toHaveBeenCalled();
 	});
+
+	it("retries a mirror write that failed", async () => {
+		const consoleError = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		projectApi.updateSettings.mockRejectedValueOnce(new Error("disk full"));
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: "p1",
+		});
+		setupClaudeProjectSettingsBridge();
+
+		useProjectStore.setState({
+			activeProject: { ...createProject(), fps: 24 },
+		});
+		expect(projectApi.updateSettings).toHaveBeenCalledOnce();
+		await vi.waitFor(() =>
+			expect(consoleError).toHaveBeenCalledWith(
+				"[ClaudeProjectSettingsBridge] Mirror failed:",
+				expect.any(Error)
+			)
+		);
+
+		// Any later store change tries the same settings again.
+		useProjectStore.setState({ isLoading: false });
+		expect(projectApi.updateSettings).toHaveBeenCalledTimes(2);
+		expect(projectApi.updateSettings).toHaveBeenLastCalledWith(
+			"p1",
+			expect.objectContaining({ fps: 24 }),
+			{ broadcast: false }
+		);
+	});
+
+	it("writes one state at a time and finishes on the newest", async () => {
+		let finishFirst: () => void = () => {};
+		projectApi.updateSettings.mockImplementationOnce(
+			() =>
+				new Promise<undefined>((resolve) => {
+					finishFirst = () => resolve(undefined);
+				})
+		);
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: "p1",
+		});
+		setupClaudeProjectSettingsBridge();
+
+		for (const fps of [24, 25, 50]) {
+			useProjectStore.setState({
+				activeProject: { ...createProject(), fps },
+			});
+		}
+		// Only the first write is in flight; the rest wait for it.
+		expect(projectApi.updateSettings).toHaveBeenCalledOnce();
+
+		finishFirst();
+		await vi.waitFor(() =>
+			expect(projectApi.updateSettings).toHaveBeenCalledTimes(2)
+		);
+		expect(projectApi.updateSettings).toHaveBeenLastCalledWith(
+			"p1",
+			expect.objectContaining({ fps: 50 }),
+			{ broadcast: false }
+		);
+	});
 });
