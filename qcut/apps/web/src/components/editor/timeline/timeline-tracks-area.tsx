@@ -35,6 +35,9 @@ import type { SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
 import { getTimelineElementEndTime } from "@/lib/timeline";
 import { cn } from "@/lib/utils";
 import { TimelineTrackLabel } from "./timeline-track-label";
+import { TimelineColorLabelMenu } from "./timeline-color-label-menu";
+import { resolveTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineVisibleRange } from "./timeline-viewport";
 import { isTimelineEntityTarget } from "./timeline-click-target";
 
@@ -354,6 +357,19 @@ export function TimelineTracksArea({
 											</div>
 										</ContextMenuTrigger>
 										<ContextMenuContent className="z-200">
+											<TimelineColorLabelMenu
+												currentColorLabel={resolveTimelineColorLabel({
+													value: track.colorLabel,
+												})}
+												onColorLabelChange={({ colorLabel }) =>
+													useTimelineStore.getState().setTrackColorLabel({
+														trackId: track.id,
+														colorLabel,
+													})
+												}
+												groupLabelKey="timeline.menu.trackColor"
+												clearLabelKey="timeline.menu.clearTrackColor"
+											/>
 											{(track.type === "media" || track.type === "audio") && (
 												<ContextMenuItem
 													onClick={(e) => {
