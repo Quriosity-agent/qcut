@@ -315,7 +315,8 @@ export interface CLIRunOptions {
 	index?: number;
 	toTrack?: string;
 	splitTime?: number;
-	seekTime?: number;
+	/** Seconds from --time; the raw text when it is not a number, so the command can refuse it. */
+	seekTime?: number | string;
 	startTime?: number;
 	endTime?: number;
 	newName?: string;
