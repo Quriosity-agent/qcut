@@ -1,5 +1,8 @@
 import type { TimelineTrack } from "@/types/timeline";
-import type { TimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
+import {
+	resolveEffectiveColorLabel,
+	type TimelineColorLabel,
+} from "@/lib/timeline/timeline-color-labels";
 import { blockedByTrackLock } from "./timeline-lock-guard";
 import type { SelectedElement } from "./types";
 import type {
@@ -55,7 +58,10 @@ export function findTimelineElementsByColorLabel({
 }): SelectedElement[] {
 	return tracks.flatMap((track) =>
 		track.elements
-			.filter((element) => element.colorLabel === colorLabel)
+			.filter(
+				(element) =>
+					resolveEffectiveColorLabel({ element, track }) === colorLabel
+			)
 			.map((element) => ({ trackId: track.id, elementId: element.id }))
 	);
 }
@@ -113,6 +119,38 @@ export function createTimelineColorLabelOperations({
 			});
 			set({ selectedElements, selectedTransition: null });
 			return selectedElements.length;
+		},
+
+		setTrackColorLabel: ({
+			trackId,
+			colorLabel,
+			pushHistory = true,
+		}: {
+			trackId: string;
+			colorLabel?: TimelineColorLabel;
+			pushHistory?: boolean;
+		}): boolean => {
+			const track = get()._tracks.find((candidate) => candidate.id === trackId);
+			if (!track || track.colorLabel === colorLabel) return false;
+			if (
+				blockedByTrackLock({
+					tracks: get()._tracks,
+					operation: "Set Track Color Label",
+					trackIds: [trackId],
+				})
+			) {
+				return false;
+			}
+
+			if (pushHistory) get().pushHistory();
+			deps.updateTracksAndSave(
+				get()._tracks.map((candidate) => {
+					if (candidate.id !== trackId) return candidate;
+					const { colorLabel: _previous, ...rest } = candidate;
+					return colorLabel ? { ...rest, colorLabel } : rest;
+				})
+			);
+			return true;
 		},
 	};
 }
