@@ -91,6 +91,8 @@ export interface ClaudeTrack {
 	elements: ClaudeElement[];
 	transitions?: ClaudeTransition[];
 	hidden?: boolean;
+	/** A locked track refuses every edit, so a refused move can say why. */
+	locked?: boolean;
 }
 
 export interface ClaudeTransition {
