@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
+import {
+	createDefaultAudioMixBus,
+	createDefaultProjectAudioMixSettings,
+	normalizeTrackAudioSettings,
+} from "../audio-mix-settings";
 import { DEFAULT_MEDIA_AUDIO_SETTINGS } from "../audio-properties";
 import { renderBrowserTimelineAudio } from "../browser-audio-export";
 
@@ -165,5 +170,35 @@ describe("browser audio export dynamics lookahead", () => {
 				channel * 1_000_000 + LOOKAHEAD_FRAMES + 95_999
 			);
 		}
+	});
+
+	it("also trims the track, bus and master strips a project mix adds", async () => {
+		const lengths: number[] = [];
+		stubOfflineContext({ lengths });
+		// Clip strip, track strip, bus strip, master strip: two each.
+		const mixLatency = 4 * LOOKAHEAD_FRAMES;
+
+		const rendered = await renderBrowserTimelineAudio({
+			tracks: [
+				{
+					...track,
+					audio: normalizeTrackAudioSettings({ audio: { busId: "music" } }),
+				},
+			],
+			mediaItems: [mediaItem],
+			totalDuration: 2,
+			fps: 30,
+			audioMix: {
+				master: {
+					...createDefaultProjectAudioMixSettings().master,
+					gainDb: -3,
+				},
+				buses: [createDefaultAudioMixBus({ id: "music", name: "Music" })],
+			},
+		});
+
+		expect(lengths).toEqual([96_000 + mixLatency]);
+		expect(rendered?.length).toBe(96_000);
+		expect(rendered?.getChannelData(0)[0]).toBe(mixLatency);
 	});
 });
