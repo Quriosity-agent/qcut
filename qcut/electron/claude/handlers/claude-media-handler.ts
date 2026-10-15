@@ -865,6 +865,7 @@ export function setupClaudeMediaIPC(): void {
 module.exports = {
 	setupClaudeMediaIPC,
 	listMediaFiles,
+	findMediaFile,
 	getMediaInfo,
 	importMediaFile,
 	deleteMediaFile,
