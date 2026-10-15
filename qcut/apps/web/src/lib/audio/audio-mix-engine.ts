@@ -15,6 +15,7 @@ import { resolveAudioMixRouting } from "./audio-mix-routing";
 import {
 	type MixStripNodes,
 	type SetMixParameter,
+	applyMixStripAutomation,
 	applyMixStripEffects,
 	applyMixStripLevel,
 	createMixStripNodes,
@@ -48,6 +49,7 @@ interface TrackStrip extends ProcessingStrip {
 interface BusStrip extends ProcessingStrip {
 	busId: string;
 	settings: AudioMixBusSettings;
+	silenced: boolean;
 }
 
 export interface AudioMixMeterSnapshot {
@@ -79,6 +81,41 @@ function smooth({
 		context.currentTime,
 		Math.max(0.001, timeConstant)
 	);
+}
+
+/** The timeline time the strips' automation was last read at. */
+let automationTime = 0;
+
+/**
+ * Moves every automated level and pan to its curve's value at `time`; called
+ * on each playback frame and on every seek.
+ */
+export function applyAudioMixAutomation(time: number) {
+	const context = getAudioMixContext();
+	automationTime = time;
+	if (!context) return;
+	const set = smoothly({ context });
+	for (const strip of trackStrips.values()) {
+		applyMixStripAutomation({
+			strip,
+			automation: strip.settings.automation,
+			silenced: strip.muted,
+			time,
+			set,
+		});
+	}
+	for (const strip of [
+		...busStrips.values(),
+		...(masterStrip ? [masterStrip] : []),
+	]) {
+		applyMixStripAutomation({
+			strip,
+			automation: strip.settings.automation,
+			silenced: strip.silenced,
+			time,
+			set,
+		});
+	}
 }
 
 export function getAudioMixContext(): AudioContext | null {
@@ -162,6 +199,7 @@ function ensureMasterStrip({ context }: { context: AudioContext }): BusStrip {
 		...createProcessingStrip({ context }),
 		busId: MASTER_AUDIO_BUS_ID,
 		settings,
+		silenced: false,
 	};
 	strip.output.connect(context.destination);
 	masterStrip = strip;
@@ -178,7 +216,12 @@ function ensureBusStrip({
 	const existing = busStrips.get(busId);
 	if (existing) return existing;
 	const settings = createDefaultAudioMixBus({ id: busId, name: busId });
-	const strip = { ...createProcessingStrip({ context }), busId, settings };
+	const strip = {
+		...createProcessingStrip({ context }),
+		busId,
+		settings,
+		silenced: false,
+	};
 	strip.output.connect(ensureMasterStrip({ context }).input);
 	busStrips.set(busId, strip);
 	return strip;
@@ -258,12 +301,20 @@ function updateBusStrip({
 }) {
 	const set = smoothly({ context });
 	strip.settings = settings;
+	strip.silenced = silenced;
 	applyMixStripEffects({ strip, effects: settings.effects, set });
 	applyMixStripLevel({
 		strip,
 		gainDb: settings.gainDb,
 		pan: settings.pan,
 		silenced,
+		set,
+	});
+	applyMixStripAutomation({
+		strip,
+		automation: settings.automation,
+		silenced,
+		time: automationTime,
 		set,
 	});
 }
@@ -313,6 +364,13 @@ export function syncAudioMixEngine({
 			gainDb: track.settings.gainDb,
 			pan: track.settings.pan,
 			silenced: track.silenced,
+			set,
+		});
+		applyMixStripAutomation({
+			strip,
+			automation: track.settings.automation,
+			silenced: track.silenced,
+			time: automationTime,
 			set,
 		});
 		routeTrack({ strip, busId: track.busId, context });
