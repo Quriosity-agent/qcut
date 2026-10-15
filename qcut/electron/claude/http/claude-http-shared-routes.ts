@@ -110,6 +110,10 @@ import { readColorLabelField } from "./timeline-color-request.js";
 import { withMediaProbes } from "../handlers/claude-media-probe.js";
 import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
+import {
+	type MutateAudioMix,
+	registerAudioMixRoutes,
+} from "./claude-http-audio-mix-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 import {
@@ -212,6 +216,8 @@ export interface WindowAccessor {
 		request: ClaudeTrackOperationRequest,
 		correlationId?: string
 	): Promise<ClaudeTrackOperationResponse>;
+	/** Read or change the mixer: tracks' mix settings, buses, master. */
+	mutateAudioMix?: MutateAudioMix;
 	/** Begin a grouped transaction */
 	beginTransaction(request?: TransactionRequest): Promise<Transaction>;
 	/** Commit a grouped transaction */
@@ -1545,6 +1551,11 @@ export function registerSharedRoutes(
 	});
 
 	registerTransactionRoutes({ router, accessor });
+	registerAudioMixRoutes({
+		router,
+		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
+		onChanged: scheduleProjectJsonAutoSync,
+	});
 
 	// ==========================================================================
 	// Project routes
