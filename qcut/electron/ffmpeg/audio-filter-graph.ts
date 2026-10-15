@@ -1,4 +1,9 @@
-import type { AudioCrossfade, AudioFile } from "../ffmpeg/types";
+import type {
+	AudioCrossfade,
+	AudioFile,
+	AudioMixConfig,
+} from "../ffmpeg/types";
+import { appendAudioMixGraph, isNeutralAudioMix } from "./audio-mix-graph";
 import {
 	buildAudioEffectTransforms,
 	buildAudioEnvelopeFilter,
@@ -446,11 +451,14 @@ export function buildTimelineAudioFilters({
 	audioCrossfades = [],
 	audioStartIndex,
 	fps,
+	audioMixConfig,
 }: {
 	audioFiles: AudioFile[];
 	audioCrossfades?: AudioCrossfade[];
 	audioStartIndex: number;
 	fps: number;
+	/** Track, bus and master settings; a neutral mix changes nothing. */
+	audioMixConfig?: AudioMixConfig;
 }): AudioFilterGraph {
 	if (audioFiles.length === 0) {
 		return { mapAudio: null, filterSteps: [] };
@@ -463,7 +471,10 @@ export function buildTimelineAudioFilters({
 		(item) => item.envelopes.length > 0
 	);
 
+	const mix = isNeutralAudioMix(audioMixConfig) ? undefined : audioMixConfig;
+
 	if (
+		!mix &&
 		preparedAudioFiles.length === 1 &&
 		!hasTransitionEnvelopes &&
 		canMapAudioInputDirectly({
@@ -575,6 +586,17 @@ export function buildTimelineAudioFilters({
 		mixedLabels.push(`[${outputLabel}]`);
 	}
 
+	if (mix) {
+		const mixed = appendAudioMixGraph({
+			inputs: preparedAudioFiles.map((item, index) => ({
+				trackId: item.file.trackId,
+				label: mixedLabels[index],
+			})),
+			config: mix,
+			filterSteps,
+		});
+		return { mapAudio: mixed ? `[${mixed}]` : null, filterSteps };
+	}
 	if (mixedLabels.length === 1) {
 		return { mapAudio: mixedLabels[0], filterSteps };
 	}
