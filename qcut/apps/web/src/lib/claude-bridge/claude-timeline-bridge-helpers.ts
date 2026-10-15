@@ -669,6 +669,22 @@ function getElementStartTime({
 	return 0;
 }
 
+/** Whether the request itself says how long the element is. */
+function requestsDuration({
+	element,
+}: {
+	element: Partial<ClaudeElement>;
+}): boolean {
+	if (typeof element.duration === "number" && element.duration > 0) {
+		return true;
+	}
+	return (
+		typeof element.startTime === "number" &&
+		typeof element.endTime === "number" &&
+		element.endTime > element.startTime
+	);
+}
+
 /** Derive element duration from start/end times or use fallback. */
 function getElementDuration({
 	element,
@@ -884,10 +900,22 @@ export async function addClaudeMediaElement({
 
 	const resolvedId = mediaItem.id;
 	const resolvedName = mediaItem.name;
-	const fallbackDuration =
+	const knownDuration =
 		typeof mediaItem.duration === "number" && mediaItem.duration > 0
 			? mediaItem.duration
-			: DEFAULT_MEDIA_DURATION_SECONDS;
+			: undefined;
+	// A still has no length of its own, but a video or audio clip placed at a
+	// guessed length would be silently wrong, so ask for one instead.
+	if (
+		knownDuration === undefined &&
+		mediaItem.type !== "image" &&
+		!requestsDuration({ element })
+	) {
+		throw new Error(
+			`The length of "${resolvedName}" is not known yet; pass duration (seconds) or durationFrames`
+		);
+	}
+	const fallbackDuration = knownDuration ?? DEFAULT_MEDIA_DURATION_SECONDS;
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
 		element,
