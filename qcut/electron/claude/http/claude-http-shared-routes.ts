@@ -263,6 +263,7 @@ export interface WindowAccessor {
 
 export interface SharedRouteOptions {
 	runDeepHealthChecks?: () => Promise<DeepHealthReport>;
+	getWindowState?: () => Promise<{ hasWindow: boolean; count: number }>;
 }
 
 /**
@@ -750,6 +751,7 @@ export function registerSharedRoutes(
 		/** Returns the current application version for metadata routes. */
 		getAppVersion: () => accessor.getAppVersion(),
 		runDeepHealthChecks: options?.runDeepHealthChecks,
+		getWindowState: options?.getWindowState,
 	});
 
 	// ==========================================================================
