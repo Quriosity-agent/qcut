@@ -18,6 +18,8 @@ import {
 	updateMixBus,
 } from "@/stores/audio-mix-actions";
 import { useAudioMeterStore } from "@/stores/editor/audio-meter-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { automationValueAt } from "@/lib/audio/audio-mix-automation";
 import type { AudioMixBusSettings } from "@/types/timeline";
 import {
 	LetterToggle,
@@ -25,6 +27,7 @@ import {
 	LevelMeter,
 	PanControl,
 } from "./mixer-controls";
+import { MixAutomationPopover } from "./mixer-automation-editor";
 import { MixEffectsEditor } from "./mixer-effects-editor";
 import { MIXER_TRACK_DRAG_TYPE, reportMixError } from "./mixer-track-row";
 
@@ -89,6 +92,9 @@ export function MixerBusRow({
 	);
 	const [dropping, setDropping] = useState(false);
 	const testId = `mixer-bus-${bus.id}`;
+	const playhead = usePlaybackStore((state) => state.currentTime);
+	const levelCurve = bus.automation?.gainDb;
+	const panCurve = bus.automation?.pan;
 
 	return (
 		<div
@@ -175,6 +181,15 @@ export function MixerBusRow({
 						/>
 					</PopoverContent>
 				</Popover>
+				<MixAutomationPopover
+					automation={bus.automation}
+					fixed={{ gainDb: bus.gainDb, pan: bus.pan }}
+					name={name}
+					testId={`${testId}-automation`}
+					onChange={(automation) =>
+						changeBus({ busId: bus.id, patch: { automation } })
+					}
+				/>
 				{isMaster ? null : (
 					<Button
 						type="button"
@@ -195,7 +210,15 @@ export function MixerBusRow({
 			<LevelMeter reading={reading} testId={`${testId}-meter`} />
 			<LevelFader
 				label={t("mixer.levelOf", { name })}
-				value={bus.gainDb}
+				value={
+					levelCurve?.length
+						? automationValueAt({ points: levelCurve, time: playhead })
+						: bus.gainDb
+				}
+				disabled={Boolean(levelCurve?.length)}
+				disabledReason={
+					levelCurve?.length ? t("mixer.automatedLevel") : undefined
+				}
 				testId={`${testId}-level`}
 				onChange={(gainDb, inGesture) =>
 					changeBus({ busId: bus.id, patch: { gainDb }, inGesture })
@@ -206,7 +229,13 @@ export function MixerBusRow({
 			/>
 			<PanControl
 				label={t("mixer.panOf", { name })}
-				value={bus.pan}
+				value={
+					panCurve?.length
+						? automationValueAt({ points: panCurve, time: playhead })
+						: bus.pan
+				}
+				disabled={Boolean(panCurve?.length)}
+				disabledReason={panCurve?.length ? t("mixer.automatedPan") : undefined}
 				testId={`${testId}-pan`}
 				onChange={(pan, inGesture) =>
 					changeBus({ busId: bus.id, patch: { pan }, inGesture })
