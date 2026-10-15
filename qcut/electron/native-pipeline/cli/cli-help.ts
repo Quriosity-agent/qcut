@@ -76,6 +76,7 @@ Global Options:
   --policy            Path to JSON action policy file
   --resume            Resume and autosave a named CLI session
   --json              Output results as JSON
+  --flat              With --json, print only the command's payload (no envelope)
   --quiet, -q         Suppress progress output
   --force             Bypass action-policy confirmations when allowed
   --help, -h          Show help
@@ -125,6 +126,50 @@ function editorAreaLines(): string[] {
 	});
 }
 
+/** Whether `area` is an editor area with actions (e.g. "timeline"). */
+export function isEditorArea(area: string): boolean {
+	return listEditorAreas().some(
+		(candidate) => candidate.area === area && candidate.actions.length > 0
+	);
+}
+
+/** List every action in one editor area, e.g. `qcut editor timeline --help`. */
+export function printEditorAreaHelp(
+	area: string,
+	{ json = false }: { json?: boolean } = {}
+): void {
+	const bin = getCliName();
+	const actions = (
+		listEditorAreas().find((candidate) => candidate.area === area)?.actions ??
+		[]
+	).map((action) => {
+		const command = `editor:${area}:${action}`;
+		return {
+			action,
+			command,
+			description: getCommand(command)?.description ?? command,
+		};
+	});
+	if (json) {
+		jsonOk({ area, actions });
+		return;
+	}
+	const width = Math.max(...actions.map(({ action }) => action.length), 10);
+	console.log(
+		`
+${bin} editor ${area} — ${actions.length} action${actions.length === 1 ? "" : "s"}
+
+Usage: ${bin} editor ${area} <action> [options]
+       ${bin} editor:${area}:<action> [options]
+
+Actions:
+${actions.map(({ action, description }) => `  ${action.padEnd(width)}  ${description}`).join("\n")}
+
+Run "${bin} editor ${area} <action> --help --json" for an action's flags.
+`.trim()
+	);
+}
+
 /** Print help for a specific command group. */
 export function printGroupHelp(groupName: string): void {
 	const bin = getCliName();
@@ -147,7 +192,8 @@ Usage: ${bin} editor <area> <action> [options]
 Areas:
 ${editorAreaLines().join("\n")}
 
-Run "${bin} editor <area> <action> --help --json" for action flags.
+Run "${bin} editor <area> --help" to list every action in an area, and
+"${bin} editor <area> <action> --help --json" for an action's flags.
 `.trim()
 		);
 		return;
