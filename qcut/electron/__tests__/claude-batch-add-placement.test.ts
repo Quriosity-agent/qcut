@@ -19,7 +19,7 @@ function element(
 const START_ERROR =
 	'Each element must include exactly one of: startTime (seconds >= 0 or "end"), after (an element id), startFrame (whole frames >= 0)';
 const DURATION_ERROR =
-	"Each element must include either a duration > 0 (seconds) or durationFrames (whole frames > 0)";
+	"Each element must include either a duration > 0 (seconds) or durationFrames (whole frames > 0); video and audio default to their file's length when the file is in the project";
 
 describe("assertBatchElementPlacement", () => {
 	it("accepts each way of giving a start", () => {
