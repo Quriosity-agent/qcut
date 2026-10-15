@@ -34,7 +34,7 @@
 | 时间线智能＋手动美体 | 已有滑杆、区域、撤销／重做、项目保存和预设 | `components/editor/properties-panel/portrait/portrait-manual-body-controls.tsx`、`stores/editor/portrait-manual-body-store.ts` |
 | 美颜实验室 | 有智能美体和美体预设，没有手动区域编辑工具 | `components/editor/properties-panel/beauty-lab/beauty-lab-controls.tsx` |
 | 原生预览／导出 | 共享 portrait provider；参数会传入导出 | `lib/export/export-engine-renderer.ts` |
-| 精确暂停合成预览 | 任何 `manualBody` 对象都会让 native source-window 不适用，包括强度全零但保留几何的情况 | `lib/portrait/portrait-temporal-policy.ts`、`lib/preview/canvas-composition-frame.ts`、`electron/jianying-portrait-adjustment-runtime/source-preroll.ts` |
+| 精确暂停合成预览（首次审计） | 当时任何 `manualBody` 对象都会让 native source-window 不适用，包括强度全零但保留几何的情况；后续已修复，固定手动几何可参与 source-window，其余适用条件仍由策略检查 | `lib/portrait/portrait-temporal-policy.ts`、`lib/preview/canvas-composition-frame.ts`、`electron/jianying-portrait-adjustment-runtime/source-preroll.ts` |
 | 美体关键帧 | 没有；现有关键帧是位置、缩放、旋转、裁剪等媒体属性 | `lib/video/video-properties.ts` |
 | 自研智能美体 | catalog 没有 body，能力列表及 planner 拒绝 `body_adjust_*` | `electron/beauty-lab/beauty-lab-independent.ts`、`research/independent-beauty/src/independent-pipeline-plan.ts` |
 | 自研手动美体 | adapter 明确拒绝非零手动工具，IPC schema 不接受非空 manualBody | `lib/portrait/independent-portrait-adjustments.ts`、`electron/beauty-lab/beauty-lab-independent.ts` |
