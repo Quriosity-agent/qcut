@@ -217,7 +217,7 @@ async function dispatchTrack(
 
 	return {
 		success: false,
-		error: `Unknown track action: ${action}. Available: list, create, update, move, delete, audio-get, audio-set, mute, solo`,
+		error: `Unknown track action: ${action}. Available: list, create, update, move, delete, audio-get, audio-set, audio-automation, mute, solo`,
 	};
 }
 
