@@ -113,6 +113,27 @@ describe("editor:project:create with settings", () => {
 		});
 	});
 
+	it("returns the new project id when its settings fail to apply", async () => {
+		const post = vi.fn(async () => ({ projectId: "p-new", name: "Door" }));
+		const patch = vi.fn(async () => {
+			throw new Error("Editor window not available");
+		});
+		const client = { post, patch } as unknown as EditorApiClient;
+
+		const result = await handleMediaProjectCommand(
+			client,
+			makeOptions({ name: "Door", fps: 24 }),
+			() => {}
+		);
+
+		expect(result).toEqual({
+			success: false,
+			error:
+				"Project p-new was created, but its settings were not applied: Editor window not available",
+			data: { projectId: "p-new", name: "Door" },
+		});
+	});
+
 	it("creates nothing when a flag is invalid", async () => {
 		const post = vi.fn();
 		const client = { post, patch: vi.fn() } as unknown as EditorApiClient;
