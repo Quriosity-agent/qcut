@@ -1,3 +1,8 @@
+import {
+	MIXER_EN_TRANSLATIONS,
+	MIXER_ZH_TRANSLATIONS,
+} from "./translations-mixer";
+
 export const SUPPORTED_LOCALES = ["zh", "en"] as const;
 
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -2146,6 +2151,7 @@ const EN_TRANSLATIONS = {
 	"updates.downloadFailed": "Failed to download update",
 	"fileOpen.importing": "Importing {{name}}…",
 	"fileOpen.failed": "Couldn't open {{name}}",
+	...MIXER_EN_TRANSLATIONS,
 } as const;
 
 export type TranslationKey = keyof typeof EN_TRANSLATIONS;
@@ -4219,6 +4225,7 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"updates.downloadFailed": "下载更新失败",
 	"fileOpen.importing": "正在导入 {{name}}…",
 	"fileOpen.failed": "无法打开 {{name}}",
+	...MIXER_ZH_TRANSLATIONS,
 };
 
 export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
