@@ -26,7 +26,11 @@ export function resolveScreenshotOutputPath({
 	return path.resolve(extension ? requested : `${requested}.png`);
 }
 
-/** Move a captured screenshot to `outputPath`, across volumes if needed. */
+/**
+ * Move a captured screenshot to `outputPath`, across volumes if needed. The
+ * capture is staged next to the destination first and renamed over it last,
+ * so a failed move never costs an existing file at that path.
+ */
 export async function moveScreenshot({
 	sourcePath,
 	outputPath,
@@ -36,16 +40,29 @@ export async function moveScreenshot({
 }): Promise<void> {
 	if (path.resolve(sourcePath) === outputPath) return;
 	await mkdir(path.dirname(outputPath), { recursive: true });
-	await rm(outputPath, { force: true });
+	const stagedPath = path.join(
+		path.dirname(outputPath),
+		`.${path.basename(outputPath)}.${process.pid}.${Date.now()}.partial`
+	);
+	let copiedAcrossVolumes = false;
 	try {
-		await rename(sourcePath, outputPath);
+		try {
+			await rename(sourcePath, stagedPath);
+		} catch (error) {
+			const code =
+				typeof error === "object" && error !== null && "code" in error
+					? (error as { code?: unknown }).code
+					: undefined;
+			if (code !== "EXDEV") throw error;
+			await copyFile(sourcePath, stagedPath);
+			copiedAcrossVolumes = true;
+		}
+		// rename replaces an existing destination in one step.
+		await rename(stagedPath, outputPath);
 	} catch (error) {
-		const code =
-			typeof error === "object" && error !== null && "code" in error
-				? (error as { code?: unknown }).code
-				: undefined;
-		if (code !== "EXDEV") throw error;
-		await copyFile(sourcePath, outputPath);
-		await unlink(sourcePath);
+		await rm(stagedPath, { force: true });
+		throw error;
 	}
+	// The original goes only once its copy is in place.
+	if (copiedAcrossVolumes) await unlink(sourcePath);
 }
