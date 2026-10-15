@@ -7,26 +7,27 @@ import type {
 import { debugError } from "@/lib/debug/debug-config";
 import {
 	MASTER_AUDIO_BUS_ID,
-	normalizeProjectAudioMixSettings,
 	normalizeTrackAudioSettings,
 } from "@/lib/audio/audio-mix-settings";
 import { resolveAudioMixRouting } from "@/lib/audio/audio-mix-routing";
+import { measureProjectMixLoudness } from "@/lib/audio/project-mix-loudness";
 import {
-	AudioMixBusError,
-	createAudioBus,
-	mergeTrackAudioPatch,
-	removeAudioBus,
-	updateAudioBus,
-} from "@/lib/audio/audio-mix-patch";
+	AudioMixActionError,
+	carriesAudio,
+	createMixBus,
+	readProjectAudioMix,
+	removeMixBus,
+	setTrackMix,
+	updateMixBus,
+} from "@/stores/audio-mix-actions";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { ProjectAudioMixSettings, TimelineTrack } from "@/types/timeline";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
 
 /**
- * The mixer over the editor API. Changes go through the same store actions
- * as the track headers and mixer panel, and every answer is the mix read back
- * from the stores, so a caller sees what took effect.
+ * The mixer over the editor API: the same actions as the mixer panel and the
+ * track headers (stores/audio-mix-actions.ts), and every answer is the mix
+ * read back from the stores, so a caller sees what took effect.
  */
 
 class MixRefusal extends Error {
@@ -45,22 +46,6 @@ function refuse(
 	throw new MixRefusal(reason, message);
 }
 
-function carriesAudio(track: TimelineTrack): boolean {
-	return track.type === "audio" || track.type === "media";
-}
-
-function currentMix(): ProjectAudioMixSettings {
-	return normalizeProjectAudioMixSettings({
-		audioMix: useProjectStore.getState().activeProject?.audioMix,
-	});
-}
-
-function findTrack(trackId: string): TimelineTrack | undefined {
-	return useTimelineStore
-		.getState()
-		.tracks.find((candidate) => candidate.id === trackId);
-}
-
 /** The whole mix as the stores hold it now. */
 export function readAudioMixSnapshot({
 	projectId,
@@ -68,7 +53,7 @@ export function readAudioMixSnapshot({
 	projectId: string;
 }): ClaudeAudioMixSnapshot {
 	const tracks = useTimelineStore.getState().tracks.filter(carriesAudio);
-	const mix = currentMix();
+	const mix = readProjectAudioMix();
 	const routes = new Map(
 		resolveAudioMixRouting({ tracks, audioMix: mix }).tracks.map((route) => [
 			route.trackId,
@@ -96,83 +81,25 @@ export function readAudioMixSnapshot({
 	};
 }
 
-function assertTrackPatchApplies({
-	track,
-	patch,
-}: {
-	track: TimelineTrack;
-	patch: ClaudeTrackAudioPatch;
-}) {
-	if (!carriesAudio(track)) {
-		refuse(
-			"invalid",
-			`Track "${track.name}" is a ${track.type} track and carries no audio`
-		);
-	}
-	const mix = currentMix();
-	if (
-		patch.busId !== undefined &&
-		patch.busId !== MASTER_AUDIO_BUS_ID &&
-		!mix.buses.some((bus) => bus.id === patch.busId)
-	) {
-		refuse(
-			"not-found",
-			`No bus "${patch.busId}"; buses: ${[MASTER_AUDIO_BUS_ID, ...mix.buses.map((bus) => bus.id)].join(", ")}`
-		);
-	}
-	for (const sourceTrackId of patch.ducking?.sourceTrackIds ?? []) {
-		if (sourceTrackId === track.id) {
-			refuse("invalid", "A track cannot duck under itself");
-		}
-		const source = findTrack(sourceTrackId);
-		if (!source || !carriesAudio(source)) {
-			refuse(
-				"not-found",
-				`Ducking source ${sourceTrackId} is not an audio track on the timeline`
-			);
-		}
-	}
-}
-
-function setTrack({
+/** Fails when the stores do not hold what the change asked for. */
+function assertTrackApplied({
 	trackId,
 	patch,
 }: {
 	trackId: string;
 	patch: ClaudeTrackAudioPatch;
 }) {
-	const track = findTrack(trackId);
-	if (!track) refuse("not-found", `Track ${trackId} is not on the timeline`);
-	assertTrackPatchApplies({ track, patch });
-
-	const { muted, ...audioPatch } = patch;
-	const store = useTimelineStore.getState();
-	if (Object.keys(audioPatch).length > 0) {
-		store.updateTrackAudio(
-			trackId,
-			mergeTrackAudioPatch({
-				settings: normalizeTrackAudioSettings({ audio: track.audio }),
-				patch: audioPatch,
-			})
-		);
-	}
-	if (muted !== undefined && (track.muted === true) !== muted) {
-		store.toggleTrackMute(trackId);
-	}
-
-	const after = findTrack(trackId);
-	const settings = normalizeTrackAudioSettings({ audio: after?.audio });
+	const track = useTimelineStore
+		.getState()
+		.tracks.find((candidate) => candidate.id === trackId);
+	const settings = normalizeTrackAudioSettings({ audio: track?.audio });
 	const applied =
 		(patch.gainDb === undefined || settings.gainDb === patch.gainDb) &&
 		(patch.pan === undefined || settings.pan === patch.pan) &&
 		(patch.busId === undefined || settings.busId === patch.busId) &&
 		(patch.solo === undefined || settings.solo === patch.solo) &&
-		(muted === undefined || (after?.muted === true) === muted);
+		(patch.muted === undefined || (track?.muted === true) === patch.muted);
 	if (!applied) refuse("invalid", "The editor did not apply the change");
-}
-
-async function saveMix(audioMix: ProjectAudioMixSettings) {
-	await useProjectStore.getState().updateProjectAudioMix(audioMix);
 }
 
 async function applyAudioMixOperation(
@@ -194,53 +121,30 @@ async function applyAudioMixOperation(
 		case "get":
 			return answer();
 		case "set-track":
-			setTrack({ trackId: request.trackId, patch: request.patch });
+			setTrackMix({ trackId: request.trackId, patch: request.patch });
+			assertTrackApplied({ trackId: request.trackId, patch: request.patch });
 			return answer();
 		case "create-bus": {
-			const { audioMix, bus } = createAudioBus({
-				audioMix: currentMix(),
+			const bus = await createMixBus({
 				id: request.busId,
 				patch: request.bus,
 			});
-			await saveMix(audioMix);
-			if (!currentMix().buses.some((candidate) => candidate.id === bus.id)) {
+			if (!readProjectAudioMix().buses.some((kept) => kept.id === bus.id)) {
 				refuse("invalid", "The editor did not keep the new bus");
 			}
 			return answer({ busId: bus.id });
 		}
 		case "update-bus":
-			await saveMix(
-				updateAudioBus({
-					audioMix: currentMix(),
-					busId: request.busId,
-					patch: request.patch,
-				})
-			);
+			await updateMixBus({ busId: request.busId, patch: request.patch });
 			return answer();
-		case "remove-bus": {
-			const audioMix = removeAudioBus({
-				audioMix: currentMix(),
-				busId: request.busId,
+		case "remove-bus":
+			return answer({
+				reroutedTrackIds: await removeMixBus({ busId: request.busId }),
 			});
-			const store = useTimelineStore.getState();
-			const routed = store.tracks.filter(
-				(track) =>
-					carriesAudio(track) &&
-					normalizeTrackAudioSettings({ audio: track.audio }).busId ===
-						request.busId
-			);
-			if (routed.length > 0) {
-				store.pushHistory();
-				for (const track of routed) {
-					store.updateTrackAudio(
-						track.id,
-						{ busId: MASTER_AUDIO_BUS_ID },
-						false
-					);
-				}
-			}
-			await saveMix(audioMix);
-			return answer({ reroutedTrackIds: routed.map((track) => track.id) });
+		case "measure-loudness": {
+			const loudness = await measureProjectMixLoudness();
+			if (!loudness) refuse("invalid", "The timeline has no audio to measure");
+			return { success: true, loudness };
 		}
 	}
 }
@@ -261,7 +165,7 @@ export function setupAudioMixHandlers({
 				await applyAudioMixOperation(data.request as ClaudeAudioMixRequest)
 			);
 		} catch (error) {
-			if (error instanceof MixRefusal || error instanceof AudioMixBusError) {
+			if (error instanceof MixRefusal || error instanceof AudioMixActionError) {
 				respond({
 					success: false,
 					reason: error.reason,
