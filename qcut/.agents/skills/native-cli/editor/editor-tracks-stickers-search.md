@@ -22,6 +22,9 @@ Confirm flags with `qcut editor <area> <action> --help --json`.
 | `editor track move` | `--track-id --index` | `--project-id` | Move a track to an exact visual index |
 | `editor track delete` | `--track-id` | `--project-id`, `--force`, `--ripple` | Delete a track; `--force` for non-empty tracks |
 
+A track's level, pan, bus, mute, solo, ducking and effects are set with
+`editor track audio-set`, `mute` and `solo`; see [editor-mix.md](editor-mix.md).
+
 ```bash
 qcut editor track list --project-id <id> --json
 qcut editor track create --type text --name "Captions" --project-id <id> --json
