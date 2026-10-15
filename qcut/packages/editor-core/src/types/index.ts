@@ -202,6 +202,8 @@ export type {
 	AudioCrossfade,
 	AudioBusEffectsSettings,
 	TimelineTrackAudioSettings,
+	AudioAutomationPoint,
+	AudioMixAutomation,
 	AudioMixBusSettings,
 	ProjectAudioMixSettings,
 	AudioStemName,
