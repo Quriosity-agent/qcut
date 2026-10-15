@@ -220,6 +220,29 @@ describe("Claude project settings bridge", () => {
 		expect(projectApi.updateSettings.mock.calls.length).toBe(calls);
 	});
 
+	it("does not rewrite settings it already wrote", async () => {
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: "p1",
+		});
+		setupClaudeProjectSettingsBridge();
+		useProjectStore.setState({
+			activeProject: { ...createProject(), fps: 24 },
+		});
+		await vi.waitFor(() =>
+			expect(projectApi.updateSettings).toHaveBeenCalledOnce()
+		);
+		// Let the write settle, then change something that is not mirrored.
+		await Promise.resolve();
+		await Promise.resolve();
+
+		useProjectStore.setState({ isLoading: true });
+		useProjectStore.setState({ isLoading: false });
+		await Promise.resolve();
+
+		expect(projectApi.updateSettings).toHaveBeenCalledOnce();
+	});
+
 	it("does not mirror a project that is still loading", () => {
 		setupClaudeProjectSettingsBridge();
 		useProjectStore.setState({
