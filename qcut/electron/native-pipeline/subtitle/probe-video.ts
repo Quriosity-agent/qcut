@@ -16,6 +16,18 @@ export interface VideoInfo {
 	width: number;
 	height: number;
 	duration: number;
+	/** Frames per second, when the stream states a usable rate. */
+	fps?: number;
+}
+
+/** "24000/1001" → 23.976; "0/0" and garbage → undefined. */
+function parseFrameRate(value: unknown): number | undefined {
+	if (typeof value !== "string") return;
+	const [numerator, denominator = "1"] = value.split("/");
+	const rate = Number(numerator) / Number(denominator);
+	return Number.isFinite(rate) && rate > 0
+		? Number(rate.toFixed(3))
+		: undefined;
 }
 
 /** Resolve ffprobe binary path. */
@@ -28,7 +40,7 @@ async function resolveFFprobePath(): Promise<string> {
 	}
 }
 
-/** Probe a video file for resolution and duration. */
+/** Probe a video file for resolution, duration and frame rate. */
 export async function probeVideoInfo(videoPath: string): Promise<VideoInfo> {
 	const ffprobe = await resolveFFprobePath();
 	const { stdout } = await execFileAsync(ffprobe, [
@@ -56,5 +68,9 @@ export async function probeVideoInfo(videoPath: string): Promise<VideoInfo> {
 		data.format?.duration || videoStream.duration || "0"
 	);
 
-	return { width, height, duration };
+	const fps =
+		parseFrameRate(videoStream.avg_frame_rate) ??
+		parseFrameRate(videoStream.r_frame_rate);
+
+	return { width, height, duration, ...(fps ? { fps } : {}) };
 }
