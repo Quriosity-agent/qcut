@@ -110,3 +110,62 @@ export function firstFreeStartTime({
 	}
 	return candidate;
 }
+
+export interface OccupancyConflict {
+	occupant: TimelineElement;
+	occupantStart: number;
+	occupantEnd: number;
+	/** Earliest start at or after the requested one where the clip fits. */
+	nextFreeStart: number;
+	/** Names the blocking clip, its span and the next free start. */
+	message: string;
+}
+
+/** Seconds as a caller would type them back: up to six decimals, no padding. */
+export function formatSeconds(seconds: number): string {
+	return `${Number(seconds.toFixed(6))}s`;
+}
+
+/**
+ * Why [startTime, startTime + duration) cannot go on this track, or null when
+ * it can. A rejection that names the obstruction and the next free start lets
+ * a caller fix the request instead of guessing.
+ */
+export function describeOccupancyConflict({
+	track,
+	startTime,
+	duration,
+	excludeElementId,
+	fps = 30,
+}: {
+	track: TimelineTrack;
+	startTime: number;
+	duration: number;
+	excludeElementId?: string;
+	fps?: number;
+}): OccupancyConflict | null {
+	const occupant = findOccupyingElement({
+		track,
+		startTime,
+		duration,
+		excludeElementId,
+		fps,
+	});
+	if (!occupant) return null;
+	const occupantStart = occupant.startTime;
+	const occupantEnd = getTimelineElementEndTime({ element: occupant, fps });
+	const nextFreeStart = firstFreeStartTime({
+		track,
+		duration,
+		notBefore: startTime,
+		excludeElementId,
+		fps,
+	});
+	return {
+		occupant,
+		occupantStart,
+		occupantEnd,
+		nextFreeStart,
+		message: `${formatSeconds(startTime)}–${formatSeconds(startTime + duration)} on track "${track.name}" overlaps "${occupant.name}" (${formatSeconds(occupantStart)}–${formatSeconds(occupantEnd)}). A track plays one element at a time; the next free start for this ${formatSeconds(duration)} clip is ${formatSeconds(nextFreeStart)}.`,
+	};
+}
