@@ -215,10 +215,22 @@ export interface TimelineStore {
 		colorLabel?: TimelineColorLabel;
 		pushHistory?: boolean;
 	}) => number;
-	/** Replace the selection with every clip carrying the requested label. */
+	/**
+	 * Replace the selection with every clip showing the requested label: its
+	 * own, or its track's when it sets none.
+	 */
 	selectElementsByColorLabel: (input: {
 		colorLabel: TimelineColorLabel;
 	}) => number;
+	/**
+	 * Set (or clear) a track's default clip colour. Returns false when the
+	 * track is missing, locked, or already has that colour.
+	 */
+	setTrackColorLabel: (input: {
+		trackId: string;
+		colorLabel?: TimelineColorLabel;
+		pushHistory?: boolean;
+	}) => boolean;
 	selectTransition: (selection: SelectedTransition) => void;
 	clearSelectedTransition: () => void;
 
