@@ -2,6 +2,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -58,6 +59,39 @@ describe("moveScreenshot", () => {
 
 		expect(readFileSync(outputPath, "utf-8")).toBe("png-bytes");
 		expect(existsSync(sourcePath)).toBe(false);
+	});
+});
+
+describe("moveScreenshot over an existing file", () => {
+	it("replaces the file once the new capture is in place", async () => {
+		const sourcePath = savedCapture("screenshot-3.png");
+		const outputPath = path.join(workDir, "replace", "shot.png");
+		mkdirSync(path.dirname(outputPath), { recursive: true });
+		writeFileSync(outputPath, "old-shot");
+
+		await moveScreenshot({ sourcePath, outputPath });
+
+		expect(readFileSync(outputPath, "utf-8")).toBe("png-bytes");
+	});
+
+	it("keeps the existing file when the capture is missing", async () => {
+		const outputPath = path.join(workDir, "keep", "shot.png");
+		mkdirSync(path.dirname(outputPath), { recursive: true });
+		writeFileSync(outputPath, "old-shot");
+
+		await expect(
+			moveScreenshot({
+				sourcePath: path.join(workDir, "QCut Recordings", "gone.png"),
+				outputPath,
+			})
+		).rejects.toThrow();
+
+		expect(readFileSync(outputPath, "utf-8")).toBe("old-shot");
+		expect(
+			readdirSync(path.dirname(outputPath)).filter((name) =>
+				name.endsWith(".partial")
+			)
+		).toEqual([]);
 	});
 });
 
