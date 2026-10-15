@@ -8,7 +8,8 @@
  * - music track -6 dB, master -2 dB      → music lands 8 dB under its source;
  * - SFX bus -4 dB, master -2 dB          → the burst lands 6 dB under its;
  * - ducking -12 dB while the burst plays → music drops by about 12 dB;
- * - soloing the SFX track                → music is gone.
+ * - soloing the SFX track                → music is gone;
+ * - `mix loudness` agrees with FFmpeg's EBU R 128 meter on the export.
  *
  * Each tone is measured with a narrow band-pass so the two never mix up.
  */
@@ -78,6 +79,36 @@ function bandLevel(
 	const match = result.stderr.match(/mean_volume: (-?[\d.]+|-inf) dB/);
 	if (!match) throw new Error(result.stderr);
 	return match[1] === "-inf" ? -120 : Number(match[1]);
+}
+
+/** FFmpeg's EBU R 128 meter: integrated loudness and true peak of `file`. */
+function ebur128(file: string): {
+	integratedLufs: number;
+	truePeakDbtp: number;
+} {
+	const result = spawnSync(
+		"ffmpeg",
+		[
+			"-hide_banner",
+			"-nostats",
+			"-i",
+			file,
+			"-af",
+			"ebur128=peak=true",
+			"-f",
+			"null",
+			"-",
+		],
+		{ encoding: "utf8" }
+	);
+	const summary = result.stderr.slice(result.stderr.lastIndexOf("Summary:"));
+	const integrated = summary.match(/I:\s+(-?[\d.]+) LUFS/);
+	const peak = summary.match(/Peak:\s+(-?[\d.]+) dBFS/);
+	if (!integrated || !peak) throw new Error(result.stderr);
+	return {
+		integratedLufs: Number(integrated[1]),
+		truePeakDbtp: Number(peak[1]),
+	};
 }
 
 function makeFixtures(dir: string) {
@@ -360,6 +391,13 @@ test("the CLI mix is what both export engines render", async ({
 			};
 		}
 
+		// --- loudness of the mix, against FFmpeg's own R 128 meter ---------------
+		const loudness = await cli<{
+			integratedLufs: number;
+			truePeakDbtp: number;
+		}>({ apiPort, args: ["editor:mix:loudness", "--project-id", projectId] });
+		const reference128 = ebur128(path.join(workDir, "mix-muxer.mp4"));
+
 		// --- solo the SFX: the music is gone from both ---------------------------
 		await cli({
 			apiPort,
@@ -381,8 +419,20 @@ test("the CLI mix is what both export engines render", async ({
 		// Persist the numbers before asserting so a failure leaves them behind.
 		await writeFile(
 			path.join(EVIDENCE_DIR, "evidence.json"),
-			JSON.stringify({ reference, ...measured }, null, 2)
+			JSON.stringify(
+				{ reference, ...measured, loudness, ffmpegEbur128: reference128 },
+				null,
+				2
+			)
 		);
+		expect(
+			Math.abs(loudness.integratedLufs - reference128.integratedLufs),
+			"integrated loudness against ffmpeg ebur128"
+		).toBeLessThan(0.5);
+		expect(
+			Math.abs(loudness.truePeakDbtp - reference128.truePeakDbtp),
+			"true peak against ffmpeg ebur128"
+		).toBeLessThan(0.5);
 		for (const engine of ["muxer", "cli"] as const) {
 			const { musicDb, sfxDb, duckDb, soloMusicDb } = measured[engine];
 			expect(Math.abs(musicDb + 8), `${engine} music level`).toBeLessThan(
