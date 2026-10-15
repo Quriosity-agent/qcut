@@ -52,6 +52,8 @@ export interface AudioExportCardProps {
 	onIncludeAudioChange: (checked: boolean) => void;
 	exportAudioSeparately: boolean;
 	onExportAudioSeparatelyChange: (checked: boolean) => void;
+	exportStems: boolean;
+	onExportStemsChange: (checked: boolean) => void;
 	bitrate: AudioExportBitrate;
 	onBitrateChange: (bitrate: AudioExportBitrate) => void;
 	sampleRate: AudioExportSampleRate;
@@ -147,6 +149,8 @@ export function AudioExportCard({
 	onIncludeAudioChange,
 	exportAudioSeparately,
 	onExportAudioSeparatelyChange,
+	exportStems,
+	onExportStemsChange,
 	bitrate,
 	onBitrateChange,
 	sampleRate,
@@ -177,6 +181,29 @@ export function AudioExportCard({
 				{includeAudio && (
 					<div className="text-xs text-muted-foreground pl-6">
 						Audio tracks will be mixed and included in the exported video
+					</div>
+				)}
+
+				{standaloneExportAvailable && (
+					<div className="space-y-1 border-t border-border/50 pt-4">
+						<div className="flex items-center space-x-2">
+							<Checkbox
+								id="export-stems"
+								checked={exportStems}
+								onCheckedChange={(checked) =>
+									onExportStemsChange(checked as boolean)
+								}
+								disabled={isExporting}
+								data-testid="export-stems-checkbox"
+							/>
+							<Label htmlFor="export-stems" className="cursor-pointer text-sm">
+								Export stems per bus (WAV)
+							</Label>
+						</div>
+						<div className="pl-6 text-xs text-muted-foreground">
+							One WAV per mixer bus beside the video, as long as it:
+							name-bus.wav
+						</div>
 					</div>
 				)}
 
