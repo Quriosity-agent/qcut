@@ -241,6 +241,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				items: { type: "string" },
 				sources: { type: "string" },
 				"append-to-track": { type: "string" },
+				"match-media": { type: "string" },
 				elements: { type: "string" },
 				time: { type: "string" },
 				"new-name": { type: "string" },
@@ -321,6 +322,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				"end-time": { type: "string" },
 				width: { type: "string" },
 				height: { type: "string" },
+				fps: { type: "string" },
 			},
 			strict: false,
 		});
@@ -373,6 +375,8 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.sources) result.sources = values.sources as string;
 		if (values["append-to-track"])
 			result.appendToTrack = values["append-to-track"] as string;
+		if (values["match-media"])
+			result.matchMedia = values["match-media"] as string;
 		if (values.elements) result.elements = values.elements as string;
 		if (values["new-name"]) result.newName = values["new-name"] as string;
 		if (values.name) result.name = values.name as string;
@@ -493,6 +497,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 			result.endTime = parseFloat(values["end-time"] as string);
 		if (values.width !== undefined) result.width = Number(values.width);
 		if (values.height !== undefined) result.height = Number(values.height);
+		if (values.fps !== undefined) result.fps = Number(values.fps);
 
 		return result;
 	} catch {
