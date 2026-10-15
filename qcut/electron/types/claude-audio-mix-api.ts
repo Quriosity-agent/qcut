@@ -129,6 +129,8 @@ export type ClaudeAudioMixRequest = { projectId: string } & (
 	| { action: "get" }
 	/** Render the mix as an export would and measure it. */
 	| { action: "measure-loudness" }
+	/** Write one WAV per bus (and one for tracks feeding the master) into `outputDir`. */
+	| { action: "render-stems"; outputDir: string; fileNamePrefix?: string }
 	| { action: "set-track"; trackId: string; patch: ClaudeTrackAudioPatch }
 	| {
 			action: "create-bus";
@@ -151,4 +153,13 @@ export interface ClaudeAudioMixResponse {
 	/** Tracks a removed bus sent back to the master. */
 	reroutedTrackIds?: string[];
 	loudness?: ClaudeMixLoudness;
+	stems?: ClaudeMixStem[];
+}
+
+export interface ClaudeMixStem {
+	/** The bus, or "master" for the tracks that feed the master directly. */
+	busId: string;
+	name: string;
+	path: string;
+	trackIds: string[];
 }
