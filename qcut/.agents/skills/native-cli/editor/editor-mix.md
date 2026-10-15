@@ -23,6 +23,7 @@ These commands need a running QCut editor with the project open.
 | `editor mix bus-set` | `--bus-id` | `--name`, `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--solo`/`--no-solo`, `--effects` | Change a bus |
 | `editor mix bus-remove` | `--bus-id` | — | Remove a bus; its tracks go back to the master |
 | `editor mix master-set` | — | `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--effects` | Change the master |
+| `editor mix loudness` | — | `--project-id` | Render the mix as an export would and measure it |
 
 Ranges: `--gain-db` -60 to 12, `--pan` -1 (left) to 1 (right). A value
 outside a range is refused with the reason; nothing is quietly clamped.
@@ -44,6 +45,15 @@ Every change answers with what the editor now holds.
   `presence`, `air`), or by position.
 - `timeline export` includes each audio track's `audio` settings and
   `muted`, and the project's `audioMix` (master and buses).
+
+## Loudness
+
+`editor mix loudness` renders the whole mix the way an export does and
+reports, per ITU-R BS.1770-4 / EBU R 128: `integratedLufs` (gated),
+`maxShortTermLufs` (3 s), `maxMomentaryLufs` (400 ms), `truePeakDbtp` (4x
+oversampled) and `samplePeakDb`. Online platforms usually ask for about -14
+LUFS integrated with true peak at or below -1 dBTP. The mixer panel's master
+strip shows the same numbers.
 
 ## Example: dialogue, SFX and music buses
 
@@ -72,4 +82,7 @@ qcut editor mix master-set --project-id $P --gain-db -1 \
 qcut editor track solo --project-id $P --track-id <guns-1> --json
 qcut editor mix export --project-id $P --json
 qcut editor track solo --project-id $P --track-id <guns-1> --off --json
+
+# Check the delivery loudness
+qcut editor mix loudness --project-id $P --json
 ```
