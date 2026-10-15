@@ -31,6 +31,10 @@ import type {
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
 } from "../../types/claude-api";
+import type {
+	ClaudeAudioMixRequest,
+	ClaudeAudioMixResponse,
+} from "../../types/claude-audio-mix-api";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
@@ -457,6 +461,22 @@ export async function requestTrackOperationFromRenderer(
 		responseChannel: "claude:timeline:trackOperation:response",
 		payload: { request },
 		timeoutErrorMessage: "Timeout waiting for track operation result",
+		correlationId,
+	});
+}
+
+/** Ask the renderer to read or change the mixer; it answers with the mix. */
+export async function requestAudioMixOperationFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeAudioMixRequest,
+	correlationId?: string
+): Promise<ClaudeAudioMixResponse> {
+	return requestRendererResult<ClaudeAudioMixResponse>({
+		win,
+		requestChannel: "claude:timeline:audioMixOperation",
+		responseChannel: "claude:timeline:audioMixOperation:response",
+		payload: { request },
+		timeoutErrorMessage: "Timeout waiting for mixer result",
 		correlationId,
 	});
 }
