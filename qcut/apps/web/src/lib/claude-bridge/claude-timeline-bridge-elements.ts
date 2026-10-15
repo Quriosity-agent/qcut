@@ -11,6 +11,7 @@ import type {
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
+import { resolveClaudePlacement } from "./claude-placement";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
 	findTrackByElementId,
@@ -519,10 +520,15 @@ export function setupElementHandlers({
 	// Handle element addition from Claude
 	claudeAPI.onAddElement(async (candidate: unknown) => {
 		try {
-			const { element, projectId } = timelineElementFromTransport({
+			const { element: request, projectId } = timelineElementFromTransport({
 				candidate,
 			});
 			assertTimelineProjectActive({ projectId });
+			const element = resolveClaudePlacement({
+				element: request,
+				tracks: useTimelineStore.getState().tracks,
+				fps: useProjectStore.getState().activeProject?.fps ?? 30,
+			});
 			const elementType = (element as Record<string, unknown>).type;
 			debugLog("[ClaudeTimelineBridge] Adding element:", element);
 
