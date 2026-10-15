@@ -22,6 +22,10 @@ import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
 } from "../../types/claude-media-bridge-api";
+import type {
+	ClaudeAudioMixRequest,
+	ClaudeAudioMixResponse,
+} from "../../types/claude-audio-mix-api";
 
 /** Claude search/transcription operations. */
 export interface ClaudeSearchAPI {
@@ -232,6 +236,16 @@ export interface ClaudeTimelineAPI {
 		sendTrackOperationResponse: (
 			requestId: string,
 			result: ClaudeTrackOperationResponse
+		) => void;
+		onAudioMixOperation: (
+			callback: (data: {
+				requestId: string;
+				request: ClaudeAudioMixRequest;
+			}) => void
+		) => void;
+		sendAudioMixOperationResponse: (
+			requestId: string,
+			result: ClaudeAudioMixResponse
 		) => void;
 		onLoadSpeech: (
 			callback: (data: {
