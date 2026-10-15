@@ -224,6 +224,14 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		f("--timeout-ms", "number", "Readiness timeout in milliseconds", {
 			default: 15000,
 		}),
+		f("--width", "number", "Canvas width in pixels (with --height)"),
+		f("--height", "number", "Canvas height in pixels (with --width)"),
+		f("--fps", "number", "Project frame rate"),
+		f(
+			"--match-media",
+			"string",
+			"Take canvas size and frame rate from this video file"
+		),
 	]),
 	"editor:project:delete": ed("editor:project:delete", "Delete project", [PID]),
 	"editor:project:rename": ed("editor:project:rename", "Rename project", [
