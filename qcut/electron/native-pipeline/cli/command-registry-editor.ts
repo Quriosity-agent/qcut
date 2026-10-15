@@ -758,6 +758,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			enum: ["auto", "native", "cli", "muxer"],
 		}),
 		f("--verify-frames", "string", "Extract frames at comma-separated seconds"),
+		f(
+			"--stems",
+			"boolean",
+			"Also write one WAV per bus beside the export, <name>-<bus>.wav (needs --output; waits for the export)"
+		),
 		f("--export-format", "string", "Export format"),
 		f("--format", "string", "Export format (alias)"),
 		f("--fps", "number", "Video frame rate (24|25|30|50|60)"),
