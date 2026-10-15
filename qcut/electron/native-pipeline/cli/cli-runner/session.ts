@@ -240,6 +240,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				data: { type: "string" },
 				items: { type: "string" },
 				sources: { type: "string" },
+				"append-to-track": { type: "string" },
 				elements: { type: "string" },
 				time: { type: "string" },
 				"new-name": { type: "string" },
@@ -370,6 +371,8 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.data) result.data = values.data as string;
 		if (values.items) result.items = values.items as string;
 		if (values.sources) result.sources = values.sources as string;
+		if (values["append-to-track"])
+			result.appendToTrack = values["append-to-track"] as string;
 		if (values.elements) result.elements = values.elements as string;
 		if (values["new-name"]) result.newName = values["new-name"] as string;
 		if (values.name) result.name = values.name as string;
