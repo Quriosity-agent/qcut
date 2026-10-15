@@ -1,4 +1,8 @@
-import type { AudioBusEffectsSettings } from "@/types/timeline";
+import type {
+	AudioBusEffectsSettings,
+	AudioMixAutomation,
+} from "@/types/timeline";
+import { automationValueAt } from "./audio-mix-automation";
 import { dbToGain } from "./audio-properties";
 
 /**
@@ -152,4 +156,33 @@ export function applyMixStripLevel({
 }) {
 	set(strip.baseGain.gain, silenced ? 0 : dbToGain({ db: gainDb }));
 	set(strip.panner.pan, pan);
+}
+
+/** Sets level and pan from the strip's curves at `time`, where it has them. */
+export function applyMixStripAutomation({
+	strip,
+	automation,
+	silenced,
+	time,
+	set,
+}: {
+	strip: MixStripNodes;
+	automation?: AudioMixAutomation;
+	silenced: boolean;
+	time: number;
+	set: SetMixParameter;
+}) {
+	if (automation?.gainDb?.length) {
+		set(
+			strip.baseGain.gain,
+			silenced
+				? 0
+				: dbToGain({
+						db: automationValueAt({ points: automation.gainDb, time }),
+					})
+		);
+	}
+	if (automation?.pan?.length) {
+		set(strip.panner.pan, automationValueAt({ points: automation.pan, time }));
+	}
 }
