@@ -10,6 +10,8 @@
  * - SFX bus -4 dB, master -2 dB          → the burst lands 6 dB under its;
  * - ducking -12 dB while the burst plays → music drops by about 12 dB;
  * - the picture's own 4 kHz tone, main track -10 dB → 12 dB under its source;
+ * - a level curve on the main track, -10 → -30 dB over 2.5–3 s → the tone
+ *   sits 32 dB under its source after 3 s;
  * - soloing the SFX track                → music and picture tone are gone;
  * - `mix loudness` agrees with FFmpeg's EBU R 128 meter on the export;
  * - `export start --stems` writes one WAV per bus beside the export.
@@ -29,7 +31,10 @@ import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixtur
 const EVIDENCE_DIR = path.resolve("output/playwright/editor-audio-mix");
 const MUSIC_BAND = "bandpass=f=440:width_type=q:w=4";
 const SFX_BAND = "bandpass=f=2000:width_type=q:w=4";
-const MAIN_BAND = "bandpass=f=4000:width_type=q:w=4";
+// Two stages: after its fade the picture tone sits 24 dB under the music,
+// which a single Q=4 band would let through enough to read 0.7 dB high.
+const MAIN_BAND =
+	"bandpass=f=4000:width_type=q:w=4,bandpass=f=4000:width_type=q:w=4";
 /** Level checks allow for AAC and the band-pass edges. */
 const LEVEL_TOLERANCE_DB = 0.7;
 
@@ -385,6 +390,26 @@ test("the CLI mix is what every export engine renders", async ({
 				"-10",
 			],
 		});
+		const automated = await cli<{
+			track: { audio: { automation?: { gainDb?: unknown[] } } };
+		}>({
+			apiPort,
+			args: [
+				"editor:track:audio-automation",
+				"--project-id",
+				projectId,
+				"--track-id",
+				mainTrackId,
+				"--param",
+				"gainDb",
+				"--points",
+				JSON.stringify([
+					{ time: 2.5, value: -10 },
+					{ time: 3, value: -30 },
+				]),
+			],
+		});
+		expect(automated.track.audio.automation?.gainDb).toHaveLength(2);
 		const music = await cli<{
 			track: { audio: { gainDb: number; ducking: { reductionDb: number } } };
 		}>({
@@ -455,6 +480,7 @@ test("the CLI mix is what every export engine renders", async ({
 				musicDb: number;
 				sfxDb: number;
 				mainDb: number;
+				mainFadeDb: number;
 				duckDb: number;
 				soloMusicDb: number;
 				soloMainDb: number;
@@ -474,6 +500,7 @@ test("the CLI mix is what every export engine renders", async ({
 				musicDb: bandLevel(output, MUSIC_BAND, [0.5, 1.4]) - reference.music,
 				sfxDb: bandLevel(output, SFX_BAND, [1.7, 2.3]) - reference.sfx,
 				mainDb: bandLevel(output, MAIN_BAND, [0.5, 1.4]) - reference.main,
+				mainFadeDb: bandLevel(output, MAIN_BAND, [3.2, 3.8]) - reference.main,
 				duckDb:
 					bandLevel(output, MUSIC_BAND, [3, 3.8]) -
 					bandLevel(output, MUSIC_BAND, [1.7, 2.3]),
@@ -581,8 +608,15 @@ test("the CLI mix is what every export engine renders", async ({
 			"true peak against ffmpeg ebur128"
 		).toBeLessThan(0.5);
 		for (const engine of ENGINES) {
-			const { musicDb, sfxDb, mainDb, duckDb, soloMusicDb, soloMainDb } =
-				measured[engine];
+			const {
+				musicDb,
+				sfxDb,
+				mainDb,
+				mainFadeDb,
+				duckDb,
+				soloMusicDb,
+				soloMainDb,
+			} = measured[engine];
 			expect(Math.abs(musicDb + 8), `${engine} music level`).toBeLessThan(
 				LEVEL_TOLERANCE_DB
 			);
@@ -594,6 +628,10 @@ test("the CLI mix is what every export engine renders", async ({
 			expect(
 				Math.abs(mainDb + 12),
 				`${engine} picture audio level`
+			).toBeLessThan(LEVEL_TOLERANCE_DB);
+			expect(
+				Math.abs(mainFadeDb + 32),
+				`${engine} picture audio after its level curve`
 			).toBeLessThan(LEVEL_TOLERANCE_DB);
 			expect(soloMusicDb, `${engine} music under an SFX solo`).toBeLessThan(
 				-50
