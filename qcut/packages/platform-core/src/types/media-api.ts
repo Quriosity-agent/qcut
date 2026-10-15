@@ -344,6 +344,10 @@ export interface PlatformFFmpegAPI {
 		bitrate: number;
 		sampleRate: number;
 		channels?: 1 | 2;
+		/** Clip crossfades per track, as the video export takes them. */
+		audioCrossfades?: unknown[];
+		/** The project mix (track, bus and master settings). */
+		audioMixConfig?: unknown;
 	}): Promise<{ outputPath: string; fileSize: number }>;
 	convertVideoToGif(options: {
 		sessionId: string;
