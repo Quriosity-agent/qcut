@@ -8,8 +8,10 @@ export function buildStandaloneAudioExportArgs({
 }): string[] {
 	const audioGraph = buildTimelineAudioFilters({
 		audioFiles: options.audioFiles,
+		audioCrossfades: options.audioCrossfades,
 		audioStartIndex: 0,
 		fps: 30,
+		audioMixConfig: options.audioMixConfig,
 	});
 	return [
 		"-y",
