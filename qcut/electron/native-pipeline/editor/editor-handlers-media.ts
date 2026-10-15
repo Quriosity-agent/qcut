@@ -21,6 +21,7 @@ import {
 	buildProjectJSONMinimal,
 } from "../cli/project-json-builder.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
+import { appendImportedMedia } from "./editor-media-append.js";
 import { assertRestrictedMediaExportAllowed } from "../../types/restricted-media-export-policy.js";
 
 type ProgressFn = (progress: {
@@ -211,13 +212,36 @@ async function mediaImportUrl(
 	return { success: true, data };
 }
 
+/** With --append-to-track, lay the imported files end to end on that track. */
+async function withAppendedMedia({
+	client,
+	projectId,
+	opts,
+	imported,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+	opts: CLIRunOptions;
+	imported: unknown;
+}): Promise<CLIResult> {
+	if (!opts.appendToTrack) return { success: true, data: imported };
+	const data = await appendImportedMedia({
+		client,
+		projectId,
+		trackId: opts.appendToTrack,
+		imported,
+	});
+	return { success: true, data };
+}
+
 /** Batch-import media files via --sources (comma-separated paths) or --items (JSON). */
 async function mediaBatchImport(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	const o = opts as CLIRunOptions & { items?: string; sources?: string };
-	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	const projectId = opts.projectId;
+	if (!projectId) return { success: false, error: "Missing --project-id" };
 
 	// Convenience: --sources "file1.png,file2.png" → auto-build items array
 	if (o.sources && !o.items) {
@@ -249,7 +273,7 @@ async function mediaBatchImport(
 			`/api/claude/media/${opts.projectId}/batch-import`,
 			{ items }
 		);
-		return { success: true, data };
+		return withAppendedMedia({ client, projectId, opts, imported: data });
 	}
 
 	if (!o.items)
@@ -286,7 +310,7 @@ async function mediaBatchImport(
 		`/api/claude/media/${opts.projectId}/batch-import`,
 		{ items: normalizedItems }
 	);
-	return { success: true, data };
+	return withAppendedMedia({ client, projectId, opts, imported: data });
 }
 
 /** Handle media extract frame. */
