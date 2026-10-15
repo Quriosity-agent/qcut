@@ -10,6 +10,7 @@ import {
 export interface BrowserAudioExportClip {
 	element: MediaElement;
 	mediaItem: MediaItem;
+	trackId: string;
 }
 
 export interface DecodedBrowserAudioExportClip extends BrowserAudioExportClip {
@@ -59,6 +60,7 @@ export function collectBrowserAudioExportClips({
 						index,
 					}),
 					mediaItem,
+					trackId: track.id,
 				});
 			}
 		}
