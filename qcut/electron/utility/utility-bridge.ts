@@ -39,6 +39,7 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 	requestTrackOperationFromRenderer,
+	requestAudioMixOperationFromRenderer,
 } from "../claude/handlers/claude-timeline-handler.js";
 import { executeBatchCuts } from "../claude/handlers/claude-cuts-handler.js";
 import { executeDeleteRange } from "../claude/handlers/claude-range-handler.js";
@@ -113,6 +114,7 @@ import type {
 	ClaudeElement,
 	ClaudeTrackOperationRequest,
 } from "../types/claude-api.js";
+import type { ClaudeAudioMixRequest } from "../types/claude-audio-mix-api.js";
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
 import {
 	requestProjectsFromRenderer,
@@ -810,6 +812,11 @@ async function handleMainRequest(
 		case "track-operation": {
 			const req = data as { request: ClaudeTrackOperationRequest };
 			return requestTrackOperationFromRenderer(win, req.request);
+		}
+
+		case "audio-mix-operation": {
+			const req = data as { request: ClaudeAudioMixRequest };
+			return requestAudioMixOperationFromRenderer(win, req.request);
 		}
 
 		case "transaction:begin": {
