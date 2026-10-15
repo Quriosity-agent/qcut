@@ -84,6 +84,18 @@ export interface AudioBusEffects {
 	limiter: { enabled: boolean; ceilingDb: number; releaseMs: number };
 }
 
+/** A point on an automation curve: a value at a time on the timeline. */
+export interface AudioAutomationPoint {
+	time: number;
+	value: number;
+}
+
+/** Level (dB) and pan curves; a curve with points replaces the fixed value. */
+export interface AudioMixAutomation {
+	gainDb?: AudioAutomationPoint[];
+	pan?: AudioAutomationPoint[];
+}
+
 export interface AudioMixBus {
 	id: string;
 	name: string;
@@ -92,6 +104,7 @@ export interface AudioMixBus {
 	muted: boolean;
 	solo: boolean;
 	effects: AudioBusEffects;
+	automation?: AudioMixAutomation;
 }
 
 export interface AudioTrackMix {
@@ -110,6 +123,7 @@ export interface AudioTrackMix {
 		attackMs: number;
 		releaseMs: number;
 	};
+	automation?: AudioMixAutomation;
 }
 
 export interface AudioMixConfig {
