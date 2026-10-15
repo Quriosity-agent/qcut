@@ -38,8 +38,8 @@ import type {
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
-/** Measuring loudness renders the whole mix first. */
-export const AUDIO_MIX_LOUDNESS_TIMEOUT_MS = 120_000;
+/** Measuring loudness and writing stems render the whole mix first. */
+export const AUDIO_MIX_RENDER_TIMEOUT_MS = 300_000;
 
 interface RendererResultResponse<T> {
 	requestId: string;
@@ -483,8 +483,8 @@ export async function requestAudioMixOperationFromRenderer(
 		timeoutErrorMessage: "Timeout waiting for mixer result",
 		correlationId,
 		timeoutMs:
-			request.action === "measure-loudness"
-				? AUDIO_MIX_LOUDNESS_TIMEOUT_MS
+			request.action === "measure-loudness" || request.action === "render-stems"
+				? AUDIO_MIX_RENDER_TIMEOUT_MS
 				: TIMELINE_REQUEST_TIMEOUT_MS,
 	});
 }
