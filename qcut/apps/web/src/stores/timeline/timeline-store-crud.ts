@@ -53,6 +53,7 @@ import {
 	describeOccupancyConflict,
 	findOverlappingPair,
 } from "@/lib/timeline-occupancy";
+import { fitCanvasToFirstMedia } from "./first-media-canvas";
 import { blockedByTrackLock } from "./timeline-lock-guard";
 import {
 	insertGapInElements,
@@ -324,81 +325,15 @@ export function createCrudOperations(
 				get().pushHistory();
 			}
 
-			// If this is the first element and it's a media element, automatically set the project canvas size
-			// to match the media's aspect ratio and FPS (for videos). Users can turn
-			// this off in Global Settings (autoCanvasFromFirstMedia).
+			// The first clip on an empty timeline fits the canvas to itself unless
+			// a size was already chosen. Users can turn this off in Global
+			// Settings (autoCanvasFromFirstMedia).
 			if (
 				isFirstElement &&
 				newElement.type === "media" &&
 				useAppSettingsStore.getState().autoCanvasFromFirstMedia
 			) {
-				import("../media/media-store")
-					.then(({ useMediaStore, getMediaAspectRatio }) => {
-						const mediaStore = useMediaStore.getState();
-						const mediaItem = mediaStore.mediaItems.find(
-							(item) => item.id === newElement.mediaId
-						);
-
-						if (
-							mediaItem &&
-							(mediaItem.type === "image" || mediaItem.type === "video")
-						) {
-							import("../editor/editor-store")
-								.then(({ useEditorStore }) => {
-									const editorStore = useEditorStore.getState();
-									editorStore.setCanvasSizeFromAspectRatio(
-										getMediaAspectRatio(mediaItem)
-									);
-									return import("../project-store").then(
-										({ useProjectStore }) =>
-											useProjectStore
-												.getState()
-												.updateProjectCanvasSize(
-													useEditorStore.getState().canvasSize,
-													"custom"
-												)
-									);
-								})
-								.catch((error) => {
-									handleError(error, {
-										operation: "Sync canvas size to project settings",
-										category: ErrorCategory.STORAGE,
-										severity: ErrorSeverity.LOW,
-										showToast: false,
-										metadata: { operation: "canvas-size-sync" },
-									});
-								});
-						}
-
-						// Set project FPS from the first video element
-						if (mediaItem && mediaItem.type === "video" && mediaItem.fps) {
-							const fps = mediaItem.fps;
-							import("../project-store")
-								.then(({ useProjectStore }) => {
-									const projectStore = useProjectStore.getState();
-									if (projectStore.activeProject) {
-										projectStore.updateProjectFps(fps);
-									}
-								})
-								.catch((error) => {
-									handleError(error, {
-										operation: "Update FPS from Project Store",
-										category: ErrorCategory.STORAGE,
-										severity: ErrorSeverity.LOW,
-										showToast: false,
-										metadata: { operation: "fps-update" },
-									});
-								});
-						}
-					})
-					.catch((error) => {
-						handleError(error, {
-							operation: "Set canvas size from first element",
-							category: ErrorCategory.STORAGE,
-							severity: ErrorSeverity.LOW,
-							showToast: false,
-						});
-					});
+				void fitCanvasToFirstMedia({ mediaId: newElement.mediaId });
 			}
 
 			updateTracksAndSave(
