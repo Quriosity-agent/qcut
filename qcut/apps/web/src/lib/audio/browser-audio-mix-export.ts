@@ -1,6 +1,9 @@
 import type { ProjectAudioMixSettings, TimelineTrack } from "@/types/timeline";
 import { dbToGain } from "./audio-properties";
-import { MASTER_AUDIO_BUS_ID } from "./audio-mix-settings";
+import {
+	MASTER_AUDIO_BUS_ID,
+	createDefaultAudioBusEffectsSettings,
+} from "./audio-mix-settings";
 import {
 	type AudioMixRouting,
 	type TrackMixRoute,
@@ -210,6 +213,11 @@ function scheduleDucking({
  *
  * `lookaheadSeconds` is one dynamics stage's delay and `clipStages` the
  * stages every clip passes before reaching its track.
+ *
+ * With `stemBusId`, only that bus's tracks are built ("master" for the tracks
+ * that feed the master directly), and the master stays neutral: a stem is
+ * the bus as it leaves its fader. The master strip is still in the path, so
+ * a stem lines up with the full mix sample for sample.
  */
 export function buildExportAudioMix({
 	context,
@@ -217,26 +225,43 @@ export function buildExportAudioMix({
 	duckingSources,
 	lookaheadSeconds,
 	clipStages,
+	stemBusId,
 }: {
 	context: BaseAudioContext;
 	mix: AudioMixRouting;
 	duckingSources: Map<string, DuckingSourceLevels>;
 	lookaheadSeconds: number;
 	clipStages: number;
+	stemBusId?: string;
 }): Map<string, AudioNode> {
 	const master = createMixStripNodes({ context });
-	applyMixStripEffects({
-		strip: master,
-		effects: mix.master.effects,
-		set: setOnce,
-	});
-	applyMixStripLevel({
-		strip: master,
-		gainDb: mix.master.gainDb,
-		pan: mix.master.pan,
-		silenced: mix.master.muted,
-		set: setOnce,
-	});
+	if (stemBusId === undefined) {
+		applyMixStripEffects({
+			strip: master,
+			effects: mix.master.effects,
+			set: setOnce,
+		});
+		applyMixStripLevel({
+			strip: master,
+			gainDb: mix.master.gainDb,
+			pan: mix.master.pan,
+			silenced: mix.master.muted,
+			set: setOnce,
+		});
+	} else {
+		applyMixStripEffects({
+			strip: master,
+			effects: createDefaultAudioBusEffectsSettings(),
+			set: setOnce,
+		});
+		applyMixStripLevel({
+			strip: master,
+			gainDb: 0,
+			pan: 0,
+			silenced: false,
+			set: setOnce,
+		});
+	}
 	master.limiter.connect(context.destination);
 
 	const busInputs = new Map<string, AudioNode>();
@@ -266,6 +291,7 @@ export function buildExportAudioMix({
 	const trackInputs = new Map<string, AudioNode>();
 	for (const route of mix.tracks) {
 		if (route.silenced) continue;
+		if (stemBusId !== undefined && route.busId !== stemBusId) continue;
 		const strip = createMixStripNodes({ context });
 		applyTrackStrip({ strip, route });
 		scheduleDucking({
