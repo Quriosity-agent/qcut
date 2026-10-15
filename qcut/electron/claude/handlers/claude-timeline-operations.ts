@@ -8,6 +8,7 @@
 import { ipcMain, BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
+import { withDefaultMediaDurations } from "./claude-media-default-duration.js";
 import {
 	assertIpcMainReady,
 	assertRendererWindowReady,
@@ -497,7 +498,7 @@ export function assertBatchElementPlacement({
 			durationFrames > 0);
 	if (!validDuration) {
 		throw new Error(
-			"Each element must include either a duration > 0 (seconds) or durationFrames (whole frames > 0)"
+			"Each element must include either a duration > 0 (seconds) or durationFrames (whole frames > 0); video and audio default to their file's length when the file is in the project"
 		);
 	}
 }
@@ -522,7 +523,11 @@ export async function batchAddElements(
 			return { added: [], failedCount: 0 };
 		}
 
-		for (const element of elements) {
+		// Media named without a length gets its file's length before anything
+		// checks for one.
+		const requests = await withDefaultMediaDurations({ projectId, elements });
+
+		for (const element of requests) {
 			if (!element.trackId || typeof element.trackId !== "string") {
 				throw new Error("Each element must include a valid trackId");
 			}
@@ -546,7 +551,7 @@ export async function batchAddElements(
 		}
 
 		if (trackById.size > 0) {
-			for (const element of elements) {
+			for (const element of requests) {
 				const trackType = trackById.get(element.trackId);
 				if (!trackType) {
 					throw new Error(`Track not found: ${element.trackId}`);
@@ -567,7 +572,7 @@ export async function batchAddElements(
 		return requestBatchAddElementsFromRenderer(
 			win,
 			projectId,
-			elements,
+			requests,
 			correlationId
 		);
 	} catch (error) {
