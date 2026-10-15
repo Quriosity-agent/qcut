@@ -26,6 +26,7 @@ Run QCut's built-in TypeScript CLI (`qcut`, legacy name `qcut-pipeline`).
 - For editor media & project commands, project.json schema, see [editor-media.md](editor/editor-media.md)
 - For editor timeline & editing commands, see [editor-timeline.md](editor/editor-timeline.md)
 - For editor tracks, element patching, timeline manifests, stickers, transcript search, audio/caption export, keyboard, UI waits, demo runs, Moyin, and pointer automation, see [editor-tracks-stickers-search.md](editor/editor-tracks-stickers-search.md)
+- For the mixer: track levels, pan, buses, master, solo, mute, ducking and effects, see [editor-mix.md](editor/editor-mix.md)
 - For editor export, diagnostics, MCP, screen recording, UI, screenshots, state control, see [editor-output.md](editor/editor-output.md)
 - For editor AI commands: video analysis, transcription, AI generation, Remotion, navigator, see [editor-ai.md](editor/editor-ai.md)
 - For editor state automation: snapshots, event streams, correlation IDs, transactions, capabilities, and notification bridge endpoints, see [editor-state-control.md](editor/editor-state-control.md)
