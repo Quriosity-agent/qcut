@@ -50,7 +50,7 @@ import {
 import { findTrackIdsForGroup } from "@qcut/editor-core/timeline";
 import { getTimelineElementDuration } from "@/lib/timeline";
 import {
-	findOccupyingElement,
+	describeOccupancyConflict,
 	findOverlappingPair,
 } from "@/lib/timeline-occupancy";
 import { blockedByTrackLock } from "./timeline-lock-guard";
@@ -136,17 +136,24 @@ export function createCrudOperations(
 		) => {
 			const shouldPushHistory = options.pushHistory !== false;
 			const shouldSelectElement = options.selectElement !== false;
+			const reject = (
+				error: Error,
+				context: Parameters<typeof handleError>[1]
+			): null => {
+				handleError(error, context);
+				options.onRejected?.(error.message);
+				return null;
+			};
 
 			// Validate element type matches track type
 			const track = get()._tracks.find((t) => t.id === trackId);
 			if (!track) {
-				handleError(new Error(`Track not found: ${trackId}`), {
+				return reject(new Error(`Track not found: ${trackId}`), {
 					operation: "Add Element to Track",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { trackId },
 				});
-				return null;
 			}
 
 			if (
@@ -156,13 +163,14 @@ export function createCrudOperations(
 					trackIds: [trackId],
 				})
 			) {
+				options.onRejected?.(`Track "${track.name}" is locked`);
 				return null;
 			}
 
 			// Use utility function for validation
 			const validation = validateElementTrackCompatibility(elementData, track);
 			if (!validation.isValid) {
-				handleError(
+				return reject(
 					new Error(
 						validation.errorMessage || "Invalid element for track type"
 					),
@@ -176,29 +184,26 @@ export function createCrudOperations(
 						},
 					}
 				);
-				return null;
 			}
 
 			// For media elements, validate mediaId exists
 			if (elementData.type === "media" && !elementData.mediaId) {
-				handleError(new Error("Media element must have mediaId"), {
+				return reject(new Error("Media element must have mediaId"), {
 					operation: "Media Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "media", trackId },
 				});
-				return null;
 			}
 
 			// For text elements, validate required text properties
 			if (elementData.type === "text" && !elementData.content) {
-				handleError(new Error("Text element must have content"), {
+				return reject(new Error("Text element must have content"), {
 					operation: "Text Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "text", trackId },
 				});
-				return null;
 			}
 
 			// For markdown elements, validate required markdown content
@@ -206,13 +211,12 @@ export function createCrudOperations(
 				elementData.type === "markdown" &&
 				typeof elementData.markdownContent !== "string"
 			) {
-				handleError(new Error("Markdown element must have markdownContent"), {
+				return reject(new Error("Markdown element must have markdownContent"), {
 					operation: "Markdown Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "markdown", trackId },
 				});
-				return null;
 			}
 
 			// Check if this is the first element being added to the timeline
@@ -245,7 +249,7 @@ export function createCrudOperations(
 				candidateTrack.elements.some((element) => element.id === requestedId)
 			);
 			if (idAlreadyExists) {
-				handleError(
+				return reject(
 					new Error(`Timeline element id already exists: ${requestedId}`),
 					{
 						operation: "Add Element to Track",
@@ -254,7 +258,6 @@ export function createCrudOperations(
 						metadata: { elementId: requestedId, trackId },
 					}
 				);
-				return null;
 			}
 
 			const newElement: TimelineElement = {
@@ -281,29 +284,24 @@ export function createCrudOperations(
 			let targetElements: TimelineElement[] = [...track.elements];
 			if (newElementDuration > 0) {
 				if (collisionMode === "reject") {
-					const occupant = findOccupyingElement({
+					const conflict = describeOccupancyConflict({
 						track,
 						startTime: targetRange.startTime,
 						duration: newElementDuration,
 						fps,
 					});
-					if (occupant) {
-						handleError(
-							new Error(
-								"Cannot place element here - it would overlap with existing elements"
-							),
-							{
-								operation: "Add Element to Track",
-								category: ErrorCategory.VALIDATION,
-								severity: ErrorSeverity.MEDIUM,
-								metadata: {
-									trackId,
-									startTime: targetRange.startTime,
-									collidingElementIds: [occupant.id],
-								},
-							}
-						);
-						return null;
+					if (conflict) {
+						return reject(new Error(conflict.message), {
+							operation: "Add Element to Track",
+							category: ErrorCategory.VALIDATION,
+							severity: ErrorSeverity.MEDIUM,
+							metadata: {
+								trackId,
+								startTime: targetRange.startTime,
+								collidingElementIds: [conflict.occupant.id],
+								nextFreeStart: conflict.nextFreeStart,
+							},
+						});
 					}
 				} else if (collisionMode === "insert") {
 					targetElements = insertGapInElements({
@@ -554,29 +552,24 @@ export function createCrudOperations(
 				element: elementToMove,
 				fps,
 			});
-			const occupant = findOccupyingElement({
+			const conflict = describeOccupancyConflict({
 				track: toTrack,
 				startTime: elementToMove.startTime,
 				duration: movedDuration,
 				excludeElementId: elementId,
 				fps,
 			});
-			if (occupant) {
-				handleError(
-					new Error(
-						"Cannot move element here - it would overlap with existing elements"
-					),
-					{
-						operation: "Move Element to Track",
-						category: ErrorCategory.VALIDATION,
-						severity: ErrorSeverity.MEDIUM,
-						metadata: {
-							targetTrackId: toTrackId,
-							elementId,
-							collidingElementIds: [occupant.id],
-						},
-					}
-				);
+			if (conflict) {
+				handleError(new Error(conflict.message), {
+					operation: "Move Element to Track",
+					category: ErrorCategory.VALIDATION,
+					severity: ErrorSeverity.MEDIUM,
+					metadata: {
+						targetTrackId: toTrackId,
+						elementId,
+						collidingElementIds: [conflict.occupant.id],
+					},
+				});
 				return;
 			}
 
@@ -735,7 +728,7 @@ export function createCrudOperations(
 					trackIds: targetTrackIds,
 				})
 			) {
-				return;
+				return false;
 			}
 			// Reference equality signals a rejected move (missing element or a
 			// same-track collision) — bail before touching history.
@@ -746,9 +739,10 @@ export function createCrudOperations(
 				startTime,
 				fps: getProjectFps(),
 			});
-			if (movedTracks === get()._tracks) return;
+			if (movedTracks === get()._tracks) return false;
 			if (pushHistory) get().pushHistory();
 			updateTracksAndSave(movedTracks);
+			return true;
 		},
 
 		toggleTrackMute: (trackId) => {
