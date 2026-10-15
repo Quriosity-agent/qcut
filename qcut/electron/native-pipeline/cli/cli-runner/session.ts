@@ -251,6 +251,7 @@ function parseSessionArgs(args: string[]): {
 			sources: { type: "string" },
 			"append-to-track": { type: "string" },
 			"match-media": { type: "string" },
+			color: { type: "string" },
 			elements: { type: "string" },
 			time: { type: "string" },
 			"new-name": { type: "string" },
@@ -393,6 +394,7 @@ function parseSessionArgs(args: string[]): {
 			result.appendToTrack = values["append-to-track"] as string;
 		if (values["match-media"])
 			result.matchMedia = values["match-media"] as string;
+		if (values.color) result.color = values.color as string;
 		if (values.elements) result.elements = values.elements as string;
 		if (values["new-name"]) result.newName = values["new-name"] as string;
 		if (values.name) result.name = values.name as string;
