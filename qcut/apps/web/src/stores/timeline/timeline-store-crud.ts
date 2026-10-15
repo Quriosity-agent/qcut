@@ -47,15 +47,12 @@ import {
 	createMediaContainer,
 	selectMulticamClip,
 } from "./timeline-compound-operations";
+import { findTrackIdsForGroup } from "@qcut/editor-core/timeline";
+import { getTimelineElementDuration } from "@/lib/timeline";
 import {
-	findRangeCollisions,
-	findTrackIdsForGroup,
-} from "@qcut/editor-core/timeline";
-import {
-	getTimelineElementDuration,
-	getTimelineElementEndTime,
-} from "@/lib/timeline";
-import { findOverlappingPair } from "@/lib/timeline-occupancy";
+	findOccupyingElement,
+	findOverlappingPair,
+} from "@/lib/timeline-occupancy";
 import { blockedByTrackLock } from "./timeline-lock-guard";
 import {
 	insertGapInElements,
@@ -284,15 +281,13 @@ export function createCrudOperations(
 			let targetElements: TimelineElement[] = [...track.elements];
 			if (newElementDuration > 0) {
 				if (collisionMode === "reject") {
-					const collisions = findRangeCollisions({
-						items: track.elements.map((el) => ({
-							id: el.id,
-							startTime: el.startTime,
-							endTime: getTimelineElementEndTime({ element: el, fps }),
-						})),
-						range: targetRange,
+					const occupant = findOccupyingElement({
+						track,
+						startTime: targetRange.startTime,
+						duration: newElementDuration,
+						fps,
 					});
-					if (collisions.length > 0) {
+					if (occupant) {
 						handleError(
 							new Error(
 								"Cannot place element here - it would overlap with existing elements"
@@ -304,7 +299,7 @@ export function createCrudOperations(
 								metadata: {
 									trackId,
 									startTime: targetRange.startTime,
-									collidingElementIds: collisions.map((item) => item.id),
+									collidingElementIds: [occupant.id],
 								},
 							}
 						);
@@ -559,19 +554,14 @@ export function createCrudOperations(
 				element: elementToMove,
 				fps,
 			});
-			const moveCollisions = findRangeCollisions({
-				items: toTrack.elements.map((el) => ({
-					id: el.id,
-					startTime: el.startTime,
-					endTime: getTimelineElementEndTime({ element: el, fps }),
-				})),
-				range: {
-					startTime: elementToMove.startTime,
-					endTime: elementToMove.startTime + movedDuration,
-				},
-				excludeIds: [elementId],
+			const occupant = findOccupyingElement({
+				track: toTrack,
+				startTime: elementToMove.startTime,
+				duration: movedDuration,
+				excludeElementId: elementId,
+				fps,
 			});
-			if (moveCollisions.length > 0) {
+			if (occupant) {
 				handleError(
 					new Error(
 						"Cannot move element here - it would overlap with existing elements"
@@ -583,7 +573,7 @@ export function createCrudOperations(
 						metadata: {
 							targetTrackId: toTrackId,
 							elementId,
-							collidingElementIds: moveCollisions.map((item) => item.id),
+							collidingElementIds: [occupant.id],
 						},
 					}
 				);
@@ -754,6 +744,7 @@ export function createCrudOperations(
 				trackId,
 				elementId,
 				startTime,
+				fps: getProjectFps(),
 			});
 			if (movedTracks === get()._tracks) return;
 			if (pushHistory) get().pushHistory();
