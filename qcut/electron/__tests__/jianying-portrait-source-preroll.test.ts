@@ -90,10 +90,10 @@ describe("portrait causal source pre-roll contract", () => {
 			})
 		).toThrow("size");
 	});
-	it("does not recover manual-body or disabled operations", () => {
+	it("accepts manual grid geometry but does not recover disabled operations", () => {
 		const value = request();
 		value.adjustments.manualBody = {};
-		expect(canRecoverPortraitSource({ request: value })).toBe(false);
+		expect(canRecoverPortraitSource({ request: value })).toBe(true);
 		value.adjustments = {
 			enabled: false,
 			values: { face_adjust_EnlargeEye: 60 },

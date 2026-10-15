@@ -13,6 +13,11 @@ import {
 import type { ReferenceWindow } from "./portrait-reference";
 
 export type PortraitCompositePass = "original" | "native" | "independent";
+export type CompositeEvidencePass =
+	| PortraitCompositePass
+	| "smart"
+	| "manual"
+	| "combined";
 export const COMPOSITE_WIDTH = 1080;
 export const COMPOSITE_HEIGHT = 1920;
 export const COMPOSITE_FPS: ClaudeLocalVideoExportRequest["frameRate"] = 30;
@@ -51,6 +56,28 @@ if (
 	throw new Error("Invalid composite duration or sample frame indices");
 }
 
+export interface CompositeSettings {
+	width: number;
+	height: number;
+	fps: ClaudeLocalVideoExportRequest["frameRate"];
+	seconds: number;
+	totalFrames: number;
+	transitionSeconds: number;
+	fit: "cover" | "contain";
+	samples: number[];
+}
+
+export const COMPOSITE_SETTINGS: CompositeSettings = {
+	width: COMPOSITE_WIDTH,
+	height: COMPOSITE_HEIGHT,
+	fps: COMPOSITE_FPS,
+	seconds: COMPOSITE_SECONDS,
+	totalFrames: COMPOSITE_TOTAL_FRAMES,
+	transitionSeconds: COMPOSITE_TRANSITION_SECONDS,
+	fit: COMPOSITE_FIT,
+	samples: COMPOSITE_SAMPLES,
+};
+
 export interface CompositeEvidenceWindow extends ReferenceWindow {
 	__playbackStore: typeof usePlaybackStore;
 	__exportStore: typeof useExportStore;
@@ -63,7 +90,7 @@ export interface CompositeEvidenceWindow extends ReferenceWindow {
 	};
 	__qcutExportFrameEvidence?: ExportFrameEvidenceSink;
 	__savePortraitCompositeFrame: (input: {
-		pass: PortraitCompositePass;
+		pass: CompositeEvidencePass;
 		frameIndex: number;
 		timeSeconds: number;
 		fps: number;
@@ -83,9 +110,11 @@ export interface CompositeProject {
 export async function prepareCompositeProject({
 	page,
 	source,
+	settings = COMPOSITE_SETTINGS,
 }: {
 	page: Page;
 	source: string;
+	settings?: CompositeSettings;
 }): Promise<CompositeProject> {
 	await page.setViewportSize({ width: 2400, height: 2500 });
 	await page.evaluate(() => {
@@ -191,12 +220,12 @@ export async function prepareCompositeProject({
 			};
 		},
 		{
-			width: COMPOSITE_WIDTH,
-			height: COMPOSITE_HEIGHT,
-			fps: COMPOSITE_FPS,
-			seconds: COMPOSITE_SECONDS,
-			fit: COMPOSITE_FIT,
-			transitionSeconds: COMPOSITE_TRANSITION_SECONDS,
+			width: settings.width,
+			height: settings.height,
+			fps: settings.fps,
+			seconds: settings.seconds,
+			fit: settings.fit,
+			transitionSeconds: settings.transitionSeconds,
 		}
 	);
 }
@@ -210,16 +239,36 @@ export async function selectCompositePass({
 	project: CompositeProject;
 	pass: PortraitCompositePass;
 }) {
-	const adjustments: MediaPortraitAdjustments =
-		pass === "original"
-			? { enabled: false, values: {} }
-			: {
-					enabled: true,
-					engine: pass,
-					faceTarget: { mode: "all" },
-					values: { face_adjust_TotalFace: 25, face_adjust_EnlargeEye: 20 },
-					makeup: { lip: { cardId: "lip-coral-nude", intensity: 35 } },
-				};
+	const adjustments = portraitCompositeAdjustments({ pass });
+	await applyCompositeAdjustments({ page, project, adjustments });
+	return adjustments;
+}
+
+export function portraitCompositeAdjustments({
+	pass,
+}: {
+	pass: PortraitCompositePass;
+}): MediaPortraitAdjustments {
+	return pass === "original"
+		? { enabled: false, values: {} }
+		: {
+				enabled: true,
+				engine: pass,
+				faceTarget: { mode: "all" },
+				values: { face_adjust_TotalFace: 25, face_adjust_EnlargeEye: 20 },
+				makeup: { lip: { cardId: "lip-coral-nude", intensity: 35 } },
+			};
+}
+
+export async function applyCompositeAdjustments({
+	page,
+	project,
+	adjustments,
+}: {
+	page: Page;
+	project: CompositeProject;
+	adjustments: MediaPortraitAdjustments;
+}) {
 	await page.evaluate(
 		({ project, adjustments }) => {
 			const stores = window as unknown as CompositeEvidenceWindow;
@@ -234,34 +283,41 @@ export async function selectCompositePass({
 		},
 		{ project, adjustments }
 	);
-	return adjustments;
 }
 
 /** Only editor layout changes: the rendered content remains the real preview. */
-export async function setOneToOnePreview({ page }: { page: Page }) {
-	await page.getByTestId("preview-canvas").evaluate((node) => {
-		const preview = node as HTMLElement;
-		const container = preview.parentElement;
-		if (!container) throw new Error("Preview layout container is missing");
-		const style = getComputedStyle(container);
-		const paddingX =
-			Number.parseFloat(style.paddingLeft) +
-			Number.parseFloat(style.paddingRight);
-		const paddingY =
-			Number.parseFloat(style.paddingTop) +
-			Number.parseFloat(style.paddingBottom);
-		Object.assign(container.style, {
-			position: "fixed",
-			zIndex: "10",
-			left: "550px",
-			top: "80px",
-			flex: "none",
-			width: `${1080 + paddingX}px`,
-			height: `${1920 + paddingY + 180}px`,
-		});
-		preview.style.borderWidth = "0";
-		preview.style.transform = "none";
-	});
+export async function setOneToOnePreview({
+	page,
+	settings = COMPOSITE_SETTINGS,
+}: {
+	page: Page;
+	settings?: CompositeSettings;
+}) {
+	await page
+		.getByTestId("preview-canvas")
+		.evaluate((node, { width, height }) => {
+			const preview = node as HTMLElement;
+			const container = preview.parentElement;
+			if (!container) throw new Error("Preview layout container is missing");
+			const style = getComputedStyle(container);
+			const paddingX =
+				Number.parseFloat(style.paddingLeft) +
+				Number.parseFloat(style.paddingRight);
+			const paddingY =
+				Number.parseFloat(style.paddingTop) +
+				Number.parseFloat(style.paddingBottom);
+			Object.assign(container.style, {
+				position: "fixed",
+				zIndex: "10",
+				left: "550px",
+				top: "80px",
+				flex: "none",
+				width: `${width + paddingX}px`,
+				height: `${height + paddingY + 180}px`,
+			});
+			preview.style.borderWidth = "0";
+			preview.style.transform = "none";
+		}, settings);
 	await expect
 		.poll(async () => {
 			const box = await page
@@ -269,7 +325,7 @@ export async function setOneToOnePreview({ page }: { page: Page }) {
 				.boundingBox();
 			return box ? [Math.round(box.width), Math.round(box.height)] : [];
 		})
-		.toEqual([COMPOSITE_WIDTH, COMPOSITE_HEIGHT]);
+		.toEqual([settings.width, settings.height]);
 	await page.getByTestId("preview-capture-surface").evaluate((surface) => {
 		const container = surface.parentElement?.parentElement;
 		if (!container) throw new Error("Preview layout container is missing");

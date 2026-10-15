@@ -1,23 +1,19 @@
 ---
-version: "2026.10.14.2"
-date: "2026-10-14"
+version: "2026.10.15.1"
+date: "2026-10-15"
 channel: "stable"
 ---
 
-# QCut v2026.10.14.2
-
-### Improved
-- Clips can change volume over time through the editor API and CLI, for example to duck music under speech. `editor timeline update-element` accepts `audio.keyframes.volumeDb`, and `batch-add` accepts the same object on new media clips. Compose manifests take `volumeKeyframes` on clips and sounds; headless renders and editable projects play the same envelope.
-- `qcut compose schema` prints every compose manifest field with its type, default and meaning, plus a worked example. The `--config` help points to it, and the bundled CLI skill documents the manifest format.
+# QCut v2026.10.15.1
 
 ### Fixed
-- Muxer exports no longer start audio about 56 ms late. This covers web and iPad exports, and desktop timelines with local color or portrait edits, filter stacks, shader transitions or stabilization. The measured offset is now 0.04 ms, the same as the source. If the encoder's start-up delay cannot be measured, the export still completes with the previous offset.
-- `editor navigator open` reports success only after the project has finished loading, and fails for a project that does not exist.
-- Project settings changed through the CLI or API while the project is closed, such as the aspect ratio, now take effect when the project opens.
-- Rejected editor API element updates report the reason instead of "Element not found". Audio settings sent through the API are checked for unknown names and wrong value types.
-- Headless compose renders place stickers the way the editor does: `transform.x`/`y` set the sticker's centre, and `scale` sets its width relative to the canvas's shorter side. Stickers in existing manifests move accordingly, and stickers centred near an edge are no longer rejected as outside the canvas.
+- Native manual body shaping now participates in the same source-history replay used by export, including combinations with intelligent body shaping and paused reverse seeks. Intelligent body shaping can also recover after a cold start.
+- Manual body region controls stay aligned when a clip is rotated, mirrored or scaled.
+- Filter CLI render and pipeline commands preserve full Windows file IDs when comparing input and output files, so different files are not mistaken for the same source. Hard-link, symlink and overwrite protections remain in place.
+
+### Verified
+- A 1080×1920, 30 fps, six-second moving-person fixture covers original, intelligent, manual and combined body paths with scale/crop keyframes, a dissolve and reverse seeks. All 64 sampled paused-preview/pre-encode export comparisons differ by at most one RGB level with identical alpha. All four exported videos decode to 180 frames with matching presentation timestamps.
 
 ### Limitations
-- Exported audio can still run up to about 30 ms past the last video frame. The latency of pitch-corrected clips is not measured, and the start-up delay measurement has only been verified on macOS.
-- `compose project --target editor` still rejects manifests that contain stickers.
-- A fixed manifest `volume` above 1 only applies to headless renders; use volume keyframes (up to +12 dB) to boost audio in editor projects.
+- Acceptance covers sampled paused previews and the native runtime integration. Continuous real-time preview consistency, independent body rendering, a separate Jianying UI comparison, multi-person tracking, occlusion recovery, long-session stability and audio synchronization remain unverified.
+- Native body processing remains slow: the six-second intelligent/manual/combined exports took approximately 15.4/37.6/53.1 minutes on the test machine. Body warps can also move the surrounding background; these tests do not establish background protection or visual quality across body types and clothing.

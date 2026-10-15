@@ -13,6 +13,7 @@ export function canRecoverPortraitSource({
 	>;
 }): boolean {
 	const { adjustments, sourceKey, timestampSeconds } = request;
+	// Manual body grids replay fixed geometry per source frame; retouch strokes own mask caches.
 	return Boolean(
 		sourceKey &&
 			timestampSeconds !== undefined &&
@@ -21,8 +22,7 @@ export function canRecoverPortraitSource({
 			adjustments.enabled &&
 			!adjustments.faces?.length &&
 			adjustments.faceTarget?.mode !== "single" &&
-			!adjustments.manualRetouch?.strokes.length &&
-			!adjustments.manualBody
+			!adjustments.manualRetouch?.strokes.length
 	);
 }
 

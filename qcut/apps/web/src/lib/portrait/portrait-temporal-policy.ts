@@ -29,7 +29,6 @@ export function canUseNativePortraitSourceWindow({
 			adjustments.faceTarget?.mode !== "single" &&
 			!adjustments.faces?.length &&
 			!adjustments.manualRetouch?.strokes.length &&
-			!adjustments.manualBody &&
 			stabilization === 0
 	);
 }

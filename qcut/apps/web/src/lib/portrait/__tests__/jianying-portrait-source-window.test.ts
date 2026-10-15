@@ -166,6 +166,69 @@ describe("deterministic native source-window adapter", () => {
 			render.mock.calls[0][0].adjustments.values.face_adjust_TotalFace
 		).toBe(25);
 	});
+	it("snapshots combined body geometry for the same atomic source replay", async () => {
+		const adjustments = {
+			enabled: true,
+			values: { body_adjust_SlimBody: 35 },
+			manualBody: { stretch: { intensity: 20, upper: 0.7, bottom: 0.2 } },
+		};
+		readSourcePreRoll.mockImplementationOnce(async ({ sourceKey }) => {
+			adjustments.manualBody.stretch.upper = 0.9;
+			adjustments.values.body_adjust_SlimBody = 60;
+			return {
+				sourceKey,
+				frames: [
+					{ timestampSeconds: 0.9, rgba: new Uint8Array([5, 6, 7, 255]) },
+				],
+			};
+		});
+		await renderJianyingPortraitAdjustmentPreview({
+			...request(),
+			adjustments,
+		});
+		expect(render).toHaveBeenCalledOnce();
+		expect(render.mock.calls[0][0]).toMatchObject({
+			freshTracking: true,
+			adjustments: {
+				values: { body_adjust_SlimBody: 35 },
+				manualBody: { stretch: { intensity: 20, upper: 0.7, bottom: 0.2 } },
+			},
+			sourcePreRoll: { frames: [{ timestampSeconds: 0.9 }] },
+		});
+	});
+	it("discards cancelled body output and starts the next request with fresh history", async () => {
+		const controller = new AbortController();
+		const value = {
+			...request(),
+			adjustments: {
+				enabled: true,
+				values: { body_adjust_SlimBody: 35 },
+				manualBody: { stretch: { intensity: 20, upper: 0.7, bottom: 0.2 } },
+			},
+		};
+		render.mockImplementationOnce(async () => {
+			controller.abort();
+			return {
+				provider: "jianying-local-swing-v1",
+				width: 1,
+				height: 1,
+				rgba: new Uint8Array([20, 30, 40, 255]),
+				activeGroups: [],
+			};
+		});
+		await expect(
+			renderJianyingPortraitAdjustmentPreview({
+				...value,
+				signal: controller.signal,
+			})
+		).rejects.toThrow(/abort/i);
+		expect(await renderJianyingPortraitAdjustmentPreview(value)).not.toBeNull();
+		expect(readSourcePreRoll).toHaveBeenCalledTimes(2);
+		expect(render.mock.calls[1][0]).toMatchObject({
+			freshTracking: true,
+			sourcePreRoll: { frames: [{ timestampSeconds: 0.9 }] },
+		});
+	});
 	it("discards a completed replay when its caller cancelled during native work", async () => {
 		const controller = new AbortController();
 		render.mockImplementationOnce(async () => {

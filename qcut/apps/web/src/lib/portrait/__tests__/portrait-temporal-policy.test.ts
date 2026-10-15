@@ -37,7 +37,6 @@ describe("native portrait source-window eligibility", () => {
 				},
 			],
 		},
-		{ manualBody: {} },
 		{
 			manualRetouch: {
 				strokes: [
@@ -58,6 +57,35 @@ describe("native portrait source-window eligibility", () => {
 				adjustments: { ...adjustments, ...change },
 			})
 		).toBe(false);
+	});
+	it.each([
+		{},
+		{ stretch: { intensity: 0, upper: 0.7, bottom: 0.2 } },
+		{ stretch: { intensity: 25, upper: 0.7, bottom: 0.2 } },
+	])("accepts automatic body with retained manual geometry %j", (manualBody) => {
+		expect(
+			canUseNativePortraitSourceWindow({
+				adjustments: {
+					enabled: true,
+					values: { body_adjust_SlimBody: 35 },
+					manualBody,
+				},
+			})
+		).toBe(true);
+	});
+	it("accepts an active manual-only grid but leaves zero-only settings inert", () => {
+		const manual = {
+			enabled: true,
+			values: {},
+			manualBody: { zoom: { intensity: 25, x: 0.5, y: 0.5, radius: 0.2 } },
+		};
+		expect(canUseNativePortraitSourceWindow({ adjustments: manual })).toBe(
+			true
+		);
+		manual.manualBody.zoom.intensity = 0;
+		expect(canUseNativePortraitSourceWindow({ adjustments: manual })).toBe(
+			false
+		);
 	});
 	it("rejects stabilized source pixels and absent settings", () => {
 		expect(
