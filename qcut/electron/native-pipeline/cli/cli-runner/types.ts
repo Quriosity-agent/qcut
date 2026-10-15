@@ -535,6 +535,24 @@ export interface CLIRunOptions {
 	flat?: boolean;
 	/** Clip or track colour label (violet, blue, green, yellow, red, rose, orange, mango; none clears) */
 	color?: string;
+	/** Mixer: level in dB (NaN when the flag was not a number) */
+	gainDb?: number;
+	/** Mixer: pan from -1 (left) to 1 (right) */
+	pan?: number;
+	/** Mixer: the bus a track feeds ("master" for none) */
+	bus?: string;
+	/** Mixer: the bus a command acts on */
+	busId?: string;
+	/** Mixer: ducking settings as JSON or @file */
+	ducking?: string;
+	/** Mixer: effects (EQ, compressor, limiter) as JSON or @file */
+	effects?: string;
+	/** Mixer: turn mute or solo off instead of on */
+	off?: boolean;
+	/** Mixer: --mute / --no-mute on a bus */
+	mute?: boolean;
+	/** Mixer: --solo / --no-solo on a bus */
+	solo?: boolean;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
