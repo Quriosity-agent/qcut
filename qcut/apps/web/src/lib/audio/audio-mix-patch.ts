@@ -1,5 +1,7 @@
 import type {
+	AudioAutomationPoint,
 	AudioBusEffectsSettings,
+	AudioMixAutomation,
 	AudioCompressorSettings,
 	AudioDuckingSettings,
 	AudioLimiterSettings,
@@ -13,6 +15,10 @@ import {
 	MASTER_AUDIO_BUS_ID,
 	createDefaultAudioMixBus,
 } from "./audio-mix-settings";
+import {
+	type AutomationParam,
+	normalizeAutomation,
+} from "./audio-mix-automation";
 
 /**
  * Partial changes to mixer settings, merged onto what a track or bus already
@@ -32,6 +38,11 @@ export interface AudioEffectsPatch {
 	limiter?: Partial<AudioLimiterSettings>;
 }
 
+/** Curves to set; each one given replaces the old one, null removes it. */
+export type AutomationPatch = Partial<
+	Record<AutomationParam, AudioAutomationPoint[] | null>
+>;
+
 export interface TrackAudioPatch {
 	gainDb?: number;
 	pan?: number;
@@ -39,6 +50,7 @@ export interface TrackAudioPatch {
 	solo?: boolean;
 	ducking?: Partial<AudioDuckingSettings>;
 	effects?: AudioEffectsPatch;
+	automation?: AutomationPatch;
 }
 
 export interface AudioBusPatch {
@@ -48,6 +60,37 @@ export interface AudioBusPatch {
 	muted?: boolean;
 	solo?: boolean;
 	effects?: AudioEffectsPatch;
+	automation?: AutomationPatch;
+}
+
+function mergeAutomationPatch({
+	automation,
+	patch,
+}: {
+	automation?: AudioMixAutomation;
+	patch?: AutomationPatch;
+}): AudioMixAutomation | undefined {
+	if (!patch) return automation;
+	const merged: Partial<Record<AutomationParam, unknown>> = { ...automation };
+	for (const [param, points] of Object.entries(patch) as Array<
+		[AutomationParam, AudioAutomationPoint[] | null | undefined]
+	>) {
+		if (points === undefined) continue;
+		merged[param] = points ?? undefined;
+	}
+	return normalizeAutomation(merged);
+}
+
+/**
+ * Puts `automation` on `settings`. When there is none the key is set to
+ * undefined rather than left out: the stores spread a change over the old
+ * settings, and an absent key would keep the old curves.
+ */
+function withAutomation<T extends { automation?: AudioMixAutomation }>(
+	settings: T,
+	automation: AudioMixAutomation | undefined
+): T {
+	return { ...settings, automation };
 }
 
 function mergeBands({
@@ -108,16 +151,19 @@ export function mergeTrackAudioPatch({
 	settings: TimelineTrackAudioSettings;
 	patch: TrackAudioPatch;
 }): TimelineTrackAudioSettings {
-	const { ducking, effects, ...levels } = patch;
-	return {
-		...settings,
-		...levels,
-		ducking: { ...settings.ducking, ...ducking },
-		effects: mergeAudioEffectsPatch({
-			effects: settings.effects,
-			patch: effects,
-		}),
-	};
+	const { ducking, effects, automation, ...levels } = patch;
+	return withAutomation(
+		{
+			...settings,
+			...levels,
+			ducking: { ...settings.ducking, ...ducking },
+			effects: mergeAudioEffectsPatch({
+				effects: settings.effects,
+				patch: effects,
+			}),
+		},
+		mergeAutomationPatch({ automation: settings.automation, patch: automation })
+	);
 }
 
 export function mergeAudioBusPatch({
@@ -127,12 +173,15 @@ export function mergeAudioBusPatch({
 	bus: AudioMixBusSettings;
 	patch: AudioBusPatch;
 }): AudioMixBusSettings {
-	const { effects, ...fields } = patch;
-	return {
-		...bus,
-		...fields,
-		effects: mergeAudioEffectsPatch({ effects: bus.effects, patch: effects }),
-	};
+	const { effects, automation, ...fields } = patch;
+	return withAutomation(
+		{
+			...bus,
+			...fields,
+			effects: mergeAudioEffectsPatch({ effects: bus.effects, patch: effects }),
+		},
+		mergeAutomationPatch({ automation: bus.automation, patch: automation })
+	);
 }
 
 /** Why a bus operation was refused. */
