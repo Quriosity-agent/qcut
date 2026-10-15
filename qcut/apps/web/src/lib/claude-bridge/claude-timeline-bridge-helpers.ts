@@ -1909,6 +1909,7 @@ export function formatTracksForExport({
 		isMain: track.isMain,
 		hidden: track.hidden,
 		locked: track.locked,
+		colorLabel: track.colorLabel,
 		elements: track.elements.map((element) =>
 			formatElementForExport({ element, trackIndex: index, fps })
 		),
