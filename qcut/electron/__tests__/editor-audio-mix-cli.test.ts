@@ -1,7 +1,9 @@
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { readAudioMixOptions } from "../native-pipeline/cli/audio-mix-cli-options.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
 import type { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
+import { handleGenerateExportCommand } from "../native-pipeline/editor/editor-handlers-generate.js";
 import { handleTimelineEditingCommand } from "../native-pipeline/editor/editor-handlers-timeline.js";
 
 /** The mixer commands: what each sends to the editor and what it prints. */
@@ -237,6 +239,67 @@ describe("bus and master commands", () => {
 		expect(result).toEqual({
 			success: true,
 			data: { projectId: "p1", integratedLufs: -14 },
+		});
+	});
+
+	it("writes stems into an absolute folder, and needs one", async () => {
+		const { client, post } = fakeClient();
+		post.mockResolvedValueOnce({ outputDir: "/abs/stems", stems: [] } as never);
+		expect(await run(client, "editor:mix:stems")).toEqual({
+			success: false,
+			error: "Pass --output-dir <folder> for the stems",
+		});
+		await run(client, "editor:mix:stems", { outputDir: "relative/stems" });
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/mix/p1/stems",
+			{ outputDir: path.resolve("relative/stems") },
+			{ timeout: 310_000 }
+		);
+	});
+
+	it("writes stems beside an export once it is done", async () => {
+		const post = vi.fn(async (route: string) =>
+			route.endsWith("/start")
+				? { jobId: "job-1" }
+				: { outputDir: "/out", stems: [{ busId: "sfx" }] }
+		);
+		const pollJob = vi.fn(async () => ({
+			status: "completed",
+			outputPath: "/out/doors.mp4",
+		}));
+		const client = { post, pollJob } as unknown as EditorApiClient;
+
+		const result = await handleGenerateExportCommand(
+			client,
+			options("editor:export:start", {
+				output: "/out/doors.mp4",
+				stems: true,
+			}),
+			() => {}
+		);
+
+		expect(pollJob).toHaveBeenCalled();
+		expect(post).toHaveBeenLastCalledWith(
+			"/api/claude/mix/p1/stems",
+			{ outputDir: "/out", fileNamePrefix: "doors-" },
+			{ timeout: 310_000 }
+		);
+		expect(result).toMatchObject({
+			success: true,
+			data: {
+				outputPath: "/out/doors.mp4",
+				stems: { outputDir: "/out" },
+			},
+		});
+		expect(
+			await handleGenerateExportCommand(
+				client,
+				options("editor:export:start", { stems: true }),
+				() => {}
+			)
+		).toEqual({
+			success: false,
+			error: "--stems needs --output: the stems go beside it",
 		});
 	});
 
