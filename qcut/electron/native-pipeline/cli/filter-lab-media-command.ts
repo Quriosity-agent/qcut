@@ -75,9 +75,10 @@ export async function validateFilterLabMediaFiles({
 	output: string;
 	force: boolean;
 }) {
-	const source = await stat(input);
+	// Windows file IDs can exceed Number's integer precision.
+	const source = await stat(input, { bigint: true });
 	if (!source.isFile()) throw new Error("Input is not a regular file.");
-	const destination = await lstat(output).catch(
+	const destination = await lstat(output, { bigint: true }).catch(
 		(error: NodeJS.ErrnoException) => {
 			if (error.code === "ENOENT") return undefined;
 			throw error;
