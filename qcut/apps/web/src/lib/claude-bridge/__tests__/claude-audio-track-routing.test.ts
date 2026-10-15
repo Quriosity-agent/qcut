@@ -85,7 +85,8 @@ describe("Claude media element track routing", () => {
 				// Element duration falls back to the media item's real duration,
 				// not the 10s default.
 				duration: 164.2,
-			})
+			}),
+			{ onRejected: expect.any(Function) }
 		);
 	});
 
@@ -104,7 +105,8 @@ describe("Claude media element track routing", () => {
 		});
 		expect(timelineStore.addElementToTrack).toHaveBeenCalledWith(
 			"track-x",
-			expect.objectContaining({ mediaId: "m-video", duration: 30 })
+			expect.objectContaining({ mediaId: "m-video", duration: 30 }),
+			{ onRejected: expect.any(Function) }
 		);
 	});
 });
