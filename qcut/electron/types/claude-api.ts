@@ -47,8 +47,11 @@ export interface MediaFile {
 	type: "video" | "audio" | "image";
 	path: string;
 	size: number;
+	/** Seconds; for video, the length of the video stream. */
 	duration?: number;
 	dimensions?: { width: number; height: number };
+	/** Frames per second, for video. */
+	fps?: number;
 	createdAt: number;
 	modifiedAt: number;
 	metadata?: StickerLabRestrictedMediaMetadata | Record<string, unknown>;
