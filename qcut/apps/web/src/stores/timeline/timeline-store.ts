@@ -30,7 +30,6 @@ import { createAutoSaveHelpers } from "./timeline-store-autosave";
 import { createCrudOperations } from "./timeline-store-crud";
 import { isSeparatedAudioPairGroup } from "./timeline-group-operations";
 import { createPersistenceOperations } from "./timeline-store-persistence";
-import { getMediaTimelineDuration } from "@/lib/video/video-timing";
 import { useProjectStore } from "../project-store";
 
 export const useTimelineStore = create<TimelineStore>((set, get) => {
@@ -274,26 +273,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 		checkElementOverlap: (trackId, startTime, duration, excludeElementId) => {
 			const track = get()._tracks.find((t) => t.id === trackId);
 			if (!track) return false;
-
-			const overlap = track.elements.some((element) => {
-				const elementEnd =
-					element.startTime +
-					(element.type === "media"
-						? getMediaTimelineDuration(element)
-						: element.duration - element.trimStart - element.trimEnd);
-
-				if (element.id === excludeElementId) {
-					return false;
-				}
-
-				return (
-					(startTime >= element.startTime && startTime < elementEnd) ||
-					(startTime + duration > element.startTime &&
-						startTime + duration <= elementEnd) ||
-					(startTime < element.startTime && startTime + duration > elementEnd)
-				);
-			});
-			return overlap;
+			return (
+				findOccupyingElement({
+					track,
+					startTime,
+					duration,
+					excludeElementId,
+					fps: useProjectStore.getState().activeProject?.fps ?? 30,
+				}) !== null
+			);
 		},
 
 		findOrCreateTrack: (trackType, span) => {
