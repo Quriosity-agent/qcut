@@ -11,7 +11,8 @@
  * - ducking -12 dB while the burst plays → music drops by about 12 dB;
  * - the picture's own 4 kHz tone, main track -10 dB → 12 dB under its source;
  * - soloing the SFX track                → music and picture tone are gone;
- * - `mix loudness` agrees with FFmpeg's EBU R 128 meter on the export.
+ * - `mix loudness` agrees with FFmpeg's EBU R 128 meter on the export;
+ * - `export start --stems` writes one WAV per bus beside the export.
  *
  * Each tone is measured with a narrow band-pass so the two never mix up.
  */
@@ -116,6 +117,24 @@ function ebur128(file: string): {
 	};
 }
 
+function durationSeconds(file: string): number {
+	return Number(
+		execFileSync(
+			"ffprobe",
+			[
+				"-v",
+				"error",
+				"-show_entries",
+				"format=duration",
+				"-of",
+				"csv=p=0",
+				file,
+			],
+			{ encoding: "utf8" }
+		).trim()
+	);
+}
+
 function makeFixtures(dir: string) {
 	const video = path.join(dir, "picture.mov");
 	const music = path.join(dir, "music.wav");
@@ -201,12 +220,15 @@ async function exportWith({
 	engine,
 	projectId,
 	outputPath,
+	stems = false,
 }: {
 	apiPort: number;
 	page: Page;
 	engine: ExportEngine;
 	projectId: string;
 	outputPath: string;
+	/** Native only: also write one WAV per bus beside the export. */
+	stems?: boolean;
 }): Promise<void> {
 	if (engine === "native") {
 		await cli({
@@ -224,6 +246,7 @@ async function exportWith({
 				"--output",
 				outputPath,
 				"--poll",
+				...(stems ? ["--stems"] : []),
 			],
 		});
 		expect(existsSync(outputPath)).toBe(true);
@@ -445,6 +468,7 @@ test("the CLI mix is what every export engine renders", async ({
 				engine,
 				projectId,
 				outputPath: output,
+				stems: engine === "native",
 			});
 			measured[engine] = {
 				musicDb: bandLevel(output, MUSIC_BAND, [0.5, 1.4]) - reference.music,
@@ -457,6 +481,22 @@ test("the CLI mix is what every export engine renders", async ({
 				soloMainDb: 0,
 			};
 		}
+
+		// --- stems beside the native export: one per bus, the programme's length -
+		const sfxStem = path.join(workDir, "mix-native-SFX.wav");
+		const directStem = path.join(workDir, "mix-native-direct.wav");
+		const stems = {
+			sfxDurationSeconds: durationSeconds(sfxStem),
+			directDurationSeconds: durationSeconds(directStem),
+			// Stems leave before the master, so its -2 dB is not in them.
+			sfxDb: bandLevel(sfxStem, SFX_BAND, [1.7, 2.3]) - reference.sfx,
+			sfxMusicDb: bandLevel(sfxStem, MUSIC_BAND, [0.5, 1.4]) - reference.music,
+			directMusicDb:
+				bandLevel(directStem, MUSIC_BAND, [0.5, 1.4]) - reference.music,
+			directMainDb:
+				bandLevel(directStem, MAIN_BAND, [0.5, 1.4]) - reference.main,
+			directSfxDb: bandLevel(directStem, SFX_BAND, [1.7, 2.3]) - reference.sfx,
+		};
 
 		// --- loudness of the mix, against FFmpeg's own R 128 meter ---------------
 		const loudness = await cli<{
@@ -495,10 +535,42 @@ test("the CLI mix is what every export engine renders", async ({
 		await writeFile(
 			path.join(EVIDENCE_DIR, "evidence.json"),
 			JSON.stringify(
-				{ reference, ...measured, loudness, ffmpegEbur128: reference128 },
+				{
+					reference,
+					...measured,
+					stems,
+					loudness,
+					ffmpegEbur128: reference128,
+				},
 				null,
 				2
 			)
+		);
+		expect(
+			Math.abs(stems.sfxDurationSeconds - 4),
+			"SFX stem length"
+		).toBeLessThan(0.05);
+		expect(
+			Math.abs(stems.directDurationSeconds - 4),
+			"direct stem length"
+		).toBeLessThan(0.05);
+		expect(Math.abs(stems.sfxDb + 4), "SFX stem level").toBeLessThan(
+			LEVEL_TOLERANCE_DB
+		);
+		expect(stems.sfxMusicDb, "music kept out of the SFX stem").toBeLessThan(
+			-50
+		);
+		expect(Math.abs(stems.directMusicDb + 6), "direct stem music").toBeLessThan(
+			LEVEL_TOLERANCE_DB
+		);
+		expect(
+			Math.abs(stems.directMainDb + 10),
+			"direct stem picture"
+		).toBeLessThan(LEVEL_TOLERANCE_DB);
+		// The SFX would sit near -4 here; what the band picks up instead is the
+		// picture's 4 kHz tone leaking through it (-10 - 15.7 dB).
+		expect(stems.directSfxDb, "SFX kept out of the direct stem").toBeLessThan(
+			-20
 		);
 		expect(
 			Math.abs(loudness.integratedLufs - reference128.integratedLufs),
