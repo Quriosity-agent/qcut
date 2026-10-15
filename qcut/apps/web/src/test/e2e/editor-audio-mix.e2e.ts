@@ -1,6 +1,7 @@
 /**
  * The mixer, end to end: set through the CLI against an isolated QCut, then
- * heard in real exports from both engines (FFmpeg and the in-browser muxer).
+ * heard in real exports from every engine: the in-browser muxer, the
+ * renderer's FFmpeg export, and the native export the CLI uses by default.
  *
  * Music (440 Hz) plays the whole 4 s and ducks under an SFX burst (2 kHz,
  * 1.5–2.5 s) that goes through an SFX bus:
@@ -8,7 +9,8 @@
  * - music track -6 dB, master -2 dB      → music lands 8 dB under its source;
  * - SFX bus -4 dB, master -2 dB          → the burst lands 6 dB under its;
  * - ducking -12 dB while the burst plays → music drops by about 12 dB;
- * - soloing the SFX track                → music is gone;
+ * - the picture's own 4 kHz tone, main track -10 dB → 12 dB under its source;
+ * - soloing the SFX track                → music and picture tone are gone;
  * - `mix loudness` agrees with FFmpeg's EBU R 128 meter on the export.
  *
  * Each tone is measured with a narrow band-pass so the two never mix up.
@@ -26,15 +28,18 @@ import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixtur
 const EVIDENCE_DIR = path.resolve("output/playwright/editor-audio-mix");
 const MUSIC_BAND = "bandpass=f=440:width_type=q:w=4";
 const SFX_BAND = "bandpass=f=2000:width_type=q:w=4";
+const MAIN_BAND = "bandpass=f=4000:width_type=q:w=4";
 /** Level checks allow for AAC and the band-pass edges. */
 const LEVEL_TOLERANCE_DB = 0.7;
 
-type ExportEngine = "cli" | "muxer";
+type RendererEngine = "cli" | "muxer";
+type ExportEngine = RendererEngine | "native";
+const ENGINES: ExportEngine[] = ["muxer", "cli", "native"];
 
 interface ExposedWindow extends Window {
 	__exportActions?: {
 		exportLocalVideo: (request: {
-			engine: ExportEngine;
+			engine: RendererEngine;
 			filename: string;
 			format: "mp4";
 			frameRate: 30;
@@ -112,7 +117,7 @@ function ebur128(file: string): {
 }
 
 function makeFixtures(dir: string) {
-	const video = path.join(dir, "picture.mp4");
+	const video = path.join(dir, "picture.mov");
 	const music = path.join(dir, "music.wav");
 	const sfx = path.join(dir, "sfx.wav");
 	ffmpeg([
@@ -121,11 +126,19 @@ function makeFixtures(dir: string) {
 		"lavfi",
 		"-i",
 		"color=c=black:s=1280x720:r=30:d=4",
-		"-an",
+		"-f",
+		"lavfi",
+		"-i",
+		"sine=frequency=4000:sample_rate=48000:duration=4",
 		"-c:v",
 		"libx264",
 		"-pix_fmt",
 		"yuv420p",
+		"-c:a",
+		"pcm_s16le",
+		"-ac",
+		"2",
+		"-shortest",
 		video,
 	]);
 	ffmpeg([
@@ -173,23 +186,49 @@ function cli<T>({
 					reject(new Error(`${args[0]} failed: ${stdout}\n${stderr}`));
 					return;
 				}
-				resolve(JSON.parse(stdout) as T);
+				// A polled command prints progress documents first; the result is
+				// the last one.
+				const last = stdout.trimEnd().lastIndexOf("\n{");
+				resolve(JSON.parse(stdout.slice(last + 1)) as T);
 			}
 		);
 	});
 }
 
 async function exportWith({
+	apiPort,
 	page,
 	engine,
 	projectId,
 	outputPath,
 }: {
+	apiPort: number;
 	page: Page;
 	engine: ExportEngine;
 	projectId: string;
 	outputPath: string;
 }): Promise<void> {
+	if (engine === "native") {
+		await cli({
+			apiPort,
+			args: [
+				"editor:export:start",
+				"--project-id",
+				projectId,
+				"--engine",
+				"native",
+				"--format",
+				"mp4",
+				"--fps",
+				"30",
+				"--output",
+				outputPath,
+				"--poll",
+			],
+		});
+		expect(existsSync(outputPath)).toBe(true);
+		return;
+	}
 	await page.evaluate(
 		async ({ engine, filename, projectId, outputPath }) => {
 			const actions = (window as unknown as ExposedWindow).__exportActions;
@@ -214,7 +253,7 @@ async function exportWith({
 test.use({ captureScreenshotVideo: false });
 test.setTimeout(600_000);
 
-test("the CLI mix is what both export engines render", async ({
+test("the CLI mix is what every export engine renders", async ({
 	apiPort,
 	page,
 }) => {
@@ -225,6 +264,7 @@ test("the CLI mix is what both export engines render", async ({
 		const reference = {
 			music: bandLevel(fixtures.music, MUSIC_BAND, [0.5, 1.4]),
 			sfx: bandLevel(fixtures.sfx, SFX_BAND, [1.7, 2.3]),
+			main: bandLevel(fixtures.video, MAIN_BAND, [0.5, 1.4]),
 		};
 
 		const { projectId } = await cli<{ projectId: string }>({
@@ -310,6 +350,18 @@ test("the CLI mix is what both export engines render", async ({
 				"sfx",
 			],
 		});
+		await cli({
+			apiPort,
+			args: [
+				"editor:track:audio-set",
+				"--project-id",
+				projectId,
+				"--track-id",
+				mainTrackId,
+				"--gain-db",
+				"-10",
+			],
+		});
 		const music = await cli<{
 			track: { audio: { gainDb: number; ducking: { reductionDb: number } } };
 		}>({
@@ -376,18 +428,33 @@ test("the CLI mix is what both export engines render", async ({
 		);
 		const measured = {} as Record<
 			ExportEngine,
-			{ musicDb: number; sfxDb: number; duckDb: number; soloMusicDb: number }
+			{
+				musicDb: number;
+				sfxDb: number;
+				mainDb: number;
+				duckDb: number;
+				soloMusicDb: number;
+				soloMainDb: number;
+			}
 		>;
-		for (const engine of ["muxer", "cli"] as const) {
+		for (const engine of ENGINES) {
 			const output = path.join(workDir, `mix-${engine}.mp4`);
-			await exportWith({ page, engine, projectId, outputPath: output });
+			await exportWith({
+				apiPort,
+				page,
+				engine,
+				projectId,
+				outputPath: output,
+			});
 			measured[engine] = {
 				musicDb: bandLevel(output, MUSIC_BAND, [0.5, 1.4]) - reference.music,
 				sfxDb: bandLevel(output, SFX_BAND, [1.7, 2.3]) - reference.sfx,
+				mainDb: bandLevel(output, MAIN_BAND, [0.5, 1.4]) - reference.main,
 				duckDb:
 					bandLevel(output, MUSIC_BAND, [3, 3.8]) -
 					bandLevel(output, MUSIC_BAND, [1.7, 2.3]),
 				soloMusicDb: 0,
+				soloMainDb: 0,
 			};
 		}
 
@@ -409,11 +476,19 @@ test("the CLI mix is what both export engines render", async ({
 				sfxTrackId,
 			],
 		});
-		for (const engine of ["muxer", "cli"] as const) {
+		for (const engine of ENGINES) {
 			const output = path.join(workDir, `solo-${engine}.mp4`);
-			await exportWith({ page, engine, projectId, outputPath: output });
+			await exportWith({
+				apiPort,
+				page,
+				engine,
+				projectId,
+				outputPath: output,
+			});
 			measured[engine].soloMusicDb =
 				bandLevel(output, MUSIC_BAND, [0.5, 1.4]) - reference.music;
+			measured[engine].soloMainDb =
+				bandLevel(output, MAIN_BAND, [0.5, 1.4]) - reference.main;
 		}
 
 		// Persist the numbers before asserting so a failure leaves them behind.
@@ -433,8 +508,9 @@ test("the CLI mix is what both export engines render", async ({
 			Math.abs(loudness.truePeakDbtp - reference128.truePeakDbtp),
 			"true peak against ffmpeg ebur128"
 		).toBeLessThan(0.5);
-		for (const engine of ["muxer", "cli"] as const) {
-			const { musicDb, sfxDb, duckDb, soloMusicDb } = measured[engine];
+		for (const engine of ENGINES) {
+			const { musicDb, sfxDb, mainDb, duckDb, soloMusicDb, soloMainDb } =
+				measured[engine];
 			expect(Math.abs(musicDb + 8), `${engine} music level`).toBeLessThan(
 				LEVEL_TOLERANCE_DB
 			);
@@ -443,9 +519,17 @@ test("the CLI mix is what both export engines render", async ({
 			);
 			expect(duckDb, `${engine} ducking`).toBeGreaterThan(10.5);
 			expect(duckDb, `${engine} ducking`).toBeLessThanOrEqual(12.5);
+			expect(
+				Math.abs(mainDb + 12),
+				`${engine} picture audio level`
+			).toBeLessThan(LEVEL_TOLERANCE_DB);
 			expect(soloMusicDb, `${engine} music under an SFX solo`).toBeLessThan(
 				-50
 			);
+			expect(
+				soloMainDb,
+				`${engine} picture audio under an SFX solo`
+			).toBeLessThan(-50);
 		}
 	} finally {
 		await rm(workDir, { force: true, recursive: true });
