@@ -287,6 +287,126 @@ describe("timeline collision contract", () => {
 		});
 	});
 
+	describe("seams computed in floating point", () => {
+		// The clips from the report: clip six ends at 100.20833 + 17.041667,
+		// which is 117.24999700000001 in floating point, and clip eight starts
+		// exactly one clip-seven later.
+		function reportedTracks(): TimelineTrack[] {
+			return [
+				{
+					id: "main",
+					name: "Main",
+					type: "media",
+					isMain: true,
+					elements: [
+						mediaElement({
+							id: "six",
+							startTime: 100.20833,
+							duration: 17.041667,
+						}),
+						mediaElement({
+							id: "eight",
+							startTime: 133.291664,
+							duration: 4,
+						}),
+						mediaElement({ id: "seven", startTime: 240, duration: 16.041667 }),
+					],
+				},
+				{
+					id: "overlay",
+					name: "Overlay",
+					type: "media",
+					elements: [
+						mediaElement({
+							id: "lane-mate",
+							startTime: 100.20833,
+							duration: 17.041667,
+						}),
+					],
+				},
+			];
+		}
+
+		it("adds a clip that starts where the previous one ends", () => {
+			setTracks(reportedTracks());
+			const result = useTimelineStore.getState().addElementToTrack("main", {
+				...newElementData,
+				startTime: 117.249997,
+				duration: 16.041667,
+			});
+			expect(result).not.toBeNull();
+		});
+
+		it("adds at a 0.1 + 0.2 seam", () => {
+			setTracks([
+				{
+					id: "main",
+					name: "Main",
+					type: "media",
+					isMain: true,
+					elements: [mediaElement({ id: "a", startTime: 0.1, duration: 0.2 })],
+				},
+			]);
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack("main", { ...newElementData, startTime: 0.3 });
+			expect(result).not.toBeNull();
+		});
+
+		it("slides a clip into a gap of exactly its length", () => {
+			setTracks(reportedTracks());
+			useTimelineStore
+				.getState()
+				.updateElementStartTime("main", "seven", 117.249997);
+			expect(mainElements().find(([id]) => id === "seven")?.[1]).toBe(
+				117.249997
+			);
+			expect(useTimelineStore.getState().history).toHaveLength(1);
+		});
+
+		it("moves a clip onto a lane where it meets its neighbour", () => {
+			const tracks = reportedTracks();
+			tracks[0].elements = tracks[0].elements.map((element) =>
+				element.id === "seven" ? { ...element, startTime: 117.249997 } : element
+			);
+			setTracks(tracks);
+			useTimelineStore
+				.getState()
+				.moveElementToTrack("main", "overlay", "seven");
+			expect(
+				useTimelineStore
+					.getState()
+					.tracks.find((track) => track.id === "overlay")
+					?.elements.map((element) => element.id)
+					.sort()
+			).toEqual(["lane-mate", "seven"]);
+		});
+
+		it("adds to the lane findOrCreateTrack picked for the span", () => {
+			setTracks(reportedTracks());
+			const span = { startTime: 117.249997, duration: 16.041667 };
+			const trackId = useTimelineStore
+				.getState()
+				.findOrCreateTrack("media", span);
+			expect(trackId).toBe("main");
+			const result = useTimelineStore.getState().addElementToTrack(trackId, {
+				...newElementData,
+				...span,
+			});
+			expect(result).not.toBeNull();
+		});
+
+		it("still rejects an overlap of one frame", () => {
+			setTracks(reportedTracks());
+			const result = useTimelineStore.getState().addElementToTrack("main", {
+				...newElementData,
+				startTime: 117.249997 - 1 / 30,
+				duration: 2,
+			});
+			expect(result).toBeNull();
+		});
+	});
+
 	describe("separateAudio stacking", () => {
 		it("stacks a new audio lane when the existing one is occupied there", () => {
 			const tracks: TimelineTrack[] = [
