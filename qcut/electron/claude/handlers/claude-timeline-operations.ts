@@ -478,7 +478,9 @@ export function assertBatchElementPlacement({
 	const validStart =
 		startForms === 1 &&
 		(startTime === "end" ||
-			(typeof startTime === "number" && startTime >= 0) ||
+			(typeof startTime === "number" &&
+				Number.isFinite(startTime) &&
+				startTime >= 0) ||
 			(typeof after === "string" && after.length > 0) ||
 			(typeof startFrame === "number" &&
 				Number.isInteger(startFrame) &&
@@ -490,6 +492,7 @@ export function assertBatchElementPlacement({
 	}
 	const validDuration =
 		(typeof duration === "number" &&
+			Number.isFinite(duration) &&
 			duration > 0 &&
 			durationFrames === undefined) ||
 		(duration === undefined &&
