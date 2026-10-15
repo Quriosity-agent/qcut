@@ -47,8 +47,11 @@ export interface MediaFile {
 	type: "video" | "audio" | "image";
 	path: string;
 	size: number;
+	/** Seconds; for video, the length of the video stream. */
 	duration?: number;
 	dimensions?: { width: number; height: number };
+	/** Frames per second, for video. */
+	fps?: number;
 	createdAt: number;
 	modifiedAt: number;
 	metadata?: StickerLabRestrictedMediaMetadata | Record<string, unknown>;
@@ -91,6 +94,8 @@ export interface ClaudeTrack {
 	elements: ClaudeElement[];
 	transitions?: ClaudeTransition[];
 	hidden?: boolean;
+	/** A locked track refuses every edit, so a refused move can say why. */
+	locked?: boolean;
 }
 
 export interface ClaudeTransition {
@@ -551,8 +556,16 @@ export interface ClaudeBatchAddElementRequest
 		| "media"
 		| "markdown";
 	trackId: string;
-	startTime: number;
-	duration: number;
+	/** Seconds, or "end" to start where the last element on the track ends. */
+	startTime?: number | "end";
+	/** Seconds; may be omitted when durationFrames is given. */
+	duration?: number;
+	/** Start where this element ends, instead of giving startTime. */
+	after?: string;
+	/** Start in whole frames at the project frame rate, instead of startTime. */
+	startFrame?: number;
+	/** Length in whole frames at the project frame rate, instead of duration. */
+	durationFrames?: number;
 	mediaId?: string;
 	sourceId?: string;
 	sourceName?: string;

@@ -107,9 +107,11 @@ export interface ClaudeTransactionAPI {
 export interface ClaudeProjectAPI {
 	project: {
 		getSettings: (projectId: string) => Promise<ProjectSettings>;
+		/** `broadcast: false` writes project.qcut without echoing to the editor. */
 		updateSettings: (
 			projectId: string,
-			settings: Partial<ProjectSettings>
+			settings: Partial<ProjectSettings>,
+			options?: { broadcast?: boolean }
 		) => Promise<void>;
 		getStats: (projectId: string) => Promise<ProjectStats>;
 		onStatsRequest: (

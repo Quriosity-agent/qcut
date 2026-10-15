@@ -127,7 +127,14 @@ export function requestFromMain(
 			},
 		});
 
-		parentPort.postMessage({ type: "main-request", id, channel, data });
+		// The deadline lets main skip work this request has stopped waiting for.
+		parentPort.postMessage({
+			type: "main-request",
+			id,
+			channel,
+			data,
+			deadline: Date.now() + timeoutMs,
+		});
 	});
 }
 

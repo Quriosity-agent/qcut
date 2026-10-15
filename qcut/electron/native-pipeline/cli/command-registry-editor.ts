@@ -149,6 +149,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			PID,
 			f("--items", "string", "JSON array of items"),
 			f("--sources", "string", "Comma-separated file paths"),
+			f(
+				"--append-to-track",
+				"string",
+				"Also lay the imported video/audio end to end at the end of this track"
+			),
 		]
 	),
 	"editor:media:extract-frame": ed(
@@ -219,6 +224,14 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		f("--timeout-ms", "number", "Readiness timeout in milliseconds", {
 			default: 15000,
 		}),
+		f("--width", "number", "Canvas width in pixels (with --height)"),
+		f("--height", "number", "Canvas height in pixels (with --width)"),
+		f("--fps", "number", "Project frame rate"),
+		f(
+			"--match-media",
+			"string",
+			"Take canvas size and frame rate from this video file"
+		),
 	]),
 	"editor:project:delete": ed("editor:project:delete", "Delete project", [PID]),
 	"editor:project:rename": ed("editor:project:rename", "Rename project", [
@@ -449,11 +462,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"number",
 			"Target time in seconds (omit to keep the current one)"
 		),
-		f("--to-track", "string", "Target track", { required: true }),
-		f("--ripple", "boolean", "Ripple edit", { default: false }),
-		f("--cross-track-ripple", "boolean", "Cross-track ripple", {
-			default: false,
-		}),
+		f(
+			"--to-track",
+			"string",
+			"Target track (omit to stay on the current one); give this, --time, or both"
+		),
 	]),
 	"editor:timeline:arrange": ed(
 		"editor:timeline:arrange",

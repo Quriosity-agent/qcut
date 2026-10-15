@@ -225,10 +225,13 @@ export function registerMetaRoutes({
 	router,
 	getAppVersion,
 	runDeepHealthChecks,
+	getWindowState,
 }: {
 	router: Router;
 	getAppVersion: () => string;
 	runDeepHealthChecks?: () => Promise<DeepHealthReport>;
+	/** Whether the editor window is open; editor commands need one. */
+	getWindowState?: () => Promise<{ hasWindow: boolean; count: number }>;
 }): void {
 	try {
 		router.get("/api/claude/health", async (req) => {
@@ -260,6 +263,20 @@ export function registerMetaRoutes({
 					electronVersion: apiVersionInfo.electronVersion,
 					capabilities,
 				};
+
+				if (getWindowState) {
+					try {
+						const windowState = await getWindowState();
+						response.window = windowState.hasWindow
+							? windowState
+							: {
+									...windowState,
+									note: "QCut's window is closed; editor commands reopen it.",
+								};
+					} catch {
+						// The process is up even when the window state is unknown.
+					}
+				}
 
 				if (deepRequested) {
 					if (runDeepHealthChecks) {

@@ -315,7 +315,8 @@ export interface CLIRunOptions {
 	index?: number;
 	toTrack?: string;
 	splitTime?: number;
-	seekTime?: number;
+	/** Seconds from --time; the raw text when it is not a number, so the command can refuse it. */
+	seekTime?: number | string;
 	startTime?: number;
 	endTime?: number;
 	newName?: string;
@@ -526,6 +527,12 @@ export interface CLIRunOptions {
 	session?: boolean;
 	/** Comma-separated sources for batch-import convenience */
 	sources?: string;
+	/** batch-import: lay the imported media end to end at the end of this track */
+	appendToTrack?: string;
+	/** project:create: take canvas size and frame rate from this video file */
+	matchMedia?: string;
+	/** With --json, print only the command's payload instead of the envelope */
+	flat?: boolean;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */

@@ -183,6 +183,44 @@ export async function listMediaFiles(projectId: string): Promise<MediaFile[]> {
 }
 
 /**
+ * The listed file a media reference names: its id first, then its file name,
+ * file stem or display name, since callers often only know the file.
+ */
+export function findMediaFile({
+	files,
+	mediaId,
+}: {
+	files: MediaFile[];
+	mediaId: string;
+}): MediaFile | null {
+	const normalizedMediaId = mediaId.trim();
+	if (!normalizedMediaId) return null;
+	const byId = files.find((media) => media.id === normalizedMediaId);
+	if (byId) return byId;
+
+	for (const media of files) {
+		try {
+			const fileName = path.basename(media.path);
+			const fileStem = path.basename(fileName, path.extname(fileName));
+			if (
+				fileStem === normalizedMediaId ||
+				fileName === normalizedMediaId ||
+				media.name === normalizedMediaId
+			) {
+				claudeLog.info(
+					HANDLER_NAME,
+					`Resolved mediaId ${normalizedMediaId} via filename fallback (${fileName})`
+				);
+				return media;
+			}
+		} catch {
+			// Skip malformed file paths and continue matching.
+		}
+	}
+	return null;
+}
+
+/**
  * Get info for a specific media file by ID
  */
 export async function getMediaInfo(
@@ -195,39 +233,13 @@ export async function getMediaInfo(
 	);
 
 	try {
-		const normalizedMediaId = mediaId.trim();
-		if (!normalizedMediaId) {
+		if (!mediaId.trim()) {
 			return null;
 		}
-
-		const allMedia = await listMediaFiles(projectId);
-		for (const media of allMedia) {
-			if (media.id === normalizedMediaId) {
-				return media;
-			}
-		}
-
-		for (const media of allMedia) {
-			try {
-				const fileName = path.basename(media.path);
-				const fileStem = path.basename(fileName, path.extname(fileName));
-				if (
-					fileStem === normalizedMediaId ||
-					fileName === normalizedMediaId ||
-					media.name === normalizedMediaId
-				) {
-					claudeLog.info(
-						HANDLER_NAME,
-						`Resolved mediaId ${normalizedMediaId} via filename fallback (${fileName})`
-					);
-					return media;
-				}
-			} catch {
-				// Skip malformed file paths and continue matching.
-			}
-		}
-
-		return null;
+		return findMediaFile({
+			files: await listMediaFiles(projectId),
+			mediaId,
+		});
 	} catch (error) {
 		claudeLog.error(
 			HANDLER_NAME,
@@ -853,6 +865,7 @@ export function setupClaudeMediaIPC(): void {
 module.exports = {
 	setupClaudeMediaIPC,
 	listMediaFiles,
+	findMediaFile,
 	getMediaInfo,
 	importMediaFile,
 	deleteMediaFile,

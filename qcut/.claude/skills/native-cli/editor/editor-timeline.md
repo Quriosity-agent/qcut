@@ -35,21 +35,78 @@ qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"video","sourceName":"my-video.mp4","startTime":0,"duration":10,"trackId":"track-1"}'
 
+# Audio file: use "type":"audio"; it lands on an audio track
+qcut editor:timeline:add-element \
+  --project-id <id> \
+  --data '{"type":"audio","sourceName":"door-creak.wav","startTime":12}'
+
 # Text element
 qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
 ```
 
+Video and audio given without `duration` take their file's own length: for
+video, the length of the video stream, not the container (which can be a
+little longer because of the audio track). If QCut cannot read the file's
+length yet, the add fails and asks for `duration` instead of guessing.
+
 ### Batch add elements (max 50)
 
-Each element **must** include `trackId`.
+Each element **must** include `trackId`, a start and a length (see placement
+below).
 
 ```bash
 qcut editor:timeline:batch-add \
   --project-id <id> \
-  --elements '[{"type":"text","content":"Title","startTime":0,"trackId":"track-1"},{"type":"text","content":"End","startTime":10,"trackId":"track-1"}]'
+  --elements '[{"type":"text","content":"Title","startTime":0,"duration":3,"trackId":"track-1"},{"type":"text","content":"End","startTime":10,"duration":3,"trackId":"track-1"}]'
 ```
+
+### Placing elements without adding up seconds
+
+`add-element` and `batch-add` accept these instead of seconds:
+
+| Field | Meaning |
+|-------|---------|
+| `"startTime": "end"` | Start where the last element on `trackId` ends |
+| `"after": "<elementId>"` | Start where that element ends, on its track unless `trackId` names another |
+| `"startFrame": <n>` | Start at whole frame `n` of the project frame rate |
+| `"durationFrames": <n>` | Last `n` whole frames |
+
+Give one start (`startTime`, `after` or `startFrame`) and one length
+(`duration` or `durationFrames`, or neither for video/audio). In a batch,
+`"end"` sees the elements added earlier in the same batch, so this lays clips
+end to end:
+
+```bash
+qcut editor:timeline:batch-add \
+  --project-id <id> \
+  --elements '[
+    {"type":"media","sourceName":"01.mp4","trackId":"<main-track>","startTime":"end"},
+    {"type":"media","sourceName":"02.mp4","trackId":"<main-track>","startTime":"end"},
+    {"type":"media","sourceName":"03.mp4","trackId":"<main-track>","startTime":"end"}
+  ]'
+```
+
+To import files and lay them out in one step, use
+`editor:media:batch-import --append-to-track <track-id>` (see
+[editor-media.md](editor-media.md)).
+
+### When a placement is refused
+
+A track plays one element at a time. Clips that touch are fine, including
+seams that miss by floating-point rounding (anything under half a frame
+counts as touching). An add, update or move onto an occupied span fails and
+says which clip is in the way and the next start where the element fits:
+
+```text
+117.25s–133.291667s on track "Main" overlaps "07.mp4" (117.3s–121.3s). A track
+plays one element at a time; the next free start for this 16.041667s clip is
+140s.
+```
+
+A locked track says so instead. Pass `"collision":"insert"` or
+`"collision":"overwrite"` on an add to make room rather than fail.
 
 ### Update element
 
@@ -96,6 +153,10 @@ qcut editor:timeline:batch-update \
   --updates '[{"elementId":"e1","changes":{"startTime":0}},{"elementId":"e2","changes":{"startTime":10}}]'
 ```
 
+Each item reports whether it applied. An item whose new `startTime` is
+refused (occupied span, locked track) fails with the reason, and none of its
+other changes are applied.
+
 ### Delete element
 
 ```bash
@@ -131,11 +192,21 @@ qcut editor:timeline:split \
 
 ### Move element
 
+Give `--time`, `--to-track`, or both. Without `--to-track` the element stays
+on its track; without `--time` it keeps its start on the new track.
+
 ```bash
+# Along its own track
 qcut editor:timeline:move \
   --project-id <id> \
   --element-id <id> \
   --time 15.0
+
+# To another track, same start
+qcut editor:timeline:move \
+  --project-id <id> \
+  --element-id <id> \
+  --to-track <track-id>
 ```
 
 ### Arrange elements on a track

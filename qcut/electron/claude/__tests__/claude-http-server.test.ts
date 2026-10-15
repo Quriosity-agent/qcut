@@ -490,6 +490,17 @@ describe("Claude HTTP Server", () => {
 		expect(res.headers["access-control-allow-origin"]).toBe("*");
 	});
 
+	it("GET /api/claude/health says when the editor window is closed", async () => {
+		const res = await fetch("/api/claude/health");
+
+		expect(res.status).toBe(200);
+		expect(res.body.data.window).toEqual({
+			hasWindow: false,
+			count: 0,
+			note: "QCut's window is closed; editor commands reopen it.",
+		});
+	});
+
 	it("GET /api/claude/health?deep=1 returns deep health report", async () => {
 		const res = await fetch("/api/claude/health?deep=1");
 

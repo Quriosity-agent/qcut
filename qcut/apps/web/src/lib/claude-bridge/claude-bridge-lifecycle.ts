@@ -64,6 +64,14 @@ import {
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
+/** Read by electron/main-window-recovery.ts through executeJavaScript. */
+function setClaudeBridgeReady({ ready }: { ready: boolean }): void {
+	if (typeof window === "undefined") return;
+	(
+		window as unknown as { __qcutClaudeBridgeReady?: boolean }
+	).__qcutClaudeBridgeReady = ready;
+}
+
 interface SetupClaudeBridgeLifecycleOptions {
 	onError?: ClaudeBridgeErrorHandler;
 }
@@ -167,8 +175,12 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeEventsBridge,
 		onError,
 	});
+	// The main process waits for this after reopening a closed window, so an
+	// editor API request is not sent before anything is listening for it.
+	setClaudeBridgeReady({ ready: true });
 
 	return () => {
+		setClaudeBridgeReady({ ready: false });
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup transaction bridge",
 			step: cleanupClaudeTransactionBridge,

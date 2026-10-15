@@ -530,30 +530,53 @@ async function timelineMove(
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	if (!opts.elementId) return { success: false, error: "Missing --element-id" };
-	if (!opts.toTrack) return { success: false, error: "Missing --to-track" };
 
-	// The command's flag is --time, which parses into seekTime as a string;
-	// reading startTime here silently dropped the requested position, so the
-	// move only ever changed tracks.
-	const rawTargetTime = (opts as CLIRunOptions & { seekTime?: number | string })
-		.seekTime;
-	const targetTimeInput = rawTargetTime ?? opts.startTime;
-	const targetTime =
-		typeof targetTimeInput === "string"
-			? Number.parseFloat(targetTimeInput)
-			: targetTimeInput;
+	// The command's flag is --time (seekTime); reading startTime alone once
+	// dropped the requested position, so the move only ever changed tracks.
+	const { time: targetTime, error: timeError } = readTimeFlag(
+		opts.seekTime ?? opts.startTime
+	);
+	if (timeError) return { success: false, error: timeError };
 
-	const body: Record<string, unknown> = { toTrackId: opts.toTrack };
-	// Omitting the time is a track-only move, which keeps the element where it is.
-	if (targetTime !== undefined && !Number.isNaN(targetTime)) {
-		body.newStartTime = targetTime;
+	const hasTargetTime = targetTime !== undefined;
+	if (!opts.toTrack && !hasTargetTime) {
+		return {
+			success: false,
+			error: "Give --time, --to-track, or both",
+		};
 	}
+	// Omitting the track keeps the element on its own; omitting the time keeps
+	// it where it is on the new track.
+	const body: Record<string, unknown> = {};
+	if (opts.toTrack) body.toTrackId = opts.toTrack;
+	if (hasTargetTime) body.newStartTime = targetTime;
 
 	const data = await client.post(
 		`/api/claude/timeline/${opts.projectId}/elements/${opts.elementId}/move`,
 		body
 	);
 	return { success: true, data };
+}
+
+/**
+ * `--time` as seconds. The parsers pass text that is not a number through
+ * unchanged, so "15oops" is refused here instead of being read as 15.
+ */
+function readTimeFlag(value: number | string | undefined): {
+	time?: number;
+	error?: string;
+} {
+	if (value === undefined) return {};
+	const time =
+		typeof value === "string"
+			? value.trim() === ""
+				? Number.NaN
+				: Number(value)
+			: value;
+	if (Number.isFinite(time) && time >= 0) return { time };
+	return {
+		error: `--time must be a number of seconds, 0 or more (got "${value}")`,
+	};
 }
 
 /** Handle timeline arrange. */
@@ -673,15 +696,11 @@ async function timelineSeek(
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 
-	const rawSeekTime = (opts as CLIRunOptions & { seekTime?: number | string })
-		.seekTime;
-	const seekTimeInput = rawSeekTime ?? opts.startTime;
-	const seekTime =
-		typeof seekTimeInput === "string"
-			? Number.parseFloat(seekTimeInput)
-			: seekTimeInput;
-
-	if (seekTime === undefined || Number.isNaN(seekTime)) {
+	const { time: seekTime, error: timeError } = readTimeFlag(
+		opts.seekTime ?? opts.startTime
+	);
+	if (timeError) return { success: false, error: timeError };
+	if (seekTime === undefined) {
 		return { success: false, error: "Missing --time" };
 	}
 

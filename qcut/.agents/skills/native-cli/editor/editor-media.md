@@ -12,6 +12,18 @@ See [editor-core.md](editor-core.md) for connection options, flags, and workflow
 qcut editor:media:list --project-id <id>
 ```
 
+Each item carries what you need to place it, read from the file with ffprobe
+(and cached while the file is unchanged):
+
+| Field | Meaning |
+|-------|---------|
+| `duration` | Seconds; for video, the length of the video stream |
+| `dimensions` | `{ "width", "height" }` for video and images |
+| `fps` | Frame rate, for video |
+
+A file ffprobe cannot read keeps these fields empty instead of failing the
+listing. `editor:media:info` returns the same fields for one item.
+
 ### Get media info
 
 ```bash
@@ -42,7 +54,18 @@ qcut editor:media:batch-import \
 
 # "source" is also accepted as an alias for "path"
 # From file: --items @imports.json
+
+# Import and lay the video/audio end to end at the end of a track
+qcut editor:media:batch-import \
+  --project-id <id> \
+  --sources "/clips/01.mp4,/clips/02.mp4,/clips/03.mp4" \
+  --append-to-track <track-id>
 ```
+
+With `--append-to-track`, each imported video or audio file is added after the
+previous one at its own length, in import order. The result has `imported`,
+`appended` (the batch-add result) and `skipped` (still images, which have no
+length of their own; add them with a `duration`).
 
 ### Extract a frame
 
@@ -78,6 +101,10 @@ qcut editor:media:delete --project-id <id> --media-id <id>
 ```bash
 qcut editor:project:settings --project-id <id>
 ```
+
+These are read from the project's `project.qcut`. Changes made in the editor
+(the canvas picker, the first clip fitting the canvas) are written back to it,
+so this agrees with `editor:timeline:export`.
 
 ### Update settings
 
@@ -123,7 +150,19 @@ qcut editor:project:report \
 
 ```bash
 qcut editor:project:create --new-name "My New Project"
+
+# Canvas and frame rate matching your footage
+qcut editor:project:create --name "Door Plan" --match-media /clips/01.mp4
+
+# Or set them directly (explicit flags win over --match-media)
+qcut editor:project:create --name "Door Plan" --width 1280 --height 720 --fps 24
 ```
+
+Without these flags a new project starts on the default preset canvas, and
+the first video or image added to its empty timeline fits the canvas to its
+aspect ratio. Once a size is set (here, in the canvas picker, or with
+`update-settings`), adding clips no longer changes it. The frame rate is never
+taken from a clip automatically; use `--match-media` or `--fps`.
 
 ### Delete project
 

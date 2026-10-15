@@ -47,15 +47,13 @@ import {
 	createMediaContainer,
 	selectMulticamClip,
 } from "./timeline-compound-operations";
+import { findTrackIdsForGroup } from "@qcut/editor-core/timeline";
+import { getTimelineElementDuration } from "@/lib/timeline";
 import {
-	findRangeCollisions,
-	findTrackIdsForGroup,
-} from "@qcut/editor-core/timeline";
-import {
-	getTimelineElementDuration,
-	getTimelineElementEndTime,
-} from "@/lib/timeline";
-import { findOverlappingPair } from "@/lib/timeline-occupancy";
+	describeOccupancyConflict,
+	findOverlappingPair,
+} from "@/lib/timeline-occupancy";
+import { fitCanvasToFirstMedia } from "./first-media-canvas";
 import { blockedByTrackLock } from "./timeline-lock-guard";
 import {
 	insertGapInElements,
@@ -139,17 +137,24 @@ export function createCrudOperations(
 		) => {
 			const shouldPushHistory = options.pushHistory !== false;
 			const shouldSelectElement = options.selectElement !== false;
+			const reject = (
+				error: Error,
+				context: Parameters<typeof handleError>[1]
+			): null => {
+				handleError(error, context);
+				options.onRejected?.(error.message);
+				return null;
+			};
 
 			// Validate element type matches track type
 			const track = get()._tracks.find((t) => t.id === trackId);
 			if (!track) {
-				handleError(new Error(`Track not found: ${trackId}`), {
+				return reject(new Error(`Track not found: ${trackId}`), {
 					operation: "Add Element to Track",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { trackId },
 				});
-				return null;
 			}
 
 			if (
@@ -159,13 +164,14 @@ export function createCrudOperations(
 					trackIds: [trackId],
 				})
 			) {
+				options.onRejected?.(`Track "${track.name}" is locked`);
 				return null;
 			}
 
 			// Use utility function for validation
 			const validation = validateElementTrackCompatibility(elementData, track);
 			if (!validation.isValid) {
-				handleError(
+				return reject(
 					new Error(
 						validation.errorMessage || "Invalid element for track type"
 					),
@@ -179,29 +185,26 @@ export function createCrudOperations(
 						},
 					}
 				);
-				return null;
 			}
 
 			// For media elements, validate mediaId exists
 			if (elementData.type === "media" && !elementData.mediaId) {
-				handleError(new Error("Media element must have mediaId"), {
+				return reject(new Error("Media element must have mediaId"), {
 					operation: "Media Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "media", trackId },
 				});
-				return null;
 			}
 
 			// For text elements, validate required text properties
 			if (elementData.type === "text" && !elementData.content) {
-				handleError(new Error("Text element must have content"), {
+				return reject(new Error("Text element must have content"), {
 					operation: "Text Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "text", trackId },
 				});
-				return null;
 			}
 
 			// For markdown elements, validate required markdown content
@@ -209,13 +212,12 @@ export function createCrudOperations(
 				elementData.type === "markdown" &&
 				typeof elementData.markdownContent !== "string"
 			) {
-				handleError(new Error("Markdown element must have markdownContent"), {
+				return reject(new Error("Markdown element must have markdownContent"), {
 					operation: "Markdown Element Validation",
 					category: ErrorCategory.VALIDATION,
 					severity: ErrorSeverity.MEDIUM,
 					metadata: { elementType: "markdown", trackId },
 				});
-				return null;
 			}
 
 			// Check if this is the first element being added to the timeline
@@ -248,7 +250,7 @@ export function createCrudOperations(
 				candidateTrack.elements.some((element) => element.id === requestedId)
 			);
 			if (idAlreadyExists) {
-				handleError(
+				return reject(
 					new Error(`Timeline element id already exists: ${requestedId}`),
 					{
 						operation: "Add Element to Track",
@@ -257,7 +259,6 @@ export function createCrudOperations(
 						metadata: { elementId: requestedId, trackId },
 					}
 				);
-				return null;
 			}
 
 			const newElement: TimelineElement = {
@@ -284,31 +285,24 @@ export function createCrudOperations(
 			let targetElements: TimelineElement[] = [...track.elements];
 			if (newElementDuration > 0) {
 				if (collisionMode === "reject") {
-					const collisions = findRangeCollisions({
-						items: track.elements.map((el) => ({
-							id: el.id,
-							startTime: el.startTime,
-							endTime: getTimelineElementEndTime({ element: el, fps }),
-						})),
-						range: targetRange,
+					const conflict = describeOccupancyConflict({
+						track,
+						startTime: targetRange.startTime,
+						duration: newElementDuration,
+						fps,
 					});
-					if (collisions.length > 0) {
-						handleError(
-							new Error(
-								"Cannot place element here - it would overlap with existing elements"
-							),
-							{
-								operation: "Add Element to Track",
-								category: ErrorCategory.VALIDATION,
-								severity: ErrorSeverity.MEDIUM,
-								metadata: {
-									trackId,
-									startTime: targetRange.startTime,
-									collidingElementIds: collisions.map((item) => item.id),
-								},
-							}
-						);
-						return null;
+					if (conflict) {
+						return reject(new Error(conflict.message), {
+							operation: "Add Element to Track",
+							category: ErrorCategory.VALIDATION,
+							severity: ErrorSeverity.MEDIUM,
+							metadata: {
+								trackId,
+								startTime: targetRange.startTime,
+								collidingElementIds: [conflict.occupant.id],
+								nextFreeStart: conflict.nextFreeStart,
+							},
+						});
 					}
 				} else if (collisionMode === "insert") {
 					targetElements = insertGapInElements({
@@ -331,81 +325,15 @@ export function createCrudOperations(
 				get().pushHistory();
 			}
 
-			// If this is the first element and it's a media element, automatically set the project canvas size
-			// to match the media's aspect ratio and FPS (for videos). Users can turn
-			// this off in Global Settings (autoCanvasFromFirstMedia).
+			// The first clip on an empty timeline fits the canvas to itself unless
+			// a size was already chosen. Users can turn this off in Global
+			// Settings (autoCanvasFromFirstMedia).
 			if (
 				isFirstElement &&
 				newElement.type === "media" &&
 				useAppSettingsStore.getState().autoCanvasFromFirstMedia
 			) {
-				import("../media/media-store")
-					.then(({ useMediaStore, getMediaAspectRatio }) => {
-						const mediaStore = useMediaStore.getState();
-						const mediaItem = mediaStore.mediaItems.find(
-							(item) => item.id === newElement.mediaId
-						);
-
-						if (
-							mediaItem &&
-							(mediaItem.type === "image" || mediaItem.type === "video")
-						) {
-							import("../editor/editor-store")
-								.then(({ useEditorStore }) => {
-									const editorStore = useEditorStore.getState();
-									editorStore.setCanvasSizeFromAspectRatio(
-										getMediaAspectRatio(mediaItem)
-									);
-									return import("../project-store").then(
-										({ useProjectStore }) =>
-											useProjectStore
-												.getState()
-												.updateProjectCanvasSize(
-													useEditorStore.getState().canvasSize,
-													"custom"
-												)
-									);
-								})
-								.catch((error) => {
-									handleError(error, {
-										operation: "Sync canvas size to project settings",
-										category: ErrorCategory.STORAGE,
-										severity: ErrorSeverity.LOW,
-										showToast: false,
-										metadata: { operation: "canvas-size-sync" },
-									});
-								});
-						}
-
-						// Set project FPS from the first video element
-						if (mediaItem && mediaItem.type === "video" && mediaItem.fps) {
-							const fps = mediaItem.fps;
-							import("../project-store")
-								.then(({ useProjectStore }) => {
-									const projectStore = useProjectStore.getState();
-									if (projectStore.activeProject) {
-										projectStore.updateProjectFps(fps);
-									}
-								})
-								.catch((error) => {
-									handleError(error, {
-										operation: "Update FPS from Project Store",
-										category: ErrorCategory.STORAGE,
-										severity: ErrorSeverity.LOW,
-										showToast: false,
-										metadata: { operation: "fps-update" },
-									});
-								});
-						}
-					})
-					.catch((error) => {
-						handleError(error, {
-							operation: "Set canvas size from first element",
-							category: ErrorCategory.STORAGE,
-							severity: ErrorSeverity.LOW,
-							showToast: false,
-						});
-					});
+				void fitCanvasToFirstMedia({ mediaId: newElement.mediaId });
 			}
 
 			updateTracksAndSave(
@@ -559,34 +487,24 @@ export function createCrudOperations(
 				element: elementToMove,
 				fps,
 			});
-			const moveCollisions = findRangeCollisions({
-				items: toTrack.elements.map((el) => ({
-					id: el.id,
-					startTime: el.startTime,
-					endTime: getTimelineElementEndTime({ element: el, fps }),
-				})),
-				range: {
-					startTime: elementToMove.startTime,
-					endTime: elementToMove.startTime + movedDuration,
-				},
-				excludeIds: [elementId],
+			const conflict = describeOccupancyConflict({
+				track: toTrack,
+				startTime: elementToMove.startTime,
+				duration: movedDuration,
+				excludeElementId: elementId,
+				fps,
 			});
-			if (moveCollisions.length > 0) {
-				handleError(
-					new Error(
-						"Cannot move element here - it would overlap with existing elements"
-					),
-					{
-						operation: "Move Element to Track",
-						category: ErrorCategory.VALIDATION,
-						severity: ErrorSeverity.MEDIUM,
-						metadata: {
-							targetTrackId: toTrackId,
-							elementId,
-							collidingElementIds: moveCollisions.map((item) => item.id),
-						},
-					}
-				);
+			if (conflict) {
+				handleError(new Error(conflict.message), {
+					operation: "Move Element to Track",
+					category: ErrorCategory.VALIDATION,
+					severity: ErrorSeverity.MEDIUM,
+					metadata: {
+						targetTrackId: toTrackId,
+						elementId,
+						collidingElementIds: [conflict.occupant.id],
+					},
+				});
 				return;
 			}
 
@@ -745,7 +663,7 @@ export function createCrudOperations(
 					trackIds: targetTrackIds,
 				})
 			) {
-				return;
+				return false;
 			}
 			// Reference equality signals a rejected move (missing element or a
 			// same-track collision) — bail before touching history.
@@ -754,10 +672,12 @@ export function createCrudOperations(
 				trackId,
 				elementId,
 				startTime,
+				fps: getProjectFps(),
 			});
-			if (movedTracks === get()._tracks) return;
+			if (movedTracks === get()._tracks) return false;
 			if (pushHistory) get().pushHistory();
 			updateTracksAndSave(movedTracks);
+			return true;
 		},
 
 		toggleTrackMute: (trackId) => {

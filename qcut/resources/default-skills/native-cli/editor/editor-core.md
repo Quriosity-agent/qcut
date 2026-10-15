@@ -21,6 +21,11 @@ qcut editor:<area>:<action> [options]      # e.g. qcut editor:timeline:export --
 qcut editor health
 ```
 
+`editor health` also reports `window`: `{ "hasWindow": false, "count": 0 }`
+means QCut is running with its window closed (macOS keeps the app alive).
+Editor commands reopen the window themselves and wait until the editor is
+ready, so there is no need to click the Dock icon first.
+
 Editor commands are split across these files:
 
 - [editor-media.md](editor-media.md), [editor-timeline.md](editor-timeline.md), [editor-output.md](editor-output.md), [editor-ai.md](editor-ai.md), [editor-state-control.md](editor-state-control.md), [editor-agent.md](editor-agent.md)

@@ -701,11 +701,12 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		project: {
 			getSettings: (projectId) =>
 				ipcRenderer.invoke("claude:project:getSettings", projectId),
-			updateSettings: (projectId, settings) =>
+			updateSettings: (projectId, settings, options) =>
 				ipcRenderer.invoke(
 					"claude:project:updateSettings",
 					projectId,
-					settings
+					settings,
+					options
 				),
 			getStats: (projectId) =>
 				ipcRenderer.invoke("claude:project:getStats", projectId),

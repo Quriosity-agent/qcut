@@ -182,9 +182,10 @@ path, or use a public/network URL that the model provider can read.
 | `flow` | ViMax pipelines, YAML workflows, script/character generation | `flow run -c pipeline.yaml -i "A sunset"` |
 | `system` | Update, auth, keys, models, cost, project setup, diagnostics | `system doctor --json --skip-health` |
 
-Run `qcut <group> --help` for group details. `qcut editor --help` does not
-list its actions; use the editor reference files above or
-`qcut editor <area> <action> --help --json`.
+Run `qcut <group> --help` for group details. `qcut editor --help` lists the
+editor areas, `qcut editor <area> --help` (or `editor:<area> --help`) lists
+every action in one area, and `qcut editor <area> <action> --help --json`
+gives an action's flags.
 
 ### Top-level commands (not in a group)
 
@@ -452,6 +453,7 @@ See [editor-media.md](editor/editor-media.md) for the full project.json schema.
 | `--output-dir` | `-o` | Output directory (default: `$QCUT_OUTPUT_DIR` or `~/Documents/QCut/exports`) |
 | `--model` | `-m` | Model key (e.g. `gpt_image_2_ima`, `kling_2_6_pro`) |
 | `--json` | | Output as JSON (includes `command_id`, `duration_ms`) |
+| `--flat` | | With `--json`, print only the command's payload (what is otherwise `data.data`) |
 | `--quiet` | `-q` | Suppress progress and exit metadata |
 | `--verbose` | `-v` | Debug logging + JSONL debug events on stderr |
 | `--force` | | Bypass action-policy confirmations when the policy allows it |

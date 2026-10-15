@@ -221,6 +221,29 @@ describe("CLI session & parallel", () => {
 			expect(opts!.command).toBe("list-models");
 		});
 
+		it("refuses a string flag given no value instead of running the command", () => {
+			expect(() =>
+				parseSessionLine("editor:project:create --match-media", {})
+			).toThrow('Missing value for --match-media in "editor:project:create"');
+		});
+
+		it("keeps a non-numeric --time for the command to refuse", () => {
+			expect(
+				parseSessionLine("editor:timeline:move --time 15oops", {})?.seekTime
+			).toBe("15oops");
+			expect(
+				parseSessionLine("editor:timeline:move --time 15", {})?.seekTime
+			).toBe(15);
+		});
+
+		it("carries a session-wide --flat into each command", () => {
+			expect(parseSessionLine("editor:media:list", { flat: true })?.flat).toBe(
+				true
+			);
+			expect(parseSessionLine("editor:media:list --flat", {})?.flat).toBe(true);
+			expect(parseSessionLine("editor:media:list", {})?.flat).toBeUndefined();
+		});
+
 		it("parses command with flags", () => {
 			const opts = parseSessionLine(
 				'generate-image -t "A cat in space" -m flux_dev',

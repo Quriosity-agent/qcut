@@ -1,7 +1,7 @@
 import type { SelectedElement } from "./types";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
-import { getTimelineElementEndTime } from "@/lib/timeline";
-import { findRangeCollisions } from "@qcut/editor-core/timeline";
+import { getTimelineElementDuration } from "@/lib/timeline";
+import { findOccupyingElement } from "@/lib/timeline-occupancy";
 
 export function groupTimelineElements({
 	tracks,
@@ -85,27 +85,25 @@ function collidesOnTrack({
 	track,
 	movedElements,
 	excludeIds,
+	fps,
 }: {
 	track: TimelineTrack;
 	movedElements: readonly TimelineElement[];
 	excludeIds: ReadonlySet<string>;
+	fps?: number;
 }): boolean {
-	const occupancy = track.elements
-		.filter((element) => !excludeIds.has(element.id))
-		.map((element) => ({
-			id: element.id,
-			startTime: element.startTime,
-			endTime: getTimelineElementEndTime({ element }),
-		}));
+	const others = {
+		...track,
+		elements: track.elements.filter((element) => !excludeIds.has(element.id)),
+	};
 	return movedElements.some(
 		(element) =>
-			findRangeCollisions({
-				items: occupancy,
-				range: {
-					startTime: element.startTime,
-					endTime: getTimelineElementEndTime({ element }),
-				},
-			}).length > 0
+			findOccupyingElement({
+				track: others,
+				startTime: element.startTime,
+				duration: getTimelineElementDuration({ element, fps }),
+				fps,
+			}) !== null
 	);
 }
 
@@ -119,11 +117,13 @@ export function moveTimelineElementGroup({
 	trackId,
 	elementId,
 	startTime,
+	fps,
 }: {
 	tracks: TimelineTrack[];
 	trackId: string;
 	elementId: string;
 	startTime: number;
+	fps?: number;
 }): TimelineTrack[] {
 	const target = tracks
 		.find((track) => track.id === trackId)
@@ -153,6 +153,7 @@ export function moveTimelineElementGroup({
 				track: movedTrack,
 				movedElements: [movedElement],
 				excludeIds: new Set([elementId]),
+				fps,
 			})
 		) {
 			return tracks;
@@ -187,6 +188,7 @@ export function moveTimelineElementGroup({
 				groupElementIds.has(element.id)
 			),
 			excludeIds: groupElementIds,
+			fps,
 		})
 	);
 	return wouldCollide ? tracks : nextTracks;

@@ -435,6 +435,75 @@ describe("Claude HTTP Server - Timeline", () => {
 		);
 	});
 
+	it("POST .../move keeps the element on its own track when toTrackId is omitted", async () => {
+		const send = vi.fn();
+		const mockWindow = createMockWindow(send);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		const timeline = {
+			name: "Door plan",
+			duration: 20,
+			width: 1280,
+			height: 720,
+			fps: 24,
+			tracks: [
+				{
+					id: "track_1",
+					index: 0,
+					name: "Main",
+					type: "media",
+					elements: [
+						{
+							id: "element_abc",
+							trackIndex: 0,
+							startTime: 15,
+							endTime: 17,
+							duration: 2,
+							type: "video",
+						},
+					],
+				},
+			],
+		};
+		vi.mocked(timelineHandler.requestTimelineFromRenderer)
+			.mockResolvedValueOnce(timeline as never)
+			.mockResolvedValueOnce(timeline as never);
+
+		const res = await fetch(
+			"/api/claude/timeline/proj_123/elements/element_abc/move",
+			{ method: "POST", body: JSON.stringify({ newStartTime: 15 }) }
+		);
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			moved: true,
+			trackId: "track_1",
+			startTime: 15,
+		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:moveElement",
+			expect.objectContaining({
+				elementId: "element_abc",
+				toTrackId: "track_1",
+				newStartTime: 15,
+			})
+		);
+	});
+
+	it("POST .../move needs a target track or time", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(vi.fn()),
+		]);
+		const res = await fetch(
+			"/api/claude/timeline/proj_123/elements/element_abc/move",
+			{ method: "POST", body: JSON.stringify({}) }
+		);
+
+		expect(res.status).toBe(400);
+		expect(res.body.error).toContain(
+			"Give 'toTrackId', 'newStartTime', or both"
+		);
+	});
+
 	it("PATCH /api/claude/timeline/:projectId/elements/:elementId waits for renderer acknowledgement", async () => {
 		const send = vi.fn();
 		const mockWindow = createMockWindow(send);

@@ -55,6 +55,10 @@ import {
 import { resolveEditorInstance } from "./instance-selection.js";
 import { ensureEditorProjectReady } from "../editor/editor-project-readiness.js";
 import { runEditorDemo } from "./editor-demo-run.js";
+import {
+	moveScreenshot,
+	resolveScreenshotOutputPath,
+} from "./screenshot-output.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -962,10 +966,25 @@ async function handleScreenshotCommand(
 
 	switch (action) {
 		case "capture": {
+			// Checked before capturing, so a bad path costs no screenshot.
+			const outputPath = options.output
+				? resolveScreenshotOutputPath({ requested: options.output })
+				: undefined;
 			const body: Record<string, unknown> = {};
 			if (options.filename) body.fileName = options.filename;
-			const data = await client.post("/api/claude/screenshot/capture", body);
-			return { success: true, data };
+			const data = await client.post<Record<string, unknown>>(
+				"/api/claude/screenshot/capture",
+				body
+			);
+			if (!outputPath || typeof data?.filePath !== "string") {
+				return { success: true, data };
+			}
+			await moveScreenshot({ sourcePath: data.filePath, outputPath });
+			return {
+				success: true,
+				data: { ...data, filePath: outputPath },
+				outputPath,
+			};
 		}
 		default:
 			return {

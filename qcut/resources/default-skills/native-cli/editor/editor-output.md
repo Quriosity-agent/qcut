@@ -283,10 +283,16 @@ Returns `parseStatus` and pipeline step progress.
 ### Capture screenshot
 
 ```bash
+# Saved as ~/Movies/QCut Recordings/qcut-screenshot.png
 qcut editor:screenshot:capture --filename "qcut-screenshot.png"
+
+# Saved wherever you say (.png is added when missing)
+qcut editor:screenshot:capture --output ./evidence/after-sfx.png
 ```
 
-Takes a screenshot of the QCut editor window.
+Takes a screenshot of the QCut editor window. `--filename` only names the
+file inside QCut's recordings folder; `--output` moves it to the given path
+and returns that path as `filePath`.
 
 ---
 

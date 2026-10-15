@@ -401,13 +401,30 @@ Success:
   "data": {
     "schema_version": "1",
     "command": "generate-image",
-    "success": true,
     "outputPath": "./output/cli-1234/output_1234.png",
     "cost": 0.005,
     "duration": 8.3
   }
 }
 ```
+
+A command that returns data (most `editor:*` commands) nests it one level
+further, as `data.data`:
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "schema_version": "1",
+    "command": "editor:media:list",
+    "data": [{ "id": "media_abc", "duration": 16.041667, "fps": 24 }]
+  }
+}
+```
+
+**`--json --flat`:** prints only that payload (`[{ "id": ... }]` above), for
+callers that want one value without unwrapping. Failures still print the
+error envelope below, and the exit code is non-zero.
 
 Error:
 ```json

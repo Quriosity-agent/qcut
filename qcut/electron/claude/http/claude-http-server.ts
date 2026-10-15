@@ -9,6 +9,7 @@
  * BrowserWindow access (main process).
  */
 
+import { getMainWindowState } from "../../main-window-recovery.js";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow, shell } from "electron";
@@ -298,6 +299,7 @@ export function startClaudeHTTPServer(
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor, {
+		getWindowState: async () => getMainWindowState(),
 		/** Runs deep health checks against the main process and renderer bridge. */
 		runDeepHealthChecks: async () =>
 			runMainProcessDeepHealthChecks({
