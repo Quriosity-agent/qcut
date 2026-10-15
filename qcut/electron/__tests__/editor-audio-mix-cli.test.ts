@@ -339,7 +339,8 @@ describe("bus and master commands", () => {
 		expect(pollJob).toHaveBeenCalled();
 		expect(post).toHaveBeenLastCalledWith(
 			"/api/claude/mix/p1/stems",
-			{ outputDir: "/out", fileNamePrefix: "doors-" },
+			// Resolved like the handler does, so Windows gets its drive letter too.
+			{ outputDir: path.resolve("/out"), fileNamePrefix: "doors-" },
 			{ timeout: 310_000 }
 		);
 		expect(result).toMatchObject({
