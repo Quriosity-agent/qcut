@@ -561,10 +561,19 @@ async function projectCreate(
 		};
 	}
 	if (projectId && wantsSettings) {
-		await client.patch(
-			`/api/claude/project/${encodeURIComponent(projectId)}/settings`,
-			settings
-		);
+		try {
+			await client.patch(
+				`/api/claude/project/${encodeURIComponent(projectId)}/settings`,
+				settings
+			);
+		} catch (error) {
+			// The project exists by now, so hand back its id with the failure.
+			return {
+				success: false,
+				error: `Project ${projectId} was created, but its settings were not applied: ${error instanceof Error ? error.message : String(error)}`,
+				data: created,
+			};
+		}
 	}
 	const data = wantsSettings ? { ...created, settings } : created;
 	let readiness;
