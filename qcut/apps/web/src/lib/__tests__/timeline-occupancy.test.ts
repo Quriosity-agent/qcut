@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { TRANSITION_SEAM_TOLERANCE_SECONDS } from "@qcut/editor-core/timeline";
 import {
+	describeOccupancyConflict,
 	findOccupyingElement,
 	findOverlappingPair,
 	firstFreeStartTime,
+	formatSeconds,
 	getSeamToleranceSeconds,
 } from "@/lib/timeline-occupancy";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
@@ -258,5 +260,63 @@ describe("seams computed in floating point", () => {
 			}
 			expect(findOverlappingPair({ elements: placed, fps: 24 })).toBeNull();
 		}
+	});
+});
+
+describe("describeOccupancyConflict", () => {
+	const track = trackWith({
+		elements: [
+			mediaElement({ id: "intro", startTime: 0, duration: 10 }),
+			mediaElement({ id: "outro", startTime: 12, duration: 5 }),
+		],
+	});
+
+	it("is null when the span is free", () => {
+		expect(
+			describeOccupancyConflict({ track, startTime: 10, duration: 2 })
+		).toBeNull();
+	});
+
+	it("names the blocking clip, its span and the next free start", () => {
+		const conflict = describeOccupancyConflict({
+			track,
+			startTime: 8,
+			duration: 3,
+		});
+		expect(conflict).toMatchObject({
+			occupant: { id: "intro" },
+			occupantStart: 0,
+			occupantEnd: 10,
+			nextFreeStart: 17,
+		});
+		expect(conflict?.message).toBe(
+			'8s–11s on track "track" overlaps "intro" (0s–10s). A track plays one element at a time; the next free start for this 3s clip is 17s.'
+		);
+	});
+
+	it("offers the gap after the blocker when the clip fits there", () => {
+		expect(
+			describeOccupancyConflict({ track, startTime: 9, duration: 2 })
+				?.nextFreeStart
+		).toBe(10);
+	});
+
+	it("ignores the element being moved", () => {
+		expect(
+			describeOccupancyConflict({
+				track,
+				startTime: 2,
+				duration: 3,
+				excludeElementId: "intro",
+			})
+		).toBeNull();
+	});
+});
+
+describe("formatSeconds", () => {
+	it("keeps up to six decimals and drops trailing zeros", () => {
+		expect(formatSeconds(117.24999700000001)).toBe("117.249997s");
+		expect(formatSeconds(17)).toBe("17s");
+		expect(formatSeconds(1 / 3)).toBe("0.333333s");
 	});
 });
