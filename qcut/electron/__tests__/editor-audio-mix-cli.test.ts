@@ -148,6 +148,47 @@ describe("track mixer commands", () => {
 		expect(patch).not.toHaveBeenCalled();
 	});
 
+	it("sets a track's curve from --param and --points, or clears it", async () => {
+		const { client, patch } = fakeClient();
+		await run(client, "editor:track:audio-automation", {
+			trackId: "guns",
+			param: "gainDb",
+			points: '[{"time":2.5,"value":-10},{"time":3,"value":-30}]',
+		});
+		await run(client, "editor:track:audio-automation", {
+			trackId: "guns",
+			param: "pan",
+			clear: true,
+		});
+		expect(patch.mock.calls.map((call) => call[1])).toEqual([
+			{
+				automation: {
+					gainDb: [
+						{ time: 2.5, value: -10 },
+						{ time: 3, value: -30 },
+					],
+				},
+			},
+			{ automation: { pan: null } },
+		]);
+		expect(
+			await run(client, "editor:track:audio-automation", {
+				trackId: "guns",
+				param: "volume",
+				points: "[]",
+			})
+		).toEqual({ success: false, error: "--param must be gainDb or pan" });
+		expect(
+			await run(client, "editor:track:audio-automation", {
+				trackId: "guns",
+				param: "gainDb",
+			})
+		).toEqual({
+			success: false,
+			error: "Give --points <json|@file> or --clear",
+		});
+	});
+
 	it("mutes and solos, and turns them off with --off", async () => {
 		const { client, patch } = fakeClient();
 		await run(client, "editor:track:mute", { trackId: "guns" });
@@ -221,6 +262,23 @@ describe("bus and master commands", () => {
 			projectId: "p1",
 			removed: "sfx",
 			reroutedTrackIds: ["guns"],
+		});
+	});
+
+	it("sets a bus's or the master's curve", async () => {
+		const { client, patch } = fakeClient();
+		await run(client, "editor:mix:bus-automation", {
+			busId: "master",
+			param: "gainDb",
+			points: '[{"time":0,"value":-6},{"time":4,"value":0}]',
+		});
+		expect(patch).toHaveBeenCalledWith("/api/claude/mix/p1/buses/master", {
+			automation: {
+				gainDb: [
+					{ time: 0, value: -6 },
+					{ time: 4, value: 0 },
+				],
+			},
 		});
 	});
 
