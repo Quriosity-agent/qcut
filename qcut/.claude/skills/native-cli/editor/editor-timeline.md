@@ -157,6 +157,35 @@ Each item reports whether it applied. An item whose new `startTime` is
 refused (occupied span, locked track) fails with the reason, and none of its
 other changes are applied.
 
+### Clip colours
+
+Clips can carry a `colorLabel`: `violet`, `blue`, `green`, `yellow`, `red`,
+`rose`, `orange` or `mango`. Any other value fails and lists these. Set it on
+any clip with `update-element` or `batch-update`, or on media clips when adding
+them (`add-element`, `batch-add`):
+
+```bash
+qcut editor:timeline:update-element --project-id <id> --element-id <id> \
+  --changes '{"colorLabel":"red"}'
+
+qcut editor:timeline:batch-add --project-id <id> \
+  --elements '[{"type":"audio","sourceName":"shot.wav","trackId":"<id>","startTime":"end","colorLabel":"red"}]'
+```
+
+To colour many clips at once, `color-label` colours every clip on a track, or
+listed clips, in one step and reports what it changed (`updatedCount`) and what
+it could not (`skipped`, with a reason such as a locked track):
+
+```bash
+qcut editor:timeline:color-label --project-id <id> --track-id <id> --color red
+qcut editor:timeline:color-label --project-id <id> --element-ids '["a","b"]' --color green
+qcut editor:timeline:color-label --project-id <id> --track-id <id> --clear
+```
+
+A track can also have a default colour (`editor track update --color`, see
+[editor-tracks-stickers-search.md](editor-tracks-stickers-search.md)); clips
+without their own colour show it.
+
 ### Delete element
 
 ```bash
@@ -232,6 +261,10 @@ qcut editor:timeline:arrange \
 qcut editor:timeline:select \
   --project-id <id> \
   --elements '[{"trackId":"t1","elementId":"e1"}]'
+
+# Every clip showing a colour (its own, or its track's), like "Select same
+# colour" in the clip menu; returns the selected clips
+qcut editor:timeline:select --project-id <id> --color green
 
 qcut editor:timeline:get-selection --project-id <id>
 qcut editor:timeline:clear-selection --project-id <id>
