@@ -526,6 +526,8 @@ export interface CLIRunOptions {
 	session?: boolean;
 	/** Comma-separated sources for batch-import convenience */
 	sources?: string;
+	/** batch-import: lay the imported media end to end at the end of this track */
+	appendToTrack?: string;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
