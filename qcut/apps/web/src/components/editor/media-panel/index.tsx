@@ -8,6 +8,7 @@ import { Text2ImageView } from "./views/text2image";
 import { AiView } from "./views/ai";
 import { StickersView } from "./views/stickers/stickers-view";
 import { SoundsView } from "./views/sounds";
+import { MixerView } from "./views/mixer/mixer-view";
 import { AIVoiceView } from "./views/sounds-ai-voice";
 import { SkillsView } from "./views/skills";
 import VideoEditView from "./views/video-edit";
@@ -55,6 +56,7 @@ export function MediaPanel() {
 	const viewMap: Record<Exclude<Tab, "pty">, ReactNode> = {
 		media: <MediaView />,
 		audio: <SoundsView />,
+		mixer: <MixerView />,
 		captions: <CaptionsView />,
 		text: <TextView />,
 		stickers: <StickersView />,
