@@ -415,7 +415,8 @@ function resolveQcutMcpServerEntry(): string | null {
  */
 async function handleMainRequest(
 	channel: string,
-	data: Record<string, unknown>
+	data: Record<string, unknown>,
+	deadline?: number
 ): Promise<unknown> {
 	if (channel === "events:list") {
 		const req = data as {
@@ -503,8 +504,16 @@ async function handleMainRequest(
 	}
 
 	// Everything below talks to the editor, so a closed window is reopened
-	// rather than failing the request.
-	const win = await ensureMainWindow();
+	// rather than failing the request. Reopening can outlast the caller's
+	// wait, and a mutation it has given up on must not run afterwards.
+	const win = await ensureMainWindow(
+		deadline === undefined ? {} : { timeoutMs: deadline - Date.now() }
+	);
+	if (deadline !== undefined && Date.now() >= deadline) {
+		throw new Error(
+			`QCut's window was not ready in time for ${channel}; it was not run`
+		);
+	}
 	const windowFor = (request?: { windowId?: number }) =>
 		resolveEditorWindow({ windowId: request?.windowId, fallback: () => win });
 	const controllerFor = (request?: { windowId?: number }) =>
@@ -1161,7 +1170,11 @@ export function startUtilityProcess(): void {
 			case "main-request": {
 				// Utility process needs something from main
 				try {
-					const result = await handleMainRequest(msg.channel, msg.data);
+					const result = await handleMainRequest(
+						msg.channel,
+						msg.data,
+						msg.deadline
+					);
 					child.postMessage({
 						type: "main-response",
 						id: msg.id,
