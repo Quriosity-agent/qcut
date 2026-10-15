@@ -24,6 +24,7 @@ These commands need a running QCut editor with the project open.
 | `editor mix bus-remove` | `--bus-id` | — | Remove a bus; its tracks go back to the master |
 | `editor mix master-set` | — | `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--effects` | Change the master |
 | `editor mix loudness` | — | `--project-id` | Render the mix as an export would and measure it |
+| `editor mix stems` | `--output-dir` | `--project-id` | Write one WAV per bus into a folder |
 
 Ranges: `--gain-db` -60 to 12, `--pan` -1 (left) to 1 (right). A value
 outside a range is refused with the reason; nothing is quietly clamped.
@@ -55,6 +56,22 @@ oversampled) and `samplePeakDb`. Online platforms usually ask for about -14
 LUFS integrated with true peak at or below -1 dBTP. The mixer panel's master
 strip shows the same numbers.
 
+## Stems
+
+Stems are the mix split by bus for delivery and remixing: one WAV per bus
+that something is heard on, named after the bus, plus `direct.wav` for the
+tracks that feed the master directly. Each is as long as the programme and
+lines up with it sample for sample. They leave each bus after its fader and
+effects but before the master, so the master's level and limiter are not in
+them; the stems summed through the master give the mix.
+
+- `qcut editor mix stems --output-dir <folder>` writes them into a folder
+  (created if needed).
+- `qcut editor export start ... --output <file> --stems` waits for the export
+  and writes them beside it as `<file name>-<bus>.wav`.
+- In the export dialog, "Export stems per bus (WAV)" does the same as
+  `--stems`.
+
 ## Example: dialogue, SFX and music buses
 
 ```bash
@@ -83,6 +100,7 @@ qcut editor track solo --project-id $P --track-id <guns-1> --json
 qcut editor mix export --project-id $P --json
 qcut editor track solo --project-id $P --track-id <guns-1> --off --json
 
-# Check the delivery loudness
+# Check the delivery loudness, then export with stems
 qcut editor mix loudness --project-id $P --json
+qcut editor export start --project-id $P --output ~/Desktop/doors.mp4 --stems --json
 ```
