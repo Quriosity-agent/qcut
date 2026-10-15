@@ -252,6 +252,7 @@ export function setupExportHandler(tempManager: TempManager): void {
 						duration: validatedDuration,
 						audioFiles,
 						audioCrossfades: options.audioCrossfades,
+						audioMixConfig: options.audioMixConfig,
 						filterChain: options.filterChain,
 						textFilterChain,
 						textAssLayers: textAssLayerPaths,
