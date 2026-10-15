@@ -593,6 +593,18 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					result,
 				});
 			},
+			onAudioMixOperation: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:audioMixOperation");
+				ipcRenderer.on("claude:timeline:audioMixOperation", (_, data) =>
+					callback(data)
+				);
+			},
+			sendAudioMixOperationResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:audioMixOperation:response", {
+					requestId,
+					result,
+				});
+			},
 			onLoadSpeech: (callback) => {
 				ipcRenderer.removeAllListeners("claude:speech:load");
 				ipcRenderer.on("claude:speech:load", (_, data) => callback(data));
@@ -619,6 +631,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
 				ipcRenderer.removeAllListeners("claude:timeline:arrange");
 				ipcRenderer.removeAllListeners("claude:timeline:trackOperation");
+				ipcRenderer.removeAllListeners("claude:timeline:audioMixOperation");
 				ipcRenderer.removeAllListeners("claude:speech:load");
 			},
 		},
