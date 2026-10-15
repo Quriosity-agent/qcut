@@ -10,6 +10,7 @@ import {
 	normalizeProjectAudioMixSettings,
 	normalizeTrackAudioSettings,
 } from "./audio-mix-settings";
+import { hasAutomation } from "./audio-mix-automation";
 
 /**
  * Who is heard and where it goes. The live preview (audio-mix-engine.ts) and
@@ -93,6 +94,7 @@ function effectsAreNeutral(effects: AudioBusEffectsSettings): boolean {
 
 function busIsNeutral(bus: AudioMixBusSettings): boolean {
 	return (
+		!hasAutomation(bus.automation) &&
 		bus.gainDb === 0 &&
 		bus.pan === 0 &&
 		!bus.muted &&
@@ -113,6 +115,7 @@ export function audioMixIsNeutral(routing: AudioMixRouting): boolean {
 		routing.tracks.every(
 			({ settings, busId }) =>
 				busId === MASTER_AUDIO_BUS_ID &&
+				!hasAutomation(settings.automation) &&
 				settings.gainDb === 0 &&
 				settings.pan === 0 &&
 				!settings.solo &&
