@@ -19,6 +19,10 @@
  * @module electron/ffmpeg/audio-mix-graph
  */
 
+import {
+	automatedLevelFilters,
+	automatedPanFilters,
+} from "./audio-mix-automation";
 import type {
 	AudioBusEffects,
 	AudioMixBus,
@@ -60,6 +64,8 @@ function effectsAreNeutral(effects: AudioBusEffects): boolean {
 
 function stripIsNeutral(strip: AudioMixBus | AudioTrackMix): boolean {
 	return (
+		!strip.automation?.gainDb?.length &&
+		!strip.automation?.pan?.length &&
 		strip.gainDb === 0 &&
 		strip.pan === 0 &&
 		!strip.muted &&
@@ -144,8 +150,10 @@ function buildPanFilter(pan: number): string | null {
 /** Pan and limiter: the strip stages after gain and ducking. */
 function buildOutputFilters(strip: AudioMixBus | AudioTrackMix): string[] {
 	const filters: string[] = [];
+	const panCurve = strip.automation?.pan;
 	const pan = buildPanFilter(strip.pan);
-	if (pan) filters.push("aformat=channel_layouts=stereo", pan);
+	if (panCurve?.length) filters.push(...automatedPanFilters(panCurve));
+	else if (pan) filters.push("aformat=channel_layouts=stereo", pan);
 	const limiter = strip.effects.limiter;
 	if (limiter.enabled) {
 		filters.push(
@@ -158,6 +166,14 @@ function buildOutputFilters(strip: AudioMixBus | AudioTrackMix): string[] {
 
 function gainFilter(gainDb: number): string | null {
 	return gainDb === 0 ? null : `volume=${round(gainDb)}dB`;
+}
+
+/** The strip's level: its curve when it has one, else its fixed gain. */
+function levelFilters(strip: AudioMixBus | AudioTrackMix): string[] {
+	const curve = strip.automation?.gainDb;
+	if (curve?.length) return automatedLevelFilters(curve);
+	const gain = gainFilter(strip.gainDb);
+	return gain ? [gain] : [];
 }
 
 /** Joins labels into one, summing when there are several. */
@@ -232,7 +248,8 @@ function defaultTrackMix(trackId: string): AudioTrackMix {
 
 /**
  * Mixes per-track labels through their tracks, buses and the master, and
- * returns the label of the finished mix, or null when every track is silent.
+ * returns the label of the finished mix: silence when the mix silences
+ * everything, null only when there are no inputs.
  */
 export function appendAudioMixGraph({
 	inputs,
@@ -263,13 +280,22 @@ export function appendAudioMixGraph({
 	// FFmpeg rejects a graph with an unconnected output, so a silenced
 	// signal is ended explicitly rather than left dangling.
 	const discard = (label: string) => filterSteps.push(`[${label}]anullsink`);
+	// A mix that silences everything still ends in a stream: one input at
+	// zero. Were it to end in nothing, exports would fall back to the raw
+	// input and play it unmixed.
+	const silentMix = (labels: string[]): string | null => {
+		const [kept, ...rest] = labels;
+		if (kept === undefined) return null;
+		for (const label of rest) discard(label);
+		filterSteps.push(`[${kept}]volume=0[a_mix]`);
+		return "a_mix";
+	};
 	const audibleTrackIds = new Set(audible.map((track) => track.trackId));
-	for (const input of inputs) {
-		if (!audibleTrackIds.has(input.trackId ?? "__unassigned")) {
-			discard(input.label.replace(/^\[|\]$/g, ""));
-		}
-	}
-	if (audible.length === 0) return null;
+	const silencedInputs = inputs
+		.filter((input) => !audibleTrackIds.has(input.trackId ?? "__unassigned"))
+		.map((input) => input.label.replace(/^\[|\]$/g, ""));
+	if (audible.length === 0) return silentMix(silencedInputs);
+	for (const label of silencedInputs) discard(label);
 
 	// Stage 1: each track's clips, through EQ, compressor and gain.
 	const preDuck = new Map<string, string>();
@@ -282,12 +308,11 @@ export function appendAudioMixGraph({
 			output: `mix_t${index}_in`,
 			filterSteps,
 		});
-		const gain = gainFilter(track.gainDb);
 		preDuck.set(
 			track.trackId,
 			applyFilters({
 				input: summed,
-				filters: [...buildToneFilters(track.effects), ...(gain ? [gain] : [])],
+				filters: [...buildToneFilters(track.effects), ...levelFilters(track)],
 				output: `mix_t${index}_pre`,
 				filterSteps,
 			})
@@ -372,6 +397,7 @@ export function appendAudioMixGraph({
 	}
 
 	// Stage 3: buses, then the master.
+	const droppedByBus: string[] = [];
 	const masterInputs = trackOutputs
 		.filter((output) => output.busId === MASTER_BUS_ID)
 		.map((output) => output.label);
@@ -381,7 +407,7 @@ export function appendAudioMixGraph({
 			.map((output) => output.label);
 		if (labels.length === 0) continue;
 		if (bus.muted || (anyBusSolo && !bus.solo)) {
-			for (const label of labels) discard(label);
+			droppedByBus.push(...labels);
 			continue;
 		}
 		const summed = sumLabels({
@@ -389,13 +415,12 @@ export function appendAudioMixGraph({
 			output: `mix_b${index}_in`,
 			filterSteps,
 		});
-		const gain = gainFilter(bus.gainDb);
 		masterInputs.push(
 			applyFilters({
 				input: summed,
 				filters: [
 					...buildToneFilters(bus.effects),
-					...(gain ? [gain] : []),
+					...levelFilters(bus),
 					...buildOutputFilters(bus),
 				],
 				output: `mix_b${index}_out`,
@@ -404,8 +429,9 @@ export function appendAudioMixGraph({
 		);
 	}
 	// Tracks routed to a bus that does not exist went to the master above, so
-	// every audible track output is consumed here or discarded with its bus.
-	if (masterInputs.length === 0) return null;
+	// every audible track output is consumed here or dropped with its bus.
+	if (masterInputs.length === 0) return silentMix(droppedByBus);
+	for (const label of droppedByBus) discard(label);
 
 	const master = config.master;
 	const masterSum = sumLabels({
@@ -413,12 +439,11 @@ export function appendAudioMixGraph({
 		output: "mix_master_in",
 		filterSteps,
 	});
-	const masterGain = master.muted ? "volume=0" : gainFilter(master.gainDb);
 	return applyFilters({
 		input: masterSum,
 		filters: [
 			...buildToneFilters(master.effects),
-			...(masterGain ? [masterGain] : []),
+			...(master.muted ? ["volume=0"] : levelFilters(master)),
 			...buildOutputFilters(master),
 		],
 		output: "a_mix",
