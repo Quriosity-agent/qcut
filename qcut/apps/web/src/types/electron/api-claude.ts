@@ -352,7 +352,8 @@ export interface ElectronClaudeOps {
 			getSettings: (projectId: string) => Promise<ProjectSettings>;
 			updateSettings: (
 				projectId: string,
-				settings: Partial<ProjectSettings>
+				settings: Partial<ProjectSettings>,
+				options?: { broadcast?: boolean }
 			) => Promise<void>;
 			getStats: (projectId: string) => Promise<ProjectStats>;
 			onStatsRequest: (
