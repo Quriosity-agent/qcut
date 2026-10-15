@@ -43,6 +43,7 @@ vi.mock("lucide-react", () => {
 		CaptionsIcon: icon("captions"),
 		LayoutTemplateIcon: icon("layout-template"),
 		SlidersHorizontalIcon: icon("sliders-horizontal"),
+		SlidersVerticalIcon: icon("sliders-vertical"),
 		UserSquareIcon: icon("user-square"),
 	};
 });
