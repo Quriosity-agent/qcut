@@ -1031,7 +1031,9 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 						output: new Uint8Array(await readFile(outputPath)),
 					};
 				}
-				if (recoverableSource && stage.group === "face") {
+				const usesTrackedSource =
+					stage.group === "face" || stage.runtimePackage === "body";
+				if (recoverableSource && usesTrackedSource) {
 					const unchanged = (await readFile(outputPath)).equals(
 						await readFile(inputPath)
 					);

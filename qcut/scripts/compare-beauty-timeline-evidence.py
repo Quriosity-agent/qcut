@@ -15,18 +15,29 @@ from PIL import Image
 MODE_LABELS = {"original": "原画面", "native": "原生", "independent": "自研"}
 
 
-def require_all_modes(*, values, label):
-    if (not isinstance(values, list) or len(values) != len(MODE_LABELS)
+def require_all_modes(*, values, label, modes=tuple(MODE_LABELS)):
+    if (not isinstance(values, list) or len(values) != len(modes)
             or any(not isinstance(value, str) for value in values)
-            or set(values) != set(MODE_LABELS)):
-        raise ValueError(f"{label} must contain original, native and independent exactly once")
+            or set(values) != set(modes)):
+        raise ValueError(f"{label} must contain {', '.join(modes)} exactly once")
 
 
-def validate_e2e_evidence(*, evidence):
+def validate_png_samples(*, evidence, modes, samples, kind, suffix=""):
+    expected = {f"{kind}-frame-{frame:06d}{suffix}.png" for frame in samples}
+    canonical = re.compile(rf"{re.escape(kind)}-frame-[0-9]+{re.escape(suffix)}\.png")
+    for mode in modes:
+        actual = {path.name for path in (evidence / mode).glob(f"{kind}-frame-*{suffix}.png")
+                  if path.is_file() and canonical.fullmatch(path.name)}
+        if actual != expected:
+            raise ValueError(f"{mode} {kind}{suffix} PNG samples must exactly match sampleIndices; "
+                             f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
+
+
+def validate_e2e_evidence(*, evidence, modes=tuple(MODE_LABELS)):
     recorded = json.loads((evidence / "e2e-evidence.json").read_text())
     if not isinstance(recorded, dict) or recorded.get("status") != "captured":
         raise ValueError("E2E evidence status must be captured")
-    require_all_modes(values=recorded.get("requestedPasses"), label="requestedPasses")
+    require_all_modes(values=recorded.get("requestedPasses"), label="requestedPasses", modes=modes)
     for name in ("duration", "fps"):
         value = recorded.get(name)
         if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
@@ -42,7 +53,7 @@ def validate_e2e_evidence(*, evidence):
     completed = recorded.get("completed")
     if not isinstance(completed, list) or any(not isinstance(row, dict) for row in completed):
         raise ValueError("E2E completed must describe every completed export")
-    require_all_modes(values=[row.get("pass") for row in completed], label="completed passes")
+    require_all_modes(values=[row.get("pass") for row in completed], label="completed passes", modes=modes)
     for row in completed:
         exported = row.get("exported")
         probe = exported.get("probe") if isinstance(exported, dict) else None
@@ -54,16 +65,9 @@ def validate_e2e_evidence(*, evidence):
             or any(type(frame) is not int or frame < 0 or frame >= total_frames for frame in samples)
             or len(set(samples)) != len(samples)):
         raise ValueError("sampleIndices must contain unique, nonempty integer indices within totalFrames")
-    for mode in MODE_LABELS:
-        for kind in ("export", "preview"):
-            expected = {f"{kind}-frame-{frame:06d}.png" for frame in samples}
-            canonical = re.compile(rf"{kind}-frame-[0-9]+\.png")
-            actual = {path.name for path in (evidence / mode).glob(f"{kind}-frame-*.png")
-                      if path.is_file() and canonical.fullmatch(path.name)}
-            if actual != expected:
-                raise ValueError(f"{mode} {kind} PNG samples must exactly match sampleIndices; "
-                                 f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
-    return {"status": recorded["status"], "completed_passes": list(MODE_LABELS),
+    for kind in ("export", "preview"):
+        validate_png_samples(evidence=evidence, modes=modes, samples=samples, kind=kind)
+    return {"status": recorded["status"], "completed_passes": list(modes),
             "duration": recorded["duration"], "fps": recorded["fps"],
             "total_frames": total_frames, "sample_indices": sorted(samples)}
 

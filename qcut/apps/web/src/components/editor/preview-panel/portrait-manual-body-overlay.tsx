@@ -75,10 +75,14 @@ export function PortraitManualBodyOverlay({
 		const svg = svgRef.current;
 		if (!svg) return;
 		const updateSize = () => {
-			const bounds = svg.getBoundingClientRect();
+			// Screen bounds include clip transforms; SVG coordinates use the layout box.
+			const style = getComputedStyle(svg);
 			setSize({
-				width: Math.max(1, bounds.width),
-				height: Math.max(1, bounds.height),
+				width: Math.max(1, Number.parseFloat(style.width) || svg.clientWidth),
+				height: Math.max(
+					1,
+					Number.parseFloat(style.height) || svg.clientHeight
+				),
 			});
 		};
 		updateSize();
