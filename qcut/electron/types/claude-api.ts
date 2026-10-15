@@ -96,6 +96,8 @@ export interface ClaudeTrack {
 	hidden?: boolean;
 	/** A locked track refuses every edit, so a refused move can say why. */
 	locked?: boolean;
+	/** Default colour for clips on this track that set none of their own. */
+	colorLabel?: string;
 }
 
 export interface ClaudeTransition {
@@ -125,8 +127,38 @@ export type ClaudeTrackType =
 	| "hyperframes"
 	| "markdown";
 
+/**
+ * The clip colour labels the editor offers. Mirrors TIMELINE_COLOR_LABELS in
+ * apps/web/src/lib/timeline/timeline-color-labels.ts, which electron cannot
+ * import; a guard test keeps the two in step.
+ */
+export const CLAUDE_TIMELINE_COLOR_LABELS = [
+	"violet",
+	"blue",
+	"green",
+	"yellow",
+	"red",
+	"rose",
+	"orange",
+	"mango",
+] as const;
+
+/** Whether `value` names a clip colour label. */
+export function isClaudeTimelineColorLabel(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		(CLAUDE_TIMELINE_COLOR_LABELS as readonly string[]).includes(value)
+	);
+}
+
 export interface ClaudeTrackOperationRequest {
-	action: "create" | "update" | "move" | "delete" | "add-transition";
+	action:
+		| "create"
+		| "update"
+		| "move"
+		| "delete"
+		| "add-transition"
+		| "color-clips";
 	trackId?: string;
 	type?: ClaudeTrackType;
 	name?: string;
@@ -134,6 +166,13 @@ export interface ClaudeTrackOperationRequest {
 	ripple?: boolean;
 	force?: boolean;
 	transition?: ClaudeTransition;
+	/**
+	 * create/update: the track's default clip colour (null clears it).
+	 * color-clips: the colour to give the clips (null clears theirs).
+	 */
+	colorLabel?: string | null;
+	/** color-clips: the clips to colour; omit to colour every clip on trackId. */
+	elementIds?: string[];
 }
 
 export interface ClaudeTrackOperationResponse {
@@ -148,7 +187,12 @@ export interface ClaudeTrackOperationResponse {
 		name: string;
 		elementCount: number;
 		isMain?: boolean;
+		colorLabel?: string;
 	}>;
+	/** color-clips: how many clips changed colour. */
+	updatedCount?: number;
+	/** color-clips: requested clips that were left alone, and why. */
+	skipped?: Array<{ elementId: string; reason: string }>;
 	error?: string;
 }
 
