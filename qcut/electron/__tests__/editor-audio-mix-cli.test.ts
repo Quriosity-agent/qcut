@@ -1,0 +1,232 @@
+import { describe, expect, it, vi } from "vitest";
+import { readAudioMixOptions } from "../native-pipeline/cli/audio-mix-cli-options.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
+import type { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
+import { handleTimelineEditingCommand } from "../native-pipeline/editor/editor-handlers-timeline.js";
+
+/** The mixer commands: what each sends to the editor and what it prints. */
+
+function options(
+	command: string,
+	overrides: Partial<CLIRunOptions> = {}
+): CLIRunOptions {
+	return {
+		command,
+		outputDir: "./output",
+		json: true,
+		verbose: false,
+		quiet: false,
+		saveIntermediates: false,
+		projectId: "p1",
+		...overrides,
+	} as CLIRunOptions;
+}
+
+const bus = (id: string, name: string) => ({
+	id,
+	name,
+	gainDb: 0,
+	pan: 0,
+	muted: false,
+	solo: false,
+	effects: {},
+});
+
+const mix = {
+	projectId: "p1",
+	master: bus("master", "Master"),
+	buses: [bus("sfx", "SFX")],
+	tracks: [
+		{
+			trackId: "guns",
+			name: "SFX · Guns",
+			type: "audio",
+			muted: false,
+			audio: { gainDb: -6 },
+			effective: { silenced: false, busId: "sfx" },
+		},
+		{
+			trackId: "voice",
+			name: "Voice",
+			type: "audio",
+			muted: false,
+			audio: { gainDb: 0 },
+			effective: { silenced: false, busId: "master" },
+		},
+	],
+};
+
+function fakeClient() {
+	const get = vi.fn(async () => mix);
+	const patch = vi.fn(async () => ({
+		track: mix.tracks[0],
+		bus: mix.buses[0],
+		mix,
+	}));
+	const post = vi.fn(async () => ({ busId: "sfx", bus: mix.buses[0], mix }));
+	const del = vi.fn(async () => ({
+		removed: "sfx",
+		reroutedTrackIds: ["guns"],
+		mix,
+	}));
+	return {
+		client: { get, patch, post, delete: del } as unknown as EditorApiClient,
+		get,
+		patch,
+		post,
+		del,
+	};
+}
+
+const run = (
+	client: EditorApiClient,
+	command: string,
+	overrides?: Partial<CLIRunOptions>
+) =>
+	handleTimelineEditingCommand(client, options(command, overrides), () => {});
+
+describe("mixer flags", () => {
+	it("reads numbers, switches and JSON text", () => {
+		expect(
+			readAudioMixOptions({
+				"gain-db": "-6",
+				pan: "0.5",
+				bus: "sfx",
+				"no-mute": true,
+				solo: true,
+				off: true,
+			})
+		).toEqual({
+			gainDb: -6,
+			pan: 0.5,
+			bus: "sfx",
+			mute: false,
+			solo: true,
+			off: true,
+		});
+		expect(readAudioMixOptions({ "gain-db": "loud" }).gainDb).toBeNaN();
+		expect(readAudioMixOptions({})).toEqual({});
+	});
+});
+
+describe("track mixer commands", () => {
+	it("sends only the given settings and prints the track read back", async () => {
+		const { client, patch } = fakeClient();
+		const result = await run(client, "editor:track:audio-set", {
+			trackId: "guns",
+			gainDb: -6,
+			bus: "sfx",
+			ducking: '{"enabled":true,"sourceTrackIds":["voice"]}',
+		});
+		expect(patch).toHaveBeenCalledWith("/api/claude/mix/p1/tracks/guns", {
+			gainDb: -6,
+			busId: "sfx",
+			ducking: { enabled: true, sourceTrackIds: ["voice"] },
+		});
+		expect(result).toEqual({
+			success: true,
+			data: { projectId: "p1", track: mix.tracks[0] },
+		});
+	});
+
+	it("names a flag that is not a number or not JSON", async () => {
+		const { client, patch } = fakeClient();
+		expect(
+			await run(client, "editor:track:audio-set", {
+				trackId: "guns",
+				gainDb: Number.NaN,
+			})
+		).toEqual({ success: false, error: "--gain-db must be a number" });
+		const badJson = await run(client, "editor:track:audio-set", {
+			trackId: "guns",
+			effects: "{compressor",
+		});
+		expect(badJson.success).toBe(false);
+		expect(badJson.error).toMatch(/^--effects: /);
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it("mutes and solos, and turns them off with --off", async () => {
+		const { client, patch } = fakeClient();
+		await run(client, "editor:track:mute", { trackId: "guns" });
+		await run(client, "editor:track:solo", { trackId: "guns", off: true });
+		expect(patch.mock.calls.map((call) => call[1])).toEqual([
+			{ muted: true },
+			{ solo: false },
+		]);
+	});
+
+	it("shows one track, or lists the audio tracks when the id is wrong", async () => {
+		const { client } = fakeClient();
+		expect(
+			await run(client, "editor:track:audio-get", { trackId: "voice" })
+		).toEqual({
+			success: true,
+			data: { projectId: "p1", track: mix.tracks[1] },
+		});
+		expect(
+			await run(client, "editor:track:audio-get", { trackId: "titles" })
+		).toEqual({
+			success: false,
+			error:
+				"Track titles is not an audio track on the timeline; audio tracks: guns (SFX · Guns), voice (Voice)",
+		});
+	});
+});
+
+describe("bus and master commands", () => {
+	it("lists each bus with the tracks feeding it", async () => {
+		const { client } = fakeClient();
+		const result = await run(client, "editor:mix:bus-list");
+		expect(result.data).toMatchObject({
+			master: { id: "master", tracks: [{ trackId: "voice", name: "Voice" }] },
+			buses: [{ id: "sfx", tracks: [{ trackId: "guns", name: "SFX · Guns" }] }],
+		});
+	});
+
+	it("creates a bus with the id and name given", async () => {
+		const { client, post } = fakeClient();
+		const result = await run(client, "editor:mix:bus-create", {
+			trackName: "SFX",
+			busId: "sfx",
+			gainDb: -3,
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/buses", {
+			name: "SFX",
+			gainDb: -3,
+			id: "sfx",
+		});
+		expect(result.data).toEqual({
+			projectId: "p1",
+			busId: "sfx",
+			bus: mix.buses[0],
+		});
+	});
+
+	it("changes a bus or the master, and removes a bus", async () => {
+		const { client, patch, del } = fakeClient();
+		await run(client, "editor:mix:bus-set", { busId: "sfx", mute: true });
+		await run(client, "editor:mix:master-set", { gainDb: -1 });
+		const removed = await run(client, "editor:mix:bus-remove", {
+			busId: "sfx",
+		});
+		expect(patch.mock.calls).toEqual([
+			["/api/claude/mix/p1/buses/sfx", { muted: true }],
+			["/api/claude/mix/p1/buses/master", { gainDb: -1 }],
+		]);
+		expect(del).toHaveBeenCalledWith("/api/claude/mix/p1/buses/sfx");
+		expect(removed.data).toEqual({
+			projectId: "p1",
+			removed: "sfx",
+			reroutedTrackIds: ["guns"],
+		});
+	});
+
+	it("says what to pass when nothing would change", async () => {
+		const { client } = fakeClient();
+		expect(await run(client, "editor:mix:master-set")).toEqual({
+			success: false,
+			error: "Pass --gain-db, --pan, --mute/--no-mute or --effects",
+		});
+	});
+});
