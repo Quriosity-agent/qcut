@@ -115,8 +115,20 @@ export interface ClaudeAudioBusPatch {
 	effects?: ClaudeAudioEffectsPatch;
 }
 
+/** Loudness of the rendered mix (ITU-R BS.1770-4 / EBU R 128). */
+export interface ClaudeMixLoudness {
+	integratedLufs: number;
+	maxShortTermLufs: number;
+	maxMomentaryLufs: number;
+	truePeakDbtp: number;
+	samplePeakDb: number;
+	durationSeconds: number;
+}
+
 export type ClaudeAudioMixRequest = { projectId: string } & (
 	| { action: "get" }
+	/** Render the mix as an export would and measure it. */
+	| { action: "measure-loudness" }
 	| { action: "set-track"; trackId: string; patch: ClaudeTrackAudioPatch }
 	| {
 			action: "create-bus";
@@ -138,4 +150,5 @@ export interface ClaudeAudioMixResponse {
 	busId?: string;
 	/** Tracks a removed bus sent back to the master. */
 	reroutedTrackIds?: string[];
+	loudness?: ClaudeMixLoudness;
 }
