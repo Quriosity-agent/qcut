@@ -189,14 +189,21 @@ export async function buildProjectJSON(
 					candidate: m.metadata,
 					mediaId,
 				});
+				// The media API nests size as `dimensions`; older payloads were flat.
+				const dimensions =
+					typeof m.dimensions === "object" && m.dimensions !== null
+						? (m.dimensions as Record<string, unknown>)
+						: {};
+				const width = m.width ?? dimensions.width;
+				const height = m.height ?? dimensions.height;
 				return {
 					id: mediaId,
 					type: parseMediaType(m.type),
 					name: str(m.name, ""),
 					path: str(m.path, ""),
 					duration: m.duration != null ? num(m.duration, 0) : null,
-					width: m.width != null ? num(m.width, 0) : null,
-					height: m.height != null ? num(m.height, 0) : null,
+					width: width != null ? num(width, 0) : null,
+					height: height != null ? num(height, 0) : null,
 					fps: m.fps != null ? num(m.fps, 0) : null,
 					importedAt: str(m.importedAt ?? m.createdAt, now),
 					...(metadata ? { metadata } : {}),
