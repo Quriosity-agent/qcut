@@ -38,6 +38,8 @@ import type {
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
+/** Measuring loudness renders the whole mix first. */
+export const AUDIO_MIX_LOUDNESS_TIMEOUT_MS = 120_000;
 
 interface RendererResultResponse<T> {
 	requestId: string;
@@ -236,6 +238,7 @@ async function requestRendererResult<T>({
 	payload,
 	timeoutErrorMessage,
 	correlationId,
+	timeoutMs = TIMELINE_REQUEST_TIMEOUT_MS,
 }: {
 	win: BrowserWindow;
 	requestChannel: string;
@@ -243,6 +246,7 @@ async function requestRendererResult<T>({
 	payload: Record<string, unknown>;
 	timeoutErrorMessage: string;
 	correlationId?: string;
+	timeoutMs?: number;
 }): Promise<T> {
 	assertIpcMainReady({
 		ipcMainInstance: ipcMain,
@@ -275,7 +279,7 @@ async function requestRendererResult<T>({
 
 		timeout = setTimeout(() => {
 			rejectOnce({ error: new Error(timeoutErrorMessage) });
-		}, TIMELINE_REQUEST_TIMEOUT_MS);
+		}, timeoutMs);
 
 		const responseHandler = (event: IpcMainEvent, data: unknown) => {
 			if (
@@ -478,6 +482,10 @@ export async function requestAudioMixOperationFromRenderer(
 		payload: { request },
 		timeoutErrorMessage: "Timeout waiting for mixer result",
 		correlationId,
+		timeoutMs:
+			request.action === "measure-loudness"
+				? AUDIO_MIX_LOUDNESS_TIMEOUT_MS
+				: TIMELINE_REQUEST_TIMEOUT_MS,
 	});
 }
 
