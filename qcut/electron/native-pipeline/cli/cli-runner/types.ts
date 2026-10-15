@@ -533,6 +533,8 @@ export interface CLIRunOptions {
 	matchMedia?: string;
 	/** With --json, print only the command's payload instead of the envelope */
 	flat?: boolean;
+	/** Clip or track colour label (violet, blue, green, yellow, red, rose, orange, mango; none clears) */
+	color?: string;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
