@@ -242,7 +242,7 @@ describe("export audio mix", () => {
 		expect(right).toBeGreaterThan(-30);
 	});
 
-	it("ducks a track only while its source sounds, by at most the set depth", () => {
+	it("ducks a track by the set depth only while its source sounds", () => {
 		const config = mix({
 			tracks: [
 				track({
@@ -273,8 +273,13 @@ describe("export audio mix", () => {
 			measure: musicBand,
 			window: [3, 3.8],
 		});
-		const reduction = after - during;
-		expect(reduction).toBeGreaterThan(6);
-		expect(reduction).toBeLessThanOrEqual(12.5);
+		const before = render({
+			files,
+			config,
+			measure: musicBand,
+			window: [0.5, 1.4],
+		});
+		expect(after - during).toBeCloseTo(12, 0);
+		expect(Math.abs(before - after)).toBeLessThan(0.1);
 	});
 });
