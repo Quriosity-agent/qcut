@@ -1,4 +1,10 @@
-import type { ProjectAudioMixSettings, TimelineTrack } from "@/types/timeline";
+import type {
+	AudioAutomationPoint,
+	AudioMixAutomation,
+	ProjectAudioMixSettings,
+	TimelineTrack,
+} from "@/types/timeline";
+import { sampleAutomation } from "./audio-mix-automation";
 import { dbToGain } from "./audio-properties";
 import {
 	MASTER_AUDIO_BUS_ID,
@@ -207,6 +213,61 @@ function scheduleDucking({
 	}
 }
 
+function scheduleCurve({
+	param,
+	points,
+	offsetSeconds,
+	toValue,
+}: {
+	param: AudioParam;
+	points: AudioAutomationPoint[];
+	offsetSeconds: number;
+	toValue: (value: number) => number;
+}) {
+	param.setValueAtTime(toValue(points[0].value), 0);
+	for (const point of points) {
+		param.linearRampToValueAtTime(
+			toValue(point.value),
+			point.time + offsetSeconds
+		);
+	}
+}
+
+/**
+ * Schedules a strip's level and pan curves. Level is a straight line in dB,
+ * so it is sampled finely enough for straight lines in gain to follow it.
+ * `offsetSeconds` is how far the strip's level stage runs behind the
+ * timeline; a silenced strip keeps its level at zero.
+ */
+function scheduleStripAutomation({
+	strip,
+	automation,
+	silenced,
+	offsetSeconds,
+}: {
+	strip: MixStripNodes;
+	automation?: AudioMixAutomation;
+	silenced: boolean;
+	offsetSeconds: number;
+}) {
+	if (automation?.gainDb?.length && !silenced) {
+		scheduleCurve({
+			param: strip.baseGain.gain,
+			points: sampleAutomation({ points: automation.gainDb }),
+			offsetSeconds,
+			toValue: (db) => dbToGain({ db }),
+		});
+	}
+	if (automation?.pan?.length) {
+		scheduleCurve({
+			param: strip.panner.pan,
+			points: automation.pan,
+			offsetSeconds,
+			toValue: (pan) => pan,
+		});
+	}
+}
+
 /**
  * Builds the mix into `context` and returns where each audible track's clips
  * go. Tracks the mix silences get no input: their clips need not be rendered.
@@ -279,6 +340,15 @@ export function buildExportAudioMix({
 			silenced: bus.silenced,
 			set: setOnce,
 		});
+		// A bus's level stage runs behind the clips, the track strip and its
+		// own compressor.
+		scheduleStripAutomation({
+			strip,
+			automation: bus.settings.automation,
+			silenced: bus.silenced,
+			offsetSeconds:
+				(clipStages + MIX_STRIP_DYNAMICS_STAGES + 1) * lookaheadSeconds,
+		});
 		strip.limiter.connect(master.input);
 		busInputs.set(bus.settings.id, strip.input);
 	}
@@ -294,6 +364,12 @@ export function buildExportAudioMix({
 		if (stemBusId !== undefined && route.busId !== stemBusId) continue;
 		const strip = createMixStripNodes({ context });
 		applyTrackStrip({ strip, route });
+		scheduleStripAutomation({
+			strip,
+			automation: route.settings.automation,
+			silenced: false,
+			offsetSeconds: duckOffsetSeconds,
+		});
 		scheduleDucking({
 			duckGain: strip.duckGain.gain,
 			route,
