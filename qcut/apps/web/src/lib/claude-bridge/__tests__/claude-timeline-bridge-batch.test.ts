@@ -24,7 +24,7 @@ const storeMocks = vi.hoisted(() => {
 		tracks: [track],
 		pushHistory: vi.fn(),
 		addElementToTrack: vi.fn(),
-		updateElementStartTime: vi.fn(),
+		updateElementStartTime: vi.fn(() => true),
 		updateElementTrim: vi.fn(),
 		updateElementDuration: vi.fn(),
 		updateMarkdownElement: vi.fn(),
@@ -143,6 +143,7 @@ describe("Claude timeline batch bridge", () => {
 			{
 				pushHistory: false,
 				selectElement: false,
+				onRejected: expect.any(Function),
 			}
 		);
 		expect(sendResponse).toHaveBeenCalledWith("request-1", {
@@ -175,6 +176,67 @@ describe("Claude timeline batch bridge", () => {
 					error: "Unsupported collision policy: merge",
 				},
 			],
+			failedCount: 1,
+		});
+	});
+
+	it("reports the store's reason when it refuses an add", async () => {
+		let batchHandler:
+			| ((data: {
+					requestId: string;
+					projectId: string;
+					elements: Array<Record<string, unknown>>;
+			  }) => Promise<void>)
+			| undefined;
+		const sendResponse = vi.fn();
+		const claudeAPI = {
+			onBatchAddElements: vi.fn(
+				(
+					handler: (data: {
+						requestId: string;
+						projectId: string;
+						elements: Array<Record<string, unknown>>;
+					}) => Promise<void>
+				) => {
+					batchHandler = handler;
+				}
+			),
+			sendBatchAddElementsResponse: sendResponse,
+		} as unknown as ClaudeTimelineBridgeAPI;
+		const sharedUtils = {
+			normalizeClaudeElementType: vi.fn(() => "media"),
+			resolveMediaIdForBatchElement: vi.fn(() => "media-1"),
+		} as unknown as ClaudeTimelineBridgeSharedUtils;
+		const reason =
+			'117.25s–133.291667s on track "Main Video" overlaps "clip 8" (117.3s–121.3s).';
+		storeMocks.state.addElementToTrack.mockImplementation(
+			(
+				_trackId: string,
+				_element: unknown,
+				options: { onRejected?: (reason: string) => void }
+			) => {
+				options.onRejected?.(reason);
+				return null;
+			}
+		);
+
+		setupBatchHandlers({ claudeAPI, sharedUtils });
+		await batchHandler?.({
+			requestId: "request-refused",
+			projectId: "project-1",
+			elements: [
+				{
+					type: "media",
+					trackId: "track-1",
+					sourceId: "media-1",
+					startTime: 117.25,
+					duration: 16.041667,
+				},
+			],
+		});
+
+		expect(sendResponse).toHaveBeenCalledWith("request-refused", {
+			added: [{ index: 0, success: false, error: reason }],
 			failedCount: 1,
 		});
 	});
