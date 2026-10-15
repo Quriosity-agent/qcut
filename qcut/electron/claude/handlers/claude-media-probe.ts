@@ -15,8 +15,6 @@ import { promisify } from "node:util";
 import { getFFprobePath } from "../../ffmpeg/utils.js";
 import type { MediaFile } from "../../types/claude-api";
 
-const execFileAsync = promisify(execFile);
-
 const PROBE_TIMEOUT_MS = 15_000;
 const MAX_CONCURRENT_PROBES = 4;
 const MAX_CACHED_PROBES = 1000;
@@ -106,7 +104,9 @@ async function runProbe({
 	type: MediaFile["type"];
 }): Promise<MediaProbeFields | null> {
 	try {
-		const { stdout } = await execFileAsync(
+		// Bound per call rather than at load, so importing the media routes
+		// never touches child_process.
+		const { stdout } = await promisify(execFile)(
 			await getFFprobePath(),
 			[
 				"-v",
