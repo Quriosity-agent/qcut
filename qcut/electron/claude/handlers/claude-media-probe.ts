@@ -33,6 +33,9 @@ interface ProbeStream {
 	avg_frame_rate?: string;
 	r_frame_rate?: string;
 	duration?: string;
+	nb_frames?: string;
+	/** Matroska/WebM keep stream lengths here, as "HH:MM:SS.nnnnnnnnn". */
+	tags?: { DURATION?: string };
 }
 
 const probeCache = new Map<string, Promise<MediaProbeFields | null>>();
@@ -52,10 +55,30 @@ function parseFrameRate(value: string | undefined): number | undefined {
 	return positiveNumber(rate);
 }
 
+/** "00:00:01.709000000" → 1.709; anything else → undefined. */
+function parseClockDuration(value: string | undefined): number | undefined {
+	const match = value?.match(/^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/);
+	if (!match) return;
+	const [, hours, minutes, seconds] = match;
+	return positiveNumber(
+		Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
+	);
+}
+
+/** A stream's own length: its duration, else its Matroska DURATION tag. */
+function streamDuration(stream: ProbeStream | undefined): number | undefined {
+	return (
+		positiveNumber(stream?.duration) ??
+		parseClockDuration(stream?.tags?.DURATION)
+	);
+}
+
 /**
  * Reads ffprobe's JSON. A video's duration comes from its video stream, not
  * the container: the container also spans a longer audio track, and placing
- * a clip by the container length leaves it overhanging its own picture.
+ * a clip by the container length leaves it overhanging its own picture. So
+ * the container length is used only when there is no audio to lengthen it;
+ * otherwise an unknown picture length stays unknown.
  */
 export function parseMediaProbe({
 	stdout,
@@ -74,7 +97,7 @@ export function parseMediaProbe({
 	const containerDuration = positiveNumber(parsed.format?.duration);
 
 	if (type === "audio") {
-		const duration = positiveNumber(audio?.duration) ?? containerDuration;
+		const duration = streamDuration(audio) ?? containerDuration;
 		return duration ? { duration } : {};
 	}
 
@@ -86,11 +109,15 @@ export function parseMediaProbe({
 		fields.height = height;
 	}
 	if (type === "video") {
-		const duration = positiveNumber(video?.duration) ?? containerDuration;
-		if (duration) fields.duration = duration;
 		const fps =
 			parseFrameRate(video?.avg_frame_rate) ??
 			parseFrameRate(video?.r_frame_rate);
+		const frameCount = positiveNumber(video?.nb_frames);
+		const duration =
+			streamDuration(video) ??
+			(frameCount && fps ? frameCount / fps : undefined) ??
+			(audio ? undefined : containerDuration);
+		if (duration) fields.duration = duration;
 		if (fps) fields.fps = Number(fps.toFixed(3));
 	}
 	return fields;
@@ -112,7 +139,7 @@ async function runProbe({
 				"-v",
 				"error",
 				"-show_entries",
-				"format=duration:stream=codec_type,width,height,avg_frame_rate,r_frame_rate,duration",
+				"format=duration:stream=codec_type,width,height,avg_frame_rate,r_frame_rate,duration,nb_frames:stream_tags=DURATION",
 				"-of",
 				"json",
 				path,
