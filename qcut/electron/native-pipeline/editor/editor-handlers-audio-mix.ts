@@ -5,7 +5,8 @@
  *   track's mixer settings;
  * - `editor:mix:export|bus-list|bus-create|bus-set|bus-remove|master-set`
  *   read the whole mix or change its buses and master;
- * - `editor:mix:loudness` renders the mix and measures its loudness.
+ * - `editor:mix:loudness` renders the mix and measures its loudness;
+ * - `editor:mix:stems` writes one WAV per bus.
  *
  * The editor checks every value and answers with what it now holds, which is
  * what these commands print.
@@ -13,14 +14,50 @@
  * @module electron/native-pipeline/editor/editor-handlers-audio-mix
  */
 
+import * as path from "node:path";
 import type {
 	ClaudeAudioMixBus,
 	ClaudeAudioMixSnapshot,
+	ClaudeMixStem,
 	ClaudeTrackAudioMix,
 } from "../../types/claude-audio-mix-api.js";
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+
+/** Stem rendering runs the whole mix once per bus. */
+const STEMS_TIMEOUT_MS = 310_000;
+
+/** Writes one WAV per bus (and one for tracks feeding the master) into `outputDir`. */
+export async function writeMixStems({
+	client,
+	projectId,
+	outputDir,
+	fileNamePrefix,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+	outputDir: string;
+	fileNamePrefix?: string;
+}): Promise<{ outputDir: string; stems: ClaudeMixStem[] }> {
+	return client.post(
+		`${mixPath(projectId)}/stems`,
+		{
+			outputDir: path.resolve(outputDir),
+			...(fileNamePrefix ? { fileNamePrefix } : {}),
+		},
+		{ timeout: STEMS_TIMEOUT_MS }
+	);
+}
+
+/** `editor:export:start --stems` puts them beside the export: `<name>-<bus>.wav`. */
+export function stemsBesideExport(outputPath: string): {
+	outputDir: string;
+	fileNamePrefix: string;
+} {
+	const parsed = path.parse(outputPath);
+	return { outputDir: parsed.dir, fileNamePrefix: `${parsed.name}-` };
+}
 
 export const TRACK_AUDIO_ACTIONS = new Set([
 	"audio-get",
@@ -262,6 +299,25 @@ export async function handleAudioMixCommand({
 				);
 				return { success: true, data: { projectId, bus } };
 			}
+			case "stems": {
+				if (!opts.outputDir || opts.outputDir === "./output") {
+					return {
+						success: false,
+						error: "Pass --output-dir <folder> for the stems",
+					};
+				}
+				return {
+					success: true,
+					data: {
+						projectId,
+						...(await writeMixStems({
+							client,
+							projectId,
+							outputDir: opts.outputDir,
+						})),
+					},
+				};
+			}
 			case "loudness": {
 				const loudness = await client.post(
 					`${path}/loudness`,
@@ -290,7 +346,7 @@ export async function handleAudioMixCommand({
 			default:
 				return {
 					success: false,
-					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set, loudness`,
+					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set, loudness, stems`,
 				};
 		}
 	} catch (error) {
