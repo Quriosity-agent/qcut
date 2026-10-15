@@ -23,7 +23,10 @@ import {
 } from "./browser-audio-export-clips";
 import { reverseAudioBuffer } from "./audio-buffer-transform";
 import { MIX_STRIP_DYNAMICS_STAGES } from "./audio-mix-strip";
-import type { AudioMixRouting } from "./audio-mix-routing";
+import {
+	type AudioMixRouting,
+	resolveAudioMixRouting,
+} from "./audio-mix-routing";
 import {
 	buildExportAudioMix,
 	connectSourceTrackStrip,
@@ -492,6 +495,8 @@ async function measureDuckingSources({
  * Renders the timeline's audio. With `audioMix`, each track goes through the
  * project's mix (track, bus and master settings, solo and ducking) the way
  * the editor plays it; without one, every clip sums straight to the output.
+ * With `stemBusId` as well, only that bus is rendered (see
+ * buildExportAudioMix).
  */
 export async function renderBrowserTimelineAudio({
 	tracks,
@@ -500,6 +505,7 @@ export async function renderBrowserTimelineAudio({
 	fps,
 	sampleRate = 48_000,
 	audioMix,
+	stemBusId,
 }: {
 	tracks: TimelineTrack[];
 	mediaItems: MediaItem[];
@@ -507,6 +513,7 @@ export async function renderBrowserTimelineAudio({
 	fps: number;
 	sampleRate?: number;
 	audioMix?: ProjectAudioMixSettings;
+	stemBusId?: string;
 }): Promise<AudioBuffer | null> {
 	const clips = exportProfiler.timeSync("audio-collect", () =>
 		collectBrowserAudioExportClips({ tracks, mediaItems })
@@ -517,7 +524,11 @@ export async function renderBrowserTimelineAudio({
 		"audio-unique-sources",
 		new Set(clips.map(({ mediaItem }) => mediaItem.id)).size
 	);
-	const mix = resolveExportAudioMix({ tracks, audioMix });
+	// A stem always goes through the mix, even one that changes nothing.
+	const mix =
+		stemBusId === undefined
+			? resolveExportAudioMix({ tracks, audioMix })
+			: resolveAudioMixRouting({ tracks, audioMix });
 	const frames = Math.max(1, Math.ceil(totalDuration * sampleRate));
 	const stageFrames = lookaheadFrames(sampleRate);
 	const latencyFrames =
@@ -552,6 +563,7 @@ export async function renderBrowserTimelineAudio({
 				),
 				lookaheadSeconds: stageFrames / sampleRate,
 				clipStages: CLIP_DYNAMICS_STAGES,
+				stemBusId,
 			})
 		: null;
 	const pitchNodeConstructor = await loadPitchNode({
