@@ -1,4 +1,5 @@
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
 import { validateElementTrackCompatibility } from "@/types/timeline";
 import type {
 	ClaudeBatchAddElementRequest,
@@ -21,6 +22,7 @@ import type {
 	ClaudeTimelineBridgeSharedUtils,
 } from "./claude-timeline-bridge";
 import { applyElementChanges } from "./claude-timeline-bridge-elements";
+import { resolveClaudePlacement } from "./claude-placement";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import {
 	assertTimelineProjectActive,
@@ -155,8 +157,16 @@ export function setupBatchHandlers({
 				const added: ClaudeBatchAddResponse["added"] = [];
 				let failedCount = 0;
 
-				for (const [index, element] of elements.entries()) {
+				const fps = useProjectStore.getState().activeProject?.fps ?? 30;
+				for (const [index, request] of elements.entries()) {
 					try {
+						// Shorthands resolve against the live tracks, so an element
+						// placed at "end" lands after the ones this batch just added.
+						const element = resolveClaudePlacement({
+							element: request,
+							tracks: useTimelineStore.getState().tracks,
+							fps,
+						});
 						const normalizedType = sharedUtils.normalizeClaudeElementType({
 							type: element.type,
 						});
