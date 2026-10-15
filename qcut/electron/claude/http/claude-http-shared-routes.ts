@@ -106,6 +106,7 @@ import {
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
+import { withMediaProbes } from "../handlers/claude-media-probe.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -799,13 +800,16 @@ export function registerSharedRoutes(
 	// ==========================================================================
 	// Media routes (file-system based -- no renderer needed)
 	// ==========================================================================
+	// Listings carry duration, size and frame rate so a caller can place clips
+	// without probing the files itself.
 	router.get("/api/claude/media/:projectId", async (req) =>
-		listMediaFiles(req.params.projectId)
+		withMediaProbes(await listMediaFiles(req.params.projectId))
 	);
 
-	router.get("/api/claude/media/:projectId/:mediaId", async (req) =>
-		getMediaInfo(req.params.projectId, req.params.mediaId)
-	);
+	router.get("/api/claude/media/:projectId/:mediaId", async (req) => {
+		const media = await getMediaInfo(req.params.projectId, req.params.mediaId);
+		return media ? (await withMediaProbes([media]))[0] : media;
+	});
 
 	router.post("/api/claude/media/:projectId/import", async (req) => {
 		if (!req.body?.source)
