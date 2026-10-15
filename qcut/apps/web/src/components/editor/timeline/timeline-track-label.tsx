@@ -24,6 +24,7 @@ import {
 	resolveTimelineColorLabel,
 } from "@/lib/timeline/timeline-color-labels";
 import { TIMELINE_COLOR_NAME_KEYS } from "./timeline-color-label-menu";
+import { TimelineTrackMixPopover } from "./timeline-track-mix-popover";
 
 interface TimelineTrackLabelProps {
 	track: TimelineTrack;
@@ -190,6 +191,7 @@ export function TimelineTrackLabel({
 
 				{hasAudioControls ? (
 					<>
+						<TimelineTrackMixPopover track={track} displayName={displayName} />
 						<button
 							type="button"
 							className={controlClassName}
