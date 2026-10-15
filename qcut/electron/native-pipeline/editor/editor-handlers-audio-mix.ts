@@ -61,6 +61,7 @@ export function stemsBesideExport(outputPath: string): {
 
 export const TRACK_AUDIO_ACTIONS = new Set([
 	"audio-get",
+	"audio-automation",
 	"audio-set",
 	"mute",
 	"solo",
@@ -139,7 +140,32 @@ async function setTrack({
 	return { success: true, data: { projectId, track } };
 }
 
-/** Handle `editor:track:audio-get|audio-set|mute|solo`. */
+const AUTOMATION_PARAMS = new Set(["gainDb", "pan"]);
+
+/** `--param` with `--points` or `--clear`, as a mixer automation patch. */
+async function readAutomationFlags(
+	opts: CLIRunOptions
+): Promise<{ automation: Record<string, unknown[] | null> }> {
+	const param = opts.param?.trim();
+	if (!param || !AUTOMATION_PARAMS.has(param)) {
+		throw new FlagError("--param must be gainDb or pan");
+	}
+	if (opts.clear && opts.points !== undefined) {
+		throw new FlagError("Give --points or --clear, not both");
+	}
+	if (!opts.clear && opts.points === undefined) {
+		throw new FlagError("Give --points <json|@file> or --clear");
+	}
+	const points = opts.clear
+		? null
+		: await readJsonFlag(opts.points, "--points");
+	if (points !== null && !Array.isArray(points)) {
+		throw new FlagError("--points must be a JSON array of {time, value}");
+	}
+	return { automation: { [param]: points } };
+}
+
+/** Handle `editor:track:audio-get|audio-set|audio-automation|mute|solo`. */
 export async function handleTrackAudioCommand({
 	client,
 	action,
@@ -155,6 +181,13 @@ export async function handleTrackAudioCommand({
 	const trackId = opts.trackId;
 	try {
 		switch (action) {
+			case "audio-automation":
+				return await setTrack({
+					client,
+					projectId,
+					trackId,
+					body: await readAutomationFlags(opts),
+				});
 			case "audio-get":
 				return {
 					success: true,
@@ -299,6 +332,15 @@ export async function handleAudioMixCommand({
 				);
 				return { success: true, data: { projectId, bus } };
 			}
+			case "bus-automation": {
+				const busId = opts.busId?.trim();
+				if (!busId) return { success: false, error: "Missing --bus-id" };
+				const { bus } = await client.patch<{ bus: ClaudeAudioMixBus }>(
+					`${path}/buses/${encodeURIComponent(busId)}`,
+					await readAutomationFlags(opts)
+				);
+				return { success: true, data: { projectId, bus } };
+			}
 			case "stems": {
 				if (!opts.outputDir || opts.outputDir === "./output") {
 					return {
@@ -346,7 +388,7 @@ export async function handleAudioMixCommand({
 			default:
 				return {
 					success: false,
-					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set, loudness, stems`,
+					error: `Unknown mix action: ${action}. Available: export, bus-list, bus-create, bus-set, bus-remove, master-set, bus-automation, loudness, stems`,
 				};
 		}
 	} catch (error) {
