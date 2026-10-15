@@ -4,8 +4,11 @@ interface FakeWindow {
 	isDestroyed: () => boolean;
 	webContents: {
 		isLoading: () => boolean;
-		executeJavaScript: (code: string) => Promise<unknown>;
+		executeJavaScript: ReturnType<typeof vi.fn>;
+		once: ReturnType<typeof vi.fn>;
 	};
+	/** Simulate a reload: the page must report ready again. */
+	reload: () => void;
 }
 
 const electron = vi.hoisted(() => ({ windows: [] as FakeWindow[] }));
@@ -22,11 +25,18 @@ function fakeWindow({
 	destroyed?: boolean;
 } = {}): FakeWindow {
 	let polls = 0;
+	const listeners: Array<() => void> = [];
 	return {
 		isDestroyed: () => destroyed,
 		webContents: {
 			isLoading: () => false,
-			executeJavaScript: async () => polls++ >= readyAfterPolls,
+			executeJavaScript: vi.fn(async () => polls++ >= readyAfterPolls),
+			once: vi.fn((_event: string, listener: () => void) => {
+				listeners.push(listener);
+			}),
+		},
+		reload: () => {
+			for (const listener of listeners.splice(0)) listener();
 		},
 	};
 }
@@ -52,7 +62,30 @@ describe("ensureMainWindow", () => {
 		expect(create).not.toHaveBeenCalled();
 	});
 
-	it("reopens a closed window and waits for the editor to be ready", async () => {
+	it("checks an open window's editor once per page load", async () => {
+		const { ensureMainWindow } = await loadModule();
+		const open = fakeWindow();
+		electron.windows = [open];
+
+		await ensureMainWindow();
+		await ensureMainWindow();
+		expect(open.webContents.executeJavaScript).toHaveBeenCalledOnce();
+
+		open.reload();
+		await ensureMainWindow();
+		expect(open.webContents.executeJavaScript).toHaveBeenCalledTimes(2);
+	});
+
+	it("waits for an open window whose editor is still starting", async () => {
+		const { ensureMainWindow } = await loadModule();
+		const starting = fakeWindow({ readyAfterPolls: 3 });
+		electron.windows = [starting];
+
+		expect(await ensureMainWindow()).toBe(starting);
+		expect(starting.webContents.executeJavaScript).toHaveBeenCalledTimes(4);
+	});
+
+	it("reopens a closed window and makes every caller wait for its editor", async () => {
 		const { ensureMainWindow, registerMainWindowFactory } = await loadModule();
 		const reopened = fakeWindow({ readyAfterPolls: 2 });
 		const create = vi.fn(() => {
@@ -60,14 +93,40 @@ describe("ensureMainWindow", () => {
 		});
 		registerMainWindowFactory(create);
 
-		const [first, second] = await Promise.all([
-			ensureMainWindow(),
-			ensureMainWindow(),
-		]);
+		const first = ensureMainWindow();
+		// The window now exists, but its editor is not ready yet.
+		const second = ensureMainWindow();
+		const [firstWindow, secondWindow] = await Promise.all([first, second]);
 
-		expect(first).toBe(reopened);
-		expect(second).toBe(reopened);
+		expect(firstWindow).toBe(reopened);
+		expect(secondWindow).toBe(reopened);
 		expect(create).toHaveBeenCalledOnce();
+		expect(reopened.webContents.executeJavaScript).toHaveBeenCalledTimes(3);
+	});
+
+	it("gives up at the caller's deadline while the reopen carries on", async () => {
+		const { ensureMainWindow, registerMainWindowFactory } = await loadModule();
+		const reopened = fakeWindow({ readyAfterPolls: 5 });
+		registerMainWindowFactory(() => {
+			electron.windows = [reopened];
+		});
+
+		await expect(ensureMainWindow({ timeoutMs: 50 })).rejects.toThrow(
+			"QCut is still reopening its window; retry the command in a moment."
+		);
+		// A later request gets the window once the editor is ready.
+		expect(await ensureMainWindow()).toBe(reopened);
+	});
+
+	it("refuses a request whose deadline has already passed", async () => {
+		const { ensureMainWindow, registerMainWindowFactory } = await loadModule();
+		registerMainWindowFactory(() => {
+			electron.windows = [fakeWindow()];
+		});
+
+		await expect(ensureMainWindow({ timeoutMs: 0 })).rejects.toThrow(
+			"QCut is still reopening its window"
+		);
 	});
 
 	it("explains how to recover when it cannot reopen", async () => {
@@ -77,16 +136,14 @@ describe("ensureMainWindow", () => {
 		);
 	});
 
-	it("gives up when the editor never becomes ready", async () => {
-		const { ensureMainWindow, registerMainWindowFactory } = await loadModule();
-		registerMainWindowFactory(() => {
-			electron.windows = [
-				fakeWindow({ readyAfterPolls: Number.POSITIVE_INFINITY }),
-			];
-		});
+	it("gives up on an open window whose editor never becomes ready", async () => {
+		const { ensureMainWindow } = await loadModule();
+		electron.windows = [
+			fakeWindow({ readyAfterPolls: Number.POSITIVE_INFINITY }),
+		];
 
 		await expect(ensureMainWindow({ timeoutMs: 250 })).rejects.toThrow(
-			"QCut reopened its window, but the editor was not ready"
+			"QCut's editor was not ready within 0.3s. Retry the command."
 		);
 	});
 });
