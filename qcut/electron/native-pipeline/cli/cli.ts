@@ -541,6 +541,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// batch import convenience
 			sources: { type: "string" },
 			"append-to-track": { type: "string" },
+			"match-media": { type: "string" },
 			// format alias (for editor:export --format)
 			format: { type: "string" },
 			// project-json flags
@@ -1265,6 +1266,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// batch import convenience
 		sources: values.sources as string | undefined,
 		appendToTrack: values["append-to-track"] as string | undefined,
+		matchMedia: values["match-media"] as string | undefined,
 		format: values.format as string | undefined,
 		// novel example flag
 		example: (values.example as boolean) ?? false,
