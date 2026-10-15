@@ -1355,14 +1355,40 @@ export function registerSharedRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/elements/:elementId/move",
 		async (req) => {
-			if (!req.body?.toTrackId)
-				throw new HttpError(400, "Missing 'toTrackId' in request body");
+			const hasStartTime = typeof req.body?.newStartTime === "number";
+			if (!req.body?.toTrackId && !hasStartTime)
+				throw new HttpError(
+					400,
+					"Give 'toTrackId', 'newStartTime', or both in the request body"
+				);
+			// Without a target track the element stays on its own track.
+			let toTrackId: string = req.body.toTrackId;
+			if (!toTrackId) {
+				const before = await accessor.requestTimeline();
+				const current = locateElement({
+					timeline: before,
+					elementId: req.params.elementId,
+				});
+				if (!current) {
+					throw new HttpError(
+						404,
+						`Element ${req.params.elementId} is not on the timeline.`
+					);
+				}
+				if (current.trackId === undefined) {
+					throw new HttpError(
+						409,
+						`The track of element ${req.params.elementId} has no id; pass 'toTrackId'.`
+					);
+				}
+				toTrackId = current.trackId;
+			}
 			const win = accessor.getWindow();
 			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:moveElement", {
 				correlationId,
 				elementId: req.params.elementId,
-				toTrackId: req.body.toTrackId,
+				toTrackId,
 				newStartTime: req.body.newStartTime,
 			});
 			const timeline = await waitForTimelineMutationBarrier({ accessor });
@@ -1388,7 +1414,7 @@ export function registerSharedRoutes(
 			// A move within one track keeps the track id, so the requested time is
 			// the only evidence that the placement was refused.
 			const refused =
-				placed.trackId !== req.body.toTrackId ||
+				placed.trackId !== toTrackId ||
 				(typeof req.body.newStartTime === "number" &&
 					Math.abs(placed.startTime - req.body.newStartTime) >
 						MOVE_START_TIME_TOLERANCE_SECONDS);
@@ -1398,7 +1424,7 @@ export function registerSharedRoutes(
 					describeRefusedMove({
 						timeline,
 						elementId: req.params.elementId,
-						toTrackId: req.body.toTrackId,
+						toTrackId,
 						startTime:
 							typeof req.body.newStartTime === "number"
 								? req.body.newStartTime
