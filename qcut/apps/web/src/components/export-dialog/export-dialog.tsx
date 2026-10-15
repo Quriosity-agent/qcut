@@ -384,6 +384,7 @@ export function ExportDialog() {
 					outputPath: replaceFileExtension(outputPath, "mp3"),
 					bitrate: audioBitrate,
 					sampleRate: audioSampleRate,
+					audioMix: useProjectStore.getState().activeProject?.audioMix,
 				});
 			} catch (audioError) {
 				debugWarn("[ExportPanel] Standalone audio export failed", audioError);
