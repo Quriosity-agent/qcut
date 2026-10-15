@@ -48,6 +48,7 @@ import {
 	setupUtilityPtyIPC,
 	cleanupUtilityProcess,
 } from "./utility/utility-bridge.js";
+import { registerMainWindowFactory } from "./main-window-recovery.js";
 import {
 	ensureClaudeApiToken,
 	removeClaudeInstanceInfo,
@@ -1089,6 +1090,8 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 		staticServer = await createStaticServer();
 
 		createWindow();
+		// Editor API requests reopen the window this way after it was closed.
+		registerMainWindowFactory(createWindow);
 
 		// Register all IPC handlers with try/catch to prevent cascade failures
 		const handlers: [string, () => void | Promise<void>][] = [
