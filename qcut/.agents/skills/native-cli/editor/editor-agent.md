@@ -207,7 +207,9 @@ qcut editor:session:load --session-name my-session --json
 
 ```bash
 qcut editor:session:list --json
-# → { "status": "ok", "data": { "sessions": [...], "count": 3 } }
+# → { "status": "ok", "data": { "command": "editor:session:list", "data": { "sessions": [...], "count": 3 } } }
+qcut editor:session:list --json --flat
+# → { "sessions": [...], "count": 3 }
 ```
 
 ### Delete session
