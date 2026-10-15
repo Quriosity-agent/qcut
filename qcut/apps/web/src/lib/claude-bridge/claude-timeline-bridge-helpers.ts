@@ -88,15 +88,30 @@ function requestedElementId({ element }: { element: Partial<ClaudeElement> }): {
 		: {};
 }
 
-function requireAddedElementId({
-	elementId,
+/**
+ * Add through the store and return the new id, or throw with the store's own
+ * reason — an occupied span names the clip in the way and the next free start.
+ */
+function addElementOrThrow({
+	timelineStore,
+	trackId,
+	element,
 	elementType,
 }: {
-	elementId: string | null;
+	timelineStore: TimelineStoreState;
+	trackId: string;
+	element: Parameters<TimelineStoreState["addElementToTrack"]>[1];
 	elementType: string;
 }): string {
+	let rejection: string | undefined;
+	const elementId = timelineStore.addElementToTrack(trackId, element, {
+		onRejected: (reason) => {
+			rejection = reason;
+		},
+	});
 	if (elementId) return elementId;
-	throw new Error(`Failed to add ${elementType} element to the timeline`);
+	const failure = `Failed to add ${elementType} element to the timeline`;
+	throw new Error(rejection ? `${failure}: ${rejection}` : failure);
 }
 
 export const CLAUDE_TEXT_PROPERTY_KEYS = [
@@ -897,30 +912,30 @@ export async function addClaudeMediaElement({
 	const mediaTiming = getClaudeMediaTimingProperties({ element });
 	const colorLabel = parseTimelineColorLabel({ value: element.colorLabel });
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "media",
-		name: resolvedName,
-		mediaId: resolvedId,
-		startTime,
-		duration,
-		trimStart:
-			typeof element.trimStart === "number" && element.trimStart >= 0
-				? element.trimStart
-				: 0,
-		trimEnd:
-			typeof element.trimEnd === "number" && element.trimEnd >= 0
-				? element.trimEnd
-				: 0,
-		fitMode: element.fitMode ?? "cover",
-		...(colorLabel ? { colorLabel } : {}),
-		...mediaTiming,
-		...(typeof element.volume === "number" ? { volume: element.volume } : {}),
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "media",
+		element: {
+			...requestedElementId({ element }),
+			type: "media",
+			name: resolvedName,
+			mediaId: resolvedId,
+			startTime,
+			duration,
+			trimStart:
+				typeof element.trimStart === "number" && element.trimStart >= 0
+					? element.trimStart
+					: 0,
+			trimEnd:
+				typeof element.trimEnd === "number" && element.trimEnd >= 0
+					? element.trimEnd
+					: 0,
+			fitMode: element.fitMode ?? "cover",
+			...(colorLabel ? { colorLabel } : {}),
+			...mediaTiming,
+			...(typeof element.volume === "number" ? { volume: element.volume } : {}),
+		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added media element:", resolvedName);
 	return addedElementId;
@@ -948,33 +963,33 @@ export function addClaudeTextElement({
 		element: element as Partial<ClaudeElement> & Record<string, unknown>,
 	});
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "text",
-		name: content,
-		content,
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		fontSize: 48,
-		fontFamily: "Inter",
-		color: "#ffffff",
-		backgroundColor: "transparent",
-		textAlign: "center",
-		fontWeight: "normal",
-		fontStyle: "normal",
-		textDecoration: "none",
-		x: 0.5,
-		y: 0.5,
-		rotation: 0,
-		opacity: 1,
-		...textProperties,
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "text",
+		element: {
+			...requestedElementId({ element }),
+			type: "text",
+			name: content,
+			content,
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			fontSize: 48,
+			fontFamily: "Inter",
+			color: "#ffffff",
+			backgroundColor: "transparent",
+			textAlign: "center",
+			fontWeight: "normal",
+			fontStyle: "normal",
+			textDecoration: "none",
+			x: 0.5,
+			y: 0.5,
+			rotation: 0,
+			opacity: 1,
+			...textProperties,
+		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added text element:", content);
 	return addedElementId;
@@ -1005,25 +1020,25 @@ export function addClaudeAdjustmentElement({
 		element: element as Partial<ClaudeElement> & Record<string, unknown>,
 	});
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "adjustment",
-		name: adjustmentFields.name ?? "自定义调节",
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		opacity: adjustmentFields.opacity ?? 1,
-		...(adjustmentFields.color ? { color: adjustmentFields.color } : {}),
-		...(adjustmentFields.adjustments
-			? { adjustments: adjustmentFields.adjustments }
-			: {}),
-		...(adjustmentFields.masks ? { masks: adjustmentFields.masks } : {}),
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "adjustment",
+		element: {
+			...requestedElementId({ element }),
+			type: "adjustment",
+			name: adjustmentFields.name ?? "自定义调节",
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			opacity: adjustmentFields.opacity ?? 1,
+			...(adjustmentFields.color ? { color: adjustmentFields.color } : {}),
+			...(adjustmentFields.adjustments
+				? { adjustments: adjustmentFields.adjustments }
+				: {}),
+			...(adjustmentFields.masks ? { masks: adjustmentFields.masks } : {}),
+		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added adjustment element:", addedElementId);
 	return addedElementId;
@@ -1316,26 +1331,27 @@ export async function addClaudeStickerElement({
 		duration,
 	});
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "sticker",
-		name: element.sourceName ?? "Sticker",
-		...(element.stickerAssetId
-			? { stickerAssetId: element.stickerAssetId }
-			: {}),
-		stickerId,
-		mediaId,
-		...(stickerRuntime ? { stickerRuntime } : {}),
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		...geometry,
-		...stickerVisuals,
-	});
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "sticker",
+		element: {
+			...requestedElementId({ element }),
+			type: "sticker",
+			name: element.sourceName ?? "Sticker",
+			...(element.stickerAssetId
+				? { stickerAssetId: element.stickerAssetId }
+				: {}),
+			stickerId,
+			mediaId,
+			...(stickerRuntime ? { stickerRuntime } : {}),
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			...geometry,
+			...stickerVisuals,
+		},
 	});
 
 	// Also add to sticker overlay store for canvas rendering + export.
@@ -1429,34 +1445,34 @@ export function addClaudeMarkdownElement({
 	}
 
 	// Subtitle-style: positioned at bottom center, compact height
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "markdown",
-		name: markdownContent.slice(0, 50),
-		markdownContent,
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		theme: "transparent",
-		fontSize: 24,
-		fontFamily: "Inter",
-		padding: 8,
-		backgroundColor: element.backgroundColor ?? "rgba(0,0,0,0.6)",
-		textColor: element.textColor ?? "#ffffff",
-		scrollMode: "static",
-		scrollSpeed: 50,
-		x: 0,
-		y: 480,
-		width: 1600,
-		height: 80,
-		rotation: 0,
-		opacity: 1,
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "markdown",
+		element: {
+			...requestedElementId({ element }),
+			type: "markdown",
+			name: markdownContent.slice(0, 50),
+			markdownContent,
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			theme: "transparent",
+			fontSize: 24,
+			fontFamily: "Inter",
+			padding: 8,
+			backgroundColor: element.backgroundColor ?? "rgba(0,0,0,0.6)",
+			textColor: element.textColor ?? "#ffffff",
+			scrollMode: "static",
+			scrollSpeed: 50,
+			x: 0,
+			y: 480,
+			width: 1600,
+			height: 80,
+			rotation: 0,
+			opacity: 1,
+		},
 	});
 	debugLog(
 		"[ClaudeTimelineBridge] Added markdown element:",
@@ -1512,25 +1528,25 @@ export function addClaudeCaptionElement({
 		duration
 	);
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "captions",
-		name: captionText.slice(0, 50),
-		text: captionText,
-		language: typeof element.language === "string" ? element.language : "en",
-		source: "manual",
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		style:
-			(element.style as unknown as import("@qcut/editor-core").SubtitleStyle) ||
-			undefined,
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "caption",
+		element: {
+			...requestedElementId({ element }),
+			type: "captions",
+			name: captionText.slice(0, 50),
+			text: captionText,
+			language: typeof element.language === "string" ? element.language : "en",
+			source: "manual",
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			style:
+				(element.style as unknown as import("@qcut/editor-core").SubtitleStyle) ||
+				undefined,
+		},
 	});
 	console.log(
 		"[CaptionDebug] Caption element created successfully, id:",
@@ -1824,24 +1840,24 @@ export async function addClaudeRemotionElement({
 		duration,
 	});
 
-	const elementId = timelineStore.addElementToTrack(trackId, {
-		...requestedElementId({ element }),
-		type: "remotion",
-		name: componentName,
-		componentId,
-		componentPath: element.componentPath,
-		props: element.props || {},
-		renderMode: "live",
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		opacity: 1,
-	});
-
-	const addedElementId = requireAddedElementId({
-		elementId,
+	const addedElementId = addElementOrThrow({
+		timelineStore,
+		trackId,
 		elementType: "remotion",
+		element: {
+			...requestedElementId({ element }),
+			type: "remotion",
+			name: componentName,
+			componentId,
+			componentPath: element.componentPath,
+			props: element.props || {},
+			renderMode: "live",
+			startTime,
+			duration,
+			trimStart: 0,
+			trimEnd: 0,
+			opacity: 1,
+		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added remotion element:", componentName);
 	return addedElementId;
@@ -1864,6 +1880,7 @@ export function formatTracksForExport({
 		type: track.type,
 		isMain: track.isMain,
 		hidden: track.hidden,
+		locked: track.locked,
 		elements: track.elements.map((element) =>
 			formatElementForExport({ element, trackIndex: index, fps })
 		),
