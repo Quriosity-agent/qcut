@@ -141,6 +141,15 @@ export function createAudioMixEditorCommands({
 			[projectId],
 			["qcut editor mix loudness --project-id <id> --json"]
 		),
+		"editor:mix:stems": ed(
+			"editor:mix:stems",
+			"Write one WAV per bus (and one for tracks feeding the master directly), each as long as the programme",
+			[
+				projectId,
+				f("--output-dir", "string", "Folder for the stems", { required: true }),
+			],
+			["qcut editor mix stems --project-id <id> --output-dir ./stems --json"]
+		),
 		"editor:mix:master-set": ed(
 			"editor:mix:master-set",
 			"Change the master's level, pan, mute or effects",
