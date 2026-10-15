@@ -39,8 +39,26 @@ export function createAudioMixEditorCommands({
 		);
 	const mute = f("--mute", "boolean", "Mute (--no-mute to unmute)");
 	const off = f("--off", "boolean", "Turn it off instead of on");
+	const param = f("--param", "string", "Which curve: gainDb or pan", {
+		required: true,
+	});
+	const points = f(
+		"--points",
+		"string",
+		'The curve as JSON or @file: [{"time":12,"value":0},{"time":12.3,"value":-6}] (time in seconds on the timeline)'
+	);
+	const clear = f("--clear", "boolean", "Remove the curve instead");
 
 	return {
+		"editor:track:audio-automation": ed(
+			"editor:track:audio-automation",
+			"Set a track's level (dB) or pan curve over timeline time; it replaces the fixed value while it has points",
+			[projectId, trackId, param, points, clear],
+			[
+				'qcut editor track audio-automation --project-id <id> --track-id <track> --param gainDb --points \'[{"time":12,"value":0},{"time":12.3,"value":-6}]\' --json',
+				"qcut editor track audio-automation --project-id <id> --track-id <track> --param pan --clear --json",
+			]
+		),
 		"editor:track:audio-get": ed(
 			"editor:track:audio-get",
 			"Show a track's mixer settings: level, pan, bus, solo, mute, ducking, effects",
@@ -140,6 +158,20 @@ export function createAudioMixEditorCommands({
 			"Render the mix as an export would and measure integrated LUFS, loudest short-term and momentary LUFS, and true peak",
 			[projectId],
 			["qcut editor mix loudness --project-id <id> --json"]
+		),
+		"editor:mix:bus-automation": ed(
+			"editor:mix:bus-automation",
+			"Set a bus's (or the master's) level or pan curve over timeline time",
+			[
+				projectId,
+				f("--bus-id", "string", "Bus ID, or master", { required: true }),
+				param,
+				points,
+				clear,
+			],
+			[
+				'qcut editor mix bus-automation --project-id <id> --bus-id music --param gainDb --points \'[{"time":0,"value":-6},{"time":4,"value":0}]\' --json',
+			]
 		),
 		"editor:mix:stems": ed(
 			"editor:mix:stems",
