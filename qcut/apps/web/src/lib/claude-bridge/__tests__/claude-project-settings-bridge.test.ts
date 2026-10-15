@@ -6,6 +6,7 @@ const projectApi = vi.hoisted(() => {
 	} = {};
 	return {
 		state,
+		updateSettings: vi.fn(async () => undefined),
 		onUpdated: vi.fn(
 			(
 				callback: (projectId: string, settings: Record<string, unknown>) => void
@@ -23,7 +24,12 @@ const storage = vi.hoisted(() => ({
 
 vi.mock("@qcut/platform-core", () => ({
 	platform: () => ({
-		claude: { project: { onUpdated: projectApi.onUpdated } },
+		claude: {
+			project: {
+				onUpdated: projectApi.onUpdated,
+				updateSettings: projectApi.updateSettings,
+			},
+		},
 	}),
 }));
 
@@ -173,5 +179,54 @@ describe("Claude project settings bridge", () => {
 
 		await vi.waitFor(() => expect(saveCurrentProject).toHaveBeenCalledOnce());
 		expect(useProjectStore.getState().activeProject?.fps).toBe(60);
+	});
+
+	it("mirrors canvas, frame rate and background changes into project.qcut", async () => {
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: "p1",
+		});
+		setupClaudeProjectSettingsBridge();
+
+		// The first clip fitting the canvas, or the canvas picker.
+		useProjectStore.setState({
+			activeProject: {
+				...createProject(),
+				canvasSize: { width: 1280, height: 720 },
+				canvasMode: "custom",
+				fps: 24,
+			},
+		});
+
+		expect(projectApi.updateSettings).toHaveBeenLastCalledWith(
+			"p1",
+			{ width: 1280, height: 720, fps: 24, backgroundColor: "#000000" },
+			{ broadcast: false }
+		);
+	});
+
+	it("does not rewrite unchanged settings", () => {
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: "p1",
+		});
+		setupClaudeProjectSettingsBridge();
+		useProjectStore.setState({ isLoading: false });
+		const calls = projectApi.updateSettings.mock.calls.length;
+
+		useProjectStore.setState({ isLoading: true });
+		useProjectStore.setState({ isLoading: false });
+
+		expect(projectApi.updateSettings.mock.calls.length).toBe(calls);
+	});
+
+	it("does not mirror a project that is still loading", () => {
+		setupClaudeProjectSettingsBridge();
+		useProjectStore.setState({
+			activeProject: createProject(),
+			loadedProjectId: null,
+		});
+
+		expect(projectApi.updateSettings).not.toHaveBeenCalled();
 	});
 });
