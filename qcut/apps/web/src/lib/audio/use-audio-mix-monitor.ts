@@ -3,7 +3,11 @@ import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useAudioMeterStore } from "@/stores/editor/audio-meter-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { readAudioMixMeters, syncAudioMixEngine } from "./audio-mix-engine";
+import {
+	applyAudioMixAutomation,
+	readAudioMixMeters,
+	syncAudioMixEngine,
+} from "./audio-mix-engine";
 import { expandCompoundMediaTracks } from "@/lib/timeline/compound-media";
 import { useMemo } from "react";
 
@@ -23,6 +27,21 @@ export function useAudioMixMonitor() {
 	useEffect(() => {
 		syncAudioMixEngine({ tracks: renderTracks, audioMix });
 	}, [audioMix, renderTracks]);
+
+	// Automated levels and pans follow the playhead, frame by frame.
+	useEffect(() => {
+		applyAudioMixAutomation(usePlaybackStore.getState().currentTime);
+		const follow = (event: Event) => {
+			const time = (event as CustomEvent<{ time?: number }>).detail?.time;
+			if (typeof time === "number") applyAudioMixAutomation(time);
+		};
+		window.addEventListener("playback-update", follow);
+		window.addEventListener("playback-seek", follow);
+		return () => {
+			window.removeEventListener("playback-update", follow);
+			window.removeEventListener("playback-seek", follow);
+		};
+	}, []);
 
 	useEffect(() => {
 		let animationFrame = 0;
