@@ -460,6 +460,48 @@ export async function requestTrackOperationFromRenderer(
 	});
 }
 
+/**
+ * Shape check for where a batch element goes. The renderer resolves the
+ * shorthands ("end", after, frame counts) against the live timeline, so this
+ * only rejects requests that could never be placed.
+ */
+export function assertBatchElementPlacement({
+	element,
+}: {
+	element: ClaudeBatchAddElementRequest;
+}): void {
+	const { startTime, after, startFrame, duration, durationFrames } = element;
+	const startForms = [startTime, after, startFrame].filter(
+		(value) => value !== undefined
+	).length;
+	const validStart =
+		startForms === 1 &&
+		(startTime === "end" ||
+			(typeof startTime === "number" && startTime >= 0) ||
+			(typeof after === "string" && after.length > 0) ||
+			(typeof startFrame === "number" &&
+				Number.isInteger(startFrame) &&
+				startFrame >= 0));
+	if (!validStart) {
+		throw new Error(
+			'Each element must include exactly one of: startTime (seconds >= 0 or "end"), after (an element id), startFrame (whole frames >= 0)'
+		);
+	}
+	const validDuration =
+		(typeof duration === "number" &&
+			duration > 0 &&
+			durationFrames === undefined) ||
+		(duration === undefined &&
+			typeof durationFrames === "number" &&
+			Number.isInteger(durationFrames) &&
+			durationFrames > 0);
+	if (!validDuration) {
+		throw new Error(
+			"Each element must include either a duration > 0 (seconds) or durationFrames (whole frames > 0)"
+		);
+	}
+}
+
 /** Handle batch add elements. */
 export async function batchAddElements(
 	win: BrowserWindow,
@@ -484,20 +526,7 @@ export async function batchAddElements(
 			if (!element.trackId || typeof element.trackId !== "string") {
 				throw new Error("Each element must include a valid trackId");
 			}
-			if (
-				typeof element.startTime !== "number" ||
-				Number.isNaN(element.startTime) ||
-				element.startTime < 0
-			) {
-				throw new Error("Each element must include a non-negative startTime");
-			}
-			if (
-				typeof element.duration !== "number" ||
-				Number.isNaN(element.duration) ||
-				element.duration <= 0
-			) {
-				throw new Error("Each element must include a duration > 0");
-			}
+			assertBatchElementPlacement({ element });
 			if (
 				element.collision !== undefined &&
 				element.collision !== "reject" &&
