@@ -57,6 +57,10 @@ import {
 	GifOptionsCard,
 } from "./export-settings-cards";
 import { CaptionExportCard, AudioExportCard } from "./export-media-cards";
+import {
+	renderProjectMixStems,
+	stemsBesideExportPath,
+} from "@/lib/audio/project-mix-stems";
 import { ExportWarnings } from "./export-warnings";
 import { CapCutDraftExportCard } from "./capcut-draft-export-card";
 import { CapCutSameProfileWritebackCard } from "./capcut-same-profile-writeback-card";
@@ -90,6 +94,7 @@ export function ExportDialog() {
 	// Audio export state (non-breaking addition)
 	const [includeAudio, setIncludeAudio] = useState(true); // Default to true for backward compatibility
 	const [exportAudioSeparately, setExportAudioSeparately] = useState(false);
+	const [exportStems, setExportStems] = useState(false);
 	const [audioBitrate, setAudioBitrate] = useState<AudioExportBitrate>(192);
 	const [audioSampleRate, setAudioSampleRate] =
 		useState<AudioExportSampleRate>(44_100);
@@ -399,6 +404,22 @@ export function ExportDialog() {
 			}
 		}
 
+		if (exportStems && hasAudio && outputPath) {
+			try {
+				await renderProjectMixStems(stemsBesideExportPath(outputPath));
+			} catch (stemsError) {
+				debugWarn("[ExportPanel] Stem export failed", stemsError);
+				useExportStore
+					.getState()
+					.setError(
+						stemsError instanceof Error
+							? stemsError.message
+							: String(stemsError)
+					);
+				return;
+			}
+		}
+
 		// Sync audio settings globally
 		const audioCodec = getCodecForFormat(exportSettings.format);
 		const audioEnabled = includeAudio && hasAudio;
@@ -677,6 +698,8 @@ export function ExportDialog() {
 						onIncludeAudioChange={setIncludeAudio}
 						exportAudioSeparately={exportAudioSeparately}
 						onExportAudioSeparatelyChange={setExportAudioSeparately}
+						exportStems={exportStems}
+						onExportStemsChange={setExportStems}
 						bitrate={audioBitrate}
 						onBitrateChange={setAudioBitrate}
 						sampleRate={audioSampleRate}
