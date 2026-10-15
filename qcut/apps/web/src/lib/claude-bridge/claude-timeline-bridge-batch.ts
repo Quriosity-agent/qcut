@@ -181,11 +181,16 @@ export function setupBatchHandlers({
 						}
 
 						// Collision policy rides along verbatim; the store command is
-						// the single authority on what each mode does (QTL-002).
+						// the single authority on what each mode does (QTL-002), so it
+						// also supplies the reason when it refuses the add.
+						let rejection: string | undefined;
 						const addOptions = {
 							pushHistory: false,
 							selectElement: false,
 							...(element.collision ? { collision: element.collision } : {}),
+							onRejected: (reason: string) => {
+								rejection = reason;
+							},
 						};
 
 						if (
@@ -415,7 +420,7 @@ export function setupBatchHandlers({
 						}
 
 						if (!createdElementId) {
-							throw new Error("Failed to create timeline element");
+							throw new Error(rejection ?? "Failed to create timeline element");
 						}
 
 						added.push({
