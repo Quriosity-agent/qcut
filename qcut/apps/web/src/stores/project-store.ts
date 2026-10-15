@@ -271,7 +271,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 				width: defaultCanvas.width,
 				height: defaultCanvas.height,
 			},
-			canvasMode: "preset",
+			// A size chosen at creation (a template) is a choice, not the
+			// untouched default the first clip may still fit to.
+			canvasMode: options?.canvasSize ? "custom" : "preset",
 			audioMix: createDefaultProjectAudioMixSettings(),
 		};
 
