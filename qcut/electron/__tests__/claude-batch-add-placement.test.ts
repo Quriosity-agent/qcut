@@ -51,6 +51,7 @@ describe("assertBatchElementPlacement", () => {
 			{},
 			{ startTime: -1 },
 			{ startTime: Number.NaN },
+			{ startTime: Number.POSITIVE_INFINITY },
 			{ startTime: "later" as unknown as number },
 			{ startFrame: 1.5 },
 			{ after: "" },
@@ -68,6 +69,7 @@ describe("assertBatchElementPlacement", () => {
 		for (const length of [
 			{},
 			{ duration: 0 },
+			{ duration: Number.POSITIVE_INFINITY },
 			{ durationFrames: 0 },
 			{ durationFrames: 2.5 },
 			{ duration: 1, durationFrames: 24 },
