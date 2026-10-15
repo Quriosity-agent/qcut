@@ -111,6 +111,7 @@ const PROJECT_AUDIO_MIX_KEYS = createAllowedKeySet<ProjectAudioMixSettings>({
 });
 const AUDIO_MIX_BUS_KEYS = createAllowedKeySet<AudioMixBusSettings>({
 	keys: {
+		automation: true,
 		effects: true,
 		gainDb: true,
 		id: true,
@@ -124,6 +125,7 @@ const TRACK_KEYS = createAllowedKeySet<TimelineTrack>({
 	keys: {
 		audio: true,
 		audioCrossfades: true,
+		colorLabel: true,
 		elements: true,
 		height: true,
 		hidden: true,
@@ -140,6 +142,7 @@ const TRACK_KEYS = createAllowedKeySet<TimelineTrack>({
 const TRACK_AUDIO_KEYS = createAllowedKeySet<TimelineTrackAudioSettings>({
 	keys: {
 		autoCrossfade: true,
+		automation: true,
 		busId: true,
 		ducking: true,
 		effects: true,
