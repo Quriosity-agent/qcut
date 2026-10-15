@@ -35,6 +35,11 @@ import {
 } from "./claude-timeline-project-guard";
 import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
+import { getTimelineElementDuration } from "@/lib/timeline";
+import {
+	describeOccupancyConflict,
+	formatSeconds,
+} from "@/lib/timeline-occupancy";
 
 function timelineElementFromTransport({ candidate }: { candidate: unknown }): {
 	element: Partial<ClaudeElement>;
@@ -58,6 +63,60 @@ function timelineElementFromTransport({ candidate }: { candidate: unknown }): {
 		)
 	) as Partial<ClaudeElement>;
 	return { element, projectId };
+}
+
+/**
+ * Why the store refused to move an element to `startTime`. The store only
+ * reports refusal, so this re-reads the timeline to name the cause: a locked
+ * track, or the clip already on the span with the next free start.
+ */
+function describeRefusedStartTime({
+	trackId,
+	elementId,
+	startTime,
+}: {
+	trackId: string;
+	elementId: string;
+	startTime: number;
+}): string {
+	const tracks = useTimelineStore.getState().tracks;
+	const track = tracks.find((candidate) => candidate.id === trackId);
+	const element = track?.elements.find(
+		(candidate) => candidate.id === elementId
+	);
+	if (!track || !element) return `Element not found: ${elementId}`;
+
+	// A grouped element moves with its group, so every lane the group touches
+	// must be editable, and its own groupmates are not obstructions.
+	const groupId = element.groupId;
+	const lockedTrack = tracks.find(
+		(candidate) =>
+			candidate.locked &&
+			(candidate.id === trackId ||
+				(groupId !== undefined &&
+					candidate.elements.some((other) => other.groupId === groupId)))
+	);
+	if (lockedTrack) return `Track "${lockedTrack.name}" is locked`;
+
+	const fps = useProjectStore.getState().activeProject?.fps ?? 30;
+	const conflict = describeOccupancyConflict({
+		track: groupId
+			? {
+					...track,
+					elements: track.elements.filter(
+						(other) => other.id === elementId || other.groupId !== groupId
+					),
+				}
+			: track,
+		startTime: Math.max(0, startTime),
+		duration: getTimelineElementDuration({ element, fps }),
+		excludeElementId: elementId,
+		fps,
+	});
+	if (conflict) return conflict.message;
+	return groupId
+		? `Moving "${element.name}" to ${formatSeconds(startTime)} would put another clip in its group on top of an existing clip`
+		: `The editor refused to move "${element.name}" to ${formatSeconds(startTime)}`;
 }
 
 /** Whether an element update applied, and why not when it did not. */
@@ -158,7 +217,29 @@ export const applyElementChanges = ({
 			throw new Error("enhancements must be an object");
 		}
 
-		if (pushHistory) {
+		// The move goes first because the store may refuse it (a locked track
+		// or an occupied span); a refused move must fail the update before any
+		// other change lands. When it succeeds it has already pushed history.
+		const requestedStart =
+			typeof changes.startTime === "number" ? changes.startTime : undefined;
+		if (requestedStart !== undefined) {
+			const moved = timelineStore.updateElementStartTime(
+				track.id,
+				elementId,
+				requestedStart,
+				pushHistory
+			);
+			if (!moved) {
+				return {
+					applied: false,
+					error: describeRefusedStartTime({
+						trackId: track.id,
+						elementId,
+						startTime: requestedStart,
+					}),
+				};
+			}
+		} else if (pushHistory) {
 			timelineStore.pushHistory();
 		}
 
@@ -168,15 +249,6 @@ export const applyElementChanges = ({
 				colorLabel,
 				pushHistory: false,
 			});
-		}
-
-		if (typeof changes.startTime === "number") {
-			timelineStore.updateElementStartTime(
-				track.id,
-				elementId,
-				changes.startTime,
-				false
-			);
 		}
 
 		if (
