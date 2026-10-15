@@ -553,6 +553,8 @@ export interface CLIRunOptions {
 	mute?: boolean;
 	/** Mixer: --solo / --no-solo on a bus */
 	solo?: boolean;
+	/** Mixer: also write one WAV per bus (editor:export:start) */
+	stems?: boolean;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
