@@ -84,7 +84,8 @@ export function findTimelineOverlaps({
 	return overlaps;
 }
 
-function elementLabel({
+/** How a report names an element: its source file, else its name, else its id. */
+export function elementLabel({
 	element,
 }: {
 	element: { sourceName?: string; name?: string; id: string };
