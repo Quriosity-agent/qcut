@@ -313,3 +313,82 @@ describe("Aliases & Deprecation", () => {
 		}
 	});
 });
+
+describe("editor area without an action", () => {
+	beforeEach(() => {
+		ModelRegistry.clear();
+		resetInitState();
+		initRegistry();
+	});
+
+	function runArgs(argv: string[]) {
+		const exit = vi.spyOn(process, "exit").mockImplementation((code) => {
+			throw new Error(`exit:${code}`);
+		});
+		const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		let exitCode = "";
+		try {
+			parseCliArgs(argv);
+		} catch (thrown) {
+			exitCode = String((thrown as Error).message);
+		}
+		const written = stdout.mock.calls.map(([chunk]) => String(chunk)).join("");
+		exit.mockRestore();
+		stdout.mockRestore();
+		log.mockRestore();
+		error.mockRestore();
+		return { exitCode, written };
+	}
+
+	it("fails with a JSON error under --json", () => {
+		const { exitCode, written } = runArgs(["editor", "timeline", "--json"]);
+		expect(exitCode).toBe("exit:2");
+		const envelope = JSON.parse(written);
+		expect(envelope).toMatchObject({
+			status: "error",
+			code: "cli:missing-action",
+			data: { area: "timeline" },
+		});
+		expect(envelope.data.actions).toContain("move");
+	});
+
+	it("lists the actions and succeeds with --help", () => {
+		const { exitCode, written } = runArgs([
+			"editor:timeline",
+			"--help",
+			"--json",
+		]);
+		expect(exitCode).toBe("exit:0");
+		expect(JSON.parse(written)).toMatchObject({
+			status: "ok",
+			data: { area: "timeline" },
+		});
+	});
+});
+
+describe("--time parsing", () => {
+	it("keeps text that is not a number for the command to refuse", () => {
+		expect(
+			parseCliArgs([
+				"editor:timeline:move",
+				"--project-id",
+				"p1",
+				"--element-id",
+				"e1",
+				"--time",
+				"15oops",
+			]).seekTime
+		).toBe("15oops");
+		expect(
+			parseCliArgs([
+				"editor:timeline:seek",
+				"--project-id",
+				"p1",
+				"--time",
+				"15",
+			]).seekTime
+		).toBe(15);
+	});
+});
