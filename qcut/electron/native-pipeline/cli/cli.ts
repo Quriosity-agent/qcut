@@ -35,8 +35,10 @@ import {
 import {
 	CLI_VERSION,
 	findHelpParam,
+	isEditorArea,
 	printCommandHelp,
 	printCommandHelpJson,
+	printEditorAreaHelp,
 	printGroupHelp,
 	printGroupHelpJson,
 	printHelp,
@@ -155,6 +157,18 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		process.exit(0);
 	}
 
+	// `editor timeline` / `editor:timeline` name an area, not a command: list
+	// its actions instead of calling the name unknown.
+	const editorArea = /^editor:([a-z0-9-]+)$/.exec(command)?.[1];
+	if (editorArea && !COMMANDS.includes(command) && isEditorArea(editorArea)) {
+		printEditorAreaHelp(editorArea, { json: argv.includes("--json") });
+		const askedForHelp = argv.includes("--help") || argv.includes("-h");
+		if (!askedForHelp) {
+			console.error(`Missing action for "editor ${editorArea}".`);
+		}
+		process.exit(askedForHelp ? 0 : 2);
+	}
+
 	if (!COMMANDS.includes(command)) {
 		console.error(`Unknown command: ${command}`);
 		console.error("Run with --help for usage.");
@@ -214,6 +228,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			parallel: { type: "boolean", default: false },
 			"max-workers": { type: "string" },
 			json: { type: "boolean", default: false },
+			flat: { type: "boolean", default: false },
 			quiet: { type: "boolean", short: "q", default: false },
 			verbose: { type: "boolean", short: "v", default: false },
 			help: { type: "boolean", short: "h", default: false },
@@ -691,6 +706,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseInt(values["max-workers"] as string, 10)
 			: undefined,
 		json: (values.json as boolean) ?? false,
+		flat: (values.flat as boolean) ?? false,
 		verbose: (values.verbose as boolean) ?? false,
 		quiet: (values.quiet as boolean) ?? false,
 		category: values.category as string | undefined,
@@ -1421,10 +1437,12 @@ export async function main(
 	debugStream.commandEnd(commandId, options.command, exitCode, durationMs);
 
 	if (options.json) {
-		emitJsonResult(options.command, result, {
-			command_id: commandId,
-			duration_ms: durationMs,
-		});
+		emitJsonResult(
+			options.command,
+			result,
+			{ command_id: commandId, duration_ms: durationMs },
+			{ flat: options.flat }
+		);
 		if (!result.success) {
 			// Let stdout drain when a failed result contains large partial data.
 			process.exitCode = 1;
