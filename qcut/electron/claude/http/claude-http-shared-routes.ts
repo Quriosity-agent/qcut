@@ -107,6 +107,7 @@ import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
 import { withMediaProbes } from "../handlers/claude-media-probe.js";
+import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -1155,17 +1156,16 @@ export function registerSharedRoutes(
 				"Renderer timeline element acknowledgement is unavailable"
 			);
 		}
+		// Media named without a length gets its file's length, so the clip is
+		// not placed at whatever the editor guessed before the file loaded.
+		const [element] = await withDefaultMediaDurations({
+			projectId: req.params.projectId,
+			elements: [{ ...req.body, id: elementId }],
+		});
 		await requireRendererMutation({
 			operation: "Timeline element placement",
 			request: () =>
-				requestAddElement(
-					req.params.projectId,
-					{
-						...req.body,
-						id: elementId,
-					},
-					correlationId
-				),
+				requestAddElement(req.params.projectId, element, correlationId),
 		});
 		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
 		return { elementId };
