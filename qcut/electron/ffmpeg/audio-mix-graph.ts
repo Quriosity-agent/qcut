@@ -10,11 +10,11 @@
  * the graph exactly as it was before mixing existed.
  *
  * Ducking in the preview watches the source tracks' level and pulls the
- * target down by a fixed amount while it is above the threshold. FFmpeg
- * cannot measure ahead like that inside one graph, so the target goes through
- * a steep sidechain compressor keyed by the sources, blended with its dry
- * signal at the ducking depth: the reduction approaches, and never exceeds,
- * the configured amount.
+ * target down by a fixed amount while it is above the threshold. Here a gate
+ * keyed by the sources opens on the target's own signal while they are loud,
+ * and that gated copy is subtracted from the target at the ducking depth: the
+ * target drops by exactly the set amount, gliding with the attack and
+ * release times.
  *
  * @module electron/ffmpeg/audio-mix-graph
  */
@@ -332,28 +332,30 @@ export function appendAudioMixGraph({
 		let current = takeCopy(track.trackId);
 		const sources = duckSources.get(track.trackId);
 		if (sources) {
-			// The key is padded with silence: sidechaincompress stops at the
-			// shorter input, which would cut the ducked signal off when a short
-			// source clip ends.
+			// The key is padded with silence, since the sidechain filters stop
+			// at the shorter input and would cut the ducked signal off when a
+			// short source clip ends. A -120 dB offset keeps the key off exact
+			// zero: FFmpeg's gate stays open on digital silence.
 			const sidechain = applyFilters({
 				input: sumLabels({
 					labels: sources.map(takeCopy),
 					output: `mix_t${index}_key`,
 					filterSteps,
 				}),
-				filters: ["apad"],
+				filters: ["apad", "dcshift=shift=0.000001"],
 				output: `mix_t${index}_keypad`,
 				filterSteps,
 			});
-			const depth = round(dbToLinear(Math.min(0, track.ducking.reductionDb)));
+			const kept = dbToLinear(Math.min(0, track.ducking.reductionDb));
 			filterSteps.push(
 				`[${current}]asplit=2[mix_t${index}_dry][mix_t${index}_wet]`,
-				`[mix_t${index}_wet][${sidechain}]sidechaincompress=` +
-					`threshold=${round(clamp(dbToLinear(track.ducking.thresholdDb), 0.000976563, 1))}` +
-					`:ratio=20:attack=${round(clamp(track.ducking.attackMs, 0.01, 2000))}` +
+				`[mix_t${index}_wet][${sidechain}]sidechaingate=` +
+					`threshold=${round(clamp(dbToLinear(track.ducking.thresholdDb), 0.000001, 1))}` +
+					":ratio=9000:range=0.0001:knee=1:detection=rms" +
+					`:attack=${round(clamp(track.ducking.attackMs, 0.01, 9000))}` +
 					`:release=${round(clamp(track.ducking.releaseMs, 0.01, 9000))}` +
-					`:detection=rms:knee=1[mix_t${index}_ducked]`,
-				`[mix_t${index}_dry][mix_t${index}_ducked]amix=inputs=2:weights='${depth} ${round(1 - depth)}':duration=longest:dropout_transition=0:normalize=0[mix_t${index}_duck]`
+					`,volume=${round(kept - 1)}[mix_t${index}_gated]`,
+				`[mix_t${index}_dry][mix_t${index}_gated]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix_t${index}_duck]`
 			);
 			current = `mix_t${index}_duck`;
 		}
