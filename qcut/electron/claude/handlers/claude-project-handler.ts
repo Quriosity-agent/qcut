@@ -582,9 +582,14 @@ export function setupClaudeProjectIPC(): void {
 		async (
 			_event: IpcMainInvokeEvent,
 			projectId: string,
-			settings: Partial<ProjectSettings>
+			settings: Partial<ProjectSettings>,
+			options?: { broadcast?: boolean }
 		) => {
-			await updateProjectSettings(projectId, settings);
+			// The editor mirrors its own changes with broadcast: false, so they
+			// are not echoed back to it.
+			await updateProjectSettings(projectId, settings, {
+				broadcast: options?.broadcast !== false,
+			});
 		}
 	);
 
