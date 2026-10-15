@@ -7,10 +7,12 @@
  */
 
 import type {
+	ClaudeAudioAutomationPoint,
 	ClaudeAudioBusPatch,
 	ClaudeAudioDucking,
 	ClaudeAudioEffectsPatch,
 	ClaudeAudioEqBand,
+	ClaudeMixAutomationPatch,
 	ClaudeTrackAudioPatch,
 } from "../../types/claude-audio-mix-api.js";
 import { HttpError } from "../utils/http-router.js";
@@ -218,6 +220,68 @@ function readDucking(value: unknown): Partial<ClaudeAudioDucking> {
 	});
 }
 
+const AUTOMATION_RANGES: Record<"gainDb" | "pan", [number, number]> = {
+	gainDb: [-60, 12],
+	pan: [-1, 1],
+};
+const MAX_AUTOMATION_POINTS = 10_000;
+
+/** A curve: `{time, value}` points, or null to remove it. */
+function readAutomationPoints(
+	value: unknown,
+	field: string,
+	range: [number, number]
+): ClaudeAudioAutomationPoint[] | null {
+	if (value === null) return null;
+	if (!Array.isArray(value)) {
+		invalid(
+			`${field} must be a list of {time, value} points, or null to remove the curve`
+		);
+	}
+	if (value.length > MAX_AUTOMATION_POINTS) {
+		invalid(`${field} may have at most ${MAX_AUTOMATION_POINTS} points`);
+	}
+	return value.map((point, index) => {
+		const name = `${field}[${index}]`;
+		const entry = readObject(point, name);
+		refuseUnknown(entry, ["time", "value"], name);
+		const time = entry.time;
+		if (typeof time !== "number" || !Number.isFinite(time) || time < 0) {
+			invalid(`${name}.time must be seconds on the timeline, 0 or more`);
+		}
+		const pointValue = readNumber(entry, "value", range, `${name}.`);
+		if (pointValue === undefined) invalid(`${name} needs a value`);
+		return { time, value: pointValue };
+	});
+}
+
+/**
+ * `automation`: level and pan curves over timeline time; each curve given
+ * replaces the old one, null removes it.
+ */
+export function readAutomationPatch(value: unknown): ClaudeMixAutomationPatch {
+	const automation = readObject(value, "automation");
+	refuseUnknown(automation, Object.keys(AUTOMATION_RANGES), "automation");
+	return defined({
+		gainDb:
+			automation.gainDb === undefined
+				? undefined
+				: readAutomationPoints(
+						automation.gainDb,
+						"automation.gainDb",
+						AUTOMATION_RANGES.gainDb
+					),
+		pan:
+			automation.pan === undefined
+				? undefined
+				: readAutomationPoints(
+						automation.pan,
+						"automation.pan",
+						AUTOMATION_RANGES.pan
+					),
+	});
+}
+
 const LEVEL_RANGE: [number, number] = [-60, 12];
 const PAN_RANGE: [number, number] = [-1, 1];
 
@@ -226,7 +290,16 @@ export function readTrackAudioPatch(body: unknown): ClaudeTrackAudioPatch {
 	const fields = readObject(body ?? {}, "body");
 	refuseUnknown(
 		fields,
-		["gainDb", "pan", "busId", "solo", "muted", "ducking", "effects"],
+		[
+			"gainDb",
+			"pan",
+			"busId",
+			"solo",
+			"muted",
+			"ducking",
+			"effects",
+			"automation",
+		],
 		""
 	);
 	const patch: ClaudeTrackAudioPatch = defined({
@@ -241,10 +314,14 @@ export function readTrackAudioPatch(body: unknown): ClaudeTrackAudioPatch {
 			fields.effects === undefined
 				? undefined
 				: readEffectsPatch(fields.effects),
+		automation:
+			fields.automation === undefined
+				? undefined
+				: readAutomationPatch(fields.automation),
 	});
 	if (Object.keys(patch).length === 0) {
 		invalid(
-			"Nothing to change: give gainDb, pan, busId, solo, muted, ducking or effects"
+			"Nothing to change: give gainDb, pan, busId, solo, muted, ducking, effects or automation"
 		);
 	}
 	return patch;
@@ -266,6 +343,7 @@ export function readBusPatch(
 			"muted",
 			"solo",
 			"effects",
+			"automation",
 		],
 		""
 	);
@@ -279,11 +357,15 @@ export function readBusPatch(
 			fields.effects === undefined
 				? undefined
 				: readEffectsPatch(fields.effects),
+		automation:
+			fields.automation === undefined
+				? undefined
+				: readAutomationPatch(fields.automation),
 	});
 	if (creating && !patch.name) invalid("A new bus needs a name");
 	if (!creating && Object.keys(patch).length === 0) {
 		invalid(
-			"Nothing to change: give name, gainDb, pan, muted, solo or effects"
+			"Nothing to change: give name, gainDb, pan, muted, solo, effects or automation"
 		);
 	}
 	return patch;
