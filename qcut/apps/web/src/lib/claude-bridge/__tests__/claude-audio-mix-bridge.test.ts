@@ -199,6 +199,36 @@ describe("mixer over the editor API", () => {
 		});
 	});
 
+	it("sets and clears a track's curves, reading them back sorted", async () => {
+		const run = setup();
+		const set = await run({
+			action: "set-track",
+			projectId: "p",
+			trackId: "ambience",
+			patch: {
+				automation: {
+					gainDb: [
+						{ time: 3, value: -30 },
+						{ time: 2.5, value: -10 },
+					],
+				},
+			},
+		});
+		expect(track(set, "ambience")?.audio.automation).toEqual({
+			gainDb: [
+				{ time: 2.5, value: -10 },
+				{ time: 3, value: -30 },
+			],
+		});
+		const cleared = await run({
+			action: "set-track",
+			projectId: "p",
+			trackId: "ambience",
+			patch: { automation: { gainDb: null } },
+		});
+		expect(track(cleared, "ambience")?.audio.automation).toBeUndefined();
+	});
+
 	it("creates a bus, routes a track to it, and sends it back to the master on removal", async () => {
 		const run = setup();
 		const created = await run({
