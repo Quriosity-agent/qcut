@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.15.1] - 2026-10-15
+
 ### Fixed
 - Native manual body shaping now participates in the same source-history replay used by export, including combinations with intelligent body shaping and paused reverse seeks. Intelligent body shaping can also recover after a cold start.
 - Manual body region controls stay aligned when a clip is rotated, mirrored or scaled.
