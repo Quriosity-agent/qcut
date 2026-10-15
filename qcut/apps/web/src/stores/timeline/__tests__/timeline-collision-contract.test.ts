@@ -287,6 +287,259 @@ describe("timeline collision contract", () => {
 		});
 	});
 
+	describe("seams computed in floating point", () => {
+		// The clips from the report: clip six ends at 100.20833 + 17.041667,
+		// which is 117.24999700000001 in floating point, and clip eight starts
+		// exactly one clip-seven later.
+		function reportedTracks(): TimelineTrack[] {
+			return [
+				{
+					id: "main",
+					name: "Main",
+					type: "media",
+					isMain: true,
+					elements: [
+						mediaElement({
+							id: "six",
+							startTime: 100.20833,
+							duration: 17.041667,
+						}),
+						mediaElement({
+							id: "eight",
+							startTime: 133.291664,
+							duration: 4,
+						}),
+						mediaElement({ id: "seven", startTime: 240, duration: 16.041667 }),
+					],
+				},
+				{
+					id: "overlay",
+					name: "Overlay",
+					type: "media",
+					elements: [
+						mediaElement({
+							id: "lane-mate",
+							startTime: 100.20833,
+							duration: 17.041667,
+						}),
+					],
+				},
+			];
+		}
+
+		it("adds a clip that starts where the previous one ends", () => {
+			setTracks(reportedTracks());
+			const result = useTimelineStore.getState().addElementToTrack("main", {
+				...newElementData,
+				startTime: 117.249997,
+				duration: 16.041667,
+			});
+			expect(result).not.toBeNull();
+		});
+
+		it("adds at a 0.1 + 0.2 seam", () => {
+			setTracks([
+				{
+					id: "main",
+					name: "Main",
+					type: "media",
+					isMain: true,
+					elements: [mediaElement({ id: "a", startTime: 0.1, duration: 0.2 })],
+				},
+			]);
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack("main", { ...newElementData, startTime: 0.3 });
+			expect(result).not.toBeNull();
+		});
+
+		it("slides a clip into a gap of exactly its length", () => {
+			setTracks(reportedTracks());
+			useTimelineStore
+				.getState()
+				.updateElementStartTime("main", "seven", 117.249997);
+			expect(mainElements().find(([id]) => id === "seven")?.[1]).toBe(
+				117.249997
+			);
+			expect(useTimelineStore.getState().history).toHaveLength(1);
+		});
+
+		it("moves a clip onto a lane where it meets its neighbour", () => {
+			const tracks = reportedTracks();
+			tracks[0].elements = tracks[0].elements.map((element) =>
+				element.id === "seven" ? { ...element, startTime: 117.249997 } : element
+			);
+			setTracks(tracks);
+			useTimelineStore
+				.getState()
+				.moveElementToTrack("main", "overlay", "seven");
+			expect(
+				useTimelineStore
+					.getState()
+					.tracks.find((track) => track.id === "overlay")
+					?.elements.map((element) => element.id)
+					.sort()
+			).toEqual(["lane-mate", "seven"]);
+		});
+
+		it("adds to the lane findOrCreateTrack picked for the span", () => {
+			setTracks(reportedTracks());
+			const span = { startTime: 117.249997, duration: 16.041667 };
+			const trackId = useTimelineStore
+				.getState()
+				.findOrCreateTrack("media", span);
+			expect(trackId).toBe("main");
+			const result = useTimelineStore.getState().addElementToTrack(trackId, {
+				...newElementData,
+				...span,
+			});
+			expect(result).not.toBeNull();
+		});
+
+		it("still rejects an overlap of one frame", () => {
+			setTracks(reportedTracks());
+			const result = useTimelineStore.getState().addElementToTrack("main", {
+				...newElementData,
+				startTime: 117.249997 - 1 / 30,
+				duration: 2,
+			});
+			expect(result).toBeNull();
+		});
+	});
+
+	describe("refusal reasons", () => {
+		it("tells the caller which clip blocks an add and where it fits", () => {
+			const onRejected = vi.fn();
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 3 },
+					{ onRejected }
+				);
+			expect(result).toBeNull();
+			expect(onRejected).toHaveBeenCalledWith(
+				'3s–5s on track "Main" overlaps "b" (2s–4s). A track plays one element at a time; the next free start for this 2s clip is 6s.'
+			);
+		});
+
+		it("says the track is locked rather than occupied", () => {
+			const tracks = baseTracks();
+			tracks[0].locked = true;
+			setTracks(tracks);
+			const onRejected = vi.fn();
+			useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 6 },
+					{ onRejected }
+				);
+			expect(onRejected).toHaveBeenCalledWith('Track "Main" is locked');
+		});
+
+		it("reports every other reason an add is refused", () => {
+			const cases = [
+				{
+					trackId: "missing",
+					element: { ...newElementData, startTime: 6 },
+					reason: "Track not found: missing",
+				},
+				{
+					trackId: "main",
+					element: { ...newElementData, mediaId: "", startTime: 6 },
+					reason: "Media element must have mediaId",
+				},
+			];
+			for (const { trackId, element, reason } of cases) {
+				const onRejected = vi.fn();
+				const result = useTimelineStore
+					.getState()
+					.addElementToTrack(trackId, element, { onRejected });
+				expect(result).toBeNull();
+				expect(onRejected).toHaveBeenCalledWith(reason);
+			}
+
+			setTracks([
+				...baseTracks(),
+				{ id: "text", name: "Text", type: "text", elements: [] },
+				{ id: "notes", name: "Notes", type: "markdown", elements: [] },
+			]);
+			const textRefusal = vi.fn();
+			useTimelineStore.getState().addElementToTrack(
+				"text",
+				{
+					type: "text",
+					name: "Title",
+					content: "",
+					startTime: 0,
+					duration: 2,
+					trimStart: 0,
+					trimEnd: 0,
+				} as never,
+				{ onRejected: textRefusal }
+			);
+			expect(textRefusal).toHaveBeenCalledWith(
+				"Text element must have content"
+			);
+
+			const markdownRefusal = vi.fn();
+			useTimelineStore.getState().addElementToTrack(
+				"notes",
+				{
+					type: "markdown",
+					name: "Notes",
+					startTime: 0,
+					duration: 2,
+					trimStart: 0,
+					trimEnd: 0,
+				} as never,
+				{ onRejected: markdownRefusal }
+			);
+			expect(markdownRefusal).toHaveBeenCalledWith(
+				"Markdown element must have markdownContent"
+			);
+
+			const wrongLane = vi.fn();
+			useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"text",
+					{ ...newElementData, startTime: 0 },
+					{ onRejected: wrongLane }
+				);
+			expect(wrongLane).toHaveBeenCalledOnce();
+			expect(useTimelineStore.getState().history).toHaveLength(0);
+		});
+
+		it("does not call onRejected for a successful add", () => {
+			const onRejected = vi.fn();
+			const result = useTimelineStore
+				.getState()
+				.addElementToTrack(
+					"main",
+					{ ...newElementData, startTime: 6 },
+					{ onRejected }
+				);
+			expect(result).not.toBeNull();
+			expect(onRejected).not.toHaveBeenCalled();
+		});
+
+		it("reports whether updateElementStartTime moved the element", () => {
+			const store = useTimelineStore.getState();
+			expect(store.updateElementStartTime("main", "a", 3)).toBe(false);
+			expect(store.updateElementStartTime("main", "c", 6)).toBe(true);
+			expect(store.updateElementStartTime("main", "missing", 6)).toBe(false);
+
+			const tracks = baseTracks();
+			tracks[0].locked = true;
+			setTracks(tracks);
+			expect(
+				useTimelineStore.getState().updateElementStartTime("main", "c", 6)
+			).toBe(false);
+		});
+	});
+
 	describe("separateAudio stacking", () => {
 		it("stacks a new audio lane when the existing one is occupied there", () => {
 			const tracks: TimelineTrack[] = [

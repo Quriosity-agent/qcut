@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+	isEditorArea,
 	printCommandHelp,
+	printEditorAreaHelp,
 	printGroupHelp,
 	printHelp,
 	printGroupHelpJson,
@@ -87,5 +89,26 @@ describe("printCommandHelp", () => {
 		expect(root).toContain("AI content generation CLI");
 		expect(group).toContain("Actions:");
 		expect(group).not.toContain("AI content generation CLI");
+	});
+});
+
+describe("printEditorAreaHelp", () => {
+	it("lists every action in the area with its description", () => {
+		const output = captureStdout({
+			run: () => printEditorAreaHelp("timeline"),
+		});
+		const actions =
+			listEditorAreas().find(({ area }) => area === "timeline")?.actions ?? [];
+
+		expect(actions.length).toBeGreaterThan(6);
+		for (const action of actions) expect(output).toContain(action);
+		expect(output).toContain("Move element");
+		expect(output).not.toContain("…");
+	});
+
+	it("knows areas from commands", () => {
+		expect(isEditorArea("timeline")).toBe(true);
+		expect(isEditorArea("health")).toBe(false);
+		expect(isEditorArea("nope")).toBe(false);
 	});
 });

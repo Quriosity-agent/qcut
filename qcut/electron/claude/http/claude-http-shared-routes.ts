@@ -105,6 +105,9 @@ import {
 } from "../claude-operation-log.js";
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
+import { describeRefusedMove } from "./timeline-move-refusal.js";
+import { withMediaProbes } from "../handlers/claude-media-probe.js";
+import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -260,6 +263,7 @@ export interface WindowAccessor {
 
 export interface SharedRouteOptions {
 	runDeepHealthChecks?: () => Promise<DeepHealthReport>;
+	getWindowState?: () => Promise<{ hasWindow: boolean; count: number }>;
 }
 
 /**
@@ -747,6 +751,7 @@ export function registerSharedRoutes(
 		/** Returns the current application version for metadata routes. */
 		getAppVersion: () => accessor.getAppVersion(),
 		runDeepHealthChecks: options?.runDeepHealthChecks,
+		getWindowState: options?.getWindowState,
 	});
 
 	// ==========================================================================
@@ -798,13 +803,16 @@ export function registerSharedRoutes(
 	// ==========================================================================
 	// Media routes (file-system based -- no renderer needed)
 	// ==========================================================================
+	// Listings carry duration, size and frame rate so a caller can place clips
+	// without probing the files itself.
 	router.get("/api/claude/media/:projectId", async (req) =>
-		listMediaFiles(req.params.projectId)
+		withMediaProbes(await listMediaFiles(req.params.projectId))
 	);
 
-	router.get("/api/claude/media/:projectId/:mediaId", async (req) =>
-		getMediaInfo(req.params.projectId, req.params.mediaId)
-	);
+	router.get("/api/claude/media/:projectId/:mediaId", async (req) => {
+		const media = await getMediaInfo(req.params.projectId, req.params.mediaId);
+		return media ? (await withMediaProbes([media]))[0] : media;
+	});
 
 	router.post("/api/claude/media/:projectId/import", async (req) => {
 		if (!req.body?.source)
@@ -1150,17 +1158,16 @@ export function registerSharedRoutes(
 				"Renderer timeline element acknowledgement is unavailable"
 			);
 		}
+		// Media named without a length gets its file's length, so the clip is
+		// not placed at whatever the editor guessed before the file loaded.
+		const [element] = await withDefaultMediaDurations({
+			projectId: req.params.projectId,
+			elements: [{ ...req.body, id: elementId }],
+		});
 		await requireRendererMutation({
 			operation: "Timeline element placement",
 			request: () =>
-				requestAddElement(
-					req.params.projectId,
-					{
-						...req.body,
-						id: elementId,
-					},
-					correlationId
-				),
+				requestAddElement(req.params.projectId, element, correlationId),
 		});
 		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
 		return { elementId };
@@ -1348,14 +1355,40 @@ export function registerSharedRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/elements/:elementId/move",
 		async (req) => {
-			if (!req.body?.toTrackId)
-				throw new HttpError(400, "Missing 'toTrackId' in request body");
+			const hasStartTime = typeof req.body?.newStartTime === "number";
+			if (!req.body?.toTrackId && !hasStartTime)
+				throw new HttpError(
+					400,
+					"Give 'toTrackId', 'newStartTime', or both in the request body"
+				);
+			// Without a target track the element stays on its own track.
+			let toTrackId: string = req.body.toTrackId;
+			if (!toTrackId) {
+				const before = await accessor.requestTimeline();
+				const current = locateElement({
+					timeline: before,
+					elementId: req.params.elementId,
+				});
+				if (!current) {
+					throw new HttpError(
+						404,
+						`Element ${req.params.elementId} is not on the timeline.`
+					);
+				}
+				if (current.trackId === undefined) {
+					throw new HttpError(
+						409,
+						`The track of element ${req.params.elementId} has no id; pass 'toTrackId'.`
+					);
+				}
+				toTrackId = current.trackId;
+			}
 			const win = accessor.getWindow();
 			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:moveElement", {
 				correlationId,
 				elementId: req.params.elementId,
-				toTrackId: req.body.toTrackId,
+				toTrackId,
 				newStartTime: req.body.newStartTime,
 			});
 			const timeline = await waitForTimelineMutationBarrier({ accessor });
@@ -1378,22 +1411,25 @@ export function registerSharedRoutes(
 			if (placed.trackId === undefined) {
 				return { moved: true, verified: false };
 			}
-			if (placed.trackId !== req.body.toTrackId) {
-				throw new HttpError(
-					409,
-					`The editor refused the move: a track plays one element at a time, and the target span on ${req.body.toTrackId} is occupied. The element is still on ${placed.trackId} at ${placed.startTime}s.`
-				);
-			}
 			// A move within one track keeps the track id, so the requested time is
 			// the only evidence that the placement was refused.
-			if (
-				typeof req.body.newStartTime === "number" &&
-				Math.abs(placed.startTime - req.body.newStartTime) >
-					MOVE_START_TIME_TOLERANCE_SECONDS
-			) {
+			const refused =
+				placed.trackId !== toTrackId ||
+				(typeof req.body.newStartTime === "number" &&
+					Math.abs(placed.startTime - req.body.newStartTime) >
+						MOVE_START_TIME_TOLERANCE_SECONDS);
+			if (refused) {
 				throw new HttpError(
 					409,
-					`The editor refused the move: a track plays one element at a time, and ${req.body.newStartTime}s on ${placed.trackId} is occupied. The element is still at ${placed.startTime}s.`
+					describeRefusedMove({
+						timeline,
+						elementId: req.params.elementId,
+						toTrackId,
+						startTime:
+							typeof req.body.newStartTime === "number"
+								? req.body.newStartTime
+								: undefined,
+					})
 				);
 			}
 			return {

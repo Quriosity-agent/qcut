@@ -491,20 +491,24 @@ describe("setupClaudeTimelineBridge - add element", () => {
 		).toHaveBeenCalledWith("media", { startTime: 2, duration: 4 });
 		expect(
 			storeMocks.timelineStoreState.addElementToTrack
-		).toHaveBeenCalledWith("media-track", {
-			type: "media",
-			name: "clip-a.mp4",
-			mediaId: "media-1",
-			startTime: 2,
-			duration: 4,
-			trimStart: 0,
-			trimEnd: 0,
-			fitMode: "cover",
-			playbackRate: 2,
-			reverse: true,
-			freezeFrameTime: 1,
-			freezeFrameDuration: 0.5,
-		});
+		).toHaveBeenCalledWith(
+			"media-track",
+			{
+				type: "media",
+				name: "clip-a.mp4",
+				mediaId: "media-1",
+				startTime: 2,
+				duration: 4,
+				trimStart: 0,
+				trimEnd: 0,
+				fitMode: "cover",
+				playbackRate: 2,
+				reverse: true,
+				freezeFrameTime: 1,
+				freezeFrameDuration: 0.5,
+			},
+			{ onRejected: expect.any(Function) }
+		);
 	});
 
 	it("adds a media element by sourceId and falls back to media duration", async () => {
@@ -529,16 +533,20 @@ describe("setupClaudeTimelineBridge - add element", () => {
 
 		expect(
 			storeMocks.timelineStoreState.addElementToTrack
-		).toHaveBeenCalledWith("media-track", {
-			type: "media",
-			name: "clip-b.mp4",
-			mediaId: "media-2",
-			startTime: 3,
-			duration: 9,
-			trimStart: 0,
-			trimEnd: 0,
-			fitMode: "cover",
-		});
+		).toHaveBeenCalledWith(
+			"media-track",
+			{
+				type: "media",
+				name: "clip-b.mp4",
+				mediaId: "media-2",
+				startTime: 3,
+				duration: 9,
+				trimStart: 0,
+				trimEnd: 0,
+				fitMode: "cover",
+			},
+			{ onRejected: expect.any(Function) }
+		);
 	});
 
 	it("preserves an explicit media fit mode", async () => {
@@ -566,7 +574,8 @@ describe("setupClaudeTimelineBridge - add element", () => {
 			storeMocks.timelineStoreState.addElementToTrack
 		).toHaveBeenCalledWith(
 			"media-track",
-			expect.objectContaining({ fitMode: "contain" })
+			expect.objectContaining({ fitMode: "contain" }),
+			{ onRejected: expect.any(Function) }
 		);
 	});
 
@@ -600,16 +609,20 @@ describe("setupClaudeTimelineBridge - add element", () => {
 
 		expect(
 			storeMocks.timelineStoreState.addElementToTrack
-		).toHaveBeenCalledWith("media-track", {
-			type: "media",
-			name: filename,
-			mediaId: "renderer-media-3",
-			startTime: 0,
-			duration: 4,
-			trimStart: 0,
-			trimEnd: 0,
-			fitMode: "cover",
-		});
+		).toHaveBeenCalledWith(
+			"media-track",
+			{
+				type: "media",
+				name: filename,
+				mediaId: "renderer-media-3",
+				startTime: 0,
+				duration: 4,
+				trimStart: 0,
+				trimEnd: 0,
+				fitMode: "cover",
+			},
+			{ onRejected: expect.any(Function) }
+		);
 	});
 
 	it("adds a text element with defaults when content is missing", async () => {
@@ -627,27 +640,31 @@ describe("setupClaudeTimelineBridge - add element", () => {
 		).toHaveBeenCalledWith("text");
 		expect(
 			storeMocks.timelineStoreState.addElementToTrack
-		).toHaveBeenCalledWith("text-track", {
-			type: "text",
-			name: "Text",
-			content: "Text",
-			startTime: 1,
-			duration: 3,
-			trimStart: 0,
-			trimEnd: 0,
-			fontSize: 48,
-			fontFamily: "Inter",
-			color: "#ffffff",
-			backgroundColor: "transparent",
-			textAlign: "center",
-			fontWeight: "normal",
-			fontStyle: "normal",
-			textDecoration: "none",
-			x: 0.5,
-			y: 0.5,
-			rotation: 0,
-			opacity: 1,
-		});
+		).toHaveBeenCalledWith(
+			"text-track",
+			{
+				type: "text",
+				name: "Text",
+				content: "Text",
+				startTime: 1,
+				duration: 3,
+				trimStart: 0,
+				trimEnd: 0,
+				fontSize: 48,
+				fontFamily: "Inter",
+				color: "#ffffff",
+				backgroundColor: "transparent",
+				textAlign: "center",
+				fontWeight: "normal",
+				fontStyle: "normal",
+				textDecoration: "none",
+				x: 0.5,
+				y: 0.5,
+				rotation: 0,
+				opacity: 1,
+			},
+			{ onRejected: expect.any(Function) }
+		);
 	});
 
 	it("preserves the requested id without storing transport correlation fields", async () => {
@@ -737,6 +754,32 @@ describe("setupClaudeTimelineBridge - add element", () => {
 		).rejects.toThrow("Failed to add text element to the timeline");
 	});
 
+	it("passes on the store's reason for refusing the insertion", async () => {
+		storeMocks.timelineStoreState.addElementToTrack.mockImplementationOnce(
+			(
+				_trackId: string,
+				_element: unknown,
+				options?: { onRejected?: (reason: string) => void }
+			) => {
+				options?.onRejected?.('Track "Text" is locked');
+				return null;
+			}
+		);
+		const { addElementHandler } = setupTimelineBridgeWithHandlers();
+
+		await expect(
+			addElementHandler({
+				projectId: "project-1",
+				type: "text",
+				content: "Locked lane",
+				startTime: 0,
+				duration: 2,
+			})
+		).rejects.toThrow(
+			'Failed to add text element to the timeline: Track "Text" is locked'
+		);
+	});
+
 	it("syncs project folder once and retries media resolution", async () => {
 		storeMocks.projectStoreState.activeProject = { id: "proj-1" };
 		syncProjectFolderMock.mockImplementation(async () => {
@@ -774,16 +817,20 @@ describe("setupClaudeTimelineBridge - add element", () => {
 		expect(syncProjectFolderMock).toHaveBeenCalledWith("proj-1");
 		expect(
 			storeMocks.timelineStoreState.addElementToTrack
-		).toHaveBeenCalledWith("media-track", {
-			type: "media",
-			name: "missing-image.png",
-			mediaId: "synced-image-1",
-			startTime: 0,
-			duration: 3,
-			trimStart: 0,
-			trimEnd: 0,
-			fitMode: "cover",
-		});
+		).toHaveBeenCalledWith(
+			"media-track",
+			{
+				type: "media",
+				name: "missing-image.png",
+				mediaId: "synced-image-1",
+				startTime: 0,
+				duration: 3,
+				trimStart: 0,
+				trimEnd: 0,
+				fitMode: "cover",
+			},
+			{ onRejected: expect.any(Function) }
+		);
 	});
 
 	it("rejects media placement when the project changes during sync", async () => {
@@ -890,7 +937,8 @@ describe("setupClaudeTimelineBridge - add element", () => {
 				duration: 4,
 				opacity: 0.8,
 				masks,
-			})
+			}),
+			{ onRejected: expect.any(Function) }
 		);
 	});
 });
@@ -1283,7 +1331,11 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 		).toHaveBeenCalledWith(
 			"track-1",
 			expect.objectContaining({ mediaId: "media-direct" }),
-			{ pushHistory: false, selectElement: false }
+			{
+				pushHistory: false,
+				selectElement: false,
+				onRejected: expect.any(Function),
+			}
 		);
 	});
 
@@ -1327,7 +1379,11 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 		).toHaveBeenCalledWith(
 			"track-1",
 			expect.objectContaining({ mediaId: "renderer-gen-1" }),
-			{ pushHistory: false, selectElement: false }
+			{
+				pushHistory: false,
+				selectElement: false,
+				onRejected: expect.any(Function),
+			}
 		);
 	});
 
@@ -1356,7 +1412,11 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 		).toHaveBeenCalledWith(
 			"track-2",
 			expect.objectContaining({ type: "text", content: "Hello World" }),
-			{ pushHistory: false, selectElement: false }
+			{
+				pushHistory: false,
+				selectElement: false,
+				onRejected: expect.any(Function),
+			}
 		);
 	});
 
@@ -1410,7 +1470,8 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 			storeMocks.timelineStoreState.addElementToTrack
 		).toHaveBeenCalledWith(
 			"track-3",
-			expect.objectContaining({ type: "adjustment", masks })
+			expect.objectContaining({ type: "adjustment", masks }),
+			{ onRejected: expect.any(Function) }
 		);
 	});
 

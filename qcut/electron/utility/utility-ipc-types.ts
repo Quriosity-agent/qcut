@@ -14,6 +14,8 @@ export interface UtilityMainRequestMessage {
 	id: string;
 	channel: string;
 	data: Record<string, unknown>;
+	/** Epoch ms after which the utility process has stopped waiting. */
+	deadline?: number;
 }
 
 export interface UtilityPtyDataMessage {

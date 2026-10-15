@@ -132,12 +132,18 @@ export function parseSessionLine(
 
 	// Build a minimal options object by parsing known flags
 	const parsed = parseSessionArgs(argTokens);
+	if (parsed.missingValues.length > 0) {
+		throw new Error(
+			`Missing value for ${parsed.missingValues.join(", ")} in "${command}"`
+		);
+	}
 
 	return {
 		command,
 		outputDir: baseOptions.outputDir ?? "./output",
 		saveIntermediates: false,
 		json: baseOptions.json ?? false,
+		flat: baseOptions.flat,
 		verbose: baseOptions.verbose ?? false,
 		quiet: baseOptions.quiet ?? false,
 		// Carry over host/port/token/performance flags from base options
@@ -153,7 +159,7 @@ export function parseSessionLine(
 		panel: baseOptions.panel,
 		tab: baseOptions.tab,
 		session: baseOptions.session,
-		...parsed,
+		...parsed.options,
 	};
 }
 
@@ -199,130 +205,143 @@ function tokenize(input: string): string[] {
 
 /**
  * Parse session-mode arguments into a partial CLIRunOptions.
- * Does not call process.exit on errors.
+ * Does not call process.exit on errors. Parsing is lenient, so a string flag
+ * given no value comes back as `true`; those flags are reported instead of
+ * running the command with a value it never got.
  */
-function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
+function parseSessionArgs(args: string[]): {
+	options: Partial<CLIRunOptions>;
+	missingValues: string[];
+} {
 	try {
-		const { values } = parseArgs({
-			args,
-			options: {
-				model: { type: "string", short: "m" },
-				text: { type: "string", short: "t" },
-				"image-url": { type: "string" },
-				"video-url": { type: "string" },
-				"audio-url": { type: "string" },
-				"reference-images": { type: "string", multiple: true },
-				"keyframe-images": { type: "string", multiple: true },
-				"keyframe-indexes": { type: "string", multiple: true },
-				"output-dir": { type: "string", short: "o" },
-				host: { type: "string" },
-				port: { type: "string" },
-				policy: { type: "string" },
-				resume: { type: "string" },
-				"state-dir": { type: "string" },
-				"session-name": { type: "string" },
-				before: { type: "string" },
-				after: { type: "string" },
-				threshold: { type: "string" },
-				duration: { type: "string", short: "d" },
-				"aspect-ratio": { type: "string" },
-				ratio: { type: "string" },
-				aspect: { type: "string" },
-				resolution: { type: "string" },
-				"project-id": { type: "string" },
-				"media-id": { type: "string" },
-				"element-id": { type: "string" },
-				"job-id": { type: "string" },
-				source: { type: "string" },
-				"source-id": { type: "string" },
-				"capture-mode": { type: "string" },
-				"recording-quality": { type: "string" },
-				data: { type: "string" },
-				items: { type: "string" },
-				sources: { type: "string" },
-				elements: { type: "string" },
-				time: { type: "string" },
-				"new-name": { type: "string" },
-				name: { type: "string" },
-				open: { type: "boolean", default: false },
-				"wait-ready": { type: "boolean", default: false },
-				"timeout-ms": { type: "string" },
-				filename: { type: "string" },
-				panel: { type: "string" },
-				tab: { type: "string" },
-				url: { type: "string" },
-				count: { type: "string" },
-				prompts: { type: "string", multiple: true },
-				value: { type: "string" },
-				checked: { type: "boolean" },
-				"no-checked": { type: "boolean", default: false },
-				ref: { type: "string" },
-				target: { type: "string" },
-				from: { type: "string" },
-				to: { type: "string" },
-				"from-ref": { type: "string" },
-				"to-ref": { type: "string" },
-				"from-x": { type: "string" },
-				"from-y": { type: "string" },
-				"to-x": { type: "string" },
-				"to-y": { type: "string" },
-				"normalized-x": { type: "string" },
-				"normalized-y": { type: "string" },
-				"from-normalized-x": { type: "string" },
-				"from-normalized-y": { type: "string" },
-				"to-normalized-x": { type: "string" },
-				"to-normalized-y": { type: "string" },
-				"to-time": { type: "string" },
-				speed: { type: "string" },
-				"skip-idle": { type: "boolean", default: false },
-				"wait-for": { type: "string" },
-				"event-track": { type: "string" },
-				plan: { type: "string" },
-				"delta-x": { type: "string" },
-				"delta-y": { type: "string" },
-				// pointer, keyboard, and sequence options
-				foreground: { type: "boolean", default: false },
-				keys: { type: "string" },
-				actions: { type: "string" },
-				record: { type: "string" },
-				"to-index": { type: "string" },
-				via: { type: "string" },
-				"hold-ms": { type: "string" },
-				"duration-ms": { type: "string" },
-				steps: { type: "string" },
-				"release-delay-ms": { type: "string" },
-				"interval-ms": { type: "string" },
-				verify: { type: "boolean" },
-				"no-verify": { type: "boolean", default: false },
-				dnd: { type: "string" },
-				"drag-start-timeout-ms": { type: "string" },
-				modifiers: { type: "string" },
-				button: { type: "string" },
-				"click-count": { type: "string" },
-				"key-events": { type: "boolean", default: false },
-				files: { type: "string" },
-				"seek-mode": { type: "string" },
-				"window-id": { type: "string" },
-				force: { type: "boolean", default: false },
-				discard: { type: "boolean", default: false },
-				replace: { type: "boolean", default: false },
-				poll: { type: "boolean", default: false },
-				json: { type: "boolean", default: false },
-				"negative-prompt": { type: "string" },
-				"voice-id": { type: "string" },
-				// sticker options
-				x: { type: "string" },
-				y: { type: "string" },
-				opacity: { type: "string" },
-				rotation: { type: "string" },
-				"sticker-id": { type: "string" },
-				"start-time": { type: "string" },
-				"end-time": { type: "string" },
-				width: { type: "string" },
-				height: { type: "string" },
-			},
-			strict: false,
-		});
+		const options = {
+			model: { type: "string", short: "m" },
+			text: { type: "string", short: "t" },
+			"image-url": { type: "string" },
+			"video-url": { type: "string" },
+			"audio-url": { type: "string" },
+			"reference-images": { type: "string", multiple: true },
+			"keyframe-images": { type: "string", multiple: true },
+			"keyframe-indexes": { type: "string", multiple: true },
+			"output-dir": { type: "string", short: "o" },
+			host: { type: "string" },
+			port: { type: "string" },
+			policy: { type: "string" },
+			resume: { type: "string" },
+			"state-dir": { type: "string" },
+			"session-name": { type: "string" },
+			before: { type: "string" },
+			after: { type: "string" },
+			threshold: { type: "string" },
+			duration: { type: "string", short: "d" },
+			"aspect-ratio": { type: "string" },
+			ratio: { type: "string" },
+			aspect: { type: "string" },
+			resolution: { type: "string" },
+			"project-id": { type: "string" },
+			"media-id": { type: "string" },
+			"element-id": { type: "string" },
+			"job-id": { type: "string" },
+			source: { type: "string" },
+			"source-id": { type: "string" },
+			"capture-mode": { type: "string" },
+			"recording-quality": { type: "string" },
+			data: { type: "string" },
+			items: { type: "string" },
+			sources: { type: "string" },
+			"append-to-track": { type: "string" },
+			"match-media": { type: "string" },
+			elements: { type: "string" },
+			time: { type: "string" },
+			"new-name": { type: "string" },
+			name: { type: "string" },
+			open: { type: "boolean", default: false },
+			"wait-ready": { type: "boolean", default: false },
+			"timeout-ms": { type: "string" },
+			filename: { type: "string" },
+			panel: { type: "string" },
+			tab: { type: "string" },
+			url: { type: "string" },
+			count: { type: "string" },
+			prompts: { type: "string", multiple: true },
+			value: { type: "string" },
+			checked: { type: "boolean" },
+			"no-checked": { type: "boolean", default: false },
+			ref: { type: "string" },
+			target: { type: "string" },
+			from: { type: "string" },
+			to: { type: "string" },
+			"from-ref": { type: "string" },
+			"to-ref": { type: "string" },
+			"from-x": { type: "string" },
+			"from-y": { type: "string" },
+			"to-x": { type: "string" },
+			"to-y": { type: "string" },
+			"normalized-x": { type: "string" },
+			"normalized-y": { type: "string" },
+			"from-normalized-x": { type: "string" },
+			"from-normalized-y": { type: "string" },
+			"to-normalized-x": { type: "string" },
+			"to-normalized-y": { type: "string" },
+			"to-time": { type: "string" },
+			speed: { type: "string" },
+			"skip-idle": { type: "boolean", default: false },
+			"wait-for": { type: "string" },
+			"event-track": { type: "string" },
+			plan: { type: "string" },
+			"delta-x": { type: "string" },
+			"delta-y": { type: "string" },
+			// pointer, keyboard, and sequence options
+			foreground: { type: "boolean", default: false },
+			keys: { type: "string" },
+			actions: { type: "string" },
+			record: { type: "string" },
+			"to-index": { type: "string" },
+			via: { type: "string" },
+			"hold-ms": { type: "string" },
+			"duration-ms": { type: "string" },
+			steps: { type: "string" },
+			"release-delay-ms": { type: "string" },
+			"interval-ms": { type: "string" },
+			verify: { type: "boolean" },
+			"no-verify": { type: "boolean", default: false },
+			dnd: { type: "string" },
+			"drag-start-timeout-ms": { type: "string" },
+			modifiers: { type: "string" },
+			button: { type: "string" },
+			"click-count": { type: "string" },
+			"key-events": { type: "boolean", default: false },
+			files: { type: "string" },
+			"seek-mode": { type: "string" },
+			"window-id": { type: "string" },
+			force: { type: "boolean", default: false },
+			discard: { type: "boolean", default: false },
+			replace: { type: "boolean", default: false },
+			poll: { type: "boolean", default: false },
+			json: { type: "boolean", default: false },
+			flat: { type: "boolean", default: false },
+			"negative-prompt": { type: "string" },
+			"voice-id": { type: "string" },
+			// sticker options
+			x: { type: "string" },
+			y: { type: "string" },
+			opacity: { type: "string" },
+			rotation: { type: "string" },
+			"sticker-id": { type: "string" },
+			"start-time": { type: "string" },
+			"end-time": { type: "string" },
+			width: { type: "string" },
+			height: { type: "string" },
+			fps: { type: "string" },
+		} as const;
+		const { values } = parseArgs({ args, options, strict: false });
+		const missingValues = Object.entries(options)
+			.filter(([name, option]) => {
+				if (option.type !== "string") return false;
+				const value: unknown = values[name];
+				return Array.isArray(value) ? value.includes(true) : value === true;
+			})
+			.map(([name]) => `--${name}`);
 
 		const result: Partial<CLIRunOptions> = {};
 		if (values.model) result.model = values.model as string;
@@ -370,6 +389,10 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.data) result.data = values.data as string;
 		if (values.items) result.items = values.items as string;
 		if (values.sources) result.sources = values.sources as string;
+		if (values["append-to-track"])
+			result.appendToTrack = values["append-to-track"] as string;
+		if (values["match-media"])
+			result.matchMedia = values["match-media"] as string;
 		if (values.elements) result.elements = values.elements as string;
 		if (values["new-name"]) result.newName = values["new-name"] as string;
 		if (values.name) result.name = values.name as string;
@@ -466,10 +489,12 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.replace) result.replace = true;
 		if (values.poll) result.poll = true;
 		if (values.json) result.json = true;
+		if (values.flat) result.flat = true;
 		if (values.time) {
-			result.seekTime = Number.isNaN(parseFloat(values.time as string))
-				? undefined
-				: parseFloat(values.time as string);
+			// Text that is not a number passes through for the command to refuse.
+			result.seekTime =
+				parseFiniteSessionNumber({ value: values.time }) ??
+				(values.time as string);
 		}
 		if (values.count) {
 			result.count = Number.isNaN(parseInt(values.count as string, 10))
@@ -490,11 +515,12 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 			result.endTime = parseFloat(values["end-time"] as string);
 		if (values.width !== undefined) result.width = Number(values.width);
 		if (values.height !== undefined) result.height = Number(values.height);
+		if (values.fps !== undefined) result.fps = Number(values.fps);
 
-		return result;
+		return { options: result, missingValues };
 	} catch {
 		// If parsing fails, return empty — runner will report the error
-		return {};
+		return { options: {}, missingValues: [] };
 	}
 }
 
@@ -566,7 +592,23 @@ export async function runSession(
 	}
 
 	for await (const line of rl) {
-		const options = parseSessionLine(line, sessionBaseOptions);
+		let options: CLIRunOptions | null;
+		try {
+			options = parseSessionLine(line, sessionBaseOptions);
+		} catch (err) {
+			// A malformed line is reported and skipped, never run half-parsed.
+			const msg = err instanceof Error ? err.message : String(err);
+			if (output === "json") {
+				emitJsonResult(line.trim().split(/\s+/)[0] ?? "", {
+					success: false,
+					error: msg,
+				});
+			} else {
+				process.stderr.write(`Error: ${msg}\n`);
+			}
+			if (isInteractive) rl.prompt();
+			continue;
+		}
 		if (!options) {
 			// null means skip (comment/empty) or exit
 			const trimmed = line.trim();
@@ -625,9 +667,12 @@ export async function runSession(
 			}
 
 			if (output === "json") {
-				emitJsonResult(options.command, result, {
-					sessionDuration: (Date.now() - startTime) / 1000,
-				});
+				emitJsonResult(
+					options.command,
+					result,
+					{ sessionDuration: (Date.now() - startTime) / 1000 },
+					{ flat: options.flat }
+				);
 			} else if (result.success) {
 				if (result.outputPath) {
 					process.stderr.write(`Output: ${result.outputPath}\n`);

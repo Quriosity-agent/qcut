@@ -35,8 +35,11 @@ import {
 import {
 	CLI_VERSION,
 	findHelpParam,
+	isEditorArea,
+	listEditorAreas,
 	printCommandHelp,
 	printCommandHelpJson,
+	printEditorAreaHelp,
 	printGroupHelp,
 	printGroupHelpJson,
 	printHelp,
@@ -155,6 +158,32 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		process.exit(0);
 	}
 
+	// `editor timeline` / `editor:timeline` name an area, not a command: list
+	// its actions instead of calling the name unknown. Without --help the
+	// command is still incomplete, so it fails (as JSON under --json).
+	const editorArea = /^editor:([a-z0-9-]+)$/.exec(command)?.[1];
+	if (editorArea && !COMMANDS.includes(command) && isEditorArea(editorArea)) {
+		const askedForHelp = argv.includes("--help") || argv.includes("-h");
+		const json = argv.includes("--json");
+		if (askedForHelp) {
+			printEditorAreaHelp(editorArea, { json });
+			process.exit(0);
+		}
+		const message = `Missing action for "editor ${editorArea}". Run "qcut editor ${editorArea} --help" to list its actions.`;
+		if (json) {
+			jsonError(message, "cli:missing-action", {
+				area: editorArea,
+				actions:
+					listEditorAreas().find(({ area }) => area === editorArea)?.actions ??
+					[],
+			});
+		} else {
+			printEditorAreaHelp(editorArea);
+			console.error(message);
+		}
+		process.exit(2);
+	}
+
 	if (!COMMANDS.includes(command)) {
 		console.error(`Unknown command: ${command}`);
 		console.error("Run with --help for usage.");
@@ -214,6 +243,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			parallel: { type: "boolean", default: false },
 			"max-workers": { type: "string" },
 			json: { type: "boolean", default: false },
+			flat: { type: "boolean", default: false },
 			quiet: { type: "boolean", short: "q", default: false },
 			verbose: { type: "boolean", short: "v", default: false },
 			help: { type: "boolean", short: "h", default: false },
@@ -540,6 +570,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			prompts: { type: "string", multiple: true },
 			// batch import convenience
 			sources: { type: "string" },
+			"append-to-track": { type: "string" },
+			"match-media": { type: "string" },
 			// format alias (for editor:export --format)
 			format: { type: "string" },
 			// project-json flags
@@ -689,6 +721,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseInt(values["max-workers"] as string, 10)
 			: undefined,
 		json: (values.json as boolean) ?? false,
+		flat: (values.flat as boolean) ?? false,
 		verbose: (values.verbose as boolean) ?? false,
 		quiet: (values.quiet as boolean) ?? false,
 		category: values.category as string | undefined,
@@ -1013,10 +1046,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				? undefined
 				: parseFloat(values["split-time"] as string)
 			: undefined,
+		// Text that is not a number passes through for the command to refuse;
+		// parseFloat would read "15oops" as 15.
 		seekTime: values.time
-			? Number.isNaN(parseFloat(values.time as string))
-				? undefined
-				: parseFloat(values.time as string)
+			? (parseFiniteCliNumber({ value: values.time }) ??
+				(values.time as string))
 			: undefined,
 		startTime: values["start-time"]
 			? Number.isNaN(parseFloat(values["start-time"] as string))
@@ -1263,6 +1297,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		prompts: values.prompts as string[] | undefined,
 		// batch import convenience
 		sources: values.sources as string | undefined,
+		appendToTrack: values["append-to-track"] as string | undefined,
+		matchMedia: values["match-media"] as string | undefined,
 		format: values.format as string | undefined,
 		// novel example flag
 		example: (values.example as boolean) ?? false,
@@ -1323,6 +1359,7 @@ export async function main(
 			args: sessionArgv,
 			options: {
 				json: { type: "boolean", default: false },
+				flat: { type: "boolean", default: false },
 				quiet: { type: "boolean", short: "q", default: false },
 				verbose: { type: "boolean", short: "v", default: false },
 				"skip-health": { type: "boolean", default: false },
@@ -1341,6 +1378,7 @@ export async function main(
 		});
 		const baseOptions: Partial<CLIRunOptions> = {
 			json: sessionValues.json as boolean,
+			flat: sessionValues.flat as boolean,
 			quiet: sessionValues.quiet as boolean,
 			verbose: sessionValues.verbose as boolean,
 			skipHealth: sessionValues["skip-health"] as boolean,
@@ -1417,10 +1455,12 @@ export async function main(
 	debugStream.commandEnd(commandId, options.command, exitCode, durationMs);
 
 	if (options.json) {
-		emitJsonResult(options.command, result, {
-			command_id: commandId,
-			duration_ms: durationMs,
-		});
+		emitJsonResult(
+			options.command,
+			result,
+			{ command_id: commandId, duration_ms: durationMs },
+			{ flat: options.flat }
+		);
 		if (!result.success) {
 			// Let stdout drain when a failed result contains large partial data.
 			process.exitCode = 1;

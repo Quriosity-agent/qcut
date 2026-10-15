@@ -79,14 +79,26 @@ export interface JsonResultMeta {
 	[key: string]: unknown;
 }
 
-/** Shared helper to emit a CLIResult as a JSON envelope. */
+/**
+ * Shared helper to emit a CLIResult as a JSON envelope.
+ *
+ * The envelope nests the command's own payload two levels down
+ * (`.data.data`). `flat` prints that payload alone instead, for callers that
+ * only want one value; failures keep the full error envelope either way.
+ */
 export function emitJsonResult(
 	command: string,
 	result: CLIResult,
-	extra?: JsonResultMeta
+	extra?: JsonResultMeta,
+	options?: { flat?: boolean }
 ): void {
 	if (result.success) {
 		const { success: _, ...rest } = result;
+		if (options?.flat) {
+			const payload = rest.data !== undefined ? rest.data : rest;
+			process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+			return;
+		}
 		jsonOk(
 			{ schema_version: SCHEMA_VERSION, command, ...rest },
 			extra?.command_id,

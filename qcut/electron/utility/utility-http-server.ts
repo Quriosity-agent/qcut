@@ -400,6 +400,13 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor, {
+		/** Asks the main process whether the editor window is open. */
+		getWindowState: async () =>
+			(await withTimeout(
+				requestFromMain("window:state", {}),
+				2_000,
+				"Window state timed out"
+			)) as { hasWindow: boolean; count: number },
 		/** Runs deep health checks through the main-process bridge. */
 		runDeepHealthChecks: async () => {
 			const startedAt = Date.now();

@@ -220,8 +220,8 @@ and only animates the pointer (`method: "api-seek"`, `reason` says why,
 `animation.type: "display-only"`).
 
 `qcut editor --help` lists the editor areas (`track`, `timeline`, `pointer`, …)
-with their action counts; `qcut editor <area> <action> --help --json` gives the
-flags.
+with their action counts; `qcut editor <area> --help` lists all of one area's
+actions, and `qcut editor <area> <action> --help --json` gives the flags.
 
 Every pointer, keyboard, hit-test, drop-files, and ruler request targets the
 first window by default. `editor windows --json` lists the open windows;

@@ -390,7 +390,7 @@ describe("Timeline handlers", () => {
 	});
 
 	describe("move", () => {
-		it("requires to-track", async () => {
+		it("requires a target time, a target track, or both", async () => {
 			const result = await handleTimelineEditingCommand(
 				client,
 				makeOpts({
@@ -401,7 +401,71 @@ describe("Timeline handlers", () => {
 				noopProgress
 			);
 			expect(result.success).toBe(false);
-			expect(result.error).toContain("--to-track");
+			expect(result.error).toBe("Give --time, --to-track, or both");
+		});
+
+		it("rejects a seek --time that is not wholly a number", async () => {
+			const result = await handleTimelineEditingCommand(
+				client,
+				makeOpts({
+					command: "editor:timeline:seek",
+					projectId: "p1",
+					seekTime: "15oops",
+				} as Partial<CLIRunOptions>),
+				noopProgress
+			);
+			expect(result).toEqual({
+				success: false,
+				error: '--time must be a number of seconds, 0 or more (got "15oops")',
+			});
+		});
+
+		it("rejects a --time that is not wholly a number", async () => {
+			for (const seekTime of ["15oops", "-2", ""]) {
+				const result = await handleTimelineEditingCommand(
+					client,
+					makeOpts({
+						command: "editor:timeline:move",
+						projectId: "p1",
+						elementId: "e1",
+						seekTime,
+					} as Partial<CLIRunOptions>),
+					noopProgress
+				);
+				expect(result.success).toBe(false);
+				expect(result.error).toContain(
+					"--time must be a number of seconds, 0 or more"
+				);
+			}
+		});
+
+		it("moves along the current track with only --time", async () => {
+			let sentBody: unknown;
+			mockRoute("POST", "/api/claude/timeline/p1/elements/e1/move", {
+				success: true,
+				data: { moved: true },
+			});
+			const originalFetchMock = globalThis.fetch;
+			globalThis.fetch = async (input, init) => {
+				sentBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+				return originalFetchMock(input, init);
+			};
+			try {
+				const result = await handleTimelineEditingCommand(
+					client,
+					makeOpts({
+						command: "editor:timeline:move",
+						projectId: "p1",
+						elementId: "e1",
+						seekTime: "15",
+					} as Partial<CLIRunOptions>),
+					noopProgress
+				);
+				expect(result.success).toBe(true);
+				expect(sentBody).toEqual({ newStartTime: 15 });
+			} finally {
+				globalThis.fetch = originalFetchMock;
+			}
 		});
 
 		it("sends move request with correct path", async () => {

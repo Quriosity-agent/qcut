@@ -1,4 +1,5 @@
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
 import { validateElementTrackCompatibility } from "@/types/timeline";
 import type {
 	ClaudeBatchAddElementRequest,
@@ -21,6 +22,7 @@ import type {
 	ClaudeTimelineBridgeSharedUtils,
 } from "./claude-timeline-bridge";
 import { applyElementChanges } from "./claude-timeline-bridge-elements";
+import { resolveClaudePlacement } from "./claude-placement";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import {
 	assertTimelineProjectActive,
@@ -155,8 +157,16 @@ export function setupBatchHandlers({
 				const added: ClaudeBatchAddResponse["added"] = [];
 				let failedCount = 0;
 
-				for (const [index, element] of elements.entries()) {
+				const fps = useProjectStore.getState().activeProject?.fps ?? 30;
+				for (const [index, request] of elements.entries()) {
 					try {
+						// Shorthands resolve against the live tracks, so an element
+						// placed at "end" lands after the ones this batch just added.
+						const element = resolveClaudePlacement({
+							element: request,
+							tracks: useTimelineStore.getState().tracks,
+							fps,
+						});
 						const normalizedType = sharedUtils.normalizeClaudeElementType({
 							type: element.type,
 						});
@@ -181,11 +191,16 @@ export function setupBatchHandlers({
 						}
 
 						// Collision policy rides along verbatim; the store command is
-						// the single authority on what each mode does (QTL-002).
+						// the single authority on what each mode does (QTL-002), so it
+						// also supplies the reason when it refuses the add.
+						let rejection: string | undefined;
 						const addOptions = {
 							pushHistory: false,
 							selectElement: false,
 							...(element.collision ? { collision: element.collision } : {}),
+							onRejected: (reason: string) => {
+								rejection = reason;
+							},
 						};
 
 						if (
@@ -415,7 +430,7 @@ export function setupBatchHandlers({
 						}
 
 						if (!createdElementId) {
-							throw new Error("Failed to create timeline element");
+							throw new Error(rejection ?? "Failed to create timeline element");
 						}
 
 						added.push({

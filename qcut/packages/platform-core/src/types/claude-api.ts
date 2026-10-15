@@ -181,7 +181,12 @@ export interface PlatformClaudeTransactionAPI {
 
 export interface PlatformClaudeProjectAPI {
 	getSettings(projectId: string): Promise<unknown>;
-	updateSettings(projectId: string, settings: unknown): Promise<unknown>;
+	/** `broadcast: false` writes project.qcut without echoing to the editor. */
+	updateSettings(
+		projectId: string,
+		settings: unknown,
+		options?: { broadcast?: boolean }
+	): Promise<unknown>;
 	getStats(projectId: string): Promise<unknown>;
 	onStatsRequest(
 		callback: (projectId: string, requestId: string) => void

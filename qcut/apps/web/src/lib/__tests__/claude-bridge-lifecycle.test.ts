@@ -71,6 +71,17 @@ describe("setupClaudeBridgeLifecycle", () => {
 		expect(cleanupQCutJianyingProjectExportBridge).toHaveBeenCalledTimes(1);
 	});
 
+	it("tells the main process when the editor API is listening", () => {
+		const flag = () =>
+			(window as unknown as { __qcutClaudeBridgeReady?: boolean })
+				.__qcutClaudeBridgeReady;
+		const cleanup = setupClaudeBridgeLifecycle();
+		expect(flag()).toBe(true);
+
+		cleanup();
+		expect(flag()).toBe(false);
+	});
+
 	it("continues setup when timeline bridge setup throws", () => {
 		const setupError = new Error("timeline setup failed");
 		vi.mocked(setupClaudeTimelineBridge).mockImplementationOnce(() => {

@@ -110,6 +110,22 @@ describe("Project Creation", () => {
 		});
 	}, 10_000); // Set test timeout to 10 seconds
 
+	it("keeps a size chosen at creation apart from the untouched default", async () => {
+		const store = useProjectStore.getState();
+
+		await store.createNewProject("Default size");
+		expect(useProjectStore.getState().activeProject?.canvasMode).toBe("preset");
+
+		await store.createNewProject("Portrait template", {
+			canvasSize: { width: 1080, height: 1920 },
+		});
+		expect(useProjectStore.getState().activeProject).toMatchObject({
+			canvasSize: { width: 1080, height: 1920 },
+			// The first clip fits only a "preset" canvas, so this size stays.
+			canvasMode: "custom",
+		});
+	});
+
 	it("loads project from storage", async () => {
 		const mockProject = TestDataFactory.createProject({
 			id: "test-project-id",

@@ -10,6 +10,10 @@
  * loading counts as not open: saving before its timeline loads would store
  * the cleared timeline.
  *
+ * The other direction matters too: changes made inside the editor are
+ * mirrored into the open project's `project.qcut`, so the CLI reads the
+ * canvas and frame rate the editor actually renders.
+ *
  * @module lib/claude-bridge/claude-project-settings-bridge
  */
 
@@ -77,6 +81,78 @@ export function mergeProjectSettings({
  */
 const pendingByProject = new Map<string, ClaudeProjectSettingsUpdate>();
 let unsubscribeProjectStore: (() => void) | null = null;
+/** What project.qcut is known to hold, so unchanged state is not rewritten. */
+let lastMirroredSettings: string | null = null;
+
+interface MirrorWrite {
+	projectApi: PlatformClaudeProjectAPI;
+	projectId: string;
+	settings: ClaudeProjectSettingsUpdate;
+	key: string;
+}
+
+/** The newest state, waiting for the write in flight to finish. */
+let queuedMirror: MirrorWrite | null = null;
+let mirrorInFlight = false;
+
+/**
+ * Writes one state at a time, always the newest. Overlapping writes could
+ * finish out of order and leave an older canvas in project.qcut. A state
+ * counts as mirrored only once its write succeeds, so a failed write is tried
+ * again on the next store change.
+ */
+async function drainMirrorQueue(): Promise<void> {
+	mirrorInFlight = true;
+	try {
+		while (queuedMirror) {
+			const next = queuedMirror;
+			queuedMirror = null;
+			if (next.key === lastMirroredSettings) continue;
+			try {
+				await next.projectApi.updateSettings(next.projectId, next.settings, {
+					broadcast: false,
+				});
+				lastMirroredSettings = next.key;
+			} catch (error) {
+				console.error("[ClaudeProjectSettingsBridge] Mirror failed:", error);
+			}
+		}
+	} finally {
+		mirrorInFlight = false;
+	}
+}
+
+/**
+ * Writes the open project's canvas, frame rate and background into its
+ * project.qcut whenever they change in the editor (the canvas picker, the
+ * first clip fitting the canvas). `editor:project:settings` and project.json
+ * read that file, so without this they report a size the editor no longer
+ * renders. `broadcast: false` keeps the write from echoing back here.
+ */
+function mirrorOpenProjectSettings({
+	projectApi,
+	project,
+	loadedProjectId,
+}: {
+	projectApi: PlatformClaudeProjectAPI;
+	project: TProject | null;
+	loadedProjectId: string | null;
+}): void {
+	if (!project || loadedProjectId !== project.id) return;
+	if (typeof projectApi.updateSettings !== "function") return;
+	const settings = {
+		width: project.canvasSize.width,
+		height: project.canvasSize.height,
+		...(project.fps ? { fps: project.fps } : {}),
+		backgroundColor: project.backgroundColor,
+	};
+	const key = JSON.stringify([project.id, settings]);
+	// While a write is in flight even a known state is queued: it may need to
+	// overwrite what that write is putting there.
+	if (!mirrorInFlight && key === lastMirroredSettings) return;
+	queuedMirror = { projectApi, projectId: project.id, settings, key };
+	if (!mirrorInFlight) void drainMirrorQueue();
+}
 
 async function applyToActiveProject({
 	settings,
@@ -130,8 +206,14 @@ export function setupClaudeProjectSettingsBridge(): void {
 	}
 	if (!projectApi?.onUpdated) return;
 
+	const api = projectApi;
 	unsubscribeProjectStore?.();
 	unsubscribeProjectStore = useProjectStore.subscribe((state) => {
+		mirrorOpenProjectSettings({
+			projectApi: api,
+			project: state.activeProject,
+			loadedProjectId: state.loadedProjectId,
+		});
 		const projectId = state.loadedProjectId;
 		const settings = projectId ? pendingByProject.get(projectId) : undefined;
 		if (!projectId || !settings) return;
@@ -157,4 +239,6 @@ export function cleanupClaudeProjectSettingsBridge(): void {
 	unsubscribeProjectStore?.();
 	unsubscribeProjectStore = null;
 	pendingByProject.clear();
+	lastMirroredSettings = null;
+	queuedMirror = null;
 }
