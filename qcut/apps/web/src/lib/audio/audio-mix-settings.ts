@@ -9,6 +9,8 @@ import type {
 	TimelineTrackAudioSettings,
 } from "@/types/timeline";
 
+import { normalizeAutomation } from "./audio-mix-automation";
+
 export const MASTER_AUDIO_BUS_ID = "master";
 
 const DEFAULT_EQ_BANDS: AudioParametricEqualizerSettings["bands"] = [
@@ -215,7 +217,9 @@ export function normalizeTrackAudioSettings({
 	audio?: Partial<TimelineTrackAudioSettings>;
 }): TimelineTrackAudioSettings {
 	const defaults = createDefaultTrackAudioSettings();
+	const automation = normalizeAutomation(audio?.automation);
 	return {
+		...(automation ? { automation } : {}),
 		gainDb: clamp({ value: audio?.gainDb ?? 0, min: -60, max: 12 }),
 		pan: clamp({ value: audio?.pan ?? 0, min: -1, max: 1 }),
 		solo: audio?.solo === true,
@@ -254,7 +258,9 @@ function normalizeAudioMixBus({
 	bus?: Partial<AudioMixBusSettings>;
 	fallback: AudioMixBusSettings;
 }): AudioMixBusSettings {
+	const automation = normalizeAutomation(bus?.automation);
 	return {
+		...(automation ? { automation } : {}),
 		id: bus?.id?.trim() || fallback.id,
 		name: bus?.name?.trim() || fallback.name,
 		gainDb: clamp({ value: bus?.gainDb ?? 0, min: -60, max: 12 }),
