@@ -183,6 +183,33 @@ describe("export audio mix", () => {
 		);
 	});
 
+	it("ends a mix that silences everything in silence, not the raw input", () => {
+		const files = [file("a", low), file("b", high)];
+		const allMuted = mix({
+			tracks: [
+				track({ trackId: "a", muted: true }),
+				track({ trackId: "b", muted: true }),
+			],
+		});
+		const graph = buildTimelineAudioFilters({
+			audioFiles: files,
+			audioStartIndex: 0,
+			fps: 30,
+			audioMixConfig: allMuted,
+		});
+		expect(graph.mapAudio).toBe("[a_mix]");
+		expect(render({ files, config: allMuted })).toBeLessThan(-85);
+
+		const busMuted = mix({
+			buses: [bus({ id: "sfx", muted: true })],
+			tracks: [
+				track({ trackId: "a", busId: "sfx" }),
+				track({ trackId: "b", busId: "sfx" }),
+			],
+		});
+		expect(render({ files, config: busMuted })).toBeLessThan(-85);
+	});
+
 	it("applies track gain", () => {
 		const base = render({ files: [file("a", low)] });
 		const quieter = render({
@@ -240,6 +267,60 @@ describe("export audio mix", () => {
 		});
 		expect(left).toBeLessThan(-60);
 		expect(right).toBeGreaterThan(-30);
+	});
+
+	it("follows a level curve in dB, holding before and after it", () => {
+		const files = [file("a", low)];
+		const base = render({ files, window: [0.2, 0.9] });
+		const config = mix({
+			tracks: [
+				track({
+					trackId: "a",
+					automation: {
+						gainDb: [
+							{ time: 1, value: 0 },
+							{ time: 2, value: -12 },
+						],
+					},
+				}),
+			],
+		});
+		expect(render({ files, config, window: [0.2, 0.9] }) - base).toBeCloseTo(
+			0,
+			0
+		);
+		// Halfway along a straight line in dB.
+		expect(render({ files, config, window: [1.45, 1.55] }) - base).toBeCloseTo(
+			-6,
+			0
+		);
+		expect(render({ files, config, window: [2.5, 3.5] }) - base).toBeCloseTo(
+			-12,
+			0
+		);
+	});
+
+	it("follows a pan curve from left to right", () => {
+		const config = mix({
+			tracks: [
+				track({
+					trackId: "a",
+					automation: {
+						pan: [
+							{ time: 1, value: -1 },
+							{ time: 2, value: 1 },
+						],
+					},
+				}),
+			],
+		});
+		const files = [file("a", low)];
+		const channel = (index: number, window: [number, number]) =>
+			render({ files, config, measure: `pan=mono|c0=c${index}`, window });
+		expect(channel(1, [0.2, 0.9])).toBeLessThan(-60);
+		expect(channel(0, [0.2, 0.9])).toBeGreaterThan(-30);
+		expect(channel(0, [2.5, 3.5])).toBeLessThan(-60);
+		expect(channel(1, [2.5, 3.5])).toBeGreaterThan(-30);
 	});
 
 	it("ducks a track by the set depth only while its source sounds", () => {
