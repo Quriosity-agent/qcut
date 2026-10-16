@@ -46,13 +46,34 @@ strip, and the track's right-click menu sets it too. `timeline export` and
 
 | Command | Required | Key options | What it does |
 | --- | --- | --- | --- |
-| `editor element patch` | `--element-id --set` | `--project-id` | Patch any timeline element fields (`--set '{"opacity":0.5}'` or `--set @patch.json`) |
+| `editor element patch` | `--element-id --set` | `--project-id` | Patch timeline element fields (`--set '{"colorLabel":"teal"}'` or `--set @patch.json`) |
+| `editor element color` | one of `--element-id`, `--element-ids`, `--track-id` + a control | `--exposure --brightness --contrast --highlights --shadows --whites --blacks --temperature --tint --saturation --vibrance --fade --vignette --sharpness --grain`, `--set`, `--reset` | Grade clips with the colour panel's basic controls, merged into each clip's grade |
+| `editor element filter` | one of `--element-id`, `--element-ids`, `--track-id` + `--resource-id` or `--clear` | `--intensity`, `--append` | Apply catalogue filters by resource id (the filter panel's LUT path), one undo step per call |
 | `editor timeline apply` | `--manifest` | `--project-id`, `--replace`, `--atomic`, `--verify` | Apply a complete timeline manifest atomically |
 
 ```bash
-qcut editor element patch --element-id <id> --set '{"name":"Intro"}' --project-id <id> --json
+qcut editor element patch --element-id <id> --set '{"color":{"basic":{"contrast":20,"saturation":-35}}}' --project-id <id> --json
+qcut editor element color --track-id <id> --contrast 15 --saturation -30 --temperature -20 --project-id <id> --json
+qcut editor element filter --element-id <id> --resource-id 7596691154008132915 --intensity 70 --project-id <id> --json
 qcut editor timeline apply --manifest @timeline.json --replace --atomic --verify --project-id <id> --json
 ```
+
+`element patch` on a clip takes timing (`startTime`, `duration`, `endTime`,
+`trimStart`, `trimEnd`), `colorLabel`, speed fields, `style.volume`, `audio`,
+`filterStack`, `portraitAdjustments`, `enhancements`, `keyframes`, and the
+grade: `color` (a partial `MediaColorSettings`, merged into the clip's current
+grade — `color.basic` holds the controls above) and `adjustments` (the eight
+legacy basic fields). A patch made only of fields the element cannot use is an
+error that names them; a patch that mixes supported and unsupported fields
+applies the former and returns the latter as `ignoredFields`. `timeline export`
+shows each clip's `color`, `adjustments`, resolved `colorSettings` and
+`filterStack`, so a grade can be read back.
+
+`element filter` resolves ids from `filter-lab catalog` (Jianying filters)
+first and `filter-lab catalog-independent` (QCut's own) second; the result
+lists each effect's `resourceId`, `version`, `implementation`, `fidelity` and
+any `warnings` (a safe-passthrough resolution is reported, not applied).
+`--append` keeps the clip's current effects; `--clear` removes them all.
 
 `timeline apply --replace` overwrites the whole timeline. Export the current
 timeline first (`editor timeline export`) so the change can be reverted.
