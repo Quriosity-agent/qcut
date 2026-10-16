@@ -6,11 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const real =
 	await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
 const rename = vi.fn(real.rename);
+const copyFile = vi.fn(real.copyFile);
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("node:fs/promises")>();
 	return {
 		...actual,
 		rename: (...args: Parameters<typeof actual.rename>) => rename(...args),
+		copyFile: (...args: Parameters<typeof actual.copyFile>) =>
+			copyFile(...args),
 	};
 });
 
@@ -22,6 +25,7 @@ describe("moveFile", () => {
 	beforeEach(async () => {
 		dir = await mkdtemp(path.join(tmpdir(), "qcut-move-"));
 		rename.mockImplementation(real.rename);
+		copyFile.mockImplementation(real.copyFile);
 	});
 	afterEach(() => rm(dir, { recursive: true, force: true }));
 
@@ -47,6 +51,26 @@ describe("moveFile", () => {
 		await moveFile({ from, to });
 		expect(await readFile(to, "utf8")).toBe("video on another disk");
 		await expect(stat(from)).rejects.toThrow();
+	});
+
+	it("removes a partial copy when the cross-device copy fails", async () => {
+		const from = path.join(dir, "export.mp4");
+		const to = path.join(dir, "video-before-audio-mix.mp4");
+		await writeFile(from, "video on another disk");
+		rename.mockImplementationOnce(async () => {
+			throw Object.assign(new Error("EXDEV: cross-device link not permitted"), {
+				code: "EXDEV",
+			});
+		});
+		copyFile.mockImplementationOnce(async (_source, destination) => {
+			await real.writeFile(destination, "video on");
+			throw Object.assign(new Error("ENOSPC: no space left on device"), {
+				code: "ENOSPC",
+			});
+		});
+		await expect(moveFile({ from, to })).rejects.toThrow("ENOSPC");
+		await expect(stat(to)).rejects.toThrow();
+		expect(await readFile(from, "utf8")).toBe("video on another disk");
 	});
 
 	it("passes other errors through", async () => {
