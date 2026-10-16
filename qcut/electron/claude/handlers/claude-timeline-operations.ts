@@ -30,6 +30,8 @@ import type {
 	ClaudeSelectionItem,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
 } from "../../types/claude-api";
 import type {
 	ClaudeAudioMixRequest,
@@ -158,6 +160,52 @@ export async function requestTimelineFromRenderer(
 /**
  * Request a split operation from the renderer and wait for the result
  */
+/** Detection plus splitting can take minutes for a whole track. */
+const SHOT_SPLIT_TIMEOUT_MS = 1_200_000;
+
+export async function requestShotSplitFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeShotSplitRequest,
+	correlationId?: string
+): Promise<ClaudeShotSplitResponse> {
+	return new Promise((resolve, reject) => {
+		let resolved = false;
+		const requestId = generateId("req");
+		const channel = "claude:timeline:shotSplit:response";
+
+		const timeout = setTimeout(() => {
+			if (resolved) return;
+			resolved = true;
+			ipcMain.removeListener(channel, handler);
+			reject(new Error("Timeout waiting for the shot split result"));
+		}, SHOT_SPLIT_TIMEOUT_MS);
+
+		const handler = (
+			_event: IpcMainEvent,
+			data: {
+				requestId: string;
+				result:
+					| { ok: true; response: ClaudeShotSplitResponse }
+					| { ok: false; error: string };
+			}
+		) => {
+			if (data.requestId !== requestId || resolved) return;
+			resolved = true;
+			clearTimeout(timeout);
+			ipcMain.removeListener(channel, handler);
+			if (data.result.ok) resolve(data.result.response);
+			else reject(new Error(data.result.error));
+		};
+
+		ipcMain.on(channel, handler);
+		win.webContents.send("claude:timeline:shotSplit", {
+			requestId,
+			correlationId,
+			request,
+		});
+	});
+}
+
 export async function requestSplitFromRenderer(
 	win: BrowserWindow,
 	elementId: string,
