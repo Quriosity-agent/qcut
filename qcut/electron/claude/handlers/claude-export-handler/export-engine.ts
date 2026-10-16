@@ -1942,6 +1942,15 @@ export async function executeExportJob({
 			);
 		}
 
+		if (abort.signal.aborted) {
+			// The cancel landed during a step that does not take the signal (GIF
+			// conversion, overlays, the probe); the job is already marked, the
+			// finished file must still go.
+			await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			claudeLog.info(HANDLER_NAME, `Export job ${jobId} stopped on request`);
+			return;
+		}
+
 		const outputStats = await fsPromises.stat(outputPath);
 		const duration = segments.reduce(
 			(sum, segment) => sum + segment.duration,
