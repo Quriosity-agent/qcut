@@ -47,16 +47,18 @@ function applyBasic(color: RgbColor, settings: MediaColorSettings): RgbColor {
 	const highlightWeight = initialLuma ** 2;
 	const blackWeight = (1 - initialLuma) ** 4;
 	const whiteWeight = initialLuma ** 4;
+	// Brightness scales like the preview's CSS `brightness()`; the tonal
+	// controls stay luma-weighted offsets.
+	const brightnessFactor = Math.max(0, 1 + basic.brightness / 100);
 	const tonalOffset =
-		basic.brightness / 100 +
 		(basic.shadows / 100) * shadowWeight * 0.35 +
 		(basic.highlights / 100) * highlightWeight * 0.35 +
 		(basic.blacks / 100) * blackWeight * 0.25 +
 		(basic.whites / 100) * whiteWeight * 0.25;
 	result = {
-		r: result.r + tonalOffset,
-		g: result.g + tonalOffset,
-		b: result.b + tonalOffset,
+		r: result.r * brightnessFactor + tonalOffset,
+		g: result.g * brightnessFactor + tonalOffset,
+		b: result.b * brightnessFactor + tonalOffset,
 	};
 	const temperature = basic.temperature / 100;
 	const tint = basic.tint / 100;
