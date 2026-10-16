@@ -50,6 +50,10 @@ import type {
 	ClaudeTrackOperationResponse,
 	ClaudeShotSplitRequest,
 	ClaudeShotSplitResponse,
+	ClaudeBeatsMarkRequest,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsRequest,
+	ClaudeSnapToBeatsResponse,
 } from "../../types/claude-api.js";
 import type {
 	EditorStateRequest,
@@ -187,6 +191,16 @@ export interface WindowAccessor {
 		request: ClaudeShotSplitRequest,
 		correlationId?: string
 	): Promise<ClaudeShotSplitResponse>;
+	/** Store a clip's beats in the editor's beat store (and bookmark them). */
+	requestBeatsMark?(
+		request: ClaudeBeatsMarkRequest,
+		correlationId?: string
+	): Promise<ClaudeBeatsMarkResponse>;
+	/** Move clips onto marked beats through the editor's own move. */
+	requestSnapToBeats?(
+		request: ClaudeSnapToBeatsRequest,
+		correlationId?: string
+	): Promise<ClaudeSnapToBeatsResponse>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<ProjectStats>;
 	/** Get the app version string */
