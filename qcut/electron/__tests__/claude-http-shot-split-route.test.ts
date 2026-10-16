@@ -68,6 +68,9 @@ describe("readShotSplitRequest", () => {
 			{ elementId: "e", engine: "jianying", threshold: 0.3 },
 			{ elementId: "e", engine: "onnx", threshold: 0.3 },
 			{ elementId: "e", cuts: [1], threshold: 0.3 },
+			// A dry run plans with the same engine, so the same rule applies.
+			{ elementId: "e", engine: "jianying", threshold: 0.2, dryRun: true },
+			{ elementId: "e", cuts: [3.333], threshold: 0.2, dryRun: true },
 		]) {
 			expect(status(body)).toBe(
 				"threshold is only supported by the FFmpeg scene engine"
