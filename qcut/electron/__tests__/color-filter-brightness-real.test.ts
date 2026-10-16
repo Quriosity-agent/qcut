@@ -79,6 +79,31 @@ describe.skipIf(!hasFfmpeg)(
 			).toBeLessThanOrEqual(4);
 		}, 60_000);
 
+		it("full desaturation is true grey, not green-grey", () => {
+			const filter = filterFor({ saturation: -100 });
+			const result = spawnSync(ffmpegPath, [
+				"-v",
+				"error",
+				"-f",
+				"lavfi",
+				"-i",
+				"color=c=0x4080c0:s=16x16:r=1:d=1,format=yuv420p",
+				"-vf",
+				`${filter},scale=1:1:flags=area`,
+				"-frames:v",
+				"1",
+				"-f",
+				"rawvideo",
+				"-pix_fmt",
+				"rgb24",
+				"-",
+			]);
+			expect(result.status, result.stderr?.toString()).toBe(0);
+			const [r, g, b] = result.stdout;
+			expect(Math.abs(r - g)).toBeLessThanOrEqual(1);
+			expect(Math.abs(g - b)).toBeLessThanOrEqual(1);
+		}, 60_000);
+
 		it("leaves black and a neutral grade alone", () => {
 			expect(
 				gradedGrey({ level: 0, filter: filterFor({ brightness: -30 }) })
