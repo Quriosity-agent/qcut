@@ -822,6 +822,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	"editor:export:list-jobs": ed("editor:export:list-jobs", "List export jobs", [
 		PID,
 	]),
+	"editor:export:cancel": ed(
+		"editor:export:cancel",
+		"Stop a running native export; its partial output is removed",
+		[PID, JID]
+	),
 
 	// ── Diagnostics & MCP ──
 	"editor:diagnostics:analyze": ed(
