@@ -64,7 +64,15 @@ qcut editor:export:start \
 ```bash
 qcut editor:export:status --project-id <id> --job-id <id>
 qcut editor:export:list-jobs --project-id <id>
+qcut editor:export:cancel --project-id <id> --job-id <id>   # stops a native export; partial output removed
 ```
+
+`--poll --json` keeps stdout to one JSON document, the final result; the
+`{"status":"pending","jobId":…}` line that announces the job goes to stderr,
+as does any progress. When a poll runs out of time the export goes on in
+QCut: `export status` follows it, `export cancel` stops it. A cancelled job
+ends with `status: "cancelled"` and no file at the output path. Exports that
+run in the editor window (the muxer engine) cannot be cancelled from the CLI.
 
 ---
 
