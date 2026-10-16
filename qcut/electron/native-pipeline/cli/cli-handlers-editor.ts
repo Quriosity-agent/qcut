@@ -26,6 +26,7 @@ import {
 } from "../editor/editor-handlers-media.js";
 import { handleTimelineEditingCommand } from "../editor/editor-handlers-timeline.js";
 import { handleAnalysisCommand } from "../editor/editor-handlers-analysis.js";
+import { handleCaptionsCommand } from "../editor/editor-handlers-captions.js";
 import { handleGenerateExportCommand } from "../editor/editor-handlers-generate.js";
 import { handleRemotionCommand } from "../editor/editor-handlers-remotion.js";
 import { handleStickerCommand } from "../editor/editor-handlers-sticker.js";
@@ -319,6 +320,9 @@ export async function handleEditorCommand(
 				case "analyze":
 				case "transcribe":
 					return await handleAnalysisCommand(client, options, onProgress);
+
+				case "captions":
+					return await handleCaptionsCommand(client, options);
 
 				case "generate":
 				case "export":
