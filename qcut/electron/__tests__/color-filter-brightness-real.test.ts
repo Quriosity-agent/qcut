@@ -104,6 +104,33 @@ describe.skipIf(!hasFfmpeg)(
 			expect(Math.abs(g - b)).toBeLessThanOrEqual(1);
 		}, 60_000);
 
+		it("temperature is a channel gain: cool lifts blue and lowers red", () => {
+			// The renderer grader's gains for −20: r×0.964, b×1.036 on (75,81,88).
+			const filter = filterFor({ temperature: -20 });
+			const result = spawnSync(ffmpegPath, [
+				"-v",
+				"error",
+				"-f",
+				"lavfi",
+				"-i",
+				"color=c=0x4b5158:s=16x16:r=1:d=1,format=yuv420p",
+				"-vf",
+				`${filter},scale=1:1:flags=area`,
+				"-frames:v",
+				"1",
+				"-f",
+				"rawvideo",
+				"-pix_fmt",
+				"rgb24",
+				"-",
+			]);
+			expect(result.status, result.stderr?.toString()).toBe(0);
+			const [r, g, b] = result.stdout;
+			expect(Math.abs(r - 72.3)).toBeLessThanOrEqual(3);
+			expect(Math.abs(g - 81)).toBeLessThanOrEqual(3);
+			expect(Math.abs(b - 91.2)).toBeLessThanOrEqual(3);
+		}, 60_000);
+
 		it("leaves black and a neutral grade alone", () => {
 			expect(
 				gradedGrey({ level: 0, filter: filterFor({ brightness: -30 }) })
