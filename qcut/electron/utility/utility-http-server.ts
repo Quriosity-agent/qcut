@@ -57,6 +57,8 @@ import type {
 	ClaudeRangeDeleteResponse,
 	AutoEditJob,
 	ClaudeShotSplitResponse,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsResponse,
 } from "../types/claude-api.js";
 import type { ClaudeAudioMixResponse } from "../types/claude-audio-mix-api.js";
 import {
@@ -284,6 +286,20 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				{ request, correlationId },
 				{ timeoutMs: 1_205_000 }
 			) as Promise<ClaudeShotSplitResponse>,
+		/** Stores a clip's beats in the editor and may bookmark them. */
+		requestBeatsMark: (request, correlationId) =>
+			requestFromMain(
+				"timeline:beats-mark",
+				{ request, correlationId },
+				{ timeoutMs: 125_000 }
+			) as Promise<ClaudeBeatsMarkResponse>,
+		/** Moves clips onto marked beats through the editor's own move. */
+		requestSnapToBeats: (request, correlationId) =>
+			requestFromMain(
+				"timeline:snap-to-beats",
+				{ request, correlationId },
+				{ timeoutMs: 35_000 }
+			) as Promise<ClaudeSnapToBeatsResponse>,
 		/** Fetches project stats through the bridge. */
 		getProjectStats: (projectId) =>
 			requestFromMain("get-project-stats", {
