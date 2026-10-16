@@ -170,8 +170,21 @@ export function createAudioMixEditorCommands({
 		"editor:mix:loudness": ed(
 			"editor:mix:loudness",
 			"Render the mix as an export would and measure integrated LUFS, loudest short-term and momentary LUFS, and true peak (a job: waits by default)",
-			[projectId, waitTimeout, pollInterval, noWait],
-			["qcut editor mix loudness --project-id <id> --json"]
+			[
+				projectId,
+				f(
+					"--engine",
+					"string",
+					"Which rendering to measure: native (default; the FFmpeg export, agrees with the exported file) or browser (the preview and the muxer engine)"
+				),
+				waitTimeout,
+				pollInterval,
+				noWait,
+			],
+			[
+				"qcut editor mix loudness --project-id <id> --json",
+				"qcut editor mix loudness --project-id <id> --engine browser --json",
+			]
 		),
 		"editor:mix:bus-automation": ed(
 			"editor:mix:bus-automation",
