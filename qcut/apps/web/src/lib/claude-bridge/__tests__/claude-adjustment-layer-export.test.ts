@@ -63,7 +63,7 @@ describe("adjustment layers in the export snapshot", () => {
 			}),
 			fps: 24,
 		});
-		const [layer] = track.elements as Array<
+		const [layer] = track.elements as unknown as Array<
 			Record<string, unknown> & {
 				colorSettings?: { enabled: boolean; basic: Record<string, unknown> };
 			}
@@ -90,7 +90,7 @@ describe("adjustment layers in the export snapshot", () => {
 			fps: 24,
 		});
 		expect(
-			(track.elements[0] as Record<string, unknown>).colorSettings
+			(track.elements[0] as unknown as Record<string, unknown>).colorSettings
 		).toBeUndefined();
 	});
 });
