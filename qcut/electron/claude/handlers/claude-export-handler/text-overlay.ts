@@ -2,8 +2,9 @@ import type {
 	ClaudeElement,
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
+import { claudeLog } from "../../utils/logger.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
-import type { TextOverlay } from "./types.js";
+import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
 // Electron's tsc root cannot import editor-core; mirror DEFAULT_SUBTITLE_STYLE.
 const NATIVE_CAPTION_DEFAULTS = {
@@ -199,6 +200,9 @@ function collectCaptionOverlay({
 		shadowOpacity: shadowOffsetX !== 0 || shadowOffsetY !== 0 ? 1 : 0,
 		shadowOffsetX,
 		shadowOffsetY,
+		glowColor: "#ffffff",
+		glowOpacity: 0,
+		glowBlur: 0,
 		positioning: "caption-anchor",
 		verticalAlign: verticalAlignValue({ value: position.align }),
 		marginV: numberValue({
@@ -342,6 +346,24 @@ function collectCanvasTextOverlay({
 			key: "shadowOffsetY",
 			fallback: 0,
 		}),
+		glowColor: stringValue({
+			element,
+			style,
+			key: "glowColor",
+			fallback: "#ffffff",
+		}),
+		glowOpacity: numberValue({
+			element,
+			style,
+			key: "glowOpacity",
+			fallback: 0,
+		}),
+		glowBlur: numberValue({
+			element,
+			style,
+			key: "glowBlur",
+			fallback: 0,
+		}),
 		positioning: "canvas-offset",
 		verticalAlign: "center",
 		marginV: 0,
@@ -431,6 +453,19 @@ function assColor(hex: string, opacity: number): string {
 	return `&H${alpha}${normalized.slice(4, 6)}${normalized.slice(2, 4)}${normalized.slice(0, 2)}`.toUpperCase();
 }
 
+/** Override tags that turn an event into the glow layer, or "" without a glow. */
+function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
+	if (overlay.glowOpacity <= 0 || overlay.glowBlur <= 0) return "";
+	const colour = assColor(
+		overlay.glowColor,
+		overlay.glowOpacity * overlay.opacity
+	);
+	const alpha = colour.slice(2, 4);
+	const bgr = colour.slice(4);
+	const border = (overlay.strokeWidth + overlay.glowBlur).toFixed(2);
+	return `\\1a&HFF&\\4a&HFF&\\3c&H${bgr}&\\3a&H${alpha}&\\bord${border}\\blur${overlay.glowBlur.toFixed(2)}`;
+}
+
 function assTime(seconds: number): string {
 	const safe = Math.max(0, seconds);
 	const hours = Math.floor(safe / 3600);
@@ -465,12 +500,67 @@ const CJK_PATTERN = /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/;
  * the style is the only reliable path, so CJK content overrides the
  * requested (Latin) family. Latin-only content keeps the element's font.
  */
-function assFontFamily(overlay: TextOverlay): string {
-	const requested = overlay.fontFamily.replace(/,/g, " ");
-	if (!CJK_PATTERN.test(overlay.content)) return requested;
+/**
+ * Families that carry CJK glyphs and that libass can open (PingFang is
+ * reserved by macOS and is deliberately absent). A request for one of these
+ * is honoured; anything else falls back to the platform default.
+ */
+const CJK_CAPABLE_FONT_FAMILIES = new Set(
+	[
+		"Songti SC",
+		"Songti TC",
+		"Kaiti SC",
+		"Kaiti TC",
+		"Heiti SC",
+		"Heiti TC",
+		"STSong",
+		"STKaiti",
+		"STHeiti",
+		"STFangsong",
+		"Yuanti SC",
+		"Wawati SC",
+		"Weibei SC",
+		"Xingkai SC",
+		"Hannotate SC",
+		"HanziPen SC",
+		"Baoli SC",
+		"Libian SC",
+		"LingWai SC",
+		"Lantinghei SC",
+		"Hiragino Sans GB",
+		"Hiragino Sans",
+		"Arial Unicode MS",
+		"Noto Sans CJK SC",
+		"Noto Sans CJK TC",
+		"Noto Sans CJK JP",
+		"Noto Serif CJK SC",
+		"Source Han Sans",
+		"Source Han Serif",
+		"Microsoft YaHei",
+		"SimHei",
+		"SimSun",
+		"FangSong",
+		"KaiTi",
+	].map((name) => name.toLowerCase())
+);
+
+/** The platform's CJK fallback when a requested family cannot render CJK. */
+export function assCjkFallbackFamily(): string {
 	if (process.platform === "darwin") return "Hiragino Sans GB";
 	if (process.platform === "win32") return "Microsoft YaHei";
 	return "Noto Sans CJK SC";
+}
+
+export function assFontFamily(overlay: TextOverlay): string {
+	const requested = overlay.fontFamily.replace(/,/g, " ").trim();
+	if (!CJK_PATTERN.test(overlay.content)) return requested;
+	if (CJK_CAPABLE_FONT_FAMILIES.has(requested.toLowerCase())) return requested;
+	const fallback = assCjkFallbackFamily();
+	claudeLog.warn(
+		HANDLER_NAME,
+		`Text overlay font "${requested}" has no CJK glyphs; exporting with ${fallback}`
+	);
+	return fallback;
 }
 
 function overlayAnchor({
@@ -581,8 +671,16 @@ export function buildTextAss({
 				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
 				: "";
 		const tags = `${motion}\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		const glow = assGlowTags({ overlay });
+		if (glow) {
+			// The glow is the same text on a lower layer: a blurred, wide border
+			// in the glow colour with the fill itself fully transparent.
+			events.push(
+				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}${glow}}${escapeAssText(overlay.content)}`
+			);
+		}
 		events.push(
-			`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}}${escapeAssText(overlay.content)}`
+			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}}${escapeAssText(overlay.content)}`
 		);
 	}
 
