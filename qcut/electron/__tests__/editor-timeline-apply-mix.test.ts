@@ -418,6 +418,34 @@ describe("timeline apply: track switches and the mix", () => {
 		expect(editor.state.buses.map((bus) => bus.id)).toEqual(["bgm"]);
 	});
 
+	it("aborts before any mixer write when the mix cannot be read", async () => {
+		const editor = makeEditor();
+		const liveGet = editor.get.getMockImplementation();
+		editor.get.mockImplementation(async (url: string) => {
+			if (url === "/api/claude/mix/project-1")
+				throw new Error("mix route down");
+			return liveGet?.(url);
+		});
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({
+				tracks: [{ alias: "music", type: "audio", name: "Music" }],
+				mix: { buses: [{ id: "bgm", name: "BGM" }], master: { gainDb: -1 } },
+			})
+		);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("mix route down");
+		expect(result.error).toContain("left untouched");
+		const mixWrites = [...editor.post.mock.calls, ...editor.patch.mock.calls]
+			.map(([url]) => String(url))
+			.filter((url) => url.startsWith("/api/claude/mix/"));
+		expect(mixWrites).toEqual([]);
+		expect(editor.post).toHaveBeenCalledWith(
+			"/api/claude/transaction/transaction-1/rollback",
+			expect.any(Object)
+		);
+	});
+
 	it("rolls back and puts the mix back when the mix read-back differs", async () => {
 		const editor = makeEditor({ masterIgnoresGain: true });
 		const result = await timelineApplyManifest(
