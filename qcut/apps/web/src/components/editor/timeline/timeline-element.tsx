@@ -4,7 +4,6 @@ import { useState } from "react";
 import { handleMediaProcessingError } from "@/lib/debug/error-handler";
 import { platform } from "@qcut/platform-core";
 import { assertRestrictedMediaExportAllowed } from "../../../../../../electron/types/restricted-media-export-policy";
-import type { SceneDetectionRequest } from "../../../../../../electron/types/claude-api";
 import { Button } from "../../ui/button";
 import {
 	MoreVertical,
@@ -109,11 +108,14 @@ import {
 	createDuplicatedTimelineElement,
 	useTimelineClipboardStore,
 } from "@/stores/timeline/timeline-clipboard-store";
+import { rollbackTimelineSceneSplits } from "./timeline-smart-split";
 import {
-	applyTimelineSceneSplits,
-	rollbackTimelineSceneSplits,
-	sceneTimelineSplitTimes,
-} from "./timeline-smart-split";
+	captureShotSplitSource,
+	runSmartShotSplit,
+	ShotSplitCancelledError,
+	type ShotSplitEngineChoice,
+	type ShotSplitSource,
+} from "@/lib/timeline/smart-shot-split";
 import { VideoClipContextMenu } from "./video-clip-context-menu";
 import { TimelineElementTaskBadge } from "./timeline-element-task-badge";
 import { TimelineSpeedKeyframeMarks } from "./timeline-speed-keyframe-marks";
@@ -167,123 +169,36 @@ function clipExportFilename({
 	return `${base || "clip"}-${secondsForCli({ value: start })}-${secondsForCli({ value: end })}.mp4`;
 }
 
-function captureShotSplitSource({
-	projectId,
-	trackId,
-	elementId,
-}: {
-	projectId: string;
-	trackId: string;
-	elementId: string;
-}) {
-	const project = useProjectStore.getState().activeProject;
-	const sourceTrack = useTimelineStore
-		.getState()
-		._tracks.find((item) => item.id === trackId);
-	const element = sourceTrack?.elements.find((item) => item.id === elementId);
-	const media =
-		element?.type === "media"
-			? useMediaStore
-					.getState()
-					.mediaItems.find((item) => item.id === element.mediaId)
-			: undefined;
-	if (
-		!project ||
-		project.id !== projectId ||
-		useProjectStore.getState().isLoading ||
-		!element ||
-		element.type !== "media" ||
-		sourceTrack?.locked ||
-		media?.type !== "video"
-	) {
-		throw new Error(
-			"Shot splitting needs an unlocked video clip in the active project"
-		);
-	}
-	const sourceElement = structuredClone(element);
-	const elementSnapshot = JSON.stringify(sourceElement);
-	const sceneId = useSceneStore.getState().currentScene?.id;
-	const sourceFile = media.file;
-	const sourceIdentity = JSON.stringify([
-		media.localPath,
-		media.url,
-		media.originalUrl,
-		media.importMetadata,
-	]);
-	const contextMatches = () => {
-		const current = useProjectStore.getState();
-		const currentMedia = useMediaStore
-			.getState()
-			.mediaItems.find((item) => item.id === media.id);
-		return (
-			!current.isLoading &&
-			current.activeProject?.id === projectId &&
-			current.activeProject.currentSceneId === project.currentSceneId &&
-			current.activeProject.fps === project.fps &&
-			useSceneStore.getState().currentScene?.id === sceneId &&
-			currentMedia?.type === "video" &&
-			currentMedia.file === sourceFile &&
-			JSON.stringify([
-				currentMedia.localPath,
-				currentMedia.url,
-				currentMedia.originalUrl,
-				currentMedia.importMetadata,
-			]) === sourceIdentity
-		);
-	};
-	const sourceMatches = () => {
-		const currentTrack = useTimelineStore
-			.getState()
-			._tracks.find((item) => item.id === trackId);
-		return (
-			contextMatches() &&
-			!currentTrack?.locked &&
-			JSON.stringify(
-				currentTrack?.elements.find((item) => item.id === elementId)
-			) === elementSnapshot
-		);
-	};
-	let stale = false;
-	const observe = () => {
-		stale ||= !sourceMatches();
-	};
-	// Latch invalidation even when a move, relink, or project switch is later undone.
-	const subscriptions = [
-		useTimelineStore.subscribe(observe),
-		useProjectStore.subscribe(observe),
-		useSceneStore.subscribe(observe),
-		useMediaStore.subscribe(observe),
-	];
-	return {
-		sourceElement,
-		mediaId: media.id,
-		fps: project.fps ?? 30,
-		contextMatches,
-		isCurrent: () => !stale && sourceMatches(),
-		dispose: () => {
-			for (const unsubscribe of subscriptions) unsubscribe();
-		},
-	};
-}
+const SHOT_SPLIT_ENGINE_LABELS: Record<ShotSplitEngineChoice, string> = {
+	auto: "自动",
+	jianying: "剪映模型",
+	onnx: "ONNX",
+	ffmpeg: "FFmpeg",
+};
 
+/**
+ * The menu's shot split: a task card with cancel/retry/undo around the shared
+ * `runSmartShotSplit`, which the editor API runs too.
+ */
 export async function runTimelineSmartShotSplit({
 	projectId,
 	trackId,
 	elementId,
-	engine = "ffmpeg",
+	engine = "auto",
 	existingTaskId,
 }: {
 	projectId: string;
 	trackId: string;
 	elementId: string;
-	engine?: SceneDetectionRequest["engine"];
+	engine?: ShotSplitEngineChoice;
 	existingTaskId?: string;
 }): Promise<void> {
 	const analyzeScenes = platform().claude?.analyze.scenes;
 	let taskId = existingTaskId;
-	let source: ReturnType<typeof captureShotSplitSource> | undefined;
+	let source: ShotSplitSource | undefined;
 	let toastId: string | number | undefined;
 	let canceled = false;
+	const engineLabel = SHOT_SPLIT_ENGINE_LABELS[engine];
 	try {
 		if (!analyzeScenes) throw new Error("智能镜头分割仅支持桌面版");
 		if (taskId) {
@@ -306,7 +221,7 @@ export async function runTimelineSmartShotSplit({
 		const snapshot = source;
 		taskId ??= useCloudTaskStore.getState().createTask({
 			kind: "scene-detection",
-			label: `镜头分割 (${engine === "onnx" ? "ONNX" : "FFmpeg"})：${source.sourceElement.name}`,
+			label: `镜头分割 (${engineLabel})：${source.sourceElement.name}`,
 			payload: {
 				projectId,
 				elementId,
@@ -349,54 +264,44 @@ export async function runTimelineSmartShotSplit({
 		});
 		useCloudTaskStore.getState().startTask({
 			id: taskId,
-			message: `正在检测镜头边界 (${engine === "onnx" ? "ONNX" : "FFmpeg"})`,
+			message: `正在检测镜头边界 (${engineLabel})`,
 		});
 		useCloudTaskStore.getState().updateProgress({ id: taskId, progress: 10 });
 		toastId = toast.loading("正在检测镜头边界...");
-		const result = await analyzeScenes(projectId, {
-			mediaId: source.mediaId,
+		const result = await runSmartShotSplit({
+			projectId,
+			trackId,
+			elementId,
 			engine,
-			aiAnalysis: false,
-			...(engine === "ffmpeg" ? { threshold: 0.3 } : {}),
+			source,
+			analyzeScenes,
+			isCanceled,
 		});
 		if (isCanceled()) {
 			toast.dismiss(toastId);
 			return;
 		}
-		if (result.engine !== engine)
-			throw new Error(
-				"Scene detection returned a different engine; timeline unchanged"
-			);
-		if (!source.isCurrent())
-			throw new Error(
-				"Clip, source media, or active project changed during detection; timeline unchanged"
-			);
 		source.dispose();
 		useCloudTaskStore
 			.getState()
 			.updateProgress({ id: taskId, progress: 70, message: "正在写入时间线" });
-		const splitTimes = sceneTimelineSplitTimes({
-			element: source.sourceElement,
-			scenes: result.scenes,
-			fps: source.fps,
-		});
-		const timeline = useTimelineStore.getState();
-		const createdIds = applyTimelineSceneSplits({
-			trackId,
-			elementId,
-			splitTimes,
-			pushHistory: timeline.pushHistory,
-			splitElement: timeline.splitElement,
-		});
+		const createdIds = result.createdElementIds;
 		const output = {
 			engine: result.engine,
+			requestedEngine: engine,
 			route: result.route,
+			fallbacks: result.fallbacks,
+			cuts: result.cuts,
+			skipped: result.skipped,
 			createdElementIds: createdIds,
 		};
+		const usedEngine = result.engine
+			? SHOT_SPLIT_ENGINE_LABELS[result.engine]
+			: engineLabel;
 		const message =
 			createdIds.length === 0
-				? "片段内未发现镜头边界"
-				: `已分成 ${createdIds.length + 1} 个镜头`;
+				? `片段内未发现镜头边界 (${usedEngine})`
+				: `已分成 ${createdIds.length + 1} 个镜头 (${usedEngine})`;
 		useCloudTaskStore.getState().completeTask({ id: taskId, message, output });
 		if (createdIds.length === 0) {
 			registerCloudTaskRuntimeActions({
@@ -466,6 +371,7 @@ export async function runTimelineSmartShotSplit({
 	} catch (error) {
 		if (
 			canceled ||
+			error instanceof ShotSplitCancelledError ||
 			useCloudTaskStore.getState().tasks.find((task) => task.id === taskId)
 				?.status === "canceled"
 		) {
@@ -1279,24 +1185,13 @@ function TimelineElementComponent({
 		input.click();
 	};
 
-	const handleSmartShotSplit = (e: React.MouseEvent) => {
-		e.stopPropagation();
+	const handleSmartShotSplit = (engine: ShotSplitEngineChoice) => {
 		if (!activeProject) return;
 		void runTimelineSmartShotSplit({
 			projectId: activeProject.id,
 			trackId: track.id,
 			elementId: element.id,
-			engine: "ffmpeg",
-		});
-	};
-
-	const handleOnnxShotSplit = () => {
-		if (!activeProject) return;
-		void runTimelineSmartShotSplit({
-			projectId: activeProject.id,
-			trackId: track.id,
-			elementId: element.id,
-			engine: "onnx",
+			engine,
 		});
 	};
 
@@ -2027,7 +1922,6 @@ function TimelineElementComponent({
 						keepLeft: handleSplitAndKeepLeftContext,
 						keepRight: handleSplitAndKeepRightContext,
 						smartShotSplit: handleSmartShotSplit,
-						onnxShotSplit: handleOnnxShotSplit,
 						openAiTextVideo: (e) => handleOpenAiPanel({ e, mode: "text" }),
 						openAiImageVideo: (e) => handleOpenAiPanel({ e, mode: "image" }),
 						openAiAudio: handleOpenAiAudio,
