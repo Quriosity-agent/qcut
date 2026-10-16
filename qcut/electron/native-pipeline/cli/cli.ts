@@ -307,6 +307,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"voice-id": { type: "string" },
 			directory: { type: "string" },
 			"dry-run": { type: "boolean", default: false },
+			"min-shot": { type: "string" },
+			"ai-analysis": { type: "boolean" },
 			recursive: { type: "boolean", default: false },
 			"include-output": { type: "boolean", default: false },
 			source: { type: "string" },
@@ -816,6 +818,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		voiceId: values["voice-id"] as string | undefined,
 		directory: values.directory as string | undefined,
 		dryRun: (values["dry-run"] as boolean) ?? false,
+		minShot:
+			values["min-shot"] !== undefined ? Number(values["min-shot"]) : undefined,
+		aiAnalysis: values["ai-analysis"] === true ? true : undefined,
 		recursive: (values.recursive as boolean) ?? false,
 		includeOutput: (values["include-output"] as boolean) ?? false,
 		source: values.source as string | undefined,
