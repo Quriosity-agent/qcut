@@ -83,7 +83,8 @@ export async function captionsImport(
 
 	const tracks: Array<{ trackId: string; cues: number }> = [];
 	let added = 0;
-	for (const lane of partitionCueLanes({ cues })) {
+	const lanes = partitionCueLanes({ cues });
+	for (const lane of lanes) {
 		const created = await client.post<{ trackId: string }>(
 			`/api/claude/timeline/${opts.projectId}/tracks`,
 			{ type: "captions" }
@@ -118,6 +119,13 @@ export async function captionsImport(
 			added,
 			tracks,
 			...(parsed.resolution ? { resolution: parsed.resolution } : {}),
+			...(lanes.length > 1
+				? {
+						warnings: [
+							`${cues.length - lanes[0].length} cue(s) overlap in time and went on ${lanes.length - 1} extra lane(s); overlapping captions stack upward on screen (preview and both exports). Stagger the cues or put them on one lane if that is not wanted.`,
+						],
+					}
+				: {}),
 		},
 	};
 }
