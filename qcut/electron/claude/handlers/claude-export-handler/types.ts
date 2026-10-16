@@ -156,6 +156,18 @@ export interface TextOverlay {
 	glowColor: string;
 	glowOpacity: number;
 	glowBlur: number;
+	/** Extra space after each character, in canvas pixels. */
+	letterSpacing: number;
+	/** Line height as a multiple of the font size (CSS line-height). */
+	lineHeight: number;
+	/**
+	 * canvas-offset only: the text box the preview wraps and aligns in,
+	 * centred on (x, y), with its inner padding and vertical alignment.
+	 */
+	boxWidth?: number;
+	boxHeight?: number;
+	boxPadding?: number;
+	boxVerticalAlign?: "top" | "middle" | "bottom";
 	positioning: "canvas-offset" | "caption-anchor";
 	verticalAlign: "top" | "center" | "bottom";
 	marginV: number;
