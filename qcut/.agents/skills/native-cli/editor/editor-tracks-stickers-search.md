@@ -58,7 +58,7 @@ qcut editor element filter --element-id <id> --resource-id 7596691154008132915 -
 qcut editor timeline apply --manifest @timeline.json --replace --atomic --verify --project-id <id> --json
 ```
 
-`element patch` on a clip takes timing (`startTime`, `duration`, `endTime`,
+`element patch` on a clip takes `name`, timing (`startTime`, `duration`, `endTime`,
 `trimStart`, `trimEnd`), `colorLabel`, speed fields, `style.volume`, `audio`,
 `filterStack`, `portraitAdjustments`, `enhancements`, `keyframes`, and the
 grade: `color` (a partial `MediaColorSettings`, merged into the clip's current
