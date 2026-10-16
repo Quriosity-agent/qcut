@@ -180,21 +180,30 @@ export async function requestShotSplitFromRenderer(
 			reject(new Error("Timeout waiting for the shot split result"));
 		}, SHOT_SPLIT_TIMEOUT_MS);
 
-		const handler = (
-			_event: IpcMainEvent,
-			data: {
-				requestId: string;
-				result:
-					| { ok: true; response: ClaudeShotSplitResponse }
-					| { ok: false; error: string };
+		const handler = (event: IpcMainEvent, data: unknown) => {
+			// Only the editor's main frame answers, and only with a well-formed
+			// result; anything else is ignored rather than thrown inside the
+			// listener, which would leave the promise waiting for the timeout.
+			if (
+				resolved ||
+				typeof data !== "object" ||
+				data === null ||
+				(data as { requestId?: unknown }).requestId !== requestId ||
+				event.sender !== win.webContents ||
+				event.senderFrame !== win.webContents.mainFrame
+			) {
+				return;
 			}
-		) => {
-			if (data.requestId !== requestId || resolved) return;
+			const result = (data as { result?: unknown }).result;
+			if (typeof result !== "object" || result === null) return;
 			resolved = true;
 			clearTimeout(timeout);
 			ipcMain.removeListener(channel, handler);
-			if (data.result.ok) resolve(data.result.response);
-			else reject(new Error(data.result.error));
+			const outcome = result as
+				| { ok: true; response: ClaudeShotSplitResponse }
+				| { ok: false; error: string };
+			if (outcome.ok) resolve(outcome.response);
+			else reject(new Error(String(outcome.error)));
 		};
 
 		ipcMain.on(channel, handler);
