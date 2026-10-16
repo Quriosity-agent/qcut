@@ -171,12 +171,12 @@ describe("unsupported patch fields", () => {
 		expect(
 			applyElementChanges({
 				elementId: "clip",
-				changes: { name: "Intro", wobble: 3 } as never,
+				changes: { wobble: 3, glow: true } as never,
 				pushHistory: false,
 			})
 		).toMatchObject({
 			applied: false,
-			error: "No supported field for a media element in: name, wobble",
+			error: "No supported field for a media element in: wobble, glow",
 		});
 		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
 	});
@@ -185,11 +185,16 @@ describe("unsupported patch fields", () => {
 		expect(
 			applyElementChanges({
 				elementId: "clip",
-				changes: { adjustments: { contrast: 10 }, name: "Intro" } as never,
+				changes: {
+					adjustments: { contrast: 10 },
+					name: "Intro",
+					wobble: 3,
+				} as never,
 				pushHistory: false,
 			})
-		).toEqual({ applied: true, ignoredFields: ["name"] });
+		).toEqual({ applied: true, ignoredFields: ["wobble"] });
 		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledTimes(1);
+		expect(lastMediaUpdate()).toMatchObject({ name: "Intro" });
 	});
 });
 
