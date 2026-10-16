@@ -39,4 +39,50 @@ describe("beat snapping", () => {
 		expect(plan).toMatchObject({ from: 9, to: 9, moved: 0, beat: null });
 		expect(plan.reason).toContain("no beat within 0.25 s");
 	});
+
+	it("puts a clip's onset on the beat and leaves a clip without one, saying why", () => {
+		const [withOnset, without] = planBeatSnaps({
+			elements: [
+				{
+					elementId: "a",
+					trackId: "t",
+					startTime: 1.4,
+					duration: 2,
+					offset: 0.3,
+				},
+				{ elementId: "b", trackId: "t", startTime: 1.4, duration: 2 },
+			],
+			beats,
+			edge: "onset",
+		});
+		// Onset at 1.7 → beat 1.5 → start 1.2.
+		expect(withOnset).toMatchObject({ to: 1.2, beat: 1.5, offset: 0.3 });
+		expect(withOnset.moved).toBeCloseTo(-0.2, 6);
+		expect(without).toMatchObject({ to: 1.4, moved: 0, beat: null });
+		expect(without.reason).toBe("no onset was found in the clip");
+	});
+
+	it("rounds the snapped start onto the frame grid only for clips that ask", () => {
+		const [aligned, exact] = planBeatSnaps({
+			elements: [
+				{
+					elementId: "video",
+					trackId: "t",
+					startTime: 1.4,
+					duration: 1,
+					alignToFrames: true,
+				},
+				{ elementId: "sound", trackId: "t", startTime: 1.4, duration: 1 },
+			],
+			beats: [1.513],
+			fps: 30,
+		});
+		// 1.513 × 30 = 45.39 → frame 45 → 1.5.
+		expect(aligned).toMatchObject({ to: 1.5, beat: 1.513, frameAligned: true });
+		expect(exact).toMatchObject({
+			to: 1.513,
+			beat: 1.513,
+			frameAligned: false,
+		});
+	});
 });
