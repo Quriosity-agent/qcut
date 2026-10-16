@@ -17,6 +17,7 @@ const VALID_PANELS = [
 	"media",
 	"text",
 	"audio",
+	"mixer",
 	"stickers",
 	"video-edit",
 	"effects",
