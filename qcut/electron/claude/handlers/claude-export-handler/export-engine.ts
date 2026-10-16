@@ -17,6 +17,7 @@ import { buildFFmpegArgs } from "../../../ffmpeg-args-builder.js";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
 import { buildExportSegmentEncodeArgs } from "./export-segment-encode.js";
+import { moveFile } from "./move-file.js";
 import { buildXfadeTransitionFilter } from "../../../ffmpeg/transition-filter.js";
 import type {
 	AudioFile,
@@ -1536,7 +1537,7 @@ export async function executeExportJob({
 
 			const concatOutputPath = path.join(tempDir, "concat-no-stickers.mp4");
 			// Move the concat output so we can use it as input for the overlay pass
-			await fsPromises.rename(videoOutputPath, concatOutputPath);
+			await moveFile({ from: videoOutputPath, to: concatOutputPath });
 
 			try {
 				const stickerPass = buildStickerOverlayPass({
@@ -1578,7 +1579,7 @@ export async function executeExportJob({
 					/* may not exist */
 				}
 				// Restore first so failed jobs never leave a partial output behind.
-				await fsPromises.rename(concatOutputPath, videoOutputPath);
+				await moveFile({ from: concatOutputPath, to: videoOutputPath });
 				throw new Error(
 					`Sticker overlay export failed: ${stickerError instanceof Error ? stickerError.message : String(stickerError)}`
 				);
@@ -1618,7 +1619,7 @@ export async function executeExportJob({
 				);
 			}
 			const sourcePath = path.join(tempDir, "video-before-jianying-text.mp4");
-			await fsPromises.rename(videoOutputPath, sourcePath);
+			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
 					args: buildTextRasterOverlayPassArgs({
@@ -1642,7 +1643,7 @@ export async function executeExportJob({
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {}
-				await fsPromises.rename(sourcePath, videoOutputPath);
+				await moveFile({ from: sourcePath, to: videoOutputPath });
 				throw new Error(
 					`Jianying text raster export failed: ${error instanceof Error ? error.message : String(error)}`
 				);
@@ -1674,7 +1675,7 @@ export async function executeExportJob({
 				}),
 				"utf8"
 			);
-			await fsPromises.rename(videoOutputPath, sourcePath);
+			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
 					args: [
@@ -1710,7 +1711,7 @@ export async function executeExportJob({
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {}
-				await fsPromises.rename(sourcePath, videoOutputPath);
+				await moveFile({ from: sourcePath, to: videoOutputPath });
 				throw new Error(
 					`Text overlay export failed: ${error instanceof Error ? error.message : String(error)}`
 				);
@@ -1727,7 +1728,7 @@ export async function executeExportJob({
 			);
 			updateJobProgress({ jobId, progress: 0.955 });
 			const sourcePath = path.join(tempDir, "video-before-audio-mix.mp4");
-			await fsPromises.rename(videoOutputPath, sourcePath);
+			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				const hasEmbeddedAudio = await probeHasAudioStream({
 					mediaPath: sourcePath,
@@ -1807,7 +1808,7 @@ export async function executeExportJob({
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {}
-				await fsPromises.rename(sourcePath, videoOutputPath);
+				await moveFile({ from: sourcePath, to: videoOutputPath });
 				throw new Error(
 					`Timeline audio mix failed: ${error instanceof Error ? error.message : String(error)}`
 				);
