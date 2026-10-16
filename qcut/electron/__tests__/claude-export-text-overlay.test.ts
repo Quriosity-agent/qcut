@@ -401,9 +401,9 @@ describe("native export text overlays", () => {
 		const captionEvent = ass
 			.split("\n")
 			.find((line) => line.startsWith("Dialogue:"));
-		// Bottom-centre alignment, pinned where the preview draws captions
-		// (28 px above the bottom edge) so two lanes overlap instead of libass
-		// stacking them; lines wrap inside the middle 80 %.
+		// Bottom-centre alignment, pinned where the preview draws captions:
+		// 28 px plus the half-leading above the bottom edge, wrapping inside
+		// the middle 80 %.
 		expect(captionStyle).toContain(",2,0,0,0,1");
 		const bottom =
 			1052 - halfLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
@@ -454,9 +454,87 @@ describe("native export text overlays", () => {
 		const style = ass.split("\n").find((line) => line.startsWith("Style:"));
 		const event = ass.split("\n").find((line) => line.startsWith("Dialogue:"));
 		expect(style).toContain(",100,100,3.00,0,3,2,1,7,0,0,0,1");
+		// Top-left: 36 px in from the left, 28 px plus the half-leading down
+		// from the top, wrapping inside the middle 80 %.
 		const top =
 			28 + halfLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
 		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q1`);
+	});
+
+	it("stacks a caption above an earlier one that shares its edge and time", () => {
+		const timeline: ClaudeTimeline = {
+			name: "Caption stack",
+			duration: 4,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "lane-2",
+					index: 0,
+					name: "字幕 2",
+					type: "captions",
+					elements: [
+						{
+							id: "second",
+							trackIndex: 0,
+							startTime: 1,
+							endTime: 2.4,
+							duration: 1.4,
+							type: "captions",
+							content: "第二句",
+							language: "zh",
+						},
+					],
+				},
+				{
+					id: "lane-1",
+					index: 1,
+					name: "字幕 1",
+					type: "captions",
+					elements: [
+						{
+							id: "first",
+							trackIndex: 1,
+							startTime: 0.5,
+							endTime: 2.6,
+							duration: 2.1,
+							type: "captions",
+							content: "第一句",
+							language: "zh",
+						},
+						{
+							id: "later",
+							trackIndex: 1,
+							startTime: 3,
+							endTime: 4,
+							duration: 1,
+							type: "captions",
+							content: "之后",
+							language: "zh",
+						},
+					],
+				},
+			],
+		};
+		const ass = buildTextAss({
+			overlays: collectTextOverlays(timeline),
+			width: 1280,
+			height: 720,
+		});
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		const yOf = (text: string) =>
+			Number(
+				events
+					.find((line) => line.endsWith(text))
+					?.match(/\\pos\(640\.00,([0-9.]+)\)/)?.[1]
+			);
+		// The first keeps the edge; the second sits one block (48 × 1.4 + 16 =
+		// 83.2 px) above it; the later one, alone, is back at the edge.
+		expect(yOf("第一句") - yOf("第二句")).toBeCloseTo(83.2, 1);
+		expect(yOf("之后")).toBe(yOf("第一句"));
 	});
 
 	it("substitutes an openable CJK family for CJK content", () => {
