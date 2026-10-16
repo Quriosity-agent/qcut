@@ -499,6 +499,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			checked: { type: "boolean" },
 			"no-checked": { type: "boolean", default: false },
 			replace: { type: "boolean", default: false },
+			lock: { type: "boolean", default: false },
+			unlock: { type: "boolean", default: false },
+			hide: { type: "boolean", default: false },
+			unhide: { type: "boolean", default: false },
 			ripple: { type: "boolean", default: false },
 			"no-ripple": { type: "boolean", default: false },
 			// editor captions import
@@ -1210,6 +1214,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			? false
 			: (values.checked as boolean | undefined),
 		replace: (values.replace as boolean) ?? false,
+		lock: (values.lock as boolean) ?? false,
+		unlock: (values.unlock as boolean) ?? false,
+		hide: (values.hide as boolean) ?? false,
+		unhide: (values.unhide as boolean) ?? false,
 		ripple: (values.ripple as boolean) ?? false,
 		noRipple: (values["no-ripple"] as boolean) ?? false,
 		...Object.fromEntries(
