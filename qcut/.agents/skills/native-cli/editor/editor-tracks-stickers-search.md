@@ -174,7 +174,7 @@ Video export is `editor export start`; see
 | `editor transition-lab apply` | `--preset --track-id --from-element-id --to-element-id` | `--project-id`, `--duration` | Apply a recipe between adjacent clips |
 | `editor analyze beats` | `--project-id --media-id` | — | Detect beats and BPM; the tempo comes from the onset periodicity (`--threshold` is accepted but changes nothing) |
 | `editor beats mark` | `--project-id --element-id` | `--media-id`, `--bookmarks none\|downbeats\|all` | Detect a clip's beats and mark them in the editor: the beat panel and the ruler's beat lines read the same store; bookmarks persist |
-| `editor timeline snap` | `--project-id --to beats --element-ids` | `--beats-from`, `--edge start\|end`, `--max-distance`, `--downbeats-only`, `--dry-run` | Move clips onto the nearest marked beat (one undo step); reports each move |
+| `editor timeline snap` | `--project-id --to beats --element-ids` | `--beats-from`, `--edge start\|end\|onset`, `--frame-align visual\|all\|none`, `--onset-threshold`, `--max-distance`, `--downbeats-only`, `--dry-run` | Move clips onto the nearest marked beat (one undo step); visual clips land on a whole frame, `--edge onset` puts a clip's first attack on the beat; reports each move |
 
 ## Script Director (Moyin) and novel parsing
 
