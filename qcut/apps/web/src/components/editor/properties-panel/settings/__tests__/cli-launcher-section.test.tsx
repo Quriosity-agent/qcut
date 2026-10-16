@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { fireEvent, render, screen, waitFor } from "@/test/test-utils";
-import type { PlatformCliLauncherState } from "@qcut/platform-core";
+import type {
+	PlatformCliLauncherInstallOutcome,
+	PlatformCliLauncherState,
+} from "@qcut/platform-core";
 import { useLocaleStore } from "@/stores/locale-store";
 
 vi.mock("sonner", () => ({
@@ -33,10 +36,12 @@ const mocks = vi.hoisted(() => {
 		state: notInstalled as PlatformCliLauncherState,
 		cliLauncher: {
 			getState: vi.fn(async () => mocks.state),
-			install: vi.fn(async () => ({
-				success: true as const,
-				state: installed,
-			})),
+			install: vi.fn(
+				async (): Promise<PlatformCliLauncherInstallOutcome> => ({
+					success: true,
+					state: installed,
+				})
+			),
 		},
 	};
 });
