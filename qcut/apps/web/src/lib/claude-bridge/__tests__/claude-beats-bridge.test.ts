@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAutoSaveTimer } from "@/stores/timeline/timeline-store-autosave";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useBeatDetectionStore } from "@/stores/beat-detection-store";
+import { type MediaItem, useMediaStore } from "@/stores/media/media-store";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { performBeatsMark, performSnapToBeats } from "../claude-beats-bridge";
 
@@ -109,7 +110,10 @@ describe("beats over the editor API", () => {
 			selectedElements: [],
 		});
 	});
-	afterEach(() => clearAutoSaveTimer());
+	afterEach(() => {
+		clearAutoSaveTimer();
+		useMediaStore.setState({ mediaItems: [] });
+	});
 
 	it("marks a clip's beats in the beat store and bookmarks the downbeats", async () => {
 		const response = await performBeatsMark({
@@ -185,5 +189,88 @@ describe("beats over the editor API", () => {
 			useTimelineStore.getState().tracks.find((t) => t.id === "cuts")
 				?.elements[0].startTime
 		).toBe(10.3);
+	});
+
+	it("lands visual clips on a whole frame and leaves sound exactly on the beat", () => {
+		// Beats at 10.513 and 12.013 on the timeline (song at 10, trimmed 0.5).
+		useBeatDetectionStore.setState({
+			cache: new Map([
+				[
+					"song",
+					{
+						...detection,
+						beats: [1.013, 2.513].map((timestamp, index) => ({
+							timestamp,
+							strength: 1,
+							index,
+							isDownbeat: index === 0,
+						})),
+						downbeats: [1.013],
+					},
+				],
+			]),
+			activeElementId: "song",
+		});
+		useMediaStore.setState({
+			mediaItems: [{ id: "b-media", type: "audio" }] as unknown as MediaItem[],
+		});
+		const byDefault = performSnapToBeats({
+			request: { projectId: "project-1", elementIds: ["a", "b"], dryRun: true },
+		});
+		expect(byDefault.frameAlign).toBe("visual");
+		const [a, b] = byDefault.results;
+		// 10.513 × 30 = 315.39 → frame 315 → 10.5.
+		expect(a).toMatchObject({ to: 10.5, beat: 10.513, frameAligned: true });
+		expect(b).toMatchObject({ to: 12.013, beat: 12.013, frameAligned: false });
+		const all = performSnapToBeats({
+			request: {
+				projectId: "project-1",
+				elementIds: ["b"],
+				frameAlign: "all",
+				dryRun: true,
+			},
+		});
+		expect(all.results[0]).toMatchObject({ to: 12, frameAligned: true });
+		const none = performSnapToBeats({
+			request: {
+				projectId: "project-1",
+				elementIds: ["a"],
+				frameAlign: "none",
+				dryRun: true,
+			},
+		});
+		expect(none.results[0]).toMatchObject({ to: 10.513, frameAligned: false });
+	});
+
+	it("puts a clip's onset on the beat when told where it is", () => {
+		useBeatDetectionStore.setState({
+			cache: new Map([["song", detection]]),
+			activeElementId: "song",
+		});
+		const response = performSnapToBeats({
+			request: {
+				projectId: "project-1",
+				elementIds: ["a", "b"],
+				edge: "onset",
+				edgeOffsets: { a: 0.3 },
+			},
+		});
+		expect(response.edge).toBe("onset");
+		const [a, b] = response.results;
+		// Onset at 10.6 → beat 10.5 → start 10.2.
+		expect(a).toMatchObject({
+			to: 10.2,
+			beat: 10.5,
+			offset: 0.3,
+			applied: true,
+		});
+		expect(b).toMatchObject({ applied: false, beat: null });
+		expect(b.reason).toBe("no onset was found in the clip");
+		expect(
+			useTimelineStore
+				.getState()
+				.tracks.find((t) => t.id === "cuts")
+				?.elements.map((e) => e.startTime)
+		).toEqual([10.2, 11.9, 15]);
 	});
 });
