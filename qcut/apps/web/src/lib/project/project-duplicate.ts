@@ -56,10 +56,14 @@ export async function copyProjectContents({
 		sourceProjectId: source.id,
 		targetProjectId,
 	});
-	const rewriteLocalPath = (localPath: string): string =>
-		disk && localPath.startsWith(`${disk.sourceRoot}/`)
-			? `${disk.targetRoot}/${localPath.slice(disk.sourceRoot.length + 1)}`
-			: localPath;
+	// Stored paths use the platform's separator (a backslash on Windows), and
+	// a root that is only a prefix of another folder's name is not a match.
+	const rewriteLocalPath = (localPath: string): string => {
+		if (!disk || !localPath.startsWith(disk.sourceRoot)) return localPath;
+		const separator = localPath.charAt(disk.sourceRoot.length);
+		if (separator !== "/" && separator !== "\\") return localPath;
+		return `${disk.targetRoot}${localPath.slice(disk.sourceRoot.length)}`;
+	};
 	const mediaItems = await storageService.copyProjectMedia({
 		sourceProjectId: source.id,
 		targetProjectId,
