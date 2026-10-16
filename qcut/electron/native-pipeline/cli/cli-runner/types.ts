@@ -451,8 +451,12 @@ export interface CLIRunOptions {
 	bookmarks?: string;
 	/** editor:timeline:snap: the clip whose marked beats are the grid. */
 	beatsFrom?: string;
-	/** editor:timeline:snap: which clip edge lands on the beat. */
+	/** editor:timeline:snap: what lands on the beat — start, end or onset. */
 	edge?: string;
+	/** editor:timeline:snap: which clips end on a whole frame — visual, all or none. */
+	frameAlign?: string;
+	/** editor:timeline:snap --edge onset: share of the loudest onset an attack must reach. */
+	onsetThreshold?: number;
 	/** editor:timeline:snap: farthest a clip may move, in seconds. */
 	maxDistance?: number;
 	/** editor:timeline:snap: only downbeats count. */
