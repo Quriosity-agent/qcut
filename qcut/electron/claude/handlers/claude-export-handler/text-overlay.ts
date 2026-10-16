@@ -3,6 +3,7 @@ import type {
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
+import { assFontMetrics } from "./ass-font-metrics.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
 import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
@@ -87,6 +88,14 @@ function verticalAlignValue({
 	value: unknown;
 }): TextOverlay["verticalAlign"] {
 	return value === "top" || value === "center" ? value : "bottom";
+}
+
+function boxVerticalAlignValue({
+	value,
+}: {
+	value: string;
+}): "top" | "middle" | "bottom" {
+	return value === "top" || value === "bottom" ? value : "middle";
 }
 
 function animationTypeValue({
@@ -203,6 +212,18 @@ function collectCaptionOverlay({
 		glowColor: "#ffffff",
 		glowOpacity: 0,
 		glowBlur: 0,
+		letterSpacing: numberValue({
+			element: {},
+			style,
+			key: "letterSpacing",
+			fallback: 0,
+		}),
+		lineHeight: numberValue({
+			element: {},
+			style,
+			key: "lineSpacing",
+			fallback: 1.4,
+		}),
 		positioning: "caption-anchor",
 		verticalAlign: verticalAlignValue({ value: position.align }),
 		marginV: numberValue({
@@ -364,6 +385,36 @@ function collectCanvasTextOverlay({
 			key: "glowBlur",
 			fallback: 0,
 		}),
+		letterSpacing: numberValue({
+			element,
+			style,
+			key: "letterSpacing",
+			fallback: 0,
+		}),
+		lineHeight: numberValue({
+			element,
+			style,
+			key: "lineHeight",
+			fallback: 1.2,
+		}),
+		// The preview's text box (text-style.ts defaults), so lines wrap and
+		// align in the same place as on screen.
+		boxWidth: numberValue({ element, style, key: "width", fallback: 640 }),
+		boxHeight: numberValue({ element, style, key: "height", fallback: 180 }),
+		boxPadding: numberValue({
+			element,
+			style,
+			key: "backgroundPadding",
+			fallback: 12,
+		}),
+		boxVerticalAlign: boxVerticalAlignValue({
+			value: stringValue({
+				element,
+				style,
+				key: "verticalAlign",
+				fallback: "middle",
+			}),
+		}),
 		positioning: "canvas-offset",
 		verticalAlign: "center",
 		marginV: 0,
@@ -460,10 +511,10 @@ function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
 		overlay.glowColor,
 		overlay.glowOpacity * overlay.opacity
 	);
-	const alpha = colour.slice(2, 4);
-	const bgr = colour.slice(4);
-	const border = (overlay.strokeWidth + overlay.glowBlur).toFixed(2);
-	return `\\1a&HFF&\\4a&HFF&\\3c&H${bgr}&\\3a&H${alpha}&\\bord${border}\\blur${overlay.glowBlur.toFixed(2)}`;
+	// A blurred copy of the glyphs themselves in the glow colour, with no
+	// border, shadow or box: the preview's text-shadow blur radius r is a
+	// Gaussian of sigma r/2, which is what libass's \blur takes.
+	return `\\1c&H${colour.slice(4)}&\\1a&H${colour.slice(2, 4)}&\\4a&HFF&\\bord0\\shad0\\blur${(overlay.glowBlur / 2).toFixed(2)}`;
 }
 
 function assTime(seconds: number): string {
@@ -563,31 +614,100 @@ export function assFontFamily(overlay: TextOverlay): string {
 	return fallback;
 }
 
-function overlayAnchor({
+/** The preview gives captions 20 px of edge padding plus the box's own 8 × 16. */
+const CAPTION_EDGE_INSET_Y = 28;
+const CAPTION_EDGE_INSET_X = 36;
+/** Captions wrap inside the middle 80 % of the frame, like the preview's box. */
+const CAPTION_SIDE_MARGIN = 0.1;
+
+interface AssPlacement {
+	/** ASS numpad alignment: which point of the text block sits on (x, y). */
+	alignment: number;
+	x: number;
+	y: number;
+	/** Event margins; libass wraps lines to PlayResX − marginL − marginR. */
+	marginL: number;
+	marginR: number;
+}
+
+/**
+ * Where the text block is pinned and how wide it may run, matching the
+ * preview: a text element fills its box (wrapping at the inner width,
+ * aligned within it); a caption sits at the frame edge the style names,
+ * where every lane draws, so two captions at once overlap as on screen
+ * instead of libass stacking them.
+ */
+function assPlacement({
 	overlay,
 	width,
 	height,
+	lineHeightEm,
 }: {
 	overlay: TextOverlay;
 	width: number;
 	height: number;
-}): { x: number; y: number } {
+	/** The line height libass lays out for the overlay's font, in em. */
+	lineHeightEm: number;
+}): AssPlacement {
+	// CSS centres each em inside its line box (half-leading); libass stacks
+	// the font's own line height with the em at its bottom. Pinning a top or
+	// bottom edge therefore moves by half the difference of the two line
+	// heights, so the glyphs land where the preview draws them.
+	const leading =
+		(overlay.fontSize * overlay.lineHeight - overlay.fontSize * lineHeightEm) /
+		2;
 	if (overlay.positioning === "canvas-offset") {
-		return { x: width / 2 + overlay.x, y: height / 2 + overlay.y };
+		const boxWidth = overlay.boxWidth ?? 640;
+		const boxHeight = overlay.boxHeight ?? 180;
+		const padding = overlay.boxPadding ?? 12;
+		const centreX = width / 2 + overlay.x;
+		const centreY = height / 2 + overlay.y;
+		const left = centreX - boxWidth / 2 + padding;
+		const right = centreX + boxWidth / 2 - padding;
+		const top = centreY - boxHeight / 2 + padding;
+		const bottom = centreY + boxHeight / 2 - padding;
+		const vertical =
+			overlay.boxVerticalAlign === "top"
+				? "top"
+				: overlay.boxVerticalAlign === "bottom"
+					? "bottom"
+					: "center";
+		return {
+			alignment: ASS_ALIGNMENTS[vertical][overlay.textAlign],
+			x:
+				overlay.textAlign === "left"
+					? left
+					: overlay.textAlign === "right"
+						? right
+						: centreX,
+			y:
+				vertical === "top"
+					? top + leading
+					: vertical === "bottom"
+						? bottom - leading
+						: centreY,
+			marginL: Math.max(0, Math.round(left)),
+			marginR: Math.max(0, Math.round(width - right)),
+		};
 	}
-	const x =
-		overlay.textAlign === "left"
-			? width * 0.1
-			: overlay.textAlign === "right"
-				? width * 0.9
-				: width / 2;
-	const y =
-		overlay.verticalAlign === "top"
-			? overlay.marginV
-			: overlay.verticalAlign === "center"
-				? height / 2
-				: height - overlay.marginV;
-	return { x, y };
+	const side = Math.round(width * CAPTION_SIDE_MARGIN);
+	return {
+		alignment: ASS_ALIGNMENTS[overlay.verticalAlign][overlay.textAlign],
+		x:
+			overlay.textAlign === "left"
+				? CAPTION_EDGE_INSET_X
+				: overlay.textAlign === "right"
+					? width - CAPTION_EDGE_INSET_X
+					: width / 2,
+		y:
+			overlay.verticalAlign === "top"
+				? CAPTION_EDGE_INSET_Y + leading
+				: overlay.verticalAlign === "center"
+					? height / 2
+					: height - CAPTION_EDGE_INSET_Y - leading,
+		marginL: side,
+		marginR: side,
+	};
 }
 
 /** Build an ASS subtitle document that preserves core QCut text styling. */
@@ -604,20 +724,29 @@ export function buildTextAss({
 	const events: string[] = [];
 	for (const [index, overlay] of overlays.entries()) {
 		const styleName = `QCutText${index}`;
-		const alignment =
-			ASS_ALIGNMENTS[
-				overlay.positioning === "caption-anchor"
-					? overlay.verticalAlign
-					: "center"
-			][overlay.textAlign];
+		const family = assFontFamily(overlay);
+		// libass sizes a font by its Windows ascent + descent, the editor by
+		// the em; the factor makes the exported em the one the preview shows.
+		const metrics = assFontMetrics({
+			family,
+			bold: overlay.fontWeight === "bold",
+			italic: overlay.fontStyle === "italic",
+		});
+		const placement = assPlacement({
+			overlay,
+			width,
+			height,
+			lineHeightEm: metrics.lineHeightEm,
+		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
 			overlay.backgroundOpacity > 0;
+		const fontSize = overlay.fontSize * metrics.sizeFactor;
 		styles.push(
 			[
 				styleName,
-				assFontFamily(overlay),
-				overlay.fontSize,
+				family,
+				fontSize.toFixed(2),
 				assColor(overlay.color, overlay.opacity),
 				assColor(overlay.color, overlay.opacity),
 				assColor(overlay.strokeColor, overlay.strokeOpacity * overlay.opacity),
@@ -633,7 +762,7 @@ export function buildTextAss({
 				0,
 				100,
 				100,
-				0,
+				overlay.letterSpacing.toFixed(2),
 				0,
 				backgroundEnabled ? 3 : 1,
 				overlay.strokeWidth,
@@ -641,26 +770,20 @@ export function buildTextAss({
 					Math.abs(overlay.shadowOffsetX),
 					Math.abs(overlay.shadowOffsetY)
 				),
-				alignment,
+				placement.alignment,
 				0,
 				0,
-				overlay.positioning === "caption-anchor"
-					? Math.max(0, Math.round(overlay.marginV))
-					: 0,
+				0,
 				1,
 			].join(",")
 		);
-
-		const { x, y } = overlayAnchor({ overlay, width, height });
+		const { x, y } = placement;
 		const animationStart = Math.max(0, overlay.animationDelay * 1000);
 		const animationEnd = Math.max(
 			animationStart,
 			(overlay.animationDelay + overlay.animationDuration) * 1000
 		);
-		let motion =
-			overlay.positioning === "canvas-offset"
-				? `\\pos(${x.toFixed(2)},${y.toFixed(2)})`
-				: "";
+		let motion = `\\pos(${x.toFixed(2)},${y.toFixed(2)})`;
 		if (overlay.animationType === "slide-up") {
 			motion = `\\move(${x.toFixed(2)},${(y + 80).toFixed(2)},${x.toFixed(2)},${y.toFixed(2)},${animationStart.toFixed(0)},${animationEnd.toFixed(0)})`;
 		} else if (overlay.animationType === "slide-left") {
@@ -670,20 +793,20 @@ export function buildTextAss({
 			overlay.animationType === "fade"
 				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
 				: "";
-		const tags = `${motion}\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		// \q1 wraps greedily at the event margins, the way the preview's box does.
+		const tags = `${motion}\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		const margins = `${placement.marginL},${placement.marginR},0`;
 		const glow = assGlowTags({ overlay });
 		if (glow) {
-			// The glow is the same text on a lower layer: a blurred, wide border
-			// in the glow colour with the fill itself fully transparent.
+			// The glow is the same text on a lower layer, blurred in the glow colour.
 			events.push(
-				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}${glow}}${escapeAssText(overlay.content)}`
+				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}${glow}}${escapeAssText(overlay.content)}`
 			);
 		}
 		events.push(
-			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}}${escapeAssText(overlay.content)}`
+			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}}${escapeAssText(overlay.content)}`
 		);
 	}
-
 	return [
 		"[Script Info]",
 		"ScriptType: v4.00+",
