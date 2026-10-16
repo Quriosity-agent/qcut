@@ -1478,6 +1478,9 @@ export function registerSharedRoutes(
 				"Shot splitting is not available in this editor"
 			);
 		}
+		// The renderer resolves ids against the open project; a mismatch is a
+		// 409 now, not an opaque job error later.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const requestShotSplit = accessor.requestShotSplit.bind(accessor);
 		const correlationId = getRequestCorrelationId({ req });
 		const job = startBackgroundJob({
