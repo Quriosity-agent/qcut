@@ -938,7 +938,9 @@ async function editingDeleteRange(
 	if (opts.trackId) {
 		body.trackIds = opts.trackId.split(",").map((s) => s.trim());
 	}
-	if (opts.ripple) body.ripple = true;
+	// The editor ripples by default; only --no-ripple turns it off.
+	if (opts.noRipple) body.ripple = false;
+	else if (opts.ripple) body.ripple = true;
 	if (opts.crossTrackRipple) body.crossTrackRipple = true;
 
 	const data = await client.delete(
