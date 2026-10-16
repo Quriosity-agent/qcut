@@ -86,7 +86,13 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			fs.rmSync(tempDir, { recursive: true, force: true });
 		});
 
-		it("keeps every frame of a segment whose audio is shorter than its picture", () => {
+		function encodeSegment({
+			duration,
+			name,
+		}: {
+			duration: number;
+			name: string;
+		}) {
 			const segment: ExportSegment = {
 				elementId: "clip-1",
 				trackId: "track-1",
@@ -94,12 +100,12 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				elementOrder: 0,
 				sourcePath,
 				startTime: 0,
-				duration: 1,
+				duration,
 				trimStart: 0,
 				sourceId: "media-1",
 				fitMode: "cover",
 			};
-			const outputPath = path.join(tempDir, "segment.mp4");
+			const outputPath = path.join(tempDir, name);
 			const args = buildExportSegmentEncodeArgs({
 				inputArgs: buildExportSegmentInputArgs({ segment }),
 				scaleFilter: "scale=64:64",
@@ -112,12 +118,30 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				timeout: 60_000,
 			});
 			expect(encoded.status, encoded.stderr).toBe(0);
+			return {
+				video: probe({ file: outputPath, stream: "v" }),
+				audio: probe({ file: outputPath, stream: "a" }),
+			};
+		}
 
-			const video = probe({ file: outputPath, stream: "v" });
-			const audio = probe({ file: outputPath, stream: "a" });
+		it("keeps every frame of a segment whose audio is shorter than its picture", () => {
+			const { video, audio } = encodeSegment({
+				duration: 1,
+				name: "segment.mp4",
+			});
 			expect(video.frames).toBe(24);
 			expect(video.duration).toBeCloseTo(1, 2);
 			expect(audio.duration).toBeGreaterThanOrEqual(0.99);
+		});
+
+		it("fills a segment longer than its source by holding the last frame", () => {
+			const { video, audio } = encodeSegment({
+				duration: 1.5,
+				name: "segment-long.mp4",
+			});
+			expect(video.frames).toBe(36);
+			expect(video.duration).toBeCloseTo(1.5, 2);
+			expect(audio.duration).toBeGreaterThanOrEqual(1.49);
 		});
 	}
 );
