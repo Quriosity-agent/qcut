@@ -1,31 +1,30 @@
 ---
-version: "2026.10.16.1"
+version: "2026.10.16.2"
 date: "2026-10-16"
 channel: "stable"
 ---
 
-# QCut v2026.10.16.1
+# QCut v2026.10.16.2
 
 ### Improved
-- Mixer: a new Mixer panel in the media panel and a mix button on every audio track header. Each track has a level fader, pan, output bus, mute, solo, EQ/compressor/limiter and ducking; buses can be created, renamed and removed, and a track is sent to a bus by dragging it there; the master shows live momentary, short-term and integrated loudness and can measure the whole mix as exported (integrated LUFS, loudest 3 s, true peak).
-- Level and pan automation: tracks, buses and the master can follow curves over timeline time, edited from each strip's A button or from the CLI. The preview and every export engine follow them.
-- Stems: "Export stems per bus (WAV)" in the export dialog and `qcut editor export start --stems` write one WAV per bus beside the export; `qcut editor mix stems` writes them into a folder.
-- CLI: `qcut editor track audio-get|audio-set|audio-automation|mute|solo` and `qcut editor mix export|bus-list|bus-create|bus-set|bus-remove|bus-automation|master-set|loudness|stems`. Every setting is range-checked and read back from the editor, and `timeline export` includes each track's mix settings and the project's buses.
-- Track and clip colours: audio clips, and every other clip type, show their colour label; a track can carry a default colour its clips inherit; `qcut editor track create|update --color`, `qcut editor timeline color-label` and `qcut editor timeline select --color`.
-- Electron E2E suite: each spec runs against an isolated QCut instance with its own data and a chosen locale, a smoke set (`bun run test:e2e:smoke`) covers 42 specs, and the specs are type-checked with the rest of the code.
+- Mixer jobs: `qcut editor mix loudness` and `qcut editor mix stems` start a job and poll it, so a long programme no longer breaks the connection. `--timeout` (default 30 min) only bounds the wait and names the job when it runs out, `--no-wait` returns the job id at once, and `qcut editor mix job-status` follows a job from any terminal.
+- `qcut editor mix loudness --engine native|browser`: the default renders the mix through the FFmpeg export pipeline and reports what FFmpeg's EBU R 128 meter reads on the exported file; `browser` measures the editor's own graph (the preview, the muxer engine and the mixer panel's Measure).
+- Command line tool: `qcut cli install` writes a `qcut` launcher (`~/.local/bin/qcut`; Windows `%LOCALAPPDATA%\QCut\bin\qcut.cmd`) that runs the command bundled with the installed app, so it follows app updates; the same "Install command line tool" button is in About & updates and in Settings. `qcut cli status` says which qcut a terminal runs and what shadows it on PATH; `qcut --version`, `qcut --help` and `qcut editor health` report the command's QCut version, with a warning when it differs from the app's; `qcut update` says whether the command it ran will follow the update.
+- `qcut editor export cancel` stops a running native export and removes its partial output; `--poll --json` keeps stdout to one JSON document (the job announcement goes to stderr).
+- `qcut editor ui switch-panel --panel mixer`; `timeline export` media clips carry `name` and the same `audio` shape the write commands take (volumeDb, fades, pan).
+- Stems are written as 48 kHz 32-bit float WAV, so a bus that passes full scale is not clipped.
 
 ### Fixed
-- Exports apply the project mix (track levels, pan, buses, master, solo and ducking) in all three engines (in-browser, FFmpeg and the native CLI export) and in standalone MP3 exports; before, only the preview did.
-- A direct-copy FFmpeg export no longer drops a video clip's own audio when audio tracks or a mix are present.
-- A mix that silences every track exports silence instead of falling back to the raw audio.
-- Ducking in FFmpeg exports reaches exactly the set depth.
-- Keyboard crop and crop reset are saved as crop edits.
-- The error shown when the editor is not ready within the allowed wait no longer varies with machine load.
+- Exporting to another disk (an external drive) failed with EXDEV and left a 240 MB intermediate file; files now move across volumes by copying, and a failed mix leaves nothing behind.
+- Stems and the preview lifted sub-bass: the pass-through low- and high-cut filters in the clip chain and in every strip carried Web Audio's default resonance (+1 dB at the cut), and four in a row gave 25 Hz +7.8 dB, 40 Hz +4.7 dB, a shotgun clip +2.2 dB and clipped 16-bit stems. Unused cuts now sit at exact identity (0 Hz / Nyquist) and active ones are Butterworth, like FFmpeg's.
+- Loudness and stems no longer stop after 120 s with a false "Cannot connect to QCut"; a closed connection, a connect timeout and an unreachable editor each get their own message.
+- Export audio defaults to 48 kHz (export dialog, native export, MP3), and an export is no longer two frames short when a clip's AAC audio ends a frame before its picture.
+- Finished mix jobs are pruned past the 50-job limit; cancelling the export behind a loudness measurement ends the job instead of polling forever; a cancel that lands after the last FFmpeg step still removes the file.
+- Windows launcher paths escape `%`; paths with `"` are refused.
 
 ### Verified
-- Real exports from all three engines measured with FFmpeg: music −8.0 dB, SFX through a −4 dB bus and a −2 dB master −6.0 dB, picture audio −12.0 dB and −32 dB after its level curve, ducking 11.6–11.7 dB, soloed-out tracks below −66 dB. Stems are the programme's length and line up with the mix. Measured loudness matches FFmpeg's EBU R 128 meter within 0.1 LU.
+- On the 233.5 s, 26-track test programme: `mix loudness` reads −20.2 LUFS / −1.9 dBTP, identical to FFmpeg's ebur128 of the export; the picture lane's stem matches its source within 0.07 dB with no clipping; export with stems to an external disk completes in 349 s with no intermediate files; cancelling an export at 21% ends both FFmpeg processes and removes the temp folders and the partial output.
 
 ### Limitations
-- Automation curves are edited as point lists in the mixer, not drawn on the timeline lanes.
-- Stems leave each bus before the master, so the master's level and limiter are not in them.
-- The E2E suite runs locally only; it is not part of CI yet.
+- The mixer panel's Measure shows the editor's rendering; the FFmpeg export can differ by a few tenths of an LU when the master limiter works hard. `qcut editor mix loudness` (default engine) gives the exported number.
+- Exports that run in the editor window (the muxer engine) cannot be cancelled from the CLI.

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.16.2] - 2026-10-16
+
 ### Improved
 - Mixer jobs: `qcut editor mix loudness` and `qcut editor mix stems` start a job and poll it, so a long programme no longer breaks the connection. `--timeout` (default 30 min) only bounds the wait and names the job when it runs out, `--no-wait` returns the job id at once, and `qcut editor mix job-status` follows a job from any terminal.
 - `qcut editor mix loudness --engine native|browser`: the default renders the mix through the FFmpeg export pipeline and reports what FFmpeg's EBU R 128 meter reads on the exported file; `browser` measures the editor's own graph (the preview, the muxer engine and the mixer panel's Measure).
