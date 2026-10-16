@@ -634,6 +634,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:removeElement");
 				ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
 				ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+				ipcRenderer.removeAllListeners("claude:timeline:shotSplit");
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
 				ipcRenderer.removeAllListeners("claude:timeline:selectElements");
