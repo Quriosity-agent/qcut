@@ -1193,6 +1193,13 @@ export function registerSharedRoutes(
 			if (!req.body || typeof req.body !== "object") {
 				throw new HttpError(400, "Missing transition data");
 			}
+			const duration = (req.body as { duration?: unknown }).duration;
+			if (typeof duration !== "number" || !Number.isFinite(duration)) {
+				throw new HttpError(
+					400,
+					"Transition 'duration' must be a number of seconds"
+				);
+			}
 			const result = await accessor.mutateTrack(
 				{
 					action: "add-transition",
