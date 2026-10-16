@@ -28,6 +28,21 @@ function clamp({
 	return Math.min(max, Math.max(min, value));
 }
 
+/** Per-channel gains for a static temperature/tint; "" when both are neutral. */
+function buildChannelGainFilter({
+	temperature,
+	tint,
+}: {
+	temperature: number;
+	tint: number;
+}): string {
+	const t = clamp({ value: temperature / 100, min: -1, max: 1 });
+	const n = clamp({ value: tint / 100, min: -1, max: 1 });
+	if (t === 0 && n === 0) return "";
+	const gain = (value: number) => clamp({ value, min: 0, max: 2 }).toFixed(4);
+	return `colorchannelmixer=rr=${gain(1 + t * 0.18 + n * 0.04)}:gg=${gain(1 - n * 0.12)}:bb=${gain(1 - t * 0.18 + n * 0.04)}`;
+}
+
 export function buildBasicFilters({
 	visual,
 	color,
@@ -132,14 +147,53 @@ export function buildBasicFilters({
 	const rawBrightness = `(128*(${contrast})*(${factor})-127.5*(${contrast})-0.5)/292`;
 	const eqBrightness = `clip((${rawBrightness})+0.005*lt((${rawBrightness}),0),-1,1)`;
 	const saturation = `clip(1+(${saturationValue})/100-clip((${fade})/100,0,1)*0.15,0,3)`;
+	// Temperature and tint are the renderer grader's channel gains
+	// (r×(1+0.18t+0.04n), g×(1−0.12n), b×(1−0.18t+0.04n) for t,n in −1..1):
+	// warm pushes red up and blue down, cool the reverse. The old eq gamma
+	// terms ran the other way. Static values use colorchannelmixer, which is
+	// a true gain; keyframed values fall back to per-frame eq gammas with the
+	// same direction.
+	const temperatureAnimated = hasColorKeyframes({
+		visual: colorVisual,
+		property: "basic.temperature",
+	});
+	const tintAnimated = hasColorKeyframes({
+		visual: colorVisual,
+		property: "basic.tint",
+	});
+	const channelGains =
+		temperatureAnimated || tintAnimated
+			? ""
+			: buildChannelGainFilter({
+					temperature:
+						values.temperature +
+						(color.smart.autoWhiteBalance
+							? (smartCorrection?.temperature ?? 0) *
+								(color.smart.enabled && color.smart.status === "ready"
+									? color.smart.intensity / 100
+									: 0)
+							: 0),
+					tint:
+						values.tint +
+						(color.smart.autoWhiteBalance
+							? (smartCorrection?.tint ?? 0) *
+								(color.smart.enabled && color.smart.status === "ready"
+									? color.smart.intensity / 100
+									: 0)
+							: 0),
+				});
+	const gammaTerms =
+		temperatureAnimated || tintAnimated
+			? `:gamma_r='clip(1+(${temperature})/600+(${tint})/900,0.5,1.5)':` +
+				`gamma_g='clip(1-(${tint})/450,0.5,1.5)':` +
+				`gamma_b='clip(1-(${temperature})/600+(${tint})/900,0.5,1.5)'`
+			: "";
 	const filters = [
-		`eq=brightness='${eqBrightness}':contrast='${eqContrast}':` +
-			`gamma_r='clip(1-(${temperature})/600-(${tint})/900,0.5,1.5)':` +
-			`gamma_g='clip(1+(${tint})/450,0.5,1.5)':` +
-			`gamma_b='clip(1+(${temperature})/600-(${tint})/900,0.5,1.5)':eval=frame`,
+		`eq=brightness='${eqBrightness}':contrast='${eqContrast}'${gammaTerms}:eval=frame`,
 		// eq's own saturation leaves chroma a step off neutral (a desaturated
 		// frame comes out green-grey); hue scales chroma around true grey.
 		`hue=s='${saturation}'`,
+		channelGains,
 	];
 	if (
 		values.vibrance !== 0 ||
