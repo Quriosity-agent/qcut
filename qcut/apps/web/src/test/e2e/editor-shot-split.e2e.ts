@@ -264,8 +264,13 @@ test("splits a clip by its shots the way the menu does, undoable in one step", a
 			"3.333,15.167",
 		],
 	});
-	expect(given.results[0].requestedEngine).toBe("cuts");
-	expect(given.results[0].engine).toBeUndefined();
+	expect(given.results[0].requestedEngine).toBe("manual");
+	expect(given.results[0].engine).toBe("manual");
+	// Given seconds land on the frame grid: 3.333 → frame 80, 15.167 → 364.
+	expect(given.results[0].cuts.map((cut) => cut.sourceTime)).toEqual([
+		80 / 24,
+		364 / 24,
+	]);
 	expect(given.results[0].createdElementIds).toHaveLength(2);
 	const afterGiven = await cli<Exported>({
 		apiPort,
