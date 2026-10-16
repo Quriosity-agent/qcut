@@ -3,6 +3,8 @@
  * the main process (utility-bridge) and the utility process.
  */
 
+import type { ClaudeShotSplitRequest } from "../types/claude-api.js";
+
 // ─── Messages FROM utility process TO main process ───
 
 export interface UtilityReadyMessage {
@@ -171,6 +173,11 @@ export interface SplitElementRequest {
 	elementId: string;
 	splitTime: number;
 	mode: string;
+}
+
+export interface ShotSplitBridgeRequest {
+	request: ClaudeShotSplitRequest;
+	correlationId?: string;
 }
 
 export interface TimelineAddElementRequest {
