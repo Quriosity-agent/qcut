@@ -784,6 +784,7 @@ export function registerAnalysisRoutes(
 			);
 		}
 		const batchCutRequest: BatchCutRequest = {
+			projectId: req.params.projectId,
 			elementId: req.body.elementId,
 			cuts: req.body.cuts,
 			ripple: req.body.ripple,
