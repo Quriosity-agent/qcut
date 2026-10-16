@@ -108,8 +108,8 @@ describe.skipIf(!hasFfmpeg)(
 				expect(Math.abs(sample.b - before.b)).toBeLessThanOrEqual(6);
 			}
 			// Fully desaturated: the channels collapse onto one grey value.
-			expect(Math.abs(inside.r - inside.g)).toBeLessThanOrEqual(6);
-			expect(Math.abs(inside.g - inside.b)).toBeLessThanOrEqual(6);
+			expect(Math.abs(inside.r - inside.g)).toBeLessThanOrEqual(2);
+			expect(Math.abs(inside.g - inside.b)).toBeLessThanOrEqual(2);
 			expect(before.b - before.r).toBeGreaterThan(80);
 		}, 60_000);
 	}
