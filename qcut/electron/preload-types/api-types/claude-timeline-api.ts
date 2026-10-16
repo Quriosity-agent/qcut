@@ -17,6 +17,8 @@ import type {
 	BatchCutResponse,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
 } from "../../types/claude-api";
 import type {
 	ClaudeMediaDeletedEvent,
@@ -175,6 +177,19 @@ export interface ClaudeTimelineAPI {
 			}) => void
 		) => void;
 		sendSplitResponse: (requestId: string, result: ClaudeSplitResponse) => void;
+		onShotSplit: (
+			callback: (data: {
+				requestId: string;
+				correlationId?: string;
+				request: ClaudeShotSplitRequest;
+			}) => void
+		) => void;
+		sendShotSplitResponse: (
+			requestId: string,
+			result:
+				| { ok: true; response: ClaudeShotSplitResponse }
+				| { ok: false; error: string }
+		) => void;
 		onExecuteCuts: (
 			callback: (data: {
 				requestId: string;
