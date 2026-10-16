@@ -335,8 +335,9 @@ export function setupBatchHandlers({
 										style.textDecoration === "line-through"
 											? style.textDecoration
 											: "none",
-									x: 0.5,
-									y: 0.5,
+									// Pixel offsets from the canvas centre.
+									x: 0,
+									y: 0,
 									rotation: 0,
 									opacity: 1,
 									...textProperties,
