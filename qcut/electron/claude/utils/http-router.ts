@@ -18,6 +18,9 @@ const MEDIA_IMPORT_PATH = /^\/api\/claude\/media\/[^/]+\/import$/;
 // stack ships raw LUT cubes (a 33³ cube is ~1MB of JSON, a 65³ several).
 const TIMELINE_BATCH_MAX_BODY_SIZE = 64 * 1024 * 1024;
 const TIMELINE_BATCH_PATH = /^\/api\/claude\/timeline\/[^/]+\/elements\/batch$/;
+/** One element's PATCH carries the same payloads (a filter stack's LUT cubes). */
+const TIMELINE_ELEMENT_PATH =
+	/^\/api\/claude\/timeline\/[^/]+\/elements\/[^/]+$/;
 
 export class HttpError extends Error {
 	status: number;
@@ -82,6 +85,9 @@ function getMaxBodySize({
 	) {
 		return TIMELINE_BATCH_MAX_BODY_SIZE;
 	}
+	if (method === "PATCH" && TIMELINE_ELEMENT_PATH.test(pathname)) {
+		return TIMELINE_BATCH_MAX_BODY_SIZE;
+	}
 	return DEFAULT_MAX_BODY_SIZE;
 }
 
@@ -99,8 +105,16 @@ function parseBody({
 		req.on("data", (chunk: Buffer) => {
 			size += chunk.length;
 			if (size > maxBodySize) {
-				req.destroy();
-				reject(new HttpError(413, "Payload too large"));
+				// Stop keeping the body but keep the socket: destroying it here
+				// left the client with ECONNRESET instead of this answer.
+				req.removeAllListeners("data");
+				req.resume();
+				reject(
+					new HttpError(
+						413,
+						`Payload too large (limit ${Math.round(maxBodySize / (1024 * 1024))} MB)`
+					)
+				);
 				return;
 			}
 			body += chunk;
@@ -172,6 +186,8 @@ export function createRouter(): Router {
 		res.writeHead(status, {
 			"Content-Type": "application/json",
 			"X-Correlation-Id": correlationId,
+			// A refused body may still be streaming in; the socket is not reusable.
+			...(status === 413 ? { Connection: "close" } : {}),
 		});
 		res.end(JSON.stringify(responseBody));
 	}
