@@ -16,6 +16,7 @@ import {
 	sanitizePathComponent,
 	validatePathWithinBase,
 } from "./lib/project-structure";
+import { copyProjectFolderContents } from "./lib/project-folder-copy";
 
 // ============================================================================
 // Types
@@ -209,6 +210,28 @@ export function setupProjectFolderIPC(): void {
 
 			log.info(`${LOG_PREFIX} Get root for project: ${sanitizedProjectId}`);
 			return projectPath;
+		}
+	);
+
+	// -------------------------------------------------------------------------
+	// Copy one project's media and settings into another (project duplicate)
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"project-folder:copy-contents",
+		async (_, sourceProjectId: string, targetProjectId: string) => {
+			const basePath = getProjectsBasePath();
+			const sourceRoot = path.join(
+				basePath,
+				sanitizePathComponent(sourceProjectId)
+			);
+			const targetRoot = path.join(
+				basePath,
+				sanitizePathComponent(targetProjectId)
+			);
+			validatePathWithinBase(sourceRoot, basePath);
+			validatePathWithinBase(targetRoot, basePath);
+			log.info(`${LOG_PREFIX} Copy contents: ${sourceRoot} → ${targetRoot}`);
+			return await copyProjectFolderContents({ sourceRoot, targetRoot });
 		}
 	);
 
