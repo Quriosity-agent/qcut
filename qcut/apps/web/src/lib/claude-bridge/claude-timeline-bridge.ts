@@ -23,6 +23,7 @@ import { setupElementHandlers } from "./claude-timeline-bridge-elements";
 import { setupBatchHandlers } from "./claude-timeline-bridge-batch";
 import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
 import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
+import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { parseStickerFileRuntime } from "@/lib/stickers/sticker-file-runtime";
 
 interface ClaudeImportedMediaEvent {
@@ -467,6 +468,7 @@ export function setupClaudeTimelineBridge(): void {
 
 	setupTrackHandlers({ claudeAPI });
 	setupAudioMixHandlers({ claudeAPI });
+	setupShotSplitHandlers({ claudeAPI });
 
 	// Handle element removal
 	claudeAPI.onRemoveElement((elementId: any) => {
