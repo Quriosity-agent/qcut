@@ -17,8 +17,12 @@ const SOURCE =
 	process.env.QCUT_SHOT_SPLIT_E2E_SOURCE ??
 	"/Users/peter/Documents/QCut/Projects/481632c1-df20-4317-8c79-041922c3ab50/media/08_机甲滑索接战三种怪物.mp4";
 const FFMPEG = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffmpeg");
-/** Per-channel agreement between the two export engines (8-bit levels). */
-const ENGINE_TOLERANCE = 20;
+/**
+ * Per-channel agreement between the two export engines (8-bit levels). Both
+ * now scale brightness like the preview; what remains is codec rounding and
+ * FFmpeg eq's 1 % brightness quantisation.
+ */
+const ENGINE_TOLERANCE = 8;
 
 function cli<T>({
 	apiPort,
@@ -209,10 +213,16 @@ test("the native export grades adjustment layers the way the renderer does", asy
 				outside: meanRgb({ file: outputPath, time: 4.5 }),
 			};
 		}
-		console.log("adjustment parity samples", JSON.stringify(samples));
+		// The ungraded source frame the window covers (the export is a 720p
+		// downscale of it; the mean colour survives that).
+		const sourceInside = meanRgb({ file: SOURCE, time: 1.5 });
+		console.log(
+			"adjustment parity samples",
+			JSON.stringify({ ...samples, sourceInside })
+		);
 
 		for (const engine of ["native", "muxer"] as const) {
-			const { inside, outside } = samples[engine];
+			const { inside } = samples[engine];
 			// Saturation −100: the channels collapse to grey.
 			expect(
 				Math.abs(inside.r - inside.g),
@@ -222,8 +232,12 @@ test("the native export grades adjustment layers the way the renderer does", asy
 				Math.abs(inside.g - inside.b),
 				`${engine} grey`
 			).toBeLessThanOrEqual(10);
-			// Brightness −30: darker than the ungraded picture.
-			expect(luma(inside), `${engine} darker`).toBeLessThan(luma(outside) - 10);
+			// Brightness −30 is the preview's CSS brightness(0.7): the grey is
+			// 0.7 × the source luma, not the source minus a constant.
+			expect(
+				Math.abs(luma(inside) - 0.7 * luma(sourceInside)),
+				`${engine} brightness`
+			).toBeLessThanOrEqual(ENGINE_TOLERANCE);
 		}
 		for (const where of ["inside", "outside"] as const) {
 			for (const channel of ["r", "g", "b"] as const) {
