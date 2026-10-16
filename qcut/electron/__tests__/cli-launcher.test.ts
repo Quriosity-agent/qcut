@@ -8,7 +8,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	buildCliLauncherScript,
@@ -147,14 +147,19 @@ describe("qcut launcher", () => {
 		writeFileSync(join(laterBin, "qcut"), "#!/bin/sh\n");
 		const launcherPath = join(localBin, "qcut");
 
+		// Real folders on the host, so the host's platform and separator apply
+		// (a Windows path carries a drive colon that ":" would split).
 		expect(
 			findQcotOnPathCompat({
 				launcherPath,
-				PATH: [bunBin, localBin, laterBin].join(":"),
+				PATH: [bunBin, localBin, laterBin].join(delimiter),
 			})
 		).toEqual({ onPath: true, shadowedBy: [join(bunBin, "qcut")] });
 		expect(
-			findQcotOnPathCompat({ launcherPath, PATH: [bunBin, laterBin].join(":") })
+			findQcotOnPathCompat({
+				launcherPath,
+				PATH: [bunBin, laterBin].join(delimiter),
+			})
 		).toEqual({
 			onPath: false,
 			shadowedBy: [join(bunBin, "qcut"), join(laterBin, "qcut")],
@@ -165,11 +170,14 @@ describe("qcut launcher", () => {
 		const root = tempDir();
 		const launcherPath = join(root, "bin", "qcut");
 		const env = { PATH: join(root, "bin") };
+		// Real files on the host: the host's platform decides the script shape,
+		// the PATH separator and whether execute bits exist.
+		const platform = process.platform;
 
 		const installed = installCliLauncher({
 			target,
 			launcherPath,
-			platform: "darwin",
+			platform,
 			env,
 		});
 		expect(installed).toMatchObject({
@@ -192,18 +200,18 @@ describe("qcut launcher", () => {
 		const refreshed = refreshCliLauncher({
 			target: moved,
 			launcherPath,
-			platform: "darwin",
+			platform,
 			env,
 		});
 		expect(refreshed.refreshed).toBe(true);
 		expect(
-			readCliLauncherState({ launcherPath, platform: "darwin", env }).target
+			readCliLauncherState({ launcherPath, platform, env }).target
 		).toEqual(moved);
 		expect(
 			refreshCliLauncher({
 				target: moved,
 				launcherPath,
-				platform: "darwin",
+				platform,
 				env,
 			}).refreshed
 		).toBe(false);
@@ -211,16 +219,16 @@ describe("qcut launcher", () => {
 		writeFileSync(launcherPath, '#!/bin/sh\nexec bun x qcut "$@"\n');
 		chmodSync(launcherPath, 0o755);
 		expect(
-			refreshCliLauncher({ target, launcherPath, platform: "darwin", env })
+			refreshCliLauncher({ target, launcherPath, platform, env })
 		).toMatchObject({ refreshed: false });
 		expect(() =>
-			installCliLauncher({ target, launcherPath, platform: "darwin", env })
+			installCliLauncher({ target, launcherPath, platform, env })
 		).toThrow(CliLauncherError);
 		expect(readFileSync(launcherPath, "utf8")).toContain("bun x qcut");
 		const replaced = installCliLauncher({
 			target,
 			launcherPath,
-			platform: "darwin",
+			platform,
 			env,
 			replaceForeign: true,
 		});
@@ -237,5 +245,9 @@ function findQcotOnPathCompat({
 	launcherPath: string;
 	PATH: string;
 }) {
-	return findQcutOnPath({ launcherPath, platform: "darwin", env: { PATH } });
+	return findQcutOnPath({
+		launcherPath,
+		platform: process.platform,
+		env: { PATH },
+	});
 }
