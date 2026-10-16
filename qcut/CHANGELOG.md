@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.16.1] - 2026-10-16
+
 ### Improved
 - Mixer: a new Mixer panel in the media panel and a mix button on every audio track header. Each track has a level fader, pan, output bus, mute, solo, EQ/compressor/limiter and ducking; buses can be created, renamed and removed, and a track is sent to a bus by dragging it there; the master shows live momentary, short-term and integrated loudness and can measure the whole mix as exported (integrated LUFS, loudest 3 s, true peak).
 - Level and pan automation: tracks, buses and the master can follow curves over timeline time, edited from each strip's A button or from the CLI. The preview and every export engine follow them.
