@@ -50,10 +50,12 @@ export function subtitleStyleToCSS({
 		fontStyle,
 		textDecoration,
 		textShadow: `${style.shadowOffset.x * canvasScale}px ${style.shadowOffset.y * canvasScale}px ${2 * canvasScale}px ${style.shadowColor}`,
+		// Outline behind the glyph (double width, painted first), as exported.
 		WebkitTextStroke:
 			style.outlineWidth > 0
-				? `${style.outlineWidth * canvasScale}px ${style.outlineColor}`
+				? `${style.outlineWidth * 2 * canvasScale}px ${style.outlineColor}`
 				: undefined,
+		paintOrder: style.outlineWidth > 0 ? "stroke fill" : undefined,
 		backgroundColor:
 			style.bgOpacity > 0
 				? hexToRgba(style.backgroundColor, style.bgOpacity)
