@@ -41,6 +41,7 @@ function makeTimelineStore({ refuseWith }: { refuseWith?: string } = {}) {
 	return {
 		tracks: [] as Array<{ id: string; type: string; elements: unknown[] }>,
 		addTrack: vi.fn(() => "markdown-track"),
+		addTrackByStackingPolicy: vi.fn(() => "markdown-track"),
 		findOrCreateTrack: vi.fn((type: string) => `${type}-track`),
 		updateElementDuration: vi.fn(),
 		addElementToTrack: vi.fn(
