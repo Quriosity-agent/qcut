@@ -93,4 +93,11 @@ describe("muxer caption placement", () => {
 		const rightCall = lastText(right.fillText);
 		expect(rightCall?.[1]).toBe(1280 - 36);
 	});
+
+	it("moves a stacked caption away from the edge by the block under it", () => {
+		const { ctx, fillText } = fakeContext();
+		// One 48 px line at 1.4 spacing plus the box's 2 × 8 px padding: 83.2 px.
+		renderCaptionElement(ctx, canvas, caption(), 1, 83.2);
+		expect(lastText(fillText)?.[2]).toBeCloseTo(720 - 28 - 83.2 - 33.6, 5);
+	});
 });
