@@ -3,6 +3,7 @@ import type {
 	ClaudeAudioMixRequest,
 	ClaudeAudioMixResponse,
 	ClaudeAudioMixSnapshot,
+	ClaudeMixLoudness,
 } from "../../types/claude-audio-mix-api";
 import {
 	readBusPatch,
@@ -164,7 +165,10 @@ describe("mixer request checks", () => {
 function routes(
 	mutateAudioMix?: (
 		request: ClaudeAudioMixRequest
-	) => Promise<ClaudeAudioMixResponse>
+	) => Promise<ClaudeAudioMixResponse>,
+	measureNativeLoudness?: (args: {
+		projectId: string;
+	}) => Promise<ClaudeMixLoudness>
 ) {
 	const handlers = new Map<string, (req: ParsedRequest) => Promise<unknown>>();
 	const add =
@@ -179,7 +183,12 @@ function routes(
 		delete: add("DELETE"),
 	} as unknown as Router;
 	const onChanged = vi.fn();
-	registerAudioMixRoutes({ router, mutateAudioMix, onChanged });
+	registerAudioMixRoutes({
+		router,
+		mutateAudioMix,
+		measureNativeLoudness,
+		onChanged,
+	});
 	const call = (
 		key: string,
 		params: Record<string, string>,
@@ -319,10 +328,16 @@ describe("mixer routes", () => {
 				})
 		);
 		const { call, onChanged } = routes(mutate);
-		const started = (await call("POST /api/claude/mix/:projectId/loudness", {
-			projectId: "p",
-		})) as { jobId: string; status: string };
-		expect(started).toMatchObject({ status: "running", kind: "loudness" });
+		const started = (await call(
+			"POST /api/claude/mix/:projectId/loudness",
+			{ projectId: "p" },
+			{ engine: "browser" }
+		)) as { jobId: string; status: string };
+		expect(started).toMatchObject({
+			status: "running",
+			kind: "loudness",
+			engine: "browser",
+		});
 		expect(mutate).toHaveBeenCalledWith(
 			{ action: "measure-loudness", projectId: "p" },
 			undefined
@@ -336,11 +351,57 @@ describe("mixer routes", () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(
 			await call(statusPath, { projectId: "p", jobId: started.jobId })
-		).toMatchObject({ status: "completed", result: { loudness } });
+		).toMatchObject({
+			status: "completed",
+			result: { loudness: { ...loudness, engine: "browser" } },
+		});
 		await expect(
 			call(statusPath, { projectId: "other", jobId: started.jobId })
 		).rejects.toMatchObject({ status: 404 });
 		expect(onChanged).not.toHaveBeenCalled();
+	});
+
+	it("measures the native export pipeline by default, when it is available", async () => {
+		const measured = {
+			integratedLufs: -20.2,
+			maxShortTermLufs: -14.5,
+			maxMomentaryLufs: -10.9,
+			truePeakDbtp: -1.7,
+			samplePeakDb: -1.9,
+			durationSeconds: 233.5,
+			engine: "native" as const,
+		};
+		const mutate = vi.fn();
+		const measureNative = vi.fn(async () => measured);
+		const { call } = routes(mutate, measureNative);
+		const started = (await call("POST /api/claude/mix/:projectId/loudness", {
+			projectId: "p",
+		})) as { jobId: string };
+		expect(started).toMatchObject({ kind: "loudness", engine: "native" });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(measureNative).toHaveBeenCalledWith({ projectId: "p" });
+		expect(mutate).not.toHaveBeenCalled();
+		expect(
+			await call("GET /api/claude/mix/:projectId/jobs/:jobId", {
+				projectId: "p",
+				jobId: started.jobId,
+			})
+		).toMatchObject({ status: "completed", result: { loudness: measured } });
+
+		await expect(
+			call(
+				"POST /api/claude/mix/:projectId/loudness",
+				{ projectId: "p" },
+				{ engine: "muxer" }
+			)
+		).rejects.toMatchObject({ status: 400 });
+	});
+
+	it("refuses the native measurement where the export engine is not available", async () => {
+		const { call } = routes(vi.fn());
+		await expect(
+			call("POST /api/claude/mix/:projectId/loudness", { projectId: "p" })
+		).rejects.toMatchObject({ status: 503 });
 	});
 
 	it("keeps a failed render's reason on the job", async () => {
@@ -349,9 +410,11 @@ describe("mixer routes", () => {
 			reason: "invalid",
 			error: "The timeline has no audio to measure",
 		}));
-		const started = (await call("POST /api/claude/mix/:projectId/loudness", {
-			projectId: "p",
-		})) as { jobId: string };
+		const started = (await call(
+			"POST /api/claude/mix/:projectId/loudness",
+			{ projectId: "p" },
+			{ engine: "browser" }
+		)) as { jobId: string };
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(
 			await call("GET /api/claude/mix/:projectId/jobs/:jobId", {
