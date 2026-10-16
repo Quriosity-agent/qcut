@@ -31,6 +31,7 @@ const storeMocks = vi.hoisted(() => {
 		updateTextElement: vi.fn(),
 		updateMediaElement: vi.fn(),
 		updateMediaTiming: vi.fn(),
+		removeElementFromTrack: vi.fn(),
 		setColorLabelForElements: vi.fn(),
 		saveImmediate: vi.fn(async () => undefined),
 	};
@@ -553,5 +554,88 @@ describe("Claude timeline batch audio fades", () => {
 				},
 			},
 		});
+	});
+	it("keeps a clip's name, placement, fit mode and grade, like an export round-trip", async () => {
+		const { batchHandler, sendResponse } = setupAddHandler();
+		await batchHandler({
+			requestId: "request-visual",
+			projectId: "project-1",
+			elements: [
+				{
+					...baseAudio,
+					name: "02_改名测试",
+					duration: 10,
+					fitMode: "contain",
+					x: 12,
+					y: -30,
+					rotation: 5,
+					scaleX: 1.2,
+					scaleY: 0.8,
+					opacity: 0.5,
+					color: { basic: { contrast: 20 } },
+				},
+			],
+		});
+		expect(sendResponse).toHaveBeenCalledWith("request-visual", {
+			added: [{ index: 0, success: true, elementId: "element-1" }],
+			failedCount: 0,
+		});
+		const [, stored] = storeMocks.state.addElementToTrack.mock.calls[0];
+		expect(stored).toMatchObject({
+			name: "02_改名测试",
+			fitMode: "contain",
+			x: 12,
+			y: -30,
+			rotation: 5,
+			scaleX: 1.2,
+			scaleY: 0.8,
+			opacity: 0.5,
+		});
+		// The grade goes through the patch path once the clip exists.
+		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledWith(
+			"track-1",
+			"element-1",
+			expect.objectContaining({
+				color: expect.objectContaining({
+					basic: expect.objectContaining({ contrast: 20 }),
+				}),
+				adjustments: expect.objectContaining({ contrast: 20 }),
+			}),
+			false
+		);
+	});
+
+	it("refuses a bad fit mode before adding and removes a clip whose grade is refused", async () => {
+		const { batchHandler, sendResponse } = setupAddHandler();
+		await batchHandler({
+			requestId: "request-bad-visual",
+			projectId: "project-1",
+			elements: [
+				{ ...baseAudio, duration: 10, fitMode: "stretch" },
+				{ ...baseAudio, duration: 10, color: "red" },
+			],
+		});
+		expect(sendResponse).toHaveBeenCalledWith("request-bad-visual", {
+			added: [
+				{
+					index: 0,
+					success: false,
+					error: "fitMode must be one of cover, contain, fill",
+				},
+				{
+					index: 1,
+					success: false,
+					error: "color must be an object (a partial colour grade)",
+				},
+			],
+			failedCount: 2,
+		});
+		// Only the second element reached the store, and it was taken out again.
+		expect(storeMocks.state.addElementToTrack).toHaveBeenCalledTimes(1);
+		expect(storeMocks.state.removeElementFromTrack).toHaveBeenCalledWith(
+			"track-1",
+			"element-1",
+			false
+		);
 	});
 });
