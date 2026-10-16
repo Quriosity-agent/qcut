@@ -146,7 +146,12 @@ export class ExportEngineMuxer extends ExportEngine {
 				bitrate: videoBitrate,
 				hardwareAcceleration: "no-preference",
 			});
-			output.addVideoTrack(videoSource, { frameRate: fps });
+			// No `frameRate` here: mediabunny would snap every sample's duration
+			// to 1/fps and make the track's timescale the frame rate, so the
+			// last frame could not stop at the timeline's end. Our timestamps
+			// already sit on the frame grid, and the default 57600 timescale
+			// holds both a frame and that remainder exactly.
+			output.addVideoTrack(videoSource);
 			yuvConverter = createCanvasYuvConverter({
 				width: this.canvas.width,
 				height: this.canvas.height,
