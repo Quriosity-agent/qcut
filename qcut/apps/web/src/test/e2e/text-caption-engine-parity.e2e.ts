@@ -16,8 +16,12 @@ import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixtur
 const FFMPEG = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffmpeg");
 const WIDTH = 1280;
 const HEIGHT = 720;
-/** Not a whole number of frames: both engines must still end exactly here. */
-const CLIP_SECONDS = 4.05;
+/**
+ * A 24 fps clip of 99 frames on a 30 fps project: 123.75 frames, so the
+ * timeline does not end on a frame and both engines must still end there.
+ */
+const CLIP_SECONDS = 4.125;
+const PROJECT_FPS = 30;
 
 function cli<T>({
 	apiPort,
@@ -60,7 +64,7 @@ function makeBlackClip({ dir }: { dir: string }): string {
 		"-f",
 		"lavfi",
 		"-i",
-		`color=c=black:s=${WIDTH}x${HEIGHT}:r=30`,
+		`color=c=black:s=${WIDTH}x${HEIGHT}:r=24`,
 		"-f",
 		"lavfi",
 		"-i",
@@ -203,7 +207,7 @@ test("text and captions measure the same from the native and muxer engines", asy
 		"editor:project:update-settings",
 		...pid,
 		"--data",
-		JSON.stringify({ width: WIDTH, height: HEIGHT, fps: 30 })
+		JSON.stringify({ width: WIDTH, height: HEIGHT, fps: PROJECT_FPS })
 	);
 	const settings = await run<{ width: number; height: number }>(
 		"editor:project:settings",
@@ -270,6 +274,15 @@ test("text and captions measure the same from the native and muxer engines", asy
 		"zh"
 	);
 
+	const { duration: timelineSeconds } = await run<{ duration: number }>(
+		"editor:timeline:export",
+		...pid
+	);
+	expect(
+		Math.abs(timelineSeconds - CLIP_SECONDS),
+		"timeline length"
+	).toBeLessThan(0.002);
+
 	const measured: Record<string, Record<string, unknown>> = {};
 	for (const engine of ["native", "muxer"] as const) {
 		const outputPath = path.join(workDir, `${engine}.mp4`);
@@ -310,25 +323,53 @@ test("text and captions measure the same from the native and muxer engines", asy
 		expect(probe.stdout.trim(), `${engine} frame size`).toBe(
 			`${WIDTH},${HEIGHT}`
 		);
-		// The file ends where the timeline ends, on both engines: the muxer's
-		// last frame is cut to the remainder instead of lasting a whole frame.
-		const length = spawnSync(
+		// The picture ends where the timeline ends: the muxer cuts its last
+		// frame to the remainder instead of a whole frame. FFmpeg's constant
+		// frame rate cannot shorten a frame, so the native engine drops the
+		// partial one instead (its first PTS can also sit a frame late after
+		// the concat), and AAC frame granularity may stretch either file's
+		// sound by up to two frames of 1024 samples.
+		const probeLength = spawnSync(
 			path.resolve("electron/resources/ffmpeg/darwin-arm64/ffprobe"),
 			[
 				"-v",
 				"error",
+				"-select_streams",
+				"v:0",
 				"-show_entries",
-				"format=duration",
+				"stream=start_time,duration,nb_frames:format=duration",
 				"-of",
-				"csv=p=0",
+				"json",
 				outputPath,
 			],
 			{ encoding: "utf8" }
 		);
-		expect(
-			Math.abs(Number(length.stdout.trim()) - CLIP_SECONDS),
-			`${engine} length ${length.stdout.trim()} vs ${CLIP_SECONDS}`
-		).toBeLessThanOrEqual(0.02);
+		const parsed = JSON.parse(probeLength.stdout) as {
+			streams: Array<{
+				start_time: string;
+				duration: string;
+				nb_frames: string;
+			}>;
+			format: { duration: string };
+		};
+		const video = parsed.streams[0];
+		const videoEnd = Number(video.start_time) + Number(video.duration);
+		const label = `${engine} video ${video.nb_frames} frames, ends ${videoEnd.toFixed(4)}, file ${parsed.format.duration}`;
+		const frames = Number(video.nb_frames);
+		const timelineFrames = timelineSeconds * PROJECT_FPS;
+		expect(frames, label).toBeGreaterThanOrEqual(Math.floor(timelineFrames));
+		expect(frames, label).toBeLessThanOrEqual(Math.ceil(timelineFrames));
+		if (engine === "muxer") {
+			expect(frames, label).toBe(Math.ceil(timelineFrames));
+		}
+		expect(Math.abs(videoEnd - timelineSeconds), label).toBeLessThanOrEqual(
+			engine === "muxer" ? 0.002 : 1 / PROJECT_FPS + 0.002
+		);
+		const fileOvershoot = Number(parsed.format.duration) - timelineSeconds;
+		expect(fileOvershoot, label).toBeGreaterThanOrEqual(-0.002);
+		expect(fileOvershoot, label).toBeLessThanOrEqual(
+			(2 * 1024) / 48_000 + 0.002
+		);
 		const overlap = readFrame({ file: outputPath, time: 2.0 });
 		const latin = readFrame({ file: outputPath, time: 3.5 });
 		const textRows = { rowStart: 0, rowEnd: HEIGHT / 2 + 40 };
