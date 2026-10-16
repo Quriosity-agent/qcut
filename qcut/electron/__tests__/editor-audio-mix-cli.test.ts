@@ -337,6 +337,20 @@ describe("bus and master commands", () => {
 		});
 	});
 
+	it("refuses a poll interval that is not a positive number of seconds", async () => {
+		const { client, post, pollJob } = fakeClient();
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		for (const pollInterval of [0, -2, Number.NaN]) {
+			expect(
+				await run(client, "editor:mix:loudness", { pollInterval })
+			).toEqual({
+				success: false,
+				error: "--poll-interval must be a positive number of seconds",
+			});
+		}
+		expect(pollJob).not.toHaveBeenCalled();
+	});
+
 	it("reads a render job's status", async () => {
 		const { client, get } = fakeClient();
 		get.mockResolvedValueOnce({ jobId: "job-1", status: "running" } as never);
