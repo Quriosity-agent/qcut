@@ -23,7 +23,7 @@ function gradedGrey({ level, filter }: { level: number; filter: string }) {
 		"-i",
 		`color=c=0x${hex}${hex}${hex}:s=16x16:r=1:d=1,format=yuv420p`,
 		"-vf",
-		`${filter},scale=1:1:flags=area`,
+		filter ? `${filter},scale=1:1:flags=area` : "scale=1:1:flags=area",
 		"-frames:v",
 		"1",
 		"-f",
@@ -57,6 +57,23 @@ describe.skipIf(!hasFfmpeg)(
 					Math.abs(gradedGrey({ level, filter }) - level * 0.7)
 				).toBeLessThanOrEqual(4);
 			}
+		}, 60_000);
+
+		it("lifts black with shadows the way the preview's luma-weighted offset does", () => {
+			// Preview: offset 0.35 × (1 − luma)² on black = 0.35 → 89; the old eq
+			// gain could not move a zero.
+			const filter = filterFor({ shadows: 100 });
+			expect(
+				Math.abs(gradedGrey({ level: 0, filter }) - 89)
+			).toBeLessThanOrEqual(4);
+		}, 60_000);
+
+		it("keeps the full gain of a +2 exposure on dark greys", () => {
+			// 32 × 4 = 128; eq's brightness clipped at 1 and lost most of it.
+			const filter = filterFor({ exposure: 2 });
+			expect(
+				Math.abs(gradedGrey({ level: 32, filter }) - 128)
+			).toBeLessThanOrEqual(4);
 		}, 60_000);
 
 		it("exposure is a gain, and contrast stretches around mid-grey after it", () => {
@@ -135,6 +152,9 @@ describe.skipIf(!hasFfmpeg)(
 			expect(
 				gradedGrey({ level: 0, filter: filterFor({ brightness: -30 }) })
 			).toBeLessThanOrEqual(2);
+			// A neutral grade adds no filter at all: no identity cube to round
+			// the picture through RGB for nothing.
+			expect(filterFor({})).toBe("");
 			expect(gradedGrey({ level: 128, filter: filterFor({}) })).toBe(128);
 		}, 60_000);
 	}
