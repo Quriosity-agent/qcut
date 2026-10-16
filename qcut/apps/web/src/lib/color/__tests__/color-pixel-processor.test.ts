@@ -26,6 +26,19 @@ function constantCube({
 }
 
 describe("color pixel processor", () => {
+	it("scales brightness like the preview's CSS filter instead of adding to it", () => {
+		const settings = structuredClone(DEFAULT_MEDIA_COLOR_SETTINGS);
+		settings.basic = { ...settings.basic, brightness: -30 };
+		for (const level of [0.25, 0.5, 0.75]) {
+			const graded = transformColorPixel({
+				color: { r: level, g: level, b: level },
+				settings,
+			});
+			expect(graded.r).toBeCloseTo(level * 0.7, 5);
+			expect(graded.g).toBeCloseTo(level * 0.7, 5);
+		}
+	});
+
 	it("treats vibrance differently from ordinary saturation", () => {
 		const muted = { r: 0.45, g: 0.42, b: 0.4 };
 		const vibrant = settings();
