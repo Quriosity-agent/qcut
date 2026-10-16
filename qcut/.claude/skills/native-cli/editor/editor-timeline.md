@@ -484,6 +484,8 @@ qcut editor beats mark --project-id <id> --element-id <music-clip> --bookmarks d
 # Pull cuts onto the nearest marked beat (within 0.5 s by default)
 qcut editor timeline snap --to beats --element-ids <a>,<b>,<c> --project-id <id> --json
 qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json
+# Put a sound effect's attack (not the file's start) on the beat
+qcut editor timeline snap --to beats --element-ids <sfx> --edge onset --project-id <id> --json
 ```
 
 The tempo is read from the periodicity of the onset curve (autocorrelation
@@ -492,10 +494,22 @@ trailer cue reads 142–144, a sparse orchestral piece near 108. `confidence`
 is how periodic the onsets are (a click track ≈ 1, a loose piece 0.3). Beats
 are tracked along that period and `isDownbeat` marks the beat phase with the
 strongest onsets. Above about 165 BPM a track of identical hits may read at
-half tempo (the prior prefers it). `beats mark` reports each beat's source
-time and its timeline time through the clip's trims and speed; `snap` moves a
+half tempo (the prior prefers it). A beat's `strength` is the strongest onset
+within a 32nd note of it, relative to the clip's loudest; 0 means the grid ran
+through a quiet stretch there. `beats mark` reports each beat's source time
+and its timeline time through the clip's trims and speed; `snap` moves a
 clip's start (or `--edge end`) onto the nearest beat and refuses, with the
 reason, when the editor would (an occupied span, a locked track).
+
+Beats rarely fall on a whole frame, so by default visual clips (video, image,
+text, captions, stickers) land on the nearest frame of the project's fps after
+snapping, while sound stays exactly on the beat; `--frame-align all|none`
+changes that, and each result says `frameAligned`. `--edge onset` aligns a
+clip's first attack instead of its start: the main process finds the first
+onset at least `--onset-threshold` (default 0.5) of the clip's loudest in its
+audio, maps it through trims and speed, and the result carries `offset` and an
+`onsets` map with each clip's source time; a clip whose attack is trimmed away
+or that has none is left where it is and says why.
 
 ### Auto-edit (remove fillers/silences)
 
