@@ -103,6 +103,19 @@ describe("scene engine resolution", () => {
 		});
 	});
 
+	it("warns when auto lands on a model engine that cannot use the threshold", async () => {
+		const result = await detectScenes("p", { mediaId: "m1", threshold: 0.2 });
+		expect(result.engine).toBe("jianying");
+		expect(result.warnings).toEqual([
+			"threshold 0.2 ignored: the jianying engine has no threshold",
+		]);
+		const explicit = await detectScenes("p", {
+			mediaId: "m1",
+			engine: "jianying",
+		});
+		expect(explicit.warnings).toBeUndefined();
+	});
+
 	it("auto falls through to ffmpeg with the reasons when the models are missing", async () => {
 		mocks.jianying = {
 			...mocks.jianying,
