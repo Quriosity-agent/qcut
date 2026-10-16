@@ -304,16 +304,20 @@ export function requestRenameProject(
 	})();
 }
 
+const DUPLICATE_PROJECT_TIMEOUT_MS = 180_000;
+
 /** Duplicate a project and materialize the duplicated scaffold on disk. */
 export function requestDuplicateProject(
 	win: BrowserWindow,
 	projectId: string
 ): Promise<DuplicateProjectResponse> {
 	return (async () => {
+		// Copying media bytes and timelines can take a while on a large project.
 		const result = await requestFromRenderer<DuplicateProjectResponse>(
 			win,
 			"claude:project:duplicate",
-			{ projectId }
+			{ projectId },
+			DUPLICATE_PROJECT_TIMEOUT_MS
 		);
 
 		try {
