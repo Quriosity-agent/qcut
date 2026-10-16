@@ -11,6 +11,7 @@ export {
 	startExportJob,
 	startRendererExportJob,
 	getExportJobStatus,
+	cancelExportJob,
 	listExportJobs,
 	applyProgressEvent,
 	clearExportJobsForTests,
