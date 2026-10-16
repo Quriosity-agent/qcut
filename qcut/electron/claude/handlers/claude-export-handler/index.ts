@@ -15,5 +15,6 @@ export {
 	getExportJobStatus,
 	listExportJobs,
 	clearExportJobsForTests,
+	cancelExportJob,
 } from "./job-manager.js";
 export { setupClaudeExportIPC } from "./ipc.js";
