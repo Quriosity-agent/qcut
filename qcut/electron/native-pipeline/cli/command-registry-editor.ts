@@ -465,6 +465,56 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--split-time", "number", "Split point in seconds", { required: true }),
 		]
 	),
+	"editor:timeline:shot-split": ed(
+		"editor:timeline:shot-split",
+		"Split a video clip (or every video clip on a track) by its shots, as one undo step; a job that waits by default",
+		[
+			PID,
+			f("--element-id", "string", "Clip to split (or give --track-id)"),
+			f("--track-id", "string", "Split every video clip on this track"),
+			f(
+				"--engine",
+				"string",
+				"Detection engine: auto (default; jianying, then onnx, then ffmpeg), jianying, onnx or ffmpeg",
+				{ enum: ["auto", "jianying", "onnx", "ffmpeg"] }
+			),
+			f("--threshold", "number", "FFmpeg scene threshold (ffmpeg engine only)"),
+			f(
+				"--min-shot",
+				"number",
+				"Shortest shot in seconds; cuts that would leave less are set aside"
+			),
+			f(
+				"--cuts",
+				"string",
+				"Cut points in source seconds (comma-separated, or @file.json: an array, or an analyze shots result); nothing is detected"
+			),
+			f(
+				"--dry-run",
+				"boolean",
+				"Plan only: report the cuts, leave the timeline alone"
+			),
+			f("--timeout", "number", "Seconds to wait for the job (default 600)"),
+			f(
+				"--poll-interval",
+				"number",
+				"Seconds between status checks (default 2)"
+			),
+			f("--no-wait", "boolean", "Return the job id without waiting"),
+		],
+		[
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --dry-run --json",
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --engine jianying --json",
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts 3.333,15.167 --json",
+			"qcut editor timeline shot-split --project-id <id> --track-id <id> --min-shot 1 --json",
+		]
+	),
+	"editor:timeline:job-status": ed(
+		"editor:timeline:job-status",
+		"Progress and result of a timeline job (shot-split)",
+		[PID, JID],
+		["qcut editor timeline job-status --project-id <id> --job-id <id> --json"]
+	),
 	"editor:timeline:move": ed("editor:timeline:move", "Move element", [
 		PID,
 		EID,
@@ -636,12 +686,37 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		"List analysis models",
 		[]
 	),
-	"editor:analyze:scenes": ed("editor:analyze:scenes", "Detect scene changes", [
-		PID,
-		MID,
-		f("--threshold", "number", "Detection threshold"),
-		f("--model", "string", "Model key", { short: "-m" }),
-	]),
+	"editor:analyze:scenes": ed(
+		"editor:analyze:scenes",
+		"Detect shot boundaries in a media item",
+		[
+			PID,
+			MID,
+			f(
+				"--engine",
+				"string",
+				"Detection engine: auto (default; jianying, then onnx, then ffmpeg), jianying, onnx or ffmpeg",
+				{ enum: ["auto", "jianying", "onnx", "ffmpeg"] }
+			),
+			f("--threshold", "number", "FFmpeg scene threshold (ffmpeg engine only)"),
+			f(
+				"--ai-analysis",
+				"boolean",
+				"Also describe each scene with the AI model (--model)"
+			),
+			f("--model", "string", "AI model key for --ai-analysis", { short: "-m" }),
+		],
+		[
+			"qcut editor analyze scenes --project-id <id> --media-id <id> --json",
+			"qcut editor analyze scenes --project-id <id> --media-id <id> --engine ffmpeg --threshold 0.3 --json",
+		]
+	),
+	"editor:analyze:engines": ed(
+		"editor:analyze:engines",
+		"Which shot-detection engines this machine can run, and the one auto picks",
+		[],
+		["qcut editor analyze engines --json"]
+	),
 	"editor:analyze:frames": ed("editor:analyze:frames", "Analyze video frames", [
 		PID,
 		MID,
