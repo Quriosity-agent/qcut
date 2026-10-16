@@ -19,6 +19,7 @@ import {
 } from "../native-pipeline/editor/editor-handlers-media.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 import { writeClaudeInstanceInfo } from "../claude/http/claude-api-token.js";
+import { describeCliInstall } from "../native-pipeline/cli/cli-version.js";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -768,6 +769,30 @@ describe("Media handlers", () => {
 		const result = await handleEditorHealth(client);
 		expect(result.success).toBe(true);
 		expect((result.data as { status: string }).status).toBe("ok");
+	});
+
+	it("editor:health reports the command's version and warns when the app differs", async () => {
+		const cli = describeCliInstall();
+		mockRoute("GET", "/api/claude/health", {
+			success: true,
+			data: { status: "ok", version: "2026.01.0101" },
+		});
+		const mismatch = await handleEditorHealth(client);
+		expect(mismatch.data).toMatchObject({
+			cliVersion: cli.version,
+			cliPath: cli.scriptPath,
+		});
+		expect((mismatch.data as { versionWarning?: string }).versionWarning).toContain(
+			"does not match QCut 2026.01.01.1"
+		);
+
+		mockRoute("GET", "/api/claude/health", {
+			success: true,
+			data: { status: "ok", version: cli.version },
+		});
+		const same = await handleEditorHealth(client, makeOpts({ command: "editor:health", statusOnly: true }));
+		expect(same.data).toMatchObject({ cliVersion: cli.version });
+		expect((same.data as { versionWarning?: string }).versionWarning).toBeUndefined();
 	});
 
 	it("editor:health --status-only --deep includes deepStatus", async () => {
