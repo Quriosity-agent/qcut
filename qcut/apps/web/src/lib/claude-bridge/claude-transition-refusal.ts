@@ -1,5 +1,7 @@
 import { getTimelineElementDuration } from "@/lib/timeline";
 import {
+	CLIP_TRANSITION_MAX_DURATION_SECONDS,
+	CLIP_TRANSITION_MIN_DURATION_SECONDS,
 	CLIP_TRANSITION_TYPES,
 	clampClipTransitionDuration,
 	isClipTransitionType,
@@ -20,6 +22,7 @@ export function describeTransitionRefusal({
 	fromElementId,
 	toElementId,
 	type,
+	duration,
 	videoMediaIds,
 	mediaTypeOf,
 }: {
@@ -27,6 +30,8 @@ export function describeTransitionRefusal({
 	fromElementId: string;
 	toElementId: string;
 	type: string;
+	/** The requested length; the store refuses anything but a finite number. */
+	duration?: unknown;
 	videoMediaIds: ReadonlySet<string>;
 	/** The media library type of a media id; undefined when it is not there. */
 	mediaTypeOf: (mediaId: string) => string | undefined;
@@ -86,6 +91,9 @@ export function describeTransitionRefusal({
 	if (Math.abs(gap) > SEAM_TOLERANCE_SECONDS) {
 		return `"${from.name}" ends at ${fromEnd.toFixed(3)} s but "${to.name}" starts at ${to.startTime.toFixed(3)} s (${gap > 0 ? "gap" : "overlap"} of ${Math.abs(gap).toFixed(3)} s); the clips must be adjacent`;
 	}
+	if (typeof duration !== "number" || !Number.isFinite(duration)) {
+		return `duration must be a number of seconds between ${CLIP_TRANSITION_MIN_DURATION_SECONDS} and ${CLIP_TRANSITION_MAX_DURATION_SECONDS}, got ${describeValue(duration)}`;
+	}
 	const room = 2 * Math.min(fromDuration, toDuration);
 	if (
 		clampClipTransitionDuration({ duration: room, maxDuration: room }) === null
@@ -93,4 +101,10 @@ export function describeTransitionRefusal({
 		return `the shorter of "${from.name}" and "${to.name}" leaves no room for a transition`;
 	}
 	return "neighbouring transitions leave no room at this cut";
+}
+
+function describeValue(value: unknown): string {
+	if (value === undefined) return "none";
+	if (typeof value === "number") return String(value);
+	return JSON.stringify(value) ?? String(value);
 }
