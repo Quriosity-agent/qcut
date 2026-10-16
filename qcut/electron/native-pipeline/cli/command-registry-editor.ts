@@ -591,10 +591,23 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f(
 				"--edge",
 				"string",
-				"Edge that lands on the beat: start (default) or end",
+				"What lands on the beat: the clip's start (default), its end, or onset (its first attack, found in its audio)",
 				{
-					enum: ["start", "end"],
+					enum: ["start", "end", "onset"],
 				}
+			),
+			f(
+				"--frame-align",
+				"string",
+				"Which clips end up on a whole frame: visual (default; video, image, text, stickers), all, or none",
+				{
+					enum: ["visual", "all", "none"],
+				}
+			),
+			f(
+				"--onset-threshold",
+				"number",
+				"With --edge onset: how loud an attack must be, as a share of the clip's loudest (default 0.5)"
 			),
 			f(
 				"--max-distance",
@@ -607,6 +620,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		[
 			"qcut editor timeline snap --to beats --element-ids <a>,<b> --project-id <id> --json",
 			"qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json",
+			"qcut editor timeline snap --to beats --element-ids <sfx> --edge onset --project-id <id> --json",
 		]
 	),
 	"editor:timeline:job-status": ed(
