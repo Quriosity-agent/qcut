@@ -72,10 +72,25 @@ Text fields and their units (preview and export agree):
 | `x`, `y` | project-canvas pixels, offset from the canvas centre | default 0 (centred); positive x is right, positive y is down |
 | `fontSize` | project-canvas pixels | scaled with the export resolution |
 | `fontFamily` | family name | system fonts work; for CJK text the export keeps CJK-capable families (Songti SC, Kaiti SC, Heiti SC, Hiragino Sans GB…) and falls back to the platform default with a warning in the log otherwise |
-| `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph |
+| `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph; the glow is a blurred copy of the glyphs (CSS `text-shadow` semantics: radius `glowBlur`, so it fades quickly and reads as a soft halo, not a box) |
+| `letterSpacing` | pixels after each character | |
+| `width`, `height`, `backgroundPadding` | project-canvas pixels | the text box (default 640 × 180, padding 12) centred on `x`, `y`; lines wrap at its inner width |
+| `verticalAlign` | top/middle/bottom | where the lines sit inside the box |
 | `color`, `backgroundColor`, `strokeColor`, `shadowColor`, `glowColor` | CSS colour | with `…Opacity` 0–1 |
-| `textAlign` | left/center/right | |
+| `textAlign` | left/center/right | inside the box |
 | `animationType` | none/fade/slide-up/slide-left | entrance only |
+
+Both export engines draw text the way the preview shows it. The native pass
+(libass) sizes each font to the preview's em (libass measures a font by its
+Windows ascent + descent, so Arial would come out 11 % small and Hiragino
+16 %; the export corrects the ASS font size per installed font), applies
+`letterSpacing`, wraps inside the text box and draws the glow as blurred
+glyphs. Captions sit where the preview puts them: the line box 28 px in from
+the top or bottom edge, text 36 px in from a side, wrapping inside the middle
+80 %; two caption lanes active at once draw on top of each other (the later
+lane on top) in the preview and in both exports, so keep overlapping cues on
+one lane or stagger them. `apps/web/src/test/e2e/text-caption-engine-parity.e2e.ts`
+measures glyph extents, glow and caption placement from both engines.
 
 A new text or captions track made without `--index` goes above the clips
 (the editor's stacking rule), so the text is visible; audio tracks go below.
