@@ -353,6 +353,12 @@ test("text and captions measure the same from the native and muxer engines", asy
 			format: { duration: string };
 		};
 		const video = parsed.streams[0];
+		// The picture starts at zero on both engines: the native concat used
+		// to move the whole program late by the first segment's AAC priming.
+		expect(
+			Math.abs(Number(video.start_time)),
+			`${engine} video start`
+		).toBeLessThan(0.002);
 		const videoEnd = Number(video.start_time) + Number(video.duration);
 		const label = `${engine} video ${video.nb_frames} frames, ends ${videoEnd.toFixed(4)}, file ${parsed.format.duration}`;
 		const frames = Number(video.nb_frames);
