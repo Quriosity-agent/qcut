@@ -520,14 +520,18 @@ export function setupBatchHandlers({
 						update.changes && typeof update.changes === "object"
 							? update.changes
 							: update;
-					const { applied, error } = applyElementChanges({
+					const { applied, error, ignoredFields } = applyElementChanges({
 						elementId: update.elementId,
 						changes,
 						pushHistory: false,
 					});
 					if (applied) {
 						updatedCount++;
-						results.push({ index, success: true });
+						results.push({
+							index,
+							success: true,
+							...(ignoredFields?.length ? { ignoredFields } : {}),
+						});
 						continue;
 					}
 
