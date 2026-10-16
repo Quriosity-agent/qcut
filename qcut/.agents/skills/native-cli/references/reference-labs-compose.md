@@ -212,7 +212,11 @@ qcut editor transition-lab apply --preset lab-page-curl --track-id track-1 --fro
 ```
 
 `editor transition-lab` recipes ship with QCut; `transition` presets only work
-on a machine with Jianying Professional installed.
+on a machine with Jianying Professional installed. The two clips must be
+consecutive video clips on one media track, meeting at a cut (a refusal names
+the clip and the gap). `gl-*` recipes are stored as `shader` transitions and
+export through the renderer's canvas engine automatically; `timeline export`
+shows them under the track's `transitions`.
 
 ## `draft` — Jianying Professional draft interop
 
