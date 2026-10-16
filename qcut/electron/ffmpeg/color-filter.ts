@@ -133,10 +133,13 @@ export function buildBasicFilters({
 	const eqBrightness = `clip((${rawBrightness})+0.005*lt((${rawBrightness}),0),-1,1)`;
 	const saturation = `clip(1+(${saturationValue})/100-clip((${fade})/100,0,1)*0.15,0,3)`;
 	const filters = [
-		`eq=brightness='${eqBrightness}':contrast='${eqContrast}':saturation='${saturation}':` +
+		`eq=brightness='${eqBrightness}':contrast='${eqContrast}':` +
 			`gamma_r='clip(1-(${temperature})/600-(${tint})/900,0.5,1.5)':` +
 			`gamma_g='clip(1+(${tint})/450,0.5,1.5)':` +
 			`gamma_b='clip(1+(${temperature})/600-(${tint})/900,0.5,1.5)':eval=frame`,
+		// eq's own saturation leaves chroma a step off neutral (a desaturated
+		// frame comes out green-grey); hue scales chroma around true grey.
+		`hue=s='${saturation}'`,
 	];
 	if (
 		values.vibrance !== 0 ||
