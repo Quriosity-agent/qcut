@@ -19,14 +19,20 @@ import { getFFprobePath } from "../../../ffmpeg/utils.js";
 
 /**
  * Where `file`'s sound starts, in seconds: negative for AAC priming kept as
- * an edit list, 0 when the file has no sound or the probe fails.
+ * an edit list, 0 when the file has no sound or the probe cannot run (no
+ * ffprobe, unreadable file) — a plain copy then, never a failed export.
  */
 export async function probeLeadingAudioTime({
 	file,
 }: {
 	file: string;
 }): Promise<number> {
-	const ffprobePath = await getFFprobePath();
+	let ffprobePath: string;
+	try {
+		ffprobePath = await getFFprobePath();
+	} catch {
+		return 0;
+	}
 	const output = await new Promise<string>((resolve) => {
 		const probe = spawn(
 			ffprobePath,
