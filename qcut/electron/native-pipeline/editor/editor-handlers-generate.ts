@@ -244,6 +244,8 @@ async function dispatchExport(
 			return exportStatus(client, opts);
 		case "list-jobs":
 			return exportListJobs(client, opts);
+		case "cancel":
+			return exportCancel(client, opts);
 		default:
 			return { success: false, error: `Unknown export action: ${action}` };
 	}
@@ -558,6 +560,21 @@ async function exportStatus(
 
 	const data = await client.get(
 		`/api/claude/export/${opts.projectId}/jobs/${opts.jobId}`
+	);
+	return { success: true, data };
+}
+
+/** Stop a running native export; the job ends as "cancelled". */
+async function exportCancel(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	if (!opts.jobId) return { success: false, error: "Missing --job-id" };
+
+	const data = await client.post(
+		`/api/claude/export/${opts.projectId}/jobs/${encodeURIComponent(opts.jobId)}/cancel`,
+		{}
 	);
 	return { success: true, data };
 }
