@@ -193,7 +193,8 @@ export function buildBasicFilters({
 		// eq's own saturation leaves chroma a step off neutral (a desaturated
 		// frame comes out green-grey); hue scales chroma around true grey.
 		`hue=s='${saturation}'`,
-		channelGains,
+		// Other graph builders join these as they are, so no empty entries.
+		...(channelGains ? [channelGains] : []),
 	];
 	if (
 		values.vibrance !== 0 ||
