@@ -1,11 +1,43 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	measureFileLoudness,
+	measureNativeExportLoudness,
 	parseEbur128Report,
 } from "../claude/handlers/claude-export-handler/export-loudness";
+import { exportJobs } from "../claude/handlers/claude-export-handler/job-manager";
+import {
+	EXPORT_JOB_STATUS,
+	type ExportJobInternal,
+} from "../claude/handlers/claude-export-handler/types";
+import type { ClaudeTimeline, MediaFile } from "../types/claude-api";
+
+vi.mock(
+	"../claude/handlers/claude-export-handler/public-api",
+	async (importOriginal) => ({
+		...(await importOriginal<Record<string, unknown>>()),
+		// The measuring export is registered already cancelled: `export cancel`
+		// accepts it like any job, and the wait must end rather than poll on.
+		startExportJob: vi.fn(async ({ projectId }: { projectId: string }) => {
+			const job: ExportJobInternal = {
+				jobId: "measure-1",
+				projectId,
+				status: EXPORT_JOB_STATUS.cancelled,
+				progress: 0.2,
+				startedAt: Date.now(),
+				completedAt: Date.now(),
+				error: "Cancelled",
+				presetId: "youtube-1080p",
+				engine: "native-cli",
+				settings: {} as ExportJobInternal["settings"],
+			};
+			exportJobs.set(job.jobId, job);
+			return { jobId: job.jobId, status: "queued" as const };
+		}),
+	})
+);
 
 const ffmpegPath = path.resolve(
 	__dirname,
@@ -45,6 +77,18 @@ describe("parseEbur128Report", () => {
 		expect(() => parseEbur128Report({ stderr: "nothing" })).toThrow(
 			"no summary"
 		);
+	});
+});
+
+describe("measureNativeExportLoudness", () => {
+	it("stops waiting when the measuring export is cancelled", async () => {
+		await expect(
+			measureNativeExportLoudness({
+				projectId: "p",
+				timeline: { fps: 30 } as unknown as ClaudeTimeline,
+				mediaFiles: [] as MediaFile[],
+			})
+		).rejects.toThrow("Cancelled");
 	});
 });
 
