@@ -413,6 +413,8 @@ export interface CLIRunOptions {
 	foreground?: boolean;
 	replace?: boolean;
 	ripple?: boolean;
+	/** Leave the gap a range delete opens (ripple is the default). */
+	noRipple?: boolean;
 	crossTrackRipple?: boolean;
 	removeFillers?: boolean;
 	removeSilences?: boolean;
