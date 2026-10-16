@@ -7,6 +7,7 @@
  * @module electron/native-pipeline/editor-api-client
  */
 
+import { describeRequestFailure } from "./editor-api-failure.js";
 import type { CLIRunOptions } from "../cli/cli-runner/types.js";
 import { readClaudeInstanceInfo } from "../../claude/http/claude-api-token.js";
 import type {
@@ -334,11 +335,12 @@ export class EditorApiClient {
 			});
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
-				throw new EditorApiError(
-					`Cannot connect to QCut at ${this.config.baseUrl}`
-				);
-			}
+			const failure = describeRequestFailure({
+				error: err,
+				url,
+				baseUrl: this.config.baseUrl,
+			});
+			if (failure) throw new EditorApiError(failure);
 			throw new EditorApiError(`HTTP request failed for ${url}: ${msg}`);
 		}
 
@@ -455,11 +457,12 @@ export class EditorApiClient {
 			});
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
-				throw new EditorApiError(
-					`Cannot connect to QCut at ${this.config.baseUrl}`
-				);
-			}
+			const failure = describeRequestFailure({
+				error: err,
+				url,
+				baseUrl: this.config.baseUrl,
+			});
+			if (failure) throw new EditorApiError(failure);
 			if (signal?.aborted) {
 				return;
 			}
@@ -947,11 +950,12 @@ export class EditorApiClient {
 			response = await fetch(url, init);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
-				throw new EditorApiError(
-					`Cannot connect to QCut at ${this.config.baseUrl}`
-				);
-			}
+			const failure = describeRequestFailure({
+				error: err,
+				url,
+				baseUrl: this.config.baseUrl,
+			});
+			if (failure) throw new EditorApiError(failure);
 			throw new EditorApiError(`HTTP request failed for ${url}: ${msg}`);
 		}
 
