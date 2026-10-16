@@ -8,8 +8,10 @@ import {
 import { COMMAND_GROUPS } from "./command-groups.js";
 import type { FlagDef } from "./command-registry-types.js";
 import { jsonError, jsonOk } from "./json-output.js";
+import { describeCliInstall } from "./cli-version.js";
 
-export const CLI_VERSION = "1.0.0";
+/** The QCut version this command was built from (release form), or "unknown". */
+export const CLI_VERSION = describeCliInstall().version;
 
 /** Detect CLI binary name from process.argv. */
 export function getCliName(): string {
