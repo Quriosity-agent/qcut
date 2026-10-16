@@ -415,6 +415,27 @@ export interface CLIRunOptions {
 	ripple?: boolean;
 	/** Leave the gap a range delete opens (ripple is the default). */
 	noRipple?: boolean;
+	// editor element color: one flag per basic grade control (temperature is above)
+	exposure?: number;
+	brightness?: number;
+	contrast?: number;
+	highlights?: number;
+	shadows?: number;
+	whites?: number;
+	blacks?: number;
+	tint?: number;
+	saturation?: number;
+	vibrance?: number;
+	fade?: number;
+	vignette?: number;
+	sharpness?: number;
+	grain?: number;
+	/** editor element filter: 0–100 strength (also --filter-intensity). */
+	intensity?: number;
+	/** editor element color: return every control to its default. */
+	reset?: boolean;
+	/** editor element filter: keep the clip's current effects and add after them. */
+	append?: boolean;
 	crossTrackRipple?: boolean;
 	removeFillers?: boolean;
 	removeSilences?: boolean;
