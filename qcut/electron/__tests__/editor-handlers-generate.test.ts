@@ -186,6 +186,38 @@ describe("Generate handlers", () => {
 		});
 	});
 
+	describe("export:cancel", () => {
+		it("requires job-id", async () => {
+			const result = await handleGenerateExportCommand(
+				client,
+				makeOpts({ command: "editor:export:cancel", projectId: "p1" }),
+				noopProgress
+			);
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("--job-id");
+		});
+
+		it("posts the cancel and hands back the job", async () => {
+			mockRoute("POST", "/api/claude/export/p1/jobs/job-9/cancel", {
+				success: true,
+				data: { jobId: "job-9", status: "cancelled" },
+			});
+			const result = await handleGenerateExportCommand(
+				client,
+				makeOpts({
+					command: "editor:export:cancel",
+					projectId: "p1",
+					jobId: "job-9",
+				}),
+				noopProgress
+			);
+			expect(result).toEqual({
+				success: true,
+				data: { jobId: "job-9", status: "cancelled" },
+			});
+		});
+	});
+
 	describe("generate:status", () => {
 		it("requires job-id", async () => {
 			const result = await handleGenerateExportCommand(
