@@ -530,6 +530,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			bookmarks: { type: "string" },
 			"beats-from": { type: "string" },
 			edge: { type: "string" },
+			"frame-align": { type: "string" },
+			"onset-threshold": { type: "string" },
 			"max-distance": { type: "string" },
 			"downbeats-only": { type: "boolean", default: false },
 			"remove-fillers": { type: "boolean" },
@@ -1257,6 +1259,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		bookmarks: values.bookmarks as string | undefined,
 		beatsFrom: values["beats-from"] as string | undefined,
 		edge: values.edge as string | undefined,
+		frameAlign: values["frame-align"] as string | undefined,
+		onsetThreshold:
+			values["onset-threshold"] !== undefined
+				? Number(values["onset-threshold"])
+				: undefined,
 		maxDistance:
 			values["max-distance"] !== undefined
 				? Number(values["max-distance"])
