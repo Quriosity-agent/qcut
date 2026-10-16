@@ -12,11 +12,10 @@ import {
 	test,
 	uploadTestMedia,
 } from "./helpers/electron-helpers";
+import { localFixturePath } from "./helpers/local-fixtures";
 
 const execFileAsync = promisify(execFile);
-const sourcePath =
-	process.env.QCUT_REAL_BODY_IMAGE_PATH ??
-	"/Users/peter/Library/Application Support/QCut/Research/JianyingFilter/body-multiface-2026-08-25/body-frame.png";
+const sourcePath = localFixturePath("QCUT_REAL_BODY_IMAGE_PATH");
 const outputDirectory = path.resolve("output/playwright/jianying-manual-body");
 const exportPath = path.join(outputDirectory, "manual-body-export.mp4");
 const exportFramePath = path.join(
