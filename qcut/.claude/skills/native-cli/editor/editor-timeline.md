@@ -389,19 +389,29 @@ qcut editor:editing:batch-cuts \
 ### Delete time range
 
 ```bash
+# Ripple is the default: later clips move left to close the gap
 qcut editor:editing:delete-range \
   --project-id <id> \
   --start-time 5.0 \
-  --end-time 15.0 \
-  --ripple
+  --end-time 15.0 --force
 
-# Limit to specific tracks
+# Keep the gap instead
+qcut editor:editing:delete-range \
+  --project-id <id> \
+  --start-time 5.0 --end-time 15.0 --no-ripple --force
+
+# Limit to specific tracks; --cross-track-ripple shifts every unlocked track
 qcut editor:editing:delete-range \
   --project-id <id> \
   --start-time 5.0 --end-time 15.0 \
   --track-id "track-1,track-2" \
-  --cross-track-ripple
+  --cross-track-ripple --force
 ```
+
+Range deletes sit in the confirm tier (`--force`). Like every command that
+edits the open project, `--project-id` must be the project the editor has
+open: another id (or one that does not exist) is refused with 409 and the
+timeline is left alone.
 
 ### Auto-edit (remove fillers/silences)
 
