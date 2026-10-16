@@ -154,6 +154,7 @@ const COMMON_PATCH_FIELDS = new Set([
  */
 const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
 	media: new Set([
+		"name",
 		"playbackRate",
 		"speedKeyframes",
 		"reverse",
@@ -492,6 +493,9 @@ export const applyElementChanges = ({
 			}
 
 			const mediaUpdates: Record<string, unknown> = {};
+			if (typeof changes.name === "string" && changes.name.trim()) {
+				mediaUpdates.name = changes.name.trim();
+			}
 			if (typeof changes.style?.volume === "number") {
 				mediaUpdates.volume = changes.style.volume;
 			}
