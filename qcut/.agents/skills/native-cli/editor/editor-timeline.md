@@ -254,8 +254,10 @@ by the editor), a `message` when an engine finds no boundary at all in a clip
 comma-separated list, or `@file.json` holding an array of seconds, an
 `analyze shots` result or an `analyze scenes` result; the seconds are rounded
 to the project's frame grid. `--threshold` is only accepted with `ffmpeg` or
-`auto`, as in `analyze scenes`. After a split, `timeline export` shows the new
-clips. Which engines this machine can run: `qcut editor analyze engines --json`.
+`auto`, as in `analyze scenes`; when `auto` lands on a model engine the result
+carries a `warnings` entry saying the threshold was ignored. After a split,
+`timeline export` shows the new clips. Which engines this machine can run:
+`qcut editor analyze engines --json`.
 
 ### Move element
 
