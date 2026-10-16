@@ -499,10 +499,19 @@ export async function detectScenes(
 			Math.round((totalDuration / (totalScenes - 1)) * 10) / 10;
 	}
 
+	// `auto` may land on a model engine; a threshold given for FFmpeg is then
+	// ignored, which the caller should hear rather than guess.
+	const warnings =
+		request.threshold !== undefined && engine !== "ffmpeg"
+			? [
+					`threshold ${request.threshold} ignored: the ${engine} engine has no threshold`,
+				]
+			: [];
 	return {
 		engine,
 		...(requested !== engine ? { requestedEngine: requested } : {}),
 		...(fallbacks.length > 0 ? { fallbacks } : {}),
+		...(warnings.length > 0 ? { warnings } : {}),
 		route,
 		durationSeconds,
 		scenes,
