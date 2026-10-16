@@ -19,6 +19,7 @@ import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
 import { timelineRequiresRendererFilterStackExport } from "../../types/filter-stack-export-policy.js";
 import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
+import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
 import type {
@@ -1882,7 +1883,8 @@ export function registerSharedRoutes(
 				}).length > 0 ||
 				timelineRequiresRendererPortraitExport({ timeline }) ||
 				timelineRequiresRendererFilterStackExport({ timeline }) ||
-				timelineRequiresRendererShaderTransitionExport({ timeline });
+				timelineRequiresRendererShaderTransitionExport({ timeline }) ||
+				timelineRequiresRendererAdjustmentLayerExport({ timeline });
 			if (requiresRendererExport) {
 				if (!accessor.requestLocalVideoExport) {
 					throw new HttpError(
