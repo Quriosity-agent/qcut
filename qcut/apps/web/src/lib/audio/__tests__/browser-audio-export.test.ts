@@ -4,6 +4,7 @@ import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { DEFAULT_MEDIA_AUDIO_SETTINGS } from "../audio-properties";
 import {
 	buildBrowserAudioAutomation,
+	DENOISE_LOWPASS_OFF_HZ,
 	MAX_BROWSER_AUDIO_AUTOMATION_POINTS,
 } from "../browser-audio-automation";
 import { renderBrowserTimelineAudio } from "../browser-audio-export";
@@ -179,6 +180,33 @@ describe("browser audio export", () => {
 		expect(middle?.formantStrength).toBe(1);
 		expect(end?.outputGain).toBeCloseTo(1.9953, 3);
 		expect(end?.pan).toBe(1);
+	});
+
+	it("parks the denoise cuts at identity until denoise is on", () => {
+		const off = buildBrowserAudioAutomation({
+			element: mediaElement(),
+			duration: 2,
+			fps: 30,
+		})[0];
+		expect(off.denoiseHighpass).toBe(0);
+		expect(off.denoiseLowpass).toBe(DENOISE_LOWPASS_OFF_HZ);
+
+		const on = buildBrowserAudioAutomation({
+			element: mediaElement({
+				audio: {
+					...DEFAULT_MEDIA_AUDIO_SETTINGS,
+					denoise: {
+						...DEFAULT_MEDIA_AUDIO_SETTINGS.denoise,
+						enabled: true,
+						amount: 50,
+					},
+				},
+			}),
+			duration: 2,
+			fps: 30,
+		})[0];
+		expect(on.denoiseHighpass).toBe(80);
+		expect(on.denoiseLowpass).toBe(16_000);
 	});
 
 	it("samples clip speed curves for offline audio automation", () => {
