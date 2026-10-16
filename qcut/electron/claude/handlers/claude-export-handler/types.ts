@@ -131,6 +131,8 @@ export interface StickerOverlay {
 export interface TextOverlay {
 	id: string;
 	content: string;
+	/** Position of the overlay's track in the timeline, for stacking ties. */
+	trackIndex?: number;
 	startTime: number;
 	endTime: number;
 	fontSize: number;
