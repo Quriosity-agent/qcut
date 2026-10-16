@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	analyzeFromSamples,
+	detectFirstOnset,
 	resolveConfig,
 	DEFAULT_CONFIG,
 } from "../audio/beat-detection-engine.js";
@@ -261,5 +262,72 @@ describe("tempo from periodicity", () => {
 			44100
 		);
 		expect(result.confidence).toBeLessThan(0.3);
+	});
+});
+
+/** Silence with one decaying sine hit at `at` seconds of the given amplitude. */
+function hitAt({
+	samples,
+	at,
+	amplitude,
+	sampleRate,
+}: {
+	samples: Float32Array;
+	at: number;
+	amplitude: number;
+	sampleRate: number;
+}) {
+	const start = Math.floor(at * sampleRate);
+	for (let i = 0; i < 2048 && start + i < samples.length; i++) {
+		samples[start + i] =
+			Math.sin((2 * Math.PI * 880 * i) / sampleRate) *
+			amplitude *
+			(1 - i / 2048);
+	}
+}
+
+describe("beat strength", () => {
+	it("reads every click of a click track as a strong beat", () => {
+		const result = analyzeFromSamples(
+			generateClickTrack(120, 10, 44100),
+			44100
+		);
+		expect(result.beats.length).toBeGreaterThan(10);
+		for (const beat of result.beats) {
+			expect(beat.strength).toBeGreaterThan(0.5);
+		}
+	});
+});
+
+describe("detectFirstOnset", () => {
+	it("finds nothing in silence or in a clip shorter than a frame", () => {
+		expect(detectFirstOnset(generateSilence(2, 44100), 44100).time).toBeNull();
+		expect(detectFirstOnset(new Float32Array(512), 44100).time).toBeNull();
+	});
+
+	it("puts the onset where the hit is, at the beat engine's frame resolution", () => {
+		const samples = generateSilence(1, 44100);
+		hitAt({ samples, at: 0.3, amplitude: 0.9, sampleRate: 44100 });
+		const onset = detectFirstOnset(samples, 44100);
+		expect(onset.time).not.toBeNull();
+		expect(Math.abs((onset.time ?? 0) - 0.3)).toBeLessThan(0.04);
+		expect(onset.strength).toBeCloseTo(1, 6);
+		expect(onset.threshold).toBe(0.5);
+		expect(onset.duration).toBe(1);
+	});
+
+	it("skips a quiet pre-roll and takes the first attack that reaches the threshold", () => {
+		const samples = generateSilence(1.5, 44100);
+		hitAt({ samples, at: 0.1, amplitude: 0.05, sampleRate: 44100 });
+		hitAt({ samples, at: 0.8, amplitude: 0.9, sampleRate: 44100 });
+		expect(
+			Math.abs((detectFirstOnset(samples, 44100).time ?? 0) - 0.8)
+		).toBeLessThan(0.04);
+		// A low threshold accepts the quiet tick.
+		expect(
+			Math.abs(
+				(detectFirstOnset(samples, 44100, { threshold: 0.1 }).time ?? 0) - 0.1
+			)
+		).toBeLessThan(0.04);
 	});
 });
