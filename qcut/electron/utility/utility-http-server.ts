@@ -791,11 +791,14 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
+		// The renderer copies media bytes and timelines; give a large project time.
 		return await withTimeout(
-			requestFromMain("project:duplicate", {
-				projectId: req.body.projectId,
-			}),
-			10_000,
+			requestFromMain(
+				"project:duplicate",
+				{ projectId: req.body.projectId },
+				{ timeoutMs: 185_000 }
+			),
+			190_000,
 			"Duplicate project timed out"
 		);
 	});
