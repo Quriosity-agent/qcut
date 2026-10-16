@@ -17,7 +17,11 @@ import {
 	listTranscribeJobs,
 	cancelTranscribeJob,
 } from "../handlers/claude-transcribe-handler.js";
-import { detectScenes } from "../handlers/claude-scene-handler.js";
+import {
+	detectScenes,
+	INVALID_SCENE_ENGINE_MESSAGE,
+	inspectSceneEngines,
+} from "../handlers/claude-scene-handler.js";
 import { analyzeFrames } from "../handlers/claude-vision-handler.js";
 import { analyzeFillers } from "../handlers/claude-filler-handler.js";
 import { analyzeBeats } from "../handlers/claude-beats-handler.js";
@@ -44,7 +48,7 @@ import { saveTranscription } from "./claude-http-search-routes.js";
 import { getRequestCorrelationId } from "./claude-http-meta-routes.js";
 import type { BrowserWindow } from "electron";
 import type { WindowProxy } from "./claude-http-shared-routes.js";
-import { SCENE_DETECTION_ENGINES } from "../../types/claude-api.js";
+import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import type {
 	AutoEditRequest,
 	AutoEditJob,
@@ -439,18 +443,20 @@ export function registerAnalysisRoutes(
 	// ==========================================================================
 	// Scene Detection routes (Stage 2)
 	// ==========================================================================
+	/** Which scene engines can run here, and the one `auto` would pick. */
+	router.get("/api/claude/analyze/engines", async () => inspectSceneEngines());
+
 	router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
 		if (!req.body?.mediaId) {
 			throw new HttpError(400, "Missing 'mediaId' in request body");
 		}
 		if (
 			req.body.engine !== undefined &&
-			!SCENE_DETECTION_ENGINES.some((engine) => engine === req.body.engine)
+			!SCENE_DETECTION_ENGINE_CHOICES.some(
+				(engine) => engine === req.body.engine
+			)
 		) {
-			throw new HttpError(
-				400,
-				"Invalid scene detection engine; expected 'ffmpeg' or 'onnx'"
-			);
+			throw new HttpError(400, INVALID_SCENE_ENGINE_MESSAGE);
 		}
 		if (
 			req.body.aiAnalysis !== undefined &&
@@ -458,7 +464,12 @@ export function registerAnalysisRoutes(
 		) {
 			throw new HttpError(400, "aiAnalysis must be a boolean");
 		}
-		if (req.body.engine === "onnx" && req.body.threshold !== undefined) {
+		if (
+			req.body.threshold !== undefined &&
+			req.body.engine !== undefined &&
+			req.body.engine !== "ffmpeg" &&
+			req.body.engine !== "auto"
+		) {
 			throw new HttpError(
 				400,
 				"threshold is only supported by the FFmpeg scene engine"
