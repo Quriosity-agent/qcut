@@ -87,20 +87,28 @@ function visual(): VideoVisual {
 describe("native color filter", () => {
 	it("builds the complete native grade and materializes its LUT", () => {
 		const filter = buildAdjustmentFilter(visual());
-		expect(filter).toContain("eq=brightness=");
-		expect(filter).toContain("vibrance=intensity=");
-		expect(filter).toContain("lut3d=file='");
+		// The static basic grade (exposure, vibrance) is one baked cube ahead
+		// of the user's LUT; eq and the vibrance filter only serve animated grades.
+		expect(filter).not.toContain("eq=brightness=");
+		expect(filter).not.toContain("vibrance=intensity=");
 		expect(filter).toContain("huesaturation=");
 		expect(filter).toContain("curves=master=");
 		expect(filter).toContain("qcut-secondary-color-luts");
 		expect(filter).toContain("colorbalance=");
-		const path = /lut3d=file='([^']+)'/.exec(filter)?.[1];
-		expect(path).toBeTruthy();
-		// The filter embeds an ffmpeg-escaped path (e.g. `C\:/...` on Windows);
+		// Three cubes: the baked basic grade, the user's LUT, the secondary curves.
+		const paths = [...filter.matchAll(/lut3d=file='([^']+)'/g)].map(
+			(match) => match[1]
+		);
+		expect(paths).toHaveLength(3);
+		// The filter embeds ffmpeg-escaped paths (e.g. `C\:/...` on Windows);
 		// undo escapeFfmpegFilterPath before touching the filesystem.
-		const lutFsPath = (path ?? "").replace(/\\([:'])/g, "$1");
-		expect(existsSync(lutFsPath)).toBe(true);
-		expect(readFileSync(lutFsPath, "utf8")).toContain("LUT_3D_SIZE 2");
+		const [gradePath, lutPath] = paths.map((path) =>
+			path.replace(/\\([:'])/g, "$1")
+		);
+		expect(existsSync(gradePath)).toBe(true);
+		expect(readFileSync(gradePath, "utf8")).toContain("LUT_3D_SIZE 33");
+		expect(existsSync(lutPath)).toBe(true);
+		expect(readFileSync(lutPath, "utf8")).toContain("LUT_3D_SIZE 2");
 	});
 
 	it("materializes dual LUTs as one skin-mask blended export cube", () => {
@@ -116,9 +124,12 @@ describe("native color filter", () => {
 			},
 		};
 		const filter = buildAdjustmentFilter(input);
-		const escapedPath = /lut3d=file='([^']+)'/.exec(filter)?.[1] ?? "";
+		// The user's LUT is the second cube, after the baked basic grade.
+		const escapedPath =
+			[...filter.matchAll(/lut3d=file='([^']+)'/g)][1]?.[1] ?? "";
 		const lutPath = escapedPath.replace(/\\([:'])/g, "$1");
 		expect(readFileSync(lutPath, "utf8")).toContain("LUT_3D_SIZE 33");
+		expect(readFileSync(lutPath, "utf8")).toContain('TITLE "Identity"');
 	});
 
 	it("emits per-frame expressions for basic and smart keyframes", () => {
