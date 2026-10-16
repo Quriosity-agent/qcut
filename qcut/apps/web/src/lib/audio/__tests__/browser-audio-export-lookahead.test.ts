@@ -6,7 +6,10 @@ import {
 	createDefaultProjectAudioMixSettings,
 	normalizeTrackAudioSettings,
 } from "../audio-mix-settings";
-import { DEFAULT_MEDIA_AUDIO_SETTINGS } from "../audio-properties";
+import {
+	DEFAULT_MEDIA_AUDIO_SETTINGS,
+	FLAT_CUTOFF_Q_DB,
+} from "../audio-properties";
 import { renderBrowserTimelineAudio } from "../browser-audio-export";
 
 vi.mock("../browser-audio-source-decoder", () => ({
@@ -81,7 +84,14 @@ function stubBuffer({
  * Offline context whose render output is a ramp, so the returned buffer
  * shows exactly which rendered frames were kept.
  */
-function stubOfflineContext({ lengths }: { lengths: number[] }) {
+function stubOfflineContext({
+	lengths,
+	filters,
+}: {
+	lengths: number[];
+	/** Every biquad the render creates, in creation order. */
+	filters?: Array<ReturnType<typeof audioNode> & { type?: string }>;
+}) {
 	vi.stubGlobal(
 		"OfflineAudioContext",
 		class {
@@ -98,7 +108,11 @@ function stubOfflineContext({ lengths }: { lengths: number[] }) {
 					stubBuffer({ numberOfChannels, length, sampleRate })
 			);
 			createBufferSource = vi.fn(() => audioNode());
-			createBiquadFilter = vi.fn(() => audioNode());
+			createBiquadFilter = vi.fn(() => {
+				const node = audioNode();
+				filters?.push(node);
+				return node;
+			});
 			createDynamicsCompressor = vi.fn(() => audioNode());
 			createStereoPanner = vi.fn(() => audioNode());
 			createGain = vi.fn(() => audioNode());
@@ -170,6 +184,47 @@ describe("browser audio export dynamics lookahead", () => {
 				channel * 1_000_000 + LOOKAHEAD_FRAMES + 95_999
 			);
 		}
+	});
+
+	it("leaves every pass-through cut filter flat", async () => {
+		const filters: Array<ReturnType<typeof audioNode> & { type?: string }> = [];
+		stubOfflineContext({ lengths: [], filters });
+
+		await renderBrowserTimelineAudio({
+			tracks: [
+				{
+					...track,
+					audio: normalizeTrackAudioSettings({ audio: { busId: "music" } }),
+				},
+			],
+			mediaItems: [mediaItem],
+			totalDuration: 2,
+			fps: 30,
+			audioMix: {
+				master: createDefaultProjectAudioMixSettings().master,
+				buses: [createDefaultAudioMixBus({ id: "music", name: "Music" })],
+			},
+		});
+
+		const cuts = filters.filter(
+			(node) => node.type === "highpass" || node.type === "lowpass"
+		);
+		// Clip: denoise and telephone cuts (4); track, bus and master strips:
+		// low and high cut each (6). With Web Audio's default Q these stacked
+		// into a +4.5 dB sub-bass lift.
+		expect(cuts).toHaveLength(10);
+		for (const cut of cuts) expect(cut.Q.value).toBe(FLAT_CUTOFF_Q_DB);
+		// Unused cuts sit at 0 Hz / Nyquist, which pass everything; only the
+		// telephone band (320–3400 Hz, mixed in at 0) keeps real corners.
+		const applied = cuts.map(
+			(cut) =>
+				(cut.frequency.setValueAtTime.mock.calls[0]?.[0] as
+					| number
+					| undefined) ?? cut.frequency.value
+		);
+		expect(applied.sort((a, b) => a - b)).toEqual([
+			0, 0, 0, 0, 320, 3_400, 24_000, 24_000, 24_000, 24_000,
+		]);
 	});
 
 	it("also trims the track, bus and master strips a project mix adds", async () => {
