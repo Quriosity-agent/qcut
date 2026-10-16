@@ -226,6 +226,12 @@ export function createProjectFolderAPI(): NonNullable<
 			ipcRenderer.invoke("project-folder:list", projectId, subPath),
 		ensureStructure: (projectId) =>
 			ipcRenderer.invoke("project-folder:ensure-structure", projectId),
+		copyContents: (sourceProjectId, targetProjectId) =>
+			ipcRenderer.invoke(
+				"project-folder:copy-contents",
+				sourceProjectId,
+				targetProjectId
+			),
 	};
 }
 
