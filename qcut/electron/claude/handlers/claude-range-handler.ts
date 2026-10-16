@@ -46,6 +46,12 @@ export function validateRangeDeleteRequest(
 	) {
 		throw new HttpError(400, "trackIds must be an array of strings");
 	}
+	if (
+		request.keepAutomation !== undefined &&
+		typeof request.keepAutomation !== "boolean"
+	) {
+		throw new HttpError(400, "keepAutomation must be true or false");
+	}
 }
 
 /**
