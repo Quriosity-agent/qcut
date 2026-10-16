@@ -63,13 +63,20 @@ export type RangeCollisionKind =
 export function classifyRangeCollision({
 	item,
 	range,
+	tolerance = 0,
 }: {
 	item: TimeRange;
 	range: TimeRange;
+	/**
+	 * A part shorter than this that would survive outside the range counts
+	 * as inside it: an item ending a few microseconds past the range end
+	 * would otherwise leave a zero-length remnant behind.
+	 */
+	tolerance?: number;
 }): RangeCollisionKind {
 	if (!rangesOverlap(item, range)) return "none";
-	const startsBefore = item.startTime < range.startTime;
-	const endsAfter = item.endTime > range.endTime;
+	const startsBefore = item.startTime < range.startTime - tolerance;
+	const endsAfter = item.endTime > range.endTime + tolerance;
 	if (startsBefore && endsAfter) return "spans";
 	if (startsBefore) return "ends-inside";
 	if (endsAfter) return "starts-inside";
