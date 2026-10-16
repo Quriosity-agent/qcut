@@ -180,6 +180,10 @@ export interface ClaudeTrackOperationRequest {
 	 * color-clips: the colour to give the clips (null clears theirs).
 	 */
 	colorLabel?: string | null;
+	/** create/update: the track's mute, visibility and lock switches. */
+	muted?: boolean;
+	hidden?: boolean;
+	locked?: boolean;
 	/** color-clips: the clips to colour; omit to colour every clip on trackId. */
 	elementIds?: string[];
 }
@@ -197,6 +201,9 @@ export interface ClaudeTrackOperationResponse {
 		elementCount: number;
 		isMain?: boolean;
 		colorLabel?: string;
+		muted?: boolean;
+		hidden?: boolean;
+		locked?: boolean;
 	}>;
 	/** color-clips: how many clips changed colour. */
 	updatedCount?: number;
