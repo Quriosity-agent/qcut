@@ -71,6 +71,10 @@ export function updateJobProgress({
 		job.fps = fps;
 		job.estimatedTimeRemaining = estimatedTimeRemaining;
 
+		if (job.status === EXPORT_JOB_STATUS.cancelled) {
+			// A late progress report from a step that was being killed.
+			return;
+		}
 		if (normalized >= 1) {
 			job.status = EXPORT_JOB_STATUS.completed;
 			job.completedAt = Date.now();
@@ -101,6 +105,44 @@ export function updateJobProgress({
 			error
 		);
 	}
+}
+
+export type CancelExportOutcome =
+	| { ok: true; job: ExportJobInternal }
+	| {
+			ok: false;
+			reason: "not-found" | "finished" | "renderer";
+			job?: ExportJobInternal;
+	  };
+
+/**
+ * Stops a running native export: the job is marked cancelled and its current
+ * FFmpeg step is killed; the engine then removes the partial output. A job
+ * that already finished stays as it is, and a renderer (muxer) export runs
+ * in the editor window, out of reach from here.
+ */
+export function cancelExportJob({
+	jobId,
+}: {
+	jobId: string;
+}): CancelExportOutcome {
+	const job = exportJobs.get(jobId);
+	if (!job) return { ok: false, reason: "not-found" };
+	if (
+		job.status !== EXPORT_JOB_STATUS.queued &&
+		job.status !== EXPORT_JOB_STATUS.exporting
+	) {
+		return { ok: false, reason: "finished", job };
+	}
+	if (job.engine === "renderer-muxer") {
+		return { ok: false, reason: "renderer", job };
+	}
+	job.status = EXPORT_JOB_STATUS.cancelled;
+	job.error = "Cancelled";
+	job.completedAt = Date.now();
+	job.abort?.abort();
+	claudeLog.info(HANDLER_NAME, `Export job ${jobId} cancelled`);
+	return { ok: true, job };
 }
 
 export function getExportJobStatus(jobId: string): ExportJobStatus | null {
