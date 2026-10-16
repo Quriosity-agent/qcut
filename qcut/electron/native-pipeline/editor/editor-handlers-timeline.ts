@@ -14,6 +14,10 @@ import {
 } from "./editor-handlers-shot-split.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+import {
+	elementColor,
+	elementFilter,
+} from "./editor-handlers-element-grade.js";
 import { jsonPending } from "../cli/json-output.js";
 import { timelineApplyManifest } from "./editor-timeline-apply.js";
 import {
@@ -95,6 +99,14 @@ export async function handleTimelineEditingCommand(
 		if (module === "element" && action === "patch") {
 			const projectId = await resolveProjectId(client, options);
 			return timelineUpdateElement(client, { ...options, projectId });
+		}
+		if (module === "element" && action === "color") {
+			const projectId = await resolveProjectId(client, options);
+			return elementColor(client, { ...options, projectId });
+		}
+		if (module === "element" && action === "filter") {
+			const projectId = await resolveProjectId(client, options);
+			return elementFilter(client, { ...options, projectId });
 		}
 		return { success: false, error: `Unknown module: ${module}` };
 	} catch (err) {
