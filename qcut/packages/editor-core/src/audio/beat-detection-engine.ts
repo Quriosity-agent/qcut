@@ -17,6 +17,7 @@ import type {
 	Beat,
 	BeatDetectionConfig,
 	BeatDetectionResult,
+	FirstOnsetResult,
 	ResolvedBeatDetectionConfig,
 } from "./beat-types.js";
 
@@ -41,6 +42,15 @@ const PRIOR_SIGMA_OCTAVES = 1;
 const TIGHTNESS = 100;
 /** The local-mean window (seconds) subtracted from the onset curve. */
 const ONSET_MEAN_SECONDS = 0.5;
+/**
+ * A beat's strength is the strongest onset within this fraction of the beat
+ * period around it (a 32nd note), not the one frame the tracker landed on:
+ * the chain is laid along the period and may sit a frame off the hit, and a
+ * beat the grid carried through a quiet stretch still reads 0.
+ */
+const STRENGTH_WINDOW_FRACTION = 1 / 16;
+/** An attack counts as the clip's first onset once it reaches this share of the loudest. */
+const FIRST_ONSET_THRESHOLD = 0.5;
 
 function resolveConfig(
 	config?: BeatDetectionConfig
@@ -237,6 +247,20 @@ function estimateTempo(
 	return { periodHops: bestLag + shift, confidence: periodicity * prominence };
 }
 
+/** The strongest onset within `window` frames of `frame`. */
+function peakAround(
+	onset: Float64Array,
+	frame: number,
+	window: number
+): number {
+	let peak = 0;
+	const last = Math.min(onset.length - 1, frame + window);
+	for (let i = Math.max(0, frame - window); i <= last; i++) {
+		if (onset[i] > peak) peak = onset[i];
+	}
+	return peak;
+}
+
 /**
  * Beat frames along `period`: dynamic programming that rewards onset
  * strength and penalises deviation from the period (Ellis 2007), then a
@@ -327,6 +351,12 @@ export function analyzeFromSamples(
 	for (let i = 0; i < onset.length; i++) {
 		if (onset[i] > maxOnset) maxOnset = onset[i];
 	}
+	const strengthWindow = Math.max(
+		1,
+		Math.round(periodHops * STRENGTH_WINDOW_FRACTION)
+	);
+	const strengthOf = (frame: number) =>
+		maxOnset > 0 ? peakAround(onset, frame, strengthWindow) / maxOnset : 0;
 	// Downbeats: the beat phase whose onsets add up to the most.
 	const measure = Math.max(1, Math.round(cfg.beatsPerMeasure));
 	let downbeatPhase = 0;
@@ -334,7 +364,7 @@ export function analyzeFromSamples(
 	for (let phase = 0; phase < measure; phase++) {
 		let sum = 0;
 		for (let i = phase; i < frames.length; i += measure)
-			sum += onset[frames[i]];
+			sum += strengthOf(frames[i]);
 		if (sum > bestPhaseScore) {
 			bestPhaseScore = sum;
 			downbeatPhase = phase;
@@ -342,12 +372,50 @@ export function analyzeFromSamples(
 	}
 	const beats: Beat[] = frames.map((frame, index) => ({
 		timestamp: Math.round(((frame * HOP) / rate) * 1000) / 1000,
-		strength: maxOnset > 0 ? onset[frame] / maxOnset : 0,
+		strength: strengthOf(frame),
 		index,
 		isDownbeat: index % measure === downbeatPhase,
 	}));
 	const downbeats = beats.filter((b) => b.isDownbeat).map((b) => b.timestamp);
 	return { bpm, confidence, beats, downbeats, duration };
+}
+
+/**
+ * Where a clip's sound first attacks: the earliest onset at least
+ * `threshold` × the clip's strongest, moved to that attack's peak frame. The
+ * time follows the beat convention (the analysis frame's start), so an onset
+ * and a beat measured this way line up with each other. `time` is null when
+ * nothing reaches the threshold (silence, or a clip shorter than a frame).
+ */
+export function detectFirstOnset(
+	samples: Float32Array,
+	sampleRate: number,
+	{ threshold = FIRST_ONSET_THRESHOLD }: { threshold?: number } = {}
+): FirstOnsetResult {
+	const duration = sampleRate > 0 ? samples.length / sampleRate : 0;
+	const bounded = Math.min(1, Math.max(0.05, threshold));
+	const none = { time: null, strength: 0, threshold: bounded, duration };
+	if (sampleRate <= 0) return none;
+	const factor = Math.max(1, Math.round(sampleRate / ANALYSIS_RATE));
+	const decimated = decimate(samples, factor);
+	if (decimated.length < FFT_SIZE + HOP) return none;
+	const rate = sampleRate / factor;
+	const onset = onsetStrength(decimated, rate);
+	let maxOnset = 0;
+	for (let i = 0; i < onset.length; i++) {
+		if (onset[i] > maxOnset) maxOnset = onset[i];
+	}
+	if (maxOnset <= 0) return none;
+	const first = onset.findIndex((value) => value >= bounded * maxOnset);
+	if (first < 0) return none;
+	let peak = first;
+	while (peak + 1 < onset.length && onset[peak + 1] > onset[peak]) peak++;
+	return {
+		time: Math.round(((peak * HOP) / rate) * 1000) / 1000,
+		strength: onset[peak] / maxOnset,
+		threshold: bounded,
+		duration,
+	};
 }
 
 /** Re-export config resolution for testing */
