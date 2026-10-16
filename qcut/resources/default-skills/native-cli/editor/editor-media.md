@@ -182,6 +182,13 @@ qcut editor:project:rename --project-id <id> --new-name "New Name"
 qcut editor:project:duplicate --project-id <id>
 ```
 
+The copy is named "原名（副本）" (then "（副本 2）"…) and carries everything the
+project stores: media (same ids, files copied into the new project folder),
+media folders, every scene's timeline with its transitions and track mixer
+settings, overlay stickers, settings and buses. The open project is saved
+first so unsaved edits are in the copy; the Jianying draft binding is not
+copied. Large projects can take a while (the command waits up to ~3 minutes).
+
 ### List all projects
 
 ```bash
@@ -216,6 +223,10 @@ qcut editor:project:export-state --project-id <id> --output ./state.json
 |------|------|---------|-------------|
 | `--project-id` | string | | Project ID (required) |
 | `--output` | string | `./output/project-<id>.json` | Output file path |
+
+The file also holds `timeline` (the open editor's tracks with transitions,
+track audio and buses, as `timeline export` returns it) when the project is
+open; otherwise `timelineUnavailable` says why.
 
 ### Import project state (planned)
 
