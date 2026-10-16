@@ -1,4 +1,5 @@
 import { platform } from "@qcut/platform-core";
+import { ipcErrorMessage } from "@/lib/claude-bridge/ipc-error-message";
 import {
 	applyTimelineSceneSplits,
 	planSceneTimelineSplits,
@@ -28,10 +29,10 @@ export interface SmartShotSplitResult {
 	trackId: string;
 	elementId: string;
 	elementName: string;
-	/** The engine asked for, or "cuts" when the cut points were given. */
-	requestedEngine: ShotSplitEngineChoice | "cuts";
-	/** The engine that detected the boundaries; absent for given cuts. */
-	engine?: ShotSplitEngine;
+	/** The engine asked for, or "manual" when the cut points were given. */
+	requestedEngine: ShotSplitEngineChoice | "manual";
+	/** The engine that found the boundaries, or "manual" for given cuts. */
+	engine?: ShotSplitEngine | "manual";
 	route?: string;
 	/** Engines `auto` passed over, with the reason each was unavailable. */
 	fallbacks?: Array<{ engine: ShotSplitEngine; reason: string }>;
@@ -40,6 +41,8 @@ export interface SmartShotSplitResult {
 	cuts: TimelineShotCut[];
 	/** Boundaries that did not become cuts, each with its reason. */
 	skipped: TimelineShotSkip[];
+	/** Why there is nothing to cut, when `cuts` and `skipped` are both empty. */
+	message?: string;
 	createdElementIds: string[];
 	/** The clip ids left on the track in time order: the source, then the new ones. */
 	elementIds: string[];
@@ -220,20 +223,29 @@ export async function runSmartShotSplit({
 		let scenes: TimelineSceneBoundary[];
 		let detection: Awaited<ReturnType<AnalyzeScenesForShotSplit>> | undefined;
 		if (cuts) {
-			scenes = cuts.map((timestamp) => ({ timestamp, confidence: 1 }));
+			// Given seconds land on the project's frame grid, like detected ones.
+			scenes = cuts.map((timestamp) => ({
+				timestamp: Math.round(timestamp * source.fps) / source.fps,
+				confidence: 1,
+			}));
 		} else {
 			if (!analyzeScenes) {
 				throw new Error("智能镜头分割仅支持桌面版");
 			}
-			detection = await analyzeScenes(projectId, {
-				mediaId: source.mediaId,
-				engine,
-				aiAnalysis: false,
-				...(threshold !== undefined &&
-				(engine === "ffmpeg" || engine === "auto")
-					? { threshold }
-					: {}),
-			});
+			try {
+				detection = await analyzeScenes(projectId, {
+					mediaId: source.mediaId,
+					engine,
+					aiAnalysis: false,
+					...(threshold !== undefined &&
+					(engine === "ffmpeg" || engine === "auto")
+						? { threshold }
+						: {}),
+				});
+			} catch (error) {
+				// Without Electron's "Error invoking remote method" wrapper.
+				throw new Error(ipcErrorMessage(error));
+			}
 			if (isCanceled?.()) throw new ShotSplitCancelledError();
 			if (engine !== "auto" && detection.engine !== engine) {
 				throw new Error(
@@ -275,13 +287,21 @@ export async function runSmartShotSplit({
 				skipped.push({ ...skip, sourceTime: cut?.sourceTime });
 			}
 		}
+		const engineRan = cuts ? "manual" : detection?.engine;
+		// A clip with no boundary at all is reported, not left as empty lists.
+		const message =
+			applied.length === 0 && skipped.length === 0
+				? cuts
+					? "no cut points given"
+					: `${engineRan} found no shot boundary in the clip's source`
+				: undefined;
 		return {
 			projectId,
 			trackId,
 			elementId,
 			elementName: source.sourceElement.name,
-			requestedEngine: cuts ? "cuts" : engine,
-			...(detection ? { engine: detection.engine } : {}),
+			requestedEngine: cuts ? "manual" : engine,
+			...(engineRan ? { engine: engineRan } : {}),
 			...(detection?.route ? { route: detection.route } : {}),
 			...(detection?.fallbacks?.length
 				? { fallbacks: detection.fallbacks }
@@ -289,6 +309,7 @@ export async function runSmartShotSplit({
 			dryRun,
 			cuts: applied,
 			skipped,
+			...(message ? { message } : {}),
 			createdElementIds,
 			elementIds: [elementId, ...createdElementIds],
 		};
