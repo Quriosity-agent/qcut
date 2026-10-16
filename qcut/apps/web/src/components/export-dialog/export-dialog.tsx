@@ -97,7 +97,7 @@ export function ExportDialog() {
 	const [exportStems, setExportStems] = useState(false);
 	const [audioBitrate, setAudioBitrate] = useState<AudioExportBitrate>(192);
 	const [audioSampleRate, setAudioSampleRate] =
-		useState<AudioExportSampleRate>(44_100);
+		useState<AudioExportSampleRate>(48_000);
 
 	// GIF export state
 	const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(
