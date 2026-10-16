@@ -45,6 +45,9 @@ qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
 
+# Text element along the bottom edge (box inset 5 % of the canvas height)
+qcut editor timeline add-element --project-id <id> --json \
+  --data '{"type":"text","content":"字幕式标题","startTime":0,"duration":5,"fontSize":48,"anchor":"bottom-center"}'
 # Text element placed 300 px right of and 400 px below the canvas centre
 qcut editor:timeline:add-element \
   --project-id <id> \
@@ -70,6 +73,7 @@ Text fields and their units (preview and export agree):
 | Field | Unit | Notes |
 |-------|------|-------|
 | `x`, `y` | project-canvas pixels, offset from the canvas centre | default 0 (centred); positive x is right, positive y is down |
+| `anchor` | top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right | add-time shorthand for `x`/`y`: the text box sits `anchorInset` px (default 5 % of the shorter canvas side) inside that edge or corner; an explicit `x` or `y` wins on its axis |
 | `fontSize` | project-canvas pixels | scaled with the export resolution |
 | `fontFamily` | family name | system fonts work; for CJK text the export keeps CJK-capable families (Songti SC, Kaiti SC, Heiti SC, Hiragino Sans GB…) and falls back to the platform default with a warning in the log otherwise |
 | `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph; the glow is a blurred copy of the glyphs (CSS `text-shadow` semantics: radius `glowBlur`, so it fades quickly and reads as a soft halo, not a box) |
