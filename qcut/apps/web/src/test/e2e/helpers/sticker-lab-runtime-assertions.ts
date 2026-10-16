@@ -93,7 +93,7 @@ export async function expectContinuousRuntimePlayback({
 		timelineTimeSeconds: startTime,
 	});
 	await canvas.evaluate((element, kind) => {
-		const harness = window as StickerLabHarnessWindow;
+		const harness = window as unknown as StickerLabHarnessWindow;
 		harness.__stickerRuntimePlaybackProbe?.cleanup();
 		if (!(element instanceof HTMLCanvasElement)) {
 			throw new Error(`Sticker runtime canvas ${kind} is missing`);
@@ -153,7 +153,7 @@ export async function expectContinuousRuntimePlayback({
 		"none"
 	);
 	const playbackProof = await page.evaluate(async () => {
-		const harness = window as StickerLabHarnessWindow;
+		const harness = window as unknown as StickerLabHarnessWindow;
 		const probe = harness.__stickerRuntimePlaybackProbe;
 		if (!probe) throw new Error("Sticker runtime playback probe is missing");
 		const animatedFrame = await probe.done;
@@ -182,7 +182,7 @@ export async function expectContinuousRuntimePlayback({
 	await expect(page.getByTestId("preview-play-button")).toBeVisible();
 
 	const result = await page.evaluate(() => {
-		const harness = window as StickerLabHarnessWindow;
+		const harness = window as unknown as StickerLabHarnessWindow;
 		const probe = harness.__stickerRuntimePlaybackProbe;
 		if (!probe) throw new Error("Sticker runtime playback probe is missing");
 		probe.cleanup();

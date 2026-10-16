@@ -49,6 +49,7 @@ import {
 	MIN_PLAYBACK_RATE,
 } from "@/lib/video/video-speed-constants";
 import { getMediaTimelineDuration } from "@/lib/video/video-timing";
+import { normalizeTrackAudioSettings } from "@/lib/audio/audio-mix-settings";
 import {
 	hasMediaColorEdits,
 	normalizeMediaColorSettings,
@@ -1909,6 +1910,11 @@ export function formatTracksForExport({
 		isMain: track.isMain,
 		hidden: track.hidden,
 		locked: track.locked,
+		colorLabel: track.colorLabel,
+		muted: track.muted,
+		...(track.type === "audio" || track.type === "media"
+			? { audio: normalizeTrackAudioSettings({ audio: track.audio }) }
+			: {}),
 		elements: track.elements.map((element) =>
 			formatElementForExport({ element, trackIndex: index, fps })
 		),

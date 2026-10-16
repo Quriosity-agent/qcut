@@ -134,4 +134,61 @@ describe("timeline color labels", () => {
 			{ trackId: "overlay", elementId: "clip-c" },
 		]);
 	});
+
+	it("selects clips that inherit their track's colour", () => {
+		const tracks = createTracks();
+		tracks[1] = { ...tracks[1], colorLabel: "green" };
+		tracks[1].elements = [
+			...tracks[1].elements,
+			mediaElement({ id: "clip-d" }),
+		];
+		setTracks({ tracks });
+
+		useTimelineStore
+			.getState()
+			.selectElementsByColorLabel({ colorLabel: "green" });
+
+		// clip-c keeps its own rose; clip-d has none, so it shows the track's green.
+		expect(useTimelineStore.getState().selectedElements).toEqual([
+			{ trackId: "overlay", elementId: "clip-d" },
+		]);
+	});
+
+	it("sets and clears a track colour as one undo step each", () => {
+		const store = useTimelineStore.getState();
+		expect(
+			store.setTrackColorLabel({ trackId: "overlay", colorLabel: "red" })
+		).toBe(true);
+		expect(
+			useTimelineStore.getState().tracks.find((track) => track.id === "overlay")
+				?.colorLabel
+		).toBe("red");
+		expect(useTimelineStore.getState().history).toHaveLength(1);
+
+		// Same colour again changes nothing.
+		expect(
+			useTimelineStore
+				.getState()
+				.setTrackColorLabel({ trackId: "overlay", colorLabel: "red" })
+		).toBe(false);
+
+		useTimelineStore.getState().setTrackColorLabel({ trackId: "overlay" });
+		expect(
+			useTimelineStore.getState().tracks.find((track) => track.id === "overlay")
+		).not.toHaveProperty("colorLabel");
+		expect(useTimelineStore.getState().history).toHaveLength(2);
+	});
+
+	it("leaves a locked track's colour alone", () => {
+		const tracks = createTracks();
+		tracks[1] = { ...tracks[1], locked: true };
+		setTracks({ tracks });
+
+		expect(
+			useTimelineStore
+				.getState()
+				.setTrackColorLabel({ trackId: "overlay", colorLabel: "red" })
+		).toBe(false);
+		expect(useTimelineStore.getState().history).toHaveLength(0);
+	});
 });

@@ -3,6 +3,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, type TestInfo } from "@playwright/test";
+import type { StickerLabAPI } from "../../../../../../electron/preload-types/api-types/sticker-lab-api";
 import type { ElectronApplication, Page } from "playwright";
 import { evaluateStickerRuntime } from "@qcut/editor-core/sticker-lab";
 import { createTestProject, ensureStickersTabActive } from "./electron-helpers";
@@ -367,7 +368,8 @@ export async function runRealCachedStickerExport({
 		activeApp = firstRun.electronApp;
 		const firstPage = firstRun.page;
 		const cacheDiscoveryEvidence = await firstPage.evaluate(async () => {
-			const stickerLab = window.electronAPI?.stickerLab;
+			const stickerLab = (window as unknown as { electronAPI?: StickerLabAPI })
+				.electronAPI?.stickerLab;
 			if (!stickerLab)
 				throw new Error("Desktop Sticker Lab bridge is unavailable");
 			const discovery = await stickerLab.discoverLocalReferences({});
@@ -485,6 +487,13 @@ export async function runRealCachedStickerExport({
 			});
 			if (!(splitLeftState.active && splitRightState.active)) {
 				throw new Error("Sticker runtime is inactive around the split point");
+			}
+			if (
+				!("frameIndex" in splitLeftState && "frameIndex" in splitRightState)
+			) {
+				throw new Error(
+					"Sticker runtime has no frame index around the split point"
+				);
 			}
 			const splitRuntimeCanvas = firstPage
 				.locator('canvas[data-sticker-runtime-kind="direct-gif"]:visible')

@@ -31,6 +31,7 @@ describe("media-panel store", () => {
 			expect(STANDARD_EDITOR_TABS).toEqual([
 				"media",
 				"audio",
+				"mixer",
 				"text",
 				"stickers",
 				"effects",

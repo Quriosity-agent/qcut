@@ -118,6 +118,7 @@ export function VideoClipContextMenu({
 	compoundKind,
 	multicamClips,
 	currentColorLabel,
+	sameColorLabel,
 	actions,
 }: {
 	isDisabled: boolean;
@@ -132,6 +133,8 @@ export function VideoClipContextMenu({
 	compoundKind?: "compound" | "multicam";
 	multicamClips: MulticamClipOption[];
 	currentColorLabel?: TimelineColorLabel;
+	/** The colour "select same colour" matches, possibly the track's. */
+	sameColorLabel?: TimelineColorLabel;
 	actions: VideoClipMenuActions;
 }) {
 	const { locale, t } = useTranslation();
@@ -203,6 +206,7 @@ export function VideoClipContextMenu({
 			<ContextMenuSeparator />
 			<TimelineColorLabelMenu
 				currentColorLabel={currentColorLabel}
+				sameColorLabel={sameColorLabel}
 				onColorLabelChange={actions.setColorLabel}
 				onSelectSameColor={actions.selectSameColor}
 			/>

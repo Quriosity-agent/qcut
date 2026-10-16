@@ -129,6 +129,8 @@ import { localizeTimelineElementName } from "@/lib/i18n/timeline-names";
 import { getVideoClipLaneHeights } from "./video-timeline-clip-layout";
 import { VideoTimelineClip } from "./video-timeline-clip";
 import {
+	getTimelineColorLabelColor,
+	resolveEffectiveColorLabel,
 	resolveTimelineColorLabel,
 	type TimelineColorLabel,
 } from "@/lib/timeline/timeline-color-labels";
@@ -581,6 +583,12 @@ function TimelineElementComponent({
 		element.type === "media" && mediaItem?.type === "video" && !isOnAudioLane;
 	const isMediaClip = element.type === "media";
 	const colorLabel = resolveTimelineColorLabel({ value: element.colorLabel });
+	// What the clip shows: its own label, else its track's default. Every clip
+	// type paints it the same way, so audio and overlay lanes match video.
+	const shownColorLabel = resolveEffectiveColorLabel({ element, track });
+	const shownColor = getTimelineColorLabelColor({
+		colorLabel: shownColorLabel,
+	});
 	const canShowVideoClipActions =
 		element.type === "media" &&
 		!isOnAudioLane &&
@@ -988,10 +996,12 @@ function TimelineElementComponent({
 	};
 
 	const handleSelectSameColor = () => {
-		if (!colorLabel) return;
+		if (!shownColorLabel) return;
 		// Let the context-menu pointer event finish before replacing the selection.
 		setTimeout(() => {
-			useTimelineStore.getState().selectElementsByColorLabel({ colorLabel });
+			useTimelineStore
+				.getState()
+				.selectElementsByColorLabel({ colorLabel: shownColorLabel });
 		}, 0);
 	};
 
@@ -1696,7 +1706,7 @@ function TimelineElementComponent({
 			return (
 				<VideoTimelineClip
 					clipWidthPx={elementWidth}
-					colorLabel={colorLabel}
+					colorLabel={shownColorLabel}
 					displayName={displayName}
 					duration={element.duration}
 					mediaId={mediaItem.id}
@@ -1752,7 +1762,13 @@ function TimelineElementComponent({
 							sourceEnd={element.duration - element.trimEnd}
 							barWidth={0.5}
 							barGap={0.5}
-							color="rgba(126, 196, 255, 0.95)"
+							// Light bars read on any label colour; unlabelled clips keep
+							// the audio lane's blue.
+							color={
+								shownColor
+									? "rgba(255, 255, 255, 0.85)"
+									: "rgba(126, 196, 255, 0.95)"
+							}
 							anchor="bottom"
 						/>
 					</div>
@@ -1832,6 +1848,8 @@ function TimelineElementComponent({
 								? "z-50"
 								: "z-10"
 						} ${element.hidden ? "opacity-50" : ""}`}
+						style={shownColor ? { backgroundColor: shownColor } : undefined}
+						data-color-label={shownColorLabel}
 					>
 						<button
 							type="button"
@@ -1988,6 +2006,7 @@ function TimelineElementComponent({
 					canLinkMedia={selectedElements.length >= 2 && !element.groupId}
 					compoundKind={element.compound?.kind}
 					currentColorLabel={colorLabel}
+					sameColorLabel={shownColorLabel}
 					multicamClips={
 						element.compound?.kind === "multicam"
 							? element.compound.clips.map((clip) => ({
@@ -2256,6 +2275,7 @@ function TimelineElementComponent({
 					</ContextMenuItem>
 					<TimelineColorLabelMenu
 						currentColorLabel={colorLabel}
+						sameColorLabel={shownColorLabel}
 						onColorLabelChange={handleSetColorLabel}
 						onSelectSameColor={handleSelectSameColor}
 					/>

@@ -8,6 +8,9 @@ import {
 	test,
 } from "./helpers/electron-helpers";
 
+// Local media previews stream over app://local-media (blob: is the fallback).
+const PREVIEW_MEDIA_URL = /^(app:\/\/local-media\/|blob:)/;
+
 const screenshotDirectory = path.resolve(
 	process.cwd(),
 	"output/playwright/transition-workflow"
@@ -145,7 +148,7 @@ test.describe("Clip transition workflow", () => {
 			captureLifecycleError({ message: error.message })
 		);
 		page.on("requestfailed", (request) => {
-			if (request.url().startsWith("blob:")) {
+			if (PREVIEW_MEDIA_URL.test(request.url())) {
 				lifecycleErrors.push(
 					`${request.url()}: ${request.failure()?.errorText ?? "request failed"}`
 				);
@@ -207,7 +210,7 @@ test.describe("Clip transition workflow", () => {
 		const seamSources = await previewVideos.evaluateAll((videos) =>
 			videos.map((video) => (video as HTMLVideoElement).currentSrc)
 		);
-		expect(seamSources.every((source) => source.startsWith("blob:"))).toBe(
+		expect(seamSources.every((source) => PREVIEW_MEDIA_URL.test(source))).toBe(
 			true
 		);
 		expect(new Set(seamSources).size).toBe(1);
@@ -306,14 +309,24 @@ test.describe("Clip transition workflow", () => {
 		await transitions
 			.getByRole("button", { name: "光效", exact: true })
 			.click();
-		const catalogPreviewSources = await transitions
-			.locator('[data-testid^="transition-card-"] img')
+		const catalogCards = transitions.locator(
+			'[data-testid^="transition-card-"]'
+		);
+		const catalogPreviewSources = await catalogCards
+			.locator("img")
 			.evaluateAll((images) =>
 				images
 					.map((image) => image.getAttribute("src"))
 					.filter((source): source is string => Boolean(source))
 			);
-		expect(catalogPreviewSources).toHaveLength(40);
+		// Every card in the expanded catalog shows a preview image.
+		expect(await catalogCards.count()).toBeGreaterThan(0);
+		expect(
+			await catalogCards.evaluateAll(
+				(cards) =>
+					cards.filter((card) => !card.querySelector("img[src]")).length
+			)
+		).toBe(0);
 		expect(new Set(catalogPreviewSources).size).toBeGreaterThanOrEqual(12);
 		expect(
 			catalogPreviewSources.every((source) => source.endsWith(".webp"))

@@ -16,17 +16,31 @@ Confirm flags with `qcut editor <area> <action> --help --json`.
 
 | Command | Required | Key options | What it does |
 | --- | --- | --- | --- |
-| `editor track list` | — | `--project-id` | List timeline tracks in visual order |
-| `editor track create` | `--type` | `--project-id`, `--name`, `--index` | Create a track (`media`, `text`, `audio`, `sticker`, …) |
-| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index` | Rename or move a track |
+| `editor track list` | — | `--project-id` | List timeline tracks in visual order (with each track's `colorLabel`) |
+| `editor track create` | `--type` | `--project-id`, `--name`, `--index`, `--color` | Create a track (`media`, `text`, `audio`, `sticker`, …) |
+| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color` | Rename, move or colour a track |
 | `editor track move` | `--track-id --index` | `--project-id` | Move a track to an exact visual index |
 | `editor track delete` | `--track-id` | `--project-id`, `--force`, `--ripple` | Delete a track; `--force` for non-empty tracks |
+
+A track's level, pan, bus, mute, solo, ducking and effects are set with
+`editor track audio-set`, `mute` and `solo`; see [editor-mix.md](editor-mix.md).
 
 ```bash
 qcut editor track list --project-id <id> --json
 qcut editor track create --type text --name "Captions" --project-id <id> --json
+qcut editor track create --type audio --name "SFX · Guns" --color red --project-id <id> --json
+qcut editor track update --track-id <track-id> --color none --project-id <id> --json
 qcut editor track delete --track-id <track-id> --force --project-id <id> --json
 ```
+
+### Track colour
+
+`--color` gives a track a default clip colour: `violet`, `blue`, `green`,
+`yellow`, `red`, `rose`, `orange` or `mango` (`none` clears it). Clips on the
+track that have no colour of their own show it, including clips added later;
+a clip's own `colorLabel` still wins. The track header shows the colour as a
+strip, and the track's right-click menu sets it too. `timeline export` and
+`track list` include each track's `colorLabel`.
 
 ## Element patch and timeline manifests
 

@@ -41,6 +41,7 @@ import {
 	collectTimelineAudioFiles,
 	executeExportJob,
 } from "./export-engine.js";
+import { audioMixConfigFromTimeline } from "./export-audio-mix.js";
 import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
 import {
@@ -577,6 +578,7 @@ export async function startExportJob({
 			textOverlays,
 			jianyingTextOverlays,
 			audioFiles,
+			audioMixConfig: audioMixConfigFromTimeline(timeline),
 			videoTransitions,
 			projectFps: timeline.fps,
 			projectCanvas:

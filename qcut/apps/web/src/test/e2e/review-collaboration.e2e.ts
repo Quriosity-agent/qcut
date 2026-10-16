@@ -1,5 +1,8 @@
-import { mkdir } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import ffmpegStaticPath from "ffmpeg-static";
 import type { Page } from "@playwright/test";
 import type { ReviewPackage } from "@qcut/editor-core/collaboration";
 import {
@@ -19,10 +22,41 @@ const artifactDirectory = path.resolve(
 	process.cwd(),
 	"output/playwright/review-collaboration"
 );
-const videoFixture = path.resolve(
+const sampleVideo = path.resolve(
 	process.cwd(),
-	"apps/web/src/test/e2e/fixtures/media/sample-video-browser.mp4"
+	"apps/web/src/test/e2e/fixtures/media/sample-video.mp4"
 );
+
+/**
+ * The committed sample is H.264 4:4:4, which a browser <video> cannot play,
+ * so the public review page gets a 4:2:0 copy made at run time. Each run
+ * converts into its own directory, removed once `use` has read the file.
+ */
+async function withBrowserVideoFixture<T>(
+	use: (fixturePath: string) => Promise<T>
+): Promise<T> {
+	if (!ffmpegStaticPath) throw new Error("ffmpeg-static is unavailable");
+	const directory = await mkdtemp(path.join(tmpdir(), "qcut-e2e-review-"));
+	try {
+		const outputPath = path.join(directory, "sample-video-browser.mp4");
+		execFileSync(ffmpegStaticPath, [
+			"-loglevel",
+			"error",
+			"-i",
+			sampleVideo,
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			"-movflags",
+			"+faststart",
+			outputPath,
+		]);
+		return await use(outputPath);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+}
 const reviewToken = "e2e-review-token-123456789";
 const reviewShareUrl = `https://qcut.app/#/review/${reviewToken}`;
 
@@ -62,7 +96,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 
 	await createTestProject(page, "Review Collaboration E2E");
 	const project = await page.evaluate(() => {
-		const harness = window as ReviewHarnessWindow;
+		const harness = window as unknown as ReviewHarnessWindow;
 		const activeProject = harness.__projectStore.getState().activeProject;
 		if (!activeProject) throw new Error("Expected an active project");
 		return activeProject;
@@ -99,7 +133,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await page.reload();
 	await waitForProjectLoad(page);
 	await page.evaluate(() => {
-		const harness = window as ReviewHarnessWindow;
+		const harness = window as unknown as ReviewHarnessWindow;
 		Object.defineProperty(navigator, "clipboard", {
 			configurable: true,
 			value: {
@@ -115,7 +149,7 @@ test("syncs a review link and collaborates on the public video page", async ({
 		"同步并复制链接"
 	);
 	await page
-		.getByRole("textbox", { name: "Review comment", exact: true })
+		.getByRole("textbox", { name: "输入这个时间点的修改意见", exact: true })
 		.fill("开头节奏再快一点");
 	await page.getByRole("button", { name: "添加评论" }).click();
 	await expect(page.getByText("开头节奏再快一点")).toBeVisible();
@@ -141,7 +175,8 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await expect
 		.poll(() =>
 			page.evaluate(
-				() => (window as ReviewHarnessWindow).__copiedReviewLink ?? ""
+				() =>
+					(window as unknown as ReviewHarnessWindow).__copiedReviewLink ?? ""
 			)
 		)
 		.toContain(reviewToken);
@@ -150,11 +185,14 @@ test("syncs a review link and collaborates on the public video page", async ({
 		animations: "disabled",
 	});
 
-	await installHttpsMediaFixture({
-		electronApp,
-		fixturePath: videoFixture,
-		mediaUrl: "https://cdn.qcut.test/review-video.mp4",
-	});
+	// The fixture reads the file into memory, so the copy can go afterwards.
+	await withBrowserVideoFixture((fixturePath) =>
+		installHttpsMediaFixture({
+			electronApp,
+			fixturePath,
+			mediaUrl: "https://cdn.qcut.test/review-video.mp4",
+		})
+	);
 	await page.evaluate((token) => {
 		window.location.hash = `#/review/${token}`;
 	}, reviewToken);
@@ -162,7 +200,9 @@ test("syncs a review link and collaborates on the public video page", async ({
 	const video = page.getByTestId("public-review-video");
 	await expect(video).toBeVisible();
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThan(0);
 	await expect(page.getByTestId("public-review-duration")).toHaveText(
 		"00:00:05:00"
@@ -194,10 +234,14 @@ test("syncs a review link and collaborates on the public video page", async ({
 		"00:00:02:15"
 	);
 	await expect
-		.poll(() => video.evaluate((element) => element.currentTime))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.currentTime)
+		)
 		.toBeCloseTo(2.5, 1);
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThanOrEqual(2);
 	await page.getByLabel("Reviewer name").fill("导演");
 	await page
@@ -208,7 +252,9 @@ test("syncs a review link and collaborates on the public video page", async ({
 	await expect(page.getByTestId("public-review-version")).toContainText("v3");
 	await expect(page.getByRole("button", { name: "添加评论" })).toBeDisabled();
 	await expect
-		.poll(() => video.evaluate((element) => element.readyState))
+		.poll(() =>
+			video.evaluate((element: HTMLVideoElement) => element.readyState)
+		)
 		.toBeGreaterThanOrEqual(2);
 	await waitForStablePaint({ page });
 	await page.screenshot({

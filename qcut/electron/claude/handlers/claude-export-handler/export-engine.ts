@@ -15,9 +15,11 @@ import {
 } from "../../../ffmpeg/utils.js";
 import { buildFFmpegArgs } from "../../../ffmpeg-args-builder.js";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
+import { embeddedAudioMixInput } from "./export-audio-mix.js";
 import { buildXfadeTransitionFilter } from "../../../ffmpeg/transition-filter.js";
 import type {
 	AudioFile,
+	AudioMixConfig,
 	TextRasterLayer,
 	VideoSource,
 	VideoTransition,
@@ -1320,6 +1322,7 @@ export async function executeExportJob({
 	textOverlays = [],
 	jianyingTextOverlays = [],
 	audioFiles = [],
+	audioMixConfig,
 	videoTransitions = [],
 	projectCanvas,
 	projectFps,
@@ -1333,6 +1336,8 @@ export async function executeExportJob({
 	textOverlays?: TextOverlay[];
 	jianyingTextOverlays?: JianyingTextOverlay[];
 	audioFiles?: AudioFile[];
+	/** The project mix; absent when it changes nothing. */
+	audioMixConfig?: AudioMixConfig;
 	videoTransitions?: VideoTransition[];
 	projectFps?: number;
 	/**
@@ -1729,8 +1734,9 @@ export async function executeExportJob({
 		}
 
 		// Independent audio tracks are mixed after all video-only compositing
-		// passes. The existing embedded video audio is included when present.
-		if (audioFiles.length > 0) {
+		// passes. The existing embedded video audio is included when present;
+		// with a project mix it goes through the mix as its track's audio.
+		if (audioFiles.length > 0 || audioMixConfig) {
 			claudeLog.info(
 				HANDLER_NAME,
 				`Mixing ${audioFiles.length} independent timeline audio track(s)`
@@ -1742,21 +1748,27 @@ export async function executeExportJob({
 				const hasEmbeddedAudio = await probeHasAudioStream({
 					mediaPath: sourcePath,
 				});
+				const embedded =
+					audioMixConfig && hasEmbeddedAudio
+						? embeddedAudioMixInput({ path: sourcePath, segments })
+						: null;
+				const mixFiles = embedded ? [embedded, ...audioFiles] : audioFiles;
 				const inputArgs = ["-y", "-i", sourcePath];
-				for (const audioFile of audioFiles) {
+				for (const audioFile of mixFiles) {
 					inputArgs.push("-i", audioFile.path);
 				}
 				const graph = buildTimelineAudioFilters({
-					audioFiles,
+					audioFiles: mixFiles,
 					audioStartIndex: 1,
 					fps: settings.fps,
+					audioMixConfig,
 				});
 				if (!graph.mapAudio) {
 					throw new Error("Timeline audio filter graph produced no audio map");
 				}
 				const filterSteps = [...graph.filterSteps];
 				let audioMap = graph.mapAudio;
-				if (hasEmbeddedAudio) {
+				if (hasEmbeddedAudio && !embedded) {
 					const externalLabel = graph.mapAudio.startsWith("[")
 						? graph.mapAudio
 						: `[${graph.mapAudio}]`;

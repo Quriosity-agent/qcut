@@ -71,7 +71,7 @@ interface HarnessStickerState {
 	selectSticker: (stickerId: string) => void;
 }
 
-interface PlanarTrackingHarnessWindow extends Window {
+interface PlanarTrackingHarnessWindow extends Omit<Window, "electronAPI"> {
 	__mediaStore: {
 		getState: () => { mediaItems: HarnessMediaItem[] };
 	};

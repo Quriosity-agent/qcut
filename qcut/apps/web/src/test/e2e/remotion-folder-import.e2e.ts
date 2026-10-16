@@ -62,12 +62,15 @@ test.describe("Remotion Folder Import", () => {
 			await captureTestStep(page, "remotion-import", 1, "editor-initial-state");
 
 			// Call validation IPC directly
-			const validationResult = await page.evaluate(async (folderPath) => {
-				if (!window.electronAPI?.remotionFolder?.validate) {
-					return { error: "remotionFolder API not available" };
-				}
-				return await window.electronAPI.remotionFolder.validate(folderPath);
-			}, VALID_PROJECT);
+			const validationResult = await page.evaluate(
+				async (folderPath): Promise<{ isValid?: boolean; error?: string }> => {
+					if (!window.electronAPI?.remotionFolder?.validate) {
+						return { error: "remotionFolder API not available" };
+					}
+					return await window.electronAPI.remotionFolder.validate(folderPath);
+				},
+				VALID_PROJECT
+			);
 
 			// Should be valid
 			expect(validationResult).not.toBeNull();
@@ -194,7 +197,9 @@ test.describe("Remotion Folder Import", () => {
 				expect(scanResult.compositions.length).toBe(2);
 
 				// Verify composition metadata
-				const compositionIds = scanResult.compositions.map((c) => c.id);
+				const compositionIds = scanResult.compositions.map(
+					(c: { id: string }) => c.id
+				);
 				expect(compositionIds).toContain("HelloWorld");
 				expect(compositionIds).toContain("TestAnimation");
 			}

@@ -2,6 +2,7 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import type { ClaudeTimeline } from "../../../../../electron/types/claude-api";
 import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { normalizeProjectAudioMixSettings } from "@/lib/audio/audio-mix-settings";
 import {
 	calculateTimelineDuration,
 	formatTracksForExport,
@@ -33,6 +34,9 @@ export function setupRequestHandlers({
 				fps,
 				tracks: formatTracksForExport({ tracks, fps }),
 				projectId: project?.id,
+				audioMix: normalizeProjectAudioMixSettings({
+					audioMix: project?.audioMix,
+				}),
 			};
 
 			claudeAPI.sendResponse(timeline);

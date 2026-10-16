@@ -1,0 +1,191 @@
+/**
+ * The editor API for the mixer: each track's level, pan, bus, solo, mute,
+ * ducking and effects, the project's buses and its master.
+ *
+ * Every request is answered with the whole mix read back from the editor, so
+ * a caller sees what actually took effect.
+ *
+ * @module electron/types/claude-audio-mix-api
+ */
+
+export const CLAUDE_MASTER_BUS_ID = "master";
+
+export interface ClaudeAudioEqBand {
+	id: string;
+	enabled: boolean;
+	type: "bell" | "low-shelf" | "high-shelf" | "notch";
+	frequencyHz: number;
+	gainDb: number;
+	q: number;
+}
+
+export interface ClaudeAudioEffects {
+	parametricEqualizer: {
+		enabled: boolean;
+		lowCutHz: number;
+		highCutHz: number;
+		bands: ClaudeAudioEqBand[];
+	};
+	compressor: {
+		enabled: boolean;
+		thresholdDb: number;
+		ratio: number;
+		attackMs: number;
+		releaseMs: number;
+		makeupGainDb: number;
+	};
+	limiter: { enabled: boolean; ceilingDb: number; releaseMs: number };
+}
+
+/** A point on an automation curve: a value at a time (seconds) on the timeline. */
+export interface ClaudeAudioAutomationPoint {
+	time: number;
+	value: number;
+}
+
+/**
+ * Level (dB) and pan curves over timeline time. A curve with points replaces
+ * the fixed value: straight lines between points (in dB for level), holding
+ * before the first point and after the last.
+ */
+export interface ClaudeMixAutomation {
+	gainDb?: ClaudeAudioAutomationPoint[];
+	pan?: ClaudeAudioAutomationPoint[];
+}
+
+/** Curves to set: each one given replaces the old one, null removes it. */
+export interface ClaudeMixAutomationPatch {
+	gainDb?: ClaudeAudioAutomationPoint[] | null;
+	pan?: ClaudeAudioAutomationPoint[] | null;
+}
+
+export interface ClaudeAudioDucking {
+	enabled: boolean;
+	sourceTrackIds: string[];
+	thresholdDb: number;
+	reductionDb: number;
+	attackMs: number;
+	releaseMs: number;
+}
+
+export interface ClaudeTrackAudioSettings {
+	gainDb: number;
+	pan: number;
+	solo: boolean;
+	busId: string;
+	effects: ClaudeAudioEffects;
+	ducking: ClaudeAudioDucking;
+	autoCrossfade: {
+		enabled: boolean;
+		defaultDuration: number;
+		curve: string;
+	};
+	automation?: ClaudeMixAutomation;
+}
+
+export interface ClaudeAudioMixBus {
+	id: string;
+	name: string;
+	gainDb: number;
+	pan: number;
+	muted: boolean;
+	solo: boolean;
+	effects: ClaudeAudioEffects;
+	automation?: ClaudeMixAutomation;
+}
+
+export interface ClaudeTrackAudioMix {
+	trackId: string;
+	name: string;
+	type: string;
+	muted: boolean;
+	audio: ClaudeTrackAudioSettings;
+	/** What the mix makes of the settings: heard or not, and where it goes. */
+	effective: { silenced: boolean; busId: string };
+}
+
+export interface ClaudeAudioMixSnapshot {
+	projectId: string;
+	master: ClaudeAudioMixBus;
+	buses: ClaudeAudioMixBus[];
+	tracks: ClaudeTrackAudioMix[];
+}
+
+/** Partial effects: only the stages and fields given change. */
+export interface ClaudeAudioEffectsPatch {
+	parametricEqualizer?: Partial<
+		Omit<ClaudeAudioEffects["parametricEqualizer"], "bands">
+	> & { bands?: Array<Partial<ClaudeAudioEqBand>> };
+	compressor?: Partial<ClaudeAudioEffects["compressor"]>;
+	limiter?: Partial<ClaudeAudioEffects["limiter"]>;
+}
+
+export interface ClaudeTrackAudioPatch {
+	gainDb?: number;
+	pan?: number;
+	busId?: string;
+	solo?: boolean;
+	muted?: boolean;
+	ducking?: Partial<ClaudeAudioDucking>;
+	effects?: ClaudeAudioEffectsPatch;
+	automation?: ClaudeMixAutomationPatch;
+}
+
+export interface ClaudeAudioBusPatch {
+	name?: string;
+	gainDb?: number;
+	pan?: number;
+	muted?: boolean;
+	solo?: boolean;
+	effects?: ClaudeAudioEffectsPatch;
+	automation?: ClaudeMixAutomationPatch;
+}
+
+/** Loudness of the rendered mix (ITU-R BS.1770-4 / EBU R 128). */
+export interface ClaudeMixLoudness {
+	integratedLufs: number;
+	maxShortTermLufs: number;
+	maxMomentaryLufs: number;
+	truePeakDbtp: number;
+	samplePeakDb: number;
+	durationSeconds: number;
+}
+
+export type ClaudeAudioMixRequest = { projectId: string } & (
+	| { action: "get" }
+	/** Render the mix as an export would and measure it. */
+	| { action: "measure-loudness" }
+	/** Write one WAV per bus (and one for tracks feeding the master) into `outputDir`. */
+	| { action: "render-stems"; outputDir: string; fileNamePrefix?: string }
+	| { action: "set-track"; trackId: string; patch: ClaudeTrackAudioPatch }
+	| {
+			action: "create-bus";
+			busId?: string;
+			bus: ClaudeAudioBusPatch & { name: string };
+	  }
+	/** `busId` "master" changes the master. */
+	| { action: "update-bus"; busId: string; patch: ClaudeAudioBusPatch }
+	| { action: "remove-bus"; busId: string }
+);
+
+export interface ClaudeAudioMixResponse {
+	success: boolean;
+	error?: string;
+	/** Why it failed: the project is not open, a track or bus is missing, or a value is refused. */
+	reason?: "not-open" | "not-found" | "invalid";
+	mix?: ClaudeAudioMixSnapshot;
+	/** The bus a create made. */
+	busId?: string;
+	/** Tracks a removed bus sent back to the master. */
+	reroutedTrackIds?: string[];
+	loudness?: ClaudeMixLoudness;
+	stems?: ClaudeMixStem[];
+}
+
+export interface ClaudeMixStem {
+	/** The bus, or "master" for the tracks that feed the master directly. */
+	busId: string;
+	name: string;
+	path: string;
+	trackIds: string[];
+}

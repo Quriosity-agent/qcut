@@ -45,7 +45,7 @@ interface TimelineTrackSnapshot {
 	elements: CaptionElementSnapshot[];
 }
 
-interface HarnessWindow extends Window {
+interface HarnessWindow extends Omit<Window, "__wordTimelineStore"> {
 	__mediaPanelStore: {
 		getState: () => {
 			setActiveTab: (tab: "word-timeline") => void;

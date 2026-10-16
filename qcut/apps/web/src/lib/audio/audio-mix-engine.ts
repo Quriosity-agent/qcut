@@ -1,5 +1,4 @@
 import type {
-	AudioBusEffectsSettings,
 	AudioMixBusSettings,
 	ProjectAudioMixSettings,
 	TimelineTrack,
@@ -11,15 +10,20 @@ import {
 	createDefaultAudioMixBus,
 	createDefaultProjectAudioMixSettings,
 	createDefaultTrackAudioSettings,
-	normalizeProjectAudioMixSettings,
-	normalizeTrackAudioSettings,
 } from "./audio-mix-settings";
+import { resolveAudioMixRouting } from "./audio-mix-routing";
+import {
+	type MixStripNodes,
+	type SetMixParameter,
+	applyMixStripAutomation,
+	applyMixStripEffects,
+	applyMixStripLevel,
+	createMixStripNodes,
+} from "./audio-mix-strip";
 import {
 	type AudioMeterReading,
 	calculateAudioMeterReading,
 } from "./audio-metering";
-
-const MAX_BUS_EQ_BANDS = 8;
 
 interface MeterTap {
 	rawAnalyser: AnalyserNode;
@@ -29,17 +33,7 @@ interface MeterTap {
 	frequencySamples: Uint8Array<ArrayBuffer>;
 }
 
-interface ProcessingStrip {
-	input: GainNode;
-	lowCut: BiquadFilterNode;
-	bands: BiquadFilterNode[];
-	highCut: BiquadFilterNode;
-	compressor: DynamicsCompressorNode;
-	compressorMakeup: GainNode;
-	baseGain: GainNode;
-	duckGain: GainNode;
-	panner: StereoPannerNode;
-	limiter: DynamicsCompressorNode;
+interface ProcessingStrip extends MixStripNodes {
 	meter: MeterTap;
 	output: AnalyserNode;
 }
@@ -55,6 +49,7 @@ interface TrackStrip extends ProcessingStrip {
 interface BusStrip extends ProcessingStrip {
 	busId: string;
 	settings: AudioMixBusSettings;
+	silenced: boolean;
 }
 
 export interface AudioMixMeterSnapshot {
@@ -86,6 +81,41 @@ function smooth({
 		context.currentTime,
 		Math.max(0.001, timeConstant)
 	);
+}
+
+/** The timeline time the strips' automation was last read at. */
+let automationTime = 0;
+
+/**
+ * Moves every automated level and pan to its curve's value at `time`; called
+ * on each playback frame and on every seek.
+ */
+export function applyAudioMixAutomation(time: number) {
+	const context = getAudioMixContext();
+	automationTime = time;
+	if (!context) return;
+	const set = smoothly({ context });
+	for (const strip of trackStrips.values()) {
+		applyMixStripAutomation({
+			strip,
+			automation: strip.settings.automation,
+			silenced: strip.muted,
+			time,
+			set,
+		});
+	}
+	for (const strip of [
+		...busStrips.values(),
+		...(masterStrip ? [masterStrip] : []),
+	]) {
+		applyMixStripAutomation({
+			strip,
+			automation: strip.settings.automation,
+			silenced: strip.silenced,
+			time,
+			set,
+		});
+	}
 }
 
 export function getAudioMixContext(): AudioContext | null {
@@ -153,142 +183,13 @@ function createProcessingStrip({
 }: {
 	context: AudioContext;
 }): ProcessingStrip {
-	const input = context.createGain();
-	const lowCut = context.createBiquadFilter();
-	lowCut.type = "highpass";
-	const bands = Array.from({ length: MAX_BUS_EQ_BANDS }, () =>
-		context.createBiquadFilter()
-	);
-	const highCut = context.createBiquadFilter();
-	highCut.type = "lowpass";
-	const compressor = context.createDynamicsCompressor();
-	const compressorMakeup = context.createGain();
-	const baseGain = context.createGain();
-	const duckGain = context.createGain();
-	const panner = context.createStereoPanner();
-	const limiter = context.createDynamicsCompressor();
-	limiter.knee.value = 0;
-	limiter.ratio.value = 20;
-	limiter.attack.value = 0.003;
-
-	input.connect(lowCut);
-	let previous: AudioNode = lowCut;
-	for (const band of bands) {
-		previous.connect(band);
-		previous = band;
-	}
-	previous.connect(highCut);
-	highCut.connect(compressor);
-	compressor.connect(compressorMakeup);
-	compressorMakeup.connect(baseGain);
-	baseGain.connect(duckGain);
-	duckGain.connect(panner);
-	panner.connect(limiter);
-	const meter = createMeterTap({ context, input: limiter });
-
-	return {
-		input,
-		lowCut,
-		bands,
-		highCut,
-		compressor,
-		compressorMakeup,
-		baseGain,
-		duckGain,
-		panner,
-		limiter,
-		meter,
-		output: meter.rawAnalyser,
-	};
+	const nodes = createMixStripNodes({ context });
+	const meter = createMeterTap({ context, input: nodes.limiter });
+	return { ...nodes, meter, output: meter.rawAnalyser };
 }
 
-function updateEffects({
-	strip,
-	effects,
-	context,
-}: {
-	strip: ProcessingStrip;
-	effects: AudioBusEffectsSettings;
-	context: AudioContext;
-}) {
-	const equalizer = effects.parametricEqualizer;
-	smooth({
-		parameter: strip.lowCut.frequency,
-		value: equalizer.enabled ? equalizer.lowCutHz : 20,
-		context,
-	});
-	smooth({
-		parameter: strip.highCut.frequency,
-		value: equalizer.enabled ? equalizer.highCutHz : 20_000,
-		context,
-	});
-	for (const [index, node] of strip.bands.entries()) {
-		const band = equalizer.enabled ? equalizer.bands[index] : undefined;
-		if (!band?.enabled) {
-			node.type = "peaking";
-			smooth({ parameter: node.gain, value: 0, context });
-			continue;
-		}
-		node.type =
-			band.type === "bell"
-				? "peaking"
-				: band.type === "low-shelf"
-					? "lowshelf"
-					: band.type === "high-shelf"
-						? "highshelf"
-						: "notch";
-		smooth({ parameter: node.frequency, value: band.frequencyHz, context });
-		smooth({ parameter: node.Q, value: band.q, context });
-		smooth({
-			parameter: node.gain,
-			value: band.type === "notch" ? 0 : band.gainDb,
-			context,
-		});
-	}
-
-	const compressor = effects.compressor;
-	smooth({
-		parameter: strip.compressor.threshold,
-		value: compressor.enabled ? compressor.thresholdDb : 0,
-		context,
-	});
-	smooth({
-		parameter: strip.compressor.ratio,
-		value: compressor.enabled ? compressor.ratio : 1,
-		context,
-	});
-	smooth({
-		parameter: strip.compressor.attack,
-		value: compressor.attackMs / 1_000,
-		context,
-	});
-	smooth({
-		parameter: strip.compressor.release,
-		value: compressor.releaseMs / 1_000,
-		context,
-	});
-	smooth({
-		parameter: strip.compressorMakeup.gain,
-		value: compressor.enabled ? dbToGain({ db: compressor.makeupGainDb }) : 1,
-		context,
-	});
-
-	const limiter = effects.limiter;
-	smooth({
-		parameter: strip.limiter.threshold,
-		value: limiter.enabled ? limiter.ceilingDb : 0,
-		context,
-	});
-	smooth({
-		parameter: strip.limiter.ratio,
-		value: limiter.enabled ? 20 : 1,
-		context,
-	});
-	smooth({
-		parameter: strip.limiter.release,
-		value: limiter.releaseMs / 1_000,
-		context,
-	});
+function smoothly({ context }: { context: AudioContext }): SetMixParameter {
+	return (parameter, value) => smooth({ parameter, value, context });
 }
 
 function ensureMasterStrip({ context }: { context: AudioContext }): BusStrip {
@@ -298,6 +199,7 @@ function ensureMasterStrip({ context }: { context: AudioContext }): BusStrip {
 		...createProcessingStrip({ context }),
 		busId: MASTER_AUDIO_BUS_ID,
 		settings,
+		silenced: false,
 	};
 	strip.output.connect(context.destination);
 	masterStrip = strip;
@@ -314,7 +216,12 @@ function ensureBusStrip({
 	const existing = busStrips.get(busId);
 	if (existing) return existing;
 	const settings = createDefaultAudioMixBus({ id: busId, name: busId });
-	const strip = { ...createProcessingStrip({ context }), busId, settings };
+	const strip = {
+		...createProcessingStrip({ context }),
+		busId,
+		settings,
+		silenced: false,
+	};
 	strip.output.connect(ensureMasterStrip({ context }).input);
 	busStrips.set(busId, strip);
 	return strip;
@@ -384,22 +291,32 @@ function routeTrack({
 function updateBusStrip({
 	strip,
 	settings,
-	muted,
+	silenced,
 	context,
 }: {
 	strip: BusStrip;
 	settings: AudioMixBusSettings;
-	muted: boolean;
+	silenced: boolean;
 	context: AudioContext;
 }) {
+	const set = smoothly({ context });
 	strip.settings = settings;
-	updateEffects({ strip, effects: settings.effects, context });
-	smooth({
-		parameter: strip.baseGain.gain,
-		value: muted || settings.muted ? 0 : dbToGain({ db: settings.gainDb }),
-		context,
+	strip.silenced = silenced;
+	applyMixStripEffects({ strip, effects: settings.effects, set });
+	applyMixStripLevel({
+		strip,
+		gainDb: settings.gainDb,
+		pan: settings.pan,
+		silenced,
+		set,
 	});
-	smooth({ parameter: strip.panner.pan, value: settings.pan, context });
+	applyMixStripAutomation({
+		strip,
+		automation: settings.automation,
+		silenced,
+		time: automationTime,
+		set,
+	});
 }
 
 export function syncAudioMixEngine({
@@ -411,23 +328,20 @@ export function syncAudioMixEngine({
 }) {
 	const context = getAudioMixContext();
 	if (!context) return;
-	const normalizedMix = normalizeProjectAudioMixSettings({ audioMix });
-	const master = ensureMasterStrip({ context });
+	const routing = resolveAudioMixRouting({ tracks, audioMix });
 	updateBusStrip({
-		strip: master,
-		settings: normalizedMix.master,
-		muted: false,
+		strip: ensureMasterStrip({ context }),
+		settings: routing.master,
+		silenced: routing.master.muted,
 		context,
 	});
 
-	const activeBusIds = new Set(normalizedMix.buses.map((bus) => bus.id));
-	const anyBusSolo = normalizedMix.buses.some((bus) => bus.solo);
-	for (const bus of normalizedMix.buses) {
-		const strip = ensureBusStrip({ context, busId: bus.id });
+	const activeBusIds = new Set(routing.buses.map((bus) => bus.settings.id));
+	for (const bus of routing.buses) {
 		updateBusStrip({
-			strip,
-			settings: bus,
-			muted: anyBusSolo && !bus.solo,
+			strip: ensureBusStrip({ context, busId: bus.settings.id }),
+			settings: bus.settings,
+			silenced: bus.silenced,
 			context,
 		});
 	}
@@ -438,34 +352,28 @@ export function syncAudioMixEngine({
 		busStrips.delete(busId);
 	}
 
-	const audioTracks = tracks.filter(
-		(track) => track.type === "audio" || track.type === "media"
-	);
-	const anyTrackSolo = audioTracks.some((track) => track.audio?.solo === true);
-	const activeTrackIds = new Set(audioTracks.map((track) => track.id));
-	for (const track of audioTracks) {
-		const settings = normalizeTrackAudioSettings({ audio: track.audio });
-		const routedBus = normalizedMix.buses.find(
-			(bus) => bus.id === settings.busId
-		);
-		const soloBusMuted = anyBusSolo && routedBus?.solo !== true;
-		const muted =
-			track.muted === true || (anyTrackSolo && !settings.solo) || soloBusMuted;
-		const strip = ensureTrackStrip({ context, trackId: track.id });
-		strip.settings = settings;
-		strip.muted = muted;
-		updateEffects({ strip, effects: settings.effects, context });
-		smooth({
-			parameter: strip.baseGain.gain,
-			value: muted ? 0 : dbToGain({ db: settings.gainDb }),
-			context,
-		});
-		smooth({ parameter: strip.panner.pan, value: settings.pan, context });
-		routeTrack({
+	const activeTrackIds = new Set(routing.tracks.map((track) => track.trackId));
+	const set = smoothly({ context });
+	for (const track of routing.tracks) {
+		const strip = ensureTrackStrip({ context, trackId: track.trackId });
+		strip.settings = track.settings;
+		strip.muted = track.silenced;
+		applyMixStripEffects({ strip, effects: track.settings.effects, set });
+		applyMixStripLevel({
 			strip,
-			busId: routedBus?.id ?? MASTER_AUDIO_BUS_ID,
-			context,
+			gainDb: track.settings.gainDb,
+			pan: track.settings.pan,
+			silenced: track.silenced,
+			set,
 		});
+		applyMixStripAutomation({
+			strip,
+			automation: track.settings.automation,
+			silenced: track.silenced,
+			time: automationTime,
+			set,
+		});
+		routeTrack({ strip, busId: track.busId, context });
 	}
 	for (const [trackId, strip] of trackStrips) {
 		if (activeTrackIds.has(trackId)) continue;

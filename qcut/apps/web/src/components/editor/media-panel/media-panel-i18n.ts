@@ -5,6 +5,7 @@ export const TAB_LABEL_KEYS: Record<Tab, TranslationKey> = {
 	media: "tabs.media",
 	text: "tabs.text",
 	audio: "tabs.audio",
+	mixer: "tabs.mixer",
 	captions: "tabs.captions",
 	stickers: "tabs.stickers",
 	"video-edit": "tabs.videoEdit",

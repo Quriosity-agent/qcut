@@ -28,7 +28,11 @@ const searchMatchCount = (query: string) =>
 			.includes(query.trim().toLocaleLowerCase())
 	).length;
 
-const categoryCases = [
+const categoryCases: ReadonlyArray<{
+	id: string;
+	count: number;
+	screenshot?: string;
+}> = [
 	{ id: "summer", count: categoryCount("summer") },
 	{ id: "portrait", count: categoryCount("portrait") },
 	{ id: "landscape", count: categoryCount("landscape") },
@@ -48,7 +52,7 @@ const categoryCases = [
 	{ id: "film", count: categoryCount("film") },
 	{ id: "basic", count: categoryCount("basic") },
 	{ id: "indoor", count: categoryCount("indoor") },
-] as const;
+];
 
 async function addVideo({ page }: { page: Page }) {
 	const mediaItem = page.getByTestId("media-item").first();

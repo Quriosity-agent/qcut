@@ -103,11 +103,9 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
 		const splitButton = page.getByTestId("split-clip-button");
 		await expect(splitButton).toBeVisible();
 
-		// Split button should be accessible
-		await expect(splitButton).toBeEnabled();
-
-		// Test that clicking doesn't cause errors (even with no elements)
-		await splitButton.click();
+		// With nothing selected there is nothing to split, so the toolbar
+		// disables the button instead of acting on an empty timeline.
+		await expect(splitButton).toBeDisabled();
 
 		// Timeline should still be functional
 		await expect(page.getByTestId("timeline-track").first()).toBeVisible();

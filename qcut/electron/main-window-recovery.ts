@@ -60,13 +60,15 @@ function delay(ms: number): Promise<void> {
 async function waitUntilEditorReady({
 	win,
 	deadline,
+	timeoutMs,
 }: {
 	win: BrowserWindow;
 	deadline: number;
+	/** The wait the caller allowed, for the message; a measured remainder would vary. */
+	timeoutMs: number;
 }): Promise<void> {
 	const contents = win.webContents;
 	if (readyContents.has(contents)) return;
-	const budgetMs = Math.max(0, deadline - Date.now());
 	while (Date.now() < deadline) {
 		if (win.isDestroyed()) {
 			throw new Error(
@@ -90,7 +92,7 @@ async function waitUntilEditorReady({
 		await delay(Math.min(READY_POLL_MS, Math.max(0, deadline - Date.now())));
 	}
 	throw new Error(
-		`QCut's editor was not ready within ${Number((budgetMs / 1000).toFixed(1))}s. Retry the command.`
+		`QCut's editor was not ready within ${Number((timeoutMs / 1000).toFixed(1))}s. Retry the command.`
 	);
 }
 
@@ -125,7 +127,11 @@ async function reopenMainWindow({
 	create();
 	const win = findOpenWindow();
 	if (!win) throw new Error("QCut could not reopen its window");
-	await waitUntilEditorReady({ win, deadline: Date.now() + REOPEN_TIMEOUT_MS });
+	await waitUntilEditorReady({
+		win,
+		deadline: Date.now() + REOPEN_TIMEOUT_MS,
+		timeoutMs: REOPEN_TIMEOUT_MS,
+	});
 	return win;
 }
 
@@ -147,7 +153,7 @@ export async function ensureMainWindow({
 
 	const existing = findOpenWindow();
 	if (existing) {
-		await waitUntilEditorReady({ win: existing, deadline });
+		await waitUntilEditorReady({ win: existing, deadline, timeoutMs });
 		return existing;
 	}
 

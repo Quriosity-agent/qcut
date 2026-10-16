@@ -9,6 +9,7 @@
 
 import type { FlagDef, CommandDef } from "./command-registry-types.js";
 import { createExtraEditorCommands } from "./command-registry-editor-extra.js";
+import { createAudioMixEditorCommands } from "./command-registry-editor-mix.js";
 import { JIANYING_TRANSITION_COMMANDS } from "./command-registry-editor-jianying.js";
 import { JIANYING_IMPORT_COMMANDS } from "./command-registry-editor-jianying-import.js";
 import { INTEROP_COMMANDS } from "./command-registry-editor-interop.js";
@@ -320,15 +321,25 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		f("--type", "string", "Track type", { required: true }),
 		f("--name", "string", "Track name"),
 		f("--index", "number", "Zero-based insertion index"),
+		f(
+			"--color",
+			"string",
+			"Default clip colour: violet, blue, green, yellow, red, rose, orange, mango"
+		),
 	]),
 	"editor:track:update": ed(
 		"editor:track:update",
-		"Rename or move a timeline track",
+		"Rename, move or colour a timeline track",
 		[
 			PID_ACTIVE,
 			f("--track-id", "string", "Track ID", { required: true }),
 			f("--name", "string", "New track name"),
 			f("--index", "number", "Zero-based destination index"),
+			f(
+				"--color",
+				"string",
+				"Default clip colour (violet, blue, green, yellow, red, rose, orange, mango), or none"
+			),
 		]
 	),
 	"editor:track:move": ed(
@@ -487,10 +498,34 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"qcut-pipeline editor:timeline:arrange --project-id <id> --track-id <id> --mode sequential --json",
 		]
 	),
-	"editor:timeline:select": ed("editor:timeline:select", "Select element", [
+	"editor:timeline:select": ed("editor:timeline:select", "Select elements", [
 		PID,
-		EID,
+		f("--elements", "string", "JSON array of {trackId, elementId}"),
+		f(
+			"--color",
+			"string",
+			"Select every clip showing this colour (its own or its track's) instead"
+		),
 	]),
+	"editor:timeline:color-label": ed(
+		"editor:timeline:color-label",
+		"Colour every clip on a track, or listed clips",
+		[
+			PID,
+			f("--track-id", "string", "Colour every clip on this track"),
+			f(
+				"--element-ids",
+				"string",
+				"Clips to colour: JSON array, comma list, or repeat the flag"
+			),
+			f(
+				"--color",
+				"string",
+				"violet, blue, green, yellow, red, rose, orange or mango"
+			),
+			f("--clear", "boolean", "Remove the clips' own colour instead"),
+		]
+	),
 	"editor:timeline:get-selection": ed(
 		"editor:timeline:get-selection",
 		"Get current selection",
@@ -723,6 +758,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			enum: ["auto", "native", "cli", "muxer"],
 		}),
 		f("--verify-frames", "string", "Extract frames at comma-separated seconds"),
+		f(
+			"--stems",
+			"boolean",
+			"Also write one WAV per bus beside the export, <name>-<bus>.wav (needs --output; waits for the export)"
+		),
 		f("--export-format", "string", "Export format"),
 		f("--format", "string", "Export format (alias)"),
 		f("--fps", "number", "Video frame rate (24|25|30|50|60)"),
@@ -1092,4 +1132,5 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		]
 	),
 	...createExtraEditorCommands({ f, ed }),
+	...createAudioMixEditorCommands({ f, ed, projectId: PID_ACTIVE }),
 };

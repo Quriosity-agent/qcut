@@ -16,11 +16,16 @@
 
 import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { _electron as electron } from "playwright";
-import { test as qcutTest } from "./electron-helpers";
+import {
+	findAvailablePort,
+	test as qcutTest,
+	restoreEnv,
+} from "./electron-helpers";
+
+export { findAvailablePort } from "./electron-helpers";
 
 export interface IsolatedElectronFixtures {
 	apiPort: number;
@@ -33,36 +38,6 @@ export interface IsolatedElectronFixtures {
 	stateHome: string;
 	/** Launch without QCUT_API_TOKEN so the app mints a per-launch token. */
 	mintApiToken: boolean;
-}
-
-export async function findAvailablePort(): Promise<number> {
-	const server = createServer();
-	await new Promise<void>((resolve, reject) => {
-		server.once("error", reject);
-		server.listen(0, "127.0.0.1", () => resolve());
-	});
-	const address = server.address();
-	if (!address || typeof address === "string") {
-		throw new Error("Could not allocate an API port");
-	}
-	await new Promise<void>((resolve, reject) => {
-		server.close((error) => (error ? reject(error) : resolve()));
-	});
-	return address.port;
-}
-
-function restoreEnv({
-	name,
-	value,
-}: {
-	name: string;
-	value: string | undefined;
-}): void {
-	if (value === undefined) {
-		delete process.env[name];
-	} else {
-		process.env[name] = value;
-	}
 }
 
 export const isolatedElectronTest = qcutTest.extend<IsolatedElectronFixtures>({

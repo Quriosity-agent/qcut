@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 
 const TYPECHECK_TARGETS = [
 	"apps/web/tsconfig.json",
+	"apps/web/tsconfig.e2e.json",
 	"electron/tsconfig.json",
 	"packages/agent-worker/tsconfig.json",
 	"packages/editor-core/tsconfig.json",

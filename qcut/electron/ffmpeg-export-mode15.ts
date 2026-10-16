@@ -16,6 +16,7 @@ import type {
 	ExportOptions,
 	ExportResult,
 	AudioFile,
+	AudioMixConfig,
 	FFmpegProgress,
 	StickerSource,
 } from "./ffmpeg/types";
@@ -221,7 +222,14 @@ export async function handleMode1_5(
 
 		// Mix overlay audio files into the concatenated output if present
 		if (audioFiles && audioFiles.length > 0) {
-			await mixOverlayAudio(ffmpegPath, frameDir, outputFile, audioFiles, fps);
+			await mixOverlayAudio(
+				ffmpegPath,
+				frameDir,
+				outputFile,
+				audioFiles,
+				fps,
+				options.audioMixConfig
+			);
 		}
 
 		// Overlay stickers onto the output if present (2nd pass)
@@ -298,7 +306,8 @@ async function mixOverlayAudio(
 	frameDir: string,
 	outputFile: string,
 	audioFiles: AudioFile[],
-	fps: number
+	fps: number,
+	audioMixConfig?: AudioMixConfig
 ): Promise<void> {
 	console.log(
 		`🎧 [MODE 1.5 EXPORT] Mixing ${audioFiles.length} overlay audio file(s) into output...`
@@ -351,6 +360,7 @@ async function mixOverlayAudio(
 			audioFiles,
 			audioStartIndex: 1,
 			fps,
+			audioMixConfig,
 		});
 		const filterParts = [...audioGraph.filterSteps];
 		let audioMap = audioGraph.mapAudio ?? "1:a";

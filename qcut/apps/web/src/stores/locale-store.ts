@@ -21,3 +21,6 @@ export const useLocaleStore = create<LocaleState>()(
 		}
 	)
 );
+
+// Expose for E2E fixtures, which pin the UI language per test.
+(window as any).__localeStore = useLocaleStore;

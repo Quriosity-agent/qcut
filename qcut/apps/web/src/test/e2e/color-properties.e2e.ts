@@ -372,7 +372,7 @@ test.describe("Professional color properties", () => {
 		await expect(scopes).toBeVisible();
 		await expect
 			.poll(() =>
-				scopes.locator("canvas").evaluate((canvas) => {
+				scopes.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
 					const context = canvas.getContext("2d");
 					if (!context || canvas.width === 0 || canvas.height === 0) return 0;
 					const pixels = context.getImageData(
@@ -448,7 +448,7 @@ test.describe("Professional color properties", () => {
 		await expect(previewCanvas).toBeVisible();
 		await expect
 			.poll(() =>
-				previewCanvas.evaluate((canvas) => {
+				previewCanvas.evaluate((canvas: HTMLCanvasElement) => {
 					const context = canvas.getContext("2d");
 					if (!context || canvas.width === 0 || canvas.height === 0) return 0;
 					const pixels = context.getImageData(

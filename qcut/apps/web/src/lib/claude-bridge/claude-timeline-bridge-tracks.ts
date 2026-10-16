@@ -6,6 +6,10 @@ import type {
 	ClaudeTrackOperationResponse,
 } from "../../../../../electron/types/claude-api";
 import { debugError } from "@/lib/debug/debug-config";
+import {
+	parseTimelineColorLabel,
+	type TimelineColorLabel,
+} from "@/lib/timeline/timeline-color-labels";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
 
 /** Mirrors the timeline store's jianying-local package-hash contract. */
@@ -32,7 +36,110 @@ function summarizeTracks(): ClaudeTrackOperationResponse["tracks"] {
 		name: track.name,
 		elementCount: track.elements.length,
 		isMain: track.isMain,
+		colorLabel: track.colorLabel,
 	}));
+}
+
+/** A request's colour: a label, undefined to clear (null/""), or a thrown list of valid ones. */
+function requestedColorLabel(
+	request: ClaudeTrackOperationRequest
+): TimelineColorLabel | undefined {
+	return parseTimelineColorLabel({ value: request.colorLabel });
+}
+
+/**
+ * Give a track its default clip colour through the same store action as the
+ * track menu, then read it back so a refused change is reported, not assumed.
+ */
+function applyTrackColor({
+	trackId,
+	request,
+	pushHistory,
+}: {
+	trackId: string;
+	request: ClaudeTrackOperationRequest;
+	pushHistory: boolean;
+}): void {
+	const colorLabel = requestedColorLabel(request);
+	const store = useTimelineStore.getState();
+	const track = store.tracks.find((candidate) => candidate.id === trackId);
+	if (track?.locked) throw new Error(`Track "${track.name}" is locked`);
+	store.setTrackColorLabel({ trackId, colorLabel, pushHistory });
+	const applied = useTimelineStore
+		.getState()
+		.tracks.find((candidate) => candidate.id === trackId)?.colorLabel;
+	if (applied !== colorLabel) {
+		throw new Error("Track color verification failed");
+	}
+}
+
+/**
+ * Colour a whole track's clips, or the listed clips, with one call to the
+ * store's setColorLabelForElements, the action the clip menu uses. Clips that
+ * cannot change are reported instead of silently skipped.
+ */
+function colorClips(
+	request: ClaudeTrackOperationRequest
+): ClaudeTrackOperationResponse {
+	if (request.colorLabel === undefined) {
+		throw new Error("colorLabel is required (null clears the clips' colour)");
+	}
+	const colorLabel = requestedColorLabel(request);
+	const tracks = useTimelineStore.getState().tracks;
+	const targets: Array<{ trackId: string; elementId: string }> = [];
+	const skipped: Array<{ elementId: string; reason: string }> = [];
+
+	if (request.elementIds && request.elementIds.length > 0) {
+		for (const elementId of request.elementIds) {
+			const track = tracks.find((candidate) =>
+				candidate.elements.some((element) => element.id === elementId)
+			);
+			if (!track) {
+				skipped.push({ elementId, reason: "not on the timeline" });
+			} else if (request.trackId && track.id !== request.trackId) {
+				skipped.push({ elementId, reason: `on track ${track.id}` });
+			} else if (track.locked) {
+				skipped.push({ elementId, reason: `track "${track.name}" is locked` });
+			} else {
+				targets.push({ trackId: track.id, elementId });
+			}
+		}
+	} else {
+		if (!request.trackId) throw new Error("Give trackId or elementIds");
+		const track = tracks.find((candidate) => candidate.id === request.trackId);
+		if (!track) throw new Error(`Track not found: ${request.trackId}`);
+		if (track.locked) throw new Error(`Track "${track.name}" is locked`);
+		for (const element of track.elements) {
+			targets.push({ trackId: track.id, elementId: element.id });
+		}
+	}
+
+	const updatedCount =
+		targets.length > 0
+			? useTimelineStore
+					.getState()
+					.setColorLabelForElements({ elements: targets, colorLabel })
+			: 0;
+	// Read back: every target must now carry the requested colour.
+	const after = useTimelineStore.getState().tracks;
+	for (const target of targets) {
+		const element = after
+			.find((track) => track.id === target.trackId)
+			?.elements.find((candidate) => candidate.id === target.elementId);
+		if (element?.colorLabel !== colorLabel) {
+			skipped.push({
+				elementId: target.elementId,
+				reason: "the editor did not apply the colour",
+			});
+		}
+	}
+	return {
+		success: true,
+		trackId: request.trackId,
+		updatedCount,
+		skipped,
+		tracks: summarizeTracks(),
+	};
 }
 
 function applyTrackOperation(
@@ -51,11 +158,16 @@ function applyTrackOperation(
 			throw new Error("Track index must be a non-negative integer");
 		}
 
+		// Checked before the track exists, so a bad colour creates nothing.
+		if (request.colorLabel !== undefined) requestedColorLabel(request);
 		const trackId =
 			request.index === undefined
 				? store.addTrack(request.type)
 				: store.insertTrackAt(request.type, request.index);
 		if (request.name?.trim()) store.renameTrack(trackId, request.name);
+		if (request.colorLabel !== undefined && request.colorLabel !== null) {
+			applyTrackColor({ trackId, request, pushHistory: false });
+		}
 		const tracks = summarizeTracks();
 		return {
 			success: true,
@@ -64,6 +176,8 @@ function applyTrackOperation(
 			tracks,
 		};
 	}
+
+	if (request.action === "color-clips") return colorClips(request);
 
 	if (!request.trackId) {
 		throw new Error("trackId is required");
@@ -80,10 +194,12 @@ function applyTrackOperation(
 		if (
 			request.action === "update" &&
 			request.index === undefined &&
-			!request.name?.trim()
+			!request.name?.trim() &&
+			request.colorLabel === undefined
 		) {
-			throw new Error("Track update needs index or name");
+			throw new Error("Track update needs index, name or colorLabel");
 		}
+		if (request.colorLabel !== undefined) requestedColorLabel(request);
 		if (
 			request.index !== undefined &&
 			(!Number.isInteger(request.index) ||
@@ -97,6 +213,13 @@ function applyTrackOperation(
 		if (request.index !== undefined)
 			store.moveTrack(request.trackId, request.index);
 		if (request.name?.trim()) store.renameTrack(request.trackId, request.name);
+		if (request.colorLabel !== undefined) {
+			applyTrackColor({
+				trackId: request.trackId,
+				request,
+				pushHistory: true,
+			});
+		}
 		const tracks = summarizeTracks();
 		const index = tracks.findIndex((track) => track.id === request.trackId);
 		if (request.index !== undefined && index !== request.index) {

@@ -57,7 +57,9 @@ async function loadProductionManifestStats({
 }): Promise<ProductionManifestStats> {
 	return page.evaluate(
 		async ({ licenseServerUrl }) => {
-			const token = await window.electronAPI.license.getAuthToken();
+			const license = window.electronAPI?.license;
+			if (!license) throw new Error("QCut license bridge is unavailable");
+			const token = await license.getAuthToken();
 			if (!token) throw new Error("QCut auth token is unavailable");
 			const loadManifest = async ({ path }: { path: string }) => {
 				const response = await fetch(`${licenseServerUrl}${path}`, {

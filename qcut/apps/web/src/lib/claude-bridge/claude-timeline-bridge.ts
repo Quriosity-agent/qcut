@@ -5,6 +5,7 @@
  */
 
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { resolveTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore, type MediaType } from "@/stores/media/media-store";
 import { platform } from "@qcut/platform-core";
@@ -21,6 +22,7 @@ import { setupRequestHandlers } from "./claude-timeline-bridge-request";
 import { setupElementHandlers } from "./claude-timeline-bridge-elements";
 import { setupBatchHandlers } from "./claude-timeline-bridge-batch";
 import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
+import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { parseStickerFileRuntime } from "@/lib/stickers/sticker-file-runtime";
 
 interface ClaudeImportedMediaEvent {
@@ -464,6 +466,7 @@ export function setupClaudeTimelineBridge(): void {
 	});
 
 	setupTrackHandlers({ claudeAPI });
+	setupAudioMixHandlers({ claudeAPI });
 
 	// Handle element removal
 	claudeAPI.onRemoveElement((elementId: any) => {
@@ -594,6 +597,13 @@ export function setupClaudeTimelineBridge(): void {
 	// Handle selection set (fire-and-forget)
 	claudeAPI.onSelectElements((data: any) => {
 		try {
+			// Selecting by colour uses the store's own rule (a clip's label, else
+			// its track's), the same as the clip menu's "select same colour".
+			const colorLabel = resolveTimelineColorLabel({ value: data.colorLabel });
+			if (colorLabel) {
+				useTimelineStore.getState().selectElementsByColorLabel({ colorLabel });
+				return;
+			}
 			debugLog(
 				"[ClaudeTimelineBridge] Setting selection:",
 				data.elements.length,

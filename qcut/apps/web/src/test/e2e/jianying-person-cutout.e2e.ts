@@ -177,7 +177,7 @@ interface CutoutMediaItem {
 	width: number;
 }
 
-interface CutoutHarnessWindow extends Window {
+interface CutoutHarnessWindow extends Omit<Window, "electronAPI"> {
 	__personCutoutStatusMessages?: string[];
 	__personCutoutStatusObserver?: MutationObserver;
 	__mediaStore: {

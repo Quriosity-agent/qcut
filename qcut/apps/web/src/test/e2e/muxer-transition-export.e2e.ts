@@ -50,10 +50,12 @@ const EVIDENCE_DIR = path.resolve(
 	"output/playwright/muxer-transitions"
 );
 
-const jianyingDissolve = resolveJianyingTransition({
+const resolvedDissolve = resolveJianyingTransition({
 	value: JIANYING_DISSOLVE_ID,
 });
-if (!jianyingDissolve) throw new Error("Missing 叠化 catalog entry");
+if (!resolvedDissolve) throw new Error("Missing 叠化 catalog entry");
+// Re-bound after the guard so the hoisted helpers below see a defined entry.
+const jianyingDissolve = resolvedDissolve;
 
 interface ExposedWindow extends Window {
 	__exportActions?: {

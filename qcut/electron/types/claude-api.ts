@@ -1,6 +1,10 @@
 /** Shared type definitions for Claude Code Integration API. */
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import type { StickerLabRestrictedMediaMetadata } from "./sticker-lab-media-metadata.js";
+import type {
+	ClaudeAudioMixBus,
+	ClaudeTrackAudioSettings,
+} from "./claude-audio-mix-api.js";
 
 // Response Types
 
@@ -83,6 +87,8 @@ export interface ClaudeTimeline {
 	 * explicit target projectId must compare it against this value.
 	 */
 	projectId?: string;
+	/** The project's buses and master; each audio track names its bus. */
+	audioMix?: { master: ClaudeAudioMixBus; buses: ClaudeAudioMixBus[] };
 }
 
 export interface ClaudeTrack {
@@ -96,6 +102,11 @@ export interface ClaudeTrack {
 	hidden?: boolean;
 	/** A locked track refuses every edit, so a refused move can say why. */
 	locked?: boolean;
+	/** Default colour for clips on this track that set none of their own. */
+	colorLabel?: string;
+	muted?: boolean;
+	/** Mixer settings of a track that carries audio. */
+	audio?: ClaudeTrackAudioSettings;
 }
 
 export interface ClaudeTransition {
@@ -125,8 +136,38 @@ export type ClaudeTrackType =
 	| "hyperframes"
 	| "markdown";
 
+/**
+ * The clip colour labels the editor offers. Mirrors TIMELINE_COLOR_LABELS in
+ * apps/web/src/lib/timeline/timeline-color-labels.ts, which electron cannot
+ * import; a guard test keeps the two in step.
+ */
+export const CLAUDE_TIMELINE_COLOR_LABELS = [
+	"violet",
+	"blue",
+	"green",
+	"yellow",
+	"red",
+	"rose",
+	"orange",
+	"mango",
+] as const;
+
+/** Whether `value` names a clip colour label. */
+export function isClaudeTimelineColorLabel(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		(CLAUDE_TIMELINE_COLOR_LABELS as readonly string[]).includes(value)
+	);
+}
+
 export interface ClaudeTrackOperationRequest {
-	action: "create" | "update" | "move" | "delete" | "add-transition";
+	action:
+		| "create"
+		| "update"
+		| "move"
+		| "delete"
+		| "add-transition"
+		| "color-clips";
 	trackId?: string;
 	type?: ClaudeTrackType;
 	name?: string;
@@ -134,6 +175,13 @@ export interface ClaudeTrackOperationRequest {
 	ripple?: boolean;
 	force?: boolean;
 	transition?: ClaudeTransition;
+	/**
+	 * create/update: the track's default clip colour (null clears it).
+	 * color-clips: the colour to give the clips (null clears theirs).
+	 */
+	colorLabel?: string | null;
+	/** color-clips: the clips to colour; omit to colour every clip on trackId. */
+	elementIds?: string[];
 }
 
 export interface ClaudeTrackOperationResponse {
@@ -148,7 +196,12 @@ export interface ClaudeTrackOperationResponse {
 		name: string;
 		elementCount: number;
 		isMain?: boolean;
+		colorLabel?: string;
 	}>;
+	/** color-clips: how many clips changed colour. */
+	updatedCount?: number;
+	/** color-clips: requested clips that were left alone, and why. */
+	skipped?: Array<{ elementId: string; reason: string }>;
 	error?: string;
 }
 

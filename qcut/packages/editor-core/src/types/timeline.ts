@@ -653,6 +653,23 @@ export interface AudioBusEffectsSettings {
 	limiter: AudioLimiterSettings;
 }
 
+/** A point on an automation curve: a value at a time on the timeline. */
+export interface AudioAutomationPoint {
+	/** Seconds on the timeline. */
+	time: number;
+	value: number;
+}
+
+/**
+ * Level (dB) and pan curves over timeline time. A curve with points replaces
+ * the fixed value: between points the value moves in a straight line (in dB
+ * for level), and before the first and after the last it holds.
+ */
+export interface AudioMixAutomation {
+	gainDb?: AudioAutomationPoint[];
+	pan?: AudioAutomationPoint[];
+}
+
 export interface TimelineTrackAudioSettings {
 	gainDb: number;
 	pan: number;
@@ -661,6 +678,7 @@ export interface TimelineTrackAudioSettings {
 	effects: AudioBusEffectsSettings;
 	ducking: AudioDuckingSettings;
 	autoCrossfade: AudioAutoCrossfadeSettings;
+	automation?: AudioMixAutomation;
 }
 
 export interface AudioMixBusSettings {
@@ -671,6 +689,7 @@ export interface AudioMixBusSettings {
 	muted: boolean;
 	solo: boolean;
 	effects: AudioBusEffectsSettings;
+	automation?: AudioMixAutomation;
 }
 
 export interface ProjectAudioMixSettings {
@@ -1209,6 +1228,8 @@ export interface TimelineTrack {
 	hidden?: boolean;
 	locked?: boolean;
 	isMain?: boolean;
+	/** Default colour for clips on this track that set no colorLabel of their own. */
+	colorLabel?: string;
 }
 
 // ---------------------------------------------------------------------------

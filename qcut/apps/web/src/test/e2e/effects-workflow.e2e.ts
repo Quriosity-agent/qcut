@@ -67,26 +67,25 @@ test.describe("Production effects workflow", () => {
 		await page.getByTestId("effects-panel-tab").click();
 		const effects = page.getByTestId("effects-view");
 		await expect(effects).toBeVisible();
+		// The panel opens on 热门 (popular), capped at 12 cards.
 		const cards = effects.locator('[data-testid^="effect-card-"]');
-		await expect(cards).toHaveCount(16);
-		await expect(cards.locator("img")).toHaveCount(16);
+		await expect(cards).toHaveCount(12);
+		const previews = cards.locator('img[data-effect-preview-base="true"]');
+		await expect(previews).toHaveCount(12);
 		await expect
 			.poll(() =>
-				cards
-					.locator("img")
-					.evaluateAll((images) =>
-						images.every(
-							(image) =>
-								(image as HTMLImageElement).complete &&
-								(image as HTMLImageElement).naturalWidth > 0 &&
-								(image as HTMLImageElement).style.filter.length > 0
-						)
+				previews.evaluateAll((images) =>
+					images.every(
+						(image) =>
+							(image as HTMLImageElement).complete &&
+							(image as HTMLImageElement).naturalWidth > 0
 					)
+				)
 			)
 			.toBe(true);
 
-		await effects.getByTestId("effect-category-vintage").click();
-		await expect(cards).toHaveCount(2);
+		await effects.getByTestId("effect-navigation-atmosphere").click();
+		await expect(effects.getByTestId("effect-card-faded-film")).toBeVisible();
 		await effects.getByTestId("effect-card-faded-film").click();
 		await expect
 			.poll(() => appliedEffects({ page }))

@@ -341,7 +341,7 @@ export async function readRestrictedState({
 	page: Page;
 }): Promise<RestrictedState> {
 	return page.evaluate(() => {
-		const harness = window as StickerLabHarnessWindow;
+		const harness = window as unknown as StickerLabHarnessWindow;
 		const persistedMedia = harness.__mediaStore
 			.getState()
 			.mediaItems.map((item) => ({
@@ -399,7 +399,7 @@ export async function saveCurrentProject({
 	page: Page;
 }): Promise<void> {
 	await page.evaluate(async () => {
-		await (window as StickerLabHarnessWindow).__projectStore
+		await (window as unknown as StickerLabHarnessWindow).__projectStore
 			.getState()
 			.saveCurrentProject();
 	});
@@ -460,7 +460,7 @@ export async function seekTimeline({
 	time: number;
 }): Promise<void> {
 	await page.evaluate((nextTime) => {
-		(window as StickerLabHarnessWindow).__playbackStore
+		(window as unknown as StickerLabHarnessWindow).__playbackStore
 			.getState()
 			.seek(nextTime);
 	}, time);
@@ -468,8 +468,9 @@ export async function seekTimeline({
 		.poll(() =>
 			page.evaluate(
 				() =>
-					(window as StickerLabHarnessWindow).__playbackStore.getState()
-						.currentTime
+					(
+						window as unknown as StickerLabHarnessWindow
+					).__playbackStore.getState().currentTime
 			)
 		)
 		.toBeCloseTo(time, 3);

@@ -31,9 +31,15 @@ import type {
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
 } from "../../types/claude-api";
+import type {
+	ClaudeAudioMixRequest,
+	ClaudeAudioMixResponse,
+} from "../../types/claude-audio-mix-api";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
+/** Measuring loudness and writing stems render the whole mix first. */
+export const AUDIO_MIX_RENDER_TIMEOUT_MS = 300_000;
 
 interface RendererResultResponse<T> {
 	requestId: string;
@@ -232,6 +238,7 @@ async function requestRendererResult<T>({
 	payload,
 	timeoutErrorMessage,
 	correlationId,
+	timeoutMs = TIMELINE_REQUEST_TIMEOUT_MS,
 }: {
 	win: BrowserWindow;
 	requestChannel: string;
@@ -239,6 +246,7 @@ async function requestRendererResult<T>({
 	payload: Record<string, unknown>;
 	timeoutErrorMessage: string;
 	correlationId?: string;
+	timeoutMs?: number;
 }): Promise<T> {
 	assertIpcMainReady({
 		ipcMainInstance: ipcMain,
@@ -271,7 +279,7 @@ async function requestRendererResult<T>({
 
 		timeout = setTimeout(() => {
 			rejectOnce({ error: new Error(timeoutErrorMessage) });
-		}, TIMELINE_REQUEST_TIMEOUT_MS);
+		}, timeoutMs);
 
 		const responseHandler = (event: IpcMainEvent, data: unknown) => {
 			if (
@@ -458,6 +466,26 @@ export async function requestTrackOperationFromRenderer(
 		payload: { request },
 		timeoutErrorMessage: "Timeout waiting for track operation result",
 		correlationId,
+	});
+}
+
+/** Ask the renderer to read or change the mixer; it answers with the mix. */
+export async function requestAudioMixOperationFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeAudioMixRequest,
+	correlationId?: string
+): Promise<ClaudeAudioMixResponse> {
+	return requestRendererResult<ClaudeAudioMixResponse>({
+		win,
+		requestChannel: "claude:timeline:audioMixOperation",
+		responseChannel: "claude:timeline:audioMixOperation:response",
+		payload: { request },
+		timeoutErrorMessage: "Timeout waiting for mixer result",
+		correlationId,
+		timeoutMs:
+			request.action === "measure-loudness" || request.action === "render-stems"
+				? AUDIO_MIX_RENDER_TIMEOUT_MS
+				: TIMELINE_REQUEST_TIMEOUT_MS,
 	});
 }
 

@@ -1,0 +1,52 @@
+/**
+ * The E2E smoke set, run with `bun run test:e2e:smoke`: core editor workflows,
+ * editor API/CLI checks and quick export gates. Each spec needs no private
+ * runtime, real-media fixture or recording permission, and finishes within a
+ * few minutes. Every test gets its own profile and API port, so the set runs
+ * beside an open QCut. Timing-sensitive performance checks such as
+ * preview-quality-proxy (frame cache, decode timing) stay out of the set.
+ */
+export const E2E_SMOKE_SPECS = [
+	"aspect-ratio-cli.e2e.ts",
+	"audio-properties.e2e.ts",
+	"audio-sync-export.e2e.ts",
+	"audio-video-simultaneous-export.e2e.ts",
+	"auto-save-recovery.e2e.ts",
+	"dense-timeline-performance.e2e.ts",
+	"editor-api-project-and-volume.e2e.ts",
+	"editor-navigation.e2e.ts",
+	"editor-responsive-workspaces.e2e.ts",
+	"effects-workflow.e2e.ts",
+	"file-operations-storage-management.e2e.ts",
+	"filter-library.e2e.ts",
+	"media-ai-outpaint.e2e.ts",
+	"media-canvas-transform.e2e.ts",
+	"media-lab-properties.e2e.ts",
+	"media-mask-overlay-handles.e2e.ts",
+	"media-mask-ui-parity.e2e.ts",
+	"multi-media-management-part1.e2e.ts",
+	"multi-media-management-part2.e2e.ts",
+	"p2-content-ecosystem.e2e.ts",
+	"project-folder-sync.e2e.ts",
+	"project-workflow-part1.e2e.ts",
+	"project-workflow-part2.e2e.ts",
+	"project-workflow-part3.e2e.ts",
+	"remotion-panel-stability.e2e.ts",
+	"review-collaboration.e2e.ts",
+	"simple-navigation.e2e.ts",
+	"sticker-media-database.e2e.ts",
+	"sticker-overlay-testing.e2e.ts",
+	"sticker-position.e2e.ts",
+	"text-overlay-box.e2e.ts",
+	"text-overlay-testing.e2e.ts",
+	"text-properties.e2e.ts",
+	"text-visual-audit.e2e.ts",
+	"timeline-context-menu.e2e.ts",
+	"timeline-daily-actions.e2e.ts",
+	"timeline-duration-limit.e2e.ts",
+	"timeline-precision-edit.e2e.ts",
+	"transition-workflow.e2e.ts",
+	"user-library-template-sync.e2e.ts",
+	"visual-regression.e2e.ts",
+	"word-timeline-caption-bridge.e2e.ts",
+] as const;

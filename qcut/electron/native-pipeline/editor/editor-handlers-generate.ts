@@ -20,6 +20,10 @@ import {
 	type EditorCaptionFormat,
 } from "./editor-caption-export.js";
 import { verifyExportFrames } from "./editor-export-verification.js";
+import {
+	stemsBesideExport,
+	writeMixStems,
+} from "./editor-handlers-audio-mix.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -401,12 +405,25 @@ async function exportStart(
 		);
 	}
 
+	// Stems go beside the export, once it is done.
+	const stemsTarget =
+		opts.stems && typeof body.outputPath === "string"
+			? stemsBesideExport(body.outputPath)
+			: null;
+	if (opts.stems && !stemsTarget) {
+		return {
+			success: false,
+			error: "--stems needs --output: the stems go beside it",
+		};
+	}
+
 	const startResult = await client.post<{ jobId: string }>(
 		`/api/claude/export/${opts.projectId}/start`,
 		body
 	);
 
-	const shouldPoll = opts.poll || Boolean(opts.verifyFrames);
+	const shouldPoll =
+		opts.poll || Boolean(opts.verifyFrames) || Boolean(stemsTarget);
 	if (!shouldPoll) {
 		return { success: true, data: startResult };
 	}
@@ -433,11 +450,24 @@ async function exportStart(
 		}
 	);
 
+	const stems = stemsTarget
+		? await writeMixStems({
+				client,
+				projectId: opts.projectId,
+				...stemsTarget,
+			})
+		: undefined;
 	if (!opts.verifyFrames) {
-		return { success: true, data: result };
+		return {
+			success: true,
+			data: stems ? { ...(result as object), stems } : result,
+		};
 	}
 
-	const completed = result as Record<string, unknown>;
+	const completed: Record<string, unknown> = {
+		...(result as Record<string, unknown>),
+		...(stems ? { stems } : {}),
+	};
 	const outputPath =
 		typeof completed.outputPath === "string"
 			? completed.outputPath

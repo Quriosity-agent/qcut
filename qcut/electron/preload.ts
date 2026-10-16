@@ -759,6 +759,8 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			bitrate: number;
 			sampleRate: number;
 			channels?: 1 | 2;
+			audioCrossfades?: unknown[];
+			audioMixConfig?: unknown;
 		}): Promise<{ outputPath: string; fileSize: number }> =>
 			ipcRenderer.invoke("export-audio-cli", options),
 		convertVideoToGif: (options: {

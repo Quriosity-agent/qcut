@@ -37,6 +37,13 @@ export interface StickerQuadSample {
 	transform: string;
 }
 
+interface BenchMediaItem {
+	duration?: number;
+	id: string;
+	name: string;
+	type: string;
+}
+
 interface BenchHarnessWindow {
 	__playbackStore: {
 		getState: () => {
@@ -49,7 +56,7 @@ interface BenchHarnessWindow {
 	__timelineStore: { getState: () => Record<string, any> };
 	stickerTest: {
 		getStores: () => {
-			media: { mediaItems: Array<Record<string, any>> };
+			media: { mediaItems: BenchMediaItem[] };
 			stickers: Record<string, any>;
 			timeline: Record<string, any>;
 		};

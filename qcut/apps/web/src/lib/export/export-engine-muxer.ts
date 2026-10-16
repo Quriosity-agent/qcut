@@ -12,6 +12,7 @@ import type { TimelineTrack } from "@/types/timeline";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import { shouldIncludeAudio } from "@/types/export";
 import { renderBrowserTimelineAudio } from "@/lib/audio/browser-audio-export";
+import { useProjectStore } from "@/stores/project-store";
 import { calculateFrameTime } from "./export-engine-utils";
 import { exportProfiler } from "./export-profiler";
 import { reportExportFrameProgress } from "./export-progress-reporter";
@@ -156,6 +157,7 @@ export class ExportEngineMuxer extends ExportEngine {
 							mediaItems: this.mediaItems,
 							totalDuration: this.totalDuration,
 							fps,
+							audioMix: useProjectStore.getState().activeProject?.audioMix,
 						})
 					)
 				: null;

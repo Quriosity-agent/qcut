@@ -23,7 +23,37 @@ test.describe("Preview quality proxy playback", () => {
 
 		const mediaItem = page.getByTestId("media-item").first();
 		await expect(mediaItem).toBeVisible();
-		await mediaItem.dragTo(page.getByTestId("timeline-track").first());
+		// Place the clip at 0 s through the store; a dragged drop lands at a
+		// varying time or misses the track, which this test is not about.
+		await page.evaluate(() => {
+			const harness = window as unknown as {
+				__timelineStore: { getState: () => any };
+				__mediaStore: { getState: () => any };
+			};
+			const item = harness.__mediaStore
+				.getState()
+				.mediaItems.find((media: { type: string }) => media.type === "video");
+			if (!item) throw new Error("No video imported");
+			const timeline = harness.__timelineStore.getState();
+			const trackId =
+				timeline.tracks.find(
+					(track: { isMain?: boolean; type: string }) =>
+						track.isMain || track.type === "media"
+				)?.id ?? timeline.addTrack("media");
+			timeline.addElementToTrack(
+				trackId,
+				{
+					type: "media",
+					mediaId: item.id,
+					name: item.name,
+					startTime: 0,
+					duration: item.duration ?? 5,
+					trimStart: 0,
+					trimEnd: 0,
+				},
+				{ pushHistory: false, selectElement: false }
+			);
+		});
 		const clip = page.getByTestId("timeline-element").first();
 		await expect(clip).toBeVisible();
 		await clip.click();
@@ -161,24 +191,31 @@ test.describe("Preview quality proxy playback", () => {
 
 		await page.getByTestId("preview-play-button").click();
 		await expect(page.getByTestId("preview-pause-button")).toBeVisible();
-		await page.evaluate(() => {
-			for (let index = 0; index < 5; index++) {
-				window.dispatchEvent(
-					new CustomEvent("qcut-video-frame", {
-						detail: {
-							videoId: "e2e-video",
-							isActivePlaybackFrame: true,
-							intervalMs: 95,
-							mediaTime: index / 10,
-							presentedFrames: index + 1,
-						},
-					})
-				);
-			}
-		});
-		await expect(page.getByTestId("preview-quality-button")).toContainText(
-			"低清画质"
-		);
+		// Frames in the first second of playback are ignored as warm-up, so keep
+		// reporting stalled frames until the preview drops to low quality.
+		await expect
+			.poll(
+				async () => {
+					await page.evaluate(() => {
+						for (let index = 0; index < 5; index++) {
+							window.dispatchEvent(
+								new CustomEvent("qcut-video-frame", {
+									detail: {
+										videoId: "e2e-video",
+										isActivePlaybackFrame: true,
+										intervalMs: 95,
+										mediaTime: index / 10,
+										presentedFrames: index + 1,
+									},
+								})
+							);
+						}
+					});
+					return page.getByTestId("preview-quality-button").textContent();
+				},
+				{ timeout: 5_000 }
+			)
+			.toContain("低清画质");
 		await page.getByTestId("preview-quality-button").click();
 		await expect(page.getByTestId("preview-runtime-quality-reason")).toHaveText(
 			"视频解码帧出现停顿"
@@ -195,6 +232,9 @@ test.describe("Preview quality proxy playback", () => {
 			fullPage: true,
 		});
 		await page.keyboard.press("Escape");
+		// Let the menu finish closing; a click during its exit animation lands on
+		// the closing menu instead of reopening it.
+		await expect(page.getByRole("menu")).toHaveCount(0);
 		await page.getByTestId("preview-pause-button").click();
 		await expect(page.getByTestId("preview-quality-button")).toHaveText("自动");
 

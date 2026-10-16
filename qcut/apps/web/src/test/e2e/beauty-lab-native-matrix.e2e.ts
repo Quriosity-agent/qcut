@@ -146,7 +146,9 @@ async function applyCase({
 		await openGroup({ controls, label: groupLabels[control.section] });
 		const section = controls.getByTestId(`portrait-section-${control.section}`);
 		const category = section.getByRole("button", {
-			name: categoryLabels[control.category ?? "common"],
+			name: categoryLabels[
+				("category" in control ? control.category : undefined) ?? "common"
+			],
 			exact: true,
 		});
 		if (await category.count()) await category.click();

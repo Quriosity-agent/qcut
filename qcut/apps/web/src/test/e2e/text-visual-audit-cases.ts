@@ -493,7 +493,7 @@ export const TEXT_VISUAL_AUDIT_CASES: TextVisualAuditCase[] = [
 					{ id: "s-start", frame: 0, value: 72, easing: "linear" },
 					{ id: "s-end", frame: 30, value: 96, easing: "easeOut" },
 				],
-			},
+			} satisfies TextElement["keyframes"],
 		},
 	})),
 	{

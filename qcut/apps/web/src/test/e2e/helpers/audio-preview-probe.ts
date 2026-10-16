@@ -152,12 +152,13 @@ export async function installAudioPreviewProbe({
 		};
 
 		contextProto.createMediaElementSource = function wrapped(
+			this: AudioContext,
 			...args: unknown[]
 		) {
 			state.mediaElementSources += 1;
 			state.mediaElementSourcesTotal += 1;
-			if (!state.contexts.includes(this as AudioContext)) {
-				state.contexts.push(this as AudioContext);
+			if (!state.contexts.includes(this)) {
+				state.contexts.push(this);
 				state.audioContexts = state.contexts.length;
 			}
 			return originalCreateSource.apply(this, args);

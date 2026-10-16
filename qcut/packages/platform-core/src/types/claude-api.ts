@@ -93,6 +93,10 @@ export interface PlatformClaudeTimelineAPI {
 		callback: (data: { requestId: string; request: unknown }) => void
 	): void;
 	sendTrackOperationResponse(requestId: string, result: unknown): void;
+	onAudioMixOperation?(
+		callback: (data: { requestId: string; request: unknown }) => void
+	): void;
+	sendAudioMixOperationResponse?(requestId: string, result: unknown): void;
 	onLoadSpeech(callback: (data: unknown) => void): void;
 	sendResponse(timeline: unknown): void;
 	removeListeners(): void;

@@ -308,6 +308,7 @@ export async function handleEditorCommand(
 				case "timeline":
 				case "editing":
 				case "track":
+				case "mix":
 				case "element":
 					return await handleTimelineEditingCommand(
 						client,

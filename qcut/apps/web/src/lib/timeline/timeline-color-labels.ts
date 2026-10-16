@@ -43,3 +43,21 @@ export function getTimelineColorLabelColor({
 	return TIMELINE_COLOR_LABELS.find((label) => label.value === colorLabel)
 		?.color;
 }
+
+/**
+ * The colour a clip shows: its own label, else its track's. A track colour is
+ * a default, so clips that set none (including ones added later) follow it,
+ * while a clip's own label still wins.
+ */
+export function resolveEffectiveColorLabel({
+	element,
+	track,
+}: {
+	element: { colorLabel?: unknown };
+	track?: { colorLabel?: unknown };
+}): TimelineColorLabel | undefined {
+	return (
+		resolveTimelineColorLabel({ value: element.colorLabel }) ??
+		resolveTimelineColorLabel({ value: track?.colorLabel })
+	);
+}

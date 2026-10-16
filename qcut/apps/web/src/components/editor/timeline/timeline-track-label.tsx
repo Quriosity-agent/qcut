@@ -19,6 +19,12 @@ import { TrackIcon } from "./track-icon";
 import { useTranslation } from "@/lib/i18n";
 import { localizeTrackName } from "@/lib/i18n/timeline-names";
 import { CoverButton } from "../cover/cover-editor";
+import {
+	getTimelineColorLabelColor,
+	resolveTimelineColorLabel,
+} from "@/lib/timeline/timeline-color-labels";
+import { TIMELINE_COLOR_NAME_KEYS } from "./timeline-color-label-menu";
+import { TimelineTrackMixPopover } from "./timeline-track-mix-popover";
 
 interface TimelineTrackLabelProps {
 	track: TimelineTrack;
@@ -58,6 +64,12 @@ export function TimelineTrackLabel({
 }: TimelineTrackLabelProps) {
 	const { locale, t } = useTranslation();
 	const displayName = localizeTrackName({ track, locale });
+	const trackColorLabel = resolveTimelineColorLabel({
+		value: track.colorLabel,
+	});
+	const trackColor = getTimelineColorLabelColor({
+		colorLabel: trackColorLabel,
+	});
 	const hasAudioControls = track.type === "media" || track.type === "audio";
 	const trackHeight = getTrackHeight(track.type, track.height);
 	const resizeState = useRef<{
@@ -79,6 +91,18 @@ export function TimelineTrackLabel({
 			data-testid="timeline-track-label"
 			data-track-id={track.id}
 		>
+			{trackColorLabel ? (
+				<span
+					aria-label={t("timeline.trackColor", {
+						color: t(TIMELINE_COLOR_NAME_KEYS[trackColorLabel]),
+					})}
+					className="absolute inset-y-0 left-0 z-10 w-1"
+					data-testid="timeline-track-color"
+					data-color-label={trackColorLabel}
+					role="img"
+					style={{ backgroundColor: trackColor }}
+				/>
+			) : null}
 			<div
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-0.5 border-b border-r border-muted/30 bg-foreground/5 px-1.5",
@@ -167,6 +191,7 @@ export function TimelineTrackLabel({
 
 				{hasAudioControls ? (
 					<>
+						<TimelineTrackMixPopover track={track} displayName={displayName} />
 						<button
 							type="button"
 							className={controlClassName}

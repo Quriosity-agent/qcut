@@ -26,6 +26,7 @@ import {
 	CaptionsIcon,
 	LayoutTemplateIcon,
 	SlidersHorizontalIcon,
+	SlidersVerticalIcon,
 	CodeXmlIcon,
 	UserSquareIcon,
 } from "lucide-react";
@@ -36,6 +37,7 @@ export type Tab =
 	| "media"
 	| "text"
 	| "audio"
+	| "mixer"
 	| "captions"
 	| "stickers"
 	| "video-edit"
@@ -88,6 +90,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 	audio: {
 		icon: AudioLinesIcon,
 		label: "音频",
+	},
+	mixer: {
+		icon: SlidersVerticalIcon,
+		label: "混音台",
 	},
 	captions: {
 		icon: CaptionsIcon,
@@ -195,6 +201,7 @@ const editSubgroups: Record<EditSubgroup, Subgroup> = {
 		label: "Manual Edit",
 		tabs: [
 			"audio",
+			"mixer",
 			"text",
 			"stickers",
 			"effects",
@@ -211,6 +218,7 @@ const editSubgroups: Record<EditSubgroup, Subgroup> = {
 export const STANDARD_EDITOR_TABS = [
 	"media",
 	"audio",
+	"mixer",
 	"text",
 	"stickers",
 	"effects",

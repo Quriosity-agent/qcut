@@ -90,6 +90,7 @@ import {
 import { assertNativeStickerRuntimeExportAllowed } from "../../../../../electron/types/sticker-runtime-export-policy";
 import { assertLocalFinalVideoExportAllowed } from "../../../../../electron/types/restricted-media-export-policy";
 import { resolveLocalFinalVideoExportOutput } from "./local-final-video-output";
+import { shouldExportVideoClipAudio } from "./export-video-clip-audio";
 
 // Re-export types for backward compatibility (using export from)
 export type {
@@ -447,8 +448,11 @@ export class CLIExportEngine extends ExportEngine {
 				sessionId: this.sessionId,
 				tracks,
 				fps: this.getFrameRate(),
-				includeEmbeddedVideoAudio:
-					this.exportAnalysis?.optimizationStrategy !== "direct-copy",
+				includeEmbeddedVideoAudio: shouldExportVideoClipAudio({
+					optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
+					tracks,
+					audioMix: useProjectStore.getState().activeProject?.audioMix,
+				}),
 			});
 			audioReactiveAnalysisFiles = preparedAudioFiles;
 			if (includeAudio) {

@@ -111,8 +111,10 @@ test("canonical features and selectable makeup cards render, reset, resize, reop
 				.getByRole("button", { name: group.label, exact: true })
 				.click();
 			const controls = JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.filter(
-				({ section, category }) =>
-					section === "features" && category === group.category
+				(control) =>
+					control.section === "features" &&
+					"category" in control &&
+					control.category === group.category
 			);
 			expect(
 				await features

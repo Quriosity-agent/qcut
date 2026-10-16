@@ -1,3 +1,8 @@
+import {
+	MIXER_EN_TRANSLATIONS,
+	MIXER_ZH_TRANSLATIONS,
+} from "./translations-mixer";
+
 export const SUPPORTED_LOCALES = ["zh", "en"] as const;
 
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -1505,6 +1510,9 @@ const EN_TRANSLATIONS = {
 	"timeline.menu.selectSameColor": "Select clips with same color",
 	"timeline.menu.clipColor": "Clip color",
 	"timeline.menu.clearClipColor": "Clear clip color",
+	"timeline.menu.trackColor": "Track color",
+	"timeline.menu.clearTrackColor": "Clear track color",
+	"timeline.trackColor": "Track color: {{color}}",
 	"timeline.color.violet": "Violet",
 	"timeline.color.blue": "Blue",
 	"timeline.color.green": "Green",
@@ -2143,6 +2151,7 @@ const EN_TRANSLATIONS = {
 	"updates.downloadFailed": "Failed to download update",
 	"fileOpen.importing": "Importing {{name}}…",
 	"fileOpen.failed": "Couldn't open {{name}}",
+	...MIXER_EN_TRANSLATIONS,
 } as const;
 
 export type TranslationKey = keyof typeof EN_TRANSLATIONS;
@@ -3599,6 +3608,9 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"timeline.menu.selectSameColor": "选中同色片段",
 	"timeline.menu.clipColor": "片段颜色",
 	"timeline.menu.clearClipColor": "清除片段颜色",
+	"timeline.menu.trackColor": "轨道颜色",
+	"timeline.menu.clearTrackColor": "清除轨道颜色",
+	"timeline.trackColor": "轨道颜色：{{color}}",
 	"timeline.color.violet": "紫色",
 	"timeline.color.blue": "蓝色",
 	"timeline.color.green": "绿色",
@@ -4213,6 +4225,7 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"updates.downloadFailed": "下载更新失败",
 	"fileOpen.importing": "正在导入 {{name}}…",
 	"fileOpen.failed": "无法打开 {{name}}",
+	...MIXER_ZH_TRANSLATIONS,
 };
 
 export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {

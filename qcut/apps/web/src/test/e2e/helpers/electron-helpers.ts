@@ -8,11 +8,14 @@
 
 import { randomBytes } from "node:crypto";
 import { test as base, Page } from "@playwright/test";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { ElectronApplication, _electron as electron } from "playwright";
-import { resolve as pathResolve } from "path";
+import { join as pathJoin, resolve as pathResolve } from "path";
 import ffmpegStaticPath from "ffmpeg-static";
+import type { AppLocale } from "../../../lib/i18n/translations";
 
 const SCREENSHOT_VIDEO_FPS = 2;
 const SCREENSHOT_CAPTURE_INTERVAL_MS = 500;
@@ -43,6 +46,7 @@ async function buildVideoFromScreenshotFrames({
 			);
 			return false;
 		}
+		const ffmpegPath: string = ffmpegStaticPath;
 
 		const inputPatternPath = pathResolve(frameDirectoryPath, "frame-%06d.png");
 		const ffmpegArgs = [
@@ -68,7 +72,7 @@ async function buildVideoFromScreenshotFrames({
 		const stderrLines: Array<string> = [];
 
 		await new Promise<void>((resolve, reject) => {
-			const ffmpegProcess = spawn(ffmpegStaticPath, ffmpegArgs, {
+			const ffmpegProcess = spawn(ffmpegPath, ffmpegArgs, {
 				stdio: ["ignore", "ignore", "pipe"],
 			});
 
@@ -106,6 +110,24 @@ async function buildVideoFromScreenshotFrames({
 }
 
 /**
+ * The app under test's own profile, editor API port and state directory for
+ * one test. They are exported to `process.env` while the test runs (see
+ * `ISOLATION_ENV_NAMES`), because the app, the helpers and CLI runs all read
+ * them from there.
+ */
+export interface AppIsolation {
+	userDataDirectory: string;
+	apiPort: number;
+	stateHome: string;
+}
+
+const ISOLATION_ENV_NAMES = [
+	"QCUT_API_PORT",
+	"XDG_STATE_HOME",
+	"QCUT_E2E_USER_DATA_DIR",
+] as const;
+
+/**
  * Electron-specific test fixtures that extend Playwright's base fixtures.
  */
 export interface ElectronFixtures {
@@ -113,8 +135,53 @@ export interface ElectronFixtures {
 	electronApp: ElectronApplication;
 	/** The main window page instance */
 	page: Page;
-	/** Encode a low-frame-rate video of the test from Playwright screenshots. */
+	/**
+	 * Encode a low-frame-rate video of the test from Playwright screenshots
+	 * taken every 500 ms. Off by default because of its cost; turn it on for a
+	 * run with QCUT_E2E_SCREEN_VIDEO=1 or per spec with `test.use`.
+	 */
 	captureScreenshotVideo: boolean;
+	/**
+	 * UI language the test runs in. QCut defaults to Chinese, so specs that
+	 * look for English copy opt in with `test.use({ appLocale: "en" })`.
+	 */
+	appLocale: AppLocale;
+	/**
+	 * Set up for every test: a fresh profile, a free API port and a temporary
+	 * state directory, so tests never share state with each other or touch a
+	 * QCut the user has open on the default port.
+	 */
+	appIsolation: AppIsolation;
+}
+
+export async function findAvailablePort(): Promise<number> {
+	const server = createServer();
+	await new Promise<void>((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", () => resolve());
+	});
+	const address = server.address();
+	if (!address || typeof address === "string") {
+		throw new Error("Could not allocate an API port");
+	}
+	await new Promise<void>((resolve, reject) => {
+		server.close((error) => (error ? reject(error) : resolve()));
+	});
+	return address.port;
+}
+
+export function restoreEnv({
+	name,
+	value,
+}: {
+	name: string;
+	value: string | undefined;
+}): void {
+	if (value === undefined) {
+		delete process.env[name];
+	} else {
+		process.env[name] = value;
+	}
 }
 
 /**
@@ -215,12 +282,10 @@ export async function cleanupDatabase(page: Page) {
 
 		try {
 			await page.evaluate(async () => {
-				// @ts-expect-error - electronAPI is exposed via preload
 				if (window.electronAPI?.storage?.clear) {
 					console.log(
 						"📂 Clearing Electron file system storage (project .json files)..."
 					);
-					// @ts-expect-error
 					await window.electronAPI.storage.clear();
 					console.log("✅ Electron file system storage cleared");
 				}
@@ -270,15 +335,50 @@ export async function cleanupDatabase(page: Page) {
 }
 
 export const test = base.extend<ElectronFixtures>({
-	captureScreenshotVideo: [true, { option: true }],
-	// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
-	electronApp: async ({}, use) => {
-		const electronApp = await startElectronApp();
+	captureScreenshotVideo: [
+		process.env.QCUT_E2E_SCREEN_VIDEO === "1",
+		{ option: true },
+	],
+	appLocale: ["zh", { option: true }],
+	appIsolation: [
+		// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
+		async ({}, use) => {
+			const userDataDirectory = await mkdtemp(
+				pathJoin(tmpdir(), "qcut-e2e-profile-")
+			);
+			const stateHome = await mkdtemp(pathJoin(tmpdir(), "qcut-e2e-state-"));
+			const apiPort = await findAvailablePort();
+			const previous = ISOLATION_ENV_NAMES.map((name) => ({
+				name,
+				value: process.env[name],
+			}));
+			process.env.QCUT_API_PORT = String(apiPort);
+			process.env.XDG_STATE_HOME = stateHome;
+			process.env.QCUT_E2E_USER_DATA_DIR = userDataDirectory;
+			try {
+				await use({ userDataDirectory, apiPort, stateHome });
+			} finally {
+				for (const entry of previous) restoreEnv(entry);
+				for (const directory of [userDataDirectory, stateHome]) {
+					await rm(directory, { recursive: true, force: true, maxRetries: 3 });
+				}
+			}
+		},
+		{ auto: true },
+	],
+	electronApp: async ({ appIsolation }, use) => {
+		const electronApp = await startElectronApp({
+			userDataDirectory: appIsolation.userDataDirectory,
+		});
 		await use(electronApp);
 		await electronApp.close();
 	},
 
-	page: async ({ captureScreenshotVideo, electronApp }, use, testInfo) => {
+	page: async (
+		{ appLocale, captureScreenshotVideo, electronApp },
+		use,
+		testInfo
+	) => {
 		const page = await electronApp.firstWindow();
 		let frameCaptureLoopPromise: Promise<void> | null = null;
 		let frameCaptureActive = false;
@@ -333,9 +433,20 @@ export const test = base.extend<ElectronFixtures>({
 
 		await cleanupDatabase(page);
 
-		await page.evaluate(() => {
+		await page.evaluate((locale) => {
 			localStorage.setItem("hasSeenOnboarding", "true");
-		});
+			(
+				window as unknown as {
+					__localeStore: {
+						getState: () => {
+							setLocale: (args: { locale: string }) => void;
+						};
+					};
+				}
+			).__localeStore
+				.getState()
+				.setLocale({ locale });
+		}, appLocale);
 
 		await navigateToProjects(page);
 
@@ -505,12 +616,14 @@ export async function createTestProject(
 	page: Page,
 	projectName = "E2E Test Project"
 ) {
+	// Generous waits: on a loaded machine the projects page can take well over
+	// 5 s to render, and a short timeout here fails every spec that uses it.
 	await page.waitForSelector(
 		'[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]',
-		{ state: "attached", timeout: 5000 }
+		{ state: "attached", timeout: 30_000 }
 	);
 
-	await page.waitForLoadState("domcontentloaded", { timeout: 3000 });
+	await page.waitForLoadState("domcontentloaded", { timeout: 30_000 });
 
 	const emptyStateButton = page.getByTestId("new-project-button-empty-state");
 	const hasEmptyState = (await emptyStateButton.count()) > 0;
@@ -596,10 +709,14 @@ export async function startElectronApp({
 	// worker's environment so helpers that read QCUT_API_TOKEN match the app.
 	process.env.QCUT_API_TOKEN =
 		process.env.QCUT_API_TOKEN?.trim() || randomBytes(16).toString("hex");
+	// Inside a test, relaunches default to that test's own profile; the API
+	// port and state directory come from the test's isolation via process.env.
+	const profileDirectory =
+		userDataDirectory ?? process.env.QCUT_E2E_USER_DATA_DIR;
 	return await electron.launch({
 		args: [
 			"dist/electron/main.js",
-			...(userDataDirectory ? [`--user-data-dir=${userDataDirectory}`] : []),
+			...(profileDirectory ? [`--user-data-dir=${profileDirectory}`] : []),
 			...(colorProfile ? [`--force-color-profile=${colorProfile}`] : []),
 		],
 		env: {

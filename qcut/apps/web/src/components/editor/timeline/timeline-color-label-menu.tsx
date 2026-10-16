@@ -11,7 +11,10 @@ import {
 } from "@/lib/timeline/timeline-color-labels";
 import { cn } from "@/lib/utils";
 
-const COLOR_NAME_KEYS: Record<TimelineColorLabel, TranslationKey> = {
+export const TIMELINE_COLOR_NAME_KEYS: Record<
+	TimelineColorLabel,
+	TranslationKey
+> = {
 	violet: "timeline.color.violet",
 	blue: "timeline.color.blue",
 	green: "timeline.color.green",
@@ -24,26 +27,37 @@ const COLOR_NAME_KEYS: Record<TimelineColorLabel, TranslationKey> = {
 
 export function TimelineColorLabelMenu({
 	currentColorLabel,
+	sameColorLabel = currentColorLabel,
 	onColorLabelChange,
 	onSelectSameColor,
+	groupLabelKey = "timeline.menu.clipColor",
+	clearLabelKey = "timeline.menu.clearClipColor",
 }: {
+	/** The label set on the target itself; marked as selected. */
 	currentColorLabel?: TimelineColorLabel;
+	/** The colour "select same colour" matches; a clip may inherit its track's. */
+	sameColorLabel?: TimelineColorLabel;
 	onColorLabelChange: (input: { colorLabel?: TimelineColorLabel }) => void;
-	onSelectSameColor: () => void;
+	/** Omit to hide "select same colour" (e.g. on a track). */
+	onSelectSameColor?: () => void;
+	groupLabelKey?: TranslationKey;
+	clearLabelKey?: TranslationKey;
 }) {
 	const { t } = useTranslation();
 
 	return (
 		<>
-			<ContextMenuItem
-				disabled={!currentColorLabel}
-				onSelect={() => onSelectSameColor()}
-			>
-				<Tags />
-				{t("timeline.menu.selectSameColor")}
-			</ContextMenuItem>
+			{onSelectSameColor ? (
+				<ContextMenuItem
+					disabled={!sameColorLabel}
+					onSelect={() => onSelectSameColor()}
+				>
+					<Tags />
+					{t("timeline.menu.selectSameColor")}
+				</ContextMenuItem>
+			) : null}
 			<div
-				aria-label={t("timeline.menu.clipColor")}
+				aria-label={t(groupLabelKey)}
 				className="flex h-9 items-center gap-1 px-2"
 				role="group"
 			>
@@ -52,7 +66,7 @@ export function TimelineColorLabelMenu({
 					return (
 						<ContextMenuItem
 							aria-checked={selected}
-							aria-label={t(COLOR_NAME_KEYS[value])}
+							aria-label={t(TIMELINE_COLOR_NAME_KEYS[value])}
 							className={cn(
 								"size-6 justify-center rounded-full p-0 focus:opacity-100",
 								selected &&
@@ -72,7 +86,7 @@ export function TimelineColorLabelMenu({
 					);
 				})}
 				<ContextMenuItem
-					aria-label={t("timeline.menu.clearClipColor")}
+					aria-label={t(clearLabelKey)}
 					className="size-6 justify-center rounded-full p-0 focus:opacity-100"
 					onSelect={() => onColorLabelChange({ colorLabel: undefined })}
 				>

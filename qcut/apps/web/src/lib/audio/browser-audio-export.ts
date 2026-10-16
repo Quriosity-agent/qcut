@@ -2,8 +2,8 @@ import type { FormantCorrectionNode } from "@soundtouchjs/formant-correction-wor
 import formantProcessorUrl from "@soundtouchjs/formant-correction-worklet/processor?url";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type {
-	MediaAudioSettings,
 	MediaElement,
+	ProjectAudioMixSettings,
 	TimelineTrack,
 } from "@/types/timeline";
 import {
@@ -22,17 +22,36 @@ import {
 	type DecodedBrowserAudioExportClip,
 } from "./browser-audio-export-clips";
 import { reverseAudioBuffer } from "./audio-buffer-transform";
+import { MIX_STRIP_DYNAMICS_STAGES } from "./audio-mix-strip";
+import {
+	type AudioMixRouting,
+	resolveAudioMixRouting,
+} from "./audio-mix-routing";
+import {
+	buildExportAudioMix,
+	connectSourceTrackStrip,
+	type DuckingSourceLevels,
+	duckingSourceTrackIds,
+	exportAudioMixStages,
+	measureDuckingLevels,
+	resolveExportAudioMix,
+} from "./browser-audio-mix-export";
 import { exportProfiler } from "@/lib/export/export-profiler";
 
 /**
  * Chromium's DynamicsCompressorNode delays its input by a fixed 6 ms
  * lookahead whatever its settings (288 frames at 48 kHz, measured). Every
  * clip passes through two of them, the compressor and the limiter in
- * `scheduleClip`, so the mix renders that much longer and drops the leading
- * frames, which puts each sound back on its timeline position.
+ * `scheduleClip`, and the project mix adds more (browser-audio-mix-export.ts),
+ * so the mix renders that much longer and drops the leading frames, which
+ * puts each sound back on its timeline position.
  */
 const DYNAMICS_LOOKAHEAD_SECONDS = 0.006;
 const CLIP_DYNAMICS_STAGES = 2;
+
+function lookaheadFrames(sampleRate: number): number {
+	return Math.round(DYNAMICS_LOOKAHEAD_SECONDS * sampleRate);
+}
 
 /** Copies `length` frames that start `frames` into `buffer`. */
 function dropLeadingFrames({
@@ -138,12 +157,14 @@ function clipNeedsPitch({ element }: { element: MediaElement }): boolean {
 async function scheduleClip({
 	context,
 	clip,
+	destination,
 	fps,
 	pitchNodeConstructor,
 	impulseCache,
 }: {
 	context: OfflineAudioContext;
 	clip: DecodedBrowserAudioExportClip;
+	destination: AudioNode;
 	fps: number;
 	pitchNodeConstructor?: typeof FormantCorrectionNode;
 	impulseCache?: Map<string, AudioBuffer>;
@@ -276,7 +297,7 @@ async function scheduleClip({
 	delay.connect(feedbackGain);
 	feedbackGain.connect(delay);
 	panner.connect(output);
-	output.connect(context.destination);
+	output.connect(destination);
 
 	compressor.attack.value = baseSettings.compressor.attackMs / 1_000;
 	compressor.release.value = baseSettings.compressor.releaseMs / 1_000;
@@ -364,18 +385,135 @@ async function scheduleClip({
 	source.stop(startTime + duration);
 }
 
+/** Loads the pitch worklet into `context` when any clip needs it. */
+async function loadPitchNode({
+	context,
+	clips,
+}: {
+	context: OfflineAudioContext;
+	clips: DecodedBrowserAudioExportClip[];
+}): Promise<typeof FormantCorrectionNode | undefined> {
+	if (!clips.some((clip) => clipNeedsPitch({ element: clip.element }))) {
+		return undefined;
+	}
+	return exportProfiler.time("audio-pitch-setup", async () => {
+		const formantModule = await import(
+			"@soundtouchjs/formant-correction-worklet"
+		);
+		await formantModule.FormantCorrectionNode.register(
+			context,
+			formantProcessorUrl
+		);
+		return formantModule.FormantCorrectionNode;
+	});
+}
+
+/** Schedules each clip into its destination; clips without one stay out. */
+async function scheduleClips({
+	context,
+	clips,
+	fps,
+	pitchNodeConstructor,
+	destinationFor,
+}: {
+	context: OfflineAudioContext;
+	clips: DecodedBrowserAudioExportClip[];
+	fps: number;
+	pitchNodeConstructor?: typeof FormantCorrectionNode;
+	destinationFor: (clip: DecodedBrowserAudioExportClip) => AudioNode | null;
+}) {
+	// Shared for this render only: clips with the same reverb settings would
+	// otherwise each rebuild an identical impulse buffer.
+	const impulseCache = new Map<string, AudioBuffer>();
+	await Promise.all(
+		clips.flatMap((clip) => {
+			const destination = destinationFor(clip);
+			return destination
+				? [
+						scheduleClip({
+							clip,
+							context,
+							destination,
+							fps,
+							impulseCache,
+							pitchNodeConstructor,
+						}),
+					]
+				: [];
+		})
+	);
+}
+
+/**
+ * Renders each track another track ducks under on its own, through its
+ * strip, and measures its level over time.
+ */
+async function measureDuckingSources({
+	mix,
+	clips,
+	fps,
+	frames,
+	sampleRate,
+}: {
+	mix: AudioMixRouting;
+	clips: DecodedBrowserAudioExportClip[];
+	fps: number;
+	frames: number;
+	sampleRate: number;
+}): Promise<Map<string, DuckingSourceLevels>> {
+	const levels = new Map<string, DuckingSourceLevels>();
+	const latency =
+		(CLIP_DYNAMICS_STAGES + MIX_STRIP_DYNAMICS_STAGES) *
+		lookaheadFrames(sampleRate);
+	for (const trackId of duckingSourceTrackIds(mix)) {
+		const trackClips = clips.filter((clip) => clip.trackId === trackId);
+		if (trackClips.length === 0) continue;
+		const context = new OfflineAudioContext(2, frames + latency, sampleRate);
+		const input = connectSourceTrackStrip({ context, mix, trackId });
+		await scheduleClips({
+			context,
+			clips: trackClips,
+			fps,
+			pitchNodeConstructor: await loadPitchNode({
+				context,
+				clips: trackClips,
+			}),
+			destinationFor: () => input,
+		});
+		levels.set(
+			trackId,
+			measureDuckingLevels({
+				buffer: await context.startRendering(),
+				startFrame: latency,
+			})
+		);
+	}
+	return levels;
+}
+
+/**
+ * Renders the timeline's audio. With `audioMix`, each track goes through the
+ * project's mix (track, bus and master settings, solo and ducking) the way
+ * the editor plays it; without one, every clip sums straight to the output.
+ * With `stemBusId` as well, only that bus is rendered (see
+ * buildExportAudioMix).
+ */
 export async function renderBrowserTimelineAudio({
 	tracks,
 	mediaItems,
 	totalDuration,
 	fps,
 	sampleRate = 48_000,
+	audioMix,
+	stemBusId,
 }: {
 	tracks: TimelineTrack[];
 	mediaItems: MediaItem[];
 	totalDuration: number;
 	fps: number;
 	sampleRate?: number;
+	audioMix?: ProjectAudioMixSettings;
+	stemBusId?: string;
 }): Promise<AudioBuffer | null> {
 	const clips = exportProfiler.timeSync("audio-collect", () =>
 		collectBrowserAudioExportClips({ tracks, mediaItems })
@@ -386,9 +524,16 @@ export async function renderBrowserTimelineAudio({
 		"audio-unique-sources",
 		new Set(clips.map(({ mediaItem }) => mediaItem.id)).size
 	);
+	// A stem always goes through the mix, even one that changes nothing.
+	const mix =
+		stemBusId === undefined
+			? resolveExportAudioMix({ tracks, audioMix })
+			: resolveAudioMixRouting({ tracks, audioMix });
 	const frames = Math.max(1, Math.ceil(totalDuration * sampleRate));
+	const stageFrames = lookaheadFrames(sampleRate);
 	const latencyFrames =
-		CLIP_DYNAMICS_STAGES * Math.round(DYNAMICS_LOOKAHEAD_SECONDS * sampleRate);
+		(CLIP_DYNAMICS_STAGES + (mix ? exportAudioMixStages(mix) : 0)) *
+		stageFrames;
 	const context = new OfflineAudioContext(
 		2,
 		frames + latencyFrames,
@@ -403,34 +548,39 @@ export async function renderBrowserTimelineAudio({
 		}
 		throw new Error("None of the timeline audio sources could be decoded");
 	}
-	const needsPitch = decodedClips.some((clip) =>
-		clipNeedsPitch({ element: clip.element })
-	);
-	let pitchNodeConstructor: typeof FormantCorrectionNode | undefined;
-	if (needsPitch) {
-		await exportProfiler.time("audio-pitch-setup", async () => {
-			const formantModule = await import(
-				"@soundtouchjs/formant-correction-worklet"
-			);
-			pitchNodeConstructor = formantModule.FormantCorrectionNode;
-			await pitchNodeConstructor.register(context, formantProcessorUrl);
-		});
-	}
-	// Shared for this export only: clips with the same reverb settings would
-	// otherwise each rebuild an identical impulse buffer.
-	const impulseCache = new Map<string, AudioBuffer>();
+	const trackInputs = mix
+		? buildExportAudioMix({
+				context,
+				mix,
+				duckingSources: await exportProfiler.time("audio-mix-ducking", () =>
+					measureDuckingSources({
+						mix,
+						clips: decodedClips,
+						fps,
+						frames,
+						sampleRate,
+					})
+				),
+				lookaheadSeconds: stageFrames / sampleRate,
+				clipStages: CLIP_DYNAMICS_STAGES,
+				stemBusId,
+			})
+		: null;
+	const pitchNodeConstructor = await loadPitchNode({
+		context,
+		clips: decodedClips,
+	});
 	await exportProfiler.time("audio-schedule", () =>
-		Promise.all(
-			decodedClips.map((clip) =>
-				scheduleClip({
-					clip,
-					context,
-					fps,
-					impulseCache,
-					pitchNodeConstructor,
-				})
-			)
-		)
+		scheduleClips({
+			context,
+			clips: decodedClips,
+			fps,
+			pitchNodeConstructor,
+			destinationFor: (clip) =>
+				trackInputs
+					? (trackInputs.get(clip.trackId) ?? null)
+					: context.destination,
+		})
 	);
 	const rendered = await exportProfiler.time("audio-offline-render", () =>
 		context.startRendering()

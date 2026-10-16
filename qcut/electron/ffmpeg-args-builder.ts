@@ -12,6 +12,7 @@ import fs from "fs";
 
 import type {
 	AudioCrossfade,
+	AudioMixConfig,
 	AudioFile,
 	EffectDistortionSource,
 	EffectOverlaySource,
@@ -56,6 +57,8 @@ export interface BuildFFmpegArgsOptions {
 	duration: number;
 	audioFiles?: AudioFile[];
 	audioCrossfades?: AudioCrossfade[];
+	/** Track, bus and master settings applied to the timeline audio. */
+	audioMixConfig?: AudioMixConfig;
 	filterChain?: string;
 	textFilterChain?: string;
 	textAssPath?: string;
@@ -537,6 +540,7 @@ function buildCompositeEncodeArgs(
 		duration,
 		audioFiles = [],
 		audioCrossfades = [],
+		audioMixConfig,
 		filterChain,
 		textFilterChain,
 		textAssPath,
@@ -895,6 +899,7 @@ function buildCompositeEncodeArgs(
 		audioCrossfades,
 		audioStartIndex: audioInputStartIndex,
 		fps,
+		audioMixConfig,
 	});
 	for (const step of audioResult.filterSteps) {
 		filterSteps.push(step);
@@ -1021,6 +1026,7 @@ export function buildFFmpegArgs(options: BuildFFmpegArgsOptions): string[] {
 				audioCrossfades: options.audioCrossfades ?? [],
 				audioStartIndex: 1,
 				fps: options.fps,
+				audioMixConfig: options.audioMixConfig,
 			});
 			if (audioGraph.filterSteps.length > 0) {
 				args.push("-filter_complex", audioGraph.filterSteps.join(";"));

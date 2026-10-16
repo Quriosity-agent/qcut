@@ -109,7 +109,7 @@ async function waitForTemplateElements({
 		.poll(() =>
 			page.evaluate(
 				() =>
-					(window as HarnessWindow).__timelineStore
+					(window as unknown as HarnessWindow).__timelineStore
 						.getState()
 						.tracks.flatMap((track) => track.elements)
 						.filter((element) => element.templateBinding).length
@@ -139,7 +139,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await importTestAudio(page);
 
 		const sourceMedia = await page.evaluate(() => {
-			const items = (window as HarnessWindow).__mediaStore.getState()
+			const items = (window as unknown as HarnessWindow).__mediaStore.getState()
 				.mediaItems;
 			const video = items.find((item) => item.type === "video");
 			const image = items.find((item) => item.type === "image");
@@ -176,7 +176,9 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(
-					() => (window as HarnessWindow).__editorStore.getState().canvasSize
+					() =>
+						(window as unknown as HarnessWindow).__editorStore.getState()
+							.canvasSize
 				)
 			)
 			.toEqual({ width: 1080, height: 1920 });
@@ -186,7 +188,9 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(
-					() => (window as HarnessWindow).__editorStore.getState().canvasSize
+					() =>
+						(window as unknown as HarnessWindow).__editorStore.getState()
+							.canvasSize
 				)
 			)
 			.toEqual({ width: 1920, height: 1080 });
@@ -199,7 +203,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(() => {
-					const elements = (window as HarnessWindow).__timelineStore
+					const elements = (window as unknown as HarnessWindow).__timelineStore
 						.getState()
 						.tracks.flatMap((track) => track.elements);
 					return elements.find(
@@ -209,7 +213,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 			)
 			.toBe(sourceMedia.imageId);
 		await page.evaluate(() => {
-			(window as HarnessWindow).__playbackStore.getState().seek(1);
+			(window as unknown as HarnessWindow).__playbackStore.getState().seek(1);
 		});
 		await page.waitForTimeout(250);
 		await page.screenshot({
@@ -221,7 +225,9 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		});
 
 		const captions = await page.evaluate(() => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
 			const trackId = timeline.addTrack("captions");
 			const firstId = timeline.addElementToTrack(trackId, {
 				type: "captions",
@@ -260,8 +266,9 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await expect
 			.poll(() =>
 				page.evaluate(() => {
-					const tracks = (window as HarnessWindow).__timelineStore.getState()
-						.tracks;
+					const tracks = (
+						window as unknown as HarnessWindow
+					).__timelineStore.getState().tracks;
 					return tracks.filter((track) => track.name.startsWith("Smart "))
 						.length;
 				})
@@ -269,8 +276,10 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 			.toBeGreaterThanOrEqual(3);
 
 		const smartPackState = await page.evaluate(async () => {
-			const timeline = (window as HarnessWindow).__timelineStore.getState();
-			const media = (window as HarnessWindow).__mediaStore.getState()
+			const timeline = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState();
+			const media = (window as unknown as HarnessWindow).__mediaStore.getState()
 				.mediaItems;
 			const generatedTracks = timeline.tracks.filter((track) =>
 				track.name.startsWith("Smart ")
@@ -324,7 +333,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		expect(smartPackState.zoomCount).toBeGreaterThanOrEqual(2);
 		expect(smartPackState.transitionCount).toBeGreaterThanOrEqual(1);
 		await page.evaluate(() => {
-			(window as HarnessWindow).__playbackStore.getState().seek(1);
+			(window as unknown as HarnessWindow).__playbackStore.getState().seek(1);
 		});
 		await page.waitForTimeout(250);
 		await page.screenshot({
@@ -401,7 +410,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		);
 
 		await page.evaluate(({ trackId, firstId }) => {
-			(window as HarnessWindow).__timelineStore
+			(window as unknown as HarnessWindow).__timelineStore
 				.getState()
 				.setSelectedElements([{ trackId, elementId: firstId }]);
 		}, captions);
@@ -418,8 +427,9 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		await expect(cloudStatus).toHaveAttribute("data-task-status", "completed");
 
 		const alignedState = await page.evaluate(() => {
-			const tracks = (window as HarnessWindow).__timelineStore.getState()
-				.tracks;
+			const tracks = (
+				window as unknown as HarnessWindow
+			).__timelineStore.getState().tracks;
 			const speech = tracks.find((track) => track.name === "Aligned Speech");
 			const avatar = tracks.find(
 				(track) => track.name === "Aligned Digital Human"
@@ -454,7 +464,7 @@ test.describe("P3 templates, automation, and cloud recovery", () => {
 		expect(pipelineCalls[1]?.args["audio-url"]).toBe(sourceMedia.audioUrl);
 		await expectNoHorizontalOverflow({ locator: captionProperties });
 		await page.evaluate(() => {
-			(window as HarnessWindow).__playbackStore.getState().seek(1);
+			(window as unknown as HarnessWindow).__playbackStore.getState().seek(1);
 		});
 		await page.waitForTimeout(250);
 		await page.screenshot({

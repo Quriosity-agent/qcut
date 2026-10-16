@@ -31,6 +31,7 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 	requestTrackOperationFromRenderer,
+	requestAudioMixOperationFromRenderer,
 } from "../handlers/claude-timeline-handler.js";
 import {
 	beginTransaction,
@@ -255,6 +256,9 @@ export function startClaudeHTTPServer(
 		/** Creates, reorders, or deletes a timeline track. */
 		mutateTrack: (request, correlationId) =>
 			requestTrackOperationFromRenderer(getWindow(), request, correlationId),
+		/** Reads or changes the mixer. */
+		mutateAudioMix: (request, correlationId) =>
+			requestAudioMixOperationFromRenderer(getWindow(), request, correlationId),
 		/** Starts a transactional timeline mutation. */
 		beginTransaction: (request) =>
 			beginTransaction({ win: getWindow(), request }),

@@ -1,8 +1,12 @@
 import type { MediaItem } from "@/stores/media/media-store";
-import type { TimelineTrack } from "@/types/timeline";
+import type { ProjectAudioMixSettings, TimelineTrack } from "@/types/timeline";
 import { platform } from "@qcut/platform-core";
 import { selectMediaAudioSources } from "@/lib/audio/audio-source-selection";
-import { extractAudioFileInputs } from "../export-cli/sources";
+import {
+	extractAudioCrossfadeInputs,
+	extractAudioFileInputs,
+	extractAudioMixConfig,
+} from "../export-cli/sources";
 import { fileExists, invokeIfAvailable } from "./export-engine-cli-utils";
 import { resolveAudioPreparationInputs } from "./export-engine-cli-audio";
 import { assertRestrictedMediaExportAllowed } from "../../../../../electron/types/restricted-media-export-policy";
@@ -20,6 +24,8 @@ export interface StandaloneAudioExportOptions {
 	outputPath: string;
 	bitrate: AudioExportBitrate;
 	sampleRate: AudioExportSampleRate;
+	/** The project mix; the MP3 sounds like the editor with it. */
+	audioMix?: ProjectAudioMixSettings;
 }
 
 function buildStandaloneAudioPolicyTracks({
@@ -68,6 +74,7 @@ export async function exportTimelineAudio({
 	outputPath,
 	bitrate,
 	sampleRate,
+	audioMix,
 }: StandaloneAudioExportOptions): Promise<{
 	outputPath: string;
 	fileSize: number;
@@ -140,5 +147,10 @@ export async function exportTimelineAudio({
 		bitrate,
 		sampleRate,
 		channels: 2,
+		audioCrossfades: extractAudioCrossfadeInputs({ tracks: hydrated.tracks }),
+		audioMixConfig: extractAudioMixConfig({
+			tracks: hydrated.tracks,
+			audioMix,
+		}),
 	});
 }

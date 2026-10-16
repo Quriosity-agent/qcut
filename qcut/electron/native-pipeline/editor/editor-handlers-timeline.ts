@@ -12,6 +12,17 @@ import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { jsonPending } from "../cli/json-output.js";
 import { timelineApplyManifest } from "./editor-timeline-apply.js";
+import {
+	readColorOption,
+	timelineColorLabel,
+	timelineSelectByColor,
+} from "./editor-handlers-timeline-color.js";
+
+import {
+	TRACK_AUDIO_ACTIONS,
+	handleAudioMixCommand,
+	handleTrackAudioCommand,
+} from "./editor-handlers-audio-mix.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -34,6 +45,7 @@ const TIMELINE_ACTIONS = [
 	"move",
 	"arrange",
 	"select",
+	"color-label",
 	"get-selection",
 	"clear-selection",
 	"play",
@@ -65,6 +77,16 @@ export async function handleTimelineEditingCommand(
 		}
 		if (module === "track") {
 			return await dispatchTrack(client, action, options);
+		}
+		if (module === "mix") {
+			const projectId = await resolveProjectId(client, options);
+			if (!projectId) {
+				return {
+					success: false,
+					error: "No active project; pass --project-id",
+				};
+			}
+			return await handleAudioMixCommand({ client, projectId, opts: options });
 		}
 		if (module === "element" && action === "patch") {
 			const projectId = await resolveProjectId(client, options);
@@ -101,6 +123,10 @@ async function dispatchTrack(
 	}
 	const basePath = `/api/claude/timeline/${encodeURIComponent(projectId)}`;
 
+	if (TRACK_AUDIO_ACTIONS.has(action)) {
+		return handleTrackAudioCommand({ client, action, projectId, opts });
+	}
+
 	if (action === "list") {
 		const timeline = await client.get<{
 			tracks: Array<{
@@ -109,6 +135,7 @@ async function dispatchTrack(
 				name: string;
 				type: string;
 				isMain?: boolean;
+				colorLabel?: string;
 				elements: unknown[];
 			}>;
 		}>(basePath);
@@ -122,11 +149,23 @@ async function dispatchTrack(
 					name: track.name,
 					type: track.type,
 					isMain: track.isMain,
+					...(track.colorLabel ? { colorLabel: track.colorLabel } : {}),
 					elementCount: track.elements.length,
 				})),
 			},
 		};
 	}
+
+	// "none" clears a track colour; anything else must be a label.
+	const trackColor =
+		opts.color?.trim().toLowerCase() === "none"
+			? { colorLabel: null }
+			: readColorOption(opts.color);
+	if ("error" in trackColor && trackColor.error) {
+		return { success: false, error: `${trackColor.error}, or none` };
+	}
+	const colorBody =
+		opts.color === undefined ? {} : { colorLabel: trackColor.colorLabel };
 
 	if (action === "create") {
 		if (!opts.trackType) return { success: false, error: "Missing --type" };
@@ -134,18 +173,23 @@ async function dispatchTrack(
 			type: opts.trackType,
 			name: opts.trackName,
 			index: opts.index,
+			...colorBody,
 		});
 		return { success: true, data };
 	}
 
 	if (action === "update") {
 		if (!opts.trackId) return { success: false, error: "Missing --track-id" };
-		if (opts.index === undefined && !opts.trackName?.trim()) {
-			return { success: false, error: "Pass --index or --name" };
+		if (
+			opts.index === undefined &&
+			!opts.trackName?.trim() &&
+			opts.color === undefined
+		) {
+			return { success: false, error: "Pass --index, --name or --color" };
 		}
 		const data = await client.patch(
 			`${basePath}/tracks/${encodeURIComponent(opts.trackId)}`,
-			{ index: opts.index, name: opts.trackName }
+			{ index: opts.index, name: opts.trackName, ...colorBody }
 		);
 		return { success: true, data };
 	}
@@ -173,7 +217,7 @@ async function dispatchTrack(
 
 	return {
 		success: false,
-		error: `Unknown track action: ${action}. Available: list, create, update, move, delete`,
+		error: `Unknown track action: ${action}. Available: list, create, update, move, delete, audio-get, audio-set, audio-automation, mute, solo`,
 	};
 }
 
@@ -213,7 +257,11 @@ async function dispatchTimeline(
 		case "arrange":
 			return timelineArrange(client, opts);
 		case "select":
-			return timelineSelect(client, opts);
+			return opts.color
+				? timelineSelectByColor(client, opts)
+				: timelineSelect(client, opts);
+		case "color-label":
+			return timelineColorLabel(client, opts);
 		case "get-selection":
 			return timelineGetSelection(client, opts);
 		case "clear-selection":

@@ -106,9 +106,14 @@ import {
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
+import { readColorLabelField } from "./timeline-color-request.js";
 import { withMediaProbes } from "../handlers/claude-media-probe.js";
 import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
+import {
+	type MutateAudioMix,
+	registerAudioMixRoutes,
+} from "./claude-http-audio-mix-routes.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 import {
@@ -211,6 +216,8 @@ export interface WindowAccessor {
 		request: ClaudeTrackOperationRequest,
 		correlationId?: string
 	): Promise<ClaudeTrackOperationResponse>;
+	/** Read or change the mixer: tracks' mix settings, buses, master. */
+	mutateAudioMix?: MutateAudioMix;
 	/** Begin a grouped transaction */
 	beginTransaction(request?: TransactionRequest): Promise<Transaction>;
 	/** Commit a grouped transaction */
@@ -1024,12 +1031,17 @@ export function registerSharedRoutes(
 		if (typeof req.body?.type !== "string") {
 			throw new HttpError(400, "Missing 'type' in request body");
 		}
+		const colorLabel = readColorLabelField({
+			value: req.body.colorLabel,
+			field: "colorLabel",
+		});
 		const result = await accessor.mutateTrack(
 			{
 				action: "create",
 				type: req.body.type as ClaudeTrackOperationRequest["type"],
 				name: typeof req.body.name === "string" ? req.body.name : undefined,
 				index: req.body.index,
+				...(colorLabel !== undefined ? { colorLabel } : {}),
 			},
 			getRequestCorrelationId({ req })
 		);
@@ -1042,11 +1054,19 @@ export function registerSharedRoutes(
 	router.patch(
 		"/api/claude/timeline/:projectId/tracks/:trackId",
 		async (req) => {
+			const colorLabel = readColorLabelField({
+				value: req.body?.colorLabel,
+				field: "colorLabel",
+			});
 			if (
 				typeof req.body?.index !== "number" &&
-				typeof req.body?.name !== "string"
+				typeof req.body?.name !== "string" &&
+				colorLabel === undefined
 			) {
-				throw new HttpError(400, "Track update needs 'index' or 'name'");
+				throw new HttpError(
+					400,
+					"Track update needs 'index', 'name' or 'colorLabel'"
+				);
 			}
 			const result = await accessor.mutateTrack(
 				{
@@ -1054,6 +1074,7 @@ export function registerSharedRoutes(
 					trackId: req.params.trackId,
 					index: req.body.index,
 					name: typeof req.body.name === "string" ? req.body.name : undefined,
+					...(colorLabel !== undefined ? { colorLabel } : {}),
 				},
 				getRequestCorrelationId({ req })
 			);
@@ -1441,15 +1462,62 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/selection", async (req) => {
-		if (!Array.isArray(req.body?.elements))
-			throw new HttpError(400, "Missing 'elements' array in request body");
+		const colorLabel = readColorLabelField({
+			value: req.body?.colorLabel,
+			field: "colorLabel",
+		});
+		if (colorLabel === null) {
+			throw new HttpError(400, "colorLabel must name a colour to select");
+		}
+		if (colorLabel === undefined && !Array.isArray(req.body?.elements))
+			throw new HttpError(
+				400,
+				"Missing 'elements' array or 'colorLabel' in request body"
+			);
 		const win = accessor.getWindow();
 		const correlationId = getRequestCorrelationId({ req });
 		win.webContents.send("claude:timeline:selectElements", {
 			correlationId,
-			elements: req.body.elements,
+			...(colorLabel ? { colorLabel } : { elements: req.body.elements }),
 		});
-		return { selected: req.body.elements.length };
+		if (!colorLabel) return { selected: req.body.elements.length };
+		// Selecting by colour is decided in the editor, so read the result back.
+		const elements = await accessor.requestSelection(correlationId);
+		return { selected: elements.length, elements };
+	});
+
+	router.post("/api/claude/timeline/:projectId/color-label", async (req) => {
+		const colorLabel = readColorLabelField({
+			value: req.body?.colorLabel,
+			field: "colorLabel",
+		});
+		if (colorLabel === undefined) {
+			throw new HttpError(
+				400,
+				"Missing 'colorLabel' (a colour, or none to clear)"
+			);
+		}
+		const elementIds = Array.isArray(req.body?.elementIds)
+			? (req.body.elementIds as unknown[]).filter(
+					(id): id is string => typeof id === "string"
+				)
+			: undefined;
+		const trackId =
+			typeof req.body?.trackId === "string" ? req.body.trackId : undefined;
+		if (!trackId && (!elementIds || elementIds.length === 0)) {
+			throw new HttpError(400, "Give 'trackId' or 'elementIds'");
+		}
+		const result = await accessor.mutateTrack(
+			{ action: "color-clips", trackId, elementIds, colorLabel },
+			getRequestCorrelationId({ req })
+		);
+		if (!result.success)
+			throw new HttpError(400, result.error || "Colouring clips failed");
+		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
+		return {
+			updatedCount: result.updatedCount ?? 0,
+			skipped: result.skipped ?? [],
+		};
 	});
 
 	router.get("/api/claude/timeline/:projectId/selection", async (req) => {
@@ -1483,6 +1551,11 @@ export function registerSharedRoutes(
 	});
 
 	registerTransactionRoutes({ router, accessor });
+	registerAudioMixRoutes({
+		router,
+		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
+		onChanged: scheduleProjectJsonAutoSync,
+	});
 
 	// ==========================================================================
 	// Project routes

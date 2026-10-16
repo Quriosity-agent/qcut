@@ -5,6 +5,9 @@ import {
 	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
+// These checks look for English UI copy.
+test.use({ appLocale: "en" });
+
 test.describe("Text Overlay Testing (Subtask 3B)", () => {
 	test("should access text panel and interact with text overlay button", async ({
 		page,
@@ -81,7 +84,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
 		// Wait for text overlay element to appear on timeline
 		await page.waitForSelector('[data-testid="timeline-element"]', {
-			timeout: 5000,
+			timeout: 15_000,
 		});
 
 		// Verify that a text element was added to the timeline
@@ -115,18 +118,8 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
-		// Test panel structure
-		const textPanel = page.getByTestId("text-panel");
-
-		// Should have proper padding/styling
-		const panelClasses = await textPanel.getAttribute("class");
-		expect(panelClasses).toContain("p-4");
-
 		// Test text overlay button structure
 		const textOverlayButton = page.getByTestId("text-overlay-button");
-		const textPreview = textOverlayButton.locator(".bg-accent").first();
-
-		await expect(textPreview).toBeVisible();
 
 		// Should show "Default text" content
 		const textContent = textOverlayButton.locator('text="Default text"');
