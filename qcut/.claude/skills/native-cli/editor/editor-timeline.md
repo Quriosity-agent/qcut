@@ -45,6 +45,11 @@ qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
 
+# Text element placed 300 px right of and 400 px below the canvas centre
+qcut editor:timeline:add-element \
+  --project-id <id> \
+  --data '{"type":"text","content":"门 的 计 划","startTime":0,"duration":5,"fontFamily":"Songti SC","fontSize":72,"x":300,"y":400,"strokeColor":"#000000","strokeWidth":3}'
+
 # Adjustment layer: grades everything on the tracks below it for its duration
 qcut editor:timeline:add-element \
   --project-id <id> \
@@ -60,10 +65,41 @@ layer with masks or a multi-pass program sends the export through the
 renderer's canvas engine automatically. `timeline export` shows the layer's
 `color`, `adjustments` and the resolved `colorSettings`.
 
+Text fields and their units (preview and export agree):
+
+| Field | Unit | Notes |
+|-------|------|-------|
+| `x`, `y` | project-canvas pixels, offset from the canvas centre | default 0 (centred); positive x is right, positive y is down |
+| `fontSize` | project-canvas pixels | scaled with the export resolution |
+| `fontFamily` | family name | system fonts work; for CJK text the export keeps CJK-capable families (Songti SC, Kaiti SC, Heiti SC, Hiragino Sans GB…) and falls back to the platform default with a warning in the log otherwise |
+| `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph |
+| `color`, `backgroundColor`, `strokeColor`, `shadowColor`, `glowColor` | CSS colour | with `…Opacity` 0–1 |
+| `textAlign` | left/center/right | |
+| `animationType` | none/fade/slide-up/slide-left | entrance only |
+
+A new text or captions track made without `--index` goes above the clips
+(the editor's stacking rule), so the text is visible; audio tracks go below.
+Dialogue belongs on `captions` elements (exportable as SRT, `editor export
+captions`, importable with `editor captions import`); titles, labels and place
+names are `text` elements, which `export captions` ignores.
+
 Video and audio given without `duration` take their file's own length: for
 video, the length of the video stream, not the container (which can be a
 little longer because of the audio track). If QCut cannot read the file's
 length yet, the add fails and asks for `duration` instead of guessing.
+
+### Import captions from a subtitle file
+
+```bash
+qcut editor:captions:import --project-id <id> --file subtitles.srt --language zh
+# Replace every captions track first; style every cue with a saved style
+qcut editor:captions:import --project-id <id> --file subtitles.vtt --replace --style @style.json
+```
+
+SRT, VTT and ASS are read with the same parser the UI uses. Cues go onto
+captions tracks above the clips (overlapping cues get their own lane) in
+batches of 50, and the result lists the tracks and cue count. `--replace`
+deletes the existing captions tracks first (one undo step each).
 
 ### Batch add elements (max 50)
 
