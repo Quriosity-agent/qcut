@@ -107,6 +107,25 @@ function shellUnquote(value: string): string {
 	return value.slice(1, -1).replace(/'\\''/g, "'");
 }
 
+/**
+ * `cmd.exe` expands `%name%` while it reads a line, so a literal `%` in a
+ * path is written as `%%`. Windows file names cannot contain `"`, and one
+ * would end the `set "…"` quoting, so such a path is refused.
+ */
+function cmdQuoteValue(value: string): string {
+	if (value.includes('"')) {
+		throw new CliLauncherError(
+			"unsupported",
+			`A Windows launcher cannot point at a path containing a double quote: ${value}`
+		);
+	}
+	return value.replace(/%/g, "%%");
+}
+
+function cmdUnquoteValue(value: string): string {
+	return value.replace(/%%/g, "%");
+}
+
 /** The launcher's text for one platform. */
 export function buildCliLauncherScript({
 	target,
@@ -119,8 +138,8 @@ export function buildCliLauncherScript({
 		return [
 			"@echo off",
 			`rem ${CLI_LAUNCHER_MARKER} (managed by QCut; reinstall from QCut > About & updates, or run: qcut cli install)`,
-			`set "QCUT_APP_EXECUTABLE=${target.executablePath}"`,
-			`set "QCUT_CLI_SCRIPT=${target.cliScriptPath}"`,
+			`set "QCUT_APP_EXECUTABLE=${cmdQuoteValue(target.executablePath)}"`,
+			`set "QCUT_CLI_SCRIPT=${cmdQuoteValue(target.cliScriptPath)}"`,
 			'if not exist "%QCUT_APP_EXECUTABLE%" (',
 			'  echo qcut: QCut is no longer at "%QCUT_APP_EXECUTABLE%"; reinstall the command line tool from QCut ^> About ^& updates 1>&2',
 			"  exit /b 127",
@@ -166,8 +185,8 @@ export function parseCliLauncher({
 	const windowsScript = /^set "QCUT_CLI_SCRIPT=(.*)"\r?$/m.exec(content);
 	if (windowsExecutable && windowsScript) {
 		return {
-			executablePath: windowsExecutable[1],
-			cliScriptPath: windowsScript[1],
+			executablePath: cmdUnquoteValue(windowsExecutable[1]),
+			cliScriptPath: cmdUnquoteValue(windowsScript[1]),
 		};
 	}
 	return undefined;
