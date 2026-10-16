@@ -55,6 +55,7 @@ import {
 	hasMediaColorEdits,
 	normalizeMediaColorSettings,
 } from "@/lib/color/color-properties";
+import { DEFAULT_MEDIA_ADJUSTMENTS } from "@/lib/video/video-properties";
 import { resolveColorFilterSettings } from "@/lib/filters/filter-resolver";
 import {
 	applyTextAnimationPreset,
@@ -646,11 +647,18 @@ export function getClaudeAdjustmentFields({
 	if (isFiniteNumber(element.opacity)) {
 		fields.opacity = element.opacity;
 	}
+	// A partial grade from the CLI is stored complete: missing fields take
+	// the editor's defaults instead of leaving holes the renderer must guess.
 	if (isPlainObject(rawColor)) {
-		fields.color = rawColor as unknown as MediaColorSettings;
+		fields.color = normalizeMediaColorSettings({
+			element: { color: rawColor as unknown as MediaColorSettings },
+		});
 	}
 	if (isPlainObject(rawAdjustments)) {
-		fields.adjustments = rawAdjustments as unknown as MediaAdjustments;
+		fields.adjustments = {
+			...DEFAULT_MEDIA_ADJUSTMENTS,
+			...(rawAdjustments as Partial<MediaAdjustments>),
+		};
 	}
 	if (Array.isArray(rawMasks)) {
 		fields.masks = rawMasks as unknown as MediaMask[];
@@ -2083,6 +2091,8 @@ function formatElementForExport({
 				opacity: element.opacity,
 				color: element.color as Record<string, unknown> | undefined,
 				adjustments: element.adjustments as Record<string, unknown> | undefined,
+				// The grade the export renders, resolved the same way as a clip's.
+				colorSettings: resolveExportElementColorSettings({ element }),
 				masks: element.masks as Record<string, unknown>[] | undefined,
 			} as unknown as ClaudeElement;
 		case "effect":
