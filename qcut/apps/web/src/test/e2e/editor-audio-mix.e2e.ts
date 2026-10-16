@@ -526,11 +526,30 @@ test("the CLI mix is what every export engine renders", async ({
 		};
 
 		// --- loudness of the mix, against FFmpeg's own R 128 meter ---------------
+		// The default measures the native export pipeline, so it must agree with
+		// the native export; --engine browser measures the renderer's graph,
+		// which is what the muxer export carries.
 		const loudness = await cli<{
 			integratedLufs: number;
 			truePeakDbtp: number;
+			engine: string;
 		}>({ apiPort, args: ["editor:mix:loudness", "--project-id", projectId] });
-		const reference128 = ebur128(path.join(workDir, "mix-muxer.mp4"));
+		const reference128 = ebur128(path.join(workDir, "mix-native.mp4"));
+		const browserLoudness = await cli<{
+			integratedLufs: number;
+			truePeakDbtp: number;
+			engine: string;
+		}>({
+			apiPort,
+			args: [
+				"editor:mix:loudness",
+				"--project-id",
+				projectId,
+				"--engine",
+				"browser",
+			],
+		});
+		const muxer128 = ebur128(path.join(workDir, "mix-muxer.mp4"));
 
 		// --- solo the SFX: the music is gone from both ---------------------------
 		await cli({
@@ -568,6 +587,8 @@ test("the CLI mix is what every export engine renders", async ({
 					stems,
 					loudness,
 					ffmpegEbur128: reference128,
+					browserLoudness,
+					muxerEbur128: muxer128,
 				},
 				null,
 				2
@@ -599,13 +620,23 @@ test("the CLI mix is what every export engine renders", async ({
 		expect(stems.directSfxDb, "SFX kept out of the direct stem").toBeLessThan(
 			-20
 		);
+		expect(loudness.engine).toBe("native");
 		expect(
 			Math.abs(loudness.integratedLufs - reference128.integratedLufs),
-			"integrated loudness against ffmpeg ebur128"
-		).toBeLessThan(0.5);
+			"integrated loudness against ffmpeg ebur128 of the native export"
+		).toBeLessThan(0.15);
 		expect(
 			Math.abs(loudness.truePeakDbtp - reference128.truePeakDbtp),
-			"true peak against ffmpeg ebur128"
+			"true peak against ffmpeg ebur128 of the native export"
+		).toBeLessThan(0.2);
+		expect(browserLoudness.engine).toBe("browser");
+		expect(
+			Math.abs(browserLoudness.integratedLufs - muxer128.integratedLufs),
+			"browser loudness against ffmpeg ebur128 of the muxer export"
+		).toBeLessThan(0.5);
+		expect(
+			Math.abs(browserLoudness.truePeakDbtp - muxer128.truePeakDbtp),
+			"browser true peak against ffmpeg ebur128 of the muxer export"
 		).toBeLessThan(0.5);
 		for (const engine of ENGINES) {
 			const {
