@@ -42,6 +42,13 @@ function makeClient() {
 						elements: [
 							{ id: "song", type: "media", sourceId: "media-9" },
 							{ id: "title", type: "text" },
+							{
+								id: "hit",
+								type: "media",
+								sourceId: "media-7",
+								trimStart: 0.5,
+								playbackRate: 2,
+							},
 						],
 					},
 				],
@@ -51,6 +58,15 @@ function makeClient() {
 	});
 	const post = vi.fn(async (url: string, body: Record<string, unknown>) => {
 		if (url === "/api/claude/analyze/project-1/beats") return detection;
+		if (url === "/api/claude/analyze/project-1/onset") {
+			return {
+				mediaId: body.mediaId,
+				time: body.mediaId === "media-7" ? 0.9 : 0.8,
+				strength: 1,
+				threshold: body.threshold ?? 0.5,
+				duration: 2,
+			};
+		}
 		if (url === "/api/claude/timeline/project-1/beats/mark") {
 			return {
 				projectId: "project-1",
@@ -159,7 +175,67 @@ describe("editor timeline snap --to beats", () => {
 				edge: "middle",
 			})
 		);
-		expect(badEdge.error).toBe("--edge must be start or end");
+		expect(badEdge.error).toBe("--edge must be start, end or onset");
+		const badAlign = await timelineSnap(
+			client,
+			options({
+				command: "editor:timeline:snap",
+				elementIds: ["a"],
+				frameAlign: "sideways",
+			})
+		);
+		expect(badAlign.error).toBe("--frame-align must be visual, all or none");
+		const badThreshold = await timelineSnap(
+			client,
+			options({
+				command: "editor:timeline:snap",
+				elementIds: ["a"],
+				edge: "onset",
+				onsetThreshold: 2,
+			})
+		);
+		expect(badThreshold.error).toContain("--onset-threshold");
 		expect(post).not.toHaveBeenCalled();
+	});
+
+	it("with --edge onset finds each clip's attack through its trims and speed first", async () => {
+		const { client, post } = makeClient();
+		const result = await timelineSnap(
+			client,
+			options({
+				command: "editor:timeline:snap",
+				to: "beats",
+				elementIds: ["song,hit,title"],
+				edge: "onset",
+				frameAlign: "none",
+				onsetThreshold: 0.6,
+			})
+		);
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/analyze/project-1/onset",
+			{ mediaId: "media-9", threshold: 0.6 },
+			expect.any(Object)
+		);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/timeline/project-1/snap-to-beats",
+			{
+				elementIds: ["song", "hit", "title"],
+				edge: "onset",
+				// hit: (0.9 − trimStart 0.5) / rate 2 = 0.2; the title has none.
+				edgeOffsets: { song: 0.8, hit: 0.2 },
+				frameAlign: "none",
+			}
+		);
+		expect(result.data).toMatchObject({
+			onsets: {
+				song: { mediaId: "media-9", sourceTime: 0.8, offset: 0.8 },
+				hit: { mediaId: "media-7", sourceTime: 0.9, offset: 0.2 },
+				title: {
+					sourceTime: null,
+					reason: expect.stringContaining("not a media clip"),
+				},
+			},
+		});
 	});
 });
