@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 	onnx: { available: false, message: "ONNX 本地模型未配置" },
 	detectBridge: vi.fn(),
 	detectOnnx: vi.fn(),
-	ffmpegScenes: vi.fn(),
+	inspectOnnx: vi.fn(),
+	spawn: vi.fn(),
 }));
 
 vi.mock("electron", () => ({
@@ -25,8 +26,34 @@ vi.mock("../jianying-shot-split/runtime.js", () => ({
 		mocks.detectBridge(...args),
 }));
 vi.mock("../jianying-shot-split/onnx-engine.js", () => ({
-	inspectOnnxEngine: vi.fn(async () => mocks.onnx),
+	inspectOnnxEngine: (...args: unknown[]) => {
+		mocks.inspectOnnx(...args);
+		return Promise.resolve(mocks.onnx);
+	},
 	detectShotsWithOnnxEngine: (...args: unknown[]) => mocks.detectOnnx(...args),
+}));
+// FFmpeg scene detection spawns ffmpeg; a process that closes cleanly with no
+// output stands in for it, so the fallback choice is what the tests observe.
+vi.mock("node:child_process", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:child_process")>();
+	const { EventEmitter } = await import("node:events");
+	return {
+		...actual,
+		spawn: (...args: unknown[]) => {
+			mocks.spawn(...args);
+			const proc = new EventEmitter() as EventEmitter & {
+				kill: () => void;
+				stderr: EventEmitter;
+			};
+			proc.kill = vi.fn();
+			proc.stderr = new EventEmitter();
+			process.nextTick(() => proc.emit("close", 0));
+			return proc;
+		},
+	};
+});
+vi.mock("../ffmpeg/utils.js", () => ({
+	getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
 }));
 vi.mock("../claude/handlers/claude-media-handler.js", () => ({
 	getMediaInfo: vi.fn(async () => ({
@@ -122,25 +149,23 @@ describe("scene engine resolution", () => {
 			available: false,
 			message: "no bridge",
 		};
-		const run = mocks.detectBridge;
-		// The FFmpeg path spawns ffmpeg; refuse it loudly so the fallback choice is what we test.
-		const result = await detectScenes("p", {
-			mediaId: "m1",
-			engine: "auto",
-		}).catch((error: Error) => error);
-		expect(run).not.toHaveBeenCalled();
+		const result = await detectScenes("p", { mediaId: "m1", engine: "auto" });
+		expect(mocks.detectBridge).not.toHaveBeenCalled();
 		expect(mocks.detectOnnx).not.toHaveBeenCalled();
-		// Either ffmpeg ran (unlikely in CI) or its spawn failed; in both cases the
-		// engine chosen was ffmpeg, which the error or result shows.
-		if (result instanceof Error) {
-			expect(result.message).not.toContain("No scene detection engine");
-		} else {
-			expect(result.engine).toBe("ffmpeg");
-			expect(result.fallbacks).toEqual([
-				{ engine: "jianying", reason: "no bridge" },
-				{ engine: "onnx", reason: "ONNX 本地模型未配置" },
-			]);
-		}
+		expect(mocks.spawn).toHaveBeenCalledTimes(1);
+		expect(result.engine).toBe("ffmpeg");
+		expect(result.requestedEngine).toBe("auto");
+		expect(result.fallbacks).toEqual([
+			{ engine: "jianying", reason: "no bridge" },
+			{ engine: "onnx", reason: "ONNX 本地模型未配置" },
+		]);
+		expect(result.scenes).toEqual([{ timestamp: 0, confidence: 1 }]);
+	});
+
+	it("auto stops probing at the first engine that can run", async () => {
+		await detectScenes("p", { mediaId: "m1" });
+		// The bridge is ready, so the ONNX check (a Python process) never starts.
+		expect(mocks.inspectOnnx).not.toHaveBeenCalled();
 	});
 
 	it("refuses unknown engines and a threshold for a model engine", async () => {
