@@ -18,7 +18,7 @@ Confirm flags with `qcut editor <area> <action> --help --json`.
 | --- | --- | --- | --- |
 | `editor track list` | — | `--project-id` | List timeline tracks in visual order (with each track's `colorLabel`) |
 | `editor track create` | `--type` | `--project-id`, `--name`, `--index`, `--color` | Create a track (`media`, `text`, `audio`, `sticker`, …) |
-| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color` | Rename, move or colour a track |
+| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color`, `--lock`/`--unlock`, `--hide`/`--unhide` | Rename, move, colour, lock or hide a track |
 | `editor track move` | `--track-id --index` | `--project-id` | Move a track to an exact visual index |
 | `editor track delete` | `--track-id` | `--project-id`, `--force`, `--ripple` | Delete a track; `--force` for non-empty tracks |
 
@@ -30,8 +30,14 @@ qcut editor track list --project-id <id> --json
 qcut editor track create --type text --name "Captions" --project-id <id> --json
 qcut editor track create --type audio --name "SFX · Guns" --color red --project-id <id> --json
 qcut editor track update --track-id <track-id> --color none --project-id <id> --json
+qcut editor track update --track-id <track-id> --lock --project-id <id> --json
 qcut editor track delete --track-id <track-id> --force --project-id <id> --json
 ```
+
+`--lock` makes a track refuse every edit (`--unlock` reverses it); `--hide`
+takes it out of the preview and the export (`--unhide` brings it back). The
+HTTP body uses `locked`, `hidden` and `muted` booleans. `track list` and
+`timeline export` report all three.
 
 ### Track colour
 
@@ -77,6 +83,40 @@ any `warnings` (a safe-passthrough resolution is reported, not applied).
 
 `timeline apply --replace` overwrites the whole timeline. Export the current
 timeline first (`editor timeline export`) so the change can be reverted.
+
+### What a manifest carries, and what comes back from `timeline export`
+
+`timeline export` writes everything `timeline apply` reads, so an export can be
+applied back (`--replace` into the same project restores a backup):
+
+- **Tracks** carry `type`, `name`, `colorLabel`, `muted`, `hidden`, `locked`
+  and, for audio and media tracks, `audio` (level, pan, bus, solo, ducking,
+  effects, automation; `autoCrossfade` is reported but read-only). Colour,
+  mute and visibility are set as the track is made; a lock is applied after
+  its clips are in, so the adds are not refused.
+- **Clips** carry their `name`, placement (`x`, `y`, `rotation`, `scaleX`,
+  `scaleY`, `opacity`, `fitMode`), timing, speed, `audio` (including empty
+  `lyrics.words`), `color`/`adjustments`, `filterStack`, `keyframes`,
+  `enhancements` and `portraitAdjustments`; a batch add stores all of them.
+- **`mix`** holds the project's `buses` and `master` as `editor mix export`
+  shows them. Buses are matched by `id` (created when missing, with the id
+  kept), the master is patched (its name is left alone), and with `--replace`
+  buses the manifest does not list are removed. Ducking `sourceTrackIds` may
+  name track aliases or old ids; they are mapped to the tracks the apply made.
+  The mix is outside the timeline transaction, so a failed apply puts it back
+  by hand (best effort) after the timeline rollback.
+- **Track order.** Array order sets the order when the manifest is the whole
+  timeline (`--replace`, or a project that still has only its empty main
+  track). Merging into a timeline that already has tracks keeps them where
+  they are; a track moves only when it names an `index`, so a manifest
+  applied in parts does not shuffle the rest. The result reports
+  `positionalTracks`.
+- **Verification** compares every field the manifest gave (track switches,
+  clip fields, the mix) with what the editor read back; a mismatch rolls the
+  timeline back. Numbers agree within 0.001; objects may gain editor defaults.
+- **Size.** Elements and updates go in batches of 50 with a deadline that
+  grows with the batch (the editor stores one element at a time), so a
+  130-clip manifest applies in one command; nothing needs to be split by hand.
 
 ## Stickers
 
