@@ -620,11 +620,23 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:editing:delete-range": ed(
 		"editor:editing:delete-range",
-		"Delete time range",
+		"Delete time range (ripple on by default; confirm tier, needs --force)",
 		[
 			PID,
 			f("--start-time", "number", "Start time in seconds", { required: true }),
 			f("--end-time", "number", "End time in seconds", { required: true }),
+			f(
+				"--track-id",
+				"string",
+				"Only these tracks (comma-separated); default every unlocked track"
+			),
+			f("--ripple", "boolean", "Close the gap (the default)"),
+			f("--no-ripple", "boolean", "Leave the gap where the range was"),
+			f(
+				"--cross-track-ripple",
+				"boolean",
+				"With --track-id: shift every unlocked track, not only the targets"
+			),
 		]
 	),
 	"editor:editing:auto-edit": ed(
