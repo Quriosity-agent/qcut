@@ -214,6 +214,7 @@ export interface ClaudeTimelineAPI {
 			callback: (data: {
 				requestId: string;
 				correlationId?: string;
+				projectId: string;
 				elementId: string;
 				cuts: Array<{ start: number; end: number }>;
 				ripple: boolean;
