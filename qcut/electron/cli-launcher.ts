@@ -18,7 +18,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, join, win32 } from "node:path";
+import { dirname, join, posix, win32 } from "node:path";
 
 export const CLI_LAUNCHER_MARKER = "QCut CLI launcher";
 
@@ -75,7 +75,8 @@ export function cliLauncherPath({
 			env.LOCALAPPDATA ?? win32.join(home, "AppData", "Local");
 		return win32.join(localAppData, "QCut", "bin", "qcut.cmd");
 	}
-	return join(home, ".local", "bin", "qcut");
+	// Spelled for the target platform, whatever host computes it.
+	return posix.join(home, ".local", "bin", "qcut");
 }
 
 /** The bundled command-line tool inside an installed app, by install layout. */
@@ -89,11 +90,11 @@ export function bundledCliScriptPath({
 	const inner = ["electron", "native-pipeline", "cli", "cli.js"];
 	switch (kind) {
 		case "mac-zip":
-			return join(appPath, "Contents", "Resources", "app.asar", ...inner);
+			return posix.join(appPath, "Contents", "Resources", "app.asar", ...inner);
 		case "windows-nsis":
 			return win32.join(appPath, "resources", "app.asar", ...inner);
 		case "linux-deb":
-			return join(appPath, "resources", "app.asar", ...inner);
+			return posix.join(appPath, "resources", "app.asar", ...inner);
 		default:
 			return undefined;
 	}
@@ -200,7 +201,8 @@ function pathEntries({
 	platform: NodeJS.Platform;
 }): string[] {
 	const raw = env.PATH ?? env.Path ?? "";
-	const separator = platform === "win32" ? ";" : delimiter;
+	// The target platform's separator, not the host's.
+	const separator = platform === "win32" ? ";" : ":";
 	return raw
 		.split(separator)
 		.map((entry) => entry.trim())
