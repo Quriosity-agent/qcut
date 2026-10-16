@@ -20,6 +20,7 @@ import type { Router } from "../utils/http-router.js";
 import { timelineRequiresRendererFilterStackExport } from "../../types/filter-stack-export-policy.js";
 import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
 import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
+import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
 import type {
@@ -590,49 +591,6 @@ function scheduleProjectJsonAutoSync({
 // be busy generating thumbnails/waveforms for seconds, and a too-tight
 // window makes every mutation guard flake with 503s. The guard still
 // fails closed when the snapshot never arrives.
-const PROJECT_SCOPE_TIMEOUT_MS = 5000;
-
-export async function assertProjectIsOpen({
-	accessor,
-	projectId,
-}: {
-	accessor: WindowAccessor;
-	projectId: string | undefined;
-}): Promise<void> {
-	if (!projectId) return;
-	const requestStateSnapshot = accessor.requestStateSnapshot;
-	if (!requestStateSnapshot) return;
-	let openProjectId: string | undefined;
-	try {
-		const snapshot = await Promise.race([
-			requestStateSnapshot({ include: ["project"] }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new Error("state snapshot timed out")),
-					PROJECT_SCOPE_TIMEOUT_MS
-				)
-			),
-		]);
-		const project = snapshot.state?.project;
-		openProjectId = project?.activeProject?.id;
-	} catch {
-		throw new HttpError(
-			503,
-			"No active editor project could be confirmed. Try again after QCut finishes loading."
-		);
-	}
-	if (!openProjectId) {
-		throw new HttpError(
-			409,
-			`The editor has no project open. Open ${projectId} first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
-		);
-	}
-	if (openProjectId === projectId) return;
-	throw new HttpError(
-		409,
-		`The editor has ${openProjectId} open, not ${projectId}. Open it first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
-	);
-}
 
 /**
  * Orders a fire-and-forget mutation against the next read, and hands back the
@@ -767,6 +725,8 @@ function locateElement({
 const SHOT_SPLIT_ENGINE_CHOICES = SCENE_DETECTION_ENGINE_CHOICES;
 
 /** The shot-split body, checked field by field; refusals name the field. */
+export { assertProjectIsOpen };
+
 export function readShotSplitRequest({
 	projectId,
 	body,
@@ -1040,6 +1000,7 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/media/:projectId/import-from-url", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.url)
 			throw new HttpError(400, "Missing 'url' in request body");
 		const result = await importMediaFromUrl(
@@ -1059,6 +1020,7 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/media/:projectId/batch-import", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
 		const result = await batchImportMedia(req.params.projectId, req.body.items);
@@ -1120,6 +1082,7 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/timeline/:projectId/tracks", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (typeof req.body?.type !== "string") {
 			throw new HttpError(400, "Missing 'type' in request body");
 		}
@@ -1160,6 +1123,8 @@ export function registerSharedRoutes(
 					"Track update needs 'index', 'name' or 'colorLabel'"
 				);
 			}
+			// Input first (400), then the project (409), then the editor.
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.mutateTrack(
 				{
 					action: "update",
@@ -1180,6 +1145,7 @@ export function registerSharedRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/tracks/:trackId/transitions",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body || typeof req.body !== "object") {
 				throw new HttpError(400, "Missing transition data");
 			}
@@ -1202,6 +1168,7 @@ export function registerSharedRoutes(
 	router.delete(
 		"/api/claude/timeline/:projectId/tracks/:trackId",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.mutateTrack(
 				{
 					action: "delete",
@@ -1219,6 +1186,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/import", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.data)
 			throw new HttpError(400, "Missing 'data' in request body");
 		const format = req.body.format || "json";
@@ -1410,6 +1378,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/arrange", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.trackId || typeof req.body.trackId !== "string")
 			throw new HttpError(400, "Missing 'trackId' in request body");
 		if (!req.body?.mode || typeof req.body.mode !== "string")
@@ -1454,6 +1423,8 @@ export function registerSharedRoutes(
 					400,
 					"Invalid mode. Use 'split', 'keepLeft', or 'keepRight'"
 				);
+			// Input first (400), then the project (409), then the editor.
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.requestSplit(
 				req.params.elementId,
 				req.body.splitTime,
@@ -1518,6 +1489,7 @@ export function registerSharedRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/elements/:elementId/move",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const hasStartTime = typeof req.body?.newStartTime === "number";
 			if (!req.body?.toTrackId && !hasStartTime)
 				throw new HttpError(
@@ -1604,6 +1576,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/selection", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const colorLabel = readColorLabelField({
 			value: req.body?.colorLabel,
 			field: "colorLabel",
@@ -1649,6 +1622,8 @@ export function registerSharedRoutes(
 		if (!trackId && (!elementIds || elementIds.length === 0)) {
 			throw new HttpError(400, "Give 'trackId' or 'elementIds'");
 		}
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const result = await accessor.mutateTrack(
 			{ action: "color-clips", trackId, elementIds, colorLabel },
 			getRequestCorrelationId({ req })
@@ -1672,13 +1647,15 @@ export function registerSharedRoutes(
 		return { elements };
 	});
 
-	router.delete("/api/claude/timeline/:projectId/selection", async () => {
+	router.delete("/api/claude/timeline/:projectId/selection", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const win = accessor.getWindow();
 		win.webContents.send("claude:timeline:clearSelection");
 		return { cleared: true };
 	});
 
 	router.post("/api/claude/timeline/:projectId/playback", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const win = accessor.getWindow();
 		const { action, time } = req.body as {
 			action: "play" | "pause" | "toggle" | "seek";
@@ -1694,6 +1671,8 @@ export function registerSharedRoutes(
 
 	registerTransactionRoutes({ router, accessor });
 	registerAudioMixRoutes({
+		assertProjectOpen: (projectId) =>
+			assertProjectIsOpen({ accessor, projectId }),
 		router,
 		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
 		measureNativeLoudness: async ({ projectId }) => {
