@@ -84,7 +84,12 @@ function makeEditor({
 				const trimStart = Number(element.trimStart ?? 0);
 				const trimEnd = Number(element.trimEnd ?? 0);
 				const duration = Number(element.duration) - trimStart - trimEnd;
-				return { ...element, duration, timelineDuration: duration };
+				return {
+					...element,
+					duration,
+					timelineDuration: duration,
+					endTime: Number(element.startTime) + duration,
+				};
 			}),
 			transitions: [],
 		})),
@@ -476,6 +481,78 @@ describe("timeline apply: track switches and the mix", () => {
 			"Ambience · wind",
 			"Appended",
 		]);
+	});
+
+	it("adds an exported, trimmed clip at its source length, not its trimmed length", async () => {
+		const editor = makeEditor();
+		// As `timeline export` writes it: `duration` is the 4.875 s left on the
+		// timeline, trims are separate, and `timelineDuration` marks the shape.
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({
+				replace: true,
+				media: [{ alias: "clip", mediaId: "media-1" }],
+				tracks: [
+					{
+						alias: "main",
+						type: "media",
+						name: "Main",
+						elements: [
+							{
+								id: "clip-4",
+								type: "media",
+								media: "clip",
+								startTime: 48.125,
+								endTime: 53,
+								duration: 4.875,
+								timelineDuration: 4.875,
+								trimStart: 12.583,
+								trimEnd: 0,
+							},
+						],
+					},
+				],
+			})
+		);
+		expect(result.success, JSON.stringify(result)).toBe(true);
+		const added = editor.post.mock.calls.find(
+			([url]) => url === "/api/claude/timeline/project-1/elements/batch"
+		)?.[1] as { elements: Array<Record<string, unknown>> };
+		expect(added.elements[0].duration).toBeCloseTo(17.458, 3);
+		expect(added.elements[0].trimStart).toBe(12.583);
+		const stored = editor.state.tracks[0].elements[0];
+		expect(stored.duration).toBeCloseTo(17.458, 3);
+	});
+
+	it("fails verification when a clip ends somewhere else than the manifest says", async () => {
+		const editor = makeEditor();
+		// The stand-in keeps the source length the manifest gave; a hand-written
+		// manifest whose endTime disagrees with duration − trims is caught.
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({
+				media: [{ alias: "clip", mediaId: "media-1" }],
+				tracks: [
+					{
+						alias: "sfx",
+						type: "audio",
+						name: "SFX",
+						elements: [
+							{
+								type: "audio",
+								media: "clip",
+								startTime: 0,
+								duration: 10,
+								trimEnd: 4,
+								endTime: 10,
+							},
+						],
+					},
+				],
+			})
+		);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("field 'endTime' did not match");
 	});
 
 	it("chunks element updates by 50 with a deadline sized to each chunk", async () => {
