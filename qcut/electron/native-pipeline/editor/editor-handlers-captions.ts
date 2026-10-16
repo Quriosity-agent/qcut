@@ -68,47 +68,70 @@ export async function captionsImport(
 		style: style ?? clip.style,
 	}));
 
-	if (opts.replace) {
-		const timeline = await client.get<{
-			tracks: Array<{ id: string; type: string }>;
-		}>(`/api/claude/timeline/${opts.projectId}`);
-		for (const track of timeline.tracks) {
-			if (track.type !== "captions") continue;
-			await client.delete(
-				`/api/claude/timeline/${opts.projectId}/tracks/${encodeURIComponent(track.id)}`,
-				{ force: true }
-			);
-		}
-	}
-
+	// One timeline transaction covers the `--replace` deletes and every batch,
+	// so a failure midway leaves the captions as they were, not half gone or
+	// half imported.
+	const started = await client.post<{ transactionId: string }>(
+		"/api/claude/transaction/begin",
+		{ label: "Import captions" }
+	);
+	const transaction = `/api/claude/transaction/${encodeURIComponent(started.transactionId)}`;
 	const tracks: Array<{ trackId: string; cues: number }> = [];
 	let added = 0;
 	const lanes = partitionCueLanes({ cues });
-	for (const lane of lanes) {
-		const created = await client.post<{ trackId: string }>(
-			`/api/claude/timeline/${opts.projectId}/tracks`,
-			{ type: "captions" }
-		);
-		const trackId = created.trackId;
-		for (let start = 0; start < lane.length; start += BATCH_LIMIT) {
-			const chunk = lane.slice(start, start + BATCH_LIMIT);
-			const result = await client.post<{ addedCount?: number }>(
-				`/api/claude/timeline/${opts.projectId}/elements/batch`,
-				{
-					elements: chunk.map((cue) => ({
-						type: "captions",
-						trackId,
-						content: cue.text,
-						startTime: cue.startTime,
-						duration: cue.duration,
-						language: cue.language,
-						...(cue.style ? { style: cue.style } : {}),
-					})),
-				}
-			);
-			added += result?.addedCount ?? chunk.length;
+	try {
+		if (opts.replace) {
+			const timeline = await client.get<{
+				tracks: Array<{ id: string; type: string }>;
+			}>(`/api/claude/timeline/${opts.projectId}`);
+			for (const track of timeline.tracks) {
+				if (track.type !== "captions") continue;
+				await client.delete(
+					`/api/claude/timeline/${opts.projectId}/tracks/${encodeURIComponent(track.id)}`,
+					{ force: true }
+				);
+			}
 		}
-		tracks.push({ trackId, cues: lane.length });
+		for (const lane of lanes) {
+			const created = await client.post<{ trackId: string }>(
+				`/api/claude/timeline/${opts.projectId}/tracks`,
+				{ type: "captions" }
+			);
+			const trackId = created.trackId;
+			for (let start = 0; start < lane.length; start += BATCH_LIMIT) {
+				const chunk = lane.slice(start, start + BATCH_LIMIT);
+				const result = await client.post<{ addedCount?: number }>(
+					`/api/claude/timeline/${opts.projectId}/elements/batch`,
+					{
+						elements: chunk.map((cue) => ({
+							type: "captions",
+							trackId,
+							content: cue.text,
+							startTime: cue.startTime,
+							duration: cue.duration,
+							language: cue.language,
+							...(cue.style ? { style: cue.style } : {}),
+						})),
+					}
+				);
+				added += result?.addedCount ?? chunk.length;
+			}
+			tracks.push({ trackId, cues: lane.length });
+		}
+		await client.post(`${transaction}/commit`, {});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		let rolledBack = false;
+		try {
+			await client.post(`${transaction}/rollback`, { reason: message });
+			rolledBack = true;
+		} catch {
+			// The import failure below is the error to report.
+		}
+		return {
+			success: false,
+			error: `Captions import failed: ${message}. The timeline was ${rolledBack ? "rolled back" : "NOT rolled back"}.`,
+		};
 	}
 	return {
 		success: true,
