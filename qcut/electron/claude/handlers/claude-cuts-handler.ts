@@ -61,6 +61,9 @@ async function getIpcMainForBatchCutExecution(): Promise<IpcMain> {
  * Validate the batch cut request and reject invalid inputs.
  */
 export function validateBatchCutRequest(request: BatchCutRequest): void {
+	if (!request.projectId || typeof request.projectId !== "string") {
+		throw new HttpError(400, "Missing or invalid 'projectId'");
+	}
 	if (!request.elementId || typeof request.elementId !== "string") {
 		throw new HttpError(400, "Missing or invalid 'elementId'");
 	}
@@ -149,6 +152,13 @@ export async function executeBatchCuts(
 			if (data.requestId !== requestId || resolved) return;
 			resolved = true;
 			cleanup();
+			// The editor answers on the same channel when it refuses the cuts,
+			// e.g. because another project is open; that is a conflict, not
+			// a job with zero cuts.
+			if (data.result?.error) {
+				reject(new HttpError(409, data.result.error));
+				return;
+			}
 			resolve(data.result);
 		};
 
@@ -157,6 +167,7 @@ export async function executeBatchCuts(
 			win.webContents.send("claude:timeline:executeCuts", {
 				requestId,
 				correlationId: request.correlationId,
+				projectId: request.projectId,
 				elementId: request.elementId,
 				cuts: request.cuts,
 				ripple: request.ripple ?? true,
