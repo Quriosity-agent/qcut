@@ -1335,6 +1335,10 @@ export function createUpdatesAPI(): NonNullable<ElectronAPI["updates"]> {
 		getReleaseNotes: (version?) =>
 			ipcRenderer.invoke("get-release-notes", version),
 		getChangelog: () => ipcRenderer.invoke("get-changelog"),
+		cliLauncher: {
+			getState: () => ipcRenderer.invoke("get-cli-launcher-state"),
+			install: (options) => ipcRenderer.invoke("install-cli-launcher", options),
+		},
 		onUpdateAvailable: (callback) => {
 			const handler = (
 				_: IpcRendererEvent,
