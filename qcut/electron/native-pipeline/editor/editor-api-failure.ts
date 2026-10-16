@@ -8,6 +8,15 @@
  * @module electron/native-pipeline/editor/editor-api-failure
  */
 
+/** The socket never connected: QCut is not reachable there. */
+const CONNECT_FAILED =
+	/UND_ERR_CONNECT_TIMEOUT|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH/i;
+/** QCut took the request but the connection's own timer ran out waiting for the answer. */
+const RESPONSE_TIMED_OUT = /UND_ERR_HEADERS_TIMEOUT|UND_ERR_BODY_TIMEOUT/i;
+/** An open connection went away mid-request. */
+const CONNECTION_DROPPED =
+	/ECONNRESET|EPIPE|UND_ERR_SOCKET|UND_ERR_CLOSED|UND_ERR_DESTROYED|UND_ERR_ABORTED|socket hang up|other side closed/i;
+
 function causeCode(error: unknown): string {
 	const cause = (error as { cause?: { code?: unknown; message?: unknown } })
 		?.cause;
@@ -36,7 +45,13 @@ export function describeRequestFailure({
 		return `Cannot connect to QCut at ${baseUrl}`;
 	}
 	if (!message.includes("fetch failed")) return null;
-	if (/ECONNRESET|socket|closed|hang up|UND_ERR/i.test(cause)) {
+	if (CONNECT_FAILED.test(cause)) {
+		return `Cannot connect to QCut at ${baseUrl} (${cause})`;
+	}
+	if (RESPONSE_TIMED_OUT.test(cause)) {
+		return `QCut accepted the request to ${url} but did not answer within the connection's timeout (${cause}); the work may still be running in the app`;
+	}
+	if (CONNECTION_DROPPED.test(cause)) {
 		return `QCut closed the connection to ${url} before answering (${cause}); the work may still be running in the app`;
 	}
 	return `Cannot connect to QCut at ${baseUrl}${cause ? ` (${cause})` : ""}`;
