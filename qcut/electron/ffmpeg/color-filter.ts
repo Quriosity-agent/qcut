@@ -13,6 +13,11 @@ import {
 	hasColorKeyframes,
 } from "./color-keyframe-filter";
 import { buildColorManagementFilters } from "./color-management-filter";
+import {
+	basicGradeIsNeutral,
+	basicGradeIsStatic,
+	buildBasicGradeLutFilter,
+} from "./color-basic-grade-lut";
 import { materializeSecondaryColorLut } from "./secondary-color-lut";
 import { buildSmartFilters } from "./color-smart-filter";
 
@@ -55,6 +60,9 @@ export function buildBasicFilters({
 	if (!color.basic.enabled) return [];
 	const colorVisual = { ...visual, color };
 	const values = color.basic;
+	// A static grade is the preview's pixel maths baked into one cube; the
+	// eq/hue approximation below is only for grades that animate.
+	const staticGrade = basicGradeIsStatic({ visual: colorVisual });
 	const value = (
 		property: keyof Omit<typeof values, "enabled">,
 		fallback: number
@@ -188,17 +196,22 @@ export function buildBasicFilters({
 				`gamma_g='clip(1-(${tint})/450,0.5,1.5)':` +
 				`gamma_b='clip(1-(${temperature})/600+(${tint})/900,0.5,1.5)'`
 			: "";
-	const filters = [
-		`eq=brightness='${eqBrightness}':contrast='${eqContrast}'${gammaTerms}:eval=frame`,
-		// eq's own saturation leaves chroma a step off neutral (a desaturated
-		// frame comes out green-grey); hue scales chroma around true grey.
-		`hue=s='${saturation}'`,
-		// Other graph builders join these as they are, so no empty entries.
-		...(channelGains ? [channelGains] : []),
-	];
+	const filters = staticGrade
+		? basicGradeIsNeutral({ basic: values })
+			? []
+			: [buildBasicGradeLutFilter({ basic: values })]
+		: [
+				`eq=brightness='${eqBrightness}':contrast='${eqContrast}'${gammaTerms}:eval=frame`,
+				// eq's own saturation leaves chroma a step off neutral (a desaturated
+				// frame comes out green-grey); hue scales chroma around true grey.
+				`hue=s='${saturation}'`,
+				// Other graph builders join these as they are, so no empty entries.
+				...(channelGains ? [channelGains] : []),
+			];
 	if (
-		values.vibrance !== 0 ||
-		hasColorKeyframes({ visual: colorVisual, property: "basic.vibrance" })
+		!staticGrade &&
+		(values.vibrance !== 0 ||
+			hasColorKeyframes({ visual: colorVisual, property: "basic.vibrance" }))
 	) {
 		const vibranceProperty = {
 			property: "basic.vibrance",
