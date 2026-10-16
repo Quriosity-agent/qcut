@@ -77,6 +77,7 @@ import {
 import { useWebcamOverlayStore } from "@/stores/webcam-overlay-store";
 import { useFigureAnnotationsStore } from "@/stores/figure-annotations-store";
 import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
+import { captionStackOffset } from "@/lib/captions/caption-stacking";
 import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
@@ -452,7 +453,11 @@ async function renderElement(
 			context.ctx,
 			context.canvas,
 			element as CaptionElement,
-			currentTime
+			currentTime,
+			captionStackOffset({
+				tracks: context.tracks,
+				element: element as CaptionElement,
+			})
 		);
 	} else if (element.type === "markdown") {
 		renderMarkdownElement({
@@ -1401,7 +1406,9 @@ export function renderCaptionElement(
 	ctx: CanvasRenderingContext2D,
 	canvas: HTMLCanvasElement,
 	element: CaptionElement,
-	currentTime = element.startTime
+	currentTime = element.startTime,
+	/** Distance from the edge taken up by captions stacked under this one. */
+	stackOffset = 0
 ): void {
 	if (!element.text || !element.text.trim()) return;
 
@@ -1447,13 +1454,14 @@ export function renderCaptionElement(
 	let centerY: number;
 	switch (style.position.align) {
 		case "top":
-			centerY = CAPTION_EDGE_INSET_Y + totalHeight / 2;
+			centerY = CAPTION_EDGE_INSET_Y + stackOffset + totalHeight / 2;
 			break;
 		case "center":
 			centerY = canvas.height / 2;
 			break;
 		default:
-			centerY = canvas.height - CAPTION_EDGE_INSET_Y - totalHeight / 2;
+			centerY =
+				canvas.height - CAPTION_EDGE_INSET_Y - stackOffset - totalHeight / 2;
 			break;
 	}
 	const anchorX =
