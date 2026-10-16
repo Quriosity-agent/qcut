@@ -149,6 +149,35 @@ describe("Transition Lab CLI", () => {
 		});
 	});
 
+	it("sends GL recipes as shader transitions with their default duration", async () => {
+		mockRoute(
+			"POST",
+			"/api/claude/timeline/project-1/tracks/track-1/transitions",
+			{ success: true, data: { transitionId: "transition-2" } }
+		);
+		const result = await handleTransitionLabCommand({
+			client,
+			options: makeOpts({
+				command: "editor:transition-lab:apply",
+				projectId: "project-1",
+				preset: "gl-overexposure",
+				trackId: "track-1",
+				fromElementId: "clip-a",
+				toElementId: "clip-b",
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(JSON.parse(lastCapturedBody ?? "{}")).toEqual({
+			fromElementId: "clip-a",
+			toElementId: "clip-b",
+			presetId: "gl-overexposure",
+			type: "shader",
+			easing: "linear",
+			duration: 0.8,
+		});
+	});
+
 	it("rejects unknown recipes before mutating the editor", async () => {
 		const result = await handleTransitionLabCommand({
 			client,
