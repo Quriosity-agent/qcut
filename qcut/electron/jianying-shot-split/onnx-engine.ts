@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths.js";
+import { privateRuntimeBase } from "../jianying-motion-tracking/runtime-assets.js";
 import {
 	JIANYING_SHOT_SPLIT_ONNX_ROUTE,
 	type JianyingShotSplitOnnxStatus,
@@ -23,11 +24,26 @@ import {
 	validateShotSplitSampling,
 } from "./video-input.js";
 
+/** Where the ONNX contract lives when no environment variable names one. */
+export function defaultOnnxShotContractPath() {
+	return path.join(
+		privateRuntimeBase(),
+		"JianyingShotSplitOnnx",
+		"contract.json"
+	);
+}
+
 export function resolveOnnxShotConfig() {
-	const contract = process.env.QCUT_JIANYING_SHOT_SPLIT_ONNX_CONTRACT;
-	if (!contract || !path.isAbsolute(contract) || !existsSync(contract)) {
+	// An app started from the Dock has no shell environment, so the contract
+	// is also looked for in the app's private runtime folder.
+	const fromEnv = process.env.QCUT_JIANYING_SHOT_SPLIT_ONNX_CONTRACT;
+	const contract =
+		fromEnv && path.isAbsolute(fromEnv) && existsSync(fromEnv)
+			? fromEnv
+			: defaultOnnxShotContractPath();
+	if (!existsSync(contract)) {
 		throw new Error(
-			"ONNX 本地模型未配置：设置 QCUT_JIANYING_SHOT_SPLIT_ONNX_CONTRACT 为已验证 contract.json 的绝对路径"
+			`ONNX 本地模型未配置：把已验证的 contract.json 放到 ${defaultOnnxShotContractPath()}，或设置 QCUT_JIANYING_SHOT_SPLIT_ONNX_CONTRACT 为它的绝对路径`
 		);
 	}
 	const researchPath = path.join(
