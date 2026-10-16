@@ -851,8 +851,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		voiceId: values["voice-id"] as string | undefined,
 		directory: values.directory as string | undefined,
 		dryRun: (values["dry-run"] as boolean) ?? false,
-		minShot:
-			values["min-shot"] !== undefined ? Number(values["min-shot"]) : undefined,
+		minShot: parseStrictCliNumber({ value: values["min-shot"] }),
 		aiAnalysis: values["ai-analysis"] === true ? true : undefined,
 		recursive: (values.recursive as boolean) ?? false,
 		includeOutput: (values["include-output"] as boolean) ?? false,
@@ -1260,14 +1259,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		beatsFrom: values["beats-from"] as string | undefined,
 		edge: values.edge as string | undefined,
 		frameAlign: values["frame-align"] as string | undefined,
-		onsetThreshold:
-			values["onset-threshold"] !== undefined
-				? Number(values["onset-threshold"])
-				: undefined,
-		maxDistance:
-			values["max-distance"] !== undefined
-				? Number(values["max-distance"])
-				: undefined,
+		onsetThreshold: parseStrictCliNumber({ value: values["onset-threshold"] }),
+		maxDistance: parseStrictCliNumber({ value: values["max-distance"] }),
 		downbeatsOnly: (values["downbeats-only"] as boolean) ?? false,
 		push: (values.push as boolean) ?? false,
 		pull: (values.pull as boolean) ?? false,
