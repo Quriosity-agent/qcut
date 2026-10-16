@@ -152,6 +152,10 @@ export interface TextOverlay {
 	shadowOpacity: number;
 	shadowOffsetX: number;
 	shadowOffsetY: number;
+	/** Soft glow behind the glyphs; drawn when glowOpacity and glowBlur are > 0. */
+	glowColor: string;
+	glowOpacity: number;
+	glowBlur: number;
 	positioning: "canvas-offset" | "caption-anchor";
 	verticalAlign: "top" | "center" | "bottom";
 	marginV: number;
