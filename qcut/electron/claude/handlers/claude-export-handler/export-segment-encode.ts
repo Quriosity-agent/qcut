@@ -11,8 +11,10 @@ import { parseBitrateForKbps } from "./utils.js";
 /**
  * A source whose sound ends a frame before its picture (AAC frames are 21–32
  * ms) used to lose that frame to `-shortest`, and a dozen such clips
- * shortened an export by two frames. Both streams are padded past the
- * segment's length and the output is cut to exactly that length.
+ * shortened an export by two frames. Both streams are padded without end
+ * (the last frame is cloned, the sound gets silence) and the output `-t` cuts
+ * the segment to exactly its length, so a source shorter than the segment
+ * fills it too.
  */
 export function buildExportSegmentEncodeArgs({
 	inputArgs,
@@ -34,7 +36,7 @@ export function buildExportSegmentEncodeArgs({
 		"-y",
 		...inputArgs,
 		"-vf",
-		`${scaleFilter},tpad=stop_mode=clone:stop_duration=1`,
+		`${scaleFilter},tpad=stop_mode=clone:stop=-1`,
 		"-r",
 		String(settings.fps),
 		"-c:v",
