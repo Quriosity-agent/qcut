@@ -24,7 +24,7 @@ These commands need a running QCut editor with the project open.
 | `editor mix bus-set` | `--bus-id` | `--name`, `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--solo`/`--no-solo`, `--effects` | Change a bus |
 | `editor mix bus-remove` | `--bus-id` | — | Remove a bus; its tracks go back to the master |
 | `editor mix master-set` | — | `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--effects` | Change the master |
-| `editor mix loudness` | — | `--timeout`, `--poll-interval`, `--no-wait` | Render the mix as an export would and measure it (a job; waits for the result by default) |
+| `editor mix loudness` | — | `--engine native\|browser`, `--timeout`, `--poll-interval`, `--no-wait` | Render the mix as an export would and measure it (a job; waits for the result by default) |
 | `editor mix stems` | `--output-dir` | `--timeout`, `--poll-interval`, `--no-wait` | Write one WAV per bus into a folder (a job; waits by default) |
 | `editor mix job-status` | `--job-id` | `--project-id` | Progress and result of a loudness or stems job |
 | `editor mix bus-automation` | `--bus-id --param` | `--points`, `--clear` | Set or remove a bus's (or the master's) level or pan curve |
@@ -105,8 +105,23 @@ never claims the app is gone.
 reports, per ITU-R BS.1770-4 / EBU R 128: `integratedLufs` (gated),
 `maxShortTermLufs` (3 s), `maxMomentaryLufs` (400 ms), `truePeakDbtp` (4x
 oversampled) and `samplePeakDb`. Online platforms usually ask for about -14
-LUFS integrated with true peak at or below -1 dBTP. The mixer panel's master
-strip shows the same numbers.
+LUFS integrated with true peak at or below -1 dBTP.
+
+`--engine` picks which rendering is measured, and the result says which in
+`engine`:
+
+- `native` (default): the timeline goes through the same FFmpeg pipeline as
+  `export start` (at a thumbnail-sized picture, so only the sound costs
+  time) and the file is measured with FFmpeg's R 128 meter. This is the
+  number `ffmpeg -af ebur128` gives for the exported file.
+- `browser`: the editor's own Web Audio graph, which is what the preview
+  plays and what the muxer engine exports. The mixer panel's master strip
+  "Measure" shows this one.
+
+The two can differ by a few tenths of an LU and a dB of true peak on
+material that keeps the master limiter busy: FFmpeg's limiter holds the
+ceiling strictly and so trims a little more than the editor's. Measure the
+engine you export with.
 
 ## Stems
 
