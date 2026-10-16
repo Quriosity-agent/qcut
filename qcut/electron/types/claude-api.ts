@@ -617,6 +617,8 @@ export interface ClaudeShotSplitClipResult {
 	}>;
 	/** Why there is nothing to cut, when `cuts` and `skipped` are both empty. */
 	message?: string;
+	/** Options the engine that ran could not honour, e.g. a threshold for a model engine. */
+	warnings?: string[];
 	createdElementIds: string[];
 	elementIds: string[];
 }
@@ -1192,6 +1194,8 @@ export interface SceneDetectionResult {
 	requestedEngine?: SceneDetectionEngineChoice;
 	/** Engines `auto` skipped on the way to the one that ran. */
 	fallbacks?: SceneEngineFallback[];
+	/** Options the engine that ran could not honour, e.g. a threshold for a model engine. */
+	warnings?: string[];
 	route?: string;
 	durationSeconds?: number;
 	scenes: SceneBoundary[];
