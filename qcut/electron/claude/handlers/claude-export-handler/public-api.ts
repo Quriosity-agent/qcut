@@ -315,6 +315,9 @@ export async function startRendererExportJob({
 			"Sticker runtime export requires an absolute local .mp4 output path."
 		);
 	}
+	// Like the native engine, create the output folder now rather than
+	// discovering after the whole render that the file cannot be written.
+	await fsPromises.mkdir(path.dirname(outputPath), { recursive: true });
 
 	const frameRate = rendererExportFrameRate({ fps: settings.fps });
 	const pinMuxerEngine =
