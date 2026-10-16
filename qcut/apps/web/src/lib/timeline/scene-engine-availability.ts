@@ -10,17 +10,32 @@ export interface SceneEngineAvailability {
 
 const CACHE_MS = 30_000;
 let cached: { at: number; engines: SceneEngineAvailability[] } | null = null;
+let pending: Promise<SceneEngineAvailability[]> | null = null;
 
-/** Which shot-detection engines this machine can run; answers are cached briefly. */
-export async function loadSceneEngineAvailability(): Promise<
+/**
+ * Which shot-detection engines this machine can run. One inspection serves
+ * every concurrent caller (each one probes the runtime and starts a Python
+ * check in the main process), and the answer is kept briefly.
+ */
+export function loadSceneEngineAvailability(): Promise<
 	SceneEngineAvailability[]
 > {
-	if (cached && Date.now() - cached.at < CACHE_MS) return cached.engines;
-	const engines = platform().claude?.analyze.engines;
-	if (!engines) return [];
-	const status = await engines();
-	cached = { at: Date.now(), engines: status.engines };
-	return status.engines;
+	if (cached && Date.now() - cached.at < CACHE_MS) {
+		return Promise.resolve(cached.engines);
+	}
+	if (pending) return pending;
+	// Everything, including a missing platform bridge, surfaces as a rejection
+	// the callers already handle, never as a throw out of a render effect.
+	pending = (async () => {
+		const engines = platform().claude?.analyze.engines;
+		if (!engines) return [];
+		const status = await engines();
+		cached = { at: Date.now(), engines: status.engines };
+		return status.engines;
+	})().finally(() => {
+		pending = null;
+	});
+	return pending;
 }
 
 /** For a menu that opens later than the app starts: resolves once mounted. */
