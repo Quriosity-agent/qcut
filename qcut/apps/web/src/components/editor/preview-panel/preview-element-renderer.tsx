@@ -608,10 +608,15 @@ export function PreviewElementRenderer({
 							whiteSpace: "pre-wrap",
 							overflowWrap: "anywhere",
 							overflow: "hidden",
+							// CSS centres the stroke on the glyph edge and paints it over the
+							// fill; the export strokes first at double width, then fills.
+							// paint-order + double width gives the same outline here.
 							WebkitTextStroke:
 								previewTextStyle.strokeWidth > 0
-									? `${previewTextStyle.strokeWidth}px ${colorWithOpacity(textStyle.strokeColor, textStyle.strokeOpacity)}`
+									? `${previewTextStyle.strokeWidth * 2}px ${colorWithOpacity(textStyle.strokeColor, textStyle.strokeOpacity)}`
 									: undefined,
+							paintOrder:
+								previewTextStyle.strokeWidth > 0 ? "stroke fill" : undefined,
 							textShadow: previewTextShadow,
 							...(fontClassName
 								? {}
