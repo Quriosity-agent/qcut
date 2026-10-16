@@ -38,8 +38,12 @@ import type {
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
-/** Measuring loudness and writing stems render the whole mix first. */
-export const AUDIO_MIX_RENDER_TIMEOUT_MS = 300_000;
+/**
+ * Measuring loudness and writing stems render the whole mix first; a long
+ * programme takes minutes per bus. The HTTP side answers with a job id, so
+ * only this renderer wait bounds the render.
+ */
+export const AUDIO_MIX_RENDER_TIMEOUT_MS = 3_600_000;
 
 interface RendererResultResponse<T> {
 	requestId: string;
