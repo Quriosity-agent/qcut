@@ -883,6 +883,8 @@ export interface CutInterval {
 }
 
 export interface BatchCutRequest {
+	/** The project the cuts were planned for; the editor refuses them for any other. */
+	projectId: string;
 	elementId: string;
 	cuts: CutInterval[];
 	ripple?: boolean; // default true
@@ -898,6 +900,8 @@ export interface BatchCutResponse {
 		duration: number;
 	}>;
 	totalRemovedDuration: number;
+	/** Why the editor applied nothing; absent when the cuts went through. */
+	error?: string;
 }
 
 // ============================================================================
