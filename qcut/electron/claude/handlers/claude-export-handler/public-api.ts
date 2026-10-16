@@ -44,6 +44,7 @@ import {
 import { audioMixConfigFromTimeline } from "./export-audio-mix.js";
 import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
+import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
 import {
 	assertLocalFinalVideoExportAllowed,
 	findRestrictedMediaForExport,
@@ -473,6 +474,7 @@ export async function startExportJob({
 			);
 		}
 		const textOverlays = collectTextOverlays(timeline);
+		const adjustmentLayers = collectAdjustmentLayers({ timeline });
 		if (textOverlays.length > 0) {
 			claudeLog.info(
 				HANDLER_NAME,
@@ -580,6 +582,7 @@ export async function startExportJob({
 			audioFiles,
 			audioMixConfig: audioMixConfigFromTimeline(timeline),
 			videoTransitions,
+			adjustmentLayers,
 			projectFps: timeline.fps,
 			projectCanvas:
 				timeline.width > 0 && timeline.height > 0
