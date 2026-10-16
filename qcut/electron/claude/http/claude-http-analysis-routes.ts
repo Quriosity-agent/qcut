@@ -47,7 +47,11 @@ import { getMediaInfo } from "../handlers/claude-media-handler.js";
 import { saveTranscription } from "./claude-http-search-routes.js";
 import { getRequestCorrelationId } from "./claude-http-meta-routes.js";
 import type { BrowserWindow } from "electron";
-import type { WindowProxy } from "./claude-http-shared-routes.js";
+import type {
+	WindowAccessor,
+	WindowProxy,
+} from "./claude-http-shared-routes.js";
+import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import type {
 	AutoEditRequest,
@@ -109,6 +113,8 @@ function normalizeWords(words: RawWord[]): Array<{
 
 interface AnalysisRoutesAccessor {
 	getWindow: () => WindowProxy;
+	/** Lets routes that edit the open project refuse another project's id. */
+	requestStateSnapshot?: WindowAccessor["requestStateSnapshot"];
 	executeBatchCuts?: (request: BatchCutRequest) => Promise<BatchCutResponse>;
 	executeDeleteRange?: (
 		request: ClaudeRangeDeleteRequest
@@ -281,6 +287,7 @@ export function registerAnalysisRoutes(
 
 	// Load pre-existing transcription data into the Smart Speech panel
 	router.post("/api/claude/transcribe/:projectId/load-speech", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.words || !Array.isArray(req.body.words)) {
 			throw new HttpError(400, "Missing 'words' array in request body");
 		}
@@ -332,6 +339,7 @@ export function registerAnalysisRoutes(
 	router.post(
 		"/api/claude/transcribe/:projectId/transcribe-and-load",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body?.mediaId && !req.body?.source) {
 				throw new HttpError(
 					400,
@@ -614,6 +622,7 @@ export function registerAnalysisRoutes(
 	// Batch Cut-List routes (Stage 3)
 	// ==========================================================================
 	router.post("/api/claude/timeline/:projectId/cuts", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.elementId || !Array.isArray(req.body?.cuts)) {
 			throw new HttpError(
 				400,
@@ -649,6 +658,7 @@ export function registerAnalysisRoutes(
 	// Range Delete routes (Stage 3)
 	// ==========================================================================
 	router.delete("/api/claude/timeline/:projectId/range", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (
 			typeof req.body?.startTime !== "number" ||
 			typeof req.body?.endTime !== "number"
@@ -689,6 +699,7 @@ export function registerAnalysisRoutes(
 	// Auto-Edit routes (Stage 3)
 	// ==========================================================================
 	router.post("/api/claude/timeline/:projectId/auto-edit", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.elementId && !req.body?.mediaId) {
 			throw new HttpError(
 				400,
@@ -808,6 +819,7 @@ export function registerAnalysisRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/auto-edit/start",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body?.elementId && !req.body?.mediaId) {
 				throw new HttpError(
 					400,
