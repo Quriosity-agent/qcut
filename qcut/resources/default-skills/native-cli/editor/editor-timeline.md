@@ -87,9 +87,10 @@ Windows ascent + descent, so Arial would come out 11 % small and Hiragino
 `letterSpacing`, wraps inside the text box and draws the glow as blurred
 glyphs. Captions sit where the preview puts them: the line box 28 px in from
 the top or bottom edge, text 36 px in from a side, wrapping inside the middle
-80 %; two caption lanes active at once draw on top of each other (the later
-lane on top) in the preview and in both exports, so keep overlapping cues on
-one lane or stagger them. `apps/web/src/test/e2e/text-caption-engine-parity.e2e.ts`
+80 %; two captions that share an edge while on screen stack: the one that
+started first keeps the edge and each later one sits one block (line box +
+16 px) above it, for its whole life, in the preview and in both exports.
+`captions import` warns when cues overlap and lands on extra lanes. `apps/web/src/test/e2e/text-caption-engine-parity.e2e.ts`
 measures glyph extents, glow and caption placement from both engines.
 
 A new text or captions track made without `--index` goes above the clips
@@ -463,6 +464,38 @@ Range deletes sit in the confirm tier (`--force`). Like every command that
 edits the open project, `--project-id` must be the project the editor has
 open: another id (or one that does not exist) is refused with 409 and the
 timeline is left alone.
+
+Mix automation follows the ripple: a rippled track's level and pan curves lose
+the points inside the range, later points move up by its length, and the value
+the curve had at the range's end is kept at the join. Bus and master curves
+move too when every unlocked track moved (the default all-tracks delete, or
+`--cross-track-ripple`); with `--track-id` on a subset they stay, since a bus
+is not tied to one track. Pass `--keep-automation` to leave every curve where
+it is. Track curves are in the timeline's undo history with the clips; bus and
+master curves live in the project and are not undone with them.
+
+### Beats: detect, mark, snap
+
+```bash
+# BPM and beats of a clip's audio, marked in the editor (ruler beat lines,
+# beat panel) and, here, bookmarked at the downbeats
+qcut editor beats mark --project-id <id> --element-id <music-clip> --bookmarks downbeats --json
+
+# Pull cuts onto the nearest marked beat (within 0.5 s by default)
+qcut editor timeline snap --to beats --element-ids <a>,<b>,<c> --project-id <id> --json
+qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json
+```
+
+The tempo is read from the periodicity of the onset curve (autocorrelation
+with a prior around 120 BPM), so it does not move with a threshold: a 144 BPM
+trailer cue reads 142–144, a sparse orchestral piece near 108. `confidence`
+is how periodic the onsets are (a click track ≈ 1, a loose piece 0.3). Beats
+are tracked along that period and `isDownbeat` marks the beat phase with the
+strongest onsets. Above about 165 BPM a track of identical hits may read at
+half tempo (the prior prefers it). `beats mark` reports each beat's source
+time and its timeline time through the clip's trims and speed; `snap` moves a
+clip's start (or `--edge end`) onto the nearest beat and refuses, with the
+reason, when the editor would (an occupied span, a locked track).
 
 ### Auto-edit (remove fillers/silences)
 
