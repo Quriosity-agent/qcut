@@ -16,6 +16,7 @@ import {
 import { buildFFmpegArgs } from "../../../ffmpeg-args-builder.js";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
+import { buildExportSegmentEncodeArgs } from "./export-segment-encode.js";
 import { buildXfadeTransitionFilter } from "../../../ffmpeg/transition-filter.js";
 import type {
 	AudioFile,
@@ -33,7 +34,6 @@ import {
 	normalizeVideoEnhancements,
 } from "../../../ffmpeg/video-enhancement-filter.js";
 import {
-	buildAtempoChain,
 	buildSegmentTransformFilter,
 	isIdentitySegmentTransform,
 	type SegmentPositionKeyframe,
@@ -137,7 +137,7 @@ export function resolveExportSettings({
 				? gifConfig.frameRate
 				: preset.fps);
 		const audioBitrate = request.audioExportConfig?.bitrate ?? 192;
-		const audioSampleRate = request.audioExportConfig?.sampleRate ?? 44_100;
+		const audioSampleRate = request.audioExportConfig?.sampleRate ?? 48_000;
 		if (![128, 192, 256, 320].includes(audioBitrate)) {
 			throw new Error("Audio bitrate must be 128, 192, 256, or 320 kbps");
 		}
@@ -979,13 +979,15 @@ export function buildExportSegmentInputArgs({
 		segment.trimStart > 0 ? ["-ss", String(segment.trimStart)] : [];
 	// duration is timeline seconds; a sped-up segment consumes rate× as much
 	// of the source before setpts compresses it back to the timeline length.
+	// `-t` before `-i` bounds what is read; the output is cut to the
+	// timeline length by the encode command.
 	const sourceReadDuration = segment.duration * (segment.playbackRate ?? 1);
 	return [
 		...seekArgs,
-		"-i",
-		segment.sourcePath,
 		"-t",
 		String(sourceReadDuration),
+		"-i",
+		segment.sourcePath,
 	];
 }
 
@@ -1406,31 +1408,13 @@ export async function executeExportJob({
 			);
 
 			await runFFmpegCommand({
-				args: [
-					"-y",
-					...inputArgs,
-					"-vf",
+				args: buildExportSegmentEncodeArgs({
+					inputArgs,
 					scaleFilter,
-					"-r",
-					String(settings.fps),
-					"-c:v",
-					settings.codec,
-					"-preset",
-					"medium",
-					"-b:v",
-					parseBitrateForKbps({ bitrate: settings.bitrate }),
-					"-pix_fmt",
-					"yuv420p",
-					...(segment.isImage ? [] : ["-c:a", "aac", "-b:a", "192k"]),
-					...(() => {
-						const atempo = segment.isImage
-							? null
-							: buildAtempoChain({ rate: segment.playbackRate ?? 1 });
-						return atempo === null ? [] : ["-af", atempo];
-					})(),
-					"-shortest",
-					outputSegmentPath,
-				],
+					segment,
+					settings,
+					outputPath: outputSegmentPath,
+				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
 					const sliceSize = 0.82 / totalSegments;
@@ -1808,7 +1792,7 @@ export async function executeExportJob({
 						"-b:a",
 						`${settings.audioBitrate ?? 192}k`,
 						"-ar",
-						String(settings.audioSampleRate ?? 44_100),
+						String(settings.audioSampleRate ?? 48_000),
 						"-ac",
 						String(settings.audioChannels ?? 2),
 						"-t",
@@ -1885,7 +1869,7 @@ export async function executeExportJob({
 						"-b:a",
 						`${settings.audioBitrate ?? 192}k`,
 						"-ar",
-						String(settings.audioSampleRate ?? 44_100),
+						String(settings.audioSampleRate ?? 48_000),
 						"-ac",
 						String(settings.audioChannels ?? 2),
 						outputPath,
