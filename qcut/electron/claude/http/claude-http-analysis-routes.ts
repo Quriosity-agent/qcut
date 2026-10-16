@@ -60,6 +60,11 @@ import type {
 	BatchCutResponse,
 	ClaudeRangeDeleteRequest,
 	ClaudeRangeDeleteResponse,
+	ClaudeBeatDetectionResult,
+	ClaudeBeatsMarkRequest,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsRequest,
+	ClaudeSnapToBeatsResponse,
 } from "../../types/claude-api.js";
 
 const HANDLER_NAME = "AnalysisRoutes";
@@ -126,6 +131,81 @@ interface AnalysisRoutesAccessor {
 	getAutoEditJobStatus?: (jobId: string) => Promise<AutoEditJob | null>;
 	listAutoEditJobs?: () => Promise<AutoEditJob[]>;
 	cancelAutoEditJob?: (jobId: string) => Promise<boolean>;
+	/** Store a clip's beats in the editor's beat store (and bookmark them). */
+	requestBeatsMark?: (
+		request: ClaudeBeatsMarkRequest,
+		correlationId?: string
+	) => Promise<ClaudeBeatsMarkResponse>;
+	/** Move clips onto marked beats through the editor's own move. */
+	requestSnapToBeats?: (
+		request: ClaudeSnapToBeatsRequest,
+		correlationId?: string
+	) => Promise<ClaudeSnapToBeatsResponse>;
+}
+
+const BOOKMARK_CHOICES = ["none", "downbeats", "all"] as const;
+
+/** The detection result a `beats mark` body carries, checked field by field. */
+function readBeatDetectionResult(value: unknown): ClaudeBeatDetectionResult {
+	if (typeof value !== "object" || value === null) {
+		throw new HttpError(400, "result must be a beat detection result object");
+	}
+	const result = value as Record<string, unknown>;
+	const number = (key: string): number => {
+		const candidate = result[key];
+		if (typeof candidate !== "number" || !Number.isFinite(candidate)) {
+			throw new HttpError(400, `result.${key} must be a number`);
+		}
+		return candidate;
+	};
+	if (!Array.isArray(result.beats)) {
+		throw new HttpError(400, "result.beats must be a list");
+	}
+	const beats = result.beats.map((beat, index) => {
+		if (typeof beat !== "object" || beat === null) {
+			throw new HttpError(400, `result.beats[${index}] must be an object`);
+		}
+		const entry = beat as Record<string, unknown>;
+		if (
+			typeof entry.timestamp !== "number" ||
+			!Number.isFinite(entry.timestamp) ||
+			entry.timestamp < 0
+		) {
+			throw new HttpError(
+				400,
+				`result.beats[${index}].timestamp must be seconds, 0 or more`
+			);
+		}
+		return {
+			timestamp: entry.timestamp,
+			strength:
+				typeof entry.strength === "number" && Number.isFinite(entry.strength)
+					? entry.strength
+					: 1,
+			index,
+			isDownbeat: entry.isDownbeat === true,
+		};
+	});
+	return {
+		bpm: number("bpm"),
+		confidence: number("confidence"),
+		duration: number("duration"),
+		beats,
+		downbeats: beats
+			.filter((beat) => beat.isDownbeat)
+			.map((beat) => beat.timestamp),
+	};
+}
+
+function readElementIds(value: unknown): string[] {
+	if (
+		!Array.isArray(value) ||
+		value.length === 0 ||
+		value.some((id) => typeof id !== "string" || !id.trim())
+	) {
+		throw new HttpError(400, "elementIds must be a non-empty list of ids");
+	}
+	return value.map((id: string) => id.trim());
 }
 
 /**
@@ -590,6 +670,80 @@ export function registerAnalysisRoutes(
 	});
 
 	// ==========================================================================
+	// Beats on the timeline: mark a clip's beats in the editor, snap clips to them
+	// ==========================================================================
+	router.post("/api/claude/timeline/:projectId/beats/mark", async (req) => {
+		const elementId =
+			typeof req.body?.elementId === "string" ? req.body.elementId.trim() : "";
+		if (!elementId) {
+			throw new HttpError(400, "Missing 'elementId' in request body");
+		}
+		const result = readBeatDetectionResult(req.body?.result);
+		const bookmarks = req.body?.bookmarks ?? "none";
+		if (!BOOKMARK_CHOICES.some((choice) => choice === bookmarks)) {
+			throw new HttpError(
+				400,
+				`bookmarks must be one of ${BOOKMARK_CHOICES.join(", ")}`
+			);
+		}
+		if (!accessor.requestBeatsMark) {
+			throw new HttpError(503, "Beat marking is not available in this editor");
+		}
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
+		return accessor.requestBeatsMark(
+			{
+				projectId: req.params.projectId,
+				elementId,
+				result,
+				bookmarks: bookmarks as ClaudeBeatsMarkRequest["bookmarks"],
+			},
+			getRequestCorrelationId({ req })
+		);
+	});
+
+	router.post("/api/claude/timeline/:projectId/snap-to-beats", async (req) => {
+		const elementIds = readElementIds(req.body?.elementIds);
+		const edge = req.body?.edge ?? "start";
+		if (edge !== "start" && edge !== "end") {
+			throw new HttpError(400, "edge must be start or end");
+		}
+		const maxDistance = req.body?.maxDistance;
+		if (
+			maxDistance !== undefined &&
+			(typeof maxDistance !== "number" ||
+				!Number.isFinite(maxDistance) ||
+				maxDistance <= 0)
+		) {
+			throw new HttpError(
+				400,
+				"maxDistance must be a positive number of seconds"
+			);
+		}
+		if (!accessor.requestSnapToBeats) {
+			throw new HttpError(
+				503,
+				"Snapping to beats is not available in this editor"
+			);
+		}
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
+		return accessor.requestSnapToBeats(
+			{
+				projectId: req.params.projectId,
+				elementIds,
+				...(typeof req.body?.beatsElementId === "string"
+					? { beatsElementId: req.body.beatsElementId.trim() }
+					: {}),
+				edge,
+				...(maxDistance !== undefined ? { maxDistance } : {}),
+				downbeatsOnly: req.body?.downbeatsOnly === true,
+				dryRun: req.body?.dryRun === true,
+			},
+			getRequestCorrelationId({ req })
+		);
+	});
+
+	// ==========================================================================
 	// Beat Detection routes (Stage 2)
 	// ==========================================================================
 	router.post("/api/claude/analyze/:projectId/beats", async (req) => {
@@ -674,6 +828,7 @@ export function registerAnalysisRoutes(
 			trackIds: req.body.trackIds,
 			ripple: req.body.ripple,
 			crossTrackRipple: req.body.crossTrackRipple,
+			keepAutomation: req.body.keepAutomation,
 		};
 		const deleteRangePromise = accessor.executeDeleteRange
 			? accessor.executeDeleteRange(deleteRangeRequest)
