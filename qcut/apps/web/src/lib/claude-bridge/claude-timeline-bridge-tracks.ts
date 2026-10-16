@@ -11,6 +11,7 @@ import {
 	type TimelineColorLabel,
 } from "@/lib/timeline/timeline-color-labels";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
+import { describeTransitionRefusal } from "./claude-transition-refusal";
 
 /** Mirrors the timeline store's jianying-local package-hash contract. */
 const LOCAL_PACKAGE_HASH_PATTERN = /^[a-f0-9]{32,64}$/;
@@ -281,8 +282,17 @@ function applyTrackOperation(
 			maskShape: transition.maskShape as ClipTransition["maskShape"],
 		});
 		if (!transitionId) {
+			const mediaItems = useMediaStore.getState().mediaItems;
 			throw new Error(
-				"Transition could not be added; clips must be adjacent video elements on the same media track"
+				`Transition could not be added: ${describeTransitionRefusal({
+					track: store.tracks.find((item) => item.id === request.trackId),
+					fromElementId: transition.fromElementId,
+					toElementId: transition.toElementId,
+					type: transition.type,
+					videoMediaIds,
+					mediaTypeOf: (mediaId) =>
+						mediaItems.find((item) => item.id === mediaId)?.type,
+				})}`
 			);
 		}
 		return {
