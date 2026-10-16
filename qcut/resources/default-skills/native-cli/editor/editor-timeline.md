@@ -495,8 +495,10 @@ is how periodic the onsets are (a click track ≈ 1, a loose piece 0.3). Beats
 are tracked along that period and `isDownbeat` marks the beat phase with the
 strongest onsets. Above about 165 BPM a track of identical hits may read at
 half tempo (the prior prefers it). A beat's `strength` is the strongest onset
-within a 32nd note of it, relative to the clip's loudest; 0 means the grid ran
-through a quiet stretch there. `beats mark` reports each beat's source time
+within a 32nd note of it, relative to the clip's loudest. It measures attacks,
+not loudness: 0 means nothing new starts at that beat — a held note, a long
+tone or a rest, which can be as loud as the rest of the piece — so pick
+accents by strength, not by level. `beats mark` reports each beat's source time
 and its timeline time through the clip's trims and speed; `snap` moves a
 clip's start (or `--edge end`) onto the nearest beat and refuses, with the
 reason, when the editor would (an occupied span, a locked track).
