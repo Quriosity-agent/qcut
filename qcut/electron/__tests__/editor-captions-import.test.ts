@@ -22,7 +22,7 @@ overlapping second
 third
 `;
 
-function fakeClient({ existingCaptionTracks = 0 } = {}) {
+function fakeClient({ existingCaptionTracks = 0, failBatches = false } = {}) {
 	const calls: Array<{ method: string; path: string; body: unknown }> = [];
 	let trackCounter = 0;
 	const client = {
@@ -40,6 +40,13 @@ function fakeClient({ existingCaptionTracks = 0 } = {}) {
 		}),
 		post: vi.fn(async (requestPath: string, body: unknown) => {
 			calls.push({ method: "POST", path: requestPath, body });
+			if (requestPath === "/api/claude/transaction/begin") {
+				return { transactionId: "tx-1" };
+			}
+			if (requestPath.startsWith("/api/claude/transaction/")) return {};
+			if (failBatches && requestPath.endsWith("/elements/batch")) {
+				throw new Error("batch refused");
+			}
 			if (requestPath.endsWith("/tracks")) {
 				trackCounter += 1;
 				return { trackId: `cap-${trackCounter}` };
@@ -147,6 +154,33 @@ describe("editor captions import", () => {
 			"/api/claude/timeline/p1/tracks/old-cap-1",
 		]);
 		expect(deletes[0].body).toEqual({ force: true });
+		// The deletes and the batches sit inside one transaction.
+		expect(calls[0].path).toBe("/api/claude/transaction/begin");
+		expect(calls.at(-1)?.path).toBe("/api/claude/transaction/tx-1/commit");
+		const firstDelete = calls.findIndex((call) => call.method === "DELETE");
+		expect(firstDelete).toBeGreaterThan(0);
+	});
+
+	it("rolls the whole import back when a batch fails", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "cues.srt");
+		writeFileSync(file, SRT);
+		const { client, calls } = fakeClient({
+			existingCaptionTracks: 1,
+			failBatches: true,
+		});
+		const result = await captionsImport(client, opts({ file, replace: true }));
+		expect(result).toMatchObject({
+			success: false,
+			error: expect.stringContaining("batch refused"),
+		});
+		expect(result.error).toContain("was rolled back");
+		expect(calls.at(-1)).toMatchObject({
+			method: "POST",
+			path: "/api/claude/transaction/tx-1/rollback",
+			body: { reason: expect.stringContaining("batch refused") },
+		});
+		expect(calls.some((call) => call.path.endsWith("/commit"))).toBe(false);
 	});
 
 	it("names a missing file and an empty one", async () => {
