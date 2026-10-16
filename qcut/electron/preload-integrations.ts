@@ -527,6 +527,30 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					result,
 				});
 			},
+			onBeatsMark: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:beatsMark");
+				ipcRenderer.on("claude:timeline:beatsMark", (_, data) =>
+					callback(data)
+				);
+			},
+			sendBeatsMarkResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:beatsMark:response", {
+					requestId,
+					result,
+				});
+			},
+			onSnapToBeats: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:snapToBeats");
+				ipcRenderer.on("claude:timeline:snapToBeats", (_, data) =>
+					callback(data)
+				);
+			},
+			sendSnapToBeatsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:snapToBeats:response", {
+					requestId,
+					result,
+				});
+			},
 			onExecuteCuts: (callback) => {
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.on("claude:timeline:executeCuts", (_, data) =>
@@ -641,6 +665,8 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
 				ipcRenderer.removeAllListeners("claude:timeline:splitElement");
 				ipcRenderer.removeAllListeners("claude:timeline:shotSplit");
+				ipcRenderer.removeAllListeners("claude:timeline:beatsMark");
+				ipcRenderer.removeAllListeners("claude:timeline:snapToBeats");
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
 				ipcRenderer.removeAllListeners("claude:timeline:selectElements");
