@@ -10,17 +10,31 @@ import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 
 const BOOKMARK_CHOICES = ["none", "downbeats", "all"] as const;
+const EDGE_CHOICES = ["start", "end", "onset"] as const;
+const FRAME_ALIGN_CHOICES = ["visual", "all", "none"] as const;
+const MEDIA_ELEMENT_TYPES = new Set(["media", "audio", "video"]);
+
+interface SnapshotElement {
+	id: string;
+	type: string;
+	sourceId?: string;
+	mediaId?: string;
+	trimStart?: number;
+	playbackRate?: number;
+}
 
 interface TimelineSnapshot {
-	tracks: Array<{
-		id: string;
-		elements: Array<{
-			id: string;
-			type: string;
-			sourceId?: string;
-			mediaId?: string;
-		}>;
-	}>;
+	tracks: Array<{ id: string; elements: SnapshotElement[] }>;
+}
+
+/** What `--edge onset` found for one clip. */
+interface ClipOnset {
+	mediaId?: string;
+	/** The attack in the media file's own seconds. */
+	sourceTime: number | null;
+	/** Seconds from the clip's start on the timeline to that attack. */
+	offset?: number;
+	reason?: string;
 }
 
 /** The media id behind a clip, from the timeline the editor has open. */
@@ -51,6 +65,74 @@ async function mediaIdOfElement({
 		return mediaId;
 	}
 	throw new Error(`Element not found: ${elementId}`);
+}
+
+/**
+ * For `--edge onset`: each clip's first attack through its trims and speed,
+ * found by the main process the way `analyze beats` reads onsets. A clip
+ * whose attack is trimmed away, or has none, is reported and left alone.
+ */
+async function clipOnsets({
+	client,
+	projectId,
+	elementIds,
+	threshold,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+	elementIds: string[];
+	threshold?: number;
+}): Promise<Record<string, ClipOnset>> {
+	const timeline = await client.get<TimelineSnapshot>(
+		`/api/claude/timeline/${encodeURIComponent(projectId)}`
+	);
+	const elements = timeline.tracks.flatMap((track) => track.elements);
+	const onsets: Record<string, ClipOnset> = {};
+	for (const elementId of elementIds) {
+		const element = elements.find((item) => item.id === elementId);
+		if (!element) throw new Error(`Element not found: ${elementId}`);
+		const mediaId = element.sourceId ?? element.mediaId;
+		if (!MEDIA_ELEMENT_TYPES.has(element.type) || !mediaId) {
+			onsets[elementId] = {
+				sourceTime: null,
+				reason: "not a media clip, so it has no onset",
+			};
+			continue;
+		}
+		const found = await client.post<{ time: number | null }>(
+			`/api/claude/analyze/${encodeURIComponent(projectId)}/onset`,
+			{ mediaId, ...(threshold !== undefined ? { threshold } : {}) },
+			{ timeout: 300_000 }
+		);
+		if (found.time === null) {
+			onsets[elementId] = {
+				mediaId,
+				sourceTime: null,
+				reason: "no onset reaches the threshold in the media",
+			};
+			continue;
+		}
+		const trimStart = element.trimStart ?? 0;
+		const rate =
+			typeof element.playbackRate === "number" && element.playbackRate > 0
+				? element.playbackRate
+				: 1;
+		const offset = (found.time - trimStart) / rate;
+		if (offset < 0) {
+			onsets[elementId] = {
+				mediaId,
+				sourceTime: found.time,
+				reason: "the first onset is trimmed away",
+			};
+			continue;
+		}
+		onsets[elementId] = {
+			mediaId,
+			sourceTime: found.time,
+			offset: Math.round(offset * 1000) / 1000,
+		};
+	}
+	return onsets;
 }
 
 /** `editor beats mark --element-id <clip> [--bookmarks none|downbeats|all]`. */
@@ -111,8 +193,29 @@ export async function timelineSnap(
 	if (elementIds.length === 0) {
 		return { success: false, error: "Missing --element-ids (or --element-id)" };
 	}
-	if (opts.edge !== undefined && opts.edge !== "start" && opts.edge !== "end") {
-		return { success: false, error: "--edge must be start or end" };
+	const edge = opts.edge ?? "start";
+	if (!EDGE_CHOICES.some((choice) => choice === edge)) {
+		return { success: false, error: "--edge must be start, end or onset" };
+	}
+	if (
+		opts.frameAlign !== undefined &&
+		!FRAME_ALIGN_CHOICES.some((choice) => choice === opts.frameAlign)
+	) {
+		return {
+			success: false,
+			error: "--frame-align must be visual, all or none",
+		};
+	}
+	if (
+		opts.onsetThreshold !== undefined &&
+		(!Number.isFinite(opts.onsetThreshold) ||
+			opts.onsetThreshold <= 0 ||
+			opts.onsetThreshold > 1)
+	) {
+		return {
+			success: false,
+			error: "--onset-threshold must be above 0 and at most 1",
+		};
 	}
 	if (
 		opts.maxDistance !== undefined &&
@@ -123,12 +226,30 @@ export async function timelineSnap(
 			error: "--max-distance must be a positive number of seconds",
 		};
 	}
-	const data = await client.post(
+	const onsets =
+		edge === "onset"
+			? await clipOnsets({
+					client,
+					projectId: opts.projectId,
+					elementIds,
+					threshold: opts.onsetThreshold,
+				})
+			: undefined;
+	const edgeOffsets = onsets
+		? Object.fromEntries(
+				Object.entries(onsets).flatMap(([elementId, onset]) =>
+					onset.offset === undefined ? [] : [[elementId, onset.offset]]
+				)
+			)
+		: undefined;
+	const data = await client.post<Record<string, unknown>>(
 		`/api/claude/timeline/${encodeURIComponent(opts.projectId)}/snap-to-beats`,
 		{
 			elementIds,
 			...(opts.beatsFrom ? { beatsElementId: opts.beatsFrom.trim() } : {}),
 			...(opts.edge ? { edge: opts.edge } : {}),
+			...(edgeOffsets ? { edgeOffsets } : {}),
+			...(opts.frameAlign ? { frameAlign: opts.frameAlign } : {}),
 			...(opts.maxDistance !== undefined
 				? { maxDistance: opts.maxDistance }
 				: {}),
@@ -136,7 +257,7 @@ export async function timelineSnap(
 			...(opts.dryRun ? { dryRun: true } : {}),
 		}
 	);
-	return { success: true, data };
+	return { success: true, data: onsets ? { ...data, onsets } : data };
 }
 
 export async function handleBeatsCommand(
