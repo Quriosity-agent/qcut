@@ -68,6 +68,7 @@ export function registerAudioMixRoutes({
 	mutateAudioMix,
 	measureNativeLoudness,
 	onChanged,
+	assertProjectOpen = async () => {},
 }: {
 	router: Router;
 	mutateAudioMix?: MutateAudioMix;
@@ -75,6 +76,8 @@ export function registerAudioMixRoutes({
 	measureNativeLoudness?: MeasureNativeLoudness;
 	/** Called after a change, with the project it changed. */
 	onChanged: (change: { projectId: string }) => void;
+	/** Refuses a project id other than the one the editor has open (409). */
+	assertProjectOpen?: (projectId: string) => Promise<void>;
 }): void {
 	async function run(
 		req: ParsedRequest,
@@ -112,6 +115,7 @@ export function registerAudioMixRoutes({
 	});
 
 	router.patch("/api/claude/mix/:projectId/tracks/:trackId", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const patch = readTrackAudioPatch(req.body);
 		const { mix } = await run(req, {
 			action: "set-track",
@@ -126,6 +130,7 @@ export function registerAudioMixRoutes({
 	});
 
 	router.post("/api/claude/mix/:projectId/buses", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const busId = readNewBusId(req.body);
 		const bus = readBusPatch(req.body, { creating: true });
 		const result = await run(req, {
@@ -142,6 +147,7 @@ export function registerAudioMixRoutes({
 	});
 
 	router.patch("/api/claude/mix/:projectId/buses/:busId", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const patch = readBusPatch(req.body);
 		const { mix } = await run(req, {
 			action: "update-bus",
@@ -165,6 +171,7 @@ export function registerAudioMixRoutes({
 	// "browser" measures the renderer's graph, which the preview and the
 	// muxer engine play.
 	router.post("/api/claude/mix/:projectId/loudness", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const projectId = req.params.projectId;
 		const engine = readLoudnessEngine(req.body);
 		if (engine === "native" && !measureNativeLoudness) {
@@ -197,6 +204,7 @@ export function registerAudioMixRoutes({
 	});
 
 	router.post("/api/claude/mix/:projectId/stems", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const projectId = req.params.projectId;
 		const outputDir =
 			typeof req.body?.outputDir === "string" ? req.body.outputDir.trim() : "";
@@ -241,6 +249,7 @@ export function registerAudioMixRoutes({
 	}));
 
 	router.delete("/api/claude/mix/:projectId/buses/:busId", async (req) => {
+		await assertProjectOpen(req.params.projectId);
 		const result = await run(req, {
 			action: "remove-bus",
 			projectId: req.params.projectId,
