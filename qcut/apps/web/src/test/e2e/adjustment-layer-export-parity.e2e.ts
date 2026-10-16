@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect } from "@playwright/test";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
+import { localFixturePath } from "./helpers/local-fixtures";
 
 /**
  * C3: an adjustment layer graded the preview but not the native export. The
@@ -13,14 +14,12 @@ import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixtur
  */
 
 /** The 门的计划 clip; QCUT_SHOT_SPLIT_E2E_SOURCE points at it on other machines. */
-const SOURCE =
-	process.env.QCUT_SHOT_SPLIT_E2E_SOURCE ??
-	"/Users/peter/Documents/QCut/Projects/481632c1-df20-4317-8c79-041922c3ab50/media/08_机甲滑索接战三种怪物.mp4";
+const SOURCE = localFixturePath("QCUT_SHOT_SPLIT_E2E_SOURCE");
 const FFMPEG = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffmpeg");
 /**
- * Per-channel agreement between the two export engines (8-bit levels). Both
- * now scale brightness like the preview; what remains is codec rounding and
- * FFmpeg eq's 1 % brightness quantisation.
+ * Per-channel agreement between the two export engines (8-bit levels). The
+ * native engine bakes a static grade into a cube of the preview's own pixel
+ * maths, so what remains is codec rounding and the cube's interpolation.
  */
 const ENGINE_TOLERANCE = 8;
 
