@@ -345,6 +345,7 @@ function applyTrackOperation(
 					fromElementId: transition.fromElementId,
 					toElementId: transition.toElementId,
 					type: transition.type,
+					duration: transition.duration,
 					videoMediaIds,
 					mediaTypeOf: (mediaId) =>
 						mediaItems.find((item) => item.id === mediaId)?.type,
