@@ -48,6 +48,10 @@ import {
 import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
+import {
+	type AdjustmentLayer,
+	runAdjustmentLayerPass,
+} from "./adjustment-layer-pass.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -1350,6 +1354,7 @@ export async function executeExportJob({
 	audioFiles = [],
 	audioMixConfig,
 	videoTransitions = [],
+	adjustmentLayers = [],
 	projectCanvas,
 	projectFps,
 }: {
@@ -1359,6 +1364,8 @@ export async function executeExportJob({
 	outputPath: string;
 	segments: ExportSegment[];
 	stickerOverlays?: StickerOverlay[];
+	/** Adjustment layers to grade the picture with, lowest track first. */
+	adjustmentLayers?: AdjustmentLayer[];
 	textOverlays?: TextOverlay[];
 	jianyingTextOverlays?: JianyingTextOverlay[];
 	audioFiles?: AudioFile[];
@@ -1552,6 +1559,28 @@ export async function executeExportJob({
 						progress: 0.87 + progress * 0.11,
 					});
 				},
+			});
+		}
+
+		// Adjustment layers below the text/sticker tracks grade the picture
+		// before those overlays are drawn, as the preview stacks them.
+		const lowerAdjustmentLayers = adjustmentLayers.filter(
+			(layer) => !layer.aboveOverlays
+		);
+		if (lowerAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+			updateJobProgress({ jobId, progress: 0.91 });
+			await runAdjustmentLayerPass({
+				layers: lowerAdjustmentLayers,
+				videoOutputPath,
+				tempDir,
+				stage: "below-overlays",
+				codec: settings.codec,
+				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+				estimatedDuration: segments.reduce((sum, s) => sum + s.duration, 0),
+				signal: abort.signal,
+				runFFmpegCommand,
+				onProgress: (progress) =>
+					updateJobProgress({ jobId, progress: 0.91 + progress * 0.01 }),
 			});
 		}
 
@@ -1750,6 +1779,28 @@ export async function executeExportJob({
 					`Text overlay export failed: ${error instanceof Error ? error.message : String(error)}`
 				);
 			}
+		}
+
+		// Adjustment layers above every text/sticker track grade those overlays
+		// too, so they run once the overlays are on the picture.
+		const upperAdjustmentLayers = adjustmentLayers.filter(
+			(layer) => layer.aboveOverlays
+		);
+		if (upperAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+			updateJobProgress({ jobId, progress: 0.955 });
+			await runAdjustmentLayerPass({
+				layers: upperAdjustmentLayers,
+				videoOutputPath,
+				tempDir,
+				stage: "above-overlays",
+				codec: settings.codec,
+				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+				estimatedDuration: segments.reduce((sum, s) => sum + s.duration, 0),
+				signal: abort.signal,
+				runFFmpegCommand,
+				onProgress: (progress) =>
+					updateJobProgress({ jobId, progress: 0.955 + progress * 0.005 }),
+			});
 		}
 
 		// Independent audio tracks are mixed after all video-only compositing
