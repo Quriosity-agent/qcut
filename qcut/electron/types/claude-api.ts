@@ -601,17 +601,22 @@ export interface ClaudeShotSplitClipResult {
 	trackId: string;
 	elementId: string;
 	elementName: string;
-	requestedEngine: SceneDetectionEngineChoice | "cuts";
-	engine?: SceneDetectionEngine;
+	/** The engine asked for, or "manual" when the cut points were given. */
+	requestedEngine: SceneDetectionEngineChoice | "manual";
+	/** The engine that found the boundaries, or "manual" for given cuts. */
+	engine?: SceneDetectionEngine | "manual";
 	route?: string;
 	fallbacks?: SceneEngineFallback[];
 	dryRun: boolean;
+	/** Frame-snapped: given seconds are rounded to the project's frame grid. */
 	cuts: Array<{ sourceTime: number; timelineTime: number }>;
 	skipped: Array<{
 		sourceTime?: number;
 		timelineTime?: number;
 		reason: string;
 	}>;
+	/** Why there is nothing to cut, when `cuts` and `skipped` are both empty. */
+	message?: string;
 	createdElementIds: string[];
 	elementIds: string[];
 }
