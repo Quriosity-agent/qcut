@@ -13,7 +13,10 @@ import type { MediaItem } from "@/stores/media/media-store-types";
 import { shouldIncludeAudio } from "@/types/export";
 import { renderBrowserTimelineAudio } from "@/lib/audio/browser-audio-export";
 import { useProjectStore } from "@/stores/project-store";
-import { calculateFrameTime } from "./export-engine-utils";
+import {
+	calculateFrameSampleDuration,
+	calculateFrameTime,
+} from "./export-engine-utils";
 import { exportProfiler } from "./export-profiler";
 import { reportExportFrameProgress } from "./export-progress-reporter";
 import { assertCanvasClipTransitionsRenderable } from "./export-clip-transitions";
@@ -196,8 +199,6 @@ export class ExportEngineMuxer extends ExportEngine {
 
 			progressCallback?.(2, "Rendering frames...");
 
-			const frameDuration = 1 / fps;
-
 			// Render and encode each frame. `CanvasSource.add` captures the
 			// canvas synchronously and returns a backpressure promise, so the
 			// encoder chews on frame N while frame N+1 renders — a bounded
@@ -253,7 +254,14 @@ export class ExportEngineMuxer extends ExportEngine {
 					codedWidth: yuvFrame.codedWidth,
 					codedHeight: yuvFrame.codedHeight,
 					timestamp: currentTime,
-					duration: frameDuration,
+					// The last frame ends where the timeline ends, so the file is
+					// as long as the timeline and the native export, not a frame more.
+					duration: calculateFrameSampleDuration({
+						frameIndex: frame,
+						totalFrames,
+						fps,
+						totalDuration: this.totalDuration,
+					}),
 					colorSpace: EXPORT_VIDEO_COLOR_SPACE,
 				});
 				const encodePromise = withTimeout(
