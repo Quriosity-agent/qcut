@@ -38,7 +38,53 @@ function summarizeTracks(): ClaudeTrackOperationResponse["tracks"] {
 		elementCount: track.elements.length,
 		isMain: track.isMain,
 		colorLabel: track.colorLabel,
+		muted: track.muted === true,
+		hidden: track.hidden === true,
+		locked: track.locked === true,
 	}));
+}
+
+const TRACK_SWITCHES = ["muted", "hidden", "locked"] as const;
+
+/**
+ * Set a track's mute, visibility and lock through the header toggles, then
+ * read them back so a refused switch is reported, not assumed.
+ */
+function applyTrackSwitches({
+	trackId,
+	request,
+}: {
+	trackId: string;
+	request: ClaudeTrackOperationRequest;
+}): void {
+	const store = useTimelineStore.getState();
+	const toggles = {
+		muted: store.toggleTrackMute,
+		hidden: store.toggleTrackHidden,
+		locked: store.toggleTrackLocked,
+	};
+	for (const key of TRACK_SWITCHES) {
+		const wanted = request[key];
+		if (wanted === undefined) continue;
+		const current =
+			useTimelineStore
+				.getState()
+				.tracks.find((track) => track.id === trackId)?.[key] === true;
+		if (current !== wanted) toggles[key](trackId);
+	}
+	const track = useTimelineStore
+		.getState()
+		.tracks.find((candidate) => candidate.id === trackId);
+	for (const key of TRACK_SWITCHES) {
+		const wanted = request[key];
+		if (wanted !== undefined && (track?.[key] === true) !== wanted) {
+			throw new Error(`The editor did not set the track's ${key} to ${wanted}`);
+		}
+	}
+}
+
+function requestsTrackSwitch(request: ClaudeTrackOperationRequest): boolean {
+	return TRACK_SWITCHES.some((key) => request[key] !== undefined);
 }
 
 /** A request's colour: a label, undefined to clear (null/""), or a thrown list of valid ones. */
@@ -172,6 +218,7 @@ function applyTrackOperation(
 		if (request.colorLabel !== undefined && request.colorLabel !== null) {
 			applyTrackColor({ trackId, request, pushHistory: false });
 		}
+		if (requestsTrackSwitch(request)) applyTrackSwitches({ trackId, request });
 		const tracks = summarizeTracks();
 		return {
 			success: true,
@@ -199,9 +246,12 @@ function applyTrackOperation(
 			request.action === "update" &&
 			request.index === undefined &&
 			!request.name?.trim() &&
-			request.colorLabel === undefined
+			request.colorLabel === undefined &&
+			!requestsTrackSwitch(request)
 		) {
-			throw new Error("Track update needs index, name or colorLabel");
+			throw new Error(
+				"Track update needs index, name, colorLabel, muted, hidden or locked"
+			);
 		}
 		if (request.colorLabel !== undefined) requestedColorLabel(request);
 		if (
@@ -223,6 +273,9 @@ function applyTrackOperation(
 				request,
 				pushHistory: true,
 			});
+		}
+		if (requestsTrackSwitch(request)) {
+			applyTrackSwitches({ trackId: request.trackId, request });
 		}
 		const tracks = summarizeTracks();
 		const index = tracks.findIndex((track) => track.id === request.trackId);
