@@ -358,17 +358,17 @@ async function resolveSceneEngine({
 	fallbacks: SceneEngineFallback[];
 }> {
 	if (requested !== "auto") return { engine: requested, fallbacks: [] };
-	const status = await inspectSceneEngines();
+	// Probe in accuracy order and stop at the first engine that can run: the
+	// ONNX check starts a Python process, so it only runs when the bridge
+	// cannot. FFmpeg is always available.
 	const fallbacks: SceneEngineFallback[] = [];
-	for (const entry of status.engines) {
-		if (entry.available) return { engine: entry.engine, fallbacks };
-		fallbacks.push({ engine: entry.engine, reason: entry.message });
-	}
-	throw new Error(
-		`No scene detection engine is available: ${fallbacks
-			.map((item) => `${item.engine}: ${item.reason}`)
-			.join("; ")}`
-	);
+	const jianying = await inspectJianyingShotSplit();
+	if (jianying.available) return { engine: "jianying", fallbacks };
+	fallbacks.push({ engine: "jianying", reason: jianying.message });
+	const onnx = await inspectOnnxEngine();
+	if (onnx.available) return { engine: "onnx", fallbacks };
+	fallbacks.push({ engine: "onnx", reason: onnx.message });
+	return { engine: "ffmpeg", fallbacks };
 }
 
 /** Scene boundaries from a shot-split model result, after checking its shape. */
