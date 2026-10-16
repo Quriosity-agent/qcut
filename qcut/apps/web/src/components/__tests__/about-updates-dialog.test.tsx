@@ -10,6 +10,13 @@ vi.mock(
 );
 
 vi.mock(
+	"@/components/editor/properties-panel/settings/cli-launcher-section",
+	() => ({
+		CliLauncherSection: () => <div data-testid="cli-launcher-controls" />,
+	})
+);
+
+vi.mock(
 	"@/components/editor/properties-panel/settings/codex-plugin-update-section",
 	() => ({
 		CodexPluginUpdateSection: () => (
@@ -32,6 +39,7 @@ describe("AboutUpdatesDialog", () => {
 		expect(screen.getByText("About & updates")).toBeInTheDocument();
 		expect(screen.getByTestId("app-update-controls")).toBeInTheDocument();
 		expect(screen.getByTestId("plugin-update-controls")).toBeInTheDocument();
+		expect(screen.getByTestId("cli-launcher-controls")).toBeInTheDocument();
 	});
 
 	it("can be closed from the dialog close button", () => {
