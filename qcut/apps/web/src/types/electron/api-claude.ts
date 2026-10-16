@@ -209,6 +209,7 @@ export interface ElectronClaudeOps {
 			onExecuteCuts: (
 				callback: (data: {
 					requestId: string;
+					projectId: string;
 					elementId: string;
 					cuts: Array<{ start: number; end: number }>;
 					ripple: boolean;
