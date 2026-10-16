@@ -135,7 +135,8 @@ describe("buildAdjustmentLayerPass", () => {
 		expect(pass).not.toBeNull();
 		const steps = pass?.filterComplex.split(";") ?? [];
 		expect(steps[0]).toBe("[0:v]split=2[adj_b0][adj_s0]");
-		expect(steps[1]).toMatch(/^\[adj_s0\].*eq=.*\[adj_g0\]$/);
+		// A static grade is the preview's maths baked into one cube.
+		expect(steps[1]).toMatch(/^\[adj_s0\].*lut3d=file=.*\[adj_g0\]$/);
 		expect(steps[2]).toBe(
 			"[adj_b0][adj_g0]overlay=enable='between(t,1,2.5)'[adj_o0]"
 		);
