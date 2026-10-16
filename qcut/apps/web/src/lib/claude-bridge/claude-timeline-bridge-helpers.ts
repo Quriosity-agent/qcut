@@ -288,6 +288,77 @@ export function normalizeClaudeTextAnimations({
 	return normalization.animation;
 }
 
+export const CLAUDE_TEXT_ANCHORS = [
+	"top-left",
+	"top-center",
+	"top-right",
+	"center-left",
+	"center",
+	"center-right",
+	"bottom-left",
+	"bottom-center",
+	"bottom-right",
+] as const;
+export type ClaudeTextAnchor = (typeof CLAUDE_TEXT_ANCHORS)[number];
+
+const DEFAULT_TEXT_BOX_WIDTH = 640;
+const DEFAULT_TEXT_BOX_HEIGHT = 180;
+
+/**
+ * `anchor` on an added text element places its box against a canvas edge or
+ * corner instead of giving `x`/`y` (pixel offsets from the canvas centre):
+ * the box sits `anchorInset` pixels (default 5 % of the shorter canvas side)
+ * inside the edge. Explicit `x`/`y` win over the anchor on their axis.
+ */
+export function resolveClaudeTextAnchor({
+	element,
+	properties,
+	canvas = useProjectStore.getState().activeProject?.canvasSize,
+}: {
+	element: Record<string, unknown>;
+	properties: ValidatedClaudeTextProperties;
+	canvas?: { width: number; height: number };
+}): Pick<ValidatedClaudeTextProperties, "x" | "y"> {
+	const anchor =
+		element.anchor ??
+		(element.style as Record<string, unknown> | undefined)?.anchor;
+	if (anchor === undefined) return {};
+	if (
+		typeof anchor !== "string" ||
+		!CLAUDE_TEXT_ANCHORS.includes(anchor as ClaudeTextAnchor)
+	) {
+		throw new Error(
+			`Unsupported text anchor "${String(anchor)}"; expected one of ${CLAUDE_TEXT_ANCHORS.join(", ")}`
+		);
+	}
+	if (!canvas) throw new Error("A text anchor needs an open project canvas");
+	const inset =
+		typeof element.anchorInset === "number" &&
+		Number.isFinite(element.anchorInset)
+			? element.anchorInset
+			: Math.round(Math.min(canvas.width, canvas.height) * 0.05);
+	const boxWidth = properties.width ?? DEFAULT_TEXT_BOX_WIDTH;
+	const boxHeight = properties.height ?? DEFAULT_TEXT_BOX_HEIGHT;
+	const [vertical, horizontal] =
+		anchor === "center" ? ["center", "center"] : anchor.split("-");
+	const x =
+		horizontal === "left"
+			? -canvas.width / 2 + inset + boxWidth / 2
+			: horizontal === "right"
+				? canvas.width / 2 - inset - boxWidth / 2
+				: 0;
+	const y =
+		vertical === "top"
+			? -canvas.height / 2 + inset + boxHeight / 2
+			: vertical === "bottom"
+				? canvas.height / 2 - inset - boxHeight / 2
+				: 0;
+	return {
+		...(properties.x === undefined ? { x } : {}),
+		...(properties.y === undefined ? { y } : {}),
+	};
+}
+
 /** Read text properties from top-level fields, falling back to legacy style. */
 export function getClaudeTextProperties({
 	element,
@@ -1072,6 +1143,13 @@ export function addClaudeTextElement({
 	const textProperties = getClaudeTextProperties({
 		element: element as Partial<ClaudeElement> & Record<string, unknown>,
 	});
+	Object.assign(
+		textProperties,
+		resolveClaudeTextAnchor({
+			element: element as Record<string, unknown>,
+			properties: textProperties,
+		})
+	);
 
 	const addedElementId = addElementOrThrow({
 		timelineStore,
