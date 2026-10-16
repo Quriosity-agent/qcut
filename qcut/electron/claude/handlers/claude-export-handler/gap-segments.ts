@@ -146,7 +146,12 @@ async function probeAudioLayout({
 }: {
 	file: string;
 }): Promise<GapAudioLayout | null> {
-	const ffprobePath = await getFFprobePath();
+	let ffprobePath: string;
+	try {
+		ffprobePath = await getFFprobePath();
+	} catch {
+		return null;
+	}
 	const output = await new Promise<string>((resolve) => {
 		const probe = spawn(
 			ffprobePath,
