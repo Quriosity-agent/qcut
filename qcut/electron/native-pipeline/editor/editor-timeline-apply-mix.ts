@@ -88,18 +88,25 @@ export function manifestHasTrackAudio(manifest: TimelineManifest): boolean {
 	return (manifest.tracks ?? []).some((track) => isRecord(track.audio));
 }
 
-/** The mix as the editor holds it, or undefined where the editor has no mixer. */
+/**
+ * The mix as the editor holds it, read before the apply changes anything in
+ * the mixer. A failed read is an error, not an empty snapshot: without the
+ * state before there would be nothing to put back if a later step failed.
+ */
 export async function readMixSnapshot({
 	client,
 	projectId,
 }: {
 	client: EditorApiClient;
 	projectId: string;
-}): Promise<MixSnapshot | undefined> {
+}): Promise<MixSnapshot> {
 	try {
 		return await client.get<MixSnapshot>(mixPath(projectId));
-	} catch {
-		return undefined;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Could not read the mix before changing it, so the mixer was left untouched: ${message}`
+		);
 	}
 }
 
