@@ -162,5 +162,15 @@ export interface ProjectFolderAPI {
 		ensureStructure: (
 			projectId: string
 		) => Promise<{ created: string[]; existing: string[] }>;
+		/** Copies `media/` and `project.qcut` from one project folder into another. */
+		copyContents: (
+			sourceProjectId: string,
+			targetProjectId: string
+		) => Promise<{
+			sourceRoot: string;
+			targetRoot: string;
+			copiedMedia: boolean;
+			copiedSettings: boolean;
+		}>;
 	};
 }
