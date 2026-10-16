@@ -501,6 +501,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			replace: { type: "boolean", default: false },
 			ripple: { type: "boolean", default: false },
 			"no-ripple": { type: "boolean", default: false },
+			// editor captions import
+			file: { type: "string" },
 			// editor element color / filter
 			exposure: { type: "string" },
 			brightness: { type: "string" },
@@ -1235,6 +1237,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		),
 		reset: (values.reset as boolean) ?? false,
 		append: (values.append as boolean) ?? false,
+		file: values.file as string | undefined,
 		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,
 		push: (values.push as boolean) ?? false,
 		pull: (values.pull as boolean) ?? false,
