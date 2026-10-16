@@ -2033,6 +2033,9 @@ function formatElementForExport({
 				audio: normalizeMediaAudioSettings({ element }),
 				keyframes: element.keyframes as ClaudeElement["keyframes"],
 				colorSettings: resolveExportElementColorSettings({ element }),
+				// The stored grade as written, so a patch can be read back.
+				color: element.color as unknown as ClaudeElement["color"],
+				adjustments: element.adjustments as Record<string, unknown> | undefined,
 				// Raw ordered Filter Lab stack; identity + payload round-trips
 				// verbatim so apply-side read-back can digest-compare it.
 				filterStack: element.filterStack,
