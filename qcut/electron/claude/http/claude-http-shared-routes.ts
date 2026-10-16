@@ -45,6 +45,8 @@ import type {
 	AutoEditJob,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
 } from "../../types/claude-api.js";
 import type {
 	EditorStateRequest,
@@ -115,6 +117,12 @@ import {
 	type MutateAudioMix,
 	registerAudioMixRoutes,
 } from "./claude-http-audio-mix-routes.js";
+import {
+	getBackgroundJob,
+	listBackgroundJobs,
+	startBackgroundJob,
+} from "./claude-http-background-jobs.js";
+import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -171,6 +179,11 @@ export interface WindowAccessor {
 		mode: string,
 		correlationId?: string
 	): Promise<ClaudeSplitResponse>;
+	/** Split clips by their shots in the renderer (detection included). */
+	requestShotSplit?(
+		request: ClaudeShotSplitRequest,
+		correlationId?: string
+	): Promise<ClaudeShotSplitResponse>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<ProjectStats>;
 	/** Get the app version string */
@@ -749,6 +762,67 @@ function locateElement({
  * Register all shared API routes onto the given router.
  * The WindowAccessor abstracts over direct vs proxied BrowserWindow access.
  */
+const SHOT_SPLIT_ENGINE_CHOICES = SCENE_DETECTION_ENGINE_CHOICES;
+
+/** The shot-split body, checked field by field; refusals name the field. */
+export function readShotSplitRequest({
+	projectId,
+	body,
+}: {
+	projectId: string;
+	body: unknown;
+}): ClaudeShotSplitRequest {
+	const input = (body ?? {}) as Record<string, unknown>;
+	const elementId =
+		typeof input.elementId === "string" && input.elementId.trim()
+			? input.elementId.trim()
+			: undefined;
+	const trackId =
+		typeof input.trackId === "string" && input.trackId.trim()
+			? input.trackId.trim()
+			: undefined;
+	if ((elementId === undefined) === (trackId === undefined)) {
+		throw new HttpError(400, "Give exactly one of elementId or trackId");
+	}
+	const request: ClaudeShotSplitRequest = { projectId, elementId, trackId };
+	if (input.engine !== undefined) {
+		if (!SHOT_SPLIT_ENGINE_CHOICES.some((choice) => choice === input.engine)) {
+			throw new HttpError(
+				400,
+				`engine must be one of ${SHOT_SPLIT_ENGINE_CHOICES.join(", ")}`
+			);
+		}
+		request.engine = input.engine as ClaudeShotSplitRequest["engine"];
+	}
+	if (input.cuts !== undefined) {
+		if (
+			!Array.isArray(input.cuts) ||
+			input.cuts.some(
+				(value) =>
+					typeof value !== "number" || !Number.isFinite(value) || value < 0
+			)
+		) {
+			throw new HttpError(400, "cuts must be an array of non-negative seconds");
+		}
+		request.cuts = input.cuts as number[];
+	}
+	for (const field of ["threshold", "minShotSeconds"] as const) {
+		const value = input[field];
+		if (value === undefined) continue;
+		if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+			throw new HttpError(400, `${field} must be a non-negative number`);
+		}
+		request[field] = value;
+	}
+	if (input.dryRun !== undefined) {
+		if (typeof input.dryRun !== "boolean") {
+			throw new HttpError(400, "dryRun must be true or false");
+		}
+		request.dryRun = input.dryRun;
+	}
+	return request;
+}
+
 export function registerSharedRoutes(
 	router: Router,
 	accessor: WindowAccessor,
@@ -1373,6 +1447,53 @@ export function registerSharedRoutes(
 			scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
 			return result;
 		}
+	);
+
+	// Splitting by shots detects first (seconds to minutes), so it is a job:
+	// the answer is a job id, polled at /timeline/:projectId/jobs/:jobId.
+	router.post("/api/claude/timeline/:projectId/shot-split", async (req) => {
+		const request = readShotSplitRequest({
+			projectId: req.params.projectId,
+			body: req.body,
+		});
+		if (!accessor.requestShotSplit) {
+			throw new HttpError(
+				503,
+				"Shot splitting is not available in this editor"
+			);
+		}
+		const requestShotSplit = accessor.requestShotSplit.bind(accessor);
+		const correlationId = getRequestCorrelationId({ req });
+		const job = startBackgroundJob({
+			projectId: req.params.projectId,
+			kind: "shot-split",
+			message: request.dryRun
+				? "Detecting shots"
+				: "Detecting shots and splitting the timeline",
+			run: async () => {
+				const response = await requestShotSplit(request, correlationId);
+				if (
+					!request.dryRun &&
+					response.results.some((r) => r.createdElementIds.length > 0)
+				) {
+					scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
+				}
+				return response;
+			},
+		});
+		return { jobId: job.jobId, status: job.status, kind: job.kind };
+	});
+
+	router.get("/api/claude/timeline/:projectId/jobs/:jobId", async (req) => {
+		const job = getBackgroundJob(req.params.jobId);
+		if (!job || job.projectId !== req.params.projectId) {
+			throw new HttpError(404, `Timeline job not found: ${req.params.jobId}`);
+		}
+		return job;
+	});
+
+	router.get("/api/claude/timeline/:projectId/jobs", async (req) =>
+		listBackgroundJobs(req.params.projectId)
 	);
 
 	router.post(
