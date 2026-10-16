@@ -43,6 +43,8 @@ export interface SmartShotSplitResult {
 	skipped: TimelineShotSkip[];
 	/** Why there is nothing to cut, when `cuts` and `skipped` are both empty. */
 	message?: string;
+	/** Options the engine that ran could not honour, e.g. a threshold for a model engine. */
+	warnings?: string[];
 	createdElementIds: string[];
 	/** The clip ids left on the track in time order: the source, then the new ones. */
 	elementIds: string[];
@@ -60,6 +62,7 @@ export type AnalyzeScenesForShotSplit = (
 	engine: ShotSplitEngine;
 	route?: string;
 	fallbacks?: Array<{ engine: ShotSplitEngine; reason: string }>;
+	warnings?: string[];
 	scenes: TimelineSceneBoundary[];
 }>;
 
@@ -306,6 +309,7 @@ export async function runSmartShotSplit({
 			...(detection?.fallbacks?.length
 				? { fallbacks: detection.fallbacks }
 				: {}),
+			...(detection?.warnings?.length ? { warnings: detection.warnings } : {}),
 			dryRun,
 			cuts: applied,
 			skipped,
