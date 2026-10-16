@@ -313,6 +313,7 @@ describe("registerAnalysisRoutes proxy hooks", () => {
 		expect(response.status).toBe(200);
 		expect((response.body as { success: boolean }).success).toBe(true);
 		expect(executeBatchCutsProxy).toHaveBeenCalledWith({
+			projectId: "proj_1",
 			elementId: "el_1",
 			cuts: [{ start: 1.0, end: 2.2 }],
 			ripple: true,
