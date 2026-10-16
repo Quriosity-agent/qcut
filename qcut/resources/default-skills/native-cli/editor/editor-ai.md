@@ -47,14 +47,23 @@ qcut editor:analyze:models
 ### Detect scenes
 
 ```bash
-qcut editor:analyze:scenes \
-  --project-id <id> \
-  --media-id <id> \
-  --threshold 0.5 \
-  --model gemini
+# The best engine available (auto = jianying model, then onnx, then ffmpeg)
+qcut editor:analyze:scenes --project-id <id> --media-id <id> --json
+# FFmpeg's picture-difference filter with its threshold
+qcut editor:analyze:scenes --project-id <id> --media-id <id> --engine ffmpeg --threshold 0.3 --json
+# Also describe each scene with an AI model
+qcut editor:analyze:scenes --project-id <id> --media-id <id> --ai-analysis --model gemini --json
+# Which engines this machine can run, and the one auto would pick
+qcut editor:analyze:engines --json
 ```
 
-`--threshold` is a float 0-1. Lower values detect more scene changes.
+`--engine` is `auto` (default), `jianying`, `onnx` or `ffmpeg`; the result's
+`engine` says which ran, and `fallbacks` which ones `auto` skipped and why.
+`--threshold` (0–1, lower finds more) applies to the ffmpeg engine only.
+`--model` only does something with `--ai-analysis`. The jianying engine needs
+this machine's private runtime and native bridge (see `qcut analyze shots
+--check`); on AI-generated footage FFmpeg misses most cuts, so prefer `auto`.
+To cut a timeline clip at the boundaries, use `editor timeline shot-split`.
 
 ### Analyze frames
 
