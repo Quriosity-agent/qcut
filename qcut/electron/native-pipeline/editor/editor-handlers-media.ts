@@ -652,9 +652,11 @@ async function projectDuplicate(
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
-	const data = await client.post("/api/claude/project/duplicate", {
-		projectId: opts.projectId,
-	});
+	const data = await client.post(
+		"/api/claude/project/duplicate",
+		{ projectId: opts.projectId },
+		{ timeout: 195_000 }
+	);
 	return { success: true, data };
 }
 
@@ -695,6 +697,17 @@ async function projectExportState(
 		operation: "project-state",
 		scope: "all-media",
 	});
+	// The timeline (tracks, transitions, track audio, buses) comes from the
+	// open editor; a project that is not open says so instead of exporting
+	// a state without one.
+	try {
+		fullState.timeline = await client.get(
+			`/api/claude/timeline/${opts.projectId}`
+		);
+	} catch (error) {
+		fullState.timelineUnavailable =
+			error instanceof Error ? error.message : String(error);
+	}
 	const json = JSON.stringify(fullState, null, 2);
 
 	const outputPath =
