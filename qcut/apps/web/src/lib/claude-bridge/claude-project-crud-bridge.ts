@@ -91,10 +91,14 @@ export function setupClaudeProjectCrudBridge(): void {
 
 	api.onDuplicateRequest(async (data) => {
 		try {
-			const store = useProjectStore.getState();
-			const newProjectId = await store.duplicateProject(data.projectId);
-			const projects = store.savedProjects;
-			const newProject = projects.find((p) => p.id === newProjectId);
+			const newProjectId = await useProjectStore
+				.getState()
+				.duplicateProject(data.projectId);
+			// Read the list after the duplicate: the snapshot from before it
+			// never holds the new project.
+			const newProject = useProjectStore
+				.getState()
+				.savedProjects.find((p) => p.id === newProjectId);
 			api.sendDuplicateResponse(data.requestId, {
 				projectId: newProjectId,
 				name: newProject?.name ?? "Duplicated Project",
