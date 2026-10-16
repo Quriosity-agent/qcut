@@ -782,17 +782,22 @@ describe("Media handlers", () => {
 			cliVersion: cli.version,
 			cliPath: cli.scriptPath,
 		});
-		expect((mismatch.data as { versionWarning?: string }).versionWarning).toContain(
-			"does not match QCut 2026.01.01.1"
-		);
+		expect(
+			(mismatch.data as { versionWarning?: string }).versionWarning
+		).toContain("does not match QCut 2026.01.01.1");
 
 		mockRoute("GET", "/api/claude/health", {
 			success: true,
 			data: { status: "ok", version: cli.version },
 		});
-		const same = await handleEditorHealth(client, makeOpts({ command: "editor:health", statusOnly: true }));
+		const same = await handleEditorHealth(
+			client,
+			makeOpts({ command: "editor:health", statusOnly: true })
+		);
 		expect(same.data).toMatchObject({ cliVersion: cli.version });
-		expect((same.data as { versionWarning?: string }).versionWarning).toBeUndefined();
+		expect(
+			(same.data as { versionWarning?: string }).versionWarning
+		).toBeUndefined();
 	});
 
 	it("editor:health --status-only --deep includes deepStatus", async () => {
