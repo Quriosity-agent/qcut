@@ -114,6 +114,29 @@ describe("qcut launcher", () => {
 		).toBeUndefined();
 	});
 
+	it("doubles percent signs in Windows paths and refuses double quotes", () => {
+		// cmd.exe expands %name% as it reads a line, so a literal % is doubled
+		// in the file and single again when read back.
+		const percent = {
+			executablePath: "C:\\Users\\100%\\QCut\\QCut AI Video Editor.exe",
+			cliScriptPath: "C:\\Users\\100%\\QCut\\resources\\app.asar\\cli.js",
+		};
+		const script = buildCliLauncherScript({
+			target: percent,
+			platform: "win32",
+		});
+		expect(script).toContain(
+			'set "QCUT_APP_EXECUTABLE=C:\\Users\\100%%\\QCut\\QCut AI Video Editor.exe"'
+		);
+		expect(parseCliLauncher({ content: script })).toEqual(percent);
+		expect(() =>
+			buildCliLauncherScript({
+				target: { ...percent, executablePath: 'C:\\Odd"Name\\QCut.exe' },
+				platform: "win32",
+			})
+		).toThrow(CliLauncherError);
+	});
+
 	it("lists qcut commands PATH resolves before the launcher", () => {
 		const root = tempDir();
 		const bunBin = join(root, "bun-bin");
