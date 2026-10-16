@@ -33,6 +33,7 @@ import {
 	requestAddElementFromRenderer,
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
+	requestShotSplitFromRenderer,
 	requestSelectionFromRenderer,
 	batchAddElements,
 	batchUpdateElements,
@@ -163,6 +164,7 @@ import type {
 	UtilityToMainMessage,
 	WebContentsSendRequest,
 	SplitElementRequest,
+	ShotSplitBridgeRequest,
 	TimelineAddElementRequest,
 	BatchAddElementsRequest,
 	BatchUpdateElementsRequest,
@@ -725,6 +727,11 @@ async function handleMainRequest(
 				req.splitTime,
 				req.mode
 			);
+		}
+
+		case "timeline:shot-split": {
+			const req = data as unknown as ShotSplitBridgeRequest;
+			return requestShotSplitFromRenderer(win, req.request, req.correlationId);
 		}
 
 		case "get-project-stats": {
