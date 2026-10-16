@@ -603,6 +603,92 @@ export interface ClaudeShotSplitRequest {
 	dryRun?: boolean;
 }
 
+/** One detected beat, in the clip's source seconds. */
+export interface ClaudeBeat {
+	timestamp: number;
+	strength: number;
+	index: number;
+	isDownbeat: boolean;
+}
+
+/** What the beat engine found for one media file (source seconds). */
+export interface ClaudeBeatDetectionResult {
+	bpm: number;
+	confidence: number;
+	beats: ClaudeBeat[];
+	downbeats: number[];
+	duration: number;
+}
+
+/**
+ * `editor beats mark`: hand a clip's detection result to the editor, which
+ * keeps it in the same beat store the beat panel and ruler markers read, and
+ * optionally writes bookmarks at the beats' timeline times.
+ */
+export interface ClaudeBeatsMarkRequest {
+	projectId: string;
+	elementId: string;
+	result: ClaudeBeatDetectionResult;
+	/** Bookmarks to add on the ruler: none (default), the downbeats, or every beat. */
+	bookmarks?: "none" | "downbeats" | "all";
+}
+
+export interface ClaudeTimelineBeat {
+	sourceTime: number;
+	/** Where the beat lands on the timeline, or null when the clip's trims cut it. */
+	timelineTime: number | null;
+	isDownbeat: boolean;
+	strength: number;
+}
+
+export interface ClaudeBeatsMarkResponse {
+	projectId: string;
+	elementId: string;
+	trackId: string;
+	bpm: number;
+	confidence: number;
+	beats: ClaudeTimelineBeat[];
+	/** Beats that fall inside the clip as placed on the timeline. */
+	onTimeline: number;
+	bookmarksAdded: number;
+}
+
+/** `editor timeline snap --to beats`: move clips onto the nearest marked beat. */
+export interface ClaudeSnapToBeatsRequest {
+	projectId: string;
+	elementIds: string[];
+	/** The clip whose marked beats are the grid; default: the one clip that has beats. */
+	beatsElementId?: string;
+	/** Which edge lands on the beat (default start). */
+	edge?: "start" | "end";
+	/** Clips farther than this (seconds) from any beat stay put (default 0.5). */
+	maxDistance?: number;
+	downbeatsOnly?: boolean;
+	dryRun?: boolean;
+}
+
+export interface ClaudeSnapToBeatsResult {
+	elementId: string;
+	trackId: string;
+	from: number;
+	to: number;
+	/** Seconds moved (signed); 0 when the clip stayed. */
+	moved: number;
+	/** The beat the edge snapped to, or null when none was near enough. */
+	beat: number | null;
+	applied: boolean;
+	reason?: string;
+}
+
+export interface ClaudeSnapToBeatsResponse {
+	projectId: string;
+	beatsElementId: string;
+	edge: "start" | "end";
+	dryRun: boolean;
+	results: ClaudeSnapToBeatsResult[];
+	moved: number;
+}
+
 export interface ClaudeShotSplitClipResult {
 	projectId: string;
 	trackId: string;
@@ -773,6 +859,12 @@ export interface ClaudeRangeDeleteRequest {
 	trackIds?: string[];
 	ripple?: boolean;
 	crossTrackRipple?: boolean;
+	/**
+	 * Leave level and pan automation where it is. By default a ripple moves a
+	 * track's curves with its clips, and bus and master curves when every
+	 * unlocked track moved.
+	 */
+	keepAutomation?: boolean;
 }
 
 export interface ClaudeRangeDeleteResponse {
