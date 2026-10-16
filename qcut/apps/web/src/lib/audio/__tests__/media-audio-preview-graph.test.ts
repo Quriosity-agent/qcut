@@ -187,6 +187,32 @@ describe("media audio preview pitch graph", () => {
 		expect(applied(denoiseLowpass.frequency)).toBe(24_000);
 	});
 
+	it("moves the denoise cuts in from the band edges once denoise is on", () => {
+		const context = audioContext();
+		audioMixMocks.getContext.mockReturnValue(context);
+		const graph = acquireGraph({
+			mediaElement: document.createElement("audio"),
+		});
+		const state = previewState();
+		state.settings.denoise = {
+			...state.settings.denoise,
+			enabled: true,
+			amount: 50,
+		};
+		graph.update({ state });
+
+		const [denoiseHighpass, denoiseLowpass] = (
+			context.createBiquadFilter as unknown as {
+				mock: { results: Array<{ value: { frequency: AudioParam } }> };
+			}
+		).mock.results.map((result) => result.value);
+		const applied = (parameter: AudioParam) =>
+			(parameter.setTargetAtTime as unknown as { mock: { calls: number[][] } })
+				.mock.calls[0]?.[0] ?? parameter.value;
+		expect(applied(denoiseHighpass.frequency)).toBe(80);
+		expect(applied(denoiseLowpass.frequency)).toBe(16_000);
+	});
+
 	it("does not load the pitch worklet for ordinary playback", async () => {
 		const mediaElement = document.createElement("audio");
 		const graph = acquireGraph({ mediaElement });
