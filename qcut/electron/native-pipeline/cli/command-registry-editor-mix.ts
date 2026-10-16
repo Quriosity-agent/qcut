@@ -48,6 +48,20 @@ export function createAudioMixEditorCommands({
 		'The curve as JSON or @file: [{"time":12,"value":0},{"time":12.3,"value":-6}] (time in seconds on the timeline)'
 	);
 	const clear = f("--clear", "boolean", "Remove the curve instead");
+	const waitTimeout = f(
+		"--timeout",
+		"number",
+		"Seconds to wait for the render before handing back the job id",
+		{ default: 1800 }
+	);
+	const pollInterval = f("--poll-interval", "number", "Seconds between polls", {
+		default: 3,
+	});
+	const noWait = f(
+		"--no-wait",
+		"boolean",
+		"Return the job id at once; follow it with job-status"
+	);
 
 	return {
 		"editor:track:audio-automation": ed(
@@ -155,8 +169,8 @@ export function createAudioMixEditorCommands({
 		),
 		"editor:mix:loudness": ed(
 			"editor:mix:loudness",
-			"Render the mix as an export would and measure integrated LUFS, loudest short-term and momentary LUFS, and true peak",
-			[projectId],
+			"Render the mix as an export would and measure integrated LUFS, loudest short-term and momentary LUFS, and true peak (a job: waits by default)",
+			[projectId, waitTimeout, pollInterval, noWait],
 			["qcut editor mix loudness --project-id <id> --json"]
 		),
 		"editor:mix:bus-automation": ed(
@@ -175,12 +189,21 @@ export function createAudioMixEditorCommands({
 		),
 		"editor:mix:stems": ed(
 			"editor:mix:stems",
-			"Write one WAV per bus (and one for tracks feeding the master directly), each as long as the programme",
+			"Write one WAV per bus (and one for tracks feeding the master directly), each as long as the programme (a job: waits by default)",
 			[
 				projectId,
 				f("--output-dir", "string", "Folder for the stems", { required: true }),
+				waitTimeout,
+				pollInterval,
+				noWait,
 			],
 			["qcut editor mix stems --project-id <id> --output-dir ./stems --json"]
+		),
+		"editor:mix:job-status": ed(
+			"editor:mix:job-status",
+			"Status and result of a loudness or stems render job",
+			[projectId, f("--job-id", "string", "Job ID", { required: true })],
+			["qcut editor mix job-status --project-id <id> --job-id <job> --json"]
 		),
 		"editor:mix:master-set": ed(
 			"editor:mix:master-set",
