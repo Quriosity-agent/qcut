@@ -4,6 +4,8 @@ import {
 	hasAutomation,
 	normalizeAutomation,
 	normalizeAutomationPoints,
+	rippleAutomation,
+	ripplePoints,
 	sampleAutomation,
 } from "../audio-mix-automation";
 
@@ -91,5 +93,54 @@ describe("automation curves", () => {
 				10
 			);
 		}
+	});
+});
+
+describe("automation after a ripple delete", () => {
+	it("drops the span, moves later points up and pins the join value", () => {
+		// A fade from 0 dB at 10 s to -12 dB at 20 s; the span 12–16 s is cut.
+		const points = [
+			{ time: 10, value: 0 },
+			{ time: 14, value: -4.8 },
+			{ time: 20, value: -12 },
+		];
+		const rippled = ripplePoints({ points, startTime: 12, endTime: 16 });
+		// The value the curve had at 16 s (-7.2 dB) now sits at 12 s, so the
+		// fade continues from there instead of interpolating across the cut.
+		expect(rippled).toEqual([
+			{ time: 10, value: 0 },
+			{ time: 12, value: expect.closeTo(-7.2, 5) },
+			{ time: 16, value: -12 },
+		]);
+	});
+
+	it("only shifts when the span is before the points", () => {
+		const points = [
+			{ time: 209.25, value: 0 },
+			{ time: 212.25, value: -60 },
+		];
+		expect(
+			ripplePoints({ points, startTime: 48.125, endTime: 60.708 })
+		).toEqual([
+			{ time: expect.closeTo(196.667, 3), value: 0 },
+			{ time: expect.closeTo(199.667, 3), value: -60 },
+		]);
+		expect(ripplePoints({ points, startTime: 300, endTime: 310 })).toEqual(
+			points
+		);
+	});
+
+	it("leaves a curve alone for an empty span and drops curves that end up empty", () => {
+		const automation = { gainDb: [{ time: 5, value: -6 }], pan: [] };
+		expect(
+			rippleAutomation({ automation, startTime: 10, endTime: 10 })?.gainDb
+		).toEqual([{ time: 5, value: -6 }]);
+		expect(
+			rippleAutomation({
+				automation: { gainDb: [{ time: 5, value: -6 }] },
+				startTime: 4,
+				endTime: 6,
+			})
+		).toBeUndefined();
 	});
 });
