@@ -570,6 +570,45 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"qcut editor timeline shot-split --project-id <id> --track-id <id> --min-shot 1 --json",
 		]
 	),
+	"editor:timeline:snap": ed(
+		"editor:timeline:snap",
+		"Move clips onto the nearest marked beat (editor beats mark first), as one undo step",
+		[
+			PID,
+			f("--to", "string", "What to snap to: beats (default)", {
+				enum: ["beats"],
+			}),
+			f(
+				"--element-ids",
+				"string",
+				"Clips to move (comma-separated; --element-id for one)"
+			),
+			f(
+				"--beats-from",
+				"string",
+				"Clip whose marked beats are the grid (default: the one marked clip)"
+			),
+			f(
+				"--edge",
+				"string",
+				"Edge that lands on the beat: start (default) or end",
+				{
+					enum: ["start", "end"],
+				}
+			),
+			f(
+				"--max-distance",
+				"number",
+				"Farthest a clip may move, in seconds (default 0.5); farther clips stay"
+			),
+			f("--downbeats-only", "boolean", "Snap to downbeats only"),
+			f("--dry-run", "boolean", "Report the moves, leave the timeline alone"),
+		],
+		[
+			"qcut editor timeline snap --to beats --element-ids <a>,<b> --project-id <id> --json",
+			"qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json",
+		]
+	),
 	"editor:timeline:job-status": ed(
 		"editor:timeline:job-status",
 		"Progress and result of a timeline job (shot-split)",
@@ -698,6 +737,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"boolean",
 				"With --track-id: shift every unlocked track, not only the targets"
 			),
+			f(
+				"--keep-automation",
+				"boolean",
+				"Leave level/pan automation in place (by default it ripples with the clips)"
+			),
 		]
 	),
 	"editor:editing:auto-edit": ed(
@@ -804,11 +848,36 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:analyze:beats": ed(
 		"editor:analyze:beats",
-		"Detect audio beats and BPM",
+		"Detect audio beats and BPM (tempo from the onset periodicity; threshold no longer changes it)",
 		[
 			PID,
 			MID,
-			f("--threshold", "number", "Sensitivity threshold (default: 1.5)"),
+			f(
+				"--threshold",
+				"number",
+				"Kept for compatibility; the tempo and beats do not depend on it"
+			),
+		]
+	),
+	"editor:beats:mark": ed(
+		"editor:beats:mark",
+		"Detect a clip's beats and mark them in the editor (beat panel, ruler markers), optionally as bookmarks",
+		[
+			PID,
+			f("--element-id", "string", "The audio or video clip", {
+				required: true,
+			}),
+			f("--media-id", "string", "Analyse this media instead of the clip's own"),
+			f(
+				"--bookmarks",
+				"string",
+				"Bookmarks to add on the ruler: none (default), downbeats or all",
+				{ enum: ["none", "downbeats", "all"] }
+			),
+		],
+		[
+			"qcut editor beats mark --element-id <clip> --project-id <id> --json",
+			"qcut editor beats mark --element-id <clip> --bookmarks downbeats --project-id <id> --json",
 		]
 	),
 
