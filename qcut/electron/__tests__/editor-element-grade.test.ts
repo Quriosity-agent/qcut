@@ -156,8 +156,15 @@ describe("editor element filter", () => {
 			intensity: 70,
 			enabled: true,
 		});
+		// Filter stacks carry LUT cubes, so they always take the batch route (64 MB cap).
+		expect(patches[0].path).toBe("/api/claude/timeline/p1/elements/batch");
 		expect(patches[0].body).toEqual({
-			filterStack: { enabled: true, effects: [effect] },
+			updates: [
+				{
+					elementId: "e1",
+					changes: { filterStack: { enabled: true, effects: [effect] } },
+				},
+			],
 		});
 		expect(result.data).toMatchObject({
 			effects: [{ resourceId: "7596691154008132915", intensity: 70 }],
@@ -218,7 +225,14 @@ describe("editor element filter", () => {
 			{ resolve }
 		);
 		expect(patches[0].body).toEqual({
-			filterStack: { enabled: true, effects: [existing, effect] },
+			updates: [
+				{
+					elementId: "e1",
+					changes: {
+						filterStack: { enabled: true, effects: [existing, effect] },
+					},
+				},
+			],
 		});
 		await elementFilter(
 			client,
@@ -226,7 +240,12 @@ describe("editor element filter", () => {
 			{ resolve }
 		);
 		expect(patches[1].body).toEqual({
-			filterStack: { enabled: false, effects: [] },
+			updates: [
+				{
+					elementId: "e1",
+					changes: { filterStack: { enabled: false, effects: [] } },
+				},
+			],
 		});
 		expect(resolve).toHaveBeenCalledTimes(1);
 	});
