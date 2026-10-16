@@ -1022,8 +1022,9 @@ export function addClaudeTextElement({
 			fontWeight: "normal",
 			fontStyle: "normal",
 			textDecoration: "none",
-			x: 0.5,
-			y: 0.5,
+			// Pixel offsets from the canvas centre, like the editor's own text.
+			x: 0,
+			y: 0,
 			rotation: 0,
 			opacity: 1,
 			...textProperties,
@@ -1446,7 +1447,8 @@ export function addClaudeMarkdownElement({
 }): string {
 	// Reuse existing markdown track instead of creating one per element
 	const existingTrack = timelineStore.tracks.find((t) => t.type === "markdown");
-	const trackId = existingTrack?.id ?? timelineStore.addTrack("markdown");
+	const trackId =
+		existingTrack?.id ?? timelineStore.addTrackByStackingPolicy("markdown");
 
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
