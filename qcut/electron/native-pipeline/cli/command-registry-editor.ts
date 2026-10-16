@@ -950,6 +950,30 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--sample-rate", "number", "Sample rate (44100|48000)"),
 		]
 	),
+	"editor:captions:import": ed(
+		"editor:captions:import",
+		"Import an SRT/VTT/ASS file as captions tracks above the clips",
+		[
+			PID,
+			f("--file", "string", "Subtitle file (.srt, .vtt, .ass)", {
+				required: true,
+			}),
+			f(
+				"--language",
+				"string",
+				"Language code for every cue (default: from the file, else en)"
+			),
+			f(
+				"--style",
+				"string",
+				"Caption style JSON or @file applied to every cue"
+			),
+			f("--replace", "boolean", "Delete the existing captions tracks first"),
+		],
+		[
+			"qcut editor captions import --project-id <id> --file subtitles.srt --language zh --json",
+		]
+	),
 	"editor:export:captions": ed(
 		"editor:export:captions",
 		"Export timeline captions as a sidecar file",
