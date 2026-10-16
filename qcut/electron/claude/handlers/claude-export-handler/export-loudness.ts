@@ -144,7 +144,10 @@ async function waitForExport({ jobId }: { jobId: string }): Promise<void> {
 		const job = getExportJobStatus(jobId);
 		if (!job) throw new Error(`The measuring export ${jobId} disappeared`);
 		if (job.status === EXPORT_JOB_STATUS.completed) return;
-		if (job.status === EXPORT_JOB_STATUS.failed) {
+		if (
+			job.status === EXPORT_JOB_STATUS.failed ||
+			job.status === EXPORT_JOB_STATUS.cancelled
+		) {
 			throw new Error(job.error ?? "The measuring export failed");
 		}
 		await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
