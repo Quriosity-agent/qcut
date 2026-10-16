@@ -127,6 +127,29 @@ describe("timeline transition operations", () => {
 		expect(useTimelineStore.getState().selectedTransition).toBeNull();
 	});
 
+	it("moves the transition out of a split clip onto the piece that still meets the next clip", () => {
+		const transitionId = useTimelineStore.getState().addTransition({
+			trackId: "track-1",
+			fromElementId: "a",
+			toElementId: "b",
+			videoMediaIds: VIDEO_MEDIA_IDS,
+			presetId: "dissolve",
+			type: "dissolve",
+			duration: 0.5,
+		});
+		const rightId = useTimelineStore
+			.getState()
+			.splitElement("track-1", "a", 1, false);
+		expect(rightId).toBeTruthy();
+		expect(useTimelineStore.getState().tracks[0].transitions).toEqual([
+			expect.objectContaining({
+				id: transitionId,
+				fromElementId: rightId,
+				toElementId: "b",
+			}),
+		]);
+	});
+
 	it("persists the local engine and public package identity", () => {
 		const packageHash = "a".repeat(32);
 		const transitionId = useTimelineStore.getState().addTransition({
@@ -400,10 +423,6 @@ describe("timeline transition operations", () => {
 			name: "delete",
 			edit: () =>
 				useTimelineStore.getState().removeElementFromTrack("track-1", "b"),
-		},
-		{
-			name: "split",
-			edit: () => useTimelineStore.getState().splitElement("track-1", "a", 1),
 		},
 		{
 			name: "move to another track",
