@@ -233,6 +233,10 @@ test("an export applied back with --replace restores tracks, clips, captions and
 			y: -20,
 			fitMode: "contain",
 			opacity: 0.8,
+			// Trims: an export reports the trimmed length, and the apply must not
+			// take the trims off a second time.
+			trimStart: 1.5,
+			trimEnd: 2,
 		})
 	);
 	await run(
@@ -379,7 +383,10 @@ test("an export applied back with --replace restores tracks, clips, captions and
 		y: -20,
 		fitMode: "contain",
 		opacity: 0.8,
+		trimStart: 1.5,
+		trimEnd: 2,
 	});
+	expect(restoredClip?.duration).toBeCloseTo(Number(clip.duration) - 3.5, 3);
 	const restoredMusic = after.tracks.find((t) => t.name === "Music");
 	expect(restoredMusic?.muted).toBe(true);
 	expect(restoredMusic?.colorLabel).toBe("blue");
