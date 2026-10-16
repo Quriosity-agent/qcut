@@ -445,9 +445,13 @@ export async function handleAudioMixCommand({
 				};
 			}
 			case "loudness": {
+				const engine = opts.engine ?? "native";
+				if (engine !== "native" && engine !== "browser") {
+					throw new FlagError("--engine must be native or browser");
+				}
 				const started = await client.post<{ jobId: string }>(
 					`${base}/loudness`,
-					{}
+					{ engine }
 				);
 				if (opts.noWait) {
 					return { success: true, data: { projectId, ...started } };
