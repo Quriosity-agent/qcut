@@ -526,6 +526,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			reset: { type: "boolean", default: false },
 			append: { type: "boolean", default: false },
 			"cross-track-ripple": { type: "boolean", default: false },
+			"keep-automation": { type: "boolean", default: false },
+			bookmarks: { type: "string" },
+			"beats-from": { type: "string" },
+			edge: { type: "string" },
+			"max-distance": { type: "string" },
+			"downbeats-only": { type: "boolean", default: false },
 			"remove-fillers": { type: "boolean" },
 			"remove-silences": { type: "boolean" },
 			"no-remove-fillers": { type: "boolean", default: false },
@@ -1247,6 +1253,15 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		append: (values.append as boolean) ?? false,
 		file: values.file as string | undefined,
 		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,
+		keepAutomation: (values["keep-automation"] as boolean) ?? false,
+		bookmarks: values.bookmarks as string | undefined,
+		beatsFrom: values["beats-from"] as string | undefined,
+		edge: values.edge as string | undefined,
+		maxDistance:
+			values["max-distance"] !== undefined
+				? Number(values["max-distance"])
+				: undefined,
+		downbeatsOnly: (values["downbeats-only"] as boolean) ?? false,
 		push: (values.push as boolean) ?? false,
 		pull: (values.pull as boolean) ?? false,
 		// Absent flags stay undefined so the clean-audio runner applies its
