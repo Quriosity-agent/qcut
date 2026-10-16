@@ -302,7 +302,9 @@ describe("bus and master commands", () => {
 		const { client, post, pollJob } = fakeClient();
 		post.mockResolvedValueOnce({ jobId: "job-1", status: "running" } as never);
 		const result = await run(client, "editor:mix:loudness", { timeout: 60 });
-		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "native",
+		});
 		expect(pollJob).toHaveBeenCalledWith("/api/claude/mix/p1/jobs/job-1", {
 			interval: 3_000,
 			timeout: 60_000,
@@ -315,6 +317,24 @@ describe("bus and master commands", () => {
 				integratedLufs: -14,
 				truePeakDbtp: -1.1,
 			},
+		});
+	});
+
+	it("measures the browser rendering on request and refuses other engines", async () => {
+		const { client, post } = fakeClient();
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		await run(client, "editor:mix:loudness", {
+			engine: "browser",
+			noWait: true,
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "browser",
+		});
+		expect(
+			await run(client, "editor:mix:loudness", { engine: "muxer" })
+		).toEqual({
+			success: false,
+			error: "--engine must be native or browser",
 		});
 	});
 
