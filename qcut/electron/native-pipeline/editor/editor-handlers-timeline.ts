@@ -12,6 +12,7 @@ import {
 	timelineJobStatus,
 	timelineShotSplit,
 } from "./editor-handlers-shot-split.js";
+import { timelineSnap } from "./editor-handlers-beats.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import {
@@ -283,6 +284,8 @@ async function dispatchTimeline(
 			return timelineBatchDelete(client, opts);
 		case "split":
 			return timelineSplit(client, opts);
+		case "snap":
+			return timelineSnap(client, opts);
 		case "shot-split":
 			return timelineShotSplit(client, opts);
 		case "job-status":
@@ -986,6 +989,7 @@ async function editingDeleteRange(
 	if (opts.noRipple) body.ripple = false;
 	else if (opts.ripple) body.ripple = true;
 	if (opts.crossTrackRipple) body.crossTrackRipple = true;
+	if (opts.keepAutomation) body.keepAutomation = true;
 
 	const data = await client.delete(
 		`/api/claude/timeline/${opts.projectId}/range`,
