@@ -23,6 +23,7 @@ import type {
 	MediaAdjustments,
 	MediaAnimationType,
 	MediaColorSettings,
+	MediaElement,
 	MediaFilterStack,
 	MediaMask,
 	StickerAnimationLoopType,
@@ -468,6 +469,55 @@ export function getClaudeMediaTimingProperties({
 		properties.frameInterpolation = frameInterpolation;
 	}
 	return properties;
+}
+
+const MEDIA_FIT_MODES = new Set(["cover", "contain", "fill"]);
+const MEDIA_VISUAL_NUMBER_KEYS = [
+	"x",
+	"y",
+	"rotation",
+	"scaleX",
+	"scaleY",
+	"opacity",
+] as const;
+
+type ClaudeMediaVisualFields = Partial<
+	Pick<
+		MediaElement,
+		"fitMode" | "x" | "y" | "rotation" | "scaleX" | "scaleY" | "opacity"
+	>
+>;
+
+/**
+ * A clip's place on the canvas (`x`, `y` pixel offsets from the centre,
+ * `rotation`, `scaleX`, `scaleY`, `opacity`) and its `fitMode`, read the same
+ * way for an add and a patch so an exported clip round-trips through
+ * `timeline apply`. A malformed value throws before anything is stored.
+ */
+export function readClaudeMediaVisualFields({
+	element,
+}: {
+	element: Record<string, unknown>;
+}): ClaudeMediaVisualFields {
+	const fields: ClaudeMediaVisualFields = {};
+	if (element.fitMode !== undefined) {
+		if (
+			typeof element.fitMode !== "string" ||
+			!MEDIA_FIT_MODES.has(element.fitMode)
+		) {
+			throw new Error("fitMode must be one of cover, contain, fill");
+		}
+		fields.fitMode = element.fitMode as MediaElement["fitMode"];
+	}
+	for (const key of MEDIA_VISUAL_NUMBER_KEYS) {
+		const value = element[key];
+		if (value === undefined) continue;
+		if (typeof value !== "number" || !Number.isFinite(value)) {
+			throw new Error(`${key} must be a finite number`);
+		}
+		fields[key] = value;
+	}
+	return fields;
 }
 
 export type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
@@ -948,6 +998,9 @@ export async function addClaudeMediaElement({
 			? namedTrack.id
 			: timelineStore.findOrCreateTrack(trackType, { startTime, duration });
 	const mediaTiming = getClaudeMediaTimingProperties({ element });
+	const visual = readClaudeMediaVisualFields({
+		element: element as Record<string, unknown>,
+	});
 	const colorLabel = parseTimelineColorLabel({ value: element.colorLabel });
 
 	const addedElementId = addElementOrThrow({
@@ -957,7 +1010,12 @@ export async function addClaudeMediaElement({
 		element: {
 			...requestedElementId({ element }),
 			type: "media",
-			name: resolvedName,
+			// The clip's own name when the request carries one (an export does),
+			// else the media file's.
+			name:
+				typeof element.name === "string" && element.name.trim()
+					? element.name.trim()
+					: resolvedName,
 			mediaId: resolvedId,
 			startTime,
 			duration,
@@ -969,10 +1027,11 @@ export async function addClaudeMediaElement({
 				typeof element.trimEnd === "number" && element.trimEnd >= 0
 					? element.trimEnd
 					: 0,
-			fitMode: element.fitMode ?? "cover",
+			fitMode: "cover",
 			...(colorLabel ? { colorLabel } : {}),
 			...mediaTiming,
 			...(typeof element.volume === "number" ? { volume: element.volume } : {}),
+			...visual,
 		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added media element:", resolvedName);
@@ -987,7 +1046,20 @@ export function addClaudeTextElement({
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
 }): string {
-	const trackId = timelineStore.findOrCreateTrack("text");
+	// A named track is the lane asked for; only an unnamed request gets one
+	// picked (or made) for it, like the batch add.
+	const namedTrack = element.trackId
+		? timelineStore.tracks.find((track) => track.id === element.trackId)
+		: undefined;
+	if (element.trackId && !namedTrack) {
+		throw new Error(`Track not found: ${element.trackId}`);
+	}
+	if (namedTrack && namedTrack.type !== "text") {
+		throw new Error(
+			`Track "${namedTrack.name}" is a ${namedTrack.type} track; a text element needs a text track`
+		);
+	}
+	const trackId = namedTrack?.id ?? timelineStore.findOrCreateTrack("text");
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
 		element,
