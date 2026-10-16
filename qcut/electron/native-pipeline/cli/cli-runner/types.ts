@@ -559,6 +559,8 @@ export interface CLIRunOptions {
 	param?: string;
 	/** Mixer automation: the curve as JSON or @file */
 	points?: string;
+	/** Mixer renders: return the job id instead of waiting for the result */
+	noWait?: boolean;
 	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
 	noCapabilityCheck?: boolean;
 	/** Export format (e.g. "mp4", "webm") */
