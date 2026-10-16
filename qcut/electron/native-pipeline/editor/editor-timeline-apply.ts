@@ -1,80 +1,51 @@
+/**
+ * `editor timeline apply`: media, tracks, elements, transitions and the mix
+ * of one manifest, applied in order inside a timeline transaction and read
+ * back (editor-timeline-apply-verify.ts, editor-timeline-apply-mix.ts).
+ *
+ * @module electron/native-pipeline/editor/editor-timeline-apply
+ */
 import { promises as fs } from "node:fs";
 import { basename } from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
+import {
+	applyManifestMix,
+	applyManifestTrackAudio,
+	manifestHasTrackAudio,
+	manifestMix,
+	readMixSnapshot,
+	restoreMix,
+	verifyManifestMix,
+	type MixSnapshot,
+} from "./editor-timeline-apply-mix.js";
+import { verifyManifest } from "./editor-timeline-apply-verify.js";
+import {
+	aliasFor,
+	collectElements,
+	collectTransitions,
+	isRecord,
+	mapReference,
+	type JsonRecord,
+	type ManifestElement,
+	type ManifestMedia,
+	type ManifestTrack,
+	type TimelineManifest,
+	type TimelineSnapshot,
+} from "./editor-timeline-manifest.js";
 
-type JsonRecord = Record<string, unknown>;
+/** Elements per editor request: the editor's own batch limit. */
+const BATCH_SIZE = 50;
 
-interface ManifestMedia extends JsonRecord {
-	alias?: string;
-	id?: string;
-	mediaId?: string;
-	path?: string;
-	url?: string;
-	filename?: string;
-}
-
-interface ManifestElement extends JsonRecord {
-	alias?: string;
-	id?: string;
-	elementId?: string;
-	track?: string;
-	trackId?: string;
-	media?: string;
-	source?: string;
-	type?: string;
-	startTime?: number;
-	duration?: number;
-	endTime?: number;
-}
-
-interface ManifestTransition extends JsonRecord {
-	track?: string;
-	trackId?: string;
-	from?: string;
-	to?: string;
-	fromElementId?: string;
-	toElementId?: string;
-	type?: string;
-	presetId?: string;
-	duration?: number;
-}
-
-interface ManifestTrack extends JsonRecord {
-	alias?: string;
-	id?: string;
-	trackId?: string;
-	name?: string;
-	type?: string;
-	elements?: ManifestElement[];
-	transitions?: ManifestTransition[];
-}
-
-interface TimelineManifest extends JsonRecord {
-	projectId?: string;
-	replace?: boolean;
-	project?: JsonRecord;
-	settings?: JsonRecord;
-	media?: ManifestMedia[];
-	tracks?: ManifestTrack[];
-	elements?: ManifestElement[];
-	updates?: ManifestElement[];
-	transitions?: ManifestTransition[];
-	export?: JsonRecord;
-}
-
-interface TimelineSnapshot {
-	tracks: Array<{
-		id?: string;
-		index: number;
-		name: string;
-		type: string;
-		isMain?: boolean;
-		elements: Array<Record<string, unknown> & { id: string }>;
-		transitions?: Array<Record<string, unknown> & { id?: string }>;
-	}>;
+/**
+ * A batch's request deadline grows with its size: the editor stores one
+ * element at a time, so a full batch on a long programme takes well over the
+ * client's 30 s default (the editor's own deadline grows the same way).
+ */
+function batchRequestTimeoutMs({ count }: { count: number }): number {
+	return 60_000 + 1_000 * count;
 }
 
 interface MediaFileSummary {
@@ -90,233 +61,6 @@ interface ImportResult {
 	error?: string;
 }
 
-const TEXT_VERIFY_KEYS = [
-	"content",
-	"text",
-	"language",
-	"fontSize",
-	"fontFamily",
-	"fontAsset",
-	"jianyingTextStyle",
-	"textTemplateId",
-	"stylePresetId",
-	"color",
-	"backgroundColor",
-	"textAlign",
-	"fontWeight",
-	"fontStyle",
-	"textDecoration",
-	"x",
-	"y",
-	"width",
-	"height",
-	"rotation",
-	"opacity",
-	"letterSpacing",
-	"lineHeight",
-	"verticalAlign",
-	"strokeColor",
-	"strokeWidth",
-	"strokeOpacity",
-	"backgroundOpacity",
-	"backgroundRadius",
-	"backgroundPadding",
-	"shadowColor",
-	"shadowOpacity",
-	"shadowOffsetX",
-	"shadowOffsetY",
-	"shadowBlur",
-	"glowColor",
-	"glowOpacity",
-	"glowBlur",
-	"curve",
-	"animationType",
-	"animationDuration",
-	"animationDelay",
-	"textAnimations",
-	"textAnimationPreset",
-	"keyframes",
-	"blendMode",
-	"trackingTargetId",
-	"trackingOffsetX",
-	"trackingOffsetY",
-	"trackingRotation",
-] as const;
-
-const MEDIA_VERIFY_KEYS = [
-	"colorLabel",
-	"volume",
-	"audioFadeIn",
-	"audioFadeOut",
-	"fitMode",
-	"x",
-	"y",
-	"rotation",
-	"scaleX",
-	"scaleY",
-	"opacity",
-	"keyframes",
-	"playbackRate",
-	"speedKeyframes",
-	"reverse",
-	"freezeFrameTime",
-	"freezeFrameDuration",
-	"preservePitch",
-	"frameInterpolation",
-	"timelineDuration",
-	"filterStack",
-] as const;
-
-const STICKER_VERIFY_KEYS = [
-	"stickerId",
-	"stickerAssetId",
-	"mediaId",
-	"stickerRuntime",
-	"x",
-	"y",
-	"width",
-	"height",
-	"rotation",
-	"opacity",
-	"maintainAspectRatio",
-	"animationInType",
-	"animationInDuration",
-	"animationOutType",
-	"animationOutDuration",
-	"animationLoopType",
-	"animationLoopIntensity",
-] as const;
-
-const TRANSITION_VERIFY_KEYS = [
-	"type",
-	"presetId",
-	"duration",
-	"direction",
-	"easing",
-	"engine",
-	"packageHash",
-	"tuning",
-	"maskShape",
-] as const;
-
-function isRecord(value: unknown): value is JsonRecord {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function stringValue(record: JsonRecord, key: string): string | undefined {
-	return typeof record[key] === "string" ? (record[key] as string) : undefined;
-}
-
-function aliasFor(
-	entry: { alias?: string; id?: string },
-	fallback: string
-): string {
-	return entry.alias?.trim() || entry.id?.trim() || fallback;
-}
-
-function mapReference(
-	map: Map<string, string>,
-	value: unknown
-): string | undefined {
-	if (typeof value !== "string" || !value.trim()) return undefined;
-	return map.get(value) ?? value;
-}
-
-function valuesMatch(expected: unknown, actual: unknown): boolean {
-	if (typeof expected === "number" && typeof actual === "number") {
-		return Math.abs(expected - actual) < 0.001;
-	}
-	if (isRecord(expected) || Array.isArray(expected)) {
-		return JSON.stringify(expected) === JSON.stringify(actual);
-	}
-	return expected === actual;
-}
-
-const MEDIA_FAMILY_TYPES = new Set(["media", "video", "audio", "image"]);
-
-function expectedManifestTrims({ expected }: { expected: ManifestElement }): {
-	trimStart: number;
-	trimEnd: number;
-} {
-	return {
-		trimStart: typeof expected.trimStart === "number" ? expected.trimStart : 0,
-		trimEnd: typeof expected.trimEnd === "number" ? expected.trimEnd : 0,
-	};
-}
-
-function expectedReadBackValue({
-	expected,
-	key,
-}: {
-	expected: ManifestElement;
-	key: string;
-}): unknown {
-	const value = expected[key];
-	if (key === "textAnimationPreset" && isRecord(value)) {
-		return stringValue(value, "presetId");
-	}
-	// The timeline reports timeline seconds: (source duration − trims) ÷
-	// playbackRate. The manifest carries source seconds, so derive what the
-	// editor must have stored — a 2× audio clip occupies half its source span.
-	// Speed keyframes and freeze frames reshape the span in ways this formula
-	// cannot express, so those elements skip the derived check.
-	if (
-		key === "timelineDuration" &&
-		MEDIA_FAMILY_TYPES.has(expected.type ?? "") &&
-		typeof expected.duration === "number" &&
-		!(
-			Array.isArray(expected.speedKeyframes) &&
-			expected.speedKeyframes.length > 0
-		) &&
-		expected.freezeFrameDuration === undefined &&
-		expected.freezeFrameTime === undefined
-	) {
-		const { trimStart, trimEnd } = expectedManifestTrims({ expected });
-		const playbackRate =
-			typeof expected.playbackRate === "number" &&
-			Number.isFinite(expected.playbackRate) &&
-			expected.playbackRate > 0
-				? expected.playbackRate
-				: 1;
-		return Math.max(0, expected.duration - trimStart - trimEnd) / playbackRate;
-	}
-	if (
-		key !== "duration" ||
-		!MEDIA_FAMILY_TYPES.has(expected.type ?? "") ||
-		typeof value !== "number"
-	) {
-		return value;
-	}
-	const { trimStart, trimEnd } = expectedManifestTrims({ expected });
-	return Math.max(0, value - trimStart - trimEnd);
-}
-
-function actualReadBackValue({
-	actual,
-	expected,
-	key,
-}: {
-	actual: JsonRecord;
-	expected: ManifestElement;
-	key: string;
-}): unknown {
-	if (key === "textAnimationPreset") {
-		const request = expected.textAnimationPreset;
-		if (!isRecord(request)) return;
-		const phase = stringValue(request, "phase");
-		if (!phase) return;
-		const animations = actual.textAnimations;
-		if (!isRecord(animations)) return;
-		const phaseState = animations[phase];
-		if (!isRecord(phaseState)) {
-			return stringValue(request, "presetId") === "none" ? "none" : undefined;
-		}
-		const sourcePreset = phaseState.sourcePreset;
-		return isRecord(sourcePreset) ? stringValue(sourcePreset, "id") : undefined;
-	}
-	return actual[key] ?? (actual.style as JsonRecord | undefined)?.[key];
-}
-
 async function resolveActiveProjectId(
 	client: EditorApiClient
 ): Promise<string | undefined> {
@@ -324,34 +68,6 @@ async function resolveActiveProjectId(
 		"/api/claude/navigator/projects"
 	);
 	return navigator.activeProjectId ?? undefined;
-}
-
-function collectElements(manifest: TimelineManifest): Array<{
-	element: ManifestElement;
-	trackRef?: string;
-}> {
-	const collected = (manifest.elements ?? []).map((element) => ({
-		element,
-		trackRef: element.track ?? element.trackId,
-	}));
-	for (const [trackIndex, track] of (manifest.tracks ?? []).entries()) {
-		const trackRef = aliasFor(track, `track-${trackIndex}`);
-		for (const element of track.elements ?? []) {
-			collected.push({ element, trackRef });
-		}
-	}
-	return collected;
-}
-
-function collectTransitions(manifest: TimelineManifest): ManifestTransition[] {
-	const collected = [...(manifest.transitions ?? [])];
-	for (const [trackIndex, track] of (manifest.tracks ?? []).entries()) {
-		const trackRef = aliasFor(track, `track-${trackIndex}`);
-		for (const transition of track.transitions ?? []) {
-			collected.push({ ...transition, track: transition.track ?? trackRef });
-		}
-	}
-	return collected;
 }
 
 async function importManifestMedia({
@@ -454,9 +170,17 @@ async function createManifestTracks({
 	manifest: TimelineManifest;
 	replace: boolean;
 	trackIds: Map<string, string>;
-}): Promise<void> {
+}): Promise<{ positional: boolean }> {
 	const basePath = `/api/claude/timeline/${encodeURIComponent(projectId)}`;
 	const before = await client.get<TimelineSnapshot>(basePath);
+	// Array order sets the track order when the manifest is the whole
+	// timeline: a replace, or a project that still has only its empty main
+	// track. Merging into a timeline that has tracks keeps their order, and a
+	// track moves only when it names an `index`, so a manifest applied in
+	// parts does not shuffle what is already there.
+	const positional =
+		replace ||
+		before.tracks.every((track) => track.isMain && track.elements.length === 0);
 	let preservedMainId: string | undefined;
 	let mainManifestIndex = -1;
 	if (replace) {
@@ -472,10 +196,22 @@ async function createManifestTracks({
 			throw new Error("QCut did not expose its required main track");
 		}
 		preservedMainId = mainTrack?.id;
+		// A locked track refuses the deletes below, so the old lock is lifted
+		// first; the manifest decides which tracks end up locked.
+		for (const track of before.tracks) {
+			if (!track.id || !track.locked) continue;
+			await client.patch(`${basePath}/tracks/${encodeURIComponent(track.id)}`, {
+				locked: false,
+			});
+		}
 		if (mainTrack?.id && mainTrack.elements.length > 0) {
-			for (let offset = 0; offset < mainTrack.elements.length; offset += 50) {
+			for (
+				let offset = 0;
+				offset < mainTrack.elements.length;
+				offset += BATCH_SIZE
+			) {
 				const elements = mainTrack.elements
-					.slice(offset, offset + 50)
+					.slice(offset, offset + BATCH_SIZE)
 					.map((element) => ({
 						trackId: mainTrack.id!,
 						elementId: element.id,
@@ -500,23 +236,33 @@ async function createManifestTracks({
 		}
 	}
 
-	for (const [index, track] of (manifest.tracks ?? []).entries()) {
-		if (!track.type) throw new Error(`Track ${index} is missing type`);
-		const alias = aliasFor(track, `track-${index}`);
+	for (const [arrayIndex, track] of (manifest.tracks ?? []).entries()) {
+		if (!track.type) throw new Error(`Track ${arrayIndex} is missing type`);
+		const alias = aliasFor(track, `track-${arrayIndex}`);
+		const index = positional
+			? arrayIndex
+			: typeof track.index === "number"
+				? track.index
+				: undefined;
+		const settings = trackSettingsBody({ track });
 		const existingId = replace
-			? index === mainManifestIndex
+			? arrayIndex === mainManifestIndex
 				? preservedMainId
 				: undefined
 			: (track.trackId ??
 				before.tracks.find((candidate) => candidate.id === track.id)?.id);
 		if (existingId) {
-			await client.patch(
-				`${basePath}/tracks/${encodeURIComponent(existingId)}`,
-				{
-					index,
-					name: track.name,
-				}
-			);
+			const body: JsonRecord = {
+				...(index !== undefined ? { index } : {}),
+				...(track.name !== undefined ? { name: track.name } : {}),
+				...settings,
+			};
+			if (Object.keys(body).length > 0) {
+				await client.patch(
+					`${basePath}/tracks/${encodeURIComponent(existingId)}`,
+					body
+				);
+			}
 			trackIds.set(alias, existingId);
 			trackIds.set(existingId, existingId);
 			continue;
@@ -527,13 +273,53 @@ async function createManifestTracks({
 			{
 				type: track.type,
 				name: track.name,
-				index,
+				...(index !== undefined ? { index } : {}),
+				...settings,
 			}
 		);
 		if (!result.trackId)
 			throw new Error(`Track '${alias}' did not return an ID`);
 		trackIds.set(alias, result.trackId);
 		if (track.id) trackIds.set(track.id, result.trackId);
+	}
+	return { positional };
+}
+
+/**
+ * A track's colour, mute and visibility, set as it is made so its clips land
+ * on a track that already looks right. A lock waits until the clips are in
+ * (`lockManifestTracks`); an explicit unlock goes first so the adds pass.
+ */
+function trackSettingsBody({ track }: { track: ManifestTrack }): JsonRecord {
+	const body: JsonRecord = {};
+	if (track.colorLabel !== undefined) body.colorLabel = track.colorLabel;
+	if (typeof track.muted === "boolean") body.muted = track.muted;
+	if (typeof track.hidden === "boolean") body.hidden = track.hidden;
+	if (track.locked === false) body.locked = false;
+	return body;
+}
+
+/** Locks the tracks the manifest marks `locked`, once their clips are in. */
+async function lockManifestTracks({
+	client,
+	projectId,
+	manifest,
+	trackIds,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+	manifest: TimelineManifest;
+	trackIds: Map<string, string>;
+}): Promise<void> {
+	for (const [index, track] of (manifest.tracks ?? []).entries()) {
+		if (track.locked !== true) continue;
+		const alias = aliasFor(track, `track-${index}`);
+		const trackId = trackIds.get(alias);
+		if (!trackId) throw new Error(`Track '${alias}' has no id to lock`);
+		await client.patch(
+			`/api/claude/timeline/${encodeURIComponent(projectId)}/tracks/${encodeURIComponent(trackId)}`,
+			{ locked: true }
+		);
 	}
 }
 
@@ -555,8 +341,8 @@ async function addManifestElements({
 	expectedElements: Map<string, ManifestElement>;
 }): Promise<void> {
 	const collected = collectElements(manifest);
-	for (let offset = 0; offset < collected.length; offset += 50) {
-		const chunk = collected.slice(offset, offset + 50);
+	for (let offset = 0; offset < collected.length; offset += BATCH_SIZE) {
+		const chunk = collected.slice(offset, offset + BATCH_SIZE);
 		const payload = chunk.map(({ element, trackRef }, localIndex) => {
 			const alias = aliasFor(element, `element-${offset + localIndex}`);
 			const resolvedTrackId = mapReference(
@@ -614,9 +400,11 @@ async function addManifestElements({
 				error?: string;
 			}>;
 			failedCount: number;
-		}>(`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`, {
-			elements: payload,
-		});
+		}>(
+			`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`,
+			{ elements: payload },
+			{ timeout: batchRequestTimeoutMs({ count: payload.length }) }
+		);
 		if (result.failedCount > 0) {
 			const failures = result.added
 				.filter((item) => !item.success)
@@ -669,18 +457,23 @@ async function updateManifestElements({
 		expectedElements.set(alias, body);
 		return { elementId, ...body };
 	});
-	const result = await client.patch<{
-		results: Array<{ index: number; success: boolean; error?: string }>;
-		failedCount: number;
-	}>(`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`, {
-		updates: payload,
-	});
-	if (result.failedCount > 0) {
-		const failures = result.results
-			.filter((item) => !item.success)
-			.map((item) => item.error)
-			.join("; ");
-		throw new Error(`Element update batch failed: ${failures}`);
+	for (let offset = 0; offset < payload.length; offset += BATCH_SIZE) {
+		const chunk = payload.slice(offset, offset + BATCH_SIZE);
+		const result = await client.patch<{
+			results: Array<{ index: number; success: boolean; error?: string }>;
+			failedCount: number;
+		}>(
+			`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`,
+			{ updates: chunk },
+			{ timeout: batchRequestTimeoutMs({ count: chunk.length }) }
+		);
+		if (result.failedCount > 0) {
+			const failures = result.results
+				.filter((item) => !item.success)
+				.map((item) => item.error)
+				.join("; ");
+			throw new Error(`Element update batch failed: ${failures}`);
+		}
 	}
 }
 
@@ -737,142 +530,6 @@ async function addManifestTransitions({
 	return transitionIds;
 }
 
-function verifyManifest({
-	timeline,
-	manifest,
-	trackIds,
-	elementIds,
-	expectedElements,
-	transitionIds,
-}: {
-	timeline: TimelineSnapshot;
-	manifest: TimelineManifest;
-	trackIds: Map<string, string>;
-	elementIds: Map<string, string>;
-	expectedElements: Map<string, ManifestElement>;
-	transitionIds: string[];
-}): string[] {
-	const issues: string[] = [];
-	for (const [index, track] of (manifest.tracks ?? []).entries()) {
-		const alias = aliasFor(track, `track-${index}`);
-		const id = trackIds.get(alias);
-		const actualIndex = timeline.tracks.findIndex(
-			(candidate) => candidate.id === id
-		);
-		if (actualIndex !== index) {
-			issues.push(
-				`track '${alias}' expected index ${index}, got ${actualIndex}`
-			);
-		}
-		if (actualIndex >= 0 && timeline.tracks[actualIndex].type !== track.type) {
-			issues.push(`track '${alias}' type mismatch`);
-		}
-		if (
-			actualIndex >= 0 &&
-			track.name !== undefined &&
-			timeline.tracks[actualIndex].name !== track.name
-		) {
-			issues.push(`track '${alias}' name mismatch`);
-		}
-	}
-
-	const actualElements = new Map(
-		timeline.tracks.flatMap((track) =>
-			track.elements.map((element) => [element.id, element])
-		)
-	);
-	for (const [alias, expected] of expectedElements) {
-		const id = elementIds.get(alias);
-		const actual = id ? actualElements.get(id) : undefined;
-		if (!actual) {
-			issues.push(`element '${alias}' is missing`);
-			continue;
-		}
-		const verifiesText =
-			expected.type === "text" || expected.type === "captions";
-		const verifiesMedia =
-			expected.type === "media" ||
-			expected.type === "video" ||
-			expected.type === "audio" ||
-			expected.type === "image";
-		const verificationKeys = [
-			"startTime",
-			"duration",
-			"trimStart",
-			"trimEnd",
-			...(verifiesText ? TEXT_VERIFY_KEYS : []),
-			...(verifiesMedia ? MEDIA_VERIFY_KEYS : []),
-			...(expected.type === "sticker" ? STICKER_VERIFY_KEYS : []),
-		] as const;
-		for (const key of verificationKeys) {
-			const expectedValue = expectedReadBackValue({ expected, key });
-			if (expectedValue === undefined) continue;
-			const actualValue = actualReadBackValue({
-				actual,
-				expected,
-				key,
-			});
-			if (!valuesMatch(expectedValue, actualValue)) {
-				issues.push(`element '${alias}' field '${key}' did not match`);
-			}
-		}
-	}
-
-	const actualTransitions = new Map(
-		timeline.tracks.flatMap((track) =>
-			(track.transitions ?? []).flatMap((transition) =>
-				transition.id
-					? [[transition.id, { trackId: track.id, transition }]]
-					: []
-			)
-		)
-	);
-	const expectedTransitions = collectTransitions(manifest);
-	for (const [index, transitionId] of transitionIds.entries()) {
-		const expected = expectedTransitions[index];
-		const actual = actualTransitions.get(transitionId);
-		if (!(expected && actual)) {
-			issues.push(`transition '${transitionId}' is missing`);
-			continue;
-		}
-		const expectedTrackId = mapReference(
-			trackIds,
-			expected.track ?? expected.trackId
-		);
-		const expectedFromId = mapReference(
-			elementIds,
-			expected.from ?? expected.fromElementId
-		);
-		const expectedToId = mapReference(
-			elementIds,
-			expected.to ?? expected.toElementId
-		);
-		if (expectedTrackId && actual.trackId !== expectedTrackId) {
-			issues.push(`transition '${transitionId}' track did not match`);
-		}
-		if (expectedFromId && actual.transition.fromElementId !== expectedFromId) {
-			issues.push(`transition '${transitionId}' from element did not match`);
-		}
-		if (expectedToId && actual.transition.toElementId !== expectedToId) {
-			issues.push(`transition '${transitionId}' to element did not match`);
-		}
-		for (const key of TRANSITION_VERIFY_KEYS) {
-			const expectedValue =
-				key === "presetId"
-					? (expected.presetId ?? expected.type)
-					: expected[key];
-			if (expectedValue === undefined) continue;
-			if (!valuesMatch(expectedValue, actual.transition[key])) {
-				issues.push(
-					`transition '${transitionId}' field '${key}' did not match`
-				);
-			}
-		}
-	}
-	return issues;
-}
-
-/** Apply one declarative timeline manifest with rollback and read-back verification. */
 export async function timelineApplyManifest(
 	client: EditorApiClient,
 	opts: CLIRunOptions
@@ -895,6 +552,9 @@ export async function timelineApplyManifest(
 	const atomic = opts.atomic !== false;
 	const shouldVerify = opts.verify !== false;
 	const replace = opts.replace || manifest.replace === true;
+	const mix = manifestMix(manifest);
+	const touchesMix = mix !== undefined || manifestHasTrackAudio(manifest);
+	let previousMix: MixSnapshot | undefined;
 	const mediaIds = new Map<string, string>();
 	const trackIds = new Map<string, string>();
 	const elementIds = new Map<string, string>();
@@ -942,7 +602,7 @@ export async function timelineApplyManifest(
 		}
 
 		timelineMutationStarted = true;
-		await createManifestTracks({
+		const { positional } = await createManifestTracks({
 			client,
 			projectId,
 			manifest,
@@ -972,19 +632,40 @@ export async function timelineApplyManifest(
 			trackIds,
 			elementIds,
 		});
+		// The mix lives in the project, outside the timeline transaction, so
+		// the state before is kept to put back by hand if anything fails.
+		if (touchesMix) {
+			previousMix = await readMixSnapshot({ client, projectId });
+			if (mix) await applyManifestMix({ client, projectId, mix, replace });
+			await applyManifestTrackAudio({ client, projectId, manifest, trackIds });
+		}
+		await lockManifestTracks({ client, projectId, manifest, trackIds });
 
 		const timeline = await client.get<TimelineSnapshot>(
 			`/api/claude/timeline/${encodeURIComponent(projectId)}`
 		);
 		const verificationIssues = shouldVerify
-			? verifyManifest({
-					timeline,
-					manifest,
-					trackIds,
-					elementIds,
-					expectedElements,
-					transitionIds,
-				})
+			? [
+					...verifyManifest({
+						timeline,
+						manifest,
+						trackIds,
+						elementIds,
+						expectedElements,
+						transitionIds,
+						positional,
+					}),
+					...(touchesMix
+						? verifyManifestMix({
+								actual: await client.get<MixSnapshot>(
+									`/api/claude/mix/${encodeURIComponent(projectId)}`
+								),
+								manifest,
+								mix,
+								trackIds,
+							})
+						: []),
+				]
 			: [];
 		if (verificationIssues.length > 0) {
 			throw new Error(
@@ -1018,6 +699,9 @@ export async function timelineApplyManifest(
 				atomic,
 				replaced: replace,
 				verified: shouldVerify,
+				/** Array order set the track order (whole-timeline manifest). */
+				positionalTracks: positional,
+				mixApplied: touchesMix,
 				media: Object.fromEntries(mediaIds),
 				tracks: Object.fromEntries(trackIds),
 				elements: Object.fromEntries(elementIds),
@@ -1048,6 +732,13 @@ export async function timelineApplyManifest(
 				);
 			} catch {
 				// Best effort; timeline rollback remains authoritative.
+			}
+		}
+		if (previousMix) {
+			try {
+				await restoreMix({ client, projectId, previous: previousMix });
+			} catch {
+				// Best effort; the error below names the step that failed.
 			}
 		}
 		const cleanedMedia: string[] = [];
