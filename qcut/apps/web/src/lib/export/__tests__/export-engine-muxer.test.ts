@@ -398,6 +398,47 @@ describe("ExportEngineMuxer", () => {
 		]);
 	});
 
+	it("ends the last frame where the timeline ends instead of a frame later", async () => {
+		const { canvas } = createMockCanvas();
+		// 0.11 s at 30 fps is 3.3 frames: four frames, the last one 0.01 s long.
+		const engine = new ExportEngineMuxer(
+			canvas,
+			{
+				format: "mp4",
+				quality: "720p",
+				filename: "short-tail.mp4",
+				width: 1280,
+				height: 720,
+				frameRate: 30,
+			},
+			[],
+			[],
+			0.11
+		);
+		engine.renderFrame = vi.fn(async () => {});
+
+		await engine.export();
+
+		const samples = mockVideoSampleCtor.mock.calls.map(([, init]) => ({
+			timestamp: init.timestamp as number,
+			duration: init.duration as number,
+		}));
+		expect(samples.map((sample) => sample.timestamp)).toEqual([
+			0,
+			1 / 30,
+			2 / 30,
+			3 / 30,
+		]);
+		expect(samples.slice(0, 3).map((sample) => sample.duration)).toEqual([
+			1 / 30,
+			1 / 30,
+			1 / 30,
+		]);
+		expect(samples[3].duration).toBeCloseTo(0.01, 9);
+		const end = samples[3].timestamp + samples[3].duration;
+		expect(end).toBeCloseTo(0.11, 9);
+	});
+
 	it("throws when export is already in progress", async () => {
 		const { canvas } = createMockCanvas();
 		const engine = new ExportEngineMuxer(
