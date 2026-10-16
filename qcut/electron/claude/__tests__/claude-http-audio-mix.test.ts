@@ -302,7 +302,7 @@ describe("mixer routes", () => {
 		expect(result).toMatchObject({ busId: "sfx", bus: { id: "sfx" } });
 	});
 
-	it("measures loudness without marking the project changed", async () => {
+	it("runs loudness as a job: a job id at once, the numbers once rendered", async () => {
 		const loudness = {
 			integratedLufs: -14.2,
 			maxShortTermLufs: -11.8,
@@ -311,18 +311,58 @@ describe("mixer routes", () => {
 			samplePeakDb: -1.3,
 			durationSeconds: 92,
 		};
-		const mutate = vi.fn(async () => ({ success: true, loudness }));
+		let finish: (value: ClaudeAudioMixResponse) => void = () => {};
+		const mutate = vi.fn(
+			() =>
+				new Promise<ClaudeAudioMixResponse>((resolve) => {
+					finish = resolve;
+				})
+		);
 		const { call, onChanged } = routes(mutate);
-		expect(
-			await call("POST /api/claude/mix/:projectId/loudness", { projectId: "p" })
-		).toEqual({ projectId: "p", ...loudness });
+		const started = (await call("POST /api/claude/mix/:projectId/loudness", {
+			projectId: "p",
+		})) as { jobId: string; status: string };
+		expect(started).toMatchObject({ status: "running", kind: "loudness" });
 		expect(mutate).toHaveBeenCalledWith(
 			{ action: "measure-loudness", projectId: "p" },
 			undefined
 		);
+		const statusPath = "GET /api/claude/mix/:projectId/jobs/:jobId";
+		expect(
+			await call(statusPath, { projectId: "p", jobId: started.jobId })
+		).toMatchObject({ status: "running", message: expect.any(String) });
+
+		finish({ success: true, loudness });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(
+			await call(statusPath, { projectId: "p", jobId: started.jobId })
+		).toMatchObject({ status: "completed", result: { loudness } });
+		await expect(
+			call(statusPath, { projectId: "other", jobId: started.jobId })
+		).rejects.toMatchObject({ status: 404 });
 		expect(onChanged).not.toHaveBeenCalled();
 	});
 
+	it("keeps a failed render's reason on the job", async () => {
+		const { call } = routes(async () => ({
+			success: false,
+			reason: "invalid",
+			error: "The timeline has no audio to measure",
+		}));
+		const started = (await call("POST /api/claude/mix/:projectId/loudness", {
+			projectId: "p",
+		})) as { jobId: string };
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(
+			await call("GET /api/claude/mix/:projectId/jobs/:jobId", {
+				projectId: "p",
+				jobId: started.jobId,
+			})
+		).toMatchObject({
+			status: "failed",
+			error: "The timeline has no audio to measure",
+		});
+	});
 	it("says the mixer is unavailable when the editor cannot reach it", async () => {
 		const { call } = routes(undefined);
 		await expect(
