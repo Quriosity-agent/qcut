@@ -44,7 +44,21 @@ qcut editor:timeline:add-element \
 qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
+
+# Adjustment layer: grades everything on the tracks below it for its duration
+qcut editor:timeline:add-element \
+  --project-id <id> \
+  --data '{"type":"adjustment","startTime":0,"duration":60,"adjustments":{"contrast":15,"saturation":-30,"temperature":-20,"vignette":35}}'
 ```
+
+An adjustment layer takes `adjustments` (brightness, contrast, saturation,
+temperature, tint, sharpness, fade, vignette), a full `color` grade like a
+clip's (`color.basic`, LUT, curves, wheels…), `opacity` and `masks`; fields
+left out keep the editor's defaults. Preview and export render the same grade:
+the native export grades the picture inside the layer's time window, and a
+layer with masks or a multi-pass program sends the export through the
+renderer's canvas engine automatically. `timeline export` shows the layer's
+`color`, `adjustments` and the resolved `colorSettings`.
 
 Video and audio given without `duration` take their file's own length: for
 video, the length of the video stream, not the container (which can be a
