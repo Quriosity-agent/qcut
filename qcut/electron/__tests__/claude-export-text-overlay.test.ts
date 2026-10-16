@@ -537,6 +537,67 @@ describe("native export text overlays", () => {
 		expect(yOf("之后")).toBe(yOf("第一句"));
 	});
 
+	it("gives the edge to the higher track when two captions start together, like the preview", () => {
+		const caption = ({
+			id,
+			trackIndex,
+			content,
+		}: {
+			id: string;
+			trackIndex: number;
+			content: string;
+		}) => ({
+			id,
+			trackIndex,
+			startTime: 1,
+			endTime: 2,
+			duration: 1,
+			type: "captions" as const,
+			content,
+			language: "zh",
+		});
+		const timeline: ClaudeTimeline = {
+			name: "Same start",
+			duration: 4,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "lower",
+					index: 0,
+					name: "字幕 A",
+					type: "captions",
+					elements: [caption({ id: "a", trackIndex: 0, content: "下层" })],
+				},
+				{
+					id: "upper",
+					index: 1,
+					name: "字幕 B",
+					type: "captions",
+					elements: [caption({ id: "b", trackIndex: 1, content: "上层" })],
+				},
+			],
+		};
+		const ass = buildTextAss({
+			overlays: collectTextOverlays(timeline),
+			width: 1280,
+			height: 720,
+		});
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		const yOf = (text: string) =>
+			Number(
+				events
+					.find((line) => line.endsWith(text))
+					?.match(/\\pos\(640\.00,([0-9.]+)\)/)?.[1]
+			);
+		// caption-stacking.ts: equal starts → the higher track keeps the edge
+		// (larger y at the bottom), the lower track stacks one block above it.
+		expect(yOf("上层") - yOf("下层")).toBeCloseTo(48 * 1.4 + 16, 1);
+	});
+
 	it("substitutes an openable CJK family for CJK content", () => {
 		const timeline: ClaudeTimeline = {
 			name: "CJK",
