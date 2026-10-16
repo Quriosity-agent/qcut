@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 
 /**
@@ -28,5 +29,25 @@ export async function moveFile({
 			throw copyError;
 		}
 		await fsPromises.unlink(from);
+	}
+}
+
+/** The synchronous form of {@link moveFile}, for the export paths that run synchronously. */
+export function moveFileSync({ from, to }: { from: string; to: string }): void {
+	try {
+		fs.renameSync(from, to);
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+		try {
+			fs.copyFileSync(from, to);
+		} catch (copyError) {
+			try {
+				fs.rmSync(to, { force: true });
+			} catch {
+				// The partial copy could not be removed; the copy error is reported.
+			}
+			throw copyError;
+		}
+		fs.unlinkSync(from);
 	}
 }
