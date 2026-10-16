@@ -445,6 +445,18 @@ export interface CLIRunOptions {
 	/** editor captions import: the subtitle file to read. */
 	file?: string;
 	crossTrackRipple?: boolean;
+	/** editor:editing:delete-range: leave mix automation where it is. */
+	keepAutomation?: boolean;
+	/** editor:beats:mark: bookmarks to add — none, downbeats or all. */
+	bookmarks?: string;
+	/** editor:timeline:snap: the clip whose marked beats are the grid. */
+	beatsFrom?: string;
+	/** editor:timeline:snap: which clip edge lands on the beat. */
+	edge?: string;
+	/** editor:timeline:snap: farthest a clip may move, in seconds. */
+	maxDistance?: number;
+	/** editor:timeline:snap: only downbeats count. */
+	downbeatsOnly?: boolean;
 	removeFillers?: boolean;
 	removeSilences?: boolean;
 	silenceThreshold?: number;
