@@ -371,4 +371,10 @@ test("text and captions measure the same from the native and muxer engines", asy
 			HEIGHT - 70
 		);
 	}
+	// Two captions at once stack: the pair spans two line boxes, not one.
+	const single = (muxer.captionLatin as ReturnType<typeof describe>).height;
+	for (const engine of [native, muxer]) {
+		const pair = engine.captionsOverlap as ReturnType<typeof describe>;
+		expect(pair.height, "stacked captions").toBeGreaterThan(single * 2);
+	}
 });
