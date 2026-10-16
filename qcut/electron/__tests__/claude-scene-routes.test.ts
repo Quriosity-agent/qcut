@@ -5,10 +5,14 @@ import { registerAnalysisRoutes } from "../claude/http/claude-http-analysis-rout
 
 const mocks = vi.hoisted(() => ({
 	detectScenes: vi.fn(),
+	inspectSceneEngines: vi.fn(),
 	logOperation: vi.fn(),
 }));
 vi.mock("../claude/handlers/claude-scene-handler.js", () => ({
+	INVALID_SCENE_ENGINE_MESSAGE:
+		"Invalid scene detection engine; expected one of auto, jianying, onnx, ffmpeg",
 	detectScenes: mocks.detectScenes,
+	inspectSceneEngines: mocks.inspectSceneEngines,
 }));
 vi.mock("../claude/handlers/claude-analyze-handler.js", () => ({}));
 vi.mock("../claude/handlers/claude-transcribe-handler.js", () => ({}));
@@ -101,7 +105,6 @@ describe("scene HTTP engine routing", () => {
 		[null],
 		[false],
 		[0],
-		["auto"],
 		["ONNX"],
 		["torch"],
 		[""],
@@ -115,6 +118,14 @@ describe("scene HTTP engine routing", () => {
 			message: expect.stringContaining("Invalid scene detection engine"),
 		});
 		expect(mocks.detectScenes).not.toHaveBeenCalled();
+	});
+
+	it("lets the handler pick the engine for auto", async () => {
+		await sceneRoute()({ body: { mediaId: "video", engine: "auto" } });
+		expect(mocks.detectScenes).toHaveBeenCalledWith(
+			"project",
+			expect.objectContaining({ engine: "auto" })
+		);
 	});
 
 	it.each([
