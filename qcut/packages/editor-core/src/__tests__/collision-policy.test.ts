@@ -65,6 +65,33 @@ describe("collision policy", () => {
 		).toBe("inside");
 	});
 
+	it("treats a sub-tolerance remnant as inside the range", () => {
+		const range = { startTime: 2, endTime: 4 };
+		// Ends 0.4 ms past the range: without a tolerance a 0.4 ms clip would survive.
+		expect(
+			classifyRangeCollision({
+				item: { startTime: 2.5, endTime: 4.0004 },
+				range,
+				tolerance: 1 / 48,
+			})
+		).toBe("inside");
+		expect(
+			classifyRangeCollision({
+				item: { startTime: 1.99, endTime: 3 },
+				range,
+				tolerance: 1 / 48,
+			})
+		).toBe("inside");
+		// A real overhang still keeps its part.
+		expect(
+			classifyRangeCollision({
+				item: { startTime: 2.5, endTime: 4.5 },
+				range,
+				tolerance: 1 / 48,
+			})
+		).toBe("starts-inside");
+	});
+
 	it("plans an overwrite by collision kind", () => {
 		expect(
 			planOverwrite({
