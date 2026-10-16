@@ -644,6 +644,47 @@ describe("Timeline Store Operations", () => {
 		).toBeCloseTo(2);
 	});
 
+	it("deleteTimeRange ripples a track's automation with its clips", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: {
+					gainDb: [
+						{ time: 2, value: 0 },
+						{ time: 12, value: -12 },
+					],
+				},
+			});
+		});
+		act(() => {
+			result.current.deleteTimeRange({ startTime: 6, endTime: 8 });
+		});
+		// Nothing sat inside 6–8 s, so the later point simply moves up 2 s.
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 2, value: 0 },
+			{ time: 10, value: -12 },
+		]);
+	});
+
+	it("deleteTimeRange leaves automation alone with keepAutomation", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: { gainDb: [{ time: 12, value: -12 }] },
+			});
+		});
+		act(() => {
+			result.current.deleteTimeRange({
+				startTime: 6,
+				endTime: 8,
+				keepAutomation: true,
+			});
+		});
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 12, value: -12 },
+		]);
+	});
+
 	it("deleteTimeRange preserves source boundaries inside a 2x clip", () => {
 		const { result, mainTrackId } = setupStoreWithElement({
 			overrides: { playbackRate: 2 },
