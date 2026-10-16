@@ -108,13 +108,8 @@ function parseBody({
 				// Stop keeping the body but keep the socket: destroying it here
 				// left the client with ECONNRESET instead of this answer.
 				req.removeAllListeners("data");
-				req.resume();
-				reject(
-					new HttpError(
-						413,
-						`Payload too large (limit ${Math.round(maxBodySize / (1024 * 1024))} MB)`
-					)
-				);
+				(req as { resume?: () => void }).resume?.();
+				reject(new HttpError(413, "Payload too large"));
 				return;
 			}
 			body += chunk;
