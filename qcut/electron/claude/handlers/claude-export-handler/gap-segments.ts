@@ -99,7 +99,6 @@ export function buildGapSegmentEncodeArgs({
 		"aac",
 		"-b:a",
 		"192k",
-		"-shortest",
 		outputPath,
 	];
 }
