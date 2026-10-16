@@ -136,6 +136,10 @@ export interface CLIRunOptions {
 	voiceId?: string;
 	directory?: string;
 	dryRun?: boolean;
+	/** Shot split: cuts that would leave a shorter shot are set aside. */
+	minShot?: number;
+	/** Scene detection: describe each scene with the AI model too. */
+	aiAnalysis?: boolean;
 	recursive?: boolean;
 	includeOutput?: boolean;
 	source?: string;
