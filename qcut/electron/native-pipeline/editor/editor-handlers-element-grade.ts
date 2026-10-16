@@ -119,17 +119,23 @@ async function patchElements({
 	projectId,
 	elementIds,
 	changes,
+	forceBatch = false,
 }: {
 	client: EditorApiClient;
 	projectId: string;
 	elementIds: string[];
 	changes: Record<string, unknown>;
+	/**
+	 * The batch route takes bodies up to 64 MB; the single-element route only
+	 * 1 MB, which a LUT cube exceeds (the server then drops the connection).
+	 */
+	forceBatch?: boolean;
 }): Promise<{
 	updated: number;
 	failed: Array<{ elementId: string; error: string }>;
 	ignoredFields: string[];
 }> {
-	if (elementIds.length === 1) {
+	if (elementIds.length === 1 && !forceBatch) {
 		const result = await client.patch<{ ignoredFields?: string[] }>(
 			`/api/claude/timeline/${projectId}/elements/${encodeURIComponent(elementIds[0])}`,
 			changes
@@ -350,6 +356,7 @@ export async function elementFilter(
 							effects: [...existing, ...resolved.effects],
 						},
 					},
+					forceBatch: true,
 				});
 				updated += outcome.updated;
 				failed.push(...outcome.failed);
@@ -365,6 +372,7 @@ export async function elementFilter(
 						effects: resolved.effects,
 					},
 				},
+				forceBatch: true,
 			});
 			updated = outcome.updated;
 			failed.push(...outcome.failed);
