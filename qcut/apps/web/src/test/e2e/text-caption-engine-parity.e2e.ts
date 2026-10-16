@@ -16,6 +16,8 @@ import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixtur
 const FFMPEG = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffmpeg");
 const WIDTH = 1280;
 const HEIGHT = 720;
+/** Not a whole number of frames: both engines must still end exactly here. */
+const CLIP_SECONDS = 4.05;
 
 function cli<T>({
 	apiPort,
@@ -64,7 +66,7 @@ function makeBlackClip({ dir }: { dir: string }): string {
 		"-i",
 		"anullsrc=r=48000:cl=stereo",
 		"-t",
-		"4",
+		String(CLIP_SECONDS),
 		"-c:v",
 		"libx264",
 		"-pix_fmt",
@@ -308,6 +310,25 @@ test("text and captions measure the same from the native and muxer engines", asy
 		expect(probe.stdout.trim(), `${engine} frame size`).toBe(
 			`${WIDTH},${HEIGHT}`
 		);
+		// The file ends where the timeline ends, on both engines: the muxer's
+		// last frame is cut to the remainder instead of lasting a whole frame.
+		const length = spawnSync(
+			path.resolve("electron/resources/ffmpeg/darwin-arm64/ffprobe"),
+			[
+				"-v",
+				"error",
+				"-show_entries",
+				"format=duration",
+				"-of",
+				"csv=p=0",
+				outputPath,
+			],
+			{ encoding: "utf8" }
+		);
+		expect(
+			Math.abs(Number(length.stdout.trim()) - CLIP_SECONDS),
+			`${engine} length ${length.stdout.trim()} vs ${CLIP_SECONDS}`
+		).toBeLessThanOrEqual(0.02);
 		const overlap = readFrame({ file: outputPath, time: 2.0 });
 		const latin = readFrame({ file: outputPath, time: 3.5 });
 		const textRows = { rowStart: 0, rowEnd: HEIGHT / 2 + 40 };
