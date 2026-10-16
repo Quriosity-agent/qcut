@@ -329,7 +329,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	]),
 	"editor:track:update": ed(
 		"editor:track:update",
-		"Rename, move or colour a timeline track",
+		"Rename, move, colour, lock or hide a timeline track",
 		[
 			PID_ACTIVE,
 			f("--track-id", "string", "Track ID", { required: true }),
@@ -340,6 +340,10 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"string",
 				"Default clip colour (violet, blue, green, yellow, red, rose, orange, mango), or none"
 			),
+			f("--lock", "boolean", "Lock the track (it refuses edits)"),
+			f("--unlock", "boolean", "Unlock the track"),
+			f("--hide", "boolean", "Hide the track from the preview and export"),
+			f("--unhide", "boolean", "Show the track again"),
 		]
 	),
 	"editor:track:move": ed(
