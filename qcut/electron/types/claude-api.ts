@@ -579,6 +579,49 @@ export interface ClaudeSplitResponse {
 	secondElementId: string | null;
 }
 
+/** Split one clip, or every video clip on a track, by its shots. */
+export interface ClaudeShotSplitRequest {
+	projectId: string;
+	elementId?: string;
+	trackId?: string;
+	/** Default `auto`: jianying, then onnx, then ffmpeg. */
+	engine?: SceneDetectionEngineChoice;
+	/** Cut points in source seconds; given, nothing is detected. */
+	cuts?: number[];
+	/** FFmpeg scene threshold; only that engine reads it. */
+	threshold?: number;
+	/** Cuts that would leave a shorter shot are set aside. */
+	minShotSeconds?: number;
+	/** Plan only; the timeline is left alone. */
+	dryRun?: boolean;
+}
+
+export interface ClaudeShotSplitClipResult {
+	projectId: string;
+	trackId: string;
+	elementId: string;
+	elementName: string;
+	requestedEngine: SceneDetectionEngineChoice | "cuts";
+	engine?: SceneDetectionEngine;
+	route?: string;
+	fallbacks?: SceneEngineFallback[];
+	dryRun: boolean;
+	cuts: Array<{ sourceTime: number; timelineTime: number }>;
+	skipped: Array<{
+		sourceTime?: number;
+		timelineTime?: number;
+		reason: string;
+	}>;
+	createdElementIds: string[];
+	elementIds: string[];
+}
+
+export interface ClaudeShotSplitResponse {
+	results: ClaudeShotSplitClipResult[];
+	/** Clips that could not be split, with the reason. */
+	failed: Array<{ elementId: string; elementName?: string; error: string }>;
+}
+
 export interface ClaudeMoveRequest {
 	toTrackId: string;
 	newStartTime?: number;
@@ -1096,19 +1139,54 @@ export interface SceneBoundary {
 	transitionType?: "cut" | "dissolve" | "fade" | "unknown";
 }
 
-export const SCENE_DETECTION_ENGINES = ["ffmpeg", "onnx"] as const;
+/** Engines that run a detection, most accurate first. */
+export const SCENE_DETECTION_ENGINES = ["jianying", "onnx", "ffmpeg"] as const;
+export type SceneDetectionEngine = (typeof SCENE_DETECTION_ENGINES)[number];
+/** What a caller may ask for: an engine, or `auto` for the first available one. */
+export const SCENE_DETECTION_ENGINE_CHOICES = [
+	"auto",
+	...SCENE_DETECTION_ENGINES,
+] as const;
+export type SceneDetectionEngineChoice =
+	(typeof SCENE_DETECTION_ENGINE_CHOICES)[number];
 
 export interface SceneDetectionRequest {
 	mediaId: string;
-	engine?: (typeof SCENE_DETECTION_ENGINES)[number];
-	/** FFmpeg scene-filter threshold; the ONNX model uses its verified profile. */
+	/** Default `auto`: the native Jianying bridge, then ONNX, then FFmpeg. */
+	engine?: SceneDetectionEngineChoice;
+	/** FFmpeg scene-filter threshold; the models use their verified profiles. */
 	threshold?: number;
 	aiAnalysis?: boolean;
 	model?: string;
 }
 
+/** Why `auto` passed over an engine. */
+export interface SceneEngineFallback {
+	engine: SceneDetectionEngine;
+	reason: string;
+}
+
+export interface SceneEngineAvailability {
+	engine: SceneDetectionEngine;
+	available: boolean;
+	/** What the engine says about itself: ready, or what is missing. */
+	message: string;
+	route?: string;
+}
+
+export interface SceneEnginesStatus {
+	engines: SceneEngineAvailability[];
+	/** The engine `auto` would run now, or null when none is available. */
+	preferred: SceneDetectionEngine | null;
+}
+
 export interface SceneDetectionResult {
-	engine: (typeof SCENE_DETECTION_ENGINES)[number];
+	/** The engine that ran. */
+	engine: SceneDetectionEngine;
+	/** What was asked for, when it differs from the engine that ran. */
+	requestedEngine?: SceneDetectionEngineChoice;
+	/** Engines `auto` skipped on the way to the one that ran. */
+	fallbacks?: SceneEngineFallback[];
 	route?: string;
 	durationSeconds?: number;
 	scenes: SceneBoundary[];
