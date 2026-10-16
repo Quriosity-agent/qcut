@@ -12,10 +12,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect } from "@playwright/test";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
+import { localFixturePath } from "./helpers/local-fixtures";
 
-const VIDEO =
-	process.env.QCUT_SHOT_SPLIT_E2E_SOURCE ??
-	"/Users/peter/Documents/QCut/Projects/481632c1-df20-4317-8c79-041922c3ab50/media/08_机甲滑索接战三种怪物.mp4";
+const VIDEO = localFixturePath("QCUT_SHOT_SPLIT_E2E_SOURCE");
 const AUDIO = path.resolve(
 	"apps/web/src/test/e2e/fixtures/media/sample-audio.mp3"
 );
