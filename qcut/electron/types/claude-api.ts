@@ -620,6 +620,17 @@ export interface ClaudeBeatDetectionResult {
 	duration: number;
 }
 
+/** Where a media file's sound first attacks (source seconds); `editor timeline snap --edge onset` puts it on the beat. */
+export interface ClaudeFirstOnsetResult {
+	mediaId: string;
+	/** Seconds from the file's start, or null when nothing reaches the threshold. */
+	time: number | null;
+	/** That attack's strength relative to the file's loudest onset (0–1). */
+	strength: number;
+	threshold: number;
+	duration: number;
+}
+
 /**
  * `editor beats mark`: hand a clip's detection result to the editor, which
  * keeps it in the same beat store the beat panel and ruler markers read, and
@@ -654,13 +665,32 @@ export interface ClaudeBeatsMarkResponse {
 }
 
 /** `editor timeline snap --to beats`: move clips onto the nearest marked beat. */
+/** Which point of a clip lands on the beat. */
+export type ClaudeBeatSnapEdge = "start" | "end" | "onset";
+/** Which clips are rounded onto a whole frame once snapped. */
+export type ClaudeBeatSnapFrameAlign = "visual" | "all" | "none";
+
 export interface ClaudeSnapToBeatsRequest {
 	projectId: string;
 	elementIds: string[];
 	/** The clip whose marked beats are the grid; default: the one clip that has beats. */
 	beatsElementId?: string;
-	/** Which edge lands on the beat (default start). */
-	edge?: "start" | "end";
+	/**
+	 * Which point lands on the beat: the clip's start (default), its end, or
+	 * its first onset (`edgeOffsets` says where that is).
+	 */
+	edge?: ClaudeBeatSnapEdge;
+	/**
+	 * For edge "onset": seconds from each clip's start on the timeline to the
+	 * attack that should land on the beat; a clip without one stays.
+	 */
+	edgeOffsets?: Record<string, number>;
+	/**
+	 * Which clips end up on a whole frame of the project's fps: the visual
+	 * ones (default; video, image, text, captions, stickers), all, or none.
+	 * Sound may sit between frames; anything seen has to start on one.
+	 */
+	frameAlign?: ClaudeBeatSnapFrameAlign;
 	/** Clips farther than this (seconds) from any beat stay put (default 0.5). */
 	maxDistance?: number;
 	downbeatsOnly?: boolean;
@@ -676,6 +706,10 @@ export interface ClaudeSnapToBeatsResult {
 	moved: number;
 	/** The beat the edge snapped to, or null when none was near enough. */
 	beat: number | null;
+	/** For edge "onset": the offset from the clip's start that was put on the beat. */
+	offset?: number;
+	/** Whether `to` was rounded onto the project's frame grid. */
+	frameAligned?: boolean;
 	applied: boolean;
 	reason?: string;
 }
@@ -683,7 +717,8 @@ export interface ClaudeSnapToBeatsResult {
 export interface ClaudeSnapToBeatsResponse {
 	projectId: string;
 	beatsElementId: string;
-	edge: "start" | "end";
+	edge: ClaudeBeatSnapEdge;
+	frameAlign: ClaudeBeatSnapFrameAlign;
 	dryRun: boolean;
 	results: ClaudeSnapToBeatsResult[];
 	moved: number;
