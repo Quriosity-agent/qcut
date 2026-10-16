@@ -25,7 +25,10 @@ import * as path from "path";
 import * as fs from "fs";
 import * as http from "http";
 import { parseChangelog } from "./release-notes-utils.js";
-import { registerMainIpcHandlers } from "./main-ipc.js";
+import {
+	registerMainIpcHandlers,
+	refreshInstalledCliLauncher,
+} from "./main-ipc.js";
 import { setupApplicationMenu } from "./app-menu.js";
 import { registerAppProtocol } from "./app-protocol-handler.js";
 import {
@@ -1359,6 +1362,9 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 			getReleasesDir,
 			readChangelogFallback,
 		});
+		// A `qcut` launcher the user installed keeps pointing at this app after
+		// it moved (an update in place changes nothing, so this is a no-op then).
+		refreshInstalledCliLauncher({ logger });
 	});
 } // end if (!isCliKeyCommand && !isHeadlessRecorder)
 
