@@ -36,6 +36,7 @@ import {
 	getClaudeMediaTimingProperties,
 	resolveClaudeStickerRuntime,
 	parseClaudeMediaFilterStack,
+	readClaudeMediaVisualFields,
 } from "./claude-timeline-bridge-helpers";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
 import {
@@ -155,6 +156,13 @@ const COMMON_PATCH_FIELDS = new Set([
 const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
 	media: new Set([
 		"name",
+		"fitMode",
+		"x",
+		"y",
+		"rotation",
+		"scaleX",
+		"scaleY",
+		"opacity",
 		"playbackRate",
 		"speedKeyframes",
 		"reverse",
@@ -320,6 +328,13 @@ export const applyElementChanges = ({
 		) {
 			throw new Error("enhancements must be an object");
 		}
+		// Canvas placement and fit, checked like the other media payloads.
+		const visualUpdates =
+			element.type === "media"
+				? readClaudeMediaVisualFields({
+						element: changes as Record<string, unknown>,
+					})
+				: {};
 		// A clip's grade: `color` is a partial MediaColorSettings merged into the
 		// current grade (the colour panel edits one value at a time the same
 		// way); `adjustments` are the eight legacy basic fields. Checked before
@@ -492,7 +507,7 @@ export const applyElementChanges = ({
 				);
 			}
 
-			const mediaUpdates: Record<string, unknown> = {};
+			const mediaUpdates: Record<string, unknown> = { ...visualUpdates };
 			if (typeof changes.name === "string" && changes.name.trim()) {
 				mediaUpdates.name = changes.name.trim();
 			}
