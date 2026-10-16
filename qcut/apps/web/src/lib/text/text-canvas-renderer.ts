@@ -246,11 +246,15 @@ export function renderTextToCanvas({
 	}
 
 	lines.forEach((line, index) => {
-		const lineWidth = measureTextWithSpacing({
-			ctx,
-			text: line,
-			letterSpacing: style.letterSpacing,
-		});
+		// CSS letter-spacing follows every character, the last one included, so
+		// a centred or right-aligned line sits half a spacing further left than
+		// its ink alone would; the preview shows that, and so does the export.
+		const lineWidth =
+			measureTextWithSpacing({
+				ctx,
+				text: line,
+				letterSpacing: style.letterSpacing,
+			}) + (line.length > 0 ? style.letterSpacing : 0);
 		const x = getLineX({
 			align: renderedElement.textAlign,
 			contentLeft,
