@@ -13,8 +13,23 @@ import { claudeLog } from "../utils/logger.js";
 import { sanitizeProjectId } from "../utils/helpers.js";
 import { getFFmpegPath } from "../../ffmpeg/utils.js";
 import { getDecryptedApiKeys } from "../../api-key-handler.js";
-import { detectShotsWithOnnxEngine } from "../../jianying-shot-split/onnx-engine.js";
-import { SCENE_DETECTION_ENGINES } from "../../types/claude-api.js";
+import {
+	detectShotsWithOnnxEngine,
+	inspectOnnxEngine,
+} from "../../jianying-shot-split/onnx-engine.js";
+import {
+	detectShotsWithJianyingRuntime,
+	inspectJianyingShotSplit,
+} from "../../jianying-shot-split/runtime.js";
+import type { JianyingShotSplitResult } from "../../jianying-shot-split/jianying-shot-split-contract.js";
+import {
+	SCENE_DETECTION_ENGINE_CHOICES,
+	type SceneDetectionEngine,
+	type SceneDetectionEngineChoice,
+	type SceneEngineAvailability,
+	type SceneEngineFallback,
+	type SceneEnginesStatus,
+} from "../../types/claude-api.js";
 import type {
 	SceneBoundary,
 	SceneDetectionRequest,
@@ -302,6 +317,100 @@ async function enrichWithAI(
 	return scenes;
 }
 
+export const INVALID_SCENE_ENGINE_MESSAGE = `Invalid scene detection engine; expected one of ${SCENE_DETECTION_ENGINE_CHOICES.join(", ")}`;
+
+/** Whether each engine can run here, and the one `auto` would pick. */
+export async function inspectSceneEngines(): Promise<SceneEnginesStatus> {
+	const [jianying, onnx] = await Promise.all([
+		inspectJianyingShotSplit(),
+		inspectOnnxEngine(),
+	]);
+	const engines: SceneEngineAvailability[] = [
+		{
+			engine: "jianying",
+			available: jianying.available,
+			message: jianying.message,
+			route: jianying.route,
+		},
+		{ engine: "onnx", available: onnx.available, message: onnx.message },
+		{
+			engine: "ffmpeg",
+			available: true,
+			message: "FFmpeg scene filter (picture-difference threshold)",
+		},
+	];
+	return {
+		engines,
+		preferred: engines.find((entry) => entry.available)?.engine ?? null,
+	};
+}
+
+/**
+ * The engine to run for a request: the one named, or for `auto` the first
+ * available one in accuracy order, with the skipped ones and their reasons.
+ */
+async function resolveSceneEngine({
+	requested,
+}: {
+	requested: SceneDetectionEngineChoice;
+}): Promise<{
+	engine: SceneDetectionEngine;
+	fallbacks: SceneEngineFallback[];
+}> {
+	if (requested !== "auto") return { engine: requested, fallbacks: [] };
+	const status = await inspectSceneEngines();
+	const fallbacks: SceneEngineFallback[] = [];
+	for (const entry of status.engines) {
+		if (entry.available) return { engine: entry.engine, fallbacks };
+		fallbacks.push({ engine: entry.engine, reason: entry.message });
+	}
+	throw new Error(
+		`No scene detection engine is available: ${fallbacks
+			.map((item) => `${item.engine}: ${item.reason}`)
+			.join("; ")}`
+	);
+}
+
+/** Scene boundaries from a shot-split model result, after checking its shape. */
+function scenesFromShotSplitResult({
+	result,
+	engine,
+}: {
+	result: JianyingShotSplitResult;
+	engine: SceneDetectionEngine;
+}): { scenes: SceneBoundary[]; route: string; durationSeconds: number } {
+	if (
+		!Number.isFinite(result.durationSeconds) ||
+		result.durationSeconds <= 0 ||
+		result.cutFrames.length !== result.cutPoints.length ||
+		result.cutPoints.some(
+			(timestamp, index) =>
+				!Number.isFinite(timestamp) ||
+				timestamp <= 0 ||
+				timestamp >= result.durationSeconds ||
+				(index > 0 && timestamp <= result.cutPoints[index - 1])
+		)
+	) {
+		throw new Error(`Invalid result from the ${engine} scene engine`);
+	}
+	// The native bridge reports no per-cut probability: its cuts are the
+	// model's decisions, so they count as certain.
+	const scores = new Map(result.scores ?? []);
+	return {
+		scenes: [
+			{ timestamp: 0, confidence: 1 },
+			...result.cutPoints.map((timestamp, index) => ({
+				timestamp,
+				confidence: result.scores
+					? (scores.get(result.cutFrames[index]) ?? 0)
+					: 1,
+			})),
+		],
+		route: result.route,
+		durationSeconds: result.durationSeconds,
+	};
+}
+
 /**
  * Main scene detection function exposed to HTTP server.
  */
@@ -309,11 +418,12 @@ export async function detectScenes(
 	projectId: string,
 	request: SceneDetectionRequest
 ): Promise<SceneDetectionResult> {
-	const engine = request.engine === undefined ? "ffmpeg" : request.engine;
-	if (!SCENE_DETECTION_ENGINES.some((candidate) => candidate === engine)) {
-		throw new Error(
-			"Invalid scene detection engine; expected 'ffmpeg' or 'onnx'"
-		);
+	const requested: SceneDetectionEngineChoice =
+		request.engine === undefined ? "auto" : request.engine;
+	if (
+		!SCENE_DETECTION_ENGINE_CHOICES.some((candidate) => candidate === requested)
+	) {
+		throw new Error(INVALID_SCENE_ENGINE_MESSAGE);
 	}
 	if (
 		request.aiAnalysis !== undefined &&
@@ -321,7 +431,11 @@ export async function detectScenes(
 	) {
 		throw new Error("aiAnalysis must be a boolean");
 	}
-	if (engine === "onnx" && request.threshold !== undefined) {
+	if (
+		request.threshold !== undefined &&
+		requested !== "ffmpeg" &&
+		requested !== "auto"
+	) {
 		throw new Error("threshold is only supported by the FFmpeg scene engine");
 	}
 	const safeProjectId = sanitizeProjectId(projectId);
@@ -333,39 +447,33 @@ export async function detectScenes(
 
 	// 1. Resolve video path
 	const videoPath = await resolveVideoForScene(safeProjectId, request.mediaId);
+	const { engine, fallbacks } = await resolveSceneEngine({ requested });
 
 	let scenes: SceneBoundary[];
 	let route: string | undefined;
 	let durationSeconds: number | undefined;
-	if (engine === "onnx") {
+	if (engine === "jianying") {
+		const result = await detectShotsWithJianyingRuntime({
+			request: { sourcePath: videoPath },
+		});
+		if (result.engine !== "bridge") {
+			throw new Error("Invalid result from the jianying scene engine");
+		}
+		({ scenes, route, durationSeconds } = scenesFromShotSplitResult({
+			result,
+			engine,
+		}));
+	} else if (engine === "onnx") {
 		const result = await detectShotsWithOnnxEngine({
 			request: { sourcePath: videoPath },
 		});
-		if (
-			result.engine !== "onnx" ||
-			!Number.isFinite(result.durationSeconds) ||
-			result.durationSeconds <= 0 ||
-			result.cutFrames.length !== result.cutPoints.length ||
-			result.cutPoints.some(
-				(timestamp, index) =>
-					!Number.isFinite(timestamp) ||
-					timestamp <= 0 ||
-					timestamp >= result.durationSeconds ||
-					(index > 0 && timestamp <= result.cutPoints[index - 1])
-			)
-		) {
+		if (result.engine !== "onnx") {
 			throw new Error("Invalid result from the ONNX scene engine");
 		}
-		const scores = new Map(result.scores ?? []);
-		scenes = [
-			{ timestamp: 0, confidence: 1 },
-			...result.cutPoints.map((timestamp, index) => ({
-				timestamp,
-				confidence: scores.get(result.cutFrames[index]) ?? 0,
-			})),
-		];
-		route = result.route;
-		durationSeconds = result.durationSeconds;
+		({ scenes, route, durationSeconds } = scenesFromShotSplitResult({
+			result,
+			engine,
+		}));
 	} else {
 		scenes = await detectScenesWithFFmpeg(videoPath, request.threshold ?? 0.3);
 	}
@@ -393,6 +501,8 @@ export async function detectScenes(
 
 	return {
 		engine,
+		...(requested !== engine ? { requestedEngine: requested } : {}),
+		...(fallbacks.length > 0 ? { fallbacks } : {}),
 		route,
 		durationSeconds,
 		scenes,
@@ -406,4 +516,5 @@ module.exports = {
 	detectScenes,
 	detectScenesWithFFmpeg,
 	parseShowInfoOutput,
+	inspectSceneEngines,
 };
