@@ -48,6 +48,7 @@ import {
 import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
+import { assFontsDirectory } from "../../../ffmpeg-args-builder.js";
 import {
 	type AdjustmentLayer,
 	runAdjustmentLayerPass,
@@ -1746,7 +1747,9 @@ export async function executeExportJob({
 						"-i",
 						sourcePath,
 						"-vf",
-						`ass='${escapeAssFilterPath(assPath)}'`,
+						// fontsdir adds the system CJK families (Songti, Kaiti…) to the
+						// fonts libass can open, so a requested family is used, not swapped.
+						`ass='${escapeAssFilterPath(assPath)}'${assFontsDirectory() ? `:fontsdir='${escapeAssFilterPath(assFontsDirectory() as string)}'` : ""}`,
 						"-map",
 						"0:v:0",
 						"-map",
