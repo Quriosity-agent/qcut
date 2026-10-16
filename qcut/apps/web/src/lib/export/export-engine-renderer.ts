@@ -1392,6 +1392,10 @@ export function renderTextElement({
 	});
 }
 
+/** The preview's caption inset: 20 px edge padding plus the box's 8 × 16 padding. */
+const CAPTION_EDGE_INSET_Y = 28;
+const CAPTION_EDGE_INSET_X = 36;
+
 /** Render caption element with subtitle styling */
 export function renderCaptionElement(
 	ctx: CanvasRenderingContext2D,
@@ -1437,24 +1441,26 @@ export function renderCaptionElement(
 	const lineHeight = style.fontSize * style.lineSpacing;
 	const totalHeight = lines.length * lineHeight;
 
-	// Calculate position based on alignment
+	// Where the preview puts the caption block: 20 px of edge padding plus
+	// the box's own 8 × 16, so the line box ends 28 px from the top or
+	// bottom edge and text starts 36 px in from a side.
 	let centerY: number;
 	switch (style.position.align) {
 		case "top":
-			centerY = totalHeight / 2 + style.fontSize;
+			centerY = CAPTION_EDGE_INSET_Y + totalHeight / 2;
 			break;
 		case "center":
 			centerY = canvas.height / 2;
 			break;
 		default:
-			centerY = canvas.height - totalHeight / 2 - style.fontSize;
+			centerY = canvas.height - CAPTION_EDGE_INSET_Y - totalHeight / 2;
 			break;
 	}
 	const anchorX =
 		style.textAlign === "left"
-			? canvas.width * 0.1
+			? CAPTION_EDGE_INSET_X
 			: style.textAlign === "right"
-				? canvas.width * 0.9
+				? canvas.width - CAPTION_EDGE_INSET_X
 				: canvas.width / 2;
 	const animatedX = anchorX + animation.offsetX;
 	const animatedY = centerY + animation.offsetY;
