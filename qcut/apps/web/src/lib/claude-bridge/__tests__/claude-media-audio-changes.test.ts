@@ -244,3 +244,73 @@ describe("applyElementChanges with audio", () => {
 		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
 	});
 });
+
+describe("lyric words over the editor API", () => {
+	it("accepts the empty word list an export reads back", () => {
+		const audio = parseClaudeMediaAudioChanges({
+			element: music,
+			value: { lyrics: { status: "idle", text: "", words: [] } },
+		});
+		expect(audio.lyrics.words).toEqual([]);
+	});
+
+	it("reads recognised words by shape, keeping only known fields", () => {
+		const audio = parseClaudeMediaAudioChanges({
+			element: music,
+			value: {
+				lyrics: {
+					status: "ready",
+					text: "门的计划",
+					words: [
+						{ id: "w1", text: "门的", start: 0.5, end: 1.1, type: "word" },
+						{
+							id: "w2",
+							text: " ",
+							start: 1.1,
+							end: 1.2,
+							type: "spacing",
+							speakerId: "A",
+						},
+					],
+				},
+			},
+		});
+		expect(audio.lyrics.status).toBe("ready");
+		expect(audio.lyrics.words).toEqual([
+			{ id: "w1", text: "门的", start: 0.5, end: 1.1, type: "word" },
+			{
+				id: "w2",
+				text: " ",
+				start: 1.1,
+				end: 1.2,
+				type: "spacing",
+				speakerId: "A",
+			},
+		]);
+	});
+
+	it("refuses a malformed word with its path", () => {
+		expect(() =>
+			parseClaudeMediaAudioChanges({
+				element: music,
+				value: {
+					lyrics: {
+						words: [{ id: "w1", text: "x", start: 2, end: 1, type: "word" }],
+					},
+				},
+			})
+		).toThrow("audio.lyrics.words[0].end must be seconds at or after start");
+		expect(() =>
+			parseClaudeMediaAudioChanges({
+				element: music,
+				value: {
+					lyrics: {
+						words: [
+							{ id: "w1", text: "x", start: 0, end: 1, type: "word", bogus: 1 },
+						],
+					},
+				},
+			})
+		).toThrow('Unknown lyric word field "audio.lyrics.words[0].bogus"');
+	});
+});
