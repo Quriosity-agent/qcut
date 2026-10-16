@@ -114,6 +114,7 @@ import {
 	type MutateAudioMix,
 	registerAudioMixRoutes,
 } from "./claude-http-audio-mix-routes.js";
+import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 import {
@@ -1554,6 +1555,19 @@ export function registerSharedRoutes(
 	registerAudioMixRoutes({
 		router,
 		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
+		measureNativeLoudness: async ({ projectId }) => {
+			const timeline = await accessor.requestTimeline();
+			if (timeline.projectId && timeline.projectId !== projectId) {
+				throw new Error(
+					`Project ${projectId} is not open in the editor (active project: ${timeline.projectId})`
+				);
+			}
+			const mediaFiles = await listMediaFilesWithRendererFallback({
+				projectId,
+				accessor,
+			});
+			return measureNativeExportLoudness({ projectId, timeline, mediaFiles });
+		},
 		onChanged: scheduleProjectJsonAutoSync,
 	});
 
