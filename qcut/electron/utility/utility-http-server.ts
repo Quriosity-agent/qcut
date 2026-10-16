@@ -56,6 +56,7 @@ import type {
 	BatchCutResponse,
 	ClaudeRangeDeleteResponse,
 	AutoEditJob,
+	ClaudeShotSplitResponse,
 } from "../types/claude-api.js";
 import type { ClaudeAudioMixResponse } from "../types/claude-audio-mix-api.js";
 import {
@@ -276,6 +277,13 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				splitTime,
 				mode,
 			}) as Promise<ClaudeSplitResponse>,
+		/** Splits clips by their shots through the bridge; detection can take minutes. */
+		requestShotSplit: (request, correlationId) =>
+			requestFromMain(
+				"timeline:shot-split",
+				{ request, correlationId },
+				{ timeoutMs: 1_205_000 }
+			) as Promise<ClaudeShotSplitResponse>,
 		/** Fetches project stats through the bridge. */
 		getProjectStats: (projectId) =>
 			requestFromMain("get-project-stats", {
