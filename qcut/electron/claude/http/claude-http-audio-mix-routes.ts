@@ -22,6 +22,7 @@ import * as path from "node:path";
 import type {
 	ClaudeAudioMixRequest,
 	ClaudeAudioMixResponse,
+	ClaudeMixLoudness,
 } from "../../types/claude-audio-mix-api.js";
 import type { ParsedRequest, Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
@@ -51,13 +52,27 @@ const STATUS_BY_REASON: Record<
 	invalid: 400,
 };
 
+function readLoudnessEngine(body: unknown): "native" | "browser" {
+	const engine = (body as { engine?: unknown } | undefined)?.engine;
+	if (engine === undefined || engine === "native") return "native";
+	if (engine === "browser") return "browser";
+	throw new HttpError(400, 'engine must be "native" or "browser"');
+}
+
+export type MeasureNativeLoudness = (args: {
+	projectId: string;
+}) => Promise<ClaudeMixLoudness>;
+
 export function registerAudioMixRoutes({
 	router,
 	mutateAudioMix,
+	measureNativeLoudness,
 	onChanged,
 }: {
 	router: Router;
 	mutateAudioMix?: MutateAudioMix;
+	/** Renders the mix through the native export engine and measures it. */
+	measureNativeLoudness?: MeasureNativeLoudness;
 	/** Called after a change, with the project it changed. */
 	onChanged: (change: { projectId: string }) => void;
 }): void {
@@ -145,21 +160,40 @@ export function registerAudioMixRoutes({
 
 	// Loudness and stems render the whole mix, minutes for a long programme,
 	// so they run as jobs: the answer is a job id, polled at .../jobs/:jobId.
+	// `engine` picks the rendering that is measured: "native" (default) runs
+	// the FFmpeg export pipeline and so agrees with the exported file;
+	// "browser" measures the renderer's graph, which the preview and the
+	// muxer engine play.
 	router.post("/api/claude/mix/:projectId/loudness", async (req) => {
 		const projectId = req.params.projectId;
+		const engine = readLoudnessEngine(req.body);
+		if (engine === "native" && !measureNativeLoudness) {
+			throw new HttpError(
+				503,
+				"The native export engine is not available here; measure with engine=browser"
+			);
+		}
 		const job = startAudioMixJob({
 			projectId,
 			kind: "loudness",
-			message: "Rendering the mix to measure it",
+			message:
+				engine === "native"
+					? "Exporting the mix through the native engine to measure it"
+					: "Rendering the mix in the editor to measure it",
 			run: async () => {
+				if (engine === "native" && measureNativeLoudness) {
+					return { loudness: await measureNativeLoudness({ projectId }) };
+				}
 				const { loudness } = await run(req, {
 					action: "measure-loudness",
 					projectId,
 				});
-				return { loudness };
+				return {
+					loudness: loudness ? { ...loudness, engine: "browser" } : loudness,
+				};
 			},
 		});
-		return { jobId: job.jobId, status: job.status, kind: job.kind };
+		return { jobId: job.jobId, status: job.status, kind: job.kind, engine };
 	});
 
 	router.post("/api/claude/mix/:projectId/stems", async (req) => {
