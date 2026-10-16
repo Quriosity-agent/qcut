@@ -633,21 +633,26 @@ interface AssPlacement {
 /**
  * Where the text block is pinned and how wide it may run, matching the
  * preview: a text element fills its box (wrapping at the inner width,
- * aligned within it); a caption sits at the frame edge the style names,
- * where every lane draws, so two captions at once overlap as on screen
- * instead of libass stacking them.
+ * aligned within it); a caption sits at the frame edge the style names, moved
+ * away from it by `stackOffset` when earlier captions share that edge (the
+ * same rule as caption-stacking.ts, so the preview, the canvas export and
+ * this pass stack alike; pinning also keeps libass's own collision shifting
+ * out of it).
  */
 function assPlacement({
 	overlay,
 	width,
 	height,
 	lineHeightEm,
+	stackOffset = 0,
 }: {
 	overlay: TextOverlay;
 	width: number;
 	height: number;
 	/** The line height libass lays out for the overlay's font, in em. */
 	lineHeightEm: number;
+	/** Captions stacked under this one, as a distance from the edge. */
+	stackOffset?: number;
 }): AssPlacement {
 	// CSS centres each em inside its line box (half-leading); libass stacks
 	// the font's own line height with the em at its bottom. Pinning a top or
@@ -691,6 +696,7 @@ function assPlacement({
 		};
 	}
 	const side = Math.round(width * CAPTION_SIDE_MARGIN);
+	const inset = CAPTION_EDGE_INSET_Y + leading + stackOffset;
 	return {
 		alignment: ASS_ALIGNMENTS[overlay.verticalAlign][overlay.textAlign],
 		x:
@@ -701,13 +707,50 @@ function assPlacement({
 					: width / 2,
 		y:
 			overlay.verticalAlign === "top"
-				? CAPTION_EDGE_INSET_Y + leading
+				? inset
 				: overlay.verticalAlign === "center"
 					? height / 2
-					: height - CAPTION_EDGE_INSET_Y - leading,
+					: height - inset,
 		marginL: side,
 		marginR: side,
 	};
+}
+
+/** The preview's caption box padding (8 px top and bottom). */
+const CAPTION_BOX_PADDING_Y = 8;
+
+/** A caption's block height for stacking: one line box plus the box padding. */
+function captionBlockHeight(overlay: TextOverlay): number {
+	return overlay.fontSize * overlay.lineHeight + 2 * CAPTION_BOX_PADDING_Y;
+}
+
+/**
+ * How far from its edge each caption draws: the summed block heights of the
+ * earlier-starting captions that share its edge and overlap it in time
+ * (caption-stacking.ts has the same rule for the preview and canvas export).
+ */
+function captionStackOffsets(overlays: TextOverlay[]): Map<string, number> {
+	const offsets = new Map<string, number>();
+	const captions = overlays.filter(
+		(overlay) =>
+			overlay.positioning === "caption-anchor" &&
+			overlay.verticalAlign !== "center"
+	);
+	for (const overlay of captions) {
+		let offset = 0;
+		for (const other of captions) {
+			if (other === overlay) break;
+			if (
+				other.verticalAlign === overlay.verticalAlign &&
+				other.startTime < overlay.endTime &&
+				overlay.startTime < other.endTime
+			) {
+				offset += captionBlockHeight(other);
+			}
+		}
+		offsets.set(overlay.id, offset);
+	}
+	return offsets;
 }
 
 /** Build an ASS subtitle document that preserves core QCut text styling. */
@@ -722,6 +765,8 @@ export function buildTextAss({
 }): string {
 	const styles: string[] = [];
 	const events: string[] = [];
+	// Overlays arrive sorted by start time, which is the stacking order.
+	const stackOffsets = captionStackOffsets(overlays);
 	for (const [index, overlay] of overlays.entries()) {
 		const styleName = `QCutText${index}`;
 		const family = assFontFamily(overlay);
@@ -737,6 +782,7 @@ export function buildTextAss({
 			width,
 			height,
 			lineHeightEm: metrics.lineHeightEm,
+			stackOffset: stackOffsets.get(overlay.id) ?? 0,
 		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
