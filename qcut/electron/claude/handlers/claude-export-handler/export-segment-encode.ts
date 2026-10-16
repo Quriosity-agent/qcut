@@ -9,12 +9,13 @@ import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
 /**
- * A source whose sound ends a frame before its picture (AAC frames are 21–32
- * ms) used to lose that frame to `-shortest`, and a dozen such clips
- * shortened an export by two frames. Both streams are padded without end
- * (the last frame is cloned, the sound gets silence) and the output `-t` cuts
- * the segment to exactly its length, so a source shorter than the segment
- * fills it too.
+ * Both streams are padded without end (the last frame is cloned, the sound
+ * gets silence) and the output `-t` alone cuts the segment to exactly its
+ * length, so a source shorter than the segment fills it too. There is no
+ * `-shortest`: FFmpeg's sync queue then trims every other stream to the
+ * first stream that ends, and the sound ends on an AAC frame boundary (21–32
+ * ms), which for a 32 kHz source sits just before the last picture frame —
+ * every untrimmed clip lost that frame, nine frames over a twelve-clip film.
  */
 export function buildExportSegmentEncodeArgs({
 	inputArgs,
@@ -59,7 +60,6 @@ export function buildExportSegmentEncodeArgs({
 				]),
 		"-t",
 		String(segment.duration),
-		"-shortest",
 		outputPath,
 	];
 }
