@@ -658,8 +658,9 @@ describe("setupClaudeTimelineBridge - add element", () => {
 				fontWeight: "normal",
 				fontStyle: "normal",
 				textDecoration: "none",
-				x: 0.5,
-				y: 0.5,
+				// Pixel offsets from the canvas centre, like the editor's own text.
+				x: 0,
+				y: 0,
 				rotation: 0,
 				opacity: 1,
 			},
