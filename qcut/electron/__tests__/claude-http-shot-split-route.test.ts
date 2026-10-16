@@ -47,4 +47,31 @@ describe("readShotSplitRequest", () => {
 		expect(refusal({ elementId: "e", minShotSeconds: -1 })).toBe(400);
 		expect(refusal({ elementId: "e", dryRun: "yes" })).toBe(400);
 	});
+
+	it("takes a threshold only for FFmpeg or auto detection", () => {
+		const status = (body: unknown) => {
+			try {
+				readShotSplitRequest({ projectId: "p", body });
+			} catch (error) {
+				return (error as { status?: number; message: string }).message;
+			}
+			return "accepted";
+		};
+		expect(status({ elementId: "e", threshold: 0.3 })).toBe("accepted");
+		expect(status({ elementId: "e", engine: "auto", threshold: 0.3 })).toBe(
+			"accepted"
+		);
+		expect(status({ elementId: "e", engine: "ffmpeg", threshold: 0.3 })).toBe(
+			"accepted"
+		);
+		for (const body of [
+			{ elementId: "e", engine: "jianying", threshold: 0.3 },
+			{ elementId: "e", engine: "onnx", threshold: 0.3 },
+			{ elementId: "e", cuts: [1], threshold: 0.3 },
+		]) {
+			expect(status(body)).toBe(
+				"threshold is only supported by the FFmpeg scene engine"
+			);
+		}
+	});
 });
