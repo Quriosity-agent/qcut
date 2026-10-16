@@ -169,11 +169,15 @@ function clipExportFilename({
 	return `${base || "clip"}-${secondsForCli({ value: start })}-${secondsForCli({ value: end })}.mp4`;
 }
 
-const SHOT_SPLIT_ENGINE_LABELS: Record<ShotSplitEngineChoice, string> = {
+const SHOT_SPLIT_ENGINE_LABELS: Record<
+	ShotSplitEngineChoice | "manual",
+	string
+> = {
 	auto: "自动",
 	jianying: "剪映模型",
 	onnx: "ONNX",
 	ffmpeg: "FFmpeg",
+	manual: "手动切点",
 };
 
 /**
