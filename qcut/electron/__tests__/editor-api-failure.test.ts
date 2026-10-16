@@ -35,6 +35,23 @@ describe("describeRequestFailure", () => {
 		).toContain("closed the connection");
 	});
 
+	it("treats a connection that never opened as not reachable, not as dropped", () => {
+		expect(
+			describeRequestFailure({
+				error: fetchFailed("UND_ERR_CONNECT_TIMEOUT"),
+				url,
+				baseUrl,
+			})
+		).toBe(`Cannot connect to QCut at ${baseUrl} (UND_ERR_CONNECT_TIMEOUT)`);
+		expect(
+			describeRequestFailure({
+				error: fetchFailed("UND_ERR_HEADERS_TIMEOUT"),
+				url,
+				baseUrl,
+			})
+		).toContain("did not answer within the connection's timeout");
+	});
+
 	it("says the client gave up on its own timeout", () => {
 		const timeout = Object.assign(new Error("The operation was aborted"), {
 			name: "TimeoutError",
