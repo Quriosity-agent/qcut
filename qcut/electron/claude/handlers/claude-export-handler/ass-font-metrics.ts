@@ -38,6 +38,7 @@ const MAX_FONT_FILES = 4000;
 const READ_WINDOW = 4096;
 
 let cachedIndex: Map<string, FaceMetrics[]> | undefined;
+let indexBuilds = 0;
 
 /** Platform font folders, in the order libass's fontconfig would see them. */
 export function systemFontDirectories(): string[] {
@@ -265,6 +266,7 @@ export function readFontFaces(file: string): FaceMetrics[] {
 }
 
 function buildIndex(directories: string[]): Map<string, FaceMetrics[]> {
+	indexBuilds += 1;
 	const index = new Map<string, FaceMetrics[]>();
 	for (const file of listFontFiles(directories)) {
 		for (const face of readFontFaces(file)) {
@@ -290,19 +292,31 @@ export function assFontMetrics({
 	family,
 	bold = false,
 	italic = false,
-	directories = systemFontDirectories(),
+	directories,
 }: {
 	family: string;
 	bold?: boolean;
 	italic?: boolean;
+	/** Folders to index instead of the system's; such an index is not kept. */
 	directories?: string[];
 }): AssFontMetrics {
-	if (!cachedIndex || directories !== systemFontDirectories()) {
-		const index = buildIndex(directories);
-		if (directories === systemFontDirectories()) cachedIndex = index;
-		return metricsFrom({ index, family, bold, italic });
+	if (directories) {
+		return metricsFrom({
+			index: buildIndex(directories),
+			family,
+			bold,
+			italic,
+		});
 	}
+	// The system index is scanned once per process (thousands of files, each
+	// opened for its tables); every overlay of every export reuses it.
+	cachedIndex ??= buildIndex(systemFontDirectories());
 	return metricsFrom({ index: cachedIndex, family, bold, italic });
+}
+
+/** How many times a font index was built; for tests of the cache. */
+export function assFontIndexBuilds(): number {
+	return indexBuilds;
 }
 
 /** The Fontsize factor alone; see `assFontMetrics`. */
