@@ -10,10 +10,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { expect } from "@playwright/test";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
+import { localFixturePath } from "./helpers/local-fixtures";
 
-const MUSIC =
-	process.env.QCUT_BEATS_E2E_SOURCE ??
-	"/Users/peter/Documents/QCut/Projects/a4c01ed2-a9e9-4875-aaa2-edb5b4f5c0af/media/nastelbom-dark-suspense-trailer-488322.mp3";
+const MUSIC = localFixturePath("QCUT_BEATS_E2E_SOURCE");
 /** The cue's tempo by an independent spectral-flux autocorrelation. */
 const REFERENCE_BPM = 144;
 
