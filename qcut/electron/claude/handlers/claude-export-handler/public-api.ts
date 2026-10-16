@@ -329,7 +329,8 @@ export async function startRendererExportJob({
 		presetId: settings.presetId,
 		progress: 0,
 		projectId,
-		settings,
+		// The settings carry the engine that actually renders, not the default.
+		settings: { ...settings, engine: "renderer-muxer" },
 		startedAt: now,
 		status: EXPORT_JOB_STATUS.queued,
 	};
