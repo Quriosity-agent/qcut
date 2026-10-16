@@ -91,8 +91,22 @@ export const CLIP_TRANSITION_TYPES = [
 	"vortex",
 	"shockwave",
 	"cube",
+	"shader",
 	"color-swipe",
 ] as const satisfies readonly ClipTransitionType[];
+
+/**
+ * Reconcile drops a transition whose type is missing from the list above —
+ * right after the editor added it — so the list has to cover the whole union.
+ * A new member of `ClipTransitionType` that is not listed fails this type.
+ */
+type UnlistedClipTransitionType = Exclude<
+	ClipTransitionType,
+	(typeof CLIP_TRANSITION_TYPES)[number]
+>;
+type AssertNever<T extends never> = T;
+export type ClipTransitionTypeListIsComplete =
+	AssertNever<UnlistedClipTransitionType>;
 
 export const CLIP_TRANSITION_MASK_SHAPES = [
 	"circle",
