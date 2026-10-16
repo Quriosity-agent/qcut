@@ -59,7 +59,9 @@ qcut editor:analyze:engines --json
 
 `--engine` is `auto` (default), `jianying`, `onnx` or `ffmpeg`; the result's
 `engine` says which ran, and `fallbacks` which ones `auto` skipped and why.
-`--threshold` (0–1, lower finds more) applies to the ffmpeg engine only.
+`--threshold` (0–1, lower finds more) applies to the ffmpeg engine only; with
+`auto` it is accepted, and the result carries a `warnings` entry when auto
+picked a model engine that ignored it.
 `--model` only does something with `--ai-analysis`. The jianying engine needs
 this machine's private runtime and native bridge (see `qcut analyze shots
 --check`); on AI-generated footage FFmpeg misses most cuts, so prefer `auto`.
