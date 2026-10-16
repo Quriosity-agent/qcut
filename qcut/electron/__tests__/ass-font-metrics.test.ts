@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+	assFontIndexBuilds,
 	assFontMetrics,
 	assFontSizeFactor,
 	resetAssFontMetricsCache,
@@ -65,6 +66,19 @@ describe.skipIf(!hasMacFonts)(
 				assFontSizeFactor({ family: "Arial", directories: ["/nonexistent"] })
 			).toBe(1);
 			expect(systemFontDirectories()[0]).toBe("/System/Library/Fonts");
+		});
+
+		it("scans the system fonts once and reuses that index for every overlay", () => {
+			resetAssFontMetricsCache();
+			const before = assFontIndexBuilds();
+			assFontMetrics({ family: "Arial" });
+			assFontMetrics({ family: "Songti SC", bold: true });
+			assFontSizeFactor({ family: "Hiragino Sans GB" });
+			expect(assFontIndexBuilds() - before).toBe(1);
+			// Explicit folders get their own index and leave the cache alone.
+			assFontMetrics({ family: "Arial", directories: ["/nonexistent"] });
+			assFontMetrics({ family: "Arial" });
+			expect(assFontIndexBuilds() - before).toBe(2);
 		});
 	}
 );
