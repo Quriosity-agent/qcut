@@ -5,13 +5,15 @@
  * itself where `editor analyze engines` says the jianying engine is unavailable.
  */
 
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { expect } from "@playwright/test";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
 
+/** The 门的计划 clip; QCUT_SHOT_SPLIT_E2E_SOURCE points at it on other machines. */
 const SOURCE =
+	process.env.QCUT_SHOT_SPLIT_E2E_SOURCE ??
 	"/Users/peter/Documents/QCut/Projects/481632c1-df20-4317-8c79-041922c3ab50/media/08_机甲滑索接战三种怪物.mp4";
 /** The model's cuts for this clip, verified frame by frame (source seconds). */
 const EXPECTED_CUTS = [
@@ -336,5 +338,4 @@ test("splits a clip by its shots the way the menu does, undoable in one step", a
 		],
 	});
 	expect(ffmpeg.results[0].engine).toBe("ffmpeg");
-	execFileSync("true");
 });
