@@ -20,6 +20,7 @@ import type { Router } from "../utils/http-router.js";
 import { timelineRequiresRendererFilterStackExport } from "../../types/filter-stack-export-policy.js";
 import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
 import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
+import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
@@ -1938,6 +1939,11 @@ export function registerSharedRoutes(
 					: []),
 				...(timelineRequiresRendererAdjustmentLayerExport({ timeline })
 					? ["masked or multi-pass adjustment layers"]
+					: []),
+				...(timelineRequiresRendererColorKeyframeExport({ timeline })
+					? [
+							"animated tonal controls (shadows, highlights, whites, blacks or fade)",
+						]
 					: []),
 			];
 			if (rendererExportReasons.length > 0) {
