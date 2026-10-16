@@ -17,6 +17,7 @@ const EXEMPT: Record<string, string> = {
 	"POST /api/claude/analyze/:projectId/frames": "reads media files",
 	"POST /api/claude/analyze/:projectId/fillers": "reads media files",
 	"POST /api/claude/analyze/:projectId/beats": "reads media files",
+	"POST /api/claude/analyze/:projectId/onset": "reads media files",
 	"POST /api/claude/analyze/:projectId/suggest-cuts": "reads media files",
 	"POST /api/claude/analyze/:projectId/suggest-cuts/start":
 		"job over media files",
