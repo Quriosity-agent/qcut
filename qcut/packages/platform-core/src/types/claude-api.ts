@@ -89,6 +89,24 @@ export interface PlatformClaudeTimelineAPI {
 			| { ok: true; response: Record<string, unknown> }
 			| { ok: false; error: string }
 	): void;
+	onBeatsMark: (
+		callback: (data: { requestId: string; request: unknown }) => void
+	) => void;
+	sendBeatsMarkResponse: (
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	) => void;
+	onSnapToBeats: (
+		callback: (data: { requestId: string; request: unknown }) => void
+	) => void;
+	sendSnapToBeatsResponse: (
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	) => void;
 	onSplitElement(callback: (data: unknown) => void): void;
 	sendSplitResponse(requestId: string, result: unknown): void;
 	onExecuteCuts(callback: (data: unknown) => void): void;
