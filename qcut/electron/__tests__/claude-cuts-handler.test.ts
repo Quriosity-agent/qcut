@@ -62,9 +62,20 @@ describe("claude-cuts-handler", () => {
 	});
 
 	describe("validateBatchCutRequest", () => {
+		it("rejects a missing projectId", () => {
+			expect(() =>
+				validateBatchCutRequest({
+					projectId: "",
+					elementId: "el_1",
+					cuts: [{ start: 0, end: 1 }],
+				})
+			).toThrow("Missing or invalid 'projectId'");
+		});
+
 		it("rejects missing elementId", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "",
 					cuts: [{ start: 0, end: 1 }],
 				})
@@ -73,13 +84,18 @@ describe("claude-cuts-handler", () => {
 
 		it("rejects empty cuts array", () => {
 			expect(() =>
-				validateBatchCutRequest({ elementId: "el_1", cuts: [] })
+				validateBatchCutRequest({
+					projectId: "proj_1",
+					elementId: "el_1",
+					cuts: [],
+				})
 			).toThrow("Missing or empty 'cuts' array");
 		});
 
 		it("rejects cuts with non-number start/end", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [{ start: "a" as unknown as number, end: 1 }],
 				})
@@ -89,6 +105,7 @@ describe("claude-cuts-handler", () => {
 		it("rejects negative times", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [{ start: -1, end: 1 }],
 				})
@@ -98,6 +115,7 @@ describe("claude-cuts-handler", () => {
 		it("rejects start >= end", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [{ start: 5, end: 3 }],
 				})
@@ -107,6 +125,7 @@ describe("claude-cuts-handler", () => {
 		it("rejects overlapping cuts", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [
 						{ start: 2, end: 5 },
@@ -119,6 +138,7 @@ describe("claude-cuts-handler", () => {
 		it("accepts valid non-overlapping cuts", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [
 						{ start: 1, end: 3 },
@@ -132,6 +152,7 @@ describe("claude-cuts-handler", () => {
 		it("accepts adjacent cuts (not overlapping)", () => {
 			expect(() =>
 				validateBatchCutRequest({
+					projectId: "proj_1",
 					elementId: "el_1",
 					cuts: [
 						{ start: 1, end: 3 },
@@ -159,6 +180,7 @@ describe("claude-cuts-handler", () => {
 			});
 
 			const promise = executeBatchCuts(mockWindow, {
+				projectId: "proj_1",
 				elementId: "el_abc",
 				cuts: [{ start: 2, end: 4 }],
 				ripple: true,
@@ -205,6 +227,52 @@ describe("claude-cuts-handler", () => {
 			expect(result.remainingElements).toHaveLength(2);
 		});
 
+		it("rejects with a conflict when the editor refuses the cuts", async () => {
+			const send = vi.fn();
+			const mockWindow = {
+				webContents: { send },
+			} as unknown as BrowserWindow;
+
+			let ipcCallback: (event: unknown, data: unknown) => void = () => {};
+			vi.mocked(ipcMain.on).mockImplementation((channel, callback) => {
+				if (channel === "claude:timeline:executeCuts:response") {
+					ipcCallback = callback as typeof ipcCallback;
+				}
+				return ipcMain;
+			});
+
+			const promise = executeBatchCuts(mockWindow, {
+				projectId: "proj_1",
+				elementId: "el_abc",
+				cuts: [{ start: 1, end: 2 }],
+			});
+			await vi.waitFor(() => {
+				expect(send).toHaveBeenCalledTimes(1);
+			});
+			const sentData = send.mock.calls[0][1] as {
+				requestId: string;
+				projectId: string;
+			};
+			expect(sentData.projectId).toBe("proj_1");
+			ipcCallback(
+				{},
+				{
+					requestId: sentData.requestId,
+					result: {
+						cutsApplied: 0,
+						elementsRemoved: 0,
+						remainingElements: [],
+						totalRemovedDuration: 0,
+						error: "Cannot mutate timeline for inactive project proj_1",
+					},
+				}
+			);
+			await expect(promise).rejects.toMatchObject({
+				status: 409,
+				message: "Cannot mutate timeline for inactive project proj_1",
+			});
+		});
+
 		it("ignores responses with mismatched requestId", async () => {
 			const send = vi.fn();
 			const mockWindow = {
@@ -220,6 +288,7 @@ describe("claude-cuts-handler", () => {
 			});
 
 			const promise = executeBatchCuts(mockWindow, {
+				projectId: "proj_1",
 				elementId: "el_abc",
 				cuts: [{ start: 1, end: 2 }],
 			});
@@ -276,6 +345,7 @@ describe("claude-cuts-handler", () => {
 			});
 
 			const promise = executeBatchCuts(mockWindow, {
+				projectId: "proj_1",
 				elementId: "el_abc",
 				cuts: [{ start: 1, end: 2 }],
 			});
@@ -313,6 +383,7 @@ describe("claude-cuts-handler", () => {
 
 			await expect(
 				executeBatchCuts(mockWindow, {
+					projectId: "proj_1",
 					elementId: "",
 					cuts: [{ start: 1, end: 2 }],
 				})
@@ -328,6 +399,7 @@ describe("claude-cuts-handler", () => {
 
 			await expect(
 				executeBatchCuts(mockWindow, {
+					projectId: "proj_1",
 					elementId: "el_abc",
 					cuts: [{ start: 1, end: 2 }],
 				})
@@ -350,6 +422,7 @@ describe("claude-cuts-handler", () => {
 			try {
 				await expect(
 					executeBatchCuts(mockWindow, {
+						projectId: "proj_1",
 						elementId: "el_abc",
 						cuts: [{ start: 1, end: 2 }],
 					})
@@ -372,6 +445,7 @@ describe("claude-cuts-handler", () => {
 
 			await expect(
 				executeBatchCuts(mockWindow, {
+					projectId: "proj_1",
 					elementId: "el_abc",
 					cuts: [{ start: 1, end: 2 }],
 				})
