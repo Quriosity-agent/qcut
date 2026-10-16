@@ -63,10 +63,14 @@ async function waitForMixJob({
 }): Promise<MixJob> {
 	const budgetMs =
 		timeoutMs ?? (opts.timeout ?? DEFAULT_RENDER_WAIT_SECONDS) * 1000;
+	const pollIntervalSeconds = opts.pollInterval ?? 3;
+	if (!Number.isFinite(pollIntervalSeconds) || pollIntervalSeconds <= 0) {
+		throw new FlagError("--poll-interval must be a positive number of seconds");
+	}
 	try {
 		return await client.pollJob<MixJob>(
 			`${mixPath(projectId)}/jobs/${encodeURIComponent(jobId)}`,
-			{ interval: (opts.pollInterval ?? 3) * 1000, timeout: budgetMs }
+			{ interval: pollIntervalSeconds * 1000, timeout: budgetMs }
 		);
 	} catch (error) {
 		if (
