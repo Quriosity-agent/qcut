@@ -368,6 +368,63 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--set", "string", "JSON object or @file", { required: true }),
 		]
 	),
+	"editor:element:color": ed(
+		"editor:element:color",
+		"Grade clips: the colour panel's basic controls, merged into each clip's grade",
+		[
+			PID_ACTIVE,
+			f("--element-id", "string", "One clip"),
+			f(
+				"--element-ids",
+				"string",
+				"Several clips (JSON array, @file, or repeat)"
+			),
+			f("--track-id", "string", "Every video clip on the track"),
+			f("--exposure", "number", "Exposure stops (−5..5)"),
+			f("--brightness", "number", "Brightness (−100..100)"),
+			f("--contrast", "number", "Contrast (−100..100)"),
+			f("--highlights", "number", "Highlights (−100..100)"),
+			f("--shadows", "number", "Shadows (−100..100)"),
+			f("--whites", "number", "Whites (−100..100)"),
+			f("--blacks", "number", "Blacks (−100..100)"),
+			f("--temperature", "number", "Temperature (−100..100)"),
+			f("--tint", "number", "Tint (−100..100)"),
+			f("--saturation", "number", "Saturation (−100..100)"),
+			f("--vibrance", "number", "Vibrance (−100..100)"),
+			f("--fade", "number", "Fade (0..100)"),
+			f("--vignette", "number", "Vignette (0..100)"),
+			f("--sharpness", "number", "Sharpness (0..100)"),
+			f("--grain", "number", "Grain (0..100)"),
+			f("--set", "string", "Extra partial colour grade as JSON or @file"),
+			f("--reset", "boolean", "Return every basic control to its default"),
+		]
+	),
+	"editor:element:filter": ed(
+		"editor:element:filter",
+		"Apply catalogue filters to clips by resource id (the filter panel's LUT path)",
+		[
+			PID_ACTIVE,
+			f("--element-id", "string", "One clip"),
+			f(
+				"--element-ids",
+				"string",
+				"Several clips (JSON array, @file, or repeat)"
+			),
+			f("--track-id", "string", "Every video clip on the track"),
+			f(
+				"--resource-id",
+				"string",
+				"Filter resource id from filter-lab catalog / catalog-independent (repeat to stack)"
+			),
+			f("--intensity", "number", "Strength 0–100 (default 100)"),
+			f(
+				"--append",
+				"boolean",
+				"Keep the clip's current filters and add after them"
+			),
+			f("--clear", "boolean", "Remove every filter from the clips"),
+		]
+	),
 	"editor:timeline:export": ed("editor:timeline:export", "Export timeline", [
 		PID,
 		f("--output-format", "string", "Output format", { short: "-f" }),
