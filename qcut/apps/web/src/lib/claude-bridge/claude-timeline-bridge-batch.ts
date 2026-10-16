@@ -14,6 +14,7 @@ import {
 	addClaudeAdjustmentElement,
 	addClaudeStickerElement,
 	getClaudeTextProperties,
+	resolveClaudeTextAnchor,
 	getClaudeMediaTimingProperties,
 	syncProjectMediaIfNeeded,
 	readClaudeMediaVisualFields,
@@ -343,6 +344,13 @@ export function setupBatchHandlers({
 						} else if (normalizedType === "text") {
 							const style = element.style || {};
 							const textProperties = getClaudeTextProperties({ element });
+							Object.assign(
+								textProperties,
+								resolveClaudeTextAnchor({
+									element: element as Record<string, unknown>,
+									properties: textProperties,
+								})
+							);
 							const content =
 								typeof element.content === "string" &&
 								element.content.length > 0
