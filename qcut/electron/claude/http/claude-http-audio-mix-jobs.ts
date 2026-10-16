@@ -67,18 +67,22 @@ export function startAudioMixJob({
 	};
 	jobs.set(job.jobId, job);
 	prune();
+	// Finished jobs are what prune can drop, so it runs again once this one
+	// finishes: with more than MAX_JOBS running at once nothing could go before.
 	run().then(
 		(result) => {
 			job.status = "completed";
 			job.completedAt = Date.now();
 			job.result = result;
 			job.message = undefined;
+			prune();
 		},
 		(error) => {
 			job.status = "failed";
 			job.completedAt = Date.now();
 			job.error = error instanceof Error ? error.message : String(error);
 			job.message = undefined;
+			prune();
 		}
 	);
 	return job;
