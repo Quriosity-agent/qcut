@@ -86,6 +86,7 @@ import {
 	startExportJob,
 	startRendererExportJob,
 	getExportJobStatus,
+	cancelExportJob,
 	listExportJobs,
 } from "../handlers/claude-export-handler.js";
 import { hasStickerRuntimeForExport } from "../../types/sticker-runtime-export-policy.js";
@@ -1784,6 +1785,33 @@ export function registerSharedRoutes(
 
 	router.get("/api/claude/export/:projectId/jobs", async (req) =>
 		listExportJobs(req.params.projectId)
+	);
+
+	router.post(
+		"/api/claude/export/:projectId/jobs/:jobId/cancel",
+		async (req) => {
+			const existing = getExportJobStatus(req.params.jobId);
+			if (!existing || existing.projectId !== req.params.projectId) {
+				throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+			}
+			const outcome = cancelExportJob({ jobId: req.params.jobId });
+			if (!outcome.ok) {
+				if (outcome.reason === "finished") {
+					throw new HttpError(
+						409,
+						`Export ${req.params.jobId} already ${existing.status}; nothing to cancel`
+					);
+				}
+				if (outcome.reason === "renderer") {
+					throw new HttpError(
+						409,
+						`Export ${req.params.jobId} runs in the editor window and cannot be cancelled from here`
+					);
+				}
+				throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+			}
+			return getExportJobStatus(req.params.jobId);
+		}
 	);
 
 	// ==========================================================================
