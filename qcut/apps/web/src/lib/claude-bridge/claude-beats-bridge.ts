@@ -2,6 +2,7 @@ import { planBeatSnaps } from "@/lib/audio/beat-snap";
 import { mapMediaBeatToTimeline } from "@/lib/audio/timeline-beats";
 import { debugError } from "@/lib/debug/debug-config";
 import { useBeatDetectionStore } from "@/stores/beat-detection-store";
+import { useMediaStore } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { MediaElement } from "@/types/timeline";
@@ -172,6 +173,10 @@ export function performSnapToBeats({
 		)
 		.map((beat) => beat.timelineTime as number);
 	const edge = request.edge ?? "start";
+	const frameAlign = request.frameAlign ?? "visual";
+	const mediaTypes = new Map(
+		useMediaStore.getState().mediaItems.map((item) => [item.id, item.type])
+	);
 	const candidates = request.elementIds.map((elementId) => {
 		for (const track of store._tracks) {
 			const element = track.elements.find((item) => item.id === elementId);
@@ -183,11 +188,19 @@ export function performSnapToBeats({
 								element.duration - element.trimStart - element.trimEnd
 							) / (element.playbackRate ?? 1)
 						: element.duration;
+				// Sound may sit between frames; anything seen has to start on one.
+				const visual =
+					element.type !== "media" ||
+					mediaTypes.get(element.mediaId) !== "audio";
+				const offset = request.edgeOffsets?.[elementId];
 				return {
 					elementId,
 					trackId: track.id,
 					startTime: element.startTime,
 					duration,
+					alignToFrames:
+						frameAlign === "all" || (frameAlign === "visual" && visual),
+					...(typeof offset === "number" ? { offset } : {}),
 				};
 			}
 		}
@@ -198,12 +211,19 @@ export function performSnapToBeats({
 		beats,
 		edge,
 		maxDistance: request.maxDistance ?? 0.5,
+		fps,
 	});
 	const results: ClaudeSnapToBeatsResult[] = [];
 	let pushedHistory = false;
 	for (const plan of plans) {
 		if (plan.beat === null || Math.abs(plan.moved) < 1e-9) {
-			results.push({ ...plan, applied: false });
+			results.push({
+				...plan,
+				applied: false,
+				...(plan.beat !== null && !plan.reason
+					? { reason: "already in place" }
+					: {}),
+			});
 			continue;
 		}
 		if (request.dryRun) {
@@ -235,6 +255,7 @@ export function performSnapToBeats({
 		projectId: request.projectId,
 		beatsElementId,
 		edge,
+		frameAlign,
 		dryRun: request.dryRun === true,
 		results,
 		moved: results.filter((result) => result.applied).length,
