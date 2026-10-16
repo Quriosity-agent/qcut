@@ -205,8 +205,12 @@ without their own colour show it.
 ```bash
 qcut editor:timeline:delete-element \
   --project-id <id> \
-  --element-id <id>
+  --element-id <id> --force
 ```
+
+Deleting sits in the CLI's confirm tier (with undo/redo, range deletes and
+track deletes), so it needs `--force`; the edit is still one undo step
+(`qcut editor undo --force`).
 
 ### Batch delete elements (max 50)
 
