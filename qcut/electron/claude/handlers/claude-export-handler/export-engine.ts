@@ -18,6 +18,11 @@ import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
 import { buildExportSegmentEncodeArgs } from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
+import {
+	ExportCancelledError,
+	isExportCancelled,
+	throwIfCancelled,
+} from "./export-cancel.js";
 import { buildXfadeTransitionFilter } from "../../../ffmpeg/transition-filter.js";
 import type {
 	AudioFile,
@@ -881,6 +886,7 @@ async function runFFmpegCommand({
 	args,
 	estimatedDuration,
 	onProgress,
+	signal,
 }: {
 	args: string[];
 	estimatedDuration: number;
@@ -890,8 +896,11 @@ async function runFFmpegCommand({
 		fps?: number;
 		eta?: number;
 	}) => void;
+	/** The job's cancellation; aborting kills FFmpeg and rejects as cancelled. */
+	signal?: AbortSignal;
 }): Promise<void> {
 	try {
+		throwIfCancelled(signal);
 		const ffmpegPath = getFFmpegPath();
 
 		await new Promise<void>((resolve, reject) => {
@@ -899,6 +908,10 @@ async function runFFmpegCommand({
 				windowsHide: true,
 				stdio: ["ignore", "pipe", "pipe"],
 			});
+			const onAbort = () => {
+				process.kill("SIGTERM");
+			};
+			signal?.addEventListener("abort", onAbort, { once: true });
 
 			let stderrOutput = "";
 
@@ -935,10 +948,16 @@ async function runFFmpegCommand({
 			});
 
 			process.on("error", (error: Error) => {
+				signal?.removeEventListener("abort", onAbort);
 				reject(error);
 			});
 
 			process.on("close", (code: number | null) => {
+				signal?.removeEventListener("abort", onAbort);
+				if (signal?.aborted) {
+					reject(new ExportCancelledError());
+					return;
+				}
 				if (code === 0) {
 					resolve();
 					return;
@@ -1239,6 +1258,7 @@ async function renderTransitionedVideo({
 	videoOutputPath,
 	videoTransitions,
 	onProgress,
+	signal,
 }: {
 	concatAudioPath: string;
 	segmentOutputs: string[];
@@ -1248,6 +1268,7 @@ async function renderTransitionedVideo({
 	videoOutputPath: string;
 	videoTransitions: VideoTransition[];
 	onProgress?: ({ progress }: { progress: number }) => void;
+	signal?: AbortSignal;
 }): Promise<void> {
 	const transitionedVideoPath = path.join(tempDir, "transitioned-video.mp4");
 	const duration = Math.max(
@@ -1277,6 +1298,7 @@ async function renderTransitionedVideo({
 	});
 
 	await runFFmpegCommand({
+		signal,
 		args: transitionArgs,
 		estimatedDuration: duration,
 		onProgress: ({ normalizedProgress }) => {
@@ -1285,6 +1307,7 @@ async function renderTransitionedVideo({
 	});
 
 	await runFFmpegCommand({
+		signal,
 		args: [
 			"-y",
 			"-i",
@@ -1355,6 +1378,11 @@ export async function executeExportJob({
 	if (!job) {
 		return;
 	}
+	// `export cancel` aborts this; every FFmpeg step listens, and a cancel
+	// that arrived while the job was still queued takes effect at the first.
+	const abort = new AbortController();
+	job.abort = abort;
+	if (job.status === EXPORT_JOB_STATUS.cancelled) abort.abort();
 
 	let tempDir = "";
 
@@ -1409,6 +1437,7 @@ export async function executeExportJob({
 			);
 
 			await runFFmpegCommand({
+				signal: abort.signal,
 				args: buildExportSegmentEncodeArgs({
 					inputArgs,
 					scaleFilter,
@@ -1479,6 +1508,7 @@ export async function executeExportJob({
 		updateJobProgress({ jobId, progress: concatProgressStart });
 
 		await runFFmpegCommand({
+			signal: abort.signal,
 			args: [
 				"-y",
 				"-f",
@@ -1508,6 +1538,7 @@ export async function executeExportJob({
 
 		if (hasVideoTransitions) {
 			await renderTransitionedVideo({
+				signal: abort.signal,
 				concatAudioPath: concatOutputPath,
 				segmentOutputs,
 				segments,
@@ -1555,6 +1586,7 @@ export async function executeExportJob({
 
 				const totalDuration = segments.reduce((sum, s) => sum + s.duration, 0);
 				await runFFmpegCommand({
+					signal: abort.signal,
 					args: stickerPass.args,
 					estimatedDuration: Math.max(0, totalDuration),
 					onProgress: ({ normalizedProgress }) => {
@@ -1622,6 +1654,7 @@ export async function executeExportJob({
 			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
+					signal: abort.signal,
 					args: buildTextRasterOverlayPassArgs({
 						sourcePath,
 						outputPath: videoOutputPath,
@@ -1678,6 +1711,7 @@ export async function executeExportJob({
 			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
+					signal: abort.signal,
 					args: [
 						"-y",
 						"-i",
@@ -1777,6 +1811,7 @@ export async function executeExportJob({
 					)
 				);
 				await runFFmpegCommand({
+					signal: abort.signal,
 					args: [
 						...inputArgs,
 						...(filterSteps.length > 0
@@ -1860,6 +1895,7 @@ export async function executeExportJob({
 			updateJobProgress({ jobId, progress: 0.96 });
 			try {
 				await runFFmpegCommand({
+					signal: abort.signal,
 					args: [
 						"-y",
 						"-i",
@@ -1953,6 +1989,13 @@ export async function executeExportJob({
 			},
 		});
 	} catch (error) {
+		if (abort.signal.aborted || isExportCancelled(error)) {
+			// cancelExportJob already marked the job; only the half-written
+			// output is left to remove.
+			await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			claudeLog.info(HANDLER_NAME, `Export job ${jobId} stopped on request`);
+			return;
+		}
 		const message = error instanceof Error ? error.message : "Export failed";
 		const failedJob = exportJobs.get(jobId);
 		if (failedJob) {
