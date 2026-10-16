@@ -97,6 +97,9 @@ describe("copyProjectContents", () => {
 			"/Projects/dst/media/08.mp4"
 		);
 		expect(rewrite("/elsewhere/clip.mp4")).toBe("/elsewhere/clip.mp4");
+		expect(rewrite("/Projects/src-archive/clip.mp4")).toBe(
+			"/Projects/src-archive/clip.mp4"
+		);
 
 		expect(storage.saveFolders).toHaveBeenCalledWith("dst", [
 			{ id: "f1", name: "B-roll" },
@@ -123,6 +126,33 @@ describe("copyProjectContents", () => {
 			stickers: 1,
 			diskCopied: true,
 		});
+	});
+
+	it("moves Windows paths with their own separator", async () => {
+		Object.defineProperty(globalThis, "window", {
+			value: {
+				electronAPI: {
+					projectFolder: {
+						copyContents: vi.fn(async () => ({
+							sourceRoot: "C:\\Projects\\src",
+							targetRoot: "C:\\Projects\\dst",
+							copiedMedia: true,
+							copiedSettings: true,
+						})),
+					},
+				},
+			},
+			configurable: true,
+			writable: true,
+		});
+		await copyProjectContents({ source: project, targetProjectId: "dst" });
+		const rewrite = storage.copyProjectMedia.mock.calls[0][0].rewriteLocalPath;
+		expect(rewrite("C:\\Projects\\src\\media\\08.mp4")).toBe(
+			"C:\\Projects\\dst\\media\\08.mp4"
+		);
+		expect(rewrite("C:\\Projects\\src-archive\\08.mp4")).toBe(
+			"C:\\Projects\\src-archive\\08.mp4"
+		);
 	});
 
 	it("still copies the stored contents when there is no desktop folder to copy", async () => {
