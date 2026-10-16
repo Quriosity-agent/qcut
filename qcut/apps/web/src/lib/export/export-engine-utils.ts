@@ -36,6 +36,34 @@ export function calculateFrameTime({
 	return frameIndex / frameRate;
 }
 
+/**
+ * How long frame `frameIndex` is shown. Every frame lasts 1/fps except the
+ * last, which ends where the timeline ends: `calculateTotalFrames` rounds the
+ * length up to whole frames, and a fixed last duration made the file up to a
+ * frame longer than the timeline (and than the native export). A remainder
+ * within a millisecond of nothing or of a whole frame is float noise from
+ * that rounding and keeps the full frame.
+ */
+export function calculateFrameSampleDuration({
+	frameIndex,
+	totalFrames,
+	fps,
+	totalDuration,
+}: {
+	frameIndex: number;
+	totalFrames: number;
+	fps: number;
+	totalDuration: number;
+}): number {
+	const frameDuration = 1 / fps;
+	if (frameIndex !== totalFrames - 1) return frameDuration;
+	const remainder = totalDuration - frameIndex / fps;
+	if (!(remainder > 0.001) || remainder >= frameDuration - 0.001) {
+		return frameDuration;
+	}
+	return remainder;
+}
+
 /** Get active elements at a specific time */
 export function getActiveElements(
 	tracks: TimelineTrack[],
