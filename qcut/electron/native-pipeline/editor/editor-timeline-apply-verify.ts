@@ -293,8 +293,12 @@ export function verifyManifest({
 			expected.type === "video" ||
 			expected.type === "audio" ||
 			expected.type === "image";
+		// `endTime` is where the clip ends on the timeline whatever its trims
+		// and speed, so a length that went wrong on the way in shows up here
+		// even when the trimmed `duration` happens to read back consistently.
 		const verificationKeys = [
 			"startTime",
+			"endTime",
 			"duration",
 			"trimStart",
 			"trimEnd",
