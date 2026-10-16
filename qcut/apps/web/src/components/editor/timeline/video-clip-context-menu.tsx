@@ -70,6 +70,52 @@ const SHOT_SPLIT_ENGINE_ITEMS: Array<{
 	{ engine: "ffmpeg", zh: "FFmpeg 画面差分", en: "FFmpeg scene filter" },
 ];
 
+/**
+ * The engine submenu's items. Mounted only while the submenu is open, so the
+ * engine inspection (a runtime probe and a Python check in the main process)
+ * runs once per opened menu instead of once per clip on the timeline.
+ */
+function ShotSplitEngineItems({
+	locale,
+	onPick,
+}: {
+	locale: string;
+	onPick: (engine: ShotSplitEngine) => void;
+}) {
+	const engineAvailability = useSceneEngineAvailability();
+	return (
+		<>
+			{SHOT_SPLIT_ENGINE_ITEMS.map((item) => {
+				const status = engineAvailability?.find(
+					(entry) => entry.engine === item.engine
+				);
+				const unavailable = status !== undefined && !status.available;
+				return (
+					<ContextMenuItem
+						key={item.engine}
+						data-testid={`${item.engine}-shot-split-menu-item`}
+						disabled={unavailable}
+						onSelect={(event) => {
+							event.stopPropagation();
+							onPick(item.engine);
+						}}
+					>
+						<SplitSquareHorizontal />
+						<span className="flex flex-col">
+							<span>{locale === "zh" ? item.zh : item.en}</span>
+							{unavailable && (
+								<span className="max-w-72 truncate text-xs text-muted-foreground">
+									{status.message}
+								</span>
+							)}
+						</span>
+					</ContextMenuItem>
+				);
+			})}
+		</>
+	);
+}
+
 interface VideoClipMenuActions {
 	copy: MouseEventHandler<HTMLDivElement>;
 	cut: MouseEventHandler<HTMLDivElement>;
@@ -162,7 +208,6 @@ export function VideoClipContextMenu({
 	actions: VideoClipMenuActions;
 }) {
 	const { locale, t } = useTranslation();
-	const engineAvailability = useSceneEngineAvailability();
 
 	return (
 		<ContextMenuContent
@@ -324,33 +369,10 @@ export function VideoClipContextMenu({
 					{locale === "zh" ? "指定镜头分割引擎" : "Shot split with engine"}
 				</ContextMenuSubTrigger>
 				<ContextMenuSubContent>
-					{SHOT_SPLIT_ENGINE_ITEMS.map((item) => {
-						const status = engineAvailability?.find(
-							(entry) => entry.engine === item.engine
-						);
-						const unavailable = status !== undefined && !status.available;
-						return (
-							<ContextMenuItem
-								key={item.engine}
-								data-testid={`${item.engine}-shot-split-menu-item`}
-								disabled={unavailable}
-								onSelect={(event) => {
-									event.stopPropagation();
-									actions.smartShotSplit(item.engine);
-								}}
-							>
-								<SplitSquareHorizontal />
-								<span className="flex flex-col">
-									<span>{locale === "zh" ? item.zh : item.en}</span>
-									{unavailable && (
-										<span className="max-w-72 truncate text-xs text-muted-foreground">
-											{status.message}
-										</span>
-									)}
-								</span>
-							</ContextMenuItem>
-						);
-					})}
+					<ShotSplitEngineItems
+						locale={locale}
+						onPick={actions.smartShotSplit}
+					/>
 				</ContextMenuSubContent>
 			</ContextMenuSub>
 			<ContextMenuItem onClick={actions.openSmartSpeech}>
