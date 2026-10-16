@@ -161,9 +161,12 @@ function applyTrackOperation(
 
 		// Checked before the track exists, so a bad colour creates nothing.
 		if (request.colorLabel !== undefined) requestedColorLabel(request);
+		// Without an index the new lane goes where the editor would put one of
+		// its kind (text and captions above the video, audio below), instead
+		// of the bottom of the list where overlays hide behind the clips.
 		const trackId =
 			request.index === undefined
-				? store.addTrack(request.type)
+				? store.addTrackByStackingPolicy(request.type)
 				: store.insertTrackAt(request.type, request.index);
 		if (request.name?.trim()) store.renameTrack(trackId, request.name);
 		if (request.colorLabel !== undefined && request.colorLabel !== null) {
