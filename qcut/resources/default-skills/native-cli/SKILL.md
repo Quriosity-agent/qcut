@@ -282,6 +282,7 @@ qcut compose schema --json                       # manifest fields, defaults, an
 qcut compose validate --config edit.qcut-compose.json --json
 qcut draft inspect --draft "~/Movies/JianyingPro Drafts/my-draft" --json
 qcut update --check --json
+qcut cli install --json                         # put the app's own qcut on PATH (~/.local/bin/qcut)
 ```
 
 ## Auth Token Management
