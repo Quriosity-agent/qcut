@@ -412,6 +412,12 @@ export interface CLIRunOptions {
 	deltaY?: number;
 	foreground?: boolean;
 	replace?: boolean;
+	/** editor:track:update: lock or unlock the track (a locked track refuses edits). */
+	lock?: boolean;
+	unlock?: boolean;
+	/** editor:track:update: hide or show the track. */
+	hide?: boolean;
+	unhide?: boolean;
 	ripple?: boolean;
 	/** Leave the gap a range delete opens (ripple is the default). */
 	noRipple?: boolean;
