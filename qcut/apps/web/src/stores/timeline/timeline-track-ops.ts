@@ -9,7 +9,7 @@ import {
 	getTimelineElementEndTime,
 	resolveElementOverlaps,
 } from "@/lib/timeline";
-import type { TimelineTrack } from "@/types/timeline";
+import type { AudioMixAutomation, TimelineTrack } from "@/types/timeline";
 import type {
 	OperationDeps,
 	StoreGet,
@@ -17,6 +17,8 @@ import type {
 } from "./timeline-store-operations";
 import { blockedByTrackLock } from "./timeline-lock-guard";
 import { overwriteRangeInElements } from "./timeline-collision-utils";
+import { rippleAutomation } from "@/lib/audio/audio-mix-automation";
+import { useProjectStore } from "@/stores/project-store";
 import { isSeparatedAudioPairGroup } from "./timeline-group-operations";
 import {
 	deriveTimelineLinks,
@@ -58,6 +60,7 @@ function applyDeleteTimeRangeToTracks({
 	targetTrackIds,
 	rippleTrackIds,
 	fps,
+	keepAutomation = false,
 }: {
 	tracks: TimelineTrack[];
 	startTime: number;
@@ -65,6 +68,8 @@ function applyDeleteTimeRangeToTracks({
 	targetTrackIds: Set<string>;
 	rippleTrackIds: Set<string>;
 	fps: number;
+	/** Leave the tracks' level and pan curves where they are. */
+	keepAutomation?: boolean;
 }): RangeDeletionResult {
 	let deletedElements = 0;
 	let splitElements = 0;
@@ -99,7 +104,25 @@ function applyDeleteTimeRangeToTracks({
 					startTime: Math.max(0, element.startTime - rangeDuration),
 				};
 			});
-			return { ...track, elements: shiftedElements };
+			// The track's own automation rides with its clips: the span goes,
+			// later points move up, as the mixer would expect after a ripple.
+			const automation =
+				!keepAutomation && track.audio?.automation
+					? rippleAutomation({
+							automation: track.audio.automation,
+							startTime,
+							endTime,
+						})
+					: track.audio?.automation;
+			const audio =
+				track.audio && automation !== track.audio.automation
+					? { ...track.audio, automation }
+					: track.audio;
+			return {
+				...track,
+				elements: shiftedElements,
+				...(audio ? { audio } : {}),
+			};
 		})
 		.filter(
 			(track) =>
@@ -114,6 +137,36 @@ function applyDeleteTimeRangeToTracks({
 		splitElements,
 		totalRemovedDuration: rangeDuration,
 	};
+}
+
+/** Moves the project's bus and master automation up by a removed span. */
+function rippleProjectMixAutomation({
+	startTime,
+	endTime,
+}: {
+	startTime: number;
+	endTime: number;
+}): void {
+	const projectStore = useProjectStore.getState();
+	const audioMix = projectStore.activeProject?.audioMix;
+	if (!audioMix) return;
+	const shift = <T extends { automation?: AudioMixAutomation }>(bus: T): T => {
+		const automation = rippleAutomation({
+			automation: bus.automation,
+			startTime,
+			endTime,
+		});
+		return automation === bus.automation ? bus : { ...bus, automation };
+	};
+	const master = shift(audioMix.master);
+	const buses = audioMix.buses.map(shift);
+	if (
+		master === audioMix.master &&
+		buses.every((bus, index) => bus === audioMix.buses[index])
+	) {
+		return;
+	}
+	void projectStore.updateProjectAudioMix({ ...audioMix, master, buses });
 }
 
 export function createTrackOps(
@@ -566,12 +619,14 @@ export function createTrackOps(
 			trackIds,
 			ripple = true,
 			crossTrackRipple = false,
+			keepAutomation = false,
 		}: {
 			startTime: number;
 			endTime: number;
 			trackIds?: string[];
 			ripple?: boolean;
 			crossTrackRipple?: boolean;
+			keepAutomation?: boolean;
 		}) => {
 			try {
 				const clampedStartTime = Math.max(0, startTime);
@@ -632,9 +687,26 @@ export function createTrackOps(
 					targetTrackIds,
 					rippleTrackIds,
 					fps: getProjectFps(),
+					keepAutomation,
 				});
 
 				updateTracksAndSave(result.tracks);
+				// Bus and master curves belong to the whole programme, so they
+				// follow only when every unlocked track moved (the default
+				// all-tracks delete, or --cross-track-ripple). They live in the
+				// project, outside the timeline's undo history.
+				const wholeTimelineRippled =
+					ripple &&
+					!keepAutomation &&
+					_tracks.every(
+						(track) => track.locked || rippleTrackIds.has(track.id)
+					);
+				if (wholeTimelineRippled) {
+					rippleProjectMixAutomation({
+						startTime: clampedStartTime,
+						endTime: clampedEndTime,
+					});
+				}
 
 				return {
 					deletedElements: result.deletedElements,
