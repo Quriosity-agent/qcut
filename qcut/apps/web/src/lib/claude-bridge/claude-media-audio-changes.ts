@@ -20,6 +20,7 @@ import {
 } from "@/lib/audio/audio-properties";
 import type {
 	AudioKeyframeProperty,
+	AudioLyricsWord,
 	MediaAudioSettings,
 	MediaPropertyKeyframe,
 } from "@/types/timeline";
@@ -110,6 +111,62 @@ function mergeKeyframes({
 	return merged;
 }
 
+const LYRIC_WORD_TYPES: ReadonlySet<AudioLyricsWord["type"]> = new Set([
+	"word",
+	"spacing",
+]);
+
+/** One recognised lyric word: id, text, start/end seconds, word or spacing. */
+function readLyricWord(item: unknown, path: string): AudioLyricsWord {
+	if (!isPlainObject(item)) throw new Error(`${path} must be an object`);
+	const { id, text, start, end, type, speakerId, ...rest } = item;
+	const unknown = Object.keys(rest);
+	if (unknown.length > 0) {
+		throw new Error(
+			`Unknown lyric word field "${path}.${unknown[0]}". Known: id, text, start, end, type, speakerId`
+		);
+	}
+	if (typeof id !== "string" || !id) {
+		throw new Error(`${path}.id must be a non-empty string`);
+	}
+	if (typeof text !== "string")
+		throw new Error(`${path}.text must be a string`);
+	if (typeof start !== "number" || !Number.isFinite(start) || start < 0) {
+		throw new Error(`${path}.start must be seconds, 0 or more`);
+	}
+	if (typeof end !== "number" || !Number.isFinite(end) || end < start) {
+		throw new Error(`${path}.end must be seconds at or after start`);
+	}
+	if (
+		typeof type !== "string" ||
+		!LYRIC_WORD_TYPES.has(type as AudioLyricsWord["type"])
+	) {
+		throw new Error(`${path}.type must be word or spacing`);
+	}
+	if (speakerId !== undefined && typeof speakerId !== "string") {
+		throw new Error(`${path}.speakerId must be a string`);
+	}
+	return {
+		id,
+		text,
+		start,
+		end,
+		type: type as AudioLyricsWord["type"],
+		...(speakerId !== undefined ? { speakerId } : {}),
+	};
+}
+
+/**
+ * Lists whose items have no stored example to merge onto (they start empty)
+ * are read by shape instead, so an export with recognised lyrics applies.
+ */
+const LIST_ITEM_READERS: Record<
+	string,
+	(item: unknown, path: string) => unknown
+> = {
+	"audio.lyrics.words": readLyricWord,
+};
+
 /**
  * `change` merged into `current`, a setting the element already has. Objects
  * merge key by key and must only name existing settings; lists are replaced,
@@ -144,6 +201,13 @@ function mergedSetting({
 	}
 	if (Array.isArray(current)) {
 		if (!Array.isArray(change)) throw new Error(`${path} must be an array`);
+		// Clearing a list is always expressible, including an empty list read
+		// back from `timeline export`.
+		if (change.length === 0) return [];
+		const readItem = LIST_ITEM_READERS[path];
+		if (readItem) {
+			return change.map((item, index) => readItem(item, `${path}[${index}]`));
+		}
 		if (current.length === 0) {
 			throw new Error(`${path} cannot be set through the editor API`);
 		}
