@@ -726,6 +726,8 @@ export interface ClaudeBatchUpdateItemRequest
 }
 
 export interface ClaudeBatchUpdateItemResult {
+	/** Fields the element type could not use; the rest were applied. */
+	ignoredFields?: string[];
 	index: number;
 	success: boolean;
 	error?: string;
