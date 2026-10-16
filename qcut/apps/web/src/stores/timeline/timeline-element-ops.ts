@@ -206,6 +206,27 @@ export function createElementOps(
 								elements: track.elements.flatMap((c) =>
 									c.id === elementId ? [leftPart, rightPart] : [c]
 								),
+								// The transition (and crossfade) out of the clip belongs to
+								// the piece that still meets the next clip; left on the left
+								// piece it would no longer touch anything and be dropped.
+								...(track.transitions
+									? {
+											transitions: track.transitions.map((item) =>
+												item.fromElementId === elementId
+													? { ...item, fromElementId: secondElementId }
+													: item
+											),
+										}
+									: {}),
+								...(track.audioCrossfades
+									? {
+											audioCrossfades: track.audioCrossfades.map((item) =>
+												item.fromElementId === elementId
+													? { ...item, fromElementId: secondElementId }
+													: item
+											),
+										}
+									: {}),
 							}
 						: track
 				)
