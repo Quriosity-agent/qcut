@@ -23,6 +23,7 @@ import {
 } from "./browser-audio-export-clips";
 import { reverseAudioBuffer } from "./audio-buffer-transform";
 import { MIX_STRIP_DYNAMICS_STAGES } from "./audio-mix-strip";
+import { FLAT_CUTOFF_Q_DB } from "./audio-properties";
 import {
 	type AudioMixRouting,
 	resolveAudioMixRouting,
@@ -228,7 +229,9 @@ async function scheduleClip({
 	const output = context.createGain();
 
 	denoiseHighpass.type = "highpass";
+	denoiseHighpass.Q.value = FLAT_CUTOFF_Q_DB;
 	denoiseLowpass.type = "lowpass";
+	denoiseLowpass.Q.value = FLAT_CUTOFF_Q_DB;
 	eqLow.type = "lowshelf";
 	eqLow.frequency.value = 160;
 	eqMid.type = "peaking";
@@ -245,8 +248,10 @@ async function scheduleClip({
 	presence.frequency.value = 4_800;
 	telephoneHighpass.type = "highpass";
 	telephoneHighpass.frequency.value = 320;
+	telephoneHighpass.Q.value = FLAT_CUTOFF_Q_DB;
 	telephoneLowpass.type = "lowpass";
 	telephoneLowpass.frequency.value = 3_400;
+	telephoneLowpass.Q.value = FLAT_CUTOFF_Q_DB;
 	compressor.knee.value = 30;
 	limiter.knee.value = 0;
 	limiter.ratio.value = 20;
@@ -321,7 +326,10 @@ async function scheduleClip({
 		[output.gain, (point) => point.outputGain],
 		[panner.pan, (point) => point.pan],
 		[denoiseHighpass.frequency, (point) => point.denoiseHighpass],
-		[denoiseLowpass.frequency, (point) => point.denoiseLowpass],
+		[
+			denoiseLowpass.frequency,
+			(point) => Math.min(point.denoiseLowpass, context.sampleRate / 2),
+		],
 		[eqLow.gain, (point) => point.eqLow],
 		[eqMid.gain, (point) => point.eqMid],
 		[eqHigh.gain, (point) => point.eqHigh],
