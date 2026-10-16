@@ -180,7 +180,10 @@ describe("qcut launcher", () => {
 			shadowedBy: [],
 			previousTarget: undefined,
 		});
-		expect(statSync(launcherPath).mode & 0o111).toBe(0o111);
+		// Windows has no execute bits; the .cmd there runs by extension.
+		if (process.platform !== "win32") {
+			expect(statSync(launcherPath).mode & 0o111).toBe(0o111);
+		}
 
 		const moved = {
 			...target,
