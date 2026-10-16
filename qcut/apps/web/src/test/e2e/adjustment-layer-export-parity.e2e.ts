@@ -188,7 +188,8 @@ test("the native export grades adjustment layers the way the renderer does", asy
 	try {
 		const samples: Record<string, { inside: Rgb; outside: Rgb }> = {};
 		for (const engine of ["native", "muxer"] as const) {
-			const outputPath = path.join(outDir, `${engine}.mp4`);
+			// A folder that does not exist yet: both engines must create it.
+			const outputPath = path.join(outDir, engine, "nested", `${engine}.mp4`);
 			await cli({
 				apiPort,
 				timeout: 420_000,
