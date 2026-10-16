@@ -78,7 +78,7 @@ describe("request body cap", () => {
 			body: big,
 		});
 		expect(response.status).toBe(413);
-		expect(response.json.error).toContain("Payload too large (limit 1 MB)");
+		expect(response.json.error).toBe("Payload too large");
 	});
 
 	it("lets one element's PATCH carry a filter stack the size of a LUT cube", async () => {
