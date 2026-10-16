@@ -59,6 +59,7 @@ import {
 	orderConcatInputs,
 	probeGapAudioLayout,
 } from "./gap-segments.js";
+import { buildConcatCopyArgs, probeLeadingAudioTime } from "./concat-timing.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -1538,7 +1539,12 @@ export async function executeExportJob({
 			gaps.reduce((sum, gap) => sum + gap.duration, 0);
 
 		const concatListPath = path.join(tempDir, "concat-list.txt");
-		const concatLines = orderConcatInputs({ segmentOutputs, gaps, gapOutputs })
+		const concatInputs = orderConcatInputs({
+			segmentOutputs,
+			gaps,
+			gapOutputs,
+		});
+		const concatLines = concatInputs
 			.map((segmentPath) => {
 				const escaped = segmentPath.replace(/\\/g, "/").replace(/'/g, "'\\''");
 				return `file '${escaped}'`;
@@ -1553,22 +1559,19 @@ export async function executeExportJob({
 		const concatProgressSpan = hasVideoTransitions ? 0.04 : 0.08;
 		updateJobProgress({ jobId, progress: concatProgressStart });
 
+		// The concat demuxer would move the whole program late by the first
+		// file's AAC priming lead; see concat-timing.ts.
+		const leadSeconds =
+			concatInputs.length > 0
+				? await probeLeadingAudioTime({ file: concatInputs[0] })
+				: 0;
 		await runFFmpegCommand({
 			signal: abort.signal,
-			args: [
-				"-y",
-				"-f",
-				"concat",
-				"-safe",
-				"0",
-				"-i",
-				concatListPath,
-				"-c",
-				"copy",
-				"-movflags",
-				"+faststart",
-				concatOutputPath,
-			],
+			args: buildConcatCopyArgs({
+				listPath: concatListPath,
+				outputPath: concatOutputPath,
+				leadSeconds,
+			}),
 			estimatedDuration: Math.max(0, concatDuration),
 			onProgress: ({ normalizedProgress }) => {
 				updateJobProgress({
