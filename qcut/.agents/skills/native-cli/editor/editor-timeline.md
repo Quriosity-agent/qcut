@@ -223,9 +223,11 @@ qcut editor:timeline:split \
 
 The same action as the timeline's right-click "智能镜头分割": detect shot
 boundaries in the clip's source, snap them to frames, and cut the clip at each
-one as a single undo step (Cmd+Z in the editor reverts the whole split). It is
-a job: the command waits (`--timeout`, default 600 s) and prints the result;
-`--no-wait` returns the job id and `editor timeline job-status` follows it.
+one as a single undo step (Cmd+Z in the editor, or `qcut editor undo --force`:
+undo and redo sit in the CLI's confirm tier, so they need `--force`, reverts
+the whole split). It is a job: the command waits (`--timeout`, default 600 s)
+and prints the result; `--no-wait` returns the job id and
+`editor timeline job-status` follows it.
 
 ```bash
 # Plan only: which cuts the engine would make, nothing changes
@@ -234,7 +236,7 @@ qcut editor timeline shot-split --project-id <id> --element-id <id> --dry-run --
 qcut editor timeline shot-split --project-id <id> --element-id <id> --json
 # A specific engine; ffmpeg takes --threshold
 qcut editor timeline shot-split --project-id <id> --element-id <id> --engine ffmpeg --threshold 0.3 --json
-# Given cut points (source seconds), no detection: detect, review, then cut
+# Given cut points (source seconds, snapped to frames), no detection: detect, review, then cut
 qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts 3.333,15.167 --json
 qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts @shots.json --json
 # Every video clip on a track, keeping shots of at least a second
@@ -242,15 +244,18 @@ qcut editor timeline shot-split --project-id <id> --track-id <id> --min-shot 1 -
 ```
 
 The result lists, per clip: `requestedEngine` and the `engine` that ran (with
-`fallbacks` naming the engines `auto` passed over and why), `cuts` as
-`{sourceTime, timelineTime}` pairs, `skipped` boundaries with the reason
-(outside the trimmed range, within a frame of an edge or of another cut,
-would leave a shot shorter than `--min-shot`, refused by the editor), the
+`fallbacks` naming the engines `auto` passed over and why; both read `manual`
+for `--cuts`), `cuts` as `{sourceTime, timelineTime}` pairs, `skipped`
+boundaries with the reason (outside the trimmed range, within a frame of an
+edge or of another cut, would leave a shot shorter than `--min-shot`, refused
+by the editor), a `message` when an engine finds no boundary at all in a clip
+(so a single-shot clip is reported, not left as empty lists), the
 `createdElementIds` and `elementIds` in time order. `--cuts` accepts a
 comma-separated list, or `@file.json` holding an array of seconds, an
-`analyze shots` result or an `analyze scenes` result. After a split,
-`timeline export` shows the new clips. Which engines this machine can run:
-`qcut editor analyze engines --json`.
+`analyze shots` result or an `analyze scenes` result; the seconds are rounded
+to the project's frame grid. `--threshold` is only accepted with `ffmpeg` or
+`auto`, as in `analyze scenes`. After a split, `timeline export` shows the new
+clips. Which engines this machine can run: `qcut editor analyze engines --json`.
 
 ### Move element
 
