@@ -46,6 +46,18 @@ export interface BeatDetectionResult {
 	duration: number;
 }
 
+/** Where a clip's sound first attacks; see detectFirstOnset. */
+export interface FirstOnsetResult {
+	/** Seconds from the clip's start, or null when nothing reaches the threshold. */
+	time: number | null;
+	/** That attack's onset strength relative to the clip's loudest (0–1). */
+	strength: number;
+	/** The share of the loudest onset an attack had to reach. */
+	threshold: number;
+	/** Total audio duration in seconds */
+	duration: number;
+}
+
 /** Resolved config with all defaults applied */
 export interface ResolvedBeatDetectionConfig {
 	windowSize: number;
