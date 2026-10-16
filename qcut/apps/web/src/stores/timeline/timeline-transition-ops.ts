@@ -6,6 +6,7 @@ import {
 	clampClipTransitionDuration,
 	type MediaElement,
 	getTransitionMaxDuration,
+	isClipTransitionType,
 	type ClipTransition,
 } from "@/types/timeline";
 import type { TimelineStore } from "./types";
@@ -76,6 +77,8 @@ export function createTransitionOps(
 			maskShape,
 		}) => {
 			if (!isValidLocalPackageHash({ engine, packageHash })) return null;
+			// Reconcile drops unknown types on the write; refuse them up front.
+			if (!isClipTransitionType({ value: type })) return null;
 			const track = get()._tracks.find((candidate) => candidate.id === trackId);
 			if (!track || track.type !== "media") return null;
 			if (
@@ -154,6 +157,12 @@ export function createTransitionOps(
 						: candidate
 				)
 			);
+			// Reconcile runs inside that write; a transition it refused must not be
+			// selected or reported as added.
+			const kept = get()
+				._tracks.find((candidate) => candidate.id === trackId)
+				?.transitions?.some((item) => item.id === id);
+			if (!kept) return null;
 			set({
 				selectedElements: [],
 				selectedTransition: { trackId, transitionId: id },
