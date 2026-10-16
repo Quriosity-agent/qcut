@@ -820,6 +820,20 @@ export function readShotSplitRequest({
 		}
 		request.dryRun = input.dryRun;
 	}
+	// Same rule as analyze scenes: a threshold with an engine that ignores it
+	// (or with given cuts) is a mistake, not something to accept silently.
+	if (
+		request.threshold !== undefined &&
+		(request.cuts !== undefined ||
+			(request.engine !== undefined &&
+				request.engine !== "ffmpeg" &&
+				request.engine !== "auto"))
+	) {
+		throw new HttpError(
+			400,
+			"threshold is only supported by the FFmpeg scene engine"
+		);
+	}
 	return request;
 }
 
