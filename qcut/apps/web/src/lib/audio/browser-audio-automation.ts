@@ -13,6 +13,13 @@ import { calculateAudioPreviewState } from "./audio-preview-state";
 const AUTOMATION_SAMPLES_PER_INTERVAL = 12;
 export const MAX_BROWSER_AUDIO_AUTOMATION_POINTS = 512;
 
+/**
+ * The denoise lowpass when denoise is off: above any Nyquist, so the graph
+ * clamps it to the context's and the filter passes everything. The highpass
+ * goes to 0 Hz for the same reason.
+ */
+export const DENOISE_LOWPASS_OFF_HZ = 1_000_000;
+
 export interface BrowserAudioAutomationPoint {
 	time: number;
 	outputGain: number;
@@ -193,8 +200,11 @@ function pointFromState({
 		time,
 		outputGain: state.outputGain,
 		pan: state.pan,
-		denoiseHighpass: 20 + denoiseAmount * 120,
-		denoiseLowpass: 22_000 - denoiseAmount * 12_000,
+		denoiseHighpass: denoiseAmount > 0 ? 20 + denoiseAmount * 120 : 0,
+		denoiseLowpass:
+			denoiseAmount > 0
+				? 22_000 - denoiseAmount * 12_000
+				: DENOISE_LOWPASS_OFF_HZ,
 		eqLow: settings.equalizer.enabled ? settings.equalizer.lowGainDb : 0,
 		eqMid: settings.equalizer.enabled ? settings.equalizer.midGainDb : 0,
 		eqHigh: settings.equalizer.enabled ? settings.equalizer.highGainDb : 0,

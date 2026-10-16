@@ -22,6 +22,7 @@ export const AUDIO_MIX_PARSE_OPTIONS = {
 	stems: { type: "boolean" },
 	param: { type: "string" },
 	points: { type: "string" },
+	"no-wait": { type: "boolean" },
 } as const;
 
 type AudioMixOptions = Pick<
@@ -38,6 +39,7 @@ type AudioMixOptions = Pick<
 	| "stems"
 	| "param"
 	| "points"
+	| "noWait"
 >;
 
 /** A number, NaN when the text is not one (the handler names the flag). */
@@ -69,6 +71,7 @@ export function readAudioMixOptions(
 		stems: values.stems === true ? true : undefined,
 		param: values.param as string | undefined,
 		points: values.points as string | undefined,
+		noWait: values["no-wait"] === true ? true : undefined,
 	};
 	return Object.fromEntries(
 		Object.entries(options).filter(([, value]) => value !== undefined)

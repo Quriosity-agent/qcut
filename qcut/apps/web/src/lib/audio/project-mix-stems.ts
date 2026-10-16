@@ -92,9 +92,11 @@ export async function renderProjectMixStems({
 		}
 		usedNames.add(fileName.toLowerCase());
 		const path = `${directory}/${fileNamePrefix}${fileName}.wav`;
+		// Stems leave their bus before the master and its limiter, so a loud
+		// bus can pass full scale; float keeps those samples instead of clipping.
 		const saved = await platform().files.writeFile(
 			path,
-			encodeAudioBufferAsWav({ buffer })
+			encodeAudioBufferAsWav({ buffer, format: "float32" })
 		);
 		if (!saved)
 			throw new Error(`Could not write the ${stem.name} stem to ${path}`);

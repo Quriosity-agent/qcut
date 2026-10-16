@@ -149,6 +149,12 @@ export interface ClaudeMixLoudness {
 	truePeakDbtp: number;
 	samplePeakDb: number;
 	durationSeconds: number;
+	/**
+	 * Which rendering was measured: "native" is the FFmpeg export pipeline
+	 * (what `export start` writes by default), "browser" the renderer's Web
+	 * Audio graph (the preview and the muxer engine).
+	 */
+	engine?: "native" | "browser";
 }
 
 export type ClaudeAudioMixRequest = { projectId: string } & (

@@ -126,6 +126,10 @@ import {
 } from "../cli-handlers-jianying-transitions.js";
 import { handleAppUpdate } from "../cli-handlers-app-update.js";
 import {
+	handleCliInstall,
+	handleCliStatus,
+} from "../cli-handlers-cli-launcher.js";
+import {
 	handleFilterLabCompare,
 	handleFilterLabList,
 	handleFilterLabMatch,
@@ -215,6 +219,8 @@ function wrapOPS(
  */
 export const HANDLER_MAP: Record<string, CommandHandler> = {
 	update: wrapOPS(handleAppUpdate),
+	"cli-install": wrapOPS(handleCliInstall),
+	"cli-status": wrapOPS(handleCliStatus),
 	"compose-plan": wrapOPS(handleComposePlan),
 	"compose-snapshot": wrapOPS(handleComposeSnapshot),
 	"compose-apply": wrapOPS(handleComposeApply),

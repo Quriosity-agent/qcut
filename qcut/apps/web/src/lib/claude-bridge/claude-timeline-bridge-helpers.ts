@@ -50,6 +50,7 @@ import {
 } from "@/lib/video/video-speed-constants";
 import { getMediaTimelineDuration } from "@/lib/video/video-timing";
 import { normalizeTrackAudioSettings } from "@/lib/audio/audio-mix-settings";
+import { normalizeMediaAudioSettings } from "@/lib/audio/audio-properties";
 import {
 	hasMediaColorEdits,
 	normalizeMediaColorSettings,
@@ -1995,6 +1996,7 @@ function formatElementForExport({
 			}
 			return {
 				...baseElement,
+				name: element.name,
 				sourceId: element.mediaId,
 				sourceName,
 				fitMode: element.fitMode,
@@ -2018,6 +2020,9 @@ function formatElementForExport({
 				volume: element.volume,
 				audioFadeIn: element.audioFadeIn,
 				audioFadeOut: element.audioFadeOut,
+				// The same shape update-element's `audio` takes, so a value read
+				// here can be written back without converting.
+				audio: normalizeMediaAudioSettings({ element }),
 				keyframes: element.keyframes as ClaudeElement["keyframes"],
 				colorSettings: resolveExportElementColorSettings({ element }),
 				// Raw ordered Filter Lab stack; identity + payload round-trips

@@ -334,10 +334,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			requestFromMain(
 				"audio-mix-operation",
 				{ request },
-				// Main waits up to five minutes for a mix render.
+				// Main waits up to an hour for a mix render (a job, not a request).
 				request.action === "measure-loudness" ||
 					request.action === "render-stems"
-					? { timeoutMs: 305_000 }
+					? { timeoutMs: 3_605_000 }
 					: {}
 			) as Promise<ClaudeAudioMixResponse>,
 		/** Starts a transactional timeline mutation. */

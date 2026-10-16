@@ -71,12 +71,28 @@ function fakeClient() {
 		reroutedTrackIds: ["guns"],
 		mix,
 	}));
+	const pollJob = vi.fn(async () => ({
+		jobId: "job-1",
+		status: "completed",
+		result: {
+			loudness: { integratedLufs: -14, truePeakDbtp: -1.1 },
+			outputDir: "/abs/stems",
+			stems: [{ busId: "sfx" }],
+		},
+	}));
 	return {
-		client: { get, patch, post, delete: del } as unknown as EditorApiClient,
+		client: {
+			get,
+			patch,
+			post,
+			delete: del,
+			pollJob,
+		} as unknown as EditorApiClient,
 		get,
 		patch,
 		post,
 		del,
+		pollJob,
 	};
 }
 
@@ -282,49 +298,130 @@ describe("bus and master commands", () => {
 		});
 	});
 
-	it("waits for the editor to render the mix before measuring loudness", async () => {
-		const { client, post } = fakeClient();
-		post.mockResolvedValueOnce({
-			projectId: "p1",
-			integratedLufs: -14,
-		} as never);
-		const result = await run(client, "editor:mix:loudness");
-		expect(post).toHaveBeenCalledWith(
-			"/api/claude/mix/p1/loudness",
-			{},
-			{ timeout: 150_000 }
-		);
+	it("starts a loudness job and waits for its numbers", async () => {
+		const { client, post, pollJob } = fakeClient();
+		post.mockResolvedValueOnce({ jobId: "job-1", status: "running" } as never);
+		const result = await run(client, "editor:mix:loudness", { timeout: 60 });
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "native",
+		});
+		expect(pollJob).toHaveBeenCalledWith("/api/claude/mix/p1/jobs/job-1", {
+			interval: 3_000,
+			timeout: 60_000,
+		});
 		expect(result).toEqual({
 			success: true,
-			data: { projectId: "p1", integratedLufs: -14 },
+			data: {
+				projectId: "p1",
+				jobId: "job-1",
+				integratedLufs: -14,
+				truePeakDbtp: -1.1,
+			},
 		});
 	});
 
-	it("writes stems into an absolute folder, and needs one", async () => {
+	it("measures the browser rendering on request and refuses other engines", async () => {
 		const { client, post } = fakeClient();
-		post.mockResolvedValueOnce({ outputDir: "/abs/stems", stems: [] } as never);
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		await run(client, "editor:mix:loudness", {
+			engine: "browser",
+			noWait: true,
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "browser",
+		});
+		expect(
+			await run(client, "editor:mix:loudness", { engine: "muxer" })
+		).toEqual({
+			success: false,
+			error: "--engine must be native or browser",
+		});
+	});
+
+	it("hands back the job id with --no-wait, and names it when the wait runs out", async () => {
+		const { client, post, pollJob } = fakeClient();
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		expect(await run(client, "editor:mix:loudness", { noWait: true })).toEqual({
+			success: true,
+			data: { projectId: "p1", jobId: "job-1", status: "running" },
+		});
+		pollJob.mockRejectedValueOnce(
+			new Error(
+				"Polling timed out after 10s, but job job-1 is still running (progress ?). Keep polling."
+			)
+		);
+		expect(await run(client, "editor:mix:loudness", { timeout: 10 })).toEqual({
+			success: false,
+			error:
+				"Waited 10 s; the render is still running in QCut (jobId=job-1). Follow it with: qcut editor mix job-status --project-id p1 --job-id job-1",
+		});
+	});
+
+	it("refuses a poll interval that is not a positive number of seconds", async () => {
+		const { client, post, pollJob } = fakeClient();
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		for (const pollInterval of [0, -2, Number.NaN]) {
+			expect(
+				await run(client, "editor:mix:loudness", { pollInterval })
+			).toEqual({
+				success: false,
+				error: "--poll-interval must be a positive number of seconds",
+			});
+		}
+		expect(pollJob).not.toHaveBeenCalled();
+	});
+
+	it("reads a render job's status", async () => {
+		const { client, get } = fakeClient();
+		get.mockResolvedValueOnce({ jobId: "job-1", status: "running" } as never);
+		expect(
+			await run(client, "editor:mix:job-status", { jobId: "job-1" })
+		).toEqual({
+			success: true,
+			data: { projectId: "p1", jobId: "job-1", status: "running" },
+		});
+		expect(get).toHaveBeenCalledWith("/api/claude/mix/p1/jobs/job-1");
+	});
+	it("writes stems into an absolute folder as a job, and needs one", async () => {
+		const { client, post, pollJob } = fakeClient();
+		post.mockResolvedValueOnce({ jobId: "job-1", status: "running" } as never);
 		expect(await run(client, "editor:mix:stems")).toEqual({
 			success: false,
 			error: "Pass --output-dir <folder> for the stems",
 		});
-		await run(client, "editor:mix:stems", { outputDir: "relative/stems" });
-		expect(post).toHaveBeenCalledWith(
-			"/api/claude/mix/p1/stems",
-			{ outputDir: path.resolve("relative/stems") },
-			{ timeout: 310_000 }
-		);
+		const result = await run(client, "editor:mix:stems", {
+			outputDir: "relative/stems",
+			pollInterval: 1,
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/stems", {
+			outputDir: path.resolve("relative/stems"),
+		});
+		expect(pollJob).toHaveBeenCalledWith("/api/claude/mix/p1/jobs/job-1", {
+			interval: 1_000,
+			timeout: 1_800_000,
+		});
+		expect(result.data).toEqual({
+			projectId: "p1",
+			jobId: "job-1",
+			outputDir: "/abs/stems",
+			stems: [{ busId: "sfx" }],
+		});
 	});
-
 	it("writes stems beside an export once it is done", async () => {
 		const post = vi.fn(async (route: string) =>
 			route.endsWith("/start")
-				? { jobId: "job-1" }
-				: { outputDir: "/out", stems: [{ busId: "sfx" }] }
+				? { jobId: "export-1" }
+				: { jobId: "mix-1", status: "running" }
 		);
-		const pollJob = vi.fn(async () => ({
-			status: "completed",
-			outputPath: "/out/doors.mp4",
-		}));
+		const pollJob = vi.fn(async (statusPath: string) =>
+			statusPath.includes("/mix/")
+				? {
+						jobId: "mix-1",
+						status: "completed",
+						result: { outputDir: "/out", stems: [{ busId: "sfx" }] },
+					}
+				: { status: "completed", outputPath: "/out/doors.mp4" }
+		);
 		const client = { post, pollJob } as unknown as EditorApiClient;
 
 		const result = await handleGenerateExportCommand(
@@ -336,18 +433,16 @@ describe("bus and master commands", () => {
 			() => {}
 		);
 
-		expect(pollJob).toHaveBeenCalled();
-		expect(post).toHaveBeenLastCalledWith(
-			"/api/claude/mix/p1/stems",
+		expect(post).toHaveBeenLastCalledWith("/api/claude/mix/p1/stems", {
 			// Resolved like the handler does, so Windows gets its drive letter too.
-			{ outputDir: path.resolve("/out"), fileNamePrefix: "doors-" },
-			{ timeout: 310_000 }
-		);
+			outputDir: path.resolve("/out"),
+			fileNamePrefix: "doors-",
+		});
 		expect(result).toMatchObject({
 			success: true,
 			data: {
 				outputPath: "/out/doors.mp4",
-				stems: { outputDir: "/out" },
+				stems: { jobId: "mix-1", outputDir: "/out" },
 			},
 		});
 		expect(
@@ -361,7 +456,6 @@ describe("bus and master commands", () => {
 			error: "--stems needs --output: the stems go beside it",
 		});
 	});
-
 	it("says what to pass when nothing would change", async () => {
 		const { client } = fakeClient();
 		expect(await run(client, "editor:mix:master-set")).toEqual({

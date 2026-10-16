@@ -1,5 +1,5 @@
 import type { AudioPreviewState } from "./audio-preview-state";
-import { dbToGain } from "./audio-properties";
+import { dbToGain, FLAT_CUTOFF_Q_DB } from "./audio-properties";
 import { clampPlaybackRate } from "@/lib/video/video-timing";
 import type { FormantCorrectionNode } from "@soundtouchjs/formant-correction-worklet";
 import formantProcessorUrl from "@soundtouchjs/formant-correction-worklet/processor?url";
@@ -107,7 +107,9 @@ function createGraph({
 	const output = context.createGain();
 
 	denoiseHighpass.type = "highpass";
+	denoiseHighpass.Q.value = FLAT_CUTOFF_Q_DB;
 	denoiseLowpass.type = "lowpass";
+	denoiseLowpass.Q.value = FLAT_CUTOFF_Q_DB;
 	eqLow.type = "lowshelf";
 	eqLow.frequency.value = 160;
 	eqMid.type = "peaking";
@@ -124,8 +126,10 @@ function createGraph({
 	presence.frequency.value = 4_800;
 	telephoneHighpass.type = "highpass";
 	telephoneHighpass.frequency.value = 320;
+	telephoneHighpass.Q.value = FLAT_CUTOFF_Q_DB;
 	telephoneLowpass.type = "lowpass";
 	telephoneLowpass.frequency.value = 3_400;
+	telephoneLowpass.Q.value = FLAT_CUTOFF_Q_DB;
 	limiter.knee.value = 0;
 	limiter.ratio.value = 20;
 	limiter.attack.value = 0.003;
@@ -230,15 +234,20 @@ function createGraph({
 			const denoiseAmount = settings.denoise.enabled
 				? settings.denoise.amount / 100
 				: 0;
+			// Off: a highpass at 0 Hz and a lowpass at Nyquist pass everything
+			// exactly; parked at 20 Hz / 22 kHz they would still shape the band.
 			smooth({
 				parameter: denoiseHighpass.frequency,
-				value: 20 + denoiseAmount * 120,
+				value: denoiseAmount > 0 ? 20 + denoiseAmount * 120 : 0,
 				context,
 			});
 			applyPitch({ state });
 			smooth({
 				parameter: denoiseLowpass.frequency,
-				value: 22_000 - denoiseAmount * 12_000,
+				value:
+					denoiseAmount > 0
+						? 22_000 - denoiseAmount * 12_000
+						: context.sampleRate / 2,
 				context,
 			});
 			smooth({

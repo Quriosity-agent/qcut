@@ -815,13 +815,21 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--format", "string", "Caption format (srt|vtt|ass|ttml)"),
 		]
 	),
-	"editor:export:status": ed("editor:export:status", "Get export job status", [
-		PID,
-		JID,
-	]),
+	"editor:export:status": ed(
+		"editor:export:status",
+		"Get export job status",
+		[PID, JID],
+		["qcut editor export status --project-id <id> --job-id <id> --json"]
+	),
 	"editor:export:list-jobs": ed("editor:export:list-jobs", "List export jobs", [
 		PID,
 	]),
+	"editor:export:cancel": ed(
+		"editor:export:cancel",
+		"Stop a running native export; its partial output is removed",
+		[PID, JID],
+		["qcut editor export cancel --project-id <id> --job-id <id> --json"]
+	),
 
 	// ── Diagnostics & MCP ──
 	"editor:diagnostics:analyze": ed(

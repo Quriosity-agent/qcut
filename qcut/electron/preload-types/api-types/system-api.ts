@@ -2,6 +2,10 @@
 import type { UpdateState } from "../../auto-update-controller.js";
 import type { CodexPluginUpdateState } from "../../codex-plugin-update-controller.js";
 import type { UpdatePreferences } from "../../update-preferences.js";
+import type {
+	CliLauncherInstallResult,
+	CliLauncherState,
+} from "../../cli-launcher.js";
 
 export interface UpdatesAPI {
 	updates?: {
@@ -31,6 +35,18 @@ export interface UpdatesAPI {
 				content: string;
 			}>
 		>;
+		/** The `qcut` launcher on PATH that runs this app's bundled command. */
+		cliLauncher?: {
+			getState: () => Promise<CliLauncherState>;
+			install: (options?: { replaceForeign?: boolean }) => Promise<
+				| { success: true; state: CliLauncherInstallResult }
+				| {
+						success: false;
+						reason: "foreign-file" | "write-failed";
+						error: string;
+				  }
+			>;
+		};
 		onUpdateAvailable: (
 			callback: (data: {
 				version: string;

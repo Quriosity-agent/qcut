@@ -82,7 +82,7 @@ export const CATEGORIES: CategoryDef[] = [
 	{
 		name: "application",
 		label: "QCut Application",
-		commands: ["update"],
+		commands: ["update", "cli-install", "cli-status"],
 	},
 	{
 		name: "generation",
@@ -745,6 +745,26 @@ const CORE_COMMANDS: Record<string, CommandDef> = {
 			"qcut update --yes",
 			"qcut update --yes --json",
 		],
+	},
+	"cli-install": {
+		name: "cli-install",
+		description:
+			"Put the qcut command bundled with the installed QCut app on PATH (~/.local/bin/qcut), so it always matches the app",
+		category: "application",
+		flags: [
+			f("--yes", "boolean", "Replace a qcut file QCut did not write", {
+				short: "-y",
+			}),
+		],
+		examples: ["qcut cli install", "qcut cli install --yes --json"],
+	},
+	"cli-status": {
+		name: "cli-status",
+		description:
+			"Show which qcut command this is, where the launcher points, and whether the app's version matches",
+		category: "application",
+		flags: [],
+		examples: ["qcut cli status --json"],
 	},
 	"instances-list": {
 		name: "instances-list",

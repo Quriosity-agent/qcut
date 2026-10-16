@@ -11,6 +11,7 @@
 import { spawn, type ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+import { moveFileSync } from "./claude/handlers/claude-export-handler/move-file.js";
 
 import type {
 	ExportOptions,
@@ -315,7 +316,7 @@ async function mixOverlayAudio(
 
 	const concatOutputTemp = path.join(frameDir, "concat_before_audio.mp4");
 	// Rename current output to temp so we can mix into final output
-	fs.renameSync(outputFile, concatOutputTemp);
+	moveFileSync({ from: outputFile, to: concatOutputTemp });
 
 	try {
 		// Build FFmpeg inputs: video + each audio file
@@ -499,7 +500,7 @@ async function overlayStickerPass(
 	);
 
 	const tempInput = path.join(frameDir, "before_stickers.mp4");
-	fs.renameSync(outputFile, tempInput);
+	moveFileSync({ from: outputFile, to: tempInput });
 
 	try {
 		const args = buildMode15StickerArgs(tempInput, outputFile, validStickers);

@@ -40,9 +40,14 @@ describe("CLI JSON stdout", () => {
 
 	it("keeps success, error, and pending wire formats unchanged", () => {
 		const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+		const writeErr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
 		jsonOk({ value: 1 });
 		jsonError("failed", "render:failed", { partial: true }, "id", 10);
 		jsonPending("job-1");
+		// The pending announcement goes to stderr so stdout stays one document.
+		expect(
+			writeErr.mock.calls.map(([value]) => JSON.parse(String(value)))
+		).toEqual([{ status: "pending", jobId: "job-1" }]);
 		expect(
 			write.mock.calls.map(([value]) => JSON.parse(String(value)))
 		).toEqual([
@@ -55,7 +60,6 @@ describe("CLI JSON stdout", () => {
 				command_id: "id",
 				duration_ms: 10,
 			},
-			{ status: "pending", jobId: "job-1" },
 		]);
 	});
 

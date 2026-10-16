@@ -272,6 +272,16 @@ export function gainToDb({ gain }: { gain: number }): number {
 	});
 }
 
+/**
+ * The Q that makes a Web Audio lowpass or highpass flat up to its cutoff
+ * (Butterworth). For those two types Q is a resonance in decibels, and the
+ * default of 1 dB puts a +2 dB bump at the cutoff whose skirt still adds
+ * +1.2 dB an octave above it. Strips and clip chains leave their cut filters
+ * in the path at 20 Hz / 20 kHz when no cut is wanted, and four of them in a
+ * row lifted a clip's sub-bass by 4.5 dB and a stem's level by 2 dB.
+ */
+export const FLAT_CUTOFF_Q_DB = -3.0103;
+
 export function dbToGain({ db }: { db: number }): number {
 	if (!Number.isFinite(db) || db <= MIN_AUDIO_VOLUME_DB) return 0;
 	return (

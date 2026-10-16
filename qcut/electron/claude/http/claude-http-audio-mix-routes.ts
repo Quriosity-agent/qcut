@@ -7,8 +7,10 @@
  *   POST   /api/claude/mix/:projectId/buses
  *   PATCH  /api/claude/mix/:projectId/buses/:busId
  *   DELETE /api/claude/mix/:projectId/buses/:busId
- *   POST   /api/claude/mix/:projectId/loudness   (renders, then measures)
- *   POST   /api/claude/mix/:projectId/stems      { outputDir, fileNamePrefix? }: one WAV per bus
+ *   POST   /api/claude/mix/:projectId/loudness   starts a job: render, then measure
+ *   POST   /api/claude/mix/:projectId/stems      { outputDir, fileNamePrefix? }: starts a job, one WAV per bus
+ *   GET    /api/claude/mix/:projectId/jobs/:jobId   the job's status and result
+ *   GET    /api/claude/mix/:projectId/jobs
  *
  * Each answers with the mix read back from the editor.
  *
@@ -20,6 +22,7 @@ import * as path from "node:path";
 import type {
 	ClaudeAudioMixRequest,
 	ClaudeAudioMixResponse,
+	ClaudeMixLoudness,
 } from "../../types/claude-audio-mix-api.js";
 import type { ParsedRequest, Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
@@ -28,6 +31,11 @@ import {
 	readNewBusId,
 	readTrackAudioPatch,
 } from "./audio-mix-request.js";
+import {
+	getAudioMixJob,
+	listAudioMixJobs,
+	startAudioMixJob,
+} from "./claude-http-audio-mix-jobs.js";
 import { getRequestCorrelationId } from "./claude-http-meta-routes.js";
 
 export type MutateAudioMix = (
@@ -44,13 +52,27 @@ const STATUS_BY_REASON: Record<
 	invalid: 400,
 };
 
+function readLoudnessEngine(body: unknown): "native" | "browser" {
+	const engine = (body as { engine?: unknown } | undefined)?.engine;
+	if (engine === undefined || engine === "native") return "native";
+	if (engine === "browser") return "browser";
+	throw new HttpError(400, 'engine must be "native" or "browser"');
+}
+
+export type MeasureNativeLoudness = (args: {
+	projectId: string;
+}) => Promise<ClaudeMixLoudness>;
+
 export function registerAudioMixRoutes({
 	router,
 	mutateAudioMix,
+	measureNativeLoudness,
 	onChanged,
 }: {
 	router: Router;
 	mutateAudioMix?: MutateAudioMix;
+	/** Renders the mix through the native export engine and measures it. */
+	measureNativeLoudness?: MeasureNativeLoudness;
 	/** Called after a change, with the project it changed. */
 	onChanged: (change: { projectId: string }) => void;
 }): void {
@@ -136,15 +158,46 @@ export function registerAudioMixRoutes({
 		};
 	});
 
+	// Loudness and stems render the whole mix, minutes for a long programme,
+	// so they run as jobs: the answer is a job id, polled at .../jobs/:jobId.
+	// `engine` picks the rendering that is measured: "native" (default) runs
+	// the FFmpeg export pipeline and so agrees with the exported file;
+	// "browser" measures the renderer's graph, which the preview and the
+	// muxer engine play.
 	router.post("/api/claude/mix/:projectId/loudness", async (req) => {
-		const { loudness } = await run(req, {
-			action: "measure-loudness",
-			projectId: req.params.projectId,
+		const projectId = req.params.projectId;
+		const engine = readLoudnessEngine(req.body);
+		if (engine === "native" && !measureNativeLoudness) {
+			throw new HttpError(
+				503,
+				"The native export engine is not available here; measure with engine=browser"
+			);
+		}
+		const job = startAudioMixJob({
+			projectId,
+			kind: "loudness",
+			message:
+				engine === "native"
+					? "Exporting the mix through the native engine to measure it"
+					: "Rendering the mix in the editor to measure it",
+			run: async () => {
+				if (engine === "native" && measureNativeLoudness) {
+					return { loudness: await measureNativeLoudness({ projectId }) };
+				}
+				const { loudness } = await run(req, {
+					action: "measure-loudness",
+					projectId,
+				});
+				return {
+					loudness: loudness ? { ...loudness, engine: "browser" } : loudness,
+				};
+			},
 		});
-		return { projectId: req.params.projectId, ...loudness };
+		return { jobId: job.jobId, status: job.status, kind: job.kind, engine };
 	});
 
 	router.post("/api/claude/mix/:projectId/stems", async (req) => {
+		const projectId = req.params.projectId;
 		const outputDir =
 			typeof req.body?.outputDir === "string" ? req.body.outputDir.trim() : "";
 		if (!outputDir || !path.isAbsolute(outputDir)) {
@@ -158,14 +211,34 @@ export function registerAudioMixRoutes({
 			throw new HttpError(400, "fileNamePrefix cannot contain a folder");
 		}
 		await fs.promises.mkdir(outputDir, { recursive: true });
-		const { stems } = await run(req, {
-			action: "render-stems",
-			projectId: req.params.projectId,
-			outputDir,
-			fileNamePrefix,
+		const job = startAudioMixJob({
+			projectId,
+			kind: "stems",
+			message: `Writing one WAV per bus into ${outputDir}`,
+			run: async () => {
+				const { stems } = await run(req, {
+					action: "render-stems",
+					projectId,
+					outputDir,
+					fileNamePrefix,
+				});
+				return { outputDir, stems: stems ?? [] };
+			},
 		});
-		return { projectId: req.params.projectId, outputDir, stems: stems ?? [] };
+		return { jobId: job.jobId, status: job.status, kind: job.kind, outputDir };
 	});
+
+	router.get("/api/claude/mix/:projectId/jobs/:jobId", async (req) => {
+		const job = getAudioMixJob(req.params.jobId);
+		if (!job || job.projectId !== req.params.projectId) {
+			throw new HttpError(404, `Mix job not found: ${req.params.jobId}`);
+		}
+		return job;
+	});
+
+	router.get("/api/claude/mix/:projectId/jobs", async (req) => ({
+		jobs: listAudioMixJobs(req.params.projectId),
+	}));
 
 	router.delete("/api/claude/mix/:projectId/buses/:busId", async (req) => {
 		const result = await run(req, {

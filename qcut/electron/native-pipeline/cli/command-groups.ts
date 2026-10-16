@@ -42,6 +42,16 @@ export const COMMAND_GROUPS: CommandGroup[] = [
 		},
 	},
 	{
+		name: "cli",
+		label: "Command Line Tool",
+		description:
+			"Install the app's bundled qcut command and check which one runs",
+		actions: {
+			install: "cli-install",
+			status: "cli-status",
+		},
+	},
+	{
 		name: "instances",
 		label: "QCut Instances",
 		description: "Discover running QCut apps and select the CLI target",

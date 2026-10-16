@@ -66,10 +66,16 @@ export function jsonError(
 	process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
 }
 
-/** Print a pending/async job JSON result to stdout. */
+/**
+ * Announce an async job that a polling command is about to wait for. It goes
+ * to stderr: stdout stays one JSON document (the final result), which is
+ * what `json.loads(stdout)` style callers expect, and the job id is still
+ * visible on the terminal, and in the final result, for `export status`
+ * or `export cancel`.
+ */
 export function jsonPending(jobId: string): void {
 	const envelope: JsonPendingEnvelope = { status: "pending", jobId };
-	process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
+	process.stderr.write(`${JSON.stringify(envelope, null, 2)}\n`);
 }
 
 /** Options for enriching JSON output with correlation and timing metadata. */

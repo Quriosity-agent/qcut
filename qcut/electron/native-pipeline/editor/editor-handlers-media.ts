@@ -11,6 +11,10 @@ import * as fs from "fs";
 import * as path from "path";
 import type { EditorApiClient } from "../editor/editor-api-client.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
+import {
+	describeCliInstall,
+	describeVersionMismatch,
+} from "../cli/cli-version.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import {
 	CANVAS_PRESET_NAMES,
@@ -68,6 +72,28 @@ export async function handleMediaProjectCommand(
 // Health
 // ---------------------------------------------------------------------------
 
+/**
+ * The running command's version beside the app's, with a warning when they
+ * differ: an old qcut lacks the app's newer commands.
+ */
+function describeCliVersions({ appVersion }: { appVersion: unknown }): {
+	cliVersion: string;
+	cliPath: string;
+	versionWarning?: string;
+} {
+	const cli = describeCliInstall();
+	const versionWarning = describeVersionMismatch({
+		cliVersion: cli.version,
+		appVersion: typeof appVersion === "string" ? appVersion : undefined,
+		cliPath: cli.scriptPath,
+	});
+	return {
+		cliVersion: cli.version,
+		cliPath: cli.scriptPath,
+		...(versionWarning ? { versionWarning } : {}),
+	};
+}
+
 /** Check editor health via the `/api/claude/health` endpoint. */
 export async function handleEditorHealth(
 	client: EditorApiClient,
@@ -79,6 +105,7 @@ export async function handleEditorHealth(
 			"/api/claude/health",
 			healthQuery
 		);
+		const versions = describeCliVersions({ appVersion: data?.version });
 		if (opts?.statusOnly) {
 			return {
 				success: true,
@@ -88,10 +115,11 @@ export async function handleEditorHealth(
 					apiVersion: data?.apiVersion,
 					uptime: data?.uptime,
 					deepStatus: data?.deepStatus,
+					...versions,
 				},
 			};
 		}
-		return { success: true, data };
+		return { success: true, data: { ...data, ...versions } };
 	} catch (err) {
 		return {
 			success: false,

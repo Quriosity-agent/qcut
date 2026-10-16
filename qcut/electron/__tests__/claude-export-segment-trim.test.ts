@@ -88,10 +88,10 @@ describe("native export segment trims", () => {
 		expect(buildExportSegmentInputArgs({ segment })).toEqual([
 			"-ss",
 			"129.5",
-			"-i",
-			"/tmp/clip.mp4",
 			"-t",
 			"1.5",
+			"-i",
+			"/tmp/clip.mp4",
 		]);
 	});
 
@@ -109,10 +109,10 @@ describe("native export segment trims", () => {
 			fitMode: "cover",
 		};
 		expect(buildExportSegmentInputArgs({ segment: untrimmed })).toEqual([
-			"-i",
-			"/tmp/clip.mp4",
 			"-t",
 			"2",
+			"-i",
+			"/tmp/clip.mp4",
 		]);
 
 		const image: ExportSegment = {

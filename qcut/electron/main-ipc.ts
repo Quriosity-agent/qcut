@@ -7,6 +7,7 @@
 
 export {
 	registerMainIpcHandlers,
+	refreshInstalledCliLauncher,
 	type MainIpcDeps,
 	type ReleaseNote,
 	type Logger,

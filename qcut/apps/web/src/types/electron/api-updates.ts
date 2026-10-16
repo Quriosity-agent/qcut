@@ -4,6 +4,8 @@
 
 import type { ReleaseNote } from "./release-notes";
 import type {
+	PlatformCliLauncherInstallOutcome,
+	PlatformCliLauncherState,
 	PlatformCodexPluginUpdateState,
 	PlatformUpdatePreferences,
 	PlatformUpdateState,
@@ -25,6 +27,12 @@ export interface ElectronUpdateOps {
 		}>;
 		getReleaseNotes: (version?: string) => Promise<ReleaseNote | null>;
 		getChangelog: () => Promise<ReleaseNote[]>;
+		cliLauncher?: {
+			getState: () => Promise<PlatformCliLauncherState>;
+			install: (options?: {
+				replaceForeign?: boolean;
+			}) => Promise<PlatformCliLauncherInstallOutcome>;
+		};
 		onUpdateAvailable: (
 			callback: (data: {
 				version: string;

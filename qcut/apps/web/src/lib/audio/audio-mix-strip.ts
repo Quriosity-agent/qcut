@@ -3,7 +3,7 @@ import type {
 	AudioMixAutomation,
 } from "@/types/timeline";
 import { automationValueAt } from "./audio-mix-automation";
-import { dbToGain } from "./audio-properties";
+import { dbToGain, FLAT_CUTOFF_Q_DB } from "./audio-properties";
 
 /**
  * The mixer's channel strip, used for every track, bus and the master: low
@@ -19,6 +19,8 @@ const MAX_MIX_STRIP_EQ_BANDS = 8;
 export const MIX_STRIP_DYNAMICS_STAGES = 2;
 
 export interface MixStripNodes {
+	/** Half the context's sample rate: a lowpass set here passes everything. */
+	nyquist: number;
 	input: GainNode;
 	lowCut: BiquadFilterNode;
 	bands: BiquadFilterNode[];
@@ -42,11 +44,13 @@ export function createMixStripNodes({
 	const input = context.createGain();
 	const lowCut = context.createBiquadFilter();
 	lowCut.type = "highpass";
+	lowCut.Q.value = FLAT_CUTOFF_Q_DB;
 	const bands = Array.from({ length: MAX_MIX_STRIP_EQ_BANDS }, () =>
 		context.createBiquadFilter()
 	);
 	const highCut = context.createBiquadFilter();
 	highCut.type = "lowpass";
+	highCut.Q.value = FLAT_CUTOFF_Q_DB;
 	const compressor = context.createDynamicsCompressor();
 	const compressorMakeup = context.createGain();
 	const baseGain = context.createGain();
@@ -72,6 +76,7 @@ export function createMixStripNodes({
 	panner.connect(limiter);
 
 	return {
+		nyquist: context.sampleRate / 2,
 		input,
 		lowCut,
 		bands,
@@ -96,10 +101,18 @@ export function applyMixStripEffects({
 	set: SetMixParameter;
 }) {
 	const equalizer = effects.parametricEqualizer;
-	set(strip.lowCut.frequency, equalizer.enabled ? equalizer.lowCutHz : 20);
+	// A highpass at 0 Hz and a lowpass at Nyquist are exact identities, so a
+	// cut that is off (or at the ends of its range, as FFmpeg treats it) costs
+	// nothing; a filter parked at 20 Hz / 20 kHz would still shape the band.
+	set(
+		strip.lowCut.frequency,
+		equalizer.enabled && equalizer.lowCutHz > 20 ? equalizer.lowCutHz : 0
+	);
 	set(
 		strip.highCut.frequency,
-		equalizer.enabled ? equalizer.highCutHz : 20_000
+		equalizer.enabled && equalizer.highCutHz < 20_000
+			? Math.min(equalizer.highCutHz, strip.nyquist)
+			: strip.nyquist
 	);
 	for (const [index, node] of strip.bands.entries()) {
 		const band = equalizer.enabled ? equalizer.bands[index] : undefined;

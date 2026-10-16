@@ -24,8 +24,9 @@ These commands need a running QCut editor with the project open.
 | `editor mix bus-set` | `--bus-id` | `--name`, `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--solo`/`--no-solo`, `--effects` | Change a bus |
 | `editor mix bus-remove` | `--bus-id` | — | Remove a bus; its tracks go back to the master |
 | `editor mix master-set` | — | `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--effects` | Change the master |
-| `editor mix loudness` | — | `--project-id` | Render the mix as an export would and measure it |
-| `editor mix stems` | `--output-dir` | `--project-id` | Write one WAV per bus into a folder |
+| `editor mix loudness` | — | `--engine native\|browser`, `--timeout`, `--poll-interval`, `--no-wait` | Render the mix as an export would and measure it (a job; waits for the result by default) |
+| `editor mix stems` | `--output-dir` | `--timeout`, `--poll-interval`, `--no-wait` | Write one WAV per bus into a folder (a job; waits by default) |
+| `editor mix job-status` | `--job-id` | `--project-id` | Progress and result of a loudness or stems job |
 | `editor mix bus-automation` | `--bus-id --param` | `--points`, `--clear` | Set or remove a bus's (or the master's) level or pan curve |
 
 Ranges: `--gain-db` -60 to 12, `--pan` -1 (left) to 1 (right). A value
@@ -75,14 +76,52 @@ qcut editor mix bus-automation --project-id $P --bus-id master --param gainDb \
 qcut editor track audio-automation --project-id $P --track-id <music> --param gainDb --clear --json
 ```
 
+## Rendering jobs: loudness and stems
+
+`mix loudness` and `mix stems` render the whole programme, which takes
+minutes on a long timeline. Both start a job in the editor and answer with a
+`jobId`; by default the command then polls the job and prints the result
+when it completes. `--timeout <seconds>` (default 1800) is how long it waits
+before giving up on *waiting*; the editor keeps rendering, and the message
+names the job: "Waited N s; the render is still running in QCut (jobId=…)".
+Follow a job later, or from another terminal, with:
+
+```bash
+qcut editor mix job-status --project-id $P --job-id mix_loudness_… --json
+```
+
+`--no-wait` prints the `jobId` straight away; `--poll-interval` (seconds,
+default 3) sets how often the command checks. A job's status is `running`,
+`completed` (with `result.loudness` or `result.stems`) or `failed` (with the
+reason). The editor keeps the last 50 jobs per session.
+
+A command that fails to reach the editor says so ("Cannot connect to QCut
+at …"); a connection the editor closed mid-request says that instead, and
+never claims the app is gone.
+
 ## Loudness
 
 `editor mix loudness` renders the whole mix the way an export does and
 reports, per ITU-R BS.1770-4 / EBU R 128: `integratedLufs` (gated),
 `maxShortTermLufs` (3 s), `maxMomentaryLufs` (400 ms), `truePeakDbtp` (4x
 oversampled) and `samplePeakDb`. Online platforms usually ask for about -14
-LUFS integrated with true peak at or below -1 dBTP. The mixer panel's master
-strip shows the same numbers.
+LUFS integrated with true peak at or below -1 dBTP.
+
+`--engine` picks which rendering is measured, and the result says which in
+`engine`:
+
+- `native` (default): the timeline goes through the same FFmpeg pipeline as
+  `export start` (at a thumbnail-sized picture, so only the sound costs
+  time) and the file is measured with FFmpeg's R 128 meter. This is the
+  number `ffmpeg -af ebur128` gives for the exported file.
+- `browser`: the editor's own Web Audio graph, which is what the preview
+  plays and what the muxer engine exports. The mixer panel's master strip
+  "Measure" shows this one.
+
+The two can differ by a few tenths of an LU and a dB of true peak on
+material that keeps the master limiter busy: FFmpeg's limiter holds the
+ceiling strictly and so trims a little more than the editor's. Measure the
+engine you export with.
 
 ## Stems
 
@@ -91,7 +130,10 @@ that something is heard on, named after the bus, plus `direct.wav` for the
 tracks that feed the master directly. Each is as long as the programme and
 lines up with it sample for sample. They leave each bus after its fader and
 effects but before the master, so the master's level and limiter are not in
-them; the stems summed through the master give the mix.
+them; the stems summed through the master give the mix. Because nothing
+limits them, a loud bus can pass full scale, so stems are written as 48 kHz
+32-bit float WAV, which keeps those samples instead of clipping them;
+convert to 16- or 24-bit after your own limiting if a tool needs it.
 
 - `qcut editor mix stems --output-dir <folder>` writes them into a folder
   (created if needed).
@@ -128,7 +170,9 @@ qcut editor track solo --project-id $P --track-id <guns-1> --json
 qcut editor mix export --project-id $P --json
 qcut editor track solo --project-id $P --track-id <guns-1> --off --json
 
-# Check the delivery loudness, then export with stems
+# Check the delivery loudness (waits for the render), then export with stems
 qcut editor mix loudness --project-id $P --json
+qcut editor mix stems --project-id $P --output-dir ~/Desktop/doors-stems --no-wait --json   # prints the jobId
+qcut editor mix job-status --project-id $P --job-id <jobId> --json
 qcut editor export start --project-id $P --output ~/Desktop/doors.mp4 --stems --json
 ```

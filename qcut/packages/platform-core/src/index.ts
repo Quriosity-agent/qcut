@@ -80,6 +80,10 @@ export type {
 	PlatformCodexPluginUpdatePhase,
 	PlatformCodexPluginUpdateState,
 	PlatformCodexPluginUpdatesAPI,
+	PlatformCliLauncherAPI,
+	PlatformCliLauncherInstallOutcome,
+	PlatformCliLauncherState,
+	PlatformCliLauncherTarget,
 	PlatformFillerAnalysisAPI,
 	PlatformPiAgentAPI,
 } from "./types/integration-api.js";

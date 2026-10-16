@@ -282,6 +282,7 @@ qcut compose schema --json                       # manifest fields, defaults, an
 qcut compose validate --config edit.qcut-compose.json --json
 qcut draft inspect --draft "~/Movies/JianyingPro Drafts/my-draft" --json
 qcut update --check --json
+qcut cli install --json                         # put the app's own qcut on PATH (~/.local/bin/qcut; Windows: %LOCALAPPDATA%\QCut\bin\qcut.cmd)
 ```
 
 ## Auth Token Management
@@ -403,7 +404,7 @@ Three possible envelope shapes:
 |--------|-------|------|
 | `ok` | `{ "status": "ok", "command_id": "cmd-...", "duration_ms": 1234, "data": { ... } }` | Command succeeded |
 | `error` | `{ "status": "error", "command_id": "cmd-...", "duration_ms": 500, "error": "msg", "code": "cmd:failed" }` | Command failed |
-| `pending` | `{ "status": "pending", "jobId": "abc-123" }` | Async job started |
+| `pending` | `{ "status": "pending", "jobId": "abc-123" }` | Async job started; with `--poll` it is printed on stderr while the command waits, so stdout stays one document (the final result) |
 
 Every `ok` and `error` envelope includes:
 - `command_id` — unique correlation ID (`cmd-{timestamp}-{random}`) for tracing

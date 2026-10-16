@@ -2149,6 +2149,22 @@ const EN_TRANSLATIONS = {
 	"updates.readyToDownload": "Ready to download",
 	"updates.installFailed": "Failed to install update",
 	"updates.downloadFailed": "Failed to download update",
+	"updates.cliTitle": "Command line tool",
+	"updates.cliDescription":
+		"Installs a qcut command that runs the tool bundled with this app, so it always matches the app's version.",
+	"updates.cliInstall": "Install command line tool",
+	"updates.cliReinstall": "Reinstall",
+	"updates.cliChecking": "Checking the qcut command...",
+	"updates.cliNotInstalled": "Not installed · will be written to {{path}}",
+	"updates.cliInstalled": "Installed · {{path}}",
+	"updates.cliForeign":
+		"{{path}} is a qcut command QCut did not write; installing replaces it",
+	"updates.cliNotOnPath":
+		"{{dir}} is not on PATH; add it so terminals find qcut",
+	"updates.cliShadowed":
+		"PATH runs {{path}} first; remove it or move QCut's folder earlier in PATH",
+	"updates.cliInstalledToast": "qcut installed at {{path}}",
+	"updates.cliInstallFailed": "Could not install the qcut command: {{error}}",
 	"fileOpen.importing": "Importing {{name}}…",
 	"fileOpen.failed": "Couldn't open {{name}}",
 	...MIXER_EN_TRANSLATIONS,
@@ -4223,6 +4239,20 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"updates.readyToDownload": "可以下载",
 	"updates.installFailed": "安装更新失败",
 	"updates.downloadFailed": "下载更新失败",
+	"updates.cliTitle": "命令行工具",
+	"updates.cliDescription":
+		"安装一个 qcut 命令，运行的是这个应用自带的工具，版本永远和应用一致。",
+	"updates.cliInstall": "安装命令行工具",
+	"updates.cliReinstall": "重新安装",
+	"updates.cliChecking": "正在检查 qcut 命令...",
+	"updates.cliNotInstalled": "未安装 · 将写入 {{path}}",
+	"updates.cliInstalled": "已安装 · {{path}}",
+	"updates.cliForeign": "{{path}} 是别处安装的 qcut，安装会把它替换掉",
+	"updates.cliNotOnPath": "{{dir}} 不在 PATH 里，加上之后终端才能找到 qcut",
+	"updates.cliShadowed":
+		"终端会先运行 {{path}}；删掉它，或把 QCut 的目录放到 PATH 更前面",
+	"updates.cliInstalledToast": "qcut 已安装到 {{path}}",
+	"updates.cliInstallFailed": "安装 qcut 命令失败：{{error}}",
 	"fileOpen.importing": "正在导入 {{name}}…",
 	"fileOpen.failed": "无法打开 {{name}}",
 	...MIXER_ZH_TRANSLATIONS,

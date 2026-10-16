@@ -674,6 +674,44 @@ export interface PlatformCodexPluginUpdatesAPI {
 	): () => void;
 }
 
+/** Where a `qcut` launcher points: the app binary run as Node, and its bundled command. */
+export interface PlatformCliLauncherTarget {
+	executablePath: string;
+	cliScriptPath: string;
+}
+
+export interface PlatformCliLauncherState {
+	path: string;
+	installed: boolean;
+	/** True when the file at `path` was written by QCut. */
+	managed: boolean;
+	target?: PlatformCliLauncherTarget;
+	onPath: boolean;
+	/** Other `qcut` commands PATH resolves before the launcher. */
+	shadowedBy: string[];
+}
+
+export type PlatformCliLauncherInstallOutcome =
+	| {
+			success: true;
+			state: PlatformCliLauncherState & {
+				previousTarget?: PlatformCliLauncherTarget;
+			};
+	  }
+	| {
+			success: false;
+			reason: "foreign-file" | "write-failed";
+			error: string;
+	  };
+
+/** Installs the `qcut` command that always matches the running app. */
+export interface PlatformCliLauncherAPI {
+	getState(): Promise<PlatformCliLauncherState>;
+	install(options?: {
+		replaceForeign?: boolean;
+	}): Promise<PlatformCliLauncherInstallOutcome>;
+}
+
 export interface PlatformUpdatesAPI {
 	checkForUpdates(): Promise<PlatformUpdateState>;
 	downloadUpdate(): Promise<PlatformUpdateState>;
@@ -702,6 +740,7 @@ export interface PlatformUpdatesAPI {
 	onUpdateDownloaded(callback: (data: { version: string }) => void): () => void;
 	onStateChanged(callback: (state: PlatformUpdateState) => void): () => void;
 	plugin?: PlatformCodexPluginUpdatesAPI;
+	cliLauncher?: PlatformCliLauncherAPI;
 }
 
 // ---------------------------------------------------------------------------

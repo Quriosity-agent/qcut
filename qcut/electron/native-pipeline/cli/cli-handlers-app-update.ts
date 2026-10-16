@@ -18,6 +18,30 @@ import type {
 	CLIResult,
 	ProgressFn,
 } from "./cli-runner/types.js";
+import { describeCliInstall } from "./cli-version.js";
+
+/**
+ * The qcut command running this update. A command outside the app does not
+ * follow app updates, so the result says how to switch to the bundled one.
+ */
+function describeRunningCli(): {
+	version: string;
+	path: string;
+	bundledInApp: boolean;
+	hint?: string;
+} {
+	const cli = describeCliInstall();
+	return {
+		version: cli.version,
+		path: cli.scriptPath,
+		bundledInApp: cli.bundledInApp,
+		...(cli.bundledInApp
+			? {}
+			: {
+					hint: `This qcut command (${cli.version}) is not the one bundled with the app and will not update with it; run \`qcut cli install\` to put the app's command on PATH`,
+				}),
+	};
+}
 
 export async function handleAppUpdate(
 	options: CLIRunOptions,
@@ -54,6 +78,7 @@ export async function handleAppUpdate(
 			latestVersion: release.version,
 			tagName: release.tagName,
 			pageUrl: release.pageUrl,
+			cli: describeRunningCli(),
 			asset: {
 				name: release.asset.name,
 				size: release.asset.size,

@@ -13,6 +13,8 @@ const ffmpegPath = path.resolve(
 describe.skipIf(!fs.existsSync(ffmpegPath))(
 	"Native color management filters",
 	() => {
+		// Each case renders through the bundled FFmpeg; loaded CI runners need
+		// well over vitest's 5 s default.
 		it("renders every supported input transfer and output gamut", () => {
 			const cases = [
 				{ input: "srgb", output: "srgb" },
@@ -62,8 +64,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					`${item.input} -> ${item.output}: ${result.stderr}`
 				).toBe(0);
 			}
-		});
-
+		}, 60_000);
 		it("normalizes HDR transfers by the configured peak luminance", () => {
 			const color = structuredClone(DEFAULT_VIDEO_COLOR_SETTINGS);
 			color.management = {
@@ -77,6 +78,6 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			const filters = buildColorManagementFilters({ color });
 			expect(filters.input.join(",")).toContain("*10");
 			expect(filters.output.join(",")).toContain("/10");
-		});
+		}, 60_000);
 	}
 );

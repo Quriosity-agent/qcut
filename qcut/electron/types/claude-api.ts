@@ -523,7 +523,7 @@ export interface ExportJobRequest {
 export interface ExportJobStatus {
 	jobId: string;
 	projectId: string;
-	status: "queued" | "exporting" | "completed" | "failed";
+	status: "queued" | "exporting" | "completed" | "failed" | "cancelled";
 	progress: number;
 	outputPath?: string;
 	error?: string;

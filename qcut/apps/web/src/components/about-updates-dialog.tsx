@@ -7,6 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { CliLauncherSection } from "@/components/editor/properties-panel/settings/cli-launcher-section";
 import { CodexPluginUpdateSection } from "@/components/editor/properties-panel/settings/codex-plugin-update-section";
 import { UpdateSettingsSection } from "@/components/editor/properties-panel/settings/update-settings-section";
 import { useAppVersion } from "@/hooks/use-app-version";
@@ -48,6 +49,7 @@ export function AboutUpdatesDialog({
 				</DialogHeader>
 				<div className="space-y-5 pt-2">
 					<UpdateSettingsSection />
+					<CliLauncherSection />
 					<CodexPluginUpdateSection />
 				</div>
 			</DialogContent>

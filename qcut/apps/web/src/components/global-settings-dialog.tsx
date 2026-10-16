@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CliLauncherSection } from "@/components/editor/properties-panel/settings/cli-launcher-section";
 import { UpdateSettingsSection } from "@/components/editor/properties-panel/settings/update-settings-section";
 import { openKeyboardShortcuts } from "@/components/keyboard-shortcuts-help";
 import { useTranslation } from "@/lib/i18n";
@@ -286,6 +287,7 @@ export const GlobalSettingsDialog = () => {
 							</button>
 						</SettingRow>
 						<UpdateSettingsSection />
+						<CliLauncherSection />
 					</TabsContent>
 				</Tabs>
 			</DialogContent>

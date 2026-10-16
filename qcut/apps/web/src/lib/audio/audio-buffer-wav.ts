@@ -17,13 +17,21 @@ function pcm16({ sample }: { sample: number }): number {
 	return clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
 }
 
+/**
+ * `pcm16` clips anything past full scale; `float32` keeps samples as rendered,
+ * which is what stems need since they are taken before the master limiter.
+ */
+export type WavSampleFormat = "pcm16" | "float32";
+
 export function encodeAudioBufferAsWav({
 	buffer,
+	format = "pcm16",
 }: {
 	buffer: AudioBuffer;
+	format?: WavSampleFormat;
 }): ArrayBuffer {
 	const channelCount = Math.min(2, Math.max(1, buffer.numberOfChannels));
-	const bytesPerSample = 2;
+	const bytesPerSample = format === "float32" ? 4 : 2;
 	const dataSize = buffer.length * channelCount * bytesPerSample;
 	const output = new ArrayBuffer(44 + dataSize);
 	const view = new DataView(output);
@@ -33,7 +41,8 @@ export function encodeAudioBufferAsWav({
 	writeAscii({ view, offset: 8, value: "WAVE" });
 	writeAscii({ view, offset: 12, value: "fmt " });
 	view.setUint32(16, 16, true);
-	view.setUint16(20, 1, true);
+	// 1 = integer PCM, 3 = IEEE float.
+	view.setUint16(20, format === "float32" ? 3 : 1, true);
 	view.setUint16(22, channelCount, true);
 	view.setUint32(24, buffer.sampleRate, true);
 	view.setUint32(28, buffer.sampleRate * channelCount * bytesPerSample, true);
@@ -48,7 +57,11 @@ export function encodeAudioBufferAsWav({
 	let offset = 44;
 	for (let frame = 0; frame < buffer.length; frame += 1) {
 		for (const channel of channels) {
-			view.setInt16(offset, pcm16({ sample: channel[frame] }), true);
+			if (format === "float32") {
+				view.setFloat32(offset, channel[frame], true);
+			} else {
+				view.setInt16(offset, pcm16({ sample: channel[frame] }), true);
+			}
 			offset += bytesPerSample;
 		}
 	}

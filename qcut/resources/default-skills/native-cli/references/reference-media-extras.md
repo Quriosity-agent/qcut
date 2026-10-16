@@ -157,7 +157,9 @@ qcut replicate:generate --input recipe.json
 
 | Action | Required | Key options | What it does |
 | --- | --- | --- | --- |
-| `system update` (also `qcut update`) | — | `--check`, `--yes`, `--no-launch` | Check, download, verify, and install the latest official QCut app |
+| `system update` (also `qcut update`) | — | `--check`, `--yes`, `--no-launch` | Check, download, verify, and install the latest official QCut app; the result's `cli` says which qcut command ran and whether it follows app updates |
+| `cli install` | — | `--yes` (replace a qcut file QCut did not write) | Write `~/.local/bin/qcut` (Windows: `%LOCALAPPDATA%\QCut\bin\qcut.cmd`), a launcher that runs the command bundled inside the installed app, so the command always matches the app. The same button is in QCut → About & updates → command line tool |
+| `cli status` | — | — | Which qcut command this is (version, path), where the launcher points, other `qcut` commands earlier on PATH |
 | `system doctor` | — | — | Report environment health (bun, ffmpeg, `.env`, keys) as JSON; use `--skip-health` when no editor is running |
 | `system keys` | — | `--configured`, `--missing`, `--category` | Show configured and missing API keys |
 | `system sync-keys` | — | `--pull` (default), `--push`, `--force` | Sync API keys with the cloud vault; requires login |
@@ -167,6 +169,8 @@ qcut replicate:generate --input recipe.json
 
 ```bash
 qcut update --check --json
+qcut cli install --json          # then open a new terminal, or check with:
+qcut cli status --json
 qcut system doctor --json --skip-health
 qcut system keys --missing --json
 qcut system login --email you@example.com --json        # password prompted, never on the command line

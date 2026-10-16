@@ -16,6 +16,21 @@ describe("QCut app update CLI", () => {
 		expect(HANDLER_MAP.update).toBeTypeOf("function");
 	});
 
+	it("registers the cli install/status commands under the cli group", () => {
+		expect(getCommand("cli-install")?.category).toBe("application");
+		expect(getCommand("cli-install")?.flags.map((flag) => flag.name)).toEqual([
+			"--yes",
+		]);
+		expect(getCommand("cli-status")?.category).toBe("application");
+		expect(HANDLER_MAP["cli-install"]).toBeTypeOf("function");
+		expect(HANDLER_MAP["cli-status"]).toBeTypeOf("function");
+		expect(parseCliArgs(["cli", "install", "--yes"])).toMatchObject({
+			command: "cli-install",
+			yes: true,
+		});
+		expect(parseCliArgs(["cli", "status"]).command).toBe("cli-status");
+	});
+
 	it("parses check, confirmation, and relaunch controls", () => {
 		const options = parseCliArgs(["update", "--check", "--yes", "--no-launch"]);
 
