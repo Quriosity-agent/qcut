@@ -24,7 +24,10 @@ import {
 } from "../handlers/claude-scene-handler.js";
 import { analyzeFrames } from "../handlers/claude-vision-handler.js";
 import { analyzeFillers } from "../handlers/claude-filler-handler.js";
-import { analyzeBeats } from "../handlers/claude-beats-handler.js";
+import {
+	analyzeBeats,
+	analyzeFirstOnset,
+} from "../handlers/claude-beats-handler.js";
 import { executeBatchCuts } from "../handlers/claude-cuts-handler.js";
 import { executeDeleteRange } from "../handlers/claude-range-handler.js";
 import {
@@ -195,6 +198,23 @@ function readBeatDetectionResult(value: unknown): ClaudeBeatDetectionResult {
 			.filter((beat) => beat.isDownbeat)
 			.map((beat) => beat.timestamp),
 	};
+}
+
+/** `edgeOffsets` of a snap: element id → seconds into the clip, 0 or more. */
+function readEdgeOffsets(value: unknown): Record<string, number> | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		throw new HttpError(400, "edgeOffsets must map element ids to seconds");
+	}
+	for (const [id, offset] of Object.entries(value)) {
+		if (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0) {
+			throw new HttpError(
+				400,
+				`edgeOffsets.${id} must be seconds into the clip, 0 or more`
+			);
+		}
+	}
+	return value as Record<string, number>;
 }
 
 function readElementIds(value: unknown): string[] {
@@ -705,9 +725,18 @@ export function registerAnalysisRoutes(
 	router.post("/api/claude/timeline/:projectId/snap-to-beats", async (req) => {
 		const elementIds = readElementIds(req.body?.elementIds);
 		const edge = req.body?.edge ?? "start";
-		if (edge !== "start" && edge !== "end") {
-			throw new HttpError(400, "edge must be start or end");
+		if (edge !== "start" && edge !== "end" && edge !== "onset") {
+			throw new HttpError(400, "edge must be start, end or onset");
 		}
+		const frameAlign = req.body?.frameAlign ?? "visual";
+		if (
+			frameAlign !== "visual" &&
+			frameAlign !== "all" &&
+			frameAlign !== "none"
+		) {
+			throw new HttpError(400, "frameAlign must be visual, all or none");
+		}
+		const edgeOffsets = readEdgeOffsets(req.body?.edgeOffsets);
 		const maxDistance = req.body?.maxDistance;
 		if (
 			maxDistance !== undefined &&
@@ -735,6 +764,8 @@ export function registerAnalysisRoutes(
 					? { beatsElementId: req.body.beatsElementId.trim() }
 					: {}),
 				edge,
+				frameAlign,
+				...(edgeOffsets ? { edgeOffsets } : {}),
 				...(maxDistance !== undefined ? { maxDistance } : {}),
 				downbeatsOnly: req.body?.downbeatsOnly === true,
 				dryRun: req.body?.dryRun === true,
@@ -768,6 +799,34 @@ export function registerAnalysisRoutes(
 			throw new HttpError(
 				500,
 				error instanceof Error ? error.message : "Beat detection failed"
+			);
+		}
+	});
+
+	router.post("/api/claude/analyze/:projectId/onset", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		const threshold = req.body?.threshold;
+		if (
+			threshold !== undefined &&
+			(typeof threshold !== "number" ||
+				!Number.isFinite(threshold) ||
+				threshold <= 0 ||
+				threshold > 1)
+		) {
+			throw new HttpError(400, "threshold must be a number between 0 and 1");
+		}
+		try {
+			return await analyzeFirstOnset(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				...(threshold !== undefined ? { threshold } : {}),
+			});
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Onset detection failed"
 			);
 		}
 	});
