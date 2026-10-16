@@ -54,7 +54,7 @@ const execFileAsync = promisify(execFile);
 /**
  * Parse a subtitle file (SRT/VTT/ASS) into CaptionElements.
  */
-function parseSubtitleInput(filePath: string): {
+export function parseSubtitleInput(filePath: string): {
 	clips: CaptionElement[];
 	resolution?: { width: number; height: number };
 } {
