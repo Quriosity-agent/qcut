@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AudioPreviewState } from "../audio-preview-state";
-import { createDefaultMediaAudioSettings } from "../audio-properties";
+import {
+	createDefaultMediaAudioSettings,
+	FLAT_CUTOFF_Q_DB,
+} from "../audio-properties";
 
 const formantMocks = vi.hoisted(() => ({
 	construct: vi.fn(),
@@ -144,6 +147,44 @@ describe("media audio preview pitch graph", () => {
 		vi.clearAllMocks();
 		audioMixMocks.getContext.mockReturnValue(audioContext());
 		audioMixMocks.getTrackInput.mockReturnValue(audioNode());
+	});
+
+	it("gives the pass-through cut filters a flat response", () => {
+		const context = audioContext();
+		audioMixMocks.getContext.mockReturnValue(context);
+		acquireGraph({ mediaElement: document.createElement("audio") });
+
+		const filters = (
+			context.createBiquadFilter as unknown as {
+				mock: { results: Array<{ value: { type?: string; Q: AudioParam } }> };
+			}
+		).mock.results.map((result) => result.value);
+		const cuts = filters.filter(
+			(node) => node.type === "highpass" || node.type === "lowpass"
+		);
+		// Denoise high and low cut, telephone band high and low cut.
+		expect(cuts).toHaveLength(4);
+		for (const cut of cuts) expect(cut.Q.value).toBe(FLAT_CUTOFF_Q_DB);
+	});
+
+	it("parks the denoise cuts at 0 Hz and Nyquist while denoise is off", () => {
+		const context = audioContext();
+		audioMixMocks.getContext.mockReturnValue(context);
+		const graph = acquireGraph({
+			mediaElement: document.createElement("audio"),
+		});
+		graph.update({ state: previewState() });
+
+		const [denoiseHighpass, denoiseLowpass] = (
+			context.createBiquadFilter as unknown as {
+				mock: { results: Array<{ value: { frequency: AudioParam } }> };
+			}
+		).mock.results.map((result) => result.value);
+		const applied = (parameter: AudioParam) =>
+			(parameter.setTargetAtTime as unknown as { mock: { calls: number[][] } })
+				.mock.calls[0]?.[0] ?? parameter.value;
+		expect(applied(denoiseHighpass.frequency)).toBe(0);
+		expect(applied(denoiseLowpass.frequency)).toBe(24_000);
 	});
 
 	it("does not load the pitch worklet for ordinary playback", async () => {
