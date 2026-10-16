@@ -322,7 +322,7 @@ async function exportStart(
 	if (exportFormat === "mp3") {
 		body.audioExportConfig = {
 			bitrate: opts.bitrate ?? 192,
-			sampleRate: opts.sampleRate ?? 44_100,
+			sampleRate: opts.sampleRate ?? 48_000,
 			channels: 2,
 		};
 	}
@@ -455,6 +455,7 @@ async function exportStart(
 				client,
 				projectId: opts.projectId,
 				...stemsTarget,
+				opts,
 			})
 		: undefined;
 	if (!opts.verifyFrames) {
