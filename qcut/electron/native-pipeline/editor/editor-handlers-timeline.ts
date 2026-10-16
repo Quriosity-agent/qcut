@@ -8,6 +8,10 @@
  */
 
 import type { EditorApiClient } from "../editor/editor-api-client.js";
+import {
+	timelineJobStatus,
+	timelineShotSplit,
+} from "./editor-handlers-shot-split.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { jsonPending } from "../cli/json-output.js";
@@ -252,6 +256,10 @@ async function dispatchTimeline(
 			return timelineBatchDelete(client, opts);
 		case "split":
 			return timelineSplit(client, opts);
+		case "shot-split":
+			return timelineShotSplit(client, opts);
+		case "job-status":
+			return timelineJobStatus(client, opts);
 		case "move":
 			return timelineMove(client, opts);
 		case "arrange":
