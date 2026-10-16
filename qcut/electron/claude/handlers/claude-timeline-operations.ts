@@ -429,6 +429,15 @@ function isTrackCompatibleWithElementType({
 	return trackType === "media" || trackType === "audio";
 }
 
+/**
+ * A batch's renderer deadline grows with its size: the editor stores one
+ * element at a time (each add re-renders the timeline), so a 50-clip batch
+ * on a long programme takes well over the single-request 5 s.
+ */
+function batchRequestTimeoutMs({ count }: { count: number }): number {
+	return TIMELINE_REQUEST_TIMEOUT_MS + 1_000 * Math.max(0, count);
+}
+
 /** Handle request batch add elements from renderer. */
 export async function requestBatchAddElementsFromRenderer(
 	win: BrowserWindow,
@@ -446,6 +455,7 @@ export async function requestBatchAddElementsFromRenderer(
 		},
 		timeoutErrorMessage: "Timeout waiting for batch add result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: elements.length }),
 	});
 }
 
@@ -462,6 +472,7 @@ export async function requestBatchUpdateElementsFromRenderer(
 		payload: { updates },
 		timeoutErrorMessage: "Timeout waiting for batch update result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: updates.length }),
 	});
 }
 
@@ -479,6 +490,7 @@ export async function requestBatchDeleteElementsFromRenderer(
 		payload: { elements, ripple },
 		timeoutErrorMessage: "Timeout waiting for batch delete result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: elements.length }),
 	});
 }
 
