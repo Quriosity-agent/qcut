@@ -645,6 +645,30 @@ function hasActivePortraitAdjustments({
 	);
 }
 
+/**
+ * A track's switches from a request body: `muted`, `hidden` and `locked`,
+ * each true or false when given.
+ */
+function readTrackSwitches({
+	body,
+}: {
+	body: Record<string, unknown> | undefined;
+}): Pick<ClaudeTrackOperationRequest, "muted" | "hidden" | "locked"> {
+	const switches: Pick<
+		ClaudeTrackOperationRequest,
+		"muted" | "hidden" | "locked"
+	> = {};
+	for (const key of ["muted", "hidden", "locked"] as const) {
+		const value = body?.[key];
+		if (value === undefined) continue;
+		if (typeof value !== "boolean") {
+			throw new HttpError(400, `'${key}' must be true or false`);
+		}
+		switches[key] = value;
+	}
+	return switches;
+}
+
 export function timelineRequiresRendererPortraitExport({
 	timeline,
 }: {
@@ -1082,7 +1106,6 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/timeline/:projectId/tracks", async (req) => {
-		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (typeof req.body?.type !== "string") {
 			throw new HttpError(400, "Missing 'type' in request body");
 		}
@@ -1090,6 +1113,9 @@ export function registerSharedRoutes(
 			value: req.body.colorLabel,
 			field: "colorLabel",
 		});
+		const switches = readTrackSwitches({ body: req.body });
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const result = await accessor.mutateTrack(
 			{
 				action: "create",
@@ -1097,6 +1123,7 @@ export function registerSharedRoutes(
 				name: typeof req.body.name === "string" ? req.body.name : undefined,
 				index: req.body.index,
 				...(colorLabel !== undefined ? { colorLabel } : {}),
+				...switches,
 			},
 			getRequestCorrelationId({ req })
 		);
@@ -1113,14 +1140,16 @@ export function registerSharedRoutes(
 				value: req.body?.colorLabel,
 				field: "colorLabel",
 			});
+			const switches = readTrackSwitches({ body: req.body });
 			if (
 				typeof req.body?.index !== "number" &&
 				typeof req.body?.name !== "string" &&
-				colorLabel === undefined
+				colorLabel === undefined &&
+				Object.keys(switches).length === 0
 			) {
 				throw new HttpError(
 					400,
-					"Track update needs 'index', 'name' or 'colorLabel'"
+					"Track update needs 'index', 'name', 'colorLabel', 'muted', 'hidden' or 'locked'"
 				);
 			}
 			// Input first (400), then the project (409), then the editor.
@@ -1132,6 +1161,7 @@ export function registerSharedRoutes(
 					index: req.body.index,
 					name: typeof req.body.name === "string" ? req.body.name : undefined,
 					...(colorLabel !== undefined ? { colorLabel } : {}),
+					...switches,
 				},
 				getRequestCorrelationId({ req })
 			);
@@ -1857,26 +1887,43 @@ export function registerSharedRoutes(
 				projectId: req.params.projectId,
 				accessor,
 			});
-			const requiresRendererExport =
-				(req.body as { engine?: string } | undefined)?.engine === "muxer" ||
-				hasStickerRuntimeForExport({
+			// Each reason is named so a refused override can say what in the
+			// timeline made this a renderer export, not just that it is one.
+			const rendererExportReasons = [
+				...((req.body as { engine?: string } | undefined)?.engine === "muxer"
+					? ["--engine muxer was asked for"]
+					: []),
+				...(hasStickerRuntimeForExport({
 					mediaItems: mediaFiles,
 					tracks: timeline.tracks,
-				}) ||
-				findRestrictedMediaForExport({
+				})
+					? ["Sticker Lab runtime stickers"]
+					: []),
+				...(findRestrictedMediaForExport({
 					mediaItems: mediaFiles,
 					scope: "timeline",
 					tracks: timeline.tracks,
-				}).length > 0 ||
-				timelineRequiresRendererPortraitExport({ timeline }) ||
-				timelineRequiresRendererFilterStackExport({ timeline }) ||
-				timelineRequiresRendererShaderTransitionExport({ timeline }) ||
-				timelineRequiresRendererAdjustmentLayerExport({ timeline });
-			if (requiresRendererExport) {
+				}).length > 0
+					? ["restricted media only the live renderer may read"]
+					: []),
+				...(timelineRequiresRendererPortraitExport({ timeline })
+					? ["portrait adjustments"]
+					: []),
+				...(timelineRequiresRendererFilterStackExport({ timeline })
+					? ["clips with a filterStack"]
+					: []),
+				...(timelineRequiresRendererShaderTransitionExport({ timeline })
+					? ["shader transitions"]
+					: []),
+				...(timelineRequiresRendererAdjustmentLayerExport({ timeline })
+					? ["masked or multi-pass adjustment layers"]
+					: []),
+			];
+			if (rendererExportReasons.length > 0) {
 				if (!accessor.requestLocalVideoExport) {
 					throw new HttpError(
 						503,
-						"The live QCut renderer is unavailable for Sticker Lab export."
+						`The live QCut renderer is unavailable, and this export needs it (${rendererExportReasons.join("; ")}).`
 					);
 				}
 				return await startRendererExportJob({
@@ -1885,6 +1932,7 @@ export function registerSharedRoutes(
 					projectId: req.params.projectId,
 					request: req.body || {},
 					timeline,
+					reasons: rendererExportReasons,
 				});
 			}
 			return await startExportJob({
