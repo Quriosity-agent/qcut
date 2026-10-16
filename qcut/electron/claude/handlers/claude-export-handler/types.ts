@@ -48,7 +48,8 @@ export interface ExportSegment {
 }
 
 export interface ResolvedExportSettings {
-	engine: "native-cli";
+	/** The engine that renders this job; a renderer export says so here too. */
+	engine: "native-cli" | "renderer-muxer";
 	presetId: string;
 	width: number;
 	height: number;
