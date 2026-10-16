@@ -122,9 +122,27 @@ vi.mock("../ffmpeg/utils", () => ({
 	getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
 }));
 
-const { mockDetectOnnx } = vi.hoisted(() => ({ mockDetectOnnx: vi.fn() }));
+const { mockDetectOnnx, mockInspectOnnx, mockInspectJianying } = vi.hoisted(
+	() => ({
+		mockDetectOnnx: vi.fn(),
+		// Neither model engine is installed here, so `auto` lands on FFmpeg.
+		mockInspectOnnx: vi.fn(async () => ({
+			available: false,
+			message: "ONNX shot-split contract missing",
+		})),
+		mockInspectJianying: vi.fn(async () => ({
+			available: false,
+			message: "shot-split runtime missing",
+		})),
+	})
+);
 vi.mock("../jianying-shot-split/onnx-engine.js", () => ({
 	detectShotsWithOnnxEngine: mockDetectOnnx,
+	inspectOnnxEngine: mockInspectOnnx,
+}));
+vi.mock("../jianying-shot-split/runtime.js", () => ({
+	detectShotsWithJianyingRuntime: vi.fn(),
+	inspectJianyingShotSplit: mockInspectJianying,
 }));
 
 // Mock child_process.spawn for FFmpeg scene detection
@@ -275,6 +293,7 @@ describe("detectScenes", () => {
 	it("respects threshold parameter", async () => {
 		const result = await detectScenes("test-project", {
 			mediaId: "valid-video",
+			engine: "ffmpeg",
 			threshold: 0.5,
 		});
 		// FFmpeg spawn is mocked — returns empty stderr, so only scene 0 is added
@@ -284,6 +303,20 @@ describe("detectScenes", () => {
 		const filterArg = spawnArgs.find((a: string) => a.includes("scene,"));
 		expect(filterArg).toContain("0.5");
 		expect(result.engine).toBe("ffmpeg");
+		expect(result.requestedEngine).toBeUndefined();
+		expect(mockDetectOnnx).not.toHaveBeenCalled();
+	});
+
+	it("defaults to auto and says which engines it passed over", async () => {
+		const result = await detectScenes("test-project", {
+			mediaId: "valid-video",
+		});
+		expect(result.engine).toBe("ffmpeg");
+		expect(result.requestedEngine).toBe("auto");
+		expect(result.fallbacks).toEqual([
+			{ engine: "jianying", reason: "shot-split runtime missing" },
+			{ engine: "onnx", reason: "ONNX shot-split contract missing" },
+		]);
 		expect(mockDetectOnnx).not.toHaveBeenCalled();
 	});
 });
@@ -365,7 +398,6 @@ describe("detectScenes ONNX routing", () => {
 	});
 
 	it.each([
-		"auto",
 		"torch",
 		"ONNX",
 		"",
