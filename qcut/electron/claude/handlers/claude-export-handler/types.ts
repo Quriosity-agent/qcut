@@ -10,6 +10,7 @@ export const EXPORT_JOB_STATUS = {
 	exporting: "exporting",
 	completed: "completed",
 	failed: "failed",
+	cancelled: "cancelled",
 } as const;
 
 export const MAX_JOBS = 50;
@@ -99,6 +100,8 @@ export interface ExportJobInternal {
 	totalFrames?: number;
 	fps?: number;
 	estimatedTimeRemaining?: number;
+	/** Aborting it stops the running FFmpeg step; set while the engine runs the job. */
+	abort?: AbortController;
 }
 
 export interface StickerOverlay {
