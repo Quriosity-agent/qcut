@@ -25,6 +25,7 @@ import {
 	requestAddElementFromRenderer,
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
+	requestShotSplitFromRenderer,
 	requestSelectionFromRenderer,
 	batchAddElements,
 	batchUpdateElements,
@@ -226,6 +227,9 @@ export function startClaudeHTTPServer(
 				mode,
 				correlationId
 			),
+		/** Splits clips by their shots in the renderer. */
+		requestShotSplit: (request, correlationId) =>
+			requestShotSplitFromRenderer(getWindow(), request, correlationId),
 		/** Fetches project stats from the renderer. */
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		/** Returns the current app version. */
