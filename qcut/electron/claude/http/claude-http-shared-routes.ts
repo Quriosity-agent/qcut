@@ -1310,6 +1310,7 @@ export function registerSharedRoutes(
 				projectId: req.params.projectId,
 			});
 			const correlationId = getRequestCorrelationId({ req });
+			let ignoredFields: string[] | undefined;
 			await requireRendererMutation({
 				operation: "Timeline element update",
 				request: async () => {
@@ -1326,10 +1327,14 @@ export function registerSharedRoutes(
 					if (result.updatedCount !== 1 || item?.success !== true) {
 						throw new Error(item?.error || "Renderer did not apply the update");
 					}
+					ignoredFields = item.ignoredFields;
 				},
 			});
 			scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-			return { updated: true };
+			// Fields the element could not use are named, not swallowed.
+			return ignoredFields?.length
+				? { updated: true, ignoredFields }
+				: { updated: true };
 		}
 	);
 
