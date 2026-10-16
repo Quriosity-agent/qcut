@@ -51,8 +51,14 @@ import type { ClaudeTimeline } from "../types/claude-api";
 import {
 	startExportJob,
 	startRendererExportJob,
+	clearExportJobsForTests,
 } from "../claude/handlers/claude-export-handler.js";
 import { listMediaFiles } from "../claude/handlers/claude-media-handler.js";
+import { exportJobs } from "../claude/handlers/claude-export-handler/job-manager.js";
+import {
+	EXPORT_JOB_STATUS,
+	type ExportJobInternal,
+} from "../claude/handlers/claude-export-handler/types.js";
 
 const restrictedMetadata = {
 	animatedSticker: true,
@@ -558,5 +564,62 @@ describe("export start project guard", () => {
 			})
 		);
 		expect(startExportJob).not.toHaveBeenCalled();
+	});
+});
+
+describe("export cancel route", () => {
+	const CANCEL = "POST /api/claude/export/:projectId/jobs/:jobId/cancel";
+	const cancel = (jobId: string, projectId = "project-a") => {
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, buildAccessor(buildTimeline("project-a")));
+		const [method, path] = CANCEL.split(" ");
+		return getHandler(
+			method,
+			path
+		)({
+			params: { projectId, jobId },
+			query: {},
+			body: {},
+		});
+	};
+	const runningJob = (jobId: string): ExportJobInternal => ({
+		jobId,
+		projectId: "project-a",
+		status: EXPORT_JOB_STATUS.exporting,
+		progress: 0.3,
+		startedAt: Date.now(),
+		presetId: "youtube-1080p",
+		engine: "native-cli",
+		settings: {} as ExportJobInternal["settings"],
+		outputPath: "/tmp/out.mp4",
+		abort: new AbortController(),
+	});
+
+	beforeEach(() => clearExportJobsForTests());
+
+	it("stops a running native export and reports it cancelled", async () => {
+		const job = runningJob("job-run");
+		exportJobs.set(job.jobId, job);
+		await expect(cancel("job-run")).resolves.toMatchObject({
+			jobId: "job-run",
+			status: "cancelled",
+		});
+		expect(job.abort?.signal.aborted).toBe(true);
+	});
+
+	it("answers 404 for an unknown job or another project's job, 409 once finished", async () => {
+		exportJobs.set("job-done", {
+			...runningJob("job-done"),
+			status: EXPORT_JOB_STATUS.completed,
+		});
+		exportJobs.set("job-run", runningJob("job-run"));
+		await expect(cancel("missing")).rejects.toMatchObject({ status: 404 });
+		await expect(cancel("job-run", "project-b")).rejects.toMatchObject({
+			status: 404,
+		});
+		await expect(cancel("job-done")).rejects.toMatchObject({
+			status: 409,
+			message: expect.stringContaining("already completed"),
+		});
 	});
 });
