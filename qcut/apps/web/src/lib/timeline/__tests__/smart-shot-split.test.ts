@@ -126,6 +126,29 @@ describe("runSmartShotSplit", () => {
 		expect(useTimelineStore.getState().history).toEqual([]);
 	});
 
+	it("passes on the engine's warnings, e.g. a threshold auto could not use", async () => {
+		const analyzeScenes: AnalyzeScenesForShotSplit = vi.fn(async () => ({
+			engine: "jianying" as const,
+			warnings: ["threshold 0.2 ignored: the jianying engine has no threshold"],
+			scenes: [{ timestamp: 0, confidence: 1 }],
+		}));
+		const result = await runSmartShotSplit({
+			...request,
+			threshold: 0.2,
+			dryRun: true,
+			analyzeScenes,
+		});
+		expect(analyzeScenes).toHaveBeenCalledWith("project", {
+			mediaId: "media",
+			engine: "auto",
+			aiAnalysis: false,
+			threshold: 0.2,
+		});
+		expect(result.warnings).toEqual([
+			"threshold 0.2 ignored: the jianying engine has no threshold",
+		]);
+	});
+
 	it("reports detection failures without Electron's remote-method wrapper", async () => {
 		const analyzeScenes: AnalyzeScenesForShotSplit = vi.fn(async () => {
 			throw new Error(
