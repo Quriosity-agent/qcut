@@ -436,6 +436,8 @@ export interface CLIRunOptions {
 	reset?: boolean;
 	/** editor element filter: keep the clip's current effects and add after them. */
 	append?: boolean;
+	/** editor captions import: the subtitle file to read. */
+	file?: string;
 	crossTrackRipple?: boolean;
 	removeFillers?: boolean;
 	removeSilences?: boolean;
