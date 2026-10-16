@@ -444,7 +444,7 @@ function collectCanvasTextOverlay({
 /** Collect text-like timeline elements for the native FFmpeg overlay pass. */
 export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 	const overlays: TextOverlay[] = [];
-	for (const track of timeline.tracks) {
+	for (const [trackIndex, track] of timeline.tracks.entries()) {
 		if (track.hidden) continue;
 		for (const source of track.elements) {
 			if (
@@ -469,7 +469,7 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 					: source.endTime - source.startTime;
 			if (!Number.isFinite(duration) || duration <= 0) continue;
 
-			overlays.push(
+			const overlay =
 				source.type === "captions"
 					? collectCaptionOverlay({
 							source,
@@ -484,8 +484,8 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 							style,
 							content,
 							duration,
-						})
-			);
+						});
+			overlays.push({ ...overlay, trackIndex });
 		}
 	}
 	return overlays.sort((left, right) => left.startTime - right.startTime);
@@ -731,11 +731,19 @@ function captionBlockHeight(overlay: TextOverlay): number {
  */
 function captionStackOffsets(overlays: TextOverlay[]): Map<string, number> {
 	const offsets = new Map<string, number>();
-	const captions = overlays.filter(
-		(overlay) =>
-			overlay.positioning === "caption-anchor" &&
-			overlay.verticalAlign !== "center"
-	);
+	const captions = overlays
+		.filter(
+			(overlay) =>
+				overlay.positioning === "caption-anchor" &&
+				overlay.verticalAlign !== "center"
+		)
+		// The preview's order: earliest start keeps the edge; at the same
+		// start the caption on the higher track (drawn on top) does.
+		.sort(
+			(left, right) =>
+				left.startTime - right.startTime ||
+				(right.trackIndex ?? 0) - (left.trackIndex ?? 0)
+		);
 	for (const overlay of captions) {
 		let offset = 0;
 		for (const other of captions) {
