@@ -61,6 +61,49 @@ interface Rgb {
 	b: number;
 }
 
+const FFPROBE = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffprobe");
+
+/** Video frame count and the video, audio and container durations of a file. */
+function probeDurations({ file }: { file: string }) {
+	const entry = (args: string[]) =>
+		spawnSync(
+			FFPROBE,
+			[
+				"-v",
+				"error",
+				...args,
+				"-of",
+				"default=noprint_wrappers=1:nokey=1",
+				file,
+			],
+			{ encoding: "utf8" }
+		).stdout.trim();
+	return {
+		frames: Number(
+			entry([
+				"-select_streams",
+				"v:0",
+				"-count_frames",
+				"-show_entries",
+				"stream=nb_read_frames",
+			])
+		),
+		frameRate: entry([
+			"-select_streams",
+			"v:0",
+			"-show_entries",
+			"stream=r_frame_rate",
+		]),
+		videoDuration: Number(
+			entry(["-select_streams", "v:0", "-show_entries", "stream=duration"])
+		),
+		audioDuration: Number(
+			entry(["-select_streams", "a:0", "-show_entries", "stream=duration"])
+		),
+		containerDuration: Number(entry(["-show_entries", "format=duration"])),
+	};
+}
+
 /** Mean RGB of the frame at `time`, from a 1×1 area downscale. */
 function meanRgb({ file, time }: { file: string; time: number }): Rgb {
 	const result = spawnSync(
@@ -209,6 +252,18 @@ test("the native export grades adjustment layers the way the renderer does", asy
 				],
 			});
 			expect(existsSync(outputPath), `${engine} export written`).toBe(true);
+			const durations = probeDurations({ file: outputPath });
+			console.log(`export durations ${engine}`, JSON.stringify(durations));
+			// The picture is exactly the six seconds the timeline holds; the AAC
+			// stream may run a packet past it, which players report as length.
+			const [num, den] = durations.frameRate.split("/").map(Number);
+			expect(durations.frames, `${engine} frames`).toBe(
+				Math.round((6 * num) / den)
+			);
+			expect(
+				Math.abs(durations.videoDuration - 6),
+				`${engine} video length`
+			).toBeLessThan(den / num / 2);
 			samples[engine] = {
 				inside: meanRgb({ file: outputPath, time: 1.5 }),
 				outside: meanRgb({ file: outputPath, time: 4.5 }),
