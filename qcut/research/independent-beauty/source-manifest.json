@@ -456,14 +456,14 @@
 		},
 		{
 			"path": "research/independent-pipeline-catalog.json",
-			"bytes": 14293,
-			"sha256": "89de678f313fd41c1294f5a4950988b6a5ec924998c400331604b896ebeab92c",
+			"bytes": 14382,
+			"sha256": "6278e56c1f75108e390c92a8a93ab715d75e129c01447138379b8af058ab60d8",
 			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8"
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 25411,
-			"sha256": "887e1f20693973b8244d98afc1d1a2807e393dbbcf590c52241e70e1d5f8b30d",
+			"bytes": 25873,
+			"sha256": "becd39f40b48ad7fe1177e6abf6cff5cd48fdf954ef8aad02284938507f11f78",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -1548,14 +1548,14 @@
 		},
 		{
 			"path": "src/independent-pipeline-plan.test.ts",
-			"bytes": 9693,
-			"sha256": "30eb009d5279129525937621688886b67605be3fe346202a3f35e9c3aa4d2e95",
+			"bytes": 11063,
+			"sha256": "fa43632ec97a30b1bd3082e5014306caee81c229da7c02f5e6dbb1318b01735d",
 			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b"
 		},
 		{
 			"path": "src/independent-pipeline-plan.ts",
-			"bytes": 9484,
-			"sha256": "f0e6686c2fb1e94c12633535d1c08338d1f16321daafeed0dedf60074441845b",
+			"bytes": 11395,
+			"sha256": "15c9f1daae27b9e32bd96a2a0fef5d521484df3c031d620012aadce1af02286c",
 			"sourceSha256": "2bf366f114733507b6ead363871f4a76088be292630c8574f28f780dfeb3ff7b"
 		},
 		{
@@ -1644,13 +1644,18 @@
 		},
 		{
 			"path": "research/manual_body_render.py",
-			"bytes": 7357,
-			"sha256": "4040b50c9cf8b72401df07da06b94584ed19b660262dd7879c739c46f299e359"
+			"bytes": 16842,
+			"sha256": "f87c5f92a7ce2135111aaa51d12bb9bfbd549fe9c61dc3f3588fbaca221d6d19"
 		},
 		{
 			"path": "research/tests/test_manual_body_render.py",
-			"bytes": 11386,
-			"sha256": "8c662e06e1d4a3ffdb5e625037a4d678cca936cba172e086b75cc034ed0bd889"
+			"bytes": 18322,
+			"sha256": "bc1c014eb74256d090ac8b44d0efdeef1ce883fdf2c3239394cf183c225b907e"
+		},
+		{
+			"path": "research/manual_body_slim_field.json",
+			"bytes": 16109,
+			"sha256": "f09b5c0859d027f99d89ff59b71815ed7a834d32858dd77d1b8a8420ba0bea4f"
 		}
 	],
 	"importPatches": [
@@ -2081,6 +2086,18 @@
 				"research/tests/test_manual_body_render.py"
 			],
 			"reason": "QCut-owned manual body stretch: a manual-body stage (after skin, before face shaping, as in the native order) renders the editor's stretch band with geometry measured from the native tool on coordinate-encoded frames; the canonical plan carries manualBody only when a tool changes the picture, so existing plans and receipts are unchanged; plan validation, resident contract and original-resolution support extended to it."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/independent-pipeline-catalog.json",
+				"src/independent-pipeline-plan.ts",
+				"src/independent-pipeline-plan.test.ts",
+				"research/manual_body_render.py",
+				"research/manual_body_slim_field.json",
+				"research/tests/test_manual_body_render.py"
+			],
+			"reason": "QCut-owned manual body slim and zoom: the manual-body stage also renders the editor's slim rectangle (a displacement table measured from the native tool on coordinate-encoded frames, one shape for every size and orientation, linear in intensity) and zoom circle (a fitted radial profile), applied after the stretch in the native order; plan validation and the planner accept their editor ranges and keep only tools that change the picture, so existing plans and receipts are unchanged."
 		}
 	],
 	"sourceWorkingTreeStatus": [
