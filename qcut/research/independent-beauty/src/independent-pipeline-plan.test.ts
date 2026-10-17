@@ -279,7 +279,46 @@ describe("independent composite plan", () => {
 			controls: { stretch },
 		});
 		expect(plan.adjustments.manualBody).toEqual({ stretch });
-		expect(independentPipelineCatalog().manualBodyTools).toEqual(["stretch"]);
+		expect(independentPipelineCatalog().manualBodyTools).toEqual([
+			"stretch",
+			"slim",
+			"zoom",
+		]);
+	});
+	test("slim and zoom join the stretch in one manual-body stage; idle tools are dropped", () => {
+		const slim = {
+			intensity: 25,
+			x: 0.5,
+			y: 0.42,
+			width: 0.3,
+			height: 0.35,
+			rotation: -30,
+		};
+		const zoom = { intensity: -15, x: 0.48, y: 0.64, radius: 0.12 };
+		const plan = independentPipelinePlan({
+			value: {
+				manualBody: {
+					stretch: { intensity: 0, upper: 0.6, bottom: 0.4 },
+					slim,
+					zoom,
+				},
+			},
+		});
+		expect(plan.adjustments.manualBody).toEqual({ slim, zoom });
+		expect(plan.stages).toEqual([
+			{
+				id: "manual-body",
+				kind: "manual-body",
+				script: "manual_body_render.py",
+				parameters: ["--manual-body", JSON.stringify({ slim, zoom })],
+				controls: { slim, zoom },
+			},
+		]);
+		const idle = independentPipelinePlan({
+			value: { manualBody: { zoom: { ...zoom, intensity: 0 } } },
+		});
+		expect(idle.adjustments).toEqual({ values: {}, makeup: {} });
+		expect(idle.stages).toEqual([]);
 	});
 	test("an idle stretch leaves no stage and no manual body in the plan", () => {
 		const plan = independentPipelinePlan({
@@ -292,17 +331,25 @@ describe("independent composite plan", () => {
 	});
 	test("rejects manual body tools and settings outside the editor's ranges", () => {
 		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
+		const slim = {
+			intensity: 10,
+			x: 0.5,
+			y: 0.5,
+			width: 0.2,
+			height: 0.2,
+			rotation: 0,
+		};
+		const zoom = { intensity: 10, x: 0.5, y: 0.5, radius: 0.2 };
 		for (const manualBody of [
-			{
-				slim: {
-					intensity: 10,
-					x: 0.5,
-					y: 0.5,
-					width: 0.2,
-					height: 0.2,
-					rotation: 0,
-				},
-			},
+			{ twist: slim },
+			{ slim: { ...slim, rotation: 181 } },
+			{ slim: { ...slim, width: 0.01 } },
+			{ slim: { ...slim, y: -0.1 } },
+			{ slim: { ...slim, radius: 0.2 } },
+			{ zoom: { ...zoom, radius: 0.51 } },
+			{ zoom: { ...zoom, radius: 0.005 } },
+			{ zoom: { x: 0.5, y: 0.5, radius: 0.2 } },
+			{ zoom: { ...zoom, intensity: -51 } },
 			{ stretch: { ...stretch, intensity: 51 } },
 			{ stretch: { ...stretch, upper: 0.21 } },
 			{ stretch: { ...stretch, bottom: 0.99 } },
