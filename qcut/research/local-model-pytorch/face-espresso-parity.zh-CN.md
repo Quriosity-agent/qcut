@@ -109,3 +109,8 @@ env -i PATH="$PATH" HOME="$HOME" DYLD_LIBRARY_PATH="$R/Frameworks" DYLD_INSERT_L
 /opt/homebrew/bin/python3 research/local-model-pytorch/espresso_parity.py .local/jianying-model-pytorch/new-collected/*/ --out .local/jianying-model-pytorch/new-parity --seed 41
 cd research/local-model-pytorch && /opt/homebrew/bin/python3 -m unittest espresso_test
 ```
+
+## 2026-10-17 更正：人体子网的权重
+
+上表 `c3388ac4a17502f3`、`811519c5c6501093` 两张 skeletonsquat 子网的 arena 切错了：用它们算出的输出与输入无关（`c3388ac4a17502f3` 第 30 层对任何输入都饱和成 2047）。当时的「逐位一致」是解释器与同一份坏 arena 上的原生 oracle 相互一致，不说明网络本身复现了。在真实渲染推理之后按图戳重新截取，得到的 arena（`fd860348…`、`a4fbff21…`）在真实输入上逐位复现原生输出，也和直接从模型文件解出的一致。详见 [自研智能长腿](../../docs/task/jianying-filter-runtime-research/independent-smart-longleg-2026-10-17.zh-CN.md)。
+
