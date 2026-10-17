@@ -92,10 +92,13 @@ export async function resolveAlphaPlaybackProxyUrl(mediaItem: {
  * Asks the desktop app about a video item, hands the answer to `update` to
  * record on the item, and returns the item's proxy as a File when it has one,
  * for thumbnails and durations the browser cannot read from the original.
+ * With `readProxy` false (a project load that already has its thumbnails)
+ * only the answer is recorded and the proxy is not read.
  */
 export async function recordMediaAlpha({
 	mediaItem,
 	update,
+	readProxy = true,
 }: {
 	mediaItem: {
 		type?: string;
@@ -103,12 +106,13 @@ export async function recordMediaAlpha({
 		localPath?: string;
 	};
 	update: (alpha: MediaAlphaInfo) => void;
+	readProxy?: boolean;
 }): Promise<File | null> {
 	if (mediaItem.type !== "video") return null;
 	const alpha = await inspectMediaAlpha(mediaItem).catch(() => null);
 	if (!alpha) return null;
 	update(alpha);
-	if (!alpha.proxyPath) return null;
+	if (!alpha.proxyPath || !readProxy) return null;
 	try {
 		const response = await fetch(localMediaUrlForPath(alpha.proxyPath));
 		if (!response.ok) return null;
