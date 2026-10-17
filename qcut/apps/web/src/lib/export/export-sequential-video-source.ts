@@ -70,12 +70,12 @@ export class SequentialVideoFrameSource {
 			const track = await input.getPrimaryVideoTrack();
 			if (!track) return null;
 			if ((await track.canDecode()) !== true) return null;
-			// Without `alpha`, a transparent video's clear pixels decode black
-			// and cover everything under the clip.
-			const sink = new CanvasSink(track, {
-				poolSize: CANVAS_POOL_SIZE,
-				alpha: await track.canBeTransparent(),
-			});
+			// A transparent video goes to the seek path: the video element
+			// decodes its alpha itself, while mediabunny merges alpha in web
+			// workers, and blob workers never start in the editor, so the first
+			// frame never came (without alpha, clear pixels decoded black).
+			if (await track.canBeTransparent()) return null;
+			const sink = new CanvasSink(track, { poolSize: CANVAS_POOL_SIZE });
 			return new SequentialVideoFrameSource(
 				input as MediabunnyInputHandle,
 				(startTimestamp) =>
