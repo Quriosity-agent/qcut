@@ -8,6 +8,8 @@ const mediabunnyMocks = vi.hoisted(() => ({
 	nextCalls: 0,
 	disposed: 0,
 	canDecode: true,
+	canBeTransparent: false,
+	sinkOptions: [] as unknown[],
 	frameDuration: 1 / 30,
 	totalFrames: 90,
 }));
@@ -23,6 +25,7 @@ vi.mock("mediabunny", () => {
 		async getPrimaryVideoTrack() {
 			return {
 				canDecode: async () => mediabunnyMocks.canDecode,
+				canBeTransparent: async () => mediabunnyMocks.canBeTransparent,
 			};
 		}
 		dispose() {
@@ -30,6 +33,9 @@ vi.mock("mediabunny", () => {
 		}
 	}
 	class CanvasSink {
+		constructor(_track: unknown, options: unknown) {
+			mediabunnyMocks.sinkOptions.push(options);
+		}
 		canvases(startTimestamp = 0) {
 			mediabunnyMocks.iteratorStarts.push(startTimestamp);
 			const d = mediabunnyMocks.frameDuration;
@@ -79,8 +85,21 @@ describe("SequentialVideoFrameSource", () => {
 		mediabunnyMocks.nextCalls = 0;
 		mediabunnyMocks.disposed = 0;
 		mediabunnyMocks.canDecode = true;
+		mediabunnyMocks.canBeTransparent = false;
+		mediabunnyMocks.sinkOptions = [];
 		mediabunnyMocks.frameDuration = 1 / 30;
 		setSequentialDecodeDisabled(false);
+	});
+
+	it("keeps a transparent video's alpha instead of decoding it onto black", async () => {
+		mediabunnyMocks.canBeTransparent = true;
+		await SequentialVideoFrameSource.open({ blob: new Blob(["x"]) });
+		mediabunnyMocks.canBeTransparent = false;
+		await SequentialVideoFrameSource.open({ blob: new Blob(["x"]) });
+		expect(mediabunnyMocks.sinkOptions).toEqual([
+			expect.objectContaining({ alpha: true }),
+			expect.objectContaining({ alpha: false }),
+		]);
 	});
 
 	it("advances monotonically with exactly one decode per frame", async () => {
