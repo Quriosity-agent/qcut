@@ -47,6 +47,24 @@ describe("findTimelineGaps", () => {
 		]);
 	});
 
+	it("runs on in black to timelineEnd after the last clip (an overlay that outlasts it)", () => {
+		expect(
+			findTimelineGaps({
+				fps: 24,
+				segments: [segment({ id: "a", startTime: 0, duration: 10 })],
+				timelineEnd: 12.5,
+			})
+		).toEqual([{ beforeSegment: 1, startTime: 10, duration: 2.5 }]);
+		// A clip that already reaches the end, give or take half a frame, needs none.
+		expect(
+			findTimelineGaps({
+				fps: 24,
+				segments: [segment({ id: "a", startTime: 0, duration: 10 })],
+				timelineEnd: 10.01,
+			})
+		).toEqual([]);
+	});
+
 	it("ignores seams shorter than half a frame", () => {
 		expect(
 			findTimelineGaps({
@@ -128,5 +146,15 @@ describe("orderConcatInputs", () => {
 				gapOutputs: ["g0.mp4", "g1.mp4"],
 			})
 		).toEqual(["g0.mp4", "s0.mp4", "s1.mp4", "g1.mp4", "s2.mp4"]);
+	});
+
+	it("puts a gap after the last segment at the end", () => {
+		expect(
+			orderConcatInputs({
+				segmentOutputs: ["s0.mp4", "s1.mp4"],
+				gaps: [{ beforeSegment: 2, startTime: 8, duration: 2 }],
+				gapOutputs: ["g0.mp4"],
+			})
+		).toEqual(["s0.mp4", "s1.mp4", "g0.mp4"]);
 	});
 });
