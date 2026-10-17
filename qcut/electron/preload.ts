@@ -30,6 +30,7 @@ import {
 	QCUT_FILTER_LIST,
 } from "./qcut-independent-filter/contract.js";
 import type {
+	AlphaPlaybackProxyResult,
 	AudioWaveformOptions,
 	AudioWaveformResult,
 	VideoCompositionFramePreviewOptions,
@@ -817,6 +818,10 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			ipcRenderer.invoke("ffmpeg-render-video-preview-proxy", options),
 		cancelVideoPreviewProxy: (requestId: string): Promise<boolean> =>
 			ipcRenderer.invoke("ffmpeg-cancel-video-preview-proxy", requestId),
+		ensureAlphaPlaybackProxy: (options: {
+			sourcePath: string;
+		}): Promise<AlphaPlaybackProxyResult> =>
+			ipcRenderer.invoke("ffmpeg-ensure-alpha-playback-proxy", options),
 		getVideoPreviewProxyCacheStats: () =>
 			ipcRenderer.invoke("ffmpeg-get-video-preview-proxy-cache-stats"),
 		clearVideoPreviewProxyCache: () =>
