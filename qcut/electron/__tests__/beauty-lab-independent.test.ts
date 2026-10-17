@@ -441,20 +441,76 @@ describe("independent photo provider", () => {
 			})
 		).toThrow(/manual body stretch/);
 	});
+	it("keeps active slim and zoom for an engine whose catalog renders them", () => {
+		const slim = {
+			intensity: 25,
+			x: 0.5,
+			y: 0.42,
+			width: 0.3,
+			height: 0.35,
+			rotation: -0,
+		};
+		const zoom = { intensity: -15, x: 0.48, y: 0.64, radius: 0.12 };
+		const value = independentBeautyAdjustments({
+			request: {
+				...request,
+				adjustments: {
+					enabled: true,
+					values: {},
+					manualBody: {
+						stretch: { intensity: 0, upper: 0.6, bottom: 0.4 },
+						slim,
+						zoom,
+					},
+				},
+			},
+			catalog: {
+				...catalog,
+				stages: [{ kind: "manual-body", tools: ["stretch", "slim", "zoom"] }],
+			},
+		});
+		// The idle stretch is dropped and −0 is written as 0, as the engine's plan keeps them.
+		expect(value.adjustments.manualBody).toEqual({
+			slim: { ...slim, rotation: 0 },
+			zoom,
+		});
+		expect(Object.is(value.adjustments.manualBody?.slim?.rotation, -0)).toBe(
+			false
+		);
+		// An engine that renders only the stretch refuses them.
+		expect(() =>
+			independentBeautyAdjustments({
+				request: {
+					...request,
+					adjustments: { enabled: true, values: {}, manualBody: { zoom } },
+				},
+				catalog: {
+					...catalog,
+					stages: [{ kind: "manual-body", tools: ["stretch"] }],
+				},
+			})
+		).toThrow(/manual body zoom/);
+	});
+	const slim = {
+		intensity: 10,
+		x: 0.5,
+		y: 0.5,
+		width: 0.2,
+		height: 0.2,
+		rotation: 0,
+	};
+	const zoom = { intensity: 10, x: 0.5, y: 0.5, radius: 0.2 };
 	it.each([
 		{ stretch: { intensity: 51, upper: 0.7, bottom: 0.2 } },
 		{ stretch: { intensity: 10, upper: 0.21, bottom: 0.2 } },
 		{ stretch: { intensity: 10, upper: 0.7 } },
-		{
-			slim: {
-				intensity: 10,
-				x: 0.5,
-				y: 0.5,
-				width: 0.2,
-				height: 0.2,
-				rotation: 0,
-			},
-		},
+		{ slim: { ...slim, rotation: 181 } },
+		{ slim: { ...slim, width: 0.01 } },
+		{ slim: { ...slim, x: 1.1 } },
+		{ zoom: { ...zoom, radius: 0.6 } },
+		{ zoom: { ...zoom, intensity: -51 } },
+		{ zoom: { ...zoom, rotation: 0 } },
+		{ twist: zoom },
 	])("rejects manual body settings it cannot render: %j", (manualBody) => {
 		expect(() =>
 			independentBeautyAdjustments({
@@ -464,7 +520,7 @@ describe("independent photo provider", () => {
 				} as unknown as BeautyLabIndependentRequest,
 				catalog: {
 					...catalog,
-					stages: [{ kind: "manual-body", tools: ["stretch"] }],
+					stages: [{ kind: "manual-body", tools: ["stretch", "slim", "zoom"] }],
 				},
 			})
 		).toThrow();
