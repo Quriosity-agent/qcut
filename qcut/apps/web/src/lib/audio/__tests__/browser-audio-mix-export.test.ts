@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TimelineTrack } from "@/types/timeline";
+import { dbToGain } from "../audio-properties";
 import {
 	createDefaultAudioMixBus,
 	createDefaultProjectAudioMixSettings,
@@ -22,7 +23,12 @@ interface FakeNode {
 }
 
 function param() {
-	return { value: 0, setTargetAtTime: vi.fn() };
+	return {
+		value: 0,
+		setTargetAtTime: vi.fn(),
+		setValueAtTime: vi.fn(),
+		linearRampToValueAtTime: vi.fn(),
+	};
 }
 
 function fakeContext() {
@@ -168,6 +174,44 @@ describe("export audio mix", () => {
 		]);
 		const voicePath = pathKinds(inputs.get("voice") as unknown as FakeNode);
 		expect(voicePath).toEqual([...strip, "delay", ...toDestination]);
+	});
+
+	it("fades the master on its own level stage, behind the stages before it", () => {
+		const fade = {
+			gainDb: [
+				{ time: 209.25, value: 0 },
+				{ time: 212.25, value: -60 },
+			],
+		};
+		for (const [routed, stagesBeforeLevel] of [
+			[false, 2 + 2 + 1],
+			[true, 2 + 2 + 2 + 1],
+		] as const) {
+			const mix = resolveExportAudioMix({
+				tracks: [track("main", routed ? { busId: "sfx" } : {})],
+				audioMix: {
+					...withBus,
+					master: { ...withBus.master, automation: fade },
+				},
+			});
+			if (!mix) throw new Error("expected a mix");
+			const { context, nodes } = fakeContext();
+			buildExportAudioMix({
+				context,
+				mix,
+				duckingSources: new Map(),
+				lookaheadSeconds: 0.006,
+				clipStages: 2,
+			});
+			// The master is built first: input, makeup, then its level stage.
+			const level = nodes.filter((node) => node.kind === "gain")[2]
+				.gain as ReturnType<typeof param>;
+			const ramps = level.linearRampToValueAtTime.mock.calls;
+			const last = ramps.at(-1) as [number, number];
+			expect(last[0]).toBe(dbToGain({ db: -60 }));
+			expect(last[1]).toBeCloseTo(212.25 + stagesBeforeLevel * 0.006, 9);
+			expect(level.setValueAtTime).toHaveBeenCalledWith(1, 0);
+		}
 	});
 
 	it("builds only the stem bus's tracks, through a neutral master", () => {
