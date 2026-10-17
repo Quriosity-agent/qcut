@@ -32,6 +32,12 @@ export interface BeautyLabIndependentStatus {
 	provider: typeof BEAUTY_LAB_INDEPENDENT_PROVIDER;
 	controls: string[];
 	makeupCards: string[];
+	/** Manual body tools the engine renders, e.g. ["stretch"]; absent: none. */
+	manualBodyTools?: string[];
+}
+/** The stretch band the independent engine renders (editor ranges). */
+export interface BeautyLabIndependentManualBody {
+	stretch?: { intensity: number; upper: number; bottom: number };
 }
 export interface BeautyLabIndependentRequest {
 	requestId: string;
@@ -65,6 +71,7 @@ export interface BeautyLabIndependentFrameRequest {
 		enabled: true;
 		values: Record<string, number>;
 		makeup?: Record<string, { cardId: string; intensity: number }>;
+		manualBody?: BeautyLabIndependentManualBody;
 	};
 }
 export interface BeautyLabIndependentFrameResult {
