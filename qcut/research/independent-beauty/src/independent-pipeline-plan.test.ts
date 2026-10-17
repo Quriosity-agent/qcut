@@ -258,6 +258,59 @@ describe("independent composite plan", () => {
 			expect(plan.stages[0].id).toBe(`makeup:${card.id}`);
 		}
 	});
+	test("the smart long leg runs last, after makeup, and takes only the body prefix", () => {
+		const plan = independentPipelinePlan({
+			value: {
+				values: { body_adjust_StretchLeg: 60, face_adjust_Whiten: 20 },
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 30 } },
+			},
+		});
+		expect(plan.stages.map(({ id }) => id)).toEqual([
+			"whiten",
+			"makeup:lip-soft-pink",
+			"smart-body",
+		]);
+		expect(plan.stages.at(-1)).toEqual({
+			id: "smart-body",
+			kind: "controls",
+			script: "body_longleg_render.py",
+			parameters: ["--controls", JSON.stringify({ StretchLeg: 60 })],
+			controls: { StretchLeg: 60 },
+		});
+		expect(plan.adjustments.values).toEqual({ Whiten: 20, StretchLeg: 60 });
+		// A shared makeup pass also comes before it.
+		const grouped = independentPipelinePlan({
+			value: {
+				values: { body_adjust_StretchLeg: 40 },
+				makeup: {
+					lip: { cardId: "lip-soft-pink", intensity: 30 },
+					brows: { cardId: "brows-standard", intensity: 30 },
+				},
+			},
+		});
+		expect(grouped.stages.map(({ id }) => id)).toEqual([
+			"dynamic-pigments",
+			"smart-body",
+		]);
+		for (const values of [
+			{ face_adjust_StretchLeg: 10 },
+			{ body_adjust_Whiten: 10 },
+			{ body_adjust_SlimWaist: 10 },
+			{ body_adjust_StretchLeg: 100.5 },
+		])
+			expect(() => independentPipelinePlan({ value: { values } })).toThrow();
+		expect(
+			independentPipelineCatalog().controls.find(
+				({ name }) => name === "StretchLeg"
+			)
+		).toEqual({
+			name: "StretchLeg",
+			title: "长腿",
+			min: 0,
+			max: 100,
+			group: "body",
+		});
+	});
 	test("manual body stretch runs after the skin stages and before face shaping", () => {
 		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
 		const plan = independentPipelinePlan({
