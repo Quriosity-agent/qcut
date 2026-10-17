@@ -45,6 +45,13 @@ export interface ExportSegment {
 	playbackRate?: number;
 	frameInterpolation?: import("../../../ffmpeg/types.js").VideoSource["frameInterpolation"];
 	enhancements?: import("../../../ffmpeg/types.js").VideoVisual["enhancements"];
+	/** Element blend mode; it only matters when the clip is drawn as an overlay. */
+	blendMode?: import("../../../ffmpeg/visual-layer-compositor.js").VisualLayerBlendMode;
+	/**
+	 * The element's keyframes (frames from the clip start), which an overlay
+	 * is drawn with; the joined picture animates from `transform` instead.
+	 */
+	keyframes?: import("../../../ffmpeg/types.js").VideoVisual["keyframes"];
 	/**
 	 * Where the sound is read when the picture comes from another file (a
 	 * neural-interpolated intermediate has no sound); absent = `sourcePath`
