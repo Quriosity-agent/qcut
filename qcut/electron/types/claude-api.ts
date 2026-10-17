@@ -378,6 +378,8 @@ export interface ClaudeElement
 	style?: Record<string, unknown>;
 	name?: string;
 	opacity?: number;
+	/** False switches a media clip's opacity and blend mode off, keeping their values. */
+	blendEnabled?: boolean;
 	volume?: number;
 	audioFadeIn?: number;
 	audioFadeOut?: number;
