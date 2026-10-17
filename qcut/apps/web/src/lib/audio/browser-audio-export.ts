@@ -25,6 +25,11 @@ import { reverseAudioBuffer } from "./audio-buffer-transform";
 import { MIX_STRIP_DYNAMICS_STAGES } from "./audio-mix-strip";
 import { FLAT_CUTOFF_Q_DB } from "./audio-properties";
 import {
+	COMPRESSOR_KNEE_DB,
+	LIMITER_KNEE_DB,
+	LIMITER_RATIO,
+} from "./dynamics-compressor-makeup";
+import {
 	type AudioMixRouting,
 	resolveAudioMixRouting,
 } from "./audio-mix-routing";
@@ -214,6 +219,7 @@ async function scheduleClip({
 	const compressor = context.createDynamicsCompressor();
 	const compressorMakeup = context.createGain();
 	const limiter = context.createDynamicsCompressor();
+	const limiterMakeup = context.createGain();
 	const telephoneDry = context.createGain();
 	const telephoneHighpass = context.createBiquadFilter();
 	const telephoneLowpass = context.createBiquadFilter();
@@ -252,9 +258,9 @@ async function scheduleClip({
 	telephoneLowpass.type = "lowpass";
 	telephoneLowpass.frequency.value = 3_400;
 	telephoneLowpass.Q.value = FLAT_CUTOFF_Q_DB;
-	compressor.knee.value = 30;
-	limiter.knee.value = 0;
-	limiter.ratio.value = 20;
+	compressor.knee.value = COMPRESSOR_KNEE_DB;
+	limiter.knee.value = LIMITER_KNEE_DB;
+	limiter.ratio.value = LIMITER_RATIO;
 	limiter.attack.value = 0.003;
 
 	source.buffer = element.reverse
@@ -283,9 +289,10 @@ async function scheduleClip({
 	}
 	compressor.connect(compressorMakeup);
 	compressorMakeup.connect(limiter);
-	limiter.connect(telephoneDry);
+	limiter.connect(limiterMakeup);
+	limiterMakeup.connect(telephoneDry);
 	telephoneDry.connect(effectsBus);
-	limiter.connect(telephoneHighpass);
+	limiterMakeup.connect(telephoneHighpass);
 	telephoneHighpass.connect(telephoneLowpass);
 	telephoneLowpass.connect(telephoneWet);
 	telephoneWet.connect(effectsBus);
@@ -340,6 +347,7 @@ async function scheduleClip({
 		[compressor.ratio, (point) => point.compressorRatio],
 		[compressorMakeup.gain, (point) => point.compressorMakeup],
 		[limiter.threshold, (point) => point.limiterThreshold],
+		[limiterMakeup.gain, (point) => point.limiterMakeup],
 		[telephoneDry.gain, (point) => point.telephoneDry],
 		[telephoneWet.gain, (point) => point.telephoneWet],
 		[dryGain.gain, (point) => point.dryMix],
