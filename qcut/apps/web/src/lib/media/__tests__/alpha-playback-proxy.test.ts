@@ -19,6 +19,7 @@ vi.mock("@qcut/platform-core", async (importOriginal) => {
 import {
 	clearMediaAlphaInspections,
 	inspectMediaAlpha,
+	recordMediaAlpha,
 	resolveAlphaPlaybackProxyUrl,
 } from "../alpha-playback-proxy";
 import { getVideoSource, localMediaUrlForPath } from "../media-source";
@@ -94,6 +95,32 @@ describe("alpha playback proxy (renderer)", () => {
 		await expect(
 			resolveAlphaPlaybackProxyUrl({ type: "image", localPath: "/media/c.png" })
 		).resolves.toBeUndefined();
+	});
+
+	it("records the verdict without reading the proxy when asked not to", async () => {
+		mocks.ensure.mockResolvedValue({
+			alpha: qtrleAlpha,
+			proxyPath: "/cache/c.webm",
+		});
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		const update = vi.fn();
+		await expect(
+			recordMediaAlpha({
+				mediaItem: {
+					type: "video",
+					name: "card.mov",
+					localPath: "/media/c.mov",
+				},
+				update,
+				readProxy: false,
+			})
+		).resolves.toBeNull();
+		expect(update).toHaveBeenCalledWith({
+			...qtrleAlpha,
+			proxyPath: "/cache/c.webm",
+		});
+		expect(fetchSpy).not.toHaveBeenCalled();
+		fetchSpy.mockRestore();
 	});
 
 	it("plays a video from its proxy in the preview", () => {
