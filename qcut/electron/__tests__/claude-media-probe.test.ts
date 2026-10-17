@@ -42,6 +42,47 @@ function fixture(name: string, type: MediaFile["type"]): MediaFile {
 }
 
 describe("parseMediaProbe", () => {
+	it("reports a video's codec, pixel format and alpha", () => {
+		const parse = (stream: Record<string, unknown>) =>
+			parseMediaProbe({
+				stdout: probeJson({
+					streams: [
+						{
+							codec_type: "video",
+							width: 1280,
+							height: 720,
+							avg_frame_rate: "24/1",
+							duration: "2.666667",
+							...stream,
+						},
+					],
+				}),
+				type: "video",
+			});
+		expect(
+			parse({
+				codec_name: "vp9",
+				pix_fmt: "yuv420p",
+				tags: { alpha_mode: "1" },
+			})
+		).toMatchObject({
+			codec: "vp9",
+			pixelFormat: "yuv420p",
+			alphaMode: 1,
+			hasAlpha: true,
+		});
+		expect(parse({ codec_name: "qtrle", pix_fmt: "argb" })).toMatchObject({
+			codec: "qtrle",
+			pixelFormat: "argb",
+			alphaMode: 0,
+			hasAlpha: true,
+		});
+		expect(parse({ codec_name: "h264", pix_fmt: "yuv420p" })).toMatchObject({
+			codec: "h264",
+			hasAlpha: false,
+		});
+	});
+
 	it("takes a video's length from its video stream, not the container", () => {
 		// The report's clip: 409 frames of 24 fps video under a longer AAC track.
 		expect(
