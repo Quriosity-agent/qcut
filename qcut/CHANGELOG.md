@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.17.2] - 2026-10-17
+
 ### Improved
 - Manual body edits now run on the independent engine for timeline clips: stretch, slim and zoom follow rules measured from native renders (stretch moves each side of the band 5 % of the frame height outward, or 2 % inward; slim moves along the box's own horizontal axis, rotated boxes included, from a measured 41×41 displacement table; zoom is a radial displacement measured on the frame's short side). They run in the native order (stretch, slim, zoom) after skin and before face shaping. An engine that cannot render a tool names it in the portrait panel instead of switching to native, and Beauty Lab lists the tools the installed engine renders.
 - The independent engine adds the smart body long leg (长腿, 0–100), applied after makeup. It finds the person with QCut's own port of the two body-keypoint networks (a coarse pass on the frame scaled to 640 px on the long side, then two refinement passes) and stretches the legs with a mesh warp drawn in Metal, taking about 0.3–0.5 s a frame.
