@@ -157,6 +157,38 @@ describe("ensureAlphaPlaybackProxy", () => {
 		]);
 	});
 
+	it("encodes at most two proxies at once", async () => {
+		let running = 0;
+		let most = 0;
+		const encode = vi.fn(async ({ args }: { args: string[] }) => {
+			running += 1;
+			most = Math.max(most, running);
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			fs.writeFileSync(args.at(-1) as string, "proxy");
+			running -= 1;
+		});
+		const sources = ["a", "b", "c", "d", "e"].map((name) => {
+			const file = path.join(dir, `${name}.mov`);
+			fs.writeFileSync(file, name);
+			return file;
+		});
+		const results = await Promise.all(
+			sources.map((sourcePath) =>
+				ensureAlphaPlaybackProxy({
+					sourcePath,
+					cacheDir: path.join(dir, "cache"),
+					probe: async () => qtrle,
+					encode,
+				})
+			)
+		);
+		expect(encode).toHaveBeenCalledTimes(5);
+		expect(most).toBe(2);
+		expect(
+			results.every((result) => fs.existsSync(result.proxyPath as string))
+		).toBe(true);
+	});
+
 	it("leaves no proxy behind when the encode fails", async () => {
 		await expect(
 			ensureAlphaPlaybackProxy({
