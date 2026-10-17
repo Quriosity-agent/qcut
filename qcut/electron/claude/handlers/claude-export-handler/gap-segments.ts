@@ -21,7 +21,10 @@ import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
 export interface TimelineGap {
-	/** Position (in start order) of the segment the gap precedes. */
+	/**
+	 * Position (in start order) of the segment the gap precedes; the segment
+	 * count for a gap after the last segment.
+	 */
 	beforeSegment: number;
 	startTime: number;
 	duration: number;
@@ -30,13 +33,17 @@ export interface TimelineGap {
 /**
  * Gaps longer than half a frame between `segments` (sorted by start time),
  * measured against the furthest end so far: overlapping lanes leave none.
+ * With `timelineEnd`, the picture also runs on in black after the last
+ * segment up to it (an overlay that outlasts the clips under it).
  */
 export function findTimelineGaps({
 	segments,
 	fps,
+	timelineEnd,
 }: {
 	segments: ExportSegment[];
 	fps: number;
+	timelineEnd?: number;
 }): TimelineGap[] {
 	const minimum = 0.5 / Math.max(1, fps);
 	const gaps: TimelineGap[] = [];
@@ -47,6 +54,13 @@ export function findTimelineGaps({
 			gaps.push({ beforeSegment: index, startTime: cursor, duration });
 		}
 		cursor = Math.max(cursor, segment.startTime + segment.duration);
+	}
+	if (timelineEnd !== undefined && timelineEnd - cursor > minimum) {
+		gaps.push({
+			beforeSegment: segments.length,
+			startTime: cursor,
+			duration: timelineEnd - cursor,
+		});
 	}
 	return gaps;
 }
@@ -111,11 +125,15 @@ export function orderConcatInputs({
 	gapOutputs: string[];
 }): string[] {
 	const inputs: string[] = [];
-	for (const [index, output] of segmentOutputs.entries()) {
+	const pushGapBefore = (index: number) => {
 		const gapIndex = gaps.findIndex((gap) => gap.beforeSegment === index);
 		if (gapIndex >= 0 && gapOutputs[gapIndex])
 			inputs.push(gapOutputs[gapIndex]);
+	};
+	for (const [index, output] of segmentOutputs.entries()) {
+		pushGapBefore(index);
 		inputs.push(output);
 	}
+	pushGapBefore(segmentOutputs.length);
 	return inputs;
 }
