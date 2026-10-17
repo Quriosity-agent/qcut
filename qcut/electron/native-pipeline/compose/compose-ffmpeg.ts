@@ -397,7 +397,7 @@ export function buildComposeFinishingArgs({
 		}
 		const labels = ["[basea]", ...audio.map((_item, index) => `[sfx${index}]`)];
 		filters.push(
-			`${labels.join("")}amix=inputs=${labels.length}:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]`
+			`${labels.join("")}amix=inputs=${labels.length}:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95:level=0:latency=1[aout]`
 		);
 		audioLabel = "aout";
 	}
