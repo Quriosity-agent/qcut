@@ -11,7 +11,7 @@ describe("real-provider matrix plan", () => {
 		const cases = beautyMatrixCases();
 		expect(new Set(cases.map(({ id }) => id)).size).toBe(cases.length);
 		for (const control of catalog.controls) {
-			const key = `face_adjust_${control.name}`;
+			const key = `${control.group === "body" ? "body" : "face"}_adjust_${control.name}`;
 			const native = JIANYING_PORTRAIT_ADJUSTMENT_CATALOG.find(
 				(entry) => entry.key === key
 			);
