@@ -3,6 +3,12 @@
  * the main process (utility-bridge) and the utility process.
  */
 
+import type {
+	ClaudeBeatsMarkRequest,
+	ClaudeShotSplitRequest,
+	ClaudeSnapToBeatsRequest,
+} from "../types/claude-api.js";
+
 // ─── Messages FROM utility process TO main process ───
 
 export interface UtilityReadyMessage {
@@ -171,6 +177,21 @@ export interface SplitElementRequest {
 	elementId: string;
 	splitTime: number;
 	mode: string;
+}
+
+export interface ShotSplitBridgeRequest {
+	request: ClaudeShotSplitRequest;
+	correlationId?: string;
+}
+
+export interface BeatsMarkBridgeRequest {
+	request: ClaudeBeatsMarkRequest;
+	correlationId?: string;
+}
+
+export interface SnapToBeatsBridgeRequest {
+	request: ClaudeSnapToBeatsRequest;
+	correlationId?: string;
 }
 
 export interface TimelineAddElementRequest {

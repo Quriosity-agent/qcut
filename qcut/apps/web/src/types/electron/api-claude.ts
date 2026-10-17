@@ -28,6 +28,8 @@ import type {
 	DiagnosticResult,
 	EditorEvent,
 	AgentPointerVisualState,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
 } from "../../../../../electron/types/claude-api";
 import type {
 	ClaudeLocalVideoExportRendererRequest,
@@ -191,9 +193,23 @@ export interface ElectronClaudeOps {
 				requestId: string,
 				result: ClaudeSplitResponse
 			) => void;
+			onShotSplit: (
+				callback: (data: {
+					requestId: string;
+					correlationId?: string;
+					request: ClaudeShotSplitRequest;
+				}) => void
+			) => void;
+			sendShotSplitResponse: (
+				requestId: string,
+				result:
+					| { ok: true; response: ClaudeShotSplitResponse }
+					| { ok: false; error: string }
+			) => void;
 			onExecuteCuts: (
 				callback: (data: {
 					requestId: string;
+					projectId: string;
 					elementId: string;
 					cuts: Array<{ start: number; end: number }>;
 					ripple: boolean;
@@ -430,11 +446,22 @@ export interface ElectronClaudeOps {
 				projectId: string,
 				options: {
 					mediaId: string;
+					/** `auto` (default) tries jianying, onnx, then ffmpeg. */
+					engine?: "auto" | "jianying" | "onnx" | "ffmpeg";
 					threshold?: number;
 					aiAnalysis?: boolean;
 					model?: string;
 				}
 			) => Promise<{
+				/** The engine that ran. */
+				engine: "jianying" | "onnx" | "ffmpeg";
+				requestedEngine?: "auto" | "jianying" | "onnx" | "ffmpeg";
+				fallbacks?: Array<{
+					engine: "jianying" | "onnx" | "ffmpeg";
+					reason: string;
+				}>;
+				route?: string;
+				durationSeconds?: number;
 				scenes: Array<{
 					timestamp: number;
 					confidence: number;
@@ -444,6 +471,16 @@ export interface ElectronClaudeOps {
 				}>;
 				totalScenes: number;
 				averageShotDuration: number;
+			}>;
+			/** Which scene engines can run on this machine, and auto's pick. */
+			engines: () => Promise<{
+				engines: Array<{
+					engine: "jianying" | "onnx" | "ffmpeg";
+					available: boolean;
+					message: string;
+					route?: string;
+				}>;
+				preferred: "jianying" | "onnx" | "ffmpeg" | null;
 			}>;
 		};
 		navigator: {

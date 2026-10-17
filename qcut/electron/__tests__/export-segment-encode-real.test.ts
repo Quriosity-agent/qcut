@@ -143,5 +143,67 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			expect(video.duration).toBeCloseTo(1.5, 2);
 			expect(audio.duration).toBeGreaterThanOrEqual(1.49);
 		});
+
+		it("keeps the last frame of an untrimmed clip whose 32 kHz sound outlasts its picture", () => {
+			// 49 frames at 24 fps is 2.041667 s; 32 kHz AAC frames are 32 ms, so
+			// the sound cut at that length ends at 2.016 s, before the last frame.
+			// `-shortest` used to let the sync queue drop that frame.
+			const source = path.join(tempDir, "source-32k.mp4");
+			const made = spawnSync(
+				ffmpegPath,
+				[
+					"-y",
+					"-v",
+					"error",
+					"-f",
+					"lavfi",
+					"-i",
+					"testsrc2=s=64x64:r=24",
+					"-f",
+					"lavfi",
+					"-i",
+					"sine=frequency=440:sample_rate=32000",
+					"-frames:v",
+					"49",
+					"-t",
+					"2.1",
+					"-c:v",
+					"libx264",
+					"-pix_fmt",
+					"yuv420p",
+					"-c:a",
+					"aac",
+					source,
+				],
+				{ encoding: "utf8", timeout: 60_000 }
+			);
+			expect(made.status, made.stderr).toBe(0);
+			const segment: ExportSegment = {
+				elementId: "clip-2",
+				trackId: "track-1",
+				trackOrder: 0,
+				elementOrder: 1,
+				sourcePath: source,
+				startTime: 0,
+				duration: 49 / 24,
+				trimStart: 0,
+				sourceId: "media-2",
+				fitMode: "cover",
+			};
+			const outputPath = path.join(tempDir, "segment-32k.mp4");
+			const encoded = spawnSync(
+				ffmpegPath,
+				buildExportSegmentEncodeArgs({
+					inputArgs: buildExportSegmentInputArgs({ segment }),
+					scaleFilter: "scale=64:64",
+					segment,
+					settings: { fps: 24, codec: "libx264", bitrate: "1M" },
+					outputPath,
+				}),
+				{ encoding: "utf8", timeout: 60_000 }
+			);
+			expect(encoded.status, encoded.stderr).toBe(0);
+			expect(probe({ file: outputPath, stream: "v" }).frames).toBe(49);
+		});
 	}
 );

@@ -58,6 +58,64 @@ export function normalizeAutomation(
 	return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
+/**
+ * A curve after the span [startTime, endTime) is cut out of the timeline:
+ * points inside the span go, points after it move earlier by the span's
+ * length, and where the span had points on both sides the value at its end
+ * is kept at the join so the curve continues from there, the way a ripple
+ * delete joins the clips.
+ */
+export function ripplePoints({
+	points,
+	startTime,
+	endTime,
+}: {
+	points: AudioAutomationPoint[];
+	startTime: number;
+	endTime: number;
+}): AudioAutomationPoint[] {
+	const removed = endTime - startTime;
+	if (removed <= 0 || points.length === 0) return points;
+	const sorted = [...points].sort((a, b) => a.time - b.time);
+	const before = sorted.filter((point) => point.time < startTime);
+	const inside = sorted.filter(
+		(point) => point.time >= startTime && point.time < endTime
+	);
+	const after = sorted
+		.filter((point) => point.time >= endTime)
+		.map((point) => ({ time: point.time - removed, value: point.value }));
+	if (inside.length > 0 && before.length > 0 && after.length > 0) {
+		// The cut lands mid-curve: pin the value the curve had at the cut's
+		// far side so the join does not interpolate across the removed span.
+		const joinValue = automationValueAt({ points: sorted, time: endTime });
+		if (after[0].time > startTime) {
+			after.unshift({ time: startTime, value: joinValue });
+		}
+	}
+	return [...before, ...after];
+}
+
+/** Every curve of `automation` rippled by `ripplePoints`; undefined when none remain. */
+export function rippleAutomation({
+	automation,
+	startTime,
+	endTime,
+}: {
+	automation: AudioMixAutomation | undefined;
+	startTime: number;
+	endTime: number;
+}): AudioMixAutomation | undefined {
+	if (!automation) return undefined;
+	const rippled: AudioMixAutomation = {};
+	for (const param of Object.keys(AUTOMATION_RANGES) as AutomationParam[]) {
+		const points = automation[param];
+		if (!points?.length) continue;
+		const next = ripplePoints({ points, startTime, endTime });
+		if (next.length > 0) rippled[param] = next;
+	}
+	return Object.keys(rippled).length > 0 ? rippled : undefined;
+}
+
 export function hasAutomation(automation?: AudioMixAutomation): boolean {
 	return Boolean(automation?.gainDb?.length || automation?.pan?.length);
 }

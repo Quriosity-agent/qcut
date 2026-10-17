@@ -14,7 +14,7 @@ import {
 } from "../utils/helpers.js";
 import { claudeLog } from "../utils/logger.js";
 import { getMediaInfo } from "./claude-media-handler.js";
-import { detectScenes } from "./claude-scene-handler.js";
+import { detectScenes, inspectSceneEngines } from "./claude-scene-handler.js";
 import { requestTimelineFromRenderer } from "./claude-timeline-handler.js";
 import { PipelineExecutor } from "../../native-pipeline/execution/executor.js";
 import type { PipelineStep } from "../../native-pipeline/execution/executor.js";
@@ -326,6 +326,8 @@ export function setupClaudeAnalyzeIPC(): void {
 		async (_event, projectId: string, request: SceneDetectionRequest) =>
 			detectScenes(projectId, request)
 	);
+
+	ipcMain.handle("claude:analyze:engines", async () => inspectSceneEngines());
 
 	claudeLog.info(HANDLER_NAME, "IPC handlers registered");
 }

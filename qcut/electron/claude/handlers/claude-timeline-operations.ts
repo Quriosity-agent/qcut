@@ -30,6 +30,12 @@ import type {
 	ClaudeSelectionItem,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
+	ClaudeBeatsMarkRequest,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsRequest,
+	ClaudeSnapToBeatsResponse,
 } from "../../types/claude-api";
 import type {
 	ClaudeAudioMixRequest,
@@ -158,6 +164,61 @@ export async function requestTimelineFromRenderer(
 /**
  * Request a split operation from the renderer and wait for the result
  */
+/** Detection plus splitting can take minutes for a whole track. */
+const SHOT_SPLIT_TIMEOUT_MS = 1_200_000;
+
+export async function requestShotSplitFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeShotSplitRequest,
+	correlationId?: string
+): Promise<ClaudeShotSplitResponse> {
+	return new Promise((resolve, reject) => {
+		let resolved = false;
+		const requestId = generateId("req");
+		const channel = "claude:timeline:shotSplit:response";
+
+		const timeout = setTimeout(() => {
+			if (resolved) return;
+			resolved = true;
+			ipcMain.removeListener(channel, handler);
+			reject(new Error("Timeout waiting for the shot split result"));
+		}, SHOT_SPLIT_TIMEOUT_MS);
+
+		const handler = (event: IpcMainEvent, data: unknown) => {
+			// Only the editor's main frame answers, and only with a well-formed
+			// result; anything else is ignored rather than thrown inside the
+			// listener, which would leave the promise waiting for the timeout.
+			if (
+				resolved ||
+				typeof data !== "object" ||
+				data === null ||
+				(data as { requestId?: unknown }).requestId !== requestId ||
+				event.sender !== win.webContents ||
+				event.senderFrame !== win.webContents.mainFrame
+			) {
+				return;
+			}
+			const result = (data as { result?: unknown }).result;
+			if (typeof result !== "object" || result === null) return;
+			resolved = true;
+			clearTimeout(timeout);
+			ipcMain.removeListener(channel, handler);
+			const outcome = result as
+				| { ok: true; response: ClaudeShotSplitResponse }
+				| { ok: false; error: string };
+			if (outcome.ok) resolve(outcome.response);
+			else reject(new Error(String(outcome.error)));
+		};
+
+		ipcMain.on(channel, handler);
+		win.webContents.send("claude:timeline:shotSplit", {
+			requestId,
+			correlationId,
+			request,
+		});
+	});
+}
+
 export async function requestSplitFromRenderer(
 	win: BrowserWindow,
 	elementId: string,
@@ -372,6 +433,84 @@ function isTrackCompatibleWithElementType({
 	return trackType === "media" || trackType === "audio";
 }
 
+/**
+ * A batch's renderer deadline grows with its size: the editor stores one
+ * element at a time (each add re-renders the timeline), so a 50-clip batch
+ * on a long programme takes well over the single-request 5 s.
+ */
+function batchRequestTimeoutMs({ count }: { count: number }): number {
+	return TIMELINE_REQUEST_TIMEOUT_MS + 1_000 * Math.max(0, count);
+}
+
+type RendererOutcome<T> =
+	| { ok: true; response: T }
+	| { ok: false; error: string };
+
+/** A renderer answer of the `{ok, response} | {ok, error}` shape, or a thrown error. */
+async function requestRendererOutcome<T>({
+	win,
+	channel,
+	payload,
+	timeoutMs,
+	timeoutErrorMessage,
+	correlationId,
+}: {
+	win: BrowserWindow;
+	channel: string;
+	payload: Record<string, unknown>;
+	timeoutMs: number;
+	timeoutErrorMessage: string;
+	correlationId?: string;
+}): Promise<T> {
+	const outcome = await requestRendererResult<RendererOutcome<T>>({
+		win,
+		requestChannel: channel,
+		responseChannel: `${channel}:response`,
+		payload,
+		timeoutErrorMessage,
+		correlationId,
+		timeoutMs,
+	});
+	if (!outcome || typeof outcome !== "object" || !("ok" in outcome)) {
+		throw new Error(`Malformed renderer answer on ${channel}`);
+	}
+	if (!outcome.ok) throw new Error(outcome.error);
+	return outcome.response;
+}
+
+/** Hands a clip's beat detection result to the editor's beat store. */
+export async function requestBeatsMarkFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeBeatsMarkRequest,
+	correlationId?: string
+): Promise<ClaudeBeatsMarkResponse> {
+	return requestRendererOutcome<ClaudeBeatsMarkResponse>({
+		win,
+		channel: "claude:timeline:beatsMark",
+		payload: { request },
+		// Bookmarks save the project once per beat.
+		timeoutMs: 120_000,
+		timeoutErrorMessage: "Timeout waiting for the beats mark result",
+		correlationId,
+	});
+}
+
+/** Moves clips onto marked beats through the editor's own move. */
+export async function requestSnapToBeatsFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeSnapToBeatsRequest,
+	correlationId?: string
+): Promise<ClaudeSnapToBeatsResponse> {
+	return requestRendererOutcome<ClaudeSnapToBeatsResponse>({
+		win,
+		channel: "claude:timeline:snapToBeats",
+		payload: { request },
+		timeoutMs: 30_000,
+		timeoutErrorMessage: "Timeout waiting for the snap to beats result",
+		correlationId,
+	});
+}
+
 /** Handle request batch add elements from renderer. */
 export async function requestBatchAddElementsFromRenderer(
 	win: BrowserWindow,
@@ -389,6 +528,7 @@ export async function requestBatchAddElementsFromRenderer(
 		},
 		timeoutErrorMessage: "Timeout waiting for batch add result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: elements.length }),
 	});
 }
 
@@ -405,6 +545,7 @@ export async function requestBatchUpdateElementsFromRenderer(
 		payload: { updates },
 		timeoutErrorMessage: "Timeout waiting for batch update result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: updates.length }),
 	});
 }
 
@@ -422,6 +563,7 @@ export async function requestBatchDeleteElementsFromRenderer(
 		payload: { elements, ripple },
 		timeoutErrorMessage: "Timeout waiting for batch delete result",
 		correlationId,
+		timeoutMs: batchRequestTimeoutMs({ count: elements.length }),
 	});
 }
 

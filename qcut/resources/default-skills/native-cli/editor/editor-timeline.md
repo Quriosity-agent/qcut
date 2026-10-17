@@ -44,12 +44,82 @@ qcut editor:timeline:add-element \
 qcut editor:timeline:add-element \
   --project-id <id> \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
+
+# Text element along the bottom edge (box inset 5 % of the canvas height)
+qcut editor timeline add-element --project-id <id> --json \
+  --data '{"type":"text","content":"字幕式标题","startTime":0,"duration":5,"fontSize":48,"anchor":"bottom-center"}'
+# Text element placed 300 px right of and 400 px below the canvas centre
+qcut editor:timeline:add-element \
+  --project-id <id> \
+  --data '{"type":"text","content":"门 的 计 划","startTime":0,"duration":5,"fontFamily":"Songti SC","fontSize":72,"x":300,"y":400,"strokeColor":"#000000","strokeWidth":3}'
+
+# Adjustment layer: grades everything on the tracks below it for its duration
+qcut editor:timeline:add-element \
+  --project-id <id> \
+  --data '{"type":"adjustment","startTime":0,"duration":60,"adjustments":{"contrast":15,"saturation":-30,"temperature":-20,"vignette":35}}'
 ```
+
+An adjustment layer takes `adjustments` (brightness, contrast, saturation,
+temperature, tint, sharpness, fade, vignette), a full `color` grade like a
+clip's (`color.basic`, LUT, curves, wheels…), `opacity` and `masks`; fields
+left out keep the editor's defaults. Preview and export render the same grade:
+the native export grades the picture inside the layer's time window, and a
+layer with masks or a multi-pass program sends the export through the
+renderer's canvas engine automatically. `timeline export` shows the layer's
+`color`, `adjustments` and the resolved `colorSettings`.
+
+Text fields and their units (preview and export agree):
+
+| Field | Unit | Notes |
+|-------|------|-------|
+| `x`, `y` | project-canvas pixels, offset from the canvas centre | default 0 (centred); positive x is right, positive y is down |
+| `anchor` | top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right | add-time shorthand for `x`/`y`: the text box sits `anchorInset` px (default 5 % of the shorter canvas side) inside that edge or corner; an explicit `x` or `y` wins on its axis |
+| `fontSize` | project-canvas pixels | scaled with the export resolution |
+| `fontFamily` | family name | system fonts work; for CJK text the export keeps CJK-capable families (Songti SC, Kaiti SC, Heiti SC, Hiragino Sans GB…) and falls back to the platform default with a warning in the log otherwise |
+| `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph; the glow is a blurred copy of the glyphs (CSS `text-shadow` semantics: radius `glowBlur`, so it fades quickly and reads as a soft halo, not a box) |
+| `letterSpacing` | pixels after each character | |
+| `width`, `height`, `backgroundPadding` | project-canvas pixels | the text box (default 640 × 180, padding 12) centred on `x`, `y`; lines wrap at its inner width |
+| `verticalAlign` | top/middle/bottom | where the lines sit inside the box |
+| `color`, `backgroundColor`, `strokeColor`, `shadowColor`, `glowColor` | CSS colour | with `…Opacity` 0–1 |
+| `textAlign` | left/center/right | inside the box |
+| `animationType` | none/fade/slide-up/slide-left | entrance only |
+
+Both export engines draw text the way the preview shows it. The native pass
+(libass) sizes each font to the preview's em (libass measures a font by its
+Windows ascent + descent, so Arial would come out 11 % small and Hiragino
+16 %; the export corrects the ASS font size per installed font), applies
+`letterSpacing`, wraps inside the text box and draws the glow as blurred
+glyphs. Captions sit where the preview puts them: the line box 28 px in from
+the top or bottom edge, text 36 px in from a side, wrapping inside the middle
+80 %; two captions that share an edge while on screen stack: the one that
+started first keeps the edge and each later one sits one block (line box +
+16 px) above it, for its whole life, in the preview and in both exports.
+`captions import` warns when cues overlap and lands on extra lanes. `apps/web/src/test/e2e/text-caption-engine-parity.e2e.ts`
+measures glyph extents, glow and caption placement from both engines.
+
+A new text or captions track made without `--index` goes above the clips
+(the editor's stacking rule), so the text is visible; audio tracks go below.
+Dialogue belongs on `captions` elements (exportable as SRT, `editor export
+captions`, importable with `editor captions import`); titles, labels and place
+names are `text` elements, which `export captions` ignores.
 
 Video and audio given without `duration` take their file's own length: for
 video, the length of the video stream, not the container (which can be a
 little longer because of the audio track). If QCut cannot read the file's
 length yet, the add fails and asks for `duration` instead of guessing.
+
+### Import captions from a subtitle file
+
+```bash
+qcut editor:captions:import --project-id <id> --file subtitles.srt --language zh
+# Replace every captions track first; style every cue with a saved style
+qcut editor:captions:import --project-id <id> --file subtitles.vtt --replace --style @style.json
+```
+
+SRT, VTT and ASS are read with the same parser the UI uses. Cues go onto
+captions tracks above the clips (overlapping cues get their own lane) in
+batches of 50, and the result lists the tracks and cue count. `--replace`
+deletes the existing captions tracks first (one undo step each).
 
 ### Batch add elements (max 50)
 
@@ -191,8 +261,12 @@ without their own colour show it.
 ```bash
 qcut editor:timeline:delete-element \
   --project-id <id> \
-  --element-id <id>
+  --element-id <id> --force
 ```
+
+Deleting sits in the CLI's confirm tier (with undo/redo, range deletes and
+track deletes), so it needs `--force`; the edit is still one undo step
+(`qcut editor undo --force`).
 
 ### Batch delete elements (max 50)
 
@@ -218,6 +292,46 @@ qcut editor:timeline:split \
   --element-id <id> \
   --split-time 10
 ```
+
+### Split a clip by its shots
+
+The same action as the timeline's right-click "智能镜头分割": detect shot
+boundaries in the clip's source, snap them to frames, and cut the clip at each
+one as a single undo step (Cmd+Z in the editor, or `qcut editor undo --force`:
+undo and redo sit in the CLI's confirm tier, so they need `--force`, reverts
+the whole split). It is a job: the command waits (`--timeout`, default 600 s)
+and prints the result; `--no-wait` returns the job id and
+`editor timeline job-status` follows it.
+
+```bash
+# Plan only: which cuts the engine would make, nothing changes
+qcut editor timeline shot-split --project-id <id> --element-id <id> --dry-run --json
+# Cut, with the best engine available (auto = jianying, then onnx, then ffmpeg)
+qcut editor timeline shot-split --project-id <id> --element-id <id> --json
+# A specific engine; ffmpeg takes --threshold
+qcut editor timeline shot-split --project-id <id> --element-id <id> --engine ffmpeg --threshold 0.3 --json
+# Given cut points (source seconds, snapped to frames), no detection: detect, review, then cut
+qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts 3.333,15.167 --json
+qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts @shots.json --json
+# Every video clip on a track, keeping shots of at least a second
+qcut editor timeline shot-split --project-id <id> --track-id <id> --min-shot 1 --json
+```
+
+The result lists, per clip: `requestedEngine` and the `engine` that ran (with
+`fallbacks` naming the engines `auto` passed over and why; both read `manual`
+for `--cuts`), `cuts` as `{sourceTime, timelineTime}` pairs, `skipped`
+boundaries with the reason (outside the trimmed range, within a frame of an
+edge or of another cut, would leave a shot shorter than `--min-shot`, refused
+by the editor), a `message` when an engine finds no boundary at all in a clip
+(so a single-shot clip is reported, not left as empty lists), the
+`createdElementIds` and `elementIds` in time order. `--cuts` accepts a
+comma-separated list, or `@file.json` holding an array of seconds, an
+`analyze shots` result or an `analyze scenes` result; the seconds are rounded
+to the project's frame grid. `--threshold` is only accepted with `ffmpeg` or
+`auto`, as in `analyze scenes`; when `auto` lands on a model engine the result
+carries a `warnings` entry saying the threshold was ignored. After a split,
+`timeline export` shows the new clips. Which engines this machine can run:
+`qcut editor analyze engines --json`.
 
 ### Move element
 
@@ -331,19 +445,77 @@ qcut editor:editing:batch-cuts \
 ### Delete time range
 
 ```bash
+# Ripple is the default: later clips move left to close the gap
 qcut editor:editing:delete-range \
   --project-id <id> \
   --start-time 5.0 \
-  --end-time 15.0 \
-  --ripple
+  --end-time 15.0 --force
 
-# Limit to specific tracks
+# Keep the gap instead
+qcut editor:editing:delete-range \
+  --project-id <id> \
+  --start-time 5.0 --end-time 15.0 --no-ripple --force
+
+# Limit to specific tracks; --cross-track-ripple shifts every unlocked track
 qcut editor:editing:delete-range \
   --project-id <id> \
   --start-time 5.0 --end-time 15.0 \
   --track-id "track-1,track-2" \
-  --cross-track-ripple
+  --cross-track-ripple --force
 ```
+
+Range deletes sit in the confirm tier (`--force`). Like every command that
+edits the open project, `--project-id` must be the project the editor has
+open: another id (or one that does not exist) is refused with 409 and the
+timeline is left alone.
+
+Mix automation follows the ripple: a rippled track's level and pan curves lose
+the points inside the range, later points move up by its length, and the value
+the curve had at the range's end is kept at the join. Bus and master curves
+move too when every unlocked track moved (the default all-tracks delete, or
+`--cross-track-ripple`); with `--track-id` on a subset they stay, since a bus
+is not tied to one track. Pass `--keep-automation` to leave every curve where
+it is. Track curves are in the timeline's undo history with the clips; bus and
+master curves live in the project and are not undone with them.
+
+### Beats: detect, mark, snap
+
+```bash
+# BPM and beats of a clip's audio, marked in the editor (ruler beat lines,
+# beat panel) and, here, bookmarked at the downbeats
+qcut editor beats mark --project-id <id> --element-id <music-clip> --bookmarks downbeats --json
+
+# Pull cuts onto the nearest marked beat (within 0.5 s by default)
+qcut editor timeline snap --to beats --element-ids <a>,<b>,<c> --project-id <id> --json
+qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json
+# Put a sound effect's attack (not the file's start) on the beat
+qcut editor timeline snap --to beats --element-ids <sfx> --edge onset --project-id <id> --json
+```
+
+The tempo is read from the periodicity of the onset curve (autocorrelation
+with a prior around 120 BPM), so it does not move with a threshold: a 144 BPM
+trailer cue reads 142–144, a sparse orchestral piece near 108. `confidence`
+is how periodic the onsets are (a click track ≈ 1, a loose piece 0.3). Beats
+are tracked along that period and `isDownbeat` marks the beat phase with the
+strongest onsets. Above about 165 BPM a track of identical hits may read at
+half tempo (the prior prefers it). A beat's `strength` is the strongest onset
+within a 32nd note of it, relative to the clip's loudest. It measures attacks,
+not loudness: 0 means nothing new starts at that beat — a held note, a long
+tone or a rest, which can be as loud as the rest of the piece — so pick
+accents by strength, not by level. `beats mark` reports each beat's source time
+and its timeline time through the clip's trims and speed; `snap` moves a
+clip's start (or `--edge end`) onto the nearest beat and refuses, with the
+reason, when the editor would (an occupied span, a locked track).
+
+Beats rarely fall on a whole frame, so by default visual clips (video, image,
+text, captions, stickers) land on the nearest frame of the project's fps after
+snapping, while sound stays exactly on the beat; `--frame-align all|none`
+changes that, and each result says `frameAligned`. `--edge onset` aligns a
+clip's first attack instead of its start: the main process finds the first
+onset at least `--onset-threshold` (default 0.5) of the clip's loudest in its
+audio, maps it through trims and speed, and the result carries `offset` and an
+`onsets` map with each clip's source time; a clip whose attack is trimmed away
+or that has none is left where it is and says why.
 
 ### Auto-edit (remove fillers/silences)
 

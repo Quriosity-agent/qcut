@@ -101,6 +101,7 @@ type AddElementHandler = (
 ) => void | Promise<void>;
 type MediaImportedHandler = (data: unknown) => void | Promise<void>;
 type MediaDeletedHandler = (data: unknown) => void | Promise<void>;
+type ExecuteCutsHandler = (data: unknown) => void;
 
 function setupTimelineBridgeWithHandlers({
 	withProjectFolder = false,
@@ -110,6 +111,7 @@ function setupTimelineBridgeWithHandlers({
 	addElementHandler: AddElementHandler;
 	mediaDeletedHandler: MediaDeletedHandler;
 	mediaImportedHandler: MediaImportedHandler;
+	executeCutsHandler: ExecuteCutsHandler;
 	timelineApi: {
 		onRequest: ReturnType<typeof vi.fn>;
 		onApply: ReturnType<typeof vi.fn>;
@@ -117,12 +119,14 @@ function setupTimelineBridgeWithHandlers({
 		onUpdateElement: ReturnType<typeof vi.fn>;
 		onRemoveElement: ReturnType<typeof vi.fn>;
 		sendResponse: ReturnType<typeof vi.fn>;
+		sendExecuteCutsResponse: ReturnType<typeof vi.fn>;
 		removeListeners: ReturnType<typeof vi.fn>;
 	};
 } {
 	let addElementHandler: AddElementHandler | null = null;
 	let mediaDeletedHandler: MediaDeletedHandler | null = null;
 	let mediaImportedHandler: MediaImportedHandler | null = null;
+	let executeCutsHandler: ExecuteCutsHandler | null = null;
 
 	const timelineApi = {
 		onRequest: vi.fn((_callback: () => void) => {}),
@@ -146,7 +150,9 @@ function setupTimelineBridgeWithHandlers({
 		onSelectElements: vi.fn((_callback: (...args: unknown[]) => void) => {}),
 		onGetSelection: vi.fn((_callback: (...args: unknown[]) => void) => {}),
 		onClearSelection: vi.fn((_callback: (...args: unknown[]) => void) => {}),
-		onExecuteCuts: vi.fn((_callback: (...args: unknown[]) => void) => {}),
+		onExecuteCuts: vi.fn((callback: ExecuteCutsHandler) => {
+			executeCutsHandler = callback;
+		}),
 		sendExecuteCutsResponse: vi.fn(),
 		onDeleteRange: vi.fn((_callback: (...args: unknown[]) => void) => {}),
 		sendDeleteRangeResponse: vi.fn(),
@@ -214,6 +220,10 @@ function setupTimelineBridgeWithHandlers({
 	if (!mediaDeletedHandler) {
 		throw new Error("media deleted handler was not registered");
 	}
+	if (!executeCutsHandler) {
+		throw new Error("execute cuts handler was not registered");
+	}
+	const registeredExecuteCutsHandler: ExecuteCutsHandler = executeCutsHandler;
 	const registeredAddElementHandler: AddElementHandler = addElementHandler;
 	const registeredMediaDeletedHandler: MediaDeletedHandler =
 		mediaDeletedHandler;
@@ -224,9 +234,61 @@ function setupTimelineBridgeWithHandlers({
 		addElementHandler: registeredAddElementHandler,
 		mediaDeletedHandler: registeredMediaDeletedHandler,
 		mediaImportedHandler: registeredMediaImportedHandler,
+		executeCutsHandler: registeredExecuteCutsHandler,
 		timelineApi,
 	};
 }
+
+describe("setupClaudeTimelineBridge - batch cuts", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storeMocks.timelineStoreState.tracks = [];
+		storeMocks.projectStoreState.activeProject = { id: "project-1" };
+		vi.spyOn(console, "error").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("refuses cuts planned for a project that is not the open one", () => {
+		const { executeCutsHandler, timelineApi } =
+			setupTimelineBridgeWithHandlers();
+		executeCutsHandler({
+			requestId: "cuts-1",
+			projectId: "project-2",
+			elementId: "clip-1",
+			cuts: [{ start: 1, end: 2 }],
+			ripple: true,
+		});
+		expect(timelineApi.sendExecuteCutsResponse).toHaveBeenCalledWith(
+			"cuts-1",
+			expect.objectContaining({
+				cutsApplied: 0,
+				error: "Cannot mutate timeline for inactive project project-2",
+			})
+		);
+		expect(storeMocks.timelineStoreState.pushHistory).not.toHaveBeenCalled();
+	});
+
+	it("names an element that is not on the timeline", () => {
+		const { executeCutsHandler, timelineApi } =
+			setupTimelineBridgeWithHandlers();
+		executeCutsHandler({
+			requestId: "cuts-2",
+			projectId: "project-1",
+			elementId: "clip-missing",
+			cuts: [{ start: 1, end: 2 }],
+			ripple: true,
+		});
+		expect(timelineApi.sendExecuteCutsResponse).toHaveBeenCalledWith(
+			"cuts-2",
+			expect.objectContaining({
+				error: "Element clip-missing is not on the timeline",
+			})
+		);
+	});
+});
 
 describe("setupClaudeTimelineBridge - add element", () => {
 	afterEach(() => {
@@ -658,8 +720,9 @@ describe("setupClaudeTimelineBridge - add element", () => {
 				fontWeight: "normal",
 				fontStyle: "normal",
 				textDecoration: "none",
-				x: 0.5,
-				y: 0.5,
+				// Pixel offsets from the canvas centre, like the editor's own text.
+				x: 0,
+				y: 0,
 				rotation: 0,
 				opacity: 1,
 			},

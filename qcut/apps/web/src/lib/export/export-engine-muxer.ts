@@ -13,7 +13,10 @@ import type { MediaItem } from "@/stores/media/media-store-types";
 import { shouldIncludeAudio } from "@/types/export";
 import { renderBrowserTimelineAudio } from "@/lib/audio/browser-audio-export";
 import { useProjectStore } from "@/stores/project-store";
-import { calculateFrameTime } from "./export-engine-utils";
+import {
+	calculateFrameSampleDuration,
+	calculateFrameTime,
+} from "./export-engine-utils";
 import { exportProfiler } from "./export-profiler";
 import { reportExportFrameProgress } from "./export-progress-reporter";
 import { assertCanvasClipTransitionsRenderable } from "./export-clip-transitions";
@@ -143,7 +146,12 @@ export class ExportEngineMuxer extends ExportEngine {
 				bitrate: videoBitrate,
 				hardwareAcceleration: "no-preference",
 			});
-			output.addVideoTrack(videoSource, { frameRate: fps });
+			// No `frameRate` here: mediabunny would snap every sample's duration
+			// to 1/fps and make the track's timescale the frame rate, so the
+			// last frame could not stop at the timeline's end. Our timestamps
+			// already sit on the frame grid, and the default 57600 timescale
+			// holds both a frame and that remainder exactly.
+			output.addVideoTrack(videoSource);
 			yuvConverter = createCanvasYuvConverter({
 				width: this.canvas.width,
 				height: this.canvas.height,
@@ -195,8 +203,6 @@ export class ExportEngineMuxer extends ExportEngine {
 			await output.start();
 
 			progressCallback?.(2, "Rendering frames...");
-
-			const frameDuration = 1 / fps;
 
 			// Render and encode each frame. `CanvasSource.add` captures the
 			// canvas synchronously and returns a backpressure promise, so the
@@ -253,7 +259,14 @@ export class ExportEngineMuxer extends ExportEngine {
 					codedWidth: yuvFrame.codedWidth,
 					codedHeight: yuvFrame.codedHeight,
 					timestamp: currentTime,
-					duration: frameDuration,
+					// The last frame ends where the timeline ends, so the file is
+					// as long as the timeline and the native export, not a frame more.
+					duration: calculateFrameSampleDuration({
+						frameIndex: frame,
+						totalFrames,
+						fps,
+						totalDuration: this.totalDuration,
+					}),
 					colorSpace: EXPORT_VIDEO_COLOR_SPACE,
 				});
 				const encodePromise = withTimeout(

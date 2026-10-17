@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { VideoColorSettings } from "./color-settings";
 
-type VideoCubeLut = NonNullable<VideoColorSettings["lut"]["cube"]>;
+export type VideoCubeLut = NonNullable<VideoColorSettings["lut"]["cube"]>;
 type VideoDualLut = NonNullable<VideoColorSettings["lut"]["dual"]>;
 
 interface LutRgb {

@@ -18,6 +18,10 @@ import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
 import { timelineRequiresRendererFilterStackExport } from "../../types/filter-stack-export-policy.js";
+import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
+import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
+import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
+import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
 import type {
@@ -45,6 +49,12 @@ import type {
 	AutoEditJob,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
+	ClaudeBeatsMarkRequest,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsRequest,
+	ClaudeSnapToBeatsResponse,
 } from "../../types/claude-api.js";
 import type {
 	EditorStateRequest,
@@ -115,6 +125,12 @@ import {
 	type MutateAudioMix,
 	registerAudioMixRoutes,
 } from "./claude-http-audio-mix-routes.js";
+import {
+	getBackgroundJob,
+	listBackgroundJobs,
+	startBackgroundJob,
+} from "./claude-http-background-jobs.js";
+import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
@@ -171,6 +187,21 @@ export interface WindowAccessor {
 		mode: string,
 		correlationId?: string
 	): Promise<ClaudeSplitResponse>;
+	/** Split clips by their shots in the renderer (detection included). */
+	requestShotSplit?(
+		request: ClaudeShotSplitRequest,
+		correlationId?: string
+	): Promise<ClaudeShotSplitResponse>;
+	/** Store a clip's beats in the editor's beat store (and bookmark them). */
+	requestBeatsMark?(
+		request: ClaudeBeatsMarkRequest,
+		correlationId?: string
+	): Promise<ClaudeBeatsMarkResponse>;
+	/** Move clips onto marked beats through the editor's own move. */
+	requestSnapToBeats?(
+		request: ClaudeSnapToBeatsRequest,
+		correlationId?: string
+	): Promise<ClaudeSnapToBeatsResponse>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<ProjectStats>;
 	/** Get the app version string */
@@ -575,49 +606,6 @@ function scheduleProjectJsonAutoSync({
 // be busy generating thumbnails/waveforms for seconds, and a too-tight
 // window makes every mutation guard flake with 503s. The guard still
 // fails closed when the snapshot never arrives.
-const PROJECT_SCOPE_TIMEOUT_MS = 5000;
-
-export async function assertProjectIsOpen({
-	accessor,
-	projectId,
-}: {
-	accessor: WindowAccessor;
-	projectId: string | undefined;
-}): Promise<void> {
-	if (!projectId) return;
-	const requestStateSnapshot = accessor.requestStateSnapshot;
-	if (!requestStateSnapshot) return;
-	let openProjectId: string | undefined;
-	try {
-		const snapshot = await Promise.race([
-			requestStateSnapshot({ include: ["project"] }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new Error("state snapshot timed out")),
-					PROJECT_SCOPE_TIMEOUT_MS
-				)
-			),
-		]);
-		const project = snapshot.state?.project;
-		openProjectId = project?.activeProject?.id;
-	} catch {
-		throw new HttpError(
-			503,
-			"No active editor project could be confirmed. Try again after QCut finishes loading."
-		);
-	}
-	if (!openProjectId) {
-		throw new HttpError(
-			409,
-			`The editor has no project open. Open ${projectId} first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
-		);
-	}
-	if (openProjectId === projectId) return;
-	throw new HttpError(
-		409,
-		`The editor has ${openProjectId} open, not ${projectId}. Open it first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
-	);
-}
 
 /**
  * Orders a fire-and-forget mutation against the next read, and hands back the
@@ -670,6 +658,30 @@ function hasActivePortraitAdjustments({
 		(value) =>
 			typeof value === "number" && Number.isFinite(value) && value !== 0
 	);
+}
+
+/**
+ * A track's switches from a request body: `muted`, `hidden` and `locked`,
+ * each true or false when given.
+ */
+function readTrackSwitches({
+	body,
+}: {
+	body: Record<string, unknown> | undefined;
+}): Pick<ClaudeTrackOperationRequest, "muted" | "hidden" | "locked"> {
+	const switches: Pick<
+		ClaudeTrackOperationRequest,
+		"muted" | "hidden" | "locked"
+	> = {};
+	for (const key of ["muted", "hidden", "locked"] as const) {
+		const value = body?.[key];
+		if (value === undefined) continue;
+		if (typeof value !== "boolean") {
+			throw new HttpError(400, `'${key}' must be true or false`);
+		}
+		switches[key] = value;
+	}
+	return switches;
 }
 
 export function timelineRequiresRendererPortraitExport({
@@ -749,6 +761,83 @@ function locateElement({
  * Register all shared API routes onto the given router.
  * The WindowAccessor abstracts over direct vs proxied BrowserWindow access.
  */
+const SHOT_SPLIT_ENGINE_CHOICES = SCENE_DETECTION_ENGINE_CHOICES;
+
+/** The shot-split body, checked field by field; refusals name the field. */
+export { assertProjectIsOpen };
+
+export function readShotSplitRequest({
+	projectId,
+	body,
+}: {
+	projectId: string;
+	body: unknown;
+}): ClaudeShotSplitRequest {
+	const input = (body ?? {}) as Record<string, unknown>;
+	const elementId =
+		typeof input.elementId === "string" && input.elementId.trim()
+			? input.elementId.trim()
+			: undefined;
+	const trackId =
+		typeof input.trackId === "string" && input.trackId.trim()
+			? input.trackId.trim()
+			: undefined;
+	if ((elementId === undefined) === (trackId === undefined)) {
+		throw new HttpError(400, "Give exactly one of elementId or trackId");
+	}
+	const request: ClaudeShotSplitRequest = { projectId, elementId, trackId };
+	if (input.engine !== undefined) {
+		if (!SHOT_SPLIT_ENGINE_CHOICES.some((choice) => choice === input.engine)) {
+			throw new HttpError(
+				400,
+				`engine must be one of ${SHOT_SPLIT_ENGINE_CHOICES.join(", ")}`
+			);
+		}
+		request.engine = input.engine as ClaudeShotSplitRequest["engine"];
+	}
+	if (input.cuts !== undefined) {
+		if (
+			!Array.isArray(input.cuts) ||
+			input.cuts.some(
+				(value) =>
+					typeof value !== "number" || !Number.isFinite(value) || value < 0
+			)
+		) {
+			throw new HttpError(400, "cuts must be an array of non-negative seconds");
+		}
+		request.cuts = input.cuts as number[];
+	}
+	for (const field of ["threshold", "minShotSeconds"] as const) {
+		const value = input[field];
+		if (value === undefined) continue;
+		if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+			throw new HttpError(400, `${field} must be a non-negative number`);
+		}
+		request[field] = value;
+	}
+	if (input.dryRun !== undefined) {
+		if (typeof input.dryRun !== "boolean") {
+			throw new HttpError(400, "dryRun must be true or false");
+		}
+		request.dryRun = input.dryRun;
+	}
+	// Same rule as analyze scenes: a threshold with an engine that ignores it
+	// (or with given cuts) is a mistake, not something to accept silently.
+	if (
+		request.threshold !== undefined &&
+		(request.cuts !== undefined ||
+			(request.engine !== undefined &&
+				request.engine !== "ffmpeg" &&
+				request.engine !== "auto"))
+	) {
+		throw new HttpError(
+			400,
+			"threshold is only supported by the FFmpeg scene engine"
+		);
+	}
+	return request;
+}
+
 export function registerSharedRoutes(
 	router: Router,
 	accessor: WindowAccessor,
@@ -950,6 +1039,7 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/media/:projectId/import-from-url", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.url)
 			throw new HttpError(400, "Missing 'url' in request body");
 		const result = await importMediaFromUrl(
@@ -969,6 +1059,7 @@ export function registerSharedRoutes(
 	});
 
 	router.post("/api/claude/media/:projectId/batch-import", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
 		const result = await batchImportMedia(req.params.projectId, req.body.items);
@@ -1037,6 +1128,9 @@ export function registerSharedRoutes(
 			value: req.body.colorLabel,
 			field: "colorLabel",
 		});
+		const switches = readTrackSwitches({ body: req.body });
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const result = await accessor.mutateTrack(
 			{
 				action: "create",
@@ -1044,6 +1138,7 @@ export function registerSharedRoutes(
 				name: typeof req.body.name === "string" ? req.body.name : undefined,
 				index: req.body.index,
 				...(colorLabel !== undefined ? { colorLabel } : {}),
+				...switches,
 			},
 			getRequestCorrelationId({ req })
 		);
@@ -1060,16 +1155,20 @@ export function registerSharedRoutes(
 				value: req.body?.colorLabel,
 				field: "colorLabel",
 			});
+			const switches = readTrackSwitches({ body: req.body });
 			if (
 				typeof req.body?.index !== "number" &&
 				typeof req.body?.name !== "string" &&
-				colorLabel === undefined
+				colorLabel === undefined &&
+				Object.keys(switches).length === 0
 			) {
 				throw new HttpError(
 					400,
-					"Track update needs 'index', 'name' or 'colorLabel'"
+					"Track update needs 'index', 'name', 'colorLabel', 'muted', 'hidden' or 'locked'"
 				);
 			}
+			// Input first (400), then the project (409), then the editor.
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.mutateTrack(
 				{
 					action: "update",
@@ -1077,6 +1176,7 @@ export function registerSharedRoutes(
 					index: req.body.index,
 					name: typeof req.body.name === "string" ? req.body.name : undefined,
 					...(colorLabel !== undefined ? { colorLabel } : {}),
+					...switches,
 				},
 				getRequestCorrelationId({ req })
 			);
@@ -1090,8 +1190,16 @@ export function registerSharedRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/tracks/:trackId/transitions",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body || typeof req.body !== "object") {
 				throw new HttpError(400, "Missing transition data");
+			}
+			const duration = (req.body as { duration?: unknown }).duration;
+			if (typeof duration !== "number" || !Number.isFinite(duration)) {
+				throw new HttpError(
+					400,
+					"Transition 'duration' must be a number of seconds"
+				);
 			}
 			const result = await accessor.mutateTrack(
 				{
@@ -1112,6 +1220,7 @@ export function registerSharedRoutes(
 	router.delete(
 		"/api/claude/timeline/:projectId/tracks/:trackId",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.mutateTrack(
 				{
 					action: "delete",
@@ -1129,6 +1238,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/import", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.data)
 			throw new HttpError(400, "Missing 'data' in request body");
 		const format = req.body.format || "json";
@@ -1252,6 +1362,7 @@ export function registerSharedRoutes(
 				projectId: req.params.projectId,
 			});
 			const correlationId = getRequestCorrelationId({ req });
+			let ignoredFields: string[] | undefined;
 			await requireRendererMutation({
 				operation: "Timeline element update",
 				request: async () => {
@@ -1268,10 +1379,14 @@ export function registerSharedRoutes(
 					if (result.updatedCount !== 1 || item?.success !== true) {
 						throw new Error(item?.error || "Renderer did not apply the update");
 					}
+					ignoredFields = item.ignoredFields;
 				},
 			});
 			scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-			return { updated: true };
+			// Fields the element could not use are named, not swallowed.
+			return ignoredFields?.length
+				? { updated: true, ignoredFields }
+				: { updated: true };
 		}
 	);
 
@@ -1320,6 +1435,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/arrange", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.trackId || typeof req.body.trackId !== "string")
 			throw new HttpError(400, "Missing 'trackId' in request body");
 		if (!req.body?.mode || typeof req.body.mode !== "string")
@@ -1364,6 +1480,8 @@ export function registerSharedRoutes(
 					400,
 					"Invalid mode. Use 'split', 'keepLeft', or 'keepRight'"
 				);
+			// Input first (400), then the project (409), then the editor.
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const result = await accessor.requestSplit(
 				req.params.elementId,
 				req.body.splitTime,
@@ -1375,9 +1493,60 @@ export function registerSharedRoutes(
 		}
 	);
 
+	// Splitting by shots detects first (seconds to minutes), so it is a job:
+	// the answer is a job id, polled at /timeline/:projectId/jobs/:jobId.
+	router.post("/api/claude/timeline/:projectId/shot-split", async (req) => {
+		const request = readShotSplitRequest({
+			projectId: req.params.projectId,
+			body: req.body,
+		});
+		if (!accessor.requestShotSplit) {
+			throw new HttpError(
+				503,
+				"Shot splitting is not available in this editor"
+			);
+		}
+		// The renderer resolves ids against the open project; a mismatch is a
+		// 409 now, not an opaque job error later.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
+		const requestShotSplit = accessor.requestShotSplit.bind(accessor);
+		const correlationId = getRequestCorrelationId({ req });
+		const job = startBackgroundJob({
+			projectId: req.params.projectId,
+			kind: "shot-split",
+			message: request.dryRun
+				? "Detecting shots"
+				: "Detecting shots and splitting the timeline",
+			run: async () => {
+				const response = await requestShotSplit(request, correlationId);
+				if (
+					!request.dryRun &&
+					response.results.some((r) => r.createdElementIds.length > 0)
+				) {
+					scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
+				}
+				return response;
+			},
+		});
+		return { jobId: job.jobId, status: job.status, kind: job.kind };
+	});
+
+	router.get("/api/claude/timeline/:projectId/jobs/:jobId", async (req) => {
+		const job = getBackgroundJob(req.params.jobId);
+		if (!job || job.projectId !== req.params.projectId) {
+			throw new HttpError(404, `Timeline job not found: ${req.params.jobId}`);
+		}
+		return job;
+	});
+
+	router.get("/api/claude/timeline/:projectId/jobs", async (req) =>
+		listBackgroundJobs(req.params.projectId)
+	);
+
 	router.post(
 		"/api/claude/timeline/:projectId/elements/:elementId/move",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			const hasStartTime = typeof req.body?.newStartTime === "number";
 			if (!req.body?.toTrackId && !hasStartTime)
 				throw new HttpError(
@@ -1464,6 +1633,7 @@ export function registerSharedRoutes(
 	);
 
 	router.post("/api/claude/timeline/:projectId/selection", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const colorLabel = readColorLabelField({
 			value: req.body?.colorLabel,
 			field: "colorLabel",
@@ -1509,6 +1679,8 @@ export function registerSharedRoutes(
 		if (!trackId && (!elementIds || elementIds.length === 0)) {
 			throw new HttpError(400, "Give 'trackId' or 'elementIds'");
 		}
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const result = await accessor.mutateTrack(
 			{ action: "color-clips", trackId, elementIds, colorLabel },
 			getRequestCorrelationId({ req })
@@ -1532,13 +1704,15 @@ export function registerSharedRoutes(
 		return { elements };
 	});
 
-	router.delete("/api/claude/timeline/:projectId/selection", async () => {
+	router.delete("/api/claude/timeline/:projectId/selection", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const win = accessor.getWindow();
 		win.webContents.send("claude:timeline:clearSelection");
 		return { cleared: true };
 	});
 
 	router.post("/api/claude/timeline/:projectId/playback", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		const win = accessor.getWindow();
 		const { action, time } = req.body as {
 			action: "play" | "pause" | "toggle" | "seek";
@@ -1554,6 +1728,8 @@ export function registerSharedRoutes(
 
 	registerTransactionRoutes({ router, accessor });
 	registerAudioMixRoutes({
+		assertProjectOpen: (projectId) =>
+			assertProjectIsOpen({ accessor, projectId }),
 		router,
 		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
 		measureNativeLoudness: async ({ projectId }) => {
@@ -1733,24 +1909,48 @@ export function registerSharedRoutes(
 				projectId: req.params.projectId,
 				accessor,
 			});
-			const requiresRendererExport =
-				(req.body as { engine?: string } | undefined)?.engine === "muxer" ||
-				hasStickerRuntimeForExport({
+			// Each reason is named so a refused override can say what in the
+			// timeline made this a renderer export, not just that it is one.
+			const rendererExportReasons = [
+				...((req.body as { engine?: string } | undefined)?.engine === "muxer"
+					? ["--engine muxer was asked for"]
+					: []),
+				...(hasStickerRuntimeForExport({
 					mediaItems: mediaFiles,
 					tracks: timeline.tracks,
-				}) ||
-				findRestrictedMediaForExport({
+				})
+					? ["Sticker Lab runtime stickers"]
+					: []),
+				...(findRestrictedMediaForExport({
 					mediaItems: mediaFiles,
 					scope: "timeline",
 					tracks: timeline.tracks,
-				}).length > 0 ||
-				timelineRequiresRendererPortraitExport({ timeline }) ||
-				timelineRequiresRendererFilterStackExport({ timeline });
-			if (requiresRendererExport) {
+				}).length > 0
+					? ["restricted media only the live renderer may read"]
+					: []),
+				...(timelineRequiresRendererPortraitExport({ timeline })
+					? ["portrait adjustments"]
+					: []),
+				...(timelineRequiresRendererFilterStackExport({ timeline })
+					? ["clips with a filterStack"]
+					: []),
+				...(timelineRequiresRendererShaderTransitionExport({ timeline })
+					? ["shader transitions"]
+					: []),
+				...(timelineRequiresRendererAdjustmentLayerExport({ timeline })
+					? ["masked or multi-pass adjustment layers"]
+					: []),
+				...(timelineRequiresRendererColorKeyframeExport({ timeline })
+					? [
+							"animated tonal controls (shadows, highlights, whites, blacks or fade)",
+						]
+					: []),
+			];
+			if (rendererExportReasons.length > 0) {
 				if (!accessor.requestLocalVideoExport) {
 					throw new HttpError(
 						503,
-						"The live QCut renderer is unavailable for Sticker Lab export."
+						`The live QCut renderer is unavailable, and this export needs it (${rendererExportReasons.join("; ")}).`
 					);
 				}
 				return await startRendererExportJob({
@@ -1759,6 +1959,7 @@ export function registerSharedRoutes(
 					projectId: req.params.projectId,
 					request: req.body || {},
 					timeline,
+					reasons: rendererExportReasons,
 				});
 			}
 			return await startExportJob({

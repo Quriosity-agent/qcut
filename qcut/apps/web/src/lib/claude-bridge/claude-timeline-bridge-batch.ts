@@ -14,8 +14,10 @@ import {
 	addClaudeAdjustmentElement,
 	addClaudeStickerElement,
 	getClaudeTextProperties,
+	resolveClaudeTextAnchor,
 	getClaudeMediaTimingProperties,
 	syncProjectMediaIfNeeded,
+	readClaudeMediaVisualFields,
 } from "./claude-timeline-bridge-helpers";
 import type {
 	ClaudeTimelineBridgeAPI,
@@ -34,6 +36,28 @@ const MAX_TIMELINE_BATCH_ITEMS = 50;
 const AUDIO_FADE_TOLERANCE_SECONDS = 0.001;
 
 /** Honor an explicitly requested element id so replays stay deterministic. */
+/** The media fields an add hands to the patch path after the clip exists. */
+const MEDIA_GRADE_FIELDS = [
+	"keyframes",
+	"filterStack",
+	"color",
+	"adjustments",
+	"enhancements",
+	"portraitAdjustments",
+] as const;
+
+function pickMediaGradeFields({
+	element,
+}: {
+	element: Record<string, unknown>;
+}): Record<string, unknown> {
+	const picked: Record<string, unknown> = {};
+	for (const key of MEDIA_GRADE_FIELDS) {
+		if (element[key] !== undefined) picked[key] = element[key];
+	}
+	return picked;
+}
+
 function requestedBatchElementId({
 	element,
 }: {
@@ -257,12 +281,18 @@ export function setupBatchHandlers({
 											element: audioLevels,
 											value: element.audio,
 										});
+							// Checked before the add so a bad value adds nothing.
+							const visual = readClaudeMediaVisualFields({ element });
+							const grade = pickMediaGradeFields({ element });
 							createdElementId = timelineStore.addElementToTrack(
 								element.trackId,
 								{
 									...requestedBatchElementId({ element }),
 									type: "media",
-									name: element.sourceName || "Media",
+									name:
+										(typeof element.name === "string" && element.name.trim()) ||
+										element.sourceName ||
+										"Media",
 									mediaId,
 									startTime: element.startTime,
 									duration: element.duration,
@@ -276,9 +306,30 @@ export function setupBatchHandlers({
 									...audioLevels,
 									...(audio ? { audio } : {}),
 									...getClaudeMediaTimingProperties({ element }),
+									...visual,
 								},
 								addOptions
 							);
+							// The grade, filters, keyframes and enhancements go through
+							// the patch path, so an add and a patch accept one set of
+							// fields; a refused grade removes the clip it was meant for.
+							if (createdElementId && Object.keys(grade).length > 0) {
+								const graded = applyElementChanges({
+									elementId: createdElementId,
+									changes: grade,
+									pushHistory: false,
+								});
+								if (!graded.applied) {
+									timelineStore.removeElementFromTrack(
+										element.trackId,
+										createdElementId,
+										false
+									);
+									throw new Error(
+										graded.error ?? "The clip's grade could not be applied"
+									);
+								}
+							}
 						} else if (normalizedType === "sticker") {
 							createdElementId = await addClaudeStickerElement({
 								element,
@@ -293,6 +344,13 @@ export function setupBatchHandlers({
 						} else if (normalizedType === "text") {
 							const style = element.style || {};
 							const textProperties = getClaudeTextProperties({ element });
+							Object.assign(
+								textProperties,
+								resolveClaudeTextAnchor({
+									element: element as Record<string, unknown>,
+									properties: textProperties,
+								})
+							);
 							const content =
 								typeof element.content === "string" &&
 								element.content.length > 0
@@ -335,8 +393,9 @@ export function setupBatchHandlers({
 										style.textDecoration === "line-through"
 											? style.textDecoration
 											: "none",
-									x: 0.5,
-									y: 0.5,
+									// Pixel offsets from the canvas centre.
+									x: 0,
+									y: 0,
 									rotation: 0,
 									opacity: 1,
 									...textProperties,
@@ -520,14 +579,18 @@ export function setupBatchHandlers({
 						update.changes && typeof update.changes === "object"
 							? update.changes
 							: update;
-					const { applied, error } = applyElementChanges({
+					const { applied, error, ignoredFields } = applyElementChanges({
 						elementId: update.elementId,
 						changes,
 						pushHistory: false,
 					});
 					if (applied) {
 						updatedCount++;
-						results.push({ index, success: true });
+						results.push({
+							index,
+							success: true,
+							...(ignoredFields?.length ? { ignoredFields } : {}),
+						});
 						continue;
 					}
 

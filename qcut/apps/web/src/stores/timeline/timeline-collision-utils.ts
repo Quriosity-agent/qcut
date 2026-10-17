@@ -44,6 +44,8 @@ export function overwriteRangeInElements({
 	let deletedElements = 0;
 	let splitElements = 0;
 
+	// Half a frame: a remnant shorter than that is not a clip, it is rounding.
+	const tolerance = 0.5 / Math.max(1, fps);
 	for (const element of elements) {
 		const kind = classifyRangeCollision({
 			item: {
@@ -51,6 +53,7 @@ export function overwriteRangeInElements({
 				endTime: getTimelineElementEndTime({ element }),
 			},
 			range,
+			tolerance,
 		});
 
 		if (kind === "none") {

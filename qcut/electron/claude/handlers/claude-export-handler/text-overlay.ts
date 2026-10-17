@@ -2,8 +2,10 @@ import type {
 	ClaudeElement,
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
+import { claudeLog } from "../../utils/logger.js";
+import { assFontMetrics } from "./ass-font-metrics.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
-import type { TextOverlay } from "./types.js";
+import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
 // Electron's tsc root cannot import editor-core; mirror DEFAULT_SUBTITLE_STYLE.
 const NATIVE_CAPTION_DEFAULTS = {
@@ -86,6 +88,14 @@ function verticalAlignValue({
 	value: unknown;
 }): TextOverlay["verticalAlign"] {
 	return value === "top" || value === "center" ? value : "bottom";
+}
+
+function boxVerticalAlignValue({
+	value,
+}: {
+	value: string;
+}): "top" | "middle" | "bottom" {
+	return value === "top" || value === "bottom" ? value : "middle";
 }
 
 function animationTypeValue({
@@ -199,6 +209,21 @@ function collectCaptionOverlay({
 		shadowOpacity: shadowOffsetX !== 0 || shadowOffsetY !== 0 ? 1 : 0,
 		shadowOffsetX,
 		shadowOffsetY,
+		glowColor: "#ffffff",
+		glowOpacity: 0,
+		glowBlur: 0,
+		letterSpacing: numberValue({
+			element: {},
+			style,
+			key: "letterSpacing",
+			fallback: 0,
+		}),
+		lineHeight: numberValue({
+			element: {},
+			style,
+			key: "lineSpacing",
+			fallback: 1.4,
+		}),
 		positioning: "caption-anchor",
 		verticalAlign: verticalAlignValue({ value: position.align }),
 		marginV: numberValue({
@@ -342,6 +367,54 @@ function collectCanvasTextOverlay({
 			key: "shadowOffsetY",
 			fallback: 0,
 		}),
+		glowColor: stringValue({
+			element,
+			style,
+			key: "glowColor",
+			fallback: "#ffffff",
+		}),
+		glowOpacity: numberValue({
+			element,
+			style,
+			key: "glowOpacity",
+			fallback: 0,
+		}),
+		glowBlur: numberValue({
+			element,
+			style,
+			key: "glowBlur",
+			fallback: 0,
+		}),
+		letterSpacing: numberValue({
+			element,
+			style,
+			key: "letterSpacing",
+			fallback: 0,
+		}),
+		lineHeight: numberValue({
+			element,
+			style,
+			key: "lineHeight",
+			fallback: 1.2,
+		}),
+		// The preview's text box (text-style.ts defaults), so lines wrap and
+		// align in the same place as on screen.
+		boxWidth: numberValue({ element, style, key: "width", fallback: 640 }),
+		boxHeight: numberValue({ element, style, key: "height", fallback: 180 }),
+		boxPadding: numberValue({
+			element,
+			style,
+			key: "backgroundPadding",
+			fallback: 12,
+		}),
+		boxVerticalAlign: boxVerticalAlignValue({
+			value: stringValue({
+				element,
+				style,
+				key: "verticalAlign",
+				fallback: "middle",
+			}),
+		}),
 		positioning: "canvas-offset",
 		verticalAlign: "center",
 		marginV: 0,
@@ -371,7 +444,7 @@ function collectCanvasTextOverlay({
 /** Collect text-like timeline elements for the native FFmpeg overlay pass. */
 export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 	const overlays: TextOverlay[] = [];
-	for (const track of timeline.tracks) {
+	for (const [trackIndex, track] of timeline.tracks.entries()) {
 		if (track.hidden) continue;
 		for (const source of track.elements) {
 			if (
@@ -396,7 +469,7 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 					: source.endTime - source.startTime;
 			if (!Number.isFinite(duration) || duration <= 0) continue;
 
-			overlays.push(
+			const overlay =
 				source.type === "captions"
 					? collectCaptionOverlay({
 							source,
@@ -411,8 +484,8 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 							style,
 							content,
 							duration,
-						})
-			);
+						});
+			overlays.push({ ...overlay, trackIndex });
 		}
 	}
 	return overlays.sort((left, right) => left.startTime - right.startTime);
@@ -429,6 +502,19 @@ function assColor(hex: string, opacity: number): string {
 		.padStart(2, "0")
 		.toUpperCase();
 	return `&H${alpha}${normalized.slice(4, 6)}${normalized.slice(2, 4)}${normalized.slice(0, 2)}`.toUpperCase();
+}
+
+/** Override tags that turn an event into the glow layer, or "" without a glow. */
+function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
+	if (overlay.glowOpacity <= 0 || overlay.glowBlur <= 0) return "";
+	const colour = assColor(
+		overlay.glowColor,
+		overlay.glowOpacity * overlay.opacity
+	);
+	// A blurred copy of the glyphs themselves in the glow colour, with no
+	// border, shadow or box: the preview's text-shadow blur radius r is a
+	// Gaussian of sigma r/2, which is what libass's \blur takes.
+	return `\\1c&H${colour.slice(4)}&\\1a&H${colour.slice(2, 4)}&\\4a&HFF&\\bord0\\shad0\\blur${(overlay.glowBlur / 2).toFixed(2)}`;
 }
 
 function assTime(seconds: number): string {
@@ -465,39 +551,214 @@ const CJK_PATTERN = /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/;
  * the style is the only reliable path, so CJK content overrides the
  * requested (Latin) family. Latin-only content keeps the element's font.
  */
-function assFontFamily(overlay: TextOverlay): string {
-	const requested = overlay.fontFamily.replace(/,/g, " ");
-	if (!CJK_PATTERN.test(overlay.content)) return requested;
+/**
+ * Families that carry CJK glyphs and that libass can open (PingFang is
+ * reserved by macOS and is deliberately absent). A request for one of these
+ * is honoured; anything else falls back to the platform default.
+ */
+const CJK_CAPABLE_FONT_FAMILIES = new Set(
+	[
+		"Songti SC",
+		"Songti TC",
+		"Kaiti SC",
+		"Kaiti TC",
+		"Heiti SC",
+		"Heiti TC",
+		"STSong",
+		"STKaiti",
+		"STHeiti",
+		"STFangsong",
+		"Yuanti SC",
+		"Wawati SC",
+		"Weibei SC",
+		"Xingkai SC",
+		"Hannotate SC",
+		"HanziPen SC",
+		"Baoli SC",
+		"Libian SC",
+		"LingWai SC",
+		"Lantinghei SC",
+		"Hiragino Sans GB",
+		"Hiragino Sans",
+		"Arial Unicode MS",
+		"Noto Sans CJK SC",
+		"Noto Sans CJK TC",
+		"Noto Sans CJK JP",
+		"Noto Serif CJK SC",
+		"Source Han Sans",
+		"Source Han Serif",
+		"Microsoft YaHei",
+		"SimHei",
+		"SimSun",
+		"FangSong",
+		"KaiTi",
+	].map((name) => name.toLowerCase())
+);
+
+/** The platform's CJK fallback when a requested family cannot render CJK. */
+export function assCjkFallbackFamily(): string {
 	if (process.platform === "darwin") return "Hiragino Sans GB";
 	if (process.platform === "win32") return "Microsoft YaHei";
 	return "Noto Sans CJK SC";
 }
 
-function overlayAnchor({
+export function assFontFamily(overlay: TextOverlay): string {
+	const requested = overlay.fontFamily.replace(/,/g, " ").trim();
+	if (!CJK_PATTERN.test(overlay.content)) return requested;
+	if (CJK_CAPABLE_FONT_FAMILIES.has(requested.toLowerCase())) return requested;
+	const fallback = assCjkFallbackFamily();
+	claudeLog.warn(
+		HANDLER_NAME,
+		`Text overlay font "${requested}" has no CJK glyphs; exporting with ${fallback}`
+	);
+	return fallback;
+}
+
+/** The preview gives captions 20 px of edge padding plus the box's own 8 × 16. */
+const CAPTION_EDGE_INSET_Y = 28;
+const CAPTION_EDGE_INSET_X = 36;
+/** Captions wrap inside the middle 80 % of the frame, like the preview's box. */
+const CAPTION_SIDE_MARGIN = 0.1;
+
+interface AssPlacement {
+	/** ASS numpad alignment: which point of the text block sits on (x, y). */
+	alignment: number;
+	x: number;
+	y: number;
+	/** Event margins; libass wraps lines to PlayResX − marginL − marginR. */
+	marginL: number;
+	marginR: number;
+}
+
+/**
+ * Where the text block is pinned and how wide it may run, matching the
+ * preview: a text element fills its box (wrapping at the inner width,
+ * aligned within it); a caption sits at the frame edge the style names, moved
+ * away from it by `stackOffset` when earlier captions share that edge (the
+ * same rule as caption-stacking.ts, so the preview, the canvas export and
+ * this pass stack alike; pinning also keeps libass's own collision shifting
+ * out of it).
+ */
+function assPlacement({
 	overlay,
 	width,
 	height,
+	lineHeightEm,
+	stackOffset = 0,
 }: {
 	overlay: TextOverlay;
 	width: number;
 	height: number;
-}): { x: number; y: number } {
+	/** The line height libass lays out for the overlay's font, in em. */
+	lineHeightEm: number;
+	/** Captions stacked under this one, as a distance from the edge. */
+	stackOffset?: number;
+}): AssPlacement {
+	// CSS centres each em inside its line box (half-leading); libass stacks
+	// the font's own line height with the em at its bottom. Pinning a top or
+	// bottom edge therefore moves by half the difference of the two line
+	// heights, so the glyphs land where the preview draws them.
+	const leading =
+		(overlay.fontSize * overlay.lineHeight - overlay.fontSize * lineHeightEm) /
+		2;
 	if (overlay.positioning === "canvas-offset") {
-		return { x: width / 2 + overlay.x, y: height / 2 + overlay.y };
+		const boxWidth = overlay.boxWidth ?? 640;
+		const boxHeight = overlay.boxHeight ?? 180;
+		const padding = overlay.boxPadding ?? 12;
+		const centreX = width / 2 + overlay.x;
+		const centreY = height / 2 + overlay.y;
+		const left = centreX - boxWidth / 2 + padding;
+		const right = centreX + boxWidth / 2 - padding;
+		const top = centreY - boxHeight / 2 + padding;
+		const bottom = centreY + boxHeight / 2 - padding;
+		const vertical =
+			overlay.boxVerticalAlign === "top"
+				? "top"
+				: overlay.boxVerticalAlign === "bottom"
+					? "bottom"
+					: "center";
+		return {
+			alignment: ASS_ALIGNMENTS[vertical][overlay.textAlign],
+			x:
+				overlay.textAlign === "left"
+					? left
+					: overlay.textAlign === "right"
+						? right
+						: centreX,
+			y:
+				vertical === "top"
+					? top + leading
+					: vertical === "bottom"
+						? bottom - leading
+						: centreY,
+			marginL: Math.max(0, Math.round(left)),
+			marginR: Math.max(0, Math.round(width - right)),
+		};
 	}
-	const x =
-		overlay.textAlign === "left"
-			? width * 0.1
-			: overlay.textAlign === "right"
-				? width * 0.9
-				: width / 2;
-	const y =
-		overlay.verticalAlign === "top"
-			? overlay.marginV
-			: overlay.verticalAlign === "center"
-				? height / 2
-				: height - overlay.marginV;
-	return { x, y };
+	const side = Math.round(width * CAPTION_SIDE_MARGIN);
+	const inset = CAPTION_EDGE_INSET_Y + leading + stackOffset;
+	return {
+		alignment: ASS_ALIGNMENTS[overlay.verticalAlign][overlay.textAlign],
+		x:
+			overlay.textAlign === "left"
+				? CAPTION_EDGE_INSET_X
+				: overlay.textAlign === "right"
+					? width - CAPTION_EDGE_INSET_X
+					: width / 2,
+		y:
+			overlay.verticalAlign === "top"
+				? inset
+				: overlay.verticalAlign === "center"
+					? height / 2
+					: height - inset,
+		marginL: side,
+		marginR: side,
+	};
+}
+
+/** The preview's caption box padding (8 px top and bottom). */
+const CAPTION_BOX_PADDING_Y = 8;
+
+/** A caption's block height for stacking: one line box plus the box padding. */
+function captionBlockHeight(overlay: TextOverlay): number {
+	return overlay.fontSize * overlay.lineHeight + 2 * CAPTION_BOX_PADDING_Y;
+}
+
+/**
+ * How far from its edge each caption draws: the summed block heights of the
+ * earlier-starting captions that share its edge and overlap it in time
+ * (caption-stacking.ts has the same rule for the preview and canvas export).
+ */
+function captionStackOffsets(overlays: TextOverlay[]): Map<string, number> {
+	const offsets = new Map<string, number>();
+	const captions = overlays
+		.filter(
+			(overlay) =>
+				overlay.positioning === "caption-anchor" &&
+				overlay.verticalAlign !== "center"
+		)
+		// The preview's order: earliest start keeps the edge; at the same
+		// start the caption on the higher track (drawn on top) does.
+		.sort(
+			(left, right) =>
+				left.startTime - right.startTime ||
+				(right.trackIndex ?? 0) - (left.trackIndex ?? 0)
+		);
+	for (const overlay of captions) {
+		let offset = 0;
+		for (const other of captions) {
+			if (other === overlay) break;
+			if (
+				other.verticalAlign === overlay.verticalAlign &&
+				other.startTime < overlay.endTime &&
+				overlay.startTime < other.endTime
+			) {
+				offset += captionBlockHeight(other);
+			}
+		}
+		offsets.set(overlay.id, offset);
+	}
+	return offsets;
 }
 
 /** Build an ASS subtitle document that preserves core QCut text styling. */
@@ -512,22 +773,34 @@ export function buildTextAss({
 }): string {
 	const styles: string[] = [];
 	const events: string[] = [];
+	// Overlays arrive sorted by start time, which is the stacking order.
+	const stackOffsets = captionStackOffsets(overlays);
 	for (const [index, overlay] of overlays.entries()) {
 		const styleName = `QCutText${index}`;
-		const alignment =
-			ASS_ALIGNMENTS[
-				overlay.positioning === "caption-anchor"
-					? overlay.verticalAlign
-					: "center"
-			][overlay.textAlign];
+		const family = assFontFamily(overlay);
+		// libass sizes a font by its Windows ascent + descent, the editor by
+		// the em; the factor makes the exported em the one the preview shows.
+		const metrics = assFontMetrics({
+			family,
+			bold: overlay.fontWeight === "bold",
+			italic: overlay.fontStyle === "italic",
+		});
+		const placement = assPlacement({
+			overlay,
+			width,
+			height,
+			lineHeightEm: metrics.lineHeightEm,
+			stackOffset: stackOffsets.get(overlay.id) ?? 0,
+		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
 			overlay.backgroundOpacity > 0;
+		const fontSize = overlay.fontSize * metrics.sizeFactor;
 		styles.push(
 			[
 				styleName,
-				assFontFamily(overlay),
-				overlay.fontSize,
+				family,
+				fontSize.toFixed(2),
 				assColor(overlay.color, overlay.opacity),
 				assColor(overlay.color, overlay.opacity),
 				assColor(overlay.strokeColor, overlay.strokeOpacity * overlay.opacity),
@@ -543,7 +816,7 @@ export function buildTextAss({
 				0,
 				100,
 				100,
-				0,
+				overlay.letterSpacing.toFixed(2),
 				0,
 				backgroundEnabled ? 3 : 1,
 				overlay.strokeWidth,
@@ -551,26 +824,20 @@ export function buildTextAss({
 					Math.abs(overlay.shadowOffsetX),
 					Math.abs(overlay.shadowOffsetY)
 				),
-				alignment,
+				placement.alignment,
 				0,
 				0,
-				overlay.positioning === "caption-anchor"
-					? Math.max(0, Math.round(overlay.marginV))
-					: 0,
+				0,
 				1,
 			].join(",")
 		);
-
-		const { x, y } = overlayAnchor({ overlay, width, height });
+		const { x, y } = placement;
 		const animationStart = Math.max(0, overlay.animationDelay * 1000);
 		const animationEnd = Math.max(
 			animationStart,
 			(overlay.animationDelay + overlay.animationDuration) * 1000
 		);
-		let motion =
-			overlay.positioning === "canvas-offset"
-				? `\\pos(${x.toFixed(2)},${y.toFixed(2)})`
-				: "";
+		let motion = `\\pos(${x.toFixed(2)},${y.toFixed(2)})`;
 		if (overlay.animationType === "slide-up") {
 			motion = `\\move(${x.toFixed(2)},${(y + 80).toFixed(2)},${x.toFixed(2)},${y.toFixed(2)},${animationStart.toFixed(0)},${animationEnd.toFixed(0)})`;
 		} else if (overlay.animationType === "slide-left") {
@@ -580,12 +847,20 @@ export function buildTextAss({
 			overlay.animationType === "fade"
 				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
 				: "";
-		const tags = `${motion}\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		// \q1 wraps greedily at the event margins, the way the preview's box does.
+		const tags = `${motion}\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		const margins = `${placement.marginL},${placement.marginR},0`;
+		const glow = assGlowTags({ overlay });
+		if (glow) {
+			// The glow is the same text on a lower layer, blurred in the glow colour.
+			events.push(
+				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}${glow}}${escapeAssText(overlay.content)}`
+			);
+		}
 		events.push(
-			`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,0,0,0,,{${tags}}${escapeAssText(overlay.content)}`
+			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}}${escapeAssText(overlay.content)}`
 		);
 	}
-
 	return [
 		"[Script Info]",
 		"ScriptType: v4.00+",

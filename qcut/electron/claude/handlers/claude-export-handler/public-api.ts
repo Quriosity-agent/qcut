@@ -44,6 +44,7 @@ import {
 import { audioMixConfigFromTimeline } from "./export-audio-mix.js";
 import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
+import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
 import {
 	assertLocalFinalVideoExportAllowed,
 	findRestrictedMediaForExport,
@@ -146,8 +147,11 @@ function rendererExportRequiresMuxer({
 
 function assertRendererExportRequestCompatible({
 	request,
+	reasons,
 }: {
 	request: ExportJobRequest;
+	/** Why this export runs in the renderer, in the caller's words. */
+	reasons: string[];
 }): void {
 	const topLevel = request as Record<string, unknown>;
 	const unsupportedOptions: string[] = [];
@@ -183,10 +187,12 @@ function assertRendererExportRequestCompatible({
 		unsupportedOptions.push("codec");
 	}
 	if (unsupportedOptions.length === 0) return;
+	const because =
+		reasons.length > 0 ? reasons.join("; ") : "a renderer-only feature";
 	throw new Error(
-		`Renderer Sticker Lab export does not support these CLI overrides: ${unsupportedOptions.join(
+		`This timeline exports through the renderer engine (${because}), which does not take these CLI overrides: ${unsupportedOptions.join(
 			", "
-		)}.`
+		)}. Drop them, or pass --engine muxer.`
 	);
 }
 
@@ -273,12 +279,15 @@ export async function startRendererExportJob({
 	projectId,
 	request,
 	timeline,
+	reasons = [],
 }: {
 	dispatch: (request: ClaudeLocalVideoExportRequest) => Promise<void>;
 	mediaFiles: MediaFile[];
 	projectId: string;
 	request: ExportJobRequest;
 	timeline: ClaudeTimeline;
+	/** What in the timeline (or request) made this a renderer export. */
+	reasons?: string[];
 }): Promise<{ jobId: string; status: ExportJobStatus["status"] }> {
 	if (isTimelineEmpty({ timeline })) {
 		throw new Error("Cannot export an empty timeline");
@@ -289,7 +298,7 @@ export async function startRendererExportJob({
 			`Export already in progress for project ${projectId} (job: ${activeJob.jobId})`
 		);
 	}
-	assertRendererExportRequestCompatible({ request });
+	assertRendererExportRequestCompatible({ request, reasons });
 
 	const settings = resolveExportSettings({ request });
 	const outputPath = request.outputPath?.trim()
@@ -314,6 +323,9 @@ export async function startRendererExportJob({
 			"Sticker runtime export requires an absolute local .mp4 output path."
 		);
 	}
+	// Like the native engine, create the output folder now rather than
+	// discovering after the whole render that the file cannot be written.
+	await fsPromises.mkdir(path.dirname(outputPath), { recursive: true });
 
 	const frameRate = rendererExportFrameRate({ fps: settings.fps });
 	const pinMuxerEngine =
@@ -328,7 +340,8 @@ export async function startRendererExportJob({
 		presetId: settings.presetId,
 		progress: 0,
 		projectId,
-		settings,
+		// The settings carry the engine that actually renders, not the default.
+		settings: { ...settings, engine: "renderer-muxer" },
 		startedAt: now,
 		status: EXPORT_JOB_STATUS.queued,
 	};
@@ -473,6 +486,7 @@ export async function startExportJob({
 			);
 		}
 		const textOverlays = collectTextOverlays(timeline);
+		const adjustmentLayers = collectAdjustmentLayers({ timeline });
 		if (textOverlays.length > 0) {
 			claudeLog.info(
 				HANDLER_NAME,
@@ -580,6 +594,7 @@ export async function startExportJob({
 			audioFiles,
 			audioMixConfig: audioMixConfigFromTimeline(timeline),
 			videoTransitions,
+			adjustmentLayers,
 			projectFps: timeline.fps,
 			projectCanvas:
 				timeline.width > 0 && timeline.height > 0

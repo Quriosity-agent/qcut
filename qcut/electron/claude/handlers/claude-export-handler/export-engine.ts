@@ -48,6 +48,18 @@ import {
 import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
+import { assFontsDirectory } from "../../../ffmpeg-args-builder.js";
+import {
+	type AdjustmentLayer,
+	runAdjustmentLayerPass,
+} from "./adjustment-layer-pass.js";
+import {
+	buildGapSegmentEncodeArgs,
+	findTimelineGaps,
+	orderConcatInputs,
+	probeGapAudioLayout,
+} from "./gap-segments.js";
+import { buildConcatCopyArgs, probeLeadingAudioTime } from "./concat-timing.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -1350,6 +1362,7 @@ export async function executeExportJob({
 	audioFiles = [],
 	audioMixConfig,
 	videoTransitions = [],
+	adjustmentLayers = [],
 	projectCanvas,
 	projectFps,
 }: {
@@ -1359,6 +1372,8 @@ export async function executeExportJob({
 	outputPath: string;
 	segments: ExportSegment[];
 	stickerOverlays?: StickerOverlay[];
+	/** Adjustment layers to grade the picture with, lowest track first. */
+	adjustmentLayers?: AdjustmentLayer[];
 	textOverlays?: TextOverlay[];
 	jianyingTextOverlays?: JianyingTextOverlay[];
 	audioFiles?: AudioFile[];
@@ -1490,8 +1505,46 @@ export async function executeExportJob({
 			}
 		}
 
+		const hasVideoTransitions = videoTransitions.length > 0;
+		// The concat alone would squeeze timeline gaps out and shift every
+		// overlay and audio track after them; black, silent clips keep the
+		// timing (the transition renderer places its segments in time itself).
+		const gaps = hasVideoTransitions
+			? []
+			: findTimelineGaps({ segments, fps: settings.fps });
+		const gapOutputs: string[] = [];
+		if (gaps.length > 0) {
+			const gapAudio = await probeGapAudioLayout({ segmentOutputs });
+			for (const [index, gap] of gaps.entries()) {
+				const gapPath = path.join(
+					tempDir,
+					`gap-${String(index).padStart(4, "0")}.mp4`
+				);
+				await runFFmpegCommand({
+					signal: abort.signal,
+					args: buildGapSegmentEncodeArgs({
+						gap,
+						settings,
+						audio: gapAudio,
+						outputPath: gapPath,
+					}),
+					estimatedDuration: gap.duration,
+				});
+				gapOutputs.push(gapPath);
+			}
+		}
+		// The concat output's length: the clips plus the gaps kept between them.
+		const concatDuration =
+			segments.reduce((sum, segment) => sum + segment.duration, 0) +
+			gaps.reduce((sum, gap) => sum + gap.duration, 0);
+
 		const concatListPath = path.join(tempDir, "concat-list.txt");
-		const concatLines = segmentOutputs
+		const concatInputs = orderConcatInputs({
+			segmentOutputs,
+			gaps,
+			gapOutputs,
+		});
+		const concatLines = concatInputs
 			.map((segmentPath) => {
 				const escaped = segmentPath.replace(/\\/g, "/").replace(/'/g, "'\\''");
 				return `file '${escaped}'`;
@@ -1499,7 +1552,6 @@ export async function executeExportJob({
 			.join("\n");
 		await fsPromises.writeFile(concatListPath, concatLines, "utf8");
 
-		const hasVideoTransitions = videoTransitions.length > 0;
 		const concatOutputPath = hasVideoTransitions
 			? path.join(tempDir, "concat-audio.mp4")
 			: videoOutputPath;
@@ -1507,26 +1559,20 @@ export async function executeExportJob({
 		const concatProgressSpan = hasVideoTransitions ? 0.04 : 0.08;
 		updateJobProgress({ jobId, progress: concatProgressStart });
 
+		// The concat demuxer would move the whole program late by the first
+		// file's AAC priming lead; see concat-timing.ts.
+		const leadSeconds =
+			concatInputs.length > 0
+				? await probeLeadingAudioTime({ file: concatInputs[0] })
+				: 0;
 		await runFFmpegCommand({
 			signal: abort.signal,
-			args: [
-				"-y",
-				"-f",
-				"concat",
-				"-safe",
-				"0",
-				"-i",
-				concatListPath,
-				"-c",
-				"copy",
-				"-movflags",
-				"+faststart",
-				concatOutputPath,
-			],
-			estimatedDuration: Math.max(
-				0,
-				segments.reduce((sum, segment) => sum + segment.duration, 0)
-			),
+			args: buildConcatCopyArgs({
+				listPath: concatListPath,
+				outputPath: concatOutputPath,
+				leadSeconds,
+			}),
+			estimatedDuration: Math.max(0, concatDuration),
 			onProgress: ({ normalizedProgress }) => {
 				updateJobProgress({
 					jobId,
@@ -1552,6 +1598,28 @@ export async function executeExportJob({
 						progress: 0.87 + progress * 0.11,
 					});
 				},
+			});
+		}
+
+		// Adjustment layers below the text/sticker tracks grade the picture
+		// before those overlays are drawn, as the preview stacks them.
+		const lowerAdjustmentLayers = adjustmentLayers.filter(
+			(layer) => !layer.aboveOverlays
+		);
+		if (lowerAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+			updateJobProgress({ jobId, progress: 0.91 });
+			await runAdjustmentLayerPass({
+				layers: lowerAdjustmentLayers,
+				videoOutputPath,
+				tempDir,
+				stage: "below-overlays",
+				codec: settings.codec,
+				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+				estimatedDuration: concatDuration,
+				signal: abort.signal,
+				runFFmpegCommand,
+				onProgress: (progress) =>
+					updateJobProgress({ jobId, progress: 0.91 + progress * 0.01 }),
 			});
 		}
 
@@ -1584,7 +1652,7 @@ export async function executeExportJob({
 					`Sticker overlay filter_complex: ${stickerPass.filterComplex}`
 				);
 
-				const totalDuration = segments.reduce((sum, s) => sum + s.duration, 0);
+				const totalDuration = concatDuration;
 				await runFFmpegCommand({
 					signal: abort.signal,
 					args: stickerPass.args,
@@ -1661,10 +1729,7 @@ export async function executeExportJob({
 						layers: textRasterLayers,
 						settings,
 					}),
-					estimatedDuration: Math.max(
-						0,
-						segments.reduce((sum, segment) => sum + segment.duration, 0)
-					),
+					estimatedDuration: Math.max(0, concatDuration),
 					onProgress: ({ normalizedProgress }) => {
 						updateJobProgress({
 							jobId,
@@ -1717,7 +1782,9 @@ export async function executeExportJob({
 						"-i",
 						sourcePath,
 						"-vf",
-						`ass='${escapeAssFilterPath(assPath)}'`,
+						// fontsdir adds the system CJK families (Songti, Kaiti…) to the
+						// fonts libass can open, so a requested family is used, not swapped.
+						`ass='${escapeAssFilterPath(assPath)}'${assFontsDirectory() ? `:fontsdir='${escapeAssFilterPath(assFontsDirectory() as string)}'` : ""}`,
 						"-map",
 						"0:v:0",
 						"-map",
@@ -1736,10 +1803,7 @@ export async function executeExportJob({
 						"+faststart",
 						videoOutputPath,
 					],
-					estimatedDuration: Math.max(
-						0,
-						segments.reduce((sum, segment) => sum + segment.duration, 0)
-					),
+					estimatedDuration: Math.max(0, concatDuration),
 				});
 			} catch (error) {
 				try {
@@ -1750,6 +1814,28 @@ export async function executeExportJob({
 					`Text overlay export failed: ${error instanceof Error ? error.message : String(error)}`
 				);
 			}
+		}
+
+		// Adjustment layers above every text/sticker track grade those overlays
+		// too, so they run once the overlays are on the picture.
+		const upperAdjustmentLayers = adjustmentLayers.filter(
+			(layer) => layer.aboveOverlays
+		);
+		if (upperAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+			updateJobProgress({ jobId, progress: 0.955 });
+			await runAdjustmentLayerPass({
+				layers: upperAdjustmentLayers,
+				videoOutputPath,
+				tempDir,
+				stage: "above-overlays",
+				codec: settings.codec,
+				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+				estimatedDuration: concatDuration,
+				signal: abort.signal,
+				runFFmpegCommand,
+				onProgress: (progress) =>
+					updateJobProgress({ jobId, progress: 0.955 + progress * 0.005 }),
+			});
 		}
 
 		// Independent audio tracks are mixed after all video-only compositing
@@ -1799,10 +1885,7 @@ export async function executeExportJob({
 				// The concat video length is the sum of encoded segment durations
 				// (timeline gaps collapse), so derive the mux duration from that
 				// rather than timeline offsets; audio tails may still extend past it.
-				const concatVideoDuration = segments.reduce(
-					(sum, segment) => sum + segment.duration,
-					0
-				);
+				const concatVideoDuration = concatDuration;
 				const totalDuration = Math.max(
 					concatVideoDuration,
 					...audioFiles.map(
@@ -1911,10 +1994,7 @@ export async function executeExportJob({
 						String(settings.audioChannels ?? 2),
 						outputPath,
 					],
-					estimatedDuration: segments.reduce(
-						(sum, segment) => sum + segment.duration,
-						0
-					),
+					estimatedDuration: concatDuration,
 				});
 			} catch (mp3Error) {
 				// Clean up partial MP3 artifact on failure
@@ -1943,10 +2023,7 @@ export async function executeExportJob({
 		}
 
 		const outputStats = await fsPromises.stat(outputPath);
-		const duration = segments.reduce(
-			(sum, segment) => sum + segment.duration,
-			0
-		);
+		const duration = concatDuration;
 
 		const finishedJob = exportJobs.get(jobId);
 		if (!finishedJob) {

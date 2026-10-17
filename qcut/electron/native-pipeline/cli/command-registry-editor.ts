@@ -329,7 +329,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	]),
 	"editor:track:update": ed(
 		"editor:track:update",
-		"Rename, move or colour a timeline track",
+		"Rename, move, colour, lock or hide a timeline track",
 		[
 			PID_ACTIVE,
 			f("--track-id", "string", "Track ID", { required: true }),
@@ -340,6 +340,10 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"string",
 				"Default clip colour (violet, blue, green, yellow, red, rose, orange, mango), or none"
 			),
+			f("--lock", "boolean", "Lock the track (it refuses edits)"),
+			f("--unlock", "boolean", "Unlock the track"),
+			f("--hide", "boolean", "Hide the track from the preview and export"),
+			f("--unhide", "boolean", "Show the track again"),
 		]
 	),
 	"editor:track:move": ed(
@@ -366,6 +370,63 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			PID_ACTIVE,
 			f("--element-id", "string", "Element ID", { required: true }),
 			f("--set", "string", "JSON object or @file", { required: true }),
+		]
+	),
+	"editor:element:color": ed(
+		"editor:element:color",
+		"Grade clips: the colour panel's basic controls, merged into each clip's grade",
+		[
+			PID_ACTIVE,
+			f("--element-id", "string", "One clip"),
+			f(
+				"--element-ids",
+				"string",
+				"Several clips (JSON array, @file, or repeat)"
+			),
+			f("--track-id", "string", "Every video clip on the track"),
+			f("--exposure", "number", "Exposure stops (−5..5)"),
+			f("--brightness", "number", "Brightness (−100..100)"),
+			f("--contrast", "number", "Contrast (−100..100)"),
+			f("--highlights", "number", "Highlights (−100..100)"),
+			f("--shadows", "number", "Shadows (−100..100)"),
+			f("--whites", "number", "Whites (−100..100)"),
+			f("--blacks", "number", "Blacks (−100..100)"),
+			f("--temperature", "number", "Temperature (−100..100)"),
+			f("--tint", "number", "Tint (−100..100)"),
+			f("--saturation", "number", "Saturation (−100..100)"),
+			f("--vibrance", "number", "Vibrance (−100..100)"),
+			f("--fade", "number", "Fade (0..100)"),
+			f("--vignette", "number", "Vignette (0..100)"),
+			f("--sharpness", "number", "Sharpness (0..100)"),
+			f("--grain", "number", "Grain (0..100)"),
+			f("--set", "string", "Extra partial colour grade as JSON or @file"),
+			f("--reset", "boolean", "Return every basic control to its default"),
+		]
+	),
+	"editor:element:filter": ed(
+		"editor:element:filter",
+		"Apply catalogue filters to clips by resource id (the filter panel's LUT path)",
+		[
+			PID_ACTIVE,
+			f("--element-id", "string", "One clip"),
+			f(
+				"--element-ids",
+				"string",
+				"Several clips (JSON array, @file, or repeat)"
+			),
+			f("--track-id", "string", "Every video clip on the track"),
+			f(
+				"--resource-id",
+				"string",
+				"Filter resource id from filter-lab catalog / catalog-independent (repeat to stack)"
+			),
+			f("--intensity", "number", "Strength 0–100 (default 100)"),
+			f(
+				"--append",
+				"boolean",
+				"Keep the clip's current filters and add after them"
+			),
+			f("--clear", "boolean", "Remove every filter from the clips"),
 		]
 	),
 	"editor:timeline:export": ed("editor:timeline:export", "Export timeline", [
@@ -464,6 +525,109 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			EID,
 			f("--split-time", "number", "Split point in seconds", { required: true }),
 		]
+	),
+	"editor:timeline:shot-split": ed(
+		"editor:timeline:shot-split",
+		"Split a video clip (or every video clip on a track) by its shots, as one undo step; a job that waits by default",
+		[
+			PID,
+			f("--element-id", "string", "Clip to split (or give --track-id)"),
+			f("--track-id", "string", "Split every video clip on this track"),
+			f(
+				"--engine",
+				"string",
+				"Detection engine: auto (default; jianying, then onnx, then ffmpeg), jianying, onnx or ffmpeg",
+				{ enum: ["auto", "jianying", "onnx", "ffmpeg"] }
+			),
+			f("--threshold", "number", "FFmpeg scene threshold (ffmpeg engine only)"),
+			f(
+				"--min-shot",
+				"number",
+				"Shortest shot in seconds; cuts that would leave less are set aside"
+			),
+			f(
+				"--cuts",
+				"string",
+				"Cut points in source seconds (comma-separated, or @file.json: an array, or an analyze shots result); nothing is detected"
+			),
+			f(
+				"--dry-run",
+				"boolean",
+				"Plan only: report the cuts, leave the timeline alone"
+			),
+			f("--timeout", "number", "Seconds to wait for the job (default 600)"),
+			f(
+				"--poll-interval",
+				"number",
+				"Seconds between status checks (default 2)"
+			),
+			f("--no-wait", "boolean", "Return the job id without waiting"),
+		],
+		[
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --dry-run --json",
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --engine jianying --json",
+			"qcut editor timeline shot-split --project-id <id> --element-id <id> --cuts 3.333,15.167 --json",
+			"qcut editor timeline shot-split --project-id <id> --track-id <id> --min-shot 1 --json",
+		]
+	),
+	"editor:timeline:snap": ed(
+		"editor:timeline:snap",
+		"Move clips onto the nearest marked beat (editor beats mark first), as one undo step",
+		[
+			PID,
+			f("--to", "string", "What to snap to: beats (default)", {
+				enum: ["beats"],
+			}),
+			f(
+				"--element-ids",
+				"string",
+				"Clips to move (comma-separated; --element-id for one)"
+			),
+			f(
+				"--beats-from",
+				"string",
+				"Clip whose marked beats are the grid (default: the one marked clip)"
+			),
+			f(
+				"--edge",
+				"string",
+				"What lands on the beat: the clip's start (default), its end, or onset (its first attack, found in its audio)",
+				{
+					enum: ["start", "end", "onset"],
+				}
+			),
+			f(
+				"--frame-align",
+				"string",
+				"Which clips end up on a whole frame: visual (default; video, image, text, stickers), all, or none",
+				{
+					enum: ["visual", "all", "none"],
+				}
+			),
+			f(
+				"--onset-threshold",
+				"number",
+				"With --edge onset: how loud an attack must be, as a share of the clip's loudest (default 0.5)"
+			),
+			f(
+				"--max-distance",
+				"number",
+				"Farthest a clip may move, in seconds (default 0.5); farther clips stay"
+			),
+			f("--downbeats-only", "boolean", "Snap to downbeats only"),
+			f("--dry-run", "boolean", "Report the moves, leave the timeline alone"),
+		],
+		[
+			"qcut editor timeline snap --to beats --element-ids <a>,<b> --project-id <id> --json",
+			"qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json",
+			"qcut editor timeline snap --to beats --element-ids <sfx> --edge onset --project-id <id> --json",
+		]
+	),
+	"editor:timeline:job-status": ed(
+		"editor:timeline:job-status",
+		"Progress and result of a timeline job (shot-split)",
+		[PID, JID],
+		["qcut editor timeline job-status --project-id <id> --job-id <id> --json"]
 	),
 	"editor:timeline:move": ed("editor:timeline:move", "Move element", [
 		PID,
@@ -570,11 +734,28 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:editing:delete-range": ed(
 		"editor:editing:delete-range",
-		"Delete time range",
+		"Delete time range (ripple on by default; confirm tier, needs --force)",
 		[
 			PID,
 			f("--start-time", "number", "Start time in seconds", { required: true }),
 			f("--end-time", "number", "End time in seconds", { required: true }),
+			f(
+				"--track-id",
+				"string",
+				"Only these tracks (comma-separated); default every unlocked track"
+			),
+			f("--ripple", "boolean", "Close the gap (the default)"),
+			f("--no-ripple", "boolean", "Leave the gap where the range was"),
+			f(
+				"--cross-track-ripple",
+				"boolean",
+				"With --track-id: shift every unlocked track, not only the targets"
+			),
+			f(
+				"--keep-automation",
+				"boolean",
+				"Leave level/pan automation in place (by default it ripples with the clips)"
+			),
 		]
 	),
 	"editor:editing:auto-edit": ed(
@@ -636,12 +817,37 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		"List analysis models",
 		[]
 	),
-	"editor:analyze:scenes": ed("editor:analyze:scenes", "Detect scene changes", [
-		PID,
-		MID,
-		f("--threshold", "number", "Detection threshold"),
-		f("--model", "string", "Model key", { short: "-m" }),
-	]),
+	"editor:analyze:scenes": ed(
+		"editor:analyze:scenes",
+		"Detect shot boundaries in a media item",
+		[
+			PID,
+			MID,
+			f(
+				"--engine",
+				"string",
+				"Detection engine: auto (default; jianying, then onnx, then ffmpeg), jianying, onnx or ffmpeg",
+				{ enum: ["auto", "jianying", "onnx", "ffmpeg"] }
+			),
+			f("--threshold", "number", "FFmpeg scene threshold (ffmpeg engine only)"),
+			f(
+				"--ai-analysis",
+				"boolean",
+				"Also describe each scene with the AI model (--model)"
+			),
+			f("--model", "string", "AI model key for --ai-analysis", { short: "-m" }),
+		],
+		[
+			"qcut editor analyze scenes --project-id <id> --media-id <id> --json",
+			"qcut editor analyze scenes --project-id <id> --media-id <id> --engine ffmpeg --threshold 0.3 --json",
+		]
+	),
+	"editor:analyze:engines": ed(
+		"editor:analyze:engines",
+		"Which shot-detection engines this machine can run, and the one auto picks",
+		[],
+		["qcut editor analyze engines --json"]
+	),
 	"editor:analyze:frames": ed("editor:analyze:frames", "Analyze video frames", [
 		PID,
 		MID,
@@ -656,11 +862,36 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:analyze:beats": ed(
 		"editor:analyze:beats",
-		"Detect audio beats and BPM",
+		"Detect audio beats and BPM (tempo from the onset periodicity; threshold no longer changes it)",
 		[
 			PID,
 			MID,
-			f("--threshold", "number", "Sensitivity threshold (default: 1.5)"),
+			f(
+				"--threshold",
+				"number",
+				"Kept for compatibility; the tempo and beats do not depend on it"
+			),
+		]
+	),
+	"editor:beats:mark": ed(
+		"editor:beats:mark",
+		"Detect a clip's beats and mark them in the editor (beat panel, ruler markers), optionally as bookmarks",
+		[
+			PID,
+			f("--element-id", "string", "The audio or video clip", {
+				required: true,
+			}),
+			f("--media-id", "string", "Analyse this media instead of the clip's own"),
+			f(
+				"--bookmarks",
+				"string",
+				"Bookmarks to add on the ruler: none (default), downbeats or all",
+				{ enum: ["none", "downbeats", "all"] }
+			),
+		],
+		[
+			"qcut editor beats mark --element-id <clip> --project-id <id> --json",
+			"qcut editor beats mark --element-id <clip> --bookmarks downbeats --project-id <id> --json",
 		]
 	),
 
@@ -804,6 +1035,30 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--filename", "string", "Output filename"),
 			f("--bitrate", "number", "MP3 bitrate (128|192|256|320)"),
 			f("--sample-rate", "number", "Sample rate (44100|48000)"),
+		]
+	),
+	"editor:captions:import": ed(
+		"editor:captions:import",
+		"Import an SRT/VTT/ASS file as captions tracks above the clips",
+		[
+			PID,
+			f("--file", "string", "Subtitle file (.srt, .vtt, .ass)", {
+				required: true,
+			}),
+			f(
+				"--language",
+				"string",
+				"Language code for every cue (default: from the file, else en)"
+			),
+			f(
+				"--style",
+				"string",
+				"Caption style JSON or @file applied to every cue"
+			),
+			f("--replace", "boolean", "Delete the existing captions tracks first"),
+		],
+		[
+			"qcut editor captions import --project-id <id> --file subtitles.srt --language zh --json",
 		]
 	),
 	"editor:export:captions": ed(

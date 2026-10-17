@@ -33,6 +33,9 @@ import {
 	requestAddElementFromRenderer,
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
+	requestShotSplitFromRenderer,
+	requestBeatsMarkFromRenderer,
+	requestSnapToBeatsFromRenderer,
 	requestSelectionFromRenderer,
 	batchAddElements,
 	batchUpdateElements,
@@ -163,6 +166,9 @@ import type {
 	UtilityToMainMessage,
 	WebContentsSendRequest,
 	SplitElementRequest,
+	ShotSplitBridgeRequest,
+	BeatsMarkBridgeRequest,
+	SnapToBeatsBridgeRequest,
 	TimelineAddElementRequest,
 	BatchAddElementsRequest,
 	BatchUpdateElementsRequest,
@@ -724,6 +730,25 @@ async function handleMainRequest(
 				req.elementId,
 				req.splitTime,
 				req.mode
+			);
+		}
+
+		case "timeline:shot-split": {
+			const req = data as unknown as ShotSplitBridgeRequest;
+			return requestShotSplitFromRenderer(win, req.request, req.correlationId);
+		}
+
+		case "timeline:beats-mark": {
+			const req = data as unknown as BeatsMarkBridgeRequest;
+			return requestBeatsMarkFromRenderer(win, req.request, req.correlationId);
+		}
+
+		case "timeline:snap-to-beats": {
+			const req = data as unknown as SnapToBeatsBridgeRequest;
+			return requestSnapToBeatsFromRenderer(
+				win,
+				req.request,
+				req.correlationId
 			);
 		}
 

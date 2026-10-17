@@ -23,6 +23,12 @@ import { setupElementHandlers } from "./claude-timeline-bridge-elements";
 import { setupBatchHandlers } from "./claude-timeline-bridge-batch";
 import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
 import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
+import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
+import { setupBeatsHandlers } from "./claude-beats-bridge";
+import {
+	assertTimelineProjectActive,
+	readRequiredTimelineProjectId,
+} from "./claude-timeline-project-guard";
 import { parseStickerFileRuntime } from "@/lib/stickers/sticker-file-runtime";
 
 interface ClaudeImportedMediaEvent {
@@ -467,6 +473,8 @@ export function setupClaudeTimelineBridge(): void {
 
 	setupTrackHandlers({ claudeAPI });
 	setupAudioMixHandlers({ claudeAPI });
+	setupShotSplitHandlers({ claudeAPI });
+	setupBeatsHandlers({ claudeAPI });
 
 	// Handle element removal
 	claudeAPI.onRemoveElement((elementId: any) => {
@@ -701,6 +709,13 @@ export function setupClaudeTimelineBridge(): void {
 				"on element:",
 				data.elementId
 			);
+			// The cuts were planned against one project's timeline; applying
+			// them while another project is open would cut the wrong clips.
+			assertTimelineProjectActive({
+				projectId: readRequiredTimelineProjectId({
+					candidate: data.projectId,
+				}),
+			});
 			const timelineStore = useTimelineStore.getState();
 			const track = findTrackByElementId(timelineStore.tracks, data.elementId);
 
@@ -709,7 +724,10 @@ export function setupClaudeTimelineBridge(): void {
 					"[ClaudeTimelineBridge] Could not find track for element:",
 					data.elementId
 				);
-				claudeAPI.sendExecuteCutsResponse(data.requestId, emptyResult);
+				claudeAPI.sendExecuteCutsResponse(data.requestId, {
+					...emptyResult,
+					error: `Element ${data.elementId} is not on the timeline`,
+				});
 				return;
 			}
 
@@ -825,7 +843,10 @@ export function setupClaudeTimelineBridge(): void {
 			});
 		} catch (error) {
 			debugError("[ClaudeTimelineBridge] Failed to execute batch cuts:", error);
-			claudeAPI.sendExecuteCutsResponse(data.requestId, emptyResult);
+			claudeAPI.sendExecuteCutsResponse(data.requestId, {
+				...emptyResult,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	});
 
@@ -857,6 +878,7 @@ export function setupClaudeTimelineBridge(): void {
 				trackIds,
 				ripple: ripple ?? true,
 				crossTrackRipple: crossTrackRipple ?? false,
+				keepAutomation: data?.request?.keepAutomation === true,
 			});
 
 			claudeAPI.sendDeleteRangeResponse(data.requestId, result);

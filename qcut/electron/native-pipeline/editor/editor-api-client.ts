@@ -397,7 +397,11 @@ export class EditorApiClient {
 		return resultData;
 	}
 
-	async patch<T = unknown>(path: string, body?: unknown): Promise<T> {
+	async patch<T = unknown>(
+		path: string,
+		body?: unknown,
+		options?: { timeout?: number }
+	): Promise<T> {
 		await this.warnIfCapabilityLikelyUnsupported({
 			method: "PATCH",
 			path,
@@ -405,7 +409,8 @@ export class EditorApiClient {
 		return await this.request<T>(
 			"PATCH",
 			`${this.config.baseUrl}${path}`,
-			body
+			body,
+			options?.timeout
 		);
 	}
 

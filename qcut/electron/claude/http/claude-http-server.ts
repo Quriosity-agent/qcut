@@ -25,6 +25,7 @@ import {
 	requestAddElementFromRenderer,
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
+	requestShotSplitFromRenderer,
 	requestSelectionFromRenderer,
 	batchAddElements,
 	batchUpdateElements,
@@ -136,6 +137,11 @@ const LONG_RUNNING_ROUTE_PATHS = new Set([
 	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
 	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
 ]);
+// Element batches are stored one element at a time in the editor, so a full
+// 50-item batch outlives the ordinary request deadline.
+const TIMELINE_BATCH_ROUTE_PATTERN =
+	/^\/api\/claude\/timeline\/[^/]+\/elements\/batch$/;
+const TIMELINE_BATCH_REQUEST_TIMEOUT_MS = 120_000;
 // The extra minute keeps the route-level 504 authoritative: the socket-level
 // 408 must never fire before the route's own deadline.
 const LONG_RUNNING_REQUEST_TIMEOUT_MS =
@@ -226,6 +232,9 @@ export function startClaudeHTTPServer(
 				mode,
 				correlationId
 			),
+		/** Splits clips by their shots in the renderer. */
+		requestShotSplit: (request, correlationId) =>
+			requestShotSplitFromRenderer(getWindow(), request, correlationId),
 		/** Fetches project stats from the renderer. */
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		/** Returns the current app version. */
@@ -533,7 +542,9 @@ export function startClaudeHTTPServer(
 		const requestPath = (req.url ?? "").split("?")[0] ?? "";
 		const requestTimeoutMs = LONG_RUNNING_ROUTE_PATHS.has(requestPath)
 			? LONG_RUNNING_REQUEST_TIMEOUT_MS
-			: REQUEST_TIMEOUT_MS;
+			: TIMELINE_BATCH_ROUTE_PATTERN.test(requestPath)
+				? TIMELINE_BATCH_REQUEST_TIMEOUT_MS
+				: REQUEST_TIMEOUT_MS;
 		req.setTimeout(requestTimeoutMs, () => {
 			if (res.writableEnded || res.headersSent) return;
 			res.writeHead(408, {

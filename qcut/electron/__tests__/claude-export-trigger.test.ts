@@ -46,10 +46,13 @@ vi.mock("node:fs/promises", () => ({
 	...mockFsPromises,
 }));
 
-vi.mock("fs", () => ({
-	default: { existsSync: (...args: unknown[]) => mockExistsSync(...args) },
-	existsSync: (...args: unknown[]) => mockExistsSync(...args),
-}));
+// Only existsSync is faked (media lookups); the rest stays real because a
+// static colour grade writes its baked cube to the temp directory.
+vi.mock("fs", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("fs")>();
+	const existsSync = (...args: unknown[]) => mockExistsSync(...args);
+	return { ...actual, default: { ...actual, existsSync }, existsSync };
+});
 
 vi.mock("../ffmpeg/utils.js", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../ffmpeg/utils.js")>();
@@ -783,7 +786,7 @@ describe("Claude export trigger", () => {
 			segment,
 			settings: { width: 1920, height: 1080, fps: 30 },
 		});
-		const colorIndex = chain.indexOf("eq=brightness=");
+		const colorIndex = chain.indexOf("lut3d=file=");
 		const rotateIndex = chain.indexOf("rotate=");
 		expect(colorIndex).toBeGreaterThan(chain.indexOf("setsar=1"));
 		expect(rotateIndex).toBeGreaterThan(colorIndex);

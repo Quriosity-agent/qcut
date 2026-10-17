@@ -17,6 +17,8 @@ import type {
 	BatchCutResponse,
 	ClaudeTrackOperationRequest,
 	ClaudeTrackOperationResponse,
+	ClaudeShotSplitRequest,
+	ClaudeShotSplitResponse,
 } from "../../types/claude-api";
 import type {
 	ClaudeMediaDeletedEvent,
@@ -175,10 +177,44 @@ export interface ClaudeTimelineAPI {
 			}) => void
 		) => void;
 		sendSplitResponse: (requestId: string, result: ClaudeSplitResponse) => void;
+		onShotSplit: (
+			callback: (data: {
+				requestId: string;
+				correlationId?: string;
+				request: ClaudeShotSplitRequest;
+			}) => void
+		) => void;
+		sendShotSplitResponse: (
+			requestId: string,
+			result:
+				| { ok: true; response: ClaudeShotSplitResponse }
+				| { ok: false; error: string }
+		) => void;
+		/** `editor beats mark`: a clip's beats for the editor's beat store. */
+		onBeatsMark: (
+			callback: (data: { requestId: string; request: unknown }) => void
+		) => void;
+		sendBeatsMarkResponse: (
+			requestId: string,
+			result:
+				| { ok: true; response: Record<string, unknown> }
+				| { ok: false; error: string }
+		) => void;
+		/** `editor timeline snap --to beats`: move clips onto marked beats. */
+		onSnapToBeats: (
+			callback: (data: { requestId: string; request: unknown }) => void
+		) => void;
+		sendSnapToBeatsResponse: (
+			requestId: string,
+			result:
+				| { ok: true; response: Record<string, unknown> }
+				| { ok: false; error: string }
+		) => void;
 		onExecuteCuts: (
 			callback: (data: {
 				requestId: string;
 				correlationId?: string;
+				projectId: string;
 				elementId: string;
 				cuts: Array<{ start: number; end: number }>;
 				ripple: boolean;

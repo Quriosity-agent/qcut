@@ -23,6 +23,7 @@ import type {
 	MediaAdjustments,
 	MediaAnimationType,
 	MediaColorSettings,
+	MediaElement,
 	MediaFilterStack,
 	MediaMask,
 	StickerAnimationLoopType,
@@ -55,6 +56,7 @@ import {
 	hasMediaColorEdits,
 	normalizeMediaColorSettings,
 } from "@/lib/color/color-properties";
+import { DEFAULT_MEDIA_ADJUSTMENTS } from "@/lib/video/video-properties";
 import { resolveColorFilterSettings } from "@/lib/filters/filter-resolver";
 import {
 	applyTextAnimationPreset,
@@ -286,6 +288,77 @@ export function normalizeClaudeTextAnimations({
 	return normalization.animation;
 }
 
+export const CLAUDE_TEXT_ANCHORS = [
+	"top-left",
+	"top-center",
+	"top-right",
+	"center-left",
+	"center",
+	"center-right",
+	"bottom-left",
+	"bottom-center",
+	"bottom-right",
+] as const;
+export type ClaudeTextAnchor = (typeof CLAUDE_TEXT_ANCHORS)[number];
+
+const DEFAULT_TEXT_BOX_WIDTH = 640;
+const DEFAULT_TEXT_BOX_HEIGHT = 180;
+
+/**
+ * `anchor` on an added text element places its box against a canvas edge or
+ * corner instead of giving `x`/`y` (pixel offsets from the canvas centre):
+ * the box sits `anchorInset` pixels (default 5 % of the shorter canvas side)
+ * inside the edge. Explicit `x`/`y` win over the anchor on their axis.
+ */
+export function resolveClaudeTextAnchor({
+	element,
+	properties,
+	canvas = useProjectStore.getState().activeProject?.canvasSize,
+}: {
+	element: Record<string, unknown>;
+	properties: ValidatedClaudeTextProperties;
+	canvas?: { width: number; height: number };
+}): Pick<ValidatedClaudeTextProperties, "x" | "y"> {
+	const anchor =
+		element.anchor ??
+		(element.style as Record<string, unknown> | undefined)?.anchor;
+	if (anchor === undefined) return {};
+	if (
+		typeof anchor !== "string" ||
+		!CLAUDE_TEXT_ANCHORS.includes(anchor as ClaudeTextAnchor)
+	) {
+		throw new Error(
+			`Unsupported text anchor "${String(anchor)}"; expected one of ${CLAUDE_TEXT_ANCHORS.join(", ")}`
+		);
+	}
+	if (!canvas) throw new Error("A text anchor needs an open project canvas");
+	const inset =
+		typeof element.anchorInset === "number" &&
+		Number.isFinite(element.anchorInset)
+			? element.anchorInset
+			: Math.round(Math.min(canvas.width, canvas.height) * 0.05);
+	const boxWidth = properties.width ?? DEFAULT_TEXT_BOX_WIDTH;
+	const boxHeight = properties.height ?? DEFAULT_TEXT_BOX_HEIGHT;
+	const [vertical, horizontal] =
+		anchor === "center" ? ["center", "center"] : anchor.split("-");
+	const x =
+		horizontal === "left"
+			? -canvas.width / 2 + inset + boxWidth / 2
+			: horizontal === "right"
+				? canvas.width / 2 - inset - boxWidth / 2
+				: 0;
+	const y =
+		vertical === "top"
+			? -canvas.height / 2 + inset + boxHeight / 2
+			: vertical === "bottom"
+				? canvas.height / 2 - inset - boxHeight / 2
+				: 0;
+	return {
+		...(properties.x === undefined ? { x } : {}),
+		...(properties.y === undefined ? { y } : {}),
+	};
+}
+
 /** Read text properties from top-level fields, falling back to legacy style. */
 export function getClaudeTextProperties({
 	element,
@@ -469,6 +542,55 @@ export function getClaudeMediaTimingProperties({
 	return properties;
 }
 
+const MEDIA_FIT_MODES = new Set(["cover", "contain", "fill"]);
+const MEDIA_VISUAL_NUMBER_KEYS = [
+	"x",
+	"y",
+	"rotation",
+	"scaleX",
+	"scaleY",
+	"opacity",
+] as const;
+
+type ClaudeMediaVisualFields = Partial<
+	Pick<
+		MediaElement,
+		"fitMode" | "x" | "y" | "rotation" | "scaleX" | "scaleY" | "opacity"
+	>
+>;
+
+/**
+ * A clip's place on the canvas (`x`, `y` pixel offsets from the centre,
+ * `rotation`, `scaleX`, `scaleY`, `opacity`) and its `fitMode`, read the same
+ * way for an add and a patch so an exported clip round-trips through
+ * `timeline apply`. A malformed value throws before anything is stored.
+ */
+export function readClaudeMediaVisualFields({
+	element,
+}: {
+	element: Record<string, unknown>;
+}): ClaudeMediaVisualFields {
+	const fields: ClaudeMediaVisualFields = {};
+	if (element.fitMode !== undefined) {
+		if (
+			typeof element.fitMode !== "string" ||
+			!MEDIA_FIT_MODES.has(element.fitMode)
+		) {
+			throw new Error("fitMode must be one of cover, contain, fill");
+		}
+		fields.fitMode = element.fitMode as MediaElement["fitMode"];
+	}
+	for (const key of MEDIA_VISUAL_NUMBER_KEYS) {
+		const value = element[key];
+		if (value === undefined) continue;
+		if (typeof value !== "number" || !Number.isFinite(value)) {
+			throw new Error(`${key} must be a finite number`);
+		}
+		fields[key] = value;
+	}
+	return fields;
+}
+
 export type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
 
 const projectMediaSyncInFlight = new Map<string, Promise<void>>();
@@ -646,11 +768,18 @@ export function getClaudeAdjustmentFields({
 	if (isFiniteNumber(element.opacity)) {
 		fields.opacity = element.opacity;
 	}
+	// A partial grade from the CLI is stored complete: missing fields take
+	// the editor's defaults instead of leaving holes the renderer must guess.
 	if (isPlainObject(rawColor)) {
-		fields.color = rawColor as unknown as MediaColorSettings;
+		fields.color = normalizeMediaColorSettings({
+			element: { color: rawColor as unknown as MediaColorSettings },
+		});
 	}
 	if (isPlainObject(rawAdjustments)) {
-		fields.adjustments = rawAdjustments as unknown as MediaAdjustments;
+		fields.adjustments = {
+			...DEFAULT_MEDIA_ADJUSTMENTS,
+			...(rawAdjustments as Partial<MediaAdjustments>),
+		};
 	}
 	if (Array.isArray(rawMasks)) {
 		fields.masks = rawMasks as unknown as MediaMask[];
@@ -940,6 +1069,9 @@ export async function addClaudeMediaElement({
 			? namedTrack.id
 			: timelineStore.findOrCreateTrack(trackType, { startTime, duration });
 	const mediaTiming = getClaudeMediaTimingProperties({ element });
+	const visual = readClaudeMediaVisualFields({
+		element: element as Record<string, unknown>,
+	});
 	const colorLabel = parseTimelineColorLabel({ value: element.colorLabel });
 
 	const addedElementId = addElementOrThrow({
@@ -949,7 +1081,12 @@ export async function addClaudeMediaElement({
 		element: {
 			...requestedElementId({ element }),
 			type: "media",
-			name: resolvedName,
+			// The clip's own name when the request carries one (an export does),
+			// else the media file's.
+			name:
+				typeof element.name === "string" && element.name.trim()
+					? element.name.trim()
+					: resolvedName,
 			mediaId: resolvedId,
 			startTime,
 			duration,
@@ -961,10 +1098,11 @@ export async function addClaudeMediaElement({
 				typeof element.trimEnd === "number" && element.trimEnd >= 0
 					? element.trimEnd
 					: 0,
-			fitMode: element.fitMode ?? "cover",
+			fitMode: "cover",
 			...(colorLabel ? { colorLabel } : {}),
 			...mediaTiming,
 			...(typeof element.volume === "number" ? { volume: element.volume } : {}),
+			...visual,
 		},
 	});
 	debugLog("[ClaudeTimelineBridge] Added media element:", resolvedName);
@@ -979,7 +1117,20 @@ export function addClaudeTextElement({
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
 }): string {
-	const trackId = timelineStore.findOrCreateTrack("text");
+	// A named track is the lane asked for; only an unnamed request gets one
+	// picked (or made) for it, like the batch add.
+	const namedTrack = element.trackId
+		? timelineStore.tracks.find((track) => track.id === element.trackId)
+		: undefined;
+	if (element.trackId && !namedTrack) {
+		throw new Error(`Track not found: ${element.trackId}`);
+	}
+	if (namedTrack && namedTrack.type !== "text") {
+		throw new Error(
+			`Track "${namedTrack.name}" is a ${namedTrack.type} track; a text element needs a text track`
+		);
+	}
+	const trackId = namedTrack?.id ?? timelineStore.findOrCreateTrack("text");
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
 		element,
@@ -992,6 +1143,13 @@ export function addClaudeTextElement({
 	const textProperties = getClaudeTextProperties({
 		element: element as Partial<ClaudeElement> & Record<string, unknown>,
 	});
+	Object.assign(
+		textProperties,
+		resolveClaudeTextAnchor({
+			element: element as Record<string, unknown>,
+			properties: textProperties,
+		})
+	);
 
 	const addedElementId = addElementOrThrow({
 		timelineStore,
@@ -1014,8 +1172,9 @@ export function addClaudeTextElement({
 			fontWeight: "normal",
 			fontStyle: "normal",
 			textDecoration: "none",
-			x: 0.5,
-			y: 0.5,
+			// Pixel offsets from the canvas centre, like the editor's own text.
+			x: 0,
+			y: 0,
 			rotation: 0,
 			opacity: 1,
 			...textProperties,
@@ -1438,7 +1597,8 @@ export function addClaudeMarkdownElement({
 }): string {
 	// Reuse existing markdown track instead of creating one per element
 	const existingTrack = timelineStore.tracks.find((t) => t.type === "markdown");
-	const trackId = existingTrack?.id ?? timelineStore.addTrack("markdown");
+	const trackId =
+		existingTrack?.id ?? timelineStore.addTrackByStackingPolicy("markdown");
 
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
@@ -2025,6 +2185,9 @@ function formatElementForExport({
 				audio: normalizeMediaAudioSettings({ element }),
 				keyframes: element.keyframes as ClaudeElement["keyframes"],
 				colorSettings: resolveExportElementColorSettings({ element }),
+				// The stored grade as written, so a patch can be read back.
+				color: element.color as unknown as ClaudeElement["color"],
+				adjustments: element.adjustments as Record<string, unknown> | undefined,
 				// Raw ordered Filter Lab stack; identity + payload round-trips
 				// verbatim so apply-side read-back can digest-compare it.
 				filterStack: element.filterStack,
@@ -2083,6 +2246,8 @@ function formatElementForExport({
 				opacity: element.opacity,
 				color: element.color as Record<string, unknown> | undefined,
 				adjustments: element.adjustments as Record<string, unknown> | undefined,
+				// The grade the export renders, resolved the same way as a clip's.
+				colorSettings: resolveExportElementColorSettings({ element }),
 				masks: element.masks as Record<string, unknown>[] | undefined,
 			} as unknown as ClaudeElement;
 		case "effect":

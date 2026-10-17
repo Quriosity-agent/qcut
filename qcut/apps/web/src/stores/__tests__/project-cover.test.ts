@@ -13,9 +13,16 @@ const repository = vi.hoisted(() => ({
 	copyProject: vi.fn(),
 	removeProject: vi.fn(),
 }));
+const duplicate = vi.hoisted(() => ({
+	copyProjectContents: vi.fn(async () => ({})),
+}));
 vi.mock("@/lib/storage/storage-service", () => ({ storageService: storage }));
 vi.mock("@/lib/cover/cover-repository", () => ({
 	coverRepository: repository,
+}));
+vi.mock("@/lib/project/project-duplicate", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@/lib/project/project-duplicate")>()),
+	copyProjectContents: duplicate.copyProjectContents,
 }));
 
 const hash = "a".repeat(64);
@@ -172,5 +179,26 @@ describe("project cover publication", () => {
 		expect(repository.copyProject.mock.invocationCallOrder[0]).toBeLessThan(
 			storage.saveProject.mock.invocationCallOrder[0]
 		);
+	});
+
+	it("copies the project's contents before listing the copy, named 原名（副本）", async () => {
+		storage.loadProject.mockResolvedValue({
+			...project,
+			name: "门的计划",
+			draftInterop: { draftId: "jy-1" },
+		});
+		await useProjectStore.getState().duplicateProject("p1");
+		expect(duplicate.copyProjectContents).toHaveBeenCalledWith({
+			source: expect.objectContaining({ id: "p1" }),
+			targetProjectId: expect.any(String),
+		});
+		expect(
+			duplicate.copyProjectContents.mock.invocationCallOrder[0]
+		).toBeLessThan(storage.saveProject.mock.invocationCallOrder[0]);
+		const saved = storage.saveProject.mock.calls[0][0].project;
+		expect(saved.name).toBe("门的计划（副本）");
+		expect(saved.id).not.toBe("p1");
+		// Two projects cannot own one draft binding.
+		expect(saved.draftInterop).toBeUndefined();
 	});
 });

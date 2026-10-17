@@ -5,6 +5,7 @@ import type {
 	EditorStateSnapshot,
 	SceneDetectionRequest,
 	SceneDetectionResult,
+	SceneEnginesStatus,
 } from "../../types/claude-api";
 import type {
 	QCutPersistedImportEvidenceRendererRequest,
@@ -61,6 +62,8 @@ export interface ClaudeAnalyzeAPI {
 			projectId: string,
 			options: SceneDetectionRequest
 		) => Promise<SceneDetectionResult>;
+		/** Which scene engines can run on this machine. */
+		engines: () => Promise<SceneEnginesStatus>;
 	};
 }
 

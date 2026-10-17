@@ -17,6 +17,10 @@ import { create } from "zustand";
 import { storageService } from "@/lib/storage/storage-service";
 import { coverRepository } from "@/lib/cover/cover-repository";
 import {
+	copyProjectContents,
+	duplicateProjectName,
+} from "@/lib/project/project-duplicate";
+import {
 	assertProjectCover,
 	type ProjectCoverBindingV1,
 } from "@qcut/editor-core/cover";
@@ -651,28 +655,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 				throw error;
 			}
 
-			const { savedProjects } = get();
+			// The open project's unsaved edits belong in the copy too.
+			if (get().loadedProjectId === projectId) {
+				const { useTimelineStore } = await import("./timeline/timeline-store");
+				await useTimelineStore.getState().saveImmediate();
+				const { useStickersOverlayStore } = await import(
+					"./stickers-overlay-store"
+				);
+				await useStickersOverlayStore.getState().saveToProject(projectId);
+			}
 
-			// Extract the base name (remove any existing numbering)
-			const numberMatch = project.name.match(/^\((\d+)\)\s+(.+)$/);
-			const baseName = numberMatch ? numberMatch[2] : project.name;
-			const existingNumbers: number[] = [];
-
-			// Check for pattern "(number) baseName" in existing projects
-			savedProjects.forEach((p) => {
-				const match = p.name.match(/^\((\d+)\)\s+(.+)$/);
-				if (match && match[2] === baseName) {
-					existingNumbers.push(parseInt(match[1], 10));
-				}
-			});
-
-			const nextNumber =
-				existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-
+			const { draftInterop: _draftInterop, ...copiable } = project;
 			const newProject: TProject = {
-				...project, // Copy all properties from the original project
+				// Everything but the draft binding: two projects cannot own one draft.
+				...copiable,
 				id: generateUUID(),
-				name: `(${nextNumber}) ${baseName}`,
+				name: duplicateProjectName({
+					name: project.name,
+					existingNames: get().savedProjects.map((item) => item.name),
+				}),
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
@@ -684,6 +685,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 					cover: project.cover,
 				});
 			}
+			// Media, folders, timelines and stickers first, so the copy is never
+			// listed without its contents.
+			await copyProjectContents({
+				source: project,
+				targetProjectId: newProject.id,
+			});
 			await storageService.saveProject({ project: newProject });
 			await get().loadAllProjects();
 			return newProject.id;

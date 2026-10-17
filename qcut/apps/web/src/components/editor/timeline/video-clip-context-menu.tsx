@@ -45,6 +45,76 @@ import type { ClipAttributePreset } from "@/lib/timeline/clip-attribute-presets"
 import { useTranslation } from "@/lib/i18n";
 import type { TimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import { TimelineColorLabelMenu } from "./timeline-color-label-menu";
+import { useSceneEngineAvailability } from "@/lib/timeline/scene-engine-availability";
+import type {
+	ShotSplitEngine,
+	ShotSplitEngineChoice,
+} from "@/lib/timeline/smart-shot-split";
+
+/** The engines a user can pin, most accurate first. */
+const SHOT_SPLIT_ENGINE_ITEMS: Array<{
+	engine: ShotSplitEngine;
+	zh: string;
+	en: string;
+}> = [
+	{
+		engine: "jianying",
+		zh: "剪映智能镜头分割模型",
+		en: "Jianying shot-split model",
+	},
+	{
+		engine: "onnx",
+		zh: "本地神经网络分镜 (ONNX)",
+		en: "Local neural shot split (ONNX)",
+	},
+	{ engine: "ffmpeg", zh: "FFmpeg 画面差分", en: "FFmpeg scene filter" },
+];
+
+/**
+ * The engine submenu's items. Mounted only while the submenu is open, so the
+ * engine inspection (a runtime probe and a Python check in the main process)
+ * runs once per opened menu instead of once per clip on the timeline.
+ */
+function ShotSplitEngineItems({
+	locale,
+	onPick,
+}: {
+	locale: string;
+	onPick: (engine: ShotSplitEngine) => void;
+}) {
+	const engineAvailability = useSceneEngineAvailability();
+	return (
+		<>
+			{SHOT_SPLIT_ENGINE_ITEMS.map((item) => {
+				const status = engineAvailability?.find(
+					(entry) => entry.engine === item.engine
+				);
+				const unavailable = status !== undefined && !status.available;
+				return (
+					<ContextMenuItem
+						key={item.engine}
+						data-testid={`${item.engine}-shot-split-menu-item`}
+						disabled={unavailable}
+						onSelect={(event) => {
+							event.stopPropagation();
+							onPick(item.engine);
+						}}
+					>
+						<SplitSquareHorizontal />
+						<span className="flex flex-col">
+							<span>{locale === "zh" ? item.zh : item.en}</span>
+							{unavailable && (
+								<span className="max-w-72 truncate text-xs text-muted-foreground">
+									{status.message}
+								</span>
+							)}
+						</span>
+					</ContextMenuItem>
+				);
+			})}
+		</>
+	);
+}
 
 interface VideoClipMenuActions {
 	copy: MouseEventHandler<HTMLDivElement>;
@@ -56,8 +126,8 @@ interface VideoClipMenuActions {
 	split: MouseEventHandler<HTMLDivElement>;
 	keepLeft: MouseEventHandler<HTMLDivElement>;
 	keepRight: MouseEventHandler<HTMLDivElement>;
-	smartShotSplit: MouseEventHandler<HTMLDivElement>;
-	onnxShotSplit: () => void;
+	/** Split the clip by shots with the given engine ("auto" picks the best available). */
+	smartShotSplit: (engine: ShotSplitEngineChoice) => void;
 	openAiTextVideo: MouseEventHandler<HTMLDivElement>;
 	openAiImageVideo: MouseEventHandler<HTMLDivElement>;
 	openAiAudio: MouseEventHandler<HTMLDivElement>;
@@ -283,22 +353,28 @@ export function VideoClipContextMenu({
 				{t("timeline.menu.duplicate")}
 			</ContextMenuItem>
 
-			<ContextMenuItem onClick={actions.smartShotSplit}>
-				<SplitSquareHorizontal />
-				{t("timeline.menu.smartShotSplit")} (FFmpeg)
-			</ContextMenuItem>
 			<ContextMenuItem
-				data-testid="onnx-shot-split-menu-item"
+				data-testid="smart-shot-split-menu-item"
 				onSelect={(event) => {
 					event.stopPropagation();
-					actions.onnxShotSplit();
+					actions.smartShotSplit("auto");
 				}}
 			>
 				<SplitSquareHorizontal />
-				{locale === "zh"
-					? "本地神经网络分镜 (ONNX)"
-					: "Local neural shot split (ONNX)"}
+				{t("timeline.menu.smartShotSplit")}
 			</ContextMenuItem>
+			<ContextMenuSub>
+				<ContextMenuSubTrigger>
+					<SplitSquareHorizontal />
+					{locale === "zh" ? "指定镜头分割引擎" : "Shot split with engine"}
+				</ContextMenuSubTrigger>
+				<ContextMenuSubContent>
+					<ShotSplitEngineItems
+						locale={locale}
+						onPick={actions.smartShotSplit}
+					/>
+				</ContextMenuSubContent>
+			</ContextMenuSub>
 			<ContextMenuItem onClick={actions.openSmartSpeech}>
 				<AudioLines />
 				{t("timeline.menu.smartSpeech")}

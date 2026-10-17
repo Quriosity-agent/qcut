@@ -8,8 +8,17 @@
  */
 
 import type { EditorApiClient } from "../editor/editor-api-client.js";
+import {
+	timelineJobStatus,
+	timelineShotSplit,
+} from "./editor-handlers-shot-split.js";
+import { timelineSnap } from "./editor-handlers-beats.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+import {
+	elementColor,
+	elementFilter,
+} from "./editor-handlers-element-grade.js";
 import { jsonPending } from "../cli/json-output.js";
 import { timelineApplyManifest } from "./editor-timeline-apply.js";
 import {
@@ -91,6 +100,14 @@ export async function handleTimelineEditingCommand(
 		if (module === "element" && action === "patch") {
 			const projectId = await resolveProjectId(client, options);
 			return timelineUpdateElement(client, { ...options, projectId });
+		}
+		if (module === "element" && action === "color") {
+			const projectId = await resolveProjectId(client, options);
+			return elementColor(client, { ...options, projectId });
+		}
+		if (module === "element" && action === "filter") {
+			const projectId = await resolveProjectId(client, options);
+			return elementFilter(client, { ...options, projectId });
 		}
 		return { success: false, error: `Unknown module: ${module}` };
 	} catch (err) {
@@ -180,16 +197,31 @@ async function dispatchTrack(
 
 	if (action === "update") {
 		if (!opts.trackId) return { success: false, error: "Missing --track-id" };
+		if (opts.lock && opts.unlock) {
+			return { success: false, error: "Pass --lock or --unlock, not both" };
+		}
+		if (opts.hide && opts.unhide) {
+			return { success: false, error: "Pass --hide or --unhide, not both" };
+		}
+		const switches = {
+			...(opts.lock ? { locked: true } : opts.unlock ? { locked: false } : {}),
+			...(opts.hide ? { hidden: true } : opts.unhide ? { hidden: false } : {}),
+		};
 		if (
 			opts.index === undefined &&
 			!opts.trackName?.trim() &&
-			opts.color === undefined
+			opts.color === undefined &&
+			Object.keys(switches).length === 0
 		) {
-			return { success: false, error: "Pass --index, --name or --color" };
+			return {
+				success: false,
+				error:
+					"Pass --index, --name, --color, --lock/--unlock or --hide/--unhide",
+			};
 		}
 		const data = await client.patch(
 			`${basePath}/tracks/${encodeURIComponent(opts.trackId)}`,
-			{ index: opts.index, name: opts.trackName, ...colorBody }
+			{ index: opts.index, name: opts.trackName, ...colorBody, ...switches }
 		);
 		return { success: true, data };
 	}
@@ -252,6 +284,12 @@ async function dispatchTimeline(
 			return timelineBatchDelete(client, opts);
 		case "split":
 			return timelineSplit(client, opts);
+		case "snap":
+			return timelineSnap(client, opts);
+		case "shot-split":
+			return timelineShotSplit(client, opts);
+		case "job-status":
+			return timelineJobStatus(client, opts);
 		case "move":
 			return timelineMove(client, opts);
 		case "arrange":
@@ -307,7 +345,24 @@ async function timelineExport(
 		`/api/claude/timeline/${opts.projectId}`,
 		Object.keys(query).length > 0 ? query : undefined
 	);
-	return { success: true, data };
+	if (fmt && fmt !== "json") return { success: true, data };
+	// The buses and master ride along so the export can be applied back as a
+	// whole timeline (tracks already carry their own `audio`).
+	try {
+		const mix = await client.get<{ master: unknown; buses: unknown[] }>(
+			`/api/claude/mix/${encodeURIComponent(opts.projectId)}`
+		);
+		return {
+			success: true,
+			data: {
+				...(data as Record<string, unknown>),
+				mix: { master: mix.master, buses: mix.buses },
+			},
+		};
+	} catch {
+		// An editor without the mixer route still exports its timeline.
+		return { success: true, data };
+	}
 }
 
 /** Handle timeline import. */
@@ -930,8 +985,11 @@ async function editingDeleteRange(
 	if (opts.trackId) {
 		body.trackIds = opts.trackId.split(",").map((s) => s.trim());
 	}
-	if (opts.ripple) body.ripple = true;
+	// The editor ripples by default; only --no-ripple turns it off.
+	if (opts.noRipple) body.ripple = false;
+	else if (opts.ripple) body.ripple = true;
 	if (opts.crossTrackRipple) body.crossTrackRipple = true;
+	if (opts.keepAutomation) body.keepAutomation = true;
 
 	const data = await client.delete(
 		`/api/claude/timeline/${opts.projectId}/range`,

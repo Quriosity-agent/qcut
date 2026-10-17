@@ -91,6 +91,8 @@ async function dispatchAnalyze(
 			return analyzeModels(client);
 		case "scenes":
 			return analyzeScenes(client, opts);
+		case "engines":
+			return analyzeEngines(client);
 		case "frames":
 			return analyzeFrames(client, opts);
 		case "fillers":
@@ -140,13 +142,29 @@ async function analyzeScenes(
 	if (!opts.mediaId) return { success: false, error: "Missing --media-id" };
 
 	const body: Record<string, unknown> = { mediaId: opts.mediaId };
+	if (opts.engine) body.engine = opts.engine;
 	if (opts.threshold !== undefined) body.threshold = opts.threshold;
-	if (opts.model) body.model = opts.model;
+	// The AI pass only runs when asked for; a model alone did nothing before.
+	if (opts.aiAnalysis) {
+		body.aiAnalysis = true;
+		if (opts.model) body.model = opts.model;
+	} else if (opts.model) {
+		return {
+			success: false,
+			error: "--model only applies with --ai-analysis",
+		};
+	}
 
 	const data = await client.post(
 		`/api/claude/analyze/${opts.projectId}/scenes`,
 		body
 	);
+	return { success: true, data };
+}
+
+/** Which shot-detection engines this machine can run. */
+async function analyzeEngines(client: EditorApiClient): Promise<CLIResult> {
+	const data = await client.get("/api/claude/analyze/engines");
 	return { success: true, data };
 }
 

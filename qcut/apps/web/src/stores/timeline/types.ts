@@ -498,6 +498,8 @@ export interface TimelineStore {
 		trackIds?: string[];
 		ripple?: boolean;
 		crossTrackRipple?: boolean;
+		/** Leave level and pan automation where it is instead of rippling it. */
+		keepAutomation?: boolean;
 	}) => {
 		deletedElements: number;
 		splitElements: number;

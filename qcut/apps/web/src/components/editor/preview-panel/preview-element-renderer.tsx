@@ -74,6 +74,8 @@ import {
 } from "@/lib/transitions/clip-transition-presentation";
 import { buildMediaMaskStrokeCssFilter } from "@/lib/video/media-mask-stroke";
 import { CaptionsDisplay } from "@/components/captions/captions-display";
+import { captionStackOffset } from "@/lib/captions/caption-stacking";
+import { resolveSubtitleStyle } from "@/lib/captions/subtitle-style";
 import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import { TimelineStickerLayer } from "./timeline-sticker-layer";
 import { PlanarTrackingSelectionOverlay } from "./planar-tracking-selection-overlay";
@@ -608,10 +610,15 @@ export function PreviewElementRenderer({
 							whiteSpace: "pre-wrap",
 							overflowWrap: "anywhere",
 							overflow: "hidden",
+							// CSS centres the stroke on the glyph edge and paints it over the
+							// fill; the export strokes first at double width, then fills.
+							// paint-order + double width gives the same outline here.
 							WebkitTextStroke:
 								previewTextStyle.strokeWidth > 0
-									? `${previewTextStyle.strokeWidth}px ${colorWithOpacity(textStyle.strokeColor, textStyle.strokeOpacity)}`
+									? `${previewTextStyle.strokeWidth * 2}px ${colorWithOpacity(textStyle.strokeColor, textStyle.strokeOpacity)}`
 									: undefined,
+							paintOrder:
+								previewTextStyle.strokeWidth > 0 ? "stroke fill" : undefined,
 							textShadow: previewTextShadow,
 							...(fontClassName
 								? {}
@@ -700,6 +707,11 @@ export function PreviewElementRenderer({
 
 		if (element.type === "captions") {
 			const canvasScale = previewDimensions.width / canvasSize.width;
+			// Captions that share an edge while on screen stack away from it, the
+			// earliest-started one keeping the edge (caption-stacking.ts); the
+			// exports stack the same way.
+			const stackOffset = captionStackOffset({ tracks, element });
+			const stackAlign = resolveSubtitleStyle(element.style).position.align;
 			const segment = {
 				id: 0,
 				seek: element.startTime * 1000,
@@ -725,7 +737,14 @@ export function PreviewElementRenderer({
 				<div
 					key={elementKey}
 					className="absolute inset-0 pointer-events-none"
-					style={{ zIndex: index + 1 }}
+					style={{
+						zIndex: index + 1,
+						...(stackOffset > 0
+							? {
+									transform: `translateY(${(stackAlign === "top" ? 1 : -1) * stackOffset * canvasScale}px)`,
+								}
+							: {}),
+					}}
 				>
 					<CaptionsDisplay
 						segments={[segment]}

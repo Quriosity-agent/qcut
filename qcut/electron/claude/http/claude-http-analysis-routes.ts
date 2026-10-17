@@ -17,10 +17,17 @@ import {
 	listTranscribeJobs,
 	cancelTranscribeJob,
 } from "../handlers/claude-transcribe-handler.js";
-import { detectScenes } from "../handlers/claude-scene-handler.js";
+import {
+	detectScenes,
+	INVALID_SCENE_ENGINE_MESSAGE,
+	inspectSceneEngines,
+} from "../handlers/claude-scene-handler.js";
 import { analyzeFrames } from "../handlers/claude-vision-handler.js";
 import { analyzeFillers } from "../handlers/claude-filler-handler.js";
-import { analyzeBeats } from "../handlers/claude-beats-handler.js";
+import {
+	analyzeBeats,
+	analyzeFirstOnset,
+} from "../handlers/claude-beats-handler.js";
 import { executeBatchCuts } from "../handlers/claude-cuts-handler.js";
 import { executeDeleteRange } from "../handlers/claude-range-handler.js";
 import {
@@ -43,8 +50,12 @@ import { getMediaInfo } from "../handlers/claude-media-handler.js";
 import { saveTranscription } from "./claude-http-search-routes.js";
 import { getRequestCorrelationId } from "./claude-http-meta-routes.js";
 import type { BrowserWindow } from "electron";
-import type { WindowProxy } from "./claude-http-shared-routes.js";
-import { SCENE_DETECTION_ENGINES } from "../../types/claude-api.js";
+import type {
+	WindowAccessor,
+	WindowProxy,
+} from "./claude-http-shared-routes.js";
+import { assertProjectIsOpen } from "./claude-http-project-scope.js";
+import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import type {
 	AutoEditRequest,
 	AutoEditJob,
@@ -52,6 +63,11 @@ import type {
 	BatchCutResponse,
 	ClaudeRangeDeleteRequest,
 	ClaudeRangeDeleteResponse,
+	ClaudeBeatDetectionResult,
+	ClaudeBeatsMarkRequest,
+	ClaudeBeatsMarkResponse,
+	ClaudeSnapToBeatsRequest,
+	ClaudeSnapToBeatsResponse,
 } from "../../types/claude-api.js";
 
 const HANDLER_NAME = "AnalysisRoutes";
@@ -105,6 +121,8 @@ function normalizeWords(words: RawWord[]): Array<{
 
 interface AnalysisRoutesAccessor {
 	getWindow: () => WindowProxy;
+	/** Lets routes that edit the open project refuse another project's id. */
+	requestStateSnapshot?: WindowAccessor["requestStateSnapshot"];
 	executeBatchCuts?: (request: BatchCutRequest) => Promise<BatchCutResponse>;
 	executeDeleteRange?: (
 		request: ClaudeRangeDeleteRequest
@@ -116,6 +134,98 @@ interface AnalysisRoutesAccessor {
 	getAutoEditJobStatus?: (jobId: string) => Promise<AutoEditJob | null>;
 	listAutoEditJobs?: () => Promise<AutoEditJob[]>;
 	cancelAutoEditJob?: (jobId: string) => Promise<boolean>;
+	/** Store a clip's beats in the editor's beat store (and bookmark them). */
+	requestBeatsMark?: (
+		request: ClaudeBeatsMarkRequest,
+		correlationId?: string
+	) => Promise<ClaudeBeatsMarkResponse>;
+	/** Move clips onto marked beats through the editor's own move. */
+	requestSnapToBeats?: (
+		request: ClaudeSnapToBeatsRequest,
+		correlationId?: string
+	) => Promise<ClaudeSnapToBeatsResponse>;
+}
+
+const BOOKMARK_CHOICES = ["none", "downbeats", "all"] as const;
+
+/** The detection result a `beats mark` body carries, checked field by field. */
+function readBeatDetectionResult(value: unknown): ClaudeBeatDetectionResult {
+	if (typeof value !== "object" || value === null) {
+		throw new HttpError(400, "result must be a beat detection result object");
+	}
+	const result = value as Record<string, unknown>;
+	const number = (key: string): number => {
+		const candidate = result[key];
+		if (typeof candidate !== "number" || !Number.isFinite(candidate)) {
+			throw new HttpError(400, `result.${key} must be a number`);
+		}
+		return candidate;
+	};
+	if (!Array.isArray(result.beats)) {
+		throw new HttpError(400, "result.beats must be a list");
+	}
+	const beats = result.beats.map((beat, index) => {
+		if (typeof beat !== "object" || beat === null) {
+			throw new HttpError(400, `result.beats[${index}] must be an object`);
+		}
+		const entry = beat as Record<string, unknown>;
+		if (
+			typeof entry.timestamp !== "number" ||
+			!Number.isFinite(entry.timestamp) ||
+			entry.timestamp < 0
+		) {
+			throw new HttpError(
+				400,
+				`result.beats[${index}].timestamp must be seconds, 0 or more`
+			);
+		}
+		return {
+			timestamp: entry.timestamp,
+			strength:
+				typeof entry.strength === "number" && Number.isFinite(entry.strength)
+					? entry.strength
+					: 1,
+			index,
+			isDownbeat: entry.isDownbeat === true,
+		};
+	});
+	return {
+		bpm: number("bpm"),
+		confidence: number("confidence"),
+		duration: number("duration"),
+		beats,
+		downbeats: beats
+			.filter((beat) => beat.isDownbeat)
+			.map((beat) => beat.timestamp),
+	};
+}
+
+/** `edgeOffsets` of a snap: element id → seconds into the clip, 0 or more. */
+function readEdgeOffsets(value: unknown): Record<string, number> | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		throw new HttpError(400, "edgeOffsets must map element ids to seconds");
+	}
+	for (const [id, offset] of Object.entries(value)) {
+		if (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0) {
+			throw new HttpError(
+				400,
+				`edgeOffsets.${id} must be seconds into the clip, 0 or more`
+			);
+		}
+	}
+	return value as Record<string, number>;
+}
+
+function readElementIds(value: unknown): string[] {
+	if (
+		!Array.isArray(value) ||
+		value.length === 0 ||
+		value.some((id) => typeof id !== "string" || !id.trim())
+	) {
+		throw new HttpError(400, "elementIds must be a non-empty list of ids");
+	}
+	return value.map((id: string) => id.trim());
 }
 
 /**
@@ -277,6 +387,7 @@ export function registerAnalysisRoutes(
 
 	// Load pre-existing transcription data into the Smart Speech panel
 	router.post("/api/claude/transcribe/:projectId/load-speech", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.words || !Array.isArray(req.body.words)) {
 			throw new HttpError(400, "Missing 'words' array in request body");
 		}
@@ -328,6 +439,7 @@ export function registerAnalysisRoutes(
 	router.post(
 		"/api/claude/transcribe/:projectId/transcribe-and-load",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body?.mediaId && !req.body?.source) {
 				throw new HttpError(
 					400,
@@ -439,18 +551,20 @@ export function registerAnalysisRoutes(
 	// ==========================================================================
 	// Scene Detection routes (Stage 2)
 	// ==========================================================================
+	/** Which scene engines can run here, and the one `auto` would pick. */
+	router.get("/api/claude/analyze/engines", async () => inspectSceneEngines());
+
 	router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
 		if (!req.body?.mediaId) {
 			throw new HttpError(400, "Missing 'mediaId' in request body");
 		}
 		if (
 			req.body.engine !== undefined &&
-			!SCENE_DETECTION_ENGINES.some((engine) => engine === req.body.engine)
+			!SCENE_DETECTION_ENGINE_CHOICES.some(
+				(engine) => engine === req.body.engine
+			)
 		) {
-			throw new HttpError(
-				400,
-				"Invalid scene detection engine; expected 'ffmpeg' or 'onnx'"
-			);
+			throw new HttpError(400, INVALID_SCENE_ENGINE_MESSAGE);
 		}
 		if (
 			req.body.aiAnalysis !== undefined &&
@@ -458,7 +572,12 @@ export function registerAnalysisRoutes(
 		) {
 			throw new HttpError(400, "aiAnalysis must be a boolean");
 		}
-		if (req.body.engine === "onnx" && req.body.threshold !== undefined) {
+		if (
+			req.body.threshold !== undefined &&
+			req.body.engine !== undefined &&
+			req.body.engine !== "ffmpeg" &&
+			req.body.engine !== "auto"
+		) {
 			throw new HttpError(
 				400,
 				"threshold is only supported by the FFmpeg scene engine"
@@ -571,6 +690,91 @@ export function registerAnalysisRoutes(
 	});
 
 	// ==========================================================================
+	// Beats on the timeline: mark a clip's beats in the editor, snap clips to them
+	// ==========================================================================
+	router.post("/api/claude/timeline/:projectId/beats/mark", async (req) => {
+		const elementId =
+			typeof req.body?.elementId === "string" ? req.body.elementId.trim() : "";
+		if (!elementId) {
+			throw new HttpError(400, "Missing 'elementId' in request body");
+		}
+		const result = readBeatDetectionResult(req.body?.result);
+		const bookmarks = req.body?.bookmarks ?? "none";
+		if (!BOOKMARK_CHOICES.some((choice) => choice === bookmarks)) {
+			throw new HttpError(
+				400,
+				`bookmarks must be one of ${BOOKMARK_CHOICES.join(", ")}`
+			);
+		}
+		if (!accessor.requestBeatsMark) {
+			throw new HttpError(503, "Beat marking is not available in this editor");
+		}
+		// Input first (400), then the project (409), then the editor.
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
+		return accessor.requestBeatsMark(
+			{
+				projectId: req.params.projectId,
+				elementId,
+				result,
+				bookmarks: bookmarks as ClaudeBeatsMarkRequest["bookmarks"],
+			},
+			getRequestCorrelationId({ req })
+		);
+	});
+
+	router.post("/api/claude/timeline/:projectId/snap-to-beats", async (req) => {
+		const elementIds = readElementIds(req.body?.elementIds);
+		const edge = req.body?.edge ?? "start";
+		if (edge !== "start" && edge !== "end" && edge !== "onset") {
+			throw new HttpError(400, "edge must be start, end or onset");
+		}
+		const frameAlign = req.body?.frameAlign ?? "visual";
+		if (
+			frameAlign !== "visual" &&
+			frameAlign !== "all" &&
+			frameAlign !== "none"
+		) {
+			throw new HttpError(400, "frameAlign must be visual, all or none");
+		}
+		const edgeOffsets = readEdgeOffsets(req.body?.edgeOffsets);
+		const maxDistance = req.body?.maxDistance;
+		if (
+			maxDistance !== undefined &&
+			(typeof maxDistance !== "number" ||
+				!Number.isFinite(maxDistance) ||
+				maxDistance <= 0)
+		) {
+			throw new HttpError(
+				400,
+				"maxDistance must be a positive number of seconds"
+			);
+		}
+		if (!accessor.requestSnapToBeats) {
+			throw new HttpError(
+				503,
+				"Snapping to beats is not available in this editor"
+			);
+		}
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
+		return accessor.requestSnapToBeats(
+			{
+				projectId: req.params.projectId,
+				elementIds,
+				...(typeof req.body?.beatsElementId === "string"
+					? { beatsElementId: req.body.beatsElementId.trim() }
+					: {}),
+				edge,
+				frameAlign,
+				...(edgeOffsets ? { edgeOffsets } : {}),
+				...(maxDistance !== undefined ? { maxDistance } : {}),
+				downbeatsOnly: req.body?.downbeatsOnly === true,
+				dryRun: req.body?.dryRun === true,
+			},
+			getRequestCorrelationId({ req })
+		);
+	});
+
+	// ==========================================================================
 	// Beat Detection routes (Stage 2)
 	// ==========================================================================
 	router.post("/api/claude/analyze/:projectId/beats", async (req) => {
@@ -599,10 +803,39 @@ export function registerAnalysisRoutes(
 		}
 	});
 
+	router.post("/api/claude/analyze/:projectId/onset", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		const threshold = req.body?.threshold;
+		if (
+			threshold !== undefined &&
+			(typeof threshold !== "number" ||
+				!Number.isFinite(threshold) ||
+				threshold <= 0 ||
+				threshold > 1)
+		) {
+			throw new HttpError(400, "threshold must be a number between 0 and 1");
+		}
+		try {
+			return await analyzeFirstOnset(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				...(threshold !== undefined ? { threshold } : {}),
+			});
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Onset detection failed"
+			);
+		}
+	});
+
 	// ==========================================================================
 	// Batch Cut-List routes (Stage 3)
 	// ==========================================================================
 	router.post("/api/claude/timeline/:projectId/cuts", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.elementId || !Array.isArray(req.body?.cuts)) {
 			throw new HttpError(
 				400,
@@ -610,6 +843,7 @@ export function registerAnalysisRoutes(
 			);
 		}
 		const batchCutRequest: BatchCutRequest = {
+			projectId: req.params.projectId,
 			elementId: req.body.elementId,
 			cuts: req.body.cuts,
 			ripple: req.body.ripple,
@@ -638,6 +872,7 @@ export function registerAnalysisRoutes(
 	// Range Delete routes (Stage 3)
 	// ==========================================================================
 	router.delete("/api/claude/timeline/:projectId/range", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (
 			typeof req.body?.startTime !== "number" ||
 			typeof req.body?.endTime !== "number"
@@ -653,6 +888,7 @@ export function registerAnalysisRoutes(
 			trackIds: req.body.trackIds,
 			ripple: req.body.ripple,
 			crossTrackRipple: req.body.crossTrackRipple,
+			keepAutomation: req.body.keepAutomation,
 		};
 		const deleteRangePromise = accessor.executeDeleteRange
 			? accessor.executeDeleteRange(deleteRangeRequest)
@@ -678,6 +914,7 @@ export function registerAnalysisRoutes(
 	// Auto-Edit routes (Stage 3)
 	// ==========================================================================
 	router.post("/api/claude/timeline/:projectId/auto-edit", async (req) => {
+		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!req.body?.elementId && !req.body?.mediaId) {
 			throw new HttpError(
 				400,
@@ -797,6 +1034,7 @@ export function registerAnalysisRoutes(
 	router.post(
 		"/api/claude/timeline/:projectId/auto-edit/start",
 		async (req) => {
+			await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 			if (!req.body?.elementId && !req.body?.mediaId) {
 				throw new HttpError(
 					400,

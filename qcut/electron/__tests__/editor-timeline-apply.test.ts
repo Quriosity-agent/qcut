@@ -363,7 +363,8 @@ describe("editor timeline apply", () => {
 		expect(result.success).toBe(true);
 		expect(patch).toHaveBeenCalledWith(
 			"/api/claude/timeline/project-1/elements/batch",
-			{ updates: [{ elementId: "video-1", keyframes }] }
+			{ updates: [{ elementId: "video-1", keyframes }] },
+			{ timeout: expect.any(Number) }
 		);
 	});
 
@@ -394,7 +395,8 @@ describe("editor timeline apply", () => {
 						color: "#ffcc00",
 					}),
 				],
-			}
+			},
+			{ timeout: expect.any(Number) }
 		);
 		expect(post).toHaveBeenCalledWith(
 			"/api/claude/transaction/transaction-1/commit",
@@ -754,7 +756,8 @@ describe("editor timeline apply", () => {
 			"/api/claude/timeline/project-1/elements/batch",
 			{
 				elements: [expect.objectContaining({ sourceId: "imported-media" })],
-			}
+			},
+			{ timeout: expect.any(Number) }
 		);
 	});
 
@@ -810,7 +813,8 @@ describe("editor timeline apply", () => {
 						expect.objectContaining({ sourceId: "existing-yarra" }),
 						expect.any(Object),
 					],
-				}
+				},
+				{ timeout: expect.any(Number) }
 			);
 		} finally {
 			await fs.rm(root, { recursive: true, force: true });

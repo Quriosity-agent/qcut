@@ -503,6 +503,7 @@ export async function autoEdit(
 			}));
 
 			result = await executeBatchCuts(win, {
+				projectId,
 				elementId: request.elementId,
 				cuts: cutIntervals,
 				ripple: true,

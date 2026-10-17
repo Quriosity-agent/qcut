@@ -101,8 +101,10 @@ function audioCrossfade({
 
 describe("clip transitions", () => {
 	it("recognizes every persisted transition engine", () => {
-		expect(CLIP_TRANSITION_TYPES).toHaveLength(25);
+		expect(CLIP_TRANSITION_TYPES).toHaveLength(26);
 		expect(CLIP_TRANSITION_TYPES).toContain("zoom-in-blur");
+		// GL recipes store this type; reconcile dropped them when it was unlisted.
+		expect(CLIP_TRANSITION_TYPES).toContain("shader");
 		for (const type of CLIP_TRANSITION_TYPES) {
 			expect(isClipTransitionType({ value: type })).toBe(true);
 		}
@@ -250,6 +252,24 @@ describe("clip transitions", () => {
 				}),
 			})
 		).toBeNull();
+	});
+
+	it("keeps GL shader transitions through reconcile", () => {
+		const shader = {
+			...transition({ id: "ab", fromElementId: "a", toElementId: "b" }),
+			presetId: "gl-overexposure",
+			type: "shader" as const,
+			easing: "linear" as const,
+		};
+		const track = mediaTrack({
+			elements: [
+				mediaElement({ id: "a", startTime: 0, duration: 3 }),
+				mediaElement({ id: "b", startTime: 3, duration: 3 }),
+			],
+			transitions: [shader],
+		});
+
+		expect(reconcileTrackTransitions({ track }).transitions).toEqual([shader]);
 	});
 
 	it("removes stale transitions after an edit breaks the seam", () => {

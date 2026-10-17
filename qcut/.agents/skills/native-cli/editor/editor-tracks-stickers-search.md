@@ -18,7 +18,7 @@ Confirm flags with `qcut editor <area> <action> --help --json`.
 | --- | --- | --- | --- |
 | `editor track list` | — | `--project-id` | List timeline tracks in visual order (with each track's `colorLabel`) |
 | `editor track create` | `--type` | `--project-id`, `--name`, `--index`, `--color` | Create a track (`media`, `text`, `audio`, `sticker`, …) |
-| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color` | Rename, move or colour a track |
+| `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color`, `--lock`/`--unlock`, `--hide`/`--unhide` | Rename, move, colour, lock or hide a track |
 | `editor track move` | `--track-id --index` | `--project-id` | Move a track to an exact visual index |
 | `editor track delete` | `--track-id` | `--project-id`, `--force`, `--ripple` | Delete a track; `--force` for non-empty tracks |
 
@@ -30,8 +30,14 @@ qcut editor track list --project-id <id> --json
 qcut editor track create --type text --name "Captions" --project-id <id> --json
 qcut editor track create --type audio --name "SFX · Guns" --color red --project-id <id> --json
 qcut editor track update --track-id <track-id> --color none --project-id <id> --json
+qcut editor track update --track-id <track-id> --lock --project-id <id> --json
 qcut editor track delete --track-id <track-id> --force --project-id <id> --json
 ```
+
+`--lock` makes a track refuse every edit (`--unlock` reverses it); `--hide`
+takes it out of the preview and the export (`--unhide` brings it back). The
+HTTP body uses `locked`, `hidden` and `muted` booleans. `track list` and
+`timeline export` report all three.
 
 ### Track colour
 
@@ -46,16 +52,71 @@ strip, and the track's right-click menu sets it too. `timeline export` and
 
 | Command | Required | Key options | What it does |
 | --- | --- | --- | --- |
-| `editor element patch` | `--element-id --set` | `--project-id` | Patch any timeline element fields (`--set '{"opacity":0.5}'` or `--set @patch.json`) |
+| `editor element patch` | `--element-id --set` | `--project-id` | Patch timeline element fields (`--set '{"colorLabel":"teal"}'` or `--set @patch.json`) |
+| `editor element color` | one of `--element-id`, `--element-ids`, `--track-id` + a control | `--exposure --brightness --contrast --highlights --shadows --whites --blacks --temperature --tint --saturation --vibrance --fade --vignette --sharpness --grain`, `--set`, `--reset` | Grade clips with the colour panel's basic controls, merged into each clip's grade |
+| `editor element filter` | one of `--element-id`, `--element-ids`, `--track-id` + `--resource-id` or `--clear` | `--intensity`, `--append` | Apply catalogue filters by resource id (the filter panel's LUT path), one undo step per call |
 | `editor timeline apply` | `--manifest` | `--project-id`, `--replace`, `--atomic`, `--verify` | Apply a complete timeline manifest atomically |
 
 ```bash
-qcut editor element patch --element-id <id> --set '{"name":"Intro"}' --project-id <id> --json
+qcut editor element patch --element-id <id> --set '{"color":{"basic":{"contrast":20,"saturation":-35}}}' --project-id <id> --json
+qcut editor element color --track-id <id> --contrast 15 --saturation -30 --temperature -20 --project-id <id> --json
+qcut editor element filter --element-id <id> --resource-id 7596691154008132915 --intensity 70 --project-id <id> --json
 qcut editor timeline apply --manifest @timeline.json --replace --atomic --verify --project-id <id> --json
 ```
 
+`element patch` on a clip takes `name`, timing (`startTime`, `duration`, `endTime`,
+`trimStart`, `trimEnd`), `colorLabel`, speed fields, `style.volume`, `audio`,
+`filterStack`, `portraitAdjustments`, `enhancements`, `keyframes`, and the
+grade: `color` (a partial `MediaColorSettings`, merged into the clip's current
+grade — `color.basic` holds the controls above) and `adjustments` (the eight
+legacy basic fields). A patch made only of fields the element cannot use is an
+error that names them; a patch that mixes supported and unsupported fields
+applies the former and returns the latter as `ignoredFields`. `timeline export`
+shows each clip's `color`, `adjustments`, resolved `colorSettings` and
+`filterStack`, so a grade can be read back.
+
+`element filter` resolves ids from `filter-lab catalog` (Jianying filters)
+first and `filter-lab catalog-independent` (QCut's own) second; the result
+lists each effect's `resourceId`, `version`, `implementation`, `fidelity` and
+any `warnings` (a safe-passthrough resolution is reported, not applied).
+`--append` keeps the clip's current effects; `--clear` removes them all.
+
 `timeline apply --replace` overwrites the whole timeline. Export the current
 timeline first (`editor timeline export`) so the change can be reverted.
+
+### What a manifest carries, and what comes back from `timeline export`
+
+`timeline export` writes everything `timeline apply` reads, so an export can be
+applied back (`--replace` into the same project restores a backup):
+
+- **Tracks** carry `type`, `name`, `colorLabel`, `muted`, `hidden`, `locked`
+  and, for audio and media tracks, `audio` (level, pan, bus, solo, ducking,
+  effects, automation; `autoCrossfade` is reported but read-only). Colour,
+  mute and visibility are set as the track is made; a lock is applied after
+  its clips are in, so the adds are not refused.
+- **Clips** carry their `name`, placement (`x`, `y`, `rotation`, `scaleX`,
+  `scaleY`, `opacity`, `fitMode`), timing, speed, `audio` (including empty
+  `lyrics.words`), `color`/`adjustments`, `filterStack`, `keyframes`,
+  `enhancements` and `portraitAdjustments`; a batch add stores all of them.
+- **`mix`** holds the project's `buses` and `master` as `editor mix export`
+  shows them. Buses are matched by `id` (created when missing, with the id
+  kept), the master is patched (its name is left alone), and with `--replace`
+  buses the manifest does not list are removed. Ducking `sourceTrackIds` may
+  name track aliases or old ids; they are mapped to the tracks the apply made.
+  The mix is outside the timeline transaction, so a failed apply puts it back
+  by hand (best effort) after the timeline rollback.
+- **Track order.** Array order sets the order when the manifest is the whole
+  timeline (`--replace`, or a project that still has only its empty main
+  track). Merging into a timeline that already has tracks keeps them where
+  they are; a track moves only when it names an `index`, so a manifest
+  applied in parts does not shuffle the rest. The result reports
+  `positionalTracks`.
+- **Verification** compares every field the manifest gave (track switches,
+  clip fields, the mix) with what the editor read back; a mismatch rolls the
+  timeline back. Numbers agree within 0.001; objects may gain editor defaults.
+- **Size.** Elements and updates go in batches of 50 with a deadline that
+  grows with the batch (the editor stores one element at a time), so a
+  130-clip manifest applies in one command; nothing needs to be split by hand.
 
 ## Stickers
 
@@ -111,7 +172,9 @@ Video export is `editor export start`; see
 | `editor project reveal` | — | `--project-id` | Reveal the project folder in the OS file manager |
 | `editor transition-lab list` | — | — | List distributable QCut shader transition recipes |
 | `editor transition-lab apply` | `--preset --track-id --from-element-id --to-element-id` | `--project-id`, `--duration` | Apply a recipe between adjacent clips |
-| `editor analyze beats` | `--project-id --media-id` | `--threshold` | Detect audio beats and BPM |
+| `editor analyze beats` | `--project-id --media-id` | — | Detect beats and BPM; the tempo comes from the onset periodicity (`--threshold` is accepted but changes nothing) |
+| `editor beats mark` | `--project-id --element-id` | `--media-id`, `--bookmarks none\|downbeats\|all` | Detect a clip's beats and mark them in the editor: the beat panel and the ruler's beat lines read the same store; bookmarks persist |
+| `editor timeline snap` | `--project-id --to beats --element-ids` | `--beats-from`, `--edge start\|end\|onset`, `--frame-align visual\|all\|none`, `--onset-threshold`, `--max-distance`, `--downbeats-only`, `--dry-run` | Move clips onto the nearest marked beat (one undo step); visual clips land on a whole frame, `--edge onset` puts a clip's first attack on the beat; reports each move |
 
 ## Script Director (Moyin) and novel parsing
 

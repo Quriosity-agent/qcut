@@ -116,6 +116,40 @@ class StorageService {
 		return adapters;
 	}
 
+	/**
+	 * Copies every media item of one project — metadata and stored bytes —
+	 * under another project id, keeping the ids, so a duplicated timeline
+	 * still resolves its clips. Returns how many items were copied.
+	 */
+	async copyProjectMedia({
+		sourceProjectId,
+		targetProjectId,
+		rewriteLocalPath = (localPath) => localPath,
+	}: {
+		sourceProjectId: string;
+		targetProjectId: string;
+		/** Maps a stored file path into the target project's folder. */
+		rewriteLocalPath?: (localPath: string) => string;
+	}): Promise<number> {
+		const source = this.getProjectMediaAdapters(sourceProjectId);
+		const target = this.getProjectMediaAdapters(targetProjectId);
+		let copied = 0;
+		for (const id of await source.mediaMetadataAdapter.list()) {
+			const metadata = await source.mediaMetadataAdapter.get(id);
+			if (!metadata) continue;
+			await target.mediaMetadataAdapter.set(id, {
+				...metadata,
+				...(metadata.localPath
+					? { localPath: rewriteLocalPath(metadata.localPath) }
+					: {}),
+			});
+			const file = await source.mediaFilesAdapter.get(id);
+			if (file) await target.mediaFilesAdapter.set(id, file);
+			copied += 1;
+		}
+		return copied;
+	}
+
 	private clearProjectMediaAdapters(projectId: string) {
 		if (this.mediaAdapterCache.delete(projectId)) {
 			debugLog("[StorageService] Cleared cached media adapters", {

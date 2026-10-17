@@ -180,6 +180,10 @@ export interface ClaudeTrackOperationRequest {
 	 * color-clips: the colour to give the clips (null clears theirs).
 	 */
 	colorLabel?: string | null;
+	/** create/update: the track's mute, visibility and lock switches. */
+	muted?: boolean;
+	hidden?: boolean;
+	locked?: boolean;
 	/** color-clips: the clips to colour; omit to colour every clip on trackId. */
 	elementIds?: string[];
 }
@@ -197,6 +201,9 @@ export interface ClaudeTrackOperationResponse {
 		elementCount: number;
 		isMain?: boolean;
 		colorLabel?: string;
+		muted?: boolean;
+		hidden?: boolean;
+		locked?: boolean;
 	}>;
 	/** color-clips: how many clips changed colour. */
 	updatedCount?: number;
@@ -579,6 +586,177 @@ export interface ClaudeSplitResponse {
 	secondElementId: string | null;
 }
 
+/** Split one clip, or every video clip on a track, by its shots. */
+export interface ClaudeShotSplitRequest {
+	projectId: string;
+	elementId?: string;
+	trackId?: string;
+	/** Default `auto`: jianying, then onnx, then ffmpeg. */
+	engine?: SceneDetectionEngineChoice;
+	/** Cut points in source seconds; given, nothing is detected. */
+	cuts?: number[];
+	/** FFmpeg scene threshold; only that engine reads it. */
+	threshold?: number;
+	/** Cuts that would leave a shorter shot are set aside. */
+	minShotSeconds?: number;
+	/** Plan only; the timeline is left alone. */
+	dryRun?: boolean;
+}
+
+/** One detected beat, in the clip's source seconds. */
+export interface ClaudeBeat {
+	timestamp: number;
+	strength: number;
+	index: number;
+	isDownbeat: boolean;
+}
+
+/** What the beat engine found for one media file (source seconds). */
+export interface ClaudeBeatDetectionResult {
+	bpm: number;
+	confidence: number;
+	beats: ClaudeBeat[];
+	downbeats: number[];
+	duration: number;
+}
+
+/** Where a media file's sound first attacks (source seconds); `editor timeline snap --edge onset` puts it on the beat. */
+export interface ClaudeFirstOnsetResult {
+	mediaId: string;
+	/** Seconds from the file's start, or null when nothing reaches the threshold. */
+	time: number | null;
+	/** That attack's strength relative to the file's loudest onset (0–1). */
+	strength: number;
+	threshold: number;
+	duration: number;
+}
+
+/**
+ * `editor beats mark`: hand a clip's detection result to the editor, which
+ * keeps it in the same beat store the beat panel and ruler markers read, and
+ * optionally writes bookmarks at the beats' timeline times.
+ */
+export interface ClaudeBeatsMarkRequest {
+	projectId: string;
+	elementId: string;
+	result: ClaudeBeatDetectionResult;
+	/** Bookmarks to add on the ruler: none (default), the downbeats, or every beat. */
+	bookmarks?: "none" | "downbeats" | "all";
+}
+
+export interface ClaudeTimelineBeat {
+	sourceTime: number;
+	/** Where the beat lands on the timeline, or null when the clip's trims cut it. */
+	timelineTime: number | null;
+	isDownbeat: boolean;
+	strength: number;
+}
+
+export interface ClaudeBeatsMarkResponse {
+	projectId: string;
+	elementId: string;
+	trackId: string;
+	bpm: number;
+	confidence: number;
+	beats: ClaudeTimelineBeat[];
+	/** Beats that fall inside the clip as placed on the timeline. */
+	onTimeline: number;
+	bookmarksAdded: number;
+}
+
+/** `editor timeline snap --to beats`: move clips onto the nearest marked beat. */
+/** Which point of a clip lands on the beat. */
+export type ClaudeBeatSnapEdge = "start" | "end" | "onset";
+/** Which clips are rounded onto a whole frame once snapped. */
+export type ClaudeBeatSnapFrameAlign = "visual" | "all" | "none";
+
+export interface ClaudeSnapToBeatsRequest {
+	projectId: string;
+	elementIds: string[];
+	/** The clip whose marked beats are the grid; default: the one clip that has beats. */
+	beatsElementId?: string;
+	/**
+	 * Which point lands on the beat: the clip's start (default), its end, or
+	 * its first onset (`edgeOffsets` says where that is).
+	 */
+	edge?: ClaudeBeatSnapEdge;
+	/**
+	 * For edge "onset": seconds from each clip's start on the timeline to the
+	 * attack that should land on the beat; a clip without one stays.
+	 */
+	edgeOffsets?: Record<string, number>;
+	/**
+	 * Which clips end up on a whole frame of the project's fps: the visual
+	 * ones (default; video, image, text, captions, stickers), all, or none.
+	 * Sound may sit between frames; anything seen has to start on one.
+	 */
+	frameAlign?: ClaudeBeatSnapFrameAlign;
+	/** Clips farther than this (seconds) from any beat stay put (default 0.5). */
+	maxDistance?: number;
+	downbeatsOnly?: boolean;
+	dryRun?: boolean;
+}
+
+export interface ClaudeSnapToBeatsResult {
+	elementId: string;
+	trackId: string;
+	from: number;
+	to: number;
+	/** Seconds moved (signed); 0 when the clip stayed. */
+	moved: number;
+	/** The beat the edge snapped to, or null when none was near enough. */
+	beat: number | null;
+	/** For edge "onset": the offset from the clip's start that was put on the beat. */
+	offset?: number;
+	/** Whether `to` was rounded onto the project's frame grid. */
+	frameAligned?: boolean;
+	applied: boolean;
+	reason?: string;
+}
+
+export interface ClaudeSnapToBeatsResponse {
+	projectId: string;
+	beatsElementId: string;
+	edge: ClaudeBeatSnapEdge;
+	frameAlign: ClaudeBeatSnapFrameAlign;
+	dryRun: boolean;
+	results: ClaudeSnapToBeatsResult[];
+	moved: number;
+}
+
+export interface ClaudeShotSplitClipResult {
+	projectId: string;
+	trackId: string;
+	elementId: string;
+	elementName: string;
+	/** The engine asked for, or "manual" when the cut points were given. */
+	requestedEngine: SceneDetectionEngineChoice | "manual";
+	/** The engine that found the boundaries, or "manual" for given cuts. */
+	engine?: SceneDetectionEngine | "manual";
+	route?: string;
+	fallbacks?: SceneEngineFallback[];
+	dryRun: boolean;
+	/** Frame-snapped: given seconds are rounded to the project's frame grid. */
+	cuts: Array<{ sourceTime: number; timelineTime: number }>;
+	skipped: Array<{
+		sourceTime?: number;
+		timelineTime?: number;
+		reason: string;
+	}>;
+	/** Why there is nothing to cut, when `cuts` and `skipped` are both empty. */
+	message?: string;
+	/** Options the engine that ran could not honour, e.g. a threshold for a model engine. */
+	warnings?: string[];
+	createdElementIds: string[];
+	elementIds: string[];
+}
+
+export interface ClaudeShotSplitResponse {
+	results: ClaudeShotSplitClipResult[];
+	/** Clips that could not be split, with the reason. */
+	failed: Array<{ elementId: string; elementName?: string; error: string }>;
+}
+
 export interface ClaudeMoveRequest {
 	toTrackId: string;
 	newStartTime?: number;
@@ -676,6 +854,8 @@ export interface ClaudeBatchUpdateItemRequest
 }
 
 export interface ClaudeBatchUpdateItemResult {
+	/** Fields the element type could not use; the rest were applied. */
+	ignoredFields?: string[];
 	index: number;
 	success: boolean;
 	error?: string;
@@ -714,6 +894,12 @@ export interface ClaudeRangeDeleteRequest {
 	trackIds?: string[];
 	ripple?: boolean;
 	crossTrackRipple?: boolean;
+	/**
+	 * Leave level and pan automation where it is. By default a ripple moves a
+	 * track's curves with its clips, and bus and master curves when every
+	 * unlocked track moved.
+	 */
+	keepAutomation?: boolean;
 }
 
 export interface ClaudeRangeDeleteResponse {
@@ -732,6 +918,8 @@ export interface CutInterval {
 }
 
 export interface BatchCutRequest {
+	/** The project the cuts were planned for; the editor refuses them for any other. */
+	projectId: string;
 	elementId: string;
 	cuts: CutInterval[];
 	ripple?: boolean; // default true
@@ -747,6 +935,8 @@ export interface BatchCutResponse {
 		duration: number;
 	}>;
 	totalRemovedDuration: number;
+	/** Why the editor applied nothing; absent when the cuts went through. */
+	error?: string;
 }
 
 // ============================================================================
@@ -1096,19 +1286,56 @@ export interface SceneBoundary {
 	transitionType?: "cut" | "dissolve" | "fade" | "unknown";
 }
 
-export const SCENE_DETECTION_ENGINES = ["ffmpeg", "onnx"] as const;
+/** Engines that run a detection, most accurate first. */
+export const SCENE_DETECTION_ENGINES = ["jianying", "onnx", "ffmpeg"] as const;
+export type SceneDetectionEngine = (typeof SCENE_DETECTION_ENGINES)[number];
+/** What a caller may ask for: an engine, or `auto` for the first available one. */
+export const SCENE_DETECTION_ENGINE_CHOICES = [
+	"auto",
+	...SCENE_DETECTION_ENGINES,
+] as const;
+export type SceneDetectionEngineChoice =
+	(typeof SCENE_DETECTION_ENGINE_CHOICES)[number];
 
 export interface SceneDetectionRequest {
 	mediaId: string;
-	engine?: (typeof SCENE_DETECTION_ENGINES)[number];
-	/** FFmpeg scene-filter threshold; the ONNX model uses its verified profile. */
+	/** Default `auto`: the native Jianying bridge, then ONNX, then FFmpeg. */
+	engine?: SceneDetectionEngineChoice;
+	/** FFmpeg scene-filter threshold; the models use their verified profiles. */
 	threshold?: number;
 	aiAnalysis?: boolean;
 	model?: string;
 }
 
+/** Why `auto` passed over an engine. */
+export interface SceneEngineFallback {
+	engine: SceneDetectionEngine;
+	reason: string;
+}
+
+export interface SceneEngineAvailability {
+	engine: SceneDetectionEngine;
+	available: boolean;
+	/** What the engine says about itself: ready, or what is missing. */
+	message: string;
+	route?: string;
+}
+
+export interface SceneEnginesStatus {
+	engines: SceneEngineAvailability[];
+	/** The engine `auto` would run now, or null when none is available. */
+	preferred: SceneDetectionEngine | null;
+}
+
 export interface SceneDetectionResult {
-	engine: (typeof SCENE_DETECTION_ENGINES)[number];
+	/** The engine that ran. */
+	engine: SceneDetectionEngine;
+	/** What was asked for, when it differs from the engine that ran. */
+	requestedEngine?: SceneDetectionEngineChoice;
+	/** Engines `auto` skipped on the way to the one that ran. */
+	fallbacks?: SceneEngineFallback[];
+	/** Options the engine that ran could not honour, e.g. a threshold for a model engine. */
+	warnings?: string[];
 	route?: string;
 	durationSeconds?: number;
 	scenes: SceneBoundary[];

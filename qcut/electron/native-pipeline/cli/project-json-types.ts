@@ -48,6 +48,11 @@ export interface ProjectJSON {
 
 	/** API key availability (never exposes actual keys) */
 	apiKeys: ApiKeyStatus;
+
+	/** `export-state` only: the open editor's timeline snapshot. */
+	timeline?: unknown;
+	/** `export-state` only: why `timeline` is missing (project not open). */
+	timelineUnavailable?: string;
 }
 
 export interface ProjectSettings {

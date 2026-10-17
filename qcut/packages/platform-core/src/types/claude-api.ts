@@ -75,6 +75,38 @@ export interface PlatformClaudeTimelineAPI {
 	onRemoveElement(callback: (id: string) => void): void;
 	onBatchDeleteElements(callback: (data: unknown) => void): void;
 	sendBatchDeleteElementsResponse(requestId: string, result: unknown): void;
+	/** Split clips by their shots (one clip or a track) and answer with the result. */
+	onShotSplit(
+		callback: (data: {
+			requestId: string;
+			correlationId?: string;
+			request: Record<string, unknown>;
+		}) => void
+	): void;
+	sendShotSplitResponse(
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	): void;
+	onBeatsMark: (
+		callback: (data: { requestId: string; request: unknown }) => void
+	) => void;
+	sendBeatsMarkResponse: (
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	) => void;
+	onSnapToBeats: (
+		callback: (data: { requestId: string; request: unknown }) => void
+	) => void;
+	sendSnapToBeatsResponse: (
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	) => void;
 	onSplitElement(callback: (data: unknown) => void): void;
 	sendSplitResponse(requestId: string, result: unknown): void;
 	onExecuteCuts(callback: (data: unknown) => void): void;
@@ -230,13 +262,17 @@ export interface PlatformClaudeAnalyzeAPI {
 		projectId: string,
 		options: {
 			mediaId: string;
-			engine?: "ffmpeg" | "onnx";
+			/** `auto` (default) tries jianying, then onnx, then ffmpeg. */
+			engine?: PlatformSceneEngineChoice;
 			threshold?: number;
 			aiAnalysis?: boolean;
 			model?: string;
 		}
 	): Promise<{
-		engine: "ffmpeg" | "onnx";
+		/** The engine that ran. */
+		engine: PlatformSceneEngine;
+		requestedEngine?: PlatformSceneEngineChoice;
+		fallbacks?: Array<{ engine: PlatformSceneEngine; reason: string }>;
 		route?: string;
 		durationSeconds?: number;
 		scenes: Array<{
@@ -249,6 +285,23 @@ export interface PlatformClaudeAnalyzeAPI {
 		totalScenes: number;
 		averageShotDuration: number;
 	}>;
+	/** Which scene engines can run on this machine, and the one auto would pick. */
+	engines(): Promise<PlatformSceneEnginesStatus>;
+}
+
+export type PlatformSceneEngine = "jianying" | "onnx" | "ffmpeg";
+export type PlatformSceneEngineChoice = "auto" | PlatformSceneEngine;
+
+export interface PlatformSceneEngineAvailability {
+	engine: PlatformSceneEngine;
+	available: boolean;
+	message: string;
+	route?: string;
+}
+
+export interface PlatformSceneEnginesStatus {
+	engines: PlatformSceneEngineAvailability[];
+	preferred: PlatformSceneEngine | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,14 @@ import type {
 	StickerElement,
 } from "@/types/timeline";
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
+import {
+	buildLegacyColorAdjustments,
+	normalizeMediaColorSettings,
+} from "@/lib/color/color-properties";
+import {
+	mergeMediaColorSettings,
+	readMediaAdjustmentsPatch,
+} from "@/lib/color/color-settings-merge";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import { resolveClaudePlacement } from "./claude-placement";
@@ -28,6 +36,7 @@ import {
 	getClaudeMediaTimingProperties,
 	resolveClaudeStickerRuntime,
 	parseClaudeMediaFilterStack,
+	readClaudeMediaVisualFields,
 } from "./claude-timeline-bridge-helpers";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
 import {
@@ -124,6 +133,90 @@ function describeRefusedStartTime({
 export interface ElementChangesResult {
 	applied: boolean;
 	error?: string;
+	/** Fields the element type has no use for; the rest were applied. */
+	ignoredFields?: string[];
+}
+
+/** Keys every element patch may carry (ids and timing). */
+const COMMON_PATCH_FIELDS = new Set([
+	"elementId",
+	"type",
+	"startTime",
+	"colorLabel",
+	"trimStart",
+	"trimEnd",
+	"duration",
+	"endTime",
+]);
+
+/**
+ * The fields a patch can change per element type. Text patches are schema
+ * driven (`getClaudeTextProperties`) and are not checked here.
+ */
+const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
+	media: new Set([
+		"name",
+		"fitMode",
+		"x",
+		"y",
+		"rotation",
+		"scaleX",
+		"scaleY",
+		"opacity",
+		"playbackRate",
+		"speedKeyframes",
+		"reverse",
+		"freezeFrameTime",
+		"freezeFrameDuration",
+		"preservePitch",
+		"frameInterpolation",
+		"style",
+		"portraitAdjustments",
+		"enhancements",
+		"keyframes",
+		"audio",
+		"filterStack",
+		"color",
+		"adjustments",
+	]),
+	adjustment: new Set(["name", "opacity", "color", "adjustments", "masks"]),
+	markdown: new Set(["content"]),
+	captions: new Set(["content", "language", "style"]),
+	sticker: new Set([
+		"mediaId",
+		"x",
+		"y",
+		"width",
+		"height",
+		"stickerGeometrySpace",
+		"stickerId",
+		"stickerAssetId",
+		"stickerRuntime",
+		"rotation",
+		"opacity",
+	]),
+};
+
+/**
+ * Fields the element's type cannot use. A patch made only of such fields is
+ * an error (it used to answer `updated: true` while changing nothing); a
+ * patch that also carries supported fields applies them and reports the rest.
+ */
+export function unsupportedPatchFields({
+	elementType,
+	changes,
+}: {
+	elementType: string;
+	changes: Record<string, unknown>;
+}): string[] {
+	const typed = PATCH_FIELDS_BY_TYPE[elementType];
+	if (!typed) return [];
+	return Object.keys(changes).filter(
+		(key) =>
+			changes[key] !== undefined &&
+			!COMMON_PATCH_FIELDS.has(key) &&
+			!typed.has(key)
+	);
 }
 
 export const applyElementChanges = ({
@@ -155,6 +248,24 @@ export const applyElementChanges = ({
 				elementId
 			);
 			return { applied: false, error: `Element not found: ${elementId}` };
+		}
+		const ignoredFields = unsupportedPatchFields({
+			elementType: element.type,
+			changes: changes as Record<string, unknown>,
+		});
+		if (
+			ignoredFields.length > 0 &&
+			ignoredFields.length ===
+				Object.keys(changes).filter(
+					(key) =>
+						(changes as Record<string, unknown>)[key] !== undefined &&
+						key !== "elementId" &&
+						key !== "type"
+				).length
+		) {
+			throw new Error(
+				`No supported field for a ${element.type} element in: ${ignoredFields.join(", ")}`
+			);
 		}
 		// Validate up front: a malformed stack must fail the whole update
 		// before any state (history, timing, trims) has been touched.
@@ -217,6 +328,34 @@ export const applyElementChanges = ({
 		) {
 			throw new Error("enhancements must be an object");
 		}
+		// Canvas placement and fit, checked like the other media payloads.
+		const visualUpdates =
+			element.type === "media"
+				? readClaudeMediaVisualFields({
+						element: changes as Record<string, unknown>,
+					})
+				: {};
+		// A clip's grade: `color` is a partial MediaColorSettings merged into the
+		// current grade (the colour panel edits one value at a time the same
+		// way); `adjustments` are the eight legacy basic fields. Checked before
+		// anything moves, like the other media payloads.
+		const colorPatch =
+			element.type === "media" &&
+			(changes as Record<string, unknown>).color !== undefined
+				? (changes as Record<string, unknown>).color
+				: undefined;
+		if (
+			colorPatch !== undefined &&
+			(typeof colorPatch !== "object" ||
+				colorPatch === null ||
+				Array.isArray(colorPatch))
+		) {
+			throw new Error("color must be an object (a partial colour grade)");
+		}
+		const adjustmentsPatch =
+			element.type === "media" && changes.adjustments !== undefined
+				? readMediaAdjustmentsPatch({ value: changes.adjustments })
+				: undefined;
 
 		// The move goes first because the store may refuse it (a locked track
 		// or an occupied span); a refused move must fail the update before any
@@ -368,7 +507,10 @@ export const applyElementChanges = ({
 				);
 			}
 
-			const mediaUpdates: Record<string, unknown> = {};
+			const mediaUpdates: Record<string, unknown> = { ...visualUpdates };
+			if (typeof changes.name === "string" && changes.name.trim()) {
+				mediaUpdates.name = changes.name.trim();
+			}
 			if (typeof changes.style?.volume === "number") {
 				mediaUpdates.volume = changes.style.volume;
 			}
@@ -402,6 +544,33 @@ export const applyElementChanges = ({
 			}
 			if (parsedFilterStack !== undefined) {
 				mediaUpdates.filterStack = parsedFilterStack;
+			}
+			if (colorPatch !== undefined || adjustmentsPatch !== undefined) {
+				const current = normalizeMediaColorSettings({ element });
+				const merged = mergeMediaColorSettings({
+					current,
+					patch: {
+						...((colorPatch as Record<string, unknown>) ?? {}),
+						...(adjustmentsPatch
+							? {
+									basic: {
+										...(((colorPatch as Record<string, unknown>)?.basic as
+											| Record<string, unknown>
+											| undefined) ?? {}),
+										...adjustmentsPatch,
+									},
+								}
+							: {}),
+					},
+				});
+				const next = normalizeMediaColorSettings({
+					element: { color: merged },
+				});
+				mediaUpdates.color = next;
+				// The legacy mirror of `color.basic`, kept in step like the panel does.
+				mediaUpdates.adjustments = buildLegacyColorAdjustments({
+					settings: next,
+				});
 			}
 			if (Object.keys(mediaUpdates).length > 0) {
 				timelineStore.updateMediaElement(
@@ -499,7 +668,9 @@ export const applyElementChanges = ({
 			}
 		}
 
-		return { applied: true };
+		return ignoredFields.length > 0
+			? { applied: true, ignoredFields }
+			: { applied: true };
 	} catch (error) {
 		debugError(
 			"[ClaudeTimelineBridge] Failed to apply element changes:",

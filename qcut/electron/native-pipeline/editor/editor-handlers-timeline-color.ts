@@ -37,7 +37,7 @@ export function readColorOption(color: string | undefined): {
  * `--element-ids` values: each may be a JSON array, an @file.json, or a
  * comma-separated list, and the flag may repeat.
  */
-async function readElementIds(
+export async function readElementIds(
 	values: string[] | undefined
 ): Promise<string[] | undefined> {
 	if (!values?.length) return undefined;

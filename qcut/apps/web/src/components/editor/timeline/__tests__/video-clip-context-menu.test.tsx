@@ -17,7 +17,6 @@ function createActions() {
 		keepLeft: vi.fn(),
 		keepRight: vi.fn(),
 		smartShotSplit: vi.fn(),
-		onnxShotSplit: vi.fn(),
 		openAiTextVideo: vi.fn(),
 		openAiImageVideo: vi.fn(),
 		openAiAudio: vi.fn(),
@@ -123,25 +122,33 @@ describe("video clip context menu", () => {
 		expect(screen.queryByText("新建复合片段")).not.toBeInTheDocument();
 	});
 
-	it("keeps FFmpeg and local ONNX as separate actions", async () => {
+	it("splits with the best engine from the main item and a chosen one from the submenu", async () => {
 		const actions = createActions();
 		renderMenu({ actions });
-		fireEvent.click(await screen.findByText(/\(FFmpeg\)$/));
-		expect(actions.smartShotSplit).toHaveBeenCalledTimes(1);
-		expect(actions.onnxShotSplit).not.toHaveBeenCalled();
+		fireEvent.click(await screen.findByTestId("smart-shot-split-menu-item"));
+		expect(actions.smartShotSplit).toHaveBeenCalledWith("auto");
+
 		fireEvent.contextMenu(screen.getByTestId("clip"));
-		fireEvent.click(await screen.findByText("本地神经网络分镜 (ONNX)"));
-		expect(actions.onnxShotSplit).toHaveBeenCalledTimes(1);
-		expect(actions.smartShotSplit).toHaveBeenCalledTimes(1);
+		const trigger = (await screen.findByText("指定镜头分割引擎")).closest(
+			"[role=menuitem]"
+		) as HTMLElement;
+		fireEvent.keyDown(trigger, { key: "ArrowRight" });
+		fireEvent.click(await screen.findByTestId("onnx-shot-split-menu-item"));
+		expect(actions.smartShotSplit).toHaveBeenLastCalledWith("onnx");
+		expect(actions.smartShotSplit).toHaveBeenCalledTimes(2);
 	});
 
-	it("supports keyboard activation of local ONNX", async () => {
+	it("supports keyboard activation of an engine in the submenu", async () => {
 		const actions = createActions();
 		renderMenu({ actions });
-		const item = await screen.findByTestId("onnx-shot-split-menu-item");
+		const trigger = (await screen.findByText("指定镜头分割引擎")).closest(
+			"[role=menuitem]"
+		) as HTMLElement;
+		fireEvent.keyDown(trigger, { key: "ArrowRight" });
+		const item = await screen.findByTestId("jianying-shot-split-menu-item");
 		item.focus();
 		fireEvent.keyDown(item, { key: "Enter" });
-		expect(actions.onnxShotSplit).toHaveBeenCalledTimes(1);
+		expect(actions.smartShotSplit).toHaveBeenCalledWith("jianying");
 	});
 
 	it("applies a clip color and selects clips with the current color", async () => {
@@ -176,8 +183,7 @@ describe("video clip context menu", () => {
 		expect(screen.getByText("Create compound clip")).toBeInTheDocument();
 		expect(screen.getByText("Create multicam clip")).toBeInTheDocument();
 		expect(screen.getByText("Link media")).toBeInTheDocument();
-		expect(
-			screen.getByText("Local neural shot split (ONNX)")
-		).toBeInTheDocument();
+		expect(screen.getByText("Smart shot split")).toBeInTheDocument();
+		expect(screen.getByText("Shot split with engine")).toBeInTheDocument();
 	});
 });

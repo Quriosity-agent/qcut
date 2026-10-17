@@ -11,6 +11,7 @@ import {
 	type TimelineColorLabel,
 } from "@/lib/timeline/timeline-color-labels";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
+import { describeTransitionRefusal } from "./claude-transition-refusal";
 
 /** Mirrors the timeline store's jianying-local package-hash contract. */
 const LOCAL_PACKAGE_HASH_PATTERN = /^[a-f0-9]{32,64}$/;
@@ -37,7 +38,53 @@ function summarizeTracks(): ClaudeTrackOperationResponse["tracks"] {
 		elementCount: track.elements.length,
 		isMain: track.isMain,
 		colorLabel: track.colorLabel,
+		muted: track.muted === true,
+		hidden: track.hidden === true,
+		locked: track.locked === true,
 	}));
+}
+
+const TRACK_SWITCHES = ["muted", "hidden", "locked"] as const;
+
+/**
+ * Set a track's mute, visibility and lock through the header toggles, then
+ * read them back so a refused switch is reported, not assumed.
+ */
+function applyTrackSwitches({
+	trackId,
+	request,
+}: {
+	trackId: string;
+	request: ClaudeTrackOperationRequest;
+}): void {
+	const store = useTimelineStore.getState();
+	const toggles = {
+		muted: store.toggleTrackMute,
+		hidden: store.toggleTrackHidden,
+		locked: store.toggleTrackLocked,
+	};
+	for (const key of TRACK_SWITCHES) {
+		const wanted = request[key];
+		if (wanted === undefined) continue;
+		const current =
+			useTimelineStore
+				.getState()
+				.tracks.find((track) => track.id === trackId)?.[key] === true;
+		if (current !== wanted) toggles[key](trackId);
+	}
+	const track = useTimelineStore
+		.getState()
+		.tracks.find((candidate) => candidate.id === trackId);
+	for (const key of TRACK_SWITCHES) {
+		const wanted = request[key];
+		if (wanted !== undefined && (track?.[key] === true) !== wanted) {
+			throw new Error(`The editor did not set the track's ${key} to ${wanted}`);
+		}
+	}
+}
+
+function requestsTrackSwitch(request: ClaudeTrackOperationRequest): boolean {
+	return TRACK_SWITCHES.some((key) => request[key] !== undefined);
 }
 
 /** A request's colour: a label, undefined to clear (null/""), or a thrown list of valid ones. */
@@ -160,14 +207,18 @@ function applyTrackOperation(
 
 		// Checked before the track exists, so a bad colour creates nothing.
 		if (request.colorLabel !== undefined) requestedColorLabel(request);
+		// Without an index the new lane goes where the editor would put one of
+		// its kind (text and captions above the video, audio below), instead
+		// of the bottom of the list where overlays hide behind the clips.
 		const trackId =
 			request.index === undefined
-				? store.addTrack(request.type)
+				? store.addTrackByStackingPolicy(request.type)
 				: store.insertTrackAt(request.type, request.index);
 		if (request.name?.trim()) store.renameTrack(trackId, request.name);
 		if (request.colorLabel !== undefined && request.colorLabel !== null) {
 			applyTrackColor({ trackId, request, pushHistory: false });
 		}
+		if (requestsTrackSwitch(request)) applyTrackSwitches({ trackId, request });
 		const tracks = summarizeTracks();
 		return {
 			success: true,
@@ -195,9 +246,12 @@ function applyTrackOperation(
 			request.action === "update" &&
 			request.index === undefined &&
 			!request.name?.trim() &&
-			request.colorLabel === undefined
+			request.colorLabel === undefined &&
+			!requestsTrackSwitch(request)
 		) {
-			throw new Error("Track update needs index, name or colorLabel");
+			throw new Error(
+				"Track update needs index, name, colorLabel, muted, hidden or locked"
+			);
 		}
 		if (request.colorLabel !== undefined) requestedColorLabel(request);
 		if (
@@ -219,6 +273,9 @@ function applyTrackOperation(
 				request,
 				pushHistory: true,
 			});
+		}
+		if (requestsTrackSwitch(request)) {
+			applyTrackSwitches({ trackId: request.trackId, request });
 		}
 		const tracks = summarizeTracks();
 		const index = tracks.findIndex((track) => track.id === request.trackId);
@@ -281,8 +338,18 @@ function applyTrackOperation(
 			maskShape: transition.maskShape as ClipTransition["maskShape"],
 		});
 		if (!transitionId) {
+			const mediaItems = useMediaStore.getState().mediaItems;
 			throw new Error(
-				"Transition could not be added; clips must be adjacent video elements on the same media track"
+				`Transition could not be added: ${describeTransitionRefusal({
+					track: store.tracks.find((item) => item.id === request.trackId),
+					fromElementId: transition.fromElementId,
+					toElementId: transition.toElementId,
+					type: transition.type,
+					duration: transition.duration,
+					videoMediaIds,
+					mediaTypeOf: (mediaId) =>
+						mediaItems.find((item) => item.id === mediaId)?.type,
+				})}`
 			);
 		}
 		return {

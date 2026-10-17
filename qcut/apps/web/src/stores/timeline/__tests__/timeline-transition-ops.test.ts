@@ -88,6 +88,68 @@ describe("timeline transition operations", () => {
 		});
 	});
 
+	it("keeps a GL shader transition in the track and returns its id", () => {
+		const transitionId = useTimelineStore.getState().addTransition({
+			trackId: "track-1",
+			fromElementId: "a",
+			toElementId: "b",
+			videoMediaIds: VIDEO_MEDIA_IDS,
+			presetId: "gl-overexposure",
+			type: "shader",
+			easing: "linear",
+			duration: 0.8,
+		});
+
+		expect(transitionId).toBeTruthy();
+		expect(useTimelineStore.getState().tracks[0].transitions).toEqual([
+			expect.objectContaining({ id: transitionId, type: "shader" }),
+		]);
+		expect(useTimelineStore.getState().selectedTransition).toEqual({
+			trackId: "track-1",
+			transitionId,
+		});
+	});
+
+	it("refuses a type reconcile would drop, without touching history", () => {
+		const transitionId = useTimelineStore.getState().addTransition({
+			trackId: "track-1",
+			fromElementId: "a",
+			toElementId: "b",
+			videoMediaIds: VIDEO_MEDIA_IDS,
+			presetId: "future",
+			type: "not-a-transition" as never,
+			duration: 0.5,
+		});
+
+		expect(transitionId).toBeNull();
+		expect(useTimelineStore.getState().tracks[0].transitions ?? []).toEqual([]);
+		expect(useTimelineStore.getState().history).toEqual([]);
+		expect(useTimelineStore.getState().selectedTransition).toBeNull();
+	});
+
+	it("moves the transition out of a split clip onto the piece that still meets the next clip", () => {
+		const transitionId = useTimelineStore.getState().addTransition({
+			trackId: "track-1",
+			fromElementId: "a",
+			toElementId: "b",
+			videoMediaIds: VIDEO_MEDIA_IDS,
+			presetId: "dissolve",
+			type: "dissolve",
+			duration: 0.5,
+		});
+		const rightId = useTimelineStore
+			.getState()
+			.splitElement("track-1", "a", 1, false);
+		expect(rightId).toBeTruthy();
+		expect(useTimelineStore.getState().tracks[0].transitions).toEqual([
+			expect.objectContaining({
+				id: transitionId,
+				fromElementId: rightId,
+				toElementId: "b",
+			}),
+		]);
+	});
+
 	it("persists the local engine and public package identity", () => {
 		const packageHash = "a".repeat(32);
 		const transitionId = useTimelineStore.getState().addTransition({
@@ -361,10 +423,6 @@ describe("timeline transition operations", () => {
 			name: "delete",
 			edit: () =>
 				useTimelineStore.getState().removeElementFromTrack("track-1", "b"),
-		},
-		{
-			name: "split",
-			edit: () => useTimelineStore.getState().splitElement("track-1", "a", 1),
 		},
 		{
 			name: "move to another track",

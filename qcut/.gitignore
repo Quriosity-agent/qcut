@@ -221,3 +221,6 @@ electron/native-pipeline/filters/filter-lab-cubes.generated.json
 
 # RIFE frame interpolation binaries are staged from electron/rife/rife-binaries.json, never committed
 electron/resources/rife/
+
+# Paths of media that exists only on this machine, read by the E2E specs
+apps/web/src/test/e2e/local-fixtures.local.json

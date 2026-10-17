@@ -226,6 +226,12 @@ export function createProjectFolderAPI(): NonNullable<
 			ipcRenderer.invoke("project-folder:list", projectId, subPath),
 		ensureStructure: (projectId) =>
 			ipcRenderer.invoke("project-folder:ensure-structure", projectId),
+		copyContents: (sourceProjectId, targetProjectId) =>
+			ipcRenderer.invoke(
+				"project-folder:copy-contents",
+				sourceProjectId,
+				targetProjectId
+			),
 	};
 }
 
@@ -509,6 +515,42 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					result,
 				});
 			},
+			onShotSplit: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:shotSplit");
+				ipcRenderer.on("claude:timeline:shotSplit", (_, data) =>
+					callback(data)
+				);
+			},
+			sendShotSplitResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:shotSplit:response", {
+					requestId,
+					result,
+				});
+			},
+			onBeatsMark: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:beatsMark");
+				ipcRenderer.on("claude:timeline:beatsMark", (_, data) =>
+					callback(data)
+				);
+			},
+			sendBeatsMarkResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:beatsMark:response", {
+					requestId,
+					result,
+				});
+			},
+			onSnapToBeats: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:snapToBeats");
+				ipcRenderer.on("claude:timeline:snapToBeats", (_, data) =>
+					callback(data)
+				);
+			},
+			sendSnapToBeatsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:snapToBeats:response", {
+					requestId,
+					result,
+				});
+			},
 			onExecuteCuts: (callback) => {
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.on("claude:timeline:executeCuts", (_, data) =>
@@ -622,6 +664,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:removeElement");
 				ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
 				ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+				ipcRenderer.removeAllListeners("claude:timeline:shotSplit");
+				ipcRenderer.removeAllListeners("claude:timeline:beatsMark");
+				ipcRenderer.removeAllListeners("claude:timeline:snapToBeats");
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
 				ipcRenderer.removeAllListeners("claude:timeline:selectElements");
@@ -777,6 +822,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			run: (projectId, options) =>
 				ipcRenderer.invoke("claude:analyze:run", projectId, options),
 			models: () => ipcRenderer.invoke("claude:analyze:models"),
+			engines: () => ipcRenderer.invoke("claude:analyze:engines"),
 			scenes: (projectId, options) =>
 				ipcRenderer.invoke("claude:analyze:scenes", projectId, options),
 		},

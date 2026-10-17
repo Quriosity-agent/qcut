@@ -216,4 +216,41 @@ describe("Adapter convenience functions", () => {
 			expect(typeof generate).toBe("function");
 		});
 	});
+
+	describe("blank numeric operands", () => {
+		it("turns an empty --min-shot, --max-distance or --onset-threshold into NaN, not 0", () => {
+			const shots = parseCliArgs([
+				"editor:timeline:shot-split",
+				"--project-id",
+				"p",
+				"--element-id",
+				"e",
+				"--min-shot",
+				"",
+			]);
+			expect(Number.isNaN(shots.minShot)).toBe(true);
+			const snap = parseCliArgs([
+				"editor:timeline:snap",
+				"--project-id",
+				"p",
+				"--element-ids",
+				"a",
+				"--max-distance",
+				"",
+				"--onset-threshold",
+				" ",
+			]);
+			expect(Number.isNaN(snap.maxDistance)).toBe(true);
+			expect(Number.isNaN(snap.onsetThreshold)).toBe(true);
+			const absent = parseCliArgs([
+				"editor:timeline:snap",
+				"--project-id",
+				"p",
+				"--element-ids",
+				"a",
+			]);
+			expect(absent.maxDistance).toBeUndefined();
+			expect(absent.minShot).toBeUndefined();
+		});
+	});
 });

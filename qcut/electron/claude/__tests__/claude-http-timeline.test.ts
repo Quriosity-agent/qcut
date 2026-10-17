@@ -320,7 +320,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/split returns split result", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(timelineHandler.requestSplitFromRenderer).mockResolvedValueOnce({
 			secondElementId: "element_split_2",
 		});
@@ -376,6 +376,54 @@ describe("Claude HTTP Server - Timeline", () => {
 			}),
 			expect.any(String)
 		);
+	});
+
+	it("PATCH .../tracks/:trackId sets mute, hidden and lock switches", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(
+			timelineHandler.requestTrackOperationFromRenderer
+		).mockResolvedValueOnce({
+			success: true,
+			trackId: "track-1",
+			index: 0,
+			tracks: [],
+		});
+
+		const res = await fetch("/api/claude/timeline/proj_123/tracks/track-1", {
+			method: "PATCH",
+			body: JSON.stringify({ hidden: true, locked: true, muted: false }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(
+			timelineHandler.requestTrackOperationFromRenderer
+		).toHaveBeenCalledWith(
+			mockWindow,
+			expect.objectContaining({
+				action: "update",
+				trackId: "track-1",
+				hidden: true,
+				locked: true,
+				muted: false,
+			}),
+			expect.any(String)
+		);
+	});
+
+	it("PATCH .../tracks/:trackId refuses a switch that is not a boolean", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(timelineHandler.requestTrackOperationFromRenderer).mockClear();
+		const res = await fetch("/api/claude/timeline/proj_123/tracks/track-1", {
+			method: "PATCH",
+			body: JSON.stringify({ locked: "yes" }),
+		});
+		expect(res.status).toBe(400);
+		expect(res.body.error).toBe("'locked' must be true or false");
+		expect(
+			timelineHandler.requestTrackOperationFromRenderer
+		).not.toHaveBeenCalled();
 	});
 
 	it("PATCH .../tracks/:trackId sets a track colour on its own", async () => {
@@ -508,7 +556,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/split validates mode", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 
 		const res = await fetch(
 			"/api/claude/timeline/proj_123/elements/element_abc/split",
@@ -526,7 +574,7 @@ describe("Claude HTTP Server - Timeline", () => {
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/move dispatches move event", async () => {
 		const send = vi.fn();
 		const mockWindow = createMockWindow(send);
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 
 		const res = await fetch(
 			"/api/claude/timeline/proj_123/elements/element_abc/move",
@@ -893,7 +941,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("DELETE /api/claude/timeline/:projectId/range forwards crossTrackRipple", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(rangeHandler.executeDeleteRange).mockResolvedValueOnce({
 			deletedElements: 2,
 			splitElements: 1,
@@ -926,7 +974,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("POST /api/claude/timeline/:projectId/arrange calls arrange handler", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(timelineHandler.arrangeTimeline).mockResolvedValueOnce({
 			arranged: [{ elementId: "el_1", newStartTime: 0 }],
 		});
@@ -957,7 +1005,7 @@ describe("Claude HTTP Server - Timeline", () => {
 	it("POST /api/claude/timeline/:projectId/selection dispatches selection update", async () => {
 		const send = vi.fn();
 		const mockWindow = createMockWindow(send);
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		const elements = [{ trackId: "track_1", elementId: "element_abc" }];
 
 		const res = await fetch("/api/claude/timeline/proj_123/selection", {
@@ -978,7 +1026,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("GET /api/claude/timeline/:projectId/selection returns renderer selection", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(
 			timelineHandler.requestSelectionFromRenderer
 		).mockResolvedValueOnce([{ trackId: "track_1", elementId: "element_abc" }]);
@@ -998,7 +1046,7 @@ describe("Claude HTTP Server - Timeline", () => {
 
 	it("GET /api/claude/timeline/:projectId/selection returns 504 on renderer timeout", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(
 			timelineHandler.requestSelectionFromRenderer
 		).mockRejectedValueOnce(new HttpError(504, "Renderer timed out"));
@@ -1013,7 +1061,7 @@ describe("Claude HTTP Server - Timeline", () => {
 	it("DELETE /api/claude/timeline/:projectId/selection clears selection", async () => {
 		const send = vi.fn();
 		const mockWindow = createMockWindow(send);
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 
 		const res = await fetch("/api/claude/timeline/proj_123/selection", {
 			method: "DELETE",

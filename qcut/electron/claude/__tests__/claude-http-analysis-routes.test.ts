@@ -283,6 +283,57 @@ describe("registerAnalysisRoutes proxy hooks", () => {
 		expect(autoEditHandler.startAutoEditJob).not.toHaveBeenCalled();
 	});
 
+	it("checks a snap's frameAlign, edge and edgeOffsets before asking the editor", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as Electron.BrowserWindow;
+		const { fetchJson } = await startRoutesServer({
+			accessor: { getWindow: () => mockWindow },
+		});
+		const post = (body: Record<string, unknown>) =>
+			fetchJson("/api/claude/timeline/proj_1/snap-to-beats", {
+				method: "POST",
+				body: JSON.stringify({ elementIds: ["a"], ...body }),
+			});
+		const badAlign = await post({ frameAlign: "sideways" });
+		expect(badAlign.status).toBe(400);
+		expect(JSON.stringify(badAlign.body)).toContain(
+			"frameAlign must be visual, all or none"
+		);
+		const badEdge = await post({ edge: "middle" });
+		expect(badEdge.status).toBe(400);
+		expect(JSON.stringify(badEdge.body)).toContain(
+			"edge must be start, end or onset"
+		);
+		const badOffsets = await post({ edge: "onset", edgeOffsets: { a: -1 } });
+		expect(badOffsets.status).toBe(400);
+		expect(JSON.stringify(badOffsets.body)).toContain(
+			"edgeOffsets.a must be seconds"
+		);
+	});
+
+	it("checks an onset analysis request before decoding anything", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as Electron.BrowserWindow;
+		const { fetchJson } = await startRoutesServer({
+			accessor: { getWindow: () => mockWindow },
+		});
+		const noMedia = await fetchJson("/api/claude/analyze/proj_1/onset", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+		expect(noMedia.status).toBe(400);
+		const badThreshold = await fetchJson("/api/claude/analyze/proj_1/onset", {
+			method: "POST",
+			body: JSON.stringify({ mediaId: "m1", threshold: 2 }),
+		});
+		expect(badThreshold.status).toBe(400);
+		expect(JSON.stringify(badThreshold.body)).toContain(
+			"threshold must be a number between 0 and 1"
+		);
+	});
+
 	it("uses accessor.executeBatchCuts when provided", async () => {
 		const mockWindow = {
 			webContents: { send: vi.fn() },
@@ -313,6 +364,7 @@ describe("registerAnalysisRoutes proxy hooks", () => {
 		expect(response.status).toBe(200);
 		expect((response.body as { success: boolean }).success).toBe(true);
 		expect(executeBatchCutsProxy).toHaveBeenCalledWith({
+			projectId: "proj_1",
 			elementId: "el_1",
 			cuts: [{ start: 1.0, end: 2.2 }],
 			ripple: true,

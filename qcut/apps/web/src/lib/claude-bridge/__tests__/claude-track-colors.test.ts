@@ -115,6 +115,17 @@ describe("track and clip colours over the editor API", () => {
 		).toBe("yellow");
 	});
 
+	it("puts a new overlay lane where the editor would: text above the clips, audio below", () => {
+		const run = setupHandler();
+		const text = run({ action: "create", type: "text" });
+		expect(text.success).toBe(true);
+		const order = useTimelineStore.getState().tracks.map((track) => track.id);
+		// Index 0 is the top row, painted last, so the text is not hidden.
+		expect(order[0]).toBe(text.trackId);
+		const audio = run({ action: "create", type: "audio" });
+		expect(useTimelineStore.getState().tracks.at(-1)?.id).toBe(audio.trackId);
+	});
+
 	it("refuses an unknown colour before creating anything", () => {
 		const run = setupHandler();
 		const before = useTimelineStore.getState().tracks.length;

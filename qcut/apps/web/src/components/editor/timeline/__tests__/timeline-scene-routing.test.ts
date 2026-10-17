@@ -59,7 +59,7 @@ function sceneResult({
 	engine = "onnx",
 	timestamps = [0, 4, 8],
 }: {
-	engine?: "onnx" | "ffmpeg";
+	engine?: "jianying" | "onnx" | "ffmpeg";
 	timestamps?: number[];
 } = {}): SceneDetectionResult {
 	return {
@@ -197,16 +197,18 @@ describe("editor scene engine routing", () => {
 		expect(readTrack()?.elements).toEqual([source]);
 	});
 
-	it("defaults to FFmpeg with its existing threshold", async () => {
-		mocks.scenes.mockResolvedValueOnce(sceneResult({ engine: "ffmpeg" }));
+	it("defaults to auto, lets the editor pick the engine, and reports which ran", async () => {
+		mocks.scenes.mockResolvedValueOnce(sceneResult({ engine: "jianying" }));
 		await runTimelineSmartShotSplit({ ...request, engine: undefined });
 		expect(mocks.scenes).toHaveBeenCalledWith("project", {
 			mediaId: "media",
-			engine: "ffmpeg",
-			threshold: 0.3,
+			engine: "auto",
 			aiAnalysis: false,
 		});
-		expect(currentTask().output?.engine).toBe("ffmpeg");
+		expect(currentTask()).toMatchObject({
+			payload: { engine: "auto" },
+			output: { engine: "jianying", requestedEngine: "auto" },
+		});
 	});
 
 	it("maps trimmed variable-speed source cuts into timeline coordinates", async () => {

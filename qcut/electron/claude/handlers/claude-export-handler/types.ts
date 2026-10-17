@@ -48,7 +48,8 @@ export interface ExportSegment {
 }
 
 export interface ResolvedExportSettings {
-	engine: "native-cli";
+	/** The engine that renders this job; a renderer export says so here too. */
+	engine: "native-cli" | "renderer-muxer";
 	presetId: string;
 	width: number;
 	height: number;
@@ -130,6 +131,8 @@ export interface StickerOverlay {
 export interface TextOverlay {
 	id: string;
 	content: string;
+	/** Position of the overlay's track in the timeline, for stacking ties. */
+	trackIndex?: number;
 	startTime: number;
 	endTime: number;
 	fontSize: number;
@@ -151,6 +154,22 @@ export interface TextOverlay {
 	shadowOpacity: number;
 	shadowOffsetX: number;
 	shadowOffsetY: number;
+	/** Soft glow behind the glyphs; drawn when glowOpacity and glowBlur are > 0. */
+	glowColor: string;
+	glowOpacity: number;
+	glowBlur: number;
+	/** Extra space after each character, in canvas pixels. */
+	letterSpacing: number;
+	/** Line height as a multiple of the font size (CSS line-height). */
+	lineHeight: number;
+	/**
+	 * canvas-offset only: the text box the preview wraps and aligns in,
+	 * centred on (x, y), with its inner padding and vertical alignment.
+	 */
+	boxWidth?: number;
+	boxHeight?: number;
+	boxPadding?: number;
+	boxVerticalAlign?: "top" | "middle" | "bottom";
 	positioning: "canvas-offset" | "caption-anchor";
 	verticalAlign: "top" | "center" | "bottom";
 	marginV: number;

@@ -162,6 +162,8 @@ const QCUT_TRANSITION_TYPES = [
 	"page-flip",
 	"cube",
 	"whip-pan",
+	// GL recipes (gl-*) store this type.
+	"shader",
 ] as const;
 
 describe("Claude track bridge transitions", () => {
@@ -290,6 +292,7 @@ describe("Claude track bridge transitions", () => {
 		];
 		expect(gapResponse.success).toBe(false);
 		expect(gapResponse.error).toContain("adjacent");
+		expect(gapResponse.error).toContain("gap of 3.000 s");
 		expect(gapped.state.tracks[0].transitions ?? []).toHaveLength(0);
 
 		// Audio media on one side: the pair is not two video clips.
@@ -306,6 +309,29 @@ describe("Claude track bridge transitions", () => {
 			{ success: boolean; error?: string },
 		];
 		expect(wrongResponse.success).toBe(false);
+		expect(wrongResponse.error).toContain("is not a video clip");
+		expect(wrongResponse.error).toContain("an audio");
 		expect(wrongMedia.state.tracks[0].transitions ?? []).toHaveLength(0);
+	});
+
+	it("names an unknown transition type and a wrong element order", () => {
+		const { store } = makeTransitionStore();
+		storeMocks.getState.mockReturnValue(store);
+		const { trackHandler, sendResponse } = setupHandler();
+
+		trackHandler(addTransitionRequest({ transition: { type: "premiere" } }));
+		trackHandler(
+			addTransitionRequest({
+				transition: { fromElementId: "clip-b", toElementId: "clip-a" },
+			})
+		);
+
+		const responses = sendResponse.mock.calls.map(
+			(call) => call[1] as { success: boolean; error?: string }
+		);
+		expect(responses[0].error).toContain(
+			'unsupported transition type "premiere"'
+		);
+		expect(responses[1].error).toContain("swap the from and to elements");
 	});
 });

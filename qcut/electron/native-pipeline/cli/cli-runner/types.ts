@@ -136,6 +136,10 @@ export interface CLIRunOptions {
 	voiceId?: string;
 	directory?: string;
 	dryRun?: boolean;
+	/** Shot split: cuts that would leave a shorter shot are set aside. */
+	minShot?: number;
+	/** Scene detection: describe each scene with the AI model too. */
+	aiAnalysis?: boolean;
 	recursive?: boolean;
 	includeOutput?: boolean;
 	source?: string;
@@ -408,8 +412,55 @@ export interface CLIRunOptions {
 	deltaY?: number;
 	foreground?: boolean;
 	replace?: boolean;
+	/** editor:track:update: lock or unlock the track (a locked track refuses edits). */
+	lock?: boolean;
+	unlock?: boolean;
+	/** editor:track:update: hide or show the track. */
+	hide?: boolean;
+	unhide?: boolean;
 	ripple?: boolean;
+	/** Leave the gap a range delete opens (ripple is the default). */
+	noRipple?: boolean;
+	// editor element color: one flag per basic grade control (temperature is above)
+	exposure?: number;
+	brightness?: number;
+	contrast?: number;
+	highlights?: number;
+	shadows?: number;
+	whites?: number;
+	blacks?: number;
+	tint?: number;
+	saturation?: number;
+	vibrance?: number;
+	fade?: number;
+	vignette?: number;
+	sharpness?: number;
+	grain?: number;
+	/** editor element filter: 0–100 strength (also --filter-intensity). */
+	intensity?: number;
+	/** editor element color: return every control to its default. */
+	reset?: boolean;
+	/** editor element filter: keep the clip's current effects and add after them. */
+	append?: boolean;
+	/** editor captions import: the subtitle file to read. */
+	file?: string;
 	crossTrackRipple?: boolean;
+	/** editor:editing:delete-range: leave mix automation where it is. */
+	keepAutomation?: boolean;
+	/** editor:beats:mark: bookmarks to add — none, downbeats or all. */
+	bookmarks?: string;
+	/** editor:timeline:snap: the clip whose marked beats are the grid. */
+	beatsFrom?: string;
+	/** editor:timeline:snap: what lands on the beat — start, end or onset. */
+	edge?: string;
+	/** editor:timeline:snap: which clips end on a whole frame — visual, all or none. */
+	frameAlign?: string;
+	/** editor:timeline:snap --edge onset: share of the loudest onset an attack must reach. */
+	onsetThreshold?: number;
+	/** editor:timeline:snap: farthest a clip may move, in seconds. */
+	maxDistance?: number;
+	/** editor:timeline:snap: only downbeats count. */
+	downbeatsOnly?: boolean;
 	removeFillers?: boolean;
 	removeSilences?: boolean;
 	silenceThreshold?: number;

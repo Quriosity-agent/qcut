@@ -13,6 +13,11 @@ import {
 	hasColorKeyframes,
 } from "./color-keyframe-filter";
 import { buildColorManagementFilters } from "./color-management-filter";
+import {
+	basicGradeIsNeutral,
+	basicGradeIsStatic,
+	buildBasicGradeLutFilter,
+} from "./color-basic-grade-lut";
 import { materializeSecondaryColorLut } from "./secondary-color-lut";
 import { buildSmartFilters } from "./color-smart-filter";
 
@@ -28,6 +33,21 @@ function clamp({
 	return Math.min(max, Math.max(min, value));
 }
 
+/** Per-channel gains for a static temperature/tint; "" when both are neutral. */
+function buildChannelGainFilter({
+	temperature,
+	tint,
+}: {
+	temperature: number;
+	tint: number;
+}): string {
+	const t = clamp({ value: temperature / 100, min: -1, max: 1 });
+	const n = clamp({ value: tint / 100, min: -1, max: 1 });
+	if (t === 0 && n === 0) return "";
+	const gain = (value: number) => clamp({ value, min: 0, max: 2 }).toFixed(4);
+	return `colorchannelmixer=rr=${gain(1 + t * 0.18 + n * 0.04)}:gg=${gain(1 - n * 0.12)}:bb=${gain(1 - t * 0.18 + n * 0.04)}`;
+}
+
 export function buildBasicFilters({
 	visual,
 	color,
@@ -40,6 +60,9 @@ export function buildBasicFilters({
 	if (!color.basic.enabled) return [];
 	const colorVisual = { ...visual, color };
 	const values = color.basic;
+	// A static grade is the preview's pixel maths baked into one cube; the
+	// eq/hue approximation below is only for grades that animate.
+	const staticGrade = basicGradeIsStatic({ visual: colorVisual });
 	const value = (
 		property: keyof Omit<typeof values, "enabled">,
 		fallback: number
@@ -112,23 +135,83 @@ export function buildBasicFilters({
 	const fade = value("fade", values.fade);
 	const vignette = value("vignette", values.vignette);
 	const grain = value("grain", values.grain);
-	const brightness =
-		`clip((${brightnessValue})/100+(${shadows})/400+(${highlights})/600+` +
-		`(${whites})/500+(${blacks})/500+clip((${fade})/100,0,1)*0.06,-1,1)`;
+	// The preview (CSS `brightness(f) contrast(c)`) multiplies RGB by `f` —
+	// exposure gain times the tonal terms — and then stretches around
+	// mid-grey by `c`. FFmpeg's eq adds `brightness×255` to limited-range luma
+	// (measured: +0.25 lifts a grey by 73 levels) and pivots contrast at grey
+	// 128, so the same affine map is reached by contrast'=c·f and
+	// brightness'=(128·c·f − 127.5·c − 0.5)/292: greys land where the preview
+	// puts them instead of the old additive brightness crushing dark frames.
+	const factor =
+		`clip(pow(2,(${exposure}))*(1+(${brightnessValue})/100+(${shadows})/400+` +
+		`(${highlights})/600+(${whites})/500+(${blacks})/500+` +
+		`clip((${fade})/100,0,1)*0.06),0,8)`;
 	const contrast =
 		`clip(1+(${contrastValue})/100+(${whites})/500-(${blacks})/500-` +
 		`clip((${fade})/100,0,1)*0.25,0,3)`;
+	const eqContrast = `(${contrast})*(${factor})`;
+	// eq quantises brightness to 1 % steps and floors negative values; half a
+	// step back centres that error instead of leaving darkened frames ~1 % low.
+	const rawBrightness = `(128*(${contrast})*(${factor})-127.5*(${contrast})-0.5)/292`;
+	const eqBrightness = `clip((${rawBrightness})+0.005*lt((${rawBrightness}),0),-1,1)`;
 	const saturation = `clip(1+(${saturationValue})/100-clip((${fade})/100,0,1)*0.15,0,3)`;
-	const filters = [
-		`eq=brightness='${brightness}':contrast='${contrast}':saturation='${saturation}':` +
-			`gamma='clip(pow(2,(${exposure})/2),0.1,10)':` +
-			`gamma_r='clip(1-(${temperature})/600-(${tint})/900,0.5,1.5)':` +
-			`gamma_g='clip(1+(${tint})/450,0.5,1.5)':` +
-			`gamma_b='clip(1+(${temperature})/600-(${tint})/900,0.5,1.5)':eval=frame`,
-	];
+	// Temperature and tint are the renderer grader's channel gains
+	// (r×(1+0.18t+0.04n), g×(1−0.12n), b×(1−0.18t+0.04n) for t,n in −1..1):
+	// warm pushes red up and blue down, cool the reverse. The old eq gamma
+	// terms ran the other way. Static values use colorchannelmixer, which is
+	// a true gain; keyframed values fall back to per-frame eq gammas with the
+	// same direction.
+	const temperatureAnimated = hasColorKeyframes({
+		visual: colorVisual,
+		property: "basic.temperature",
+	});
+	const tintAnimated = hasColorKeyframes({
+		visual: colorVisual,
+		property: "basic.tint",
+	});
+	const channelGains =
+		temperatureAnimated || tintAnimated
+			? ""
+			: buildChannelGainFilter({
+					temperature:
+						values.temperature +
+						(color.smart.autoWhiteBalance
+							? (smartCorrection?.temperature ?? 0) *
+								(color.smart.enabled && color.smart.status === "ready"
+									? color.smart.intensity / 100
+									: 0)
+							: 0),
+					tint:
+						values.tint +
+						(color.smart.autoWhiteBalance
+							? (smartCorrection?.tint ?? 0) *
+								(color.smart.enabled && color.smart.status === "ready"
+									? color.smart.intensity / 100
+									: 0)
+							: 0),
+				});
+	const gammaTerms =
+		temperatureAnimated || tintAnimated
+			? `:gamma_r='clip(1+(${temperature})/600+(${tint})/900,0.5,1.5)':` +
+				`gamma_g='clip(1-(${tint})/450,0.5,1.5)':` +
+				`gamma_b='clip(1-(${temperature})/600+(${tint})/900,0.5,1.5)'`
+			: "";
+	const filters = staticGrade
+		? basicGradeIsNeutral({ basic: values })
+			? []
+			: [buildBasicGradeLutFilter({ basic: values })]
+		: [
+				`eq=brightness='${eqBrightness}':contrast='${eqContrast}'${gammaTerms}:eval=frame`,
+				// eq's own saturation leaves chroma a step off neutral (a desaturated
+				// frame comes out green-grey); hue scales chroma around true grey.
+				`hue=s='${saturation}'`,
+				// Other graph builders join these as they are, so no empty entries.
+				...(channelGains ? [channelGains] : []),
+			];
 	if (
-		values.vibrance !== 0 ||
-		hasColorKeyframes({ visual: colorVisual, property: "basic.vibrance" })
+		!staticGrade &&
+		(values.vibrance !== 0 ||
+			hasColorKeyframes({ visual: colorVisual, property: "basic.vibrance" }))
 	) {
 		const vibranceProperty = {
 			property: "basic.vibrance",
