@@ -4,11 +4,19 @@ import type {
 } from "@/types/timeline";
 import { automationValueAt } from "./audio-mix-automation";
 import { dbToGain, FLAT_CUTOFF_Q_DB } from "./audio-properties";
+import {
+	COMPRESSOR_KNEE_DB,
+	compressorOutputGain,
+	LIMITER_KNEE_DB,
+	LIMITER_RATIO,
+	limiterOutputGain,
+} from "./dynamics-compressor-makeup";
 
 /**
  * The mixer's channel strip, used for every track, bus and the master: low
  * cut, eight EQ bands, high cut, compressor, makeup gain, gain, ducking, pan
- * and limiter. The live preview and the in-browser export build the same
+ * and limiter, then a gain that divides out the limiter's built-in makeup.
+ * The live preview and the in-browser export build the same
  * strip; the preview glides each parameter to its new value while the export
  * sets it once before rendering, which is the `set` both pass in.
  */
@@ -31,11 +39,13 @@ export interface MixStripNodes {
 	duckGain: GainNode;
 	panner: StereoPannerNode;
 	limiter: DynamicsCompressorNode;
+	/** The strip's output: divides out the limiter's built-in makeup gain. */
+	limiterOutput: GainNode;
 }
 
 export type SetMixParameter = (parameter: AudioParam, value: number) => void;
 
-/** Builds and wires a strip; its output is `limiter`. */
+/** Builds and wires a strip; its output is `limiterOutput`. */
 export function createMixStripNodes({
 	context,
 }: {
@@ -52,14 +62,16 @@ export function createMixStripNodes({
 	highCut.type = "lowpass";
 	highCut.Q.value = FLAT_CUTOFF_Q_DB;
 	const compressor = context.createDynamicsCompressor();
+	compressor.knee.value = COMPRESSOR_KNEE_DB;
 	const compressorMakeup = context.createGain();
 	const baseGain = context.createGain();
 	const duckGain = context.createGain();
 	const panner = context.createStereoPanner();
 	const limiter = context.createDynamicsCompressor();
-	limiter.knee.value = 0;
-	limiter.ratio.value = 20;
+	limiter.knee.value = LIMITER_KNEE_DB;
+	limiter.ratio.value = LIMITER_RATIO;
 	limiter.attack.value = 0.003;
+	const limiterOutput = context.createGain();
 
 	input.connect(lowCut);
 	let previous: AudioNode = lowCut;
@@ -74,6 +86,7 @@ export function createMixStripNodes({
 	baseGain.connect(duckGain);
 	duckGain.connect(panner);
 	panner.connect(limiter);
+	limiter.connect(limiterOutput);
 
 	return {
 		nyquist: context.sampleRate / 2,
@@ -87,6 +100,7 @@ export function createMixStripNodes({
 		duckGain,
 		panner,
 		limiter,
+		limiterOutput,
 	};
 }
 
@@ -135,22 +149,33 @@ export function applyMixStripEffects({
 	}
 
 	const compressor = effects.compressor;
-	set(
-		strip.compressor.threshold,
-		compressor.enabled ? compressor.thresholdDb : 0
-	);
-	set(strip.compressor.ratio, compressor.enabled ? compressor.ratio : 1);
+	const compressorThresholdDb = compressor.enabled ? compressor.thresholdDb : 0;
+	const compressorRatio = compressor.enabled ? compressor.ratio : 1;
+	set(strip.compressor.threshold, compressorThresholdDb);
+	set(strip.compressor.ratio, compressorRatio);
 	set(strip.compressor.attack, compressor.attackMs / 1_000);
 	set(strip.compressor.release, compressor.releaseMs / 1_000);
 	set(
 		strip.compressorMakeup.gain,
-		compressor.enabled ? dbToGain({ db: compressor.makeupGainDb }) : 1
+		compressorOutputGain({
+			thresholdDb: compressorThresholdDb,
+			ratio: compressorRatio,
+			makeupGain: compressor.enabled
+				? dbToGain({ db: compressor.makeupGainDb })
+				: 1,
+		})
 	);
 
 	const limiter = effects.limiter;
-	set(strip.limiter.threshold, limiter.enabled ? limiter.ceilingDb : 0);
-	set(strip.limiter.ratio, limiter.enabled ? 20 : 1);
+	const limiterThresholdDb = limiter.enabled ? limiter.ceilingDb : 0;
+	const limiterRatio = limiter.enabled ? LIMITER_RATIO : 1;
+	set(strip.limiter.threshold, limiterThresholdDb);
+	set(strip.limiter.ratio, limiterRatio);
 	set(strip.limiter.release, limiter.releaseMs / 1_000);
+	set(
+		strip.limiterOutput.gain,
+		limiterOutputGain({ thresholdDb: limiterThresholdDb, ratio: limiterRatio })
+	);
 }
 
 /** Applies the strip's gain and pan; a silenced strip passes nothing. */
