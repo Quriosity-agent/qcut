@@ -91,15 +91,17 @@ describe("SequentialVideoFrameSource", () => {
 		setSequentialDecodeDisabled(false);
 	});
 
-	it("keeps a transparent video's alpha instead of decoding it onto black", async () => {
+	it("leaves a transparent video to the seek path, which keeps its alpha", async () => {
 		mediabunnyMocks.canBeTransparent = true;
-		await SequentialVideoFrameSource.open({ blob: new Blob(["x"]) });
+		await expect(
+			SequentialVideoFrameSource.open({ blob: new Blob(["x"]) })
+		).resolves.toBeNull();
+		expect(mediabunnyMocks.sinkOptions).toEqual([]);
 		mediabunnyMocks.canBeTransparent = false;
-		await SequentialVideoFrameSource.open({ blob: new Blob(["x"]) });
-		expect(mediabunnyMocks.sinkOptions).toEqual([
-			expect.objectContaining({ alpha: true }),
-			expect.objectContaining({ alpha: false }),
-		]);
+		await expect(
+			SequentialVideoFrameSource.open({ blob: new Blob(["x"]) })
+		).resolves.not.toBeNull();
+		expect(mediabunnyMocks.sinkOptions).toHaveLength(1);
 	});
 
 	it("advances monotonically with exactly one decode per frame", async () => {
