@@ -11,9 +11,25 @@ export interface PipelineStretch {
 	upper: number;
 	bottom: number;
 }
+export interface PipelineSlim {
+	intensity: number;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+}
+export interface PipelineZoom {
+	intensity: number;
+	x: number;
+	y: number;
+	radius: number;
+}
 /** Manual body tools that change the picture; absent when none does. */
 export interface PipelineManualBody {
 	stretch?: PipelineStretch;
+	slim?: PipelineSlim;
+	zoom?: PipelineZoom;
 }
 export interface PipelineAdjustments {
 	values: Record<string, number>;
@@ -111,7 +127,57 @@ function manualBodyTools(): string[] {
 	return catalog.stages.find(({ kind }) => kind === "manual-body")?.tools ?? [];
 }
 
-/** The editor's manual-body ranges: intensity −50..50, a band at least 0.02 tall. */
+type ManualBodyTool = keyof PipelineManualBody;
+interface ManualBodyField {
+	key: string;
+	min: number;
+	max: number;
+	title: string;
+}
+
+/**
+ * The editor's manual-body ranges, tool by tool, in the order the plan keeps
+ * the fields. Intensity is −50..50 everywhere. Stretch handles are shares of
+ * the height from the bottom, at least 0.02 apart. Slim and zoom centres are
+ * shares of the frame with y from the bottom; the slim box's size is a share
+ * of the frame and its rotation is in degrees; the zoom radius is a share of
+ * the frame's shorter side.
+ */
+const MANUAL_BODY_FIELDS: Record<
+	ManualBodyTool,
+	{ title: string; fields: ManualBodyField[] }
+> = {
+	stretch: {
+		title: "拉长",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "upper", min: 0.02, max: 1, title: "上线" },
+			{ key: "bottom", min: 0, max: 0.98, title: "下线" },
+		],
+	},
+	slim: {
+		title: "瘦身",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "x", min: 0, max: 1, title: "中心X" },
+			{ key: "y", min: 0, max: 1, title: "中心Y" },
+			{ key: "width", min: 0.02, max: 1, title: "宽度" },
+			{ key: "height", min: 0.02, max: 1, title: "高度" },
+			{ key: "rotation", min: -180, max: 180, title: "旋转" },
+		],
+	},
+	zoom: {
+		title: "放大缩小",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "x", min: 0, max: 1, title: "中心X" },
+			{ key: "y", min: 0, max: 1, title: "中心Y" },
+			{ key: "radius", min: 0.01, max: 0.5, title: "半径" },
+		],
+	},
+};
+
+/** The requested manual body tools, checked against the editor's ranges; idle tools are dropped. */
 function manualBodyAdjustments({
 	value,
 }: {
@@ -120,36 +186,29 @@ function manualBodyAdjustments({
 	if (value === undefined) return undefined;
 	const input = record({ value, label: "手动美体" });
 	allowedKeys({ value: input, keys: manualBodyTools(), label: "手动美体" });
-	const manualBody: PipelineManualBody = {};
-	if (input.stretch !== undefined) {
-		const stretch = record({ value: input.stretch, label: "手动美体拉长" });
+	const manualBody: Record<string, Record<string, number>> = {};
+	for (const tool of Object.keys(MANUAL_BODY_FIELDS) as ManualBodyTool[]) {
+		if (input[tool] === undefined) continue;
+		const { title, fields } = MANUAL_BODY_FIELDS[tool];
+		const settings = record({ value: input[tool], label: `手动美体${title}` });
 		allowedKeys({
-			value: stretch,
-			keys: ["intensity", "upper", "bottom"],
-			label: "手动美体拉长",
+			value: settings,
+			keys: fields.map(({ key }) => key),
+			label: `手动美体${title}`,
 		});
-		const upper = strength({
-			value: stretch.upper,
-			min: 0.02,
-			max: 1,
-			label: "拉长上线",
-		});
-		const bottom = strength({
-			value: stretch.bottom,
-			min: 0,
-			max: 0.98,
-			label: "拉长下线",
-		});
-		if (upper - bottom < 0.02 - 1e-9) throw new Error("拉长上下线至少相距0.02");
-		const intensity = strength({
-			value: stretch.intensity,
-			min: -50,
-			max: 50,
-			label: "拉长强度",
-		});
-		if (intensity !== 0) manualBody.stretch = { intensity, upper, bottom };
+		const checked = Object.fromEntries(
+			fields.map(({ key, min, max, title: field }) => [
+				key,
+				strength({ value: settings[key], min, max, label: `${title}${field}` }),
+			])
+		);
+		if (tool === "stretch" && checked.upper - checked.bottom < 0.02 - 1e-9)
+			throw new Error("拉长上下线至少相距0.02");
+		if (checked.intensity !== 0) manualBody[tool] = checked;
 	}
-	return Object.keys(manualBody).length > 0 ? manualBody : undefined;
+	return Object.keys(manualBody).length > 0
+		? (manualBody as PipelineManualBody)
+		: undefined;
 }
 
 function strength({
