@@ -9,6 +9,11 @@ import {
 	mapMediaTimelineTime,
 } from "@/lib/video/video-timing";
 import { calculateAudioPreviewState } from "./audio-preview-state";
+import {
+	compressorOutputGain,
+	LIMITER_RATIO,
+	limiterOutputGain,
+} from "./dynamics-compressor-makeup";
 
 const AUTOMATION_SAMPLES_PER_INTERVAL = 12;
 export const MAX_BROWSER_AUDIO_AUTOMATION_POINTS = 512;
@@ -36,8 +41,11 @@ export interface BrowserAudioAutomationPoint {
 	formantStrength: number;
 	compressorThreshold: number;
 	compressorRatio: number;
+	/** The gain after the compressor: the user's makeup over Chromium's own. */
 	compressorMakeup: number;
 	limiterThreshold: number;
+	/** The gain after the limiter: divides out Chromium's built-in makeup. */
+	limiterMakeup: number;
 	telephoneDry: number;
 	telephoneWet: number;
 	dryMix: number;
@@ -194,6 +202,15 @@ function pointFromState({
 		: 0;
 	const reverbMix = settings.reverb.enabled ? settings.reverb.mix / 100 : 0;
 	const echoMix = settings.echo.enabled ? settings.echo.mix / 100 : 0;
+	const compressorThreshold = settings.compressor.enabled
+		? settings.compressor.thresholdDb
+		: 0;
+	const compressorRatio = settings.compressor.enabled
+		? settings.compressor.ratio
+		: 1;
+	const limiterThreshold = settings.limiter.enabled
+		? settings.limiter.ceilingDb
+		: 0;
 	const pitchEnabled =
 		settings.pitch.enabled && Math.abs(settings.pitch.semitones) >= 0.01;
 	return {
@@ -219,16 +236,20 @@ function pointFromState({
 			: 0,
 		pitchSemitones: pitchEnabled ? settings.pitch.semitones : 0,
 		formantStrength: pitchEnabled && settings.pitch.preserveFormants ? 1 : 0,
-		compressorThreshold: settings.compressor.enabled
-			? settings.compressor.thresholdDb
-			: 0,
-		compressorRatio: settings.compressor.enabled
-			? settings.compressor.ratio
-			: 1,
-		compressorMakeup: settings.compressor.enabled
-			? 10 ** (settings.compressor.makeupGainDb / 20)
-			: 1,
-		limiterThreshold: settings.limiter.enabled ? settings.limiter.ceilingDb : 0,
+		compressorThreshold,
+		compressorRatio,
+		compressorMakeup: compressorOutputGain({
+			thresholdDb: compressorThreshold,
+			ratio: compressorRatio,
+			makeupGain: settings.compressor.enabled
+				? 10 ** (settings.compressor.makeupGainDb / 20)
+				: 1,
+		}),
+		limiterThreshold,
+		limiterMakeup: limiterOutputGain({
+			thresholdDb: limiterThreshold,
+			ratio: LIMITER_RATIO,
+		}),
 		telephoneDry: 1 - telephoneMix,
 		telephoneWet: telephoneMix,
 		dryMix: Math.max(0, 1 - Math.max(reverbMix, echoMix)),
