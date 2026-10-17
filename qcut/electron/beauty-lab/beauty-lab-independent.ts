@@ -33,6 +33,10 @@ import {
 	writeIndependentSourceEvidence,
 	verifyIndependentSourceEvidenceReceipt,
 } from "./beauty-lab-independent-source-evidence.js";
+import {
+	canonicalIndependentManualBody,
+	independentManualBodySchema,
+} from "./beauty-lab-independent-manual-body.js";
 
 const requestSchema = z
 	.object({
@@ -60,7 +64,7 @@ const requestSchema = z
 					.optional(),
 				faces: z.array(z.never()).max(0).optional(),
 				skinToneResourceId: z.null().optional(),
-				manualBody: z.object({}).strict().optional(),
+				manualBody: independentManualBodySchema.optional(),
 				manualRetouch: z
 					.object({ strokes: z.array(z.never()).max(0) })
 					.strict()
@@ -80,7 +84,23 @@ const catalogSchema = z.object({
 		z.object({ name: z.string(), min: z.number(), max: z.number() })
 	),
 	makeup: z.array(z.object({ id: z.string(), category: z.string() })),
+	stages: z
+		.array(
+			z.object({ kind: z.string(), tools: z.array(z.string()).optional() })
+		)
+		.optional(),
 });
+
+/** The manual body tools the engine's manual-body stage renders. */
+function catalogManualBodyTools({
+	catalog,
+}: {
+	catalog: z.infer<typeof catalogSchema>;
+}) {
+	return (catalog.stages ?? [])
+		.filter(({ kind }) => kind === "manual-body")
+		.flatMap(({ tools }) => tools ?? []);
+}
 
 export function independentBeautyAdjustments({
 	request,
@@ -126,9 +146,18 @@ export function independentBeautyAdjustments({
 		)
 			throw new Error(`Unsupported independent makeup ${category}`);
 	}
+	const manualBody = canonicalIndependentManualBody({
+		manualBody: parsed.adjustments.manualBody,
+	});
+	const tools = catalogManualBodyTools({ catalog });
+	for (const tool of Object.keys(manualBody ?? {}))
+		if (!tools.includes(tool))
+			throw new Error(
+				`Independent beauty does not support manual body ${tool}`
+			);
 	return {
 		request: structuredClone(parsed) as BeautyLabIndependentRequest,
-		adjustments: { values, makeup },
+		adjustments: { values, makeup, ...(manualBody ? { manualBody } : {}) },
 	};
 }
 
@@ -272,6 +301,7 @@ export function createBeautyLabIndependentProvider({
 					"Single opaque photo, max edge 4096 / 8,294,400 pixels; resident rendering, general native parity unverified",
 				controls: inventory.controls.map(({ name }) => `face_adjust_${name}`),
 				makeupCards: inventory.makeup.map(({ id }) => id),
+				manualBodyTools: catalogManualBodyTools({ catalog: inventory }),
 			};
 		} catch (error) {
 			return {
@@ -280,6 +310,7 @@ export function createBeautyLabIndependentProvider({
 				message: String(error),
 				controls: [],
 				makeupCards: [],
+				manualBodyTools: [],
 			};
 		}
 	}
