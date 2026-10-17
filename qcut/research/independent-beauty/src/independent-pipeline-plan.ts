@@ -6,9 +6,19 @@ export interface PipelineSelection {
 	cardId: string;
 	intensity: number;
 }
+export interface PipelineStretch {
+	intensity: number;
+	upper: number;
+	bottom: number;
+}
+/** Manual body tools that change the picture; absent when none does. */
+export interface PipelineManualBody {
+	stretch?: PipelineStretch;
+}
 export interface PipelineAdjustments {
 	values: Record<string, number>;
 	makeup: Record<string, PipelineSelection>;
+	manualBody?: PipelineManualBody;
 }
 interface NumericControl {
 	name: string;
@@ -31,10 +41,12 @@ interface MakeupControl {
 }
 interface StageDefinition {
 	id: string;
-	kind: "scalar" | "controls" | "gan";
+	kind: "scalar" | "controls" | "gan" | "manual-body";
 	script: string;
 	controls: string[];
 	bindings?: { name: string; flag: string; scale: number }[];
+	/** For the manual-body stage: the tools it renders. */
+	tools?: string[];
 }
 interface PipelineCatalog {
 	version: 1;
@@ -52,7 +64,8 @@ export interface PipelineStage {
 	controls:
 		| Record<string, number>
 		| PipelineSelection
-		| Record<string, PipelineSelection>;
+		| Record<string, PipelineSelection>
+		| PipelineManualBody;
 }
 export interface IndependentPipelinePlan {
 	version: 1;
@@ -91,6 +104,52 @@ function allowedKeys({
 	for (const key of Object.keys(value)) {
 		if (!keys.includes(key)) throw new Error(`${label}不接受 ${key}`);
 	}
+}
+
+/** The manual body tools the catalog's manual-body stage renders. */
+function manualBodyTools(): string[] {
+	return catalog.stages.find(({ kind }) => kind === "manual-body")?.tools ?? [];
+}
+
+/** The editor's manual-body ranges: intensity −50..50, a band at least 0.02 tall. */
+function manualBodyAdjustments({
+	value,
+}: {
+	value: unknown;
+}): PipelineManualBody | undefined {
+	if (value === undefined) return undefined;
+	const input = record({ value, label: "手动美体" });
+	allowedKeys({ value: input, keys: manualBodyTools(), label: "手动美体" });
+	const manualBody: PipelineManualBody = {};
+	if (input.stretch !== undefined) {
+		const stretch = record({ value: input.stretch, label: "手动美体拉长" });
+		allowedKeys({
+			value: stretch,
+			keys: ["intensity", "upper", "bottom"],
+			label: "手动美体拉长",
+		});
+		const upper = strength({
+			value: stretch.upper,
+			min: 0.02,
+			max: 1,
+			label: "拉长上线",
+		});
+		const bottom = strength({
+			value: stretch.bottom,
+			min: 0,
+			max: 0.98,
+			label: "拉长下线",
+		});
+		if (upper - bottom < 0.02 - 1e-9) throw new Error("拉长上下线至少相距0.02");
+		const intensity = strength({
+			value: stretch.intensity,
+			min: -50,
+			max: 50,
+			label: "拉长强度",
+		});
+		if (intensity !== 0) manualBody.stretch = { intensity, upper, bottom };
+	}
+	return Object.keys(manualBody).length > 0 ? manualBody : undefined;
 }
 
 function strength({
@@ -132,6 +191,7 @@ export function independentPipelineCatalog() {
 			min,
 			max,
 		})),
+		manualBodyTools: manualBodyTools(),
 		limitations: catalog.limitations,
 	};
 }
@@ -142,7 +202,12 @@ export function independentPipelineAdjustments({
 	value: unknown;
 }): PipelineAdjustments {
 	const input = record({ value, label: "复合参数" });
-	allowedKeys({ value: input, keys: ["values", "makeup"], label: "复合参数" });
+	allowedKeys({
+		value: input,
+		keys: ["values", "makeup", "manualBody"],
+		label: "复合参数",
+	});
+	const manualBody = manualBodyAdjustments({ value: input.manualBody });
 	const requestedValues = record({
 		value: input.values === undefined ? {} : input.values,
 		label: "values",
@@ -202,6 +267,7 @@ export function independentPipelineAdjustments({
 				.filter(({ id, category }) => makeup[category]?.cardId === id)
 				.map(({ category }) => [category, makeup[category]])
 		),
+		...(manualBody ? { manualBody } : {}),
 	};
 }
 
@@ -213,6 +279,17 @@ export function independentPipelinePlan({
 	const adjustments = independentPipelineAdjustments({ value });
 	const stages: PipelineStage[] = [];
 	for (const definition of catalog.stages) {
+		if (definition.kind === "manual-body") {
+			if (!adjustments.manualBody) continue;
+			stages.push({
+				id: definition.id,
+				kind: definition.kind,
+				script: definition.script,
+				parameters: ["--manual-body", JSON.stringify(adjustments.manualBody)],
+				controls: adjustments.manualBody,
+			});
+			continue;
+		}
 		const controls = Object.fromEntries(
 			definition.controls
 				.filter((name) => (adjustments.values[name] ?? 0) !== 0)
