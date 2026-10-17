@@ -186,6 +186,8 @@ export interface VideoSource {
 	elementOrder?: number;
 	/** File system path to the video file */
 	path: string;
+	/** Input decoder that keeps a VP8/VP9 source's alpha (see video-alpha.ts). */
+	decoder?: "libvpx" | "libvpx-vp9";
 	/** Start time in the final timeline (seconds) */
 	startTime: number;
 	/** Duration to use from this video (seconds) */
