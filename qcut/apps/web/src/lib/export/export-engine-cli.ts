@@ -1018,10 +1018,6 @@ export class CLIExportEngine extends ExportEngine {
 		});
 	}
 
-	calculateTotalFrames(): number {
-		return Math.ceil(this.totalDuration * this.fps);
-	}
-
 	private async cleanup(): Promise<void> {
 		if (!this.sessionId) return;
 
