@@ -1,4 +1,4 @@
-"""QCut-owned manual body tools on an opaque photo: stretch one horizontal band.
+"""QCut-owned manual body tools on an opaque photo: stretch, slim and zoom.
 
 The editor's manual-body `stretch` is {intensity -50..50, upper, bottom}: the
 band between two handles, as shares of the height measured from the bottom
@@ -15,6 +15,27 @@ the band in between scales evenly and the rest of the picture shifts as a
 whole; the resulting source rows are then spread by the native grid's
 250/249 about the frame centre. The native's sub-pixel horizontal offset is
 not reproduced: columns stay where they are.
+
+`slim` is {intensity -50..50, x, y (centre, y from the bottom), width,
+height (shares of the frame), rotation (degrees)}: inside that rectangle the
+picture moves along the rectangle's horizontal axis, towards its centre line
+for a positive intensity and away from it for a negative one, most at the
+quarter lines halfway up and fading to nothing at its sides, top and bottom.
+The native field, measured on coordinate-encoded frames, is one shape for
+every rectangle size and orientation and exactly linear in intensity; it is
+kept as a table (manual_body_slim_field.json) because no short formula
+reproduces it within a pixel.
+
+`zoom` is {intensity -50..50, x, y (centre, y from the bottom), radius (a
+share of the frame's shorter side)}: a circle magnified (positive) or
+shrunk (negative) about its centre, most in the middle and not at all at its
+edge. A source point at relative radius r moves out to r + i * A * r *
+(1 - r^a)^b, with (A, a, b) = (0.4, 3.25, 2.066) for magnifying and (0.25,
+5.40, 2.060) for shrinking, i the native intensity (editor value / 100):
+fitted to the native tool within 0.2 px at every radius, size and
+orientation measured.
+
+Tools apply in the native order: stretch, slim, zoom.
 """
 from render_resolution import source_edge_limit
 import argparse
@@ -32,12 +53,16 @@ from facefitting_image import decode_image
 from slimface_render import validate_rgba
 from whiten_metal import process_images
 
-TOOLS = ('stretch',)
+TOOLS = ('stretch', 'slim', 'zoom')
 INTENSITY_LIMIT = 50
 MIN_BAND = 0.02
 STRETCH_SHARE = 0.05
 SHRINK_SHARE = 0.02
 GRID_SCALE = 250 / 249
+SLIM_FIELD = Path(__file__).resolve().with_name('manual_body_slim_field.json')
+# Radial motion profile (amplitude, a, b) for magnifying and for shrinking.
+ZOOM_MAGNIFY = (0.4, 3.25, 2.066)
+ZOOM_SHRINK = (0.25, 5.40, 2.060)
 
 
 def _number(*, value, label, low, high):
@@ -47,11 +72,7 @@ def _number(*, value, label, low, high):
     return 0.0 if value == 0 else float(value)
 
 
-def validate_manual_body(*, manual_body):
-    """The settings this renderer accepts, with every field checked; only active tools."""
-    if not isinstance(manual_body, dict) or not manual_body or not set(manual_body) <= set(TOOLS):
-        raise ValueError(f'manual body must set at least one of {", ".join(TOOLS)}')
-    stretch = manual_body['stretch']
+def _stretch(*, stretch):
     if not isinstance(stretch, dict) or set(stretch) != {'intensity', 'upper', 'bottom'}:
         raise ValueError('manual body stretch requires exactly intensity, upper and bottom')
     upper = _number(value=stretch['upper'], label='stretch.upper', low=MIN_BAND, high=1)
@@ -60,7 +81,40 @@ def validate_manual_body(*, manual_body):
         raise ValueError('manual body stretch band must be at least 0.02 tall')
     intensity = _number(value=stretch['intensity'], label='stretch.intensity',
                         low=-INTENSITY_LIMIT, high=INTENSITY_LIMIT)
-    return {'stretch': {'intensity': intensity, 'upper': upper, 'bottom': bottom}}
+    return {'intensity': intensity, 'upper': upper, 'bottom': bottom}
+
+
+def _slim(*, slim):
+    keys = ('intensity', 'x', 'y', 'width', 'height', 'rotation')
+    if not isinstance(slim, dict) or set(slim) != set(keys):
+        raise ValueError('manual body slim requires exactly intensity, x, y, width, height and rotation')
+    limits = {'intensity': (-INTENSITY_LIMIT, INTENSITY_LIMIT), 'x': (0, 1), 'y': (0, 1),
+              'width': (MIN_BAND, 1), 'height': (MIN_BAND, 1), 'rotation': (-180, 180)}
+    return {key: _number(value=slim[key], label=f'slim.{key}', low=limits[key][0], high=limits[key][1])
+            for key in keys}
+
+
+def _zoom(*, zoom):
+    keys = ('intensity', 'x', 'y', 'radius')
+    if not isinstance(zoom, dict) or set(zoom) != set(keys):
+        raise ValueError('manual body zoom requires exactly intensity, x, y and radius')
+    limits = {'intensity': (-INTENSITY_LIMIT, INTENSITY_LIMIT), 'x': (0, 1), 'y': (0, 1), 'radius': (0.01, 0.5)}
+    return {key: _number(value=zoom[key], label=f'zoom.{key}', low=limits[key][0], high=limits[key][1])
+            for key in keys}
+
+
+def validate_manual_body(*, manual_body):
+    """The settings this renderer accepts, with every field checked."""
+    if not isinstance(manual_body, dict) or not manual_body or not set(manual_body) <= set(TOOLS):
+        raise ValueError(f'manual body must set at least one of {", ".join(TOOLS)}')
+    settings = {}
+    if 'stretch' in manual_body:
+        settings['stretch'] = _stretch(stretch=manual_body['stretch'])
+    if 'slim' in manual_body:
+        settings['slim'] = _slim(slim=manual_body['slim'])
+    if 'zoom' in manual_body:
+        settings['zoom'] = _zoom(zoom=manual_body['zoom'])
+    return settings
 
 
 def stretch_edge_pixels(*, height, intensity, upper, bottom):
@@ -106,18 +160,149 @@ def apply_stretch(*, rgba, intensity, upper, bottom):
     return result
 
 
+def load_slim_field(*, path=SLIM_FIELD):
+    """The slim table: inward motion in half-widths at full intensity, by |v| row and |u| column."""
+    data = json.loads(path.read_text())
+    table = np.asarray(data['inward'], np.float64)
+    step = float(data['step'])
+    if table.ndim != 2 or table.shape[0] != table.shape[1] or not math.isclose((table.shape[0] - 1) * step, 1) \
+            or not np.all(np.isfinite(table)) or np.any(table < 0) or np.any(table[:, 0] != 0):
+        raise ValueError('invalid manual body slim table')
+    return table, step
+
+
+def slim_inward(*, u, v, table, step):
+    """Bilinear inward motion at full intensity for source positions (|u|, |v| <= 1)."""
+    last = table.shape[0] - 1
+    au = np.clip(np.abs(u), 0, 1) / step
+    av = np.clip(np.abs(v), 0, 1) / step
+    column = np.minimum(np.floor(au).astype(np.intp), last - 1)
+    row = np.minimum(np.floor(av).astype(np.intp), last - 1)
+    fu, fv = au - column, av - row
+    top = table[row, column] * (1 - fu) + table[row, column + 1] * fu
+    below = table[row + 1, column] * (1 - fu) + table[row + 1, column + 1] * fu
+    return top * (1 - fv) + below * fv
+
+
+def slim_source_points(*, width, height, intensity, x, y, rect_width, rect_height, rotation, table, step):
+    """Output pixels inside the rectangle and the continuous source point each samples."""
+    amount = intensity / 100
+    angle = math.radians(rotation)
+    # The rectangle's axes in top-down pixels; its height axis' sign does not matter.
+    axis_u = np.array([math.cos(angle), math.sin(angle)])
+    axis_v = np.array([-math.sin(angle), math.cos(angle)])
+    centre = np.array([x * width, (1 - y) * height])
+    half_u, half_v = rect_width / 2 * width, rect_height / 2 * height
+    corners = np.array([centre + su * half_u * axis_u + sv * half_v * axis_v for su in (-1, 1) for sv in (-1, 1)])
+    left, top = np.floor(corners.min(axis=0)).astype(int)
+    right, bottom = np.ceil(corners.max(axis=0)).astype(int)
+    left, top = max(left, 0), max(top, 0)
+    right, bottom = min(right, width), min(bottom, height)
+    if right <= left or bottom <= top or amount == 0:
+        return np.empty(0, np.intp), np.empty(0, np.intp), np.empty((0, 2))
+    rows, columns = np.mgrid[top:bottom, left:right]
+    offset = np.stack([columns + 0.5 - centre[0], rows + 0.5 - centre[1]], axis=-1)
+    u_out = offset @ axis_u / half_u
+    v = offset @ axis_v / half_v
+    inside = (np.abs(u_out) < 1) & (np.abs(v) < 1)
+    u_out, v = u_out[inside], v[inside]
+    # The field moves source points: u_out = u_source - amount * sign * inward. Invert it by
+    # fixed-point steps; the motion's slope stays far below one, so they converge.
+    u_source = u_out.copy()
+    for _ in range(12):
+        u_source = u_out + amount * np.sign(u_source) * slim_inward(u=u_source, v=v, table=table, step=step)
+    points = centre + np.outer(u_source * half_u, axis_u) + np.outer(v * half_v, axis_v)
+    return rows[inside], columns[inside], points
+
+
+def sample_bilinear(*, rgba, points):
+    """RGBA at continuous (x, y) pixel points (pixel centres at +0.5), clamped at the edges."""
+    height, width = rgba.shape[:2]
+    position_x = np.clip(points[:, 0] - 0.5, 0, width - 1)
+    position_y = np.clip(points[:, 1] - 0.5, 0, height - 1)
+    x0 = np.floor(position_x).astype(np.intp)
+    y0 = np.floor(position_y).astype(np.intp)
+    x1, y1 = np.minimum(x0 + 1, width - 1), np.minimum(y0 + 1, height - 1)
+    fx, fy = (position_x - x0)[:, None], (position_y - y0)[:, None]
+    source = rgba.astype(np.float64)
+    top = source[y0, x0] * (1 - fx) + source[y0, x1] * fx
+    below = source[y1, x0] * (1 - fx) + source[y1, x1] * fx
+    return np.clip(np.rint(top * (1 - fy) + below * fy), 0, 255).astype(np.uint8)
+
+
+def apply_slim(*, rgba, intensity, x, y, width, height, rotation, table=None, step=None):
+    """The slim rectangle's horizontal pull; pixels outside it keep the photo."""
+    if table is None:
+        table, step = load_slim_field()
+    rows, columns, points = slim_source_points(
+        width=rgba.shape[1], height=rgba.shape[0], intensity=intensity, x=x, y=y,
+        rect_width=width, rect_height=height, rotation=rotation, table=table, step=step)
+    result = rgba.copy()
+    if len(rows):
+        result[rows, columns] = sample_bilinear(rgba=rgba, points=points)
+    return result
+
+
+def zoom_motion(*, radius, amount):
+    """Outward motion (in circle radii) of a source point at relative `radius`."""
+    scale, power, falloff = ZOOM_MAGNIFY if amount > 0 else ZOOM_SHRINK
+    clipped = np.clip(radius, 0, 1)
+    return amount * scale * clipped * (1 - clipped ** power) ** falloff
+
+
+def zoom_source_points(*, width, height, intensity, x, y, radius):
+    """Output pixels inside the zoom circle and the continuous source point each samples."""
+    amount = intensity / 100
+    size = radius * min(width, height)
+    centre = np.array([x * width, (1 - y) * height])
+    left, top = (max(int(math.floor(value - size)), 0) for value in centre)
+    right = min(int(math.ceil(centre[0] + size)), width)
+    bottom = min(int(math.ceil(centre[1] + size)), height)
+    if right <= left or bottom <= top or amount == 0:
+        return np.empty(0, np.intp), np.empty(0, np.intp), np.empty((0, 2))
+    rows, columns = np.mgrid[top:bottom, left:right]
+    offset = np.stack([columns + 0.5 - centre[0], rows + 0.5 - centre[1]], axis=-1)
+    out_radius = np.hypot(offset[..., 0], offset[..., 1]) / size
+    inside = out_radius < 1
+    out_radius, offset = out_radius[inside], offset[inside]
+    # Points move out by zoom_motion; invert it by fixed-point steps (its slope stays below one).
+    source_radius = out_radius.copy()
+    for _ in range(12):
+        source_radius = out_radius - zoom_motion(radius=source_radius, amount=amount)
+    ratio = np.divide(source_radius, out_radius, out=np.ones_like(out_radius), where=out_radius > 0)
+    return rows[inside], columns[inside], centre + offset * ratio[:, None]
+
+
+def apply_zoom(*, rgba, intensity, x, y, radius):
+    """The zoom circle: radial magnify or shrink; pixels outside it keep the photo."""
+    rows, columns, points = zoom_source_points(width=rgba.shape[1], height=rgba.shape[0],
+                                               intensity=intensity, x=x, y=y, radius=radius)
+    result = rgba.copy()
+    if len(rows):
+        result[rows, columns] = sample_bilinear(rgba=rgba, points=points)
+    return result
+
+
 def run(*, rgba, manual_body, runtime, output, report):
     started = time.monotonic()
     validate_rgba(rgba=rgba)
     if max(rgba.shape[:2]) > source_edge_limit() or np.any(rgba[..., 3] != 255):
         raise ValueError('bounded opaque manual-body photo required')
     settings = validate_manual_body(manual_body=manual_body)
-    stretch = settings['stretch']
-    result = apply_stretch(rgba=rgba, **stretch)
+    result = rgba
+    if 'stretch' in settings:
+        result = apply_stretch(rgba=result, **settings['stretch'])
+    if 'slim' in settings:
+        result = apply_slim(rgba=result, **settings['slim'])
+    if 'zoom' in settings:
+        result = apply_zoom(rgba=result, **settings['zoom'])
+    if result is rgba:
+        result = rgba.copy()
     independence = process_images()
     receipt = {'scope': 'original-photo-manual-body-PNG', 'tools': sorted(settings), 'manualBody': settings,
                'width': rgba.shape[1], 'height': rgba.shape[0],
-               'stretchEdgePixels': stretch_edge_pixels(height=rgba.shape[0], **stretch),
+               **({'stretchEdgePixels': stretch_edge_pixels(height=rgba.shape[0], **settings['stretch'])}
+                  if 'stretch' in settings else {}),
                'independence': independence, 'privateAssetDependency': False,
                'fixedLandmarks': False, 'nativeGeometryUsed': False, 'nativeProductParityVerified': False,
                'inputRgbaSha256': hashlib.sha256(rgba.tobytes()).hexdigest(),
