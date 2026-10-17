@@ -226,7 +226,8 @@ async function compositeSegmentCursor({
 	const { fps, codec, bitrate } = settings;
 	const ffmpegPath = getFFmpegPath();
 	const frameSizeBytes = srcWidth * srcHeight * 4;
-	const outputTempPath = segmentPath + ".cursor-tmp.mp4";
+	// Same container as the segment: its sound is PCM and is copied over.
+	const outputTempPath = `${segmentPath}.cursor-tmp${path.extname(segmentPath)}`;
 
 	const { points, captureRect } = telemetry;
 	const swayAmount = settings.cursorConfig?.sway ?? 0;
@@ -287,7 +288,7 @@ async function compositeSegmentCursor({
 				stdio: ["ignore", "pipe", "pipe"],
 			});
 
-			// Encoder: include audio from original source via separate input
+			// Encoder: the segment's own sound (already trimmed, PCM) is copied.
 			const encoder = spawn(
 				ffmpegPath,
 				[
@@ -303,7 +304,7 @@ async function compositeSegmentCursor({
 					"-i",
 					"pipe:0",
 					"-i",
-					originalSourcePath,
+					segmentPath,
 					"-map",
 					"0:v",
 					"-map",
@@ -317,10 +318,8 @@ async function compositeSegmentCursor({
 					"-pix_fmt",
 					"yuv420p",
 					"-c:a",
-					"aac",
-					"-b:a",
-					"192k",
-					"-shortest",
+					"copy",
+					...(duration > 0 ? ["-t", String(duration)] : ["-shortest"]),
 					"-movflags",
 					"+faststart",
 					outputTempPath,
