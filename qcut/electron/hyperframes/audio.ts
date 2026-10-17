@@ -496,7 +496,7 @@ function buildHyperframesEncodePreamble({
 			.map((_track, index) => `[ha${index}]`)
 			.join("");
 		filterParts.push(
-			`${mixInputs}amix=inputs=${audioTracks.length}:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.98,atrim=duration=${formatNumber(duration)}[haout]`
+			`${mixInputs}amix=inputs=${audioTracks.length}:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.98:level=0:latency=1,atrim=duration=${formatNumber(duration)}[haout]`
 		);
 		args.push(
 			"-filter_complex",
