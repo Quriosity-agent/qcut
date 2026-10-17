@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.17.1] - 2026-10-17
+
 ### Improved
 - Smart shot split: `qcut editor timeline shot-split` finds a clip's cuts with the bundled local shot model (ONNX or FFmpeg scene detection when it is unavailable, `qcut editor analyze engines` says which), takes manual cut points, a minimum shot length and dry runs, and splits on the timeline as one undo step; the same split is in the clip's context menu. `qcut editor analyze shots` reports cut times.
 - Colour: `qcut editor element color` sets the 15 basic controls on a clip or a whole track as one undo step, `qcut editor element filter --resource-id` applies a filter preset, and `element patch` accepts `color` and `adjustments`. Adjustment layers export through the native engine; layers with masks or multi-pass effects, clips with a filter stack, GL transitions and animated grades that use the tonal controls export through the editor engine automatically, and `--engine native` says why it is refused.
