@@ -71,7 +71,8 @@ describe("sticker overlay FFmpeg builder", () => {
 		expect(graph).toContain("adelay=2250:all=1");
 		expect(graph).toContain("volume=0.15");
 		expect(graph).toContain("amix=inputs=2");
-		expect(graph).toContain("alimiter=limit=0.95");
+		// A safety limiter that neither delays the mix nor lifts it to full scale.
+		expect(graph).toContain("alimiter=limit=0.95:level=0:latency=1");
 		expect(args).toContain("[aout]");
 		expect(args).toContain("aac");
 	});
