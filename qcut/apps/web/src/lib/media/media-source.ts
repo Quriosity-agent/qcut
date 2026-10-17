@@ -36,11 +36,18 @@ export function getVideoSource(mediaItem: {
 	file?: File;
 	url?: string;
 	localPath?: string;
+	metadata?: Record<string, unknown>;
 }): VideoSource {
 	if (mediaItem.file) {
+		// A transparent video the browser cannot decode plays from its VP9
+		// alpha proxy (see alpha-playback-proxy.ts).
+		const proxyPath = (mediaItem.metadata?.alpha as { proxyPath?: unknown })
+			?.proxyPath;
+		const playbackPath =
+			typeof proxyPath === "string" ? proxyPath : mediaItem.localPath;
 		const protocolSrc =
-			mediaItem.localPath && platform().isElectron
-				? localMediaUrlForPath(mediaItem.localPath)
+			playbackPath && platform().isElectron
+				? localMediaUrlForPath(playbackPath)
 				: undefined;
 		return { file: mediaItem.file, type: "file", protocolSrc };
 	}
