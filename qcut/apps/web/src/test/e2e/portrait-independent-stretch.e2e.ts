@@ -323,6 +323,7 @@ test("independent stretch exports the engine's rows on timeline clips", async ({
 			],
 		});
 		console.log("auto export engine", autoJob.engine);
+		expect(autoJob.engine, "auto export engine").toBe("renderer-muxer");
 		const autoWant = engineRows(CLIPS[0]).map(
 			(value, row) => value ?? row + 0.5
 		);
