@@ -256,6 +256,14 @@
 			"max": 100,
 			"group": "features",
 			"stage": "face-features"
+		},
+		{
+			"name": "StretchLeg",
+			"title": "长腿",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
 		}
 	],
 	"stages": [
@@ -342,6 +350,13 @@
 			"script": "jawline_render.py",
 			"controls": ["XiaHeXian"],
 			"bindings": [{ "name": "XiaHeXian", "flag": "--intensity", "scale": 1 }]
+		},
+		{
+			"id": "smart-body",
+			"kind": "controls",
+			"script": "body_longleg_render.py",
+			"controls": ["StretchLeg"],
+			"afterMakeup": true
 		}
 	],
 	"makeup": [
@@ -658,6 +673,7 @@
 		"单人不透明图片，最长边1280",
 		"所有阶段使用自研渲染；仍需本机私有模型和材质",
 		"手动美体（拉长、瘦身、放大缩小）的形变与原生相差约1像素以内；原生对整幅画面的亚像素重采样未复刻。",
+		"智能美体目前只开放长腿：人体姿态与原生 CPU 路径一致，腿部区域按原生成片拟合，与原生仍有差异；多人时只处理第一个人；视频逐帧独立计算，不做跨帧平滑。",
 		"每阶段从上阶段结果重新推导关键点与蒙版",
 		"固定顺序组合，不保证任意组合与原生像素一致",
 		"视频、多脸及其他GPU未验收",
