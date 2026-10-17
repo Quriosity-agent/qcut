@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"profile": "qcut-independent-photo-v1-20261008",
-	"sourceManifestSha256": "b106f12c87af50c3883c858ae35b97b72781a32b10e66daaa9e26578e70063ca",
+	"sourceManifestSha256": "5e37a17df6b018dd4a322998327a8ffddb7f76668713089dd4d64831b2fb672c",
 	"files": [
 		{
 			"path": "Cache/effect/7406174445548719394/ed8ca9399d3ef88ea59931f6f57885a1/LuaRTTI.MarkGen.lua",
@@ -1567,6 +1567,11 @@
 			"path": "research/blush-baby-pink-v1.npz",
 			"bytes": 5316,
 			"sha256": "38a2752b5ee9674bbf35253abb525e3ec4a5b8a0c89fc01acaa6fe8588379d47"
+		},
+		{
+			"path": "research/body-skeleton-v1.npz",
+			"bytes": 767518,
+			"sha256": "92ee99023a1d900f1a4810d21dd49aee3ad98baa2cbe62680a88635b669cdee5"
 		},
 		{
 			"path": "research/brow-v1.npz",
