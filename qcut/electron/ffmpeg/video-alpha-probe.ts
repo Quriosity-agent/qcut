@@ -88,3 +88,31 @@ export async function probeVideoAlpha({
 		});
 	});
 }
+
+/**
+ * `sources` with the libvpx decoder named on each VP8/VP9 file that carries
+ * alpha, so a composite keeps its transparency; a file that cannot be probed
+ * keeps FFmpeg's default decoder.
+ */
+export async function withAlphaDecoders<
+	Source extends { path: string; decoder?: "libvpx" | "libvpx-vp9" },
+>({
+	sources,
+	probe = probeVideoAlpha,
+}: {
+	sources: Source[];
+	probe?: typeof probeVideoAlpha;
+}): Promise<Source[]> {
+	const known = new Map<string, Promise<VideoAlphaInfo | null>>();
+	return Promise.all(
+		sources.map(async (source) => {
+			let alpha = known.get(source.path);
+			if (!alpha) {
+				alpha = probe({ mediaPath: source.path }).catch(() => null);
+				known.set(source.path, alpha);
+			}
+			const decoder = (await alpha)?.decoder;
+			return decoder ? { ...source, decoder } : source;
+		})
+	);
+}
