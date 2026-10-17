@@ -398,6 +398,77 @@ describe("independent photo provider", () => {
 		});
 		expect(value.adjustments).toEqual({ values: { Nose: -50 }, makeup: {} });
 	});
+	it("keeps an active stretch band for an engine whose catalog renders it", () => {
+		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
+		const withStage = {
+			...catalog,
+			stages: [{ kind: "manual-body", tools: ["stretch"] }],
+		};
+		const value = independentBeautyAdjustments({
+			request: {
+				...request,
+				adjustments: { enabled: true, values: {}, manualBody: { stretch } },
+			},
+			catalog: withStage,
+		});
+		expect(value.adjustments).toEqual({
+			values: {},
+			makeup: {},
+			manualBody: { stretch },
+		});
+		// An idle band is not part of the canonical adjustments.
+		expect(
+			independentBeautyAdjustments({
+				request: {
+					...request,
+					adjustments: {
+						enabled: true,
+						values: {},
+						manualBody: { stretch: { ...stretch, intensity: 0 } },
+					},
+				},
+				catalog: withStage,
+			}).adjustments
+		).toEqual({ values: {}, makeup: {} });
+		// An engine without the stage refuses it rather than ignoring it.
+		expect(() =>
+			independentBeautyAdjustments({
+				request: {
+					...request,
+					adjustments: { enabled: true, values: {}, manualBody: { stretch } },
+				},
+				catalog,
+			})
+		).toThrow(/manual body stretch/);
+	});
+	it.each([
+		{ stretch: { intensity: 51, upper: 0.7, bottom: 0.2 } },
+		{ stretch: { intensity: 10, upper: 0.21, bottom: 0.2 } },
+		{ stretch: { intensity: 10, upper: 0.7 } },
+		{
+			slim: {
+				intensity: 10,
+				x: 0.5,
+				y: 0.5,
+				width: 0.2,
+				height: 0.2,
+				rotation: 0,
+			},
+		},
+	])("rejects manual body settings it cannot render: %j", (manualBody) => {
+		expect(() =>
+			independentBeautyAdjustments({
+				request: {
+					...request,
+					adjustments: { enabled: true, values: {}, manualBody },
+				} as unknown as BeautyLabIndependentRequest,
+				catalog: {
+					...catalog,
+					stages: [{ kind: "manual-body", tools: ["stretch"] }],
+				},
+			})
+		).toThrow();
+	});
 	it.each([
 		{ enabled: true, values: { unknown: 1 } },
 		{ enabled: true, values: { Nose: 101 } },
