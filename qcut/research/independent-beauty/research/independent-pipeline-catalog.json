@@ -292,6 +292,13 @@
 			]
 		},
 		{
+			"id": "manual-body",
+			"kind": "manual-body",
+			"script": "manual_body_render.py",
+			"controls": [],
+			"tools": ["stretch"]
+		},
+		{
 			"id": "face-features",
 			"kind": "controls",
 			"script": "portrait_features_render.py",
@@ -650,6 +657,7 @@
 	"limitations": [
 		"单人不透明图片，最长边1280",
 		"所有阶段使用自研渲染；仍需本机私有模型和材质",
+		"手动美体目前只开放拉长；瘦身和放大缩小尚未开放。",
 		"每阶段从上阶段结果重新推导关键点与蒙版",
 		"固定顺序组合，不保证任意组合与原生像素一致",
 		"视频、多脸及其他GPU未验收",
