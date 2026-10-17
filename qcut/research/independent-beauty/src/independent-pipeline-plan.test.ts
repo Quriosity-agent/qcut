@@ -258,4 +258,62 @@ describe("independent composite plan", () => {
 			expect(plan.stages[0].id).toBe(`makeup:${card.id}`);
 		}
 	});
+	test("manual body stretch runs after the skin stages and before face shaping", () => {
+		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
+		const plan = independentPipelinePlan({
+			value: {
+				values: { Whiten: 20, TotalFace: 30 },
+				manualBody: { stretch },
+			},
+		});
+		expect(plan.stages.map(({ id }) => id)).toEqual([
+			"whiten",
+			"manual-body",
+			"face-features",
+		]);
+		expect(plan.stages[1]).toEqual({
+			id: "manual-body",
+			kind: "manual-body",
+			script: "manual_body_render.py",
+			parameters: ["--manual-body", JSON.stringify({ stretch })],
+			controls: { stretch },
+		});
+		expect(plan.adjustments.manualBody).toEqual({ stretch });
+		expect(independentPipelineCatalog().manualBodyTools).toEqual(["stretch"]);
+	});
+	test("an idle stretch leaves no stage and no manual body in the plan", () => {
+		const plan = independentPipelinePlan({
+			value: {
+				manualBody: { stretch: { intensity: 0, upper: 0.6, bottom: 0.4 } },
+			},
+		});
+		expect(plan.stages).toEqual([]);
+		expect(plan.adjustments).toEqual({ values: {}, makeup: {} });
+	});
+	test("rejects manual body tools and settings outside the editor's ranges", () => {
+		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
+		for (const manualBody of [
+			{
+				slim: {
+					intensity: 10,
+					x: 0.5,
+					y: 0.5,
+					width: 0.2,
+					height: 0.2,
+					rotation: 0,
+				},
+			},
+			{ stretch: { ...stretch, intensity: 51 } },
+			{ stretch: { ...stretch, upper: 0.21 } },
+			{ stretch: { ...stretch, bottom: 0.99 } },
+			{ stretch: { ...stretch, extra: 1 } },
+			{ stretch: { intensity: 20, upper: 0.7 } },
+			{ stretch: { ...stretch, intensity: Number.NaN } },
+			[],
+		]) {
+			expect(() =>
+				independentPipelinePlan({ value: { manualBody } })
+			).toThrow();
+		}
+	});
 });
