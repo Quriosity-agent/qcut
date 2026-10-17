@@ -83,6 +83,24 @@ describe("independent frame cache key", () => {
 		makeup: {},
 		rgba: input,
 	};
+	it("keys a stretch band, and leaves keys without one as they were", () => {
+		const key = independentFrameCacheKey(base);
+		expect(independentFrameCacheKey({ ...base, manualBody: undefined })).toBe(
+			key
+		);
+		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
+		const stretched = independentFrameCacheKey({
+			...base,
+			manualBody: { stretch },
+		});
+		expect(stretched).not.toBe(key);
+		expect(
+			independentFrameCacheKey({
+				...base,
+				manualBody: { stretch: { ...stretch, intensity: 21 } },
+			})
+		).not.toBe(stretched);
+	});
 	it("ignores adjustment key order", () => {
 		expect(independentFrameCacheKey(base)).toBe(
 			independentFrameCacheKey({
