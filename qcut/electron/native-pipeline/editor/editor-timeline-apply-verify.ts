@@ -83,6 +83,8 @@ const MEDIA_VERIFY_KEYS = [
 	"scaleX",
 	"scaleY",
 	"opacity",
+	"blendMode",
+	"blendEnabled",
 	"keyframes",
 	"playbackRate",
 	"speedKeyframes",
