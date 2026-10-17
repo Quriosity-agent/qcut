@@ -213,6 +213,50 @@ describe("media audio preview pitch graph", () => {
 		expect(applied(denoiseLowpass.frequency)).toBe(16_000);
 	});
 
+	it("divides Chromium's built-in makeup out after the clip compressor and limiter", () => {
+		const context = audioContext();
+		audioMixMocks.getContext.mockReturnValue(context);
+		const graph = acquireGraph({
+			mediaElement: document.createElement("audio"),
+		});
+		const state = previewState();
+		state.settings.compressor = {
+			...state.settings.compressor,
+			enabled: true,
+			thresholdDb: -18,
+			ratio: 3,
+			makeupGainDb: 4,
+		};
+		state.settings.limiter = {
+			...state.settings.limiter,
+			enabled: true,
+			ceilingDb: -1,
+		};
+		graph.update({ state });
+
+		type Node = AudioNode & {
+			connect: { mock: { calls: AudioNode[][] } };
+			gain: AudioParam;
+		};
+		const [compressor, limiter] = (
+			context.createDynamicsCompressor as unknown as {
+				mock: { results: Array<{ value: Node }> };
+			}
+		).mock.results.map((result) => result.value);
+		const compressorMakeup = compressor.connect.mock.calls[0][0] as Node;
+		const limiterMakeup = limiter.connect.mock.calls[0][0] as Node;
+		// The limiter feeds only its makeup stage; both telephone paths start there.
+		expect(limiter.connect.mock.calls).toHaveLength(1);
+		const applied = (parameter: AudioParam) =>
+			(
+				parameter.setTargetAtTime as unknown as { mock: { calls: number[][] } }
+			).mock.calls.at(-1)?.[0] ?? Number.NaN;
+		const toDb = (gain: number) => 20 * Math.log10(gain);
+		// Chromium adds 0.908 dB after this compressor and 0.570 dB after the limiter.
+		expect(toDb(applied(compressorMakeup.gain))).toBeCloseTo(4 - 0.908, 2);
+		expect(toDb(applied(limiterMakeup.gain))).toBeCloseTo(-0.57, 2);
+	});
+
 	it("does not load the pitch worklet for ordinary playback", async () => {
 		const mediaElement = document.createElement("audio");
 		const graph = acquireGraph({ mediaElement });
