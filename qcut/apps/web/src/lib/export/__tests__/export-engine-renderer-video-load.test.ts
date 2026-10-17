@@ -115,7 +115,12 @@ describe("export video loading cancellation", () => {
 				signal: new AbortController().signal,
 			}).catch((error: unknown) => error);
 			await vi.advanceTimersByTimeAsync(1_000);
-			expect(await failed).toEqual(new Error("Failed to load video"));
+			const error = (await failed) as Error;
+			// The failure names the clip and its file, keeping the cause.
+			expect(error.message).toBe(
+				'Clip "Clip" (clip) could not be rendered from Source: Failed to load video'
+			);
+			expect(error.cause).toEqual(new Error("Failed to load video"));
 			expect(toBlob).not.toHaveBeenCalled();
 			expect(drawImage).not.toHaveBeenCalled();
 			expect(sequential.getOrOpen).toHaveBeenCalledTimes(3);
