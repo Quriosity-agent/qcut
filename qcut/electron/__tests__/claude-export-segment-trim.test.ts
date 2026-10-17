@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-	buildExportSegmentInputArgs,
-	collectExportSegments,
-} from "../claude/handlers/claude-export-handler/export-engine.js";
+import { collectExportSegments } from "../claude/handlers/claude-export-handler/export-engine.js";
+import { buildExportSegmentInputArgs } from "../claude/handlers/claude-export-handler/export-segment-encode.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
 import type { ClaudeTimeline, MediaFile } from "../types/claude-api.js";
 
