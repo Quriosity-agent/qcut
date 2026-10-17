@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 import numpy as np
 from PIL import Image
@@ -194,6 +195,40 @@ class Renderer(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'unsupported smart body controls'):
                 render.run(rgba=rgba, controls={'Whiten': 50}, runtime=root / 'missing-runtime',
                            output=root / 'c.png', report=root / 'c.json')
+
+    def test_a_still_searches_for_a_face_once_and_tracks_a_found_one_every_update(self):
+        class Body:
+            def __init__(self):
+                self.faces = []
+
+            def update(self, points, visibility, width, height, faces, rectangles, rolls, target):
+                self.faces.append(faces)
+                return {'faces': list(self.faces)}
+
+        for found in (None, {'faces': 'f', 'rectangles': 'r', 'rolls': 'o'}):
+            calls = []
+
+            class Faces:
+                detection = {'faces': 0}
+
+                def __init__(self, model_root):
+                    pass
+
+                def update(self, algorithm):
+                    calls.append(algorithm)
+                    return found
+
+            with unittest.mock.patch.object(render, 'BodyFaceSequence', Faces), \
+                    unittest.mock.patch.object(render, 'SmartBody', Body), \
+                    unittest.mock.patch.object(render, 'algorithm_image', lambda rgba: 'image'), \
+                    unittest.mock.patch.object(render, 'normalize_joints',
+                                               lambda points, width, height: {'points': 0, 'visibility': 0}):
+                result, faces = render.still_frame(rgba=np.zeros((4, 4, 4), np.uint8), points=[], algorithm_size=(4, 4),
+                                                   targets={}, runtime=Path('runtime'))
+            # The body always takes every update; a frame without one usable face is searched once.
+            self.assertEqual(len(result['faces']), render.STILL_UPDATES)
+            self.assertEqual(len(calls), 1 if found is None else render.STILL_UPDATES)
+            self.assertEqual(faces['faceFound'], found is not None)
 
     @unittest.skipUnless(HAS_ASSET, 'private body skeleton asset not installed')
     def test_photo_without_a_person_is_unchanged(self):
