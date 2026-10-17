@@ -100,6 +100,18 @@ describe("Export Engine Utils", () => {
 		it("returns 0 for zero duration", () => {
 			expect(calculateTotalFrames(0, 30)).toBe(0);
 		});
+
+		it("does not count an end a hair past a frame boundary as a frame", () => {
+			// A 24 fps film whose audio runs 0.3 ms past its last frame.
+			expect(calculateTotalFrames(212.250301, 24)).toBe(5094);
+			expect(calculateTotalFrames(5094 / 24, 24)).toBe(5094);
+		});
+
+		it("still counts a real part frame at the end", () => {
+			// 5153.2 frames: the last one is shown for a fifth of a frame.
+			expect(calculateTotalFrames(214.7167, 24)).toBe(5154);
+			expect(calculateTotalFrames(1.002, 30)).toBe(31);
+		});
 	});
 
 	describe("getActiveElements", () => {
@@ -128,6 +140,29 @@ describe("Export Engine Utils", () => {
 			const active = getActiveElements(tracks, mediaItems, 2);
 			expect(active).toHaveLength(1);
 			expect(active[0].element.id).toBe("e1");
+		});
+
+		it("cuts on the frame when a cut point sits a hair past it", () => {
+			// Frame 1155 at 24 fps starts at 48.125 s; a ripple delete of
+			// 60.708 − 48.125 s left this cut a third of a millisecond later.
+			const cut = 1155 / 24 + 0.000333;
+			const before = createMediaElement("before", "m1", 40, cut - 40);
+			const after = createMediaElement("after", "m1", cut, 5);
+			const tracks: TimelineTrack[] = [
+				{
+					id: "t1",
+					name: "Track 1",
+					type: "media",
+					elements: [before, after],
+					muted: false,
+				},
+			];
+			const ids = (frame: number) =>
+				getActiveElements(tracks, [], frame / 24, 24).map(
+					({ element }) => element.id
+				);
+			expect(ids(1154)).toEqual(["before"]);
+			expect(ids(1155)).toEqual(["after"]);
 		});
 
 		it("returns empty array when no elements are active", () => {
