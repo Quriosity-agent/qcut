@@ -258,10 +258,14 @@ describe("independent composite plan", () => {
 			expect(plan.stages[0].id).toBe(`makeup:${card.id}`);
 		}
 	});
-	test("the smart long leg runs last, after makeup, and takes only the body prefix", () => {
+	test("smart body runs last, after makeup, and takes only the body prefix", () => {
 		const plan = independentPipelinePlan({
 			value: {
-				values: { body_adjust_StretchLeg: 60, face_adjust_Whiten: 20 },
+				values: {
+					body_adjust_SlimHip: -20,
+					body_adjust_StretchLeg: 60,
+					face_adjust_Whiten: 20,
+				},
 				makeup: { lip: { cardId: "lip-soft-pink", intensity: 30 } },
 			},
 		});
@@ -273,11 +277,18 @@ describe("independent composite plan", () => {
 		expect(plan.stages.at(-1)).toEqual({
 			id: "smart-body",
 			kind: "controls",
-			script: "body_longleg_render.py",
-			parameters: ["--controls", JSON.stringify({ StretchLeg: 60 })],
-			controls: { StretchLeg: 60 },
+			script: "body_smart_render.py",
+			parameters: [
+				"--controls",
+				JSON.stringify({ StretchLeg: 60, SlimHip: -20 }),
+			],
+			controls: { StretchLeg: 60, SlimHip: -20 },
 		});
-		expect(plan.adjustments.values).toEqual({ Whiten: 20, StretchLeg: 60 });
+		expect(plan.adjustments.values).toEqual({
+			Whiten: 20,
+			StretchLeg: 60,
+			SlimHip: -20,
+		});
 		// A shared makeup pass also comes before it.
 		const grouped = independentPipelinePlan({
 			value: {
@@ -295,19 +306,31 @@ describe("independent composite plan", () => {
 		for (const values of [
 			{ face_adjust_StretchLeg: 10 },
 			{ body_adjust_Whiten: 10 },
-			{ body_adjust_SlimWaist: 10 },
+			{ body_adjust_SlimWaist: 101 },
+			{ body_adjust_SlimHip: -51 },
 			{ body_adjust_StretchLeg: 100.5 },
 		])
 			expect(() => independentPipelinePlan({ value: { values } })).toThrow();
-		expect(
-			independentPipelineCatalog().controls.find(
-				({ name }) => name === "StretchLeg"
-			)
-		).toEqual({
-			name: "StretchLeg",
-			title: "长腿",
-			min: 0,
-			max: 100,
+		const body = independentPipelineCatalog().controls.filter(
+			({ group }) => group === "body"
+		);
+		expect(body.map(({ name }) => name)).toEqual([
+			"SmallHead",
+			"SwanNeck",
+			"SlimArm",
+			"OrthoShoulder",
+			"WidenShoulderTest",
+			"SlimBody",
+			"SlimWaist",
+			"StretchLeg",
+			"SlimBreast",
+			"SlimHip",
+		]);
+		expect(body.find(({ name }) => name === "SlimHip")).toEqual({
+			name: "SlimHip",
+			title: "美胯",
+			min: -50,
+			max: 50,
 			group: "body",
 		});
 	});
