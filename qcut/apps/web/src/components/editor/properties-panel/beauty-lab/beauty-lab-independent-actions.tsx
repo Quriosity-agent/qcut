@@ -6,6 +6,20 @@ import type { useBeautyLabIndependent } from "@/lib/portrait/use-beauty-lab-inde
 
 type IndependentLab = ReturnType<typeof useBeautyLabIndependent>;
 
+const MANUAL_BODY_TOOL_NAMES: Record<string, string> = {
+	stretch: "拉长",
+	slim: "瘦身",
+	zoom: "放大缩小",
+};
+
+/** " / 手动美体拉长、瘦身…" for the manual body tools the engine renders; empty when none. */
+function manualBodySummary({ tools }: { tools: string[] | undefined }) {
+	const names = (tools ?? []).flatMap(
+		(tool) => MANUAL_BODY_TOOL_NAMES[tool] ?? []
+	);
+	return names.length > 0 ? ` / 手动美体${names.join("、")}` : "";
+}
+
 function independentIssueLabel({
 	lab,
 	isZh,
@@ -104,7 +118,7 @@ export function BeautyLabIndependentStatus({
 			<span title={lab.status?.message}>
 				{lab.status?.available
 					? isZh
-						? `自研就绪 · ${lab.status.controls.length} 项调节 / ${lab.status.makeupCards.length} 款美妆${(lab.status.manualBodyTools ?? []).includes("stretch") ? " / 手动美体拉长" : ""} · 单人照片 ≤4096 / 829 万像素`
+						? `自研就绪 · ${lab.status.controls.length} 项调节 / ${lab.status.makeupCards.length} 款美妆${manualBodySummary({ tools: lab.status.manualBodyTools })} · 单人照片 ≤4096 / 829 万像素`
 						: "Independent ready · single-face photos ≤4096 / 8.29 MP"
 					: isZh
 						? "自研未就绪"
