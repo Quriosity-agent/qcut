@@ -101,17 +101,45 @@ export function independentPortraitRequest({
 				intensity: selection.intensity,
 			};
 	}
-	// The stretch band is rendered; slim and zoom are not yet.
-	const stretch = adjustments.manualBody?.stretch;
-	const stretchActive = stretch !== undefined && stretch.intensity !== 0;
-	if (
-		stretchActive &&
-		support &&
-		!(support.manualBodyTools ?? []).includes("stretch")
-	)
-		unsupported.push("manualBody.stretch");
-	for (const tool of ["slim", "zoom"] as const)
-		if ((adjustments.manualBody?.[tool]?.intensity ?? 0) !== 0)
+	// Active manual body tools pass through with exactly the fields the engine takes.
+	const { stretch, slim, zoom } = adjustments.manualBody ?? {};
+	const manualBody: NonNullable<
+		BeautyLabIndependentFrameRequest["adjustments"]["manualBody"]
+	> = {
+		...(stretch && stretch.intensity !== 0
+			? {
+					stretch: {
+						intensity: stretch.intensity,
+						upper: stretch.upper,
+						bottom: stretch.bottom,
+					},
+				}
+			: {}),
+		...(slim && slim.intensity !== 0
+			? {
+					slim: {
+						intensity: slim.intensity,
+						x: slim.x,
+						y: slim.y,
+						width: slim.width,
+						height: slim.height,
+						rotation: slim.rotation,
+					},
+				}
+			: {}),
+		...(zoom && zoom.intensity !== 0
+			? {
+					zoom: {
+						intensity: zoom.intensity,
+						x: zoom.x,
+						y: zoom.y,
+						radius: zoom.radius,
+					},
+				}
+			: {}),
+	};
+	for (const tool of Object.keys(manualBody))
+		if (support && !(support.manualBodyTools ?? []).includes(tool))
 			unsupported.push(`manualBody.${tool}`);
 	if (unsupported.length > 0)
 		return { issue: { code: "unsupported", selections: unsupported } };
@@ -120,17 +148,7 @@ export function independentPortraitRequest({
 			enabled: true,
 			values,
 			...(Object.keys(makeup).length > 0 ? { makeup } : {}),
-			...(stretch && stretchActive
-				? {
-						manualBody: {
-							stretch: {
-								intensity: stretch.intensity,
-								upper: stretch.upper,
-								bottom: stretch.bottom,
-							},
-						},
-					}
-				: {}),
+			...(Object.keys(manualBody).length > 0 ? { manualBody } : {}),
 		},
 	};
 }
