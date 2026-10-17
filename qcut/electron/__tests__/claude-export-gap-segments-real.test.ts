@@ -2,13 +2,15 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildExportSegmentInputArgs } from "../claude/handlers/claude-export-handler/export-engine";
-import { buildExportSegmentEncodeArgs } from "../claude/handlers/claude-export-handler/export-segment-encode";
+import { buildSegmentConcatArgs } from "../claude/handlers/claude-export-handler/concat-timing";
+import {
+	buildExportSegmentEncodeArgs,
+	buildExportSegmentInputArgs,
+} from "../claude/handlers/claude-export-handler/export-segment-encode";
 import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
 	orderConcatInputs,
-	probeGapAudioLayout,
 } from "../claude/handlers/claude-export-handler/gap-segments";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types";
 
@@ -92,18 +94,50 @@ function meanRgb({ file, time }: { file: string; time: number }) {
 	return { r, g, b };
 }
 
+/** Loudness (RMS) of the decoded sound between `from` and `to` seconds. */
+function rms({ file, from, to }: { file: string; from: number; to: number }) {
+	const rate = 48_000;
+	const result = spawnSync(
+		ffmpegPath,
+		[
+			"-v",
+			"error",
+			"-i",
+			file,
+			"-vn",
+			"-ac",
+			"1",
+			"-ar",
+			String(rate),
+			"-f",
+			"f32le",
+			"-",
+		],
+		{ maxBuffer: 64 * 1024 * 1024 }
+	);
+	expect(result.status, result.stderr?.toString()).toBe(0);
+	const bytes = result.stdout as Buffer;
+	const samples = new Float32Array(
+		bytes.buffer,
+		bytes.byteOffset,
+		Math.floor(bytes.byteLength / 4)
+	).subarray(Math.round(from * rate), Math.round(to * rate));
+	let sum = 0;
+	for (const sample of samples) sum += sample * sample;
+	return Math.sqrt(sum / Math.max(1, samples.length));
+}
+
 /**
  * A clip that starts half a second into the timeline: the gap before it must
- * come out as black and silence of the same shape as the clip's own sound, so
- * the copied concat keeps the timeline's timing and plays the clip's audio at
- * its own rate.
+ * come out as black and silence in the segments' own PCM format, so the
+ * concat keeps the timeline's timing for both picture and sound.
  */
 describe.skipIf(!fs.existsSync(ffmpegPath))(
 	"export gap segments (real ffmpeg)",
 	() => {
 		const sourcePath = path.join(tempDir, "red-mono-44k.mp4");
-		const segmentPath = path.join(tempDir, "segment-0000.mp4");
-		const gapPath = path.join(tempDir, "gap-0000.mp4");
+		const segmentPath = path.join(tempDir, "segment-0000.mov");
+		const gapPath = path.join(tempDir, "gap-0000.mov");
 		const concatPath = path.join(tempDir, "concat.mp4");
 		const settings = {
 			width: 64,
@@ -140,7 +174,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			fs.rmSync(tempDir, { recursive: true, force: true });
 		});
 
-		it("fills the gap with black and silence the clip's audio can be copied next to", async () => {
+		it("fills the gap with black and silence the clip's sound joins without moving", () => {
 			const segment: ExportSegment = {
 				elementId: "clip",
 				trackId: "main",
@@ -159,21 +193,17 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					scaleFilter: "scale=64:64,setsar=1",
 					segment,
 					settings,
+					audio: { kind: "input" },
 					outputPath: segmentPath,
 				})
 			);
 			const gaps = findTimelineGaps({ segments: [segment], fps: 24 });
 			expect(gaps).toEqual([{ beforeSegment: 0, startTime: 0, duration: 0.5 }]);
 
-			const audio = await probeGapAudioLayout({
-				segmentOutputs: [segmentPath],
-			});
-			expect(audio).toEqual({ sampleRate: 44_100, channels: 1 });
 			run(
 				buildGapSegmentEncodeArgs({
 					gap: gaps[0],
 					settings,
-					audio,
 					outputPath: gapPath,
 				})
 			);
@@ -189,26 +219,29 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					.map((file) => `file '${file}'`)
 					.join("\n")
 			);
-			run([
-				"-y",
-				"-f",
-				"concat",
-				"-safe",
-				"0",
-				"-i",
-				listPath,
-				"-c",
-				"copy",
-				concatPath,
-			]);
+			run(
+				buildSegmentConcatArgs({
+					listPath,
+					outputPath: concatPath,
+					audio: { sampleRate: 48_000, channels: 2 },
+					audioBitrateKbps: 192,
+				})
+			);
 
 			const video = probeStream({ file: concatPath, stream: "v" });
 			expect(video.frames).toBe(36);
 			expect(Math.abs(video.duration - 1.5)).toBeLessThan(0.05);
+			// The 44.1 kHz mono source comes out in the export's format.
 			const sound = probeStream({ file: concatPath, stream: "a" });
-			expect(sound.sampleRate).toBe(44_100);
-			expect(sound.channels).toBe(1);
-			expect(Math.abs(sound.duration - 1.5)).toBeLessThan(0.15);
+			expect(sound.sampleRate).toBe(48_000);
+			expect(sound.channels).toBe(2);
+			expect(Math.abs(sound.duration - 1.5)).toBeLessThan(0.03);
+			// Silence in the gap, the clip's tone (FFmpeg's sine is 1/8 full
+			// scale: RMS 0.088) from 0.5 s on.
+			expect(rms({ file: concatPath, from: 0, to: 0.48 })).toBeLessThan(0.001);
+			expect(rms({ file: concatPath, from: 0.52, to: 1.45 })).toBeGreaterThan(
+				0.05
+			);
 
 			const inGap = meanRgb({ file: concatPath, time: 0.25 });
 			expect(Math.max(inGap.r, inGap.g, inGap.b)).toBeLessThan(20);
