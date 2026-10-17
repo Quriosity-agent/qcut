@@ -80,6 +80,7 @@ import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
 import { captionStackOffset } from "@/lib/captions/caption-stacking";
 import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
+import { resolveAlphaPlaybackProxyUrl } from "@/lib/media/alpha-playback-proxy";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import { createIndependentSourceEvidenceReader } from "@/lib/portrait/independent-source-evidence";
@@ -273,6 +274,10 @@ function beginMediaTransitionLayer({
 /** Context passed to renderer functions */
 export interface RenderContext {
 	signal?: AbortSignal;
+	/**
+	 * A clip that fails to render fails the frame, naming the clip, instead of
+	 * leaving it out of the picture.
+	 */
 	strictMediaErrors?: boolean;
 	isolatedCompositor?: boolean;
 	ctx: CanvasRenderingContext2D;
@@ -779,7 +784,14 @@ async function renderMediaElement(
 			error,
 			signal: context.signal,
 		});
-		if (context.strictMediaErrors) throw error;
+		if (context.strictMediaErrors) {
+			// A cancel stays a cancel; anything else names the clip and file.
+			if (context.signal?.aborted) throw error;
+			throw new Error(
+				`Clip "${element.name}" (${element.id}) could not be rendered from ${mediaItem.name}: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error }
+			);
+		}
 		debugError(`[ExportEngine] Failed to render ${element.id}:`, error);
 	}
 }
@@ -1011,7 +1023,10 @@ async function renderVideoAttempt(
 ): Promise<void> {
 	const { canvas, videoCache } = context;
 
-	const url = mediaItem.url as string; // Guaranteed non-null by renderVideo guard
+	// A transparent video the browser cannot decode plays from its proxy.
+	const url =
+		(await resolveAlphaPlaybackProxyUrl(mediaItem)) ??
+		(mediaItem.url as string); // Guaranteed non-null by renderVideo guard
 
 	try {
 		context.signal?.throwIfAborted();
