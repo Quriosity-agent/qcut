@@ -41,7 +41,7 @@ interface NumericControl {
 	title: string;
 	min: number;
 	max: number;
-	group: "face" | "features" | "skin";
+	group: "face" | "features" | "skin" | "body";
 	stage: string;
 }
 interface MakeupControl {
@@ -63,6 +63,8 @@ interface StageDefinition {
 	bindings?: { name: string; flag: string; scale: number }[];
 	/** For the manual-body stage: the tools it renders. */
 	tools?: string[];
+	/** Runs after the makeup stages, as the native smart-body package does. */
+	afterMakeup?: boolean;
 }
 interface PipelineCatalog {
 	version: 1;
@@ -273,10 +275,16 @@ export function independentPipelineAdjustments({
 	});
 	const values: Record<string, number> = {};
 	for (const [rawName, raw] of Object.entries(requestedValues)) {
-		const name = rawName.startsWith("face_adjust_")
-			? rawName.slice("face_adjust_".length)
-			: rawName;
-		const control = catalog.controls.find((entry) => entry.name === name);
+		const body = rawName.startsWith("body_adjust_");
+		const face = rawName.startsWith("face_adjust_");
+		const prefix = body ? "body_adjust_" : face ? "face_adjust_" : "";
+		const name = rawName.slice(prefix.length);
+		const control = catalog.controls.find(
+			(entry) =>
+				entry.name === name &&
+				(!body || entry.group === "body") &&
+				(!face || entry.group !== "body")
+		);
 		if (!control) throw new Error(`自研复合暂不支持 ${rawName}`);
 		if (Object.hasOwn(values, name)) throw new Error(`参数 ${name} 被重复指定`);
 		values[name] = strength({
@@ -337,10 +345,12 @@ export function independentPipelinePlan({
 }): IndependentPipelinePlan {
 	const adjustments = independentPipelineAdjustments({ value });
 	const stages: PipelineStage[] = [];
+	const lateStages: PipelineStage[] = [];
 	for (const definition of catalog.stages) {
+		const target = definition.afterMakeup ? lateStages : stages;
 		if (definition.kind === "manual-body") {
 			if (!adjustments.manualBody) continue;
-			stages.push({
+			target.push({
 				id: definition.id,
 				kind: definition.kind,
 				script: definition.script,
@@ -362,7 +372,7 @@ export function independentPipelinePlan({
 						flag,
 						String((adjustments.values[name] ?? 0) * scale),
 					]);
-		stages.push({
+		target.push({
 			id: definition.id,
 			kind: definition.kind,
 			script: definition.script,
@@ -390,7 +400,7 @@ export function independentPipelinePlan({
 			parameters: ["--selections", JSON.stringify(selections)],
 			controls: selections,
 		});
-		return { version: 1, adjustments, stages };
+		return { version: 1, adjustments, stages: [...stages, ...lateStages] };
 	}
 	for (const card of catalog.makeup) {
 		const selection = adjustments.makeup[card.category];
@@ -408,7 +418,7 @@ export function independentPipelinePlan({
 			controls: selection,
 		});
 	}
-	return { version: 1, adjustments, stages };
+	return { version: 1, adjustments, stages: [...stages, ...lateStages] };
 }
 
 if (import.meta.main) {
