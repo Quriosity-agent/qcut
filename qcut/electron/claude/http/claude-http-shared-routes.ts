@@ -121,6 +121,7 @@ import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
 import { readColorLabelField } from "./timeline-color-request.js";
 import { withMediaProbes } from "../handlers/claude-media-probe.js";
+import { withMediaElementAlpha } from "../handlers/claude-timeline-media-alpha.js";
 import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import {
@@ -1053,12 +1054,17 @@ export function registerSharedRoutes(
 		const format = req.query.format || "json";
 		if (format === "md") return timelineToMarkdown(timeline);
 
+		// The alpha report is extra: a listing that fails leaves it out.
+		const reported = await withMediaElementAlpha({
+			timeline,
+			mediaFiles: await listMediaFiles(req.params.projectId).catch(() => []),
+		});
 		// Projects saved before a track became a single lane can still hold
 		// stacked elements. Report them rather than repairing them silently: the
 		// fix is editor:timeline:arrange, which the caller chooses to run.
 		const overlaps = findTimelineOverlaps({ timeline });
-		if (overlaps.length === 0) return timeline;
-		return { ...timeline, overlaps };
+		if (overlaps.length === 0) return reported;
+		return { ...reported, overlaps };
 	});
 
 	router.post("/api/claude/timeline/:projectId/tracks", async (req) => {
