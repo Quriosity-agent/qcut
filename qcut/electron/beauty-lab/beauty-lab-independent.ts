@@ -81,7 +81,13 @@ const hash = ({ bytes }: { bytes: Uint8Array }) =>
 	createHash("sha256").update(bytes).digest("hex");
 const catalogSchema = z.object({
 	controls: z.array(
-		z.object({ name: z.string(), min: z.number(), max: z.number() })
+		z.object({
+			name: z.string(),
+			min: z.number(),
+			max: z.number(),
+			/** "body" controls are the editor's body_adjust_* keys; all others face_adjust_*. */
+			group: z.string().optional(),
+		})
 	),
 	makeup: z.array(z.object({ id: z.string(), category: z.string() })),
 	stages: z
@@ -121,8 +127,11 @@ export function independentBeautyAdjustments({
 	independentSourceEvidenceIdentity(parsed);
 	const values: Record<string, number> = {};
 	for (const [key, value] of Object.entries(parsed.adjustments.values)) {
-		const name = key.startsWith("face_adjust_") ? key.slice(12) : key;
-		const control = catalog.controls.find((entry) => entry.name === name);
+		const body = key.startsWith("body_adjust_");
+		const name = body || key.startsWith("face_adjust_") ? key.slice(12) : key;
+		const control = catalog.controls.find(
+			(entry) => entry.name === name && (entry.group === "body") === body
+		);
 		if (!control) {
 			if (value === 0) continue;
 			throw new Error(`Independent beauty does not support ${key}`);
@@ -299,7 +308,9 @@ export function createBeautyLabIndependentProvider({
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				message:
 					"Single opaque photo, max edge 4096 / 8,294,400 pixels; resident rendering, general native parity unverified",
-				controls: inventory.controls.map(({ name }) => `face_adjust_${name}`),
+				controls: inventory.controls.map(({ name, group }) =>
+					group === "body" ? `body_adjust_${name}` : `face_adjust_${name}`
+				),
 				makeupCards: inventory.makeup.map(({ id }) => id),
 				manualBodyTools: catalogManualBodyTools({ catalog: inventory }),
 			};
