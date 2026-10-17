@@ -494,7 +494,7 @@ test("transparent overlays export from both engines and round-trip", async ({
 		);
 
 		const outputs: Record<string, string> = {};
-		const measured: Record<string, Json> = {};
+		const measured: Record<string, Json | number> = {};
 		for (const engine of ["native", "muxer"] as const) {
 			const outputPath = path.join(EVIDENCE_DIR, `${engine}.mp4`);
 			rmSync(outputPath, { force: true });
