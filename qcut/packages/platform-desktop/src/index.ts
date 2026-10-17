@@ -161,6 +161,8 @@ const ffmpegAdapter = {
 	renderVideoPreviewProxy: (o: any) => api().ffmpeg.renderVideoPreviewProxy(o),
 	cancelVideoPreviewProxy: (id: any) =>
 		api().ffmpeg.cancelVideoPreviewProxy(id),
+	ensureAlphaPlaybackProxy: (options: { sourcePath: string }) =>
+		api().ffmpeg.ensureAlphaPlaybackProxy(options),
 	getVideoPreviewProxyCacheStats: () =>
 		api().ffmpeg.getVideoPreviewProxyCacheStats(),
 	clearVideoPreviewProxyCache: () => api().ffmpeg.clearVideoPreviewProxyCache(),
