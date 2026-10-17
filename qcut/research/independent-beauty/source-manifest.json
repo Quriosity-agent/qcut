@@ -456,14 +456,14 @@
 		},
 		{
 			"path": "research/independent-pipeline-catalog.json",
-			"bytes": 14075,
-			"sha256": "baff1699c16130053b69d7cf89c9f75202fcda77a2ae1d4511d010abb9cb2fd6",
+			"bytes": 14293,
+			"sha256": "89de678f313fd41c1294f5a4950988b6a5ec924998c400331604b896ebeab92c",
 			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8"
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 24953,
-			"sha256": "7d8d0b9334501b4c96e1416ae48b9f8bfb639934b2595e1ad72c63f882c4979c",
+			"bytes": 25411,
+			"sha256": "887e1f20693973b8244d98afc1d1a2807e393dbbcf590c52241e70e1d5f8b30d",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -1548,14 +1548,14 @@
 		},
 		{
 			"path": "src/independent-pipeline-plan.test.ts",
-			"bytes": 7923,
-			"sha256": "5d8e3456c7d27e7045bd238b01f986fcd62b04e2967c45340c4f4a0a81d75ad2",
+			"bytes": 9693,
+			"sha256": "30eb009d5279129525937621688886b67605be3fe346202a3f35e9c3aa4d2e95",
 			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b"
 		},
 		{
 			"path": "src/independent-pipeline-plan.ts",
-			"bytes": 7199,
-			"sha256": "27ad6bb19b8962bca0f7563b419c6c57841d476963faa831f3e6e3629b0fa4b5",
+			"bytes": 9484,
+			"sha256": "f0e6686c2fb1e94c12633535d1c08338d1f16321daafeed0dedf60074441845b",
 			"sourceSha256": "2bf366f114733507b6ead363871f4a76088be292630c8574f28f780dfeb3ff7b"
 		},
 		{
@@ -1584,8 +1584,8 @@
 		},
 		{
 			"path": "research/independent_stage_runner.py",
-			"bytes": 3000,
-			"sha256": "34b5281cdd636228ca21ddb0c6f2144ef67bcf205e9690cfc632fe6adf3883bc"
+			"bytes": 3054,
+			"sha256": "c0201ed82f6077d339dadebcd07e1e26c7bde6c5ab09d622a9803297d7a75344"
 		},
 		{
 			"path": "research/independent_worker.py",
@@ -1641,6 +1641,16 @@
 			"path": "research/tests/test_source_face_confirmation.py",
 			"bytes": 13453,
 			"sha256": "f5482a17cf22fd8bb848965ccb5d2a3ce5b7e618c2b5153e8d61b42219e6a962"
+		},
+		{
+			"path": "research/manual_body_render.py",
+			"bytes": 7357,
+			"sha256": "4040b50c9cf8b72401df07da06b94584ed19b660262dd7879c739c46f299e359"
+		},
+		{
+			"path": "research/tests/test_manual_body_render.py",
+			"bytes": 11386,
+			"sha256": "8c662e06e1d4a3ffdb5e625037a4d678cca936cba172e086b75cc034ed0bd889"
 		}
 	],
 	"importPatches": [
@@ -2059,6 +2069,18 @@
 				"research/tests/test_source_face_confirmation.py"
 			],
 			"reason": "Add request-bound bidirectional source evidence only for multiple accepted candidates in the first original-input portrait package. Require four distinct neighboring source timestamps, independently strict single-face neighbors and unique unanimous geometric association; preserve current landmarks and all sole-candidate pixels. Bind exact manifest bytes and raw RGBA hashes across subprocess/resident dispatch and subsequent same-photo lipstick identity. Missing or ambiguous support fails closed; transient second-person correctness remains explicitly unverified."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/independent-pipeline-catalog.json",
+				"research/independent_stage_runner.py",
+				"src/independent-pipeline-plan.ts",
+				"src/independent-pipeline-plan.test.ts",
+				"research/manual_body_render.py",
+				"research/tests/test_manual_body_render.py"
+			],
+			"reason": "QCut-owned manual body stretch: a manual-body stage (after skin, before face shaping, as in the native order) renders the editor's stretch band with geometry measured from the native tool on coordinate-encoded frames; the canonical plan carries manualBody only when a tool changes the picture, so existing plans and receipts are unchanged; plan validation, resident contract and original-resolution support extended to it."
 		}
 	],
 	"sourceWorkingTreeStatus": [
