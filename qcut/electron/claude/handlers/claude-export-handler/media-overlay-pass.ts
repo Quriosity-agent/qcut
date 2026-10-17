@@ -149,7 +149,10 @@ export function buildMediaOverlayPassArgs({
 	};
 }
 
-/** Reads each overlay video's alpha; a still needs no decoder choice. */
+/**
+ * Reads each overlay video's alpha; a still needs no decoder choice. A file
+ * that cannot be read fails the export, naming the clip and the file.
+ */
 export async function probeMediaOverlayInputs({
 	overlays,
 	probe = probeVideoAlpha,
@@ -166,7 +169,13 @@ export async function probeMediaOverlayInputs({
 				alpha = probe({ mediaPath: segment.sourcePath });
 				known.set(segment.sourcePath, alpha);
 			}
-			return { segment, alpha: await alpha };
+			try {
+				return { segment, alpha: await alpha };
+			} catch (error) {
+				throw new Error(
+					`Overlay clip ${segment.elementId} (${path.basename(segment.sourcePath)}) cannot be read: ${error instanceof Error ? error.message : String(error)}`
+				);
+			}
 		})
 	);
 }
