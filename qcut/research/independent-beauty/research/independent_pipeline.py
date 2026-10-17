@@ -47,6 +47,12 @@ ORIGINAL_RENDERERS = frozenset({
     'makeup3d_render.py', 'contacts_render.py', 'dynamic_makeup_render.py',
     'manual_body_render.py',
 })
+# The settings of each manual body tool; the renderer checks their ranges.
+MANUAL_BODY_KEYS = {
+    'stretch': frozenset({'intensity', 'upper', 'bottom'}),
+    'slim': frozenset({'intensity', 'x', 'y', 'width', 'height', 'rotation'}),
+    'zoom': frozenset({'intensity', 'x', 'y', 'radius'}),
+}
 
 
 def sha256(*, data):
@@ -186,8 +192,10 @@ def validate_plan(*, plan, scripts):
             raise ValueError('invalid plan makeup selection')
         values.append(selection['intensity'])
     for tool, settings in adjustments.get('manualBody', {}).items():
-        if (tool != 'stretch' or not isinstance(settings, dict) or set(settings) != {'intensity', 'upper', 'bottom'}
-                or any(type(settings[key]) not in (int, float) or not 0 <= settings[key] <= 1 for key in ('upper', 'bottom'))):
+        if (tool not in MANUAL_BODY_KEYS or not isinstance(settings, dict) or set(settings) != MANUAL_BODY_KEYS[tool]
+                or any(type(value) not in (int, float) or not math.isfinite(value) for value in settings.values())
+                or any(not 0 <= value <= 1 for key, value in settings.items() if key not in ('intensity', 'rotation'))
+                or abs(settings.get('rotation', 0)) > 180):
             raise ValueError('invalid plan manual body tool')
         values.append(settings['intensity'])
     if any(type(value) not in (int, float) or abs(value) > 100 or not math.isfinite(value) for value in values):
