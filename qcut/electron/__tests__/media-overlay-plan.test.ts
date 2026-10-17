@@ -171,3 +171,21 @@ describe("planMediaOverlays", () => {
 		);
 	});
 });
+
+describe("probeMediaOverlayInputs", () => {
+	it("names the clip and file an unreadable overlay comes from", async () => {
+		const { probeMediaOverlayInputs } = await import(
+			"../claude/handlers/claude-export-handler/media-overlay-pass.js"
+		);
+		await expect(
+			probeMediaOverlayInputs({
+				overlays: [segment("broken", 0, 1, 1)],
+				probe: async () => {
+					throw new Error("moov atom not found");
+				},
+			})
+		).rejects.toThrow(
+			"Overlay clip broken (broken.mov) cannot be read: moov atom not found"
+		);
+	});
+});
