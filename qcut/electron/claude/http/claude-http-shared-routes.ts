@@ -22,6 +22,7 @@ import { timelineRequiresRendererPortraitExport } from "../../types/portrait-exp
 import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
 import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
 import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
+import { mediaOverlayRendererReason } from "../../types/media-overlay-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
@@ -1885,6 +1886,9 @@ export function registerSharedRoutes(
 							"animated tonal controls (shadows, highlights, whites, blacks or fade)",
 						]
 					: []),
+				...[mediaOverlayRendererReason({ timeline })].filter(
+					(reason): reason is string => reason !== null
+				),
 			];
 			if (rendererExportReasons.length > 0) {
 				if (!accessor.requestLocalVideoExport) {
