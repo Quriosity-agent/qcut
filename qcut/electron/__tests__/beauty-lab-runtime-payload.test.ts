@@ -68,10 +68,11 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(277);
+		).toBe(278);
 		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
 			expect.arrayContaining([
 				"research/face_selection_reference.py",
+				"research/manual_body_slim_field.json",
 				"research/source_face_confirmation.py",
 				"research/tests/test_face_identity_no_effect.py",
 				"research/tests/test_face_selection_reference.py",
