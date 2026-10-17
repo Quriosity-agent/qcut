@@ -138,6 +138,36 @@ describe("independent portrait request", () => {
 		).toMatchObject({ adjustments: { manualBody: { stretch } } });
 	});
 
+	it("passes active slim and zoom to an engine that renders them, idle tools dropped", () => {
+		const slim = {
+			intensity: 20,
+			x: 0.5,
+			y: 0.45,
+			width: 0.3,
+			height: 0.3,
+			rotation: 30,
+		};
+		const zoom = { intensity: -10, x: 0.5, y: 0.6, radius: 0.2 };
+		const adjustments = {
+			...base,
+			manualBody: {
+				stretch: { intensity: 0, upper: 0.448, bottom: 0.202 },
+				slim,
+				zoom,
+			},
+		};
+		expect(
+			independentPortraitRequest({
+				adjustments,
+				support: { ...support, manualBodyTools: ["stretch", "slim", "zoom"] },
+			})
+		).toMatchObject({ adjustments: { manualBody: { slim, zoom } } });
+		const unchecked = independentPortraitRequest({ adjustments });
+		expect(
+			"adjustments" in unchecked ? unchecked.adjustments.manualBody : undefined
+		).toEqual({ slim, zoom });
+	});
+
 	it("reports manual body tools the engine does not render", () => {
 		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
 		const older = independentPortraitRequest({
