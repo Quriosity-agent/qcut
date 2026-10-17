@@ -19,6 +19,7 @@ RGBA_PARAMETERS = {
     'jawline_render.py': {'intensity': float},
     'lip_render.py': {'strength': float, 'texture_state': str},
     'makeup3d_render.py': {'card': str, 'intensity': float},
+    'manual_body_render.py': {'manual_body': 'json'},
     **{f'{name}_render.py': {'card': str, 'strength': float} for name in
        ('softpink', 'brow', 'makeup248', 'eye', 'lashes', 'shadow', 'look', 'contacts')},
 }
