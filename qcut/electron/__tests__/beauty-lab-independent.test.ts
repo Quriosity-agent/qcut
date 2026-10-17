@@ -398,6 +398,47 @@ describe("independent photo provider", () => {
 		});
 		expect(value.adjustments).toEqual({ values: { Nose: -50 }, makeup: {} });
 	});
+	it("names body controls with the editor's body prefix and maps them back", async () => {
+		const withBody = {
+			...catalog,
+			controls: [
+				...catalog.controls,
+				{ name: "StretchLeg", min: 0, max: 100, group: "body" },
+			],
+		};
+		await writeFile(
+			path.join(directory, "research/independent-pipeline-catalog.json"),
+			JSON.stringify(withBody)
+		);
+		const { provider } = setup();
+		expect((await provider.inspect()).controls).toEqual([
+			"face_adjust_Nose",
+			"body_adjust_StretchLeg",
+		]);
+		const adjusted = independentBeautyAdjustments({
+			request: {
+				...request,
+				adjustments: {
+					enabled: true,
+					values: { body_adjust_StretchLeg: 60, face_adjust_Nose: 10 },
+				},
+			},
+			catalog: withBody,
+		});
+		expect(adjusted.adjustments.values).toEqual({ StretchLeg: 60, Nose: 10 });
+		// A prefix only reaches controls of its own group.
+		for (const values of [
+			{ face_adjust_StretchLeg: 60 },
+			{ body_adjust_Nose: 10 },
+			{ body_adjust_SlimWaist: 10 },
+		])
+			expect(() =>
+				independentBeautyAdjustments({
+					request: { ...request, adjustments: { enabled: true, values } },
+					catalog: withBody,
+				})
+			).toThrow(/does not support/);
+	});
 	it("keeps an active stretch band for an engine whose catalog renders it", () => {
 		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
 		const withStage = {
