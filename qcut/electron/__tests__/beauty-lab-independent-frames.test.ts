@@ -101,6 +101,37 @@ describe("independent frame cache key", () => {
 			})
 		).not.toBe(stretched);
 	});
+	it("keys slim and zoom too, whatever order the tools and fields were written in", () => {
+		const slim = {
+			intensity: 20,
+			x: 0.5,
+			y: 0.4,
+			width: 0.3,
+			height: 0.3,
+			rotation: 15,
+		};
+		const zoom = { intensity: -10, x: 0.5, y: 0.6, radius: 0.1 };
+		const key = independentFrameCacheKey({
+			...base,
+			manualBody: { slim, zoom },
+		});
+		expect(
+			independentFrameCacheKey({
+				...base,
+				manualBody: {
+					zoom: { radius: 0.1, y: 0.6, x: 0.5, intensity: -10 },
+					slim,
+				},
+			})
+		).toBe(key);
+		for (const manualBody of [
+			{ slim },
+			{ zoom },
+			{ slim: { ...slim, rotation: 16 }, zoom },
+			{ slim, zoom: { ...zoom, radius: 0.11 } },
+		])
+			expect(independentFrameCacheKey({ ...base, manualBody })).not.toBe(key);
+	});
 	it("ignores adjustment key order", () => {
 		expect(independentFrameCacheKey(base)).toBe(
 			independentFrameCacheKey({
