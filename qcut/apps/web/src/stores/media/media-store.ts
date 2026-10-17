@@ -26,6 +26,10 @@ import {
 	getMediaDuration as getMediaDurationImpl,
 } from "./media-store-helpers";
 
+import {
+	type MediaAlphaInfo,
+	recordMediaAlpha,
+} from "@/lib/media/alpha-playback-proxy";
 import { createFolderActions, type FolderActions } from "./media-store-folders";
 
 // Re-export types and helpers for backward compatibility
@@ -107,6 +111,14 @@ const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
 	useMediaStore.setState({ mediaItems: updatedItems });
 };
 
+/** Records a video's alpha facts (see lib/media/alpha-playback-proxy.ts). */
+const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
+	const item = useMediaStore
+		.getState()
+		.mediaItems.find((candidate) => candidate.id === itemId);
+	updateMediaItemField(itemId, { metadata: { ...item?.metadata, alpha } });
+};
+
 // Helper to update media item metadata and persist to storage
 const updateMediaMetadataAndPersist = async (
 	itemId: string,
@@ -171,8 +183,19 @@ const extractVideoMetadataBackground = async (
 		// Set status to loading
 		updateMediaItemField(itemId, { thumbnailStatus: "loading" });
 
+		// A transparent video the browser cannot decode is read from its proxy.
+		const item = useMediaStore
+			.getState()
+			.mediaItems.find((candidate) => candidate.id === itemId);
+		const proxyFile = item
+			? await recordMediaAlpha({
+					mediaItem: item,
+					update: recordItemAlpha(itemId),
+				})
+			: null;
+
 		// Clone file to isolate temporary operations from display URL
-		const fileClone = cloneFileForTemporaryUse(file);
+		const fileClone = cloneFileForTemporaryUse(proxyFile ?? file);
 
 		const [thumbnailResult, durationResult] = await Promise.allSettled([
 			generateVideoThumbnailBrowserImpl(fileClone),
@@ -635,6 +658,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			);
 
 			set({ mediaItems: updatedMediaItems, hasInitialized: true });
+			// Videos whose thumbnails were stored still need their alpha verdict.
+			for (const item of updatedMediaItems) {
+				if (item.type === "video" && item.thumbnailUrl) {
+					void recordMediaAlpha({
+						mediaItem: item,
+						update: recordItemAlpha(item.id),
+					});
+				}
+			}
 			debugLog(
 				`[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
 			);
