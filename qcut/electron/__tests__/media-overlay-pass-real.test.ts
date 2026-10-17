@@ -184,6 +184,19 @@ describe.skipIf(!fs.existsSync(ffmpegPath))("media overlay pass", () => {
 			"1",
 			source("still.png"),
 		]);
+		// Twelve frames whose last one is fully clear, as a card that has faded out.
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`color=c=black@0:s=${W}x${H}:r=${FPS}:d=0.5,format=rgba,` +
+				"drawbox=x=40:y=40:w=80:h=60:color=red@1:t=fill:replace=1:enable='lt(n,11)'",
+			"-c:v",
+			"qtrle",
+			"-pix_fmt",
+			"argb",
+			source("fade.mov"),
+		]);
 		run([
 			"-f",
 			"lavfi",
@@ -312,6 +325,31 @@ describe.skipIf(!fs.existsSync(ffmpegPath))("media overlay pass", () => {
 		// Red × base keeps the base's red channel and zeroes the rest.
 		expectNear(pixel(frame, RED_BOX.x, RED_BOX.y), [BASE[0], 0, 0], 16);
 		expectNear(pixel(frame, CLEAR.x, CLEAR.y), BASE, 8);
+	}, 60_000);
+
+	it("holds a file's own last frame when the clip outlasts the file", async () => {
+		// A 0.75 s clip of a 0.5 s file: twelve frames, then the last one held.
+		const output = await composite("fade", [
+			overlay(source("fade.mov"), 1, { duration: 0.75 }),
+		]);
+		const { frames } = decode(output);
+		for (let index = 24; index <= 34; index += 1) {
+			expectNear(
+				pixel(frames[index], RED_BOX.x, RED_BOX.y),
+				[255, 0, 0],
+				24,
+				`frame ${index}`
+			);
+		}
+		// The file's last frame is clear, so the box is gone from there on.
+		for (const index of [35, 38, 41]) {
+			expectNear(
+				pixel(frames[index], RED_BOX.x, RED_BOX.y),
+				BASE,
+				8,
+				`frame ${index}`
+			);
+		}
 	}, 60_000);
 
 	it("keeps the picture's length and copies its sound", async () => {
