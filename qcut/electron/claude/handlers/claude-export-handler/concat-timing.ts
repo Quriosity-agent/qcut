@@ -1,95 +1,57 @@
 /**
  * Timing of the native export's concat step.
  *
- * Each encoded segment carries its AAC encoder priming as an edit list: the
- * first audio packet sits at −1024 samples and the list skips it, so the
- * segment's sound and picture both start at zero. The concat demuxer does
- * not keep that: it shifts every stream of the first file up by that lead,
- * so the whole program came out 21–23 ms late, and every later video
- * re-encode (text, stickers, adjustment layers) added another third of a
- * frame on top. Shifting the concat input back by the lead, and letting the
- * muxer keep the negative audio start as an edit list again, puts picture
- * and sound where the timeline has them.
+ * The segments and gap clips are intermediate MOVs whose sound is PCM in
+ * one rate and layout, so the concat demuxer lays every file's samples
+ * straight after the previous file's and nothing is added at a cut. The
+ * picture is copied; the sound is encoded to AAC once, here, so the program
+ * carries a single encoder priming at its start, kept as an edit list, and
+ * picture and sound both start at zero.
+ *
+ * (Encoding each segment to AAC and copying the packets put a priming frame
+ * in front of every clip and kept the padding at the end of each one: the
+ * sound of every clip after the first moved 40–60 ms later per cut, and the
+ * first file's priming had shifted the whole program as well.)
  *
  * @module electron/claude/handlers/claude-export-handler/concat-timing
  */
 
-import { spawn } from "node:child_process";
-import { getFFprobePath } from "../../../ffmpeg/utils.js";
+import type { SegmentAudioFormat } from "./export-segment-encode.js";
 
-/**
- * Where `file`'s sound starts, in seconds: negative for AAC priming kept as
- * an edit list, 0 when the file has no sound or the probe cannot run (no
- * ffprobe, unreadable file) — a plain copy then, never a failed export.
- */
-export async function probeLeadingAudioTime({
-	file,
-}: {
-	file: string;
-}): Promise<number> {
-	let ffprobePath: string;
-	try {
-		ffprobePath = await getFFprobePath();
-	} catch {
-		return 0;
-	}
-	const output = await new Promise<string>((resolve) => {
-		const probe = spawn(
-			ffprobePath,
-			[
-				"-v",
-				"error",
-				"-select_streams",
-				"a:0",
-				"-read_intervals",
-				"%+#1",
-				"-show_entries",
-				"packet=pts_time",
-				"-of",
-				"csv=p=0",
-				file,
-			],
-			{ windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }
-		);
-		let stdout = "";
-		probe.stdout.on("data", (chunk: Buffer) => {
-			stdout += chunk.toString();
-		});
-		probe.on("error", () => resolve(""));
-		probe.on("close", () => resolve(stdout));
-	});
-	const first = Number(output.trim().split("\n")[0]?.replace(/,.*$/, ""));
-	return Number.isFinite(first) ? first : 0;
-}
-
-/**
- * The stream-copy concat of `listPath` into `outputPath`. With a negative
- * `leadSeconds` (the first input's audio lead), the input is shifted back by
- * it and negative timestamps are kept, so the output starts at zero like the
- * segments did instead of `lead` late.
- */
-export function buildConcatCopyArgs({
+/** The concat of `listPath` into `outputPath`: picture copied, sound encoded once. */
+export function buildSegmentConcatArgs({
 	listPath,
 	outputPath,
-	leadSeconds,
+	audio,
+	audioBitrateKbps,
 }: {
 	listPath: string;
 	outputPath: string;
-	leadSeconds: number;
+	audio: SegmentAudioFormat;
+	audioBitrateKbps: number;
 }): string[] {
-	const shifted = leadSeconds < 0;
 	return [
 		"-y",
-		...(shifted ? ["-itsoffset", leadSeconds.toFixed(6)] : []),
 		"-f",
 		"concat",
 		"-safe",
 		"0",
 		"-i",
 		listPath,
-		"-c",
+		"-map",
+		"0:v:0",
+		"-map",
+		"0:a:0",
+		"-c:v",
 		"copy",
-		...(shifted ? ["-avoid_negative_ts", "disabled"] : []),
+		"-c:a",
+		"aac",
+		"-b:a",
+		`${audioBitrateKbps}k`,
+		"-ar",
+		String(audio.sampleRate),
+		"-ac",
+		String(audio.channels),
 		"-movflags",
 		"+faststart",
 		outputPath,

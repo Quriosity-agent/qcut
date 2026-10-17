@@ -456,14 +456,14 @@
 		},
 		{
 			"path": "research/independent-pipeline-catalog.json",
-			"bytes": 14075,
-			"sha256": "baff1699c16130053b69d7cf89c9f75202fcda77a2ae1d4511d010abb9cb2fd6",
+			"bytes": 14883,
+			"sha256": "905b3d90ed724e061fd035922a23c12240000dcaaa86fd4be0d1a8d82a39264a",
 			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8"
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 24953,
-			"sha256": "7d8d0b9334501b4c96e1416ae48b9f8bfb639934b2595e1ad72c63f882c4979c",
+			"bytes": 25899,
+			"sha256": "af4edab9a6fec0a274cf471378e94c6c0631c854badbecbb6cf0e126e80db31c",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -1548,14 +1548,14 @@
 		},
 		{
 			"path": "src/independent-pipeline-plan.test.ts",
-			"bytes": 7923,
-			"sha256": "5d8e3456c7d27e7045bd238b01f986fcd62b04e2967c45340c4f4a0a81d75ad2",
+			"bytes": 12615,
+			"sha256": "6d9c1556ff7241acd007d58e52c9de4c97282f5f0b378637ba7c91ca4e524403",
 			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b"
 		},
 		{
 			"path": "src/independent-pipeline-plan.ts",
-			"bytes": 7199,
-			"sha256": "27ad6bb19b8962bca0f7563b419c6c57841d476963faa831f3e6e3629b0fa4b5",
+			"bytes": 11868,
+			"sha256": "3a4acaa101400e84d0ed994320c16d2b23b4f1baa84f81eb95e00b53a5693b0f",
 			"sourceSha256": "2bf366f114733507b6ead363871f4a76088be292630c8574f28f780dfeb3ff7b"
 		},
 		{
@@ -1584,8 +1584,8 @@
 		},
 		{
 			"path": "research/independent_stage_runner.py",
-			"bytes": 3000,
-			"sha256": "34b5281cdd636228ca21ddb0c6f2144ef67bcf205e9690cfc632fe6adf3883bc"
+			"bytes": 3106,
+			"sha256": "db162b87904cfb67a97104c26b7d04c7c0d6ecf50f7a383b4faaf3b64409d4a7"
 		},
 		{
 			"path": "research/independent_worker.py",
@@ -1641,6 +1641,76 @@
 			"path": "research/tests/test_source_face_confirmation.py",
 			"bytes": 13453,
 			"sha256": "f5482a17cf22fd8bb848965ccb5d2a3ce5b7e618c2b5153e8d61b42219e6a962"
+		},
+		{
+			"path": "research/manual_body_render.py",
+			"bytes": 16842,
+			"sha256": "f87c5f92a7ce2135111aaa51d12bb9bfbd549fe9c61dc3f3588fbaca221d6d19"
+		},
+		{
+			"path": "research/tests/test_manual_body_render.py",
+			"bytes": 18322,
+			"sha256": "bc1c014eb74256d090ac8b44d0efdeef1ce883fdf2c3239394cf183c225b907e"
+		},
+		{
+			"path": "research/manual_body_slim_field.json",
+			"bytes": 16109,
+			"sha256": "f09b5c0859d027f99d89ff59b71815ed7a834d32858dd77d1b8a8420ba0bea4f"
+		},
+		{
+			"path": "research/body_espresso_graph.py",
+			"bytes": 16450,
+			"sha256": "e58d214521a486fd7f79b6472eabdcb5185163e7479c8cdfa807ab93d6d020a5"
+		},
+		{
+			"path": "research/body_espresso_fixed.py",
+			"bytes": 23028,
+			"sha256": "04384fd746d94de709ea061e7d2106deaed5cbe5f317bbb66d64a5d2f3258eb9"
+		},
+		{
+			"path": "research/body_skeleton_model.py",
+			"bytes": 3398,
+			"sha256": "9cf0aadc15675a7fe0fcbe1173d5171e7e5597fa97089f0dc94c647104d0d06c"
+		},
+		{
+			"path": "research/body_skeleton_preprocess.py",
+			"bytes": 5196,
+			"sha256": "d36edf6949a372eda4d5ba2552f53da79c4087132e65e9f061c60a39680c6e75"
+		},
+		{
+			"path": "research/body_skeleton_kernels.py",
+			"bytes": 8942,
+			"sha256": "3f9c3724c3a6e18db174c5a6fb66fc8b27c0a26ab4669dedd9c4f3fe3e25d6d0"
+		},
+		{
+			"path": "research/body_skeleton_decode.py",
+			"bytes": 15099,
+			"sha256": "f09a1df74d0d3ac9884d9606383214299bd0f25cbc69de892715c35ea621146c"
+		},
+		{
+			"path": "research/body_longleg_state.py",
+			"bytes": 7985,
+			"sha256": "d35a068915815e6c64a7de9d28b5526d7b02625615f81d1dcd030922d5fa0641"
+		},
+		{
+			"path": "research/body_longleg_mesh.py",
+			"bytes": 4691,
+			"sha256": "18700abaa7592fb0d75a0e7cd15cc6fcb6aac6ca6819707f5fdecda8c6c1e797"
+		},
+		{
+			"path": "research/body_mesh_metal.swift",
+			"bytes": 7138,
+			"sha256": "1420f56412e5ee6c3d832b68b37d0aedeff6b5bcc623237248286d388b033e9e"
+		},
+		{
+			"path": "research/body_longleg_render.py",
+			"bytes": 7590,
+			"sha256": "e59fc509e0cefb8cec358b13806f1388d8b52ed77ea75e2b370d222ff34fd0d6"
+		},
+		{
+			"path": "research/tests/test_body_longleg.py",
+			"bytes": 13912,
+			"sha256": "dea14791288788aa9379040e28697c2dfceb7420d7a639c2850614469b8fbccf"
 		}
 	],
 	"importPatches": [
@@ -2059,6 +2129,51 @@
 				"research/tests/test_source_face_confirmation.py"
 			],
 			"reason": "Add request-bound bidirectional source evidence only for multiple accepted candidates in the first original-input portrait package. Require four distinct neighboring source timestamps, independently strict single-face neighbors and unique unanimous geometric association; preserve current landmarks and all sole-candidate pixels. Bind exact manifest bytes and raw RGBA hashes across subprocess/resident dispatch and subsequent same-photo lipstick identity. Missing or ambiguous support fails closed; transient second-person correctness remains explicitly unverified."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/independent-pipeline-catalog.json",
+				"research/independent_stage_runner.py",
+				"src/independent-pipeline-plan.ts",
+				"src/independent-pipeline-plan.test.ts",
+				"research/manual_body_render.py",
+				"research/tests/test_manual_body_render.py"
+			],
+			"reason": "QCut-owned manual body stretch: a manual-body stage (after skin, before face shaping, as in the native order) renders the editor's stretch band with geometry measured from the native tool on coordinate-encoded frames; the canonical plan carries manualBody only when a tool changes the picture, so existing plans and receipts are unchanged; plan validation, resident contract and original-resolution support extended to it."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/independent-pipeline-catalog.json",
+				"src/independent-pipeline-plan.ts",
+				"src/independent-pipeline-plan.test.ts",
+				"research/manual_body_render.py",
+				"research/manual_body_slim_field.json",
+				"research/tests/test_manual_body_render.py"
+			],
+			"reason": "QCut-owned manual body slim and zoom: the manual-body stage also renders the editor's slim rectangle (a displacement table measured from the native tool on coordinate-encoded frames, one shape for every size and orientation, linear in intensity) and zoom circle (a fitted radial profile), applied after the stretch in the native order; plan validation and the planner accept their editor ranges and keep only tools that change the picture, so existing plans and receipts are unchanged."
+		},
+		{
+			"files": [
+				"research/independent-pipeline-catalog.json",
+				"research/independent_pipeline.py",
+				"research/independent_stage_runner.py",
+				"src/independent-pipeline-plan.ts",
+				"src/independent-pipeline-plan.test.ts",
+				"research/body_espresso_graph.py",
+				"research/body_espresso_fixed.py",
+				"research/body_skeleton_model.py",
+				"research/body_skeleton_preprocess.py",
+				"research/body_skeleton_kernels.py",
+				"research/body_skeleton_decode.py",
+				"research/body_longleg_state.py",
+				"research/body_longleg_mesh.py",
+				"research/body_mesh_metal.swift",
+				"research/body_longleg_render.py",
+				"research/tests/test_body_longleg.py"
+			],
+			"reason": "QCut-owned smart long leg (body_adjust_StretchLeg): a smart-body stage after makeup, as in the native order. The still-frame pose follows the effect's own path, measured on real render tensors: the frame scaled to a 640 long side, the coarse fixed-point body network seeding two 192x144 refinement passes (NumPy interpreter, bit-exact with the native CPU networks; weights from the private runtime asset body-skeleton-v1.npz). The leg descriptor, state, 30x30 mesh and Metal draw port the 2026-10-17 independent research chain; the still-frame descriptor update count is fitted to native renders. Body controls are named body_adjust_* and map only to catalog controls of the body group; existing plans are unchanged."
 		}
 	],
 	"sourceWorkingTreeStatus": [

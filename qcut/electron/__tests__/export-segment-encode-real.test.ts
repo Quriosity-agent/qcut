@@ -2,8 +2,10 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildExportSegmentEncodeArgs } from "../claude/handlers/claude-export-handler/export-segment-encode";
-import { buildExportSegmentInputArgs } from "../claude/handlers/claude-export-handler/export-engine";
+import {
+	buildExportSegmentEncodeArgs,
+	buildExportSegmentInputArgs,
+} from "../claude/handlers/claude-export-handler/export-segment-encode";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types";
 
 const ffmpegPath = path.resolve(
@@ -22,6 +24,9 @@ const tempDir = path.resolve(
 function probe({ file, stream }: { file: string; stream: "v" | "a" }): {
 	duration: number;
 	frames: number;
+	codec: string;
+	sampleRate: number;
+	channels: number;
 } {
 	const result = spawnSync(
 		ffprobePath,
@@ -32,7 +37,7 @@ function probe({ file, stream }: { file: string; stream: "v" | "a" }): {
 			`${stream}:0`,
 			"-count_frames",
 			"-show_entries",
-			"stream=duration,nb_read_frames",
+			"stream=duration,nb_read_frames,codec_name,sample_rate,channels",
 			"-of",
 			"json",
 			file,
@@ -40,11 +45,21 @@ function probe({ file, stream }: { file: string; stream: "v" | "a" }): {
 		{ encoding: "utf8" }
 	);
 	const parsed = JSON.parse(result.stdout) as {
-		streams: Array<{ duration: string; nb_read_frames: string }>;
+		streams: Array<{
+			duration: string;
+			nb_read_frames: string;
+			codec_name: string;
+			sample_rate?: string;
+			channels?: number;
+		}>;
 	};
+	const [first] = parsed.streams;
 	return {
-		duration: Number(parsed.streams[0].duration),
-		frames: Number(parsed.streams[0].nb_read_frames),
+		duration: Number(first.duration),
+		frames: Number(first.nb_read_frames),
+		codec: first.codec_name,
+		sampleRate: Number(first.sample_rate ?? 0),
+		channels: Number(first.channels ?? 0),
 	};
 }
 
@@ -111,6 +126,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				scaleFilter: "scale=64:64",
 				segment,
 				settings: { fps: 24, codec: "libx264", bitrate: "1M" },
+				audio: { kind: "input" },
 				outputPath,
 			});
 			const encoded = spawnSync(ffmpegPath, args, {
@@ -127,21 +143,27 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 		it("keeps every frame of a segment whose audio is shorter than its picture", () => {
 			const { video, audio } = encodeSegment({
 				duration: 1,
-				name: "segment.mp4",
+				name: "segment.mov",
 			});
 			expect(video.frames).toBe(24);
 			expect(video.duration).toBeCloseTo(1, 2);
-			expect(audio.duration).toBeGreaterThanOrEqual(0.99);
+			// PCM in the export's format, padded to exactly the segment.
+			expect(audio).toMatchObject({
+				codec: "pcm_f32le",
+				sampleRate: 48_000,
+				channels: 2,
+			});
+			expect(audio.duration).toBeCloseTo(1, 4);
 		});
 
 		it("fills a segment longer than its source by holding the last frame", () => {
 			const { video, audio } = encodeSegment({
 				duration: 1.5,
-				name: "segment-long.mp4",
+				name: "segment-long.mov",
 			});
 			expect(video.frames).toBe(36);
 			expect(video.duration).toBeCloseTo(1.5, 2);
-			expect(audio.duration).toBeGreaterThanOrEqual(1.49);
+			expect(audio.duration).toBeCloseTo(1.5, 4);
 		});
 
 		it("keeps the last frame of an untrimmed clip whose 32 kHz sound outlasts its picture", () => {
@@ -190,7 +212,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				sourceId: "media-2",
 				fitMode: "cover",
 			};
-			const outputPath = path.join(tempDir, "segment-32k.mp4");
+			const outputPath = path.join(tempDir, "segment-32k.mov");
 			const encoded = spawnSync(
 				ffmpegPath,
 				buildExportSegmentEncodeArgs({
@@ -198,12 +220,81 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					scaleFilter: "scale=64:64",
 					segment,
 					settings: { fps: 24, codec: "libx264", bitrate: "1M" },
+					audio: { kind: "input" },
 					outputPath,
 				}),
 				{ encoding: "utf8", timeout: 60_000 }
 			);
 			expect(encoded.status, encoded.stderr).toBe(0);
 			expect(probe({ file: outputPath, stream: "v" }).frames).toBe(49);
+			expect(probe({ file: outputPath, stream: "a" }).duration).toBeCloseTo(
+				49 / 24,
+				4
+			);
+		});
+
+		it("gives a picture exactly its length of silence in the export's format", () => {
+			const still = path.join(tempDir, "still.png");
+			const made = spawnSync(
+				ffmpegPath,
+				[
+					"-y",
+					"-v",
+					"error",
+					"-f",
+					"lavfi",
+					"-i",
+					"color=c=green:s=64x64",
+					"-frames:v",
+					"1",
+					still,
+				],
+				{ encoding: "utf8", timeout: 60_000 }
+			);
+			expect(made.status, made.stderr).toBe(0);
+			const segment: ExportSegment = {
+				elementId: "still",
+				trackId: "track-1",
+				trackOrder: 0,
+				elementOrder: 2,
+				sourcePath: still,
+				startTime: 0,
+				duration: 1.25,
+				trimStart: 0,
+				sourceId: "media-3",
+				fitMode: "cover",
+				isImage: true,
+			};
+			const outputPath = path.join(tempDir, "segment-still.mov");
+			const encoded = spawnSync(
+				ffmpegPath,
+				buildExportSegmentEncodeArgs({
+					inputArgs: buildExportSegmentInputArgs({ segment }),
+					scaleFilter: "scale=64:64",
+					segment,
+					settings: {
+						fps: 24,
+						codec: "libx264",
+						bitrate: "1M",
+						audioSampleRate: 44_100,
+						audioChannels: 1,
+					},
+					audio: null,
+					outputPath,
+				}),
+				{ encoding: "utf8", timeout: 60_000 }
+			);
+			expect(encoded.status, encoded.stderr).toBe(0);
+			expect(probe({ file: outputPath, stream: "v" }).frames).toBe(30);
+			expect(probe({ file: outputPath, stream: "a" })).toMatchObject({
+				codec: "pcm_f32le",
+				sampleRate: 44_100,
+				channels: 1,
+			});
+			expect(probe({ file: outputPath, stream: "a" }).duration).toBeCloseTo(
+				1.25,
+				4
+			);
 		});
 	}
 );

@@ -106,12 +106,104 @@ describe("independent portrait request", () => {
 		expect(result).toEqual({
 			issue: {
 				code: "scope",
-				selections: ["faces", "manual-retouch", "manual-body"],
+				selections: ["faces", "manual-retouch"],
 			},
 		});
 		if ("issue" in result)
 			expect(independentPortraitIssueMessage({ issue: result.issue })).toBe(
-				"自研美颜只能对全部人脸统一处理，请先清除：单人或分人物设置、手动精修、手动美体"
+				"自研美颜只能对全部人脸统一处理，请先清除：单人或分人物设置、手动精修"
+			);
+	});
+
+	it("passes an active stretch band to an engine that renders it", () => {
+		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
+		expect(
+			independentPortraitRequest({
+				adjustments: { ...base, manualBody: { stretch } },
+				support: { ...support, manualBodyTools: ["stretch"] },
+			})
+		).toEqual({
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_Whiten: 45 },
+				makeup: { lip: { cardId: "lip-coral-nude", intensity: 40 } },
+				manualBody: { stretch },
+			},
+		});
+		// Without the engine's support list the engine itself validates it.
+		expect(
+			independentPortraitRequest({
+				adjustments: { ...base, manualBody: { stretch } },
+			})
+		).toMatchObject({ adjustments: { manualBody: { stretch } } });
+	});
+
+	it("passes active slim and zoom to an engine that renders them, idle tools dropped", () => {
+		const slim = {
+			intensity: 20,
+			x: 0.5,
+			y: 0.45,
+			width: 0.3,
+			height: 0.3,
+			rotation: 30,
+		};
+		const zoom = { intensity: -10, x: 0.5, y: 0.6, radius: 0.2 };
+		const adjustments = {
+			...base,
+			manualBody: {
+				stretch: { intensity: 0, upper: 0.448, bottom: 0.202 },
+				slim,
+				zoom,
+			},
+		};
+		expect(
+			independentPortraitRequest({
+				adjustments,
+				support: { ...support, manualBodyTools: ["stretch", "slim", "zoom"] },
+			})
+		).toMatchObject({ adjustments: { manualBody: { slim, zoom } } });
+		const unchecked = independentPortraitRequest({ adjustments });
+		expect(
+			"adjustments" in unchecked ? unchecked.adjustments.manualBody : undefined
+		).toEqual({ slim, zoom });
+	});
+
+	it("reports manual body tools the engine does not render", () => {
+		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
+		const older = independentPortraitRequest({
+			adjustments: { ...base, manualBody: { stretch } },
+			support,
+		});
+		expect(older).toEqual({
+			issue: { code: "unsupported", selections: ["manualBody.stretch"] },
+		});
+		const result = independentPortraitRequest({
+			adjustments: {
+				...base,
+				manualBody: {
+					stretch,
+					slim: {
+						intensity: 20,
+						x: 0.5,
+						y: 0.5,
+						width: 0.3,
+						height: 0.3,
+						rotation: 0,
+					},
+					zoom: { intensity: -10, x: 0.5, y: 0.5, radius: 0.2 },
+				},
+			},
+			support: { ...support, manualBodyTools: ["stretch"] },
+		});
+		expect(result).toEqual({
+			issue: {
+				code: "unsupported",
+				selections: ["manualBody.slim", "manualBody.zoom"],
+			},
+		});
+		if ("issue" in result)
+			expect(independentPortraitIssueMessage({ issue: result.issue })).toBe(
+				"自研美颜不支持这些参数：手动美体·瘦身、手动美体·放大缩小"
 			);
 	});
 

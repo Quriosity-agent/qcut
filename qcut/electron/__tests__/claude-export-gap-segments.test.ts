@@ -61,7 +61,7 @@ describe("findTimelineGaps", () => {
 });
 
 describe("buildGapSegmentEncodeArgs", () => {
-	it("encodes black and silence with the segments' codec, size, rate and sound shape", () => {
+	it("encodes black and PCM silence with the segments' codec, size, rate and sound format", () => {
 		const args = buildGapSegmentEncodeArgs({
 			gap: { beforeSegment: 1, startTime: 2, duration: 1.5 },
 			settings: {
@@ -70,9 +70,10 @@ describe("buildGapSegmentEncodeArgs", () => {
 				fps: 25,
 				codec: "libx264",
 				bitrate: "6M",
+				audioSampleRate: 44_100,
+				audioChannels: 1,
 			},
-			audio: { sampleRate: 44_100, channels: 1 },
-			outputPath: "/tmp/gap-0000.mp4",
+			outputPath: "/tmp/gap-0000.mov",
 		});
 		expect(args).toContain("color=c=black:s=1280x720:r=25");
 		expect(args).toContain("anullsrc=r=44100:cl=mono");
@@ -82,7 +83,36 @@ describe("buildGapSegmentEncodeArgs", () => {
 		]);
 		expect(args).toContain("libx264");
 		expect(args).toContain("yuv420p");
-		expect(args.at(-1)).toBe("/tmp/gap-0000.mp4");
+		expect(args.slice(args.indexOf("-c:a"), args.indexOf("-c:a") + 6)).toEqual([
+			"-c:a",
+			"pcm_f32le",
+			"-ar",
+			"44100",
+			"-ac",
+			"1",
+		]);
+		expect(args.at(-1)).toBe("/tmp/gap-0000.mov");
+	});
+
+	it("defaults to 48 kHz stereo silence, the export's default format", () => {
+		const args = buildGapSegmentEncodeArgs({
+			gap: { beforeSegment: 0, startTime: 0, duration: 1 },
+			settings: {
+				width: 640,
+				height: 360,
+				fps: 30,
+				codec: "libx264",
+				bitrate: "2M",
+			},
+			outputPath: "/tmp/gap-0000.mov",
+		});
+		expect(args).toContain("anullsrc=r=48000:cl=stereo");
+		expect(args.slice(args.indexOf("-ar"), args.indexOf("-ar") + 4)).toEqual([
+			"-ar",
+			"48000",
+			"-ac",
+			"2",
+		]);
 	});
 });
 

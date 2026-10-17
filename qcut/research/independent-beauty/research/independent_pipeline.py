@@ -45,7 +45,14 @@ ORIGINAL_RENDERERS = frozenset({
     'lip_render.py', 'softpink_render.py', 'brow_render.py', 'makeup248_render.py',
     'eye_render.py', 'lashes_render.py', 'shadow_render.py', 'look_render.py',
     'makeup3d_render.py', 'contacts_render.py', 'dynamic_makeup_render.py',
+    'manual_body_render.py', 'body_longleg_render.py',
 })
+# The settings of each manual body tool; the renderer checks their ranges.
+MANUAL_BODY_KEYS = {
+    'stretch': frozenset({'intensity', 'upper', 'bottom'}),
+    'slim': frozenset({'intensity', 'x', 'y', 'width', 'height', 'rotation'}),
+    'zoom': frozenset({'intensity', 'x', 'y', 'radius'}),
+}
 
 
 def sha256(*, data):
@@ -176,14 +183,21 @@ def validate_plan(*, plan, scripts):
             or type(plan['version']) is not int or plan['version'] != 1):
         raise ValueError('unsupported pipeline plan')
     adjustments = plan['adjustments']
-    if (not isinstance(adjustments, dict) or set(adjustments) != {'values', 'makeup'}
-            or not all(isinstance(adjustments[key], dict) for key in ('values', 'makeup'))):
+    if (not isinstance(adjustments, dict) or set(adjustments) - {'manualBody'} != {'values', 'makeup'}
+            or not all(isinstance(adjustments[key], dict) for key in adjustments)):
         raise ValueError('plan requires canonical values and makeup objects')
     values = list(adjustments['values'].values())
     for selection in adjustments['makeup'].values():
         if not isinstance(selection, dict) or set(selection) != {'cardId', 'intensity'} or not isinstance(selection['cardId'], str):
             raise ValueError('invalid plan makeup selection')
         values.append(selection['intensity'])
+    for tool, settings in adjustments.get('manualBody', {}).items():
+        if (tool not in MANUAL_BODY_KEYS or not isinstance(settings, dict) or set(settings) != MANUAL_BODY_KEYS[tool]
+                or any(type(value) not in (int, float) or not math.isfinite(value) for value in settings.values())
+                or any(not 0 <= value <= 1 for key, value in settings.items() if key not in ('intensity', 'rotation'))
+                or abs(settings.get('rotation', 0)) > 180):
+            raise ValueError('invalid plan manual body tool')
+        values.append(settings['intensity'])
     if any(type(value) not in (int, float) or abs(value) > 100 or not math.isfinite(value) for value in values):
         raise ValueError('plan intensities must be finite numbers')
     stages = plan['stages']

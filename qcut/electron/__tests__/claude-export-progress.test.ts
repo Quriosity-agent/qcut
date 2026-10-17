@@ -40,6 +40,8 @@ vi.mock("node:fs/promises", () => ({
 vi.mock("../ffmpeg/utils.js", () => ({
 	getFFmpegPath: () => mockGetFFmpegPath(),
 	parseProgress: (...args: unknown[]) => mockParseProgress(...args),
+	// Each segment's sound source is probed before it is encoded.
+	probeHasAudioStream: async () => true,
 }));
 
 vi.mock("electron", () => ({

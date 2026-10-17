@@ -7,6 +7,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import {
+	INDEPENDENT_MANUAL_BODY_LABELS,
 	type IndependentPortraitIssue,
 	independentPortraitRequest,
 } from "@/lib/portrait/independent-portrait-adjustments";
@@ -19,7 +20,6 @@ import type { MediaPortraitAdjustments } from "@/types/timeline";
 const SCOPE_LABELS = {
 	faces: { zh: "单人或分人物设置", en: "per-person settings" },
 	"manual-retouch": { zh: "手动精修", en: "manual retouch" },
-	"manual-body": { zh: "手动美体", en: "manual body" },
 	"skin-tone": { zh: "肤色资源", en: "skin tone resources" },
 } as const;
 
@@ -41,6 +41,8 @@ function issueText({
 			: `Independent processes all faces alike; clear: ${names.join(", ")}`;
 	}
 	const names = issue.selections.map((selection) => {
+		const tool = INDEPENDENT_MANUAL_BODY_LABELS[selection];
+		if (tool) return isZh ? tool.zh : tool.en;
 		const named =
 			nativeStatus?.catalog.find((control) => control.key === selection) ??
 			nativeStatus?.makeupCards.find((card) => card.id === selection);

@@ -33,6 +33,10 @@ import {
 	writeIndependentSourceEvidence,
 	verifyIndependentSourceEvidenceReceipt,
 } from "./beauty-lab-independent-source-evidence.js";
+import {
+	canonicalIndependentManualBody,
+	independentManualBodySchema,
+} from "./beauty-lab-independent-manual-body.js";
 
 const requestSchema = z
 	.object({
@@ -60,7 +64,7 @@ const requestSchema = z
 					.optional(),
 				faces: z.array(z.never()).max(0).optional(),
 				skinToneResourceId: z.null().optional(),
-				manualBody: z.object({}).strict().optional(),
+				manualBody: independentManualBodySchema.optional(),
 				manualRetouch: z
 					.object({ strokes: z.array(z.never()).max(0) })
 					.strict()
@@ -77,10 +81,32 @@ const hash = ({ bytes }: { bytes: Uint8Array }) =>
 	createHash("sha256").update(bytes).digest("hex");
 const catalogSchema = z.object({
 	controls: z.array(
-		z.object({ name: z.string(), min: z.number(), max: z.number() })
+		z.object({
+			name: z.string(),
+			min: z.number(),
+			max: z.number(),
+			/** "body" controls are the editor's body_adjust_* keys; all others face_adjust_*. */
+			group: z.string().optional(),
+		})
 	),
 	makeup: z.array(z.object({ id: z.string(), category: z.string() })),
+	stages: z
+		.array(
+			z.object({ kind: z.string(), tools: z.array(z.string()).optional() })
+		)
+		.optional(),
 });
+
+/** The manual body tools the engine's manual-body stage renders. */
+function catalogManualBodyTools({
+	catalog,
+}: {
+	catalog: z.infer<typeof catalogSchema>;
+}) {
+	return (catalog.stages ?? [])
+		.filter(({ kind }) => kind === "manual-body")
+		.flatMap(({ tools }) => tools ?? []);
+}
 
 export function independentBeautyAdjustments({
 	request,
@@ -101,8 +127,11 @@ export function independentBeautyAdjustments({
 	independentSourceEvidenceIdentity(parsed);
 	const values: Record<string, number> = {};
 	for (const [key, value] of Object.entries(parsed.adjustments.values)) {
-		const name = key.startsWith("face_adjust_") ? key.slice(12) : key;
-		const control = catalog.controls.find((entry) => entry.name === name);
+		const body = key.startsWith("body_adjust_");
+		const name = body || key.startsWith("face_adjust_") ? key.slice(12) : key;
+		const control = catalog.controls.find(
+			(entry) => entry.name === name && (entry.group === "body") === body
+		);
 		if (!control) {
 			if (value === 0) continue;
 			throw new Error(`Independent beauty does not support ${key}`);
@@ -126,9 +155,18 @@ export function independentBeautyAdjustments({
 		)
 			throw new Error(`Unsupported independent makeup ${category}`);
 	}
+	const manualBody = canonicalIndependentManualBody({
+		manualBody: parsed.adjustments.manualBody,
+	});
+	const tools = catalogManualBodyTools({ catalog });
+	for (const tool of Object.keys(manualBody ?? {}))
+		if (!tools.includes(tool))
+			throw new Error(
+				`Independent beauty does not support manual body ${tool}`
+			);
 	return {
 		request: structuredClone(parsed) as BeautyLabIndependentRequest,
-		adjustments: { values, makeup },
+		adjustments: { values, makeup, ...(manualBody ? { manualBody } : {}) },
 	};
 }
 
@@ -270,8 +308,11 @@ export function createBeautyLabIndependentProvider({
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				message:
 					"Single opaque photo, max edge 4096 / 8,294,400 pixels; resident rendering, general native parity unverified",
-				controls: inventory.controls.map(({ name }) => `face_adjust_${name}`),
+				controls: inventory.controls.map(({ name, group }) =>
+					group === "body" ? `body_adjust_${name}` : `face_adjust_${name}`
+				),
 				makeupCards: inventory.makeup.map(({ id }) => id),
+				manualBodyTools: catalogManualBodyTools({ catalog: inventory }),
 			};
 		} catch (error) {
 			return {
@@ -280,6 +321,7 @@ export function createBeautyLabIndependentProvider({
 				message: String(error),
 				controls: [],
 				makeupCards: [],
+				manualBodyTools: [],
 			};
 		}
 	}

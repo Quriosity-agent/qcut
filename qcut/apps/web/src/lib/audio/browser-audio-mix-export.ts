@@ -309,6 +309,19 @@ export function buildExportAudioMix({
 			silenced: mix.master.muted,
 			set: setOnce,
 		});
+		// The master's level stage runs behind the clips, the track strip, a
+		// bus strip (tracks that skip a bus are delayed to match) and its own
+		// compressor. Its fade used to be left out of the in-browser export.
+		scheduleStripAutomation({
+			strip: master,
+			automation: mix.master.automation,
+			silenced: mix.master.muted,
+			offsetSeconds:
+				(clipStages +
+					MIX_STRIP_DYNAMICS_STAGES * (usesBuses(mix) ? 2 : 1) +
+					1) *
+				lookaheadSeconds,
+		});
 	} else {
 		applyMixStripEffects({
 			strip: master,

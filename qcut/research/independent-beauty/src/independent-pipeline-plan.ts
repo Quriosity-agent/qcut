@@ -6,16 +6,42 @@ export interface PipelineSelection {
 	cardId: string;
 	intensity: number;
 }
+export interface PipelineStretch {
+	intensity: number;
+	upper: number;
+	bottom: number;
+}
+export interface PipelineSlim {
+	intensity: number;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+}
+export interface PipelineZoom {
+	intensity: number;
+	x: number;
+	y: number;
+	radius: number;
+}
+/** Manual body tools that change the picture; absent when none does. */
+export interface PipelineManualBody {
+	stretch?: PipelineStretch;
+	slim?: PipelineSlim;
+	zoom?: PipelineZoom;
+}
 export interface PipelineAdjustments {
 	values: Record<string, number>;
 	makeup: Record<string, PipelineSelection>;
+	manualBody?: PipelineManualBody;
 }
 interface NumericControl {
 	name: string;
 	title: string;
 	min: number;
 	max: number;
-	group: "face" | "features" | "skin";
+	group: "face" | "features" | "skin" | "body";
 	stage: string;
 }
 interface MakeupControl {
@@ -31,10 +57,14 @@ interface MakeupControl {
 }
 interface StageDefinition {
 	id: string;
-	kind: "scalar" | "controls" | "gan";
+	kind: "scalar" | "controls" | "gan" | "manual-body";
 	script: string;
 	controls: string[];
 	bindings?: { name: string; flag: string; scale: number }[];
+	/** For the manual-body stage: the tools it renders. */
+	tools?: string[];
+	/** Runs after the makeup stages, as the native smart-body package does. */
+	afterMakeup?: boolean;
 }
 interface PipelineCatalog {
 	version: 1;
@@ -52,7 +82,8 @@ export interface PipelineStage {
 	controls:
 		| Record<string, number>
 		| PipelineSelection
-		| Record<string, PipelineSelection>;
+		| Record<string, PipelineSelection>
+		| PipelineManualBody;
 }
 export interface IndependentPipelinePlan {
 	version: 1;
@@ -91,6 +122,95 @@ function allowedKeys({
 	for (const key of Object.keys(value)) {
 		if (!keys.includes(key)) throw new Error(`${label}不接受 ${key}`);
 	}
+}
+
+/** The manual body tools the catalog's manual-body stage renders. */
+function manualBodyTools(): string[] {
+	return catalog.stages.find(({ kind }) => kind === "manual-body")?.tools ?? [];
+}
+
+type ManualBodyTool = keyof PipelineManualBody;
+interface ManualBodyField {
+	key: string;
+	min: number;
+	max: number;
+	title: string;
+}
+
+/**
+ * The editor's manual-body ranges, tool by tool, in the order the plan keeps
+ * the fields. Intensity is −50..50 everywhere. Stretch handles are shares of
+ * the height from the bottom, at least 0.02 apart. Slim and zoom centres are
+ * shares of the frame with y from the bottom; the slim box's size is a share
+ * of the frame and its rotation is in degrees; the zoom radius is a share of
+ * the frame's shorter side.
+ */
+const MANUAL_BODY_FIELDS: Record<
+	ManualBodyTool,
+	{ title: string; fields: ManualBodyField[] }
+> = {
+	stretch: {
+		title: "拉长",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "upper", min: 0.02, max: 1, title: "上线" },
+			{ key: "bottom", min: 0, max: 0.98, title: "下线" },
+		],
+	},
+	slim: {
+		title: "瘦身",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "x", min: 0, max: 1, title: "中心X" },
+			{ key: "y", min: 0, max: 1, title: "中心Y" },
+			{ key: "width", min: 0.02, max: 1, title: "宽度" },
+			{ key: "height", min: 0.02, max: 1, title: "高度" },
+			{ key: "rotation", min: -180, max: 180, title: "旋转" },
+		],
+	},
+	zoom: {
+		title: "放大缩小",
+		fields: [
+			{ key: "intensity", min: -50, max: 50, title: "强度" },
+			{ key: "x", min: 0, max: 1, title: "中心X" },
+			{ key: "y", min: 0, max: 1, title: "中心Y" },
+			{ key: "radius", min: 0.01, max: 0.5, title: "半径" },
+		],
+	},
+};
+
+/** The requested manual body tools, checked against the editor's ranges; idle tools are dropped. */
+function manualBodyAdjustments({
+	value,
+}: {
+	value: unknown;
+}): PipelineManualBody | undefined {
+	if (value === undefined) return undefined;
+	const input = record({ value, label: "手动美体" });
+	allowedKeys({ value: input, keys: manualBodyTools(), label: "手动美体" });
+	const manualBody: Record<string, Record<string, number>> = {};
+	for (const tool of Object.keys(MANUAL_BODY_FIELDS) as ManualBodyTool[]) {
+		if (input[tool] === undefined) continue;
+		const { title, fields } = MANUAL_BODY_FIELDS[tool];
+		const settings = record({ value: input[tool], label: `手动美体${title}` });
+		allowedKeys({
+			value: settings,
+			keys: fields.map(({ key }) => key),
+			label: `手动美体${title}`,
+		});
+		const checked = Object.fromEntries(
+			fields.map(({ key, min, max, title: field }) => [
+				key,
+				strength({ value: settings[key], min, max, label: `${title}${field}` }),
+			])
+		);
+		if (tool === "stretch" && checked.upper - checked.bottom < 0.02 - 1e-9)
+			throw new Error("拉长上下线至少相距0.02");
+		if (checked.intensity !== 0) manualBody[tool] = checked;
+	}
+	return Object.keys(manualBody).length > 0
+		? (manualBody as PipelineManualBody)
+		: undefined;
 }
 
 function strength({
@@ -132,6 +252,7 @@ export function independentPipelineCatalog() {
 			min,
 			max,
 		})),
+		manualBodyTools: manualBodyTools(),
 		limitations: catalog.limitations,
 	};
 }
@@ -142,17 +263,28 @@ export function independentPipelineAdjustments({
 	value: unknown;
 }): PipelineAdjustments {
 	const input = record({ value, label: "复合参数" });
-	allowedKeys({ value: input, keys: ["values", "makeup"], label: "复合参数" });
+	allowedKeys({
+		value: input,
+		keys: ["values", "makeup", "manualBody"],
+		label: "复合参数",
+	});
+	const manualBody = manualBodyAdjustments({ value: input.manualBody });
 	const requestedValues = record({
 		value: input.values === undefined ? {} : input.values,
 		label: "values",
 	});
 	const values: Record<string, number> = {};
 	for (const [rawName, raw] of Object.entries(requestedValues)) {
-		const name = rawName.startsWith("face_adjust_")
-			? rawName.slice("face_adjust_".length)
-			: rawName;
-		const control = catalog.controls.find((entry) => entry.name === name);
+		const body = rawName.startsWith("body_adjust_");
+		const face = rawName.startsWith("face_adjust_");
+		const prefix = body ? "body_adjust_" : face ? "face_adjust_" : "";
+		const name = rawName.slice(prefix.length);
+		const control = catalog.controls.find(
+			(entry) =>
+				entry.name === name &&
+				(!body || entry.group === "body") &&
+				(!face || entry.group !== "body")
+		);
 		if (!control) throw new Error(`自研复合暂不支持 ${rawName}`);
 		if (Object.hasOwn(values, name)) throw new Error(`参数 ${name} 被重复指定`);
 		values[name] = strength({
@@ -202,6 +334,7 @@ export function independentPipelineAdjustments({
 				.filter(({ id, category }) => makeup[category]?.cardId === id)
 				.map(({ category }) => [category, makeup[category]])
 		),
+		...(manualBody ? { manualBody } : {}),
 	};
 }
 
@@ -212,7 +345,20 @@ export function independentPipelinePlan({
 }): IndependentPipelinePlan {
 	const adjustments = independentPipelineAdjustments({ value });
 	const stages: PipelineStage[] = [];
+	const lateStages: PipelineStage[] = [];
 	for (const definition of catalog.stages) {
+		const target = definition.afterMakeup ? lateStages : stages;
+		if (definition.kind === "manual-body") {
+			if (!adjustments.manualBody) continue;
+			target.push({
+				id: definition.id,
+				kind: definition.kind,
+				script: definition.script,
+				parameters: ["--manual-body", JSON.stringify(adjustments.manualBody)],
+				controls: adjustments.manualBody,
+			});
+			continue;
+		}
 		const controls = Object.fromEntries(
 			definition.controls
 				.filter((name) => (adjustments.values[name] ?? 0) !== 0)
@@ -226,7 +372,7 @@ export function independentPipelinePlan({
 						flag,
 						String((adjustments.values[name] ?? 0) * scale),
 					]);
-		stages.push({
+		target.push({
 			id: definition.id,
 			kind: definition.kind,
 			script: definition.script,
@@ -254,7 +400,7 @@ export function independentPipelinePlan({
 			parameters: ["--selections", JSON.stringify(selections)],
 			controls: selections,
 		});
-		return { version: 1, adjustments, stages };
+		return { version: 1, adjustments, stages: [...stages, ...lateStages] };
 	}
 	for (const card of catalog.makeup) {
 		const selection = adjustments.makeup[card.category];
@@ -272,7 +418,7 @@ export function independentPipelinePlan({
 			controls: selection,
 		});
 	}
-	return { version: 1, adjustments, stages };
+	return { version: 1, adjustments, stages: [...stages, ...lateStages] };
 }
 
 if (import.meta.main) {

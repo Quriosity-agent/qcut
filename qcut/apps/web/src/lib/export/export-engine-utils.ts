@@ -18,12 +18,23 @@ export interface ActiveElement {
 	mediaItem: MediaItem | null;
 }
 
+/**
+ * An end less than this past a frame boundary is noise, not a frame of its
+ * own: summed clip lengths in float, or an audio clip a hair longer than the
+ * picture. 212.250301 s at 24 fps is 5094 frames, as the native export
+ * makes it, not 5095. The same floor as `calculateFrameSampleDuration`.
+ */
+const FRAME_END_NOISE_SECONDS = 0.001;
+
 /** Calculate total number of frames needed for export */
 export function calculateTotalFrames(
 	totalDuration: number,
 	fps: number
 ): number {
-	return Math.ceil(totalDuration * fps);
+	return Math.max(
+		0,
+		Math.ceil((totalDuration - FRAME_END_NOISE_SECONDS) * fps)
+	);
 }
 
 export function calculateFrameTime({
@@ -38,11 +49,12 @@ export function calculateFrameTime({
 
 /**
  * How long frame `frameIndex` is shown. Every frame lasts 1/fps except the
- * last, which ends where the timeline ends: `calculateTotalFrames` rounds the
- * length up to whole frames, and a fixed last duration made the file up to a
- * frame longer than the timeline (and than the native export). A remainder
- * within a millisecond of nothing or of a whole frame is float noise from
- * that rounding and keeps the full frame.
+ * last, which ends where the timeline ends: `calculateTotalFrames` counts a
+ * frame for any end more than a millisecond past a boundary, and a fixed
+ * last duration made the file up to a frame longer than the timeline (and
+ * than the native export). A remainder within a millisecond of a whole
+ * frame (or, for a caller with its own count, of nothing) keeps the full
+ * frame.
  */
 export function calculateFrameSampleDuration({
 	frameIndex,
@@ -64,6 +76,16 @@ export function calculateFrameSampleDuration({
 	return remainder;
 }
 
+/**
+ * A clip edge less than this after a frame's start counts as on that frame.
+ * Cut points kept to the millisecond sit up to half a millisecond off the
+ * frame grid (a ripple delete of 60.708 − 48.125 s moves every later clip a
+ * third of a millisecond past its frame), and at each such cut the clip
+ * before was still the one shown: the new shot came one frame late, where
+ * the native export cuts on the frame.
+ */
+const ELEMENT_EDGE_NOISE_SECONDS = 0.001;
+
 /** Get active elements at a specific time */
 export function getActiveElements(
 	tracks: TimelineTrack[],
@@ -77,7 +99,8 @@ export function getActiveElements(
 ): ActiveElement[] {
 	const plan = buildCompositionPlan({
 		tracks,
-		currentTime,
+		// Only which clips are on screen; each still renders at currentTime.
+		currentTime: currentTime + ELEMENT_EDGE_NOISE_SECONDS,
 		forceActiveElementIds: transitions?.forceActiveElementIds,
 		activeTransitionIds: transitions?.activeTransitionIds,
 		getElementDuration: ({ element }) =>

@@ -19,6 +19,10 @@ import {
 	independentSourceEvidenceSchema,
 	independentSourceEvidenceIdentity,
 } from "./beauty-lab-independent-source-evidence.js";
+import {
+	canonicalIndependentManualBody,
+	independentManualBodySchema,
+} from "./beauty-lab-independent-manual-body.js";
 
 /** Timeline frames carry no photo identity; the cache keys them by content. */
 export const INDEPENDENT_TIMELINE_SOURCE_KEY = "timeline-frame";
@@ -42,6 +46,7 @@ const frameRequestSchema = z
 							.strict()
 					)
 					.optional(),
+				manualBody: independentManualBodySchema.optional(),
 			})
 			.strict(),
 	})
@@ -166,6 +171,9 @@ export function createIndependentFrameRenderer({
 				height,
 				values: input.adjustments.values,
 				makeup: input.adjustments.makeup ?? {},
+				manualBody: canonicalIndependentManualBody({
+					manualBody: input.adjustments.manualBody,
+				}),
 				rgba: input.rgba,
 				sourceEvidenceSha256: evidenceIdentity?.manifestSha256,
 			});

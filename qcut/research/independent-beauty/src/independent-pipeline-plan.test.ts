@@ -258,4 +258,162 @@ describe("independent composite plan", () => {
 			expect(plan.stages[0].id).toBe(`makeup:${card.id}`);
 		}
 	});
+	test("the smart long leg runs last, after makeup, and takes only the body prefix", () => {
+		const plan = independentPipelinePlan({
+			value: {
+				values: { body_adjust_StretchLeg: 60, face_adjust_Whiten: 20 },
+				makeup: { lip: { cardId: "lip-soft-pink", intensity: 30 } },
+			},
+		});
+		expect(plan.stages.map(({ id }) => id)).toEqual([
+			"whiten",
+			"makeup:lip-soft-pink",
+			"smart-body",
+		]);
+		expect(plan.stages.at(-1)).toEqual({
+			id: "smart-body",
+			kind: "controls",
+			script: "body_longleg_render.py",
+			parameters: ["--controls", JSON.stringify({ StretchLeg: 60 })],
+			controls: { StretchLeg: 60 },
+		});
+		expect(plan.adjustments.values).toEqual({ Whiten: 20, StretchLeg: 60 });
+		// A shared makeup pass also comes before it.
+		const grouped = independentPipelinePlan({
+			value: {
+				values: { body_adjust_StretchLeg: 40 },
+				makeup: {
+					lip: { cardId: "lip-soft-pink", intensity: 30 },
+					brows: { cardId: "brows-standard", intensity: 30 },
+				},
+			},
+		});
+		expect(grouped.stages.map(({ id }) => id)).toEqual([
+			"dynamic-pigments",
+			"smart-body",
+		]);
+		for (const values of [
+			{ face_adjust_StretchLeg: 10 },
+			{ body_adjust_Whiten: 10 },
+			{ body_adjust_SlimWaist: 10 },
+			{ body_adjust_StretchLeg: 100.5 },
+		])
+			expect(() => independentPipelinePlan({ value: { values } })).toThrow();
+		expect(
+			independentPipelineCatalog().controls.find(
+				({ name }) => name === "StretchLeg"
+			)
+		).toEqual({
+			name: "StretchLeg",
+			title: "长腿",
+			min: 0,
+			max: 100,
+			group: "body",
+		});
+	});
+	test("manual body stretch runs after the skin stages and before face shaping", () => {
+		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
+		const plan = independentPipelinePlan({
+			value: {
+				values: { Whiten: 20, TotalFace: 30 },
+				manualBody: { stretch },
+			},
+		});
+		expect(plan.stages.map(({ id }) => id)).toEqual([
+			"whiten",
+			"manual-body",
+			"face-features",
+		]);
+		expect(plan.stages[1]).toEqual({
+			id: "manual-body",
+			kind: "manual-body",
+			script: "manual_body_render.py",
+			parameters: ["--manual-body", JSON.stringify({ stretch })],
+			controls: { stretch },
+		});
+		expect(plan.adjustments.manualBody).toEqual({ stretch });
+		expect(independentPipelineCatalog().manualBodyTools).toEqual([
+			"stretch",
+			"slim",
+			"zoom",
+		]);
+	});
+	test("slim and zoom join the stretch in one manual-body stage; idle tools are dropped", () => {
+		const slim = {
+			intensity: 25,
+			x: 0.5,
+			y: 0.42,
+			width: 0.3,
+			height: 0.35,
+			rotation: -30,
+		};
+		const zoom = { intensity: -15, x: 0.48, y: 0.64, radius: 0.12 };
+		const plan = independentPipelinePlan({
+			value: {
+				manualBody: {
+					stretch: { intensity: 0, upper: 0.6, bottom: 0.4 },
+					slim,
+					zoom,
+				},
+			},
+		});
+		expect(plan.adjustments.manualBody).toEqual({ slim, zoom });
+		expect(plan.stages).toEqual([
+			{
+				id: "manual-body",
+				kind: "manual-body",
+				script: "manual_body_render.py",
+				parameters: ["--manual-body", JSON.stringify({ slim, zoom })],
+				controls: { slim, zoom },
+			},
+		]);
+		const idle = independentPipelinePlan({
+			value: { manualBody: { zoom: { ...zoom, intensity: 0 } } },
+		});
+		expect(idle.adjustments).toEqual({ values: {}, makeup: {} });
+		expect(idle.stages).toEqual([]);
+	});
+	test("an idle stretch leaves no stage and no manual body in the plan", () => {
+		const plan = independentPipelinePlan({
+			value: {
+				manualBody: { stretch: { intensity: 0, upper: 0.6, bottom: 0.4 } },
+			},
+		});
+		expect(plan.stages).toEqual([]);
+		expect(plan.adjustments).toEqual({ values: {}, makeup: {} });
+	});
+	test("rejects manual body tools and settings outside the editor's ranges", () => {
+		const stretch = { intensity: 20, upper: 0.7, bottom: 0.2 };
+		const slim = {
+			intensity: 10,
+			x: 0.5,
+			y: 0.5,
+			width: 0.2,
+			height: 0.2,
+			rotation: 0,
+		};
+		const zoom = { intensity: 10, x: 0.5, y: 0.5, radius: 0.2 };
+		for (const manualBody of [
+			{ twist: slim },
+			{ slim: { ...slim, rotation: 181 } },
+			{ slim: { ...slim, width: 0.01 } },
+			{ slim: { ...slim, y: -0.1 } },
+			{ slim: { ...slim, radius: 0.2 } },
+			{ zoom: { ...zoom, radius: 0.51 } },
+			{ zoom: { ...zoom, radius: 0.005 } },
+			{ zoom: { x: 0.5, y: 0.5, radius: 0.2 } },
+			{ zoom: { ...zoom, intensity: -51 } },
+			{ stretch: { ...stretch, intensity: 51 } },
+			{ stretch: { ...stretch, upper: 0.21 } },
+			{ stretch: { ...stretch, bottom: 0.99 } },
+			{ stretch: { ...stretch, extra: 1 } },
+			{ stretch: { intensity: 20, upper: 0.7 } },
+			{ stretch: { ...stretch, intensity: Number.NaN } },
+			[],
+		]) {
+			expect(() =>
+				independentPipelinePlan({ value: { manualBody } })
+			).toThrow();
+		}
+	});
 });

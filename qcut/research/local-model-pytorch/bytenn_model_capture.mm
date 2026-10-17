@@ -31,6 +31,8 @@
 //     bytenn_model_capture.mm -o bytenn-model-capture.dylib
 // Use:
 //   QCUT_BYTENN_CAPTURE_DIR=<dir> DYLD_INSERT_LIBRARIES=<dylib> <host> ...
+// QCUT_BYTENN_CAPTURE_ENGINE_IO=1 also records what crosses ByteNNEngine's
+// SetInput / GetInputConfig / Inference / GetOutput (see the engine recorders).
 #import <Foundation/Foundation.h>
 #include <dlfcn.h>
 #include <mach/mach.h>
@@ -204,6 +206,8 @@ template <typename Visit> void forEachRegion(Visit visit, size_t *scanned, int *
   }
 }
 
+int dumpStampWindows(const char *kind, const std::set<uint32_t> &stamps);
+
 // Scan readable, non-shared, non-executable memory for graph text and dump each
 // distinct hit with a bounded window after it (the arena of a decoded packed
 // container follows its graph text). Regions are copied with
@@ -245,7 +249,17 @@ void scanHeapForGraphs(const char *kind) {
       ++hits;
     }
   }, &scanned, &regions, &unreadable);
-  // Second pass: the bytes before every occurrence of a found stamp.
+  const int stampHits = dumpStampWindows(kind, stamps);
+  writeMeta(sequence++, "heap-scan",
+            std::string(kind) + " regions=" + std::to_string(regions) + " unreadable=" + std::to_string(unreadable) +
+                " scanned_bytes=" + std::to_string(scanned) + " hits=" + std::to_string(hits) + " stamps=" + std::to_string(stamps.size()) +
+                " stamp_hits=" + std::to_string(stampHits),
+            0);
+}
+
+// The bytes before every occurrence of each stamp (a decoded arena ends with
+// its graph's stamp); at most 64 windows per call.
+int dumpStampWindows(const char *kind, const std::set<uint32_t> &stamps) {
   int stampHits = 0;
   size_t scannedAgain = 0;
   int regionsAgain = 0, unreadableAgain = 0;
@@ -271,11 +285,7 @@ void scanHeapForGraphs(const char *kind) {
       }
     }
   }, &scannedAgain, &regionsAgain, &unreadableAgain);
-  writeMeta(sequence++, "heap-scan",
-            std::string(kind) + " regions=" + std::to_string(regions) + " unreadable=" + std::to_string(unreadable) +
-                " scanned_bytes=" + std::to_string(scanned) + " hits=" + std::to_string(hits) + " stamps=" + std::to_string(stamps.size()) +
-                " stamp_hits=" + std::to_string(stampHits),
-            0);
+  return stampHits;
 }
 
 // Dump a config block handed to Engine::Init and every BM container reachable
@@ -594,17 +604,24 @@ InitFunction originalInitConfig = nullptr;
 InitFunction originalInitConfigExt = nullptr;
 std::map<void **, void **> patchedVtables;
 
+// QCUT_BYTENN_SKIP_INIT_SCAN=1 keeps the config dumps but skips the heap sweep
+// after Init (about a gigabyte per body-package run), for I/O-only captures.
+bool skipInitScan() {
+  static const char *flag = std::getenv("QCUT_BYTENN_SKIP_INIT_SCAN");
+  return flag && *flag == '1';
+}
+
 long recordedInitConfig(void *self, const void *config) {
   captureConfig("engine-config", config);
   const long result = originalInitConfig(self, config);
-  scanHeapForGraphs("engine-config");
+  if (!skipInitScan()) scanHeapForGraphs("engine-config");
   return result;
 }
 
 long recordedInitConfigExt(void *self, const void *config) {
   captureConfig("engine-configext", config);
   const long result = originalInitConfigExt(self, config);
-  scanHeapForGraphs("engine-configext");
+  if (!skipInitScan()) scanHeapForGraphs("engine-configext");
   return result;
 }
 
@@ -612,6 +629,243 @@ const char *symbolName(const void *address) {
   Dl_info info;
   return dladdr(address, &info) && info.dli_sname ? info.dli_sname : "";
 }
+
+// --- Engine inference recorders (QCUT_BYTENN_CAPTURE_ENGINE_IO=1) -----------
+//
+// Networks such as the body keypoint model run through ByteNNEngine rather than
+// espresso::Thrustor, so the espresso I/O recorders never see them. These slots
+// of the same vtable copy record what crosses the engine boundary. The tensor
+// layout is not public, so each record keeps the raw vector elements and, for
+// every aligned word in them that points into mapped memory, the bytes there
+// (bounded); the layout is then read offline from those dumps.
+
+using EngineVectorCall = long (*)(void *self, void *tensors);
+using EngineVoidCall = long (*)(void *self);
+using EngineNamedCall = long (*)(void *self, const void *name);
+EngineVectorCall originalSetInput = nullptr;
+EngineVectorCall originalSetInputExt = nullptr;
+EngineVectorCall originalGetInputConfig = nullptr;
+EngineVectorCall originalGetInputConfigExt = nullptr;
+EngineVectorCall originalGetOutput = nullptr;
+EngineVectorCall originalGetOutputExt = nullptr;
+EngineVoidCall originalInference = nullptr;
+EngineVoidCall originalInferenceTextureIO = nullptr;
+EngineNamedCall originalInferenceNamed = nullptr;
+
+constexpr size_t kEngineElementLimit = 4096;
+constexpr size_t kEnginePointeeLimit = 2u * 1024u * 1024u;
+constexpr int kEngineInferenceLimit = 6;  // per engine object
+
+struct EngineState {
+  int inferences = 0;
+  std::vector<unsigned char> inputElements;  // last SetInput / GetInputConfig vector, copied
+  bool inputExt = false;
+};
+std::map<void *, EngineState> engineStates;
+
+bool captureEngineIO() {
+  static const char *flag = std::getenv("QCUT_BYTENN_CAPTURE_ENGINE_IO");
+  return captureDirectory() && flag && *flag == '1';
+}
+
+std::vector<unsigned char> vectorElements(const void *tensors) {
+  struct Raw { const unsigned char *begin, *end, *capacity; };
+  const std::vector<unsigned char> header = copyMemory(tensors, sizeof(Raw));
+  if (header.size() != sizeof(Raw)) return {};
+  Raw raw;
+  std::memcpy(&raw, header.data(), sizeof raw);
+  if (!raw.begin || raw.end < raw.begin) return {};
+  return copyMemory(raw.begin, std::min(static_cast<size_t>(raw.end - raw.begin), kEngineElementLimit));
+}
+
+bool plausiblePointer(uintptr_t value) { return value >= 0x100000000ull && value < 0x0000800000000000ull; }
+
+// Dumps the bytes behind every pointer-like word of `bytes`; `depth` follows
+// one more level (shared_ptr<TensorExt> elements point at objects).
+void dumpPointees(int index, const std::string &kind, const std::vector<unsigned char> &bytes, int depth,
+                  std::ostringstream &listing) {
+  for (size_t offset = 0; offset + 8 <= bytes.size(); offset += 8) {
+    uintptr_t value;
+    std::memcpy(&value, bytes.data() + offset, 8);
+    if (!plausiblePointer(value)) continue;
+    const void *address = reinterpret_cast<const void *>(value);
+    const size_t extent = mappedExtent(address, depth > 0 ? 512 : kEnginePointeeLimit);
+    if (!extent) continue;
+    const std::string name = kind + "-at" + std::to_string(offset);
+    const size_t written = writeBytes(capturePath(index, name.c_str(), "bin"), address, extent);
+    listing << name << "\t" << value << "\t" << extent << "\t" << written << "\t" << symbolName(address) << "\n";
+    if (depth > 0) dumpPointees(index, name, copyMemory(address, extent), depth - 1, listing);
+  }
+}
+
+void recordEngineTensors(const char *kind, void *self, const std::vector<unsigned char> &elements, bool ext,
+                         const std::string &extra) {
+  std::lock_guard<std::mutex> lock(captureMutex);
+  EngineState &state = engineStates[self];
+  if (state.inferences >= kEngineInferenceLimit) return;
+  const int index = sequence++;
+  const size_t written = writeBytes(capturePath(index, kind, "bin"), elements.data(), elements.size());
+  std::ostringstream listing;
+  dumpPointees(index, kind, elements, ext ? 1 : 0, listing);
+  std::ofstream(capturePath(index, kind, "pointees.txt")) << listing.str();
+  writeMeta(index, kind,
+            "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " inference=" +
+                std::to_string(state.inferences) + " ext=" + (ext ? "1" : "0") + extra,
+            written);
+}
+
+long recordedSetInput(void *self, void *tensors) {
+  if (captureEngineIO()) {
+    const std::vector<unsigned char> elements = vectorElements(tensors);
+    recordEngineTensors("engine-setinput", self, elements, false, "");
+    std::lock_guard<std::mutex> lock(captureMutex);
+    engineStates[self].inputElements = elements;
+    engineStates[self].inputExt = false;
+  }
+  return originalSetInput(self, tensors);
+}
+
+long recordedSetInputExt(void *self, void *tensors) {
+  if (captureEngineIO()) {
+    const std::vector<unsigned char> elements = vectorElements(tensors);
+    recordEngineTensors("engine-setinput-ext", self, elements, true, "");
+    std::lock_guard<std::mutex> lock(captureMutex);
+    engineStates[self].inputElements = elements;
+    engineStates[self].inputExt = true;
+  }
+  return originalSetInputExt(self, tensors);
+}
+
+long recordedGetInputConfig(void *self, void *tensors) {
+  const long result = originalGetInputConfig(self, tensors);
+  if (captureEngineIO()) {
+    const std::vector<unsigned char> elements = vectorElements(tensors);
+    recordEngineTensors("engine-inputconfig", self, elements, false, " rc=" + std::to_string(result));
+    std::lock_guard<std::mutex> lock(captureMutex);
+    engineStates[self].inputElements = elements;
+    engineStates[self].inputExt = false;
+  }
+  return result;
+}
+
+long recordedGetInputConfigExt(void *self, void *tensors) {
+  const long result = originalGetInputConfigExt(self, tensors);
+  if (captureEngineIO()) {
+    const std::vector<unsigned char> elements = vectorElements(tensors);
+    recordEngineTensors("engine-inputconfig-ext", self, elements, true, " rc=" + std::to_string(result));
+    std::lock_guard<std::mutex> lock(captureMutex);
+    engineStates[self].inputElements = elements;
+    engineStates[self].inputExt = true;
+  }
+  return result;
+}
+
+// The caller may write pixels straight into buffers it got earlier, so the
+// remembered input elements are dumped again as Inference starts.
+void recordInferenceStart(void *self, const char *variant) {
+  std::vector<unsigned char> elements;
+  bool ext = false;
+  {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    elements = engineStates[self].inputElements;
+    ext = engineStates[self].inputExt;
+  }
+  recordEngineTensors("engine-inference-input", self, elements, ext, std::string(" variant=") + variant);
+}
+
+// QCUT_BYTENN_STAMPS_AFTER_INFERENCE=<stamp>,<stamp>... dumps, once per engine
+// after its first Inference, the bytes before every occurrence of those graph
+// stamps: the weights the engine has just run with are certainly live then.
+std::set<uint32_t> stampsAfterInference() {
+  std::set<uint32_t> stamps;
+  const char *list = std::getenv("QCUT_BYTENN_STAMPS_AFTER_INFERENCE");
+  for (const char *cursor = list; cursor && *cursor;) {
+    char *next = nullptr;
+    const unsigned long long value = std::strtoull(cursor, &next, 10);
+    if (next == cursor) break;
+    if (value <= 0xFFFFFFFFull) stamps.insert(static_cast<uint32_t>(value));
+    cursor = *next == ',' ? next + 1 : next;
+  }
+  return stamps;
+}
+
+void recordInferenceEnd(void *self, const char *variant, long result) {
+  int completed = 0;
+  {
+    std::lock_guard<std::mutex> lock(captureMutex);
+    EngineState &state = engineStates[self];
+    writeMeta(sequence++, "engine-inference",
+              "self=" + std::to_string(reinterpret_cast<uintptr_t>(self)) + " inference=" +
+                  std::to_string(state.inferences) + " variant=" + variant + " rc=" + std::to_string(result),
+              0);
+    completed = ++state.inferences;
+  }
+  static const std::set<uint32_t> stamps = stampsAfterInference();
+  if (completed == 1 && !stamps.empty()) dumpStampWindows("engine-inference", stamps);
+}
+
+long recordedInference(void *self) {
+  if (captureEngineIO()) recordInferenceStart(self, "plain");
+  const long result = originalInference(self);
+  if (captureEngineIO()) recordInferenceEnd(self, "plain", result);
+  return result;
+}
+
+long recordedInferenceTextureIO(void *self) {
+  if (captureEngineIO()) recordInferenceStart(self, "texture-io-async");
+  const long result = originalInferenceTextureIO(self);
+  if (captureEngineIO()) recordInferenceEnd(self, "texture-io-async", result);
+  return result;
+}
+
+long recordedInferenceNamed(void *self, const void *name) {
+  if (captureEngineIO()) recordInferenceStart(self, "named");
+  const long result = originalInferenceNamed(self, name);
+  if (captureEngineIO()) recordInferenceEnd(self, "named", result);
+  return result;
+}
+
+long recordedGetOutput(void *self, void *tensors) {
+  const long result = originalGetOutput(self, tensors);
+  if (captureEngineIO())
+    recordEngineTensors("engine-getoutput", self, vectorElements(tensors), false, " rc=" + std::to_string(result));
+  return result;
+}
+
+long recordedGetOutputExt(void *self, void *tensors) {
+  const long result = originalGetOutputExt(self, tensors);
+  if (captureEngineIO())
+    recordEngineTensors("engine-getoutput-ext", self, vectorElements(tensors), true, " rc=" + std::to_string(result));
+  return result;
+}
+
+struct EngineSlot {
+  const char *symbol;
+  void **original;
+  void *recorder;
+};
+
+// Matched by symbol substring; the Tensor and TensorExt overloads differ in the vector element type.
+const EngineSlot kEngineSlots[] = {
+    {"ByteNNEngineImpl8SetInputERKNSt3__16vectorINS_6TensorE", reinterpret_cast<void **>(&originalSetInput),
+     reinterpret_cast<void *>(&recordedSetInput)},
+    {"ByteNNEngineImpl8SetInputERKNSt3__16vectorINS1_10shared_ptrINS_9TensorExtE",
+     reinterpret_cast<void **>(&originalSetInputExt), reinterpret_cast<void *>(&recordedSetInputExt)},
+    {"ByteNNEngineImpl14GetInputConfigERNSt3__16vectorINS_6TensorE",
+     reinterpret_cast<void **>(&originalGetInputConfig), reinterpret_cast<void *>(&recordedGetInputConfig)},
+    {"ByteNNEngineImpl14GetInputConfigERNSt3__16vectorINS1_10shared_ptrINS_9TensorExtE",
+     reinterpret_cast<void **>(&originalGetInputConfigExt), reinterpret_cast<void *>(&recordedGetInputConfigExt)},
+    {"ByteNNEngineImpl9InferenceEv", reinterpret_cast<void **>(&originalInference),
+     reinterpret_cast<void *>(&recordedInference)},
+    {"ByteNNEngineImpl23InferenceTextureIOAsyncEv", reinterpret_cast<void **>(&originalInferenceTextureIO),
+     reinterpret_cast<void *>(&recordedInferenceTextureIO)},
+    {"ByteNNEngineImpl9InferenceERKNSt3__112basic_string", reinterpret_cast<void **>(&originalInferenceNamed),
+     reinterpret_cast<void *>(&recordedInferenceNamed)},
+    {"ByteNNEngineImpl9GetOutputEPNSt3__16vectorINS_6TensorE", reinterpret_cast<void **>(&originalGetOutput),
+     reinterpret_cast<void *>(&recordedGetOutput)},
+    {"ByteNNEngineImpl9GetOutputEPNSt3__16vectorINS1_10shared_ptrINS_9TensorExtE",
+     reinterpret_cast<void **>(&originalGetOutputExt), reinterpret_cast<void *>(&recordedGetOutputExt)},
+};
 
 // Copy the object's vtable (with the two words that precede it, so RTTI keeps
 // working), redirect the Init slots, and point the object at the copy. Slots
@@ -639,6 +893,13 @@ void installInitRecorders(void *engine) {
     } else if (std::strstr(name, "ByteNNEngineImpl4InitERKNS_9ConfigExtE")) {
       originalInitConfigExt = reinterpret_cast<InitFunction>(vptr[slot]);
       copy[slot + 2] = reinterpret_cast<void *>(&recordedInitConfigExt);
+    } else if (captureEngineIO()) {
+      for (const EngineSlot &entry : kEngineSlots) {
+        if (!std::strstr(name, entry.symbol)) continue;
+        *entry.original = vptr[slot];
+        copy[slot + 2] = entry.recorder;
+        break;
+      }
     }
   }
   patchedVtables[vptr] = copy + 2;

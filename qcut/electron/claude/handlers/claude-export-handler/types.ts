@@ -45,6 +45,12 @@ export interface ExportSegment {
 	playbackRate?: number;
 	frameInterpolation?: import("../../../ffmpeg/types.js").VideoSource["frameInterpolation"];
 	enhancements?: import("../../../ffmpeg/types.js").VideoVisual["enhancements"];
+	/**
+	 * Where the sound is read when the picture comes from another file (a
+	 * neural-interpolated intermediate has no sound); absent = `sourcePath`
+	 * from `trimStart`.
+	 */
+	soundSource?: { path: string; trimStart: number };
 }
 
 export interface ResolvedExportSettings {

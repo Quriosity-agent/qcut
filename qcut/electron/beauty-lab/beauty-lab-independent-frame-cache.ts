@@ -12,6 +12,10 @@ import {
 import path from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { z } from "zod";
+import {
+	type IndependentManualBody,
+	independentManualBodyKeyEntries,
+} from "./beauty-lab-independent-manual-body.js";
 
 export const INDEPENDENT_FRAME_CACHE_MAX_BYTES = 4 * 1024 ** 3;
 
@@ -40,6 +44,7 @@ export function independentFrameCacheKey({
 	height,
 	values,
 	makeup,
+	manualBody,
 	rgba,
 	sourceEvidenceSha256,
 }: {
@@ -48,6 +53,8 @@ export function independentFrameCacheKey({
 	height: number;
 	values: Record<string, number>;
 	makeup: Record<string, { cardId: string; intensity: number }>;
+	/** Canonical (active tools only); absent keeps keys without manual body unchanged. */
+	manualBody?: IndependentManualBody;
 	rgba: Uint8Array;
 	sourceEvidenceSha256?: string;
 }) {
@@ -69,6 +76,9 @@ export function independentFrameCacheKey({
 					selection.cardId,
 					selection.intensity,
 				]),
+				...(manualBody && Object.keys(manualBody).length > 0
+					? { manualBody: independentManualBodyKeyEntries({ manualBody }) }
+					: {}),
 			})
 		)
 		.update("\0")
