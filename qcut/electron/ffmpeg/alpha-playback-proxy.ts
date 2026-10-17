@@ -123,6 +123,27 @@ function runFFmpeg({ args }: { args: string[] }): Promise<void> {
 const pendingProxies = new Map<string, Promise<void>>();
 
 /**
+ * At most this many proxies encode at once: opening a project asks about
+ * every transparent clip in it together, and each new one is a VP9 encode.
+ */
+const MAX_PARALLEL_ENCODES = 2;
+let runningEncodes = 0;
+const waitingEncodes: Array<() => void> = [];
+
+/** Runs `work` in an encode slot; a finished encode hands its slot on. */
+async function withEncodeSlot<T>(work: () => Promise<T>): Promise<T> {
+	if (runningEncodes < MAX_PARALLEL_ENCODES) runningEncodes += 1;
+	else await new Promise<void>((resolve) => waitingEncodes.push(resolve));
+	try {
+		return await work();
+	} finally {
+		const next = waitingEncodes.shift();
+		if (next) next();
+		else runningEncodes -= 1;
+	}
+}
+
+/**
  * The source's alpha facts and, when the browser cannot decode it, the path
  * of its proxy in `cacheDir`, writing the proxy first if it does not exist.
  * Concurrent calls for one source share one encode.
@@ -162,12 +183,14 @@ export async function ensureAlphaPlaybackProxy({
 			// Written under a temporary name so a half-written proxy is never read.
 			const partialPath = `${proxyPath}.partial-${process.pid}-${Date.now()}`;
 			try {
-				await encode({
-					args: buildAlphaPlaybackProxyArgs({
-						sourcePath,
-						outputPath: partialPath,
-					}),
-				});
+				await withEncodeSlot(() =>
+					encode({
+						args: buildAlphaPlaybackProxyArgs({
+							sourcePath,
+							outputPath: partialPath,
+						}),
+					})
+				);
 				await fsPromises.rename(partialPath, proxyPath);
 			} catch (error) {
 				await fsPromises.rm(partialPath, { force: true });
