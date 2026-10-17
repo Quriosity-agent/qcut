@@ -2,12 +2,11 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { buildSegmentConcatArgs } from "../claude/handlers/claude-export-handler/concat-timing.js";
 import {
-	buildConcatCopyArgs,
-	probeLeadingAudioTime,
-} from "../claude/handlers/claude-export-handler/concat-timing.js";
-import { buildExportSegmentInputArgs } from "../claude/handlers/claude-export-handler/export-engine.js";
-import { buildExportSegmentEncodeArgs } from "../claude/handlers/claude-export-handler/export-segment-encode.js";
+	buildExportSegmentEncodeArgs,
+	buildExportSegmentInputArgs,
+} from "../claude/handlers/claude-export-handler/export-segment-encode.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
 
 const ffmpegPath = path.resolve(
@@ -53,27 +52,45 @@ function flashTimes({ file }: { file: string }): number[] {
 		.map(([time]) => time);
 }
 
-/** Where sound starts after each silence (the clicks). */
+/**
+ * Where sound starts after each silence (the clicks), counted in decoded
+ * samples the way a player plays them, not by packet timestamps.
+ */
 function clickTimes({ file }: { file: string }): number[] {
+	const rate = 48_000;
 	const result = spawnSync(
 		ffmpegPath,
 		[
-			"-hide_banner",
-			"-nostats",
+			"-v",
+			"error",
 			"-i",
 			file,
 			"-vn",
-			"-af",
-			"silencedetect=n=-35dB:d=0.05",
+			"-ac",
+			"1",
+			"-ar",
+			String(rate),
 			"-f",
-			"null",
+			"f32le",
 			"-",
 		],
-		{ encoding: "utf8" }
+		{ maxBuffer: 64 * 1024 * 1024 }
 	);
-	return [...result.stderr.matchAll(/silence_end: ([0-9.]+)/g)].map((match) =>
-		Number(match[1])
+	const bytes = result.stdout as unknown as Buffer;
+	const samples = new Float32Array(
+		bytes.buffer,
+		bytes.byteOffset,
+		Math.floor(bytes.byteLength / 4)
 	);
+	const times: number[] = [];
+	let quiet = 0;
+	for (const [index, sample] of samples.entries()) {
+		if (Math.abs(sample) > 0.3) {
+			if (quiet > 0.05 * rate) times.push(index / rate);
+			quiet = 0;
+		} else quiet += 1;
+	}
+	return times;
 }
 
 function videoStart({ file }: { file: string }): number {
@@ -98,14 +115,15 @@ function videoStart({ file }: { file: string }): number {
 /**
  * Two encoded segments, each with a white frame and a click one second in,
  * concatenated the way the export does: picture and sound must sit at 1.0 s
- * and 3.0 s afterwards, not 21 ms late, and still after a video re-encode
- * pass with the sound copied.
+ * and 3.0 s afterwards, and still after a video re-encode pass with the
+ * sound copied. (The first file's AAC priming used to move the whole program
+ * 21 ms late, and every later clip another priming frame plus padding.)
  */
 describe.skipIf(!fs.existsSync(ffmpegPath))(
 	"export concat timing (real ffmpeg)",
 	() => {
 		const sourcePath = path.join(tempDir, "flash-click.mp4");
-		const segmentPath = path.join(tempDir, "segment-0000.mp4");
+		const segmentPath = path.join(tempDir, "segment-0000.mov");
 		const concatPath = path.join(tempDir, "concat.mp4");
 		const passPath = path.join(tempDir, "pass.mp4");
 
@@ -136,7 +154,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			fs.rmSync(tempDir, { recursive: true, force: true });
 		});
 
-		it("keeps picture and sound on the timeline through the concat and a re-encode pass", async () => {
+		it("keeps picture and sound on the timeline through the concat and a re-encode pass", () => {
 			const segment: ExportSegment = {
 				elementId: "clip",
 				trackId: "main",
@@ -155,14 +173,11 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					scaleFilter: "scale=320:180,setsar=1",
 					segment,
 					settings: { fps: 30, codec: "libx264", bitrate: "1000k" },
+					audio: { kind: "input" },
 					outputPath: segmentPath,
 				})
 			);
 			expect(videoStart({ file: segmentPath })).toBe(0);
-
-			const lead = await probeLeadingAudioTime({ file: segmentPath });
-			// AAC priming: 1024 samples at 48 kHz, kept as an edit list.
-			expect(lead).toBeCloseTo(-1024 / 48_000, 4);
 
 			const listPath = path.join(tempDir, "concat-list.txt");
 			fs.writeFileSync(
@@ -170,10 +185,11 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				[segmentPath, segmentPath].map((file) => `file '${file}'`).join("\n")
 			);
 			run(
-				buildConcatCopyArgs({
+				buildSegmentConcatArgs({
 					listPath,
 					outputPath: concatPath,
-					leadSeconds: lead,
+					audio: { sampleRate: 48_000, channels: 2 },
+					audioBitrateKbps: 192,
 				})
 			);
 			expect(videoStart({ file: concatPath })).toBe(0);
