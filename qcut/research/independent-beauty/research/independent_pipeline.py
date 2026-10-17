@@ -45,7 +45,7 @@ ORIGINAL_RENDERERS = frozenset({
     'lip_render.py', 'softpink_render.py', 'brow_render.py', 'makeup248_render.py',
     'eye_render.py', 'lashes_render.py', 'shadow_render.py', 'look_render.py',
     'makeup3d_render.py', 'contacts_render.py', 'dynamic_makeup_render.py',
-    'manual_body_render.py',
+    'manual_body_render.py', 'body_longleg_render.py',
 })
 # The settings of each manual body tool; the renderer checks their ranges.
 MANUAL_BODY_KEYS = {
