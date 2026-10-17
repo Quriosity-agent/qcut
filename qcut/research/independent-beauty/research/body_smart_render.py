@@ -83,13 +83,16 @@ def still_frame(*, rgba, points, algorithm_size, targets, runtime):
     algorithm = algorithm_image(rgba)
     faces = BodyFaceSequence(model_root=runtime / 'research')
     body = SmartBody()
-    face, face_error = None, None
+    face, face_error, searched = None, None, False
     for _ in range(STILL_UPDATES):
-        if face_error is None:
+        # The image never changes: without exactly one usable face the first
+        # search stays the answer, so the detector runs once for it.
+        if face_error is None and (face is not None or not searched):
             try:
                 face = faces.update(algorithm)
             except ValueError as error:
                 face, face_error = None, str(error)
+            searched = True
         inputs = (face['faces'], face['rectangles'], face['rolls']) if face else (None, None, None)
         result = body.update(joints['points'], joints['visibility'], width, height, *inputs, target=targets)
     return result, {'detection': faces.detection, 'faceFound': face is not None, 'faceError': face_error}
