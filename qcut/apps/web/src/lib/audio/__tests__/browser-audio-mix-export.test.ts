@@ -8,6 +8,7 @@ import {
 } from "../audio-mix-settings";
 import {
 	buildExportAudioMix,
+	connectSourceTrackStrip,
 	duckingSourceTrackIds,
 	exportAudioMixStages,
 	measureDuckingLevels,
@@ -105,6 +106,20 @@ const withBus = {
 	buses: [createDefaultAudioMixBus({ id: "sfx", name: "SFX" })],
 };
 
+/** The node kinds one strip passes a signal through, input to output. */
+const STRIP = [
+	"gain",
+	...Array(10).fill("biquad"),
+	"dynamics",
+	"gain",
+	"gain",
+	"gain",
+	"panner",
+	"dynamics",
+	// Divides out the limiter's built-in makeup gain.
+	"gain",
+];
+
 describe("export audio mix", () => {
 	it("is skipped without a project mix or when it changes nothing", () => {
 		expect(resolveExportAudioMix({ tracks: [track("a")] })).toBeNull();
@@ -156,26 +171,28 @@ describe("export audio mix", () => {
 		});
 
 		expect([...inputs.keys()]).toEqual(["guns", "voice", "score"]);
-		const strip = [
-			"gain",
-			...Array(10).fill("biquad"),
-			"dynamics",
-			"gain",
-			"gain",
-			"gain",
-			"panner",
-			"dynamics",
-			// Divides out the limiter's built-in makeup gain.
-			"gain",
-		];
-		const toDestination = [...strip, "destination"];
+		const toDestination = [...STRIP, "destination"];
 		expect(pathKinds(inputs.get("guns") as unknown as FakeNode)).toEqual([
-			...strip,
-			...strip,
+			...STRIP,
+			...STRIP,
 			...toDestination,
 		]);
 		const voicePath = pathKinds(inputs.get("voice") as unknown as FakeNode);
-		expect(voicePath).toEqual([...strip, "delay", ...toDestination]);
+		expect(voicePath).toEqual([...STRIP, "delay", ...toDestination]);
+	});
+
+	it("pre-renders a ducking source through its whole strip, makeup trim included", () => {
+		const mix = resolveExportAudioMix({
+			tracks: [track("guns", { gainDb: -3 })],
+			audioMix: withBus,
+		});
+		if (!mix) throw new Error("expected a mix");
+		const { context } = fakeContext();
+		const input = connectSourceTrackStrip({ context, mix, trackId: "guns" });
+		expect(pathKinds(input as unknown as FakeNode)).toEqual([
+			...STRIP,
+			"destination",
+		]);
 	});
 
 	it("fades the master on its own level stage, behind the stages before it", () => {
