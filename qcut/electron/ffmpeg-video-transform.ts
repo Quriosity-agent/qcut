@@ -1915,10 +1915,14 @@ function buildSegmentFilters({
 	steps.push(
 		`color=c=black@0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba[${transparent}]`
 	);
+	// The canvas, exactly the clip's length, sets where the layer ends; the
+	// clip's own last frame is held to it. Ending on the clip's input instead
+	// lost its last frame (FFmpeg's fps step drops a frame that ends the input)
+	// and one more for a WebM's millisecond timestamps.
 	steps.push(
 		`[${transparent}][${current}]overlay=` +
 			`x='(W-w)/2+(${x})+(${transformAnimation.x})+(${effectTransformMotion.x})':` +
-			`y='(H-h)/2+(${y})+(${transformAnimation.y})+(${effectTransformMotion.y})':shortest=1:format=auto[${foreground}]`
+			`y='(H-h)/2+(${y})+(${transformAnimation.y})+(${effectTransformMotion.y})':eof_action=repeat:shortest=0:format=auto[${foreground}]`
 	);
 	if (transparentOutput) {
 		const layer = `video_${segmentIndex}_layer`;
