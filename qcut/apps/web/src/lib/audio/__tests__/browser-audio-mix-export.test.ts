@@ -165,6 +165,8 @@ describe("export audio mix", () => {
 			"gain",
 			"panner",
 			"dynamics",
+			// Divides out the limiter's built-in makeup gain.
+			"gain",
 		];
 		const toDestination = [...strip, "destination"];
 		expect(pathKinds(inputs.get("guns") as unknown as FakeNode)).toEqual([
