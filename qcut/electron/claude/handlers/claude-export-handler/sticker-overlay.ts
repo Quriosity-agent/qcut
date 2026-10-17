@@ -24,11 +24,13 @@ export function buildStickerOverlayPass({
 
 	const args = ["-y", "-i", inputPath];
 	for (const sticker of stickerOverlays) {
+		// Read for as long as the sticker shows; its frames are moved to its
+		// start below, so a moving sticker begins on its own first frame.
 		args.push(
 			"-stream_loop",
 			"-1",
 			"-t",
-			String(sticker.endTime),
+			String(Math.max(0, sticker.endTime - sticker.startTime)),
 			"-i",
 			sticker.sourcePath
 		);
@@ -41,7 +43,8 @@ export function buildStickerOverlayPass({
 		const scaledLabel = `stk_s${index}`;
 		let preparedLabel = scaledLabel;
 		filterSteps.push(
-			`[${inputIndex}:v]scale=${sticker.width}:${sticker.height}[${scaledLabel}]`
+			`[${inputIndex}:v]setpts=PTS-STARTPTS+${sticker.startTime}/TB,` +
+				`scale=${sticker.width}:${sticker.height}[${scaledLabel}]`
 		);
 
 		if (sticker.rotation !== 0) {
