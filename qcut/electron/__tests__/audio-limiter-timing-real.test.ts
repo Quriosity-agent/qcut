@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildAudioEffectTransforms } from "../ffmpeg-audio-effects";
 import { buildTimelineAudioFilters } from "../ffmpeg/audio-filter-graph";
 import type { AudioSettings } from "../ffmpeg/audio-settings";
@@ -17,10 +17,14 @@ import type { AudioMixBus, AudioTrackMix } from "../ffmpeg/types";
  */
 
 const ffmpeg = getFFmpegPath();
-const workDir = mkdtempSync(path.join(tmpdir(), "qcut-limiter-timing-"));
-afterAll(() => rmSync(workDir, { recursive: true, force: true }));
-
 const RATE = 48_000;
+const CLICK_EXPRESSION = `if(between(n,${RATE},${RATE + 47}),0.5*cos(2*PI*1000*t),0)`;
+
+let workDir = "";
+/** Two seconds of stereo silence with a 1 ms, −6 dBFS click from sample 48 000. */
+let click = "";
+/** The click as it is, read back the way every limited render is. */
+let original: Float32Array = new Float32Array();
 
 function run(args: string[]) {
 	const result = spawnSync(
@@ -30,20 +34,6 @@ function run(args: string[]) {
 	);
 	if (result.status !== 0) throw new Error(result.stderr);
 }
-
-/** Two seconds of stereo silence with a 1 ms, −6 dBFS click from sample 48 000. */
-const click = path.join(workDir, "click.wav");
-const clickExpression = `if(between(n,${RATE},${RATE + 47}),0.5*cos(2*PI*1000*t),0)`;
-run([
-	"-y",
-	"-f",
-	"lavfi",
-	"-i",
-	`aevalsrc='${clickExpression}|${clickExpression}':s=${RATE}:d=2`,
-	"-c:a",
-	"pcm_f32le",
-	click,
-]);
 
 /**
  * Runs `graph` (reading [0:a] or [0:a:0], ending in [x]) over the click and
@@ -85,8 +75,6 @@ function peak(samples: Float32Array) {
 	for (const value of samples) max = Math.max(max, Math.abs(value));
 	return max;
 }
-
-const original = render("[0:a]anull[x]");
 
 const limiter = { enabled: true, ceilingDb: -1, releaseMs: 80 };
 
@@ -143,7 +131,26 @@ function clipAudio(): AudioSettings {
 	};
 }
 
-describe("export limiters", () => {
+describe.skipIf(!existsSync(ffmpeg))("export limiters", () => {
+	beforeAll(() => {
+		workDir = mkdtempSync(path.join(tmpdir(), "qcut-limiter-timing-"));
+		click = path.join(workDir, "click.wav");
+		run([
+			"-y",
+			"-f",
+			"lavfi",
+			"-i",
+			`aevalsrc='${CLICK_EXPRESSION}|${CLICK_EXPRESSION}':s=${RATE}:d=2`,
+			"-c:a",
+			"pcm_f32le",
+			click,
+		]);
+		original = render("[0:a]anull[x]");
+	});
+	afterAll(() => {
+		if (workDir) rmSync(workDir, { recursive: true, force: true });
+	});
+
 	it("keep the original's timing and level", () => {
 		expect(onset(original)).toBe(RATE);
 		expect(peak(original)).toBeCloseTo(0.5, 4);
