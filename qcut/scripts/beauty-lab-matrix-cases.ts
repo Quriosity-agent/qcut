@@ -11,10 +11,18 @@ export interface BeautyMatrixCase {
 	adjustments: MediaPortraitAdjustments;
 }
 
+/** The native key of a catalog control: body controls carry the body prefix. */
+export function matrixControlKey({ name }: { name: string }) {
+	const group = catalog.controls.find(
+		(control) => control.name === name
+	)?.group;
+	return `${group === "body" ? "body" : "face"}_adjust_${name}`;
+}
+
 function controls({ values }: { values: Record<string, number> }) {
 	return Object.fromEntries(
 		Object.entries(values).map(([name, value]) => [
-			`face_adjust_${name}`,
+			matrixControlKey({ name }),
 			value,
 		])
 	) as Partial<Record<MediaPortraitAdjustmentKey, number>>;
