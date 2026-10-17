@@ -36,5 +36,11 @@ export async function resolveNeuralInterpolationSegment({
 		onProgress,
 	});
 	if (!prepared) return rest;
-	return { ...rest, sourcePath: prepared.path, trimStart: 0 };
+	// The intermediate is picture only; the clip keeps its own sound.
+	return {
+		...rest,
+		sourcePath: prepared.path,
+		trimStart: 0,
+		soundSource: { path: segment.sourcePath, trimStart: segment.trimStart },
+	};
 }
