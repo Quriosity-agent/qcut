@@ -765,6 +765,16 @@ export interface VideoCompositionFramePreviewResult {
 	timelineTime: number;
 }
 
+/**
+ * A video's alpha facts and, when the browser cannot decode its alpha, the
+ * VP9 alpha WebM it plays from (see alpha-playback-proxy.ts).
+ */
+export interface AlphaPlaybackProxyResult {
+	/** Null when the file has no video stream. */
+	alpha: import("./video-alpha.js").VideoAlphaInfo | null;
+	proxyPath?: string;
+}
+
 export interface VideoPreviewProxyOptions {
 	requestId: string;
 	sourcePath: string;
