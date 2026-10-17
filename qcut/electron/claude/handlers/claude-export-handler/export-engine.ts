@@ -24,6 +24,12 @@ import {
 	segmentAudioFormat,
 } from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
+import { runMediaOverlayPass } from "./media-overlay-pass.js";
+import { readSegmentBlendFields } from "./media-overlay-source.js";
+import {
+	buildTimelineAudioFile,
+	optionalNumber,
+} from "./timeline-audio-file.js";
 import {
 	ExportCancelledError,
 	isExportCancelled,
@@ -246,14 +252,6 @@ function findMediaForElement({
 	return null;
 }
 
-function optionalNumber(value: unknown, fallback?: number): number | undefined {
-	return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function optionalBoolean(value: unknown, fallback = false): boolean {
-	return typeof value === "boolean" ? value : fallback;
-}
-
 /**
  * Collect independent timeline audio tracks. Embedded audio from media tracks is
  * already carried by the base video export and is intentionally excluded here.
@@ -305,45 +303,14 @@ export async function collectTimelineAudioFiles({
 				continue;
 			}
 
-			const elementRecord = element as unknown as Record<string, unknown>;
-			const props =
-				typeof element.props === "object" && element.props !== null
-					? element.props
-					: {};
-			const read = (key: string): unknown =>
-				elementRecord[key] !== undefined ? elementRecord[key] : props[key];
-			const trimStart = optionalNumber(element.trimStart, 0) ?? 0;
-			const trimEnd = optionalNumber(element.trimEnd, 0) ?? 0;
-			const visibleDuration =
-				optionalNumber(element.duration) ??
-				Math.max(0, element.endTime - element.startTime);
-			if (!visibleDuration || visibleDuration <= 0) continue;
-			// The serialized timeline reports how long the clip plays, while the
-			// audio filter graph expects the source length and subtracts the trims
-			// itself. Without converting back, a trimmed clip collapses to silence.
-			const duration = visibleDuration + trimStart + trimEnd;
-
-			resolvedMediaFiles?.push(media);
-			audioFiles.push({
-				elementId: element.id,
+			const audioFile = buildTimelineAudioFile({
+				element,
 				trackId: track.id ?? `track-${trackIndex}`,
-				path: media.path,
-				startTime: Math.max(0, element.startTime),
-				volume: optionalNumber(read("volume"), 1),
-				sourceGain: optionalNumber(read("sourceGain"), 1),
-				trimStart,
-				trimEnd,
-				duration,
-				fadeIn: optionalNumber(read("audioFadeIn"), 0),
-				fadeOut: optionalNumber(read("audioFadeOut"), 0),
-				normalize: optionalBoolean(read("audioNormalize")),
-				denoise: optionalNumber(read("audioDenoise"), 0),
-				pan: optionalNumber(read("audioPan"), 0),
-				playbackRate: optionalNumber(read("playbackRate"), 1),
-				reverse: optionalBoolean(read("reverse")),
-				freezeFrameTime: optionalNumber(read("freezeFrameTime")),
-				freezeFrameDuration: optionalNumber(read("freezeFrameDuration"), 0),
+				mediaPath: media.path,
 			});
+			if (!audioFile) continue;
+			resolvedMediaFiles?.push(media);
+			audioFiles.push(audioFile);
 		}
 	}
 	audioFiles.sort((left, right) => left.startTime - right.startTime);
@@ -563,6 +530,7 @@ export async function collectExportSegments({
 					...(playbackRate === 1 ? {} : { playbackRate }),
 					...(frameInterpolation === undefined ? {} : { frameInterpolation }),
 					...(enhancements === undefined ? {} : { enhancements }),
+					...readSegmentBlendFields({ element }),
 				});
 			}
 		}
@@ -1038,6 +1006,7 @@ function readElementTransform({
 		y?: number;
 		rotation?: number;
 		opacity?: number;
+		blendEnabled?: boolean;
 		keyframes?: Partial<Record<string, unknown>>;
 	};
 	fps: number;
@@ -1059,7 +1028,8 @@ function readElementTransform({
 		rotationDegrees: asFinite(element.rotation, 0),
 		scaleX: asFinite(loose.scaleX, 1),
 		scaleY: asFinite(loose.scaleY, 1),
-		opacity: asFinite(element.opacity, 1),
+		// The preview switches opacity off with the blend section.
+		opacity: element.blendEnabled === false ? 1 : asFinite(element.opacity, 1),
 		...(xKeyframes === undefined ? {} : { xKeyframes }),
 		...(yKeyframes === undefined ? {} : { yKeyframes }),
 	};
@@ -1238,6 +1208,7 @@ async function renderTransitionedVideo({
 	tempDir,
 	videoOutputPath,
 	videoTransitions,
+	minimumDuration = 0,
 	onProgress,
 	signal,
 }: {
@@ -1248,12 +1219,15 @@ async function renderTransitionedVideo({
 	tempDir: string;
 	videoOutputPath: string;
 	videoTransitions: VideoTransition[];
+	/** Black runs on to here (the end of an overlay past the clips). */
+	minimumDuration?: number;
 	onProgress?: ({ progress }: { progress: number }) => void;
 	signal?: AbortSignal;
 }): Promise<void> {
 	const transitionedVideoPath = path.join(tempDir, "transitioned-video.mp4");
 	const duration = Math.max(
 		1 / Math.max(1, settings.fps),
+		minimumDuration,
 		...segments.map((segment) => segment.startTime + segment.duration)
 	);
 	const videoSources = buildTransitionVideoSources({
@@ -1325,6 +1299,7 @@ export async function executeExportJob({
 	settings,
 	outputPath,
 	segments,
+	mediaOverlays = [],
 	stickerOverlays = [],
 	textOverlays = [],
 	jianyingTextOverlays = [],
@@ -1339,7 +1314,10 @@ export async function executeExportJob({
 	projectId: string;
 	settings: ResolvedExportSettings;
 	outputPath: string;
+	/** The joined clips, in start order. */
 	segments: ExportSegment[];
+	/** Clips drawn over the joined picture (see media-overlay-plan.ts). */
+	mediaOverlays?: ExportSegment[];
 	stickerOverlays?: StickerOverlay[];
 	/** Adjustment layers to grade the picture with, lowest track first. */
 	adjustmentLayers?: AdjustmentLayer[];
@@ -1483,9 +1461,23 @@ export async function executeExportJob({
 		// The concat alone would squeeze timeline gaps out and shift every
 		// overlay and audio track after them; black, silent clips keep the
 		// timing (the transition renderer places its segments in time itself).
+		// The picture runs on in black under an overlay that outlasts the
+		// clips below it.
+		const overlayEnd =
+			mediaOverlays.length > 0
+				? Math.max(
+						...mediaOverlays.map(
+							(overlay) => overlay.startTime + overlay.duration
+						)
+					)
+				: undefined;
 		const gaps = hasVideoTransitions
 			? []
-			: findTimelineGaps({ segments, fps: settings.fps });
+			: findTimelineGaps({
+					segments,
+					fps: settings.fps,
+					timelineEnd: overlayEnd,
+				});
 		const gapOutputs: string[] = [];
 		if (gaps.length > 0) {
 			for (const [index, gap] of gaps.entries()) {
@@ -1505,10 +1497,13 @@ export async function executeExportJob({
 				gapOutputs.push(gapPath);
 			}
 		}
-		// The concat output's length: the clips plus the gaps kept between them.
-		const concatDuration =
+		// The concat output's length: the clips plus the gaps kept between them
+		// (a transition export runs on to the overlays itself).
+		const concatDuration = Math.max(
 			segments.reduce((sum, segment) => sum + segment.duration, 0) +
-			gaps.reduce((sum, gap) => sum + gap.duration, 0);
+				gaps.reduce((sum, gap) => sum + gap.duration, 0),
+			hasVideoTransitions ? (overlayEnd ?? 0) : 0
+		);
 
 		const concatListPath = path.join(tempDir, "concat-list.txt");
 		const concatInputs = orderConcatInputs({
@@ -1560,12 +1555,28 @@ export async function executeExportJob({
 				tempDir,
 				videoOutputPath,
 				videoTransitions,
+				minimumDuration: overlayEnd,
 				onProgress: ({ progress }) => {
 					updateJobProgress({
 						jobId,
 						progress: 0.87 + progress * 0.11,
 					});
 				},
+			});
+		}
+
+		if (mediaOverlays.length > 0 && settings.format !== "mp3") {
+			updateJobProgress({ jobId, progress: 0.9 });
+			await runMediaOverlayPass({
+				overlays: mediaOverlays,
+				videoOutputPath,
+				tempDir,
+				settings,
+				duration: concatDuration,
+				signal: abort.signal,
+				runFFmpegCommand,
+				onProgress: (progress) =>
+					updateJobProgress({ jobId, progress: 0.9 + progress * 0.01 }),
 			});
 		}
 

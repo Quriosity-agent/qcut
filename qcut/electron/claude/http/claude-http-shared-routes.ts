@@ -22,6 +22,7 @@ import { timelineRequiresRendererPortraitExport } from "../../types/portrait-exp
 import { timelineRequiresRendererShaderTransitionExport } from "../../types/shader-transition-export-policy.js";
 import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjustment-layer-export-policy.js";
 import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
+import { mediaOverlayRendererReason } from "../../types/media-overlay-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
@@ -120,6 +121,7 @@ import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
 import { readColorLabelField } from "./timeline-color-request.js";
 import { withMediaProbes } from "../handlers/claude-media-probe.js";
+import { withMediaElementAlpha } from "../handlers/claude-timeline-media-alpha.js";
 import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import {
@@ -1052,12 +1054,17 @@ export function registerSharedRoutes(
 		const format = req.query.format || "json";
 		if (format === "md") return timelineToMarkdown(timeline);
 
+		// The alpha report is extra: a listing that fails leaves it out.
+		const reported = await withMediaElementAlpha({
+			timeline,
+			mediaFiles: await listMediaFiles(req.params.projectId).catch(() => []),
+		});
 		// Projects saved before a track became a single lane can still hold
 		// stacked elements. Report them rather than repairing them silently: the
 		// fix is editor:timeline:arrange, which the caller chooses to run.
 		const overlaps = findTimelineOverlaps({ timeline });
-		if (overlaps.length === 0) return timeline;
-		return { ...timeline, overlaps };
+		if (overlaps.length === 0) return reported;
+		return { ...reported, overlaps };
 	});
 
 	router.post("/api/claude/timeline/:projectId/tracks", async (req) => {
@@ -1885,6 +1892,9 @@ export function registerSharedRoutes(
 							"animated tonal controls (shadows, highlights, whites, blacks or fade)",
 						]
 					: []),
+				...[mediaOverlayRendererReason({ timeline })].filter(
+					(reason): reason is string => reason !== null
+				),
 			];
 			if (rendererExportReasons.length > 0) {
 				if (!accessor.requestLocalVideoExport) {

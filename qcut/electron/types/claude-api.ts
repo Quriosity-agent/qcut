@@ -56,6 +56,13 @@ export interface MediaFile {
 	dimensions?: { width: number; height: number };
 	/** Frames per second, for video. */
 	fps?: number;
+	/** Video codec and pixel format, as ffprobe names them. */
+	codec?: string;
+	pixelFormat?: string;
+	/** WebM/Matroska alpha_mode tag of a VP8/VP9 stream; 0 when absent. */
+	alphaMode?: number;
+	/** The video carries an alpha channel (see ffmpeg/video-alpha.ts). */
+	hasAlpha?: boolean;
 	createdAt: number;
 	modifiedAt: number;
 	metadata?: StickerLabRestrictedMediaMetadata | Record<string, unknown>;
@@ -378,6 +385,13 @@ export interface ClaudeElement
 	style?: Record<string, unknown>;
 	name?: string;
 	opacity?: number;
+	/** False switches a media clip's opacity and blend mode off, keeping their values. */
+	blendEnabled?: boolean;
+	/**
+	 * Reported by `timeline export`: the media clip's source video carries an
+	 * alpha channel. Read-only; `timeline apply` ignores it.
+	 */
+	hasAlpha?: boolean;
 	volume?: number;
 	audioFadeIn?: number;
 	audioFadeOut?: number;

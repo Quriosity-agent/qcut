@@ -261,7 +261,7 @@ export function buildAudioEffectTransforms({
 	}
 	if (includesDynamics && audio.limiter.enabled) {
 		transforms.push(
-			`alimiter=limit=${formatAudioNumber({ value: dbToLinear({ db: audio.limiter.ceilingDb }) })}:attack=5:release=${formatAudioNumber({ value: clamp({ value: audio.limiter.releaseMs, min: 10, max: 1000 }) })}`
+			`alimiter=limit=${formatAudioNumber({ value: dbToLinear({ db: audio.limiter.ceilingDb }) })}:attack=5:release=${formatAudioNumber({ value: clamp({ value: audio.limiter.releaseMs, min: 10, max: 1000 }) })}:level=0:latency=1`
 		);
 	}
 	if (includesOutput && audio.loudness.enabled) {

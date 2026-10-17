@@ -65,7 +65,9 @@ qcut editor timeline apply --manifest @timeline.json --replace --atomic --verify
 ```
 
 `element patch` on a clip takes `name`, timing (`startTime`, `duration`, `endTime`,
-`trimStart`, `trimEnd`), `colorLabel`, speed fields, `style.volume`, `audio`,
+`trimStart`, `trimEnd`), `colorLabel`, placement (`x`, `y`, `rotation`,
+`scaleX`, `scaleY`, `opacity`, `fitMode`), blending (`blendMode`,
+`blendEnabled`), speed fields, `style.volume`, `audio`,
 `filterStack`, `portraitAdjustments`, `enhancements`, `keyframes`, and the
 grade: `color` (a partial `MediaColorSettings`, merged into the clip's current
 grade — `color.basic` holds the controls above) and `adjustments` (the eight
@@ -95,9 +97,12 @@ applied back (`--replace` into the same project restores a backup):
   mute and visibility are set as the track is made; a lock is applied after
   its clips are in, so the adds are not refused.
 - **Clips** carry their `name`, placement (`x`, `y`, `rotation`, `scaleX`,
-  `scaleY`, `opacity`, `fitMode`), timing, speed, `audio` (including empty
-  `lyrics.words`), `color`/`adjustments`, `filterStack`, `keyframes`,
-  `enhancements` and `portraitAdjustments`; a batch add stores all of them.
+  `scaleY`, `opacity`, `fitMode`), blending (`blendMode`, `blendEnabled`),
+  timing, speed, `audio` (including empty `lyrics.words`),
+  `color`/`adjustments`, `filterStack`, `keyframes`, `enhancements` and
+  `portraitAdjustments`; a batch add stores all of them. A media clip also
+  reports `hasAlpha` (its source video has an alpha channel); that is read
+  from the file and ignored on apply.
 - **`mix`** holds the project's `buses` and `master` as `editor mix export`
   shows them. Buses are matched by `id` (created when missing, with the id
   kept), the master is patched (its name is left alone), and with `--replace`
@@ -117,6 +122,50 @@ applied back (`--replace` into the same project restores a backup):
 - **Size.** Elements and updates go in batches of 50 with a deadline that
   grows with the batch (the editor stores one element at a time), so a
   130-clip manifest applies in one command; nothing needs to be split by hand.
+
+## Transparent overlays (透明叠加层)
+
+A media clip on a media track above another media clip is drawn over it, the
+way the preview stacks tracks: a transparent clip shows the picture under it
+through its clear pixels, and an opaque one covers it like picture-in-picture.
+
+```bash
+qcut editor media batch-import --sources card.webm --project-id <id> --json
+qcut editor media info --media-id <media-id> --project-id <id> --json   # hasAlpha, codec, pixelFormat, alphaMode
+qcut editor track create --type media --name "Overlay" --index 0 --project-id <id> --json
+qcut editor:timeline:add-element --data '{"type":"media","sourceName":"card.webm","trackId":"<overlay-track-id>","startTime":1,"duration":2.667}' --project-id <id> --json
+qcut editor element patch --element-id <clip-id> --set '{"opacity":0.8,"x":-200,"y":120,"scaleX":0.5,"scaleY":0.5,"blendMode":"screen"}' --project-id <id> --json
+```
+
+**Formats.** VP9 (or VP8) WebM with `alpha_mode=1`, ProRes 4444, QuickTime
+Animation (`qtrle`) and PNG in MOV, and PNG stills keep their alpha. `editor
+media info` reports a video's `codec`, `pixelFormat`, `alphaMode` and
+`hasAlpha`; `timeline export` marks each media clip with `hasAlpha`.
+
+**Native export** (`--engine native`, and what `auto` uses). Clips that take
+turns on different tracks are joined as before. A clip that overlaps a clip
+on a lower media track by more than half a frame is an overlay: after the
+joined picture is cut, overlays are drawn over it lowest track first, each on
+exactly the frames the preview shows it (start ≤ frame + 1 ms < end), in RGBA
+until the final encode. The picture runs on in black under an overlay that
+outlasts the clips below it, so the export always ends where the timeline
+does. Position, scale, rotation, opacity (it scales the clip's own alpha),
+`fitMode`, trims, constant speed and blend modes apply; VP9 alpha is read with
+libvpx. An overlay's sound goes into the mix on its own track (its level, pan,
+bus and mute); an overlay without sound adds nothing.
+
+The native engine cannot stack a transition into or out of an overlay,
+neural frame interpolation on one, or a text, caption, sticker, adjustment or
+effect layer below one that it overlaps. `auto` sends such a timeline to the
+renderer's muxer engine; `--engine native` is refused with the reason.
+
+**Muxer engine and preview.** VP9 alpha decodes with its alpha. Browsers
+cannot decode ProRes, QuickTime Animation or PNG MOV, so on import (or at the
+first export) QCut writes a VP9 alpha proxy into the project's
+`cache/alpha-proxies/` folder; the preview and the muxer play that file, and
+the native engine keeps reading the original. A clip the muxer still cannot
+decode fails the export with the clip's name, file and reason; it is never
+left out silently. The editor's own export button keeps VP9 alpha as well.
 
 ## Stickers
 

@@ -182,6 +182,42 @@ describe("browser audio export", () => {
 		expect(end?.pan).toBe(1);
 	});
 
+	it("divides Chromium's built-in makeup out of the clip compressor and limiter", () => {
+		const toDb = (gain: number) => 20 * Math.log10(gain);
+		const [neutral] = buildBrowserAudioAutomation({
+			element: mediaElement(),
+			duration: 2,
+			fps: 30,
+		});
+		expect(neutral.compressorMakeup).toBeCloseTo(1, 6);
+		expect(neutral.limiterMakeup).toBeCloseTo(1, 6);
+
+		const [point] = buildBrowserAudioAutomation({
+			element: mediaElement({
+				audio: {
+					...DEFAULT_MEDIA_AUDIO_SETTINGS,
+					compressor: {
+						...DEFAULT_MEDIA_AUDIO_SETTINGS.compressor,
+						enabled: true,
+						thresholdDb: -18,
+						ratio: 3,
+						makeupGainDb: 4,
+					},
+					limiter: {
+						...DEFAULT_MEDIA_AUDIO_SETTINGS.limiter,
+						enabled: true,
+						ceilingDb: -1,
+					},
+				},
+			}),
+			duration: 2,
+			fps: 30,
+		});
+		// Chromium adds 0.908 dB after this compressor and 0.570 dB after the limiter.
+		expect(toDb(point.compressorMakeup)).toBeCloseTo(4 - 0.908, 2);
+		expect(toDb(point.limiterMakeup)).toBeCloseTo(-0.57, 2);
+	});
+
 	it("parks the denoise cuts at identity until denoise is on", () => {
 		const off = buildBrowserAudioAutomation({
 			element: mediaElement(),

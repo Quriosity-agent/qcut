@@ -552,18 +552,36 @@ const MEDIA_VISUAL_NUMBER_KEYS = [
 	"opacity",
 ] as const;
 
+const MEDIA_BLEND_MODES = new Set([
+	"normal",
+	"multiply",
+	"screen",
+	"overlay",
+	"darken",
+	"lighten",
+]);
+
 type ClaudeMediaVisualFields = Partial<
 	Pick<
 		MediaElement,
-		"fitMode" | "x" | "y" | "rotation" | "scaleX" | "scaleY" | "opacity"
+		| "fitMode"
+		| "x"
+		| "y"
+		| "rotation"
+		| "scaleX"
+		| "scaleY"
+		| "opacity"
+		| "blendMode"
+		| "blendEnabled"
 	>
 >;
 
 /**
  * A clip's place on the canvas (`x`, `y` pixel offsets from the centre,
- * `rotation`, `scaleX`, `scaleY`, `opacity`) and its `fitMode`, read the same
- * way for an add and a patch so an exported clip round-trips through
- * `timeline apply`. A malformed value throws before anything is stored.
+ * `rotation`, `scaleX`, `scaleY`, `opacity`), its `fitMode` and how it blends
+ * with what is under it (`blendMode`, `blendEnabled`), read the same way for
+ * an add and a patch so an exported clip round-trips through `timeline
+ * apply`. A malformed value throws before anything is stored.
  */
 export function readClaudeMediaVisualFields({
 	element,
@@ -587,6 +605,23 @@ export function readClaudeMediaVisualFields({
 			throw new Error(`${key} must be a finite number`);
 		}
 		fields[key] = value;
+	}
+	if (element.blendMode !== undefined) {
+		if (
+			typeof element.blendMode !== "string" ||
+			!MEDIA_BLEND_MODES.has(element.blendMode)
+		) {
+			throw new Error(
+				"blendMode must be one of normal, multiply, screen, overlay, darken, lighten"
+			);
+		}
+		fields.blendMode = element.blendMode as MediaElement["blendMode"];
+	}
+	if (element.blendEnabled !== undefined) {
+		if (typeof element.blendEnabled !== "boolean") {
+			throw new Error("blendEnabled must be true or false");
+		}
+		fields.blendEnabled = element.blendEnabled;
 	}
 	return fields;
 }
@@ -2177,6 +2212,8 @@ function formatElementForExport({
 				scaleX: element.scaleX,
 				scaleY: element.scaleY,
 				opacity: element.opacity,
+				blendMode: element.blendMode,
+				blendEnabled: element.blendEnabled,
 				volume: element.volume,
 				audioFadeIn: element.audioFadeIn,
 				audioFadeOut: element.audioFadeOut,

@@ -38,6 +38,7 @@ import { validateAudioInputStreams } from "./ffmpeg/audio-input-validation.js";
 import { prepareFFmpegFilterComplexScripts } from "./ffmpeg/filter-complex-script.js";
 import { formatFFmpegFailure } from "./ffmpeg/process-error.js";
 import { resolveNeuralVideoSources } from "./ffmpeg/neural-video-sources.js";
+import { withAlphaDecoders } from "./ffmpeg/video-alpha-probe.js";
 
 /**
  * Registers the export-video-cli IPC handler.
@@ -197,7 +198,7 @@ export function setupExportHandler(tempManager: TempManager): void {
 			const validatedOptions = { ...options, audioFiles };
 			// RIFE has to finish before the graph is built: each "neural" source is
 			// swapped for a lossless intermediate covering exactly its read window.
-			const videoSources = options.videoSources?.some(
+			const timelineVideoSources = options.videoSources?.some(
 				(source) => source.frameInterpolation === "neural"
 			)
 				? await resolveNeuralVideoSources({
@@ -206,6 +207,11 @@ export function setupExportHandler(tempManager: TempManager): void {
 						workDir: path.join(tempManager.getFrameDir(sessionId), "neural"),
 					})
 				: options.videoSources;
+			// A VP9 clip with alpha decodes through libvpx, or its clear pixels
+			// turn black over everything under it.
+			const videoSources = timelineVideoSources
+				? await withAlphaDecoders({ sources: timelineVideoSources })
+				: timelineVideoSources;
 
 			return new Promise<ExportResult>((resolve, reject) => {
 				// Get session directories

@@ -258,10 +258,82 @@
 			"stage": "face-features"
 		},
 		{
+			"name": "SmallHead",
+			"title": "小头",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SwanNeck",
+			"title": "天鹅颈",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SlimArm",
+			"title": "瘦手臂",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "OrthoShoulder",
+			"title": "直角肩",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "WidenShoulderTest",
+			"title": "宽肩",
+			"min": -50,
+			"max": 50,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SlimBody",
+			"title": "瘦身",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SlimWaist",
+			"title": "瘦腰",
+			"min": 0,
+			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
 			"name": "StretchLeg",
 			"title": "长腿",
 			"min": 0,
 			"max": 100,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SlimBreast",
+			"title": "胸型",
+			"min": -50,
+			"max": 50,
+			"group": "body",
+			"stage": "smart-body"
+		},
+		{
+			"name": "SlimHip",
+			"title": "美胯",
+			"min": -50,
+			"max": 50,
 			"group": "body",
 			"stage": "smart-body"
 		}
@@ -354,8 +426,19 @@
 		{
 			"id": "smart-body",
 			"kind": "controls",
-			"script": "body_longleg_render.py",
-			"controls": ["StretchLeg"],
+			"script": "body_smart_render.py",
+			"controls": [
+				"SmallHead",
+				"SwanNeck",
+				"SlimArm",
+				"OrthoShoulder",
+				"WidenShoulderTest",
+				"SlimBody",
+				"SlimWaist",
+				"StretchLeg",
+				"SlimBreast",
+				"SlimHip"
+			],
 			"afterMakeup": true
 		}
 	],
@@ -673,7 +756,7 @@
 		"单人不透明图片，最长边1280",
 		"所有阶段使用自研渲染；仍需本机私有模型和材质",
 		"手动美体（拉长、瘦身、放大缩小）的形变与原生相差约1像素以内；原生对整幅画面的亚像素重采样未复刻。",
-		"智能美体目前只开放长腿：人体姿态与原生 CPU 路径一致，腿部区域按原生成片拟合，与原生仍有差异；多人时只处理第一个人；视频逐帧独立计算，不做跨帧平滑。",
+		"智能美体十项（小头、天鹅颈、瘦手臂、直角肩、宽肩、瘦身、瘦腰、长腿、胸型、美胯）共用一套身体状态与网格：状态与网格移植自已逐位核对的研究实现；静帧按原生成片测得的稳定状态（同一帧更新 8 次）取值，与 QCut 原生成片仍有差异；只处理一个人和一张脸；视频逐帧独立计算，不做跨帧平滑。",
 		"每阶段从上阶段结果重新推导关键点与蒙版",
 		"固定顺序组合，不保证任意组合与原生像素一致",
 		"视频、多脸及其他GPU未验收",

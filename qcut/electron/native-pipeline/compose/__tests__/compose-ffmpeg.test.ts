@@ -113,6 +113,8 @@ describe("compose FFmpeg compiler", () => {
 		expect(command).toContain("volume=0.5");
 		expect(command).toContain("adelay=1000:all=1");
 		expect(command).toContain("amix=inputs=2");
+		// A safety limiter that neither delays the mix nor lifts it to full scale.
+		expect(command).toContain("alimiter=limit=0.95:level=0:latency=1");
 	});
 
 	it("gives a keyframed sound its envelope instead of a fixed volume", () => {

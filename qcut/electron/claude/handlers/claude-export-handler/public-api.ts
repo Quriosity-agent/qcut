@@ -45,6 +45,9 @@ import { audioMixConfigFromTimeline } from "./export-audio-mix.js";
 import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
 import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
+import { planMediaOverlays } from "./media-overlay-plan.js";
+import { mediaOverlayRendererReason } from "../../../types/media-overlay-export-policy.js";
+import { probeHasAudioStream } from "../../../ffmpeg/utils.js";
 import {
 	assertLocalFinalVideoExportAllowed,
 	findRestrictedMediaForExport,
@@ -124,6 +127,8 @@ function isTimelineEmpty({ timeline }: { timeline: ClaudeTimeline }): boolean {
  * from its in-memory stores, but those can lag behind the persisted policy
  * inputs (disk sidecars, serialized timeline) after a project reopen, so the
  * decision made here from the durable inputs is pinned onto the request.
+ * Media overlays the native engine cannot stack go to the muxer too: it
+ * draws every layer the way the preview does.
  */
 function rendererExportRequiresMuxer({
 	mediaFiles,
@@ -141,7 +146,8 @@ function rendererExportRequiresMuxer({
 			mediaItems: mediaFiles,
 			scope: "timeline",
 			tracks: timeline.tracks,
-		}).length > 0
+		}).length > 0 ||
+		mediaOverlayRendererReason({ timeline }) !== null
 	);
 }
 
@@ -444,16 +450,33 @@ export async function startExportJob({
 		});
 		const nonStickerResolvedMediaFiles: MediaFile[] = [];
 		const stickerResolvedMediaFiles: MediaFile[] = [];
-		const segments = await collectExportSegments({
+		const allSegments = await collectExportSegments({
 			timeline,
 			mediaFiles,
 			projectId,
 			resolvedMediaFiles: nonStickerResolvedMediaFiles,
 		});
 
-		if (segments.length === 0) {
+		if (allSegments.length === 0) {
 			throw new Error(
 				"No exportable segments found (no video or image media on timeline)"
+			);
+		}
+		// Clips that play over a clip on a lower track are drawn over the
+		// joined picture instead of being joined after it.
+		const {
+			base: segments,
+			overlays: mediaOverlays,
+			overlayAudioFiles,
+		} = await planMediaOverlays({
+			timeline,
+			segments: allSegments,
+			hasAudioStream: probeHasAudioStream,
+		});
+		if (mediaOverlays.length > 0) {
+			claudeLog.info(
+				HANDLER_NAME,
+				`Found ${mediaOverlays.length} media overlay(s) to draw over the joined picture`
 			);
 		}
 		const videoTransitions = collectVideoTransitions({ timeline, segments });
@@ -493,12 +516,15 @@ export async function startExportJob({
 				`Found ${textOverlays.length} text/caption overlay(s) to render`
 			);
 		}
-		const audioFiles = await collectTimelineAudioFiles({
-			timeline,
-			mediaFiles,
-			projectId,
-			resolvedMediaFiles: nonStickerResolvedMediaFiles,
-		});
+		const audioFiles = [
+			...(await collectTimelineAudioFiles({
+				timeline,
+				mediaFiles,
+				projectId,
+				resolvedMediaFiles: nonStickerResolvedMediaFiles,
+			})),
+			...overlayAudioFiles,
+		].sort((left, right) => left.startTime - right.startTime);
 		const stickerOverlayMediaIds = stickerOverlays.map(
 			(stickerOverlay) => stickerOverlay.mediaId
 		);
@@ -588,6 +614,7 @@ export async function startExportJob({
 			settings,
 			outputPath,
 			segments,
+			mediaOverlays,
 			stickerOverlays,
 			textOverlays,
 			jianyingTextOverlays,

@@ -1,7 +1,6 @@
 import { resolveAutorotatedVideoDimensions } from "../jianying-person-cutout/video-display-dimensions.js";
+import { videoAlphaFromStream } from "./video-alpha.js";
 import { buildVideoLabFilter } from "./video-lab-filter.js";
-
-const TRANSPARENT_PIXEL_FORMAT = /^(?:yuva|gbrap|rgba|bgra|argb|abgr|ya)/;
 
 export interface LocalDeflickerMetadata {
 	width: number;
@@ -76,10 +75,7 @@ export function parseLocalDeflickerMetadata({
 	) {
 		throw new Error("Local deflicker currently supports SDR video only");
 	}
-	if (
-		TRANSPARENT_PIXEL_FORMAT.test(video.pix_fmt ?? "") ||
-		Number(video.tags?.alpha_mode) > 0
-	) {
+	if (videoAlphaFromStream({ stream: video }).hasAlpha) {
 		throw new Error("Local deflicker does not support transparent video");
 	}
 	if (

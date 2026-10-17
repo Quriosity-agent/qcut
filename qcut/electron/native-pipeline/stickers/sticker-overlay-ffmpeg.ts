@@ -178,7 +178,7 @@ export function buildStickerOverlayFfmpegArgs({
 			audioLabels.push(`[${label}]`);
 		}
 		filters.push(
-			`${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]`
+			`${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95:level=0:latency=1[aout]`
 		);
 	}
 

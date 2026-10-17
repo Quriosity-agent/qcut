@@ -229,6 +229,8 @@ export class ExportEngine {
 		const renderIndex = this.getExportRenderIndex();
 		return {
 			signal: this.abortController?.signal,
+			// An export that silently dropped an undecodable clip looked finished.
+			strictMediaErrors: true,
 			ctx: this.ctx,
 			canvas: this.canvas,
 			tracks: this.tracks,

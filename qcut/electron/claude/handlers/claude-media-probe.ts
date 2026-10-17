@@ -1,5 +1,6 @@
 /**
- * Duration, dimensions and frame rate for project media, read with ffprobe.
+ * Duration, dimensions, frame rate and alpha for project media, read with
+ * ffprobe.
  *
  * The media list is a directory scan, so without this a caller sees files with
  * no length or size and has to run ffprobe itself before it can place a clip.
@@ -13,6 +14,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getFFprobePath } from "../../ffmpeg/utils.js";
+import { videoAlphaFromStream } from "../../ffmpeg/video-alpha.js";
 import type { MediaFile } from "../../types/claude-api";
 
 const PROBE_TIMEOUT_MS = 15_000;
@@ -24,18 +26,28 @@ export interface MediaProbeFields {
 	width?: number;
 	height?: number;
 	fps?: number;
+	/** Video only: codec, pixel format, WebM alpha_mode and the alpha verdict. */
+	codec?: string;
+	pixelFormat?: string;
+	alphaMode?: number;
+	hasAlpha?: boolean;
 }
 
 interface ProbeStream {
 	codec_type?: string;
+	codec_name?: string;
+	pix_fmt?: string;
 	width?: number;
 	height?: number;
 	avg_frame_rate?: string;
 	r_frame_rate?: string;
 	duration?: string;
 	nb_frames?: string;
-	/** Matroska/WebM keep stream lengths here, as "HH:MM:SS.nnnnnnnnn". */
-	tags?: { DURATION?: string };
+	/**
+	 * Matroska/WebM keep stream lengths here, as "HH:MM:SS.nnnnnnnnn", and a
+	 * VP8/VP9 stream's alpha flag.
+	 */
+	tags?: { DURATION?: string; alpha_mode?: string; ALPHA_MODE?: string };
 }
 
 const probeCache = new Map<string, Promise<MediaProbeFields | null>>();
@@ -119,6 +131,13 @@ export function parseMediaProbe({
 			(audio ? undefined : containerDuration);
 		if (duration) fields.duration = duration;
 		if (fps) fields.fps = Number(fps.toFixed(3));
+		if (video?.codec_name) {
+			const alpha = videoAlphaFromStream({ stream: video });
+			fields.codec = alpha.codec;
+			fields.pixelFormat = alpha.pixelFormat;
+			fields.alphaMode = alpha.alphaMode;
+			fields.hasAlpha = alpha.hasAlpha;
+		}
 	}
 	return fields;
 }
@@ -139,7 +158,7 @@ async function runProbe({
 				"-v",
 				"error",
 				"-show_entries",
-				"format=duration:stream=codec_type,width,height,avg_frame_rate,r_frame_rate,duration,nb_frames:stream_tags=DURATION",
+				"format=duration:stream=codec_type,codec_name,pix_fmt,width,height,avg_frame_rate,r_frame_rate,duration,nb_frames:stream_tags=DURATION,alpha_mode,ALPHA_MODE",
 				"-of",
 				"json",
 				path,
@@ -188,7 +207,8 @@ function needsProbe(file: MediaFile): boolean {
 	return (
 		file.duration === undefined ||
 		file.dimensions === undefined ||
-		file.fps === undefined
+		file.fps === undefined ||
+		file.hasAlpha === undefined
 	);
 }
 
@@ -208,10 +228,18 @@ function withProbe(file: MediaFile, probe: MediaProbeFields | null): MediaFile {
 		...(file.fps === undefined && probe.fps !== undefined
 			? { fps: probe.fps }
 			: {}),
+		...(file.hasAlpha === undefined && probe.hasAlpha !== undefined
+			? {
+					codec: probe.codec,
+					pixelFormat: probe.pixelFormat,
+					alphaMode: probe.alphaMode,
+					hasAlpha: probe.hasAlpha,
+				}
+			: {}),
 	};
 }
 
-/** Add duration, dimensions and frame rate to a media listing. */
+/** Add duration, dimensions, frame rate and a video's alpha to a media listing. */
 export async function withMediaProbes(
 	files: MediaFile[]
 ): Promise<MediaFile[]> {

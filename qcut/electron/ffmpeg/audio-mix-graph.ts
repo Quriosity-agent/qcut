@@ -158,7 +158,7 @@ function buildOutputFilters(strip: AudioMixBus | AudioTrackMix): string[] {
 	if (limiter.enabled) {
 		filters.push(
 			`alimiter=limit=${round(clamp(dbToLinear(limiter.ceilingDb), 0.0625, 1))}` +
-				`:attack=3:release=${round(clamp(limiter.releaseMs, 1, 8000))}:level=0`
+				`:attack=3:release=${round(clamp(limiter.releaseMs, 1, 8000))}:level=0:latency=1`
 		);
 	}
 	return filters;

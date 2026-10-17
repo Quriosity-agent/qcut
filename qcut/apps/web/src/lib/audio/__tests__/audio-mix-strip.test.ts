@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createDefaultAudioBusEffectsSettings } from "../audio-mix-settings";
 import { applyMixStripEffects, createMixStripNodes } from "../audio-mix-strip";
 import { FLAT_CUTOFF_Q_DB } from "../audio-properties";
@@ -13,14 +13,14 @@ function biquad() {
 		frequency: param(350),
 		Q: param(1),
 		gain: param(0),
-		connect: () => {},
+		connect: vi.fn(),
 	};
 }
 
 function fakeContext() {
 	return {
 		sampleRate: 48_000,
-		createGain: () => ({ gain: param(1), connect: () => {} }),
+		createGain: () => ({ gain: param(1), connect: vi.fn() }),
 		createBiquadFilter: biquad,
 		createDynamicsCompressor: () => ({
 			threshold: param(-24),
@@ -28,9 +28,9 @@ function fakeContext() {
 			ratio: param(12),
 			attack: param(0.003),
 			release: param(0.25),
-			connect: () => {},
+			connect: vi.fn(),
 		}),
-		createStereoPanner: () => ({ pan: param(0), connect: () => {} }),
+		createStereoPanner: () => ({ pan: param(0), connect: vi.fn() }),
 	} as unknown as BaseAudioContext;
 }
 
@@ -86,5 +86,37 @@ describe("createMixStripNodes", () => {
 		});
 		expect(strip.lowCut.frequency.value).toBe(80);
 		expect(strip.highCut.frequency.value).toBe(12_000);
+	});
+	it("divides Chromium's built-in makeup out after the compressor and the limiter", () => {
+		const strip = createMixStripNodes({ context: fakeContext() });
+		expect(strip.limiter.connect).toHaveBeenCalledWith(strip.limiterOutput);
+		const set = (parameter: AudioParam, value: number) => {
+			parameter.value = value;
+		};
+		const toDb = (gain: number) => 20 * Math.log10(gain);
+		const effects = createDefaultAudioBusEffectsSettings();
+
+		applyMixStripEffects({ strip, effects, set });
+		expect(strip.compressorMakeup.gain.value).toBeCloseTo(1, 6);
+		expect(strip.limiterOutput.gain.value).toBeCloseTo(1, 6);
+
+		applyMixStripEffects({
+			strip,
+			effects: {
+				...effects,
+				compressor: {
+					...effects.compressor,
+					enabled: true,
+					thresholdDb: -18,
+					ratio: 3,
+					makeupGainDb: 4,
+				},
+				limiter: { ...effects.limiter, enabled: true, ceilingDb: -1 },
+			},
+			set,
+		});
+		// Chromium adds 0.908 dB after this compressor and 0.570 dB after the limiter.
+		expect(toDb(strip.compressorMakeup.gain.value)).toBeCloseTo(4 - 0.908, 2);
+		expect(toDb(strip.limiterOutput.gain.value)).toBeCloseTo(-0.57, 2);
 	});
 });

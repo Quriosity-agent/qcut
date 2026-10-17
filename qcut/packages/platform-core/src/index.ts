@@ -48,6 +48,7 @@ export type {
 	PlatformVideoPreviewProxyOptions,
 	PlatformVideoPreviewProxyResult,
 	PlatformVideoPreviewProxyProgress,
+	PlatformAlphaPlaybackProxyResult,
 	PlatformAudioWaveformOptions,
 	PlatformAudioWaveformResult,
 	PlatformTranscriptionAPI,

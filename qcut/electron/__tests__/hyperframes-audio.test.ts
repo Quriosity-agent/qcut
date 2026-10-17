@@ -43,6 +43,8 @@ describe("HyperFrames audio encoding", () => {
 		expect(filter).toContain("atrim=duration=3");
 		expect(filter).toContain("adelay=1250:all=1");
 		expect(filter).toContain("volume=0.8");
+		// A safety limiter that neither delays the mix nor lifts it to full scale.
+		expect(filter).toContain("alimiter=limit=0.98:level=0:latency=1");
 		expect(args.at(-1)).toBe("/tmp/composition.mov");
 	});
 

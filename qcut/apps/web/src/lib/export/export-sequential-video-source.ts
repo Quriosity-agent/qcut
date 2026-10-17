@@ -15,6 +15,7 @@
  */
 
 import { debugWarn } from "@/lib/debug/debug-config";
+import { resolveAlphaPlaybackProxyUrl } from "@/lib/media/alpha-playback-proxy";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import { exportProfiler } from "./export-profiler";
 
@@ -69,6 +70,11 @@ export class SequentialVideoFrameSource {
 			const track = await input.getPrimaryVideoTrack();
 			if (!track) return null;
 			if ((await track.canDecode()) !== true) return null;
+			// A transparent video goes to the seek path: the video element
+			// decodes its alpha itself, while mediabunny merges alpha in web
+			// workers, and blob workers never start in the editor, so the first
+			// frame never came (without alpha, clear pixels decoded black).
+			if (await track.canBeTransparent()) return null;
 			const sink = new CanvasSink(track, { poolSize: CANVAS_POOL_SIZE });
 			return new SequentialVideoFrameSource(
 				input as MediabunnyInputHandle,
@@ -283,11 +289,15 @@ async function resolveMediaBlob({
 	signal?: AbortSignal;
 }): Promise<Blob | null> {
 	signal?.throwIfAborted();
-	if (mediaItem.file instanceof Blob && mediaItem.file.size > 0)
+	// A transparent video the browser cannot decode reads its VP9 alpha proxy.
+	const proxyUrl = await resolveAlphaPlaybackProxyUrl(mediaItem);
+	signal?.throwIfAborted();
+	if (!proxyUrl && mediaItem.file instanceof Blob && mediaItem.file.size > 0)
 		return mediaItem.file;
-	if (!mediaItem.url) return null;
+	const url = proxyUrl ?? mediaItem.url;
+	if (!url) return null;
 	try {
-		const response = await fetch(mediaItem.url, { signal });
+		const response = await fetch(url, { signal });
 		signal?.throwIfAborted();
 		if (!response.ok) return null;
 		const blob = await response.blob();

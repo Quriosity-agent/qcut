@@ -261,6 +261,18 @@ export interface PlatformVideoPreviewProxyOptions {
 	enhancements: PlatformVideoEnhancements;
 }
 
+/** A video's alpha facts and, when the browser cannot decode its alpha, the proxy it plays from. */
+export interface PlatformAlphaPlaybackProxyResult {
+	alpha: {
+		codec: string;
+		pixelFormat: string;
+		alphaMode: number;
+		hasAlpha: boolean;
+		decoder?: string;
+	} | null;
+	proxyPath?: string;
+}
+
 export interface PlatformVideoPreviewProxyResult {
 	requestId: string;
 	proxyUrl: string;
@@ -393,6 +405,10 @@ export interface PlatformFFmpegAPI {
 		options: PlatformVideoPreviewProxyOptions
 	): Promise<PlatformVideoPreviewProxyResult>;
 	cancelVideoPreviewProxy(requestId: string): Promise<boolean>;
+	/** Alpha facts of a video file and its browser-playable proxy, if it needs one. */
+	ensureAlphaPlaybackProxy?(options: {
+		sourcePath: string;
+	}): Promise<PlatformAlphaPlaybackProxyResult>;
 	onVideoPreviewProxyProgress(
 		callback: (progress: PlatformVideoPreviewProxyProgress) => void
 	): () => void;

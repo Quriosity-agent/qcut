@@ -31,13 +31,48 @@ describe("native export sticker overlays", () => {
 				"-stream_loop",
 				"-1",
 				"-t",
-				"9",
+				"3",
 				"-i",
 				"/tmp/approved-check.png",
 			])
 		);
 		expect(pass.filterComplex).toContain(
 			"overlay=x=1477.2:y=151.2:enable='between(t,6,9)'"
+		);
+	});
+
+	it("starts a moving sticker on its first frame where it appears", () => {
+		const pass = buildStickerOverlayPass({
+			inputPath: "/tmp/source.mp4",
+			outputPath: "/tmp/output.mp4",
+			stickerOverlays: [
+				{
+					mediaId: "sticker-media",
+					sourcePath: "/tmp/spinner.webm",
+					startTime: 4,
+					endTime: 6.5,
+					x: 10,
+					y: 20,
+					width: 100,
+					height: 100,
+					opacity: 1,
+					rotation: 0,
+				},
+			],
+			codec: "libx264",
+			bitrate: "8000k",
+		});
+		const input = pass.args.indexOf("/tmp/spinner.webm");
+		expect(pass.args.slice(input - 5, input + 1)).toEqual([
+			"-stream_loop",
+			"-1",
+			"-t",
+			"2.5",
+			"-i",
+			"/tmp/spinner.webm",
+		]);
+		expect(pass.filterComplex).toContain(
+			"[1:v]setpts=PTS-STARTPTS+4/TB,scale=100:100"
 		);
 	});
 });

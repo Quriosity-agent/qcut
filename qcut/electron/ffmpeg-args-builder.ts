@@ -43,6 +43,7 @@ import {
 } from "./ffmpeg/visual-layer-compositor";
 import { appendStickerInputArgs } from "./ffmpeg-sticker-input";
 import { buildStickerFilterGraph } from "./ffmpeg/sticker-filter-graph";
+import { alphaDecoderInputArgs } from "./ffmpeg/video-alpha";
 
 /**
  * Object options for FFmpeg arg generation.
@@ -580,7 +581,11 @@ function buildCompositeEncodeArgs(
 			if (!fs.existsSync(videoSource.path)) {
 				throw new Error(`Video source not found: ${videoSource.path}`);
 			}
-			args.push("-i", videoSource.path);
+			args.push(
+				...alphaDecoderInputArgs({ alpha: videoSource }),
+				"-i",
+				videoSource.path
+			);
 		}
 		hasBaseVideoInput = true;
 	} else if (imageSources.length > 0 || textRasterLayers.length > 0) {

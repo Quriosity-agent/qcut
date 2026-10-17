@@ -184,7 +184,7 @@ function createProcessingStrip({
 	context: AudioContext;
 }): ProcessingStrip {
 	const nodes = createMixStripNodes({ context });
-	const meter = createMeterTap({ context, input: nodes.limiter });
+	const meter = createMeterTap({ context, input: nodes.limiterOutput });
 	return { ...nodes, meter, output: meter.rawAnalyser };
 }
 

@@ -106,7 +106,7 @@ export function connectSourceTrackStrip({
 	const route = mix.tracks.find((track) => track.trackId === trackId);
 	const strip = createMixStripNodes({ context });
 	if (route) applyTrackStrip({ strip, route });
-	strip.limiter.connect(context.destination);
+	strip.limiterOutput.connect(context.destination);
 	return strip.input;
 }
 
@@ -336,7 +336,7 @@ export function buildExportAudioMix({
 			set: setOnce,
 		});
 	}
-	master.limiter.connect(context.destination);
+	master.limiterOutput.connect(context.destination);
 
 	const busInputs = new Map<string, AudioNode>();
 	for (const bus of mix.buses) {
@@ -362,7 +362,7 @@ export function buildExportAudioMix({
 			offsetSeconds:
 				(clipStages + MIX_STRIP_DYNAMICS_STAGES + 1) * lookaheadSeconds,
 		});
-		strip.limiter.connect(master.input);
+		strip.limiterOutput.connect(master.input);
 		busInputs.set(bus.settings.id, strip.input);
 	}
 
@@ -391,14 +391,14 @@ export function buildExportAudioMix({
 		});
 		const busInput = busInputs.get(route.busId);
 		if (busInput) {
-			strip.limiter.connect(busInput);
+			strip.limiterOutput.connect(busInput);
 		} else if (alignDirectTracks) {
 			const delay = context.createDelay(1);
 			delay.delayTime.value = busDelaySeconds;
-			strip.limiter.connect(delay);
+			strip.limiterOutput.connect(delay);
 			delay.connect(master.input);
 		} else {
-			strip.limiter.connect(master.input);
+			strip.limiterOutput.connect(master.input);
 		}
 		trackInputs.set(route.trackId, strip.input);
 	}

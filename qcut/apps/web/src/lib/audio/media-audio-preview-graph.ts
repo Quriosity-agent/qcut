@@ -1,5 +1,12 @@
 import type { AudioPreviewState } from "./audio-preview-state";
 import { dbToGain, FLAT_CUTOFF_Q_DB } from "./audio-properties";
+import {
+	COMPRESSOR_KNEE_DB,
+	compressorOutputGain,
+	LIMITER_KNEE_DB,
+	LIMITER_RATIO,
+	limiterOutputGain,
+} from "./dynamics-compressor-makeup";
 import { clampPlaybackRate } from "@/lib/video/video-timing";
 import type { FormantCorrectionNode } from "@soundtouchjs/formant-correction-worklet";
 import formantProcessorUrl from "@soundtouchjs/formant-correction-worklet/processor?url";
@@ -92,6 +99,7 @@ function createGraph({
 	const compressor = context.createDynamicsCompressor();
 	const compressorMakeup = context.createGain();
 	const limiter = context.createDynamicsCompressor();
+	const limiterMakeup = context.createGain();
 	const telephoneDry = context.createGain();
 	const telephoneHighpass = context.createBiquadFilter();
 	const telephoneLowpass = context.createBiquadFilter();
@@ -130,8 +138,9 @@ function createGraph({
 	telephoneLowpass.type = "lowpass";
 	telephoneLowpass.frequency.value = 3_400;
 	telephoneLowpass.Q.value = FLAT_CUTOFF_Q_DB;
-	limiter.knee.value = 0;
-	limiter.ratio.value = 20;
+	compressor.knee.value = COMPRESSOR_KNEE_DB;
+	limiter.knee.value = LIMITER_KNEE_DB;
+	limiter.ratio.value = LIMITER_RATIO;
 	limiter.attack.value = 0.003;
 
 	source.connect(input);
@@ -148,9 +157,10 @@ function createGraph({
 	pitchWet.connect(compressor);
 	compressor.connect(compressorMakeup);
 	compressorMakeup.connect(limiter);
-	limiter.connect(telephoneDry);
+	limiter.connect(limiterMakeup);
+	limiterMakeup.connect(telephoneDry);
 	telephoneDry.connect(effectsBus);
-	limiter.connect(telephoneHighpass);
+	limiterMakeup.connect(telephoneHighpass);
 	telephoneHighpass.connect(telephoneLowpass);
 	telephoneLowpass.connect(telephoneWet);
 	telephoneWet.connect(effectsBus);
@@ -286,16 +296,20 @@ function createGraph({
 					: 0,
 				context,
 			});
+			const compressorThresholdDb = settings.compressor.enabled
+				? settings.compressor.thresholdDb
+				: 0;
+			const compressorRatio = settings.compressor.enabled
+				? settings.compressor.ratio
+				: 1;
 			smooth({
 				parameter: compressor.threshold,
-				value: settings.compressor.enabled
-					? settings.compressor.thresholdDb
-					: 0,
+				value: compressorThresholdDb,
 				context,
 			});
 			smooth({
 				parameter: compressor.ratio,
-				value: settings.compressor.enabled ? settings.compressor.ratio : 1,
+				value: compressorRatio,
 				context,
 			});
 			smooth({
@@ -310,19 +324,35 @@ function createGraph({
 			});
 			smooth({
 				parameter: compressorMakeup.gain,
-				value: settings.compressor.enabled
-					? dbToGain({ db: settings.compressor.makeupGainDb })
-					: 1,
+				value: compressorOutputGain({
+					thresholdDb: compressorThresholdDb,
+					ratio: compressorRatio,
+					makeupGain: settings.compressor.enabled
+						? dbToGain({ db: settings.compressor.makeupGainDb })
+						: 1,
+				}),
 				context,
 			});
+			const limiterThresholdDb = settings.limiter.enabled
+				? settings.limiter.ceilingDb
+				: 0;
+			const limiterRatio = settings.limiter.enabled ? LIMITER_RATIO : 1;
 			smooth({
 				parameter: limiter.threshold,
-				value: settings.limiter.enabled ? settings.limiter.ceilingDb : 0,
+				value: limiterThresholdDb,
 				context,
 			});
 			smooth({
 				parameter: limiter.ratio,
-				value: settings.limiter.enabled ? 20 : 1,
+				value: limiterRatio,
+				context,
+			});
+			smooth({
+				parameter: limiterMakeup.gain,
+				value: limiterOutputGain({
+					thresholdDb: limiterThresholdDb,
+					ratio: limiterRatio,
+				}),
 				context,
 			});
 			smooth({

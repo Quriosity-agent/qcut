@@ -572,6 +572,8 @@ describe("Claude timeline batch audio fades", () => {
 					scaleX: 1.2,
 					scaleY: 0.8,
 					opacity: 0.5,
+					blendMode: "screen",
+					blendEnabled: false,
 					color: { basic: { contrast: 20 } },
 				},
 			],
@@ -590,6 +592,8 @@ describe("Claude timeline batch audio fades", () => {
 			scaleX: 1.2,
 			scaleY: 0.8,
 			opacity: 0.5,
+			blendMode: "screen",
+			blendEnabled: false,
 		});
 		// The grade goes through the patch path once the clip exists.
 		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledWith(
@@ -613,6 +617,7 @@ describe("Claude timeline batch audio fades", () => {
 			elements: [
 				{ ...baseAudio, duration: 10, fitMode: "stretch" },
 				{ ...baseAudio, duration: 10, color: "red" },
+				{ ...baseAudio, duration: 10, blendMode: "dissolve" },
 			],
 		});
 		expect(sendResponse).toHaveBeenCalledWith("request-bad-visual", {
@@ -627,8 +632,14 @@ describe("Claude timeline batch audio fades", () => {
 					success: false,
 					error: "color must be an object (a partial colour grade)",
 				},
+				{
+					index: 2,
+					success: false,
+					error:
+						"blendMode must be one of normal, multiply, screen, overlay, darken, lighten",
+				},
 			],
-			failedCount: 2,
+			failedCount: 3,
 		});
 		// Only the second element reached the store, and it was taken out again.
 		expect(storeMocks.state.addElementToTrack).toHaveBeenCalledTimes(1);

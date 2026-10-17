@@ -68,10 +68,10 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(289);
+		).toBe(336);
 		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
 			expect.arrayContaining([
-				"research/body_longleg_render.py",
+				"research/body_smart_render.py",
 				"research/body_mesh_metal.swift",
 				"research/face_selection_reference.py",
 				"research/manual_body_slim_field.json",
@@ -82,7 +82,7 @@ describe("independent runtime payload", () => {
 			])
 		);
 		expect(profile.files).toHaveLength(363);
-		// The smart long leg's private body networks.
+		// The smart body's private body networks.
 		expect(
 			profile.files.some(
 				({ path: name }) => name === "research/body-skeleton-v1.npz"

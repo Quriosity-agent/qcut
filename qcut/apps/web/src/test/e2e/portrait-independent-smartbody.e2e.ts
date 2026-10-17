@@ -1,9 +1,10 @@
 /**
- * The independent engine's smart long leg (长腿) on a timeline photo, through a real
- * export. The exported frame must match the engine's own render of the same photo
- * (`body_longleg_render.py`) within coding noise, show the legs moved, and leave the
- * upper body as it was. The fixture is a local full-body photo (not in Git); the test
- * skips without it or without the private body networks.
+ * The independent engine's smart body on a timeline photo, through a real export: long
+ * legs, slim waist and small head together. The exported frame must match the engine's
+ * own render of the same photo (`body_smart_render.py`) within coding noise in both the
+ * lower and the upper body, and differ clearly from the photo in both. The fixture is a
+ * local full-body photo (not in Git); the test skips without it or without the private
+ * body networks.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -25,6 +26,19 @@ const PHOTO =
 const WIDTH = 1080;
 const HEIGHT = 1920;
 const FPS = 24;
+const CONTROLS = { StretchLeg: 100, SlimWaist: 80, SmallHead: 60 };
+const BODY_CONTROLS = [
+	"SmallHead",
+	"SwanNeck",
+	"SlimArm",
+	"OrthoShoulder",
+	"WidenShoulderTest",
+	"SlimBody",
+	"SlimWaist",
+	"StretchLeg",
+	"SlimBreast",
+	"SlimHip",
+].map((name) => `body_adjust_${name}`);
 
 function cli<T>({
 	apiPort,
@@ -94,10 +108,55 @@ function meanDifference({
 	return total / ((to - from) * WIDTH * 3);
 }
 
+/**
+ * Mean channel difference of the export from the engine and from the photo, over the
+ * pixels the engine moved (any channel more than `threshold` from the photo).
+ */
+function warpedDifference({
+	exported,
+	engine,
+	original,
+	from,
+	to,
+	threshold = 24,
+}: {
+	exported: Buffer;
+	engine: Buffer;
+	original: Buffer;
+	from: number;
+	to: number;
+	threshold?: number;
+}) {
+	let pixels = 0;
+	let vsEngine = 0;
+	let vsOriginal = 0;
+	for (let pixel = from * WIDTH; pixel < to * WIDTH; pixel += 1) {
+		const index = pixel * 3;
+		let moved = false;
+		for (let channel = 0; channel < 3; channel += 1)
+			moved ||=
+				Math.abs(engine[index + channel] - original[index + channel]) >
+				threshold;
+		if (!moved) continue;
+		pixels += 1;
+		for (let channel = 0; channel < 3; channel += 1) {
+			vsEngine += Math.abs(exported[index + channel] - engine[index + channel]);
+			vsOriginal += Math.abs(
+				exported[index + channel] - original[index + channel]
+			);
+		}
+	}
+	return {
+		share: pixels / ((to - from) * WIDTH),
+		vsEngine: vsEngine / Math.max(1, pixels * 3),
+		vsOriginal: vsOriginal / Math.max(1, pixels * 3),
+	};
+}
+
 test.use({ captureScreenshotVideo: false });
 test.setTimeout(900_000);
 
-test("independent smart long leg exports the engine's render on a timeline photo", async ({
+test("independent smart body exports the engine's render on a timeline photo", async ({
 	apiPort,
 	page,
 }) => {
@@ -121,11 +180,14 @@ test("independent smart long leg exports the engine's render on a timeline photo
 		).electronAPI?.beautyLab?.inspectIndependent?.()
 	);
 	test.skip(
-		!status?.available || !status.controls.includes("body_adjust_StretchLeg"),
-		`independent smart long leg unavailable: ${status?.message}`
+		!status?.available ||
+			!BODY_CONTROLS.every((key) => status.controls.includes(key)),
+		`independent smart body unavailable: ${status?.message}`
 	);
 	const run = <T>(...args: string[]) => cli<T>({ apiPort, args });
-	const workDir = mkdtempSync(path.join(tmpdir(), "qcut-independent-longleg-"));
+	const workDir = mkdtempSync(
+		path.join(tmpdir(), "qcut-independent-smartbody-")
+	);
 	try {
 		const photo = path.join(workDir, "body.png");
 		execFileSync(FFMPEG, [
@@ -143,11 +205,11 @@ test("independent smart long leg exports the engine's render on a timeline photo
 			PYTHON,
 			[
 				"-B",
-				path.join(ENGINE, "body_longleg_render.py"),
+				path.join(ENGINE, "body_smart_render.py"),
 				"--image",
 				photo,
 				"--controls",
-				JSON.stringify({ StretchLeg: 100 }),
+				JSON.stringify(CONTROLS),
 				"--output",
 				reference,
 				"--report",
@@ -158,7 +220,7 @@ test("independent smart long leg exports the engine's render on a timeline photo
 		const { projectId } = run<{ projectId: string }>(
 			"editor:project:create",
 			"--name",
-			"Independent long leg",
+			"Independent smart body",
 			"--width",
 			String(WIDTH),
 			"--height",
@@ -196,14 +258,19 @@ test("independent smart long leg exports the engine's render on a timeline photo
 				portraitAdjustments: {
 					enabled: true,
 					engine: "independent",
-					values: { body_adjust_StretchLeg: 100 },
+					values: Object.fromEntries(
+						Object.entries(CONTROLS).map(([name, value]) => [
+							`body_adjust_${name}`,
+							value,
+						])
+					),
 				},
 			})
 		);
 
 		// Kept as evidence beside the other Playwright outputs.
 		const outputPath = path.resolve(
-			"output/playwright/portrait-independent-longleg/longleg.mp4"
+			"output/playwright/portrait-independent-smartbody/smartbody.mp4"
 		);
 		rmSync(outputPath, { force: true });
 		const job = cli<{ engine?: string }>({
@@ -230,33 +297,47 @@ test("independent smart long leg exports the engine's render on a timeline photo
 		const exported = rgbFrame({ file: outputPath, time: 0.5 });
 		const expected = rgbFrame({ file: reference });
 		const original = rgbFrame({ file: photo });
-		const legsVsEngine = meanDifference({
+		const half = HEIGHT / 2;
+		const lowerVsEngine = meanDifference({
 			left: exported,
 			right: expected,
-			from: HEIGHT / 2,
+			from: half,
 			to: HEIGHT,
 		});
-		const legsVsOriginal = meanDifference({
+		const lowerVsOriginal = meanDifference({
 			left: exported,
 			right: original,
-			from: HEIGHT / 2,
+			from: half,
 			to: HEIGHT,
-		});
-		const upperVsOriginal = meanDifference({
-			left: exported,
-			right: original,
-			from: 0,
-			to: Math.round(HEIGHT * 0.4),
 		});
 		console.log(
-			`legs: export vs engine ${legsVsEngine.toFixed(2)}, export vs original ${legsVsOriginal.toFixed(2)}; upper body vs original ${upperVsOriginal.toFixed(2)}`
+			`lower body: export vs engine ${lowerVsEngine.toFixed(2)}, export vs original ${lowerVsOriginal.toFixed(2)}`
 		);
-		// The export carries the engine's warp within coding noise (about 2.3 on
-		// this photo at the TikTok bitrate)...
-		expect(legsVsEngine).toBeLessThan(4);
-		expect(legsVsOriginal).toBeGreaterThan(legsVsEngine * 4);
-		// ...and the upper body is the photo's own.
-		expect(upperVsOriginal).toBeLessThan(4);
+		// The export carries the engine's warp within coding noise (about 2.3 at the
+		// TikTok bitrate), and the long legs move the lower body far more than that.
+		expect(lowerVsEngine).toBeLessThan(4);
+		expect(lowerVsOriginal).toBeGreaterThan(lowerVsEngine * 4);
+		// The small head and slim waist move fewer pixels: on the ones the engine moved,
+		// the export follows the engine, not the photo.
+		for (const [name, rows] of Object.entries({
+			upper: { from: 0, to: half },
+			lower: { from: half, to: HEIGHT },
+		})) {
+			const warped = warpedDifference({
+				exported,
+				engine: expected,
+				original,
+				...rows,
+			});
+			console.log(
+				`${name} body, ${(warped.share * 100).toFixed(2)}% of pixels moved: export vs engine ${warped.vsEngine.toFixed(2)}, export vs original ${warped.vsOriginal.toFixed(2)}`
+			);
+			expect(warped.share, `${name} body moved`).toBeGreaterThan(0.005);
+			expect(
+				warped.vsOriginal,
+				`${name} body follows the engine`
+			).toBeGreaterThan(warped.vsEngine * 3);
+		}
 	} finally {
 		rmSync(workDir, { recursive: true, force: true });
 	}

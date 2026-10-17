@@ -151,6 +151,7 @@ export const mockElectronAPI: ElectronAPI = {
 			fileSize: 4096,
 		}),
 		cancelVideoPreviewProxy: vi.fn().mockResolvedValue(false),
+		ensureAlphaPlaybackProxy: vi.fn().mockResolvedValue({ alpha: null }),
 		getVideoPreviewProxyCacheStats: vi.fn().mockResolvedValue({
 			cacheDir: "/tmp/qcut-video-preview-proxy",
 			entryCount: 0,
