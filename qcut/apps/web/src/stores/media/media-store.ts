@@ -664,6 +664,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 					void recordMediaAlpha({
 						mediaItem: item,
 						update: recordItemAlpha(item.id),
+						readProxy: false,
 					});
 				}
 			}
