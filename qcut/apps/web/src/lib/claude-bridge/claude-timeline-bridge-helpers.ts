@@ -2177,6 +2177,8 @@ function formatElementForExport({
 				scaleX: element.scaleX,
 				scaleY: element.scaleY,
 				opacity: element.opacity,
+				blendMode: element.blendMode,
+				blendEnabled: element.blendEnabled,
 				volume: element.volume,
 				audioFadeIn: element.audioFadeIn,
 				audioFadeOut: element.audioFadeOut,
