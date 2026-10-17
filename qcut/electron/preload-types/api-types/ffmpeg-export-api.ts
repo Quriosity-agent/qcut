@@ -5,6 +5,7 @@ import type {
 } from "../supporting-types";
 import type { AudioSettings } from "../../ffmpeg/audio-settings";
 import type {
+	AlphaPlaybackProxyResult,
 	AudioWaveformOptions,
 	AudioWaveformResult,
 	VideoCompositionFramePreviewOptions,
@@ -48,6 +49,10 @@ export interface FFmpegExportAPI {
 			options: VideoPreviewProxyOptions
 		) => Promise<VideoPreviewProxyResult>;
 		cancelVideoPreviewProxy: (requestId: string) => Promise<boolean>;
+		/** Alpha facts of a video file and its browser-playable proxy, if it needs one. */
+		ensureAlphaPlaybackProxy: (options: {
+			sourcePath: string;
+		}) => Promise<AlphaPlaybackProxyResult>;
 		getVideoPreviewProxyCacheStats: () => Promise<VideoPreviewProxyCacheStats>;
 		clearVideoPreviewProxyCache: () => Promise<VideoPreviewProxyCacheClearResult>;
 		onVideoPreviewProxyProgress: (
