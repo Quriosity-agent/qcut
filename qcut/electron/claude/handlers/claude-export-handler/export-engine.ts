@@ -16,7 +16,13 @@ import {
 import { buildFFmpegArgs } from "../../../ffmpeg-args-builder.js";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
-import { buildExportSegmentEncodeArgs } from "./export-segment-encode.js";
+import {
+	buildExportSegmentEncodeArgs,
+	buildExportSegmentInputArgs,
+	createAudioStreamProbe,
+	resolveExportSegmentAudio,
+	segmentAudioFormat,
+} from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
 import {
 	ExportCancelledError,
@@ -57,9 +63,8 @@ import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
 	orderConcatInputs,
-	probeGapAudioLayout,
 } from "./gap-segments.js";
-import { buildConcatCopyArgs, probeLeadingAudioTime } from "./concat-timing.js";
+import { buildSegmentConcatArgs } from "./concat-timing.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -988,42 +993,6 @@ async function runFFmpegCommand({
 }
 
 /**
- * Build ffmpeg input args for one export segment. Seeks to the segment's
- * source in-point (trimStart) before decoding so trimmed clips start at the
- * right place instead of source time 0.
- */
-export function buildExportSegmentInputArgs({
-	segment,
-}: {
-	segment: ExportSegment;
-}): string[] {
-	if (segment.isImage) {
-		return [
-			"-loop",
-			"1",
-			"-t",
-			String(segment.duration),
-			"-i",
-			segment.sourcePath,
-		];
-	}
-	const seekArgs =
-		segment.trimStart > 0 ? ["-ss", String(segment.trimStart)] : [];
-	// duration is timeline seconds; a sped-up segment consumes rate× as much
-	// of the source before setpts compresses it back to the timeline length.
-	// `-t` before `-i` bounds what is read; the output is cut to the
-	// timeline length by the encode command.
-	const sourceReadDuration = segment.duration * (segment.playbackRate ?? 1);
-	return [
-		...seekArgs,
-		"-t",
-		String(sourceReadDuration),
-		"-i",
-		segment.sourcePath,
-	];
-}
-
-/**
  * Converts one media keyframe channel to timeline-seconds tracks. Only the
  * all-linear shape animates in export (matching what draft import produces);
  * any other easing keeps the legacy static behavior for the channel.
@@ -1426,11 +1395,15 @@ export async function executeExportJob({
 
 		const segmentOutputs: string[] = [];
 		const totalSegments = segments.length;
+		const hasAudioStream = createAudioStreamProbe({
+			probe: probeHasAudioStream,
+		});
 
 		for (const [index, rawSegment] of segments.entries()) {
+			// MOV: the segment's sound is PCM (see export-segment-encode.ts).
 			const outputSegmentPath = path.join(
 				tempDir,
-				`segment-${String(index).padStart(4, "0")}.mp4`
+				`segment-${String(index).padStart(4, "0")}.mov`
 			);
 			// Neural interpolation runs RIFE ahead of the graph and swaps in a
 			// lossless intermediate; the rest of the loop never sees the mode.
@@ -1458,6 +1431,7 @@ export async function executeExportJob({
 					scaleFilter,
 					segment,
 					settings,
+					audio: await resolveExportSegmentAudio({ segment, hasAudioStream }),
 					outputPath: outputSegmentPath,
 				}),
 				estimatedDuration: segment.duration,
@@ -1514,18 +1488,16 @@ export async function executeExportJob({
 			: findTimelineGaps({ segments, fps: settings.fps });
 		const gapOutputs: string[] = [];
 		if (gaps.length > 0) {
-			const gapAudio = await probeGapAudioLayout({ segmentOutputs });
 			for (const [index, gap] of gaps.entries()) {
 				const gapPath = path.join(
 					tempDir,
-					`gap-${String(index).padStart(4, "0")}.mp4`
+					`gap-${String(index).padStart(4, "0")}.mov`
 				);
 				await runFFmpegCommand({
 					signal: abort.signal,
 					args: buildGapSegmentEncodeArgs({
 						gap,
 						settings,
-						audio: gapAudio,
 						outputPath: gapPath,
 					}),
 					estimatedDuration: gap.duration,
@@ -1559,18 +1531,14 @@ export async function executeExportJob({
 		const concatProgressSpan = hasVideoTransitions ? 0.04 : 0.08;
 		updateJobProgress({ jobId, progress: concatProgressStart });
 
-		// The concat demuxer would move the whole program late by the first
-		// file's AAC priming lead; see concat-timing.ts.
-		const leadSeconds =
-			concatInputs.length > 0
-				? await probeLeadingAudioTime({ file: concatInputs[0] })
-				: 0;
+		// Picture copied, the PCM sound encoded once; see concat-timing.ts.
 		await runFFmpegCommand({
 			signal: abort.signal,
-			args: buildConcatCopyArgs({
+			args: buildSegmentConcatArgs({
 				listPath: concatListPath,
 				outputPath: concatOutputPath,
-				leadSeconds,
+				audio: segmentAudioFormat({ settings }),
+				audioBitrateKbps: settings.audioBitrate ?? 192,
 			}),
 			estimatedDuration: Math.max(0, concatDuration),
 			onProgress: ({ normalizedProgress }) => {
