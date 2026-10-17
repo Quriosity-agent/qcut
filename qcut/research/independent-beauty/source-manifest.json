@@ -1894,8 +1894,8 @@
 		},
 		{
 			"path": "research/body_smart_render.py",
-			"bytes": 8995,
-			"sha256": "3ff9b433c77b4861eed81919a6cb7237436d333b63624bef079d389de72df912"
+			"bytes": 9225,
+			"sha256": "250b38c9682b99b1eb6451e19e72615d63a5d0c486a034220515cff8892f2f65"
 		},
 		{
 			"path": "research/body_status.py",
@@ -1944,8 +1944,8 @@
 		},
 		{
 			"path": "research/tests/test_body_smart.py",
-			"bytes": 14436,
-			"sha256": "71e2e8be65cf4f5ecb1164a02ef05656715194749146dbb9866ebe512e2052a2"
+			"bytes": 16170,
+			"sha256": "bc6af8baff220a111ec6a3d5bbfa66fff36f3235aa77efb389b27f549605872b"
 		}
 	],
 	"importPatches": [
@@ -2470,6 +2470,13 @@
 				"research/tests/test_body_smart.py"
 			],
 			"reason": "QCut-owned smart body, all ten sliders (small head, swan neck, slim arms, square shoulders, shoulder width, slim body, slim waist, long legs, bust, hip shape) in one smart-body stage after makeup. The per-joint status, head, public measurements, torso basis, ten part descriptors and states, and the composed 30x30 mesh port the 2026-10-17 independent research chain verbatim in float32 order (byte-identical to it on 138 cold, persistent and randomized cases; its accepted mesh matched the effect bit for bit). Faces come from the engine's own detector and alignment networks; Stage1 can recompute yaw and pitch in the effect's four-lane fused order (pose_heads, off unless asked). A still frame is the component after eight updates of the still pose, where the effect's photo renders were measured to settle. The long-leg-only state, mesh and renderer are replaced."
+		},
+		{
+			"files": [
+				"research/body_smart_render.py",
+				"research/tests/test_body_smart.py"
+			],
+			"reason": "A still image is searched for a face once when the search finds no single usable face: the image and the detector do not change across the eight updates, so the repeats only added latency. The body still takes all eight updates."
 		}
 	],
 	"sourceWorkingTreeStatus": [
