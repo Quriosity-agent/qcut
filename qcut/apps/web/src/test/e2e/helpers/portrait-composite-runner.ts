@@ -148,6 +148,7 @@ export async function runCompositeConsistency({
 	requirePortraitSource = false,
 	traceHelperPath,
 	prepareProject = prepareCompositeProject,
+	beforeExport,
 }: {
 	source: string | undefined;
 	output: string;
@@ -168,6 +169,15 @@ export async function runCompositeConsistency({
 		source: string;
 		settings: CompositeSettings;
 	}) => Promise<CompositeProject>;
+	/**
+	 * Runs after a pass's adjustments are applied and before its export starts,
+	 * e.g. to park the playhead away from frame 0 so the export begins with a
+	 * cold native tracker instead of one warmed by the paused preview.
+	 */
+	beforeExport?: (options: {
+		page: Page;
+		pass: CompositeEvidencePass;
+	}) => Promise<void>;
 }) {
 	test.skip(
 		!source || !existsSync(source),
@@ -305,6 +315,7 @@ export async function runCompositeConsistency({
 			const { id: pass, adjustments, capturePreview = true } = configuredPass;
 			await mkdir(path.join(output, pass), { recursive: true });
 			await applyCompositeAdjustments({ page, project, adjustments });
+			if (beforeExport) await beforeExport({ page, pass });
 			stageEvents.push({
 				pass,
 				stage: "exportStart",
