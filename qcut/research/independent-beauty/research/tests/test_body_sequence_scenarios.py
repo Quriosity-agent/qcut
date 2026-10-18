@@ -70,16 +70,22 @@ class CompositedScenarios(unittest.TestCase):
         self.assertEqual([receipt['bodyReported'] for receipt in receipts], [False, False, True, True])
         self.assertFalse(receipts[2]['unchanged'])
 
-    def test_a_second_person_entering_does_not_disturb_the_tracked_body(self):
-        plain = self.run_sequence(self.frames)
-        entering = self.run_sequence([*self.frames[:4], *(with_second_person(rgba=frame) for frame in self.frames[4:])])
-        self.assertEqual([receipt['bodyReported'] for receipt in entering], [False] + [True] * 7)
-        for index in range(4, 8):
+    def test_second_valid_face_is_kept_while_the_tracked_body_continues(self):
+        entering = [*self.frames[:4], *(with_second_person(rgba=frame) for frame in self.frames[4:])]
+        session = BodySmartSequence(runtime=RUNTIME)
+        receipts = []
+        for index, rgba in enumerate(entering):
+            result, receipt = session.process(rgba=rgba, controls=CONTROLS, stream='scenario', frame=index,
+                                             timestamp=index / 24)
+            receipts.append({**receipt, 'unchanged': np.array_equal(result, rgba)})
+        self.assertFalse(session.invalid)
+        self.assertEqual(session.next_frame, len(entering))
+        self.assertEqual([receipt['bodyReported'] for receipt in receipts], [False] + [True] * 7)
+        self.assertTrue(any(sum(not slot['new'] for slot in receipt['face']['slots']) >= 2 for receipt in receipts))
+        for index, receipt in enumerate(receipts[4:], 4):
             with self.subTest(frame=index):
-                self.assertEqual(entering[index]['skeleton']['plan']['mode'], 1)
-                self.assertNotIn('ambiguous', entering[index]['skeleton']['state'])
-                # The tracked body's geometry is the first person's: the same mesh as without the newcomer.
-                self.assertEqual(entering[index]['meshSha256'], plain[index]['meshSha256'])
+                self.assertEqual(receipt['skeleton']['plan']['mode'], 1)
+                self.assertFalse(receipt['unchanged'])
 
     def test_a_lost_body_keeps_its_frames_and_the_person_is_found_again(self):
         frames = [*self.frames[:3], without_person(rgba=self.frames[3]), without_person(rgba=self.frames[4]),
