@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.18.3] - 2026-10-18
+
 ### Improved
 - Independent engine, smart body on video: a video clip with any of the ten smart body controls set now renders from the clip's own history instead of frame by frame as a photo. Body tracking, the face and the ten-part geometry carry from the clip's first frame, so the paused preview and the export show the same result, and seeking back or forward replays only the frames the engine lacks. The engine keeps a checkpoint every twelve frames in the project cache and resumes from it, so a restarted engine process or a second export reproduces the same bytes.
 - The paused preview and the export decode a clip's frames the same way and share the frame cache: frames rendered while scrubbing are reused by the export, and an unchanged timeline exports from the cache alone.
