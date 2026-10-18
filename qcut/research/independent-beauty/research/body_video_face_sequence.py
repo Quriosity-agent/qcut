@@ -1,4 +1,4 @@
-"""Persistent 106-point face inputs for the single-person body sequence profile."""
+"""Five native face slots feeding the independent single-body video renderer."""
 from pathlib import Path
 
 import numpy as np
@@ -6,10 +6,12 @@ import numpy as np
 from alignment_assets import load_assets
 from alignment_decode import OutOfFrameLandmarks, normalized
 from alignment_infer import Stage1
+from body_face_duplicates import suppress_duplicates
 from body_face_metadata import rectangle
-from body_video_face_metadata import RollFilter
+from body_face_matching import nearest_detection
 from body_face_policy import RejectedVideoFace, VideoFacePolicy
 from body_face_recovery import VideoFaceRecovery
+from body_face_slots import BodyFaceSlot, FACE_SLOT_COUNT
 from body_face_start import start_video_face
 from face_detection import Detector
 
@@ -37,78 +39,132 @@ class BodyVideoFaceSequence:
         self.policy = VideoFacePolicy(runtime=runtime)
         self.detector = Detector(model=self.root / 'face-detector-dynamic.onnx')
         self.models = {size: _AcceptedVideoModel(owner=self, size=size,
-                       model=Stage1(size=size, model=self.root / f'face-align-{size}.onnx'))
+                       model=Stage1(size=size, model=self.root / f'face-align-{size}.onnx', probability_heads=True))
                        for size in (120, 160)}
         self.assets = load_assets(path=self.root / 'alignment-assets-v1.npz')
         self.reset()
 
-    def _clear_face(self):
-        self.engine = None
-        self.face = None
-        self.index = 0
-        self.roll = RollFilter()
-
     def reset(self):
-        self._clear_face()
+        self.slots = [BodyFaceSlot() for _ in range(FACE_SLOT_COUNT)]
         self.size = None
         self.relaxed = False
         self.recovery = VideoFaceRecovery()
         self.attempts = []
+        self.frame_counter = -1
+        self.no_face_count = 0
+        self.next_identifier = 0
 
-    def _detect(self, *, algorithm):
-        detection = self.detector.detect(rgba=algorithm)
-        count = len(detection['rects'])
-        if count != 1:
-            return None, {'status': 'no-face' if count == 0 else 'ambiguous-faces', 'candidates': count}
-        self.engine, result, self.face, self.size = start_video_face(
-            algorithm=algorithm, box=detection['rects'][0], model_root=self.root,
-            assets=self.assets, models=self.models)
-        return result, None
+    def _active_count(self):
+        return sum(slot.active for slot in self.slots)
 
-    def _consume(self, *, result):
-        data = {'faces': normalized(points=result['points'], size=self.size)[None],
-                'rectangles': rectangle(points=result['points'], size=self.size)[None],
-                'rolls': np.asarray([self.roll.update(points=result['tracked'])], np.float32)}
-        self.index += 1
-        return data
+    def _track_slot(self, *, slot, algorithm):
+        try:
+            result = slot.engine.process(rgba=algorithm, size=self.size, index=slot.index, face=slot.face)
+            slot.accept(result=result, size=self.size)
+            return None
+        except (RejectedVideoFace, OutOfFrameLandmarks) as error:
+            slot.active = False
+            return str(error)
 
-    def _finish(self, *, data, receipt, was_tracking, detector_retry, retained_dropped=False):
-        self.recovery.finish(previous_faces=int(was_tracking), current_faces=int(data is not None),
-                             detector_retry=detector_retry)
+    def _track(self, *, algorithm):
+        failures = []
+        for slot in self.slots:
+            if slot.active:
+                reason = self._track_slot(slot=slot, algorithm=algorithm)
+                if reason is not None:
+                    failures.append(reason)
+        return failures
+
+    def _detect(self, *, algorithm, keep, initialize_tracking):
+        boxes = self.detector.detect(rgba=algorithm)['rects']
+        matches = {index: nearest_detection(retained=slot.box, detections=boxes, capacity=FACE_SLOT_COUNT)
+                   for index, slot in enumerate(self.slots) if keep and slot.active}
+        reasons = []
+        for candidate_index, box in enumerate(boxes[:FACE_SLOT_COUNT]):
+            if candidate_index in matches.values():
+                continue
+            slot_index = (next((i for i, slot in enumerate(self.slots) if not slot.active), None)
+                          if keep else candidate_index)
+            if slot_index is None:
+                break
+            try:
+                engine, result, face, _ = start_video_face(algorithm=algorithm, box=box, model_root=self.root,
+                    assets=self.assets, models=self.models, identifier=self.next_identifier, seed_only=True)
+            except (RejectedVideoFace, OutOfFrameLandmarks) as error:
+                reasons.append(str(error))
+                continue
+            slot = BodyFaceSlot(engine=engine, face=face, identifier=self.next_identifier,
+                                persistent_id=self.next_identifier)
+            self.slots[slot_index] = slot
+            self.next_identifier += 1
+            slot.accept(result=result, size=self.size)
+            if initialize_tracking:
+                reason = self._track_slot(slot=slot, algorithm=algorithm)
+                if reason is not None:
+                    reasons.append(reason)
+        return {'candidates': len(boxes), 'matchedDetections': matches, 'rejections': reasons}
+
+    def _step(self, *, algorithm):
+        previous_count = self._active_count()
+        self.frame_counter += 1
+        self.no_face_count = 0 if previous_count else self.no_face_count + 1
+        cadence = 24 if previous_count else (2 if self.no_face_count < 10 else 4 if self.no_face_count < 30 else 8)
+        scheduled = self.frame_counter % cadence == 0
+        self.relaxed = self.recovery.active
+        self.attempts = []
+        receipt = {'status': 'tracked'}
+        retry = False
+        if self.recovery.active:
+            self._track(algorithm=algorithm)
+            retained = self._active_count()
+            receipt.update(self._detect(algorithm=algorithm, keep=True, initialize_tracking=True))
+            receipt['status'] = 'recovery-retained' if retained else 'redetected' if previous_count else 'tracked'
+        elif previous_count:
+            failures = self._track(algorithm=algorithm)
+            if failures or scheduled:
+                retry = bool(failures)
+                receipt.update(self._detect(algorithm=algorithm, keep=True, initialize_tracking=retry))
+                receipt['status'] = 'redetected' if retry else 'tracked'
+        elif scheduled:
+            receipt.update(self._detect(algorithm=algorithm, keep=False, initialize_tracking=False))
+        else:
+            return None, {'status': 'no-face', 'attempts': [], 'relaxed': self.relaxed,
+                          'recovery': self.recovery.snapshot(), 'slots': [], 'frameCounter': self.frame_counter}
+        before = [index for index, slot in enumerate(self.slots) if slot.active]
+        suppress_duplicates(slots=self.slots)
+        active = [(index, slot) for index, slot in enumerate(self.slots) if slot.active]
+        self.recovery.finish(previous_faces=previous_count, current_faces=len(active), detector_retry=retry)
+        data = None
+        published = sorted((slot for _, slot in active if not slot.new), key=lambda slot: slot.identifier)
+        if published:
+            data = {'faces': np.stack([normalized(points=slot.points, size=self.size) for slot in published]),
+                    'rectangles': np.stack([rectangle(points=slot.points, size=self.size) for slot in published]),
+                    'rolls': np.asarray([slot.roll_value for slot in published], np.float32)}
+        else:
+            rejected = receipt.get('rejections', [])
+            receipt['status'] = 'rejected-reset' if rejected else 'no-face'
+            if rejected:
+                receipt['reason'] = rejected[-1]
+        matches = receipt.get('matchedDetections', {})
+        if len(matches) == 1:
+            receipt['matchedDetection'] = next(iter(matches.values()))
         return data, {**receipt, 'attempts': self.attempts, 'relaxed': self.relaxed,
-                      'recovery': self.recovery.snapshot(),
-                      **({'retainedFaceDropped': True} if retained_dropped else {})}
+                      'recovery': self.recovery.snapshot(), 'frameCounter': self.frame_counter,
+                      'suppressedSlots': [index for index in before if not self.slots[index].active],
+                      'slots': [{'index': index, 'id': slot.identifier, 'persistentId': slot.persistent_id,
+                                 'age': slot.age, 'new': slot.new} for index, slot in active]}
 
     def update(self, *, algorithm):
         height, width = algorithm.shape[:2]
         if self.size is not None and self.size != (width, height):
             raise ValueError('face dimensions changed; reset before replay')
-        retained_dropped = False
-        if self.recovery.active and self.engine is not None:
-            # A face kept through a frame-end retry. The native rule for matching it is
-            # unverified, so the retained face is dropped and the recovery window's
-            # relaxed detection decides this frame; a session keeps going instead of failing.
-            self._clear_face()
-            retained_dropped = True
         self.size = (width, height)
-        self.attempts = []
-        self.relaxed = self.recovery.active
-        was_tracking = self.engine is not None
-        for attempt in range(2 if was_tracking else 1):
-            try:
-                if self.engine is None:
-                    result, empty = self._detect(algorithm=algorithm)
-                    if empty is not None:
-                        return self._finish(data=None, receipt=empty, was_tracking=was_tracking,
-                                            detector_retry=attempt > 0, retained_dropped=retained_dropped)
-                else:
-                    result = self.engine.process(rgba=algorithm, size=self.size, index=self.index, face=self.face)
-                data = self._consume(result=result)
-                return self._finish(data=data, receipt={'status': 'redetected' if attempt else 'tracked'},
-                                    was_tracking=was_tracking, detector_retry=attempt > 0,
-                                    retained_dropped=retained_dropped)
-            except (RejectedVideoFace, OutOfFrameLandmarks) as error:
-                self._clear_face()
-                reason = str(error)
-        return self._finish(data=None, receipt={'status': 'rejected-reset', 'reason': reason}, was_tracking=was_tracking,
-                            detector_retry=was_tracking, retained_dropped=retained_dropped)
+        warmup = None
+        if self.frame_counter < 0:
+            # Body export starts after the native same-image seed warmup.
+            _, warmup = self._step(algorithm=algorithm)
+        data, receipt = self._step(algorithm=algorithm)
+        if warmup is not None:
+            receipt['attempts'] = warmup['attempts'] + receipt['attempts']
+            receipt['warmup'] = warmup
+        return data, receipt
