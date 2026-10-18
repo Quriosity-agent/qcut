@@ -140,6 +140,7 @@ export async function runCompositeConsistency({
 	requireAudio = false,
 	requirePortraitSource = false,
 	traceHelperPath,
+	prepareProject = prepareCompositeProject,
 }: {
 	source: string | undefined;
 	output: string;
@@ -150,6 +151,16 @@ export async function runCompositeConsistency({
 	requireAudio?: boolean;
 	requirePortraitSource?: boolean;
 	traceHelperPath?: string;
+	/**
+	 * Builds the timeline the passes run on. The default is the two-clip
+	 * dissolve composite; a scenario that must isolate one effect (a single
+	 * clean clip, no keyframes or transition) supplies its own.
+	 */
+	prepareProject?: (options: {
+		page: Page;
+		source: string;
+		settings: CompositeSettings;
+	}) => Promise<CompositeProject>;
 }) {
 	test.skip(
 		!source || !existsSync(source),
@@ -272,7 +283,7 @@ export async function runCompositeConsistency({
 				if (beautyWarnings.length > 1000) beautyWarnings.shift();
 			}
 		});
-		const project = await prepareCompositeProject({ page, source, settings });
+		const project = await prepareProject({ page, source, settings });
 		evidence.project = project;
 		await installCompositeExportCapture({
 			page,
