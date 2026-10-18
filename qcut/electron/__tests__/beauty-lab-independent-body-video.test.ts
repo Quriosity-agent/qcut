@@ -1,6 +1,14 @@
 // @vitest-environment node
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rm,
+	utimes,
+	writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createCanvas, ImageData } from "@napi-rs/canvas";
@@ -12,6 +20,7 @@ import {
 	independentBodyVideoAvailable,
 	independentBodyVideoSession,
 	IndependentSequenceGapError,
+	pruneIndependentSessions,
 } from "../beauty-lab/beauty-lab-independent-body-video";
 import { createIndependentFrameCache } from "../beauty-lab/beauty-lab-independent-frame-cache";
 import { INDEPENDENT_TIMELINE_SOURCE_KEY } from "../beauty-lab/beauty-lab-independent-frames";
@@ -287,6 +296,72 @@ describe("body video sequence frames", () => {
 		);
 		frames.dispose();
 		await expect(frames.render({ request })).rejects.toThrow("disposed");
+	});
+	it("prunes the least recently used session folders past the byte budget, keeping the active one", async () => {
+		const sessions = path.join(directory, "sessions");
+		const folders = ["1".repeat(64), "2".repeat(64), "3".repeat(64)];
+		for (const [index, name] of folders.entries()) {
+			await mkdir(path.join(sessions, name), { recursive: true });
+			const file = path.join(sessions, name, "0000000012.snapshot");
+			await writeFile(file, new Uint8Array(1000));
+			const time = new Date(Date.UTC(2026, 0, 1 + index));
+			await utimes(file, time, time);
+		}
+		await writeFile(path.join(sessions, "not-a-session"), "kept");
+		expect(
+			await pruneIndependentSessions({
+				directory: sessions,
+				maxBytes: 2000,
+				active: folders[0],
+			})
+		).toEqual({ total: 2000, removed: [folders[1]] });
+		expect((await readdir(sessions)).sort()).toEqual(
+			[folders[0], folders[2], "not-a-session"].sort()
+		);
+		expect(
+			await pruneIndependentSessions({ directory: sessions, maxBytes: 5000 })
+		).toEqual({ total: 2000, removed: [] });
+		expect(
+			await pruneIndependentSessions({
+				directory: path.join(directory, "missing"),
+				maxBytes: 1,
+			})
+		).toEqual({ total: 0, removed: [] });
+	});
+	it("prunes other sessions after a render, at most once a minute", async () => {
+		const sessions = path.join(directory, "sessions");
+		const stale = path.join(sessions, "9".repeat(64));
+		await mkdir(stale, { recursive: true });
+		await writeFile(
+			path.join(stale, "0000000012.snapshot"),
+			new Uint8Array(10)
+		);
+		let clock = 1_000_000;
+		const frames = createIndependentSequenceFrameRenderer({
+			provider: engine(),
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256: async () => "e".repeat(64),
+			sessionsDirectory: sessions,
+			maxSessionBytes: 1,
+			now: () => clock,
+		});
+		await frames.render({ request });
+		expect(await readdir(sessions)).toEqual([]);
+		await mkdir(stale, { recursive: true });
+		await writeFile(
+			path.join(stale, "0000000012.snapshot"),
+			new Uint8Array(10)
+		);
+		const next = (frame: number, requestId: string) => ({
+			...request,
+			requestId,
+			sequence: { ...request.sequence, frame },
+		});
+		await frames.render({ request: next(1, "frame-2") });
+		expect(await readdir(sessions)).toEqual(["9".repeat(64)]);
+		clock += 61_000;
+		await frames.render({ request: next(2, "frame-3") });
+		expect(await readdir(sessions)).toEqual([]);
 	});
 	it("needs an absolute checkpoint folder", () => {
 		expect(() =>
