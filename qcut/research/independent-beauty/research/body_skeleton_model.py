@@ -3,12 +3,13 @@
 `body-skeleton-v1.npz` (built locally from the installed smart-body model and never
 committed) holds the graph text and weight arena of two fixed-point networks: `coarse`,
 the full-frame multi-person net (18 joint heatmaps plus background, 38 limb vector
-channels), and `refine`, the 192x144 single-person net. Both run on the NumPy
-interpreter; every graph and arena is checked against the hashes that reproduced real
-render outputs bit for bit.
+channels), and `refine`, the 192x144 single-person net. NumPy remains the reference
+and default; QCUT_BODY_SKELETON_BACKEND=onnx-exact opts into bounded standard ONNX
+sessions using the same verified graphs and arenas. No vendor installation is read.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -26,10 +27,19 @@ ARENA_SHA256 = {
 }
 OUTPUTS = {'coarse': ('heatmap_output_0', 'vectormap_output_0'), 'refine': ('output_0',)}
 _LOADED = {}
+BACKEND_ENV = 'QCUT_BODY_SKELETON_BACKEND'
+
+
+def selected_backend(*, backend=None):
+    value = os.environ.get(BACKEND_ENV, 'numpy') if backend is None else backend
+    if value not in ('numpy', 'onnx-exact'):
+        raise ValueError('body skeleton backend must be numpy or onnx-exact')
+    return value
 
 
 class SkeletonNetworks:
-    def __init__(self, *, path):
+    def __init__(self, *, path, backend=None):
+        self.backend = selected_backend(backend=backend)
         path = Path(path)
         with np.load(path, allow_pickle=False) as data:
             arrays = {name: data[name] for name in data.files}
@@ -44,26 +54,39 @@ class SkeletonNetworks:
         self.provenance = {'asset': path.name, 'assetSha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                            'graphs': dict(GRAPH_SHA256), 'arenas': dict(ARENA_SHA256),
                            'source': json.loads(arrays['provenance'].tobytes())}
+        self.accelerator = None
+        self.provenance['inference'] = {'backend': 'numpy-fixed-reference',
+            'weights': 'original private vendor graph and arena; no replacement or independently trained model',
+            'runtimeReadsVendorInstallation': False, 'nativeRuntimeLoaded': False}
+        if self.backend == 'onnx-exact':
+            from body_skeleton_onnx import ExactOnnxNetworks
+            self.accelerator = ExactOnnxNetworks(networks=self.networks, outputs=OUTPUTS)
+            self.provenance['inference'] = self.accelerator.provenance
 
     def infer(self, *, tensor, network='coarse'):
         """int16 NHWC (n=1) input whose integers mean value/64; returns the int16 outputs."""
         x = np.asarray(tensor)
         if x.dtype != np.int16 or x.ndim != 4 or x.shape[0] != 1 or x.shape[-1] != 3:
             raise ValueError('int16 NHWC input with one image required')
+        if network not in OUTPUTS:
+            raise ValueError('unknown body skeleton network')
+        if self.accelerator is not None:
+            return self.accelerator.infer(tensor=x, network=network)
         text, arena = self.networks[network]
         # The graph input carries six fraction bits; the tensor's integers are passed unchanged.
         blobs = run(text, arena, {'data': (x.astype(np.int64), [2, 6])})
         return {name: blobs[name]['data'].astype(np.int16) for name in OUTPUTS[network]}
 
 
-def load_networks(*, runtime):
+def load_networks(*, runtime, backend=None):
     """Networks from `<runtime>/research/body-skeleton-v1.npz`, cached per file state."""
     path = Path(runtime) / 'research' / ASSET
     if not path.is_file():
         raise ValueError('body skeleton asset is not installed in the private runtime')
     stat = path.stat()
-    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    backend = selected_backend(backend=backend)
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns, backend)
     if key not in _LOADED:
         _LOADED.clear()
-        _LOADED[key] = SkeletonNetworks(path=path)
+        _LOADED[key] = SkeletonNetworks(path=path, backend=backend)
     return _LOADED[key]
