@@ -14,6 +14,10 @@ struct Request: Decodable {
     let indices: String
     let output: String
     let resolutionMode: String?
+    let sourceWidth: Int?
+    let sourceHeight: Int?
+    let sourcePrecision: String?
+    let meshProfile: String?
 }
 
 struct Failure: Error, CustomStringConvertible { let description: String }
@@ -41,18 +45,48 @@ fragment float4 meshFragment(MeshVertex in [[stage_in]], texture2d<half> image [
 func run() throws {
     try require(CommandLine.arguments.count == 2, "request.json argument required")
     let request = try JSONDecoder().decode(Request.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+    let sourceWidth = request.sourceWidth ?? request.width
+    let sourceHeight = request.sourceHeight ?? request.height
+    let precision = request.sourcePrecision ?? "half"
+    let profile = request.meshProfile ?? "body"
+    let vertexLimit = profile == "manual-zoom" ? 63001 : 4096
+    let triangleLimit = profile == "manual-zoom" ? 125000 : 4096
     try require(request.width > 0 && request.height > 0 && request.width <= 4096 && request.height <= 4096, "bounded image required")
+    try require(sourceWidth > 0 && sourceHeight > 0 && sourceWidth <= 4096 && sourceHeight <= 4096, "bounded source required")
+    try require(precision == "half" || precision == "float", "explicit texture precision required")
+    try require(profile == "body" || profile == "manual-zoom", "explicit mesh profile required")
+    try require(profile != "manual-zoom" || precision == "float", "manual zoom requires float sampling")
     guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
         throw Failure(description: "Metal unavailable")
     }
     let rgba = try Data(contentsOf: URL(fileURLWithPath: request.rgba))
     let vertices = try Data(contentsOf: URL(fileURLWithPath: request.vertices))
     let indices = try Data(contentsOf: URL(fileURLWithPath: request.indices))
-    try require(rgba.count == request.width * request.height * 4 && vertices.count % 20 == 0 && indices.count % 12 == 0
-                && !vertices.isEmpty && !indices.isEmpty, "input byte geometry invalid")
+    try require(rgba.count == sourceWidth * sourceHeight * 4 && vertices.count % 20 == 0 && indices.count % 12 == 0
+                && vertices.count >= 60 && vertices.count / 20 <= vertexLimit
+                && indices.count >= 12 && indices.count / 12 <= triangleLimit, "input byte geometry invalid")
+    let finiteVertices = vertices.withUnsafeBytes { bytes in
+        stride(from: 0, to: bytes.count, by: 4).allSatisfy { offset in
+            let value = bytes.loadUnaligned(fromByteOffset: offset, as: Float.self)
+            return value.isFinite && abs(value) <= 32768
+        }
+    }
+    let validIndices = indices.withUnsafeBytes { bytes in
+        stride(from: 0, to: bytes.count, by: 4).allSatisfy { offset in
+            bytes.loadUnaligned(fromByteOffset: offset, as: UInt32.self) < vertices.count / 20
+        }
+    }
+    try require(finiteVertices && validIndices, "bounded finite indexed mesh required")
     let options = MTLCompileOptions()
     options.mathMode = .fast
-    let library = try device.makeLibrary(source: shaderSource, options: options)
+    var source = precision == "float" ? shaderSource.replacingOccurrences(of: "texture2d<half>", with: "texture2d<float>") : shaderSource
+    if profile == "manual-zoom" {
+        source = source.replacingOccurrences(
+            of: "return float4(image.sample(sampling, in.coordinate));",
+            with: "float2 domain = step(float2(0), in.coordinate) - step(float2(1), in.coordinate); return float4(image.sample(sampling, in.coordinate)) * (domain.x * domain.y);"
+        )
+    }
+    let library = try device.makeLibrary(source: source, options: options)
     let pipeline = MTLRenderPipelineDescriptor()
     pipeline.vertexFunction = library.makeFunction(name: "meshVertex")
     pipeline.fragmentFunction = library.makeFunction(name: "meshFragment")
@@ -68,19 +102,19 @@ func run() throws {
     pipeline.colorAttachments[0].pixelFormat = .rgba8Unorm
     pipeline.colorAttachments[0].isBlendingEnabled = false
     let state = try device.makeRenderPipelineState(descriptor: pipeline)
-    func texture(_ usage: MTLTextureUsage) throws -> MTLTexture {
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: request.width,
-                                                                  height: request.height, mipmapped: false)
+    func texture(_ usage: MTLTextureUsage, width: Int, height: Int) throws -> MTLTexture {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: width,
+                                                                  height: height, mipmapped: false)
         descriptor.storageMode = .shared
         descriptor.usage = usage
         guard let made = device.makeTexture(descriptor: descriptor) else { throw Failure(description: "texture allocation failed") }
         return made
     }
-    let input = try texture(.shaderRead)
-    let output = try texture(.renderTarget)
+    let input = try texture(.shaderRead, width: sourceWidth, height: sourceHeight)
+    let output = try texture(.renderTarget, width: request.width, height: request.height)
     rgba.withUnsafeBytes {
-        input.replace(region: MTLRegionMake2D(0, 0, request.width, request.height), mipmapLevel: 0,
-                      withBytes: $0.baseAddress!, bytesPerRow: request.width * 4)
+        input.replace(region: MTLRegionMake2D(0, 0, sourceWidth, sourceHeight), mipmapLevel: 0,
+                      withBytes: $0.baseAddress!, bytesPerRow: sourceWidth * 4)
     }
     let samplerDescriptor = MTLSamplerDescriptor()
     samplerDescriptor.minFilter = .linear
@@ -123,11 +157,13 @@ func run() throws {
     var receipt: [String: Any] = [
         "gpu": device.name, "width": request.width, "height": request.height, "format": "RGBA8Unorm",
         "sampling": "linear", "address": "clamp", "blending": false, "pixelBytes": result.count,
+        "sourcePrecision": precision, "meshProfile": profile,
+        "vertexCount": vertices.count / 20, "triangleCount": indices.count / 12,
         "privateNativeImages": images.filter { path in forbidden.contains { path.contains($0) } },
     ]
     if request.resolutionMode == "original" {
         receipt["resolutionMode"] = "original"
-        receipt["sourceFrameSize"] = [request.width, request.height]
+        receipt["sourceFrameSize"] = [sourceWidth, sourceHeight]
         receipt["sourceRgbaBytes"] = rgba.count
         receipt["maxSourceEdge"] = 4096
     }
