@@ -1,4 +1,5 @@
 import type { MediaAdjustments, MediaColorSettings } from "@/types/timeline";
+import { COLOR_KEYFRAME_DEFINITIONS } from "./color-properties";
 
 /**
  * Merging a partial grade from the editor API into a clip's current grade:
@@ -78,4 +79,74 @@ export function readMediaAdjustmentsPatch({
 		patch[key as keyof MediaAdjustments] = entry;
 	}
 	return patch;
+}
+
+/**
+ * Range check for a grade patch from the editor API. The editor's own sliders
+ * clamp to these ranges (COLOR_KEYFRAME_DEFINITIONS), but a JSON payload can
+ * name any number — `basic.exposure: 20` on a −5..5 EV control renders a
+ * white frame. Out-of-range values are refused with the allowed range, the
+ * same way a misspelt adjustments field is refused, instead of being clamped
+ * behind the caller's back.
+ *
+ * Only known numeric leaves are checked; fields without a published range
+ * (curves, LUT payloads, keyframe lists…) pass through untouched.
+ */
+export function assertColorPatchInRange({
+	patch,
+	prefix = "color",
+}: {
+	patch: Record<string, unknown>;
+	prefix?: string;
+}): void {
+	const walk = (value: unknown, path: string[]): void => {
+		if (!isPlainObject(value)) return;
+		for (const [key, entry] of Object.entries(value)) {
+			const nextPath = [...path, key];
+			const definition =
+				COLOR_KEYFRAME_DEFINITIONS[
+					nextPath.join(".") as keyof typeof COLOR_KEYFRAME_DEFINITIONS
+				];
+			if (definition && typeof entry === "number") {
+				if (
+					!Number.isFinite(entry) ||
+					entry < definition.min ||
+					entry > definition.max
+				) {
+					throw new Error(
+						`${prefix}.${nextPath.join(".")} must be ${definition.min}..${definition.max} (got ${entry})`
+					);
+				}
+				continue;
+			}
+			walk(entry, nextPath);
+		}
+	};
+	walk(patch, []);
+}
+
+/**
+ * The eight legacy fields mirror `color.basic`, so they obey the same ranges.
+ */
+export function assertAdjustmentsPatchInRange({
+	patch,
+}: {
+	patch: Partial<MediaAdjustments>;
+}): void {
+	for (const [key, entry] of Object.entries(patch)) {
+		const definition =
+			COLOR_KEYFRAME_DEFINITIONS[
+				`basic.${key}` as keyof typeof COLOR_KEYFRAME_DEFINITIONS
+			];
+		if (!definition || typeof entry !== "number") continue;
+		if (
+			!Number.isFinite(entry) ||
+			entry < definition.min ||
+			entry > definition.max
+		) {
+			throw new Error(
+				`adjustments.${key} must be ${definition.min}..${definition.max} (got ${entry})`
+			);
+		}
+	}
 }
