@@ -264,6 +264,45 @@ describe("independent body video frame driver", () => {
 		]);
 	});
 
+	it("restarts a rebuild from the new point when a replayed frame meets a gap", async () => {
+		let calls = 0;
+		render.mockImplementation(
+			async (request: BeautyLabIndependentSequenceFrameRequest) => {
+				const { frame, replay } = request.sequence;
+				calls += 1;
+				// Frame 6 lacks history; replaying 4 finds its checkpoint gone and restarts at 2.
+				if (calls === 1)
+					return { status: "replay", requestId: request.requestId, from: 3 };
+				if (calls === 3 && replay && frame === 4)
+					return { status: "replay", requestId: request.requestId, from: 2 };
+				return rendered(request);
+			}
+		);
+		const output = await renderIndependentBodyVideoFrame({
+			frame: { clip, frame: 6 },
+			width,
+			height,
+			adjustments,
+			createDecoder,
+		});
+		expect(Array.from(output)).toEqual([9, 9, 9, 255, 6, 1, 1, 255]);
+		expect(
+			render.mock.calls.map(([request]) => [
+				(request as BeautyLabIndependentSequenceFrameRequest).sequence.frame,
+				(request as BeautyLabIndependentSequenceFrameRequest).sequence.replay,
+			])
+		).toEqual([
+			[6, false],
+			[3, true],
+			[4, true],
+			[2, true],
+			[3, true],
+			[4, true],
+			[5, true],
+			[6, false],
+		]);
+	});
+
 	it("gives up when the history cannot be rebuilt or the replay start is invalid", async () => {
 		render.mockImplementation(
 			async (request: BeautyLabIndependentSequenceFrameRequest) => ({
