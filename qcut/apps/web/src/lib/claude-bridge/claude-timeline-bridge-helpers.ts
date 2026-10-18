@@ -59,6 +59,7 @@ import {
 import {
 	assertAdjustmentsPatchInRange,
 	assertColorPatchInRange,
+	mergeGradePatch,
 } from "@/lib/color/color-settings-merge";
 import { DEFAULT_MEDIA_ADJUSTMENTS } from "@/lib/video/video-properties";
 import { resolveColorFilterSettings } from "@/lib/filters/filter-resolver";
@@ -793,8 +794,17 @@ export function parseClaudeMediaFilterStack({
 
 export function getClaudeAdjustmentFields({
 	element,
+	current,
 }: {
 	element: Partial<ClaudeElement> & Record<string, unknown>;
+	/**
+	 * The adjustment layer being updated. When given, a partial grade merges
+	 * into this layer's current grade with `color.basic` winning any field the
+	 * legacy `adjustments` also name, and the stored mirror is regenerated —
+	 * the same rules a media clip's patch follows. Creation leaves it unset:
+	 * a new layer's partial grade is completed from the editor's defaults.
+	 */
+	current?: { color?: MediaColorSettings; adjustments?: MediaAdjustments };
 }): ClaudeAdjustmentFields {
 	const fields: ClaudeAdjustmentFields = {};
 	const rawColor = element.color;
@@ -807,22 +817,41 @@ export function getClaudeAdjustmentFields({
 	if (isFiniteNumber(element.opacity)) {
 		fields.opacity = element.opacity;
 	}
-	// A partial grade from the CLI is stored complete: missing fields take
-	// the editor's defaults instead of leaving holes the renderer must guess.
 	if (isPlainObject(rawColor)) {
 		assertColorPatchInRange({ patch: rawColor as Record<string, unknown> });
-		fields.color = normalizeMediaColorSettings({
-			element: { color: rawColor as unknown as MediaColorSettings },
-		});
 	}
 	if (isPlainObject(rawAdjustments)) {
 		assertAdjustmentsPatchInRange({
 			patch: rawAdjustments as Partial<MediaAdjustments>,
 		});
-		fields.adjustments = {
-			...DEFAULT_MEDIA_ADJUSTMENTS,
-			...(rawAdjustments as Partial<MediaAdjustments>),
-		};
+	}
+	if (current && (isPlainObject(rawColor) || isPlainObject(rawAdjustments))) {
+		const graded = mergeGradePatch({
+			current: normalizeMediaColorSettings({ element: current }),
+			colorPatch: isPlainObject(rawColor)
+				? (rawColor as Record<string, unknown>)
+				: undefined,
+			adjustmentsPatch: isPlainObject(rawAdjustments)
+				? (rawAdjustments as Partial<MediaAdjustments>)
+				: undefined,
+		});
+		fields.color = graded.color;
+		fields.adjustments = graded.adjustments;
+	} else {
+		// A partial grade from the CLI is stored complete: missing fields take
+		// the editor's defaults instead of leaving holes the renderer must
+		// guess.
+		if (isPlainObject(rawColor)) {
+			fields.color = normalizeMediaColorSettings({
+				element: { color: rawColor as unknown as MediaColorSettings },
+			});
+		}
+		if (isPlainObject(rawAdjustments)) {
+			fields.adjustments = {
+				...DEFAULT_MEDIA_ADJUSTMENTS,
+				...(rawAdjustments as Partial<MediaAdjustments>),
+			};
+		}
 	}
 	if (Array.isArray(rawMasks)) {
 		fields.masks = rawMasks as unknown as MediaMask[];
