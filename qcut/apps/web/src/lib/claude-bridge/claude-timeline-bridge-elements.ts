@@ -14,6 +14,8 @@ import {
 	normalizeMediaColorSettings,
 } from "@/lib/color/color-properties";
 import {
+	assertAdjustmentsPatchInRange,
+	assertColorPatchInRange,
 	mergeMediaColorSettings,
 	readMediaAdjustmentsPatch,
 } from "@/lib/color/color-settings-merge";
@@ -352,10 +354,18 @@ export const applyElementChanges = ({
 		) {
 			throw new Error("color must be an object (a partial colour grade)");
 		}
+		if (colorPatch !== undefined) {
+			assertColorPatchInRange({
+				patch: colorPatch as Record<string, unknown>,
+			});
+		}
 		const adjustmentsPatch =
 			element.type === "media" && changes.adjustments !== undefined
 				? readMediaAdjustmentsPatch({ value: changes.adjustments })
 				: undefined;
+		if (adjustmentsPatch !== undefined) {
+			assertAdjustmentsPatchInRange({ patch: adjustmentsPatch });
+		}
 
 		// The move goes first because the store may refuse it (a locked track
 		// or an occupied span); a refused move must fail the update before any
@@ -547,6 +557,12 @@ export const applyElementChanges = ({
 			}
 			if (colorPatch !== undefined || adjustmentsPatch !== undefined) {
 				const current = normalizeMediaColorSettings({ element });
+				// When one payload carries both representations (a timeline export
+				// does), `color.basic` is the source of truth and `adjustments` is
+				// its legacy mirror — the same precedence normalizeMediaColorSettings
+				// gives stored elements. Mirror-first spread order, so a field named
+				// on both sides takes the `color.basic` value instead of letting a
+				// stale exported mirror silently undo the grade.
 				const merged = mergeMediaColorSettings({
 					current,
 					patch: {
@@ -554,10 +570,10 @@ export const applyElementChanges = ({
 						...(adjustmentsPatch
 							? {
 									basic: {
+										...adjustmentsPatch,
 										...(((colorPatch as Record<string, unknown>)?.basic as
 											| Record<string, unknown>
 											| undefined) ?? {}),
-										...adjustmentsPatch,
 									},
 								}
 							: {}),
