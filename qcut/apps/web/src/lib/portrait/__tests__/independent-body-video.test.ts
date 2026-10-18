@@ -117,15 +117,16 @@ describe("independent body video clip frames", () => {
 			})
 		).toBeCloseTo(1 + 2 + 1 / 24, 12);
 	});
-	it("names the clip by its media, timing and edit, not by its timeline position", async () => {
+	it("names the clip by its element, media, timing and edit, not by its timeline position", async () => {
 		const identity = await independentBodyVideoClipIdentity({ clip });
 		expect(identity).toMatch(/^[a-f0-9]{64}$/);
 		expect(
 			await independentBodyVideoClipIdentity({
-				clip: { ...clip, element: element({ startTime: 7, id: "clip-2" }) },
+				clip: { ...clip, element: element({ startTime: 7 }) },
 			})
 		).toBe(identity);
 		for (const changed of [
+			{ ...clip, element: element({ id: "clip-2" }) },
 			{ ...clip, element: element({ trimStart: 1.5 }) },
 			{ ...clip, element: element({ playbackRate: 2 }) },
 			{ ...clip, element: element({ reverse: true }) },
