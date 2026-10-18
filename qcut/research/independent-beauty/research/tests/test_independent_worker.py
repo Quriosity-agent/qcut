@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -16,8 +17,35 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import independent_pipeline as pipeline
+from independent_sequence_sessions import SequenceGap
 import independent_stage_runner as stages
 import independent_worker as worker
+
+
+class FakeSessions:
+    """The session table's worker-facing surface: prepare, a stage runner and a snapshot."""
+
+    def __init__(self, *, runtime, gap_at=None):
+        self.runtime, self.gap_at, self.prepared = runtime, gap_at, []
+        self.engine = SimpleNamespace(next_frame=0)
+
+    def prepare(self, *, session, frame, checkpoints):
+        self.prepared.append((session, frame, checkpoints))
+        if frame == self.gap_at:
+            raise SequenceGap(restart_from=frame - 2)
+        self.engine.next_frame = frame
+        return 'restarted' if frame == 0 else 'continued'
+
+    def stage_runner(self, *, sequence, resumed, fallback):
+        def run(**arguments):
+            run.rendered = True
+            self.engine.next_frame = sequence['frame'] + 1
+
+        run.rendered = False
+        return run
+
+    def snapshot(self):
+        return {'active': True}
 
 
 class WorkerTests(unittest.TestCase):
@@ -30,12 +58,13 @@ class WorkerTests(unittest.TestCase):
         self.request = {'id': 'one', 'image': str(self.image), 'request': str(self.root / 'request.json'),
                         'output': str(self.root / 'output.png'), 'report': str(self.root / 'report.json')}
 
-    def serve(self, *, rows, render):
+    def serve(self, *, rows, render, sessions=None):
         output = io.StringIO()
         with patch.dict(os.environ), redirect_stderr(io.StringIO()):
             worker.serve(runtime=self.root,
                          input_stream=io.BytesIO(b''.join(json.dumps(row).encode() + b'\n' for row in rows)),
-                         output_stream=output, render=render)
+                         output_stream=output, render=render,
+                         **({} if sessions is None else {'sessions': sessions}))
         return [json.loads(line) for line in output.getvalue().splitlines()]
 
     def test_failure_then_success_and_no_stage_stdout_on_protocol(self):
@@ -147,6 +176,55 @@ class WorkerTests(unittest.TestCase):
                              source=self.root / 'whiten_render.py', image=self.image, runtime=self.root,
                              output=self.root / 'out.png', report=self.root / 'out.json', face_reference=object())
         module.run.assert_not_called()
+
+    def sequence_request(self, *, frame, identifier='seq'):
+        return self.request | {'id': identifier, 'sequence': {'session': 'c' * 64, 'frame': frame,
+                                                              'timestamp': frame / 24, 'checkpoints': str(self.root / 'ck')}}
+
+    @staticmethod
+    def render_body_stage(**arguments):
+        """A pipeline whose plan has the smart-body stage; photo requests keep the photo runner."""
+        if arguments['stage_runner'] is not stages.run_stage:
+            arguments['stage_runner'](stage={'script': 'body_smart_render.py', 'parameters': []})
+        arguments['runtime_receipt']()
+
+    def test_sequence_requests_render_through_the_session_and_report_the_next_frame(self):
+        table = FakeSessions(runtime=self.root)
+        responses = self.serve(rows=[self.sequence_request(frame=0), self.sequence_request(frame=1, identifier='two'),
+                                     self.request], render=self.render_body_stage, sessions=lambda **_: table)
+        self.assertEqual(responses[0], {'id': 'seq', 'ok': True, 'sequence': {'nextFrame': 1, 'resumed': 'restarted'}})
+        self.assertEqual(responses[1], {'id': 'two', 'ok': True, 'sequence': {'nextFrame': 2, 'resumed': 'continued'}})
+        self.assertEqual(responses[2], {'id': 'one', 'ok': True})
+        self.assertEqual([frame for _, frame, _ in table.prepared], [0, 1])
+        self.assertEqual(table.prepared[0][2], str(self.root / 'ck'))
+
+    def test_a_history_gap_is_a_recoverable_reply_not_a_failure(self):
+        table = FakeSessions(runtime=self.root, gap_at=7)
+        render = Mock(side_effect=self.render_body_stage)
+        responses = self.serve(rows=[self.sequence_request(frame=7), self.sequence_request(frame=5, identifier='two')],
+                               render=render, sessions=lambda **_: table)
+        self.assertEqual(responses[0], {'id': 'seq', 'ok': False, 'error': 'SequenceGap: body video history resumes at frame 5',
+                                        'gap': {'restartFrom': 5}})
+        self.assertEqual(responses[1], {'id': 'two', 'ok': True, 'sequence': {'nextFrame': 6, 'resumed': 'continued'}})
+        self.assertEqual(render.call_count, 1)
+
+    def test_a_sequence_request_whose_plan_has_no_body_stage_fails(self):
+        table = FakeSessions(runtime=self.root)
+        responses = self.serve(rows=[self.sequence_request(frame=0)], render=Mock(), sessions=lambda **_: table)
+        self.assertFalse(responses[0]['ok'])
+        self.assertIn('smart-body stage', responses[0]['error'])
+        self.assertNotIn('gap', responses[0])
+
+    def test_photo_requests_keep_the_photo_stage_runner(self):
+        render = Mock()
+        self.serve(rows=[self.request], render=render, sessions=lambda **_: FakeSessions(runtime=self.root))
+        self.assertIs(render.call_args.kwargs['stage_runner'], stages.run_stage)
+
+    def test_sequence_requests_are_validated_before_execution(self):
+        for sequence in ({'session': 'C' * 64, 'frame': 0, 'timestamp': 0, 'checkpoints': str(self.root)},
+                         {'session': 'c' * 64, 'frame': 0, 'timestamp': 0}, 'frames'):
+            with self.subTest(sequence=sequence), self.assertRaises(ValueError):
+                worker.validate_request(request=self.request | {'sequence': sequence})
 
     @unittest.skipUnless(sys.platform == 'darwin' and shutil.which('bun'), 'real planner requires macOS/Bun')
     def test_real_worker_two_jobs_match_one_shot_pixels_and_recover_after_invalid_plan(self):
