@@ -18,10 +18,18 @@ import {
 import type { PortraitCompositePass } from "./helpers/portrait-composite-project";
 import { runCompositeConsistency } from "./helpers/portrait-composite-runner";
 
-const configuredPasses = process.env.QCUT_BODY_CLOSE_PASSES?.split(",").filter(
-	(pass): pass is PortraitCompositePass =>
-		(BODY_CLOSE_PASSES as string[]).includes(pass)
+const requestedPasses = process.env.QCUT_BODY_CLOSE_PASSES?.split(",")
+	.map((pass) => pass.trim())
+	.filter(Boolean);
+const unknownPasses = (requestedPasses ?? []).filter(
+	(pass) => !(BODY_CLOSE_PASSES as string[]).includes(pass)
 );
+// A typo must not fall back to running every pass (an hour of exports).
+if (unknownPasses.length > 0)
+	throw new Error(
+		`Unknown QCUT_BODY_CLOSE_PASSES: ${unknownPasses.join(",")} (expected ${BODY_CLOSE_PASSES.join("|")})`
+	);
+const configuredPasses = requestedPasses as PortraitCompositePass[] | undefined;
 const scenario = createBodyVideoCloseScenario({
 	seconds: Number(process.env.QCUT_BODY_CLOSE_SECONDS ?? 6),
 	sampleCount: Number(process.env.QCUT_BODY_CLOSE_SAMPLES ?? 16),
