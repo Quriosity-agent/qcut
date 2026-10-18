@@ -99,6 +99,23 @@ class BodySequenceContract(unittest.TestCase):
         self.assertEqual(self.skeletons[0].update.call_count, 2)
         self.assertEqual(self.skeletons[1].update.call_count, 1)
 
+    def test_restart_keeps_loaded_networks_for_a_new_stream(self):
+        self.frame()
+        skeleton, face, composition = self.engine.skeleton, self.engine.face, self.engine.composition
+        self.engine.restart()
+        self.assertIs(self.engine.skeleton, skeleton)
+        for part in (skeleton, face, composition):
+            part.reset.assert_called_once_with()
+        self.assertEqual((self.engine.next_frame, self.engine.stream, self.engine.timestamp), (0, None, None))
+        self.frame(stream='clip-b')
+        self.assertEqual(len(self.skeletons), 1)
+        self.assertEqual(skeleton.update.call_count, 2)
+
+    def test_restart_loads_networks_when_none_are_loaded(self):
+        self.engine.restart()
+        self.assertEqual(len(self.skeletons), 1)
+        self.assertEqual(self.engine.next_frame, 0)
+
     def test_controls_and_timestamp_validation_happen_before_inference(self):
         for controls in ({'SlimBody': 101}, {'unknown': 20}):
             with self.assertRaises(ValueError):
