@@ -1,5 +1,9 @@
 import type { MediaAdjustments, MediaColorSettings } from "@/types/timeline";
-import { COLOR_KEYFRAME_DEFINITIONS } from "./color-properties";
+import {
+	buildLegacyColorAdjustments,
+	COLOR_KEYFRAME_DEFINITIONS,
+	normalizeMediaColorSettings,
+} from "./color-properties";
 
 /**
  * Merging a partial grade from the editor API into a clip's current grade:
@@ -107,14 +111,17 @@ export function assertColorPatchInRange({
 				COLOR_KEYFRAME_DEFINITIONS[
 					nextPath.join(".") as keyof typeof COLOR_KEYFRAME_DEFINITIONS
 				];
-			if (definition && typeof entry === "number") {
+			if (definition) {
+				// A defined leaf is numeric by contract: a string or null here
+				// would be stored verbatim and read back as a broken grade.
 				if (
+					typeof entry !== "number" ||
 					!Number.isFinite(entry) ||
 					entry < definition.min ||
 					entry > definition.max
 				) {
 					throw new Error(
-						`${prefix}.${nextPath.join(".")} must be ${definition.min}..${definition.max} (got ${entry})`
+						`${prefix}.${nextPath.join(".")} must be ${definition.min}..${definition.max} (got ${JSON.stringify(entry)})`
 					);
 				}
 				continue;
@@ -138,15 +145,55 @@ export function assertAdjustmentsPatchInRange({
 			COLOR_KEYFRAME_DEFINITIONS[
 				`basic.${key}` as keyof typeof COLOR_KEYFRAME_DEFINITIONS
 			];
-		if (!definition || typeof entry !== "number") continue;
+		if (!definition) continue;
 		if (
+			typeof entry !== "number" ||
 			!Number.isFinite(entry) ||
 			entry < definition.min ||
 			entry > definition.max
 		) {
 			throw new Error(
-				`adjustments.${key} must be ${definition.min}..${definition.max} (got ${entry})`
+				`adjustments.${key} must be ${definition.min}..${definition.max} (got ${JSON.stringify(entry)})`
 			);
 		}
 	}
+}
+
+/**
+ * One payload's grade patch applied onto a current grade: `color` merges
+ * field by field and, when the legacy `adjustments` ride along, `color.basic`
+ * wins any field named on both sides — the read-side precedence. Returns the
+ * stored pair: the normalized merged grade plus its regenerated legacy
+ * mirror. Shared by media clips and adjustment-layer updates so the two
+ * element kinds cannot drift apart again.
+ */
+export function mergeGradePatch({
+	current,
+	colorPatch,
+	adjustmentsPatch,
+}: {
+	current: MediaColorSettings;
+	colorPatch: Record<string, unknown> | undefined;
+	adjustmentsPatch: Partial<MediaAdjustments> | undefined;
+}): { color: MediaColorSettings; adjustments: MediaAdjustments } {
+	const merged = mergeMediaColorSettings({
+		current,
+		patch: {
+			...(colorPatch ?? {}),
+			...(adjustmentsPatch
+				? {
+						basic: {
+							...adjustmentsPatch,
+							...((colorPatch?.basic as Record<string, unknown> | undefined) ??
+								{}),
+						},
+					}
+				: {}),
+		},
+	});
+	const next = normalizeMediaColorSettings({ element: { color: merged } });
+	return {
+		color: next,
+		adjustments: buildLegacyColorAdjustments({ settings: next }),
+	};
 }
