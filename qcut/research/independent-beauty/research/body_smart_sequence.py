@@ -3,9 +3,16 @@ or from a snapshot (body_sequence_checkpoint).
 
 This API deliberately owns no global state or frame cache. It is not the editor's
 stateless photo adapter. The accepted algorithm profile is upright, single-person
-modern CPU, mode2, with no populated protection masks. A frame on which seeding
-sees several bodies is kept as it is, like a frame without a body, and seeding
-retries on the next frame; a body already tracked keeps being tracked.
+modern CPU, persistent mode 1 (every frame refreshes the measurable anchors, the way
+the product's native path follows a moving body; mode 2 kept the anchors of the first
+frame, which has not converged yet), with no populated protection masks.
+
+The frame whose coarse pass seeds tracking is refined in the same frame, so the body
+shows on the frame that found it. The first body frame of a session converges its
+geometry with the still path's update count before it is drawn; later frames advance
+once each. A frame on which seeding sees several bodies is kept as it is, like a frame
+without a body, and seeding retries on the next frame; a body already tracked keeps
+being tracked.
 """
 import hashlib
 import math
@@ -19,6 +26,7 @@ from body_mesh_grid import pack_vertices
 from body_mesh_renderer import algorithm_image, draw_mesh
 from body_skeleton_model import load_networks
 from body_skeleton_sequence import AmbiguousBodyFrame, BodySkeletonSequence
+from body_smart_render import STILL_UPDATES as FIRST_BODY_UPDATES
 from body_composition.controls import validate_controls
 from render_resolution import source_edge_limit
 from slimface_render import validate_rgba
@@ -59,7 +67,7 @@ class BodySmartSequence:
         from body_composition import PersistentCombinedBody
         self.skeleton = BodySkeletonSequence(networks=load_networks(runtime=self.runtime))
         self.face = BodyVideoFaceSequence(runtime=self.runtime)
-        self.composition = PersistentCombinedBody(mode=2)
+        self.composition = PersistentCombinedBody(mode=1)
 
     def _validate(self, *, rgba, stream, frame, timestamp):
         if self.invalid:
@@ -81,6 +89,9 @@ class BodySmartSequence:
         if self.size is not None and self.size != rgba.shape[:2]:
             raise ValueError('frame dimensions changed; reset and replay required')
 
+    def _skeleton_debug(self):
+        return {key: self.skeleton.last_debug[key] for key in ('network', 'plan', 'state')}
+
     def process(self, *, rgba, controls, stream, frame, timestamp, cancelled=None):
         self._validate(rgba=rgba, stream=stream, frame=frame, timestamp=timestamp)
         values, targets = validate_controls(controls=controls)
@@ -95,9 +106,16 @@ class BodySmartSequence:
             if self.skeleton is None:
                 self._initialize()
             algorithm, raster = algorithm_image(rgba=rgba, runtime=self.runtime)
+            seed_refined = False
             try:
                 body = self.skeleton.update(algorithm=algorithm)
-                skeleton = {key: self.skeleton.last_debug[key] for key in ('network', 'plan', 'state')}
+                skeleton = self._skeleton_debug()
+                if body is None and skeleton['state'].get('mode') == 0 and skeleton['state'].get('objects') == 1:
+                    # The coarse pass only seeds tracking; the refine pass on the same
+                    # frame emits the body on the frame that found it.
+                    body = self.skeleton.update(algorithm=algorithm)
+                    skeleton = self._skeleton_debug()
+                    seed_refined = True
             except AmbiguousBodyFrame:
                 # The skeleton has reset itself; it seeds again on the next frame.
                 body, skeleton = None, {'network': 'coarse', 'plan': {'mode': 0},
@@ -105,14 +123,18 @@ class BodySmartSequence:
             check_cancelled()
             face, face_details = self.face.update(algorithm=algorithm)
             check_cancelled()
-            details = {'bodyReported': body is not None, 'identity': True,
+            details = {'bodyReported': body is not None, 'identity': True, 'seedRefined': seed_refined,
                        'algorithmRaster': raster, 'face': face_details, 'skeleton': skeleton}
             result = rgba.copy()
             if body is not None:
                 height, width = rgba.shape[:2]
                 face_inputs = face or {'faces': None, 'rectangles': None, 'rolls': None}
-                mesh = self.composition.update(coords=body['coords'], visibility=body['visibility'],
-                                               width=width, height=height, targets=targets, **face_inputs)
+                # A session's first body frame converges like a still; later frames advance once.
+                updates = FIRST_BODY_UPDATES if self.composition.frame == 0 else 1
+                for _ in range(updates):
+                    mesh = self.composition.update(coords=body['coords'], visibility=body['visibility'],
+                                                   width=width, height=height, targets=targets, **face_inputs)
+                details['compositionUpdates'] = updates
                 positions = mesh['positions']
                 if not np.isfinite(positions).all():
                     raise ValueError('body sequence produced nonfinite geometry')
