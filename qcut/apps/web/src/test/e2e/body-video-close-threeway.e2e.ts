@@ -11,6 +11,10 @@ import {
 	createBodyVideoCloseScenario,
 	createSingleClipBodyProjectPreparer,
 } from "./helpers/body-video-close-scenario";
+import {
+	seek,
+	waitForPausedFrame,
+} from "./helpers/independent-body-video-helpers";
 import type { PortraitCompositePass } from "./helpers/portrait-composite-project";
 import { runCompositeConsistency } from "./helpers/portrait-composite-runner";
 
@@ -23,6 +27,13 @@ const scenario = createBodyVideoCloseScenario({
 	sampleCount: Number(process.env.QCUT_BODY_CLOSE_SAMPLES ?? 16),
 	...(configuredPasses?.length ? { passes: configuredPasses } : {}),
 });
+// With the playhead parked here before each graded export, the export's frame 0
+// is a timestamp discontinuity for the native tracker: a cold start instead of
+// the tracker the paused preview at frame 0 has already warmed.
+const parkSeconds = Number(process.env.QCUT_BODY_CLOSE_PARK_SECONDS ?? 0);
+const parkFrame = Math.round(parkSeconds * scenario.settings.fps);
+if (parkSeconds > 0 && parkFrame >= scenario.settings.totalFrames)
+	throw new Error("QCUT_BODY_CLOSE_PARK_SECONDS must fall inside the clip");
 
 test("single-person body closure: untouched, native and independent on one clean 6 s clip", async () => {
 	await runCompositeConsistency({
@@ -40,5 +51,19 @@ test("single-person body closure: untouched, native and independent on one clean
 			),
 			requireNative: scenario.passes.some(({ id }) => id === "native"),
 		}),
+		...(parkSeconds > 0
+			? {
+					beforeExport: async ({ page, pass }) => {
+						// The untouched pass has no composition surface to wait on.
+						if (pass === "original") return;
+						await seek({ page, frame: parkFrame, fps: scenario.settings.fps });
+						await waitForPausedFrame({
+							page,
+							frame: parkFrame,
+							timeout: 300_000,
+						});
+					},
+				}
+			: {}),
 	});
 });
