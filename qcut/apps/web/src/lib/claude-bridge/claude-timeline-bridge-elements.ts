@@ -9,14 +9,11 @@ import type {
 	StickerElement,
 } from "@/types/timeline";
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
-import {
-	buildLegacyColorAdjustments,
-	normalizeMediaColorSettings,
-} from "@/lib/color/color-properties";
+import { normalizeMediaColorSettings } from "@/lib/color/color-properties";
 import {
 	assertAdjustmentsPatchInRange,
 	assertColorPatchInRange,
-	mergeMediaColorSettings,
+	mergeGradePatch,
 	readMediaAdjustmentsPatch,
 } from "@/lib/color/color-settings-merge";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
@@ -565,37 +562,17 @@ export const applyElementChanges = ({
 				mediaUpdates.filterStack = parsedFilterStack;
 			}
 			if (colorPatch !== undefined || adjustmentsPatch !== undefined) {
-				const current = normalizeMediaColorSettings({ element });
 				// When one payload carries both representations (a timeline export
 				// does), `color.basic` is the source of truth and `adjustments` is
-				// its legacy mirror — the same precedence normalizeMediaColorSettings
-				// gives stored elements. Mirror-first spread order, so a field named
-				// on both sides takes the `color.basic` value instead of letting a
-				// stale exported mirror silently undo the grade.
-				const merged = mergeMediaColorSettings({
-					current,
-					patch: {
-						...((colorPatch as Record<string, unknown>) ?? {}),
-						...(adjustmentsPatch
-							? {
-									basic: {
-										...adjustmentsPatch,
-										...(((colorPatch as Record<string, unknown>)?.basic as
-											| Record<string, unknown>
-											| undefined) ?? {}),
-									},
-								}
-							: {}),
-					},
+				// its legacy mirror — mergeGradePatch applies the read-side
+				// precedence and regenerates the mirror from the merged grade.
+				const graded = mergeGradePatch({
+					current: normalizeMediaColorSettings({ element }),
+					colorPatch: colorPatch as Record<string, unknown> | undefined,
+					adjustmentsPatch,
 				});
-				const next = normalizeMediaColorSettings({
-					element: { color: merged },
-				});
-				mediaUpdates.color = next;
-				// The legacy mirror of `color.basic`, kept in step like the panel does.
-				mediaUpdates.adjustments = buildLegacyColorAdjustments({
-					settings: next,
-				});
+				mediaUpdates.color = graded.color;
+				mediaUpdates.adjustments = graded.adjustments;
 			}
 			if (Object.keys(mediaUpdates).length > 0) {
 				timelineStore.updateMediaElement(
@@ -610,6 +587,9 @@ export const applyElementChanges = ({
 		if (element.type === "adjustment") {
 			const adjustmentUpdates = getClaudeAdjustmentFields({
 				element: changes as Partial<ClaudeElement> & Record<string, unknown>,
+				// Updates merge into the layer's current grade; creation (the
+				// add path) completes a partial grade from defaults instead.
+				current: element,
 			});
 			if (Object.keys(adjustmentUpdates).length > 0) {
 				timelineStore.updateAdjustmentElement(
