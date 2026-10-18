@@ -544,7 +544,7 @@ export function createBeautyLabIndependentProvider({
 			if ((await verifySources()) !== manifestSha256)
 				throw new Error("Independent source manifest changed during execution");
 			report.qcutSourceManifestSha256 = manifestSha256;
-			job.controller.signal.throwIfAborted();
+			if (!input.sequence) job.controller.signal.throwIfAborted();
 			return {
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				requestId: input.requestId,
