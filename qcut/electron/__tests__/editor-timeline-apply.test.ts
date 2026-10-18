@@ -661,6 +661,132 @@ describe("editor timeline apply", () => {
 		);
 	});
 
+	it("rolls back when a clip's colour grade did not land (Q4: adjustments shadowed color.basic)", async () => {
+		const gradedManifest = {
+			...manifest,
+			tracks: manifest.tracks.map((track, index) =>
+				index === 0
+					? {
+							...track,
+							elements: [
+								{
+									...track.elements[0],
+									color: {
+										enabled: true,
+										basic: { enabled: true, contrast: 25 },
+									},
+								},
+							],
+						}
+					: track
+			),
+		};
+		// The historical failure: the stored grade kept contrast 0, yet verify
+		// reported true because it never compared `color`.
+		const { client, post } = makeClient({
+			videoElement: {
+				startTime: 0,
+				duration: 2,
+				color: { enabled: true, basic: { enabled: true, contrast: 0 } },
+				adjustments: { contrast: 0 },
+			},
+		});
+
+		const result = await timelineApplyManifest(
+			client,
+			makeOptions(gradedManifest)
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("field 'color' did not match");
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/transaction/transaction-1/rollback",
+			expect.any(Object)
+		);
+	});
+
+	it("rolls back a manifest whose adjustments mirror disagrees with color.basic", async () => {
+		const conflictedManifest = {
+			...manifest,
+			tracks: manifest.tracks.map((track, index) =>
+				index === 0
+					? {
+							...track,
+							elements: [
+								{
+									...track.elements[0],
+									color: {
+										enabled: true,
+										basic: { enabled: true, contrast: 25 },
+									},
+									// A stale exported mirror: apply honors color.basic and
+									// re-mirrors adjustments, so this 0 can never read back.
+									adjustments: { contrast: 0 },
+								},
+							],
+						}
+					: track
+			),
+		};
+		const { client } = makeClient({
+			videoElement: {
+				startTime: 0,
+				duration: 2,
+				color: { enabled: true, basic: { enabled: true, contrast: 25 } },
+				adjustments: { contrast: 25 },
+			},
+		});
+
+		const result = await timelineApplyManifest(
+			client,
+			makeOptions(conflictedManifest)
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("field 'adjustments' did not match");
+	});
+
+	it("verifies a grade whose two representations agree", async () => {
+		const syncedManifest = {
+			...manifest,
+			tracks: manifest.tracks.map((track, index) =>
+				index === 0
+					? {
+							...track,
+							elements: [
+								{
+									...track.elements[0],
+									color: {
+										enabled: true,
+										basic: { enabled: true, contrast: 25, saturation: 15 },
+									},
+									adjustments: { contrast: 25, saturation: 15 },
+								},
+							],
+						}
+					: track
+			),
+		};
+		const { client } = makeClient({
+			videoElement: {
+				startTime: 0,
+				duration: 2,
+				color: {
+					enabled: true,
+					basic: { enabled: true, contrast: 25, saturation: 15, exposure: 0 },
+				},
+				adjustments: { contrast: 25, saturation: 15, brightness: 0 },
+			},
+		});
+
+		const result = await timelineApplyManifest(
+			client,
+			makeOptions(syncedManifest)
+		);
+
+		expect(result).toEqual(expect.objectContaining({ success: true }));
+	});
+
 	it("rolls back when a media speed field is not applied", async () => {
 		const speedManifest = {
 			...manifest,
