@@ -1223,6 +1223,16 @@ export function PreviewElementRenderer({
 										...additionalColorLayers,
 									]}
 									portraitAdjustments={previewPortraitAdjustments}
+									bodyVideoClip={
+										element.type === "media"
+											? {
+													element,
+													mediaItem,
+													fps: activeProject?.fps ?? 30,
+													timelineTime: currentTime,
+												}
+											: undefined
+									}
 								/>
 							) : null}
 							<PortraitManualBodyOverlay elementId={element.id} />
