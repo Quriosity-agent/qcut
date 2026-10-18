@@ -1,0 +1,80 @@
+"""Owned single-person CPU skeleton lifecycle; no recorded poses or native calls."""
+import numpy as np
+
+from body_points import normalize_joints
+from body_skeleton_decode import (crop_layout_and_roi, map_local_to_global,
+                                  tracking_body_box, postprocess, refine_pose, refine_tensor)
+from body_skeleton_preprocess import skeleton005_auto
+
+
+class AmbiguousBodyFrame(ValueError):
+    """The validated one-person profile cannot choose between multiple bodies."""
+
+
+class BodySkeletonSequence:
+    def __init__(self, *, networks):
+        self.networks = networks
+        self.reset()
+
+    def reset(self):
+        self.points = None
+        self.size = None
+        self.iterations = 0
+        self.frame = 0
+        self.last_debug = None
+
+    def update(self, *, algorithm):
+        if (not isinstance(algorithm, np.ndarray) or algorithm.dtype != np.uint8
+                or algorithm.ndim != 3 or algorithm.shape[2] not in (3, 4)
+                or min(algorithm.shape[:2]) < 16 or max(algorithm.shape[:2]) > 1280):
+            raise ValueError('bounded RGB algorithm raster required')
+        height, width = algorithm.shape[:2]
+        size = (width, height)
+        if self.size is not None and self.size != size:
+            raise ValueError('skeleton dimensions changed; reset before replay')
+        rgb = np.ascontiguousarray(algorithm[..., :3])
+        box = tracking_body_box(self.points, size) if self.points is not None else None
+        mode = int(box is not None)
+        plan = {'mode': mode}
+        if mode == 0:
+            tensor, _ = skeleton005_auto(rgb)
+            outputs = self.networks.infer(tensor=tensor[None], network='coarse')
+            heat = heatmaps(outputs['heatmap_output_0'])
+            paf = heatmaps(outputs['vectormap_output_0'])
+            th, tw = tensor.shape[:2]
+            _, roi = crop_layout_and_roi([0, 0, width, height], (tw, th))
+            people = map_local_to_global(postprocess(heat, paf), (tw, th), roi)
+            if len(people) > 1:
+                # Failure invalidates the chain; callers must replay after selecting a new clip.
+                self.reset()
+                raise AmbiguousBodyFrame('multiple bodies require an explicitly validated identity policy')
+            seeded = people and sum(p[3] and p[2] >= 0 for p in people[0]) >= 8
+            points = people[0] if seeded else None
+            iterations = 0
+            reported = None
+        else:
+            layout, roi = crop_layout_and_roi(box)
+            plan.update(bbox=box, layout=layout, roi=roi, body_scale=max(box[2:]))
+            tensor = refine_tensor(rgb, box)
+            outputs = self.networks.infer(tensor=tensor[None], network='refine')
+            points = refine_pose(heatmaps(outputs['output_0']), roi, self.points, max(box[2:]))
+            if not any(point[3] for point in points):
+                points = None
+            reported = points
+            iterations = self.iterations + 1
+        self.points, self.size, self.iterations = points, size, iterations
+        self.last_debug = {'frame': self.frame, 'network': 'refine' if mode else 'coarse',
+                           'plan': plan, 'state': {'mode': mode, 'iterations': iterations,
+                           'objects': int(points is not None), 'id': 0 if points is not None else None},
+                           'input': tensor, 'outputs': outputs}
+        self.frame += 1
+        # The coarse pass seeds internal tracking but intentionally emits no external body.
+        if reported is None:
+            return None
+        joints = normalize_joints(reported, width, height)
+        return {'coords': joints['points'], 'visibility': joints['visibility'],
+                'sdkPoints': np.asarray(reported, np.float32)}
+
+
+def heatmaps(output):
+    return (output[0].transpose(2, 0, 1).astype(np.float32) / np.float32(1024)).tolist()
