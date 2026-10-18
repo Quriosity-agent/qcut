@@ -27,29 +27,30 @@ import {
 /** Timeline frames carry no photo identity; the cache keys them by content. */
 export const INDEPENDENT_TIMELINE_SOURCE_KEY = "timeline-frame";
 
-const frameRequestSchema = z
-	.object({
-		requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
-		width: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
-		height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
-		rgba: z.instanceof(Uint8Array),
-		sourceEvidence: independentSourceEvidenceSchema.optional(),
-		adjustments: z
-			.object({
-				enabled: z.literal(true),
-				values: z.record(z.string(), z.number().finite()),
-				makeup: z
-					.record(
-						z.string(),
-						z
-							.object({ cardId: z.string(), intensity: z.number().finite() })
-							.strict()
-					)
-					.optional(),
-				manualBody: independentManualBodySchema.optional(),
-			})
-			.strict(),
-	})
+/** A timeline frame's fields before the strict pixel-budget refinement; sequence frames extend it. */
+export const independentFrameRequestShape = z.object({
+	requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
+	width: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
+	height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
+	rgba: z.instanceof(Uint8Array),
+	sourceEvidence: independentSourceEvidenceSchema.optional(),
+	adjustments: z
+		.object({
+			enabled: z.literal(true),
+			values: z.record(z.string(), z.number().finite()),
+			makeup: z
+				.record(
+					z.string(),
+					z
+						.object({ cardId: z.string(), intensity: z.number().finite() })
+						.strict()
+				)
+				.optional(),
+			manualBody: independentManualBodySchema.optional(),
+		})
+		.strict(),
+});
+const frameRequestSchema = independentFrameRequestShape
 	.strict()
 	.refine(
 		({ width, height }) => width * height <= INDEPENDENT_BEAUTY_MAX_PIXELS,
@@ -78,7 +79,7 @@ export async function independentEngineSha256({
 		.digest("hex");
 }
 
-async function waitForFrameOperation<T>({
+export async function waitForFrameOperation<T>({
 	signal,
 	operation,
 }: {
