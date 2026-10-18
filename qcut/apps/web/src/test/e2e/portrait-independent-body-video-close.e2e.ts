@@ -399,7 +399,7 @@ test("independent smart body: 180 frames identical across export order, cache lo
 			recomputedSeconds: afterRestartRecomputed.seconds,
 			checkpoints: await checkpointFiles({ sessions }),
 		};
-		evidence.referenceDigestSha256 = reference.join("\n");
+		evidence.referenceDigests = reference;
 		evidence.errors = errors;
 		evidence.consoleErrors = consoleErrors;
 		await persist();
