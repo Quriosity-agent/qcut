@@ -181,7 +181,7 @@ def map_local_to_global(groups, map_size, roi):
 
 def next_body_box(points, image_size, aspect_threshold=.8, wide_margin=.4, other_margin=.2,
                   vertical_margin=.2, min_aspect=.5, min_size=(32, 32)):
-    """The tracker's next crop around the valid joints, widened for upright bodies."""
+    """Base joint bounds, widened for upright bodies; excludes tracking recovery margins."""
     iw, ih = image_size
     good = [p for p in points if p[3]]
     if not good:
@@ -210,6 +210,25 @@ def next_body_box(points, image_size, aspect_threshold=.8, wide_margin=.4, other
         width += 2 * pad
     if width < min_size[0] or height < min_size[1]:
         return None
+    return [left, top, width, height]
+
+
+def tracking_body_box(points, image_size):
+    """Bach CPU tracker crop with its default missing-ankle and missing-knee recovery."""
+    box = next_body_box(points, image_size)
+    if box is None:
+        return None
+    left, top, width, height = box
+    # A torso-only crop would keep the refinement network from recovering legs.
+    if not points[10][3] and not points[13][3]:
+        bottom = min(image_size[1], fcvtzs(f32(fma(f32(height), f32(.6), f32(top + height)))))
+        height = bottom - top
+    if points[0][3] and points[1][3] and not (points[9][3] and points[12][3]):
+        nose_y, neck_y = points[0][1], points[1][1]
+        recovered_top = max(0, fcvtzs(f32(fma(-f32(neck_y - nose_y), f32(2), f32(neck_y)))))
+        new_top = min(top, recovered_top)
+        height += top - new_top
+        top = new_top
     return [left, top, width, height]
 
 
@@ -311,7 +330,18 @@ def still_pose(*, rgba, networks):
     Returns (points, details): 18 [x, y, score, valid] joints of the first coarse person
     after the two refinement passes, and what each stage saw.
     """
-    rgb = np.ascontiguousarray(algorithm_image(rgba)[..., :3])
+    return pose_from_algorithm(algorithm=algorithm_image(rgba), networks=networks, refinement_passes=REFINE_PASSES)
+
+
+def pose_from_algorithm(*, algorithm, networks, refinement_passes, tracker_crop=False):
+    """First coarse person refined on a caller-owned algorithm raster; fresh state per call."""
+    if type(refinement_passes) is not int or not 1 <= refinement_passes <= REFINE_PASSES:
+        raise ValueError("one or two refinement passes required")
+    if (not isinstance(algorithm, np.ndarray) or algorithm.dtype != np.uint8 or algorithm.ndim != 3
+            or algorithm.shape[2] not in (3, 4) or min(algorithm.shape[:2]) < 16
+            or max(algorithm.shape[:2]) > ALGORITHM_LONG_SIDE):
+        raise ValueError("bounded RGB algorithm image required")
+    rgb = np.ascontiguousarray(algorithm[..., :3])
     height, width = rgb.shape[:2]
     tensor, preprocess = skeleton005_auto(rgb)
     outputs = networks.infer(tensor=tensor[None], network='coarse')
@@ -325,8 +355,9 @@ def still_pose(*, rgba, networks):
     if not people or sum(1 for p in people[0] if p[3] and p[2] >= 0.0) < 8:
         return None, details
     points = [list(p) for p in people[0]]
-    for _ in range(REFINE_PASSES):
-        box = next_body_box(points, (width, height))
+    for _ in range(refinement_passes):
+        box_builder = tracking_body_box if tracker_crop else next_body_box
+        box = box_builder(points, (width, height))
         if box is None:
             return None, details
         _, refine_roi = crop_layout_and_roi(box)
