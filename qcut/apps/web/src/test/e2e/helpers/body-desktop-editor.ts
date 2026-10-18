@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Page } from "@playwright/test";
-import type { MediaPortraitAdjustments } from "../../../../types/timeline";
+import type { MediaPortraitAdjustments } from "@/types/timeline";
 
 const execFileAsync = promisify(execFile);
 
