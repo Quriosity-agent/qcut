@@ -56,6 +56,10 @@ import {
 	hasMediaColorEdits,
 	normalizeMediaColorSettings,
 } from "@/lib/color/color-properties";
+import {
+	assertAdjustmentsPatchInRange,
+	assertColorPatchInRange,
+} from "@/lib/color/color-settings-merge";
 import { DEFAULT_MEDIA_ADJUSTMENTS } from "@/lib/video/video-properties";
 import { resolveColorFilterSettings } from "@/lib/filters/filter-resolver";
 import {
@@ -806,11 +810,15 @@ export function getClaudeAdjustmentFields({
 	// A partial grade from the CLI is stored complete: missing fields take
 	// the editor's defaults instead of leaving holes the renderer must guess.
 	if (isPlainObject(rawColor)) {
+		assertColorPatchInRange({ patch: rawColor as Record<string, unknown> });
 		fields.color = normalizeMediaColorSettings({
 			element: { color: rawColor as unknown as MediaColorSettings },
 		});
 	}
 	if (isPlainObject(rawAdjustments)) {
+		assertAdjustmentsPatchInRange({
+			patch: rawAdjustments as Partial<MediaAdjustments>,
+		});
 		fields.adjustments = {
 			...DEFAULT_MEDIA_ADJUSTMENTS,
 			...(rawAdjustments as Partial<MediaAdjustments>),
