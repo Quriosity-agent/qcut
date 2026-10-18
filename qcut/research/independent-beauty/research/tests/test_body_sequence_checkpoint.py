@@ -158,11 +158,25 @@ class SnapshotContract(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported'):
             checkpoint.restore(session=fake_session(), data=pickle.dumps({'version': 2}))
 
+    def test_engine_classes_are_imported_on_demand_in_a_fresh_process(self):
+        session = fake_session()
+        advance(session, frame=2)
+        data = checkpoint.capture(session=session)
+        # A worker that has rendered nothing yet has not imported the recovery module.
+        module = sys.modules.pop('body_face_recovery')
+        try:
+            checkpoint.restore(session=fake_session(), data=data)
+            self.assertIn('body_face_recovery', sys.modules)
+        finally:
+            sys.modules['body_face_recovery'] = module
+
     def test_only_numpy_pieces_and_engine_classes_are_admitted(self):
         refused = [pickle.dumps({'version': 1, 'call': os.system}),
                    # A class an engine module only imports, an engine function, a dotted attribute.
                    b'cbody_sequence_checkpoint\nPath\n.', b'cbody_sequence_checkpoint\ncapture\n.',
-                   b'calignment_sequence\nSequence.process\n.', b'cnot_an_imported_module\nThing\n.']
+                   b'calignment_sequence\nSequence.process\n.', b'cnot_an_imported_module\nThing\n.',
+                   # Importable, but not an engine module.
+                   b'cjson.decoder\nJSONDecoder\n.', b'cunittest.mock\nMock\n.']
         for data in refused:
             with self.subTest(data=data[:48]), self.assertRaises(pickle.UnpicklingError):
                 checkpoint.restore(session=fake_session(), data=data)
