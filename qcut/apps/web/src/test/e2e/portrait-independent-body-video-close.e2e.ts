@@ -183,6 +183,17 @@ test("independent smart body: 180 frames identical across export order, cache lo
 	let app: ElectronApplication = await startElectronApp({ userDataDirectory });
 	const errors: string[] = [];
 	const consoleErrors: string[] = [];
+	// An Electron exit during a stage would otherwise show only as a 900 s wait
+	// for an export file that never comes; record it with its time.
+	let closing = false;
+	const watchExit = (application: ElectronApplication) =>
+		application.process().once("exit", (code, signal) => {
+			if (!closing)
+				errors.push(
+					`Electron exited unexpectedly (code ${code}, signal ${signal}) at ${new Date().toISOString()}`
+				);
+		});
+	watchExit(app);
 	const checks: Record<string, boolean> = {};
 	const evidence: Record<string, unknown> = {
 		source: path.basename(source),
@@ -363,8 +374,11 @@ test("independent smart body: 180 frames identical across export order, cache lo
 		// 6. Restart the application: the stored project and the on-disk
 		// session must reproduce the frames — first from the frame cache, then
 		// with the cache emptied (checkpoint replay only).
+		closing = true;
 		await app.close();
+		closing = false;
 		app = await startElectronApp({ userDataDirectory });
+		watchExit(app);
 		page = await getMainWindow(app);
 		attach(page);
 		await openProjectInEditor({ page, projectId });
@@ -414,6 +428,7 @@ test("independent smart body: 180 frames identical across export order, cache lo
 		evidence.errors = errors;
 		evidence.consoleErrors = consoleErrors;
 		await persist();
+		closing = true;
 		await app.close();
 	}
 });
