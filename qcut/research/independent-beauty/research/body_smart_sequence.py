@@ -41,6 +41,17 @@ class BodySmartSequence:
         self.timestamp = None
         self.invalid = False
 
+    def restart(self):
+        """reset() for a new stream that keeps the networks, loading them when absent."""
+        loaded = self.skeleton, self.face, self.composition
+        self.reset()
+        if loaded[0] is None:
+            self._initialize()
+            return
+        for part in loaded:
+            part.reset()
+        self.skeleton, self.face, self.composition = loaded
+
     def _initialize(self):
         from body_composition import PersistentCombinedBody
         self.skeleton = BodySkeletonSequence(networks=load_networks(runtime=self.runtime))
