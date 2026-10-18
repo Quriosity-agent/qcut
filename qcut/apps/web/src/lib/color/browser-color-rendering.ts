@@ -21,6 +21,7 @@ import {
 } from "./jianying-local-effect-preview";
 import { renderJianyingPortraitAdjustmentPreview } from "@/lib/portrait/jianying-portrait-adjustment-preview";
 import { renderIndependentPortraitFrame } from "@/lib/portrait/independent-portrait-frame";
+import type { IndependentBodyVideoFrame } from "@/lib/portrait/independent-body-video";
 import type { PortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import type { IndependentPortraitSourceEvidenceReader } from "@/lib/portrait/independent-source-evidence";
 import {
@@ -174,6 +175,7 @@ async function portraitAdjustedSource({
 	timestampSeconds,
 	readPortraitSourcePreRoll,
 	readIndependentSourceEvidence,
+	independentBodyVideo,
 	portraitTemporalMode,
 	signal,
 }: {
@@ -186,6 +188,8 @@ async function portraitAdjustedSource({
 	timestampSeconds?: number;
 	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
 	readIndependentSourceEvidence?: IndependentPortraitSourceEvidenceReader;
+	/** The clip frame this source shows, when its body edit follows the clip's history. */
+	independentBodyVideo?: IndependentBodyVideoFrame;
 	signal?: AbortSignal;
 } & PortraitTemporalOptions): Promise<CanvasImageSource> {
 	if (!hasMediaPortraitAdjustments({ adjustments })) return source;
@@ -231,6 +235,7 @@ async function portraitAdjustedSource({
 					adjustments,
 					timestampSeconds,
 					readSourceEvidence: readIndependentSourceEvidence,
+					bodyVideo: independentBodyVideo,
 					signal,
 				})
 			: await renderJianyingPortraitAdjustmentPreview({
@@ -645,6 +650,7 @@ export async function drawColorGradedSourceStack({
 	portraitAdjustments,
 	readPortraitSourcePreRoll,
 	readIndependentSourceEvidence,
+	independentBodyVideo,
 	portraitTemporalMode,
 	signal,
 }: {
@@ -661,6 +667,7 @@ export async function drawColorGradedSourceStack({
 	portraitAdjustments?: MediaPortraitAdjustments;
 	readPortraitSourcePreRoll?: PortraitSourcePreRollReader;
 	readIndependentSourceEvidence?: IndependentPortraitSourceEvidenceReader;
+	independentBodyVideo?: IndependentBodyVideoFrame;
 	signal?: AbortSignal;
 } & PortraitTemporalOptions): Promise<void> {
 	const pixelWidth = Math.max(1, Math.round(Math.abs(width)));
@@ -675,6 +682,7 @@ export async function drawColorGradedSourceStack({
 		timestampSeconds,
 		readPortraitSourcePreRoll,
 		readIndependentSourceEvidence,
+		independentBodyVideo,
 		portraitTemporalMode,
 		signal,
 	}).catch((cause: unknown) => {
