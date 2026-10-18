@@ -4,6 +4,7 @@ import {
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
 	BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+	BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME,
 } from "./beauty-lab/beauty-lab-independent-contract.js";
 /**
  * Electron preload script that exposes a secure API to the renderer process.
@@ -315,6 +316,8 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_CANCEL, request),
 		renderIndependentFrame: (request) =>
 			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_RENDER_FRAME, request),
+		renderIndependentSequenceFrame: (request) =>
+			ipcRenderer.invoke(BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME, request),
 		inspectCandidate: () =>
 			ipcRenderer.invoke(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL),
 		renderCandidate: (request) =>

@@ -5,6 +5,8 @@ export const BEAUTY_LAB_INDEPENDENT_RENDER = "beauty-lab:render-independent";
 export const BEAUTY_LAB_INDEPENDENT_CANCEL = "beauty-lab:cancel-independent";
 export const BEAUTY_LAB_INDEPENDENT_RENDER_FRAME =
 	"beauty-lab:render-independent-frame";
+export const BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME =
+	"beauty-lab:render-independent-sequence-frame";
 export const BEAUTY_LAB_INDEPENDENT_PROVIDER = "qcut-independent-photo-v1";
 export const INDEPENDENT_BEAUTY_MAX_EDGE = 4096;
 export const INDEPENDENT_BEAUTY_MAX_PIXELS = 3840 * 2160;
@@ -34,6 +36,8 @@ export interface BeautyLabIndependentStatus {
 	makeupCards: string[];
 	/** Manual body tools the engine renders, e.g. ["stretch", "slim", "zoom"]; absent: none. */
 	manualBodyTools?: string[];
+	/** True when the runtime holds the body-video policy the engine pins: clip body edits then follow the clip's history. */
+	bodyVideo?: boolean;
 }
 /** The manual body tools the independent engine renders (editor ranges). */
 export interface BeautyLabIndependentManualBody {
@@ -91,6 +95,30 @@ export interface BeautyLabIndependentFrameResult {
 	/** True when the frame came from the disk cache instead of the engine. */
 	cached: boolean;
 }
+/**
+ * One frame of a clip's body-video session. `clip` names the clip's source
+ * and timing; `frame` counts the clip's frames from its first at `fps`, and
+ * frame k renders after frames 0..k-1 of the same session.
+ */
+export interface BeautyLabIndependentSequence {
+	clip: string;
+	frame: number;
+	fps: number;
+	/** Rebuilds history after a "replay" result: the cache is skipped so the engine advances. */
+	replay: boolean;
+}
+export interface BeautyLabIndependentSequenceFrameRequest
+	extends Omit<BeautyLabIndependentFrameRequest, "sourceEvidence"> {
+	sequence: BeautyLabIndependentSequence;
+}
+export type BeautyLabIndependentSequenceFrameResult =
+	| (BeautyLabIndependentFrameResult & { status: "rendered" })
+	| {
+			status: "replay";
+			requestId: string;
+			/** Submit frames `from`..frame-1 with `replay`, then ask for the frame again. */
+			from: number;
+	  };
 export interface BeautyLabIndependentAPI {
 	inspectIndependent?: () => Promise<BeautyLabIndependentStatus>;
 	renderIndependent?: (
@@ -102,4 +130,7 @@ export interface BeautyLabIndependentAPI {
 	renderIndependentFrame?: (
 		request: BeautyLabIndependentFrameRequest
 	) => Promise<BeautyLabIndependentFrameResult>;
+	renderIndependentSequenceFrame?: (
+		request: BeautyLabIndependentSequenceFrameRequest
+	) => Promise<BeautyLabIndependentSequenceFrameResult>;
 }

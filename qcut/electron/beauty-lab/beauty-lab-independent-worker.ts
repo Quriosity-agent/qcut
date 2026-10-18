@@ -4,10 +4,31 @@ import path from "node:path";
 import { StringDecoder } from "node:string_decoder";
 import { z } from "zod";
 
+const gapSchema = z
+	.object({ restartFrom: z.number().int().nonnegative() })
+	.strict();
 const replySchema = z.discriminatedUnion("ok", [
-	z.object({ id: z.string(), ok: z.literal(true) }).strict(),
 	z
-		.object({ id: z.string(), ok: z.literal(false), error: z.string() })
+		.object({
+			id: z.string(),
+			ok: z.literal(true),
+			sequence: z
+				.object({
+					nextFrame: z.number().int().nonnegative(),
+					resumed: z.string(),
+				})
+				.strict()
+				.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			id: z.string(),
+			ok: z.literal(false),
+			error: z.string(),
+			// A body-video frame whose history the worker lacks; the worker stays usable.
+			gap: gapSchema.optional(),
+		})
 		.strict(),
 ]);
 const MAX_MESSAGE_BYTES = 64 * 1024;
@@ -19,11 +40,22 @@ interface WorkerRequest {
 	output: string;
 	report: string;
 	source_evidence?: string;
+	sequence?: {
+		session: string;
+		frame: number;
+		timestamp: number;
+		checkpoints: string;
+	};
+}
+
+/** A rendered job, or the frame a body-video session must replay from. */
+export interface WorkerOutcome {
+	gap?: { restartFrom: number };
 }
 
 interface RunningRequest {
 	id: string;
-	resolve: () => void;
+	resolve: (outcome: WorkerOutcome) => void;
 	reject: (error: Error) => void;
 	cleanup: () => void;
 }
@@ -113,10 +145,13 @@ export function createIndependentBeautyWorker({
 					const pending = state.pending;
 					if (!pending || reply.id !== pending.id)
 						throw new Error("Independent worker response identity mismatch");
-					if (!reply.ok) throw new Error(reply.error);
+					let outcome: WorkerOutcome;
+					if (reply.ok) outcome = {};
+					else if (reply.gap) outcome = { gap: reply.gap };
+					else throw new Error(reply.error);
 					state.pending = undefined;
 					pending.cleanup();
-					pending.resolve();
+					pending.resolve(outcome);
 					diagnostic = "";
 					diagnosticBytes = 0;
 					state.idle = setTimeout(() => {
@@ -178,7 +213,7 @@ export function createIndependentBeautyWorker({
 		environment: NodeJS.ProcessEnv;
 		signal: AbortSignal;
 		timeoutMs: number;
-	}) {
+	}): Promise<WorkerOutcome> {
 		if (disposed || busy)
 			throw new Error("Independent worker busy or disposed");
 		signal.throwIfAborted();
@@ -200,7 +235,7 @@ export function createIndependentBeautyWorker({
 			if (disposed) throw new Error("Independent worker disposed");
 			const state = current ?? start({ identity, environment });
 			clearTimeout(state.idle);
-			await new Promise<void>((resolve, reject) => {
+			return await new Promise<WorkerOutcome>((resolve, reject) => {
 				const abort = () =>
 					stop({ state, error: new Error("Independent beauty cancelled") });
 				const timer = setTimeout(() => {

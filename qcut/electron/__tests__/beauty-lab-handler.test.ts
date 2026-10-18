@@ -485,7 +485,7 @@ describe("Beauty Lab IPC", () => {
 		await Promise.resolve();
 		expect(candidateProvider.dispose).toHaveBeenCalledOnce();
 		expect(settled).toBe(false);
-		expect(registrations.size).toBe(stale ? 9 : 0);
+		expect(registrations.size).toBe(stale ? 10 : 0);
 		finish();
 		await disposal;
 		expect(settled).toBe(true);
@@ -565,6 +565,16 @@ describe("independent Beauty Lab IPC", () => {
 		await expect(
 			invoke({ channel: BEAUTY_LAB_INDEPENDENT_RENDER, event, request: {} })
 		).rejects.toThrow("owned-only");
+		// A session frame carries a checkpoint folder: the photo channel never forwards one.
+		const photoRenders = owned.render.mock.calls.length;
+		await expect(
+			invoke({
+				channel: BEAUTY_LAB_INDEPENDENT_RENDER,
+				event,
+				request: { requestId: "clip", sequence: { checkpoints: "/" } },
+			})
+		).rejects.toThrow("sequence-frame channel");
+		expect(owned.render).toHaveBeenCalledTimes(photoRenders);
 		expect(
 			await invoke({
 				channel: BEAUTY_LAB_INDEPENDENT_CANCEL,

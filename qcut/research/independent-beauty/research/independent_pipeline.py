@@ -1,6 +1,8 @@
 """Execute a canonical, original-derived chain of independent photo renderers."""
 import argparse
 import ast
+from collections import OrderedDict
+import copy
 import hashlib
 import json
 import math
@@ -25,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 1024 * 1024
 MAX_RECEIPT_BYTES = 16 * 1024 * 1024
 MAX_STAGES = 64
+PLAN_CACHE_LIMIT = 64
 TRANSPORT_FLAGS = {'--image', '--rgba', '--width', '--height', '--runtime', '--output',
                    '--report', '--points', '--assets', '--shape-assets', '--max-edge', '--resolution', '--face-reference', '--source-evidence'}
 FORBIDDEN_IMAGE_TOKENS = ('libcccreator', 'libbytenn', 'liblens', 'libagfx',
@@ -232,6 +235,26 @@ def canonical_plan(*, request, directory, environment):
     return parse_json(data=process.stdout), command
 
 
+def cached_canonical_plan(*, cache, request, directory, environment, sources):
+    """`canonical_plan`, remembered per request while the catalog and planner are unchanged.
+
+    The resident worker plans each frame of a clip from the same request; the
+    planner is a Bun subprocess, so the remembered plan saves its start per frame.
+    """
+    if cache is None:
+        return canonical_plan(request=request, directory=directory, environment=environment)
+    key = (json.dumps(request, sort_keys=True, ensure_ascii=False, allow_nan=False),
+           tuple(sorted(sources.items())), environment.get(RESOLUTION_ENV))
+    if key in cache:
+        cache.move_to_end(key)
+    else:
+        cache[key] = canonical_plan(request=request, directory=directory, environment=environment)
+        while len(cache) > PLAN_CACHE_LIMIT:
+            cache.popitem(last=False)
+    plan, command = cache[key]
+    return copy.deepcopy(plan), list(command)
+
+
 def renderer_arguments(*, script, runtime):
     source = ROOT / 'research' / script
     if not source.is_file() or source.resolve().parent != (ROOT / 'research').resolve():
@@ -289,7 +312,7 @@ def _publish(*, png, receipt, output, report):
 
 
 def run(*, image, runtime, output, report, plan=None, request=None, resolution='preview',
-        stage_runner=None, runtime_receipt=None, source_evidence=None):
+        stage_runner=None, runtime_receipt=None, source_evidence=None, plan_cache=None):
     started = time.monotonic()
     if (plan is None) == (request is None):
         raise ValueError('provide exactly one plan or request JSON file')
@@ -318,8 +341,9 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
     rows = []
     with tempfile.TemporaryDirectory(prefix='independent-pipeline-', dir=output.parent) as temporary:
         directory = Path(temporary)
-        canonical, planner_command = canonical_plan(request=supplied['adjustments'] if plan is not None else supplied,
-                                                    directory=directory, environment=environment)
+        canonical, planner_command = cached_canonical_plan(
+            cache=plan_cache, request=supplied['adjustments'] if plan is not None else supplied,
+            directory=directory, environment=environment, sources=sources)
         validate_plan(plan=canonical, scripts=scripts)
         if plan is not None and not _same_json(left=canonical, right=supplied):
             raise ValueError('supplied plan differs from the canonical independent plan')

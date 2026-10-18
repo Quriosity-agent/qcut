@@ -47,6 +47,7 @@ export function independentFrameCacheKey({
 	manualBody,
 	rgba,
 	sourceEvidenceSha256,
+	sequence,
 }: {
 	engineSha256: string;
 	width: number;
@@ -57,6 +58,8 @@ export function independentFrameCacheKey({
 	manualBody?: IndependentManualBody;
 	rgba: Uint8Array;
 	sourceEvidenceSha256?: string;
+	/** A body-video frame: its session and frame index; absent keeps still-frame keys unchanged. */
+	sequence?: { session: string; frame: number };
 }) {
 	const sorted = <T>(record: Record<string, T>) =>
 		Object.entries(record).sort(([left], [right]) =>
@@ -79,6 +82,7 @@ export function independentFrameCacheKey({
 				...(manualBody && Object.keys(manualBody).length > 0
 					? { manualBody: independentManualBodyKeyEntries({ manualBody }) }
 					: {}),
+				...(sequence ? { sequence: [sequence.session, sequence.frame] } : {}),
 			})
 		)
 		.update("\0")

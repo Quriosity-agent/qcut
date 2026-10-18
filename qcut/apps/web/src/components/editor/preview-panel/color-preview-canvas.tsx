@@ -15,6 +15,12 @@ import {
 	colorPreviewCanvasSize,
 	portraitPreviewCanvasSize,
 } from "@/lib/color/color-preview-resolution";
+import {
+	type IndependentBodyVideoClip,
+	independentBodyVideoApplies,
+	independentBodyVideoCapability,
+	independentBodyVideoFrameIndex,
+} from "@/lib/portrait/independent-body-video";
 import { portraitPreviewSourceKey } from "@/lib/portrait/portrait-preview-source-key";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import { cn } from "@/lib/utils";
@@ -50,6 +56,7 @@ export function ColorPreviewCanvas({
 	additionalLayers = [],
 	portraitAdjustments,
 	portraitRenderSize,
+	bodyVideoClip,
 }: {
 	sourceSelector: string;
 	settings: MediaColorSettings;
@@ -60,10 +67,15 @@ export function ColorPreviewCanvas({
 	additionalLayers?: BrowserColorGradeLayer[];
 	portraitAdjustments?: MediaPortraitAdjustments;
 	portraitRenderSize?: { width: number; height: number };
+	/** The video clip and timeline time shown, so an independent body edit renders with the clip's history. */
+	bodyVideoClip?: IndependentBodyVideoClip & { timelineTime: number };
 }) {
 	const portraitWidth = portraitRenderSize?.width;
 	const portraitHeight = portraitRenderSize?.height;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	// Read at draw time: the clip's time moves without re-running the draw effect.
+	const bodyVideoClipRef = useRef(bodyVideoClip);
+	bodyVideoClipRef.current = bodyVideoClip;
 	const renderTailRef = useRef<Promise<void>>(Promise.resolve());
 	const [independentPending, setIndependentPending] = useState(false);
 	const colorPickerActive = useColorPickerStore((state) => state.active);
@@ -275,6 +287,25 @@ export function ColorPreviewCanvas({
 									fit: prepared.preRollFit,
 								})
 							: undefined;
+					const clip = bodyVideoClipRef.current;
+					const independentBodyVideo =
+						clip &&
+						source instanceof HTMLVideoElement &&
+						independentBodyVideoApplies({
+							adjustments: framePortrait,
+							mediaType: clip.mediaItem.type,
+							fps: clip.fps,
+						}) &&
+						(await independentBodyVideoCapability())
+							? {
+									clip,
+									frame: independentBodyVideoFrameIndex({
+										clip,
+										timelineTime: clip.timelineTime,
+									}),
+								}
+							: undefined;
+					if (cancelled || frameSignal.aborted) return;
 					const rendered = document.createElement("canvas");
 					rendered.width = canvas.width;
 					rendered.height = canvas.height;
@@ -302,6 +333,9 @@ export function ColorPreviewCanvas({
 							timestampSeconds,
 							portraitAdjustments: adjustments,
 							readPortraitSourcePreRoll,
+							independentBodyVideo: adjustments
+								? independentBodyVideo
+								: undefined,
 							signal: frameSignal,
 						});
 					if (framePortrait?.engine !== "independent") {

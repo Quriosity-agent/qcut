@@ -82,6 +82,11 @@ import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { resolveAlphaPlaybackProxyUrl } from "@/lib/media/alpha-playback-proxy";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
+import {
+	independentBodyVideoApplies,
+	independentBodyVideoCapability,
+	independentBodyVideoFrameIndex,
+} from "@/lib/portrait/independent-body-video";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
 import { createIndependentSourceEvidenceReader } from "@/lib/portrait/independent-source-evidence";
 import { canUseNativePortraitSourceWindow } from "@/lib/portrait/portrait-temporal-policy";
@@ -1157,6 +1162,29 @@ async function renderVideoAttempt(
 								: url,
 					})
 				: undefined;
+		// A body edit on a video clip follows the clip's history: the frame is
+		// rendered after the clip's earlier frames, as the paused preview does.
+		const bodyVideoClip = {
+			element: mediaElement,
+			mediaItem,
+			fps: context.fps,
+		};
+		const independentBodyVideo =
+			(mediaElement.enhancements?.stabilization ?? 0) === 0 &&
+			independentBodyVideoApplies({
+				adjustments: visual.portraitAdjustments,
+				mediaType: mediaItem.type,
+				fps: context.fps,
+			}) &&
+			(await independentBodyVideoCapability())
+				? {
+						clip: bodyVideoClip,
+						frame: independentBodyVideoFrameIndex({
+							clip: bodyVideoClip,
+							timelineTime: element.startTime + timeOffset,
+						}),
+					}
+				: undefined;
 		const drawVideo = () =>
 			exportProfiler.time("video-draw", async () =>
 				drawPortraitExportFrame({
@@ -1193,6 +1221,7 @@ async function renderVideoAttempt(
 											: "recovery",
 									readPortraitSourcePreRoll,
 									readIndependentSourceEvidence,
+									independentBodyVideo,
 									signal: context.signal,
 									frameSeed: Math.round(
 										(element.startTime + timeOffset) * context.fps

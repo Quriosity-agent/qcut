@@ -462,8 +462,8 @@
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 25897,
-			"sha256": "0161b64d045fadf8b05af74d1e1209af3e230f5ddb2ecb581f1818dcf808a144",
+			"bytes": 26940,
+			"sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -1230,8 +1230,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_pipeline.py",
-			"bytes": 23730,
-			"sha256": "a632ab5aeaf46fbd7af1b781fe974478b16cfa63dc0aabb4a48abf7d50a26fda",
+			"bytes": 24900,
+			"sha256": "38bec6c7b190cd922131fb2a1f7b756a5431e04ba0228bcfe052fd5198bbfafb",
 			"sourceSha256": "e12057a20f376c07db392705a8eb7f50c512ddb577327ff4d01199cfbcffc967"
 		},
 		{
@@ -1589,8 +1589,8 @@
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 4346,
-			"sha256": "af4ec7b12c47768bef7ae614ffb4c21f0d71f9af2145d72b8fa0bedf2231e537"
+			"bytes": 6056,
+			"sha256": "dd194d03fd7ee26bc32e4849e72915b0c0ea4500a36a22d91c0b8c50d7351710"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -1604,8 +1604,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_worker.py",
-			"bytes": 10914,
-			"sha256": "469b9f5b43a53a5b990102ec76e04e6646cad623fa6cec211b0c9bf4c121b593"
+			"bytes": 18346,
+			"sha256": "a15ade7747aecd9e3c474958ffa55e2495a37e2ecd492e490a7e2695eb0a32dc"
 		},
 		{
 			"path": "research/tests/test_metal_original_resolution.py",
@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 6710,
-			"sha256": "ba6d93f5e6cc64f1ad4909511954cc76841feb306f5dc8b468524b0991afc9d0"
+			"bytes": 7818,
+			"sha256": "985d8895c90426d3b41ff9a4bd5066aa0da711a364382a31f1fa8ac7bdd5f71f"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2289,8 +2289,8 @@
 		},
 		{
 			"path": "research/body_video_face_sequence.py",
-			"bytes": 4911,
-			"sha256": "c6297d2f2a1cc6b68542c5975ed14b2de7cd6e6858de0f3a9191a84bbf27ce17"
+			"bytes": 5413,
+			"sha256": "4e67d4f15024f0073f118ffed584a85fd9ae2361412461eb0117c1549429e174"
 		},
 		{
 			"path": "research/manual_body_zoom_geometry.py",
@@ -2354,13 +2354,13 @@
 		},
 		{
 			"path": "research/tests/test_body_smart_sequence.py",
-			"bytes": 5179,
-			"sha256": "0fde98ce4b0ec842311a9abf66ef9851471baefaf505b49ec818b919bcb6d968"
+			"bytes": 6858,
+			"sha256": "101e5ec85592f70a1359e2faa661e46479bbf85b9c10331b15f40ed6a7d5595e"
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
-			"bytes": 6293,
-			"sha256": "81cefcdfea86e166b0208605f2d65ab513e3ded5859ee299182f59f2ddb110b0"
+			"bytes": 6939,
+			"sha256": "4daa87e3af7ec0a91b01c052600b011be61bb565c8927e250fb61d65a57e186a"
 		},
 		{
 			"path": "research/tests/test_manual_body_zoom_geometry.py",
@@ -2371,6 +2371,31 @@
 			"path": "src/independent-smart-body-plan.test.ts",
 			"bytes": 3100,
 			"sha256": "79c733ae0c30eafa7099c682cbb8e00674669b13d43f93fabeb5a1f2b6fc7c95"
+		},
+		{
+			"path": "research/body_sequence_checkpoint.py",
+			"bytes": 4967,
+			"sha256": "3579b3b227c11e37ceca49bfef6059bfc9130287f3ad8e1f08aab8c7c0cd38b1"
+		},
+		{
+			"path": "research/independent_sequence_sessions.py",
+			"bytes": 10047,
+			"sha256": "b3f5823b0ac263cdddb1b2b1b3bbde223c8578758b5700db62cee1db27543f74"
+		},
+		{
+			"path": "research/tests/test_body_sequence_checkpoint.py",
+			"bytes": 10182,
+			"sha256": "47e2389facac5f55b73b7c8efc29676a16005b19abe27e4e38f2b905eae76417"
+		},
+		{
+			"path": "research/tests/test_independent_sequence_sessions.py",
+			"bytes": 11893,
+			"sha256": "3f83f0da359f52772a974ae56ad915a40fd1e9057b4ac9452e5e144e5f6a1dbe"
+		},
+		{
+			"path": "research/tests/test_body_sequence_scenarios.py",
+			"bytes": 4881,
+			"sha256": "43a41a2a689a896cd3e8cbe1691a009e7e98ae1cac535feea6713023f15e741f"
 		}
 	],
 	"importPatches": [
@@ -2999,6 +3024,13 @@
 				"src/independent-smart-body-plan.test.ts"
 			],
 			"reason": "Owned body temporal research: explicit persistent single-person mode2 session, native missing-leg tracker crop, video classification and same-frame redetection lifecycle, bounded replay/cancellation contract, optional exact ONNX integer interpreter, and native-rule finite manual zoom mesh. Numeric CPU probes and original renderer comparisons are private evidence; source contains no vendor binaries, shaders, weights, model policy tables, or recorded landmarks. The production photo runner retains its accepted eight same-image updates; the cold body_smart_candidate and namespaced temporal modules remain explicit research APIs; the optional video policy is required only by the explicit sequence API. Manual zoom uses only owned numeric code and public Metal."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/tests/test_independent_pipeline.py"
+			],
+			"reason": "Remember the canonical plan per request and resolution while the catalog and planner hashes are unchanged, so the resident worker plans a clip's frames once instead of starting the Bun planner per frame; plans are handed out as copies and the hash chain, stage order and receipts are unchanged"
 		}
 	],
 	"sourceWorkingTreeStatus": [

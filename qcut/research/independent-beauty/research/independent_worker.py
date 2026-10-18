@@ -1,5 +1,11 @@
-"""Serial JSONL renderer retaining only imports and stateless CPU model sessions."""
+"""Serial JSONL renderer retaining imports, stateless CPU model sessions and body-video histories.
+
+A request with `sequence` renders frame `frame` of a body-video session
+(independent_sequence_sessions). When the session's history does not reach that frame the
+reply is not ok and names the frame to replay from; the worker itself stays usable.
+"""
 import argparse
+from collections import OrderedDict
 from contextlib import redirect_stdout
 import json
 import os
@@ -9,6 +15,7 @@ import sys
 from PIL import Image
 
 from independent_pipeline import clean_environment, parse_json, run
+from independent_sequence_sessions import SequenceGap, SequenceSessions, validate_sequence
 from independent_session_cache import SessionCache, reuse_sessions
 from independent_stage_runner import run_stage
 from render_resolution import RESOLUTION_ENV, resolution_mode
@@ -21,7 +28,8 @@ REQUEST_PATHS = ('image', 'request', 'output', 'report')
 
 def validate_request(*, request):
     if (not isinstance(request, dict)
-            or not {'id', *REQUEST_PATHS} <= set(request) <= {'id', *REQUEST_PATHS, 'resolution', 'source_evidence'}):
+            or not {'id', *REQUEST_PATHS} <= set(request) <= {'id', *REQUEST_PATHS, 'resolution', 'source_evidence',
+                                                             'sequence'}):
         raise ValueError('resident request requires id and four explicit paths')
     identifier = request['id']
     if not isinstance(identifier, str) or not 1 <= len(identifier) <= 128 or any(ord(char) < 32 for char in identifier):
@@ -32,6 +40,8 @@ def validate_request(*, request):
             raise ValueError('bounded absolute resident paths required')
     if 'resolution' in request:
         resolution_mode(mode=request['resolution'])
+    if 'sequence' in request:
+        validate_sequence(sequence=request['sequence'])
     return request
 
 
@@ -42,7 +52,7 @@ def request_resolution(*, request):
         return 'original' if max(source.size) > 1280 else 'preview'
 
 
-def serve(*, runtime, input_stream, output_stream, render=run):
+def serve(*, runtime, input_stream, output_stream, render=run, sessions=SequenceSessions):
     runtime = Path(runtime).resolve(strict=True)
     if not runtime.is_dir():
         raise ValueError('runtime directory required')
@@ -50,6 +60,8 @@ def serve(*, runtime, input_stream, output_stream, render=run):
     os.environ.clear()
     os.environ.update(environment)
     cache = SessionCache()
+    sessions = sessions(runtime=runtime)
+    plans = OrderedDict()
     completed = 0
     with reuse_sessions(cache=cache):
         while True:
@@ -63,15 +75,28 @@ def serve(*, runtime, input_stream, output_stream, render=run):
                 request = validate_request(request=parse_json(data=line, limit=MAX_REQUEST_BYTES))
                 mode = request_resolution(request=request)
                 os.environ[RESOLUTION_ENV] = mode
+                sequence, stage_runner = request.get('sequence'), run_stage
+                if sequence is not None:
+                    resumed = sessions.prepare(session=sequence['session'], frame=sequence['frame'],
+                                               checkpoints=sequence['checkpoints'])
+                    stage_runner = sessions.stage_runner(sequence=sequence, resumed=resumed, fallback=run_stage)
                 with redirect_stdout(sys.stderr):
                     render(image=request['image'], request=request['request'], runtime=runtime,
                            output=request['output'], report=request['report'], resolution=mode,
-                           stage_runner=run_stage,
+                           stage_runner=stage_runner, plan_cache=plans,
                            **({'source_evidence': Path(request['source_evidence'])} if 'source_evidence' in request else {}),
                            runtime_receipt=lambda: {'pid': os.getpid(), 'completedJobsBefore': completed,
-                                                    'sessionCache': cache.snapshot()})
+                                                    'sessionCache': cache.snapshot(), 'plansRemembered': len(plans),
+                                                    'bodySessions': sessions.snapshot()})
+                if sequence is not None and not stage_runner.rendered:
+                    raise ValueError('a body video frame requires the smart-body stage')
                 completed += 1
                 response = {'id': request['id'], 'ok': True}
+                if sequence is not None:
+                    response['sequence'] = {'nextFrame': sessions.engine.next_frame, 'resumed': resumed}
+            except SequenceGap as gap:
+                response = {'id': request['id'], 'ok': False, 'error': f'SequenceGap: {gap}',
+                            'gap': {'restartFrom': gap.restart_from}}
             except (Exception, SystemExit) as error:
                 identifier = request.get('id') if isinstance(request, dict) else None
                 if not isinstance(identifier, str) or len(identifier) > 128:
