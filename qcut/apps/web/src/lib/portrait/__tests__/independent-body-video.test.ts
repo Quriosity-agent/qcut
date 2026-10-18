@@ -161,6 +161,7 @@ describe("independent body video frame driver", () => {
 		height = 1;
 	let render: ReturnType<typeof vi.fn>;
 	let inspect: ReturnType<typeof vi.fn>;
+	let cancelIndependent: ReturnType<typeof vi.fn>;
 	const decoded: number[] = [];
 	const decoder: ReturnType<typeof createIndependentBodyVideoDecoder> = {
 		frame: vi.fn(async ({ frame }: { frame: number }) => {
@@ -189,12 +190,14 @@ describe("independent body video frame driver", () => {
 			rendered(request)
 		);
 		inspect = vi.fn(async () => ({ available: true, bodyVideo: true }));
+		cancelIndependent = vi.fn(async () => ({ cancelled: true }));
 		Object.defineProperty(window, "electronAPI", {
 			configurable: true,
 			value: {
 				beautyLab: {
 					renderIndependentSequenceFrame: render,
 					inspectIndependent: inspect,
+					cancelIndependent,
 				},
 			},
 		});
@@ -357,6 +360,23 @@ describe("independent body video frame driver", () => {
 			})
 		).rejects.toThrow();
 		expect(render).toHaveBeenCalledTimes(1);
+		// The waiting request is withdrawn from the engine queue by its id.
+		const [request] = render.mock.calls[0] as [
+			BeautyLabIndependentSequenceFrameRequest,
+		];
+		expect(cancelIndependent).toHaveBeenCalledWith({
+			requestId: request.requestId,
+		});
+		cancelIndependent.mockClear();
+		await renderIndependentBodyVideoFrame({
+			frame: { clip, frame: 1 },
+			width,
+			height,
+			adjustments,
+			signal: new AbortController().signal,
+			createDecoder,
+		});
+		expect(cancelIndependent).not.toHaveBeenCalled();
 		render.mockImplementationOnce(
 			async (request: BeautyLabIndependentSequenceFrameRequest) => ({
 				...rendered(request),
