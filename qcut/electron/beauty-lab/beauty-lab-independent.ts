@@ -198,6 +198,7 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime = verifyIndependentBeautyRuntime,
 	verifyEnvironment = verifyIndependentBeautyEnvironment,
 	createWorker = createIndependentBeautyWorker,
+	sessionsDirectory,
 }: {
 	engineRoot: string;
 	runtimeRoot?: string;
@@ -208,6 +209,8 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 	createWorker?: typeof createIndependentBeautyWorker;
+	/** Session frames keep their checkpoints below this folder only; absent, none render. */
+	sessionsDirectory?: string;
 }) {
 	const worker = createWorker({
 		python,
@@ -350,6 +353,15 @@ export function createBeautyLabIndependentProvider({
 			};
 		}
 	}
+	function insideSessions({ checkpoints }: { checkpoints: string }) {
+		if (!sessionsDirectory) return false;
+		const relative = path.relative(sessionsDirectory, checkpoints);
+		return (
+			relative !== "" &&
+			!relative.startsWith("..") &&
+			!path.isAbsolute(relative)
+		);
+	}
 	async function render({
 		request,
 	}: {
@@ -358,6 +370,10 @@ export function createBeautyLabIndependentProvider({
 		if (active || disposed)
 			throw new Error("Independent engine busy or disposed");
 		const input = structuredClone(requestSchema.parse(request));
+		if (input.sequence && !insideSessions(input.sequence))
+			throw new Error(
+				"Independent body video checkpoints must live in the sessions folder"
+			);
 		let finish = () => {};
 		const job = {
 			id: input.requestId,
