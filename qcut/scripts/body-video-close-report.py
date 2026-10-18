@@ -192,6 +192,22 @@ def load_invariance(*, path):
     return record
 
 
+def cross_run(*, invariance_dir, independent_frames, width, height):
+    """The invariance run's own sequential export against the three-way independent
+    export: a separate project, process and export dialog on the same clip."""
+    sequential = invariance_dir / "export-sequential.mp4"
+    if not sequential.exists():
+        return None
+    frames = list(VIDEO.rgb_frames(path=sequential, width=width, height=height))
+    if len(frames) != len(independent_frames):
+        return {"frames": len(frames), "comparable": False}
+    rows = pair_series(reference_frames=independent_frames, candidate_frames=frames)
+    identical = sum(1 for row in rows if row["max_abs_rgb"] == 0)
+    return {"frames": len(frames), "comparable": True, "identical_frames": identical,
+            "mean_abs_rgb": float(np.mean([row["mean_abs_rgb"] for row in rows])),
+            "max_abs_rgb": max(row["max_abs_rgb"] for row in rows)}
+
+
 def badge(*, passed):
     return PNG.parity_badge(passed=passed)
 
@@ -241,7 +257,16 @@ def write_page(*, output, report, lock):
     if invariance:
         checks = "".join(f'<li>{html.escape(name)}：{badge(passed=bool(result))}</li>'
                          for name, result in invariance.get("checks", {}).items())
-        invariance_html = (f'<h2>操作不变性（第 4 步）</h2><ul>{checks}</ul>'
+        cross = invariance.get("cross_run")
+        if cross and cross.get("comparable"):
+            cross_html = (f'<p>跨工程复现：不变性 E2E 的顺序导出 vs 三方对照的自研导出（另一个工程、另一次进程、另一个导出对话框）：'
+                          f'{cross["identical_frames"]}/{cross["frames"]} 帧逐像素相同，'
+                          f'均值 {cross["mean_abs_rgb"]:.3f}，最大 {cross["max_abs_rgb"]} 色阶。</p>')
+        elif cross:
+            cross_html = f'<p>跨工程复现：帧数不同（{cross["frames"]}），未比较。</p>'
+        else:
+            cross_html = ""
+        invariance_html = (f'<h2>操作不变性（第 4 步）</h2><ul>{checks}</ul>{cross_html}'
                            f'<p><a href="{html.escape(invariance["source"])}">E2E 记录</a></p>')
     (output / "index.html").write_text(f'''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>单人动态美体闭环对照</title>
@@ -356,7 +381,9 @@ def build(*, evidence, lock, invariance_dir, output):
     if invariance_dir is not None:
         inv = load_invariance(path=invariance_dir)
         invariance = {"source": str(Path(invariance_dir).resolve() / "e2e-evidence.json"), "checks": inv.get("checks", {}),
-                      "record": inv}
+                      "record": inv,
+                      "cross_run": cross_run(invariance_dir=Path(invariance_dir), independent_frames=frames_by_mode["independent"],
+                                             width=width, height=height)}
 
     parity_ok = bool(parity) and all(summary["passed"] for summary in parity.values())
     tracking_ok = all(not summary["frames_without_effect"] for summary in effects.values())
