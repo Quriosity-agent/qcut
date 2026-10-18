@@ -1,8 +1,8 @@
 """Exact snapshots of a body-video session, so a seek resumes from a checkpoint.
 
 A snapshot holds the session's history and none of its models: the skeleton's
-tracking points, the video face's tracking, recovery and roll state, the
-persistent ten-part geometry and the frame clock, about 50 KB for a 1080p
+tracking points, each video face slot's tracking and roll, recovery state, the
+persistent ten-part geometry and the frame clock, about 50 KB for a one-face 1080p
 stream. Restoring the snapshot taken after frame n into a session (which keeps
 or loads its networks) and processing frame n + 1 gives the bytes that
 processing frames 0..n + 1 in one session gives.
@@ -18,12 +18,14 @@ import pickle
 import sys
 
 from alignment_sequence import Sequence
+from body_face_slots import FACE_SLOT_COUNT, BodyFaceSlot
 
-SNAPSHOT_VERSION = 1
+SNAPSHOT_VERSION = 2
 ENGINE_ROOT = Path(__file__).resolve().parent
 # Model handles and per-frame diagnostics; everything else an object holds is history.
 SKELETON_HANDLES = frozenset({'networks', 'last_debug'})
-FACE_HANDLES = frozenset({'root', 'policy', 'detector', 'models', 'assets', 'attempts', 'engine'})
+FACE_HANDLES = frozenset({'root', 'policy', 'detector', 'models', 'assets', 'attempts', 'engine', 'slots'})
+FACE_SLOT_HANDLES = frozenset({'engine'})
 FACE_ENGINE_HANDLES = frozenset({'models'})
 NUMPY_PIECES = frozenset({
     ('numpy', 'dtype'), ('numpy', 'ndarray'),
@@ -69,6 +71,23 @@ def _assign(*, owner, state):
         setattr(owner, key, value)
 
 
+def _capture_slot(*, slot):
+    return {'history': _history(owner=slot, handles=FACE_SLOT_HANDLES),
+            'engine': None if slot.engine is None else _history(owner=slot.engine, handles=FACE_ENGINE_HANDLES)}
+
+
+def _restore_slot(*, state, models):
+    slot = BodyFaceSlot.__new__(BodyFaceSlot)
+    _assign(owner=slot, state=state['history'])
+    slot.engine = None
+    if state['engine'] is not None:
+        engine = Sequence.__new__(Sequence)
+        _assign(owner=engine, state=state['engine'])
+        engine.models = models.copy()
+        slot.engine = engine
+    return slot
+
+
 def capture(*, session):
     """The session's history as bytes; an incomplete session has none."""
     if session.invalid:
@@ -77,11 +96,12 @@ def capture(*, session):
                 'clock': {'stream': session.stream, 'size': session.size,
                           'next_frame': session.next_frame, 'timestamp': session.timestamp}}
     if snapshot['initialized']:
-        engine = session.face.engine
+        if len(session.face.slots) != FACE_SLOT_COUNT:
+            raise ValueError('five face slots required for a body snapshot')
         snapshot.update(
             skeleton=_history(owner=session.skeleton, handles=SKELETON_HANDLES),
             face=_history(owner=session.face, handles=FACE_HANDLES),
-            face_engine=None if engine is None else _history(owner=engine, handles=FACE_ENGINE_HANDLES),
+            face_slots=[_capture_slot(slot=slot) for slot in session.face.slots],
             composition=_history(owner=session.composition, handles=frozenset()))
     # One pickle keeps references shared between the objects shared after restore.
     return pickle.dumps(snapshot, protocol=pickle.HIGHEST_PROTOCOL)
@@ -92,16 +112,16 @@ def restore(*, session, data):
     snapshot = SnapshotUnpickler(io.BytesIO(data)).load()
     if not isinstance(snapshot, dict) or snapshot.get('version') != SNAPSHOT_VERSION:
         raise ValueError('unsupported body session snapshot')
+    if snapshot.get('initialized'):
+        slots = snapshot.get('face_slots')
+        if not isinstance(slots, list) or len(slots) != FACE_SLOT_COUNT:
+            raise ValueError('five face slots required for a body snapshot')
     session.restart()
     if snapshot['initialized']:
         _assign(owner=session.skeleton, state=snapshot['skeleton'])
         _assign(owner=session.face, state=snapshot['face'])
-        session.face.engine = None
-        if snapshot['face_engine'] is not None:
-            engine = Sequence.__new__(Sequence)
-            _assign(owner=engine, state=snapshot['face_engine'])
-            engine.models = session.face.models.copy()
-            session.face.engine = engine
+        session.face.slots = [_restore_slot(state=state, models=session.face.models)
+                              for state in snapshot['face_slots']]
         _assign(owner=session.composition, state=snapshot['composition'])
     clock = snapshot['clock']
     session.stream, session.size = clock['stream'], clock['size']
