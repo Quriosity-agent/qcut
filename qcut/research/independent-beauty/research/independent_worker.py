@@ -5,6 +5,7 @@ A request with `sequence` renders frame `frame` of a body-video session
 reply is not ok and names the frame to replay from; the worker itself stays usable.
 """
 import argparse
+from collections import OrderedDict
 from contextlib import redirect_stdout
 import json
 import os
@@ -60,6 +61,7 @@ def serve(*, runtime, input_stream, output_stream, render=run, sessions=Sequence
     os.environ.update(environment)
     cache = SessionCache()
     sessions = sessions(runtime=runtime)
+    plans = OrderedDict()
     completed = 0
     with reuse_sessions(cache=cache):
         while True:
@@ -81,10 +83,10 @@ def serve(*, runtime, input_stream, output_stream, render=run, sessions=Sequence
                 with redirect_stdout(sys.stderr):
                     render(image=request['image'], request=request['request'], runtime=runtime,
                            output=request['output'], report=request['report'], resolution=mode,
-                           stage_runner=stage_runner,
+                           stage_runner=stage_runner, plan_cache=plans,
                            **({'source_evidence': Path(request['source_evidence'])} if 'source_evidence' in request else {}),
                            runtime_receipt=lambda: {'pid': os.getpid(), 'completedJobsBefore': completed,
-                                                    'sessionCache': cache.snapshot(),
+                                                    'sessionCache': cache.snapshot(), 'plansRemembered': len(plans),
                                                     'bodySessions': sessions.snapshot()})
                 if sequence is not None and not stage_runner.rendered:
                     raise ValueError('a body video frame requires the smart-body stage')
