@@ -99,6 +99,22 @@ class BodySequenceContract(unittest.TestCase):
         self.assertEqual(self.skeletons[0].update.call_count, 2)
         self.assertEqual(self.skeletons[1].update.call_count, 1)
 
+    def test_several_bodies_while_seeding_keep_the_frame_and_the_session(self):
+        self.frame()
+        self.engine.skeleton.update.side_effect = module.AmbiguousBodyFrame('two people')
+        result, receipt = self.frame(index=1)
+        np.testing.assert_array_equal(result, self.rgba)
+        self.assertFalse(receipt['bodyReported'])
+        self.assertTrue(receipt['skeleton']['state']['ambiguous'])
+        self.assertIn('several bodies', receipt['reason'])
+        self.assertFalse(self.engine.invalid)
+        self.assertEqual(self.engine.next_frame, 2)
+        self.assertEqual(self.engine.face.update.call_count, 2)
+        self.engine.composition.update.assert_not_called()
+        self.engine.skeleton.update.side_effect = None
+        _, receipt = self.frame(index=2)
+        self.assertNotIn('ambiguous', receipt['skeleton']['state'])
+
     def test_restart_keeps_loaded_networks_for_a_new_stream(self):
         self.frame()
         skeleton, face, composition = self.engine.skeleton, self.engine.face, self.engine.composition
