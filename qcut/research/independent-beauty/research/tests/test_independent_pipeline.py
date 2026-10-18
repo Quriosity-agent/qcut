@@ -1,4 +1,5 @@
 """Pipeline boundary and real subprocess chain tests without private models."""
+from collections import OrderedDict
 import copy
 import json
 import os
@@ -115,10 +116,11 @@ class PipelineTests(unittest.TestCase):
         self.canonical['stages'].append({'id': f'stage-{index}', 'script': script, 'kind': 'scalar',
             'controls': {'test': delta}, 'parameters': ['--delta', str(delta), '--mode', mode]})
 
-    def execute(self, *, supplied=None, request=False, source_evidence=None):
+    def execute(self, *, supplied=None, request=False, source_evidence=None, plan_cache=None):
         self.plan_path.write_text(json.dumps(self.canonical if supplied is None else supplied))
         return pipeline.run(image=self.image, runtime=self.runtime, output=self.output, report=self.report,
-                            source_evidence=source_evidence, **{('request' if request else 'plan'): self.plan_path})
+                            source_evidence=source_evidence, plan_cache=plan_cache,
+                            **{('request' if request else 'plan'): self.plan_path})
 
     def assert_clean_failure(self, *, supplied=None):
         with self.assertRaises((ValueError, subprocess.CalledProcessError)):
@@ -136,6 +138,26 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(receipt['plan'], self.canonical)
         self.assertEqual(receipt['outputPngSha256'], pipeline.sha256(data=self.output.read_bytes()))
         self.assertEqual(list(self.root.glob('independent-pipeline-*')), [])
+
+    def test_plan_cache_plans_a_repeated_request_once_and_replans_changes(self):
+        cache = OrderedDict()
+        self.add_stage()
+        request = {'values': {'test': 1}, 'makeup': {}}
+        first = self.execute(supplied=request, request=True, plan_cache=cache)
+        self.output.unlink()
+        self.report.unlink()
+        second = self.execute(supplied=request, request=True, plan_cache=cache)
+        self.assertEqual(self.planner.call_count, 1)
+        self.assertEqual(second['plan'], first['plan'])
+        self.assertEqual(second['plannerCommand'], first['plannerCommand'])
+        self.output.unlink()
+        self.report.unlink()
+        self.execute(supplied={'values': {'test': 2}, 'makeup': {}}, request=True, plan_cache=cache)
+        self.assertEqual(self.planner.call_count, 2)
+        self.assertEqual(len(cache), 2)
+        # A remembered plan is handed out as a copy; a caller cannot change what later frames plan with.
+        first['plan']['stages'].clear()
+        self.assertEqual(len(next(iter(cache.values()))[0]['stages']), 1)
 
     def test_request_is_forwarded_to_canonical_planner(self):
         requested = {'values': {'face_adjust_TotalFace': 0}, 'makeup': {}}
