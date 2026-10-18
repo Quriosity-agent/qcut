@@ -20,6 +20,10 @@ export function useIndependentPortraitStatus({
 	useEffect(() => {
 		if (!enabled) return;
 		let active = true;
+		const clearInspection = () => {
+			active = false;
+			setState({ status: null, error: null, loading: true });
+		};
 		setState({ status: null, error: null, loading: true });
 		const inspect = window.electronAPI?.beautyLab?.inspectIndependent;
 		if (!inspect) {
@@ -28,7 +32,7 @@ export function useIndependentPortraitStatus({
 				error: "Requires QCut Desktop",
 				loading: false,
 			});
-			return;
+			return clearInspection;
 		}
 		void inspect().then(
 			(status) => {
@@ -36,12 +40,14 @@ export function useIndependentPortraitStatus({
 			},
 			(error: unknown) => {
 				if (active)
-					setState({ status: null, error: String(error), loading: false });
+					setState({
+						status: null,
+						error: error instanceof Error ? error.message : String(error),
+						loading: false,
+					});
 			}
 		);
-		return () => {
-			active = false;
-		};
+		return clearInspection;
 	}, [enabled]);
 	return enabled ? state : { status: null, error: null, loading: false };
 }
