@@ -10,6 +10,8 @@ processing frames 0..n + 1 in one session gives.
 Snapshots outlive the worker on disk, so reading one back admits only numpy's
 array pieces and classes the engine itself defines; anything else is refused.
 """
+import importlib
+import importlib.util
 import io
 from pathlib import Path
 import pickle
@@ -30,17 +32,30 @@ NUMPY_PIECES = frozenset({
 })
 
 
+def _engine_module(name):
+    """The engine module `name`, imported on demand; a fresh worker holds few of them yet."""
+    module = sys.modules.get(name)
+    if module is None:
+        try:
+            origin = getattr(importlib.util.find_spec(name), 'origin', None)
+        except (ImportError, ValueError):
+            origin = None
+        if origin is None or not Path(origin).resolve().is_relative_to(ENGINE_ROOT):
+            return None
+        module = importlib.import_module(name)
+    source = getattr(module, '__file__', None)
+    return module if source and Path(source).resolve().is_relative_to(ENGINE_ROOT) else None
+
+
 class SnapshotUnpickler(pickle.Unpickler):
     """Rebuilds numpy arrays and engine-defined classes; refuses every other global."""
 
     def find_class(self, module, name):
         if (module, name) in NUMPY_PIECES:
             return super().find_class(module, name)
-        owner = sys.modules.get(module)
-        source = getattr(owner, '__file__', None)
-        value = getattr(owner, name, None) if '.' not in name else None
-        if (source is None or not isinstance(value, type) or value.__module__ != module
-                or not Path(source).resolve().is_relative_to(ENGINE_ROOT)):
+        owner = _engine_module(module) if '.' not in name else None
+        value = getattr(owner, name, None)
+        if not isinstance(value, type) or value.__module__ != module:
             raise pickle.UnpicklingError(f'body snapshot refers to {module}.{name}')
         return value
 
