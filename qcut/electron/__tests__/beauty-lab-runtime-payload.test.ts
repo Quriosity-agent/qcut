@@ -68,12 +68,16 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(426);
+		).toBe(433);
 		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
 			expect.arrayContaining([
 				"research/body_smart_render.py",
 				"research/body_smart_candidate.py",
 				"research/body_video_face_sequence.py",
+				"research/body_face_matching.py",
+				"research/body_face_slots.py",
+				"research/body_face_duplicates.py",
+				"research/alignment_probability.py",
 				"research/body_sequence_render.py",
 				"research/manual_body_zoom_geometry.py",
 				"research/body_mesh_metal.swift",
@@ -83,6 +87,9 @@ describe("independent runtime payload", () => {
 				"research/tests/test_face_identity_no_effect.py",
 				"research/tests/test_face_selection_reference.py",
 				"research/tests/test_source_face_confirmation.py",
+				"research/tests/test_body_face_matching.py",
+				"research/tests/test_body_face_duplicates.py",
+				"research/tests/test_alignment_probability.py",
 			])
 		);
 		expect(profile.files).toHaveLength(363);
