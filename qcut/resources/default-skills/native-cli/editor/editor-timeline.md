@@ -213,8 +213,11 @@ qcut editor:timeline:update-element \
 ### Volume over time (media clips)
 
 `audio` on a media element merges into its audio settings, the same ones the
-editor's audio panel edits. `audio.keyframes.volumeDb` replaces the clip's
-volume keyframes; `[]` or `null` removes them. Each keyframe is
+editor's audio panel edits. `audio.volumeDb` is the clip's gain; the legacy
+linear `volume` is only its mirror, and a patch refreshes the mirror (and the
+legacy fade fields) immediately, so both representations always agree and
+every export reads the patched level. `audio.keyframes.volumeDb` replaces the
+clip's volume keyframes; `[]` or `null` removes them. Each keyframe is
 `{frame, value, easing?}`:
 
 - `frame`: whole frames at the project frame rate, counted from the clip's
