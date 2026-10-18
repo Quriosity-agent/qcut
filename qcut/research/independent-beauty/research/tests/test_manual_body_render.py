@@ -162,7 +162,7 @@ class ZoomGeometry(unittest.TestCase):
             self.assertAlmostEqual((near + body.zoom_motion(radius=near, amount=amount)) / near, expected, places=4)
         self.assertEqual(body.zoom_motion(radius=1.0, amount=0.5), 0)
 
-    def test_magnify_and_shrink_inside_the_circle_only(self):
+    def test_zoom_direction_and_native_whole_frame_resampling(self):
         width, height = 320, 240
         rgba = column_ramp(width=width, height=height)
         # Radius 0.25 of the shorter side: 60 px around the centre.
@@ -170,8 +170,9 @@ class ZoomGeometry(unittest.TestCase):
         shrunk = body.apply_zoom(rgba=rgba, intensity=-50, x=.5, y=.5, radius=.25)
         middle = height // 2
         for result in (grown, shrunk):
-            np.testing.assert_array_equal(result[:, :99], rgba[:, :99])
-            np.testing.assert_array_equal(result[:59], rgba[:59])
+            self.assertTrue(np.all(result[..., 3] == 255))
+        np.testing.assert_array_equal(grown[:59], shrunk[:59])
+        self.assertFalse(np.array_equal(grown[:59], rgba[:59]))
         # 30 px right of the centre: magnifying shows a source column nearer the centre.
         self.assertLess(int(grown[middle, 190, 0]), 190)
         self.assertGreater(int(shrunk[middle, 190, 0]), 190)

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
 	Select,
 	SelectContent,
@@ -63,41 +62,27 @@ function issueText({
 export function PortraitEngineControl({
 	adjustments,
 	nativeStatus,
+	independentStatus,
+	independentError,
 	disabled,
 	locale,
 	onChange,
 }: {
 	adjustments: MediaPortraitAdjustments;
 	nativeStatus: JianyingPortraitAdjustmentStatus | null;
+	independentStatus: BeautyLabIndependentStatus | null;
+	independentError: string | null;
 	disabled: boolean;
 	locale: string;
 	onChange: (adjustments: MediaPortraitAdjustments) => void;
 }) {
 	const isZh = locale === "zh";
 	const independent = adjustments.engine === "independent";
-	const [status, setStatus] = useState<BeautyLabIndependentStatus | null>(null);
-	const [statusError, setStatusError] = useState<string | null>(null);
-	useEffect(() => {
-		if (!independent) return;
-		let active = true;
-		const inspect = window.electronAPI?.beautyLab?.inspectIndependent;
-		if (!inspect) {
-			setStatusError(isZh ? "需要 QCut 桌面版" : "Requires QCut Desktop");
-			return;
-		}
-		void inspect()
-			.then((next) => {
-				if (!active) return;
-				setStatus(next);
-				setStatusError(null);
-			})
-			.catch((error: unknown) => {
-				if (active) setStatusError(String(error));
-			});
-		return () => {
-			active = false;
-		};
-	}, [independent, isZh]);
+	const status = independentStatus;
+	const statusError =
+		independentError === "Requires QCut Desktop" && isZh
+			? "需要 QCut 桌面版"
+			: independentError;
 	const converted =
 		independent && status?.available
 			? independentPortraitRequest({ adjustments, support: status })

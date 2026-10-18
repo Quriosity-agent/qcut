@@ -456,8 +456,8 @@
 		},
 		{
 			"path": "research/independent-pipeline-catalog.json",
-			"bytes": 16411,
-			"sha256": "1f4f9bca9c535e11b2031ad426c384af00d4b91a2aeff3cc2fbae3c0d621d523",
+			"bytes": 16569,
+			"sha256": "8a6c40b68ee2f3fa824009ddd5d1e3f420ca91933a6050c29f80a3a64633733f",
 			"sourceSha256": "72b19e3c01768e37f70c8060f81a109ad49e2454c78bf6bb62752e628f634de8"
 		},
 		{
@@ -1548,8 +1548,8 @@
 		},
 		{
 			"path": "src/independent-pipeline-plan.test.ts",
-			"bytes": 13023,
-			"sha256": "f0e2c694f0da2f98ed2997729e227b9fd378d75397899bd4d0bd3359d73d1bc9",
+			"bytes": 13055,
+			"sha256": "ba2586be691d8996f9233d78dc1d1448de5a7f20dc229a8799ff70bb80a53b33",
 			"sourceSha256": "f5d10e8e0f34f439ee347842b16b2ac5bff46f028a9aa81a125725ad889ef09b"
 		},
 		{
@@ -1644,13 +1644,13 @@
 		},
 		{
 			"path": "research/manual_body_render.py",
-			"bytes": 16842,
-			"sha256": "f87c5f92a7ce2135111aaa51d12bb9bfbd549fe9c61dc3f3588fbaca221d6d19"
+			"bytes": 16012,
+			"sha256": "2ae2e36ee0891223849cbdb51ab827705f0c2dbd8fb997fdbe3a027841dba95a"
 		},
 		{
 			"path": "research/tests/test_manual_body_render.py",
-			"bytes": 18322,
-			"sha256": "bc1c014eb74256d090ac8b44d0efdeef1ce883fdf2c3239394cf183c225b907e"
+			"bytes": 18377,
+			"sha256": "322d3f9637832ae7733f36b997adebbc3abbbbc63f29e8bab17c5a9b9d6eb307"
 		},
 		{
 			"path": "research/manual_body_slim_field.json",
@@ -1669,8 +1669,8 @@
 		},
 		{
 			"path": "research/body_skeleton_model.py",
-			"bytes": 3398,
-			"sha256": "9cf0aadc15675a7fe0fcbe1173d5171e7e5597fa97089f0dc94c647104d0d06c"
+			"bytes": 4705,
+			"sha256": "376e4f01b44690581eafab2805498eb911c375c5a9e27c70d7f854a382f84e25"
 		},
 		{
 			"path": "research/body_skeleton_preprocess.py",
@@ -1684,8 +1684,8 @@
 		},
 		{
 			"path": "research/body_skeleton_decode.py",
-			"bytes": 15099,
-			"sha256": "f09a1df74d0d3ac9884d9606383214299bd0f25cbc69de892715c35ea621146c"
+			"bytes": 16803,
+			"sha256": "8d0c42f775764c421ee5888780f8f51a798e776ffe5619a2f91f65171d100640"
 		},
 		{
 			"path": "research/body_longleg_state.py",
@@ -1694,8 +1694,8 @@
 		},
 		{
 			"path": "research/body_mesh_metal.swift",
-			"bytes": 7138,
-			"sha256": "1420f56412e5ee6c3d832b68b37d0aedeff6b5bcc623237248286d388b033e9e"
+			"bytes": 9454,
+			"sha256": "8048ea1e0d7dbb74a1055b03d6c2a2926584c4c3adceb74aafcbbd14ffa0adff"
 		},
 		{
 			"path": "research/alignment_pose_heads.py",
@@ -1946,6 +1946,431 @@
 			"path": "research/tests/test_body_smart.py",
 			"bytes": 16170,
 			"sha256": "bc6af8baff220a111ec6a3d5bbfa66fff36f3235aa77efb389b27f549605872b"
+		},
+		{
+			"path": "research/body_composition/__init__.py",
+			"bytes": 559,
+			"sha256": "2d40207ef7a95c412ce75d61f7de5b4938f67e8fb152f949fc347f5680f3492a"
+		},
+		{
+			"path": "research/body_composition/controls.py",
+			"bytes": 2643,
+			"sha256": "81587fcd6468334b6b2866463676db1a2b5e0dbebfdea4eea050203908c81d3d"
+		},
+		{
+			"path": "research/body_composition/grid.py",
+			"bytes": 555,
+			"sha256": "a30cb4ddba8994ca8d1b040fd4e856090a9248ebc219f2dc5e18fbe97a4cd391"
+		},
+		{
+			"path": "research/body_composition/head/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/head/face_selection.py",
+			"bytes": 2606,
+			"sha256": "b251ca19cb1804fbfe930aa164080ad6ec75bcacf5d2c64c17c0eff0774259d4"
+		},
+		{
+			"path": "research/body_composition/head/producer.py",
+			"bytes": 6254,
+			"sha256": "f188480fb2d3ce0c821334af1493a06caf69f22e0654f0b34b0b37e7b6f08d51"
+		},
+		{
+			"path": "research/body_composition/head/protected_roi.py",
+			"bytes": 3094,
+			"sha256": "68509ba2dbb44b5021953fed00ec4f500f4d840a36c6859fc4e24ad81b767e2e"
+		},
+		{
+			"path": "research/body_composition/hip_breast/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/hip_breast/breast_descriptor.py",
+			"bytes": 3689,
+			"sha256": "2cb7abbd4656ca7f2d65d532330f1c297bb69ef61c04f372d3b693e710070e1a"
+		},
+		{
+			"path": "research/body_composition/hip_breast/breast_geometry.py",
+			"bytes": 2453,
+			"sha256": "5fa4b086c202437a7a33d20692729f4e59332689e4627b66d2782cfba1f5e3a8"
+		},
+		{
+			"path": "research/body_composition/hip_breast/breast_state.py",
+			"bytes": 3594,
+			"sha256": "8c14634ecfe25a679b5ce2f89d707367e976c8439cbf8d2a27568324f8d9c824"
+		},
+		{
+			"path": "research/body_composition/hip_breast/hip_descriptor.py",
+			"bytes": 1471,
+			"sha256": "b2ca37a5755123f71e618960564044436cb7de2678d7d2fcac239d96449bbc98"
+		},
+		{
+			"path": "research/body_composition/hip_breast/hip_geometry.py",
+			"bytes": 2054,
+			"sha256": "2d191973b5464c8ceb0d339f579b14491b73ca0c6faadc449c886dcb121f7950"
+		},
+		{
+			"path": "research/body_composition/hip_breast/hip_state.py",
+			"bytes": 2113,
+			"sha256": "85f45b3ba798bc3afdd5a6e3f955630874bdfddc345f708c9d220fce7f89bffc"
+		},
+		{
+			"path": "research/body_composition/hip_breast/public_basis.py",
+			"bytes": 2667,
+			"sha256": "21781633e52e83eb87715ce80b77e3833f3da2363263edb5a7deaa6db04c4ffc"
+		},
+		{
+			"path": "research/body_composition/hip_breast/public_hip_aux.py",
+			"bytes": 922,
+			"sha256": "66842c5726de63881ac06e2a0108738e2d07f6aa90e6adb12e0c8982b2fc6834"
+		},
+		{
+			"path": "research/body_composition/inputs.py",
+			"bytes": 2527,
+			"sha256": "53d669d3e9daa5dc6870871c99a25f658871328419af2fdbd563de3a3a4eebb0"
+		},
+		{
+			"path": "research/body_composition/longleg_geometry.py",
+			"bytes": 3915,
+			"sha256": "82e7a911b88fa6b4966f99e953d4d730d0408d84ee7be7f9f02a3c182c5ac2a0"
+		},
+		{
+			"path": "research/body_composition/longleg_state.py",
+			"bytes": 2967,
+			"sha256": "adf3d13978f9c17fed0262a202717599e31a9530d6fe12acfdf9a921fab7cd6a"
+		},
+		{
+			"path": "research/body_composition/neck/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/neck/descriptor.py",
+			"bytes": 4068,
+			"sha256": "c40a39c20b45b8c1a10caa63f412da821028a8b749ee9cd1736c06c0b8f19f59"
+		},
+		{
+			"path": "research/body_composition/neck/face_points.py",
+			"bytes": 2144,
+			"sha256": "c168f36a4122b60418713bdad6d536a28941c408b08a806383dad6946b5ae421"
+		},
+		{
+			"path": "research/body_composition/neck/geometry.py",
+			"bytes": 2474,
+			"sha256": "1038a70de2a14741526f9125fdf3ff187a6fcfd9c25994dfe696468cf919ff13"
+		},
+		{
+			"path": "research/body_composition/neck/state.py",
+			"bytes": 2121,
+			"sha256": "37bb50bc38d2b12ecfdbd344c109572aeb59b5e1c47b112aa2498afd4f4f6683"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/descriptor.py",
+			"bytes": 1338,
+			"sha256": "5936d50d222043d1313fe66fb9b998b2290bda85e561972739255db536e097dc"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/geometry.py",
+			"bytes": 4297,
+			"sha256": "746050597cfdf8361271510489e489767057f4edffa87d594491663e94dda5e6"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/history.py",
+			"bytes": 5545,
+			"sha256": "d2abe43861cf0b7ed57610b7acc0b24c70519136b726af9f3f49dd41e83c65a5"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/radial.py",
+			"bytes": 1134,
+			"sha256": "abe3fd64da33932f8834df93529735ec55f26cf222acca3eb5b8f81546e0a849"
+		},
+		{
+			"path": "research/body_composition/ortho_shoulder/state.py",
+			"bytes": 842,
+			"sha256": "16c08044727a864efdbb22eb1e424aac64a21f4c96feb48c0d79e2988f63106e"
+		},
+		{
+			"path": "research/body_composition/persistent.py",
+			"bytes": 9418,
+			"sha256": "fa8e72b3846e387f559062b935fc3c64310ad020841d4cc919003ec081d7cdf5"
+		},
+		{
+			"path": "research/body_composition/pipeline.py",
+			"bytes": 12013,
+			"sha256": "dfb071d63b06d2e469cf725b78e1183981ee8516a0284dfd73f33a91e30b6e81"
+		},
+		{
+			"path": "research/body_composition/public_descriptor.py",
+			"bytes": 7667,
+			"sha256": "f2017184f8583134d95ba3a91635b71a8dc76b9f781d7a84a861fc1ebbd1912e"
+		},
+		{
+			"path": "research/body_composition/shoulder_smoothing.py",
+			"bytes": 1993,
+			"sha256": "060aeedc94a5e6f5708acce8a3bdeaab94f1ec616357fa25b388ee485d810928"
+		},
+		{
+			"path": "research/body_composition/slim_arm/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/slim_arm/bent_limb.py",
+			"bytes": 7429,
+			"sha256": "2610319de59396a6fc5e7e813cd9ee3ef3f848c0ae24517b1b280280e82ccca1"
+		},
+		{
+			"path": "research/body_composition/slim_arm/descriptor.py",
+			"bytes": 2439,
+			"sha256": "a7e336d6f60c2ba930c2153cd00551be4e533748e39b9446ea5184093cbe752d"
+		},
+		{
+			"path": "research/body_composition/slim_arm/geometry.py",
+			"bytes": 1435,
+			"sha256": "8c1ad8dabb6f04103ec0ee8a55babe5aac8a1df5a744d60ec4e1a1bdde0cfcca"
+		},
+		{
+			"path": "research/body_composition/slim_arm/history.py",
+			"bytes": 1313,
+			"sha256": "b6cb73d82f742102e895067c8a55f60298575727c8daff1d2a7856a2ce5d565a"
+		},
+		{
+			"path": "research/body_composition/slim_arm/state.py",
+			"bytes": 4680,
+			"sha256": "590ae1d5500610c88ddc559da4a47725c9c8e661f245b0166a675cb943e25591"
+		},
+		{
+			"path": "research/body_composition/slim_arm/straight_limb.py",
+			"bytes": 4720,
+			"sha256": "6e292605980d4fe611a87e93e8a2747d1247ef0db1f07b7e35c189fea7fedd95"
+		},
+		{
+			"path": "research/body_composition/small_head/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/small_head/geometry.py",
+			"bytes": 2448,
+			"sha256": "e39763fd541d613c51fca207c46f4086ba3f171f1046f01e0c4ead1f881f05f6"
+		},
+		{
+			"path": "research/body_composition/small_head/history.py",
+			"bytes": 867,
+			"sha256": "da7cd37eec684634da30efc975f001cacefc17adf455803011ed9a8186ee312c"
+		},
+		{
+			"path": "research/body_composition/small_head/state.py",
+			"bytes": 978,
+			"sha256": "d8b773b8b5ca63cedee2c39b0b1c34d4fcb8f29ce36ce5acc7621a40eba55edf"
+		},
+		{
+			"path": "research/body_composition/status.py",
+			"bytes": 5266,
+			"sha256": "ebd4b461f76e79f35fcc0925c5abc197e7b3d110e18f9a2357602d440552ca5a"
+		},
+		{
+			"path": "research/body_composition/temporal_intensity.py",
+			"bytes": 624,
+			"sha256": "dfcf0ab2593f773ab54ad3713e913c0fffedc22b815c959d9ceafe69e4feca61"
+		},
+		{
+			"path": "research/body_composition/waist_body/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/waist_body/descriptors.py",
+			"bytes": 2803,
+			"sha256": "1a1eadaea5efd9d576ca84ed7e7750acf6cfec94fff53d7531c472f61f180f7b"
+		},
+		{
+			"path": "research/body_composition/waist_body/geometry.py",
+			"bytes": 4790,
+			"sha256": "fd837338ff694cb4e5edd52bee15c6781cf580c1a81de2ab2ea5533a9adabb09"
+		},
+		{
+			"path": "research/body_composition/waist_body/state.py",
+			"bytes": 2129,
+			"sha256": "5af05863e213c7c16cb6c1750e79712b86161091a1fd954cf19fc6cfe4f26750"
+		},
+		{
+			"path": "research/body_composition/widen_shoulder/__init__.py",
+			"bytes": 41,
+			"sha256": "017088d47d631439b9fb24356d043fd1c1ab9255e3449d84d3b316ed4ab5fbc7"
+		},
+		{
+			"path": "research/body_composition/widen_shoulder/geometry.py",
+			"bytes": 5346,
+			"sha256": "3c36a97a10f8fc591cde764fdc80e6cb484febc12465cdc8fb3c2aefad2222f9"
+		},
+		{
+			"path": "research/body_composition/widen_shoulder/history.py",
+			"bytes": 1009,
+			"sha256": "4eb5b70c87f0e573cb77ba6f15b4ef8253d2ed4f7d9967bd875c465a1bffebe3"
+		},
+		{
+			"path": "research/body_composition/widen_shoulder/state.py",
+			"bytes": 1965,
+			"sha256": "9cfed9f692a9679448107eca9b0d34e3f73ca9e788458a5c1863845bcc6762f6"
+		},
+		{
+			"path": "research/body_composition/widen_shoulder/temporal_geometry.py",
+			"bytes": 4083,
+			"sha256": "d515f6f7779fa388640ca0109c2ab91b374b0a395fbb3a921ebd403cdfe042f5"
+		},
+		{
+			"path": "research/body_espresso_onnx.py",
+			"bytes": 13114,
+			"sha256": "78bf68bfe3818bb4eff23887feb6ecf72a13a7ab1c3bfea8eb13ebc2670ce901"
+		},
+		{
+			"path": "research/body_face_policy.py",
+			"bytes": 5373,
+			"sha256": "d8626bce100734ed79847ff28156c8a44ed9cc92c6003f4e5ab415dcd229b2d6"
+		},
+		{
+			"path": "research/body_face_recovery.py",
+			"bytes": 913,
+			"sha256": "b817983ed25e492a6aeb62aa8a4ec9e0ff8fb09cd23131e34c1bac2a1146625b"
+		},
+		{
+			"path": "research/body_face_start.py",
+			"bytes": 1389,
+			"sha256": "c7b041b8e97c88b25cb428016856fc4a40dc50452b91a5e4002e79bf704a49ac"
+		},
+		{
+			"path": "research/body_mesh_renderer.py",
+			"bytes": 4082,
+			"sha256": "8e5be95d391d492e46afcb3781c65b11386c82937bc9fa870da6600527832954"
+		},
+		{
+			"path": "research/body_sequence_render.py",
+			"bytes": 3162,
+			"sha256": "cd5c9f8f686ff700e8d7fdf607ea3bb7afcecd687437ee6ddb40e455cfcba009"
+		},
+		{
+			"path": "research/body_skeleton_onnx.py",
+			"bytes": 2740,
+			"sha256": "462955aac8bf37f8c9177451b7c73d94a8df6346d29ccf790743ce76b5e4cebd"
+		},
+		{
+			"path": "research/body_skeleton_sequence.py",
+			"bytes": 3886,
+			"sha256": "99e12e79b069c487d70777352146c9a46fb4032e0e6a04aee62237a2d3c897e5"
+		},
+		{
+			"path": "research/body_smart_candidate.py",
+			"bytes": 4562,
+			"sha256": "2cb7725f47234e35641e2ce74c783e6bc486a580bd3ce64d2c93cb3cf2cf4b52"
+		},
+		{
+			"path": "research/body_smart_perception.py",
+			"bytes": 3836,
+			"sha256": "1c5deb8dcba34baa1ac9d8e51d749cf9400681f0ada8b4778b5d9a326eec34bc"
+		},
+		{
+			"path": "research/body_smart_sequence.py",
+			"bytes": 6710,
+			"sha256": "ba6d93f5e6cc64f1ad4909511954cc76841feb306f5dc8b468524b0991afc9d0"
+		},
+		{
+			"path": "research/body_video_face_metadata.py",
+			"bytes": 392,
+			"sha256": "7df48832fca3854fcaeb6c00944e41e65d6a715cd762416e17b3d09dd3b8acfb"
+		},
+		{
+			"path": "research/body_video_face_sequence.py",
+			"bytes": 4911,
+			"sha256": "c6297d2f2a1cc6b68542c5975ed14b2de7cd6e6858de0f3a9191a84bbf27ce17"
+		},
+		{
+			"path": "research/manual_body_zoom_geometry.py",
+			"bytes": 4688,
+			"sha256": "a99c78dcbc54082f807e3049f411ca9c27c1a8e9aa6f9d5504aff35f50d23d4c"
+		},
+		{
+			"path": "research/tests/test_body_composition.py",
+			"bytes": 9836,
+			"sha256": "9632aa650fad7d27957586ae9c169bfa0eb46a6bdb4af5306526eae692f19c96"
+		},
+		{
+			"path": "research/tests/test_body_composition_persistent.py",
+			"bytes": 9903,
+			"sha256": "cc5836447d986538605515f6ad2a2580d6179b81c34ff4515cd11679aa2a1c3b"
+		},
+		{
+			"path": "research/tests/test_body_face_policy.py",
+			"bytes": 4649,
+			"sha256": "b9fb0ba08703497689fafb7611158a948647cf4fa3c5811522aa1c8254c7c610"
+		},
+		{
+			"path": "research/tests/test_body_face_recovery.py",
+			"bytes": 2446,
+			"sha256": "bfa17d4b0ae3360971d2e1ccd350f6a95d58d69493aaf00bef7cd3c161dee9a6"
+		},
+		{
+			"path": "research/tests/test_body_integration.py",
+			"bytes": 3123,
+			"sha256": "5b051a3eababbc2650819a99151c62688f0f70baa2be0b3ee4385e4c70bc21bb"
+		},
+		{
+			"path": "research/tests/test_body_sequence_isolation.py",
+			"bytes": 7487,
+			"sha256": "31ad9d4dd11bb215c51aebe89eef9f12c817b3bbe446bca0995cd03f9869ff0e"
+		},
+		{
+			"path": "research/tests/test_body_skeleton_onnx.py",
+			"bytes": 10439,
+			"sha256": "fe600f8440ce857c30511db3863d53ccac1ae5a4e3ec45649a518e6af84f6085"
+		},
+		{
+			"path": "research/tests/test_body_skeleton_sequence.py",
+			"bytes": 3112,
+			"sha256": "62128ddb120230c955357b4af63d8eb6bc30160d1e64e93815ddb043e49a222d"
+		},
+		{
+			"path": "research/tests/test_body_skeleton_tracking_box.py",
+			"bytes": 2514,
+			"sha256": "7622b25b7b18ca069e63770ba6587f1df3367417af59e3716579e38cf39f4462"
+		},
+		{
+			"path": "research/tests/test_body_smart_candidate.py",
+			"bytes": 7473,
+			"sha256": "8c29aef95aa106062637c12c243faf49f20ea800e9a3b721b24d53324c34a598"
+		},
+		{
+			"path": "research/tests/test_body_smart_perception.py",
+			"bytes": 4439,
+			"sha256": "547eea63eade1a99219e915a04e23c75cf9bbdbc36f7c13ca57b048f7b0ad876"
+		},
+		{
+			"path": "research/tests/test_body_smart_sequence.py",
+			"bytes": 5179,
+			"sha256": "0fde98ce4b0ec842311a9abf66ef9851471baefaf505b49ec818b919bcb6d968"
+		},
+		{
+			"path": "research/tests/test_body_video_face_sequence.py",
+			"bytes": 6293,
+			"sha256": "81cefcdfea86e166b0208605f2d65ab513e3ded5859ee299182f59f2ddb110b0"
+		},
+		{
+			"path": "research/tests/test_manual_body_zoom_geometry.py",
+			"bytes": 6096,
+			"sha256": "c66baf963d8191d097f50572ce8b231cd82ba63e39ee569529cafd4892263703"
+		},
+		{
+			"path": "src/independent-smart-body-plan.test.ts",
+			"bytes": 3100,
+			"sha256": "79c733ae0c30eafa7099c682cbb8e00674669b13d43f93fabeb5a1f2b6fc7c95"
 		}
 	],
 	"importPatches": [
@@ -2477,6 +2902,103 @@
 				"research/tests/test_body_smart.py"
 			],
 			"reason": "A still image is searched for a face once when the search finds no single usable face: the image and the detector do not change across the eight updates, so the repeats only added latency. The body still takes all eight updates."
+		},
+		{
+			"files": [
+				"research/body_composition/__init__.py",
+				"research/body_composition/controls.py",
+				"research/body_composition/grid.py",
+				"research/body_composition/head/__init__.py",
+				"research/body_composition/head/face_selection.py",
+				"research/body_composition/head/producer.py",
+				"research/body_composition/head/protected_roi.py",
+				"research/body_composition/hip_breast/__init__.py",
+				"research/body_composition/hip_breast/breast_descriptor.py",
+				"research/body_composition/hip_breast/breast_geometry.py",
+				"research/body_composition/hip_breast/breast_state.py",
+				"research/body_composition/hip_breast/hip_descriptor.py",
+				"research/body_composition/hip_breast/hip_geometry.py",
+				"research/body_composition/hip_breast/hip_state.py",
+				"research/body_composition/hip_breast/public_basis.py",
+				"research/body_composition/hip_breast/public_hip_aux.py",
+				"research/body_composition/inputs.py",
+				"research/body_composition/longleg_geometry.py",
+				"research/body_composition/longleg_state.py",
+				"research/body_composition/neck/__init__.py",
+				"research/body_composition/neck/descriptor.py",
+				"research/body_composition/neck/face_points.py",
+				"research/body_composition/neck/geometry.py",
+				"research/body_composition/neck/state.py",
+				"research/body_composition/ortho_shoulder/__init__.py",
+				"research/body_composition/ortho_shoulder/descriptor.py",
+				"research/body_composition/ortho_shoulder/geometry.py",
+				"research/body_composition/ortho_shoulder/history.py",
+				"research/body_composition/ortho_shoulder/radial.py",
+				"research/body_composition/ortho_shoulder/state.py",
+				"research/body_composition/persistent.py",
+				"research/body_composition/pipeline.py",
+				"research/body_composition/public_descriptor.py",
+				"research/body_composition/shoulder_smoothing.py",
+				"research/body_composition/slim_arm/__init__.py",
+				"research/body_composition/slim_arm/bent_limb.py",
+				"research/body_composition/slim_arm/descriptor.py",
+				"research/body_composition/slim_arm/geometry.py",
+				"research/body_composition/slim_arm/history.py",
+				"research/body_composition/slim_arm/state.py",
+				"research/body_composition/slim_arm/straight_limb.py",
+				"research/body_composition/small_head/__init__.py",
+				"research/body_composition/small_head/geometry.py",
+				"research/body_composition/small_head/history.py",
+				"research/body_composition/small_head/state.py",
+				"research/body_composition/status.py",
+				"research/body_composition/temporal_intensity.py",
+				"research/body_composition/waist_body/__init__.py",
+				"research/body_composition/waist_body/descriptors.py",
+				"research/body_composition/waist_body/geometry.py",
+				"research/body_composition/waist_body/state.py",
+				"research/body_composition/widen_shoulder/__init__.py",
+				"research/body_composition/widen_shoulder/geometry.py",
+				"research/body_composition/widen_shoulder/history.py",
+				"research/body_composition/widen_shoulder/state.py",
+				"research/body_composition/widen_shoulder/temporal_geometry.py",
+				"research/body_espresso_onnx.py",
+				"research/body_face_policy.py",
+				"research/body_face_recovery.py",
+				"research/body_face_start.py",
+				"research/body_mesh_metal.swift",
+				"research/body_mesh_renderer.py",
+				"research/body_sequence_render.py",
+				"research/body_skeleton_decode.py",
+				"research/body_skeleton_model.py",
+				"research/body_skeleton_onnx.py",
+				"research/body_skeleton_sequence.py",
+				"research/body_smart_candidate.py",
+				"research/body_smart_perception.py",
+				"research/body_smart_sequence.py",
+				"research/body_video_face_metadata.py",
+				"research/body_video_face_sequence.py",
+				"research/independent-pipeline-catalog.json",
+				"research/manual_body_render.py",
+				"research/manual_body_zoom_geometry.py",
+				"research/tests/test_body_composition.py",
+				"research/tests/test_body_composition_persistent.py",
+				"research/tests/test_body_face_policy.py",
+				"research/tests/test_body_face_recovery.py",
+				"research/tests/test_body_integration.py",
+				"research/tests/test_body_sequence_isolation.py",
+				"research/tests/test_body_skeleton_onnx.py",
+				"research/tests/test_body_skeleton_sequence.py",
+				"research/tests/test_body_skeleton_tracking_box.py",
+				"research/tests/test_body_smart_candidate.py",
+				"research/tests/test_body_smart_perception.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_video_face_sequence.py",
+				"research/tests/test_manual_body_render.py",
+				"research/tests/test_manual_body_zoom_geometry.py",
+				"src/independent-pipeline-plan.test.ts",
+				"src/independent-smart-body-plan.test.ts"
+			],
+			"reason": "Owned body temporal research: explicit persistent single-person mode2 session, native missing-leg tracker crop, video classification and same-frame redetection lifecycle, bounded replay/cancellation contract, optional exact ONNX integer interpreter, and native-rule finite manual zoom mesh. Numeric CPU probes and original renderer comparisons are private evidence; source contains no vendor binaries, shaders, weights, model policy tables, or recorded landmarks. The production photo runner retains its accepted eight same-image updates; the cold body_smart_candidate and namespaced temporal modules remain explicit research APIs; the optional video policy is required only by the explicit sequence API. Manual zoom uses only owned numeric code and public Metal."
 		}
 	],
 	"sourceWorkingTreeStatus": [

@@ -306,6 +306,7 @@ describe("independent composite plan", () => {
 		for (const values of [
 			{ face_adjust_StretchLeg: 10 },
 			{ body_adjust_Whiten: 10 },
+			{ body_adjust_Unknown: 10 },
 			{ body_adjust_SlimWaist: 101 },
 			{ body_adjust_SlimHip: -51 },
 			{ body_adjust_StretchLeg: 100.5 },

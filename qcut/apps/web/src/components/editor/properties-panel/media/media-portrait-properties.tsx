@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { JIANYING_PORTRAIT_ADJUSTMENT_CATALOG } from "../../../../../../../electron/jianying-portrait-adjustment-runtime/catalog";
+import { useIndependentPortraitStatus } from "@/lib/portrait/use-independent-portrait-status";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,6 +103,10 @@ export function MediaPortraitProperties({
 	onInteractionEnd: () => void;
 }) {
 	const { locale, t } = useTranslation();
+	const independentEngine = adjustments.engine === "independent";
+	const independentRuntime = useIndependentPortraitStatus({
+		enabled: independentEngine,
+	});
 	const [activeTab, setActiveTab] = useState<PortraitPanelTab>("face");
 	const [openFaceSections, setOpenFaceSections] = useState(() => ({
 		...INITIAL_FACE_SECTION_VISIBILITY,
@@ -229,9 +235,10 @@ export function MediaPortraitProperties({
 			new Map(
 				(["skin", "face-shape", "features", "body"] as const).map((section) => [
 					section,
-					(status?.catalog ?? []).filter(
-						(control) => control.section === section
-					),
+					(status?.catalog.length
+						? status.catalog
+						: JIANYING_PORTRAIT_ADJUSTMENT_CATALOG
+					).filter((control) => control.section === section),
 				])
 			),
 		[status?.catalog]
@@ -253,23 +260,30 @@ export function MediaPortraitProperties({
 	}, [readyPackages]);
 	const readyManualBodyTools = useMemo(() => {
 		const tools = new Set<MediaPortraitManualBodyTool>();
+		if (independentEngine) {
+			if (!independentRuntime.status?.available) return tools;
+			for (const tool of ["stretch", "slim", "zoom"] as const)
+				if (independentRuntime.status.manualBodyTools?.includes(tool))
+					tools.add(tool);
+			return tools;
+		}
 		if (readyPackages.has("manual-stretch")) tools.add("stretch");
 		if (readyPackages.has("manual-slim")) tools.add("slim");
 		if (readyPackages.has("manual-zoom")) tools.add("zoom");
 		return tools;
-	}, [readyPackages]);
+	}, [independentEngine, independentRuntime.status, readyPackages]);
 	const isControlReady = useCallback(
 		(control: JianyingPortraitAdjustmentControl) =>
-			readyPackages.has(runtimePackageForControl({ control })),
-		[readyPackages]
+			independentEngine
+				? independentRuntime.status?.available === true &&
+					independentRuntime.status.controls.includes(control.key)
+				: readyPackages.has(runtimePackageForControl({ control })),
+		[independentEngine, independentRuntime.status, readyPackages]
 	);
 	const nativeDisabled = loading || !status?.available;
-	// The independent engine feeds on the same slider/makeup values but runs
-	// without the native runtime, so those controls only wait for the status
-	// check; native-only tools (face targeting, manual retouch/body) keep the
-	// native gate.
-	const independentEngine = adjustments.engine === "independent";
-	const valueControlsDisabled = independentEngine ? loading : nativeDisabled;
+	const valueControlsDisabled = independentEngine
+		? independentRuntime.loading || !independentRuntime.status?.available
+		: nativeDisabled;
 	const hasSectionValue = useCallback(
 		({ section }: { section: JianyingPortraitAdjustmentSection }) =>
 			(controlsBySection.get(section) ?? []).some(
@@ -462,23 +476,29 @@ export function MediaPortraitProperties({
 					currentFrame={currentFrame}
 					initialAdjustments={adjustments}
 				/>
-				<PortraitRuntimeStatus
-					status={status}
-					loading={loading}
-					locale={locale}
-					onRefresh={() => void inspect({ refresh: true })}
-				/>
+				{!independentEngine && (
+					<PortraitRuntimeStatus
+						status={status}
+						loading={loading}
+						locale={locale}
+						onRefresh={() => void inspect({ refresh: true })}
+					/>
+				)}
 				<div className="flex items-center justify-between">
 					<PropertyItemLabel>
-						{locale === "zh" ? "原版美颜美体" : "Native retouch"}
+						{locale === "zh" ? "美颜美体" : "Portrait and body"}
 					</PropertyItemLabel>
 					<Switch
 						checked={adjustments.enabled}
-						disabled={valueControlsDisabled}
+						disabled={!adjustments.enabled && valueControlsDisabled}
 						aria-label={
-							locale === "zh"
-								? "启用原版美颜美体"
-								: "Enable native portrait retouch"
+							independentEngine
+								? locale === "zh"
+									? "启用自研美颜美体"
+									: "Enable independent portrait retouch"
+								: locale === "zh"
+									? "启用原版美颜美体"
+									: "Enable native portrait retouch"
 						}
 						onCheckedChange={(enabled) =>
 							onAdjustmentsChange({ ...adjustments, enabled })
@@ -488,7 +508,9 @@ export function MediaPortraitProperties({
 				<PortraitEngineControl
 					adjustments={adjustments}
 					nativeStatus={status}
-					disabled={loading}
+					independentStatus={independentRuntime.status}
+					independentError={independentRuntime.error}
+					disabled={false}
 					locale={locale}
 					onChange={onAdjustmentsChange}
 				/>
@@ -634,7 +656,13 @@ export function MediaPortraitProperties({
 								{locale === "zh" ? "作用范围" : "Scope"}
 							</span>
 							<span className="font-medium">
-								{locale === "zh" ? "全部人物" : "All people"}
+								{independentEngine
+									? locale === "zh"
+										? "智能：首个检测人物；手动：指定区域"
+										: "Smart: first detected person; manual: selected region"
+									: locale === "zh"
+										? "全部人物"
+										: "All people"}
 							</span>
 						</div>
 						<div className="border-t border-border/70">
@@ -661,7 +689,7 @@ export function MediaPortraitProperties({
 								<PortraitManualBodyControls
 									active={activeTab === "body" && openBodySections.manual}
 									adjustments={adjustments}
-									disabled={nativeDisabled || !adjustments.enabled}
+									disabled={valueControlsDisabled || !adjustments.enabled}
 									elementId={elementId}
 									locale={locale}
 									readyTools={readyManualBodyTools}

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@/test/test-utils";
 import type { JianyingPortraitAdjustmentStatus } from "@/types/electron";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { PortraitEngineControl } from "../portrait-engine-control";
+import { useIndependentPortraitStatus } from "@/lib/portrait/use-independent-portrait-status";
 
 const nativeStatus = {
 	state: "ready",
@@ -44,6 +45,29 @@ afterEach(() => {
 	Reflect.deleteProperty(window, "electronAPI");
 });
 
+function ControlHarness({
+	adjustments,
+	onChange,
+}: {
+	adjustments: MediaPortraitAdjustments;
+	onChange: (adjustments: MediaPortraitAdjustments) => void;
+}) {
+	const runtime = useIndependentPortraitStatus({
+		enabled: adjustments.engine === "independent",
+	});
+	return (
+		<PortraitEngineControl
+			adjustments={adjustments}
+			nativeStatus={nativeStatus}
+			independentStatus={runtime.status}
+			independentError={runtime.error}
+			disabled={false}
+			locale="zh"
+			onChange={onChange}
+		/>
+	);
+}
+
 function renderControl({
 	adjustments,
 	onChange = vi.fn(),
@@ -51,15 +75,7 @@ function renderControl({
 	adjustments: MediaPortraitAdjustments;
 	onChange?: (adjustments: MediaPortraitAdjustments) => void;
 }) {
-	render(
-		<PortraitEngineControl
-			adjustments={adjustments}
-			nativeStatus={nativeStatus}
-			disabled={false}
-			locale="zh"
-			onChange={onChange}
-		/>
-	);
+	render(<ControlHarness adjustments={adjustments} onChange={onChange} />);
 	return onChange;
 }
 

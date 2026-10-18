@@ -560,6 +560,57 @@ describe("independent frame renderer", () => {
 		expect(provider.render).toHaveBeenCalledOnce();
 	});
 
+	it("reuses a body composite across seeks and reprocesses a changed signed control", async () => {
+		const provider = engine();
+		const renderer = createIndependentFrameRenderer({
+			provider,
+			cache: createIndependentFrameCache({ directory }),
+			engineSha256: async () => "body-engine",
+		});
+		const values = {
+			body_adjust_SlimWaist: 80,
+			body_adjust_StretchLeg: 60,
+			body_adjust_WidenShoulderTest: -30,
+			body_adjust_SlimBreast: -20,
+			body_adjust_SlimHip: -10,
+		};
+		const makeRequest = ({
+			id,
+			edits = values,
+		}: {
+			id: string;
+			edits?: Record<string, number>;
+		}) => ({
+			...request,
+			requestId: id,
+			adjustments: { enabled: true, values: edits },
+		});
+		expect(
+			await renderer.render({ request: makeRequest({ id: "body-first" }) })
+		).toMatchObject({ cached: false });
+		expect(
+			await renderer.render({
+				request: makeRequest({
+					id: "body-revisit",
+					edits: Object.fromEntries(Object.entries(values).reverse()),
+				}),
+			})
+		).toMatchObject({ cached: true });
+		expect(provider.render).toHaveBeenCalledOnce();
+		expect(provider.render.mock.calls[0][0].request).toMatchObject({
+			adjustments: { values },
+		});
+		expect(
+			await renderer.render({
+				request: makeRequest({
+					id: "body-sign-change",
+					edits: { ...values, body_adjust_SlimHip: 10 },
+				}),
+			})
+		).toMatchObject({ cached: false });
+		expect(provider.render).toHaveBeenCalledTimes(2);
+	});
+
 	it("reprocesses after an engine update", async () => {
 		const provider = engine();
 		const cache = createIndependentFrameCache({ directory });

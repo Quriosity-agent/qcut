@@ -29,11 +29,12 @@ reproduces it within a pixel.
 `zoom` is {intensity -50..50, x, y (centre, y from the bottom), radius (a
 share of the frame's shorter side)}: a circle magnified (positive) or
 shrunk (negative) about its centre, most in the middle and not at all at its
-edge. A source point at relative radius r moves out to r + i * A * r *
-(1 - r^a)^b, with (A, a, b) = (0.4, 3.25, 2.066) for magnifying and (0.25,
-5.40, 2.060) for shrinking, i the native intensity (editor value / 100):
-fitted to the native tool within 0.2 px at every radius, size and
-orientation measured.
+edge. The forward mesh uses the radial weight 1 - t*t*(3 - 2*t),
+t = clamp(r**h, 0, 1), h = 1.8 for magnifying and 3 for shrinking. The
+intensity multiplier is 0.4 or 0.25 respectively. Its 250-by-250 grid uses
+a 1.2 canvas scale with rounded dimensions and pinned viewport boundaries;
+this reproduces the native whole-frame subpixel resampling as well.
+The public Metal raster requires no original model or effect assets.
 
 Tools apply in the native order: stretch, slim, zoom.
 """
@@ -50,6 +51,8 @@ import numpy as np
 from PIL import Image
 
 from facefitting_image import decode_image
+from body_mesh_renderer import draw_mesh
+from manual_body_zoom_geometry import make_zoom_mesh, radial_weight
 from slimface_render import validate_rgba
 from whiten_metal import process_images
 
@@ -60,9 +63,7 @@ STRETCH_SHARE = 0.05
 SHRINK_SHARE = 0.02
 GRID_SCALE = 250 / 249
 SLIM_FIELD = Path(__file__).resolve().with_name('manual_body_slim_field.json')
-# Radial motion profile (amplitude, a, b) for magnifying and for shrinking.
-ZOOM_MAGNIFY = (0.4, 3.25, 2.066)
-ZOOM_SHRINK = (0.25, 5.40, 2.060)
+
 
 
 def _number(*, value, label, low, high):
@@ -244,42 +245,23 @@ def apply_slim(*, rgba, intensity, x, y, width, height, rotation, table=None, st
 
 
 def zoom_motion(*, radius, amount):
-    """Outward motion (in circle radii) of a source point at relative `radius`."""
-    scale, power, falloff = ZOOM_MAGNIFY if amount > 0 else ZOOM_SHRINK
-    clipped = np.clip(radius, 0, 1)
-    return amount * scale * clipped * (1 - clipped ** power) ** falloff
+    """Outward radial motion before finite-grid interpolation."""
+    clipped = np.clip(np.asarray(radius, np.float32), 0, 1)
+    scale = np.float32(amount) * np.float32(.4 if amount > 0 else .25)
+    return scale * (clipped * radial_weight(radius=clipped, positive=amount > 0))
 
 
-def zoom_source_points(*, width, height, intensity, x, y, radius):
-    """Output pixels inside the zoom circle and the continuous source point each samples."""
-    amount = intensity / 100
-    size = radius * min(width, height)
-    centre = np.array([x * width, (1 - y) * height])
-    left, top = (max(int(math.floor(value - size)), 0) for value in centre)
-    right = min(int(math.ceil(centre[0] + size)), width)
-    bottom = min(int(math.ceil(centre[1] + size)), height)
-    if right <= left or bottom <= top or amount == 0:
-        return np.empty(0, np.intp), np.empty(0, np.intp), np.empty((0, 2))
-    rows, columns = np.mgrid[top:bottom, left:right]
-    offset = np.stack([columns + 0.5 - centre[0], rows + 0.5 - centre[1]], axis=-1)
-    out_radius = np.hypot(offset[..., 0], offset[..., 1]) / size
-    inside = out_radius < 1
-    out_radius, offset = out_radius[inside], offset[inside]
-    # Points move out by zoom_motion; invert it by fixed-point steps (its slope stays below one).
-    source_radius = out_radius.copy()
-    for _ in range(12):
-        source_radius = out_radius - zoom_motion(radius=source_radius, amount=amount)
-    ratio = np.divide(source_radius, out_radius, out=np.ones_like(out_radius), where=out_radius > 0)
-    return rows[inside], columns[inside], centre + offset * ratio[:, None]
-
-
-def apply_zoom(*, rgba, intensity, x, y, radius):
-    """The zoom circle: radial magnify or shrink; pixels outside it keep the photo."""
-    rows, columns, points = zoom_source_points(width=rgba.shape[1], height=rgba.shape[0],
-                                               intensity=intensity, x=x, y=y, radius=radius)
-    result = rgba.copy()
-    if len(rows):
-        result[rows, columns] = sample_bilinear(rgba=rgba, points=points)
+def apply_zoom(*, rgba, intensity, x, y, radius, runtime=None):
+    if intensity == 0:
+        return rgba.copy()
+    runtime = Path(__file__).resolve().parents[1] / 'runtime' if runtime is None else runtime
+    vertices, triangles = make_zoom_mesh(width=rgba.shape[1], height=rgba.shape[0],
+                                         intensity=intensity, x=x, y=y, radius=radius)
+    result, _ = draw_mesh(rgba=rgba, vertices=vertices, triangles=triangles, runtime=runtime,
+                          precision='float', mesh_profile='manual-zoom')
+    # The scene composites uncovered mesh pixels over the unchanged source.
+    uncovered = result[..., 3] == 0
+    result[uncovered] = rgba[uncovered]
     return result
 
 
@@ -295,7 +277,7 @@ def run(*, rgba, manual_body, runtime, output, report):
     if 'slim' in settings:
         result = apply_slim(rgba=result, **settings['slim'])
     if 'zoom' in settings:
-        result = apply_zoom(rgba=result, **settings['zoom'])
+        result = apply_zoom(rgba=result, runtime=runtime, **settings['zoom'])
     if result is rgba:
         result = rgba.copy()
     independence = process_images()
@@ -305,6 +287,7 @@ def run(*, rgba, manual_body, runtime, output, report):
                   if 'stretch' in settings else {}),
                'independence': independence, 'privateAssetDependency': False,
                'fixedLandmarks': False, 'nativeGeometryUsed': False, 'nativeProductParityVerified': False,
+               **({'zoomGeometry': 'finite-grid-250', 'zoomSampling': 'float'} if 'zoom' in settings else {}),
                'inputRgbaSha256': hashlib.sha256(rgba.tobytes()).hexdigest(),
                'outputRgbaSha256': hashlib.sha256(result.tobytes()).hexdigest(),
                'changedPixels': int(np.count_nonzero(np.any(result != rgba, axis=-1))),
