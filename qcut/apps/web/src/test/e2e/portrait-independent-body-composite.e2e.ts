@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { expect, type Locator } from "@playwright/test";
-import type { BeautyLabIndependentStatus } from "../../../types/electron";
+import type { BeautyLabIndependentStatus } from "@/types/electron";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
 import {
 	armCompositeCapture,
