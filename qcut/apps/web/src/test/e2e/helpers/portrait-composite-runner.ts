@@ -28,6 +28,13 @@ import { probeVideo } from "./transition-export-evidence";
 export interface CompositeScenarioPass {
 	id: CompositeEvidencePass;
 	adjustments: MediaPortraitAdjustments;
+	/**
+	 * Paused-preview capture needs the committed canvas-composition surface,
+	 * which only exists for frames with a composition plan (body or colour
+	 * edits, keyframes, transitions). A pass whose frames have none — an
+	 * untouched clip — records its export frames only.
+	 */
+	capturePreview?: boolean;
 }
 
 async function exportCompositePass({
@@ -295,7 +302,7 @@ export async function runCompositeConsistency({
 		await persist();
 		await passes.reduce(async (previous, configuredPass) => {
 			await previous;
-			const { id: pass, adjustments } = configuredPass;
+			const { id: pass, adjustments, capturePreview = true } = configuredPass;
 			await mkdir(path.join(output, pass), { recursive: true });
 			await applyCompositeAdjustments({ page, project, adjustments });
 			stageEvents.push({
@@ -323,11 +330,12 @@ export async function runCompositeConsistency({
 					.filter((frame) => frame.pass === pass)
 					.map((frame) => frame.frameIndex)
 			).toEqual(settings.samples);
-			await setOneToOnePreview({ page, settings });
 			const previews: Array<
 				Awaited<ReturnType<typeof captureCompositePreview>>
 			> = [];
-			await previewIndices.reduce(async (prior, frameIndex, sampleIndex) => {
+			if (capturePreview) await setOneToOnePreview({ page, settings });
+			const previewTargets = capturePreview ? previewIndices : [];
+			await previewTargets.reduce(async (prior, frameIndex, sampleIndex) => {
 				await prior;
 				const selected = sampleIndex % 2 === 1;
 				await page.evaluate(
@@ -368,7 +376,18 @@ export async function runCompositeConsistency({
 				stage: "previewEnd",
 				timestamp: new Date().toISOString(),
 			});
-			completed.push({ pass, adjustments, exported, previews });
+			completed.push({
+				pass,
+				adjustments,
+				exported,
+				previews,
+				...(capturePreview
+					? {}
+					: {
+							previewSkipped:
+								"no composition plan on an unedited clip; export frames only",
+						}),
+			});
 			await persist();
 		}, Promise.resolve());
 		expect(pageErrors).toEqual([]);
