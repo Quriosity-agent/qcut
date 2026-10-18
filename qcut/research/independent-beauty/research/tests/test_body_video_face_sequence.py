@@ -48,9 +48,20 @@ class VideoFaceSequence(unittest.TestCase):
         self.assertEqual(self.sequence.detector.detect.call_count, 1)
         self.assertIs(self.sequence.engine, self.fresh)
         self.assertEqual(self.sequence.index, 1)
-        with self.assertRaisesRegex(ValueError, 'retained face tracking is not supported'):
-            self.sequence.update(algorithm=self.algorithm)
+        self.assertTrue(receipt['recovery']['active'])
+        # The face kept through the retry is not tracked on: the recovery window re-detects it.
+        data, receipt = self.sequence.update(algorithm=self.algorithm)
         self.fresh.process.assert_not_called()
+        self.assertTrue(receipt['retainedFaceDropped'])
+        self.assertEqual(receipt['status'], 'tracked')
+        self.assertTrue(receipt['relaxed'])
+        self.assertEqual(data['faces'].shape, (1, 106, 2))
+        self.assertEqual(self.start.call_count, 2)
+        self.assertEqual(self.sequence.detector.detect.call_count, 2)
+        self.assertFalse(receipt['recovery']['active'])
+        third, receipt = self.sequence.update(algorithm=self.algorithm)
+        self.assertNotIn('retainedFaceDropped', receipt)
+        self.assertEqual(receipt['status'], 'tracked')
 
     def test_failed_redetection_has_no_points_or_old_history(self):
         self.track(failure=module.RejectedVideoFace('tracking failure'))
