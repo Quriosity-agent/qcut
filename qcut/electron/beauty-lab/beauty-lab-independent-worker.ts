@@ -48,6 +48,34 @@ interface WorkerRequest {
 	};
 }
 
+/**
+ * The resident worker died under a request — killed from outside, out of
+ * memory, a crash — rather than being stopped on purpose. A body-video
+ * session can recover from this: the next request starts a fresh worker,
+ * which lacks the session's history and answers with the frame to replay.
+ */
+export class IndependentWorkerExitedError extends Error {
+	readonly exitCode: number | null;
+	readonly signal: string | null;
+	constructor({
+		code,
+		signal,
+		diagnostic = "",
+	}: {
+		code: number | null;
+		signal: string | null;
+		diagnostic?: string;
+	}) {
+		const cause = signal ? `signal ${signal}` : `code ${code ?? "unknown"}`;
+		super(
+			`Independent worker exited (${cause})${diagnostic ? `: ${diagnostic}` : ""}`
+		);
+		this.name = "IndependentWorkerExitedError";
+		this.exitCode = code;
+		this.signal = signal;
+	}
+}
+
 /** A rendered job, or the frame a body-video session must replay from. */
 export interface WorkerOutcome {
 	gap?: { restartFrom: number };
@@ -179,14 +207,21 @@ export function createIndependentBeautyWorker({
 		});
 		child.stdin.on("error", (error) => stop({ state, error }));
 		child.on("error", (error) => stop({ state, error }));
-		child.on("exit", () => {
+		child.on("exit", (code, signal) => {
 			// The parent can exit while a renderer still holds the group's pipes.
+			// A stop() already names its reason; anything else died on its own.
 			stop({
 				state,
-				error: state.failure ?? new Error("Independent worker exited"),
+				error:
+					state.failure ??
+					new IndependentWorkerExitedError({
+						code,
+						signal,
+						diagnostic: diagnostic.slice(-2048),
+					}),
 			});
 		});
-		child.on("close", (code) => {
+		child.on("close", (code, signal) => {
 			clearTimeout(state.idle);
 			if (current === state) current = undefined;
 			const pending = state.pending;
@@ -194,7 +229,11 @@ export function createIndependentBeautyWorker({
 			pending?.cleanup();
 			pending?.reject(
 				state.failure ??
-					new Error(`Independent worker failed (${code}): ${diagnostic}`)
+					new IndependentWorkerExitedError({
+						code,
+						signal,
+						diagnostic: diagnostic.slice(-2048),
+					})
 			);
 			close();
 		});
