@@ -154,6 +154,27 @@ describe("independent body video clip frames", () => {
 				await independentBodyVideoClipIdentity({ clip: changed })
 			).not.toBe(identity);
 	});
+	it("keeps its identity when the project is reopened and storage rebuilds the media File", async () => {
+		const identity = await independentBodyVideoClipIdentity({ clip });
+		// After a restart the storage layer hands back the OPFS file: named by
+		// the media id, stamped with the write time, holding the same bytes.
+		const reopened = mediaItem({
+			file: new File([new Uint8Array(16)], "media-1", {
+				lastModified: 1_800_000_000_000,
+			}),
+		});
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: reopened },
+			})
+		).toBe(identity);
+		// Renaming the media in the panel changes neither the bytes nor the identity.
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: mediaItem({ name: "renamed.mp4" }) },
+			})
+		).toBe(identity);
+	});
 });
 
 describe("independent body video frame driver", () => {
