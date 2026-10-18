@@ -21,6 +21,7 @@ import {
 } from "@/lib/color/color-settings-merge";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
+import { buildLegacyAudioFields } from "@/lib/audio/audio-properties";
 import { resolveClaudePlacement } from "./claude-placement";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
@@ -551,6 +552,14 @@ export const applyElementChanges = ({
 			}
 			if (parsedAudio !== undefined) {
 				mediaUpdates.audio = parsedAudio;
+				// The legacy fields (volume, fades, …) are normally mirrored from
+				// the settings only when a project loads; the editor-API native
+				// export reads them, so a gain patched here must land in both
+				// representations immediately (问题记录 Q7/问题 2).
+				Object.assign(
+					mediaUpdates,
+					buildLegacyAudioFields({ settings: parsedAudio })
+				);
 			}
 			if (parsedFilterStack !== undefined) {
 				mediaUpdates.filterStack = parsedFilterStack;
