@@ -39,6 +39,11 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
   if (request.image === 'oversized') return process.stdout.write('x'.repeat(70000));
   if (request.image === 'wrong-id') return process.stdout.write(JSON.stringify({id:'wrong',ok:true})+'\\n');
   if (request.image === 'fail') return process.stdout.write(JSON.stringify({id:request.id,ok:false,error:'bad frame'})+'\\n');
+  if (request.image === 'gap') return process.stdout.write(JSON.stringify({id:request.id,ok:false,error:'SequenceGap: resumes at 3',gap:{restartFrom:3}})+'\\n');
+  if (request.image === 'sequence') {
+    fs.writeFileSync(request.output, JSON.stringify(request.sequence));
+    return process.stdout.write(JSON.stringify({id:request.id,ok:true,sequence:{nextFrame:request.sequence.frame+1,resumed:'continued'}})+'\\n');
+  }
   fs.writeFileSync(request.output, request.image);
   process.stdout.write(JSON.stringify({id:request.id,ok:true})+'\\n');
 });
@@ -117,7 +122,7 @@ describe("resident beauty process lifetime", () => {
 		"fail",
 	])("recovers after %s without publishing a success", async (image) => {
 		await expect(worker.run(job({ image }))).rejects.toThrow();
-		await expect(worker.run(job())).resolves.toBeUndefined();
+		await expect(worker.run(job())).resolves.toEqual({});
 		expect(spawn).toHaveBeenCalledTimes(2);
 	});
 
@@ -137,11 +142,35 @@ describe("resident beauty process lifetime", () => {
 		expect(spawn).toHaveBeenCalledTimes(2);
 	});
 
+	it("answers a body-video history gap without losing the process", async () => {
+		const first = job({ image: "gap" });
+		await expect(worker.run(first)).resolves.toEqual({
+			gap: { restartFrom: 3 },
+		});
+		const sequence = {
+			session: "s".repeat(64),
+			frame: 4,
+			timestamp: 1 / 6,
+			checkpoints: directory,
+		};
+		const second = job({ image: "sequence" });
+		await expect(
+			worker.run({ ...second, request: { ...second.request, sequence } })
+		).resolves.toEqual({});
+		expect(JSON.parse(await readFile(second.request.output, "utf8"))).toEqual(
+			sequence
+		);
+		expect(await readFile(first.request.report, "utf8")).toBe(
+			await readFile(second.request.report, "utf8")
+		);
+		expect(spawn).toHaveBeenCalledTimes(1);
+	});
+
 	it("times out a hung job and recovers", async () => {
 		await expect(
 			worker.run(job({ image: "hang", timeoutMs: 100 }))
 		).rejects.toThrow("timed out");
-		await expect(worker.run(job())).resolves.toBeUndefined();
+		await expect(worker.run(job())).resolves.toEqual({});
 	});
 
 	it("rejects an already aborted request without starting a process", async () => {
@@ -196,7 +225,7 @@ describe("resident beauty process lifetime", () => {
 				await vi.waitFor(() =>
 					expect(() => process.kill(descendant, 0)).toThrow()
 				);
-				await expect(worker.run(job())).resolves.toBeUndefined();
+				await expect(worker.run(job())).resolves.toEqual({});
 			} finally {
 				try {
 					process.kill(descendant, "SIGKILL");
