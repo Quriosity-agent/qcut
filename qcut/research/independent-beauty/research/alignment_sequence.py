@@ -88,12 +88,14 @@ class Sequence:
             raise ValueError('Extra refinement requires fresh owned seed tracking history')
         self.tracking_points = points106(points=points).copy()
 
-    def process(self, *, rgba, size, index, face, discarded_forward=None, discarded_tracking=False):
+    def process(self, *, rgba, size, index, face, discarded_forward=None, discarded_tracking=False, seed_only=False):
         if type(index) is not int or index != self.index + 1:
             raise ValueError("contiguous prediction indices required")
         algorithm = resize_rgba(frame=rgba, size=size)
         if type(discarded_tracking) is not bool:
             raise ValueError("typed discarded tracking decision required")
+        if type(seed_only) is not bool or seed_only and (face is None or face.get('mode') != 'seed-160'):
+            raise ValueError('seed-only output requires explicit seed-160 mode')
         result = {"algorithm": algorithm, "heads": {}, "tensors": {}, "points": None,
                   "normalized": None, "seed": None, "stage1": None, "tracked": None,
                   "forward": None, "inverse": None, "tracking_filtered": None,
@@ -151,6 +153,20 @@ class Sequence:
                                       inverse=init.get("inverse", prepared["inverse"]), size=160)
         elif face["initialization"] is not None:
             raise ValueError("unexpected initialization geometry")
+        if seed_only:
+            if not own_transform:
+                raise ValueError('seed-only output requires owned tracking geometry')
+            seed = result['seed']
+            self.state = initialize_base(points=seed, width=profile[0]['width'], height=profile[0]['height'],
+                escales=tuple(row['escale'] for row in profile), alphas=tuple(row['alpha'] for row in profile))
+            self.identity, self.profile, self.index = identity, copy.deepcopy(profile), index
+            self.decode_profile = decode_profile
+            self.tracking_state = initialize(points=seed, **track_profile)
+            self.tracking_points, self.tracking_profile = seed.copy(), copy.deepcopy(face)
+            self.seen.add(identity)
+            result.update(points=seed.copy(), tracked=seed.copy(),
+                          normalized=normalized(points=seed, size=size) if self.normalize_output else None)
+            return result
         transform, tracking_state = None, None
         if own_transform:
             previous = result["seed"] if mode == "seed-160" else self.tracking_points
