@@ -54,8 +54,8 @@
 		},
 		{
 			"path": "research/alignment_infer.py",
-			"bytes": 5040,
-			"sha256": "a2f52aa801979ad2acd0a40eb743cc0aab6fb0babd6e23815eabb6ec52fcac32",
+			"bytes": 5802,
+			"sha256": "16d45442080ce26388fd0b3e3d9c24f653a9783a0d65d1293ff6fc4b99644c1f",
 			"sourceSha256": "2264c520f5b54a245178e8ed117b04eae8e1b215ac461a29ebd30cd3f3ab2614"
 		},
 		{
@@ -72,8 +72,8 @@
 		},
 		{
 			"path": "research/alignment_sequence.py",
-			"bytes": 12193,
-			"sha256": "f3ed59e15a83540f12907c40961b2450616e75de023a9de3a90de0e61d727f46",
+			"bytes": 13341,
+			"sha256": "5114cfd2220688b4c0f0f2a971e74d742bfac7fbe27fbfbbc158a8da16a2158d",
 			"sourceSha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5"
 		},
 		{
@@ -2239,13 +2239,13 @@
 		},
 		{
 			"path": "research/body_face_recovery.py",
-			"bytes": 913,
-			"sha256": "b817983ed25e492a6aeb62aa8a4ec9e0ff8fb09cd23131e34c1bac2a1146625b"
+			"bytes": 946,
+			"sha256": "e08e26ba3647a1c7e8c25642868312a18c1b5b27ef3baa0030b212b4a8296ec3"
 		},
 		{
 			"path": "research/body_face_start.py",
-			"bytes": 1389,
-			"sha256": "c7b041b8e97c88b25cb428016856fc4a40dc50452b91a5e4002e79bf704a49ac"
+			"bytes": 1450,
+			"sha256": "8cab909574e250d1a2b2a0f56d8a9ab0653281c500972720e7a23e3bb2a6ae9d"
 		},
 		{
 			"path": "research/body_mesh_renderer.py",
@@ -2289,8 +2289,8 @@
 		},
 		{
 			"path": "research/body_video_face_sequence.py",
-			"bytes": 5413,
-			"sha256": "4e67d4f15024f0073f118ffed584a85fd9ae2361412461eb0117c1549429e174"
+			"bytes": 8429,
+			"sha256": "755ef6db19a8a77a043f4c45da78cf07bae88ed264c8b1bb7e8f62673040abc1"
 		},
 		{
 			"path": "research/manual_body_zoom_geometry.py",
@@ -2314,8 +2314,8 @@
 		},
 		{
 			"path": "research/tests/test_body_face_recovery.py",
-			"bytes": 2446,
-			"sha256": "bfa17d4b0ae3360971d2e1ccd350f6a95d58d69493aaf00bef7cd3c161dee9a6"
+			"bytes": 3094,
+			"sha256": "f0712fae792fb7dcb48bbd90938e07d5e4f68b58327c73b6e082e495986e0739"
 		},
 		{
 			"path": "research/tests/test_body_integration.py",
@@ -2359,8 +2359,8 @@
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
-			"bytes": 6939,
-			"sha256": "4daa87e3af7ec0a91b01c052600b011be61bb565c8927e250fb61d65a57e186a"
+			"bytes": 17222,
+			"sha256": "0b7e9703330f8cee9e9653a1b94cdeb0334e4a595877d67f1c9259d303e753e8"
 		},
 		{
 			"path": "research/tests/test_manual_body_zoom_geometry.py",
@@ -2374,8 +2374,8 @@
 		},
 		{
 			"path": "research/body_sequence_checkpoint.py",
-			"bytes": 4967,
-			"sha256": "3579b3b227c11e37ceca49bfef6059bfc9130287f3ad8e1f08aab8c7c0cd38b1"
+			"bytes": 5839,
+			"sha256": "ad7e18cb1c89b011b6b531016dfce90a8c8b0c70d757d51fb29aeefec45b9567"
 		},
 		{
 			"path": "research/independent_sequence_sessions.py",
@@ -2384,8 +2384,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_checkpoint.py",
-			"bytes": 10182,
-			"sha256": "47e2389facac5f55b73b7c8efc29676a16005b19abe27e4e38f2b905eae76417"
+			"bytes": 21181,
+			"sha256": "09f77aba6f7287a7f15fa7f83384d7a9078d3db74cbbceef913a7f4f975c5e76"
 		},
 		{
 			"path": "research/tests/test_independent_sequence_sessions.py",
@@ -2394,8 +2394,43 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
-			"bytes": 4881,
-			"sha256": "43a41a2a689a896cd3e8cbe1691a009e7e98ae1cac535feea6713023f15e741f"
+			"bytes": 5203,
+			"sha256": "2015e2cfbedb4677915349c0f4fbba5fb20ae52c47c993002dc5e49dfc6e79e0"
+		},
+		{
+			"path": "research/body_face_matching.py",
+			"bytes": 2482,
+			"sha256": "a0de0657c33e5a3104625897dfcd8d0415047e05e49b1fab246470103186b5e3"
+		},
+		{
+			"path": "research/tests/test_body_face_matching.py",
+			"bytes": 4184,
+			"sha256": "60033f73727b527ed2a68068f063b6705a990e3b19b10658f1d2ce0d48b7f924"
+		},
+		{
+			"path": "research/alignment_probability.py",
+			"bytes": 3853,
+			"sha256": "4688f0d7af41bd418c3ff90770d737a1a236231d885b94d1701745090284339f"
+		},
+		{
+			"path": "research/body_face_slots.py",
+			"bytes": 1604,
+			"sha256": "e5f05b0454792bf5f34048d14094a9c7e82b7078c6f39cbe5febd4bb6aa01e64"
+		},
+		{
+			"path": "research/body_face_duplicates.py",
+			"bytes": 1973,
+			"sha256": "bd13f4e48f53ec2bae0c37a4abe162566b6cf9cc3c322868f7ee8fc509d96b71"
+		},
+		{
+			"path": "research/tests/test_alignment_probability.py",
+			"bytes": 7696,
+			"sha256": "1e91af9d188cab43df403ae35e7fa2f9c3f7c6aaa2658589ed57409619d5cba3"
+		},
+		{
+			"path": "research/tests/test_body_face_duplicates.py",
+			"bytes": 4292,
+			"sha256": "dca51c98e73944cedc9002b515f966627b82199225e8a28ffca9fbe9877e14f3"
 		}
 	],
 	"importPatches": [
@@ -3031,6 +3066,28 @@
 				"research/tests/test_independent_pipeline.py"
 			],
 			"reason": "Remember the canonical plan per request and resolution while the catalog and planner hashes are unchanged, so the resident worker plans a clip's frames once instead of starting the Bun planner per frame; plans are handed out as copies and the hash chain, stage order and receipts are unchanged"
+		},
+		{
+			"files": [
+				"research/alignment_infer.py",
+				"research/alignment_probability.py",
+				"research/alignment_sequence.py",
+				"research/body_face_duplicates.py",
+				"research/body_face_matching.py",
+				"research/body_face_recovery.py",
+				"research/body_face_slots.py",
+				"research/body_face_start.py",
+				"research/body_sequence_checkpoint.py",
+				"research/body_video_face_sequence.py",
+				"research/tests/test_alignment_probability.py",
+				"research/tests/test_body_face_duplicates.py",
+				"research/tests/test_body_face_matching.py",
+				"research/tests/test_body_face_recovery.py",
+				"research/tests/test_body_sequence_checkpoint.py",
+				"research/tests/test_body_sequence_scenarios.py",
+				"research/tests/test_body_video_face_sequence.py"
+			],
+			"reason": "Restore the pinned native five-slot video face lifecycle: independent slot histories, retained-face matching, cold detector-index allocation and recovery first-free allocation, monotonic IDs, native detection cadence, delayed publication of 160-only seeds, current-ID output order, and ordered FilterDup suppression. Optional exact classification terminals preserve native float32 FMA and scalar softmax order for video gates and duplicate confidence without changing default photo heads. Checkpoint v2 captures all five slot histories without model handles and reattaches shared models on restore. Regression coverage includes active recovery, slot loss and reentry, duplicate boundaries, classifier terminals, and checkpoint continuation. The body renderer remains a single-body profile; private model weights, original libraries, probe captures, and runtime assets remain private and unchanged."
 		}
 	],
 	"sourceWorkingTreeStatus": [
