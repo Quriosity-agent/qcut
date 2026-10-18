@@ -216,6 +216,21 @@ def fmt(value, digits=3):
     return "—" if value is None else f"{value:.{digits}f}" if isinstance(value, float) else str(value)
 
 
+def ranges(frames):
+    """Frame numbers as compact runs: [3, 4, 5, 8, 11, 12] → "3–5, 8, 11–12"."""
+    runs, start, previous = [], None, None
+    for frame in list(frames) + [None]:
+        if start is None:
+            start = previous = frame
+            continue
+        if frame is not None and frame == previous + 1:
+            previous = frame
+            continue
+        runs.append(f"{start}–{previous}" if start != previous else f"{start}")
+        start = previous = frame
+    return ", ".join(runs) if runs else "—"
+
+
 def write_page(*, output, report, lock):
     pairs_rows = "".join(
         f'<tr><th>{html.escape(PAIRS[name][2])}</th>'
@@ -229,10 +244,10 @@ def write_page(*, output, report, lock):
         for name, summary in report["pairs"].items())
     effect_rows = "".join(
         f'<tr><th>{PASS_LABELS[mode]}</th><td>{summary["frames_with_effect"]}/{summary["frames"]}</td>'
-        f'<td>{html.escape(str(summary["frames_without_effect"][:20]))}{"…" if len(summary["frames_without_effect"]) > 20 else ""}</td>'
+        f'<td>{html.escape(ranges(summary["frames_without_effect"]))}</td>'
         f'<td>{fmt(summary["changed_fraction"]["mean"] * 100, 2)} %</td>'
         f'<td>{fmt(summary["bbox_height_fraction"]["mean"], 2)}</td>'
-        f'<td>{html.escape(str(summary["whole_frame_frames"]))}</td></tr>'
+        f'<td>{html.escape(ranges(summary["whole_frame_frames"]))}</td></tr>'
         for mode, summary in report["effect_regions"].items())
     parity_rows = "".join(
         f'<tr><th>{PASS_LABELS[mode]}</th><td>{badge(passed=summary["passed"])}</td>'
