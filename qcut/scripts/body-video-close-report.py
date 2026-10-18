@@ -57,23 +57,34 @@ def band_profile(*, mask, bands=8):
     return [float(mask[edges[i]:edges[i + 1]].mean()) for i in range(bands)]
 
 
+BLOCK = 8
+
+
+def block_mean(*, magnitude):
+    """8×8 block means of |Δ|: a body edit lifts whole blocks, encoder noise does not."""
+    height, width = magnitude.shape
+    h, w = height - height % BLOCK, width - width % BLOCK
+    return magnitude[:h, :w].reshape(h // BLOCK, BLOCK, w // BLOCK, BLOCK).mean(axis=(1, 3))
+
+
 def effect_region(*, before, after):
-    """Where a pass changed the picture versus the untouched frame."""
+    """Where a pass changed the picture versus the untouched frame (block level)."""
     magnitude = np.abs(after.astype(np.int16) - before.astype(np.int16)).max(axis=2)
-    mask = magnitude > EFFECT_THRESHOLD
+    blocks = block_mean(magnitude=magnitude)
+    mask = blocks > EFFECT_THRESHOLD
     changed = int(mask.sum())
-    total = mask.size
+    summary = {"mean_abs_rgb": float(magnitude.mean()), "max_abs_rgb": int(magnitude.max()),
+               "bands": band_profile(mask=mask)}
     if changed == 0:
-        return {"changed_fraction": 0.0, "bbox": None, "bands": band_profile(mask=mask),
-                "mean_abs_rgb": float(magnitude.mean()), "max_abs_rgb": int(magnitude.max())}
+        return {"changed_fraction": 0.0, "bbox": None, **summary}
     rows = np.flatnonzero(mask.any(axis=1))
     cols = np.flatnonzero(mask.any(axis=0))
-    bbox = {"x0": int(cols[0]), "y0": int(rows[0]), "x1": int(cols[-1]) + 1, "y1": int(rows[-1]) + 1}
-    height, width = mask.shape
+    bbox = {"x0": int(cols[0]) * BLOCK, "y0": int(rows[0]) * BLOCK,
+            "x1": (int(cols[-1]) + 1) * BLOCK, "y1": (int(rows[-1]) + 1) * BLOCK}
+    height, width = magnitude.shape
     bbox["width_fraction"] = (bbox["x1"] - bbox["x0"]) / width
     bbox["height_fraction"] = (bbox["y1"] - bbox["y0"]) / height
-    return {"changed_fraction": changed / total, "bbox": bbox, "bands": band_profile(mask=mask),
-            "mean_abs_rgb": float(magnitude.mean()), "max_abs_rgb": int(magnitude.max())}
+    return {"changed_fraction": changed / mask.size, "bbox": bbox, **summary}
 
 
 def pair_series(*, reference_frames, candidate_frames):
@@ -242,7 +253,7 @@ def write_page(*, output, report, lock):
 <h2>逐帧误差（{report["total_frames"]} 帧，解码后）</h2>
 <table><thead><tr><th>对</th><th>均值(平均)</th><th>均值 p95</th><th>均值最大</th><th>单像素最大</th><th>最大跳变</th><th>误差最大帧</th><th>跳变最大帧</th></tr></thead><tbody>{pairs_rows}</tbody></table>
 <h2>有效跟踪帧：身体区域是否被改变</h2>
-<p>相对原图，|Δ|&gt;{EFFECT_THRESHOLD} 的像素为"被改变"；bbox 高度占比和整帧级变化用于识别全局漂移。</p>
+<p>相对原图，8×8 块均值 |Δ|&gt;{EFFECT_THRESHOLD} 的块为"被改变"（块均值滤掉编码噪声）；无效果帧按该路径自身典型改变面积的 10 % 判定；bbox 高度占比和整帧级变化用于识别全局漂移。</p>
 <table><thead><tr><th>路径</th><th>有效果帧</th><th>无效果帧</th><th>平均改变面积</th><th>bbox 高度占比</th><th>整帧级变化帧</th></tr></thead><tbody>{effect_rows}</tbody></table>
 <h2>产品画面：暂停预览画布 ↔ 编码前导出帧（第 3 步，目标 ≤1）</h2>
 <table><thead><tr><th>路径</th><th>结果</th><th>最大 RGB</th><th>最大 Alpha</th><th>失败帧</th></tr></thead><tbody>{parity_rows}</tbody></table>
