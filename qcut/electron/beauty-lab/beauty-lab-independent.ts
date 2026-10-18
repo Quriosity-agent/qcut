@@ -37,6 +37,10 @@ import {
 	canonicalIndependentManualBody,
 	independentManualBodySchema,
 } from "./beauty-lab-independent-manual-body.js";
+import {
+	independentBodyVideoAvailable,
+	IndependentSequenceGapError,
+} from "./beauty-lab-independent-body-video.js";
 
 const requestSchema = z
 	.object({
@@ -46,6 +50,20 @@ const requestSchema = z
 		height: z.number().int().min(1).max(INDEPENDENT_BEAUTY_MAX_EDGE),
 		rgba: z.instanceof(Uint8Array),
 		sourceEvidence: independentSourceEvidenceSchema.optional(),
+		// A body-video frame: the worker renders it from the session's history.
+		sequence: z
+			.object({
+				session: z.string().regex(/^[a-f0-9]{64}$/),
+				frame: z.number().int().min(0),
+				timestamp: z.number().finite().min(0),
+				checkpoints: z
+					.string()
+					.min(1)
+					.max(4096)
+					.refine((value) => path.isAbsolute(value)),
+			})
+			.strict()
+			.optional(),
 		adjustments: z
 			.object({
 				enabled: z.literal(true),
@@ -179,6 +197,7 @@ export function createBeautyLabIndependentProvider({
 	runJob,
 	verifyRuntime = verifyIndependentBeautyRuntime,
 	verifyEnvironment = verifyIndependentBeautyEnvironment,
+	createWorker = createIndependentBeautyWorker,
 }: {
 	engineRoot: string;
 	runtimeRoot?: string;
@@ -188,8 +207,9 @@ export function createBeautyLabIndependentProvider({
 	runJob?: typeof runIndependentBeautyJob;
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
+	createWorker?: typeof createIndependentBeautyWorker;
 }) {
-	const worker = createIndependentBeautyWorker({
+	const worker = createWorker({
 		python,
 		engineRoot,
 		runtimeRoot,
@@ -302,7 +322,10 @@ export function createBeautyLabIndependentProvider({
 				signal?.throwIfAborted();
 				verifiedEnvironmentKey = environmentKey;
 			}
-			const inventory = await catalog();
+			const [inventory, bodyVideo] = await Promise.all([
+				catalog(),
+				independentBodyVideoAvailable({ runtimeRoot }),
+			]);
 			return {
 				available: true,
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
@@ -313,6 +336,7 @@ export function createBeautyLabIndependentProvider({
 				),
 				makeupCards: inventory.makeup.map(({ id }) => id),
 				manualBodyTools: catalogManualBodyTools({ catalog: inventory }),
+				bodyVideo,
 			};
 		} catch (error) {
 			return {
@@ -322,6 +346,7 @@ export function createBeautyLabIndependentProvider({
 				controls: [],
 				makeupCards: [],
 				manualBodyTools: [],
+				bodyVideo: false,
 			};
 		}
 	}
@@ -415,22 +440,35 @@ export function createBeautyLabIndependentProvider({
 				execution.args.push("--resolution", "original");
 			if (sourceEvidence)
 				execution.args.push("--source-evidence", sourceEvidence.path);
-			if (runJob) await runJob(execution);
-			else
-				await worker.run({
+			if (runJob) {
+				if (input.sequence)
+					throw new Error("Independent body video needs the resident worker");
+				await runJob(execution);
+			} else {
+				// A session frame runs to completion: the engine's history has
+				// advanced once the frame is in flight, and the result is cached.
+				const outcome = await worker.run({
 					request: {
 						image: path.join(directory, "input.png"),
 						request: path.join(directory, "request.json"),
 						output: path.join(directory, "owned.png"),
 						report: path.join(directory, "owned.json"),
 						...(sourceEvidence ? { source_evidence: sourceEvidence.path } : {}),
+						...(input.sequence ? { sequence: input.sequence } : {}),
 					},
 					sourceIdentity: manifestSha256,
 					environment: cleanEnvironment,
-					signal: job.controller.signal,
+					signal: input.sequence
+						? new AbortController().signal
+						: job.controller.signal,
 					timeoutMs: execution.timeoutMs,
 				});
-			job.controller.signal.throwIfAborted();
+				if (outcome.gap)
+					throw new IndependentSequenceGapError({
+						restartFrom: outcome.gap.restartFrom,
+					});
+			}
+			if (!input.sequence) job.controller.signal.throwIfAborted();
 			const budgets = await Promise.all([
 				stat(path.join(directory, "owned.png")),
 				stat(path.join(directory, "owned.json")),
