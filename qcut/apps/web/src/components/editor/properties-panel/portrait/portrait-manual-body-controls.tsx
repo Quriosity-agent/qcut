@@ -79,10 +79,18 @@ export function PortraitManualBodyControls({
 	useEffect(() => {
 		syncValue({ elementId, manualBody: adjustments.manualBody });
 	}, [adjustments.manualBody, elementId, syncValue]);
+	const toolReady = readyTools.has(tool);
 	useEffect(() => {
-		setActive({ active: active && !disabled });
+		if (toolReady || manualBody[tool]) return;
+		const next =
+			TOOLS.find((candidate) => readyTools.has(candidate)) ??
+			TOOLS.find((candidate) => manualBody[candidate]);
+		if (next) setTool({ tool: next });
+	}, [manualBody, readyTools, setTool, tool, toolReady]);
+	useEffect(() => {
+		setActive({ active: active && !disabled && toolReady });
 		return () => setActive({ active: false });
-	}, [active, disabled, setActive]);
+	}, [active, disabled, setActive, toolReady]);
 	useEffect(() => {
 		setBindings({
 			bindings: {
@@ -105,7 +113,6 @@ export function PortraitManualBodyControls({
 		setBindings,
 	]);
 
-	const toolReady = readyTools.has(tool);
 	const controlsDisabled = disabled || !toolReady;
 	const setToolValue = ({
 		next,
@@ -157,7 +164,10 @@ export function PortraitManualBodyControls({
 								"h-7 rounded-sm px-1 text-[10px]",
 								tool === candidate && "bg-background shadow-sm"
 							)}
-							disabled={disabled || !readyTools.has(candidate)}
+							disabled={
+								disabled ||
+								(!readyTools.has(candidate) && !manualBody[candidate])
+							}
 							aria-pressed={tool === candidate}
 							onClick={() => setTool({ tool: candidate })}
 							onKeyDown={(event) => event.stopPropagation()}
@@ -173,7 +183,7 @@ export function PortraitManualBodyControls({
 					variant="outline"
 					size="icon"
 					className="size-8 rounded-sm"
-					disabled={pastCount === 0}
+					disabled={disabled || pastCount === 0}
 					aria-label={isZh ? "撤销手动美体" : "Undo manual body"}
 					title={isZh ? "撤销" : "Undo"}
 					onClick={undo}
@@ -188,7 +198,7 @@ export function PortraitManualBodyControls({
 					variant="outline"
 					size="icon"
 					className="size-8 rounded-sm"
-					disabled={futureCount === 0}
+					disabled={disabled || futureCount === 0}
 					aria-label={isZh ? "重做手动美体" : "Redo manual body"}
 					title={isZh ? "重做" : "Redo"}
 					onClick={redo}
@@ -203,7 +213,7 @@ export function PortraitManualBodyControls({
 					variant="outline"
 					size="icon"
 					className="size-8 rounded-sm"
-					disabled={controlsDisabled || !manualBody[tool]}
+					disabled={disabled || !manualBody[tool]}
 					aria-label={isZh ? "重置当前工具" : "Reset current tool"}
 					title={isZh ? "重置" : "Reset"}
 					onClick={resetTool}
@@ -331,9 +341,13 @@ export function PortraitManualBodyControls({
 			) : null}
 			{toolReady ? null : (
 				<p className="text-[10px] text-muted-foreground">
-					{isZh
-						? "该原版手动美体包尚未进入本机私有库"
-						: "This native manual body package is not cached locally"}
+					{adjustments.engine === "independent"
+						? isZh
+							? "当前自研引擎不支持此工具；已保存的设置可重置清除"
+							: "This independent engine does not support this tool; saved settings can be reset"
+						: isZh
+							? "该原版手动美体包尚未进入本机私有库"
+							: "This native manual body package is not cached locally"}
 				</p>
 			)}
 		</div>
