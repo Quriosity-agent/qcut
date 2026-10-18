@@ -4,6 +4,7 @@ import type {
 	BeautyLabIndependentSequenceFrameResult,
 } from "@/types/electron";
 import type { MediaElement, MediaPortraitAdjustments } from "@/types/timeline";
+import { normalizeMediaPortraitAdjustments } from "@qcut/editor-core";
 import { SequentialVideoRegistry } from "@/lib/export/export-sequential-video-source";
 import { getExportFrameSampleTime } from "@/lib/export/export-video-frame-seek";
 import {
@@ -150,6 +151,11 @@ async function sha256Hex({ text }: { text: string }) {
  * File's name and lastModified change while the bytes (and the frames they
  * decode to) do not. The byte length is what the storage layer persists
  * (`MediaFileData.size`) and what a relinked media file usually changes.
+ *
+ * The edit enters in its canonical shape, the one the timeline loader
+ * stores it in (non-zero values in key order, defaults dropped), so the
+ * object the panel wrote and the object a reopened project loads name the
+ * same session.
  */
 export async function independentBodyVideoClipIdentity({
 	clip,
@@ -172,7 +178,9 @@ export async function independentBodyVideoClipIdentity({
 			reverse: element.reverse ?? false,
 			freezeFrameTime: element.freezeFrameTime ?? null,
 			freezeFrameDuration: element.freezeFrameDuration ?? 0,
-			portraitAdjustments: element.portraitAdjustments ?? null,
+			portraitAdjustments: normalizeMediaPortraitAdjustments({
+				adjustments: element.portraitAdjustments,
+			}),
 		}),
 	});
 }
