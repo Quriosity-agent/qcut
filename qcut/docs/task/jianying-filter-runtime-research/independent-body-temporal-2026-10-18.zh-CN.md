@@ -2,6 +2,8 @@
 
 本轮目标是按已验证的原生数学推进独立实现。生产默认路径仍是逐帧照片渲染；新增持续序列是显式离线 API，尚未切换编辑器的预览、内容缓存和导出调度。不能把底层对拍通过写成产品视频已经验收。
 
+> 后续：[自研美体接入视频片段（2026-10-18）](independent-body-video-2026-10-18.zh-CN.md) 已把这套会话接进预览、帧缓存与导出。
+
 ## 新增能力
 
 - `body_composition.PersistentCombinedBody(mode=1|2)`：十项变形器持续状态、Head/Public/Status、肩部缓存、ROI 与计数器。原 `CombinedBody` 保留。
