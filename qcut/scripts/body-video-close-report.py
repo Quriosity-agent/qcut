@@ -267,12 +267,19 @@ def summarize_pair(*, rows):
 
 
 def summarize_effects(*, regions):
-    with_effect = [row["frame"] for row in regions if row["changed_fraction"] > 0.0005]
-    without = [row["frame"] for row in regions if row["changed_fraction"] <= 0.0005]
+    # A frame has "lost" the effect when its changed area collapses against the
+    # pass's own typical frame, not against an absolute pixel count: encoder noise
+    # alone can exceed a fixed count on 2M pixels, and a weak-but-present effect
+    # on a small subject should not count as absent.
+    fractions = [row["changed_fraction"] for row in regions]
+    floor = max(0.0005, 0.1 * float(np.median(fractions)))
+    with_effect = [row["frame"] for row in regions if row["changed_fraction"] > floor]
+    without = [row["frame"] for row in regions if row["changed_fraction"] <= floor]
     heights = [row["bbox"]["height_fraction"] for row in regions if row["bbox"]]
     whole = [row["frame"] for row in regions
              if row["bbox"] and row["bbox"]["height_fraction"] > 0.9 and row["bbox"]["width_fraction"] > 0.9]
     return {"frames": len(regions), "frames_with_effect": len(with_effect), "frames_without_effect": without,
+            "effect_floor_fraction": floor,
             "changed_fraction": VIDEO.distribution(values=[row["changed_fraction"] for row in regions]),
             "bbox_height_fraction": VIDEO.distribution(values=heights) or {"mean": None},
             "whole_frame_frames": whole, "per_frame": regions}
