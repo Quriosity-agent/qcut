@@ -270,18 +270,28 @@ export async function renderIndependentBodyVideoFrame({
 			const rgba = await decoder.frame({ frame: index, width, height, signal });
 			signal?.throwIfAborted();
 			const requestId = `body-video-${crypto.randomUUID()}`;
-			const result = await render({
-				requestId,
-				width,
-				height,
-				rgba,
-				adjustments,
-				sequence: { clip: identity, frame: index, fps: clip.fps, replay },
-			});
-			signal?.throwIfAborted();
-			if (result.requestId !== requestId)
-				throw new Error("自研美颜返回了不匹配的画面");
-			return result;
+			// Cancelling drops the frame while it still waits in the engine queue; a
+			// frame already running completes and is cached, so no history is lost.
+			const cancel = () => {
+				void api.cancelIndependent?.({ requestId }).catch(() => {});
+			};
+			signal?.addEventListener("abort", cancel, { once: true });
+			try {
+				const result = await render({
+					requestId,
+					width,
+					height,
+					rgba,
+					adjustments,
+					sequence: { clip: identity, frame: index, fps: clip.fps, replay },
+				});
+				signal?.throwIfAborted();
+				if (result.requestId !== requestId)
+					throw new Error("自研美颜返回了不匹配的画面");
+				return result;
+			} finally {
+				signal?.removeEventListener("abort", cancel);
+			}
 		};
 		let result = await submit({ index: frame, replay: false });
 		// A gap during a rebuild (another clip took the engine meanwhile, or a
