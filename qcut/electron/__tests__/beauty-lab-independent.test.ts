@@ -13,6 +13,7 @@ import type { BeautyLabIndependentRequest } from "../beauty-lab/beauty-lab-indep
 import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
 import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
 import { verifyIndependentBeautyEnvironment } from "../beauty-lab/beauty-lab-runtime-environment";
+import independentCatalog from "../../research/independent-beauty/research/independent-pipeline-catalog.json";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],
@@ -438,6 +439,61 @@ describe("independent photo provider", () => {
 					catalog: withBody,
 				})
 			).toThrow(/does not support/);
+	});
+	it("advertises all smart body controls and preserves signed values through rendering", async () => {
+		await writeFile(
+			path.join(directory, "research/independent-pipeline-catalog.json"),
+			JSON.stringify(independentCatalog)
+		);
+		const { provider, runJob } = setup();
+		try {
+			const status = await provider.inspect();
+			const controls = independentCatalog.controls.filter(
+				({ group }) => group === "body"
+			);
+			expect(controls).toHaveLength(10);
+			expect(
+				status.controls.filter((key) => key.startsWith("body_adjust_"))
+			).toEqual(controls.map(({ name }) => `body_adjust_${name}`));
+			const values = Object.fromEntries(
+				controls.map(({ name, min, max }) => [
+					`body_adjust_${name}`,
+					min < 0 ? min : max,
+				])
+			);
+			const result = await provider.render({
+				request: { ...request, adjustments: { enabled: true, values } },
+			});
+			expect(result.report.adjustments).toEqual({
+				values: Object.fromEntries(
+					controls.map(({ name, min, max }) => [name, min < 0 ? min : max])
+				),
+				makeup: {},
+			});
+			expect(runJob).toHaveBeenCalledOnce();
+		} finally {
+			await provider.dispose();
+		}
+	});
+	it.each([
+		{ key: "body_adjust_WidenShoulderTest", value: -50.01 },
+		{ key: "body_adjust_SlimBreast", value: 50.01 },
+		{ key: "body_adjust_SlimHip", value: -50.01 },
+		{ key: "body_adjust_SlimWaist", value: -1 },
+		{ key: "face_adjust_SmallHead", value: 20 },
+	])("rejects smart body edits outside the catalog contract: $key", ({
+		key,
+		value,
+	}) => {
+		expect(() =>
+			independentBeautyAdjustments({
+				request: {
+					...request,
+					adjustments: { enabled: true, values: { [key]: value } },
+				},
+				catalog: independentCatalog,
+			})
+		).toThrow();
 	});
 	it("keeps an active stretch band for an engine whose catalog renders it", () => {
 		const stretch = { intensity: -30, upper: 0.72, bottom: 0.18 };
