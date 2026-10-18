@@ -149,6 +149,7 @@ function setup({
 	mutate,
 	run,
 	worker,
+	sessionsDirectory,
 	environment = {
 		PATH: process.env.PATH,
 		QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
@@ -184,6 +185,7 @@ function setup({
 	run?: typeof runIndependentBeautyJob;
 	/** Serves renders instead of one-shot jobs, as the editor does. */
 	worker?: ReturnType<typeof createIndependentBeautyWorker>;
+	sessionsDirectory?: string;
 	environment?: NodeJS.ProcessEnv;
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
@@ -219,6 +221,7 @@ function setup({
 						worker as ReturnType<typeof createIndependentBeautyWorker>,
 				}
 			: { runJob }),
+		...(sessionsDirectory ? { sessionsDirectory } : {}),
 		verifyRuntime,
 		verifyEnvironment,
 	});
@@ -226,15 +229,16 @@ function setup({
 }
 
 describe("independent body video frames", () => {
+	const sessions = path.join(os.tmpdir(), "sessions");
 	const sequence = {
 		session: "5".repeat(64),
 		frame: 2,
 		timestamp: 2 / 24,
-		checkpoints: path.join(os.tmpdir(), "sessions", "5".repeat(64)),
+		checkpoints: path.join(sessions, "5".repeat(64)),
 	};
 	it("renders a session frame through the resident worker and reports the capability", async () => {
 		const worker = fakeWorker();
-		const { provider } = setup({ worker });
+		const { provider } = setup({ worker, sessionsDirectory: sessions });
 		const result = await provider.render({
 			request: { ...request, sequence },
 		});
@@ -250,7 +254,7 @@ describe("independent body video frames", () => {
 	});
 	it("surfaces a worker history gap as a typed error without a result", async () => {
 		const worker = fakeWorker({ outcomes: [{ gap: { restartFrom: 1 } }] });
-		const { provider } = setup({ worker });
+		const { provider } = setup({ worker, sessionsDirectory: sessions });
 		const failure = await provider
 			.render({ request: { ...request, sequence } })
 			.catch((error: unknown) => error);
@@ -260,22 +264,33 @@ describe("independent body video frames", () => {
 			provider.render({ request: { ...request, requestId: "two", sequence } })
 		).resolves.toMatchObject({ requestId: "two" });
 	});
-	it("needs the resident worker and an absolute checkpoint folder", async () => {
-		const { provider, runJob } = setup();
+	it("needs the resident worker and a checkpoint folder inside the sessions folder", async () => {
+		const { provider, runJob } = setup({ sessionsDirectory: sessions });
 		await expect(
 			provider.render({ request: { ...request, sequence } })
 		).rejects.toThrow("resident worker");
 		expect(runJob).not.toHaveBeenCalled();
 		const worker = fakeWorker();
-		const { provider: resident } = setup({ worker });
+		const { provider: resident } = setup({
+			worker,
+			sessionsDirectory: sessions,
+		});
+		for (const checkpoints of [
+			"sessions",
+			sessions,
+			path.join(sessions, "..", "elsewhere"),
+			path.join(os.tmpdir(), "sessions-other", "5".repeat(64)),
+			"/",
+		])
+			await expect(
+				resident.render({
+					request: { ...request, sequence: { ...sequence, checkpoints } },
+				})
+			).rejects.toThrow();
+		const { provider: unconfigured } = setup({ worker });
 		await expect(
-			resident.render({
-				request: {
-					...request,
-					sequence: { ...sequence, checkpoints: "sessions" },
-				},
-			})
-		).rejects.toThrow();
+			unconfigured.render({ request: { ...request, sequence } })
+		).rejects.toThrow("sessions folder");
 		expect(worker.run).not.toHaveBeenCalled();
 	});
 });
