@@ -142,6 +142,9 @@ def sampled_png_parity(*, evidence, modes, samples, output):
     """Pre-encode plane: committed paused-preview composition vs the export canvas."""
     parity = {}
     for mode in modes:
+        if not (evidence / mode / f"preview-frame-{samples[0]:06d}-composition.png").exists():
+            # The untouched pass records export frames only (no composition surface).
+            continue
         rows = []
         for frame in samples:
             difference = output / f"preview-export-{mode}-{frame:06d}.png"
@@ -337,7 +340,7 @@ def build(*, evidence, lock, invariance_dir, output):
         invariance = {"source": str(Path(invariance_dir).resolve() / "e2e-evidence.json"), "checks": inv.get("checks", {}),
                       "record": inv}
 
-    parity_ok = all(summary["passed"] for summary in parity.values())
+    parity_ok = bool(parity) and all(summary["passed"] for summary in parity.values())
     tracking_ok = all(not summary["frames_without_effect"] for summary in effects.values())
     verdict_parts = [f'预览↔导出 {"通过" if parity_ok else "失败"}',
                      f'有效跟踪 {"全帧生效" if tracking_ok else "存在无效果帧"}',
