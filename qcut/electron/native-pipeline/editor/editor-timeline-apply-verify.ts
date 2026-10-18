@@ -95,6 +95,13 @@ const MEDIA_VERIFY_KEYS = [
 	"frameInterpolation",
 	"timelineDuration",
 	"filterStack",
+	// The grade, both representations: `color` subset-compares (the editor
+	// stores a normalized full grade), while `adjustments` read back as the
+	// mirror of the effective `color.basic` — a manifest whose two sides
+	// disagree fails here instead of silently losing one of them (Q4,
+	// 问题记录_片中文字_QCut1702).
+	"color",
+	"adjustments",
 ] as const;
 
 const STICKER_VERIFY_KEYS = [
@@ -116,6 +123,9 @@ const STICKER_VERIFY_KEYS = [
 	"animationLoopType",
 	"animationLoopIntensity",
 ] as const;
+
+/** An adjustment layer's grade verifies like a clip's. */
+const ADJUSTMENT_VERIFY_KEYS = ["color", "adjustments", "opacity"] as const;
 
 const TRANSITION_VERIFY_KEYS = [
 	"type",
@@ -307,6 +317,7 @@ export function verifyManifest({
 			...(verifiesText ? TEXT_VERIFY_KEYS : []),
 			...(verifiesMedia ? MEDIA_VERIFY_KEYS : []),
 			...(expected.type === "sticker" ? STICKER_VERIFY_KEYS : []),
+			...(expected.type === "adjustment" ? ADJUSTMENT_VERIFY_KEYS : []),
 		] as const;
 		for (const key of verificationKeys) {
 			const expectedValue = expectedReadBackValue({ expected, key });
