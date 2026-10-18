@@ -2289,8 +2289,8 @@
 		},
 		{
 			"path": "research/body_video_face_sequence.py",
-			"bytes": 4911,
-			"sha256": "c6297d2f2a1cc6b68542c5975ed14b2de7cd6e6858de0f3a9191a84bbf27ce17"
+			"bytes": 5413,
+			"sha256": "4e67d4f15024f0073f118ffed584a85fd9ae2361412461eb0117c1549429e174"
 		},
 		{
 			"path": "research/manual_body_zoom_geometry.py",
@@ -2359,8 +2359,8 @@
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
-			"bytes": 6293,
-			"sha256": "81cefcdfea86e166b0208605f2d65ab513e3ded5859ee299182f59f2ddb110b0"
+			"bytes": 6939,
+			"sha256": "4daa87e3af7ec0a91b01c052600b011be61bb565c8927e250fb61d65a57e186a"
 		},
 		{
 			"path": "research/tests/test_manual_body_zoom_geometry.py",
