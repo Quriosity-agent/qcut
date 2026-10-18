@@ -72,18 +72,24 @@ class BodyVideoFaceSequence:
         self.index += 1
         return data
 
-    def _finish(self, *, data, receipt, was_tracking, detector_retry):
+    def _finish(self, *, data, receipt, was_tracking, detector_retry, retained_dropped=False):
         self.recovery.finish(previous_faces=int(was_tracking), current_faces=int(data is not None),
                              detector_retry=detector_retry)
         return data, {**receipt, 'attempts': self.attempts, 'relaxed': self.relaxed,
-                      'recovery': self.recovery.snapshot()}
+                      'recovery': self.recovery.snapshot(),
+                      **({'retainedFaceDropped': True} if retained_dropped else {})}
 
     def update(self, *, algorithm):
         height, width = algorithm.shape[:2]
         if self.size is not None and self.size != (width, height):
             raise ValueError('face dimensions changed; reset before replay')
+        retained_dropped = False
         if self.recovery.active and self.engine is not None:
-            raise ValueError('native recovery with retained face tracking is not supported; reset before replay')
+            # A face kept through a frame-end retry. The native rule for matching it is
+            # unverified, so the retained face is dropped and the recovery window's
+            # relaxed detection decides this frame; a session keeps going instead of failing.
+            self._clear_face()
+            retained_dropped = True
         self.size = (width, height)
         self.attempts = []
         self.relaxed = self.recovery.active
@@ -94,14 +100,15 @@ class BodyVideoFaceSequence:
                     result, empty = self._detect(algorithm=algorithm)
                     if empty is not None:
                         return self._finish(data=None, receipt=empty, was_tracking=was_tracking,
-                                            detector_retry=attempt > 0)
+                                            detector_retry=attempt > 0, retained_dropped=retained_dropped)
                 else:
                     result = self.engine.process(rgba=algorithm, size=self.size, index=self.index, face=self.face)
                 data = self._consume(result=result)
                 return self._finish(data=data, receipt={'status': 'redetected' if attempt else 'tracked'},
-                                    was_tracking=was_tracking, detector_retry=attempt > 0)
+                                    was_tracking=was_tracking, detector_retry=attempt > 0,
+                                    retained_dropped=retained_dropped)
             except (RejectedVideoFace, OutOfFrameLandmarks) as error:
                 self._clear_face()
                 reason = str(error)
         return self._finish(data=None, receipt={'status': 'rejected-reset', 'reason': reason}, was_tracking=was_tracking,
-                            detector_retry=was_tracking)
+                            detector_retry=was_tracking, retained_dropped=retained_dropped)
