@@ -1589,8 +1589,8 @@
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 4346,
-			"sha256": "af4ec7b12c47768bef7ae614ffb4c21f0d71f9af2145d72b8fa0bedf2231e537"
+			"bytes": 5945,
+			"sha256": "f2eccf31eb5a13e1d582ad887a062267647922218223355deb3a5d95949bfd6f"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -1604,8 +1604,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_worker.py",
-			"bytes": 10914,
-			"sha256": "469b9f5b43a53a5b990102ec76e04e6646cad623fa6cec211b0c9bf4c121b593"
+			"bytes": 15288,
+			"sha256": "28b6a1f5a32f68ef3a973abe45a7223ea39ff67e82f2c537e46592cb1ab8c943"
 		},
 		{
 			"path": "research/tests/test_metal_original_resolution.py",
@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 6710,
-			"sha256": "ba6d93f5e6cc64f1ad4909511954cc76841feb306f5dc8b468524b0991afc9d0"
+			"bytes": 7818,
+			"sha256": "985d8895c90426d3b41ff9a4bd5066aa0da711a364382a31f1fa8ac7bdd5f71f"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2354,8 +2354,8 @@
 		},
 		{
 			"path": "research/tests/test_body_smart_sequence.py",
-			"bytes": 5179,
-			"sha256": "0fde98ce4b0ec842311a9abf66ef9851471baefaf505b49ec818b919bcb6d968"
+			"bytes": 6858,
+			"sha256": "101e5ec85592f70a1359e2faa661e46479bbf85b9c10331b15f40ed6a7d5595e"
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
@@ -2371,6 +2371,26 @@
 			"path": "src/independent-smart-body-plan.test.ts",
 			"bytes": 3100,
 			"sha256": "79c733ae0c30eafa7099c682cbb8e00674669b13d43f93fabeb5a1f2b6fc7c95"
+		},
+		{
+			"path": "research/body_sequence_checkpoint.py",
+			"bytes": 4439,
+			"sha256": "9a58cf6337df93513a3401f645d8a074f1eb2bd2105309a4ddb6b3f5e623fb54"
+		},
+		{
+			"path": "research/independent_sequence_sessions.py",
+			"bytes": 10047,
+			"sha256": "b3f5823b0ac263cdddb1b2b1b3bbde223c8578758b5700db62cee1db27543f74"
+		},
+		{
+			"path": "research/tests/test_body_sequence_checkpoint.py",
+			"bytes": 9492,
+			"sha256": "7c86786fc76fa753afbc79e453859351b3bd1d114e165bc5d15f629216f74279"
+		},
+		{
+			"path": "research/tests/test_independent_sequence_sessions.py",
+			"bytes": 11893,
+			"sha256": "3f83f0da359f52772a974ae56ad915a40fd1e9057b4ac9452e5e144e5f6a1dbe"
 		}
 	],
 	"importPatches": [
