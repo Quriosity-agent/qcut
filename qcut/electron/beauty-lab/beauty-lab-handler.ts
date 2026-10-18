@@ -97,6 +97,10 @@ export function setupBeautyLabIPC({
 		assertTrusted({ event });
 		if (!independentProvider)
 			throw new Error("Independent photo engine is not connected");
+		// A session frame names a checkpoint folder; only the sequence renderer
+		// composes one, under its own sessions folder.
+		if (request && typeof request === "object" && "sequence" in request)
+			throw new Error("Body video frames use the sequence-frame channel");
 		return independentProvider.render({ request });
 	});
 	ipcMain.handle(
