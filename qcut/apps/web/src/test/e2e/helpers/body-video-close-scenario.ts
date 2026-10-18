@@ -166,9 +166,9 @@ export function createSingleClipBodyProjectPreparer({
 				const inspect = window.electronAPI?.jianyingPortraitAdjustment?.inspect;
 				return inspect ? await inspect() : null;
 			});
-			if (!status?.ready)
+			if (status?.state !== "ready" || !status.available)
 				throw new Error(
-					`Native portrait runtime is not ready: ${JSON.stringify(status)}`
+					`Native portrait runtime is not ready: ${status?.state ?? "no status"} — ${status?.message ?? ""}`
 				);
 		}
 		return page.evaluate(
