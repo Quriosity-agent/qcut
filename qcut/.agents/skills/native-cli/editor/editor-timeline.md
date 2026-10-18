@@ -68,6 +68,29 @@ layer with masks or a multi-pass program sends the export through the
 renderer's canvas engine automatically. `timeline export` shows the layer's
 `color`, `adjustments` and the resolved `colorSettings`.
 
+Grade field rules (clips and adjustment layers, patch / update / apply):
+
+- **`color.basic` wins over `adjustments`.** The eight legacy `adjustments`
+  fields are a mirror of `color.basic`; when one payload carries both (a
+  `timeline export` does), any field named on both sides takes the
+  `color.basic` value, and the stored `adjustments` are re-mirrored from the
+  effective grade. `apply --verify` compares both representations, so a
+  manifest whose two sides disagree fails verification instead of silently
+  losing one side — when editing an exported manifest, change both or drop
+  `adjustments`.
+- **Out-of-range values are refused**, with the allowed range in the error,
+  instead of being clamped or rendered (e.g. `basic.exposure: 20` used to
+  export a white frame). Ranges: `basic.exposure` −5..5 EV;
+  `basic.sharpness/fade/vignette/grain` 0..100; every other `basic.*`,
+  `hsl.<range>.*` and wheel `luminance` −100..100; wheel `x`/`y` −1..1;
+  `lut.intensity`/`lut.skinProtection` 0..100.
+- **Colour wheel directions** (`color.wheels.shadows|midtones|highlights|
+  offset`, each `{x, y, luminance}`): `x`+ shifts red/magenta, `x`− green;
+  `y`+ shifts **blue**, `y`− yellow — the y axis points to cool, the
+  opposite of "up is warm". `luminance` lifts or darkens that zone. Example:
+  cool teal shadows ≈ `{"wheels":{"enabled":true,"shadows":{"x":-0.018,
+  "y":0.025}}}`.
+
 Text fields and their units (preview and export agree):
 
 | Field | Unit | Notes |
