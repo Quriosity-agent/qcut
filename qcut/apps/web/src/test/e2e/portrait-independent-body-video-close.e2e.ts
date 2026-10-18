@@ -393,15 +393,22 @@ test("independent smart body: 180 frames identical across export order, cache lo
 			reference
 		);
 		expect(afterRestartRecomputed.frames).toEqual(reference);
+		// The reopened project names the same session: one folder of
+		// checkpoints, so the cached export above read its frames from the
+		// cache instead of recomputing them (cachedSeconds ≪ recomputedSeconds).
+		const sessionsAfterRestart = await checkpointFiles({ sessions });
+		checks.restart_session_reused =
+			Object.keys(sessionsAfterRestart).length === 1;
 		evidence.restart = {
 			cachedSeconds: afterRestart.seconds,
 			recomputedSeconds: afterRestartRecomputed.seconds,
-			checkpoints: await checkpointFiles({ sessions }),
+			checkpoints: sessionsAfterRestart,
 		};
 		evidence.referenceDigests = reference;
 		evidence.errors = errors;
 		evidence.consoleErrors = consoleErrors;
 		await persist();
+		expect(Object.keys(sessionsAfterRestart)).toHaveLength(1);
 		expect(errors).toEqual([]);
 	} finally {
 		evidence.errors = errors;
