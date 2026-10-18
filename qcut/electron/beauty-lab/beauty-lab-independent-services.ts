@@ -34,9 +34,15 @@ export function createIndependentBeautyServices({
 		userDataPath,
 		"PrivateRuntimes/IndependentBeauty/current"
 	);
+	const sessionsDirectory = path.join(
+		userDataPath,
+		"Cache",
+		"independent-beauty-sessions"
+	);
 	const independentProvider = createIndependentRenderQueue({
 		provider: createBeautyLabIndependentProvider({
 			engineRoot,
+			sessionsDirectory,
 			runtimeRoot:
 				environment.QCUT_INDEPENDENT_BEAUTY_RUNTIME ??
 				(isPackaged ? installedRuntime : path.join(engineRoot, "runtime")),
@@ -60,11 +66,7 @@ export function createIndependentBeautyServices({
 		provider: independentProvider,
 		cache,
 		engineSha256,
-		sessionsDirectory: path.join(
-			userDataPath,
-			"Cache",
-			"independent-beauty-sessions"
-		),
+		sessionsDirectory,
 	});
 	return { independentProvider, independentFrames, independentSequenceFrames };
 }
