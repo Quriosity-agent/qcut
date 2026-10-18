@@ -22,6 +22,13 @@ import independent_stage_runner as stages
 import independent_worker as worker
 
 
+RUNTIME = Path(__file__).resolve().parents[2] / 'runtime'
+VIDEO_ASSETS = ('body-skeleton-v1.npz', 'body-face-video-policy-v1.json', 'face-detector-dynamic.onnx',
+                'face-align-120.onnx', 'face-align-160.onnx', 'alignment-assets-v1.npz')
+HAS_VIDEO_RUNTIME = all((RUNTIME / 'research' / name).is_file() for name in VIDEO_ASSETS)
+FRAMES = Path(os.environ.get('QCUT_BODY_VIDEO_FRAMES', '/nonexistent'))
+
+
 class FakeSessions:
     """The session table's worker-facing surface: prepare, a stage runner and a snapshot."""
 
@@ -225,6 +232,41 @@ class WorkerTests(unittest.TestCase):
                          {'session': 'c' * 64, 'frame': 0, 'timestamp': 0}, 'frames'):
             with self.subTest(sequence=sequence), self.assertRaises(ValueError):
                 worker.validate_request(request=self.request | {'sequence': sequence})
+
+    @unittest.skipUnless(sys.platform == 'darwin' and shutil.which('bun') and HAS_VIDEO_RUNTIME
+                         and len(list(FRAMES.glob('frame-*.png'))) >= 8,
+                         'real body video needs macOS/Bun, the private runtime and QCUT_BODY_VIDEO_FRAMES (8+ frames)')
+    def test_real_worker_resumes_a_body_session_from_its_disk_checkpoint(self):
+        frames = sorted(FRAMES.glob('frame-*.png'))
+        request = self.root / 'body.json'
+        request.write_text(json.dumps({'values': {'SlimBody': 40, 'StretchLeg': 30}, 'makeup': {}}))
+        session, checkpoints = 'f' * 64, self.root / 'checkpoints'
+
+        def job(frame, identifier):
+            # The clip loops past its last frame; the session only needs ordered frames.
+            return {'id': identifier, 'image': str(frames[frame % len(frames)]), 'request': str(request),
+                    'output': str(self.root / f'{identifier}.png'), 'report': str(self.root / f'{identifier}.json'),
+                    'sequence': {'session': session, 'frame': frame, 'timestamp': frame / 24,
+                                 'checkpoints': str(checkpoints)}}
+
+        def serve(jobs):
+            process = subprocess.run([sys.executable, '-B', str(pipeline.ROOT / 'research/independent_worker.py'),
+                                      '--runtime', str(RUNTIME)], input=''.join(json.dumps(row) + '\n' for row in jobs),
+                                     capture_output=True, text=True, check=True, timeout=300,
+                                     env={**os.environ, 'PATH': '/opt/homebrew/bin:' + os.environ.get('PATH', '')})
+            return [json.loads(line) for line in process.stdout.splitlines()]
+
+        first = serve([job(frame, f'a{frame}') for frame in range(14)])
+        self.assertTrue(all(reply['ok'] for reply in first), first)
+        self.assertEqual(sorted(path.name for path in checkpoints.iterdir()), ['0000000012.snapshot'])
+        # A new process holds no history: frame 13 resumes from the checkpoint, not from the clip's start.
+        second = serve([job(13, 'gap'), job(12, 'b12'), job(13, 'b13')])
+        self.assertEqual(second[0], {'id': 'gap', 'ok': False, 'error': 'SequenceGap: body video history resumes at frame 12',
+                                     'gap': {'restartFrom': 12}})
+        self.assertEqual([reply.get('sequence') for reply in second[1:]],
+                         [{'nextFrame': 13, 'resumed': 'restored'}, {'nextFrame': 14, 'resumed': 'continued'}])
+        for frame in (12, 13):
+            self.assertEqual((self.root / f'b{frame}.png').read_bytes(), (self.root / f'a{frame}.png').read_bytes())
 
     @unittest.skipUnless(sys.platform == 'darwin' and shutil.which('bun'), 'real planner requires macOS/Bun')
     def test_real_worker_two_jobs_match_one_shot_pixels_and_recover_after_invalid_plan(self):
