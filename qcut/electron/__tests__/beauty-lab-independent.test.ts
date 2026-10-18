@@ -9,8 +9,10 @@ import {
 	createBeautyLabIndependentProvider,
 	independentBeautyAdjustments,
 } from "../beauty-lab/beauty-lab-independent";
+import { IndependentSequenceGapError } from "../beauty-lab/beauty-lab-independent-body-video";
 import type { BeautyLabIndependentRequest } from "../beauty-lab/beauty-lab-independent-contract";
 import { runIndependentBeautyJob } from "../beauty-lab/beauty-lab-independent-process";
+import type { createIndependentBeautyWorker } from "../beauty-lab/beauty-lab-independent-worker";
 import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
 import { verifyIndependentBeautyEnvironment } from "../beauty-lab/beauty-lab-runtime-environment";
 import independentCatalog from "../../research/independent-beauty/research/independent-pipeline-catalog.json";
@@ -53,9 +55,100 @@ afterEach(async () => {
 	});
 });
 
+/** What the engine leaves for the provider: the owned PNG and its passing report. */
+async function writeOwnedResult({
+	adjustmentsPath,
+	output,
+	report,
+	evidencePath,
+	mutate,
+}: {
+	adjustmentsPath: string;
+	output: string;
+	report: string;
+	evidencePath?: string;
+	mutate?: (report: Record<string, unknown>) => void;
+}) {
+	const adjustments = JSON.parse(
+		await readFile(adjustmentsPath, "utf8")
+	) as unknown;
+	const rgba = new Uint8Array([11, 20, 30, 255]);
+	const canvas = createCanvas(1, 1);
+	canvas
+		.getContext("2d")
+		.putImageData(new ImageData(new Uint8ClampedArray(rgba), 1, 1), 0, 0);
+	const png = canvas.toBuffer("image/png");
+	const inputHash = hash({ bytes: request.rgba }),
+		outputHash = hash({ bytes: rgba });
+	const receipt: Record<string, unknown> = {
+		passed: true,
+		width: 1,
+		height: 1,
+		adjustments,
+		nativeInputsUsed: false,
+		nativeGeometryUsed: false,
+		nativeFallbackUsed: false,
+		nativeProductParityVerified: false,
+		independence: { private_native_images: [] },
+		inputRgbaSha256: inputHash,
+		outputRgbaSha256: outputHash,
+		outputPngSha256: hash({ bytes: png }),
+		stages: [{ inputRgbaSha256: inputHash, outputRgbaSha256: outputHash }],
+	};
+	if (evidencePath) {
+		const manifest = await readFile(evidencePath);
+		const evidence = JSON.parse(manifest.toString()) as {
+			policy: string;
+			status: string;
+		};
+		receipt.sourceEvidence = {
+			manifestSha256: hash({ bytes: manifest }),
+			policy: evidence.policy,
+			status: evidence.status,
+		};
+	}
+	mutate?.(receipt);
+	await Promise.all([
+		writeFile(output, png),
+		writeFile(report, JSON.stringify(receipt)),
+	]);
+}
+
+/** A resident worker that answers from `outcomes`, rendering when an outcome has no gap. */
+function fakeWorker({
+	outcomes = [],
+}: {
+	outcomes?: Array<{ gap?: { restartFrom: number } }>;
+} = {}) {
+	const run = vi.fn(
+		async ({
+			request: sent,
+		}: {
+			request: {
+				request: string;
+				output: string;
+				report: string;
+				sequence?: unknown;
+			};
+			signal: AbortSignal;
+		}) => {
+			const outcome = outcomes.shift() ?? {};
+			if (outcome.gap) return outcome;
+			await writeOwnedResult({
+				adjustmentsPath: sent.request,
+				output: sent.output,
+				report: sent.report,
+			});
+			return {};
+		}
+	);
+	return { run, dispose: vi.fn(async () => {}) };
+}
+
 function setup({
 	mutate,
 	run,
+	worker,
 	environment = {
 		PATH: process.env.PATH,
 		QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
@@ -89,6 +182,8 @@ function setup({
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
 	run?: typeof runIndependentBeautyJob;
+	/** Serves renders instead of one-shot jobs, as the editor does. */
+	worker?: ReturnType<typeof createIndependentBeautyWorker>;
 	environment?: NodeJS.ProcessEnv;
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
@@ -101,51 +196,15 @@ function setup({
 				expect(environment.PYTHONDONTWRITEBYTECODE).toBe("1");
 				const file = ({ flag }: { flag: string }) =>
 					args[args.indexOf(flag) + 1];
-				const adjustments = JSON.parse(
-					await readFile(file({ flag: "--request" }), "utf8")
-				) as unknown;
-				const rgba = new Uint8Array([11, 20, 30, 255]);
-				const canvas = createCanvas(1, 1);
-				canvas
-					.getContext("2d")
-					.putImageData(new ImageData(new Uint8ClampedArray(rgba), 1, 1), 0, 0);
-				const png = canvas.toBuffer("image/png");
-				const inputHash = hash({ bytes: request.rgba }),
-					outputHash = hash({ bytes: rgba });
-				const report: Record<string, unknown> = {
-					passed: true,
-					width: 1,
-					height: 1,
-					adjustments,
-					nativeInputsUsed: false,
-					nativeGeometryUsed: false,
-					nativeFallbackUsed: false,
-					nativeProductParityVerified: false,
-					independence: { private_native_images: [] },
-					inputRgbaSha256: inputHash,
-					outputRgbaSha256: outputHash,
-					outputPngSha256: hash({ bytes: png }),
-					stages: [
-						{ inputRgbaSha256: inputHash, outputRgbaSha256: outputHash },
-					],
-				};
-				if (args.includes("--source-evidence")) {
-					const manifest = await readFile(file({ flag: "--source-evidence" }));
-					const evidence = JSON.parse(manifest.toString()) as {
-						policy: string;
-						status: string;
-					};
-					report.sourceEvidence = {
-						manifestSha256: hash({ bytes: manifest }),
-						policy: evidence.policy,
-						status: evidence.status,
-					};
-				}
-				mutate?.(report);
-				await Promise.all([
-					writeFile(file({ flag: "--output" }), png),
-					writeFile(file({ flag: "--report" }), JSON.stringify(report)),
-				]);
+				await writeOwnedResult({
+					adjustmentsPath: file({ flag: "--request" }),
+					output: file({ flag: "--output" }),
+					report: file({ flag: "--report" }),
+					evidencePath: args.includes("--source-evidence")
+						? file({ flag: "--source-evidence" })
+						: undefined,
+					mutate,
+				});
 			})
 	);
 	const provider = createBeautyLabIndependentProvider({
@@ -154,12 +213,72 @@ function setup({
 		python: process.execPath,
 		platform: "darwin",
 		environment,
-		runJob,
+		...(worker
+			? {
+					createWorker: () =>
+						worker as ReturnType<typeof createIndependentBeautyWorker>,
+				}
+			: { runJob }),
 		verifyRuntime,
 		verifyEnvironment,
 	});
 	return { provider, runJob, verifyEnvironment, verifyRuntime, environment };
 }
+
+describe("independent body video frames", () => {
+	const sequence = {
+		session: "5".repeat(64),
+		frame: 2,
+		timestamp: 2 / 24,
+		checkpoints: path.join(os.tmpdir(), "sessions", "5".repeat(64)),
+	};
+	it("renders a session frame through the resident worker and reports the capability", async () => {
+		const worker = fakeWorker();
+		const { provider } = setup({ worker });
+		const result = await provider.render({
+			request: { ...request, sequence },
+		});
+		expect([...result.rgba]).toEqual([11, 20, 30, 255]);
+		expect(worker.run).toHaveBeenCalledTimes(1);
+		const sent = worker.run.mock.calls[0][0];
+		expect(sent.request.sequence).toEqual(sequence);
+		expect(sent.signal.aborted).toBe(false);
+		expect(await provider.inspect()).toMatchObject({
+			available: true,
+			bodyVideo: false,
+		});
+	});
+	it("surfaces a worker history gap as a typed error without a result", async () => {
+		const worker = fakeWorker({ outcomes: [{ gap: { restartFrom: 1 } }] });
+		const { provider } = setup({ worker });
+		const failure = await provider
+			.render({ request: { ...request, sequence } })
+			.catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(IndependentSequenceGapError);
+		expect((failure as IndependentSequenceGapError).restartFrom).toBe(1);
+		await expect(
+			provider.render({ request: { ...request, requestId: "two", sequence } })
+		).resolves.toMatchObject({ requestId: "two" });
+	});
+	it("needs the resident worker and an absolute checkpoint folder", async () => {
+		const { provider, runJob } = setup();
+		await expect(
+			provider.render({ request: { ...request, sequence } })
+		).rejects.toThrow("resident worker");
+		expect(runJob).not.toHaveBeenCalled();
+		const worker = fakeWorker();
+		const { provider: resident } = setup({ worker });
+		await expect(
+			resident.render({
+				request: {
+					...request,
+					sequence: { ...sequence, checkpoints: "sessions" },
+				},
+			})
+		).rejects.toThrow();
+		expect(worker.run).not.toHaveBeenCalled();
+	});
+});
 
 describe("independent photo provider", () => {
 	it("binds a source sidecar to the worker result and removes its private files", async () => {
