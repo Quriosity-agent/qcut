@@ -52,9 +52,8 @@ const INTERFERE_AFTER_FRAMES = 30;
 interface ExportStoreWindow extends BodyVideoWindow {
 	__exportStore: {
 		getState: () => {
-			isExporting: boolean;
 			error: string | null;
-			progress: { progress: number };
+			progress: { isExporting: boolean; progress: number };
 		};
 	};
 	router?: {
@@ -92,9 +91,9 @@ async function exportState({ page }: { page: Page }) {
 			window as unknown as ExportStoreWindow
 		).__exportStore.getState();
 		return {
-			isExporting: state.isExporting,
+			isExporting: state.progress.isExporting,
 			error: state.error,
-			progress: state.progress?.progress ?? 0,
+			progress: state.progress.progress,
 		};
 	});
 }
