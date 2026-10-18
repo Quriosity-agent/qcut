@@ -138,9 +138,11 @@ async function sha256Hex({ text }: { text: string }) {
 }
 
 /**
- * Names the clip for the engine's session: its media file, the timing that
- * maps clip frames to source frames, the frame rate and the edit as the clip
- * defines it. Moving the clip on the timeline keeps the identity.
+ * Names the clip for the engine's session: the timeline element, its media
+ * file, the timing that maps clip frames to source frames, the frame rate and
+ * the edit as the clip defines it. Moving the clip on the timeline keeps the
+ * identity; two clips cut from one file never share a session, so their
+ * frames cannot interleave in the engine's history.
  */
 export async function independentBodyVideoClipIdentity({
 	clip,
@@ -151,6 +153,7 @@ export async function independentBodyVideoClipIdentity({
 	return sha256Hex({
 		text: JSON.stringify({
 			schemaVersion: 1,
+			elementId: element.id,
 			mediaId: mediaItem.id,
 			file: {
 				name: mediaItem.file?.name ?? null,
