@@ -9,6 +9,9 @@ export type {
 	BeautyLabIndependentFrameResult,
 	BeautyLabIndependentRequest,
 	BeautyLabIndependentResult,
+	BeautyLabIndependentSequence,
+	BeautyLabIndependentSequenceFrameRequest,
+	BeautyLabIndependentSequenceFrameResult,
 	BeautyLabIndependentStatus,
 } from "../../../../../electron/beauty-lab/beauty-lab-independent-contract";
 export { BEAUTY_LAB_INDEPENDENT_PROVIDER } from "../../../../../electron/beauty-lab/beauty-lab-independent-contract";
