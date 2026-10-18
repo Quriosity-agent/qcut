@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applyElementChanges } from "../claude-timeline-bridge-elements";
-import { formatTracksForExport } from "../claude-timeline-bridge-helpers";
+import {
+	formatTracksForExport,
+	getClaudeAdjustmentFields,
+} from "../claude-timeline-bridge-helpers";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 
 const storeMocks = vi.hoisted(() => {
@@ -228,5 +231,142 @@ describe("clip colour in the export snapshot", () => {
 		expect(element.colorSettings).toMatchObject({
 			basic: expect.objectContaining({ contrast: 20 }),
 		});
+	});
+});
+
+/** Q4/Q5 (问题记录_片中文字_QCut1702): precedence and range rules for grades. */
+describe("grade precedence and ranges through element patch", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storeMocks.state.tracks[0].elements[0] = {
+			id: "clip",
+			type: "media",
+			mediaId: "media",
+			name: "Clip",
+			startTime: 0,
+			duration: 8,
+			trimStart: 0,
+			trimEnd: 0,
+		};
+	});
+
+	it("lets color.basic win over a stale exported adjustments mirror", () => {
+		// A timeline-export round trip: the user edited color.basic.contrast
+		// but the manifest still carries the old all-zero adjustments mirror.
+		const result = applyElementChanges({
+			elementId: "clip",
+			changes: {
+				color: {
+					enabled: true,
+					basic: { enabled: true, contrast: 25, saturation: 15 },
+				},
+				adjustments: {
+					brightness: 0,
+					contrast: 0,
+					saturation: 0,
+					temperature: 0,
+					tint: 0,
+					sharpness: 0,
+					fade: 0,
+					vignette: 0,
+				},
+			} as never,
+			pushHistory: false,
+		});
+		expect(result).toEqual({ applied: true });
+		const update = lastMediaUpdate();
+		expect(update.color.basic).toMatchObject({ contrast: 25, saturation: 15 });
+		// The stored mirror follows the effective grade, not the stale input.
+		expect(update.adjustments).toMatchObject({ contrast: 25, saturation: 15 });
+	});
+
+	it("still applies an adjustments-only patch", () => {
+		const result = applyElementChanges({
+			elementId: "clip",
+			changes: { adjustments: { contrast: 12 } } as never,
+			pushHistory: false,
+		});
+		expect(result).toEqual({ applied: true });
+		const update = lastMediaUpdate();
+		expect(update.color.basic).toMatchObject({ contrast: 12 });
+		expect(update.adjustments).toMatchObject({ contrast: 12 });
+	});
+
+	it("refuses an out-of-range basic control instead of storing it", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { color: { basic: { exposure: 20 } } } as never,
+				pushHistory: false,
+			})
+		).toMatchObject({
+			applied: false,
+			error: expect.stringContaining(
+				"color.basic.exposure must be -5..5 (got 20)"
+			),
+		});
+		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
+	});
+
+	it("refuses an out-of-range legacy adjustments field", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { adjustments: { contrast: 2000 } } as never,
+				pushHistory: false,
+			})
+		).toMatchObject({
+			applied: false,
+			error: expect.stringContaining(
+				"adjustments.contrast must be -100..100 (got 2000)"
+			),
+		});
+		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
+	});
+
+	it("refuses an out-of-range colour wheel coordinate", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { color: { wheels: { shadows: { x: 4 } } } } as never,
+				pushHistory: false,
+			})
+		).toMatchObject({
+			applied: false,
+			error: expect.stringContaining(
+				"color.wheels.shadows.x must be -1..1 (got 4)"
+			),
+		});
+	});
+
+	it("refuses an out-of-range grade on an adjustment layer too", () => {
+		expect(() =>
+			getClaudeAdjustmentFields({
+				element: {
+					color: { basic: { exposure: 20 } },
+				} as never,
+			})
+		).toThrow("color.basic.exposure must be -5..5 (got 20)");
+		expect(() =>
+			getClaudeAdjustmentFields({
+				element: { adjustments: { vignette: 500 } } as never,
+			})
+		).toThrow("adjustments.vignette must be 0..100 (got 500)");
+	});
+
+	it("keeps accepting in-range values at the range edges", () => {
+		const result = applyElementChanges({
+			elementId: "clip",
+			changes: {
+				color: {
+					basic: { exposure: -5 },
+					wheels: { shadows: { x: -0.018, y: 0.025 } },
+				},
+			} as never,
+			pushHistory: false,
+		});
+		expect(result).toEqual({ applied: true });
+		const update = lastMediaUpdate();
+		expect(update.color.basic).toMatchObject({ exposure: -5 });
 	});
 });
