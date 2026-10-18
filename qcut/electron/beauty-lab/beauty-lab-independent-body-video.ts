@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import {
@@ -27,6 +27,56 @@ export const INDEPENDENT_BODY_VIDEO_POLICY = {
 	file: "research/body-face-video-policy-v1.json",
 	sha256: "b5b9905399fac944db0ac036260fe6916b84a314f6eb69eec5555c2358b0a91b",
 };
+/** Checkpoints are ~50 KB per twelve frames; this holds days of edited footage. */
+export const INDEPENDENT_SESSIONS_MAX_BYTES = 2 * 1024 ** 3;
+const PRUNE_INTERVAL_MS = 60_000;
+
+/**
+ * Drops the least recently used session folders until the checkpoint store
+ * fits `maxBytes`, keeping `active`. The worker recreates a folder it still
+ * writes to; a pruned session merely replays from its clip's first frame.
+ */
+export async function pruneIndependentSessions({
+	directory,
+	maxBytes,
+	active,
+}: {
+	directory: string;
+	maxBytes: number;
+	active?: string;
+}) {
+	const names = await readdir(directory).catch(() => [] as string[]);
+	const folders = await Promise.all(
+		names
+			.filter((name) => /^[a-f0-9]{64}$/.test(name))
+			.map(async (name) => {
+				const folder = path.join(directory, name);
+				let bytes = 0;
+				let usedAt = 0;
+				for (const file of await readdir(folder).catch(() => [] as string[])) {
+					const metadata = await stat(path.join(folder, file)).catch(
+						() => null
+					);
+					if (!metadata?.isFile()) continue;
+					bytes += metadata.size;
+					usedAt = Math.max(usedAt, metadata.mtimeMs);
+				}
+				return { name, folder, bytes, usedAt };
+			})
+	);
+	let total = folders.reduce((sum, folder) => sum + folder.bytes, 0);
+	const removed: string[] = [];
+	for (const folder of folders.sort(
+		(left, right) => left.usedAt - right.usedAt
+	)) {
+		if (total <= maxBytes) break;
+		if (folder.name === active) continue;
+		await rm(folder.folder, { recursive: true, force: true });
+		total -= folder.bytes;
+		removed.push(folder.name);
+	}
+	return { total, removed };
+}
 
 export async function independentBodyVideoAvailable({
 	runtimeRoot,
@@ -120,6 +170,8 @@ export function createIndependentSequenceFrameRenderer({
 	cache,
 	engineSha256,
 	sessionsDirectory,
+	maxSessionBytes = INDEPENDENT_SESSIONS_MAX_BYTES,
+	now = Date.now,
 }: {
 	provider: {
 		render: (input: {
@@ -130,10 +182,26 @@ export function createIndependentSequenceFrameRenderer({
 	engineSha256: () => Promise<string>;
 	/** Each session keeps its on-disk checkpoints in `<sessionsDirectory>/<session>`. */
 	sessionsDirectory: string;
+	maxSessionBytes?: number;
+	now?: () => number;
 }) {
 	if (!path.isAbsolute(sessionsDirectory))
 		throw new Error("Independent session checkpoints need an absolute folder");
 	let disposed = false;
+	let prunedAt = Number.NEGATIVE_INFINITY;
+	let pruning: Promise<unknown> = Promise.resolve();
+	function prune({ active }: { active: string }) {
+		if (now() - prunedAt < PRUNE_INTERVAL_MS) return pruning;
+		prunedAt = now();
+		pruning = pruneIndependentSessions({
+			directory: sessionsDirectory,
+			maxBytes: maxSessionBytes,
+			active,
+		}).catch((error: unknown) => {
+			console.warn("[independent-beauty] Session prune failed:", error);
+		});
+		return pruning;
+	}
 	async function render({
 		request,
 	}: {
@@ -230,6 +298,7 @@ export function createIndependentSequenceFrameRenderer({
 			// The frame itself succeeded; only the next export loses the reuse.
 			console.warn("[independent-beauty] Frame cache write failed:", error);
 		}
+		await prune({ active: session });
 		return {
 			status: "rendered",
 			requestId,
