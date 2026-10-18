@@ -60,8 +60,14 @@ function bodyClosePass({
 }: {
 	id: PortraitCompositePass;
 }): CompositeScenarioPass {
+	// The untouched clip has no composition plan, so no committed preview
+	// surface to read; its export frames are the 原图 reference.
 	if (id === "original")
-		return { id, adjustments: { enabled: false, values: {} } };
+		return {
+			id,
+			adjustments: { enabled: false, values: {} },
+			capturePreview: false,
+		};
 	return {
 		id,
 		adjustments: {
