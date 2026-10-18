@@ -17,8 +17,10 @@ import {
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
 	BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+	BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME,
 } from "./beauty-lab-independent-contract.js";
 import type { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
+import type { createIndependentSequenceFrameRenderer } from "./beauty-lab-independent-body-video.js";
 import type { createIndependentFrameRenderer } from "./beauty-lab-independent-frames.js";
 
 let activeController: symbol | undefined;
@@ -32,6 +34,7 @@ export function setupBeautyLabIPC({
 	candidateProvider = createBeautyLabCandidateProvider(),
 	independentProvider,
 	independentFrames,
+	independentSequenceFrames,
 }: {
 	getMainWindow: () => BrowserWindow | null;
 	root: string;
@@ -44,6 +47,9 @@ export function setupBeautyLabIPC({
 		"inspect" | "render" | "cancel" | "dispose"
 	>;
 	independentFrames?: ReturnType<typeof createIndependentFrameRenderer>;
+	independentSequenceFrames?: ReturnType<
+		typeof createIndependentSequenceFrameRenderer
+	>;
 }) {
 	const ownedChain = ownedChainRoot
 		? createBeautyLabOwnedChainProvider({
@@ -78,6 +84,7 @@ export function setupBeautyLabIPC({
 		BEAUTY_LAB_INDEPENDENT_RENDER,
 		BEAUTY_LAB_INDEPENDENT_CANCEL,
 		BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+		BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME,
 	])
 		ipcMain.removeHandler(channel);
 	ipcMain.handle(BEAUTY_LAB_INDEPENDENT_INSPECT, (event) => {
@@ -99,6 +106,15 @@ export function setupBeautyLabIPC({
 			if (!independentFrames)
 				throw new Error("Independent photo engine is not connected");
 			return independentFrames.render({ request });
+		}
+	);
+	ipcMain.handle(
+		BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME,
+		(event, request: unknown) => {
+			assertTrusted({ event });
+			if (!independentSequenceFrames)
+				throw new Error("Independent photo engine is not connected");
+			return independentSequenceFrames.render({ request });
 		}
 	);
 	ipcMain.handle(
@@ -171,11 +187,13 @@ export function setupBeautyLabIPC({
 					BEAUTY_LAB_INDEPENDENT_RENDER,
 					BEAUTY_LAB_INDEPENDENT_CANCEL,
 					BEAUTY_LAB_INDEPENDENT_RENDER_FRAME,
+					BEAUTY_LAB_INDEPENDENT_RENDER_SEQUENCE_FRAME,
 				])
 					ipcMain.removeHandler(channel);
 			}
 			if (!disposal) {
 				independentFrames?.dispose();
+				independentSequenceFrames?.dispose();
 				disposal = Promise.all([
 					candidateProvider.dispose(),
 					independentProvider?.dispose(),
