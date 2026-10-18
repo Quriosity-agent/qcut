@@ -344,21 +344,39 @@
 			"kind": "scalar",
 			"script": "smooth_render.py",
 			"controls": ["Smooth"],
-			"bindings": [{ "name": "Smooth", "flag": "--strength", "scale": 0.01 }]
+			"bindings": [
+				{
+					"name": "Smooth",
+					"flag": "--strength",
+					"scale": 0.01
+				}
+			]
 		},
 		{
 			"id": "whiten",
 			"kind": "scalar",
 			"script": "whiten_render.py",
 			"controls": ["Whiten"],
-			"bindings": [{ "name": "Whiten", "flag": "--strength", "scale": 0.01 }]
+			"bindings": [
+				{
+					"name": "Whiten",
+					"flag": "--strength",
+					"scale": 0.01
+				}
+			]
 		},
 		{
 			"id": "spot-acne",
 			"kind": "scalar",
 			"script": "spot_acne_render.py",
 			"controls": ["SpotAcne"],
-			"bindings": [{ "name": "SpotAcne", "flag": "--intensity", "scale": 1 }]
+			"bindings": [
+				{
+					"name": "SpotAcne",
+					"flag": "--intensity",
+					"scale": 1
+				}
+			]
 		},
 		{
 			"id": "skin-gan",
@@ -366,9 +384,21 @@
 			"script": "skin_gan_render.py",
 			"controls": ["yunfu", "fuling", "lunkuopinghua"],
 			"bindings": [
-				{ "name": "yunfu", "flag": "--yunfu", "scale": 1 },
-				{ "name": "fuling", "flag": "--fuling", "scale": 1 },
-				{ "name": "lunkuopinghua", "flag": "--contour", "scale": 1 }
+				{
+					"name": "yunfu",
+					"flag": "--yunfu",
+					"scale": 1
+				},
+				{
+					"name": "fuling",
+					"flag": "--fuling",
+					"scale": 1
+				},
+				{
+					"name": "lunkuopinghua",
+					"flag": "--contour",
+					"scale": 1
+				}
 			]
 		},
 		{
@@ -414,14 +444,26 @@
 			"kind": "scalar",
 			"script": "youtai_render.py",
 			"controls": ["YouTaiFace"],
-			"bindings": [{ "name": "YouTaiFace", "flag": "--intensity", "scale": 1 }]
+			"bindings": [
+				{
+					"name": "YouTaiFace",
+					"flag": "--intensity",
+					"scale": 1
+				}
+			]
 		},
 		{
 			"id": "jawline",
 			"kind": "scalar",
 			"script": "jawline_render.py",
 			"controls": ["XiaHeXian"],
-			"bindings": [{ "name": "XiaHeXian", "flag": "--intensity", "scale": 1 }]
+			"bindings": [
+				{
+					"name": "XiaHeXian",
+					"flag": "--intensity",
+					"scale": 1
+				}
+			]
 		},
 		{
 			"id": "smart-body",
@@ -755,7 +797,7 @@
 	"limitations": [
 		"单人不透明图片，最长边1280",
 		"所有阶段使用自研渲染；仍需本机私有模型和材质",
-		"手动美体（拉长、瘦身、放大缩小）的形变与原生相差约1像素以内；原生对整幅画面的亚像素重采样未复刻。",
+		"手动放大缩小的原生对照样本最大色差为1；拉长、瘦身的全图重采样仍有差异。",
 		"智能美体十项（小头、天鹅颈、瘦手臂、直角肩、宽肩、瘦身、瘦腰、长腿、胸型、美胯）共用一套身体状态与网格：状态与网格移植自已逐位核对的研究实现；静帧按原生成片测得的稳定状态（同一帧更新 8 次）取值，与 QCut 原生成片仍有差异；只处理一个人和一张脸；视频逐帧独立计算，不做跨帧平滑。",
 		"每阶段从上阶段结果重新推导关键点与蒙版",
 		"固定顺序组合，不保证任意组合与原生像素一致",
