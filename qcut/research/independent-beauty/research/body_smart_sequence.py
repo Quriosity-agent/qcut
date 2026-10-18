@@ -1,8 +1,11 @@
-"""Explicit, bounded body-video session. Seek/recovery requires replay from frame zero.
+"""Explicit, bounded body-video session. Seek/recovery requires replay from frame zero
+or from a snapshot (body_sequence_checkpoint).
 
 This API deliberately owns no global state or frame cache. It is not the editor's
 stateless photo adapter. The accepted algorithm profile is upright, single-person
-modern CPU, mode2, with no populated protection masks.
+modern CPU, mode2, with no populated protection masks. A frame on which seeding
+sees several bodies is kept as it is, like a frame without a body, and seeding
+retries on the next frame; a body already tracked keeps being tracked.
 """
 import hashlib
 import math
@@ -15,7 +18,7 @@ from body_video_face_sequence import BodyVideoFaceSequence
 from body_mesh_grid import pack_vertices
 from body_mesh_renderer import algorithm_image, draw_mesh
 from body_skeleton_model import load_networks
-from body_skeleton_sequence import BodySkeletonSequence
+from body_skeleton_sequence import AmbiguousBodyFrame, BodySkeletonSequence
 from body_composition.controls import validate_controls
 from render_resolution import source_edge_limit
 from slimface_render import validate_rgba
@@ -92,13 +95,18 @@ class BodySmartSequence:
             if self.skeleton is None:
                 self._initialize()
             algorithm, raster = algorithm_image(rgba=rgba, runtime=self.runtime)
-            body = self.skeleton.update(algorithm=algorithm)
+            try:
+                body = self.skeleton.update(algorithm=algorithm)
+                skeleton = {key: self.skeleton.last_debug[key] for key in ('network', 'plan', 'state')}
+            except AmbiguousBodyFrame:
+                # The skeleton has reset itself; it seeds again on the next frame.
+                body, skeleton = None, {'network': 'coarse', 'plan': {'mode': 0},
+                                        'state': {'mode': 0, 'objects': 0, 'ambiguous': True}}
             check_cancelled()
             face, face_details = self.face.update(algorithm=algorithm)
             check_cancelled()
             details = {'bodyReported': body is not None, 'identity': True,
-                       'algorithmRaster': raster, 'face': face_details,
-                       'skeleton': {key: self.skeleton.last_debug[key] for key in ('network', 'plan', 'state')}}
+                       'algorithmRaster': raster, 'face': face_details, 'skeleton': skeleton}
             result = rgba.copy()
             if body is not None:
                 height, width = rgba.shape[:2]
@@ -115,6 +123,8 @@ class BodySmartSequence:
                     result, host = draw_mesh(rgba=rgba, vertices=pack_vertices(positions, mesh['uv'], width, height),
                                              triangles=mesh['tri'], runtime=self.runtime)
                     details.update(identity=False, metal=host)
+            elif skeleton['state'].get('ambiguous'):
+                details['reason'] = 'several bodies while seeding; original frame preserved'
             else:
                 # The skeleton's suppressed seed/lost frame still occupies its video timestamp.
                 details['reason'] = 'no external body; original frame preserved'
