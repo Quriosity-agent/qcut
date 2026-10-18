@@ -284,19 +284,20 @@ export async function renderIndependentBodyVideoFrame({
 			return result;
 		};
 		let result = await submit({ index: frame, replay: false });
-		// A second gap means another clip took the engine meanwhile; one more
-		// rebuild is reasonable, an endless chase is not.
+		// A gap during a rebuild (another clip took the engine meanwhile, or a
+		// checkpoint failed to restore and an earlier one answers) names a new
+		// start: a few rebuilds are reasonable, an endless chase is not.
 		for (let attempt = 0; result.status === "replay"; attempt++) {
-			if (attempt === 2) throw new Error("自研美体视频的历史状态无法重建");
+			if (attempt === 3) throw new Error("自研美体视频的历史状态无法重建");
 			const from = result.from;
 			if (!Number.isInteger(from) || from < 0 || from > frame)
 				throw new Error("自研美体视频返回了无效的重放起点");
-			for (let index = from; index < frame; index++) {
+			let gap: BeautyLabIndependentSequenceFrameResult | undefined;
+			for (let index = from; index < frame && !gap; index++) {
 				const replayed = await submit({ index, replay: true });
-				if (replayed.status !== "rendered")
-					throw new Error("自研美体视频的历史状态无法重建");
+				if (replayed.status === "replay") gap = replayed;
 			}
-			result = await submit({ index: frame, replay: false });
+			result = gap ?? (await submit({ index: frame, replay: false }));
 		}
 		if (
 			result.width !== width ||
