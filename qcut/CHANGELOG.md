@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.18.1] - 2026-10-17
+
 ### Improved
 - Transparent overlays: a video with an alpha channel on a media track above another clip is drawn over it in the preview and in both export engines, lowest track first and only on the clip's own frames, with its position, scale, rotation, opacity, fit, trims, speed and blend mode. VP9 WebM with alpha, ProRes 4444, QuickTime Animation and PNG MOV keep their transparency; an opaque clip covers what is under it as picture-in-picture, and an overlay's sound goes through its own track in the mix. The preview and the editor engine play ProRes, QuickTime Animation and PNG MOV from a VP9 alpha copy that QCut writes into the project's cache.
 - `qcut editor media info` reports a video's codec, pixel format, alpha mode and `hasAlpha`, and `timeline export` marks each media clip with `hasAlpha`. `element patch`, batch adds and `timeline apply --verify` take a clip's `blendMode` and `blendEnabled`, so an overlay track round-trips.

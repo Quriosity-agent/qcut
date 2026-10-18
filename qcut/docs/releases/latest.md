@@ -1,27 +1,29 @@
 ---
-version: "2026.10.17.2"
+version: "2026.10.18.1"
 date: "2026-10-17"
 channel: "stable"
 ---
 
-# QCut v2026.10.17.2
+# QCut v2026.10.18.1
 
 ### Improved
-- Manual body edits now run on the independent engine for timeline clips: stretch, slim and zoom follow rules measured from native renders (stretch moves each side of the band 5 % of the frame height outward, or 2 % inward; slim moves along the box's own horizontal axis, rotated boxes included, from a measured 41×41 displacement table; zoom is a radial displacement measured on the frame's short side). They run in the native order (stretch, slim, zoom) after skin and before face shaping. An engine that cannot render a tool names it in the portrait panel instead of switching to native, and Beauty Lab lists the tools the installed engine renders.
-- The independent engine adds the smart body long leg (长腿, 0–100), applied after makeup. It finds the person with QCut's own port of the two body-keypoint networks (a coarse pass on the frame scaled to 640 px on the long side, then two refinement passes) and stretches the legs with a mesh warp drawn in Metal, taking about 0.3–0.5 s a frame.
+- Transparent overlays: a video with an alpha channel on a media track above another clip is drawn over it in the preview and in both export engines, lowest track first and only on the clip's own frames, with its position, scale, rotation, opacity, fit, trims, speed and blend mode. VP9 WebM with alpha, ProRes 4444, QuickTime Animation and PNG MOV keep their transparency; an opaque clip covers what is under it as picture-in-picture, and an overlay's sound goes through its own track in the mix. The preview and the editor engine play ProRes, QuickTime Animation and PNG MOV from a VP9 alpha copy that QCut writes into the project's cache.
+- `qcut editor media info` reports a video's codec, pixel format, alpha mode and `hasAlpha`, and `timeline export` marks each media clip with `hasAlpha`. `element patch`, batch adds and `timeline apply --verify` take a clip's `blendMode` and `blendEnabled`, so an overlay track round-trips.
+- The independent engine adds the other nine smart body controls (small head, swan neck, slim arms, square shoulders, shoulder width, slim body, slim waist, bust and hip shape) beside the long leg, all ten in one smart-body stage after makeup.
 
 ### Fixed
-- Native export: the main track's sound no longer drifts later at every cut. Each clip was 40–60 ms later than the one before it, because every segment's AAC start-up delay and end padding survived the concat. Segments and gaps now carry PCM sound in the export's format and the joined sound is encoded once; picture-only and silent clips get silence, frame-interpolated clips keep their own sound, and the cursor pass keeps the segment's trimmed sound.
-- Editor export: a timeline that ends less than 1 ms past a frame no longer gains a frame (212.250301 s at 24 fps is 5094 frames), and a cut a fraction of a microsecond after a frame start no longer shows the outgoing clip for one extra frame.
-- Master level and pan automation now applies in the editor export, so a master fade-out fades the file.
-- An API export on auto sent clips whose only portrait edits were makeup, manual body, manual retouch or per-face settings to the native engine, which dropped those edits; any portrait edit that changes the picture now routes the export to the renderer.
+- Native export: clips on an upper media track that played over the main track were appended after it, so a 15.04 s timeline exported as 25.75 s of full-screen clips on black. They are now composited over the picture. Stacks the native engine cannot draw (a transition on an overlay, neural frame interpolation on one, or a text, sticker, adjustment or effect layer below one) export through the editor engine, and `--engine native` says why.
+- Editor engine: a VP9 clip with alpha decoded onto black, and ProRes, QuickTime Animation and PNG MOV clips were left out without a word. A clip that cannot be decoded now fails the export with its name, file and reason. The editor's export button keeps VP9 alpha too.
+- FFmpeg layer compositing dropped a clip's last frame when its file ended inside the clip (a WebM lost one more); this affected the editor's CLI export and native transitions.
+- Native export: audio limiters delayed the sound by their 3–5 ms lookahead, and a clip limiter raised the level up to its ceiling. The editor engine's compressor and limiter added Chromium's makeup gain (+0.57 dB for a −1 dB limiter, +0.91 dB for the default compressor), so it exported louder than native. Both engines now keep the timeline's timing and level.
+- Native export: a moving sticker started wherever its loop had got to instead of on its own first frame, and a clip with its blend section switched off kept its opacity.
 
 ### Verified
-- Eight hard cuts from a 32 kHz source drifted 0/62/115/151/197/247/306/340 ms before the fix and 0.04 ms after. In the app, both engines export a 204-frame, eight-cut project frame for frame, with clicks within 0.06 ms and the master fade at about −48 dB; native stems match within 0.06 ms.
-- Manual body against native on coordinate-coded frames: slim within 1.85 px and zoom within 1.27 px; timeline exports of stretch, slim and zoom match the engine's render with a 0.3 px median error.
-- Long leg: both networks reproduce native inputs and outputs bit for bit and the two refinement boxes match native exactly. Against native renders the mean difference is 0.86–4.65 grey levels, where the effect itself changes 5–10. A 1080×1920 export at 100 differs from the engine's render by 2.63 on the legs (encoding noise 2.28) and from the original by 24.55.
+- In the app, one clip with the same transparent card in all four formats above it exports from both engines with 144 of 144 frames, the card on exactly its frames and the picture showing through its clear pixels; the two engines agree at 58 dB. `timeline export` → `apply --replace` keeps every overlay field, and a broken MOV fails both exports by name. The requester's four test files (native): the transparent area is 45–48 dB against the plain picture and the text 39.8–41.5 dB against FFmpeg's own overlay. Real title cards composited onto the original clip match the version baked by hand at 44–45 dB.
+- Clicks through a track compressor and a −1 dB master limiter land on time in both engines (native was 3.02 ms late), and the level matches the source within 0.07 dB in both (the editor engine was 1.48 dB louder).
+- Smart body: the port is byte-identical to the research implementation on 138 cases, its accepted meshes and both face frames. A 1080×1920 export with long legs, slim waist and small head follows the engine's render on the moved pixels (2.7–3.0 grey levels, against 43–45 from the photo).
 
 ### Limitations
-- Manual body: the whole-frame sub-pixel resample native applies (up to 1.2 px horizontally) is not reproduced, and most of the remaining difference on photos comes from it.
-- Long leg: the still-frame body measurement is fitted to native renders rather than reproduced, one person only, with no smoothing across video frames; a small person in a landscape frame is not detected (native does not detect one either). Native's second refinement pass can run in floating point, which moves 11 of 18 joints by 1–5 px. The other smart body controls remain native only.
-- The long leg needs the body networks in the external runtime. They are extracted on the machine from the installed model and are not distributed, so existing independent-engine installations need the updated runtime.
+- The editor engine decodes transparent videos frame by frame through the video element, so long overlays export more slowly there.
+- The two engines read untagged media differently (BT.709 in the editor, BT.601 in FFmpeg), so coloured overlay text can differ slightly between them; white text does not.
+- Smart body stills use eight updates of the pose, fitted to native renders rather than reproduced; one person, upright frames, and no smoothing across video frames.
