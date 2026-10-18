@@ -462,8 +462,8 @@
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 25897,
-			"sha256": "0161b64d045fadf8b05af74d1e1209af3e230f5ddb2ecb581f1818dcf808a144",
+			"bytes": 26940,
+			"sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -1230,8 +1230,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_pipeline.py",
-			"bytes": 23730,
-			"sha256": "a632ab5aeaf46fbd7af1b781fe974478b16cfa63dc0aabb4a48abf7d50a26fda",
+			"bytes": 24900,
+			"sha256": "38bec6c7b190cd922131fb2a1f7b756a5431e04ba0228bcfe052fd5198bbfafb",
 			"sourceSha256": "e12057a20f376c07db392705a8eb7f50c512ddb577327ff4d01199cfbcffc967"
 		},
 		{
@@ -1589,8 +1589,8 @@
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 5945,
-			"sha256": "f2eccf31eb5a13e1d582ad887a062267647922218223355deb3a5d95949bfd6f"
+			"bytes": 6056,
+			"sha256": "dd194d03fd7ee26bc32e4849e72915b0c0ea4500a36a22d91c0b8c50d7351710"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -3019,6 +3019,13 @@
 				"src/independent-smart-body-plan.test.ts"
 			],
 			"reason": "Owned body temporal research: explicit persistent single-person mode2 session, native missing-leg tracker crop, video classification and same-frame redetection lifecycle, bounded replay/cancellation contract, optional exact ONNX integer interpreter, and native-rule finite manual zoom mesh. Numeric CPU probes and original renderer comparisons are private evidence; source contains no vendor binaries, shaders, weights, model policy tables, or recorded landmarks. The production photo runner retains its accepted eight same-image updates; the cold body_smart_candidate and namespaced temporal modules remain explicit research APIs; the optional video policy is required only by the explicit sequence API. Manual zoom uses only owned numeric code and public Metal."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/tests/test_independent_pipeline.py"
+			],
+			"reason": "Remember the canonical plan per request and resolution while the catalog and planner hashes are unchanged, so the resident worker plans a clip's frames once instead of starting the Bun planner per frame; plans are handed out as copies and the hash chain, stage order and receipts are unchanged"
 		}
 	],
 	"sourceWorkingTreeStatus": [
