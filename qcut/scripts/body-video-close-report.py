@@ -114,13 +114,22 @@ def write_difference_video(*, reference_frames, candidate_frames, path, fps):
     command = ["ffmpeg", "-y", "-v", "error", "-nostdin", "-f", "rawvideo", "-pix_fmt", "rgb24",
                "-s", f"{width}x{height}", "-r", str(fps), "-i", "pipe:0",
                "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", str(path)]
-    with subprocess.Popen(command, stdin=subprocess.PIPE) as encoder:
-        for before, after in zip(reference_frames, candidate_frames):
-            delta = np.abs(after.astype(np.int16) - before.astype(np.int16))
-            encoder.stdin.write(np.minimum(delta * 4, 255).astype(np.uint8).tobytes())
-        encoder.stdin.close()
-        if encoder.wait() != 0:
-            raise RuntimeError(f"ffmpeg failed writing {path}")
+    try:
+        encoder = subprocess.Popen(command, stdin=subprocess.PIPE)
+    except FileNotFoundError as error:
+        raise RuntimeError(f"ffmpeg is required to write {path}") from error
+    with encoder:
+        try:
+            for before, after in zip(reference_frames, candidate_frames):
+                delta = np.abs(after.astype(np.int16) - before.astype(np.int16))
+                encoder.stdin.write(np.minimum(delta * 4, 255).astype(np.uint8).tobytes())
+            encoder.stdin.close()
+        except BrokenPipeError:
+            # The encoder exited early; its exit code below says why.
+            pass
+        code = encoder.wait()
+        if code != 0:
+            raise RuntimeError(f"ffmpeg failed writing {path} (exit code {code})")
 
 
 def thumbnail(*, frame):
@@ -153,9 +162,14 @@ def sampled_png_parity(*, evidence, modes, samples, output):
     """Pre-encode plane: committed paused-preview composition vs the export canvas."""
     parity = {}
     for mode in modes:
-        if not (evidence / mode / f"preview-frame-{samples[0]:06d}-composition.png").exists():
-            # The untouched pass records export frames only (no composition surface).
+        # The untouched pass records export frames only (no composition surface);
+        # every processed pass must have captured every sampled frame.
+        if mode == "original":
             continue
+        missing = [frame for frame in samples
+                   if not (evidence / mode / f"preview-frame-{frame:06d}-composition.png").exists()]
+        if missing:
+            raise SystemExit(f"Preview evidence incomplete for {mode}: missing frames {missing}")
         rows = []
         for frame in samples:
             difference = output / f"preview-export-{mode}-{frame:06d}.png"
