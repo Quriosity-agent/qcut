@@ -354,6 +354,60 @@ describe("grade precedence and ranges through element patch", () => {
 		).toThrow("adjustments.vignette must be 0..100 (got 500)");
 	});
 
+	it("refuses non-numeric values on defined grade fields", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { color: { basic: { exposure: "20" } } } as never,
+				pushHistory: false,
+			})
+		).toMatchObject({
+			applied: false,
+			error: expect.stringContaining(
+				'color.basic.exposure must be -5..5 (got "20")'
+			),
+		});
+		expect(() =>
+			getClaudeAdjustmentFields({
+				element: { adjustments: { brightness: "20" } } as never,
+			})
+		).toThrow('adjustments.brightness must be -100..100 (got "20")');
+	});
+
+	it("merges an adjustment-layer update into its current grade, basic wins", () => {
+		const fields = getClaudeAdjustmentFields({
+			element: {
+				color: { basic: { saturation: 15 } },
+				// Stale exported mirror naming a field the color patch also sets.
+				adjustments: { saturation: 0, vignette: 35 },
+			} as never,
+			current: {
+				color: {
+					enabled: true,
+					basic: { enabled: true, contrast: 25 },
+					wheels: { enabled: true, shadows: { x: -0.018, y: 0.025 } },
+				},
+			} as never,
+		});
+		// The untouched parts of the current grade survive the partial patch.
+		expect(fields.color?.basic).toMatchObject({ contrast: 25, saturation: 15 });
+		expect(fields.color?.wheels.shadows).toMatchObject({ x: -0.018, y: 0.025 });
+		// The mirror follows the merged grade: basic wins, legacy-only lands.
+		expect(fields.adjustments).toMatchObject({
+			contrast: 25,
+			saturation: 15,
+			vignette: 35,
+		});
+	});
+
+	it("keeps completing a new layer's partial grade from defaults", () => {
+		const fields = getClaudeAdjustmentFields({
+			element: { adjustments: { contrast: 15 } } as never,
+		});
+		expect(fields.color).toBeUndefined();
+		expect(fields.adjustments).toMatchObject({ contrast: 15, saturation: 0 });
+	});
+
 	it("keeps accepting in-range values at the range edges", () => {
 		const result = applyElementChanges({
 			elementId: "clip",
