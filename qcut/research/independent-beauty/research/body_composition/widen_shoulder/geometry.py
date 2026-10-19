@@ -1,4 +1,4 @@
-"""Independent first-frame WidenShoulder geometry, orientation0, no segmentation."""
+"""Independent WidenShoulder raw geometry with native binary mask membership."""
 
 from ..shoulder_smoothing import smooth
 import ctypes as C, math
@@ -43,7 +43,7 @@ def kernel(p, center, movement, movement_length, radius, strength, inside=True):
     return out
 
 
-def raw_geometry(source, state):
+def raw_geometry(source, state, *, grid_mask=None):
     src = F(source)
     rows, cols = np.asarray(src.shape[:2]) - 1
     w, h = src[-1, -1]
@@ -55,8 +55,8 @@ def raw_geometry(source, state):
     invalid = lambda p: bool(p[0] == F(-1) and p[1] == F(-1))
     if invalid(left) or invalid(right) or np.array_equal(left, right):
         return (False, delta, (0, 0, 0, 0))
-    if state.get("segmentation", False):
-        raise NotImplementedError("Segmentation mask mapping pending parity")
+    if state.get("segmentation", False) and grid_mask is None:
+        raise ValueError("A populated segmentation state requires its sampled grid mask")
     v = F(left - right)
     factor = F(F(F(length(v) + length(v)) / F(F(w) + F(h))) + F(1e-06))
     scale = F(min(factor, F(0.33286)) / factor)
@@ -124,6 +124,7 @@ def raw_geometry(source, state):
                             F(move_len * weight[i]),
                             radius,
                             strength,
+                            inside=True if grid_mask is None else bool(grid_mask[r, c]),
                         )
                     )
     return (

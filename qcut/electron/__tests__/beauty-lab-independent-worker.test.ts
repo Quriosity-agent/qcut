@@ -1,8 +1,10 @@
 // @vitest-environment node
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createIndependentBeautyWorker,
@@ -100,6 +102,110 @@ function job({
 		timeoutMs,
 	};
 }
+
+function controlledChild() {
+	return Object.assign(new EventEmitter(), {
+		stdin: new PassThrough(),
+		stdout: new PassThrough(),
+		stderr: new PassThrough(),
+		exitCode: null,
+		signalCode: null,
+		kill: vi.fn(),
+	}) as unknown as ChildProcessWithoutNullStreams;
+}
+
+function pipeError({ code }: { code: string }) {
+	return Object.assign(new Error(`write ${code}`), { code });
+}
+
+describe("resident worker transport failures", () => {
+	it.each(
+		["EPIPE", "ERR_STREAM_DESTROYED"].flatMap((code) =>
+			["error-first", "exit-first"].map((order) => ({ code, order }))
+		)
+	)("recognizes $code with $order after a completed frame", async ({
+		code,
+		order,
+	}) => {
+		const child = controlledChild();
+		vi.mocked(spawn).mockReturnValueOnce(child);
+		const first = worker.run(job());
+		const { id } = JSON.parse(String(child.stdin.read()));
+		child.stdout.emit(
+			"data",
+			Buffer.from(`${JSON.stringify({ id, ok: true })}\n`)
+		);
+		await expect(first).resolves.toEqual({});
+		const pending = worker.run(job());
+		const rejected = expect(pending).rejects.toBeInstanceOf(
+			IndependentWorkerExitedError
+		);
+		if (order === "exit-first") child.emit("exit", 7, null);
+		child.stdin.emit("error", pipeError({ code }));
+		if (order === "error-first") child.emit("exit", 7, null);
+		child.emit("close", 7, null);
+		await rejected;
+		await expect(worker.run(job())).resolves.toEqual({});
+		expect(spawn).toHaveBeenCalledTimes(2);
+	});
+
+	it.each([
+		"EPIPE",
+		"ERR_STREAM_DESTROYED",
+	])("settles %s when the child closes without an exit event", async (code) => {
+		const child = controlledChild();
+		vi.mocked(spawn).mockReturnValueOnce(child);
+		const rejected = expect(worker.run(job())).rejects.toBeInstanceOf(
+			IndependentWorkerExitedError
+		);
+		child.stdin.emit("error", pipeError({ code }));
+		child.emit("close", null, null);
+		await rejected;
+	});
+
+	it.each([
+		{ stop: "cancel", message: "cancelled" },
+		{ stop: "response", message: "identity mismatch" },
+		{ stop: "timeout", message: "timed out" },
+	])("keeps $stop failures nonretryable after a pipe error", async ({
+		stop,
+		message,
+	}) => {
+		vi.useFakeTimers();
+		try {
+			const child = controlledChild();
+			vi.mocked(spawn).mockReturnValueOnce(child);
+			const controller = new AbortController();
+			const pending = worker.run(
+				job({ signal: controller.signal, timeoutMs: 100 })
+			);
+			const failed = pending.catch((error: unknown) => error);
+			if (stop === "cancel") controller.abort();
+			if (stop === "response")
+				child.stdout.emit("data", Buffer.from('{"id":"wrong","ok":true}\n'));
+			if (stop === "timeout") await vi.advanceTimersByTimeAsync(100);
+			child.stdin.emit("error", pipeError({ code: "EPIPE" }));
+			child.emit("exit", null, "SIGKILL");
+			child.emit("close", null, "SIGKILL");
+			const error = await failed;
+			expect(error).toBeInstanceOf(Error);
+			expect(error).not.toBeInstanceOf(IndependentWorkerExitedError);
+			expect(error).toHaveProperty("message", expect.stringContaining(message));
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("does not classify an arbitrary stream failure as a worker exit", async () => {
+		const child = controlledChild();
+		vi.mocked(spawn).mockReturnValueOnce(child);
+		const original = pipeError({ code: "EIO" });
+		const rejected = expect(worker.run(job())).rejects.toBe(original);
+		child.stdin.emit("error", original);
+		child.emit("close", null, null);
+		await rejected;
+	});
+});
 
 describe("resident beauty process lifetime", () => {
 	it("reuses a real process for successive frames and recycles on source changes", async () => {

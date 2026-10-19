@@ -35,13 +35,14 @@ def reset_face(s):
         s.put(off, -1)
 
 
-def update(s, coords, visibility, faces, rects, rolls, w, h, reject_distant=True):
+def update(s, coords, visibility, faces, rects, rolls, w, h, reject_distant=True,
+           *, body_present=True):
     s.data[60] = 0
     validids = [i for i in BODY if visibility[i]]
     body = points_in_image(coords, validids, w, h)
-    index = -1
+    index = 0 if not body_present else -1
     closest = np.finfo(np.float32).max
-    if len(body):
+    if body_present and len(body):
         center = mean(body)
         for i, face in enumerate(faces):
             delta = mean(points_in_image(face, MATCH, w, h)) - center
@@ -51,7 +52,7 @@ def update(s, coords, visibility, faces, rects, rolls, w, h, reject_distant=True
                 closest = distance
     if index != struct.unpack_from("<i", s.data, 56)[0]:
         reset_face(s)
-    if index < 0:
+    if index < 0 or index >= len(faces):
         return
     s.puti(56, index)
     s.data[60] = 1

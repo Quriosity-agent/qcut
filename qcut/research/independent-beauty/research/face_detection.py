@@ -29,8 +29,8 @@ class Detector:
                 or len(outputs) != len(HEAD_NAMES) or {value.name for value in outputs} != set(HEAD_NAMES)):
             raise ValueError("dynamic integer six-head detector model required")
 
-    def detect(self, *, rgba):
-        result = prepare_detection(rgba=rgba)
+    def detect(self, *, rgba, prepared_algorithm=False):
+        result = prepare_detection(rgba=rgba, prepared_algorithm=prepared_algorithm)
         outputs = self.session.run(list(HEAD_NAMES), {"data": result["tensor"].astype(np.int64)})
         if len(outputs) != len(HEAD_NAMES):
             raise ValueError("six detector outputs required")
@@ -47,5 +47,5 @@ class Detector:
         rects = frame_rectangles(boxes=boxes, scales=result["scales"])
         result.update(heads={name: value for name, (value, _) in zip(HEAD_NAMES, heads, strict=True)},
                       rects=rects, scores=boxes[:, 4].copy(), model_sha256=self.sha256,
-                      equal_score_proposals_order="stable-owned-order-native-ties-unverified")
+                      equal_score_proposals_order="native-score-only-full-or-partial-sort")
         return result

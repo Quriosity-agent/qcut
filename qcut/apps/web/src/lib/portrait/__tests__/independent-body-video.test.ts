@@ -190,7 +190,6 @@ describe("independent body video clip frames", () => {
 				clip: { ...clip, mediaItem: relinked },
 			})
 		).not.toBe(identity);
-		// A file larger than the fingerprint span is named by its head and tail.
 		const large = (fill: number) =>
 			mediaItem({
 				file: new File([new Uint8Array(3 * 1024 * 1024).fill(fill)], "big.mp4"),
@@ -209,6 +208,62 @@ describe("independent body video clip frames", () => {
 				},
 			})
 		);
+	});
+	it("invalidates history when a relink changes only the middle of the media", async () => {
+		const bytes = new Uint8Array(3 * 1024 * 1024);
+		const changed = bytes.slice();
+		changed[1_500_000] = 1;
+		const original = mediaItem({ file: new File([bytes], "clip.mp4") });
+		const relinked = mediaItem({ file: new File([changed], "clip.mp4") });
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: relinked },
+			})
+		).not.toBe(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: original },
+			})
+		);
+	});
+	it("hashes bounded chunks once for concurrent and repeated frames", async () => {
+		const chunkSize = 4 * 1024 * 1024;
+		const file = new File([new Uint8Array(2 * chunkSize + 1)], "large.mp4");
+		const slices = vi.spyOn(file, "slice");
+		const wholeFileReads = vi.spyOn(file, "arrayBuffer");
+		const input = { clip: { ...clip, mediaItem: mediaItem({ file }) } };
+		const [first, concurrent] = await Promise.all([
+			independentBodyVideoClipIdentity(input),
+			independentBodyVideoClipIdentity(input),
+		]);
+		expect(concurrent).toBe(first);
+		expect(await independentBodyVideoClipIdentity(input)).toBe(first);
+		expect(slices.mock.calls).toEqual([
+			[0, chunkSize],
+			[chunkSize, 2 * chunkSize],
+			[2 * chunkSize, file.size],
+		]);
+		expect(wholeFileReads).not.toHaveBeenCalled();
+	});
+	it("retries a failed content read without retaining its rejected promise", async () => {
+		const file = new File([new Uint8Array(16)], "retry.mp4");
+		const failure = new Error("Media temporarily unavailable");
+		const slices = vi.spyOn(file, "slice").mockImplementationOnce(() => {
+			throw failure;
+		});
+		const input = { clip: { ...clip, mediaItem: mediaItem({ file }) } };
+		const attempts = await Promise.allSettled([
+			independentBodyVideoClipIdentity(input),
+			independentBodyVideoClipIdentity(input),
+		]);
+		expect(attempts).toEqual([
+			{ status: "rejected", reason: failure },
+			{ status: "rejected", reason: failure },
+		]);
+		expect(slices).toHaveBeenCalledTimes(1);
+		const identity = await independentBodyVideoClipIdentity(input);
+		expect(identity).toMatch(/^[a-f0-9]{64}$/);
+		expect(await independentBodyVideoClipIdentity(input)).toBe(identity);
+		expect(slices).toHaveBeenCalledTimes(2);
 	});
 	it("keeps its identity when the timeline loader canonicalizes the stored element", async () => {
 		// The panel writes the edit in its own key order with zero-valued

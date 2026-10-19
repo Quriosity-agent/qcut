@@ -78,20 +78,20 @@ class SkeletonHead:
         self.data[104] = 0
         self.data[60] = 0
         skeleton_enabled = bool(status_valid and (not status_blocked))
-        if faces is not None:
-            from .face_selection import update
+        from .face_selection import update
 
-            update(
-                self,
-                coords,
-                visibility,
-                faces,
-                rectangles,
-                rolls,
-                width,
-                height,
-                reject_distant=skeleton_enabled,
-            )
+        update(
+            self,
+            coords,
+            visibility,
+            () if faces is None else faces,
+            rectangles,
+            rolls,
+            width,
+            height,
+            reject_distant=skeleton_enabled,
+            body_present=status_valid,
+        )
         if skeleton_enabled:
             p = np.asarray(coords, np.float32).reshape(18, 2) * np.array(
                 [width, height], np.float32

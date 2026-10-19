@@ -17,8 +17,8 @@ class State:
     target: float = 0.35
     step: float = 2.0
     modifier: float = 0.5
-    axis: tuple = (1.0, 0.0)
-    perpendicular: tuple = (0.0, -1.0)
+    axis: tuple = (0.0, 0.0)
+    perpendicular: tuple = (0.0, 0.0)
     extra: float = 0.0
     lobes: list = field(
         default_factory=lambda: [

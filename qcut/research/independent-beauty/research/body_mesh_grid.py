@@ -3,7 +3,7 @@ import numpy as np
 F = np.float32
 
 def make_grid(width, height, rows, cols):
-    if min(width, height, rows, cols) <= 0 or (rows + 1) * (cols + 1) > 4096 or rows * cols * 2 > 4096:
+    if min(width, height, rows, cols) <= 0 or (rows + 1) * (cols + 1) > 8192 or rows * cols * 2 > 16384:
         raise ValueError('positive bounded dimensions/grid required')
     x = F(F(width) / F(cols)) * np.arange(cols + 1, dtype=np.float32)
     x[-1] = F(width)

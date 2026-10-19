@@ -41,12 +41,23 @@ class FaceRecoveryWindow(unittest.TestCase):
         state.finish(previous_faces=1, current_faces=0, detector_retry=True)
         self.assertEqual(state.snapshot(), {'active': True, 'counter': 1})
 
+    def test_gaining_another_valid_face_ends_recovery(self):
+        state = VideoFaceRecovery(active=True, counter=8)
+        state.finish(previous_faces=2, current_faces=3)
+        self.assertEqual(state.snapshot(), {'active': False, 'counter': 8})
+
+    def test_partial_face_loss_keeps_recovery_counter(self):
+        state = VideoFaceRecovery(active=True, counter=8)
+        state.finish(previous_faces=5, current_faces=2)
+        self.assertEqual(state.snapshot(), {'active': True, 'counter': 9})
+
     def test_initial_empty_detection_does_not_start_window(self):
         state = VideoFaceRecovery()
         state.finish(previous_faces=0, current_faces=0)
         self.assertEqual(state.snapshot(), {'active': False, 'counter': 0})
-        with self.assertRaisesRegex(ValueError, 'single-person'):
-            state.finish(previous_faces=1, current_faces=2)
+        for previous, current in ((-1, 0), (0, 6), (True, 1), (1, 1.0)):
+            with self.subTest(previous=previous, current=current), self.assertRaisesRegex(ValueError, 'bounded native'):
+                state.finish(previous_faces=previous, current_faces=current)
 
 
 if __name__ == '__main__':

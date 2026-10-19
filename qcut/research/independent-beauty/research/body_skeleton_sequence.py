@@ -1,14 +1,11 @@
-"""Owned single-person CPU skeleton lifecycle; no recorded poses or native calls."""
+"""Owned default one-target CPU skeleton lifecycle; no recorded poses or native calls."""
 import numpy as np
 
 from body_points import normalize_joints
+from body_skeleton_identity import select_seed
 from body_skeleton_decode import (crop_layout_and_roi, map_local_to_global,
                                   tracking_body_box, postprocess, refine_pose, refine_tensor)
 from body_skeleton_preprocess import skeleton005_auto
-
-
-class AmbiguousBodyFrame(ValueError):
-    """The validated one-person profile cannot choose between multiple bodies."""
 
 
 class BodySkeletonSequence:
@@ -31,7 +28,8 @@ class BodySkeletonSequence:
         height, width = algorithm.shape[:2]
         size = (width, height)
         if self.size is not None and self.size != size:
-            raise ValueError('skeleton dimensions changed; reset before replay')
+            self.points = None
+            self.iterations = 0
         rgb = np.ascontiguousarray(algorithm[..., :3])
         box = tracking_body_box(self.points, size) if self.points is not None else None
         mode = int(box is not None)
@@ -44,12 +42,7 @@ class BodySkeletonSequence:
             th, tw = tensor.shape[:2]
             _, roi = crop_layout_and_roi([0, 0, width, height], (tw, th))
             people = map_local_to_global(postprocess(heat, paf), (tw, th), roi)
-            if len(people) > 1:
-                # Failure invalidates the chain; callers must replay after selecting a new clip.
-                self.reset()
-                raise AmbiguousBodyFrame('multiple bodies require an explicitly validated identity policy')
-            seeded = people and sum(p[3] and p[2] >= 0 for p in people[0]) >= 8
-            points = people[0] if seeded else None
+            points = select_seed(people=people)
             iterations = 0
             reported = None
         else:

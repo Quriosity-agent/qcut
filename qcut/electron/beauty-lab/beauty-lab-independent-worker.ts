@@ -205,7 +205,19 @@ export function createIndependentBeautyWorker({
 					error: new Error("Independent worker diagnostic budget exceeded"),
 				});
 		});
-		child.stdin.on("error", (error) => stop({ state, error }));
+		child.stdin.on("error", (error) => {
+			const code = "code" in error ? error.code : undefined;
+			// A dead pipe can report before the process's exit event is delivered.
+			const failure =
+				code === "EPIPE" || code === "ERR_STREAM_DESTROYED"
+					? new IndependentWorkerExitedError({
+							code: child.exitCode,
+							signal: child.signalCode,
+							diagnostic: diagnostic || error.message,
+						})
+					: error;
+			stop({ state, error: failure });
+		});
 		child.on("error", (error) => stop({ state, error }));
 		child.on("exit", (code, signal) => {
 			// The parent can exit while a renderer still holds the group's pipes.

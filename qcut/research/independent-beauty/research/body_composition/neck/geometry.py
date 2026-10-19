@@ -27,7 +27,12 @@ def deform(
     xs = f(w / f(cols))
     ys = f(h / f(rows))
     cache = {}
-    if abs(f(intensity)) < np.finfo(np.float32).eps:
+    epsilon = np.finfo(np.float32).eps
+    if abs(f(intensity)) < epsilon or not halves:
+        return dst
+    # Native checks the first half's three radii before either half is generated.
+    first_radii = halves[0]['radii']
+    if any(abs(f(first_radii[index])) < epsilon for index in (0, 2, 3)):
         return dst
     for j, half in enumerate(halves):
         center = np.asarray(half["center"], np.float32)

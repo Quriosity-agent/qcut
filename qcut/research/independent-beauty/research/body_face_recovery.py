@@ -1,4 +1,4 @@
-"""Single-person video's frame-boundary visibility recovery window."""
+"""Five-slot video's frame-boundary visibility recovery window."""
 from dataclasses import dataclass
 
 
@@ -8,8 +8,8 @@ class VideoFaceRecovery:
     counter: int = 0
 
     def finish(self, *, previous_faces, current_faces, detector_retry=False):
-        if previous_faces not in (0, 1) or current_faces not in (0, 1):
-            raise ValueError('single-person face counts required')
+        if any(type(count) is not int or not 0 <= count <= 5 for count in (previous_faces, current_faces)):
+            raise ValueError('bounded native face counts required')
         if detector_retry:
             self.active = True
             self.counter = 0

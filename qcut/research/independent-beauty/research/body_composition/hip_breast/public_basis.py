@@ -3,6 +3,7 @@
 import ctypes as C
 import numpy as np
 from .hip_descriptor import ema
+from ..joint_groups import frame_joint_groups
 
 f = np.float32
 libm = C.CDLL(None)
@@ -53,13 +54,7 @@ class PublicBasis:
         self.perp = np.array([0, -1], np.float32)
 
     def update(self, seq, coords, vis, w, h):
-        p = np.asarray(coords, np.float32) * np.array([w, h], np.float32)
-        v = np.asarray(vis, bool)
-        groups = [
-            [p[i] for i in ids if v[i] and np.all(p[i] > 0) and np.all(p[i] < [w, h])]
-            for ids in [[2, 5], [8, 11]]
-        ]
-        sh, hip = groups
+        _, (sh, hip, _) = frame_joint_groups(coords=coords, visibility=vis, width=w, height=h)
         direct = lambda a: np.asarray(
             a[1] - a[0] if a[0][0] <= a[1][0] else a[0] - a[1], np.float32
         )
@@ -69,7 +64,9 @@ class PublicBasis:
             )
         target = f(0)
         if len(sh) == 2 and len(hip) == 2:
-            first = ema(angle(direct(hip)), angle(direct(sh)), f(0.25))
+            total = f(seq.shoulder_reliability + seq.hip_reliability)
+            ratio = f(0.5) if abs(total) < np.finfo(np.float32).eps else f(seq.shoulder_reliability / total)
+            first = ema(angle(direct(hip)), angle(direct(sh)), f(ratio * ratio))
             d = seq.hip_smooth - seq.sh_smooth
             rotation = angle(normalized(np.array([-d[1], d[0]], np.float32)))
             alpha = f(min(f(f(seq.width + self.hip_width) / seq.scale), f(1)))

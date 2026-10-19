@@ -3,6 +3,7 @@
 import numpy as np
 from .geometry import raw_geometry
 from ..shoulder_smoothing import smooth
+from ..segmentation_mask import sample_grid_mask, validate_segmentation_mask
 
 F = np.float32
 
@@ -20,13 +21,22 @@ class WidenHistory:
         self.bounds = None
         self.counter = counter if counter is not None else HistoryCounter()
         self.alpha = None
+        self.segmentation_mask = None
 
-    def step(self, source, state, destination=None):
-        on, raw, bounds = raw_geometry(source, state)
+    def step(self, source, state, destination=None, *, segmentation_mask=None):
+        supplied_mask = validate_segmentation_mask(mask=segmentation_mask)
+        if supplied_mask is not None:
+            self.segmentation_mask = supplied_mask
+        rows, cols = np.asarray(source.shape[:2]) - 1
+        grid_mask = None if self.segmentation_mask is None else sample_grid_mask(
+            mask=self.segmentation_mask, rows=rows, cols=cols
+        )
+        state["segmentation"] = grid_mask is not None
+        on, raw, bounds = raw_geometry(source, state, grid_mask=grid_mask)
         rows, cols = np.asarray(raw.shape[:2]) - 1
         if self.raw is None or state.get("history_invalid", True):
             self.raw = raw.copy()
-            self.bounds = bounds
+            self.bounds = bounds if on else (99999998, 99999998, -99999998, -99999998)
             self.alpha = None
         else:
             old = self.raw
@@ -58,12 +68,14 @@ class WidenHistory:
                 F(F(total / F((rows + 1) * (cols + 1))) * F(10201))
                 / F(F(source[-1, -1, 0]) + F(source[-1, -1, 1]))
             )
-            alpha = F(min(0.25 / (float(mean) + 1e-6), 1.0))
+            numerator = 0.25 if grid_mask is None else float(F(0.43))
+            alpha = F(min(numerator / (float(mean) + 1e-6), 1.0))
             self.alpha = float(alpha)
-            inv = F(F(1) - alpha)
             for r in range(t, bottom):
                 for c in range(l, right):
-                    raw[r, c] = F(F(old[r, c] * inv) + F(raw[r, c] * alpha))
+                    weight = alpha if grid_mask is None or grid_mask[r, c] else F(alpha * F(0.25))
+                    inv = F(F(1) - weight)
+                    raw[r, c] = F(F(old[r, c] * inv) + F(raw[r, c] * weight))
             self.raw = raw.copy()
             self.counter.value += 1
             if self.counter.value % 15 == 0:

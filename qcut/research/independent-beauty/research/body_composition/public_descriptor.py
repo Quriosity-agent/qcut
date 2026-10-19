@@ -5,6 +5,7 @@ markers (record offset+1), not body3D flags. Scope is pinned by oracle reports.
 
 import numpy as np
 import math
+from .joint_groups import frame_joint_groups
 
 
 def point_distance(a, b):
@@ -36,6 +37,8 @@ class DescriptorSequence:
         self.signvar = f(-1)
         self.yaw = f(-1)
         self.turnvar = f(-1)
+        self.shoulder_reliability = f(0)
+        self.hip_reliability = f(0)
 
     def update(
         self,
@@ -50,21 +53,14 @@ class DescriptorSequence:
         status_blocked=False,
         status_swapped=False,
     ):
-        p = np.asarray(coords, np.float32).reshape(18, 2) * np.array(
-            [width, height], np.float32
-        )
+        p, (shoulder, hip, knee) = frame_joint_groups(
+            coords=coords, visibility=visibility, width=width, height=height)
         v = np.array(visibility, bool)
         if not status_valid:
             return self.snapshot(False)
         if status_blocked:
             self.advance_leg_base()
             return self.snapshot(False)
-        bounds = np.all((p > 0) & (p < np.array([width, height], np.float32)), axis=1)
-
-        def group(ids):
-            return p[[i for i in ids if v[i] and bounds[i]]]
-
-        shoulder, hip, knee = [group(ids) for ids in ([2, 5], [8, 11], [9, 12])]
         mean = lambda a: (
             np.mean(a, axis=0, dtype=np.float32)
             if len(a)
@@ -90,6 +86,10 @@ class DescriptorSequence:
         flags = flags or {}
         shrel = f((bool(flags.get(81, False)) + bool(flags.get(201, False))) * 0.5)
         hiprel = f((bool(flags.get(321, False)) + bool(flags.get(441, False))) * 0.5)
+        if len(shoulder):
+            self.shoulder_reliability = shrel
+        if len(hip):
+            self.hip_reliability = hiprel
         rawsh = sh
         if len(shoulder) and v[1]:
             neckrel = f(bool(flags.get(41, False)))

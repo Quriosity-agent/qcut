@@ -7,6 +7,7 @@ import numpy as np
 
 from align160_heads_contract import GATES, HEAD_CHANNELS, MODEL_SHA256
 from alignment_pose_heads import compute_pose_heads, prepare_pose_heads
+from alignment_probability import classification_probabilities, prepare_probability_head
 
 MODELS = {160: MODEL_SHA256, 120: "26b5c79a46478896bb91d9693dd114c2374d7b64b0e0b64245f77cf6289d5364"}
 
@@ -42,9 +43,9 @@ def compare_heads(*, actual, expected, size):
 
 
 class Stage1:
-    def __init__(self, *, size, model, expected_sha256=None, pose_heads=False):
-        """`pose_heads` recomputes yaw and pitch from the shared pooled features in the
-        effect's fused multiply-add order (ONNX Runtime's matmul rounds differently)."""
+    def __init__(self, *, size, model, expected_sha256=None, pose_heads=False, probability_heads=False):
+        """Optional pose and probability heads use the effect's CPU float32 order
+        on shared pooled features; ONNX Runtime's matrix product rounds differently."""
         import onnxruntime as ort
         self.channels = channels(size=size)
         self.size = size
@@ -55,20 +56,29 @@ class Stage1:
         data = model.read_bytes()
         if hashlib.sha256(data).hexdigest() != self.expected:
             raise ValueError("unsupported Stage1 model")
-        if type(pose_heads) is not bool:
-            raise ValueError("typed pose-head policy required")
+        if type(pose_heads) is not bool or type(probability_heads) is not bool:
+            raise ValueError("typed alignment-head policies required")
         self.pose = None
+        self.probability = None
+        self.feature_names = []
         if pose_heads:
             data, features, parameters = prepare_pose_heads(data=data)
             self.pose = (features, parameters)
+            self.feature_names.append(features)
+        if probability_heads:
+            data, features, parameters = prepare_probability_head(data=data)
+            self.probability = (features, parameters)
+            if features not in self.feature_names:
+                self.feature_names.append(features)
         self.runner = cpu_session(data=data, optimize=False)
         inputs, outputs = self.runner.get_inputs(), self.runner.get_outputs()
-        heads = outputs[:-1] if self.pose else outputs
+        heads = outputs[:len(self.channels)]
+        features = outputs[len(self.channels):]
         if (len(inputs) != 1 or inputs[0].name != "data" or inputs[0].shape != [1, size, size, 3]
                 or inputs[0].type != "tensor(int64)" or [value.name for value in heads] != list(self.channels)
                 or any(value.type != "tensor(float)" or value.shape != [1, 1, 1, self.channels[value.name]] for value in heads)
-                or (self.pose and (outputs[-1].name != self.pose[0] or outputs[-1].type != "tensor(float)"
-                                   or outputs[-1].shape != [1, 128]))
+                or [value.name for value in features] != self.feature_names
+                or any(value.type != "tensor(float)" or value.shape != [1, 128] for value in features)
                 or self.runner.get_providers() != ["CPUExecutionProvider"]):
             raise ValueError("locked CPU model metadata required")
 
@@ -81,11 +91,12 @@ class Stage1:
         if hashlib.sha256(self.model.read_bytes()).hexdigest() != self.expected:
             raise ValueError("model changed during persistent inference")
         values = self.runner.run(None, {"data": tensor.astype(np.int64)})
+        heads = dict(zip(self.channels, values[:len(self.channels)], strict=True))
+        features = dict(zip(self.feature_names, values[len(self.channels):], strict=True))
         if self.pose:
-            heads = dict(zip(self.channels, values[:-1], strict=True))
-            heads.update(compute_pose_heads(features=values[-1], parameters=self.pose[1]))
-        else:
-            heads = dict(zip(self.channels, values, strict=True))
+            heads.update(compute_pose_heads(features=features[self.pose[0]], parameters=self.pose[1]))
+        if self.probability:
+            heads['prob'] = classification_probabilities(features=features[self.probability[0]], parameters=self.probability[1])
         for name, value in heads.items():
             if (not isinstance(value, np.ndarray) or value.dtype != np.float32
                     or value.shape != (1, 1, 1, self.channels[name]) or not np.isfinite(value).all()):

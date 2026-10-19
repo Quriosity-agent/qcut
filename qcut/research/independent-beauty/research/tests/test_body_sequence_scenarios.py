@@ -58,53 +58,58 @@ class CompositedScenarios(unittest.TestCase):
         for index, rgba in enumerate(frames):
             result, receipt = session.process(rgba=rgba, controls=CONTROLS, stream='scenario', frame=index,
                                               timestamp=index / 24)
-            receipts.append({**receipt, 'unchanged': np.array_equal(result, rgba)})
+            receipts.append({**receipt, 'unchanged': np.array_equal(result, rgba),
+                             'compositionFrame': session.composition.frame})
         return receipts
 
-    def test_several_bodies_on_the_seed_frame_keep_the_frame_and_seed_on_the_next(self):
+    def test_several_bodies_seed_the_first_eligible_body_then_track_on_the_next_frame(self):
         receipts = self.run_sequence([with_second_person(rgba=self.frames[0]), *self.frames[1:4]])
-        self.assertTrue(receipts[0]['skeleton']['state'].get('ambiguous'))
-        self.assertTrue(receipts[0]['unchanged'])
+        self.assertEqual(receipts[0]['skeleton']['state']['objects'], 1)
+        self.assertIn('meshSha256', receipts[0])
+        self.assertEqual(receipts[0]['compositionFrame'], 1)
         self.assertFalse(receipts[0]['bodyReported'])
-        # Frame 1 seeds one body and refines it in the same frame.
         self.assertEqual([receipt['bodyReported'] for receipt in receipts], [False, True, True, True])
-        self.assertTrue(receipts[1]['seedRefined'])
-        self.assertEqual(receipts[1]['compositionUpdates'], 8)
-        self.assertEqual(receipts[2]['compositionUpdates'], 1)
-        self.assertFalse(receipts[1]['unchanged'])
+        self.assertFalse(receipts[2]['unchanged'])
 
-    def test_a_second_person_entering_keeps_the_session_on_the_tracked_body(self):
-        plain = self.run_sequence(self.frames)
-        entering = self.run_sequence([*self.frames[:4], *(with_second_person(rgba=frame) for frame in self.frames[4:])])
-        self.assertEqual([receipt['bodyReported'] for receipt in entering], [True] * 8)
-        self.assertEqual([receipt['meshSha256'] for receipt in entering[:4]],
-                         [receipt['meshSha256'] for receipt in plain[:4]])
-        for index in range(4, 8):
+    def test_second_valid_face_is_kept_while_the_tracked_body_continues(self):
+        plain = self.run_sequence(self.frames[:4])
+        entering = [*self.frames[:4], *(with_second_person(rgba=frame) for frame in self.frames[4:])]
+        session = BodySmartSequence(runtime=RUNTIME)
+        receipts = []
+        for index, rgba in enumerate(entering):
+            result, receipt = session.process(rgba=rgba, controls=CONTROLS, stream='scenario', frame=index,
+                                             timestamp=index / 24)
+            receipts.append({**receipt, 'unchanged': np.array_equal(result, rgba)})
+        self.assertFalse(session.invalid)
+        self.assertEqual(session.next_frame, len(entering))
+        self.assertEqual([receipt['bodyReported'] for receipt in receipts], [False] + [True] * 7)
+        self.assertEqual([receipt['meshSha256'] for receipt in receipts[:4]],
+                         [receipt['meshSha256'] for receipt in plain])
+        self.assertTrue(any(sum(not slot['new'] for slot in receipt['face']['slots']) >= 2 for receipt in receipts))
+        for index, receipt in enumerate(receipts[4:], 4):
             with self.subTest(frame=index):
-                # Seeding never reruns: the newcomer cannot make the frame ambiguous or
-                # steal the track. With anchors refreshed every frame, the mesh itself
-                # is not asserted equal to the single-person run: the refine crop and
-                # the frame-wide face track both see the second person (multi-person
-                # identity is outside the single-person scope).
-                self.assertEqual(entering[index]['skeleton']['plan']['mode'], 1)
-                self.assertNotIn('ambiguous', entering[index]['skeleton']['state'])
-                self.assertFalse(entering[index]['unchanged'])
+                self.assertEqual(receipt['skeleton']['plan']['mode'], 1)
+                self.assertNotIn('ambiguous', receipt['skeleton']['state'])
+                self.assertFalse(receipt['unchanged'])
 
-    def test_a_lost_body_keeps_its_frames_and_the_person_is_found_again(self):
+    def test_a_lost_body_advances_retained_geometry_before_the_person_is_found_again(self):
         frames = [*self.frames[:3], without_person(rgba=self.frames[3]), without_person(rgba=self.frames[4]),
                   *self.frames[5:8]]
         receipts = self.run_sequence(frames)
         reported = [receipt['bodyReported'] for receipt in receipts]
-        self.assertEqual(reported[:3], [True, True, True])
+        self.assertEqual(reported[:3], [False, True, True])
         self.assertEqual(reported[3:5], [False, False])
-        self.assertTrue(all(receipt['unchanged'] for receipt in receipts[3:5]))
-        # After the loss the skeleton seeds again and refines on the same frame; the
-        # geometry history is warm, so that frame advances once like any other.
-        self.assertTrue(receipts[5]['seedRefined'])
-        self.assertEqual(receipts[5]['skeleton']['network'], 'refine')
-        self.assertEqual(receipts[5]['compositionUpdates'], 1)
-        self.assertEqual(reported[5:], [True, True, True])
-        self.assertFalse(receipts[5]['unchanged'])
+        self.assertEqual([receipt['compositionFrame'] for receipt in receipts], list(range(1, 9)))
+        for frame, receipt in enumerate(receipts[3:5], 3):
+            with self.subTest(frame=frame):
+                self.assertFalse(receipt['unchanged'])
+                self.assertFalse(receipt['identity'])
+                self.assertGreater(receipt['maximumDisplacementPixels'], 0)
+                self.assertIn('meshSha256', receipt)
+        # After the loss the skeleton seeds again: one silent coarse frame, then tracking.
+        self.assertEqual(receipts[5]['skeleton']['plan']['mode'], 0)
+        self.assertEqual(reported[5:], [False, True, True])
+        self.assertFalse(receipts[7]['unchanged'])
 
 
 if __name__ == '__main__':
