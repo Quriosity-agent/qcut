@@ -423,8 +423,9 @@ class RealSnapshot(unittest.TestCase):
                 np.testing.assert_array_equal(sought[index], expected[index + 4])
 
 
-    @unittest.skipUnless(len(list(RECOVERY_FRAMES.glob('frame-*.png'))) >= 12,
-                         'retained recovery needs QCUT_BODY_RETAINED_FACE_FRAMES (the native-observed 12-frame fixture)')
+@unittest.skipUnless(HAS_VIDEO_RUNTIME and len(list(RECOVERY_FRAMES.glob('frame-*.png'))) >= 12,
+                     'retained recovery needs the private video runtime and QCUT_BODY_RETAINED_FACE_FRAMES (the native-observed 12-frame fixture)')
+class RealRetainedFaceSnapshot(unittest.TestCase):
     def test_checkpoint_preserves_retained_face_recovery_history(self):
         rgbas = [decode_image(image=path, max_edge=4096)['rgba'] for path in sorted(RECOVERY_FRAMES.glob('frame-*.png'))[:12]]
 
