@@ -12,7 +12,11 @@ import body_smart_sequence as module
 
 class BodySequenceContract(unittest.TestCase):
     def setUp(self):
-        self.rgba = np.full((32, 24, 4), 255, np.uint8)
+        self.rgba = np.full((32, 32, 4), 255, np.uint8)
+        self.base = np.asarray([[[0, 0], [24, 0]], [[0, 32], [24, 32]]], np.float32)
+        self.mesh = {'base': self.base, 'positions': self.base.copy(),
+                     'uv': self.base / np.asarray([24, 32], np.float32),
+                     'tri': np.asarray([[0, 1, 2], [1, 2, 3]], np.int32)}
         self.engine = module.BodySmartSequence(runtime=Path('/unused-runtime'))
         self.skeletons = []
 
@@ -23,6 +27,7 @@ class BodySequenceContract(unittest.TestCase):
             self.engine.face = Mock()
             self.engine.face.update.return_value = (None, {'status': 'no-face'})
             self.engine.composition = Mock()
+            self.engine.composition.update.return_value = self.mesh
             self.skeletons.append(self.engine.skeleton)
 
         self.addCleanup(patch.stopall)
@@ -30,29 +35,67 @@ class BodySequenceContract(unittest.TestCase):
         patch.object(module, 'algorithm_image', return_value=(self.rgba, {})).start()
         patch.object(module, 'process_images', return_value={'loaded_images': [], 'private_native_images': []}).start()
 
-    def frame(self, *, index=0, stream='clip-a', timestamp=None, cancelled=None, controls=None):
+    def frame(self, *, index=0, stream='clip-a', timestamp=None, cancelled=None, controls=None,
+              control_events=()):
         return self.engine.process(rgba=self.rgba, controls=controls or {}, stream=stream,
                                    frame=index, timestamp=index / 24 if timestamp is None else timestamp,
-                                   cancelled=cancelled)
+                                   cancelled=cancelled, control_events=control_events)
 
-    def test_suppressed_seed_preserves_frame_and_timestamp(self):
+    def test_suppressed_seed_advances_missing_body_geometry_and_timestamp(self):
         result, receipt = self.frame()
         np.testing.assert_array_equal(result, self.rgba)
         self.assertIsNot(result, self.rgba)
         self.assertEqual(receipt['frame'], 0)
         self.assertFalse(receipt['bodyReported'])
         self.assertEqual(self.engine.next_frame, 1)
-        self.engine.composition.update.assert_not_called()
+        inputs = self.engine.composition.update.call_args.kwargs
+        self.assertFalse(inputs['body_present'])
+        np.testing.assert_array_equal(inputs['visibility'], np.zeros(18, np.uint8))
 
-    def test_invalid_order_stream_size_and_time_do_not_mutate_history(self):
+    def test_supplied_segmentation_is_copied_before_inference_and_forwarded(self):
+        mask = np.arange(35, dtype=np.uint8).reshape(5, 7)
+        expected = mask.copy()
+        with patch.object(module, 'algorithm_image', side_effect=lambda **kwargs: (
+                mask.fill(0) or self.rgba, {})):
+            self.engine.process(rgba=self.rgba, controls={}, stream='mask', frame=0,
+                                timestamp=0, segmentation_mask=mask)
+        passed = self.engine.composition.update.call_args.kwargs['segmentation_mask']
+        np.testing.assert_array_equal(passed, expected)
+        self.assertFalse(np.shares_memory(passed, mask))
+
+    def test_invalid_segmentation_is_rejected_before_loading_or_advancing(self):
+        for mask in ([], np.zeros((2, 2), np.float32), np.zeros((0, 2), np.uint8),
+                     np.zeros((2, 2, 1), np.uint8)):
+            with self.subTest(shape=getattr(mask, 'shape', None)), self.assertRaises(ValueError):
+                self.engine.process(rgba=self.rgba, controls={}, stream='mask', frame=0,
+                                    timestamp=0, segmentation_mask=mask)
+        self.engine._initialize.assert_not_called()
+        self.assertFalse(self.engine.invalid)
+        self.assertEqual(self.engine.next_frame, 0)
+
+    def test_missing_body_renders_retained_deformation_instead_of_returning_original(self):
         self.frame()
-        invalid = [dict(index=0), dict(index=2), dict(index=1, stream='clip-b'),
-                   dict(index=1, timestamp=0), dict(index=1, timestamp=.25)]
+        self.engine.composition.update.return_value = {
+            **self.mesh, 'positions': self.base + np.float32(1),
+        }
+        rendered = np.full_like(self.rgba, 80)
+        with patch.object(module, 'draw_mesh', return_value=(rendered, {})) as draw:
+            result, receipt = self.frame(index=1)
+        self.assertFalse(receipt['bodyReported'])
+        self.assertFalse(receipt['identity'])
+        self.assertIs(result, rendered)
+        draw.assert_called_once()
+        self.assertEqual(self.engine.composition.update.call_count, 2)
+        self.assertFalse(self.engine.composition.update.call_args.kwargs['body_present'])
+
+    def test_invalid_order_stream_and_unbounded_size_do_not_mutate_history(self):
+        self.frame()
+        invalid = [dict(index=0), dict(index=2), dict(index=True), dict(index=1, stream='clip-b')]
         for arguments in invalid:
             with self.subTest(arguments=arguments), self.assertRaises(ValueError):
                 self.frame(**arguments)
         with self.assertRaises(ValueError):
-            self.engine.process(rgba=np.full((33, 24, 4), 255, np.uint8), controls={},
+            self.engine.process(rgba=np.full((33, 4097, 4), 255, np.uint8), controls={},
                                 stream='clip-a', frame=1, timestamp=1 / 24)
         self.assertEqual(self.skeletons[0].update.call_count, 1)
         self.assertEqual(self.engine.next_frame, 1)
@@ -60,11 +103,52 @@ class BodySequenceContract(unittest.TestCase):
         self.frame(index=1)
         self.assertEqual(self.skeletons[0].update.call_count, 2)
 
+    def test_source_resize_uses_transient_extent_then_returns_to_active_extent(self):
+        sizes = ((1080, 1920), (720, 1280), (720, 1280), (1280, 720))
+        with patch.object(module, 'source_edge_limit', return_value=4096), \
+                patch.object(module, 'algorithm_image', return_value=(self.rgba, {})) as raster:
+            for index, (width, height) in enumerate(sizes):
+                self.engine.process(rgba=np.full((height, width, 4), 255, np.uint8), controls={},
+                                    stream='resize', frame=index, timestamp=index / 30)
+        self.assertEqual([call.kwargs['output_size'] for call in raster.call_args_list],
+                         [(360, 640), (128, 227), (360, 640), (227, 128)])
+        self.assertEqual(self.engine.next_frame, 4)
+        self.engine._initialize.assert_called_once()
+        self.engine.skeleton.reset.assert_not_called()
+        self.engine.face.reset.assert_not_called()
+
     def test_zero_controls_keep_tracking_for_later_keyframes(self):
         self.frame()
         self.frame(index=1)
         self.assertEqual(self.skeletons[0].update.call_count, 2)
         self.assertEqual(self.engine.face.update.call_count, 2)
+
+    def test_frame_timestamps_reach_native_input_selection(self):
+        for index, timestamp in enumerate((0, .01, .03)):
+            self.frame(index=index, timestamp=timestamp)
+            self.engine.composition.configure_frame.assert_called_with(timestamp=timestamp, reset_clock=False)
+
+    def test_time_repeats_reversals_and_jumps_keep_submission_order_and_perception(self):
+        timestamps = (0, .03, .75, .75, .2, .199, 0)
+        self.frame(timestamp=timestamps[0])
+        skeleton, face, composition = self.engine.skeleton, self.engine.face, self.engine.composition
+        with patch.object(self.engine, 'restart', wraps=self.engine.restart) as restart:
+            for index, timestamp in enumerate(timestamps[1:], start=1):
+                with self.subTest(frame=index, timestamp=timestamp):
+                    _, receipt = self.frame(index=index, timestamp=timestamp)
+                    self.assertEqual(receipt['timestampSeconds'], timestamp)
+                    self.assertEqual(self.engine.next_frame, index + 1)
+                    self.assertEqual(self.engine.timestamp, timestamp)
+                    composition.configure_frame.assert_called_with(timestamp=timestamp, reset_clock=False)
+            restart.assert_not_called()
+        self.assertIs(self.engine.skeleton, skeleton)
+        self.assertIs(self.engine.face, face)
+        self.assertIs(self.engine.composition, composition)
+        self.engine._initialize.assert_called_once()
+        for part in (skeleton, face, composition):
+            self.assertEqual(part.update.call_count, len(timestamps))
+            part.reset.assert_not_called()
+        self.assertFalse(self.engine.invalid)
 
     def test_cancel_after_inference_requires_reset_replay(self):
         checks = iter([False, True])
@@ -99,21 +183,15 @@ class BodySequenceContract(unittest.TestCase):
         self.assertEqual(self.skeletons[0].update.call_count, 2)
         self.assertEqual(self.skeletons[1].update.call_count, 1)
 
-    def test_several_bodies_while_seeding_keep_the_frame_and_the_session(self):
+    def test_skeleton_failures_cannot_silently_skip_the_composition_frame(self):
         self.frame()
-        self.engine.skeleton.update.side_effect = module.AmbiguousBodyFrame('two people')
-        result, receipt = self.frame(index=1)
-        np.testing.assert_array_equal(result, self.rgba)
-        self.assertFalse(receipt['bodyReported'])
-        self.assertTrue(receipt['skeleton']['state']['ambiguous'])
-        self.assertIn('several bodies', receipt['reason'])
-        self.assertFalse(self.engine.invalid)
-        self.assertEqual(self.engine.next_frame, 2)
-        self.assertEqual(self.engine.face.update.call_count, 2)
-        self.engine.composition.update.assert_not_called()
-        self.engine.skeleton.update.side_effect = None
-        _, receipt = self.frame(index=2)
-        self.assertNotIn('ambiguous', receipt['skeleton']['state'])
+        self.engine.skeleton.update.side_effect = ValueError('invalid body result')
+        with self.assertRaisesRegex(ValueError, 'invalid body result'):
+            self.frame(index=1)
+        self.assertTrue(self.engine.invalid)
+        self.assertEqual(self.engine.next_frame, 1)
+        self.assertEqual(self.engine.face.update.call_count, 1)
+        self.assertEqual(self.engine.composition.update.call_count, 1)
 
     def test_restart_keeps_loaded_networks_for_a_new_stream(self):
         self.frame()
