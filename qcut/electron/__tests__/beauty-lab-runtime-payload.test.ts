@@ -68,9 +68,39 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(433);
+		).toBe(463);
 		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
 			expect.arrayContaining([
+				"research/detection_order.py",
+				"research/tests/test_detection_order.py",
+				"research/detection_resize.py",
+				"research/tests/test_body_algorithm_raster.py",
+				"research/tests/test_detection_resize.py",
+				"research/alignment_ordinary_sampling.py",
+				"research/body_algorithm_size.py",
+				"research/body_composition/joint_groups.py",
+				"research/body_composition/segmentation_mask.py",
+				"research/body_skeleton_identity.py",
+				"research/tests/test_alignment_ordinary_sampling.py",
+				"research/tests/test_body_algorithm_size.py",
+				"research/tests/test_body_face_resize.py",
+				"research/tests/test_body_joint_groups.py",
+				"research/tests/test_body_neck_degenerate.py",
+				"research/tests/test_body_segmentation_mask.py",
+				"research/tests/test_body_sequence_render.py",
+				"research/tests/test_body_sequence_resize_checkpoint.py",
+				"research/tests/test_body_skeleton_identity.py",
+				"research/body_composition/native_reset.py",
+				"research/body_control_events.py",
+				"research/tests/test_body_control_events.py",
+				"research/tests/test_body_native_reset_fields.py",
+				"research/tests/test_body_sequence_native_reset.py",
+				"research/tests/test_body_sequence_checkpoint_compatibility.py",
+				"research/body_composition/native_video.py",
+				"research/body_composition/vertex_history.py",
+				"research/tests/test_body_composition_absent.py",
+				"research/tests/test_body_composition_native_video.py",
+				"research/tests/test_body_vertex_history.py",
 				"research/body_smart_render.py",
 				"research/body_smart_candidate.py",
 				"research/body_video_face_sequence.py",
