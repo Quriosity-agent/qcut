@@ -103,7 +103,8 @@ export async function sha256Blob({
 		);
 		hasher.update(chunk);
 		onProgress?.(blob.size > 0 ? nextOffset / blob.size : 1);
-		await hashChunk({ offset: nextOffset });
+		// Awaiting the recursion retains every chunk until the full hash finishes.
+		return hashChunk({ offset: nextOffset });
 	};
 	await hashChunk({ offset: 0 });
 	signal?.throwIfAborted();
