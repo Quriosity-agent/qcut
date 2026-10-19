@@ -27,7 +27,6 @@ export const INDEPENDENT_BODY_VIDEO_POLICY = {
 	file: "research/body-face-video-policy-v1.json",
 	sha256: "b5b9905399fac944db0ac036260fe6916b84a314f6eb69eec5555c2358b0a91b",
 };
-/** Checkpoints are ~50 KB per twelve frames; this holds days of edited footage. */
 export const INDEPENDENT_SESSIONS_MAX_BYTES = 2 * 1024 ** 3;
 const PRUNE_INTERVAL_MS = 60_000;
 
