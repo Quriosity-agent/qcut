@@ -129,13 +129,45 @@ export function independentBodyVideoSourceTime({
 }
 
 async function sha256Hex({ text }: { text: string }) {
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(text)
+	return hex(
+		await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))
 	);
+}
+
+function hex(digest: ArrayBuffer) {
 	return [...new Uint8Array(digest)]
 		.map((byte) => byte.toString(16).padStart(2, "0"))
 		.join("");
+}
+
+/** Bytes hashed from each end of the media file for its content fingerprint. */
+const FINGERPRINT_SPAN_BYTES = 1024 * 1024;
+const fingerprints = new WeakMap<File, Promise<string>>();
+
+/**
+ * Names the media's bytes without reading the whole file: the byte length
+ * plus the first and last megabyte. Relinking a clip keeps the media id and
+ * can keep the byte length, but a different file changes its head or tail,
+ * so the session (and its checkpoints) cannot be reused for new content.
+ */
+function mediaContentFingerprint({ file }: { file: File | undefined }) {
+	if (!file || file.size === 0) return Promise.resolve(null);
+	let pending = fingerprints.get(file);
+	if (!pending) {
+		pending = (async () => {
+			const head = await file.slice(0, FINGERPRINT_SPAN_BYTES).arrayBuffer();
+			const tail = await file
+				.slice(Math.max(0, file.size - FINGERPRINT_SPAN_BYTES))
+				.arrayBuffer();
+			const bytes = new Uint8Array(8 + head.byteLength + tail.byteLength);
+			new DataView(bytes.buffer).setFloat64(0, file.size);
+			bytes.set(new Uint8Array(head), 8);
+			bytes.set(new Uint8Array(tail), 8 + head.byteLength);
+			return hex(await crypto.subtle.digest("SHA-256", bytes));
+		})();
+		fingerprints.set(file, pending);
+	}
+	return pending;
 }
 
 /**
@@ -145,12 +177,12 @@ async function sha256Hex({ text }: { text: string }) {
  * identity; two clips cut from one file never share a session, so their
  * frames cannot interleave in the engine's history.
  *
- * The media is named by its id and its byte length, never by the `File`
- * object: reopening the project rebuilds that object from storage, where
- * OPFS names the file after the media id and stamps the write time, so the
- * File's name and lastModified change while the bytes (and the frames they
- * decode to) do not. The byte length is what the storage layer persists
- * (`MediaFileData.size`) and what a relinked media file usually changes.
+ * The media is named by its id and its bytes (length plus a head-and-tail
+ * fingerprint), never by the `File` object's name or lastModified: reopening
+ * the project rebuilds that object from storage, where OPFS names the file
+ * after the media id and stamps the write time, while the bytes (and the
+ * frames they decode to) do not change. Relinking keeps the media id and may
+ * keep the length; the fingerprint is what tells the new content apart.
  *
  * The edit enters in its canonical shape, the one the timeline loader
  * stores it in (non-zero values in key order, defaults dropped), so the
@@ -165,10 +197,11 @@ export async function independentBodyVideoClipIdentity({
 	const { element, mediaItem, fps } = clip;
 	return sha256Hex({
 		text: JSON.stringify({
-			schemaVersion: 2,
+			schemaVersion: 3,
 			elementId: element.id,
 			mediaId: mediaItem.id,
 			mediaBytes: mediaItem.file?.size ?? null,
+			mediaContent: await mediaContentFingerprint({ file: mediaItem.file }),
 			fps,
 			duration: element.duration,
 			trimStart: element.trimStart,
