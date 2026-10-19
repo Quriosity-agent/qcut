@@ -7,7 +7,6 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from body_composition.joint_groups import frame_joint_groups
-from body_composition.native_video import NativeVideoBody
 from test_body_composition import synthetic_inputs
 
 
@@ -27,7 +26,12 @@ class PublicJointGroups(unittest.TestCase):
         _, groups = frame_joint_groups(coords=coords, visibility=visibility, width=720, height=1280)
         np.testing.assert_array_equal(groups[1], [[360, 640]])
 
+
+@unittest.skipUnless(sys.platform == 'darwin', 'native geometry uses macOS float32 libm')
+class NativePublicJointGroups(unittest.TestCase):
     def test_visible_hips_outside_frame_do_not_activate_hip_after_a_reset(self):
+        from body_composition.native_video import NativeVideoBody
+
         for y in (0, -.03, 1, 1.03):
             supplied = synthetic_inputs()
             supplied['coords'] = supplied['coords'].copy()
@@ -42,6 +46,8 @@ class PublicJointGroups(unittest.TestCase):
                 np.testing.assert_array_equal(engine.hip.radii, [-1, -1, -1, -1])
 
     def test_one_in_frame_hip_is_eligible_even_when_smoothed_center_is_uninitialized(self):
+        from body_composition.native_video import NativeVideoBody
+
         supplied = synthetic_inputs()
         supplied['coords'] = supplied['coords'].copy()
         supplied['coords'][8, 1] = 0
