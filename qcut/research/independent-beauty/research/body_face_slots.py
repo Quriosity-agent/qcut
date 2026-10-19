@@ -27,13 +27,23 @@ class BodyFaceSlot:
     points: object = None
     tracked: object = None
     roll_value: np.float32 = np.float32(0)
+    size_status: int = 0
+
+    def resize(self, *, size):
+        self.face, self.size_status = self.engine.resize_tracking(size=size, face=self.face)
 
     def accept(self, *, result, size):
         self.points = result['points'].copy()
         self.tracked = result['tracked'].copy()
         self.box = tracked_rectangle(points=self.points, size=size)
         seeded = 120 not in result['heads']
-        self.roll_value = (np.float32(raw_roll(points=self.tracked) * DEGREE_TO_RADIAN) if seeded
+        resized = self.size_status != 0
+        if resized:
+            degrees = raw_roll(points=self.tracked)
+            self.roll.pose.current = np.asarray([0, 0, degrees], np.float32)
+            self.roll.pose.delta = None
+            self.face['mode'] = 'update'
+        self.roll_value = (np.float32(raw_roll(points=self.tracked) * DEGREE_TO_RADIAN) if seeded or resized
                            else self.roll.update(points=self.tracked))
         probability = np.asarray(result['heads'][160 if seeded else 120]['prob'], np.float32).reshape(-1)
         combined = probability[0]
