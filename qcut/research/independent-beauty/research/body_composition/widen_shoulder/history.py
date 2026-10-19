@@ -24,6 +24,7 @@ class PersistentWiden:
         flip=False,
         strategy=65536,
         destination=None,
+        segmentation_mask=None,
     ):
         previous = self.state
         self.state = from_descriptor(
@@ -35,4 +36,4 @@ class PersistentWiden:
             strategy=strategy,
             previous=previous,
         )
-        return self.history.step(source, self.state, destination)
+        return self.history.step(source, self.state, destination, segmentation_mask=segmentation_mask)
