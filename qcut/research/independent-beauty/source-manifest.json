@@ -2384,8 +2384,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_checkpoint.py",
-			"bytes": 27731,
-			"sha256": "5af38e2bec8fa28a11a12579d31558a51ef11abfdf223270cf72ccc965691931"
+			"bytes": 27826,
+			"sha256": "ef4895a7ad7d04ef85ff3480c2ae4c93c4c1ae1cdd840cb871468bffb80f4c41"
 		},
 		{
 			"path": "research/tests/test_independent_sequence_sessions.py",
@@ -2529,8 +2529,8 @@
 		},
 		{
 			"path": "research/tests/test_body_joint_groups.py",
-			"bytes": 2694,
-			"sha256": "4169fb28c6f66d758a002ad0478dbb5783cecfe1a0d66b8ad2dc52067ee0f64d"
+			"bytes": 2911,
+			"sha256": "538ebb22c8ab22224bd22e1e17fe5d30882db1bdad2a22a7c6ab5f611fe83be3"
 		},
 		{
 			"path": "research/tests/test_body_neck_degenerate.py",
@@ -3301,7 +3301,7 @@
 				"research/tests/test_body_smart_sequence.py",
 				"research/tests/test_body_vertex_history.py"
 			],
-			"reason": "Restore native missing-body per-frame descriptor and deformation advancement, residual rendering, empty-face selection, the fixed 60-column/75-row video mesh, native descriptor/long-leg/reliability inputs, and SmallHead/SlimHip/SlimArm vertex histories. Preserve native float texture sampling with unflipped source pixels and fragment UV-Y inversion. Extend the video profile with absolute timestamp-driven component input modes and exact warm IMAGE resets, preserving perception, strengths, retained-but-uninitialized vertex filter storage and shoulder counters according to native virtual-reset fields rather than rebuilding the session. Add Python-only ordered RESET_PARAMS/set_control events, with complete validation before mutation, native clock reset and same-value reapply semantics; submission frame order remains independent of repeated, reversed or jumping finite nonnegative timestamps. Snapshot v4 captures the native effect clock and filter initialized state and rejects older incompatible schemas before session mutation. Cover control order, absence/reentry, warm-reset field retention, cancellation/render failure, and exact checkpoint replay. Existing worker/Electron event transport and cache contracts remain closed to these Python-only events. Stateless photo and manual-body scope remain separate. Private models, binaries, captures, imported sourceSha256 provenance, and all runtime asset rows remain unchanged."
+			"reason": "Restore the video profile with absolute timestamp-driven component input modes and exact warm IMAGE resets, preserving perception, strengths, retained-but-uninitialized vertex filter storage and shoulder counters according to native virtual-reset fields rather than rebuilding the session. Add Python-only ordered RESET_PARAMS/set_control events, with complete validation before mutation, native clock reset and same-value reapply semantics; submission frame order remains independent of repeated, reversed or jumping finite nonnegative timestamps. Snapshot v4 captures the native effect clock and filter initialized state and rejects older incompatible schemas before session mutation. Cover control order, absence/reentry, warm-reset field retention, cancellation/render failure, and exact checkpoint replay. Existing worker/Electron event transport and cache contracts remain closed to these Python-only events. Stateless photo and manual-body scope remain separate. Private models, binaries, captures, imported sourceSha256 provenance, and all runtime asset rows remain unchanged."
 		},
 		{
 			"files": [
@@ -3359,7 +3359,7 @@
 				"research/tests/test_body_algorithm_raster.py",
 				"research/tests/test_detection_resize.py"
 			],
-			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source.\nRestore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality."
+			"reason": "Restore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality."
 		},
 		{
 			"files": [
@@ -3368,11 +3368,18 @@
 				"research/tests/test_detection_order.py",
 				"research/vendor/face_detector.py"
 			],
-			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source.\nRestore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality.\nRestore the pinned detector's score-only full sort and heap partial_sort, including exact equal-score proposal swaps and the count >= 1500 branch. Independent synthetic native oracles cover both complete ordering algorithms; no area, coordinate or stable-order substitute is used for tied proposals. The detector metadata now states the verified policy."
+			"reason": "Restore the pinned detector's score-only full sort and heap partial_sort, including exact equal-score proposal swaps and the count >= 1500 branch. Independent synthetic native oracles cover both complete ordering algorithms; no area, coordinate or stable-order substitute is used for tied proposals. The detector metadata now states the verified policy."
 		},
 		{
 			"files": ["research/tests/test_body_sequence_scenarios.py"],
 			"reason": "Reconcile master body-video closure coverage with the verified native seed-frame and missing-body lifecycle. Retain single-step native timing and warm resets while preserving the incoming independent baseline and second-person assertions. Desktop worker recovery and media identity changes are integrated separately. Private runtime assets and imported source provenance remain unchanged."
+		},
+		{
+			"files": [
+				"research/tests/test_body_joint_groups.py",
+				"research/tests/test_body_sequence_checkpoint.py"
+			],
+			"reason": "Correct test prerequisites without changing the body engine: defer macOS-only native geometry imports to Darwin-gated tests and allow retained-face checkpoint fixtures to run independently of ordinary video fixtures. Preserve all production source hashes, imported provenance, and private runtime asset rows."
 		}
 	],
 	"sourceWorkingTreeStatus": [
