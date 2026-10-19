@@ -81,7 +81,6 @@ class BodySmartSequence:
         if self.stream is not None and self.stream != stream:
             raise ValueError('stream changed; reset and replay required')
         size = (rgba.shape[1], rgba.shape[0])
-        body_algorithm_size(size=size)
         return body_algorithm_size(size=size, source_changed=self.size is not None and self.size != rgba.shape[:2])
 
     def process(self, *, rgba, controls, stream, frame, timestamp, cancelled=None, reapply_controls=False,
