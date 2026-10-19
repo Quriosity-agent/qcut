@@ -19,6 +19,33 @@ export function optionalBoolean(value: unknown, fallback = false): boolean {
 }
 
 /**
+ * The clip's gain for the mix. A serialized element carries both the modern
+ * `audio` settings and the legacy linear `volume`, but the legacy field is
+ * only mirrored from the settings when a project loads — a gain patched
+ * through the API (`audio.volumeDb`) is newer than it until then. Prefer
+ * `audio.volumeDb` with the renderer graph's own −60 dB silence floor, the
+ * same precedence the in-app export engine applies; elements without
+ * settings keep the legacy field.
+ */
+export function timelineClipGain({
+	audio,
+	fallback,
+}: {
+	audio: unknown;
+	fallback: number | undefined;
+}): number | undefined {
+	if (typeof audio !== "object" || audio === null || Array.isArray(audio)) {
+		return fallback;
+	}
+	const settings = audio as { enabled?: unknown; volumeDb?: unknown };
+	if (settings.enabled === false) return 0;
+	const volumeDb = optionalNumber(settings.volumeDb);
+	if (volumeDb === undefined) return fallback;
+	if (volumeDb <= -60) return 0;
+	return 10 ** (volumeDb / 20);
+}
+
+/**
  * The mix input for `element`, read from `mediaPath` on the track `trackId`,
  * or null when the clip plays for no time. Fields missing on the element fall
  * back to its `props`.
@@ -54,7 +81,10 @@ export function buildTimelineAudioFile({
 		trackId,
 		path: mediaPath,
 		startTime: Math.max(0, element.startTime),
-		volume: optionalNumber(read("volume"), 1),
+		volume: timelineClipGain({
+			audio: read("audio"),
+			fallback: optionalNumber(read("volume"), 1),
+		}),
 		sourceGain: optionalNumber(read("sourceGain"), 1),
 		trimStart,
 		trimEnd,

@@ -213,7 +213,7 @@ describe("applyElementChanges with audio", () => {
 		expect(storeMocks.state.updateMediaElement).toHaveBeenCalledWith(
 			"track",
 			"music",
-			{
+			expect.objectContaining({
 				audio: expect.objectContaining({
 					keyframes: {
 						volumeDb: [
@@ -221,9 +221,25 @@ describe("applyElementChanges with audio", () => {
 						],
 					},
 				}),
-			},
+			}),
 			false
 		);
+	});
+
+	it("mirrors the legacy volume fields when audio settings change", () => {
+		// 问题记录 Q7/问题 2: the mirror used to refresh only on project load,
+		// so the editor-API native export kept using the stale legacy volume.
+		const result = applyElementChanges({
+			elementId: "music",
+			changes: { audio: { volumeDb: 2, fadeIn: 0.5 } },
+			pushHistory: false,
+		});
+
+		expect(result).toEqual({ applied: true });
+		const update = storeMocks.state.updateMediaElement.mock.calls.at(-1)?.[2];
+		expect(update.audio.volumeDb).toBe(2);
+		expect(update.volume).toBeCloseTo(10 ** (2 / 20), 6);
+		expect(update.audioFadeIn).toBe(0.5);
 	});
 
 	it("rejects malformed audio before touching timing", () => {
