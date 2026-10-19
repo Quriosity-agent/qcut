@@ -52,9 +52,12 @@ def tracking_parameters(*, face):
 
 
 class Sequence:
-    def __init__(self, *, model_root, models=None, normalize_output=True):
+    def __init__(self, *, model_root, models=None, normalize_output=True, sampling_profile="fast"):
         if type(normalize_output) is not bool:
             raise ValueError("typed normalized-output policy required")
+        if sampling_profile not in ("fast", "ordinary"):
+            raise ValueError("known alignment sampling profile required")
+        self.sampling_profile = sampling_profile
         self.normalize_output = normalize_output
         self.models = ({size: Stage1(size=size, model=model_root / f"face-align-{size}.onnx") for size in (120, 160)}
                        if models is None else models.copy())
@@ -88,6 +91,32 @@ class Sequence:
             raise ValueError('Extra refinement requires fresh owned seed tracking history')
         self.tracking_points = points106(points=points).copy()
 
+    def resize_tracking(self, *, size, face):
+        if (not isinstance(size, tuple) or len(size) != 2
+                or any(type(side) is not int or not 0 < side <= 4096 for side in size)):
+            raise ValueError('bounded integer algorithm dimensions required')
+        if (not owned_transform(face=face) or self.state is None or self.tracking_state is None
+                or self.tracking_points is None or self.decode_profile is None
+                or face['identity'] != self.identity or parameters(face=face) != self.profile
+                or tracking_parameters(face=face) != self.tracking_profile['tracking_smoothing']
+                or face['mode'] != 'update'):
+            raise ValueError('current owned tracking history required for dimension change')
+        previous_size = self.decode_profile[0]
+        if previous_size == size:
+            return face, 0
+        scale = np.asarray(size, np.float32) / np.asarray(previous_size, np.float32)
+        status = 1 if abs(float(np.float32(scale[0] - scale[1]))) <= .01 else 2
+        resized = copy.deepcopy(face)
+        resized['mode'] = 'reset-120'
+        for profile in [*resized['smoothing'], resized['tracking_smoothing']]:
+            profile['width'], profile['height'] = size[1], size[0]
+        # Native scales raw tracking input, retaining its filter and transform history.
+        self.tracking_points = np.float32(self.tracking_points * scale)
+        self.profile = copy.deepcopy(resized['smoothing'])
+        self.decode_profile = (size, *self.decode_profile[1:])
+        self.tracking_profile = copy.deepcopy(resized)
+        return resized, status
+
     def process(self, *, rgba, size, index, face, discarded_forward=None, discarded_tracking=False, seed_only=False):
         if type(index) is not int or index != self.index + 1:
             raise ValueError("contiguous prediction indices required")
@@ -113,7 +142,7 @@ class Sequence:
                               tracking_filtered=filtered, transform_refreshed=refreshed, owned_tracking_transform=True,
                               tracking_filter_state=tracking_state)
             if discarded_forward is not None:
-                tensor = signed_input(frame=algorithm, forward=discarded_forward)
+                tensor = signed_input(frame=algorithm, forward=discarded_forward, profile=self.sampling_profile)
                 result["tensors"][120] = tensor
                 result["heads"][120] = self.models[120].infer(tensor=tensor)
             self.state, self.identity, self.profile, self.decode_profile, self.index = None, None, None, None, index
@@ -178,7 +207,7 @@ class Sequence:
         else:
             forward, inverse = face["forward"], face["inverse"]
         result.update(forward=forward.copy(), inverse=inverse.copy())
-        tensor = signed_input(frame=algorithm, forward=forward)
+        tensor = signed_input(frame=algorithm, forward=forward, profile=self.sampling_profile)
         heads = self.models[120].infer(tensor=tensor)
         result["tensors"][120], result["heads"][120] = tensor, heads
         stage, tracked = decode(raw=heads["fc_landmark_s1"].reshape(106, 2), order=face["order"],
