@@ -2,8 +2,8 @@
 
 A snapshot holds the session's history and none of its models: the skeleton's
 tracking points, each video face slot's tracking and roll, recovery state, the
-persistent ten-part geometry and the frame clock, about 50 KB for a one-face 1080p
-stream. Restoring the snapshot taken after frame n into a session (which keeps
+persistent ten-part geometry, vertex-history caches and the frame clock.
+Restoring the snapshot taken after frame n into a session (which keeps
 or loads its networks) and processing frame n + 1 gives the bytes that
 processing frames 0..n + 1 in one session gives.
 
@@ -20,7 +20,8 @@ import sys
 from alignment_sequence import Sequence
 from body_face_slots import FACE_SLOT_COUNT, BodyFaceSlot
 
-SNAPSHOT_VERSION = 2
+# Earlier snapshots lack the native seed policy and retained segmentation state.
+SNAPSHOT_VERSION = 5
 ENGINE_ROOT = Path(__file__).resolve().parent
 # Model handles and per-frame diagnostics; everything else an object holds is history.
 SKELETON_HANDLES = frozenset({'networks', 'last_debug'})
