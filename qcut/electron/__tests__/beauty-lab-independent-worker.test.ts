@@ -4,7 +4,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createIndependentBeautyWorker } from "../beauty-lab/beauty-lab-independent-worker";
+import {
+	createIndependentBeautyWorker,
+	IndependentWorkerExitedError,
+} from "../beauty-lab/beauty-lab-independent-worker";
 
 vi.mock("node:child_process", async (original) => {
 	const actual = await original<typeof import("node:child_process")>();
@@ -139,6 +142,16 @@ describe("resident beauty process lifetime", () => {
 		await rejected;
 		expect(() => process.kill(pid, 0)).toThrow();
 		await worker.run(job());
+		expect(spawn).toHaveBeenCalledTimes(2);
+	});
+
+	it("names a death under a request so a body-video session can resubmit", async () => {
+		// A crash (or an outside SIGKILL) is not a stop() with a reason: the
+		// pending request must learn the process is gone, not just that it failed.
+		const failure = worker.run(job({ image: "crash" }));
+		await expect(failure).rejects.toBeInstanceOf(IndependentWorkerExitedError);
+		await expect(failure).rejects.toMatchObject({ exitCode: 7, signal: null });
+		await expect(worker.run(job())).resolves.toEqual({});
 		expect(spawn).toHaveBeenCalledTimes(2);
 	});
 

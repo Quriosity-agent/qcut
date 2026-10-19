@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 7818,
-			"sha256": "985d8895c90426d3b41ff9a4bd5066aa0da711a364382a31f1fa8ac7bdd5f71f"
+			"bytes": 9190,
+			"sha256": "f9eb07acd1578ab124ef0ae9bfdaee517e18ef6074f14284db0461284565b15f"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2394,8 +2394,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
-			"bytes": 4881,
-			"sha256": "43a41a2a689a896cd3e8cbe1691a009e7e98ae1cac535feea6713023f15e741f"
+			"bytes": 5666,
+			"sha256": "3793d447cdc964d4e823744dd7b6e54e599a16595e85ab02b25993a0030f0f46"
 		}
 	],
 	"importPatches": [

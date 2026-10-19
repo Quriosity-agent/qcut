@@ -17,6 +17,7 @@ import {
 	waitForFrameOperation,
 } from "./beauty-lab-independent-frames.js";
 import { canonicalIndependentManualBody } from "./beauty-lab-independent-manual-body.js";
+import { IndependentWorkerExitedError } from "./beauty-lab-independent-worker.js";
 
 /**
  * The engine's video face profile loads this runtime asset and pins its hash
@@ -260,9 +261,8 @@ export function createIndependentSequenceFrameRenderer({
 					cached: true,
 				};
 		}
-		let result: BeautyLabIndependentResult;
-		try {
-			result = await provider.render({
+		const submit = () =>
+			provider.render({
 				request: {
 					...input,
 					sourceKey: INDEPENDENT_TIMELINE_SOURCE_KEY,
@@ -274,6 +274,23 @@ export function createIndependentSequenceFrameRenderer({
 					},
 				},
 			});
+		let result: BeautyLabIndependentResult;
+		try {
+			try {
+				result = await submit();
+			} catch (error) {
+				// A worker that dies under a frame takes the session's in-memory
+				// history with it, but not the on-disk checkpoints. One resubmission
+				// starts a fresh worker; lacking the history it answers with the
+				// frame to replay from, which the caller already knows how to do.
+				// Anything else (a deliberate stop, a bad request) is passed on.
+				if (!(error instanceof IndependentWorkerExitedError)) throw error;
+				console.warn(
+					`[independent-beauty] Worker died under frame ${sequence.frame}; resubmitting once:`,
+					error.message
+				);
+				result = await submit();
+			}
 		} catch (error) {
 			if (error instanceof IndependentSequenceGapError)
 				return { status: "replay", requestId, from: error.restartFrom };
