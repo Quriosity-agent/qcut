@@ -1,10 +1,11 @@
 """Owned NanoDet postprocessing with inclusive pixel boxes and explicit profiles.
 
 No weights, runtime, landmark-order table or model-specific configuration is
-embedded. Equal-score proposals use stable input order, not libc++'s unstable
-sort; comparisons must explicitly report any resulting selection difference.
+embedded. Proposal ordering reproduces the pinned native score-only sort.
 """
 import numpy as np
+
+from detection_order import native_score_order
 
 
 def validate_heads(*, heads, image_size, strides):
@@ -124,7 +125,7 @@ def suppress_ordered(*, boxes, before, after, threshold):
 def decode(*, heads, image_size, strides, minimum_sizes, confidence, before, after, iou):
     values = proposals(heads=heads, image_size=image_size, strides=strides,
                        minimum_sizes=minimum_sizes, confidence=confidence)
-    order = np.argsort(-values[:, 4], kind="stable")
+    order = native_score_order(scores=values[:, 4], before=before)
     return suppress_ordered(boxes=values[order], before=before, after=after, threshold=iou)
 
 
