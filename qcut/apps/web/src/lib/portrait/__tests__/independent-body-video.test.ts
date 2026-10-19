@@ -176,6 +176,40 @@ describe("independent body video clip frames", () => {
 			})
 		).toBe(identity);
 	});
+	it("changes its identity when the media is relinked to other bytes of the same length", async () => {
+		const identity = await independentBodyVideoClipIdentity({ clip });
+		// Relink keeps the media id and, here, the byte length: only the content differs.
+		const relinked = mediaItem({
+			file: new File([new Uint8Array(16).fill(255)], "clip.mp4", {
+				type: "video/mp4",
+				lastModified: 1_700_000_000_000,
+			}),
+		});
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: relinked },
+			})
+		).not.toBe(identity);
+		// A file larger than the fingerprint span is named by its head and tail.
+		const large = (fill: number) =>
+			mediaItem({
+				file: new File([new Uint8Array(3 * 1024 * 1024).fill(fill)], "big.mp4"),
+			});
+		const tailChanged = new Uint8Array(3 * 1024 * 1024);
+		tailChanged[tailChanged.length - 1] = 1;
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: large(0) },
+			})
+		).not.toBe(
+			await independentBodyVideoClipIdentity({
+				clip: {
+					...clip,
+					mediaItem: mediaItem({ file: new File([tailChanged], "big.mp4") }),
+				},
+			})
+		);
+	});
 	it("keeps its identity when the timeline loader canonicalizes the stored element", async () => {
 		// The panel writes the edit in its own key order with zero-valued
 		// entries; reopening the project runs the element through the loader's
