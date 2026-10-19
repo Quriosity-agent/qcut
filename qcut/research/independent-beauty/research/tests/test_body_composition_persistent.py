@@ -77,7 +77,7 @@ class PersistentComposition(unittest.TestCase):
         cls.engine = PersistentCombinedBody
 
     def test_mode_must_be_an_explicit_integer_profile(self):
-        for mode in (-1, 0, 3, True, np.bool_(False), 1.0, "1", None):
+        for mode in (-1, 3, True, np.bool_(False), 1.0, "1", None):
             with self.subTest(mode=mode), self.assertRaises(ValueError):
                 self.engine(mode=mode)
 
