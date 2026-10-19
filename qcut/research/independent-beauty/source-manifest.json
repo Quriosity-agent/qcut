@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 8269,
-			"sha256": "bb48290dbc8f9d79f447acb1c33f01f4674b9df8c8ab437490551bfd632fa628"
+			"bytes": 8230,
+			"sha256": "135bf594371d04bd8005ede9f6537c71a184a3e03b9ce869c336f2f71c7f362e"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2354,8 +2354,8 @@
 		},
 		{
 			"path": "research/tests/test_body_smart_sequence.py",
-			"bytes": 11741,
-			"sha256": "e0f841787fdd03e2d80ccf45949a4a8ff01cd5e1a218437cf0673de6c40dbe77"
+			"bytes": 13782,
+			"sha256": "7d1af312b8df845ac33563cfa7a2939e23e91971d22bc5c3e90332242a753de8"
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
@@ -3380,6 +3380,13 @@
 				"research/tests/test_body_sequence_checkpoint.py"
 			],
 			"reason": "Correct test prerequisites without changing the body engine: defer macOS-only native geometry imports to Darwin-gated tests and allow retained-face checkpoint fixtures to run independently of ordinary video fixtures. Preserve all production source hashes, imported provenance, and private runtime asset rows."
+		},
+		{
+			"files": [
+				"research/body_smart_sequence.py",
+				"research/tests/test_body_smart_sequence.py"
+			],
+			"reason": "Validate only the current native algorithm extent: remove the extra steady-state budget check that rejected a valid transient source resize before its smaller algorithm image was calculated. Keep cold/steady network limits and pre-mutation failure semantics; regression covers cold rejection, warm acceptance, unchanged state after steady rejection, and continuation on a valid frame. Native arithmetic and private runtime assets remain unchanged."
 		}
 	],
 	"sourceWorkingTreeStatus": [
