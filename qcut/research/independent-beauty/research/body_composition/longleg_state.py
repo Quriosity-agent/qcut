@@ -24,7 +24,7 @@ class Part4:
 class State:
     mode: int = 1
     active: bool = False
-    width: float = 0.0
+    width: float = -1.0
     end: float = -1.0
     pivot: float = -1.0
     strategy: int = 0
