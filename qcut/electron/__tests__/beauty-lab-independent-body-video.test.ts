@@ -22,6 +22,7 @@ import {
 	IndependentSequenceGapError,
 	pruneIndependentSessions,
 } from "../beauty-lab/beauty-lab-independent-body-video";
+import { IndependentWorkerExitedError } from "../beauty-lab/beauty-lab-independent-worker";
 import { createIndependentFrameCache } from "../beauty-lab/beauty-lab-independent-frame-cache";
 import { INDEPENDENT_TIMELINE_SOURCE_KEY } from "../beauty-lab/beauty-lab-independent-frames";
 
@@ -268,6 +269,38 @@ describe("body video sequence frames", () => {
 			frames.render({ request: { ...request, requestId: "frame-2" } })
 		).rejects.toThrow("GPU process failed");
 	});
+	it("resubmits once after the worker dies under a frame and relays the fresh worker's replay", async () => {
+		const { provider, renderer: sequence } = renderer();
+		provider.render
+			.mockRejectedValueOnce(
+				new IndependentWorkerExitedError({ code: null, signal: "SIGKILL" })
+			)
+			.mockRejectedValueOnce(
+				new IndependentSequenceGapError({ restartFrom: 12 })
+			);
+		await expect(sequence.render({ request })).resolves.toEqual({
+			status: "replay",
+			requestId: request.requestId,
+			from: 12,
+		});
+		expect(provider.render).toHaveBeenCalledTimes(2);
+	});
+
+	it("passes a second worker death on instead of retrying forever", async () => {
+		const { provider, renderer: sequence } = renderer();
+		provider.render
+			.mockRejectedValueOnce(
+				new IndependentWorkerExitedError({ code: 137, signal: null })
+			)
+			.mockRejectedValueOnce(
+				new IndependentWorkerExitedError({ code: 137, signal: null })
+			);
+		await expect(sequence.render({ request })).rejects.toBeInstanceOf(
+			IndependentWorkerExitedError
+		);
+		expect(provider.render).toHaveBeenCalledTimes(2);
+	});
+
 	it("refuses neighbour evidence, slow frame rates, fractional frames and foreign clips", async () => {
 		const { provider, renderer: frames } = renderer();
 		for (const bad of [

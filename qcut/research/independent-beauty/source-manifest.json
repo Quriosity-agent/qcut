@@ -2394,8 +2394,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
-			"bytes": 5645,
-			"sha256": "3e8c4ee4ecafadbaef394da9c5e18fdbdadf8f9349ad5d165c63cfe6c3a4eba0"
+			"bytes": 5921,
+			"sha256": "2fa594fea1c5d5d7d637a3bd9aa2e8991f92dbc4222333ecb53caa067ad31c13"
 		},
 		{
 			"path": "research/body_face_matching.py",
@@ -3369,6 +3369,10 @@
 				"research/vendor/face_detector.py"
 			],
 			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source.\nRestore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality.\nRestore the pinned detector's score-only full sort and heap partial_sort, including exact equal-score proposal swaps and the count >= 1500 branch. Independent synthetic native oracles cover both complete ordering algorithms; no area, coordinate or stable-order substitute is used for tied proposals. The detector metadata now states the verified policy."
+		},
+		{
+			"files": ["research/tests/test_body_sequence_scenarios.py"],
+			"reason": "Reconcile master body-video closure coverage with the verified native seed-frame and missing-body lifecycle. Retain single-step native timing and warm resets while preserving the incoming independent baseline and second-person assertions. Desktop worker recovery and media identity changes are integrated separately. Private runtime assets and imported source provenance remain unchanged."
 		}
 	],
 	"sourceWorkingTreeStatus": [

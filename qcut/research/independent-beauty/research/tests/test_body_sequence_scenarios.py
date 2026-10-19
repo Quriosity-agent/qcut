@@ -72,6 +72,7 @@ class CompositedScenarios(unittest.TestCase):
         self.assertFalse(receipts[2]['unchanged'])
 
     def test_second_valid_face_is_kept_while_the_tracked_body_continues(self):
+        plain = self.run_sequence(self.frames[:4])
         entering = [*self.frames[:4], *(with_second_person(rgba=frame) for frame in self.frames[4:])]
         session = BodySmartSequence(runtime=RUNTIME)
         receipts = []
@@ -82,10 +83,13 @@ class CompositedScenarios(unittest.TestCase):
         self.assertFalse(session.invalid)
         self.assertEqual(session.next_frame, len(entering))
         self.assertEqual([receipt['bodyReported'] for receipt in receipts], [False] + [True] * 7)
+        self.assertEqual([receipt['meshSha256'] for receipt in receipts[:4]],
+                         [receipt['meshSha256'] for receipt in plain])
         self.assertTrue(any(sum(not slot['new'] for slot in receipt['face']['slots']) >= 2 for receipt in receipts))
         for index, receipt in enumerate(receipts[4:], 4):
             with self.subTest(frame=index):
                 self.assertEqual(receipt['skeleton']['plan']['mode'], 1)
+                self.assertNotIn('ambiguous', receipt['skeleton']['state'])
                 self.assertFalse(receipt['unchanged'])
 
     def test_a_lost_body_advances_retained_geometry_before_the_person_is_found_again(self):
