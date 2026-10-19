@@ -250,7 +250,7 @@ class SnapshotContract(unittest.TestCase):
             checkpoint.capture(session=session)
 
     def test_legacy_and_unknown_versions_are_refused_before_session_restart(self):
-        for version in (0, 1, 3):
+        for version in (0, 1, 2, 3, 4, 6):
             session = fake_session()
             with self.subTest(version=version), self.assertRaisesRegex(ValueError, 'unsupported'):
                 checkpoint.restore(session=session, data=pickle.dumps({'version': version}))
@@ -278,6 +278,120 @@ class SnapshotContract(unittest.TestCase):
         for data in refused:
             with self.subTest(data=data[:48]), self.assertRaises(pickle.UnpicklingError):
                 checkpoint.restore(session=fake_session(), data=data)
+
+
+@unittest.skipUnless(sys.platform == 'darwin', 'accepted geometry uses macOS float32 libm')
+class AbsentBodySnapshot(unittest.TestCase):
+    def assert_history_equal(self, actual, expected):
+        self.assertIs(type(actual), type(expected))
+        if isinstance(expected, (np.ndarray, np.generic)):
+            self.assertEqual(actual.dtype, expected.dtype)
+            self.assertEqual(actual.shape, expected.shape)
+            self.assertEqual(actual.tobytes(), expected.tobytes())
+        elif isinstance(expected, dict):
+            self.assertEqual(actual.keys(), expected.keys())
+            for key in expected:
+                self.assert_history_equal(actual[key], expected[key])
+        elif isinstance(expected, (list, tuple)):
+            self.assertEqual(len(actual), len(expected))
+            for value, reference in zip(actual, expected, strict=True):
+                self.assert_history_equal(value, reference)
+        elif hasattr(expected, '__dict__'):
+            self.assert_history_equal(vars(actual), vars(expected))
+        else:
+            self.assertEqual(actual, expected)
+
+    def new_session(self, *, composition_factory):
+        session = fake_session()
+
+        def initialize():
+            session.skeleton, session.face = FakeSkeleton(), FakeFace()
+            session.composition = composition_factory()
+
+        session._initialize.side_effect = initialize
+        session._initialize()
+        return session
+
+    def advance_geometry(self, *, session, frame, controls=None):
+        from test_body_composition import synthetic_inputs
+        inputs = synthetic_inputs()
+        if 5 <= frame < 24:
+            inputs.update(coords=np.zeros((18, 2), np.float32), visibility=np.zeros(18, np.uint8),
+                          faces=None, rectangles=None, rolls=None, body_present=False)
+        targets = .35 if frame < 13 or frame >= 24 else {'SmallHead': .2, 'WidenShoulder': -.1}
+        if controls is not None:
+            from body_composition.controls import validate_controls
+            values, targets = validate_controls(controls=controls)
+            session.composition.configure_controls(controls=values)
+        mesh = session.composition.update(**inputs, targets=targets)
+        session.stream, session.size = 'absent-body', (inputs['height'], inputs['width'])
+        session.next_frame, session.timestamp = frame + 1, frame / 24
+        return mesh
+
+    def test_snapshots_during_decay_preserve_caches_and_reentry_exactly(self):
+        from body_composition import PersistentCombinedBody
+        from body_composition.native_video import NativeVideoBody
+        for name, factory in (('persistent-mode2', lambda: PersistentCombinedBody(mode=2)),
+                              ('native-video', NativeVideoBody)):
+            with self.subTest(composition=name):
+                self.assert_decay_restores_exactly(composition_factory=factory)
+
+    def assert_decay_restores_exactly(self, *, composition_factory):
+        session = self.new_session(composition_factory=composition_factory)
+        expected, snapshots = {}, {}
+        for frame in range(29):
+            mesh = self.advance_geometry(session=session, frame=frame)
+            data = checkpoint.capture(session=session)
+            expected[frame] = mesh['positions'].copy(), data
+            if frame in (5, 18):
+                self.assertFalse(mesh['status']['present'])
+                snapshots[frame] = data
+            if frame == 5:
+                self.assertFalse(np.array_equal(mesh['positions'], mesh['base']))
+        for frame, data in snapshots.items():
+            resumed = self.new_session(composition_factory=composition_factory)
+            models = resumed.face.models
+            checkpoint.restore(session=resumed, data=data)
+            self.assertIs(resumed.face.models, models)
+            self.assertIs(resumed.composition.widen_history.counter,
+                          resumed.composition.widen_history.history.counter)
+            self.assertEqual(resumed.composition.frame, frame + 1)
+            for following in range(frame + 1, 29):
+                with self.subTest(snapshot=frame, frame=following):
+                    mesh = self.advance_geometry(session=resumed, frame=following)
+                    positions, state = expected[following]
+                    np.testing.assert_array_equal(mesh['positions'], positions)
+                    self.assert_history_equal(pickle.loads(checkpoint.capture(session=resumed)),
+                                              pickle.loads(state))
+
+    def test_zero_event_snapshot_keeps_dirty_history_until_reentry_without_reapplying(self):
+        from body_composition.native_video import NativeVideoBody
+        session = self.new_session(composition_factory=NativeVideoBody)
+        for frame in range(5):
+            self.advance_geometry(session=session, frame=frame, controls=CONTROLS)
+        old = {name: session.composition.vertex_history[name].values.copy()
+               for name in ('SmallHead', 'SlimHip')}
+        self.advance_geometry(session=session, frame=5, controls={})
+        resumed = self.new_session(composition_factory=NativeVideoBody)
+        checkpoint.restore(session=resumed, data=checkpoint.capture(session=session))
+        self.assertEqual(resumed.composition._control_values, session.composition._control_values)
+        self.assertTrue(all(value == 0 for value in resumed.composition._control_values))
+        for name, previous in old.items():
+            history = resumed.composition.vertex_history[name]
+            self.assertTrue(history.dirty)
+            np.testing.assert_array_equal(history.values, previous)
+            self.assertTrue(np.any(history.values))
+        resumed.composition.configure_controls(controls={'SmallHead': 0.0})
+        self.assertFalse(resumed.composition._configuration_dirty)
+        for frame in range(6, 29):
+            controls = {} if frame < 24 else CONTROLS
+            expected = self.advance_geometry(session=session, frame=frame, controls=controls)
+            actual = self.advance_geometry(session=resumed, frame=frame, controls=controls)
+            with self.subTest(frame=frame):
+                np.testing.assert_array_equal(actual['positions'], expected['positions'])
+                self.assert_history_equal(pickle.loads(checkpoint.capture(session=resumed)),
+                                          pickle.loads(checkpoint.capture(session=session)))
+        self.assertTrue(all(not resumed.composition.vertex_history[name].dirty for name in old))
 
 
 @unittest.skipUnless(HAS_VIDEO_RUNTIME and len(list(FRAMES.glob('frame-*.png'))) >= 8,
