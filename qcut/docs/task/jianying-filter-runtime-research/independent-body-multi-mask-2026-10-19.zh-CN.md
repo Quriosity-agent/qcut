@@ -78,7 +78,7 @@
 
 模型、原包、二进制、图片和原始反编译仅保存在忽略目录：
 
-`/Users/peter/Desktop/code/qcut/qcut/.local/body-multi-mask-20261019/native-mask/`
+`.local/body-multi-mask-20261019/native-mask/`
 
 该目录内 `gallery/index.html` 展示原图、无蒙版原生、显式输入蒙版、有蒙版原生、自研及差分；`aggregate.json`、`fullgraph-owned-mask-comparison.json`、`sampling-results.json`、`composition-results.json` 保存精确结果。源代码包含九项蒙版回归测试和九项离线 manifest 测试；六帧纯合成输入的真正原生 mesh/cache 哈希已冻结为无需私有模型的回归值。
 
@@ -112,7 +112,7 @@
 
 本地证据位于：
 
-`/Users/peter/Desktop/code/qcut/qcut/.local/body-multi-mask-20261019/native-identity/`
+`.local/body-multi-mask-20261019/native-identity/`
 
 最终收尾版 `production36-sort-final`／`production-crossing48-sort-final` 重新从原图执行36＋48帧，431份Python源码运行前后hash无漂移，摘要为 `4929fd24bfc319145f70f84b64de10698a4a669a3122c7ffbd4ab02740fe1519`。`final-identity-acceptance.json` 汇总结果与源码hash，`gallery/index.html` 提供原图／原生／自研／原生差分／原图到效果差分，`gallery/contact-sheet.jpg` 展示六个关键帧。原生动态参数、静态函数边界、失败首帧与修复前报告均保留，未上传模型或原生二进制。
 
