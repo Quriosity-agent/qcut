@@ -53,6 +53,8 @@ class BodyVideoFaceSequence:
         self.frame_counter = -1
         self.no_face_count = 0
         self.next_identifier = 0
+        self.dimension_failure_pending = False
+        self.size_status = 0
 
     def _active_count(self):
         return sum(slot.active for slot in self.slots)
@@ -65,23 +67,29 @@ class BodyVideoFaceSequence:
         except (RejectedVideoFace, OutOfFrameLandmarks) as error:
             slot.active = False
             return str(error)
+        finally:
+            slot.size_status = 0
 
     def _track(self, *, algorithm):
         failures = []
+        self.dimension_failure_pending = False
         for slot in self.slots:
             if slot.active:
+                self.size_status = slot.size_status
                 reason = self._track_slot(slot=slot, algorithm=algorithm)
                 if reason is not None:
                     failures.append(reason)
+                    if self.size_status == 2:
+                        self.dimension_failure_pending = True
         return failures
 
     def _detect(self, *, algorithm, keep, initialize_tracking):
-        boxes = self.detector.detect(rgba=algorithm)['rects']
+        boxes = self.detector.detect(rgba=algorithm, prepared_algorithm=True)['rects']
         matches = {index: nearest_detection(retained=slot.box, detections=boxes, capacity=FACE_SLOT_COUNT)
                    for index, slot in enumerate(self.slots) if keep and slot.active}
         reasons = []
         for candidate_index, box in enumerate(boxes[:FACE_SLOT_COUNT]):
-            if candidate_index in matches.values():
+            if candidate_index in matches.values() and not (self.relaxed and self.size_status == 2):
                 continue
             slot_index = (next((i for i, slot in enumerate(self.slots) if not slot.active), None)
                           if keep else candidate_index)
@@ -91,6 +99,9 @@ class BodyVideoFaceSequence:
                 engine, result, face, _ = start_video_face(algorithm=algorithm, box=box, model_root=self.root,
                     assets=self.assets, models=self.models, identifier=self.next_identifier, seed_only=True)
             except (RejectedVideoFace, OutOfFrameLandmarks) as error:
+                if not keep:
+                    self.slots[slot_index].active = False
+                    self.slots[slot_index].new = False
                 reasons.append(str(error))
                 continue
             slot = BodyFaceSlot(engine=engine, face=face, identifier=self.next_identifier,
@@ -121,6 +132,9 @@ class BodyVideoFaceSequence:
             receipt['status'] = 'recovery-retained' if retained else 'redetected' if previous_count else 'tracked'
         elif previous_count:
             failures = self._track(algorithm=algorithm)
+            if not scheduled and self.dimension_failure_pending:
+                receipt.update(self._detect(algorithm=algorithm, keep=False, initialize_tracking=True))
+                self.dimension_failure_pending = False
             if failures or scheduled:
                 retry = bool(failures)
                 receipt.update(self._detect(algorithm=algorithm, keep=True, initialize_tracking=retry))
@@ -157,7 +171,9 @@ class BodyVideoFaceSequence:
     def update(self, *, algorithm):
         height, width = algorithm.shape[:2]
         if self.size is not None and self.size != (width, height):
-            raise ValueError('face dimensions changed; reset before replay')
+            for slot in self.slots:
+                if slot.active:
+                    slot.resize(size=(width, height))
         self.size = (width, height)
         warmup = None
         if self.frame_counter < 0:
