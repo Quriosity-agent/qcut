@@ -3,7 +3,7 @@
 The effect first scales the frame so its long side is 640 (aspect kept, native linear
 resize; exact halvings take the 2x2 area path). On that image the coarse network finds
 people (18 joint heatmaps and 19 limb vector fields, grouped as in the native decoder);
-the first person seeds a tracker that never reports this coarse pose. Two refinement
+the first valid person in decoder order seeds a tracker that never reports this coarse pose. Two refinement
 passes follow on the same frame: each crops a box around the current pose (aspect-fit
 into 144x192), runs the refine network (17 COCO joints), converts to the 18-joint layout
 and smooths against the previous pose. The second pass is the pose the effect uses.
@@ -18,6 +18,7 @@ from body_skeleton_kernels import (f32, fcvtzs, fma, find_candidate_limbs, find_
                                    find_max_by_mask, find_max_by_mask_single, resize_cubic, resize_nearest,
                                    LIMB_JOINTS)
 from body_skeleton_preprocess import resize_linear_u8, skeleton005_auto
+from body_skeleton_identity import select_seed
 
 ALGORITHM_LONG_SIDE = 640
 REFINE_SIZE = (144, 192)
@@ -352,9 +353,9 @@ def pose_from_algorithm(*, algorithm, networks, refinement_passes, tracker_crop=
     people = map_local_to_global(postprocess(heat.tolist(), paf.tolist()), (tw, th), roi)
     details = {'algorithmSize': [width, height], 'coarseTensor': [tw, th], 'coarsePreprocess': preprocess,
                'coarsePeople': len(people), 'refineBoxes': []}
-    if not people or sum(1 for p in people[0] if p[3] and p[2] >= 0.0) < 8:
+    points = select_seed(people=people)
+    if points is None:
         return None, details
-    points = [list(p) for p in people[0]]
     for _ in range(refinement_passes):
         box_builder = tracking_body_box if tracker_crop else next_body_box
         box = box_builder(points, (width, height))
