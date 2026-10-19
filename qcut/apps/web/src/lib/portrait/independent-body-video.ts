@@ -4,6 +4,7 @@ import type {
 	BeautyLabIndependentSequenceFrameResult,
 } from "@/types/electron";
 import type { MediaElement, MediaPortraitAdjustments } from "@/types/timeline";
+import { normalizeMediaPortraitAdjustments } from "@qcut/editor-core";
 import { SequentialVideoRegistry } from "@/lib/export/export-sequential-video-source";
 import { getExportFrameSampleTime } from "@/lib/export/export-video-frame-seek";
 import {
@@ -138,11 +139,23 @@ async function sha256Hex({ text }: { text: string }) {
 }
 
 /**
- * Names the clip for the engine's session: the timeline element, its media
- * file, the timing that maps clip frames to source frames, the frame rate and
- * the edit as the clip defines it. Moving the clip on the timeline keeps the
+ * Names the clip for the engine's session: the timeline element, its media,
+ * the timing that maps clip frames to source frames, the frame rate and the
+ * edit as the clip defines it. Moving the clip on the timeline keeps the
  * identity; two clips cut from one file never share a session, so their
  * frames cannot interleave in the engine's history.
+ *
+ * The media is named by its id and its byte length, never by the `File`
+ * object: reopening the project rebuilds that object from storage, where
+ * OPFS names the file after the media id and stamps the write time, so the
+ * File's name and lastModified change while the bytes (and the frames they
+ * decode to) do not. The byte length is what the storage layer persists
+ * (`MediaFileData.size`) and what a relinked media file usually changes.
+ *
+ * The edit enters in its canonical shape, the one the timeline loader
+ * stores it in (non-zero values in key order, defaults dropped), so the
+ * object the panel wrote and the object a reopened project loads name the
+ * same session.
  */
 export async function independentBodyVideoClipIdentity({
 	clip,
@@ -152,14 +165,10 @@ export async function independentBodyVideoClipIdentity({
 	const { element, mediaItem, fps } = clip;
 	return sha256Hex({
 		text: JSON.stringify({
-			schemaVersion: 1,
+			schemaVersion: 2,
 			elementId: element.id,
 			mediaId: mediaItem.id,
-			file: {
-				name: mediaItem.file?.name ?? null,
-				size: mediaItem.file?.size ?? null,
-				lastModified: mediaItem.file?.lastModified ?? null,
-			},
+			mediaBytes: mediaItem.file?.size ?? null,
 			fps,
 			duration: element.duration,
 			trimStart: element.trimStart,
@@ -169,7 +178,9 @@ export async function independentBodyVideoClipIdentity({
 			reverse: element.reverse ?? false,
 			freezeFrameTime: element.freezeFrameTime ?? null,
 			freezeFrameDuration: element.freezeFrameDuration ?? 0,
-			portraitAdjustments: element.portraitAdjustments ?? null,
+			portraitAdjustments: normalizeMediaPortraitAdjustments({
+				adjustments: element.portraitAdjustments,
+			}),
 		}),
 	});
 }

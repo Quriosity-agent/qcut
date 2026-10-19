@@ -5,6 +5,7 @@ import type {
 } from "@/types/electron";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { MediaElement, MediaPortraitAdjustments } from "@/types/timeline";
+import { normalizeMediaElement } from "@/stores/timeline/timeline-store-normalization";
 import {
 	createIndependentBodyVideoDecoder,
 	independentBodyVideoApplies,
@@ -153,6 +154,54 @@ describe("independent body video clip frames", () => {
 			expect(
 				await independentBodyVideoClipIdentity({ clip: changed })
 			).not.toBe(identity);
+	});
+	it("keeps its identity when the project is reopened and storage rebuilds the media File", async () => {
+		const identity = await independentBodyVideoClipIdentity({ clip });
+		// After a restart the storage layer hands back the OPFS file: named by
+		// the media id, stamped with the write time, holding the same bytes.
+		const reopened = mediaItem({
+			file: new File([new Uint8Array(16)], "media-1", {
+				lastModified: 1_800_000_000_000,
+			}),
+		});
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: reopened },
+			})
+		).toBe(identity);
+		// Renaming the media in the panel changes neither the bytes nor the identity.
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, mediaItem: mediaItem({ name: "renamed.mp4" }) },
+			})
+		).toBe(identity);
+	});
+	it("keeps its identity when the timeline loader canonicalizes the stored element", async () => {
+		// The panel writes the edit in its own key order with zero-valued
+		// entries; reopening the project runs the element through the loader's
+		// normalizer, which rewrites the edit canonically and fills defaults.
+		const written = element({
+			portraitAdjustments: {
+				enabled: true,
+				values: {
+					face_adjust_Whiten: 0,
+					body_adjust_StretchLeg: 30,
+					body_adjust_SlimBody: 40,
+				},
+				engine: "independent",
+			},
+		});
+		const loaded = normalizeMediaElement({ element: written }) as MediaElement;
+		expect(loaded).not.toEqual(written);
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, element: loaded },
+			})
+		).toBe(
+			await independentBodyVideoClipIdentity({
+				clip: { ...clip, element: written },
+			})
+		);
 	});
 });
 
