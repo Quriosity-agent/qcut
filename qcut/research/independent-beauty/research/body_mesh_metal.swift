@@ -18,6 +18,7 @@ struct Request: Decodable {
     let sourceHeight: Int?
     let sourcePrecision: String?
     let meshProfile: String?
+    let flipSampleY: Bool?
 }
 
 struct Failure: Error, CustomStringConvertible { let description: String }
@@ -49,8 +50,8 @@ func run() throws {
     let sourceHeight = request.sourceHeight ?? request.height
     let precision = request.sourcePrecision ?? "half"
     let profile = request.meshProfile ?? "body"
-    let vertexLimit = profile == "manual-zoom" ? 63001 : 4096
-    let triangleLimit = profile == "manual-zoom" ? 125000 : 4096
+    let vertexLimit = profile == "manual-zoom" ? 63001 : 8192
+    let triangleLimit = profile == "manual-zoom" ? 125000 : 16384
     try require(request.width > 0 && request.height > 0 && request.width <= 4096 && request.height <= 4096, "bounded image required")
     try require(sourceWidth > 0 && sourceHeight > 0 && sourceWidth <= 4096 && sourceHeight <= 4096, "bounded source required")
     try require(precision == "half" || precision == "float", "explicit texture precision required")
@@ -84,6 +85,12 @@ func run() throws {
         source = source.replacingOccurrences(
             of: "return float4(image.sample(sampling, in.coordinate));",
             with: "float2 domain = step(float2(0), in.coordinate) - step(float2(1), in.coordinate); return float4(image.sample(sampling, in.coordinate)) * (domain.x * domain.y);"
+        )
+    }
+    if request.flipSampleY == true {
+        source = source.replacingOccurrences(
+            of: "image.sample(sampling, in.coordinate)",
+            with: "image.sample(sampling, float2(in.coordinate.x, 1.0f - in.coordinate.y))"
         )
     }
     let library = try device.makeLibrary(source: source, options: options)
@@ -159,6 +166,7 @@ func run() throws {
         "sampling": "linear", "address": "clamp", "blending": false, "pixelBytes": result.count,
         "sourcePrecision": precision, "meshProfile": profile,
         "vertexCount": vertices.count / 20, "triangleCount": indices.count / 12,
+        "flipSampleY": request.flipSampleY ?? false,
         "privateNativeImages": images.filter { path in forbidden.contains { path.contains($0) } },
     ]
     if request.resolutionMode == "original" {
