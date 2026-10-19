@@ -291,13 +291,16 @@ class VideoFaceSequence(unittest.TestCase):
         self.sequence.detector.detect.assert_called_once()
         self.start.assert_called_once()
 
-    def test_size_change_needs_explicit_reset_even_after_missing_face(self):
+    def test_size_change_without_faces_keeps_cadence_and_identifiers(self):
         self.sequence.detector.detect.return_value = {'rects': np.empty((0, 4), np.float32)}
         self.sequence.update(algorithm=self.algorithm)
-        with self.assertRaisesRegex(ValueError, 'dimensions changed'):
-            self.sequence.update(algorithm=np.zeros((101, 100, 4), np.uint8))
-        self.sequence.reset()
-        self.sequence.update(algorithm=np.zeros((101, 100, 4), np.uint8))
+        self.sequence.next_identifier = 11
+        _, receipt = self.sequence.update(algorithm=np.zeros((101, 100, 4), np.uint8))
+        self.assertNotIn('warmup', receipt)
+        self.assertEqual(self.sequence.size, (100, 101))
+        self.assertEqual(self.sequence.frame_counter, 2)
+        self.assertEqual(self.sequence.next_identifier, 11)
+        self.assertEqual(self.sequence.detector.detect.call_count, 2)
 
     def test_model_rejection_happens_before_decoder_consumes_heads(self):
         self.sequence.policy = Mock()
