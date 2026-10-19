@@ -7,6 +7,7 @@ import type { MediaElement, MediaPortraitAdjustments } from "@/types/timeline";
 import { normalizeMediaPortraitAdjustments } from "@qcut/editor-core";
 import { SequentialVideoRegistry } from "@/lib/export/export-sequential-video-source";
 import { getExportFrameSampleTime } from "@/lib/export/export-video-frame-seek";
+import { sha256Blob } from "@/lib/tracking/planar-tracking-analyzer";
 import {
 	getMediaSourcePlaybackTime,
 	mapMediaTimelineTime,
@@ -140,31 +141,17 @@ function hex(digest: ArrayBuffer) {
 		.join("");
 }
 
-/** Bytes hashed from each end of the media file for its content fingerprint. */
-const FINGERPRINT_SPAN_BYTES = 1024 * 1024;
 const fingerprints = new WeakMap<File, Promise<string>>();
 
-/**
- * Names the media's bytes without reading the whole file: the byte length
- * plus the first and last megabyte. Relinking a clip keeps the media id and
- * can keep the byte length, but a different file changes its head or tail,
- * so the session (and its checkpoints) cannot be reused for new content.
- */
+/** Full-content identity keeps a relink from restoring another file's history. */
 function mediaContentFingerprint({ file }: { file: File | undefined }) {
 	if (!file || file.size === 0) return Promise.resolve(null);
 	let pending = fingerprints.get(file);
 	if (!pending) {
-		pending = (async () => {
-			const head = await file.slice(0, FINGERPRINT_SPAN_BYTES).arrayBuffer();
-			const tail = await file
-				.slice(Math.max(0, file.size - FINGERPRINT_SPAN_BYTES))
-				.arrayBuffer();
-			const bytes = new Uint8Array(8 + head.byteLength + tail.byteLength);
-			new DataView(bytes.buffer).setFloat64(0, file.size);
-			bytes.set(new Uint8Array(head), 8);
-			bytes.set(new Uint8Array(tail), 8 + head.byteLength);
-			return hex(await crypto.subtle.digest("SHA-256", bytes));
-		})();
+		pending = sha256Blob({ blob: file }).catch((error: unknown) => {
+			fingerprints.delete(file);
+			throw error;
+		});
 		fingerprints.set(file, pending);
 	}
 	return pending;
@@ -177,8 +164,8 @@ function mediaContentFingerprint({ file }: { file: File | undefined }) {
  * identity; two clips cut from one file never share a session, so their
  * frames cannot interleave in the engine's history.
  *
- * The media is named by its id and its bytes (length plus a head-and-tail
- * fingerprint), never by the `File` object's name or lastModified: reopening
+ * The media is named by its id and all its bytes, never by the `File`
+ * object's name or lastModified: reopening
  * the project rebuilds that object from storage, where OPFS names the file
  * after the media id and stamps the write time, while the bytes (and the
  * frames they decode to) do not change. Relinking keeps the media id and may
@@ -197,7 +184,7 @@ export async function independentBodyVideoClipIdentity({
 	const { element, mediaItem, fps } = clip;
 	return sha256Hex({
 		text: JSON.stringify({
-			schemaVersion: 3,
+			schemaVersion: 4,
 			elementId: element.id,
 			mediaId: mediaItem.id,
 			mediaBytes: mediaItem.file?.size ?? null,
