@@ -40,7 +40,7 @@ untouched 这一路没有 composition plan，预览走普通 video 路径，没�
 
 ## 3. 代码发现与修复
 
-### 3.1 计算进行中 worker 丢失会让导出失败（已修，待 E2E 证明）
+### 3.1 计算进行中 worker 丢失会让导出失败（已修，E2E 已证明，见 §4.4）
 
 阅读 `beauty-lab-independent-worker.ts`：常驻 worker 退出时，**正在处理的请求被以通用错误拒绝**，下一次请求才会懒启动新 worker；`beauty-lab-independent-body-video.ts` 只把 `IndependentSequenceGapError` 转成 `replay`，其它错误直接抛出 → 导出中断。原有 E2E 的杀进程发生在导出完成之后，所以没覆盖到。
 
