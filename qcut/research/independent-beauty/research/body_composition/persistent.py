@@ -17,22 +17,29 @@ from .slim_arm.history import SlimArmSequence
 from .small_head.history import SmallHeadSequence
 from .widen_shoulder.history import PersistentWiden
 from .widen_shoulder.temporal_geometry import HistoryCounter
+from .vertex_history import VertexHistory
+from .segmentation_mask import validate_segmentation_mask
 
 
 class PersistentCombinedBody(CombinedBody):
     """Keep descriptors, intensities and shoulder grids across ordered frames.
 
-    Mode 1 refreshes measurable anchors; mode 2 keeps populated anchors under
-    each part's native condition. Shoulder cache updates occur in either mode.
+    Mode 0 smooths measurable anchors, mode 1 refreshes them, and mode 2 keeps
+    populated anchors under each part's native condition. These are component
+    input types, separate from each item's strategy. Shoulder caches keep advancing.
     """
+
+    _long_leg_lower_multiplier = 1.0
+    _smoothed_parts = ()
+    _supports_resize = False
 
     def __init__(self, *, mode=1):
         if (
             isinstance(mode, (bool, np.bool_))
             or not isinstance(mode, (int, np.integer))
-            or mode not in (1, 2)
+            or mode not in (0, 1, 2)
         ):
-            raise ValueError("persistent body mode must be 1 or 2")
+            raise ValueError("persistent body mode must be 0, 1 or 2")
         self._mode = int(mode)
         self.reset()
 
@@ -43,7 +50,7 @@ class PersistentCombinedBody(CombinedBody):
     def reset(self):
         """Start an independent stream, clearing anchors, caches and counters.
 
-        Use at a seek, cut, identity change or resolution boundary. Unlike the
+        Use for a new stream, identity change or resolution boundary. Unlike the
         original process-global counters, independent streams cannot affect one
         another's fifteenth-cache-update compaction phase.
         """
@@ -56,6 +63,7 @@ class PersistentCombinedBody(CombinedBody):
         self.ortho_history = OrthoSequence()
         self.ortho_geometry = OrthoGeometry()
         self.widen_history = PersistentWiden(counter=HistoryCounter())
+        self.vertex_history = {name: VertexHistory(degree=.2) for name in self._smoothed_parts}
 
     def update(
         self,
@@ -68,11 +76,14 @@ class PersistentCombinedBody(CombinedBody):
         faces=None,
         rectangles=None,
         rolls=None,
+        body_present=True,
+        segmentation_mask=None,
     ):
         """Advance one frame; all-zero visibility retains native decay history.
 
         Missing joints are represented by zero visibility and finite coordinates.
-        They do not imply a new identity. A size change requires reset() first;
+        body_present=False keeps joint history while advancing part decay.
+        A size change requires reset() first;
         invalid arguments are rejected before advancing any stream state.
         """
         coords, visibility, faces, rectangles, rolls = validate_inputs(
@@ -85,8 +96,9 @@ class PersistentCombinedBody(CombinedBody):
             rolls=rolls,
         )
         targets = resolve_targets(targets)
+        segmentation_mask = validate_segmentation_mask(mask=segmentation_mask)
         size = (int(width), int(height))
-        if self._image_size is not None and size != self._image_size:
+        if self._image_size is not None and size != self._image_size and not self._supports_resize:
             raise ValueError("image dimensions changed; reset persistent body first")
         fresh = super().update(
             coords=coords,
@@ -97,10 +109,12 @@ class PersistentCombinedBody(CombinedBody):
             faces=faces,
             rectangles=rectangles,
             rolls=rolls,
+            body_present=body_present,
         )
         states = self._prepare_states(fresh, targets, width, height)
         delta, stages = self._compose(
-            fresh["base"], states, fresh, targets, width, height
+            fresh["base"], states, fresh, targets, width, height,
+            segmentation_mask=segmentation_mask,
         )
         positions = compose_positions(base=fresh["base"], delta=delta)
         if not np.isfinite(positions).all():
@@ -146,6 +160,8 @@ class PersistentCombinedBody(CombinedBody):
                     height,
                     strategy=65536,
                     body_scale=fresh["public"]["scale"],
+                    part5_valid=descriptors["waist"].valid,
+                    part5_y=descriptors["waist"].center[1],
                 )
             elif name in ("SlimWaist", "SlimBody"):
                 state = module.prepare(
@@ -187,13 +203,18 @@ class PersistentCombinedBody(CombinedBody):
         )
         return states
 
-    def _compose(self, base, states, fresh, targets, width, height):
+    def _compose(self, base, states, fresh, targets, width, height, *, segmentation_mask=None):
         delta = np.zeros_like(base)
         stages = {}
         for name in ORDER:
             state = states[name]
+            history = self.vertex_history.get(name)
+            accumulated = delta
+            if history is not None:
+                delta = np.zeros_like(base)
+            smooth_active = False
             if name == "SmallHead":
-                _, delta = parts.head_geometry.deform(base, state, delta)
+                smooth_active, delta = parts.head_geometry.deform(base, state, delta)
             elif name == "LongLeg":
                 mesh_state = parts.kernel.LongLegState(
                     state.intensity,
@@ -202,7 +223,7 @@ class PersistentCombinedBody(CombinedBody):
                     state.width,
                     state.end,
                     state.pivot,
-                    1.0,
+                    self._long_leg_lower_multiplier,
                     state.strategy,
                     *state.foot,
                 )
@@ -226,6 +247,7 @@ class PersistentCombinedBody(CombinedBody):
                     targets[name],
                     flip=fresh["status"]["status50"],
                     destination=delta,
+                    segmentation_mask=segmentation_mask,
                 )
                 states[name] = self.widen_history.state
             elif name == "SwanNeck":
@@ -233,6 +255,7 @@ class PersistentCombinedBody(CombinedBody):
                     base, state.intensity, state.halves, state.coefficients, delta
                 )
             elif name == "SlimHip":
+                smooth_active = state.active and abs(np.float32(state.intensity)) >= np.finfo(np.float32).eps
                 delta = parts.hb_hip_geometry.deform(
                     base,
                     state.intensity,
@@ -244,6 +267,7 @@ class PersistentCombinedBody(CombinedBody):
                 )
             elif name == "SlimArm":
                 _, delta = parts.arm_geometry.deform(base, state, delta)
+                smooth_active = state.get("enabled", True) and state.get("valid", True)
             elif name == "SlimBreast":
                 delta = parts.hb_breast_geometry.deform(
                     base,
@@ -254,5 +278,9 @@ class PersistentCombinedBody(CombinedBody):
                     state.perpendicular,
                     delta,
                 )
+            if history is not None:
+                if smooth_active:
+                    delta = history.update(current=delta, width=width, height=height, reset=self.mode == 2)
+                delta = np.float32(accumulated + delta)
             stages[name] = delta.copy()
         return delta, stages
