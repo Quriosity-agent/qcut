@@ -19,6 +19,7 @@ def start_video_face(*, algorithm, box, assets, models, model_root, identifier=0
             'tracking_smoothing': {**smoothing, 'escale': 3},
             'initialization': {'call': {'format': 0, 'orientation': 0, 'target': [160, 160],
                                        'flags': [1, 0, 0], 'rect': {'values': box.tolist()}, 'expansion': 1}}}
-    engine = Sequence(model_root=model_root, models=models, normalize_output=False)
+    engine = Sequence(model_root=model_root, models=models, normalize_output=False,
+                      sampling_profile="ordinary")
     result = engine.process(rgba=algorithm, size=size, index=0, face=face, seed_only=seed_only)
     return engine, result, {**face, 'mode': 'update', 'initialization': None}, size
