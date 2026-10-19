@@ -1,18 +1,25 @@
 """Bounded RGBA affine sampler with separately quantized coordinate tables.
 
-Pure NumPy; no native library, model, mean face or captured input is loaded.
+NumPy and system float32 arithmetic; no proprietary library or captured input.
 The verified profile uses float32 arithmetic and nearest-even FP rounding.
 """
 from __future__ import annotations
 
 import numpy as np
 
+from alignment_ordinary_sampling import coordinate_tables
 
-def inverse_forward(*, forward):
+
+def validated_forward(*, forward):
     matrix = np.asarray(forward)
     if (matrix.dtype != np.float32 or matrix.shape != (2, 3) or
             not np.isfinite(matrix).all() or np.max(np.abs(matrix)) > 32768):
         raise ValueError("bounded float32 forward affine required")
+    return matrix
+
+
+def inverse_forward(*, forward):
+    matrix = validated_forward(forward=forward)
     a, b, tx, c, d, ty = matrix.reshape(-1)
     determinant = np.float32(np.float32(a * d) - np.float32(b * c))
     if not np.isfinite(determinant) or abs(float(determinant)) < 1e-8:
@@ -43,19 +50,26 @@ def quantize(*, values):
     return signed.astype(np.int32)
 
 
-def sample_bgr(*, frame, forward, size=(120, 120)):
+def sample_bgr(*, frame, forward, size=(120, 120), profile="fast"):
     values = np.asarray(frame)
     if (values.dtype != np.uint8 or values.ndim != 3 or values.shape[2] != 4 or
             not all(1 <= side <= 4096 for side in values.shape[:2]) or
             values.nbytes > 64 * 1024**2 or not isinstance(size, tuple) or len(size) != 2 or
             not all(type(side) is int and 2 <= side <= 160 for side in size)):
         raise ValueError("bounded RGBA frame and sampling size required")
-    inverse = inverse_forward(forward=forward)
-    p, q, u, r, s, v = inverse.reshape(-1)
-    x = np.arange(size[0], dtype=np.float32)[None, :]
-    y = np.arange(size[1], dtype=np.float32)[:, None]
-    source_x = quantize(values=p * x + u) + quantize(values=q * y)
-    source_y = quantize(values=r * x + v) + quantize(values=s * y)
+    if profile not in ('fast', 'ordinary'):
+        raise ValueError('known alignment sampling profile required')
+    if profile == 'ordinary':
+        tables = coordinate_tables(forward=validated_forward(forward=forward), size=size)
+        x_columns, x_rows, y_columns, y_rows = tables
+    else:
+        inverse = inverse_forward(forward=forward)
+        p, q, u, r, s, v = inverse.reshape(-1)
+        x = np.arange(size[0], dtype=np.float32)[None, :]
+        y = np.arange(size[1], dtype=np.float32)[:, None]
+        x_columns, x_rows, y_columns, y_rows = p * x + u, q * y, r * x + v, s * y
+    source_x = quantize(values=x_columns) + quantize(values=x_rows)
+    source_y = quantize(values=y_columns) + quantize(values=y_rows)
     height, width = values.shape[:2]
     valid = (source_x >= 0) & (source_x < width) & (source_y >= 0) & (source_y < height)
     output = np.zeros((size[1], size[0], 3), dtype=np.uint8)
@@ -63,6 +77,6 @@ def sample_bgr(*, frame, forward, size=(120, 120)):
     return output
 
 
-def signed_input(*, frame, forward, size=(120, 120)):
-    pixels = sample_bgr(frame=frame, forward=forward, size=size)
+def signed_input(*, frame, forward, size=(120, 120), profile="fast"):
+    pixels = sample_bgr(frame=frame, forward=forward, size=size, profile=profile)
     return (pixels.astype(np.int16) - 128)[None, ...]
