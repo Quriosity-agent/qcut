@@ -17,6 +17,7 @@ from .waist_body import state as wb_state
 from .waist_body import geometry as wb_geometry
 from .waist_body import descriptors as wb_descriptors
 from .hip_breast import public_basis as hb_public_basis
+from .joint_groups import frame_joint_groups
 from .hip_breast import public_hip_aux as hb_public_hip_aux
 from .hip_breast import hip_descriptor as hb_hip_descriptor
 from .hip_breast import hip_state as hb_hip_state
@@ -53,6 +54,9 @@ class CombinedBody:
         self.shoulder = shoulder_descriptor.ShoulderDescriptor()
         self.arm = arm_descriptor.ArmDescriptor()
 
+    def _make_grid(self, *, width, height):
+        return make_grid(width, height)
+
     def update(
         self,
         *,
@@ -64,6 +68,7 @@ class CombinedBody:
         faces=None,
         rectangles=None,
         rolls=None,
+        body_present=True,
     ):
         """Consume normalized y-up perception and internal targets; no image or model access.
 
@@ -71,6 +76,8 @@ class CombinedBody:
         a new instance gives a deterministic image/seek boundary. This is not a video
         identity manager or a persistent ten-part deformer session.
         """
+        if not isinstance(body_present, (bool, np.bool_)):
+            raise ValueError("body_present must be a boolean")
         coords, visibility, faces, rectangles, rolls = validate_inputs(
             coords=coords,
             visibility=visibility,
@@ -82,17 +89,19 @@ class CombinedBody:
         )
         targets = resolve_targets(targets)
         result = self._update(
-            coords, visibility, width, height, faces, rectangles, rolls, targets
+            coords, visibility, width, height, faces, rectangles, rolls, targets,
+            body_present=body_present,
         )
         if not np.isfinite(result["positions"]).all():
             raise ValueError("body geometry is not finite for the supplied perception")
         return result
 
     def _update(
-        self, coords, vis, w, h, faces=None, rectangles=None, rolls=None, target=0.35
+        self, coords, vis, w, h, faces=None, rectangles=None, rolls=None, target=0.35,
+        *, body_present=True,
     ):
         targets = resolve_targets(target)
-        status = self.status.update(coords, vis, w, h)
+        status = self.status.update(coords, vis, w, h, present=body_present)
         status_flags = dict(enumerate(status["bone_records"].reshape(-1).tolist()))
         hs = self.head.update(
             coords,
@@ -124,8 +133,8 @@ class CombinedBody:
             if eligible
             else (self.basis.axis, self.basis.perp)
         )
-        shcount = int(vis[[2, 5]].sum())
-        hipcount = int(vis[[8, 11]].sum())
+        _, (shoulders, hips, _) = frame_joint_groups(coords=coords, visibility=vis, width=w, height=h)
+        shcount, hipcount = len(shoulders), len(hips)
         frontal = (
             self.hipaux.update(
                 self.public,
@@ -249,7 +258,7 @@ class CombinedBody:
                     target=targets["SlimHip"],
                     step=2,
                     amplitude=0.15,
-                    profile=(0.45, 0.0, 0.4, 0.15, 0.15),
+                    profile=(0.45, 0.0, 0.4, 0.0, 0.0),
                 ),
                 hip,
                 w,
@@ -273,7 +282,7 @@ class CombinedBody:
             ),
             "SlimArm": arm_state.from_descriptor(arm, w, h, targets["SlimArm"]),
         }
-        base, uv, tri = make_grid(w, h)
+        base, uv, tri = self._make_grid(width=w, height=h)
         delta = np.zeros_like(base)
         stages = {}
         for name in ORDER:
