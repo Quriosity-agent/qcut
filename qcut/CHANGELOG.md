@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.19.1] - 2026-10-19
+
 ### Improved
 - Independent engine, smart body on video: the body geometry now follows the person through the clip. The session's persistent composition ran in the photo mode that keeps the anchors of its first frame, so on a walking clip the leg-stretch band stayed at one height and the slimming amplitude never changed while the person moved and approached the camera; the anchors are now refreshed every frame, matching the native path's trajectory (band top within about 10 px, slimming within half a pixel on a 1080×1920 clip).
 - The first frame of a body-video clip is processed too: the frame whose coarse pass seeds tracking is refined in the same frame, and the first body frame converges its geometry like a still before it is drawn, so the effect no longer fades in over the first half second.
