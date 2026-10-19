@@ -15,16 +15,16 @@ SOURCE = Path(__file__).with_name('body_mesh_metal.swift')
 
 
 def draw_mesh(*, rgba, vertices, triangles, runtime, output_size=None, precision='half', flip_source=True,
-              mesh_profile='body'):
+              mesh_profile='body', flip_sample_y=False):
     validate_rgba(rgba=rgba)
     height, width = rgba.shape[:2]
     output_size = (width, height) if output_size is None else output_size
     if (len(output_size) != 2 or any(type(v) is not int or not 1 <= v <= 4096 for v in output_size)
-            or precision not in ('half', 'float') or type(flip_source) is not bool
+            or precision not in ('half', 'float') or type(flip_source) is not bool or type(flip_sample_y) is not bool
             or mesh_profile not in ('body', 'manual-zoom')
             or (mesh_profile == 'manual-zoom' and precision != 'float')):
         raise ValueError('bounded output size and explicit sampling policy required')
-    vertex_limit, triangle_limit = (63001, 125000) if mesh_profile == 'manual-zoom' else (4096, 4096)
+    vertex_limit, triangle_limit = (63001, 125000) if mesh_profile == 'manual-zoom' else (8192, 16384)
     vertices = np.asarray(vertices, np.float32)
     triangles = np.asarray(triangles)
     if (vertices.ndim != 2 or vertices.shape[1] != 5 or not 3 <= len(vertices) <= vertex_limit
@@ -42,6 +42,7 @@ def draw_mesh(*, rgba, vertices, triangles, runtime, output_size=None, precision
         np.ascontiguousarray(triangles, np.uint32).tofile(directory / 'triangles.u32')
         request = {'width': output_size[0], 'height': output_size[1], 'sourceWidth': width,
                    'sourceHeight': height, 'sourcePrecision': precision, 'meshProfile': mesh_profile,
+                   'flipSampleY': flip_sample_y,
                    'rgba': str(directory / 'input.rgba'), 'vertices': str(directory / 'vertices.f32'),
                    'indices': str(directory / 'triangles.u32'), 'output': str(directory / 'output.rgba'),
                    **gpu_request_fields()}
@@ -56,11 +57,15 @@ def draw_mesh(*, rgba, vertices, triangles, runtime, output_size=None, precision
     return result, {**receipt, 'sourceSha256': identity, 'hostSha256': binary_identity}
 
 
-def algorithm_image(*, rgba, runtime):
+def algorithm_image(*, rgba, runtime, output_size=None):
     from detection_geometry import algorithm_size
-    size = algorithm_size(size=(rgba.shape[1], rgba.shape[0]))
-    # Top-down source and quad keep the detector's raster orientation unchanged.
+    size = algorithm_size(size=(rgba.shape[1], rgba.shape[0])) if output_size is None else output_size
     vertices = np.asarray([[-1, 1, .5, 0, 0], [1, 1, .5, 1, 0],
                            [-1, -1, .5, 0, 1], [1, -1, .5, 1, 1]], np.float32)
-    return draw_mesh(rgba=rgba, vertices=vertices, triangles=np.asarray([[0, 2, 1], [1, 2, 3]], np.uint32),
+    triangles = np.asarray([[0, 2, 1], [1, 2, 3]], np.uint32)
+    if output_size is not None:
+        # The video producer's fan diagonal affects float UV interpolation at odd widths.
+        vertices = vertices[[0, 1, 3, 2]]
+        triangles = np.asarray([[0, 1, 2], [0, 2, 3]], np.uint32)
+    return draw_mesh(rgba=rgba, vertices=vertices, triangles=triangles,
                      runtime=runtime, output_size=size, precision='float', flip_source=False)
