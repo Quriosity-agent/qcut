@@ -117,6 +117,37 @@ class BodySequenceContract(unittest.TestCase):
         self.engine.skeleton.reset.assert_not_called()
         self.engine.face.reset.assert_not_called()
 
+    def test_resize_validates_the_current_extent_without_admitting_an_unbounded_steady_frame(self):
+        resized = np.full((1281, 360, 4), 255, np.uint8)
+        with patch.object(module, 'source_edge_limit', return_value=4096), \
+                patch.object(module, 'algorithm_image', return_value=(self.rgba, {})) as raster:
+            with self.assertRaisesRegex(ValueError, 'bounded algorithm image dimensions'):
+                self.engine.process(rgba=resized, controls={}, stream='clip-a', frame=0, timestamp=0)
+            self.engine._initialize.assert_not_called()
+            raster.assert_not_called()
+            self.assertEqual((self.engine.next_frame, self.engine.size, self.engine.timestamp), (0, None, None))
+            self.assertFalse(self.engine.invalid)
+
+            self.frame()
+            self.engine.process(rgba=resized, controls={}, stream='clip-a', frame=1, timestamp=1 / 24)
+            self.assertEqual(raster.call_args.kwargs['output_size'], (128, 455))
+            self.assertEqual((self.engine.next_frame, self.engine.size, self.engine.timestamp),
+                             (2, (1281, 360), 1 / 24))
+            raster.reset_mock()
+            with self.assertRaisesRegex(ValueError, 'bounded algorithm image dimensions'):
+                self.engine.process(rgba=resized, controls={}, stream='clip-a', frame=2, timestamp=2 / 24)
+            raster.assert_not_called()
+            self.assertEqual((self.engine.next_frame, self.engine.size, self.engine.timestamp),
+                             (2, (1281, 360), 1 / 24))
+            self.assertFalse(self.engine.invalid)
+            for part in (self.engine.skeleton, self.engine.face, self.engine.composition):
+                self.assertEqual(part.update.call_count, 2)
+                part.reset.assert_not_called()
+            self.assertEqual(self.engine.composition.configure_frame.call_count, 2)
+            self.frame(index=2)
+            self.assertEqual(self.engine.next_frame, 3)
+            self.engine._initialize.assert_called_once()
+
     def test_zero_controls_keep_tracking_for_later_keyframes(self):
         self.frame()
         self.frame(index=1)
