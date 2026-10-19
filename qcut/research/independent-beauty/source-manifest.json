@@ -66,14 +66,14 @@
 		},
 		{
 			"path": "research/alignment_sampling.py",
-			"bytes": 3281,
-			"sha256": "a7f56d772a293a9b6de414c1a097beaada8b6bff8c94a10bab69df48bba89d2e",
+			"bytes": 3892,
+			"sha256": "ce534cd18c644a2a0794c8a0842c3f0dfa2beb1ba3e5e9ee91c9bc145307b913",
 			"sourceSha256": "a7f56d772a293a9b6de414c1a097beaada8b6bff8c94a10bab69df48bba89d2e"
 		},
 		{
 			"path": "research/alignment_sequence.py",
-			"bytes": 13341,
-			"sha256": "5114cfd2220688b4c0f0f2a971e74d742bfac7fbe27fbfbbc158a8da16a2158d",
+			"bytes": 15248,
+			"sha256": "a7728c26b9000c451979d1dbd0baf10efa2ef870f18b29087da7a3317b86cc3c",
 			"sourceSha256": "58d8fdd19f0be5128d1003186a394ebe6b68c072f2db8c6c6bdfe19d3598efb5"
 		},
 		{
@@ -150,8 +150,8 @@
 		},
 		{
 			"path": "research/detection_geometry.py",
-			"bytes": 2283,
-			"sha256": "0abd0f71d543a35bd65cd84fce6f5d5d66df489391fdad5ae12fedfb5bf22805",
+			"bytes": 2605,
+			"sha256": "17971df4c6ce6f02b61057997f3aa3d8566924b994ee5a22ceafdf4887b91231",
 			"sourceSha256": "0abd0f71d543a35bd65cd84fce6f5d5d66df489391fdad5ae12fedfb5bf22805"
 		},
 		{
@@ -246,8 +246,8 @@
 		},
 		{
 			"path": "research/face_detection.py",
-			"bytes": 2775,
-			"sha256": "475d4f28c4a1c8e072591c577a0f4c9499f41c51539b993c63296c3bd823da14",
+			"bytes": 2837,
+			"sha256": "bc8309dc645a06dd7c172a121d2465a36c02b80580d6e4a0540aebc7de2d01cc",
 			"sourceSha256": "aafec85107876664bc82ef14c0602c5e5583a47729a0a5f42ac7509fb86c02d7"
 		},
 		{
@@ -1476,8 +1476,8 @@
 		},
 		{
 			"path": "research/vendor/face_detector.py",
-			"bytes": 8047,
-			"sha256": "2cb7ae65dcadfe319aa873ec01e0afad82b5bd7508b906e70179e849b2785cd7",
+			"bytes": 8028,
+			"sha256": "ee5ada67513d84f7fa6d5a148aed26c233e20e3692a748371810ff88c35d49f4",
 			"sourceSha256": "2cb7ae65dcadfe319aa873ec01e0afad82b5bd7508b906e70179e849b2785cd7"
 		},
 		{
@@ -1684,8 +1684,8 @@
 		},
 		{
 			"path": "research/body_skeleton_decode.py",
-			"bytes": 16803,
-			"sha256": "8d0c42f775764c421ee5888780f8f51a798e776ffe5619a2f91f65171d100640"
+			"bytes": 16818,
+			"sha256": "4936662e1c113f72398fc8dc65bc5fc3b0e955955d3a3d8983077be871a1d132"
 		},
 		{
 			"path": "research/body_longleg_state.py",
@@ -1694,8 +1694,8 @@
 		},
 		{
 			"path": "research/body_mesh_metal.swift",
-			"bytes": 9454,
-			"sha256": "8048ea1e0d7dbb74a1055b03d6c2a2926584c4c3adceb74aafcbbd14ffa0adff"
+			"bytes": 9783,
+			"sha256": "2d7490668709771cc66a6014a3f3c80e44708b175521f0883872232840883b74"
 		},
 		{
 			"path": "research/alignment_pose_heads.py",
@@ -1794,8 +1794,8 @@
 		},
 		{
 			"path": "research/body_mesh_grid.py",
-			"bytes": 1972,
-			"sha256": "dc49f0a7160f74e7914044c9aaaaa839081b166d55efcc10f8f8914b3c95f2f5"
+			"bytes": 1973,
+			"sha256": "eb1e8662ed6be68b8bf5cde253fce196c8dcefd298b661f1db6903f268118bdb"
 		},
 		{
 			"path": "research/body_mesh_system.py",
@@ -1969,13 +1969,13 @@
 		},
 		{
 			"path": "research/body_composition/head/face_selection.py",
-			"bytes": 2606,
-			"sha256": "b251ca19cb1804fbfe930aa164080ad6ec75bcacf5d2c64c17c0eff0774259d4"
+			"bytes": 2706,
+			"sha256": "a71e6b66f8c5a8720d257fb2ef34d97fba5b044837f2c0cff43fd96541201372"
 		},
 		{
 			"path": "research/body_composition/head/producer.py",
-			"bytes": 6254,
-			"sha256": "f188480fb2d3ce0c821334af1493a06caf69f22e0654f0b34b0b37e7b6f08d51"
+			"bytes": 6240,
+			"sha256": "4e1efb48ae7c98098ca4b6cf84cd0c7789558bd30f3d790e9ea4ba9aaa4d3fd6"
 		},
 		{
 			"path": "research/body_composition/head/protected_roi.py",
@@ -1999,8 +1999,8 @@
 		},
 		{
 			"path": "research/body_composition/hip_breast/breast_state.py",
-			"bytes": 3594,
-			"sha256": "8c14634ecfe25a679b5ce2f89d707367e976c8439cbf8d2a27568324f8d9c824"
+			"bytes": 3593,
+			"sha256": "4ef2f43cd6528d8b9a929183755ca10b9e9621942385c492629169476e2f5a0b"
 		},
 		{
 			"path": "research/body_composition/hip_breast/hip_descriptor.py",
@@ -2019,8 +2019,8 @@
 		},
 		{
 			"path": "research/body_composition/hip_breast/public_basis.py",
-			"bytes": 2667,
-			"sha256": "21781633e52e83eb87715ce80b77e3833f3da2363263edb5a7deaa6db04c4ffc"
+			"bytes": 2706,
+			"sha256": "9d4160b95e8869ee5d342c7b00396cfe482e908ba1dfef57e6b3e334f6087dc1"
 		},
 		{
 			"path": "research/body_composition/hip_breast/public_hip_aux.py",
@@ -2039,8 +2039,8 @@
 		},
 		{
 			"path": "research/body_composition/longleg_state.py",
-			"bytes": 2967,
-			"sha256": "adf3d13978f9c17fed0262a202717599e31a9530d6fe12acfdf9a921fab7cd6a"
+			"bytes": 2968,
+			"sha256": "6f11dfb2edd9e738612fa67bc44e974909933a04621468003db48e570287e1e0"
 		},
 		{
 			"path": "research/body_composition/neck/__init__.py",
@@ -2059,8 +2059,8 @@
 		},
 		{
 			"path": "research/body_composition/neck/geometry.py",
-			"bytes": 2474,
-			"sha256": "1038a70de2a14741526f9125fdf3ff187a6fcfd9c25994dfe696468cf919ff13"
+			"bytes": 2721,
+			"sha256": "01e208890c96384e35b16d17f02a4860923bf82065d0436ea04fe20965970ce4"
 		},
 		{
 			"path": "research/body_composition/neck/state.py",
@@ -2099,18 +2099,18 @@
 		},
 		{
 			"path": "research/body_composition/persistent.py",
-			"bytes": 9418,
-			"sha256": "fa8e72b3846e387f559062b935fc3c64310ad020841d4cc919003ec081d7cdf5"
+			"bytes": 10971,
+			"sha256": "d2eb29eb15b5381d1410e62138ce5c066df3c520b822e8948d399d188024abef"
 		},
 		{
 			"path": "research/body_composition/pipeline.py",
-			"bytes": 12013,
-			"sha256": "dfb071d63b06d2e469cf725b78e1183981ee8516a0284dfd73f33a91e30b6e81"
+			"bytes": 12475,
+			"sha256": "4745e38167e51cecbe5e2f37d51d4f322cfb96d5c06dac3842f24c84569fee1b"
 		},
 		{
 			"path": "research/body_composition/public_descriptor.py",
-			"bytes": 7667,
-			"sha256": "f2017184f8583134d95ba3a91635b71a8dc76b9f781d7a84a861fc1ebbd1912e"
+			"bytes": 7682,
+			"sha256": "5a07c407fc5896ceaa4ca31e750a409eef11a9ff78e09b9edc80530a90220bab"
 		},
 		{
 			"path": "research/body_composition/shoulder_smoothing.py",
@@ -2209,13 +2209,13 @@
 		},
 		{
 			"path": "research/body_composition/widen_shoulder/geometry.py",
-			"bytes": 5346,
-			"sha256": "3c36a97a10f8fc591cde764fdc80e6cb484febc12465cdc8fb3c2aefad2222f9"
+			"bytes": 5484,
+			"sha256": "0173681c54bb55d3dc4a130a6817a5de0ca05bbd4006f32f47f14cdcbdf9482d"
 		},
 		{
 			"path": "research/body_composition/widen_shoulder/history.py",
-			"bytes": 1009,
-			"sha256": "4eb5b70c87f0e573cb77ba6f15b4ef8253d2ed4f7d9967bd875c465a1bffebe3"
+			"bytes": 1078,
+			"sha256": "61ad9d6e2d6c3a52047aa684261733f999b5642722fbb8a17608d0760ebbe301"
 		},
 		{
 			"path": "research/body_composition/widen_shoulder/state.py",
@@ -2224,8 +2224,8 @@
 		},
 		{
 			"path": "research/body_composition/widen_shoulder/temporal_geometry.py",
-			"bytes": 4083,
-			"sha256": "d515f6f7779fa388640ca0109c2ab91b374b0a395fbb3a921ebd403cdfe042f5"
+			"bytes": 4910,
+			"sha256": "49c902a674e35406ab8fe0e972df4288cc7a28d0a2d4f9150c453ba71210b800"
 		},
 		{
 			"path": "research/body_espresso_onnx.py",
@@ -2244,18 +2244,18 @@
 		},
 		{
 			"path": "research/body_face_start.py",
-			"bytes": 1450,
-			"sha256": "8cab909574e250d1a2b2a0f56d8a9ab0653281c500972720e7a23e3bb2a6ae9d"
+			"bytes": 1501,
+			"sha256": "f9c2cf7f872b224ed2c046d7b113ab7114c65dadef4fdfa538304879d07664a4"
 		},
 		{
 			"path": "research/body_mesh_renderer.py",
-			"bytes": 4082,
-			"sha256": "8e5be95d391d492e46afcb3781c65b11386c82937bc9fa870da6600527832954"
+			"bytes": 4421,
+			"sha256": "4c2fa580574df54dd763908fda93ab2e21a0ca767b787c5c515106b44bb29c0f"
 		},
 		{
 			"path": "research/body_sequence_render.py",
-			"bytes": 3162,
-			"sha256": "cd5c9f8f686ff700e8d7fdf607ea3bb7afcecd687437ee6ddb40e455cfcba009"
+			"bytes": 5518,
+			"sha256": "6f1b63d0e28b350467f26326a350efbeca50d78261bee334aacf8020e73795a3"
 		},
 		{
 			"path": "research/body_skeleton_onnx.py",
@@ -2264,8 +2264,8 @@
 		},
 		{
 			"path": "research/body_skeleton_sequence.py",
-			"bytes": 3886,
-			"sha256": "99e12e79b069c487d70777352146c9a46fb4032e0e6a04aee62237a2d3c897e5"
+			"bytes": 3449,
+			"sha256": "fd7eb332f71707a4c28b07d8f4250933ff00e67fa7ecef7ca50ac082c3f22322"
 		},
 		{
 			"path": "research/body_smart_candidate.py",
@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 7818,
-			"sha256": "985d8895c90426d3b41ff9a4bd5066aa0da711a364382a31f1fa8ac7bdd5f71f"
+			"bytes": 8269,
+			"sha256": "bb48290dbc8f9d79f447acb1c33f01f4674b9df8c8ab437490551bfd632fa628"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2289,8 +2289,8 @@
 		},
 		{
 			"path": "research/body_video_face_sequence.py",
-			"bytes": 8429,
-			"sha256": "755ef6db19a8a77a043f4c45da78cf07bae88ed264c8b1bb7e8f62673040abc1"
+			"bytes": 9247,
+			"sha256": "2b4297c86826749c9807d2e1d6876d7d7054b11c804f87969165fe385d525e02"
 		},
 		{
 			"path": "research/manual_body_zoom_geometry.py",
@@ -2304,8 +2304,8 @@
 		},
 		{
 			"path": "research/tests/test_body_composition_persistent.py",
-			"bytes": 9903,
-			"sha256": "cc5836447d986538605515f6ad2a2580d6179b81c34ff4515cd11679aa2a1c3b"
+			"bytes": 9900,
+			"sha256": "376c8a0642504af39908639b8622835b71d4b45232264a9cac01a43771429925"
 		},
 		{
 			"path": "research/tests/test_body_face_policy.py",
@@ -2324,8 +2324,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_isolation.py",
-			"bytes": 7487,
-			"sha256": "31ad9d4dd11bb215c51aebe89eef9f12c817b3bbe446bca0995cd03f9869ff0e"
+			"bytes": 16910,
+			"sha256": "80ad87f868baf63427d62b2533b9779c6df6f543d9ec00335485852bfa4f6caa"
 		},
 		{
 			"path": "research/tests/test_body_skeleton_onnx.py",
@@ -2334,8 +2334,8 @@
 		},
 		{
 			"path": "research/tests/test_body_skeleton_sequence.py",
-			"bytes": 3112,
-			"sha256": "62128ddb120230c955357b4af63d8eb6bc30160d1e64e93815ddb043e49a222d"
+			"bytes": 5341,
+			"sha256": "383e504dd5e94ff8cc58b9a99048d6460b1d0141322e775e976187ab7c387c0c"
 		},
 		{
 			"path": "research/tests/test_body_skeleton_tracking_box.py",
@@ -2354,13 +2354,13 @@
 		},
 		{
 			"path": "research/tests/test_body_smart_sequence.py",
-			"bytes": 6858,
-			"sha256": "101e5ec85592f70a1359e2faa661e46479bbf85b9c10331b15f40ed6a7d5595e"
+			"bytes": 11741,
+			"sha256": "e0f841787fdd03e2d80ccf45949a4a8ff01cd5e1a218437cf0673de6c40dbe77"
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
-			"bytes": 17222,
-			"sha256": "0b7e9703330f8cee9e9653a1b94cdeb0334e4a595877d67f1c9259d303e753e8"
+			"bytes": 17386,
+			"sha256": "111a9ea219e50b923ebd255a9cb24ad34fd8d45cb03ec4b56b8b7a506e33f2e2"
 		},
 		{
 			"path": "research/tests/test_manual_body_zoom_geometry.py",
@@ -2374,8 +2374,8 @@
 		},
 		{
 			"path": "research/body_sequence_checkpoint.py",
-			"bytes": 5839,
-			"sha256": "ad7e18cb1c89b011b6b531016dfce90a8c8b0c70d757d51fb29aeefec45b9567"
+			"bytes": 5902,
+			"sha256": "10e938e8eddd451e60549c901d00b172edf0c39022e3ab95568962a6ef0bca93"
 		},
 		{
 			"path": "research/independent_sequence_sessions.py",
@@ -2384,8 +2384,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_checkpoint.py",
-			"bytes": 21181,
-			"sha256": "09f77aba6f7287a7f15fa7f83384d7a9078d3db74cbbceef913a7f4f975c5e76"
+			"bytes": 27731,
+			"sha256": "5af38e2bec8fa28a11a12579d31558a51ef11abfdf223270cf72ccc965691931"
 		},
 		{
 			"path": "research/tests/test_independent_sequence_sessions.py",
@@ -2394,8 +2394,8 @@
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
-			"bytes": 5203,
-			"sha256": "2015e2cfbedb4677915349c0f4fbba5fb20ae52c47c993002dc5e49dfc6e79e0"
+			"bytes": 5645,
+			"sha256": "3e8c4ee4ecafadbaef394da9c5e18fdbdadf8f9349ad5d165c63cfe6c3a4eba0"
 		},
 		{
 			"path": "research/body_face_matching.py",
@@ -2414,8 +2414,8 @@
 		},
 		{
 			"path": "research/body_face_slots.py",
-			"bytes": 1604,
-			"sha256": "e5f05b0454792bf5f34048d14094a9c7e82b7078c6f39cbe5febd4bb6aa01e64"
+			"bytes": 2035,
+			"sha256": "e9939c242fbe5a1610bed8cead66814b0e1c76f6907a2a02eb1f6d5447af8085"
 		},
 		{
 			"path": "research/body_face_duplicates.py",
@@ -2431,6 +2431,156 @@
 			"path": "research/tests/test_body_face_duplicates.py",
 			"bytes": 4292,
 			"sha256": "dca51c98e73944cedc9002b515f966627b82199225e8a28ffca9fbe9877e14f3"
+		},
+		{
+			"path": "research/body_composition/native_video.py",
+			"bytes": 2788,
+			"sha256": "2d3031918fc673a75c64206292ec626c15931eab05b2aeee18419e19b0b9b781"
+		},
+		{
+			"path": "research/body_composition/vertex_history.py",
+			"bytes": 1423,
+			"sha256": "e52f04724135a101f7b6df41cc96680963c19d3ea57dbc740d64aaab5a36886b"
+		},
+		{
+			"path": "research/tests/test_body_composition_absent.py",
+			"bytes": 5779,
+			"sha256": "e9defae5f3476beb51405d69b5829a75480084272234f695184d628d51a7ce8c"
+		},
+		{
+			"path": "research/tests/test_body_composition_native_video.py",
+			"bytes": 7066,
+			"sha256": "e39f6cb6e3cd29366077b41e060e4422d98b4d7e99e5e50fd1f91695121a68fb"
+		},
+		{
+			"path": "research/tests/test_body_vertex_history.py",
+			"bytes": 4593,
+			"sha256": "303942a73740ab1f5ccb4a0b484d7b98be180d75a03c681bb3267addc7224402"
+		},
+		{
+			"path": "research/tests/test_body_sequence_checkpoint_compatibility.py",
+			"bytes": 2757,
+			"sha256": "33eecc296ebbe97ea0f367a18ad8853105b292c0c010943b066bfe28dcd90ea0"
+		},
+		{
+			"path": "research/body_composition/native_reset.py",
+			"bytes": 3202,
+			"sha256": "42f299df194cc4fed47608343add812207b4cd5049045609a01ad691e6a013f4"
+		},
+		{
+			"path": "research/body_control_events.py",
+			"bytes": 2228,
+			"sha256": "a76e26fb50bd1922ee139460d67e484f30bbfda99ac8d5a0cb1859f2a9f6dae5"
+		},
+		{
+			"path": "research/tests/test_body_control_events.py",
+			"bytes": 7644,
+			"sha256": "68f93a6102bf31ca8cd1c9f2a00361a39a831995af16f1225bca7dc032a2efc6"
+		},
+		{
+			"path": "research/tests/test_body_native_reset_fields.py",
+			"bytes": 6036,
+			"sha256": "d4f32c39aa3951ee3466ac21b0e04856a16cbaf355b65cde0147d465bea0dfe3"
+		},
+		{
+			"path": "research/tests/test_body_sequence_native_reset.py",
+			"bytes": 10591,
+			"sha256": "efd40658d698b6c5bcca118711d877eaffe301706d65084b90686c07acea1661"
+		},
+		{
+			"path": "research/alignment_ordinary_sampling.py",
+			"bytes": 1241,
+			"sha256": "54b70ca38bfb715b6c813893fd7487fceb710bb50774c5b67519c7b511a52eaf"
+		},
+		{
+			"path": "research/body_algorithm_size.py",
+			"bytes": 1590,
+			"sha256": "180e424dd81ee91a7a4c6e724b87902c9a0ca98417907c984001ed2cf3fc2df7"
+		},
+		{
+			"path": "research/body_composition/joint_groups.py",
+			"bytes": 560,
+			"sha256": "5e65ff8e78a1666d14201cdc158d66a03a9c16a4ba19e91524e606fb614532ba"
+		},
+		{
+			"path": "research/body_composition/segmentation_mask.py",
+			"bytes": 1561,
+			"sha256": "f07f645c9caee58326b6ce167b4f31a0c05961cb29cd86e8a6f8db1341cc5e2b"
+		},
+		{
+			"path": "research/body_skeleton_identity.py",
+			"bytes": 449,
+			"sha256": "b8027a46ebc5289ade147f02199a75ec374ea926bcd6b50e1e9f22449e939c09"
+		},
+		{
+			"path": "research/tests/test_alignment_ordinary_sampling.py",
+			"bytes": 2830,
+			"sha256": "a5e5c13ec4c28e205b696a8da9d5b5507794d9ce023c2ffce95ce95a6abe1158"
+		},
+		{
+			"path": "research/tests/test_body_algorithm_size.py",
+			"bytes": 3603,
+			"sha256": "9f0aee989fa898c1ed197c2b5404c240f057d7b15a7237cd79b37951fada9f79"
+		},
+		{
+			"path": "research/tests/test_body_face_resize.py",
+			"bytes": 9157,
+			"sha256": "35d41bdb433a2cc03263b9897db4f9c56b8baf02b89c53e5314a9422d3ec2a72"
+		},
+		{
+			"path": "research/tests/test_body_joint_groups.py",
+			"bytes": 2694,
+			"sha256": "4169fb28c6f66d758a002ad0478dbb5783cecfe1a0d66b8ad2dc52067ee0f64d"
+		},
+		{
+			"path": "research/tests/test_body_neck_degenerate.py",
+			"bytes": 2184,
+			"sha256": "0121cd0e90e01e3d68b185fff298c9c0e0642176b40eab1fd4e8c7c861adf5d7"
+		},
+		{
+			"path": "research/tests/test_body_segmentation_mask.py",
+			"bytes": 6493,
+			"sha256": "14a70c5550f3c7f65c5ff7978fd30ba96e623635d3ae7545c0b6a1eaeda2224b"
+		},
+		{
+			"path": "research/tests/test_body_sequence_render.py",
+			"bytes": 10627,
+			"sha256": "cb123351d4f64513fd0b26c10061b80e8c5119950c1836869316d20b7c102233"
+		},
+		{
+			"path": "research/tests/test_body_sequence_resize_checkpoint.py",
+			"bytes": 7376,
+			"sha256": "1996cd7b8f81f471c150e5efe018fee1ad92c604afd8f570ac579fa7e267435f"
+		},
+		{
+			"path": "research/tests/test_body_skeleton_identity.py",
+			"bytes": 2892,
+			"sha256": "bfdb9cbdd6b452b90bc4f1947bb66aeddf2a5819f1ea7b840571359108b50946"
+		},
+		{
+			"path": "research/detection_resize.py",
+			"bytes": 1978,
+			"sha256": "42b912b2d6ca3b5c7f2e41e258b27e69cf80fab19ce756dc12fea308e01f8fc6"
+		},
+		{
+			"path": "research/tests/test_body_algorithm_raster.py",
+			"bytes": 2141,
+			"sha256": "617248ebc29bb21812c1b7b29a6c9438dd9044bc24adf91b0817003ba43db557"
+		},
+		{
+			"path": "research/tests/test_detection_resize.py",
+			"bytes": 2627,
+			"sha256": "d380ec85ca657297402bbe8aeee2a8b4fcc4585caaaa2e949c4c785d06a91474"
+		},
+		{
+			"path": "research/detection_order.py",
+			"bytes": 7514,
+			"sha256": "0f49850bce53f126cf2f744698b02d14d5187740a625c89b854f72b71efbbefd"
+		},
+		{
+			"path": "research/tests/test_detection_order.py",
+			"bytes": 4496,
+			"sha256": "dff8a56f7c53921cc2e54a7ff72f4df719ec0d54b82e5f0a188b41eac1668686"
 		}
 	],
 	"importPatches": [
@@ -3088,6 +3238,137 @@
 				"research/tests/test_body_video_face_sequence.py"
 			],
 			"reason": "Restore the pinned native five-slot video face lifecycle: independent slot histories, retained-face matching, cold detector-index allocation and recovery first-free allocation, monotonic IDs, native detection cadence, delayed publication of 160-only seeds, current-ID output order, and ordered FilterDup suppression. Optional exact classification terminals preserve native float32 FMA and scalar softmax order for video gates and duplicate confidence without changing default photo heads. Checkpoint v2 captures all five slot histories without model handles and reattaches shared models on restore. Regression coverage includes active recovery, slot loss and reentry, duplicate boundaries, classifier terminals, and checkpoint continuation. The body renderer remains a single-body profile; private model weights, original libraries, probe captures, and runtime assets remain private and unchanged."
+		},
+		{
+			"files": [
+				"research/body_composition/head/face_selection.py",
+				"research/body_composition/head/producer.py",
+				"research/body_composition/hip_breast/breast_state.py",
+				"research/body_composition/hip_breast/public_basis.py",
+				"research/body_composition/longleg_state.py",
+				"research/body_composition/native_video.py",
+				"research/body_composition/persistent.py",
+				"research/body_composition/pipeline.py",
+				"research/body_composition/public_descriptor.py",
+				"research/body_composition/vertex_history.py",
+				"research/body_composition/widen_shoulder/temporal_geometry.py",
+				"research/body_mesh_grid.py",
+				"research/body_mesh_metal.swift",
+				"research/body_mesh_renderer.py",
+				"research/body_smart_sequence.py",
+				"research/tests/test_body_composition_absent.py",
+				"research/tests/test_body_composition_native_video.py",
+				"research/tests/test_body_composition_persistent.py",
+				"research/tests/test_body_sequence_checkpoint.py",
+				"research/tests/test_body_sequence_isolation.py",
+				"research/tests/test_body_sequence_scenarios.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_vertex_history.py"
+			],
+			"reason": "Restore native missing-body per-frame advancement: preserve skeleton history while descriptor intensities and deformation caches continue, render retained residual geometry, and apply native face selection when the body or face result is empty. Add the pinned video component input type 0, fixed 60-column/75-row mesh, hard-reset descriptor sentinels, native reliability weighting, long-leg state inputs, and per-vertex SmallHead/SlimHip/SlimArm temporal accumulation. Use native float texture sampling with unflipped source pixels and fragment UV-Y inversion. Preserve native control-value and explicit reapply events, including pending vertex-history invalidation across inactive frames and checkpoints. Cover absent-body cancellation, render failure, decay/reentry, and checkpoint continuation with both persistent and native video profiles. Stateless photo profile and manual-body scope remain separate. Private models, binaries, native captures, and runtime asset rows remain unchanged."
+		},
+		{
+			"files": [
+				"research/body_composition/native_video.py",
+				"research/body_composition/persistent.py",
+				"research/body_composition/vertex_history.py",
+				"research/body_sequence_checkpoint.py",
+				"research/body_smart_sequence.py",
+				"research/tests/test_body_composition_native_video.py",
+				"research/tests/test_body_sequence_checkpoint.py",
+				"research/tests/test_body_sequence_checkpoint_compatibility.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_vertex_history.py"
+			],
+			"reason": "Restore native timestamp-driven component input types: first-frame mode 1, mode 0 above a 0.01-second interval, and mode 2 at or below that interval, including native per-vertex history reset gates. Reject intervals above 0.1 seconds before advancing state and require replay. Bump body-session snapshot schema to v3 because the former mode-2 geometry profile and its cached mesh cannot resume in the native 60-column/75-row video profile; refuse v2 snapshots before any session restart, loaded-model change, history mutation, or clock change. Add an independent compatibility regression and refresh timestamp-boundary tests. Preserve all prior import provenance and all private runtime asset rows unchanged."
+		},
+		{
+			"files": [
+				"research/body_composition/native_reset.py",
+				"research/body_composition/native_video.py",
+				"research/body_composition/persistent.py",
+				"research/body_composition/vertex_history.py",
+				"research/body_control_events.py",
+				"research/body_sequence_checkpoint.py",
+				"research/body_smart_sequence.py",
+				"research/tests/test_body_composition_native_video.py",
+				"research/tests/test_body_control_events.py",
+				"research/tests/test_body_native_reset_fields.py",
+				"research/tests/test_body_sequence_checkpoint.py",
+				"research/tests/test_body_sequence_checkpoint_compatibility.py",
+				"research/tests/test_body_sequence_isolation.py",
+				"research/tests/test_body_sequence_native_reset.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_vertex_history.py"
+			],
+			"reason": "Restore native missing-body per-frame descriptor and deformation advancement, residual rendering, empty-face selection, the fixed 60-column/75-row video mesh, native descriptor/long-leg/reliability inputs, and SmallHead/SlimHip/SlimArm vertex histories. Preserve native float texture sampling with unflipped source pixels and fragment UV-Y inversion. Extend the video profile with absolute timestamp-driven component input modes and exact warm IMAGE resets, preserving perception, strengths, retained-but-uninitialized vertex filter storage and shoulder counters according to native virtual-reset fields rather than rebuilding the session. Add Python-only ordered RESET_PARAMS/set_control events, with complete validation before mutation, native clock reset and same-value reapply semantics; submission frame order remains independent of repeated, reversed or jumping finite nonnegative timestamps. Snapshot v4 captures the native effect clock and filter initialized state and rejects older incompatible schemas before session mutation. Cover control order, absence/reentry, warm-reset field retention, cancellation/render failure, and exact checkpoint replay. Existing worker/Electron event transport and cache contracts remain closed to these Python-only events. Stateless photo and manual-body scope remain separate. Private models, binaries, captures, imported sourceSha256 provenance, and all runtime asset rows remain unchanged."
+		},
+		{
+			"files": [
+				"research/alignment_ordinary_sampling.py",
+				"research/alignment_sampling.py",
+				"research/alignment_sequence.py",
+				"research/body_algorithm_size.py",
+				"research/body_composition/hip_breast/public_basis.py",
+				"research/body_composition/joint_groups.py",
+				"research/body_composition/native_video.py",
+				"research/body_composition/neck/geometry.py",
+				"research/body_composition/persistent.py",
+				"research/body_composition/pipeline.py",
+				"research/body_composition/public_descriptor.py",
+				"research/body_composition/segmentation_mask.py",
+				"research/body_composition/widen_shoulder/geometry.py",
+				"research/body_composition/widen_shoulder/history.py",
+				"research/body_composition/widen_shoulder/temporal_geometry.py",
+				"research/body_face_slots.py",
+				"research/body_face_start.py",
+				"research/body_mesh_renderer.py",
+				"research/body_sequence_checkpoint.py",
+				"research/body_sequence_render.py",
+				"research/body_skeleton_decode.py",
+				"research/body_skeleton_identity.py",
+				"research/body_skeleton_sequence.py",
+				"research/body_smart_sequence.py",
+				"research/body_video_face_sequence.py",
+				"research/detection_geometry.py",
+				"research/face_detection.py",
+				"research/tests/test_alignment_ordinary_sampling.py",
+				"research/tests/test_body_algorithm_size.py",
+				"research/tests/test_body_face_resize.py",
+				"research/tests/test_body_joint_groups.py",
+				"research/tests/test_body_native_reset_fields.py",
+				"research/tests/test_body_neck_degenerate.py",
+				"research/tests/test_body_segmentation_mask.py",
+				"research/tests/test_body_sequence_checkpoint.py",
+				"research/tests/test_body_sequence_checkpoint_compatibility.py",
+				"research/tests/test_body_sequence_render.py",
+				"research/tests/test_body_sequence_resize_checkpoint.py",
+				"research/tests/test_body_sequence_scenarios.py",
+				"research/tests/test_body_skeleton_identity.py",
+				"research/tests/test_body_skeleton_sequence.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_video_face_sequence.py"
+			],
+			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source."
+		},
+		{
+			"files": [
+				"research/body_mesh_renderer.py",
+				"research/detection_geometry.py",
+				"research/detection_resize.py",
+				"research/tests/test_body_algorithm_raster.py",
+				"research/tests/test_detection_resize.py"
+			],
+			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source.\nRestore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality."
+		},
+		{
+			"files": [
+				"research/detection_order.py",
+				"research/face_detection.py",
+				"research/tests/test_detection_order.py",
+				"research/vendor/face_detector.py"
+			],
+			"reason": "Restore the native default single-target multi-person seed and identity lifecycle, strict in-frame Public joint groups, SwanNeck degenerate-radius gating, and the ordinary video-face affine sampler. Implement live source/algorithm resize using the two native float32 dimension fits, skeleton reseeding, retained face identity and tracking filters, native Base/pose reinitialization and recovery detection order. Support explicit MattingResult byte masks in the verified WidenShoulder branch, native sampling and temporal weights, warm-reset mask retention, bounded offline mask PNG inputs and ordered control events. Advance snapshot format to version 5 with exact resize/mask/cancellation continuation tests. Preserve photo sampler defaults, imported source provenance, all private asset rows, models and binaries. No models or native captures are added to source.\nRestore the observed GL_TRIANGLE_FAN diagonal for explicitly sized video algorithm images while retaining the existing photo quad, and the native detector resize float32 reciprocal/FMA coordinate order with seven-bit separable truncation. Cover odd aspect ratios and preserve the distinction between rendered pixels, perception coordinates and intermediate mesh equality.\nRestore the pinned detector's score-only full sort and heap partial_sort, including exact equal-score proposal swaps and the count >= 1500 branch. Independent synthetic native oracles cover both complete ordering algorithms; no area, coordinate or stable-order substitute is used for tied proposals. The detector metadata now states the verified policy."
 		}
 	],
 	"sourceWorkingTreeStatus": [
