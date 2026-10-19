@@ -2,7 +2,7 @@
 import numpy as np
 
 from algorithm_frame import resize_rgba, validate_frame
-from vendor.espresso_preprocess_probe import separable_bilinear_truncating
+from detection_resize import resize_bgr
 
 
 def algorithm_size(*, size):
@@ -17,9 +17,10 @@ def algorithm_size(*, size):
     return result
 
 
-def detector_size(*, size):
+def detector_size(*, size, maximum_edge=640):
     if (not isinstance(size, tuple) or len(size) != 2
-            or any(type(side) is not int or not 16 <= side <= 640 for side in size)):
+            or type(maximum_edge) is not int or maximum_edge not in (640, 1280)
+            or any(type(side) is not int or not 16 <= side <= maximum_edge for side in size)):
         raise ValueError("bounded algorithm image dimensions required")
     short, long = min(size), max(size)
     scaled = int(np.float32(long) * np.float32(320 / short))
@@ -33,15 +34,18 @@ def detector_size(*, size):
     return target, scales
 
 
-def prepare_detection(*, rgba):
+def prepare_detection(*, rgba, prepared_algorithm=False):
     if not isinstance(rgba, np.ndarray) or rgba.ndim != 3:
         raise ValueError("packed RGBA photo required")
-    size = algorithm_size(size=(rgba.shape[1], rgba.shape[0]))
+    if type(prepared_algorithm) is not bool:
+        raise ValueError('explicit algorithm-image policy required')
+    size = ((rgba.shape[1], rgba.shape[0]) if prepared_algorithm
+            else algorithm_size(size=(rgba.shape[1], rgba.shape[0])))
     validate_frame(frame=rgba, size=size)
-    algorithm = resize_rgba(frame=rgba, size=size)
+    target, scales = detector_size(size=size, maximum_edge=1280 if prepared_algorithm else 640)
+    algorithm = rgba if prepared_algorithm else resize_rgba(frame=rgba, size=size)
     bgr = np.ascontiguousarray(algorithm[:, :, :3][:, :, ::-1])
-    target, scales = detector_size(size=size)
-    prepared = separable_bilinear_truncating(bgr.astype(np.float64), *target).astype(np.uint8)
+    prepared = resize_bgr(pixels=bgr, size=target)
     tensor = (prepared.astype(np.int16) - 128).astype(np.int8)[None]
     return {"algorithm": algorithm, "source": bgr, "prepared": prepared, "tensor": tensor,
             "algorithm_size": size, "network_size": target, "scales": scales}
