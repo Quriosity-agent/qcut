@@ -45,11 +45,13 @@ untouched 这一路没有 composition plan，预览走普通 video 路径，没�
 
 ## 3. 代码发现与修复
 
-### 3.1 计算进行中 worker 丢失会让导出失败（已修，E2E 已证明，见 §4.4）
+### 3.1 计算进行中 worker 丢失会让导出失败（历史 E2E 与后续管道竞态回归）
 
 阅读 `beauty-lab-independent-worker.ts`：常驻 worker 退出时，**正在处理的请求被以通用错误拒绝**，下一次请求才会懒启动新 worker；`beauty-lab-independent-body-video.ts` 只把 `IndependentSequenceGapError` 转成 `replay`，其它错误直接抛出 → 导出中断。原有 E2E 的杀进程发生在导出完成之后，所以没覆盖到。
 
 修复：worker 模块新增 `IndependentWorkerExitedError`（区分「自己死掉」与「有原因的 stop」）；会话渲染器在收到该错误时**重提交一次**——新 worker 没有会话历史，会按既有协议回复 gap → `replay`，渲染端已经会从检查点重放。连续两次死亡原样抛出。单测：`beauty-lab-independent-worker.test.ts`、`beauty-lab-independent-body-video.test.ts`。
+
+合并后审计补充：已完成一帧后 worker 死亡，下一次 stdin 写入的 `EPIPE`／`ERR_STREAM_DESTROYED` 可能先于 exit 事件到达。旧实现把这条路径记为通用错误，导致上述重提交分支失效；当前把这两种断管错误也归为 `IndependentWorkerExitedError`，不依赖 error／exit 的先后顺序。已记录的主动取消、超时或无效响应仍保留原失败原因，其它管道错误不转为可重试退出。新增回归覆盖两种事件顺序、仅 close 无 exit，以及停止原因的保留；这项修复没有重新执行 §4.4 的 180 帧 E2E。
 
 ### 3.2 harness 的坑
 
@@ -162,7 +164,9 @@ untouched 这一路没有 composition plan，预览走普通 video 路径，没�
 
 单测 `independent-body-video.test.ts` 新增"File 重建后身份不变"与"加载器规范化后身份不变"（用真实 `normalizeMediaElement` round-trip）两例，修前都失败。close E2E 的重启阶段新增 `restart_session_reused`（会话目录只有一个），并把 Electron 意外退出的 code/signal/时间记进 evidence。
 
-评审补充：重链接保留媒体 id，字节长度也可能不变，所以片段身份另加了媒体内容指纹（字节长度 + 文件首尾各 1 MiB 的 SHA-256，按 File 对象记忆化）；重开工程字节不变、身份不变，换成等长的另一个文件则换会话、旧检查点不再被复用（`independent-body-video.test.ts` 有等长重链接与仅尾部改变两例）。
+历史评审补充：当时为重链接增加了字节长度及文件首尾各 1 MiB 的 SHA-256 采样指纹，并按 `File` 对象记忆化。原有等长重链接与仅尾部改变两例能够区分对应素材，但不能证明任意内容变化都会换会话；合并后审计复现了同大小、首尾不变、仅中段变化的碰撞，旧方案会误用另一文件的历史。
+
+当前修复：身份 schema 升为 4，复用 `sha256Blob` 以最多 4 MiB 分块读取完整内容并计算 SHA-256。`WeakMap<File, Promise<string>>` 共享并发和重复请求；读取失败后移除失败的 promise，允许重试。前端 16 项测试与共享哈希 3 项测试通过，新增覆盖中段独变、分块读取／缓存共享和失败重试。该补充是代码回归结果，没有新增 180 帧产品 E2E 或复用旧 E2E 的性能数字。
 
 ## 5. 结论
 
