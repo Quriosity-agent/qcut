@@ -9,16 +9,16 @@ import type {
 	StickerElement,
 } from "@/types/timeline";
 import { DEFAULT_MEDIA_ENHANCEMENTS } from "@/lib/video/video-properties";
+import { normalizeMediaColorSettings } from "@/lib/color/color-properties";
 import {
-	buildLegacyColorAdjustments,
-	normalizeMediaColorSettings,
-} from "@/lib/color/color-properties";
-import {
-	mergeMediaColorSettings,
+	assertAdjustmentsPatchInRange,
+	assertColorPatchInRange,
+	mergeGradePatch,
 	readMediaAdjustmentsPatch,
 } from "@/lib/color/color-settings-merge";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
+import { buildLegacyAudioFields } from "@/lib/audio/audio-properties";
 import { resolveClaudePlacement } from "./claude-placement";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
@@ -352,10 +352,18 @@ export const applyElementChanges = ({
 		) {
 			throw new Error("color must be an object (a partial colour grade)");
 		}
+		if (colorPatch !== undefined) {
+			assertColorPatchInRange({
+				patch: colorPatch as Record<string, unknown>,
+			});
+		}
 		const adjustmentsPatch =
 			element.type === "media" && changes.adjustments !== undefined
 				? readMediaAdjustmentsPatch({ value: changes.adjustments })
 				: undefined;
+		if (adjustmentsPatch !== undefined) {
+			assertAdjustmentsPatchInRange({ patch: adjustmentsPatch });
+		}
 
 		// The move goes first because the store may refuse it (a locked track
 		// or an occupied span); a refused move must fail the update before any
@@ -541,36 +549,30 @@ export const applyElementChanges = ({
 			}
 			if (parsedAudio !== undefined) {
 				mediaUpdates.audio = parsedAudio;
+				// The legacy fields (volume, fades, …) are normally mirrored from
+				// the settings only when a project loads; the editor-API native
+				// export reads them, so a gain patched here must land in both
+				// representations immediately (问题记录 Q7/问题 2).
+				Object.assign(
+					mediaUpdates,
+					buildLegacyAudioFields({ settings: parsedAudio })
+				);
 			}
 			if (parsedFilterStack !== undefined) {
 				mediaUpdates.filterStack = parsedFilterStack;
 			}
 			if (colorPatch !== undefined || adjustmentsPatch !== undefined) {
-				const current = normalizeMediaColorSettings({ element });
-				const merged = mergeMediaColorSettings({
-					current,
-					patch: {
-						...((colorPatch as Record<string, unknown>) ?? {}),
-						...(adjustmentsPatch
-							? {
-									basic: {
-										...(((colorPatch as Record<string, unknown>)?.basic as
-											| Record<string, unknown>
-											| undefined) ?? {}),
-										...adjustmentsPatch,
-									},
-								}
-							: {}),
-					},
+				// When one payload carries both representations (a timeline export
+				// does), `color.basic` is the source of truth and `adjustments` is
+				// its legacy mirror — mergeGradePatch applies the read-side
+				// precedence and regenerates the mirror from the merged grade.
+				const graded = mergeGradePatch({
+					current: normalizeMediaColorSettings({ element }),
+					colorPatch: colorPatch as Record<string, unknown> | undefined,
+					adjustmentsPatch,
 				});
-				const next = normalizeMediaColorSettings({
-					element: { color: merged },
-				});
-				mediaUpdates.color = next;
-				// The legacy mirror of `color.basic`, kept in step like the panel does.
-				mediaUpdates.adjustments = buildLegacyColorAdjustments({
-					settings: next,
-				});
+				mediaUpdates.color = graded.color;
+				mediaUpdates.adjustments = graded.adjustments;
 			}
 			if (Object.keys(mediaUpdates).length > 0) {
 				timelineStore.updateMediaElement(
@@ -585,6 +587,9 @@ export const applyElementChanges = ({
 		if (element.type === "adjustment") {
 			const adjustmentUpdates = getClaudeAdjustmentFields({
 				element: changes as Partial<ClaudeElement> & Record<string, unknown>,
+				// Updates merge into the layer's current grade; creation (the
+				// add path) completes a partial grade from defaults instead.
+				current: element,
 			});
 			if (Object.keys(adjustmentUpdates).length > 0) {
 				timelineStore.updateAdjustmentElement(
