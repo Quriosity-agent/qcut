@@ -147,6 +147,45 @@ describe("planar tracking analyzer", () => {
 		);
 	});
 
+	it("finishes every chunk before resolving the digest", async () => {
+		const chunkSize = 4 * 1024 * 1024;
+		const bytes = new Uint8Array(2 * chunkSize + 17);
+		bytes.fill(0x61, 0, chunkSize);
+		bytes.fill(0x62, chunkSize, 2 * chunkSize);
+		bytes.fill(0x63, 2 * chunkSize);
+		const blob = new Blob([bytes]);
+		const slices = vi.spyOn(blob, "slice");
+		const onProgress = vi.fn();
+		await expect(sha256Blob({ blob, onProgress })).resolves.toBe(
+			"2bca1f35ea844efea9896bebca6f6b05f885f643216084363270f663f5b10045"
+		);
+		expect(slices.mock.calls).toEqual([
+			[0, chunkSize],
+			[chunkSize, 2 * chunkSize],
+			[2 * chunkSize, bytes.length],
+		]);
+		expect(onProgress.mock.calls).toEqual([
+			[chunkSize / bytes.length],
+			[(2 * chunkSize) / bytes.length],
+			[1],
+		]);
+	});
+
+	it("stops reading later chunks after cancellation", async () => {
+		const chunkSize = 4 * 1024 * 1024;
+		const blob = new Blob([new Uint8Array(chunkSize + 1)]);
+		const slices = vi.spyOn(blob, "slice");
+		const controller = new AbortController();
+		await expect(
+			sha256Blob({
+				blob,
+				signal: controller.signal,
+				onProgress: () => controller.abort(),
+			})
+		).rejects.toMatchObject({ name: "AbortError" });
+		expect(slices.mock.calls).toEqual([[0, chunkSize]]);
+	});
+
 	it("tracks both directions, stops at loss, and emits a valid ordered sidecar", async () => {
 		const frameSource = new FakeFrameSource();
 		const tracker = new FakeTracker();
