@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CanvasCompositionPreviewPlan } from "@/lib/preview/canvas-composition-frame";
+import type { CanvasPlaybackPreparationMetrics } from "@/lib/preview/canvas-composition-playback-preparation";
 import {
-	prepareCanvasPlaybackFrames,
-	type CanvasPlaybackPreparationMetrics,
-} from "@/lib/preview/canvas-composition-playback-preparation";
+	createCanvasPlaybackStream,
+	type CanvasPlaybackStream,
+	type CanvasPlaybackStreamStats,
+} from "@/lib/preview/canvas-composition-playback-stream";
 export type { CanvasPlaybackPreparationMetrics } from "@/lib/preview/canvas-composition-playback-preparation";
 import {
 	createCanvasPlaybackCache,
@@ -21,9 +23,11 @@ export interface CanvasPlaybackSession {
 	plan: CanvasCompositionPreviewPlan;
 	frames: number;
 	generation: string;
+	stream?: CanvasPlaybackStream;
 }
 
 interface PreparationRequest {
+	projectId: string;
 	plan: CanvasCompositionPreviewPlan;
 	frames: number;
 	backgroundColor?: string;
@@ -39,20 +43,28 @@ interface PreparationResult {
 	error?: string;
 	warning?: string;
 	metrics?: CanvasPlaybackPreparationMetrics;
+	window?: CanvasPlaybackStreamStats;
 }
 
-async function disposePlaybackCache({
-	cache,
-}: {
-	cache?: CanvasPlaybackCache;
-}) {
-	try {
-		await cache?.dispose();
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.warn("[effect-playback] Cache cleanup failed:", error);
-		return message;
-	}
+const cacheCleanup = new WeakMap<
+	CanvasPlaybackCache,
+	Promise<string | undefined>
+>();
+
+function disposePlaybackCache({ cache }: { cache?: CanvasPlaybackCache }) {
+	if (!cache) return Promise.resolve(undefined);
+	const existing = cacheCleanup.get(cache);
+	if (existing) return existing;
+	const operation = cache.dispose().then(
+		() => undefined,
+		(error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			console.warn("[effect-playback] Cache cleanup failed:", error);
+			return message;
+		}
+	);
+	cacheCleanup.set(cache, operation);
+	return operation;
 }
 
 function playbackCacheWarning({
@@ -102,24 +114,41 @@ export function useCanvasPlaybackPreview({
 			return null;
 		const frames = Math.ceil(totalDuration * plan.fps - 1e-6);
 		if (frames < 1) return null;
-		return { plan, frames, backgroundColor, revision };
+		return { projectId, plan, frames, backgroundColor, revision };
 	}, [enabled, plan, projectId, totalDuration, backgroundColor, revision]);
 	const latestRequest = useRef(request);
 	latestRequest.current = request;
 	const controllerRef = useRef<AbortController | null>(null);
 	const tail = useRef<Promise<void>>(Promise.resolve());
 	const cacheRef = useRef<CanvasPlaybackCache | null>(null);
+	const streamRef = useRef<CanvasPlaybackStream | null>(null);
+	const activeProject = useRef<string | null>(null);
+	const targetRef = useRef<{
+		request: PreparationRequest;
+		time: number;
+	} | null>(null);
 	const [result, setResult] = useState<PreparationResult | null>(null);
-	const cancel = useCallback(() => {
+	const stop = useCallback(() => {
 		if (controllerRef.current && usePlaybackStore.getState().isPlaying)
 			usePlaybackStore.getState().pause();
 		controllerRef.current?.abort();
 		controllerRef.current = null;
-		setResult(null);
 		const cache = cacheRef.current;
+		const stream = streamRef.current;
 		cacheRef.current = null;
-		if (cache) void disposePlaybackCache({ cache });
+		streamRef.current = null;
+		tail.current = tail.current
+			.catch(() => {})
+			.then(async () => {
+				await stream?.dispose();
+				await disposePlaybackCache({ cache: cache ?? undefined });
+			});
 	}, []);
+	const cancel = useCallback(() => {
+		activeProject.current = null;
+		stop();
+		setResult(null);
+	}, [stop]);
 	useEffect(() => {
 		// These stores are consulted by the export compositor outside its track snapshot.
 		const invalidate = () => {
@@ -169,95 +198,181 @@ export function useCanvasPlaybackPreview({
 	}, []);
 	useEffect(() => {
 		if (!request) return;
-		return () => {
-			if (controllerRef.current && usePlaybackStore.getState().isPlaying)
-				usePlaybackStore.getState().pause();
-			controllerRef.current?.abort();
-			controllerRef.current = null;
-			const cache = cacheRef.current;
-			cacheRef.current = null;
-			if (cache) void disposePlaybackCache({ cache });
-		};
-	}, [request]);
-	const prepare = useCallback(() => {
-		if (!request) return;
-		cancel();
-		usePlaybackStore.getState().pause();
-		const controller = new AbortController();
-		controllerRef.current = controller;
-		const generation = crypto.randomUUID();
-		const update = (
-			state: Omit<PreparationResult, "request" | "generation">
-		) => {
-			if (controller.signal.aborted || latestRequest.current !== request)
-				return;
-			setResult({ request, generation, ...state });
-		};
-		update({ status: "preparing", completed: 0 });
-		tail.current = tail.current
-			.catch(() => {})
-			.then(async () => {
-				const started = performance.now();
-				let cache: CanvasPlaybackCache | undefined;
-				try {
-					controller.signal.throwIfAborted();
-					cache = await createCanvasPlaybackCache();
-					controller.signal.throwIfAborted();
-					cacheRef.current = cache;
-					const metrics = await prepareCanvasPlaybackFrames({
-						plan: request.plan,
-						backgroundColor: request.backgroundColor,
-						frames: request.frames,
-						cache,
-						signal: controller.signal,
-						onProgress: ({ completed, metrics }) => {
+		return stop;
+	}, [request, stop]);
+	const beginPreparation = useCallback(
+		({ preserveSeek }: { preserveSeek: boolean }) => {
+			if (!request || suspended) return;
+			if (!preserveSeek || targetRef.current?.request !== request) {
+				const playback = usePlaybackStore.getState();
+				targetRef.current = {
+					request,
+					time: playback.previewScrubTime ?? playback.currentTime,
+				};
+			}
+			stop();
+			activeProject.current = request.projectId;
+			usePlaybackStore.getState().pause();
+			const controller = new AbortController();
+			controllerRef.current = controller;
+			const generation = crypto.randomUUID();
+			const update = (
+				state: Omit<PreparationResult, "request" | "generation">
+			) => {
+				if (controller.signal.aborted || latestRequest.current !== request)
+					return;
+				setResult({ request, generation, ...state });
+			};
+			update({ status: "preparing", completed: 0 });
+			tail.current = tail.current
+				.catch(() => {})
+				.then(async () => {
+					let cache: CanvasPlaybackCache | undefined;
+					let stream: CanvasPlaybackStream | undefined;
+					let session: CanvasPlaybackSession | undefined;
+					const publish = () => {
+						if (!stream || controller.signal.aborted) return;
+						if (stream.error) {
+							if (!session) return;
 							update({
-								status: "preparing",
-								completed,
-								metrics: {
-									...metrics,
-									wallMs: performance.now() - started,
-								},
-								warning: playbackCacheWarning({ cache }),
+								status: "error",
+								completed: 0,
+								error: stream.error.message,
 							});
-						},
-					});
-					controller.signal.throwIfAborted();
-					update({
-						status: "ready",
-						completed: request.frames,
-						metrics: { ...metrics, wallMs: performance.now() - started },
-						warning: playbackCacheWarning({ cache }),
-						session: {
+							activeProject.current = null;
+							controller.abort();
+							void stream.dispose().then(() => disposePlaybackCache({ cache }));
+							return;
+						}
+						update({
+							status: session ? "ready" : "preparing",
+							completed: stream.stats.residentFrames,
+							session,
+							metrics: stream.metrics,
+							window: stream.stats,
+							warning: playbackCacheWarning({ cache }),
+						});
+					};
+					try {
+						controller.signal.throwIfAborted();
+						cache = await createCanvasPlaybackCache();
+						controller.signal.throwIfAborted();
+						cacheRef.current = cache;
+						stream = createCanvasPlaybackStream({
+							plan: request.plan,
+							backgroundColor: request.backgroundColor,
+							frames: request.frames,
 							cache,
+							signal: controller.signal,
+							onChange: publish,
+						});
+						streamRef.current = stream;
+						const currentTime =
+							targetRef.current?.request === request
+								? targetRef.current.time
+								: usePlaybackStore.getState().currentTime;
+						stream.setTarget({
+							frame: Math.max(
+								0,
+								Math.min(
+									request.frames - 1,
+									Math.round(currentTime * request.plan.fps)
+								)
+							),
+						});
+						await stream.waitForTarget();
+						controller.signal.throwIfAborted();
+						session = {
+							cache,
+							stream,
 							plan: request.plan,
 							frames: request.frames,
 							generation,
-						},
-					});
-				} catch (error) {
-					if (cacheRef.current === cache) cacheRef.current = null;
-					const cleanupWarning = await disposePlaybackCache({ cache });
-					update({
-						status: "error",
-						completed: 0,
-						error: error instanceof Error ? error.message : String(error),
-						warning: playbackCacheWarning({ cache, cleanupWarning }),
-					});
-				}
+						};
+						publish();
+					} catch (error) {
+						if (!controller.signal.aborted && latestRequest.current === request)
+							activeProject.current = null;
+						if (cacheRef.current === cache) cacheRef.current = null;
+						if (streamRef.current === stream) streamRef.current = null;
+						await stream?.dispose();
+						const cleanupWarning = await disposePlaybackCache({ cache });
+						update({
+							status: "error",
+							completed: 0,
+							error: error instanceof Error ? error.message : String(error),
+							warning: playbackCacheWarning({ cache, cleanupWarning }),
+						});
+					}
+				});
+		},
+		[request, suspended, stop]
+	);
+	const prepare = useCallback(
+		() => beginPreparation({ preserveSeek: false }),
+		[beginPreparation]
+	);
+	useEffect(() => {
+		if (!request || activeProject.current !== request.projectId) {
+			activeProject.current = null;
+			return;
+		}
+		if (suspended || controllerRef.current) return;
+		const timer = window.setTimeout(() => {
+			if (
+				activeProject.current === request.projectId &&
+				latestRequest.current === request &&
+				!controllerRef.current
+			)
+				beginPreparation({ preserveSeek: true });
+		}, 150);
+		return () => window.clearTimeout(timer);
+	}, [request, suspended, beginPreparation]);
+	useEffect(() => {
+		const updateTarget = (event: Event) => {
+			const current = latestRequest.current;
+			const stream = streamRef.current;
+			if (!current) return;
+			const seekTime = (event as CustomEvent<{ time?: number }>).detail?.time;
+			const time =
+				typeof seekTime === "number" && Number.isFinite(seekTime)
+					? seekTime
+					: usePlaybackStore.getState().currentTime;
+			targetRef.current = { request: current, time };
+			if (!stream || stream.error || controllerRef.current?.signal.aborted)
+				return;
+			stream.setTarget({
+				frame: Math.max(
+					0,
+					Math.min(current.frames - 1, Math.round(time * current.plan.fps))
+				),
 			});
-	}, [request, cancel]);
+		};
+		window.addEventListener("playback-seek", updateTarget);
+		return () => window.removeEventListener("playback-seek", updateTarget);
+	}, []);
 	const current = result?.request === request ? result : null;
+	const status =
+		current?.status ??
+		(request && activeProject.current === request.projectId && !suspended
+			? ("preparing" as const)
+			: ("idle" as const));
 	useEffect(() => {
-		if (suspended && current?.status === "preparing") cancel();
-	}, [suspended, current?.status, cancel]);
+		if (
+			suspended &&
+			(current?.status === "preparing" ||
+				(!current && activeProject.current === request?.projectId))
+		)
+			cancel();
+		else streamRef.current?.setSuspended({ value: suspended });
+	}, [suspended, current, request?.projectId, cancel]);
 	useEffect(() => {
-		if (current?.status !== "preparing") return;
+		if (status !== "preparing") return;
 		const stopUnpreparedPlayback = () => {
 			queueMicrotask(() => {
 				if (
 					latestRequest.current === request &&
-					controllerRef.current &&
+					activeProject.current === request?.projectId &&
 					usePlaybackStore.getState().isPlaying
 				)
 					usePlaybackStore.getState().pause();
@@ -266,10 +381,10 @@ export function useCanvasPlaybackPreview({
 		window.addEventListener("playback-play", stopUnpreparedPlayback);
 		return () =>
 			window.removeEventListener("playback-play", stopUnpreparedPlayback);
-	}, [current?.status, request]);
+	}, [status, request]);
 	return {
 		available: Boolean(request),
-		status: current?.status ?? ("idle" as const),
+		status,
 		completed: current?.completed ?? 0,
 		total: request?.frames ?? 0,
 		generation: current?.generation ?? "",
@@ -277,6 +392,7 @@ export function useCanvasPlaybackPreview({
 		error: current?.error,
 		warning: current?.warning,
 		metrics: current?.metrics,
+		window: current?.window,
 		prepare: suspended ? () => {} : prepare,
 		cancel,
 	};
