@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from alignment_assets import load_assets
-from alignment_decode import OutOfFrameLandmarks, normalized
+from alignment_decode import OutOfFrameLandmarks, normalized_coordinates
 from alignment_infer import Stage1
 from body_face_duplicates import suppress_duplicates
 from body_face_metadata import rectangle
@@ -151,7 +151,7 @@ class BodyVideoFaceSequence:
         data = None
         published = sorted((slot for _, slot in active if not slot.new), key=lambda slot: slot.identifier)
         if published:
-            data = {'faces': np.stack([normalized(points=slot.points, size=self.size) for slot in published]),
+            data = {'faces': np.stack([normalized_coordinates(points=slot.points, size=self.size) for slot in published]),
                     'rectangles': np.stack([rectangle(points=slot.points, size=self.size) for slot in published]),
                     'rolls': np.asarray([slot.roll_value for slot in published], np.float32)}
         else:
