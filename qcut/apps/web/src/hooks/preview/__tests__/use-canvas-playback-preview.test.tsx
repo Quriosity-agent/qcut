@@ -1,9 +1,9 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { CanvasCompositionFrame } from "@/lib/preview/canvas-composition-frame";
 import type { CanvasPlaybackCache } from "@/lib/preview/canvas-composition-playback-cache";
 import {
-	playbackStores,
+	setupPlaybackPreviewTests,
 	createCache,
 	createRenderer,
 	options,
@@ -14,29 +14,17 @@ import {
 } from "./canvas-playback-preview-fixtures";
 import { useCanvasPlaybackPreview } from "../use-canvas-playback-preview";
 
-const stores = playbackStores();
-
-beforeEach(() => {
-	vi.resetAllMocks();
-	stores.state.isPlaying = false;
-	stores.state.pause.mockImplementation(() => {
-		stores.state.isPlaying = false;
-	});
-	const { cache, renderer } = resources();
-	createCache.mockResolvedValue(cache);
-	createRenderer.mockReturnValue(renderer);
-});
-afterEach(() => {
-	cleanup();
-	for (const listeners of stores.listeners) listeners.clear();
-});
+const stores = setupPlaybackPreviewTests();
 
 describe("effect playback preparation lifecycle", () => {
 	it("stores every export-compositor frame before publishing a ready session", async () => {
-		const { cache, renderer } = resources();
+		const { cache, renderer, writeFrame } = resources();
 		const lastWrite = deferred<void>();
-		vi.mocked(cache.write).mockImplementationOnce(async () => {});
-		vi.mocked(cache.write).mockReturnValueOnce(lastWrite.promise);
+		vi.mocked(cache.write).mockImplementationOnce(writeFrame);
+		vi.mocked(cache.write).mockImplementationOnce(async (request) => {
+			await lastWrite.promise;
+			await writeFrame(request);
+		});
 		createCache.mockResolvedValue(cache);
 		createRenderer.mockReturnValue(renderer);
 		const { result } = renderHook(() => useCanvasPlaybackPreview(options));
@@ -97,7 +85,7 @@ describe("effect playback preparation lifecycle", () => {
 		expect(result.current.session).toBeUndefined();
 		expect(result.current.status).toBe("idle");
 		expect(renderer.render).toHaveBeenCalledTimes(2);
-		expect(cache.dispose).toHaveBeenCalled();
+		expect(cache.dispose).toHaveBeenCalledOnce();
 	});
 
 	it("invalidates a ready generation on edit and stops its playback", async () => {
@@ -113,10 +101,10 @@ describe("effect playback preparation lifecycle", () => {
 		await waitFor(() => expect(result.current.status).toBe("ready"));
 		stores.state.isPlaying = true;
 		rerender({ backgroundColor: "#654321" });
-		expect(result.current.status).toBe("idle");
+		expect(result.current.status).toBe("preparing");
 		expect(result.current.session).toBeUndefined();
 		expect(stores.state.isPlaying).toBe(false);
-		expect(cache.dispose).toHaveBeenCalledOnce();
+		await waitFor(() => expect(cache.dispose).toHaveBeenCalledOnce());
 		expect(createRenderer.mock.calls[0][0].signal.aborted).toBe(true);
 	});
 
@@ -143,7 +131,7 @@ describe("effect playback preparation lifecycle", () => {
 					{}
 				);
 		});
-		expect(result.current.status).toBe("idle");
+		expect(result.current.status).toBe("preparing");
 		expect(result.current.session).toBeUndefined();
 		unmount();
 		expect(stores.listeners.every((listeners) => listeners.size === 0)).toBe(
@@ -345,7 +333,7 @@ describe("effect playback preparation lifecycle", () => {
 			for (const listener of stores.listeners[index])
 				listener({ [field]: {} }, {});
 		});
-		expect(result.current.status).toBe("idle");
+		expect(result.current.status).toBe("preparing");
 	});
 
 	it("invalidates nested effect edits when the store replaces its map", async () => {
@@ -359,7 +347,7 @@ describe("effect playback preparation lifecycle", () => {
 			for (const listener of stores.listeners[0])
 				listener({ activeEffects: after }, { activeEffects: before });
 		});
-		expect(result.current.status).toBe("idle");
+		expect(result.current.status).toBe("preparing");
 	});
 
 	it("blocks play while preparing and releases the guard when ready", async () => {
@@ -385,10 +373,9 @@ describe("effect playback preparation lifecycle", () => {
 	});
 	it("surfaces cache warnings without failing successful preparation", async () => {
 		const { cache } = resources();
-		createCache.mockResolvedValue({
-			...cache,
-			cleanupWarnings: ["Crash cleanup unavailable"],
-		});
+		createCache.mockResolvedValue(
+			Object.assign(cache, { cleanupWarnings: ["Crash cleanup unavailable"] })
+		);
 		const { result } = renderHook(() => useCanvasPlaybackPreview(options));
 		act(() => result.current.prepare());
 		await waitFor(() => expect(result.current.status).toBe("ready"));
