@@ -46,7 +46,8 @@ def crop_inverse(*, rect):
     return inverse
 
 
-def normalized(*, points, size):
+def normalized_coordinates(*, points, size):
+    """Native coordinate conversion retains finite points beyond the image edges."""
     if (not isinstance(size, tuple) or len(size) != 2
             or any(type(side) is not int or not 1 <= side <= 4096 for side in size)
             or not isinstance(points, np.ndarray) or points.dtype != np.float32
@@ -57,6 +58,11 @@ def normalized(*, points, size):
     result[:, 0] = points[:, 0] * reciprocal[0]
     # H-y rounds before the multiply; 1-y/H changes the consumer's bits.
     result[:, 1] = (np.float32(size[1]) - points[:, 1]) * reciprocal[1]
+    return result
+
+
+def normalized(*, points, size):
+    result = normalized_coordinates(points=points, size=size)
     if (result < 0).any() or (result > 1).any():
         raise OutOfFrameLandmarks("normalized points outside frame; clipping prohibited")
     return result
