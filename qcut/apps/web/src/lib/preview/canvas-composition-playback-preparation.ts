@@ -30,6 +30,7 @@ export async function prepareCanvasPlaybackFrames({
 	cache,
 	signal,
 	onProgress,
+	startFrame = 0,
 }: {
 	plan: CanvasCompositionPreviewPlan;
 	backgroundColor?: string;
@@ -40,6 +41,7 @@ export async function prepareCanvasPlaybackFrames({
 		completed: number;
 		metrics: CanvasPlaybackPreparationMetrics;
 	}) => void;
+	startFrame?: number;
 }): Promise<CanvasPlaybackPreparationMetrics> {
 	signal.throwIfAborted();
 	const frameBytes = plan.width * plan.height * 4;
@@ -50,6 +52,9 @@ export async function prepareCanvasPlaybackFrames({
 	if (
 		!Number.isSafeInteger(frames) ||
 		frames < 1 ||
+		!Number.isSafeInteger(startFrame) ||
+		startFrame < 0 ||
+		!Number.isSafeInteger(startFrame + frames) ||
 		!Number.isSafeInteger(frameBytes) ||
 		frameBytes < 1 ||
 		capacity < 1
@@ -75,14 +80,15 @@ export async function prepareCanvasPlaybackFrames({
 	};
 	const pending = new Map<number, Promise<CaptureOutcome>>();
 	let pendingPngBytes = 0;
-	let next = 0;
+	let next = startFrame;
+	const endFrame = startFrame + frames;
 	let failed = false;
 	const stop = ({ error }: { error: unknown }) => {
 		failed = true;
 		work.abort(error);
 	};
 	const fill = () => {
-		while (next < frames && pending.size < capacity && !workSignal.aborted) {
+		while (next < endFrame && pending.size < capacity && !workSignal.aborted) {
 			const frame = next++;
 			const capture = renderer.render({ frame }).then(
 				(value): CaptureOutcome => {
@@ -113,7 +119,7 @@ export async function prepareCanvasPlaybackFrames({
 	};
 	try {
 		fill();
-		for (let frame = 0; frame < frames; frame++) {
+		for (let frame = startFrame; frame < endFrame; frame++) {
 			const outcome = await pending.get(frame);
 			workSignal.throwIfAborted();
 			if (!outcome) throw new Error("Missing prepared composition frame");
@@ -126,7 +132,10 @@ export async function prepareCanvasPlaybackFrames({
 			pendingPngBytes -= capture.blob.size;
 			pending.delete(frame);
 			metrics.wallMs = performance.now() - started;
-			onProgress({ completed: frame + 1, metrics: { ...metrics } });
+			onProgress({
+				completed: frame - startFrame + 1,
+				metrics: { ...metrics },
+			});
 			fill();
 		}
 	} catch (error) {
