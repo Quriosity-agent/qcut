@@ -189,6 +189,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
 			runtimePreviewQualityDiagnostic: null,
 		});
 		stopTimer();
+		window.dispatchEvent(new CustomEvent("playback-pause"));
 	},
 
 	toggle: () => {
