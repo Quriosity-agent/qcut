@@ -1,12 +1,14 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanvasPlaybackSession } from "@/hooks/preview/use-canvas-playback-preview";
+import { createCanvasPlaybackReader } from "@/lib/preview/canvas-composition-playback-reader";
 import { buildExportRenderIndex } from "@/lib/export/export-render-index";
 import { EffectPlaybackCanvas } from "../effect-playback-preview";
 
 interface PlaybackSnapshot {
 	isPlaying: boolean;
 	currentTime: number;
+	previewScrubTime?: number | null;
 }
 
 interface MockReader {
@@ -46,6 +48,7 @@ vi.mock("@/stores/editor/playback-store", () => ({
 }));
 
 vi.mock("@/lib/preview/canvas-composition-playback-reader", () => ({
+	PLAYBACK_BITMAP_MAX_FRAMES: 6,
 	createCanvasPlaybackReader: vi.fn(() => {
 		const reader: MockReader = {
 			bitmaps: new Map(),
@@ -104,6 +107,9 @@ function session({ generation = "first" }: { generation?: string } = {}) {
 		frames: 180,
 		cache: {
 			id: generation,
+			maxBytes: 2 * 1024 ** 3,
+			has: vi.fn(() => true),
+			remove: vi.fn(async () => {}),
 			bytes: 0,
 			frameCount: 180,
 			read: vi.fn(async () => new Blob()),
@@ -111,6 +117,55 @@ function session({ generation = "first" }: { generation?: string } = {}) {
 			dispose: vi.fn(async () => {}),
 		},
 	} satisfies CanvasPlaybackSession;
+}
+
+function streamingSession({ windowEnd = 120 } = {}) {
+	let error: Error | undefined;
+	let aborted = false;
+	const value = session();
+	const stream = {
+		get aborted() {
+			return aborted;
+		},
+		setTarget: vi.fn(),
+		waitForTarget: vi.fn(async () => {}),
+		read: value.cache.read,
+		setSuspended: vi.fn(),
+		dispose: vi.fn(async () => {}),
+		stats: {
+			segmentFrames: Math.max(1, windowEnd / 2),
+			targetFrame: 0,
+			windowStart: 0,
+			windowEnd,
+			cacheBytes: 0,
+			cacheBudgetBytes: value.cache.maxBytes,
+			residentFrames: 0,
+			preparedTotal: 0,
+			evictedTotal: 0,
+			targetReady: true,
+		},
+		metrics: {
+			renderMs: 0,
+			encodeMs: 0,
+			writeMs: 0,
+			wallMs: 0,
+			maxInFlightFrames: 0,
+			maxReservedPixelBytes: 0,
+			maxPendingPngBytes: 0,
+		},
+		get error() {
+			return error;
+		},
+	} satisfies NonNullable<CanvasPlaybackSession["stream"]>;
+	return {
+		session: { ...value, stream },
+		abort() {
+			aborted = true;
+		},
+		fail({ message }: { message: string }) {
+			error = new Error(message);
+		},
+	};
 }
 
 function fill({ reader, frames }: { reader: MockReader; frames: number[] }) {
@@ -283,5 +338,134 @@ describe("effect playback surface lifecycle", () => {
 		act(() => fill({ reader, frames: [0, 1, 2, 3] }));
 		expect(mocks.play).toHaveBeenCalledTimes(1);
 		expect(drawImage).not.toHaveBeenCalled();
+	});
+
+	it("retargets the rolling stream before the bitmap reader on a distant seek", () => {
+		const source = streamingSession();
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		expect(createCanvasPlaybackReader).toHaveBeenCalledWith(
+			expect.objectContaining({ cache: source.session.stream })
+		);
+		source.session.stream.setTarget.mockClear();
+		reader.setTarget.mockClear();
+		act(() => {
+			window.dispatchEvent(
+				new CustomEvent("playback-seek", { detail: { time: 4 } })
+			);
+		});
+		expect(source.session.stream.setTarget).toHaveBeenCalledOnce();
+		expect(source.session.stream.setTarget).toHaveBeenCalledWith({
+			frame: 120,
+		});
+		expect(reader.setTarget).toHaveBeenCalledWith({ frame: 120 });
+		expect(
+			source.session.stream.setTarget.mock.invocationCallOrder[0]
+		).toBeLessThan(reader.setTarget.mock.invocationCallOrder[0]);
+	});
+
+	it("keeps a pending scrub when the prepared canvas mounts, then follows the playback clock", () => {
+		mocks.state = {
+			isPlaying: false,
+			currentTime: 0,
+			previewScrubTime: 2,
+		};
+		const source = streamingSession();
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		expect(source.session.stream.setTarget).toHaveBeenLastCalledWith({
+			frame: 60,
+		});
+		expect(reader.setTarget).toHaveBeenLastCalledWith({ frame: 60 });
+		act(() => fill({ reader, frames: [0, 60] }));
+		expect(screen.getByTestId("effect-playback-canvas").dataset.frame).toBe(
+			"60"
+		);
+		act(() => {
+			updatePlayback({ changes: { previewScrubTime: null } });
+			window.dispatchEvent(new CustomEvent("playback-play"));
+		});
+		expect(source.session.stream.setTarget).toHaveBeenLastCalledWith({
+			frame: 0,
+		});
+		expect(screen.getByTestId("effect-playback-canvas").dataset.frame).toBe(
+			"0"
+		);
+	});
+
+	it("resumes within a tiny prepared window without waiting for unreachable lookahead frames", () => {
+		const source = streamingSession({ windowEnd: 2 });
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		expect(createCanvasPlaybackReader).toHaveBeenCalledWith(
+			expect.objectContaining({ maxFrames: 2 })
+		);
+		act(() => mocks.play());
+		act(() => fill({ reader, frames: [0] }));
+		expect(mocks.state.isPlaying).toBe(false);
+		act(() => fill({ reader, frames: [1] }));
+		expect(mocks.state.isPlaying).toBe(true);
+		expect(screen.queryByTestId("effect-playback-buffering")).toBeNull();
+		expect(reader.bitmaps.has(2)).toBe(false);
+	});
+
+	it("pauses once on a stream failure without recursively retargeting or drawing stale frames", () => {
+		const source = streamingSession();
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		act(() => fill({ reader, frames: [0, 1, 2, 3] }));
+		drawImage.mockClear();
+		reader.setTarget.mockClear();
+		source.session.stream.setTarget.mockClear();
+		source.fail({ message: "Rolling cache is unavailable" });
+		act(() => updatePlayback({ changes: { isPlaying: true } }));
+		expect(mocks.pause).toHaveBeenCalledOnce();
+		expect(mocks.state.isPlaying).toBe(false);
+		expect(reader.setTarget).not.toHaveBeenCalled();
+		expect(source.session.stream.setTarget).not.toHaveBeenCalled();
+		expect(drawImage).not.toHaveBeenCalled();
+		expect(
+			screen.getByTestId("effect-playback-buffering").textContent
+		).toContain("Rolling cache is unavailable");
+	});
+
+	it("pauses a reader failure during active playback without reentering target selection", () => {
+		const source = streamingSession();
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		act(() => fill({ reader, frames: [0, 1, 2, 3] }));
+		act(() => updatePlayback({ changes: { isPlaying: true } }));
+		expect(mocks.state.isPlaying).toBe(true);
+		reader.setTarget.mockClear();
+		source.session.stream.setTarget.mockClear();
+		act(() => {
+			reader.error = new Error("Decoded frame is corrupt");
+			fill({ reader, frames: [] });
+		});
+		expect(mocks.pause).toHaveBeenCalledOnce();
+		expect(mocks.state.isPlaying).toBe(false);
+		expect(reader.setTarget).not.toHaveBeenCalled();
+		expect(source.session.stream.setTarget).not.toHaveBeenCalled();
+		expect(
+			screen.getByTestId("effect-playback-buffering").textContent
+		).toContain("Decoded frame is corrupt");
+	});
+
+	it("ignores a synchronously aborted stream before React removes the old canvas", () => {
+		const source = streamingSession();
+		render(<EffectPlaybackCanvas session={source.session} />);
+		const reader = mocks.readers[0];
+		source.session.stream.setTarget.mockClear();
+		reader.setTarget.mockClear();
+		source.abort();
+		source.session.stream.setTarget.mockImplementation(() => {
+			throw new DOMException("Old generation aborted", "AbortError");
+		});
+		act(() => mocks.seek(4));
+		act(() => fill({ reader, frames: [0, 1, 2, 3, 120] }));
+		expect(source.session.stream.setTarget).not.toHaveBeenCalled();
+		expect(reader.setTarget).not.toHaveBeenCalled();
+		expect(drawImage).not.toHaveBeenCalled();
+		expect(mocks.pause).not.toHaveBeenCalled();
 	});
 });
