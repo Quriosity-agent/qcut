@@ -89,6 +89,13 @@ export async function installSegmentedRequestObserver({
 					void Promise.resolve(result).then((value: unknown) => {
 						entry.status = "completed";
 						entry.completedAt = Date.now();
+						if (
+							channel === "jianying-portrait-adjustment:cancel" &&
+							typeof value === "boolean"
+						) {
+							entry.result = { cancelled: value };
+							return;
+						}
 						const receipt = value as SegmentedRenderRequest["result"];
 						if (receipt && typeof receipt === "object")
 							entry.result = {
