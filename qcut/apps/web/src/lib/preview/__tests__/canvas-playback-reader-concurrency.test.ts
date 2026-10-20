@@ -143,6 +143,42 @@ describe("parallel playback read and decode reservations", () => {
 		dispose();
 	});
 
+	it("reclaims an aborted segment wait while retaining an uncancellable peer decode", async () => {
+		const { reader, decode, read, decodes, finish, dispose } = fixture({
+			capacity: 2,
+		});
+		const readImmediately = read.getMockImplementation()!;
+		read.mockImplementation((request) => {
+			if (request.frame !== 1) return readImmediately(request);
+			return new Promise<Blob>((_resolve, reject) => {
+				request.signal.addEventListener(
+					"abort",
+					() => reject(request.signal.reason),
+					{ once: true }
+				);
+			});
+		});
+		reader.setTarget({ frame: 0 });
+		await vi.waitFor(() => expect(decode).toHaveBeenCalledOnce());
+		expect(reader.stats).toMatchObject({ frames: 2, inFlightFrames: 2 });
+		reader.setTarget({ frame: 10 });
+		expect(read).toHaveBeenCalledTimes(2);
+		await vi.waitFor(() => expect(decode).toHaveBeenCalledTimes(2));
+		expect(decodes.map(({ frame }) => frame)).toEqual([0, 10]);
+		expect(reader.stats).toMatchObject({ frames: 2, bytes: 32 });
+		const current = finish({ index: 1 });
+		await vi.waitFor(() => expect(reader.get({ frame: 10 })).toBe(current));
+		expect(read).toHaveBeenCalledTimes(3);
+		expect(reader.stats).toMatchObject({ frames: 2, inFlightFrames: 1 });
+		const obsolete = finish({ index: 0 });
+		await vi.waitFor(() => expect(decode).toHaveBeenCalledTimes(3));
+		expect(obsolete.close).toHaveBeenCalledOnce();
+		expect(decodes[2].frame).toBe(11);
+		expect(reader.stats.frames).toBe(2);
+		expect(reader.error).toBeUndefined();
+		dispose();
+	});
+
 	it("keeps a replacement reservation when a publication listener seeks away and back", async () => {
 		const { reader, decode, read, decodes, finish, dispose } = fixture({
 			capacity: 2,
