@@ -198,13 +198,79 @@ describe("playback cache generation ownership", () => {
 		expect(storage.directories.size).toBe(0);
 	});
 
-	it("reports reclamation failure before allocating another generation", async () => {
+	it("warns about one stuck orphan while still removing healthy orphans and preparing a new generation", async () => {
+		const storage = installStorage();
+		const healthyBefore = managedId();
+		const abandoned = managedId();
+		const healthyAfter = managedId();
+		storage.directories.set(healthyBefore, new Map());
+		storage.directories.set(abandoned, new Map());
+		storage.directories.set(healthyAfter, new Map());
+		storage.failures.remove.add(abandoned);
+		const recovered = await createCanvasPlaybackCache();
+		expect(recovered.cleanupWarnings).toEqual([
+			`Unable to reclaim effect playback cache ${abandoned}`,
+		]);
+		expect(storage.directories.has(healthyBefore)).toBe(false);
+		expect(storage.directories.has(healthyAfter)).toBe(false);
+		expect(storage.directories.has(abandoned)).toBe(true);
+		expect(storage.directories.has(recovered.id)).toBe(true);
+		expect(storage.locks.size).toBe(1);
+		await recovered.dispose();
+		expect(storage.directories.size).toBe(1);
+		expect(storage.locks.size).toBe(0);
+	});
+
+	it("blocks another allocation if the replacement also cannot be removed and recovers once deletion works", async () => {
 		const storage = installStorage();
 		const abandoned = managedId();
 		storage.directories.set(abandoned, new Map());
 		storage.failures.remove.add(abandoned);
+		const replacement = await createCanvasPlaybackCache();
+		storage.failures.remove.add(replacement.id);
+		await expect(replacement.dispose()).rejects.toThrow("Unable to remove");
+		expect(storage.locks.size).toBe(0);
+		const healthy = managedId();
+		storage.directories.set(healthy, new Map());
+		storage.parent.getDirectoryHandle.mockClear();
 		await expect(createCanvasPlaybackCache()).rejects.toThrow(
-			"Unable to reclaim"
+			"Unable to reclaim 2 effect playback caches"
+		);
+		expect(storage.parent.getDirectoryHandle).not.toHaveBeenCalled();
+		expect(storage.directories.has(healthy)).toBe(false);
+		expect(storage.locks.size).toBe(0);
+		expect(storage.directories.size).toBe(2);
+		storage.failures.remove.clear();
+		const recovered = await createCanvasPlaybackCache();
+		expect(recovered.cleanupWarnings).toEqual([]);
+		expect(storage.directories.has(abandoned)).toBe(false);
+		expect(storage.directories.has(replacement.id)).toBe(false);
+		expect(storage.directories.size).toBe(1);
+		await recovered.dispose();
+		expect(storage.directories.size).toBe(0);
+		expect(storage.locks.size).toBe(0);
+	});
+
+	it("does not downgrade directory enumeration errors to cleanup warnings", async () => {
+		const storage = installStorage();
+		vi.spyOn(storage.parent, "entries").mockImplementation(() => {
+			throw new Error("Directory enumeration failed");
+		});
+		await expect(createCanvasPlaybackCache()).rejects.toThrow(
+			"Directory enumeration failed"
+		);
+		expect(storage.parent.getDirectoryHandle).not.toHaveBeenCalled();
+		expect(storage.locks.size).toBe(0);
+	});
+
+	it("does not downgrade ownership lock errors to cleanup warnings", async () => {
+		const storage = installStorage();
+		storage.directories.set(managedId(), new Map());
+		storage.lockManager.request.mockRejectedValueOnce(
+			new Error("Lock service unavailable")
+		);
+		await expect(createCanvasPlaybackCache()).rejects.toThrow(
+			"Lock service unavailable"
 		);
 		expect(storage.parent.getDirectoryHandle).not.toHaveBeenCalled();
 		expect(storage.locks.size).toBe(0);
