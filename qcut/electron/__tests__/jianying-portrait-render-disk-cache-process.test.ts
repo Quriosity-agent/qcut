@@ -125,7 +125,7 @@ function startWorker({
 	});
 	const exitResult = new Promise<Error | null>((resolve) => {
 		child.once("error", resolve);
-		child.once("exit", (code, signal) => {
+		child.once("close", (code, signal) => {
 			if (code === 0 || signal === "SIGKILL") resolve(null);
 			else resolve(new Error(`Cache worker exited ${code}: ${stderr}`));
 		});
