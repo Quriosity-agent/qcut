@@ -19,6 +19,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from render_resolution import RESOLUTION_ENV, resolution_mode
+from pipeline_source_png import normalized_rgba_png
 from face_selection_reference import bind_reference, reference_from_receipt, write_reference
 from source_face_confirmation import evidence_receipt, validate_stage_confirmation
 
@@ -350,7 +351,13 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
         if mode == 'original' and any(stage['script'] not in ORIGINAL_RENDERERS for stage in canonical['stages']):
             raise ValueError('an active renderer has no original-resolution contract')
         current = directory / 'original.png'
-        Image.fromarray(original).save(current)
+        reuse_source_png = (bool(canonical['stages'])
+                            and canonical['stages'][0]['script'] == 'body_smart_render.py'
+                            and normalized_rgba_png(data=image.read_bytes()))
+        if reuse_source_png:
+            shutil.copyfile(image, current)
+        else:
+            Image.fromarray(original).save(current)
         current_rgba = original
         original_rgba_hash = sha256(data=original.tobytes())
         establish_identity = (len(canonical['stages']) > 1
@@ -420,6 +427,7 @@ def run(*, image, runtime, output, report, plan=None, request=None, resolution='
         verify_isolation(receipt={'independence': isolation}, runtime=runtime)
         receipt = {'scope': 'original-photo-independent-canonical-stage-chain', 'version': 1, 'passed': True,
                    'plan': canonical, 'adjustments': canonical['adjustments'], 'stages': rows, 'source': str(image),
+                   'sourceNormalization': 'copied-normalized-rgba-png' if reuse_source_png else 'canonical-rgba-encode',
                    'sourceSha256': original_file_hash, 'width': original.shape[1], 'height': original.shape[0],
                    'resolutionMode': mode, 'originalDimensions': [original.shape[1], original.shape[0]],
                    'analysisDimensions': ([int(original.shape[1]*min(1, 640/max(original.shape[:2]))),
