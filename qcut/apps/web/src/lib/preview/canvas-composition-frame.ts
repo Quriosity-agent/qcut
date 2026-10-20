@@ -20,6 +20,10 @@ import { SequentialVideoRegistry } from "@/lib/export/export-sequential-video-so
 import { COMPOSITION_CANVAS_CONTEXT_SETTINGS } from "@/lib/export/composition-canvas-context";
 import { canUseNativePortraitSourceWindow } from "@/lib/portrait/portrait-temporal-policy";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
+import {
+	hasIndependentBodyVideoContentSource,
+	independentBodyVideoApplies,
+} from "@/lib/portrait/independent-body-video";
 
 export interface CanvasCompositionPreviewPlan {
 	tracks: TimelineTrack[];
@@ -104,6 +108,15 @@ export function createCanvasCompositionPreviewPlan({
 			if (hasUnsupportedCanvasVisuals({ element })) return null;
 			const adjustments =
 				resolveMediaVisualProperties(element).portraitAdjustments;
+			if (
+				independentBodyVideoApplies({
+					adjustments,
+					mediaType: media.type,
+					fps,
+				}) &&
+				!hasIndependentBodyVideoContentSource({ mediaItem: media })
+			)
+				return null;
 			if (
 				adjustments?.engine !== "independent" &&
 				hasMediaPortraitAdjustments({ adjustments }) &&
