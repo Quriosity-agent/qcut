@@ -82,8 +82,11 @@ describe("composition playback disk cache", () => {
 		const cache = await createCanvasPlaybackCache();
 		const blob = png();
 		const signal = new AbortController().signal;
+		expect(cache.has({ frame: 0 })).toBe(false);
 		await cache.write({ frame: 0, blob, signal });
 		await cache.write({ frame: 1, blob, signal });
+		expect(cache.has({ frame: 0 })).toBe(true);
+		expect(cache.maxBytes).toBe(CANVAS_PLAYBACK_CACHE_MAX_BYTES);
 		expect(cache.bytes).toBe(blob.size * 2);
 		expect(cache.frameCount).toBe(2);
 		expect(await cache.read({ frame: 1, signal })).toBe(blob);
@@ -101,6 +104,7 @@ describe("composition playback disk cache", () => {
 		});
 		expect(cache.bytes).toBe(0);
 		expect(cache.frameCount).toBe(0);
+		expect(cache.has({ frame: 0 })).toBe(false);
 	});
 
 	it("rejects the byte limit before creating another frame", async () => {
@@ -112,6 +116,222 @@ describe("composition playback disk cache", () => {
 			cache.write({ frame: 1, blob: png(), signal })
 		).rejects.toThrow("disk cache limit");
 		expect(storage.directory.getFileHandle).toHaveBeenCalledTimes(1);
+		expect(cache.bytes).toBe(6);
+		await cache.dispose();
+	});
+
+	it("rejects a single oversized frame before allocating a file", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache({ maxBytes: 5 });
+		const signal = new AbortController().signal;
+		expect(cache.maxBytes).toBe(5);
+		await expect(
+			cache.write({ frame: 0, blob: png(), signal })
+		).rejects.toThrow("frame exceeds its disk cache limit");
+		expect(storage.directory.getFileHandle).not.toHaveBeenCalled();
+		expect(cache.bytes).toBe(0);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		await cache.dispose();
+	});
+
+	it("reuses only deleted frame bytes while retaining exact surviving PNGs", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache({ maxBytes: 12 });
+		const signal = new AbortController().signal;
+		const first = png();
+		const second = png({ value: "second" });
+		await cache.write({ frame: 0, blob: first, signal });
+		await cache.write({ frame: 1, blob: second, signal });
+		await cache.remove({ frames: [0, 0, 99], signal });
+		expect(storage.directory.removeEntry).toHaveBeenCalledTimes(1);
+		expect(cache.bytes).toBe(second.size);
+		expect(cache.frameCount).toBe(1);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(cache.has({ frame: 1 })).toBe(true);
+		expect(await cache.read({ frame: 1, signal })).toBe(second);
+		await expect(cache.read({ frame: 0, signal })).rejects.toThrow(
+			"not prepared"
+		);
+		await cache.write({ frame: 2, blob: first, signal });
+		await cache.remove({ frames: [2], signal });
+		await cache.write({ frame: 0, blob: first, signal });
+		expect(cache.bytes).toBe(12);
+		expect(cache.frameCount).toBe(2);
+		expect(await cache.read({ frame: 0, signal })).toBe(first);
+		await cache.dispose();
+	});
+
+	it("retains the failed frame's budget after a partial removal and allows retry", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache({ maxBytes: 12 });
+		const signal = new AbortController().signal;
+		await cache.write({ frame: 0, blob: png(), signal });
+		await cache.write({ frame: 1, blob: png(), signal });
+		const failure = new DOMException(
+			"File locked",
+			"NoModificationAllowedError"
+		);
+		storage.directory.removeEntry
+			.mockImplementationOnce(async (name) => {
+				storage.files.delete(name);
+			})
+			.mockRejectedValueOnce(failure);
+		await expect(
+			cache.remove({ frames: [0, 1], signal })
+		).rejects.toMatchObject({
+			message: "Unable to remove effect playback frame 1",
+			cause: failure,
+		});
+		expect(cache.bytes).toBe(6);
+		expect(cache.frameCount).toBe(1);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(cache.has({ frame: 1 })).toBe(true);
+		expect(storage.files.has("1.png")).toBe(true);
+		await expect(
+			cache.write({ frame: 2, blob: png({ value: "1234567" }), signal })
+		).rejects.toThrow("disk cache limit");
+		await cache.remove({ frames: [1], signal });
+		await cache.write({ frame: 2, blob: png({ value: "1234567" }), signal });
+		expect(cache.bytes).toBe(7);
+		await cache.dispose();
+	});
+
+	it("reclaims metadata for a frame already absent from OPFS", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache({ maxBytes: 6 });
+		const signal = new AbortController().signal;
+		await cache.write({ frame: 0, blob: png(), signal });
+		storage.files.clear();
+		storage.directory.removeEntry.mockRejectedValueOnce(
+			new DOMException("Already removed", "NotFoundError")
+		);
+		await cache.remove({ frames: [0], signal });
+		expect(cache.bytes).toBe(0);
+		expect(cache.frameCount).toBe(0);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		await cache.write({ frame: 1, blob: png(), signal });
+		expect(cache.bytes).toBe(6);
+		await cache.dispose();
+	});
+
+	it("serializes rolling removals with writes and reads in request order", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache({ maxBytes: 6 });
+		const signal = new AbortController().signal;
+		const waiting = deferred();
+		storage.writes.wait = waiting.promise;
+		const blob = png();
+		const written = cache.write({ frame: 0, blob, signal });
+		const readBeforeRemoval = cache.read({ frame: 0, signal });
+		const removed = cache.remove({ frames: [0], signal });
+		const readAfterRemoval = expect(
+			cache.read({ frame: 0, signal })
+		).rejects.toThrow("not prepared");
+		const replacement = cache.write({ frame: 1, blob, signal });
+		await vi.waitFor(() => expect(storage.write).toHaveBeenCalledOnce());
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(storage.directory.removeEntry).not.toHaveBeenCalled();
+		waiting.resolve();
+		await written;
+		expect(await readBeforeRemoval).toBe(blob);
+		await Promise.all([removed, readAfterRemoval, replacement]);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(cache.has({ frame: 1 })).toBe(true);
+		expect(cache.bytes).toBe(6);
+		await cache.dispose();
+	});
+
+	it("rejects a cancelled queued removal without deleting its frames", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache();
+		const waiting = deferred();
+		storage.writes.wait = waiting.promise;
+		const signal = new AbortController().signal;
+		const written = cache.write({ frame: 0, blob: png(), signal });
+		const controller = new AbortController();
+		const rejected = expect(
+			cache.remove({ frames: [0], signal: controller.signal })
+		).rejects.toMatchObject({ name: "AbortError" });
+		controller.abort();
+		waiting.resolve();
+		await Promise.all([written, rejected]);
+		expect(storage.directory.removeEntry).not.toHaveBeenCalled();
+		expect(cache.has({ frame: 0 })).toBe(true);
+		expect(cache.bytes).toBe(6);
+		await cache.dispose();
+	});
+
+	it("accounts for deletion completed during cancellation and retains subsequent frames", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache();
+		const signal = new AbortController().signal;
+		await cache.write({ frame: 0, blob: png(), signal });
+		await cache.write({ frame: 1, blob: png(), signal });
+		const waiting = deferred();
+		storage.directory.removeEntry.mockImplementationOnce(async (name) => {
+			await waiting.promise;
+			storage.files.delete(name);
+		});
+		const controller = new AbortController();
+		const rejected = expect(
+			cache.remove({ frames: [0, 1], signal: controller.signal })
+		).rejects.toMatchObject({ name: "AbortError" });
+		await vi.waitFor(() =>
+			expect(storage.directory.removeEntry).toHaveBeenCalledOnce()
+		);
+		expect(cache.bytes).toBe(12);
+		expect(cache.has({ frame: 0 })).toBe(true);
+		controller.abort();
+		waiting.resolve();
+		await rejected;
+		expect(cache.bytes).toBe(6);
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(cache.has({ frame: 1 })).toBe(true);
+		expect(storage.files.has("1.png")).toBe(true);
+		await cache.dispose();
+	});
+
+	it("waits for pending removals before disposing and rejects later writes", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache();
+		const signal = new AbortController().signal;
+		await cache.write({ frame: 0, blob: png(), signal });
+		const waiting = deferred();
+		storage.directory.removeEntry.mockImplementationOnce(async (name) => {
+			await waiting.promise;
+			storage.files.delete(name);
+		});
+		const rejectedRemoval = expect(
+			cache.remove({ frames: [0], signal })
+		).rejects.toThrow("disposed");
+		const rejectedWrite = expect(
+			cache.write({ frame: 1, blob: png(), signal })
+		).rejects.toThrow("disposed");
+		await vi.waitFor(() =>
+			expect(storage.directory.removeEntry).toHaveBeenCalledOnce()
+		);
+		const disposal = cache.dispose();
+		expect(cache.has({ frame: 0 })).toBe(false);
+		expect(storage.parent.removeEntry).not.toHaveBeenCalled();
+		waiting.resolve();
+		await Promise.all([rejectedRemoval, rejectedWrite, disposal]);
+		expect(storage.parent.removeEntry).toHaveBeenCalledOnce();
+		expect(cache.bytes).toBe(0);
+		await expect(cache.remove({ frames: [], signal })).rejects.toThrow(
+			"disposed"
+		);
+	});
+
+	it("validates the whole removal batch before deleting any frame", async () => {
+		const storage = installStorage();
+		const cache = await createCanvasPlaybackCache();
+		const signal = new AbortController().signal;
+		await cache.write({ frame: 0, blob: png(), signal });
+		await expect(cache.remove({ frames: [0, -1], signal })).rejects.toThrow(
+			"Invalid composition playback frame"
+		);
+		expect(storage.directory.removeEntry).not.toHaveBeenCalled();
+		expect(cache.has({ frame: 0 })).toBe(true);
 		expect(cache.bytes).toBe(6);
 		await cache.dispose();
 	});
