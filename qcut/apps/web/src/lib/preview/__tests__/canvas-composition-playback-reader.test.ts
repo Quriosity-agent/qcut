@@ -89,6 +89,86 @@ describe("composition playback bitmap reader", () => {
 		reader.dispose();
 	});
 
+	it("cancels reads waiting for an old segment and admits the new seek after they settle", async () => {
+		const { reader, read, decode } = fixture();
+		read.mockImplementation(({ frame, signal }) => {
+			if (frame >= 10) return Promise.resolve(new Blob([String(frame)]));
+			return new Promise<Blob>((_resolve, reject) => {
+				signal.addEventListener("abort", () => reject(signal.reason), {
+					once: true,
+				});
+			});
+		});
+		reader.setTarget({ frame: 0 });
+		expect(reader.stats.inFlightFrames).toBe(2);
+		reader.setTarget({ frame: 10 });
+		expect(read.mock.calls.map(([request]) => request.frame)).toEqual([0, 1]);
+		expect(read.mock.calls.every(([request]) => request.signal.aborted)).toBe(
+			true
+		);
+		expect(reader.stats.inFlightFrames).toBe(2);
+		await vi.waitFor(() => expect(reader.get({ frame: 11 })).toBeDefined());
+		expect(read.mock.calls.map(([request]) => request.frame)).toEqual([
+			0, 1, 10, 11,
+		]);
+		expect(
+			read.mock.calls.slice(2).every(([request]) => !request.signal.aborted)
+		).toBe(true);
+		expect(decode).toHaveBeenCalledTimes(2);
+		expect(reader.stats).toMatchObject({ frames: 2, bytes: 32 });
+		expect(reader.error).toBeUndefined();
+		reader.dispose();
+	});
+
+	it("discards a cancelled decode even if another seek wants its frame again", async () => {
+		const { reader, decode, read } = fixture({ capacity: 1 });
+		const pending = deferred<ImageBitmap>();
+		decode.mockReturnValueOnce(pending.promise);
+		reader.setTarget({ frame: 0 });
+		await vi.waitFor(() => expect(decode).toHaveBeenCalledOnce());
+		reader.setTarget({ frame: 10 });
+		reader.setTarget({ frame: 0 });
+		expect(read).toHaveBeenCalledOnce();
+		expect(reader.stats).toMatchObject({ frames: 1, inFlightFrames: 1 });
+		const stale = bitmap();
+		pending.resolve(stale);
+		await vi.waitFor(() => expect(reader.get({ frame: 0 })).toBeDefined());
+		expect(stale.close).toHaveBeenCalledOnce();
+		expect(reader.get({ frame: 0 })).not.toBe(stale);
+		expect(read.mock.calls.map(([request]) => request.frame)).toEqual([0, 0]);
+		expect(reader.error).toBeUndefined();
+		reader.dispose();
+	});
+
+	it("does not turn a cancelled segment's late error into a reader failure", async () => {
+		const { reader, read } = fixture({ capacity: 1 });
+		const pending = deferred<Blob>();
+		read.mockReturnValueOnce(pending.promise);
+		reader.setTarget({ frame: 0 });
+		reader.setTarget({ frame: 10 });
+		pending.reject(new Error("Old segment was removed"));
+		await vi.waitFor(() => expect(reader.get({ frame: 10 })).toBeDefined());
+		expect(reader.error).toBeUndefined();
+		reader.dispose();
+	});
+
+	it("closes published bitmaps and stops on a current segment read error", async () => {
+		const { reader, read, decoded } = fixture();
+		const pending = deferred<Blob>();
+		read.mockResolvedValueOnce(new Blob(["first"]));
+		read.mockReturnValueOnce(pending.promise);
+		reader.setTarget({ frame: 0 });
+		await vi.waitFor(() => expect(reader.get({ frame: 0 })).toBeDefined());
+		const failure = new Error("Current cache read failed");
+		pending.reject(failure);
+		await vi.waitFor(() => expect(reader.error).toBe(failure));
+		expect(decoded[0].close).toHaveBeenCalledOnce();
+		expect(reader.stats.frames).toBe(0);
+		reader.setTarget({ frame: 10 });
+		expect(read).toHaveBeenCalledTimes(2);
+		reader.dispose();
+	});
+
 	it("aborts a pending read and never decodes or notifies after disposal", async () => {
 		const { reader, read, decode } = fixture({ capacity: 1 });
 		const pending = deferred<Blob>();
