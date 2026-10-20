@@ -58,4 +58,20 @@ describe("playback store preview scrub time", () => {
 		store.play();
 		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
 	});
+
+	it("publishes explicit pauses even while already paused so a buffering preview can cancel its resume", () => {
+		const states: boolean[] = [];
+		const listener = () => {
+			states.push(usePlaybackStore.getState().isPlaying);
+		};
+		window.addEventListener("playback-pause", listener);
+		try {
+			usePlaybackStore.getState().pause();
+			usePlaybackStore.getState().pause();
+			usePlaybackStore.getState().setVolume(0.5);
+		} finally {
+			window.removeEventListener("playback-pause", listener);
+		}
+		expect(states).toEqual([false, false]);
+	});
 });
