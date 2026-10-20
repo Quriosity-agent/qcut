@@ -1512,6 +1512,7 @@ export function PreviewPanel() {
 							error={effectPlayback.error}
 							warning={effectPlayback.warning}
 							metrics={effectPlayback.metrics}
+							window={effectPlayback.window}
 							onPrepare={effectPlayback.prepare}
 							onCancel={effectPlayback.cancel}
 						/>
