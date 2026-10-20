@@ -8,6 +8,7 @@ import type { MediaElement, MediaPortraitAdjustments } from "@/types/timeline";
 import { normalizeMediaElement } from "@/stores/timeline/timeline-store-normalization";
 import {
 	createIndependentBodyVideoDecoder,
+	hasIndependentBodyVideoContentSource,
 	independentBodyVideoApplies,
 	independentBodyVideoCapability,
 	independentBodyVideoClipIdentity,
@@ -81,6 +82,46 @@ describe("independent body video applicability", () => {
 					...(change as object),
 				})
 			).toBe(false);
+	});
+
+	it("accepts loaded media bytes regardless of a mutable display URL", () => {
+		const item = mediaItem({ url: "app://local-media/clip.mp4" });
+		expect(hasIndependentBodyVideoContentSource({ mediaItem: item })).toBe(
+			true
+		);
+		const changedPreview = { ...item, url: "blob:replacement-preview" };
+		expect(
+			hasIndependentBodyVideoContentSource({
+				mediaItem: changedPreview,
+			})
+		).toBe(true);
+	});
+
+	it.each([
+		{ url: "blob:preview-only", file: undefined },
+		{
+			url: "app://local-media/clip.mp4",
+			localPath: "/media/clip.mp4",
+			file: new File([], "clip.mp4"),
+		},
+		{ url: "https://example.com/clip.mp4", file: undefined },
+	])("rejects URL-only history admission for $url", (source) => {
+		expect(
+			hasIndependentBodyVideoContentSource({ mediaItem: mediaItem(source) })
+		).toBe(false);
+	});
+
+	it("checks loaded-source eligibility without reading its media bytes", () => {
+		const file = new File([new Uint8Array(16)], "clip.mp4");
+		const slices = vi.spyOn(file, "slice");
+		const reads = vi.spyOn(file, "arrayBuffer");
+		expect(
+			hasIndependentBodyVideoContentSource({
+				mediaItem: mediaItem({ file }),
+			})
+		).toBe(true);
+		expect(slices).not.toHaveBeenCalled();
+		expect(reads).not.toHaveBeenCalled();
 	});
 });
 
