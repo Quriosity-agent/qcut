@@ -19,6 +19,7 @@ export interface SegmentedRenderRequest {
 		from?: number;
 		sourceWindowCacheHit?: boolean;
 		nativeRenderCount?: number;
+		needsSourcePreRoll?: boolean;
 		cancelled?: boolean;
 	};
 	error?: string;
@@ -104,6 +105,7 @@ export async function installSegmentedRequestObserver({
 								from: receipt.from,
 								sourceWindowCacheHit: receipt.sourceWindowCacheHit,
 								nativeRenderCount: receipt.nativeRenderCount,
+								needsSourcePreRoll: receipt.needsSourcePreRoll,
 								cancelled: receipt.cancelled,
 							};
 					}, rejected);
@@ -130,4 +132,75 @@ export async function readSegmentedRequests({
 		if (!entries) throw new Error("Missing segmented request observer");
 		return entries.slice(after);
 	}, after);
+}
+
+/** Only the unchanged clip's target segment proves reuse; prefetch is separate. */
+export function verifySegmentCacheReuse({
+	requests,
+	engine,
+	startFrame,
+	endFrame,
+	clipStartFrame,
+	values,
+}: {
+	requests: SegmentedRenderRequest[];
+	engine: "native" | "independent";
+	startFrame: number;
+	endFrame: number;
+	clipStartFrame: number;
+	values: Record<string, number>;
+}) {
+	if (
+		!Number.isInteger(startFrame) ||
+		!Number.isInteger(endFrame) ||
+		startFrame < 0 ||
+		endFrame <= startFrame
+	)
+		throw new Error("Cache reuse requires a nonempty integer frame range");
+	const selected: Array<{ frame: number; request: SegmentedRenderRequest }> =
+		[];
+	for (const request of requests) {
+		if (
+			request.status !== "completed" ||
+			!Object.entries(values).every(
+				([name, value]) => request.values?.[name] === value
+			)
+		)
+			continue;
+		let frame: number | undefined;
+		if (
+			engine === "native" &&
+			request.channel === "jianying-portrait-adjustment:render" &&
+			request.freshTracking === true &&
+			request.sourceKey
+		)
+			frame = request.frameNumber;
+		if (
+			engine === "independent" &&
+			request.channel === "beauty-lab:render-independent-sequence-frame" &&
+			request.sequence?.replay === false
+		)
+			frame = clipStartFrame + request.sequence.frame;
+		if (frame !== undefined && frame >= startFrame && frame < endFrame)
+			selected.push({ frame, request });
+	}
+	const frames = [...new Set(selected.map((entry) => entry.frame))].sort(
+		(left, right) => left - right
+	);
+	const missing = Array.from(
+		{ length: endFrame - startFrame },
+		(_, index) => startFrame + index
+	).filter((frame) => !frames.includes(frame));
+	if (missing.length)
+		throw new Error(`Unchanged segment has missing cache receipts: ${missing}`);
+	for (const { frame, request } of selected) {
+		const hit =
+			engine === "native"
+				? request.result?.sourceWindowCacheHit === true &&
+					request.result?.nativeRenderCount === 0
+				: request.result?.cached === true;
+		if (!hit)
+			throw new Error(`Unchanged ${engine} frame ${frame} was rendered again`);
+	}
+	return { startFrame, endFrame, frames, requests: selected };
 }
