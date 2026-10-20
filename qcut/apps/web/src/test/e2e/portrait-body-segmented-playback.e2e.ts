@@ -27,6 +27,7 @@ import { prepareSegmentedBodyProject } from "./helpers/body-segmented-playback-p
 import {
 	installSegmentedRequestObserver,
 	readSegmentedRequests,
+	verifySegmentCacheReuse,
 } from "./helpers/body-segmented-playback-requests";
 import { changeSlimBody } from "./helpers/body-video-editor-operations";
 import {
@@ -87,12 +88,18 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 	const stateHome = await mkdtemp(
 		path.join(os.tmpdir(), "qcut-body-segmented-state-")
 	);
-	const previousEnvironment = ["QCUT_API_PORT", "XDG_STATE_HOME"].map(
-		(name) => ({
-			name,
-			value: process.env[name],
-		})
+	const nativeRenderCacheRoot = path.join(
+		userDataDirectory,
+		"native-render-cache"
 	);
+	const previousEnvironment = [
+		"QCUT_API_PORT",
+		"XDG_STATE_HOME",
+		"QCUT_JIANYING_PORTRAIT_RENDER_CACHE_ROOT",
+	].map((name) => ({
+		name,
+		value: process.env[name],
+	}));
 	const exportStages: Record<string, BodyOperationFrame[]> = {};
 	const playbackStages: Record<string, BodyPlaybackFrame[]> = {};
 	const checks: Record<string, boolean> = {};
@@ -124,6 +131,7 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 		frontendIndexSha256: await hashFile({ file: "apps/web/dist/index.html" }),
 		userDataDirectory,
 		stateHome,
+		nativeRenderCacheRoot: engine === "native" ? nativeRenderCacheRoot : null,
 		checks,
 		exportStages,
 		playbackStages,
@@ -147,6 +155,9 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 		writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
 	process.env.QCUT_API_PORT = String(await findAvailablePort());
 	process.env.XDG_STATE_HOME = stateHome;
+	if (engine === "native")
+		process.env.QCUT_JIANYING_PORTRAIT_RENDER_CACHE_ROOT =
+			nativeRenderCacheRoot;
 	const app = await startElectronApp({
 		userDataDirectory,
 		colorProfile: "srgb",
@@ -325,6 +336,15 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 			seekAudits.push({ milliseconds: Date.now() - started, status, capture });
 		}, Promise.resolve());
 		checks.far_and_backward_seek_match_export = true;
+		// The far tail has no person and legitimately needs uncached native history.
+		const untouchedFrame = half + Math.min(60, half - 1);
+		await seek({ page, frame: untouchedFrame, fps });
+		evidence.unchangedClipBeforeEdit = await waitForSegmentedFrame({
+			page,
+			frame: untouchedFrame,
+			generation,
+			settled: true,
+		});
 		await page.screenshot({ path: path.join(output, "before-edit-ui.png") });
 
 		const beforeChange = (await readSegmentedRequests({ app })).length;
@@ -342,7 +362,7 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 			.not.toBe(generation);
 		const changedStatus = await waitForSegmentedFrame({
 			page,
-			frame: far,
+			frame: untouchedFrame,
 			settled: true,
 		});
 		const changedGeneration = changedStatus.generation;
@@ -355,7 +375,7 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 				page,
 				output,
 				stage: "unchanged-b",
-				frame: far,
+				frame: untouchedFrame,
 				generation: changedGeneration,
 				reference: exportStages.baseline,
 			}),
@@ -366,19 +386,16 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 			app,
 			after: beforeChange,
 		});
-		const bReceipts = unchangedRequests.filter(
-			(request) =>
-				request.status === "completed" &&
-				request.values?.body_adjust_StretchLeg === 20 &&
-				request.channel.includes("render")
-		);
-		expect(bReceipts.length).toBeGreaterThan(0);
-		for (const request of bReceipts) {
-			if (engine === "native") {
-				expect(request.result?.sourceWindowCacheHit).toBe(true);
-				expect(request.result?.nativeRenderCount).toBe(0);
-			} else expect(request.result?.cached).toBe(true);
-		}
+		const targetStart =
+			Math.floor(untouchedFrame / first.segmentFrames) * first.segmentFrames;
+		evidence.unchangedSegmentReuse = verifySegmentCacheReuse({
+			requests: unchangedRequests,
+			engine,
+			startFrame: targetStart,
+			endFrame: Math.min(frames, targetStart + first.segmentFrames),
+			clipStartFrame: half,
+			values: { body_adjust_SlimBody: 55, body_adjust_StretchLeg: 20 },
+		});
 		checks.parameter_edit_automatically_rebuilds_current_generation = true;
 		checks.unchanged_b_reuses_backend_pixels = true;
 		await persist();
