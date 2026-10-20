@@ -1,8 +1,15 @@
 // @vitest-environment node
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createPortraitSourceWindowRenderCache } from "../jianying-portrait-adjustment-runtime/source-window-render-cache.js";
 import { createPortraitRenderRequests } from "../jianying-portrait-adjustment-runtime/render-requests.js";
-import { CacheLeaseUnavailableError } from "../jianying-portrait-adjustment-runtime/render-disk-cache-lock.js";
+import { createPortraitRenderDiskCache } from "../jianying-portrait-adjustment-runtime/render-disk-cache.js";
+import {
+	CacheLeaseUnavailableError,
+	withPortraitRenderCacheLock,
+} from "../jianying-portrait-adjustment-runtime/render-disk-cache-lock.js";
 import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 
 function deferred<Result>() {
@@ -156,17 +163,95 @@ describe("native independent request caching and cancellation", () => {
 		await pending;
 		expect(f.identity.clear).toHaveBeenCalledOnce();
 	});
-	it("stops retrying an unavailable cache lease until the provider cache is recreated", async () => {
+	it("recovers reads and writes after a real competing cache lease is released", async () => {
+		const f = fixture();
+		const directory = await mkdtemp(
+			path.join(os.tmpdir(), "native-cache-recovery-")
+		);
+		const cache = createPortraitRenderDiskCache({ directory });
+		const executor = createPortraitSourceWindowRenderCache({
+			cache,
+			identity: f.identity,
+		});
+		const leased = deferred<void>();
+		const released = deferred<void>();
+		const competing = withPortraitRenderCacheLock({
+			directory,
+			run: async () => {
+				leased.resolve();
+				await released.promise;
+			},
+		});
+		const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const originalRequest = structuredClone(f.request);
+		try {
+			await Promise.race([leased.promise, competing]);
+			const unavailable = await executor.render(f);
+			expect(unavailable.sourceWindowCacheHit).toBe(false);
+			expect(f.renderFresh).toHaveBeenCalledOnce();
+			expect(warning).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(CacheLeaseUnavailableError)
+			);
+			released.resolve();
+			await competing;
+			const cold = await executor.render(f);
+			expect(cold.sourceWindowCacheHit).toBe(false);
+			const warm = await executor.render(f);
+			expect(warm).toEqual({
+				...f.result,
+				sourceWindowCacheHit: true,
+				nativeRenderCount: 0,
+			});
+			expect(f.renderFresh).toHaveBeenCalledTimes(2);
+			expect(f.applyCachedResult).toHaveBeenCalledOnce();
+			expect(f.request).toEqual(originalRequest);
+		} finally {
+			released.resolve();
+			await competing;
+			await executor.close();
+			await rm(directory, { recursive: true, force: true });
+			warning.mockRestore();
+		}
+	});
+	it("recovers a warm read after a previous cache write lost its lease", async () => {
 		const f = fixture();
 		const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
-		f.cache.read.mockRejectedValue(new CacheLeaseUnavailableError());
-		await f.executor.render(f);
-		const second = await f.executor.render(f);
-		expect(second.sourceWindowCacheHit).toBe(false);
-		expect(f.cache.read).toHaveBeenCalledOnce();
-		expect(f.renderFresh).toHaveBeenCalledTimes(2);
-		expect(warning).toHaveBeenCalledOnce();
-		warning.mockRestore();
+		f.cache.write.mockRejectedValueOnce(new CacheLeaseUnavailableError());
+		try {
+			const first = await f.executor.render(f);
+			expect(first.sourceWindowCacheHit).toBe(false);
+			expect(first.rgba).toEqual(f.result.rgba);
+			f.cache.read.mockResolvedValue(f.result);
+			const second = await f.executor.render(f);
+			expect(second.sourceWindowCacheHit).toBe(true);
+			expect(second.nativeRenderCount).toBe(0);
+			expect(f.cache.read).toHaveBeenCalledTimes(2);
+			expect(f.renderFresh).toHaveBeenCalledOnce();
+			expect(f.applyCachedResult).toHaveBeenCalledOnce();
+		} finally {
+			warning.mockRestore();
+		}
+	});
+	it("still rejects stale runtime identity after a transient lease failure", async () => {
+		const f = fixture();
+		const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+		f.cache.read.mockRejectedValueOnce(new CacheLeaseUnavailableError());
+		try {
+			await f.executor.render(f);
+			f.cache.read.mockResolvedValue(f.result);
+			f.identity.resolve
+				.mockResolvedValueOnce("runtime-a")
+				.mockResolvedValue("runtime-b");
+			const second = await f.executor.render(f);
+			expect(f.cache.read).toHaveBeenCalledTimes(2);
+			expect(second.sourceWindowCacheHit).toBe(false);
+			expect(f.renderFresh).toHaveBeenCalledTimes(2);
+			expect(f.applyCachedResult).not.toHaveBeenCalled();
+			expect(f.cache.write).not.toHaveBeenCalled();
+		} finally {
+			warning.mockRestore();
+		}
 	});
 	it("returns cancellation promptly but reserves request identity until started work settles", async () => {
 		const requests = createPortraitRenderRequests();
