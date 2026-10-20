@@ -2,13 +2,49 @@ import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import { reportColorDegradation } from "@/lib/color/color-degradation";
 import type { PortraitSourcePreRollReader } from "./portrait-source-preroll";
-import type { JianyingPortraitAdjustmentRenderResult } from "@/types/electron/api-jianying-portrait-adjustment";
+import type {
+	JianyingPortraitAdjustmentAPI,
+	JianyingPortraitAdjustmentRenderRequest,
+	JianyingPortraitAdjustmentRenderResult,
+} from "@/types/electron/api-jianying-portrait-adjustment";
 import {
 	canUseNativePortraitSourceWindow,
 	NativePortraitSourceWindowError,
 	portraitSourceWindowKey,
 	type PortraitTemporalOptions,
 } from "./portrait-temporal-policy";
+
+async function submitPortraitRender({
+	api,
+	request,
+	signal,
+}: {
+	api: JianyingPortraitAdjustmentAPI;
+	request: JianyingPortraitAdjustmentRenderRequest;
+	signal?: AbortSignal;
+}) {
+	signal?.throwIfAborted();
+	if (!signal || !api.cancel) return api.render(request);
+	const requestId = crypto.randomUUID();
+	let onAbort = () => {};
+	const cancelled = new Promise<never>((_resolve, reject) => {
+		onAbort = () => {
+			void api.cancel?.({ requestId }).catch((error) => {
+				console.warn("[native-portrait] Cancellation failed:", error);
+			});
+			reject(signal.reason ?? new DOMException("Cancelled", "AbortError"));
+		};
+	});
+	signal.addEventListener("abort", onAbort, { once: true });
+	try {
+		return await Promise.race([
+			api.render({ ...request, requestId }),
+			cancelled,
+		]);
+	} finally {
+		signal.removeEventListener("abort", onAbort);
+	}
+}
 
 function validateRenderedPortrait({
 	result,
@@ -97,10 +133,14 @@ export async function renderJianyingPortraitAdjustmentPreview({
 			throw new Error(
 				"Portrait source-window decoder did not return a history result"
 			);
-		let result = await api.render({
-			...request,
-			...(deterministic ? { freshTracking: true } : {}),
-			...(history?.frames.length ? { sourcePreRoll: history } : {}),
+		let result = await submitPortraitRender({
+			api,
+			signal,
+			request: {
+				...request,
+				...(deterministic ? { freshTracking: true } : {}),
+				...(history?.frames.length ? { sourcePreRoll: history } : {}),
+			},
 		});
 		signal?.throwIfAborted();
 		validateRenderedPortrait({ result, source });
@@ -120,7 +160,11 @@ export async function renderJianyingPortraitAdjustmentPreview({
 			});
 			signal?.throwIfAborted();
 			if (sourcePreRoll)
-				result = await api.render({ ...request, sourcePreRoll });
+				result = await submitPortraitRender({
+					api,
+					signal,
+					request: { ...request, sourcePreRoll },
+				});
 			signal?.throwIfAborted();
 			validateRenderedPortrait({ result, source });
 		}
