@@ -94,6 +94,32 @@ class VideoFaceSequence(unittest.TestCase):
         self.start.assert_called_once()
         self.assertNotIn('retainedFaceDropped', receipt)
 
+    def test_native_publication_keeps_accepted_outside_points_and_history(self):
+        slot = self.track()
+        self.sequence.size = (360, 640)
+        self.algorithm = np.zeros((640, 360, 4), np.uint8)
+        result = prediction(box=self.box)
+        result['points'][:4] = [[-36, 320], [396, 320], [180, -64], [180, 704]]
+        slot.engine.process.return_value = result
+        roll, face = slot.roll, slot.face
+        data, receipt = self.sequence.update(algorithm=self.algorithm)
+        # Original public FaceBuffer bits from the accepted-slot boundary probe.
+        expected_bits = np.asarray([
+            [0xbdcccccd, 0x3f000000], [0x3f8ccccd, 0x3f000000],
+            [0x3f000000, 0x3f8ccccd], [0x3f000000, 0xbdcccccd],
+        ], np.uint32)
+        np.testing.assert_array_equal(data['faces'][0, :4].view(np.uint32), expected_bits)
+        np.testing.assert_array_equal(slot.points, result['points'])
+        self.assertIs(self.sequence.slots[0], slot)
+        self.assertIs(slot.roll, roll)
+        self.assertIs(slot.face, face)
+        self.assertEqual((slot.identifier, slot.persistent_id, slot.index, slot.age), (0, 0, 9, 9))
+        self.assertTrue(slot.active)
+        self.assertFalse(slot.new)
+        self.assertEqual(receipt['status'], 'tracked')
+        self.sequence.detector.detect.assert_not_called()
+        self.start.assert_not_called()
+
     def test_recovery_without_detection_keeps_tracking_history(self):
         slot = self.track()
         self.ready(recovery=9)
