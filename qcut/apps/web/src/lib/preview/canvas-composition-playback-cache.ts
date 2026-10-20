@@ -1,6 +1,7 @@
 export const CANVAS_PLAYBACK_CACHE_MAX_BYTES = 2 * 1024 ** 3;
 export const CANVAS_PLAYBACK_CACHE_DIRECTORY = "composition-playback";
 const MANAGED_GENERATION = /^v1-[0-9a-f-]{36}$/;
+const MAX_FAILED_ORPHAN_GENERATIONS = 1;
 const ownershipName = ({ id }: { id: string }) =>
 	`qcut-composition-playback:${id}`;
 
@@ -75,6 +76,7 @@ async function reclaimInactiveGenerations({
 	locks: LockManager;
 }) {
 	const warnings: string[] = [];
+	const failedRemovals: Error[] = [];
 	for await (const [id, handle] of parent.entries()) {
 		if (handle.kind !== "directory") continue;
 		if (!MANAGED_GENERATION.test(id)) {
@@ -90,13 +92,22 @@ async function reclaimInactiveGenerations({
 					await parent.removeEntry(id, { recursive: true });
 				} catch (error) {
 					if (isMissingEntry({ error })) return;
-					throw new Error(`Unable to reclaim effect playback cache ${id}`, {
-						cause: error,
-					});
+					const failure = new Error(
+						`Unable to reclaim effect playback cache ${id}`,
+						{ cause: error }
+					);
+					failedRemovals.push(failure);
+					warnings.push(failure.message);
 				}
 			}
 		);
 	}
+	// One stuck directory may coexist with healthy generations; repeated removal failures must not accumulate.
+	if (failedRemovals.length > MAX_FAILED_ORPHAN_GENERATIONS)
+		throw new Error(
+			`Unable to reclaim ${failedRemovals.length} effect playback caches; remove old caches before preparing another generation`,
+			{ cause: new AggregateError(failedRemovals) }
+		);
 	return warnings;
 }
 
