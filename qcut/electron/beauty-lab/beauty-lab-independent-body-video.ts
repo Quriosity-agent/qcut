@@ -187,6 +187,7 @@ export function createIndependentSequenceFrameRenderer({
 }) {
 	if (!path.isAbsolute(sessionsDirectory))
 		throw new Error("Independent session checkpoints need an absolute folder");
+	const pending = new Map<string, AbortController>();
 	let disposed = false;
 	let prunedAt = Number.NEGATIVE_INFINITY;
 	let pruning: Promise<unknown> = Promise.resolve();
@@ -221,111 +222,138 @@ export function createIndependentSequenceFrameRenderer({
 			adjustments: structuredClone(parsed.adjustments),
 		};
 		const { requestId, width, height } = input;
-		const signal = new AbortController().signal;
-		const engine = await waitForFrameOperation({
-			signal,
-			operation: engineSha256,
-		});
-		const manualBody = canonicalIndependentManualBody({
-			manualBody: input.adjustments.manualBody,
-		});
-		const edit = {
-			width,
-			height,
-			values: input.adjustments.values,
-			makeup: input.adjustments.makeup ?? {},
-			manualBody,
-		};
-		const session = independentBodyVideoSession({
-			engineSha256: engine,
-			clip: sequence.clip,
-			width,
-			height,
-		});
-		const key = independentFrameCacheKey({
-			engineSha256: engine,
-			...edit,
-			rgba: input.rgba,
-			sequence: { session, frame: sequence.frame },
-		});
-		if (!sequence.replay) {
-			const cached = await cache.read({ key, width, height });
-			if (cached)
-				return {
-					status: "rendered",
-					requestId,
-					width,
-					height,
-					rgba: cached,
-					cached: true,
-				};
-		}
-		const submit = () =>
-			provider.render({
-				request: {
-					...input,
-					sourceKey: INDEPENDENT_TIMELINE_SOURCE_KEY,
-					sequence: {
-						session,
-						frame: sequence.frame,
-						timestamp: sequence.frame / sequence.fps,
-						checkpoints: path.join(sessionsDirectory, session),
-					},
-				},
+		if (pending.has(requestId))
+			throw new Error("Duplicate independent sequence request id");
+		const controller = new AbortController();
+		pending.set(requestId, controller);
+		const { signal } = controller;
+		try {
+			const engine = await waitForFrameOperation({
+				signal,
+				operation: engineSha256,
 			});
-		let result: BeautyLabIndependentResult;
-		try {
-			try {
-				result = await submit();
-			} catch (error) {
-				// A worker that dies under a frame takes the session's in-memory
-				// history with it, but not the on-disk checkpoints. One resubmission
-				// starts a fresh worker; lacking the history it answers with the
-				// frame to replay from, which the caller already knows how to do.
-				// Anything else (a deliberate stop, a bad request) is passed on.
-				if (!(error instanceof IndependentWorkerExitedError)) throw error;
-				console.warn(
-					`[independent-beauty] Worker died under frame ${sequence.frame}; resubmitting once:`,
-					error.message
-				);
-				result = await submit();
-			}
-		} catch (error) {
-			if (error instanceof IndependentSequenceGapError)
-				return { status: "replay", requestId, from: error.restartFrom };
-			throw error;
-		}
-		if (
-			result.requestId !== requestId ||
-			result.width !== width ||
-			result.height !== height ||
-			result.rgba.length !== input.rgba.length
-		)
-			throw new Error("Independent frame result identity mismatch");
-		try {
-			await cache.write({
-				key,
+			const manualBody = canonicalIndependentManualBody({
+				manualBody: input.adjustments.manualBody,
+			});
+			const edit = {
 				width,
 				height,
-				png: result.png,
-				rgba: result.rgba,
+				values: input.adjustments.values,
+				makeup: input.adjustments.makeup ?? {},
+				manualBody,
+			};
+			const session = independentBodyVideoSession({
+				engineSha256: engine,
+				clip: sequence.clip,
+				width,
+				height,
 			});
-		} catch (error) {
-			// The frame itself succeeded; only the next export loses the reuse.
-			console.warn("[independent-beauty] Frame cache write failed:", error);
+			const key = independentFrameCacheKey({
+				engineSha256: engine,
+				...edit,
+				rgba: input.rgba,
+				sequence: { session, frame: sequence.frame },
+			});
+			if (!sequence.replay) {
+				const cached = await waitForFrameOperation({
+					signal,
+					operation: () => cache.read({ key, width, height }),
+				});
+				signal.throwIfAborted();
+				if (cached)
+					return {
+						status: "rendered",
+						requestId,
+						width,
+						height,
+						rgba: cached,
+						cached: true,
+					};
+			}
+			const submit = () => {
+				signal.throwIfAborted();
+				return provider.render({
+					request: {
+						...input,
+						sourceKey: INDEPENDENT_TIMELINE_SOURCE_KEY,
+						sequence: {
+							session,
+							frame: sequence.frame,
+							timestamp: sequence.frame / sequence.fps,
+							checkpoints: path.join(sessionsDirectory, session),
+						},
+					},
+				});
+			};
+			let result: BeautyLabIndependentResult;
+			try {
+				try {
+					result = await submit();
+				} catch (error) {
+					// A worker that dies under a frame takes the session's in-memory
+					// history with it, but not the on-disk checkpoints. One resubmission
+					// starts a fresh worker; lacking the history it answers with the
+					// frame to replay from, which the caller already knows how to do.
+					// Anything else (a deliberate stop, a bad request) is passed on.
+					if (!(error instanceof IndependentWorkerExitedError)) throw error;
+					signal.throwIfAborted();
+					console.warn(
+						`[independent-beauty] Worker died under frame ${sequence.frame}; resubmitting once:`,
+						error.message
+					);
+					result = await submit();
+				}
+			} catch (error) {
+				if (error instanceof IndependentSequenceGapError) {
+					signal.throwIfAborted();
+					return { status: "replay", requestId, from: error.restartFrom };
+				}
+				throw error;
+			}
+			if (
+				result.requestId !== requestId ||
+				result.width !== width ||
+				result.height !== height ||
+				result.rgba.length !== input.rgba.length
+			)
+				throw new Error("Independent frame result identity mismatch");
+			// Once submitted, a successful frame must be cached even if its caller
+			// cancelled: the worker may already have advanced the session history.
+			try {
+				await cache.write({
+					key,
+					width,
+					height,
+					png: result.png,
+					rgba: result.rgba,
+				});
+			} catch (error) {
+				// The frame itself succeeded; only the next export loses the reuse.
+				console.warn("[independent-beauty] Frame cache write failed:", error);
+			}
+			await prune({ active: session });
+			return {
+				status: "rendered",
+				requestId,
+				width,
+				height,
+				rgba: result.rgba,
+				cached: false,
+			};
+		} finally {
+			pending.delete(requestId);
 		}
-		await prune({ active: session });
-		return {
-			status: "rendered",
-			requestId,
-			width,
-			height,
-			rgba: result.rgba,
-			cached: false,
-		};
+	}
+	function cancel({ request }: { request: { requestId: string } }) {
+		const controller = pending.get(request?.requestId);
+		if (!controller) return { cancelled: false };
+		controller.abort(new Error("Independent beauty cancelled"));
+		return { cancelled: true };
 	}
 	function dispose() {
 		disposed = true;
+		for (const controller of pending.values())
+			controller.abort(new Error("Independent sequence renderer disposed"));
 	}
-	return { render, dispose };
+	return { render, cancel, dispose };
 }
