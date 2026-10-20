@@ -57,6 +57,20 @@ function parseSourceKey({ value }: { value: unknown }) {
 	return value;
 }
 
+export function parseJianyingPortraitCancelRequest({
+	request,
+}: {
+	request: unknown;
+}) {
+	const requestId = recordValue({ value: request })?.requestId;
+	if (
+		typeof requestId !== "string" ||
+		!/^[A-Za-z0-9._:-]{1,128}$/.test(requestId)
+	)
+		throw new Error("剪映美颜美体 requestId 无效");
+	return { requestId };
+}
+
 function parsePersonBindingAnchor({ value }: { value: unknown }) {
 	const anchor = recordValue({ value });
 	const rect = recordValue({ value: anchor?.rect });
@@ -591,6 +605,9 @@ export function parseJianyingPortraitRenderRequest({
 	});
 	const manualBody = parseManualBody({ value: adjustments.manualBody });
 	const parsed: JianyingPortraitAdjustmentRenderRequest = {
+		...(record.requestId === undefined
+			? {}
+			: parseJianyingPortraitCancelRequest({ request: record })),
 		width,
 		height,
 		rgba: new Uint8Array(
