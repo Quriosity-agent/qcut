@@ -324,6 +324,7 @@ describe("independent body video frame driver", () => {
 	beforeEach(() => {
 		decoded.length = 0;
 		vi.mocked(decoder.dispose).mockClear();
+		createDecoder.mockClear();
 		render = vi.fn(async (request: BeautyLabIndependentSequenceFrameRequest) =>
 			rendered(request)
 		);
@@ -364,7 +365,7 @@ describe("independent body video frame driver", () => {
 			BeautyLabIndependentSequenceFrameRequest,
 		];
 		expect(request.sequence).toEqual({
-			clip: await independentBodyVideoClipIdentity({ clip }),
+			clip: await independentBodyVideoClipIdentity({ clip, adjustments }),
 			frame: 5,
 			fps: 24,
 			replay: false,
@@ -403,6 +404,147 @@ describe("independent body video frame driver", () => {
 			[5, true],
 			[6, false],
 		]);
+	});
+
+	it("rebuilds all prior controls when a resolved edit changes without changing the stored element", async () => {
+		const sessions = new Map<string, { next: number; total: number }>();
+		render.mockImplementation(
+			async (request: BeautyLabIndependentSequenceFrameRequest) => {
+				const { clip: identity, frame } = request.sequence;
+				const state = sessions.get(identity) ?? { next: 0, total: 0 };
+				if (state.next !== frame)
+					return {
+						status: "replay",
+						requestId: request.requestId,
+						from: state.next,
+					};
+				state.next += 1;
+				state.total += request.adjustments.values.face_adjust_BrightEye ?? 0;
+				sessions.set(identity, state);
+				const result = rendered(request);
+				if (result.status === "rendered") result.rgba[0] = state.total;
+				return result;
+			}
+		);
+		const input = { width, height, createDecoder };
+		await renderIndependentBodyVideoFrame({
+			...input,
+			frame: { clip, frame: 2 },
+			adjustments: {
+				...adjustments,
+				values: { ...adjustments.values, face_adjust_BrightEye: 10 },
+			},
+		});
+		const output = await renderIndependentBodyVideoFrame({
+			...input,
+			frame: { clip, frame: 3 },
+			adjustments: {
+				...adjustments,
+				values: { ...adjustments.values, face_adjust_BrightEye: 20 },
+			},
+		});
+		expect(output[0]).toBe(80);
+		expect(sessions.size).toBe(2);
+		expect(decoded).toEqual([2, 0, 1, 2, 3, 0, 1, 2, 3]);
+	});
+
+	it("snapshots an edit before decoding so a parameter update cannot change its replay", async () => {
+		const changing = {
+			...adjustments,
+			values: { ...adjustments.values },
+			manualBody: { stretch: { intensity: 20, upper: 0.45, bottom: 0.2 } },
+		};
+		render.mockImplementationOnce(
+			async (request: BeautyLabIndependentSequenceFrameRequest) => {
+				changing.values.body_adjust_SlimBody = 80;
+				changing.manualBody.stretch.upper = 0.6;
+				return { status: "replay", requestId: request.requestId, from: 0 };
+			}
+		);
+		await renderIndependentBodyVideoFrame({
+			frame: { clip, frame: 2 },
+			width,
+			height,
+			adjustments: changing,
+			createDecoder,
+		});
+		expect(decoded).toEqual([2, 0, 1, 2]);
+		for (const [request] of render.mock.calls as [
+			BeautyLabIndependentSequenceFrameRequest,
+		][]) {
+			expect(request.adjustments.values.body_adjust_SlimBody).toBe(40);
+			expect(request.adjustments.manualBody?.stretch?.upper).toBe(0.45);
+		}
+	});
+
+	it("keeps a restored edit's session after an intervening zero-value bypass", async () => {
+		const input = {
+			frame: { clip, frame: 2 },
+			width,
+			height,
+			adjustments,
+			createDecoder,
+		};
+		await renderIndependentBodyVideoFrame(input);
+		const disabled = { ...bodyEdit, values: { body_adjust_SlimBody: 0 } };
+		expect(
+			independentBodyVideoApplies({
+				adjustments: disabled,
+				mediaType: "video",
+				fps: clip.fps,
+			})
+		).toBe(false);
+		const reopened = normalizeMediaElement({
+			element: clip.element,
+		}) as MediaElement;
+		await renderIndependentBodyVideoFrame({
+			...input,
+			frame: { clip: { ...clip, element: reopened }, frame: 2 },
+			adjustments: {
+				enabled: true,
+				values: { face_adjust_Whiten: 0, body_adjust_SlimBody: 40 },
+			},
+		});
+		const submitted = render.mock.calls.map(
+			([request]) => request as BeautyLabIndependentSequenceFrameRequest
+		);
+		expect(submitted).toHaveLength(2);
+		expect(submitted[1].sequence.clip).toBe(submitted[0].sequence.clip);
+	});
+
+	it("does not open a decoder or submit after cancellation before or during identity hashing", async () => {
+		const aborted = new AbortController();
+		aborted.abort();
+		await expect(
+			renderIndependentBodyVideoFrame({
+				frame: { clip, frame: 2 },
+				width,
+				height,
+				adjustments,
+				createDecoder,
+				signal: aborted.signal,
+			})
+		).rejects.toThrow();
+		const duringHash = new AbortController();
+		const file = new File([new Uint8Array(16)], "cancel-hash.mp4");
+		const slice = file.slice.bind(file);
+		vi.spyOn(file, "slice").mockImplementation((...args) => {
+			duringHash.abort();
+			return slice(...args);
+		});
+		await expect(
+			renderIndependentBodyVideoFrame({
+				frame: { clip: { ...clip, mediaItem: mediaItem({ file }) }, frame: 2 },
+				width,
+				height,
+				adjustments,
+				createDecoder,
+				signal: duringHash.signal,
+			})
+		).rejects.toThrow();
+		expect(createDecoder).not.toHaveBeenCalled();
+		expect(render).not.toHaveBeenCalled();
+		expect(cancelIndependent).not.toHaveBeenCalled();
 	});
 
 	it("restarts a rebuild from the new point when a replayed frame meets a gap", async () => {
