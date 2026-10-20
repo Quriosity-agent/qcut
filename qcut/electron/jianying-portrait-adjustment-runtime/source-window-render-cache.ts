@@ -3,7 +3,6 @@ import type {
 	JianyingPortraitAdjustmentRenderResult,
 } from "./jianying-portrait-adjustment-contract.js";
 import { createPortraitRenderDiskCache } from "./render-disk-cache.js";
-import { CacheLeaseUnavailableError } from "./render-disk-cache-lock.js";
 import {
 	createPortraitRenderIdentity,
 	isCacheablePortraitSourceWindow,
@@ -18,9 +17,7 @@ export function createPortraitSourceWindowRenderCache({
 	identity?: ReturnType<typeof createPortraitRenderIdentity>;
 } = {}) {
 	let warned = false;
-	let leaseUnavailable = false;
 	function warn({ error }: { error: unknown }) {
-		if (error instanceof CacheLeaseUnavailableError) leaseUnavailable = true;
 		if (warned) return;
 		warned = true;
 		console.warn(
@@ -48,8 +45,6 @@ export function createPortraitSourceWindowRenderCache({
 		}) => {
 			signal?.throwIfAborted();
 			if (!isCacheablePortraitSourceWindow({ request })) return renderFresh();
-			if (leaseUnavailable)
-				return { ...(await renderFresh()), sourceWindowCacheHit: false };
 			let runtimeIdentity: string | undefined;
 			let key: string | undefined;
 			try {
