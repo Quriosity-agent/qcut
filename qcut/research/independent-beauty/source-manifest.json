@@ -462,8 +462,8 @@
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 26940,
-			"sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af",
+			"bytes": 27427,
+			"sha256": "314862472a40a16ff369b5536e22f34e91184769dc573481cab98495c99d43eb",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -2581,6 +2581,16 @@
 			"path": "research/tests/test_detection_order.py",
 			"bytes": 4496,
 			"sha256": "dff8a56f7c53921cc2e54a7ff72f4df719ec0d54b82e5f0a188b41eac1668686"
+		},
+		{
+			"path": "research/pipeline_source_png.py",
+			"bytes": 1612,
+			"sha256": "24fea22c9b4b5ba1fd78a32b5f29cd789805081d27eb9b243b0cf9af58f210c6"
+		},
+		{
+			"path": "research/tests/test_pipeline_source_png.py",
+			"bytes": 11134,
+			"sha256": "1b66f180731137e05f835d946a0dc0f65d589a2035c3f1e6907b2de9e4cea248"
 		}
 	],
 	"importPatches": [
@@ -3387,6 +3397,14 @@
 				"research/tests/test_body_smart_sequence.py"
 			],
 			"reason": "Validate only the current native algorithm extent: remove the extra steady-state budget check that rejected a valid transient source resize before its smaller algorithm image was calculated. Keep cold/steady network limits and pre-mutation failure semantics; regression covers cold rejection, warm acceptance, unchanged state after steady rejection, and continuation on a valid frame. Native arithmetic and private runtime assets remain unchanged."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/pipeline_source_png.py",
+				"research/tests/test_pipeline_source_png.py"
+			],
+			"reason": "Skip only the redundant initial PNG normalization for a smart-body-first chain when the validated opaque source is a CRC-valid non-interlaced 8-bit RGBA PNG containing only standard sRGB and unchanged 8-bit sBIT metadata. Copy to the private temporary original.png, retain all input decoding, limits, source hashes and zero-stage encoding, and leave every renderer and final PNG compression unchanged. Tests bind final PNG bytes and RGBA, stage order, metadata fallbacks and rejection paths. No models, tracking rules or rendering arithmetic change."
 		}
 	],
 	"sourceWorkingTreeStatus": [
