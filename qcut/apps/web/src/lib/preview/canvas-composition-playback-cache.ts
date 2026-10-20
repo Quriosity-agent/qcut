@@ -7,6 +7,8 @@ const ownershipName = ({ id }: { id: string }) =>
 
 export interface CanvasPlaybackCache {
 	readonly id: string;
+	readonly maxBytes: number;
+	has: ({ frame }: { frame: number }) => boolean;
 	write: ({
 		frame,
 		blob,
@@ -23,6 +25,13 @@ export interface CanvasPlaybackCache {
 		frame: number;
 		signal: AbortSignal;
 	}) => Promise<Blob>;
+	remove: ({
+		frames,
+		signal,
+	}: {
+		frames: readonly number[];
+		signal: AbortSignal;
+	}) => Promise<void>;
 	dispose: () => Promise<void>;
 	readonly bytes: number;
 	readonly frameCount: number;
@@ -153,6 +162,16 @@ export async function createCanvasPlaybackCache({
 	let disposal: Promise<void> | undefined;
 	let cleanupError: Error | undefined;
 
+	function assertUsable({ signal }: { signal: AbortSignal }) {
+		signal.throwIfAborted();
+		if (disposed) throw new Error("Composition playback cache disposed");
+	}
+
+	function assertFrame({ frame }: { frame: number }) {
+		if (!Number.isSafeInteger(frame) || frame < 0)
+			throw new Error("Invalid composition playback frame");
+	}
+
 	function assertActive({
 		frame,
 		signal,
@@ -160,10 +179,8 @@ export async function createCanvasPlaybackCache({
 		frame: number;
 		signal: AbortSignal;
 	}) {
-		signal.throwIfAborted();
-		if (disposed) throw new Error("Composition playback cache disposed");
-		if (!Number.isSafeInteger(frame) || frame < 0)
-			throw new Error("Invalid composition playback frame");
+		assertUsable({ signal });
+		assertFrame({ frame });
 	}
 
 	function enqueue<Result>({ run }: { run: () => Promise<Result> }) {
@@ -191,6 +208,8 @@ export async function createCanvasPlaybackCache({
 					throw new Error("Composition playback frame already written");
 				if (blob.size === 0 || blob.type !== "image/png")
 					throw new Error("Composition playback needs a non-empty PNG");
+				if (blob.size > maxBytes)
+					throw new Error("Effect playback frame exceeds its disk cache limit");
 				if (bytes + blob.size > maxBytes)
 					throw new Error(
 						"Effect playback preview exceeds its disk cache limit"
@@ -214,6 +233,51 @@ export async function createCanvasPlaybackCache({
 					await directory.removeEntry(name).catch(() => {});
 					throw error;
 				}
+			},
+		});
+	}
+
+	async function removeFrame({
+		frame,
+		signal,
+	}: {
+		frame: number;
+		signal: AbortSignal;
+	}) {
+		assertUsable({ signal });
+		const frameBytes = frames.get(frame);
+		if (frameBytes === undefined) return;
+		try {
+			await directory.removeEntry(`${frame}.png`);
+		} catch (error) {
+			if (!isMissingEntry({ error }))
+				throw new Error(`Unable to remove effect playback frame ${frame}`, {
+					cause: error,
+				});
+		}
+		// OPFS deletion cannot be cancelled; account for it before rejecting an abort.
+		frames.delete(frame);
+		bytes -= frameBytes;
+		assertUsable({ signal });
+	}
+
+	function remove({
+		frames: requestedFrames,
+		signal,
+	}: {
+		frames: readonly number[];
+		signal: AbortSignal;
+	}) {
+		const selectedFrames = [...new Set(requestedFrames)];
+		return enqueue({
+			run: async () => {
+				assertUsable({ signal });
+				for (const frame of selectedFrames) assertFrame({ frame });
+				return selectedFrames.reduce(
+					(operation, frame) =>
+						operation.then(() => removeFrame({ frame, signal })),
+					Promise.resolve()
+				);
 			},
 		});
 	}
@@ -260,8 +324,11 @@ export async function createCanvasPlaybackCache({
 
 	return {
 		id: generation,
+		maxBytes,
+		has: ({ frame }) => !disposed && frames.has(frame),
 		write,
 		read,
+		remove,
 		dispose,
 		cleanupWarnings,
 		get cleanupError() {
