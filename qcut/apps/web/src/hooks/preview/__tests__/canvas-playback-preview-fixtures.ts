@@ -1,4 +1,5 @@
-import { vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, beforeEach, vi } from "vitest";
 import {
 	createCanvasCompositionRenderer,
 	type CanvasCompositionFrame,
@@ -14,7 +15,7 @@ type StoreListener = (state: StoreState, previous: StoreState) => void;
 
 const stores = vi.hoisted(() => {
 	const listeners = Array.from({ length: 5 }, () => new Set<StoreListener>());
-	const state = { isPlaying: false, pause: vi.fn() };
+	const state = { isPlaying: false, currentTime: 0, pause: vi.fn() };
 	return {
 		listeners,
 		state,
@@ -96,21 +97,61 @@ export function capture({ frame }: { frame: number }): CanvasCompositionFrame {
 }
 
 export function resources() {
+	const frames = new Map<number, Blob>();
+	const writeFrame: CanvasPlaybackCache["write"] = async ({
+		frame,
+		blob,
+		signal,
+	}) => {
+		signal.throwIfAborted();
+		frames.set(frame, blob);
+	};
 	const cache: CanvasPlaybackCache = {
 		id: crypto.randomUUID(),
-		bytes: 0,
-		frameCount: 0,
-		write: vi.fn(async ({ signal }) => signal.throwIfAborted()),
-		read: vi.fn(async () => new Blob(["png"], { type: "image/png" })),
-		dispose: vi.fn(async () => {}),
+		maxBytes: 2 * 1024 ** 3,
+		get bytes() {
+			return [...frames.values()].reduce((total, blob) => total + blob.size, 0);
+		},
+		get frameCount() {
+			return frames.size;
+		},
+		has: vi.fn(({ frame }) => frames.has(frame)),
+		write: vi.fn(writeFrame),
+		read: vi.fn(async ({ frame, signal }) => {
+			signal.throwIfAborted();
+			const blob = frames.get(frame);
+			if (!blob) throw new Error(`Frame ${frame} is unavailable`);
+			return blob;
+		}),
+		remove: vi.fn(async ({ frames: removed, signal }) => {
+			signal.throwIfAborted();
+			for (const frame of removed) frames.delete(frame);
+		}),
+		dispose: vi.fn(async () => frames.clear()),
 	};
 	const renderer = {
 		render: vi.fn(async ({ frame }: { frame: number }) => capture({ frame })),
 		dispose: vi.fn(async () => {}),
 	};
-	return { cache, renderer };
+	return { cache, renderer, writeFrame };
 }
 
-export function playbackStores() {
+export function setupPlaybackPreviewTests() {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		stores.state.isPlaying = false;
+		stores.state.currentTime = 0;
+		stores.state.pause.mockImplementation(() => {
+			stores.state.isPlaying = false;
+		});
+		const { cache, renderer } = resources();
+		createCache.mockResolvedValue(cache);
+		createRenderer.mockReturnValue(renderer);
+	});
+	afterEach(() => {
+		cleanup();
+		vi.useRealTimers();
+		for (const listeners of stores.listeners) listeners.clear();
+	});
 	return stores;
 }
