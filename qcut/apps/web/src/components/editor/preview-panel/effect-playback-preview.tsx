@@ -3,7 +3,11 @@ import type {
 	CanvasPlaybackPreparationMetrics,
 	CanvasPlaybackSession,
 } from "@/hooks/preview/use-canvas-playback-preview";
-import { createCanvasPlaybackReader } from "@/lib/preview/canvas-composition-playback-reader";
+import {
+	createCanvasPlaybackReader,
+	PLAYBACK_BITMAP_MAX_FRAMES,
+} from "@/lib/preview/canvas-composition-playback-reader";
+import type { CanvasPlaybackStreamStats } from "@/lib/preview/canvas-composition-playback-stream";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 
 export function EffectPlaybackCanvas({
@@ -21,10 +25,17 @@ export function EffectPlaybackCanvas({
 		canvas.width = width;
 		canvas.height = height;
 		const reader = createCanvasPlaybackReader({
-			cache: session.cache,
+			cache: session.stream ?? session.cache,
 			width,
 			height,
 			frames: session.frames,
+			// Pending reads outside the rolling window can starve a backward seek.
+			maxFrames: session.stream
+				? Math.min(
+						PLAYBACK_BITMAP_MAX_FRAMES,
+						session.stream.stats.segmentFrames + 1
+					)
+				: PLAYBACK_BITMAP_MAX_FRAMES,
 		});
 		let target = 0;
 		let presented = -1;
@@ -40,7 +51,7 @@ export function EffectPlaybackCanvas({
 			}
 		};
 		const publish = () => {
-			if (disposed) return;
+			if (disposed || session.stream?.aborted) return;
 			const stats = reader.stats;
 			canvas.dataset.bufferedFrames = String(stats.frames);
 			canvas.dataset.bufferedBytes = String(stats.bytes);
@@ -48,7 +59,9 @@ export function EffectPlaybackCanvas({
 			canvas.dataset.bufferBudgetBytes = String(stats.maxBytes);
 			if (reader.error) {
 				resumeAfterBuffer = false;
-				usePlaybackStore.getState().pause();
+				withPlaybackChange({
+					change: () => usePlaybackStore.getState().pause(),
+				});
 				setMessage(`效果预览读取失败：${reader.error.message}，请重新准备`);
 				return;
 			}
@@ -68,7 +81,8 @@ export function EffectPlaybackCanvas({
 			}
 			const warmEnd = Math.min(
 				session.frames - 1,
-				target + Math.min(stats.maxFrames, 4) - 1
+				target + Math.min(stats.maxFrames, 4) - 1,
+				(session.stream?.stats.windowEnd ?? session.frames) - 1
 			);
 			const hasReadyLookahead = Array.from(
 				{ length: warmEnd - target + 1 },
@@ -87,11 +101,20 @@ export function EffectPlaybackCanvas({
 			}
 		};
 		const request = ({ time }: { time: number }) => {
-			if (!Number.isFinite(time) || disposed) return;
+			if (!Number.isFinite(time) || disposed || session.stream?.aborted) return;
 			target = Math.max(
 				0,
 				Math.min(session.frames - 1, Math.round(time * fps))
 			);
+			if (session.stream?.error) {
+				resumeAfterBuffer = false;
+				withPlaybackChange({
+					change: () => usePlaybackStore.getState().pause(),
+				});
+				setMessage(`效果预览准备失败：${session.stream.error.message}`);
+				return;
+			}
+			session.stream?.setTarget({ frame: target });
 			reader.setTarget({ frame: target });
 			if (!reader.get({ frame: target })) {
 				setMessage("正在缓冲效果预览…");
@@ -135,7 +158,8 @@ export function EffectPlaybackCanvas({
 		window.addEventListener("playback-seek", onTime);
 		window.addEventListener("playback-play", onPlay);
 		window.addEventListener("playback-pause", onPause);
-		onPlay();
+		const playback = usePlaybackStore.getState();
+		request({ time: playback.previewScrubTime ?? playback.currentTime });
 		return () => {
 			disposed = true;
 			reader.dispose();
@@ -179,6 +203,7 @@ export function EffectPlaybackControls({
 	error,
 	warning,
 	metrics,
+	window,
 	onPrepare,
 	onCancel,
 }: {
@@ -190,6 +215,7 @@ export function EffectPlaybackControls({
 	error?: string;
 	warning?: string;
 	metrics?: CanvasPlaybackPreparationMetrics;
+	window?: CanvasPlaybackStreamStats;
 	onPrepare: () => void;
 	onCancel: () => void;
 }) {
@@ -210,12 +236,21 @@ export function EffectPlaybackControls({
 			data-preparation-inflight={metrics?.maxInFlightFrames}
 			data-preparation-rgba-bytes={metrics?.maxReservedPixelBytes}
 			data-preparation-png-bytes={metrics?.maxPendingPngBytes}
+			data-segment-frames={window?.segmentFrames}
+			data-window-start={window?.windowStart}
+			data-window-end={window?.windowEnd}
+			data-cache-bytes={window?.cacheBytes}
+			data-cache-budget-bytes={window?.cacheBudgetBytes}
+			data-prepared-total={window?.preparedTotal}
+			data-evicted-total={window?.evictedTotal}
+			data-target-frame={window?.targetFrame}
+			data-preparing-segment={window?.preparingSegment}
 		>
 			<span role="status">
 				{preparing
-					? `正在准备效果预览 ${completed}/${total}`
+					? `正在准备当前位置的效果预览（已缓存 ${completed} 帧）`
 					: status === "ready"
-						? "效果预览已就绪，可连续播放"
+						? `效果预览已开启，按播放位置分段准备（已缓存 ${completed} 帧）`
 						: (error ?? "准备后可连续播放美颜美体效果")}
 			</span>
 			{warning ? (
