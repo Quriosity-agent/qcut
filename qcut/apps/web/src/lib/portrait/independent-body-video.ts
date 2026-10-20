@@ -83,6 +83,15 @@ export function independentBodyVideoApplies({
 	);
 }
 
+/** A URL alone cannot identify the bytes belonging to a checkpoint history. */
+export function hasIndependentBodyVideoContentSource({
+	mediaItem,
+}: {
+	mediaItem: Pick<MediaItem, "file">;
+}): boolean {
+	return mediaItem.file instanceof Blob && mediaItem.file.size > 0;
+}
+
 export function independentBodyVideoFrameCount({
 	clip,
 }: {
