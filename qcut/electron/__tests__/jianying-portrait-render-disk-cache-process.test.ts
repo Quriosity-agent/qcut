@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { fork, type ChildProcess } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
 	mkdir,
 	mkdtemp,
@@ -14,6 +14,8 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createPortraitRenderDiskCache } from "../jianying-portrait-adjustment-runtime/render-disk-cache.js";
@@ -22,7 +24,12 @@ import {
 	withPortraitRenderCacheLock,
 } from "../jianying-portrait-adjustment-runtime/render-disk-cache-lock.js";
 
-type WorkerMessage = { type: "ready" | "temporary" | "done"; file?: string };
+type WorkerMessage = {
+	type: "ready" | "temporary" | "retry" | "done";
+	file?: string;
+	key?: string;
+	rgbaSha256?: string;
+};
 const directories: string[] = [];
 const children = new Set<ChildProcess>();
 let worker: string;
@@ -44,7 +51,7 @@ beforeAll(async () => {
 	];
 	await Promise.all(
 		sources.map(async (source) => {
-			const input = path.resolve("electron", source);
+			const input = fileURLToPath(new URL(`../${source}`, import.meta.url));
 			const output = path.join(directory, source.replace(/\.ts$/, ".js"));
 			await mkdir(path.dirname(output), { recursive: true });
 			const compiled = transpileModule(await readFile(input, "utf8"), {
@@ -95,28 +102,38 @@ function startWorker({
 	maxBytes = 10000,
 	prefix = "a",
 	count = 1,
+	retryBudgetMs = 10000,
 }: {
 	directory: string;
 	maxBytes?: number;
 	prefix?: string;
 	count?: number;
+	retryBudgetMs?: number;
 }) {
-	const child = fork(worker, [directory, `${maxBytes}`, prefix, `${count}`], {
-		stdio: ["ignore", "ignore", "pipe", "ipc"],
-		execArgv: [],
-	});
+	const child = fork(
+		worker,
+		[directory, `${maxBytes}`, prefix, `${count}`, `${retryBudgetMs}`],
+		{
+			stdio: ["ignore", "ignore", "pipe", "ipc"],
+			execArgv: [],
+		}
+	);
 	children.add(child);
 	let stderr = "";
 	child.stderr?.on("data", (data: Buffer) => {
 		stderr += data.toString();
 	});
-	const exited = new Promise<void>((resolve, reject) => {
-		child.once("error", reject);
+	const exitResult = new Promise<Error | null>((resolve) => {
+		child.once("error", resolve);
 		child.once("exit", (code, signal) => {
-			if (code === 0 || signal === "SIGKILL") resolve();
-			else reject(new Error(`Cache worker exited ${code}: ${stderr}`));
+			if (code === 0 || signal === "SIGKILL") resolve(null);
+			else resolve(new Error(`Cache worker exited ${code}: ${stderr}`));
 		});
 	});
+	async function exited() {
+		const error = await exitResult;
+		if (error) throw error;
+	}
 	function next({ type }: { type: WorkerMessage["type"] }) {
 		return new Promise<WorkerMessage>((resolve, reject) => {
 			function cleanup() {
@@ -179,11 +196,92 @@ describe("native disk cache cross-process ownership", () => {
 		);
 		for (const item of workers) item.child.send("start");
 		await Promise.all(observations);
-		await Promise.all(workers.map((item) => item.exited));
+		await Promise.all(workers.map((item) => item.exited()));
 		expect(await directoryBytes({ directory })).toBeLessThanOrEqual(maxBytes);
 		expect(
 			(await readdir(directory)).some((file) => file.endsWith(".tmp"))
 		).toBe(false);
+	});
+
+	it("completes after an observer holds the writer beyond the production lease timeout", async () => {
+		const directory = await temporaryDirectory();
+		const writer = startWorker({ directory, prefix: "a" });
+		const waitingWriter = startWorker({ directory, prefix: "b" });
+		await Promise.all([
+			writer.next({ type: "ready" }),
+			waitingWriter.next({ type: "ready" }),
+		]);
+		const held = writer.next({ type: "temporary" });
+		writer.child.send("start");
+		await held;
+		const waiting = waitingWriter.next({ type: "temporary" }).then(
+			(message) => ({ message, error: null }),
+			(error: Error) => ({ message: null, error })
+		);
+		const retried = waitingWriter.next({ type: "retry" });
+		waitingWriter.child.send("start");
+		const retry = await retried;
+		await delay(250);
+		writer.child.send("release");
+		const result = await waiting;
+		expect(result.error).toBeNull();
+		expect(result.message?.file).toBeDefined();
+		waitingWriter.child.send("release");
+		await Promise.all([writer.exited(), waitingWriter.exited()]);
+		const cache = createPortraitRenderDiskCache({ directory });
+		const stored = await cache.read({
+			key: retry.key!,
+			width: 32,
+			height: 32,
+		});
+		expect(retry.key).toBe(`b${"0".repeat(63)}`);
+		expect(stored).not.toBeNull();
+		expect(createHash("sha256").update(stored!.rgba).digest("hex")).toBe(
+			retry.rgbaSha256
+		);
+		await cache.close();
+	});
+
+	it("stops retrying when the fixture lease retry budget expires", async () => {
+		const directory = await temporaryDirectory();
+		const writer = startWorker({ directory });
+		const waitingWriter = startWorker({
+			directory,
+			prefix: "b",
+			retryBudgetMs: 600,
+		});
+		await Promise.all([
+			writer.next({ type: "ready" }),
+			waitingWriter.next({ type: "ready" }),
+		]);
+		const held = writer.next({ type: "temporary" });
+		writer.child.send("start");
+		const temporary = await held;
+		const failed = expect(waitingWriter.exited()).rejects.toThrow(
+			"CacheLeaseUnavailableError"
+		);
+		waitingWriter.child.send("start");
+		await failed;
+		expect(await stat(temporary.file!)).toBeDefined();
+		writer.child.send("release");
+		await writer.exited();
+	});
+
+	it("propagates unexpected worker errors without retrying them", async () => {
+		const root = await temporaryDirectory();
+		const directory = path.join(root, "file-is-not-a-cache-directory");
+		await writeFile(directory, "occupied");
+		const writer = startWorker({ directory });
+		let retries = 0;
+		writer.child.on("message", (message: WorkerMessage) => {
+			if (message.type === "retry") retries += 1;
+		});
+		await writer.next({ type: "ready" });
+		const failed = expect(writer.exited()).rejects.toThrow("EEXIST");
+		writer.child.send("start");
+		await failed;
+		expect(retries).toBe(0);
+		expect(await readFile(directory, "utf8")).toBe("occupied");
 	});
 
 	it("does not reclaim a live writer and reclaims its orphan only after SIGKILL", async () => {
@@ -210,7 +308,7 @@ describe("native disk cache cross-process ownership", () => {
 		await rejected;
 		expect(await readFile(message.file!)).toEqual(orphanBytes);
 		writer.child.kill("SIGKILL");
-		await writer.exited;
+		await writer.exited();
 		expect(
 			await cache.read({ key: "f".repeat(64), width: 32, height: 32 })
 		).toBeNull();
@@ -246,7 +344,7 @@ describe("native disk cache cross-process ownership", () => {
 		} finally {
 			writer.child.send("release");
 		}
-		await writer.exited;
+		await writer.exited();
 		expect(await cache.read({ key, width: 32, height: 32 })).not.toBeNull();
 		await cache.close();
 	});
@@ -267,7 +365,7 @@ describe("native disk cache cross-process ownership", () => {
 		).rejects.toBeInstanceOf(CacheLeaseUnavailableError);
 		expect(await stat(message.file!)).toBeDefined();
 		writer.child.send("release");
-		await writer.exited;
+		await writer.exited();
 	});
 
 	it.skipIf(process.platform === "win32")(
