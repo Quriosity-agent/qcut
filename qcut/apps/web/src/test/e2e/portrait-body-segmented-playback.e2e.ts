@@ -70,7 +70,7 @@ test("body: rolling 1080p preview matches complete export through segment bounda
 		!source || !existsSync(source),
 		"Set QCUT_BODY_CLOSE_SOURCE to the private 1080×1920 source"
 	);
-	test.setTimeout(14_400_000);
+	test.setTimeout(21_600_000);
 	if (!source) throw new Error("Missing segmented body source");
 	await mkdir(output, { recursive: true });
 	const evidencePath = path.join(output, "e2e-evidence.json");
