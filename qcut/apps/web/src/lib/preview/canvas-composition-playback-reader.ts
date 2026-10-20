@@ -37,7 +37,7 @@ export function createCanvasPlaybackReader({
 	const listeners = new Set<() => void>();
 	const controller = new AbortController();
 	let target = 0;
-	const pending = new Map<number, symbol>();
+	const pending = new Map<number, AbortController>();
 	let pumping = false;
 	let error: Error | undefined;
 	const notify = () => {
@@ -56,15 +56,25 @@ export function createCanvasPlaybackReader({
 		for (const bitmap of bitmaps.values()) bitmap.close();
 		bitmaps.clear();
 	};
-	const load = async ({ frame, token }: { frame: number; token: symbol }) => {
+	const load = async ({
+		frame,
+		requestController,
+	}: {
+		frame: number;
+		requestController: AbortController;
+	}) => {
+		const signal = AbortSignal.any([
+			controller.signal,
+			requestController.signal,
+		]);
 		const release = () => {
-			if (pending.get(frame) === token) pending.delete(frame);
+			if (pending.get(frame) === requestController) pending.delete(frame);
 		};
 		try {
-			const blob = await cache.read({ frame, signal: controller.signal });
-			if (controller.signal.aborted || !wanted({ frame })) return;
+			const blob = await cache.read({ frame, signal });
+			if (signal.aborted || !wanted({ frame })) return;
 			const bitmap = await decode(blob);
-			if (controller.signal.aborted || !wanted({ frame })) {
+			if (signal.aborted || !wanted({ frame })) {
 				bitmap.close();
 				return;
 			}
@@ -76,7 +86,7 @@ export function createCanvasPlaybackReader({
 			bitmaps.set(frame, bitmap);
 			notify();
 		} catch (cause) {
-			if (!controller.signal.aborted) {
+			if (!signal.aborted && wanted({ frame })) {
 				error = cause instanceof Error ? cause : new Error(String(cause));
 				controller.abort();
 				clearBitmaps();
@@ -111,9 +121,9 @@ export function createCanvasPlaybackReader({
 				}
 				if (next === undefined) break;
 				// A seek cannot reclaim a slot until its old decode has actually settled.
-				const token = Symbol();
-				pending.set(next, token);
-				void load({ frame: next, token });
+				const requestController = new AbortController();
+				pending.set(next, requestController);
+				void load({ frame: next, requestController });
 			}
 		} finally {
 			pumping = false;
@@ -126,6 +136,9 @@ export function createCanvasPlaybackReader({
 			if (!Number.isInteger(frame) || frame < 0)
 				throw new Error("Invalid playback frame");
 			target = Math.max(0, Math.min(frames - 1, frame));
+			for (const [pendingFrame, requestController] of pending) {
+				if (!wanted({ frame: pendingFrame })) requestController.abort();
+			}
 			evict();
 			pump();
 		},
