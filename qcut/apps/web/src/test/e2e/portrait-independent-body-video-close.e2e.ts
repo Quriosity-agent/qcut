@@ -1,15 +1,7 @@
-/**
- * Single-person dynamic body closure, part 2: the independent (自研) smart-body
- * session must give the same 180 frames whatever the operator does around it —
- * a straight export, seeking backwards through the clip, emptying the frame
- * cache, cancelling an export halfway, losing the engine worker while a frame
- * is being computed, and restarting the application.
- *
- * Every export is digested per decoded frame; equality of the digest lists is
- * the acceptance. The checks are recorded in e2e-evidence.json for the report.
- */
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -18,23 +10,35 @@ import {
 	type Page,
 	test,
 } from "@playwright/test";
+import {
+	changeSlimBody,
+	type ExportStoreWindow,
+	openProjectInEditor,
+	waitForExportIdle,
+} from "./helpers/body-video-editor-operations";
 import { BODY_CLOSE_VALUES } from "./helpers/body-video-close-scenario";
 import {
-	getMainWindow,
-	startElectronApp,
-	waitForProjectLoad,
-} from "./helpers/electron-helpers";
+	armBodyOperationEvidence,
+	type BodyOperationFrame,
+	captureBodyOperationPreview,
+	expectBodyOperationFrames,
+	installBodyOperationEvidence,
+} from "./helpers/body-video-operation-evidence";
 import {
-	type BodyVideoWindow,
+	installBodyWorkerObserver,
+	readBodyWorkerObservation,
+	waitForInFlightBodyFrame,
+} from "./helpers/body-video-worker-observer";
+import { getMainWindow, startElectronApp } from "./helpers/electron-helpers";
+import {
 	cacheEntries,
 	checkpointFiles,
-	engineWorkers,
 	exportTimeline,
 	finishExport,
 	seek,
+	waitForPausedFrame,
 	setBodyValues,
 	startExport,
-	waitForPausedFrame,
 } from "./helpers/independent-body-video-helpers";
 import { preparePortraitReferenceProject } from "./helpers/portrait-reference";
 
@@ -46,127 +50,22 @@ const output = path.resolve(
 const FPS = 30;
 const SECONDS = Number(process.env.QCUT_BODY_CLOSE_SECONDS ?? 6);
 const FRAMES = SECONDS * FPS;
-/** Past two on-disk checkpoints (every 12 frames) before interfering. */
-const INTERFERE_AFTER_FRAMES = 30;
+if (!Number.isInteger(FRAMES) || FRAMES < 36 || FRAMES > 1800)
+	throw new Error("Body operation acceptance requires 36..1800 whole frames");
+const INTERFERE_AFTER_FRAMES = Math.min(30, Math.floor(FRAMES / 2));
+const SEEK_ORDER = [FRAMES - 1, 0, Math.floor(FRAMES / 2), 1, FRAMES - 2];
+const SAMPLES = [...SEEK_ORDER].sort((left, right) => left - right);
 
-interface ExportStoreWindow extends BodyVideoWindow {
-	__exportStore: {
-		getState: () => {
-			error: string | null;
-			progress: { isExporting: boolean; progress: number };
-		};
-	};
-	router?: {
-		navigate: (options: {
-			to: string;
-			params: Record<string, string>;
-		}) => Promise<void> | void;
-	};
-}
-
-function sameDigests(left: string[], right: string[]) {
-	return left.length === right.length && left.every((d, i) => d === right[i]);
-}
-
-async function waitForComputedFrames({
-	cache,
-	count,
-	timeout = 600_000,
-}: {
-	cache: string;
-	count: number;
-	timeout?: number;
-}) {
-	await expect
-		.poll(async () => (await cacheEntries({ cache })).length, {
-			timeout,
-			intervals: [500, 1_000],
-		})
-		.toBeGreaterThanOrEqual(count);
-}
-
-async function exportState({ page }: { page: Page }) {
-	return page.evaluate(() => {
-		const state = (
-			window as unknown as ExportStoreWindow
-		).__exportStore.getState();
-		return {
-			isExporting: state.progress.isExporting,
-			error: state.error,
-			progress: state.progress.progress,
-		};
-	});
-}
-
-async function waitForExportIdle({
-	page,
-	timeout = 900_000,
-}: {
-	page: Page;
-	timeout?: number;
-}) {
-	await expect
-		.poll(async () => (await exportState({ page })).isExporting, {
-			timeout,
-			intervals: [500, 1_000, 2_000],
-		})
-		.toBe(false);
-	return exportState({ page });
-}
-
-async function reverseSeekWalk({
-	page,
-	frames,
-}: {
-	page: Page;
-	frames: number[];
-}) {
-	for (const frame of frames) {
-		await seek({ page, frame, fps: FPS });
-		await waitForPausedFrame({ page, frame, timeout: 300_000 });
-	}
-}
-
-async function openProjectInEditor({
-	page,
-	projectId,
-}: {
-	page: Page;
-	projectId: string;
-}) {
-	await page.evaluate(async (id) => {
-		const router = (window as unknown as ExportStoreWindow).router;
-		if (router?.navigate) {
-			await router.navigate({
-				to: "/editor/$project_id",
-				params: { project_id: id },
-			});
-		} else {
-			window.location.hash = `#/editor/${id}`;
-		}
-	}, projectId);
-	await waitForProjectLoad(page);
-	await expect
-		.poll(
-			() =>
-				page.evaluate(
-					() =>
-						(window as unknown as ExportStoreWindow).__projectStore.getState()
-							.activeProject?.id ?? null
-				),
-			{ timeout: 60_000 }
-		)
-		.toBe(projectId);
-}
-
-test("independent smart body: 180 frames identical across export order, cache loss, cancel, worker crash and restart", async () => {
+test("independent body: parameter edits, cold seeks, cancellation and in-flight worker recovery preserve every export frame", async () => {
 	test.skip(
 		!source || !existsSync(source),
-		"Set QCUT_BODY_CLOSE_SOURCE to the locked 1080×1920 body source; needs the independent runtime with its body-video policy"
+		"Set QCUT_BODY_CLOSE_SOURCE to the real 1080×1920 body source"
 	);
-	test.setTimeout(7_200_000);
+	test.setTimeout(10_800_000);
 	if (!source) throw new Error("Missing body source");
 	await mkdir(output, { recursive: true });
+	if (existsSync(path.join(output, "e2e-evidence.json")))
+		throw new Error("Use a fresh operation evidence directory");
 	const userDataDirectory = await mkdtemp(
 		path.join(os.tmpdir(), "qcut-body-close-")
 	);
@@ -180,28 +79,50 @@ test("independent smart body: 180 frames identical across export order, cache lo
 		"Cache",
 		"independent-beauty-sessions"
 	);
-	let app: ElectronApplication = await startElectronApp({ userDataDirectory });
+	let app: ElectronApplication = await startElectronApp({
+		userDataDirectory,
+		colorProfile: "srgb",
+	});
 	const errors: string[] = [];
 	const consoleErrors: string[] = [];
-	// An Electron exit during a stage would otherwise show only as a 900 s wait
-	// for an export file that never comes; record it with its time.
 	let closing = false;
-	const watchExit = (application: ElectronApplication) =>
+	const watchExit = ({ application }: { application: ElectronApplication }) =>
 		application.process().once("exit", (code, signal) => {
 			if (!closing)
 				errors.push(
 					`Electron exited unexpectedly (code ${code}, signal ${signal}) at ${new Date().toISOString()}`
 				);
 		});
-	watchExit(app);
+	watchExit({ application: app });
 	const checks: Record<string, boolean> = {};
+	const preEncodeStages: Record<string, BodyOperationFrame[]> = {};
+	const previews: Array<Record<string, unknown>> = [];
 	const evidence: Record<string, unknown> = {
+		schemaVersion: 2,
+		status: "running",
 		source: path.basename(source),
+		sourceSha256: createHash("sha256")
+			.update(await readFile(source))
+			.digest("hex"),
+		gitHead: execFileSync("git", ["rev-parse", "HEAD"], {
+			encoding: "utf8",
+		}).trim(),
+		engineManifestSha256: createHash("sha256")
+			.update(
+				await readFile("research/independent-beauty/source-manifest.json")
+			)
+			.digest("hex"),
 		frames: FRAMES,
 		fps: FPS,
+		width: 1080,
+		height: 1920,
 		values: BODY_CLOSE_VALUES,
 		userDataDirectory,
 		checks,
+		preEncodeStages,
+		previews,
+		comparison:
+			"All frames use pre-encode RGBA SHA256 and decoded-export MD5; sampled preview PNGs compare only to their own engine and edit",
 	};
 	const persist = () =>
 		writeFile(
@@ -209,15 +130,21 @@ test("independent smart body: 180 frames identical across export order, cache lo
 			`${JSON.stringify(evidence, null, 2)}\n`,
 			"utf8"
 		);
-	const attach = (page: Page) => {
+	const attach = async ({ page }: { page: Page }) => {
 		page.on("pageerror", (error) => errors.push(error.message));
 		page.on("console", (message) => {
 			if (message.type() === "error") consoleErrors.push(message.text());
 		});
+		await installBodyOperationEvidence({
+			page,
+			output,
+			stages: preEncodeStages,
+		});
 	};
 	try {
 		let page = await getMainWindow(app);
-		attach(page);
+		await installBodyWorkerObserver({ app });
+		await attach({ page });
 		const { panel } = await preparePortraitReferenceProject({
 			page,
 			source,
@@ -238,192 +165,328 @@ test("independent smart body: 180 frames identical across export order, cache lo
 		await expect(page.getByTestId("portrait-engine-runtime")).toHaveCount(0, {
 			timeout: 120_000,
 		});
-		const status = await page.evaluate(async () => {
-			const inspect = window.electronAPI?.beautyLab?.inspectIndependent;
-			return inspect ? await inspect() : null;
-		});
-		test.skip(
-			status?.bodyVideo !== true,
-			"The installed independent runtime has no body-video policy"
+		const status = await page.evaluate(async () =>
+			window.electronAPI?.beautyLab?.inspectIndependent?.()
 		);
+		expect(status?.available).toBe(true);
+		expect(status?.bodyVideo).toBe(true);
+		evidence.runtimeStatus = status;
 		await setBodyValues({ page, values: BODY_CLOSE_VALUES });
+		await changeSlimBody({ page, value: 55 });
+		await changeSlimBody({ page, value: 40 });
+		evidence.parameterControlPreflight = [40, 55, 40];
 		await persist();
 
-		// 1. Straight sequential export: the reference digests.
-		const sequential = await exportTimeline({
-			app,
-			page,
-			file: path.join(output, "export-sequential.mp4"),
-			fps: FPS,
-			frames: FRAMES,
-		});
+		const exportStage = async ({ stage }: { stage: string }) => {
+			await armBodyOperationEvidence({
+				page,
+				stage,
+				frames: FRAMES,
+				samples: SAMPLES,
+			});
+			const exported = await exportTimeline({
+				app,
+				page,
+				file: path.join(output, `export-${stage}.mp4`),
+				fps: FPS,
+				frames: FRAMES,
+			});
+			expect(preEncodeStages[stage]).toHaveLength(FRAMES);
+			evidence[stage] = {
+				seconds: exported.seconds,
+				decodedFrameDigests: exported.frames,
+			};
+			await persist();
+			return exported;
+		};
+		const compare = ({
+			stage,
+			decoded,
+			reference,
+		}: {
+			stage: string;
+			decoded: string[];
+			reference: string[];
+		}) => {
+			expectBodyOperationFrames({
+				stages: preEncodeStages,
+				actual: stage,
+				reference: "sequential",
+				frames: FRAMES,
+			});
+			expect(decoded).toEqual(reference);
+		};
+		const previewStage = async ({
+			stage,
+			reference,
+			order = SAMPLES,
+			cold = false,
+		}: {
+			stage: string;
+			reference: string;
+			order?: number[];
+			cold?: boolean;
+		}) => {
+			await order.reduce(async (previous, frame) => {
+				await previous;
+				if (cold) {
+					const anchor = frame === 0 ? FRAMES - 1 : 0;
+					await seek({ page, frame: anchor, fps: FPS });
+					await waitForPausedFrame({ page, frame: anchor, timeout: 300_000 });
+					await rm(cache, { recursive: true, force: true });
+					expect(await cacheEntries({ cache })).toHaveLength(0);
+				}
+				const observation = await readBodyWorkerObservation({ app });
+				previews.push({
+					stage,
+					...(await captureBodyOperationPreview({
+						page,
+						output,
+						stage,
+						frame,
+						fps: FPS,
+						expected: preEncodeStages[reference][frame].rgbaSha256,
+					})),
+				});
+				if (cold) {
+					const after = await readBodyWorkerObservation({ app });
+					expect(
+						after.completed,
+						`cold seek ${frame} must reach the worker`
+					).toBeGreaterThan(observation.completed);
+				}
+				await persist();
+			}, Promise.resolve());
+		};
+
+		const sequential = await exportStage({ stage: "sequential" });
 		const reference = sequential.frames;
 		expect(new Set(reference).size).toBeGreaterThan(FRAMES / 2);
-		const afterSequential = await cacheEntries({ cache });
-		expect(afterSequential).toHaveLength(FRAMES);
 		const checkpoints = await checkpointFiles({ sessions });
-		expect(Object.keys(checkpoints)).toHaveLength(1);
-		evidence.sequential = {
-			seconds: sequential.seconds,
-			checkpoints: Object.values(checkpoints)[0],
+		expect(Object.keys(checkpoints).length).toBeGreaterThanOrEqual(1);
+		evidence.initialCheckpoints = checkpoints;
+		await previewStage({ stage: "sequential", reference: "sequential" });
+		checks.sequential_preview_export_identical = true;
+
+		await changeSlimBody({ page, value: 55 });
+		await rm(cache, { recursive: true, force: true });
+		const changed = await exportStage({ stage: "parameter-changed" });
+		const changedFrames = preEncodeStages["parameter-changed"]
+			.filter(
+				(frame, index) =>
+					frame.rgbaSha256 !== preEncodeStages.sequential[index].rgbaSha256
+			)
+			.map(({ frame }) => frame);
+		evidence.parameterChange = {
+			control: "body_adjust_SlimBody",
+			from: 40,
+			to: 55,
+			changedFrames,
 		};
-		await persist();
-
-		// 2. Seeking backwards through the exported range only reads the cache.
-		const descending = [179, 150, 121, 90, 61, 30, 13, 0].filter(
-			(frame) => frame < FRAMES
-		);
-		await reverseSeekWalk({ page, frames: descending });
-		const afterReverse = await cacheEntries({ cache });
-		checks.reverse_seek_cache_untouched =
-			JSON.stringify(afterReverse) === JSON.stringify(afterSequential);
-		expect(afterReverse).toEqual(afterSequential);
-		await persist();
-
-		// 3. Empty frame cache: every frame is recomputed from the clip's history
-		// and the on-disk checkpoints; the pictures must not move.
-		await rm(cache, { recursive: true, force: true });
-		const recomputed = await exportTimeline({
-			app,
-			page,
-			file: path.join(output, "export-cache-cleared.mp4"),
-			fps: FPS,
-			frames: FRAMES,
+		expect(changedFrames.length).toBeGreaterThan(0);
+		expect(changed.frames).not.toEqual(reference);
+		await previewStage({
+			stage: "parameter-changed",
+			reference: "parameter-changed",
 		});
-		checks.cache_cleared_identical = sameDigests(recomputed.frames, reference);
-		expect(recomputed.frames).toEqual(reference);
-		evidence.cacheCleared = { seconds: recomputed.seconds };
+		checks.parameter_change_visible_and_preview_export_identical = true;
+		await changeSlimBody({ page, value: 40 });
+
+		// Every target starts without disk frame results; worker activity rejects a warm-preview false pass.
+		await previewStage({
+			stage: "cold-seek-restored",
+			reference: "sequential",
+			order: SEEK_ORDER,
+			cold: true,
+		});
+		await rm(cache, { recursive: true, force: true });
+		const restored = await exportStage({ stage: "restored-cold-seek" });
+		compare({
+			stage: "restored-cold-seek",
+			decoded: restored.frames,
+			reference,
+		});
+		checks.parameter_restore_and_cold_seek_identical = true;
+		checks.cache_cleared_identical = true;
 		await persist();
 
-		// 4. Cancel while frames are still being computed, then export again.
 		await rm(cache, { recursive: true, force: true });
+		await armBodyOperationEvidence({
+			page,
+			stage: "cancelled",
+			frames: FRAMES,
+			samples: SAMPLES,
+		});
 		await startExport({
 			app,
 			page,
 			file: path.join(output, "export-cancelled.mp4"),
 			fps: FPS,
 		});
-		await waitForComputedFrames({ cache, count: INTERFERE_AFTER_FRAMES });
+		await expect
+			.poll(() => preEncodeStages.cancelled?.length ?? 0, { timeout: 600_000 })
+			.toBeGreaterThanOrEqual(INTERFERE_AFTER_FRAMES);
+		const cancellationsBefore = (await readBodyWorkerObservation({ app }))
+			.cancellations.length;
+		const requestObservedBeforeClick = await waitForInFlightBodyFrame({
+			app,
+			minimumFrame: INTERFERE_AFTER_FRAMES,
+		});
 		await page.getByRole("button", { name: "Cancel Export" }).click();
 		const cancelled = await waitForExportIdle({ page });
+		await expect
+			.poll(
+				async () =>
+					(await readBodyWorkerObservation({ app })).cancellations.length,
+				{ timeout: 30_000 }
+			)
+			.toBeGreaterThan(cancellationsBefore);
+		const cancelEntries = (
+			await readBodyWorkerObservation({ app })
+		).cancellations.slice(cancellationsBefore);
+		const pendingAtCancel = cancelEntries.find((entry) => {
+			const request = entry.sequenceRequest;
+			return (
+				entry.cancelled === true &&
+				request &&
+				request.frame >= INTERFERE_AFTER_FRAMES &&
+				entry.activeSequenceRequests.filter(
+					(candidate) => candidate.frame === request.frame
+				).length === 1 &&
+				entry.pending.some(
+					(pending) =>
+						pending.frame === request.frame &&
+						pending.startedAt >= request.enteredAt
+				)
+			);
+		});
 		evidence.cancelled = {
 			...cancelled,
-			computedFramesAtCancel: (await cacheEntries({ cache })).length,
+			requestObservedBeforeClick,
+			cancelHandlerEntries: cancelEntries,
+			pendingAtCancel,
+			capturedFrames: preEncodeStages.cancelled?.length ?? 0,
 		};
+		expect(
+			pendingAtCancel,
+			"Actual cancel IPC must enter with its frame request pending"
+		).toBeDefined();
+		checks.cancel_ipc_entered_with_pending_frame = true;
+		expect(preEncodeStages.cancelled?.length ?? 0).toBeGreaterThan(0);
+		expect(preEncodeStages.cancelled?.length ?? 0).toBeLessThan(FRAMES);
 		await page.getByRole("button", { name: "Close export dialog" }).click();
-		const afterCancel = await exportTimeline({
-			app,
-			page,
-			file: path.join(output, "export-after-cancel.mp4"),
-			fps: FPS,
-			frames: FRAMES,
+		const afterCancel = await exportStage({ stage: "after-cancel" });
+		compare({ stage: "after-cancel", decoded: afterCancel.frames, reference });
+		await previewStage({
+			stage: "after-cancel",
+			reference: "after-cancel",
+			order: [Math.floor(FRAMES / 2)],
 		});
-		checks.cancel_then_export_identical = sameDigests(
-			afterCancel.frames,
-			reference
-		);
-		expect(afterCancel.frames).toEqual(reference);
+		checks.cancel_then_export_identical = true;
 		await persist();
 
-		// 5. Kill the engine worker while it is computing a frame mid-export.
-		// The export must finish by itself (worker respawn + history replay)
-		// with the same pictures.
 		await rm(cache, { recursive: true, force: true });
-		const appPid = app.process().pid;
-		if (!appPid) throw new Error("Missing Electron process identity");
-		const { started: killStarted } = await startExport({
+		await armBodyOperationEvidence({
+			page,
+			stage: "worker-killed",
+			frames: FRAMES,
+			samples: SAMPLES,
+		});
+		const { started } = await startExport({
 			app,
 			page,
 			file: path.join(output, "export-worker-killed.mp4"),
 			fps: FPS,
 		});
-		await waitForComputedFrames({ cache, count: INTERFERE_AFTER_FRAMES });
-		const workers = await engineWorkers({ appPid });
-		expect(workers.length).toBeGreaterThanOrEqual(1);
-		for (const pid of workers) process.kill(pid, "SIGKILL");
-		const killedAt = (await cacheEntries({ cache })).length;
+		await expect
+			.poll(() => preEncodeStages["worker-killed"]?.length ?? 0, {
+				timeout: 600_000,
+			})
+			.toBeGreaterThanOrEqual(INTERFERE_AFTER_FRAMES);
+		const killedRequest = await waitForInFlightBodyFrame({
+			app,
+			minimumFrame: INTERFERE_AFTER_FRAMES,
+			kill: true,
+		});
 		const killedState = await waitForExportIdle({ page });
+		const observation = await readBodyWorkerObservation({ app });
 		evidence.workerKilled = {
-			workers,
-			computedFramesAtKill: killedAt,
 			...killedState,
-			respawned: await engineWorkers({ appPid }),
+			inFlightRequest: killedRequest,
+			observation,
 		};
 		await persist();
-		if (killedState.error) {
-			checks.worker_killed_mid_export_recovered = false;
-			await persist();
-			throw new Error(
-				`Export did not survive a worker crash at frame ~${killedAt}: ${killedState.error}`
-			);
-		}
+		expect(killedState.error).toBeNull();
+		expect(
+			observation.spawned.some(
+				(pid) => pid !== killedRequest.pid && !observation.exited.includes(pid)
+			)
+		).toBe(true);
 		const afterKill = await finishExport({
 			page,
 			file: path.join(output, "export-worker-killed.mp4"),
 			fps: FPS,
 			frames: FRAMES,
-			started: killStarted,
+			started,
 		});
-		checks.worker_killed_mid_export_recovered = sameDigests(
-			afterKill.frames,
-			reference
-		);
-		expect(afterKill.frames).toEqual(reference);
+		evidence["worker-killed"] = {
+			seconds: afterKill.seconds,
+			decodedFrameDigests: afterKill.frames,
+		};
+		compare({ stage: "worker-killed", decoded: afterKill.frames, reference });
+		await previewStage({
+			stage: "worker-killed",
+			reference: "worker-killed",
+			order: [FRAMES - 1],
+		});
+		checks.worker_killed_mid_export_recovered = true;
+		const beforeRestart = await checkpointFiles({ sessions });
 		await persist();
 
-		// 6. Restart the application: the stored project and the on-disk
-		// session must reproduce the frames — first from the frame cache, then
-		// with the cache emptied (checkpoint replay only).
 		closing = true;
 		await app.close();
+		app = await startElectronApp({ userDataDirectory, colorProfile: "srgb" });
 		closing = false;
-		app = await startElectronApp({ userDataDirectory });
-		watchExit(app);
+		watchExit({ application: app });
 		page = await getMainWindow(app);
-		attach(page);
+		await installBodyWorkerObserver({ app });
+		await attach({ page });
 		await openProjectInEditor({ page, projectId });
-		const afterRestart = await exportTimeline({
-			app,
-			page,
-			file: path.join(output, "export-after-restart.mp4"),
-			fps: FPS,
-			frames: FRAMES,
+		const afterRestart = await exportStage({ stage: "after-restart" });
+		compare({
+			stage: "after-restart",
+			decoded: afterRestart.frames,
+			reference,
 		});
-		checks.restart_cached_identical = sameDigests(
-			afterRestart.frames,
-			reference
-		);
-		expect(afterRestart.frames).toEqual(reference);
+		checks.restart_cached_identical = true;
 		await rm(cache, { recursive: true, force: true });
-		const afterRestartRecomputed = await exportTimeline({
-			app,
-			page,
-			file: path.join(output, "export-after-restart-recomputed.mp4"),
-			fps: FPS,
-			frames: FRAMES,
+		const afterRestartRecomputed = await exportStage({
+			stage: "after-restart-recomputed",
 		});
-		checks.restart_cache_cleared_identical = sameDigests(
-			afterRestartRecomputed.frames,
-			reference
+		compare({
+			stage: "after-restart-recomputed",
+			decoded: afterRestartRecomputed.frames,
+			reference,
+		});
+		checks.restart_cache_cleared_identical = true;
+		const afterRestartCheckpoints = await checkpointFiles({ sessions });
+		expect(Object.keys(afterRestartCheckpoints).sort()).toEqual(
+			Object.keys(beforeRestart).sort()
 		);
-		expect(afterRestartRecomputed.frames).toEqual(reference);
-		// The reopened project names the same session: one folder of
-		// checkpoints, so the cached export above read its frames from the
-		// cache instead of recomputing them (cachedSeconds ≪ recomputedSeconds).
-		const sessionsAfterRestart = await checkpointFiles({ sessions });
-		checks.restart_session_reused =
-			Object.keys(sessionsAfterRestart).length === 1;
+		checks.restart_session_identity_reused = true;
 		evidence.restart = {
 			cachedSeconds: afterRestart.seconds,
 			recomputedSeconds: afterRestartRecomputed.seconds,
-			checkpoints: sessionsAfterRestart,
+			checkpoints: afterRestartCheckpoints,
 		};
 		evidence.referenceDigests = reference;
-		evidence.errors = errors;
-		evidence.consoleErrors = consoleErrors;
-		await persist();
-		expect(Object.keys(sessionsAfterRestart)).toHaveLength(1);
 		expect(errors).toEqual([]);
+		evidence.status = "passed";
+	} catch (error) {
+		evidence.status = "failed";
+		evidence.failure =
+			error instanceof Error ? (error.stack ?? error.message) : String(error);
+		throw error;
 	} finally {
 		evidence.errors = errors;
 		evidence.consoleErrors = consoleErrors;
