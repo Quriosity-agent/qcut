@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
 	mkdir,
+	mkdtemp,
 	readdir,
 	readFile,
 	rename,
@@ -9,6 +10,7 @@ import {
 	utimes,
 	writeFile,
 } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { z } from "zod";
@@ -90,6 +92,23 @@ export function independentFrameCacheKey({
 		.digest("hex");
 }
 
+async function loadPngSnapshot({ png }: { png: Uint8Array }) {
+	const bytes = Buffer.from(png);
+	if (!bytes.includes("<svg")) return loadImage(bytes);
+	// The Buffer image loader scans compressed PNG data; a private file preserves
+	// the already-verified bytes even if the cache entry is concurrently replaced.
+	const directory = await mkdtemp(
+		path.join(os.tmpdir(), "qcut-independent-png-")
+	);
+	try {
+		const file = path.join(directory, "frame.png");
+		await writeFile(file, bytes, { flag: "wx" });
+		return await loadImage(file);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+}
+
 async function decodePng({
 	png,
 	width,
@@ -99,7 +118,7 @@ async function decodePng({
 	width: number;
 	height: number;
 }) {
-	const image = await loadImage(Buffer.from(png));
+	const image = await loadPngSnapshot({ png });
 	if (image.width !== width || image.height !== height)
 		throw new Error("Cached independent frame has other dimensions");
 	const canvas = createCanvas(width, height);
