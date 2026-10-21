@@ -91,6 +91,11 @@ import {
 	useNativeCompositionFramePreview,
 } from "@/hooks/preview/use-native-composition-frame-preview";
 import { useCanvasCompositionFramePreview } from "@/hooks/preview/use-canvas-composition-frame-preview";
+import { useCanvasPlaybackPreview } from "@/hooks/preview/use-canvas-playback-preview";
+import {
+	EffectPlaybackCanvas,
+	EffectPlaybackControls,
+} from "./preview-panel/effect-playback-preview";
 import { createCanvasCompositionPreviewPlan } from "@/lib/preview/canvas-composition-frame";
 import { usePlaybackHealthPreviewQuality } from "@/hooks/preview/use-playback-health-preview-quality";
 import { useCachedPreviewFrame } from "@/hooks/preview/use-cached-preview-frame";
@@ -772,10 +777,8 @@ export function PreviewPanel() {
 			activeProject?.fps,
 		]
 	);
-	const canvasCompositionEnabled =
+	const canvasCompositionEligible =
 		Boolean(canvasCompositionPlan) &&
-		!isPlaying &&
-		!isExporting &&
 		previewMode === "video" &&
 		activeProject?.backgroundType !== "blur" &&
 		!maskEditorActive &&
@@ -787,6 +790,21 @@ export function PreviewPanel() {
 		!zoomPreviewActive &&
 		!cursorOverlayPreviewActive &&
 		recordingBackground.type === "none";
+	const effectPlayback = useCanvasPlaybackPreview({
+		enabled: canvasCompositionEligible && !isExpanded,
+		plan: canvasCompositionPlan,
+		projectId: activeProject?.id,
+		totalDuration,
+		backgroundColor: activeProject?.backgroundColor,
+		suspended: isExporting,
+	});
+	const preparedPlaybackActive =
+		effectPlayback.status === "preparing" || effectPlayback.status === "ready";
+	const canvasCompositionEnabled =
+		canvasCompositionEligible &&
+		!isPlaying &&
+		!isExporting &&
+		!preparedPlaybackActive;
 	const canvasCompositionPreview = useCanvasCompositionFramePreview({
 		enabled: canvasCompositionEnabled,
 		plan: canvasCompositionPlan,
@@ -794,12 +812,15 @@ export function PreviewPanel() {
 		totalDuration,
 		backgroundColor: activeProject?.backgroundColor,
 	});
-	const suppressDomPortraitPreview = shouldSuppressDomPortraitPreview({
-		canvasCompositionEnabled,
-		status: canvasCompositionPreview.status,
-	});
+	const suppressDomPortraitPreview =
+		preparedPlaybackActive ||
+		shouldSuppressDomPortraitPreview({
+			canvasCompositionEnabled,
+			status: canvasCompositionPreview.status,
+		});
 	const compositionPreviewEnabled =
 		!canvasCompositionEnabled &&
+		!preparedPlaybackActive &&
 		!isExporting &&
 		!isPlaying &&
 		previewMode === "video" &&
@@ -1347,6 +1368,12 @@ export function PreviewPanel() {
 													data-height={canvasCompositionPreview.height}
 												/>
 											) : null}
+											{effectPlayback.session ? (
+												<EffectPlaybackCanvas
+													key={effectPlayback.session.generation}
+													session={effectPlayback.session}
+												/>
+											) : null}
 										</div>
 									);
 									return hasBg ? (
@@ -1475,6 +1502,21 @@ export function PreviewPanel() {
 
 					<div className="flex-1" />
 
+					{effectPlayback.available && !isExporting ? (
+						<EffectPlaybackControls
+							status={effectPlayback.status}
+							completed={effectPlayback.completed}
+							total={effectPlayback.total}
+							generation={effectPlayback.generation}
+							sessionId={effectPlayback.session?.cache.id}
+							error={effectPlayback.error}
+							warning={effectPlayback.warning}
+							metrics={effectPlayback.metrics}
+							window={effectPlayback.window}
+							onPrepare={effectPlayback.prepare}
+							onCancel={effectPlayback.cancel}
+						/>
+					) : null}
 					<PreviewToolbar
 						hasAnyElements={hasAnyElements}
 						onToggleExpanded={toggleExpanded}

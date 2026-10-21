@@ -74,6 +74,9 @@ import {
 	canRecoverPortraitSource,
 	parsePortraitSourcePreRoll,
 } from "./source-preroll.js";
+import { resolvePortraitRenderRuntime } from "./render-cache-identity.js";
+import { createPortraitSourceWindowRenderCache } from "./source-window-render-cache.js";
+import { createPortraitRenderRequests } from "./render-requests.js";
 
 const CACHE_LIMIT = 4;
 const MANUAL_RETOUCH_CACHE_VERSION = "v1";
@@ -105,6 +108,7 @@ export interface JianyingPortraitAdjustmentProvider {
 	render: (
 		request: JianyingPortraitAdjustmentRenderRequest
 	) => Promise<JianyingPortraitAdjustmentRenderResult>;
+	cancel: ({ requestId }: { requestId: string }) => boolean;
 	detect: (
 		request: JianyingPortraitAdjustmentDetectRequest
 	) => Promise<JianyingPortraitAdjustmentDetectResult>;
@@ -453,9 +457,26 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		limit: TRACKING_SCOPE_LIMIT,
 	});
 	const cache = new Map<string, Uint8Array>();
+	let sourceWindowCache = createPortraitSourceWindowRenderCache();
+	const renderRequests = createPortraitRenderRequests();
+	let nativeRenderCount = 0;
 	let queue = Promise.resolve();
 	let temporaryDirectoryPromise: Promise<string> | null = null;
 	let detectionSnapshot: DetectionSnapshot | null = null;
+
+	const rememberFrame = ({
+		cacheKey,
+		output,
+	}: {
+		cacheKey: string;
+		output: Uint8Array;
+	}) => {
+		if (cache.size >= CACHE_LIMIT) {
+			const oldest = cache.keys().next().value;
+			if (oldest) cache.delete(oldest);
+		}
+		cache.set(cacheKey, output);
+	};
 
 	const retireInactiveSessions = async ({
 		sessions,
@@ -659,14 +680,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			}
 		}
 
-		const [runtime, hostPath, packages, makeupCards] = await Promise.all([
-			inspectJianyingFilterLocalRuntime(),
-			resolveJianyingPortraitAdjustmentHost(),
-			resolveJianyingPortraitPackages({
-				skinToneResourceId: request.adjustments.skinToneResourceId ?? undefined,
-			}),
-			resolveJianyingPortraitMakeupCards(),
-		]);
+		const [runtime, hostPath, packages, makeupCards] =
+			await resolvePortraitRenderRuntime({ request });
 		if (
 			runtime.status.state !== "ready" ||
 			!runtime.frameworkDirectory ||
@@ -835,6 +850,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 				stroke: strokes[strokes.length - 1],
 				tool,
 			});
+			nativeRenderCount++;
 			await session.process.render({
 				requestId: `${requestId}-${index}-manual-warm`,
 				timestampSeconds: requestedTimestamp,
@@ -989,14 +1005,16 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 					});
 					return renderStage({ index: index + 1, inputPath: outputPath });
 				}
-				const renderAttempt = async ({ attempt }: { attempt: number }) =>
-					session.process.render({
+				const renderAttempt = async ({ attempt }: { attempt: number }) => {
+					nativeRenderCount++;
+					return session.process.render({
 						requestId: `${requestId}-${index}-${attempt}`,
 						timestampSeconds: requestedTimestamp,
 						inputPath,
 						outputPath,
 						featureParameters,
 					});
+				};
 				if (stage.runtimePackage === "spot-acne") {
 					const inputPixels = await readFile(inputPath);
 					await renderUntilOutputChanges({
@@ -1059,11 +1077,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			const needsSourcePreRoll = [...sessions.values()].some(
 				(session) => session.needsSourcePreRoll
 			);
-			if (writeCache && !needsSourcePreRoll && cache.size >= CACHE_LIMIT) {
-				const oldest = cache.keys().next().value;
-				if (oldest) cache.delete(oldest);
-			}
-			if (writeCache && !needsSourcePreRoll) cache.set(cacheKey, output);
+			if (writeCache && !needsSourcePreRoll)
+				rememberFrame({ cacheKey, output });
 			return {
 				provider: "jianying-local-swing-v1",
 				width: request.width,
@@ -1081,7 +1096,8 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 	};
 
 	const renderWithSourcePreRoll = async (
-		request: JianyingPortraitAdjustmentRenderRequest
+		request: JianyingPortraitAdjustmentRenderRequest,
+		{ writeCache = true } = {}
 	): Promise<JianyingPortraitAdjustmentRenderResult> => {
 		const preRoll = parsePortraitSourcePreRoll({
 			value: request.sourcePreRoll,
@@ -1093,10 +1109,14 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 		if (!preRoll) {
 			// Packages outside the stable-frame list refine the previous render's tracker, so a
 			// cold request retires it first to match a first render.
-			if (!request.freshTracking) return renderNow(request);
+			if (!request.freshTracking) {
+				if (request.adjustments.enabled && requestedGroups({ request }).length)
+					await trackingScopes.restore({ scopeKey });
+				return renderNow(request);
+			}
 			await trackingScopes.retire({ scopeKey });
 			// The cache may hold a warm render of this exact edit, so do not read it.
-			return renderNow(request, { readCache: false });
+			return renderNow(request, { readCache: false, writeCache });
 		}
 		const { sourcePreRoll: _preRoll, ...target } = request;
 		await trackingScopes.retire({ scopeKey });
@@ -1109,7 +1129,7 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 					{ readCache: false, writeCache: false }
 				);
 			}, Promise.resolve());
-			return await renderNow(target, { readCache: false });
+			return await renderNow(target, { readCache: false, writeCache });
 		} catch (cause) {
 			await trackingScopes.retire({ scopeKey });
 			throw cause;
@@ -1214,15 +1234,60 @@ export function createJianyingPortraitAdjustmentProvider(): JianyingPortraitAdju
 			return pending;
 		},
 		render: (request) => {
-			const pending = queue.then(() => renderWithSourcePreRoll(request));
-			queue = pending.then(
-				() => undefined,
-				() => undefined
-			);
-			return pending;
+			const snapshot = structuredClone(request);
+			return renderRequests.run({
+				requestId: snapshot.requestId,
+				enqueue: (signal) => {
+					const pending = queue.then(() =>
+						sourceWindowCache.render({
+							request: snapshot,
+							signal,
+							renderFresh: async () => {
+								const before = nativeRenderCount;
+								const result = await renderWithSourcePreRoll(snapshot);
+								return {
+									...result,
+									nativeRenderCount: nativeRenderCount - before,
+								};
+							},
+							applyCachedResult: async ({ result, assertReplayIdentity }) => {
+								const scopeKey = [
+									snapshot.width,
+									snapshot.height,
+									snapshot.sourceKey,
+								].join("\0");
+								await trackingScopes.retire({ scopeKey });
+								if (result.activeGroups.length === 0) return;
+								const scope = await trackingScopes.acquire({ scopeKey });
+								// Cached pixels occupy the same LRU slot. Only a later stateful
+								// request needs the original replay to reconstruct its native tracker.
+								scope.restoreNativeState = async () => {
+									await assertReplayIdentity();
+									await renderWithSourcePreRoll(snapshot, {
+										writeCache: false,
+									});
+								};
+								rememberFrame({
+									cacheKey: frameCacheKey({ request: snapshot }),
+									output: new Uint8Array(result.rgba),
+								});
+							},
+						})
+					);
+					queue = pending.then(
+						() => undefined,
+						() => undefined
+					);
+					return pending;
+				},
+			});
 		},
+		cancel: renderRequests.cancel,
 		clear: async () => {
+			renderRequests.cancelAll();
 			await queue;
+			await sourceWindowCache.close();
+			sourceWindowCache = createPortraitSourceWindowRenderCache();
 			cache.clear();
 			detectionSnapshot = null;
 			await trackingScopes.clear();

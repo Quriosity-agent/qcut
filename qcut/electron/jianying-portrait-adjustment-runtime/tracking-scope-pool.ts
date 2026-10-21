@@ -8,6 +8,7 @@ export interface PortraitTrackingScope<
 	sessions: Map<string, Session>;
 	lastTimestampSeconds: number | null;
 	lastRenderedCacheKey: string | null;
+	restoreNativeState?: () => Promise<void>;
 }
 
 export function createPortraitTrackingScopePool<
@@ -54,5 +55,18 @@ export function createPortraitTrackingScopePool<
 		await Promise.all(active.map((session) => session.process.dispose()));
 	};
 
-	return { acquire, clear, retire };
+	const restore = async ({ scopeKey }: { scopeKey: string }) => {
+		const scope = scopes.get(scopeKey);
+		const restoreNativeState = scope?.restoreNativeState;
+		if (!scope || !restoreNativeState) return;
+		scope.restoreNativeState = undefined;
+		try {
+			await restoreNativeState();
+		} catch (error) {
+			await retire({ scopeKey });
+			throw error;
+		}
+	};
+
+	return { acquire, clear, retire, restore };
 }

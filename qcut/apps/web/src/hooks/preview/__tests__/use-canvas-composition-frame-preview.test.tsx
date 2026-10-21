@@ -35,6 +35,7 @@ function capture({ frame }: { frame: number }): CanvasCompositionFrame {
 		blob: new Blob(["png"], { type: "image/png" }),
 		frame,
 		timeSeconds: frame / 30,
+		timings: { renderMs: 10, encodeMs: 5 },
 		width: 1080,
 		height: 1920,
 	};

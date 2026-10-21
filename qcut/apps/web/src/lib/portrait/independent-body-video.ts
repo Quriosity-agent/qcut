@@ -83,6 +83,15 @@ export function independentBodyVideoApplies({
 	);
 }
 
+/** A URL alone cannot identify the bytes belonging to a checkpoint history. */
+export function hasIndependentBodyVideoContentSource({
+	mediaItem,
+}: {
+	mediaItem: Pick<MediaItem, "file">;
+}): boolean {
+	return mediaItem.file instanceof Blob && mediaItem.file.size > 0;
+}
+
 export function independentBodyVideoFrameCount({
 	clip,
 }: {
@@ -174,35 +183,44 @@ function mediaContentFingerprint({ file }: { file: File | undefined }) {
  * The edit enters in its canonical shape, the one the timeline loader
  * stores it in (non-zero values in key order, defaults dropped), so the
  * object the panel wrote and the object a reopened project loads name the
- * same session.
+ * same session. Resolved render edits also belong to that history: Media Lab
+ * can change the pixels entering the body stage without changing the stored
+ * portrait values.
  */
 export async function independentBodyVideoClipIdentity({
 	clip,
+	adjustments,
 }: {
 	clip: IndependentBodyVideoClip;
+	adjustments?: BeautyLabIndependentFrameRequest["adjustments"];
 }) {
 	const { element, mediaItem, fps } = clip;
-	return sha256Hex({
-		text: JSON.stringify({
-			schemaVersion: 4,
-			elementId: element.id,
-			mediaId: mediaItem.id,
-			mediaBytes: mediaItem.file?.size ?? null,
-			mediaContent: await mediaContentFingerprint({ file: mediaItem.file }),
-			fps,
-			duration: element.duration,
-			trimStart: element.trimStart,
-			trimEnd: element.trimEnd,
-			playbackRate: element.playbackRate ?? 1,
-			speedKeyframes: element.speedKeyframes ?? [],
-			reverse: element.reverse ?? false,
-			freezeFrameTime: element.freezeFrameTime ?? null,
-			freezeFrameDuration: element.freezeFrameDuration ?? 0,
-			portraitAdjustments: normalizeMediaPortraitAdjustments({
-				adjustments: element.portraitAdjustments,
-			}),
+	const descriptor = {
+		schemaVersion: 5,
+		elementId: element.id,
+		mediaId: mediaItem.id,
+		mediaBytes: mediaItem.file?.size ?? null,
+		fps,
+		duration: element.duration,
+		trimStart: element.trimStart,
+		trimEnd: element.trimEnd,
+		playbackRate: element.playbackRate ?? 1,
+		speedKeyframes:
+			element.speedKeyframes?.map((keyframe) => ({ ...keyframe })) ?? [],
+		reverse: element.reverse ?? false,
+		freezeFrameTime: element.freezeFrameTime ?? null,
+		freezeFrameDuration: element.freezeFrameDuration ?? 0,
+		portraitAdjustments: normalizeMediaPortraitAdjustments({
+			adjustments: element.portraitAdjustments,
 		}),
-	});
+		...(adjustments
+			? {
+					renderAdjustments: normalizeMediaPortraitAdjustments({ adjustments }),
+				}
+			: {}),
+	};
+	const mediaContent = await mediaContentFingerprint({ file: mediaItem.file });
+	return sha256Hex({ text: JSON.stringify({ ...descriptor, mediaContent }) });
 }
 
 /**
@@ -284,11 +302,17 @@ export async function renderIndependentBodyVideoFrame({
 	signal?: AbortSignal;
 	createDecoder?: typeof createIndependentBodyVideoDecoder;
 }): Promise<Uint8Array> {
+	signal?.throwIfAborted();
 	const api = window.electronAPI?.beautyLab;
 	if (!api?.renderIndependentSequenceFrame)
 		throw new Error("自研美体视频需要 QCut 桌面版");
 	const render = api.renderIndependentSequenceFrame;
-	const identity = await independentBodyVideoClipIdentity({ clip });
+	const renderAdjustments = structuredClone(adjustments);
+	const identity = await independentBodyVideoClipIdentity({
+		clip,
+		adjustments: renderAdjustments,
+	});
+	signal?.throwIfAborted();
 	const decoder = createDecoder({ clip });
 	try {
 		const submit = async ({
@@ -313,7 +337,7 @@ export async function renderIndependentBodyVideoFrame({
 					width,
 					height,
 					rgba,
-					adjustments,
+					adjustments: renderAdjustments,
 					sequence: { clip: identity, frame: index, fps: clip.fps, replay },
 				});
 				signal?.throwIfAborted();

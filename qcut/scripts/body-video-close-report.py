@@ -8,15 +8,16 @@ portrait-independent-body-video-close.e2e.ts.
 Produces <evidence>/report/: metrics.json, difference videos, worst-frame strips and
 index.html (原图 / 原生 / 自研 / 差分 + full videos + worst-frame notes).
 
-Decoded MP4 frames serve the full-180 statistics (same encoder for every pass, so
-the comparison plane is shared); the ≤1 level preview↔export claim is made only on
-the pre-encode PNG samples.
+Decoded MP4 frames serve the recorded frame-count statistics. Picture differences
+do not establish detector or tracking state. The ≤1 level paused-preview/export
+claim is made only on pre-encode PNG samples.
 """
 
 import argparse
 import html
 import importlib.util
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -34,6 +35,7 @@ def load_sibling(*, filename):
 
 PNG = load_sibling(filename="compare-beauty-timeline-evidence.py")
 VIDEO = load_sibling(filename="analyze-beauty-timeline-video.py")
+OPERATIONS = load_sibling(filename="body-video-operation-report.py")
 
 PASS_LABELS = {"original": "原图", "native": "原生", "independent": "自研"}
 PAIRS = {
@@ -246,6 +248,11 @@ def ranges(frames):
 
 
 def write_page(*, output, report, lock):
+    evidence_href = html.escape(os.path.relpath(report["evidence_source"], output.resolve()))
+    lock_href = html.escape(os.path.relpath(report["scenario_lock_source"], output.resolve())) if report.get("scenario_lock_source") else None
+    lock_link = f' · <a href="{lock_href}">场景锁定</a>' if lock_href else ""
+    profile_html = OPERATIONS.structured(value=report.get("native_profile"))
+    limitations_html = OPERATIONS.structured(value=report.get("limitations"))
     pairs_rows = "".join(
         f'<tr><th>{html.escape(PAIRS[name][2])}</th>'
         f'<td>{fmt(summary["per_frame_mean_abs_rgb"]["mean"])}</td>'
@@ -272,7 +279,7 @@ def write_page(*, output, report, lock):
         f'<tr><td>{row["frame"]}</td><td>{fmt(row["mean_rgb"])}</td><td>{fmt(row["p99_rgb"], 1)}</td>'
         f'<td>{row["max_rgb"]}</td></tr>' for row in report["native_independent_preencode"])
     videos = "".join(
-        f'<figure><video controls preload="metadata" src="../{mode}/export.mp4"></video><figcaption>{label}</figcaption></figure>'
+        f'<figure><video controls preload="metadata" src="{evidence_href}/{mode}/export.mp4"></video><figcaption>{label}</figcaption></figure>'
         for mode, label in PASS_LABELS.items())
     videos += "".join(
         f'<figure><video controls preload="metadata" src="{name}.mp4"></video><figcaption>差分 ×4：{html.escape(PAIRS[name][2])}</figcaption></figure>'
@@ -284,8 +291,6 @@ def write_page(*, output, report, lock):
     invariance = report.get("invariance")
     invariance_html = ""
     if invariance:
-        checks = "".join(f'<li>{html.escape(name)}：{badge(passed=bool(result))}</li>'
-                         for name, result in invariance.get("checks", {}).items())
         cross = invariance.get("cross_run")
         if cross and cross.get("comparable"):
             cross_html = (f'<p>跨工程复现：不变性 E2E 的顺序导出 vs 三方对照的自研导出（另一个工程、另一次进程、另一个导出对话框）：'
@@ -295,27 +300,30 @@ def write_page(*, output, report, lock):
             cross_html = f'<p>跨工程复现：帧数不同（{cross["frames"]}），未比较。</p>'
         else:
             cross_html = ""
-        invariance_html = (f'<h2>操作不变性（第 4 步）</h2><ul>{checks}</ul>{cross_html}'
-                           f'<p><a href="{html.escape(invariance["source"])}">E2E 记录</a></p>')
+        invariance_html = (OPERATIONS.render(summary=invariance["summary"]) + cross_html
+                           + f'<p><a href="{html.escape(invariance["source"])}">操作 E2E 记录</a></p>')
     (output / "index.html").write_text(f'''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>单人动态美体闭环对照</title>
-<style>body{{margin:28px;background:#17191d;color:#e8eaee;font:16px/1.6 system-ui}}.videos{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}figure{{margin:0}}img,video{{width:100%;background:#000}}a{{color:#8bc5ff}}td,th{{padding:6px 10px;border:1px solid #555;text-align:left}}table{{border-collapse:collapse;margin:12px 0}}.pass{{color:#86dfa6}}.fail{{color:#ff9999}}section{{border-top:1px solid #444;padding:18px 0}}code{{color:#ffd48a}}@media(max-width:900px){{.videos{{grid-template-columns:1fr}}}}</style>
+<style>body{{margin:28px;background:#17191d;color:#e8eaee;font:16px/1.6 system-ui}}.videos{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}figure{{margin:0}}img,video{{width:100%;background:#000}}a{{color:#8bc5ff}}td,th{{padding:6px 10px;border:1px solid #555;text-align:left}}table{{border-collapse:collapse;margin:12px 0}}pre{{white-space:pre-wrap;overflow-wrap:anywhere}}.pass{{color:#86dfa6}}.fail{{color:#ff9999}}section{{border-top:1px solid #444;padding:18px 0}}code{{color:#ffd48a}}@media(max-width:900px){{.videos{{grid-template-columns:1fr}}}}</style>
 <h1>单人动态美体闭环对照：{html.escape(report["verdict"])}</h1>
 <p>场景锁定：源 <code>{html.escape(Path(lock["source"]["path"]).name)}</code>（sha256 {lock["source"]["sha256"][:16]}…），{lock["timeline"]["width"]}×{lock["timeline"]["height"]}，{lock["timeline"]["fps"]} fps 时间线，{lock["timeline"]["frames"]} 帧；参数 瘦身 {lock["values"]["body_adjust_SlimBody"]} + 长腿 {lock["values"]["body_adjust_StretchLeg"]}；git {report["git_head"][:12]}；自研引擎 manifest {lock["independentEngine"]["sourceManifestSha256"][:12]}…</p>
 <p>统计平面：全部 {report["total_frames"]} 帧来自三路导出的解码画面（同一编码器、同一网格，差分视频 ×4）；预览↔导出 ≤1 色阶只在编码前 PNG 样本（{len(report["samples"])} 帧）上判定。</p>
+<h2>原生配置与验收范围</h2><h3>原生配置（scenario lock 的 nativeProfile）</h3>{profile_html}
+<h3>范围与限制（limitations）</h3>{limitations_html}
+<p>未记录的配置或范围不从差分画面推断。下表不证明身份跟踪、自动蒙版、实时播放或跨平台已验收。</p>
 <h2>完整视频</h2><div class="videos">{videos}</div>
 <h2>逐帧误差（{report["total_frames"]} 帧，解码后）</h2>
 <table><thead><tr><th>对</th><th>均值(平均)</th><th>均值 p95</th><th>均值最大</th><th>单像素最大</th><th>最大跳变</th><th>误差最大帧</th><th>跳变最大帧</th></tr></thead><tbody>{pairs_rows}</tbody></table>
-<h2>有效跟踪帧：身体区域是否被改变</h2>
-<p>相对原图，8×8 块均值 |Δ|&gt;{EFFECT_THRESHOLD} 的块为"被改变"（块均值滤掉编码噪声）；无效果帧按该路径自身典型改变面积的 10 % 判定；bbox 高度占比和整帧级变化用于识别全局漂移。</p>
-<table><thead><tr><th>路径</th><th>有效果帧</th><th>无效果帧</th><th>平均改变面积</th><th>bbox 高度占比</th><th>整帧级变化帧</th></tr></thead><tbody>{effect_rows}</tbody></table>
+<h2>画面变化统计：各路径相对原图的变化</h2>
+<p>相对原图，8×8 块均值 |Δ|&gt;{EFFECT_THRESHOLD} 的块计入变化区域（块平均减少编码噪声影响）。低变化阈值为该路径典型变化面积的 10 %，且不低于 0.05 %。初始化、参数和画面内容都可能产生低变化帧；像素差分不能判定跟踪丢失。bbox 仅描述变化范围。</p>
+<table><thead><tr><th>路径</th><th>超过变化阈值帧</th><th>低于变化阈值帧</th><th>平均改变面积</th><th>bbox 高度占比</th><th>整帧级变化帧</th></tr></thead><tbody>{effect_rows}</tbody></table>
 <h2>产品画面：暂停预览画布 ↔ 编码前导出帧（第 3 步，目标 ≤1）</h2>
 <table><thead><tr><th>路径</th><th>结果</th><th>最大 RGB</th><th>最大 Alpha</th><th>失败帧</th></tr></thead><tbody>{parity_rows}</tbody></table>
 <h2>原生 ↔ 自研（编码前 PNG 样本）</h2>
 <table><thead><tr><th>帧</th><th>均值</th><th>p99</th><th>最大</th></tr></thead><tbody>{pre_rows}</tbody></table>
 {invariance_html}
 <h2>最差帧说明</h2><p>每条：原图 / 原生 / 自研 / 差分 ×4；点开查看全分辨率。</p>{worst}
-<p><a href="metrics.json">metrics.json</a> · <a href="../e2e-evidence.json">E2E 记录</a> · <a href="../scenario-lock.json">场景锁定</a></p>
+<p><a href="metrics.json">metrics.json</a> · <a href="{evidence_href}/e2e-evidence.json">三方 E2E 记录</a>{lock_link}</p>
 </html>''')
 
 
@@ -332,10 +340,7 @@ def summarize_pair(*, rows):
 
 
 def summarize_effects(*, regions):
-    # A frame has "lost" the effect when its changed area collapses against the
-    # pass's own typical frame, not against an absolute pixel count: encoder noise
-    # alone can exceed a fixed count on 2M pixels, and a weak-but-present effect
-    # on a small subject should not count as absent.
+    # Relative area is a picture-change statistic, never a detector/tracker receipt.
     fractions = [row["changed_fraction"] for row in regions]
     floor = max(0.0005, 0.1 * float(np.median(fractions)))
     with_effect = [row["frame"] for row in regions if row["changed_fraction"] > floor]
@@ -350,7 +355,7 @@ def summarize_effects(*, regions):
             "whole_frame_frames": whole, "per_frame": regions}
 
 
-def build(*, evidence, lock, invariance_dir, output):
+def build(*, evidence, lock, invariance_dir, output, lock_path=None, verify_operation_videos=False, operation_ffmpeg="ffmpeg"):
     record = json.loads((evidence / "e2e-evidence.json").read_text())
     width, height, fps = record["width"], record["height"], record["fps"]
     samples = record["sampleIndices"]
@@ -380,7 +385,7 @@ def build(*, evidence, lock, invariance_dir, output):
     parity = sampled_png_parity(evidence=evidence, modes=modes, samples=samples, output=output)
     pre_encode = sampled_pre_encode_pairs(evidence=evidence, samples=samples, output=output)
 
-    # Worst frames: largest native↔independent error, largest jump, and any lost-tracking frame.
+    # Include low-change frames without inferring why their pixels changed less.
     alignment = pairs["native_independent"]
     selected = []
     for frame in alignment["worst_frames_by_mean"][:3]:
@@ -395,8 +400,8 @@ def build(*, evidence, lock, invariance_dir, output):
                          "note": f'相对上一帧残差变化均值 {row.get("mean_residual_change", 0):.2f}，最大 {row.get("max_residual_change", 0)}'})
     for mode in ("native", "independent"):
         for frame in effects[mode]["frames_without_effect"][:2]:
-            selected.append({"frame": frame, "reason": f"{PASS_LABELS[mode]}在此帧没有改变身体区域",
-                             "note": "相对原图没有超过阈值的像素：跟踪丢失或效果为零"})
+            selected.append({"frame": frame, "reason": f"{PASS_LABELS[mode]}在此帧的画面变化面积较低",
+                             "note": "变化面积未超过此路径的统计阈值；该统计不判定跟踪状态，初始化也可能产生这种画面。"})
     seen, worst = set(), []
     for entry in selected:
         if entry["frame"] in seen:
@@ -409,19 +414,22 @@ def build(*, evidence, lock, invariance_dir, output):
     invariance = None
     if invariance_dir is not None:
         inv = load_invariance(path=invariance_dir)
+        verified = OPERATIONS.verify_decoded_exports(record=inv, directory=Path(invariance_dir), ffmpeg=operation_ffmpeg) if verify_operation_videos else None
         invariance = {"source": str(Path(invariance_dir).resolve() / "e2e-evidence.json"), "checks": inv.get("checks", {}),
-                      "record": inv,
+                      "record": inv, "summary": OPERATIONS.summarize(record=inv, verified_videos=verified),
                       "cross_run": cross_run(invariance_dir=Path(invariance_dir), independent_frames=frames_by_mode["independent"],
                                              width=width, height=height)}
 
     parity_ok = bool(parity) and all(summary["passed"] for summary in parity.values())
-    tracking_ok = all(not summary["frames_without_effect"] for summary in effects.values())
     verdict_parts = [f'预览↔导出 {"通过" if parity_ok else "失败"}',
-                     f'有效跟踪 {"全帧生效" if tracking_ok else "存在无效果帧"}',
                      f'原生↔自研均值 {alignment["per_frame_mean_abs_rgb"]["mean"]:.2f}（最大帧 {alignment["per_frame_mean_abs_rgb"]["max"]:.2f}）']
-    if invariance and invariance["checks"]:
-        verdict_parts.append(f'操作不变性 {"通过" if all(invariance["checks"].values()) else "失败"}')
-    report = {"schemaVersion": 1, "git_head": record["gitHead"], "total_frames": counts["original"], "samples": samples,
+    if invariance:
+        verdict_parts.append(f'编辑器操作 {invariance["summary"]["label"]}')
+    report = {"schemaVersion": 2, "evidence_source": str(evidence.resolve()),
+              "scenario_lock_source": str(lock_path.resolve()) if lock_path else None,
+              "native_profile": lock.get("nativeProfile"), "limitations": lock.get("limitations"),
+              "change_statistics_scope": "Pixel-change thresholds do not determine detector or tracking state",
+              "git_head": record["gitHead"], "total_frames": counts["original"], "samples": samples,
               "effect_threshold": EFFECT_THRESHOLD, "pairs": pairs, "effect_regions": effects,
               "preview_export_parity": parity, "native_independent_preencode": pre_encode,
               "worst_frames": worst, "invariance": invariance, "verdict": "；".join(verdict_parts)}
@@ -435,11 +443,14 @@ def main():
     parser.add_argument("evidence", type=Path, help="three-way E2E evidence folder")
     parser.add_argument("--lock", type=Path, required=True, help="scenario-lock.json")
     parser.add_argument("--invariance", type=Path, help="invariance E2E evidence folder")
+    parser.add_argument("--verify-operation-videos", action="store_true", help="recompute every operation export decoded MD5 without modifying its evidence")
+    parser.add_argument("--operation-ffmpeg", default="ffmpeg", help="FFmpeg used by the operation E2E for exact decoded digest verification")
     parser.add_argument("--out", type=Path, help="report folder (default <evidence>/report)")
     args = parser.parse_args()
     lock = json.loads(args.lock.read_text())
     report = build(evidence=args.evidence, lock=lock, invariance_dir=args.invariance,
-                   output=args.out or args.evidence / "report")
+                   output=args.out or args.evidence / "report", lock_path=args.lock,
+                   verify_operation_videos=args.verify_operation_videos, operation_ffmpeg=args.operation_ffmpeg)
     brief = {name: {"mean": summary["per_frame_mean_abs_rgb"]["mean"], "worst": summary["worst_frames_by_mean"],
                     "jumps": summary["jump_frames"]} for name, summary in report["pairs"].items()}
     print(json.dumps({"verdict": report["verdict"], "pairs": brief,

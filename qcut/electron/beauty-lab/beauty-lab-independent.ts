@@ -514,7 +514,10 @@ export function createBeautyLabIndependentProvider({
 				expected: sourceEvidence,
 				receipt: report.sourceEvidence,
 			});
-			const decoded = await loadImage(png);
+			// Buffer decoding scans compressed PNG bytes for SVG markers.
+			const decoded = await loadImage(path.join(directory, "owned.png"));
+			if (decoded.width !== input.width || decoded.height !== input.height)
+				throw new Error("Independent decoded PNG dimensions changed");
 			canvas.getContext("2d").drawImage(decoded, 0, 0);
 			const rgba = new Uint8Array(
 				canvas.getContext("2d").getImageData(0, 0, input.width, input.height)

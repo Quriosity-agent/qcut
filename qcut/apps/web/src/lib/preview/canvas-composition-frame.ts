@@ -20,6 +20,10 @@ import { SequentialVideoRegistry } from "@/lib/export/export-sequential-video-so
 import { COMPOSITION_CANVAS_CONTEXT_SETTINGS } from "@/lib/export/composition-canvas-context";
 import { canUseNativePortraitSourceWindow } from "@/lib/portrait/portrait-temporal-policy";
 import { createPortraitSourcePreRollReader } from "@/lib/portrait/portrait-source-preroll";
+import {
+	hasIndependentBodyVideoContentSource,
+	independentBodyVideoApplies,
+} from "@/lib/portrait/independent-body-video";
 
 export interface CanvasCompositionPreviewPlan {
 	tracks: TimelineTrack[];
@@ -105,6 +109,15 @@ export function createCanvasCompositionPreviewPlan({
 			const adjustments =
 				resolveMediaVisualProperties(element).portraitAdjustments;
 			if (
+				independentBodyVideoApplies({
+					adjustments,
+					mediaType: media.type,
+					fps,
+				}) &&
+				!hasIndependentBodyVideoContentSource({ mediaItem: media })
+			)
+				return null;
+			if (
 				adjustments?.engine !== "independent" &&
 				hasMediaPortraitAdjustments({ adjustments }) &&
 				(!canUseNativePortraitSourceWindow({ adjustments }) ||
@@ -150,26 +163,32 @@ export function createCanvasCompositionPreviewPlan({
 
 export interface CanvasCompositionFrame {
 	blob: Blob;
+	timings: { renderMs: number; encodeMs: number };
 	frame: number;
 	timeSeconds: number;
 	width: number;
 	height: number;
 }
 
-export async function renderCanvasCompositionFrame({
+export interface CanvasCompositionRenderer {
+	render: ({ frame }: { frame: number }) => Promise<CanvasCompositionFrame>;
+	dispose: () => Promise<void>;
+}
+
+export function createCanvasCompositionRenderer({
 	plan,
-	frame,
 	backgroundColor,
 	signal,
+	maxInFlightFrames = 1,
 }: {
 	plan: CanvasCompositionPreviewPlan;
-	frame: number;
 	backgroundColor?: string;
 	signal: AbortSignal;
-}): Promise<CanvasCompositionFrame> {
+	maxInFlightFrames?: number;
+}): CanvasCompositionRenderer {
 	signal.throwIfAborted();
-	if (!Number.isInteger(frame) || frame < 0)
-		throw new Error("Invalid preview frame");
+	if (![1, 2].includes(maxInFlightFrames))
+		throw new Error("Invalid composition encoding capacity");
 	const canvas = document.createElement("canvas");
 	canvas.width = plan.width;
 	canvas.height = plan.height;
@@ -196,32 +215,116 @@ export async function renderCanvasCompositionFrame({
 		renderIndex: plan.renderIndex,
 		sequentialVideo,
 	};
-	try {
-		await renderFrame(context, frame / plan.fps);
+	let tail = Promise.resolve();
+	let disposed = false;
+	let disposal: Promise<void> | undefined;
+	let failure: Error | undefined;
+	const encodings = new Set<Promise<void>>();
+	function assertActive() {
 		signal.throwIfAborted();
-		const blob = await new Promise<Blob>((resolve, reject) => {
-			canvas.toBlob((result) => {
-				if (result) resolve(result);
-				else reject(new Error("Unable to encode composition preview"));
-			}, "image/png");
+		if (disposed) throw new Error("Composition preview renderer disposed");
+		if (failure) throw failure;
+	}
+	function render({
+		frame,
+	}: {
+		frame: number;
+	}): Promise<CanvasCompositionFrame> {
+		if (!Number.isInteger(frame) || frame < 0)
+			return Promise.reject(new Error("Invalid preview frame"));
+		const snapshot = tail.then(async () => {
+			assertActive();
+			if (encodings.size >= maxInFlightFrames) {
+				await Promise.race(encodings);
+				assertActive();
+			}
+			const renderStarted = performance.now();
+			await renderFrame(context, frame / plan.fps);
+			const renderMs = performance.now() - renderStarted;
+			assertActive();
+			const encodeStarted = performance.now();
+			// toBlob copies the bitmap synchronously, before its parallel PNG encoding.
+			const encoded = new Promise<Blob>((resolve, reject) => {
+				canvas.toBlob((result) => {
+					if (result) resolve(result);
+					else reject(new Error("Unable to encode composition preview"));
+				}, "image/png");
+			});
+			const capture = encoded.then((blob) => {
+				assertActive();
+				return {
+					blob,
+					timings: { renderMs, encodeMs: performance.now() - encodeStarted },
+					frame,
+					timeSeconds: frame / plan.fps,
+					width: plan.width,
+					height: plan.height,
+				};
+			});
+			const settled = capture.then(
+				() => {},
+				(error: unknown) => {
+					failure ??= error instanceof Error ? error : new Error(String(error));
+				}
+			);
+			encodings.add(settled);
+			void settled.then(() => encodings.delete(settled));
+			return { capture };
 		});
-		signal.throwIfAborted();
-		return {
-			blob,
-			frame,
-			timeSeconds: frame / plan.fps,
-			width: plan.width,
-			height: plan.height,
-		};
+		tail = snapshot.then(
+			() => {},
+			(error: unknown) => {
+				failure ??= error instanceof Error ? error : new Error(String(error));
+			}
+		);
+		return snapshot.then(({ capture }) => capture);
+	}
+	function dispose() {
+		disposed = true;
+		disposal ??= tail.then(async () => {
+			await Promise.all(encodings);
+			try {
+				for (const video of context.videoCache.values()) {
+					video.pause();
+					video.removeAttribute("src");
+					video.load();
+				}
+			} finally {
+				context.videoCache.clear();
+				context.imageCache?.clear();
+				context.usedImages.clear();
+				try {
+					await sequentialVideo.disposeAll();
+				} finally {
+					canvas.width = 0;
+					canvas.height = 0;
+				}
+			}
+		});
+		return disposal;
+	}
+	return { render, dispose };
+}
+
+export async function renderCanvasCompositionFrame({
+	plan,
+	frame,
+	backgroundColor,
+	signal,
+}: {
+	plan: CanvasCompositionPreviewPlan;
+	frame: number;
+	backgroundColor?: string;
+	signal: AbortSignal;
+}): Promise<CanvasCompositionFrame> {
+	const renderer = createCanvasCompositionRenderer({
+		plan,
+		backgroundColor,
+		signal,
+	});
+	try {
+		return await renderer.render({ frame });
 	} finally {
-		for (const video of context.videoCache.values()) {
-			video.pause();
-			video.removeAttribute("src");
-			video.load();
-		}
-		context.videoCache.clear();
-		await sequentialVideo.disposeAll();
-		canvas.width = 0;
-		canvas.height = 0;
+		await renderer.dispose();
 	}
 }

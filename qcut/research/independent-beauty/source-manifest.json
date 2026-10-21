@@ -48,8 +48,8 @@
 		},
 		{
 			"path": "research/alignment_decode.py",
-			"bytes": 3245,
-			"sha256": "daba103023933078aff3245dcafddaf7c09d0711040f4c112e9239550a078eed",
+			"bytes": 3457,
+			"sha256": "5cb64ae6ca7e8ca7be55a40337058c5a423b44b82b2b2765675d5e8b9ef07d92",
 			"sourceSha256": "690ad122cf1ae8fb2a214713c3395c9da9abeb7814c1735e3e320b000e417606"
 		},
 		{
@@ -462,8 +462,8 @@
 		},
 		{
 			"path": "research/independent_pipeline.py",
-			"bytes": 26940,
-			"sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af",
+			"bytes": 27427,
+			"sha256": "314862472a40a16ff369b5536e22f34e91184769dc573481cab98495c99d43eb",
 			"sourceSha256": "ba7fae7c3ff975a163405eac125bc51c17eff88bee883262e9f0043879aa23ec"
 		},
 		{
@@ -2289,8 +2289,8 @@
 		},
 		{
 			"path": "research/body_video_face_sequence.py",
-			"bytes": 9247,
-			"sha256": "2b4297c86826749c9807d2e1d6876d7d7054b11c804f87969165fe385d525e02"
+			"bytes": 9271,
+			"sha256": "ce9e3adb0326c515334c72d6db069c205cea09ef14125f761b76e1606a768d46"
 		},
 		{
 			"path": "research/manual_body_zoom_geometry.py",
@@ -2359,8 +2359,8 @@
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
-			"bytes": 17386,
-			"sha256": "111a9ea219e50b923ebd255a9cb24ad34fd8d45cb03ec4b56b8b7a506e33f2e2"
+			"bytes": 18762,
+			"sha256": "938fcbf7a06a875b4ffda9e8a18620890a28153d46e57f3e6d64037568c586ba"
 		},
 		{
 			"path": "research/tests/test_manual_body_zoom_geometry.py",
@@ -2581,6 +2581,16 @@
 			"path": "research/tests/test_detection_order.py",
 			"bytes": 4496,
 			"sha256": "dff8a56f7c53921cc2e54a7ff72f4df719ec0d54b82e5f0a188b41eac1668686"
+		},
+		{
+			"path": "research/pipeline_source_png.py",
+			"bytes": 1612,
+			"sha256": "24fea22c9b4b5ba1fd78a32b5f29cd789805081d27eb9b243b0cf9af58f210c6"
+		},
+		{
+			"path": "research/tests/test_pipeline_source_png.py",
+			"bytes": 11134,
+			"sha256": "1b66f180731137e05f835d946a0dc0f65d589a2035c3f1e6907b2de9e4cea248"
 		}
 	],
 	"importPatches": [
@@ -3387,6 +3397,22 @@
 				"research/tests/test_body_smart_sequence.py"
 			],
 			"reason": "Validate only the current native algorithm extent: remove the extra steady-state budget check that rejected a valid transient source resize before its smaller algorithm image was calculated. Keep cold/steady network limits and pre-mutation failure semantics; regression covers cold rejection, warm acceptance, unchanged state after steady rejection, and continuation on a valid frame. Native arithmetic and private runtime assets remain unchanged."
+		},
+		{
+			"files": [
+				"research/independent_pipeline.py",
+				"research/pipeline_source_png.py",
+				"research/tests/test_pipeline_source_png.py"
+			],
+			"reason": "Skip only the redundant initial PNG normalization for a smart-body-first chain when the validated opaque source is a CRC-valid non-interlaced 8-bit RGBA PNG containing only standard sRGB and unchanged 8-bit sBIT metadata. Copy to the private temporary original.png, retain all input decoding, limits, source hashes and zero-stage encoding, and leave every renderer and final PNG compression unchanged. Tests bind final PNG bytes and RGBA, stage order, metadata fallbacks and rejection paths. No models, tracking rules or rendering arithmetic change."
+		},
+		{
+			"files": [
+				"research/alignment_decode.py",
+				"research/body_video_face_sequence.py",
+				"research/tests/test_body_video_face_sequence.py"
+			],
+			"reason": "Preserve finite out-of-frame VIDEO face coordinates after accepted tracking, matching the native public FaceBuffer conversion without clipping, dropping slots, or changing their histories. Keep the still-photo in-frame contract. Verify native float32 output bits and replay the real frame-215 boundary failure."
 		}
 	],
 	"sourceWorkingTreeStatus": [

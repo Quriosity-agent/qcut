@@ -128,8 +128,13 @@ export function setupBeautyLabIPC({
 			if (!independentProvider)
 				throw new Error("Independent photo engine is not connected");
 			const frame = independentFrames?.cancel({ request });
+			const sequence = independentSequenceFrames?.cancel({ request });
 			const engine = independentProvider.cancel({ request });
-			return { cancelled: Boolean(frame?.cancelled || engine.cancelled) };
+			return {
+				cancelled: Boolean(
+					frame?.cancelled || sequence?.cancelled || engine.cancelled
+				),
+			};
 		}
 	);
 	ipcMain.handle(BEAUTY_LAB_CANDIDATE_INSPECT_CHANNEL, (event) => {

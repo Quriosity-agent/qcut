@@ -116,6 +116,7 @@ import {
 	JIANYING_PORTRAIT_ADJUSTMENT_DETECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL,
 	JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL,
+	JIANYING_PORTRAIT_ADJUSTMENT_CANCEL_CHANNEL,
 } from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-contract.js";
 import {
 	BEAUTY_LAB_LIST_CHANNEL,
@@ -329,6 +330,8 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			ipcRenderer.invoke(BEAUTY_LAB_LOAD_CHANNEL, request),
 	},
 	jianyingPortraitAdjustment: {
+		cancel: (request) =>
+			ipcRenderer.invoke(JIANYING_PORTRAIT_ADJUSTMENT_CANCEL_CHANNEL, request),
 		inspect: (request) =>
 			ipcRenderer.invoke(JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL, request),
 		render: (request) =>

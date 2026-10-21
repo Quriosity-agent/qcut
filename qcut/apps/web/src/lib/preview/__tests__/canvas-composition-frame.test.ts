@@ -319,6 +319,25 @@ describe("canvas composition preview", () => {
 		expect(createCanvasCompositionPreviewPlan(input)).not.toBeNull();
 	});
 
+	it("requires owned source bytes for independent body history without rejecting makeup-only edits", () => {
+		const input = fixture();
+		const element = input.tracks[0].elements[0];
+		if (element.type !== "media") throw new Error("Expected media");
+		element.portraitAdjustments = {
+			enabled: true,
+			engine: "independent",
+			values: { body_adjust_SlimBody: 40 },
+		};
+		expect(createCanvasCompositionPreviewPlan(input)).not.toBeNull();
+		input.mediaItems[0].file = new File([], "placeholder.mp4");
+		expect(createCanvasCompositionPreviewPlan(input)).toBeNull();
+		element.portraitAdjustments.values = {};
+		element.portraitAdjustments.makeup = {
+			lip: { cardId: "lip-coral-nude", intensity: 35 },
+		};
+		expect(createCanvasCompositionPreviewPlan(input)).not.toBeNull();
+	});
+
 	it("keeps identity-bound native adjustments on their existing preview path", () => {
 		const input = fixture();
 		const element = input.tracks[0].elements[0];

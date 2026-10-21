@@ -131,8 +131,8 @@ export function PortraitEngineControl({
 				<div className="space-y-1 rounded-sm border border-border/70 bg-muted/30 px-2.5 py-2 text-[11px] text-muted-foreground">
 					<p data-testid="portrait-engine-note">
 						{isZh
-							? "首次处理需要初始化；后续帧复用已加载的引擎，耗时取决于尺寸和调节项。播放时显示原画面，暂停后显示处理结果；导出逐帧处理并复用已缓存的帧。暂停预览最长边 1920；导出可保留 1080p 和 4K 横竖屏处理尺寸，超过最长边 4096 或 829 万像素时按比例缩小处理。"
-							: "The first frame initializes the engine; later frames reuse it. Processing time depends on dimensions and edits. Playback shows the original, paused frames show the result, and export processes each frame and reuses cached results. Paused previews use up to 1920 px on the longest edge. Export retains landscape and portrait 1080p and 4K processing dimensions; larger frames are fitted within 4096 px and 8.29 MP."}
+							? "首次处理需要初始化；后续帧复用已加载的引擎，耗时取决于尺寸和调节项。暂停后显示处理结果；支持的工程可开启“准备效果预览”分段播放效果，开启后调参会自动更新当前位置。导出逐帧处理并复用已缓存的帧。暂停预览最长边 1920；导出可保留 1080p 和 4K 横竖屏处理尺寸，超过最长边 4096 或 829 万像素时按比例缩小处理。"
+							: "The first frame initializes the engine; later frames reuse it. Processing time depends on dimensions and edits. Paused frames show the result. Supported projects can prepare effect playback in segments; parameter changes then automatically update the current position. Export processes each frame and reuses cached results. Paused previews use up to 1920 px on the longest edge. Export retains landscape and portrait 1080p and 4K processing dimensions; larger frames are fitted within 4096 px and 8.29 MP."}
 					</p>
 					{runtimeMessage ? (
 						<p

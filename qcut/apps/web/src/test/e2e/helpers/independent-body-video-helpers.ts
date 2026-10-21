@@ -4,13 +4,14 @@
  * discovery, body edits through the store and a framemd5 export.
  */
 import { execFile } from "node:child_process";
-import { readdir, readFile, rm, stat } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { type ElectronApplication, expect, type Page } from "@playwright/test";
 import { getFFmpegPath } from "../../../../../../electron/ffmpeg/paths";
 import { probeVideo } from "./transition-export-evidence";
 import { stubExportSaveDialog } from "./e2e-export-helpers";
+import { waitForBodyExportFile } from "./body-export-completion";
 import type { ReferenceWindow } from "./portrait-reference";
 
 const run = promisify(execFile);
@@ -254,18 +255,7 @@ export async function finishExport({
 	started: number;
 	timeout?: number;
 }) {
-	await expect
-		.poll(
-			async () => {
-				try {
-					return (await stat(file)).size;
-				} catch {
-					return 0;
-				}
-			},
-			{ timeout, intervals: [500, 1_000, 2_000] }
-		)
-		.toBeGreaterThan(1_000);
+	await waitForBodyExportFile({ page, file, timeout });
 	const seconds = (Date.now() - started) / 1000;
 	await expect(page.getByTestId("export-start-button")).toBeVisible({
 		timeout: 30_000,

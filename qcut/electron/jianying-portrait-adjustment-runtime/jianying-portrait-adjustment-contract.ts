@@ -2,6 +2,8 @@ export const JIANYING_PORTRAIT_ADJUSTMENT_INSPECT_CHANNEL =
 	"jianying-portrait-adjustment:inspect";
 export const JIANYING_PORTRAIT_ADJUSTMENT_RENDER_CHANNEL =
 	"jianying-portrait-adjustment:render";
+export const JIANYING_PORTRAIT_ADJUSTMENT_CANCEL_CHANNEL =
+	"jianying-portrait-adjustment:cancel";
 
 export type JianyingPortraitAdjustmentGroup = "face" | "body";
 export type JianyingPortraitAdjustmentSection =
@@ -323,6 +325,7 @@ export interface JianyingPortraitAdjustmentInspectRequest {
 }
 
 export interface JianyingPortraitAdjustmentRenderRequest {
+	requestId?: string;
 	width: number;
 	height: number;
 	rgba: Uint8Array;
@@ -356,6 +359,10 @@ export interface JianyingPortraitAdjustmentRenderResult {
 	height: number;
 	rgba: Uint8Array;
 	activeGroups: JianyingPortraitAdjustmentGroup[];
+	/** Present only for independently reset source-window requests. */
+	sourceWindowCacheHit?: boolean;
+	/** Actual host render commands for this request, including real source pre-roll. */
+	nativeRenderCount?: number;
 	/** A face stage stayed unchanged; this is not a detector result or success claim. */
 	needsSourcePreRoll?: boolean;
 }
@@ -419,6 +426,7 @@ export interface JianyingPortraitAdjustmentAPI {
 	render: (
 		request: JianyingPortraitAdjustmentRenderRequest
 	) => Promise<JianyingPortraitAdjustmentRenderResult>;
+	cancel?: (request: { requestId: string }) => Promise<boolean>;
 	detect: (
 		request: JianyingPortraitAdjustmentDetectRequest
 	) => Promise<JianyingPortraitAdjustmentDetectResult>;

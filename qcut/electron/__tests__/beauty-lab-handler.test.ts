@@ -511,6 +511,34 @@ describe("Beauty Lab IPC", () => {
 });
 
 describe("independent Beauty Lab IPC", () => {
+	it("routes cancellation to a sequence lookup before it reaches the worker", async () => {
+		const { event, mainWindow } = context();
+		const owned = {
+			...createBeautyLabIndependentProvider({ engineRoot: "/unused" }),
+			cancel: vi.fn(() => ({ cancelled: false })),
+		};
+		const sequence = {
+			render: vi.fn(),
+			cancel: vi.fn(() => ({ cancelled: true })),
+			dispose: vi.fn(),
+		};
+		const controller = setupBeautyLabIPC({
+			getMainWindow: () => mainWindow,
+			root: "/unused",
+			currentSourceRoot: "/unused",
+			provider: provider(),
+			independentProvider: owned,
+			independentSequenceFrames: sequence,
+		});
+		const request = { requestId: "body-cache-lookup" };
+		await expect(
+			invoke({ channel: BEAUTY_LAB_INDEPENDENT_CANCEL, event, request })
+		).resolves.toEqual({ cancelled: true });
+		expect(sequence.cancel).toHaveBeenCalledExactlyOnceWith({ request });
+		expect(owned.cancel).toHaveBeenCalledExactlyOnceWith({ request });
+		await controller.dispose();
+		expect(sequence.dispose).toHaveBeenCalledOnce();
+	});
 	it("dispatches only to the independent provider and awaits its disposal", async () => {
 		const { event, mainWindow } = context();
 		const owned = {

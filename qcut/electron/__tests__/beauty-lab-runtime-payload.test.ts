@@ -68,10 +68,12 @@ describe("independent runtime payload", () => {
 		);
 		expect(
 			source.default.files.length + source.default.generatedFiles.length
-		).toBe(463);
+		).toBe(465);
 		expect(source.default.generatedFiles.map(({ path: name }) => name)).toEqual(
 			expect.arrayContaining([
 				"research/detection_order.py",
+				"research/pipeline_source_png.py",
+				"research/tests/test_pipeline_source_png.py",
 				"research/tests/test_detection_order.py",
 				"research/detection_resize.py",
 				"research/tests/test_body_algorithm_raster.py",

@@ -16,6 +16,7 @@ import type { createIndependentBeautyWorker } from "../beauty-lab/beauty-lab-ind
 import { verifyIndependentBeautyRuntime } from "../beauty-lab/beauty-lab-runtime-payload";
 import { verifyIndependentBeautyEnvironment } from "../beauty-lab/beauty-lab-runtime-environment";
 import independentCatalog from "../../research/independent-beauty/research/independent-pipeline-catalog.json";
+import { pngWithSvgMarker } from "./independent-png-svg-fixture";
 
 const catalog = {
 	controls: [{ name: "Nose", min: -50, max: 100 }],
@@ -62,12 +63,14 @@ async function writeOwnedResult({
 	report,
 	evidencePath,
 	mutate,
+	transformPng,
 }: {
 	adjustmentsPath: string;
 	output: string;
 	report: string;
 	evidencePath?: string;
 	mutate?: (report: Record<string, unknown>) => void;
+	transformPng?: (png: Buffer) => Buffer;
 }) {
 	const adjustments = JSON.parse(
 		await readFile(adjustmentsPath, "utf8")
@@ -77,7 +80,8 @@ async function writeOwnedResult({
 	canvas
 		.getContext("2d")
 		.putImageData(new ImageData(new Uint8ClampedArray(rgba), 1, 1), 0, 0);
-	const png = canvas.toBuffer("image/png");
+	const encoded = canvas.toBuffer("image/png");
+	const png = transformPng ? transformPng(encoded) : encoded;
 	const inputHash = hash({ bytes: request.rgba }),
 		outputHash = hash({ bytes: rgba });
 	const receipt: Record<string, unknown> = {
@@ -147,6 +151,7 @@ function fakeWorker({
 
 function setup({
 	mutate,
+	transformPng,
 	run,
 	worker,
 	sessionsDirectory,
@@ -182,6 +187,7 @@ function setup({
 		}),
 }: {
 	mutate?: (report: Record<string, unknown>) => void;
+	transformPng?: (png: Buffer) => Buffer;
 	run?: typeof runIndependentBeautyJob;
 	/** Serves renders instead of one-shot jobs, as the editor does. */
 	worker?: ReturnType<typeof createIndependentBeautyWorker>;
@@ -206,6 +212,7 @@ function setup({
 						? file({ flag: "--source-evidence" })
 						: undefined,
 					mutate,
+					transformPng,
 				});
 			})
 	);
@@ -798,6 +805,37 @@ describe("independent photo provider", () => {
 		expect(result.outputSha256).toBe(hash({ bytes: result.rgba }));
 		await provider.dispose();
 	});
+	it("decodes valid PNG pixels even when its metadata resembles SVG", async () => {
+		const { provider } = setup({
+			transformPng: (png) => pngWithSvgMarker({ png }),
+		});
+		try {
+			const result = await provider.render({ request });
+			expect(result.rgba).toEqual(new Uint8Array([11, 20, 30, 255]));
+			expect(result.outputSha256).toBe(hash({ bytes: result.rgba }));
+			expect(result.report.outputPngSha256).toBe(hash({ bytes: result.png }));
+		} finally {
+			await provider.dispose();
+		}
+	});
+	it.each([
+		{ label: "damaged PNG", transformPng: () => Buffer.alloc(64) },
+		{
+			label: "different dimensions",
+			transformPng: () => createCanvas(2, 1).toBuffer("image/png"),
+		},
+	])("rejects $label before decoding the owned file", async ({
+		transformPng,
+	}) => {
+		const { provider } = setup({ transformPng });
+		try {
+			await expect(provider.render({ request })).rejects.toThrow(
+				"Invalid independent PNG budget or dimensions"
+			);
+		} finally {
+			await provider.dispose();
+		}
+	});
 	it.each([
 		{ nativeInputsUsed: true },
 		{ nativeFallbackUsed: true },
@@ -806,6 +844,7 @@ describe("independent photo provider", () => {
 		{ independence: { private_native_images: ["libAGFX.dylib"] } },
 		{ inputRgbaSha256: "wrong" },
 		{ outputPngSha256: "wrong" },
+		{ outputRgbaSha256: "wrong" },
 		{ width: 2 },
 		{ adjustments: { values: {}, makeup: {} } },
 		{ stages: [{ inputRgbaSha256: "wrong", outputRgbaSha256: "wrong" }] },
