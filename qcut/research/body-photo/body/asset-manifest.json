@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "nativeLibrariesIncluded": false,
+  "weightsOrigin": "extracted original private model data; not independently trained",
+  "files": {
+    "research/body-skeleton-v1.npz": {
+      "bytes": 767518,
+      "sha256": "92ee99023a1d900f1a4810d21dd49aee3ad98baa2cbe62680a88635b669cdee5"
+    },
+    "research/face-detector-dynamic.onnx": {
+      "bytes": 1749659,
+      "sha256": "4733751ec48c8dc5f8ca3fe3fbbfaa87c7f1393be5fba1d02320e4e71faa749a"
+    },
+    "research/face-align-120.onnx": {
+      "bytes": 2460958,
+      "sha256": "26b5c79a46478896bb91d9693dd114c2374d7b64b0e0b64245f77cf6289d5364"
+    },
+    "research/face-align-160.onnx": {
+      "bytes": 2451456,
+      "sha256": "45e3499295914247ab3a74fc080cf82c9cdecc82592224580a775838a5410174"
+    },
+    "research/alignment-assets-v1.npz": {
+      "bytes": 2286,
+      "sha256": "383a85b488649789968bdb46df581ceea86d27532d7a915f604fe5deb2459a21"
+    }
+  }
+}
