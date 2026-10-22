@@ -30,15 +30,22 @@ class RuntimeBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "must name the external"):
                 qcut_host.verify_environment()
 
-    def test_runtime_adapter_keeps_data_external_and_rejects_missing_relative_or_symlink(self):
+    def test_runtime_adapter_keeps_data_external_and_rejects_missing_or_relative(self):
         for text in ("relative", str(self.root / "missing")):
             with self.subTest(path=text), patch.dict(os.environ, {RUNTIME_ENV: text}):
                 with self.assertRaisesRegex(ValueError, "existing absolute"):
                     runtime_root(body_root=self.root / "source")
         with patch.dict(os.environ, {RUNTIME_ENV: str(self.root)}):
             self.assertEqual(runtime_root(body_root=self.root / "source"), self.root)
+
+    def test_runtime_adapter_rejects_symlink(self):
         link = self.root / "link"
-        link.symlink_to(self.root, target_is_directory=True)
+        try:
+            link.symlink_to(self.root, target_is_directory=True)
+        except OSError as error:
+            if os.name == "nt" and error.winerror == 1314:
+                self.skipTest("Windows symlink privilege is unavailable")
+            raise
         with patch.dict(os.environ, {RUNTIME_ENV: str(link)}):
             with self.assertRaisesRegex(ValueError, "symlink"):
                 runtime_root(body_root=self.root / "source")
