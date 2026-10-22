@@ -21,6 +21,12 @@ const ready: BodyPhotoLabStatus = {
 	runtimeConfigured: true,
 	windowOpen: false,
 };
+const missing: BodyPhotoLabStatus = {
+	...ready,
+	available: false,
+	runtimeConfigured: false,
+	message: "Choose resources",
+};
 
 function installAPI({
 	overrides = {},
@@ -52,12 +58,6 @@ describe("photo body launcher", () => {
 	});
 
 	it("requires verified resources before opening and supports selection cancellation", async () => {
-		const missing = {
-			...ready,
-			available: false,
-			runtimeConfigured: false,
-			message: "Choose resources",
-		};
 		const api = installAPI({
 			overrides: {
 				inspect: vi.fn().mockResolvedValue(missing),
@@ -74,6 +74,73 @@ describe("photo body launcher", () => {
 		);
 		await waitFor(() => expect(api.chooseRuntime).toHaveBeenCalledTimes(1));
 		expect(api.open).not.toHaveBeenCalled();
+	});
+
+	it("enables launch after the selected runtime finishes verification", async () => {
+		let finishSelection = (_status: BodyPhotoLabStatus) => {};
+		const api = installAPI({
+			overrides: {
+				inspect: vi
+					.fn()
+					.mockResolvedValueOnce(missing)
+					.mockResolvedValue({ ...ready, windowOpen: true }),
+				chooseRuntime: vi.fn(
+					() =>
+						new Promise<BodyPhotoLabStatus>((resolve) => {
+							finishSelection = resolve;
+						})
+				),
+			},
+		});
+		render(<BeautyLabBodyPhoto locale="en" disabled={false} />);
+		await screen.findByText("Choose resources");
+		const open = screen.getByRole("button", { name: "Open photo body" });
+		const choose = screen.getByRole("button", {
+			name: "Choose local resources",
+		});
+		fireEvent.click(choose);
+		expect(choose).toBeDisabled();
+		expect(open).toBeDisabled();
+		await act(async () => finishSelection(ready));
+		expect(open).toBeEnabled();
+		expect(choose).toBeEnabled();
+		expect(screen.queryByText("Choose resources")).not.toBeInTheDocument();
+		fireEvent.click(open);
+		await screen.findByRole("button", { name: "Close photo window" });
+		expect(api.open).toHaveBeenCalledTimes(1);
+	});
+
+	it("allows choosing valid resources after a rejected folder", async () => {
+		const chooseRuntime = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Missing pinned CPU models"))
+			.mockResolvedValueOnce(ready);
+		installAPI({
+			overrides: {
+				inspect: vi.fn().mockResolvedValue(missing),
+				chooseRuntime,
+			},
+		});
+		render(<BeautyLabBodyPhoto locale="en" disabled={false} />);
+		await screen.findByText("Choose resources");
+		const choose = screen.getByRole("button", {
+			name: "Choose local resources",
+		});
+		fireEvent.click(choose);
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"Missing pinned CPU models"
+		);
+		expect(choose).toBeEnabled();
+		expect(
+			screen.getByRole("button", { name: "Open photo body" })
+		).toBeDisabled();
+		fireEvent.click(choose);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: "Open photo body" })
+			).toBeEnabled()
+		);
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 	});
 
 	it("keeps all actions disabled during an existing lab job", async () => {
@@ -136,6 +203,27 @@ describe("photo body launcher", () => {
 		expect(inspect).toHaveBeenCalledTimes(2);
 		await act(async () => window.dispatchEvent(new Event("focus")));
 		expect(inspect).toHaveBeenCalledTimes(3);
+	});
+
+	it("refreshes the launcher after the photo window closes and can reopen it", async () => {
+		const api = installAPI({
+			overrides: {
+				inspect: vi
+					.fn()
+					.mockResolvedValueOnce({ ...ready, windowOpen: true })
+					.mockResolvedValueOnce(ready)
+					.mockResolvedValueOnce({ ...ready, windowOpen: true }),
+			},
+		});
+		render(<BeautyLabBodyPhoto locale="en" disabled={false} />);
+		await screen.findByRole("button", { name: "Close photo window" });
+		await act(async () => window.dispatchEvent(new Event("focus")));
+		expect(
+			screen.queryByRole("button", { name: "Close photo window" })
+		).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Open photo body" }));
+		await screen.findByRole("button", { name: "Close photo window" });
+		expect(api.open).toHaveBeenCalledTimes(1);
 	});
 
 	it("ignores an obsolete API response after the desktop session changes", async () => {
