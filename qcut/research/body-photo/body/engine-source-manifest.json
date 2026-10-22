@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "7bd5ceacc996b924c25563f430651dd1046d6ce0",
+  "sourcePrefix": "qcut/research/independent-beauty/research/",
+  "sourceBytesModified": false,
+  "entrypoint": "engine/research/body_smart_render.py",
+  "scope": "canonical static photo renderer; no video or native SDK",
+  "files": {
+    "engine/research/algorithm_frame.py": {
+      "bytes": 4020,
+      "sha256": "2138aa24ffa7d8cafe588c38f1960e6c5ebf3dca23aec96a65cb956a394b5d14"
+    },
+    "engine/research/align160_heads_contract.py": {
+      "bytes": 497,
+      "sha256": "8b5b18e4e76f66e11cc42928c987743b62ae06dd3de23055d2ca3cd52a306ab6"
+    },
+    "engine/research/align160_prepare.py": {
+      "bytes": 3774,
+      "sha256": "81b6837bee8a3c36044e432c3f2b4cac816eeeb94add1182220c63c299b52d72"
+    },
+    "engine/research/alignment_assets.py": {
+      "bytes": 3521,
+      "sha256": "9efa5efedfe953af8d8826cc8d447803d3d9b3b23b0b120c8fb81aeba371811c"
+    },
+    "engine/research/alignment_crop_transform.py": {
+      "bytes": 2897,
+      "sha256": "f344dd5d027d08ff633373ac35f5bc4e5ea8f7624577990930d4f3ad36ec44b7"
+    },
+    "engine/research/alignment_decode.py": {
+      "bytes": 3245,
+      "sha256": "daba103023933078aff3245dcafddaf7c09d0711040f4c112e9239550a078eed"
+    },
+    "engine/research/alignment_infer.py": {
+      "bytes": 5802,
+      "sha256": "16d45442080ce26388fd0b3e3d9c24f653a9783a0d65d1293ff6fc4b99644c1f"
+    },
+    "engine/research/alignment_ordinary_sampling.py": {
+      "bytes": 1241,
+      "sha256": "54b70ca38bfb715b6c813893fd7487fceb710bb50774c5b67519c7b511a52eaf"
+    },
+    "engine/research/alignment_photo.py": {
+      "bytes": 6103,
+      "sha256": "1cf93c7cc946c093d0a2b359b40db01a55ec6682698117e25d2a32717145ec40"
+    },
+    "engine/research/alignment_pose_heads.py": {
+      "bytes": 3691,
+      "sha256": "4a062d8377b4c26f8d56bf7682a60cf2618fe168fbc8f51abf1eea2154f08c44"
+    },
+    "engine/research/alignment_probability.py": {
+      "bytes": 3853,
+      "sha256": "4688f0d7af41bd418c3ff90770d737a1a236231d885b94d1701745090284339f"
+    },
+    "engine/research/alignment_sampling.py": {
+      "bytes": 3892,
+      "sha256": "ce534cd18c644a2a0794c8a0842c3f0dfa2beb1ba3e5e9ee91c9bc145307b913"
+    },
+    "engine/research/alignment_sequence.py": {
+      "bytes": 15248,
+      "sha256": "a7728c26b9000c451979d1dbd0baf10efa2ef870f18b29087da7a3317b86cc3c"
+    },
+    "engine/research/alignment_temporal.py": {
+      "bytes": 7186,
+      "sha256": "af7f1ed9a3a9c23f3e7c3cab25694df8a35f94234e5b5368a2046df12018e9f9"
+    },
+    "engine/research/alignment_transform.py": {
+      "bytes": 5692,
+      "sha256": "aa7fa4961ac66c3f05cea8fbec283e8701c948accce09e7c6c5ace1fd8c3a723"
+    },
+    "engine/research/body_arm_bent_limb.py": {
+      "bytes": 6607,
+      "sha256": "aedb67aef0a25eb5877f1ddff90095332e41d9c4b75ba11d115a48c57c336f1e"
+    },
+    "engine/research/body_arm_descriptor.py": {
+      "bytes": 2059,
+      "sha256": "2720503607460576cb7509583c6e05d29ff7952f7c850b17cfffa67b55de6638"
+    },
+    "engine/research/body_arm_geometry.py": {
+      "bytes": 1793,
+      "sha256": "9f7471db648321d7ede5262a093196a3f45743083bc98971a860bd099dc5287a"
+    },
+    "engine/research/body_arm_history.py": {
+      "bytes": 1644,
+      "sha256": "fe90daa6efa5a5431d416850f51679be3f7caaecfc76118c0979334d6157bd8e"
+    },
+    "engine/research/body_arm_state.py": {
+      "bytes": 4080,
+      "sha256": "986c08e7df6f593c113823290b2e5312bcdc8d32171fb1c707167c22294e887c"
+    },
+    "engine/research/body_arm_straight_limb.py": {
+      "bytes": 4449,
+      "sha256": "0fda1abbaf6190d5e8e7be0a7299d712ba686cb6938fff83675c3cb9ad3acec8"
+    },
+    "engine/research/body_breast_descriptor.py": {
+      "bytes": 3149,
+      "sha256": "251ef9847369be402a5a0a930f3992d7f9857fac444d8c17d2b02600f7eb520b"
+    },
+    "engine/research/body_breast_geometry.py": {
+      "bytes": 2236,
+      "sha256": "8d53feb9cea05550319e8f8dceaa85cb55964b21070a5770c3bab56dd6515a90"
+    },
+    "engine/research/body_breast_state.py": {
+      "bytes": 3186,
+      "sha256": "261f4a3ab01c337dfb5abf27f22e753d86e584e74470aa145735b2d98a3b0902"
+    },
+    "engine/research/body_espresso_fixed.py": {
+      "bytes": 23028,
+      "sha256": "04384fd746d94de709ea061e7d2106deaed5cbe5f317bbb66d64a5d2f3258eb9"
+    },
+    "engine/research/body_espresso_graph.py": {
+      "bytes": 16450,
+      "sha256": "e58d214521a486fd7f79b6472eabdcb5185163e7479c8cdfa807ab93d6d020a5"
+    },
+    "engine/research/body_espresso_onnx.py": {
+      "bytes": 13114,
+      "sha256": "78bf68bfe3818bb4eff23887feb6ecf72a13a7ab1c3bfea8eb13ebc2670ce901"
+    },
+    "engine/research/body_face_metadata.py": {
+      "bytes": 3487,
+      "sha256": "bc9695121cec58d2af3e4fdd0b03e5a9551154693359a6f049f508be24fdbf4e"
+    },
+    "engine/research/body_face_sequence.py": {
+      "bytes": 3272,
+      "sha256": "d69737ec3ee035ff6ac10f19e2f33572e93f28ccd2d763cb3091900317cfbdda"
+    },
+    "engine/research/body_head.py": {
+      "bytes": 5515,
+      "sha256": "3c2d1e30b0d4f4304b8748aa69c12b16273bc16a62e8fbcc779c79ed892633bf"
+    },
+    "engine/research/body_head_faces.py": {
+      "bytes": 2538,
+      "sha256": "c45ff5707d192552bb07f01688339a7a792fd57e8f914e4ca452dde21277fff2"
+    },
+    "engine/research/body_head_roi.py": {
+      "bytes": 2658,
+      "sha256": "d00db9b90f8c0c9141752ec35f79b604858a5119bbf2d067f7ff19e5ae1e6039"
+    },
+    "engine/research/body_hip_descriptor.py": {
+      "bytes": 1318,
+      "sha256": "d6c6019fd5812e22ee201c2dec81b337ed829a1acf202d2322f87bf8c278b4a0"
+    },
+    "engine/research/body_hip_geometry.py": {
+      "bytes": 1957,
+      "sha256": "e73df16fc70eaa28c7d53855662609673cb66fe12c62ca2ff7b971e52cefc7b4"
+    },
+    "engine/research/body_hip_state.py": {
+      "bytes": 1981,
+      "sha256": "5ebffe9fc5291baa6cde8c077276d3e300c964432dd63a4119f210a956d918cb"
+    },
+    "engine/research/body_longleg_kernel.py": {
+      "bytes": 3571,
+      "sha256": "18ce13953818e424c40f2617d36b02ca6342b618b8b7fdc1df028cde9b6ee194"
+    },
+    "engine/research/body_longleg_state.py": {
+      "bytes": 2634,
+      "sha256": "0f7a432a2d427f44bd35c4cb0b9bf44057d6566b581f3be8519cd8cdd0559884"
+    },
+    "engine/research/body_mesh_grid.py": {
+      "bytes": 1973,
+      "sha256": "eb1e8662ed6be68b8bf5cde253fce196c8dcefd298b661f1db6903f268118bdb"
+    },
+    "engine/research/body_mesh_metal.swift": {
+      "bytes": 9783,
+      "sha256": "2d7490668709771cc66a6014a3f3c80e44708b175521f0883872232840883b74"
+    },
+    "engine/research/body_mesh_system.py": {
+      "bytes": 2214,
+      "sha256": "873f251975e444b06fcd333793596ed26ab08fe9cf7a3d91e275d2820c3d1d84"
+    },
+    "engine/research/body_neck_descriptor.py": {
+      "bytes": 3729,
+      "sha256": "a4de9f0fe661872e4ad89bc2479e7404fe2a46e17240d3c7b5e265c8121bdee1"
+    },
+    "engine/research/body_neck_face_points.py": {
+      "bytes": 2069,
+      "sha256": "2dccb83ade0ebc80c21262195bc43def4c18ebb4d7198b63107fa50f2ba6eaeb"
+    },
+    "engine/research/body_neck_geometry.py": {
+      "bytes": 2247,
+      "sha256": "01497a084e8b8d7907a16141ddb6835fa85e921403fa4b0b787e1689f398a2a5"
+    },
+    "engine/research/body_neck_state.py": {
+      "bytes": 1758,
+      "sha256": "82250ea71c26e9c16f563bde494368009f186f1a664fcf374efe26933a0d9d64"
+    },
+    "engine/research/body_ortho_shoulder_geometry.py": {
+      "bytes": 5444,
+      "sha256": "9da92add9eeb0a62ac7413f4c4b4e570eb501618f419e207808e8c5a024255b7"
+    },
+    "engine/research/body_ortho_shoulder_history.py": {
+      "bytes": 5576,
+      "sha256": "6e36117101da65c02713043047a0be455e10b46a0ecd4adf82f203838d21109d"
+    },
+    "engine/research/body_ortho_shoulder_radial.py": {
+      "bytes": 1089,
+      "sha256": "d017dfaa702bc6d362fcfe966d9f2fc7b92388abbec33ec0ef91e96a0e93d29f"
+    },
+    "engine/research/body_ortho_shoulder_state.py": {
+      "bytes": 807,
+      "sha256": "75db84c27d42a24af03272453bee784e8a80ce5c1f10ec432e2b8e9edf4b8926"
+    },
+    "engine/research/body_points.py": {
+      "bytes": 847,
+      "sha256": "45aea91480ec38460017c57385ed1f70ca30e60cc51fa3862014da1956eb08ca"
+    },
+    "engine/research/body_public.py": {
+      "bytes": 6787,
+      "sha256": "528abd5b3f51dfe5c65087adfe2da7259d6a68e7feac779d7b9ffefca55ca7dd"
+    },
+    "engine/research/body_public_basis.py": {
+      "bytes": 2590,
+      "sha256": "016e3526afac3c3a2f2e7233d4bbb467a8965c1af7ce747d2173bb4c7ff2dc89"
+    },
+    "engine/research/body_public_hip_aux.py": {
+      "bytes": 854,
+      "sha256": "78168b0ffef38f3a1406eea065483f7dedc665c54c1008a43b6676420f2db01d"
+    },
+    "engine/research/body_shoulder_descriptor.py": {
+      "bytes": 1199,
+      "sha256": "4e32e79d3c21fae55d4a086c6a10d62adbf3e13d3a6b6bde821f9612c846a270"
+    },
+    "engine/research/body_skeleton_decode.py": {
+      "bytes": 16818,
+      "sha256": "4936662e1c113f72398fc8dc65bc5fc3b0e955955d3a3d8983077be871a1d132"
+    },
+    "engine/research/body_skeleton_identity.py": {
+      "bytes": 449,
+      "sha256": "b8027a46ebc5289ade147f02199a75ec374ea926bcd6b50e1e9f22449e939c09"
+    },
+    "engine/research/body_skeleton_kernels.py": {
+      "bytes": 8942,
+      "sha256": "3f9c3724c3a6e18db174c5a6fb66fc8b27c0a26ab4669dedd9c4f3fe3e25d6d0"
+    },
+    "engine/research/body_skeleton_model.py": {
+      "bytes": 4705,
+      "sha256": "376e4f01b44690581eafab2805498eb911c375c5a9e27c70d7f854a382f84e25"
+    },
+    "engine/research/body_skeleton_onnx.py": {
+      "bytes": 2740,
+      "sha256": "462955aac8bf37f8c9177451b7c73d94a8df6346d29ccf790743ce76b5e4cebd"
+    },
+    "engine/research/body_skeleton_preprocess.py": {
+      "bytes": 5196,
+      "sha256": "d36edf6949a372eda4d5ba2552f53da79c4087132e65e9f061c60a39680c6e75"
+    },
+    "engine/research/body_small_head_geometry.py": {
+      "bytes": 2243,
+      "sha256": "a7615073ecd46a2799c220c032cd827c81ea3ce5688abe11fde882d8bf798082"
+    },
+    "engine/research/body_small_head_history.py": {
+      "bytes": 1261,
+      "sha256": "56e6b2dcd06aad708305547e3ad04702c295a26c92a371b51761431d34dc6e5a"
+    },
+    "engine/research/body_small_head_state.py": {
+      "bytes": 744,
+      "sha256": "01f2d8c33238e36d3e264e6088ecbf12139f11ab943608865ced1811801dc351"
+    },
+    "engine/research/body_smart_controls.py": {
+      "bytes": 2267,
+      "sha256": "19609b3d0067b2d66512cb587e478aa81bdbfbab4cdfc19a99c5ee9712771ddd"
+    },
+    "engine/research/body_smart_pipeline.py": {
+      "bytes": 13658,
+      "sha256": "431714f247086a0a542987323f7bd42c7d8e63eb9bba98ce1fe1ca599207ac93"
+    },
+    "engine/research/body_smart_render.py": {
+      "bytes": 9225,
+      "sha256": "250b38c9682b99b1eb6451e19e72615d63a5d0c486a034220515cff8892f2f65"
+    },
+    "engine/research/body_status.py": {
+      "bytes": 4634,
+      "sha256": "0a0f70b900b16f675583a0e2dfe6419debabf4c285a164bd8d31f55678d3f1a3"
+    },
+    "engine/research/body_waist_descriptors.py": {
+      "bytes": 2634,
+      "sha256": "42a68eb6699d58402121645d316b861089fae044f08012a9641ba37bd7252a7b"
+    },
+    "engine/research/body_waist_geometry.py": {
+      "bytes": 4614,
+      "sha256": "22b793dff938d84193232a5746b57dd90bc932f0dadd974e050cc336ff9bd92f"
+    },
+    "engine/research/body_waist_state.py": {
+      "bytes": 2070,
+      "sha256": "bfc3d8c598b56c6d97ce4a781f954cf0ce00825f8c15c249d251094d85f5a6ca"
+    },
+    "engine/research/body_widen_shoulder_geometry.py": {
+      "bytes": 10034,
+      "sha256": "853a55663e72c182e23ff9417f3f343411d9ea5fd453f28f636e0b69d4daea99"
+    },
+    "engine/research/body_widen_shoulder_history.py": {
+      "bytes": 800,
+      "sha256": "a9e975269f130e303776e31f75aadaad0284a0f5b1a59ee5f145d768396b8f16"
+    },
+    "engine/research/body_widen_shoulder_state.py": {
+      "bytes": 1680,
+      "sha256": "4aea7790a3a95cf0479b1ff8ed0887c9465dad953eac5f0536a63eef590e0945"
+    },
+    "engine/research/consumer_points.py": {
+      "bytes": 1052,
+      "sha256": "dc9126a8773e40ce07e76dc530861f707c4ab342b4e6a22d32ea16c656a3f39a"
+    },
+    "engine/research/consumer_pose.py": {
+      "bytes": 839,
+      "sha256": "55a5177bf267557ba22ec7042396af8ecc2432becf4a0bb430ec1c918ebafddc"
+    },
+    "engine/research/detection_geometry.py": {
+      "bytes": 2605,
+      "sha256": "17971df4c6ce6f02b61057997f3aa3d8566924b994ee5a22ceafdf4887b91231"
+    },
+    "engine/research/detection_order.py": {
+      "bytes": 7514,
+      "sha256": "0f49850bce53f126cf2f744698b02d14d5187740a625c89b854f72b71efbbefd"
+    },
+    "engine/research/detection_resize.py": {
+      "bytes": 1978,
+      "sha256": "42b912b2d6ca3b5c7f2e41e258b27e69cf80fab19ce756dc12fea308e01f8fc6"
+    },
+    "engine/research/face_detection.py": {
+      "bytes": 2837,
+      "sha256": "bc8309dc645a06dd7c172a121d2465a36c02b80580d6e4a0540aebc7de2d01cc"
+    },
+    "engine/research/face_selection_reference.py": {
+      "bytes": 9490,
+      "sha256": "a7109d7c5d5634e019f6906340629cd17f599fa1fe7abdec73f8b58b4c8144a4"
+    },
+    "engine/research/facefitting_export.py": {
+      "bytes": 1879,
+      "sha256": "0582b30955f623f2221d2e4cffec7169ce85fc820fa994ac0217258d36797686"
+    },
+    "engine/research/facefitting_geometry.py": {
+      "bytes": 4637,
+      "sha256": "399ad7d3927370e745e673ad16a4407383a3d6dad80075cb55f970c0c6b8d51e"
+    },
+    "engine/research/facefitting_image.py": {
+      "bytes": 1680,
+      "sha256": "7add28ae192220c4b94544baa29051f61dd75cc66f421e695812f11b92e21c26"
+    },
+    "engine/research/facefitting_infer.py": {
+      "bytes": 6316,
+      "sha256": "e50f0c5d5778b9effada264090074f0c4ee880dbf86fdfcf08b4955f56804563"
+    },
+    "engine/research/facefitting_input.py": {
+      "bytes": 5220,
+      "sha256": "7ce3f1f7d0d3a4993fdcf987659955852ca89c2a77b379ae90a07a1c833d25a5"
+    },
+    "engine/research/facefitting_model.py": {
+      "bytes": 2638,
+      "sha256": "4b7b7777101ccfee205c3ee6b28a7293c269019c2072bee4f3eecd42c1971865"
+    },
+    "engine/research/facefitting_output.py": {
+      "bytes": 3125,
+      "sha256": "088dec263de36a79aefbb5501778a19f0d9d91581a39d7a7c813a4696acf245e"
+    },
+    "engine/research/facefitting_pose.py": {
+      "bytes": 2414,
+      "sha256": "4e96937cf9b73ce0e210cfc539f53342d38e222a3878cd7f14e1a833f14cd847"
+    },
+    "engine/research/facefitting_solver.py": {
+      "bytes": 7237,
+      "sha256": "67fad859994255b2634a83312b7b1a0b64422f4972c2b42c40764052a705c2d0"
+    },
+    "engine/research/independent_pipeline.py": {
+      "bytes": 26940,
+      "sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af"
+    },
+    "engine/research/independent_session_cache.py": {
+      "bytes": 2699,
+      "sha256": "00a6cb5c49921783a3f6ea786797cfd5d0e8b3a34fdb59e88b8fa46cd40581ae"
+    },
+    "engine/research/makeup_blend.py": {
+      "bytes": 5263,
+      "sha256": "46bd490a7030bcc360d2811445113e283a04a9d12079a05c027b45ad96e74d74"
+    },
+    "engine/research/makeup_metal.py": {
+      "bytes": 4755,
+      "sha256": "cef400ff13123ce4db1681fd5dc4cd4dc3a2a37d1b04726f197727db8afd39d5"
+    },
+    "engine/research/makeup_metal.swift": {
+      "bytes": 13583,
+      "sha256": "5d8bb96397fdf8029a41585c4a89b603b766a43cdec41181ce412af2251cea94"
+    },
+    "engine/research/render_resolution.py": {
+      "bytes": 1214,
+      "sha256": "c4af6ca2cd9677cfc014d135a33f4e3afa668b81a5c3b6e5bf33f77931c37517"
+    },
+    "engine/research/slimface_detection.py": {
+      "bytes": 1896,
+      "sha256": "c9591a6fa3a36bc41944462f6ce501eec0820ba529f11b79227c2bfdfbe51f3c"
+    },
+    "engine/research/slimface_geometry.py": {
+      "bytes": 3998,
+      "sha256": "b8f60eda56362981e9549a7caa7958330d3dfa092e389739257ee96f80979d0c"
+    },
+    "engine/research/slimface_render.py": {
+      "bytes": 3268,
+      "sha256": "c029a35cbbba342e69bcd67b16845ca76c52d76e3015e5a848184cbe1b721701"
+    },
+    "engine/research/source_face_confirmation.py": {
+      "bytes": 10435,
+      "sha256": "e62584c5aebeaab91678f650f9d1a3234844ffb96a836b3e869c1702377905da"
+    },
+    "engine/research/vendor/LICENSE.opencv-svd.txt": {
+      "bytes": 1923,
+      "sha256": "ddbd4ce279ddc5cdae7e9ec639c98298ee7eac45f280fa32bb0c1d8124bd2c76"
+    },
+    "engine/research/vendor/espresso_preprocess_probe.py": {
+      "bytes": 10643,
+      "sha256": "0bd717bcbf24c3106fa518d4eb854db2493600f8b241b866720fd74d82bf97f1"
+    },
+    "engine/research/vendor/face_detector.py": {
+      "bytes": 8028,
+      "sha256": "ee5ada67513d84f7fa6d5a148aed26c233e20e3692a748371810ff88c35d49f4"
+    },
+    "engine/research/vendor/face_geometry.py": {
+      "bytes": 4926,
+      "sha256": "617a54ea2f2ad8ffe2670e890b71a37f4345e3b870e09e3183f78b190ffda587"
+    },
+    "engine/research/vendor/owned_prepare.py": {
+      "bytes": 3484,
+      "sha256": "eb8021e97b21dabf131751058e3bb7fa5e45667f4065c9fc490dbc6b5eb65794"
+    },
+    "engine/research/whiten_math.py": {
+      "bytes": 3155,
+      "sha256": "86de928433510105395b1e1fbd073e82f30bd39136386ebf84997bd1b68bacd4"
+    },
+    "engine/research/whiten_metal.py": {
+      "bytes": 3404,
+      "sha256": "6ea6f140ac6670243fc8e6b335cb2c4668422bf6dabb585f0b66251c855be4b3"
+    },
+    "engine/research/whiten_metal.swift": {
+      "bytes": 8231,
+      "sha256": "c3e928cd7f809df4c67ea0826c5cceb80a1b9e3757f315ca101a0a8fbb729aae"
+    },
+    "engine/research/worker.py": {
+      "bytes": 6994,
+      "sha256": "7c17f47c77fcd2778057f4490e69e9bf7291fa8f81f91cbe1c722cd4951692d1"
+    }
+  }
+}
