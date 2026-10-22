@@ -29,7 +29,7 @@ CPU 照片编辑器。本次同步独立版 PR #17–#21，源码基准为
 没有回退或覆盖当前视频引擎的新实现。
 
 `research/body-photo/source-manifest.json` 记录每个导入文件和所有适配。
-适配仅涉及外部运行目录、CPU 选择、进程所有权及离线校验；几何、感知、蒙版、肤色、
+适配涉及外部运行目录、CPU 选择、进程所有权、离线校验及限定文档支持的图片解码格式；几何、感知、蒙版、肤色、
 控制范围和上游网页保留原始内容。`stage-body-photo` 组装完整的冻结源树。
 
 应用仅打包经过哈希校验的文本源码。31 个模型／常量文件、Python 环境、照片、回执、
@@ -79,6 +79,13 @@ CPU 照片编辑器。本次同步独立版 PR #17–#21，源码基准为
 成功。实际下载 PNG 仍与独立版基准逐字节相同。
 E2E 可用 `QCUT_BODY_PHOTO_TEST_RUNTIME` 指定测试资源，避免依赖产品环境覆盖。
 
+评审后再次验收：完整 staged Python 测试 522 项通过（9 项显式跳过），
+服务／窗口／进程相关 Electron 测试 54 项通过，重新编译后的真实 E2E 通过。
+状态查询在 30 秒内复用同一运行时的成功结果并合并并发查询；每次实际打开仍完整
+校验 Python、模型和源码。缓存随选择变化、失败、异常退出或解释器身份变化失效。
+初次挂载／切回流程的 Python 校验启动次数从 4 次降为 1 次。
+图片解码限定为文档承诺的 PNG、JPEG 和 WebP。
+
 可运行的源码检查：
 
 ```sh
@@ -86,11 +93,14 @@ bun run check-types
 bun run check-provenance
 bun run stage-body-photo
 bunx vitest run electron/__tests__/body-photo-*.test.ts scripts/__tests__/body-photo-packaging.test.ts apps/web/src/lib/portrait/__tests__/use-body-photo-lab.test.tsx
-"$QCUT_BODY_PHOTO_PYTHON" -B -m unittest discover -s research/body-photo/body/tests
+(cd build/body-photo && "$QCUT_BODY_PHOTO_PYTHON" -B -m unittest discover -s body/tests)
 bun test ./research/body-photo/body/tests
 ```
 
-Python 单元测试命令需要先将 `QCUT_BODY_PHOTO_PYTHON` 指向已安装依赖的 V3 Python。
+Python 单元测试命令需要先将 `QCUT_BODY_PHOTO_PYTHON` 指向已安装依赖的 V3 Python，
+并运行前面的 `bun run stage-body-photo`。完整测试从组装后的 `build/body-photo` 运行，
+使用通过哈希校验的 107 个冻结引擎文件；直接从 `research/body-photo` 运行会缺少
+`body/engine/research`，导致网格、真实导入和源码回执测试失败。
 
 上游已有 Windows／Linux 交付包证据；本次 QCut 窗口的真实运行验收仅在 macOS，
 不能把上游交付包测试当成 QCut 三平台安装包验收。
@@ -101,3 +111,8 @@ Python 单元测试命令需要先将 `QCUT_BODY_PHOTO_PYTHON` 指向已安装�
 支持范围有限；拒绝时需要手动轮廓，不能当成语义分割或三维理解。
 照片新增参数尚未进入时间线，也未获得视频跨帧、多人或任意姿态的验收。
 此次像素一致性比较对象是独立版 V3，不能据此宣称新增参数与剪映原生等价。
+
+原生默认路径的后续研究独立记录在
+`research/jianying-runtime-probe/BODY_DEFAULT_PROFILE_20261023.md`：
+已经独立复现本次 CPU 冷启动调用，并执行同包中的真实浮点图。
+这些探针没有改变生产后端；单次张量或关节点结果不能替代完整视频像素验收。
