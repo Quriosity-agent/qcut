@@ -35,6 +35,8 @@ export function setupBodyPhotoLabIPC({
 		event: IpcMainInvokeEvent;
 		args: unknown[];
 	}) {
+		if (activeController !== identity)
+			throw new Error("Body-photo laboratory controller is no longer active");
 		const window = getMainWindow();
 		if (
 			!window ||
