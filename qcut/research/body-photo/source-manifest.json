@@ -10,8 +10,8 @@
       "origin": "QCut lifecycle/source integration"
     },
     "README.md": {
-      "bytes": 2358,
-      "sha256": "bd707336aecc1c48ac067f635d796d541853afc024a39ade8868ab585265644c",
+      "bytes": 2431,
+      "sha256": "0b8073624b6424cd8ce6c9d75a8b026d6e22321cfd5e8f4377f0948c4f7a61c8",
       "origin": "QCut lifecycle/source integration"
     },
     "body/PHOTO-CONTROLS.md": {
@@ -35,9 +35,10 @@
       "upstreamSha256": "6406121ec641509d9669809c478d716575be7efbbea7960cc5efbf8fa78e2e64"
     },
     "body/backend.py": {
-      "bytes": 28276,
-      "sha256": "3776c44d90ba0680416f87fab0ce861ee899a985273d7eb90938187dedb2c2bc",
-      "upstreamSha256": "3776c44d90ba0680416f87fab0ce861ee899a985273d7eb90938187dedb2c2bc"
+      "bytes": 28309,
+      "sha256": "d48b4e292b040bd774b50a5817ce28addd64d3fa39540d6104eac6de926d9034",
+      "upstreamSha256": "3776c44d90ba0680416f87fab0ce861ee899a985273d7eb90938187dedb2c2bc",
+      "adaptation": "Restrict photo decoders to the documented PNG/JPEG/WebP import contract; valid-photo rendering unchanged."
     },
     "body/background.py": {
       "bytes": 9079,
@@ -311,9 +312,10 @@
       "upstreamSha256": "422db2b0431e9da48d680d346597e7dd4153a4ebefb3c89c9918c533206bc92c"
     },
     "body/tests/test_backend.py": {
-      "bytes": 26038,
-      "sha256": "ba4e70b0169f08fa40a36ffb42375c16dfffedd10ec1df1df4b68938f079e334",
-      "upstreamSha256": "ba4e70b0169f08fa40a36ffb42375c16dfffedd10ec1df1df4b68938f079e334"
+      "bytes": 26904,
+      "sha256": "69f255485687b19cdb612526e2631092b2e97bd3bbd44194a4f5806c6a50fc39",
+      "upstreamSha256": "ba4e70b0169f08fa40a36ffb42375c16dfffedd10ec1df1df4b68938f079e334",
+      "adaptation": "Add documented image format acceptance and unsupported decoder rejection regression."
     },
     "body/tests/test_background.py": {
       "bytes": 8580,
@@ -438,9 +440,10 @@
       "upstreamSha256": "86816355469ea6420410afe08df4b983c266a50398bb3586bdb0d1495215da2d"
     },
     "body/tests/test_qcut_host.py": {
-      "bytes": 5910,
-      "sha256": "4906ee240e556018f33a8392cbea8d890d4e2c2cba00f925f90673e5538e5783",
-      "origin": "QCut lifecycle/source integration"
+      "bytes": 6156,
+      "sha256": "6fdd0b551293c9d529839cbd9434a754190c1d34d7002c2f85aae9cbfa4983b9",
+      "origin": "QCut lifecycle/source integration",
+      "adaptation": "QCut host lifecycle/runtime boundaries; isolate Windows symlink privilege skips from other runtime validation."
     },
     "body/tests/test_region_render.py": {
       "bytes": 21013,
