@@ -102,6 +102,21 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(image.getpixel((0, 0)), (255, 255, 255))
         self.assertIn("白色", photo["message"])
 
+    def test_only_documented_photo_formats_are_decoded(self):
+        for format_name in ("PNG", "JPEG", "WEBP"):
+            with self.subTest(format=format_name):
+                stream = io.BytesIO()
+                Image.new("RGB", (32, 48), (130, 80, 50)).save(stream, format=format_name)
+                photo = self.backend.import_photo(data=stream.getvalue())
+                self.assertEqual((photo["width"], photo["height"]), (32, 48))
+        for format_name in ("BMP", "TIFF", "GIF"):
+            with self.subTest(format=format_name):
+                stream = io.BytesIO()
+                Image.new("RGB", (32, 48)).save(stream, format=format_name)
+                with self.assertRaises(AppError) as raised:
+                    self.backend.import_photo(data=stream.getvalue())
+                self.assertEqual(raised.exception.code, "invalid_image")
+
     def test_exif_orientation_applied_before_size_recorded(self):
         stream = io.BytesIO()
         image = Image.new("RGB", (80, 40), (200, 100, 50))
