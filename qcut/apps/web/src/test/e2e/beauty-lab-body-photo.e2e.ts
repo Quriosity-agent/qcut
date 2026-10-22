@@ -12,6 +12,9 @@ import {
 import type { ReferenceWindow } from "./helpers/portrait-reference";
 
 const fixtureRoot = process.env.QCUT_BODY_PHOTO_TEST_FIXTURE;
+const runtimeRoot =
+	process.env.QCUT_BODY_PHOTO_TEST_RUNTIME ??
+	process.env.QCUT_BODY_PHOTO_RUNTIME;
 const output = path.resolve(
 	process.env.QCUT_BODY_PHOTO_TEST_OUTPUT ?? "output/playwright/body-photo-lab"
 );
@@ -58,11 +61,15 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 	electronApp,
 }) => {
 	test.skip(
-		!fixtureRoot || !existsSync(path.join(fixtureRoot, "ui-cases.json")),
+		!fixtureRoot ||
+			!existsSync(path.join(fixtureRoot, "ui-cases.json")) ||
+			!runtimeRoot ||
+			!existsSync(runtimeRoot),
 		"Requires the private V3 UI photo fixture and an installed local CPU runtime"
 	);
 	test.setTimeout(300_000);
-	if (!fixtureRoot) throw new Error("Missing private fixture");
+	if (!fixtureRoot || !runtimeRoot)
+		throw new Error("Missing private fixture or runtime");
 	const fixture = JSON.parse(
 		await readFile(path.join(fixtureRoot, "ui-cases.json"), "utf8")
 	) as {
@@ -77,6 +84,11 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 			.digest("hex")
 	).toBe(fixture.photos.automatic.sha256);
 	await mkdir(output, { recursive: true });
+	await electronApp.evaluate(({ dialog }) => {
+		Reflect.deleteProperty(process.env, "QCUT_BODY_PHOTO_RUNTIME");
+		Reflect.deleteProperty(process.env, "QCUT_BODY_PHOTO_PYTHON");
+		dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+	});
 	await navigateToProjects(page);
 	await createTestProject(page, `CPU Body Photo ${Date.now()}`);
 	await uploadTestMedia(page, source);
@@ -114,6 +126,27 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 	await page.getByTestId("beauty-lab-open").click();
 	const launcher = page.getByTestId("beauty-lab-body-photo");
 	const open = launcher.getByRole("button", { name: "打开照片美体" });
+	const chooseRuntime = launcher.getByRole("button", { name: "选择本地资源" });
+	const close = launcher.getByRole("button", { name: "关闭照片窗口" });
+	await expect(chooseRuntime).toBeEnabled();
+	await expect(open).toBeDisabled();
+	expect(
+		(await page.evaluate(() => window.electronAPI!.bodyPhotoLab!.inspect()))
+			.available
+	).toBe(false);
+	const windowCount = electronApp.windows().length;
+	await chooseRuntime.click();
+	await expect(chooseRuntime).toBeEnabled();
+	await expect(open).toBeDisabled();
+	expect(electronApp.windows()).toHaveLength(windowCount);
+	await electronApp.evaluate(({ dialog }, selection) => {
+		dialog.showOpenDialog = async () => ({
+			canceled: false,
+			filePaths: [selection],
+		});
+	}, runtimeRoot);
+	await chooseRuntime.click();
+	await expect(open).toBeEnabled({ timeout: 60_000 });
 	const readiness = await page.evaluate(() =>
 		window.electronAPI!.bodyPhotoLab!.inspect()
 	);
@@ -196,18 +229,47 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 	});
 	await setLift({ page: photo, value: 50 });
 	await expect(photo.locator("#download")).toBeHidden();
+	await photo.evaluate(() => {
+		const originalFetch = window.fetch.bind(window);
+		const responseHeld = new Promise<void>((resolve) => {
+			Reflect.set(window, "__releaseBodyPhotoRender", resolve);
+		});
+		window.fetch = async (input, options) => {
+			const response = await originalFetch(input, options);
+			if (input === "/api/render") {
+				window.fetch = originalFetch;
+				await responseHeld;
+			}
+			return response;
+		};
+	});
+	const staleResponse = photo.waitForResponse(`${origin}/api/render`);
+	await photo.locator("#apply").click();
+	await expect(photo.locator("#processing-overlay")).toBeVisible();
+	await setLift({ page: photo, value: 75 });
+	await photo.evaluate(() => {
+		Reflect.get(window, "__releaseBodyPhotoRender")();
+		Reflect.deleteProperty(window, "__releaseBodyPhotoRender");
+	});
+	expect((await staleResponse).status()).toBe(200);
+	await expect(photo.locator("#processing-overlay")).toBeHidden();
+	await expect(photo.locator("#download")).toBeHidden();
+	await expect(photo.locator("#result-layer")).toBeHidden();
+	await expect(photo.locator("#view-result")).toBeDisabled();
 	const requestStarted = photo.waitForRequest(
 		(request) =>
 			request.url() === `${origin}/api/render` && request.method() === "POST"
 	);
 	await photo.locator("#apply").click();
 	await requestStarted;
-	await page.evaluate(() => window.electronAPI!.bodyPhotoLab!.close());
+	await close.click();
 	await expect.poll(() => photo.isClosed()).toBe(true);
 	await expectHostStopped({ origin });
+	await expect(close).toBeHidden();
+	await expect(open).toBeEnabled();
 
 	const reopening = electronApp.waitForEvent("window");
-	await page.evaluate(() => window.electronAPI!.bodyPhotoLab!.open());
+	await open.click();
 	const recovered = await reopening;
 	await recovered.waitForURL(/^http:\/\/127\.0\.0\.1:\d+\//);
 	const recoveredOrigin = new URL(recovered.url()).origin;
@@ -221,8 +283,11 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 	}, recoveredOrigin);
 	await expect.poll(() => recovered.isClosed()).toBe(true);
 	await expectHostStopped({ origin: recoveredOrigin });
+	await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+	await expect(close).toBeHidden();
+	await expect(open).toBeEnabled();
 	const finalOpening = electronApp.waitForEvent("window");
-	await page.evaluate(() => window.electronAPI!.bodyPhotoLab!.open());
+	await open.click();
 	const finalPhoto = await finalOpening;
 	await finalPhoto.waitForURL(/^http:\/\/127\.0\.0\.1:\d+\//);
 	await importPhoto({ page: finalPhoto, source });
@@ -232,6 +297,6 @@ test("Beauty Lab launches the verified CPU photo editor, preserves PNG pixels an
 	);
 	await finalPhoto.locator("#apply").click();
 	expect((await (await identityResponse).json()).status).toBe("identity");
-	await page.evaluate(() => window.electronAPI!.bodyPhotoLab!.close());
+	await close.click();
 	expect(await snapshot()).toBe(before);
 });
