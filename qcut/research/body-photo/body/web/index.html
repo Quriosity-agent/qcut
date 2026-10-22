@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="color-scheme" content="dark" />
+	<title>独立美体 · 图片版</title>
+	<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23a5e1ca'/%3E%3Ctext x='24' y='35' text-anchor='middle' fill='%23142b24' font-family='Georgia,serif' font-size='36'%3EB%3C/text%3E%3C/svg%3E" />
+	<link rel="stylesheet" href="/styles.css" />
+	<link rel="stylesheet" href="/local-editor.css" />
+</head>
+<body>
+	<header class="topbar">
+		<a class="brand" href="/" aria-label="独立美体首页"><span class="brand-mark" aria-hidden="true">B</span><span><strong>独立美体</strong><small>BODY STUDIO · 图片版</small></span></a>
+		<div class="header-status"><span class="local-badge"><span aria-hidden="true"></span>照片在本机处理</span><span id="engine-badge" class="engine-badge">检查引擎中</span></div>
+	</header>
+	<main class="workspace">
+		<aside class="settings-panel" aria-label="照片与身体调整">
+			<section class="intro"><p class="eyebrow">YOUR PHOTO, YOUR PROPORTIONS</p><h1>微调身形，<br />保留自己的样子。</h1><p>从同一张原图调整比例，直接看实际变化。</p></section>
+			<section class="photo-section" aria-labelledby="photo-heading">
+				<div class="section-heading"><h2 id="photo-heading"><span>01</span>打开照片</h2><span id="photo-size" class="muted"></span></div>
+				<label class="upload-button" for="photo-file"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" /></svg><span id="upload-label">选择一张照片</span><input id="photo-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff" /></label>
+				<p id="photo-filename" class="photo-filename">优先选择单人正立、关节清晰的全身照片。</p>
+			</section>
+			<form id="body-form" aria-label="身体图片调整">
+				<div class="section-heading"><h2><span>02</span>按部位调整</h2><button id="reset" class="text-button" type="button" disabled>全部归零</button></div>
+				<p id="catalog-summary" class="scope-note catalog-summary">正在读取当前引擎支持的参数…</p>
+				<div id="slider-controls" class="slider-controls"></div>
+				<p id="skin-scope" class="scope-note skin-scope" hidden>身体皮肤仅处理保守识别出的裸露区域，尽量保留头脸、衣物和背景；近肤色衣物、遮挡和复杂光照仍需逐图检查。淡化小瑕疵不生成新皮肤，也不保证移除纹身或疤痕。</p>
+				<div class="background-option"><label class="edit-toggle" for="background-protection"><input id="background-protection" type="checkbox" disabled />背景保护</label><p>自动识别人像，保留远处背景。轮廓附近的过渡区仍会随形变改变；识别失败会停止这次处理，请关闭保护或换图重试。</p></div>
+				<button id="apply" class="apply-button" type="submit" disabled><span id="apply-label">应用调整</span><span aria-hidden="true">↗</span></button>
+				<p class="apply-note">调整后点击应用，每次都从原图重新计算。</p>
+			</form>
+			<div class="scope-card"><span class="scope-dot" aria-hidden="true"></span><div><strong>静态图片 · 单人照片</strong><p id="scope-description">各部位按照片中可见的关节分别判断。优先使用正立、关节清晰的照片。</p></div></div>
+		</aside>
+		<section class="preview-panel" aria-labelledby="preview-heading">
+			<div class="preview-heading"><div><p class="eyebrow">BEFORE / AFTER</p><h2 id="preview-heading">看到每一次改变</h2></div><a id="download" class="download-button" download="独立美体-结果.png" hidden>下载实际 PNG <span aria-hidden="true">↓</span></a></div>
+			<div class="preview-toolbar"><div class="view-tabs" role="group" aria-label="预览方式"><button id="view-compare" type="button" aria-pressed="true">半图对比</button><button id="view-original" type="button" aria-pressed="false">原图</button><button id="view-result" type="button" aria-pressed="false" disabled>实际结果</button><button id="view-blink" type="button" aria-pressed="false" disabled>原图／结果闪切</button></div><span id="result-meta" class="muted">等待打开照片</span></div>
+			<div id="image-stage" class="image-stage" data-view="original">
+				<div id="empty-state" class="empty-state"><div class="empty-art" aria-hidden="true"><svg viewBox="0 0 160 200" fill="none"><ellipse cx="80" cy="35" rx="18" ry="23" /><path d="M58 69c-7 6-15 18-18 35l-9 43m71-78c7 6 15 18 18 35l9 43M58 69c9 9 35 9 44 0M58 69l-6 57c-1 13 2 20 8 29l-4 32m46-118 6 57c1 13-2 20-8 29l4 32M60 155l20-24 20 24M80 131v56" /><path class="art-guide" d="M19 35h122M19 83h122M19 129h122M19 180h122M80 9v184" /></svg><span class="art-point art-point-one"></span><span class="art-point art-point-two"></span><span class="art-point art-point-three"></span></div><h3>一张照片，开始微调</h3><p>打开照片，调整左侧滑杆，再应用查看真实结果。</p><button id="empty-upload" type="button" class="empty-upload">打开照片 <span aria-hidden="true">＋</span></button></div>
+				<img id="source-image" class="preview-image" alt="原始照片" draggable="false" hidden />
+				<div id="result-layer" class="result-layer" hidden><img id="result-image" class="preview-image" alt="独立美体实际处理结果" draggable="false" /></div>
+				<span id="left-label" class="image-label label-left" hidden>原图</span><span id="right-label" class="image-label label-right" hidden>实际结果</span>
+				<div id="wipe-line" class="wipe-line" aria-hidden="true" hidden><span>‹ ›</span></div>
+				<div id="processing-overlay" class="processing-overlay" hidden><span class="spinner" aria-hidden="true"></span><span>正在生成实际结果</span></div>
+			</div>
+			<div id="wipe-controls" class="wipe-controls"><label for="wipe-position">对比位置</label><input id="wipe-position" type="range" min="0" max="100" value="50" step="1" aria-label="原图与实际结果的分界位置" disabled /><output id="wipe-output" for="wipe-position">50%</output></div>
+			<div class="feedback" role="status" aria-live="polite" aria-atomic="true"><div class="feedback-heading"><span id="status-dot" class="status-dot" aria-hidden="true"></span><strong id="status-title">正在准备</strong></div><p id="status-message">正在检查本机美体引擎…</p><ul id="control-feedback" hidden></ul><ul id="edit-feedback" hidden></ul></div>
+			<p class="comparison-note">左侧原图，右侧实际结果；天然左右不对称也会影响观感，可拖动分界线检查同一位置。</p>
+			<section id="glute-editor" class="local-editor" aria-label="侧面与背面提臀定位" hidden>
+				<p id="glute-detection" role="status" aria-live="polite">导入照片后检查提臀定位。</p>
+				<details id="glute-details"><summary>查看提臀定位／手动校正</summary>
+				<p class="manual-intro">导入后自动估计侧面或背面的臀峰与臀下缘，可直接调「提臀」滑杆并应用。若点位不准，选中定位点修改坐标，或重新标记后保存；手动定位优先。这里调整二维轮廓，标记区域内的衣物与遮挡也会变形，请先核对点位。</p>
+				<label for="glute-view">照片方向</label><select id="glute-view"><option value="side-left">侧面 · 臀部朝画面左侧突出</option><option value="side-right">侧面 · 臀部朝画面右侧突出</option><option value="rear">背面 · 左右两侧</option></select>
+				<div id="glute-stage" class="manual-stage" tabindex="0" role="group" aria-label="臀部定位原图" aria-describedby="glute-message"><img id="glute-source" alt="用于标记臀峰和臀下缘的原图" draggable="false" /><svg id="glute-overlay" aria-hidden="true"></svg></div>
+				<p id="glute-message" role="status" aria-live="polite">先打开照片，再按顺序点击臀峰和臀下缘。</p>
+				<label for="glute-point">校正已有定位点<select id="glute-point" aria-label="选择需要校正的臀部定位点"></select></label>
+				<div class="manual-fields"><label for="glute-x">定位 X · 宽度 %<input id="glute-x" type="number" min="1" max="99" step="0.1" value="50" /></label><label for="glute-y">定位 Y · 高度 %<input id="glute-y" type="number" min="1" max="99" step="0.1" value="60" /></label></div>
+				<div class="manual-actions"><button id="glute-move" type="button">更新选中点</button><button id="glute-add" type="button">添加定位点</button><button id="glute-undo" type="button">撤销一点</button><button id="glute-restart" type="button">重新手动标记</button><button id="glute-save" type="button">使用这组定位</button><button id="glute-clear" type="button">恢复自动定位</button></div>
+				</details>
+			</section>
+			<section class="local-editor" aria-label="手动局部修形">
+				<div class="local-editor-heading"><label class="edit-toggle" for="manual-toggle"><input id="manual-toggle" type="checkbox" disabled />展开手动局部修形工具</label><span id="manual-count" class="muted">0 / 32 笔</span></div>
+				<p class="manual-intro">在下方独立原图中拖动，添加局部位移；之后点击左侧「应用调整」。收起工具不会清空已记录笔画，停用请点击「清空局部修形」。局部修形在自动比例调整后依次执行，叠加时位置可能随前面的调整变化。半图对比和导出仍在上方。</p>
+				<div id="manual-panel" hidden>
+					<div id="manual-stage" class="manual-stage" tabindex="0" role="group" aria-label="原图局部修形画布" aria-describedby="manual-help"><img id="manual-source" alt="用于指定局部修形位置的原始照片" draggable="false" /><svg id="manual-overlay" aria-hidden="true"></svg></div>
+					<div class="manual-radius-row"><label for="manual-radius">笔刷半径 · 短边比例</label><input id="manual-radius" type="range" min="2" max="30" step="1" value="12" /><output id="manual-radius-output" for="manual-radius">12%</output></div>
+					<p id="manual-help" class="manual-intro">圆圈为影响范围，箭头为移动方向。每笔最多移动半个半径，超出会自动收短。坐标以原图左上角为 0%，向右、向下增加。可直接输入数值；画布获得焦点后方向键调整位移，Shift 加速，Enter 添加，Esc 取消拖动。</p>
+					<div class="manual-fields"><label for="manual-x">起点 X · 宽度 %<input id="manual-x" type="number" min="0" max="100" step="0.25" value="50" /></label><label for="manual-y">起点 Y · 高度 %<input id="manual-y" type="number" min="0" max="100" step="0.25" value="50" /></label><label for="manual-dx">左右位移 · 宽度 %<input id="manual-dx" type="number" min="-15" max="15" step="0.25" value="-2" /></label><label for="manual-dy">上下位移 · 高度 %<input id="manual-dy" type="number" min="-15" max="15" step="0.25" value="0" /></label></div>
+					<div class="manual-actions"><button id="manual-add" type="button">添加这一笔</button><button id="manual-undo" type="button" disabled>撤销一笔</button><button id="manual-clear" type="button" disabled>清空局部修形</button></div>
+					<p id="manual-message" role="status" aria-live="polite">在原图上拖动一笔，或输入起点和位移后添加。</p>
+				</div>
+			</section>
+		</section>
+	</main>
+	<footer><span>独立美体 · 图片版</span><span>保留原图 · 等比显示 · PNG 输出</span></footer>
+	<script type="module" src="/app.js"></script>
+</body>
+</html>
