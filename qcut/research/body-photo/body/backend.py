@@ -279,7 +279,7 @@ class BodyBackend:
         if not data or len(data) > MAX_FILE_BYTES:
             raise AppError(message="请选择不超过 20 MiB 的静态图片。", code="file_size", status=413)
         try:
-            with Image.open(io.BytesIO(data)) as source:
+            with Image.open(io.BytesIO(data), formats=("PNG", "JPEG", "WEBP")) as source:
                 if getattr(source, "n_frames", 1) != 1 or getattr(source, "is_animated", False):
                     raise AppError(message="此版只接受静态照片，请先导出单张图片。", code="animated_image", status=422)
                 if source.width * source.height > MAX_DECODE_PIXELS:
