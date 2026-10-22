@@ -1,0 +1,611 @@
+{
+  "schemaVersion": 1,
+  "upstreamRepository": "https://github.com/donghaozhang/qcut-beauty-standalone",
+  "upstreamCommit": "0c790e219f857baaa19ea77e8cc6be4a8db6ab97",
+  "scope": "CPU still photos; source only; models external",
+  "files": {
+    ".gitignore": {
+      "bytes": 97,
+      "sha256": "dd5ba6c5d2d0b979d229a5054c3ee88d53215ad9ff3bd5f6c0b98ee7de4ffed8",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "README.md": {
+      "bytes": 2358,
+      "sha256": "bd707336aecc1c48ac067f635d796d541853afc024a39ade8868ab585265644c",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/PHOTO-CONTROLS.md": {
+      "bytes": 10260,
+      "sha256": "761be60216d76a4ce29b8607f71452fff2691db9a9c07aad52ec74493dbce47b",
+      "upstreamSha256": "761be60216d76a4ce29b8607f71452fff2691db9a9c07aad52ec74493dbce47b"
+    },
+    "body/PORTABLE.md": {
+      "bytes": 5554,
+      "sha256": "086aa96ec065cb97f52f212af0b0c74270370d90f30011dd74b6283ec1efd17b",
+      "upstreamSha256": "086aa96ec065cb97f52f212af0b0c74270370d90f30011dd74b6283ec1efd17b"
+    },
+    "body/README.md": {
+      "bytes": 27695,
+      "sha256": "44189383a93bef2bd16772bae911a874d454dee041b4412b8affe8bf2330959d",
+      "upstreamSha256": "44189383a93bef2bd16772bae911a874d454dee041b4412b8affe8bf2330959d"
+    },
+    "body/asset-manifest.json": {
+      "bytes": 933,
+      "sha256": "6406121ec641509d9669809c478d716575be7efbbea7960cc5efbf8fa78e2e64",
+      "upstreamSha256": "6406121ec641509d9669809c478d716575be7efbbea7960cc5efbf8fa78e2e64"
+    },
+    "body/backend.py": {
+      "bytes": 28276,
+      "sha256": "3776c44d90ba0680416f87fab0ce861ee899a985273d7eb90938187dedb2c2bc",
+      "upstreamSha256": "3776c44d90ba0680416f87fab0ce861ee899a985273d7eb90938187dedb2c2bc"
+    },
+    "body/background.py": {
+      "bytes": 9079,
+      "sha256": "ea157a65771cba1ee2e94374fc00be2d67b97892b8fb173423bb4aecfc0e60f6",
+      "upstreamSha256": "ea157a65771cba1ee2e94374fc00be2d67b97892b8fb173423bb4aecfc0e60f6"
+    },
+    "body/body_skin.py": {
+      "bytes": 6335,
+      "sha256": "63b02b4a35ffdff0728c4c01212295720e259df46d4bde1a9e2a3814f1fa8a00",
+      "upstreamSha256": "63b02b4a35ffdff0728c4c01212295720e259df46d4bde1a9e2a3814f1fa8a00"
+    },
+    "body/catalog.json": {
+      "bytes": 1456,
+      "sha256": "ec441b1c5e9fab7a1737d36d7c0f32924bf9aec8eda397c848b29696d25b8f6d",
+      "upstreamSha256": "ec441b1c5e9fab7a1737d36d7c0f32924bf9aec8eda397c848b29696d25b8f6d"
+    },
+    "body/cli_console.py": {
+      "bytes": 324,
+      "sha256": "fcbaf0af0cb365f53332703087fb0dcc1f11a0e9a238858fb7b373957c147d86",
+      "upstreamSha256": "fcbaf0af0cb365f53332703087fb0dcc1f11a0e9a238858fb7b373957c147d86"
+    },
+    "body/control_contract.py": {
+      "bytes": 1741,
+      "sha256": "e5b5e207c496aa31ef82a562e8a63edb1d0200e36509234dc1afab564987f155",
+      "upstreamSha256": "e5b5e207c496aa31ef82a562e8a63edb1d0200e36509234dc1afab564987f155"
+    },
+    "body/cpu_raster.py": {
+      "bytes": 7519,
+      "sha256": "6808afdb676d1f7e55bb873301b0dcc1c4f67a815717087d9d3f5db88f9c951f",
+      "upstreamSha256": "6808afdb676d1f7e55bb873301b0dcc1c4f67a815717087d9d3f5db88f9c951f"
+    },
+    "body/edit_feedback.py": {
+      "bytes": 2657,
+      "sha256": "e523af5da4431eda6efed7fae302ea47c1e62ab7de79dca909758775acbfb6bb",
+      "upstreamSha256": "e523af5da4431eda6efed7fae302ea47c1e62ab7de79dca909758775acbfb6bb"
+    },
+    "body/edit_render.py": {
+      "bytes": 7273,
+      "sha256": "557e9140eb01139e8afac36d199e53e56fa20a5c68d93dbb5549b89e4ee6b4b4",
+      "upstreamSha256": "557e9140eb01139e8afac36d199e53e56fa20a5c68d93dbb5549b89e4ee6b4b4"
+    },
+    "body/engine-source-manifest.json": {
+      "bytes": 17286,
+      "sha256": "e3441a1525a4091023437fedf06e8b15302edd6d8787f6ac4b096a06716008aa",
+      "upstreamSha256": "e3441a1525a4091023437fedf06e8b15302edd6d8787f6ac4b096a06716008aa"
+    },
+    "body/glute_analysis.py": {
+      "bytes": 2964,
+      "sha256": "4e25a368fee0a85f7a5e1fb7becd61ef65014c186a9a19036b8dcbbf7279276c",
+      "upstreamSha256": "4e25a368fee0a85f7a5e1fb7becd61ef65014c186a9a19036b8dcbbf7279276c"
+    },
+    "body/glute_detection.py": {
+      "bytes": 17387,
+      "sha256": "35ab2ee3c52ec25c150dc0fe4c3cf3e9fd6c9af65d0e110f2cca1d9e0f96b510",
+      "upstreamSha256": "35ab2ee3c52ec25c150dc0fe4c3cf3e9fd6c9af65d0e110f2cca1d9e0f96b510"
+    },
+    "body/glute_import.py": {
+      "bytes": 1819,
+      "sha256": "886d6a0733cd1d83c5f03615b92d187bf8a28d9a84e243647d1f9cb55b457fca",
+      "upstreamSha256": "886d6a0733cd1d83c5f03615b92d187bf8a28d9a84e243647d1f9cb55b457fca"
+    },
+    "body/glute_lift.py": {
+      "bytes": 12017,
+      "sha256": "3dc6aa73b25d789666b94807a7ce9a932e5eabb1831e9e6c08f22e6f232b66fe",
+      "upstreamSha256": "3dc6aa73b25d789666b94807a7ce9a932e5eabb1831e9e6c08f22e6f232b66fe"
+    },
+    "body/import_engine.py": {
+      "bytes": 11361,
+      "sha256": "8f2df8394025fe4ccbd9813d7d3092c1808ff0715d1a7314a0bda5444e8bea2b",
+      "upstreamSha256": "c6418492e821ceb130178d4811a95928fff84711d70f7e6534d26759f972cfca",
+      "adaptation": "Resolve private runtime through explicit external root; frozen engine verifier unchanged."
+    },
+    "body/leg_render.py": {
+      "bytes": 4351,
+      "sha256": "65046c3ed2fb341dd2d84b6942078497c6f6dd6bb09426d02670b056c9f292f4",
+      "upstreamSha256": "65046c3ed2fb341dd2d84b6942078497c6f6dd6bb09426d02670b056c9f292f4"
+    },
+    "body/leg_shape.py": {
+      "bytes": 6618,
+      "sha256": "1212607484d3f9d8714f8cadaaf4287e5e180d7d6137bd77f24ada5250b99bb6",
+      "upstreamSha256": "1212607484d3f9d8714f8cadaaf4287e5e180d7d6137bd77f24ada5250b99bb6"
+    },
+    "body/licenses/PPHumanSeg-Apache-2.0.txt": {
+      "bytes": 11437,
+      "sha256": "d9cf3b547fa4232fb9285f2db52e909f10f00781aaf64a6d0bb90c55149f1363",
+      "upstreamSha256": "d9cf3b547fa4232fb9285f2db52e909f10f00781aaf64a6d0bb90c55149f1363"
+    },
+    "body/local_shape.py": {
+      "bytes": 8515,
+      "sha256": "45a5f348c7df729d49289853e9cc9441819f47de588b532497c1e62c3500c905",
+      "upstreamSha256": "45a5f348c7df729d49289853e9cc9441819f47de588b532497c1e62c3500c905"
+    },
+    "body/native_inventory.py": {
+      "bytes": 5452,
+      "sha256": "130197e94176a81ebd7dc39511e74ed81ad1645ee188cbc3723ea6fd990860ab",
+      "upstreamSha256": "130197e94176a81ebd7dc39511e74ed81ad1645ee188cbc3723ea6fd990860ab"
+    },
+    "body/onnx_mask.py": {
+      "bytes": 5547,
+      "sha256": "b016550860ac3750d17415555c13227adc8357eb8baa5ebf4b05ac5781f87346",
+      "upstreamSha256": "af65d297caf26d2996c76de3813e6892b58129f011d5c05fb6b78fafd853203d",
+      "adaptation": "Resolve the externally installed pinned person mask path only."
+    },
+    "body/person-mask-model.json": {
+      "bytes": 1638,
+      "sha256": "7d6ad7a394f354c0bb366611aa2942d6c7e673bde6fcdc94babcd1f4156cf872",
+      "upstreamSha256": "7d6ad7a394f354c0bb366611aa2942d6c7e673bde6fcdc94babcd1f4156cf872"
+    },
+    "body/person_mask.swift": {
+      "bytes": 3164,
+      "sha256": "c82aeb54f41d92436933dee8b2a259542fc40b52f599327a9795a7e9a66cd35f",
+      "upstreamSha256": "c82aeb54f41d92436933dee8b2a259542fc40b52f599327a9795a7e9a66cd35f"
+    },
+    "body/photo_controls.py": {
+      "bytes": 4201,
+      "sha256": "97158763904a080f6a3ab7392120dfd3db5c8febf1806eae77a4309293ebb818",
+      "upstreamSha256": "97158763904a080f6a3ab7392120dfd3db5c8febf1806eae77a4309293ebb818"
+    },
+    "body/platform_backend.py": {
+      "bytes": 886,
+      "sha256": "5e05537f47e13d7abc9b67532be7d5e45639168187699d9dc50f98e351aa6c51",
+      "upstreamSha256": "59fe9122e41fa56303cbb7e3126790516a4676757602310846e8d08cd02e49fb",
+      "adaptation": "Select CPU for the explicitly managed QCut photo service, including macOS."
+    },
+    "body/portable-models.json": {
+      "bytes": 14913,
+      "sha256": "52270f5a2dd931b6c28bf5f0b77f0757d7c198cfee06ae21e7848dec0aaac2bb",
+      "upstreamSha256": "52270f5a2dd931b6c28bf5f0b77f0757d7c198cfee06ae21e7848dec0aaac2bb"
+    },
+    "body/portable_background.py": {
+      "bytes": 3988,
+      "sha256": "1e2c6bdfec6510f076f4ddedb54b31410d535c107c44afaca7fa145714fe7a2e",
+      "upstreamSha256": "1e2c6bdfec6510f076f4ddedb54b31410d535c107c44afaca7fa145714fe7a2e"
+    },
+    "body/portable_engine.py": {
+      "bytes": 5851,
+      "sha256": "05a43a0aa2eafeec08a1a090519500dfd82d06ffb25471ed41bd61fe02a24ab7",
+      "upstreamSha256": "b89b6f8f45a84acff7306239a49bdd314a301a423836429958c13aba12ba5898",
+      "adaptation": "Resolve external face, skeleton and mask runtime directories only."
+    },
+    "body/portable_leg.py": {
+      "bytes": 9977,
+      "sha256": "06c207afd9c595b9fa1f5c6db95a55d5380be92aa14e84e475e07fec293f0050",
+      "upstreamSha256": "06c207afd9c595b9fa1f5c6db95a55d5380be92aa14e84e475e07fec293f0050"
+    },
+    "body/portable_math.py": {
+      "bytes": 5688,
+      "sha256": "bcd7734ba8943cd0eaa07db12cc3cd2019f4158b68147e2153a113471516eb0b",
+      "upstreamSha256": "bcd7734ba8943cd0eaa07db12cc3cd2019f4158b68147e2153a113471516eb0b"
+    },
+    "body/portable_models.py": {
+      "bytes": 8303,
+      "sha256": "0187abdb4e7931f87dd6d0566aec0145828cb99b7912f13455800583d568451d",
+      "upstreamSha256": "0187abdb4e7931f87dd6d0566aec0145828cb99b7912f13455800583d568451d"
+    },
+    "body/portable_pose.py": {
+      "bytes": 5828,
+      "sha256": "33a358350efdf22e4a24ae6d92cf2f4dd4d73e9699c6fff6f45f5ba7220728df",
+      "upstreamSha256": "33a358350efdf22e4a24ae6d92cf2f4dd4d73e9699c6fff6f45f5ba7220728df"
+    },
+    "body/process_group.py": {
+      "bytes": 4758,
+      "sha256": "0b8b2c41bde0df1f671e3e5ea771dbe73d53d0a998555fec68358eb7f024e4a2",
+      "upstreamSha256": "3c6d2368f030124f845d0c75262b79d283f2a2b9be4d70ee93f83314fd3905aa",
+      "adaptation": "Attach the managed render parent watchdog before unchanged renderer execution."
+    },
+    "body/qcut_host.py": {
+      "bytes": 3963,
+      "sha256": "9e1a4365d3d590337c73ecb24e03f779a8aa585f39dc4365b451e512064c62bd",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/qcut_parent.py": {
+      "bytes": 2191,
+      "sha256": "fdea8995d08a35762ce375adce9b2686612ee44e2f422b68cea0eadeae8dc108",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/qcut_render.py": {
+      "bytes": 833,
+      "sha256": "ab41ead2e881c192699fa1635359ef50a41b94c77c969c26a27f37e06cdcdb26",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/region_render.py": {
+      "bytes": 10530,
+      "sha256": "c08521d50a1a4d5b0affa7aacb2b0fcb854300584e381b6bed19db937b1d098c",
+      "upstreamSha256": "c08521d50a1a4d5b0affa7aacb2b0fcb854300584e381b6bed19db937b1d098c"
+    },
+    "body/region_shape.py": {
+      "bytes": 19406,
+      "sha256": "4d48f600d5eeaa55bded1bd4c6d9b5bdf8d9b5fb537d153d1a17262b419c841d",
+      "upstreamSha256": "4d48f600d5eeaa55bded1bd4c6d9b5bdf8d9b5fb537d153d1a17262b419c841d"
+    },
+    "body/render.py": {
+      "bytes": 13099,
+      "sha256": "fe6599f37febe0e7f88b307952e85a58e45ded9f9e7cc1871291ebe1869907db",
+      "upstreamSha256": "7f688452aed1093a08832ec5a1ae06c27eecb5cbbc206456d44fbf793c5bfdaf",
+      "adaptation": "Resolve and protect external runtime; preserve only the explicit runtime root during environment isolation."
+    },
+    "body/requirements.txt": {
+      "bytes": 61,
+      "sha256": "4175bfcd88c93d4a61b55d75620b42c9156f057cdb4bdfcabbb2c170c83617ab",
+      "upstreamSha256": "4175bfcd88c93d4a61b55d75620b42c9156f057cdb4bdfcabbb2c170c83617ab"
+    },
+    "body/runtime_paths.py": {
+      "bytes": 659,
+      "sha256": "48628c8602ef409c21857552068d5062e60328cb2b9cca7ca8a847d5a4a5ebb4",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/server.py": {
+      "bytes": 9047,
+      "sha256": "4b5fd691f71cbfa5a183fad3e561354169ede5cbfdfd0233a71b61b087e987ce",
+      "upstreamSha256": "4b5fd691f71cbfa5a183fad3e561354169ede5cbfdfd0233a71b61b087e987ce"
+    },
+    "body/skin_blemish.py": {
+      "bytes": 7661,
+      "sha256": "2102b19eef89a530641df3f6e15d03ce8938a4be7510cb5e2fe99b75e90e565a",
+      "upstreamSha256": "2102b19eef89a530641df3f6e15d03ce8938a4be7510cb5e2fe99b75e90e565a"
+    },
+    "body/skin_mask.py": {
+      "bytes": 12090,
+      "sha256": "4cd4119dac17045acda979a3e3a3187003ab3f9e33d224cee318c019e7b3e369",
+      "upstreamSha256": "4cd4119dac17045acda979a3e3a3187003ab3f9e33d224cee318c019e7b3e369"
+    },
+    "body/tests/body-app-platform.test.js": {
+      "bytes": 9002,
+      "sha256": "f7128fdcb4a8dfcf3fe25041a0ded1ed8df721d6f8eea62078aad1d18af86d4a",
+      "upstreamSha256": "f7128fdcb4a8dfcf3fe25041a0ded1ed8df721d6f8eea62078aad1d18af86d4a"
+    },
+    "body/tests/body-auto-glute-ui.test.js": {
+      "bytes": 14673,
+      "sha256": "f182c1707ca32f7859d239782632b02a888247432d079dfa2c08af8c2aa596a4",
+      "upstreamSha256": "f182c1707ca32f7859d239782632b02a888247432d079dfa2c08af8c2aa596a4"
+    },
+    "body/tests/body-control-groups.test.js": {
+      "bytes": 8551,
+      "sha256": "d6ac0e980e908b5cdc584610ae4219c96889279bf677d18d3c0eaa9420d9ad15",
+      "upstreamSha256": "d6ac0e980e908b5cdc584610ae4219c96889279bf677d18d3c0eaa9420d9ad15"
+    },
+    "body/tests/body-edits-controller.test.js": {
+      "bytes": 10268,
+      "sha256": "d7d518a474c5a729e9aee40ff14bb23dae29104b2b9d2ce6a3f69313d1c9cf08",
+      "upstreamSha256": "d7d518a474c5a729e9aee40ff14bb23dae29104b2b9d2ce6a3f69313d1c9cf08"
+    },
+    "body/tests/body-glute-contract.test.js": {
+      "bytes": 3320,
+      "sha256": "e02a7b20c0621d187a3732495d9beae37974895e5b907e2464a7590db2119166",
+      "upstreamSha256": "e02a7b20c0621d187a3732495d9beae37974895e5b907e2464a7590db2119166"
+    },
+    "body/tests/body-glute-ui.test.js": {
+      "bytes": 12251,
+      "sha256": "ac07fd051629e9267073f79dd270f8e4b6a76b5d9edbe2667e939973f9e6ab11",
+      "upstreamSha256": "ac07fd051629e9267073f79dd270f8e4b6a76b5d9edbe2667e939973f9e6ab11"
+    },
+    "body/tests/body-web-controller.test.js": {
+      "bytes": 20920,
+      "sha256": "bbf474e4fa693726200d95d016068e0866fd4eb4faa9fc7219aa9c8af99d0c25",
+      "upstreamSha256": "bbf474e4fa693726200d95d016068e0866fd4eb4faa9fc7219aa9c8af99d0c25"
+    },
+    "body/tests/fixtures/body-photo-catalog.js": {
+      "bytes": 1359,
+      "sha256": "c051529e7480714c5d036bfb0731ba5925ed52c522e9742bd849501777add386",
+      "upstreamSha256": "c051529e7480714c5d036bfb0731ba5925ed52c522e9742bd849501777add386"
+    },
+    "body/tests/test_auto_glute_backend.py": {
+      "bytes": 13647,
+      "sha256": "d34659416c63ccfb8b2f96c3b4866e707b463f12b657770ec5295ea24b080481",
+      "upstreamSha256": "d34659416c63ccfb8b2f96c3b4866e707b463f12b657770ec5295ea24b080481"
+    },
+    "body/tests/test_auto_glute_render.py": {
+      "bytes": 9508,
+      "sha256": "422db2b0431e9da48d680d346597e7dd4153a4ebefb3c89c9918c533206bc92c",
+      "upstreamSha256": "422db2b0431e9da48d680d346597e7dd4153a4ebefb3c89c9918c533206bc92c"
+    },
+    "body/tests/test_backend.py": {
+      "bytes": 26038,
+      "sha256": "ba4e70b0169f08fa40a36ffb42375c16dfffedd10ec1df1df4b68938f079e334",
+      "upstreamSha256": "ba4e70b0169f08fa40a36ffb42375c16dfffedd10ec1df1df4b68938f079e334"
+    },
+    "body/tests/test_background.py": {
+      "bytes": 8580,
+      "sha256": "c13fcd5ada34da04950e3a95539612a6c40c08e5100295cde12d46e4e1a46190",
+      "upstreamSha256": "c13fcd5ada34da04950e3a95539612a6c40c08e5100295cde12d46e4e1a46190"
+    },
+    "body/tests/test_body_skin.py": {
+      "bytes": 8588,
+      "sha256": "b4044f20d577a55018f07ad1b48444056c6db6201a3bfa748cdada99e2e7fd6c",
+      "upstreamSha256": "b4044f20d577a55018f07ad1b48444056c6db6201a3bfa748cdada99e2e7fd6c"
+    },
+    "body/tests/test_cli_console.py": {
+      "bytes": 2981,
+      "sha256": "58fb574845f0ecbdd3877353651ad10f30bcc949495e57a38405e57d8ed7a38c",
+      "upstreamSha256": "58fb574845f0ecbdd3877353651ad10f30bcc949495e57a38405e57d8ed7a38c"
+    },
+    "body/tests/test_control_contract.py": {
+      "bytes": 5618,
+      "sha256": "89a4a0e6b46e5944bde9b9b14d0ee955d167bca51938d16b23e8697c84a7e90a",
+      "upstreamSha256": "89a4a0e6b46e5944bde9b9b14d0ee955d167bca51938d16b23e8697c84a7e90a"
+    },
+    "body/tests/test_cpu_raster.py": {
+      "bytes": 9507,
+      "sha256": "974e5688b67fe02d2c6de31cd72ab6ee41dc2e743796dfdb71c4619c2f38e26a",
+      "upstreamSha256": "974e5688b67fe02d2c6de31cd72ab6ee41dc2e743796dfdb71c4619c2f38e26a"
+    },
+    "body/tests/test_edit_backend.py": {
+      "bytes": 5211,
+      "sha256": "35d3e90e1181ef3a460ad55d920866e77fe65d132749fb6bc3ca6b8f6694a40b",
+      "upstreamSha256": "35d3e90e1181ef3a460ad55d920866e77fe65d132749fb6bc3ca6b8f6694a40b"
+    },
+    "body/tests/test_edit_render.py": {
+      "bytes": 15022,
+      "sha256": "142ef2ddbc6a5aa4734e23beb4afe7a8209ecad1bcd2b7dc2164ada723950e5f",
+      "upstreamSha256": "142ef2ddbc6a5aa4734e23beb4afe7a8209ecad1bcd2b7dc2164ada723950e5f"
+    },
+    "body/tests/test_glute_detection.py": {
+      "bytes": 11582,
+      "sha256": "a81e4f1198d2d0aaced2d47226108b6fc11124122c8fe38553a1ee503262b146",
+      "upstreamSha256": "a81e4f1198d2d0aaced2d47226108b6fc11124122c8fe38553a1ee503262b146"
+    },
+    "body/tests/test_glute_lift.py": {
+      "bytes": 14538,
+      "sha256": "5be15a8585d50695aa3566d99896725991e2c878ffdf666fb1a5c8dfb1b20c19",
+      "upstreamSha256": "5be15a8585d50695aa3566d99896725991e2c878ffdf666fb1a5c8dfb1b20c19"
+    },
+    "body/tests/test_import_engine.py": {
+      "bytes": 4669,
+      "sha256": "eedfcde66b067acc0d66bfb6df69a3f59bd1faff21903f00f6646637c8848452",
+      "upstreamSha256": "eedfcde66b067acc0d66bfb6df69a3f59bd1faff21903f00f6646637c8848452"
+    },
+    "body/tests/test_leg_render.py": {
+      "bytes": 10038,
+      "sha256": "b58f02f2df91806143832a8540900e6ec2b7fad7bd3f4c21ac0b025a5d65c8be",
+      "upstreamSha256": "b58f02f2df91806143832a8540900e6ec2b7fad7bd3f4c21ac0b025a5d65c8be"
+    },
+    "body/tests/test_leg_shape.py": {
+      "bytes": 15811,
+      "sha256": "67cfc4edf51bd4629b21960cc9ecf58f82d608af4b4e5cf4e1516385041dee40",
+      "upstreamSha256": "67cfc4edf51bd4629b21960cc9ecf58f82d608af4b4e5cf4e1516385041dee40"
+    },
+    "body/tests/test_local_shape.py": {
+      "bytes": 12318,
+      "sha256": "6a025ab32db390eb5f8401c4965c6466e354a92ccb4b7029fa5317df5af04da0",
+      "upstreamSha256": "6a025ab32db390eb5f8401c4965c6466e354a92ccb4b7029fa5317df5af04da0"
+    },
+    "body/tests/test_native_inventory.py": {
+      "bytes": 7429,
+      "sha256": "bde4fc8647fd1fd0d74c5ba54cab96453fbc455dc004803be4e6ae31e0f82452",
+      "upstreamSha256": "bde4fc8647fd1fd0d74c5ba54cab96453fbc455dc004803be4e6ae31e0f82452"
+    },
+    "body/tests/test_onnx_mask.py": {
+      "bytes": 10265,
+      "sha256": "55ccbc29e632a9eac8795b08671a89378abd5dddf5fc5577f0cbc3fccb1356a3",
+      "upstreamSha256": "32255bb63061e21fd5a1d3254108782819efa6095c930ecbfeccdb32edfaba5c",
+      "adaptation": "Exclude two downloader-only tests because installers are not included; retain all mask inference and integrity tests."
+    },
+    "body/tests/test_photo_controls.py": {
+      "bytes": 3859,
+      "sha256": "78c3ac5bc4d18d03ea5ba91b04429db0db48cfe4cd51a1e2b146425a8fdf54c8",
+      "upstreamSha256": "78c3ac5bc4d18d03ea5ba91b04429db0db48cfe4cd51a1e2b146425a8fdf54c8"
+    },
+    "body/tests/test_platform_backend.py": {
+      "bytes": 1174,
+      "sha256": "e1df0f933e81f6606a5428b57de0db671f90dc21f2004dd2dc8e3115038b486f",
+      "upstreamSha256": "e1df0f933e81f6606a5428b57de0db671f90dc21f2004dd2dc8e3115038b486f"
+    },
+    "body/tests/test_portable_background.py": {
+      "bytes": 6632,
+      "sha256": "7e4bc22c70529b5db3baaf083634207f3b44debbaad7d9176d2f0aea93a65cce",
+      "upstreamSha256": "7e4bc22c70529b5db3baaf083634207f3b44debbaad7d9176d2f0aea93a65cce"
+    },
+    "body/tests/test_portable_engine_safety.py": {
+      "bytes": 5905,
+      "sha256": "48c720bd111055322d269f9da20f708e8182a6b274debe043170f35261faf630",
+      "upstreamSha256": "48c720bd111055322d269f9da20f708e8182a6b274debe043170f35261faf630"
+    },
+    "body/tests/test_portable_leg.py": {
+      "bytes": 11940,
+      "sha256": "615918df4e83698e2a9671584af43b6992a62cb71fdd6f5e0e9990b4bc7cd8d1",
+      "upstreamSha256": "615918df4e83698e2a9671584af43b6992a62cb71fdd6f5e0e9990b4bc7cd8d1"
+    },
+    "body/tests/test_portable_math.py": {
+      "bytes": 8564,
+      "sha256": "fdbe0bde7c10f2ddf17b6daeb0b8db223cac67c3936518c78de12b70a934ba96",
+      "upstreamSha256": "fdbe0bde7c10f2ddf17b6daeb0b8db223cac67c3936518c78de12b70a934ba96"
+    },
+    "body/tests/test_portable_models.py": {
+      "bytes": 11177,
+      "sha256": "c18c637f59aff1e8d693f894a9566522e3d372b0a6485aad825dc785b52939c7",
+      "upstreamSha256": "2764ecdf884562d737bdb4cff234925c7bba6cf558b0c926a931a8318f91a396",
+      "adaptation": "Exclude five exporter-only tests and exporter fixture helper; retain thirteen runtime integrity and ONNX contract tests."
+    },
+    "body/tests/test_portable_pose.py": {
+      "bytes": 7679,
+      "sha256": "2af0a453fdff1b423fbb154c525ecc4717fde341c530dd461b4694f720b8ef7a",
+      "upstreamSha256": "2af0a453fdff1b423fbb154c525ecc4717fde341c530dd461b4694f720b8ef7a"
+    },
+    "body/tests/test_process_group.py": {
+      "bytes": 10859,
+      "sha256": "86816355469ea6420410afe08df4b983c266a50398bb3586bdb0d1495215da2d",
+      "upstreamSha256": "86816355469ea6420410afe08df4b983c266a50398bb3586bdb0d1495215da2d"
+    },
+    "body/tests/test_qcut_host.py": {
+      "bytes": 5910,
+      "sha256": "4906ee240e556018f33a8392cbea8d890d4e2c2cba00f925f90673e5538e5783",
+      "origin": "QCut lifecycle/source integration"
+    },
+    "body/tests/test_region_render.py": {
+      "bytes": 21013,
+      "sha256": "fede768aac99dcb875d7f797a9b14f4d1d4e56b9b38197732884d4df3f104731",
+      "upstreamSha256": "fede768aac99dcb875d7f797a9b14f4d1d4e56b9b38197732884d4df3f104731"
+    },
+    "body/tests/test_region_shape.py": {
+      "bytes": 25406,
+      "sha256": "f68f1174f5c1b9d3b50b758733776a969d8ac4025524fb9f4d234c24aa68b48f",
+      "upstreamSha256": "f68f1174f5c1b9d3b50b758733776a969d8ac4025524fb9f4d234c24aa68b48f"
+    },
+    "body/tests/test_render.py": {
+      "bytes": 9234,
+      "sha256": "3cb1b041aed75737d9d496ff17ab928424bc362c79e1a99813bea1169a6ed3da",
+      "upstreamSha256": "97c34046f623422980b35a4b4226c5c751fd58cc64768fb3915852a0571612b1",
+      "adaptation": "Isolate synthetic receipt unit tests from private Metal assets; exclude one real Metal CLI fixture test from the CPU photo source package."
+    },
+    "body/tests/test_server.py": {
+      "bytes": 17432,
+      "sha256": "04856c702e757e132f28ea9c8862dba5e7ef8dd13a9d8002546075441dc06eea",
+      "upstreamSha256": "04856c702e757e132f28ea9c8862dba5e7ef8dd13a9d8002546075441dc06eea"
+    },
+    "body/tests/test_signed_controls.py": {
+      "bytes": 12630,
+      "sha256": "d5d43dc956835e5f9896a24cd5e404034d4b21b599d28a1b389cce3287614473",
+      "upstreamSha256": "d5d43dc956835e5f9896a24cd5e404034d4b21b599d28a1b389cce3287614473"
+    },
+    "body/tests/test_skin_blemish.py": {
+      "bytes": 7358,
+      "sha256": "b91957a86c7312786f12aca6e539ca2d711201948988e7e68f607811b251847b",
+      "upstreamSha256": "b91957a86c7312786f12aca6e539ca2d711201948988e7e68f607811b251847b"
+    },
+    "body/tests/test_skin_mask.py": {
+      "bytes": 5610,
+      "sha256": "cfd7dad99fc52e751559da2d361e918626d3ffa88c7ebf30f5c720dcc2de16cf",
+      "upstreamSha256": "cfd7dad99fc52e751559da2d361e918626d3ffa88c7ebf30f5c720dcc2de16cf"
+    },
+    "body/tests/test_validate_photo_controls.py": {
+      "bytes": 16754,
+      "sha256": "a78dc382095a23ad01589e68d49986018b9553c8993ca140e7c4fe51ac88df73",
+      "upstreamSha256": "d6a92a3f877f37871891f1eceba0ddfebe194a50e846a3ea358c076ade170e91",
+      "adaptation": "Exclude one standalone repository GitHub workflow assertion; retain fixture, receipt and runner assertions."
+    },
+    "body/tests/test_validate_portable.py": {
+      "bytes": 12886,
+      "sha256": "8d0eafe87b687b727f7bb224b7a2d41b70ebd2803710b4e7368f51919919ca85",
+      "upstreamSha256": "8d0eafe87b687b727f7bb224b7a2d41b70ebd2803710b4e7368f51919919ca85"
+    },
+    "body/tests/test_verify_matrix.py": {
+      "bytes": 34927,
+      "sha256": "587f674e2954c7a0c3448981070f4e5bb2d5c7d16e1806c5e0fd3fad52075351",
+      "upstreamSha256": "587f674e2954c7a0c3448981070f4e5bb2d5c7d16e1806c5e0fd3fad52075351"
+    },
+    "body/validate_photo_controls.py": {
+      "bytes": 17788,
+      "sha256": "bea0e5276c8a64e6c5502a035c0c302768e7f572d5272a297708474602801796",
+      "upstreamSha256": "c5bc3c90bd33f46bd005cfd69831f39207cb92c37fd27f09caaeaaaf48028e2a",
+      "adaptation": "Protect the selected external runtime from validation output writes."
+    },
+    "body/validate_portable.py": {
+      "bytes": 19881,
+      "sha256": "999659fc51bfeb43c50d05d5a54d15920c4a03239c540bba571f00a3e6c736d0",
+      "upstreamSha256": "c55fe957283b8bd1261eb6d064c18e1501f7eb0578217b50a79e0d8696fdc8b8",
+      "adaptation": "Protect the selected external runtime from validation output writes."
+    },
+    "body/verify_matrix.py": {
+      "bytes": 28815,
+      "sha256": "06e2f34b2b830bec6d24dc31ab54826b4a700f87e91bb5908cd2935af6495106",
+      "upstreamSha256": "06e2f34b2b830bec6d24dc31ab54826b4a700f87e91bb5908cd2935af6495106"
+    },
+    "body/verify_matrix_report.py": {
+      "bytes": 11201,
+      "sha256": "ee4b56b1e9139c42d2d0d8dfbaee413a2a83bfd3ef365f7397dcb3dec99dbc80",
+      "upstreamSha256": "ee4b56b1e9139c42d2d0d8dfbaee413a2a83bfd3ef365f7397dcb3dec99dbc80"
+    },
+    "body/verify_photo.py": {
+      "bytes": 8470,
+      "sha256": "7f788526d0f3cc30c6b404c10e80bd5237b6d88eb316caf63cb8fd38f2de59a7",
+      "upstreamSha256": "7f788526d0f3cc30c6b404c10e80bd5237b6d88eb316caf63cb8fd38f2de59a7"
+    },
+    "body/web/app.js": {
+      "bytes": 17512,
+      "sha256": "25cb6ac55f8a60a2b605f3ee5d54eda319aa30bad2948ac5ddcb2ef1f63d65e0",
+      "upstreamSha256": "25cb6ac55f8a60a2b605f3ee5d54eda319aa30bad2948ac5ddcb2ef1f63d65e0"
+    },
+    "body/web/body-controller.js": {
+      "bytes": 13053,
+      "sha256": "15d344b04a9e64de28297ab92f399cbdfe3bd55cdc32db64e513a0b4ae23a5c3",
+      "upstreamSha256": "15d344b04a9e64de28297ab92f399cbdfe3bd55cdc32db64e513a0b4ae23a5c3"
+    },
+    "body/web/edits-contract.js": {
+      "bytes": 4785,
+      "sha256": "4cb7f483612b9742219525248bf2cd125fe5c5f117c0559d7267cdcc2d53dbb5",
+      "upstreamSha256": "4cb7f483612b9742219525248bf2cd125fe5c5f117c0559d7267cdcc2d53dbb5"
+    },
+    "body/web/glute-contract.js": {
+      "bytes": 2257,
+      "sha256": "1a49c630cad7851d2fe29123ed95d05dbaa99c30ab78ac7bd6387cb35eea2ce7",
+      "upstreamSha256": "1a49c630cad7851d2fe29123ed95d05dbaa99c30ab78ac7bd6387cb35eea2ce7"
+    },
+    "body/web/glute-editor.js": {
+      "bytes": 9537,
+      "sha256": "abafad0877c346a6467fd922c7085925d8a8ea720597536365e949939ea27176",
+      "upstreamSha256": "abafad0877c346a6467fd922c7085925d8a8ea720597536365e949939ea27176"
+    },
+    "body/web/index.html": {
+      "bytes": 11757,
+      "sha256": "720c20ad55ca2c1ef0fab9b5543bc894a8654757d27cd294277d2b163c094294",
+      "upstreamSha256": "720c20ad55ca2c1ef0fab9b5543bc894a8654757d27cd294277d2b163c094294"
+    },
+    "body/web/local-editor.css": {
+      "bytes": 2603,
+      "sha256": "8db0333228e814205e9f393dae1033ec3c416b95da42803069531baf975ec9a3",
+      "upstreamSha256": "8db0333228e814205e9f393dae1033ec3c416b95da42803069531baf975ec9a3"
+    },
+    "body/web/local-editor.js": {
+      "bytes": 10152,
+      "sha256": "3c9d6e32f367b2cd76c2793f5a4c1e4a7e5a68d8e1bde173f7b40c18bd68ff62",
+      "upstreamSha256": "3c9d6e32f367b2cd76c2793f5a4c1e4a7e5a68d8e1bde173f7b40c18bd68ff62"
+    },
+    "body/web/styles.css": {
+      "bytes": 16700,
+      "sha256": "abdf09ea58f83ea5fcb17bbbf9bb2f5d7557d7b6bb24b1f6583989ee2efd4ba4",
+      "upstreamSha256": "abdf09ea58f83ea5fcb17bbbf9bb2f5d7557d7b6bb24b1f6583989ee2efd4ba4"
+    }
+  },
+  "engineOverrides": {
+    "alignment_decode.py": {
+      "sourcePath": "engine-overrides/alignment_decode.py",
+      "bytes": 3245,
+      "sha256": "daba103023933078aff3245dcafddaf7c09d0711040f4c112e9239550a078eed"
+    },
+    "independent_pipeline.py": {
+      "sourcePath": "engine-overrides/independent_pipeline.py",
+      "bytes": 26940,
+      "sha256": "b88454f22c1c9fa686109594bbc035c4464e539cdc497ed3fdd0d9f9868612af"
+    }
+  },
+  "excluded": {
+    "tools": [
+      "download_person_mask.py",
+      "export_models.py",
+      "package_portable.py",
+      "launch.py",
+      "setup.ps1",
+      "setup.sh",
+      "启动独立美体.command"
+    ],
+    "testModules": [
+      "test_launch.py",
+      "test_package_portable.py",
+      "test_setup.py"
+    ],
+    "testMethods": {
+      "downloader": 2,
+      "exporter": 5,
+      "standaloneGitHubWorkflow": 1,
+      "nativeMetalFixture": 1
+    },
+    "privatePayloads": [
+      "runtime",
+      "models",
+      "fixtures/images",
+      "ZIPs",
+      "native libraries"
+    ]
+  }
+}
