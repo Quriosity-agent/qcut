@@ -30,6 +30,24 @@ afterEach(async () => {
 	await fs.rm(root, { recursive: true, force: true });
 });
 
+function blockedVerification() {
+	let reject = (_error: Error) => {};
+	let exit = () => {};
+	const closed = new Promise<void>((resolve) => {
+		exit = resolve;
+	});
+	const reply = new Promise<Record<string, unknown>>(
+		(_resolve, rejectReply) => {
+			reject = rejectReply;
+		}
+	);
+	const stop = vi.fn(async () => {
+		reject(new Error("Body-photo operation cancelled"));
+		exit();
+	});
+	return { reply, closed, stop, exit };
+}
+
 function fixture({
 	invalidIdentity = false,
 	verification = true,
@@ -44,6 +62,14 @@ function fixture({
 	hostStopGate?: Promise<void>;
 } = {}) {
 	const hosts: Array<BodyPhotoProcess & { exit: () => void }> = [];
+	const verificationResult = vi.fn(() => verification);
+	const sourceManifest = { sha256: "a".repeat(64) };
+	const verifySources = vi.fn(({ root: stagedRoot }: { root: string }) => ({
+		root: stagedRoot,
+		bodyRoot: path.join(stagedRoot, "body"),
+		manifestSha256: sourceManifest.sha256,
+		files: 107,
+	}));
 	const stageSources = vi.fn(
 		({ destinationRoot }: { destinationRoot: string }) => ({
 			root: destinationRoot,
@@ -73,7 +99,7 @@ function fixture({
 					replyType === "verified"
 						? {
 								type: "verified",
-								verified: verification,
+								verified: verificationResult(),
 								onnxruntime: "1.22.1",
 							}
 						: {
@@ -116,21 +142,23 @@ function fixture({
 	});
 	const verifyServer = vi.fn(async () => {});
 	const getMainWindow = vi.fn((): BrowserWindow | null => null);
+	const environment: NodeJS.ProcessEnv = environmentOverride
+		? {
+				QCUT_BODY_PHOTO_RUNTIME: missingRuntime
+					? path.join(root, "missing")
+					: root,
+			}
+		: {};
 	const service = createBodyPhotoLabService({
 		getMainWindow,
 		sourceRoot: root,
 		resourcesPath: root,
 		userDataPath: path.join(root, "userdata"),
 		isPackaged: false,
-		environment: environmentOverride
-			? {
-					QCUT_BODY_PHOTO_RUNTIME: missingRuntime
-						? path.join(root, "missing")
-						: root,
-				}
-			: {},
+		environment,
 		platform: "darwin",
 		stageSources,
+		verifySources,
 		startProcess,
 		createWindow,
 		verifyServer,
@@ -145,6 +173,10 @@ function fixture({
 		startProcess,
 		verifyServer,
 		getMainWindow,
+		environment,
+		verificationResult,
+		verifySources,
+		sourceManifest,
 	};
 }
 
@@ -176,6 +208,165 @@ describe("body-photo dedicated service", () => {
 			})
 		);
 	});
+	it("uses only two verification processes across mount, focus, open and close status reads", async () => {
+		const { service, startProcess, hosts, verifySources } = fixture();
+		await Promise.all([
+			service.inspect(),
+			service.inspect(),
+			service.inspect(),
+		]);
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(1);
+		await service.open();
+		expect(await service.inspect()).toMatchObject({ windowOpen: true });
+		await service.close();
+		expect(await service.inspect()).toMatchObject({ windowOpen: false });
+		expect(
+			startProcess.mock.calls.filter(([call]) => call.replyType === "verified")
+		).toHaveLength(2);
+		expect(hosts).toHaveLength(1);
+		expect(verifySources).toHaveBeenCalledTimes(7);
+	});
+	it("expires UI readiness without extending it on status reads", async () => {
+		const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+		const { service, startProcess } = fixture();
+		await service.inspect();
+		now.mockReturnValue(30_999);
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(1);
+		now.mockReturnValue(31_000);
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(2);
+	});
+	it("keys UI readiness to the resolved runtime, interpreter and source manifest", async () => {
+		const { service, environment, sourceManifest, startProcess } = fixture();
+		await service.inspect();
+		const other = path.join(root, "other");
+		await Promise.all([
+			fs.mkdir(path.join(other, "runtime", "body"), { recursive: true }),
+			fs.mkdir(path.join(other, "runtime", "body-portable"), {
+				recursive: true,
+			}),
+			fs.mkdir(path.join(other, "body", ".venv", "bin"), { recursive: true }),
+		]);
+		await fs.writeFile(
+			path.join(other, "body", ".venv", "bin", "python"),
+			"other"
+		);
+		environment.QCUT_BODY_PHOTO_RUNTIME = other;
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(2);
+		const python = path.join(root, "alternate-python");
+		await fs.writeFile(python, "python-v1");
+		environment.QCUT_BODY_PHOTO_PYTHON = python;
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(3);
+		await fs.writeFile(python, "replaced-python-v2");
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(4);
+		sourceManifest.sha256 = "b".repeat(64);
+		expect(await service.inspect()).toMatchObject({
+			sourceManifestSha256: sourceManifest.sha256,
+		});
+		expect(startProcess).toHaveBeenCalledTimes(5);
+	});
+	it("retries failed checks and never uses UI readiness to authorize changed models", async () => {
+		const { service, startProcess, verificationResult, hosts } = fixture({
+			verification: false,
+		});
+		expect(await service.inspect()).toMatchObject({ available: false });
+		verificationResult.mockReturnValue(true);
+		expect(await service.inspect()).toMatchObject({ available: true });
+		expect(startProcess).toHaveBeenCalledTimes(2);
+		verificationResult.mockReturnValue(false);
+		await expect(service.open()).rejects.toThrow("verification");
+		expect(hosts).toHaveLength(0);
+		expect(await service.inspect()).toMatchObject({ available: false });
+		expect(startProcess).toHaveBeenCalledTimes(4);
+	});
+	it("rechecks staged source integrity before open despite cached readiness", async () => {
+		const { service, verifySources, hosts, startProcess } = fixture();
+		await service.inspect();
+		verifySources.mockImplementationOnce(() => {
+			throw new Error("Body photo source integrity failed");
+		});
+		await expect(service.open()).rejects.toThrow("source integrity");
+		expect(hosts).toHaveLength(0);
+		expect(startProcess).toHaveBeenCalledTimes(1);
+		expect(await service.inspect()).toMatchObject({ available: true });
+		expect(startProcess).toHaveBeenCalledTimes(2);
+	});
+	it("cancels an in-flight shared status verification and retries without stale readiness", async () => {
+		const { service, startProcess } = fixture();
+		const verification = blockedVerification();
+		startProcess.mockReturnValueOnce(verification);
+		const inspections = Promise.all([service.inspect(), service.inspect()]);
+		await vi.waitFor(() => expect(startProcess).toHaveBeenCalledOnce());
+		await service.close();
+		expect(await inspections).toEqual([
+			expect.objectContaining({
+				available: false,
+				message: expect.stringContaining("cancelled"),
+			}),
+			expect.objectContaining({
+				available: false,
+				message: expect.stringContaining("cancelled"),
+			}),
+		]);
+		expect(verification.stop).toHaveBeenCalled();
+		expect(await service.inspect()).toMatchObject({ available: true });
+		expect(startProcess).toHaveBeenCalledTimes(2);
+	});
+	it("cancels the mandatory open verification even after a successful status check", async () => {
+		const { service, startProcess, hosts, createWindow } = fixture();
+		await service.inspect();
+		const verification = blockedVerification();
+		startProcess.mockReturnValueOnce(verification);
+		const opening = service.open();
+		const cancelled = expect(opening).rejects.toThrow("cancelled");
+		await vi.waitFor(() => expect(startProcess).toHaveBeenCalledTimes(2));
+		await service.close();
+		await cancelled;
+		expect(hosts).toHaveLength(0);
+		expect(createWindow).not.toHaveBeenCalled();
+		expect(await service.inspect()).toMatchObject({ available: true });
+		expect(startProcess).toHaveBeenCalledTimes(3);
+	});
+	it("invalidates readiness when an interpreter symlink resolves to a different executable", async () => {
+		const { service, environment, startProcess } = fixture();
+		const linkedPython = path.join(root, "linked-python");
+		const otherPython = path.join(root, "other-python");
+		await fs.writeFile(otherPython, "other-interpreter");
+		await fs.symlink(
+			path.join(root, "body", ".venv", "bin", "python"),
+			linkedPython
+		);
+		environment.QCUT_BODY_PHOTO_PYTHON = linkedPython;
+		await service.inspect();
+		await fs.unlink(linkedPython);
+		await fs.symlink(otherPython, linkedPython);
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(2);
+	});
+
+	it("invalidates UI readiness after unexpected host exit or readiness failure", async () => {
+		const { service, hosts, startProcess, verifyServer } = fixture();
+		await service.open();
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(2);
+		hosts[0].exit();
+		await Promise.resolve();
+		expect(await service.inspect()).toMatchObject({
+			available: true,
+			windowOpen: false,
+		});
+		expect(startProcess).toHaveBeenCalledTimes(3);
+		verifyServer.mockRejectedValueOnce(new Error("identity failed"));
+		await expect(service.open()).rejects.toThrow("identity failed");
+		await service.inspect();
+		expect(startProcess).toHaveBeenCalledTimes(6);
+	});
+
 	it("serializes simultaneous opens and reuses only its own live window", async () => {
 		const { service, hosts, windows, createWindow, verifyServer } = fixture();
 		await Promise.all([service.open(), service.open()]);
@@ -239,6 +430,9 @@ describe("body-photo dedicated service", () => {
 		expect(
 			await selected.service.selectRuntime({ selection: root })
 		).toMatchObject({ available: true });
+		expect(selected.startProcess).toHaveBeenCalledOnce();
+		await selected.service.selectRuntime({ selection: root });
+		expect(selected.startProcess).toHaveBeenCalledTimes(2);
 		const settings = path.join(root, "userdata", "body-photo-runtime.json");
 		const original = await fs.readFile(settings, "utf8");
 		expect(JSON.parse(original)).toMatchObject({
