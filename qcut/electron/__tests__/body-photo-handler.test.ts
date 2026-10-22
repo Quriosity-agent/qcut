@@ -136,4 +136,28 @@ describe("body-photo IPC trust boundary", () => {
 		expect(registrations.size).toBe(4);
 		await current.controller.dispose();
 	});
+	it.each([
+		"disposed",
+		"replaced",
+	] as const)("ignores a native picker result after its controller is %s", async (change) => {
+		let complete = (_result: { canceled: boolean; filePaths: string[] }) => {};
+		showOpenDialog.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					complete = resolve;
+				})
+		);
+		const old = fixture();
+		const choosing = invoke({
+			channel: BODY_PHOTO_CHOOSE_RUNTIME,
+			event: old.event,
+		});
+		const rejected = expect(choosing).rejects.toThrow("active");
+		await vi.waitFor(() => expect(showOpenDialog).toHaveBeenCalledOnce());
+		if (change === "disposed") await old.controller.dispose();
+		else fixture();
+		complete({ canceled: false, filePaths: ["/chosen-v3"] });
+		await rejected;
+		expect(old.service.selectRuntime).not.toHaveBeenCalled();
+	});
 });
