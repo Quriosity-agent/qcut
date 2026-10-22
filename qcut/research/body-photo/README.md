@@ -37,5 +37,6 @@ additionally retains the upstream kill-on-close job ownership.
 The source manifest records every imported file's original hash and all plumbing
 adaptations. Geometry, pose, masks, skin, crop safety, control ranges and web UI
 retain upstream bytes. Adaptations resolve an external runtime root, select CPU
-for this managed photo route, and attach process ownership. The source stager
+for this managed photo route, attach process ownership, and restrict image
+decoders to the documented PNG/JPEG/WebP import contract. The source stager
 pins the manifest hash and rejects tampering, extra files, models and symlinks.
