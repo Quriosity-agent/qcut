@@ -334,17 +334,23 @@ describe("body-photo dedicated service", () => {
 	});
 	it("invalidates readiness when an interpreter symlink resolves to a different executable", async () => {
 		const { service, environment, startProcess } = fixture();
-		const linkedPython = path.join(root, "linked-python");
-		const otherPython = path.join(root, "other-python");
-		await fs.writeFile(otherPython, "other-interpreter");
-		await fs.symlink(
-			path.join(root, "body", ".venv", "bin", "python"),
-			linkedPython
+		const linkedDirectory = path.join(root, "python-current");
+		const otherDirectory = path.join(root, "other-interpreter");
+		await fs.mkdir(otherDirectory);
+		await fs.writeFile(
+			path.join(otherDirectory, "python"),
+			"other-interpreter"
 		);
-		environment.QCUT_BODY_PHOTO_PYTHON = linkedPython;
+		const linkType = process.platform === "win32" ? "junction" : "dir";
+		await fs.symlink(
+			path.join(root, "body", ".venv", "bin"),
+			linkedDirectory,
+			linkType
+		);
+		environment.QCUT_BODY_PHOTO_PYTHON = path.join(linkedDirectory, "python");
 		await service.inspect();
-		await fs.unlink(linkedPython);
-		await fs.symlink(otherPython, linkedPython);
+		await fs.unlink(linkedDirectory);
+		await fs.symlink(otherDirectory, linkedDirectory, linkType);
 		await service.inspect();
 		expect(startProcess).toHaveBeenCalledTimes(2);
 	});
