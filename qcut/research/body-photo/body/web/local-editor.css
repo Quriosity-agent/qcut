@@ -1,0 +1,26 @@
+.background-option { margin: 19px 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: #0d181a; }
+.edit-toggle { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #d1e5db; cursor: pointer; }
+.edit-toggle input { width: 17px; height: 17px; accent-color: var(--mint); margin: 0; }
+.background-option p, .manual-intro { color: var(--muted); font-size: 11px; line-height: 1.8; }
+.background-option p { margin: 9px 0 0; }
+.local-editor { margin-top: 22px; border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: #111d20; }
+.local-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.manual-intro { margin: 12px 0; }
+.manual-stage { position: relative; height: min(62vh, 650px); min-height: 320px; border: 1px solid #31464a; border-radius: 8px; overflow: hidden; background: #091315; touch-action: none; cursor: crosshair; }
+.manual-stage img, .manual-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.manual-stage img { object-fit: contain; object-position: center; }
+.manual-stage svg { pointer-events: none; }
+.manual-radius-row { display: flex; align-items: center; gap: 14px; margin: 18px 0; font-size: 11px; color: #bdd5c9; }
+.manual-radius-row label { flex-shrink: 0; }
+.manual-radius-row output { width: 38px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.manual-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.manual-fields label { color: var(--muted); font-size: 10px; }
+.manual-fields input { display: block; width: 100%; background: #0c171a; color: var(--mint); border: 1px solid #38504b; border-radius: 5px; padding: 8px; margin-top: 6px; }
+.manual-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.manual-actions button { color: var(--mint); border: 1px solid #3b5c51; background: #21362f; padding: 9px 12px; border-radius: 6px; font-size: 11px; }
+.manual-actions button:hover:not(:disabled) { background: #304a40; }
+#manual-message { font-size: 11px; color: #a8c2b5; line-height: 1.8; margin-bottom: 0; }
+#edit-feedback { color: #b7d2c3; font-size: 11px; line-height: 1.8; padding-left: 27px; }
+#glute-view { margin: 12px 0; padding: 8px; max-width: 100%; color: var(--mint); background: #0c171a; border: 1px solid #38504b; }
+#glute-message { font-size: 12px; line-height: 1.8; color: #bdd5c9; }
+@media (max-width: 500px) { .manual-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }.manual-radius-row { gap: 9px; }.local-editor { padding: 14px; } }
