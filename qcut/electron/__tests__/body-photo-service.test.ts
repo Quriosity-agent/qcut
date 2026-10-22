@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { EventEmitter } from "node:events";
 import type { BrowserWindow } from "electron";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBodyPhotoLabService } from "../body-photo/body-photo-service";
@@ -24,6 +25,7 @@ beforeEach(async () => {
 	);
 });
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await Promise.all(services.splice(0).map((service) => service.dispose()));
 	await fs.rm(root, { recursive: true, force: true });
 });
@@ -113,8 +115,9 @@ function fixture({
 		return window as unknown as BrowserWindow;
 	});
 	const verifyServer = vi.fn(async () => {});
+	const getMainWindow = vi.fn((): BrowserWindow | null => null);
 	const service = createBodyPhotoLabService({
-		getMainWindow: () => null,
+		getMainWindow,
 		sourceRoot: root,
 		resourcesPath: root,
 		userDataPath: path.join(root, "userdata"),
@@ -141,6 +144,7 @@ function fixture({
 		stageSources,
 		startProcess,
 		verifyServer,
+		getMainWindow,
 	};
 }
 
@@ -278,5 +282,83 @@ describe("body-photo dedicated service", () => {
 		await expect(reopening).resolves.toEqual({ opened: true });
 		expect(hosts).toHaveLength(2);
 		await service.close();
+	});
+	it("cancels a reopen that is still waiting for previous host cleanup", async () => {
+		let release = () => {};
+		const hostStopGate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const { service, hosts, windows } = fixture({ hostStopGate });
+		await service.open();
+		windows[0].destroy();
+		const reopening = service.open();
+		const cancelled = expect(reopening).rejects.toThrow("cancelled");
+		const closing = service.close();
+		release();
+		await closing;
+		await cancelled;
+		expect(hosts).toHaveLength(1);
+	});
+	it("does not launch a host when cancelled while creating its state directory", async () => {
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const mkdtemp = fs.mkdtemp.bind(fs);
+		let stateRoot: string | undefined;
+		vi.spyOn(fs, "mkdtemp").mockImplementation(async (...args) => {
+			const created = await mkdtemp(...args);
+			if (String(args[0]).includes("state-")) {
+				stateRoot = created as string;
+				await gate;
+			}
+			return created;
+		});
+		const { service, hosts, createWindow } = fixture();
+		const opening = service.open();
+		const cancelled = expect(opening).rejects.toThrow("cancelled");
+		await vi.waitFor(() => expect(stateRoot).toBeDefined());
+		await service.close();
+		release();
+		await cancelled;
+		expect(hosts).toHaveLength(0);
+		expect(createWindow).not.toHaveBeenCalled();
+		await expect(fs.stat(stateRoot as string)).rejects.toThrow();
+	});
+	it.each([
+		"opening",
+		"open",
+	] as const)("closes an %s laboratory when its main-window owner closes", async (phase) => {
+		let destroyed = false;
+		const owner = Object.assign(new EventEmitter(), {
+			isDestroyed: () => destroyed,
+		});
+		const { service, getMainWindow, hosts, windows, verifyServer } = fixture();
+		getMainWindow.mockReturnValue(owner as unknown as BrowserWindow);
+		let release = () => {};
+		if (phase === "opening") {
+			verifyServer.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						release = resolve;
+					})
+			);
+		}
+		const opening = service.open();
+		const outcome =
+			phase === "opening"
+				? expect(opening).rejects.toThrow("cancelled")
+				: expect(opening).resolves.toEqual({ opened: true });
+		await vi.waitFor(() => expect(verifyServer).toHaveBeenCalledOnce());
+		if (phase === "open") await outcome;
+		destroyed = true;
+		getMainWindow.mockReturnValue(null);
+		owner.emit("closed");
+		release();
+		await outcome;
+		await vi.waitFor(() => expect(hosts[0].stop).toHaveBeenCalled());
+		if (phase === "opening") expect(windows).toHaveLength(0);
+		else expect(windows[0].isDestroyed()).toBe(true);
+		expect(owner.listenerCount("closed")).toBe(0);
 	});
 });
