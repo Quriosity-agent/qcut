@@ -96,11 +96,21 @@ export function createBodyPhotoLabService({
 		| Promise<Awaited<ReturnType<typeof stageBodyPhotoSources>>>
 		| undefined;
 	let window: BrowserWindow | undefined;
+	let owner: BrowserWindow | undefined;
 	let host: BodyPhotoProcess | undefined;
 	let opening: Promise<{ opened: true }> | undefined;
 	let closing: Promise<void> | undefined;
 	let disposed = false;
 	let generation = 0;
+
+	function releaseOwner() {
+		owner?.removeListener("closed", onOwnerClosed);
+		owner = undefined;
+	}
+
+	function onOwnerClosed() {
+		void close().catch(() => {});
+	}
 
 	function stopProcesses({ targets }: { targets: BodyPhotoProcess[] }) {
 		const stopping = Promise.all([
@@ -229,6 +239,7 @@ export function createBodyPhotoLabService({
 		const wasOpen = Boolean(window || host || opening || processes.size);
 		const closingHost = host;
 		generation += 1;
+		releaseOwner();
 		if (window && !window.isDestroyed()) window.destroy();
 		window = undefined;
 		await stopProcesses({
@@ -253,8 +264,15 @@ export function createBodyPhotoLabService({
 			return Promise.resolve({ opened: true });
 		}
 		opening ??= (async () => {
-			if (closing) await closing;
 			const identity = generation;
+			const parent = getMainWindow();
+			if (parent?.isDestroyed())
+				throw new Error("Body-photo main-window owner is closed");
+			owner = parent ?? undefined;
+			owner?.once("closed", onOwnerClosed);
+			if (closing) await closing;
+			if (identity !== generation || disposed)
+				throw new Error("Body-photo operation cancelled");
 			const { runtime, sources } = await verifyRuntime();
 			if (identity !== generation)
 				throw new Error("Body-photo operation cancelled");
@@ -262,6 +280,10 @@ export function createBodyPhotoLabService({
 			const stateRoot = await fs.mkdtemp(
 				path.join(sessionRoot as string, "state-")
 			);
+			if (identity !== generation || disposed) {
+				await fs.rm(stateRoot, { recursive: true, force: true });
+				throw new Error("Body-photo operation cancelled");
+			}
 			const process = launch({
 				runtime,
 				bodyRoot: sources.bodyRoot,
@@ -300,12 +322,13 @@ export function createBodyPhotoLabService({
 					throw new Error("Body-photo operation cancelled");
 				const opened = await createWindow({
 					origin,
-					parent: getMainWindow(),
+					parent,
 					show,
 					onClosed: () => {
 						if (host !== process) return;
 						window = undefined;
 						host = undefined;
+						releaseOwner();
 						generation += 1;
 						void stopProcesses({ targets: [process] }).catch(() => {});
 					},
@@ -318,6 +341,7 @@ export function createBodyPhotoLabService({
 				void process.closed.then(() => {
 					if (host === process) {
 						host = undefined;
+						releaseOwner();
 						generation += 1;
 						void stopProcesses({ targets: [process] }).catch(() => {});
 					}
@@ -336,6 +360,7 @@ export function createBodyPhotoLabService({
 		void opening
 			.finally(() => {
 				opening = undefined;
+				if (!window) releaseOwner();
 			})
 			.catch(() => {});
 		return opening;
