@@ -25,6 +25,13 @@ import {
 } from "./body-photo-process.js";
 import { createBodyPhotoWindow } from "./body-photo-window.js";
 
+const READINESS_MAX_AGE_MS = 30_000;
+
+interface VerifiedRuntime {
+	runtime: BodyPhotoRuntime;
+	sources: Awaited<ReturnType<typeof stageBodyPhotoSources>>;
+}
+
 function checkServerIdentity({
 	origin,
 	instance,
@@ -102,6 +109,18 @@ export function createBodyPhotoLabService({
 	let closing: Promise<void> | undefined;
 	let disposed = false;
 	let generation = 0;
+	let readinessContext: string | undefined;
+	let readinessRevision = 0;
+	let readiness: { key: string; expiresAt: number } | undefined;
+	let pendingReadiness:
+		| { key: string; generation: number; promise: Promise<VerifiedRuntime> }
+		| undefined;
+
+	function invalidateReadiness() {
+		readiness = undefined;
+		pendingReadiness = undefined;
+		readinessRevision += 1;
+	}
 
 	function releaseOwner() {
 		owner?.removeListener("closed", onOwnerClosed);
@@ -177,45 +196,95 @@ export function createBodyPhotoLabService({
 		return process;
 	}
 
-	async function verifyRuntime({ selection }: { selection?: string } = {}) {
+	async function verifyRuntime({
+		selection,
+		reuseReadiness = false,
+	}: {
+		selection?: string;
+		reuseReadiness?: boolean;
+	} = {}): Promise<VerifiedRuntime> {
 		const identity = generation;
-		const chosen =
-			selection ??
-			environment.QCUT_BODY_PHOTO_RUNTIME ??
-			(await readBodyPhotoSelection({ settingsPath })) ??
-			path.join(userDataPath, "PrivateRuntimes", "BodyPhoto", "current");
-		const runtime = await resolveBodyPhotoRuntime({
-			selection: chosen,
-			pythonOverride: environment.QCUT_BODY_PHOTO_PYTHON,
-			platform,
-		});
-		const sources = await prepareSources();
-		if (disposed || identity !== generation)
-			throw new Error("Body-photo operation cancelled");
-		const verification = launch({
-			runtime,
-			bodyRoot: sources.bodyRoot,
-			arguments: ["--verify"],
-			replyType: "verified",
-		});
 		try {
-			const reply = await verification.reply;
-			if (reply.onnxruntime !== "1.22.1" || reply.verified !== true)
-				throw new Error(
-					"Body-photo Python or model verification did not match the pinned CPU runtime"
-				);
-			await verification.closed;
+			const chosen =
+				selection ??
+				environment.QCUT_BODY_PHOTO_RUNTIME ??
+				(await readBodyPhotoSelection({ settingsPath })) ??
+				path.join(userDataPath, "PrivateRuntimes", "BodyPhoto", "current");
+			const runtime = await resolveBodyPhotoRuntime({
+				selection: chosen,
+				pythonOverride: environment.QCUT_BODY_PHOTO_PYTHON,
+				platform,
+			});
+			const prepared = await prepareSources();
+			const sources = verifySources({ root: prepared.root });
+			const pythonTarget = await fs.realpath(runtime.python);
+			const pythonStat = await fs.stat(pythonTarget);
+			const key = JSON.stringify([
+				runtime.bundleRoot,
+				runtime.runtimeRoot,
+				runtime.python,
+				pythonTarget,
+				pythonStat.size,
+				pythonStat.mtimeMs,
+				pythonStat.ctimeMs,
+				sources.root,
+				sources.manifestSha256,
+			]);
 			if (disposed || identity !== generation)
 				throw new Error("Body-photo operation cancelled");
-			return { runtime, sources };
-		} finally {
-			await verification.stop();
+			if (readinessContext !== key) {
+				invalidateReadiness();
+				readinessContext = key;
+			}
+			// UI freshness never authorizes execution; open always performs its own verification.
+			if (reuseReadiness) {
+				if (readiness?.key === key && Date.now() < readiness.expiresAt)
+					return { runtime, sources };
+				if (
+					pendingReadiness?.key === key &&
+					pendingReadiness.generation === identity
+				)
+					return await pendingReadiness.promise;
+			}
+			const revision = readinessRevision;
+			const promise = (async () => {
+				const verification = launch({
+					runtime,
+					bodyRoot: sources.bodyRoot,
+					arguments: ["--verify"],
+					replyType: "verified",
+				});
+				try {
+					const reply = await verification.reply;
+					if (reply.onnxruntime !== "1.22.1" || reply.verified !== true)
+						throw new Error(
+							"Body-photo Python or model verification did not match the pinned CPU runtime"
+						);
+					await verification.closed;
+					if (disposed || identity !== generation)
+						throw new Error("Body-photo operation cancelled");
+					if (revision === readinessRevision)
+						readiness = { key, expiresAt: Date.now() + READINESS_MAX_AGE_MS };
+					return { runtime, sources };
+				} finally {
+					await verification.stop();
+				}
+			})();
+			pendingReadiness = { key, generation: identity, promise };
+			try {
+				return await promise;
+			} finally {
+				if (pendingReadiness?.promise === promise) pendingReadiness = undefined;
+			}
+		} catch (error) {
+			invalidateReadiness();
+			throw error;
 		}
 	}
 
 	async function inspect(): Promise<BodyPhotoLabStatus> {
 		try {
-			const { sources } = await verifyRuntime();
+			const { sources } = await verifyRuntime({ reuseReadiness: true });
 			return {
 				available: true,
 				provider: BODY_PHOTO_PROVIDER,
@@ -340,6 +409,7 @@ export function createBodyPhotoLabService({
 				window = opened;
 				void process.closed.then(() => {
 					if (host === process) {
+						invalidateReadiness();
 						host = undefined;
 						releaseOwner();
 						generation += 1;
@@ -356,7 +426,10 @@ export function createBodyPhotoLabService({
 				await stopProcesses({ targets: [process] });
 				throw error;
 			}
-		})();
+		})().catch((error) => {
+			invalidateReadiness();
+			throw error;
+		});
 		void opening
 			.finally(() => {
 				opening = undefined;
@@ -378,6 +451,7 @@ export function createBodyPhotoLabService({
 			throw new Error(
 				"Clear the body-photo environment overrides before choosing a local runtime"
 			);
+		invalidateReadiness();
 		await close();
 		const { runtime } = await verifyRuntime({ selection });
 		await saveBodyPhotoSelection({
