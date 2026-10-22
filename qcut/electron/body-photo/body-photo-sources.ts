@@ -14,7 +14,7 @@ import path from "node:path";
 
 // Updated with the curated source manifest; source and manifest must change together.
 export const BODY_PHOTO_SOURCE_MANIFEST_SHA256 =
-	"d0e9c349bb1657f5960bd227815f432fa811f4f3335d5a547070f532dd11aa39";
+	"97efe9714c6546ca60df5d2dc70f271f2b27f077f4e2f8e13844616ba3f9b6c1";
 
 interface FileIdentity {
 	bytes: number;
