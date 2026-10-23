@@ -22,6 +22,7 @@ import {
 } from "./beauty-lab-independent-contract.js";
 import type { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
 import { createIndependentBeautyWorker } from "./beauty-lab-independent-worker.js";
+import { createIndependentCoreMLInspector } from "./beauty-lab-independent-coreml-inspector.js";
 import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
 import {
 	independentBeautyEnvironment,
@@ -216,7 +217,7 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime = verifyIndependentBeautyRuntime,
 	verifyEnvironment = verifyIndependentBeautyEnvironment,
 	createWorker = createIndependentBeautyWorker,
-	inspectCoreML = inspectIndependentCoreML,
+	inspectCoreML,
 	sessionsDirectory,
 }: {
 	engineRoot: string;
@@ -233,6 +234,11 @@ export function createBeautyLabIndependentProvider({
 	sessionsDirectory?: string;
 }) {
 	const worker = createWorker({
+		python,
+		engineRoot,
+		runtimeRoot,
+	});
+	const coremlInspector = createIndependentCoreMLInspector({
 		python,
 		engineRoot,
 		runtimeRoot,
@@ -315,13 +321,18 @@ export function createBeautyLabIndependentProvider({
 		return hash({ bytes: manifestBytes });
 	}
 	async function inspectProfile({ signal }: { signal?: AbortSignal } = {}) {
-		return inspectCoreML({
+		const options = {
 			engineRoot,
 			runtimeRoot,
 			python,
 			environment,
 			platform,
 			signal,
+		};
+		if (inspectCoreML) return inspectCoreML(options);
+		return coremlInspector.inspect({
+			...options,
+			sourceIdentity: await verifySources(),
 		});
 	}
 	async function inspect({
@@ -536,6 +547,7 @@ export function createBeautyLabIndependentProvider({
 				// advanced once the frame is in flight, and the result is cached.
 				const outcome = await worker.run({
 					request: {
+						outerRequestId: input.requestId,
 						image: path.join(directory, "input.png"),
 						request: path.join(directory, "request.json"),
 						output: path.join(directory, "owned.png"),
@@ -695,6 +707,7 @@ export function createBeautyLabIndependentProvider({
 		active?.controller.abort();
 		await active?.done;
 		await worker.dispose();
+		await coremlInspector.dispose();
 	}
 	return { inspect, inspectProfile, render, cancel, dispose };
 }
