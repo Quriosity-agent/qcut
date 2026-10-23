@@ -10,6 +10,7 @@ import * as canvasEffects from "@/lib/effects/effects-utils";
 import * as colorRendering from "@/lib/color/browser-color-rendering";
 import { NativePortraitSourceWindowError } from "@/lib/portrait/portrait-temporal-policy";
 import * as sourceEvidence from "@/lib/portrait/independent-source-evidence";
+import * as bodyVideo from "@/lib/portrait/independent-body-video";
 
 const effects = vi.hoisted(() => ({ enabled: true }));
 
@@ -204,6 +205,64 @@ afterEach(() => {
 });
 
 describe("independent portrait export failure", () => {
+	it("carries the saved CoreML profile and animated body values into the video sequence", async () => {
+		const { context } = fixture({ type: "video" });
+		const element = context.tracks[0].elements[0] as MediaElement;
+		element.portraitAdjustments = {
+			enabled: true,
+			engine: "independent",
+			bodyVideoProfile: "swing-coreml-v1",
+			values: { body_adjust_SlimBody: 20 },
+		};
+		const savedAdjustments = element.portraitAdjustments;
+		const resolveVisual = mediaProperties.resolveMediaKeyframes;
+		vi.spyOn(mediaProperties, "resolveMediaKeyframes").mockImplementation(
+			(arguments_) => ({
+				...resolveVisual(arguments_),
+				portraitAdjustments: {
+					...savedAdjustments,
+					values: { body_adjust_SlimBody: 60 },
+				},
+			})
+		);
+		vi.spyOn(bodyVideo, "independentBodyVideoCapability").mockResolvedValue(
+			true
+		);
+		const renderSequence = vi
+			.spyOn(bodyVideo, "renderIndependentBodyVideoFrame")
+			.mockResolvedValue(new Uint8Array(16).fill(255));
+		await renderFrame(context, 0.15);
+		expect(renderSequence).toHaveBeenCalledOnce();
+		expect(renderSequence).toHaveBeenCalledWith(
+			expect.objectContaining({
+				frame: expect.objectContaining({ frame: 5 }),
+				adjustments: expect.objectContaining({
+					bodyVideoProfile: "swing-coreml-v1",
+					values: { body_adjust_SlimBody: 60 },
+				}),
+			})
+		);
+		expect(provider).not.toHaveBeenCalled();
+	});
+
+	it("stops CoreML body export when the sequence path is unavailable", async () => {
+		const { context, ctx } = fixture({ type: "video" });
+		const element = context.tracks[0].elements[0] as MediaElement;
+		element.portraitAdjustments = {
+			enabled: true,
+			engine: "independent",
+			bodyVideoProfile: "swing-coreml-v1",
+			values: { body_adjust_SlimBody: 40 },
+		};
+		vi.spyOn(bodyVideo, "independentBodyVideoCapability").mockResolvedValue(
+			false
+		);
+		await expect(renderFrame(context, 0)).rejects.toThrow(/CoreML/);
+		expect(provider).not.toHaveBeenCalled();
+		expect(ctx.drawImage).not.toHaveBeenCalled();
+		expect(ctx.fillText).not.toHaveBeenCalled();
+	});
+
 	it("binds independent neighbor evidence to decoded PTS rather than the timeline sample clock", async () => {
 		const signal = new AbortController().signal;
 		const { context, decode } = fixture({ type: "video", signal });
