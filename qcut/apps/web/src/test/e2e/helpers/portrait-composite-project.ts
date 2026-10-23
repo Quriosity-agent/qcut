@@ -65,6 +65,7 @@ export interface CompositeSettings {
 	transitionSeconds: number;
 	fit: "cover" | "contain";
 	samples: number[];
+	captureEveryFrame?: boolean;
 }
 
 export const COMPOSITE_SETTINGS: CompositeSettings = {
@@ -97,6 +98,7 @@ export interface CompositeEvidenceWindow extends ReferenceWindow {
 		width: number;
 		height: number;
 		png: string;
+		rgbaSha256: string;
 	}) => Promise<void>;
 }
 
