@@ -83,6 +83,12 @@ export async function captureCoreMLBodyExecutionEvidence({
 	frames: number;
 }) {
 	const observation = await readBodyWorkerObservation({ app });
+	await mkdir(output, { recursive: true });
+	const observationFile = path.join(output, "worker-observation.json");
+	const observationBytes = Buffer.from(
+		`${JSON.stringify(observation, null, 2)}\n`
+	);
+	await writeFile(observationFile, observationBytes);
 	expect(observation.evidenceErrors).toEqual([]);
 	const executions = observation.executions.filter(
 		(item) => item.profile === COREML_BODY_PROFILE
@@ -114,7 +120,6 @@ export async function captureCoreMLBodyExecutionEvidence({
 			};
 			expect(journal.identity.profile).toBe(COREML_BODY_PROFILE);
 			expect(journal.identity.generation).toBe(journal.session);
-			await mkdir(output, { recursive: true });
 			const file = path.join(output, `${journal.session}.journal.json`);
 			await writeFile(file, bytes);
 			return {
@@ -137,6 +142,12 @@ export async function captureCoreMLBodyExecutionEvidence({
 		observationalReportCopies: true,
 		referenceRoutesInjected: false,
 		nativeParityVerified: false,
+		observation: {
+			file: observationFile,
+			sha256: createHash("sha256").update(observationBytes).digest("hex"),
+			outerRequests: observation.sequenceHistory.length,
+			workerAttempts: observation.workerHistory.length,
+		},
 		executions,
 		journals,
 		cpuPasses: routes.filter((item) => item.backend === "cpu").length,
