@@ -67,6 +67,69 @@ afterEach(() => {
 
 describe("independent portrait export preflight", () => {
 	it.each([
+		{ bodyVideo: true },
+		{
+			bodyVideo: true,
+			bodyVideoProfiles: {
+				"swing-coreml-v1": { available: false, message: "models missing" },
+			},
+		},
+		{
+			bodyVideo: false,
+			bodyVideoProfiles: {
+				"swing-coreml-v1": { available: true, message: "models ready" },
+			},
+		},
+	])("rejects an unavailable saved CoreML body profile before encoding: %j", async (profile) => {
+		inspectIndependent.mockResolvedValueOnce({
+			available: true,
+			provider: "qcut-independent-photo-v1",
+			message: "ready",
+			controls: ["body_adjust_SlimBody"],
+			makeupCards: [],
+			...profile,
+		});
+		await expect(
+			prepareIndependentPortraitExport({
+				width: 1080,
+				height: 1920,
+				tracks: tracks({
+					elements: [
+						clip({
+							name: "CoreML body",
+							portraitAdjustments: {
+								...independent,
+								bodyVideoProfile: "swing-coreml-v1",
+								values: { body_adjust_SlimBody: 40 },
+							},
+						}),
+					],
+				}),
+			})
+		).rejects.toThrow("片段「CoreML body」的 CoreML 视频美体不可用");
+	});
+
+	it("allows a saved CoreML preference when the edit only treats the face", async () => {
+		await expect(
+			prepareIndependentPortraitExport({
+				width: 1080,
+				height: 1920,
+				tracks: tracks({
+					elements: [
+						clip({
+							name: "Face only",
+							portraitAdjustments: {
+								...independent,
+								bodyVideoProfile: "swing-coreml-v1",
+							},
+						}),
+					],
+				}),
+			})
+		).resolves.toEqual({ clips: 1 });
+	});
+
+	it.each([
 		{ width: 0, height: 1080 },
 		{ width: 1920, height: Number.NaN },
 		{ width: 1920.5, height: 1080 },
