@@ -5,7 +5,12 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { inspectBodyPlaybackCache } from "./helpers/body-playback-cache-evidence";
+import {
+	expectSegmentedWindow,
+	inspectSegmentedSequenceCache,
+	settleSegmentedFrame,
+	waitForSegmentedFrame,
+} from "./helpers/body-segmented-playback-evidence";
 import {
 	expectBodyPlaybackTiming,
 	measurePreparedBodyPlaybackTiming,
@@ -24,7 +29,6 @@ import {
 	finishBodyPlaybackEvidence,
 	installBodyPlaybackEvidence,
 	playPreparedBodyClip,
-	waitForEffectPlaybackReady,
 } from "./helpers/body-playback-evidence";
 import {
 	installBodyWorkerObserver,
@@ -38,7 +42,10 @@ import {
 	seek,
 	setBodyValues,
 } from "./helpers/independent-body-video-helpers";
-import { preparePortraitReferenceProject } from "./helpers/portrait-reference";
+import {
+	preparePortraitReferenceProject,
+	type ReferenceWindow,
+} from "./helpers/portrait-reference";
 import {
 	COREML_BODY_PROFILE,
 	requestedBodyVideoProfile,
@@ -174,6 +181,16 @@ test("independent body: prepared continuous playback matches export and rejects 
 		await setBodyValues({ page, values: BODY_CLOSE_VALUES });
 		await changeSlimBody({ page, value: 55 });
 		await changeSlimBody({ page, value: 40 });
+		const projectTiming = await page.evaluate(() => {
+			const stores = window as unknown as ReferenceWindow;
+			return {
+				fps: stores.__projectStore.getState().activeProject?.fps,
+				duration: stores.__timelineStore.getState().getTotalDuration(),
+			};
+		});
+		evidence.projectTiming = projectTiming;
+		expect(projectTiming.fps).toBe(FPS);
+		expect(Math.ceil(projectTiming.duration * FPS - 1e-6)).toBe(FRAMES);
 		const status = page.getByTestId("effect-playback-status");
 		const canvas = page.getByTestId("effect-playback-canvas");
 		const sample = async ({ label }: { label: string }) => {
@@ -202,17 +219,32 @@ test("independent body: prepared continuous playback matches export and rejects 
 			await persist();
 		};
 		const prepare = async () => {
+			await seek({ page, frame: 0, fps: FPS });
 			const started = Date.now();
 			await page.getByTestId("prepare-effect-playback").click();
-			const generation = await waitForEffectPlaybackReady({ page });
-			expect(Number(await status.getAttribute("data-completed"))).toBe(FRAMES);
-			expect(Number(await status.getAttribute("data-total"))).toBe(FRAMES);
+			const window = await waitForSegmentedFrame({ page, frame: 0 });
+			expectSegmentedWindow({ status: window, total: FRAMES });
+			if (!window.generation) throw new Error("Missing playback generation");
 			return {
-				generation,
+				...window,
+				generation: window.generation,
 				milliseconds: Date.now() - started,
-				sessionId: await status.getAttribute("data-session-id"),
 			};
 		};
+		const settleWindow = ({
+			frame,
+			generation,
+		}: {
+			frame: number;
+			generation: string;
+		}) =>
+			settleSegmentedFrame({
+				page,
+				frame,
+				generation,
+				frames: FRAMES,
+				fps: FPS,
+			});
 		const play = async ({
 			stage,
 			reference,
@@ -222,6 +254,7 @@ test("independent body: prepared continuous playback matches export and rejects 
 			reference: string;
 			generation: string;
 		}) => {
+			await settleWindow({ frame: 0, generation });
 			const before = await readBodyWorkerObservation({ app });
 			await sample({ label: `${stage}-before` });
 			const capture = await playPreparedBodyClip({
@@ -232,6 +265,14 @@ test("independent body: prepared continuous playback matches export and rejects 
 			});
 			await sample({ label: `${stage}-after` });
 			await page.screenshot({ path: path.join(output, `${stage}-ui.png`) });
+			const after = await readBodyWorkerObservation({ app });
+			const report = {
+				...capture,
+				workerCompletedBefore: before.completed,
+				workerCompletedAfter: after.completed,
+			};
+			evidence[stage] = report;
+			await persist();
 			const metrics = expectPlaybackPixels({
 				capture,
 				reference: exportStages[reference],
@@ -239,16 +280,11 @@ test("independent body: prepared continuous playback matches export and rejects 
 				frames: FRAMES,
 				fps: FPS,
 			});
-			const after = await readBodyWorkerObservation({ app });
 			expect(
 				after.completed,
 				"Prepared playback must not render body frames"
 			).toBe(before.completed);
-			evidence[stage] = {
-				...metrics,
-				workerCompletedBefore: before.completed,
-				workerCompletedAfter: after.completed,
-			};
+			Object.assign(report, metrics);
 			await persist();
 		};
 
@@ -259,6 +295,7 @@ test("independent body: prepared continuous playback matches export and rejects 
 			stage: string;
 			generation: string;
 		}) => {
+			await settleWindow({ frame: 0, generation });
 			const before = await readBodyWorkerObservation({ app });
 			const capture = await measurePreparedBodyPlaybackTiming({
 				page,
@@ -284,9 +321,11 @@ test("independent body: prepared continuous playback matches export and rejects 
 		await page.screenshot({
 			path: path.join(output, "baseline-prepared-ui.png"),
 		});
-		evidence.baselineCache = await inspectBodyPlaybackCache({
+		evidence.baselineCache = await inspectSegmentedSequenceCache({
 			page,
-			sessionId: initial.sessionId,
+			frames: FRAMES,
+			fps: FPS,
+			generation: initial.generation,
 			reference: exportStages.baseline,
 		});
 		checks.all_cached_frames_match_export = true;
@@ -312,8 +351,7 @@ test("independent body: prepared continuous playback matches export and rejects 
 		await [FRAMES - 2, 1, Math.floor(FRAMES / 2)].reduce(
 			async (previous, frame) => {
 				await previous;
-				await seek({ page, frame, fps: FPS });
-				await expect(canvas).toHaveAttribute("data-frame", String(frame));
+				await settleWindow({ frame, generation: initial.generation });
 			},
 			Promise.resolve()
 		);
@@ -331,15 +369,25 @@ test("independent body: prepared continuous playback matches export and rejects 
 		const cancelPending = async ({
 			reason,
 			action,
+			replacement = false,
 		}: {
 			reason: string;
 			action: () => Promise<void>;
+			replacement?: boolean;
 		}) => {
 			const before = await readBodyWorkerObservation({ app });
 			const pending = await waitForInFlightBodyFrame({ app, minimumFrame: 1 });
+			const obsoleteGeneration = await status.getAttribute("data-generation");
+			if (!obsoleteGeneration)
+				throw new Error("Missing obsolete playback generation");
 			await armBodyPlaybackEvidence({ page, stage: reason });
 			await action();
-			await expect(status).toHaveAttribute("data-status", "idle");
+			if (!replacement)
+				await expect(status).toHaveAttribute("data-status", "idle");
+			await expect(status).not.toHaveAttribute(
+				"data-generation",
+				obsoleteGeneration
+			);
 			await expect(canvas).toBeHidden();
 			await expect
 				.poll(
@@ -374,27 +422,35 @@ test("independent body: prepared continuous playback matches export and rejects 
 					{ timeout: 30_000 }
 				)
 				.toBe(false);
-			await expect(status).toHaveAttribute("data-status", "idle");
+			if (!replacement)
+				await expect(status).toHaveAttribute("data-status", "idle");
 			const obsolete = await finishBodyPlaybackEvidence({ page });
 			expect(obsolete.errors).toEqual([]);
-			expect(obsolete.frames).toEqual([]);
+			const lateObsolete = obsolete.frames.filter(
+				({ generation }) => generation === obsoleteGeneration
+			);
+			expect(lateObsolete).toEqual([]);
+			if (!replacement) expect(obsolete.frames).toEqual([]);
 			evidence[reason] = {
 				pending,
+				obsoleteGeneration,
 				cancellations,
 				inFlight,
-				latePresentedFrames: obsolete.frames.length,
+				lateObsoletePresentedFrames: lateObsolete.length,
+				observedPresentedFrames: obsolete.frames.length,
 			};
 			await persist();
 		};
 		await changeSlimBody({ page, value: 55 });
-		await expect(status).toHaveAttribute("data-status", "idle");
-		await expect(canvas).toBeHidden();
-		await page.getByTestId("prepare-effect-playback").click();
 		await expect(status).toHaveAttribute("data-status", "preparing");
+		await expect(canvas).toBeHidden();
 		await cancelPending({
 			reason: "parameter-invalidation",
 			action: () => changeSlimBody({ page, value: 60 }),
+			replacement: true,
 		});
+		await page.getByTestId("cancel-effect-playback").click();
+		await expect(status).toHaveAttribute("data-status", "idle");
 		checks.parameter_change_cancels_pending_and_hides_old_effect = true;
 
 		await changeSlimBody({ page, value: 55 });
@@ -422,9 +478,11 @@ test("independent body: prepared continuous playback matches export and rejects 
 			path: path.join(output, "changed-prepared-ui.png"),
 		});
 		expect(changed.generation).not.toBe(initial.generation);
-		evidence.changedCache = await inspectBodyPlaybackCache({
+		evidence.changedCache = await inspectSegmentedSequenceCache({
 			page,
-			sessionId: changed.sessionId,
+			frames: FRAMES,
+			fps: FPS,
+			generation: changed.generation,
 			reference: exportStages.changed,
 		});
 		await play({
