@@ -35,8 +35,7 @@ class BodySkeletonSequence:
         mode = int(box is not None)
         plan = {'mode': mode}
         if mode == 0:
-            tensor, _ = skeleton005_auto(rgb)
-            outputs = self.networks.infer(tensor=tensor[None], network='coarse')
+            tensor, outputs = self._coarse(rgb=rgb)
             heat = heatmaps(outputs['heatmap_output_0'])
             paf = heatmaps(outputs['vectormap_output_0'])
             th, tw = tensor.shape[:2]
@@ -48,8 +47,7 @@ class BodySkeletonSequence:
         else:
             layout, roi = crop_layout_and_roi(box)
             plan.update(bbox=box, layout=layout, roi=roi, body_scale=max(box[2:]))
-            tensor = refine_tensor(rgb, box)
-            outputs = self.networks.infer(tensor=tensor[None], network='refine')
+            tensor, outputs = self._refine(rgb=rgb, box=box)
             points = refine_pose(heatmaps(outputs['output_0']), roi, self.points, max(box[2:]))
             if not any(point[3] for point in points):
                 points = None
@@ -68,6 +66,21 @@ class BodySkeletonSequence:
         return {'coords': joints['points'], 'visibility': joints['visibility'],
                 'sdkPoints': np.asarray(reported, np.float32)}
 
+    def _coarse(self, *, rgb):
+        tensor, _ = skeleton005_auto(rgb)
+        return tensor, self.networks.infer(tensor=tensor[None], network='coarse')
+
+    def _refine(self, *, rgb, box):
+        tensor = refine_tensor(rgb, box)
+        return tensor, self.networks.infer(tensor=tensor[None], network='refine')
+
 
 def heatmaps(output):
-    return (output[0].transpose(2, 0, 1).astype(np.float32) / np.float32(1024)).tolist()
+    if (not isinstance(output, np.ndarray) or output.ndim != 4 or output.shape[0] != 1
+            or output.dtype not in (np.dtype('int16'), np.dtype('float32'))
+            or not output.size or not np.isfinite(output).all()):
+        raise ValueError('finite int16 or float32 NHWC body output required')
+    values = output[0].transpose(2, 0, 1).astype(np.float32)
+    if output.dtype == np.int16:
+        values /= np.float32(1024)
+    return values.tolist()
