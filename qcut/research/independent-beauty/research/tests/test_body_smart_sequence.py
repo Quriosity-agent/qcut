@@ -1,6 +1,7 @@
 """A persistent render chain must not advance twice or survive an incomplete frame."""
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -8,6 +9,35 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import body_smart_sequence as module
+
+
+class BodySequenceInitialization(unittest.TestCase):
+    def test_failed_initialization_retries_without_retaining_partial_parts(self):
+        for swing in (False, True):
+            for failing_part in ('face', 'composition'):
+                with self.subTest(swing=swing, failing_part=failing_part):
+                    engine = module.BodySmartSequence(runtime=Path('/unused-runtime'))
+                    skeleton, face, composition = Mock(), Mock(), Mock()
+                    if swing:
+                        engine._execution = SimpleNamespace(reset=Mock(), create_skeleton=Mock(return_value=skeleton))
+                    failure = ValueError('assets unavailable')
+                    with patch.object(module, 'load_networks', return_value=Mock()), \
+                            patch.object(module, 'BodySkeletonSequence', return_value=skeleton), \
+                            patch.object(module, 'BodyVideoFaceSequence',
+                                         side_effect=[failure, face] if failing_part == 'face' else [face, face]) as faces, \
+                            patch('body_composition.native_video.NativeVideoBody',
+                                  side_effect=[failure, composition] if failing_part == 'composition' else [composition]):
+                        with self.assertRaisesRegex(ValueError, 'assets unavailable'):
+                            engine.restart()
+                        self.assertEqual((engine.skeleton, engine.face, engine.composition), (None, None, None))
+                        engine.restart()
+                        self.assertIs(engine.skeleton, skeleton)
+                        self.assertIs(engine.face, face)
+                        self.assertIs(engine.composition, composition)
+                        engine.restart()
+                        self.assertEqual(faces.call_count, 2)
+                        for part in (skeleton, face, composition):
+                            part.reset.assert_called_once()
 
 
 class BodySequenceContract(unittest.TestCase):
