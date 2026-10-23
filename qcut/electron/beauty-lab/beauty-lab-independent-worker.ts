@@ -45,6 +45,8 @@ interface WorkerRequest {
 		frame: number;
 		timestamp: number;
 		checkpoints: string;
+		executionProfile?: "swing-coreml-v1";
+		executionGeneration?: string;
 	};
 }
 
