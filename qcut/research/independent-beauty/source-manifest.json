@@ -2379,8 +2379,8 @@
 		},
 		{
 			"path": "research/independent_sequence_sessions.py",
-			"bytes": 14652,
-			"sha256": "e68ba06fe5b77fc17cff16fe8f412b36b1e0a7c955edda5e168e5ca4471da6d0"
+			"bytes": 15644,
+			"sha256": "f61e22d07c2bbdcdf664b6cf1fc3ae62a6d3cf82a1b3ea63a99437fc81e7f3e3"
 		},
 		{
 			"path": "research/tests/test_body_sequence_checkpoint.py",
@@ -2389,8 +2389,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_sequence_sessions.py",
-			"bytes": 11893,
-			"sha256": "3f83f0da359f52772a974ae56ad915a40fd1e9057b4ac9452e5e144e5f6a1dbe"
+			"bytes": 13787,
+			"sha256": "3af442a319ea376201d95de67422b12ba84139fe322a82fcc35146e593d1843c"
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
@@ -2674,8 +2674,8 @@
 		},
 		{
 			"path": "research/tests/test_body_execution_sessions.py",
-			"bytes": 10047,
-			"sha256": "84e89e68f2740bdf6c78e077d62f515097629641e9d1adfe94a72573ee0ef4f0"
+			"bytes": 13142,
+			"sha256": "9296372cf38d61704bdad88e349a8e59aa59db9ffe94e1355a02cc7c23e5bb9c"
 		},
 		{
 			"path": "research/tests/test_body_execution_sources.py",
