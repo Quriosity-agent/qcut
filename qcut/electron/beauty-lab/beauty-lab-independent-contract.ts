@@ -112,6 +112,8 @@ export interface BeautyLabIndependentSequence {
 	clip: string;
 	frame: number;
 	fps: number;
+	/** CoreML's graph clock follows decoded source PTS, including repeated samples. */
+	sourceTimestampSeconds?: number;
 	/** Rebuilds history after a "replay" result: the cache is skipped so the engine advances. */
 	replay: boolean;
 }
