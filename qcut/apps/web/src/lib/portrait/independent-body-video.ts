@@ -61,6 +61,20 @@ export function resetIndependentBodyVideoCapability() {
 }
 
 /** A video clip whose independent edit moves the body: its frames share one history. */
+export function hasIndependentBodyVideoAdjustments({
+	adjustments,
+}: {
+	adjustments?: MediaPortraitAdjustments;
+}) {
+	return Boolean(
+		adjustments?.enabled &&
+			adjustments.engine === "independent" &&
+			Object.entries(adjustments.values).some(
+				([key, value]) => key.startsWith("body_adjust_") && (value ?? 0) !== 0
+			)
+	);
+}
+
 export function independentBodyVideoApplies({
 	adjustments,
 	mediaType,
@@ -71,15 +85,11 @@ export function independentBodyVideoApplies({
 	fps: number;
 }) {
 	return Boolean(
-		adjustments?.enabled &&
-			adjustments.engine === "independent" &&
+		hasIndependentBodyVideoAdjustments({ adjustments }) &&
 			mediaType === "video" &&
 			Number.isFinite(fps) &&
 			fps >= INDEPENDENT_BODY_VIDEO_MIN_FPS &&
-			fps <= INDEPENDENT_BODY_VIDEO_MAX_FPS &&
-			Object.entries(adjustments.values).some(
-				([key, value]) => key.startsWith("body_adjust_") && (value ?? 0) !== 0
-			)
+			fps <= INDEPENDENT_BODY_VIDEO_MAX_FPS
 	);
 }
 
