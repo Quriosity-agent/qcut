@@ -1,27 +1,26 @@
 ---
-version: "2026.10.21.1"
-date: "2026-10-21"
+version: "2026.10.23.1"
+date: "2026-10-23"
 channel: "stable"
 ---
 
-# QCut v2026.10.21.1
+# QCut v2026.10.23.1
 
 ### Improved
-- Effect playback prepares bounded segments around the playhead, retaining the previous, current and next windows instead of requiring the whole timeline to fit in the preview cache. Seeking reprioritizes work; parameter edits hide stale frames and automatically rebuild the current window.
-- Native body rendering reuses verified source-window frames while preserving the existing pre-roll and tracking rules. Independent rendering retains its checkpoint and replay history. Segment boundaries introduce no additional tracking resets.
+- Beauty Lab opens the standalone V3 CPU photo editor in its own Electron window, with 21 still-photo body controls, local shaping, background protection, automatic/manual glute contours, before-and-after comparisons and original-size PNG export.
+- The independent Python API and resident worker offer an explicit macOS `swing-coreml-v1` execution profile. Separate resident coarse/refine hosts follow the pinned native per-detector CPU-to-CoreML readiness rules, cold-start refinement, two graph updates per source frame and parameter timing between updates.
+- Completed frames record the engine's own backend decisions for replay and checkpoint recovery. Checkpoint identities bind the execution generation, source closure, external models, helper and system/backend configuration.
 
 ### Fixed
-- Cancelling preparation prevents late frames from being presented and supports a clean restart. Export suspends background prefetch, while unchanged clips can reuse eligible backend frames after edits elsewhere.
-- Accepted video-face points outside the image retain native float32 coordinates instead of being clipped or rejected by the photo-only bounds check.
-- Valid independent PNGs whose compressed bytes contain an SVG marker now decode correctly without weakening integrity checks. Native disk caching retries its lease after transient contention instead of remaining disabled.
+- Photo-window cancellation, stale results, renderer crashes, close and reopen preserve process ownership and prevent an outdated render from replacing the current edit.
+- In-memory snapshots and active video-engine state are scoped to their session, execution profile/generation and checkpoint directory, preventing one batch or directory from reusing another history. Failed initialization and incomplete frames cannot become reusable completed state; activated CoreML fails explicitly instead of silently falling back to CPU.
 
 ### Verified
-- PR #516 passed Windows, macOS and Linux CI. Native and independent 1080 x 1920 editor runs each passed all 13 acceptance gates, including parameter changes, forward/backward seeking, in-flight cancellation and recovery.
-- Each engine's 720 cached frames matched its own pre-encode export RGBA exactly. The observed playback frames also matched: 719 native and 717 independent. All 360 edited-clip cached frames matched the changed export; the unchanged clip retained identical export pixels.
-- Cumulative preview PNG output exceeded 2.55 GB while sampled active preview storage stayed below 698 MB. Three locations on a six-clip 72-second timeline passed sparse pixel and cache-bound checks. The native baseline retained identical raw RGBA hashes across all 720 frames before and after the cache fixes.
+- PR #518 passed Windows, macOS and Linux CI. The full independent Python suite ran 1,050 tests with 9 explicit private-fixture skips and no failures; targeted regressions include execution and checkpoint-directory isolation.
+- Photo acceptance includes 40 real-image comparisons with identical PNG and RGBA against standalone V3, plus real Electron import, render, export, cancellation and crash/reopen checks. This establishes standalone parity for the tested photos.
+- Three matched native/independent backend histories each produced four identical 1080 x 1920 RGBA frames, using three unique source images and documented scheduling waits. Separately, 32 consecutive source-rate frames (about 1.33 seconds) matched the independent engine's own replay on 32/32 frames and checkpoint recovery on 16/16. Real helper termination and in-flight cancellation recovered identical output.
 
 ### Limitations
-- Native and independent outputs still differ visibly. Initial inference remains slower than real time; this release does not establish arbitrary continuous Jianying-history equivalence.
-- The 72-second checks are sparse samples, not a complete long-video export. Long-term process memory growth, broader multi-person footage and unrestricted audio/video synchronization remain unverified.
-- Two Minor performance follow-ups remain deferred. Automated reviews did not cover every final commit: CodeRabbit paused and Devin skipped for unavailable credits.
-- Private beauty model weights, original native libraries and local research captures remain external and are not added by this release.
+- The 21 added photo controls remain still-photo controls. The new CoreML profile is opt-in at the Python/worker boundary; the editor keeps its existing warm CPU default. UI selection, project-persisted execution generations and this profile's full editor preview/export acceptance remain pending.
+- Matched backend histories do not establish equal asynchronous startup timing: the natural independent run still differs from the unmodified native schedule. The 32-frame test adds self-consistency evidence, not further native parity. Real-time throughput, long videos, broad multi-person/occlusion coverage and Windows/Linux CoreML parity remain unverified.
+- Original private model weights remain external dependencies. The new host uses owned code and Apple system CoreML without loading Jianying libraries; private models, native libraries, compiled research helpers and captured validation assets are not added by this release.
