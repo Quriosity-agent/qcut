@@ -5,6 +5,53 @@ import {
 } from "../portrait-adjustments.js";
 
 describe("media portrait adjustments", () => {
+	it("preserves the explicit body video profile through project serialization", () => {
+		const selected = {
+			enabled: true,
+			engine: "independent" as const,
+			values: { body_adjust_SlimWaist: 35 },
+			bodyVideoProfile: "swing-coreml-v1" as const,
+		};
+		const reopened = normalizeMediaPortraitAdjustments({
+			adjustments: JSON.parse(JSON.stringify(selected)),
+		});
+		expect(reopened).toEqual(selected);
+		expect(
+			normalizeMediaPortraitAdjustments({ adjustments: reopened })
+		).toEqual(selected);
+	});
+
+	it("keeps legacy warm projects unchanged and rejects unknown body video profiles", () => {
+		const legacy = {
+			enabled: true,
+			engine: "independent" as const,
+			values: { body_adjust_SlimBody: 40 },
+		};
+		expect(
+			JSON.stringify(normalizeMediaPortraitAdjustments({ adjustments: legacy }))
+		).toBe(JSON.stringify(legacy));
+		expect(
+			normalizeMediaPortraitAdjustments({
+				adjustments: { ...legacy, bodyVideoProfile: undefined },
+			})
+		).toEqual(legacy);
+		for (const bodyVideoProfile of [
+			"automatic",
+			"bef-cpu-warm-v1",
+			"",
+			null,
+			42,
+		]) {
+			expect(() =>
+				normalizeMediaPortraitAdjustments({
+					adjustments: JSON.parse(
+						JSON.stringify({ ...legacy, bodyVideoProfile })
+					),
+				})
+			).toThrow("Unknown portrait body video profile");
+		}
+	});
+
 	it("round-trips every new nose and brow key including per-face values", () => {
 		const keys = [
 			"face_adjust_MaShengNose",
