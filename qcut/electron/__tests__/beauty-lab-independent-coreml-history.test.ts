@@ -185,7 +185,13 @@ describe("CoreML cache/history integration", () => {
 				values: { body_adjust_SlimBody: 25 },
 				bodyVideoProfile: "swing-coreml-v1" as const,
 			},
-			sequence: { clip: "c".repeat(64), frame: 0, fps: 24, replay: false },
+			sequence: {
+				clip: "c".repeat(64),
+				frame: 0,
+				fps: 24,
+				replay: false,
+				sourceTimestampSeconds: 0,
+			},
 		};
 		const selected = independentBodyVideoSession({
 			engineSha256: resources,
