@@ -2701,6 +2701,16 @@
 			"path": "research/tests/test_body_swing_skeleton.py",
 			"bytes": 3596,
 			"sha256": "1faa6d19d00b43442ad1e4abf2493c81e9f8bb1240106474dc2de03297967116"
+		},
+		{
+			"path": "research/body_coreml_capability.py",
+			"bytes": 2100,
+			"sha256": "11c6322dc7296e2bef711013f76a7f7bc4d2a694680d54775fcbe29cb6ada928"
+		},
+		{
+			"path": "research/tests/test_body_coreml_capability.py",
+			"bytes": 3514,
+			"sha256": "c8ff67afa8ef9d3fc9a396d2c17f17f8ca0ea0075945010ce70182685c8bebcc"
 		}
 	],
 	"importPatches": [
@@ -3557,6 +3567,13 @@
 				"research/tests/test_independent_worker.py"
 			],
 			"reason": "Add the explicit swing-coreml-v1 body-video profile and retain bef-cpu-warm-v1 as the omitted default. The opt-in uses externally supplied pinned CoreML models with an owned system-only resident host, polls readiness separately before each detector crop, preserves the one-time cold refine and two graph updates per source frame, and records completed own routes for deterministic replay. Bind version-6 checkpoints and route journals to generation, backend/model/helper/system identities and the actual owned-source closure; retain warm version-5 checkpoints. Reject input or route forks, partial frames and incompatible histories, close resident helpers on worker exit, and publish initialized components atomically. Tests cover lifecycle failures, model validation, readiness routing, checkpoint identity, journal concurrency, source membership and existing warm behavior. No private models, native vendor libraries, captured inputs or frozen PHOTO closure changes are included."
+		},
+		{
+			"files": [
+				"research/body_coreml_capability.py",
+				"research/tests/test_body_coreml_capability.py"
+			],
+			"reason": "Validate the editor opt-in CoreML execution before cached frames are served. Reuse the real Swing execution identity without starting inference, validate the pinned external coarse/refine resources and owned system helper, omit per-session generation from the capability identity, and bind the system hardware and Python versions. Tests cover capability resources, helper integrity and cleanup. No models, native runtime assets or reference inference data are included."
 		}
 	],
 	"sourceWorkingTreeStatus": [
