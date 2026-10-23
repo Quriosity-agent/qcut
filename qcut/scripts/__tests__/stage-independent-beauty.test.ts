@@ -69,6 +69,23 @@ describe("independent owned-source staging", () => {
 			readFileSync(path.join(value.outputRoot, value.file.path), "utf8")
 		).toContain("owned source");
 	});
+	it("stages a hash-pinned Objective-C++ host source without its compiled host", () => {
+		const value = fixture();
+		const entry = { ...value.file, path: "research/body_coreml_host.mm" };
+		writeFileSync(
+			path.join(value.sourceRoot, entry.path),
+			readFileSync(path.join(value.sourceRoot, value.file.path))
+		);
+		writeFileSync(
+			path.join(value.sourceRoot, "research/body_coreml_host"),
+			"binary"
+		);
+		value.manifest({ entry });
+		expect(stageIndependentBeauty(value).files).toBe(1);
+		expect(readdirSync(path.join(value.outputRoot, "research"))).toEqual([
+			"body_coreml_host.mm",
+		]);
+	});
 	it("removes stale unpinned artifacts from generated output", () => {
 		const value = fixture();
 		stageIndependentBeauty(value);
