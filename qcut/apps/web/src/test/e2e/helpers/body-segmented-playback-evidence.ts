@@ -127,6 +127,72 @@ export function expectSegmentedWindow({
 	expect(status.cacheBytes).toBeLessThanOrEqual(status.cacheBudgetBytes);
 }
 
+export async function settleSegmentedFrame({
+	page,
+	frame,
+	fps,
+	frames,
+	generation,
+}: {
+	page: Page;
+	frame: number;
+	fps: number;
+	frames: number;
+	generation: string;
+}) {
+	await seek({ page, frame, fps });
+	const status = await waitForSegmentedFrame({
+		page,
+		frame,
+		generation,
+		settled: true,
+	});
+	expectSegmentedWindow({ status, total: frames });
+	return status;
+}
+
+/** Audit each segment before another target can evict its PNGs. */
+export async function inspectSegmentedSequenceCache({
+	page,
+	frames,
+	fps,
+	generation,
+	reference,
+}: {
+	page: Page;
+	frames: number;
+	fps: number;
+	generation: string;
+	reference: BodyOperationFrame[];
+}) {
+	const context = { page, frames, fps, generation };
+	const first = await settleSegmentedFrame({ ...context, frame: 0 });
+	const segments: Array<{
+		status: Awaited<ReturnType<typeof readSegmentedStatus>>;
+		cache: Awaited<ReturnType<typeof inspectSegmentedCache>>;
+	}> = [];
+	await Array.from(
+		{ length: Math.ceil(frames / first.segmentFrames) },
+		(_, index) => index * first.segmentFrames
+	).reduce(async (previous, start) => {
+		await previous;
+		const status = await settleSegmentedFrame({ ...context, frame: start });
+		const cache = await inspectSegmentedCache({
+			page,
+			status,
+			start,
+			end: Math.min(frames, start + first.segmentFrames),
+			reference,
+		});
+		segments.push({ status, cache });
+	}, Promise.resolve());
+	const hashes = segments.flatMap(({ cache }) => cache.hashes);
+	expect(hashes.map(({ frame }) => frame)).toEqual(
+		Array.from({ length: frames }, (_, frame) => frame)
+	);
+	return { sessionId: first.sessionId, frames: hashes, segments };
+}
+
 /** Reads actual OPFS files; only one inspection bitmap/RGBA copy exists at once. */
 export async function inspectSegmentedCache({
 	page,
