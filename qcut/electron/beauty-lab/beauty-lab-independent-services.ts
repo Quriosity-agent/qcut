@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { createBeautyLabIndependentProvider } from "./beauty-lab-independent.js";
 import { createIndependentSequenceFrameRenderer } from "./beauty-lab-independent-body-video.js";
@@ -39,20 +40,20 @@ export function createIndependentBeautyServices({
 		"Cache",
 		"independent-beauty-sessions"
 	);
-	const independentProvider = createIndependentRenderQueue({
-		provider: createBeautyLabIndependentProvider({
-			engineRoot,
-			sessionsDirectory,
-			runtimeRoot:
-				environment.QCUT_INDEPENDENT_BEAUTY_RUNTIME ??
-				(isPackaged ? installedRuntime : path.join(engineRoot, "runtime")),
-			python:
-				environment.QCUT_INDEPENDENT_BEAUTY_PYTHON ??
-				(isPackaged
-					? path.join(installedRuntime, ".venv/bin/python")
-					: path.join(engineRoot, "research/.venv/bin/python")),
-		}),
+	const provider = createBeautyLabIndependentProvider({
+		environment,
+		engineRoot,
+		sessionsDirectory,
+		runtimeRoot:
+			environment.QCUT_INDEPENDENT_BEAUTY_RUNTIME ??
+			(isPackaged ? installedRuntime : path.join(engineRoot, "runtime")),
+		python:
+			environment.QCUT_INDEPENDENT_BEAUTY_PYTHON ??
+			(isPackaged
+				? path.join(installedRuntime, ".venv/bin/python")
+				: path.join(engineRoot, "research/.venv/bin/python")),
 	});
+	const independentProvider = createIndependentRenderQueue({ provider });
 	const cache = createIndependentFrameCache({
 		directory: path.join(userDataPath, "Cache", "independent-beauty-frames"),
 	});
@@ -67,6 +68,23 @@ export function createIndependentBeautyServices({
 		cache,
 		engineSha256,
 		sessionsDirectory,
+		resolveCoreML: async ({ signal }) => {
+			const status = await provider.inspect({ signal, includeProfiles: false });
+			signal.throwIfAborted();
+			if (!status.available || !status.bodyVideo)
+				throw new Error(status.message);
+			const profile = await provider.inspectProfile({ signal });
+			if (!profile.available) throw new Error(profile.message);
+			return {
+				identitySha256: profile.identitySha256,
+				execution: profile.identity.execution,
+				engineSha256: createHash("sha256")
+					.update(await engineSha256())
+					.update("\0")
+					.update(profile.identitySha256)
+					.digest("hex"),
+			};
+		},
 	});
 	return { independentProvider, independentFrames, independentSequenceFrames };
 }
