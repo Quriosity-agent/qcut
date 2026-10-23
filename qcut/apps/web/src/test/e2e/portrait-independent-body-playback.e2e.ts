@@ -39,8 +39,16 @@ import {
 	setBodyValues,
 } from "./helpers/independent-body-video-helpers";
 import { preparePortraitReferenceProject } from "./helpers/portrait-reference";
+import {
+	COREML_BODY_PROFILE,
+	requestedBodyVideoProfile,
+	selectCoreMLBodyProfile,
+	captureCoreMLBodyExecutionEvidence,
+} from "./helpers/body-video-profile-evidence";
 
 const source = process.env.QCUT_BODY_CLOSE_SOURCE;
+const bodyProfile = requestedBodyVideoProfile();
+const coreml = bodyProfile === COREML_BODY_PROFILE;
 const output = path.resolve(
 	process.env.QCUT_BODY_PLAYBACK_OUTPUT ??
 		"output/playwright/portrait-independent-body-playback"
@@ -77,6 +85,7 @@ test("independent body: prepared continuous playback matches export and rejects 
 	const evidence: Record<string, unknown> = {
 		schemaVersion: 1,
 		status: "running",
+		bodyProfile,
 		source: path.basename(source),
 		sourceSha256: createHash("sha256")
 			.update(await readFile(source))
@@ -128,7 +137,10 @@ test("independent body: prepared continuous playback matches export and rejects 
 		page.on("console", (message) => {
 			if (message.type() === "error") consoleErrors.push(message.text());
 		});
-		await installBodyWorkerObserver({ app });
+		await installBodyWorkerObserver({
+			app,
+			...(coreml ? { output: path.join(output, "worker-reports") } : {}),
+		});
 		const { panel } = await preparePortraitReferenceProject({
 			page,
 			source,
@@ -150,6 +162,15 @@ test("independent body: prepared continuous playback matches export and rejects 
 		expect(runtime?.available).toBe(true);
 		expect(runtime?.bodyVideo).toBe(true);
 		evidence.runtime = runtime;
+		if (coreml) {
+			expect(runtime?.bodyVideoProfiles?.[COREML_BODY_PROFILE]?.available).toBe(
+				true
+			);
+			evidence.profileSelection = await selectCoreMLBodyProfile({
+				page,
+				output: path.join(output, "coreml-ui-selection.png"),
+			});
+		}
 		await setBodyValues({ page, values: BODY_CLOSE_VALUES });
 		await changeSlimBody({ page, value: 55 });
 		await changeSlimBody({ page, value: 40 });
@@ -418,6 +439,14 @@ test("independent body: prepared continuous playback matches export and rejects 
 		});
 		checks.changed_lightweight_playback_near_realtime = true;
 		checks.decoded_cache_stays_bounded = true;
+		if (coreml) {
+			evidence.coremlExecution = await captureCoreMLBodyExecutionEvidence({
+				app,
+				output: path.join(output, "execution"),
+				frames: FRAMES,
+			});
+			checks.coreml_execution_identity_and_routes_verified = true;
+		}
 		expect(errors).toEqual([]);
 		evidence.status = "passed";
 	} catch (error) {
