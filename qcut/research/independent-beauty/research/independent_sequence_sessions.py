@@ -77,6 +77,7 @@ class SequenceSessions:
         self.journal = None
         self.interval, self.memory_bytes = interval, memory_bytes
         self.active = None
+        self.active_checkpoints = None
         self.snapshots = OrderedDict()
         self.bytes = 0
         self.closed = False
@@ -90,7 +91,7 @@ class SequenceSessions:
             if callable(close):
                 close()
         finally:
-            self.active, self.journal = None, None
+            self.active, self.active_checkpoints, self.journal = None, None, None
             self.snapshots.clear()
             self.bytes = 0
 
@@ -98,11 +99,15 @@ class SequenceSessions:
         return {'active': self.active is not None, 'nextFrame': self.engine.next_frame,
                 'memorySnapshots': len(self.snapshots), 'memoryBytes': self.bytes}
 
-    def _live(self, session):
-        return self.active == session and not self.engine.invalid
+    def _live(self, *, session, checkpoints):
+        return (self.active == session and self.active_checkpoints == Path(checkpoints).resolve()
+                and not self.engine.invalid)
 
-    def _remember(self, *, session, frame, data):
-        key = (session, frame)
+    def _scope(self, *, session, checkpoints):
+        return (session, tuple(sorted(self.execution_request.items())), str(Path(checkpoints).resolve()))
+
+    def _remember(self, *, session, frame, checkpoints, data):
+        key = (self._scope(session=session, checkpoints=checkpoints), frame)
         if key in self.snapshots:
             self.bytes -= len(self.snapshots.pop(key))
         self.snapshots[key] = data
@@ -116,7 +121,8 @@ class SequenceSessions:
         return Path(checkpoints) / f'{frame:010d}{SUFFIX}'
 
     def _stored(self, *, session, checkpoints):
-        frames = {frame for owner, frame in self.snapshots if owner == session}
+        scope = self._scope(session=session, checkpoints=checkpoints)
+        frames = {frame for owner, frame in self.snapshots if owner == scope}
         folder = Path(checkpoints)
         if folder.is_dir():
             frames.update(int(path.name.removesuffix(SUFFIX)) for path in folder.iterdir()
@@ -125,14 +131,15 @@ class SequenceSessions:
 
     def _nearest(self, *, session, frame, checkpoints):
         frames = {stored for stored in self._stored(session=session, checkpoints=checkpoints) if stored <= frame}
-        if self._live(session) and self.engine.next_frame <= frame:
+        if self._live(session=session, checkpoints=checkpoints) and self.engine.next_frame <= frame:
             frames.add(self.engine.next_frame)
         return max(frames, default=0)
 
     def _load(self, *, session, frame, checkpoints):
-        data = self.snapshots.get((session, frame))
+        key = (self._scope(session=session, checkpoints=checkpoints), frame)
+        data = self.snapshots.get(key)
         if data is not None:
-            self.snapshots.move_to_end((session, frame))
+            self.snapshots.move_to_end(key)
             return data
         path = self._path(checkpoints=checkpoints, frame=frame)
         try:
@@ -144,14 +151,16 @@ class SequenceSessions:
         return None
 
     def _discard(self, *, session, frame, checkpoints):
-        data = self.snapshots.pop((session, frame), None)
+        key = (self._scope(session=session, checkpoints=checkpoints), frame)
+        data = self.snapshots.pop(key, None)
         self.bytes -= len(data or b'')
         self._path(checkpoints=checkpoints, frame=frame).unlink(missing_ok=True)
 
     def _park(self):
         """Keep the newest state of the session the engine is about to leave."""
         if self.active is not None and not self.engine.invalid and self.engine.next_frame > 0:
-            self._remember(session=self.active, frame=self.engine.next_frame, data=capture(session=self.engine))
+            self._remember(session=self.active, frame=self.engine.next_frame,
+                           checkpoints=self.active_checkpoints, data=capture(session=self.engine))
 
     def _select_execution(self, *, execution_profile, execution_generation):
         requested = execution_request(execution_profile=execution_profile,
@@ -163,6 +172,7 @@ class SequenceSessions:
                                      execution_generation=requested.get('generation'))
         previous = self.engine
         self.engine, self.active, self.execution_request = engine, None, requested
+        self.active_checkpoints = None
         self.journal = None
         close = getattr(previous, 'close', None)
         if callable(close):
@@ -185,25 +195,26 @@ class SequenceSessions:
         """Bring the engine to `frame` of `session` and say how, or raise SequenceGap."""
         if self.closed:
             raise ValueError('body video sessions are closed')
+        checkpoints = Path(checkpoints).resolve()
         self._select_execution(execution_profile=execution_profile, execution_generation=execution_generation)
         journal = self._execution_journal(session=session, checkpoints=checkpoints)
-        if self._live(session) and self.engine.next_frame == frame:
+        if self._live(session=session, checkpoints=checkpoints) and self.engine.next_frame == frame:
             self.journal = journal
             self._apply_execution_replay()
             return 'continued'
         if frame == 0:
             self._park()
-            self.active = None
+            self.active, self.active_checkpoints = None, None
             self.engine.restart()
             self.journal = journal
             self._apply_execution_replay()
-            self.active = session
+            self.active, self.active_checkpoints = session, checkpoints
             return 'restarted'
         data = self._load(session=session, frame=frame, checkpoints=checkpoints)
         if data is None:
             raise SequenceGap(restart_from=self._nearest(session=session, frame=frame, checkpoints=checkpoints))
         self._park()
-        self.active = None
+        self.active, self.active_checkpoints = None, None
         self.journal = journal
         self._apply_execution_replay(replace_context=True)
         try:
@@ -219,12 +230,12 @@ class SequenceSessions:
             # An unreadable snapshot is only a lost checkpoint: drop it and replay from an earlier one.
             self._discard(session=session, frame=frame, checkpoints=checkpoints)
             raise SequenceGap(restart_from=self._nearest(session=session, frame=frame, checkpoints=checkpoints))
-        self.active = session
+        self.active, self.active_checkpoints = session, checkpoints
         return 'restored'
 
     def _checkpoint(self, *, session, checkpoints):
         frame, data = self.engine.next_frame, capture(session=self.engine)
-        self._remember(session=session, frame=frame, data=data)
+        self._remember(session=session, frame=frame, checkpoints=checkpoints, data=data)
         path = self._path(checkpoints=checkpoints, frame=frame)
         temporary = path.with_name(f'.{path.name}.{os.getpid()}.tmp')
         try:
@@ -241,7 +252,8 @@ class SequenceSessions:
                execution_profile=None, execution_generation=None):
         """Frame `frame` of a prepared session; every CHECKPOINT_INTERVAL frames leaves a snapshot."""
         requested = execution_request(execution_profile=execution_profile, execution_generation=execution_generation)
-        if requested != self.execution_request or not self._live(session) or self.engine.next_frame != frame:
+        if (requested != self.execution_request or not self._live(session=session, checkpoints=checkpoints)
+                or self.engine.next_frame != frame):
             raise ValueError('prepare the body video session before rendering its frame')
         input_identity = None
         if self.journal is not None:
