@@ -20,7 +20,13 @@ const request = {
 		values: { body_adjust_SlimBody: 25 },
 		bodyVideoProfile: "swing-coreml-v1" as const,
 	},
-	sequence: { clip: "c".repeat(64), frame: 0, fps: 24, replay: false },
+	sequence: {
+		clip: "c".repeat(64),
+		frame: 0,
+		fps: 24,
+		replay: false,
+		sourceTimestampSeconds: 1.001,
+	},
 };
 function setup() {
 	const result = {
@@ -54,6 +60,39 @@ function setup() {
 }
 
 describe("explicit CoreML body sequence", () => {
+	it("passes decoded source PTS to the graph without quantizing it to timeline FPS", async () => {
+		const test = setup();
+		await test.frames.render({ request });
+		expect(test.provider.render).toHaveBeenCalledWith({
+			request: expect.objectContaining({
+				sequence: expect.objectContaining({ frame: 0, timestamp: 1.001 }),
+			}),
+		});
+	});
+	it("rejects missing source PTS before resource checks or cache reuse", async () => {
+		const test = setup();
+		const { sourceTimestampSeconds: _timestamp, ...sequence } =
+			request.sequence;
+		await expect(
+			test.frames.render({ request: { ...request, sequence } })
+		).rejects.toThrow("source timestamp");
+		expect(test.resolveCoreML).not.toHaveBeenCalled();
+		expect(test.cache.read).not.toHaveBeenCalled();
+	});
+	it("does not reuse a cached frame with a different source timestamp", async () => {
+		const test = setup();
+		test.cache.read.mockResolvedValue(request.rgba);
+		await test.frames.render({ request });
+		await test.frames.render({
+			request: {
+				...request,
+				sequence: { ...request.sequence, sourceTimestampSeconds: 1.042708 },
+			},
+		});
+		expect(test.cache.read.mock.calls[0]).not.toEqual(
+			test.cache.read.mock.calls[1]
+		);
+	});
 	it("validates resources before a cached frame can be read", async () => {
 		const test = setup();
 		test.cache.read.mockResolvedValue(request.rgba);
