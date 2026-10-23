@@ -392,7 +392,10 @@ describe("independent body video frame driver", () => {
 	const decoder: ReturnType<typeof createIndependentBodyVideoDecoder> = {
 		frame: vi.fn(async ({ frame }: { frame: number }) => {
 			decoded.push(frame);
-			return new Uint8Array([frame, 0, 0, 255, 0, frame, 0, 255]);
+			return {
+				rgba: new Uint8Array([frame, 0, 0, 255, 0, frame, 0, 255]),
+				sourceTimestampSeconds: frame / clip.fps,
+			};
 		}),
 		dispose: vi.fn(async () => {}),
 	};
