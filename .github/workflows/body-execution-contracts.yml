@@ -51,15 +51,20 @@ jobs:
         run: >-
           python -m pip install --only-binary=:all:
           numpy==2.5.3 Pillow==12.2.0 onnxruntime==1.22.1 onnx==1.19.0
-      - name: Test routing, cadence, resident protocol and recovery without private assets
+      - name: Test portable resident protocol, source identity and execution journal
+        working-directory: qcut/research/independent-beauty/research/tests
+        run: >-
+          python -B -m unittest
+          test_body_coreml_assets test_body_coreml_process
+          test_body_execution_profile test_body_execution_sources test_body_execution_journal -v
+      - name: Test macOS routing, cadence and complete session recovery without private assets
+        if: runner.os == 'macOS'
         working-directory: qcut/research/independent-beauty/research/tests
         run: >-
           python -B -m unittest
           test_body_smart_sequence test_body_sequence_checkpoint
           test_body_swing_cadence test_body_swing_networks test_body_swing_skeleton test_body_swing_render
-          test_body_coreml_assets test_body_coreml_process
-          test_body_execution_profile test_body_execution_sources test_body_execution_checkpoint
-          test_body_execution_journal test_body_execution_sessions test_independent_worker -v
+          test_body_execution_checkpoint test_body_execution_sessions test_independent_worker -v
       - name: Test native evidence gates with synthetic fixtures
         run: >-
           python -B -m unittest discover -s research/jianying-runtime-probe
