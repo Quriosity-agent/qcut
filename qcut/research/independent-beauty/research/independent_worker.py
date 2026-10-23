@@ -10,6 +10,7 @@ from contextlib import contextmanager, redirect_stdout
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 from PIL import Image
@@ -29,11 +30,15 @@ REQUEST_PATHS = ('image', 'request', 'output', 'report')
 def validate_request(*, request):
     if (not isinstance(request, dict)
             or not {'id', *REQUEST_PATHS} <= set(request) <= {'id', *REQUEST_PATHS, 'resolution', 'source_evidence',
-                                                             'sequence'}):
+                                                             'sequence', 'outerRequestId'}):
         raise ValueError('resident request requires id and four explicit paths')
     identifier = request['id']
     if not isinstance(identifier, str) or not 1 <= len(identifier) <= 128 or any(ord(char) < 32 for char in identifier):
         raise ValueError('bounded printable request id required')
+    if 'outerRequestId' in request:
+        outer = request['outerRequestId']
+        if not isinstance(outer, str) or re.fullmatch(r'[A-Za-z0-9._:-]{1,128}', outer) is None:
+            raise ValueError('bounded outer request identity required')
     for name in (*REQUEST_PATHS, *(['source_evidence'] if 'source_evidence' in request else [])):
         value = request[name]
         if not isinstance(value, str) or not value or '\x00' in value or len(value) > 8192 or not Path(value).is_absolute():
