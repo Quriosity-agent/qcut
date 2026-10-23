@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 describe("rolling composition playback preparation", () => {
-	it("prepares the target segment before allowing playback and prefetches only the next segment", async () => {
+	it("publishes the current segment before filling the two initial lookahead slots", async () => {
 		const { stream, requestAt, requests, cache, plan, settle } = fixture();
 		expect(prepareCanvasPlaybackFrames).not.toHaveBeenCalled();
 		stream.setTarget({ frame: 0 });
@@ -51,21 +51,25 @@ describe("rolling composition playback preparation", () => {
 		const next = await requestAt({ index: 1 });
 		expect(next.request).toMatchObject({ startFrame: 2, frames: 2 });
 		await next.complete();
+		const third = await requestAt({ index: 2 });
+		expect(third.request).toMatchObject({ startFrame: 4, frames: 2 });
+		expect(stream.stats.targetReady).toBe(true);
+		await third.complete();
 		await settle();
-		expect(requests).toHaveLength(2);
-		expect(cache.frameCount).toBe(4);
+		expect(requests).toHaveLength(3);
+		expect(cache.frameCount).toBe(6);
 		expect(stream.stats).toMatchObject({
 			segmentFrames: 2,
-			preparedTotal: 4,
-			residentFrames: 4,
+			preparedTotal: 6,
+			residentFrames: 6,
 			evictedTotal: 0,
 			windowStart: 0,
-			windowEnd: 4,
+			windowEnd: 6,
 		});
 		expect(stream.metrics).toMatchObject({
-			renderMs: 40,
-			encodeMs: 8,
-			writeMs: 4,
+			renderMs: 60,
+			encodeMs: 12,
+			writeMs: 6,
 			maxInFlightFrames: 2,
 			maxReservedPixelBytes: 48,
 			maxPendingPngBytes: 65_553,
@@ -78,10 +82,11 @@ describe("rolling composition playback preparation", () => {
 		stream.setTarget({ frame: 0 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
-		await settle();
-		stream.setTarget({ frame: 2 });
 		await (await requestAt({ index: 2 })).complete();
 		await settle();
+		stream.setTarget({ frame: 2 });
+		await settle();
+		expect(requests).toHaveLength(3);
 		expect([...files.keys()]).toEqual([0, 1, 2, 3, 4, 5]);
 		stream.setTarget({ frame: 4 });
 		const forward = await requestAt({ index: 3 });
@@ -97,17 +102,48 @@ describe("rolling composition playback preparation", () => {
 		stream.setTarget({ frame: 0 });
 		const backward = await requestAt({ index: 4 });
 		expect(backward.request).toMatchObject({ startFrame: 0, frames: 2 });
-		expect([...files.keys()]).toEqual([2, 3]);
+		expect([...files.keys()]).toEqual([2, 3, 4, 5]);
 		await backward.complete();
 		await stream.waitForTarget();
 		await settle();
 		expect(requests).toHaveLength(5);
-		expect([...files.keys()].sort((a, b) => a - b)).toEqual([0, 1, 2, 3]);
+		expect([...files.keys()].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5]);
 		expect(stream.stats).toMatchObject({
-			residentFrames: 4,
+			residentFrames: 6,
 			preparedTotal: 10,
-			evictedTotal: 6,
+			evictedTotal: 4,
 		});
+		expect(value.peakBytes).toBeLessThanOrEqual(cache.maxBytes);
+	});
+
+	it("retains the third segment when a fully prepared short clip returns to its start", async () => {
+		const { stream, requestAt, requests, cache, files, settle } = fixture({
+			frames: 6,
+		});
+		stream.setTarget({ frame: 0 });
+		await (await requestAt({ index: 0 })).complete();
+		await (await requestAt({ index: 1 })).complete();
+		await (await requestAt({ index: 2 })).complete();
+		await settle();
+		const third = files.get(4);
+		stream.setTarget({ frame: 4 });
+		await settle();
+		expect(cache.has({ frame: 0 })).toBe(false);
+		stream.setTarget({ frame: 0 });
+		const start = await requestAt({ index: 3 });
+		expect(start.request).toMatchObject({ startFrame: 0, frames: 2 });
+		await start.complete();
+		await settle();
+		expect(files.get(4)).toBe(third);
+		stream.setTarget({ frame: 2 });
+		await settle();
+		stream.setTarget({ frame: 4 });
+		await settle();
+		expect(requests).toHaveLength(4);
+		expect(
+			cache.write.mock.calls.filter(([{ frame }]) => frame === 4)
+		).toHaveLength(1);
+		expect(stream.error).toBeUndefined();
 	});
 
 	it("aborts an obsolete segment and drains it before starting a distant target", async () => {
@@ -137,20 +173,20 @@ describe("rolling composition playback preparation", () => {
 
 	it("stops obsolete prefetch when seeking back to an already prepared segment", async () => {
 		const { stream, requestAt, requests, files, settle } = fixture();
-		stream.setTarget({ frame: 0 });
+		stream.setTarget({ frame: 2 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
 		await settle();
-		stream.setTarget({ frame: 2 });
+		stream.setTarget({ frame: 4 });
 		const obsolete = await requestAt({ index: 2 });
-		await obsolete.publish({ frame: 4 });
-		stream.setTarget({ frame: 0 });
+		await obsolete.publish({ frame: 6 });
+		stream.setTarget({ frame: 2 });
 		expect(stream.stats.targetReady).toBe(true);
 		expect(obsolete.request.signal.aborted).toBe(true);
 		obsolete.gate.resolve();
 		await settle();
 		expect(requests).toHaveLength(3);
-		expect([...files.keys()]).toEqual([0, 1, 2, 3]);
+		expect([...files.keys()]).toEqual([2, 3, 4, 5]);
 		expect(stream.stats.evictedTotal).toBe(1);
 		expect(stream.error).toBeUndefined();
 	});
@@ -160,6 +196,7 @@ describe("rolling composition playback preparation", () => {
 		stream.setTarget({ frame: 0 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
+		await (await requestAt({ index: 2 })).complete();
 		await settle();
 		const retainedSuffix = files.get(1);
 		const removal = deferred<void>();
@@ -174,19 +211,19 @@ describe("rolling composition playback preparation", () => {
 		expect(files.has(1)).toBe(true);
 		stream.setTarget({ frame: 0 });
 		removal.resolve();
-		const repaired = await requestAt({ index: 2 });
+		const repaired = await requestAt({ index: 3 });
 		expect(repaired.request).toMatchObject({ startFrame: 0, frames: 2 });
 		await repaired.complete();
 		await stream.waitForTarget();
 		await settle();
 		expect(files.get(1)).toBe(retainedSuffix);
 		expect(cache.write.mock.calls.map(([{ frame }]) => frame)).toEqual([
-			0, 1, 2, 3, 0,
+			0, 1, 2, 3, 4, 5, 0,
 		]);
 		expect(stream.stats).toMatchObject({
-			preparedTotal: 5,
+			preparedTotal: 7,
 			evictedTotal: 1,
-			residentFrames: 4,
+			residentFrames: 6,
 			targetReady: true,
 		});
 		expect(stream.error).toBeUndefined();
@@ -264,6 +301,7 @@ describe("rolling composition playback preparation", () => {
 		stream.setTarget({ frame: 0 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
+		await (await requestAt({ index: 2 })).complete();
 		await settle();
 		const retainedBytes = cache.bytes;
 		cache.remove.mockRejectedValueOnce(new Error("OPFS removal failed"));
@@ -272,7 +310,7 @@ describe("rolling composition playback preparation", () => {
 		await settle();
 		expect(stream.stats.cacheBytes).toBe(retainedBytes);
 		expect(stream.stats.evictedTotal).toBe(0);
-		expect(requests).toHaveLength(2);
+		expect(requests).toHaveLength(3);
 	});
 
 	it("reports bytes actually reclaimed when a batch eviction fails midway", async () => {
@@ -280,6 +318,7 @@ describe("rolling composition playback preparation", () => {
 		stream.setTarget({ frame: 0 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
+		await (await requestAt({ index: 2 })).complete();
 		await settle();
 		cache.remove.mockImplementationOnce(async ({ frames }) => {
 			files.delete(frames[0]);
@@ -291,8 +330,8 @@ describe("rolling composition playback preparation", () => {
 		);
 		await settle();
 		expect(stream.stats).toMatchObject({
-			cacheBytes: 3 * 65_553,
-			residentFrames: 3,
+			cacheBytes: 5 * 65_553,
+			residentFrames: 5,
 			evictedTotal: 1,
 		});
 	});
