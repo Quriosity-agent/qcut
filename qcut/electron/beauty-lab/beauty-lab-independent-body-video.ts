@@ -19,6 +19,7 @@ import {
 import { canonicalIndependentManualBody } from "./beauty-lab-independent-manual-body.js";
 import { createCoreMLHistoryGuard } from "./beauty-lab-independent-coreml-history.js";
 import { INDEPENDENT_COREML_PROFILE } from "./beauty-lab-independent-coreml.js";
+import { createIndependentKeyedQueue } from "./beauty-lab-independent-keyed-queue.js";
 import { IndependentWorkerExitedError } from "./beauty-lab-independent-worker.js";
 
 /**
@@ -146,8 +147,9 @@ export const independentSequenceSchema = z
 			.int()
 			.min(0)
 			.max(2 ** 31 - 1),
-		// The engine takes steps of at most 0.1 s between frames.
+		// The legacy warm profile derives its clock from FPS; CoreML uses source PTS.
 		fps: z.number().finite().min(10).max(240),
+		sourceTimestampSeconds: z.number().finite().nonnegative().optional(),
 		replay: z.boolean(),
 	})
 	.strict();
@@ -192,7 +194,9 @@ export function independentBodyVideoSession({
 				clip,
 				width,
 				height,
-				...(execution ? { execution } : {}),
+				...(execution
+					? { execution: { ...execution, clock: "decoded-source-pts-v1" } }
+					: {}),
 			})
 		)
 		.digest("hex");
@@ -236,6 +240,7 @@ export function createIndependentSequenceFrameRenderer({
 	if (!path.isAbsolute(sessionsDirectory))
 		throw new Error("Independent session checkpoints need an absolute folder");
 	const pending = new Map<string, AbortController>();
+	const frameQueue = createIndependentKeyedQueue();
 	const coremlRequests = new Set<string>();
 	let disposed = false;
 	let prunedAt = Number.NEGATIVE_INFINITY;
@@ -279,9 +284,7 @@ export function createIndependentSequenceFrameRenderer({
 		const profiled =
 			input.adjustments.bodyVideoProfile === INDEPENDENT_COREML_PROFILE;
 		if (profiled) coremlRequests.add(requestId);
-		try {
-			if (profiled && !resolveCoreML)
-				throw new Error("CoreML body video is unavailable in this host");
+		async function renderFrame(): Promise<BeautyLabIndependentSequenceFrameResult> {
 			const profile =
 				profiled && resolveCoreML
 					? await waitForFrameOperation({
@@ -291,7 +294,10 @@ export function createIndependentSequenceFrameRenderer({
 					: undefined;
 			const engine =
 				profile?.engineSha256 ??
-				(await waitForFrameOperation({ signal, operation: engineSha256 }));
+				(await waitForFrameOperation({
+					signal,
+					operation: engineSha256,
+				}));
 			const manualBody = canonicalIndependentManualBody({
 				manualBody: input.adjustments.manualBody,
 			});
@@ -333,7 +339,13 @@ export function createIndependentSequenceFrameRenderer({
 				engineSha256: engine,
 				...edit,
 				rgba: input.rgba,
-				sequence: { session, frame: sequence.frame },
+				sequence: {
+					session,
+					frame: sequence.frame,
+					...(profiled
+						? { sourceTimestampSeconds: sequence.sourceTimestampSeconds }
+						: {}),
+				},
 			});
 			if (!sequence.replay) {
 				const cached = await waitForFrameOperation({
@@ -374,7 +386,9 @@ export function createIndependentSequenceFrameRenderer({
 									}
 								: {}),
 							frame: sequence.frame,
-							timestamp: sequence.frame / sequence.fps,
+							timestamp:
+								sequence.sourceTimestampSeconds ??
+								sequence.frame / sequence.fps,
 							checkpoints: path.join(sessionsDirectory, session),
 						},
 					},
@@ -440,6 +454,30 @@ export function createIndependentSequenceFrameRenderer({
 				rgba: result.rgba,
 				cached: false,
 			};
+		}
+		try {
+			if (profiled && sequence.sourceTimestampSeconds === undefined)
+				throw new Error(
+					"CoreML body video requires a decoded source timestamp"
+				);
+			if (!profiled && sequence.sourceTimestampSeconds !== undefined)
+				throw new Error(
+					"Decoded source timestamps require the CoreML body profile"
+				);
+			if (profiled && !resolveCoreML)
+				throw new Error("CoreML body video is unavailable in this host");
+			// Resolve resources after waiting; the full cache key still binds each request's pixels and edit.
+			const slot = JSON.stringify([
+				sequence.clip,
+				sequence.frame,
+				width,
+				height,
+			]);
+			return await frameQueue.run({
+				key: slot,
+				signal,
+				operation: renderFrame,
+			});
 		} finally {
 			pending.delete(requestId);
 			coremlRequests.delete(requestId);
