@@ -28,6 +28,16 @@ const readline = require('node:readline');
 readline.createInterface({ input: process.stdin }).on('line', line => {
   const request = JSON.parse(line);
   fs.writeFileSync(request.report, String(process.pid));
+  if (request.image === undefined) {
+    const failed = request.report.endsWith('unicode-fail');
+    const reply = Buffer.from(JSON.stringify(failed
+      ? {id:request.id,ok:false,error:'模型完整性失败'}
+      : {id:request.id,ok:true})+'\\n');
+    const split = failed ? reply.indexOf(Buffer.from('模型')) + 1 : 9;
+    process.stdout.write(reply.subarray(0, split));
+    setImmediate(() => process.stdout.write(reply.subarray(split)));
+    return;
+  }
   if (request.image === 'hang-with-child' || request.image === 'exit-with-child') {
     const code =
       "require('node:fs').writeFileSync(process.argv[1], String(process.pid));" +
@@ -208,6 +218,38 @@ describe("resident worker transport failures", () => {
 });
 
 describe("resident beauty process lifetime", () => {
+	it("uses the isolated capability script and assembles chunked report-only replies", async () => {
+		await worker.dispose();
+		worker = createIndependentBeautyWorker({
+			python: process.execPath,
+			engineRoot: directory,
+			runtimeRoot: directory,
+			script: "body_coreml_capability_worker.py",
+		});
+		const first = job();
+		const second = job();
+		await worker.run({ ...first, request: { report: first.request.report } });
+		await worker.run({ ...second, request: { report: second.request.report } });
+		expect(spawn).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(spawn).mock.calls[0][1]).toContain(
+			path.join(directory, "research", "body_coreml_capability_worker.py")
+		);
+		expect(await readFile(first.request.report, "utf8")).toBe(
+			await readFile(second.request.report, "utf8")
+		);
+		const failed = expect(
+			worker.run({
+				...job(),
+				request: {
+					report: path.join(directory, "unicode-fail"),
+				},
+			})
+		).rejects.toThrow("模型完整性失败");
+		await failed;
+		await worker.run({ ...first, request: { report: first.request.report } });
+		expect(spawn).toHaveBeenCalledTimes(2);
+	});
+
 	it("reuses a real process for successive frames and recycles on source changes", async () => {
 		const first = job();
 		const second = job({ image: "different pixels" });
