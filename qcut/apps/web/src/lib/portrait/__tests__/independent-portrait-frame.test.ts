@@ -63,6 +63,36 @@ afterEach(() => {
 });
 
 describe("independent portrait frame", () => {
+	it("rejects selected CoreML body edits when video sequence processing is unavailable", async () => {
+		await expect(
+			renderIndependentPortraitFrame({
+				source: frame({ alpha: [255, 255] }),
+				adjustments: {
+					...adjustments,
+					bodyVideoProfile: "swing-coreml-v1",
+					values: { body_adjust_SlimBody: 40 },
+				},
+			})
+		).rejects.toThrow("CoreML 美体需要可用的视频序列处理");
+		expect(renderIndependentFrame).not.toHaveBeenCalled();
+	});
+
+	it("keeps a saved body profile out of face-only still requests", async () => {
+		const selected = {
+			...adjustments,
+			bodyVideoProfile: "swing-coreml-v1" as const,
+		};
+		await renderIndependentPortraitFrame({
+			source: frame({ alpha: [255, 255] }),
+			adjustments: selected,
+		});
+		expect(renderIndependentFrame.mock.calls[0][0].adjustments).toEqual({
+			enabled: true,
+			values: { face_adjust_Whiten: 45 },
+		});
+		expect(selected.bodyVideoProfile).toBe("swing-coreml-v1");
+	});
+
 	it("sends an opaque frame and restores the source alpha", async () => {
 		const output = await renderIndependentPortraitFrame({
 			source: frame({ alpha: [255, 0] }),
