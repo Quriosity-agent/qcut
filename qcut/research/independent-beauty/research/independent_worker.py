@@ -6,7 +6,7 @@ reply is not ok and names the frame to replay from; the worker itself stays usab
 """
 import argparse
 from collections import OrderedDict
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 import json
 import os
 from pathlib import Path
@@ -52,6 +52,16 @@ def request_resolution(*, request):
         return 'original' if max(source.size) > 1280 else 'preview'
 
 
+@contextmanager
+def owned_sequence_sessions(*, sessions):
+    try:
+        yield
+    finally:
+        close = getattr(sessions, 'close', None)
+        if callable(close):
+            close()
+
+
 def serve(*, runtime, input_stream, output_stream, render=run, sessions=SequenceSessions):
     runtime = Path(runtime).resolve(strict=True)
     if not runtime.is_dir():
@@ -63,7 +73,7 @@ def serve(*, runtime, input_stream, output_stream, render=run, sessions=Sequence
     sessions = sessions(runtime=runtime)
     plans = OrderedDict()
     completed = 0
-    with reuse_sessions(cache=cache):
+    with reuse_sessions(cache=cache), owned_sequence_sessions(sessions=sessions):
         while True:
             line = input_stream.readline(MAX_REQUEST_BYTES + 1)
             if not line:
@@ -77,8 +87,12 @@ def serve(*, runtime, input_stream, output_stream, render=run, sessions=Sequence
                 os.environ[RESOLUTION_ENV] = mode
                 sequence, stage_runner = request.get('sequence'), run_stage
                 if sequence is not None:
+                    execution = {}
+                    if 'executionProfile' in sequence or 'executionGeneration' in sequence:
+                        execution = {'execution_profile': sequence.get('executionProfile'),
+                                     'execution_generation': sequence.get('executionGeneration')}
                     resumed = sessions.prepare(session=sequence['session'], frame=sequence['frame'],
-                                               checkpoints=sequence['checkpoints'])
+                                               checkpoints=sequence['checkpoints'], **execution)
                     stage_runner = sessions.stage_runner(sequence=sequence, resumed=resumed, fallback=run_stage)
                 with redirect_stdout(sys.stderr):
                     render(image=request['image'], request=request['request'], runtime=runtime,
