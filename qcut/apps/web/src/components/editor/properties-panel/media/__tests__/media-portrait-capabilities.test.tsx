@@ -22,8 +22,12 @@ let native: JianyingPortraitAdjustmentStatus;
 let independent: BeautyLabIndependentStatus;
 let inspectNative: ReturnType<typeof vi.fn>;
 let inspectIndependent: ReturnType<typeof vi.fn>;
+const interactionStart = vi.fn();
+const interactionEnd = vi.fn();
 
 beforeEach(() => {
+	interactionStart.mockClear();
+	interactionEnd.mockClear();
 	native = {
 		state: "ready",
 		available: true,
@@ -69,9 +73,11 @@ afterEach(() => Reflect.deleteProperty(window, "electronAPI"));
 function Harness({
 	engine = "independent",
 	manualBody,
+	mediaType = "video",
 }: {
 	engine?: "native" | "independent";
 	manualBody?: MediaPortraitAdjustments["manualBody"];
+	mediaType?: string;
 }) {
 	const [adjustments, setAdjustments] = useState<MediaPortraitAdjustments>({
 		enabled: true,
@@ -83,13 +89,14 @@ function Harness({
 		<>
 			<MediaPortraitProperties
 				elementId="body-clip"
+				mediaType={mediaType}
 				currentFrame={0}
 				enhancements={DEFAULT_MEDIA_ENHANCEMENTS}
 				adjustments={adjustments}
 				onEnhancementsChange={vi.fn()}
 				onAdjustmentsChange={setAdjustments}
-				onInteractionStart={vi.fn()}
-				onInteractionEnd={vi.fn()}
+				onInteractionStart={interactionStart}
+				onInteractionEnd={interactionEnd}
 			/>
 			<output data-testid="stored-adjustments">
 				{JSON.stringify(adjustments)}
@@ -113,6 +120,47 @@ function chooseEngine({ name }: { name: string }) {
 }
 
 describe("desktop portrait engine capabilities", () => {
+	it("exposes the configured video profile and records an undoable project edit", async () => {
+		independent = {
+			...independent,
+			bodyVideo: true,
+			bodyVideoProfiles: {
+				"swing-coreml-v1": { available: true, message: "ready" },
+			},
+		};
+		render(<Harness />);
+		await waitFor(() =>
+			expect(
+				screen.queryByTestId("portrait-body-video-profile-status")
+			).toBeNull()
+		);
+		fireEvent.keyDown(
+			screen.getByRole("combobox", { name: "美体视频计算方式" }),
+			{ key: "ArrowDown" }
+		);
+		expect(
+			screen.getByRole("option", { name: "原生调度 CoreML" })
+		).not.toHaveAttribute("aria-disabled", "true");
+		fireEvent.keyDown(screen.getByRole("option", { name: "原生调度 CoreML" }), {
+			key: "Enter",
+		});
+		expect(screen.getByTestId("stored-adjustments")).toHaveTextContent(
+			'"bodyVideoProfile":"swing-coreml-v1"'
+		);
+		expect(interactionStart).toHaveBeenCalledOnce();
+		expect(interactionEnd).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		"image",
+		"audio",
+	])("does not offer a video profile for %s media", (mediaType) => {
+		render(<Harness mediaType={mediaType} />);
+		expect(
+			screen.queryByTestId("portrait-body-video-profile-control")
+		).toBeNull();
+	});
+
 	it("edits independent smart and manual body when native inspection fails", async () => {
 		inspectNative.mockRejectedValueOnce(new Error("Native runtime absent"));
 		render(<Harness />);
