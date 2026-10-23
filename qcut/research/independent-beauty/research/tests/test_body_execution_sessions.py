@@ -78,13 +78,13 @@ class ExecutionSessions(unittest.TestCase):
     def make_table(self):
         return module.SequenceSessions(runtime=self.root, engine_factory=self.factory, interval=2)
 
-    def request(self, *, frame, generation='run-one'):
-        return {'session': SESSION, 'frame': frame, 'checkpoints': str(self.root / generation),
+    def request(self, *, frame, generation='run-one', checkpoints=None):
+        return {'session': SESSION, 'frame': frame, 'checkpoints': str(checkpoints or self.root / generation),
                 'execution_profile': SWING_PROFILE, 'execution_generation': generation}
 
-    def frame(self, *, frame, table=None, generation='run-one', **changes):
+    def frame(self, *, frame, table=None, generation='run-one', checkpoints=None, **changes):
         table = table or self.table
-        request = self.request(frame=frame, generation=generation)
+        request = self.request(frame=frame, generation=generation, checkpoints=checkpoints)
         resumed = table.prepare(**request)
         pixels, receipt = table.render(**request, timestamp=frame / 30, rgba=self.rgba,
                                        controls=changes.get('controls', {'SlimBody': 40}))
@@ -178,6 +178,60 @@ class ExecutionSessions(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported'):
             self.table.prepare(**{**self.request(frame=0), 'execution_profile': 'automatic'})
         self.assertEqual(self.factory.call_count, calls)
+
+    def test_same_session_generations_restore_their_own_checkpoint_and_parked_history(self):
+        for frame in range(3):
+            self.frame(frame=frame)
+        original = copy.deepcopy(self.table.engine.routes)
+        self.table.prepare(**self.request(frame=0, generation='run-two'))
+        self.table.engine.own_ready = True
+        for frame in range(3):
+            self.frame(frame=frame, generation='run-two')
+        alternate = copy.deepcopy(self.table.engine.routes)
+        self.assertNotEqual(original, alternate)
+        self.assertEqual(self.table.prepare(**self.request(frame=2)), 'restored')
+        self.assertEqual(self.table.engine.routes, original[:2])
+        self.assertEqual(self.table.prepare(**self.request(frame=3, generation='run-two')), 'restored')
+        self.assertEqual(self.table.engine.routes, alternate)
+        self.assertEqual(self.table.prepare(**self.request(frame=3)), 'restored')
+        self.assertEqual(self.table.engine.routes, original)
+
+    def test_empty_folder_cannot_continue_live_history_or_advertise_its_checkpoints(self):
+        for frame in range(3):
+            self.frame(frame=frame)
+        other = self.root / 'empty-history'
+        for frame in (2, 3, 9):
+            with self.subTest(frame=frame):
+                with self.assertRaises(module.SequenceGap) as gap:
+                    self.table.prepare(**self.request(frame=frame, checkpoints=other))
+                self.assertEqual(gap.exception.restart_from, 0)
+        self.assertEqual(self.frame(frame=3)[0], 'continued')
+
+    def test_same_generation_folders_restore_their_own_routes(self):
+        for frame in range(3):
+            self.frame(frame=frame)
+        original = copy.deepcopy(self.table.engine.routes)
+        other = self.root / 'other-history'
+        self.table.prepare(**self.request(frame=0, checkpoints=other))
+        self.table.engine.own_ready = True
+        for frame in range(3):
+            self.frame(frame=frame, checkpoints=other)
+        alternate = copy.deepcopy(self.table.engine.routes)
+        self.assertNotEqual(original, alternate)
+        self.assertEqual(self.table.prepare(**self.request(frame=2)), 'restored')
+        self.assertEqual(self.table.engine.routes, original[:2])
+        self.assertEqual(self.table.prepare(**self.request(frame=3, checkpoints=other)), 'restored')
+        self.assertEqual(self.table.engine.routes, alternate)
+        self.assertEqual(self.table.prepare(**self.request(frame=3)), 'restored')
+        self.assertEqual(self.table.engine.routes, original)
+
+    def test_render_cannot_write_another_folder_without_preparing_it(self):
+        self.frame(frame=0)
+        request = self.request(frame=1, checkpoints=self.root / 'unprepared')
+        with self.assertRaisesRegex(ValueError, 'prepare'):
+            self.table.render(**request, rgba=self.rgba, timestamp=1 / 30, controls={'SlimBody': 40})
+        self.assertEqual(self.table.engine.next_frame, 1)
+        self.assertFalse(Path(request['checkpoints']).exists())
 
     def test_switching_clip_journals_parks_previous_routes_before_installing_new_prefix(self):
         self.frame(frame=0)
