@@ -35,6 +35,7 @@ const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_DIAGNOSTIC_BYTES = 256 * 1024;
 
 interface WorkerRequest {
+	outerRequestId?: string;
 	image: string;
 	request: string;
 	output: string;
@@ -105,11 +106,13 @@ export function createIndependentBeautyWorker({
 	engineRoot,
 	runtimeRoot,
 	idleMs = 60_000,
+	script = "independent_worker.py",
 }: {
 	python: string;
 	engineRoot: string;
 	runtimeRoot: string;
 	idleMs?: number;
+	script?: "independent_worker.py" | "body_coreml_capability_worker.py";
 }) {
 	let current: WorkerState | undefined;
 	let disposed = false;
@@ -137,7 +140,7 @@ export function createIndependentBeautyWorker({
 			python,
 			[
 				"-B",
-				path.join(engineRoot, "research/independent_worker.py"),
+				path.join(engineRoot, "research", script),
 				"--runtime",
 				runtimeRoot,
 			],
@@ -261,7 +264,7 @@ export function createIndependentBeautyWorker({
 		signal,
 		timeoutMs,
 	}: {
-		request: WorkerRequest;
+		request: WorkerRequest | { report: string };
 		sourceIdentity: string;
 		environment: NodeJS.ProcessEnv;
 		signal: AbortSignal;
