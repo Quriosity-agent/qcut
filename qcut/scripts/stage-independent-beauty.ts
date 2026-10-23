@@ -25,6 +25,7 @@ const manifestSchema = z.object({
 const sourceExtensions = new Set([
 	".py",
 	".swift",
+	".mm",
 	".json",
 	".ts",
 	".js",
