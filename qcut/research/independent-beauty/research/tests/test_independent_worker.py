@@ -233,6 +233,42 @@ class WorkerTests(unittest.TestCase):
             with self.subTest(sequence=sequence), self.assertRaises(ValueError):
                 worker.validate_request(request=self.request | {'sequence': sequence})
 
+    def test_explicit_execution_profile_and_generation_reach_prepare_unchanged(self):
+        table = FakeSessions(runtime=self.root)
+        original = table.prepare
+
+        def prepare(**arguments):
+            self.assertEqual(arguments.pop('execution_profile'), 'swing-coreml-v1')
+            self.assertEqual(arguments.pop('execution_generation'), 'owned-generation')
+            return original(**arguments)
+
+        table.prepare = Mock(side_effect=prepare)
+        request = self.sequence_request(frame=0)
+        request['sequence'].update(executionProfile='swing-coreml-v1', executionGeneration='owned-generation')
+        responses = self.serve(rows=[request], render=self.render_body_stage, sessions=lambda **_: table)
+        self.assertTrue(responses[0]['ok'])
+        table.prepare.assert_called_once()
+
+    def test_execution_checkpoint_error_is_not_a_replay_gap(self):
+        from body_execution_profile import BodyExecutionCheckpointError
+
+        table = FakeSessions(runtime=self.root)
+        table.prepare = Mock(side_effect=BodyExecutionCheckpointError('recorded readiness cannot be replayed'))
+        render = Mock()
+        responses = self.serve(rows=[self.sequence_request(frame=3)], render=render, sessions=lambda **_: table)
+        self.assertFalse(responses[0]['ok'])
+        self.assertIn('BodyExecutionCheckpointError', responses[0]['error'])
+        self.assertNotIn('gap', responses[0])
+        render.assert_not_called()
+
+    def test_worker_eof_closes_session_helpers_after_success_or_render_failure(self):
+        for failure in (None, RuntimeError('failed frame')):
+            table = FakeSessions(runtime=self.root)
+            table.close = Mock()
+            with self.subTest(failure=failure):
+                self.serve(rows=[self.request], render=Mock(side_effect=failure), sessions=lambda **_: table)
+                table.close.assert_called_once()
+
     @unittest.skipUnless(sys.platform == 'darwin' and shutil.which('bun') and HAS_VIDEO_RUNTIME
                          and len(list(FRAMES.glob('frame-*.png'))) >= 8,
                          'real body video needs macOS/Bun, the private runtime and QCUT_BODY_VIDEO_FRAMES (8+ frames)')
