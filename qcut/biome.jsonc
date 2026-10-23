@@ -23,6 +23,13 @@
 
 	"overrides": [
 		{
+			// Source integrity pins require the imported upstream bytes to stay exact.
+			"includes": ["research/body-photo/**"],
+			"formatter": { "enabled": false },
+			"linter": { "enabled": false },
+			"assist": { "enabled": false }
+		},
+		{
 			"includes": [
 				"apps/web/src/components/**",
 				"apps/web/src/routes/**",

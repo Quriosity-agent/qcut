@@ -1589,8 +1589,8 @@
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 6056,
-			"sha256": "dd194d03fd7ee26bc32e4849e72915b0c0ea4500a36a22d91c0b8c50d7351710"
+			"bytes": 6639,
+			"sha256": "e0b8717576b73139a1b420b24f651cb60506cc498d22cb1225314ef97af56746"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -1604,8 +1604,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_worker.py",
-			"bytes": 18346,
-			"sha256": "a15ade7747aecd9e3c474958ffa55e2495a37e2ecd492e490a7e2695eb0a32dc"
+			"bytes": 20247,
+			"sha256": "b01a1dcfcc59e05b92933db96244be9f2ab2f2202205401de44f65c7a1a0637e"
 		},
 		{
 			"path": "research/tests/test_metal_original_resolution.py",
@@ -2264,8 +2264,8 @@
 		},
 		{
 			"path": "research/body_skeleton_sequence.py",
-			"bytes": 3449,
-			"sha256": "fd7eb332f71707a4c28b07d8f4250933ff00e67fa7ecef7ca50ac082c3f22322"
+			"bytes": 3999,
+			"sha256": "6ace58b45b803022981916261914e67e40e58f975539a0a28db9017c1c19bc17"
 		},
 		{
 			"path": "research/body_smart_candidate.py",
@@ -2279,8 +2279,8 @@
 		},
 		{
 			"path": "research/body_smart_sequence.py",
-			"bytes": 8230,
-			"sha256": "135bf594371d04bd8005ede9f6537c71a184a3e03b9ce869c336f2f71c7f362e"
+			"bytes": 12636,
+			"sha256": "2523cef06089ab62a94d26a49aafab9bb8eddc4e62cdf58a41bd2ae60c8354bc"
 		},
 		{
 			"path": "research/body_video_face_metadata.py",
@@ -2354,8 +2354,8 @@
 		},
 		{
 			"path": "research/tests/test_body_smart_sequence.py",
-			"bytes": 13782,
-			"sha256": "7d1af312b8df845ac33563cfa7a2939e23e91971d22bc5c3e90332242a753de8"
+			"bytes": 15794,
+			"sha256": "4fe8fe386392ecbd8a5f11918a0d520d7472632722f8de5e98f2d44830eaa6e8"
 		},
 		{
 			"path": "research/tests/test_body_video_face_sequence.py",
@@ -2374,13 +2374,13 @@
 		},
 		{
 			"path": "research/body_sequence_checkpoint.py",
-			"bytes": 5902,
-			"sha256": "10e938e8eddd451e60549c901d00b172edf0c39022e3ab95568962a6ef0bca93"
+			"bytes": 8209,
+			"sha256": "7014edf976e767059f2c07e1abddafa8ed20423e822f05afebbf93c1c222aca2"
 		},
 		{
 			"path": "research/independent_sequence_sessions.py",
-			"bytes": 10047,
-			"sha256": "b3f5823b0ac263cdddb1b2b1b3bbde223c8578758b5700db62cee1db27543f74"
+			"bytes": 15644,
+			"sha256": "f61e22d07c2bbdcdf664b6cf1fc3ae62a6d3cf82a1b3ea63a99437fc81e7f3e3"
 		},
 		{
 			"path": "research/tests/test_body_sequence_checkpoint.py",
@@ -2389,8 +2389,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_sequence_sessions.py",
-			"bytes": 11893,
-			"sha256": "3f83f0da359f52772a974ae56ad915a40fd1e9057b4ac9452e5e144e5f6a1dbe"
+			"bytes": 13787,
+			"sha256": "3af442a319ea376201d95de67422b12ba84139fe322a82fcc35146e593d1843c"
 		},
 		{
 			"path": "research/tests/test_body_sequence_scenarios.py",
@@ -2591,6 +2591,116 @@
 			"path": "research/tests/test_pipeline_source_png.py",
 			"bytes": 11134,
 			"sha256": "1b66f180731137e05f835d946a0dc0f65d589a2035c3f1e6907b2de9e4cea248"
+		},
+		{
+			"path": "research/body_coreml_assets.py",
+			"bytes": 6704,
+			"sha256": "96a31321c15ff5bb03f77522117a6dda14e02196a516f656a639ce4f6f8edec9"
+		},
+		{
+			"path": "research/body_coreml_build.py",
+			"bytes": 4137,
+			"sha256": "c756b7f2b3a79bd19628bc2ab1e40c3e29900e3110d9afa87dc8d597d1ce38ac"
+		},
+		{
+			"path": "research/body_coreml_host.mm",
+			"bytes": 8549,
+			"sha256": "ce07ede97456fd138ffc784ab3d1cede204c866bc52d76aba7105655ef2f2c4f"
+		},
+		{
+			"path": "research/body_coreml_process.py",
+			"bytes": 16684,
+			"sha256": "9b59d7d898c305a506a7285d4970603a1de65077191878b6d3d1533922c208fb"
+		},
+		{
+			"path": "research/body_execution_journal.py",
+			"bytes": 6446,
+			"sha256": "cb72ca306ecfbc7e231bc894464de3d58c34d36991795719692490b5a4eaf3bc"
+		},
+		{
+			"path": "research/body_execution_profile.py",
+			"bytes": 2765,
+			"sha256": "17bd32ced0996a3cf790c12d8cb5bc5d240db91b01bde9866fb3a6905a25e050"
+		},
+		{
+			"path": "research/body_execution_sources.py",
+			"bytes": 2062,
+			"sha256": "3efb51434a8b5b61bb642b6dda0102c6a21bfc79e45640161a67c5aa4c419bee"
+		},
+		{
+			"path": "research/body_swing_cadence.py",
+			"bytes": 1505,
+			"sha256": "da4f447a0b3556d4467fd0f7f6285595aec1dc8b6876d01f65aaaccd1c0200a9"
+		},
+		{
+			"path": "research/body_swing_execution.py",
+			"bytes": 2719,
+			"sha256": "f8293c651b20dff8111e9defbc5208e64b44bc65c971831dfa1edd6e85decd5b"
+		},
+		{
+			"path": "research/body_swing_networks.py",
+			"bytes": 7402,
+			"sha256": "4c5d6934ba83dc0956216ef95bf6b6c5a7c5df876663e32aed9cbe812782cce7"
+		},
+		{
+			"path": "research/body_swing_skeleton.py",
+			"bytes": 826,
+			"sha256": "543e2cf4d2e0e38891ca6b19e59ba599c07321dbd7c8410d220d1cadc4104964"
+		},
+		{
+			"path": "research/tests/test_body_coreml_assets.py",
+			"bytes": 6394,
+			"sha256": "1a9159b3f2e47a9e14b0125f2b9a6689c994bdf730b6405c7431939434f57cd7"
+		},
+		{
+			"path": "research/tests/test_body_coreml_process.py",
+			"bytes": 15670,
+			"sha256": "84f8bbc2f95227de795ad93b36ff0c48d711d72d9aad9c2144823372809bacd4"
+		},
+		{
+			"path": "research/tests/test_body_execution_checkpoint.py",
+			"bytes": 6465,
+			"sha256": "3014573b4ab88ecb81ab2607a9aeac32ffedca72e932860737e5a20e9ab727c1"
+		},
+		{
+			"path": "research/tests/test_body_execution_journal.py",
+			"bytes": 6098,
+			"sha256": "f8ff94d5a659b8da03f0813a8f78dc4497e23c858c80741dd32e2c59f03e3b9f"
+		},
+		{
+			"path": "research/tests/test_body_execution_profile.py",
+			"bytes": 3310,
+			"sha256": "fa66ab6785e7fc922479b6d46b9666b8098c6b9502ad05cc8fc485838cdf7f7f"
+		},
+		{
+			"path": "research/tests/test_body_execution_sessions.py",
+			"bytes": 13142,
+			"sha256": "9296372cf38d61704bdad88e349a8e59aa59db9ffe94e1355a02cc7c23e5bb9c"
+		},
+		{
+			"path": "research/tests/test_body_execution_sources.py",
+			"bytes": 4534,
+			"sha256": "cb49c9817d0c8f1c3500b6f3e914d208cdcd1cbc700ef5d5f51d8a92d3b78312"
+		},
+		{
+			"path": "research/tests/test_body_swing_cadence.py",
+			"bytes": 3062,
+			"sha256": "1853215b0462ace1c7de1f008d1249a5dc7f775526dd3749437ccad807468c2f"
+		},
+		{
+			"path": "research/tests/test_body_swing_networks.py",
+			"bytes": 9273,
+			"sha256": "8a49508f2f121e4be139021e6407c2ab9e237851797618cd47218b2f7559fcd3"
+		},
+		{
+			"path": "research/tests/test_body_swing_render.py",
+			"bytes": 5478,
+			"sha256": "d1b6f4b2bfd6c72b137a63e524be781ef117a89f34fcb09ec4ba2504cda209e2"
+		},
+		{
+			"path": "research/tests/test_body_swing_skeleton.py",
+			"bytes": 3596,
+			"sha256": "1faa6d19d00b43442ad1e4abf2493c81e9f8bb1240106474dc2de03297967116"
 		}
 	],
 	"importPatches": [
@@ -3413,6 +3523,40 @@
 				"research/tests/test_body_video_face_sequence.py"
 			],
 			"reason": "Preserve finite out-of-frame VIDEO face coordinates after accepted tracking, matching the native public FaceBuffer conversion without clipping, dropping slots, or changing their histories. Keep the still-photo in-frame contract. Verify native float32 output bits and replay the real frame-215 boundary failure."
+		},
+		{
+			"files": [
+				"research/body_coreml_assets.py",
+				"research/body_coreml_build.py",
+				"research/body_coreml_host.mm",
+				"research/body_coreml_process.py",
+				"research/body_execution_journal.py",
+				"research/body_execution_profile.py",
+				"research/body_execution_sources.py",
+				"research/body_sequence_checkpoint.py",
+				"research/body_skeleton_sequence.py",
+				"research/body_smart_sequence.py",
+				"research/body_swing_cadence.py",
+				"research/body_swing_execution.py",
+				"research/body_swing_networks.py",
+				"research/body_swing_skeleton.py",
+				"research/independent_sequence_sessions.py",
+				"research/independent_worker.py",
+				"research/tests/test_body_coreml_assets.py",
+				"research/tests/test_body_coreml_process.py",
+				"research/tests/test_body_execution_checkpoint.py",
+				"research/tests/test_body_execution_journal.py",
+				"research/tests/test_body_execution_profile.py",
+				"research/tests/test_body_execution_sessions.py",
+				"research/tests/test_body_execution_sources.py",
+				"research/tests/test_body_smart_sequence.py",
+				"research/tests/test_body_swing_cadence.py",
+				"research/tests/test_body_swing_networks.py",
+				"research/tests/test_body_swing_render.py",
+				"research/tests/test_body_swing_skeleton.py",
+				"research/tests/test_independent_worker.py"
+			],
+			"reason": "Add the explicit swing-coreml-v1 body-video profile and retain bef-cpu-warm-v1 as the omitted default. The opt-in uses externally supplied pinned CoreML models with an owned system-only resident host, polls readiness separately before each detector crop, preserves the one-time cold refine and two graph updates per source frame, and records completed own routes for deterministic replay. Bind version-6 checkpoints and route journals to generation, backend/model/helper/system identities and the actual owned-source closure; retain warm version-5 checkpoints. Reject input or route forks, partial frames and incompatible histories, close resident helpers on worker exit, and publish initialized components atomically. Tests cover lifecycle failures, model validation, readiness routing, checkpoint identity, journal concurrency, source membership and existing warm behavior. No private models, native vendor libraries, captured inputs or frozen PHOTO closure changes are included."
 		}
 	],
 	"sourceWorkingTreeStatus": [

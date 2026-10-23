@@ -33,6 +33,7 @@ import { beautyLabCatalogStatus } from "@/lib/portrait/beauty-lab-catalog";
 import { exportBeautyLabComparison } from "@/lib/portrait/beauty-lab-export";
 import { useBeautyLab } from "@/lib/portrait/use-beauty-lab";
 import type { MediaPortraitAdjustments } from "@/types/timeline";
+import { BeautyLabBodyPhoto } from "./beauty-lab-body-photo";
 import { BeautyLabControls } from "./beauty-lab-controls";
 import { BeautyLabResults } from "./beauty-lab-results";
 
@@ -136,6 +137,7 @@ function BeautyLabWorkspace(props: BeautyLabProps) {
 			className="flex min-h-0 flex-1 flex-col"
 			data-testid="beauty-lab-workspace"
 		>
+			<BeautyLabBodyPhoto locale={locale} disabled={disabled} />
 			<div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
 				<Button
 					type="button"

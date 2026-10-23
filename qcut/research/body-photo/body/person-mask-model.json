@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "PP-HumanSeg FP32",
+  "filename": "human_segmentation_pphumanseg_2023mar.onnx",
+  "size": 6163938,
+  "sha256": "552d8a984054e59b5d773d24b9b12022b22046ceb2bbc4c9aaeaceb36a9ddf24",
+  "repository": "https://github.com/opencv/opencv_zoo",
+  "revision": "47534e27c9851bb1128ccc0102f1145e27f23f98",
+  "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/47534e27c9851bb1128ccc0102f1145e27f23f98/models/human_segmentation_pphumanseg/human_segmentation_pphumanseg_2023mar.onnx",
+  "sourceDocumentation": "https://github.com/opencv/opencv_zoo/blob/47534e27c9851bb1128ccc0102f1145e27f23f98/models/human_segmentation_pphumanseg/README.md",
+  "referenceImplementation": "https://github.com/opencv/opencv_zoo/blob/47534e27c9851bb1128ccc0102f1145e27f23f98/models/human_segmentation_pphumanseg/pphumanseg.py",
+  "license": "Apache-2.0",
+  "licenseFile": "licenses/PPHumanSeg-Apache-2.0.txt",
+  "licenseSha256": "d9cf3b547fa4232fb9285f2db52e909f10f00781aaf64a6d0bb90c55149f1363",
+  "copyright": "Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved",
+  "input": {"name": "x", "shape": [1, 3, 192, 192], "dtype": "float32", "color": "RGB", "normalization": "(value / 255 - 0.5) / 0.5", "resize": "bilinear to 192x192, matching upstream without letterbox"},
+  "output": {"name": "save_infer_model/scale_0.tmp_1", "shape": [1, 2, 192, 192], "classes": ["background", "person"], "restore": "bilinear probabilities to original dimensions before argmax"},
+  "limitations": ["192px semantic silhouette, not hair matting", "Does not reconstruct revealed background", "Does not identify which person to edit"]
+}

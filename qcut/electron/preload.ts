@@ -1,5 +1,11 @@
 import { QCUT_FILTER_COMPARE } from "./qcut-independent-filter/comparison-contract.js";
 import {
+	BODY_PHOTO_INSPECT,
+	BODY_PHOTO_OPEN,
+	BODY_PHOTO_CLOSE,
+	BODY_PHOTO_CHOOSE_RUNTIME,
+} from "./body-photo/body-photo-contract.js";
+import {
 	BEAUTY_LAB_INDEPENDENT_INSPECT,
 	BEAUTY_LAB_INDEPENDENT_RENDER,
 	BEAUTY_LAB_INDEPENDENT_CANCEL,
@@ -307,6 +313,12 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 				);
 			};
 		},
+	},
+	bodyPhotoLab: {
+		inspect: () => ipcRenderer.invoke(BODY_PHOTO_INSPECT),
+		open: () => ipcRenderer.invoke(BODY_PHOTO_OPEN),
+		close: () => ipcRenderer.invoke(BODY_PHOTO_CLOSE),
+		chooseRuntime: () => ipcRenderer.invoke(BODY_PHOTO_CHOOSE_RUNTIME),
 	},
 	beautyLab: {
 		inspectIndependent: () =>

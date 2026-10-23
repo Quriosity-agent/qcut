@@ -94,6 +94,8 @@ import {
 	type JianyingPortraitAdjustmentIPCController,
 } from "./jianying-portrait-adjustment-runtime/jianying-portrait-adjustment-handler.js";
 import { setupBeautyLabIPC } from "./beauty-lab/beauty-lab-handler.js";
+import { setupBodyPhotoLabIPC } from "./body-photo/body-photo-handler.js";
+import { createBodyPhotoLabService } from "./body-photo/body-photo-service.js";
 import { resolveBeautyLabResearchPaths } from "./beauty-lab/beauty-lab-research-config.js";
 import { createBeautyLabCandidateProvider } from "./beauty-lab/beauty-lab-candidate-provider.js";
 import { createIndependentBeautyServices } from "./beauty-lab/beauty-lab-independent-services.js";
@@ -187,6 +189,8 @@ let independentFilterController: ReturnType<
 let jianyingPortraitAdjustmentController: JianyingPortraitAdjustmentIPCController | null =
 	null;
 let beautyLabController: ReturnType<typeof setupBeautyLabIPC> | null = null;
+let bodyPhotoLabController: ReturnType<typeof setupBodyPhotoLabIPC> | null =
+	null;
 let jianyingMotionTrackingController: JianyingMotionTrackingIPCController | null =
 	null;
 let jianyingBasicVideoController: JianyingBasicVideoIPCController | null = null;
@@ -728,6 +732,7 @@ function createWindow(): void {
 
 	// Create the main window
 	mainWindow = new BrowserWindow({
+		show: !process.env.QCUT_E2E_OFFSCREEN,
 		width: 1600,
 		height: 1000,
 		minWidth: 960,
@@ -1172,6 +1177,24 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 			],
 			["JianyingPersonCutoutIPC", setupJianyingPersonCutoutIPC],
 			[
+				"BodyPhotoLabIPC",
+				() => {
+					bodyPhotoLabController = setupBodyPhotoLabIPC({
+						getMainWindow: () => mainWindow,
+						service: createBodyPhotoLabService({
+							getMainWindow: () => mainWindow,
+							sourceRoot: app.isPackaged
+								? app.getAppPath()
+								: path.resolve(__dirname, "../.."),
+							resourcesPath: process.resourcesPath,
+							userDataPath: app.getPath("userData"),
+							isPackaged: app.isPackaged,
+							show: !process.env.QCUT_E2E_OFFSCREEN,
+						}),
+					});
+				},
+			],
+			[
 				"BeautyLabIPC",
 				async () => {
 					const sourceRoot = app.isPackaged
@@ -1390,11 +1413,24 @@ app.on("before-quit", (event) => {
 	// preventDefault the window teardown.
 	stagedUpdateVisibility?.setQuitting();
 	const beautyLab = beautyLabController;
+	const bodyPhotoLab = bodyPhotoLabController;
 	if (
 		!isHeadlessRecorder &&
 		deferBeautyLabQuit({
 			event,
-			dispose: beautyLab ? () => beautyLab.dispose() : undefined,
+			dispose:
+				beautyLab || bodyPhotoLab
+					? async () => {
+							const results = await Promise.allSettled([
+								beautyLab?.dispose(),
+								bodyPhotoLab?.dispose(),
+							]);
+							const failed = results.find(
+								(result) => result.status === "rejected"
+							);
+							if (failed?.status === "rejected") throw failed.reason;
+						}
+					: undefined,
 		})
 	) {
 		return;
@@ -1422,6 +1458,8 @@ app.on("before-quit", (event) => {
 	jianyingPortraitAdjustmentController = null;
 	beautyLabController?.dispose();
 	beautyLabController = null;
+	bodyPhotoLabController?.dispose();
+	bodyPhotoLabController = null;
 	jianyingMotionTrackingController?.dispose();
 	jianyingMotionTrackingController = null;
 	jianyingBasicVideoController?.dispose();

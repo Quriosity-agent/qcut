@@ -120,6 +120,7 @@
 		"stage-jianying-filter-local-bridge": "bun scripts/stage-jianying-filter-local-bridge.ts",
 		"stage-independent-filter-host": "bun scripts/stage-independent-filter-host.ts",
 		"stage-local-model-shot": "bun scripts/stage-local-model-shot.ts",
+		"stage-body-photo": "bun scripts/stage-body-photo.ts",
 		"stage:all-binaries": "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries && bun run stage-rife-binaries && bun run stage-jianying-transition-bridge && bun run stage-jianying-text-runtime-bridge && bun run stage-jianying-filter-local-bridge && bun run stage-independent-filter-host && bun run stage-local-model-shot",
 		"aicp:install": "cd packages/video-agent-skill && pip install -e \".[dev]\"",
 		"aicp:test": "cd packages/video-agent-skill && python -m pytest tests/ -x --tb=short",
@@ -308,6 +309,18 @@
 		"npmRebuild": false,
 		"nodeGypRebuild": false,
 		"extraResources": [
+			{
+				"from": "build/body-photo",
+				"to": "body-photo",
+				"filter": [
+					"**/*",
+					"!**/runtime{,/**/*}",
+					"!**/.venv{,/**/*}",
+					"!**/output{,/**/*}",
+					"!**/__pycache__{,/**/*}",
+					"!**/*.{pyc,pyo,onnx,npz,bin,dylib,dll,so,zip}"
+				]
+			},
 			{
 				"from": "build/independent-beauty",
 				"to": "independent-beauty",

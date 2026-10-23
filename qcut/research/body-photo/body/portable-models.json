@@ -1,0 +1,757 @@
+{
+  "schemaVersion": 1,
+  "onnx": "1.19.0",
+  "onnxruntime": "1.22.1",
+  "opset": 18,
+  "weightsOrigin": "original private vendor graph and arena; not independently trained",
+  "inputPolicy": "Original aspect fit to long side224, short side32..224 aligned16; refine192x144. No ONNX model compilation or NPZ load at inference.",
+  "files": {
+    "body-coarse-32x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        32,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          4,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          4,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "5decceedc9608cd0e47e139a8a206c312f45ba948a0d20179942aeefeb7f687c"
+    },
+    "body-coarse-48x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        48,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          6,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          6,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "3dde44de1ec6bd42e6b13c5d19355b8027b9286bfd824cb4b4bb7ba568ec47e1"
+    },
+    "body-coarse-64x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        64,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          8,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          8,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "b4a37198b9b9b209464dfaa5ea8ce22e6f1907e2982c36025228fffb7e855421"
+    },
+    "body-coarse-80x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        80,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          10,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          10,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "f0364e34eebfea8668645089e04c6c09f54e86f31c1ba944181d06f5c114a80f"
+    },
+    "body-coarse-96x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        96,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          12,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          12,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "56907e3aea226e93063de3f3de890280fd58908fe7800bdac148bc9017436cb0"
+    },
+    "body-coarse-112x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        112,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          14,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          14,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "7007044b29d878b7c7c011e4e429aebaaabb0cc172dcc6c15d8e9e074497c145"
+    },
+    "body-coarse-128x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        128,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          16,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          16,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "cf82aec718a91a2b179d32907c668a3e861f4e8ba8cc5a228752a0cc3d1eec03"
+    },
+    "body-coarse-144x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        144,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          18,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          18,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "993a1a5c9b891619256d0076c0bc1bf14f0e044061048994c98edac10b37f966"
+    },
+    "body-coarse-160x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        160,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          20,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          20,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "ed0d641a25f8e1df9e60b07ddfdbd23688241e356a3c87c5e101961a4ef7ec87"
+    },
+    "body-coarse-176x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        176,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          22,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          22,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "c006aea752611ad5985e66a52b5712d5596f77f26fa997c0787c425fa4530f83"
+    },
+    "body-coarse-192x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        192,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          24,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          24,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "aeaed9cb0652191b30b7dac99020343ba73cf0ad3d88b5b2410ecac4260bae93"
+    },
+    "body-coarse-208x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        208,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          26,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          26,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "080f744b00b45a30f43218f4ff38d6b683fba659208fbfd8e1b6a8e83b620fad"
+    },
+    "body-coarse-224x32-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        32,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          4,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          4,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "8b2f282c172b5bbab09d03e48e035f3de65273119ee6fbc974ba4f81fd45e7b3"
+    },
+    "body-coarse-224x48-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        48,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          6,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          6,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "ab9dd00637c5c2fce86df3c49a4e1053cdec2796301a518177feb71064cd23ad"
+    },
+    "body-coarse-224x64-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        64,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          8,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          8,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "f8b146d29597fb64856e5d5c22993ac05a877882b8a37537066170bf7023ec7b"
+    },
+    "body-coarse-224x80-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        80,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          10,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          10,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "df4515aaaa26a0bf88ec671df793cf6bc22dd1cf15941c14ee754a6e11874ce3"
+    },
+    "body-coarse-224x96-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        96,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          12,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          12,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "7c3d21bfb1e8c4ade449fc9f7c8b24110093fa51271c9af916866260fe55b17d"
+    },
+    "body-coarse-224x112-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        112,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          14,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          14,
+          38
+        ]
+      },
+      "bytes": 2175648,
+      "sha256": "5da876d5d305e79bfd8e17052f0c653cf67bae01d5b8ca126166133a566703fa"
+    },
+    "body-coarse-224x128-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        128,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          16,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          16,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "5f0d053c80d2e17f97cc78dc1e2efd81ae4225096671c9f1998a90f31e329595"
+    },
+    "body-coarse-224x144-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        144,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          18,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          18,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "55eaf35738c8864366f6de9fdafe42e3bd65a6b2b2072b21a7a345ca92c320c8"
+    },
+    "body-coarse-224x160-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        160,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          20,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          20,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "44863c7c094a3be4a94362f2af1a26f79c6ad8d11f60bebaebcf92d579e657ad"
+    },
+    "body-coarse-224x176-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        176,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          22,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          22,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "91fce59389c6ea2f8b66660ce35f95819772e7e188b8083f048157630c8b925e"
+    },
+    "body-coarse-224x192-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        192,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          24,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          24,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "a2e8dace0cc71fc31490f8622b9741fcad45266da2db9ca11436b1df5336f7a1"
+    },
+    "body-coarse-224x208-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        208,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          26,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          26,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "c5a48afced404c066cc98b3879e27f75ba3cb1e848da2beb4a73f6fade6f2a52"
+    },
+    "body-coarse-224x224-fp64.onnx": {
+      "network": "coarse",
+      "inputShape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "outputs": [
+        "heatmap_output_0",
+        "vectormap_output_0"
+      ],
+      "outputShapes": {
+        "heatmap_output_0": [
+          1,
+          28,
+          28,
+          19
+        ],
+        "vectormap_output_0": [
+          1,
+          28,
+          28,
+          38
+        ]
+      },
+      "bytes": 2175649,
+      "sha256": "d4605399c43d507d10d5af64b79459649e9c034ce07d37674bdaa7996e0de144"
+    },
+    "body-refine-192x144-fp64.onnx": {
+      "network": "refine",
+      "inputShape": [
+        1,
+        192,
+        144,
+        3
+      ],
+      "outputs": [
+        "output_0"
+      ],
+      "outputShapes": {
+        "output_0": [
+          1,
+          24,
+          18,
+          34
+        ]
+      },
+      "bytes": 2070539,
+      "sha256": "227622a7c475cbddceceb21d9da3ce20fab3060788965dadd196c72366c1b07d"
+    }
+  }
+}

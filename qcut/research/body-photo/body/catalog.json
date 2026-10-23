@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "product": "独立美体 · 图片版",
+  "scope": "单人、正立、不透明静态照片",
+  "controls": [
+    {"name": "StretchLeg", "title": "长腿", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "SlimWaist", "title": "瘦腰", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "SmallHead", "title": "小头", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "SlimBody", "title": "整体瘦身", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "SlimArm", "title": "瘦手臂", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "ShoulderWidth", "title": "肩宽", "min": -50, "max": 50, "default": 0, "step": 1},
+    {"name": "OrthoShoulder", "title": "直角肩", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "SwanNeck", "title": "天鹅颈", "min": 0, "max": 100, "default": 0, "step": 1},
+    {"name": "HipWidth", "title": "胯宽", "min": -50, "max": 50, "default": 0, "step": 1},
+    {"name": "BustSize", "title": "胸围", "min": -50, "max": 50, "default": 0, "step": 1},
+    {"name": "ThighWidth", "title": "大腿粗细", "min": -50, "max": 50, "default": 0, "step": 1},
+    {"name": "CalfWidth", "title": "小腿粗细", "min": -50, "max": 50, "default": 0, "step": 1}
+  ],
+  "limits": {"maxFileBytes": 20971520, "maxEdge": 4096, "maxPixels": 8294400},
+  "backend": "macOS-Metal",
+  "sourceCommit": "7bd5ceacc996b924c25563f430651dd1046d6ce0"
+}
