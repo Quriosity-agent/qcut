@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { independentBodyVideoProfileSchema } from "./beauty-lab-independent-coreml.js";
 import runtimeProfile from "../beauty-lab-runtime-payload.json";
 import {
 	INDEPENDENT_BEAUTY_MAX_EDGE,
@@ -47,6 +48,7 @@ export const independentFrameRequestShape = z.object({
 				)
 				.optional(),
 			manualBody: independentManualBodySchema.optional(),
+			bodyVideoProfile: independentBodyVideoProfileSchema.optional(),
 		})
 		.strict(),
 });
@@ -131,6 +133,8 @@ export function createIndependentFrameRenderer({
 	}): Promise<BeautyLabIndependentFrameResult> {
 		if (disposed) throw new Error("Independent frame renderer disposed");
 		const parsed = frameRequestSchema.parse(request);
+		if (parsed.adjustments.bodyVideoProfile)
+			throw new Error("CoreML body video requires the sequence API");
 		if (
 			parsed.rgba.buffer instanceof SharedArrayBuffer ||
 			parsed.rgba.length !== parsed.width * parsed.height * 4
