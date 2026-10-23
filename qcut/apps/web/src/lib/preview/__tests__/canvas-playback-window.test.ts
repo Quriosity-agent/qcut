@@ -31,14 +31,28 @@ describe("rolling playback frame windows", () => {
 		});
 		expect(window.at({ frame: 0 })).toEqual({
 			start: 0,
-			end: 120,
-			segments: [0, 1],
+			end: 180,
+			segments: [0, 1, 2],
 		});
 		expect(window.at({ frame: 60 })).toEqual({
 			start: 0,
 			end: 180,
 			segments: [1, 2],
 		});
+	});
+
+	it("uses the empty previous slot to prefetch a complete three-segment clip", () => {
+		const window = createCanvasPlaybackWindow({
+			...portrait,
+			frames: 180,
+			maxBytes: 2 * 1024 ** 3,
+		});
+		expect(window.at({ frame: 0 })).toEqual({
+			start: 0,
+			end: 180,
+			segments: [0, 1, 2],
+		});
+		expect(window.at({ frame: 59 })).toEqual(window.at({ frame: 0 }));
 	});
 
 	it("shrinks 4K segment duration to fit the same worst-case byte budget", () => {
@@ -57,6 +71,9 @@ describe("rolling playback frame windows", () => {
 		expect(window.segmentFrames * 3 * reservation).toBeLessThanOrEqual(
 			maxBytes
 		);
+		expect(window.at({ frame: 0 }).end * reservation).toBeLessThanOrEqual(
+			maxBytes
+		);
 	});
 
 	it("rounds fractional frame rates upward and clips the tail segment", () => {
@@ -69,6 +86,11 @@ describe("rolling playback frame windows", () => {
 		});
 		expect(window.segmentFrames).toBe(60);
 		expect(window.range({ index: 2 })).toEqual({ start: 120, end: 123 });
+		expect(window.at({ frame: 0 })).toEqual({
+			start: 0,
+			end: 123,
+			segments: [0, 1, 2],
+		});
 		expect(window.at({ frame: 122 })).toEqual({
 			start: 60,
 			end: 123,
