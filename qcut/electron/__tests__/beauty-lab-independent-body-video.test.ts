@@ -330,6 +330,47 @@ describe("body video sequence frames", () => {
 		frames.dispose();
 		await expect(frames.render({ request })).rejects.toThrow("disposed");
 	});
+	it("retains completed CoreML routes and lock while reclaiming snapshots", async () => {
+		const sessions = path.join(directory, "sessions");
+		const session = "a".repeat(64);
+		const folder = path.join(sessions, session);
+		await mkdir(folder, { recursive: true });
+		const journal = JSON.stringify({
+			version: 1,
+			session,
+			identity: { profile: "swing-coreml-v1", generation: session },
+			frames: [
+				{
+					frame: 0,
+					input: "c".repeat(64),
+					routes: [{ network: "refine", backend: "coreml" }],
+				},
+			],
+		});
+		await Promise.all([
+			writeFile(path.join(folder, "execution-routes-v1.json"), journal),
+			writeFile(path.join(folder, "execution-routes-v1.lock"), "locked-inode"),
+			writeFile(path.join(folder, "0000000012.snapshot"), new Uint8Array(1024)),
+		]);
+		const pruned = await pruneIndependentSessions({
+			directory: sessions,
+			maxBytes: 1,
+		});
+		expect(
+			await readFile(path.join(folder, "execution-routes-v1.json"), "utf8")
+		).toBe(journal);
+		expect(
+			await readFile(path.join(folder, "execution-routes-v1.lock"), "utf8")
+		).toBe("locked-inode");
+		expect(await readdir(folder)).not.toContain("0000000012.snapshot");
+		expect(pruned.total).toBe(
+			Buffer.byteLength(journal) + Buffer.byteLength("locked-inode")
+		);
+		expect(pruned.removed).toEqual([]);
+		expect(
+			await pruneIndependentSessions({ directory: sessions, maxBytes: 1 })
+		).toEqual(pruned);
+	});
 	it("prunes the least recently used session folders past the byte budget, keeping the active one", async () => {
 		const sessions = path.join(directory, "sessions");
 		const folders = ["1".repeat(64), "2".repeat(64), "3".repeat(64)];
