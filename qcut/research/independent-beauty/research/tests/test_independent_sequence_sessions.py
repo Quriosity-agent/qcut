@@ -96,7 +96,7 @@ class SessionTable(unittest.TestCase):
         self.assertNotIn('checkpoint', results[3][1])
         self.assertEqual(sorted(path.name for path in Path(self.folder()).iterdir()),
                          ['0000000003.snapshot', '0000000006.snapshot'])
-        self.assertEqual(sorted(self.sessions.snapshots), [(SESSION_A, 3), (SESSION_A, 6)])
+        self.assertEqual(self.sessions.snapshot()['memorySnapshots'], 2)
 
     def test_backward_seek_answers_a_gap_then_restores_the_nearest_snapshot(self):
         for frame in range(7):
@@ -164,7 +164,9 @@ class SessionTable(unittest.TestCase):
         sessions = self.table(engine=self.engine, memory_bytes=1)
         for frame in range(7):
             self.frame(frame, sessions=sessions)
-        self.assertEqual(list(sessions.snapshots), [(SESSION_A, 6)])
+        self.assertEqual(sessions.snapshot()['memorySnapshots'], 1)
+        (Path(self.folder()) / '0000000006.snapshot').unlink()
+        self.assertEqual(self.frame(6, sessions=sessions)[0], 'restored')
         self.assertEqual(self.frame(3, sessions=sessions)[0], 'restored')
 
     def test_a_folder_that_cannot_be_written_keeps_the_memory_snapshot(self):
@@ -175,7 +177,37 @@ class SessionTable(unittest.TestCase):
             _, receipt = self.sessions.render(session=SESSION_A, frame=frame, timestamp=frame / 24,
                                               checkpoints=str(blocked / SESSION_A), rgba=self.rgba, controls={})
         self.assertFalse(receipt['checkpoint']['stored'])
-        self.assertIn((SESSION_A, 3), self.sessions.snapshots)
+        self.sessions.prepare(session=SESSION_B, frame=0, checkpoints=self.folder(SESSION_B))
+        self.assertEqual(self.sessions.prepare(session=SESSION_A, frame=3,
+                                              checkpoints=str(blocked / SESSION_A)), 'restored')
+        self.assertEqual(self.engine.history, [0, 1, 2])
+
+    def test_warm_history_cannot_continue_in_an_empty_checkpoint_folder(self):
+        self.frame(0)
+        other = str(self.root / 'other-history')
+        with self.assertRaises(module.SequenceGap) as gap:
+            self.sessions.prepare(session=SESSION_A, frame=1, checkpoints=other)
+        self.assertEqual(gap.exception.restart_from, 0)
+        self.assertEqual(self.frame(1)[0], 'continued')
+        self.sessions.prepare(session=SESSION_A, frame=0, checkpoints=other)
+        self.sessions.render(session=SESSION_A, frame=0, timestamp=0, checkpoints=other,
+                             rgba=self.rgba, controls={})
+        self.assertEqual(self.sessions.prepare(session=SESSION_A, frame=2, checkpoints=self.folder()), 'restored')
+        self.assertEqual(self.engine.history, [0, 1])
+
+    def test_invalid_other_folder_snapshot_does_not_discard_original_memory(self):
+        for frame in range(3):
+            self.frame(frame)
+        other = self.root / 'invalid-history'
+        other.mkdir()
+        broken = other / '0000000003.snapshot'
+        broken.write_bytes(b'not a snapshot')
+        with self.assertRaises(module.SequenceGap) as gap:
+            self.sessions.prepare(session=SESSION_A, frame=3, checkpoints=str(other))
+        self.assertEqual(gap.exception.restart_from, 0)
+        self.assertFalse(broken.exists())
+        self.assertEqual(self.sessions.prepare(session=SESSION_A, frame=3, checkpoints=self.folder()), 'restored')
+        self.assertEqual(self.engine.history, [0, 1, 2])
 
     def test_render_requires_a_prepared_session(self):
         with self.assertRaisesRegex(ValueError, 'prepare'):
