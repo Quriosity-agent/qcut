@@ -253,6 +253,7 @@ describe("independent body video frames", () => {
 		expect(worker.run).toHaveBeenCalledTimes(1);
 		const sent = worker.run.mock.calls[0][0];
 		expect(sent.request.sequence).toEqual(sequence);
+		expect(sent.request).toMatchObject({ outerRequestId: request.requestId });
 		expect(sent.signal.aborted).toBe(false);
 		expect(await provider.inspect()).toMatchObject({
 			available: true,
