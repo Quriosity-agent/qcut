@@ -254,6 +254,40 @@ describe("dynamic matrix evidence cannot pass from unrelated reports", () => {
 		input.observation.workerHistory[1].association = "unavailable";
 		expect(() => verifyBodyMatrixCase(input)).toThrow("Explicit worker/IPC");
 	});
+	it("binds reused request IDs to the worker process that produced the report", () => {
+		const input = fixture();
+		input.observation.spawned.push(2);
+		input.observation.workerHistory.unshift({
+			...input.observation.workerHistory[1],
+			pid: 2,
+			outerRequestId: "stale-outer-request",
+			elapsedMs: 999,
+			outcome: "exit",
+		});
+		const result = verifyBodyMatrixCase(input);
+		expect(result.frames[1]).toMatchObject({
+			workerRequestId: "worker-1",
+			outerRequestId: "outer-1",
+			workerElapsedMs: 10,
+		});
+	});
+	it("rejects a matching request ID recorded only in another worker process", () => {
+		const input = fixture();
+		input.observation.spawned.push(2);
+		input.observation.workerHistory[1].pid = 2;
+		expect(() => verifyBodyMatrixCase(input)).toThrow(
+			"matching worker request and PID"
+		);
+	});
+	it("rejects ambiguous matching IDs within the same worker process", () => {
+		const input = fixture();
+		input.observation.workerHistory.push({
+			...input.observation.workerHistory[1],
+		});
+		expect(() => verifyBodyMatrixCase(input)).toThrow(
+			"matching worker request and PID"
+		);
+	});
 	it("requires a complete generation, not the same frame rendered twice", () => {
 		const input = fixture();
 		input.observation.executions = [
