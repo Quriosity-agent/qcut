@@ -30,9 +30,12 @@ counterparts. All 24 final RGBA outputs match their unobserved counterparts
 byte for byte. The common first three outputs, public skeleton results, mesh
 positions and backend routes also match across all four observed sessions.
 
-Each session executes 12 public skeleton calls and 12 mesh updates. Actual
-backend selection is two CPU passes followed by 11 CoreML passes. For the
-last three requests:
+Each session executes 12 public skeleton calls and 12 mesh updates. Public
+calls can contain multiple detector passes: the first call runs coarse and
+refine passes, and each of the remaining 11 calls runs one refine pass. The
+per-call pass counts are `[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]`, totaling 13.
+Route entries count detector passes, not public calls. Actual backend selection
+is two CPU passes followed by 11 CoreML passes. For the last three requests:
 
 - `same` selects part modes `[2, 2]`, preserving mesh and final RGBA exactly.
   Skeleton inference still runs and public coordinates can change. This is not
@@ -87,7 +90,9 @@ history as the already completed automatic owned runs.
 
 Under that condition, all **24 final RGBA frames, 48 graph-update meshes and
 52 inference-route entries are exact**, across repeated, forward, backward
-and jumping timestamps. Route comparison checks the whole prefix from the
+and jumping timestamps. Each of these four sessions retains the same per-call
+pass distribution: 13 detector passes per session × 4 sessions = 52 routes.
+Route comparison checks the whole prefix from the
 first inference, not only the current frame. These conditional runs have no
 unobserved counterpart; the separate natural runs provide the observation
 transparency check, not a claim that the readiness wait is transparent.
