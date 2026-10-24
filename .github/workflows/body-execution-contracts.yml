@@ -8,6 +8,10 @@ on:
       - qcut/research/independent-beauty/probes/**
       - qcut/research/jianying-runtime-probe/body_backend_*
       - qcut/research/jianying-runtime-probe/test_body_backend_*
+      - qcut/research/jianying-runtime-probe/body_timestamp_*
+      - qcut/research/jianying-runtime-probe/test_body_timestamp_*
+      - qcut/scripts/body-coreml-editor-report.py
+      - qcut/scripts/test_body_coreml_editor_report.py
       - .github/workflows/body-execution-contracts.yml
   push:
     branches: [master]
@@ -16,6 +20,10 @@ on:
       - qcut/research/independent-beauty/probes/**
       - qcut/research/jianying-runtime-probe/body_backend_*
       - qcut/research/jianying-runtime-probe/test_body_backend_*
+      - qcut/research/jianying-runtime-probe/body_timestamp_*
+      - qcut/research/jianying-runtime-probe/test_body_timestamp_*
+      - qcut/scripts/body-coreml-editor-report.py
+      - qcut/scripts/test_body_coreml_editor_report.py
       - .github/workflows/body-execution-contracts.yml
   workflow_dispatch:
 
@@ -56,6 +64,7 @@ jobs:
         run: >-
           python -B -m unittest
           test_body_coreml_assets test_body_coreml_process
+          test_body_coreml_capability test_body_coreml_capability_worker
           test_body_execution_profile test_body_execution_sources test_body_execution_journal -v
       - name: Test macOS routing, cadence and complete session recovery without private assets
         if: runner.os == 'macOS'
@@ -73,3 +82,9 @@ jobs:
         run: >-
           python -B -m unittest discover -s research/independent-beauty/probes
           -p 'test_body_swing_render_probe.py' -v
+      - name: Test native timestamp evidence contracts with synthetic fixtures
+        run: >-
+          python -B -m unittest discover -s research/jianying-runtime-probe
+          -p 'test_body_timestamp_*.py' -v
+      - name: Test editor evidence reports with synthetic fixtures
+        run: python -B -m unittest discover -s scripts -p 'test_body_coreml_editor_report.py' -v
