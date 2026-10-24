@@ -22,6 +22,7 @@ import {
 } from "./beauty-lab-independent-contract.js";
 import type { runIndependentBeautyJob } from "./beauty-lab-independent-process.js";
 import { createIndependentBeautyWorker } from "./beauty-lab-independent-worker.js";
+import { createIndependentCoreMLInspector } from "./beauty-lab-independent-coreml-inspector.js";
 import { verifyIndependentBeautyRuntime } from "./beauty-lab-runtime-payload.js";
 import {
 	independentBeautyEnvironment,
@@ -42,6 +43,14 @@ import {
 	IndependentSequenceGapError,
 } from "./beauty-lab-independent-body-video.js";
 
+import {
+	inspectIndependentCoreML,
+	independentBodyVideoProfileSchema,
+	coreMLSequenceIdentity,
+	verifyCoreMLSequenceReceipt,
+	INDEPENDENT_COREML_PROFILE,
+} from "./beauty-lab-independent-coreml.js";
+
 const requestSchema = z
 	.object({
 		requestId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/),
@@ -53,6 +62,15 @@ const requestSchema = z
 		// A body-video frame: the worker renders it from the session's history.
 		sequence: z
 			.object({
+				executionProfile: independentBodyVideoProfileSchema.optional(),
+				executionGeneration: z
+					.string()
+					.regex(/^[a-f0-9]{64}$/)
+					.optional(),
+				executionIdentitySha256: z
+					.string()
+					.regex(/^[a-f0-9]{64}$/)
+					.optional(),
 				session: z.string().regex(/^[a-f0-9]{64}$/),
 				frame: z.number().int().min(0),
 				timestamp: z.number().finite().min(0),
@@ -83,6 +101,7 @@ const requestSchema = z
 				faces: z.array(z.never()).max(0).optional(),
 				skinToneResourceId: z.null().optional(),
 				manualBody: independentManualBodySchema.optional(),
+				bodyVideoProfile: independentBodyVideoProfileSchema.optional(),
 				manualRetouch: z
 					.object({ strokes: z.array(z.never()).max(0) })
 					.strict()
@@ -198,6 +217,7 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime = verifyIndependentBeautyRuntime,
 	verifyEnvironment = verifyIndependentBeautyEnvironment,
 	createWorker = createIndependentBeautyWorker,
+	inspectCoreML,
 	sessionsDirectory,
 }: {
 	engineRoot: string;
@@ -209,10 +229,16 @@ export function createBeautyLabIndependentProvider({
 	verifyRuntime?: typeof verifyIndependentBeautyRuntime;
 	verifyEnvironment?: typeof verifyIndependentBeautyEnvironment;
 	createWorker?: typeof createIndependentBeautyWorker;
+	inspectCoreML?: typeof inspectIndependentCoreML;
 	/** Session frames keep their checkpoints below this folder only; absent, none render. */
 	sessionsDirectory?: string;
 }) {
 	const worker = createWorker({
+		python,
+		engineRoot,
+		runtimeRoot,
+	});
+	const coremlInspector = createIndependentCoreMLInspector({
 		python,
 		engineRoot,
 		runtimeRoot,
@@ -294,7 +320,40 @@ export function createBeautyLabIndependentProvider({
 		);
 		return hash({ bytes: manifestBytes });
 	}
-	async function inspect({ signal }: { signal?: AbortSignal } = {}) {
+	async function inspectProfile({ signal }: { signal?: AbortSignal } = {}) {
+		return inspectProfileWithSourceIdentity({
+			signal,
+			sourceIdentity: await verifySources(),
+		});
+	}
+	async function inspectProfileWithSourceIdentity({
+		signal,
+		sourceIdentity,
+	}: {
+		signal?: AbortSignal;
+		sourceIdentity: string;
+	}) {
+		const options = {
+			engineRoot,
+			runtimeRoot,
+			python,
+			environment,
+			platform,
+			signal,
+		};
+		if (inspectCoreML) return inspectCoreML(options);
+		return coremlInspector.inspect({
+			...options,
+			sourceIdentity,
+		});
+	}
+	async function inspect({
+		signal,
+		includeProfiles = true,
+	}: {
+		signal?: AbortSignal;
+		includeProfiles?: boolean;
+	} = {}) {
 		try {
 			if (platform !== "darwin" || disposed)
 				throw new Error(
@@ -329,7 +388,28 @@ export function createBeautyLabIndependentProvider({
 				catalog(),
 				independentBodyVideoAvailable({ runtimeRoot }),
 			]);
+			const coreml = includeProfiles
+				? await inspectProfileWithSourceIdentity({
+						signal,
+						sourceIdentity: sourceManifestSha256,
+					})
+				: undefined;
 			return {
+				...(coreml
+					? {
+							bodyVideoProfiles: {
+								[INDEPENDENT_COREML_PROFILE]: {
+									available: bodyVideo && coreml.available,
+									message: bodyVideo
+										? coreml.message
+										: "Body video runtime policy is unavailable",
+									...(coreml.available
+										? { identitySha256: coreml.identitySha256 }
+										: {}),
+								},
+							},
+						}
+					: {}),
 				available: true,
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				message:
@@ -370,6 +450,10 @@ export function createBeautyLabIndependentProvider({
 		if (active || disposed)
 			throw new Error("Independent engine busy or disposed");
 		const input = structuredClone(requestSchema.parse(request));
+		coreMLSequenceIdentity({
+			profile: input.adjustments.bodyVideoProfile,
+			sequence: input.sequence,
+		});
 		if (input.sequence && !insideSessions(input.sequence))
 			throw new Error(
 				"Independent body video checkpoints must live in the sessions folder"
@@ -385,7 +469,20 @@ export function createBeautyLabIndependentProvider({
 		active = job;
 		let directory: string | undefined;
 		try {
-			const status = await inspect({ signal: job.controller.signal });
+			const status = await inspect({
+				signal: job.controller.signal,
+				includeProfiles: false,
+			});
+			const coreml = input.adjustments.bodyVideoProfile
+				? await inspectProfile({ signal: job.controller.signal })
+				: undefined;
+			if (coreml && (!status.bodyVideo || !coreml.available))
+				throw new Error(coreml.message);
+			if (
+				coreml?.available &&
+				coreml.identitySha256 !== input.sequence?.executionIdentitySha256
+			)
+				throw new Error("CoreML execution resources changed before rendering");
 			if (!status.available) throw new Error(status.message);
 			const validated = independentBeautyAdjustments({
 				request: input,
@@ -465,18 +562,30 @@ export function createBeautyLabIndependentProvider({
 				// advanced once the frame is in flight, and the result is cached.
 				const outcome = await worker.run({
 					request: {
+						outerRequestId: input.requestId,
 						image: path.join(directory, "input.png"),
 						request: path.join(directory, "request.json"),
 						output: path.join(directory, "owned.png"),
 						report: path.join(directory, "owned.json"),
 						...(sourceEvidence ? { source_evidence: sourceEvidence.path } : {}),
-						...(input.sequence ? { sequence: input.sequence } : {}),
+						...(input.sequence
+							? {
+									sequence: (() => {
+										const { executionIdentitySha256: _expected, ...sequence } =
+											input.sequence;
+										return sequence;
+									})(),
+								}
+							: {}),
 					},
-					sourceIdentity: manifestSha256,
+					sourceIdentity: coreml?.available
+						? `${manifestSha256}:${coreml.identitySha256}`
+						: manifestSha256,
 					environment: cleanEnvironment,
-					signal: input.sequence
-						? new AbortController().signal
-						: job.controller.signal,
+					signal:
+						input.sequence && !coreml
+							? new AbortController().signal
+							: job.controller.signal,
 					timeoutMs: execution.timeoutMs,
 				});
 				if (outcome.gap)
@@ -484,7 +593,7 @@ export function createBeautyLabIndependentProvider({
 						restartFrom: outcome.gap.restartFrom,
 					});
 			}
-			if (!input.sequence) job.controller.signal.throwIfAborted();
+			if (!input.sequence || coreml) job.controller.signal.throwIfAborted();
 			const budgets = await Promise.all([
 				stat(path.join(directory, "owned.png")),
 				stat(path.join(directory, "owned.json")),
@@ -510,6 +619,21 @@ export function createBeautyLabIndependentProvider({
 			)
 				throw new Error("Invalid independent PNG budget or dimensions");
 			const report = JSON.parse(source) as Record<string, unknown>;
+			if (coreml?.available && input.sequence?.executionGeneration) {
+				verifyCoreMLSequenceReceipt({
+					stages: report.stages,
+					generation: input.sequence.executionGeneration,
+					execution: coreml.identity.execution,
+				});
+				const current = await inspectProfile({ signal: job.controller.signal });
+				if (
+					!current.available ||
+					current.identitySha256 !== coreml.identitySha256
+				)
+					throw new Error(
+						"CoreML execution resources changed during rendering"
+					);
+			}
 			verifyIndependentSourceEvidenceReceipt({
 				expected: sourceEvidence,
 				receipt: report.sourceEvidence,
@@ -563,7 +687,7 @@ export function createBeautyLabIndependentProvider({
 			if ((await verifySources()) !== manifestSha256)
 				throw new Error("Independent source manifest changed during execution");
 			report.qcutSourceManifestSha256 = manifestSha256;
-			if (!input.sequence) job.controller.signal.throwIfAborted();
+			if (!input.sequence || coreml) job.controller.signal.throwIfAborted();
 			return {
 				provider: BEAUTY_LAB_INDEPENDENT_PROVIDER,
 				requestId: input.requestId,
@@ -598,6 +722,7 @@ export function createBeautyLabIndependentProvider({
 		active?.controller.abort();
 		await active?.done;
 		await worker.dispose();
+		await coremlInspector.dispose();
 	}
-	return { inspect, render, cancel, dispose };
+	return { inspect, inspectProfile, render, cancel, dispose };
 }

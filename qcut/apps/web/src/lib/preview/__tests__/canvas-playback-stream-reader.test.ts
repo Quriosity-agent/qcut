@@ -62,32 +62,32 @@ describe("rolling stream and decoded playback reader", () => {
 	it("reloads a cached target after a one-frame forward and backward seek in a minimum window", async () => {
 		const value = fixture({ segmentFrames: 1 });
 		const { stream, reader, requestAt, settle, cache, reads } = value;
-		stream.setTarget({ frame: 0 });
+		stream.setTarget({ frame: 1 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
 		await settle();
 		expect(stream.stats).toMatchObject({
 			segmentFrames: 1,
-			windowEnd: 2,
+			windowEnd: 3,
 			residentFrames: 2,
 		});
-		reader.setTarget({ frame: 0 });
-		await vi.waitFor(() => expect(reader.get({ frame: 1 })).toBeDefined());
-		const first = reader.get({ frame: 0 });
+		reader.setTarget({ frame: 1 });
+		await vi.waitFor(() => expect(reader.get({ frame: 2 })).toBeDefined());
+		const first = reader.get({ frame: 1 });
 		expect(first).toBeDefined();
 
-		value.seek({ frame: 1 });
+		value.seek({ frame: 2 });
 		const obsolete = await requestAt({ index: 2 });
-		expect(obsolete.request).toMatchObject({ startFrame: 2, frames: 1 });
+		expect(obsolete.request).toMatchObject({ startFrame: 3, frames: 1 });
 		expect(first?.close).toHaveBeenCalledOnce();
-		value.seek({ frame: 0 });
+		value.seek({ frame: 1 });
 		expect(obsolete.request.signal.aborted).toBe(true);
 		obsolete.gate.resolve();
 		await settle();
 
-		expect(cache.has({ frame: 0 })).toBe(true);
-		await vi.waitFor(() => expect(reader.get({ frame: 0 })).toBeDefined());
-		expect(reader.get({ frame: 0 })).not.toBe(first);
+		expect(cache.has({ frame: 1 })).toBe(true);
+		await vi.waitFor(() => expect(reader.get({ frame: 1 })).toBeDefined());
+		expect(reader.get({ frame: 1 })).not.toBe(first);
 		expect(reader.stats).toMatchObject({
 			maxFrames: 2,
 			frames: 2,
@@ -95,7 +95,7 @@ describe("rolling stream and decoded playback reader", () => {
 		});
 		expect(
 			reads.mock.calls
-				.filter(([{ frame }]) => frame >= 2)
+				.filter(([{ frame }]) => frame >= 3)
 				.every(([{ signal }]) => signal.aborted)
 		).toBe(true);
 		expect(stream.error).toBeUndefined();
@@ -106,23 +106,24 @@ describe("rolling stream and decoded playback reader", () => {
 	it("releases future waits when returning to the last frame of a two-frame segment", async () => {
 		const value = fixture({ segmentFrames: 2 });
 		const { stream, reader, requestAt, settle, cache, images } = value;
-		stream.setTarget({ frame: 1 });
+		stream.setTarget({ frame: 3 });
 		await (await requestAt({ index: 0 })).complete();
 		await (await requestAt({ index: 1 })).complete();
 		await settle();
-		reader.setTarget({ frame: 1 });
-		await vi.waitFor(() => expect(reader.get({ frame: 3 })).toBeDefined());
-		const first = reader.get({ frame: 1 });
+		reader.setTarget({ frame: 3 });
+		await vi.waitFor(() => expect(reader.get({ frame: 5 })).toBeDefined());
+		const first = reader.get({ frame: 3 });
 
-		value.seek({ frame: 2 });
+		value.seek({ frame: 4 });
 		const obsolete = await requestAt({ index: 2 });
-		expect(obsolete.request).toMatchObject({ startFrame: 4, frames: 2 });
-		value.seek({ frame: 1 });
+		expect(obsolete.request).toMatchObject({ startFrame: 6, frames: 2 });
+		value.seek({ frame: 3 });
+		expect(obsolete.request.signal.aborted).toBe(true);
 		obsolete.gate.resolve();
 		await settle();
-		expect(cache.has({ frame: 1 })).toBe(true);
-		await vi.waitFor(() => expect(reader.get({ frame: 1 })).toBeDefined());
-		expect(reader.get({ frame: 1 })).not.toBe(first);
+		expect(cache.has({ frame: 3 })).toBe(true);
+		await vi.waitFor(() => expect(reader.get({ frame: 3 })).toBeDefined());
+		expect(reader.get({ frame: 3 })).not.toBe(first);
 		expect(first?.close).toHaveBeenCalledOnce();
 		expect(reader.stats).toMatchObject({
 			maxFrames: 3,

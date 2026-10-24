@@ -1,5 +1,6 @@
 import type { MediaPortraitAdjustments } from "@/types/timeline";
 import {
+	hasIndependentBodyVideoAdjustments,
 	type IndependentBodyVideoFrame,
 	renderIndependentBodyVideoFrame,
 } from "./independent-body-video";
@@ -60,6 +61,16 @@ export async function renderIndependentPortraitFrame({
 		throw new Error(
 			independentPortraitIssueMessage({ issue: converted.issue })
 		);
+	if (
+		adjustments.bodyVideoProfile &&
+		!bodyVideo &&
+		hasIndependentBodyVideoAdjustments({ adjustments })
+	)
+		throw new Error(
+			"原生调度 CoreML 美体需要可用的视频序列处理，请检查运行环境、视频帧率和稳定设置"
+		);
+	const { bodyVideoProfile: _profile, ...stillAdjustments } =
+		converted.adjustments;
 	const { width, height } = source;
 	if (!independentPortraitDimensionsValid({ width, height }))
 		throw new Error(
@@ -85,7 +96,7 @@ export async function renderIndependentPortraitFrame({
 		: await renderIndependentStillFrame({
 				api,
 				source,
-				adjustments: converted.adjustments,
+				adjustments: stillAdjustments,
 				timestampSeconds,
 				readSourceEvidence,
 				describe,

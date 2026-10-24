@@ -4,7 +4,12 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import {
+	expect,
+	test,
+	type Page,
+	type ElectronApplication,
+} from "@playwright/test";
 import { getMainWindow, startElectronApp } from "./electron-helpers";
 import {
 	armCompositeCapture,
@@ -149,6 +154,8 @@ export async function runCompositeConsistency({
 	traceHelperPath,
 	prepareProject = prepareCompositeProject,
 	beforeExport,
+	setupEvidence,
+	afterPass,
 }: {
 	source: string | undefined;
 	output: string;
@@ -178,6 +185,16 @@ export async function runCompositeConsistency({
 		page: Page;
 		pass: CompositeEvidencePass;
 	}) => Promise<void>;
+	setupEvidence?: (options: {
+		app: ElectronApplication;
+		page: Page;
+	}) => Promise<void>;
+	afterPass?: (options: {
+		app: ElectronApplication;
+		page: Page;
+		pass: CompositeEvidencePass;
+		frames: CapturedExportFrame[];
+	}) => Promise<Record<string, unknown>>;
 }) {
 	test.skip(
 		!source || !existsSync(source),
@@ -252,6 +269,7 @@ export async function runCompositeConsistency({
 		nativeTemporalMode:
 			"runtime temporal policy; exact paused canvas composition required",
 		sampleIndices: settings.samples,
+		captureEveryFrame: settings.captureEveryFrame === true,
 		requestedPasses: passes.map(({ id }) => id),
 		previewSeekOrder: previewIndices,
 		capture:
@@ -289,6 +307,7 @@ export async function runCompositeConsistency({
 				.digest("hex");
 		}
 		const page = await getMainWindow(app);
+		if (setupEvidence) await setupEvidence({ app, page });
 		page.on("pageerror", (error) => pageErrors.push(error.message));
 		page.on("console", (message) => {
 			if (message.type() === "error") consoleErrors.push(message.text());
@@ -340,7 +359,11 @@ export async function runCompositeConsistency({
 				frames
 					.filter((frame) => frame.pass === pass)
 					.map((frame) => frame.frameIndex)
-			).toEqual(settings.samples);
+			).toEqual(
+				settings.captureEveryFrame
+					? Array.from({ length: settings.totalFrames }, (_, index) => index)
+					: settings.samples
+			);
 			const previews: Array<
 				Awaited<ReturnType<typeof captureCompositePreview>>
 			> = [];
@@ -392,6 +415,16 @@ export async function runCompositeConsistency({
 				adjustments,
 				exported,
 				previews,
+				...(afterPass
+					? {
+							acceptance: await afterPass({
+								app,
+								page,
+								pass,
+								frames: frames.filter((frame) => frame.pass === pass),
+							}),
+						}
+					: {}),
 				...(capturePreview
 					? {}
 					: {

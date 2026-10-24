@@ -20,6 +20,7 @@ export interface CapturedExportFrame {
 	width: number;
 	height: number;
 	pngSha256: string;
+	rgbaSha256: string;
 	file: string;
 }
 
@@ -54,10 +55,16 @@ export async function installCompositeExportCapture({
 			width: number;
 			height: number;
 			png: string;
+			rgbaSha256: string;
 		}) => {
 			if (
 				!allowedPasses.includes(input.pass) ||
-				!settings.samples.includes(input.frameIndex) ||
+				!(settings.captureEveryFrame
+					? Number.isInteger(input.frameIndex) &&
+						input.frameIndex >= 0 &&
+						input.frameIndex < settings.totalFrames
+					: settings.samples.includes(input.frameIndex)) ||
+				!/^[a-f0-9]{64}$/.test(input.rgbaSha256) ||
 				input.width !== settings.width ||
 				input.height !== settings.height ||
 				input.fps !== settings.fps ||
@@ -99,11 +106,25 @@ export async function armCompositeCapture({
 	settings?: CompositeSettings;
 }) {
 	await page.evaluate(
-		({ pass, frameIndices }) => {
+		({ pass, frameIndices, captureEveryFrame, totalFrames }) => {
 			const target = window as unknown as CompositeEvidenceWindow;
-			target.__qcutExportFrameEvidence = {
+			const sink: NonNullable<
+				CompositeEvidenceWindow["__qcutExportFrameEvidence"]
+			> = {
 				frameIndices,
 				capture: async ({ canvas, frameIndex, timeSeconds, fps }) => {
+					const context = canvas.getContext("2d");
+					if (!context) throw new Error("Missing export evidence canvas");
+					const rgba = context.getImageData(
+						0,
+						0,
+						canvas.width,
+						canvas.height
+					).data;
+					const digest = await crypto.subtle.digest("SHA-256", rgba);
+					const rgbaSha256 = Array.from(new Uint8Array(digest), (byte) =>
+						byte.toString(16).padStart(2, "0")
+					).join("");
 					await target.__savePortraitCompositeFrame({
 						pass,
 						frameIndex,
@@ -112,11 +133,21 @@ export async function armCompositeCapture({
 						width: canvas.width,
 						height: canvas.height,
 						png: canvas.toDataURL("image/png"),
+						rgbaSha256,
 					});
+					if (captureEveryFrame)
+						sink.frameIndices =
+							frameIndex + 1 < totalFrames ? [frameIndex + 1] : [];
 				},
 			};
+			target.__qcutExportFrameEvidence = sink;
 		},
-		{ pass, frameIndices: settings.samples }
+		{
+			pass,
+			frameIndices: settings.captureEveryFrame ? [0] : settings.samples,
+			captureEveryFrame: settings.captureEveryFrame === true,
+			totalFrames: settings.totalFrames,
+		}
 	);
 }
 

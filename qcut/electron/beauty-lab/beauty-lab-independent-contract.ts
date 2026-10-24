@@ -38,6 +38,13 @@ export interface BeautyLabIndependentStatus {
 	manualBodyTools?: string[];
 	/** True when the runtime holds the body-video policy the engine pins: clip body edits then follow the clip's history. */
 	bodyVideo?: boolean;
+	bodyVideoProfiles?: {
+		"swing-coreml-v1": {
+			available: boolean;
+			message: string;
+			identitySha256?: string;
+		};
+	};
 }
 /** The manual body tools the independent engine renders (editor ranges). */
 export interface BeautyLabIndependentManualBody {
@@ -85,6 +92,7 @@ export interface BeautyLabIndependentFrameRequest {
 		values: Record<string, number>;
 		makeup?: Record<string, { cardId: string; intensity: number }>;
 		manualBody?: BeautyLabIndependentManualBody;
+		bodyVideoProfile?: "swing-coreml-v1";
 	};
 }
 export interface BeautyLabIndependentFrameResult {
@@ -104,6 +112,8 @@ export interface BeautyLabIndependentSequence {
 	clip: string;
 	frame: number;
 	fps: number;
+	/** CoreML's graph clock follows decoded source PTS, including repeated samples. */
+	sourceTimestampSeconds?: number;
 	/** Rebuilds history after a "replay" result: the cache is skipped so the engine advances. */
 	replay: boolean;
 }

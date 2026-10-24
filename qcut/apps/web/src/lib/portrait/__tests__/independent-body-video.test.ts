@@ -126,6 +126,53 @@ describe("independent body video applicability", () => {
 });
 
 describe("independent body video clip frames", () => {
+	it("separates body profile histories and keeps a saved CoreML clip identity after reopening", async () => {
+		const warm = { ...bodyEdit, enabled: true as const };
+		const selected = {
+			...warm,
+			bodyVideoProfile: "swing-coreml-v1" as const,
+		};
+		const selectedClip = {
+			...clip,
+			element: element({ portraitAdjustments: selected }),
+		};
+		const identity = await independentBodyVideoClipIdentity({
+			clip: selectedClip,
+			adjustments: selected,
+		});
+		expect(identity).not.toBe(
+			await independentBodyVideoClipIdentity({ clip, adjustments: warm })
+		);
+		const reopened = normalizeMediaElement({
+			element: JSON.parse(JSON.stringify(selectedClip.element)),
+		}) as MediaElement;
+		expect(reopened.portraitAdjustments?.bodyVideoProfile).toBe(
+			"swing-coreml-v1"
+		);
+		if (!reopened.portraitAdjustments)
+			throw new Error("Missing saved portrait edit");
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip: {
+					...selectedClip,
+					element: reopened,
+					mediaItem: mediaItem({
+						file: new File([new Uint8Array(16)], "stored-media", {
+							lastModified: 1_800_000_000_000,
+						}),
+					}),
+				},
+				adjustments: { ...reopened.portraitAdjustments, enabled: true },
+			})
+		).toBe(identity);
+		expect(
+			await independentBodyVideoClipIdentity({
+				clip,
+				adjustments: { ...warm, bodyVideoProfile: undefined },
+			})
+		).toBe(await independentBodyVideoClipIdentity({ clip, adjustments: warm }));
+	});
+
 	it("counts the clip's timeline frames and clamps timeline times into them", () => {
 		// 7 s of source at 1x: 168 frames at 24 fps.
 		expect(independentBodyVideoFrameCount({ clip })).toBe(168);
@@ -345,7 +392,10 @@ describe("independent body video frame driver", () => {
 	const decoder: ReturnType<typeof createIndependentBodyVideoDecoder> = {
 		frame: vi.fn(async ({ frame }: { frame: number }) => {
 			decoded.push(frame);
-			return new Uint8Array([frame, 0, 0, 255, 0, frame, 0, 255]);
+			return {
+				rgba: new Uint8Array([frame, 0, 0, 255, 0, frame, 0, 255]),
+				sourceTimestampSeconds: frame / clip.fps,
+			};
 		}),
 		dispose: vi.fn(async () => {}),
 	};
@@ -414,6 +464,44 @@ describe("independent body video frame driver", () => {
 		expect(Array.from(request.rgba)).toEqual([5, 0, 0, 255, 0, 5, 0, 255]);
 		expect(request.requestId).toMatch(/^body-video-/);
 		expect(decoder.dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it("preserves the selected profile on the target and every history replay request", async () => {
+		const selected = {
+			...adjustments,
+			bodyVideoProfile: "swing-coreml-v1" as const,
+		};
+		render.mockImplementationOnce(
+			async (request: BeautyLabIndependentSequenceFrameRequest) => ({
+				status: "replay",
+				requestId: request.requestId,
+				from: 0,
+			})
+		);
+		await renderIndependentBodyVideoFrame({
+			frame: { clip, frame: 2 },
+			width,
+			height,
+			adjustments: selected,
+			createDecoder,
+		});
+		const requests = render.mock.calls.map(
+			([request]) => request as BeautyLabIndependentSequenceFrameRequest
+		);
+		expect(requests.map((request) => request.sequence.frame)).toEqual([
+			2, 0, 1, 2,
+		]);
+		expect(
+			requests.every(
+				(request) => request.adjustments.bodyVideoProfile === "swing-coreml-v1"
+			)
+		).toBe(true);
+		expect(new Set(requests.map((request) => request.sequence.clip)).size).toBe(
+			1
+		);
+		expect(requests[0].sequence.clip).not.toBe(
+			await independentBodyVideoClipIdentity({ clip, adjustments })
+		);
 	});
 
 	it("rebuilds the history the engine asks for, in order, before the frame itself", async () => {
@@ -489,14 +577,19 @@ describe("independent body video frame driver", () => {
 		expect(decoded).toEqual([2, 0, 1, 2, 3, 0, 1, 2, 3]);
 	});
 
-	it("snapshots an edit before decoding so a parameter update cannot change its replay", async () => {
+	it.each([
+		undefined,
+		"swing-coreml-v1",
+	] as const)("snapshots an edit before decoding so a parameter update cannot change its replay (%s)", async (profile) => {
 		const changing = {
 			...adjustments,
+			bodyVideoProfile: profile,
 			values: { ...adjustments.values },
 			manualBody: { stretch: { intensity: 20, upper: 0.45, bottom: 0.2 } },
 		};
 		render.mockImplementationOnce(
 			async (request: BeautyLabIndependentSequenceFrameRequest) => {
+				changing.bodyVideoProfile = profile ? undefined : "swing-coreml-v1";
 				changing.values.body_adjust_SlimBody = 80;
 				changing.manualBody.stretch.upper = 0.6;
 				return { status: "replay", requestId: request.requestId, from: 0 };
@@ -513,6 +606,7 @@ describe("independent body video frame driver", () => {
 		for (const [request] of render.mock.calls as [
 			BeautyLabIndependentSequenceFrameRequest,
 		][]) {
+			expect(request.adjustments.bodyVideoProfile).toBe(profile);
 			expect(request.adjustments.values.body_adjust_SlimBody).toBe(40);
 			expect(request.adjustments.manualBody?.stretch?.upper).toBe(0.45);
 		}
@@ -662,7 +756,14 @@ describe("independent body video frame driver", () => {
 		).rejects.toThrow("重放起点");
 	});
 
-	it("stops at the next frame once cancelled and rejects mismatched results", async () => {
+	it.each([
+		undefined,
+		"swing-coreml-v1",
+	] as const)("stops at the next frame once cancelled and rejects mismatched results (%s)", async (profile) => {
+		const selectedAdjustments = {
+			...adjustments,
+			...(profile ? { bodyVideoProfile: profile } : {}),
+		};
 		const controller = new AbortController();
 		render.mockImplementationOnce(
 			async (request: BeautyLabIndependentSequenceFrameRequest) => {
@@ -675,7 +776,7 @@ describe("independent body video frame driver", () => {
 				frame: { clip, frame: 4 },
 				width,
 				height,
-				adjustments,
+				adjustments: selectedAdjustments,
 				signal: controller.signal,
 				createDecoder,
 			})
@@ -685,6 +786,7 @@ describe("independent body video frame driver", () => {
 		const [request] = render.mock.calls[0] as [
 			BeautyLabIndependentSequenceFrameRequest,
 		];
+		expect(request.adjustments.bodyVideoProfile).toBe(profile);
 		expect(cancelIndependent).toHaveBeenCalledWith({
 			requestId: request.requestId,
 		});

@@ -105,6 +105,30 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual([item['ok'] for item in responses], [False, True])
         render.assert_called_once()
 
+    def test_outer_request_identity_is_transport_only(self):
+        render = Mock()
+        correlated = self.request | {'outerRequestId': 'body-video:clip_1.frame-2'}
+        responses = self.serve(rows=[correlated, self.request | {'id': 'two'}], render=render)
+        self.assertEqual(responses, [{'id': 'one', 'ok': True}, {'id': 'two', 'ok': True}])
+        self.assertEqual(render.call_count, 2)
+        for call in render.call_args_list:
+            self.assertNotIn('outerRequestId', call.kwargs)
+            self.assertNotIn('outerRequestId', call.kwargs['runtime_receipt']())
+        first, second = [dict(call.kwargs) for call in render.call_args_list]
+        first.pop('runtime_receipt')
+        second.pop('runtime_receipt')
+        self.assertEqual(first, second)
+
+    def test_invalid_outer_request_identity_does_not_render_or_break_next_request(self):
+        for value in (None, False, '', 'x' * 129, 'with space', 'line\nbreak', '/tmp/request', '请求'):
+            with self.subTest(value=value):
+                render = Mock()
+                rows = [self.request | {'outerRequestId': value}, self.request | {'id': 'valid'}]
+                responses = self.serve(rows=rows, render=render)
+                self.assertEqual([response['ok'] for response in responses], [False, True])
+                self.assertEqual(responses[1]['id'], 'valid')
+                render.assert_called_once()
+
     def test_oversize_line_terminates_without_parsing_trailing_fragments(self):
         render = Mock()
         output = io.StringIO()

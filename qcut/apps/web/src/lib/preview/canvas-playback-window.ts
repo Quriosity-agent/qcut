@@ -42,12 +42,13 @@ export function createCanvasPlaybackWindow({
 		range,
 		at({ frame }: { frame: number }) {
 			const index = segment({ frame });
+			const start = Math.max(0, (index - 1) * segmentFrames);
+			// The first segment has no previous segment occupying the third slot.
+			const prefetch = index === 0 ? [0, 1, 2] : [index, index + 1];
 			return {
-				start: Math.max(0, (index - 1) * segmentFrames),
-				end: Math.min(frames, (index + 2) * segmentFrames),
-				segments: [index, index + 1].filter(
-					(value) => value * segmentFrames < frames
-				),
+				start,
+				end: Math.min(frames, start + 3 * segmentFrames),
+				segments: prefetch.filter((value) => value * segmentFrames < frames),
 			};
 		},
 	};

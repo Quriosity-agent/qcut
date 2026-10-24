@@ -61,6 +61,20 @@ export function resetIndependentBodyVideoCapability() {
 }
 
 /** A video clip whose independent edit moves the body: its frames share one history. */
+export function hasIndependentBodyVideoAdjustments({
+	adjustments,
+}: {
+	adjustments?: MediaPortraitAdjustments;
+}) {
+	return Boolean(
+		adjustments?.enabled &&
+			adjustments.engine === "independent" &&
+			Object.entries(adjustments.values).some(
+				([key, value]) => key.startsWith("body_adjust_") && (value ?? 0) !== 0
+			)
+	);
+}
+
 export function independentBodyVideoApplies({
 	adjustments,
 	mediaType,
@@ -71,15 +85,11 @@ export function independentBodyVideoApplies({
 	fps: number;
 }) {
 	return Boolean(
-		adjustments?.enabled &&
-			adjustments.engine === "independent" &&
+		hasIndependentBodyVideoAdjustments({ adjustments }) &&
 			mediaType === "video" &&
 			Number.isFinite(fps) &&
 			fps >= INDEPENDENT_BODY_VIDEO_MIN_FPS &&
-			fps <= INDEPENDENT_BODY_VIDEO_MAX_FPS &&
-			Object.entries(adjustments.values).some(
-				([key, value]) => key.startsWith("body_adjust_") && (value ?? 0) !== 0
-			)
+			fps <= INDEPENDENT_BODY_VIDEO_MAX_FPS
 	);
 }
 
@@ -269,7 +279,7 @@ export function createIndependentBodyVideoDecoder({
 		context.drawImage(decoded.canvas as CanvasImageSource, 0, 0, width, height);
 		const rgba = new Uint8Array(context.getImageData(0, 0, width, height).data);
 		for (let index = 3; index < rgba.length; index += 4) rgba[index] = 255;
-		return rgba;
+		return { rgba, sourceTimestampSeconds: decoded.timestamp };
 	}
 	async function dispose() {
 		if (canvas) {
@@ -322,8 +332,20 @@ export async function renderIndependentBodyVideoFrame({
 			index: number;
 			replay: boolean;
 		}): Promise<BeautyLabIndependentSequenceFrameResult> => {
-			const rgba = await decoder.frame({ frame: index, width, height, signal });
+			const { rgba, sourceTimestampSeconds } = await decoder.frame({
+				frame: index,
+				width,
+				height,
+				signal,
+			});
 			signal?.throwIfAborted();
+			const sourceClock =
+				renderAdjustments.bodyVideoProfile === "swing-coreml-v1";
+			if (
+				sourceClock &&
+				(!Number.isFinite(sourceTimestampSeconds) || sourceTimestampSeconds < 0)
+			)
+				throw new Error("自研美体视频没有有效的源帧时间戳");
 			const requestId = `body-video-${crypto.randomUUID()}`;
 			// Cancelling drops the frame while it still waits in the engine queue; a
 			// frame already running completes and is cached, so no history is lost.
@@ -338,7 +360,13 @@ export async function renderIndependentBodyVideoFrame({
 					height,
 					rgba,
 					adjustments: renderAdjustments,
-					sequence: { clip: identity, frame: index, fps: clip.fps, replay },
+					sequence: {
+						clip: identity,
+						frame: index,
+						fps: clip.fps,
+						replay,
+						...(sourceClock ? { sourceTimestampSeconds } : {}),
+					},
 				});
 				signal?.throwIfAborted();
 				if (result.requestId !== requestId)

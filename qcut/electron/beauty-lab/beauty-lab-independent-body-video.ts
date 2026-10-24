@@ -17,6 +17,9 @@ import {
 	waitForFrameOperation,
 } from "./beauty-lab-independent-frames.js";
 import { canonicalIndependentManualBody } from "./beauty-lab-independent-manual-body.js";
+import { createCoreMLHistoryGuard } from "./beauty-lab-independent-coreml-history.js";
+import { INDEPENDENT_COREML_PROFILE } from "./beauty-lab-independent-coreml.js";
+import { createIndependentKeyedQueue } from "./beauty-lab-independent-keyed-queue.js";
 import { IndependentWorkerExitedError } from "./beauty-lab-independent-worker.js";
 
 /**
@@ -33,8 +36,9 @@ const PRUNE_INTERVAL_MS = 60_000;
 
 /**
  * Drops the least recently used session folders until the checkpoint store
- * fits `maxBytes`, keeping `active`. The worker recreates a folder it still
- * writes to; a pruned session merely replays from its clip's first frame.
+ * fits `maxBytes`, keeping `active`. CoreML route journals are replay state,
+ * not disposable cache: only their snapshots can be evicted. Retained journals
+ * may exceed the cache budget; replay must never invent a second route history.
  */
 export async function pruneIndependentSessions({
 	directory,
@@ -51,30 +55,59 @@ export async function pruneIndependentSessions({
 			.filter((name) => /^[a-f0-9]{64}$/.test(name))
 			.map(async (name) => {
 				const folder = path.join(directory, name);
-				let bytes = 0;
-				let usedAt = 0;
-				for (const file of await readdir(folder).catch(() => [] as string[])) {
-					const metadata = await stat(path.join(folder, file)).catch(
-						() => null
-					);
-					if (!metadata?.isFile()) continue;
-					bytes += metadata.size;
-					usedAt = Math.max(usedAt, metadata.mtimeMs);
-				}
+				const files = await readdir(folder).catch(() => [] as string[]);
+				const metadata = await Promise.all(
+					files.map((file) => stat(path.join(folder, file)).catch(() => null))
+				);
+				const bytes = metadata.reduce(
+					(sum, file) => sum + (file?.isFile() ? file.size : 0),
+					0
+				);
+				const usedAt = metadata.reduce(
+					(latest, file) => Math.max(latest, file?.isFile() ? file.mtimeMs : 0),
+					0
+				);
 				return { name, folder, bytes, usedAt };
 			})
 	);
 	let total = folders.reduce((sum, folder) => sum + folder.bytes, 0);
 	const removed: string[] = [];
-	for (const folder of folders.sort(
-		(left, right) => left.usedAt - right.usedAt
-	)) {
-		if (total <= maxBytes) break;
-		if (folder.name === active) continue;
-		await rm(folder.folder, { recursive: true, force: true });
-		total -= folder.bytes;
-		removed.push(folder.name);
-	}
+	await folders
+		.sort((left, right) => left.usedAt - right.usedAt)
+		.reduce<Promise<void>>(async (previous, folder) => {
+			await previous;
+			if (total <= maxBytes || folder.name === active) return;
+			const journal = path.join(folder.folder, "execution-routes-v1.json");
+			if (
+				await stat(journal).then(
+					() => true,
+					() => false
+				)
+			) {
+				const snapshots = (await readdir(folder.folder)).filter((file) =>
+					/^\d{10}\.snapshot$/.test(file)
+				);
+				const reclaimed = await Promise.all(
+					snapshots.map(async (file) => {
+						const target = path.join(folder.folder, file);
+						const metadata = await stat(target).catch(() => null);
+						if (!metadata?.isFile()) return 0;
+						await rm(target, { force: true });
+						return metadata.size;
+					})
+				);
+				total -= reclaimed.reduce((bytes, size) => bytes + size, 0);
+				return;
+			}
+			await rm(folder.folder, { recursive: true, force: true });
+			total -= folder.bytes;
+			removed.push(folder.name);
+		}, Promise.resolve());
+	if (total > maxBytes)
+		console.warn(
+			"[independent-beauty] Session checkpoint budget remains exceeded; active checkpoints and completed CoreML route journals are retained for deterministic replay",
+			{ total, maxBytes }
+		);
 	return { total, removed };
 }
 
@@ -114,8 +147,9 @@ export const independentSequenceSchema = z
 			.int()
 			.min(0)
 			.max(2 ** 31 - 1),
-		// The engine takes steps of at most 0.1 s between frames.
+		// The legacy warm profile derives its clock from FPS; CoreML uses source PTS.
 		fps: z.number().finite().min(10).max(240),
+		sourceTimestampSeconds: z.number().finite().nonnegative().optional(),
 		replay: z.boolean(),
 	})
 	.strict();
@@ -144,15 +178,26 @@ export function independentBodyVideoSession({
 	clip,
 	width,
 	height,
+	execution,
 }: {
 	engineSha256: string;
 	clip: string;
 	width: number;
 	height: number;
+	execution?: { profile: "swing-coreml-v1"; fps: number };
 }) {
 	return createHash("sha256")
 		.update(
-			JSON.stringify({ schemaVersion: 1, engineSha256, clip, width, height })
+			JSON.stringify({
+				schemaVersion: 1,
+				engineSha256,
+				clip,
+				width,
+				height,
+				...(execution
+					? { execution: { ...execution, clock: "decoded-source-pts-v1" } }
+					: {}),
+			})
 		)
 		.digest("hex");
 }
@@ -169,6 +214,7 @@ export function createIndependentSequenceFrameRenderer({
 	provider,
 	cache,
 	engineSha256,
+	resolveCoreML,
 	sessionsDirectory,
 	maxSessionBytes = INDEPENDENT_SESSIONS_MAX_BYTES,
 	now = Date.now,
@@ -177,9 +223,15 @@ export function createIndependentSequenceFrameRenderer({
 		render: (input: {
 			request: unknown;
 		}) => Promise<BeautyLabIndependentResult>;
+		cancel?: (input: { request: { requestId: string } }) => unknown;
 	};
 	cache: Pick<ReturnType<typeof createIndependentFrameCache>, "read" | "write">;
 	engineSha256: () => Promise<string>;
+	resolveCoreML?: (input: { signal: AbortSignal }) => Promise<{
+		engineSha256: string;
+		identitySha256: string;
+		execution: Record<string, unknown>;
+	}>;
 	/** Each session keeps its on-disk checkpoints in `<sessionsDirectory>/<session>`. */
 	sessionsDirectory: string;
 	maxSessionBytes?: number;
@@ -188,6 +240,8 @@ export function createIndependentSequenceFrameRenderer({
 	if (!path.isAbsolute(sessionsDirectory))
 		throw new Error("Independent session checkpoints need an absolute folder");
 	const pending = new Map<string, AbortController>();
+	const frameQueue = createIndependentKeyedQueue();
+	const coremlRequests = new Set<string>();
 	let disposed = false;
 	let prunedAt = Number.NEGATIVE_INFINITY;
 	let pruning: Promise<unknown> = Promise.resolve();
@@ -227,11 +281,23 @@ export function createIndependentSequenceFrameRenderer({
 		const controller = new AbortController();
 		pending.set(requestId, controller);
 		const { signal } = controller;
-		try {
-			const engine = await waitForFrameOperation({
-				signal,
-				operation: engineSha256,
-			});
+		const profiled =
+			input.adjustments.bodyVideoProfile === INDEPENDENT_COREML_PROFILE;
+		if (profiled) coremlRequests.add(requestId);
+		async function renderFrame(): Promise<BeautyLabIndependentSequenceFrameResult> {
+			const profile =
+				profiled && resolveCoreML
+					? await waitForFrameOperation({
+							signal,
+							operation: () => resolveCoreML({ signal }),
+						})
+					: undefined;
+			const engine =
+				profile?.engineSha256 ??
+				(await waitForFrameOperation({
+					signal,
+					operation: engineSha256,
+				}));
 			const manualBody = canonicalIndependentManualBody({
 				manualBody: input.adjustments.manualBody,
 			});
@@ -245,14 +311,41 @@ export function createIndependentSequenceFrameRenderer({
 			const session = independentBodyVideoSession({
 				engineSha256: engine,
 				clip: sequence.clip,
+				...(profile
+					? {
+							execution: {
+								profile: INDEPENDENT_COREML_PROFILE,
+								fps: sequence.fps,
+							},
+						}
+					: {}),
 				width,
 				height,
 			});
+			const history = profile
+				? createCoreMLHistoryGuard({
+						sessionsDirectory,
+						session,
+						resourceIdentitySha256: profile.identitySha256,
+						execution: profile.execution,
+					})
+				: undefined;
+			if (history)
+				await waitForFrameOperation({
+					signal,
+					operation: () => history.synchronize(),
+				});
 			const key = independentFrameCacheKey({
 				engineSha256: engine,
 				...edit,
 				rgba: input.rgba,
-				sequence: { session, frame: sequence.frame },
+				sequence: {
+					session,
+					frame: sequence.frame,
+					...(profiled
+						? { sourceTimestampSeconds: sequence.sourceTimestampSeconds }
+						: {}),
+				},
 			});
 			if (!sequence.replay) {
 				const cached = await waitForFrameOperation({
@@ -260,7 +353,13 @@ export function createIndependentSequenceFrameRenderer({
 					operation: () => cache.read({ key, width, height }),
 				});
 				signal.throwIfAborted();
-				if (cached)
+				if (cached) {
+					if (history)
+						await waitForFrameOperation({
+							signal,
+							operation: () =>
+								history.synchronize({ requiredFrame: sequence.frame }),
+						});
 					return {
 						status: "rendered",
 						requestId,
@@ -269,6 +368,7 @@ export function createIndependentSequenceFrameRenderer({
 						rgba: cached,
 						cached: true,
 					};
+				}
 			}
 			const submit = () => {
 				signal.throwIfAborted();
@@ -278,8 +378,17 @@ export function createIndependentSequenceFrameRenderer({
 						sourceKey: INDEPENDENT_TIMELINE_SOURCE_KEY,
 						sequence: {
 							session,
+							...(profile
+								? {
+										executionProfile: INDEPENDENT_COREML_PROFILE,
+										executionGeneration: session,
+										executionIdentitySha256: profile.identitySha256,
+									}
+								: {}),
 							frame: sequence.frame,
-							timestamp: sequence.frame / sequence.fps,
+							timestamp:
+								sequence.sourceTimestampSeconds ??
+								sequence.frame / sequence.fps,
 							checkpoints: path.join(sessionsDirectory, session),
 						},
 					},
@@ -310,6 +419,7 @@ export function createIndependentSequenceFrameRenderer({
 				}
 				throw error;
 			}
+			if (profile) signal.throwIfAborted();
 			if (
 				result.requestId !== requestId ||
 				result.width !== width ||
@@ -317,7 +427,11 @@ export function createIndependentSequenceFrameRenderer({
 				result.rgba.length !== input.rgba.length
 			)
 				throw new Error("Independent frame result identity mismatch");
-			// Once submitted, a successful frame must be cached even if its caller
+			if (history) {
+				await history.synchronize({ requiredFrame: sequence.frame });
+				signal.throwIfAborted();
+			}
+			// Once submitted, a successful warm frame must be cached even if its caller
 			// cancelled: the worker may already have advanced the session history.
 			try {
 				await cache.write({
@@ -332,6 +446,7 @@ export function createIndependentSequenceFrameRenderer({
 				console.warn("[independent-beauty] Frame cache write failed:", error);
 			}
 			await prune({ active: session });
+			if (profile) signal.throwIfAborted();
 			return {
 				status: "rendered",
 				requestId,
@@ -340,20 +455,49 @@ export function createIndependentSequenceFrameRenderer({
 				rgba: result.rgba,
 				cached: false,
 			};
+		}
+		try {
+			if (profiled && sequence.sourceTimestampSeconds === undefined)
+				throw new Error(
+					"CoreML body video requires a decoded source timestamp"
+				);
+			if (!profiled && sequence.sourceTimestampSeconds !== undefined)
+				throw new Error(
+					"Decoded source timestamps require the CoreML body profile"
+				);
+			if (profiled && !resolveCoreML)
+				throw new Error("CoreML body video is unavailable in this host");
+			// Resolve resources after waiting; the full cache key still binds each request's pixels and edit.
+			const slot = JSON.stringify([
+				sequence.clip,
+				sequence.frame,
+				width,
+				height,
+			]);
+			return await frameQueue.run({
+				key: slot,
+				signal,
+				operation: renderFrame,
+			});
 		} finally {
 			pending.delete(requestId);
+			coremlRequests.delete(requestId);
 		}
 	}
 	function cancel({ request }: { request: { requestId: string } }) {
 		const controller = pending.get(request?.requestId);
 		if (!controller) return { cancelled: false };
 		controller.abort(new Error("Independent beauty cancelled"));
+		if (coremlRequests.has(request.requestId)) provider.cancel?.({ request });
 		return { cancelled: true };
 	}
 	function dispose() {
 		disposed = true;
-		for (const controller of pending.values())
+		for (const [requestId, controller] of pending) {
 			controller.abort(new Error("Independent sequence renderer disposed"));
+			if (coremlRequests.has(requestId))
+				provider.cancel?.({ request: { requestId } });
+		}
 	}
 	return { render, cancel, dispose };
 }

@@ -41,6 +41,14 @@ import {
 	startExport,
 } from "./helpers/independent-body-video-helpers";
 import { preparePortraitReferenceProject } from "./helpers/portrait-reference";
+import {
+	COREML_BODY_PROFILE,
+	requestedBodyVideoProfile,
+	selectCoreMLBodyProfile,
+	assertSavedCoreMLBodyProfile,
+	captureCoreMLBodyExecutionEvidence,
+} from "./helpers/body-video-profile-evidence";
+import { probeVideo } from "./helpers/transition-export-evidence";
 
 const source = process.env.QCUT_BODY_CLOSE_SOURCE;
 const output = path.resolve(
@@ -55,6 +63,8 @@ if (!Number.isInteger(FRAMES) || FRAMES < 36 || FRAMES > 1800)
 const INTERFERE_AFTER_FRAMES = Math.min(30, Math.floor(FRAMES / 2));
 const SEEK_ORDER = [FRAMES - 1, 0, Math.floor(FRAMES / 2), 1, FRAMES - 2];
 const SAMPLES = [...SEEK_ORDER].sort((left, right) => left - right);
+const bodyProfile = requestedBodyVideoProfile();
+const coreml = bodyProfile === COREML_BODY_PROFILE;
 
 test("independent body: parameter edits, cold seeks, cancellation and in-flight worker recovery preserve every export frame", async () => {
 	test.skip(
@@ -117,6 +127,8 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		width: 1080,
 		height: 1920,
 		values: BODY_CLOSE_VALUES,
+		bodyVideoProfile: bodyProfile,
+		sourceProbe: await probeVideo({ filePath: source }),
 		userDataDirectory,
 		checks,
 		preEncodeStages,
@@ -143,7 +155,10 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 	};
 	try {
 		let page = await getMainWindow(app);
-		await installBodyWorkerObserver({ app });
+		await installBodyWorkerObserver({
+			app,
+			...(coreml ? { output: path.join(output, "worker-reports") } : {}),
+		});
 		await attach({ page });
 		const { panel } = await preparePortraitReferenceProject({
 			page,
@@ -171,6 +186,15 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		expect(status?.available).toBe(true);
 		expect(status?.bodyVideo).toBe(true);
 		evidence.runtimeStatus = status;
+		if (coreml) {
+			expect(status?.bodyVideoProfiles?.[COREML_BODY_PROFILE]?.available).toBe(
+				true
+			);
+			evidence.profileSelection = await selectCoreMLBodyProfile({
+				page,
+				output: path.join(output, "coreml-ui-selection.png"),
+			});
+		}
 		await setBodyValues({ page, values: BODY_CLOSE_VALUES });
 		await changeSlimBody({ page, value: 55 });
 		await changeSlimBody({ page, value: 40 });
@@ -267,6 +291,13 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		evidence.initialCheckpoints = checkpoints;
 		await previewStage({ stage: "sequential", reference: "sequential" });
 		checks.sequential_preview_export_identical = true;
+		if (coreml)
+			evidence.initialCoreMLExecution =
+				await captureCoreMLBodyExecutionEvidence({
+					app,
+					output: path.join(output, "execution-initial"),
+					frames: FRAMES,
+				});
 
 		await changeSlimBody({ page, value: 55 });
 		await rm(cache, { recursive: true, force: true });
@@ -331,6 +362,7 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		const requestObservedBeforeClick = await waitForInFlightBodyFrame({
 			app,
 			minimumFrame: INTERFERE_AFTER_FRAMES,
+			...(coreml ? { minimumPendingMs: 10 } : {}),
 		});
 		await page.getByRole("button", { name: "Cancel Export" }).click();
 		const cancelled = await waitForExportIdle({ page });
@@ -407,6 +439,7 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 			app,
 			minimumFrame: INTERFERE_AFTER_FRAMES,
 			kill: true,
+			...(coreml ? { minimumPendingMs: 10 } : {}),
 		});
 		const killedState = await waitForExportIdle({ page });
 		const observation = await readBodyWorkerObservation({ app });
@@ -441,6 +474,13 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		});
 		checks.worker_killed_mid_export_recovered = true;
 		const beforeRestart = await checkpointFiles({ sessions });
+		if (coreml)
+			evidence.beforeRestartCoreMLExecution =
+				await captureCoreMLBodyExecutionEvidence({
+					app,
+					output: path.join(output, "execution-before-restart"),
+					frames: FRAMES,
+				});
 		await persist();
 
 		closing = true;
@@ -449,9 +489,18 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 		closing = false;
 		watchExit({ application: app });
 		page = await getMainWindow(app);
-		await installBodyWorkerObserver({ app });
+		await installBodyWorkerObserver({
+			app,
+			...(coreml
+				? { output: path.join(output, "worker-reports-restarted") }
+				: {}),
+		});
 		await attach({ page });
 		await openProjectInEditor({ page, projectId });
+		if (coreml) {
+			await assertSavedCoreMLBodyProfile({ page });
+			checks.coreml_profile_saved_and_reopened = true;
+		}
 		const afterRestart = await exportStage({ stage: "after-restart" });
 		compare({
 			stage: "after-restart",
@@ -474,6 +523,13 @@ test("independent body: parameter edits, cold seeks, cancellation and in-flight 
 			Object.keys(beforeRestart).sort()
 		);
 		checks.restart_session_identity_reused = true;
+		if (coreml)
+			evidence.afterRestartCoreMLExecution =
+				await captureCoreMLBodyExecutionEvidence({
+					app,
+					output: path.join(output, "execution-after-restart"),
+					frames: FRAMES,
+				});
 		evidence.restart = {
 			cachedSeconds: afterRestart.seconds,
 			recomputedSeconds: afterRestartRecomputed.seconds,

@@ -1,5 +1,6 @@
 import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
 import { NativePortraitSourceWindowError } from "@/lib/portrait/portrait-temporal-policy";
+import { hasIndependentBodyVideoAdjustments } from "@/lib/portrait/independent-body-video";
 import {
 	independentPortraitIssueMessage,
 	independentPortraitRequest,
@@ -111,6 +112,24 @@ export async function prepareIndependentPortraitExport({
 	for (const element of elements) {
 		const adjustments =
 			resolveMediaVisualProperties(element).portraitAdjustments;
+		const requiresCoreMLBody =
+			adjustments.bodyVideoProfile === "swing-coreml-v1" &&
+			hasIndependentBodyVideoAdjustments({ adjustments });
+		const bodyProfile = adjustments.bodyVideoProfile
+			? status.bodyVideoProfiles?.[adjustments.bodyVideoProfile]
+			: undefined;
+		if (
+			requiresCoreMLBody &&
+			(status.bodyVideo !== true || bodyProfile?.available !== true)
+		) {
+			const reason =
+				status.bodyVideo !== true
+					? "当前引擎不支持视频美体序列"
+					: (bodyProfile?.message ?? "请配置 CoreML 视频序列运行环境");
+			throw new Error(
+				`片段「${element.name}」的 CoreML 视频美体不可用：${reason}`
+			);
+		}
 		const processingSize = portraitProcessingSize({
 			width,
 			height,

@@ -18,6 +18,7 @@ export function independentBeautyEnvironment({
 			Object.entries(environment).filter(
 				([key]) =>
 					!key.startsWith("DYLD_") &&
+					!key.startsWith("LD_") &&
 					!["PYTHONPATH", "PYTHONHOME"].includes(key)
 			)
 		),

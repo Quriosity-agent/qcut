@@ -44,6 +44,7 @@ import { PropertyGroup, PropertyItemLabel } from "../property-item";
 import { PortraitAdjustmentSection } from "../portrait/portrait-adjustment-controls";
 import { PortraitCollapsibleGroup } from "../portrait/portrait-collapsible-group";
 import { PortraitEngineControl } from "../portrait/portrait-engine-control";
+import { PortraitBodyVideoProfileControl } from "../portrait/portrait-body-video-profile-control";
 import { PortraitFaceTargetControl } from "../portrait/portrait-face-target-control";
 import { PortraitMakeupControls } from "../portrait/portrait-makeup-controls";
 import { PortraitManualBodyControls } from "../portrait/portrait-manual-body-controls";
@@ -85,6 +86,7 @@ function runtimePackageForControl({
 
 export function MediaPortraitProperties({
 	elementId,
+	mediaType,
 	currentFrame,
 	enhancements,
 	adjustments,
@@ -94,6 +96,7 @@ export function MediaPortraitProperties({
 	onInteractionEnd,
 }: {
 	elementId: string;
+	mediaType?: string;
 	currentFrame: number;
 	enhancements: MediaEnhancements;
 	adjustments: MediaPortraitAdjustments;
@@ -514,6 +517,22 @@ export function MediaPortraitProperties({
 					locale={locale}
 					onChange={onAdjustmentsChange}
 				/>
+				{independentEngine && mediaType === "video" ? (
+					<PortraitBodyVideoProfileControl
+						adjustments={adjustments}
+						status={independentRuntime.status}
+						error={independentRuntime.error}
+						locale={locale}
+						onChange={(next) => {
+							onInteractionStart();
+							try {
+								onAdjustmentsChange(next);
+							} finally {
+								onInteractionEnd();
+							}
+						}}
+					/>
+				) : null}
 				<Tabs
 					value={activeTab}
 					onValueChange={(value) => setActiveTab(value as PortraitPanelTab)}

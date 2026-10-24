@@ -1589,8 +1589,8 @@
 		},
 		{
 			"path": "research/independent_worker.py",
-			"bytes": 6639,
-			"sha256": "e0b8717576b73139a1b420b24f651cb60506cc498d22cb1225314ef97af56746"
+			"bytes": 6914,
+			"sha256": "cfa9c46bdae1b98f288fcbd9ae0ade9e42ea177d9a646b7ebb031c67b4040ee5"
 		},
 		{
 			"path": "research/render_resolution.py",
@@ -1604,8 +1604,8 @@
 		},
 		{
 			"path": "research/tests/test_independent_worker.py",
-			"bytes": 20247,
-			"sha256": "b01a1dcfcc59e05b92933db96244be9f2ab2f2202205401de44f65c7a1a0637e"
+			"bytes": 21661,
+			"sha256": "de7cf99b52d94601cc7e1a87502f68fb12615682840ab673313e52a4f1a5dfbd"
 		},
 		{
 			"path": "research/tests/test_metal_original_resolution.py",
@@ -2701,6 +2701,26 @@
 			"path": "research/tests/test_body_swing_skeleton.py",
 			"bytes": 3596,
 			"sha256": "1faa6d19d00b43442ad1e4abf2493c81e9f8bb1240106474dc2de03297967116"
+		},
+		{
+			"path": "research/body_coreml_capability.py",
+			"bytes": 2100,
+			"sha256": "11c6322dc7296e2bef711013f76a7f7bc4d2a694680d54775fcbe29cb6ada928"
+		},
+		{
+			"path": "research/tests/test_body_coreml_capability.py",
+			"bytes": 3514,
+			"sha256": "c8ff67afa8ef9d3fc9a396d2c17f17f8ca0ea0075945010ce70182685c8bebcc"
+		},
+		{
+			"path": "research/body_coreml_capability_worker.py",
+			"bytes": 3080,
+			"sha256": "f3c778e6121b59e5575e41ad8247e46435c3332a84e185b59b533bbce9c7713a"
+		},
+		{
+			"path": "research/tests/test_body_coreml_capability_worker.py",
+			"bytes": 5350,
+			"sha256": "33809c8daa75cd9537cb0a18fce14d69c1e2d5a71a69f19a1f08ef052d37b014"
 		}
 	],
 	"importPatches": [
@@ -3557,6 +3577,22 @@
 				"research/tests/test_independent_worker.py"
 			],
 			"reason": "Add the explicit swing-coreml-v1 body-video profile and retain bef-cpu-warm-v1 as the omitted default. The opt-in uses externally supplied pinned CoreML models with an owned system-only resident host, polls readiness separately before each detector crop, preserves the one-time cold refine and two graph updates per source frame, and records completed own routes for deterministic replay. Bind version-6 checkpoints and route journals to generation, backend/model/helper/system identities and the actual owned-source closure; retain warm version-5 checkpoints. Reject input or route forks, partial frames and incompatible histories, close resident helpers on worker exit, and publish initialized components atomically. Tests cover lifecycle failures, model validation, readiness routing, checkpoint identity, journal concurrency, source membership and existing warm behavior. No private models, native vendor libraries, captured inputs or frozen PHOTO closure changes are included."
+		},
+		{
+			"files": [
+				"research/body_coreml_capability.py",
+				"research/tests/test_body_coreml_capability.py"
+			],
+			"reason": "Validate the editor opt-in CoreML execution before cached frames are served. Reuse the real Swing execution identity without starting inference, validate the pinned external coarse/refine resources and owned system helper, omit per-session generation from the capability identity, and bind the system hardware and Python versions. Tests cover capability resources, helper integrity and cleanup. No models, native runtime assets or reference inference data are included."
+		},
+		{
+			"files": [
+				"research/independent_worker.py",
+				"research/tests/test_independent_worker.py",
+				"research/body_coreml_capability_worker.py",
+				"research/tests/test_body_coreml_capability_worker.py"
+			],
+			"reason": "Reuse a bounded resident capability inspector while validating model, helper and owned-source bytes for every request, including same-size same-mtime CPU archive changes. Keep inspection separate from rendering and restart on executable, source or environment changes. Add optional validated outerRequestId transport metadata to correlate editor requests with workers without changing render inputs, sequence history or output pixels. Tests cover repeated verification, malformed requests, failures and transport-only behavior. No private models or native assets are included."
 		}
 	],
 	"sourceWorkingTreeStatus": [

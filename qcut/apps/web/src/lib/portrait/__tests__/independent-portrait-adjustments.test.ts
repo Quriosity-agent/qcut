@@ -20,6 +20,24 @@ const base: MediaPortraitAdjustments = {
 };
 
 describe("independent portrait request", () => {
+	it("forwards the saved body video profile without adding it to old requests", () => {
+		const selected = independentPortraitRequest({
+			adjustments: {
+				...base,
+				bodyVideoProfile: "swing-coreml-v1",
+				values: { body_adjust_SlimBody: 40 },
+			},
+		});
+		expect(selected).toMatchObject({
+			adjustments: {
+				bodyVideoProfile: "swing-coreml-v1",
+				values: { body_adjust_SlimBody: 40 },
+			},
+		});
+		const legacy = independentPortraitRequest({ adjustments: base });
+		expect(legacy).not.toHaveProperty("adjustments.bodyVideoProfile");
+	});
+
 	it("keeps only active supported edits for the engine", () => {
 		expect(independentPortraitRequest({ adjustments: base, support })).toEqual({
 			adjustments: {

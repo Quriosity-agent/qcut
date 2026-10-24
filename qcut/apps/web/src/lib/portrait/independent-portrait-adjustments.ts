@@ -146,6 +146,9 @@ export function independentPortraitRequest({
 	return {
 		adjustments: {
 			enabled: true,
+			...(adjustments.bodyVideoProfile
+				? { bodyVideoProfile: adjustments.bodyVideoProfile }
+				: {}),
 			values,
 			...(Object.keys(makeup).length > 0 ? { makeup } : {}),
 			...(Object.keys(manualBody).length > 0 ? { manualBody } : {}),

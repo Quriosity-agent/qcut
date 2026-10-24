@@ -208,6 +208,8 @@ export interface MediaPortraitAdjustments {
 	 * that never chose an engine keep their stored shape byte-identical.
 	 */
 	engine?: MediaPortraitEngine;
+	/** Absent preserves the existing warm CPU video history. */
+	bodyVideoProfile?: "swing-coreml-v1";
 	/** Global skin LUT; absent keeps legacy pink, null explicitly disables it. */
 	skinToneResourceId?: MediaPortraitSkinToneResourceId | null;
 	values: Partial<Record<MediaPortraitAdjustmentKey, number>>;
@@ -255,6 +257,13 @@ export function normalizeMediaPortraitAdjustments({
 		}
 	}
 	const faceTarget = normalizeFaceTarget({ target: adjustments?.faceTarget });
+	const bodyVideoProfile = adjustments?.bodyVideoProfile;
+	if (
+		bodyVideoProfile !== undefined &&
+		bodyVideoProfile !== "swing-coreml-v1"
+	) {
+		throw new Error("Unknown portrait body video profile");
+	}
 	const skinToneResourceId = adjustments?.skinToneResourceId;
 	if (
 		skinToneResourceId !== undefined &&
@@ -277,6 +286,7 @@ export function normalizeMediaPortraitAdjustments({
 			? { engine: "independent" as const }
 			: {}),
 		values,
+		...(bodyVideoProfile === undefined ? {} : { bodyVideoProfile }),
 		...(skinToneResourceId === undefined ? {} : { skinToneResourceId }),
 		...(faceTarget ? { faceTarget } : {}),
 		...(Object.keys(makeup).length > 0 ? { makeup } : {}),

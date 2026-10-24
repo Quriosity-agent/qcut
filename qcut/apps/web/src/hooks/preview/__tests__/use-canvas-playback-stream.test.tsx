@@ -220,11 +220,11 @@ describe("segmented playback preparation", () => {
 		expect(first.cache.dispose).not.toHaveBeenCalled();
 		expect(resumed.renderer.render).not.toHaveBeenCalled();
 		rerender({ suspended: false });
-		await waitFor(() => expect(result.current.completed).toBe(120));
+		await waitFor(() => expect(result.current.completed).toBe(180));
 		expect(result.current.session).toBe(session);
 		expect(
 			resumed.renderer.render.mock.calls.map(([input]) => input.frame)
-		).toEqual(Array.from({ length: 60 }, (_, offset) => 60 + offset));
+		).toEqual(Array.from({ length: 120 }, (_, offset) => 60 + offset));
 		expect(createCache).toHaveBeenCalledOnce();
 	});
 
