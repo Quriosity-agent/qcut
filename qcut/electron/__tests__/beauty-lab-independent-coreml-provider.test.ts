@@ -7,8 +7,23 @@ import { createCanvas, ImageData } from "@napi-rs/canvas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBeautyLabIndependentProvider } from "../beauty-lab/beauty-lab-independent";
 import type { inspectIndependentCoreML } from "../beauty-lab/beauty-lab-independent-coreml";
+import type { createIndependentCoreMLInspector } from "../beauty-lab/beauty-lab-independent-coreml-inspector";
 import type { createIndependentBeautyWorker } from "../beauty-lab/beauty-lab-independent-worker";
 
+const { inspectResidentCoreML } = vi.hoisted(() => ({
+	inspectResidentCoreML:
+		vi.fn<ReturnType<typeof createIndependentCoreMLInspector>["inspect"]>(),
+}));
+vi.mock("node:fs/promises", async (original) => {
+	const fs = await original<typeof import("node:fs/promises")>();
+	return { ...fs, readFile: vi.fn(fs.readFile) };
+});
+vi.mock("../beauty-lab/beauty-lab-independent-coreml-inspector", () => ({
+	createIndependentCoreMLInspector: () => ({
+		inspect: inspectResidentCoreML,
+		dispose: vi.fn(async () => {}),
+	}),
+}));
 vi.mock(
 	"../beauty-lab/beauty-lab-independent-body-video",
 	async (original) => ({
@@ -20,6 +35,10 @@ vi.mock(
 );
 let directory: string;
 beforeEach(async () => {
+	vi.mocked(readFile).mockClear();
+	inspectResidentCoreML
+		.mockReset()
+		.mockImplementation(async () => structuredClone(capability));
 	directory = await mkdtemp(path.join(os.tmpdir(), "coreml-provider-"));
 	await mkdir(path.join(directory, "research"));
 	await writeFile(
@@ -77,7 +96,10 @@ function input() {
 		},
 	};
 }
-function setup({ mutate = (_report: Record<string, unknown>) => {} } = {}) {
+function setup({
+	mutate = (_report: Record<string, unknown>) => {},
+	resident = false,
+} = {}) {
 	const inspectCoreML = vi.fn<typeof inspectIndependentCoreML>(async () =>
 		structuredClone(capability)
 	);
@@ -136,7 +158,7 @@ function setup({ mutate = (_report: Record<string, unknown>) => {} } = {}) {
 		sessionsDirectory: path.join(directory, "sessions"),
 		python: process.execPath,
 		platform: "darwin",
-		inspectCoreML,
+		...(resident ? {} : { inspectCoreML }),
 		environment: {
 			PATH: process.env.PATH,
 			QCUT_INDEPENDENT_BEAUTY_BUN: process.execPath,
@@ -154,7 +176,85 @@ function setup({ mutate = (_report: Record<string, unknown>) => {} } = {}) {
 	return { provider, inspectCoreML, run };
 }
 
+async function pinSource() {
+	const file = "research/pinned.py";
+	const source = "original";
+	const manifest = JSON.stringify({
+		files: [
+			{
+				path: file,
+				sha256: createHash("sha256").update(source).digest("hex"),
+			},
+		],
+		generatedFiles: [],
+	});
+	const sourceFile = path.join(directory, file);
+	await Promise.all([
+		writeFile(sourceFile, source),
+		writeFile(path.join(directory, "source-manifest.json"), manifest),
+	]);
+	return {
+		sourceFile,
+		manifestSha256: createHash("sha256").update(manifest).digest("hex"),
+	};
+}
+
 describe("CoreML provider binding", () => {
+	it("verifies source bytes once per status inspection without reusing them across calls", async () => {
+		const { sourceFile, manifestSha256 } = await pinSource();
+		const test = setup({ resident: true });
+		await expect(test.provider.inspect()).resolves.toMatchObject({
+			available: true,
+		});
+		expect(
+			vi.mocked(readFile).mock.calls.filter(([file]) => file === sourceFile)
+		).toHaveLength(1);
+		expect(inspectResidentCoreML).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sourceIdentity: manifestSha256 })
+		);
+		await expect(test.provider.inspect()).resolves.toMatchObject({
+			available: true,
+		});
+		expect(
+			vi.mocked(readFile).mock.calls.filter(([file]) => file === sourceFile)
+		).toHaveLength(2);
+		await writeFile(sourceFile, "modified");
+		await expect(test.provider.inspect()).resolves.toMatchObject({
+			available: false,
+			message: expect.stringContaining("Independent source changed"),
+		});
+		expect(inspectResidentCoreML).toHaveBeenCalledTimes(2);
+		await test.provider.dispose();
+	});
+	it("verifies fresh source bytes for standalone profile inspection", async () => {
+		const { sourceFile } = await pinSource();
+		const test = setup({ resident: true });
+		await expect(test.provider.inspect()).resolves.toMatchObject({
+			available: true,
+		});
+		await writeFile(sourceFile, "modified");
+		await expect(test.provider.inspectProfile()).rejects.toThrow(
+			"Independent source changed"
+		);
+		expect(inspectResidentCoreML).toHaveBeenCalledOnce();
+		await test.provider.dispose();
+	});
+	it("revalidates source bytes after prediction instead of reusing the pre-render hash", async () => {
+		const { sourceFile } = await pinSource();
+		const test = setup({ resident: true });
+		const run = test.run.getMockImplementation()!;
+		test.run.mockImplementationOnce(async (request) => {
+			const result = await run(request);
+			await writeFile(sourceFile, "modified");
+			return result;
+		});
+		await expect(test.provider.render({ request: input() })).rejects.toThrow(
+			"Independent source changed"
+		);
+		expect(test.run).toHaveBeenCalledOnce();
+		expect(inspectResidentCoreML).toHaveBeenCalledOnce();
+		await test.provider.dispose();
+	});
 	it("publishes capability separately from warm availability", async () => {
 		const test = setup();
 		test.inspectCoreML.mockResolvedValue({
