@@ -446,6 +446,7 @@ export function createIndependentSequenceFrameRenderer({
 				console.warn("[independent-beauty] Frame cache write failed:", error);
 			}
 			await prune({ active: session });
+			if (profile) signal.throwIfAborted();
 			return {
 				status: "rendered",
 				requestId,
