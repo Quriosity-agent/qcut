@@ -321,6 +321,18 @@ export function createBeautyLabIndependentProvider({
 		return hash({ bytes: manifestBytes });
 	}
 	async function inspectProfile({ signal }: { signal?: AbortSignal } = {}) {
+		return inspectProfileWithSourceIdentity({
+			signal,
+			sourceIdentity: await verifySources(),
+		});
+	}
+	async function inspectProfileWithSourceIdentity({
+		signal,
+		sourceIdentity,
+	}: {
+		signal?: AbortSignal;
+		sourceIdentity: string;
+	}) {
 		const options = {
 			engineRoot,
 			runtimeRoot,
@@ -332,7 +344,7 @@ export function createBeautyLabIndependentProvider({
 		if (inspectCoreML) return inspectCoreML(options);
 		return coremlInspector.inspect({
 			...options,
-			sourceIdentity: await verifySources(),
+			sourceIdentity,
 		});
 	}
 	async function inspect({
@@ -377,7 +389,10 @@ export function createBeautyLabIndependentProvider({
 				independentBodyVideoAvailable({ runtimeRoot }),
 			]);
 			const coreml = includeProfiles
-				? await inspectProfile({ signal })
+				? await inspectProfileWithSourceIdentity({
+						signal,
+						sourceIdentity: sourceManifestSha256,
+					})
 				: undefined;
 			return {
 				...(coreml
