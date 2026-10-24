@@ -6,8 +6,13 @@ import { createIndependentSequenceFrameRenderer } from "../beauty-lab/beauty-lab
 import type { BeautyLabIndependentResult } from "../beauty-lab/beauty-lab-independent-contract";
 import { createIndependentRenderQueue } from "../beauty-lab/beauty-lab-independent-queue";
 
-const { synchronize } = vi.hoisted(() => ({
+const { synchronize, readSessionFolders } = vi.hoisted(() => ({
 	synchronize: vi.fn(async (_input?: { requiredFrame?: number }) => {}),
+	readSessionFolders: vi.fn(async (): Promise<string[]> => []),
+}));
+vi.mock("node:fs/promises", async (importOriginal) => ({
+	...(await importOriginal<typeof import("node:fs/promises")>()),
+	readdir: readSessionFolders,
 }));
 vi.mock("../beauty-lab/beauty-lab-independent-coreml-history", () => ({
 	createCoreMLHistoryGuard: () => ({ synchronize }),
@@ -41,6 +46,7 @@ const coremlRequest = {
 
 function fixture() {
 	synchronize.mockClear();
+	readSessionFolders.mockReset().mockResolvedValue([]);
 	const entries = new Map<string, Uint8Array>();
 	const cache = {
 		read: vi.fn(async ({ key }: { key: string }) => entries.get(key) ?? null),
@@ -85,7 +91,35 @@ function fixture() {
 		});
 		return publication;
 	}
-	return { frames, provider, cache, identity, resolveCoreML, holdPublication };
+	function holdFinalization({ phase }: { phase: "cache write" | "prune" }) {
+		const entered = deferred<void>();
+		const released = deferred<void>();
+		async function wait() {
+			entered.resolve();
+			await released.promise;
+		}
+		if (phase === "cache write") {
+			cache.write.mockImplementationOnce(async ({ key, rgba }) => {
+				await wait();
+				entries.set(key, rgba);
+			});
+		} else {
+			readSessionFolders.mockImplementationOnce(async () => {
+				await wait();
+				return [];
+			});
+		}
+		return { entered: entered.promise, release: released.resolve };
+	}
+	return {
+		frames,
+		provider,
+		cache,
+		identity,
+		resolveCoreML,
+		holdPublication,
+		holdFinalization,
+	};
 }
 
 describe("sequence frame cache publication", () => {
@@ -245,6 +279,55 @@ describe("sequence frame cache publication", () => {
 		await expect(first).resolves.toMatchObject({ cached: false });
 		await expect(second).resolves.toMatchObject({ cached: true });
 		expect(test.provider.render).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		"cache write",
+		"prune",
+	] as const)("rejects CoreML cancellation during %s and retains the completed cache", async (phase) => {
+		const test = fixture();
+		const finalization = test.holdFinalization({ phase });
+		const first = test.frames.render({ request: coremlRequest });
+		const rejected = expect(first).rejects.toThrow("cancelled");
+		await finalization.entered;
+		expect(test.frames.cancel({ request: coremlRequest })).toEqual({
+			cancelled: true,
+		});
+		finalization.release();
+		await rejected;
+		await expect(
+			test.frames.render({
+				request: { ...coremlRequest, requestId: "after-cancel" },
+			})
+		).resolves.toMatchObject({ cached: true, rgba: pixels });
+		expect(test.provider.render).toHaveBeenCalledOnce();
+		expect(test.cache.write).toHaveBeenCalledOnce();
+		expect(test.resolveCoreML).toHaveBeenCalledTimes(2);
+		expect(synchronize).toHaveBeenCalledTimes(4);
+	});
+
+	it.each([
+		"cache write",
+		"prune",
+	] as const)("completes a warm frame cancelled during %s and retains its cache", async (phase) => {
+		const test = fixture();
+		const finalization = test.holdFinalization({ phase });
+		const first = test.frames.render({ request });
+		await finalization.entered;
+		expect(test.frames.cancel({ request })).toEqual({ cancelled: true });
+		finalization.release();
+		await expect(first).resolves.toMatchObject({
+			cached: false,
+			rgba: pixels,
+		});
+		await expect(
+			test.frames.render({
+				request: { ...request, requestId: "after-cancel" },
+			})
+		).resolves.toMatchObject({ cached: true, rgba: pixels });
+		expect(test.provider.render).toHaveBeenCalledOnce();
+		expect(test.cache.write).toHaveBeenCalledOnce();
+		expect(test.provider.cancel).not.toHaveBeenCalled();
 	});
 
 	it("drains a cancelled CoreML leader and lets the follower recover independently", async () => {
