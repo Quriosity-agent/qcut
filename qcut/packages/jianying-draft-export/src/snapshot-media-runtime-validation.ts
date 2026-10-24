@@ -844,6 +844,7 @@ const MEDIA_ENHANCEMENT_KEYS = createAllowedKeySet<MediaEnhancements>({
 const MEDIA_PORTRAIT_ADJUSTMENT_CONTAINER_KEYS =
 	createAllowedKeySet<MediaPortraitAdjustments>({
 		keys: {
+			bodyVideoProfile: true,
 			enabled: true,
 			engine: true,
 			faces: true,
@@ -2084,7 +2085,7 @@ export function validateMediaElement({
 			path: `${portraitPath}.enabled`,
 			value: portraitAdjustments.enabled,
 		});
-		validateNumberRecord({
+		const portraitValues = validateNumberRecord({
 			allowed: MEDIA_PORTRAIT_ADJUSTMENT_VALUE_KEYS,
 			path: `${portraitPath}.values`,
 			value: portraitAdjustments.values,
@@ -2111,6 +2112,30 @@ export function validateMediaElement({
 			throw validationIssue({
 				path: `${portraitPath}.engine`,
 				message: "Expected native or independent.",
+			});
+		}
+		const bodyVideoProfile = portraitAdjustments.bodyVideoProfile;
+		if (
+			bodyVideoProfile !== undefined &&
+			bodyVideoProfile !== "swing-coreml-v1"
+		) {
+			throw validationIssue({
+				path: `${portraitPath}.bodyVideoProfile`,
+				message: "Expected swing-coreml-v1 or no body video profile.",
+			});
+		}
+		const hasActiveCoreMLBody =
+			bodyVideoProfile === "swing-coreml-v1" &&
+			portraitAdjustments.enabled === true &&
+			engine === "independent" &&
+			Object.entries(portraitValues).some(
+				([key, value]) => key.startsWith("body_adjust_") && value !== 0
+			);
+		if (hasActiveCoreMLBody) {
+			throw validationIssue({
+				path: `${portraitPath}.bodyVideoProfile`,
+				message:
+					"CoreML body video execution is not represented in JianYing drafts. Bake the media before draft export.",
 			});
 		}
 		if (portraitAdjustments.faceTarget !== undefined) {
