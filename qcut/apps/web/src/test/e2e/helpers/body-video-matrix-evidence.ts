@@ -170,9 +170,13 @@ export function verifyBodyMatrixCase({
 		assert.equal(journal.frames[frame]?.frame, frame);
 		assert.deepEqual(journal.frames[frame].routes, execution.routes);
 		const workers = observation.workerHistory.filter(
-			({ id }) => id === execution.workerRequestId
+			({ id, pid }) => id === execution.workerRequestId && pid === execution.pid
 		);
-		assert.equal(workers.length, 1);
+		assert.equal(
+			workers.length,
+			1,
+			"Expected one matching worker request and PID"
+		);
 		const worker = workers[0];
 		assert.equal(
 			worker.association,
