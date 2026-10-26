@@ -10,6 +10,10 @@
  */
 
 import { createServer } from "node:http";
+import {
+	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
+	TIMELINE_BATCH_ROUTE_PATTERN,
+} from "../claude/utils/timeline-batch-deadline.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -975,7 +979,9 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		const requestPath = (req.url ?? "").split("?")[0] ?? "";
 		const requestTimeoutMs = LONG_RUNNING_ROUTE_PATHS.has(requestPath)
 			? LONG_RUNNING_REQUEST_TIMEOUT_MS
-			: REQUEST_TIMEOUT_MS;
+			: TIMELINE_BATCH_ROUTE_PATTERN.test(requestPath)
+				? TIMELINE_BATCH_HTTP_TIMEOUT_MS
+				: REQUEST_TIMEOUT_MS;
 		req.setTimeout(requestTimeoutMs, () => {
 			if (res.writableEnded || res.headersSent) return;
 			res.writeHead(408, { "Content-Type": "application/json" });
