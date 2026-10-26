@@ -44,6 +44,12 @@ qcut editor:export:start \
   --gif-fps 20 --gif-loop --gif-quality 10 --poll
 ```
 
+The returned job uses `presetId: "custom"` when its effective width, height,
+fps, format, or bitrate differs from the selected preset (or the default
+`youtube-1080p`). Unchanged values keep the preset ID. Omitted settings still
+come from that preset; nested `settings` values take precedence over the
+same top-level fields.
+
 ### Enhancement flags
 
 | Flag | Type | Description |
@@ -73,6 +79,31 @@ as does any progress. When a poll runs out of time the export goes on in
 QCut: `export status` follows it, `export cancel` stops it. A cancelled job
 ends with `status: "cancelled"` and no file at the output path. Exports that
 run in the editor window (the muxer engine) cannot be cancelled from the CLI.
+
+### Native export audio check
+
+When the master limiter is enabled, native exports measure the final encoded
+file's true peak before the job becomes `completed`. `export:status` and the
+final `--poll` result include `audioValidation` and, when needed, `warnings`.
+These fields are visible in both plain output and `--json` output.
+
+| `audioValidation.status` | Meaning |
+|--------------------------|---------|
+| `passed` | Measured true peak is within the configured ceiling at meter precision |
+| `exceeded` | Measured true peak exceeds the ceiling; `warnings` explains the result |
+| `unavailable` | Measurement failed; `warnings` explains why the saved file could not be checked |
+| `no-audio` | The exported file has no audio stream |
+
+`ceilingDbtp` is the configured master limiter ceiling, or `null` if that value
+is invalid (`unavailable`). `truePeakDbtp` is the
+measured level in dBTP; `null` means digital silence. The peak field is absent
+for `unavailable` or `no-audio`. With the master limiter disabled, no automatic
+check is performed and `audioValidation` is absent.
+
+A peak warning preserves the completed export and its output path. This check
+does not alter the audio or guarantee that AAC-encoded true peaks stay below
+the ceiling. If the peak exceeds it, lower the master gain or limiter ceiling,
+export again, and check the new result before delivery.
 
 ---
 
