@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { execute, type Session } from "./editor-real-batch-evidence.ts";
+import {
+	execute,
+	sha256File,
+	type Session,
+} from "./editor-real-batch-evidence.ts";
 
 interface ExportResult {
 	status: string;
@@ -286,10 +290,7 @@ export async function runExportPair({
 	);
 	const unchanged = await Promise.all(
 		session.clips.map(
-			async (clip) =>
-				createHash("sha256")
-					.update(await readFile(clip.file))
-					.digest("hex") === clip.sha256
+			async (clip) => (await sha256File({ file: clip.file })) === clip.sha256
 		)
 	);
 	assert(
