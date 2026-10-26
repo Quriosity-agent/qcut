@@ -7,6 +7,12 @@ import { promisify } from "node:util";
 
 export const execute = promisify(execFile);
 
+export async function sha256File({ file }: { file: string }): Promise<string> {
+	return createHash("sha256")
+		.update(await readFile(file))
+		.digest("hex");
+}
+
 export interface Clip {
 	name: string;
 	file: string;
@@ -95,9 +101,7 @@ export async function sourceClips({
 				file,
 				duration: Number(stream.duration),
 				frames: Number(stream.nb_frames),
-				sha256: createHash("sha256")
-					.update(await readFile(file))
-					.digest("hex"),
+				sha256: await sha256File({ file }),
 			};
 		})
 	);
