@@ -122,14 +122,16 @@ project; it does not replace an existing project.
 
 ## Regression coverage and validation
 
-- Combined affected suite: **316 tests in 25 files passed**, including real
+- Combined affected suite: **317 tests in 25 files passed**, including real
   FFmpeg encodes, MP4/MOV/MP3, mono/stereo, 44.1/48 kHz, silence, low ceilings,
   a real correction retry, quiet-signal preservation and video packet hashes.
 - Master-only deferral, unchanged track/bus effects, missing audio, invalid
   measurements, retry exhaustion, pre/post-publication cancellation ownership,
   CLI status serialization and processes ignoring SIGTERM are covered.
 - Video-only MP4/MOV container brands, video packet identity, atomic publication
-  and existing-file preservation on failure/cancellation are covered.
+  and existing-file preservation on failure/cancellation are covered. Native
+  MOV with ProRes also has an end-to-end regression: its private intermediate
+  retains the MOV container, preserving ProRes support with the limiter enabled.
 - Internal project JSON clients now pass the current runtime bearer token;
   real HTTP tests confirm authenticated snapshots, rejected anonymous requests
   and retention of the previous sidecar when a read is rejected.
@@ -138,6 +140,8 @@ project; it does not replace an existing project.
 - Repository type checks and the final Electron build passed. Web build passed
   for the earlier batch and metadata changes; this follow-up does not change
   Web source. The desktop harness also passed a targeted Node TypeScript check.
+- Five injected desktop-harness failure paths verify that screenshot and
+  application-close errors preserve the original phase error and fail the run.
 - Scoped Biome and `git diff --check` passed; the three CLI export references
   are byte-identical.
 - Changes contain only source, tests and Markdown. No original footage, model,
