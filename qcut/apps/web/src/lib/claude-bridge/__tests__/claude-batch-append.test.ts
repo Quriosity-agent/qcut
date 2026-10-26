@@ -78,10 +78,16 @@ describe("batch-add laid end to end", () => {
 		useProjectStore.setState({ activeProject: null });
 	});
 
-	it('chains startTime "end" across the batch with frame-counted lengths', async () => {
-		const frameCounts = [
+	it.each([
+		12, 32,
+	])('chains %i clips at startTime "end" with frame-counted lengths', async (count) => {
+		const sourceFrames = [
 			410, 236, 503, 289, 377, 409, 385, 168, 251, 330, 299, 441,
 		];
+		const frameCounts = Array.from(
+			{ length: count },
+			(_, index) => sourceFrames[index % sourceFrames.length]
+		);
 		const { batchHandler, sendResponse } = setupHandler();
 
 		await batchHandler({
@@ -102,7 +108,7 @@ describe("batch-add laid end to end", () => {
 		const placed = [
 			...(useTimelineStore.getState().tracks[0]?.elements ?? []),
 		].sort((a, b) => a.startTime - b.startTime);
-		expect(placed).toHaveLength(12);
+		expect(placed).toHaveLength(count);
 		let expectedFrame = 0;
 		for (const [index, element] of placed.entries()) {
 			expect(element.startTime * 24).toBeCloseTo(expectedFrame, 6);
