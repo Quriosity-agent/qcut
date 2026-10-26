@@ -44,6 +44,12 @@ qcut editor:export:start \
   --gif-fps 20 --gif-loop --gif-quality 10 --poll
 ```
 
+The returned job uses `presetId: "custom"` when its effective width, height,
+fps, format, or bitrate differs from the selected preset (or the default
+`youtube-1080p`). Unchanged values keep the preset ID. Omitted settings still
+come from that preset; nested `settings` values take precedence over the
+same top-level fields.
+
 ### Enhancement flags
 
 | Flag | Type | Description |
@@ -73,6 +79,46 @@ as does any progress. When a poll runs out of time the export goes on in
 QCut: `export status` follows it, `export cancel` stops it. A cancelled job
 ends with `status: "cancelled"` and no file at the output path. Exports that
 run in the editor window (the muxer engine) cannot be cancelled from the CLI.
+
+### Native export true-peak limiting
+
+When the master limiter is enabled, native MP4, MOV and MP3 exports apply a
+four-times oversampled limiter and measure the final encoded file before the
+job becomes `completed`. Enable the master limiter through the mixer (see
+[editor-mix.md](editor-mix.md)); no separate export flag is required.
+
+Each candidate is encoded from the same lossless mixed audio. If AAC/MP3
+encoding produces new peaks, QCut automatically reduces gain and re-encodes,
+up to four attempts. Only a verified candidate replaces the destination file.
+The meter's 0.1 dB display precision is handled conservatively; a displayed
+peak exactly at the ceiling is not accepted without additional headroom.
+
+`export:status` and the final `--poll` result include `audioValidation` in both
+plain and JSON output. For example:
+
+```json
+{
+  "status": "passed",
+  "ceilingDbtp": -1,
+  "truePeakDbtp": -1.1,
+  "limiting": { "oversampleFactor": 4, "encodeAttempts": 2, "attenuationDb": 1.5 }
+}
+```
+
+`attenuationDb` is the additional gain reduction needed after limiting to
+control encoding peaks. Quiet audio is not automatically raised or lowered.
+Digital silence passes with `truePeakDbtp: null`. Video without an audio stream
+returns `status: "no-audio"`; MP3 without audio fails.
+
+If measurement fails or no candidate meets the ceiling, the job fails instead
+of publishing an unverified result. Cancellation stops processing and removes
+this job's unfinished output; a pre-existing destination is retained until a
+verified replacement is published. With the master limiter disabled, this
+processing and `audioValidation` are absent. GIF has no audio processing.
+
+This guarantee applies to the final native export. Live preview and renderer
+muxer exports retain their existing dynamics processing; heavy limiting or
+encoding correction can change the final audio level relative to preview.
 
 ---
 

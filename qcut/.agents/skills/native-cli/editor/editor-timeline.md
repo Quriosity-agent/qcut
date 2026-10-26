@@ -149,6 +149,13 @@ deletes the existing captions tracks first (one undo step each).
 Each element **must** include `trackId`, a start and a length (see placement
 below).
 
+`batch-add` uses a 125-second CLI deadline to allow the editor's 120-second
+batch request to return; an explicit `--timeout <seconds>` overrides it.
+A timeout does not cancel placement or prove that nothing was added. Export
+the timeline and check the actual elements before retrying, otherwise the
+retry may add duplicates. A completed response includes per-item results and
+`failedCount`, including any partial application.
+
 ```bash
 qcut editor:timeline:batch-add \
   --project-id <id> \

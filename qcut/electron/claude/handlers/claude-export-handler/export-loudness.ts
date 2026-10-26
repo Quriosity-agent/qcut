@@ -14,6 +14,7 @@ import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getFFmpegPath, getFFprobePath } from "../../../ffmpeg/utils.js";
+import { parseTruePeakSummary } from "../../../ffmpeg/audio-true-peak.js";
 import type { ClaudeTimeline, MediaFile } from "../../../types/claude-api.js";
 import type { ClaudeMixLoudness } from "../../../types/claude-audio-mix-api.js";
 import { getExportJobStatus } from "./job-manager.js";
@@ -63,8 +64,7 @@ export function parseEbur128Report({
 }): Omit<ClaudeMixLoudness, "durationSeconds"> {
 	const summary = stderr.slice(stderr.lastIndexOf("Summary:"));
 	const integrated = summary.match(/\bI:\s+(-?[\d.]+|-inf) LUFS/);
-	const truePeak = summary.match(/Peak:\s+(-?[\d.]+|-inf) dBFS/);
-	if (!integrated || !truePeak) {
+	if (!integrated) {
 		throw new Error(
 			`FFmpeg's ebur128 meter gave no summary: ${stderr.slice(-400)}`
 		);
@@ -83,7 +83,7 @@ export function parseEbur128Report({
 		text === "-inf" ? Number.NEGATIVE_INFINITY : Number(text);
 	return {
 		integratedLufs: toNumber(integrated[1]),
-		truePeakDbtp: toNumber(truePeak[1]),
+		truePeakDbtp: parseTruePeakSummary({ stderr }),
 		maxMomentaryLufs: maxMomentary,
 		maxShortTermLufs: maxShortTerm,
 		samplePeakDb: samplePeak

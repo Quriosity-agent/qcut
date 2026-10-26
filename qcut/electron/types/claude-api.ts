@@ -1,6 +1,7 @@
 /** Shared type definitions for Claude Code Integration API. */
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import type { StickerLabRestrictedMediaMetadata } from "./sticker-lab-media-metadata.js";
+import type { ExportAudioValidation } from "./export-audio-validation.js";
 import type {
 	ClaudeAudioMixBus,
 	ClaudeTrackAudioSettings,
@@ -558,6 +559,8 @@ export interface ExportJobStatus {
 	fileSize?: number;
 	presetId?: string;
 	engine?: string;
+	audioValidation?: ExportAudioValidation;
+	warnings?: string[];
 }
 
 // Summary & Report Types (Stage 5)

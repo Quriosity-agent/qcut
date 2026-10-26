@@ -532,6 +532,7 @@ async function writeProjectJsonSnapshot({
 	try {
 		const client = new EditorApiClient({
 			baseUrl: resolveQCutRuntimeEndpoint().baseUrl,
+			token: process.env.QCUT_API_TOKEN?.trim() || undefined,
 			timeout: 5000,
 			skipCapabilityCheck: true,
 		});

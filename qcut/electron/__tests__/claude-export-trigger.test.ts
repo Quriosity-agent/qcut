@@ -200,6 +200,7 @@ describe("Claude export trigger", () => {
 
 		expect(result.jobId).toMatch(/^export_/);
 		expect(result.status).toBe("queued");
+		expect(getExportJobStatus(result.jobId)?.presetId).toBe("youtube-1080p");
 	});
 
 	it("refuses a restricted Sticker Lab source before queuing FFmpeg", async () => {
@@ -1172,7 +1173,7 @@ describe("Claude export trigger", () => {
 		});
 
 		const job = getExportJobStatus(result.jobId);
-		expect(job?.presetId).toBe("youtube-1080p");
+		expect(job?.presetId).toBe("custom");
 		expect(job?.settings?.width).toBe(1280);
 		expect(job?.settings?.height).toBe(720);
 		expect(job?.settings?.fps).toBe(24);
@@ -1196,6 +1197,7 @@ describe("Claude export trigger", () => {
 		});
 
 		const job = getExportJobStatus(result.jobId);
+		expect(job?.presetId).toBe("custom");
 		expect(job?.settings?.width).toBe(1280);
 		expect(job?.settings?.height).toBe(720);
 		expect(job?.settings?.fps).toBe(24);

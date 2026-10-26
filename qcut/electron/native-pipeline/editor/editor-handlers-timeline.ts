@@ -9,6 +9,10 @@
 
 import type { EditorApiClient } from "../editor/editor-api-client.js";
 import {
+	TIMELINE_BATCH_CLIENT_TIMEOUT_MS,
+	withTimelineBatchTimeoutContext,
+} from "../../claude/utils/timeline-batch-deadline.js";
+import {
 	timelineJobStatus,
 	timelineShotSplit,
 } from "./editor-handlers-shot-split.js";
@@ -473,11 +477,21 @@ async function timelineBatchAdd(
 		}
 	}
 
-	const data = await client.post(
-		`/api/claude/timeline/${opts.projectId}/elements/batch`,
-		{ elements }
-	);
-	return { success: true, data };
+	try {
+		const data = await client.post(
+			`/api/claude/timeline/${opts.projectId}/elements/batch`,
+			{ elements },
+			{
+				timeout:
+					opts.timeout === undefined
+						? TIMELINE_BATCH_CLIENT_TIMEOUT_MS
+						: Number(opts.timeout) * 1000,
+			}
+		);
+		return { success: true, data };
+	} catch (error) {
+		throw withTimelineBatchTimeoutContext({ error });
+	}
 }
 
 /** Handle timeline update element. */
