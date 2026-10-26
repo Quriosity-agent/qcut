@@ -192,13 +192,37 @@ describe.skipIf(!existsSync(ffmpeg))(
 		});
 
 		it.each([
-			{ format: "mp4", sampleRate: 48_000, channels: 2, codec: "aac" },
-			{ format: "mp3", sampleRate: 44_100, channels: 1, codec: "mp3" },
+			{
+				format: "mp4",
+				sampleRate: 48_000,
+				channels: 2,
+				codec: "aac",
+				videoEncoder: "libx264",
+				videoCodec: "h264",
+			},
+			{
+				format: "mp3",
+				sampleRate: 44_100,
+				channels: 1,
+				codec: "mp3",
+				videoEncoder: "libx264",
+				videoCodec: "h264",
+			},
+			{
+				format: "mov",
+				sampleRate: 48_000,
+				channels: 2,
+				codec: "aac",
+				videoEncoder: "prores_ks",
+				videoCodec: "prores",
+			},
 		] as const)("limits a native $format export and preserves $sampleRate Hz / $channels channel output", async ({
 			format,
 			sampleRate,
 			channels,
 			codec,
+			videoEncoder,
+			videoCodec,
 		}) => {
 			const outputPath = path.join(workDir, `native-export.${format}`);
 			const jobId = `peak-validation-native-${format}`;
@@ -210,7 +234,7 @@ describe.skipIf(!existsSync(ffmpeg))(
 				height: 32,
 				fps: 24,
 				format,
-				codec: "libx264",
+				codec: videoEncoder,
 				bitrate: "128k",
 				audioBitrate: 192,
 				audioSampleRate: sampleRate,
@@ -303,7 +327,7 @@ describe.skipIf(!existsSync(ffmpeg))(
 					duration?: string;
 					start_time?: string;
 				}>;
-				format: { duration: string };
+				format: { duration: string; tags?: { major_brand?: string } };
 			};
 			const audio = metadata.streams.filter(
 				(stream) => stream.codec_type === "audio"
@@ -318,11 +342,15 @@ describe.skipIf(!existsSync(ffmpeg))(
 			const video = metadata.streams.filter(
 				(stream) => stream.codec_type === "video"
 			);
-			expect(video).toHaveLength(format === "mp4" ? 1 : 0);
-			if (format === "mp4") {
+			expect(video).toHaveLength(format === "mp3" ? 0 : 1);
+			if (format !== "mp3") {
+				expect(video[0].codec_name).toBe(videoCodec);
 				expect(Number(video[0].duration)).toBeCloseTo(3, 2);
 				expect(Number(audio[0].start_time)).toBeCloseTo(0, 3);
 				expect(Number(video[0].start_time)).toBeCloseTo(0, 3);
+			}
+			if (format === "mov") {
+				expect(metadata.format.tags?.major_brand?.trim()).toBe("qt");
 			}
 		}, 30_000);
 
