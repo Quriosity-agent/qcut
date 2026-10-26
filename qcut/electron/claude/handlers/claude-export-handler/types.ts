@@ -4,6 +4,7 @@
  */
 
 import type { JianyingTextRuntimeReference } from "../../../jianying-text-runtime/jianying-text-runtime-contract.js";
+import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
 
 export const EXPORT_JOB_STATUS = {
 	queued: "queued",
@@ -116,6 +117,8 @@ export interface ExportJobInternal {
 	estimatedTimeRemaining?: number;
 	/** Aborting it stops the running FFmpeg step; set while the engine runs the job. */
 	abort?: AbortController;
+	audioValidation?: ExportAudioValidation;
+	warnings?: string[];
 }
 
 export interface StickerOverlay {
