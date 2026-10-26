@@ -14,8 +14,8 @@ import {
 	probeHasAudioStream,
 } from "../../../ffmpeg/utils.js";
 import { buildFFmpegArgs } from "../../../ffmpeg-args-builder.js";
-import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
-import { embeddedAudioMixInput } from "./export-audio-mix.js";
+import { renderTimelineAudioMix } from "./export-audio-mix-pass.js";
+import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
 import { validateExportAudioPeak } from "./export-audio-validation.js";
 import {
 	buildExportSegmentEncodeArgs,
@@ -1259,6 +1259,10 @@ export async function executeExportJob({
 	if (job.status === EXPORT_JOB_STATUS.cancelled) abort.abort();
 
 	let tempDir = "";
+	const enforceTruePeak =
+		audioMixConfig?.master.effects.limiter.enabled === true &&
+		settings.format !== "gif";
+	let ownsFinalOutput = !enforceTruePeak;
 
 	try {
 		job.status = EXPORT_JOB_STATUS.exporting;
@@ -1276,9 +1280,9 @@ export async function executeExportJob({
 			path.join(tempBase, "qcut-claude-export-")
 		);
 
-		// GIF and MP3 need an MP4 intermediary. Keep it in the export session
-		// directory so an existing user file can never be overwritten or deleted.
-		const needsIntermediateVideo = ["gif", "mp3"].includes(settings.format);
+		// Limited exports keep video private until the encoded audio is verified.
+		const needsIntermediateVideo =
+			["gif", "mp3"].includes(settings.format) || enforceTruePeak;
 		const videoOutputPath = needsIntermediateVideo
 			? path.join(tempDir, "intermediate.mp4")
 			: outputPath;
@@ -1729,99 +1733,27 @@ export async function executeExportJob({
 			});
 		}
 
-		// Independent audio tracks are mixed after all video-only compositing
-		// passes. The existing embedded video audio is included when present;
-		// with a project mix it goes through the mix as its track's audio.
+		let audioValidation: ExportAudioValidation | undefined;
+		let audioFinalized = false;
 		if (audioFiles.length > 0 || audioMixConfig) {
-			claudeLog.info(
-				HANDLER_NAME,
-				`Mixing ${audioFiles.length} independent timeline audio track(s)`
-			);
 			updateJobProgress({ jobId, progress: 0.955 });
-			const sourcePath = path.join(tempDir, "video-before-audio-mix.mp4");
-			await moveFile({ from: videoOutputPath, to: sourcePath });
-			try {
-				const hasEmbeddedAudio = await probeHasAudioStream({
-					mediaPath: sourcePath,
-				});
-				const embedded =
-					audioMixConfig && hasEmbeddedAudio
-						? embeddedAudioMixInput({ path: sourcePath, segments })
-						: null;
-				const mixFiles = embedded ? [embedded, ...audioFiles] : audioFiles;
-				const inputArgs = ["-y", "-i", sourcePath];
-				for (const audioFile of mixFiles) {
-					inputArgs.push("-i", audioFile.path);
-				}
-				const graph = buildTimelineAudioFilters({
-					audioFiles: mixFiles,
-					audioStartIndex: 1,
-					fps: settings.fps,
-					audioMixConfig,
-				});
-				if (!graph.mapAudio) {
-					throw new Error("Timeline audio filter graph produced no audio map");
-				}
-				const filterSteps = [...graph.filterSteps];
-				let audioMap = graph.mapAudio;
-				if (hasEmbeddedAudio && !embedded) {
-					const externalLabel = graph.mapAudio.startsWith("[")
-						? graph.mapAudio
-						: `[${graph.mapAudio}]`;
-					filterSteps.push(
-						`[0:a]${externalLabel}amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[a_final]`
-					);
-					audioMap = "[a_final]";
-				}
-				// The concat video length is the sum of encoded segment durations
-				// (timeline gaps collapse), so derive the mux duration from that
-				// rather than timeline offsets; audio tails may still extend past it.
-				const concatVideoDuration = concatDuration;
-				const totalDuration = Math.max(
-					concatVideoDuration,
-					...audioFiles.map(
-						(audioFile) =>
-							audioFile.startTime + Math.max(0, audioFile.duration ?? 0)
-					)
-				);
-				await runFFmpegCommand({
-					signal: abort.signal,
-					args: [
-						...inputArgs,
-						...(filterSteps.length > 0
-							? ["-filter_complex", filterSteps.join(";")]
-							: []),
-						"-map",
-						"0:v:0",
-						"-map",
-						audioMap,
-						"-c:v",
-						"copy",
-						"-c:a",
-						"aac",
-						"-b:a",
-						`${settings.audioBitrate ?? 192}k`,
-						"-ar",
-						String(settings.audioSampleRate ?? 48_000),
-						"-ac",
-						String(settings.audioChannels ?? 2),
-						"-t",
-						String(totalDuration),
-						"-movflags",
-						"+faststart",
-						videoOutputPath,
-					],
-					estimatedDuration: totalDuration,
-				});
-			} catch (error) {
-				try {
-					await fsPromises.unlink(videoOutputPath);
-				} catch {}
-				await moveFile({ from: sourcePath, to: videoOutputPath });
-				throw new Error(
-					`Timeline audio mix failed: ${error instanceof Error ? error.message : String(error)}`
-				);
-			}
+			const result = await renderTimelineAudioMix({
+				videoOutputPath,
+				outputPath,
+				tempDir,
+				settings,
+				segments,
+				audioFiles,
+				audioMixConfig,
+				duration: concatDuration,
+				runFFmpegCommand,
+				signal: abort.signal,
+				onPublished: () => {
+					ownsFinalOutput = true;
+				},
+			});
+			audioValidation = result.audioValidation;
+			audioFinalized = result.finalized;
 		}
 
 		// =====================================================================
@@ -1864,7 +1796,7 @@ export async function executeExportJob({
 			}
 		}
 
-		if (settings.format === "mp3") {
+		if (settings.format === "mp3" && !audioFinalized) {
 			claudeLog.info(HANDLER_NAME, "Extracting standalone MP3 export...");
 			updateJobProgress({ jobId, progress: 0.96 });
 			try {
@@ -1913,8 +1845,9 @@ export async function executeExportJob({
 			);
 		}
 
-		const audioCheck =
-			settings.format === "gif"
+		const audioCheck = audioValidation
+			? { audioValidation }
+			: settings.format === "gif"
 				? {}
 				: await validateExportAudioPeak({
 						outputPath,
@@ -1933,7 +1866,9 @@ export async function executeExportJob({
 			// conversion, overlays, the probe, the stat above); the job is
 			// already marked, the finished file must still go. Nothing awaits
 			// between this check and the completed status below.
-			await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			if (ownsFinalOutput) {
+				await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			}
 			claudeLog.info(HANDLER_NAME, `Export job ${jobId} stopped on request`);
 			return;
 		}
@@ -1982,7 +1917,9 @@ export async function executeExportJob({
 		if (abort.signal.aborted || isExportCancelled(error)) {
 			// cancelExportJob already marked the job; only the half-written
 			// output is left to remove.
-			await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			if (ownsFinalOutput) {
+				await fsPromises.rm(outputPath, { force: true }).catch(() => undefined);
+			}
 			claudeLog.info(HANDLER_NAME, `Export job ${jobId} stopped on request`);
 			return;
 		}
