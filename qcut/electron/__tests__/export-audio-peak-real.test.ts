@@ -13,7 +13,7 @@ import {
 } from "../claude/handlers/claude-export-handler/job-manager";
 import type { ResolvedExportSettings } from "../claude/handlers/claude-export-handler/types";
 import { buildTimelineAudioFilters } from "../ffmpeg/audio-filter-graph";
-import { getFFmpegPath } from "../ffmpeg/paths";
+import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths";
 import type { AudioMixConfig } from "../ffmpeg/types";
 
 vi.mock("electron", () => ({
@@ -30,6 +30,7 @@ vi.mock("../claude/utils/logger", () => ({
 const ffmpeg = getFFmpegPath();
 const limiter = { enabled: true, ceilingDb: -1, releaseMs: 50 };
 let workDir = "";
+let ffprobe = "";
 let limitedPcm = "";
 let limitedAac = "";
 let safeAac = "";
@@ -133,7 +134,8 @@ async function validateWithoutChangingFile({ file }: { file: string }) {
 describe.skipIf(!existsSync(ffmpeg))(
 	"encoded export true peak (real FFmpeg)",
 	() => {
-		beforeAll(() => {
+		beforeAll(async () => {
+			ffprobe = await getFFprobePath();
 			workDir = mkdtempSync(path.join(tmpdir(), "qcut-export-peak-"));
 			const source = path.join(workDir, "intersample.wav");
 			// A phase-shifted 12 kHz tone has reconstructed peaks between its samples.
@@ -189,9 +191,17 @@ describe.skipIf(!existsSync(ffmpeg))(
 			if (workDir) rmSync(workDir, { recursive: true, force: true });
 		});
 
-		it("completes a native video export with the encoded peak warning in its public job result", async () => {
-			const outputPath = path.join(workDir, "native-export.mp4");
-			const jobId = "peak-validation-native";
+		it.each([
+			{ format: "mp4", sampleRate: 48_000, channels: 2, codec: "aac" },
+			{ format: "mp3", sampleRate: 44_100, channels: 1, codec: "mp3" },
+		] as const)("limits a native $format export and preserves $sampleRate Hz / $channels channel output", async ({
+			format,
+			sampleRate,
+			channels,
+			codec,
+		}) => {
+			const outputPath = path.join(workDir, `native-export.${format}`);
+			const jobId = `peak-validation-native-${format}`;
 			const projectId = "peak-validation-project";
 			const settings: ResolvedExportSettings = {
 				engine: "native-cli",
@@ -199,12 +209,12 @@ describe.skipIf(!existsSync(ffmpeg))(
 				width: 32,
 				height: 32,
 				fps: 24,
-				format: "mp4",
+				format,
 				codec: "libx264",
 				bitrate: "128k",
 				audioBitrate: 192,
-				audioSampleRate: 48_000,
-				audioChannels: 2,
+				audioSampleRate: sampleRate,
+				audioChannels: channels,
 			};
 			exportJobs.set(jobId, {
 				jobId,
@@ -251,12 +261,69 @@ describe.skipIf(!existsSync(ffmpeg))(
 				status: "completed",
 				progress: 1,
 				outputPath,
-				audioValidation: { status: "exceeded", ceilingDbtp: -1 },
-				warnings: [expect.stringContaining("dBTP")],
+				audioValidation: {
+					status: "passed",
+					ceilingDbtp: limiter.ceilingDb,
+					limiting: {
+						oversampleFactor: 4,
+						encodeAttempts: expect.any(Number),
+						attenuationDb: expect.any(Number),
+					},
+				},
 			});
+			expect(result?.audioValidation?.truePeakDbtp).toBeTypeOf("number");
+			expect(result?.audioValidation?.truePeakDbtp).toBeLessThanOrEqual(
+				limiter.ceilingDb
+			);
 			expect(existsSync(outputPath)).toBe(true);
 			const rechecked = await validateWithoutChangingFile({ file: outputPath });
 			expect(result).toMatchObject(rechecked);
+			expect(rechecked.audioValidation?.status).toBe("passed");
+
+			const probe = spawnSync(
+				ffprobe,
+				[
+					"-v",
+					"error",
+					"-show_streams",
+					"-show_format",
+					"-of",
+					"json",
+					outputPath,
+				],
+				{ encoding: "utf8", timeout: 30_000 }
+			);
+			expect(probe.status, probe.stderr).toBe(0);
+			const metadata = JSON.parse(probe.stdout) as {
+				streams: Array<{
+					codec_type: string;
+					codec_name: string;
+					sample_rate?: string;
+					channels?: number;
+					duration?: string;
+					start_time?: string;
+				}>;
+				format: { duration: string };
+			};
+			const audio = metadata.streams.filter(
+				(stream) => stream.codec_type === "audio"
+			);
+			expect(audio).toHaveLength(1);
+			expect(audio[0]).toMatchObject({
+				codec_name: codec,
+				sample_rate: String(sampleRate),
+				channels,
+			});
+			expect(Math.abs(Number(metadata.format.duration) - 3)).toBeLessThan(0.08);
+			const video = metadata.streams.filter(
+				(stream) => stream.codec_type === "video"
+			);
+			expect(video).toHaveLength(format === "mp4" ? 1 : 0);
+			if (format === "mp4") {
+				expect(Number(video[0].duration)).toBeCloseTo(3, 2);
+				expect(Number(audio[0].start_time)).toBeCloseTo(0, 3);
+				expect(Number(video[0].start_time)).toBeCloseTo(0, 3);
+			}
 		}, 30_000);
 
 		it("warns about the final AAC true peak even when the mixer holds PCM sample peaks", async () => {
