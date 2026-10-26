@@ -3,6 +3,10 @@ import type {
 	ClaudeBatchAddResponse,
 	ClaudeElement,
 } from "../types/claude-api.js";
+import {
+	TIMELINE_BATCH_MAIN_TIMEOUT_MS,
+	withTimelineBatchTimeoutContext,
+} from "../claude/utils/timeline-batch-deadline.js";
 
 export type UtilityRequestFromMain = (
 	channel: string,
@@ -34,11 +38,16 @@ export function createUtilityTimelineMutationAccessor({
 				projectId,
 			});
 		},
-		batchAddElements: (projectId, elements, correlationId) =>
-			requestFromMain("batch-add-elements", {
-				correlationId,
-				elements,
-				projectId,
-			}) as Promise<ClaudeBatchAddResponse>,
+		batchAddElements: async (projectId, elements, correlationId) => {
+			try {
+				return (await requestFromMain(
+					"batch-add-elements",
+					{ correlationId, elements, projectId },
+					{ timeoutMs: TIMELINE_BATCH_MAIN_TIMEOUT_MS }
+				)) as ClaudeBatchAddResponse;
+			} catch (error) {
+				throw withTimelineBatchTimeoutContext({ error });
+			}
+		},
 	};
 }
