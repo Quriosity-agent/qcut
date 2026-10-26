@@ -1,10 +1,17 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderTruePeakLimitedExport } from "../claude/handlers/claude-export-handler/export-audio-limiter";
+import { renderTimelineAudioMix } from "../claude/handlers/claude-export-handler/export-audio-mix-pass";
 import { measureFileTruePeak } from "../ffmpeg/audio-true-peak";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths";
 
@@ -56,7 +63,7 @@ async function probe({ file }: { file: string }) {
 			start_time?: string;
 			duration?: string;
 		}>;
-		format: { duration: string };
+		format: { duration: string; tags?: { major_brand?: string } };
 	};
 }
 
@@ -305,5 +312,85 @@ describe.skipIf(!existsSync(ffmpeg))(
 			expect(result.audioValidation.limiting?.encodeAttempts).toBe(1);
 			expect(await measureFileTruePeak({ file: output })).toBe(-Infinity);
 		}, 60_000);
+
+		it.each([
+			"mp4",
+			"mov",
+		])("publishes video-only %s in the requested container with unchanged picture packets", async (format) => {
+			const privateVideo = path.join(
+				directory,
+				`private-no-audio-${format}.mp4`
+			);
+			const outputPath = path.join(directory, `no-audio.${format}`);
+			copyFileSync(video, privateVideo);
+			const onPublished = vi.fn();
+			const result = await renderTimelineAudioMix({
+				videoOutputPath: privateVideo,
+				outputPath,
+				tempDir: directory,
+				settings: {
+					engine: "native-cli",
+					presetId: "custom",
+					width: 32,
+					height: 32,
+					fps: 24,
+					format,
+					codec: "libx264",
+					bitrate: "128k",
+				},
+				segments: [],
+				audioFiles: [],
+				duration,
+				audioMixConfig: {
+					master: {
+						id: "master",
+						name: "Master",
+						gainDb: 0,
+						pan: 0,
+						muted: false,
+						solo: false,
+						effects: {
+							parametricEqualizer: {
+								enabled: false,
+								lowCutHz: 20,
+								highCutHz: 20_000,
+								bands: [],
+							},
+							compressor: {
+								enabled: false,
+								thresholdDb: -18,
+								ratio: 3,
+								attackMs: 10,
+								releaseMs: 120,
+								makeupGainDb: 0,
+							},
+							limiter: { enabled: true, ceilingDb: -1, releaseMs: 50 },
+						},
+					},
+					buses: [],
+					tracks: [],
+				},
+				runFFmpegCommand: async ({ args }) => {
+					run({ args });
+				},
+				onPublished,
+			});
+			expect(result).toEqual({
+				finalized: true,
+				audioValidation: { status: "no-audio", ceilingDbtp: -1 },
+			});
+			const metadata = await probe({ file: outputPath });
+			expect(metadata.streams.map((stream) => stream.codec_type)).toEqual([
+				"video",
+			]);
+			expect(metadata.format.tags?.major_brand?.trim()).toBe(
+				format === "mov" ? "qt" : "isom"
+			);
+			expect(videoDigest({ file: outputPath })).toBe(
+				videoDigest({ file: video })
+			);
+			expect(Number(metadata.format.duration)).toBeCloseTo(duration, 2);
+			expect(onPublished).toHaveBeenCalledOnce();
+		}, 30_000);
 	}
 );
