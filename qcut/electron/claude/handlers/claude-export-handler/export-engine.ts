@@ -1283,8 +1283,9 @@ export async function executeExportJob({
 		// Limited exports keep video private until the encoded audio is verified.
 		const needsIntermediateVideo =
 			["gif", "mp3"].includes(settings.format) || enforceTruePeak;
+		const intermediateExtension = settings.format === "mov" ? "mov" : "mp4";
 		const videoOutputPath = needsIntermediateVideo
-			? path.join(tempDir, "intermediate.mp4")
+			? path.join(tempDir, `intermediate.${intermediateExtension}`)
 			: outputPath;
 
 		const segmentOutputs: string[] = [];
