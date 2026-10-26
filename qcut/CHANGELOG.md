@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.26.1] - 2026-10-26
+
 ### Fixed
 
-- Native MP4, MOV and MP3 exports now apply the enabled master true-peak limiter and verify the encoded audio before publishing the output. AAC and MP3 overshoot is corrected from the same lossless intermediate, without raising quiet audio. Failed or cancelled exports preserve an existing destination file.
+- Native MP4, MOV and MP3 exports now apply the enabled master true-peak limiter and verify the encoded audio before publishing the output. AAC and MP3 overshoot is corrected from the same lossless intermediate, without raising quiet audio. Failures and cancellation before publication preserve an existing destination file.
 - Timeline batch commands share a duration-aware deadline across the CLI, HTTP server and renderer. Explicit caller timeouts remain authoritative; uncertain mutation outcomes are reported without automatic retries.
 - Custom export settings retain their custom preset identity. Authenticated desktop project snapshots synchronize the internal project file after saving.
 
