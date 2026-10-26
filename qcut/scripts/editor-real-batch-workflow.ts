@@ -4,7 +4,11 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { _electron as electron, type ElectronApplication } from "playwright";
+import {
+	_electron as electron,
+	type ElectronApplication,
+	type Page,
+} from "playwright";
 
 import {
 	execute,
@@ -52,6 +56,21 @@ const electronLog: string[] = [];
 
 async function save({ name, value }: { name: string; value: unknown }) {
 	await writeFile(path.join(outputRoot, name), JSON.stringify(value, null, 2));
+}
+
+async function saveProjectState({ page }: { page: Page }) {
+	await page.evaluate(async () => {
+		const stores = window as unknown as {
+			__projectStore: {
+				getState: () => { saveCurrentProject: () => Promise<void> };
+			};
+			__timelineStore: {
+				getState: () => { saveImmediate: () => Promise<void> };
+			};
+		};
+		await stores.__projectStore.getState().saveCurrentProject();
+		await stores.__timelineStore.getState().saveImmediate();
+	});
 }
 
 async function availablePort() {
@@ -347,18 +366,7 @@ async function prepare() {
 		],
 	});
 	await page.screenshot({ path: path.join(outputRoot, "timeline-scrub.png") });
-	await page.evaluate(async () => {
-		const stores = window as unknown as {
-			__projectStore: {
-				getState: () => { saveCurrentProject: () => Promise<void> };
-			};
-			__timelineStore: {
-				getState: () => { saveImmediate: () => Promise<void> };
-			};
-		};
-		await stores.__projectStore.getState().saveCurrentProject();
-		await stores.__timelineStore.getState().saveImmediate();
-	});
+	await saveProjectState({ page });
 	await retryRead<{
 		state: {
 			timeline: { autoSave: { isSaving: boolean; lastSavedAt: number } };
@@ -443,19 +451,7 @@ async function verifySidecar() {
 			"project.json"
 		),
 		cli,
-		saveProject: () =>
-			page.evaluate(async () => {
-				const stores = window as unknown as {
-					__projectStore: {
-						getState: () => { saveCurrentProject: () => Promise<void> };
-					};
-					__timelineStore: {
-						getState: () => { saveImmediate: () => Promise<void> };
-					};
-				};
-				await stores.__projectStore.getState().saveCurrentProject();
-				await stores.__timelineStore.getState().saveImmediate();
-			}),
+		saveProject: () => saveProjectState({ page }),
 		reopen: async () => {
 			await app?.close();
 			app = undefined;
