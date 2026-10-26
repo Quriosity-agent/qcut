@@ -7,6 +7,7 @@
 
 import { ipcMain, BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
+import { withTimelineBatchTimeoutContext } from "../utils/timeline-batch-deadline.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
 import { withDefaultMediaDurations } from "./claude-media-default-duration.js";
 import {
@@ -529,6 +530,8 @@ export async function requestBatchAddElementsFromRenderer(
 		timeoutErrorMessage: "Timeout waiting for batch add result",
 		correlationId,
 		timeoutMs: batchRequestTimeoutMs({ count: elements.length }),
+	}).catch((error: unknown) => {
+		throw withTimelineBatchTimeoutContext({ error });
 	});
 }
 
