@@ -483,11 +483,16 @@ try {
 			stack: error instanceof Error ? error.stack : undefined,
 		},
 	});
+	const screenshotPath = path.join(outputRoot, `${phase}-error.png`);
 	if (app)
-		await (await app.firstWindow())
-			.screenshot({ path: path.join(outputRoot, `${phase}-error.png`) })
+		await app
+			.firstWindow({ timeout: 5000 })
+			.then((page) => page.screenshot({ path: screenshotPath, timeout: 5000 }))
 			.catch(() => {});
 	throw error;
 } finally {
-	await app?.close();
+	await app?.close().catch((error) => {
+		console.error("Failed to close the test Electron instance:", error);
+		process.exitCode = 1;
+	});
 }
