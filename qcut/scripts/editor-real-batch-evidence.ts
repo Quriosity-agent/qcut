@@ -1,16 +1,17 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
 export const execute = promisify(execFile);
 
 export async function sha256File({ file }: { file: string }): Promise<string> {
-	return createHash("sha256")
-		.update(await readFile(file))
-		.digest("hex");
+	const hash = createHash("sha256");
+	for await (const chunk of createReadStream(file)) hash.update(chunk);
+	return hash.digest("hex");
 }
 
 export interface Clip {
