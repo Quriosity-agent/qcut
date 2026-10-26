@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createUtilityTimelineMutationAccessor } from "../utility/utility-timeline-accessor";
+import { TIMELINE_BATCH_MAIN_TIMEOUT_MS } from "../claude/utils/timeline-batch-deadline";
 
 describe("utility timeline mutation accessor", () => {
 	it("forwards project identity for single placement", async () => {
@@ -39,10 +40,14 @@ describe("utility timeline mutation accessor", () => {
 		await expect(
 			accessor.batchAddElements("project-1", elements, "correlation-2")
 		).resolves.toEqual(response);
-		expect(requestFromMain).toHaveBeenCalledWith("batch-add-elements", {
-			correlationId: "correlation-2",
-			elements,
-			projectId: "project-1",
-		});
+		expect(requestFromMain).toHaveBeenCalledWith(
+			"batch-add-elements",
+			{
+				correlationId: "correlation-2",
+				elements,
+				projectId: "project-1",
+			},
+			{ timeoutMs: TIMELINE_BATCH_MAIN_TIMEOUT_MS }
+		);
 	});
 });
