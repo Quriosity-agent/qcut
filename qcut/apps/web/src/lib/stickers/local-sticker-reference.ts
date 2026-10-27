@@ -49,6 +49,7 @@ export type {
 export interface LocalStickerReferenceDiscovery {
 	catalogs: LocalBridgeStickerCatalog[];
 	warningCount: number;
+	error?: string;
 }
 
 export interface StickerReferenceUsageMetadata {
@@ -256,7 +257,14 @@ export async function discoverLocalStickerReferenceCatalogs(): Promise<LocalStic
 		return { catalogs, warningCount };
 	} catch (error) {
 		debugError("[StickerLab] Local reference discovery failed", error);
-		return { catalogs: [], warningCount: 1 };
+		return {
+			catalogs: [],
+			warningCount: 1,
+			error:
+				error instanceof Error && error.message.trim()
+					? error.message
+					: "Unable to discover local Sticker Lab references",
+		};
 	}
 }
 

@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
 
 const mocks = vi.hoisted(() => ({
 	discoverLocalReferences: vi.fn(),
@@ -35,11 +38,22 @@ function getHandler({
 }
 
 describe("Sticker Lab IPC handlers", () => {
+	let profile: string;
 	beforeEach(() => {
+		profile = fs.mkdtempSync(path.join(tmpdir(), "qcut-ipc-sticker-root-"));
+		vi.stubEnv("QCUT_USER_DATA_DIR", profile);
+		vi.stubEnv("QCUT_STICKER_LAB_ROOT", "");
 		vi.clearAllMocks();
-		mocks.discoverLocalReferences.mockResolvedValue({ catalogs: [] });
+		mocks.discoverLocalReferences.mockResolvedValue({
+			catalogs: [{}],
+			warnings: [],
+		});
 		mocks.readLocalReference.mockResolvedValue({ bytes: new Uint8Array() });
 		registerStickerLabHandlers();
+	});
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		fs.rmSync(profile, { recursive: true, force: true });
 	});
 
 	it("defaults discovery to the platform videos directory", async () => {
@@ -51,7 +65,49 @@ describe("Sticker Lab IPC handlers", () => {
 
 		expect(mocks.getPath).toHaveBeenCalledWith("videos");
 		expect(mocks.discoverLocalReferences).toHaveBeenCalledWith({
-			videosDirectory: "/mock/videos",
+			rootPath: "/mock/videos/QCut Sticker Lab",
+		});
+	});
+
+	it("reads a persistent root without requiring shell environment inheritance", async () => {
+		fs.writeFileSync(
+			path.join(profile, "sticker-lab-root.json"),
+			JSON.stringify({ version: 1, rootPath: "/external/stickers" })
+		);
+		const discover = getHandler({
+			channel: "sticker-lab:discover-local-references",
+		});
+		await discover({}, {});
+		expect(mocks.discoverLocalReferences).toHaveBeenCalledWith({
+			rootPath: "/external/stickers",
+		});
+	});
+
+	it("does not silently use the default root when persistent configuration is corrupt", async () => {
+		fs.writeFileSync(path.join(profile, "sticker-lab-root.json"), "broken");
+		const discover = getHandler({
+			channel: "sticker-lab:discover-local-references",
+		});
+		await expect(discover({}, {})).rejects.toThrow();
+		expect(mocks.discoverLocalReferences).not.toHaveBeenCalled();
+	});
+
+	it("rejects an unavailable persisted drive instead of discovering a second root", async () => {
+		fs.writeFileSync(
+			path.join(profile, "sticker-lab-root.json"),
+			JSON.stringify({ version: 1, rootPath: "/offline/stickers" })
+		);
+		mocks.discoverLocalReferences.mockResolvedValue({
+			catalogs: [],
+			warnings: [{ message: "drive offline" }],
+		});
+		const discover = getHandler({
+			channel: "sticker-lab:discover-local-references",
+		});
+		await expect(discover({}, {})).rejects.toThrow("drive offline");
+		expect(mocks.discoverLocalReferences).toHaveBeenCalledTimes(1);
+		expect(mocks.discoverLocalReferences).toHaveBeenCalledWith({
+			rootPath: "/offline/stickers",
 		});
 	});
 

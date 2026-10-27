@@ -1,6 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
+import {
+	existsSync,
+	readFileSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { CLIRunOptions } from "../../cli/cli-runner/types";
 import type { EditorApiClient } from "../editor-api-client";
 import { handleStickerCommand } from "../editor-handlers-sticker";
@@ -24,6 +32,44 @@ function baseOptions({ command }: { command: string }): CLIRunOptions {
 }
 
 describe("editor sticker handlers", () => {
+	test("uses the shared persisted root for editor sticker add without --root", async () => {
+		const profile = mkdtempSync(join(tmpdir(), "qcut-editor-sticker-profile-"));
+		try {
+			writeFileSync(
+				join(profile, "sticker-lab-root.json"),
+				JSON.stringify({ version: 1, rootPath: "/private/QCut Sticker Lab" })
+			);
+			vi.stubEnv("QCUT_USER_DATA_DIR", profile);
+			vi.stubEnv("QCUT_STICKER_LAB_ROOT", "");
+			const dependencies = stickerLabDependencies();
+			const discover = vi.fn(dependencies.discoverLocalReferences);
+			const client = {
+				post: async (path: string) => ({
+					id: path.includes("/media/") ? "media-local" : "element-local",
+				}),
+			} as unknown as EditorApiClient;
+			const result = await handleStickerCommand(
+				client,
+				{
+					...baseOptions({ command: "editor:sticker:add" }),
+					projectId: "isolated-project",
+					provider: "sticker-lab",
+					batchId: "jianying-2026-08-23-batch-18-v2",
+					stickerId: "18001",
+					startTime: 0,
+					endTime: 1,
+				},
+				{ ...dependencies, discoverLocalReferences: discover }
+			);
+			expect(result.success).toBe(true);
+			expect(discover).toHaveBeenCalledWith({
+				rootPath: "/private/QCut Sticker Lab",
+			});
+		} finally {
+			vi.unstubAllEnvs();
+			rmSync(profile, { recursive: true, force: true });
+		}
+	});
 	test("searches without requiring an open project", async () => {
 		globalThis.fetch = async () =>
 			new Response(

@@ -90,11 +90,76 @@ describe("useLocalStickerCatalog", () => {
 			isAvailable: false,
 			isLoading: false,
 			localReferenceWarningCount: 0,
+			localReferenceError: null,
 			privateCatalogs: [],
 			unavailablePrivateCatalogIds: [],
 		});
 		expect(catalogMocks.loadPrivateManifest).not.toHaveBeenCalled();
 		expect(catalogMocks.loadManifest).not.toHaveBeenCalled();
+	});
+
+	it("shows a configured local root failure without a manifest feature flag", async () => {
+		catalogMocks.getSource.mockReturnValue(null);
+		catalogMocks.supportsLocal.mockReturnValue(true);
+		catalogMocks.discoverLocal.mockResolvedValue({
+			catalogs: [],
+			warningCount: 1,
+			error: "Configured Sticker Lab root is unavailable",
+		});
+
+		const { result } = renderHook(() => useLocalStickerCatalog());
+
+		await waitFor(() =>
+			expect(result.current.localReferenceError).toBe(
+				"Configured Sticker Lab root is unavailable"
+			)
+		);
+		expect(result.current).toMatchObject({
+			isAvailable: true,
+			isLoading: false,
+			localReferenceWarningCount: 1,
+			privateCatalogs: [],
+		});
+		expect(catalogMocks.loadPrivateManifest).not.toHaveBeenCalled();
+	});
+
+	it("blocks private fallback and retains the local error after a slower public manifest loads", async () => {
+		const resolvers = new Map<
+			string,
+			(value: ReturnType<typeof createLocalStickerCatalog>) => void
+		>();
+		catalogMocks.getSource.mockReturnValue({
+			kind: "manifest",
+			manifestPath: "/tmp/public-sticker-manifest.json",
+		});
+		catalogMocks.loadManifest.mockReturnValue(
+			new Promise((resolve) => resolvers.set("public", resolve))
+		);
+		catalogMocks.discoverLocal.mockResolvedValue({
+			catalogs: [],
+			warningCount: 1,
+			error: "External Sticker Lab volume is offline",
+		});
+
+		const { result } = renderHook(() => useLocalStickerCatalog());
+		await waitFor(() =>
+			expect(result.current.localReferenceError).toBe(
+				"External Sticker Lab volume is offline"
+			)
+		);
+		const publicCatalog = createLocalStickerCatalog();
+		await act(async () => {
+			resolvers.get("public")?.(publicCatalog);
+			await Promise.resolve();
+		});
+
+		expect(result.current.catalog).toEqual(publicCatalog);
+		expect(result.current.error).toBeNull();
+		expect(result.current.localReferenceError).toBe(
+			"External Sticker Lab volume is offline"
+		);
+		expect(result.current.privateCatalogs).toEqual([]);
+		expect(catalogMocks.loadPrivateManifest).not.toHaveBeenCalled();
 	});
 
 	it("shows local desktop references even when the feature flag is off", async () => {
@@ -122,6 +187,7 @@ describe("useLocalStickerCatalog", () => {
 			isAvailable: true,
 			isLoading: false,
 			localReferenceWarningCount: 0,
+			localReferenceError: null,
 			unavailablePrivateCatalogIds: [],
 		});
 		expect(catalogMocks.loadPrivateManifest).not.toHaveBeenCalled();
@@ -146,6 +212,7 @@ describe("useLocalStickerCatalog", () => {
 			isAvailable: true,
 			isLoading: false,
 			localReferenceWarningCount: 0,
+			localReferenceError: null,
 			privateCatalogs: [],
 			unavailablePrivateCatalogIds: [],
 		});
@@ -227,6 +294,7 @@ describe("useLocalStickerCatalog", () => {
 			isAvailable: true,
 			isLoading: false,
 			localReferenceWarningCount: 0,
+			localReferenceError: null,
 			privateCatalogs: [],
 			// Nothing mocks the private manifests here, so all three legitimately
 			// fail — and the panel now says so instead of showing a short list.

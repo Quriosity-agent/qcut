@@ -1,9 +1,15 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
 import {
 	handleStickerLabCatalogs,
 	handleStickerLabCategories,
 	handleStickerLabItems,
 	handleStickerLabSearch,
+	handleStickerLabRoot,
+	handleStickerLabSetRoot,
+	handleStickerLabResetRoot,
 	type StickerLabHandlerDependencies,
 } from "../cli-handlers-sticker-lab";
 import type { CLIRunOptions } from "../cli-runner/types";
@@ -134,8 +140,107 @@ function dependencies({
 	return { discover };
 }
 
+let profile: string;
+beforeEach(() => {
+	profile = fs.realpathSync(
+		fs.mkdtempSync(path.join(tmpdir(), "qcut-cli-root-settings-"))
+	);
+	vi.stubEnv("QCUT_USER_DATA_DIR", profile);
+	vi.stubEnv("QCUT_STICKER_LAB_ROOT", "");
+});
 afterEach(() => {
 	vi.unstubAllEnvs();
+	fs.rmSync(profile, { recursive: true, force: true });
+});
+
+describe("sticker-lab persistent root handlers", () => {
+	test("persists a validated library and reports it without shell root variables", async () => {
+		const library = path.join(profile, "library");
+		fs.mkdirSync(library);
+		const set = await handleStickerLabSetRoot(
+			{ ...baseOptions({ command: "sticker-lab-set-root" }), root: library },
+			dependencies()
+		);
+		expect(set).toMatchObject({
+			success: true,
+			data: {
+				rootPath: library,
+				savedRootPath: library,
+				source: "persisted",
+				catalogCount: 2,
+			},
+		});
+		const result = await handleStickerLabRoot(
+			baseOptions({ command: "sticker-lab-root" })
+		);
+		expect(result).toMatchObject({
+			success: true,
+			data: {
+				rootPath: library,
+				source: "persisted",
+				configPath: path.join(profile, "sticker-lab-root.json"),
+			},
+		});
+		const catalogReader = vi.fn(async () => discovery());
+		await handleStickerLabCatalogs(
+			baseOptions({ command: "sticker-lab-catalogs" }),
+			dependencies({ discover: catalogReader })
+		);
+		expect(catalogReader).toHaveBeenCalledWith({ rootPath: library });
+	});
+
+	test("preserves the old config when a selection has no usable catalog", async () => {
+		const configPath = path.join(profile, "sticker-lab-root.json");
+		const previous = JSON.stringify({ version: 1, rootPath: ROOT_PATH });
+		fs.writeFileSync(configPath, previous);
+		const result = await handleStickerLabSetRoot(
+			{
+				...baseOptions({ command: "sticker-lab-set-root" }),
+				root: path.join(profile, "missing"),
+			},
+			dependencies({
+				discover: async () => ({
+					...discovery(),
+					catalogs: [],
+					warnings: [{ message: "offline" }],
+				}),
+			})
+		);
+		expect(result).toMatchObject({
+			success: false,
+			error: expect.stringContaining("offline"),
+		});
+		expect(fs.readFileSync(configPath, "utf8")).toBe(previous);
+	});
+
+	test("requires --root and does not create configuration on failure", async () => {
+		expect(
+			await handleStickerLabSetRoot(
+				baseOptions({ command: "sticker-lab-set-root" })
+			)
+		).toMatchObject({ success: false, error: "Missing --root." });
+		expect(fs.existsSync(path.join(profile, "sticker-lab-root.json"))).toBe(
+			false
+		);
+	});
+
+	test("reset leaves library files untouched and reports the effective default", async () => {
+		const library = path.join(profile, "library");
+		fs.mkdirSync(library);
+		fs.writeFileSync(path.join(library, "keep.txt"), "keep");
+		await handleStickerLabSetRoot(
+			{ ...baseOptions({ command: "sticker-lab-set-root" }), root: library },
+			dependencies()
+		);
+		expect(
+			await handleStickerLabResetRoot(
+				baseOptions({ command: "sticker-lab-reset-root" })
+			)
+		).toMatchObject({ success: true, data: { source: "default" } });
+		expect(fs.readFileSync(path.join(library, "keep.txt"), "utf8")).toBe(
+			"keep"
+		);
+	});
 });
 
 describe("sticker-lab CLI handlers", () => {

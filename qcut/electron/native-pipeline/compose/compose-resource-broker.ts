@@ -284,10 +284,12 @@ export async function discoverComposeResources({
 } = {}): Promise<ComposeResourceBrokerResult> {
 	const limit = normalizedLimit({ value: perTypeLimit });
 	const warnings: string[] = [];
-	const stickerPromise = dependencies
-		.discoverStickers({
-			rootPath: resolveStickerLabRootOverride({}),
-		})
+	const stickerPromise = Promise.resolve()
+		.then(() =>
+			dependencies.discoverStickers({
+				rootPath: resolveStickerLabRootOverride({}),
+			})
+		)
 		.catch((error: unknown) => {
 			warnings.push(`Sticker Lab: ${errorMessage({ error })}`);
 			return null;

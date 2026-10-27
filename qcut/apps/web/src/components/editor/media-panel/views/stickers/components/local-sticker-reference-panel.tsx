@@ -65,6 +65,7 @@ export function LocalStickerReferencePanel({
 	error,
 	isLoading,
 	localReferenceWarningCount = 0,
+	localReferenceError = null,
 	onSelect,
 	privateCategories = EMPTY_PRIVATE_CATEGORIES,
 	selection = null,
@@ -74,6 +75,7 @@ export function LocalStickerReferencePanel({
 	error: string | null;
 	isLoading: boolean;
 	localReferenceWarningCount?: number;
+	localReferenceError?: string | null;
 	onSelect: ({
 		file,
 		metadata,
@@ -129,7 +131,15 @@ export function LocalStickerReferencePanel({
 					可导出本地成片 · 原素材及工程包禁止导出、禁止二次分发
 				</div>
 			) : null}
-			{localReferenceWarningCount > 0 ? (
+			{localReferenceError ? (
+				<div
+					className="mx-2 mt-2 shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] leading-snug text-amber-200/90"
+					data-testid="sticker-lab-local-reference-error"
+					role="alert"
+				>
+					本地参照库无法读取：{localReferenceError}
+				</div>
+			) : localReferenceWarningCount > 0 ? (
 				<div
 					className="mx-2 mt-2 shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] leading-snug text-amber-200/90"
 					data-testid="sticker-lab-local-reference-warning"

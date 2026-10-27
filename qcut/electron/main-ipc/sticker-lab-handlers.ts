@@ -3,6 +3,7 @@ import {
 	discoverLocalReferences,
 	readLocalReference,
 } from "../native-pipeline/stickers/local-reference-catalog/index.js";
+import { resolveStickerLabRoot } from "../native-pipeline/stickers/sticker-lab-root-config.js";
 
 function parseDiscoveryOptions({ value }: { value: unknown }): {
 	rootPath?: string;
@@ -60,10 +61,22 @@ export function registerStickerLabHandlers(): void {
 		"sticker-lab:discover-local-references",
 		async (_event: IpcMainInvokeEvent, value: unknown) => {
 			const options = parseDiscoveryOptions({ value });
-			return discoverLocalReferences({
-				...options,
+			const resolution = resolveStickerLabRoot({
+				root: options.rootPath,
 				...(options.rootPath ? {} : { videosDirectory: app.getPath("videos") }),
 			});
+			const discovery = await discoverLocalReferences({
+				rootPath: resolution.rootPath,
+			});
+			if (resolution.source !== "default" && discovery.catalogs.length === 0) {
+				const warnings = discovery.warnings
+					.map(({ message }) => message)
+					.join("; ");
+				throw new Error(
+					`Configured Sticker Lab root is unavailable: ${resolution.rootPath}${warnings ? `. ${warnings}` : ""}`
+				);
+			}
+			return discovery;
 		}
 	);
 	ipcMain.handle(

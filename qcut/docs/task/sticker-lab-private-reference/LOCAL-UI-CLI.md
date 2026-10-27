@@ -11,8 +11,9 @@
 ## 1. 当前本地库存
 
 默认目录是当前用户视频目录下的 `QCut Sticker Lab`。在 macOS 上通常为
-`~/Movies/QCut Sticker Lab`；也可通过 CLI `--root` 或
-`QCUT_STICKER_LAB_ROOT` 指定另一个仓库外目录。
+`~/Movies/QCut Sticker Lab`。可通过 `sticker-lab set-root` 保存另一个仓库外目录，
+桌面版从 Finder/Dock 正常启动也会读取这项配置；不需要继承终端环境变量。
+单次命令仍可通过 CLI `--root` 或 `QCUT_STICKER_LAB_ROOT` 覆盖。
 
 2026-08-23 的真实目录核验结果：
 
@@ -37,8 +38,9 @@ QCut 桌面版通过受限 Electron IPC 发现本地批次，renderer 不直接�
 1. 本地目录至少有一个有效批次时，贴纸实验室使用本地目录，不再并入远端冻结三批，
    避免重复；
 2. 无需 Vite feature flag；本地目录存在时，桌面版自动显示贴纸实验室；
-3. 本地目录不存在或没有有效批次时，原有远端冻结三批仍作为已配置构建的兼容
-   fallback；
+3. 默认本地目录不存在或没有有效批次时，原有远端冻结三批仍作为已配置构建的兼容
+   fallback；显式指定、环境变量或保存的根目录不可用时，应报告该配置的问题，不能
+   静默改读原本机库；
 4. Web 平台不具备本地目录能力，不显示虚假的本地错误；
 5. 43 个分类按稳定 category ID 合并；同 ID 素材只保留一个，本地条目优先；
 6. 卡片进入可视区前不读取原文件，进入前后 160 px 才按需读取并校验；离开该区域
@@ -90,9 +92,45 @@ bun run qcut sticker-lab search --query "安排" --json
 - `--query <text>`：按批次、分类、贴纸 ID、名称等检索；
 - `--offset <n>`、`--limit <1..500>`：确定性分页。
 
-根目录优先级为显式 `--root`、非空 `QCUT_STICKER_LAB_ROOT`、平台默认视频目录。JSON
+CLI 与桌面发现共用根目录选择逻辑：显式 `--root` / IPC `rootPath`、非空
+`QCUT_STICKER_LAB_ROOT`、已保存根目录、平台默认视频目录，按此顺序选择。JSON
 输出总是包含 `referenceOnly: true`、禁止上传/再分发提示、warning 列表、库存 summary
 和分页状态。CLI 输出可报告当前扫描根目录，但不会把它写进项目 metadata。
+
+### 保存外盘根目录
+
+```bash
+bun run qcut sticker-lab root --json
+bun run qcut sticker-lab set-root --root "/Volumes/External/QCut Sticker Lab" --json
+bun run qcut sticker-lab root --json
+```
+
+`root` 不扫描素材，报告最终选择的 `rootPath`、`source` 与 `configPath`。`source`
+为 `explicit`、`environment`、`persisted` 或 `default`。`set-root` 先验证真实目录和
+可用批次，再原子保存配置；还会报告 `savedRootPath`、`catalogCount`、`warningCount`。
+若当前环境变量覆盖了新保存路径，返回的 `rootPath` / `source` 仍显示实际生效的选择。
+
+显式参数和环境变量继续支持不含 `.`、`..` 路径段的相对目录，并按当前工作目录解析；
+持久配置中的路径始终为绝对路径。
+
+共享配置位于 QCut 用户数据目录下的 `sticker-lab-root.json`，macOS 默认路径为
+`~/Library/Application Support/QCut/sticker-lab-root.json`。文件仅保存版本与根目录路径，
+以 `0600` 权限写入，不进入 Git 或项目 metadata。CLI 与桌面版都遵守
+`QCUT_USER_DATA_DIR`；测试应将其指向临时目录，避免改写真实用户配置。
+
+重开贴纸面板或下次启动 QCut 后，标准桌面发现会使用同一项持久配置。配置损坏时明确
+报错；配置的外盘离线时，浏览或导入不能悄悄回退到旧本机素材。
+
+```bash
+bun run qcut sticker-lab reset-root --json
+```
+
+`reset-root` 只移除该根目录配置文件，不移动、删除或修改素材。重置后若仍有环境变量，
+它仍优先于默认目录；可用 `root --json` 检查实际选择。
+
+这些命令不负责搬运资料。外置时仍应先复制校验，并在副本同步重定位 manifest/report
+中的绝对素材路径，再用 `catalogs`、代表资源读取和桌面预览验证。根目录、批次或素材
+使用符号链接仍被拒绝；保存根目录不会放宽路径边界或 SHA-256 校验。
 
 ## 4. CLI 加入内部时间线
 
