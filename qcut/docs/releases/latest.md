@@ -1,24 +1,25 @@
 ---
-version: "2026.10.26.1"
-date: "2026-10-26"
+version: "2026.10.27.1"
+date: "2026-10-27"
 channel: "stable"
 ---
 
-# QCut v2026.10.26.1
+# QCut v2026.10.27.1
+
+## Added
+
+- Sticker Lab can keep compatible private reference catalogs on an external drive through a persisted root shared by the desktop app and CLI. `sticker-lab root`, `set-root` and `reset-root` inspect or manage the setting; explicit roots and environment overrides retain priority.
 
 ## Fixed
 
-- Native MP4, MOV and MP3 exports now apply the enabled master true-peak limiter and verify the encoded audio before publishing the output. AAC and MP3 overshoot is corrected from the same lossless intermediate, without raising quiet audio. Failures and cancellation before publication preserve an existing destination file.
-- Timeline batch commands share a duration-aware deadline across the CLI, HTTP server and renderer. Explicit caller timeouts remain authoritative; uncertain mutation outcomes are reported without automatic retries.
-- Custom export settings retain their custom preset identity. Authenticated desktop project snapshots synchronize the internal project file after saving.
+- A missing or invalid private catalog reports a local error without hiding the public sticker grid. A configured unavailable drive fails explicitly instead of silently selecting another library. Reference containment, symlink rejection and resource checksum checks remain enforced.
 
 ## Verified
 
-- PR #522 passed Linux, macOS and Windows CI. The local regression run passed 317 tests across 25 files; real audio limiting, encoded peak enforcement and project snapshot tests also ran in platform CI.
-- A private 32-source desktop workflow imported media in two batches, appended all 32 timeline elements in one command, played, saved, reopened and exported 805 frames at 1470 x 630 and 24 fps. Sources remained unchanged.
-- With the same +12 dB gain, the 33.54-second export measured +10.6 dBTP without limiting and -1.4 dBTP with a -1 dBTP ceiling; video packets remained identical. Separate 84-second audio checks measured -1.1 dBTP for AAC and -1.3 dBTP for MP3.
+- PR #524 passed Linux, macOS and Windows CI, including platform-native path and Windows temporary-directory canonicalization coverage.
+- A signed, notarized macOS build of the same functional code passed real GIF, static PNG, atlas-animation, PNG-sequence and alpha-video preview, import, save and reopen checks. A normal-profile test also verified three animation formats with the former local library unavailable and preserved the existing project's timeline contents.
 
 ## Limitations
 
-- True-peak export verification covers the native export path with the master limiter enabled. These results do not establish identical behavior for every codec, browser export path or third-party playback system.
-- Private test footage, beauty models, native reference libraries and local validation captures are not included. Reported measurements describe the tested inputs and configurations.
+- The setting selects an existing compatible catalog; it does not move files automatically. The external drive must be mounted to browse or import its library. Private-reference restrictions remain in effect.
+- Desktop playback acceptance above was performed on Apple Silicon macOS; Windows and Linux coverage comes from CI and packaging checks. Private test artwork, local configuration and validation captures are not included in the release.
