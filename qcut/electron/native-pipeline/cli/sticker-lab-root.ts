@@ -1,12 +1,11 @@
+import {
+	resolveStickerLabRoot,
+	type StickerLabRootOptions,
+} from "../stickers/sticker-lab-root-config.js";
+
 export function resolveStickerLabRootOverride({
-	environment = process.env,
-	root,
-}: {
-	environment?: Readonly<Record<string, string | undefined>>;
-	root?: string;
-}): string | undefined {
-	const explicitRoot = root?.trim();
-	if (explicitRoot) return explicitRoot;
-	const configuredRoot = environment.QCUT_STICKER_LAB_ROOT?.trim();
-	return configuredRoot || undefined;
+	...options
+}: StickerLabRootOptions): string | undefined {
+	const resolution = resolveStickerLabRoot(options);
+	return resolution.source === "default" ? undefined : resolution.rootPath;
 }

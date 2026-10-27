@@ -723,6 +723,29 @@ describe("LocalStickerReferencePanel", () => {
 		expect(screen.getByText("剪映贴纸面板 · 3 批参照")).toBeInTheDocument();
 	});
 
+	it("keeps public original stickers visible beside a local reference root error", async () => {
+		render(
+			<LocalStickerReferencePanel
+				catalog={createRemoteStickerCatalog()}
+				error={null}
+				isLoading={false}
+				localReferenceWarningCount={1}
+				localReferenceError="External Sticker Lab volume is offline"
+				onSelect={async () => {}}
+			/>
+		);
+
+		expect(
+			screen.getByTestId("sticker-lab-local-reference-error")
+		).toHaveTextContent("External Sticker Lab volume is offline");
+		expect(screen.getByTestId("local-sticker-category-grid")).toBeVisible();
+		await waitFor(() =>
+			expect(
+				screen.getAllByTestId("local-sticker-reference-item")
+			).toHaveLength(2)
+		);
+	});
+
 	it("marks local lab placement as internal reference only", async () => {
 		const catalog = createLocalBridgeStickerCatalog();
 		const onSelect = vi.fn(async () => {});

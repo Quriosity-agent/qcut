@@ -7,6 +7,11 @@ import {
 } from "../stickers/local-reference-catalog/index.js";
 import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { resolveStickerLabRootOverride } from "./sticker-lab-root.js";
+import {
+	resetStickerLabRootConfig,
+	resolveStickerLabRoot,
+	writeStickerLabRootConfig,
+} from "../stickers/sticker-lab-root-config.js";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
@@ -408,4 +413,63 @@ export async function handleStickerLabSearch(
 	dependencies: StickerLabHandlerDependencies = DEFAULT_DEPENDENCIES
 ): Promise<CLIResult> {
 	return handleItems({ options, dependencies, search: true });
+}
+
+export async function handleStickerLabRoot(
+	options: CLIRunOptions
+): Promise<CLIResult> {
+	try {
+		return {
+			success: true,
+			data: resolveStickerLabRoot({ root: options.root }),
+		};
+	} catch (error) {
+		return { success: false, error: errorMessage({ error }) };
+	}
+}
+
+export async function handleStickerLabSetRoot(
+	options: CLIRunOptions,
+	dependencies: StickerLabHandlerDependencies = DEFAULT_DEPENDENCIES
+): Promise<CLIResult> {
+	try {
+		if (!options.root?.trim()) throw new Error("Missing --root.");
+		const selected = resolveStickerLabRoot({ root: options.root });
+		const discovery = await dependencies.discover({
+			rootPath: selected.rootPath,
+		});
+		if (discovery.catalogs.length === 0) {
+			const warnings = discovery.warnings
+				.map(({ message }) => message)
+				.join("; ");
+			throw new Error(
+				`Sticker Lab root has no usable catalogs: ${selected.rootPath}${warnings ? `. ${warnings}` : ""}`
+			);
+		}
+		const savedRootPath = await writeStickerLabRootConfig({
+			rootPath: selected.rootPath,
+		});
+		return {
+			success: true,
+			data: {
+				...resolveStickerLabRoot(),
+				savedRootPath,
+				catalogCount: discovery.catalogs.length,
+				warningCount: discovery.warnings.length,
+			},
+		};
+	} catch (error) {
+		return { success: false, error: errorMessage({ error }) };
+	}
+}
+
+export async function handleStickerLabResetRoot(
+	_options: CLIRunOptions
+): Promise<CLIResult> {
+	try {
+		resetStickerLabRootConfig();
+		return { success: true, data: resolveStickerLabRoot() };
+	} catch (error) {
+		return { success: false, error: errorMessage({ error }) };
+	}
 }

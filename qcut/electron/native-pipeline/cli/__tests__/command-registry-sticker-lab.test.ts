@@ -6,6 +6,9 @@ import { getCommand, getCommandFlag } from "../command-registry";
 describe("Sticker Lab command registry", () => {
 	test("routes every Sticker Lab group action", () => {
 		for (const [action, command] of [
+			["root", "sticker-lab-root"],
+			["set-root", "sticker-lab-set-root"],
+			["reset-root", "sticker-lab-reset-root"],
 			["catalogs", "sticker-lab-catalogs"],
 			["categories", "sticker-lab-categories"],
 			["items", "sticker-lab-items"],
@@ -16,6 +19,35 @@ describe("Sticker Lab command registry", () => {
 				remainingArgs: [],
 			});
 			expect(getCommand(command)?.category).toBe("sticker-lab");
+		}
+	});
+
+	test("parses a persistent root change and documents its required path", () => {
+		expect(
+			parseCliArgs([
+				"sticker-lab",
+				"set-root",
+				"--root",
+				"/Volumes/External/QCut Sticker Lab",
+				"--json",
+			])
+		).toMatchObject({
+			command: "sticker-lab-set-root",
+			root: "/Volumes/External/QCut Sticker Lab",
+			json: true,
+		});
+		expect(getCommandFlag("sticker-lab-set-root", "--root")).toMatchObject({
+			required: true,
+		});
+	});
+
+	test("keeps root inspection and reset separate from an asset path", () => {
+		for (const action of ["root", "reset-root"]) {
+			expect(parseCliArgs(["sticker-lab", action, "--json"])).toMatchObject({
+				command: `sticker-lab-${action}`,
+				json: true,
+			});
+			expect(getCommandFlag(`sticker-lab-${action}`, "--root")).toBeUndefined();
 		}
 	});
 

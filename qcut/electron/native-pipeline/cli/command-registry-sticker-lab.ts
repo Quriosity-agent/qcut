@@ -26,7 +26,7 @@ function command({
 const ROOT_FLAG = flag(
 	"--root",
 	"string",
-	"Private local reference root (defaults to QCUT_STICKER_LAB_ROOT, then ~/Movies/QCut Sticker Lab on macOS or ~/Videos/QCut Sticker Lab elsewhere)"
+	"Private local reference root (defaults to QCUT_STICKER_LAB_ROOT, then the saved root, then the platform QCut Sticker Lab folder)"
 );
 const BATCH_FLAG = flag(
 	"--batch-id",
@@ -51,6 +51,29 @@ const PAGINATION_FLAGS = [
 ];
 
 export const STICKER_LAB_COMMANDS: Record<string, CommandDef> = {
+	"sticker-lab-root": command({
+		name: "sticker-lab-root",
+		description:
+			"Show the effective Sticker Lab root, its source, and config path",
+		flags: [],
+		examples: ["qcut sticker-lab root --json"],
+	}),
+	"sticker-lab-set-root": command({
+		name: "sticker-lab-set-root",
+		description:
+			"Validate and save a Sticker Lab root shared with the desktop app",
+		flags: [{ ...ROOT_FLAG, required: true }],
+		examples: [
+			'qcut sticker-lab set-root --root "/Volumes/External/QCut Sticker Lab" --json',
+		],
+	}),
+	"sticker-lab-reset-root": command({
+		name: "sticker-lab-reset-root",
+		description:
+			"Remove the saved Sticker Lab root without changing any assets",
+		flags: [],
+		examples: ["qcut sticker-lab reset-root --json"],
+	}),
 	"sticker-lab-catalogs": command({
 		name: "sticker-lab-catalogs",
 		description: "List private local Sticker Lab reference batches",

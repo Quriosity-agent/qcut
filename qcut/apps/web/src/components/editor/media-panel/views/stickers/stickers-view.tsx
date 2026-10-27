@@ -284,6 +284,7 @@ export function StickersView() {
 							localReferenceWarningCount={
 								localStickerCatalog.localReferenceWarningCount
 							}
+							localReferenceError={localStickerCatalog.localReferenceError}
 							onSelect={handleLocalReferenceSelect}
 							privateCategories={privateLabCategories}
 							selection={resolvedLabSelection}

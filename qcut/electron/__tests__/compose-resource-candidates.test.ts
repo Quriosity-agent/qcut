@@ -17,6 +17,7 @@ import type { EditorApiClient } from "../native-pipeline/editor/editor-api-clien
 
 const directories: string[] = [];
 afterEach(async () => {
+	vi.unstubAllEnvs();
 	await Promise.all(
 		directories
 			.splice(0)
@@ -25,6 +26,50 @@ afterEach(async () => {
 });
 
 describe("Compose lab candidates", () => {
+	it("keeps sounds and transitions available when Sticker Lab configuration is corrupt", async () => {
+		const profile = await mkdtemp(join(tmpdir(), "compose-sticker-config-"));
+		directories.push(profile);
+		await writeFile(join(profile, "sticker-lab-root.json"), "broken json");
+		vi.stubEnv("QCUT_USER_DATA_DIR", profile);
+		vi.stubEnv("QCUT_STICKER_LAB_ROOT", "");
+		vi.stubEnv(
+			"QCUT_SOUND_EFFECTS_LAB_MANIFEST_PATH",
+			join(profile, "sounds.json")
+		);
+		const discoverStickers = vi.fn();
+		const listSounds = vi.fn().mockResolvedValue([
+			{
+				id: "sound",
+				name: "Sound",
+				reusable: true,
+				provider: "local",
+				redistribution: "allowed",
+				tags: [],
+				localPath: "/test/sound.wav",
+			},
+		]);
+		const inspectJianyingTransitions = vi.fn().mockResolvedValue(null);
+		const result = await discoverComposeResources({
+			dependencies: {
+				discoverStickers,
+				listSounds,
+				inspectJianyingTransitions,
+			},
+		});
+		expect(discoverStickers).not.toHaveBeenCalled();
+		expect(listSounds).toHaveBeenCalledTimes(1);
+		expect(inspectJianyingTransitions).toHaveBeenCalledTimes(1);
+		expect(
+			result.resources.some(({ assetType }) => assetType === "sound-effect")
+		).toBe(true);
+		expect(
+			result.resources.some(({ assetType }) => assetType === "transition")
+		).toBe(true);
+		expect(
+			result.resources.some(({ assetType }) => assetType === "sticker")
+		).toBe(false);
+		expect(result.warnings).toEqual([expect.stringContaining("Sticker Lab:")]);
+	});
 	it("enumerates fonts, fancy words, templates, animations and filters without private paths", async () => {
 		const result = await discoverComposeLabCandidates({
 			dependencies: {

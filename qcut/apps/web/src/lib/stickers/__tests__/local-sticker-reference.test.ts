@@ -109,6 +109,28 @@ describe("local sticker reference files", () => {
 		expect(supportsLocalStickerReferences()).toBe(true);
 	});
 
+	it("preserves discovery failures so callers can block remote fallback", async () => {
+		platformMocks.discoverLocalReferences.mockRejectedValue(
+			new Error("Configured Sticker Lab root is unavailable")
+		);
+
+		await expect(discoverLocalStickerReferenceCatalogs()).resolves.toEqual({
+			catalogs: [],
+			warningCount: 1,
+			error: "Configured Sticker Lab root is unavailable",
+		});
+	});
+
+	it("provides a nonempty discovery error when the bridge rejects without a message", async () => {
+		platformMocks.discoverLocalReferences.mockRejectedValue(new Error(""));
+
+		await expect(discoverLocalStickerReferenceCatalogs()).resolves.toEqual({
+			catalogs: [],
+			warningCount: 1,
+			error: "Unable to discover local Sticker Lab references",
+		});
+	});
+
 	it("discovers and reads a verified repository-external reference", async () => {
 		const catalog = createLocalBridgeStickerCatalog();
 		const reference = createLocalBridgeStickerReference();

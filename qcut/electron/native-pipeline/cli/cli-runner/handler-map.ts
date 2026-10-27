@@ -113,6 +113,9 @@ import {
 	handleStickerSearch,
 } from "../cli-handlers-stickers.js";
 import {
+	handleStickerLabRoot,
+	handleStickerLabSetRoot,
+	handleStickerLabResetRoot,
 	handleStickerLabCatalogs,
 	handleStickerLabCategories,
 	handleStickerLabItems,
@@ -302,6 +305,9 @@ export const HANDLER_MAP: Record<string, CommandHandler> = {
 	"effect-lab-search": wrap(handleEffectLabSearch),
 	"effect-lab-doctor": wrap(handleEffectLabDoctor),
 	"effect-lab-render": wrapOP(handleEffectLabRender),
+	"sticker-lab-root": wrap(handleStickerLabRoot),
+	"sticker-lab-set-root": wrap(handleStickerLabSetRoot),
+	"sticker-lab-reset-root": wrap(handleStickerLabResetRoot),
 	"sticker-lab-catalogs": wrap(handleStickerLabCatalogs),
 	"sticker-lab-categories": wrap(handleStickerLabCategories),
 	"sticker-lab-items": wrap(handleStickerLabItems),

@@ -174,6 +174,9 @@ export const COMMAND_GROUPS: CommandGroup[] = [
 		label: "Sticker Lab",
 		description: "Browse private local sticker reference batches",
 		actions: {
+			root: "sticker-lab-root",
+			"set-root": "sticker-lab-set-root",
+			"reset-root": "sticker-lab-reset-root",
 			catalogs: "sticker-lab-catalogs",
 			categories: "sticker-lab-categories",
 			items: "sticker-lab-items",

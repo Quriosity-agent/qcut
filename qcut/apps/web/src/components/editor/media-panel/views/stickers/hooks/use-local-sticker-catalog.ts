@@ -31,6 +31,7 @@ export interface LocalStickerCatalogState {
 	privateCatalogs: StickerReferenceCatalog[];
 	/** Invalid or unreadable local batches, reported without exposing file paths. */
 	localReferenceWarningCount: number;
+	localReferenceError: string | null;
 	/**
 	 * Reference catalogues that failed to load. Surfaced rather than swallowed:
 	 * every failure hides a slice of the catalogue, and dropping them silently
@@ -53,6 +54,7 @@ function initialCatalogState({
 		isAvailable,
 		isLoading: isAvailable,
 		localReferenceWarningCount: 0,
+		localReferenceError: null,
 		privateCatalogs: [],
 		unavailablePrivateCatalogIds: [],
 	};
@@ -135,6 +137,18 @@ export function useLocalStickerCatalog(): LocalStickerCatalogState {
 		const loadPrivateCatalogs = async () => {
 			const localDiscovery = await discoverLocalStickerReferenceCatalogs();
 			if (disposed) return;
+			if (localDiscovery.error) {
+				setState((previous) => ({
+					...previous,
+					localReferenceError: localDiscovery.error ?? null,
+					isAvailable: true,
+					isLoading: source ? previous.isLoading : false,
+					localReferenceWarningCount: localDiscovery.warningCount,
+					privateCatalogs: [],
+					unavailablePrivateCatalogIds: [],
+				}));
+				return;
+			}
 			if (localDiscovery.catalogs.length > 0) {
 				setState((previous) => ({
 					...previous,
