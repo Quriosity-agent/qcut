@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import type { ElectronApplication, Page } from "playwright";
+import type { StickerLabAPI } from "../../../../../electron/preload-types/api-types/sticker-lab-api";
 import {
 	createTestProject,
 	ensureStickersTabActive,
@@ -29,7 +30,8 @@ import {
 
 async function discover({ page }: { page: Page }) {
 	return page.evaluate(async () => {
-		const bridge = window.electronAPI?.stickerLab;
+		const bridge = (window as unknown as { electronAPI?: StickerLabAPI })
+			.electronAPI?.stickerLab;
 		if (!bridge) throw new Error("Sticker Lab bridge is unavailable");
 		return bridge.discoverLocalReferences({});
 	});
@@ -215,7 +217,9 @@ test.describe("Sticker Lab persisted root desktop lifecycle", () => {
 				expect(discovery.warnings).toEqual([]);
 				const read = await firstRun.page.evaluate(
 					async ({ rootPath, batchId, stickerId }) => {
-						const bridge = window.electronAPI?.stickerLab;
+						const bridge = (
+							window as unknown as { electronAPI?: StickerLabAPI }
+						).electronAPI?.stickerLab;
 						if (!bridge) throw new Error("Sticker Lab bridge is unavailable");
 						const result = await bridge.readLocalReference({
 							rootPath,
