@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -13,13 +14,14 @@ describe("persistent Sticker Lab root", () => {
 	let temporaryRoot: string;
 	let userDataPath: string;
 	let library: string;
-	beforeEach(() => {
-		temporaryRoot = fs.realpathSync(
+	beforeEach(async () => {
+		temporaryRoot = await realpath(
 			fs.mkdtempSync(path.join(tmpdir(), "qcut-sticker-root-"))
 		);
 		userDataPath = path.join(temporaryRoot, "profile");
 		library = path.join(temporaryRoot, "external-library");
 		fs.mkdirSync(library);
+		library = await realpath(library);
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();

@@ -65,7 +65,7 @@ describe("Sticker Lab IPC handlers", () => {
 
 		expect(mocks.getPath).toHaveBeenCalledWith("videos");
 		expect(mocks.discoverLocalReferences).toHaveBeenCalledWith({
-			rootPath: "/mock/videos/QCut Sticker Lab",
+			rootPath: path.resolve("/mock/videos", "QCut Sticker Lab"),
 		});
 	});
 
@@ -111,7 +111,7 @@ describe("Sticker Lab IPC handlers", () => {
 		});
 	});
 
-	it("forwards an explicit discovery root without consulting app paths", async () => {
+	it("resolves an explicit discovery root without consulting app paths", async () => {
 		const discover = getHandler({
 			channel: "sticker-lab:discover-local-references",
 		});
@@ -120,7 +120,7 @@ describe("Sticker Lab IPC handlers", () => {
 
 		expect(mocks.getPath).not.toHaveBeenCalled();
 		expect(mocks.discoverLocalReferences).toHaveBeenCalledWith({
-			rootPath: "/private/stickers",
+			rootPath: path.resolve("/private/stickers"),
 		});
 	});
 
