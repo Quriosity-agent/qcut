@@ -9,6 +9,7 @@ import type { SubtitleStyle } from "@/types/timeline";
 export {
 	DEFAULT_SUBTITLE_STYLE,
 	resolveSubtitleStyle,
+	resolveSecondaryLineStyle,
 	hexToRgba,
 	rgbToASSColor,
 	assColorToRgb,
