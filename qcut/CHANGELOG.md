@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `editor transaction list|status|rollback`: see timeline transactions, including one only the editor still holds, and end it (an orphan is discarded without restoring anything).
 - `editor transcribe start --to-captions` puts a finished transcript on captions tracks (with `--style`, `--preset`, `--replace`); `captions import --preset film` (电影字幕: no box, thin outline, soft shadow), also in the captions panel presets.
+- `editor track move --above <trackId>` / `--below <trackId>` puts a track directly over or under another one; the answer has the resulting index and order.
 
 ### Fixed
 
@@ -20,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bold captions in families outside `/System/Library/Fonts/Supplemental` (e.g. Avenir Next) export upright: libass gets a per-export folder with just the used fonts from every macOS font folder (also ~420 MB less memory per text export).
 - `--provider elevenlabs` transcription uses `ELEVENLABS_API_KEY` directly, else the signed-in QCut account, else a FAL key; test placeholder keys are skipped and the error names what is missing. E2E runs no longer write the user's credential files.
 - Explicit line breaks in captions are drawn by the preview and the canvas export too, and stacked captions make room for every line.
+- `delete-element` answers once the editor's timeline no longer has the element (`confirmed`), and a `timeline export` right after it can no longer get the late answer of an older, timed-out read (each read is matched to its own request).
+- `media:batch-import` answers once the editor has loaded the copied files (`editorReady` per file), so an `add-element` right after finds them; a single add waits up to 25 s for a busy editor and, if it still times out, says the element may yet be placed.
 
 ## [2026.10.27.1] - 2026-10-27
 
