@@ -37,6 +37,7 @@ import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import {
 	captionStyleWarnings,
 	normalizeCaptionStyleInput,
+	secondaryCaptionText,
 } from "../../../../../electron/types/caption-style-input";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
@@ -475,6 +476,7 @@ export function setupBatchHandlers({
 							// caption's own; what cannot be used is reported.
 							const captionStyle = normalizeCaptionStyleInput({ element });
 							warnings = captionStyleWarnings(captionStyle);
+							const secondaryText = secondaryCaptionText(element);
 
 							createdElementId = timelineStore.addElementToTrack(
 								element.trackId,
@@ -483,6 +485,7 @@ export function setupBatchHandlers({
 									type: "captions",
 									name: captionText.slice(0, 50),
 									text: captionText,
+									...(secondaryText ? { secondaryText } : {}),
 									language:
 										typeof element.language === "string"
 											? element.language
