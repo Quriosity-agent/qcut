@@ -86,6 +86,32 @@ describe("generateASS", () => {
 		expect(ass).not.toContain("\\kf");
 	});
 
+	it("writes a bilingual caption's second line after a break, in its own font", () => {
+		const ass = generateASS(
+			[
+				{
+					...caption(),
+					text: "三年前",
+					secondaryText: "Three years ago\nyou were the best",
+					style: {
+						...caption({ karaoke: true }).style,
+						karaokeMode: "none",
+						secondary: {
+							fontFamily: "Futura",
+							fontSize: 24,
+							fontColor: "#ffcc00",
+						},
+					} as CaptionElement["style"],
+				},
+			],
+			{ resolution: { width: 1920, height: 1080 } }
+		);
+
+		expect(ass).toContain(
+			"三年前\\N{\\fnFutura\\fs24\\b0\\i0\\c&H00CCFF&}Three years ago\\Nyou were the best"
+		);
+	});
+
 	it("uses the configured CJK export font without changing Latin captions", () => {
 		const chinese = caption();
 		chinese.text = "真实视频字幕";
