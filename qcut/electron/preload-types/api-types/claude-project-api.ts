@@ -53,6 +53,8 @@ export interface ClaudeTransactionAPI {
 				requestId: string;
 				transactionId: string;
 				reason?: string;
+				/** End without restoring the timeline (nobody edited under it). */
+				discard?: boolean;
 			}) => void
 		) => void;
 		sendRollbackResponse: (
@@ -97,6 +99,14 @@ export interface ClaudeTransactionAPI {
 					timestamp: number;
 					transactionId?: string;
 				}>;
+				/** The transaction the editor holds open, if any. */
+				activeTransaction?: {
+					id: string;
+					label?: string;
+					createdAt: number;
+					expiresAt: number;
+					projectId?: string;
+				} | null;
 			}
 		) => void;
 		removeListeners: () => void;
