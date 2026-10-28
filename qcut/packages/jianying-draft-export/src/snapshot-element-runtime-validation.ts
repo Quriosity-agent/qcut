@@ -3,6 +3,7 @@ import type {
 	AnimatedParameter,
 	AudioLyricsWord,
 	CaptionElement,
+	CaptionSecondaryStyle,
 	EffectAudioCompanion,
 	EffectChain,
 	EffectElement,
@@ -182,6 +183,7 @@ const CAPTION_ELEMENT_KEYS = createElementAllowedKeySet<CaptionElement>({
 		source: true,
 		style: true,
 		text: true,
+		secondaryText: true,
 		words: true,
 		emphasis: true,
 		emphasisBaseStyle: true,
@@ -343,11 +345,21 @@ const SUBTITLE_STYLE_KEYS = createAllowedKeySet<SubtitleStyle>({
 		outlineColor: true,
 		outlineWidth: true,
 		position: true,
+		secondary: true,
 		shadowColor: true,
 		shadowOffset: true,
 		textAlign: true,
 		underline: true,
 		upcomingColor: true,
+	},
+});
+const SUBTITLE_SECONDARY_KEYS = createAllowedKeySet<CaptionSecondaryStyle>({
+	keys: {
+		bold: true,
+		fontColor: true,
+		fontFamily: true,
+		fontSize: true,
+		italic: true,
 	},
 });
 const SUBTITLE_SHADOW_OFFSET_KEYS = new Set(["x", "y"]);
@@ -1094,6 +1106,13 @@ function validateCaptionElement({
 		path: `${path}.text`,
 		value: element.text,
 	});
+	if (element.secondaryText !== undefined) {
+		getString({
+			allowEmpty: true,
+			path: `${path}.secondaryText`,
+			value: element.secondaryText,
+		});
+	}
 	getString({ path: `${path}.language`, value: element.language });
 	assertStringLiteral({
 		allowed: new Set(["imported", "manual", "transcription"]),
@@ -1198,6 +1217,33 @@ function validateSubtitleStyle({
 		path: `${positionPath}.align`,
 		value: position.align,
 	});
+	if (style.secondary !== undefined) {
+		const secondaryPath = `${stylePath}.secondary`;
+		const secondary = getRecord({
+			path: secondaryPath,
+			value: style.secondary,
+		});
+		assertKeys({
+			allowed: SUBTITLE_SECONDARY_KEYS,
+			path: secondaryPath,
+			record: secondary,
+		});
+		for (const key of ["fontFamily", "fontColor"]) {
+			if (secondary[key] !== undefined) {
+				getString({ path: `${secondaryPath}.${key}`, value: secondary[key] });
+			}
+		}
+		assertOptionalFiniteNumber({
+			path: `${secondaryPath}.fontSize`,
+			value: secondary.fontSize,
+		});
+		for (const key of ["bold", "italic"]) {
+			assertOptionalBoolean({
+				path: `${secondaryPath}.${key}`,
+				value: secondary[key],
+			});
+		}
+	}
 }
 
 function validateAdjustmentElement({
