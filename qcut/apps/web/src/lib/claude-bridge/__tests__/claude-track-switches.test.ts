@@ -121,7 +121,7 @@ describe("track switches over the editor API", () => {
 		const response = run({ action: "update", trackId: "voice" });
 		expect(response.success).toBe(false);
 		expect(response.error).toBe(
-			"Track update needs index, name, colorLabel, muted, hidden or locked"
+			"Track update needs index, aboveTrackId, belowTrackId, name, colorLabel, muted, hidden or locked"
 		);
 	});
 });
