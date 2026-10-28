@@ -22,7 +22,11 @@ overlapping second
 third
 `;
 
-function fakeClient({ existingCaptionTracks = 0, failBatches = false } = {}) {
+function fakeClient({
+	existingCaptionTracks = 0,
+	failBatches = false,
+	batchWarnings = [] as string[],
+} = {}) {
 	const calls: Array<{ method: string; path: string; body: unknown }> = [];
 	let trackCounter = 0;
 	const client = {
@@ -51,7 +55,15 @@ function fakeClient({ existingCaptionTracks = 0, failBatches = false } = {}) {
 				trackCounter += 1;
 				return { trackId: `cap-${trackCounter}` };
 			}
-			return { addedCount: (body as { elements: unknown[] }).elements.length };
+			const elements = (body as { elements: unknown[] }).elements;
+			return {
+				addedCount: elements.length,
+				added: elements.map((_, index) => ({
+					index,
+					success: true,
+					...(batchWarnings.length > 0 ? { warnings: batchWarnings } : {}),
+				})),
+			};
 		}),
 		delete: vi.fn(async (requestPath: string, body: unknown) => {
 			calls.push({ method: "DELETE", path: requestPath, body });
@@ -198,5 +210,50 @@ describe("editor captions import", () => {
 			success: false,
 			error: expect.stringContaining("No cues"),
 		});
+	});
+
+	it("puts --preset under --style and reports each style warning once", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "cues.srt");
+		writeFileSync(file, SRT);
+		const warning =
+			'Caption field "style.marginV" ignored: no effect on captions';
+		const { client, calls } = fakeClient({ batchWarnings: [warning] });
+		const result = await captionsImport(
+			client,
+			opts({
+				file,
+				preset: "film",
+				style: JSON.stringify({ fontFamily: "Futura", outlineWidth: 2 }),
+			})
+		);
+		expect(result.success).toBe(true);
+		const batch = calls.find((call) => call.path.endsWith("/elements/batch"));
+		expect(
+			(batch?.body as { elements: Array<{ style: unknown }> }).elements[0].style
+		).toMatchObject({
+			bgOpacity: 0,
+			shadowOffset: { x: 0, y: 2 },
+			outlineWidth: 2,
+			fontFamily: "Futura",
+		});
+		const warnings = (result.data as { warnings: string[] }).warnings;
+		expect(warnings.filter((entry) => entry === warning)).toHaveLength(1);
+	});
+
+	it("names the presets when one is unknown", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "cues.srt");
+		writeFileSync(file, SRT);
+		const { client, calls } = fakeClient();
+		const result = await captionsImport(
+			client,
+			opts({ file, preset: "movie" })
+		);
+		expect(result).toMatchObject({
+			success: false,
+			error: expect.stringContaining("film"),
+		});
+		expect(calls).toHaveLength(0);
 	});
 });
