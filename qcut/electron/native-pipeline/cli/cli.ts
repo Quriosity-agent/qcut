@@ -511,6 +511,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"no-ripple": { type: "boolean", default: false },
 			// editor captions import
 			file: { type: "string" },
+			"secondary-file": { type: "string" },
 			// editor element color / filter
 			exposure: { type: "string" },
 			brightness: { type: "string" },
@@ -1261,6 +1262,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		reset: (values.reset as boolean) ?? false,
 		append: (values.append as boolean) ?? false,
 		file: values.file as string | undefined,
+		secondaryFile: values["secondary-file"] as string | undefined,
 		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,
 		keepAutomation: (values["keep-automation"] as boolean) ?? false,
 		bookmarks: values.bookmarks as string | undefined,
