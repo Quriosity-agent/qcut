@@ -14,6 +14,14 @@
  * - N10: an ElevenLabs transcription with only the E2E placeholder FAL key
  *   fails before any request, naming the credentials it needs.
  * - N12.1: `export start --poll --json` prints one JSON document on stdout.
+ * - N13: a delete made while the editor is (or was just) busy is confirmed
+ *   in the timeline before it answers, and the export right after it agrees.
+ *   (The race behind the report — a late answer to an old read passing for a
+ *   new one — is pinned by timeline-request-correlation.test.ts.)
+ * - N14: `track move --above <main>` puts a new media track over the main one.
+ * - N15: `batch-import` of qtrle cards answers once the editor has loaded
+ *   them (it used to answer after copying; the editor loaded them on the
+ *   first add, and the second add timed out), and they place at once.
  *
  * The app runs with no credentials of the user's (`appCredentials: "empty"`),
  * so nothing here can reach a provider with their account.
@@ -395,6 +403,181 @@ test("QCut 2701 report: tracks, transactions, caption style, bold font, keys", a
 		);
 		expect(imported.added, "the next import works").toBe(1);
 		evidence("N7 next import", imported);
+
+		// --- N13: a delete is confirmed before it answers, busy editor or not -----
+		const doomed = await cli<{ elementId: string }>(
+			apiPort,
+			"editor:timeline:add-element",
+			...pid,
+			"--data",
+			JSON.stringify({
+				type: "captions",
+				trackId: freshTrack.trackId,
+				content: "old score stand-in",
+				startTime: 3.6,
+				duration: 0.3,
+			})
+		);
+		const holdEditor = (ms: number) =>
+			page.evaluate((duration) => {
+				const until = Date.now() + duration;
+				while (Date.now() < until) {
+					// Hold the editor's main thread, as a heavy project does.
+				}
+			}, ms);
+		const busyExport = holdEditor(9000);
+		const lostRead = await cliRaw({
+			apiPort,
+			args: ["editor:timeline:export", ...pid, "--json"],
+		});
+		expect(lostRead.code, "a read fails while the editor is busy").not.toBe(0);
+		const deleted = await cli<{ removed: boolean; confirmed: boolean }>(
+			apiPort,
+			"editor:timeline:delete-element",
+			...pid,
+			"--element-id",
+			doomed.elementId,
+			"--force"
+		);
+		await busyExport;
+		expect(deleted).toMatchObject({ removed: true, confirmed: true });
+		const checked = await cli<{
+			tracks: Array<{ elements: Array<{ id: string }> }>;
+		}>(apiPort, "editor:timeline:export", ...pid);
+		const stillThere = checked.tracks.some((track) =>
+			track.elements.some((element) => element.id === doomed.elementId)
+		);
+		evidence("N13 export right after a delete during a busy editor", {
+			deleted,
+			stillThere,
+		});
+		expect(stillThere, "the export agrees with the delete").toBe(false);
+
+		// --- N14: a new media track directly above the main track -----------------
+		const replacement = await cli<{ trackId: string }>(
+			apiPort,
+			"editor:track:create",
+			...pid,
+			"--type",
+			"media",
+			"--name",
+			"画面替换"
+		);
+		const moved = await cli<{ index: number; tracks: Array<{ id: string }> }>(
+			apiPort,
+			"editor:track:move",
+			...pid,
+			"--track-id",
+			replacement.trackId,
+			"--above",
+			mainId
+		);
+		const order = (
+			await cli<{ tracks: Array<{ id: string }> }>(
+				apiPort,
+				"editor:timeline:export",
+				...pid
+			)
+		).tracks.map((track) => track.id);
+		evidence("N14 move --above the main track", {
+			answerIndex: moved.index,
+			exportIndex: order.indexOf(replacement.trackId),
+			mainIndex: order.indexOf(mainId),
+		});
+		expect(order.indexOf(replacement.trackId)).toBe(order.indexOf(mainId) - 1);
+		expect(moved.index).toBe(order.indexOf(replacement.trackId));
+
+		// --- N15: a batch import answers once the editor has the media ----------
+		const cards = [1, 2, 3].map((seconds) => {
+			const file = path.join(workDir, `card${seconds}.mov`);
+			execFileSync(FFMPEG, [
+				"-y",
+				"-v",
+				"error",
+				"-f",
+				"lavfi",
+				"-i",
+				`color=c=black@0.0:s=1470x630:r=24,format=argb,drawbox=x=300:y=260:w=${300 * seconds}:h=110:color=white@1:t=fill`,
+				"-t",
+				String(seconds),
+				"-c:v",
+				"qtrle",
+				"-pix_fmt",
+				"argb",
+				file,
+			]);
+			return file;
+		});
+		const importedCards = await cli<
+			Array<{ success: boolean; editorReady?: boolean; warning?: string }>
+		>(
+			apiPort,
+			"editor:media:batch-import",
+			...pid,
+			"--sources",
+			cards.join(",")
+		);
+		// The editor's media list before anything else asks it to load them.
+		const inEditor = await page.evaluate(() => {
+			const store = (
+				window as unknown as {
+					__mediaStore?: {
+						getState: () => { mediaItems: Array<{ name: string }> };
+					};
+				}
+			).__mediaStore;
+			return store?.getState().mediaItems.map((item) => item.name) ?? [];
+		});
+		const cardTrack = await cli<{ trackId: string }>(
+			apiPort,
+			"editor:track:create",
+			...pid,
+			"--type",
+			"media",
+			"--name",
+			"字卡"
+		);
+		const addExitCodes: number[] = [];
+		let cardStart = 0;
+		for (const [index, card] of cards.entries()) {
+			const add = await cliRaw({
+				apiPort,
+				args: [
+					"editor:timeline:add-element",
+					...pid,
+					"--data",
+					JSON.stringify({
+						type: "media",
+						sourceName: path.basename(card),
+						trackId: cardTrack.trackId,
+						startTime: cardStart,
+					}),
+					"--json",
+					"--flat",
+				],
+			});
+			addExitCodes.push(add.code);
+			expect(add.code, add.stdout).toBe(0);
+			cardStart += index + 1;
+		}
+		evidence("N15 batch-import of 3 qtrle cards, then add each at once", {
+			editorReady: importedCards.map((card) => card.editorReady),
+			inEditorWhenImportAnswered: cards.map((card) =>
+				inEditor.includes(path.basename(card))
+			),
+			addExitCodes,
+		});
+		expect(importedCards.map((card) => card.editorReady)).toEqual([
+			true,
+			true,
+			true,
+		]);
+		for (const card of cards) {
+			expect(
+				inEditor,
+				"the editor has each card when the import answers"
+			).toContain(path.basename(card));
+		}
 
 		// --- N9 + N12.1: bold Avenir Next stays upright; one JSON document --------
 		if (existsSync(AVENIR)) {
