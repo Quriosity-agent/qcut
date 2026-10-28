@@ -34,6 +34,20 @@ describe("CaptionsDisplay", () => {
 		expect(screen.getByText("Hello world").style.fontSize).toBe("24px");
 	});
 
+	it("breaks lines where the caption does, without an empty first or last line", () => {
+		render(
+			<CaptionsDisplay
+				segments={[{ ...segment, text: "\nRound one\n第一回合\n" }]}
+				currentTime={0.5}
+			/>
+		);
+
+		const text = screen.getByText(/Round one/);
+		expect(text.textContent).toBe("Round one\n第一回合");
+		// pre-line draws the break as a new line, as both exports do.
+		expect(text.style.whiteSpace).toBe("pre-line");
+	});
+
 	it("renders timed words through the karaoke renderer", () => {
 		render(
 			<CaptionsDisplay
