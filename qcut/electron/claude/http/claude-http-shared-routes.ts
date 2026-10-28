@@ -24,6 +24,7 @@ import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjus
 import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
 import { mediaOverlayRendererReason } from "../../types/media-overlay-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
+import { loadBatchImportInEditor } from "./claude-http-batch-import-editor.js";
 import {
 	captionStyleWarnings,
 	normalizeCaptionStyleInput,
@@ -644,6 +645,30 @@ async function waitForTimelineMutationBarrier({
 	}
 }
 
+/** Timeline reads (each up to TIMELINE_SYNC_BARRIER_TIMEOUT_MS) a delete makes to see it applied. */
+const DELETE_CONFIRM_READS = 4;
+
+/**
+ * Reads the timeline until the editor answers, at most `reads` times. Reads
+ * queue behind the mutation sent before them, so an answer shows it applied;
+ * each read is matched to its own request, so a late answer to an earlier,
+ * timed-out read cannot pass for a newer one. A read that fails at once (no
+ * window) uses up its attempt, so this never spins.
+ */
+async function readTimelineAfterMutation({
+	accessor,
+	reads,
+}: {
+	accessor: WindowAccessor;
+	reads: number;
+}): Promise<ClaudeTimeline | null> {
+	for (let attempt = 0; attempt < reads; attempt++) {
+		const timeline = await waitForTimelineMutationBarrier({ accessor });
+		if (timeline) return timeline;
+	}
+	return null;
+}
+
 /** The track holding `elementId` in a timeline read, if any. */
 function findTrackOfElement({
 	timeline,
@@ -1025,7 +1050,14 @@ export function registerSharedRoutes(
 		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
-		const result = await batchImportMedia(req.params.projectId, req.body.items);
+		const copied = await batchImportMedia(req.params.projectId, req.body.items);
+		// The editor loads what was copied before this answers, so an
+		// add-element right after finds the media.
+		const result = await loadBatchImportInEditor({
+			accessor,
+			projectId: req.params.projectId,
+			results: copied,
+		});
 		logOperation({
 			stage: 1,
 			action: "import",
@@ -1124,15 +1156,24 @@ export function registerSharedRoutes(
 				field: "colorLabel",
 			});
 			const switches = readTrackSwitches({ body: req.body });
+			const relative = {
+				...(typeof req.body?.aboveTrackId === "string"
+					? { aboveTrackId: req.body.aboveTrackId }
+					: {}),
+				...(typeof req.body?.belowTrackId === "string"
+					? { belowTrackId: req.body.belowTrackId }
+					: {}),
+			};
 			if (
 				typeof req.body?.index !== "number" &&
+				Object.keys(relative).length === 0 &&
 				typeof req.body?.name !== "string" &&
 				colorLabel === undefined &&
 				Object.keys(switches).length === 0
 			) {
 				throw new HttpError(
 					400,
-					"Track update needs 'index', 'name', 'colorLabel', 'muted', 'hidden' or 'locked'"
+					"Track update needs 'index', 'aboveTrackId', 'belowTrackId', 'name', 'colorLabel', 'muted', 'hidden' or 'locked'"
 				);
 			}
 			// Input first (400), then the project (409), then the editor.
@@ -1142,6 +1183,7 @@ export function registerSharedRoutes(
 					action: "update",
 					trackId: req.params.trackId,
 					index: req.body.index,
+					...relative,
 					name: typeof req.body.name === "string" ? req.body.name : undefined,
 					...(colorLabel !== undefined ? { colorLabel } : {}),
 					...switches,
@@ -1422,27 +1464,42 @@ export function registerSharedRoutes(
 			}
 			const win = accessor.getWindow();
 			win.webContents.send("claude:timeline:removeElement", elementId);
-			const after = await waitForTimelineMutationBarrier({ accessor });
+			// Answer only once the editor shows the delete (it may be busy,
+			// e.g. computing a long clip's waveform), so a check right after
+			// sees what this answer says.
+			const after = await readTimelineAfterMutation({
+				accessor,
+				reads: DELETE_CONFIRM_READS,
+			});
 			scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-			if (!track || !after) return { removed: true };
+			if (!after) {
+				return {
+					removed: true,
+					confirmed: false,
+					warning: `The editor did not answer within ${(DELETE_CONFIRM_READS * TIMELINE_SYNC_BARRIER_TIMEOUT_MS) / 1000}s; the delete is queued and applies once it is free. Check with editor:timeline:export.`,
+				};
+			}
 			if (findTrackOfElement({ timeline: after, elementId })) {
 				throw new HttpError(
 					409,
-					`Element ${elementId} was not removed; its track "${track.name}" may be locked`
+					`Element ${elementId} was not removed${track ? `; its track "${track.name}" may be locked` : ""}`
 				);
 			}
-			const trackRemoved = !after.tracks.some(
+			if (!track) return { removed: true, confirmed: true };
+			const remaining = after.tracks.find(
 				(candidate) => candidate.id === track.id
 			);
 			return {
 				removed: true,
+				confirmed: true,
 				trackId: track.id,
-				trackRemoved,
-				...(trackRemoved
-					? {
+				trackRemoved: !remaining,
+				trackElements: remaining?.elements.length ?? 0,
+				...(remaining
+					? {}
+					: {
 							warning: `Track "${track.name}" (${track.id}) had no other elements and was removed with this one; create a track before adding to it again.`,
-						}
-					: {}),
+						}),
 			};
 		}
 	);
