@@ -716,6 +716,53 @@ describe("Claude HTTP Server", () => {
 		).toEqual([true, true]);
 	});
 
+	// Review of PR #526: the editor wait began only after the copy.
+	it("POST /api/claude/media/:projectId/batch-import counts the copy against the editor wait", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		let now = Date.now();
+		const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+		vi.mocked(mediaHandler.batchImportMedia).mockImplementationOnce(
+			async () => {
+				// The copy takes the whole budget.
+				now += 20_000;
+				return [
+					{
+						index: 0,
+						success: true,
+						mediaFile: {
+							id: "media_card1",
+							name: "card1.mov",
+							type: "video" as const,
+							path: "/mock/project/media/card1.mov",
+							size: 100,
+							createdAt: 1,
+							modifiedAt: 1,
+						},
+					},
+				];
+			}
+		);
+		vi.mocked(
+			mediaRendererHandler.requestMediaImportFromRenderer
+		).mockImplementationOnce(() => new Promise(() => {}));
+		try {
+			const res = await fetch("/api/claude/media/proj_123/batch-import", {
+				method: "POST",
+				body: JSON.stringify({ items: [{ path: "/cards/card1.mov" }] }),
+			});
+
+			expect(res.status).toBe(200);
+			expect(
+				mediaRendererHandler.requestMediaImportFromRenderer
+			).toHaveBeenCalledTimes(1);
+			expect(res.body.data[0]).toMatchObject({ editorReady: false });
+		} finally {
+			clock.mockRestore();
+		}
+	});
+
 	it("POST /api/claude/media/:projectId/import forwards Sticker Lab metadata", async () => {
 		const mockWindow = createMockWindow();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
