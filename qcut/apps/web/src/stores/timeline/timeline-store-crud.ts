@@ -352,7 +352,12 @@ export function createCrudOperations(
 			return newElement.id;
 		},
 
-		removeElementFromTrack: (trackId, elementId, pushHistory = true) => {
+		removeElementFromTrack: (
+			trackId,
+			elementId,
+			pushHistory = true,
+			options
+		) => {
 			const track = get()._tracks.find((t) => t.id === trackId);
 			const element = track?.elements.find((el) => el.id === elementId);
 			if (!track || !element) return;
@@ -415,11 +420,13 @@ export function createCrudOperations(
 			}
 
 			const { rippleEditingEnabled, mainTrackMagnetEnabled } = get();
+			const keepGap = options?.keepGap === true;
 
 			// Main-track magnet (QTL-005): the main track never keeps a hole, so
 			// its deletions close their gap even outside ripple mode.
-			const magnetApplies = mainTrackMagnetEnabled && Boolean(track.isMain);
-			if (rippleEditingEnabled || magnetApplies) {
+			const magnetApplies =
+				!keepGap && mainTrackMagnetEnabled && Boolean(track.isMain);
+			if (!keepGap && (rippleEditingEnabled || magnetApplies)) {
 				get().removeElementFromTrackWithRipple(
 					trackId,
 					elementId,
