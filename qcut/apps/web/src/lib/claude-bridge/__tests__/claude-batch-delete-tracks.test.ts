@@ -10,7 +10,14 @@ const store = vi.hoisted(() => {
 	const state = {
 		tracks: [] as Array<{ id: string; elements: Array<{ id: string }> }>,
 		pushHistory: () => {},
-		removeElementFromTrack: (trackId: string, elementId: string) => {
+		removeOptions: [] as unknown[],
+		removeElementFromTrack: (
+			trackId: string,
+			elementId: string,
+			_pushHistory?: boolean,
+			options?: unknown
+		) => {
+			state.removeOptions.push(options);
 			state.tracks = state.tracks
 				.map((track) =>
 					track.id === trackId
@@ -87,6 +94,19 @@ describe("batch delete and the tracks it empties", () => {
 			"r1",
 			expect.objectContaining({ deletedCount: 3, removedTrackIds: ["score"] })
 		);
+	});
+
+	// N17 (2026-10-28 trailer report): without --ripple the later clips on
+	// the main track still moved up by the deleted clip's length.
+	it("leaves the gap, on the main track too, unless asked to ripple", () => {
+		store.removeOptions = [];
+		const { onDelete } = setup();
+		onDelete({
+			requestId: "r3",
+			elements: [{ trackId: "main", elementId: "clip" }],
+			ripple: false,
+		});
+		expect(store.removeOptions).toEqual([{ keepGap: true }]);
 	});
 
 	it("adds nothing when every track keeps an element", () => {
