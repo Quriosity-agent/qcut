@@ -359,6 +359,12 @@ Malformed audio (a fractional frame, an unknown keyframe property, a missing
 value) fails the update with the reason, and nothing about the element
 changes. `batch-add` accepts the same `audio` object on media elements.
 
+Both export engines apply these settings on every track. On the main track
+the native export applies a clip's gain, mute (`"enabled": false`), volume
+keyframes and fades; its other audio effects (EQ, denoise, pitch,
+compressor, reverb…) reach only the muxer export (`--engine muxer`), and a
+native export that leaves them out lists those clips in its `warnings`.
+
 ### Batch update elements (max 50)
 
 ```bash
@@ -434,15 +440,26 @@ refused (409) instead of answering `removed`.
 # Simple: plain element ID array
 qcut editor:timeline:batch-delete \
   --project-id <id> \
-  --cuts '["elem1","elem2","elem3"]' \
-  --ripple
+  --elements '["elem1","elem2","elem3"]' \
+  --ripple --force
 
 # Explicit: with trackId per element
 qcut editor:timeline:batch-delete \
   --project-id <id> \
-  --cuts '[{"trackId":"t1","elementId":"elem1"}]' \
-  --ripple
+  --elements '[{"trackId":"t1","elementId":"elem1"}]' \
+  --force
 ```
+
+`--elements` takes the list (`--cuts`, the name these docs used to give it,
+is accepted too). Without `--ripple` every gap stays where the clip was —
+on the main track too, whatever the editor's ripple and magnet settings — so
+a clip can be replaced in place: delete it, then `add-element` the new one
+at the same `startTime`. `--ripple` closes each gap by moving the later
+clips on that track left. A single `delete-element`
+works like a delete in the timeline: with the editor's main-track magnet on
+(the default) it closes a gap on the main track. `add-element` and
+`batch-add` both take `"collision": "insert"` (push the later clips right),
+`"overwrite"` or `"reject"` (the default: refuse an occupied span).
 
 ### Split element
 
