@@ -84,7 +84,7 @@ import type {
 	ClaudeHistorySummary,
 	ClaudeUndoRedoResponse,
 } from "../claude/handlers/claude-transaction-handler.js";
-import { NAVIGATION_TIMEOUT_MS } from "../claude/handlers/claude-navigator-handler.js";
+import { NAVIGATION_TIMEOUT_MS } from "../claude/utils/navigation-timeout.js";
 import type { ClaudeConsoleEntry } from "../claude/handlers/claude-console-handler.js";
 import type {
 	AgentPointerResult,
