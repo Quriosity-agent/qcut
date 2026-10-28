@@ -1,7 +1,7 @@
-# QCut 2701 trailer issue fixes (N6–N12)
+# QCut 2701 trailer issue fixes (N6–N15)
 
 Baseline: `v2026.10.27.1` / `51ffcee11`. Source: the 2026-10-28 StreetFighter
-sample report (配乐、双语字幕、字卡, items N6–N12). The user's projects and the
+sample report (配乐、双语字幕、字卡, items N6–N15). The user's projects and the
 installed app were not touched: every live check ran on an isolated build
 (temporary profile, free API port, temporary state and credential folders)
 with a throw-away project that the run deletes.
@@ -17,6 +17,9 @@ with a throw-away project that the run deletes.
 | N12.1: `export start --poll --json` prints two JSON documents | Not reproduced: since `db6367671` (2026-10-16, in 2026.10.27.1) the pending notice goes to stderr. | Verified live (stdout parses as one document). |
 | N12.2: commands fail right after `navigator open` | In the packaged app :8765 is served by the utility process, whose `navigator/open` gave up after 10 s while the editor waits up to 20 s (main 25 s): a large project came back "timed out" while still loading. | The utility route uses the 25 s navigation budget; docs point to `--wait-ready`. |
 | N12.3: a 电影字幕 preset | — | `film` preset for `captions import --preset` (no box, 1.5 px outline, soft shadow) and a 电影字幕 entry in the captions panel presets. |
+| N13: `delete-element` answers ok, the `timeline export` right after still shows the element; deleting again "works" | Timeline reads carried no request id. A read that timed out while the editor was busy stayed queued there and was answered later, from the timeline as it was then; that late answer satisfied whichever read was waiting at the time — the export after the delete. The 2701 delete also answered `removed` without looking. | Each timeline read carries an id the editor echoes, and only the answer to that read is taken. `delete-element` answers once a read shows the element gone (`confirmed: true`, `trackElements`; up to 4 reads, ~20 s), `confirmed: false` with a warning when the editor never answered, 409 when it is still there. |
+| N14: `track:move --index <main>` right after `track:create` answers ok but the track stays under main; the same command again works | Not reproduced in a fresh profile: since `60e1a6479` (in 2701) the move is applied and read back before it answers. The export it was checked against is the likeliest culprit (N13's stale read). | `track move --above/--below <trackId>` places a track next to another one in the editor's current order, with no index to work out; the answer has the resulting `index` and order. With N13's fix the export after a move reads the new order. |
+| N15: right after `media:batch-import` of qtrle movs the 2nd `add-element` times out (~5 s) and is not placed; a few seconds later it works | `batch-import` only copied the files; the editor loaded them on the first add, and a single add waited only 5 s for the editor. In a large project that load and the work right after it outlast 5 s. (A fresh profile with 20 such movs did not time out: the first add, which loaded all 20, took 1.3 s.) | `batch-import` hands each copied file to the editor, as a single import with metadata does, and answers once the editor has it (`editorReady` per file; 20 s in all, then a warning while it keeps loading). `add-element` waits up to 25 s for a busy editor; on timeout it says the element may still be placed and to check `timeline export` before retrying. |
 
 ## Not changed
 
@@ -35,6 +38,13 @@ with a throw-away project that the run deletes.
   differently); break long cues with `\n`.
 - The canvas export still wraps captions only at spaces, so a long CJK line
   without breaks does not wrap there (pre-existing).
+- The project check every editing command makes first still waits 5 s for the
+  editor: a command that lands in a longer busy stretch fails with `No active
+  editor project could be confirmed` (nothing is changed, so it can simply be
+  retried; the report's scripts already do).
+- A single `media:import` still tells the editor without waiting for it (it
+  already loads right away); only `batch-import` used to skip the editor.
+- N16–N18, added to the report after this work started, are not part of it.
 
 ## Verification
 
@@ -46,7 +56,8 @@ the final tree: node project 8310 passed (3 load timeouts in
 Live E2E: `apps/web/src/test/e2e/editor-cli-trailer-2701.e2e.ts` replays the
 report's sequence against an isolated build (temporary profile, free port,
 **empty** credential folder) through the source CLI, then deletes its project.
-Run on `bun run build` of this branch, offscreen: 1 passed (22.7 s).
+Run on `bun run build` of this branch, offscreen: 1 passed (39.7 s with the
+N13–N15 checks).
 
 | Check | Result |
 | --- | --- |
@@ -58,6 +69,9 @@ Run on `bun run build` of this branch, offscreen: 1 passed (22.7 s).
 | N12.1 `export start --poll --json` | stdout is one JSON document (1178 bytes); the pending notice is on stderr |
 | N10 `transcribe start --provider elevenlabs` with only `FAL_KEY=test-fal-api-key-e2e` | fails before any request: `ElevenLabs transcription has no usable credentials. It needs one of: ELEVENLABS_API_KEY …, a signed-in QCut account …, or a FAL key in key_id:key_secret form …. Skipped: FAL_KEY looks like a test placeholder` |
 | N10 `check-keys` | `FAL_KEY` reported with `warning: "looks like a test placeholder …"` |
+| N13 `timeline export` while the editor's main thread is held 9 s, then `delete-element` | the export fails; the delete answers `{removed: true, confirmed: true, trackElements: 1}` once the editor is free; the export right after does not list the element |
+| N14 `track create --type media`, then `track move --above <main>` | answer `index` 2 = the track's index in the export, main at 3 |
+| N15 `batch-import` of 3 qtrle ARGB cards (1470×630), then `add-element` each at once | every file `editorReady: true` and already in the editor's media list when the import answered; the 3 adds exit 0 |
 
 N9 was first reproduced with the bundled FFmpeg (libass 0.17.4, CoreText
 provider): `fontselect: (Avenir Next, 700, 0) -> /System/Library/Fonts/Avenir
@@ -72,3 +86,12 @@ a scripted editor that handles messages in order once free (each of its
 three fix paths fails with the fix removed), and
 `utility-navigator-open.test.ts` starts the real utility HTTP server with a
 project that takes 11 s to load (504 at 10 s before).
+
+N13–N15 without a window: `timeline-request-correlation.test.ts` replays the
+race (a read times out in a busy editor, the element is deleted, a new read
+is made; the editor answers the old read first) and the new read gets the
+post-delete timeline; the HTTP suite pins the delete's confirmation reads,
+the 504 of an unconfirmed placement and `batch-import` asking the editor for
+each copied file; `claude-renderer-mutation-handler.test.ts` places a clip the
+editor confirms after 8 s (5 s failed before); `claude-track-move-relative`
+and `editor-track-move-cli` cover `--above/--below`.
