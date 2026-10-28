@@ -475,7 +475,9 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 							source,
 							element,
 							style,
-							content,
+							// As the preview, the canvas export and stacking read it: a
+							// leading or trailing line break draws no empty line.
+							content: content.trim(),
 							duration,
 						})
 					: collectCanvasTextOverlay({
