@@ -267,4 +267,35 @@ describe("caption style input", () => {
 			captionStyleFromPatch({ changes: { shadowOffsetX: 6 } }).style
 		).toEqual({ shadowOffset: { x: 6 } });
 	});
+
+	// A coordinate that was not a number used to be stored as given (the
+	// ASS export reads `position.y` as its margin).
+	it("stores only numeric position coordinates and names other position keys", () => {
+		expect(
+			normalizeCaptionStyleInput({
+				element: { style: { position: { align: "bottom", x: "bad" } } },
+			})
+		).toEqual({
+			ignored: [{ field: "style.position", reason: "x expected a number" }],
+		});
+		expect(
+			normalizeCaptionStyleInput({
+				element: { style: { position: { align: "top", y: 40, marginV: 12 } } },
+			})
+		).toEqual({
+			style: { position: { align: "top", y: 40 } },
+			ignored: [
+				{
+					field: "style.position.marginV",
+					reason: "not a caption position field (align, x, y)",
+				},
+			],
+		});
+		expect(
+			captionStyleFromPatch({
+				changes: { position: { align: "center", y: 30 } },
+				current: { position: { align: "bottom", x: 5, y: 12 } },
+			}).style
+		).toEqual({ position: { align: "center", x: 5, y: 30 } });
+	});
 });
