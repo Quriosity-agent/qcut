@@ -59,6 +59,14 @@ export interface ExportSegment {
 	 * from `trimStart`.
 	 */
 	soundSource?: { path: string; trimStart: number };
+	/**
+	 * The clip's own sound as one FFmpeg filter: its gain, mute, volume
+	 * keyframes and fades (timeline-audio-file.ts); absent when they change
+	 * nothing.
+	 */
+	audioEnvelope?: string;
+	/** The clip has audio effects only the mix applies, so a joined clip loses them. */
+	audioEffectsNotApplied?: true;
 }
 
 export interface ResolvedExportSettings {
