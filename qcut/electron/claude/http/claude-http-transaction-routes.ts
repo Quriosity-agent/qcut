@@ -1,7 +1,9 @@
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
 import type {
+	RendererTransactionSummary,
 	Transaction,
+	TransactionList,
 	TransactionRequest,
 } from "../../types/claude-api.js";
 
@@ -16,6 +18,7 @@ export interface ClaudeHistorySummary {
 	redoCount: number;
 	entries: ClaudeHistoryEntry[];
 	redoEntries?: ClaudeHistoryEntry[];
+	activeTransaction?: RendererTransactionSummary | null;
 }
 
 export interface ClaudeUndoRedoResponse {
@@ -32,8 +35,10 @@ interface TransactionRouteAccessor {
 	rollbackTransaction(
 		transactionId: string,
 		reason?: string
-	): Promise<{ transaction: Transaction }>;
+	): Promise<{ transaction: Transaction; orphaned?: boolean }>;
 	getTransactionStatus(transactionId: string): Promise<Transaction | null>;
+	/** Optional so accessors predating it keep compiling; the route 501s. */
+	listTransactions?(): Promise<TransactionList>;
 	undoTimeline(): Promise<ClaudeUndoRedoResponse>;
 	redoTimeline(): Promise<ClaudeUndoRedoResponse>;
 	getHistorySummary(): Promise<ClaudeHistorySummary>;
@@ -126,6 +131,20 @@ export function registerTransactionRoutes({
 				throw toHttpError({
 					error,
 					fallbackMessage: "Failed to rollback transaction",
+				});
+			}
+		});
+
+		router.get("/api/claude/transaction", async () => {
+			try {
+				if (!accessor.listTransactions) {
+					throw new HttpError(501, "Listing transactions is not supported");
+				}
+				return await accessor.listTransactions();
+			} catch (error) {
+				throw toHttpError({
+					error,
+					fallbackMessage: "Failed to list transactions",
 				});
 			}
 		});
