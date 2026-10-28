@@ -36,6 +36,15 @@ export interface ClaudeUndoRedoResponse {
 	applied: boolean;
 	undoCount: number;
 	redoCount: number;
+	/** The step taken back (or redone), when one was. */
+	label?: string;
+	/** What that step changed: counts and the first few elements. */
+	changes?: {
+		added: number;
+		removed: number;
+		moved: number;
+		elements: Array<Record<string, unknown>>;
+	};
 }
 
 export type RendererTransactionResult = {
