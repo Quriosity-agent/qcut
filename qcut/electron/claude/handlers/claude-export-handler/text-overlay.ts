@@ -4,6 +4,7 @@ import type {
 } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
 import { assFontMetrics } from "./ass-font-metrics.js";
+import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
 import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
@@ -136,7 +137,7 @@ function collectCaptionOverlay({
 		fallback: NATIVE_CAPTION_DEFAULTS.shadowOffsetY,
 	});
 
-	return {
+	const overlay: TextOverlay = {
 		id: source.id,
 		content,
 		startTime: source.startTime,
@@ -253,6 +254,50 @@ function collectCaptionOverlay({
 			fallback: 0,
 		}),
 	};
+	// A bilingual caption's second-language line, in style.secondary's look
+	// over the caption's own.
+	const secondaryContent =
+		typeof source.secondaryContent === "string"
+			? source.secondaryContent.trim()
+			: "";
+	if (!secondaryContent) return overlay;
+	const secondary = recordValue({ value: style.secondary });
+	overlay.secondary = {
+		content: secondaryContent,
+		fontFamily: stringValue({
+			element: {},
+			style: secondary,
+			key: "fontFamily",
+			fallback: overlay.fontFamily,
+		}),
+		fontSize: numberValue({
+			element: {},
+			style: secondary,
+			key: "fontSize",
+			fallback: overlay.fontSize,
+		}),
+		color: stringValue({
+			element: {},
+			style: secondary,
+			key: "fontColor",
+			fallback: overlay.color,
+		}),
+		fontWeight: booleanValue({
+			record: secondary,
+			key: "bold",
+			fallback: overlay.fontWeight === "bold",
+		})
+			? "bold"
+			: "normal",
+		fontStyle: booleanValue({
+			record: secondary,
+			key: "italic",
+			fallback: overlay.fontStyle === "italic",
+		})
+			? "italic"
+			: "normal",
+	};
+	return overlay;
 }
 
 function collectCanvasTextOverlay({
@@ -527,14 +572,6 @@ function assTime(seconds: number): string {
 	return `${hours}:${String(minutes).padStart(2, "0")}:${remainder.toFixed(2).padStart(5, "0")}`;
 }
 
-function escapeAssText(text: string): string {
-	return text
-		.replace(/\\/g, "\\\\")
-		.replace(/{/g, "\\{")
-		.replace(/}/g, "\\}")
-		.replace(/\r?\n/g, "\\N");
-}
-
 const ASS_ALIGNMENTS = {
 	top: { left: 7, center: 8, right: 9 },
 	center: { left: 4, center: 5, right: 6 },
@@ -647,6 +684,7 @@ function assPlacement({
 	height,
 	lineHeightEm,
 	stackOffset = 0,
+	lastLineLeading,
 }: {
 	overlay: TextOverlay;
 	width: number;
@@ -655,6 +693,11 @@ function assPlacement({
 	lineHeightEm: number;
 	/** Captions stacked under this one, as a distance from the edge. */
 	stackOffset?: number;
+	/**
+	 * A caption's last line's half-leading when it is in another font (a
+	 * bilingual caption's second-language line), which pins the bottom edge.
+	 */
+	lastLineLeading?: number;
 }): AssPlacement {
 	// CSS centres each em inside its line box (half-leading); libass stacks
 	// the font's own line height with the em at its bottom. Pinning a top or
@@ -699,6 +742,7 @@ function assPlacement({
 	}
 	const side = Math.round(width * CAPTION_SIDE_MARGIN);
 	const inset = CAPTION_EDGE_INSET_Y + leading + stackOffset;
+	const lastLeading = lastLineLeading ?? leading;
 	return {
 		alignment: ASS_ALIGNMENTS[overlay.verticalAlign][overlay.textAlign],
 		x:
@@ -707,12 +751,14 @@ function assPlacement({
 				: overlay.textAlign === "right"
 					? width - CAPTION_EDGE_INSET_X
 					: width / 2,
+		// libass centres the glyph block, CSS the whole box: with a last line
+		// in another font the two leadings differ by half their difference.
 		y:
 			overlay.verticalAlign === "top"
 				? inset
 				: overlay.verticalAlign === "center"
-					? height / 2
-					: height - inset,
+					? height / 2 + (leading - lastLeading) / 2
+					: height - (CAPTION_EDGE_INSET_Y + lastLeading + stackOffset),
 		marginL: side,
 		marginR: side,
 	};
@@ -726,9 +772,14 @@ const CAPTION_BOX_PADDING_Y = 8;
  * in the text, as caption-stacking.ts counts them) plus the box padding.
  */
 function captionBlockHeight(overlay: TextOverlay): number {
-	const lines = Math.max(1, overlay.content.trim().split(/\r?\n/).length);
+	const lines = (text: string) =>
+		Math.max(1, text.trim().split(/\r?\n/).length);
+	const secondary = overlay.secondary;
 	return (
-		lines * overlay.fontSize * overlay.lineHeight + 2 * CAPTION_BOX_PADDING_Y
+		(lines(overlay.content) * overlay.fontSize +
+			(secondary ? lines(secondary.content) * secondary.fontSize : 0)) *
+			overlay.lineHeight +
+		2 * CAPTION_BOX_PADDING_Y
 	);
 }
 
@@ -793,12 +844,23 @@ export function buildTextAss({
 			bold: overlay.fontWeight === "bold",
 			italic: overlay.fontStyle === "italic",
 		});
+		const caption =
+			overlay.positioning === "caption-anchor"
+				? captionEventText({
+						overlay,
+						fontSize: overlay.fontSize * metrics.sizeFactor,
+						fontFamilyFor: assFontFamily,
+					})
+				: undefined;
 		const placement = assPlacement({
 			overlay,
 			width,
 			height,
-			lineHeightEm: metrics.lineHeightEm,
+			// libass makes a caption line as tall as its ASS size (the font's
+			// Windows height); the hhea height differs for fonts like Songti SC.
+			lineHeightEm: caption ? metrics.sizeFactor : metrics.lineHeightEm,
 			stackOffset: stackOffsets.get(overlay.id) ?? 0,
+			lastLineLeading: caption?.lastLineLeading,
 		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
@@ -859,14 +921,15 @@ export function buildTextAss({
 		const tags = `${motion}\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
 		const margins = `${placement.marginL},${placement.marginR},0`;
 		const glow = assGlowTags({ overlay });
+		const eventText = caption?.text ?? escapeAssText(overlay.content);
 		if (glow) {
 			// The glow is the same text on a lower layer, blurred in the glow colour.
 			events.push(
-				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}${glow}}${escapeAssText(overlay.content)}`
+				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}${glow}}${eventText}`
 			);
 		}
 		events.push(
-			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}}${escapeAssText(overlay.content)}`
+			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}}${eventText}`
 		);
 	}
 	return [
