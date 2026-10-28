@@ -7,7 +7,10 @@
 
 import { ipcMain, BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
-import { withTimelineBatchTimeoutContext } from "../utils/timeline-batch-deadline.js";
+import {
+	TIMELINE_ADD_ELEMENT_TIMEOUT_MS,
+	withTimelineBatchTimeoutContext,
+} from "../utils/timeline-batch-deadline.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
 import { withDefaultMediaDurations } from "./claude-media-default-duration.js";
 import {
@@ -96,14 +99,20 @@ export async function requestAddElementFromRenderer({
 		},
 		requestIdPrefix: "timeline-add",
 		responseChannel: "claude:timeline:addElement:response",
-		timeoutMessage: "Renderer timeline element mutation timed out.",
-		timeoutMs: TIMELINE_REQUEST_TIMEOUT_MS,
+		timeoutMessage: `Renderer timeline element mutation timed out after ${TIMELINE_ADD_ELEMENT_TIMEOUT_MS / 1000}s; the editor may still be processing imported media. The element may still be added once it is free: check editor:timeline:export before retrying.`,
+		timeoutMs: TIMELINE_ADD_ELEMENT_TIMEOUT_MS,
 		win,
 	});
 }
 
 /**
- * Request timeline data from renderer process
+ * Request timeline data from renderer process.
+ *
+ * Each request carries an id that the renderer echoes. A request that
+ * times out here stays queued in a busy editor and is answered later, from
+ * the timeline as it was then; matching ids keeps that late answer from
+ * satisfying a newer request (a `timeline export` right after a delete once
+ * showed the deleted element that way).
  */
 export async function requestTimelineFromRenderer(
 	win: BrowserWindow
@@ -111,7 +120,7 @@ export async function requestTimelineFromRenderer(
 	assertIpcMainReady({
 		ipcMainInstance: ipcMain,
 		action: "timeline request",
-		requiresOnce: true,
+		requiresOnce: false,
 	});
 	assertRendererWindowReady({
 		win,
@@ -122,6 +131,7 @@ export async function requestTimelineFromRenderer(
 		let resolved = false;
 		let timeout: NodeJS.Timeout | undefined;
 		const responseChannel = "claude:timeline:response";
+		const requestId = generateId("timeline");
 
 		const cleanup = (): void => {
 			if (timeout) {
@@ -141,17 +151,23 @@ export async function requestTimelineFromRenderer(
 			rejectOnce({ error: new Error("Timeout waiting for timeline data") });
 		}, 5000);
 
-		/** Handle handler. */
-		const handler = (_event: IpcMainEvent, timeline: ClaudeTimeline) => {
-			if (resolved) return;
+		/** Takes only the answer to this request. */
+		const handler = (_event: IpcMainEvent, response: unknown) => {
+			if (
+				resolved ||
+				!isRendererTimelineResponse(response) ||
+				response.requestId !== requestId
+			) {
+				return;
+			}
 			resolved = true;
 			cleanup();
-			resolve(timeline);
+			resolve(response.timeline);
 		};
 
 		try {
-			ipcMain.once(responseChannel, handler);
-			win.webContents.send("claude:timeline:request");
+			ipcMain.on(responseChannel, handler);
+			win.webContents.send("claude:timeline:request", { requestId });
 		} catch (error) {
 			const failure =
 				error instanceof Error
@@ -160,6 +176,18 @@ export async function requestTimelineFromRenderer(
 			rejectOnce({ error: failure });
 		}
 	});
+}
+
+function isRendererTimelineResponse(
+	candidate: unknown
+): candidate is { requestId: string; timeline: ClaudeTimeline } {
+	if (typeof candidate !== "object" || candidate === null) return false;
+	const response = candidate as Record<string, unknown>;
+	return (
+		typeof response.requestId === "string" &&
+		typeof response.timeline === "object" &&
+		response.timeline !== null
+	);
 }
 
 /**
