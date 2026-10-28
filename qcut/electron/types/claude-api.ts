@@ -1495,6 +1495,22 @@ export interface RendererTransactionSummary {
 	expiresAt: number;
 	projectId?: string;
 }
+/** What an undo or redo did to the timeline: counts and the first ten elements. */
+export interface ClaudeUndoRedoChanges {
+	added: number;
+	removed: number;
+	moved: number;
+	elements: Array<{
+		elementId: string;
+		name?: string;
+		change: "added" | "removed" | "moved";
+		trackId: string;
+		startTime: number;
+		duration: number;
+		/** Where a moved element was before. */
+		from?: { trackId: string; startTime: number; duration: number };
+	}>;
+}
 /** `GET /api/claude/transaction`: what is open, in this process and in the editor. */
 export interface TransactionList {
 	/** The transaction QCut holds open, if any. */
