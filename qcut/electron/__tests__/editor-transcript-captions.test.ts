@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
 import type { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
+import { resolveCaptionImportStyle } from "../native-pipeline/editor/editor-handlers-captions.js";
 import {
 	cuesFromTranscript,
 	transcriptToCaptions,
@@ -91,18 +92,20 @@ describe("captions from a transcript", () => {
 				return { addedCount: 1, added: [{ index: 0, success: true }] };
 			}),
 		} as unknown as EditorApiClient;
+		const opts = {
+			command: "editor:transcribe:start",
+			projectId: "p1",
+			preset: "film",
+			outputDir: "./output",
+			json: true,
+			verbose: false,
+			quiet: false,
+			saveIntermediates: false,
+		} as CLIRunOptions;
 		const result = await transcriptToCaptions({
 			client,
-			opts: {
-				command: "editor:transcribe:start",
-				projectId: "p1",
-				preset: "film",
-				outputDir: "./output",
-				json: true,
-				verbose: false,
-				quiet: false,
-				saveIntermediates: false,
-			} as CLIRunOptions,
+			opts,
+			style: await resolveCaptionImportStyle({ opts }),
 			transcript: {
 				language: "eng",
 				words: [
@@ -129,5 +132,49 @@ describe("captions from a transcript", () => {
 			],
 		});
 		expect(calls.at(-1)?.path).toBe("/api/claude/transaction/tx-9/commit");
+	});
+
+	it("captions a Gemini transcript from its segments, so they keep their spaces", async () => {
+		const posted: unknown[] = [];
+		const client = {
+			post: vi.fn(async (path: string, body: unknown) => {
+				if (path === "/api/claude/transaction/begin") {
+					return { transactionId: "tx-3" };
+				}
+				if (path.endsWith("/tracks")) return { trackId: "cap-2" };
+				if (path.endsWith("/elements/batch")) posted.push(body);
+				return { addedCount: 2, added: [] };
+			}),
+		} as unknown as EditorApiClient;
+		// Gemini's "words" are its segments, with no spacing between them.
+		const segments = [
+			{ text: "so we went", start: 0, end: 1.5 },
+			{ text: "to the store", start: 1.5, end: 3 },
+		];
+		await transcriptToCaptions({
+			client,
+			opts: {
+				command: "editor:transcribe:start",
+				projectId: "p1",
+				provider: "gemini",
+				outputDir: "./output",
+				json: true,
+				verbose: false,
+				quiet: false,
+				saveIntermediates: false,
+			} as CLIRunOptions,
+			transcript: {
+				language: "en",
+				segments,
+				words: segments.map((segment) => ({ ...segment, type: "word" })),
+			},
+		});
+
+		const contents = posted.flatMap((body) =>
+			(body as { elements: Array<{ content: string }> }).elements.map(
+				(element) => element.content
+			)
+		);
+		expect(contents).toEqual(["so we went", "to the store"]);
 	});
 });
