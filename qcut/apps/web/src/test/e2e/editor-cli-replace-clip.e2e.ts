@@ -10,13 +10,16 @@
  * - A ripple delete on the main track leaves an unlinked sound-effect track
  *   exactly as it was (two effects that overlapped by a few milliseconds
  *   moved by 4 and 16 ms).
+ * - So do a batch delete of several main-track clips and a batch-add insert
+ *   with no undo at all (v14: on 2701 the delete closed its gap through the
+ *   magnet's ripple, which re-resolved the overlaps of every track).
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { isolatedElectronTest as test } from "./helpers/isolated-electron-fixture";
 
 const FFMPEG = path.resolve("electron/resources/ffmpeg/darwin-arm64/ffmpeg");
@@ -96,6 +99,47 @@ function makeClip({ file, color }: { file: string; color: string }): void {
 	]);
 }
 
+function makeHit({ file }: { file: string }): void {
+	execFileSync(FFMPEG, [
+		"-y",
+		"-v",
+		"error",
+		"-f",
+		"lavfi",
+		"-i",
+		"sine=frequency=880:duration=0.5",
+		file,
+	]);
+}
+
+/** Leaves the editor first, so no empty Untitled Project is left behind. */
+async function deleteProject({
+	apiPort,
+	page,
+	projectId,
+}: {
+	apiPort: number;
+	page: Page;
+	projectId: string;
+}): Promise<void> {
+	await page.evaluate(() => {
+		window.location.hash = "#/projects";
+	});
+	await page.waitForTimeout(1000);
+	qcut({
+		apiPort,
+		args: ["editor:project:delete", "--project-id", projectId, "--force"],
+	});
+	const folder = path.join(
+		homedir(),
+		"Documents",
+		"QCut",
+		"Projects",
+		projectId
+	);
+	if (existsSync(folder)) rmSync(folder, { recursive: true, force: true });
+}
+
 test.use({ captureScreenshotVideo: false, appCredentials: "empty" });
 test.setTimeout(600_000);
 
@@ -128,16 +172,7 @@ test("a main-track clip is replaced in place, and undo says what it took back", 
 			return file;
 		});
 		const sfx = path.join(workDir, "hit.wav");
-		execFileSync(FFMPEG, [
-			"-y",
-			"-v",
-			"error",
-			"-f",
-			"lavfi",
-			"-i",
-			"sine=frequency=880:duration=0.5",
-			sfx,
-		]);
+		makeHit({ file: sfx });
 		const mainId = run<Timeline>("editor:track:list", ...pid).tracks.find(
 			(track) => track.isMain
 		)?.id as string;
@@ -284,22 +319,111 @@ test("a main-track clip is replaced in place, and undo says what it took back", 
 		expect(last.status, "an undo with nothing to take back").not.toBe(0);
 		expect(last.output).toContain("Nothing to undo: the undo history is empty");
 	} finally {
-		await page.evaluate(() => {
-			window.location.hash = "#/projects";
-		});
-		await page.waitForTimeout(1000);
-		qcut({
-			apiPort,
-			args: ["editor:project:delete", ...pid, "--force"],
-		});
-		const folder = path.join(
-			homedir(),
-			"Documents",
-			"QCut",
-			"Projects",
-			projectId
+		await deleteProject({ apiPort, page, projectId });
+		rmSync(workDir, { recursive: true, force: true });
+	}
+});
+
+test("a main-track batch delete and insert leave the sound effects where they were", async ({
+	apiPort,
+	page,
+}) => {
+	test.skip(!existsSync(FFMPEG), "bundled ffmpeg missing");
+	await page.waitForLoadState("domcontentloaded");
+	const run = <T>(...args: string[]) => cli<T>({ apiPort, args });
+	const workDir = mkdtempSync(path.join(tmpdir(), "qcut-delete-insert-"));
+	const { projectId } = run<{ projectId: string }>(
+		"editor:project:create",
+		"--name",
+		"Delete and insert (delete me)",
+		"--open"
+	);
+	const pid = ["--project-id", projectId];
+	const starts = (trackId: string) =>
+		run<Timeline>("editor:timeline:export", ...pid)
+			.tracks.find((track) => track.id === trackId)
+			?.elements.map((element) => element.startTime)
+			.sort((left, right) => left - right);
+	try {
+		run(
+			"editor:project:update-settings",
+			...pid,
+			"--data",
+			JSON.stringify({ width: 320, height: 180, fps: 30 })
 		);
-		if (existsSync(folder)) rmSync(folder, { recursive: true, force: true });
+		const clip = path.join(workDir, "red.mp4");
+		makeClip({ file: clip, color: "red" });
+		const hit = path.join(workDir, "hit.wav");
+		makeHit({ file: hit });
+		run("editor:media:batch-import", ...pid, "--sources", `${clip},${hit}`);
+		const mainId = run<Timeline>("editor:track:list", ...pid).tracks.find(
+			(track) => track.isMain
+		)?.id as string;
+		const sfxTrack = run<{ trackId: string }>(
+			"editor:track:create",
+			...pid,
+			"--type",
+			"audio",
+			"--name",
+			"音效 1"
+		).trackId;
+		const place = (
+			trackId: string,
+			sourceName: string,
+			duration: number,
+			startTimes: number[]
+		) =>
+			startTimes.map((startTime) => ({
+				type: "media",
+				sourceName,
+				trackId,
+				startTime,
+				duration,
+			}));
+		run(
+			"editor:timeline:batch-add",
+			...pid,
+			"--elements",
+			JSON.stringify([
+				...place(mainId, "red.mp4", 2, [0, 2, 4, 6, 8, 10, 12, 14]),
+				// Overlapping by 16 and 4 ms, as the report's two effects did.
+				...place(sfxTrack, "hit.wav", 0.5, [1, 1.484, 3, 3.496]),
+			])
+		);
+		const sfxStarts = [1, 1.484, 3, 3.496];
+		expect(starts(sfxTrack)).toEqual(sfxStarts);
+
+		// Five clips in the middle, without --ripple: the gap stays.
+		const main = run<Timeline>("editor:timeline:export", ...pid).tracks.find(
+			(track) => track.id === mainId
+		);
+		const middle = (main?.elements ?? [])
+			.filter((element) => element.startTime >= 4 && element.startTime < 14)
+			.map((element) => ({ trackId: mainId, elementId: element.id }));
+		expect(middle).toHaveLength(5);
+		run(
+			"editor:timeline:batch-delete",
+			...pid,
+			"--elements",
+			JSON.stringify(middle),
+			"--force"
+		);
+		expect(starts(sfxTrack)).toEqual(sfxStarts);
+		expect(starts(mainId)).toEqual([0, 2, 14]);
+
+		// An insert splits the clip at 14 s and moves its second half on.
+		run(
+			"editor:timeline:batch-add",
+			...pid,
+			"--elements",
+			JSON.stringify([
+				{ ...place(mainId, "red.mp4", 2, [15])[0], collision: "insert" },
+			])
+		);
+		expect(starts(sfxTrack)).toEqual(sfxStarts);
+		expect(starts(mainId)).toEqual([0, 2, 14, 15, 17]);
+	} finally {
+		await deleteProject({ apiPort, page, projectId });
 		rmSync(workDir, { recursive: true, force: true });
 	}
 });
