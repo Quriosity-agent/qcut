@@ -152,6 +152,7 @@ element's top level (top level wins, as for text), on `add-element`,
 | `lineSpacing` | `lineHeight` | line-height multiple |
 | `animationType`, `animationDuration`, `animationDelay` | — | none/fade/slide-up/slide-left; s; s |
 | `karaokeMode`, `highlightColor`, `upcomingColor`, `highlightScale` | — | word highlighting |
+| `secondary: {fontFamily, fontSize, fontColor, bold, italic}` | `color`, `fontWeight`, `fontStyle` inside it | the second-language line's look (see below) |
 
 Captions sit 28 px from the edge `position.align` names; `position.x/y`,
 `marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur`, `strokeOpacity` and the
@@ -166,8 +167,37 @@ folder (`/System/Library/Fonts`, `…/Supplemental`, `/Library/Fonts`,
 
 ### Bilingual captions (two lines, two styles)
 
-Put each language on its own captions track with **the same timing**, the
-upper language on the upper track:
+One caption can carry both languages: `secondaryContent` is a second-language
+line drawn under `content`, in the look `style.secondary` gives it — any of
+`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`; what is left out is
+the caption's own. The outline, shadow, box, line spacing and alignment are
+the caption's; the box wraps both lines.
+
+```bash
+qcut editor:timeline:add-element --project-id <id> --data '{
+  "type": "captions", "trackId": "<captions-track>", "startTime": 12, "duration": 2.5,
+  "content": "三年前，你是这座城里最能打的人",
+  "secondaryContent": "Three years ago, you were the best fighter in this city",
+  "style": {"fontFamily": "Hiragino Sans GB", "fontSize": 34, "bold": true,
+            "secondary": {"fontFamily": "Futura", "fontSize": 24, "fontColor": "#E8E2D6"}}
+}'
+# or from two subtitle files: each English cue becomes the second line of the
+# Chinese cue it overlaps longest (cues that overlap none are reported)
+qcut editor:captions:import --project-id <id> --file zh.srt --secondary-file en.srt \
+  --style '{"fontSize":34,"bold":true,"secondary":{"fontFamily":"Futura","fontSize":24}}'
+```
+
+`update-element` takes `secondaryContent` (`""` removes the line) and a
+partial `style.secondary` (it merges over the stored one); `timeline export`
+shows both, and `timeline apply` brings them back. The preview, the canvas
+export and the native export draw the two lines at the same places (each
+line box is its font size × `lineSpacing`, as in the preview's box), stacking
+counts the block's real height, and SRT/VTT/ASS/TTML exports write the second
+line as the cue's second line. A karaoke caption (`karaokeMode`) draws only
+its first line in the preview and the canvas export.
+
+Two captions tracks with **the same timing** still work for separate tracks
+(the upper language on the upper track):
 
 ```bash
 qcut editor:track:create --project-id <id> --type captions --name "字幕 中文"
