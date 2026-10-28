@@ -104,6 +104,29 @@ describe("Claude caption update bridge", () => {
 		);
 	});
 
+	it("sets and removes a bilingual caption's second line", () => {
+		applyElementChanges({
+			elementId: "caption",
+			changes: { secondaryContent: " Round one " },
+			pushHistory: false,
+		});
+		expect(storeMocks.state.updateCaptionElement).toHaveBeenLastCalledWith(
+			"captions-track",
+			"caption",
+			{ secondaryText: "Round one" },
+			false
+		);
+
+		applyElementChanges({
+			elementId: "caption",
+			changes: { secondaryContent: "" },
+			pushHistory: false,
+		});
+		const [, , cleared] =
+			storeMocks.state.updateCaptionElement.mock.calls.at(-1) ?? [];
+		expect(cleared).toHaveProperty("secondaryText", undefined);
+	});
+
 	it("leaves the caption alone when only timing changes", () => {
 		applyElementChanges({
 			elementId: "caption",
