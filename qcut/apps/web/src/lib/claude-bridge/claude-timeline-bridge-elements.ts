@@ -493,11 +493,11 @@ export const applyElementChanges = ({
 			if (typeof changes.language === "string") {
 				captionUpdates.language = changes.language;
 			}
-			const captionStyle = captionStyleFromPatch({ changes });
-			ignoredFields.push(...captionStyle.ignored.map(({ field }) => field));
-			if (captionStyle.style) {
+			const patch = captionStyleFromPatch({ changes, current: element.style });
+			ignoredFields.push(...patch.ignored.map(({ field }) => field));
+			if (patch.style) {
 				captionUpdates.style =
-					captionStyle.style as unknown as CaptionElement["style"];
+					patch.style as unknown as CaptionElement["style"];
 			}
 			if (Object.keys(captionUpdates).length > 0) {
 				timelineStore.updateCaptionElement(
