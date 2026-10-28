@@ -16,6 +16,7 @@ import { claudeLog } from "../utils/logger.js";
 import { sanitizeProjectId, isValidSourcePath } from "../utils/helpers.js";
 import { getFFmpegPath, getFFprobePath } from "../../ffmpeg/utils.js";
 import { getDecryptedApiKeys } from "../../api-key-handler.js";
+import { transcribeWithElevenLabs } from "./claude-transcribe-scribe.js";
 import type {
 	TranscribeJob,
 	TranscribeRequest,
@@ -25,7 +26,6 @@ import type {
 } from "../../types/claude-api";
 
 const HANDLER_NAME = "Transcribe";
-const TRANSCRIPTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 // Video extensions that require audio extraction
 const VIDEO_EXTENSIONS = new Set([
@@ -223,142 +223,6 @@ export async function extractAudio(videoPath: string): Promise<string> {
 }
 
 /**
- * Upload a file to FAL storage for ElevenLabs transcription.
- */
-async function uploadToFalStorage(
-	filePath: string,
-	apiKey: string
-): Promise<string> {
-	const { readFile } = await import("node:fs/promises");
-	const { basename } = await import("node:path");
-
-	const fileBuffer = await readFile(filePath);
-	const fileName = basename(filePath);
-
-	const initResponse = await fetch(
-		"https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3",
-		{
-			method: "POST",
-			headers: {
-				Authorization: `Key ${apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				file_name: fileName,
-				content_type: "audio/mpeg",
-			}),
-		}
-	);
-
-	if (!initResponse.ok) {
-		const errorText = await initResponse.text();
-		throw new Error(
-			`FAL storage initiate failed: ${initResponse.status} ${errorText}`
-		);
-	}
-
-	const initData = (await initResponse.json()) as {
-		upload_url?: string;
-		file_url?: string;
-	};
-
-	if (!initData.upload_url || !initData.file_url) {
-		throw new Error("FAL storage did not return upload URLs");
-	}
-
-	const uploadResponse = await fetch(initData.upload_url, {
-		method: "PUT",
-		headers: { "Content-Type": "audio/mpeg" },
-		body: new Uint8Array(fileBuffer),
-	});
-
-	if (!uploadResponse.ok) {
-		throw new Error(`FAL storage upload failed: ${uploadResponse.status}`);
-	}
-
-	return initData.file_url;
-}
-
-/**
- * Call ElevenLabs Scribe v2 via FAL.
- */
-async function transcribeWithElevenLabs(
-	audioPath: string,
-	language?: string,
-	diarize = true
-): Promise<TranscriptionResult> {
-	const keys = await getDecryptedApiKeys();
-	const apiKey = keys.falApiKey;
-	if (!apiKey) {
-		throw new Error(
-			"FAL API key not configured. Go to Settings → API Keys to set it."
-		);
-	}
-
-	claudeLog.info(HANDLER_NAME, "Uploading audio to FAL storage...");
-	const audioUrl = await uploadToFalStorage(audioPath, apiKey);
-
-	claudeLog.info(HANDLER_NAME, "Calling ElevenLabs Scribe v2...");
-	const requestBody: Record<string, unknown> = {
-		audio_url: audioUrl,
-		diarize,
-		tag_audio_events: true,
-	};
-	if (language) {
-		requestBody.language_code = language;
-	}
-
-	const response = await fetch(
-		"https://fal.run/fal-ai/elevenlabs/speech-to-text/scribe-v2",
-		{
-			method: "POST",
-			headers: {
-				Authorization: `Key ${apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(requestBody),
-			signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-		}
-	);
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
-	}
-
-	const result = (await response.json()) as {
-		text: string;
-		language_code: string;
-		words: Array<{
-			text: string;
-			start: number;
-			end: number;
-			type: string;
-			speaker_id: string | null;
-		}>;
-	};
-
-	// Convert to unified format
-	const words: TranscriptionWord[] = (result.words || []).map((w) => ({
-		text: w.text,
-		start: w.start,
-		end: w.end,
-		type: w.type as TranscriptionWord["type"],
-		speaker: w.speaker_id ?? undefined,
-	}));
-
-	const segments = buildSegments(words);
-	const duration = words.length > 0 ? words[words.length - 1].end : 0;
-
-	return {
-		words,
-		segments,
-		language: result.language_code || "unknown",
-		duration,
-	};
-}
-
-/**
  * Call Gemini transcription.
  */
 async function transcribeWithGemini(
@@ -476,41 +340,6 @@ function parseSrtToSegments(srtContent: string): TranscriptionSegment[] {
 function parseTimestamp(parts: string[]): number {
 	const [h, m, s, ms] = parts.map(Number);
 	return h * 3600 + m * 60 + s + ms / 1000;
-}
-
-/**
- * Build segments from word-level data by grouping on pauses.
- */
-function buildSegments(words: TranscriptionWord[]): TranscriptionSegment[] {
-	const segments: TranscriptionSegment[] = [];
-	let currentText = "";
-	let segStart = -1;
-	let segEnd = 0;
-
-	for (const word of words) {
-		if (word.type !== "word" && word.type !== "punctuation") {
-			// On spacing/audio_event with gap > 0.5s, start new segment
-			if (word.end - word.start > 0.5 && currentText.trim()) {
-				segments.push({
-					text: currentText.trim(),
-					start: segStart,
-					end: segEnd,
-				});
-				currentText = "";
-				segStart = -1;
-			}
-			continue;
-		}
-		if (segStart < 0) segStart = word.start;
-		segEnd = word.end;
-		currentText += word.text;
-	}
-
-	if (currentText.trim() && segStart >= 0) {
-		segments.push({ text: currentText.trim(), start: segStart, end: segEnd });
-	}
-
-	return segments;
 }
 
 // ============================================================================
