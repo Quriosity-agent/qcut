@@ -5,7 +5,7 @@
  */
 
 import * as fs from "fs";
-import * as os from "os";
+import { tmpdir } from "node:os";
 import * as path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -321,7 +321,7 @@ export async function handleSubtitleExport(
 		`.tmp_subtitle_${Date.now()}.ass`
 	);
 	const tmpFontsDirectory = path.join(
-		os.tmpdir(),
+		tmpdir(),
 		`qcut-subtitle-fonts-${process.pid}-${Date.now()}`
 	);
 	try {
