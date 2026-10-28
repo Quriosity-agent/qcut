@@ -316,6 +316,9 @@ export interface CLIRunOptions {
 	transactionId?: string;
 	/** `editor transcribe start --to-captions`: put the result on captions tracks. */
 	toCaptions?: boolean;
+	/** `editor track move --above|--below <trackId>`: place relative to a track. */
+	above?: string;
+	below?: string;
 	trackId?: string;
 	fromElementId?: string;
 	toElementId?: string;
