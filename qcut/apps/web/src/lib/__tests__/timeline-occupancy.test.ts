@@ -7,6 +7,7 @@ import {
 	firstFreeStartTime,
 	formatSeconds,
 	getSeamToleranceSeconds,
+	resolveLaneOverlaps,
 } from "@/lib/timeline-occupancy";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
 
@@ -260,6 +261,42 @@ describe("seams computed in floating point", () => {
 			}
 			expect(findOverlappingPair({ elements: placed, fps: 24 })).toBeNull();
 		}
+	});
+});
+
+// N18 (2026-10-28 trailer report): ripples resolved overlaps strictly, so two
+// sound effects placed 16 and 4 ms into their neighbours were pushed along.
+describe("resolveLaneOverlaps", () => {
+	it("leaves overlaps under half a frame where they are, in the same array", () => {
+		const elements = [
+			mediaElement({ id: "a", startTime: 1, duration: 0.5 }),
+			mediaElement({ id: "b", startTime: 1.484, duration: 0.5 }),
+			mediaElement({ id: "c", startTime: 3, duration: 0.5 }),
+			mediaElement({ id: "d", startTime: 3.496, duration: 0.5 }),
+		];
+
+		expect(resolveLaneOverlaps({ elements, fps: 30 })).toBe(elements);
+	});
+
+	it("moves a real overlap to its neighbour's end and no touching one", () => {
+		const elements = [
+			mediaElement({ id: "late", startTime: 4.484, duration: 0.5 }),
+			mediaElement({ id: "a", startTime: 0, duration: 2 }),
+			mediaElement({ id: "b", startTime: 1, duration: 2 }),
+			mediaElement({ id: "near", startTime: 4, duration: 0.5 }),
+		];
+
+		expect(
+			resolveLaneOverlaps({ elements, fps: 30 }).map((element) => [
+				element.id,
+				element.startTime,
+			])
+		).toEqual([
+			["a", 0],
+			["b", 2],
+			["near", 4],
+			["late", 4.484],
+		]);
 	});
 });
 
