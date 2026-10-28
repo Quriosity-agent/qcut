@@ -62,6 +62,11 @@ qcut editor:media:batch-import \
   --append-to-track <track-id>
 ```
 
+A batch import answers once the open editor has loaded each copied file, so
+an `add-element` right after finds it. Each result says `"editorReady":true`;
+a file the editor has not confirmed within 20 s in all is `"editorReady":false`
+with a `warning` (it keeps loading, and `add-element` waits for it).
+
 With `--append-to-track`, each imported video or audio file is added after the
 previous one at its own length, in import order. The result has `imported`,
 `appended` (the batch-add result) and `skipped` (still images, which have no
