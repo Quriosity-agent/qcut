@@ -4,11 +4,10 @@ import {
 	handleError,
 } from "@/lib/debug/error-handler";
 import {
-	checkElementOverlaps,
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
-	resolveElementOverlaps,
 } from "@/lib/timeline";
+import { resolveLaneOverlaps } from "@/lib/timeline-occupancy";
 import type { AudioMixAutomation, TimelineTrack } from "@/types/timeline";
 import type {
 	OperationDeps,
@@ -280,6 +279,9 @@ export function createTrackOps(
 
 			// Remove the track and apply ripple effects to remaining tracks.
 			// Locked tracks hold their position: the ripple domain skips them.
+			// So does a track the ripple moves nothing on: resolving its
+			// overlaps would only nudge clips nobody touched (N18).
+			const fps = getProjectFps();
 			const updatedTracks = _tracks
 				.filter((track) => track.id !== trackId)
 				.map((track) => {
@@ -296,20 +298,23 @@ export function createTrackOps(
 							}
 						}
 
-						return {
-							...element,
-							startTime: Math.max(0, newStartTime),
-						};
+						const startTime = Math.max(0, newStartTime);
+						return startTime === element.startTime
+							? element
+							: { ...element, startTime };
 					});
-
-					// Check for overlaps and resolve them if necessary
-					const hasOverlaps = checkElementOverlaps(updatedElements);
-					if (hasOverlaps) {
-						const resolvedElements = resolveElementOverlaps(updatedElements);
-						return { ...track, elements: resolvedElements };
+					if (
+						updatedElements.every(
+							(element, index) => element === track.elements[index]
+						)
+					) {
+						return track;
 					}
 
-					return { ...track, elements: updatedElements };
+					return {
+						...track,
+						elements: resolveLaneOverlaps({ elements: updatedElements, fps }),
+					};
 				});
 
 			updateTracksAndSave(updatedTracks);
@@ -398,6 +403,7 @@ export function createTrackOps(
 			// outside the domain are left exactly as they are: resolving their
 			// overlaps here nudged unrelated clips (two sound effects moved by
 			// 4 and 16 ms when a main-track clip was deleted, N18).
+			const fps = getProjectFps();
 			const rippledTracks = _tracks.map((currentTrack) => {
 				const shouldApplyRipple = rippleDomain.domainTrackIds.has(
 					currentTrack.id
@@ -436,15 +442,10 @@ export function createTrackOps(
 						return currentElement;
 					});
 
-				// Check for overlaps and resolve them if necessary
-				const hasOverlaps = checkElementOverlaps(updatedElements);
-				if (hasOverlaps) {
-					// Resolve overlaps by adjusting element positions
-					const resolvedElements = resolveElementOverlaps(updatedElements);
-					return { ...currentTrack, elements: resolvedElements };
-				}
-
-				return { ...currentTrack, elements: updatedElements };
+				return {
+					...currentTrack,
+					elements: resolveLaneOverlaps({ elements: updatedElements, fps }),
+				};
 			});
 
 			updateTracksAndSave(
