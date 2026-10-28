@@ -66,6 +66,12 @@ on a text track, a clip on a captions track) is refused; neither is replaced
 by a new track. Without `trackId` QCut picks or makes a suitable track. The
 answer names the track used: `{"elementId":"…","trackId":"…","trackName":"…"}`.
 
+A busy editor (a big project, media still loading) can take a while to place
+an element; `add-element` waits up to 25 s for it. If it still has not
+answered, the add fails with `timed out after 25s` — the element may yet be
+placed once the editor is free, so check `editor:timeline:export` before
+adding it again.
+
 An adjustment layer takes `adjustments` (brightness, contrast, saturation,
 temperature, tint, sharpness, fade, vignette), a full `color` grade like a
 clip's (`color.basic`, LUT, curves, wheels…), `opacity` and `masks`; fields
@@ -376,9 +382,16 @@ Deleting sits in the CLI's confirm tier (with undo/redo, range deletes and
 track deletes), so it needs `--force`; the edit is still one undo step
 (`qcut editor undo --force`).
 
+The delete answers once the editor's timeline no longer has the element
+(`"confirmed":true`), so a `timeline export` right after agrees with it; a
+busy editor gets up to 20 s. If the editor did not answer in that time the
+answer is `"confirmed":false` with a warning: the delete is queued and applies
+once the editor is free. `trackElements` is how many elements its track has
+left.
+
 A track left empty by a delete is removed with its last element (the
 editor's own rule; the main track stays). The answer says so —
-`{"removed":true,"trackId":"…","trackRemoved":true,"warning":"Track \"配乐 1\" … was removed with this one; create a track before adding to it again."}` —
+`{"removed":true,"confirmed":true,"trackId":"…","trackRemoved":true,"trackElements":0,"warning":"Track \"配乐 1\" … was removed with this one; create a track before adding to it again."}` —
 and `batch-delete` lists such tracks in `removedTrackIds`. Only the track the
 delete emptied goes: an empty track made with `track:create` and not filled
 yet stays, whatever is deleted elsewhere. An element id that is not on the
