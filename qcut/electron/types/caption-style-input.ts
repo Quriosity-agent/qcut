@@ -158,6 +158,8 @@ const CAPTION_ELEMENT_FIELDS = new Set([
 	"name",
 	"content",
 	"text",
+	"secondaryContent",
+	"secondaryText",
 	"language",
 	"source",
 	"confidence",
@@ -273,6 +275,74 @@ function readField({
 	return undefined;
 }
 
+/** What a bilingual caption's second line can set; the rest is the caption's. */
+const SECONDARY_FIELDS = [
+	"fontFamily",
+	"fontSize",
+	"fontColor",
+	"bold",
+	"italic",
+];
+
+/**
+ * `secondary`: the look of the caption's second-language line, in the same
+ * names (and text-element spellings) as the caption's own fields.
+ */
+function readSecondary({
+	value,
+	field,
+	style,
+	ignored,
+}: {
+	value: unknown;
+	field: string;
+	style: Record<string, unknown>;
+	ignored: CaptionStyleInput["ignored"];
+}): void {
+	if (!isRecord(value)) {
+		ignored.push({
+			field,
+			reason: `expected an object with ${SECONDARY_FIELDS.join(", ")}`,
+		});
+		return;
+	}
+	const secondary: Record<string, unknown> = {};
+	for (const [key, entry] of Object.entries(value)) {
+		const read: Record<string, unknown> = {};
+		const reason = readField({ key, value: entry, style: read });
+		if (reason) {
+			ignored.push({ field: `${field}.${key}`, reason });
+		} else if (
+			Object.keys(read).some((name) => !SECONDARY_FIELDS.includes(name))
+		) {
+			ignored.push({
+				field: `${field}.${key}`,
+				reason: `the second line sets only ${SECONDARY_FIELDS.join(", ")}; its outline, shadow, box and alignment are the caption's`,
+			});
+		} else {
+			Object.assign(secondary, read);
+		}
+	}
+	if (Object.keys(secondary).length > 0) {
+		style.secondary = {
+			...(isRecord(style.secondary) ? style.secondary : {}),
+			...secondary,
+		};
+	}
+}
+
+/**
+ * A caption's second-language line as an API element gives it
+ * (`secondaryContent`, like `content`, or the store's `secondaryText`):
+ * trimmed, "" when given blank (no second line), undefined when not given.
+ */
+export function secondaryCaptionText(
+	element: Record<string, unknown>
+): string | undefined {
+	const value = element.secondaryContent ?? element.secondaryText;
+	return typeof value === "string" ? value.trim() : undefined;
+}
+
 /** Every field a caption's style takes, in either spelling. */
 export const CAPTION_STYLE_KEYS: ReadonlySet<string> = new Set([
 	...Object.keys(CAPTION_STYLE_FIELDS),
@@ -285,6 +355,7 @@ export const CAPTION_STYLE_KEYS: ReadonlySet<string> = new Set([
 	"fontWeight",
 	"fontStyle",
 	"textDecoration",
+	"secondary",
 ]);
 
 /** Fields read at the top level as style, reported when they do nothing. */
@@ -327,8 +398,18 @@ export function normalizeCaptionStyleInput({
 				Number(right in CAPTION_STYLE_FIELDS)
 		);
 		for (const [key, value] of ordered) {
+			if (key === "secondary") {
+				readSecondary({ value, field: `${prefix}${key}`, style, ignored });
+				continue;
+			}
 			const reason = readField({ key, value, style });
 			if (reason) ignored.push({ field: `${prefix}${key}`, reason });
+		}
+	}
+	for (const key of ["secondaryContent", "secondaryText"]) {
+		const value = element[key];
+		if (value !== undefined && value !== null && typeof value !== "string") {
+			ignored.push({ field: key, reason: "expected text" });
 		}
 	}
 	return { ...(Object.keys(style).length > 0 ? { style } : {}), ignored };
@@ -347,8 +428,8 @@ export function captionStyleWarnings({
  * A patch's caption style: its `style` plus the style fields given at the
  * top level; other top-level fields are the patch's own business. The store
  * merges a patch over the stored style one level deep, so a patch to part of
- * `shadowOffset` or `position` (one axis, the alignment) carries the rest of
- * `current`'s.
+ * `shadowOffset`, `position` or `secondary` (one axis, the alignment, the
+ * second line's size) carries the rest of `current`'s.
  */
 export function captionStyleFromPatch({
 	changes,
@@ -363,7 +444,7 @@ export function captionStyleFromPatch({
 	}
 	const input = normalizeCaptionStyleInput({ element });
 	if (!input.style || !isRecord(current)) return input;
-	for (const key of ["shadowOffset", "position"]) {
+	for (const key of ["shadowOffset", "position", "secondary"]) {
 		const patch = input.style[key];
 		const stored = current[key];
 		if (isRecord(patch) && isRecord(stored)) {
