@@ -159,6 +159,14 @@ vi.mock("../handlers/claude-transaction-handler.js", () => ({
 		redoCount: 1,
 		entries: [{ label: "Edit", timestamp: 123 }],
 	})),
+	listTransactions: vi.fn(async () => ({
+		active: null,
+		recent: [],
+		editor: {
+			activeTransaction: { id: "txn_orphan", createdAt: 1, expiresAt: 2 },
+			orphaned: true,
+		},
+	})),
 }));
 
 vi.mock("../handlers/claude-project-handler.js", () => ({
@@ -416,6 +424,39 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.data.historyEntryAdded).toBe(true);
 		expect(transactionHandler.commitTransaction).toHaveBeenCalledWith({
 			transactionId: "txn_test_1",
+		});
+	});
+
+	it("GET /api/claude/transaction lists the editor's orphaned transaction", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/transaction");
+
+		expect(res.status).toBe(200);
+		expect(res.body.data.editor).toEqual({
+			activeTransaction: { id: "txn_orphan", createdAt: 1, expiresAt: 2 },
+			orphaned: true,
+		});
+		expect(transactionHandler.listTransactions).toHaveBeenCalledWith({
+			win: mockWindow,
+		});
+	});
+
+	it("POST /api/claude/transaction/:id/rollback passes the window for orphans", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/transaction/txn_orphan/rollback", {
+			method: "POST",
+			body: JSON.stringify({ reason: "stuck" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(transactionHandler.rollbackTransaction).toHaveBeenCalledWith({
+			transactionId: "txn_orphan",
+			reason: "stuck",
+			win: mockWindow,
 		});
 	});
 
