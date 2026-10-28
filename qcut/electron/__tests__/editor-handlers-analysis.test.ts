@@ -377,6 +377,39 @@ describe("Transcribe handlers", () => {
 			expect((result.data as { jobId: string }).jobId).toBe("tj1");
 		});
 
+		it("with --to-captions refuses an unknown preset before transcribing", async () => {
+			let started = false;
+			const origFetch = globalThis.fetch;
+			globalThis.fetch = async () => {
+				started = true;
+				return new Response(
+					JSON.stringify({ success: true, data: { jobId: "tj3" } }),
+					{ headers: { "Content-Type": "application/json" } }
+				);
+			};
+			try {
+				const result = await handleAnalysisCommand(
+					client,
+					makeOpts({
+						command: "editor:transcribe:start",
+						projectId: "p1",
+						mediaId: "m1",
+						toCaptions: true,
+						preset: "nosuch",
+					}),
+					noopProgress
+				);
+				expect(result).toMatchObject({
+					success: false,
+					error: expect.stringContaining('Unknown caption preset "nosuch"'),
+				});
+				expect(started).toBe(false);
+			} finally {
+				globalThis.fetch = origFetch;
+				installFetchMock(BASE_URL);
+			}
+		});
+
 		it("with --poll calls pollJob", async () => {
 			let callCount = 0;
 			const origFetch = globalThis.fetch;
