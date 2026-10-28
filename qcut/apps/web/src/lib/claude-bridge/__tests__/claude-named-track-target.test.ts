@@ -93,6 +93,39 @@ describe("single add on a named track", () => {
 		);
 	});
 
+	// N17 (2026-10-28 trailer report): a single add refused an overlap that
+	// batch-add, given the same `collision`, resolved.
+	it("passes the request's collision policy to the store, as batch-add does", async () => {
+		const store = makeStore();
+		await addClaudeMediaElement({
+			element: {
+				type: "audio",
+				sourceName: "v11配乐.wav",
+				trackId: "score",
+				startTime: 0,
+				collision: "insert",
+			} as never,
+			timelineStore: store,
+			projectId: "project-1",
+		});
+		expect(store.addElementToTrack).toHaveBeenCalledWith(
+			"score",
+			expect.anything(),
+			expect.objectContaining({ collision: "insert" })
+		);
+		expect(() =>
+			addClaudeCaptionElement({
+				element: {
+					type: "captions",
+					trackId: "subs-en",
+					content: "x",
+					collision: "squeeze",
+				} as never,
+				timelineStore: makeStore(),
+			})
+		).toThrow("collision must be one of: reject, insert, overwrite");
+	});
+
 	it("puts a caption on the named captions track", () => {
 		const store = makeStore();
 		addClaudeCaptionElement({
