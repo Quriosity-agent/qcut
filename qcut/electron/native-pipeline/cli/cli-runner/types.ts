@@ -312,6 +312,10 @@ export interface CLIRunOptions {
 	mediaId?: string;
 	elementId?: string;
 	jobId?: string;
+	/** `editor transaction rollback|status --transaction-id`. */
+	transactionId?: string;
+	/** `editor transcribe start --to-captions`: put the result on captions tracks. */
+	toCaptions?: boolean;
 	trackId?: string;
 	fromElementId?: string;
 	toElementId?: string;
