@@ -8,10 +8,10 @@
 
 import { randomBytes } from "node:crypto";
 import { test as base, Page } from "@playwright/test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { ElectronApplication, _electron as electron } from "playwright";
 import { join as pathJoin, resolve as pathResolve } from "path";
 import ffmpegStaticPath from "ffmpeg-static";
@@ -125,7 +125,36 @@ const ISOLATION_ENV_NAMES = [
 	"QCUT_API_PORT",
 	"XDG_STATE_HOME",
 	"QCUT_E2E_USER_DATA_DIR",
+	"QCUT_CREDENTIALS_HOME",
 ] as const;
+
+/** The user's credential files, relative to their home folder. */
+const CREDENTIAL_FILES = [
+	[".qcut", ".env"],
+	[".config", "video-ai-studio", "credentials.env"],
+] as const;
+
+/**
+ * A home for the app's credential files holding copies of the user's: keys a
+ * spec saves (e.g. `apiKeys.set({ falApiKey: "test-…-e2e" })`) land in the
+ * copy, never in the files the user's own QCut reads.
+ */
+async function copyCredentialHome({
+	copy,
+}: {
+	copy: boolean;
+}): Promise<string> {
+	const home = await mkdtemp(pathJoin(tmpdir(), "qcut-e2e-credentials-"));
+	if (!copy) return home;
+	for (const segments of CREDENTIAL_FILES) {
+		const target = pathJoin(home, ...segments);
+		await mkdir(pathJoin(target, ".."), { recursive: true });
+		await copyFile(pathJoin(homedir(), ...segments), target).catch(() => {
+			// A user without that file gets none in the copy either.
+		});
+	}
+	return home;
+}
 
 /**
  * Electron-specific test fixtures that extend Playwright's base fixtures.
@@ -152,6 +181,12 @@ export interface ElectronFixtures {
 	 * QCut the user has open on the default port.
 	 */
 	appIsolation: AppIsolation;
+	/**
+	 * The app's credential files: copies of the user's (`copy`, the default,
+	 * so specs that call providers keep working) or none at all (`empty`,
+	 * for specs that must never reach a provider with the user's account).
+	 */
+	appCredentials: "copy" | "empty";
 }
 
 export async function findAvailablePort(): Promise<number> {
@@ -340,13 +375,16 @@ export const test = base.extend<ElectronFixtures>({
 		{ option: true },
 	],
 	appLocale: ["zh", { option: true }],
+	appCredentials: ["copy", { option: true }],
 	appIsolation: [
-		// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
-		async ({}, use) => {
+		async ({ appCredentials }, use) => {
 			const userDataDirectory = await mkdtemp(
 				pathJoin(tmpdir(), "qcut-e2e-profile-")
 			);
 			const stateHome = await mkdtemp(pathJoin(tmpdir(), "qcut-e2e-state-"));
+			const credentialHome = await copyCredentialHome({
+				copy: appCredentials === "copy",
+			});
 			const apiPort = await findAvailablePort();
 			const previous = ISOLATION_ENV_NAMES.map((name) => ({
 				name,
@@ -355,11 +393,16 @@ export const test = base.extend<ElectronFixtures>({
 			process.env.QCUT_API_PORT = String(apiPort);
 			process.env.XDG_STATE_HOME = stateHome;
 			process.env.QCUT_E2E_USER_DATA_DIR = userDataDirectory;
+			process.env.QCUT_CREDENTIALS_HOME = credentialHome;
 			try {
 				await use({ userDataDirectory, apiPort, stateHome });
 			} finally {
 				for (const entry of previous) restoreEnv(entry);
-				for (const directory of [userDataDirectory, stateHome]) {
+				for (const directory of [
+					userDataDirectory,
+					stateHome,
+					credentialHome,
+				]) {
 					await rm(directory, { recursive: true, force: true, maxRetries: 3 });
 				}
 			}
