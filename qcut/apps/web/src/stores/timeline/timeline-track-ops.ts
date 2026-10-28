@@ -394,11 +394,17 @@ export function createTrackOps(
 			const elementDuration = getTimelineElementDuration({ element });
 			const elementEndTime = elementStartTime + elementDuration;
 
-			// Remove the element and shift the ripple domain after it
+			// Remove the element and shift the ripple domain after it. Tracks
+			// outside the domain are left exactly as they are: resolving their
+			// overlaps here nudged unrelated clips (two sound effects moved by
+			// 4 and 16 ms when a main-track clip was deleted, N18).
 			const rippledTracks = _tracks.map((currentTrack) => {
 				const shouldApplyRipple = rippleDomain.domainTrackIds.has(
 					currentTrack.id
 				);
+				if (!shouldApplyRipple && currentTrack.id !== trackId) {
+					return currentTrack;
+				}
 
 				const updatedElements = currentTrack.elements
 					.filter((currentElement) => {
