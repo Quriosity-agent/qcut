@@ -27,6 +27,7 @@ import {
 import { handleTimelineEditingCommand } from "../editor/editor-handlers-timeline.js";
 import { handleAnalysisCommand } from "../editor/editor-handlers-analysis.js";
 import { handleCaptionsCommand } from "../editor/editor-handlers-captions.js";
+import { handleTransactionCommand } from "../editor/editor-handlers-transaction.js";
 import { handleBeatsCommand } from "../editor/editor-handlers-beats.js";
 import { handleGenerateExportCommand } from "../editor/editor-handlers-generate.js";
 import { handleRemotionCommand } from "../editor/editor-handlers-remotion.js";
@@ -324,6 +325,8 @@ export async function handleEditorCommand(
 
 				case "captions":
 					return await handleCaptionsCommand(client, options);
+				case "transaction":
+					return await handleTransactionCommand(client, options);
 				case "beats":
 					return await handleBeatsCommand(client, options);
 
@@ -407,7 +410,7 @@ export async function handleEditorCommand(
 				default:
 					return {
 						success: false,
-						error: `Unknown editor module: ${module}. Available: auth, health, media, project, timeline, editing, track, element, analyze, transcribe, search, generate, export, diagnostics, mcp, remotion, sticker, transition-lab, jianying-transition, navigator, screen-recording, ui, snapshot, pointer, keyboard, demo, diff, session, console, errors, moyin, novel, screenshot, undo, redo, state`,
+						error: `Unknown editor module: ${module}. Available: auth, health, media, project, timeline, editing, track, element, analyze, transcribe, captions, transaction, search, generate, export, diagnostics, mcp, remotion, sticker, transition-lab, jianying-transition, navigator, screen-recording, ui, snapshot, pointer, keyboard, demo, diff, session, console, errors, moyin, novel, screenshot, undo, redo, state`,
 					};
 			}
 		})();
