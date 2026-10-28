@@ -77,6 +77,37 @@ export function findOverlappingPair({
 }
 
 /**
+ * The lane with every overlap pushed to the end of the element before it.
+ * An overlap shorter than the seam tolerance counts as touching here too, so
+ * that element stays where it is: a ripple used to push two sound effects
+ * placed 16 and 4 ms into their neighbours to the neighbours' ends (N18).
+ * Returns the same array, in its order, when nothing overlaps.
+ */
+export function resolveLaneOverlaps({
+	elements,
+	fps = 30,
+}: {
+	elements: TimelineElement[];
+	fps?: number;
+}): TimelineElement[] {
+	if (!findOverlappingPair({ elements, fps })) return elements;
+	const tolerance = getSeamToleranceSeconds(fps);
+	const sorted = [...elements].sort((a, b) => a.startTime - b.startTime);
+	const resolved: TimelineElement[] = [sorted[0]];
+	for (let index = 1; index < sorted.length; index++) {
+		const previous = resolved[index - 1];
+		const current = sorted[index];
+		const previousEnd = getTimelineElementEndTime({ element: previous, fps });
+		resolved.push(
+			current.startTime < previousEnd - tolerance
+				? { ...current, startTime: previousEnd }
+				: current
+		);
+	}
+	return resolved;
+}
+
+/**
  * The earliest time at or after `notBefore` where `duration` fits on this
  * track. Used to make a rejection actionable rather than a dead end.
  */
