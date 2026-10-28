@@ -47,6 +47,10 @@ import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import { getTimelineElementDuration } from "@/lib/timeline";
 import {
+	CAPTION_STYLE_KEYS,
+	captionStyleFromPatch,
+} from "../../../../../electron/types/caption-style-input";
+import {
 	describeOccupancyConflict,
 	formatSeconds,
 } from "@/lib/timeline-occupancy";
@@ -181,7 +185,7 @@ const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
 	]),
 	adjustment: new Set(["name", "opacity", "color", "adjustments", "masks"]),
 	markdown: new Set(["content"]),
-	captions: new Set(["content", "language", "style"]),
+	captions: new Set(["content", "language", "style", ...CAPTION_STYLE_KEYS]),
 	sticker: new Set([
 		"mediaId",
 		"x",
@@ -489,9 +493,11 @@ export const applyElementChanges = ({
 			if (typeof changes.language === "string") {
 				captionUpdates.language = changes.language;
 			}
-			if (styleChanges) {
+			const captionStyle = captionStyleFromPatch({ changes });
+			ignoredFields.push(...captionStyle.ignored.map(({ field }) => field));
+			if (captionStyle.style) {
 				captionUpdates.style =
-					styleChanges as unknown as CaptionElement["style"];
+					captionStyle.style as unknown as CaptionElement["style"];
 			}
 			if (Object.keys(captionUpdates).length > 0) {
 				timelineStore.updateCaptionElement(
