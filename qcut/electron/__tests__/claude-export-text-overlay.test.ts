@@ -31,6 +31,25 @@ function halfLeading({
 	return (fontSize * lineHeight - fontSize * lineHeightEm) / 2;
 }
 
+/**
+ * A caption line's half-leading: libass makes the line as tall as its ASS
+ * size, the font size × the size factor (the font's Windows height).
+ */
+function captionLeading({
+	family,
+	fontSize,
+	lineHeight,
+	bold = false,
+}: {
+	family: string;
+	fontSize: number;
+	lineHeight: number;
+	bold?: boolean;
+}): number {
+	const { sizeFactor } = assFontMetrics({ family, bold });
+	return (fontSize * lineHeight - fontSize * sizeFactor) / 2;
+}
+
 describe("native export text overlays", () => {
 	it("routes stable Jianying references away from ordinary ASS text", () => {
 		const timeline: ClaudeTimeline = {
@@ -406,7 +425,7 @@ describe("native export text overlays", () => {
 		// the middle 80 %.
 		expect(captionStyle).toContain(",2,0,0,0,1");
 		const bottom =
-			1052 - halfLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
+			1052 - captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
 		expect(captionEvent).toContain(
 			`,,192,192,0,,{\\pos(960.00,${bottom.toFixed(2)})\\q1`
 		);
@@ -446,7 +465,9 @@ describe("native export text overlays", () => {
 		const event = buildTextAss({ overlays, width: 1920, height: 1080 })
 			.split("\n")
 			.find((line) => line.startsWith("Dialogue:"));
-		expect(event).toMatch(/\}First line\\NSecond line$/);
+		// The text starts with its first line and ends with its last.
+		expect(event).toMatch(/\}First line\\N/);
+		expect(event).toMatch(/\}Second line$/);
 	});
 
 	it("pins top and left captions at the preview's edge insets", () => {
@@ -493,7 +514,7 @@ describe("native export text overlays", () => {
 		// Top-left: 36 px in from the left, 28 px plus the half-leading down
 		// from the top, wrapping inside the middle 80 %.
 		const top =
-			28 + halfLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
+			28 + captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
 		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q1`);
 	});
 
@@ -701,6 +722,106 @@ describe("native export text overlays", () => {
 		// Two 48 px lines at 1.4 spacing plus 16 px of box padding.
 		expect(yOf("Don't fight") - yOf("Not anymore")).toBeCloseTo(
 			2 * 48 * 1.4 + 16,
+			1
+		);
+	});
+
+	it("draws a bilingual caption's second line in its own font, pinned by its own leading", () => {
+		const caption = (
+			id: string,
+			trackIndex: number,
+			fields: Record<string, unknown>
+		) => ({
+			id,
+			trackIndex,
+			startTime: trackIndex === 0 ? 0 : 0.5,
+			endTime: 2,
+			duration: trackIndex === 0 ? 2 : 1.5,
+			type: "captions" as const,
+			language: "en",
+			...fields,
+		});
+		const timeline: ClaudeTimeline = {
+			name: "Bilingual line",
+			duration: 4,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "subs",
+					index: 0,
+					name: "字幕",
+					type: "captions",
+					elements: [
+						caption("duo", 0, {
+							content: "Round one",
+							secondaryContent: "Fight",
+							style: {
+								fontFamily: "Arial",
+								fontSize: 40,
+								bgOpacity: 0,
+								secondary: {
+									fontFamily: "Futura",
+									fontSize: 24,
+									fontColor: "#ffcc00",
+									bold: true,
+								},
+							},
+						}),
+					],
+				},
+				{
+					id: "later",
+					index: 1,
+					name: "字幕 2",
+					type: "captions",
+					elements: [
+						caption("above", 1, {
+							content: "Above",
+							style: { fontFamily: "Arial", fontSize: 40, bgOpacity: 0 },
+						}),
+					],
+				},
+			],
+		};
+
+		const overlays = collectTextOverlays(timeline);
+		expect(overlays.find((overlay) => overlay.id === "duo")?.secondary).toEqual(
+			{
+				content: "Fight",
+				fontFamily: "Futura",
+				fontSize: 24,
+				color: "#ffcc00",
+				fontWeight: "bold",
+				fontStyle: "normal",
+			}
+		);
+		const ass = buildTextAss({ overlays, width: 1280, height: 720 });
+		const event = (text: string) =>
+			ass
+				.split("\n")
+				.find((line) => line.startsWith("Dialogue:") && line.includes(text)) ??
+			"";
+		const yOf = (text: string) =>
+			Number(event(text).match(/\\pos\(640\.00,([0-9.]+)\)/)?.[1]);
+		expect(event("Round one")).toMatch(
+			/Round one\\N.*\{\\fnFutura\\b1\\i0\\c&H00CCFF&\\fs[0-9.]+\}Fight$/
+		);
+		// The bottom line is the second-language one, so its leading pins it.
+		const secondLeading = captionLeading({
+			family: "Futura",
+			fontSize: 24,
+			lineHeight: 1.4,
+			bold: true,
+		});
+		expect(yOf("Round one")).toBeCloseTo(720 - 28 - secondLeading, 1);
+		// A later caption on that edge sits above the whole two-line block.
+		expect(yOf("Round one") - yOf("Above")).toBeCloseTo(
+			(40 + 24) * 1.4 +
+				16 +
+				captionLeading({ family: "Arial", fontSize: 40, lineHeight: 1.4 }) -
+				secondLeading,
 			1
 		);
 	});
