@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `media:batch-import` answers once the editor has loaded the copied files (`editorReady` per file), so an `add-element` right after finds them; a single add waits up to 25 s for a busy editor and, if it still times out, says the element may yet be placed.
 - Multi-line captions keep the preview's line spacing in the native export, and captions in fonts whose two line-height metrics differ (e.g. Songti SC) sit where the canvas export draws them.
 - `transcribe start --to-captions` checks `--style` and `--preset` before transcribing, and Gemini transcripts no longer run their segments together.
+- The native export applies a main-track clip's own volume, mute (`audio.enabled: false`), volume keyframes and fades (it played the clip as imported), and gives audio-track and overlay clips their full audio settings, as the muxer export does; main-track clips whose other audio effects only the muxer export applies are listed in the export's warnings.
+- `timeline batch-delete` accepts `--cuts` as well as `--elements`, and without `--ripple` keeps every gap, on the main track too; a single `add-element` honours `collision` (`insert`, `overwrite`, `reject`) as `batch-add` does.
+- `editor undo` / `redo` answer the step they took back or redid (`label`) and what it changed (`changes`), and fail when nothing changed instead of printing ok; a ripple delete no longer moves clips on tracks it does not ripple (two sound effects that overlapped a neighbour by a few milliseconds were nudged).
 
 ## [2026.10.27.1] - 2026-10-27
 
