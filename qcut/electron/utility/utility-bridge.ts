@@ -58,6 +58,7 @@ import {
 	commitTransaction,
 	rollbackTransaction,
 	getTransactionStatus,
+	listTransactions,
 	undoTimeline,
 	redoTimeline,
 	getHistorySummary,
@@ -859,7 +860,12 @@ async function handleMainRequest(
 			return rollbackTransaction({
 				transactionId: req.transactionId,
 				reason: req.reason,
+				win,
 			});
+		}
+
+		case "transaction:list": {
+			return listTransactions({ win });
 		}
 
 		case "transaction:status": {
