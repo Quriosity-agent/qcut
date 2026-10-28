@@ -1,5 +1,8 @@
 import type { CaptionElement, TimelineTrack } from "@/types/timeline";
-import { resolveSubtitleStyle } from "./subtitle-style";
+import {
+	resolveSecondaryLineStyle,
+	resolveSubtitleStyle,
+} from "./subtitle-style";
 
 /**
  * Where a caption sits when other captions share its edge while it is on
@@ -22,6 +25,10 @@ export function captionLineCount({ text }: { text: string }): number {
 	return Math.max(1, text.trim().split(/\r?\n/).length);
 }
 
+/**
+ * A caption's block: its line boxes (a bilingual caption's second-language
+ * lines at their own size) plus the box padding.
+ */
 export function captionBlockHeight({
 	element,
 	lines = captionLineCount({ text: element.text ?? "" }),
@@ -30,8 +37,13 @@ export function captionBlockHeight({
 	lines?: number;
 }): number {
 	const style = resolveSubtitleStyle(element.style);
+	const secondaryLines = element.secondaryText?.trim()
+		? captionLineCount({ text: element.secondaryText })
+		: 0;
 	return (
-		Math.max(1, lines) * style.fontSize * style.lineSpacing +
+		(Math.max(1, lines) * style.fontSize +
+			secondaryLines * resolveSecondaryLineStyle(style).fontSize) *
+			style.lineSpacing +
 		2 * CAPTION_BOX_PADDING_Y
 	);
 }
