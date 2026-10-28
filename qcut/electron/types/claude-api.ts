@@ -180,6 +180,9 @@ export interface ClaudeTrackOperationRequest {
 	type?: ClaudeTrackType;
 	name?: string;
 	index?: number;
+	/** update/move: put the track directly above (or below) this track. */
+	aboveTrackId?: string;
+	belowTrackId?: string;
 	ripple?: boolean;
 	force?: boolean;
 	transition?: ClaudeTransition;
@@ -1194,6 +1197,10 @@ export interface BatchImportResult {
 	success: boolean;
 	mediaFile?: MediaFile;
 	error?: string;
+	/** Whether the open editor confirmed it loaded the copied file. */
+	editorReady?: boolean;
+	/** Why the editor does not have the file yet, when it does not. */
+	warning?: string;
 }
 
 // ============================================================================
