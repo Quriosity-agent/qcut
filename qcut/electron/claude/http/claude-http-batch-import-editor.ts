@@ -15,9 +15,9 @@ import type { BatchImportResult } from "../../types/claude-api.js";
 import type { WindowAccessor } from "./claude-http-shared-routes.js";
 
 /**
- * How long one batch import waits for the editor in all. It keeps the
- * answer inside the CLI's default 30 s request wait; files the editor has
- * not confirmed by then keep loading there.
+ * How long one batch import takes at most before it answers, copying the
+ * files included. It keeps the answer inside the CLI's default 30 s request
+ * wait; files the editor has not confirmed by then keep loading there.
  */
 export const BATCH_IMPORT_EDITOR_WAIT_MS = 20_000;
 
@@ -52,22 +52,25 @@ async function settleWithin({
 
 /**
  * Asks the editor to load each copied file, one at a time, and waits for it
- * within `waitMs` overall. Files left when the time is up are still sent, so
- * the editor keeps loading them; their entries say so.
+ * until `waitMs` after `startedAt` (when the import began, so the copy counts
+ * too). Files left when the time is up are still sent, so the editor keeps
+ * loading them; their entries say so.
  */
 export async function loadBatchImportInEditor({
 	accessor,
 	projectId,
 	results,
+	startedAt = Date.now(),
 	waitMs = BATCH_IMPORT_EDITOR_WAIT_MS,
 }: {
 	accessor: Pick<WindowAccessor, "requestMediaImport">;
 	projectId: string;
 	results: BatchImportResult[];
+	startedAt?: number;
 	waitMs?: number;
 }): Promise<BatchImportResult[]> {
 	if (!accessor.requestMediaImport) return results;
-	const deadline = Date.now() + waitMs;
+	const deadline = startedAt + waitMs;
 	const loaded: BatchImportResult[] = [];
 	for (const result of results) {
 		const media = result.mediaFile;
