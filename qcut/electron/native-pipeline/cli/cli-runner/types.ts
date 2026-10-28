@@ -451,6 +451,8 @@ export interface CLIRunOptions {
 	append?: boolean;
 	/** editor captions import: the subtitle file to read. */
 	file?: string;
+	/** editor captions import: a second-language file whose cues become each caption's second line. */
+	secondaryFile?: string;
 	crossTrackRipple?: boolean;
 	/** editor:editing:delete-range: leave mix automation where it is. */
 	keepAutomation?: boolean;
