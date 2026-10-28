@@ -59,6 +59,13 @@ qcut editor:timeline:add-element \
   --data '{"type":"adjustment","startTime":0,"duration":60,"adjustments":{"contrast":15,"saturation":-30,"temperature":-20,"vignette":35}}'
 ```
 
+A `trackId` names the lane: the element goes on that track or the add fails.
+A track that does not exist (deleted, or removed when a delete emptied it)
+is `Track not found: <id>`, and one that cannot hold the element (a caption
+on a text track, a clip on a captions track) is refused; neither is replaced
+by a new track. Without `trackId` QCut picks or makes a suitable track. The
+answer names the track used: `{"elementId":"…","trackId":"…","trackName":"…"}`.
+
 An adjustment layer takes `adjustments` (brightness, contrast, saturation,
 temperature, tint, sharpness, fade, vignette), a full `color` grade like a
 clip's (`color.basic`, LUT, curves, wheels…), `opacity` and `masks`; fields
@@ -120,6 +127,58 @@ started first keeps the edge and each later one sits one block (line box +
 `captions import` warns when cues overlap and lands on extra lanes. `apps/web/src/test/e2e/text-caption-engine-parity.e2e.ts`
 measures glyph extents, glow and caption placement from both engines.
 
+### Caption style fields
+
+A caption keeps its look in `style`, in subtitle names. The text element's
+names for the same things are accepted too, inside `style` or at the
+element's top level (top level wins, as for text), on `add-element`,
+`batch-add`, `update-element` and `captions import --style`:
+
+| Caption field (`style.*`) | Also accepted | Unit / values |
+|---|---|---|
+| `fontFamily`, `fontSize`, `letterSpacing`, `textAlign` | — | family name; canvas px; px; left/center/right |
+| `fontColor`, `fontOpacity` | `color`, `opacity` | colour (#rrggbb); 0–1 |
+| `outlineColor`, `outlineWidth` | `strokeColor`, `strokeWidth` | colour; px (drawn behind the glyph) |
+| `shadowColor`, `shadowOffset: {x, y}` | `shadowOffsetX`, `shadowOffsetY` | colour; px |
+| `backgroundColor`, `bgOpacity` | `backgroundOpacity`; `backgroundColor: "transparent"` = no box | colour; 0–1 (default **0.8**, a black box) |
+| `bold`, `italic`, `underline` | `fontWeight: "bold"`, `fontStyle: "italic"`, `textDecoration: "underline"` | true/false |
+| `position.align` | `verticalAlign` (`middle` = center) | top/center/bottom |
+| `lineSpacing` | `lineHeight` | line-height multiple |
+| `animationType`, `animationDuration`, `animationDelay` | — | none/fade/slide-up/slide-left; s; s |
+| `karaokeMode`, `highlightColor`, `upcomingColor`, `highlightScale` | — | word highlighting |
+
+Captions sit 28 px from the edge `position.align` names; `position.x/y`,
+`marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur`, `strokeOpacity` and the
+like have no effect on captions. Every field that is not applied is named:
+`warnings` on the `add-element` answer and on each `batch-add` item, and
+`ignoredFields` (e.g. `style.marginV`) on `update-element`. `timeline export`
+shows each caption's stored `style` (no `style` means the default look:
+Arial 48, white, 80 % black box). In the native export a `bold` family is
+matched to its own upright bold face (e.g. AvenirNext-Bold), from any font
+folder (`/System/Library/Fonts`, `…/Supplemental`, `/Library/Fonts`,
+`~/Library/Fonts`).
+
+### Bilingual captions (two lines, two styles)
+
+Put each language on its own captions track with **the same timing**, the
+upper language on the upper track:
+
+```bash
+qcut editor:track:create --project-id <id> --type captions --name "字幕 中文"
+qcut editor:track:create --project-id <id> --type captions --name "字幕 英文"
+# batch-add the Chinese cues (style: Hiragino Sans GB 34, bold) to 字幕 中文 and
+# the English ones (Futura 24) to 字幕 英文, both with the same startTime/duration
+```
+
+Captions that share an edge while on screen stack: the one that started
+first keeps the edge; at the same start the caption on the lower track keeps
+it and the one on the track above sits above it — no one-frame offset
+needed. Each one below lifts the next by its whole block, one line box per
+line break (`\n`) in its text, so an English cue written as two lines pushes
+the Chinese one up by two lines (preview, canvas and native exports alike).
+A long line the export wraps on its own is still counted as one line: break
+long cues yourself with `\n`.
+
 A new text or captions track made without `--index` goes above the clips
 (the editor's stacking rule), so the text is visible; audio tracks go below.
 Dialogue belongs on `captions` elements (exportable as SRT, `editor export
@@ -143,6 +202,22 @@ SRT, VTT and ASS are read with the same parser the UI uses. Cues go onto
 captions tracks above the clips (overlapping cues get their own lane) in
 batches of 50, and the result lists the tracks and cue count. `--replace`
 deletes the existing captions tracks first (one undo step each).
+
+`--style` takes the caption style fields below (either spelling); a field it
+cannot use comes back once in `warnings`. `--preset` puts a named look under
+`--style`: `film` (电影字幕: no box, a 1.5 px black outline and a soft 2 px
+drop shadow, white, not bold; font and size are left to `--style`),
+`cinematic`, `bold`, `minimal`, `karaoke`, `news`:
+
+```bash
+qcut editor:captions:import --project-id <id> --file 字幕_英文.srt --preset film \
+  --style '{"fontFamily":"Futura","fontSize":24}'
+```
+
+The import runs in one timeline transaction. If the editor is still busy
+(just after opening a big project) the begin can time out; nothing is changed
+and nothing is left open, so the import can simply be run again
+(see [editor-state-control.md](editor-state-control.md#transactions-undo-groups)).
 
 ### Batch add elements (max 50)
 
@@ -300,6 +375,15 @@ qcut editor:timeline:delete-element \
 Deleting sits in the CLI's confirm tier (with undo/redo, range deletes and
 track deletes), so it needs `--force`; the edit is still one undo step
 (`qcut editor undo --force`).
+
+A track left empty by a delete is removed with its last element (the
+editor's own rule; the main track stays). The answer says so —
+`{"removed":true,"trackId":"…","trackRemoved":true,"warning":"Track \"配乐 1\" … was removed with this one; create a track before adding to it again."}` —
+and `batch-delete` lists such tracks in `removedTrackIds`. Only the track the
+delete emptied goes: an empty track made with `track:create` and not filled
+yet stays, whatever is deleted elsewhere. An element id that is not on the
+timeline is a 404 (`Element not found`), and one whose track is locked is
+refused (409) instead of answering `removed`.
 
 ### Batch delete elements (max 50)
 
