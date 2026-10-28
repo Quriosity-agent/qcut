@@ -719,9 +719,15 @@ function assPlacement({
 /** The preview's caption box padding (8 px top and bottom). */
 const CAPTION_BOX_PADDING_Y = 8;
 
-/** A caption's block height for stacking: one line box plus the box padding. */
+/**
+ * A caption's block height for stacking: its line boxes (one per line break
+ * in the text, as caption-stacking.ts counts them) plus the box padding.
+ */
 function captionBlockHeight(overlay: TextOverlay): number {
-	return overlay.fontSize * overlay.lineHeight + 2 * CAPTION_BOX_PADDING_Y;
+	const lines = Math.max(1, overlay.content.trim().split(/\r?\n/).length);
+	return (
+		lines * overlay.fontSize * overlay.lineHeight + 2 * CAPTION_BOX_PADDING_Y
+	);
 }
 
 /**
