@@ -227,6 +227,11 @@ export function buildExportSegmentEncodeArgs({
 			// with the picture from the segment's first frame.
 			"aresample=async=1:first_pts=0",
 			...(atempo === null ? [] : [atempo]),
+			// The clip's own gain, mute, volume keyframes and fades, on the
+			// timeline's clock (after the tempo change).
+			...(audio !== null && segment.audioEnvelope
+				? [segment.audioEnvelope]
+				: []),
 			"apad",
 		].join(","),
 		...segmentPcmAudioArgs({ format }),
