@@ -1,7 +1,7 @@
-# QCut 2701 trailer issue fixes (N6–N15)
+# QCut 2701 trailer issue fixes (N6–N18)
 
 Baseline: `v2026.10.27.1` / `51ffcee11`. Source: the 2026-10-28 StreetFighter
-sample report (配乐、双语字幕、字卡, items N6–N15). The user's projects and the
+sample report (配乐、双语字幕、字卡, items N6–N18). The user's projects and the
 installed app were not touched: every live check ran on an isolated build
 (temporary profile, free API port, temporary state and credential folders)
 with a throw-away project that the run deletes.
@@ -69,6 +69,43 @@ canvas export; the Jianying/CapCut draft export keeps only the first line;
 there is no captions-panel editor for the second line yet (set it through
 the API, the CLI or `captions import --secondary-file`).
 
+## N16–N18: clip sound in the native export, replacing a clip, undo
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| N16: a main-track clip's `volume`, `audio.enabled`, `audio.volumeDb` and `audio.keyframes.volumeDb` read back, but the native export came out sample for sample as before | The native export joins main-track clips segment by segment, and each segment took its sound straight from the source: no gain, mute, keyframes or fades. Clips the mix handles (audio tracks, overlays) got the legacy `volume` and fade fields only, so their volume keyframes and effects were dropped too. | Each joined segment's sound gets the clip's gain, mute, volume keyframes and fades, built by the mix's own envelope filter, on the timeline's clock (after the tempo change). Mixed clips get their full settings (effects, keyframes, fades), as in the muxer export. A main-track clip's other effects (EQ, denoise, pitch, compressor, reverb…) still come only from the muxer export; a native export that leaves them out lists those clips in its `warnings`. |
+| N17: the docs say `batch-delete --cuts`, the command needs `--elements`; a batch delete without `--ripple` still moves every later main-track clip up; a single `add-element` ignores `"collision":"insert"` that `batch-add` honours | The flag's name changed without the docs, and the registry listed no flags. A batch delete without ripple called the store's ordinary removal, where the main-track magnet (QTL-005, on by default) closes every main-track gap. The single-add helpers never passed `collision` to the store. | `--cuts` is read as well as `--elements`, and the registry lists `--elements` and `--ripple`. An API batch delete without `--ripple` keeps every gap, whatever the editor's magnet and ripple settings (`removeElementFromTrack(…, { keepGap: true })`); deletes in the timeline are unchanged. Every single add passes `collision` to the store; an unknown value fails as in `batch-add`. The docs give the replace-in-place recipe. |
+| N18: right after that delete, `editor:undo --force` answered ok, the main track stayed moved up, and two unrelated sound effects moved (106.3804→106.3964, 108.396→108.4) | The ripple removal (which the magnet uses) re-resolved overlaps on every track, so two effects that overlapped a neighbour by less than half a frame (a placement allows that) were pushed to its end: +16 and +4 ms, at the delete. And `editor:undo` printed ok whatever the editor answered, `applied: false` (nothing undone) included. Not reproduced: in a fresh project the undo after the same delete restores it every time. What the report saw fits an undo that changed nothing, e.g. under a transaction left in the editor by N7 (it suppresses the delete's history entry and makes the editor answer `applied: false`). | A ripple removal changes only the tracks it ripples and the deleted clip's own track. Undo and redo answer `label` (the step) and `changes` (elements added, removed and moved, the first ten with where they were), and fail when nothing changed: `Nothing to undo: the undo history is empty`, or `The editor did not undo: a transaction is open in it`. |
+
+Verified: unit tests for the clip sound fields and the export warning
+(`timeline-audio-file.test.ts`), the segment's filter chain with the real
+FFmpeg (`export-segment-encode-real.test.ts`: the envelope after the tempo
+change, a muted segment below RMS 1e-4), `keepGap` against the magnet and
+ripple mode, the batch delete, a single add's `collision`, `--cuts`, the
+ripple leaving other tracks alone, the change summary, the bridge's undo
+answer and the CLI's undo/redo results. Two new E2Es on isolated builds:
+
+- `main-track-clip-audio-export.e2e.ts`: two tone clips on the main track,
+  the first with the report's keyframes (-60 dB to frame 45, 0 dB from 46),
+  the second `{volume: 0, audio: {enabled: false, volumeDb: -60}}`, exported
+  by both engines. RMS of the keyframed silence / after it / the disabled
+  clip: native 0 / 0.088 / 0, muxer 0 / 0.125 / 0.
+- `editor-cli-replace-clip.e2e.ts`: three 2 s clips and four effects that
+  overlap in pairs by 12 and 4 ms (3, 3.488, 5, 5.496). `batch-delete --cuts`
+  without `--ripple` leaves `[0, 4]`; the undo answers `{applied: true,
+  label: "Edit", changes: {added: 1, removed: 0, moved: 0}}`; a `--ripple`
+  delete leaves `[0, 2]` and every effect where it was; its undo lists the
+  restored clip and the one moved back from 2 to 4; a single add into the
+  occupied span is refused, `"collision":"squeeze"` is refused with batch-add's
+  message, and `"collision":"insert"` gives `[0, 2, 4, 6]`; undoing until
+  nothing is left fails with `Nothing to undo: the undo history is empty`.
+  With the ripple fix taken out (rebuilt), the spec fails at the effects:
+  3.488→3.5 and 5.496→5.5, the report's mechanism.
+
+The muxer export's sound is about 3 dB above the native one's for the same
+clip (0.125 against 0.088, the tone's own RMS); it was so before this change
+and its cause was not looked into.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -92,7 +129,14 @@ the API, the CLI or `captions import --secondary-file`).
   retried; the report's scripts already do).
 - A single `media:import` still tells the editor without waiting for it (it
   already loads right away); only `batch-import` used to skip the editor.
-- N16–N18, added to the report after this work started, are not part of it.
+- N16: a main-track clip's audio effects other than gain, mute, keyframes and
+  fades are still applied only by the muxer export (the native export lists
+  the clips it leaves them out of). Moving every main-track clip's sound
+  into the mix would change the export's audio path for every project.
+- N17: no command replaces a clip's source in place yet; the recipe is
+  `batch-delete` without `--ripple`, then `add-element` at the same start.
+- N18: history steps other than transactions are still labelled `Edit`;
+  `changes` is what tells them apart.
 
 ## Verification
 
@@ -105,7 +149,8 @@ Live E2E: `apps/web/src/test/e2e/editor-cli-trailer-2701.e2e.ts` replays the
 report's sequence against an isolated build (temporary profile, free port,
 **empty** credential folder) through the source CLI, then deletes its project.
 Run on `bun run build` of this branch, offscreen: 1 passed (39.7 s with the
-N13–N15 checks).
+N13–N15 checks). On the final tree it ran again with the two N16–N18 specs
+and `bilingual-caption-engine-parity`: 4 passed (1.5 min).
 
 | Check | Result |
 | --- | --- |
