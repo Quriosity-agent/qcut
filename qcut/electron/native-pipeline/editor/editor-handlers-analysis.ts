@@ -11,6 +11,7 @@ import type { EditorApiClient } from "../editor/editor-api-client.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { jsonPending } from "../cli/json-output.js";
+import { resolveCaptionImportStyle } from "./editor-handlers-captions.js";
 import { transcriptToCaptions } from "./editor-transcript-captions.js";
 
 type ProgressFn = (progress: {
@@ -340,6 +341,20 @@ async function transcribeStart(
 			error: "--source and --media-id are mutually exclusive",
 		};
 
+	// A bad --style or --preset fails here, not after a whole (possibly
+	// paid) transcription.
+	let captionStyle: Record<string, unknown> | undefined;
+	if (opts.toCaptions) {
+		try {
+			captionStyle = await resolveCaptionImportStyle({ opts });
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			};
+		}
+	}
+
 	const startResult = await client.post<{ jobId: string }>(
 		`/api/claude/transcribe/${opts.projectId}/start`,
 		buildTranscribeBody(opts)
@@ -392,6 +407,7 @@ async function transcribeStart(
 		const captions = await transcriptToCaptions({
 			client,
 			opts,
+			style: captionStyle,
 			transcript: (
 				result as {
 					result?: Parameters<typeof transcriptToCaptions>[0]["transcript"];
