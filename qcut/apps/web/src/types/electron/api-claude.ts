@@ -133,7 +133,8 @@ export interface ElectronClaudeOps {
 			) => Promise<void>;
 			getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
 			clearSelection: (projectId: string) => Promise<void>;
-			onRequest: (callback: () => void) => void;
+			/** `requestId` is echoed by `sendResponse` so main matches the answer. */
+			onRequest: (callback: (request?: { requestId?: string }) => void) => void;
 			onApply: (
 				callback: (timeline: ClaudeTimeline, replace?: boolean) => void
 			) => void;
@@ -273,7 +274,7 @@ export interface ElectronClaudeOps {
 					fileName: string;
 				}) => void
 			) => void;
-			sendResponse: (timeline: ClaudeTimeline) => void;
+			sendResponse: (timeline: ClaudeTimeline, requestId?: string) => void;
 			removeListeners: () => void;
 		};
 		transaction: {
