@@ -9,11 +9,7 @@
 
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
-import {
-	type Cue,
-	importCaptionCues,
-	resolveCaptionImportStyle,
-} from "./editor-handlers-captions.js";
+import { type Cue, importCaptionCues } from "./editor-handlers-captions.js";
 
 interface TranscriptWord {
 	text: string;
@@ -45,7 +41,7 @@ function columns(text: string): number {
 
 /**
  * Caption cues from a transcript: from its words when it has them (Scribe),
- * so every cue starts and ends on a word, else from its segments (Gemini).
+ * so every cue starts and ends on a word, else from its segments.
  */
 export function cuesFromTranscript({
 	transcript,
@@ -105,22 +101,32 @@ export function cuesFromTranscript({
 	return cues;
 }
 
-/** Imports a finished transcription job's result as captions. */
+/**
+ * Imports a finished transcription job's result as captions. `style` is
+ * resolved by the caller before it starts the job, so a bad `--style` or
+ * `--preset` fails before transcribing rather than after.
+ */
 export async function transcriptToCaptions({
 	client,
 	opts,
 	transcript,
+	style,
 }: {
 	client: EditorApiClient;
 	opts: CLIRunOptions;
 	transcript: Transcript | undefined;
+	style?: Record<string, unknown>;
 }): Promise<CLIResult> {
 	if (!transcript) {
 		return { success: false, error: "The transcription returned no result" };
 	}
-	const style = await resolveCaptionImportStyle({ opts });
 	const cues = cuesFromTranscript({
-		transcript,
+		// Gemini's "words" are its whole segments, with no spacing between
+		// them: joined as words they would run together.
+		transcript:
+			opts.provider === "gemini"
+				? { ...transcript, words: undefined }
+				: transcript,
 		language: opts.language ?? transcript.language ?? "en",
 		style,
 	});
