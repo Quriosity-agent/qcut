@@ -6,6 +6,7 @@ import {
 	type TimelineHistorySnapshot,
 } from "@/stores/timeline/timeline-history";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { historyStepReport } from "./claude-timeline-change-summary";
 import type { TimelineStore } from "@/stores/timeline/types";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -669,73 +670,48 @@ export function setupClaudeTransactionBridge(): void {
 			}
 		});
 
-		api.onUndo((data) => {
-			try {
-				if (activeTransaction) {
-					api.sendUndoResponse(data.requestId, {
-						applied: false,
-						undoCount: useTimelineStore.getState().history.length,
-						redoCount: useTimelineStore.getState().redoStack.length,
-					});
-					return;
-				}
-				const before = useTimelineStore.getState();
-				const beforeUndoCount = before.history.length;
-				const beforeRedoCount = before.redoStack.length;
-				before.undo();
-				syncHistoryMetadataWithStore();
-				const after = useTimelineStore.getState();
-				api.sendUndoResponse(data.requestId, {
-					applied:
-						after.history.length !== beforeUndoCount ||
-						after.redoStack.length !== beforeRedoCount,
-					undoCount: after.history.length,
-					redoCount: after.redoStack.length,
-				});
-			} catch (error) {
-				debugError("[ClaudeTransactionBridge] Undo handler failed:", error);
+		/** Undo or redo through the store; the answer says what it took back (N18). */
+		const runHistoryStep = (step: "undo" | "redo", requestId: string) => {
+			const send =
+				step === "undo" ? api.sendUndoResponse : api.sendRedoResponse;
+			const counts = () => {
 				const store = useTimelineStore.getState();
-				api.sendUndoResponse(data.requestId, {
-					applied: false,
+				return {
 					undoCount: store.history.length,
 					redoCount: store.redoStack.length,
-				});
-			}
-		});
-
-		api.onRedo((data) => {
+				};
+			};
 			try {
 				if (activeTransaction) {
-					api.sendRedoResponse(data.requestId, {
-						applied: false,
-						undoCount: useTimelineStore.getState().history.length,
-						redoCount: useTimelineStore.getState().redoStack.length,
-					});
+					send(requestId, { applied: false, ...counts() });
 					return;
 				}
-				const before = useTimelineStore.getState();
-				const beforeUndoCount = before.history.length;
-				const beforeRedoCount = before.redoStack.length;
-				before.redo();
+				const store = useTimelineStore.getState();
+				const tracksBefore = store.tracks;
+				const was = counts();
+				store[step]();
 				syncHistoryMetadataWithStore();
-				const after = useTimelineStore.getState();
-				api.sendRedoResponse(data.requestId, {
-					applied:
-						after.history.length !== beforeUndoCount ||
-						after.redoStack.length !== beforeRedoCount,
-					undoCount: after.history.length,
-					redoCount: after.redoStack.length,
+				const now = counts();
+				const applied =
+					now.undoCount !== was.undoCount || now.redoCount !== was.redoCount;
+				send(requestId, {
+					applied,
+					...now,
+					...(applied
+						? historyStepReport({
+								entries: step === "undo" ? redoEntries : historyEntries,
+								before: tracksBefore,
+								after: useTimelineStore.getState().tracks,
+							})
+						: {}),
 				});
 			} catch (error) {
-				debugError("[ClaudeTransactionBridge] Redo handler failed:", error);
-				const store = useTimelineStore.getState();
-				api.sendRedoResponse(data.requestId, {
-					applied: false,
-					undoCount: store.history.length,
-					redoCount: store.redoStack.length,
-				});
+				debugError(`[ClaudeTransactionBridge] ${step} handler failed:`, error);
+				send(requestId, { applied: false, ...counts() });
 			}
-		});
+		};
+		api.onUndo((data) => runHistoryStep("undo", data.requestId));
+		api.onRedo((data) => runHistoryStep("redo", data.requestId));
 
 		api.onHistory((data) => {
 			try {
