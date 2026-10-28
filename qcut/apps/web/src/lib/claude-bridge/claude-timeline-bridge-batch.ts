@@ -710,10 +710,16 @@ export function setupBatchHandlers({
 								true
 							);
 						} else {
+							// Without `ripple` the gap stays, on the main track too
+							// and whatever the editor's ripple mode (N17): the
+							// magnet and ripple mode are for edits in the timeline,
+							// and an API caller replacing a clip in place needs the
+							// clips after it to stay put.
 							timelineStore.removeElementFromTrack(
 								entry.trackId,
 								entry.elementId,
-								false
+								false,
+								{ keepGap: true }
 							);
 						}
 						deletedCount++;
