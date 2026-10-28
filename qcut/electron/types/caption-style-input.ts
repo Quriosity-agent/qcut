@@ -234,10 +234,19 @@ function readField({
 			"bottom"
 		)(align === "middle" ? "center" : align);
 		if (read === INVALID) return "expected top, center or bottom";
-		const position = key === "position" && isRecord(value) ? value : {};
+		// Only numbers reach the stored x/y (the ASS export's margins).
+		const coordinates: Record<string, unknown> = {};
+		if (key === "position" && isRecord(value)) {
+			for (const axis of ["x", "y"] as const) {
+				if (value[axis] === undefined) continue;
+				const coordinate = number()(value[axis]);
+				if (coordinate === INVALID) return `${axis} expected a number`;
+				coordinates[axis] = coordinate;
+			}
+		}
 		style.position = {
 			...(style.position as object),
-			...position,
+			...coordinates,
 			align: read,
 		};
 		return undefined;
@@ -273,6 +282,35 @@ function readField({
 	if (read === INVALID) return `expected ${spec.expects}`;
 	style[field] = read;
 	return undefined;
+}
+
+const POSITION_FIELDS = ["align", "x", "y"];
+
+/**
+ * `position`: its alignment and coordinates, read as one field; any other
+ * key in it is named instead of being stored.
+ */
+function readPosition({
+	value,
+	field,
+	style,
+	ignored,
+}: {
+	value: unknown;
+	field: string;
+	style: Record<string, unknown>;
+	ignored: CaptionStyleInput["ignored"];
+}): void {
+	const reason = readField({ key: "position", value, style });
+	if (reason) ignored.push({ field, reason });
+	if (!isRecord(value)) return;
+	for (const key of Object.keys(value)) {
+		if (POSITION_FIELDS.includes(key)) continue;
+		ignored.push({
+			field: `${field}.${key}`,
+			reason: `not a caption position field (${POSITION_FIELDS.join(", ")})`,
+		});
+	}
 }
 
 /** What a bilingual caption's second line can set; the rest is the caption's. */
@@ -400,6 +438,10 @@ export function normalizeCaptionStyleInput({
 		for (const [key, value] of ordered) {
 			if (key === "secondary") {
 				readSecondary({ value, field: `${prefix}${key}`, style, ignored });
+				continue;
+			}
+			if (key === "position") {
+				readPosition({ value, field: `${prefix}${key}`, style, ignored });
 				continue;
 			}
 			const reason = readField({ key, value, style });
