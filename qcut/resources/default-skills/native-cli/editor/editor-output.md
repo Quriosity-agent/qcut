@@ -359,6 +359,10 @@ qcut editor:undo --json
 qcut editor:redo --json
 ```
 
+Each answers with the step it took back or redid (`label`) and what that
+changed (`changes`), and fails when nothing changed; see
+editor-state-control.md.
+
 ### State snapshot
 
 ```bash
