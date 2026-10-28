@@ -157,7 +157,9 @@ function secondaryLineForASS({
 	const secondary = resolveSecondaryLineStyle(style);
 	// \c takes the colour without its alpha: &HBBGGRR&.
 	const color = `&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`;
-	return `\\N{\\fn${secondary.fontFamily}\\fs${secondary.fontSize}\\b${secondary.bold ? 1 : 0}\\i${secondary.italic ? 1 : 0}\\c${color}}${text.replace(/\n/g, "\\N")}`;
+	// `{`, `}` and `\` in a font name would end the override block early.
+	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
+	return `\\N{\\fn${family}\\fs${secondary.fontSize}\\b${secondary.bold ? 1 : 0}\\i${secondary.italic ? 1 : 0}\\c${color}}${text.replace(/\n/g, "\\N")}`;
 }
 
 function captionAnimationTags({
