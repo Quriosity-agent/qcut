@@ -753,6 +753,7 @@ export function PreviewElementRenderer({
 						subtitleStyle={element.style}
 						words={words}
 						canvasScale={canvasScale}
+						secondaryText={element.secondaryText}
 					/>
 				</div>
 			);
