@@ -43,6 +43,7 @@ import {
 	commitTransaction,
 	rollbackTransaction,
 	getTransactionStatus,
+	listTransactions,
 	undoTimeline,
 	redoTimeline,
 	getHistorySummary,
@@ -274,10 +275,17 @@ export function startClaudeHTTPServer(
 		commitTransaction: (transactionId) => commitTransaction({ transactionId }),
 		/** Rolls back a pending timeline transaction. */
 		rollbackTransaction: (transactionId, reason) =>
-			rollbackTransaction({ transactionId, reason }),
+			rollbackTransaction({
+				transactionId,
+				reason,
+				win: BrowserWindow.getAllWindows()[0],
+			}),
 		/** Returns the current state of a timeline transaction. */
 		getTransactionStatus: (transactionId) =>
 			Promise.resolve(getTransactionStatus({ transactionId })),
+		/** Lists open and recent transactions, including the editor's own. */
+		listTransactions: () =>
+			listTransactions({ win: BrowserWindow.getAllWindows()[0] }),
 		/** Undoes the last timeline mutation. */
 		undoTimeline: () => undoTimeline({ win: getWindow() }),
 		/** Redoes the last undone timeline mutation. */
