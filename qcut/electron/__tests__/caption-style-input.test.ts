@@ -182,4 +182,24 @@ describe("caption style input", () => {
 		expect(result.style).toEqual({ bgOpacity: 0, outlineWidth: 1 });
 		expect(result.ignored).toEqual([]);
 	});
+
+	it("keeps the stored axis and position a patch to part of them leaves out", () => {
+		const current = {
+			shadowOffset: { x: 2, y: 4 },
+			position: { align: "bottom", x: 0, y: 12 },
+			fontSize: 48,
+		};
+		const result = captionStyleFromPatch({
+			changes: { shadowOffsetX: 6, verticalAlign: "top" },
+			current,
+		});
+		expect(result.style).toEqual({
+			shadowOffset: { x: 6, y: 4 },
+			position: { align: "top", x: 0, y: 12 },
+		});
+		// Without a stored style the patch stands as given.
+		expect(
+			captionStyleFromPatch({ changes: { shadowOffsetX: 6 } }).style
+		).toEqual({ shadowOffset: { x: 6 } });
+	});
 });
