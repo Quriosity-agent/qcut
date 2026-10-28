@@ -1602,23 +1602,22 @@ function wrapTextForCanvas({
 	text: string;
 	maxWidth: number;
 }): string[] {
-	const words = text.split(" ");
 	const lines: string[] = [];
-	let currentLine = "";
+	// A line break in the text always breaks the line (the preview and the
+	// native export draw it too); each paragraph then wraps at the width.
+	for (const paragraph of text.split(/\r?\n/)) {
+		let currentLine = "";
+		for (const word of paragraph.split(" ")) {
+			const candidate = currentLine ? `${currentLine} ${word}` : word;
+			const candidateWidth = ctx.measureText(candidate).width;
 
-	for (const word of words) {
-		const candidate = currentLine ? `${currentLine} ${word}` : word;
-		const candidateWidth = ctx.measureText(candidate).width;
-
-		if (candidateWidth <= maxWidth || currentLine.length === 0) {
-			currentLine = candidate;
-		} else {
-			lines.push(currentLine);
-			currentLine = word;
+			if (candidateWidth <= maxWidth || currentLine.length === 0) {
+				currentLine = candidate;
+			} else {
+				lines.push(currentLine);
+				currentLine = word;
+			}
 		}
-	}
-
-	if (currentLine) {
 		lines.push(currentLine);
 	}
 
