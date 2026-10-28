@@ -21,6 +21,54 @@ with a throw-away project that the run deletes.
 | N14: `track:move --index <main>` right after `track:create` answers ok but the track stays under main; the same command again works | Not reproduced in a fresh profile: since `60e1a6479` (in 2701) the move is applied and read back before it answers. The export it was checked against is the likeliest culprit (N13's stale read). | `track move --above/--below <trackId>` places a track next to another one in the editor's current order, with no index to work out; the answer has the resulting `index` and order. With N13's fix the export after a move reads the new order. |
 | N15: right after `media:batch-import` of qtrle movs the 2nd `add-element` times out (~5 s) and is not placed; a few seconds later it works | `batch-import` only copied the files; the editor loaded them on the first add, and a single add waited only 5 s for the editor. In a large project that load and the work right after it outlast 5 s. (A fresh profile with 20 such movs did not time out: the first add, which loaded all 20, took 1.3 s.) | `batch-import` hands each copied file to the editor, as a single import with metadata does, and answers once the editor has it (`editorReady` per file; 20 s in all, then a warning while it keeps loading). `add-element` waits up to 25 s for a busy editor; on timeout it says the element may still be placed and to check `timeline export` before retrying. |
 
+## N11 follow-up: a second-language line in one caption
+
+The report's first wish for N11 (a 副语言行 with its own style) now exists, so
+a bilingual caption is one element instead of two tracks:
+
+- Data: `CaptionElement.secondaryText` and `SubtitleStyle.secondary`
+  (`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`; anything left out
+  is the caption's own; outline, shadow, box, line spacing and alignment
+  are always the caption's). API and `timeline export` call the text
+  `secondaryContent` (beside `content`); `secondaryText` is accepted too.
+  The normalizer reads `style.secondary` in either spelling and names fields
+  the second line cannot set (`style.secondary.outlineWidth` …).
+- Engines: the preview draws the line as a second block in the same box; the
+  canvas export lays both blocks out on the same line boxes (font size ×
+  `lineSpacing`); the native export writes one ASS event — the second line
+  after `\N` with inline font tags — and inserts spacer lines (a hard space
+  at the missing height) so libass, which stacks lines exactly as tall as
+  their ASS size with no leading, lands every line where the CSS box puts it.
+  Stacking counts the block's real height in all three.
+- libass measured, not assumed: lines are 52 px apart at ASS size 52 for
+  Arial, Songti SC and Hiragino alike, i.e. the font's Windows height (the
+  size factor), not its `hhea` height. Caption layout now uses that height;
+  Songti SC had `hhea` 1.4 em against a Windows 1.0 em, which put a native
+  Songti caption ~10 px below the canvas export's.
+- I/O: add-element, batch-add, update-element (`""` removes the line; a
+  partial `style.secondary` merges), `timeline apply` (passes it through),
+  `captions import --secondary-file en.srt` (each cue goes to the `--file`
+  cue it overlaps longest; unpaired ones are reported), SRT/VTT (second
+  line), ASS (`\N`, which also fixes multi-line cues breaking the file),
+  TTML (`<br/>`), the styled ASS export (inline font tags), and Jianying draft
+  validation (accepts and checks the new fields).
+
+Verified: unit tests for the normalizer, the patch path, batch add, the
+snapshot, the preview, the canvas renderer, stacking, the ASS line
+composition, the native overlay (font switch, bottom pin by the second
+line's leading, stacking above a two-line block), the exports, the import
+pairing and draft validation. `bilingual-caption-engine-parity.e2e.ts`
+exports one bilingual caption (white Songti SC 52 bold over yellow Futura 30)
+through both engines and measures each colour's pixels: text bottom 640 / 640,
+second line bottom 682 / 678, gap 18 / 14 px (native / muxer); before the
+line-height fix the text was 11 px apart. `text-caption-engine-parity`
+still passes.
+
+Not done: a karaoke caption draws only its first line in the preview and the
+canvas export; the Jianying/CapCut draft export keeps only the first line;
+there is no captions-panel editor for the second line yet (set it through
+the API, the CLI or `captions import --secondary-file`).
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
