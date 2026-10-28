@@ -13,7 +13,12 @@ const storeMocks = vi.hoisted(() => {
 		duration: 2,
 		trimStart: 0,
 		trimEnd: 0,
-		style: { fontSize: 48, fontColor: "#ffffff", bold: false },
+		style: {
+			fontSize: 48,
+			fontColor: "#ffffff",
+			bold: false,
+			shadowOffset: { x: 2, y: 4 },
+		},
 	};
 	const state = {
 		tracks: [
@@ -80,6 +85,21 @@ describe("Claude caption update bridge", () => {
 				language: "zh",
 				style: { fontColor: "#00ffcc", fontSize: 72 },
 			},
+			false
+		);
+	});
+
+	it("patches one shadow axis without losing the other", () => {
+		applyElementChanges({
+			elementId: "caption",
+			changes: { shadowOffsetY: 8 },
+			pushHistory: false,
+		});
+
+		expect(storeMocks.state.updateCaptionElement).toHaveBeenCalledWith(
+			"captions-track",
+			"caption",
+			{ style: { shadowOffset: { x: 2, y: 8 } } },
 			false
 		);
 	});
