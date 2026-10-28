@@ -25,6 +25,7 @@ import type {
 	QualitySettings,
 } from "./ffmpeg/types";
 
+import { platformAssFontsDirectory } from "./claude/handlers/claude-export-handler/ass-fonts-dir.js";
 import { QUALITY_SETTINGS, debugLog, debugWarn } from "./ffmpeg/utils";
 import {
 	buildVideoTimelineFilters,
@@ -63,6 +64,8 @@ export interface BuildFFmpegArgsOptions {
 	filterChain?: string;
 	textFilterChain?: string;
 	textAssPath?: string;
+	/** A folder of links to the fonts the ASS layers use (ass-fonts-dir.ts). */
+	assFontsDirectory?: string;
 	textAssLayers?: Array<{
 		path: string;
 		blendMode:
@@ -108,24 +111,18 @@ function escapeFilterPath(filePath: string): string {
 		.replace(/([,;[\]])/g, "\\$1");
 }
 
-/**
- * The bundled static FFmpeg's libass has no system font discovery: it only
- * loads fonts from an explicit fontsdir. Point it at the platform directory
- * that carries CJK-capable fonts so burned-in text keeps its glyphs.
- */
+/** The platform fonts folder libass falls back to; see ass-fonts-dir.ts. */
 export function assFontsDirectory(): string | undefined {
-	if (process.platform === "darwin") {
-		return "/System/Library/Fonts/Supplemental";
-	}
-	if (process.platform === "win32") {
-		return `${process.env.WINDIR ?? "C:\\Windows"}\\Fonts`;
-	}
-	return undefined;
+	return platformAssFontsDirectory();
 }
 
-function assFontsDirSuffix(): string {
-	const directory = assFontsDirectory();
-	return directory ? `:fontsdir='${escapeFilterPath(directory)}'` : "";
+/**
+ * The `:fontsdir=` option for an ass filter: the export's own folder of the
+ * fonts its text uses when one was built, else the platform folder.
+ */
+function assFontsDirSuffix(directory?: string): string {
+	const resolved = directory ?? assFontsDirectory();
+	return resolved ? `:fontsdir='${escapeFilterPath(resolved)}'` : "";
 }
 
 interface ResolvedTextAssLayer {
@@ -379,12 +376,15 @@ function buildCanonicalVisualFilters({
 	backgroundColor,
 	filterChain,
 	textFilterChain,
+	fontsDirSuffix,
 }: {
 	videoSources: VideoSource[];
 	videoTransitions: VideoTransition[];
 	images: ImageSource[];
 	stickers: StickerSource[];
 	textAssLayers: ResolvedTextAssLayer[];
+	/** `:fontsdir=…` for every ass filter. */
+	fontsDirSuffix: string;
 	textRasterLayers: ResolvedTextRasterLayer[];
 	baseInputCount: number;
 	width: number;
@@ -489,7 +489,7 @@ function buildCanonicalVisualFilters({
 		const overlayLabel = `visual_text_ass_${index}`;
 		filterSteps.push(
 			`color=c=black@0.0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba,` +
-				`ass=filename='${escapeFilterPath(layer.path)}':alpha=1${assFontsDirSuffix()}[${overlayLabel}]`
+				`ass=filename='${escapeFilterPath(layer.path)}':alpha=1${fontsDirSuffix}[${overlayLabel}]`
 		);
 		layers.push({
 			inputLabel: overlayLabel,
@@ -545,6 +545,7 @@ function buildCompositeEncodeArgs(
 		filterChain,
 		textFilterChain,
 		textAssPath,
+		assFontsDirectory: textFontsDirectory,
 		textAssLayers = [],
 		textRasterLayers = [],
 		stickerSources = [],
@@ -721,6 +722,7 @@ function buildCompositeEncodeArgs(
 
 	const filterSteps: string[] = [];
 	let currentVideoLabel = "0:v";
+	const fontsDirSuffix = assFontsDirSuffix(textFontsDirectory);
 	const resolvedTextAssLayers: ResolvedTextAssLayer[] = [
 		...(textAssPath
 			? [{ path: textAssPath, blendMode: "normal" as const }]
@@ -758,6 +760,7 @@ function buildCompositeEncodeArgs(
 			backgroundColor,
 			filterChain,
 			textFilterChain,
+			fontsDirSuffix,
 		});
 		filterSteps.push(...canonical.filterSteps);
 		currentVideoLabel = canonical.outputLabel;
@@ -853,7 +856,7 @@ function buildCompositeEncodeArgs(
 			}
 			const overlayLabel = `text_ass_overlay_${index}`;
 			filterSteps.push(
-				`color=c=black@0.0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba,ass=filename='${escapeFilterPath(layer.path)}':alpha=1${assFontsDirSuffix()}[${overlayLabel}]`
+				`color=c=black@0.0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba,ass=filename='${escapeFilterPath(layer.path)}':alpha=1${fontsDirSuffix}[${overlayLabel}]`
 			);
 			const outputLabel = `v_text_ass_${filterLabelIndex++}`;
 			if (layer.blendMode === "normal") {
