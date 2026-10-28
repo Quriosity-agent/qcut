@@ -1073,6 +1073,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				required: true,
 			}),
 			f(
+				"--secondary-file",
+				"string",
+				"Second-language subtitle file: each cue becomes the second line of the --file caption it overlaps (style it with style.secondary)"
+			),
+			f(
 				"--language",
 				"string",
 				"Language code for every cue (default: from the file, else en)"
@@ -1092,6 +1097,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		[
 			"qcut editor captions import --project-id <id> --file subtitles.srt --language zh --json",
 			'qcut editor captions import --project-id <id> --file subtitles.srt --preset film --style \'{"fontFamily":"Futura","fontSize":24}\' --json',
+			'qcut editor captions import --project-id <id> --file zh.srt --secondary-file en.srt --style \'{"fontSize":34,"bold":true,"secondary":{"fontFamily":"Futura","fontSize":24}}\' --json',
 		]
 	),
 	// ── Transactions ──
