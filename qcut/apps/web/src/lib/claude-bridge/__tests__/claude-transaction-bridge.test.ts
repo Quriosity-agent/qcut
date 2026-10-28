@@ -124,8 +124,10 @@ vi.mock("@/lib/debug/debug-config", () => ({
 	debugWarn: vi.fn(),
 }));
 
+import { useProjectStore } from "@/stores/project-store";
 import {
 	cleanupClaudeTransactionBridge,
+	STALE_TRANSACTION_GRACE_MS,
 	setupClaudeTransactionBridge,
 } from "../claude-transaction-bridge";
 
@@ -198,6 +200,139 @@ describe("Claude transaction bridge sticker rollback", () => {
 		expect(transactionMocks.api.sendRollbackResponse).toHaveBeenCalledWith(
 			"request-rollback",
 			{ success: true }
+		);
+	});
+
+	it("a discard ends the transaction without restoring anything", async () => {
+		setupClaudeTransactionBridge();
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-begin",
+			transactionId: "transaction-1",
+			createdAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		});
+		// Edited by other, non-transactional requests while it was held.
+		timelineMocks.state._tracks = [{ id: "track-during", elements: [] }];
+
+		await transactionMocks.callbacks.rollback?.({
+			requestId: "request-discard",
+			transactionId: "transaction-1",
+			reason: "Begin timed out",
+			discard: true,
+		});
+
+		expect(timelineMocks.state.restoreTracks).not.toHaveBeenCalled();
+		expect(timelineMocks.state._tracks).toEqual([
+			{ id: "track-during", elements: [] },
+		]);
+		expect(transactionMocks.api.sendRollbackResponse).toHaveBeenCalledWith(
+			"request-discard",
+			{ success: true, message: "Discarded; nothing restored" }
+		);
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-next",
+			transactionId: "transaction-2",
+			createdAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		});
+		expect(transactionMocks.api.sendBeginResponse).toHaveBeenLastCalledWith(
+			"request-next",
+			{ success: true }
+		);
+	});
+
+	it("a new begin drops a transaction held well past its expiry", async () => {
+		setupClaudeTransactionBridge();
+		const expired = Date.now() - STALE_TRANSACTION_GRACE_MS - 1;
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-orphan",
+			transactionId: "transaction-orphan",
+			createdAt: expired - 30_000,
+			expiresAt: expired,
+		});
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-next",
+			transactionId: "transaction-next",
+			createdAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		});
+		expect(transactionMocks.api.sendBeginResponse).toHaveBeenLastCalledWith(
+			"request-next",
+			{ success: true }
+		);
+
+		// One that is still within its time keeps blocking.
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-nested",
+			transactionId: "transaction-nested",
+			createdAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		});
+		expect(transactionMocks.api.sendBeginResponse).toHaveBeenLastCalledWith(
+			"request-nested",
+			{
+				success: false,
+				error:
+					"Nested transactions are not supported. Active transaction: transaction-next",
+			}
+		);
+	});
+
+	it("never restores a snapshot into a project other than its own", async () => {
+		setupClaudeTransactionBridge();
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-begin",
+			transactionId: "transaction-1",
+			createdAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		});
+		vi.mocked(useProjectStore.getState).mockReturnValue({
+			activeProject: { id: "project-2" },
+		} as never);
+		try {
+			await transactionMocks.callbacks.rollback?.({
+				requestId: "request-rollback",
+				transactionId: "transaction-1",
+			});
+		} finally {
+			vi.mocked(useProjectStore.getState).mockReturnValue({
+				activeProject: { id: "project-1" },
+			} as never);
+		}
+
+		expect(timelineMocks.state.restoreTracks).not.toHaveBeenCalled();
+		expect(timelineMocks.state.saveImmediate).not.toHaveBeenCalled();
+		expect(transactionMocks.api.sendRollbackResponse).toHaveBeenCalledWith(
+			"request-rollback",
+			{
+				success: true,
+				message: "Project project-1 is no longer open; nothing restored",
+			}
+		);
+	});
+
+	it("reports the transaction it holds in the history reply", async () => {
+		setupClaudeTransactionBridge();
+		await transactionMocks.callbacks.begin?.({
+			requestId: "request-begin",
+			transactionId: "transaction-1",
+			label: "Import captions",
+			createdAt: 10,
+			expiresAt: Date.now() + 30_000,
+		});
+		await transactionMocks.callbacks.history?.({
+			requestId: "request-history",
+		});
+		expect(transactionMocks.api.sendHistoryResponse).toHaveBeenCalledWith(
+			"request-history",
+			expect.objectContaining({
+				activeTransaction: expect.objectContaining({
+					id: "transaction-1",
+					label: "Import captions",
+					createdAt: 10,
+					projectId: "project-1",
+				}),
+			})
 		);
 	});
 });
