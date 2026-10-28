@@ -92,6 +92,26 @@ describe("caption stacking", () => {
 		).toBe(0);
 	});
 
+	it("counts a bilingual caption's second line at its own size", () => {
+		const duo = {
+			...caption({ id: "duo", startTime: 0, duration: 2 }),
+			text: "三年前",
+			secondaryText: "Three years ago",
+			style: { fontSize: 34, secondary: { fontSize: 24 } },
+		} as unknown as CaptionElement;
+		// (34 + 24) × 1.4 for the two line boxes, plus 2 × 8 px of padding.
+		expect(captionBlockHeight({ element: duo })).toBeCloseTo(
+			(34 + 24) * 1.4 + 16,
+			5
+		);
+		// Without its own size, the second line is the caption's size.
+		expect(
+			captionBlockHeight({
+				element: { ...duo, style: { fontSize: 34 } } as CaptionElement,
+			})
+		).toBeCloseTo(2 * 34 * 1.4 + 16, 5);
+	});
+
 	it("lifts a caption by every line of a two-line caption under it (N11)", () => {
 		// Bilingual: the English line underneath breaks into two lines.
 		const english = {
