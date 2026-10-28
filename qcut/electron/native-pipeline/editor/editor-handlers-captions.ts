@@ -19,10 +19,62 @@ const BATCH_LIMIT = 50;
 
 export interface Cue {
 	text: string;
+	/** A bilingual caption's second-language line. */
+	secondaryText?: string;
 	startTime: number;
 	duration: number;
 	language: string;
 	style?: unknown;
+}
+
+type TimedText = Pick<Cue, "text" | "startTime" | "duration">;
+
+function overlapSeconds(left: TimedText, right: TimedText): number {
+	return Math.max(
+		0,
+		Math.min(left.startTime + left.duration, right.startTime + right.duration) -
+			Math.max(left.startTime, right.startTime)
+	);
+}
+
+/**
+ * A second-language file's cues as the second lines of `cues`: each goes to
+ * the cue it overlaps longest (several in time order join with a line
+ * break). Those that overlap none are counted, not placed.
+ */
+export function pairSecondaryCues({
+	cues,
+	secondary,
+}: {
+	cues: Cue[];
+	secondary: TimedText[];
+}): { cues: Cue[]; unpaired: number } {
+	const lines = cues.map((): TimedText[] => []);
+	let unpaired = 0;
+	for (const candidate of secondary) {
+		let best = -1;
+		let bestOverlap = 0;
+		for (const [index, cue] of cues.entries()) {
+			const overlap = overlapSeconds(cue, candidate);
+			if (overlap > bestOverlap) {
+				best = index;
+				bestOverlap = overlap;
+			}
+		}
+		if (best < 0) unpaired++;
+		else lines[best].push(candidate);
+	}
+	return {
+		cues: cues.map((cue, index) => {
+			const text = lines[index]
+				.sort((left, right) => left.startTime - right.startTime)
+				.map((line) => line.text.trim())
+				.filter(Boolean)
+				.join("\n");
+			return text ? { ...cue, secondaryText: text } : cue;
+		}),
+		unpaired,
+	};
 }
 
 /** Greedy lanes: a cue joins the first lane whose last cue ends before it starts. */
@@ -93,24 +145,51 @@ export async function captionsImport(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
-	const cues: Cue[] = parsed.clips.map((clip) => ({
+	let cues: Cue[] = parsed.clips.map((clip) => ({
 		text: clip.text,
 		startTime: clip.startTime,
 		duration: clip.duration,
 		language: opts.language ?? clip.language,
 		style: style ?? clip.style,
 	}));
+	// A second-language file gives each caption its second line.
+	const secondaryFile = opts.secondaryFile?.trim();
+	let secondaryPath: string | undefined;
+	let unpaired = 0;
+	if (secondaryFile) {
+		secondaryPath = path.resolve(secondaryFile);
+		if (!fs.existsSync(secondaryPath)) {
+			return {
+				success: false,
+				error: `Subtitle file not found: ${secondaryPath}`,
+			};
+		}
+		const secondary = parseSubtitleInput(secondaryPath).clips;
+		if (secondary.length === 0) {
+			return { success: false, error: `No cues found in ${secondaryPath}` };
+		}
+		({ cues, unpaired } = pairSecondaryCues({ cues, secondary }));
+	}
 	const imported = await importCaptionCues({ client, opts, cues });
 	if (!imported.success) return imported;
 	const { warnings, ...summary } = imported.data as Record<string, unknown>;
+	const allWarnings = [
+		...((warnings as string[] | undefined) ?? []),
+		...(unpaired > 0
+			? [
+					`${unpaired} cue(s) of ${secondaryPath} overlap no cue of ${filePath} and were left out.`,
+				]
+			: []),
+	];
 	return {
 		success: true,
 		data: {
 			projectId: opts.projectId,
 			file: filePath,
+			...(secondaryPath ? { secondaryFile: secondaryPath } : {}),
 			...summary,
 			...(parsed.resolution ? { resolution: parsed.resolution } : {}),
-			...(warnings ? { warnings } : {}),
+			...(allWarnings.length > 0 ? { warnings: allWarnings } : {}),
 		},
 	};
 }
@@ -169,6 +248,9 @@ export async function importCaptionCues({
 						type: "captions",
 						trackId,
 						content: cue.text,
+						...(cue.secondaryText
+							? { secondaryContent: cue.secondaryText }
+							: {}),
 						startTime: cue.startTime,
 						duration: cue.duration,
 						language: cue.language,
