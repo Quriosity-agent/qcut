@@ -511,6 +511,12 @@ test("QCut 2701 report: tracks, transactions, caption style, bold font, keys", a
 		expect(fal?.warning).toContain("test placeholder");
 		evidence("N10 check-keys FAL_KEY", fal);
 	} finally {
+		// Leave the editor first: deleting the open project makes it open a
+		// fresh "Untitled Project", whose folder would be left behind.
+		await page.evaluate(() => {
+			window.location.hash = "#/projects";
+		});
+		await page.waitForTimeout(1000);
 		await cliRaw({
 			apiPort,
 			args: ["editor:project:delete", ...pid, "--force", "--json"],
