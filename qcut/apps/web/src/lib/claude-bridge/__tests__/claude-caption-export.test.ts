@@ -67,4 +67,38 @@ describe("Claude caption export", () => {
 		expect(caption.style).toEqual(style);
 		expect(caption.emphasis).toBe(true);
 	});
+
+	it("shows a bilingual caption's second line as secondaryContent", () => {
+		const tracks: TimelineTrack[] = [
+			{
+				id: "captions",
+				name: "字幕",
+				type: "captions",
+				elements: [
+					{
+						id: "caption-1",
+						type: "captions",
+						name: "三年前",
+						text: "三年前",
+						secondaryText: "Three years ago",
+						language: "zh",
+						source: "manual",
+						startTime: 0,
+						duration: 2,
+						trimStart: 0,
+						trimEnd: 0,
+						style: { secondary: { fontFamily: "Futura" } } as never,
+					},
+				],
+			},
+		];
+
+		const [caption] = formatTracksForExport({ tracks, fps: 30 })[0].elements;
+
+		expect(caption).toMatchObject({
+			content: "三年前",
+			secondaryContent: "Three years ago",
+			style: { secondary: { fontFamily: "Futura" } },
+		});
+	});
 });
