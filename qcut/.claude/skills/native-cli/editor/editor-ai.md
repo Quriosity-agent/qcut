@@ -153,6 +153,37 @@ qcut editor:transcribe:start \
 
 The `--load-speech` flag sends the result to the Smart Speech panel. Words appear as clickable chips for timestamp navigation.
 
+### Transcribe straight to captions
+
+```bash
+qcut editor:transcribe:start --project-id <id> \
+  --source path:/abs/对白.wav --provider elevenlabs --language zh \
+  --to-captions --preset film --style '{"fontFamily":"Hiragino Sans GB","fontSize":34}' --json
+```
+
+`--to-captions` waits for the transcript and puts it on captions tracks the
+way `editor:captions:import` does (one transaction, overlapping cues on their
+own lanes, `--style`, `--preset`, `--replace`). Cues follow the words: a cue
+ends at a sentence end (。！？.!?), a pause over 0.5 s, 42 half-width columns
+(21 CJK characters) or 6 s. The answer carries the job result plus `captions`
+(cues, tracks, warnings).
+
+### ElevenLabs credentials (`--provider elevenlabs`, the default)
+
+Scribe v2 runs on the first of these that is set up:
+
+1. `ELEVENLABS_API_KEY` — ElevenLabs is called directly (no FAL).
+2. A signed-in QCut account (`qcut login`) — QCut cloud, as the 字幕 panel's
+   智能识别 does; no key needed.
+3. A FAL key (`FAL_KEY`, in FAL's `key_id:key_secret` form).
+
+A key that cannot be real is skipped instead of sent: a test placeholder
+(`test-…`, `…-e2e`) or a FAL key without `:`. With none left the job fails
+with `ElevenLabs transcription has no usable credentials. It needs one of: …
+Skipped: FAL_KEY looks like a test placeholder …`. `qcut system keys` marks
+such keys with `!!` and a `warning`. (An ElevenLabs balance in WZRD/QCut Web
+is a different account and is not used here.)
+
 ### Job management
 
 ```bash
@@ -166,7 +197,8 @@ qcut editor:transcribe:cancel --project-id <id> --job-id <id>
 | Flag | Type | Description |
 |------|------|-------------|
 | `--language` | string | Language code (e.g., `en`, `zh`) |
-| `--provider` | string | Provider (e.g., `deepgram`) |
+| `--provider` | string | `elevenlabs` (default) or `gemini` |
+| `--to-captions` | boolean | `start` only: put the transcript on captions tracks (with `--style`, `--preset`, `--replace`) |
 | `--no-diarize` | boolean | Disable speaker diarization |
 | `--load-speech` | boolean | Load result into Smart Speech panel |
 | `--poll` | boolean | Auto-poll until complete |
@@ -365,7 +397,10 @@ Returns project list with `id`, `name`, `createdAt`, `updatedAt`, and `activePro
 qcut editor:navigator:open --project-id <id>
 ```
 
-Navigates the editor to the project, loads timeline, media, and skills.
+Navigates the editor to the project, loads timeline, media, and skills,
+and answers once the project has loaded (up to 25 s; `navigated: false` with
+the reason otherwise). Add `--wait-ready` to also wait until the media and
+timeline reads answer, before the first edit of a large project.
 
 ---
 
