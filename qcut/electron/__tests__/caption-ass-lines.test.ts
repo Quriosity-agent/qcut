@@ -125,4 +125,29 @@ describe("caption lines in ASS", () => {
 			})
 		).toEqual({ text: "第一回合" });
 	});
+
+	// A brace or backslash in the font name closed the override block early.
+	it("keeps the second line's font name inside its override block", () => {
+		const event = captionEventText({
+			overlay: {
+				content: "第一回合",
+				fontSize: 40,
+				fontFamily: "PingFang SC",
+				lineHeight: 1.4,
+				secondary: {
+					content: "Round one",
+					fontFamily: "Fu}tu\\ra{",
+					fontSize: 24,
+					color: "#ffcc00",
+					fontWeight: "normal",
+					fontStyle: "normal",
+				},
+			} as TextOverlay,
+			fontSize: 46,
+			fontFamilyFor: (overlay: TextOverlay) => overlay.fontFamily,
+		});
+
+		expect(event.text).toContain("{\\fnFutura\\b0\\i0\\c&H00CCFF&\\fs");
+		expect(event.text.endsWith("}Round one")).toBe(true);
+	});
 });
