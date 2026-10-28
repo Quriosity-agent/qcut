@@ -345,16 +345,30 @@ export function captionStyleWarnings({
 
 /**
  * A patch's caption style: its `style` plus the style fields given at the
- * top level; other top-level fields are the patch's own business.
+ * top level; other top-level fields are the patch's own business. The store
+ * merges a patch over the stored style one level deep, so a patch to part of
+ * `shadowOffset` or `position` (one axis, the alignment) carries the rest of
+ * `current`'s.
  */
 export function captionStyleFromPatch({
 	changes,
+	current,
 }: {
 	changes: Record<string, unknown>;
+	current?: unknown;
 }): CaptionStyleInput {
 	const element: Record<string, unknown> = { style: changes.style };
 	for (const key of CAPTION_STYLE_KEYS) {
 		if (changes[key] !== undefined) element[key] = changes[key];
 	}
-	return normalizeCaptionStyleInput({ element });
+	const input = normalizeCaptionStyleInput({ element });
+	if (!input.style || !isRecord(current)) return input;
+	for (const key of ["shadowOffset", "position"]) {
+		const patch = input.style[key];
+		const stored = current[key];
+		if (isRecord(patch) && isRecord(stored)) {
+			input.style[key] = { ...stored, ...patch };
+		}
+	}
+	return input;
 }
