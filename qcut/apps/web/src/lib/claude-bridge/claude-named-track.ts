@@ -1,7 +1,20 @@
 import type { TimelineTrack } from "@/types/timeline";
 
+/** The element types a named track is checked for. */
+type NamedTrackElementType =
+	| "media"
+	| "text"
+	| "adjustment"
+	| "captions"
+	| "markdown"
+	| "sticker"
+	| "remotion";
+
 /** The track types each element type may be placed on, as the store allows. */
-const TRACK_TYPES_FOR_ELEMENT: Record<string, readonly string[]> = {
+const TRACK_TYPES_FOR_ELEMENT: Record<
+	NamedTrackElementType,
+	readonly string[]
+> = {
 	media: ["media", "audio"],
 	text: ["text"],
 	adjustment: ["adjustment"],
@@ -26,7 +39,7 @@ export function resolveNamedTrack({
 }: {
 	tracks: readonly TimelineTrack[];
 	trackId: unknown;
-	elementType: keyof typeof TRACK_TYPES_FOR_ELEMENT;
+	elementType: NamedTrackElementType;
 }): TimelineTrack | undefined {
 	if (trackId === undefined || trackId === null || trackId === "") {
 		return undefined;
