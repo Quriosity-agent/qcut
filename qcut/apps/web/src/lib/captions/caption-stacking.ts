@@ -13,9 +13,18 @@ import { resolveSubtitleStyle } from "./subtitle-style";
 /** The preview's caption box padding (8 px top and bottom). */
 const CAPTION_BOX_PADDING_Y = 8;
 
+/**
+ * The lines a caption's text breaks into on its own (`\n`); every engine
+ * draws those breaks, so stacking can count them. Automatic wrapping of a
+ * long line is not counted: the engines measure text differently.
+ */
+export function captionLineCount({ text }: { text: string }): number {
+	return Math.max(1, text.trim().split(/\r?\n/).length);
+}
+
 export function captionBlockHeight({
 	element,
-	lines = 1,
+	lines = captionLineCount({ text: element.text ?? "" }),
 }: {
 	element: CaptionElement;
 	lines?: number;
