@@ -93,6 +93,11 @@ export function assInlineColor(hex: string): string {
 	return `&H${rgb.slice(4, 6)}${rgb.slice(2, 4)}${rgb.slice(0, 2)}&`.toUpperCase();
 }
 
+/** A font name inside an override block, where `{`, `}` and `\` would end it. */
+function overrideFontName(family: string): string {
+	return family.replace(/[{}\\]/g, "");
+}
+
 /**
  * A caption event's text: the caption's lines, then a bilingual caption's
  * second-language lines in their font. A last line in that other font also
@@ -135,7 +140,7 @@ export function captionEventText({
 		lines: lines(secondary.content),
 		fontSize: secondary.fontSize,
 		assFontSize: secondary.fontSize * metrics.sizeFactor,
-		fontTags: `\\fn${family}\\b${bold ? 1 : 0}\\i${italic ? 1 : 0}\\c${assInlineColor(secondary.color)}`,
+		fontTags: `\\fn${overrideFontName(family)}\\b${bold ? 1 : 0}\\i${italic ? 1 : 0}\\c${assInlineColor(secondary.color)}`,
 	};
 	runs.push(secondaryRun);
 	return {
