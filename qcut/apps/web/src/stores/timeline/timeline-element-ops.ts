@@ -5,10 +5,8 @@ import {
 } from "@/lib/debug/error-handler";
 import { createObjectURL } from "@/lib/media/blob-manager";
 import {
-	checkElementOverlaps,
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
-	resolveElementOverlaps,
 } from "@/lib/timeline";
 import { generateUUID } from "@/lib/utils";
 import type {
@@ -30,7 +28,10 @@ import {
 	createStickerInstanceId,
 } from "@/lib/stickers/sticker-instance";
 import { blockedByTrackLock } from "./timeline-lock-guard";
-import { findOccupyingElement } from "@/lib/timeline-occupancy";
+import {
+	findOccupyingElement,
+	resolveLaneOverlaps,
+} from "@/lib/timeline-occupancy";
 
 export function createElementOps(
 	get: StoreGet,
@@ -83,19 +84,16 @@ export function createElementOps(
 			const newEndTime = clampedNewStartTime + elementTimelineDuration;
 			const timeDelta = clampedNewStartTime - oldStartTime;
 
-			// Update tracks based on multi-track ripple setting
+			// Only the moved element's own track ripples. Other tracks are left
+			// exactly as they are: resolving their overlaps here nudged
+			// unrelated clips (N18).
+			const fps = getProjectFps();
 			const updatedTracks = _tracks.map((currentTrack) => {
-				// Only apply ripple effects to the same track unless multi-track ripple is enabled
-				const shouldApplyRipple = currentTrack.id === trackId;
+				if (currentTrack.id !== trackId) return currentTrack;
 
 				const updatedElements = currentTrack.elements.map((currentElement) => {
-					if (currentElement.id === elementId && currentTrack.id === trackId) {
+					if (currentElement.id === elementId) {
 						return { ...currentElement, startTime: clampedNewStartTime };
-					}
-
-					// Only apply ripple effects if we should process this track
-					if (!shouldApplyRipple) {
-						return currentElement;
 					}
 
 					// For ripple editing, we need to move elements that come after the moved element
@@ -128,15 +126,10 @@ export function createElementOps(
 					return currentElement;
 				});
 
-				// Check for overlaps and resolve them if necessary
-				const hasOverlaps = checkElementOverlaps(updatedElements);
-				if (hasOverlaps) {
-					// Resolve overlaps by adjusting element positions
-					const resolvedElements = resolveElementOverlaps(updatedElements);
-					return { ...currentTrack, elements: resolvedElements };
-				}
-
-				return { ...currentTrack, elements: updatedElements };
+				return {
+					...currentTrack,
+					elements: resolveLaneOverlaps({ elements: updatedElements, fps }),
+				};
 			});
 
 			updateTracksAndSave(updatedTracks);
