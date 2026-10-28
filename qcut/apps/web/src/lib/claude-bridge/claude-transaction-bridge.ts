@@ -61,6 +61,13 @@ type CommitResponse = TransactionResponse & {
 
 const DEFAULT_HISTORY_LABEL = "Edit";
 const DEFAULT_TRANSACTION_LABEL = "Claude transaction";
+/**
+ * Past its expiry plus this, the main process would already have rolled a
+ * transaction back if it still tracked it (its rollback request would have
+ * been handled first, since requests are handled in order): the one held
+ * here is orphaned and must not block new transactions.
+ */
+export const STALE_TRANSACTION_GRACE_MS = 15_000;
 
 let activeTransaction: ActiveTransactionContext | null = null;
 let historyEntries: TransactionHistoryEntry[] = [];
@@ -447,6 +454,16 @@ export function setupClaudeTransactionBridge(): void {
 
 		api.onBegin((data) => {
 			try {
+				if (
+					activeTransaction &&
+					Date.now() > activeTransaction.expiresAt + STALE_TRANSACTION_GRACE_MS
+				) {
+					debugWarn(
+						"[ClaudeTransactionBridge] Dropping expired orphaned transaction:",
+						activeTransaction.transactionId
+					);
+					activeTransaction = null;
+				}
 				if (activeTransaction) {
 					sendBeginResponse({
 						api,
@@ -577,6 +594,37 @@ export function setupClaudeTransactionBridge(): void {
 				}
 
 				const current = activeTransaction;
+				// A discard ends a transaction nobody edited under (its begin
+				// timed out): restoring would undo everything done since.
+				if (data.discard === true) {
+					activeTransaction = null;
+					debugWarn(
+						"[ClaudeTransactionBridge] Discarded transaction without restoring:",
+						data.transactionId,
+						data.reason
+					);
+					sendRollbackResponse({
+						api,
+						requestId: data.requestId,
+						result: { success: true, message: "Discarded; nothing restored" },
+					});
+					return;
+				}
+				// The snapshot belongs to the project the transaction began in;
+				// restoring it into another open project would overwrite that one.
+				const openProjectId = useProjectStore.getState().activeProject?.id;
+				if (current.projectId && current.projectId !== openProjectId) {
+					activeTransaction = null;
+					sendRollbackResponse({
+						api,
+						requestId: data.requestId,
+						result: {
+							success: true,
+							message: `Project ${current.projectId} is no longer open; nothing restored`,
+						},
+					});
+					return;
+				}
 				const store = useTimelineStore.getState();
 				store.restoreTracks(cloneJson({ value: current.preSnapshot.tracks }));
 				useTimelineStore.setState({
@@ -698,6 +746,15 @@ export function setupClaudeTransactionBridge(): void {
 					redoCount: store.redoStack.length,
 					entries: [...historyEntries],
 					redoEntries: [...redoEntries],
+					activeTransaction: activeTransaction
+						? {
+								id: activeTransaction.transactionId,
+								label: activeTransaction.label,
+								createdAt: activeTransaction.createdAt,
+								expiresAt: activeTransaction.expiresAt,
+								projectId: activeTransaction.projectId,
+							}
+						: null,
 				});
 			} catch (error) {
 				debugError("[ClaudeTransactionBridge] History handler failed:", error);
