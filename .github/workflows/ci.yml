@@ -9,6 +9,14 @@ on:
   push:
     branches: [master]
 
+# Commits are pushed one file at a time, and every push queued a full
+# three-OS run, though only the head commit's checks gate a pull request:
+# a new push now cancels the pull request's older runs. A master push is
+# grouped by its own run id, so no master run is ever cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
