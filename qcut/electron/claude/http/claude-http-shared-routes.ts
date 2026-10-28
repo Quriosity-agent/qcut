@@ -1050,13 +1050,16 @@ export function registerSharedRoutes(
 		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
+		const startedAt = Date.now();
 		const copied = await batchImportMedia(req.params.projectId, req.body.items);
 		// The editor loads what was copied before this answers, so an
-		// add-element right after finds the media.
+		// add-element right after finds the media; the copy's time counts
+		// against the same wait.
 		const result = await loadBatchImportInEditor({
 			accessor,
 			projectId: req.params.projectId,
 			results: copied,
+			startedAt,
 		});
 		logOperation({
 			stage: 1,
