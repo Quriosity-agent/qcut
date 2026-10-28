@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.29.1] - 2026-10-28
+
 ### Added
 
 - `editor transaction list|status|rollback`: see timeline transactions, including one only the editor still holds, and end it (an orphan is discarded without restoring anything).
