@@ -1738,4 +1738,48 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 			expect.stringContaining('Caption field "style.marginV" ignored'),
 		]);
 	});
+
+	it("stores a bilingual caption's second line and its look", async () => {
+		storeMocks.timelineStoreState.tracks.push({
+			id: "track-duo",
+			name: "字幕",
+			type: "captions",
+			elements: [],
+		});
+		const { batchAddHandler } = setupBatchAddBridge();
+
+		await batchAddHandler({
+			requestId: "req-duo",
+			projectId: "project-1",
+			elements: [
+				{
+					type: "captions",
+					trackId: "track-duo",
+					startTime: 12,
+					duration: 2.5,
+					content: "三年前",
+					secondaryContent: " Three years ago ",
+					style: {
+						fontSize: 34,
+						secondary: { fontFamily: "Futura", fontSize: 24 },
+					},
+				} as unknown as ClaudeBatchAddElementRequest,
+			],
+		});
+
+		expect(
+			storeMocks.timelineStoreState.addElementToTrack
+		).toHaveBeenCalledWith(
+			"track-duo",
+			expect.objectContaining({
+				text: "三年前",
+				secondaryText: "Three years ago",
+				style: {
+					fontSize: 34,
+					secondary: { fontFamily: "Futura", fontSize: 24 },
+				},
+			}),
+			expect.any(Object)
+		);
+	});
 });
