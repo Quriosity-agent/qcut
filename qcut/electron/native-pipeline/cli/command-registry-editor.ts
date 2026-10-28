@@ -351,13 +351,16 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:track:move": ed(
 		"editor:track:move",
-		"Move a timeline track to an exact visual index",
+		"Move a timeline track to an exact visual index, or directly above/below another track",
 		[
 			PID_ACTIVE,
 			f("--track-id", "string", "Track ID", { required: true }),
-			f("--index", "number", "Zero-based destination index", {
-				required: true,
-			}),
+			f("--index", "number", "Zero-based destination index (0 = top row)"),
+			f("--above", "string", "Put the track directly above this track ID"),
+			f("--below", "string", "Put the track directly below this track ID"),
+		],
+		[
+			"qcut editor track move --project-id <id> --track-id <new> --above <main-track-id> --json",
 		]
 	),
 	"editor:track:delete": ed("editor:track:delete", "Delete a timeline track", [
