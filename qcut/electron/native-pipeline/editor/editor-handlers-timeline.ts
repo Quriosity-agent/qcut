@@ -584,13 +584,15 @@ async function timelineBatchDelete(
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
-	if (!opts.elements)
+	// `--cuts` is what the docs used to name it (N17); both are read.
+	const input = opts.elements ?? opts.cuts;
+	if (!input)
 		return {
 			success: false,
 			error: "Missing --elements (JSON array or @file.json)",
 		};
 
-	const parsed = await resolveJsonInput(opts.elements);
+	const parsed = await resolveJsonInput(input);
 	let elements = Array.isArray(parsed)
 		? parsed
 		: (parsed as { elements?: unknown[] }).elements;
