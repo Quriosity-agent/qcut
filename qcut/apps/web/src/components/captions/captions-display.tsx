@@ -125,7 +125,7 @@ export function CaptionsDisplay({
 							hyphens: "auto",
 						}}
 					>
-						{activeSegment.text}
+						{activeSegment.text.trim()}
 					</div>
 				)}
 			</div>
