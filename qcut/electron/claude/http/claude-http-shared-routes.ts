@@ -24,10 +24,15 @@ import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjus
 import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
 import { mediaOverlayRendererReason } from "../../types/media-overlay-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
+import {
+	captionStyleWarnings,
+	normalizeCaptionStyleInput,
+} from "../../types/caption-style-input.js";
 import { HttpError } from "../utils/http-router.js";
 import { getProjectPath, isValidSourcePath } from "../utils/helpers.js";
 import type {
 	Transaction,
+	TransactionList,
 	TransactionRequest,
 	MediaFile,
 	ClaudeTimeline,
@@ -260,13 +265,15 @@ export interface WindowAccessor {
 	commitTransaction(
 		transactionId: string
 	): Promise<{ transaction: Transaction; historyEntryAdded: boolean }>;
-	/** Rollback a grouped transaction */
+	/** Rollback a grouped transaction (or drop one only the editor still holds) */
 	rollbackTransaction(
 		transactionId: string,
 		reason?: string
-	): Promise<{ transaction: Transaction }>;
+	): Promise<{ transaction: Transaction; orphaned?: boolean }>;
 	/** Get transaction status */
 	getTransactionStatus(transactionId: string): Promise<Transaction | null>;
+	/** List open and recent transactions, including the editor's own */
+	listTransactions?(): Promise<TransactionList>;
 	/** Trigger undo */
 	undoTimeline(): Promise<ClaudeUndoRedoResponse>;
 	/** Trigger redo */
@@ -635,6 +642,19 @@ async function waitForTimelineMutationBarrier({
 		// Best-effort ordering only.
 		return null;
 	}
+}
+
+/** The track holding `elementId` in a timeline read, if any. */
+function findTrackOfElement({
+	timeline,
+	elementId,
+}: {
+	timeline: ClaudeTimeline;
+	elementId: string;
+}): ClaudeTimeline["tracks"][number] | undefined {
+	return timeline.tracks?.find((track) =>
+		track.elements?.some((element) => element.id === elementId)
+	);
 }
 
 /**
@@ -1251,7 +1271,25 @@ export function registerSharedRoutes(
 				requestAddElement(req.params.projectId, element, correlationId),
 		});
 		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-		return { elementId };
+		// The track it actually landed on, so a caller can check the lane
+		// without exporting the timeline.
+		const placed = await waitForTimelineMutationBarrier({ accessor });
+		const track = placed
+			? findTrackOfElement({ timeline: placed, elementId })
+			: undefined;
+		// The renderer applies the same reading of a caption's style; its
+		// reply carries no data, so what it could not use is reported here.
+		const warnings =
+			req.body.type === "captions" || req.body.type === "caption"
+				? captionStyleWarnings(
+						normalizeCaptionStyleInput({ element: req.body })
+					)
+				: [];
+		return {
+			elementId,
+			...(track ? { trackId: track.id, trackName: track.name } : {}),
+			...(warnings.length > 0 ? { warnings } : {}),
+		};
 	});
 
 	router.post("/api/claude/timeline/:projectId/elements/batch", async (req) => {
@@ -1371,14 +1409,41 @@ export function registerSharedRoutes(
 				accessor,
 				projectId: req.params.projectId,
 			});
+			const { elementId } = req.params;
+			// Read first, so the answer can name the element's track and say
+			// whether that track went too (an emptied track is removed with its
+			// last element, and a later add naming it is refused).
+			const before = await waitForTimelineMutationBarrier({ accessor });
+			const track = before
+				? findTrackOfElement({ timeline: before, elementId })
+				: undefined;
+			if (before && !track) {
+				throw new HttpError(404, `Element not found: ${elementId}`);
+			}
 			const win = accessor.getWindow();
-			win.webContents.send(
-				"claude:timeline:removeElement",
-				req.params.elementId
-			);
-			await waitForTimelineMutationBarrier({ accessor });
+			win.webContents.send("claude:timeline:removeElement", elementId);
+			const after = await waitForTimelineMutationBarrier({ accessor });
 			scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-			return { removed: true };
+			if (!track || !after) return { removed: true };
+			if (findTrackOfElement({ timeline: after, elementId })) {
+				throw new HttpError(
+					409,
+					`Element ${elementId} was not removed; its track "${track.name}" may be locked`
+				);
+			}
+			const trackRemoved = !after.tracks.some(
+				(candidate) => candidate.id === track.id
+			);
+			return {
+				removed: true,
+				trackId: track.id,
+				trackRemoved,
+				...(trackRemoved
+					? {
+							warning: `Track "${track.name}" (${track.id}) had no other elements and was removed with this one; create a track before adding to it again.`,
+						}
+					: {}),
+			};
 		}
 	);
 
