@@ -335,4 +335,48 @@ describe("Claude transaction bridge sticker rollback", () => {
 			})
 		);
 	});
+
+	// N18 (2026-10-28 trailer report): an undo answered ok while it took back
+	// another step than the caller meant, and nothing said which.
+	it("answers an undo with the step it took back and what that changed", async () => {
+		const clip = (startTime: number) => ({
+			id: "clip",
+			name: "clip",
+			startTime,
+			duration: 2,
+		});
+		const state = timelineMocks.state as Record<string, unknown>;
+		state.tracks = [{ id: "main", elements: [clip(2)] }];
+		timelineMocks.state.history = [{}];
+		timelineMocks.state.redoStack = [];
+		timelineMocks.state.undo.mockImplementationOnce(() => {
+			timelineMocks.state.history = [];
+			timelineMocks.state.redoStack = [{}];
+			state.tracks = [{ id: "main", elements: [clip(0)] }];
+		});
+		setupClaudeTransactionBridge();
+
+		await transactionMocks.callbacks.undo?.({ requestId: "request-undo" });
+
+		expect(transactionMocks.api.sendUndoResponse).toHaveBeenCalledWith(
+			"request-undo",
+			expect.objectContaining({
+				applied: true,
+				undoCount: 0,
+				redoCount: 1,
+				label: expect.any(String),
+				changes: expect.objectContaining({
+					moved: 1,
+					elements: [
+						expect.objectContaining({
+							elementId: "clip",
+							startTime: 0,
+							from: expect.objectContaining({ startTime: 2 }),
+						}),
+					],
+				}),
+			})
+		);
+		delete state.tracks;
+	});
 });
