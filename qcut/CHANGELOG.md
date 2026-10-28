@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `editor transaction list|status|rollback`: see timeline transactions, including one only the editor still holds, and end it (an orphan is discarded without restoring anything).
+- `editor transcribe start --to-captions` puts a finished transcript on captions tracks (with `--style`, `--preset`, `--replace`); `captions import --preset film` (电影字幕: no box, thin outline, soft shadow), also in the captions panel presets.
+
+### Fixed
+
+- `add-element` with a `trackId` that no longer exists fails with `Track not found` instead of putting the clip on a new track; the answer names the track used. A delete removes only the track it emptied (a new, unfilled track survives deletes elsewhere) and says when it removed one.
+- A `captions import` whose transaction begin timed out no longer leaves a transaction that blocks every later import; commit/rollback timeouts stay recoverable, and the utility API waits the full 25 s for `navigator open`.
+- Caption style accepts the text element's field names and top-level style fields, and names every field it cannot use instead of dropping it.
+- Bold captions in families outside `/System/Library/Fonts/Supplemental` (e.g. Avenir Next) export upright: libass gets a per-export folder with just the used fonts from every macOS font folder (also ~420 MB less memory per text export).
+- `--provider elevenlabs` transcription uses `ELEVENLABS_API_KEY` directly, else the signed-in QCut account, else a FAL key; test placeholder keys are skipped and the error names what is missing. E2E runs no longer write the user's credential files.
+- Explicit line breaks in captions are drawn by the preview and the canvas export too, and stacked captions make room for every line.
+
 ## [2026.10.27.1] - 2026-10-27
 
 ### Added
