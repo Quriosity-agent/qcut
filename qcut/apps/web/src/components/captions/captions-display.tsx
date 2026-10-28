@@ -117,6 +117,9 @@ export function CaptionsDisplay({
 					<div
 						style={{
 							...captionCSS,
+							// A line break in the caption is a line break on screen,
+							// as in both exports.
+							whiteSpace: "pre-line",
 							wordWrap: "break-word",
 							overflowWrap: "break-word",
 							hyphens: "auto",
