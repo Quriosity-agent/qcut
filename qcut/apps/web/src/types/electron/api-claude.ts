@@ -336,6 +336,8 @@ export interface ElectronClaudeOps {
 					applied: boolean;
 					undoCount: number;
 					redoCount: number;
+					label?: string;
+					changes?: unknown;
 				}
 			) => void;
 			onRedo: (callback: (data: { requestId: string }) => void) => void;
@@ -345,6 +347,8 @@ export interface ElectronClaudeOps {
 					applied: boolean;
 					undoCount: number;
 					redoCount: number;
+					label?: string;
+					changes?: unknown;
 				}
 			) => void;
 			onHistory: (callback: (data: { requestId: string }) => void) => void;
