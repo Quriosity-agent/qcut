@@ -1,6 +1,7 @@
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
 import type {
+	ClaudeUndoRedoChanges,
 	RendererTransactionSummary,
 	Transaction,
 	TransactionList,
@@ -28,12 +29,7 @@ export interface ClaudeUndoRedoResponse {
 	/** The step taken back (or redone), when one was. */
 	label?: string;
 	/** What that step changed: counts and the first few elements. */
-	changes?: {
-		added: number;
-		removed: number;
-		moved: number;
-		elements: Array<Record<string, unknown>>;
-	};
+	changes?: ClaudeUndoRedoChanges;
 }
 
 interface TransactionRouteAccessor {
