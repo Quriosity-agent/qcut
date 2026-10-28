@@ -3,6 +3,7 @@ import {
 	captionStyleFromPatch,
 	captionStyleWarnings,
 	normalizeCaptionStyleInput,
+	secondaryCaptionText,
 } from "../types/caption-style-input.js";
 
 /**
@@ -181,6 +182,70 @@ describe("caption style input", () => {
 		});
 		expect(result.style).toEqual({ bgOpacity: 0, outlineWidth: 1 });
 		expect(result.ignored).toEqual([]);
+	});
+
+	it("reads a bilingual caption's second-line look, in either spelling", () => {
+		const result = normalizeCaptionStyleInput({
+			element: {
+				content: "三年前",
+				secondaryContent: "Three years ago",
+				style: {
+					fontSize: 34,
+					secondary: {
+						fontFamily: "Futura",
+						fontSize: 24,
+						color: "#eee",
+						fontWeight: "bold",
+						outlineWidth: 1,
+						shadowOffsetX: 2,
+					},
+				},
+			},
+		});
+		expect(result.style).toEqual({
+			fontSize: 34,
+			secondary: {
+				fontFamily: "Futura",
+				fontSize: 24,
+				fontColor: "#eeeeee",
+				bold: true,
+			},
+		});
+		expect(result.ignored.map(({ field }) => field)).toEqual([
+			"style.secondary.outlineWidth",
+			"style.secondary.shadowOffsetX",
+		]);
+		expect(result.ignored[0].reason).toContain("its outline");
+	});
+
+	it("names a second line it cannot use", () => {
+		const result = normalizeCaptionStyleInput({
+			element: { secondary: "Futura", secondaryContent: 7 },
+		});
+		expect(result.style).toBeUndefined();
+		expect(result.ignored.map(({ field }) => field)).toEqual([
+			"secondary",
+			"secondaryContent",
+		]);
+	});
+
+	it("reads the second line's text from either name; blank means none", () => {
+		expect(secondaryCaptionText({ secondaryContent: " Round one " })).toBe(
+			"Round one"
+		);
+		expect(secondaryCaptionText({ secondaryText: "Fight" })).toBe("Fight");
+		expect(secondaryCaptionText({ secondaryContent: "  " })).toBe("");
+		expect(secondaryCaptionText({ content: "x" })).toBeUndefined();
+	});
+
+	it("merges a partial second-line patch over the stored one", () => {
+		const result = captionStyleFromPatch({
+			changes: { style: { secondary: { fontSize: 26 } } },
+			current: { secondary: { fontFamily: "Futura", fontSize: 24 } },
+		});
+		expect(result.style).toEqual({
+			secondary: { fontFamily: "Futura", fontSize: 26 },
+		});
 	});
 
 	it("keeps the stored axis and position a patch to part of them leaves out", () => {
