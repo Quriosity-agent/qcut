@@ -48,7 +48,11 @@ export function extractCaptionSegments(
 						seek: element.startTime * 1000,
 						start: element.startTime,
 						end: element.startTime + element.duration,
-						text: element.text,
+						// A bilingual caption's second-language line is the cue's
+						// second line.
+						text: element.secondaryText?.trim()
+							? `${element.text.trim()}\n${element.secondaryText.trim()}`
+							: element.text,
 						tokens: [],
 						temperature: 0.0,
 						avg_logprob: -0.5,
@@ -84,6 +88,11 @@ function formatVttTime(seconds: number): string {
 	const ms = Math.floor((seconds % 1) * 1000);
 
 	return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${ms.toString().padStart(3, "0")}`;
+}
+
+/** A cue's text on one ASS Dialogue line: its line breaks become `\N`. */
+function assLineBreaks(text: string): string {
+	return text.trim().replace(/\r?\n/g, "\\N");
 }
 
 /**
@@ -155,7 +164,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 	segments.forEach((segment) => {
 		const startTime = formatAssTime(segment.start);
 		const endTime = formatAssTime(segment.end);
-		content += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${segment.text.trim()}\n`;
+		content += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${assLineBreaks(segment.text)}\n`;
 	});
 
 	return content;
@@ -208,7 +217,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 		if (segWords.length === 0) {
 			// No word data: plain dialogue line
-			content += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${segment.text.trim()}\n`;
+			content += `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,${assLineBreaks(segment.text)}\n`;
 			continue;
 		}
 
@@ -267,7 +276,7 @@ export function exportTtml(
 	segments.forEach((segment) => {
 		const startTime = formatTtmlTime(segment.start);
 		const endTime = formatTtmlTime(segment.end);
-		content += `      <p begin="${startTime}" end="${endTime}">${escapeXml(segment.text.trim())}</p>\n`;
+		content += `      <p begin="${startTime}" end="${endTime}">${escapeXml(segment.text.trim()).replace(/\r?\n/g, "<br/>")}</p>\n`;
 	});
 
 	content += `    </div>
