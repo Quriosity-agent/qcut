@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createUtilityTimelineMutationAccessor } from "../utility/utility-timeline-accessor";
-import { TIMELINE_BATCH_MAIN_TIMEOUT_MS } from "../claude/utils/timeline-batch-deadline";
+import {
+	TIMELINE_ADD_ELEMENT_TIMEOUT_MS,
+	TIMELINE_BATCH_MAIN_TIMEOUT_MS,
+} from "../claude/utils/timeline-batch-deadline";
 
 describe("utility timeline mutation accessor", () => {
 	it("forwards project identity for single placement", async () => {
@@ -13,11 +16,18 @@ describe("utility timeline mutation accessor", () => {
 			"correlation-1"
 		);
 
-		expect(requestFromMain).toHaveBeenCalledWith("timeline:add-element", {
-			correlationId: "correlation-1",
-			element: { duration: 5, startTime: 0, type: "sticker" },
-			projectId: "project-1",
-		});
+		// N15: main waits up to 25 s for a busy editor (just after an import);
+		// the utility hop must not give up first.
+		expect(requestFromMain).toHaveBeenCalledWith(
+			"timeline:add-element",
+			{
+				correlationId: "correlation-1",
+				element: { duration: 5, startTime: 0, type: "sticker" },
+				projectId: "project-1",
+			},
+			{ timeoutMs: TIMELINE_ADD_ELEMENT_TIMEOUT_MS + 2000 }
+		);
+		expect(TIMELINE_ADD_ELEMENT_TIMEOUT_MS).toBeGreaterThanOrEqual(25_000);
 	});
 
 	it("forwards project identity for batch placement", async () => {
