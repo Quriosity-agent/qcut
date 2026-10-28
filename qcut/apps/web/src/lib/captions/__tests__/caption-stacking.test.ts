@@ -91,4 +91,31 @@ describe("caption stacking", () => {
 			})
 		).toBe(0);
 	});
+
+	it("lifts a caption by every line of a two-line caption under it (N11)", () => {
+		// Bilingual: the English line underneath breaks into two lines.
+		const english = {
+			...caption({ id: "english", startTime: 22.75, duration: 1.45 }),
+			text: "Don't fight anymore?\nYour fists are more honest than you.",
+		} as CaptionElement;
+		const chinese = caption({
+			id: "chinese",
+			startTime: 22.75,
+			duration: 1.45,
+		});
+		const bilingual = [
+			{ id: "zh", name: "字幕 中文", type: "captions", elements: [chinese] },
+			{ id: "en", name: "字幕 英文", type: "captions", elements: [english] },
+		] as unknown as TimelineTrack[];
+		// Same start: the upper track's caption sits above the lower track's.
+		expect(
+			captionsSharingEdge({ tracks: bilingual, element: chinese }).map(
+				(c) => c.id
+			)
+		).toEqual(["english", "chinese"]);
+		// Two 48 px lines at 1.4 spacing plus the box's 2 × 8 px padding.
+		expect(
+			captionStackOffset({ tracks: bilingual, element: chinese })
+		).toBeCloseTo(2 * 48 * 1.4 + 16, 5);
+	});
 });
