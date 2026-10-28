@@ -598,6 +598,77 @@ describe("native export text overlays", () => {
 		expect(yOf("上层") - yOf("下层")).toBeCloseTo(48 * 1.4 + 16, 1);
 	});
 
+	it("lifts the caption above by every line of a two-line caption under it (N11)", () => {
+		const caption = ({
+			id,
+			trackIndex,
+			content,
+		}: {
+			id: string;
+			trackIndex: number;
+			content: string;
+		}) => ({
+			id,
+			trackIndex,
+			startTime: 1,
+			endTime: 2,
+			duration: 1,
+			type: "captions" as const,
+			content,
+			language: "zh",
+		});
+		const timeline: ClaudeTimeline = {
+			name: "Bilingual",
+			duration: 4,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "zh",
+					index: 0,
+					name: "字幕 中文",
+					type: "captions",
+					// Latin like the line under it, so both get the same font (and
+					// half-leading) and only the block height differs.
+					elements: [
+						caption({ id: "zh", trackIndex: 0, content: "Not anymore?" }),
+					],
+				},
+				{
+					id: "en",
+					index: 1,
+					name: "字幕 英文",
+					type: "captions",
+					elements: [
+						caption({
+							id: "en",
+							trackIndex: 1,
+							content: "Don't fight anymore?\nYour fists are more honest.",
+						}),
+					],
+				},
+			],
+		};
+		const ass = buildTextAss({
+			overlays: collectTextOverlays(timeline),
+			width: 1280,
+			height: 720,
+		});
+		const yOf = (text: string) =>
+			Number(
+				ass
+					.split("\n")
+					.find((line) => line.startsWith("Dialogue:") && line.includes(text))
+					?.match(/\\pos\(640\.00,([0-9.]+)\)/)?.[1]
+			);
+		// Two 48 px lines at 1.4 spacing plus 16 px of box padding.
+		expect(yOf("Don't fight") - yOf("Not anymore")).toBeCloseTo(
+			2 * 48 * 1.4 + 16,
+			1
+		);
+	});
+
 	it("substitutes an openable CJK family for CJK content", () => {
 		const timeline: ClaudeTimeline = {
 			name: "CJK",
