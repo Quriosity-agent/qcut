@@ -11,6 +11,7 @@ import type { EditorApiClient } from "../editor/editor-api-client.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { jsonPending } from "../cli/json-output.js";
+import { transcriptToCaptions } from "./editor-transcript-captions.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -344,7 +345,8 @@ async function transcribeStart(
 		buildTranscribeBody(opts)
 	);
 
-	if (!opts.poll) {
+	// Captions need the finished transcript, so --to-captions waits for it.
+	if (!opts.poll && !opts.toCaptions) {
 		return { success: true, data: startResult };
 	}
 
@@ -384,6 +386,29 @@ async function transcribeStart(
 			fileName: `transcription_${sourceDesc.replace(/[/\\:]/g, "_")}.json`,
 			mediaId: opts.mediaId,
 		});
+	}
+
+	if (opts.toCaptions) {
+		const captions = await transcriptToCaptions({
+			client,
+			opts,
+			transcript: (
+				result as {
+					result?: Parameters<typeof transcriptToCaptions>[0]["transcript"];
+				}
+			).result,
+		});
+		if (!captions.success) {
+			return {
+				success: false,
+				error: `Transcribed, but the captions were not added: ${captions.error}`,
+				data: result,
+			};
+		}
+		return {
+			success: true,
+			data: { ...(result as object), captions: captions.data },
+		};
 	}
 
 	return { success: true, data: result };
