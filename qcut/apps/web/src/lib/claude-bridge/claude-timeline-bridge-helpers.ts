@@ -72,7 +72,10 @@ import {
 import type { TextAnimationPhase } from "@/lib/text/text-animation-presets";
 import { assertTimelineProjectActive } from "./claude-timeline-project-guard";
 import { resolveNamedTrack } from "./claude-named-track";
-import { normalizeCaptionStyleInput } from "../../../../../electron/types/caption-style-input";
+import {
+	normalizeCaptionStyleInput,
+	secondaryCaptionText,
+} from "../../../../../electron/types/caption-style-input";
 import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import {
 	parseTimelineColorLabel,
@@ -1809,6 +1812,10 @@ export function addClaudeCaptionElement({
 		duration
 	);
 
+	// A bilingual caption's second-language line, drawn under the text.
+	const secondaryText = secondaryCaptionText(
+		element as Record<string, unknown>
+	);
 	const addedElementId = addElementOrThrow({
 		timelineStore,
 		trackId,
@@ -1818,6 +1825,7 @@ export function addClaudeCaptionElement({
 			type: "captions",
 			name: captionText.slice(0, 50),
 			text: captionText,
+			...(secondaryText ? { secondaryText } : {}),
 			language: typeof element.language === "string" ? element.language : "en",
 			source: "manual",
 			startTime,
@@ -2317,6 +2325,9 @@ function formatElementForExport({
 			return {
 				...baseElement,
 				content: element.text,
+				...(element.secondaryText
+					? { secondaryContent: element.secondaryText }
+					: {}),
 				language: element.language,
 				// Native export reads the burn-in look from here; without it the
 				// caption falls back to the white default style.
