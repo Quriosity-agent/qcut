@@ -382,6 +382,8 @@ export interface ClaudeElement
 	animationLoopIntensity?: number;
 	zIndex?: number;
 	content?: string;
+	/** A bilingual caption's second-language line, drawn under `content`. */
+	secondaryContent?: string;
 	language?: string;
 	/** Caption marked as a key point (划重点). */
 	emphasis?: boolean;
