@@ -192,6 +192,19 @@ export interface TextOverlay {
 	animationType: "none" | "fade" | "slide-up" | "slide-left";
 	animationDuration: number;
 	animationDelay: number;
+	/**
+	 * caption-anchor only: a bilingual caption's second-language line, drawn
+	 * under `content` in its own font (outline, shadow, box and line spacing
+	 * stay the caption's).
+	 */
+	secondary?: {
+		content: string;
+		fontFamily: string;
+		fontSize: number;
+		color: string;
+		fontWeight: "normal" | "bold";
+		fontStyle: "normal" | "italic";
+	};
 }
 
 export interface JianyingTextOverlay {
