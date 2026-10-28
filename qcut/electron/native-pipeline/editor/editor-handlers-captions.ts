@@ -29,7 +29,13 @@ export interface Cue {
 
 type TimedText = Pick<Cue, "text" | "startTime" | "duration">;
 
-function overlapSeconds(left: TimedText, right: TimedText): number {
+function overlapSeconds({
+	left,
+	right,
+}: {
+	left: TimedText;
+	right: TimedText;
+}): number {
 	return Math.max(
 		0,
 		Math.min(left.startTime + left.duration, right.startTime + right.duration) -
@@ -55,7 +61,7 @@ export function pairSecondaryCues({
 		let best = -1;
 		let bestOverlap = 0;
 		for (const [index, cue] of cues.entries()) {
-			const overlap = overlapSeconds(cue, candidate);
+			const overlap = overlapSeconds({ left: cue, right: candidate });
 			if (overlap > bestOverlap) {
 				best = index;
 				bestOverlap = overlap;
