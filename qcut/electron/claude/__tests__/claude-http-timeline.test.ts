@@ -835,6 +835,109 @@ describe("Claude HTTP Server - Timeline", () => {
 		);
 	});
 
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId says when its track went with it", async () => {
+		const send = vi.fn();
+		const mockWindow = createMockWindow(send);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		const timeline = (tracks: unknown[]) =>
+			({
+				name: "P",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 24,
+				tracks,
+			}) as never;
+		vi.mocked(timelineHandler.requestTimelineFromRenderer)
+			.mockResolvedValueOnce(
+				timeline([
+					{ id: "main", name: "Main", elements: [{ id: "clip" }] },
+					{ id: "score", name: "配乐 1", elements: [{ id: "music" }] },
+				])
+			)
+			.mockResolvedValueOnce(
+				timeline([{ id: "main", name: "Main", elements: [{ id: "clip" }] }])
+			);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/music", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({
+			removed: true,
+			trackId: "score",
+			trackRemoved: true,
+		});
+		expect(res.body.data.warning).toContain("配乐 1");
+		expect(send).toHaveBeenCalledWith("claude:timeline:removeElement", "music");
+	});
+
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId 404s an unknown element", async () => {
+		const send = vi.fn();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(send),
+		]);
+		vi.mocked(
+			timelineHandler.requestTimelineFromRenderer
+		).mockResolvedValueOnce({
+			name: "P",
+			duration: 0,
+			width: 1920,
+			height: 1080,
+			fps: 24,
+			tracks: [{ id: "main", name: "Main", elements: [] }],
+		} as never);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/ghost", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(404);
+		expect(res.body.error).toContain("Element not found: ghost");
+		expect(send).not.toHaveBeenCalledWith(
+			"claude:timeline:removeElement",
+			expect.anything()
+		);
+	});
+
+	it("POST /api/claude/timeline/:projectId/elements reports the track it landed on", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		vi.mocked(
+			timelineHandler.requestTimelineFromRenderer
+		).mockResolvedValueOnce({
+			name: "P",
+			duration: 0,
+			width: 1920,
+			height: 1080,
+			fps: 24,
+			tracks: [
+				{ id: "score", name: "配乐 Suno", elements: [{ id: "element_9" }] },
+			],
+		} as never);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements", {
+			method: "POST",
+			body: JSON.stringify({
+				id: "element_9",
+				type: "audio",
+				sourceName: "score.wav",
+				trackId: "score",
+				startTime: 0,
+				duration: 5,
+			}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			elementId: "element_9",
+			trackId: "score",
+			trackName: "配乐 Suno",
+		});
+	});
+
 	it("DELETE /api/claude/timeline/:projectId/elements/batch calls batch delete handler", async () => {
 		const mockWindow = createMockWindow();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
