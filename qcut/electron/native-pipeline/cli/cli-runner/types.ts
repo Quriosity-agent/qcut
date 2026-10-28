@@ -312,6 +312,13 @@ export interface CLIRunOptions {
 	mediaId?: string;
 	elementId?: string;
 	jobId?: string;
+	/** `editor transaction rollback|status --transaction-id`. */
+	transactionId?: string;
+	/** `editor transcribe start --to-captions`: put the result on captions tracks. */
+	toCaptions?: boolean;
+	/** `editor track move --above|--below <trackId>`: place relative to a track. */
+	above?: string;
+	below?: string;
 	trackId?: string;
 	fromElementId?: string;
 	toElementId?: string;
@@ -444,6 +451,8 @@ export interface CLIRunOptions {
 	append?: boolean;
 	/** editor captions import: the subtitle file to read. */
 	file?: string;
+	/** editor captions import: a second-language file whose cues become each caption's second line. */
+	secondaryFile?: string;
 	crossTrackRipple?: boolean;
 	/** editor:editing:delete-range: leave mix automation where it is. */
 	keepAutomation?: boolean;

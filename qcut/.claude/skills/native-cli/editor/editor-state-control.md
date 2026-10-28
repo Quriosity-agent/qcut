@@ -9,7 +9,7 @@ qcut editor:state:snapshot --json    # Full state snapshot
 qcut editor:state:snapshot --include timeline,playhead --json  # Partial
 ```
 
-The endpoints below have no CLI wrappers — use `curl` directly. Requires QCut running.
+The endpoints below have no CLI wrappers — use `curl` directly (transactions excepted: see below). Requires QCut running.
 
 > **Note:** In curl examples below, `...` is shorthand for `http://127.0.0.1:8765/api/claude`.
 
@@ -57,16 +57,46 @@ curl .../commands/<correlationId>/wait  # Long-poll (29s timeout)
 
 ## Transactions (Undo Groups)
 
-Group multiple operations into a single undo entry.
+Group multiple operations into a single undo entry. `editor:captions:import`
+opens one for its whole import.
+
+```bash
+qcut editor transaction list --json                              # Open + recent, and what the editor holds
+qcut editor transaction status --transaction-id <id> --json
+qcut editor transaction rollback --transaction-id <id> --json    # End one (see below)
+```
+
+The HTTP routes, for scripts (each needs the bearer token the CLI sends for
+you; it is the `token` field of `~/.local/state/qcut-pipeline/instances/8765.json`,
+or `QCUT_API_TOKEN` when QCut was started with one):
 
 ```bash
 curl -X POST .../transaction/begin -d '{"label":"Add intro","timeoutMs":30000}'  # → transactionId
 curl -X POST .../transaction/<id>/commit                                          # Commit
 curl -X POST .../transaction/<id>/rollback                                        # Rollback
 curl .../transaction/<id>                                                         # Status
+curl .../transaction                                                              # List
 ```
 
 **Rules**: One active transaction at a time (409 if nested). Auto-rollback after timeout (default 30s, max 5min). Undo/redo blocked during active transaction.
+
+**When the editor is busy** (just after opening a large project), a begin can
+time out after 5 s: it fails with `Timeout waiting for transaction begin …
+Nothing was changed; retry once it is ready`, and the editor drops the
+transaction when it gets to the request, so nothing is left open. A commit or
+rollback the editor does not answer in time leaves the transaction active
+with its timeout re-armed, so it can be retried and still expires.
+
+**Orphaned transactions**: `transaction list` reports `editor.orphaned: true`
+when the editor holds a transaction QCut no longer tracks (QCut 2026.10.27.1
+and older left one behind after a begin timeout; every later import then
+failed with `Nested transactions are not supported. Active transaction: …`).
+`transaction rollback --transaction-id <that id>` ends it **without
+restoring anything** (no caller ever edited under it, and restoring would
+undo everything done since it opened); a new begin also drops one that is
+more than 15 s past its expiry. Rolling back a transaction whose project is
+no longer open ends it without restoring either, so another project's
+snapshot is never written into the open one.
 
 ---
 
@@ -87,3 +117,13 @@ curl .../commands/registry                         # All commands + schemas
 ```bash
 curl .../history    # { undoCount, redoCount, entries[] }
 ```
+
+`editor:undo` and `editor:redo` (`POST .../undo`, `POST .../redo`) answer
+`{ applied, undoCount, redoCount, label, changes }`. `label` names the step
+taken back or redone (a transaction's label, `Edit` for any other step), and
+`changes` says what it did to the timeline: how many elements it `added`,
+`removed` and `moved`, and the first ten of them with their track,
+`startTime` and `duration` (a moved one also has `from`, where it was
+before). Check `changes` against the step you meant to take back. When
+nothing changed (`applied: false`: the history is empty, or a transaction is
+open) the command fails and says which.

@@ -6,6 +6,10 @@ import {
 	deleteKey as removeFromQcutEnv,
 	getKeyFromFile as readFromQcutEnvFile,
 } from "./native-pipeline/infra/key-manager.js";
+import {
+	aicpCredentialsFilePath,
+	qcutEnvFilePath,
+} from "./native-pipeline/infra/credential-home.js";
 import { computeKeyStatus, KEY_SOURCE_PRECEDENCE } from "./api-key-status.js";
 import type { KeyStatus, KeySource } from "./api-key-status.js";
 import {
@@ -143,13 +147,7 @@ function decryptStoredApiKeys({
  * Windows: %APPDATA%/video-ai-studio/credentials.env
  */
 function getAicpCredentialsPath(): string {
-	const home = process.env.HOME || process.env.USERPROFILE || "";
-	if (process.platform === "win32") {
-		const appData =
-			process.env.APPDATA || path.join(home, "AppData", "Roaming");
-		return path.join(appData, "video-ai-studio", "credentials.env");
-	}
-	return path.join(home, ".config", "video-ai-studio", "credentials.env");
+	return aicpCredentialsFilePath();
 }
 
 /**
@@ -276,8 +274,7 @@ async function loadElectronStoredKeys(): Promise<ApiKeys> {
  */
 function loadQcutEnvKeys(): Partial<ApiKeys> {
 	try {
-		const home = process.env.HOME || process.env.USERPROFILE || "";
-		const envPath = path.join(home, ".qcut", ".env");
+		const envPath = qcutEnvFilePath();
 		if (!fs.existsSync(envPath)) return {};
 		const result: Partial<ApiKeys> = {};
 		for (const line of fs.readFileSync(envPath, "utf-8").split("\n")) {

@@ -9,6 +9,7 @@
 
 import type { CaptionElement, SubtitleStyle } from "../types/timeline.js";
 import {
+	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	rgbToASSColor,
 	alignToASSAlignment,
@@ -139,7 +140,26 @@ function captionTextForASS({
 					})
 					.join(" ");
 	const animationTags = captionAnimationTags({ clip, style, resolution });
-	return animationTags ? `{${animationTags}}${renderedText}` : renderedText;
+	const body = `${renderedText}${secondaryLineForASS({ clip, style })}`;
+	return animationTags ? `{${animationTags}}${body}` : body;
+}
+
+/** A bilingual caption's second-language line, after a break in its own font. */
+function secondaryLineForASS({
+	clip,
+	style,
+}: {
+	clip: CaptionElement;
+	style: SubtitleStyle;
+}): string {
+	const text = clip.secondaryText?.trim();
+	if (!text) return "";
+	const secondary = resolveSecondaryLineStyle(style);
+	// \c takes the colour without its alpha: &HBBGGRR&.
+	const color = `&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`;
+	// `{`, `}` and `\` in a font name would end the override block early.
+	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
+	return `\\N{\\fn${family}\\fs${secondary.fontSize}\\b${secondary.bold ? 1 : 0}\\i${secondary.italic ? 1 : 0}\\c${color}}${text.replace(/\n/g, "\\N")}`;
 }
 
 function captionAnimationTags({

@@ -32,6 +32,7 @@ import {
 } from "./ffmpeg/utils";
 
 import { buildFFmpegArgs } from "./ffmpeg-args-builder.js";
+import { prepareAssFontsDirectory } from "./claude/handlers/claude-export-handler/ass-fonts-dir.js";
 import { handleWordFilterCut } from "./ffmpeg-export-word-filter.js";
 import { handleMode1_5 } from "./ffmpeg-export-mode15.js";
 import { validateAudioInputStreams } from "./ffmpeg/audio-input-validation.js";
@@ -224,6 +225,7 @@ export function setupExportHandler(tempManager: TempManager): void {
 					trackOrder?: number;
 					elementOrder?: number;
 				}> = [];
+				let assFontsDirectory: string | undefined;
 				if (textAssLayers.length > 0) {
 					fs.mkdirSync(frameDir, { recursive: true });
 					for (const [index, layer] of textAssLayers.entries()) {
@@ -236,6 +238,10 @@ export function setupExportHandler(tempManager: TempManager): void {
 							elementOrder: layer.elementOrder,
 						});
 					}
+					assFontsDirectory = prepareAssFontsDirectory({
+						scripts: textAssLayers.map((layer) => layer.content),
+						directory: path.join(frameDir, "ass-fonts"),
+					});
 				}
 
 				// Construct FFmpeg arguments
@@ -262,6 +268,7 @@ export function setupExportHandler(tempManager: TempManager): void {
 						filterChain: options.filterChain,
 						textFilterChain,
 						textAssLayers: textAssLayerPaths,
+						assFontsDirectory,
 						textRasterLayers,
 						useDirectCopy: effectiveUseDirectCopy,
 						videoSources,

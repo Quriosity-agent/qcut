@@ -940,6 +940,72 @@ describe("snapshot runtime property allowlists", () => {
 		}
 	});
 
+	it("validates a bilingual caption's second line and keeps it valid", async () => {
+		const outputParentDirectory = await createTemporaryDirectory();
+		const sourcePath = join(outputParentDirectory, "proof.png");
+		await writeFile(sourcePath, "runtime validation only");
+		const snapshot = createNormalizedSnapshot({ sourcePath });
+		const caption = snapshot.tracks[2]?.elements[0];
+		if (!caption || caption.type !== "captions") {
+			throw new Error("Expected the normalized snapshot to carry a caption");
+		}
+		Object.assign(caption, {
+			secondaryText: "Three years ago",
+			style: {
+				...createSubtitleStyle(),
+				secondary: { fontFamily: "Futura", fontSize: 24, bold: false },
+			},
+		});
+		const session = new StandaloneJianyingDraftExportSession({
+			ffprobePath: TRUSTED_FFPROBE_PATH,
+		});
+		const plan = await session.plan({
+			input: {
+				draftName: "Bilingual caption",
+				outputParentDirectory,
+				snapshot,
+				targetPlatform: "macos",
+			},
+		});
+		expect(plan.requestFingerprint).toMatch(/^[a-f0-9]{64}$/);
+
+		const cases: {
+			expectedPath: string;
+			mutate: (value: QCutDraftExportSnapshotV1) => void;
+		}[] = [
+			{
+				expectedPath: "$.snapshot.tracks[2].elements[0].style.secondary",
+				mutate: (value) => {
+					Object.assign(value.tracks[2]?.elements[0] ?? {}, {
+						style: {
+							...createSubtitleStyle(),
+							secondary: { fontFamily: "Futura", outlineWidth: 1 },
+						},
+					});
+				},
+			},
+			{
+				expectedPath:
+					"$.snapshot.tracks[2].elements[0].style.secondary.fontSize",
+				mutate: (value) => {
+					Object.assign(value.tracks[2]?.elements[0] ?? {}, {
+						style: {
+							...createSubtitleStyle(),
+							secondary: { fontSize: "small" },
+						},
+					});
+				},
+			},
+		];
+		for (const testCase of cases) {
+			await expectUnknownKeyRejection({
+				...testCase,
+				outputParentDirectory,
+				snapshot,
+			});
+		}
+	});
+
 	it("uses the request validation error type for unknown properties", async () => {
 		const outputParentDirectory = await createTemporaryDirectory();
 		const snapshot = {

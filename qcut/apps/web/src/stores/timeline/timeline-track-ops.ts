@@ -4,11 +4,10 @@ import {
 	handleError,
 } from "@/lib/debug/error-handler";
 import {
-	checkElementOverlaps,
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
-	resolveElementOverlaps,
 } from "@/lib/timeline";
+import { resolveLaneOverlaps } from "@/lib/timeline-occupancy";
 import type { AudioMixAutomation, TimelineTrack } from "@/types/timeline";
 import type {
 	OperationDeps,
@@ -16,6 +15,7 @@ import type {
 	StoreSet,
 } from "./timeline-store-operations";
 import { blockedByTrackLock } from "./timeline-lock-guard";
+import { dropEmptiedTracks } from "./utils";
 import { overwriteRangeInElements } from "./timeline-collision-utils";
 import { rippleAutomation } from "@/lib/audio/audio-mix-automation";
 import { useProjectStore } from "@/stores/project-store";
@@ -279,6 +279,9 @@ export function createTrackOps(
 
 			// Remove the track and apply ripple effects to remaining tracks.
 			// Locked tracks hold their position: the ripple domain skips them.
+			// So does a track the ripple moves nothing on: resolving its
+			// overlaps would only nudge clips nobody touched (N18).
+			const fps = getProjectFps();
 			const updatedTracks = _tracks
 				.filter((track) => track.id !== trackId)
 				.map((track) => {
@@ -295,20 +298,23 @@ export function createTrackOps(
 							}
 						}
 
-						return {
-							...element,
-							startTime: Math.max(0, newStartTime),
-						};
+						const startTime = Math.max(0, newStartTime);
+						return startTime === element.startTime
+							? element
+							: { ...element, startTime };
 					});
-
-					// Check for overlaps and resolve them if necessary
-					const hasOverlaps = checkElementOverlaps(updatedElements);
-					if (hasOverlaps) {
-						const resolvedElements = resolveElementOverlaps(updatedElements);
-						return { ...track, elements: resolvedElements };
+					if (
+						updatedElements.every(
+							(element, index) => element === track.elements[index]
+						)
+					) {
+						return track;
 					}
 
-					return { ...track, elements: updatedElements };
+					return {
+						...track,
+						elements: resolveLaneOverlaps({ elements: updatedElements, fps }),
+					};
 				});
 
 			updateTracksAndSave(updatedTracks);
@@ -393,56 +399,58 @@ export function createTrackOps(
 			const elementDuration = getTimelineElementDuration({ element });
 			const elementEndTime = elementStartTime + elementDuration;
 
-			// Remove the element and shift the ripple domain after it
-			const updatedTracks = _tracks
-				.map((currentTrack) => {
-					const shouldApplyRipple = rippleDomain.domainTrackIds.has(
-						currentTrack.id
-					);
+			// Remove the element and shift the ripple domain after it. Tracks
+			// outside the domain are left exactly as they are: resolving their
+			// overlaps here nudged unrelated clips (two sound effects moved by
+			// 4 and 16 ms when a main-track clip was deleted, N18).
+			const fps = getProjectFps();
+			const rippledTracks = _tracks.map((currentTrack) => {
+				const shouldApplyRipple = rippleDomain.domainTrackIds.has(
+					currentTrack.id
+				);
+				if (!shouldApplyRipple && currentTrack.id !== trackId) {
+					return currentTrack;
+				}
 
-					const updatedElements = currentTrack.elements
-						.filter((currentElement) => {
-							// Remove the target element
-							if (
-								currentElement.id === elementId &&
-								currentTrack.id === trackId
-							) {
-								return false;
-							}
-							return true;
-						})
-						.map((currentElement) => {
-							// Only apply ripple effects if we should process this track
-							if (!shouldApplyRipple) {
-								return currentElement;
-							}
-
-							// Shift elements that start after the removed element
-							if (currentElement.startTime >= elementEndTime) {
-								return {
-									...currentElement,
-									startTime: Math.max(
-										0,
-										currentElement.startTime - elementDuration
-									),
-								};
-							}
+				const updatedElements = currentTrack.elements
+					.filter((currentElement) => {
+						// Remove the target element
+						if (
+							currentElement.id === elementId &&
+							currentTrack.id === trackId
+						) {
+							return false;
+						}
+						return true;
+					})
+					.map((currentElement) => {
+						// Only apply ripple effects if we should process this track
+						if (!shouldApplyRipple) {
 							return currentElement;
-						});
+						}
 
-					// Check for overlaps and resolve them if necessary
-					const hasOverlaps = checkElementOverlaps(updatedElements);
-					if (hasOverlaps) {
-						// Resolve overlaps by adjusting element positions
-						const resolvedElements = resolveElementOverlaps(updatedElements);
-						return { ...currentTrack, elements: resolvedElements };
-					}
+						// Shift elements that start after the removed element
+						if (currentElement.startTime >= elementEndTime) {
+							return {
+								...currentElement,
+								startTime: Math.max(
+									0,
+									currentElement.startTime - elementDuration
+								),
+							};
+						}
+						return currentElement;
+					});
 
-					return { ...currentTrack, elements: updatedElements };
-				})
-				.filter((track) => track.elements.length > 0 || track.isMain);
+				return {
+					...currentTrack,
+					elements: resolveLaneOverlaps({ elements: updatedElements, fps }),
+				};
+			});
 
-			updateTracksAndSave(updatedTracks);
+			updateTracksAndSave(
+				dropEmptiedTracks({ tracks: rippledTracks, trackIds: [trackId] })
+			);
 		},
 
 		rippleDeleteAcrossTracks: (

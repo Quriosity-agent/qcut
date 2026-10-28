@@ -292,7 +292,13 @@ export interface TimelineStore {
 	removeElementFromTrack: (
 		trackId: string,
 		elementId: string,
-		pushHistory?: boolean
+		pushHistory?: boolean,
+		/**
+		 * `keepGap` leaves the gap whatever the editor's ripple mode and
+		 * main-track magnet say: for an API delete that did not ask for a
+		 * ripple.
+		 */
+		options?: { keepGap?: boolean }
 	) => void;
 	/** Move an element from one track to another */
 	moveElementToTrack: (

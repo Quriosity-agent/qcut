@@ -74,6 +74,8 @@ const DEFAULT_ALLOW_PATTERNS = [
 	"editor:pointer:hit-test",
 	"editor:pointer:wait-for",
 	"editor:state:snapshot",
+	"editor:transaction:list",
+	"editor:transaction:status",
 	"editor:diff:*",
 	"editor:session:*",
 	"editor:screenshot:capture",
@@ -114,6 +116,7 @@ const DEFAULT_CONFIRM_PATTERNS = [
 	"editor:demo:run",
 	"editor:undo",
 	"editor:redo",
+	"editor:transaction:rollback",
 	"editor:screen-recording:stop --discard",
 	"editor:screen-recording:force-stop",
 ];

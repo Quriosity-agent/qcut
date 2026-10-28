@@ -19,6 +19,8 @@ export interface KeyReportEntry {
 	source: KeyStatus["source"];
 	masked: string | null;
 	requiredFor: KeyCategory[];
+	/** Why a configured value cannot be a working key (e.g. a test placeholder). */
+	warning?: string;
 }
 
 export interface KeyReport {
@@ -141,6 +143,7 @@ export function buildKeyReport({
 			source: status.source,
 			masked: status.masked ?? null,
 			requiredFor: requiredForKey({ name: status.name }),
+			...(status.warning ? { warning: status.warning } : {}),
 		})
 	);
 	const keys = decorated.filter((key) =>

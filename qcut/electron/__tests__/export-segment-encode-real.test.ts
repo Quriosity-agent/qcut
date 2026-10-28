@@ -6,7 +6,9 @@ import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
 } from "../claude/handlers/claude-export-handler/export-segment-encode";
+import { segmentAudioFields } from "../claude/handlers/claude-export-handler/timeline-audio-file";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types";
+import type { ClaudeElement } from "../types/claude-api";
 
 const ffmpegPath = path.resolve(
 	__dirname,
@@ -295,6 +297,193 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				1.25,
 				4
 			);
+		});
+
+		// N16 (2026-10-28 trailer report): a main-track clip's own volume, mute
+		// and volume keyframes did not change the exported sound at all.
+		describe("a joined clip's own sound", () => {
+			const tone = path.join(tempDir, "tone-2s.mp4");
+
+			/** RMS of the segment's sound between `from` and `to` seconds. */
+			function rms({
+				file,
+				from,
+				to,
+			}: {
+				file: string;
+				from: number;
+				to: number;
+			}): number {
+				const decoded = spawnSync(
+					ffmpegPath,
+					[
+						"-v",
+						"error",
+						"-i",
+						file,
+						"-vn",
+						"-ac",
+						"1",
+						"-ar",
+						"48000",
+						"-f",
+						"f32le",
+						"-",
+					],
+					{ maxBuffer: 64 * 1024 * 1024, timeout: 60_000 }
+				);
+				expect(decoded.status, decoded.stderr?.toString()).toBe(0);
+				const samples = new Float32Array(
+					decoded.stdout.buffer,
+					decoded.stdout.byteOffset,
+					decoded.stdout.byteLength / 4
+				);
+				let sum = 0;
+				let count = 0;
+				for (
+					let index = Math.round(from * 48_000);
+					index < to * 48_000;
+					index++
+				) {
+					sum += samples[index] ** 2;
+					count++;
+				}
+				return Math.sqrt(sum / count);
+			}
+
+			function encodeWithAudio({
+				audio,
+				name,
+			}: {
+				audio: Record<string, unknown>;
+				name: string;
+			}): string {
+				if (!fs.existsSync(tone)) {
+					const made = spawnSync(
+						ffmpegPath,
+						[
+							"-y",
+							"-v",
+							"error",
+							"-f",
+							"lavfi",
+							"-i",
+							"color=c=blue:s=64x64:r=24:d=2",
+							"-f",
+							"lavfi",
+							"-i",
+							"sine=frequency=440:sample_rate=48000:duration=2",
+							"-c:v",
+							"libx264",
+							"-pix_fmt",
+							"yuv420p",
+							"-c:a",
+							"aac",
+							tone,
+						],
+						{ encoding: "utf8", timeout: 60_000 }
+					);
+					expect(made.status, made.stderr).toBe(0);
+				}
+				const segment: ExportSegment = {
+					elementId: "clip-sound",
+					trackId: "main",
+					trackOrder: 0,
+					elementOrder: 0,
+					sourcePath: tone,
+					startTime: 0,
+					duration: 2,
+					trimStart: 0,
+					sourceId: "media-tone",
+					fitMode: "cover",
+					...segmentAudioFields({
+						element: { id: "clip-sound", audio } as unknown as ClaudeElement,
+						duration: 2,
+						fps: 24,
+					}),
+				};
+				const outputPath = path.join(tempDir, name);
+				const encoded = spawnSync(
+					ffmpegPath,
+					buildExportSegmentEncodeArgs({
+						inputArgs: buildExportSegmentInputArgs({ segment }),
+						scaleFilter: "scale=64:64",
+						segment,
+						settings: { fps: 24, codec: "libx264", bitrate: "1M" },
+						audio: { kind: "input" },
+						outputPath,
+					}),
+					{ encoding: "utf8", timeout: 60_000 }
+				);
+				expect(encoded.status, encoded.stderr).toBe(0);
+				return outputPath;
+			}
+
+			const settings = (overrides: Record<string, unknown>) => ({
+				enabled: true,
+				volumeDb: 0,
+				fadeIn: 0,
+				fadeOut: 0,
+				panEnabled: false,
+				pan: 0,
+				loudness: {
+					enabled: false,
+					targetLufs: -16,
+					truePeakDb: -1.5,
+					loudnessRange: 11,
+				},
+				denoise: { enabled: false, amount: 0, noiseFloorDb: -50 },
+				voiceEnhance: { enabled: false, clarity: 0, warmth: 0, presence: 0 },
+				pitch: { enabled: false, semitones: 0, preserveFormants: true },
+				equalizer: {
+					enabled: false,
+					lowGainDb: 0,
+					midGainDb: 0,
+					highGainDb: 0,
+				},
+				compressor: {
+					enabled: false,
+					thresholdDb: -18,
+					ratio: 3,
+					attackMs: 10,
+					releaseMs: 120,
+					makeupGainDb: 0,
+				},
+				limiter: { enabled: false, ceilingDb: -1, releaseMs: 50 },
+				reverb: { enabled: false, mix: 20, roomSize: 40, damping: 50 },
+				echo: { enabled: false, mix: 15, delayMs: 220, feedback: 25 },
+				telephone: { enabled: false, mix: 100 },
+				...overrides,
+			});
+
+			// The source tone is 440 Hz at FFmpeg's default 1/8 amplitude: RMS 0.088.
+			it("silences a disabled clip", () => {
+				const loud = encodeWithAudio({ audio: settings({}), name: "tone.mov" });
+				const muted = encodeWithAudio({
+					audio: settings({ enabled: false, volumeDb: -60 }),
+					name: "tone-muted.mov",
+				});
+				expect(rms({ file: loud, from: 0.2, to: 1.8 })).toBeGreaterThan(0.05);
+				expect(rms({ file: muted, from: 0, to: 2 })).toBeLessThan(1e-4);
+			});
+
+			it("mutes only where the volume keyframes say", () => {
+				// -60 dB (silence) for the first second (24 frames), then 0 dB.
+				const keyed = encodeWithAudio({
+					audio: settings({
+						keyframes: {
+							volumeDb: [
+								{ id: "a", frame: 0, value: -60, easing: "linear" },
+								{ id: "b", frame: 24, value: -60, easing: "linear" },
+								{ id: "c", frame: 25, value: 0, easing: "linear" },
+							],
+						},
+					}),
+					name: "tone-keyed.mov",
+				});
+				expect(rms({ file: keyed, from: 0.05, to: 0.95 })).toBeLessThan(1e-4);
+				expect(rms({ file: keyed, from: 1.2, to: 1.9 })).toBeGreaterThan(0.05);
+			});
 		});
 	}
 );

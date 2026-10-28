@@ -13,6 +13,8 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 interface FaceMetrics {
+	/** The font file holding the face (a .ttc holds several). */
+	file: string;
 	/** Every family name the face answers to, in every language. */
 	families: string[];
 	subfamily: string;
@@ -232,6 +234,7 @@ function readFace({
 	const subfamily =
 		readNames({ table: nameTable, nameIds: [17, 2] })[0] ?? "Regular";
 	return {
+		file,
 		families,
 		subfamily,
 		bold: (selection & 0x20) !== 0 || /bold/i.test(subfamily),
@@ -355,6 +358,34 @@ function metricsFrom({
 		sizeFactor: plausible(winHeightEm) ? winHeightEm : 1,
 		lineHeightEm: plausible(lineHeightEm) ? lineHeightEm : 1,
 	};
+}
+
+/**
+ * The font files holding a face of any of `families`, matched by every
+ * localized family name, as libass matches them.
+ */
+export function assFontFilesForFamilies({
+	families,
+	directories,
+}: {
+	families: string[];
+	/** Folders to index instead of the system's; such an index is not kept. */
+	directories?: string[];
+}): string[] {
+	let index: Map<string, FaceMetrics[]>;
+	if (directories) {
+		index = buildIndex(directories);
+	} else {
+		cachedIndex ??= buildIndex(systemFontDirectories());
+		index = cachedIndex;
+	}
+	const files = new Set<string>();
+	for (const family of families) {
+		for (const face of index.get(family.trim().toLowerCase()) ?? []) {
+			files.add(face.file);
+		}
+	}
+	return [...files];
 }
 
 /** Drops the cached index, for tests that point at their own folders. */

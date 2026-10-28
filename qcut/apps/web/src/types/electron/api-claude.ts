@@ -3,6 +3,7 @@
  */
 
 import type {
+	ClaudeUndoRedoChanges,
 	MediaFile,
 	ClaudeTimeline,
 	ClaudeElement,
@@ -133,7 +134,8 @@ export interface ElectronClaudeOps {
 			) => Promise<void>;
 			getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
 			clearSelection: (projectId: string) => Promise<void>;
-			onRequest: (callback: () => void) => void;
+			/** `requestId` is echoed by `sendResponse` so main matches the answer. */
+			onRequest: (callback: (request?: { requestId?: string }) => void) => void;
 			onApply: (
 				callback: (timeline: ClaudeTimeline, replace?: boolean) => void
 			) => void;
@@ -273,7 +275,7 @@ export interface ElectronClaudeOps {
 					fileName: string;
 				}) => void
 			) => void;
-			sendResponse: (timeline: ClaudeTimeline) => void;
+			sendResponse: (timeline: ClaudeTimeline, requestId?: string) => void;
 			removeListeners: () => void;
 		};
 		transaction: {
@@ -316,6 +318,8 @@ export interface ElectronClaudeOps {
 					requestId: string;
 					transactionId: string;
 					reason?: string;
+					/** End without restoring the timeline (nobody edited under it). */
+					discard?: boolean;
 				}) => void
 			) => void;
 			sendRollbackResponse: (
@@ -333,6 +337,8 @@ export interface ElectronClaudeOps {
 					applied: boolean;
 					undoCount: number;
 					redoCount: number;
+					label?: string;
+					changes?: ClaudeUndoRedoChanges;
 				}
 			) => void;
 			onRedo: (callback: (data: { requestId: string }) => void) => void;
@@ -342,6 +348,8 @@ export interface ElectronClaudeOps {
 					applied: boolean;
 					undoCount: number;
 					redoCount: number;
+					label?: string;
+					changes?: ClaudeUndoRedoChanges;
 				}
 			) => void;
 			onHistory: (callback: (data: { requestId: string }) => void) => void;
@@ -360,6 +368,14 @@ export interface ElectronClaudeOps {
 						timestamp: number;
 						transactionId?: string;
 					}>;
+					/** The transaction the editor holds open, if any. */
+					activeTransaction?: {
+						id: string;
+						label?: string;
+						createdAt: number;
+						expiresAt: number;
+						projectId?: string;
+					} | null;
 				}
 			) => void;
 			removeListeners: () => void;

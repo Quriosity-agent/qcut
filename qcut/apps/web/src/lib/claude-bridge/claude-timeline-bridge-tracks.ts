@@ -83,6 +83,42 @@ function applyTrackSwitches({
 	}
 }
 
+/**
+ * The index that puts the track directly above or below another one, from
+ * the current order (so it needs no index arithmetic from the caller, and
+ * reads the order the editor has now).
+ */
+function resolveRelativeTrackIndex({
+	tracks,
+	request,
+}: {
+	tracks: readonly { id: string }[];
+	request: ClaudeTrackOperationRequest;
+}): number | undefined {
+	const anchorId = request.aboveTrackId ?? request.belowTrackId;
+	if (anchorId === undefined) return undefined;
+	if (
+		request.aboveTrackId !== undefined &&
+		request.belowTrackId !== undefined
+	) {
+		throw new Error("Give aboveTrackId or belowTrackId, not both");
+	}
+	if (request.index !== undefined) {
+		throw new Error("Give index or aboveTrackId/belowTrackId, not both");
+	}
+	if (anchorId === request.trackId) {
+		throw new Error("A track cannot be moved relative to itself");
+	}
+	const from = tracks.findIndex((track) => track.id === request.trackId);
+	const anchor = tracks.findIndex((track) => track.id === anchorId);
+	if (anchor < 0) throw new Error(`Track not found: ${anchorId}`);
+	// Index 0 is the top row; removing the track first shifts the rows under it.
+	const anchorAfterRemoval = from < anchor ? anchor - 1 : anchor;
+	return request.aboveTrackId !== undefined
+		? anchorAfterRemoval
+		: anchorAfterRemoval + 1;
+}
+
 function requestsTrackSwitch(request: ClaudeTrackOperationRequest): boolean {
 	return TRACK_SWITCHES.some((key) => request[key] !== undefined);
 }
@@ -242,6 +278,11 @@ function applyTrackOperation(
 	}
 
 	if (request.action === "move" || request.action === "update") {
+		const relativeIndex = resolveRelativeTrackIndex({
+			tracks: store.tracks,
+			request,
+		});
+		if (relativeIndex !== undefined) request.index = relativeIndex;
 		if (
 			request.action === "update" &&
 			request.index === undefined &&
@@ -250,7 +291,7 @@ function applyTrackOperation(
 			!requestsTrackSwitch(request)
 		) {
 			throw new Error(
-				"Track update needs index, name, colorLabel, muted, hidden or locked"
+				"Track update needs index, aboveTrackId, belowTrackId, name, colorLabel, muted, hidden or locked"
 			);
 		}
 		if (request.colorLabel !== undefined) requestedColorLabel(request);

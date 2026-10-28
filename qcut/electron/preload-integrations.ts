@@ -405,7 +405,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.invoke("claude:timeline:clearSelection", projectId),
 			onRequest: (callback) => {
 				ipcRenderer.removeAllListeners("claude:timeline:request");
-				ipcRenderer.on("claude:timeline:request", () => callback());
+				ipcRenderer.on("claude:timeline:request", (_, data) => callback(data));
 			},
 			onApply: (callback) => {
 				ipcRenderer.removeAllListeners("claude:timeline:apply");
@@ -651,8 +651,8 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:speech:load");
 				ipcRenderer.on("claude:speech:load", (_, data) => callback(data));
 			},
-			sendResponse: (timeline) => {
-				ipcRenderer.send("claude:timeline:response", timeline);
+			sendResponse: (timeline, requestId) => {
+				ipcRenderer.send("claude:timeline:response", { requestId, timeline });
 			},
 			removeListeners: () => {
 				ipcRenderer.removeAllListeners("claude:timeline:request");

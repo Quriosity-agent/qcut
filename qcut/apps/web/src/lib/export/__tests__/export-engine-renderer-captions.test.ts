@@ -100,4 +100,67 @@ describe("muxer caption placement", () => {
 		renderCaptionElement(ctx, canvas, caption(), 1, 83.2);
 		expect(lastText(fillText)?.[2]).toBeCloseTo(720 - 28 - 83.2 - 33.6, 5);
 	});
+
+	it("breaks a caption at its own line breaks, as the preview and ASS do (N11)", () => {
+		const { ctx, fillText } = fakeContext();
+		renderCaptionElement(
+			ctx,
+			canvas,
+			{ ...caption(), text: "你的拳头\nYour fists" } as CaptionElement,
+			1
+		);
+		const drawn = fillText.mock.calls.map(([text]) => text);
+		expect(drawn).toContain("你的拳头");
+		expect(drawn).toContain("Your fists");
+		expect(drawn.some((text) => String(text).includes("\n"))).toBe(false);
+	});
+
+	it("draws a bilingual caption's second line under it, in its own font and colour", () => {
+		const { ctx, fillText } = fakeContext();
+		const fonts: string[] = [];
+		const colours: string[] = [];
+		fillText.mockImplementation(() => {
+			fonts.push(ctx.font);
+			colours.push(String(ctx.fillStyle));
+		});
+		renderCaptionElement(
+			ctx,
+			canvas,
+			{
+				...caption({
+					fontFamily: "Arial",
+					fontSize: 34,
+					bold: true,
+					fontColor: "#ffffff",
+					secondary: {
+						fontFamily: "Futura",
+						fontSize: 24,
+						fontColor: "#ffcc00",
+						bold: false,
+					},
+				}),
+				text: "第一回合",
+				secondaryText: "Round one",
+			} as CaptionElement,
+			1
+		);
+
+		const calls = fillText.mock.calls.map(([text, x, y], index) => ({
+			text,
+			x,
+			y,
+			font: fonts[index],
+			colour: colours[index],
+		}));
+		const primary = calls.filter((call) => call.text === "第一回合").at(-1);
+		const secondary = calls.filter((call) => call.text === "Round one").at(-1);
+		// Line boxes of 34 × 1.4 and 24 × 1.4, the block 28 px off the bottom.
+		const bottom = 720 - 28;
+		expect(secondary?.y).toBeCloseTo(bottom - (24 * 1.4) / 2, 5);
+		expect(primary?.y).toBeCloseTo(bottom - 24 * 1.4 - (34 * 1.4) / 2, 5);
+		expect(primary?.font).toContain("bold 34px");
+		expect(secondary?.font).toContain("normal 24px");
+		expect(secondary?.font).toContain("Futura");
+		expect(secondary?.colour).toBe("#ffcc00");
+	});
 });

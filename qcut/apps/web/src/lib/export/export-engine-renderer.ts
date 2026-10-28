@@ -62,6 +62,7 @@ import { stripMarkdownSyntax } from "@/lib/markdown";
 import {
 	getCaptionAnimationState,
 	hexToRgba,
+	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 } from "@/lib/captions/subtitle-style";
 import { renderKaraokeCaptionToCanvas } from "@/lib/captions/karaoke-canvas-renderer";
@@ -1478,19 +1479,47 @@ export function renderCaptionElement(
 
 	ctx.save();
 	ctx.globalAlpha = style.fontOpacity * animation.opacity;
-	ctx.font = `${fontStyle} ${fontWeight} ${style.fontSize}px ${canvasFontFamily(style.fontFamily)}`;
+	const font = `${fontStyle} ${fontWeight} ${style.fontSize}px ${canvasFontFamily(style.fontFamily)}`;
+	ctx.font = font;
 	ctx.letterSpacing = `${style.letterSpacing}px`;
 	ctx.textAlign = style.textAlign;
 	ctx.textBaseline = "middle";
 
-	// Measure text for background
-	const lines = wrapTextForCanvas({
+	// The text's lines, then a bilingual caption's second-language lines in
+	// their own font; each line box is its font size × the line spacing, as
+	// the preview's box lays them out.
+	const rows = wrapTextForCanvas({
 		ctx,
 		text: element.text.trim(),
 		maxWidth: canvas.width * 0.8,
-	});
-	const lineHeight = style.fontSize * style.lineSpacing;
-	const totalHeight = lines.length * lineHeight;
+	}).map((text) => ({
+		text,
+		font,
+		fontSize: style.fontSize,
+		color: style.fontColor,
+	}));
+	const secondaryText = element.secondaryText?.trim();
+	if (secondaryText) {
+		const secondary = resolveSecondaryLineStyle(style);
+		const secondaryFont = `${secondary.italic ? "italic" : "normal"} ${secondary.bold ? "bold" : "normal"} ${secondary.fontSize}px ${canvasFontFamily(secondary.fontFamily)}`;
+		ctx.font = secondaryFont;
+		for (const text of wrapTextForCanvas({
+			ctx,
+			text: secondaryText,
+			maxWidth: canvas.width * 0.8,
+		})) {
+			rows.push({
+				text,
+				font: secondaryFont,
+				fontSize: secondary.fontSize,
+				color: secondary.fontColor,
+			});
+		}
+	}
+	const totalHeight = rows.reduce(
+		(sum, row) => sum + row.fontSize * style.lineSpacing,
+		0
+	);
 
 	// Where the preview puts the caption block: 20 px of edge padding plus
 	// the box's own 8 × 16, so the line box ends 28 px from the top or
@@ -1520,7 +1549,10 @@ export function renderCaptionElement(
 	// Draw background
 	if (style.bgOpacity > 0) {
 		const maxLineWidth = Math.max(
-			...lines.map((line) => ctx.measureText(line).width)
+			...rows.map((row) => {
+				ctx.font = row.font;
+				return ctx.measureText(row.text).width;
+			})
 		);
 		const padding = 16;
 		ctx.fillStyle = hexToRgba(style.backgroundColor, style.bgOpacity);
@@ -1539,35 +1571,39 @@ export function renderCaptionElement(
 	}
 
 	// Draw each line
-	for (let i = 0; i < lines.length; i++) {
-		const y = animatedY - totalHeight / 2 + (i + 0.5) * lineHeight;
+	let lineTop = animatedY - totalHeight / 2;
+	for (const row of rows) {
+		const lineHeight = row.fontSize * style.lineSpacing;
+		const y = lineTop + lineHeight / 2;
+		lineTop += lineHeight;
+		ctx.font = row.font;
 
 		// Draw outline/stroke
 		if (style.outlineWidth > 0) {
 			ctx.strokeStyle = style.outlineColor;
 			ctx.lineWidth = style.outlineWidth * 2;
 			ctx.lineJoin = "round";
-			ctx.strokeText(lines[i], animatedX, y);
+			ctx.strokeText(row.text, animatedX, y);
 		}
 
 		// Draw shadow
 		if (style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0) {
 			ctx.fillStyle = style.shadowColor;
 			ctx.fillText(
-				lines[i],
+				row.text,
 				animatedX + style.shadowOffset.x,
 				y + style.shadowOffset.y
 			);
 		}
 
 		// Draw text
-		ctx.fillStyle = style.fontColor;
-		ctx.fillText(lines[i], animatedX, y);
+		ctx.fillStyle = row.color;
+		ctx.fillText(row.text, animatedX, y);
 
 		// Draw underline
 		if (style.underline) {
-			const metrics = ctx.measureText(lines[i]);
-			const underlineY = y + style.fontSize * 0.15;
+			const metrics = ctx.measureText(row.text);
+			const underlineY = y + row.fontSize * 0.15;
 			ctx.beginPath();
 			const underlineStart =
 				style.textAlign === "left"
@@ -1577,8 +1613,8 @@ export function renderCaptionElement(
 						: animatedX - metrics.width / 2;
 			ctx.moveTo(underlineStart, underlineY);
 			ctx.lineTo(underlineStart + metrics.width, underlineY);
-			ctx.strokeStyle = style.fontColor;
-			ctx.lineWidth = Math.max(1, style.fontSize / 20);
+			ctx.strokeStyle = row.color;
+			ctx.lineWidth = Math.max(1, row.fontSize / 20);
 			ctx.stroke();
 		}
 	}
@@ -1602,23 +1638,22 @@ function wrapTextForCanvas({
 	text: string;
 	maxWidth: number;
 }): string[] {
-	const words = text.split(" ");
 	const lines: string[] = [];
-	let currentLine = "";
+	// A line break in the text always breaks the line (the preview and the
+	// native export draw it too); each paragraph then wraps at the width.
+	for (const paragraph of text.split(/\r?\n/)) {
+		let currentLine = "";
+		for (const word of paragraph.split(" ")) {
+			const candidate = currentLine ? `${currentLine} ${word}` : word;
+			const candidateWidth = ctx.measureText(candidate).width;
 
-	for (const word of words) {
-		const candidate = currentLine ? `${currentLine} ${word}` : word;
-		const candidateWidth = ctx.measureText(candidate).width;
-
-		if (candidateWidth <= maxWidth || currentLine.length === 0) {
-			currentLine = candidate;
-		} else {
-			lines.push(currentLine);
-			currentLine = word;
+			if (candidateWidth <= maxWidth || currentLine.length === 0) {
+				currentLine = candidate;
+			} else {
+				lines.push(currentLine);
+				currentLine = word;
+			}
 		}
-	}
-
-	if (currentLine) {
 		lines.push(currentLine);
 	}
 

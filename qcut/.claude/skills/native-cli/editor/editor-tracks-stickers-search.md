@@ -19,7 +19,7 @@ Confirm flags with `qcut editor <area> <action> --help --json`.
 | `editor track list` | — | `--project-id` | List timeline tracks in visual order (with each track's `colorLabel`) |
 | `editor track create` | `--type` | `--project-id`, `--name`, `--index`, `--color` | Create a track (`media`, `text`, `audio`, `sticker`, …) |
 | `editor track update` | `--track-id` | `--project-id`, `--name`, `--index`, `--color`, `--lock`/`--unlock`, `--hide`/`--unhide` | Rename, move, colour, lock or hide a track |
-| `editor track move` | `--track-id --index` | `--project-id` | Move a track to an exact visual index |
+| `editor track move` | `--track-id` and one of `--index`, `--above <trackId>`, `--below <trackId>` | `--project-id` | Move a track to a visual index, or directly above or below another track |
 | `editor track delete` | `--track-id` | `--project-id`, `--force`, `--ripple` | Delete a track; `--force` for non-empty tracks |
 
 A track's level, pan, bus, mute, solo, ducking and effects are set with
@@ -32,6 +32,15 @@ qcut editor track create --type audio --name "SFX · Guns" --color red --project
 qcut editor track update --track-id <track-id> --color none --project-id <id> --json
 qcut editor track update --track-id <track-id> --lock --project-id <id> --json
 qcut editor track delete --track-id <track-id> --force --project-id <id> --json
+```
+
+`track move --above <trackId>` puts the track directly over another one (for
+example a new media track over the main track) without working out an index;
+`--below` puts it directly under. The answer has the track's resulting
+`index` and the whole order (`tracks`), read back from the editor.
+
+```bash
+qcut editor track move --track-id <new-track> --above <main-track> --project-id <id> --json
 ```
 
 `--lock` makes a track refuse every edit (`--unlock` reverses it); `--hide`

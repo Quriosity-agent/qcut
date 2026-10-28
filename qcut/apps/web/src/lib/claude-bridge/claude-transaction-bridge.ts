@@ -6,6 +6,7 @@ import {
 	type TimelineHistorySnapshot,
 } from "@/stores/timeline/timeline-history";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { historyStepReport } from "./claude-timeline-change-summary";
 import type { TimelineStore } from "@/stores/timeline/types";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -61,6 +62,13 @@ type CommitResponse = TransactionResponse & {
 
 const DEFAULT_HISTORY_LABEL = "Edit";
 const DEFAULT_TRANSACTION_LABEL = "Claude transaction";
+/**
+ * Past its expiry plus this, the main process would already have rolled a
+ * transaction back if it still tracked it (its rollback request would have
+ * been handled first, since requests are handled in order): the one held
+ * here is orphaned and must not block new transactions.
+ */
+export const STALE_TRANSACTION_GRACE_MS = 15_000;
 
 let activeTransaction: ActiveTransactionContext | null = null;
 let historyEntries: TransactionHistoryEntry[] = [];
@@ -447,6 +455,16 @@ export function setupClaudeTransactionBridge(): void {
 
 		api.onBegin((data) => {
 			try {
+				if (
+					activeTransaction &&
+					Date.now() > activeTransaction.expiresAt + STALE_TRANSACTION_GRACE_MS
+				) {
+					debugWarn(
+						"[ClaudeTransactionBridge] Dropping expired orphaned transaction:",
+						activeTransaction.transactionId
+					);
+					activeTransaction = null;
+				}
 				if (activeTransaction) {
 					sendBeginResponse({
 						api,
@@ -577,6 +595,37 @@ export function setupClaudeTransactionBridge(): void {
 				}
 
 				const current = activeTransaction;
+				// A discard ends a transaction nobody edited under (its begin
+				// timed out): restoring would undo everything done since.
+				if (data.discard === true) {
+					activeTransaction = null;
+					debugWarn(
+						"[ClaudeTransactionBridge] Discarded transaction without restoring:",
+						data.transactionId,
+						data.reason
+					);
+					sendRollbackResponse({
+						api,
+						requestId: data.requestId,
+						result: { success: true, message: "Discarded; nothing restored" },
+					});
+					return;
+				}
+				// The snapshot belongs to the project the transaction began in;
+				// restoring it into another open project would overwrite that one.
+				const openProjectId = useProjectStore.getState().activeProject?.id;
+				if (current.projectId && current.projectId !== openProjectId) {
+					activeTransaction = null;
+					sendRollbackResponse({
+						api,
+						requestId: data.requestId,
+						result: {
+							success: true,
+							message: `Project ${current.projectId} is no longer open; nothing restored`,
+						},
+					});
+					return;
+				}
 				const store = useTimelineStore.getState();
 				store.restoreTracks(cloneJson({ value: current.preSnapshot.tracks }));
 				useTimelineStore.setState({
@@ -621,73 +670,48 @@ export function setupClaudeTransactionBridge(): void {
 			}
 		});
 
-		api.onUndo((data) => {
-			try {
-				if (activeTransaction) {
-					api.sendUndoResponse(data.requestId, {
-						applied: false,
-						undoCount: useTimelineStore.getState().history.length,
-						redoCount: useTimelineStore.getState().redoStack.length,
-					});
-					return;
-				}
-				const before = useTimelineStore.getState();
-				const beforeUndoCount = before.history.length;
-				const beforeRedoCount = before.redoStack.length;
-				before.undo();
-				syncHistoryMetadataWithStore();
-				const after = useTimelineStore.getState();
-				api.sendUndoResponse(data.requestId, {
-					applied:
-						after.history.length !== beforeUndoCount ||
-						after.redoStack.length !== beforeRedoCount,
-					undoCount: after.history.length,
-					redoCount: after.redoStack.length,
-				});
-			} catch (error) {
-				debugError("[ClaudeTransactionBridge] Undo handler failed:", error);
+		/** Undo or redo through the store; the answer says what it took back (N18). */
+		const runHistoryStep = (step: "undo" | "redo", requestId: string) => {
+			const send =
+				step === "undo" ? api.sendUndoResponse : api.sendRedoResponse;
+			const counts = () => {
 				const store = useTimelineStore.getState();
-				api.sendUndoResponse(data.requestId, {
-					applied: false,
+				return {
 					undoCount: store.history.length,
 					redoCount: store.redoStack.length,
-				});
-			}
-		});
-
-		api.onRedo((data) => {
+				};
+			};
 			try {
 				if (activeTransaction) {
-					api.sendRedoResponse(data.requestId, {
-						applied: false,
-						undoCount: useTimelineStore.getState().history.length,
-						redoCount: useTimelineStore.getState().redoStack.length,
-					});
+					send(requestId, { applied: false, ...counts() });
 					return;
 				}
-				const before = useTimelineStore.getState();
-				const beforeUndoCount = before.history.length;
-				const beforeRedoCount = before.redoStack.length;
-				before.redo();
+				const store = useTimelineStore.getState();
+				const tracksBefore = store.tracks;
+				const was = counts();
+				store[step]();
 				syncHistoryMetadataWithStore();
-				const after = useTimelineStore.getState();
-				api.sendRedoResponse(data.requestId, {
-					applied:
-						after.history.length !== beforeUndoCount ||
-						after.redoStack.length !== beforeRedoCount,
-					undoCount: after.history.length,
-					redoCount: after.redoStack.length,
+				const now = counts();
+				const applied =
+					now.undoCount !== was.undoCount || now.redoCount !== was.redoCount;
+				send(requestId, {
+					applied,
+					...now,
+					...(applied
+						? historyStepReport({
+								entries: step === "undo" ? redoEntries : historyEntries,
+								before: tracksBefore,
+								after: useTimelineStore.getState().tracks,
+							})
+						: {}),
 				});
 			} catch (error) {
-				debugError("[ClaudeTransactionBridge] Redo handler failed:", error);
-				const store = useTimelineStore.getState();
-				api.sendRedoResponse(data.requestId, {
-					applied: false,
-					undoCount: store.history.length,
-					redoCount: store.redoStack.length,
-				});
+				debugError(`[ClaudeTransactionBridge] ${step} handler failed:`, error);
+				send(requestId, { applied: false, ...counts() });
 			}
-		});
+		};
+		api.onUndo((data) => runHistoryStep("undo", data.requestId));
+		api.onRedo((data) => runHistoryStep("redo", data.requestId));
 
 		api.onHistory((data) => {
 			try {
@@ -698,6 +722,15 @@ export function setupClaudeTransactionBridge(): void {
 					redoCount: store.redoStack.length,
 					entries: [...historyEntries],
 					redoEntries: [...redoEntries],
+					activeTransaction: activeTransaction
+						? {
+								id: activeTransaction.transactionId,
+								label: activeTransaction.label,
+								createdAt: activeTransaction.createdAt,
+								expiresAt: activeTransaction.expiresAt,
+								projectId: activeTransaction.projectId,
+							}
+						: null,
 				});
 			} catch (error) {
 				debugError("[ClaudeTransactionBridge] History handler failed:", error);

@@ -10,14 +10,11 @@
 import { ipcMain, BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
 import { claudeLog } from "../utils/logger.js";
+import { NAVIGATION_TIMEOUT_MS } from "../utils/navigation-timeout.js";
 
 const HANDLER_NAME = "Navigator";
 const REQUEST_TIMEOUT_MS = 5000;
-/**
- * The renderer answers an open request only once the project has loaded, and
- * gives up itself after 20 s; this leaves room for that answer to arrive.
- */
-export const NAVIGATION_TIMEOUT_MS = 25_000;
+export { NAVIGATION_TIMEOUT_MS };
 
 export interface NavigateToProjectResult {
 	navigated: boolean;

@@ -27,6 +27,7 @@ import type {
 	MediaFilterStack,
 	MediaMask,
 	StickerAnimationLoopType,
+	SubtitleStyle,
 	TextAnimationsV1,
 	TextElement,
 	TimelineElement,
@@ -70,6 +71,11 @@ import {
 } from "@/lib/text/text-animation-presets";
 import type { TextAnimationPhase } from "@/lib/text/text-animation-presets";
 import { assertTimelineProjectActive } from "./claude-timeline-project-guard";
+import { resolveNamedTrack } from "./claude-named-track";
+import {
+	normalizeCaptionStyleInput,
+	secondaryCaptionText,
+} from "../../../../../electron/types/caption-style-input";
 import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import {
 	parseTimelineColorLabel,
@@ -97,6 +103,20 @@ function requestedElementId({ element }: { element: Partial<ClaudeElement> }): {
 		: {};
 }
 
+/** A request's collision policy is one batch-add takes (QTL-002), or none. */
+function assertCollisionPolicy(
+	collision: unknown
+): asserts collision is "insert" | "overwrite" | "reject" | undefined {
+	if (
+		collision !== undefined &&
+		collision !== "insert" &&
+		collision !== "overwrite" &&
+		collision !== "reject"
+	) {
+		throw new Error("collision must be one of: reject, insert, overwrite");
+	}
+}
+
 /**
  * Add through the store and return the new id, or throw with the store's own
  * reason — an occupied span names the clip in the way and the next free start.
@@ -106,14 +126,19 @@ function addElementOrThrow({
 	trackId,
 	element,
 	elementType,
+	collision,
 }: {
 	timelineStore: TimelineStoreState;
 	trackId: string;
 	element: Parameters<TimelineStoreState["addElementToTrack"]>[1];
 	elementType: string;
+	/** The request's collision policy, as batch-add takes it (QTL-002). */
+	collision?: unknown;
 }): string {
+	assertCollisionPolicy(collision);
 	let rejection: string | undefined;
 	const elementId = timelineStore.addElementToTrack(trackId, element, {
+		...(collision ? { collision } : {}),
 		onRejected: (reason) => {
 			rejection = reason;
 		},
@@ -1132,14 +1157,15 @@ export async function addClaudeMediaElement({
 	// A caller that names a track has asked for that specific lane, so honor it
 	// and let the store refuse an occupied span. Only an unnamed request gets a
 	// lane picked for it, in which case the span keeps it off an occupied one.
-	const namedTrack = element.trackId
-		? timelineStore.tracks.find((track) => track.id === element.trackId)
-		: undefined;
+	const namedTrack = resolveNamedTrack({
+		tracks: timelineStore.tracks,
+		trackId: element.trackId,
+		elementType: "media",
+	});
 	assertTimelineProjectActive({ projectId });
 	const trackId =
-		namedTrack?.type === trackType
-			? namedTrack.id
-			: timelineStore.findOrCreateTrack(trackType, { startTime, duration });
+		namedTrack?.id ??
+		timelineStore.findOrCreateTrack(trackType, { startTime, duration });
 	const mediaTiming = getClaudeMediaTimingProperties({ element });
 	const visual = readClaudeMediaVisualFields({
 		element: element as Record<string, unknown>,
@@ -1147,6 +1173,7 @@ export async function addClaudeMediaElement({
 	const colorLabel = parseTimelineColorLabel({ value: element.colorLabel });
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "media",
@@ -1191,17 +1218,11 @@ export function addClaudeTextElement({
 }): string {
 	// A named track is the lane asked for; only an unnamed request gets one
 	// picked (or made) for it, like the batch add.
-	const namedTrack = element.trackId
-		? timelineStore.tracks.find((track) => track.id === element.trackId)
-		: undefined;
-	if (element.trackId && !namedTrack) {
-		throw new Error(`Track not found: ${element.trackId}`);
-	}
-	if (namedTrack && namedTrack.type !== "text") {
-		throw new Error(
-			`Track "${namedTrack.name}" is a ${namedTrack.type} track; a text element needs a text track`
-		);
-	}
+	const namedTrack = resolveNamedTrack({
+		tracks: timelineStore.tracks,
+		trackId: element.trackId,
+		elementType: "text",
+	});
 	const trackId = namedTrack?.id ?? timelineStore.findOrCreateTrack("text");
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
@@ -1224,6 +1245,7 @@ export function addClaudeTextElement({
 	);
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "text",
@@ -1264,9 +1286,11 @@ export function addClaudeAdjustmentElement({
 	element: Partial<ClaudeElement> & { trackId?: string };
 	timelineStore: TimelineStoreState;
 }): string {
-	const existingTrack = element.trackId
-		? timelineStore.tracks.find((track) => track.id === element.trackId)
-		: null;
+	const namedTrack = resolveNamedTrack({
+		tracks: timelineStore.tracks,
+		trackId: element.trackId,
+		elementType: "adjustment",
+	});
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
 		element,
@@ -1274,14 +1298,14 @@ export function addClaudeAdjustmentElement({
 	});
 	// A named track is honored as asked; an unnamed one must have room.
 	const trackId =
-		existingTrack?.type === "adjustment"
-			? existingTrack.id
-			: timelineStore.findOrCreateTrack("adjustment", { startTime, duration });
+		namedTrack?.id ??
+		timelineStore.findOrCreateTrack("adjustment", { startTime, duration });
 	const adjustmentFields = getClaudeAdjustmentFields({
 		element: element as Partial<ClaudeElement> & Record<string, unknown>,
 	});
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "adjustment",
@@ -1572,11 +1596,17 @@ export async function addClaudeStickerElement({
 	// One sticker track holds many stickers, one at a time; a sticker that
 	// overlaps an existing one gets its own lane instead of stacking.
 	assertTimelineProjectActive({ projectId });
-	const trackId = findOrCreateClaudeStickerTrack({
-		timelineStore,
-		startTime,
-		duration,
-	});
+	const trackId =
+		resolveNamedTrack({
+			tracks: timelineStore.tracks,
+			trackId: element.trackId,
+			elementType: "sticker",
+		})?.id ??
+		findOrCreateClaudeStickerTrack({
+			timelineStore,
+			startTime,
+			duration,
+		});
 
 	const canvasSize = useProjectStore.getState().activeProject?.canvasSize ?? {
 		width: 1920,
@@ -1593,6 +1623,7 @@ export async function addClaudeStickerElement({
 	});
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "sticker",
@@ -1667,10 +1698,18 @@ export function addClaudeMarkdownElement({
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
 }): string {
-	// Reuse existing markdown track instead of creating one per element
+	// A named track is the lane; otherwise reuse the markdown track instead
+	// of creating one per element.
+	const namedTrack = resolveNamedTrack({
+		tracks: timelineStore.tracks,
+		trackId: element.trackId,
+		elementType: "markdown",
+	});
 	const existingTrack = timelineStore.tracks.find((t) => t.type === "markdown");
 	const trackId =
-		existingTrack?.id ?? timelineStore.addTrackByStackingPolicy("markdown");
+		namedTrack?.id ??
+		existingTrack?.id ??
+		timelineStore.addTrackByStackingPolicy("markdown");
 
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
@@ -1686,9 +1725,12 @@ export function addClaudeMarkdownElement({
 			? rawMarkdown
 			: DEFAULT_MARKDOWN_CONTENT;
 
-	// Clamp any existing element whose end time would overlap this one's start
+	const collision = (element as Record<string, unknown>).collision;
+	assertCollisionPolicy(collision);
+	// Clamp any existing element whose end time would overlap this one's
+	// start, unless the request names a collision policy for the store.
 	const track = timelineStore.tracks.find((t) => t.id === trackId);
-	if (track) {
+	if (collision === undefined && track) {
 		const endTime = startTime + duration;
 		for (const existing of track.elements) {
 			const existingEnd = existing.startTime + getEffectiveDuration(existing);
@@ -1708,6 +1750,7 @@ export function addClaudeMarkdownElement({
 
 	// Subtitle-style: positioned at bottom center, compact height
 	const addedElementId = addElementOrThrow({
+		collision,
 		timelineStore,
 		trackId,
 		elementType: "markdown",
@@ -1764,11 +1807,17 @@ export function addClaudeCaptionElement({
 		fallbackDuration: DEFAULT_CAPTION_DURATION_SECONDS,
 	});
 
-	// Use findOrCreateTrack for robust live-state track creation (consistent with media/text helpers)
-	const trackId = timelineStore.findOrCreateTrack("captions", {
-		startTime,
-		duration,
-	});
+	// A named track is the lane; an unnamed caption gets one with room.
+	const trackId =
+		resolveNamedTrack({
+			tracks: timelineStore.tracks,
+			trackId: element.trackId,
+			elementType: "captions",
+		})?.id ??
+		timelineStore.findOrCreateTrack("captions", {
+			startTime,
+			duration,
+		});
 	console.log("[CaptionDebug] Using captions track:", trackId);
 
 	// Check both element.content and element.text (CLI may send either field)
@@ -1790,7 +1839,12 @@ export function addClaudeCaptionElement({
 		duration
 	);
 
+	// A bilingual caption's second-language line, drawn under the text.
+	const secondaryText = secondaryCaptionText(
+		element as Record<string, unknown>
+	);
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "caption",
@@ -1799,15 +1853,18 @@ export function addClaudeCaptionElement({
 			type: "captions",
 			name: captionText.slice(0, 50),
 			text: captionText,
+			...(secondaryText ? { secondaryText } : {}),
 			language: typeof element.language === "string" ? element.language : "en",
 			source: "manual",
 			startTime,
 			duration,
 			trimStart: 0,
 			trimEnd: 0,
-			style:
-				(element.style as unknown as import("@qcut/editor-core").SubtitleStyle) ||
-				undefined,
+			// Text-element names (color, strokeWidth…) map to the caption's
+			// own; the HTTP route reports what could not be used.
+			style: normalizeCaptionStyleInput({
+				element: element as Record<string, unknown>,
+			}).style as SubtitleStyle | undefined,
 		},
 	});
 	console.log(
@@ -2005,6 +2062,8 @@ export async function addClaudeRemotionElement({
 }): Promise<string> {
 	assertTimelineProjectActive({ projectId });
 	const componentName = element.sourceName || "Remotion";
+	const collision = (element as Record<string, unknown>).collision;
+	assertCollisionPolicy(collision);
 
 	// Folder-based import: use the existing remotion-folder pipeline
 	if (element.folderPath) {
@@ -2024,29 +2083,44 @@ export async function addClaudeRemotionElement({
 			fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
 		});
 		assertTimelineProjectActive({ projectId });
-		const trackId = timelineStore.findOrCreateTrack("remotion", {
-			startTime,
-			duration,
-		});
+		const trackId =
+			resolveNamedTrack({
+				tracks: timelineStore.tracks,
+				trackId: element.trackId,
+				elementType: "remotion",
+			})?.id ??
+			timelineStore.findOrCreateTrack("remotion", {
+				startTime,
+				duration,
+			});
 
 		// Add a timeline element for each imported composition
 		let offset = startTime;
 		const createdElementIds: string[] = [];
 		for (const [index, compId] of registeredIds.entries()) {
-			const elementId = timelineStore.addElementToTrack(trackId, {
-				...(index === 0 ? requestedElementId({ element }) : {}),
-				type: "remotion",
-				name: compId,
-				componentId: compId,
-				props: element.props || {},
-				renderMode: "live",
-				startTime: offset,
-				duration,
-				trimStart: 0,
-				trimEnd: 0,
-				opacity: 1,
-			});
-			if (!elementId) {
+			try {
+				createdElementIds.push(
+					addElementOrThrow({
+						collision,
+						timelineStore,
+						trackId,
+						elementType: "remotion",
+						element: {
+							...(index === 0 ? requestedElementId({ element }) : {}),
+							type: "remotion",
+							name: compId,
+							componentId: compId,
+							props: element.props || {},
+							renderMode: "live",
+							startTime: offset,
+							duration,
+							trimStart: 0,
+							trimEnd: 0,
+							opacity: 1,
+						},
+					})
+				);
+			} catch (error) {
 				for (const createdElementId of createdElementIds) {
 					timelineStore.removeElementFromTrack(
 						trackId,
@@ -2054,9 +2128,8 @@ export async function addClaudeRemotionElement({
 						false
 					);
 				}
-				throw new Error("Failed to add remotion element to the timeline");
+				throw error;
 			}
-			createdElementIds.push(elementId);
 			offset += duration;
 		}
 
@@ -2097,12 +2170,19 @@ export async function addClaudeRemotionElement({
 		fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
 	});
 	assertTimelineProjectActive({ projectId });
-	const trackId = timelineStore.findOrCreateTrack("remotion", {
-		startTime,
-		duration,
-	});
+	const trackId =
+		resolveNamedTrack({
+			tracks: timelineStore.tracks,
+			trackId: element.trackId,
+			elementType: "remotion",
+		})?.id ??
+		timelineStore.findOrCreateTrack("remotion", {
+			startTime,
+			duration,
+		});
 
 	const addedElementId = addElementOrThrow({
+		collision,
 		timelineStore,
 		trackId,
 		elementType: "remotion",
@@ -2284,6 +2364,9 @@ function formatElementForExport({
 			return {
 				...baseElement,
 				content: element.text,
+				...(element.secondaryText
+					? { secondaryContent: element.secondaryText }
+					: {}),
 				language: element.language,
 				// Native export reads the burn-in look from here; without it the
 				// caption falls back to the white default style.

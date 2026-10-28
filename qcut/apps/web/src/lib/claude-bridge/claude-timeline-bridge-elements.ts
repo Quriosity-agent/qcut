@@ -3,7 +3,6 @@ import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore } from "@/stores/media/media-store";
 import { normalizeMediaPortraitAdjustments } from "@qcut/editor-core";
 import type {
-	CaptionElement,
 	MediaElement,
 	MediaPortraitAdjustments,
 	StickerElement,
@@ -46,6 +45,10 @@ import {
 import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import { getTimelineElementDuration } from "@/lib/timeline";
+import {
+	CAPTION_PATCH_FIELDS,
+	captionUpdatesFromPatch,
+} from "./claude-caption-patch";
 import {
 	describeOccupancyConflict,
 	formatSeconds,
@@ -181,7 +184,7 @@ const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
 	]),
 	adjustment: new Set(["name", "opacity", "color", "adjustments", "masks"]),
 	markdown: new Set(["content"]),
-	captions: new Set(["content", "language", "style"]),
+	captions: new Set(CAPTION_PATCH_FIELDS),
 	sticker: new Set([
 		"mediaId",
 		"x",
@@ -478,26 +481,13 @@ export const applyElementChanges = ({
 		}
 
 		if (element.type === "captions") {
-			// Captions expose their text as `content` in the export snapshot, so
-			// the same key is accepted back; style merges over the current look.
-			const captionUpdates: Partial<
-				Pick<CaptionElement, "text" | "language" | "style">
-			> = {};
-			if (typeof changes.content === "string") {
-				captionUpdates.text = changes.content;
-			}
-			if (typeof changes.language === "string") {
-				captionUpdates.language = changes.language;
-			}
-			if (styleChanges) {
-				captionUpdates.style =
-					styleChanges as unknown as CaptionElement["style"];
-			}
-			if (Object.keys(captionUpdates).length > 0) {
+			const caption = captionUpdatesFromPatch({ element, changes });
+			ignoredFields.push(...caption.ignoredFields);
+			if (Object.keys(caption.updates).length > 0) {
 				timelineStore.updateCaptionElement(
 					track.id,
 					elementId,
-					captionUpdates,
+					caption.updates,
 					false
 				);
 			}

@@ -6,6 +6,7 @@
 export {
 	DEFAULT_SUBTITLE_STYLE,
 	resolveSubtitleStyle,
+	resolveSecondaryLineStyle,
 	hexToRgba,
 	rgbToASSColor,
 	assColorToRgb,

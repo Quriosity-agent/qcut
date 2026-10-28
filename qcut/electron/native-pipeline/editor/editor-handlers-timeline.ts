@@ -232,12 +232,26 @@ async function dispatchTrack(
 
 	if (action === "move") {
 		if (!opts.trackId) return { success: false, error: "Missing --track-id" };
-		if (opts.index === undefined) {
-			return { success: false, error: "Missing --index" };
+		const targets = [
+			opts.index !== undefined,
+			opts.above !== undefined,
+			opts.below !== undefined,
+		].filter(Boolean).length;
+		if (targets !== 1) {
+			return {
+				success: false,
+				error:
+					"Give exactly one of --index, --above <trackId> or --below <trackId>",
+			};
 		}
+		// The answer carries the track's resulting `index` and the whole order.
 		const data = await client.patch(
 			`${basePath}/tracks/${encodeURIComponent(opts.trackId)}`,
-			{ index: opts.index }
+			opts.above !== undefined
+				? { aboveTrackId: opts.above }
+				: opts.below !== undefined
+					? { belowTrackId: opts.below }
+					: { index: opts.index }
 		);
 		return { success: true, data };
 	}
@@ -570,13 +584,15 @@ async function timelineBatchDelete(
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
-	if (!opts.elements)
+	// `--cuts` is what the docs used to name it (N17); both are read.
+	const input = opts.elements ?? opts.cuts;
+	if (!input)
 		return {
 			success: false,
 			error: "Missing --elements (JSON array or @file.json)",
 		};
 
-	const parsed = await resolveJsonInput(opts.elements);
+	const parsed = await resolveJsonInput(input);
 	let elements = Array.isArray(parsed)
 		? parsed
 		: (parsed as { elements?: unknown[] }).elements;

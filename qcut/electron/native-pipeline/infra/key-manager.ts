@@ -26,7 +26,8 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import * as os from "os";
+import { aicpCredentialsFilePath, qcutEnvFilePath } from "./credential-home.js";
+import { keyProblem } from "./key-validity.js";
 
 const KEY_NAMES = [
 	"FAL_KEY",
@@ -70,11 +71,13 @@ export interface KeyStatus {
 	 */
 	source: "env" | "envfile" | "aicp-cli" | "none";
 	masked?: string;
+	/** Set when the configured value cannot be a working key. */
+	warning?: string;
 }
 
 function getEnvFilePath(configDirOverride?: string): string {
 	if (configDirOverride) return path.join(configDirOverride, ".env");
-	return path.join(os.homedir(), ".qcut", ".env");
+	return qcutEnvFilePath();
 }
 
 function readEnvFile(configDirOverride?: string): Map<string, string> {
@@ -189,30 +192,22 @@ export function checkKeys(): KeyStatus[] {
 		const fileValue = envEntries.get(name);
 		const aicpValue = aicpEntries.get(name);
 
-		if (envValue) {
+		const configured = (
+			source: "env" | "envfile" | "aicp-cli",
+			value: string
+		): KeyStatus => {
+			const warning = keyProblem({ name, value });
 			return {
 				name,
 				configured: true,
-				source: "env" as const,
-				masked: maskKey(envValue),
+				source,
+				masked: maskKey(value),
+				...(warning ? { warning } : {}),
 			};
-		}
-		if (fileValue) {
-			return {
-				name,
-				configured: true,
-				source: "envfile" as const,
-				masked: maskKey(fileValue),
-			};
-		}
-		if (aicpValue) {
-			return {
-				name,
-				configured: true,
-				source: "aicp-cli" as const,
-				masked: maskKey(aicpValue),
-			};
-		}
+		};
+		if (envValue) return configured("env", envValue);
+		if (fileValue) return configured("envfile", fileValue);
+		if (aicpValue) return configured("aicp-cli", aicpValue);
 		return { name, configured: false, source: "none" as const };
 	});
 }
@@ -232,19 +227,7 @@ export function setupEnvTemplate(): string {
 }
 
 function getAicpCredentialsPath(): string {
-	if (process.platform === "win32") {
-		return path.join(
-			process.env.APPDATA || os.homedir(),
-			"video-ai-studio",
-			"credentials.env"
-		);
-	}
-	return path.join(
-		os.homedir(),
-		".config",
-		"video-ai-studio",
-		"credentials.env"
-	);
+	return aicpCredentialsFilePath();
 }
 
 export function loadEnvFile(configDirOverride?: string): void {

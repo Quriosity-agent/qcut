@@ -48,6 +48,7 @@ import {
 	selectMulticamClip,
 } from "./timeline-compound-operations";
 import { findTrackIdsForGroup } from "@qcut/editor-core/timeline";
+import { dropEmptiedTracks } from "./utils";
 import { getTimelineElementDuration } from "@/lib/timeline";
 import {
 	describeOccupancyConflict,
@@ -351,7 +352,12 @@ export function createCrudOperations(
 			return newElement.id;
 		},
 
-		removeElementFromTrack: (trackId, elementId, pushHistory = true) => {
+		removeElementFromTrack: (
+			trackId,
+			elementId,
+			pushHistory = true,
+			options
+		) => {
 			const track = get()._tracks.find((t) => t.id === trackId);
 			const element = track?.elements.find((el) => el.id === elementId);
 			if (!track || !element) return;
@@ -397,23 +403,30 @@ export function createCrudOperations(
 						}
 					}
 				}
+				const groupTrackIds = findTrackIdsForGroup({
+					tracks: get()._tracks,
+					groupId,
+				});
 				updateTracksAndSave(
-					get()
-						._tracks.map((t) => ({
+					dropEmptiedTracks({
+						tracks: get()._tracks.map((t) => ({
 							...t,
 							elements: t.elements.filter((el) => el.groupId !== groupId),
-						}))
-						.filter((t) => t.elements.length > 0 || t.isMain)
+						})),
+						trackIds: groupTrackIds,
+					})
 				);
 				return;
 			}
 
 			const { rippleEditingEnabled, mainTrackMagnetEnabled } = get();
+			const keepGap = options?.keepGap === true;
 
 			// Main-track magnet (QTL-005): the main track never keeps a hole, so
 			// its deletions close their gap even outside ripple mode.
-			const magnetApplies = mainTrackMagnetEnabled && Boolean(track.isMain);
-			if (rippleEditingEnabled || magnetApplies) {
+			const magnetApplies =
+				!keepGap && mainTrackMagnetEnabled && Boolean(track.isMain);
+			if (!keepGap && (rippleEditingEnabled || magnetApplies)) {
 				get().removeElementFromTrackWithRipple(
 					trackId,
 					elementId,
@@ -424,16 +437,17 @@ export function createCrudOperations(
 				if (pushHistory) get().pushHistory();
 				get().deselectElement(trackId, elementId);
 				updateTracksAndSave(
-					get()
-						._tracks.map((t) =>
+					dropEmptiedTracks({
+						tracks: get()._tracks.map((t) =>
 							t.id === trackId
 								? {
 										...t,
 										elements: t.elements.filter((el) => el.id !== elementId),
 									}
 								: t
-						)
-						.filter((t) => t.elements.length > 0 || t.isMain)
+						),
+						trackIds: [trackId],
+					})
 				);
 			}
 		},
@@ -513,8 +527,8 @@ export function createCrudOperations(
 			// gesture undoes as one step.
 			if (pushHistory) get().pushHistory();
 
-			const newTracks = get()
-				._tracks.map((t) => {
+			const newTracks = dropEmptiedTracks({
+				tracks: get()._tracks.map((t) => {
 					if (t.id === fromTrackId) {
 						return {
 							...t,
@@ -528,8 +542,9 @@ export function createCrudOperations(
 						};
 					}
 					return t;
-				})
-				.filter((t) => t.elements.length > 0 || t.isMain);
+				}),
+				trackIds: [fromTrackId],
+			});
 
 			updateTracksAndSave(newTracks);
 		},

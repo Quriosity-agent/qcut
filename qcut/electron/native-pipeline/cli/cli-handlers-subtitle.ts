@@ -5,6 +5,7 @@
  */
 
 import * as fs from "fs";
+import { tmpdir } from "node:os";
 import * as path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -25,6 +26,7 @@ import {
 	type SrtEntry,
 } from "../autoclip/srt-parser.js";
 import { resolveStyleFromCLI } from "../subtitle/style-presets.js";
+import { prepareAssFontsDirectory } from "../../claude/handlers/claude-export-handler/ass-fonts-dir.js";
 import { probeVideoInfo } from "../subtitle/probe-video.js";
 import type {
 	CLIRunOptions,
@@ -32,15 +34,9 @@ import type {
 	ProgressFn,
 } from "./cli-runner/types.js";
 
-// The bundled static FFmpeg's libass has no system font discovery; point it
-// at a platform fonts directory so CJK subtitles keep their glyphs.
-function assFontsDirSuffixForCli(): string {
-	const directory =
-		process.platform === "darwin"
-			? "/System/Library/Fonts/Supplemental"
-			: process.platform === "win32"
-				? `${process.env.WINDIR ?? "C:\\Windows"}\\Fonts`
-				: undefined;
+// libass gets a folder of links to just the fonts the subtitles use (see
+// ass-fonts-dir.ts), or the platform fonts folder.
+function assFontsDirSuffixForCli(directory: string | undefined): string {
 	if (!directory) return "";
 	const escaped = directory
 		.replace(/\\/g, "/")
@@ -324,9 +320,17 @@ export async function handleSubtitleExport(
 		path.dirname(videoPath),
 		`.tmp_subtitle_${Date.now()}.ass`
 	);
+	const tmpFontsDirectory = path.join(
+		tmpdir(),
+		`qcut-subtitle-fonts-${process.pid}-${Date.now()}`
+	);
 	try {
 		const assContent = generateASS(styledClips, { resolution });
 		fs.writeFileSync(tmpAssPath, assContent, "utf-8");
+		const fontsDirectory = prepareAssFontsDirectory({
+			scripts: [assContent],
+			directory: tmpFontsDirectory,
+		});
 
 		// For execFile, the filter value must NOT have shell quotes
 		const escapedAssPath = tmpAssPath.replace(/\\/g, "/").replace(/:/g, "\\:");
@@ -336,7 +340,7 @@ export async function handleSubtitleExport(
 				"-i",
 				videoPath,
 				"-vf",
-				`ass=${escapedAssPath}${assFontsDirSuffixForCli()}`,
+				`ass=${escapedAssPath}${assFontsDirSuffixForCli(fontsDirectory)}`,
 				"-c:a",
 				"copy",
 				"-y",
@@ -365,6 +369,7 @@ export async function handleSubtitleExport(
 	} finally {
 		try {
 			if (fs.existsSync(tmpAssPath)) fs.unlinkSync(tmpAssPath);
+			fs.rmSync(tmpFontsDirectory, { recursive: true, force: true });
 		} catch {
 			/* ignore */
 		}

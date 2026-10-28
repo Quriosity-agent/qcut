@@ -5,6 +5,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { buildFFmpegArgs } from "../ffmpeg-args-builder.js";
+import { prepareAssFontsDirectory } from "../claude/handlers/claude-export-handler/ass-fonts-dir.js";
 import type {
 	VideoCompositionFramePreviewOptions,
 	VideoCompositionFramePreviewResult,
@@ -248,9 +249,11 @@ function getMappedVideoLabel({ args }: { args: string[] }): {
 export function buildVideoCompositionFramePreviewCommand({
 	options,
 	textAssLayerPaths = [],
+	assFontsDirectory,
 }: {
 	options: VideoCompositionFramePreviewOptions;
 	textAssLayerPaths?: PreparedTextAssLayer[];
+	assFontsDirectory?: string;
 }): CompositionPreviewCommand {
 	assertCompositionPreviewOptions({ options });
 	const timelineTime =
@@ -274,6 +277,7 @@ export function buildVideoCompositionFramePreviewCommand({
 		imageSources: options.imageSources,
 		stickerSources: options.stickerSources,
 		textAssLayers: textAssLayerPaths,
+		assFontsDirectory,
 		textRasterLayers: options.textRasterLayers,
 	});
 	const { filterIndex, mapIndex, videoMap } = getMappedVideoLabel({
@@ -425,7 +429,11 @@ function prepareTextAssLayerFiles({
 	textAssLayers,
 }: {
 	textAssLayers: TextAssLayer[];
-}): { directory?: string; layers: PreparedTextAssLayer[] } {
+}): {
+	directory?: string;
+	layers: PreparedTextAssLayer[];
+	fontsDirectory?: string;
+} {
 	if (textAssLayers.length === 0) return { layers: [] };
 	const directory = fs.mkdtempSync(
 		path.join(os.tmpdir(), "qcut-composition-preview-")
@@ -441,7 +449,12 @@ function prepareTextAssLayerFiles({
 				elementOrder: layer.elementOrder,
 			};
 		});
-		return { directory, layers };
+		// The fonts the export would use, so a paused frame matches it.
+		const fontsDirectory = prepareAssFontsDirectory({
+			scripts: textAssLayers.map((layer) => layer.content),
+			directory: path.join(directory, "fonts"),
+		});
+		return { directory, layers, fontsDirectory };
 	} catch (error) {
 		fs.rmSync(directory, { recursive: true, force: true });
 		throw error;
@@ -654,6 +667,7 @@ export async function renderVideoCompositionFramePreview({
 		const command = buildVideoCompositionFramePreviewCommand({
 			options,
 			textAssLayerPaths: preparedText.layers,
+			assFontsDirectory: preparedText.fontsDirectory,
 		});
 		const pngData = await runPreviewProcess({
 			requestId: options.requestId,

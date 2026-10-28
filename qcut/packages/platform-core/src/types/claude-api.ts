@@ -64,7 +64,8 @@ export interface PlatformClaudeTimelineAPI {
 	clearSelection(projectId: string): Promise<unknown>;
 
 	// Event listeners
-	onRequest(callback: () => void): void;
+	/** `requestId` is echoed by `sendResponse` so main matches the answer. */
+	onRequest(callback: (request?: { requestId?: string }) => void): void;
 	onApply(callback: (timeline: unknown, replace?: boolean) => void): void;
 	onAddElement(callback: (element: unknown) => void): void;
 	onBatchAddElements(callback: (data: unknown) => void): void;
@@ -130,13 +131,30 @@ export interface PlatformClaudeTimelineAPI {
 	): void;
 	sendAudioMixOperationResponse?(requestId: string, result: unknown): void;
 	onLoadSpeech(callback: (data: unknown) => void): void;
-	sendResponse(timeline: unknown): void;
+	sendResponse(timeline: unknown, requestId?: string): void;
 	removeListeners(): void;
 }
 
 // ---------------------------------------------------------------------------
 // Claude Transaction
 // ---------------------------------------------------------------------------
+
+/** What an undo or redo did to the timeline: counts and the first ten elements. */
+export interface PlatformUndoRedoChanges {
+	added: number;
+	removed: number;
+	moved: number;
+	elements: Array<{
+		elementId: string;
+		name?: string;
+		change: "added" | "removed" | "moved";
+		trackId: string;
+		startTime: number;
+		duration: number;
+		/** Where a moved element was before. */
+		from?: { trackId: string; startTime: number; duration: number };
+	}>;
+}
 
 export interface PlatformClaudeTransactionAPI {
 	onBegin(
@@ -174,6 +192,8 @@ export interface PlatformClaudeTransactionAPI {
 			requestId: string;
 			transactionId: string;
 			reason?: string;
+			/** End without restoring the timeline (nobody edited under it). */
+			discard?: boolean;
 		}) => void
 	): void;
 	sendRollbackResponse(
@@ -183,12 +203,24 @@ export interface PlatformClaudeTransactionAPI {
 	onUndo(callback: (data: { requestId: string }) => void): void;
 	sendUndoResponse(
 		requestId: string,
-		result: { applied: boolean; undoCount: number; redoCount: number }
+		result: {
+			applied: boolean;
+			undoCount: number;
+			redoCount: number;
+			label?: string;
+			changes?: PlatformUndoRedoChanges;
+		}
 	): void;
 	onRedo(callback: (data: { requestId: string }) => void): void;
 	sendRedoResponse(
 		requestId: string,
-		result: { applied: boolean; undoCount: number; redoCount: number }
+		result: {
+			applied: boolean;
+			undoCount: number;
+			redoCount: number;
+			label?: string;
+			changes?: PlatformUndoRedoChanges;
+		}
 	): void;
 	onHistory(callback: (data: { requestId: string }) => void): void;
 	sendHistoryResponse(
@@ -206,6 +238,14 @@ export interface PlatformClaudeTransactionAPI {
 				timestamp: number;
 				transactionId?: string;
 			}>;
+			/** The transaction the editor holds open, if any. */
+			activeTransaction?: {
+				id: string;
+				label?: string;
+				createdAt: number;
+				expiresAt: number;
+				projectId?: string;
+			} | null;
 		}
 	): void;
 	removeListeners(): void;

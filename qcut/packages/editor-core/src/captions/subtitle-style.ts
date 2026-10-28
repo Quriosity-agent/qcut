@@ -6,7 +6,10 @@
  * @module @qcut/editor-core/captions/subtitle-style
  */
 
-import type { SubtitleStyle } from "../types/timeline.js";
+import type {
+	CaptionSecondaryStyle,
+	SubtitleStyle,
+} from "../types/timeline.js";
 
 /** Default subtitle style used as fallback when no style is set */
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
@@ -57,6 +60,23 @@ export function resolveSubtitleStyle(
 			...DEFAULT_SUBTITLE_STYLE.position,
 			...style.position,
 		},
+	};
+}
+
+/**
+ * The look of a bilingual caption's second-language line: `style.secondary`
+ * over the caption's own font, size, colour, weight and slant.
+ */
+export function resolveSecondaryLineStyle(
+	style: SubtitleStyle
+): Required<CaptionSecondaryStyle> {
+	const secondary = style.secondary ?? {};
+	return {
+		fontFamily: secondary.fontFamily ?? style.fontFamily,
+		fontSize: secondary.fontSize ?? style.fontSize,
+		fontColor: secondary.fontColor ?? style.fontColor,
+		bold: secondary.bold ?? style.bold,
+		italic: secondary.italic ?? style.italic,
 	};
 }
 

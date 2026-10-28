@@ -1,6 +1,9 @@
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
-import { validateElementTrackCompatibility } from "@/types/timeline";
+import {
+	type SubtitleStyle,
+	validateElementTrackCompatibility,
+} from "@/types/timeline";
 import type {
 	ClaudeBatchAddElementRequest,
 	ClaudeBatchAddResponse,
@@ -31,6 +34,11 @@ import {
 	readRequiredTimelineProjectId,
 } from "./claude-timeline-project-guard";
 import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
+import {
+	captionStyleWarnings,
+	normalizeCaptionStyleInput,
+	secondaryCaptionText,
+} from "../../../../../electron/types/caption-style-input";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
 const AUDIO_FADE_TOLERANCE_SECONDS = 0.001;
@@ -255,6 +263,7 @@ export function setupBatchHandlers({
 						}
 
 						let createdElementId: string | null = null;
+						let warnings: string[] = [];
 						assertTimelineProjectActive({ projectId });
 
 						if (normalizedType === "media") {
@@ -463,6 +472,11 @@ export function setupBatchHandlers({
 									: typeof element.text === "string" && element.text.length > 0
 										? element.text
 										: "Caption";
+							// Text-element names (color, strokeWidth…) map to the
+							// caption's own; what cannot be used is reported.
+							const captionStyle = normalizeCaptionStyleInput({ element });
+							warnings = captionStyleWarnings(captionStyle);
+							const secondaryText = secondaryCaptionText(element);
 
 							createdElementId = timelineStore.addElementToTrack(
 								element.trackId,
@@ -471,6 +485,7 @@ export function setupBatchHandlers({
 									type: "captions",
 									name: captionText.slice(0, 50),
 									text: captionText,
+									...(secondaryText ? { secondaryText } : {}),
 									language:
 										typeof element.language === "string"
 											? element.language
@@ -480,7 +495,7 @@ export function setupBatchHandlers({
 									duration: element.duration,
 									trimStart: 0,
 									trimEnd: 0,
-									style: element.style || undefined,
+									style: captionStyle.style as SubtitleStyle | undefined,
 								},
 								addOptions
 							);
@@ -496,6 +511,7 @@ export function setupBatchHandlers({
 							index,
 							success: true,
 							elementId: createdElementId,
+							...(warnings.length > 0 ? { warnings } : {}),
 						});
 					} catch (error) {
 						failedCount++;
@@ -670,6 +686,7 @@ export function setupBatchHandlers({
 				let deletedCount = 0;
 				let failedCount = 0;
 				const results: ClaudeBatchDeleteResponse["results"] = [];
+				const touchedTrackIds = new Set<string>();
 
 				for (const [index, entry] of elements.entries()) {
 					try {
@@ -684,6 +701,7 @@ export function setupBatchHandlers({
 							throw new Error(`Element not found: ${entry.elementId}`);
 						}
 
+						touchedTrackIds.add(entry.trackId);
 						if (data.ripple) {
 							timelineStore.removeElementFromTrackWithRipple(
 								entry.trackId,
@@ -692,10 +710,16 @@ export function setupBatchHandlers({
 								true
 							);
 						} else {
+							// Without `ripple` the gap stays, on the main track too
+							// and whatever the editor's ripple mode (N17): the
+							// magnet and ripple mode are for edits in the timeline,
+							// and an API caller replacing a clip in place needs the
+							// clips after it to stay put.
 							timelineStore.removeElementFromTrack(
 								entry.trackId,
 								entry.elementId,
-								false
+								false,
+								{ keepGap: true }
 							);
 						}
 						deletedCount++;
@@ -710,10 +734,19 @@ export function setupBatchHandlers({
 					}
 				}
 
+				// An emptied track goes with its last element; say so, since a
+				// later add naming that track id is refused.
+				const remainingTrackIds = new Set(
+					useTimelineStore.getState().tracks.map((track) => track.id)
+				);
+				const removedTrackIds = [...touchedTrackIds].filter(
+					(trackId) => !remainingTrackIds.has(trackId)
+				);
 				claudeAPI.sendBatchDeleteElementsResponse(data.requestId, {
 					deletedCount,
 					failedCount,
 					results,
+					...(removedTrackIds.length > 0 ? { removedTrackIds } : {}),
 				});
 			} catch (error) {
 				debugError(

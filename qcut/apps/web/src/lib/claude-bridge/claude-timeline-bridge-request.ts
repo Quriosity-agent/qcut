@@ -15,8 +15,9 @@ export function setupRequestHandlers({
 }: {
 	claudeAPI: ClaudeTimelineBridgeAPI;
 }): void {
-	// Respond to timeline export request from main process
-	claudeAPI.onRequest(() => {
+	// Respond to timeline export request from main process, echoing its id
+	// so main matches this answer to the request that asked for it.
+	claudeAPI.onRequest((request) => {
 		try {
 			debugLog("[ClaudeTimelineBridge] Received timeline export request");
 
@@ -39,7 +40,7 @@ export function setupRequestHandlers({
 				}),
 			};
 
-			claudeAPI.sendResponse(timeline);
+			claudeAPI.sendResponse(timeline, request?.requestId);
 			debugLog("[ClaudeTimelineBridge] Sent timeline response");
 		} catch (error) {
 			debugError(

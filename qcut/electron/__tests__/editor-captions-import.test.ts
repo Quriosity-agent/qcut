@@ -6,6 +6,7 @@ import type { EditorApiClient } from "../native-pipeline/editor/editor-api-clien
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
 import {
 	captionsImport,
+	pairSecondaryCues,
 	partitionCueLanes,
 } from "../native-pipeline/editor/editor-handlers-captions.js";
 
@@ -22,7 +23,11 @@ overlapping second
 third
 `;
 
-function fakeClient({ existingCaptionTracks = 0, failBatches = false } = {}) {
+function fakeClient({
+	existingCaptionTracks = 0,
+	failBatches = false,
+	batchWarnings = [] as string[],
+} = {}) {
 	const calls: Array<{ method: string; path: string; body: unknown }> = [];
 	let trackCounter = 0;
 	const client = {
@@ -51,7 +56,15 @@ function fakeClient({ existingCaptionTracks = 0, failBatches = false } = {}) {
 				trackCounter += 1;
 				return { trackId: `cap-${trackCounter}` };
 			}
-			return { addedCount: (body as { elements: unknown[] }).elements.length };
+			const elements = (body as { elements: unknown[] }).elements;
+			return {
+				addedCount: elements.length,
+				added: elements.map((_, index) => ({
+					index,
+					success: true,
+					...(batchWarnings.length > 0 ? { warnings: batchWarnings } : {}),
+				})),
+			};
 		}),
 		delete: vi.fn(async (requestPath: string, body: unknown) => {
 			calls.push({ method: "DELETE", path: requestPath, body });
@@ -87,6 +100,29 @@ describe("partitionCueLanes", () => {
 			["a", "c"],
 			["b"],
 		]);
+	});
+});
+
+describe("pairSecondaryCues", () => {
+	it("gives each second-language cue to the cue it overlaps longest", () => {
+		const { cues, unpaired } = pairSecondaryCues({
+			cues: [
+				{ text: "第一句", startTime: 1, duration: 2, language: "zh" },
+				{ text: "第二句", startTime: 3, duration: 2, language: "zh" },
+			],
+			secondary: [
+				// Mostly under the second cue, though it starts under the first.
+				{ text: "Second line", startTime: 2.8, duration: 2 },
+				{ text: "First line", startTime: 1, duration: 1 },
+				{ text: "and more", startTime: 2, duration: 0.9 },
+				{ text: "nobody's", startTime: 8, duration: 1 },
+			],
+		});
+		expect(cues.map((cue) => cue.secondaryText)).toEqual([
+			"First line\nand more",
+			"Second line",
+		]);
+		expect(unpaired).toBe(1);
 	});
 });
 
@@ -198,5 +234,87 @@ describe("editor captions import", () => {
 			success: false,
 			error: expect.stringContaining("No cues"),
 		});
+	});
+
+	it("puts --preset under --style and reports each style warning once", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "cues.srt");
+		writeFileSync(file, SRT);
+		const warning =
+			'Caption field "style.marginV" ignored: no effect on captions';
+		const { client, calls } = fakeClient({ batchWarnings: [warning] });
+		const result = await captionsImport(
+			client,
+			opts({
+				file,
+				preset: "film",
+				style: JSON.stringify({ fontFamily: "Futura", outlineWidth: 2 }),
+			})
+		);
+		expect(result.success).toBe(true);
+		const batch = calls.find((call) => call.path.endsWith("/elements/batch"));
+		expect(
+			(batch?.body as { elements: Array<{ style: unknown }> }).elements[0].style
+		).toMatchObject({
+			bgOpacity: 0,
+			shadowOffset: { x: 0, y: 2 },
+			outlineWidth: 2,
+			fontFamily: "Futura",
+		});
+		const warnings = (result.data as { warnings: string[] }).warnings;
+		expect(warnings.filter((entry) => entry === warning)).toHaveLength(1);
+	});
+
+	it("names the presets when one is unknown", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "cues.srt");
+		writeFileSync(file, SRT);
+		const { client, calls } = fakeClient();
+		const result = await captionsImport(
+			client,
+			opts({ file, preset: "movie" })
+		);
+		expect(result).toMatchObject({
+			success: false,
+			error: expect.stringContaining("film"),
+		});
+		expect(calls).toHaveLength(0);
+	});
+
+	it("takes each caption's second line from a second-language file", async () => {
+		dir = mkdtempSync(path.join(tmpdir(), "qcut-captions-"));
+		const file = path.join(dir, "zh.srt");
+		const secondaryFile = path.join(dir, "en.srt");
+		writeFileSync(
+			file,
+			"1\n00:00:01,000 --> 00:00:03,000\n三年前\n\n2\n00:00:05,000 --> 00:00:06,000\n下车\n"
+		);
+		writeFileSync(
+			secondaryFile,
+			"1\n00:00:01,040 --> 00:00:02,960\nThree years ago\n\n2\n00:00:09,000 --> 00:00:10,000\nUnmatched\n"
+		);
+		const { client, calls } = fakeClient();
+		const result = await captionsImport(
+			client,
+			opts({ file, secondaryFile, language: "zh" })
+		);
+
+		expect(result).toMatchObject({
+			success: true,
+			data: { secondaryFile, cues: 2 },
+		});
+		const batch = calls.find((call) => call.path.endsWith("/elements/batch"));
+		expect(
+			(batch?.body as { elements: Array<Record<string, unknown>> }).elements
+		).toEqual([
+			expect.objectContaining({
+				content: "三年前",
+				secondaryContent: "Three years ago",
+			}),
+			expect.not.objectContaining({ secondaryContent: expect.anything() }),
+		]);
+		expect((result.data as { warnings?: string[] }).warnings).toEqual([
+			expect.stringContaining("1 cue(s) of"),
+		]);
 	});
 });

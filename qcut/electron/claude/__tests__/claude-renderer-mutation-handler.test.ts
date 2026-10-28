@@ -145,6 +145,46 @@ describe("renderer mutation acknowledgement", () => {
 		await expect(pending).resolves.toBeUndefined();
 	});
 
+	// N15 (2026-10-28 trailer report): right after an import the editor can
+	// take longer than 5 s to place a clip; the late placement still landed
+	// while the CLI had already reported a timeout.
+	it("waits through a busy editor for a placement", async () => {
+		vi.useFakeTimers();
+		const win = createWindow();
+		const pending = requestAddElementFromRenderer({
+			element: { duration: 2, id: "card-2", startTime: 1, type: "media" },
+			projectId: "project-1",
+			win,
+		});
+		const request = vi.mocked(win.webContents.send).mock.calls[0]?.[1] as {
+			requestId: string;
+		};
+		await vi.advanceTimersByTimeAsync(8000);
+		electronMocks.listeners.get("claude:timeline:addElement:response")?.(
+			{ sender: win.webContents, senderFrame: win.webContents.mainFrame },
+			{ requestId: request.requestId }
+		);
+
+		await expect(pending).resolves.toBeUndefined();
+	});
+
+	it("says a placement may still land when the editor never confirms it", async () => {
+		vi.useFakeTimers();
+		const win = createWindow();
+		const pending = requestAddElementFromRenderer({
+			element: { duration: 2, id: "card-2", startTime: 1, type: "media" },
+			projectId: "project-1",
+			win,
+		});
+		const rejection = expect(pending).rejects.toThrow(
+			/timed out after 25s.*check editor:timeline:export before retrying/
+		);
+		await vi.advanceTimersByTimeAsync(25_000);
+
+		await rejection;
+		expect(electronMocks.listeners.size).toBe(0);
+	});
+
 	it("binds a batch placement request to its project", async () => {
 		const win = createWindow();
 		const pending = requestBatchAddElementsFromRenderer(

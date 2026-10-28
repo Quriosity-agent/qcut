@@ -316,6 +316,7 @@ describe("Claude HTTP Server - Timeline", () => {
 		vi.mocked(timelineHandler.requestAddElementFromRenderer).mockResolvedValue(
 			undefined
 		);
+		vi.mocked(timelineHandler.requestTimelineFromRenderer).mockReset();
 	});
 
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/split returns split result", async () => {
@@ -832,6 +833,203 @@ describe("Claude HTTP Server - Timeline", () => {
 			mockWindow,
 			[{ elementId: "el_1", startTime: 3 }],
 			expect.any(String)
+		);
+	});
+
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId says when its track went with it", async () => {
+		const send = vi.fn();
+		const mockWindow = createMockWindow(send);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		const timeline = (tracks: unknown[]) =>
+			({
+				name: "P",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 24,
+				tracks,
+			}) as never;
+		vi.mocked(timelineHandler.requestTimelineFromRenderer)
+			.mockResolvedValueOnce(
+				timeline([
+					{ id: "main", name: "Main", elements: [{ id: "clip" }] },
+					{ id: "score", name: "配乐 1", elements: [{ id: "music" }] },
+				])
+			)
+			.mockResolvedValueOnce(
+				timeline([{ id: "main", name: "Main", elements: [{ id: "clip" }] }])
+			);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/music", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({
+			removed: true,
+			confirmed: true,
+			trackId: "score",
+			trackRemoved: true,
+			trackElements: 0,
+		});
+		expect(res.body.data.warning).toContain("配乐 1");
+		expect(send).toHaveBeenCalledWith("claude:timeline:removeElement", "music");
+	});
+
+	// N13 (2026-10-28 trailer report): a busy editor answered the delete
+	// before it applied, and the export right after still showed the element.
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId answers once the editor shows the delete", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		const timeline = (elements: Array<{ id: string }>) =>
+			({
+				name: "P",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 24,
+				tracks: [{ id: "score", name: "配乐 1", elements }],
+			}) as never;
+		vi.mocked(timelineHandler.requestTimelineFromRenderer)
+			.mockResolvedValueOnce(timeline([{ id: "old" }, { id: "new" }]))
+			.mockRejectedValueOnce(new Error("Timeout waiting for timeline data"))
+			.mockResolvedValueOnce(timeline([{ id: "new" }]));
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/old", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			removed: true,
+			confirmed: true,
+			trackId: "score",
+			trackRemoved: false,
+			trackElements: 1,
+		});
+		expect(timelineHandler.requestTimelineFromRenderer).toHaveBeenCalledTimes(
+			3
+		);
+	});
+
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId says when the editor never confirmed it", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		vi.mocked(timelineHandler.requestTimelineFromRenderer)
+			.mockResolvedValueOnce({
+				name: "P",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 24,
+				tracks: [{ id: "score", name: "配乐 1", elements: [{ id: "old" }] }],
+			} as never)
+			.mockRejectedValue(new Error("Timeout waiting for timeline data"));
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/old", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({ removed: true, confirmed: false });
+		expect(res.body.data.warning).toContain("did not answer within 20s");
+		// The pre-read plus a bounded number of confirmation reads.
+		expect(timelineHandler.requestTimelineFromRenderer).toHaveBeenCalledTimes(
+			5
+		);
+	});
+
+	it("DELETE /api/claude/timeline/:projectId/elements/:elementId 404s an unknown element", async () => {
+		const send = vi.fn();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(send),
+		]);
+		vi.mocked(
+			timelineHandler.requestTimelineFromRenderer
+		).mockResolvedValueOnce({
+			name: "P",
+			duration: 0,
+			width: 1920,
+			height: 1080,
+			fps: 24,
+			tracks: [{ id: "main", name: "Main", elements: [] }],
+		} as never);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements/ghost", {
+			method: "DELETE",
+		});
+
+		expect(res.status).toBe(404);
+		expect(res.body.error).toContain("Element not found: ghost");
+		expect(send).not.toHaveBeenCalledWith(
+			"claude:timeline:removeElement",
+			expect.anything()
+		);
+	});
+
+	it("POST /api/claude/timeline/:projectId/elements reports the track it landed on", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		vi.mocked(
+			timelineHandler.requestTimelineFromRenderer
+		).mockResolvedValueOnce({
+			name: "P",
+			duration: 0,
+			width: 1920,
+			height: 1080,
+			fps: 24,
+			tracks: [
+				{ id: "score", name: "配乐 Suno", elements: [{ id: "element_9" }] },
+			],
+		} as never);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements", {
+			method: "POST",
+			body: JSON.stringify({
+				id: "element_9",
+				type: "audio",
+				sourceName: "score.wav",
+				trackId: "score",
+				startTime: 0,
+				duration: 5,
+			}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			elementId: "element_9",
+			trackId: "score",
+			trackName: "配乐 Suno",
+		});
+	});
+
+	it("POST /api/claude/timeline/:projectId/elements answers 504 when the editor never confirms a placement", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		vi.mocked(timelineHandler.requestAddElementFromRenderer).mockRejectedValue(
+			new Error(
+				"Renderer timeline element mutation timed out after 25s; the editor may still be processing imported media. The element may still be added once it is free: check editor:timeline:export before retrying."
+			)
+		);
+
+		const res = await fetch("/api/claude/timeline/proj_123/elements", {
+			method: "POST",
+			body: JSON.stringify({
+				type: "media",
+				sourceName: "card2.mov",
+				trackId: "cards",
+				startTime: 1,
+				duration: 2,
+			}),
+		});
+
+		expect(res.status).toBe(504);
+		expect(res.body.error).toContain(
+			"check editor:timeline:export before retrying"
 		);
 	});
 

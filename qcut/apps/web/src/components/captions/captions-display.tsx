@@ -5,6 +5,7 @@ import type { SubtitleStyle } from "@/types/timeline";
 import type { WordItem } from "@/types/word-timeline";
 import {
 	getCaptionAnimationState,
+	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	subtitleStyleToCSS,
 } from "@/lib/captions/subtitle-style";
@@ -20,6 +21,8 @@ interface CaptionsDisplayProps {
 	/** Word-level timing data for karaoke rendering */
 	words?: WordItem[];
 	canvasScale?: number;
+	/** A bilingual caption's second-language line, under the text. */
+	secondaryText?: string;
 }
 
 /** Renders active caption text with optional karaoke word highlighting. */
@@ -32,8 +35,10 @@ export function CaptionsDisplay({
 	subtitleStyle,
 	words,
 	canvasScale = 1,
+	secondaryText,
 }: CaptionsDisplayProps) {
 	const resolved = resolveSubtitleStyle(subtitleStyle);
+	const secondary = resolveSecondaryLineStyle(resolved);
 	const captionCSS = subtitleStyleToCSS({ style: resolved, canvasScale });
 	const karaokeMode = resolved.karaokeMode ?? "none";
 
@@ -117,12 +122,32 @@ export function CaptionsDisplay({
 					<div
 						style={{
 							...captionCSS,
+							// A line break in the caption is a line break on screen,
+							// as in both exports.
+							whiteSpace: "pre-line",
 							wordWrap: "break-word",
 							overflowWrap: "break-word",
 							hyphens: "auto",
 						}}
 					>
-						{activeSegment.text}
+						{activeSegment.text.trim()}
+						{secondaryText?.trim() ? (
+							// The second line is its own block in the same box, in its
+							// own font; it keeps the caption's line spacing, outline
+							// and shadow, as both exports draw it.
+							<div
+								data-testid="caption-secondary"
+								style={{
+									fontFamily: `${secondary.fontFamily}, sans-serif`,
+									fontSize: `${secondary.fontSize * canvasScale}px`,
+									fontWeight: secondary.bold ? "bold" : "normal",
+									fontStyle: secondary.italic ? "italic" : "normal",
+									color: secondary.fontColor,
+								}}
+							>
+								{secondaryText.trim()}
+							</div>
+						) : null}
 					</div>
 				)}
 			</div>

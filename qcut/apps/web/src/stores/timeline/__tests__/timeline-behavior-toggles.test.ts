@@ -140,6 +140,22 @@ describe("timeline behavior toggles", () => {
 			expect(startTimes("main")).toEqual([0, 2]);
 			expect(useTimelineStore.getState().history).toHaveLength(0);
 		});
+
+		// N17 (2026-10-28 trailer report): an API batch delete without
+		// --ripple moved the later main-track clips up all the same.
+		it("keeps the gap when asked, over both the magnet and ripple mode", () => {
+			useTimelineStore.setState({
+				mainTrackMagnetEnabled: true,
+				rippleEditingEnabled: true,
+			});
+			useTimelineStore
+				.getState()
+				.removeElementFromTrack("main", "a", true, { keepGap: true });
+
+			expect(startTimes("main")).toEqual([2]);
+			expect(startTimes("overlay")).toEqual([0, 2]);
+			expect(useTimelineStore.getState().history).toHaveLength(1);
+		});
 	});
 
 	describe("linked ripple", () => {

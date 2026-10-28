@@ -49,6 +49,7 @@ import type {
 	EditorEvent,
 	EditorStateSnapshot,
 	Transaction,
+	TransactionList,
 	ClaudeTimeline,
 	ClaudeSelectionItem,
 	ClaudeSplitResponse,
@@ -83,6 +84,7 @@ import type {
 	ClaudeHistorySummary,
 	ClaudeUndoRedoResponse,
 } from "../claude/handlers/claude-transaction-handler.js";
+import { NAVIGATION_TIMEOUT_MS } from "../claude/utils/navigation-timeout.js";
 import type { ClaudeConsoleEntry } from "../claude/handlers/claude-console-handler.js";
 import type {
 	AgentPointerResult,
@@ -108,6 +110,8 @@ import { createUtilityLocalVideoExportAccessor } from "./utility-local-video-exp
 let server: Server | null = null;
 
 const REQUEST_TIMEOUT_MS = 120_000;
+/** Main may ask the editor (up to 5 s) before acting on a transaction (5 s). */
+const TRANSACTION_REQUEST_TIMEOUT_MS = 15_000;
 const LONG_RUNNING_ROUTE_PATHS = new Set([
 	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
 	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
@@ -378,15 +382,24 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			}) as Promise<{ transaction: Transaction; historyEntryAdded: boolean }>,
 		/** Rolls back a pending timeline transaction. */
 		rollbackTransaction: (transactionId, reason) =>
-			requestFromMain("transaction:rollback", {
-				transactionId,
-				reason,
-			}) as Promise<{ transaction: Transaction }>,
+			requestFromMain(
+				"transaction:rollback",
+				{ transactionId, reason },
+				// Main may ask the editor what it holds before ending it.
+				{ timeoutMs: TRANSACTION_REQUEST_TIMEOUT_MS }
+			) as Promise<{ transaction: Transaction; orphaned?: boolean }>,
 		/** Returns the current state of a timeline transaction. */
 		getTransactionStatus: (transactionId) =>
 			requestFromMain("transaction:status", {
 				transactionId,
 			}) as Promise<Transaction | null>,
+		/** Lists open and recent transactions, including the editor's own. */
+		listTransactions: () =>
+			requestFromMain(
+				"transaction:list",
+				{},
+				{ timeoutMs: TRANSACTION_REQUEST_TIMEOUT_MS }
+			) as Promise<TransactionList>,
 		/** Undoes the last timeline mutation. */
 		undoTimeline: () =>
 			requestFromMain("timeline:undo", {}) as Promise<ClaudeUndoRedoResponse>,
@@ -658,12 +671,19 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
+		// The editor answers once the project has loaded (it gives up after
+		// 20 s, main after 26 s). A shorter wait here answered "timed out"
+		// while a large project was still loading, and the next commands then
+		// met a busy editor ("Timeout waiting for transaction begin").
+		const wait = NAVIGATION_TIMEOUT_MS + 2000;
 		return await withTimeout(
-			requestFromMain("navigate-to-project", {
-				projectId: req.body.projectId,
-			}),
-			10_000,
-			"Renderer timed out"
+			requestFromMain(
+				"navigate-to-project",
+				{ projectId: req.body.projectId },
+				{ timeoutMs: wait }
+			),
+			wait,
+			"The editor did not finish opening the project in time"
 		);
 	});
 

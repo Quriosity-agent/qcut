@@ -36,6 +36,9 @@ const PID_ACTIVE = f(
 const MID = f("--media-id", "string", "Media ID", { required: true });
 const EID = f("--element-id", "string", "Element ID", { required: true });
 const JID = f("--job-id", "string", "Job ID", { required: true });
+const TXN = f("--transaction-id", "string", "Transaction ID", {
+	required: true,
+});
 const DATA = f("--data", "string", "JSON input (@file/inline/-)");
 const DATA_REQ = f("--data", "string", "JSON input (@file/inline/-)", {
 	required: true,
@@ -348,13 +351,16 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:track:move": ed(
 		"editor:track:move",
-		"Move a timeline track to an exact visual index",
+		"Move a timeline track to an exact visual index, or directly above/below another track",
 		[
 			PID_ACTIVE,
 			f("--track-id", "string", "Track ID", { required: true }),
-			f("--index", "number", "Zero-based destination index", {
-				required: true,
-			}),
+			f("--index", "number", "Zero-based destination index (0 = top row)"),
+			f("--above", "string", "Put the track directly above this track ID"),
+			f("--below", "string", "Put the track directly below this track ID"),
+		],
+		[
+			"qcut editor track move --project-id <id> --track-id <new> --above <main-track-id> --json",
 		]
 	),
 	"editor:track:delete": ed("editor:track:delete", "Delete a timeline track", [
@@ -511,10 +517,23 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:timeline:batch-delete": ed(
 		"editor:timeline:batch-delete",
-		"Batch delete elements",
+		"Batch delete elements; without --ripple every gap stays, on the main track too",
 		[
 			PID,
-			f("--cuts", "string", "JSON array of element IDs", { required: true }),
+			f(
+				"--elements",
+				"string",
+				'JSON array of element IDs or {"trackId","elementId"} (or @file.json); --cuts is accepted too',
+				{ required: true }
+			),
+			f(
+				"--ripple",
+				"boolean",
+				"Close each gap by moving the later clips on that track left"
+			),
+		],
+		[
+			'qcut editor timeline batch-delete --project-id <id> --elements \'[{"trackId":"<main>","elementId":"<clip>"}]\' --force --json',
 		]
 	),
 	"editor:timeline:split": ed(
@@ -915,7 +934,28 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--media-id", "string", "Media ID"),
 			f("--source", "string", "Source (path:/file.mp4 or media:id)"),
 			f("--model", "string", "Model key", { short: "-m" }),
+			f(
+				"--provider",
+				"string",
+				"elevenlabs (Scribe v2: ELEVENLABS_API_KEY, else your QCut account, else a FAL key) or gemini"
+			),
+			f("--language", "string", "Language code (e.g. zh, en)"),
 			POLL,
+			f(
+				"--to-captions",
+				"boolean",
+				"Wait for the transcript and put it on captions tracks (takes --style, --preset, --replace)"
+			),
+			f("--style", "string", "Caption style JSON or @file for --to-captions"),
+			f("--preset", "string", "Caption look for --to-captions (e.g. film)"),
+			f(
+				"--replace",
+				"boolean",
+				"With --to-captions: delete the existing captions tracks first"
+			),
+		],
+		[
+			"qcut editor transcribe start --project-id <id> --source path:/abs/dialogue.wav --provider elevenlabs --language zh --to-captions --preset film --json",
 		]
 	),
 	"editor:transcribe:status": ed(
@@ -1046,6 +1086,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				required: true,
 			}),
 			f(
+				"--secondary-file",
+				"string",
+				"Second-language subtitle file: each cue becomes the second line of the --file caption it overlaps (style it with style.secondary)"
+			),
+			f(
 				"--language",
 				"string",
 				"Language code for every cue (default: from the file, else en)"
@@ -1053,13 +1098,39 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f(
 				"--style",
 				"string",
-				"Caption style JSON or @file applied to every cue"
+				"Caption style JSON or @file applied to every cue (caption or text field names)"
+			),
+			f(
+				"--preset",
+				"string",
+				"Caption look under --style: film (no box, thin outline, soft shadow), cinematic, bold, minimal, karaoke, news"
 			),
 			f("--replace", "boolean", "Delete the existing captions tracks first"),
 		],
 		[
 			"qcut editor captions import --project-id <id> --file subtitles.srt --language zh --json",
+			'qcut editor captions import --project-id <id> --file subtitles.srt --preset film --style \'{"fontFamily":"Futura","fontSize":24}\' --json',
+			'qcut editor captions import --project-id <id> --file zh.srt --secondary-file en.srt --style \'{"fontSize":34,"bold":true,"secondary":{"fontFamily":"Futura","fontSize":24}}\' --json',
 		]
+	),
+	// ── Transactions ──
+	"editor:transaction:list": ed(
+		"editor:transaction:list",
+		"List open and recent timeline transactions, including one only the editor still holds",
+		[],
+		["qcut editor transaction list --json"]
+	),
+	"editor:transaction:status": ed(
+		"editor:transaction:status",
+		"Get one timeline transaction",
+		[TXN],
+		["qcut editor transaction status --transaction-id <id> --json"]
+	),
+	"editor:transaction:rollback": ed(
+		"editor:transaction:rollback",
+		"Roll back an open timeline transaction; one only the editor still holds is ended without restoring anything",
+		[TXN],
+		["qcut editor transaction rollback --transaction-id <id> --json"]
 	),
 	"editor:export:captions": ed(
 		"editor:export:captions",

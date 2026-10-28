@@ -180,6 +180,9 @@ export interface ClaudeTrackOperationRequest {
 	type?: ClaudeTrackType;
 	name?: string;
 	index?: number;
+	/** update/move: put the track directly above (or below) this track. */
+	aboveTrackId?: string;
+	belowTrackId?: string;
 	ripple?: boolean;
 	force?: boolean;
 	transition?: ClaudeTransition;
@@ -379,6 +382,8 @@ export interface ClaudeElement
 	animationLoopIntensity?: number;
 	zIndex?: number;
 	content?: string;
+	/** A bilingual caption's second-language line, drawn under `content`. */
+	secondaryContent?: string;
 	language?: string;
 	/** Caption marked as a key point (划重点). */
 	emphasis?: boolean;
@@ -833,6 +838,8 @@ export interface ClaudeBatchAddItemResult {
 	success: boolean;
 	elementId?: string;
 	error?: string;
+	/** Fields of the request that were not applied, and why. */
+	warnings?: string[];
 }
 
 export interface ClaudeBatchAddResponse {
@@ -855,6 +862,8 @@ export interface ClaudeBatchDeleteResponse {
 	deletedCount: number;
 	failedCount: number;
 	results: ClaudeBatchDeleteItemResult[];
+	/** Tracks the deletes left empty, which the editor removed with them. */
+	removedTrackIds?: string[];
 }
 
 export interface ClaudeBatchUpdateItemRequest
@@ -1190,6 +1199,10 @@ export interface BatchImportResult {
 	success: boolean;
 	mediaFile?: MediaFile;
 	error?: string;
+	/** Whether the open editor confirmed it loaded the copied file. */
+	editorReady?: boolean;
+	/** Why the editor does not have the file yet, when it does not. */
+	warning?: string;
 }
 
 // ============================================================================
@@ -1473,6 +1486,47 @@ export interface Transaction {
 	updatedAt: number;
 	expiresAt: number;
 	error?: string;
+}
+/** The transaction the editor window itself holds open. */
+export interface RendererTransactionSummary {
+	id: string;
+	label?: string;
+	createdAt: number;
+	expiresAt: number;
+	projectId?: string;
+}
+/** What an undo or redo did to the timeline: counts and the first ten elements. */
+export interface ClaudeUndoRedoChanges {
+	added: number;
+	removed: number;
+	moved: number;
+	elements: Array<{
+		elementId: string;
+		name?: string;
+		change: "added" | "removed" | "moved";
+		trackId: string;
+		startTime: number;
+		duration: number;
+		/** Where a moved element was before. */
+		from?: { trackId: string; startTime: number; duration: number };
+	}>;
+}
+/** `GET /api/claude/transaction`: what is open, in this process and in the editor. */
+export interface TransactionList {
+	/** The transaction QCut holds open, if any. */
+	active: Transaction | null;
+	/** Finished transactions, newest first. */
+	recent: Transaction[];
+	/**
+	 * What the editor window holds; `orphaned` when QCut does not track it
+	 * (such a transaction blocks every new one until it is rolled back).
+	 */
+	editor?:
+		| {
+				activeTransaction: RendererTransactionSummary | null;
+				orphaned: boolean;
+		  }
+		| { error: string };
 }
 
 // Screen recording option values shared by the HTTP routes, CLI, and renderer.

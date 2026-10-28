@@ -202,6 +202,26 @@ export const CAPTION_STYLE_PRESETS: readonly CaptionStylePreset[] = [
 		}),
 	},
 	{
+		id: "film-subtitle",
+		name: "电影字幕",
+		description: "无底框，细描边加柔和阴影，适合预告片和剧情片",
+		platform: "电影 / 预告片",
+		textStylePresetId: "clean-white",
+		style: createCaptionStyleFromTextPreset({
+			textStylePresetId: "clean-white",
+			overrides: {
+				fontSize: 40,
+				bold: false,
+				outlineColor: "#000000",
+				outlineWidth: 1.5,
+				shadowColor: "#000000",
+				shadowOffset: { x: 0, y: 2 },
+				bgOpacity: 0,
+				lineSpacing: 1.2,
+			},
+		}),
+	},
+	{
 		id: "karaoke-lyrics",
 		name: "歌词卡拉 OK",
 		description: "逐词高亮，适合歌词和节奏字幕",

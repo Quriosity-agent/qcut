@@ -172,6 +172,7 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 				source: string;
 				masked?: string;
 				requiredFor?: string[];
+				warning?: string;
 			}[];
 		};
 		const configured = data.keys.filter((key) => key.configured);
@@ -190,8 +191,9 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 			for (const key of configured) {
 				const categories = key.requiredFor?.join(", ") || "-";
 				console.log(
-					`  OK  ${key.name.padEnd(20)} ${key.source.padEnd(8)} ${(key.masked ?? "").padEnd(12)} ${categories}`
+					`  ${key.warning ? "!!" : "OK"}  ${key.name.padEnd(20)} ${key.source.padEnd(8)} ${(key.masked ?? "").padEnd(12)} ${categories}`
 				);
+				if (key.warning) console.log(`      ${key.warning}`);
 			}
 			console.log("");
 		}

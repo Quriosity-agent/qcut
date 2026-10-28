@@ -13,7 +13,12 @@ const storeMocks = vi.hoisted(() => {
 		duration: 2,
 		trimStart: 0,
 		trimEnd: 0,
-		style: { fontSize: 48, fontColor: "#ffffff", bold: false },
+		style: {
+			fontSize: 48,
+			fontColor: "#ffffff",
+			bold: false,
+			shadowOffset: { x: 2, y: 4 },
+		},
 	};
 	const state = {
 		tracks: [
@@ -82,6 +87,44 @@ describe("Claude caption update bridge", () => {
 			},
 			false
 		);
+	});
+
+	it("patches one shadow axis without losing the other", () => {
+		applyElementChanges({
+			elementId: "caption",
+			changes: { shadowOffsetY: 8 },
+			pushHistory: false,
+		});
+
+		expect(storeMocks.state.updateCaptionElement).toHaveBeenCalledWith(
+			"captions-track",
+			"caption",
+			{ style: { shadowOffset: { x: 2, y: 8 } } },
+			false
+		);
+	});
+
+	it("sets and removes a bilingual caption's second line", () => {
+		applyElementChanges({
+			elementId: "caption",
+			changes: { secondaryContent: " Round one " },
+			pushHistory: false,
+		});
+		expect(storeMocks.state.updateCaptionElement).toHaveBeenLastCalledWith(
+			"captions-track",
+			"caption",
+			{ secondaryText: "Round one" },
+			false
+		);
+
+		applyElementChanges({
+			elementId: "caption",
+			changes: { secondaryContent: "" },
+			pushHistory: false,
+		});
+		const [, , cleared] =
+			storeMocks.state.updateCaptionElement.mock.calls.at(-1) ?? [];
+		expect(cleared).toHaveProperty("secondaryText", undefined);
 	});
 
 	it("leaves the caption alone when only timing changes", () => {

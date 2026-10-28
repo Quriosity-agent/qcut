@@ -351,6 +351,40 @@ describe("Timeline handlers", () => {
 			globalThis.fetch = origFetch;
 			installFetchMock(BASE_URL);
 		});
+
+		// N17 (2026-10-28 trailer report): the docs named the flag --cuts.
+		it("reads --cuts as well as --elements", async () => {
+			let capturedBody: string | null = null;
+			const origFetch = globalThis.fetch;
+			globalThis.fetch = async (
+				_input: RequestInfo | URL,
+				init?: RequestInit
+			) => {
+				capturedBody = init?.body as string;
+				return new Response(
+					JSON.stringify({ success: true, data: { deletedCount: 1 } }),
+					{ headers: { "Content-Type": "application/json" } }
+				);
+			};
+			try {
+				const result = await handleTimelineEditingCommand(
+					client,
+					makeOpts({
+						command: "editor:timeline:batch-delete",
+						projectId: "p1",
+						cuts: '[{"trackId":"main","elementId":"clip"}]',
+					} as Partial<CLIRunOptions>),
+					noopProgress
+				);
+				expect(result.success).toBe(true);
+				expect(JSON.parse(capturedBody ?? "{}")).toMatchObject({
+					elements: [{ trackId: "main", elementId: "clip" }],
+				});
+			} finally {
+				globalThis.fetch = origFetch;
+				installFetchMock(BASE_URL);
+			}
+		});
 	});
 
 	// -- Manipulation --

@@ -1078,11 +1078,30 @@ export interface SubtitleStyle {
 	upcomingColor?: string;
 	/** Scale factor for the active word (default: 1.15) */
 	highlightScale?: number;
+	/** The look of a bilingual caption's second-language line (`secondaryText`). */
+	secondary?: CaptionSecondaryStyle;
+}
+
+/**
+ * The second-language line's own look; each field left out is the caption's.
+ * Outline, shadow, box, spacing and alignment are always the caption's.
+ */
+export interface CaptionSecondaryStyle {
+	fontFamily?: string;
+	fontSize?: number;
+	fontColor?: string;
+	bold?: boolean;
+	italic?: boolean;
 }
 
 export interface CaptionElement extends BaseTimelineElement {
 	type: "captions";
 	text: string;
+	/**
+	 * A second-language line drawn under `text`, in `style.secondary`'s look:
+	 * a bilingual caption is one element instead of two captions tracks.
+	 */
+	secondaryText?: string;
 	language: string;
 	confidence?: number;
 	source: "transcription" | "manual" | "imported";

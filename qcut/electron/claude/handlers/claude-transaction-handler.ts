@@ -1,45 +1,39 @@
-import { BrowserWindow, ipcMain, type IpcMainEvent } from "electron";
+import type { BrowserWindow } from "electron";
 import { generateId } from "../utils/helpers.js";
 import { claudeLog } from "../utils/logger.js";
 import {
 	TRANSACTION_STATE,
 	type Transaction,
+	type TransactionList,
 	type TransactionRequest,
 } from "../../types/claude-api.js";
+import {
+	type ClaudeHistorySummary,
+	type ClaudeUndoRedoResponse,
+	RENDERER_REQUEST_TIMEOUT_MS,
+	type RendererTransactionResult,
+	type RendererTransactionSummary,
+	discardAbandonedBegin,
+	requestBeginFromRenderer,
+	requestCommitFromRenderer,
+	requestHistoryFromRenderer,
+	requestRedoFromRenderer,
+	requestRollbackFromRenderer,
+	requestUndoFromRenderer,
+} from "./claude-transaction-renderer.js";
+
+export type {
+	ClaudeHistoryEntry,
+	ClaudeHistorySummary,
+	ClaudeUndoRedoResponse,
+	RendererTransactionSummary,
+} from "./claude-transaction-renderer.js";
 
 const HANDLER_NAME = "Transaction";
-const RENDERER_REQUEST_TIMEOUT_MS = 5000;
 export const DEFAULT_TRANSACTION_TIMEOUT_MS = 30_000;
 const MAX_STORED_TRANSACTIONS = 200;
-
-export interface ClaudeHistoryEntry {
-	label: string;
-	timestamp: number;
-	transactionId?: string;
-}
-
-export interface ClaudeHistorySummary {
-	undoCount: number;
-	redoCount: number;
-	entries: ClaudeHistoryEntry[];
-	redoEntries?: ClaudeHistoryEntry[];
-}
-
-export interface ClaudeUndoRedoResponse {
-	applied: boolean;
-	undoCount: number;
-	redoCount: number;
-}
-
-type RendererTransactionResult = {
-	success: boolean;
-	error?: string;
-	message?: string;
-};
-
-type RendererCommitResult = RendererTransactionResult & {
-	historyEntryAdded?: boolean;
-};
+/** How many finished transactions `listTransactions` reports. */
+const LISTED_RECENT_TRANSACTIONS = 20;
 
 type ManagedTransaction = Transaction & {
 	timeoutMs: number;
@@ -47,8 +41,6 @@ type ManagedTransaction = Transaction & {
 	window: BrowserWindow;
 	isFinalizing: boolean;
 };
-
-type RendererRequestResult<T> = { requestId: string; result: T };
 
 const transactionsById = new Map<string, ManagedTransaction>();
 const transactionOrder: string[] = [];
@@ -224,155 +216,6 @@ function getRollbackReasonText({
 	return trimmed;
 }
 
-function requestRendererResponse<T>({
-	win,
-	requestChannel,
-	responseChannel,
-	payload,
-	timeoutErrorMessage,
-}: {
-	win: BrowserWindow;
-	requestChannel: string;
-	responseChannel: string;
-	payload: Record<string, unknown>;
-	timeoutErrorMessage: string;
-}): Promise<T> {
-	return new Promise((resolve, reject) => {
-		let resolved = false;
-		const requestId = generateId("req");
-
-		const timeout = setTimeout(() => {
-			if (resolved) {
-				return;
-			}
-			resolved = true;
-			ipcMain.removeListener(responseChannel, responseHandler);
-			reject(new Error(timeoutErrorMessage));
-		}, RENDERER_REQUEST_TIMEOUT_MS);
-
-		const responseHandler = (
-			_event: IpcMainEvent,
-			data: RendererRequestResult<T>
-		) => {
-			if (resolved || data.requestId !== requestId) {
-				return;
-			}
-			resolved = true;
-			clearTimeout(timeout);
-			ipcMain.removeListener(responseChannel, responseHandler);
-			resolve(data.result);
-		};
-
-		ipcMain.on(responseChannel, responseHandler);
-		win.webContents.send(requestChannel, {
-			requestId,
-			...payload,
-		});
-	});
-}
-
-async function requestBeginFromRenderer({
-	win,
-	transactionId,
-	label,
-	timeoutMs,
-	createdAt,
-	expiresAt,
-}: {
-	win: BrowserWindow;
-	transactionId: string;
-	label?: string;
-	timeoutMs: number;
-	createdAt: number;
-	expiresAt: number;
-}): Promise<RendererTransactionResult> {
-	return requestRendererResponse<RendererTransactionResult>({
-		win,
-		requestChannel: "claude:transaction:begin",
-		responseChannel: "claude:transaction:begin:response",
-		payload: { transactionId, label, timeoutMs, createdAt, expiresAt },
-		timeoutErrorMessage: "Timeout waiting for transaction begin",
-	});
-}
-
-async function requestCommitFromRenderer({
-	win,
-	transactionId,
-	label,
-}: {
-	win: BrowserWindow;
-	transactionId: string;
-	label?: string;
-}): Promise<RendererCommitResult> {
-	return requestRendererResponse<RendererCommitResult>({
-		win,
-		requestChannel: "claude:transaction:commit",
-		responseChannel: "claude:transaction:commit:response",
-		payload: { transactionId, label },
-		timeoutErrorMessage: "Timeout waiting for transaction commit",
-	});
-}
-
-async function requestRollbackFromRenderer({
-	win,
-	transactionId,
-	reason,
-}: {
-	win: BrowserWindow;
-	transactionId: string;
-	reason?: string;
-}): Promise<RendererTransactionResult> {
-	return requestRendererResponse<RendererTransactionResult>({
-		win,
-		requestChannel: "claude:transaction:rollback",
-		responseChannel: "claude:transaction:rollback:response",
-		payload: { transactionId, reason },
-		timeoutErrorMessage: "Timeout waiting for transaction rollback",
-	});
-}
-
-async function requestUndoFromRendererInternal({
-	win,
-}: {
-	win: BrowserWindow;
-}): Promise<ClaudeUndoRedoResponse> {
-	return requestRendererResponse<ClaudeUndoRedoResponse>({
-		win,
-		requestChannel: "claude:transaction:undo",
-		responseChannel: "claude:transaction:undo:response",
-		payload: {},
-		timeoutErrorMessage: "Timeout waiting for undo",
-	});
-}
-
-async function requestRedoFromRendererInternal({
-	win,
-}: {
-	win: BrowserWindow;
-}): Promise<ClaudeUndoRedoResponse> {
-	return requestRendererResponse<ClaudeUndoRedoResponse>({
-		win,
-		requestChannel: "claude:transaction:redo",
-		responseChannel: "claude:transaction:redo:response",
-		payload: {},
-		timeoutErrorMessage: "Timeout waiting for redo",
-	});
-}
-
-async function requestHistoryFromRendererInternal({
-	win,
-}: {
-	win: BrowserWindow;
-}): Promise<ClaudeHistorySummary> {
-	return requestRendererResponse<ClaudeHistorySummary>({
-		win,
-		requestChannel: "claude:transaction:history",
-		responseChannel: "claude:transaction:history:response",
-		payload: {},
-		timeoutErrorMessage: "Timeout waiting for history",
-	});
-}
-
 async function timeoutActiveTransaction({
 	transaction,
 }: {
@@ -447,6 +290,145 @@ function scheduleTransactionTimeout({
 	}
 }
 
+/** Removes a transaction whose begin never completed from the registry. */
+function forgetTransaction({ transactionId }: { transactionId: string }): void {
+	transactionsById.delete(transactionId);
+	const index = transactionOrder.lastIndexOf(transactionId);
+	if (index >= 0) {
+		transactionOrder.splice(index, 1);
+	}
+	if (activeTransactionId === transactionId) {
+		activeTransactionId = null;
+	}
+}
+
+/** The editor holds a transaction this process does not know: say how to end it. */
+function beginRejectionMessage({ error }: { error?: string }): string {
+	const message = error || "Renderer rejected transaction begin";
+	const held = /Active transaction: (\S+)/.exec(message)?.[1];
+	if (!held || getManagedTransaction({ transactionId: held })) return message;
+	return `${message}. QCut no longer tracks that transaction; end it with \`qcut editor transaction rollback --transaction-id ${held}\` (nothing is restored), or wait: it ends on its own once it expires.`;
+}
+
+/**
+ * Runs a commit or rollback request; when the editor never answers, the
+ * transaction goes back to active with its timeout re-armed, so a retry,
+ * a rollback or the timeout can still end it instead of it staying
+ * "finalizing" (and blocking every later transaction) forever.
+ */
+async function withRecoverableFinalize<T>({
+	transaction,
+	request,
+}: {
+	transaction: ManagedTransaction;
+	request: () => Promise<T>;
+}): Promise<T> {
+	try {
+		return await request();
+	} catch (error) {
+		transaction.isFinalizing = false;
+		scheduleTransactionTimeout({ transaction });
+		throw error;
+	}
+}
+
+/**
+ * A transaction the editor window still holds but this process does not
+ * (its begin timed out, or the app predates the discard on timeout): drop it
+ * in the window without restoring, since no caller ever edited under it and
+ * restoring would undo everything done since it opened. Null when the window
+ * holds a different one or none.
+ */
+async function discardOrphanedTransaction({
+	win,
+	transactionId,
+	reason,
+}: {
+	win: BrowserWindow;
+	transactionId: string;
+	reason?: string;
+}): Promise<{ transaction: Transaction; orphaned: true } | null> {
+	const history = await requestHistoryFromRenderer({ win });
+	const held = history.activeTransaction;
+	if (!held || held.id !== transactionId) return null;
+	const result = await requestRollbackFromRenderer({
+		win,
+		transactionId,
+		reason: reason ?? "Rolled back by request",
+		discard: true,
+	});
+	if (!result.success) {
+		throw new ClaudeTransactionError({
+			message: result.error || "The editor did not end the transaction",
+			statusCode: 409,
+			code: "TRANSACTION_ROLLBACK_REJECTED",
+		});
+	}
+	claudeLog.warn(
+		HANDLER_NAME,
+		`Discarded orphaned transaction ${transactionId} held by the editor`
+	);
+	const now = Date.now();
+	return {
+		transaction: {
+			id: held.id,
+			label: held.label,
+			state: TRANSACTION_STATE.rolledBack,
+			createdAt: held.createdAt,
+			updatedAt: now,
+			expiresAt: held.expiresAt,
+			error:
+				"Discarded: QCut no longer tracked this transaction; the timeline was left as it is",
+		},
+		orphaned: true,
+	};
+}
+
+/**
+ * Every transaction this process knows (the open one first, then the most
+ * recent), plus the one the editor window holds, which is `orphaned` when
+ * this process does not know it — the state `editor transaction rollback`
+ * can end.
+ */
+export async function listTransactions({
+	win,
+}: {
+	win?: BrowserWindow;
+} = {}): Promise<TransactionList> {
+	const active = getActiveTransactionStatus();
+	const recent = [...transactionOrder]
+		.reverse()
+		.filter((id) => id !== active?.id)
+		.slice(0, LISTED_RECENT_TRANSACTIONS)
+		.map((id) => transactionsById.get(id))
+		.filter((transaction): transaction is ManagedTransaction =>
+			Boolean(transaction)
+		)
+		.map((transaction) => cloneTransaction({ transaction }));
+	if (!win) return { active, recent };
+	try {
+		const history = await requestHistoryFromRenderer({ win });
+		const held: RendererTransactionSummary | null =
+			history.activeTransaction ?? null;
+		return {
+			active,
+			recent,
+			editor: {
+				activeTransaction: held,
+				orphaned: Boolean(held && held.id !== active?.id),
+			},
+		};
+	} catch (error) {
+		return {
+			active,
+			recent,
+			editor: {
+				error: error instanceof Error ? error.message : String(error),
+			},
+		};
+	}
+}
+
 export async function beginTransaction({
 	win,
 	request,
@@ -493,28 +475,22 @@ export async function beginTransaction({
 				expiresAt,
 			});
 		} catch (error) {
-			transactionsById.delete(transactionId);
-			const index = transactionOrder.lastIndexOf(transactionId);
-			if (index >= 0) {
-				transactionOrder.splice(index, 1);
-			}
-			if (activeTransactionId === transactionId) {
-				activeTransactionId = null;
-			}
-			throw error;
+			forgetTransaction({ transactionId });
+			// The editor answers in order once it is free, so a begin it has not
+			// answered yet still runs later and would hold the timeline forever
+			// (nothing tracks it any more). The discard queued behind it ends it.
+			discardAbandonedBegin({ win, transactionId });
+			throw new ClaudeTransactionError({
+				message: `${error instanceof Error ? error.message : "Transaction begin failed"}: the editor did not answer within ${RENDERER_REQUEST_TIMEOUT_MS / 1000}s (it may still be loading a project). Nothing was changed; retry once it is ready.`,
+				statusCode: 503,
+				code: "TRANSACTION_BEGIN_TIMEOUT",
+			});
 		}
 
 		if (!beginResult.success) {
-			transactionsById.delete(transactionId);
-			const index = transactionOrder.lastIndexOf(transactionId);
-			if (index >= 0) {
-				transactionOrder.splice(index, 1);
-			}
-			if (activeTransactionId === transactionId) {
-				activeTransactionId = null;
-			}
+			forgetTransaction({ transactionId });
 			throw new ClaudeTransactionError({
-				message: beginResult.error || "Renderer rejected transaction begin",
+				message: beginRejectionMessage({ error: beginResult.error }),
 				statusCode: 409,
 				code: "TRANSACTION_BEGIN_REJECTED",
 			});
@@ -555,10 +531,14 @@ export async function commitTransaction({
 		transaction.isFinalizing = true;
 		clearManagedTransactionTimer({ transaction });
 
-		const result = await requestCommitFromRenderer({
-			win: transaction.window,
-			transactionId,
-			label: transaction.label,
+		const result = await withRecoverableFinalize({
+			transaction,
+			request: () =>
+				requestCommitFromRenderer({
+					win: transaction.window,
+					transactionId,
+					label: transaction.label,
+				}),
 		});
 
 		if (!result.success) {
@@ -596,11 +576,22 @@ export async function commitTransaction({
 export async function rollbackTransaction({
 	transactionId,
 	reason,
+	win,
 }: {
 	transactionId: string;
 	reason?: string;
-}): Promise<{ transaction: Transaction }> {
+	/** The editor window, to end a transaction only it still holds. */
+	win?: BrowserWindow;
+}): Promise<{ transaction: Transaction; orphaned?: boolean }> {
 	try {
+		if (win && activeTransactionId !== transactionId) {
+			const orphan = await discardOrphanedTransaction({
+				win,
+				transactionId,
+				reason: getRollbackReasonText({ reason }),
+			});
+			if (orphan) return orphan;
+		}
 		const transaction = ensureActiveTransactionMatches({ transactionId });
 		if (transaction.isFinalizing) {
 			throw new ClaudeTransactionError({
@@ -613,10 +604,14 @@ export async function rollbackTransaction({
 		transaction.isFinalizing = true;
 		clearManagedTransactionTimer({ transaction });
 
-		const result = await requestRollbackFromRenderer({
-			win: transaction.window,
-			transactionId,
-			reason: getRollbackReasonText({ reason }),
+		const result = await withRecoverableFinalize({
+			transaction,
+			request: () =>
+				requestRollbackFromRenderer({
+					win: transaction.window,
+					transactionId,
+					reason: getRollbackReasonText({ reason }),
+				}),
 		});
 
 		if (!result.success) {
@@ -693,7 +688,7 @@ export async function undoTimeline({
 				code: "UNDO_BLOCKED_BY_TRANSACTION",
 			});
 		}
-		return await requestUndoFromRendererInternal({ win });
+		return await requestUndoFromRenderer({ win });
 	} catch (error) {
 		if (error instanceof ClaudeTransactionError) {
 			throw error;
@@ -719,7 +714,7 @@ export async function redoTimeline({
 				code: "REDO_BLOCKED_BY_TRANSACTION",
 			});
 		}
-		return await requestRedoFromRendererInternal({ win });
+		return await requestRedoFromRenderer({ win });
 	} catch (error) {
 		if (error instanceof ClaudeTransactionError) {
 			throw error;
@@ -738,7 +733,7 @@ export async function getHistorySummary({
 	win: BrowserWindow;
 }): Promise<ClaudeHistorySummary> {
 	try {
-		return await requestHistoryFromRendererInternal({ win });
+		return await requestHistoryFromRenderer({ win });
 	} catch (error) {
 		throw new ClaudeTransactionError({
 			message:
@@ -765,6 +760,7 @@ export function resetTransactionManagerForTests(): void {
 // CommonJS export for compatibility with existing Electron requires
 module.exports = {
 	beginTransaction,
+	listTransactions,
 	commitTransaction,
 	rollbackTransaction,
 	getTransactionStatus,

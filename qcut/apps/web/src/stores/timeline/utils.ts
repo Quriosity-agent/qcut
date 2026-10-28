@@ -78,3 +78,23 @@ export function getElementEndTime(element: {
 }): number {
 	return element.startTime + getEffectiveDuration(element);
 }
+
+/**
+ * Drops the tracks among `trackIds` that an edit has just left empty (never
+ * the main track). Only the tracks the edit touched: an empty track that was
+ * created on purpose and not filled yet (by the user, or `track:create` right
+ * before a batch) must survive an unrelated delete elsewhere.
+ */
+export function dropEmptiedTracks({
+	tracks,
+	trackIds,
+}: {
+	tracks: TimelineTrack[];
+	trackIds: Iterable<string>;
+}): TimelineTrack[] {
+	const touched = new Set(trackIds);
+	return tracks.filter(
+		(track) =>
+			track.elements.length > 0 || track.isMain || !touched.has(track.id)
+	);
+}

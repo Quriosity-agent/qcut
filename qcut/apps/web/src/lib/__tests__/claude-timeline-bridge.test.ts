@@ -1686,4 +1686,100 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
 		expect(response.added[0].success).toBe(false);
 		expect(response.added[0].error).toContain("greater than 0");
 	});
+
+	it("stores a caption's style under the caption's names and reports what it could not use", async () => {
+		storeMocks.timelineStoreState.tracks.push({
+			id: "track-cap",
+			name: "字幕 英文",
+			type: "captions",
+			elements: [],
+		});
+		const { batchAddHandler, sendBatchAddResponse } = setupBatchAddBridge();
+
+		await batchAddHandler({
+			requestId: "req-captions",
+			projectId: "project-1",
+			elements: [
+				{
+					type: "captions",
+					trackId: "track-cap",
+					startTime: 61,
+					duration: 1.4,
+					content: "Round one.",
+					// Text-element names at the top level, as in the report.
+					color: "#ECE8DE",
+					strokeWidth: 1.6,
+					backgroundOpacity: 0,
+					style: { fontFamily: "Futura", marginV: 34 },
+				} as unknown as ClaudeBatchAddElementRequest,
+			],
+		});
+
+		expect(
+			storeMocks.timelineStoreState.addElementToTrack
+		).toHaveBeenCalledWith(
+			"track-cap",
+			expect.objectContaining({
+				type: "captions",
+				text: "Round one.",
+				style: {
+					fontFamily: "Futura",
+					fontColor: "#ECE8DE",
+					outlineWidth: 1.6,
+					bgOpacity: 0,
+				},
+			}),
+			expect.any(Object)
+		);
+		const response: ClaudeBatchAddResponse =
+			sendBatchAddResponse.mock.calls[0][1];
+		expect(response.added[0].success).toBe(true);
+		expect(response.added[0].warnings).toEqual([
+			expect.stringContaining('Caption field "style.marginV" ignored'),
+		]);
+	});
+
+	it("stores a bilingual caption's second line and its look", async () => {
+		storeMocks.timelineStoreState.tracks.push({
+			id: "track-duo",
+			name: "字幕",
+			type: "captions",
+			elements: [],
+		});
+		const { batchAddHandler } = setupBatchAddBridge();
+
+		await batchAddHandler({
+			requestId: "req-duo",
+			projectId: "project-1",
+			elements: [
+				{
+					type: "captions",
+					trackId: "track-duo",
+					startTime: 12,
+					duration: 2.5,
+					content: "三年前",
+					secondaryContent: " Three years ago ",
+					style: {
+						fontSize: 34,
+						secondary: { fontFamily: "Futura", fontSize: 24 },
+					},
+				} as unknown as ClaudeBatchAddElementRequest,
+			],
+		});
+
+		expect(
+			storeMocks.timelineStoreState.addElementToTrack
+		).toHaveBeenCalledWith(
+			"track-duo",
+			expect.objectContaining({
+				text: "三年前",
+				secondaryText: "Three years ago",
+				style: {
+					fontSize: 34,
+					secondary: { fontFamily: "Futura", fontSize: 24 },
+				},
+			}),
+			expect.any(Object)
+		);
+	});
 });
