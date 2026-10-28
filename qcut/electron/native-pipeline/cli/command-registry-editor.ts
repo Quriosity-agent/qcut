@@ -517,10 +517,23 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:timeline:batch-delete": ed(
 		"editor:timeline:batch-delete",
-		"Batch delete elements",
+		"Batch delete elements; without --ripple every gap stays, on the main track too",
 		[
 			PID,
-			f("--cuts", "string", "JSON array of element IDs", { required: true }),
+			f(
+				"--elements",
+				"string",
+				'JSON array of element IDs or {"trackId","elementId"} (or @file.json); --cuts is accepted too',
+				{ required: true }
+			),
+			f(
+				"--ripple",
+				"boolean",
+				"Close each gap by moving the later clips on that track left"
+			),
+		],
+		[
+			'qcut editor timeline batch-delete --project-id <id> --elements \'[{"trackId":"<main>","elementId":"<clip>"}]\' --force --json',
 		]
 	),
 	"editor:timeline:split": ed(
