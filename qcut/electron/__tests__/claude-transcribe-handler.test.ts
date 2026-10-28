@@ -108,8 +108,10 @@ vi.mock("../claude/handlers/claude-media-handler", () => ({
 }));
 
 const { mockGetDecryptedApiKeys } = vi.hoisted(() => ({
+	// A FAL key has FAL's key_id:key_secret form; a `test-…` value would be
+	// refused as a placeholder before any request.
 	mockGetDecryptedApiKeys: vi.fn(async () => ({
-		falApiKey: "test-fal-key",
+		falApiKey: "fal-key-id:fal-key-secret",
 		geminiApiKey: "test-gemini-key",
 		anthropicApiKey: "",
 	})),
@@ -438,7 +440,7 @@ describe("ElevenLabs transcription API (mocked)", () => {
 		).rejects.toThrow("FAL storage upload failed");
 	});
 
-	it("throws when FAL API key is missing", async () => {
+	it("names every way to transcribe when no credentials are usable", async () => {
 		mockGetDecryptedApiKeys.mockResolvedValueOnce({
 			falApiKey: "",
 			geminiApiKey: "",
@@ -450,7 +452,41 @@ describe("ElevenLabs transcription API (mocked)", () => {
 				mediaId: "valid-audio",
 				provider: "elevenlabs",
 			})
-		).rejects.toThrow("FAL API key not configured");
+		).rejects.toThrow(
+			"ElevenLabs transcription has no usable credentials. It needs one of: ELEVENLABS_API_KEY"
+		);
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
+	it("calls ElevenLabs directly, without FAL, when ELEVENLABS_API_KEY is set", async () => {
+		mockGetDecryptedApiKeys.mockResolvedValueOnce({
+			falApiKey: "fal-key-id:fal-key-secret",
+			elevenLabsApiKey: "sk_live_direct",
+			geminiApiKey: "",
+			anthropicApiKey: "",
+		} as never);
+		mockFsReadFile.mockResolvedValue(Buffer.from("fake-audio"));
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({
+				language_code: "zho",
+				words: [{ text: "下车", start: 1, end: 1.5, type: "word" }],
+			}),
+		});
+
+		const result = await transcribeMedia("test-project", {
+			mediaId: "valid-audio",
+			provider: "elevenlabs",
+			language: "zh",
+		});
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		const [url, init] = mockFetch.mock.calls[0];
+		expect(url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
+		expect(init.headers).toEqual({ "xi-api-key": "sk_live_direct" });
+		expect((init.body as FormData).get("model_id")).toBe("scribe_v2");
+		expect((init.body as FormData).get("language_code")).toBe("zh");
+		expect(result.segments).toEqual([{ text: "下车", start: 1, end: 1.5 }]);
 	});
 
 	it("maps speaker_id correctly", async () => {
