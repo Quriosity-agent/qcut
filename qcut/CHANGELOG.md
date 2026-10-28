@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `editor transaction list|status|rollback`: see timeline transactions, including one only the editor still holds, and end it (an orphan is discarded without restoring anything).
 - `editor transcribe start --to-captions` puts a finished transcript on captions tracks (with `--style`, `--preset`, `--replace`); `captions import --preset film` (电影字幕: no box, thin outline, soft shadow), also in the captions panel presets.
 - `editor track move --above <trackId>` / `--below <trackId>` puts a track directly over or under another one; the answer has the resulting index and order.
+- Bilingual captions: a caption can carry a second-language line (`secondaryContent`) in its own font, size, colour, weight and slant (`style.secondary`), drawn under its text by the preview and both exports at the same places; `captions import --secondary-file` takes the second lines from another subtitle file by time, and SRT/VTT/ASS/TTML exports write the line as the cue's second line.
 
 ### Fixed
 
@@ -23,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Explicit line breaks in captions are drawn by the preview and the canvas export too, and stacked captions make room for every line.
 - `delete-element` answers once the editor's timeline no longer has the element (`confirmed`), and a `timeline export` right after it can no longer get the late answer of an older, timed-out read (each read is matched to its own request).
 - `media:batch-import` answers once the editor has loaded the copied files (`editorReady` per file), so an `add-element` right after finds them; a single add waits up to 25 s for a busy editor and, if it still times out, says the element may yet be placed.
+- Multi-line captions keep the preview's line spacing in the native export, and captions in fonts whose two line-height metrics differ (e.g. Songti SC) sit where the canvas export draws them.
+- `transcribe start --to-captions` checks `--style` and `--preset` before transcribing, and Gemini transcripts no longer run their segments together.
 
 ## [2026.10.27.1] - 2026-10-27
 
