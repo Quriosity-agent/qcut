@@ -112,14 +112,26 @@ function addElementOrThrow({
 	trackId,
 	element,
 	elementType,
+	collision,
 }: {
 	timelineStore: TimelineStoreState;
 	trackId: string;
 	element: Parameters<TimelineStoreState["addElementToTrack"]>[1];
 	elementType: string;
+	/** The request's collision policy, as batch-add takes it (QTL-002). */
+	collision?: unknown;
 }): string {
+	if (
+		collision !== undefined &&
+		collision !== "insert" &&
+		collision !== "overwrite" &&
+		collision !== "reject"
+	) {
+		throw new Error("collision must be one of: reject, insert, overwrite");
+	}
 	let rejection: string | undefined;
 	const elementId = timelineStore.addElementToTrack(trackId, element, {
+		...(collision ? { collision } : {}),
 		onRejected: (reason) => {
 			rejection = reason;
 		},
@@ -1154,6 +1166,7 @@ export async function addClaudeMediaElement({
 	const colorLabel = parseTimelineColorLabel({ value: element.colorLabel });
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "media",
@@ -1225,6 +1238,7 @@ export function addClaudeTextElement({
 	);
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "text",
@@ -1284,6 +1298,7 @@ export function addClaudeAdjustmentElement({
 	});
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "adjustment",
@@ -1601,6 +1616,7 @@ export async function addClaudeStickerElement({
 	});
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "sticker",
@@ -1724,6 +1740,7 @@ export function addClaudeMarkdownElement({
 
 	// Subtitle-style: positioned at bottom center, compact height
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "markdown",
@@ -1817,6 +1834,7 @@ export function addClaudeCaptionElement({
 		element as Record<string, unknown>
 	);
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "caption",
@@ -2144,6 +2162,7 @@ export async function addClaudeRemotionElement({
 		});
 
 	const addedElementId = addElementOrThrow({
+		collision: (element as Record<string, unknown>).collision,
 		timelineStore,
 		trackId,
 		elementType: "remotion",
