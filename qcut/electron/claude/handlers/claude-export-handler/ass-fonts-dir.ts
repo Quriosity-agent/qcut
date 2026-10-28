@@ -14,7 +14,7 @@
  *
  * @module electron/claude/handlers/claude-export-handler/ass-fonts-dir
  */
-import { mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, symlinkSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { assFontFilesForFamilies } from "./ass-font-metrics.js";
 
@@ -88,14 +88,15 @@ export function prepareAssFontsDirectory({
 	});
 	if (files.length === 0) return platformAssFontsDirectory(platform);
 	mkdirSync(directory, { recursive: true });
+	// libass loads every file in the folder, so links an earlier export left
+	// in the same folder go first. Only links are removed; this never made
+	// anything else there.
+	for (const entry of readdirSync(directory, { withFileTypes: true })) {
+		if (entry.isSymbolicLink()) unlinkSync(path.join(directory, entry.name));
+	}
 	for (const [index, file] of files.entries()) {
 		// Same-named files exist in different folders (a user's Arial).
-		const link = path.join(directory, `${index}-${path.basename(file)}`);
-		try {
-			symlinkSync(file, link);
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-		}
+		symlinkSync(file, path.join(directory, `${index}-${path.basename(file)}`));
 	}
 	return directory;
 }
