@@ -354,29 +354,32 @@ describe("Claude transaction bridge sticker rollback", () => {
 			timelineMocks.state.redoStack = [{}];
 			state.tracks = [{ id: "main", elements: [clip(0)] }];
 		});
-		setupClaudeTransactionBridge();
+		try {
+			setupClaudeTransactionBridge();
 
-		await transactionMocks.callbacks.undo?.({ requestId: "request-undo" });
+			await transactionMocks.callbacks.undo?.({ requestId: "request-undo" });
 
-		expect(transactionMocks.api.sendUndoResponse).toHaveBeenCalledWith(
-			"request-undo",
-			expect.objectContaining({
-				applied: true,
-				undoCount: 0,
-				redoCount: 1,
-				label: expect.any(String),
-				changes: expect.objectContaining({
-					moved: 1,
-					elements: [
-						expect.objectContaining({
-							elementId: "clip",
-							startTime: 0,
-							from: expect.objectContaining({ startTime: 2 }),
-						}),
-					],
-				}),
-			})
-		);
-		delete state.tracks;
+			expect(transactionMocks.api.sendUndoResponse).toHaveBeenCalledWith(
+				"request-undo",
+				expect.objectContaining({
+					applied: true,
+					undoCount: 0,
+					redoCount: 1,
+					label: expect.any(String),
+					changes: expect.objectContaining({
+						moved: 1,
+						elements: [
+							expect.objectContaining({
+								elementId: "clip",
+								startTime: 0,
+								from: expect.objectContaining({ startTime: 2 }),
+							}),
+						],
+					}),
+				})
+			);
+		} finally {
+			Reflect.deleteProperty(state, "tracks");
+		}
 	});
 });
