@@ -100,4 +100,18 @@ describe("muxer caption placement", () => {
 		renderCaptionElement(ctx, canvas, caption(), 1, 83.2);
 		expect(lastText(fillText)?.[2]).toBeCloseTo(720 - 28 - 83.2 - 33.6, 5);
 	});
+
+	it("breaks a caption at its own line breaks, as the preview and ASS do (N11)", () => {
+		const { ctx, fillText } = fakeContext();
+		renderCaptionElement(
+			ctx,
+			canvas,
+			{ ...caption(), text: "你的拳头\nYour fists" } as CaptionElement,
+			1
+		);
+		const drawn = fillText.mock.calls.map(([text]) => text);
+		expect(drawn).toContain("你的拳头");
+		expect(drawn).toContain("Your fists");
+		expect(drawn.some((text) => String(text).includes("\n"))).toBe(false);
+	});
 });
