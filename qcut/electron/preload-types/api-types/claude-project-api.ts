@@ -1,4 +1,5 @@
 import type {
+	ClaudeUndoRedoChanges,
 	ProjectSettings,
 	ProjectStats,
 	ExportPreset,
@@ -73,7 +74,7 @@ export interface ClaudeTransactionAPI {
 				undoCount: number;
 				redoCount: number;
 				label?: string;
-				changes?: unknown;
+				changes?: ClaudeUndoRedoChanges;
 			}
 		) => void;
 		onRedo: (callback: (data: { requestId: string }) => void) => void;
@@ -84,7 +85,7 @@ export interface ClaudeTransactionAPI {
 				undoCount: number;
 				redoCount: number;
 				label?: string;
-				changes?: unknown;
+				changes?: ClaudeUndoRedoChanges;
 			}
 		) => void;
 		onHistory: (callback: (data: { requestId: string }) => void) => void;
