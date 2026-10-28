@@ -3,6 +3,7 @@
  */
 
 import type {
+	ClaudeUndoRedoChanges,
 	MediaFile,
 	ClaudeTimeline,
 	ClaudeElement,
@@ -337,7 +338,7 @@ export interface ElectronClaudeOps {
 					undoCount: number;
 					redoCount: number;
 					label?: string;
-					changes?: unknown;
+					changes?: ClaudeUndoRedoChanges;
 				}
 			) => void;
 			onRedo: (callback: (data: { requestId: string }) => void) => void;
@@ -348,7 +349,7 @@ export interface ElectronClaudeOps {
 					undoCount: number;
 					redoCount: number;
 					label?: string;
-					changes?: unknown;
+					changes?: ClaudeUndoRedoChanges;
 				}
 			) => void;
 			onHistory: (callback: (data: { requestId: string }) => void) => void;
