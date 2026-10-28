@@ -4,6 +4,7 @@ import type {
 	ClaudeElement,
 } from "../types/claude-api.js";
 import {
+	TIMELINE_ADD_ELEMENT_TIMEOUT_MS,
 	TIMELINE_BATCH_MAIN_TIMEOUT_MS,
 	withTimelineBatchTimeoutContext,
 } from "../claude/utils/timeline-batch-deadline.js";
@@ -32,11 +33,13 @@ export function createUtilityTimelineMutationAccessor({
 } {
 	return {
 		requestAddElement: async (projectId, element, correlationId) => {
-			await requestFromMain("timeline:add-element", {
-				correlationId,
-				element,
-				projectId,
-			});
+			// Main waits up to 25 s for the editor; the default 10 s here
+			// would give up first and report a placement that still happens.
+			await requestFromMain(
+				"timeline:add-element",
+				{ correlationId, element, projectId },
+				{ timeoutMs: TIMELINE_ADD_ELEMENT_TIMEOUT_MS + 2000 }
+			);
 		},
 		batchAddElements: async (projectId, elements, correlationId) => {
 			try {
