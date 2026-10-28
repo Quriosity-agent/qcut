@@ -16,6 +16,7 @@ import type {
 	StoreSet,
 } from "./timeline-store-operations";
 import { blockedByTrackLock } from "./timeline-lock-guard";
+import { dropEmptiedTracks } from "./utils";
 import { overwriteRangeInElements } from "./timeline-collision-utils";
 import { rippleAutomation } from "@/lib/audio/audio-mix-automation";
 import { useProjectStore } from "@/stores/project-store";
@@ -394,55 +395,55 @@ export function createTrackOps(
 			const elementEndTime = elementStartTime + elementDuration;
 
 			// Remove the element and shift the ripple domain after it
-			const updatedTracks = _tracks
-				.map((currentTrack) => {
-					const shouldApplyRipple = rippleDomain.domainTrackIds.has(
-						currentTrack.id
-					);
+			const rippledTracks = _tracks.map((currentTrack) => {
+				const shouldApplyRipple = rippleDomain.domainTrackIds.has(
+					currentTrack.id
+				);
 
-					const updatedElements = currentTrack.elements
-						.filter((currentElement) => {
-							// Remove the target element
-							if (
-								currentElement.id === elementId &&
-								currentTrack.id === trackId
-							) {
-								return false;
-							}
-							return true;
-						})
-						.map((currentElement) => {
-							// Only apply ripple effects if we should process this track
-							if (!shouldApplyRipple) {
-								return currentElement;
-							}
-
-							// Shift elements that start after the removed element
-							if (currentElement.startTime >= elementEndTime) {
-								return {
-									...currentElement,
-									startTime: Math.max(
-										0,
-										currentElement.startTime - elementDuration
-									),
-								};
-							}
+				const updatedElements = currentTrack.elements
+					.filter((currentElement) => {
+						// Remove the target element
+						if (
+							currentElement.id === elementId &&
+							currentTrack.id === trackId
+						) {
+							return false;
+						}
+						return true;
+					})
+					.map((currentElement) => {
+						// Only apply ripple effects if we should process this track
+						if (!shouldApplyRipple) {
 							return currentElement;
-						});
+						}
 
-					// Check for overlaps and resolve them if necessary
-					const hasOverlaps = checkElementOverlaps(updatedElements);
-					if (hasOverlaps) {
-						// Resolve overlaps by adjusting element positions
-						const resolvedElements = resolveElementOverlaps(updatedElements);
-						return { ...currentTrack, elements: resolvedElements };
-					}
+						// Shift elements that start after the removed element
+						if (currentElement.startTime >= elementEndTime) {
+							return {
+								...currentElement,
+								startTime: Math.max(
+									0,
+									currentElement.startTime - elementDuration
+								),
+							};
+						}
+						return currentElement;
+					});
 
-					return { ...currentTrack, elements: updatedElements };
-				})
-				.filter((track) => track.elements.length > 0 || track.isMain);
+				// Check for overlaps and resolve them if necessary
+				const hasOverlaps = checkElementOverlaps(updatedElements);
+				if (hasOverlaps) {
+					// Resolve overlaps by adjusting element positions
+					const resolvedElements = resolveElementOverlaps(updatedElements);
+					return { ...currentTrack, elements: resolvedElements };
+				}
 
-			updateTracksAndSave(updatedTracks);
+				return { ...currentTrack, elements: updatedElements };
+			});
+
+			updateTracksAndSave(
+				dropEmptiedTracks({ tracks: rippledTracks, trackIds: [trackId] })
+			);
 		},
 
 		rippleDeleteAcrossTracks: (
