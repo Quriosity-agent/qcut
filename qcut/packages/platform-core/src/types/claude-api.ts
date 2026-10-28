@@ -139,6 +139,23 @@ export interface PlatformClaudeTimelineAPI {
 // Claude Transaction
 // ---------------------------------------------------------------------------
 
+/** What an undo or redo did to the timeline: counts and the first ten elements. */
+export interface PlatformUndoRedoChanges {
+	added: number;
+	removed: number;
+	moved: number;
+	elements: Array<{
+		elementId: string;
+		name?: string;
+		change: "added" | "removed" | "moved";
+		trackId: string;
+		startTime: number;
+		duration: number;
+		/** Where a moved element was before. */
+		from?: { trackId: string; startTime: number; duration: number };
+	}>;
+}
+
 export interface PlatformClaudeTransactionAPI {
 	onBegin(
 		callback: (data: {
@@ -191,7 +208,7 @@ export interface PlatformClaudeTransactionAPI {
 			undoCount: number;
 			redoCount: number;
 			label?: string;
-			changes?: unknown;
+			changes?: PlatformUndoRedoChanges;
 		}
 	): void;
 	onRedo(callback: (data: { requestId: string }) => void): void;
@@ -202,7 +219,7 @@ export interface PlatformClaudeTransactionAPI {
 			undoCount: number;
 			redoCount: number;
 			label?: string;
-			changes?: unknown;
+			changes?: PlatformUndoRedoChanges;
 		}
 	): void;
 	onHistory(callback: (data: { requestId: string }) => void): void;
