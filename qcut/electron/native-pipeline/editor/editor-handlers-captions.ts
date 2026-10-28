@@ -13,10 +13,11 @@ import { parseSubtitleInput } from "../cli/cli-handlers-subtitle.js";
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+import { PRESET_NAMES, SUBTITLE_PRESETS } from "../subtitle/style-presets.js";
 
 const BATCH_LIMIT = 50;
 
-interface Cue {
+export interface Cue {
 	text: string;
 	startTime: number;
 	duration: number;
@@ -42,6 +43,31 @@ export function partitionCueLanes({ cues }: { cues: Cue[] }): Cue[][] {
 	return lanes.map((lane) => lane.cues);
 }
 
+/**
+ * `--preset` (a named look, e.g. `film`: no box, thin outline, soft shadow)
+ * under `--style` (JSON or @file), whose fields win.
+ */
+export async function resolveCaptionImportStyle({
+	opts,
+}: {
+	opts: CLIRunOptions;
+}): Promise<Record<string, unknown> | undefined> {
+	const preset = opts.preset?.trim();
+	const presetStyle = preset ? SUBTITLE_PRESETS[preset] : undefined;
+	if (preset && !presetStyle) {
+		throw new Error(
+			`Unknown caption preset "${preset}". Available: ${PRESET_NAMES.join(", ")}`
+		);
+	}
+	const style =
+		opts.style !== undefined ? await resolveJsonInput(opts.style) : undefined;
+	if (style !== undefined && (typeof style !== "object" || style === null)) {
+		throw new Error("--style must be a JSON object (or @file holding one)");
+	}
+	if (!presetStyle) return style as Record<string, unknown> | undefined;
+	return { ...presetStyle, ...(style as Record<string, unknown> | undefined) };
+}
+
 export async function captionsImport(
 	client: EditorApiClient,
 	opts: CLIRunOptions
@@ -58,8 +84,15 @@ export async function captionsImport(
 	if (parsed.clips.length === 0) {
 		return { success: false, error: `No cues found in ${filePath}` };
 	}
-	const style =
-		opts.style !== undefined ? await resolveJsonInput(opts.style) : undefined;
+	let style: unknown;
+	try {
+		style = await resolveCaptionImportStyle({ opts });
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 	const cues: Cue[] = parsed.clips.map((clip) => ({
 		text: clip.text,
 		startTime: clip.startTime,
@@ -67,16 +100,44 @@ export async function captionsImport(
 		language: opts.language ?? clip.language,
 		style: style ?? clip.style,
 	}));
+	const imported = await importCaptionCues({ client, opts, cues });
+	if (!imported.success) return imported;
+	const { warnings, ...summary } = imported.data as Record<string, unknown>;
+	return {
+		success: true,
+		data: {
+			projectId: opts.projectId,
+			file: filePath,
+			...summary,
+			...(parsed.resolution ? { resolution: parsed.resolution } : {}),
+			...(warnings ? { warnings } : {}),
+		},
+	};
+}
 
-	// One timeline transaction covers the `--replace` deletes and every batch,
-	// so a failure midway leaves the captions as they were, not half gone or
-	// half imported.
+/**
+ * Puts cues onto new captions tracks, the way the captions panel imports a
+ * file: cues that overlap get their own lane, lanes sit above the clips, and
+ * one timeline transaction covers the `--replace` deletes and every batch,
+ * so a failure midway leaves the captions as they were.
+ */
+export async function importCaptionCues({
+	client,
+	opts,
+	cues,
+}: {
+	client: EditorApiClient;
+	opts: CLIRunOptions;
+	cues: Cue[];
+}): Promise<CLIResult> {
 	const started = await client.post<{ transactionId: string }>(
 		"/api/claude/transaction/begin",
 		{ label: "Import captions" }
 	);
 	const transaction = `/api/claude/transaction/${encodeURIComponent(started.transactionId)}`;
 	const tracks: Array<{ trackId: string; cues: number }> = [];
+	// Every cue shares the style, so each warning is reported once.
+	const styleWarnings = new Set<string>();
 	let added = 0;
 	const lanes = partitionCueLanes({ cues });
 	try {
@@ -100,21 +161,24 @@ export async function captionsImport(
 			const trackId = created.trackId;
 			for (let start = 0; start < lane.length; start += BATCH_LIMIT) {
 				const chunk = lane.slice(start, start + BATCH_LIMIT);
-				const result = await client.post<{ addedCount?: number }>(
-					`/api/claude/timeline/${opts.projectId}/elements/batch`,
-					{
-						elements: chunk.map((cue) => ({
-							type: "captions",
-							trackId,
-							content: cue.text,
-							startTime: cue.startTime,
-							duration: cue.duration,
-							language: cue.language,
-							...(cue.style ? { style: cue.style } : {}),
-						})),
-					}
-				);
+				const result = await client.post<{
+					addedCount?: number;
+					added?: Array<{ warnings?: string[] }>;
+				}>(`/api/claude/timeline/${opts.projectId}/elements/batch`, {
+					elements: chunk.map((cue) => ({
+						type: "captions",
+						trackId,
+						content: cue.text,
+						startTime: cue.startTime,
+						duration: cue.duration,
+						language: cue.language,
+						...(cue.style ? { style: cue.style } : {}),
+					})),
+				});
 				added += result?.addedCount ?? chunk.length;
+				for (const item of result?.added ?? []) {
+					for (const warning of item.warnings ?? []) styleWarnings.add(warning);
+				}
 			}
 			tracks.push({ trackId, cues: lane.length });
 		}
@@ -133,22 +197,21 @@ export async function captionsImport(
 			error: `Captions import failed: ${message}. The timeline was ${rolledBack ? "rolled back" : "NOT rolled back"}.`,
 		};
 	}
+	const warnings = [
+		...(lanes.length > 1
+			? [
+					`${cues.length - lanes[0].length} cue(s) overlap in time and went on ${lanes.length - 1} extra lane(s); overlapping captions stack upward on screen (preview and both exports). Stagger the cues or put them on one lane if that is not wanted.`,
+				]
+			: []),
+		...styleWarnings,
+	];
 	return {
 		success: true,
 		data: {
-			projectId: opts.projectId,
-			file: filePath,
 			cues: cues.length,
 			added,
 			tracks,
-			...(parsed.resolution ? { resolution: parsed.resolution } : {}),
-			...(lanes.length > 1
-				? {
-						warnings: [
-							`${cues.length - lanes[0].length} cue(s) overlap in time and went on ${lanes.length - 1} extra lane(s); overlapping captions stack upward on screen (preview and both exports). Stagger the cues or put them on one lane if that is not wanted.`,
-						],
-					}
-				: {}),
+			...(warnings.length > 0 ? { warnings } : {}),
 		},
 	};
 }
