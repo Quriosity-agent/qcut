@@ -47,6 +47,19 @@ function rippleTracks(): TimelineTrack[] {
 	];
 }
 
+/** Two effects 16 ms into each other, which a placement allows (N18). */
+function sfxTrack(): TimelineTrack {
+	return {
+		id: "sfx",
+		name: "音效 1",
+		type: "audio",
+		elements: [
+			mediaElement({ id: "hit-1", startTime: 6.3804, duration: 0.516 }),
+			mediaElement({ id: "hit-2", startTime: 6.88, duration: 0.5 }),
+		],
+	};
+}
+
 function elementStartTimes({ trackId }: { trackId: string }): number[] {
 	return (
 		useTimelineStore
@@ -91,22 +104,88 @@ describe("timeline ripple operations", () => {
 	// N18 (2026-10-28 trailer report): deleting a main-track clip moved two
 	// sound effects on another track by 4 and 16 ms.
 	it("leaves overlapping clips on tracks outside the ripple alone", () => {
-		const sfx: TimelineTrack = {
-			id: "sfx",
-			name: "音效 1",
-			type: "audio",
-			elements: [
-				mediaElement({ id: "hit-1", startTime: 6.3804, duration: 0.516 }),
-				mediaElement({ id: "hit-2", startTime: 6.88, duration: 0.5 }),
-			],
-		};
-		const tracks = [...rippleTracks(), sfx];
+		const tracks = [...rippleTracks(), sfxTrack()];
 		useTimelineStore.setState({ _tracks: tracks, tracks });
 
 		useTimelineStore.getState().removeElementFromTrackWithRipple("main", "b");
 
 		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 2]);
 		expect(elementStartTimes({ trackId: "sfx" })).toEqual([6.3804, 6.88]);
+	});
+
+	it("keeps an overlap under half a frame on the rippled track as it is", () => {
+		const tracks: TimelineTrack[] = [
+			{
+				id: "main",
+				name: "Main",
+				type: "media",
+				isMain: true,
+				elements: [
+					mediaElement({ id: "a", startTime: 0 }),
+					mediaElement({ id: "b", startTime: 2 }),
+					// 4 ms into b, which a placement allows.
+					mediaElement({ id: "c", startTime: 3.996 }),
+				],
+			},
+		];
+		useTimelineStore.setState({ _tracks: tracks, tracks });
+
+		useTimelineStore.getState().removeElementFromTrackWithRipple("main", "a");
+
+		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 3.996 - 2]);
+	});
+
+	it("leaves overlapping clips on other tracks alone when a clip moves", () => {
+		const tracks = [...rippleTracks(), sfxTrack()];
+		useTimelineStore.setState({ _tracks: tracks, tracks });
+
+		useTimelineStore
+			.getState()
+			.updateElementStartTimeWithRipple("main", "b", 3);
+
+		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 3, 5]);
+		expect(elementStartTimes({ trackId: "sfx" })).toEqual([6.3804, 6.88]);
+	});
+
+	it("removes a track with ripple and moves nothing it does not ripple", () => {
+		const tracks: TimelineTrack[] = [
+			...rippleTracks(),
+			{
+				id: "sfx",
+				name: "音效 1",
+				type: "audio",
+				elements: [
+					mediaElement({ id: "hit-1", startTime: 1, duration: 0.5 }),
+					mediaElement({ id: "hit-2", startTime: 1.484, duration: 0.5 }),
+					mediaElement({ id: "hit-3", startTime: 7, duration: 0.5 }),
+					mediaElement({ id: "hit-4", startTime: 7.496, duration: 0.5 }),
+				],
+			},
+			{
+				id: "stacked",
+				name: "Stacked",
+				type: "audio",
+				// 0.2 s into each other, more than a placement allows: the
+				// ripple moves nothing here, so this track stays as it is.
+				elements: [
+					mediaElement({ id: "s-1", startTime: 1, duration: 0.5 }),
+					mediaElement({ id: "s-2", startTime: 1.3, duration: 0.5 }),
+				],
+			},
+		];
+		useTimelineStore.setState({ _tracks: tracks, tracks });
+
+		// The overlay clip spans 4–6 s, so everything from 6 s moves up 2 s.
+		useTimelineStore.getState().removeTrackWithRipple("overlay");
+
+		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 2, 4]);
+		expect(elementStartTimes({ trackId: "sfx" })).toEqual([
+			1,
+			1.484,
+			7 - 2,
+			7.496 - 2,
+		]);
+		expect(elementStartTimes({ trackId: "stacked" })).toEqual([1, 1.3]);
 	});
 
 	it("moves later clips by the same delta without changing other tracks", () => {
