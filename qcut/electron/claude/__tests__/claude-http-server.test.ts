@@ -55,6 +55,7 @@ vi.mock("../handlers/claude-media-handler.js", () => ({
 	listMediaFiles: vi.fn(async () => []),
 	getMediaInfo: vi.fn(async () => null),
 	importMediaFile: vi.fn(async () => null),
+	batchImportMedia: vi.fn(async () => []),
 	deleteMediaFile: vi.fn(async () => false),
 	renameMediaFile: vi.fn(async () => false),
 }));
@@ -661,6 +662,58 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(400);
 		expect(res.body.success).toBe(false);
 		expect(res.body.error).toContain("source");
+	});
+
+	// N15 (2026-10-28 trailer report): a batch import answered once the files
+	// were copied; the editor loaded them on the first add, and the second
+	// add timed out.
+	it("POST /api/claude/media/:projectId/batch-import answers once the editor has the files", async () => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			createMockWindow(),
+		]);
+		const card = (n: number) => ({
+			id: `media_card${n}`,
+			name: `card${n}.mov`,
+			type: "video" as const,
+			path: `/mock/project/media/card${n}.mov`,
+			size: 100 * n,
+			createdAt: 1,
+			modifiedAt: 1,
+		});
+		vi.mocked(mediaHandler.batchImportMedia).mockResolvedValueOnce([
+			{ index: 0, success: true, mediaFile: card(1) },
+			{ index: 1, success: true, mediaFile: card(2) },
+		]);
+
+		const res = await fetch("/api/claude/media/proj_123/batch-import", {
+			method: "POST",
+			body: JSON.stringify({
+				items: [{ path: "/cards/card1.mov" }, { path: "/cards/card2.mov" }],
+			}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(
+			mediaRendererHandler.requestMediaImportFromRenderer
+		).toHaveBeenCalledTimes(2);
+		expect(
+			mediaRendererHandler.requestMediaImportFromRenderer
+		).toHaveBeenNthCalledWith(2, {
+			payload: {
+				id: "media_card2",
+				name: "card2.mov",
+				path: "/mock/project/media/card2.mov",
+				projectId: "proj_123",
+				size: 200,
+				type: "video",
+			},
+			win: expect.anything(),
+		});
+		expect(
+			res.body.data.map(
+				(result: { editorReady?: boolean }) => result.editorReady
+			)
+		).toEqual([true, true]);
 	});
 
 	it("POST /api/claude/media/:projectId/import forwards Sticker Lab metadata", async () => {
