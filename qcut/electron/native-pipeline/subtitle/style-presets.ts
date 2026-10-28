@@ -62,6 +62,19 @@ export const SUBTITLE_PRESETS: Record<string, Partial<SubtitleStyle>> = {
 		shadowOffset: { x: 0, y: 0 },
 		position: { align: "bottom", x: 50, y: 90 },
 	},
+	// 电影字幕: no box, a thin outline and a soft drop shadow. Only the look,
+	// so the font and size stay whatever suits the canvas.
+	film: {
+		fontColor: "#ffffff",
+		fontOpacity: 1,
+		bold: false,
+		outlineColor: "#000000",
+		outlineWidth: 1.5,
+		shadowColor: "#000000",
+		shadowOffset: { x: 0, y: 2 },
+		bgOpacity: 0,
+		position: { align: "bottom", x: 50, y: 90 },
+	},
 };
 
 /** List of valid preset names */
