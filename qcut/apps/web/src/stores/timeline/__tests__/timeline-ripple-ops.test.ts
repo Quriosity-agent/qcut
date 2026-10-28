@@ -88,6 +88,27 @@ describe("timeline ripple operations", () => {
 		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 2, 4]);
 	});
 
+	// N18 (2026-10-28 trailer report): deleting a main-track clip moved two
+	// sound effects on another track by 4 and 16 ms.
+	it("leaves overlapping clips on tracks outside the ripple alone", () => {
+		const sfx: TimelineTrack = {
+			id: "sfx",
+			name: "音效 1",
+			type: "audio",
+			elements: [
+				mediaElement({ id: "hit-1", startTime: 6.3804, duration: 0.516 }),
+				mediaElement({ id: "hit-2", startTime: 6.88, duration: 0.5 }),
+			],
+		};
+		const tracks = [...rippleTracks(), sfx];
+		useTimelineStore.setState({ _tracks: tracks, tracks });
+
+		useTimelineStore.getState().removeElementFromTrackWithRipple("main", "b");
+
+		expect(elementStartTimes({ trackId: "main" })).toEqual([0, 2]);
+		expect(elementStartTimes({ trackId: "sfx" })).toEqual([6.3804, 6.88]);
+	});
+
 	it("moves later clips by the same delta without changing other tracks", () => {
 		useTimelineStore
 			.getState()
