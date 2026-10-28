@@ -117,3 +117,13 @@ curl .../commands/registry                         # All commands + schemas
 ```bash
 curl .../history    # { undoCount, redoCount, entries[] }
 ```
+
+`editor:undo` and `editor:redo` (`POST .../undo`, `POST .../redo`) answer
+`{ applied, undoCount, redoCount, label, changes }`. `label` names the step
+taken back or redone (a transaction's label, `Edit` for any other step), and
+`changes` says what it did to the timeline: how many elements it `added`,
+`removed` and `moved`, and the first ten of them with their track,
+`startTime` and `duration` (a moved one also has `from`, where it was
+before). Check `changes` against the step you meant to take back. When
+nothing changed (`applied: false`: the history is empty, or a transaction is
+open) the command fails and says which.
