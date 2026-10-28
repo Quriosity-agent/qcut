@@ -6,7 +6,10 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BatchImportResult } from "../../types/claude-api.js";
-import { loadBatchImportInEditor } from "../http/claude-http-batch-import-editor.js";
+import {
+	BATCH_IMPORT_EDITOR_WAIT_MS,
+	loadBatchImportInEditor,
+} from "../http/claude-http-batch-import-editor.js";
 
 function copied(index: number, name: string): BatchImportResult {
 	return {
@@ -98,6 +101,22 @@ describe("batch import loads the copied files in the editor", () => {
 		expect(results.map((result) => result.editorReady)).toEqual([false, false]);
 		expect(results[0].warning).toContain("still loading");
 		for (const resolve of pending) resolve();
+	});
+
+	// Review of PR #526: the wait began after the copy, so a slow copy could
+	// push the answer past the CLI's 30 s.
+	it("counts the copy against its budget, still sending every file", async () => {
+		const requestMediaImport = vi.fn(() => new Promise<void>(() => {}));
+		const results = await loadBatchImportInEditor({
+			accessor: { requestMediaImport },
+			projectId: "p",
+			results: [copied(0, "sub01.mov"), copied(1, "sub02.mov")],
+			startedAt: Date.now() - BATCH_IMPORT_EDITOR_WAIT_MS,
+		});
+
+		expect(requestMediaImport).toHaveBeenCalledTimes(2);
+		expect(results.map((result) => result.editorReady)).toEqual([false, false]);
+		expect(results[1].warning).toContain("still loading");
 	});
 
 	it("leaves the results alone without an editor to ask", async () => {
