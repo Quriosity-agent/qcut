@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -82,4 +83,15 @@ describe("utility navigator open", () => {
 		const open = calls.find((call) => call.channel === "navigate-to-project");
 		expect(open?.options?.timeoutMs).toBeGreaterThanOrEqual(25_000);
 	}, 20_000);
+
+	it("takes the wait from a constants module, not the main-process handler", () => {
+		// The navigator handler uses ipcMain and BrowserWindow, main-process
+		// APIs the utility process must not load.
+		const source = readFileSync(
+			new URL("../utility/utility-http-server.ts", import.meta.url),
+			"utf8"
+		);
+		expect(source).not.toContain("claude-navigator-handler");
+		expect(source).toContain("../claude/utils/navigation-timeout.js");
+	});
 });
