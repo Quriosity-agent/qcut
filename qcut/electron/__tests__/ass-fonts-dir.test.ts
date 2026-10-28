@@ -29,6 +29,7 @@ vi.mock("electron", () => ({
 }));
 
 const AVENIR = "/System/Library/Fonts/Avenir Next.ttc";
+const HELVETICA = "/System/Library/Fonts/Helvetica.ttc";
 const onMacWithAvenir = process.platform === "darwin" && existsSync(AVENIR);
 
 function script({ family, bold }: { family: string; bold: boolean }): string {
@@ -114,6 +115,32 @@ describe("ASS fonts folder", () => {
 		}
 	);
 
+	it.skipIf(!onMacWithAvenir || !existsSync(HELVETICA))(
+		"replaces the links an earlier export left in the same folder",
+		() => {
+			const work = mkdtempSync(path.join(tmpdir(), "qcut-ass-reuse-"));
+			made.push(work);
+			const directory = path.join(work, "ass-fonts");
+			prepareAssFontsDirectory({
+				scripts: [script({ family: "Avenir Next", bold: true })],
+				directory,
+			});
+			// Not a link, so not the helper's: left alone.
+			writeFileSync(path.join(directory, "notes.txt"), "");
+			prepareAssFontsDirectory({
+				scripts: [script({ family: "Helvetica", bold: false })],
+				directory,
+			});
+
+			const linked = readdirSync(directory)
+				.filter((name) => name !== "notes.txt")
+				.map((name) => realpathSync(path.join(directory, name)));
+			expect(linked).toContain(HELVETICA);
+			expect(linked).not.toContain(AVENIR);
+			expect(existsSync(path.join(directory, "notes.txt"))).toBe(true);
+		}
+	);
+
 	it.skipIf(!onMacWithAvenir)(
 		"bold Avenir Next renders upright through the bundled FFmpeg",
 		() => {
@@ -148,6 +175,9 @@ describe("ASS fonts folder", () => {
 				],
 				{ encoding: "utf8", timeout: 30_000 }
 			);
+			// The frame was rendered, not just the font chosen before a failure.
+			expect(result.status, result.stderr.slice(-2000)).toBe(0);
+			expect(existsSync(path.join(work, "frame.png"))).toBe(true);
 			const selection = result.stderr
 				.split("\n")
 				.find((line) => line.includes("fontselect: (Avenir Next, 700, 0)"));
