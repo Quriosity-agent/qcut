@@ -193,6 +193,7 @@ export type {
 	StickerPropertyKeyframe,
 	AdjustmentElement,
 	CaptionElement,
+	CaptionSecondaryStyle,
 	SubtitleStyle,
 	RemotionElement,
 	HyperframesElement,
@@ -536,6 +537,7 @@ export {
 export {
 	DEFAULT_SUBTITLE_STYLE,
 	resolveSubtitleStyle,
+	resolveSecondaryLineStyle,
 	hexToRgba,
 	rgbToASSColor,
 	assColorToRgb,
