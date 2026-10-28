@@ -28,6 +28,7 @@ import { handleTimelineEditingCommand } from "../editor/editor-handlers-timeline
 import { handleAnalysisCommand } from "../editor/editor-handlers-analysis.js";
 import { handleCaptionsCommand } from "../editor/editor-handlers-captions.js";
 import { handleTransactionCommand } from "../editor/editor-handlers-transaction.js";
+import { handleHistoryStep } from "../editor/editor-handlers-history.js";
 import { handleBeatsCommand } from "../editor/editor-handlers-beats.js";
 import { handleGenerateExportCommand } from "../editor/editor-handlers-generate.js";
 import { handleRemotionCommand } from "../editor/editor-handlers-remotion.js";
@@ -455,14 +456,9 @@ async function handleStateCommand(
 	const module = parts[1]; // "undo", "redo", or "state"
 
 	switch (module) {
-		case "undo": {
-			const data = await client.post("/api/claude/undo", {});
-			return { success: true, data };
-		}
-		case "redo": {
-			const data = await client.post("/api/claude/redo", {});
-			return { success: true, data };
-		}
+		case "undo":
+		case "redo":
+			return handleHistoryStep({ client, step: module });
 		case "state": {
 			const action = parts[2]; // "snapshot"
 			if (action !== "snapshot") {
