@@ -10,7 +10,10 @@
 import { type BrowserWindow, ipcMain, type IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
 import { claudeLog } from "../utils/logger.js";
-import type { RendererTransactionSummary } from "../../types/claude-api.js";
+import type {
+	ClaudeUndoRedoChanges,
+	RendererTransactionSummary,
+} from "../../types/claude-api.js";
 
 export type { RendererTransactionSummary };
 
@@ -39,12 +42,7 @@ export interface ClaudeUndoRedoResponse {
 	/** The step taken back (or redone), when one was. */
 	label?: string;
 	/** What that step changed: counts and the first few elements. */
-	changes?: {
-		added: number;
-		removed: number;
-		moved: number;
-		elements: Array<Record<string, unknown>>;
-	};
+	changes?: ClaudeUndoRedoChanges;
 }
 
 export type RendererTransactionResult = {
