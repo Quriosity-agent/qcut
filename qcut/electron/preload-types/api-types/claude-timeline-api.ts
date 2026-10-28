@@ -119,8 +119,9 @@ export interface ClaudeTimelineAPI {
 		) => Promise<void>;
 		getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
 		clearSelection: (projectId: string) => Promise<void>;
-		onRequest: (callback: () => void) => void;
-		sendResponse: (timeline: ClaudeTimeline) => void;
+		/** `requestId` is echoed by `sendResponse` so main matches the answer. */
+		onRequest: (callback: (request?: { requestId?: string }) => void) => void;
+		sendResponse: (timeline: ClaudeTimeline, requestId?: string) => void;
 		onApply: (
 			callback: (timeline: ClaudeTimeline, replace?: boolean) => void
 		) => void;
