@@ -186,12 +186,24 @@ export interface PlatformClaudeTransactionAPI {
 	onUndo(callback: (data: { requestId: string }) => void): void;
 	sendUndoResponse(
 		requestId: string,
-		result: { applied: boolean; undoCount: number; redoCount: number }
+		result: {
+			applied: boolean;
+			undoCount: number;
+			redoCount: number;
+			label?: string;
+			changes?: unknown;
+		}
 	): void;
 	onRedo(callback: (data: { requestId: string }) => void): void;
 	sendRedoResponse(
 		requestId: string,
-		result: { applied: boolean; undoCount: number; redoCount: number }
+		result: {
+			applied: boolean;
+			undoCount: number;
+			redoCount: number;
+			label?: string;
+			changes?: unknown;
+		}
 	): void;
 	onHistory(callback: (data: { requestId: string }) => void): void;
 	sendHistoryResponse(
