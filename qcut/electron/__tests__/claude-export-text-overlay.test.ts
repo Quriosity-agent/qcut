@@ -413,6 +413,42 @@ describe("native export text overlays", () => {
 		expect(captionEvent).toContain("Grace in motion and rhythm");
 	});
 
+	it("draws no empty line for a caption's leading or trailing line break", () => {
+		const overlays = collectTextOverlays({
+			name: "Caption trim",
+			duration: 2,
+			width: 1920,
+			height: 1080,
+			fps: 30,
+			tracks: [
+				{
+					id: "captions",
+					index: 0,
+					name: "Captions",
+					type: "captions",
+					elements: [
+						{
+							id: "caption-1",
+							trackIndex: 0,
+							startTime: 0,
+							endTime: 2,
+							duration: 2,
+							type: "captions",
+							content: "\nFirst line\nSecond line\n",
+							language: "en",
+						},
+					],
+				},
+			],
+		});
+
+		expect(overlays[0]?.content).toBe("First line\nSecond line");
+		const event = buildTextAss({ overlays, width: 1920, height: 1080 })
+			.split("\n")
+			.find((line) => line.startsWith("Dialogue:"));
+		expect(event).toMatch(/\}First line\\NSecond line$/);
+	});
+
 	it("pins top and left captions at the preview's edge insets", () => {
 		const timeline: ClaudeTimeline = {
 			name: "Caption corners",
