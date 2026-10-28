@@ -64,7 +64,8 @@ export interface PlatformClaudeTimelineAPI {
 	clearSelection(projectId: string): Promise<unknown>;
 
 	// Event listeners
-	onRequest(callback: () => void): void;
+	/** `requestId` is echoed by `sendResponse` so main matches the answer. */
+	onRequest(callback: (request?: { requestId?: string }) => void): void;
 	onApply(callback: (timeline: unknown, replace?: boolean) => void): void;
 	onAddElement(callback: (element: unknown) => void): void;
 	onBatchAddElements(callback: (data: unknown) => void): void;
@@ -130,7 +131,7 @@ export interface PlatformClaudeTimelineAPI {
 	): void;
 	sendAudioMixOperationResponse?(requestId: string, result: unknown): void;
 	onLoadSpeech(callback: (data: unknown) => void): void;
-	sendResponse(timeline: unknown): void;
+	sendResponse(timeline: unknown, requestId?: string): void;
 	removeListeners(): void;
 }
 
