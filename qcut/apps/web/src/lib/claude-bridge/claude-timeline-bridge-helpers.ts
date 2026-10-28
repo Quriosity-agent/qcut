@@ -103,6 +103,20 @@ function requestedElementId({ element }: { element: Partial<ClaudeElement> }): {
 		: {};
 }
 
+/** A request's collision policy is one batch-add takes (QTL-002), or none. */
+function assertCollisionPolicy(
+	collision: unknown
+): asserts collision is "insert" | "overwrite" | "reject" | undefined {
+	if (
+		collision !== undefined &&
+		collision !== "insert" &&
+		collision !== "overwrite" &&
+		collision !== "reject"
+	) {
+		throw new Error("collision must be one of: reject, insert, overwrite");
+	}
+}
+
 /**
  * Add through the store and return the new id, or throw with the store's own
  * reason — an occupied span names the clip in the way and the next free start.
@@ -121,14 +135,7 @@ function addElementOrThrow({
 	/** The request's collision policy, as batch-add takes it (QTL-002). */
 	collision?: unknown;
 }): string {
-	if (
-		collision !== undefined &&
-		collision !== "insert" &&
-		collision !== "overwrite" &&
-		collision !== "reject"
-	) {
-		throw new Error("collision must be one of: reject, insert, overwrite");
-	}
+	assertCollisionPolicy(collision);
 	let rejection: string | undefined;
 	const elementId = timelineStore.addElementToTrack(trackId, element, {
 		...(collision ? { collision } : {}),
@@ -1718,9 +1725,12 @@ export function addClaudeMarkdownElement({
 			? rawMarkdown
 			: DEFAULT_MARKDOWN_CONTENT;
 
-	// Clamp any existing element whose end time would overlap this one's start
+	const collision = (element as Record<string, unknown>).collision;
+	assertCollisionPolicy(collision);
+	// Clamp any existing element whose end time would overlap this one's
+	// start, unless the request names a collision policy for the store.
 	const track = timelineStore.tracks.find((t) => t.id === trackId);
-	if (track) {
+	if (collision === undefined && track) {
 		const endTime = startTime + duration;
 		for (const existing of track.elements) {
 			const existingEnd = existing.startTime + getEffectiveDuration(existing);
@@ -1740,7 +1750,7 @@ export function addClaudeMarkdownElement({
 
 	// Subtitle-style: positioned at bottom center, compact height
 	const addedElementId = addElementOrThrow({
-		collision: (element as Record<string, unknown>).collision,
+		collision,
 		timelineStore,
 		trackId,
 		elementType: "markdown",
@@ -2052,6 +2062,8 @@ export async function addClaudeRemotionElement({
 }): Promise<string> {
 	assertTimelineProjectActive({ projectId });
 	const componentName = element.sourceName || "Remotion";
+	const collision = (element as Record<string, unknown>).collision;
+	assertCollisionPolicy(collision);
 
 	// Folder-based import: use the existing remotion-folder pipeline
 	if (element.folderPath) {
@@ -2086,20 +2098,29 @@ export async function addClaudeRemotionElement({
 		let offset = startTime;
 		const createdElementIds: string[] = [];
 		for (const [index, compId] of registeredIds.entries()) {
-			const elementId = timelineStore.addElementToTrack(trackId, {
-				...(index === 0 ? requestedElementId({ element }) : {}),
-				type: "remotion",
-				name: compId,
-				componentId: compId,
-				props: element.props || {},
-				renderMode: "live",
-				startTime: offset,
-				duration,
-				trimStart: 0,
-				trimEnd: 0,
-				opacity: 1,
-			});
-			if (!elementId) {
+			try {
+				createdElementIds.push(
+					addElementOrThrow({
+						collision,
+						timelineStore,
+						trackId,
+						elementType: "remotion",
+						element: {
+							...(index === 0 ? requestedElementId({ element }) : {}),
+							type: "remotion",
+							name: compId,
+							componentId: compId,
+							props: element.props || {},
+							renderMode: "live",
+							startTime: offset,
+							duration,
+							trimStart: 0,
+							trimEnd: 0,
+							opacity: 1,
+						},
+					})
+				);
+			} catch (error) {
 				for (const createdElementId of createdElementIds) {
 					timelineStore.removeElementFromTrack(
 						trackId,
@@ -2107,9 +2128,8 @@ export async function addClaudeRemotionElement({
 						false
 					);
 				}
-				throw new Error("Failed to add remotion element to the timeline");
+				throw error;
 			}
-			createdElementIds.push(elementId);
 			offset += duration;
 		}
 
@@ -2162,7 +2182,7 @@ export async function addClaudeRemotionElement({
 		});
 
 	const addedElementId = addElementOrThrow({
-		collision: (element as Record<string, unknown>).collision,
+		collision,
 		timelineStore,
 		trackId,
 		elementType: "remotion",
