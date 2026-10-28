@@ -28,8 +28,10 @@ import { moveFile } from "./move-file.js";
 import { runMediaOverlayPass } from "./media-overlay-pass.js";
 import { readSegmentBlendFields } from "./media-overlay-source.js";
 import {
+	audioEffectsNotAppliedWarning,
 	buildTimelineAudioFile,
 	optionalNumber,
+	segmentAudioFields,
 } from "./timeline-audio-file.js";
 import {
 	ExportCancelledError,
@@ -443,6 +445,11 @@ export async function collectExportSegments({
 					...(frameInterpolation === undefined ? {} : { frameInterpolation }),
 					...(enhancements === undefined ? {} : { enhancements }),
 					...readSegmentBlendFields({ element }),
+					...segmentAudioFields({
+						element,
+						duration: durationFromElement,
+						fps: timeline.fps || 30,
+					}),
 				});
 			}
 		}
@@ -1883,7 +1890,11 @@ export async function executeExportJob({
 		finishedJob.fileSize = outputStats.size;
 		finishedJob.completedAt = Date.now();
 		Object.assign(finishedJob, audioCheck);
-		for (const warning of audioCheck.warnings ?? []) {
+		const effectsWarning = audioEffectsNotAppliedWarning(segments);
+		if (effectsWarning) {
+			finishedJob.warnings = [...(finishedJob.warnings ?? []), effectsWarning];
+		}
+		for (const warning of finishedJob.warnings ?? []) {
 			claudeLog.warn(HANDLER_NAME, warning);
 		}
 
