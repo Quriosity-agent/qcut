@@ -28,6 +28,7 @@ let phase = "";
 let noise = "";
 let silence = "";
 let quiet = "";
+let bursts = "";
 
 function run({ args }: { args: string[] }): string {
 	const result = spawnSync(
@@ -94,6 +95,25 @@ function pcm({ file, name }: { file: string; name: string }): Float32Array {
 	return new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
 }
 
+/** RMS of a stretch of decoded samples, dBFS. */
+function levelDb({
+	samples,
+	start,
+	end,
+}: {
+	samples: Float32Array;
+	start: number;
+	end: number;
+}): number {
+	let energy = 0;
+	const first = Math.round(start * 48_000);
+	const last = Math.round(end * 48_000);
+	for (let index = first; index < last; index++) {
+		energy += samples[index] * samples[index];
+	}
+	return 10 * Math.log10(energy / (last - first));
+}
+
 function peakIndex({ samples }: { samples: Float32Array }): number {
 	let peak = 0;
 	let index = 0;
@@ -136,6 +156,14 @@ describe.skipIf(!existsSync(ffmpeg))(
 			silence = fixture({
 				name: "silence",
 				source: "anullsrc=r=48000:cl=stereo:d=3",
+			});
+			// A quiet tone under three bursts of noise far over the ceiling.
+			const burst =
+				"(between(t,0.5,0.8)+between(t,1.5,1.8)+between(t,2.5,2.8))*2";
+			const bed = "0.0316*sin(2*PI*220*t)";
+			bursts = fixture({
+				name: "bursts",
+				source: `aevalsrc='${burst}*(2*random(0)-1)+${bed}|${burst}*(2*random(1)-1)+${bed}':s=48000:d=3`,
 			});
 			quiet = fixture({
 				name: "quiet",
@@ -226,9 +254,9 @@ describe.skipIf(!existsSync(ffmpeg))(
 				expect(result.audioValidation.limiting?.encodeAttempts).toBeGreaterThan(
 					1
 				);
-				expect(result.audioValidation.limiting?.attenuationDb).toBeGreaterThan(
-					0
-				);
+				expect(
+					result.audioValidation.limiting?.maxCorrectionDb
+				).toBeGreaterThan(0);
 			}
 			const metadata = await probe({ file: output });
 			const audio = metadata.streams.find(
@@ -266,8 +294,11 @@ describe.skipIf(!existsSync(ffmpeg))(
 				bitrateKbps: 192,
 				format: "mp4",
 			});
-			expect(result.audioValidation.limiting?.attenuationDb).toBe(0);
-			expect(result.audioValidation.limiting?.encodeAttempts).toBe(1);
+			expect(result.audioValidation.limiting).toMatchObject({
+				encodeAttempts: 1,
+				correctedSeconds: 0,
+				maxCorrectionDb: 0,
+			});
 			const original = pcm({ file: quiet, name: "quiet-original" });
 			const decoded = pcm({ file: output, name: "quiet-decoded" });
 			expect(
@@ -293,6 +324,43 @@ describe.skipIf(!existsSync(ffmpeg))(
 			expect(
 				Math.abs((after as number) - (before as number))
 			).toBeLessThanOrEqual(0.2);
+		}, 60_000);
+
+		it("lowers only the moments encoding pushed over the ceiling (N21)", async () => {
+			const output = path.join(directory, "bursts.mp4");
+			const result = await renderTruePeakLimitedExport({
+				sourceAudioPath: bursts,
+				sourceVideoPath: video,
+				outputPath: output,
+				tempDir: directory,
+				duration,
+				limiter: { ceilingDb: -1, releaseMs: 50 },
+				sampleRate: 48_000,
+				channels: 2,
+				bitrateKbps: 192,
+				format: "mp4",
+			});
+			expect(result.audioValidation.status).toBe("passed");
+			const limiting = result.audioValidation.limiting;
+			expect(limiting?.encodeAttempts).toBeGreaterThan(1);
+			expect(limiting?.correctedSeconds).toBeGreaterThan(0);
+			expect(limiting?.correctedSeconds).toBeLessThan(1.5);
+			const finalPeak = await measureFileTruePeak({ file: output });
+			expect((finalPeak as number) + 0.05).toBeLessThanOrEqual(-1);
+			// Between the bursts the tone keeps its level: the whole mix used to
+			// come down by the overshoot of the loudest moment.
+			const original = pcm({ file: bursts, name: "bursts-original" });
+			const decoded = pcm({ file: output, name: "bursts-decoded" });
+			for (const [start, end] of [
+				[0.05, 0.35],
+				[1.05, 1.35],
+				[2.05, 2.35],
+			]) {
+				expect(
+					levelDb({ samples: decoded, start, end }) -
+						levelDb({ samples: original, start, end })
+				).toBeCloseTo(0, 1);
+			}
 		}, 60_000);
 
 		it("passes silent MP3 without converting silence into a finite peak", async () => {
