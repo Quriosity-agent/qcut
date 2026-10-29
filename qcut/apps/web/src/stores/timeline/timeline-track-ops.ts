@@ -7,7 +7,7 @@ import {
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
 } from "@/lib/timeline";
-import { resolveLaneOverlaps } from "@/lib/timeline-occupancy";
+import { resolveLaneOverlaps, startsAtOrAfter } from "@/lib/timeline-occupancy";
 import type { AudioMixAutomation, TimelineTrack } from "@/types/timeline";
 import type {
 	OperationDeps,
@@ -293,7 +293,13 @@ export function createTrackOps(
 						for (let i = mergedRanges.length - 1; i >= 0; i--) {
 							const gap = mergedRanges[i];
 							// If this element starts after the gap, shift it left by the gap duration
-							if (newStartTime >= gap.endTime) {
+							if (
+								startsAtOrAfter({
+									startTime: newStartTime,
+									time: gap.endTime,
+									fps,
+								})
+							) {
 								newStartTime -= gap.duration;
 							}
 						}
@@ -429,8 +435,15 @@ export function createTrackOps(
 							return currentElement;
 						}
 
-						// Shift elements that start after the removed element
-						if (currentElement.startTime >= elementEndTime) {
+						// Shift elements that start after the removed element, one
+						// starting a rounding error before its end too (N20)
+						if (
+							startsAtOrAfter({
+								startTime: currentElement.startTime,
+								time: elementEndTime,
+								fps,
+							})
+						) {
 							return {
 								...currentElement,
 								startTime: Math.max(
