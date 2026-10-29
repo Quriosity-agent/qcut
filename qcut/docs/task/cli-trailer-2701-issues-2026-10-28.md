@@ -1,7 +1,8 @@
-# QCut 2701 trailer issue fixes (N6–N18)
+# QCut 2701 trailer issue fixes (N6–N20)
 
 Baseline: `v2026.10.27.1` / `51ffcee11`. Source: the 2026-10-28 StreetFighter
-sample report (配乐、双语字幕、字卡, items N6–N18). The user's projects and the
+sample report (配乐、双语字幕、字卡, items N6–N18, and N19–N20 from its
+2026-10-29 addendum, after v16b and v17). The user's projects and the
 installed app were not touched: every live check ran on an isolated build
 (temporary profile, free API port, temporary state and credential folders)
 with a throw-away project that the run deletes.
@@ -124,6 +125,56 @@ The muxer export's sound is about 3 dB above the native one's for the same
 clip (0.125 against 0.088, the tone's own RMS); it was so before this change
 and its cause was not looked into.
 
+## N19–N20: the mix after a rename; inserts and ripples on a seam
+
+Baseline `v2026.10.29.1` / `e48c726a5` (PR #526 merged). The record puts
+both on the installed 2701, but only v16b's rename ran there: the app
+restarted into 2026.10.29.1 at 13:42 local time, before the v17 work
+(14:50–15:02). Both issues reproduced on this baseline first.
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| N19: `mix:bus-automation` answered ok and `mix export` read the new master curve back, but the project file kept the old one; switching projects, `project:duplicate` and `project:rename` all gave the old curve (v16b, then the final v17 after its rename) | Every mixer command saves before it answers: on a fresh project the file holds each new curve, bus and level the moment the command returns, and v17's file had its new curve right after it was set (03:53 UTC). The old curve came back with `project:rename`. It saved the project list's copy of the record (`savedProjects`, last read when the project was duplicated, since a mix change does not re-read the list) and put that copy in the editor too, so the curve, buses and anything else changed since went back on disk and in the editor. The parent session's transcript and the app log place both losses at a rename: v16b's at its rename to 定版 (2026-10-29 02:15 UTC), v17's at 04:02 UTC (disk and live both back to the −60 dip the copy had). A duplicate and a reopen only showed what the rename had written. Moving a project to a folder worked the same way, and a duplicate of the open project read its record from disk, not from the editor. | A rename and a move to a folder change the open project as the editor holds it (the name or folder only, in the editor first, then saved) and a closed one as it is stored, read fresh rather than from the list (`stores/project-record-change.ts`). A duplicate of the open project copies the editor's record. Docs: every mixer change is saved before the command answers, and a rename changes only the name. |
+| N20: on v17, `batch-delete --elements '[id]' --force` without `--ripple` left the gap, where v13–v15 closed it (N17), and the replacement put back with `"collision":"insert"` pushed the 30+ clips after it 1.29 s right; `timeline export` lists elements out of time order | The delete differs by version, not within one: v17 ran on 2026.10.29.1, where a batch delete without `--ripple` keeps its gap (N17's fix, as documented), and v13–v15 ran on 2701, where the magnet closed it. The fault is the insert: `insert` moved everything from its start on by the new clip's whole length, gap or not (as QTL-002 defined it), so the clip put back into its gap pushed every later clip 1.29 s right. Reproducing it showed a second fault on the same seam. 105_并肩_04 ran from 135.4584 for 1.2917 s, to 136.7501, and 106 started at 136.75, 0.1 ms earlier. A ripple delete (`--ripple`, or the magnet's single delete) moves the clips that start at or after the deleted clip's end, compared strictly, so 106 stayed, the clips rippled into it went back to their old places through the overlap pass, and the gap stayed open. Ripple moves, trims and track removals compared the same way. The export lists elements in the order they were added, so an inserted clip comes last. | `insert` moves the later clips only as far as the new one needs: its whole length where a clip starts at the point or is split there, less where a gap is, nothing where the gap fits it to within half a frame. Ripple deletes (the magnet's too), moves, trims and track removals count a clip starting less than half a frame before the edit point as after it (`startsAtOrAfter`, the seam rule placements use). `timeline export` lists each track's elements in time order. Docs: both rules, and that moves are checked one at a time (`batch-update` too), so clips going left move in time order and clips going right in reverse. |
+
+Verified: unit tests for a rename of the open and of a closed project, a
+move to a folder and a duplicate, each against a list copy older than the
+project (`project-store-latest-record.test.ts`, 4 tests, all failing on the
+previous code); ripples across v17's seam (a ripple delete, the magnet's
+delete, a delete that keeps its gap, a ripple track removal, trim and move)
+and inserts into a gap that fits, one 0.1 ms short, one too short, v17's own
+numbers, at a clip start and inside a clip (`timeline-ripple-seams.test.ts`,
+`timeline-insert-room.test.ts`: 9 of the 12 fail on the previous code, the
+other 3 are behaviour that stays); the export's time order
+(`claude-media-timing.test.ts`). Two E2E specs on isolated builds:
+
+- `editor-cli-mix-save.e2e.ts`: bus-create, bus-set, master-set,
+  bus-automation, and a bus created and removed: after each command the
+  project file holds the new mix. A track's level, bus, pan curve and mute
+  read back through `mix export`. A rename keeps all of it in the file and
+  the editor; a duplicate's file has the same mix; after a further master
+  change, a rename of the closed project keeps it, and reopening the project
+  shows everything as it was left. On the build without the fix the spec
+  fails at the first rename: the file is back to the new project's mix.
+- `editor-cli-replace-clip.e2e.ts`, third test: 24 fps, five 1.2917 s clips on
+  the main track with two seams where a clip ends 0.1 ms after the next one
+  starts. A batch delete of 105 by plain id without `--ripple` keeps the gap;
+  the replacement put back with `insert` moves nothing and is second in the
+  export; a `--ripple` delete of 107 and the magnet's single delete of the
+  replacement close their gaps; the effects track stays as it was. On the
+  build without the fix it fails at the insert, as v17 did: the three later
+  clips 1.2917 s right and the inserted clip listed last.
+
+The whole web suite: 1600 files, 15478 tests passed (104 skipped); check-types,
+lint and the build pass. E2E on the final build: 26 of 28 passed across both
+specs, `project-duplicate`, `file-operations-storage-management`,
+`timeline-context-menu`, `main-track-cut-sync` and `timeline-daily-actions`;
+`timeline-apply-roundtrip` (skipped there for want of its local clip) passed on
+its own with a generated clip (1 passed). The one failure,
+`timeline-context-menu` › smart shot split, expects the menu to send
+`threshold: 0.3`, which the shared shot split stopped doing in PR #505; it and
+its code are unchanged here.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -155,6 +206,14 @@ and its cause was not looked into.
   `batch-delete` without `--ripple`, then `add-element` at the same start.
 - N18: history steps other than transactions are still labelled `Edit`;
   `changes` is what tells them apart.
+- N19: the project store's other record changes (bookmarks, frame rate,
+  canvas, guides, the timeline toggles) save the record as it was when they
+  started and put it in the editor once saved, so a change landing in
+  between could be lost. Nothing in the report went that way.
+- N20: `batch-update` still applies its moves one at a time, so a batch that
+  moves many clips by the same amount must be in order (documented) rather
+  than checked as a whole. `rippleDeleteAcrossTracks` (no caller) and the
+  unused `element-operations.ts` keep the strict comparison.
 
 ## Verification
 
