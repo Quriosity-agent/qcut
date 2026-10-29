@@ -8,6 +8,7 @@ import {
 	parseEbur128Report,
 } from "../claude/handlers/claude-export-handler/export-loudness";
 import { exportJobs } from "../claude/handlers/claude-export-handler/job-manager";
+import { startExportJob } from "../claude/handlers/claude-export-handler/public-api";
 import {
 	EXPORT_JOB_STATUS,
 	type ExportJobInternal,
@@ -132,6 +133,48 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			expect(loudness.maxShortTermLufs).toBeGreaterThan(-21.5);
 			expect(loudness.maxMomentaryLufs).toBeGreaterThan(-21.5);
 			expect(loudness.durationSeconds).toBeCloseTo(5, 1);
+		});
+
+		it("hands back what the measuring export's true-peak check lowered", async () => {
+			const audioValidation: NonNullable<ExportJobInternal["audioValidation"]> =
+				{
+					status: "passed",
+					ceilingDbtp: -2.5,
+					truePeakDbtp: -2.8,
+					limiting: {
+						oversampleFactor: 4,
+						encodeAttempts: 2,
+						peakCorrection: "local",
+						correctedSeconds: 0.2,
+						maxCorrectionDb: 1.4,
+						corrections: [{ start: 1.952, end: 2.148, depthDb: 1.4 }],
+					},
+				};
+			vi.mocked(startExportJob).mockImplementationOnce(
+				async ({ projectId, request }) => {
+					fs.copyFileSync(tone, request.outputPath as string);
+					exportJobs.set("measure-2", {
+						jobId: "measure-2",
+						projectId,
+						status: EXPORT_JOB_STATUS.completed,
+						progress: 1,
+						startedAt: Date.now(),
+						completedAt: Date.now(),
+						presetId: "custom",
+						engine: "native-cli",
+						settings: {} as ExportJobInternal["settings"],
+						audioValidation,
+					});
+					return { jobId: "measure-2", status: "queued" as const };
+				}
+			);
+			const loudness = await measureNativeExportLoudness({
+				projectId: "p",
+				timeline: { fps: 30 } as unknown as ClaudeTimeline,
+				mediaFiles: [] as MediaFile[],
+			});
+			expect(loudness.engine).toBe("native");
+			expect(loudness.audioValidation).toEqual(audioValidation);
 		});
 	}
 );
