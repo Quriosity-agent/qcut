@@ -291,7 +291,8 @@ describe.skipIf(!existsSync(ffmpeg))(
 					limiting: {
 						oversampleFactor: 4,
 						encodeAttempts: expect.any(Number),
-						attenuationDb: expect.any(Number),
+						correctedSeconds: expect.any(Number),
+						maxCorrectionDb: expect.any(Number),
 					},
 				},
 			});
