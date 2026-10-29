@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.29.2] - 2026-10-29
+
 ### Changed
 
 - `"collision": "insert"` moves the later clips only as far as the new one needs: a clip put back into the gap a delete left (to within half a frame) moves nothing, where it used to push everything after it by its whole length. Where a clip starts at the insert point, or is split there, they still move by the whole length.
