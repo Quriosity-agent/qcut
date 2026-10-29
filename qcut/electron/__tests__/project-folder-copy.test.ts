@@ -47,6 +47,31 @@ describe("copyProjectFolderContents", () => {
 		);
 	});
 
+	it("leaves the source alone when the copy changes, and the copy when the source does", async () => {
+		root = mkdtempSync(path.join(tmpdir(), "qcut-project-copy-"));
+		const source = path.join(root, "src");
+		mkdirSync(path.join(source, "media"), { recursive: true });
+		writeFileSync(path.join(source, "media", "clip.mp4"), "source video");
+		writeFileSync(path.join(source, "media", "card.png"), "card");
+
+		await copyProjectFolderContents({
+			sourceRoot: source,
+			targetRoot: path.join(root, "dst"),
+		});
+		writeFileSync(path.join(root, "dst", "media", "clip.mp4"), "edited copy");
+		rmSync(path.join(root, "dst", "media", "card.png"));
+		expect(readFileSync(path.join(source, "media", "clip.mp4"), "utf8")).toBe(
+			"source video"
+		);
+		expect(readFileSync(path.join(source, "media", "card.png"), "utf8")).toBe(
+			"card"
+		);
+		writeFileSync(path.join(source, "media", "clip.mp4"), "edited source");
+		expect(
+			readFileSync(path.join(root, "dst", "media", "clip.mp4"), "utf8")
+		).toBe("edited copy");
+	});
+
 	it("reports what was missing and refuses to copy a folder onto itself", async () => {
 		root = mkdtempSync(path.join(tmpdir(), "qcut-project-copy-"));
 		const source = path.join(root, "empty");

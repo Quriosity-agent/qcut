@@ -19,7 +19,8 @@ interface ExportResult {
 		limiting?: {
 			oversampleFactor: number;
 			encodeAttempts: number;
-			attenuationDb: number;
+			correctedSeconds: number;
+			maxCorrectionDb: number;
 		};
 	};
 }

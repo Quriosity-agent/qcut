@@ -88,10 +88,16 @@ job becomes `completed`. Enable the master limiter through the mixer (see
 [editor-mix.md](editor-mix.md)); no separate export flag is required.
 
 Each candidate is encoded from the same lossless mixed audio. If AAC/MP3
-encoding produces new peaks, QCut automatically reduces gain and re-encodes,
-up to four attempts. Only a verified candidate replaces the destination file.
-The meter's 0.1 dB display precision is handled conservatively; a displayed
-peak exactly at the ceiling is not accepted without additional headroom.
+encoding pushes the true peak over the ceiling, QCut lowers only the moments
+around it and re-encodes, up to six attempts: every 100 ms block whose true
+peak is within 0.75 dB of the ceiling comes down to 1.25 dB under it (with
+one codec window either side, easing in and out over 20 ms), because
+encoding again moves each block's peak by a few tenths of a dB. The rest of
+the mix keeps its level, so a change elsewhere, a picture-only edit for
+example, does not move the level of the whole export. Only a verified
+candidate replaces the destination file. The meter's 0.1 dB display
+precision is handled conservatively; a displayed peak exactly at the ceiling
+is not accepted without additional headroom.
 
 `export:status` and the final `--poll` result include `audioValidation` in both
 plain and JSON output. For example:
@@ -101,12 +107,22 @@ plain and JSON output. For example:
   "status": "passed",
   "ceilingDbtp": -1,
   "truePeakDbtp": -1.1,
-  "limiting": { "oversampleFactor": 4, "encodeAttempts": 2, "attenuationDb": 1.5 }
+  "limiting": {
+    "oversampleFactor": 4,
+    "encodeAttempts": 2,
+    "correctedSeconds": 3.4,
+    "maxCorrectionDb": 1.6
+  }
 }
 ```
 
-`attenuationDb` is the additional gain reduction needed after limiting to
-control encoding peaks. Quiet audio is not automatically raised or lowered.
+`correctedSeconds` is how much of the mix was lowered to control encoding
+peaks and `maxCorrectionDb` the deepest of those local reductions; both are 0
+when the first encode passed. Nothing else is raised or lowered: earlier
+versions turned the whole mix down by the worst overshoot (`attenuationDb`),
+so a small change anywhere could move the whole export by a few tenths of a
+dB.
+
 Digital silence passes with `truePeakDbtp: null`. Video without an audio stream
 returns `status: "no-audio"`; MP3 without audio fails.
 

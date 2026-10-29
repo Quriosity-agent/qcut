@@ -8,6 +8,12 @@ export interface ExportAudioValidation {
 	limiting?: {
 		oversampleFactor: number;
 		encodeAttempts: number;
-		attenuationDb: number;
+		/**
+		 * Seconds of the mix lowered where encoding pushed the true peak up;
+		 * everything else keeps its level. 0 when the first encode passed.
+		 */
+		correctedSeconds: number;
+		/** The deepest of those local reductions, dB. */
+		maxCorrectionDb: number;
 	};
 }

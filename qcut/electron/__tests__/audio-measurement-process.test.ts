@@ -149,3 +149,44 @@ describe("audio measurement process ownership", () => {
 		expect(child.stderr.listenerCount("data")).toBe(0);
 	});
 });
+
+describe("streamed meter logs", () => {
+	it("hands every stderr line over without the output cap and keeps only a tail", async () => {
+		const lines: string[] = [];
+		const result = runAudioMeasurementProcess({
+			command: "/meter",
+			args: ["input.mp4"],
+			timeout: 1000,
+			onStderrLine: (line) => lines.push(line),
+		});
+		const block = `t: 0.1 FTPK: -3.0 -2.9 dBFS ${"x".repeat(200)}\n`;
+		for (let index = 0; index < 1000; index++) child.stderr.write(block);
+		const bytes = Buffer.from("峰值 Peak: -1.0 dBFS\nlast line");
+		child.stderr.write(bytes.subarray(0, 2));
+		child.stderr.write(bytes.subarray(2));
+		child.emit("close", 0, null);
+		const { stderr } = await result;
+		expect(child.kill).not.toHaveBeenCalled();
+		expect(lines).toHaveLength(1002);
+		expect(lines[0]).toBe(block.trimEnd());
+		expect(lines.slice(-2)).toEqual(["峰值 Peak: -1.0 dBFS", "last line"]);
+		expect(stderr.length).toBeLessThanOrEqual(2000);
+		expect(stderr).toContain("last line");
+	});
+
+	it("stops the meter when the line handler fails", async () => {
+		const result = runAudioMeasurementProcess({
+			command: "/meter",
+			args: ["input.mp4"],
+			timeout: 1000,
+			onStderrLine: () => {
+				throw new Error("bad line");
+			},
+		});
+		const rejected = expect(result).rejects.toThrow("bad line");
+		child.stderr.write("t: 0.1\n");
+		expect(child.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+		child.emit("close", null, "SIGKILL");
+		await rejected;
+	});
+});

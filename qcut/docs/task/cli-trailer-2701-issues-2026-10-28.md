@@ -1,8 +1,9 @@
-# QCut 2701 trailer issue fixes (N6–N20)
+# QCut 2701 trailer issue fixes (N6–N21)
 
 Baseline: `v2026.10.27.1` / `51ffcee11`. Source: the 2026-10-28 StreetFighter
-sample report (配乐、双语字幕、字卡, items N6–N18, and N19–N20 from its
-2026-10-29 addendum, after v16b and v17). The user's projects and the
+sample report (配乐、双语字幕、字卡, items N6–N18, N19–N20 from its
+2026-10-29 addendum, after v16b and v17, and N21 after v19). The user's
+projects and the
 installed app were not touched: every live check ran on an isolated build
 (temporary profile, free API port, temporary state and credential folders)
 with a throw-away project that the run deletes.
@@ -184,6 +185,61 @@ behaviour that stays). The whole web suite: 1600 files, 15483 tests passed
 `project-duplicate`, `main-track-cut-sync`, `timeline-apply-roundtrip` with a
 generated clip).
 
+## N21: the export level after a picture-only change
+
+Baseline `v2026.10.29.2` / `fdb2380e1` (PR #527 merged); reported on the
+installed 2026.10.29.1 and again on 2026.10.29.2.
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| N21: v19 replaced one silent 25-frame clip on the main track and nothing in the sound, yet its export came out 0.42 dB quieter everywhere than v18's (−16.4 against −16.0 LUFS, every 5 s window −0.40 to −0.46 dB; `encodeAttempts` 3 against 2, `attenuationDb` 1.7 against 1.3) | With the master limiter on, the native export limits the mix to 0.3 dB under the ceiling (oversampled 4×), encodes it and measures the encoded file's true peak; when that was over the ceiling, the loop turned the **whole mix** down by the overshoot plus 0.3 dB and encoded again. AAC raises a limited mix's peaks by about a dB, mostly through its band limit (band-limiting the limited mix at 17.5 kHz alone gives the same −1.7 dBTP as 192 kbps AAC; 128 kbps, band-limited at 16 kHz, reaches −0.1), and how much at each moment moves by tenths of a dB with any change to the file, because the encoder's rate control carries a change on through every later frame. So the whole export followed the worst moment: on a stand-in for v18's mix (its own export, +1.3 dB), moving one second by −0.05 dB moved the export by up to 0.3 LU (seven such variants: −15.73 to −16.03 LUFS, one of them +0.21 dB in every 5 s window). v19's second encode measured −2.4 dBTP against −2.5, so it went round once more, 0.4 dB lower. | Only the moments around the overshoot come down. The meter's own 100 ms blocks (`FTPK`) show where: every block within 0.75 dB of the ceiling is lowered to 1.25 dB under it in the lossless mix, with one codec window (2304 samples) either side and 20 ms raised-cosine ramps, and the mix is encoded again, up to six times; a block over the ceiling again goes 0.5 dB further each time. The rest of the mix keeps its level. The guard and the target come from the same stand-in: between two near-identical encodes 99 % of loud blocks move 0.5 dB or less, but a few move up to 1.2 dB. A first encode that passes is published exactly as before. `audioValidation.limiting` reports `correctedSeconds` and `maxCorrectionDb` in place of `attenuationDb`. |
+
+Tried and dropped: lowering the limiter for the whole mix instead (only the
+peaks change, but the limiter's level then follows the encoder's chaos;
+spread 0.11 LU on the trailer and 0.93 LU on a hot music mix, more than
+before); band-limiting the mix before the limiter (the limiter's own gain
+changes put the band back: −1.5 dBTP after AAC); and switching off the
+encoder's noise substitution and intensity stereo (still +0.6 to +0.8 dB,
+and every export's sound would change).
+
+Verified on the stand-in for v18 and six variants (one second −0.05 dB at
+15, 40, 65, 90, 115 and 140 s), and on the v11 Suno score +6 dB against a −1 dB
+ceiling with the same six variants, through the real
+`renderTruePeakLimitedExport` and the bundled FFmpeg:
+
+| | Old loop | Now |
+| --- | --- | --- |
+| Trailer, ceiling −2.5 | 2 encodes each, the whole mix −0.9 to −1.2 dB; −15.73 to −16.03 LUFS | 2 encodes each, about 35 s of the 170 s lowered by up to 2.15 dB; −15.38 to −15.40 LUFS |
+| Trailer, 5 s windows against the unchanged mix | whole film shifted: medians −0.096 to +0.206 dB | medians 0.000 to 0.002 dB; the furthest window 0.12 dB (a corrected moment) |
+| Hot music, ceiling −1 | 2–3 encodes, the whole mix −1.3 to −2.1 dB; −12.82 to −13.62 LUFS | 2–3 encodes; −12.13 to −12.17 LUFS |
+
+Tests: `export-audio-limiter.test.ts` replays v19 (a second encode at −2.4
+against −2.5 lowers only that block: every sample outside the two corrected
+stretches is as the limiter left it, and no encode applies a gain);
+`export-audio-limiter-real.test.ts` puts a −30 dBFS tone under three noise
+bursts: the old loop takes the tone down 1.60 dB, the new one leaves it
+within 0.01 dB; `export-audio-peak-dips.test.ts` and `audio-true-peak.test.ts`
+cover the dips and the block reading (including the last partial 100 ms,
+which the meter logs only in its summary); `audio-measurement-process.test.ts`
+the streamed meter log. The whole Electron suite: 756 files, 7800 tests passed.
+
+## Re-check on 2026.10.29.2: project copies and a damaged project file
+
+Two more items from the report's re-check (2026-10-29 evening).
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| Every project duplicate copies the whole `media/` folder (about 0.75 GB a version; `~/Documents/QCut/Projects` at 24 GB, the system disk 89 % full) | `copyProjectFolderContents` copied `media/` with `fs.cp`. Adding `COPYFILE_FICLONE` would not help on the Mac: Node's libuv (1.51, in Electron 40's Node 24) clones only through Linux's FICLONE ioctl, so on APFS that flag copies in full and `COPYFILE_FICLONE_FORCE` fails with ENOSYS (256 MB test file: 256 MB used, then ENOSYS; `cp -c`: 0 MB). | On macOS the media is copied with `/bin/cp -c -f -R <media>/. <target>` (clonefile; cp copies in full itself across volumes or on a file system without clones); elsewhere, or if cp fails, `fs.cp` with `COPYFILE_FICLONE` (clones on btrfs and XFS). Under Electron's Node, 512 MB of media: 512.1 MB and 432 ms before, 0.0 MB and 5 ms now; the bytes match, and changing or deleting a file in either project leaves the other as it was. |
+| Every start logs `[Storage] Corrupted JSON file for key "video-editor-projects_projects_6a3fd63a-…": Unexpected non-whitespace character after JSON at position 1286` for a test project from 2026-08-01, whose 1287-byte file is complete JSON plus one `}` | That file was written before v2026.09.28.1, when `storage:save` wrote the file in place with `fs.promises.writeFile` and two saves of one project could overlap: each opened the file and truncated it, the longer wrote, and the shorter then wrote over its start, leaving the longer one's last `}`. Since `93cc7a641` (2026-09-27) every save writes a temporary file and renames it, queued one at a time per file (`storage-json.ts`, with tests for interrupted writes and concurrent saves), so no new file can end up like this. Reading such a file still failed, and the project was missing from the list. | `readStorageJson` reads a complete JSON object or array followed by stray characters as the JSON before them. It first copies the file aside as it was (`<file>.damaged-<hash>`, written once, not listed as a project), leaves the file itself for the next save of that record, and the log says how many characters and where the copy is. If the copy cannot be made, nothing past the damage is read. Any other damage is reported as before, now with the file's path. A copy of the user's file reads as its project (name, 1 scene, 1 stray character); the file itself was not changed. |
+
+Tests: `project-folder-copy.test.ts` (a change or deletion in either copy
+leaves the other) and `project-folder-copy-clone.test.ts` (the `cp -c` call,
+and a full copy when cp fails); `storage-json.test.ts` replays the two
+overlapping truncating writes and reads the later save back, and covers braces
+inside strings, other damage, a repeat read (one copy) and a copy that cannot
+be made; `storage-handlers.test.ts` checks what `storage:load` hands over and
+logs.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -219,6 +275,15 @@ generated clip).
   canvas, guides, the timeline toggles) save the record as it was when they
   started and put it in the editor once saved, so a change landing in
   between could be lost. Nothing in the report went that way.
+- The damaged 2026-08-01 project file itself (`video-editor-projects_projects_6a3fd63a-…`)
+  was not changed: whether to rewrite it or delete that test project is the
+  user's call.
+- N21: the first limiter is unchanged (0.3 dB under the ceiling), so an
+  export whose first encode passes comes out as before. Only exports through
+  the editor API (and `mix loudness --engine native`) run this check; the
+  editor's export dialog has no encoded true-peak check at all. A higher
+  audio bitrate keeps more of the band and needs less correction (320 kbps:
+  +0.3 dB on the stand-in, 192 kbps: +1.1).
 - N20: `batch-update` still applies its moves one at a time, so a batch that
   moves many clips by the same amount must be in order (documented) rather
   than checked as a whole. `rippleDeleteAcrossTracks` (no caller) and the
