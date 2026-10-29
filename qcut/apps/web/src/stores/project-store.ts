@@ -113,7 +113,10 @@ interface ProjectStore {
 		options?: { backgroundColor?: string; blurIntensity?: BlurIntensity }
 	) => Promise<void>;
 	updateProjectFps: (fps: number) => Promise<void>;
-	updateProjectAudioMix: (audioMix: ProjectAudioMixSettings) => Promise<void>;
+	/** Resolves to whether the mix was saved; a failure is also reported. */
+	updateProjectAudioMix: (
+		audioMix: ProjectAudioMixSettings
+	) => Promise<boolean>;
 	updateProjectTimelineSettings: (
 		settings: ProjectTimelineSettings
 	) => Promise<void>;
@@ -531,9 +534,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 	moveProjectToFolder: async (projectId: string, folderId: string | null) => {
 		try {
-			const listed = get().savedProjects.find((item) => item.id === projectId);
-			if (listed && (listed.folderId ?? null) === folderId) return true;
-
 			const moved = await saveProjectRecordChange({
 				projectId,
 				patch: { folderId },
@@ -974,7 +974,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 	updateProjectAudioMix: async (audioMix) => {
 		const { activeProject } = get();
-		if (!activeProject) return;
+		if (!activeProject) return false;
 		const updatedProject: TProject = {
 			...activeProject,
 			audioMix: normalizeProjectAudioMixSettings({ audioMix }),
@@ -983,12 +983,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 		set({ activeProject: updatedProject });
 		try {
 			await storageService.saveProject({ project: updatedProject });
+			return true;
 		} catch (error) {
 			handleStorageError(error, "Update project audio mix", {
 				projectId: activeProject.id,
 				projectName: activeProject.name,
 				operation: "updateProjectAudioMix",
 			});
+			return false;
 		}
 	},
 }));
