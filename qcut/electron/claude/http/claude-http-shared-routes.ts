@@ -175,8 +175,11 @@ export interface WindowProxy {
 export interface WindowAccessor {
 	/** Get a BrowserWindow or proxy with webContents.send capability */
 	getWindow(): WindowProxy;
-	/** Request full timeline data from renderer */
-	requestTimeline(): Promise<ClaudeTimeline>;
+	/**
+	 * Request full timeline data from renderer. With `projectId`, a project
+	 * the editor does not have loaded is read from storage instead.
+	 */
+	requestTimeline(options?: { projectId?: string }): Promise<ClaudeTimeline>;
 	/** Render a local MP4 through the live editor canvas and MP4 muxer. */
 	requestLocalVideoExport?(
 		request: ClaudeLocalVideoExportRequest
@@ -567,6 +570,36 @@ async function writeProjectJsonSnapshot({
 }
 
 /** Debounce best-effort project.json regeneration after timeline mutations. */
+/**
+ * The named project's timeline: the editor's own when it has that project
+ * loaded, else the project as storage holds it, so reading a project never
+ * switches what the user has open (N23).
+ */
+async function requestProjectTimeline({
+	accessor,
+	projectId,
+}: {
+	accessor: WindowAccessor;
+	projectId: string;
+}): Promise<ClaudeTimeline> {
+	try {
+		return await Promise.race([
+			accessor.requestTimeline({ projectId }),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+			),
+		]);
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			/^Project .+ was not found$/.test(error.message)
+		) {
+			throw new HttpError(404, error.message);
+		}
+		throw error;
+	}
+}
+
 function scheduleProjectJsonAutoSync({
 	projectId,
 }: {
@@ -1100,13 +1133,10 @@ export function registerSharedRoutes(
 	// Timeline routes
 	// ==========================================================================
 	router.get("/api/claude/timeline/:projectId", async (req) => {
-		await assertProjectIsOpen({ accessor, projectId: req.params.projectId });
-		const timeline = await Promise.race([
-			accessor.requestTimeline(),
-			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
-			),
-		]);
+		const timeline = await requestProjectTimeline({
+			accessor,
+			projectId: req.params.projectId,
+		});
 		const format = req.query.format || "json";
 		if (format === "md") return timelineToMarkdown(timeline);
 
@@ -1858,15 +1888,10 @@ export function registerSharedRoutes(
 
 	router.get("/api/claude/project/:projectId/summary", async (req) => {
 		try {
-			const timeline = await Promise.race([
-				accessor.requestTimeline(),
-				new Promise<never>((_, reject) =>
-					setTimeout(
-						() => reject(new HttpError(504, "Renderer timed out")),
-						5000
-					)
-				),
-			]);
+			const timeline = await requestProjectTimeline({
+				accessor,
+				projectId: req.params.projectId,
+			});
 			const [mediaFiles, settings] = await Promise.all([
 				listMediaFiles(req.params.projectId),
 				getProjectSettings(req.params.projectId),
@@ -1891,15 +1916,10 @@ export function registerSharedRoutes(
 
 	router.post("/api/claude/project/:projectId/report", async (req) => {
 		try {
-			const timeline = await Promise.race([
-				accessor.requestTimeline(),
-				new Promise<never>((_, reject) =>
-					setTimeout(
-						() => reject(new HttpError(504, "Renderer timed out")),
-						5000
-					)
-				),
-			]);
+			const timeline = await requestProjectTimeline({
+				accessor,
+				projectId: req.params.projectId,
+			});
 			const [mediaFiles, settings] = await Promise.all([
 				listMediaFiles(req.params.projectId),
 				getProjectSettings(req.params.projectId),
