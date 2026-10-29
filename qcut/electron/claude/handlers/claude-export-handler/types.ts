@@ -4,7 +4,10 @@
  */
 
 import type { JianyingTextRuntimeReference } from "../../../jianying-text-runtime/jianying-text-runtime-contract.js";
-import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
+import type {
+	ExportAudioValidation,
+	ExportPeakCorrection,
+} from "../../../types/export-audio-validation.js";
 
 export const EXPORT_JOB_STATUS = {
 	queued: "queued",
@@ -84,6 +87,8 @@ export interface ResolvedExportSettings {
 	audioBitrate?: number;
 	audioSampleRate?: number;
 	audioChannels?: 1 | 2;
+	/** How the master limiter's true-peak check handles encoding overshoot. */
+	peakCorrection?: ExportPeakCorrection;
 
 	/** Cursor enhancement config (passed through to compositor) */
 	cursorConfig?: {
