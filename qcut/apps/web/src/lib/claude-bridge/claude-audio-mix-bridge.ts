@@ -82,6 +82,18 @@ export function readAudioMixSnapshot({
 	};
 }
 
+/**
+ * Saves the timeline now rather than on its next autosave: a track's mix
+ * lives there, and an answer means the change is stored.
+ */
+async function saveTrackMix(): Promise<void> {
+	if (!(await useTimelineStore.getState().saveImmediate())) {
+		throw new Error(
+			"The track's mix changed in the editor but could not be saved"
+		);
+	}
+}
+
 /** Fails when the stores do not hold what the change asked for. */
 function assertTrackApplied({
 	trackId,
@@ -124,6 +136,7 @@ async function applyAudioMixOperation(
 		case "set-track":
 			setTrackMix({ trackId: request.trackId, patch: request.patch });
 			assertTrackApplied({ trackId: request.trackId, patch: request.patch });
+			await saveTrackMix();
 			return answer();
 		case "create-bus": {
 			const bus = await createMixBus({
@@ -138,10 +151,11 @@ async function applyAudioMixOperation(
 		case "update-bus":
 			await updateMixBus({ busId: request.busId, patch: request.patch });
 			return answer();
-		case "remove-bus":
-			return answer({
-				reroutedTrackIds: await removeMixBus({ busId: request.busId }),
-			});
+		case "remove-bus": {
+			const reroutedTrackIds = await removeMixBus({ busId: request.busId });
+			if (reroutedTrackIds.length > 0) await saveTrackMix();
+			return answer({ reroutedTrackIds });
+		}
 		case "render-stems":
 			return {
 				success: true,
