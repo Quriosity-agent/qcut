@@ -7,7 +7,10 @@ feeds the master. Exports (both engines) render exactly what the editor
 plays.
 
 These commands need a running QCut editor with the project open.
-`--project-id` defaults to the active project.
+`--project-id` defaults to the active project. Each change is saved before
+the command answers: the master and buses with the project, a track's
+settings with the timeline. A rename, a duplicate or reopening the project
+keeps them.
 
 ## Commands
 
