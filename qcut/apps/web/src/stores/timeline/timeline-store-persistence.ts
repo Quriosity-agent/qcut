@@ -241,19 +241,19 @@ export function createPersistenceOperations(
 			try {
 				const { useProjectStore } = await import("../project-store");
 				const activeProject = useProjectStore.getState().activeProject;
-				if (activeProject) {
-					await storageService.saveProjectTimeline({
-						projectId: activeProject.id,
-						tracks: get()._tracks,
-						sceneId: activeProject.currentSceneId,
-					});
+				if (!activeProject) return false;
+				await storageService.saveProjectTimeline({
+					projectId: activeProject.id,
+					tracks: get()._tracks,
+					sceneId: activeProject.currentSceneId,
+				});
 
-					set({
-						isAutoSaving: false,
-						autoSaveStatus: "Saved",
-						lastAutoSaveAt: Date.now(),
-					});
-				}
+				set({
+					isAutoSaving: false,
+					autoSaveStatus: "Saved",
+					lastAutoSaveAt: Date.now(),
+				});
+				return true;
 			} catch (error) {
 				handleError(error, {
 					operation: "Immediate Save Timeline",
@@ -261,6 +261,7 @@ export function createPersistenceOperations(
 					severity: ErrorSeverity.HIGH,
 					metadata: { trackCount: get()._tracks.length },
 				});
+				return false;
 			}
 		},
 
