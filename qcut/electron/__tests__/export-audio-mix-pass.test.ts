@@ -187,6 +187,30 @@ describe("native audio mix pass", () => {
 		);
 	});
 
+	it("hands the export's peak correction to the limiter and returns its warnings", async () => {
+		vi.mocked(renderTruePeakLimitedExport).mockImplementationOnce(
+			async ({ outputPath: target }) => {
+				await writeFile(target, "checked picture and audio");
+				return {
+					audioValidation: { status: "exceeded", ceilingDbtp: -1 },
+					warnings: ["over the ceiling"],
+				};
+			}
+		);
+		const result = await renderTimelineAudioMix({
+			...options({ config: mixConfig() }),
+			settings: { ...settings, peakCorrection: "check" },
+		});
+		expect(renderTruePeakLimitedExport).toHaveBeenCalledWith(
+			expect.objectContaining({ peakCorrection: "check" })
+		);
+		expect(result).toEqual({
+			finalized: true,
+			audioValidation: { status: "exceeded", ceilingDbtp: -1 },
+			warnings: ["over the ceiling"],
+		});
+	});
+
 	it("keeps the existing AAC mix path when the master limiter is disabled", async () => {
 		const config = mixConfig();
 		config.master.effects.limiter.enabled = false;
