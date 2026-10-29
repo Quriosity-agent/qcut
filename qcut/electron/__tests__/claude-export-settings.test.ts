@@ -146,3 +146,23 @@ describe("export preset metadata", () => {
 		).toThrow("Invalid preset ID: not-a-preset");
 	});
 });
+
+describe("export peak correction", () => {
+	it("hands a requested peak correction to the native engine", () => {
+		expect(
+			resolveExportSettings({ request: { peakCorrection: "whole" } })
+				.peakCorrection
+		).toBe("whole");
+		expect(resolveExportSettings({ request: {} })).not.toHaveProperty(
+			"peakCorrection"
+		);
+	});
+
+	it("refuses a peak correction it does not know", () => {
+		expect(() =>
+			resolveExportSettings({
+				request: { peakCorrection: "loud" as never },
+			})
+		).toThrow("Peak correction must be one of local, whole, check");
+	});
+});
