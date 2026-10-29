@@ -7,7 +7,9 @@
  * Modes:
  * - `reject`: the command fails when the target range is occupied.
  * - `insert`: the occupant spanning the insert point is split and everything
- *   at or after the point shifts right by the inserted duration.
+ *   at or after the point shifts right as far as the inserted element needs:
+ *   its whole duration when something starts at the point, nothing when a
+ *   gap there fits it.
  * - `overwrite`: the target range is cleared (remove / trim / split) while
  *   downstream elements keep their time positions.
  *
@@ -121,15 +123,16 @@ export function planOverwrite({
 }
 
 export interface InsertPlan {
-	/** Starts at or after the insert point: shift right by the duration. */
+	/** Starts at or after the insert point: shifts right. */
 	shiftIds: string[];
 	/** Strictly spans the insert point: split there, right half shifts. */
 	splitIds: string[];
 }
 
 /**
- * Plan opening a gap at insertTime. The caller applies the inserted duration
- * to shifted elements and to the right half of split elements.
+ * Plan opening a gap at insertTime: which items shift right and which split
+ * there. How far they shift is the caller's: the store moves them only as
+ * far as the inserted element needs.
  */
 export function planInsertShift({
 	items,
