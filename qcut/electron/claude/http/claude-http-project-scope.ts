@@ -50,12 +50,12 @@ export async function assertProjectIsOpen({
 	if (!openProjectId) {
 		throw new HttpError(
 			409,
-			`The editor has no project open. Open ${projectId} first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
+			`The editor has no project open. Open ${projectId} first (editor:navigator:open --project-id ${projectId}), then retry.`
 		);
 	}
 	if (openProjectId === projectId) return;
 	throw new HttpError(
 		409,
-		`The editor has ${openProjectId} open, not ${projectId}. Open it first (editor:navigator:open --project-id ${projectId}) or pass --focus.`
+		`The editor has ${openProjectId} open, not ${projectId}. Open it first (editor:navigator:open --project-id ${projectId}), then retry.`
 	);
 }
