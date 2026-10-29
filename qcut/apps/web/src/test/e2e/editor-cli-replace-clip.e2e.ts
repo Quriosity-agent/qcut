@@ -432,9 +432,10 @@ test("a main-track batch delete and insert leave the sound effects where they we
 });
 
 // N20 (2026-10-29 trailer report): on v17's main track 105 ended 0.1 ms after
-// 106 started. Deleting 105 left its gap open even where the magnet should
-// have closed it, and the replacement put back into the gap pushed the 30
-// clips after it right by its whole length.
+// 106 started. The delete kept its gap, as one without --ripple does, and the
+// replacement put back into the gap pushed the 30 clips after it right by its
+// whole length. On that seam a ripple delete, the magnet's included, left the
+// gap open.
 test("a clip put back into its gap moves nothing, and ripple deletes close the gaps", async ({
 	apiPort,
 	page,
