@@ -26,6 +26,10 @@ import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
 import {
+	isLoadedProject,
+	loadStoredProjectView,
+} from "./claude-stored-project";
+import {
 	assertTimelineProjectActive,
 	readRequiredTimelineProjectId,
 } from "./claude-timeline-project-guard";
@@ -949,15 +953,23 @@ export function setupClaudeProjectBridge(): void {
 	const projectAPI = claude.project;
 
 	// Respond to stats request (must forward requestId for main process matching)
-	projectAPI.onStatsRequest((_projectId: string, requestId: string) => {
-		const timelineState = useTimelineStore.getState();
-		const projectState = useProjectStore.getState();
-		const tracks = timelineState.tracks;
+	projectAPI.onStatsRequest(async (projectId: string, requestId: string) => {
+		// Another project than the loaded one is counted as storage holds it (N23).
+		const stored =
+			projectId && !isLoadedProject(projectId)
+				? await loadStoredProjectView({ projectId }).catch(() => null)
+				: null;
+		const project = stored
+			? stored.project
+			: useProjectStore.getState().activeProject;
+		const tracks = stored ? stored.tracks : useTimelineStore.getState().tracks;
+		const mediaItems = stored
+			? stored.media
+			: useMediaStore.getState().mediaItems;
 
 		// Count media by type
 		const mediaCount = { video: 0, audio: 0, image: 0 };
 		let elementCount = 0;
-		const mediaItems = useMediaStore.getState().mediaItems;
 
 		for (const track of tracks) {
 			elementCount += track.elements.length;
@@ -977,13 +989,14 @@ export function setupClaudeProjectBridge(): void {
 		const stats = {
 			totalDuration: calculateTimelineDuration({
 				tracks,
-				fps: projectState.activeProject?.fps ?? 30,
+				fps: project?.fps ?? 30,
 			}),
 			mediaCount,
 			trackCount: tracks.length,
 			elementCount,
-			lastModified:
-				projectState.activeProject?.updatedAt?.getTime() || Date.now(),
+			lastModified: project?.updatedAt
+				? new Date(project.updatedAt).getTime()
+				: Date.now(),
 			fileSize: 0, // Would need to calculate
 		};
 
