@@ -93,13 +93,18 @@ export interface ClaudeTimeline {
 	fps: number;
 	tracks: ClaudeTrack[];
 	/**
-	 * Id of the project this snapshot was taken from. The renderer can only
-	 * snapshot the currently open project, so consumers that receive an
-	 * explicit target projectId must compare it against this value.
+	 * Id of the project this snapshot was taken from. A request without a
+	 * projectId snapshots the currently open project, so consumers that
+	 * receive an explicit target projectId must compare it against this value.
 	 */
 	projectId?: string;
 	/** The project's buses and master; each audio track names its bus. */
 	audioMix?: { master: ClaudeAudioMixBus; buses: ClaudeAudioMixBus[] };
+	/**
+	 * True when the project was not loaded in the editor and this is the
+	 * project as it was last saved (N23); absent for the open project.
+	 */
+	readFromStorage?: true;
 }
 
 export interface ClaudeTrack {
