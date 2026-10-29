@@ -253,7 +253,8 @@ export async function renderTruePeakLimitedExport({
 			signal,
 		});
 
-		const dips: PeakDip[] = [];
+		/** Each correction's dips, in the order they were applied. */
+		const passes: PeakDip[][] = [];
 		const encodeCandidate = async ({
 			attempt,
 		}: {
@@ -284,7 +285,7 @@ export async function renderTruePeakLimitedExport({
 					limiting: {
 						oversampleFactor: OVERSAMPLE_FACTOR,
 						encodeAttempts: attempt,
-						...summarizePeakDips({ dips, duration }),
+						...summarizePeakDips({ passes, duration }),
 					},
 				};
 			}
@@ -306,7 +307,7 @@ export async function renderTruePeakLimitedExport({
 				sampleRate,
 				channels,
 			});
-			dips.push(...correction);
+			passes.push(correction);
 			return encodeCandidate({ attempt: attempt + 1 });
 		};
 
