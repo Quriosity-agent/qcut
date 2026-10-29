@@ -120,3 +120,33 @@ describe("timeline reads are matched to their own request", () => {
 		});
 	});
 });
+
+describe("timeline reads of a named project (N23)", () => {
+	it("asks for the named project and passes its answer back", async () => {
+		const editor = busyEditor();
+		const read = requestTimelineFromRenderer(editor.window as never, {
+			projectId: "closed-project",
+		});
+		expect(editor.queue).toEqual([
+			{ requestId: expect.any(String), projectId: "closed-project" },
+		]);
+		editor.drain();
+		await expect(read).resolves.toEqual({
+			tracks: [{ id: "score", elements: ["old-score"] }],
+		});
+	});
+
+	it("fails with the editor's reason when it cannot answer", async () => {
+		const editor = busyEditor();
+		const read = requestTimelineFromRenderer(editor.window as never, {
+			projectId: "missing",
+		});
+		ipc.reply("claude:timeline:response", {
+			requestId: editor.queue[0].requestId,
+			timeline: null,
+			error: "Project missing was not found",
+		});
+		await expect(read).rejects.toThrow("Project missing was not found");
+		expect(ipc.listeners.get("claude:timeline:response")?.size ?? 0).toBe(0);
+	});
+});
