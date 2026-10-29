@@ -7,6 +7,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultProjectAudioMixSettings } from "@/lib/audio/audio-mix-settings";
+import { handleError } from "@/lib/debug/error-handler";
 import type { TProject } from "@/types/project";
 import { useProjectStore } from "../project-store";
 
@@ -211,6 +212,27 @@ describe("project record changes start from the latest record (N19)", () => {
 		expect(
 			await useProjectStore.getState().moveProjectToFolder("v17", null)
 		).toBe(true);
+		expect(storage.saveProject).not.toHaveBeenCalled();
+	});
+
+	it("says when the project to rename is not stored", async () => {
+		storage.loadProject.mockResolvedValue(null);
+
+		await useProjectStore.getState().renameProject("gone", "定版");
+
+		expect(storage.saveProject).not.toHaveBeenCalled();
+		expect(handleError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "Project gone not found" }),
+			expect.objectContaining({ operation: "Find project to rename" })
+		);
+	});
+
+	it("does not save a mix with no project open", async () => {
+		expect(
+			await useProjectStore
+				.getState()
+				.updateProjectAudioMix(createDefaultProjectAudioMixSettings())
+		).toBe(false);
 		expect(storage.saveProject).not.toHaveBeenCalled();
 	});
 
