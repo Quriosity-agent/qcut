@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	readStorageJson,
 	removeStorageJson,
 	writeStorageJson,
 } from "../main-ipc/storage-json.js";
@@ -117,5 +118,103 @@ describe("atomic project JSON storage", () => {
 		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
 			version: 0,
 		});
+	});
+});
+
+describe("reading stored project JSON", () => {
+	let directory: string;
+	let filePath: string;
+	beforeEach(async () => {
+		directory = await fs.mkdtemp(path.join(os.tmpdir(), "qcut-storage-read-"));
+		filePath = path.join(directory, "project.json");
+	});
+	afterEach(async () => {
+		vi.restoreAllMocks();
+		await fs.rm(directory, { recursive: true, force: true });
+	});
+
+	it("reads a value, and nothing for a missing or empty file", async () => {
+		await fs.writeFile(filePath, '{"name":"a"}');
+		expect(await readStorageJson({ filePath })).toEqual({
+			value: { name: "a" },
+		});
+		await fs.writeFile(filePath, " \n");
+		expect(await readStorageJson({ filePath })).toBeNull();
+		expect(
+			await readStorageJson({ filePath: path.join(directory, "absent.json") })
+		).toBeNull();
+	});
+
+	it("reads the JSON before stray characters and keeps the file as it was", async () => {
+		const damaged = '{"name":"Transition Parity","scenes":[{"id":"a"}]}}';
+		await fs.writeFile(filePath, damaged);
+		const read = await readStorageJson({ filePath });
+		expect(read?.value).toEqual({
+			name: "Transition Parity",
+			scenes: [{ id: "a" }],
+		});
+		expect(read?.strayTail?.characters).toBe(1);
+		const backupPath = read?.strayTail?.backupPath as string;
+		expect(path.dirname(backupPath)).toBe(directory);
+		expect(backupPath.endsWith(".json")).toBe(false);
+		expect(await fs.readFile(backupPath, "utf8")).toBe(damaged);
+		expect(await fs.readFile(filePath, "utf8")).toBe(damaged);
+		await readStorageJson({ filePath });
+		expect((await fs.readdir(directory)).sort()).toEqual(
+			["project.json", path.basename(backupPath)].sort()
+		);
+	});
+
+	it("reads the later of two overlapping saves that truncated the file", async () => {
+		// Saves before 2026-09-27 wrote the file in place: both opened it
+		// (truncating), the longer wrote, then the shorter wrote over its start.
+		const longer = JSON.stringify({
+			name: "Transition Parity - BT709 - 2026-08-01",
+			scenes: [{ id: "main", name: "Main" }],
+		});
+		const shorter = JSON.stringify({
+			name: "Transition Parity - BT709",
+			scenes: [{ id: "main" }],
+		});
+		const first = await fs.open(filePath, "w");
+		const second = await fs.open(filePath, "w");
+		await first.write(longer, 0);
+		await second.write(shorter, 0);
+		await Promise.all([first.close(), second.close()]);
+		const damaged = await fs.readFile(filePath, "utf8");
+		expect(damaged).toBe(shorter + longer.slice(shorter.length));
+		expect(() => JSON.parse(damaged)).toThrow(SyntaxError);
+		const read = await readStorageJson({ filePath });
+		expect(read?.value).toEqual(JSON.parse(shorter));
+		expect(read?.strayTail?.characters).toBe(longer.length - shorter.length);
+	});
+
+	it("is not misled by braces and brackets inside strings", async () => {
+		await fs.writeFile(filePath, '{"text":"a } b ] c \\" }"}x');
+		expect((await readStorageJson({ filePath }))?.value).toEqual({
+			text: 'a } b ] c " }',
+		});
+	});
+
+	it.each([
+		'{"name":',
+		'x{"name":"a"}',
+		'"name"x',
+		'{"name":"a"]}',
+	])("fails on other damage, without a copy: %s", async (contents) => {
+		await fs.writeFile(filePath, contents);
+		await expect(readStorageJson({ filePath })).rejects.toThrow(SyntaxError);
+		expect(await fs.readdir(directory)).toEqual(["project.json"]);
+	});
+
+	it("does not read past the damage when the file cannot be copied aside", async () => {
+		await fs.writeFile(filePath, '{"name":"a"}}');
+		vi.spyOn(fs, "writeFile").mockRejectedValueOnce(
+			Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" })
+		);
+		await expect(readStorageJson({ filePath })).rejects.toThrow(
+			"could not be copied aside first (EACCES: permission denied)"
+		);
+		expect(await fs.readFile(filePath, "utf8")).toBe('{"name":"a"}}');
 	});
 });
