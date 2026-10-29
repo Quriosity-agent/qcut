@@ -544,7 +544,10 @@ async function handleMainRequest(
 		}
 
 		case "get-timeline": {
-			return requestTimelineFromRenderer(win);
+			const { projectId } = data as { projectId?: unknown };
+			return requestTimelineFromRenderer(win, {
+				...(typeof projectId === "string" ? { projectId } : {}),
+			});
 		}
 
 		case "get-selection": {
