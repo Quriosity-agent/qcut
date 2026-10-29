@@ -21,6 +21,26 @@ export function getSeamToleranceSeconds(fps = 30): number {
 }
 
 /**
+ * Whether a clip starting at `startTime` comes at or after `time`, a start
+ * less than the seam tolerance before it counting as at it. Every ripple asks
+ * this of the clips after its edit point. A strict comparison left a clip
+ * starting a rounding error before a deleted clip's end (136.75 against
+ * 136.7501) where it was, and the clips rippled into it were pushed back to
+ * their old places, so the gap never closed (N20).
+ */
+export function startsAtOrAfter({
+	startTime,
+	time,
+	fps = 30,
+}: {
+	startTime: number;
+	time: number;
+	fps?: number;
+}): boolean {
+	return startTime >= time - getSeamToleranceSeconds(fps);
+}
+
+/**
  * The element already occupying [startTime, startTime + duration) on this
  * track, or null when the span is free. Returns the element itself so callers
  * can name the obstruction instead of only refusing.
