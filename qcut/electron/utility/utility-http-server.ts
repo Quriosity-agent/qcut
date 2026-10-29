@@ -274,9 +274,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		...localVideoExportAccessor,
 		/** Creates a BrowserWindow-like proxy backed by main-process IPC. */
 		getWindow: () => createWindowProxy(requestFromMain),
-		/** Requests the current timeline through the main-process bridge. */
-		requestTimeline: () =>
-			requestFromMain("get-timeline", {}) as Promise<ClaudeTimeline>,
+		/** Requests the current timeline (or a stored project's) through the main-process bridge. */
+		requestTimeline: (options) =>
+			requestFromMain("get-timeline", {
+				...(options?.projectId ? { projectId: options.projectId } : {}),
+			}) as Promise<ClaudeTimeline>,
 		/** Requests the current editor selection through the bridge. */
 		requestSelection: () =>
 			requestFromMain("get-selection", {}) as Promise<ClaudeSelectionItem[]>,
