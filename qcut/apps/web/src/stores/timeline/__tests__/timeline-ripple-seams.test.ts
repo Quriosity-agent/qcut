@@ -2,8 +2,8 @@
  * N20 (2026-10-29 trailer report): a ripple counts a clip starting a rounding
  * error before its edit point as after it, the rule placements use for
  * seams. v17's main track had 105 at 135.4584 for 1.2917 s (ending at
- * 136.7501) and 106 at 136.75: deleting 105 left 106 in place, the clips
- * rippled into 106 went back to their old places, and the gap stayed.
+ * 136.7501) and 106 at 136.75: a ripple delete of 105 left 106 in place, the
+ * clips rippled into 106 went back to their old places, and the gap stayed.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
