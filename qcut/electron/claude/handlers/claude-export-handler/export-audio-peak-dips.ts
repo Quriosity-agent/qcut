@@ -10,6 +10,8 @@ export interface PeakDip {
 
 const RAMP_SECONDS = 0.02;
 const BYTES_PER_SAMPLE = 4;
+/** How finely the deepest moment is looked for: 40 steps across a ramp. */
+const SUMMARY_STEP_SECONDS = 0.0005;
 
 /**
  * The dips that bring every block above `targetDb` down to it, and a block
@@ -43,30 +45,74 @@ export function planPeakDips({
 	});
 }
 
+function byStart(left: PeakDip, right: PeakDip): number {
+	return left.start - right.start;
+}
+
 /**
  * How long the dips lowered the mix for, in seconds of `duration`, and the
- * most any one stretch came down over every pass, in dB.
+ * most any moment came down, in dB. Each pass of dips is applied to the mix
+ * the one before it left, so their depths add up; within a pass the deepest
+ * dip holds, as applyPeakDips applies it.
  */
 export function summarizePeakDips({
-	dips,
+	passes,
 	duration,
 }: {
-	dips: PeakDip[];
+	passes: PeakDip[][];
 	duration: number;
 }): { correctedSeconds: number; maxCorrectionDb: number } {
-	const depths = new Map<string, number>();
+	const dips = passes.flat().sort(byStart);
 	let seconds = 0;
 	let reach = 0;
-	for (const dip of [...dips].sort((left, right) => left.start - right.start)) {
-		const key = `${dip.start}:${dip.end}`;
-		depths.set(key, (depths.get(key) ?? 0) + dip.depthDb);
+	for (const dip of dips) {
 		const end = Math.min(duration, dip.end);
 		seconds += Math.max(0, end - Math.max(reach, dip.start));
 		reach = Math.max(reach, end);
 	}
+	let deepest = 0;
+	for (const group of groupDips({ dips })) {
+		const reaching = passes.map((pass) =>
+			pass
+				.filter(
+					(dip) =>
+						dip.start - RAMP_SECONDS < group.end &&
+						dip.end + RAMP_SECONDS > group.start
+				)
+				.sort(byStart)
+		);
+		const next = reaching.map(() => 0);
+		const active: PeakDip[][] = reaching.map(() => []);
+		const last = Math.min(duration, group.end);
+		for (
+			let time = Math.max(0, group.start);
+			time <= last;
+			time += SUMMARY_STEP_SECONDS
+		) {
+			let total = 0;
+			for (const [pass, waiting] of reaching.entries()) {
+				while (
+					next[pass] < waiting.length &&
+					waiting[next[pass]].start - RAMP_SECONDS <= time
+				) {
+					active[pass].push(waiting[next[pass]]);
+					next[pass] += 1;
+				}
+				active[pass] = active[pass].filter(
+					(dip) => dip.end + RAMP_SECONDS >= time
+				);
+				let depth = 0;
+				for (const dip of active[pass]) {
+					depth = Math.max(depth, depthAt({ dip, time }));
+				}
+				total += depth;
+			}
+			deepest = Math.max(deepest, total);
+		}
+	}
 	return {
 		correctedSeconds: Number(seconds.toFixed(2)),
-		maxCorrectionDb: Number(Math.max(0, ...depths.values()).toFixed(2)),
+		maxCorrectionDb: Number(deepest.toFixed(2)),
 	};
 }
 
@@ -80,14 +126,17 @@ function depthAt({ dip, time }: { dip: PeakDip; time: number }): number {
 	);
 }
 
-/** Dips whose ramps touch, in start order: each stretch is read once. */
-function groupDips({
-	dips,
-}: {
+/** A stretch of touching dips, from the start of its first ramp to the end of its last. */
+interface DipGroup {
 	dips: PeakDip[];
-}): Array<{ dips: PeakDip[]; start: number; end: number }> {
-	const groups: Array<{ dips: PeakDip[]; start: number; end: number }> = [];
-	for (const dip of [...dips].sort((left, right) => left.start - right.start)) {
+	start: number;
+	end: number;
+}
+
+/** Dips whose ramps touch, in start order: each stretch is read once. */
+function groupDips({ dips }: { dips: PeakDip[] }): DipGroup[] {
+	const groups: DipGroup[] = [];
+	for (const dip of [...dips].sort(byStart)) {
 		const group = groups.at(-1);
 		if (group && dip.start - RAMP_SECONDS <= group.end) {
 			group.dips.push(dip);
