@@ -31,6 +31,7 @@ import { blockedByTrackLock } from "./timeline-lock-guard";
 import {
 	findOccupyingElement,
 	resolveLaneOverlaps,
+	startsAtOrAfter,
 } from "@/lib/timeline-occupancy";
 
 export function createElementOps(
@@ -102,7 +103,13 @@ export function createElementOps(
 					// If moving element to the right (positive delta)
 					if (timeDelta > 0) {
 						// Move elements that start after the original position of the moved element
-						if (currentElementStart >= oldEndTime) {
+						if (
+							startsAtOrAfter({
+								startTime: currentElementStart,
+								time: oldEndTime,
+								fps,
+							})
+						) {
 							return {
 								...currentElement,
 								startTime: currentElementStart + timeDelta,
@@ -113,8 +120,16 @@ export function createElementOps(
 					else if (timeDelta < 0) {
 						// Move elements that start after the new position of the moved element
 						if (
-							currentElementStart >= newEndTime &&
-							currentElementStart >= oldStartTime
+							startsAtOrAfter({
+								startTime: currentElementStart,
+								time: newEndTime,
+								fps,
+							}) &&
+							startsAtOrAfter({
+								startTime: currentElementStart,
+								time: oldStartTime,
+								fps,
+							})
 						) {
 							return {
 								...currentElement,
