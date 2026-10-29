@@ -150,4 +150,30 @@ describe("ripples count a seam within half a frame as touching (N20)", () => {
 
 		expect(starts("main")).toEqual([134.1667, 136.4584, 137.75, 139.0417]);
 	});
+
+	it("moves the clip after a ripple-moved clip with it when it moves left", () => {
+		// 106 starts 15 ms before 105 ends, which a placement allows at 30 fps.
+		const tracks: TimelineTrack[] = [
+			{
+				...v17Tracks()[0],
+				elements: [
+					clip({ id: "104", startTime: 134.1667 }),
+					clip({ id: "105", startTime: 135.4584 }),
+					clip({ id: "106", startTime: 136.7351 }),
+					clip({ id: "107", startTime: 138.0268 }),
+				],
+			},
+		];
+		useTimelineStore.setState({
+			_tracks: tracks,
+			tracks,
+			rippleEditingEnabled: true,
+		});
+
+		useTimelineStore
+			.getState()
+			.updateElementStartTimeWithRipple("main", "105", 135.4484);
+
+		expect(starts("main")).toEqual([134.1667, 135.4484, 136.7251, 138.0168]);
+	});
 });
