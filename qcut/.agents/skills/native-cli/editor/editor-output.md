@@ -64,6 +64,7 @@ same top-level fields.
 | `--gif-quality` | number (1-20) | GIF quality (lower = better visual, slower) |
 | `--mic` | boolean | Capture microphone audio |
 | `--system-audio` | boolean | Capture system audio |
+| `--peak-correction` | `local` \| `whole` \| `check` | Native exports with the master limiter on: how encoding peaks over the ceiling are handled (see [Native export true-peak limiting](#native-export-true-peak-limiting)) |
 
 ### Job management
 
@@ -88,16 +89,31 @@ job becomes `completed`. Enable the master limiter through the mixer (see
 [editor-mix.md](editor-mix.md)); no separate export flag is required.
 
 Each candidate is encoded from the same lossless mixed audio. If AAC/MP3
-encoding pushes the true peak over the ceiling, QCut lowers only the moments
-around it and re-encodes, up to six attempts: every 100 ms block whose true
-peak is within 0.75 dB of the ceiling comes down to 1.25 dB under it (with
-one codec window either side, easing in and out over 20 ms), because
-encoding again moves each block's peak by a few tenths of a dB. The rest of
-the mix keeps its level, so a change elsewhere, a picture-only edit for
-example, does not move the level of the whole export. Only a verified
-candidate replaces the destination file. The meter's 0.1 dB display
-precision is handled conservatively; a displayed peak exactly at the ceiling
-is not accepted without additional headroom.
+encoding pushes the true peak over the ceiling, what happens depends on
+`--peak-correction` (`peakCorrection` in the HTTP request; native exports
+only):
+
+- `local` (default): QCut lowers only the moments around the overshoot and
+  re-encodes, up to six attempts: every 100 ms block whose true peak is
+  within 0.75 dB of the ceiling comes down to 1.25 dB under it (with one
+  codec window either side, easing in and out over 20 ms), because encoding
+  again moves each block's peak by a few tenths of a dB. The rest of the mix
+  keeps its level, so a change elsewhere, a picture-only edit for example,
+  does not move the level of the whole export. The loud moments it lowers
+  come down relative to the rest, so the loudness range shrinks a little.
+- `whole`: the whole mix comes down by the overshoot plus 0.3 dB and is
+  encoded again (QCut before 2026.10.29.3). Level relationships stay as
+  mixed, but the whole export's level follows the encoder's worst moment,
+  so a small change anywhere can move it by tenths of a dB.
+- `check`: nothing is lowered. The first encode is published as it is and
+  `audioValidation.status` is `exceeded` (with a warning) when it went over.
+
+Only a verified candidate replaces the destination file (`check` publishes
+its single encode). The meter's 0.1 dB display precision is handled
+conservatively; a displayed peak exactly at the ceiling is not accepted
+without additional headroom. `editor mix loudness` (native) shows which
+stretches an export would lower before you export (see
+[editor-mix.md](editor-mix.md)).
 
 `export:status` and the final `--poll` result include `audioValidation` in both
 plain and JSON output. For example:
@@ -110,18 +126,24 @@ plain and JSON output. For example:
   "limiting": {
     "oversampleFactor": 4,
     "encodeAttempts": 2,
-    "correctedSeconds": 3.4,
-    "maxCorrectionDb": 1.6
+    "peakCorrection": "local",
+    "correctedSeconds": 0.39,
+    "maxCorrectionDb": 2.25,
+    "corrections": [
+      { "start": 12.352, "end": 12.548, "depthDb": 2.25 },
+      { "start": 87.152, "end": 87.348, "depthDb": 1.85 }
+    ]
   }
 }
 ```
 
-`correctedSeconds` is how much of the mix was lowered to control encoding
-peaks and `maxCorrectionDb` the deepest of those local reductions; both are 0
-when the first encode passed. Nothing else is raised or lowered: earlier
-versions turned the whole mix down by the worst overshoot (`attenuationDb`),
-so a small change anywhere could move the whole export by a few tenths of a
-dB.
+`corrections` lists each stretch that was lowered, in seconds from the start
+of the export, with how far it came down at its deepest (`depthDb`; stretches
+whose 20 ms ramps touch are one entry). `correctedSeconds` is their total
+length and `maxCorrectionDb` the deepest of them; all are empty or 0 when
+the first encode passed or with `check`. With `whole`, `corrections` is one
+stretch covering the whole export. Earlier versions reported the whole-mix
+reduction as `attenuationDb`.
 
 Digital silence passes with `truePeakDbtp: null`. Video without an audio stream
 returns `status: "no-audio"`; MP3 without audio fails.
