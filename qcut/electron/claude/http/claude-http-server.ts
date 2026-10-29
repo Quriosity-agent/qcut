@@ -204,8 +204,9 @@ export function startClaudeHTTPServer(
 	const accessor: WindowAccessor = {
 		/** Returns the main-process BrowserWindow for route handlers. */
 		getWindow,
-		/** Requests the current timeline from the renderer. */
-		requestTimeline: () => requestTimelineFromRenderer(getWindow()),
+		/** Requests the current timeline (or a stored project's) from the renderer. */
+		requestTimeline: (options) =>
+			requestTimelineFromRenderer(getWindow(), options),
 		/** Delegates exact sticker runtime rendering to the live editor. */
 		requestLocalVideoExport: (request) =>
 			requestClaudeLocalVideoExportFromRenderer({
