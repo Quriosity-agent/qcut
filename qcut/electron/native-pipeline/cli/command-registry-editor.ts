@@ -1047,6 +1047,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"boolean",
 			"Debug: force the per-frame seek path in renderer exports"
 		),
+		f(
+			"--peak-correction",
+			"string",
+			"With the master limiter on, how encoding peaks over the ceiling are handled: local (default: lower only those moments), whole (lower the whole mix), check (lower nothing, report)"
+		),
 		// GIF options
 		f("--gif-fps", "number", "GIF frame rate (15|20|25|30)"),
 		f("--gif-loop", "boolean", "GIF loop (true=infinite)"),
