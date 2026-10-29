@@ -8,6 +8,8 @@
  * @module electron/types/claude-audio-mix-api
  */
 
+import type { ExportAudioValidation } from "./export-audio-validation.js";
+
 export const CLAUDE_MASTER_BUS_ID = "master";
 
 export interface ClaudeAudioEqBand {
@@ -155,6 +157,12 @@ export interface ClaudeMixLoudness {
 	 * Audio graph (the preview and the muxer engine).
 	 */
 	engine?: "native" | "browser";
+	/**
+	 * Native only: what the export's true-peak check did to this mix with the
+	 * master limiter on, at the export's default audio settings: which
+	 * stretches an export lowers, and by how much.
+	 */
+	audioValidation?: ExportAudioValidation;
 }
 
 export type ClaudeAudioMixRequest = { projectId: string } & (
