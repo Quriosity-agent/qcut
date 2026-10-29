@@ -7,7 +7,11 @@ import { ipcMain, app, type IpcMainInvokeEvent } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import type { MainIpcDeps } from "./types.js";
-import { removeStorageJson, writeStorageJson } from "./storage-json.js";
+import {
+	readStorageJson,
+	removeStorageJson,
+	writeStorageJson,
+} from "./storage-json.js";
 
 export function registerStorageHandlers(deps: MainIpcDeps): void {
 	const { logger } = deps;
@@ -34,20 +38,21 @@ export function registerStorageHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"storage:load",
 		async (_event: IpcMainInvokeEvent, key: string): Promise<any> => {
+			const safeKey = path.basename(key);
+			const userDataPath = app.getPath("userData");
+			const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
 			try {
-				const safeKey = path.basename(key);
-				const userDataPath = app.getPath("userData");
-				const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
-				const data = await fs.promises.readFile(filePath, "utf8");
-				if (!data || !data.trim()) {
-					return null;
+				const stored = await readStorageJson({ filePath });
+				if (stored?.strayTail) {
+					logger.warn(
+						`[Storage] "${key}" has ${stored.strayTail.characters} stray character(s) after its JSON; read the JSON before them. ${filePath} is unchanged until the next save; a copy as it was: ${stored.strayTail.backupPath}`
+					);
 				}
-				return JSON.parse(data);
-			} catch (error: any) {
-				if (error.code === "ENOENT") return null;
+				return stored ? stored.value : null;
+			} catch (error: unknown) {
 				if (error instanceof SyntaxError) {
 					logger.error(
-						`[Storage] Corrupted JSON file for key "${key}":`,
+						`[Storage] Corrupted JSON file for key "${key}" (${filePath}), left as it is:`,
 						error.message
 					);
 					return null;
