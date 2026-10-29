@@ -1,15 +1,33 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { runAudioMeasurementProcess } from "../../../ffmpeg/audio-measurement-process.js";
-import { measureFileTruePeak } from "../../../ffmpeg/audio-true-peak.js";
+import { measureFileTruePeakBlocks } from "../../../ffmpeg/audio-true-peak.js";
 import { getFFmpegPath } from "../../../ffmpeg/utils.js";
 import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
+import {
+	applyPeakDips,
+	type PeakDip,
+	planPeakDips,
+	summarizePeakDips,
+} from "./export-audio-peak-dips.js";
 
 const OVERSAMPLE_FACTOR = 4;
 const HEADROOM_DB = 0.3;
 const METER_ROUNDING_DB = 0.050001;
-const MAX_ENCODE_ATTEMPTS = 4;
+const MAX_ENCODE_ATTEMPTS = 6;
 const PROCESS_TIMEOUT_MS = 30 * 60_000;
+/**
+ * Encoding again moves a block's true peak by up to a dB (by 0.5 dB or less
+ * for 99 in 100 loud blocks of a trailer mix), so a correction takes every
+ * block within the guard of the ceiling down to the target below it, where
+ * the next encode is unlikely to push it back over.
+ */
+const CORRECTION_GUARD_DB = 0.75;
+const CORRECTION_TARGET_DB = 1.25;
+/** Each correction after the first takes blocks over the ceiling this much further again. */
+const REPEAT_CORRECTION_DB = 0.5;
+/** A corrected block's dip spans one AAC or MP3 window (2 × 1152 samples) either side. */
+const CODEC_WINDOW_SAMPLES = 2304;
 
 export interface TruePeakLimitedExportOptions {
 	sourceAudioPath: string;
@@ -111,16 +129,28 @@ function limitingFilter({
 	].join(",");
 }
 
+/**
+ * The limited mix is headerless float PCM, so a correction can rewrite the
+ * samples of a moment in place.
+ */
+function rawPcmFormat({
+	sampleRate,
+	channels,
+}: {
+	sampleRate: number;
+	channels: 1 | 2;
+}): string[] {
+	return ["-f", "f32le", "-ar", String(sampleRate), "-ac", String(channels)];
+}
+
 function encodingArgs({
 	options,
 	limitedAudioPath,
 	candidatePath,
-	attenuationDb,
 }: {
 	options: TruePeakLimitedExportOptions;
 	limitedAudioPath: string;
 	candidatePath: string;
-	attenuationDb: number;
 }): string[] {
 	const {
 		format,
@@ -133,13 +163,12 @@ function encodingArgs({
 	const isAudioOnly = format === "mp3";
 	return [
 		...(isAudioOnly ? [] : ["-i", sourceVideoPath as string]),
+		...rawPcmFormat({ sampleRate, channels }),
 		"-i",
 		limitedAudioPath,
 		...(isAudioOnly ? ["-vn"] : ["-map", "0:v:0", "-c:v", "copy"]),
 		"-map",
 		`${isAudioOnly ? 0 : 1}:a:0`,
-		"-af",
-		`volume=${-attenuationDb}dB:precision=double`,
 		"-c:a",
 		isAudioOnly ? "libmp3lame" : "aac",
 		"-b:a",
@@ -157,7 +186,12 @@ function encodingArgs({
 	];
 }
 
-/** Publish only a measured candidate; every retry reads the same lossless mix. */
+/**
+ * Publish only a measured candidate. Where an encode goes over the ceiling,
+ * the moments at and near it are lowered in the lossless mix and it is
+ * encoded again; the rest of the mix keeps its level, so a small change to
+ * the mix cannot move the level of the whole export.
+ */
 export async function renderTruePeakLimitedExport({
 	sourceAudioPath,
 	sourceVideoPath,
@@ -199,7 +233,7 @@ export async function renderTruePeakLimitedExport({
 			path.join(path.dirname(outputPath), ".qcut-true-peak-")
 		);
 		signal?.throwIfAborted();
-		const limitedAudioPath = path.join(audioWorkDir, "limited.wav");
+		const limitedAudioPath = path.join(audioWorkDir, "limited.f32");
 		const candidatePath = path.join(candidateDir, `encoded.${options.format}`);
 		await run({
 			args: [
@@ -212,30 +246,28 @@ export async function renderTruePeakLimitedExport({
 				limitingFilter({ options }),
 				"-c:a",
 				"pcm_f32le",
-				"-rf64",
-				"auto",
+				"-f",
+				"f32le",
 				limitedAudioPath,
 			],
 			signal,
 		});
 
+		const dips: PeakDip[] = [];
 		const encodeCandidate = async ({
 			attempt,
-			attenuationDb,
 		}: {
 			attempt: number;
-			attenuationDb: number;
 		}): Promise<ExportAudioValidation> => {
 			await run({
-				args: encodingArgs({
-					options,
-					limitedAudioPath,
-					candidatePath,
-					attenuationDb,
-				}),
+				args: encodingArgs({ options, limitedAudioPath, candidatePath }),
 				signal,
 			});
-			const peak = await measureFileTruePeak({ file: candidatePath, signal });
+			const { truePeak: peak, blocks } = await measureFileTruePeakBlocks({
+				file: candidatePath,
+				aboveDb: limiter.ceilingDb - CORRECTION_GUARD_DB,
+				signal,
+			});
 			signal?.throwIfAborted();
 			if (peak === null || (peak !== -Infinity && !Number.isFinite(peak))) {
 				throw new Error(
@@ -243,7 +275,8 @@ export async function renderTruePeakLimitedExport({
 				);
 			}
 			// A rounded reading at the ceiling can conceal 0.05 dB of overshoot.
-			if (peak + METER_ROUNDING_DB <= limiter.ceilingDb) {
+			const overDb = limiter.ceilingDb - METER_ROUNDING_DB;
+			if (peak <= overDb) {
 				return {
 					status: "passed",
 					ceilingDbtp: limiter.ceilingDb,
@@ -251,7 +284,7 @@ export async function renderTruePeakLimitedExport({
 					limiting: {
 						oversampleFactor: OVERSAMPLE_FACTOR,
 						encodeAttempts: attempt,
-						attenuationDb,
+						...summarizePeakDips({ dips, duration }),
 					},
 				};
 			}
@@ -260,16 +293,24 @@ export async function renderTruePeakLimitedExport({
 					`True-peak limited export still measures ${peak.toFixed(1)} dBTP above the safe ceiling after ${attempt} encodes`
 				);
 			}
-			return encodeCandidate({
-				attempt: attempt + 1,
-				attenuationDb: attenuationDb + peak - limiter.ceilingDb + HEADROOM_DB,
+			const correction = planPeakDips({
+				blocks,
+				targetDb: limiter.ceilingDb - CORRECTION_TARGET_DB,
+				overDb,
+				extraDb: REPEAT_CORRECTION_DB * (attempt - 1),
+				padSeconds: CODEC_WINDOW_SAMPLES / sampleRate,
 			});
+			await applyPeakDips({
+				file: limitedAudioPath,
+				dips: correction,
+				sampleRate,
+				channels,
+			});
+			dips.push(...correction);
+			return encodeCandidate({ attempt: attempt + 1 });
 		};
 
-		const audioValidation = await encodeCandidate({
-			attempt: 1,
-			attenuationDb: 0,
-		});
+		const audioValidation = await encodeCandidate({ attempt: 1 });
 		signal?.throwIfAborted();
 		await fs.rename(candidatePath, outputPath);
 		onPublished?.();
