@@ -1,7 +1,10 @@
 /** Shared type definitions for Claude Code Integration API. */
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import type { StickerLabRestrictedMediaMetadata } from "./sticker-lab-media-metadata.js";
-import type { ExportAudioValidation } from "./export-audio-validation.js";
+import type {
+	ExportAudioValidation,
+	ExportPeakCorrection,
+} from "./export-audio-validation.js";
 import type {
 	ClaudeAudioMixBus,
 	ClaudeTrackAudioSettings,
@@ -502,6 +505,11 @@ export interface ExportJobRequest {
 	profilePath?: string;
 	/** Debug: force the renderer's per-frame seek path (baseline profiling). */
 	disableSequentialDecode?: boolean;
+	/**
+	 * Native exports with the master limiter on: how encoding pushing the true
+	 * peak over the ceiling is handled ("local" by default).
+	 */
+	peakCorrection?: ExportPeakCorrection;
 
 	/** GIF-specific export options */
 	gifConfig?: {
