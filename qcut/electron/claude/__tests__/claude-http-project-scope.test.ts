@@ -49,7 +49,7 @@ describe("assertProjectIsOpen", () => {
 				accessor: accessorWith({ openProjectId: "a" }),
 				projectId: "b",
 			})
-		).rejects.toThrow(/has a open, not b.*editor:navigator:open.*--focus/s);
+		).rejects.toThrow(/has a open, not b.*editor:navigator:open.*then retry/s);
 	});
 
 	it("stays out of the way when no project was named", async () => {
