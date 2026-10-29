@@ -174,6 +174,46 @@ describe("project record changes start from the latest record (N19)", () => {
 		);
 	});
 
+	it("puts the open project back when its rename cannot be saved", async () => {
+		const open = openWithNewerCurve();
+		storage.saveProject.mockRejectedValueOnce(new Error("disk full"));
+
+		await useProjectStore.getState().renameProject("v17", "定版 v17");
+
+		expect(useProjectStore.getState().activeProject).toBe(open);
+	});
+
+	it("moves a closed project the list shows in the wrong folder", async () => {
+		const other = project({ id: "other", curveDb: 0 });
+		useProjectStore.setState({
+			savedProjects: [project({ id: "v16b", curveDb: -24 }), other],
+			activeProject: other,
+			loadedProjectId: other.id,
+		});
+		storage.loadProject.mockResolvedValue({
+			...project({ id: "v16b", curveDb: -24 }),
+			folderId: "folder-1",
+		});
+
+		const moved = await useProjectStore
+			.getState()
+			.moveProjectToFolder("v16b", null);
+
+		expect(moved).toBe(true);
+		expect(savedRecords()).toEqual([
+			expect.objectContaining({ id: "v16b", folderId: null }),
+		]);
+	});
+
+	it("leaves a record that already holds the change as it is", async () => {
+		openWithNewerCurve();
+
+		expect(
+			await useProjectStore.getState().moveProjectToFolder("v17", null)
+		).toBe(true);
+		expect(storage.saveProject).not.toHaveBeenCalled();
+	});
+
 	it("duplicates the open project as the editor holds it", async () => {
 		const open = openWithNewerCurve();
 
