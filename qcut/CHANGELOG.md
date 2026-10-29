@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A native export with the master limiter on no longer turns the whole mix down when encoding pushes the true peak over the ceiling. Only the moments around the overshoot come down (each 100 ms block within 0.75 dB of the ceiling, to 1.25 dB under it), and the rest of the mix keeps its level. The encoder's peaks move by tenths of a dB with any change to the file, and the whole export used to follow the worst of them: a trailer exported 0.42 dB quieter everywhere after one silent clip was replaced. A mix that needs the correction now exports louder than before, closer to the mix as heard in the editor (that trailer: about 0.5 LU). `audioValidation.limiting` reports `correctedSeconds` and `maxCorrectionDb` in place of `attenuationDb`; an export whose first encode passes is unchanged.
+
 ## [2026.10.29.2] - 2026-10-29
 
 ### Changed
