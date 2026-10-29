@@ -138,7 +138,8 @@ beforeEach(async () => {
 					limiting: {
 						oversampleFactor: 4,
 						encodeAttempts: 1,
-						attenuationDb: 0,
+						correctedSeconds: 0,
+						maxCorrectionDb: 0,
 					},
 				},
 			};
