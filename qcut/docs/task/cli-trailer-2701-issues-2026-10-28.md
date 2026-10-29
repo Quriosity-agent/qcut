@@ -223,6 +223,23 @@ cover the dips and the block reading (including the last partial 100 ms,
 which the meter logs only in its summary); `audio-measurement-process.test.ts`
 the streamed meter log. The whole Electron suite: 756 files, 7800 tests passed.
 
+## Re-check on 2026.10.29.2: project copies and a damaged project file
+
+Two more items from the report's re-check (2026-10-29 evening).
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| Every project duplicate copies the whole `media/` folder (about 0.75 GB a version; `~/Documents/QCut/Projects` at 24 GB, the system disk 89 % full) | `copyProjectFolderContents` copied `media/` with `fs.cp`. Adding `COPYFILE_FICLONE` would not help on the Mac: Node's libuv (1.51, in Electron 40's Node 24) clones only through Linux's FICLONE ioctl, so on APFS that flag copies in full and `COPYFILE_FICLONE_FORCE` fails with ENOSYS (256 MB test file: 256 MB used, then ENOSYS; `cp -c`: 0 MB). | On macOS the media is copied with `/bin/cp -c -f -R <media>/. <target>` (clonefile; cp copies in full itself across volumes or on a file system without clones); elsewhere, or if cp fails, `fs.cp` with `COPYFILE_FICLONE` (clones on btrfs and XFS). Under Electron's Node, 512 MB of media: 512.1 MB and 432 ms before, 0.0 MB and 5 ms now; the bytes match, and changing or deleting a file in either project leaves the other as it was. |
+| Every start logs `[Storage] Corrupted JSON file for key "video-editor-projects_projects_6a3fd63a-…": Unexpected non-whitespace character after JSON at position 1286` for a test project from 2026-08-01, whose 1287-byte file is complete JSON plus one `}` | That file was written before v2026.09.28.1, when `storage:save` wrote the file in place with `fs.promises.writeFile` and two saves of one project could overlap: each opened the file and truncated it, the longer wrote, and the shorter then wrote over its start, leaving the longer one's last `}`. Since `93cc7a641` (2026-09-27) every save writes a temporary file and renames it, queued one at a time per file (`storage-json.ts`, with tests for interrupted writes and concurrent saves), so no new file can end up like this. Reading such a file still failed, and the project was missing from the list. | `readStorageJson` reads a complete JSON object or array followed by stray characters as the JSON before them. It first copies the file aside as it was (`<file>.damaged-<hash>`, written once, not listed as a project), leaves the file itself for the next save of that record, and the log says how many characters and where the copy is. If the copy cannot be made, nothing past the damage is read. Any other damage is reported as before, now with the file's path. A copy of the user's file reads as its project (name, 1 scene, 1 stray character); the file itself was not changed. |
+
+Tests: `project-folder-copy.test.ts` (a change or deletion in either copy
+leaves the other) and `project-folder-copy-clone.test.ts` (the `cp -c` call,
+and a full copy when cp fails); `storage-json.test.ts` replays the two
+overlapping truncating writes and reads the later save back, and covers braces
+inside strings, other damage, a repeat read (one copy) and a copy that cannot
+be made; `storage-handlers.test.ts` checks what `storage:load` hands over and
+logs.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -258,6 +275,9 @@ the streamed meter log. The whole Electron suite: 756 files, 7800 tests passed.
   canvas, guides, the timeline toggles) save the record as it was when they
   started and put it in the editor once saved, so a change landing in
   between could be lost. Nothing in the report went that way.
+- The damaged 2026-08-01 project file itself (`video-editor-projects_projects_6a3fd63a-…`)
+  was not changed: whether to rewrite it or delete that test project is the
+  user's call.
 - N21: the first limiter is unchanged (0.3 dB under the ceiling), so an
   export whose first encode passes comes out as before. Only exports through
   the editor API (and `mix loudness --engine native`) run this check; the
