@@ -133,7 +133,14 @@ describe("peak dips", () => {
 				],
 				duration: 3,
 			})
-		).toEqual({ correctedSeconds: 0.6, maxCorrectionDb: 1.8 });
+		).toEqual({
+			correctedSeconds: 0.6,
+			maxCorrectionDb: 1.8,
+			corrections: [
+				{ start: 0.2, end: 0.7, depthDb: 1.8 },
+				{ start: 2.9, end: 3, depthDb: 0.3 },
+			],
+		});
 	});
 
 	it("adds the depths of later passes where they overlap an earlier one", () => {
