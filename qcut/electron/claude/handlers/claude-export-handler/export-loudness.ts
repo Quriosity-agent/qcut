@@ -189,9 +189,11 @@ export async function measureNativeExportLoudness({
 			mediaFiles,
 		});
 		await waitForExport({ jobId });
+		const audioValidation = getExportJobStatus(jobId)?.audioValidation;
 		return {
 			...(await measureFileLoudness({ file: outputPath })),
 			engine: "native",
+			...(audioValidation ? { audioValidation } : {}),
 		};
 	} finally {
 		await fsPromises.rm(tempDir, { recursive: true, force: true });
