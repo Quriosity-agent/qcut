@@ -118,17 +118,46 @@ describe("peak dips", () => {
 		expect(mix[870 * 2]).toBe(0.5);
 	});
 
-	it("totals how long the mix was lowered and the deepest stretch over every pass", () => {
+	it("totals how long the mix was lowered, the deepest of a pass where its dips overlap", () => {
 		expect(
 			summarizePeakDips({
-				dips: [
-					{ start: 0.2, end: 0.5, depthDb: 1.2 },
-					{ start: 0.4, end: 0.7, depthDb: 0.4 },
-					{ start: 0.2, end: 0.5, depthDb: 0.6 },
-					{ start: 2.9, end: Number.POSITIVE_INFINITY, depthDb: 0.3 },
+				passes: [
+					[
+						{ start: 0.2, end: 0.5, depthDb: 1.2 },
+						{ start: 0.4, end: 0.7, depthDb: 0.4 },
+					],
+					[
+						{ start: 0.2, end: 0.5, depthDb: 0.6 },
+						{ start: 2.9, end: Number.POSITIVE_INFINITY, depthDb: 0.3 },
+					],
 				],
 				duration: 3,
 			})
 		).toEqual({ correctedSeconds: 0.6, maxCorrectionDb: 1.8 });
+	});
+
+	it("adds the depths of later passes where they overlap an earlier one", () => {
+		// The second pass found the next block over: the dips overlap but differ.
+		expect(
+			summarizePeakDips({
+				passes: [
+					[{ start: 0.2, end: 0.5, depthDb: 1.2 }],
+					[{ start: 0.4, end: 0.7, depthDb: 0.4 }],
+				],
+				duration: 3,
+			}).maxCorrectionDb
+		).toBe(1.6);
+		// Ramps that meet end to end cross-fade: together they stay at 1 dB.
+		const twoPasses = (secondStart: number) =>
+			summarizePeakDips({
+				passes: [
+					[{ start: 0.2, end: 0.5, depthDb: 1 }],
+					[{ start: secondStart, end: 0.8, depthDb: 1 }],
+				],
+				duration: 3,
+			}).maxCorrectionDb;
+		expect(twoPasses(0.52)).toBe(1);
+		// Overlapping ramps add up: at 0.505 s each is at cos²(π/8) of 1 dB.
+		expect(twoPasses(0.51)).toBe(1.71);
 	});
 });
