@@ -110,7 +110,11 @@ export async function renderTimelineAudioMix({
 	audioMixConfig?: AudioMixConfig;
 	signal?: AbortSignal;
 	onPublished?: () => void;
-}): Promise<{ finalized: boolean; audioValidation?: ExportAudioValidation }> {
+}): Promise<{
+	finalized: boolean;
+	audioValidation?: ExportAudioValidation;
+	warnings?: string[];
+}> {
 	throwIfCancelled(signal);
 	const limiter = audioMixConfig?.master.effects.limiter;
 	const enforceTruePeak =
@@ -231,6 +235,7 @@ export async function renderTimelineAudioMix({
 				channels: settings.audioChannels ?? 2,
 				bitrateKbps: settings.audioBitrate ?? 192,
 				format: settings.format,
+				peakCorrection: settings.peakCorrection,
 				signal,
 				onPublished,
 			});
