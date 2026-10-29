@@ -14,6 +14,12 @@ qcut editor:timeline:export --project-id <id> --json
 qcut editor:timeline:export --project-id <id> --output-format json
 ```
 
+Each track lists its elements in time order. Moves are checked one at a
+time (`batch-update` takes its changes in the order given), so a script that
+puts several clips back should move the ones going left in time order and the
+ones going right in reverse, or a clip runs into a neighbour that has not
+moved yet.
+
 ### Import timeline
 
 ```bash
@@ -457,9 +463,14 @@ a clip can be replaced in place: delete it, then `add-element` the new one
 at the same `startTime`. `--ripple` closes each gap by moving the later
 clips on that track left. A single `delete-element`
 works like a delete in the timeline: with the editor's main-track magnet on
-(the default) it closes a gap on the main track. `add-element` and
-`batch-add` both take `"collision": "insert"` (push the later clips right),
-`"overwrite"` or `"reject"` (the default: refuse an occupied span).
+(the default) it closes a gap on the main track. A clip that starts less than
+half a frame before the deleted one ends counts as later, as seams do
+everywhere. `add-element` and `batch-add` both take `"collision": "insert"`,
+`"overwrite"` or `"reject"` (the default: refuse an occupied span). `insert`
+moves the later clips right only as far as the new one needs: its whole
+length where a clip starts at its `startTime` (one it lands inside is split
+there), less where a gap is, and not at all where the gap fits it to within
+half a frame. So the clip put back into the gap a delete left moves nothing.
 
 ### Split element
 

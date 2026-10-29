@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const storage = vi.hoisted(() => ({
 	loadProject: vi.fn(),
 	saveProject: vi.fn(async () => {}),
+	saveProjectTimeline: vi.fn(async () => {}),
 }));
 vi.mock("@/lib/storage/storage-service", () => ({ storageService: storage }));
 
@@ -262,6 +263,59 @@ describe("mixer over the editor API", () => {
 		});
 		expect(removed.mix?.buses).toEqual([]);
 		expect(track(removed, "guns")?.audio.busId).toBe("master");
+	});
+
+	// N19: an answer means the change is stored, or says it is not.
+	it("answers with an error when the mix could not be saved", async () => {
+		const run = setup();
+		storage.saveProject.mockRejectedValueOnce(new Error("disk full"));
+		expect(
+			await run({
+				action: "update-bus",
+				projectId: "p",
+				busId: "master",
+				patch: { gainDb: -2 },
+			})
+		).toMatchObject({
+			success: false,
+			error: "The mix changed in the editor but could not be saved",
+		});
+	});
+
+	it("saves a track's mix before it answers, and says when it could not", async () => {
+		const run = setup();
+		storage.saveProjectTimeline.mockClear();
+		const saved = await run({
+			action: "set-track",
+			projectId: "p",
+			trackId: "guns",
+			patch: { gainDb: -4 },
+		});
+		expect(saved.success).toBe(true);
+		expect(storage.saveProjectTimeline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: "p",
+				tracks: expect.arrayContaining([
+					expect.objectContaining({
+						id: "guns",
+						audio: expect.objectContaining({ gainDb: -4 }),
+					}),
+				]),
+			})
+		);
+
+		storage.saveProjectTimeline.mockRejectedValueOnce(new Error("disk full"));
+		expect(
+			await run({
+				action: "set-track",
+				projectId: "p",
+				trackId: "guns",
+				patch: { gainDb: -8 },
+			})
+		).toMatchObject({
+			success: false,
+			error: "The track's mix changed in the editor but could not be saved",
+		});
 	});
 
 	it("changes the master", async () => {

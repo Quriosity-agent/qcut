@@ -2228,9 +2228,13 @@ export function formatTracksForExport({
 		...(track.type === "audio" || track.type === "media"
 			? { audio: normalizeTrackAudioSettings({ audio: track.audio }) }
 			: {}),
-		elements: track.elements.map((element) =>
-			formatElementForExport({ element, trackIndex: index, fps })
-		),
+		// In time order, as the timeline shows them: the store keeps them in
+		// the order they were added (N20).
+		elements: [...track.elements]
+			.sort((left, right) => left.startTime - right.startTime)
+			.map((element) =>
+				formatElementForExport({ element, trackIndex: index, fps })
+			),
 		transitions: track.transitions?.map((transition) => ({
 			...transition,
 			tuning: transition.tuning as Record<string, unknown> | undefined,

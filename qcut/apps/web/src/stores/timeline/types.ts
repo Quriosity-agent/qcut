@@ -537,8 +537,11 @@ export interface TimelineStore {
 		projectId: string;
 		sceneId?: string;
 	}) => Promise<void>;
-	/** Save timeline immediately without debounce - for critical operations */
-	saveImmediate: () => Promise<void>;
+	/**
+	 * Save timeline immediately without debounce - for critical operations.
+	 * Resolves to whether it was saved; a failure is also reported.
+	 */
+	saveImmediate: () => Promise<boolean>;
 	clearTimeline: () => void;
 	/** Restore timeline tracks (for rollback on load failure) */
 	restoreTracks: (tracks: TimelineTrack[]) => void;

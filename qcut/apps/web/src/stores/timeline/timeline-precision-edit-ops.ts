@@ -12,6 +12,7 @@ import {
 	handleError,
 } from "@/lib/debug/error-handler";
 import { getTimelineElementDuration } from "@/lib/timeline";
+import { startsAtOrAfter } from "@/lib/timeline-occupancy";
 import {
 	deriveTimelineLinks,
 	resolveRippleDomain,
@@ -186,6 +187,7 @@ export function createPrecisionEditOps(
 
 			const oldEndTime =
 				element.startTime + getTimelineElementDuration({ element });
+			const fps = deps.getProjectFps();
 			if (pushHistory) get().pushHistory();
 			deps.updateTracksAndSave(
 				get()._tracks.map((candidate) => {
@@ -201,7 +203,12 @@ export function createPrecisionEditOps(
 						: candidate.elements;
 					if (inDomain) {
 						elements = elements.map((current) =>
-							current.id !== elementId && current.startTime >= oldEndTime
+							current.id !== elementId &&
+							startsAtOrAfter({
+								startTime: current.startTime,
+								time: oldEndTime,
+								fps,
+							})
 								? {
 										...current,
 										startTime: Math.max(

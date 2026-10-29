@@ -13,6 +13,9 @@
  * - So do a batch delete of several main-track clips and a batch-add insert
  *   with no undo at all (v14: on 2701 the delete closed its gap through the
  *   magnet's ripple, which re-resolved the overlaps of every track).
+ * - N20: where a clip ends a rounding error after the next one starts (v17),
+ *   a clip put back into the gap it left moves nothing, and ripple deletes
+ *   still close their gaps.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -422,6 +425,147 @@ test("a main-track batch delete and insert leave the sound effects where they we
 		);
 		expect(starts(sfxTrack)).toEqual(sfxStarts);
 		expect(starts(mainId)).toEqual([0, 2, 14, 15, 17]);
+	} finally {
+		await deleteProject({ apiPort, page, projectId });
+		rmSync(workDir, { recursive: true, force: true });
+	}
+});
+
+// N20 (2026-10-29 trailer report): on v17's main track 105 ended 0.1 ms after
+// 106 started. The delete kept its gap, as one without --ripple does, and the
+// replacement put back into the gap pushed the 30 clips after it right by its
+// whole length. On that seam a ripple delete, the magnet's included, left the
+// gap open.
+test("a clip put back into its gap moves nothing, and ripple deletes close the gaps", async ({
+	apiPort,
+	page,
+}) => {
+	test.skip(!existsSync(FFMPEG), "bundled ffmpeg missing");
+	await page.waitForLoadState("domcontentloaded");
+	const run = <T>(...args: string[]) => cli<T>({ apiPort, args });
+	const workDir = mkdtempSync(path.join(tmpdir(), "qcut-seams-"));
+	const { projectId } = run<{ projectId: string }>(
+		"editor:project:create",
+		"--name",
+		"Seams (delete me)",
+		"--open"
+	);
+	const pid = ["--project-id", projectId];
+	const track = (trackId: string) =>
+		run<Timeline>("editor:timeline:export", ...pid).tracks.find(
+			(candidate) => candidate.id === trackId
+		);
+	// In the export's own order, which is time order.
+	const starts = (trackId: string) =>
+		track(trackId)?.elements.map((element) =>
+			Number(element.startTime.toFixed(4))
+		);
+	const idAt = (trackId: string, startTime: number) =>
+		track(trackId)?.elements.find(
+			(element) => Number(element.startTime.toFixed(4)) === startTime
+		)?.id as string;
+	try {
+		run(
+			"editor:project:update-settings",
+			...pid,
+			"--data",
+			JSON.stringify({ width: 320, height: 180, fps: 24 })
+		);
+		const clips = ["red", "green", "blue"].map((color) => {
+			const file = path.join(workDir, `${color}.mp4`);
+			makeClip({ file, color });
+			return file;
+		});
+		const hit = path.join(workDir, "hit.wav");
+		makeHit({ file: hit });
+		run(
+			"editor:media:batch-import",
+			...pid,
+			"--sources",
+			[...clips, hit].join(",")
+		);
+		const mainId = run<Timeline>("editor:track:list", ...pid).tracks.find(
+			(candidate) => candidate.isMain
+		)?.id as string;
+		const sfxTrack = run<{ trackId: string }>(
+			"editor:track:create",
+			...pid,
+			"--type",
+			"audio",
+			"--name",
+			"音效 1"
+		).trackId;
+		const clip = (sourceName: string, startTime: number) => ({
+			type: "media",
+			sourceName,
+			trackId: mainId,
+			startTime,
+			duration: 1.2917,
+		});
+		// 105 ends at 2.5834 and 107 at 5.1667, 0.1 ms after 106 and 108 start.
+		run(
+			"editor:timeline:batch-add",
+			...pid,
+			"--elements",
+			JSON.stringify([
+				clip("red.mp4", 0),
+				clip("green.mp4", 1.2917),
+				clip("blue.mp4", 2.5833),
+				clip("red.mp4", 3.875),
+				clip("green.mp4", 5.1666),
+				{
+					type: "media",
+					sourceName: "hit.wav",
+					trackId: sfxTrack,
+					startTime: 3,
+					duration: 0.5,
+				},
+			])
+		);
+		expect(starts(mainId)).toEqual([0, 1.2917, 2.5833, 3.875, 5.1666]);
+
+		// Without --ripple the gap stays (plain ids, as replace_main_clip.py
+		// gives them).
+		run(
+			"editor:timeline:batch-delete",
+			...pid,
+			"--elements",
+			JSON.stringify([idAt(mainId, 1.2917)]),
+			"--force"
+		);
+		expect(starts(mainId)).toEqual([0, 2.5833, 3.875, 5.1666]);
+
+		// The replacement is 0.1 ms longer than the gap: nothing moves, and
+		// the export lists it second, where it is, not last.
+		run(
+			"editor:timeline:batch-add",
+			...pid,
+			"--elements",
+			JSON.stringify([{ ...clip("blue.mp4", 1.2917), collision: "insert" }])
+		);
+		expect(starts(mainId)).toEqual([0, 1.2917, 2.5833, 3.875, 5.1666]);
+
+		// A ripple delete closes its gap across the seam after it.
+		run(
+			"editor:timeline:batch-delete",
+			...pid,
+			"--elements",
+			JSON.stringify([idAt(mainId, 3.875)]),
+			"--ripple",
+			"--force"
+		);
+		expect(starts(mainId)).toEqual([0, 1.2917, 2.5833, 3.8749]);
+
+		// So does a single delete on the main track, through the magnet.
+		run(
+			"editor:timeline:delete-element",
+			...pid,
+			"--element-id",
+			idAt(mainId, 1.2917),
+			"--force"
+		);
+		expect(starts(mainId)).toEqual([0, 1.2916, 2.5832]);
+		expect(starts(sfxTrack)).toEqual([3]);
 	} finally {
 		await deleteProject({ apiPort, page, projectId });
 		rmSync(workDir, { recursive: true, force: true });

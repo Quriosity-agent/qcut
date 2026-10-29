@@ -181,6 +181,9 @@ qcut editor:project:delete --project-id <id>
 qcut editor:project:rename --project-id <id> --new-name "New Name"
 ```
 
+Only the name changes: an open project keeps everything else as the editor
+holds it, a closed one as it is stored.
+
 ### Duplicate project
 
 ```bash
@@ -190,9 +193,9 @@ qcut editor:project:duplicate --project-id <id>
 The copy is named "原名（副本）" (then "（副本 2）"…) and carries everything the
 project stores: media (same ids, files copied into the new project folder),
 media folders, every scene's timeline with its transitions and track mixer
-settings, overlay stickers, settings and buses. The open project is saved
-first so unsaved edits are in the copy; the Jianying draft binding is not
-copied. Large projects can take a while (the command waits up to ~3 minutes).
+settings, overlay stickers, settings and buses. The open project is copied
+as the editor holds it, so unsaved edits are in the copy; the Jianying draft
+binding is not copied. Large projects can take a while (the command waits up to ~3 minutes).
 
 ### List all projects
 

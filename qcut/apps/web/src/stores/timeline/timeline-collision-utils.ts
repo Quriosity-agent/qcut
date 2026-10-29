@@ -3,6 +3,10 @@ import {
 	createStickerInstanceId,
 } from "@/lib/stickers/sticker-instance";
 import { getTimelineElementEndTime } from "@/lib/timeline";
+import {
+	getSeamToleranceSeconds,
+	startsAtOrAfter,
+} from "@/lib/timeline-occupancy";
 import { generateUUID } from "@/lib/utils";
 import type { TimelineElement } from "@/types/timeline";
 import {
@@ -122,9 +126,13 @@ export function overwriteRangeInElements({
 }
 
 /**
- * Open a gap of `insertDuration` at `insertTime`: the element spanning the
- * point is split (named like a manual split), and everything at or after the
- * point shifts right.
+ * Makes room for `insertDuration` at `insertTime`. The element spanning the
+ * point is split (named like a manual split), and every element from the
+ * point on moves right as far as the inserted one needs: its whole length
+ * when something starts at the point, less when a gap is there, and not at
+ * all when the gap fits it (N20: a clip put back into the gap its
+ * predecessor left pushed the 30 clips after it 1.29 s right). Seams less
+ * than the seam tolerance apart count as touching.
  */
 export function insertGapInElements({
 	elements,
@@ -137,20 +145,20 @@ export function insertGapInElements({
 	insertDuration: number;
 	fps: number;
 }): TimelineElement[] {
-	const nextElements: TimelineElement[] = [];
+	const tolerance = getSeamToleranceSeconds(fps);
+	const pieces: Array<{ element: TimelineElement; after: boolean }> = [];
 
 	for (const element of elements) {
-		if (element.startTime >= insertTime) {
-			nextElements.push({
-				...element,
-				startTime: element.startTime + insertDuration,
-			});
+		if (
+			startsAtOrAfter({ startTime: element.startTime, time: insertTime, fps })
+		) {
+			pieces.push({ element, after: true });
 			continue;
 		}
 
 		const endTime = getTimelineElementEndTime({ element });
-		if (endTime <= insertTime) {
-			nextElements.push(element);
+		if (endTime <= insertTime + tolerance) {
+			pieces.push({ element, after: false });
 			continue;
 		}
 
@@ -159,24 +167,39 @@ export function insertGapInElements({
 			splitTime: insertTime,
 			fps,
 		});
-		nextElements.push({
-			...element,
-			...splitUpdates.left,
-			name: getElementNameWithSuffix(element.name, "left"),
+		pieces.push({
+			element: {
+				...element,
+				...splitUpdates.left,
+				name: getElementNameWithSuffix(element.name, "left"),
+			},
+			after: false,
 		});
-		nextElements.push(
-			assignNewStickerInstanceId({
+		pieces.push({
+			element: assignNewStickerInstanceId({
 				element: {
 					...element,
 					id: generateUUID(),
-					startTime: insertTime + insertDuration,
+					startTime: insertTime,
 					...splitUpdates.right,
 					name: getElementNameWithSuffix(element.name, "right"),
 				},
 				newStickerId: createStickerInstanceId(),
-			})
-		);
+			}),
+			after: true,
+		});
 	}
 
-	return nextElements;
+	const firstAfterStart = Math.min(
+		...pieces
+			.filter((piece) => piece.after)
+			.map((piece) => piece.element.startTime)
+	);
+	const overflow = insertTime + insertDuration - firstAfterStart;
+	const shift = overflow > tolerance ? overflow : 0;
+	return pieces.map(({ element, after }) =>
+		after && shift > 0
+			? { ...element, startTime: element.startTime + shift }
+			: element
+	);
 }

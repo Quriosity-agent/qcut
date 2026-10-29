@@ -26,6 +26,7 @@ import {
 } from "@qcut/editor-core/cover";
 import { toast } from "sonner";
 import { getMediaStore } from "./media/media-store-loader";
+import { saveProjectRecordChange } from "./project-record-change";
 // Dynamic import to break circular dependency
 // import { useTimelineStore } from "./timeline-store";
 // Dynamic import to break circular dependency
@@ -112,7 +113,10 @@ interface ProjectStore {
 		options?: { backgroundColor?: string; blurIntensity?: BlurIntensity }
 	) => Promise<void>;
 	updateProjectFps: (fps: number) => Promise<void>;
-	updateProjectAudioMix: (audioMix: ProjectAudioMixSettings) => Promise<void>;
+	/** Resolves to whether the mix was saved; a failure is also reported. */
+	updateProjectAudioMix: (
+		audioMix: ProjectAudioMixSettings
+	) => Promise<boolean>;
 	updateProjectTimelineSettings: (
 		settings: ProjectTimelineSettings
 	) => Promise<void>;
@@ -530,22 +534,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 	moveProjectToFolder: async (projectId: string, folderId: string | null) => {
 		try {
-			const project =
-				get().savedProjects.find((item) => item.id === projectId) ??
-				(await storageService.loadProject({ id: projectId }));
-			if (!project) return false;
-			if ((project.folderId ?? null) === folderId) return true;
-
-			const updatedProject: TProject = { ...project, folderId };
-			await storageService.saveProject({ project: updatedProject });
+			const moved = await saveProjectRecordChange({
+				projectId,
+				patch: { folderId },
+				getActiveProject: () => get().activeProject,
+				setActiveProject: (project) => set({ activeProject: project }),
+			});
+			if (!moved) return false;
 			set((state) => ({
 				savedProjects: state.savedProjects.map((p) =>
-					p.id === projectId ? updatedProject : p
+					p.id === projectId ? { ...p, folderId } : p
 				),
-				activeProject:
-					state.activeProject?.id === projectId
-						? updatedProject
-						: state.activeProject,
 			}));
 			return true;
 		} catch (error) {
@@ -600,41 +599,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 	},
 
 	renameProject: async (id: string, name: string) => {
-		const { savedProjects } = get();
-
-		// Find the project to rename
-		const projectToRename = savedProjects.find((p) => p.id === id);
-		if (!projectToRename) {
-			handleError(new Error(`Project ${id} not found`), {
-				operation: "Find project to rename",
-				category: ErrorCategory.VALIDATION,
-				severity: ErrorSeverity.MEDIUM,
-				metadata: { projectId: id },
-			});
-			return;
-		}
-
-		const updatedProject = {
-			...projectToRename,
-			name,
-			updatedAt: new Date(),
-		};
-
 		try {
-			// Save to storage
-			await storageService.saveProject({ project: updatedProject });
-
-			await get().loadAllProjects();
-
-			// Update activeProject if it's the same project
-			const { activeProject } = get();
-			if (activeProject?.id === id) {
-				set({ activeProject: updatedProject });
+			const renamed = await saveProjectRecordChange({
+				projectId: id,
+				patch: { name },
+				getActiveProject: () => get().activeProject,
+				setActiveProject: (project) => set({ activeProject: project }),
+			});
+			if (!renamed) {
+				handleError(new Error(`Project ${id} not found`), {
+					operation: "Find project to rename",
+					category: ErrorCategory.VALIDATION,
+					severity: ErrorSeverity.MEDIUM,
+					metadata: { projectId: id },
+				});
+				return;
 			}
+			await get().loadAllProjects();
 		} catch (error) {
 			handleStorageError(error, "Rename project", {
 				projectId: id,
-				oldName: projectToRename.name,
 				newName: name,
 				operation: "renameProject",
 			});
@@ -643,7 +627,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 	duplicateProject: async (projectId: string) => {
 		try {
-			const project = await storageService.loadProject({ id: projectId });
+			// The open project is copied as the editor holds it: its stored
+			// record can be older than the editor's (N19).
+			const isOpen = get().loadedProjectId === projectId;
+			const project = isOpen
+				? get().activeProject
+				: await storageService.loadProject({ id: projectId });
 			if (!project) {
 				const error = new NotFoundError(`Project ${projectId} not found`);
 				handleError(error, {
@@ -656,7 +645,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 			}
 
 			// The open project's unsaved edits belong in the copy too.
-			if (get().loadedProjectId === projectId) {
+			if (isOpen) {
 				const { useTimelineStore } = await import("./timeline/timeline-store");
 				await useTimelineStore.getState().saveImmediate();
 				const { useStickersOverlayStore } = await import(
@@ -985,7 +974,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 	updateProjectAudioMix: async (audioMix) => {
 		const { activeProject } = get();
-		if (!activeProject) return;
+		if (!activeProject) return false;
 		const updatedProject: TProject = {
 			...activeProject,
 			audioMix: normalizeProjectAudioMixSettings({ audioMix }),
@@ -994,12 +983,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 		set({ activeProject: updatedProject });
 		try {
 			await storageService.saveProject({ project: updatedProject });
+			return true;
 		} catch (error) {
 			handleStorageError(error, "Update project audio mix", {
 				projectId: activeProject.id,
 				projectName: activeProject.name,
 				operation: "updateProjectAudioMix",
 			});
+			return false;
 		}
 	},
 }));

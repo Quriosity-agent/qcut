@@ -68,7 +68,13 @@ describe("project folder store", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		storageMocks.saveProject.mockResolvedValue(undefined);
-		storageMocks.loadProject.mockResolvedValue(null);
+		// Storage holds what the list shows.
+		storageMocks.loadProject.mockImplementation(
+			async ({ id }: { id: string }) =>
+				useProjectStore
+					.getState()
+					.savedProjects.find((project) => project.id === id) ?? null
+		);
 		storageMocks.deleteProjectFolder.mockResolvedValue(undefined);
 		useProjectStore.setState({
 			activeProject: null,

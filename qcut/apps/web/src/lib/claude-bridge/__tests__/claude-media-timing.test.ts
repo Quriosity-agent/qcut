@@ -193,6 +193,41 @@ describe("Claude media timing bridge", () => {
 		expect(calculateTimelineDuration({ tracks, fps: 30 })).toBe(4);
 	});
 
+	// N20: an inserted clip came last, so a script moving clips back in the
+	// export's order ran into neighbours it had not moved yet.
+	it("lists a track's elements in time order", () => {
+		const clip = (id: string, startTime: number) => ({
+			id,
+			type: "media" as const,
+			mediaId: "media",
+			name: id,
+			startTime,
+			duration: 1,
+			trimStart: 0,
+			trimEnd: 0,
+		});
+		const tracks: TimelineTrack[] = [
+			{
+				id: "track",
+				name: "Media",
+				type: "media",
+				elements: [clip("a", 0), clip("c", 2), clip("inserted", 1)],
+			},
+		];
+
+		const exported = formatTracksForExport({ tracks, fps: 30 });
+		expect(exported[0].elements.map((element) => element.id)).toEqual([
+			"a",
+			"inserted",
+			"c",
+		]);
+		expect(tracks[0].elements.map((element) => element.id)).toEqual([
+			"a",
+			"c",
+			"inserted",
+		]);
+	});
+
 	it("preserves audio volume in the export snapshot", () => {
 		const tracks: TimelineTrack[] = [
 			{
