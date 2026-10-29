@@ -136,7 +136,11 @@ async function applyMix({
 }) {
 	const projectStore = useProjectStore.getState();
 	if (save) {
-		await projectStore.updateProjectAudioMix(audioMix);
+		// The editor plays the new mix either way; a caller has to know that
+		// reopening the project would bring back the old one.
+		if (!(await projectStore.updateProjectAudioMix(audioMix))) {
+			throw new Error("The mix changed in the editor but could not be saved");
+		}
 		return;
 	}
 	const project = projectStore.activeProject;
