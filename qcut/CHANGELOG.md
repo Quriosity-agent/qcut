@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `project:rename` and moving a project to a folder no longer put back an older copy of the project: the master curve, buses and other settings changed since the project list was last read survived on disk only until a rename, and in the editor too. A duplicate of the open project copies it as the editor holds it.
+- `project:rename` and moving a project to a folder no longer put back an older copy of the project: the master curve, buses and other settings changed since the project list was last read survived on disk only until a rename, and in the editor too. A duplicate of the open project copies it as the editor holds it. A mixer command whose change could not be saved answers with an error instead of ok, and a track's mixer change is saved before the command answers.
 - Ripple deletes (the main-track magnet's too), ripple moves, ripple trims and `track:delete --ripple` close up a clip that starts a rounding error before the edit point; the gap stayed open where a clip ended 0.1 ms after the next one started.
 
 ## [2026.10.29.1] - 2026-10-28
