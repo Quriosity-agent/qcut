@@ -9,10 +9,7 @@ import { resolveTimelineColorLabel } from "@/lib/timeline/timeline-color-labels"
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore, type MediaType } from "@/stores/media/media-store";
 import { platform } from "@qcut/platform-core";
-import type {
-	ClaudeElement,
-	ClaudeBatchAddElementRequest,
-} from "../../../../../electron/types/claude-api";
+import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
 	calculateTimelineDuration,
@@ -25,6 +22,10 @@ import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
 import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
+import {
+	decodeDeterministicMediaSourceName,
+	resolveMediaIdForBatchElement,
+} from "./claude-media-resolve";
 import {
 	isLoadedProject,
 	loadStoredProjectView,
@@ -228,83 +229,7 @@ export function normalizeClaudeElementType({
 	return null;
 }
 
-export function decodeDeterministicMediaSourceName({
-	sourceId,
-}: {
-	sourceId: string;
-}): string | null {
-	try {
-		if (!sourceId.startsWith("media_")) {
-			return null;
-		}
-		const encodedName = sourceId.slice("media_".length);
-		if (!encodedName) {
-			return null;
-		}
-		const base64 = encodedName.replace(/-/g, "+").replace(/_/g, "/");
-		const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-		const binary = window.atob(padded);
-		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-		return new TextDecoder().decode(bytes);
-	} catch {
-		return null;
-	}
-}
-
-export function resolveMediaIdForBatchElement({
-	element,
-}: {
-	element: ClaudeBatchAddElementRequest;
-}): string | null {
-	const { mediaItems } = useMediaStore.getState();
-
-	if (element.mediaId) {
-		const byMediaId = mediaItems.find((item) => item.id === element.mediaId);
-		if (byMediaId) {
-			return byMediaId.id;
-		}
-
-		const decodedMediaIdName = decodeDeterministicMediaSourceName({
-			sourceId: element.mediaId,
-		});
-		if (decodedMediaIdName) {
-			const byDecodedMediaIdName = mediaItems.find(
-				(item) => item.name === decodedMediaIdName
-			);
-			if (byDecodedMediaIdName) {
-				return byDecodedMediaIdName.id;
-			}
-		}
-	}
-
-	if (element.sourceId) {
-		const bySourceId = mediaItems.find((item) => item.id === element.sourceId);
-		if (bySourceId) {
-			return bySourceId.id;
-		}
-
-		const decodedName = decodeDeterministicMediaSourceName({
-			sourceId: element.sourceId,
-		});
-		if (decodedName) {
-			const byDecodedName = mediaItems.find(
-				(item) => item.name === decodedName
-			);
-			if (byDecodedName) {
-				return byDecodedName.id;
-			}
-		}
-	}
-
-	if (element.sourceName) {
-		const byName = mediaItems.find((item) => item.name === element.sourceName);
-		if (byName) {
-			return byName.id;
-		}
-	}
-
-	return null;
-}
+export { decodeDeterministicMediaSourceName, resolveMediaIdForBatchElement };
 
 export type ClaudeTimelineBridgeSharedUtils = {
 	normalizeClaudeElementType: typeof normalizeClaudeElementType;
