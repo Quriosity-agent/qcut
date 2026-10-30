@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
-import * as os from "os";
+import { tmpdir } from "node:os";
 import * as path from "path";
 import {
 	parseReleaseNote,
@@ -369,7 +369,7 @@ Latest content`
 	});
 
 	it("puts the newest of one day's releases first", () => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qcut-releases-"));
+		const dir = fs.mkdtempSync(path.join(tmpdir(), "qcut-releases-"));
 		try {
 			for (const version of ["2026.10.29.1", "2026.10.29.3", "2026.10.29.2"]) {
 				fs.writeFileSync(
