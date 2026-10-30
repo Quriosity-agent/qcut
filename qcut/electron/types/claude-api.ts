@@ -1528,6 +1528,32 @@ export interface ClaudeUndoRedoChanges {
 		fields?: string[];
 	}>;
 }
+/**
+ * `GET /api/claude/updates` (`editor:updates:status`), and the answer of
+ * pause and resume: QCut's own updates, as the running app holds them.
+ */
+export interface ClaudeUpdateStatus {
+	/** False in a development build, which never updates itself. */
+	available: boolean;
+	/** Held back: nothing downloads by itself or installs when QCut quits. */
+	paused: boolean;
+	automaticUpdates: boolean;
+	phase:
+		| "idle"
+		| "checking"
+		| "available"
+		| "downloading"
+		| "ready"
+		| "up-to-date"
+		| "error"
+		| "unavailable";
+	currentVersion: string;
+	/** The newer version on offer or downloading. */
+	version?: string;
+	/** A downloaded version, waiting for QCut to quit (or for a resume). */
+	staged?: string;
+	message?: string;
+}
 /** `GET /api/claude/transaction`: what is open, in this process and in the editor. */
 export interface TransactionList {
 	/** The transaction QCut holds open, if any. */
