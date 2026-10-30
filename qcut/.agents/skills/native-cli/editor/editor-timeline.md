@@ -21,12 +21,14 @@ ones going right in reverse, or a clip runs into a neighbour that has not
 moved yet.
 
 A project the editor does not have open is read as it was last saved, and the
-editor stays on the project it has open: the answer has `"readFromStorage":
-true`. The open project is read live, unsaved changes included. The same goes
-for `timeline info`, `track list`, `sticker list`, `export captions`,
-`project stats`, `project summary` and `mix export`; editing commands still
-need the project open (`editor:navigator:open`). An unknown project id
-answers 404.
+editor stays on the project it has open: the timeline answer has
+`"readFromStorage": true`, and an unknown project id answers 404. The open
+project is read live, unsaved changes included. `timeline info`, `track list`,
+`sticker list`, `export captions`, `project summary` and `mix export` read a
+closed project the same way. `project stats` counts it as saved too (its
+answer has no `readFromStorage`, and a project storage does not have counts
+as empty). Editing commands still need the project open
+(`editor:navigator:open`).
 
 ### Import timeline
 
@@ -270,8 +272,9 @@ qcut editor:timeline:add-element --project-id <id> --data '{
 - `fontWeight` picks the family's face of that weight (`Source Han Serif CN`
   + 600 is its SemiBold). The font has to be installed (double-click the
   file, Install): QCut draws with installed fonts only, and a family it
-  cannot find is drawn in a substitute (for Chinese in the native export,
-  Hiragino Sans GB).
+  cannot find is drawn in a substitute (for Chinese, the native export uses
+  Hiragino Sans GB on macOS, Microsoft YaHei on Windows and Noto Sans CJK SC
+  elsewhere).
 - `letterSpacing` is pixels: 0.10 em at 28 px is 2.8. The second line takes
   its own; without one it takes the caption's.
 - `shadows`: up to 4, drawn in order under both lines (under every letter,
