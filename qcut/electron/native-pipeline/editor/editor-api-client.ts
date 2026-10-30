@@ -345,6 +345,7 @@ export class EditorApiClient {
 			if (failure) throw new EditorApiError(failure);
 			throw new EditorApiError(`HTTP request failed for ${url}: ${msg}`);
 		}
+		noticeLastUpdate(response.headers?.get(LAST_UPDATE_HEADER));
 
 		if (!response.body) {
 			throw new EditorApiError("No response body for streaming request");
@@ -475,6 +476,7 @@ export class EditorApiClient {
 			}
 			throw new EditorApiError(`HTTP request failed for ${url}: ${msg}`);
 		}
+		noticeLastUpdate(response.headers?.get(LAST_UPDATE_HEADER));
 
 		if (!response.ok) {
 			const text = await response.text().catch(() => "");
