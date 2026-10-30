@@ -206,7 +206,12 @@ test("replace-media keeps the clip and closed projects read from storage", async
 
 		// Too short for the clip's 1–4 s: refused, nothing changes, and the
 		// file it imported is gone again.
-		const mediaBefore = (run("editor:media:list", ...pid) as unknown[]).length;
+		const mediaCount = () => {
+			const media = run("editor:media:list", ...pid);
+			return Array.isArray(media) ? media.length : -1;
+		};
+		const mediaBefore = mediaCount();
+		expect(mediaBefore).toBeGreaterThan(0);
 		const short = qcut({
 			apiPort,
 			args: [
@@ -228,9 +233,7 @@ test("replace-media keeps the clip and closed projects read from storage", async
 			"but the clip reads it from 1.000 s to 4.000 s"
 		);
 		expect(shot()).toMatchObject({ sourceName: "shot_v2.mp4", trimStart: 1 });
-		expect((run("editor:media:list", ...pid) as unknown[]).length).toBe(
-			mediaBefore
-		);
+		expect(mediaCount()).toBe(mediaBefore);
 
 		// N23: the closed project reads from storage; the editor stays put.
 		const closedTimeline = run(
