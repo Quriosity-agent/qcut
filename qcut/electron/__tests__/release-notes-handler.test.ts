@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import {
 	parseReleaseNote,
@@ -176,6 +177,15 @@ describe("compareSemver", () => {
 
 	it("should compare rc higher than beta", () => {
 		expect(compareSemver("1.0.0-rc.1", "1.0.0-beta.1")).toBeGreaterThan(0);
+	});
+
+	// The changelog page opened on 2026.10.29.1 while 29.3 was out.
+	it("compares every part of QCut's four-part versions", () => {
+		expect(compareSemver("2026.10.29.3", "2026.10.29.1")).toBeGreaterThan(0);
+		expect(compareSemver("2026.10.29.1", "2026.10.29.3")).toBeLessThan(0);
+		expect(compareSemver("2026.10.30.1", "2026.10.29.3")).toBeGreaterThan(0);
+		expect(compareSemver("2026.10.29.2", "2026.10.29.2")).toBe(0);
+		expect(compareSemver("2026.10.29.1", "2026.10.29")).toBeGreaterThan(0);
 	});
 
 	it("should return 0 for equal prerelease versions", () => {
@@ -356,6 +366,25 @@ Latest content`
 	it("should read and parse all version files", () => {
 		const notes = readReleaseNotesFromDir(testDir);
 		expect(notes).toHaveLength(3);
+	});
+
+	it("puts the newest of one day's releases first", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "qcut-releases-"));
+		try {
+			for (const version of ["2026.10.29.1", "2026.10.29.3", "2026.10.29.2"]) {
+				fs.writeFileSync(
+					path.join(dir, `v${version}.md`),
+					`---\nversion: "${version}"\ndate: "2026-10-29"\nchannel: "stable"\n---\n\n# QCut v${version}\n`
+				);
+			}
+			expect(readReleaseNotesFromDir(dir).map((note) => note.version)).toEqual([
+				"2026.10.29.3",
+				"2026.10.29.2",
+				"2026.10.29.1",
+			]);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it("should sort results newest first", () => {
