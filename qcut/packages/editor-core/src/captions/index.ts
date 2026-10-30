@@ -28,6 +28,7 @@ export {
 } from "./caption-animation.js";
 
 export {
+	assBlurForCssBlur,
 	generateASS,
 	secondsToASSTime,
 	type ASSGeneratorOptions,
