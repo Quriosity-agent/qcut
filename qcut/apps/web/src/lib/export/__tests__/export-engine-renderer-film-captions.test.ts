@@ -120,6 +120,31 @@ describe("film subtitles in the canvas export", () => {
 		expect(String(draws[5].font)).toContain("normal normal 22px");
 	});
 
+	it("casts a shadow from the outline too when the caption has one", () => {
+		const { ctx } = recordingContext();
+		const strokes: Array<{ text: string; filter: unknown; style: unknown }> =
+			[];
+		const record = ctx as unknown as Record<string, unknown>;
+		record.strokeText = vi.fn((text: string) => {
+			strokes.push({ text, filter: record.filter, style: record.strokeStyle });
+		});
+		const outlined = {
+			...caption,
+			secondaryText: undefined,
+			style: {
+				...caption.style,
+				outlineWidth: 2,
+				outlineColor: "#101010",
+				shadows: [{ color: "#000000", opacity: 0.5, blur: 4, x: 0, y: 2 }],
+			},
+		} as unknown as CaptionElement;
+		renderCaptionElement(ctx, canvas, outlined, 2.5, 0, 24);
+		expect(strokes).toEqual([
+			{ text: "三年前", filter: "blur(2px)", style: "rgba(0, 0, 0, 0.5)" },
+			{ text: "三年前", filter: "none", style: "#101010" },
+		]);
+	});
+
 	it("fades in over 4 frames and out over 3 at the project rate", () => {
 		const alphaAt = (time: number) => {
 			const { ctx } = recordingContext();
