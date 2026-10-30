@@ -479,6 +479,8 @@ fails with the reason, when:
   converted voice, a cover, AI-denoised sound, a cutout or mask matte,
   surface tracking), which would keep using the old file: turn it off first;
 - the clip is on a locked track, or is a compound or multicam clip;
+- the new media is a sound for a picture clip or a picture for a sound clip
+  (video and stills can replace each other);
 - the editor is still loading a file it was just given: the error names the
   imported media's id, to run again with `--media-id`.
 
