@@ -2128,6 +2128,12 @@ const EN_TRANSLATIONS = {
 	"updates.automatic": "Automatic updates",
 	"updates.automaticDescription":
 		"Download app updates automatically up to 1 GB",
+	"updates.pause": "Pause updates",
+	"updates.pauseDescription":
+		"While paused, QCut downloads no updates and installs none when it quits",
+	"updates.pausedAvailable": "QCut v{{version}} is available · updates paused",
+	"updates.pausedReady":
+		"QCut v{{version}} is downloaded · installs once updates resume",
 	"updates.downloadVersion": "Download v{{version}}",
 	"updates.restartInstall": "Restart and install",
 	"updates.pluginChecking": "Checking QCut Plugin...",
@@ -4218,6 +4224,11 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"updates.unavailable": "暂时无法检查更新",
 	"updates.automatic": "自动更新",
 	"updates.automaticDescription": "自动下载不超过 1 GB 的应用更新",
+	"updates.pause": "暂停更新",
+	"updates.pauseDescription":
+		"暂停期间不下载更新，已下载的更新也不会在退出时安装",
+	"updates.pausedAvailable": "QCut v{{version}} 可更新 · 更新已暂停",
+	"updates.pausedReady": "QCut v{{version}} 已下载 · 恢复更新后才会安装",
 	"updates.downloadVersion": "下载 v{{version}}",
 	"updates.restartInstall": "重启并安装",
 	"updates.pluginChecking": "正在检查 QCut 插件...",

@@ -11,6 +11,7 @@ import {
 	assWeightTag,
 	captionFadeSeconds,
 	captionShadowsValue,
+	assBlurForCssBlur,
 	captionWeightValue,
 	overlayWeight,
 } from "./caption-ass-style.js";
@@ -600,8 +601,9 @@ function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
 	);
 	// A blurred copy of the glyphs themselves in the glow colour, with no
 	// border, shadow or box: the preview's text-shadow blur radius r is a
-	// Gaussian of sigma r/2, which is what libass's \blur takes.
-	return `\\1c&H${colour.slice(4)}&\\1a&H${colour.slice(2, 4)}&\\4a&HFF&\\bord0\\shad0\\blur${(overlay.glowBlur / 2).toFixed(2)}`;
+	// Gaussian of sigma r/2, and libass's \blur b one of sigma 0.849 b.
+	const blur = assBlurForCssBlur(overlay.glowBlur);
+	return `\\1c&H${colour.slice(4)}&\\1a&H${colour.slice(2, 4)}&\\4a&HFF&\\bord0\\shad0\\blur${blur.toFixed(2)}`;
 }
 
 /** Seconds as an ASS time keeps them: to the hundredth. */

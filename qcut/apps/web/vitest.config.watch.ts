@@ -7,7 +7,7 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: "happy-dom",
-		setupFiles: "./src/test/setup.ts",
+		setupFiles: ["./src/test/setup-electron-log.ts", "./src/test/setup.ts"],
 		watch: true,
 		watchExclude: [
 			"**/node_modules/**",

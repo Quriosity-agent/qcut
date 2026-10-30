@@ -51,7 +51,15 @@ import {
 	setupUtilityPtyIPC,
 	cleanupUtilityProcess,
 } from "./utility/utility-bridge.js";
-import { registerMainWindowFactory } from "./main-window-recovery.js";
+import {
+	ensureMainWindow,
+	registerMainWindowFactory,
+} from "./main-window-recovery.js";
+import {
+	reopenProjectAfterUpdate,
+	trackOpenProject,
+} from "./reopen-after-update.js";
+import { requestNavigateToProject } from "./claude/handlers/claude-navigator-handler.js";
 import {
 	ensureClaudeApiToken,
 	removeClaudeInstanceInfo,
@@ -65,6 +73,8 @@ import {
 } from "./window-sizing.js";
 import { toReleaseVersion } from "./update-version.js";
 import { recordLaunchVersion } from "./update-history.js";
+import { registerUpdateControl } from "./update-control.js";
+import { watchSquirrelWhilePaused } from "./update-squirrel-mac.js";
 import {
 	loadInitialLicenseServerRuntimeConfig,
 	refreshLicenseServerRuntimeConfig,
@@ -541,6 +551,18 @@ function setupAutoUpdater(): void {
 				// the close-prompt must be disarmed here or it hijacks the install.
 				stagedUpdateVisibility?.setQuitting();
 			},
+			withdrawInstallOnQuit:
+				process.platform === "darwin"
+					? watchSquirrelWhilePaused({
+							nativeUpdater: nativeAutoUpdater,
+							onSquirrelStaged: () => updateController?.withdrawIfPaused(),
+							logger,
+						})
+					: undefined,
+		});
+		registerUpdateControl({
+			updateController,
+			packageVersion: app.getVersion(),
 		});
 		updateController.start();
 	} catch (error: unknown) {
@@ -883,9 +905,16 @@ function createWindow(): void {
 	});
 
 	// Window event handlers
+	trackOpenProject({
+		win: mainWindow,
+		userDataPath: app.getPath("userData"),
+		packageVersion: app.getVersion(),
+	});
 	mainWindow.on("close", (event) => {
 		// macOS keeps QCut alive after the last window closes, so a staged
-		// update would otherwise wait forever for ShipIt. Offer to install now.
+		// update would otherwise wait forever for ShipIt. Offer to install now,
+		// unless updates are paused.
+		if (updateController?.getPreferences().paused) return;
 		if (!stagedUpdateVisibility?.shouldInterceptClose()) return;
 		event.preventDefault();
 		void stagedUpdateVisibility.resolveClose().then((choice) => {
@@ -1111,6 +1140,13 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 		createWindow();
 		// Editor API requests reopen the window this way after it was closed.
 		registerMainWindowFactory(createWindow);
+		void reopenProjectAfterUpdate({
+			userDataPath: app.getPath("userData"),
+			packageVersion: app.getVersion(),
+			open: async (projectId) =>
+				requestNavigateToProject(await ensureMainWindow(), projectId),
+			logger,
+		});
 
 		// Register all IPC handlers with try/catch to prevent cascade failures
 		const handlers: [string, () => void | Promise<void>][] = [
@@ -1382,6 +1418,7 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 		}
 
 		// Configure auto-updater for production builds
+		registerUpdateControl({ packageVersion: app.getVersion() });
 		if (app.isPackaged) {
 			setupAutoUpdater();
 			setupCodexPluginUpdater();

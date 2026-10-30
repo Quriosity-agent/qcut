@@ -33,14 +33,30 @@ export interface ASSGeneratorOptions {
 	fps?: number;
 }
 
-/** The style's MarginL/MarginR; MarginV is the style's position.y. */
+/** The style's MarginL/MarginR. */
 const STYLE_SIDE_MARGIN = 10;
+
+/**
+ * How far the preview keeps a caption's line box from the frame edge its
+ * style names: 20 px of padding plus the box's own 8, whatever `position.y`
+ * holds (the native export does the same). This path used `position.y`, 90
+ * by default, and its captions sat 62 px higher than the preview's.
+ */
+const CAPTION_EDGE_INSET_Y = 28;
 
 /**
  * libass's `\blur b` is a Gaussian of σ = 2b / √ln 256 ≈ 0.849 b (measured
  * with the bundled FFmpeg), so a σ needs `\blur` σ · √ln 256 / 2.
  */
 const LIBASS_BLUR_PER_SIGMA = Math.sqrt(Math.log(256)) / 2;
+
+/**
+ * The `\blur` that draws a CSS `text-shadow` (or canvas `shadowBlur`) blur
+ * radius, a Gaussian of σ = radius / 2.
+ */
+export function assBlurForCssBlur(radius: number): number {
+	return (radius / 2) * LIBASS_BLUR_PER_SIGMA;
+}
 
 function containsCJK(text: string): boolean {
 	return /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
@@ -202,7 +218,7 @@ function shadowTagsForASS({
 	const [alpha, color] = splitAssColor(
 		rgbToASSColor(shadow.color, shadow.opacity * style.fontOpacity)
 	);
-	const blur = `\\blur${((shadow.blur / 2) * LIBASS_BLUR_PER_SIGMA).toFixed(2)}`;
+	const blur = `\\blur${assBlurForCssBlur(shadow.blur).toFixed(2)}`;
 	// A karaoke caption's upcoming words take the secondary colour (\2c).
 	if (style.outlineWidth > 0) {
 		// A see-through fill shows the border as the whole widened letter.
@@ -354,7 +370,7 @@ function pinnedPosition({
 	resolution: ASSGeneratorOptions["resolution"];
 	offset: { x: number; y: number };
 }): string {
-	const marginV = Math.round(style.position.y);
+	const marginV = CAPTION_EDGE_INSET_Y;
 	const x =
 		style.textAlign === "left"
 			? STYLE_SIDE_MARGIN
@@ -386,7 +402,7 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
 	const alignment = alignToASSAlignment(style.position.align, style.textAlign);
-	const marginV = Math.round(style.position.y);
+	const marginV = CAPTION_EDGE_INSET_Y;
 	// Soft shadows are layers of their own; the hard one is ASS's.
 	const shadow =
 		!resolveCaptionShadows(style) &&

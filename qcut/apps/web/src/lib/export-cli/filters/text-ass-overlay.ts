@@ -1,5 +1,8 @@
 import { rgbToASSColor } from "@/lib/captions/subtitle-style";
-import { secondsToASSTime } from "@/lib/captions/ass-generator";
+import {
+	assBlurForCssBlur,
+	secondsToASSTime,
+} from "@/lib/captions/ass-generator";
 import { getCurvedTextTransforms } from "@/lib/text/curved-text";
 import {
 	getTextAnimationState,
@@ -369,7 +372,8 @@ function buildElementEvents({
 				entry.anchorTags,
 				"\\bord0\\shad0",
 				`\\1c${assOverrideColor(color)}`,
-				`\\blur${blur}`,
+				// The preview draws `blur` as a CSS text-shadow radius (σ = blur/2).
+				`\\blur${assBlurForCssBlur(blur).toFixed(2)}`,
 				motionTags({
 					element,
 					x: entry.x + offsetX,

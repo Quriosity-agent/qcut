@@ -34,7 +34,7 @@ export function registerShellGithubHandlers(deps: MainIpcDeps): void {
 			return new Promise((resolve) => {
 				const request = https
 					.get(
-						"https://api.github.com/repos/donghaozhang/qcut",
+						"https://api.github.com/repos/Quriosity-agent/qcut",
 						{
 							headers: { "User-Agent": "QCut-Video-Editor" },
 							timeout: 10000, // 10 second timeout

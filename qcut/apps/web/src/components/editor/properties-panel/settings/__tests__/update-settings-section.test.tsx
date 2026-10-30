@@ -33,11 +33,16 @@ const mocks = vi.hoisted(() => {
 			getPreferences: vi.fn(async () => ({
 				automaticUpdates: true,
 				maxAutomaticDownloadBytes: 512 * 1024 * 1024,
+				paused: false,
 			})),
 			setPreferences: vi.fn(
-				async (preferences: { automaticUpdates?: boolean }) => ({
+				async (preferences: {
+					automaticUpdates?: boolean;
+					paused?: boolean;
+				}) => ({
 					automaticUpdates: preferences.automaticUpdates ?? true,
 					maxAutomaticDownloadBytes: 512 * 1024 * 1024,
+					paused: preferences.paused ?? false,
 				})
 			),
 			onStateChanged: vi.fn(
@@ -294,5 +299,53 @@ describe("UpdateSettingsSection", () => {
 		await waitFor(() =>
 			expect(mocks.updates.installUpdate).toHaveBeenCalledTimes(1)
 		);
+	});
+
+	// N26 (2026-10-30 trailer report): hold updates back mid-project.
+	it("pauses updates and offers no install while paused", async () => {
+		render(<UpdateSettingsSection />);
+		await screen.findByText("QCut v2026.07.11.1 is up to date");
+
+		fireEvent.click(screen.getByRole("switch", { name: /^Pause updates/ }));
+		await waitFor(() =>
+			expect(mocks.updates.setPreferences).toHaveBeenCalledWith({
+				paused: true,
+			})
+		);
+		act(() => {
+			mocks.listener?.({
+				...mocks.state,
+				phase: "ready",
+				version: "2026.07.12.1",
+				paused: true,
+			});
+		});
+		expect(
+			await screen.findByText(
+				"QCut v2026.07.12.1 is downloaded · installs once updates resume"
+			)
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Restart and install" })
+		).not.toBeInTheDocument();
+	});
+
+	it("says an update on offer waits while paused", async () => {
+		render(<UpdateSettingsSection />);
+		await screen.findByText("QCut v2026.07.11.1 is up to date");
+		act(() => {
+			mocks.listener?.({
+				...mocks.state,
+				phase: "available",
+				version: "2026.07.12.1",
+				decision: "paused",
+				paused: true,
+			});
+		});
+		expect(
+			await screen.findByText(
+				"QCut v2026.07.12.1 is available · updates paused"
+			)
+		).toBeInTheDocument();
 	});
 });

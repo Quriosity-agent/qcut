@@ -277,6 +277,38 @@ N26 scope still to agree:
   projects page (only then, and only if it still exists). Touches the project
   store, main's first `loadURL` and the update record above; no updater code.
 
+## N26–N29: pausing updates, reopening after one, quitting, refused commands, test logs
+
+Baseline `v2026.10.30.1` / `6c7816d97`; the report's re-check on 2026.10.30.1
+(N27–N29) and the five follow-ups PR #529 listed. Read the code for each
+first; all were real.
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| N26: updates cannot be held back mid-project | `autoInstallOnAppQuit` was always on, and on macOS electron-updater hands a finished download to Squirrel at once; its ShipIt job then waits for QCut to exit. The "Automatic updates" switch only stopped downloads. | `editor updates pause\|resume\|status` and Settings → Updates → Pause updates, kept in `update-preferences.json`. Paused: decision `paused` (no automatic download), install-on-quit off, the macOS ShipIt job removed (`launchctl remove <bundle id>.ShipIt`, again if Squirrel finishes preparing after the pause), no install prompts, an explicit install refused. Resume: install-on-quit on and the cached download handed over again. |
+| N26: after an update restart no project is open | Every launch opened the projects page. | The editor window notes the project it shows as it closes (`reopen-after-update.json`: the id and the version that wrote it); the first launch of another version opens it once through the navigator (`[UpdateHistory] Reopened project …`). A launch of the same version opens nothing, as before. |
+| N27: with a downloaded update, the first quit closes the window but QCut keeps running (API 401, no log lines) until a second quit | Not the update. The Beauty Lab quit guard defers the first `before-quit` and quits again once its cleanup is done; with nothing to wait for, that cleanup settled in the microtask checkpoint of the first `before-quit`, so `app.quit()` ran inside Electron's own `Browser::Quit()`. The outer call then stored `is_quitting_ = false` (its `before-quit` had been prevented); the window still closed, and Electron took it for a plain last-window close (`window-all-closed`), which macOS survives. A busy app finished closing inside the inner quit; an idle, hidden one did not. The utility process kept 8765 because the app never reached shutdown. | The guard resumes the quit on a later turn (`setImmediate`), once `before-quit` has returned. |
+| N28: a refused replace-media leaves an empty "Edit" step and clears redo; the undo answer shows nothing | `PATCH …/elements/:id` goes through batch update, which (like batch add and delete) pushed its undo step before knowing anything would change. The undo summary counted only elements added, removed or moved by track, start and duration. | A batch's step is taken back when the timeline is unchanged (undo, redo and their labels as before). The summary counts `changed` elements and names `fields`. The replace-media docs say `editor:undo` needs `--force`. |
+| N29: unit tests append to `~/Library/Logs/qcut/main.log` | Main-process modules log through electron-log, whose Node transport writes `~/Library/Logs/<package name>/main.log`, the user's QCut log. | A Vitest setup file turns electron-log's file transport off; the lines stay on the console. |
+| The Export dialog's FFmpeg path puts captions at `position.y` (90 px), the preview at 28 px | editor-core's ASS used `position.y` as MarginV; the preview and the native export ignore it. | MarginV and the pinned shadow layers use 28 px. With the bundled libass a default caption's lowest ink moved from 98 to 36 px above the frame edge. |
+| Text glow (native) 15 % narrow; text shadow and glow (Export dialog) 70 % wide | They wrote `\blur r/2` and `\blur r` for a CSS blur radius r (σ r/2); libass's `\blur b` is σ 0.849 b. | Both write `\blur (r/2)·√ln256/2` (`assBlurForCssBlur`, `LIBASS_BLUR_PER_SIGMA`). |
+| `/changelog` opens 2026.10.29.1 | `compareSemver` compared three parts of a four-part version. | It compares every part. |
+| GitHub links point at donghaozhang/qcut | Left from the repository's move; the old API address answers 301, which `https.get` does not follow, so the star count read 0. | The footer, blog, changelog and contributors pages and the star count use Quriosity-agent/qcut. |
+| The editor's own Replace puts a sound in place of a picture | The store's `replaceElementMedia` had no kind check. | It refuses the swap before importing anything, with replace-media's rule and message (`mediaKindMismatch`). |
+
+Quit and update checks ran on a signed, isolated build: this checkout's main
+process inside a copy of Electron.app with its own bundle id
+(`com.qcut.videoeditor.quittest`), signed with the Developer ID so Squirrel
+stages a real update from a local feed; its own HOME, profile, state folder
+and port 18940, the `qcut://` handler and keychain left alone. N27
+reproduced there (staged update, app hidden five idle minutes, AppleScript
+quit: `window-all-closed`, still running 180 s later, the second quit exited
+at once) and quits in one second with the change. N26: pause removed ShipIt,
+a paused quit left the bundle at 2026.10.3001, the next launch said
+`decision=paused` and downloaded nothing, resume staged it again and the next
+quit installed 2026.10.3002; a project open at quit reopened on 2026.10.3002
+and not on a second launch of it.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -305,16 +337,13 @@ N26 scope still to agree:
   the clips it leaves them out of). Moving every main-track clip's sound
   into the mix would change the export's audio path for every project.
 - N17: superseded by N24's `timeline replace-media`.
-- N26: pausing automatic updates and reopening the project after an update
-  (scope above), the `/changelog` page opening 29.1 rather than the newest
-  release (`compareSemver` in `release-notes-utils.ts` reads three parts of a
-  four-part version), and the GitHub links still pointing at
-  `donghaozhang/qcut` (`shell-github-handlers.ts`, `footer.tsx`).
-- The text element's glow (native) and soft shadow (Export dialog path) use
-  `\blur` blur÷2 and `\blur` blur, which libass draws 15 % narrower and 70 %
-  wider than the preview; the new caption shadows use the measured scale.
-- The Export dialog's FFmpeg path still places captions by the style's
-  `position.y` margin (90 px by default), not the preview's 28 px inset.
+- The Export dialog's FFmpeg path keeps captions 28 px from the edge but
+  still without the native export's line-height compensation and stacking
+  of overlapping captions (a few pixels; overlapping cues may differ).
+- A batch add with stickers or adjustment layers still pushes one undo step
+  per such element besides the batch's own (pre-existing).
+- The pr-comments skill examples and the beauty research manifests still
+  name `donghaozhang` repositories: examples and provenance, not links.
 - N18: history steps other than transactions are still labelled `Edit`;
   `changes` is what tells them apart.
 - N19: the project store's other record changes (bookmarks, frame rate,

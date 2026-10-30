@@ -605,11 +605,14 @@ export type PlatformUpdatePhase =
 export type PlatformAutomaticUpdateDecision =
 	| "automatic"
 	| "disabled"
-	| "too-large";
+	| "too-large"
+	| "paused";
 
 export interface PlatformUpdatePreferences {
 	automaticUpdates: boolean;
 	maxAutomaticDownloadBytes: number;
+	/** Held back: nothing downloads by itself or installs when QCut quits. */
+	paused: boolean;
 }
 
 export interface PlatformStagedUpdateInfo {
@@ -639,6 +642,8 @@ export interface PlatformUpdateState {
 	staged?: PlatformStagedUpdateInfo;
 	/** Most recent background check failure while an update is staged. */
 	lastCheckError?: string;
+	/** Updates held back: nothing downloads by itself or installs on quit. */
+	paused?: boolean;
 }
 
 export type PlatformCodexPluginUpdatePhase =

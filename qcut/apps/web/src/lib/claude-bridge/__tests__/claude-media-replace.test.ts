@@ -58,16 +58,18 @@ const shot: MediaElement = {
 function setTimeline({
 	element = shot,
 	locked = false,
+	type = "media",
 }: {
 	element?: MediaElement;
 	locked?: boolean;
+	type?: "media" | "audio";
 } = {}) {
 	const tracks: TimelineTrack[] = [
 		{
 			id: "main",
 			name: "主轨道",
-			type: "media",
-			isMain: true,
+			type,
+			isMain: type === "media",
 			muted: false,
 			hidden: false,
 			locked,
@@ -261,5 +263,27 @@ describe("replacing a clip's media", () => {
 			"score.mp3 is audio; this clip's media is a picture, so it takes video or an image"
 		);
 		expect(clip()).toEqual(shot);
+	});
+
+	// Separate Audio leaves the video's mediaId on the detached sound.
+	it("lets a detached sound on an audio lane take another sound", () => {
+		media.items.push({
+			id: "take2",
+			name: "take2.wav",
+			type: "audio",
+			duration: 12,
+		});
+		setTimeline({ type: "audio" });
+		expect(replace({ mediaId: "take2" })).toEqual({ applied: true });
+		const detached = useTimelineStore
+			.getState()
+			.tracks.flatMap((track) => track.elements)
+			.find((element) => element.id === "shot") as MediaElement;
+		expect(detached.mediaId).toBe("take2");
+
+		setTimeline({ type: "audio" });
+		expect(replace({ mediaId: "v2" }).error).toBe(
+			"05_拳域_01_v2.mp4 is a picture; this clip's media is audio, so it takes audio"
+		);
 	});
 });

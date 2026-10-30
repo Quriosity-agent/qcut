@@ -69,7 +69,8 @@ describe("buildTextASSOverlay", () => {
 		expect(result.content).toContain("\\frz-12");
 		expect(result.content).toContain("\\move(");
 		expect(result.content).toContain("\\p1");
-		expect(result.content).toContain("\\blur8");
+		// The 8 px glow radius is the preview's σ 4; libass's \blur b is σ 0.849 b.
+		expect(result.content).toContain("\\blur4.71");
 		expect(result.content).not.toContain("\\N");
 	});
 

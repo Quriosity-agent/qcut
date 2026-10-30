@@ -13,40 +13,71 @@ export interface TimelineChangeSummary {
 	added: number;
 	removed: number;
 	moved: number;
+	/**
+	 * Elements that kept their place but not their settings, such as a clip
+	 * whose media was replaced.
+	 */
+	changed: number;
 	/** The first few changed elements, in timeline order. */
 	elements: Array<{
 		elementId: string;
 		name?: string;
-		change: "added" | "removed" | "moved";
+		change: "added" | "removed" | "moved" | "changed";
 		trackId: string;
 		startTime: number;
 		/** Where a moved element was before. */
 		from?: { trackId: string; startTime: number; duration: number };
 		duration: number;
+		/** For a moved or changed element: the fields that differ. */
+		fields?: string[];
 	}>;
 }
 
 const LISTED = 10;
 
+type Placed = {
+	placement: {
+		name?: string;
+		trackId: string;
+		startTime: number;
+		duration: number;
+	};
+	element: Record<string, unknown>;
+};
+
 function placements(tracks: readonly TimelineTrack[]) {
-	const byId = new Map<
-		string,
-		{ name?: string; trackId: string; startTime: number; duration: number }
-	>();
+	const byId = new Map<string, Placed>();
 	for (const track of tracks) {
 		for (const element of track.elements) {
 			byId.set(element.id, {
-				name: element.name,
-				trackId: track.id,
-				startTime: element.startTime,
-				duration: element.duration,
+				placement: {
+					name: element.name,
+					trackId: track.id,
+					startTime: element.startTime,
+					duration: element.duration,
+				},
+				element: element as unknown as Record<string, unknown>,
 			});
 		}
 	}
 	return byId;
 }
 
-/** The elements added, removed or moved between two timelines. */
+/** The element's fields whose values differ, in name order. */
+function differingFields({
+	was,
+	now,
+}: {
+	was: Record<string, unknown>;
+	now: Record<string, unknown>;
+}): string[] {
+	const keys = new Set([...Object.keys(was), ...Object.keys(now)]);
+	return [...keys]
+		.filter((key) => JSON.stringify(was[key]) !== JSON.stringify(now[key]))
+		.sort();
+}
+
+/** The elements added, removed, moved or changed between two timelines. */
 export function summarizeTimelineChange({
 	before,
 	after,
@@ -57,16 +88,24 @@ export function summarizeTimelineChange({
 	const was = placements(before);
 	const now = placements(after);
 	const elements: TimelineChangeSummary["elements"] = [];
-	const counts = { added: 0, removed: 0, moved: 0 };
-	for (const [elementId, placement] of now) {
+	const counts = { added: 0, removed: 0, moved: 0, changed: 0 };
+	for (const [elementId, { placement, element }] of now) {
 		const earlier = was.get(elementId);
 		if (!earlier) {
 			counts.added++;
 			elements.push({ elementId, change: "added", ...placement });
-		} else if (
-			earlier.trackId !== placement.trackId ||
-			earlier.startTime !== placement.startTime ||
-			earlier.duration !== placement.duration
+			continue;
+		}
+		// History snapshots share untouched elements, which need no comparing.
+		const fields =
+			earlier.element === element
+				? []
+				: differingFields({ was: earlier.element, now: element });
+		const from = earlier.placement;
+		if (
+			from.trackId !== placement.trackId ||
+			from.startTime !== placement.startTime ||
+			from.duration !== placement.duration
 		) {
 			counts.moved++;
 			elements.push({
@@ -74,14 +113,18 @@ export function summarizeTimelineChange({
 				change: "moved",
 				...placement,
 				from: {
-					trackId: earlier.trackId,
-					startTime: earlier.startTime,
-					duration: earlier.duration,
+					trackId: from.trackId,
+					startTime: from.startTime,
+					duration: from.duration,
 				},
+				...(fields.length > 0 ? { fields } : {}),
 			});
+		} else if (fields.length > 0) {
+			counts.changed++;
+			elements.push({ elementId, change: "changed", ...placement, fields });
 		}
 	}
-	for (const [elementId, placement] of was) {
+	for (const [elementId, { placement }] of was) {
 		if (now.has(elementId)) continue;
 		counts.removed++;
 		elements.push({ elementId, change: "removed", ...placement });

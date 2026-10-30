@@ -449,7 +449,9 @@ timeline, in-point (`trimStart`) and every setting (volume, audio, colour,
 keyframes, effects); only its source and the out trim that follows from the
 new media's length change. A clip still named after its media takes the new
 media's name; a renamed clip keeps its own. One undo step restores the old
-media.
+media (`qcut editor:undo --force`: undo sits in the CLI's confirm tier), and
+its answer lists the clip under `changes` with the fields it put back. A
+refused swap adds no undo step and leaves redo as it was.
 
 ```bash
 # Import the new render and put it in place of the old one.

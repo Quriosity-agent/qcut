@@ -198,7 +198,7 @@ function ChangelogPage() {
 						<div className="text-muted-foreground">
 							No release notes available. Check the{" "}
 							<a
-								href="https://github.com/donghaozhang/qcut/releases"
+								href="https://github.com/Quriosity-agent/qcut/releases"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="text-primary underline"

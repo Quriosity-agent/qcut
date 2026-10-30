@@ -5,6 +5,10 @@ import {
 } from "@/lib/debug/error-handler";
 import { createObjectURL } from "@/lib/media/blob-manager";
 import {
+	clipMediaKind,
+	mediaKindMismatch,
+} from "@/lib/media/media-replace-kind";
+import {
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
 } from "@/lib/timeline";
@@ -547,6 +551,17 @@ export function createElementOps(
 							"Unsupported file type. Please select a video, audio, or image file.",
 					};
 				}
+				const mismatch = mediaKindMismatch({
+					current: clipMediaKind({
+						trackType: track?.type ?? "media",
+						mediaType: mediaStore.mediaItems.find(
+							(item) => item.id === element.mediaId
+						)?.type,
+					}),
+					next: fileType,
+					nextName: newFile.name,
+				});
+				if (mismatch) return { success: false, error: mismatch };
 
 				// Process the new media file
 				const mediaData: {

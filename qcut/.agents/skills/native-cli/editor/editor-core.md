@@ -36,6 +36,22 @@ changed: …`); `--json` output on stdout is unchanged. The version that first
 records launches cannot name the one before it, so the notice starts with
 the update after it.
 
+Hold updates back while a project is under way, so its exports keep sounding
+and looking the same:
+
+```bash
+qcut editor updates pause    # nothing downloads, nothing installs on quit
+qcut editor updates status   # paused or not, a version on offer, one downloaded (staged)
+qcut editor updates resume   # updates download and install on quit again
+```
+
+While paused QCut downloads no update by itself and installs none when it
+quits. An update it had already downloaded stays uninstalled (on macOS the
+install it had set up for the next quit is withdrawn) and installs at the
+first quit after `resume`. The pause lasts across launches until it is
+resumed; Settings → Updates has the same switch (Pause updates). A
+development build does not update itself: `status` says so and `pause` fails.
+
 Editor commands are split across these files:
 
 - [editor-media.md](editor-media.md), [editor-timeline.md](editor-timeline.md), [editor-output.md](editor-output.md), [editor-ai.md](editor-ai.md), [editor-state-control.md](editor-state-control.md), [editor-agent.md](editor-agent.md)

@@ -22,7 +22,12 @@ export function createBeautyLabQuitGuard({
 			.catch(onError)
 			.finally(() => {
 				completed = true;
-				resumeQuit();
+				// Never from inside before-quit (N27, 2026-10-30 trailer report):
+				// a cleanup with nothing to wait for settles before this event's
+				// listeners have all returned, and Electron then marks the quit
+				// it started there as cancelled. Its windows still close, and
+				// macOS keeps the windowless app running.
+				setImmediate(resumeQuit);
 			});
 		return true;
 	};

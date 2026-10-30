@@ -122,8 +122,12 @@ curl .../history    # { undoCount, redoCount, entries[] }
 `{ applied, undoCount, redoCount, label, changes }`. `label` names the step
 taken back or redone (a transaction's label, `Edit` for any other step), and
 `changes` says what it did to the timeline: how many elements it `added`,
-`removed` and `moved`, and the first ten of them with their track,
-`startTime` and `duration` (a moved one also has `from`, where it was
-before). Check `changes` against the step you meant to take back. When
+`removed`, `moved` and `changed`, and the first ten of them with their
+track, `startTime` and `duration`. A moved one also has `from`, where it was
+before; a `changed` one kept its place but not its settings (a replaced
+media, a trim, a grade), and `fields` names what differs on a moved or
+changed one. Check `changes` against the step you meant to take back. A
+command the editor refuses adds no step, so it never needs undoing and
+leaves redo as it was. When
 nothing changed (`applied: false`: the history is empty, or a transaction is
 open) the command fails and says which.

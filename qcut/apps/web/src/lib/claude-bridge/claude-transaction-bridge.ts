@@ -22,6 +22,11 @@ type TransactionHistoryEntry = {
 	transactionId?: string;
 };
 
+export interface HistoryLabels {
+	undo: TransactionHistoryEntry[];
+	redo: TransactionHistoryEntry[];
+}
+
 type ActiveTransactionContext = {
 	transactionId: string;
 	label?: string;
@@ -439,6 +444,16 @@ function commitSingleHistoryEntry({
 		);
 		return false;
 	}
+}
+
+/** The labels of the undo and redo steps, for a caller that puts the steps back. */
+export function captureHistoryLabels(): HistoryLabels {
+	return { undo: [...historyEntries], redo: [...redoEntries] };
+}
+
+export function restoreHistoryLabels({ labels }: { labels: HistoryLabels }) {
+	historyEntries = [...labels.undo];
+	redoEntries = [...labels.redo];
 }
 
 export function setupClaudeTransactionBridge(): void {

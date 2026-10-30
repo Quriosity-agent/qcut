@@ -141,6 +141,9 @@ export function UpdateNotification() {
 		};
 	}, [applyState, hasUpdates]);
 
+	// Paused on purpose: no prompts until updates resume.
+	if (state.paused) return null;
+
 	if (
 		state.phase === "available" &&
 		state.version &&

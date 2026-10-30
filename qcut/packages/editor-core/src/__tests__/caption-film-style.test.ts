@@ -149,14 +149,14 @@ describe("ASS for the Export dialog's FFmpeg path", () => {
 		const fade = "\\fade(255,0,255,0,167,875,1000)";
 		// σ = blur ÷ 2, in libass's \blur units (σ = 0.849 × \blur).
 		expect(events[0]).toBe(
-			`Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,{${fade}\\pos(735,542)\\b600\\1c&H000000&\\1a&H40&\\2c&H000000&\\2a&H40&\\3a&HFF&\\4a&HFF&\\bord0\\shad0\\blur1.88}三年前\\N{\\fnGill Sans\\fs22\\b0\\i0\\fsp0.66}Three years ago`
+			`Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,{${fade}\\pos(735,604)\\b600\\1c&H000000&\\1a&H40&\\2c&H000000&\\2a&H40&\\3a&HFF&\\4a&HFF&\\bord0\\shad0\\blur1.88}三年前\\N{\\fnGill Sans\\fs22\\b0\\i0\\fsp0.66}Three years ago`
 		);
 		expect(events[1]).toContain(
-			`{${fade}\\pos(735,540)\\b600\\1c&H000000&\\1a&H9E&`
+			`{${fade}\\pos(735,602)\\b600\\1c&H000000&\\1a&H9E&`
 		);
 		expect(events[1]).toContain("\\blur10.60}");
 		expect(events[2]).toBe(
-			`Dialogue: 2,0:00:02.00,0:00:03.00,Default,,0,0,0,,{${fade}\\pos(735,540)\\b600}三年前\\N{\\fnGill Sans\\fs22\\b0\\i0\\fsp0.66\\c&HC6D6DE&}Three years ago`
+			`Dialogue: 2,0:00:02.00,0:00:03.00,Default,,0,0,0,,{${fade}\\pos(735,602)\\b600}三年前\\N{\\fnGill Sans\\fs22\\b0\\i0\\fsp0.66\\c&HC6D6DE&}Three years ago`
 		);
 		// The style keeps no hard shadow and spaces the caption's own line.
 		const style = ass.split("\n").find((line) => line.startsWith("Style:"));

@@ -6,11 +6,18 @@ export const MAX_AUTOMATIC_UPDATE_BYTES = 1024 * 1024 * 1024;
 export interface UpdatePreferences {
 	automaticUpdates: boolean;
 	maxAutomaticDownloadBytes: number;
+	/**
+	 * Updates held back while a project is under way (N26, 2026-10-30
+	 * trailer report): nothing downloads by itself, and nothing downloaded
+	 * installs when QCut quits, until they are resumed.
+	 */
+	paused: boolean;
 }
 
 export const DEFAULT_UPDATE_PREFERENCES: UpdatePreferences = {
 	automaticUpdates: true,
 	maxAutomaticDownloadBytes: MAX_AUTOMATIC_UPDATE_BYTES,
+	paused: false,
 };
 
 function getPreferencesPath({
@@ -35,6 +42,7 @@ export function readUpdatePreferences({
 					? parsed.automaticUpdates
 					: DEFAULT_UPDATE_PREFERENCES.automaticUpdates,
 			maxAutomaticDownloadBytes: MAX_AUTOMATIC_UPDATE_BYTES,
+			paused: parsed.paused === true,
 		};
 	} catch {
 		return { ...DEFAULT_UPDATE_PREFERENCES };
@@ -51,6 +59,7 @@ export function writeUpdatePreferences({
 	const normalized: UpdatePreferences = {
 		automaticUpdates: preferences.automaticUpdates,
 		maxAutomaticDownloadBytes: MAX_AUTOMATIC_UPDATE_BYTES,
+		paused: preferences.paused === true,
 	};
 	const preferencesPath = getPreferencesPath({ userDataPath });
 	const temporaryPath = `${preferencesPath}.tmp-${process.pid}`;

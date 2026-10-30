@@ -235,6 +235,25 @@ test("replace-media keeps the clip and closed projects read from storage", async
 		expect(shot()).toMatchObject({ sourceName: "shot_v2.mp4", trimStart: 1 });
 		expect(mediaCount()).toBe(mediaBefore);
 
+		// N28: the refusal left no undo step, so one undo takes back the
+		// replacement, and its answer names the clip and what changed on it.
+		const undone = run("editor:undo", "--force") as {
+			changes?: {
+				changed?: number;
+				moved?: number;
+				elements?: Array<{ elementId: string; fields?: string[] }>;
+			};
+		};
+		expect(shot()).toMatchObject({ sourceName: "shot_v1.mp4", trimStart: 1 });
+		const undoneClip = undone.changes?.elements?.find(
+			(element) => element.elementId === clipId
+		);
+		expect(undoneClip?.fields).toEqual(
+			expect.arrayContaining(["mediaId", "name"])
+		);
+		run("editor:redo", "--force");
+		expect(shot()).toMatchObject({ sourceName: "shot_v2.mp4" });
+
 		// N23: the closed project reads from storage; the editor stays put.
 		const closedTimeline = run(
 			"editor:timeline:export",

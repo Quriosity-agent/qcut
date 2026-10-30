@@ -12,6 +12,7 @@
  */
 
 import { getLastUpdate } from "../update-history.js";
+import { handleUpdateControlRequest } from "../update-control.js";
 import {
 	utilityProcess,
 	BrowserWindow,
@@ -512,6 +513,8 @@ async function handleMainRequest(
 	if (channel === "windows:list") {
 		return describeEditorWindows();
 	}
+	const updateStatus = handleUpdateControlRequest({ channel, data });
+	if (updateStatus) return updateStatus;
 
 	// Everything below talks to the editor, so a closed window is reopened
 	// rather than failing the request. Reopening can outlast the caller's
