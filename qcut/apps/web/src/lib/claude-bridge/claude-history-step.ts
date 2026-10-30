@@ -1,8 +1,7 @@
 /**
  * The undo step of an editor API batch, taken back when the batch changed
- * nothing (N28, 2026-10-30 trailer report: a refused replace-media left an
- * empty "Edit" step on the undo stack and emptied the redo stack, so one
- * undo no longer took back the last replacement).
+ * nothing, so a refused command leaves the undo and redo stacks and their
+ * labels as they were.
  *
  * @module lib/claude-bridge/claude-history-step
  */
