@@ -18,6 +18,7 @@ function unavailableState(): UpdateState {
 		transferred: 0,
 		total: 0,
 		automaticDownload: false,
+		paused: false,
 		message: app.isPackaged
 			? "Auto-updater not available"
 			: "Updates only available in production builds",
@@ -49,6 +50,7 @@ export function registerUpdateHandlers(deps: MainIpcDeps): void {
 			updateController?.getPreferences() ?? {
 				automaticUpdates: false,
 				maxAutomaticDownloadBytes: 0,
+				paused: false,
 			}
 		);
 	});
@@ -57,7 +59,11 @@ export function registerUpdateHandlers(deps: MainIpcDeps): void {
 		"set-update-preferences",
 		async (_event, preferences: Partial<UpdatePreferences>) => {
 			if (!updateController)
-				return { automaticUpdates: false, maxAutomaticDownloadBytes: 0 };
+				return {
+					automaticUpdates: false,
+					maxAutomaticDownloadBytes: 0,
+					paused: false,
+				};
 			try {
 				return updateController.setPreferences({ preferences });
 			} catch (error: unknown) {
