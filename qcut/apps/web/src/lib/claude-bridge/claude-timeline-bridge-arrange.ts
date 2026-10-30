@@ -20,7 +20,7 @@ export function setupArrangeHandler({
 		typeof claudeAPI.onArrange === "function" &&
 		typeof claudeAPI.sendArrangeResponse === "function"
 	) {
-		claudeAPI.onArrange((data: any) => {
+		claudeAPI.onArrange((data) => {
 			try {
 				const timelineStore = useTimelineStore.getState();
 				const track = timelineStore.tracks.find(
