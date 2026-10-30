@@ -8,6 +8,7 @@
 
 import type {
 	CaptionSecondaryStyle,
+	CaptionShadow,
 	SubtitleStyle,
 } from "../types/timeline.js";
 
@@ -63,21 +64,66 @@ export function resolveSubtitleStyle(
 	};
 }
 
+/** A caption line's font weight: `fontWeight`, else bold's 700 or 400. */
+export function captionFontWeight(style: {
+	fontWeight?: number;
+	bold?: boolean;
+}): number {
+	return style.fontWeight ?? (style.bold ? 700 : 400);
+}
+
+/** A weight as CSS and canvas fonts name it: bold and normal, else the number. */
+export function cssFontWeight(weight: number): string {
+	return weight === 700 ? "bold" : weight === 400 ? "normal" : String(weight);
+}
+
 /**
  * The look of a bilingual caption's second-language line: `style.secondary`
- * over the caption's own font, size, colour, weight and slant.
+ * over the caption's own font, size, colour, spacing, weight and slant.
  */
 export function resolveSecondaryLineStyle(
 	style: SubtitleStyle
 ): Required<CaptionSecondaryStyle> {
 	const secondary = style.secondary ?? {};
+	const fontWeight =
+		secondary.fontWeight ??
+		(secondary.bold === undefined
+			? captionFontWeight(style)
+			: captionFontWeight({ bold: secondary.bold }));
 	return {
 		fontFamily: secondary.fontFamily ?? style.fontFamily,
 		fontSize: secondary.fontSize ?? style.fontSize,
 		fontColor: secondary.fontColor ?? style.fontColor,
-		bold: secondary.bold ?? style.bold,
+		bold: fontWeight >= 600,
 		italic: secondary.italic ?? style.italic,
+		letterSpacing: secondary.letterSpacing ?? style.letterSpacing,
+		fontWeight,
 	};
+}
+
+/**
+ * The soft shadows a caption draws (N25), each complete; undefined when it
+ * keeps the single shadow of `shadowColor` and `shadowOffset`.
+ */
+export function resolveCaptionShadows(
+	style: Pick<SubtitleStyle, "shadows">
+): CaptionShadow[] | undefined {
+	if (!Array.isArray(style.shadows)) return undefined;
+	const finite = (value: unknown, fallback: number) =>
+		typeof value === "number" && Number.isFinite(value) ? value : fallback;
+	return style.shadows
+		.filter(
+			(shadow) =>
+				typeof shadow?.color === "string" &&
+				/^#[0-9a-f]{6}$/i.test(shadow.color)
+		)
+		.map((shadow) => ({
+			color: shadow.color,
+			opacity: Math.min(1, Math.max(0, finite(shadow.opacity, 1))),
+			blur: Math.max(0, finite(shadow.blur, 0)),
+			x: finite(shadow.x, 0),
+			y: finite(shadow.y, 0),
+		}));
 }
 
 /** Convert hex color + opacity to rgba string */
