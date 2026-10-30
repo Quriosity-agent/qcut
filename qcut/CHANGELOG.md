@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.30.2] - 2026-10-30
+
 ### Added
 
 - `editor updates pause` holds QCut's own updates back while a project is under way: nothing downloads by itself, and an update already downloaded does not install when QCut quits (on macOS, the install set up for the next quit is withdrawn). `editor updates resume` lets them go again and sets a downloaded update to install at the next quit; `editor updates status` says whether updates are paused and which version is on offer or downloaded. Settings → Updates has the same switch, and the update prompts stay quiet while paused. The pause lasts across launches until it is resumed.
