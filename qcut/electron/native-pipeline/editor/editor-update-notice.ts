@@ -39,8 +39,12 @@ export function noticeLastUpdate(header: string | null | undefined): void {
 		console.warn(
 			`[QCut] QCut was updated from ${update.from} to ${update.to} (first run ${update.at}). What changed: ${update.releaseNotes}`
 		);
+		// A new file renamed over the old one: a CLI reading it meanwhile
+		// sees the old note or the new one, never half of one.
 		fs.mkdirSync(path.dirname(file), { recursive: true });
-		fs.writeFileSync(file, `${JSON.stringify({ noticed: key })}\n`);
+		const temporary = `${file}.${process.pid}.tmp`;
+		fs.writeFileSync(temporary, `${JSON.stringify({ noticed: key })}\n`);
+		fs.renameSync(temporary, file);
 	} catch {
 		// A notice is never worth failing a command over.
 	}
