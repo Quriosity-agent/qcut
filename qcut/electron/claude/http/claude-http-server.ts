@@ -9,6 +9,11 @@
  * BrowserWindow access (main process).
  */
 
+import { getLastUpdate } from "../../update-history.js";
+import {
+	formatLastUpdateHeader,
+	LAST_UPDATE_HEADER,
+} from "../../update-notice.js";
 import { getMainWindowState } from "../../main-window-recovery.js";
 import {
 	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
@@ -240,6 +245,8 @@ export function startClaudeHTTPServer(
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		/** Returns the current app version. */
 		getAppVersion: () => app.getVersion(),
+		/** The last update QCut found it had at launch. */
+		getLastUpdate,
 		/** Enables notification forwarding for a session. */
 		enableNotifications: (sessionId) =>
 			Promise.resolve(notificationBridge.enable({ sessionId })),
@@ -533,6 +540,11 @@ export function startClaudeHTTPServer(
 	// ==========================================================================
 	server = createServer((req, res) => {
 		setCorsHeaders(res);
+		// Every answer says what QCut last updated from, for the CLI to note.
+		const lastUpdate = getLastUpdate();
+		if (lastUpdate) {
+			res.setHeader(LAST_UPDATE_HEADER, formatLastUpdateHeader(lastUpdate));
+		}
 		let requestCorrelationId = "";
 		try {
 			requestCorrelationId = generateId("corr");
