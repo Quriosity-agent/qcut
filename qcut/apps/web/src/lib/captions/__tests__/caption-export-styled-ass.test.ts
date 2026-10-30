@@ -33,9 +33,9 @@ const tracks = [
 describe("styled ASS caption export", () => {
 	it("writes the fade frames at the rate it is given, and none without one", () => {
 		const resolution = { width: 1470, height: 630 };
-		expect(exportAssStyled(tracks, resolution, 24)).toContain(
+		expect(exportAssStyled({ tracks, resolution, fps: 24 })).toContain(
 			"\\fade(255,0,255,0,167,875,1000)"
 		);
-		expect(exportAssStyled(tracks, resolution)).not.toContain("\\fade(");
+		expect(exportAssStyled({ tracks, resolution })).not.toContain("\\fade(");
 	});
 });
