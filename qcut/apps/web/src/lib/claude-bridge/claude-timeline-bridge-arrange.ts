@@ -6,7 +6,10 @@
  */
 
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { ClaudeArrangeResponse } from "../../../../../electron/types/claude-api";
+import type {
+	ClaudeArrangeRequest,
+	ClaudeArrangeResponse,
+} from "../../../../../electron/types/claude-api";
 import { debugError } from "@/lib/debug/debug-config";
 import { getTimelineElementDuration } from "@/lib/timeline";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
@@ -20,7 +23,11 @@ export function setupArrangeHandler({
 		typeof claudeAPI.onArrange === "function" &&
 		typeof claudeAPI.sendArrangeResponse === "function"
 	) {
-		claudeAPI.onArrange((data) => {
+		claudeAPI.onArrange((message) => {
+			const data = message as {
+				requestId: string;
+				request: ClaudeArrangeRequest;
+			};
 			try {
 				const timelineStore = useTimelineStore.getState();
 				const track = timelineStore.tracks.find(
