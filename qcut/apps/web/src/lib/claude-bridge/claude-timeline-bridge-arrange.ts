@@ -90,9 +90,9 @@ export function setupArrangeHandler({
 					currentStartTime +=
 						getTimelineElementDuration({ element, fps }) + gap;
 				}
-				if (
-					!arranged.every(({ newStartTime }) => Number.isFinite(newStartTime))
-				) {
+				// Every length went into this sum, the last element's too, and a sum
+				// with a non-finite term is never finite again.
+				if (!Number.isFinite(currentStartTime)) {
 					claudeAPI.sendArrangeResponse(data.requestId, { arranged: [] });
 					return;
 				}
