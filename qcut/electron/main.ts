@@ -51,7 +51,15 @@ import {
 	setupUtilityPtyIPC,
 	cleanupUtilityProcess,
 } from "./utility/utility-bridge.js";
-import { registerMainWindowFactory } from "./main-window-recovery.js";
+import {
+	ensureMainWindow,
+	registerMainWindowFactory,
+} from "./main-window-recovery.js";
+import {
+	reopenProjectAfterUpdate,
+	trackOpenProject,
+} from "./reopen-after-update.js";
+import { requestNavigateToProject } from "./claude/handlers/claude-navigator-handler.js";
 import {
 	ensureClaudeApiToken,
 	removeClaudeInstanceInfo,
@@ -898,6 +906,11 @@ function createWindow(): void {
 	});
 
 	// Window event handlers
+	trackOpenProject({
+		win: mainWindow,
+		userDataPath: app.getPath("userData"),
+		packageVersion: app.getVersion(),
+	});
 	mainWindow.on("close", (event) => {
 		// macOS keeps QCut alive after the last window closes, so a staged
 		// update would otherwise wait forever for ShipIt. Offer to install now,
@@ -1128,6 +1141,13 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 		createWindow();
 		// Editor API requests reopen the window this way after it was closed.
 		registerMainWindowFactory(createWindow);
+		void reopenProjectAfterUpdate({
+			userDataPath: app.getPath("userData"),
+			packageVersion: app.getVersion(),
+			open: async (projectId) =>
+				requestNavigateToProject(await ensureMainWindow(), projectId),
+			logger,
+		});
 
 		// Register all IPC handlers with try/catch to prevent cascade failures
 		const handlers: [string, () => void | Promise<void>][] = [
