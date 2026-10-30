@@ -76,41 +76,51 @@ describe("withdrawing Squirrel's install on quit", () => {
 		);
 	});
 
-	it("withdraws again when Squirrel finishes preparing while paused", () => {
+	it("tells the updater when Squirrel finishes preparing an update", () => {
 		const nativeUpdater = new EventEmitter();
+		const onSquirrelStaged = vi.fn();
 		const { runCommand } = launchd();
-		const logger = { log: vi.fn(), warn: vi.fn() };
-		let paused = false;
 		watchSquirrelWhilePaused({
 			nativeUpdater,
-			isPaused: () => paused,
-			logger,
+			onSquirrelStaged,
+			logger: { log: vi.fn() },
 			execPath,
 			runCommand,
 		});
 		nativeUpdater.emit("update-downloaded");
+		expect(onSquirrelStaged).toHaveBeenCalledTimes(1);
+		// Whether to withdraw it is the updater's call.
 		expect(runCommand).not.toHaveBeenCalled();
-		paused = true;
-		nativeUpdater.emit("update-downloaded");
-		expect(runCommand).toHaveBeenCalledWith("/bin/launchctl", [
-			"remove",
-			label,
-		]);
 	});
 
-	it("warns, rather than throws, when that later withdrawal fails", () => {
-		const nativeUpdater = new EventEmitter();
-		const logger = { log: vi.fn(), warn: vi.fn() };
-		watchSquirrelWhilePaused({
-			nativeUpdater,
-			isPaused: () => true,
+	it("hands the updater a withdrawal that says what it did, or throws", () => {
+		const logger = { log: vi.fn() };
+		const present = launchd();
+		const withdraw = watchSquirrelWhilePaused({
+			nativeUpdater: new EventEmitter(),
+			onSquirrelStaged: vi.fn(),
+			logger,
+			execPath,
+			runCommand: present.runCommand,
+		});
+		withdraw();
+		expect(present.isLoaded()).toBe(false);
+		expect(logger.log).toHaveBeenLastCalledWith(
+			"[AutoUpdater] Withdrew the staged install; it will not install on quit"
+		);
+		withdraw();
+		expect(logger.log).toHaveBeenLastCalledWith(
+			"[AutoUpdater] No staged install to withdraw"
+		);
+
+		const stuck = watchSquirrelWhilePaused({
+			nativeUpdater: new EventEmitter(),
+			onSquirrelStaged: vi.fn(),
 			logger,
 			execPath,
 			runCommand: launchd({ stuck: true }).runCommand,
 		});
-		expect(() => nativeUpdater.emit("update-downloaded")).not.toThrow();
-		expect(logger.warn).toHaveBeenCalledWith(
-			"[AutoUpdater] Could not withdraw the staged install:",
+		expect(stuck).toThrow(
 			`${label} is still loaded, so the update would install when QCut quits`
 		);
 	});
