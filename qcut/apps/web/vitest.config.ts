@@ -18,6 +18,7 @@ export default defineConfig({
 		},
 		globalSetup: path.resolve(rootDir, "src/test/global-setup.ts"),
 		setupFiles: [
+			path.resolve(rootDir, "src/test/setup-electron-log.ts"),
 			path.resolve(rootDir, "src/test/preload-polyfills.ts"),
 			path.resolve(rootDir, "src/test/setup-radix-patches.ts"),
 			path.resolve(rootDir, "src/test/setup.ts"),
