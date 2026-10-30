@@ -879,17 +879,20 @@ export function setupClaudeProjectBridge(): void {
 
 	// Respond to stats request (must forward requestId for main process matching)
 	projectAPI.onStatsRequest(async (projectId: string, requestId: string) => {
-		// Another project than the loaded one is counted as storage holds it (N23).
-		const stored =
-			projectId && !isLoadedProject(projectId)
-				? await loadStoredProjectView({ projectId }).catch(() => null)
-				: null;
-		const project = stored
-			? stored.project
+		// Another project than the loaded one is counted as storage holds it
+		// (N23); one storage cannot give has no stats, never the open one's.
+		const named = Boolean(projectId) && !isLoadedProject({ projectId });
+		const stored = named
+			? await loadStoredProjectView({ projectId }).catch(() => null)
+			: null;
+		const project = named
+			? stored?.project
 			: useProjectStore.getState().activeProject;
-		const tracks = stored ? stored.tracks : useTimelineStore.getState().tracks;
-		const mediaItems = stored
-			? stored.media
+		const tracks = named
+			? (stored?.tracks ?? [])
+			: useTimelineStore.getState().tracks;
+		const mediaItems = named
+			? (stored?.media ?? [])
 			: useMediaStore.getState().mediaItems;
 
 		// Count media by type
