@@ -20,9 +20,21 @@ export interface UpdateRecord {
 /** The response header carrying the last update. */
 export const LAST_UPDATE_HEADER = "x-qcut-last-update";
 
-/** `from=…; to=…; at=…; notes=…` (all ASCII). */
+/**
+ * `from=…; to=…; at=…; notes=…`, each value URI-encoded: a header takes only
+ * plain characters, and a hand-edited record must not break every answer.
+ */
 export function formatLastUpdateHeader(record: UpdateRecord): string {
-	return `from=${record.from}; to=${record.to}; at=${record.at}; notes=${record.releaseNotes}`;
+	const field = (value: string) => encodeURIComponent(String(value));
+	return `from=${field(record.from)}; to=${field(record.to)}; at=${field(record.at)}; notes=${field(record.releaseNotes)}`;
+}
+
+function decodeField(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
 }
 
 /** The header back as a record; undefined when it is not one. */
@@ -40,10 +52,12 @@ export function parseLastUpdateHeader(
 			);
 		}
 	}
-	const from = fields.get("from");
-	const to = fields.get("to");
-	const at = fields.get("at");
-	const releaseNotes = fields.get("notes");
+	const [from, to, at, releaseNotes] = ["from", "to", "at", "notes"].map(
+		(name) => {
+			const value = fields.get(name);
+			return value ? decodeField(value) : undefined;
+		}
+	);
 	return from && to && at && releaseNotes
 		? { from, to, at, releaseNotes }
 		: undefined;
