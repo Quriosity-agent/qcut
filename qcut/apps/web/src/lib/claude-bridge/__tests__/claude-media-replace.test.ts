@@ -199,6 +199,15 @@ describe("replacing a clip's media", () => {
 		expect(replace({ mediaId: "v2", trimStart: -1 }).error).toBe(
 			"trimStart must be a number of seconds, 0 or more"
 		);
+		media.items.push({
+			id: "song",
+			name: "score.mp3",
+			type: "audio",
+			duration: 30,
+		});
+		expect(replace({ mediaId: "song" }).error).toBe(
+			"score.mp3 is audio; this clip's media is a picture, so it takes video or an image"
+		);
 		expect(clip()).toEqual(shot);
 	});
 });
