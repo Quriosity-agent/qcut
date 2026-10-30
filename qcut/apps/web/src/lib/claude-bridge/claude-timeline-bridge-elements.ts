@@ -17,6 +17,7 @@ import {
 } from "@/lib/color/color-settings-merge";
 import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
+import { mediaReplacementFromPatch } from "./claude-media-replace";
 import { buildLegacyAudioFields } from "@/lib/audio/audio-properties";
 import { resolveClaudePlacement } from "./claude-placement";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
@@ -181,6 +182,9 @@ const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
 		"filterStack",
 		"color",
 		"adjustments",
+		// Replacing the source in place (N24): claude-media-replace.ts.
+		"mediaId",
+		"sourceDuration",
 	]),
 	adjustment: new Set(["name", "opacity", "color", "adjustments", "masks"]),
 	markdown: new Set(["content"]),
@@ -367,6 +371,14 @@ export const applyElementChanges = ({
 		if (adjustmentsPatch !== undefined) {
 			assertAdjustmentsPatchInRange({ patch: adjustmentsPatch });
 		}
+		const replacement =
+			element.type === "media"
+				? mediaReplacementFromPatch({
+						element,
+						track,
+						changes: changes as Record<string, unknown>,
+					})
+				: undefined;
 
 		// The move goes first because the store may refuse it (a locked track
 		// or an occupied span); a refused move must fail the update before any
@@ -402,9 +414,11 @@ export const applyElementChanges = ({
 			});
 		}
 
+		// A replacement sets its own trims from the new media's length.
 		if (
-			typeof changes.trimStart === "number" ||
-			typeof changes.trimEnd === "number"
+			!replacement &&
+			(typeof changes.trimStart === "number" ||
+				typeof changes.trimEnd === "number")
 		) {
 			timelineStore.updateElementTrim(
 				track.id,
@@ -505,7 +519,10 @@ export const applyElementChanges = ({
 				);
 			}
 
-			const mediaUpdates: Record<string, unknown> = { ...visualUpdates };
+			const mediaUpdates: Record<string, unknown> = {
+				...visualUpdates,
+				...replacement,
+			};
 			if (typeof changes.name === "string" && changes.name.trim()) {
 				mediaUpdates.name = changes.name.trim();
 			}
