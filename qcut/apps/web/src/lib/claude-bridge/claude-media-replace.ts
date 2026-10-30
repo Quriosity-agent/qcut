@@ -1,7 +1,10 @@
 import { useMediaStore } from "@/stores/media/media-store";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { resolveMediaIdForBatchElement } from "./claude-media-resolve";
-import { mediaKindMismatch } from "@/lib/media/media-replace-kind";
+import {
+	clipMediaKind,
+	mediaKindMismatch,
+} from "@/lib/media/media-replace-kind";
 
 /** How far new media may fall short of the clip's out-point and still fit. */
 const LENGTH_TOLERANCE_SECONDS = 0.001;
@@ -55,11 +58,14 @@ export function planMediaReplacement({
 	mediaId,
 	sourceDuration,
 	trimStart = element.trimStart,
+	trackType = "media",
 }: {
 	element: MediaElement;
 	mediaId: string;
 	sourceDuration?: number;
 	trimStart?: number;
+	/** The clip's lane: a clip on an audio lane plays sound. */
+	trackType?: string;
 }): MediaReplacement {
 	const { mediaItems } = useMediaStore.getState();
 	const resolvedId = resolveMediaIdForBatchElement({ element: { mediaId } });
@@ -81,13 +87,11 @@ export function planMediaReplacement({
 		);
 	}
 	const previous = mediaItems.find((item) => item.id === element.mediaId);
-	const mismatch = previous
-		? mediaKindMismatch({
-				current: previous.type,
-				next: media.type,
-				nextName: media.name,
-			})
-		: undefined;
+	const mismatch = mediaKindMismatch({
+		current: clipMediaKind({ trackType, mediaType: previous?.type }),
+		next: media.type,
+		nextName: media.name,
+	});
 	if (mismatch) throw new Error(mismatch);
 	// A renamed clip keeps its name; one still named after its media follows
 	// the new media, as the editor's own Replace does.
@@ -170,5 +174,11 @@ export function mediaReplacementFromPatch({
 	) {
 		throw new Error("trimStart must be a number of seconds, 0 or more");
 	}
-	return planMediaReplacement({ element, mediaId, sourceDuration, trimStart });
+	return planMediaReplacement({
+		element,
+		mediaId,
+		sourceDuration,
+		trimStart,
+		trackType: track.type,
+	});
 }
