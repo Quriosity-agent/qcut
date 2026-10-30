@@ -19,6 +19,7 @@ import { useTranslation } from "@/lib/i18n";
 const EMPTY_PREFERENCES: PlatformUpdatePreferences = {
 	automaticUpdates: false,
 	maxAutomaticDownloadBytes: 0,
+	paused: false,
 };
 
 function statusLabel({
@@ -28,6 +29,14 @@ function statusLabel({
 	state: PlatformUpdateState;
 	t: ReturnType<typeof useTranslation>["t"];
 }): string {
+	if (state.paused && state.version) {
+		if (state.phase === "ready") {
+			return t("updates.pausedReady", { version: state.version });
+		}
+		if (state.phase === "available") {
+			return t("updates.pausedAvailable", { version: state.version });
+		}
+	}
 	switch (state.phase) {
 		case "checking":
 			return t("updates.checking");
@@ -54,6 +63,7 @@ function statusLabel({
 export function UpdateSettingsSection() {
 	const { t } = useTranslation();
 	const automaticUpdatesId = useId();
+	const pauseUpdatesId = useId();
 	const {
 		state,
 		available: hasUpdates,
@@ -89,6 +99,15 @@ export function UpdateSettingsSection() {
 				preferences: { automaticUpdates: enabled },
 			});
 			setPreferences(saved);
+		},
+		[hasUpdates, savePreferences]
+	);
+
+	const setPaused = useCallback(
+		async ({ paused }: { paused: boolean }) => {
+			if (!hasUpdates) return;
+			setPreferences((current) => ({ ...current, paused }));
+			setPreferences(await savePreferences({ preferences: { paused } }));
 		},
 		[hasUpdates, savePreferences]
 	);
@@ -159,6 +178,21 @@ export function UpdateSettingsSection() {
 					onCheckedChange={(enabled) => void setAutomaticUpdates({ enabled })}
 				/>
 			</div>
+			<div className="flex items-center justify-between gap-3 py-2">
+				<label htmlFor={pauseUpdatesId} className="min-w-0">
+					<span className="block text-sm">{t("updates.pause")}</span>
+					<span className="block text-xs text-muted-foreground">
+						{t("updates.pauseDescription")}
+					</span>
+				</label>
+				<Switch
+					id={pauseUpdatesId}
+					checked={preferences.paused}
+					disabled={!hasUpdates}
+					onCheckedChange={(paused) => void setPaused({ paused })}
+					data-testid="app-update-pause-switch"
+				/>
+			</div>
 
 			{state.phase === "downloading" && (
 				<div
@@ -195,7 +229,7 @@ export function UpdateSettingsSection() {
 				</Button>
 			)}
 
-			{state.phase === "ready" && (
+			{state.phase === "ready" && !preferences.paused && (
 				<Button
 					type="button"
 					variant="secondary"
