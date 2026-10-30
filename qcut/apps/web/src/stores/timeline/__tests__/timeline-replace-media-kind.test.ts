@@ -59,13 +59,13 @@ import { mediaKindMismatch } from "@/lib/media/media-replace-kind";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineTrack } from "@/types/timeline";
 
-function setClip(mediaId: string) {
+function setClip(mediaId: string, trackType: "media" | "audio" = "media") {
 	const tracks: TimelineTrack[] = [
 		{
 			id: "main",
 			name: "主轨道",
-			type: "media",
-			isMain: true,
+			type: trackType,
+			isMain: trackType === "media",
 			elements: [
 				{
 					id: "clip",
@@ -127,5 +127,34 @@ describe("what can replace a clip's media", () => {
 			error:
 				"still.png is a picture; this clip's media is audio, so it takes audio",
 		});
+	});
+
+	// Separate Audio leaves the video's mediaId on the detached sound.
+	it("lets a detached sound on an audio lane take another sound", async () => {
+		setClip("shot", "audio");
+		const sound = new File(["x"], "take2.wav", { type: "audio/wav" });
+		await useTimelineStore
+			.getState()
+			.replaceElementMedia("main", "clip", sound);
+		expect(media.addMediaItem).toHaveBeenCalledTimes(1);
+
+		const picture = new File(["x"], "b-roll.mp4", { type: "video/mp4" });
+		await expect(
+			useTimelineStore.getState().replaceElementMedia("main", "clip", picture)
+		).resolves.toEqual({
+			success: false,
+			error:
+				"b-roll.mp4 is a picture; this clip's media is audio, so it takes audio",
+		});
+	});
+
+	it("still keeps a picture clip a picture when its media is gone", async () => {
+		setClip("deleted-media");
+		const sound = new File(["x"], "score.mp3", { type: "audio/mpeg" });
+		const result = await useTimelineStore
+			.getState()
+			.replaceElementMedia("main", "clip", sound);
+		expect(result.success).toBe(false);
+		expect(media.addMediaItem).not.toHaveBeenCalled();
 	});
 });
