@@ -10,6 +10,9 @@ export {
 	DEFAULT_SUBTITLE_STYLE,
 	resolveSubtitleStyle,
 	resolveSecondaryLineStyle,
+	captionFontWeight,
+	cssFontWeight,
+	resolveCaptionShadows,
 	hexToRgba,
 	rgbToASSColor,
 	assColorToRgb,
@@ -18,10 +21,38 @@ export {
 	assAlignmentToTextAlign,
 	CAPTION_ANIMATION_TYPES,
 	resolveCaptionAnimation,
+	resolveCaptionFades,
 	getCaptionAnimationState,
 } from "@qcut/editor-core";
 
-import { hexToRgba } from "@qcut/editor-core";
+import {
+	captionFontWeight,
+	cssFontWeight,
+	hexToRgba,
+	resolveCaptionShadows,
+} from "@qcut/editor-core";
+
+/**
+ * A caption's soft shadows as CSS `text-shadow` (N25), or undefined when it
+ * keeps the single shadow; "none" for an empty list.
+ */
+export function captionShadowsToCSS({
+	style,
+	canvasScale = 1,
+}: {
+	style: SubtitleStyle;
+	canvasScale?: number;
+}): string | undefined {
+	const shadows = resolveCaptionShadows(style);
+	if (!shadows) return undefined;
+	if (shadows.length === 0) return "none";
+	return shadows
+		.map(
+			(shadow) =>
+				`${shadow.x * canvasScale}px ${shadow.y * canvasScale}px ${shadow.blur * canvasScale}px ${hexToRgba(shadow.color, shadow.opacity)}`
+		)
+		.join(", ");
+}
 
 /** Convert SubtitleStyle to CSS properties for DOM-based rendering */
 export function subtitleStyleToCSS({
@@ -31,7 +62,7 @@ export function subtitleStyleToCSS({
 	style: SubtitleStyle;
 	canvasScale?: number;
 }): React.CSSProperties {
-	const fontWeight = style.bold ? "bold" : "normal";
+	const fontWeight = cssFontWeight(captionFontWeight(style));
 	const fontStyle = style.italic ? "italic" : "normal";
 	const textDecoration = style.underline ? "underline" : "none";
 
@@ -50,7 +81,11 @@ export function subtitleStyleToCSS({
 		fontWeight,
 		fontStyle,
 		textDecoration,
-		textShadow: `${style.shadowOffset.x * canvasScale}px ${style.shadowOffset.y * canvasScale}px ${2 * canvasScale}px ${style.shadowColor}`,
+		// Soft shadows are painted on an underlay under every line instead
+		// (captions-display.tsx), as the exports draw them.
+		textShadow: resolveCaptionShadows(style)
+			? "none"
+			: `${style.shadowOffset.x * canvasScale}px ${style.shadowOffset.y * canvasScale}px ${2 * canvasScale}px ${style.shadowColor}`,
 		// Outline behind the glyph (double width, painted first), as exported.
 		WebkitTextStroke:
 			style.outlineWidth > 0
