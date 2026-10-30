@@ -60,8 +60,11 @@ import {
 import { loadExportVideo } from "./export-video-load";
 import { stripMarkdownSyntax } from "@/lib/markdown";
 import {
+	captionFontWeight,
+	cssFontWeight,
 	getCaptionAnimationState,
 	hexToRgba,
+	resolveCaptionShadows,
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 } from "@/lib/captions/subtitle-style";
@@ -468,7 +471,8 @@ async function renderElement(
 			captionStackOffset({
 				tracks: context.tracks,
 				element: element as CaptionElement,
-			})
+			}),
+			context.fps
 		);
 	} else if (element.type === "markdown") {
 		renderMarkdownElement({
@@ -1453,7 +1457,9 @@ export function renderCaptionElement(
 	element: CaptionElement,
 	currentTime = element.startTime,
 	/** Distance from the edge taken up by captions stacked under this one. */
-	stackOffset = 0
+	stackOffset = 0,
+	/** The project frame rate, for the caption's fade frames. */
+	fps?: number
 ): void {
 	if (!element.text || !element.text.trim()) return;
 
@@ -1469,12 +1475,14 @@ export function renderCaptionElement(
 	) {
 		return;
 	}
-	const fontWeight = style.bold ? "bold" : "normal";
+	const fontWeight = cssFontWeight(captionFontWeight(style));
 	const fontStyle = style.italic ? "italic" : "normal";
 	const animation = getCaptionAnimationState({
 		style,
 		startTime: element.startTime,
 		currentTime,
+		endTime: element.startTime + element.duration,
+		fps,
 	});
 
 	ctx.save();
@@ -1497,12 +1505,14 @@ export function renderCaptionElement(
 		font,
 		fontSize: style.fontSize,
 		color: style.fontColor,
+		letterSpacing: style.letterSpacing,
 	}));
 	const secondaryText = element.secondaryText?.trim();
 	if (secondaryText) {
 		const secondary = resolveSecondaryLineStyle(style);
-		const secondaryFont = `${secondary.italic ? "italic" : "normal"} ${secondary.bold ? "bold" : "normal"} ${secondary.fontSize}px ${canvasFontFamily(secondary.fontFamily)}`;
+		const secondaryFont = `${secondary.italic ? "italic" : "normal"} ${cssFontWeight(secondary.fontWeight)} ${secondary.fontSize}px ${canvasFontFamily(secondary.fontFamily)}`;
 		ctx.font = secondaryFont;
+		ctx.letterSpacing = `${secondary.letterSpacing}px`;
 		for (const text of wrapTextForCanvas({
 			ctx,
 			text: secondaryText,
@@ -1513,9 +1523,15 @@ export function renderCaptionElement(
 				font: secondaryFont,
 				fontSize: secondary.fontSize,
 				color: secondary.fontColor,
+				letterSpacing: secondary.letterSpacing,
 			});
 		}
 	}
+	/** Sets a row's font and spacing on the context, to measure or draw it. */
+	const setRowFont = (row: (typeof rows)[number]) => {
+		ctx.font = row.font;
+		ctx.letterSpacing = `${row.letterSpacing}px`;
+	};
 	const totalHeight = rows.reduce(
 		(sum, row) => sum + row.fontSize * style.lineSpacing,
 		0
@@ -1550,7 +1566,7 @@ export function renderCaptionElement(
 	if (style.bgOpacity > 0) {
 		const maxLineWidth = Math.max(
 			...rows.map((row) => {
-				ctx.font = row.font;
+				setRowFont(row);
 				return ctx.measureText(row.text).width;
 			})
 		);
@@ -1570,13 +1586,38 @@ export function renderCaptionElement(
 		);
 	}
 
-	// Draw each line
+	// Each line's centre: its box is its font size × the line spacing.
 	let lineTop = animatedY - totalHeight / 2;
-	for (const row of rows) {
+	const placed = rows.map((row) => {
 		const lineHeight = row.fontSize * style.lineSpacing;
 		const y = lineTop + lineHeight / 2;
 		lineTop += lineHeight;
-		ctx.font = row.font;
+		return { row, y };
+	});
+
+	// Soft shadows go under every line: each a blurred copy of the letters
+	// (and their outline) in its colour, as the preview's text-shadow is.
+	const softShadows = resolveCaptionShadows(style);
+	for (const shadow of softShadows ?? []) {
+		const color = hexToRgba(shadow.color, shadow.opacity);
+		ctx.filter = shadow.blur > 0 ? `blur(${shadow.blur / 2}px)` : "none";
+		for (const { row, y } of placed) {
+			setRowFont(row);
+			if (style.outlineWidth > 0) {
+				ctx.strokeStyle = color;
+				ctx.lineWidth = style.outlineWidth * 2;
+				ctx.lineJoin = "round";
+				ctx.strokeText(row.text, animatedX + shadow.x, y + shadow.y);
+			}
+			ctx.fillStyle = color;
+			ctx.fillText(row.text, animatedX + shadow.x, y + shadow.y);
+		}
+		ctx.filter = "none";
+	}
+
+	// Draw each line
+	for (const { row, y } of placed) {
+		setRowFont(row);
 
 		// Draw outline/stroke
 		if (style.outlineWidth > 0) {
@@ -1587,7 +1628,10 @@ export function renderCaptionElement(
 		}
 
 		// Draw shadow
-		if (style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0) {
+		if (
+			!softShadows &&
+			(style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0)
+		) {
 			ctx.fillStyle = style.shadowColor;
 			ctx.fillText(
 				row.text,
