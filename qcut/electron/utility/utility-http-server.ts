@@ -42,6 +42,7 @@ import {
 import { registerSnapshotRoutes } from "../claude/http/claude-http-snapshot-routes.js";
 import { registerPlaybackDiagnosticsRoutes } from "../claude/http/claude-http-playback-routes.js";
 import { registerAgentPointerRoutes } from "../claude/http/claude-http-pointer-routes.js";
+import { registerUpdateRoutes } from "../claude/http/claude-http-update-routes.js";
 import {
 	handleClaudeEventsStreamRequest,
 	registerClaudeEventsRoutes,
@@ -51,6 +52,7 @@ import {
 	registerClaudeConsoleRoutes,
 } from "../claude/http/claude-http-console-routes.js";
 import type {
+	ClaudeUpdateStatus,
 	EditorEvent,
 	EditorStateSnapshot,
 	Transaction,
@@ -582,6 +584,14 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	registerPlaybackDiagnosticsRoutes(router, {
 		pullSnapshot: () => requestFromMain("playback-diagnostics:snapshot", {}),
 		resetCollector: () => requestFromMain("playback-diagnostics:reset", {}),
+	});
+	registerUpdateRoutes(router, {
+		getStatus: async () =>
+			(await requestFromMain("updates:status", {})) as ClaudeUpdateStatus,
+		setPaused: async (paused) =>
+			(await requestFromMain("updates:set-paused", {
+				paused,
+			})) as ClaudeUpdateStatus,
 	});
 	registerAgentPointerRoutes(router, {
 		getState: async (request) =>
