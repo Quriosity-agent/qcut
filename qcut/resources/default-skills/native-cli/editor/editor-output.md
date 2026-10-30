@@ -112,8 +112,10 @@ Only a verified candidate replaces the destination file (`check` publishes
 its single encode). The meter's 0.1 dB display precision is handled
 conservatively; a displayed peak exactly at the ceiling is not accepted
 without additional headroom. `editor mix loudness` (native) shows which
-stretches an export would lower before you export (see
-[editor-mix.md](editor-mix.md)).
+stretches an export with the default `local` correction would lower, before
+you export (see [editor-mix.md](editor-mix.md)). Its measuring render always
+corrects locally: an export with `whole` lowers the whole mix instead, and
+one with `check` lowers nothing.
 
 `export:status` and the final `--poll` result include `audioValidation` in both
 plain and JSON output. For example:
@@ -127,20 +129,21 @@ plain and JSON output. For example:
     "oversampleFactor": 4,
     "encodeAttempts": 2,
     "peakCorrection": "local",
-    "correctedSeconds": 0.39,
+    "correctedSeconds": 0.47,
     "maxCorrectionDb": 2.25,
     "corrections": [
-      { "start": 12.352, "end": 12.548, "depthDb": 2.25 },
-      { "start": 87.152, "end": 87.348, "depthDb": 1.85 }
+      { "start": 12.332, "end": 12.568, "depthDb": 2.25 },
+      { "start": 87.132, "end": 87.368, "depthDb": 1.85 }
     ]
   }
 }
 ```
 
 `corrections` lists each stretch that was lowered, in seconds from the start
-of the export, with how far it came down at its deepest (`depthDb`; stretches
-whose 20 ms ramps touch are one entry). `correctedSeconds` is their total
-length and `maxCorrectionDb` the deepest of them; all are empty or 0 when
+of the export, from where the level starts to ease down to where it is back
+(its 20 ms ramps included), with how far it came down at its deepest
+(`depthDb`; stretches whose ramps touch are one entry). `correctedSeconds` is
+their total length and `maxCorrectionDb` the deepest of them; all are empty or 0 when
 the first encode passed or with `check`. With `whole`, `corrections` is one
 stretch covering the whole export. Earlier versions reported the whole-mix
 reduction as `attenuationDb`.
