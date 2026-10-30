@@ -24,6 +24,7 @@ import {
 	getRecord,
 	getString,
 	type JsonValue,
+	validationIssue,
 } from "./runtime-json.js";
 import { createAllowedKeySet } from "./snapshot-runtime-helpers.js";
 
@@ -77,6 +78,38 @@ const SUBTITLE_SHADOW_KEYS = createAllowedKeySet<CaptionShadow>({
 const SUBTITLE_SHADOW_OFFSET_KEYS = new Set(["x", "y"]);
 const SUBTITLE_POSITION_KEYS = new Set(["align", "x", "y"]);
 
+/** A number in [min, max] (a whole one when `integer`), or undefined if allowed. */
+function assertNumberInRange({
+	path,
+	value,
+	min,
+	max,
+	integer = false,
+	optional = false,
+}: {
+	path: string;
+	value: JsonValue | undefined;
+	min: number;
+	max: number;
+	integer?: boolean;
+	optional?: boolean;
+}): void {
+	if (value === undefined && optional) return;
+	if (
+		typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= min &&
+		value <= max &&
+		(!integer || Number.isInteger(value))
+	) {
+		return;
+	}
+	throw validationIssue({
+		message: `Expected ${integer ? "a whole number" : "a number"} from ${min} to ${max}.`,
+		path,
+	});
+}
+
 function validateSubtitleShadows({
 	path,
 	value,
@@ -92,12 +125,22 @@ function validateSubtitleShadows({
 			path: shadowPath,
 			record: shadow,
 		});
+		// The editor stores every field of a shadow.
 		getString({ path: `${shadowPath}.color`, value: shadow.color });
-		for (const key of ["opacity", "blur", "x", "y"]) {
-			assertOptionalFiniteNumber({
-				path: `${shadowPath}.${key}`,
-				value: shadow[key],
-			});
+		assertNumberInRange({
+			path: `${shadowPath}.opacity`,
+			value: shadow.opacity,
+			min: 0,
+			max: 1,
+		});
+		assertNumberInRange({
+			path: `${shadowPath}.blur`,
+			value: shadow.blur,
+			min: 0,
+			max: 200,
+		});
+		for (const key of ["x", "y"]) {
+			getFiniteNumber({ path: `${shadowPath}.${key}`, value: shadow[key] });
 		}
 	}
 }
@@ -159,11 +202,23 @@ export function validateSubtitleStyle({
 			value: style[key],
 		});
 	}
-	// Film-subtitle fields (N25), absent on older captions.
-	for (const key of ["fontWeight", "fadeInFrames", "fadeOutFrames"]) {
-		assertOptionalFiniteNumber({
+	// Film-subtitle fields (N25), absent on older captions; the same ranges
+	// the editor API accepts.
+	assertNumberInRange({
+		path: `${stylePath}.fontWeight`,
+		value: style.fontWeight,
+		min: 100,
+		max: 900,
+		optional: true,
+	});
+	for (const key of ["fadeInFrames", "fadeOutFrames"]) {
+		assertNumberInRange({
 			path: `${stylePath}.${key}`,
 			value: style[key],
+			min: 0,
+			max: 600,
+			integer: true,
+			optional: true,
 		});
 	}
 	if (style.shadows !== undefined) {
@@ -213,12 +268,19 @@ export function validateSubtitleStyle({
 				getString({ path: `${secondaryPath}.${key}`, value: secondary[key] });
 			}
 		}
-		for (const key of ["fontSize", "letterSpacing", "fontWeight"]) {
+		for (const key of ["fontSize", "letterSpacing"]) {
 			assertOptionalFiniteNumber({
 				path: `${secondaryPath}.${key}`,
 				value: secondary[key],
 			});
 		}
+		assertNumberInRange({
+			path: `${secondaryPath}.fontWeight`,
+			value: secondary.fontWeight,
+			min: 100,
+			max: 900,
+			optional: true,
+		});
 		for (const key of ["bold", "italic"]) {
 			assertOptionalBoolean({
 				path: `${secondaryPath}.${key}`,
