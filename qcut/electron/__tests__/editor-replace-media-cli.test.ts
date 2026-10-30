@@ -2,7 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
+import {
+	type EditorApiClient,
+	EditorApiError,
+} from "../native-pipeline/editor/editor-api-client.js";
 import { timelineReplaceMedia } from "../native-pipeline/editor/editor-handlers-replace-media.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
 import { getCommand } from "../native-pipeline/cli/command-registry.js";
@@ -217,14 +220,25 @@ describe("editor timeline replace-media", () => {
 
 	it("takes back the file it imported when the editor refuses the swap", async () => {
 		const { client, patch, remove } = fakeClient();
-		patch.mockRejectedValueOnce(new Error("05_v2.mp4 is 3.000 s long"));
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
 		await expect(
 			timelineReplaceMedia(client, options({ source: shotFile() }))
 		).rejects.toThrow("05_v2.mp4 is 3.000 s long");
 		expect(remove).toHaveBeenCalledWith("/api/claude/media/p1/v2");
 
+		// After a timeout the editor may still make the swap: the file stays.
+		patch.mockRejectedValueOnce(
+			new EditorApiError("Timeline element update timed out", 504)
+		);
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow("timed out");
+		expect(remove).toHaveBeenCalledTimes(1);
+
 		// Media that was in the project already stays.
-		patch.mockRejectedValueOnce(new Error("too short"));
+		patch.mockRejectedValueOnce(new EditorApiError("too short", 409));
 		await expect(
 			timelineReplaceMedia(client, options({ mediaId: "v2" }))
 		).rejects.toThrow("too short");
