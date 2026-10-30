@@ -170,6 +170,17 @@ describe("project stats of a project that is not open", () => {
 		);
 	});
 
+	it("counts the open project from the editor", async () => {
+		setupClaudeProjectBridge();
+		const [onStats] = project.onStatsRequest.mock.calls[0];
+		await onStats("open", "stats-open");
+		expect(storage.loadProject).not.toHaveBeenCalled();
+		expect(project.sendStatsResponse).toHaveBeenCalledWith(
+			expect.objectContaining({ trackCount: 1, elementCount: 0 }),
+			"stats-open"
+		);
+	});
+
 	it("counts nothing for a project storage does not have, not the open one", async () => {
 		storage.loadProject.mockResolvedValueOnce(null);
 		setupClaudeProjectBridge();
