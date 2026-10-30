@@ -20,6 +20,14 @@ puts several clips back should move the ones going left in time order and the
 ones going right in reverse, or a clip runs into a neighbour that has not
 moved yet.
 
+A project the editor does not have open is read as it was last saved, and the
+editor stays on the project it has open: the answer has `"readFromStorage":
+true`. The open project is read live, unsaved changes included. The same goes
+for `timeline info`, `track list`, `sticker list`, `export captions`,
+`project stats`, `project summary` and `mix export`; editing commands still
+need the project open (`editor:navigator:open`). An unknown project id
+answers 404.
+
 ### Import timeline
 
 ```bash
