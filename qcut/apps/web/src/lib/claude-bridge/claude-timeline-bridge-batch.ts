@@ -26,6 +26,7 @@ import type {
 } from "./claude-timeline-bridge";
 import { applyElementChanges } from "./claude-timeline-bridge-elements";
 import { setupArrangeHandler } from "./claude-timeline-bridge-arrange";
+import { beginHistoryStep } from "./claude-history-step";
 import { resolveClaudePlacement } from "./claude-placement";
 import { parseClaudeMediaAudioChanges } from "./claude-media-audio-changes";
 import {
@@ -183,7 +184,7 @@ export function setupBatchHandlers({
 				);
 
 				assertTimelineProjectActive({ projectId });
-				timelineStore.pushHistory();
+				const historyStep = beginHistoryStep();
 
 				const added: ClaudeBatchAddResponse["added"] = [];
 				let failedCount = 0;
@@ -521,6 +522,7 @@ export function setupBatchHandlers({
 						});
 					}
 				}
+				historyStep.finish();
 
 				claudeAPI.sendBatchAddElementsResponse(data.requestId, {
 					added,
@@ -579,8 +581,7 @@ export function setupBatchHandlers({
 					return;
 				}
 
-				useTimelineStore.getState().pushHistory();
-
+				const historyStep = beginHistoryStep();
 				const results: ClaudeBatchUpdateResponse["results"] = [];
 				let updatedCount = 0;
 				let failedCount = 0;
@@ -616,6 +617,7 @@ export function setupBatchHandlers({
 						error: error ?? `Element not found: ${update.elementId}`,
 					});
 				}
+				historyStep.finish();
 
 				await useTimelineStore.getState().saveImmediate();
 				claudeAPI.sendBatchUpdateElementsResponse(data.requestId, {
@@ -680,7 +682,7 @@ export function setupBatchHandlers({
 				}
 
 				const timelineStore = useTimelineStore.getState();
-				timelineStore.pushHistory();
+				const historyStep = beginHistoryStep();
 
 				let deletedCount = 0;
 				let failedCount = 0;
@@ -732,6 +734,7 @@ export function setupBatchHandlers({
 						});
 					}
 				}
+				historyStep.finish();
 
 				// An emptied track goes with its last element; say so, since a
 				// later add naming that track id is refused.
