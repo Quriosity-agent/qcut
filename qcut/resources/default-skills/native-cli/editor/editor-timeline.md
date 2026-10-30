@@ -391,6 +391,55 @@ Each item reports whether it applied. An item whose new `startTime` is
 refused (occupied span, locked track) fails with the reason, and none of its
 other changes are applied.
 
+### Replace a clip's media
+
+`replace-media` gives a media clip another file, or another media item of the
+project, in one step. The clip keeps its track, start, length on the
+timeline, in-point (`trimStart`) and every setting (volume, audio, colour,
+keyframes, effects); only its source and the out trim that follows from the
+new media's length change. A clip still named after its media takes the new
+media's name; a renamed clip keeps its own. One undo step restores the old
+media.
+
+```bash
+# Import the new render and put it in place of the old one.
+qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
+  --source ~/shots/05_v2.mp4 --json
+
+# Media already in the project, read from its start instead of the clip's
+# current in-point.
+qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
+  --media-id <media-id> --trim-start 0 --json
+```
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--project-id` | string | Project ID (required) |
+| `--element-id` | string | The media clip (required) |
+| `--source` | string | File to import and use (or `--media-id`) |
+| `--media-id` | string | Media already in the project (or `--source`) |
+| `--trim-start` | number | Seconds into the new media where the clip starts reading it (default: the clip's current in-point) |
+
+The answer is the clip as the timeline now holds it (`mediaId`,
+`sourceName`, `startTime`, `endTime`, `trimStart`, `trimEnd`), plus the
+imported media with `--source`. The clip stays as it was, and the command
+fails with the reason, when:
+
+- the new media ends before the clip's out-point (`trimStart` plus the
+  clip's span): the error gives both; read it from an earlier point with
+  `--trim-start`, or shorten the clip first;
+- the clip plays something made from its current media (separated stems, a
+  converted voice, a cover, AI-denoised sound, a cutout or mask matte,
+  surface tracking), which would keep using the old file: turn it off first;
+- the clip is on a locked track, or is a compound or multicam clip;
+- the editor is still loading a file it was just given: the error names the
+  imported media's id, to run again with `--media-id`.
+
+A still image takes the clip's span with no trims. The same swap is an
+`update-element` patch with `mediaId` (and optionally `trimStart`); a
+`duration`, `trimEnd` or `endTime` in that patch is refused, since they
+follow from the new media.
+
 ### Clip colours
 
 Clips can carry a `colorLabel`: `violet`, `blue`, `green`, `yellow`, `red`,
