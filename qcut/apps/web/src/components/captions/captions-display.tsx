@@ -4,6 +4,8 @@ import type { TranscriptionSegment } from "@/types/captions";
 import type { SubtitleStyle } from "@/types/timeline";
 import type { WordItem } from "@/types/word-timeline";
 import {
+	captionShadowsToCSS,
+	cssFontWeight,
 	getCaptionAnimationState,
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
@@ -23,6 +25,8 @@ interface CaptionsDisplayProps {
 	canvasScale?: number;
 	/** A bilingual caption's second-language line, under the text. */
 	secondaryText?: string;
+	/** The project frame rate, for the caption's fade frames. */
+	fps?: number;
 }
 
 /** Renders active caption text with optional karaoke word highlighting. */
@@ -36,10 +40,12 @@ export function CaptionsDisplay({
 	words,
 	canvasScale = 1,
 	secondaryText,
+	fps,
 }: CaptionsDisplayProps) {
 	const resolved = resolveSubtitleStyle(subtitleStyle);
 	const secondary = resolveSecondaryLineStyle(resolved);
 	const captionCSS = subtitleStyleToCSS({ style: resolved, canvasScale });
+	const softShadows = captionShadowsToCSS({ style: resolved, canvasScale });
 	const karaokeMode = resolved.karaokeMode ?? "none";
 
 	// Find the active caption segment based on current time
@@ -80,6 +86,8 @@ export function CaptionsDisplay({
 		style: resolved,
 		startTime: activeSegment.start,
 		currentTime,
+		endTime: activeSegment.end,
+		fps,
 	});
 	const horizontalAlignMap: Record<SubtitleStyle["textAlign"], string> = {
 		left: "flex-start",
@@ -128,29 +136,81 @@ export function CaptionsDisplay({
 							wordWrap: "break-word",
 							overflowWrap: "break-word",
 							hyphens: "auto",
+							// The shadow underlay sits behind the text, above the box.
+							...(softShadows
+								? { position: "relative", isolation: "isolate" }
+								: {}),
 						}}
 					>
-						{activeSegment.text.trim()}
-						{secondaryText?.trim() ? (
-							// The second line is its own block in the same box, in its
-							// own font; it keeps the caption's line spacing, outline
-							// and shadow, as both exports draw it.
+						{softShadows && softShadows !== "none" ? (
+							// The same lines, see-through, casting the soft shadows:
+							// every shadow lies under every line, as in the exports.
 							<div
-								data-testid="caption-secondary"
+								aria-hidden
+								data-testid="caption-shadows"
 								style={{
-									fontFamily: `${secondary.fontFamily}, sans-serif`,
-									fontSize: `${secondary.fontSize * canvasScale}px`,
-									fontWeight: secondary.bold ? "bold" : "normal",
-									fontStyle: secondary.italic ? "italic" : "normal",
-									color: secondary.fontColor,
+									position: "absolute",
+									inset: 0,
+									zIndex: -1,
+									padding: captionCSS.padding,
+									color: "transparent",
+									WebkitTextStrokeColor: "transparent",
+									textShadow: softShadows,
 								}}
 							>
-								{secondaryText.trim()}
+								{activeSegment.text.trim()}
+								<SecondaryLine
+									text={secondaryText}
+									secondary={secondary}
+									canvasScale={canvasScale}
+									color="transparent"
+								/>
 							</div>
 						) : null}
+						{activeSegment.text.trim()}
+						<SecondaryLine
+							text={secondaryText}
+							secondary={secondary}
+							canvasScale={canvasScale}
+							color={secondary.fontColor}
+						/>
 					</div>
 				)}
 			</div>
+		</div>
+	);
+}
+
+/**
+ * A bilingual caption's second-language line: its own block in the same
+ * box, in its own font, spacing and weight; it keeps the caption's line
+ * spacing, outline and shadows, as both exports draw it.
+ */
+function SecondaryLine({
+	text,
+	secondary,
+	canvasScale,
+	color,
+}: {
+	text?: string;
+	secondary: ReturnType<typeof resolveSecondaryLineStyle>;
+	canvasScale: number;
+	color: string;
+}) {
+	if (!text?.trim()) return null;
+	return (
+		<div
+			data-testid={color === "transparent" ? undefined : "caption-secondary"}
+			style={{
+				fontFamily: `${secondary.fontFamily}, sans-serif`,
+				fontSize: `${secondary.fontSize * canvasScale}px`,
+				fontWeight: cssFontWeight(secondary.fontWeight),
+				fontStyle: secondary.italic ? "italic" : "normal",
+				letterSpacing: `${secondary.letterSpacing * canvasScale}px`,
+				color,
+			}}
+		>
+			{text.trim()}
 		</div>
 	);
 }

@@ -26,6 +26,16 @@ means QCut is running with its window closed (macOS keeps the app alive).
 Editor commands reopen the window themselves and wait until the editor is
 ready, so there is no need to click the Dock icon first.
 
+QCut updates itself. `editor health` gives the running version as releases
+name it (`releaseVersion`, e.g. `2026.10.29.3`; `appVersion` is the package's
+`2026.10.2903`) and the last update it found at launch, `lastUpdate`:
+`{ "from": "2026.10.29.2", "to": "2026.10.29.3", "at": "<first run, ISO>",
+"releaseNotes": "<GitHub release page>" }`. The first editor command after an
+update also says it once on stderr (`[QCut] QCut was updated from … What
+changed: …`); `--json` output on stdout is unchanged. The version that first
+records launches cannot name the one before it, so the notice starts with
+the update after it.
+
 Editor commands are split across these files:
 
 - [editor-media.md](editor-media.md), [editor-timeline.md](editor-timeline.md), [editor-output.md](editor-output.md), [editor-ai.md](editor-ai.md), [editor-state-control.md](editor-state-control.md), [editor-agent.md](editor-agent.md)

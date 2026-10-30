@@ -1080,11 +1080,40 @@ export interface SubtitleStyle {
 	highlightScale?: number;
 	/** The look of a bilingual caption's second-language line (`secondaryText`). */
 	secondary?: CaptionSecondaryStyle;
+	/**
+	 * The face's weight, 100–900 (SemiBold is 600); absent means `bold`'s
+	 * 700 or 400.
+	 */
+	fontWeight?: number;
+	/**
+	 * Soft shadows under the text, drawn in order; present, they replace
+	 * `shadowColor` and `shadowOffset` (`[]` draws none).
+	 */
+	shadows?: CaptionShadow[];
+	/** Frames of linear fade-in from the caption's start, at the project rate. */
+	fadeInFrames?: number;
+	/** Frames of linear fade-out to the caption's end, at the project rate. */
+	fadeOutFrames?: number;
+}
+
+/** One soft shadow under a caption's text. */
+export interface CaptionShadow {
+	color: string;
+	/** 0–1, on top of the text's own opacity. */
+	opacity: number;
+	/**
+	 * Blur radius in canvas pixels, as CSS text-shadow takes it: a Gaussian
+	 * of σ = blur ÷ 2.
+	 */
+	blur: number;
+	/** Offset in canvas pixels; y is down. */
+	x: number;
+	y: number;
 }
 
 /**
  * The second-language line's own look; each field left out is the caption's.
- * Outline, shadow, box, spacing and alignment are always the caption's.
+ * Outline, shadow, box, line spacing and alignment are always the caption's.
  */
 export interface CaptionSecondaryStyle {
 	fontFamily?: string;
@@ -1092,6 +1121,10 @@ export interface CaptionSecondaryStyle {
 	fontColor?: string;
 	bold?: boolean;
 	italic?: boolean;
+	/** Horizontal character spacing in canvas pixels. */
+	letterSpacing?: number;
+	/** 100–900; absent means `bold`'s, else the caption's weight. */
+	fontWeight?: number;
 }
 
 export interface CaptionElement extends BaseTimelineElement {

@@ -11,6 +11,7 @@
  * - Message queue for offline utility process
  */
 
+import { getLastUpdate } from "../update-history.js";
 import {
 	utilityProcess,
 	BrowserWindow,
@@ -544,7 +545,10 @@ async function handleMainRequest(
 		}
 
 		case "get-timeline": {
-			return requestTimelineFromRenderer(win);
+			const { projectId } = data as { projectId?: unknown };
+			return requestTimelineFromRenderer(win, {
+				...(typeof projectId === "string" ? { projectId } : {}),
+			});
 		}
 
 		case "get-selection": {
@@ -1335,6 +1339,7 @@ export function startUtilityProcess(): void {
 		config: {
 			httpPort: runtimeEndpoint.port,
 			appVersion: app.getVersion(),
+			lastUpdate: getLastUpdate(),
 		},
 	});
 }

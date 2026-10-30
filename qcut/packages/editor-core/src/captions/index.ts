@@ -7,6 +7,9 @@ export {
 	DEFAULT_SUBTITLE_STYLE,
 	resolveSubtitleStyle,
 	resolveSecondaryLineStyle,
+	captionFontWeight,
+	cssFontWeight,
+	resolveCaptionShadows,
 	hexToRgba,
 	rgbToASSColor,
 	assColorToRgb,
@@ -18,6 +21,8 @@ export {
 export {
 	CAPTION_ANIMATION_TYPES,
 	resolveCaptionAnimation,
+	resolveCaptionFades,
+	captionAssFade,
 	getCaptionAnimationState,
 	type CaptionAnimationState,
 } from "./caption-animation.js";

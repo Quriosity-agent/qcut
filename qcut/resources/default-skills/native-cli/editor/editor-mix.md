@@ -44,7 +44,9 @@ Every change answers with what the editor now holds.
 - Solo: once any track is soloed, only soloed tracks are heard. Once any bus
   is soloed, only tracks on soloed buses are heard.
 - `mix export` shows each track's `effective` result: whether it is
-  `silenced` and the bus it actually feeds.
+  `silenced` and the bus it actually feeds. It also reads a project the
+  editor does not have open, as last saved, without opening it; changing a
+  mix still needs the project open.
 - Ducking: while any of `sourceTrackIds` is louder than `thresholdDb`, the
   track drops by `reductionDb`, gliding down over `attackMs` and back over
   `releaseMs`.
@@ -117,7 +119,12 @@ LUFS integrated with true peak at or below -1 dBTP.
 - `native` (default): the timeline goes through the same FFmpeg pipeline as
   `export start` (at a thumbnail-sized picture, so only the sound costs
   time) and the file is measured with FFmpeg's R 128 meter. This is the
-  number `ffmpeg -af ebur128` gives for the exported file.
+  number `ffmpeg -af ebur128` gives for the exported file. With the master
+  limiter on, the result also carries that render's `audioValidation`:
+  the stretches an export would lower to keep encoding under the ceiling
+  (`limiting.corrections`, see [editor-output.md](editor-output.md)), at the
+  export's default audio settings (AAC 192 kbps, 48 kHz, stereo, local
+  correction), before anything is exported.
 - `browser`: the editor's own Web Audio graph, which is what the preview
   plays and what the muxer engine exports. The mixer panel's master strip
   "Measure" shows this one.

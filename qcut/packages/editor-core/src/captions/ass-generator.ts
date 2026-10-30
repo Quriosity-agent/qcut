@@ -7,20 +7,40 @@
  * @module @qcut/editor-core/captions/ass-generator
  */
 
-import type { CaptionElement, SubtitleStyle } from "../types/timeline.js";
+import type {
+	CaptionElement,
+	CaptionShadow,
+	SubtitleStyle,
+} from "../types/timeline.js";
 import {
+	captionFontWeight,
+	resolveCaptionShadows,
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	rgbToASSColor,
 	alignToASSAlignment,
 } from "./subtitle-style.js";
-import { resolveCaptionAnimation } from "./caption-animation.js";
+import {
+	captionAssFade,
+	resolveCaptionAnimation,
+} from "./caption-animation.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
 	title?: string;
 	cjkFontFamily?: string;
+	/** The project frame rate, for captions' fade frames. */
+	fps?: number;
 }
+
+/** The style's MarginL/MarginR; MarginV is the style's position.y. */
+const STYLE_SIDE_MARGIN = 10;
+
+/**
+ * libass's `\blur b` is a Gaussian of σ = 2b / √ln 256 ≈ 0.849 b (measured
+ * with the bundled FFmpeg), so a σ needs `\blur` σ · √ln 256 / 2.
+ */
+const LIBASS_BLUR_PER_SIGMA = Math.sqrt(Math.log(256)) / 2;
 
 function containsCJK(text: string): boolean {
 	return /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
@@ -100,23 +120,112 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 		});
 		const key = JSON.stringify(resolved);
 		const styleName = styleNames.get(key) || "Default";
-		const startTime = secondsToASSTime(clip.startTime);
-		const endTime = secondsToASSTime(clip.startTime + clip.duration);
-		const text = captionTextForASS({ clip, style: resolved, resolution });
-		content += `Dialogue: 0,${startTime},${endTime},${styleName},,0,0,0,,${text}\n`;
+		for (const line of captionEventsForASS({
+			clip,
+			style: resolved,
+			resolution,
+			fps: options.fps,
+			styleName,
+		})) {
+			content += `${line}\n`;
+		}
 	}
 
 	return content;
 }
 
-function captionTextForASS({
+/**
+ * A caption's Dialogue lines: its soft shadows first, each a layer of its
+ * own under the text (N25), then the text. With shadows, every layer is
+ * pinned with \pos at the point the style's alignment and margins give, so
+ * each shadow sits exactly at its offset from the letters.
+ */
+function captionEventsForASS({
 	clip,
 	style,
 	resolution,
+	fps,
+	styleName,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
+	fps?: number;
+	styleName: string;
+}): string[] {
+	const startTime = secondsToASSTime(clip.startTime);
+	const endTime = secondsToASSTime(clip.startTime + clip.duration);
+	const centiseconds = (seconds: number) => Math.floor(seconds * 100);
+	const fade = captionAssFade({
+		style,
+		fps,
+		duration:
+			(centiseconds(clip.startTime + clip.duration) -
+				centiseconds(clip.startTime)) /
+			100,
+	});
+	const weight = captionFontWeight(style);
+	const weightTag = weight === 400 || weight === 700 ? "" : `\\b${weight}`;
+	const shadows = resolveCaptionShadows(style) ?? [];
+	const event = (layer: number, tags: string, body: string) =>
+		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,0,,${tags ? `{${tags}}` : ""}${body}`;
+	const pin = shadows.length > 0;
+	const lines = shadows.map((shadow, layer) =>
+		event(
+			layer,
+			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
+			captionTextForASS({ clip, style, colorTags: false })
+		)
+	);
+	lines.push(
+		event(
+			shadows.length,
+			`${captionAnimationTags({ clip, style, resolution, fade, pin })}${weightTag}`,
+			captionTextForASS({ clip, style, colorTags: true })
+		)
+	);
+	return lines;
+}
+
+/**
+ * Tags that draw an event as one soft shadow: the letters (and outline) in
+ * the shadow's colour, blurred to σ = blur ÷ 2 as the preview's
+ * text-shadow is.
+ */
+function shadowTagsForASS({
+	shadow,
+	style,
+}: {
+	shadow: CaptionShadow;
+	style: SubtitleStyle;
+}): string {
+	const [alpha, color] = splitAssColor(
+		rgbToASSColor(shadow.color, shadow.opacity * style.fontOpacity)
+	);
+	const blur = `\\blur${((shadow.blur / 2) * LIBASS_BLUR_PER_SIGMA).toFixed(2)}`;
+	// A karaoke caption's upcoming words take the secondary colour (\2c).
+	if (style.outlineWidth > 0) {
+		// A see-through fill shows the border as the whole widened letter.
+		return `\\1a&HFF&\\2a&HFF&\\3c${color}\\3a${alpha}\\4a&HFF&\\bord${style.outlineWidth}\\shad0${blur}`;
+	}
+	return `\\1c${color}\\1a${alpha}\\2c${color}\\2a${alpha}\\3a&HFF&\\4a&HFF&\\bord0\\shad0${blur}`;
+}
+
+/** `&HAABBGGRR` as the `&HAA&` and `&HBBGGRR&` that override tags take. */
+function splitAssColor(color: string): [string, string] {
+	const hex = color.replace(/^&H/i, "").padStart(8, "0");
+	return [`&H${hex.slice(0, 2)}&`, `&H${hex.slice(2)}&`];
+}
+
+function captionTextForASS({
+	clip,
+	style,
+	colorTags,
+}: {
+	clip: CaptionElement;
+	style: SubtitleStyle;
+	/** False for a shadow layer, which draws every line in its colour. */
+	colorTags: boolean;
 }): string {
 	const text = clip.text.trim().replace(/\n/g, "\\N");
 	const karaokeMode = clip.style?.karaokeMode ?? "none";
@@ -139,40 +248,66 @@ function captionTextForASS({
 						return `{\\${tag}${durationCs}}${word.text.trim()}`;
 					})
 					.join(" ");
-	const animationTags = captionAnimationTags({ clip, style, resolution });
-	const body = `${renderedText}${secondaryLineForASS({ clip, style })}`;
-	return animationTags ? `{${animationTags}}${body}` : body;
+	return `${renderedText}${secondaryLineForASS({ clip, style, colorTags })}`;
 }
 
 /** A bilingual caption's second-language line, after a break in its own font. */
 function secondaryLineForASS({
 	clip,
 	style,
+	colorTags,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
+	colorTags: boolean;
 }): string {
 	const text = clip.secondaryText?.trim();
 	if (!text) return "";
 	const secondary = resolveSecondaryLineStyle(style);
 	// \c takes the colour without its alpha: &HBBGGRR&.
-	const color = `&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`;
+	const color = colorTags
+		? `\\c&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`
+		: "";
 	// `{`, `}` and `\` in a font name would end the override block early.
 	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
-	return `\\N{\\fn${family}\\fs${secondary.fontSize}\\b${secondary.bold ? 1 : 0}\\i${secondary.italic ? 1 : 0}\\c${color}}${text.replace(/\n/g, "\\N")}`;
+	const weight =
+		secondary.fontWeight === 700
+			? 1
+			: secondary.fontWeight === 400
+				? 0
+				: secondary.fontWeight;
+	// Its own spacing only where it differs from the caption's (the style's).
+	const spacing =
+		secondary.letterSpacing === style.letterSpacing
+			? ""
+			: `\\fsp${secondary.letterSpacing}`;
+	return `\\N{\\fn${family}\\fs${secondary.fontSize}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}}${text.replace(/\n/g, "\\N")}`;
 }
 
+/**
+ * The event's fade and motion. `fade` (from the caption's fade frames)
+ * replaces the animation's own; `pin` places a still caption with \pos where
+ * the style's alignment and margins put it, moved by `offset`.
+ */
 function captionAnimationTags({
 	clip,
 	style,
 	resolution,
+	fade: frameFade,
+	pin = false,
+	offset = { x: 0, y: 0 },
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
+	fade?: string;
+	pin?: boolean;
+	offset?: { x: number; y: number };
 }): string {
 	const animation = resolveCaptionAnimation({ style });
-	if (animation.type === "none") return "";
+	if (animation.type === "none") {
+		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset }) : ""}`;
+	}
 
 	const clipDurationMs = Math.max(1, Math.round(clip.duration * 1000));
 	const startMs = Math.min(
@@ -183,8 +318,12 @@ function captionAnimationTags({
 		clipDurationMs,
 		startMs + Math.max(1, Math.round(animation.duration * 1000))
 	);
-	const fade = `\\fade(255,0,0,${startMs},${endMs},${clipDurationMs},${clipDurationMs})`;
-	if (animation.type === "fade") return fade;
+	const fade =
+		frameFade ??
+		`\\fade(255,0,0,${startMs},${endMs},${clipDurationMs},${clipDurationMs})`;
+	if (animation.type === "fade") {
+		return `${fade}${pin ? pinnedPosition({ style, resolution, offset }) : ""}`;
+	}
 
 	const margin = Math.max(10, Math.round(style.fontSize));
 	const targetX =
@@ -202,7 +341,33 @@ function captionAnimationTags({
 	const startX = animation.type === "slide-left" ? targetX + 120 : targetX;
 	const startY = animation.type === "slide-up" ? targetY + 80 : targetY;
 
-	return `${fade}\\move(${startX},${startY},${targetX},${targetY},${startMs},${endMs})`;
+	return `${fade}\\move(${startX + offset.x},${startY + offset.y},${targetX + offset.x},${targetY + offset.y},${startMs},${endMs})`;
+}
+
+/** `\pos` at the point the style's alignment and margins place the text. */
+function pinnedPosition({
+	style,
+	resolution,
+	offset,
+}: {
+	style: SubtitleStyle;
+	resolution: ASSGeneratorOptions["resolution"];
+	offset: { x: number; y: number };
+}): string {
+	const marginV = Math.round(style.position.y);
+	const x =
+		style.textAlign === "left"
+			? STYLE_SIDE_MARGIN
+			: style.textAlign === "right"
+				? resolution.width - STYLE_SIDE_MARGIN
+				: resolution.width / 2;
+	const y =
+		style.position.align === "top"
+			? marginV
+			: style.position.align === "center"
+				? resolution.height / 2
+				: resolution.height - marginV;
+	return `\\pos(${x + offset.x},${y + offset.y})`;
 }
 
 function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
@@ -217,13 +382,17 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 	);
 	const outline = rgbToASSColor(style.outlineColor, 1);
 	const back = rgbToASSColor(style.shadowColor, 1);
-	const bold = style.bold ? -1 : 0;
+	const bold = captionFontWeight(style) >= 600 ? -1 : 0;
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
 	const alignment = alignToASSAlignment(style.position.align, style.textAlign);
 	const marginV = Math.round(style.position.y);
+	// Soft shadows are layers of their own; the hard one is ASS's.
 	const shadow =
-		style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0 ? 1 : 0;
+		!resolveCaptionShadows(style) &&
+		(style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0)
+			? 1
+			: 0;
 
 	return [
 		name,
@@ -245,8 +414,8 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 		style.outlineWidth,
 		shadow,
 		alignment,
-		10, // MarginL
-		10, // MarginR
+		STYLE_SIDE_MARGIN, // MarginL
+		STYLE_SIDE_MARGIN, // MarginR
 		marginV,
 		1, // Encoding
 	].join(",");

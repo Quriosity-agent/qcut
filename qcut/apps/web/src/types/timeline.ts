@@ -167,6 +167,7 @@ export type {
 	StickerPropertyKeyframe,
 	AdjustmentElement,
 	CaptionElement,
+	CaptionShadow,
 	SubtitleStyle,
 	RemotionElement,
 	HyperframesElement,

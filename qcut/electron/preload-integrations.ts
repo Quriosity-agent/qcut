@@ -651,8 +651,12 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:speech:load");
 				ipcRenderer.on("claude:speech:load", (_, data) => callback(data));
 			},
-			sendResponse: (timeline, requestId) => {
-				ipcRenderer.send("claude:timeline:response", { requestId, timeline });
+			sendResponse: (timeline, requestId, error) => {
+				ipcRenderer.send("claude:timeline:response", {
+					requestId,
+					timeline,
+					...(error ? { error } : {}),
+				});
 			},
 			removeListeners: () => {
 				ipcRenderer.removeAllListeners("claude:timeline:request");

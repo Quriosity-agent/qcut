@@ -115,7 +115,13 @@ export async function requestAddElementFromRenderer({
  * showed the deleted element that way).
  */
 export async function requestTimelineFromRenderer(
-	win: BrowserWindow
+	win: BrowserWindow,
+	{
+		projectId,
+	}: {
+		/** Another project than the open one is read from storage (N23). */
+		projectId?: string;
+	} = {}
 ): Promise<ClaudeTimeline> {
 	assertIpcMainReady({
 		ipcMainInstance: ipcMain,
@@ -160,6 +166,10 @@ export async function requestTimelineFromRenderer(
 			) {
 				return;
 			}
+			if ("error" in response) {
+				rejectOnce({ error: new Error(response.error) });
+				return;
+			}
 			resolved = true;
 			cleanup();
 			resolve(response.timeline);
@@ -167,7 +177,10 @@ export async function requestTimelineFromRenderer(
 
 		try {
 			ipcMain.on(responseChannel, handler);
-			win.webContents.send("claude:timeline:request", { requestId });
+			win.webContents.send("claude:timeline:request", {
+				requestId,
+				...(projectId ? { projectId } : {}),
+			});
 		} catch (error) {
 			const failure =
 				error instanceof Error
@@ -180,14 +193,14 @@ export async function requestTimelineFromRenderer(
 
 function isRendererTimelineResponse(
 	candidate: unknown
-): candidate is { requestId: string; timeline: ClaudeTimeline } {
+): candidate is
+	| { requestId: string; timeline: ClaudeTimeline }
+	| { requestId: string; error: string } {
 	if (typeof candidate !== "object" || candidate === null) return false;
 	const response = candidate as Record<string, unknown>;
-	return (
-		typeof response.requestId === "string" &&
-		typeof response.timeline === "object" &&
-		response.timeline !== null
-	);
+	if (typeof response.requestId !== "string") return false;
+	if (typeof response.error === "string") return true;
+	return typeof response.timeline === "object" && response.timeline !== null;
 }
 
 /**

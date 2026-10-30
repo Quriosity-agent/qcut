@@ -118,7 +118,7 @@ describe("peak dips", () => {
 		expect(mix[870 * 2]).toBe(0.5);
 	});
 
-	it("totals how long the mix was lowered, the deepest of a pass where its dips overlap", () => {
+	it("totals how long the mix was lowered, ramps included, the deepest of a pass where its dips overlap", () => {
 		expect(
 			summarizePeakDips({
 				passes: [
@@ -133,7 +133,16 @@ describe("peak dips", () => {
 				],
 				duration: 3,
 			})
-		).toEqual({ correctedSeconds: 0.6, maxCorrectionDb: 1.8 });
+		).toEqual({
+			// Each stretch is where the gain changes: 20 ms ramps either side,
+			// clipped to the mix; the seconds are the stretches' sum.
+			correctedSeconds: 0.66,
+			maxCorrectionDb: 1.8,
+			corrections: [
+				{ start: 0.18, end: 0.72, depthDb: 1.8 },
+				{ start: 2.88, end: 3, depthDb: 0.3 },
+			],
+		});
 	});
 
 	it("adds the depths of later passes where they overlap an earlier one", () => {

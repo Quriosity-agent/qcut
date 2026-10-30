@@ -1,3 +1,5 @@
+import type { UpdateRecord } from "../../update-notice.js";
+import { toReleaseVersion } from "../../update-version.js";
 import type { ParsedRequest, Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
 import {
@@ -224,11 +226,14 @@ export function wrapRouterWithCorrelationTracking({
 export function registerMetaRoutes({
 	router,
 	getAppVersion,
+	getLastUpdate,
 	runDeepHealthChecks,
 	getWindowState,
 }: {
 	router: Router;
 	getAppVersion: () => string;
+	/** The last update QCut found it had at launch (N26). */
+	getLastUpdate?: () => UpdateRecord | undefined;
 	runDeepHealthChecks?: () => Promise<DeepHealthReport>;
 	/** Whether the editor window is open; editor commands need one. */
 	getWindowState?: () => Promise<{ hasWindow: boolean; count: number }>;
@@ -261,8 +266,12 @@ export function registerMetaRoutes({
 					protocolVersion: apiVersionInfo.protocolVersion,
 					appVersion: apiVersionInfo.appVersion,
 					electronVersion: apiVersionInfo.electronVersion,
+					// The release version, as tags and release notes name it.
+					releaseVersion: toReleaseVersion({ packageVersion: appVersion }),
 					capabilities,
 				};
+				const lastUpdate = getLastUpdate?.();
+				if (lastUpdate) response.lastUpdate = lastUpdate;
 
 				if (getWindowState) {
 					try {

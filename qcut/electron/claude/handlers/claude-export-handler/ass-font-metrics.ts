@@ -20,6 +20,8 @@ interface FaceMetrics {
 	subfamily: string;
 	bold: boolean;
 	italic: boolean;
+	/** OS/2 says the face covers CJK ideographs (ulUnicodeRange bit 59). */
+	cjk: boolean;
 	/** winAscent + winDescent over unitsPerEm: what libass sizes by. */
 	winHeightEm: number;
 	/** hhea ascender − descender over unitsPerEm: libass's line height. */
@@ -224,6 +226,8 @@ function readFace({
 	const winAscent = os2Table.readUInt16BE(74);
 	const winDescent = os2Table.readUInt16BE(76);
 	const selection = os2Table.readUInt16BE(62);
+	// ulUnicodeRange2 (bytes 46–49) bit 27 is range bit 59: U+4E00–U+9FFF.
+	const unicodeRange2 = os2Table.readUInt32BE(46);
 	if (!unitsPerEm || !(winAscent + winDescent)) return undefined;
 	const hheaHeight =
 		hheaTable && hheaTable.length >= 8
@@ -239,6 +243,7 @@ function readFace({
 		subfamily,
 		bold: (selection & 0x20) !== 0 || /bold/i.test(subfamily),
 		italic: (selection & 0x01) !== 0 || /italic|oblique/i.test(subfamily),
+		cjk: (unicodeRange2 & (1 << 27)) !== 0,
 		winHeightEm: (winAscent + winDescent) / unitsPerEm,
 		lineHeightEm:
 			(hheaHeight > 0 ? hheaHeight : winAscent + winDescent) / unitsPerEm,
@@ -360,6 +365,13 @@ function metricsFrom({
 	};
 }
 
+/** An index of `directories`, or the system's, built once per process. */
+function fontIndex(directories?: string[]): Map<string, FaceMetrics[]> {
+	if (directories) return buildIndex(directories);
+	cachedIndex ??= buildIndex(systemFontDirectories());
+	return cachedIndex;
+}
+
 /**
  * The font files holding a face of any of `families`, matched by every
  * localized family name, as libass matches them.
@@ -372,13 +384,7 @@ export function assFontFilesForFamilies({
 	/** Folders to index instead of the system's; such an index is not kept. */
 	directories?: string[];
 }): string[] {
-	let index: Map<string, FaceMetrics[]>;
-	if (directories) {
-		index = buildIndex(directories);
-	} else {
-		cachedIndex ??= buildIndex(systemFontDirectories());
-		index = cachedIndex;
-	}
+	const index = fontIndex(directories);
 	const files = new Set<string>();
 	for (const family of families) {
 		for (const face of index.get(family.trim().toLowerCase()) ?? []) {
@@ -386,6 +392,23 @@ export function assFontFilesForFamilies({
 		}
 	}
 	return [...files];
+}
+
+/**
+ * Whether an installed face of `family` covers CJK ideographs, so libass can
+ * draw Chinese in it rather than ask the platform for a fallback.
+ */
+export function assFamilyCoversCjk({
+	family,
+	directories,
+}: {
+	family: string;
+	/** Folders to index instead of the system's; such an index is not kept. */
+	directories?: string[];
+}): boolean {
+	return (fontIndex(directories).get(family.trim().toLowerCase()) ?? []).some(
+		(face) => face.cjk
+	);
 }
 
 /** Drops the cached index, for tests that point at their own folders. */

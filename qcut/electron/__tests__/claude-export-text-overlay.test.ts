@@ -795,6 +795,8 @@ describe("native export text overlays", () => {
 				color: "#ffcc00",
 				fontWeight: "bold",
 				fontStyle: "normal",
+				// The caption's own spacing, as nothing else is given.
+				letterSpacing: 0,
 			}
 		);
 		const ass = buildTextAss({ overlays, width: 1280, height: 720 });

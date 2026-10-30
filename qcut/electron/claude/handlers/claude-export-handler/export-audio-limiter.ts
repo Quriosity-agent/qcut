@@ -3,7 +3,11 @@ import path from "node:path";
 import { runAudioMeasurementProcess } from "../../../ffmpeg/audio-measurement-process.js";
 import { measureFileTruePeakBlocks } from "../../../ffmpeg/audio-true-peak.js";
 import { getFFmpegPath } from "../../../ffmpeg/utils.js";
-import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
+import {
+	EXPORT_PEAK_CORRECTIONS,
+	type ExportAudioValidation,
+	type ExportPeakCorrection,
+} from "../../../types/export-audio-validation.js";
 import {
 	applyPeakDips,
 	type PeakDip,
@@ -40,6 +44,8 @@ export interface TruePeakLimitedExportOptions {
 	channels: 1 | 2;
 	bitrateKbps: number;
 	format: string;
+	/** How encoding peaks over the ceiling are handled; "local" by default. */
+	peakCorrection?: ExportPeakCorrection;
 	signal?: AbortSignal;
 	onPublished?: () => void;
 }
@@ -56,6 +62,14 @@ function validateOptions({
 	}
 	if (format !== "mp3" && !options.sourceVideoPath) {
 		throw new Error("True-peak limited video export requires a video source");
+	}
+	if (
+		options.peakCorrection !== undefined &&
+		!EXPORT_PEAK_CORRECTIONS.includes(options.peakCorrection)
+	) {
+		throw new Error(
+			`Peak correction must be one of ${EXPORT_PEAK_CORRECTIONS.join(", ")}`
+		);
 	}
 	if (
 		path.resolve(options.sourceAudioPath) === path.resolve(options.outputPath)
@@ -147,10 +161,13 @@ function encodingArgs({
 	options,
 	limitedAudioPath,
 	candidatePath,
+	attenuationDb,
 }: {
 	options: TruePeakLimitedExportOptions;
 	limitedAudioPath: string;
 	candidatePath: string;
+	/** Lowers the whole mix ("whole" correction only). */
+	attenuationDb: number;
 }): string[] {
 	const {
 		format,
@@ -169,6 +186,9 @@ function encodingArgs({
 		...(isAudioOnly ? ["-vn"] : ["-map", "0:v:0", "-c:v", "copy"]),
 		"-map",
 		`${isAudioOnly ? 0 : 1}:a:0`,
+		...(attenuationDb > 0
+			? ["-af", `volume=${-attenuationDb}dB:precision=double`]
+			: []),
 		"-c:a",
 		isAudioOnly ? "libmp3lame" : "aac",
 		"-b:a",
@@ -188,9 +208,11 @@ function encodingArgs({
 
 /**
  * Publish only a measured candidate. Where an encode goes over the ceiling,
- * the moments at and near it are lowered in the lossless mix and it is
- * encoded again; the rest of the mix keeps its level, so a small change to
- * the mix cannot move the level of the whole export.
+ * "local" lowers the moments at and near it in the lossless mix and encodes
+ * again; the rest of the mix keeps its level, so a small change to the mix
+ * cannot move the level of the whole export. "whole" lowers the whole mix by
+ * the overshoot instead (as before 2026.10.29.3), and "check" publishes the
+ * first encode as it is, reporting any overshoot.
  */
 export async function renderTruePeakLimitedExport({
 	sourceAudioPath,
@@ -203,10 +225,12 @@ export async function renderTruePeakLimitedExport({
 	channels,
 	bitrateKbps,
 	format,
+	peakCorrection = "local",
 	signal,
 	onPublished,
 }: TruePeakLimitedExportOptions): Promise<{
 	audioValidation: ExportAudioValidation;
+	warnings?: string[];
 }> {
 	const options = {
 		sourceAudioPath,
@@ -219,6 +243,7 @@ export async function renderTruePeakLimitedExport({
 		channels,
 		bitrateKbps,
 		format,
+		peakCorrection,
 		signal,
 	};
 	signal?.throwIfAborted();
@@ -253,15 +278,39 @@ export async function renderTruePeakLimitedExport({
 			signal,
 		});
 
-		/** Each correction's dips, in the order they were applied. */
+		/** Each local correction's dips, in the order they were applied. */
 		const passes: PeakDip[][] = [];
+		let attenuationDb = 0;
+		const corrected = () =>
+			peakCorrection === "whole"
+				? {
+						correctedSeconds:
+							attenuationDb > 0 ? Number(duration.toFixed(2)) : 0,
+						maxCorrectionDb: Number(attenuationDb.toFixed(2)),
+						corrections:
+							attenuationDb > 0
+								? [
+										{
+											start: 0,
+											end: Number(duration.toFixed(3)),
+											depthDb: Number(attenuationDb.toFixed(2)),
+										},
+									]
+								: [],
+					}
+				: summarizePeakDips({ passes, duration });
 		const encodeCandidate = async ({
 			attempt,
 		}: {
 			attempt: number;
 		}): Promise<ExportAudioValidation> => {
 			await run({
-				args: encodingArgs({ options, limitedAudioPath, candidatePath }),
+				args: encodingArgs({
+					options,
+					limitedAudioPath,
+					candidatePath,
+					attenuationDb,
+				}),
 				signal,
 			});
 			const { truePeak: peak, blocks } = await measureFileTruePeakBlocks({
@@ -277,15 +326,16 @@ export async function renderTruePeakLimitedExport({
 			}
 			// A rounded reading at the ceiling can conceal 0.05 dB of overshoot.
 			const overDb = limiter.ceilingDb - METER_ROUNDING_DB;
-			if (peak <= overDb) {
+			if (peak <= overDb || peakCorrection === "check") {
 				return {
-					status: "passed",
+					status: peak <= overDb ? "passed" : "exceeded",
 					ceilingDbtp: limiter.ceilingDb,
 					truePeakDbtp: Number.isFinite(peak) ? peak : null,
 					limiting: {
 						oversampleFactor: OVERSAMPLE_FACTOR,
 						encodeAttempts: attempt,
-						...summarizePeakDips({ passes, duration }),
+						peakCorrection,
+						...corrected(),
 					},
 				};
 			}
@@ -293,6 +343,10 @@ export async function renderTruePeakLimitedExport({
 				throw new Error(
 					`True-peak limited export still measures ${peak.toFixed(1)} dBTP above the safe ceiling after ${attempt} encodes`
 				);
+			}
+			if (peakCorrection === "whole") {
+				attenuationDb += peak - limiter.ceilingDb + HEADROOM_DB;
+				return encodeCandidate({ attempt: attempt + 1 });
 			}
 			const correction = planPeakDips({
 				blocks,
@@ -316,7 +370,13 @@ export async function renderTruePeakLimitedExport({
 		await fs.rename(candidatePath, outputPath);
 		onPublished?.();
 		signal?.throwIfAborted();
-		return { audioValidation };
+		if (audioValidation.status !== "exceeded") return { audioValidation };
+		return {
+			audioValidation,
+			warnings: [
+				`The exported audio true peak is ${audioValidation.truePeakDbtp?.toFixed(1)} dBTP, above the master limiter ceiling of ${limiter.ceilingDb.toFixed(1)} dB. Peak correction "check" lowers nothing; export with "local" or "whole" to keep it under the ceiling.`,
+			],
+		};
 	} finally {
 		await Promise.all(
 			[audioWorkDir, candidateDir]

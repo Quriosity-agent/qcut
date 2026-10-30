@@ -183,6 +183,9 @@ function assertRendererExportRequestCompatible({
 	if (request.audioExportConfig !== undefined) {
 		unsupportedOptions.push("audioExportConfig");
 	}
+	if (request.peakCorrection !== undefined) {
+		unsupportedOptions.push("peakCorrection");
+	}
 	if (
 		request.settings?.bitrate !== undefined ||
 		topLevel.bitrate !== undefined

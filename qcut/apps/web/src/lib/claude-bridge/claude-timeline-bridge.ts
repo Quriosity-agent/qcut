@@ -9,10 +9,7 @@ import { resolveTimelineColorLabel } from "@/lib/timeline/timeline-color-labels"
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore, type MediaType } from "@/stores/media/media-store";
 import { platform } from "@qcut/platform-core";
-import type {
-	ClaudeElement,
-	ClaudeBatchAddElementRequest,
-} from "../../../../../electron/types/claude-api";
+import type { ClaudeElement } from "../../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
 import {
 	calculateTimelineDuration,
@@ -25,6 +22,14 @@ import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
 import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
+import {
+	decodeDeterministicMediaSourceName,
+	resolveMediaIdForBatchElement,
+} from "./claude-media-resolve";
+import {
+	isLoadedProject,
+	loadStoredProjectView,
+} from "./claude-stored-project";
 import {
 	assertTimelineProjectActive,
 	readRequiredTimelineProjectId,
@@ -224,83 +229,7 @@ export function normalizeClaudeElementType({
 	return null;
 }
 
-export function decodeDeterministicMediaSourceName({
-	sourceId,
-}: {
-	sourceId: string;
-}): string | null {
-	try {
-		if (!sourceId.startsWith("media_")) {
-			return null;
-		}
-		const encodedName = sourceId.slice("media_".length);
-		if (!encodedName) {
-			return null;
-		}
-		const base64 = encodedName.replace(/-/g, "+").replace(/_/g, "/");
-		const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-		const binary = window.atob(padded);
-		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-		return new TextDecoder().decode(bytes);
-	} catch {
-		return null;
-	}
-}
-
-export function resolveMediaIdForBatchElement({
-	element,
-}: {
-	element: ClaudeBatchAddElementRequest;
-}): string | null {
-	const { mediaItems } = useMediaStore.getState();
-
-	if (element.mediaId) {
-		const byMediaId = mediaItems.find((item) => item.id === element.mediaId);
-		if (byMediaId) {
-			return byMediaId.id;
-		}
-
-		const decodedMediaIdName = decodeDeterministicMediaSourceName({
-			sourceId: element.mediaId,
-		});
-		if (decodedMediaIdName) {
-			const byDecodedMediaIdName = mediaItems.find(
-				(item) => item.name === decodedMediaIdName
-			);
-			if (byDecodedMediaIdName) {
-				return byDecodedMediaIdName.id;
-			}
-		}
-	}
-
-	if (element.sourceId) {
-		const bySourceId = mediaItems.find((item) => item.id === element.sourceId);
-		if (bySourceId) {
-			return bySourceId.id;
-		}
-
-		const decodedName = decodeDeterministicMediaSourceName({
-			sourceId: element.sourceId,
-		});
-		if (decodedName) {
-			const byDecodedName = mediaItems.find(
-				(item) => item.name === decodedName
-			);
-			if (byDecodedName) {
-				return byDecodedName.id;
-			}
-		}
-	}
-
-	if (element.sourceName) {
-		const byName = mediaItems.find((item) => item.name === element.sourceName);
-		if (byName) {
-			return byName.id;
-		}
-	}
-
-	return null;
-}
+export { decodeDeterministicMediaSourceName, resolveMediaIdForBatchElement };
 
 export type ClaudeTimelineBridgeSharedUtils = {
 	normalizeClaudeElementType: typeof normalizeClaudeElementType;
@@ -949,15 +878,26 @@ export function setupClaudeProjectBridge(): void {
 	const projectAPI = claude.project;
 
 	// Respond to stats request (must forward requestId for main process matching)
-	projectAPI.onStatsRequest((_projectId: string, requestId: string) => {
-		const timelineState = useTimelineStore.getState();
-		const projectState = useProjectStore.getState();
-		const tracks = timelineState.tracks;
+	projectAPI.onStatsRequest(async (projectId: string, requestId: string) => {
+		// Another project than the loaded one is counted as storage holds it
+		// (N23); one storage cannot give has no stats, never the open one's.
+		const named = Boolean(projectId) && !isLoadedProject({ projectId });
+		const stored = named
+			? await loadStoredProjectView({ projectId }).catch(() => null)
+			: null;
+		const project = named
+			? stored?.project
+			: useProjectStore.getState().activeProject;
+		const tracks = named
+			? (stored?.tracks ?? [])
+			: useTimelineStore.getState().tracks;
+		const mediaItems = named
+			? (stored?.media ?? [])
+			: useMediaStore.getState().mediaItems;
 
 		// Count media by type
 		const mediaCount = { video: 0, audio: 0, image: 0 };
 		let elementCount = 0;
-		const mediaItems = useMediaStore.getState().mediaItems;
 
 		for (const track of tracks) {
 			elementCount += track.elements.length;
@@ -977,13 +917,14 @@ export function setupClaudeProjectBridge(): void {
 		const stats = {
 			totalDuration: calculateTimelineDuration({
 				tracks,
-				fps: projectState.activeProject?.fps ?? 30,
+				fps: project?.fps ?? 30,
 			}),
 			mediaCount,
 			trackCount: tracks.length,
 			elementCount,
-			lastModified:
-				projectState.activeProject?.updatedAt?.getTime() || Date.now(),
+			lastModified: project?.updatedAt
+				? new Date(project.updatedAt).getTime()
+				: Date.now(),
 			fileSize: 0, // Would need to calculate
 		};
 

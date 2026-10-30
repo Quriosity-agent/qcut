@@ -9,6 +9,11 @@
  * BrowserWindow access (main process).
  */
 
+import { getLastUpdate } from "../../update-history.js";
+import {
+	formatLastUpdateHeader,
+	LAST_UPDATE_HEADER,
+} from "../../update-notice.js";
 import { getMainWindowState } from "../../main-window-recovery.js";
 import {
 	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
@@ -204,8 +209,9 @@ export function startClaudeHTTPServer(
 	const accessor: WindowAccessor = {
 		/** Returns the main-process BrowserWindow for route handlers. */
 		getWindow,
-		/** Requests the current timeline from the renderer. */
-		requestTimeline: () => requestTimelineFromRenderer(getWindow()),
+		/** Requests the current timeline (or a stored project's) from the renderer. */
+		requestTimeline: (options) =>
+			requestTimelineFromRenderer(getWindow(), options),
 		/** Delegates exact sticker runtime rendering to the live editor. */
 		requestLocalVideoExport: (request) =>
 			requestClaudeLocalVideoExportFromRenderer({
@@ -239,6 +245,8 @@ export function startClaudeHTTPServer(
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		/** Returns the current app version. */
 		getAppVersion: () => app.getVersion(),
+		/** The last update QCut found it had at launch. */
+		getLastUpdate,
 		/** Enables notification forwarding for a session. */
 		enableNotifications: (sessionId) =>
 			Promise.resolve(notificationBridge.enable({ sessionId })),
@@ -532,6 +540,11 @@ export function startClaudeHTTPServer(
 	// ==========================================================================
 	server = createServer((req, res) => {
 		setCorsHeaders(res);
+		// Every answer says what QCut last updated from, for the CLI to note.
+		const lastUpdate = getLastUpdate();
+		if (lastUpdate) {
+			res.setHeader(LAST_UPDATE_HEADER, formatLastUpdateHeader(lastUpdate));
+		}
 		let requestCorrelationId = "";
 		try {
 			requestCorrelationId = generateId("corr");

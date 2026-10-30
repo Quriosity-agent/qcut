@@ -21,6 +21,10 @@ import {
 } from "./editor-caption-export.js";
 import { verifyExportFrames } from "./editor-export-verification.js";
 import {
+	EXPORT_PEAK_CORRECTIONS,
+	type ExportPeakCorrection,
+} from "../../types/export-audio-validation.js";
+import {
 	stemsBesideExport,
 	writeMixStems,
 } from "./editor-handlers-audio-mix.js";
@@ -320,6 +324,18 @@ async function exportStart(
 	}
 	if (raw["no-sequential-decode"] === true) {
 		body.disableSequentialDecode = true;
+	}
+	const peakCorrection = raw["peak-correction"];
+	if (peakCorrection !== undefined) {
+		if (
+			!EXPORT_PEAK_CORRECTIONS.includes(peakCorrection as ExportPeakCorrection)
+		) {
+			return {
+				success: false,
+				error: `--peak-correction must be one of: ${EXPORT_PEAK_CORRECTIONS.join(", ")}`,
+			};
+		}
+		body.peakCorrection = peakCorrection;
 	}
 	if (exportFormat === "mp3") {
 		body.audioExportConfig = {

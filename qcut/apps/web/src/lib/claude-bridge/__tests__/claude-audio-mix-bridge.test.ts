@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const storage = vi.hoisted(() => ({
 	loadProject: vi.fn(),
+	loadTimeline: vi.fn(),
+	loadAllMediaSummaries: vi.fn(async () => []),
 	saveProject: vi.fn(async () => {}),
 	saveProjectTimeline: vi.fn(async () => {}),
 }));
@@ -96,12 +98,61 @@ describe("mixer over the editor API", () => {
 		});
 	});
 
-	it("refuses a project that is not the one open", async () => {
-		const run = setup();
-		expect(await run({ action: "get", projectId: "other" })).toMatchObject({
-			success: false,
-			reason: "not-open",
+	it("reads a project that is not open from storage, without opening it", async () => {
+		const mix = createDefaultProjectAudioMixSettings();
+		mix.master.gainDb = -3;
+		storage.loadProject.mockResolvedValueOnce({
+			id: "other",
+			name: "v19",
+			currentSceneId: "scene-1",
+			audioMix: mix,
 		});
+		storage.loadTimeline.mockResolvedValueOnce([
+			{
+				id: "score",
+				name: "Score",
+				type: "audio",
+				muted: true,
+				audio: { gainDb: -6 },
+				elements: [],
+			},
+		]);
+		const run = setup();
+		const response = await run({ action: "get", projectId: "other" });
+		expect(storage.loadTimeline).toHaveBeenCalledWith({
+			projectId: "other",
+			sceneId: "scene-1",
+		});
+		expect(response).toMatchObject({
+			success: true,
+			mix: {
+				projectId: "other",
+				master: { gainDb: -3 },
+				tracks: [{ trackId: "score", muted: true, audio: { gainDb: -6 } }],
+			},
+		});
+		expect(useProjectStore.getState().loadedProjectId).toBe("p");
+	});
+
+	it("answers that a project is missing when storage has none", async () => {
+		storage.loadProject.mockResolvedValueOnce(null);
+		const run = setup();
+		expect(await run({ action: "get", projectId: "gone" })).toMatchObject({
+			success: false,
+			error: "Project gone was not found",
+		});
+	});
+
+	it("refuses to change a project that is not the one open", async () => {
+		const run = setup();
+		expect(
+			await run({
+				action: "set-track",
+				projectId: "other",
+				trackId: "guns",
+				patch: { gainDb: -6 },
+			})
+		).toMatchObject({ success: false, reason: "not-open" });
 	});
 
 	it("sets a track's level, pan and ducking and reads them back", async () => {

@@ -1744,6 +1744,7 @@ export async function executeExportJob({
 		}
 
 		let audioValidation: ExportAudioValidation | undefined;
+		let audioWarnings: string[] = [];
 		let audioFinalized = false;
 		if (audioFiles.length > 0 || audioMixConfig) {
 			updateJobProgress({ jobId, progress: 0.955 });
@@ -1763,6 +1764,7 @@ export async function executeExportJob({
 				},
 			});
 			audioValidation = result.audioValidation;
+			audioWarnings = result.warnings ?? [];
 			audioFinalized = result.finalized;
 		}
 
@@ -1890,6 +1892,12 @@ export async function executeExportJob({
 		finishedJob.fileSize = outputStats.size;
 		finishedJob.completedAt = Date.now();
 		Object.assign(finishedJob, audioCheck);
+		if (audioWarnings.length > 0) {
+			finishedJob.warnings = [
+				...(finishedJob.warnings ?? []),
+				...audioWarnings,
+			];
+		}
 		const effectsWarning = audioEffectsNotAppliedWarning(segments);
 		if (effectsWarning) {
 			finishedJob.warnings = [...(finishedJob.warnings ?? []), effectsWarning];

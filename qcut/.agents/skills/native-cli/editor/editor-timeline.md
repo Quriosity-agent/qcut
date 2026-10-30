@@ -20,6 +20,16 @@ puts several clips back should move the ones going left in time order and the
 ones going right in reverse, or a clip runs into a neighbour that has not
 moved yet.
 
+A project the editor does not have open is read as it was last saved, and the
+editor stays on the project it has open: the timeline answer has
+`"readFromStorage": true`, and an unknown project id answers 404. The open
+project is read live, unsaved changes included. `timeline info`, `track list`,
+`sticker list`, `export captions`, `project summary` and `mix export` read a
+closed project the same way. `project stats` counts it as saved too (its
+answer has no `readFromStorage`, and a project storage does not have counts
+as empty). Editing commands still need the project open
+(`editor:navigator:open`).
+
 ### Import timeline
 
 ```bash
@@ -157,12 +167,15 @@ element's top level (top level wins, as for text), on `add-element`,
 | `position.align` | `verticalAlign` (`middle` = center) | top/center/bottom |
 | `lineSpacing` | `lineHeight` | line-height multiple |
 | `animationType`, `animationDuration`, `animationDelay` | — | none/fade/slide-up/slide-left; s; s |
+| `fontWeight` | `bold` (700), `"normal"` (400) | 100–900: a face between regular and bold, e.g. SemiBold 600 |
+| `shadows: [{color, opacity, blur, x, y}]` | — | soft shadows under the text, replacing `shadowColor`/`shadowOffset` (see below) |
+| `fadeInFrames`, `fadeOutFrames` | — | whole frames at the project rate (see below) |
 | `karaokeMode`, `highlightColor`, `upcomingColor`, `highlightScale` | — | word highlighting |
-| `secondary: {fontFamily, fontSize, fontColor, bold, italic}` | `color`, `fontWeight`, `fontStyle` inside it | the second-language line's look (see below) |
+| `secondary: {fontFamily, fontSize, fontColor, bold, italic, letterSpacing, fontWeight}` | `color`, `fontStyle` inside it | the second-language line's look (see below) |
 
 Captions sit 28 px from the edge `position.align` names; `position.x/y`,
-`marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur`, `strokeOpacity` and the
-like have no effect on captions. Every field that is not applied is named:
+`marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur` (soft shadows are
+`shadows`), `strokeOpacity` and the like have no effect on captions. Every field that is not applied is named:
 `warnings` on the `add-element` answer and on each `batch-add` item, and
 `ignoredFields` (e.g. `style.marginV`) on `update-element`. `timeline export`
 shows each caption's stored `style` (no `style` means the default look:
@@ -175,9 +188,9 @@ folder (`/System/Library/Fonts`, `…/Supplemental`, `/Library/Fonts`,
 
 One caption can carry both languages: `secondaryContent` is a second-language
 line drawn under `content`, in the look `style.secondary` gives it — any of
-`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`; what is left out is
-the caption's own. The outline, shadow, box, line spacing and alignment are
-the caption's; the box wraps both lines.
+`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`, `letterSpacing`,
+`fontWeight`; what is left out is the caption's own. The outline, shadows,
+box, line spacing and alignment are the caption's; the box wraps both lines.
 
 ```bash
 qcut editor:timeline:add-element --project-id <id> --data '{
@@ -231,6 +244,51 @@ Video and audio given without `duration` take their file's own length: for
 video, the length of the video stream, not the container (which can be a
 little longer because of the audio track). If QCut cannot read the file's
 length yet, the add fails and asks for `duration` instead of guessing.
+
+### Film subtitles: weights, soft shadows, frame fades
+
+A caption's style can carry a cinema subtitle look whole, so changing a
+cue's time is changing its numbers: the shadows and fades follow it. The
+preview, the canvas export (`--engine muxer`), the native export and the
+Export dialog's FFmpeg export draw these alike.
+
+```bash
+# Style D of the trailer: 思源宋体 SemiBold 28 over Gill Sans 22, two soft
+# shadows, a 4-frame fade-in and a 3-frame fade-out.
+qcut editor:timeline:add-element --project-id <id> --data '{
+  "type": "captions", "trackId": "<captions-track>", "startTime": 41.25, "duration": 2.5,
+  "content": "三年前　你是这座城里最能打的人",
+  "secondaryContent": "Three years ago, you were the best fighter in this city",
+  "style": {"fontFamily": "Source Han Serif CN", "fontSize": 28, "fontWeight": 600,
+            "letterSpacing": 2.8, "fontColor": "#F4EFE6", "outlineWidth": 0, "bgOpacity": 0,
+            "shadows": [{"color": "#000000", "opacity": 0.75, "blur": 3.2, "y": 2},
+                        {"color": "#000000", "opacity": 0.38, "blur": 18}],
+            "fadeInFrames": 4, "fadeOutFrames": 3,
+            "secondary": {"fontFamily": "Gill Sans", "fontSize": 22, "fontWeight": 400,
+                          "letterSpacing": 0.66, "fontColor": "#DED6C6"}}
+}'
+```
+
+- `fontWeight` picks the family's face of that weight (`Source Han Serif CN`
+  + 600 is its SemiBold). The font has to be installed (double-click the
+  file, Install): QCut draws with installed fonts only, and a family it
+  cannot find is drawn in a substitute (for Chinese, the native export uses
+  Hiragino Sans GB on macOS, Microsoft YaHei on Windows and Noto Sans CJK SC
+  elsewhere).
+- `letterSpacing` is pixels: 0.10 em at 28 px is 2.8. The second line takes
+  its own; without one it takes the caption's.
+- `shadows`: up to 4, drawn in order under both lines (under every letter,
+  never over one). `color` is `#rrggbb`; `opacity` 0–1 on top of the text's
+  own; `blur` is a blur radius in pixels as CSS `text-shadow` takes it, a
+  Gaussian of σ = blur ÷ 2 (OpenCV's or PIL's `GaussianBlur` σ 1.6 is blur
+  3.2); `x`, `y` move it (y down). Given, they replace `shadowColor` and
+  `shadowOffset`; `[]` draws none; `null` goes back to the single shadow.
+  An update replaces the whole list.
+- `fadeInFrames` / `fadeOutFrames`: linear fades counted in frames at the
+  project rate, from the caption's start and to its end. Frame k of a
+  4-frame fade-in is at k/4 (the first frame clear), the last frame of a
+  3-frame fade-out at 1/3 — what FFmpeg's `fade` filter does. A fade-in takes
+  over `animationType`'s opacity ramp (a slide still moves).
 
 ### Import captions from a subtitle file
 
@@ -382,6 +440,60 @@ qcut editor:timeline:batch-update \
 Each item reports whether it applied. An item whose new `startTime` is
 refused (occupied span, locked track) fails with the reason, and none of its
 other changes are applied.
+
+### Replace a clip's media
+
+`replace-media` gives a media clip another file, or another media item of the
+project, in one step. The clip keeps its track, start, length on the
+timeline, in-point (`trimStart`) and every setting (volume, audio, colour,
+keyframes, effects); only its source and the out trim that follows from the
+new media's length change. A clip still named after its media takes the new
+media's name; a renamed clip keeps its own. One undo step restores the old
+media.
+
+```bash
+# Import the new render and put it in place of the old one.
+qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
+  --source ~/shots/05_v2.mp4 --json
+
+# Media already in the project, read from its start instead of the clip's
+# current in-point.
+qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
+  --media-id <media-id> --trim-start 0 --json
+```
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--project-id` | string | Project ID (required) |
+| `--element-id` | string | The media clip (required) |
+| `--source` | string | File to import and use (or `--media-id`) |
+| `--media-id` | string | Media already in the project (or `--source`) |
+| `--trim-start` | number | Seconds into the new media where the clip starts reading it (default: the clip's current in-point) |
+
+The answer is the clip as the timeline now holds it (`mediaId`,
+`sourceName`, `startTime`, `endTime`, `trimStart`, `trimEnd`), plus the
+imported media with `--source`. The clip stays as it was, and the command
+fails with the reason, when:
+
+- the new media ends before the clip's out-point (`trimStart` plus the
+  clip's span): the error gives both; read it from an earlier point with
+  `--trim-start`, or shorten the clip first;
+- the clip plays something made from its current media (separated stems, a
+  converted voice, a cover, AI-denoised sound, a cutout or mask matte,
+  surface tracking), which would keep using the old file: turn it off first;
+- the clip is on a locked track, or is a compound or multicam clip;
+- the new media is a sound for a picture clip or a picture for a sound clip
+  (video and stills can replace each other);
+- the editor is still loading a file it was just given: the error names the
+  imported media's id, to run again with `--media-id`.
+
+With `--source`, a file the command imported for a swap that is then
+refused is removed from the project again.
+
+A still image takes the clip's span with no trims. The same swap is an
+`update-element` patch with `mediaId` (and optionally `trimStart`); a
+`duration`, `trimEnd` or `endTime` in that patch is refused, since they
+follow from the new media.
 
 ### Clip colours
 

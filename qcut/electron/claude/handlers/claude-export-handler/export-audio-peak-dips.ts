@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import type { TruePeakBlock } from "../../../ffmpeg/audio-true-peak.js";
+import type { ExportAudioCorrection } from "../../../types/export-audio-validation.js";
 
 /** Lowers a stretch of the mix by depthDb, easing in and out just outside it. */
 export interface PeakDip {
@@ -50,10 +51,11 @@ function byStart(left: PeakDip, right: PeakDip): number {
 }
 
 /**
- * How long the dips lowered the mix for, in seconds of `duration`, and the
- * most any moment came down, in dB. Each pass of dips is applied to the mix
- * the one before it left, so their depths add up; within a pass the deepest
- * dip holds, as applyPeakDips applies it.
+ * How long the dips lowered the mix for, in seconds of `duration`, the most
+ * any moment came down, in dB, and each stretch they lowered (dips whose
+ * ramps touch make one), ramps included: the seconds are the stretches'. Each pass of dips is applied to the mix the one
+ * before it left, so their depths add up; within a pass the deepest dip
+ * holds, as applyPeakDips applies it.
  */
 export function summarizePeakDips({
 	passes,
@@ -61,17 +63,17 @@ export function summarizePeakDips({
 }: {
 	passes: PeakDip[][];
 	duration: number;
-}): { correctedSeconds: number; maxCorrectionDb: number } {
+}): {
+	correctedSeconds: number;
+	maxCorrectionDb: number;
+	corrections: ExportAudioCorrection[];
+} {
 	const dips = passes.flat().sort(byStart);
 	let seconds = 0;
-	let reach = 0;
-	for (const dip of dips) {
-		const end = Math.min(duration, dip.end);
-		seconds += Math.max(0, end - Math.max(reach, dip.start));
-		reach = Math.max(reach, end);
-	}
 	let deepest = 0;
+	const corrections: ExportAudioCorrection[] = [];
 	for (const group of groupDips({ dips })) {
+		let groupDeepest = 0;
 		const reaching = passes.map((pass) =>
 			pass
 				.filter(
@@ -107,12 +109,25 @@ export function summarizePeakDips({
 				}
 				total += depth;
 			}
-			deepest = Math.max(deepest, total);
+			groupDeepest = Math.max(groupDeepest, total);
+		}
+		deepest = Math.max(deepest, groupDeepest);
+		// The stretch the gain changes over: its ramps included.
+		const start = Math.max(0, group.start);
+		const end = Math.min(duration, group.end);
+		if (end > start) {
+			seconds += end - start;
+			corrections.push({
+				start: Number(start.toFixed(3)),
+				end: Number(end.toFixed(3)),
+				depthDb: Number(groupDeepest.toFixed(2)),
+			});
 		}
 	}
 	return {
 		correctedSeconds: Number(seconds.toFixed(2)),
 		maxCorrectionDb: Number(deepest.toFixed(2)),
+		corrections,
 	};
 }
 

@@ -130,8 +130,11 @@ describe("verified true-peak export", () => {
 			limiting: {
 				oversampleFactor: 4,
 				encodeAttempts: 2,
-				correctedSeconds: 0.2,
+				peakCorrection: "local",
+				// The block ± one codec window, with its 20 ms ramps.
+				correctedSeconds: 0.24,
 				maxCorrectionDb: 2.95,
+				corrections: [{ start: 0.932, end: 1.168, depthDb: 2.95 }],
 			},
 		});
 		expect(meterMock).toHaveBeenCalledWith(
@@ -184,8 +187,13 @@ describe("verified true-peak export", () => {
 		expect(result.audioValidation.limiting).toEqual({
 			oversampleFactor: 4,
 			encodeAttempts: 3,
-			correctedSeconds: 0.39,
+			peakCorrection: "local",
+			correctedSeconds: 0.47,
 			maxCorrectionDb: 2.25,
+			corrections: [
+				{ start: 0.932, end: 1.168, depthDb: 2.25 },
+				{ start: 1.932, end: 2.168, depthDb: 1.85 },
+			],
 		});
 		const mix = encodedMixes[2];
 		// Down to 1.25 dB under the ceiling, the next over it 0.5 dB further.
@@ -200,6 +208,78 @@ describe("verified true-peak export", () => {
 				],
 			})
 		).toBe(true);
+	});
+
+	it("lowers the whole mix by the overshoot when asked to, as before 2026.10.29.3", async () => {
+		meterMock
+			.mockResolvedValueOnce(
+				measured({
+					truePeak: 0.7,
+					blocks: [{ start: 1, end: 1.1, peakDb: 0.7 }],
+				})
+			)
+			.mockResolvedValueOnce(measured({ truePeak: -1.3 }));
+		const result = await renderTruePeakLimitedExport({
+			...options,
+			peakCorrection: "whole",
+		});
+		expect(result.audioValidation.limiting).toEqual({
+			oversampleFactor: 4,
+			encodeAttempts: 2,
+			peakCorrection: "whole",
+			correctedSeconds: 3,
+			maxCorrectionDb: 2,
+			corrections: [{ start: 0, end: 3, depthDb: 2 }],
+		});
+		const [, first, second] = processMock.mock.calls.map(([call]) => call);
+		expect(first.args.join(" ")).not.toContain("volume=");
+		expect(second.args).toContain("volume=-2dB:precision=double");
+		// The lossless mix itself is never lowered in place.
+		expect(untouchedOutside({ mix: encodedMixes[1], stretches: [] })).toBe(
+			true
+		);
+	});
+
+	it("publishes the first encode and warns when only checking", async () => {
+		meterMock.mockResolvedValueOnce(
+			measured({
+				truePeak: 0.7,
+				blocks: [{ start: 1, end: 1.1, peakDb: 0.7 }],
+			})
+		);
+		const result = await renderTruePeakLimitedExport({
+			...options,
+			peakCorrection: "check",
+		});
+		expect(result.audioValidation).toEqual({
+			status: "exceeded",
+			ceilingDbtp: -1,
+			truePeakDbtp: 0.7,
+			limiting: {
+				oversampleFactor: 4,
+				encodeAttempts: 1,
+				peakCorrection: "check",
+				correctedSeconds: 0,
+				maxCorrectionDb: 0,
+				corrections: [],
+			},
+		});
+		expect(result.warnings).toEqual([
+			'The exported audio true peak is 0.7 dBTP, above the master limiter ceiling of -1.0 dB. Peak correction "check" lowers nothing; export with "local" or "whole" to keep it under the ceiling.',
+		]);
+		expect(meterMock).toHaveBeenCalledTimes(1);
+		expect(await fs.readFile(options.outputPath, "utf8")).toBe(
+			"new measured output"
+		);
+	});
+
+	it("passes a check that stays under the ceiling without a warning", async () => {
+		const result = await renderTruePeakLimitedExport({
+			...options,
+			peakCorrection: "check",
+		});
+		expect(result.audioValidation.status).toBe("passed");
+		expect(result.warnings).toBeUndefined();
 	});
 
 	it("corrects a rounded reading at the ceiling instead of accepting hidden overshoot", async () => {
@@ -225,8 +305,10 @@ describe("verified true-peak export", () => {
 		expect(result.audioValidation.limiting).toEqual({
 			oversampleFactor: 4,
 			encodeAttempts: 1,
+			peakCorrection: "local",
 			correctedSeconds: 0,
 			maxCorrectionDb: 0,
+			corrections: [],
 		});
 	});
 
@@ -362,6 +444,7 @@ describe("verified true-peak export", () => {
 
 	it.each([
 		{ format: "webm" },
+		{ peakCorrection: "loud" as never },
 		{ limiter: { ceilingDb: NaN, releaseMs: 50 } },
 		{ duration: 0 },
 		{ sampleRate: 0 },

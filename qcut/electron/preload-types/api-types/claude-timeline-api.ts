@@ -119,9 +119,19 @@ export interface ClaudeTimelineAPI {
 		) => Promise<void>;
 		getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
 		clearSelection: (projectId: string) => Promise<void>;
-		/** `requestId` is echoed by `sendResponse` so main matches the answer. */
-		onRequest: (callback: (request?: { requestId?: string }) => void) => void;
-		sendResponse: (timeline: ClaudeTimeline, requestId?: string) => void;
+		/**
+		 * `requestId` is echoed by `sendResponse` so main matches the answer;
+		 * a `projectId` the editor does not have loaded is read from storage.
+		 */
+		onRequest: (
+			callback: (request?: { requestId?: string; projectId?: string }) => void
+		) => void;
+		/** `error` instead of a timeline when the request could not be answered. */
+		sendResponse: (
+			timeline: ClaudeTimeline | null,
+			requestId?: string,
+			error?: string
+		) => void;
 		onApply: (
 			callback: (timeline: ClaudeTimeline, replace?: boolean) => void
 		) => void;

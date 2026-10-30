@@ -1,7 +1,10 @@
 /** Shared type definitions for Claude Code Integration API. */
 import type { JianyingTextRuntimeReference } from "../jianying-text-runtime/jianying-text-runtime-contract.js";
 import type { StickerLabRestrictedMediaMetadata } from "./sticker-lab-media-metadata.js";
-import type { ExportAudioValidation } from "./export-audio-validation.js";
+import type {
+	ExportAudioValidation,
+	ExportPeakCorrection,
+} from "./export-audio-validation.js";
 import type {
 	ClaudeAudioMixBus,
 	ClaudeTrackAudioSettings,
@@ -90,13 +93,18 @@ export interface ClaudeTimeline {
 	fps: number;
 	tracks: ClaudeTrack[];
 	/**
-	 * Id of the project this snapshot was taken from. The renderer can only
-	 * snapshot the currently open project, so consumers that receive an
-	 * explicit target projectId must compare it against this value.
+	 * Id of the project this snapshot was taken from. A request without a
+	 * projectId snapshots the currently open project, so consumers that
+	 * receive an explicit target projectId must compare it against this value.
 	 */
 	projectId?: string;
 	/** The project's buses and master; each audio track names its bus. */
 	audioMix?: { master: ClaudeAudioMixBus; buses: ClaudeAudioMixBus[] };
+	/**
+	 * True when the project was not loaded in the editor and this is the
+	 * project as it was last saved (N23); absent for the open project.
+	 */
+	readFromStorage?: true;
 }
 
 export interface ClaudeTrack {
@@ -502,6 +510,11 @@ export interface ExportJobRequest {
 	profilePath?: string;
 	/** Debug: force the renderer's per-frame seek path (baseline profiling). */
 	disableSequentialDecode?: boolean;
+	/**
+	 * Native exports with the master limiter on: how encoding pushing the true
+	 * peak over the ceiling is handled ("local" by default).
+	 */
+	peakCorrection?: ExportPeakCorrection;
 
 	/** GIF-specific export options */
 	gifConfig?: {

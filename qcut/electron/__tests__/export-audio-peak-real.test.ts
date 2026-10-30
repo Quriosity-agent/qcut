@@ -381,6 +381,107 @@ describe.skipIf(!existsSync(ffmpeg))(
 			expect(result.warnings?.[0]).toContain("dBTP");
 		}, 30_000);
 
+		it.each([
+			"check",
+			"whole",
+		] as const)("exports with peak correction %s", async (peakCorrection) => {
+			// Full-scale noise: AAC always takes its limited peaks over the ceiling.
+			const noise = path.join(workDir, "noise.wav");
+			if (!existsSync(noise)) {
+				run({
+					args: [
+						"-f",
+						"lavfi",
+						"-i",
+						"anoisesrc=color=white:seed=7:amplitude=1:sample_rate=48000:duration=3,volume=2",
+						"-c:a",
+						"pcm_f32le",
+						noise,
+					],
+				});
+			}
+			const outputPath = path.join(workDir, `noise-${peakCorrection}.mp4`);
+			const jobId = `peak-correction-${peakCorrection}`;
+			const settings: ResolvedExportSettings = {
+				engine: "native-cli",
+				presetId: "custom",
+				width: 32,
+				height: 32,
+				fps: 24,
+				format: "mp4",
+				codec: "libx264",
+				bitrate: "128k",
+				audioBitrate: 192,
+				audioSampleRate: 48_000,
+				audioChannels: 2,
+				peakCorrection,
+			};
+			exportJobs.set(jobId, {
+				jobId,
+				projectId: "peak-correction-project",
+				settings,
+				presetId: settings.presetId,
+				engine: settings.engine,
+				status: "queued",
+				progress: 0,
+				startedAt: Date.now(),
+			});
+			await executeExportJob({
+				jobId,
+				projectId: "peak-correction-project",
+				settings,
+				outputPath,
+				segments: [
+					{
+						elementId: "video",
+						trackId: "video-track",
+						trackOrder: 0,
+						elementOrder: 0,
+						sourcePath: videoOnly,
+						sourceId: "video-source",
+						startTime: 0,
+						duration: 3,
+						trimStart: 0,
+						fitMode: "contain",
+					},
+				],
+				audioFiles: [
+					{
+						path: noise,
+						trackId: "audio",
+						startTime: 0,
+						duration: 3,
+						volume: 1,
+					},
+				],
+				audioMixConfig: mixConfig({ gainDb: 0 }),
+			});
+			const result = getExportJobStatus(jobId);
+			expect(result?.status, result?.error).toBe("completed");
+			expect(existsSync(outputPath)).toBe(true);
+			const limiting = result?.audioValidation?.limiting;
+			expect(limiting?.peakCorrection).toBe(peakCorrection);
+			if (peakCorrection === "check") {
+				expect(result?.audioValidation?.status).toBe("exceeded");
+				expect(limiting).toMatchObject({
+					encodeAttempts: 1,
+					correctedSeconds: 0,
+					corrections: [],
+				});
+				expect(result?.warnings).toEqual(
+					expect.arrayContaining([
+						expect.stringContaining('Peak correction "check" lowers nothing'),
+					])
+				);
+			} else {
+				expect(result?.audioValidation?.status).toBe("passed");
+				expect(limiting?.corrections).toEqual([
+					{ start: 0, end: 3, depthDb: limiting?.maxCorrectionDb },
+				]);
+				expect(limiting?.maxCorrectionDb).toBeGreaterThan(0);
+			}
+		}, 60_000);
+
 		it("passes a quieter encoded mix without altering the exported bytes", async () => {
 			const result = await validateWithoutChangingFile({ file: safeAac });
 			expect(result.audioValidation?.status).toBe("passed");

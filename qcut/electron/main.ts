@@ -64,6 +64,7 @@ import {
 	resolveRequestedDisplay,
 } from "./window-sizing.js";
 import { toReleaseVersion } from "./update-version.js";
+import { recordLaunchVersion } from "./update-history.js";
 import {
 	loadInitialLicenseServerRuntimeConfig,
 	refreshLicenseServerRuntimeConfig,
@@ -1077,6 +1078,16 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 				? "🔐 Editor API token taken from QCUT_API_TOKEN"
 				: "🔐 Editor API token generated for this launch"
 		);
+		// Which version ran last, before the API servers start reporting it.
+		const lastUpdate = recordLaunchVersion({
+			userDataPath: app.getPath("userData"),
+			packageVersion: app.getVersion(),
+		});
+		if (lastUpdate) {
+			logger.log(
+				`[UpdateHistory] Last update: ${lastUpdate.from} -> ${lastUpdate.to} at ${lastUpdate.at}`
+			);
+		}
 		// Set macOS dock icon (requires PNG format)
 		if (process.platform === "darwin" && app.dock) {
 			const iconPath = app.isPackaged

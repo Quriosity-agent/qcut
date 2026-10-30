@@ -7,6 +7,7 @@ import type {
 import { debugError } from "@/lib/debug/debug-config";
 import {
 	MASTER_AUDIO_BUS_ID,
+	normalizeProjectAudioMixSettings,
 	normalizeTrackAudioSettings,
 } from "@/lib/audio/audio-mix-settings";
 import { resolveAudioMixRouting } from "@/lib/audio/audio-mix-routing";
@@ -23,7 +24,12 @@ import {
 } from "@/stores/audio-mix-actions";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import type { ProjectAudioMixSettings, TimelineTrack } from "@/types/timeline";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
+import {
+	loadStoredProjectView,
+	storedProjectNotFound,
+} from "./claude-stored-project";
 
 /**
  * The mixer over the editor API: the same actions as the mixer panel and the
@@ -47,14 +53,17 @@ function refuse(
 	throw new MixRefusal(reason, message);
 }
 
-/** The whole mix as the stores hold it now. */
+/** The whole mix as the stores hold it now, or as given (a stored project). */
 export function readAudioMixSnapshot({
 	projectId,
+	tracks: allTracks = useTimelineStore.getState().tracks,
+	mix = readProjectAudioMix(),
 }: {
 	projectId: string;
+	tracks?: TimelineTrack[];
+	mix?: ProjectAudioMixSettings;
 }): ClaudeAudioMixSnapshot {
-	const tracks = useTimelineStore.getState().tracks.filter(carriesAudio);
-	const mix = readProjectAudioMix();
+	const tracks = allTracks.filter(carriesAudio);
 	const routes = new Map(
 		resolveAudioMixRouting({ tracks, audioMix: mix }).tracks.map((route) => [
 			route.trackId,
@@ -119,6 +128,24 @@ async function applyAudioMixOperation(
 	request: ClaudeAudioMixRequest
 ): Promise<ClaudeAudioMixResponse> {
 	if (useProjectStore.getState().loadedProjectId !== request.projectId) {
+		// Reading a project does not need it open: storage has its mix (N23).
+		if (request.action === "get") {
+			const stored = await loadStoredProjectView({
+				projectId: request.projectId,
+			});
+			if (!stored)
+				throw storedProjectNotFound({ projectId: request.projectId });
+			return {
+				success: true,
+				mix: readAudioMixSnapshot({
+					projectId: request.projectId,
+					tracks: stored.tracks,
+					mix: normalizeProjectAudioMixSettings({
+						audioMix: stored.project.audioMix,
+					}),
+				}),
+			};
+		}
 		refuse(
 			"not-open",
 			`Project ${request.projectId} is not open in the editor; open it first (qcut editor navigator open --project-id ${request.projectId})`

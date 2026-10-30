@@ -228,6 +228,7 @@ export type {
 	AdjustmentElement,
 	CaptionElement,
 	CaptionSecondaryStyle,
+	CaptionShadow,
 	SubtitleStyle,
 	RemotionElement,
 	HyperframesElement,

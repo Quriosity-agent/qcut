@@ -9,6 +9,57 @@ import {
 	applyTimelineToStore,
 } from "./claude-timeline-bridge-helpers";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
+import {
+	isLoadedProject,
+	loadStoredProjectView,
+	storedProjectNotFound,
+} from "./claude-stored-project";
+
+function liveTimeline(): ClaudeTimeline {
+	const project = useProjectStore.getState().activeProject;
+	const tracks = useTimelineStore.getState().tracks;
+	const fps = project?.fps || 30;
+	return {
+		name: project?.name || "Untitled",
+		duration: calculateTimelineDuration({ tracks, fps }),
+		width: project?.canvasSize?.width || 1920,
+		height: project?.canvasSize?.height || 1080,
+		fps,
+		tracks: formatTracksForExport({ tracks, fps }),
+		projectId: project?.id,
+		audioMix: normalizeProjectAudioMixSettings({
+			audioMix: project?.audioMix,
+		}),
+	};
+}
+
+/** A project the editor does not have loaded, as it was last saved (N23). */
+async function storedTimeline({
+	projectId,
+}: {
+	projectId: string;
+}): Promise<ClaudeTimeline> {
+	const stored = await loadStoredProjectView({ projectId });
+	if (!stored) throw storedProjectNotFound({ projectId });
+	const { project, tracks, media } = stored;
+	const names = new Map(media.map((item) => [item.id, item.name]));
+	const fps = project.fps || 30;
+	return {
+		name: project.name || "Untitled",
+		duration: calculateTimelineDuration({ tracks, fps }),
+		width: project.canvasSize?.width || 1920,
+		height: project.canvasSize?.height || 1080,
+		fps,
+		tracks: formatTracksForExport({
+			tracks,
+			fps,
+			mediaName: (mediaId) => names.get(mediaId),
+		}),
+		projectId: project.id,
+		audioMix: normalizeProjectAudioMixSettings({ audioMix: project.audioMix }),
+		readFromStorage: true,
+	};
+}
 
 export function setupRequestHandlers({
 	claudeAPI,
@@ -16,36 +67,27 @@ export function setupRequestHandlers({
 	claudeAPI: ClaudeTimelineBridgeAPI;
 }): void {
 	// Respond to timeline export request from main process, echoing its id
-	// so main matches this answer to the request that asked for it.
-	claudeAPI.onRequest((request) => {
+	// so main matches this answer to the request that asked for it. A request
+	// naming a project the editor does not have loaded reads it from storage.
+	claudeAPI.onRequest(async (request) => {
 		try {
 			debugLog("[ClaudeTimelineBridge] Received timeline export request");
-
-			const timelineState = useTimelineStore.getState();
-			const projectState = useProjectStore.getState();
-			const project = projectState.activeProject;
-			const tracks = timelineState.tracks;
-			const fps = project?.fps || 30;
-
-			const timeline: ClaudeTimeline = {
-				name: project?.name || "Untitled",
-				duration: calculateTimelineDuration({ tracks, fps }),
-				width: project?.canvasSize?.width || 1920,
-				height: project?.canvasSize?.height || 1080,
-				fps,
-				tracks: formatTracksForExport({ tracks, fps }),
-				projectId: project?.id,
-				audioMix: normalizeProjectAudioMixSettings({
-					audioMix: project?.audioMix,
-				}),
-			};
-
+			const projectId = request?.projectId;
+			const timeline =
+				projectId === undefined || isLoadedProject({ projectId })
+					? liveTimeline()
+					: await storedTimeline({ projectId });
 			claudeAPI.sendResponse(timeline, request?.requestId);
 			debugLog("[ClaudeTimelineBridge] Sent timeline response");
 		} catch (error) {
 			debugError(
 				"[ClaudeTimelineBridge] Failed to handle timeline export request:",
 				error
+			);
+			claudeAPI.sendResponse(
+				null,
+				request?.requestId,
+				error instanceof Error ? error.message : "Timeline request failed"
 			);
 		}
 	});

@@ -1,4 +1,5 @@
 import type { ExportJobRequest } from "../../../types/claude-api";
+import { EXPORT_PEAK_CORRECTIONS } from "../../../types/export-audio-validation.js";
 import type { ResolvedExportSettings } from "./types.js";
 import { findPresetById } from "./presets.js";
 
@@ -56,6 +57,14 @@ export function resolveExportSettings({
 		if (![44_100, 48_000].includes(audioSampleRate)) {
 			throw new Error("Audio sample rate must be 44100 or 48000 Hz");
 		}
+		if (
+			request.peakCorrection !== undefined &&
+			!EXPORT_PEAK_CORRECTIONS.includes(request.peakCorrection)
+		) {
+			throw new Error(
+				`Peak correction must be one of ${EXPORT_PEAK_CORRECTIONS.join(", ")}`
+			);
+		}
 
 		const width =
 			s?.width ?? (typeof top.width === "number" ? top.width : preset.width);
@@ -87,6 +96,9 @@ export function resolveExportSettings({
 			audioBitrate,
 			audioSampleRate,
 			audioChannels: request.audioExportConfig?.channels ?? 2,
+			...(request.peakCorrection
+				? { peakCorrection: request.peakCorrection }
+				: {}),
 
 			// Pass through enhancement configs
 			cursorConfig: request.cursorConfig,

@@ -675,6 +675,20 @@ class StorageService {
 		return mediaItems;
 	}
 
+	/** Each media item's id, name and type, from metadata only (no file blobs). */
+	async loadAllMediaSummaries(
+		projectId: string
+	): Promise<Array<Pick<MediaFileData, "id" | "name" | "type">>> {
+		const { mediaMetadataAdapter } = this.getProjectMediaAdapters(projectId);
+		const mediaIds = await mediaMetadataAdapter.list();
+		const records = await Promise.all(
+			mediaIds.map((mediaId) => mediaMetadataAdapter.get(mediaId))
+		);
+		return records.flatMap((media) =>
+			media ? [{ id: media.id, name: media.name, type: media.type }] : []
+		);
+	}
+
 	/** Read export-policy metadata without loading media blobs into memory. */
 	async loadAllMediaExportPolicyRecords(
 		projectId: string

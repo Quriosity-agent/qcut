@@ -433,6 +433,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			time: { type: "string" },
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
+			"trim-start": { type: "string" },
 			"new-name": { type: "string" },
 			open: { type: "boolean", default: false },
 			"wait-ready": { type: "boolean", default: false },
@@ -601,6 +602,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"gif-quality": { type: "string" },
 			"profile-path": { type: "string" },
 			"no-sequential-decode": { type: "boolean", default: false },
+			"peak-correction": { type: "string" },
 			mic: { type: "boolean", default: false },
 			// Default true matches the command-registry advertisement and user
 			// docs — capturing system audio is the intended out-of-box
@@ -1114,6 +1116,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				? undefined
 				: parseFloat(values["end-time"] as string)
 			: undefined,
+		trimStart: parseStrictCliNumber({ value: values["trim-start"] }),
 		newName: values["new-name"] as string | undefined,
 		name: values.name as string | undefined,
 		open: (values.open as boolean) ?? false,
@@ -1375,6 +1378,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			? { "profile-path": values["profile-path"] as string }
 			: {}),
 		...(values["no-sequential-decode"] ? { "no-sequential-decode": true } : {}),
+		...(values["peak-correction"]
+			? { "peak-correction": values["peak-correction"] as string }
+			: {}),
 		...(values.mic ? { mic: true } : {}),
 		...(values["system-audio"] ? { "system-audio": true } : {}),
 		// ui options

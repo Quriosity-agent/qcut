@@ -1,4 +1,4 @@
-# QCut 2701 trailer issue fixes (N6–N21)
+# QCut 2701 trailer issue fixes (N6–N26)
 
 Baseline: `v2026.10.27.1` / `51ffcee11`. Source: the 2026-10-28 StreetFighter
 sample report (配乐、双语字幕、字卡, items N6–N18, N19–N20 from its
@@ -240,6 +240,43 @@ inside strings, other damage, a repeat read (one copy) and a copy that cannot
 be made; `storage-handlers.test.ts` checks what `storage:load` hands over and
 logs.
 
+## N22–N26: export peaks, closed projects, replacing a clip, film subtitles, updates
+
+Baseline `v2026.10.29.3` / `3c1267896`; the report's 2026-10-30 addendum,
+written while making v20 and v21 on the installed 2026.10.29.3. Read the code
+for each first; all five were real.
+
+| Report | Root cause | Change |
+| --- | --- | --- |
+| N22: the local peak correction reports only `correctedSeconds` and `maxCorrectionDb`; there is no choice of method; nothing tells before an export where it will lower | The dips were applied per 100 ms block but only summed for the report; the loop had one mode. | `export start --peak-correction local\|whole\|check`: `local` (default) as in 2026.10.29.3, `whole` lowers the whole mix by the overshoot + 0.3 dB through the encoder (the pre-29.3 behaviour, level relations kept), `check` encodes once and reports `exceeded` with a warning. `limiting.corrections` lists every stretch lowered (start, end, depth; dips whose ramps touch are one stretch). `editor mix loudness` with the native engine returns the same `audioValidation`, so the stretches are known before exporting. |
+| N23: `timeline:export`, `mix:export`, `project:info` need the project open in the editor | Every timeline read went to the renderer, which answered only for the open project (409 otherwise); worse, project stats, the timeline summary and the report answered with **whichever** project was open whatever id they named, and the 409's `--focus` hint could never work (focus runs only after success). | A read naming a project the editor has not loaded is answered from storage in the renderer (project record, the current scene's tracks from IndexedDB, media names) without switching what is open; `readFromStorage: true` marks it, an unknown id is a 404. Covers `timeline export`, the summary and report, `project stats`/`info` and `mix export`; mixer changes to a closed project are still refused. |
+| N24: replacing a main-track shot takes `batch-delete` + `batch-add` with insert + moving the shifted clips back | There was no API for it; the editor's Replace needs a picked file, resets the in-point to 0 and trims the tail. | `editor timeline replace-media --element-id <clip> --source <file>` (or `--media-id`, `--trim-start`): one `mediaId` patch that keeps track, start, length, in-point and every setting, sets the out trim from the new length, one undo step; media ending before the clip's out-point, a locked track, a compound clip, or stems/converted voice/cover/AI denoise/cutout/mask matte/tracking made from the old file are refused with the reason; a file it imported for a refused swap is removed again. The answer is the clip read back from the timeline. |
+| N25: style D (思源宋体 SemiBold 28 + Gill Sans 22, 0.10/0.03 em spacing, two soft shadows, 4/3-frame fades) can only be drawn outside QCut | Captions had `bold` only, one letter spacing for both lines, one hard shadow (exports: no blur; native: a diagonal of max(x, y)), and a fade-in in seconds; the native export also replaced any CJK family not on a fixed list (思源宋体 CN included) with Hiragino Sans GB. | New style fields in all four renderers (preview, canvas export, native export, the Export dialog's FFmpeg path): `fontWeight` 100–900, the second line's `letterSpacing`/`fontWeight`, `shadows` (≤ 4 soft shadows: colour, opacity, CSS blur radius, offset; drawn under every line) and `fadeInFrames`/`fadeOutFrames` (frame ramps at the project rate, as FFmpeg's `fade` did on the drawn files). The native export keeps any installed font whose OS/2 table covers CJK. |
+| N26: QCut updated itself silently; after the restart no project was open | Nothing recorded the version that ran before, health had no update information, `autoInstallOnAppQuit` is always on (on macOS the zip goes to Squirrel as soon as it is downloaded), "Later" only hides the toast, and every launch opens the projects page. | Done (no updater change): each launch notes its version in `userData/update-history.json`; `editor health` reports `releaseVersion` and `lastUpdate {from, to, at, releaseNotes}`, every API answer carries it in `X-QCut-Last-Update`, and the CLI says it once on stderr. Proposed, not done (they change the updater or the first screen; scope below): pausing automatic updates, and reopening the project after an update. |
+
+Usage notes for N25: the 思源宋体 files are in `/Volumes/Elements/字体安装包`, not
+installed, so neither the preview nor the exports can find them — install
+them (the family is `Source Han Serif CN`, SemiBold is weight 600). The
+script's half-width `　` and the missing spacing around it and between
+`——`/`……` are its own typesetting; QCut spaces every character the same
+(an en space `\u2002` gives the half-width gap). libass's `\blur b` measured
+σ = 0.849 b with the bundled FFmpeg (b 2, 4, 8 → σ 1.66, 3.36, 6.78), so the
+new shadows write `\blur` σ·√ln256⁄2.
+
+N26 scope still to agree:
+
+- Pause automatic updates (`app update pause [--until <date>]`/`resume`,
+  a Settings switch, `editor health` showing it): while paused no automatic
+  download, and a downloaded update is not installed on quit
+  (`autoInstallOnAppQuit` off, so on macOS nothing reaches Squirrel until an
+  explicit install). Touches `auto-update-controller.ts`, the update
+  preferences, the update IPC/settings UI and the CLI; needs a packaged-build
+  check of the macOS hand-off.
+- Reopen the project after an update: the editor records the project open
+  at quit; the first launch after a version change opens it instead of the
+  projects page (only then, and only if it still exists). Touches the project
+  store, main's first `loadURL` and the update record above; no updater code.
+
 ## Not changed
 
 - WZRD (QCut Web) Scribe v2 through the user's WZRD account: a different
@@ -267,8 +304,17 @@ logs.
   fades are still applied only by the muxer export (the native export lists
   the clips it leaves them out of). Moving every main-track clip's sound
   into the mix would change the export's audio path for every project.
-- N17: no command replaces a clip's source in place yet; the recipe is
-  `batch-delete` without `--ripple`, then `add-element` at the same start.
+- N17: superseded by N24's `timeline replace-media`.
+- N26: pausing automatic updates and reopening the project after an update
+  (scope above), the `/changelog` page opening 29.1 rather than the newest
+  release (`compareSemver` in `release-notes-utils.ts` reads three parts of a
+  four-part version), and the GitHub links still pointing at
+  `donghaozhang/qcut` (`shell-github-handlers.ts`, `footer.tsx`).
+- The text element's glow (native) and soft shadow (Export dialog path) use
+  `\blur` blur÷2 and `\blur` blur, which libass draws 15 % narrower and 70 %
+  wider than the preview; the new caption shadows use the measured scale.
+- The Export dialog's FFmpeg path still places captions by the style's
+  `position.y` margin (90 px by default), not the preview's 28 px inset.
 - N18: history steps other than transactions are still labelled `Edit`;
   `changes` is what tells them apart.
 - N19: the project store's other record changes (bookmarks, frame rate,
@@ -339,3 +385,25 @@ the 504 of an unconfirmed placement and `batch-import` asking the editor for
 each copied file; `claude-renderer-mutation-handler.test.ts` places a clip the
 editor confirms after 8 s (5 s failed before); `claude-track-move-relative`
 and `editor-track-move-cli` cover `--above/--below`.
+
+N22–N26 (`claude/fix-2903-n22-n26`): web 1611 files / 15566 tests, Electron
+763 / 7853, editor-core 102 / 1000 passed before the N26 commits, with the
+web, Electron and editor-core type checks clean; the Electron suite again
+after them: 764 files / 7859 tests passed. Live, on `bun run build` of the branch, offscreen with
+an isolated profile and throw-away projects:
+
+| Spec | Result |
+| --- | --- |
+| `film-caption-style-engine-parity` (N25: Hiragino Mincho ProN 600 over Gill Sans, two shadows, 4/3 fade frames at 24 fps, grey background) | passed. Native vs muxer: lines' bottoms within 1–3 px, widths within 1 px (519/518, 234/233), lit pixels within 7 %; grey between the lines 122.0 / 121.2 and at the shadow's core 76 / 77 (background 128); fade frames 12–16 and 57–60: native 0, .148, .367, .656, 1.00 \| 1, .563, .223, 0 — muxer within 0.04 of each |
+| `replace-media-closed-reads` (N24, N23) | passed: the 8 s render swaps in at 2 s with in-point 1 s and out trim 4 s, its −6 dB gain still in the export; a 3 s file is refused with both lengths, the timeline and media list unchanged; the closed project's `timeline export` (`readFromStorage: true`), `project info` (1 element) and `mix export` answer while the editor stays on the open one |
+| `bilingual-caption-engine-parity`, `text-caption-engine-parity` | passed (unchanged captions) |
+| `mix-dynamics-engine-parity`, `audio-sync-export` (N22's export path) | passed |
+
+With the bundled FFmpeg's `-loglevel debug`, the native ASS for weight 600
+selects `(Hiragino Mincho ProN, 600) -> HiraMinProN-W6` and `(Gill Sans, 600)
+-> GillSans-SemiBold` (W3 and GillSans at 400). The film spec measures the
+fades as the letters' distance from the grey, which the shadow under a
+half-faded letter lowers: that is why its levels sit under ¼, ½, ¾ in both
+engines alike; the opacity itself (k/4 in, 1 − k/3 out) is pinned by
+`caption-film-style.test.ts` and the preview and canvas tests.
+

@@ -63,6 +63,15 @@ function number({ min, max }: { min?: number; max?: number } = {}) {
 			: INVALID;
 }
 
+function integer({ min, max }: { min: number; max: number }) {
+	return (value: unknown): unknown =>
+		Number.isInteger(value) &&
+		(value as number) >= min &&
+		(value as number) <= max
+			? value
+			: INVALID;
+}
+
 function oneOf(...allowed: string[]) {
 	return (value: unknown): unknown =>
 		typeof value === "string" && allowed.includes(value) ? value : INVALID;
@@ -108,6 +117,14 @@ const CAPTION_STYLE_FIELDS: Record<
 	},
 	animationDuration: { read: number({ min: 0 }), expects: "seconds ≥ 0" },
 	animationDelay: { read: number({ min: 0 }), expects: "seconds ≥ 0" },
+	fadeInFrames: {
+		read: integer({ min: 0, max: 600 }),
+		expects: "whole frames at the project rate, 0–600",
+	},
+	fadeOutFrames: {
+		read: integer({ min: 0, max: 600 }),
+		expects: "whole frames at the project rate, 0–600",
+	},
 	karaokeMode: {
 		read: oneOf(...KARAOKE_MODES),
 		expects: KARAOKE_MODES.join(", "),
@@ -130,8 +147,10 @@ const CAPTION_STYLE_ALIASES: Record<string, string> = {
 /** Text-element fields a caption has no counterpart for. */
 const NO_CAPTION_EQUIVALENT: Record<string, string> = {
 	strokeOpacity: "the outline is drawn at the text's opacity",
-	shadowOpacity: "the shadow is drawn at the text's opacity",
-	shadowBlur: "caption shadows are not blurred",
+	shadowOpacity:
+		"the shadow is drawn at the text's opacity; soft shadows with their own opacity are shadows: [{color, opacity, blur, x, y}]",
+	shadowBlur:
+		"the single shadow is not blurred; soft shadows are shadows: [{color, opacity, blur, x, y}]",
 	glowColor: "captions have no glow",
 	glowOpacity: "captions have no glow",
 	glowBlur: "captions have no glow",
@@ -252,13 +271,23 @@ function readField({
 		return undefined;
 	}
 	if (key === "fontWeight") {
-		if (value !== "bold" && value !== "normal" && typeof value !== "number") {
-			return "expected bold or normal";
+		const weight =
+			value === "bold"
+				? 700
+				: value === "normal"
+					? 400
+					: typeof value === "number" && value >= 100 && value <= 900
+						? Math.round(value)
+						: undefined;
+		if (weight === undefined) {
+			return "expected bold, normal or a weight 100–900 (SemiBold is 600)";
 		}
-		style.bold =
-			value === "bold" || (typeof value === "number" && value >= 600);
+		style.bold = weight >= 600;
+		// Bold and regular are `bold`'s own; only a weight between is kept.
+		style.fontWeight = weight === 400 || weight === 700 ? undefined : weight;
 		return undefined;
 	}
+	if (key === "shadows") return readShadows({ value, style });
 	if (key === "fontStyle" || key === "textDecoration") {
 		const on = key === "fontStyle" ? "italic" : "underline";
 		const off = key === "fontStyle" ? "normal" : "none";
@@ -281,6 +310,76 @@ function readField({
 	const read = spec.read(value);
 	if (read === INVALID) return `expected ${spec.expects}`;
 	style[field] = read;
+	if (field === "bold") {
+		// `bold` sets the weight: a stored weight it contradicts goes.
+		const weight = style.fontWeight;
+		if (typeof weight !== "number" || weight >= 600 !== read) {
+			style.fontWeight = undefined;
+		}
+	}
+	return undefined;
+}
+
+/** At most this many soft shadows, each a layer the exports draw. */
+const MAX_CAPTION_SHADOWS = 4;
+const SHADOW_FIELDS = ["color", "opacity", "blur", "x", "y"];
+
+/**
+ * `shadows`: soft shadows under the text (N25), stored complete; they
+ * replace `shadowColor`/`shadowOffset`, `[]` draws none, and `null` goes
+ * back to the single shadow.
+ */
+function readShadows({
+	value,
+	style,
+}: {
+	value: unknown;
+	style: Record<string, unknown>;
+}): string | undefined {
+	if (value === null) {
+		style.shadows = undefined;
+		return undefined;
+	}
+	const expects = `expected up to ${MAX_CAPTION_SHADOWS} of {color, opacity?, blur?, x?, y?}`;
+	if (!Array.isArray(value) || value.length > MAX_CAPTION_SHADOWS) {
+		return expects;
+	}
+	const shadows: Record<string, unknown>[] = [];
+	for (const [index, entry] of value.entries()) {
+		if (!isRecord(entry)) return `[${index}] ${expects}`;
+		const unknown = Object.keys(entry).filter(
+			(key) => !SHADOW_FIELDS.includes(key)
+		);
+		if (unknown.length > 0) {
+			return `[${index}].${unknown[0]} is not a shadow field (${SHADOW_FIELDS.join(", ")})`;
+		}
+		const shadowColor = color(entry.color);
+		if (
+			shadowColor === INVALID ||
+			!/^#[0-9a-f]{6}$/i.test(shadowColor as string)
+		) {
+			return `[${index}].color expected a colour (#rrggbb)`;
+		}
+		const shadow: Record<string, unknown> = { color: shadowColor };
+		for (const [key, read, fallback, expected] of [
+			["opacity", number({ min: 0, max: 1 }), 1, "0–1"],
+			[
+				"blur",
+				number({ min: 0, max: 200 }),
+				0,
+				"a blur radius in pixels, 0–200",
+			],
+			["x", number(), 0, "pixels"],
+			["y", number(), 0, "pixels"],
+		] as const) {
+			const given = entry[key];
+			const parsed = given === undefined ? fallback : read(given);
+			if (parsed === INVALID) return `[${index}].${key} expected ${expected}`;
+			shadow[key] = parsed;
+		}
+		shadows.push(shadow);
+	}
+	style.shadows = shadows;
 	return undefined;
 }
 
@@ -320,6 +419,8 @@ const SECONDARY_FIELDS = [
 	"fontColor",
 	"bold",
 	"italic",
+	"letterSpacing",
+	"fontWeight",
 ];
 
 /**
@@ -346,7 +447,8 @@ function readSecondary({
 	}
 	const secondary: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(value)) {
-		const read: Record<string, unknown> = {};
+		// Read over what the line has so far, so `bold` sees its weight.
+		const read: Record<string, unknown> = { ...secondary };
 		const reason = readField({ key, value: entry, style: read });
 		if (reason) {
 			ignored.push({ field: `${field}.${key}`, reason });
@@ -394,6 +496,7 @@ export const CAPTION_STYLE_KEYS: ReadonlySet<string> = new Set([
 	"fontStyle",
 	"textDecoration",
 	"secondary",
+	"shadows",
 ]);
 
 /** Fields read at the top level as style, reported when they do nothing. */

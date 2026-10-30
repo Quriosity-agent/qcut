@@ -4,7 +4,10 @@
  */
 
 import type { JianyingTextRuntimeReference } from "../../../jianying-text-runtime/jianying-text-runtime-contract.js";
-import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
+import type {
+	ExportAudioValidation,
+	ExportPeakCorrection,
+} from "../../../types/export-audio-validation.js";
 
 export const EXPORT_JOB_STATUS = {
 	queued: "queued",
@@ -84,6 +87,8 @@ export interface ResolvedExportSettings {
 	audioBitrate?: number;
 	audioSampleRate?: number;
 	audioChannels?: 1 | 2;
+	/** How the master limiter's true-peak check handles encoding overshoot. */
+	peakCorrection?: ExportPeakCorrection;
 
 	/** Cursor enhancement config (passed through to compositor) */
 	cursorConfig?: {
@@ -200,6 +205,14 @@ export interface TextOverlay {
 	animationType: "none" | "fade" | "slide-up" | "slide-left";
 	animationDuration: number;
 	animationDelay: number;
+	/** caption-anchor only (N25): a weight other than bold's (SemiBold 600). */
+	weight?: number;
+	/** caption-anchor only: soft shadows under the text, instead of the hard one. */
+	shadows?: TextOverlayShadow[];
+	/** caption-anchor only: seconds of fade-in from the start. */
+	fadeIn?: number;
+	/** caption-anchor only: seconds of fade-out to the end. */
+	fadeOut?: number;
 	/**
 	 * caption-anchor only: a bilingual caption's second-language line, drawn
 	 * under `content` in its own font (outline, shadow, box and line spacing
@@ -212,7 +225,22 @@ export interface TextOverlay {
 		color: string;
 		fontWeight: "normal" | "bold";
 		fontStyle: "normal" | "italic";
+		/** Extra space after each character, in canvas pixels. */
+		letterSpacing: number;
+		/** A weight other than bold's, as on the caption. */
+		weight?: number;
 	};
+}
+
+/** One soft shadow under a caption's text. */
+export interface TextOverlayShadow {
+	color: string;
+	/** 0–1, on top of the text's opacity. */
+	opacity: number;
+	/** CSS text-shadow blur radius in pixels: a Gaussian of σ = blur ÷ 2. */
+	blur: number;
+	x: number;
+	y: number;
 }
 
 export interface JianyingTextOverlay {

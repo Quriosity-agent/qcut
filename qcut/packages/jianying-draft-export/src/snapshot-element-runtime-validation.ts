@@ -3,7 +3,6 @@ import type {
 	AnimatedParameter,
 	AudioLyricsWord,
 	CaptionElement,
-	CaptionSecondaryStyle,
 	EffectAudioCompanion,
 	EffectChain,
 	EffectElement,
@@ -21,7 +20,6 @@ import type {
 	RemotionElement,
 	StickerElement,
 	StickerKeyframeProperty,
-	SubtitleStyle,
 	TextElement,
 	TextFontAssetReference,
 	TextKeyframeProperty,
@@ -41,6 +39,7 @@ import {
 	type JsonValue,
 	validationIssue,
 } from "./runtime-json.js";
+import { validateSubtitleStyle } from "./snapshot-caption-style-validation.js";
 import { validateMediaElement } from "./snapshot-media-runtime-validation.js";
 import {
 	createAllowedKeySet,
@@ -324,46 +323,6 @@ const STICKER_KEYFRAME_PROPERTIES = createAllowedKeySet<
 		y: true,
 	},
 });
-const SUBTITLE_STYLE_KEYS = createAllowedKeySet<SubtitleStyle>({
-	keys: {
-		animationDelay: true,
-		animationDuration: true,
-		animationType: true,
-		backgroundColor: true,
-		bgOpacity: true,
-		bold: true,
-		fontColor: true,
-		fontFamily: true,
-		fontOpacity: true,
-		fontSize: true,
-		highlightColor: true,
-		highlightScale: true,
-		italic: true,
-		karaokeMode: true,
-		letterSpacing: true,
-		lineSpacing: true,
-		outlineColor: true,
-		outlineWidth: true,
-		position: true,
-		secondary: true,
-		shadowColor: true,
-		shadowOffset: true,
-		textAlign: true,
-		underline: true,
-		upcomingColor: true,
-	},
-});
-const SUBTITLE_SECONDARY_KEYS = createAllowedKeySet<CaptionSecondaryStyle>({
-	keys: {
-		bold: true,
-		fontColor: true,
-		fontFamily: true,
-		fontSize: true,
-		italic: true,
-	},
-});
-const SUBTITLE_SHADOW_OFFSET_KEYS = new Set(["x", "y"]);
-const SUBTITLE_POSITION_KEYS = new Set(["align", "x", "y"]);
 const AUDIO_LYRICS_WORD_KEYS = createAllowedKeySet<AudioLyricsWord>({
 	keys: {
 		end: true,
@@ -1135,113 +1094,6 @@ function validateCaptionElement({
 		const value = element[key];
 		if (value !== undefined) {
 			validateSubtitleStyle({ path: `${path}.${key}`, value });
-		}
-	}
-}
-
-function validateSubtitleStyle({
-	path: stylePath,
-	value,
-}: {
-	path: string;
-	value: JsonValue;
-}): void {
-	const style = getRecord({ path: stylePath, value });
-	assertKeys({ allowed: SUBTITLE_STYLE_KEYS, path: stylePath, record: style });
-	for (const key of [
-		"fontFamily",
-		"fontColor",
-		"outlineColor",
-		"shadowColor",
-		"backgroundColor",
-	]) {
-		getString({
-			allowEmpty: true,
-			path: `${stylePath}.${key}`,
-			value: style[key],
-		});
-	}
-	assertStringLiteral({
-		allowed: new Set(["left", "center", "right"]),
-		path: `${stylePath}.textAlign`,
-		value: style.textAlign,
-	});
-	assertStringLiteral({
-		allowed: new Set(["none", "fade", "slide-up", "slide-left"]),
-		path: `${stylePath}.animationType`,
-		value: style.animationType,
-	});
-	for (const key of [
-		"fontSize",
-		"letterSpacing",
-		"fontOpacity",
-		"outlineWidth",
-		"bgOpacity",
-		"lineSpacing",
-		"animationDuration",
-		"animationDelay",
-	]) {
-		getFiniteNumber({
-			path: `${stylePath}.${key}`,
-			value: style[key],
-		});
-	}
-	for (const key of ["bold", "italic", "underline"]) {
-		getBoolean({
-			path: `${stylePath}.${key}`,
-			value: style[key],
-		});
-	}
-	const shadowPath = `${stylePath}.shadowOffset`;
-	const shadow = getRecord({
-		path: shadowPath,
-		value: style.shadowOffset,
-	});
-	assertKeys({
-		allowed: SUBTITLE_SHADOW_OFFSET_KEYS,
-		path: shadowPath,
-		record: shadow,
-	});
-	const positionPath = `${stylePath}.position`;
-	const position = getRecord({
-		path: positionPath,
-		value: style.position,
-	});
-	assertKeys({
-		allowed: SUBTITLE_POSITION_KEYS,
-		path: positionPath,
-		record: position,
-	});
-	assertStringLiteral({
-		allowed: new Set(["top", "center", "bottom"]),
-		path: `${positionPath}.align`,
-		value: position.align,
-	});
-	if (style.secondary !== undefined) {
-		const secondaryPath = `${stylePath}.secondary`;
-		const secondary = getRecord({
-			path: secondaryPath,
-			value: style.secondary,
-		});
-		assertKeys({
-			allowed: SUBTITLE_SECONDARY_KEYS,
-			path: secondaryPath,
-			record: secondary,
-		});
-		for (const key of ["fontFamily", "fontColor"]) {
-			if (secondary[key] !== undefined) {
-				getString({ path: `${secondaryPath}.${key}`, value: secondary[key] });
-			}
-		}
-		assertOptionalFiniteNumber({
-			path: `${secondaryPath}.fontSize`,
-			value: secondary.fontSize,
-		});
-		for (const key of ["bold", "italic"]) {
-			assertOptionalBoolean({
-				path: `${secondaryPath}.${key}`,
-				value: secondary[key],
-			});
 		}
 	}
 }

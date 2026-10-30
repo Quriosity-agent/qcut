@@ -2208,12 +2208,22 @@ export async function addClaudeRemotionElement({
 /**
  * Format internal tracks for Claude export
  */
+/** A media item's name by id: the open project's media store unless given. */
+export type MediaNameLookup = (mediaId: string) => string | undefined;
+
+function liveMediaName(mediaId: string): string | undefined {
+	return useMediaStore.getState().mediaItems.find((item) => item.id === mediaId)
+		?.name;
+}
+
 export function formatTracksForExport({
 	tracks,
 	fps,
+	mediaName = liveMediaName,
 }: {
 	tracks: TimelineTrack[];
 	fps: number;
+	mediaName?: MediaNameLookup;
 }): ClaudeTrack[] {
 	return tracks.map((track, index) => ({
 		id: track.id,
@@ -2233,7 +2243,7 @@ export function formatTracksForExport({
 		elements: [...track.elements]
 			.sort((left, right) => left.startTime - right.startTime)
 			.map((element) =>
-				formatElementForExport({ element, trackIndex: index, fps })
+				formatElementForExport({ element, trackIndex: index, fps, mediaName })
 			),
 		transitions: track.transitions?.map((transition) => ({
 			...transition,
@@ -2277,10 +2287,12 @@ function formatElementForExport({
 	element,
 	trackIndex,
 	fps,
+	mediaName,
 }: {
 	element: TimelineElement;
 	trackIndex: number;
 	fps: number;
+	mediaName: MediaNameLookup;
 }): ClaudeElement {
 	const sourceDuration = getEffectiveDuration(element);
 	const timelineDuration = getTimelineElementDuration({ element, fps });
@@ -2300,16 +2312,10 @@ function formatElementForExport({
 	// Add type-specific fields
 	switch (element.type) {
 		case "media": {
-			// Resolve the actual media file name from the store for reliable export matching
-			let sourceName = element.name;
-			if (element.mediaId) {
-				const mediaItem = useMediaStore
-					.getState()
-					.mediaItems.find((item) => item.id === element.mediaId);
-				if (mediaItem?.name) {
-					sourceName = mediaItem.name;
-				}
-			}
+			// Resolve the actual media file name for reliable export matching
+			const sourceName =
+				(element.mediaId ? mediaName(element.mediaId) : undefined) ||
+				element.name;
 			return {
 				...baseElement,
 				name: element.name,

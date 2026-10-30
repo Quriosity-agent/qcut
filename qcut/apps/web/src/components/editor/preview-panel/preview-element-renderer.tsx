@@ -754,6 +754,7 @@ export function PreviewElementRenderer({
 						words={words}
 						canvasScale={canvasScale}
 						secondaryText={element.secondaryText}
+						fps={activeProject?.fps ?? 30}
 					/>
 				</div>
 			);

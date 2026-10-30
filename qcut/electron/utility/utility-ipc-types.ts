@@ -3,6 +3,8 @@
  * the main process (utility-bridge) and the utility process.
  */
 
+import type { UpdateRecord } from "../update-notice.js";
+
 import type {
 	ClaudeBeatsMarkRequest,
 	ClaudeShotSplitRequest,
@@ -91,6 +93,8 @@ export interface MainInitMessage {
 	config: {
 		httpPort: number;
 		appVersion: string;
+		/** The last update QCut found it had at launch (N26). */
+		lastUpdate?: UpdateRecord;
 	};
 }
 

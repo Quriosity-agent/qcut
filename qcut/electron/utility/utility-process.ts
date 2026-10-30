@@ -149,10 +149,11 @@ parentPort.on(
 		switch (msg.type) {
 			case "init": {
 				// Initialize HTTP server and PTY manager
-				const { httpPort, appVersion } = msg.config;
+				const { httpPort, appVersion, lastUpdate } = msg.config;
 				startUtilityHttpServer({
 					port: httpPort,
 					appVersion,
+					lastUpdate,
 					requestFromMain,
 				});
 				logger.info("[UtilityProcess] Initialized");
