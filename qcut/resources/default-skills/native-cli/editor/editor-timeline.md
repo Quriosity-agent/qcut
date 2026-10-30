@@ -482,6 +482,9 @@ fails with the reason, when:
 - the editor is still loading a file it was just given: the error names the
   imported media's id, to run again with `--media-id`.
 
+With `--source`, a file the command imported for a swap that is then
+refused is removed from the project again.
+
 A still image takes the clip's span with no trims. The same swap is an
 `update-element` patch with `mediaId` (and optionally `trimStart`); a
 `duration`, `trimEnd` or `endTime` in that patch is refused, since they
