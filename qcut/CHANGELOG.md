@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.10.30.1] - 2026-10-30
+
 ### Added
 
 - `export start --peak-correction local|whole|check` (`peakCorrection` in the request) chooses what a native export with the master limiter on does when encoding pushes the true peak over the ceiling. `local` (the default) lowers only the moments around the overshoot. `whole` lowers the whole mix by the overshoot, as before 2026.10.29.3, which keeps the mix's level relationships. `check` lowers nothing, publishes the first encode and reports `exceeded` with a warning.
