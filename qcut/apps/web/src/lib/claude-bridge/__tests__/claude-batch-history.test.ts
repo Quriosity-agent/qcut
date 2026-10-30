@@ -183,8 +183,13 @@ describe("undo steps of refused editor API batches", () => {
 		expect(useTimelineStore.getState().history).toHaveLength(1);
 	});
 
-	it("adds no step for a batch add that adds nothing", async () => {
-		const { add } = handlers();
+	it("adds no step and keeps redo for a batch add that adds nothing", async () => {
+		const { add, replace } = handlers();
+		await replace("v2");
+		useTimelineStore.getState().undo();
+		const { history, redoStack } = useTimelineStore.getState();
+		expect(redoStack).toHaveLength(1);
+
 		expect(
 			await add([
 				{
@@ -196,7 +201,8 @@ describe("undo steps of refused editor API batches", () => {
 				},
 			])
 		).toMatchObject({ failedCount: 1 });
-		expect(useTimelineStore.getState().history).toEqual([]);
+		expect(useTimelineStore.getState().history).toBe(history);
+		expect(useTimelineStore.getState().redoStack).toBe(redoStack);
 	});
 });
 
