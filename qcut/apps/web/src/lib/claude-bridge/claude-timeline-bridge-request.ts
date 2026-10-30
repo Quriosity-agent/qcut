@@ -40,7 +40,7 @@ async function storedTimeline({
 	projectId: string;
 }): Promise<ClaudeTimeline> {
 	const stored = await loadStoredProjectView({ projectId });
-	if (!stored) throw storedProjectNotFound(projectId);
+	if (!stored) throw storedProjectNotFound({ projectId });
 	const { project, tracks, media } = stored;
 	const names = new Map(media.map((item) => [item.id, item.name]));
 	const fps = project.fps || 30;
@@ -74,7 +74,7 @@ export function setupRequestHandlers({
 			debugLog("[ClaudeTimelineBridge] Received timeline export request");
 			const projectId = request?.projectId;
 			const timeline =
-				projectId === undefined || isLoadedProject(projectId)
+				projectId === undefined || isLoadedProject({ projectId })
 					? liveTimeline()
 					: await storedTimeline({ projectId });
 			claudeAPI.sendResponse(timeline, request?.requestId);
