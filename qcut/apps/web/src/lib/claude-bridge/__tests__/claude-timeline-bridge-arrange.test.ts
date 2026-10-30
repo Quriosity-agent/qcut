@@ -139,6 +139,13 @@ describe("arranging a track", () => {
 		setTrack({ elements: [endless, clip("after", 5, 1)] });
 		expect(arrange({ mode: "sequential" })).toEqual(["r1", { arranged: [] }]);
 		expect(starts()).toEqual({ endless: 0, after: 5 });
+
+		// Last in line, its length moves no other element's start.
+		setTrack({
+			elements: [clip("before", 0, 1), { ...endless, startTime: 5 }],
+		});
+		expect(arrange({ mode: "sequential" })).toEqual(["r1", { arranged: [] }]);
+		expect(starts()).toEqual({ before: 0, endless: 5 });
 	});
 
 	it("moves an element whose id is __proto__", () => {
