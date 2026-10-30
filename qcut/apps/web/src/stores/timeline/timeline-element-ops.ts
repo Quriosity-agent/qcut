@@ -4,6 +4,7 @@ import {
 	handleError,
 } from "@/lib/debug/error-handler";
 import { createObjectURL } from "@/lib/media/blob-manager";
+import { mediaKindMismatch } from "@/lib/media/media-replace-kind";
 import {
 	getTimelineElementDuration,
 	getTimelineElementEndTime,
@@ -547,6 +548,17 @@ export function createElementOps(
 							"Unsupported file type. Please select a video, audio, or image file.",
 					};
 				}
+				const currentType = mediaStore.mediaItems.find(
+					(item) => item.id === element.mediaId
+				)?.type;
+				const mismatch = currentType
+					? mediaKindMismatch({
+							current: currentType,
+							next: fileType,
+							nextName: newFile.name,
+						})
+					: undefined;
+				if (mismatch) return { success: false, error: mismatch };
 
 				// Process the new media file
 				const mediaData: {
