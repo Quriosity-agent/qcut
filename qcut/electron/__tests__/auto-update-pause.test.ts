@@ -37,9 +37,14 @@ class FakeUpdater extends EventEmitter implements AutoUpdaterLike {
 
 	/** The next download fails, as a hand-over that cannot reach Squirrel. */
 	nextDownloadError: Error | undefined;
+	/** The next download finishes only once this settles, as a slow one. */
+	downloadGate: Promise<void> | undefined;
 
 	async downloadUpdate(): Promise<string[]> {
 		this.downloadCount += 1;
+		const gate = this.downloadGate;
+		this.downloadGate = undefined;
+		if (gate) await gate;
 		if (this.nextDownloadError) {
 			const error = this.nextDownloadError;
 			this.nextDownloadError = undefined;
@@ -159,7 +164,8 @@ describe("paused updates", () => {
 		expect(controller.getState().phase).toBe("ready");
 		// No "installs the next time you quit" notice while paused.
 		expect(onUpdateStaged).not.toHaveBeenCalled();
-		expect(withdrawInstallOnQuit).not.toHaveBeenCalled();
+		// Checked that nothing is set to install on quit (on macOS, no job).
+		expect(withdrawInstallOnQuit).toHaveBeenCalledTimes(1);
 
 		controller.setPreferences({ preferences: { paused: false } });
 		await vi.waitFor(() => expect(updater.downloadCount).toBe(2));
@@ -213,6 +219,79 @@ describe("paused updates", () => {
 		controller.setPreferences({ preferences: { paused: true } });
 		controller.setPreferences({ preferences: { paused: false } });
 		await vi.waitFor(() => expect(updater.downloadCount).toBe(3));
+		controller.stop();
+	});
+
+	it("retry a failed withdrawal when a download finishes while paused", async () => {
+		const { updater, controller, withdrawInstallOnQuit } = setup();
+		controller.start();
+		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
+		withdrawInstallOnQuit.mockImplementationOnce(() => {
+			throw new Error("com.qcut.videoeditor.ShipIt is still loaded");
+		});
+		controller.setPreferences({ preferences: { paused: true } });
+
+		await updater.downloadUpdate();
+		expect(withdrawInstallOnQuit).toHaveBeenCalledTimes(2);
+		// Withdrawn now, so resuming hands it over again.
+		controller.setPreferences({ preferences: { paused: false } });
+		await vi.waitFor(() => expect(updater.downloadCount).toBe(3));
+		controller.stop();
+	});
+
+	it("keep it withdrawn when a pause comes in during the hand-over", async () => {
+		const { updater, controller } = setup();
+		controller.start();
+		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
+		controller.setPreferences({ preferences: { paused: true } });
+
+		let finishHandOver: (() => void) | undefined;
+		updater.downloadGate = new Promise<void>((resolve) => {
+			finishHandOver = resolve;
+		});
+		controller.setPreferences({ preferences: { paused: false } });
+		controller.setPreferences({ preferences: { paused: true } });
+		// It finishes paused, with install-on-quit off: nothing was handed over.
+		finishHandOver?.();
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(updater.downloadCount).toBe(2);
+
+		controller.setPreferences({ preferences: { paused: false } });
+		await vi.waitFor(() => expect(updater.downloadCount).toBe(3));
+		controller.stop();
+	});
+
+	it("withdraw an install Squirrel sets up after the pause", async () => {
+		const { controller, withdrawInstallOnQuit } = setup();
+		controller.start();
+		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
+		// While updates run, the install Squirrel set up stays.
+		controller.withdrawIfPaused();
+		expect(withdrawInstallOnQuit).not.toHaveBeenCalled();
+
+		controller.setPreferences({ preferences: { paused: true } });
+		// Squirrel was still preparing it when the pause came.
+		controller.withdrawIfPaused();
+		expect(withdrawInstallOnQuit).toHaveBeenCalledTimes(2);
+
+		withdrawInstallOnQuit.mockImplementationOnce(() => {
+			throw new Error("com.qcut.videoeditor.ShipIt is still loaded");
+		});
+		controller.withdrawIfPaused();
+		expect(controller.getState().message).toBe(
+			"Updates are paused, but QCut 2026.10.30.2 could still install when QCut quits: com.qcut.videoeditor.ShipIt is still loaded"
+		);
+		controller.stop();
+	});
+
+	it("have nothing to withdraw before an update is downloaded", async () => {
+		const { controller, withdrawInstallOnQuit } = setup({ paused: true });
+		controller.start();
+		await vi.waitFor(() =>
+			expect(controller.getState().phase).toBe("available")
+		);
+		controller.withdrawIfPaused();
+		expect(withdrawInstallOnQuit).not.toHaveBeenCalled();
 		controller.stop();
 	});
 });
