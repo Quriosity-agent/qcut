@@ -42,6 +42,14 @@ const STYLE_SIDE_MARGIN = 10;
  */
 const LIBASS_BLUR_PER_SIGMA = Math.sqrt(Math.log(256)) / 2;
 
+/**
+ * The `\blur` that draws a CSS `text-shadow` (or canvas `shadowBlur`) blur
+ * radius, a Gaussian of σ = radius / 2.
+ */
+export function assBlurForCssBlur(radius: number): number {
+	return (radius / 2) * LIBASS_BLUR_PER_SIGMA;
+}
+
 function containsCJK(text: string): boolean {
 	return /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
 		text
@@ -202,7 +210,7 @@ function shadowTagsForASS({
 	const [alpha, color] = splitAssColor(
 		rgbToASSColor(shadow.color, shadow.opacity * style.fontOpacity)
 	);
-	const blur = `\\blur${((shadow.blur / 2) * LIBASS_BLUR_PER_SIGMA).toFixed(2)}`;
+	const blur = `\\blur${assBlurForCssBlur(shadow.blur).toFixed(2)}`;
 	// A karaoke caption's upcoming words take the secondary colour (\2c).
 	if (style.outlineWidth > 0) {
 		// A see-through fill shows the border as the whole widened letter.
