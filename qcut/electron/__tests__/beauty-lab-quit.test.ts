@@ -41,6 +41,19 @@ describe("Beauty Lab quit cleanup", () => {
 		await vi.waitFor(() => expect(resumeQuit).toHaveBeenCalledTimes(1));
 	});
 
+	it("resumes the quit only once before-quit has returned (N27)", async () => {
+		const resumeQuit = vi.fn();
+		const guard = createBeautyLabQuitGuard({ resumeQuit, onError: vi.fn() });
+		const dispose = async () => {};
+		expect(guard({ event: { preventDefault: vi.fn() }, dispose })).toBe(true);
+		// A cleanup with nothing to wait for settles in this turn's microtasks,
+		// which Electron runs before its before-quit emit returns.
+		for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+		expect(resumeQuit).not.toHaveBeenCalled();
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(resumeQuit).toHaveBeenCalledTimes(1);
+	});
+
 	it("does not intercept quit when the lab was never initialized", () => {
 		const event = { preventDefault: vi.fn() };
 		const resumeQuit = vi.fn();
