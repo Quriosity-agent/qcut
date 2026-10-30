@@ -126,14 +126,26 @@ export async function timelineReplaceMedia(
 			? media.duration
 			: undefined;
 
-	const patch = await client.patch<{ ignoredFields?: string[] }>(
-		`/api/claude/timeline/${project}/elements/${encodeURIComponent(elementId)}`,
-		{
-			mediaId,
-			...(sourceDuration ? { sourceDuration } : {}),
-			...(trimStart !== undefined ? { trimStart } : {}),
+	let patch: { ignoredFields?: string[] };
+	try {
+		patch = await client.patch<{ ignoredFields?: string[] }>(
+			`/api/claude/timeline/${project}/elements/${encodeURIComponent(elementId)}`,
+			{
+				mediaId,
+				...(sourceDuration ? { sourceDuration } : {}),
+				...(trimStart !== undefined ? { trimStart } : {}),
+			}
+		);
+	} catch (error) {
+		// A refused swap leaves the project as it was: without the file this
+		// command imported for it.
+		if (imported) {
+			await client
+				.delete(`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`)
+				.catch(() => undefined);
 		}
-	);
+		throw error;
+	}
 	const timeline = await client.get<ClaudeTimeline>(
 		`/api/claude/timeline/${project}`
 	);
