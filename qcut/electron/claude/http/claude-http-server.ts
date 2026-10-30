@@ -101,6 +101,8 @@ import {
 	resetPlaybackDiagnosticsInRenderer,
 } from "./claude-http-playback-routes.js";
 import { registerAgentPointerRoutes } from "./claude-http-pointer-routes.js";
+import { registerUpdateRoutes } from "./claude-http-update-routes.js";
+import { getUpdateStatus, setUpdatesPaused } from "../../update-control.js";
 import {
 	hitTestEditorPoint,
 	readTimelineRulerLabels,
@@ -383,6 +385,10 @@ export function startClaudeHTTPServer(
 	registerPlaybackDiagnosticsRoutes(router, {
 		pullSnapshot: () => pullPlaybackDiagnosticsFromRenderer(getWindow()),
 		resetCollector: () => resetPlaybackDiagnosticsInRenderer(getWindow()),
+	});
+	registerUpdateRoutes(router, {
+		getStatus: async () => getUpdateStatus(),
+		setPaused: async (paused) => setUpdatesPaused({ paused }),
 	});
 	registerAgentPointerRoutes(router, {
 		getState: async (request) => pointerController(request).getState(),
