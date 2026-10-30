@@ -13,6 +13,7 @@
  */
 
 import { assFontMetrics } from "./ass-font-metrics.js";
+import { assWeightTag, overlayWeight } from "./caption-ass-style.js";
 import type { TextOverlay } from "./types.js";
 
 /** Text as ASS draws it literally; line breaks become `\N`. */
@@ -107,12 +108,15 @@ export function captionEventText({
 	overlay,
 	fontSize,
 	fontFamilyFor,
+	colorTags = true,
 }: {
 	overlay: TextOverlay;
 	/** The event style's ASS font size. */
 	fontSize: number;
 	/** The family libass draws an overlay's text in (CJK substitution). */
 	fontFamilyFor: (overlay: TextOverlay) => string;
+	/** False for a shadow layer, which draws every line in its own colour. */
+	colorTags?: boolean;
 }): { text: string; lastLineLeading?: number } {
 	const lines = (text: string) =>
 		text.split(/\r?\n/).map((line) => escapeAssText(line));
@@ -136,11 +140,17 @@ export function captionEventText({
 	const bold = secondary.fontWeight === "bold";
 	const italic = secondary.fontStyle === "italic";
 	const metrics = assFontMetrics({ family, bold, italic });
+	// Its own spacing only where it differs from the caption's (the style's).
+	const spacing =
+		secondary.letterSpacing === overlay.letterSpacing
+			? ""
+			: `\\fsp${secondary.letterSpacing.toFixed(2)}`;
+	const color = colorTags ? `\\c${assInlineColor(secondary.color)}` : "";
 	const secondaryRun: AssCaptionRun = {
 		lines: lines(secondary.content),
 		fontSize: secondary.fontSize,
 		assFontSize: secondary.fontSize * metrics.sizeFactor,
-		fontTags: `\\fn${overrideFontName(family)}\\b${bold ? 1 : 0}\\i${italic ? 1 : 0}\\c${assInlineColor(secondary.color)}`,
+		fontTags: `\\fn${overrideFontName(family)}${assWeightTag(overlayWeight(secondary))}\\i${italic ? 1 : 0}${spacing}${color}`,
 	};
 	runs.push(secondaryRun);
 	return {
