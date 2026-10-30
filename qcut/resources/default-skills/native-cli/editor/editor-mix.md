@@ -44,7 +44,9 @@ Every change answers with what the editor now holds.
 - Solo: once any track is soloed, only soloed tracks are heard. Once any bus
   is soloed, only tracks on soloed buses are heard.
 - `mix export` shows each track's `effective` result: whether it is
-  `silenced` and the bus it actually feeds.
+  `silenced` and the bus it actually feeds. It also reads a project the
+  editor does not have open, as last saved, without opening it; changing a
+  mix still needs the project open.
 - Ducking: while any of `sourceTrackIds` is louder than `thresholdDb`, the
   track drops by `reductionDb`, gliding down over `attackMs` and back over
   `releaseMs`.
