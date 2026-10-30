@@ -92,6 +92,11 @@ export interface AutoUpdateController {
 	checkForUpdates(): Promise<UpdateState>;
 	downloadUpdate(): Promise<UpdateState>;
 	installUpdate(): { success: boolean; message: string };
+	/**
+	 * Squirrel finished preparing an update (macOS). One that a pause came
+	 * in on meanwhile is withdrawn now, and a failure is said in the state.
+	 */
+	withdrawIfPaused(): void;
 	getState(): UpdateState;
 	getPreferences(): UpdatePreferences;
 	setPreferences({
@@ -469,8 +474,11 @@ export function createAutoUpdateController({
 			});
 			sendToRenderer({ channel: "update-downloaded", data: { version } });
 			if (preferences.paused) {
-				// Fetched by hand while paused: not set to install on quit.
-				installWithdrawn = true;
+				// Install-on-quit is off, so this one reaches neither Squirrel nor
+				// the quit handler. Holding back still retries an earlier install
+				// that could not be withdrawn, and marks it withdrawn only once
+				// that worked.
+				holdBack();
 				return;
 			}
 			if (!alreadyStaged) onUpdateStaged?.({ staged });
@@ -505,7 +513,6 @@ export function createAutoUpdateController({
 	};
 
 	const holdBack = (): void => {
-		logger.log("[AutoUpdater] Updates paused");
 		if (!staged || installWithdrawn) return;
 		try {
 			withdrawInstallOnQuit?.();
@@ -536,7 +543,8 @@ export function createAutoUpdateController({
 		updater
 			.downloadUpdate()
 			.then(() => {
-				installWithdrawn = false;
+				// A pause that came in meanwhile keeps it withdrawn.
+				if (!preferences.paused) installWithdrawn = false;
 			})
 			.catch((error: unknown) => publishError({ error, source: "download" }));
 	};
@@ -568,6 +576,12 @@ export function createAutoUpdateController({
 		},
 		checkForUpdates,
 		downloadUpdate,
+		withdrawIfPaused: () => {
+			if (!preferences.paused || !staged) return;
+			// Squirrel set up a new install for quit after the pause.
+			installWithdrawn = false;
+			holdBack();
+		},
 		installUpdate: () => {
 			if (preferences.paused) {
 				return {
@@ -595,7 +609,10 @@ export function createAutoUpdateController({
 				},
 			});
 			updater.autoInstallOnAppQuit = !preferences.paused;
-			if (preferences.paused && !wasPaused) holdBack();
+			if (preferences.paused && !wasPaused) {
+				logger.log("[AutoUpdater] Updates paused");
+				holdBack();
+			}
 			if (wasPaused && !preferences.paused) release();
 			if (preferences.paused !== wasPaused) publishState({ nextState: state });
 			if (
