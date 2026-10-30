@@ -139,7 +139,7 @@ describe("paused updates", () => {
 	});
 
 	it("hand the downloaded update over again on resume", async () => {
-		const { updater, controller } = setup();
+		const { updater, controller, onUpdateStaged } = setup();
 		controller.start();
 		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
 		controller.setPreferences({ preferences: { paused: true } });
@@ -148,6 +148,8 @@ describe("paused updates", () => {
 		expect(updater.autoInstallOnAppQuit).toBe(true);
 		// The cached download is handed over again, not fetched anew.
 		await vi.waitFor(() => expect(updater.downloadCount).toBe(2));
+		// Its notice came with the first download, and it does not come twice.
+		expect(onUpdateStaged).toHaveBeenCalledTimes(1);
 		expect(controller.getState().paused).toBe(false);
 		expect(controller.installUpdate().success).toBe(true);
 		controller.stop();
@@ -169,6 +171,12 @@ describe("paused updates", () => {
 
 		controller.setPreferences({ preferences: { paused: false } });
 		await vi.waitFor(() => expect(updater.downloadCount).toBe(2));
+		// Handed over again, it can install, so the notice comes now.
+		expect(onUpdateStaged).toHaveBeenCalledExactlyOnceWith({
+			staged: expect.objectContaining({
+				internalVersion: updater.info.version,
+			}),
+		});
 		controller.stop();
 	});
 
