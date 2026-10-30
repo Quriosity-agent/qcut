@@ -58,14 +58,14 @@ export function planMediaReplacement({
 	mediaId,
 	sourceDuration,
 	trimStart = element.trimStart,
-	trackType = "media",
+	trackType,
 }: {
 	element: MediaElement;
 	mediaId: string;
 	sourceDuration?: number;
 	trimStart?: number;
 	/** The clip's lane: a clip on an audio lane plays sound. */
-	trackType?: string;
+	trackType: string;
 }): MediaReplacement {
 	const { mediaItems } = useMediaStore.getState();
 	const resolvedId = resolveMediaIdForBatchElement({ element: { mediaId } });
