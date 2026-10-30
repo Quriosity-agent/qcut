@@ -14,6 +14,7 @@
  * - getAppVersion(): returns app version string
  */
 
+import type { UpdateRecord } from "../../update-notice.js";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
@@ -218,6 +219,8 @@ export interface WindowAccessor {
 	getProjectStats(projectId: string): Promise<ProjectStats>;
 	/** Get the app version string */
 	getAppVersion(): string;
+	/** The last update QCut found it had at launch (N26). */
+	getLastUpdate?(): UpdateRecord | undefined;
 	/** Enable operation notifications to a PTY session */
 	enableNotifications(
 		sessionId: string
@@ -869,6 +872,7 @@ export function registerSharedRoutes(
 		router,
 		/** Returns the current application version for metadata routes. */
 		getAppVersion: () => accessor.getAppVersion(),
+		getLastUpdate: () => accessor.getLastUpdate?.(),
 		runDeepHealthChecks: options?.runDeepHealthChecks,
 		getWindowState: options?.getWindowState,
 	});
