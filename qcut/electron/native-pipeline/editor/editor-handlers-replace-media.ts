@@ -18,7 +18,7 @@ import type {
 	ClaudeElement,
 	ClaudeTimeline,
 } from "../../types/claude-api.js";
-import type { EditorApiClient } from "./editor-api-client.js";
+import { type EditorApiClient, EditorApiError } from "./editor-api-client.js";
 
 /** The clip as the timeline holds it after the replacement. */
 function describeClip({
@@ -137,9 +137,14 @@ export async function timelineReplaceMedia(
 			}
 		);
 	} catch (error) {
-		// A refused swap leaves the project as it was: without the file this
-		// command imported for it.
-		if (imported) {
+		// A refused swap (409) leaves the project as it was: without the file
+		// this command imported for it. After a timeout the editor may still
+		// make the swap, so the file stays.
+		if (
+			imported &&
+			error instanceof EditorApiError &&
+			error.statusCode === 409
+		) {
 			await client
 				.delete(`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`)
 				.catch(() => undefined);
