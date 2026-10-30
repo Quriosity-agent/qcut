@@ -332,11 +332,15 @@ export function extractCaptionElements(
  * Export captions as ASS with full subtitle style support. Captions' fade
  * frames need the project's `fps`; without it they are left out.
  */
-export function exportAssStyled(
-	tracks: TimelineTrack[],
-	resolution: { width: number; height: number },
-	fps?: number
-): string {
+export function exportAssStyled({
+	tracks,
+	resolution,
+	fps,
+}: {
+	tracks: TimelineTrack[];
+	resolution: { width: number; height: number };
+	fps?: number;
+}): string {
 	const clips = extractCaptionElements(tracks);
 	return generateASS(clips, { resolution, fps });
 }
