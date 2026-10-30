@@ -9,6 +9,23 @@
 
 import type { MediaType } from "@/stores/media/media-store-types";
 
+/**
+ * What a clip plays, for the rule below: a clip on an audio lane plays sound
+ * even when it keeps its video's media (Separate Audio leaves the video's
+ * `mediaId` on the detached sound). Elsewhere its media item says; with that
+ * media gone, a clip off the audio lanes counts as a picture.
+ */
+export function clipMediaKind({
+	trackType,
+	mediaType,
+}: {
+	trackType: string;
+	mediaType?: MediaType;
+}): MediaType {
+	if (trackType === "audio") return "audio";
+	return mediaType ?? "video";
+}
+
 /** Why media of type `next` cannot replace a clip's `current` media, if it cannot. */
 export function mediaKindMismatch({
 	current,
