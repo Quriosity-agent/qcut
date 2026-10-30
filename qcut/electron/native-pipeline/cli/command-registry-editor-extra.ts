@@ -136,6 +136,26 @@ export function createExtraEditorCommands({
 			}),
 		]),
 
+		// ── QCut's own updates ──
+		"editor:updates:status": ed(
+			"editor:updates:status",
+			"QCut's own updates: paused or not, and any version on offer or downloaded",
+			[],
+			["qcut editor updates status --json"]
+		),
+		"editor:updates:pause": ed(
+			"editor:updates:pause",
+			"Hold QCut's updates back: nothing downloads, and nothing installs when QCut quits",
+			[],
+			["qcut editor updates pause --json"]
+		),
+		"editor:updates:resume": ed(
+			"editor:updates:resume",
+			"Let QCut's updates download and install on quit again",
+			[],
+			["qcut editor updates resume --json"]
+		),
+
 		// ── UI ──
 		"editor:ui:switch-panel": ed(
 			"editor:ui:switch-panel",
