@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import path from "node:path";
+import { posix } from "node:path";
 
 type Run = (file: string, args: string[]) => string;
 
@@ -25,7 +25,8 @@ export function readBundleIdentifier({
 	execPath: string;
 	runCommand?: Run;
 }): string {
-	const infoPlist = path.join(path.dirname(execPath), "..", "Info.plist");
+	// A macOS bundle path, whatever platform computes it.
+	const infoPlist = posix.join(posix.dirname(execPath), "..", "Info.plist");
 	return runCommand("/usr/bin/plutil", [
 		"-extract",
 		"CFBundleIdentifier",
