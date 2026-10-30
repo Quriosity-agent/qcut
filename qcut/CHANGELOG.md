@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Quitting QCut no longer leaves it running without a window, its editor API answering 401 and a downloaded update not installing, until a second quit. When the Beauty Lab cleanup on quit had nothing to wait for (QCut idle in the background), the quit it resumed was marked cancelled while the window still closed.
 - An editor command QCut refuses (a replace-media whose media is too short or of the wrong kind, a delete that finds nothing, an add or update that cannot land) no longer adds an empty undo step or empties the redo stack.
-- The editor's own Replace (a clip's context menu) no longer puts a sound in place of a picture clip, or a picture in place of a sound; video and stills still replace each other, as with `replace-media`.
+- The editor's own Replace (a clip's context menu) no longer puts a sound in place of a picture clip, or a picture in place of a sound; video and stills still replace each other, as with `replace-media`. In both, a clip on an audio lane counts as a sound, so one split off with Separate Audio (it keeps the video's media) takes another sound.
+- `editor:timeline:arrange` measures a speed-ramped clip at the project's frame rate. It measured it at 30 fps, so on other frame rates the next clip either landed on the ramp, and the arrange was refused, or left a gap.
 - The Export dialog's FFmpeg export draws captions 28 px from the frame edge, where the preview and the native export draw them, instead of at `position.y` (90 px by default).
 - Text shadows and glows blur as wide as in the preview: the Export dialog's FFmpeg export drew them about 70 % wider, and the native export's glow about 15 % narrower.
 - The changelog page opens on the newest release. It compared only three parts of QCut's four-part versions and opened on 2026.10.29.1 while 2026.10.29.3 was out.
