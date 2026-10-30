@@ -122,6 +122,7 @@ export function buildTimelineAssLayers({
 						resolution: { width: canvasWidth, height: canvasHeight },
 						title: `QCut Caption ${element.id}`,
 						cjkFontFamily,
+						fps,
 					}),
 					blendMode: "normal",
 					trackOrder,
