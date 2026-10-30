@@ -325,10 +325,11 @@ describe("native export text overlays", () => {
 			.filter((line) => line.startsWith("Dialogue:"));
 		expect(events).toHaveLength(2);
 		// Layer 0: the glyphs in the glow colour (BGR FFA34F, alpha 0.9 → &H19),
-		// no border or shadow, blurred by half the preview's blur radius.
+		// no border or shadow, blurred like the preview: its 24 px blur radius is
+		// a σ of 12, and libass's \blur b a σ of 0.849 b, so \blur 14.13.
 		expect(events[0]).toMatch(/^Dialogue: 0,/);
 		expect(events[0]).toContain(
-			"\\1c&HFFA34F&\\1a&H19&\\4a&HFF&\\bord0\\shad0\\blur12.00}QCUT"
+			"\\1c&HFFA34F&\\1a&H19&\\4a&HFF&\\bord0\\shad0\\blur14.13}QCUT"
 		);
 		expect(events[0]).not.toContain("\\bord28");
 		expect(events[1]).toMatch(/^Dialogue: 1,/);
