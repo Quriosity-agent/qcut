@@ -79,9 +79,15 @@ export function planMediaReplacement({
 			`The clip's ${derived} was made from its current media; turn it off before replacing the media`
 		);
 	}
+	const previous = mediaItems.find((item) => item.id === element.mediaId);
+	// A sound stays a sound and a picture a picture (video and stills swap).
+	if (previous && (previous.type === "audio") !== (media.type === "audio")) {
+		throw new Error(
+			`${media.name} is ${media.type === "audio" ? "audio" : "a picture"}; this clip's media is ${previous.type === "audio" ? "audio" : "a picture"}, so it takes ${previous.type === "audio" ? "audio" : "video or an image"}`
+		);
+	}
 	// A renamed clip keeps its name; one still named after its media follows
 	// the new media, as the editor's own Replace does.
-	const previous = mediaItems.find((item) => item.id === element.mediaId);
 	const name =
 		!previous || element.name === previous.name ? media.name : element.name;
 	const span = element.duration - element.trimStart - element.trimEnd;
