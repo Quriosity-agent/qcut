@@ -20,12 +20,17 @@ export interface UpdateRecord {
 /** The response header carrying the last update. */
 export const LAST_UPDATE_HEADER = "x-qcut-last-update";
 
+const LONE_SURROGATE =
+	/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
+
 /**
  * `from=…; to=…; at=…; notes=…`, each value URI-encoded: a header takes only
  * plain characters, and a hand-edited record must not break every answer.
  */
 export function formatLastUpdateHeader(record: UpdateRecord): string {
-	const field = (value: string) => encodeURIComponent(String(value));
+	// A lone surrogate would make encodeURIComponent throw; it becomes U+FFFD.
+	const field = (value: string) =>
+		encodeURIComponent(String(value).replace(LONE_SURROGATE, "\ufffd"));
 	return `from=${field(record.from)}; to=${field(record.to)}; at=${field(record.at)}; notes=${field(record.releaseNotes)}`;
 }
 
