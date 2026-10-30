@@ -131,9 +131,10 @@ describe("verified true-peak export", () => {
 				oversampleFactor: 4,
 				encodeAttempts: 2,
 				peakCorrection: "local",
-				correctedSeconds: 0.2,
+				// The block ± one codec window, with its 20 ms ramps.
+				correctedSeconds: 0.24,
 				maxCorrectionDb: 2.95,
-				corrections: [{ start: 0.952, end: 1.148, depthDb: 2.95 }],
+				corrections: [{ start: 0.932, end: 1.168, depthDb: 2.95 }],
 			},
 		});
 		expect(meterMock).toHaveBeenCalledWith(
@@ -187,11 +188,11 @@ describe("verified true-peak export", () => {
 			oversampleFactor: 4,
 			encodeAttempts: 3,
 			peakCorrection: "local",
-			correctedSeconds: 0.39,
+			correctedSeconds: 0.47,
 			maxCorrectionDb: 2.25,
 			corrections: [
-				{ start: 0.952, end: 1.148, depthDb: 2.25 },
-				{ start: 1.952, end: 2.148, depthDb: 1.85 },
+				{ start: 0.932, end: 1.168, depthDb: 2.25 },
+				{ start: 1.932, end: 2.168, depthDb: 1.85 },
 			],
 		});
 		const mix = encodedMixes[2];
