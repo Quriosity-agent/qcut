@@ -41,13 +41,30 @@ describe("update preferences", () => {
 			preferences: {
 				automaticUpdates: false,
 				maxAutomaticDownloadBytes: 1,
+				paused: false,
 			},
 		});
 
 		expect(readUpdatePreferences({ userDataPath })).toEqual({
 			automaticUpdates: false,
 			maxAutomaticDownloadBytes: MAX_AUTOMATIC_UPDATE_BYTES,
+			paused: false,
 		});
+	});
+
+	it("keeps a pause across launches, and only a true one (N26)", () => {
+		const userDataPath = createUserDataPath();
+		expect(readUpdatePreferences({ userDataPath }).paused).toBe(false);
+		writeUpdatePreferences({
+			userDataPath,
+			preferences: { ...DEFAULT_UPDATE_PREFERENCES, paused: true },
+		});
+		expect(readUpdatePreferences({ userDataPath }).paused).toBe(true);
+		fs.writeFileSync(
+			path.join(userDataPath, "update-preferences.json"),
+			JSON.stringify({ automaticUpdates: true, paused: "yes" })
+		);
+		expect(readUpdatePreferences({ userDataPath }).paused).toBe(false);
 	});
 
 	it("falls back safely when the preferences file is corrupt", () => {
