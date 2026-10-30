@@ -185,6 +185,58 @@ describe("replacing a clip's media", () => {
 		expect(clip().mediaId).toBe("old");
 	});
 
+	it("refuses while the clip uses anything made from the old file", () => {
+		// Just the fields that matter; the rest of each setting is left out.
+		const madeFromOld: Array<[string, Record<string, unknown>]> = [
+			[
+				"audio.voiceConversion",
+				{ audio: { voiceConversion: { enabled: true, status: "ready" } } },
+			],
+			["audio.cover", { audio: { cover: { enabled: true, status: "ready" } } }],
+			[
+				"audio.denoise",
+				{
+					audio: {
+						denoise: {
+							enabled: true,
+							amount: 1,
+							noiseFloorDb: -60,
+							mode: "ai",
+							processedMediaId: "old-clean",
+						},
+					},
+				},
+			],
+			[
+				"customCutout",
+				{
+					customCutout: {
+						enabled: true,
+						applyStrokes: true,
+						strokes: [],
+						resultMaskId: "old-matte",
+					},
+				},
+			],
+			["masks", { masks: [{ type: "rectangle", sourceMediaId: "old-alpha" }] }],
+			["surfaceTrackings", { surfaceTrackings: [{ id: "t" }] }],
+		];
+		for (const [setting, fields] of madeFromOld) {
+			setTimeline({
+				element: { ...shot, ...fields } as unknown as MediaElement,
+			});
+			expect(replace({ mediaId: "v2" }).error).toBe(
+				`The clip's ${setting} was made from its current media; turn it off before replacing the media`
+			);
+		}
+		setTimeline({
+			element: { ...shot, compound: { kind: "multicam", clips: [] } },
+		});
+		expect(replace({ mediaId: "v2" }).error).toBe(
+			"A multicam clip has no single media to replace"
+		);
+	});
+
 	it("refuses on a locked track, media it does not have, and set timing", () => {
 		setTimeline({ locked: true });
 		expect(replace({ mediaId: "v2" }).error).toBe('Track "主轨道" is locked');
