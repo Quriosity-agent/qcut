@@ -33,8 +33,16 @@ export interface ASSGeneratorOptions {
 	fps?: number;
 }
 
-/** The style's MarginL/MarginR; MarginV is the style's position.y. */
+/** The style's MarginL/MarginR. */
 const STYLE_SIDE_MARGIN = 10;
+
+/**
+ * How far the preview keeps a caption's line box from the frame edge its
+ * style names: 20 px of padding plus the box's own 8, whatever `position.y`
+ * holds (the native export does the same). This path used `position.y`, 90
+ * by default, and its captions sat 62 px higher than the preview's.
+ */
+const CAPTION_EDGE_INSET_Y = 28;
 
 /**
  * libass's `\blur b` is a Gaussian of σ = 2b / √ln 256 ≈ 0.849 b (measured
@@ -362,7 +370,7 @@ function pinnedPosition({
 	resolution: ASSGeneratorOptions["resolution"];
 	offset: { x: number; y: number };
 }): string {
-	const marginV = Math.round(style.position.y);
+	const marginV = CAPTION_EDGE_INSET_Y;
 	const x =
 		style.textAlign === "left"
 			? STYLE_SIDE_MARGIN
@@ -394,7 +402,7 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
 	const alignment = alignToASSAlignment(style.position.align, style.textAlign);
-	const marginV = Math.round(style.position.y);
+	const marginV = CAPTION_EDGE_INSET_Y;
 	// Soft shadows are layers of their own; the hard one is ASS's.
 	const shadow =
 		!resolveCaptionShadows(style) &&
