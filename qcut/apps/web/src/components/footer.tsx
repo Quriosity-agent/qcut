@@ -56,7 +56,7 @@ export function Footer() {
 					{/* Social + copyright */}
 					<div className="flex items-center gap-4">
 						<a
-							href="https://github.com/donghaozhang/qcut"
+							href="https://github.com/Quriosity-agent/qcut"
 							className="text-muted-foreground hover:text-foreground transition-colors"
 							target="_blank"
 							rel="noopener noreferrer"
