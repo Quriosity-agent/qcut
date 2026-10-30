@@ -150,15 +150,19 @@ export interface PlatformUndoRedoChanges {
 	added: number;
 	removed: number;
 	moved: number;
+	/** Elements that kept their place but not their settings (a replaced media, a trim). */
+	changed: number;
 	elements: Array<{
 		elementId: string;
 		name?: string;
-		change: "added" | "removed" | "moved";
+		change: "added" | "removed" | "moved" | "changed";
 		trackId: string;
 		startTime: number;
 		duration: number;
 		/** Where a moved element was before. */
 		from?: { trackId: string; startTime: number; duration: number };
+		/** For a moved or changed element: the fields that differ. */
+		fields?: string[];
 	}>;
 }
 
