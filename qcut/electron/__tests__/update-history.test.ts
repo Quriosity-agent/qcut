@@ -63,6 +63,20 @@ describe("the launch record", () => {
 		).toEqual({ lastRunVersion: "2026.10.29.3", lastUpdate: UPDATE });
 	});
 
+	it("drops a last update that is not one, keeping the version", () => {
+		const userDataPath = folder();
+		writeFileSync(
+			path.join(userDataPath, "update-history.json"),
+			JSON.stringify({
+				lastRunVersion: "2026.10.29.3",
+				lastUpdate: { from: 7, to: "2026.10.29.3" },
+			})
+		);
+		expect(
+			recordLaunchVersion({ userDataPath, packageVersion: "2026.10.2903" })
+		).toBeUndefined();
+	});
+
 	it("starts over from a record it cannot read", () => {
 		const userDataPath = folder();
 		writeFileSync(path.join(userDataPath, "update-history.json"), "{not json");
@@ -77,6 +91,11 @@ describe("the update header and health", () => {
 		expect(parseLastUpdateHeader(formatLastUpdateHeader(UPDATE))).toEqual(
 			UPDATE
 		);
+		// A hand-edited record still makes a header Node accepts.
+		const odd = { ...UPDATE, from: "定版\n2026; x=1", releaseNotes: "a=b" };
+		const header = formatLastUpdateHeader(odd);
+		expect(header).toMatch(/^[\x21-\x7e ]+$/);
+		expect(parseLastUpdateHeader(header)).toEqual(odd);
 		expect(parseLastUpdateHeader("from=1; to=2")).toBeUndefined();
 		expect(parseLastUpdateHeader(null)).toBeUndefined();
 	});
