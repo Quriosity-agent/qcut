@@ -22,6 +22,15 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
  */
 export const LIBASS_BLUR_PER_SIGMA = Math.sqrt(Math.log(256)) / 2;
 
+/**
+ * The `\blur` that draws a CSS `text-shadow` blur radius, a Gaussian of
+ * σ = radius / 2 (the same conversion as editor-core's, which this process
+ * cannot import at run time).
+ */
+export function assBlurForCssBlur(radius: number): number {
+	return (radius / 2) * LIBASS_BLUR_PER_SIGMA;
+}
+
 function finite(value: unknown, fallback: number): number {
 	return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -152,7 +161,7 @@ export function assShadowTags({
 		shadow.color,
 		shadow.opacity * overlay.opacity
 	);
-	const blur = `\\blur${((shadow.blur / 2) * LIBASS_BLUR_PER_SIGMA).toFixed(2)}`;
+	const blur = `\\blur${assBlurForCssBlur(shadow.blur).toFixed(2)}`;
 	if (overlay.strokeWidth > 0) {
 		// A see-through fill shows the border as the whole widened letter.
 		return `\\1a&HFF&\\3c${color}\\3a${alpha}\\4a&HFF&\\bord${overlay.strokeWidth}\\shad0${blur}`;
