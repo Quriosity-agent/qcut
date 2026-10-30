@@ -88,7 +88,7 @@ describe("BlogPage", () => {
 
 		await vi.waitFor(() => {
 			expect(mockOpenExternal).toHaveBeenCalledWith(
-				"https://github.com/donghaozhang/qcut"
+				"https://github.com/Quriosity-agent/qcut"
 			);
 		});
 		expect(mockOpenInNewTab).not.toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe("BlogPage", () => {
 
 		await vi.waitFor(() => {
 			expect(mockOpenInNewTab).toHaveBeenCalledWith(
-				"https://github.com/donghaozhang/qcut"
+				"https://github.com/Quriosity-agent/qcut"
 			);
 		});
 	});
