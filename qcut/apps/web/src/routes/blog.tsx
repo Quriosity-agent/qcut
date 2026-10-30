@@ -19,7 +19,7 @@ export const Route = createFileRoute("/blog")({
  */
 function BlogPage() {
 	const handleRedirectToGitHub = async () => {
-		const url = "https://github.com/donghaozhang/qcut";
+		const url = "https://github.com/Quriosity-agent/qcut";
 		if (platform().shell?.openExternal) {
 			try {
 				await platform().shell.openExternal(url);
@@ -63,7 +63,7 @@ function BlogPage() {
 						<p className="text-sm text-muted-foreground mt-4">
 							Find release notes, documentation, and discussions at
 							<br />
-							<span className="font-mono">github.com/donghaozhang/qcut</span>
+							<span className="font-mono">github.com/Quriosity-agent/qcut</span>
 						</p>
 					</div>
 				</div>
