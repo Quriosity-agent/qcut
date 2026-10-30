@@ -39,6 +39,7 @@ export default defineConfig({
 		},
 		globalSetup: path.resolve(webRoot, "src/test/global-setup.ts"),
 		setupFiles: [
+			path.resolve(webRoot, "src/test/setup-electron-log.ts"),
 			path.resolve(webRoot, "src/test/preload-polyfills.ts"),
 			path.resolve(webRoot, "src/test/setup-radix-patches.ts"),
 			path.resolve(webRoot, "src/test/setup.ts"),
