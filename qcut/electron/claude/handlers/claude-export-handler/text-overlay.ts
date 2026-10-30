@@ -3,8 +3,17 @@ import type {
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
-import { assFontMetrics } from "./ass-font-metrics.js";
+import { assFamilyCoversCjk, assFontMetrics } from "./ass-font-metrics.js";
 import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
+import {
+	assCaptionFade,
+	assShadowTags,
+	assWeightTag,
+	captionFadeSeconds,
+	captionShadowsValue,
+	captionWeightValue,
+	overlayWeight,
+} from "./caption-ass-style.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
 import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
@@ -115,12 +124,15 @@ function collectCaptionOverlay({
 	style,
 	content,
 	duration,
+	fps,
 }: {
 	source: ClaudeElement;
 	element: Record<string, unknown>;
 	style: Record<string, unknown>;
 	content: string;
 	duration: number;
+	/** The project frame rate, for fade frames. */
+	fps?: number;
 }): TextOverlay {
 	const position = recordValue({ value: style.position });
 	const shadowOffset = recordValue({ value: style.shadowOffset });
@@ -254,6 +266,19 @@ function collectCaptionOverlay({
 			fallback: 0,
 		}),
 	};
+	// Film-subtitle styling (N25): a weight between regular and bold, soft
+	// shadows instead of the hard one, fades counted in frames.
+	const weight = captionWeightValue(style.fontWeight);
+	if (weight !== undefined) {
+		overlay.weight = weight;
+		overlay.fontWeight = weight >= 600 ? "bold" : "normal";
+	}
+	const shadows = captionShadowsValue(style.shadows);
+	if (shadows) overlay.shadows = shadows;
+	const fadeIn = captionFadeSeconds({ frames: style.fadeInFrames, fps });
+	const fadeOut = captionFadeSeconds({ frames: style.fadeOutFrames, fps });
+	if (fadeIn > 0) overlay.fadeIn = fadeIn;
+	if (fadeOut > 0) overlay.fadeOut = fadeOut;
 	// A bilingual caption's second-language line, in style.secondary's look
 	// over the caption's own.
 	const secondaryContent =
@@ -296,7 +321,21 @@ function collectCaptionOverlay({
 		})
 			? "italic"
 			: "normal",
+		letterSpacing: numberValue({
+			element: {},
+			style: secondary,
+			key: "letterSpacing",
+			fallback: overlay.letterSpacing,
+		}),
 	};
+	// Its own weight, else its bold's, else the caption's.
+	const secondaryWeight =
+		captionWeightValue(secondary.fontWeight) ??
+		(typeof secondary.bold === "boolean" ? undefined : overlay.weight);
+	if (secondaryWeight !== undefined) {
+		overlay.secondary.weight = secondaryWeight;
+		overlay.secondary.fontWeight = secondaryWeight >= 600 ? "bold" : "normal";
+	}
 	return overlay;
 }
 
@@ -524,6 +563,7 @@ export function collectTextOverlays(timeline: ClaudeTimeline): TextOverlay[] {
 							// leading or trailing line break draws no empty line.
 							content: content.trim(),
 							duration,
+							fps: timeline.fps,
 						})
 					: collectCanvasTextOverlay({
 							source,
@@ -562,6 +602,11 @@ function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
 	// border, shadow or box: the preview's text-shadow blur radius r is a
 	// Gaussian of sigma r/2, which is what libass's \blur takes.
 	return `\\1c&H${colour.slice(4)}&\\1a&H${colour.slice(2, 4)}&\\4a&HFF&\\bord0\\shad0\\blur${(overlay.glowBlur / 2).toFixed(2)}`;
+}
+
+/** Seconds as an ASS time keeps them: to the hundredth. */
+function assSeconds(seconds: number): number {
+	return Math.round(Math.max(0, seconds) * 100) / 100;
 }
 
 function assTime(seconds: number): string {
@@ -645,6 +690,14 @@ export function assFontFamily(overlay: TextOverlay): string {
 	const requested = overlay.fontFamily.replace(/,/g, " ").trim();
 	if (!CJK_PATTERN.test(overlay.content)) return requested;
 	if (CJK_CAPABLE_FONT_FAMILIES.has(requested.toLowerCase())) return requested;
+	// An installed font that covers CJK (Source Han Serif CN, …) is one libass
+	// opens itself from the export's font folder (PingFang is not in one).
+	if (
+		!/^pingfang/i.test(requested) &&
+		assFamilyCoversCjk({ family: requested })
+	) {
+		return requested;
+	}
 	const fallback = assCjkFallbackFamily();
 	claudeLog.warn(
 		HANDLER_NAME,
@@ -890,10 +943,13 @@ export function buildTextAss({
 				0,
 				backgroundEnabled ? 3 : 1,
 				overlay.strokeWidth,
-				Math.max(
-					Math.abs(overlay.shadowOffsetX),
-					Math.abs(overlay.shadowOffsetY)
-				),
+				// Soft shadows are layers of their own; the hard one is ASS's.
+				overlay.shadows
+					? 0
+					: Math.max(
+							Math.abs(overlay.shadowOffsetX),
+							Math.abs(overlay.shadowOffsetY)
+						),
 				placement.alignment,
 				0,
 				0,
@@ -907,29 +963,62 @@ export function buildTextAss({
 			animationStart,
 			(overlay.animationDelay + overlay.animationDuration) * 1000
 		);
-		let motion = `\\pos(${x.toFixed(2)},${y.toFixed(2)})`;
-		if (overlay.animationType === "slide-up") {
-			motion = `\\move(${x.toFixed(2)},${(y + 80).toFixed(2)},${x.toFixed(2)},${y.toFixed(2)},${animationStart.toFixed(0)},${animationEnd.toFixed(0)})`;
-		} else if (overlay.animationType === "slide-left") {
-			motion = `\\move(${(x + 120).toFixed(2)},${y.toFixed(2)},${x.toFixed(2)},${y.toFixed(2)},${animationStart.toFixed(0)},${animationEnd.toFixed(0)})`;
-		}
+		/** The block's position or slide, moved by (dx, dy) for a shadow. */
+		const motionAt = (dx: number, dy: number) => {
+			const [px, py] = [(x + dx).toFixed(2), (y + dy).toFixed(2)];
+			const timing = `${animationStart.toFixed(0)},${animationEnd.toFixed(0)}`;
+			if (overlay.animationType === "slide-up") {
+				return `\\move(${px},${(y + dy + 80).toFixed(2)},${px},${py},${timing})`;
+			}
+			if (overlay.animationType === "slide-left") {
+				return `\\move(${(x + dx + 120).toFixed(2)},${py},${px},${py},${timing})`;
+			}
+			return `\\pos(${px},${py})`;
+		};
+		const start = assTime(overlay.startTime);
+		const end = assTime(overlay.endTime);
 		const fade =
-			overlay.animationType === "fade"
+			assCaptionFade({
+				overlay,
+				duration: assSeconds(overlay.endTime) - assSeconds(overlay.startTime),
+			}) ??
+			(overlay.animationType === "fade"
 				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
-				: "";
+				: "");
+		const weight = overlayWeight(overlay);
+		const weightTag =
+			weight === 400 || weight === 700 ? "" : assWeightTag(weight);
 		// \q1 wraps greedily at the event margins, the way the preview's box does.
-		const tags = `${motion}\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}`;
+		const shared = `\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}${weightTag}`;
+		const tags = `${motionAt(0, 0)}${shared}`;
 		const margins = `${placement.marginL},${placement.marginR},0`;
 		const glow = assGlowTags({ overlay });
 		const eventText = caption?.text ?? escapeAssText(overlay.content);
+		// Soft shadows first, each on its own layer under the text: the letters
+		// in the shadow's colour (the second line's own colour left out).
+		const shadows = overlay.shadows ?? [];
+		const shadowText = shadows.length
+			? (captionEventText({
+					overlay,
+					fontSize,
+					fontFamilyFor: assFontFamily,
+					colorTags: false,
+				}).text ?? eventText)
+			: eventText;
+		for (const [layer, shadow] of shadows.entries()) {
+			events.push(
+				`Dialogue: ${layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay })}}${shadowText}`
+			);
+		}
+		const base = shadows.length;
 		if (glow) {
 			// The glow is the same text on a lower layer, blurred in the glow colour.
 			events.push(
-				`Dialogue: 0,${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}${glow}}${eventText}`
+				`Dialogue: ${base},${start},${end},${styleName},,${margins},,{${tags}${glow}}${eventText}`
 			);
 		}
 		events.push(
-			`Dialogue: ${glow ? 1 : 0},${assTime(overlay.startTime)},${assTime(overlay.endTime)},${styleName},,${margins},,{${tags}}${eventText}`
+			`Dialogue: ${base + (glow ? 1 : 0)},${start},${end},${styleName},,${margins},,{${tags}}${eventText}`
 		);
 	}
 	return [
