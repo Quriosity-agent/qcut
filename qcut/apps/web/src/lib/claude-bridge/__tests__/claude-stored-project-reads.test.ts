@@ -169,4 +169,20 @@ describe("project stats of a project that is not open", () => {
 			"stats-1"
 		);
 	});
+
+	it("counts nothing for a project storage does not have, not the open one", async () => {
+		storage.loadProject.mockResolvedValueOnce(null);
+		setupClaudeProjectBridge();
+		const [onStats] = project.onStatsRequest.mock.calls[0];
+		await onStats("gone", "stats-2");
+		expect(project.sendStatsResponse).toHaveBeenCalledWith(
+			expect.objectContaining({
+				trackCount: 0,
+				elementCount: 0,
+				mediaCount: { video: 0, audio: 0, image: 0 },
+				totalDuration: 0,
+			}),
+			"stats-2"
+		);
+	});
 });
