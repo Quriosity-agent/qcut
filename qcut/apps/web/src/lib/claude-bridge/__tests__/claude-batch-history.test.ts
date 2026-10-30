@@ -21,11 +21,17 @@ vi.mock("@/stores/media/media-store", () => ({
 vi.mock("@/lib/storage/storage-service", () => ({
 	storageService: {
 		saveTimeline: vi.fn(() => Promise.resolve()),
+		saveProjectTimeline: vi.fn(() => Promise.resolve()),
 		loadTimeline: vi.fn(() => Promise.resolve(null)),
 	},
 }));
 vi.mock("@/stores/project-store", () => ({
-	useProjectStore: { getState: vi.fn(() => ({ activeProject: null })) },
+	useProjectStore: {
+		getState: vi.fn(() => ({ activeProject: { id: "p1", fps: 24 } })),
+	},
+}));
+vi.mock("@/lib/project/project-folder-sync", () => ({
+	syncProjectFolder: vi.fn(async () => undefined),
 }));
 vi.mock("@/stores/editor/editor-store", () => ({
 	useEditorStore: {
@@ -39,6 +45,7 @@ vi.mock("sonner", () => ({
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { setupBatchHandlers } from "../claude-timeline-bridge-batch";
+import { beginHistoryStep } from "../claude-history-step";
 
 const shot: MediaElement = {
 	id: "shot",
@@ -70,12 +77,18 @@ function setTimeline() {
 }
 
 function handlers() {
+	let onAdd: ((data: unknown) => Promise<void>) | undefined;
 	let onUpdate: ((data: unknown) => Promise<void>) | undefined;
 	let onDelete: ((data: unknown) => void) | undefined;
+	const sendBatchAddElementsResponse = vi.fn();
 	const sendBatchUpdateElementsResponse = vi.fn();
 	const sendBatchDeleteElementsResponse = vi.fn();
 	setupBatchHandlers({
 		claudeAPI: {
+			onBatchAddElements: (callback: typeof onAdd) => {
+				onAdd = callback;
+			},
+			sendBatchAddElementsResponse,
 			onBatchUpdateElements: (callback: typeof onUpdate) => {
 				onUpdate = callback;
 			},
@@ -85,12 +98,26 @@ function handlers() {
 			},
 			sendBatchDeleteElementsResponse,
 		} as never,
-		sharedUtils: {} as never,
+		sharedUtils: {
+			normalizeClaudeElementType: () => "media",
+			resolveMediaIdForBatchElement: ({
+				element,
+			}: {
+				element: { sourceId?: string };
+			}) => element.sourceId,
+		} as never,
 	});
-	if (!onUpdate || !onDelete) throw new Error("batch handlers not registered");
+	if (!onAdd || !onUpdate || !onDelete) {
+		throw new Error("batch handlers not registered");
+	}
+	const add = onAdd;
 	const update = onUpdate;
 	const remove = onDelete;
 	return {
+		add: async (elements: Array<Record<string, unknown>>) => {
+			await add({ requestId: "add", projectId: "p1", elements });
+			return sendBatchAddElementsResponse.mock.lastCall?.[1];
+		},
 		replace: async (mediaId: string) => {
 			await update({
 				requestId: mediaId,
@@ -154,5 +181,40 @@ describe("undo steps of refused editor API batches", () => {
 		expect(useTimelineStore.getState().history).toEqual([]);
 		expect(remove("shot")).toMatchObject({ deletedCount: 1 });
 		expect(useTimelineStore.getState().history).toHaveLength(1);
+	});
+
+	it("adds no step for a batch add that adds nothing", async () => {
+		const { add } = handlers();
+		expect(
+			await add([
+				{
+					type: "media",
+					trackId: "gone",
+					sourceId: "v2",
+					startTime: 0,
+					duration: 1,
+				},
+			])
+		).toMatchObject({ failedCount: 1 });
+		expect(useTimelineStore.getState().history).toEqual([]);
+	});
+});
+
+describe("a batch's undo step", () => {
+	it("is kept when another step came after it", () => {
+		const step = beginHistoryStep();
+		useTimelineStore.getState().pushHistory();
+		step.finish();
+		expect(useTimelineStore.getState().history).toHaveLength(2);
+	});
+
+	it("is kept when the timeline changed", () => {
+		const step = beginHistoryStep();
+		useTimelineStore
+			.getState()
+			.updateElementStartTime("main", "shot", 5, false);
+		step.finish();
+		expect(useTimelineStore.getState().history).toHaveLength(1);
+		expect(clip().startTime).toBe(5);
 	});
 });
