@@ -555,8 +555,7 @@ function setupAutoUpdater(): void {
 				process.platform === "darwin"
 					? watchSquirrelWhilePaused({
 							nativeUpdater: nativeAutoUpdater,
-							isPaused: () =>
-								updateController?.getPreferences().paused === true,
+							onSquirrelStaged: () => updateController?.withdrawIfPaused(),
 							logger,
 						})
 					: undefined,
