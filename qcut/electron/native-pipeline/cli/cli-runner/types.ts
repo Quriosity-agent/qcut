@@ -330,6 +330,8 @@ export interface CLIRunOptions {
 	seekTime?: number | string;
 	startTime?: number;
 	endTime?: number;
+	/** `editor timeline replace-media --trim-start`: the new in-point, in seconds. */
+	trimStart?: number;
 	newName?: string;
 	/** Project name alias used by editor project create. */
 	name?: string;
