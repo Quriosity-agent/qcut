@@ -165,12 +165,15 @@ element's top level (top level wins, as for text), on `add-element`,
 | `position.align` | `verticalAlign` (`middle` = center) | top/center/bottom |
 | `lineSpacing` | `lineHeight` | line-height multiple |
 | `animationType`, `animationDuration`, `animationDelay` | — | none/fade/slide-up/slide-left; s; s |
+| `fontWeight` | `bold` (700), `"normal"` (400) | 100–900: a face between regular and bold, e.g. SemiBold 600 |
+| `shadows: [{color, opacity, blur, x, y}]` | — | soft shadows under the text, replacing `shadowColor`/`shadowOffset` (see below) |
+| `fadeInFrames`, `fadeOutFrames` | — | whole frames at the project rate (see below) |
 | `karaokeMode`, `highlightColor`, `upcomingColor`, `highlightScale` | — | word highlighting |
-| `secondary: {fontFamily, fontSize, fontColor, bold, italic}` | `color`, `fontWeight`, `fontStyle` inside it | the second-language line's look (see below) |
+| `secondary: {fontFamily, fontSize, fontColor, bold, italic, letterSpacing, fontWeight}` | `color`, `fontStyle` inside it | the second-language line's look (see below) |
 
 Captions sit 28 px from the edge `position.align` names; `position.x/y`,
-`marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur`, `strokeOpacity` and the
-like have no effect on captions. Every field that is not applied is named:
+`marginV`, `x`, `y`, `width`, `glow*`, `shadowBlur` (soft shadows are
+`shadows`), `strokeOpacity` and the like have no effect on captions. Every field that is not applied is named:
 `warnings` on the `add-element` answer and on each `batch-add` item, and
 `ignoredFields` (e.g. `style.marginV`) on `update-element`. `timeline export`
 shows each caption's stored `style` (no `style` means the default look:
@@ -183,9 +186,9 @@ folder (`/System/Library/Fonts`, `…/Supplemental`, `/Library/Fonts`,
 
 One caption can carry both languages: `secondaryContent` is a second-language
 line drawn under `content`, in the look `style.secondary` gives it — any of
-`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`; what is left out is
-the caption's own. The outline, shadow, box, line spacing and alignment are
-the caption's; the box wraps both lines.
+`fontFamily`, `fontSize`, `fontColor`, `bold`, `italic`, `letterSpacing`,
+`fontWeight`; what is left out is the caption's own. The outline, shadows,
+box, line spacing and alignment are the caption's; the box wraps both lines.
 
 ```bash
 qcut editor:timeline:add-element --project-id <id> --data '{
@@ -239,6 +242,50 @@ Video and audio given without `duration` take their file's own length: for
 video, the length of the video stream, not the container (which can be a
 little longer because of the audio track). If QCut cannot read the file's
 length yet, the add fails and asks for `duration` instead of guessing.
+
+### Film subtitles: weights, soft shadows, frame fades
+
+A caption's style can carry a cinema subtitle look whole, so changing a
+cue's time is changing its numbers: the shadows and fades follow it. The
+preview, the canvas export (`--engine muxer`), the native export and the
+Export dialog's FFmpeg export draw these alike.
+
+```bash
+# Style D of the trailer: 思源宋体 SemiBold 28 over Gill Sans 22, two soft
+# shadows, a 4-frame fade-in and a 3-frame fade-out.
+qcut editor:timeline:add-element --project-id <id> --data '{
+  "type": "captions", "trackId": "<captions-track>", "startTime": 41.25, "duration": 2.5,
+  "content": "三年前　你是这座城里最能打的人",
+  "secondaryContent": "Three years ago, you were the best fighter in this city",
+  "style": {"fontFamily": "Source Han Serif CN", "fontSize": 28, "fontWeight": 600,
+            "letterSpacing": 2.8, "fontColor": "#F4EFE6", "outlineWidth": 0, "bgOpacity": 0,
+            "shadows": [{"color": "#000000", "opacity": 0.75, "blur": 3.2, "y": 2},
+                        {"color": "#000000", "opacity": 0.38, "blur": 18}],
+            "fadeInFrames": 4, "fadeOutFrames": 3,
+            "secondary": {"fontFamily": "Gill Sans", "fontSize": 22, "fontWeight": 400,
+                          "letterSpacing": 0.66, "fontColor": "#DED6C6"}}
+}'
+```
+
+- `fontWeight` picks the family's face of that weight (`Source Han Serif CN`
+  + 600 is its SemiBold). The font has to be installed (double-click the
+  file, Install): QCut draws with installed fonts only, and a family it
+  cannot find is drawn in a substitute (for Chinese in the native export,
+  Hiragino Sans GB).
+- `letterSpacing` is pixels: 0.10 em at 28 px is 2.8. The second line takes
+  its own; without one it takes the caption's.
+- `shadows`: up to 4, drawn in order under both lines (under every letter,
+  never over one). `color` is `#rrggbb`; `opacity` 0–1 on top of the text's
+  own; `blur` is a blur radius in pixels as CSS `text-shadow` takes it, a
+  Gaussian of σ = blur ÷ 2 (OpenCV's or PIL's `GaussianBlur` σ 1.6 is blur
+  3.2); `x`, `y` move it (y down). Given, they replace `shadowColor` and
+  `shadowOffset`; `[]` draws none; `null` goes back to the single shadow.
+  An update replaces the whole list.
+- `fadeInFrames` / `fadeOutFrames`: linear fades counted in frames at the
+  project rate, from the caption's start and to its end. Frame k of a
+  4-frame fade-in is at k/4 (the first frame clear), the last frame of a
+  3-frame fade-out at 1/3 — what FFmpeg's `fade` filter does. A fade-in takes
+  over `animationType`'s opacity ramp (a slide still moves).
 
 ### Import captions from a subtitle file
 
