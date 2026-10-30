@@ -133,7 +133,8 @@ async function applyAudioMixOperation(
 			const stored = await loadStoredProjectView({
 				projectId: request.projectId,
 			});
-			if (!stored) throw storedProjectNotFound(request.projectId);
+			if (!stored)
+				throw storedProjectNotFound({ projectId: request.projectId });
 			return {
 				success: true,
 				mix: readAudioMixSnapshot({
