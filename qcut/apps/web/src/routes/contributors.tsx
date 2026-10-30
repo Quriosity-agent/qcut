@@ -301,7 +301,7 @@ function ContributorsPage() {
 
 								<div className="flex flex-col sm:flex-row gap-4 justify-center">
 									<a
-										href="https://github.com/Quriosity-agent/qcut/blob/main/.github/CONTRIBUTING.md"
+										href="https://github.com/Quriosity-agent/qcut/blob/master/qcut/.github/CONTRIBUTING.md"
 										target="_blank"
 										rel="noopener noreferrer"
 									>
