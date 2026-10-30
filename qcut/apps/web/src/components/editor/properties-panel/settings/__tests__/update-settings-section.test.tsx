@@ -329,4 +329,23 @@ describe("UpdateSettingsSection", () => {
 			screen.queryByRole("button", { name: "Restart and install" })
 		).not.toBeInTheDocument();
 	});
+
+	it("says an update on offer waits while paused", async () => {
+		render(<UpdateSettingsSection />);
+		await screen.findByText("QCut v2026.07.11.1 is up to date");
+		act(() => {
+			mocks.listener?.({
+				...mocks.state,
+				phase: "available",
+				version: "2026.07.12.1",
+				decision: "paused",
+				paused: true,
+			});
+		});
+		expect(
+			await screen.findByText(
+				"QCut v2026.07.12.1 is available · updates paused"
+			)
+		).toBeInTheDocument();
+	});
 });
