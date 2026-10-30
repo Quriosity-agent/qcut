@@ -22,6 +22,9 @@ import path from "node:path";
 
 const RECORD_FILE = "reopen-after-update.json";
 
+/** A reopen is under way; a window closing meanwhile must not forget it. */
+let reopening = false;
+
 interface OpenProjectRecord {
 	projectId: string;
 	/** The package version that wrote the record. */
@@ -53,7 +56,7 @@ export function rememberOpenProject({
 	const projectId = projectIdFromEditorUrl(url);
 	try {
 		if (!projectId) {
-			rmSync(file, { force: true });
+			if (!reopening) rmSync(file, { force: true });
 			return;
 		}
 		const record: OpenProjectRecord = { projectId, version: packageVersion };
@@ -68,29 +71,32 @@ export function rememberOpenProject({
 
 /**
  * The project to open on this launch: the one an earlier version left open,
- * when this launch runs a different version. Reading it forgets it, so it
- * opens once.
+ * when this launch runs a different version. It stays noted until it has
+ * opened (or the editor refused it), so a launch that could not open it
+ * leaves it to the next one.
  */
-export function takeProjectToReopen({
+export function pendingProjectToReopen({
 	userDataPath,
 	packageVersion,
 }: {
 	userDataPath: string;
 	packageVersion: string;
 }): string | undefined {
-	const file = path.join(userDataPath, RECORD_FILE);
 	let record: Partial<OpenProjectRecord>;
 	try {
 		record = JSON.parse(
-			readFileSync(file, "utf8")
+			readFileSync(path.join(userDataPath, RECORD_FILE), "utf8")
 		) as Partial<OpenProjectRecord>;
 	} catch {
 		return undefined;
 	}
-	rmSync(file, { force: true });
 	if (typeof record.projectId !== "string" || !record.projectId)
 		return undefined;
 	return record.version !== packageVersion ? record.projectId : undefined;
+}
+
+function forgetProjectToReopen({ userDataPath }: { userDataPath: string }) {
+	rmSync(path.join(userDataPath, RECORD_FILE), { force: true });
 }
 
 /** On the first launch after an update, opens the project left open before it. */
@@ -109,10 +115,13 @@ export async function reopenProjectAfterUpdate({
 		warn(message?: unknown, ...optionalParams: unknown[]): void;
 	};
 }): Promise<void> {
-	const projectId = takeProjectToReopen({ userDataPath, packageVersion });
+	const projectId = pendingProjectToReopen({ userDataPath, packageVersion });
 	if (!projectId) return;
+	reopening = true;
 	try {
 		const result = await open(projectId);
+		// Opened, or refused by the editor (deleted meanwhile): done either way.
+		forgetProjectToReopen({ userDataPath });
 		if (result.navigated === false) {
 			logger.warn(
 				`[UpdateHistory] Could not reopen project ${projectId} after the update: ${result.error ?? "the editor did not open it"}`
@@ -125,8 +134,10 @@ export async function reopenProjectAfterUpdate({
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.warn(
-			`[UpdateHistory] Could not reopen project ${projectId} after the update: ${message}`
+			`[UpdateHistory] Could not reopen project ${projectId} after the update (the next launch tries again): ${message}`
 		);
+	} finally {
+		reopening = false;
 	}
 }
 
