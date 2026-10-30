@@ -505,6 +505,29 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			`qcut-pipeline editor:timeline:update-element --project-id <id> --element-id <music-id> --data '{"audio":{"keyframes":{"volumeDb":[{"frame":0,"value":0},{"frame":30,"value":-18},{"frame":150,"value":-18},{"frame":180,"value":0}]}}}' --json`,
 		]
 	),
+	"editor:timeline:replace-media": ed(
+		"editor:timeline:replace-media",
+		"Give a media clip another file in one step; it keeps its track, start, length, in-point and settings, and media too short for the clip is refused",
+		[
+			PID,
+			EID,
+			f("--source", "string", "File to import and use (or give --media-id)"),
+			f(
+				"--media-id",
+				"string",
+				"Media already in the project to use (or give --source)"
+			),
+			f(
+				"--trim-start",
+				"number",
+				"Seconds into the new media where the clip starts reading it (default: the clip's current in-point)"
+			),
+		],
+		[
+			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --source ~/shots/05_v2.mp4 --json",
+			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --media-id <media> --trim-start 0 --json",
+		]
+	),
 	"editor:timeline:batch-update": ed(
 		"editor:timeline:batch-update",
 		"Batch update elements",
