@@ -7,13 +7,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * stays a sound.
  */
 
-const media = vi.hoisted(() => ({
-	items: [
-		{ id: "shot", name: "05_拳域_01.mp4", type: "video" },
-		{ id: "score", name: "score.wav", type: "audio" },
-	],
-	addMediaItem: vi.fn(async () => "new-media"),
-}));
+type MediaItemStub = {
+	id: string;
+	name: string;
+	type: string;
+	duration?: number;
+};
+
+const media = vi.hoisted(() => {
+	const library = {
+		items: [] as MediaItemStub[],
+		addMediaItem: vi.fn(
+			async (_projectId: string, item: Omit<MediaItemStub, "id">) => {
+				library.items.push({ ...item, id: "new-media" });
+				return "new-media";
+			}
+		),
+	};
+	return library;
+});
 vi.mock("@/stores/media/media-store", () => ({
 	useMediaStore: {
 		getState: () => ({
@@ -48,6 +60,7 @@ vi.mock("@/stores/project-store", () => ({
 vi.mock("@/lib/storage/storage-service", () => ({
 	storageService: {
 		saveTimeline: vi.fn(() => Promise.resolve()),
+		saveProjectTimeline: vi.fn(() => Promise.resolve()),
 		loadTimeline: vi.fn(() => Promise.resolve(null)),
 	},
 }));
@@ -83,7 +96,18 @@ function setClip(mediaId: string, trackType: "media" | "audio" = "media") {
 	useTimelineStore.setState({ _tracks: tracks, tracks, history: [] });
 }
 
+function clipNow() {
+	return useTimelineStore
+		.getState()
+		.tracks.flatMap((track) => track.elements)
+		.find((element) => element.id === "clip");
+}
+
 beforeEach(() => {
+	media.items = [
+		{ id: "shot", name: "05_拳域_01.mp4", type: "video" },
+		{ id: "score", name: "score.wav", type: "audio" },
+	];
 	media.addMediaItem.mockClear();
 });
 
@@ -133,10 +157,13 @@ describe("what can replace a clip's media", () => {
 	it("lets a detached sound on an audio lane take another sound", async () => {
 		setClip("shot", "audio");
 		const sound = new File(["x"], "take2.wav", { type: "audio/wav" });
-		await useTimelineStore
-			.getState()
-			.replaceElementMedia("main", "clip", sound);
-		expect(media.addMediaItem).toHaveBeenCalledTimes(1);
+		await expect(
+			useTimelineStore.getState().replaceElementMedia("main", "clip", sound)
+		).resolves.toEqual({ success: true });
+		expect(clipNow()).toMatchObject({
+			mediaId: "new-media",
+			name: "take2.wav",
+		});
 
 		const picture = new File(["x"], "b-roll.mp4", { type: "video/mp4" });
 		await expect(
