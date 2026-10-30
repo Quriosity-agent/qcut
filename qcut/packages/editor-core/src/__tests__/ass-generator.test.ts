@@ -168,4 +168,17 @@ describe("generateASS", () => {
 		expect(ass).toContain("\\fade(255,0,0,250,750,2000,2000)");
 		expect(ass).toContain("\\move(1896,1136,1896,1056,250,750)");
 	});
+
+	// PR #529 follow-up: this path put captions position.y (90 by default)
+	// from the edge while the preview and the native export use 28 px.
+	it("keeps captions 28 px from the edge, like the preview", () => {
+		// The default style says position.y 90.
+		const ass = generateASS([caption()], {
+			resolution: { width: 1280, height: 720 },
+		});
+		const styleLine = ass
+			.split("\n")
+			.find((line) => line.startsWith("Style: Default,"));
+		expect(styleLine?.split(",").slice(-4)).toEqual(["10", "10", "28", "1"]);
+	});
 });
