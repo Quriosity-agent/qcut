@@ -5,6 +5,7 @@
  * @module lib/claude-bridge/claude-timeline-bridge-arrange
  */
 
+import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type {
 	ClaudeArrangeRequest,
@@ -13,6 +14,13 @@ import type {
 import { debugError } from "@/lib/debug/debug-config";
 import { getTimelineElementDuration } from "@/lib/timeline";
 import type { ClaudeTimelineBridgeAPI } from "./claude-timeline-bridge";
+
+/** A distance in seconds the request may set: finite and not negative. */
+function seconds(value: unknown): number | undefined {
+	return typeof value === "number" && Number.isFinite(value) && value >= 0
+		? value
+		: undefined;
+}
 
 export function setupArrangeHandler({
 	claudeAPI,
@@ -40,17 +48,11 @@ export function setupArrangeHandler({
 				}
 
 				const requestMode = data.request.mode;
-				const startOffset =
-					typeof data.request.startOffset === "number" &&
-					data.request.startOffset >= 0
-						? data.request.startOffset
-						: 0;
+				const startOffset = seconds(data.request.startOffset) ?? 0;
 				const gap =
-					typeof data.request.gap === "number" && data.request.gap >= 0
-						? data.request.gap
-						: requestMode === "spaced"
-							? 0.5
-							: 0;
+					seconds(data.request.gap) ?? (requestMode === "spaced" ? 0.5 : 0);
+				// The store's overlap check measures speed-ramped clips at this rate.
+				const fps = useProjectStore.getState().activeProject?.fps ?? 30;
 
 				const byStartTime = [...track.elements].sort(
 					(left, right) => left.startTime - right.startTime
@@ -76,7 +78,8 @@ export function setupArrangeHandler({
 				}
 
 				const arranged: ClaudeArrangeResponse["arranged"] = [];
-				const startTimes: Record<string, number> = {};
+				// No prototype, so an element id such as "__proto__" is a key too.
+				const startTimes: Record<string, number> = Object.create(null);
 				let currentStartTime = startOffset;
 				for (const element of orderedElements) {
 					startTimes[element.id] = currentStartTime;
@@ -84,7 +87,14 @@ export function setupArrangeHandler({
 						elementId: element.id,
 						newStartTime: currentStartTime,
 					});
-					currentStartTime += getTimelineElementDuration({ element }) + gap;
+					currentStartTime +=
+						getTimelineElementDuration({ element, fps }) + gap;
+				}
+				if (
+					!arranged.every(({ newStartTime }) => Number.isFinite(newStartTime))
+				) {
+					claudeAPI.sendArrangeResponse(data.requestId, { arranged: [] });
+					return;
 				}
 
 				// One commit for the whole lane. Moving elements one at a time would
