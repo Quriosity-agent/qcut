@@ -54,7 +54,10 @@ export function compareSemver(a: string, b: string): number {
 	const pA = parseV(a);
 	const pB = parseV(b);
 
-	for (let i = 0; i < 3; i++) {
+	// Every part counts: QCut's releases have four (2026.10.29.3), and with
+	// three the changelog page opened on 2026.10.29.1, tied with the newer.
+	const length = Math.max(pA.parts.length, pB.parts.length);
+	for (let i = 0; i < length; i++) {
 		const diff = (pA.parts[i] || 0) - (pB.parts[i] || 0);
 		if (diff !== 0) return diff;
 	}
