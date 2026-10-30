@@ -19,6 +19,7 @@ const EMPTY_STATE: PlatformUpdateState = {
 const EMPTY_PREFERENCES: PlatformUpdatePreferences = {
 	automaticUpdates: false,
 	maxAutomaticDownloadBytes: 0,
+	paused: false,
 };
 
 function resolveAppUpdates(): PlatformUpdatesAPI | undefined {
