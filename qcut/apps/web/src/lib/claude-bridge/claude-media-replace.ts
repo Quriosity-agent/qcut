@@ -1,6 +1,7 @@
 import { useMediaStore } from "@/stores/media/media-store";
 import type { MediaElement, TimelineTrack } from "@/types/timeline";
 import { resolveMediaIdForBatchElement } from "./claude-media-resolve";
+import { mediaKindMismatch } from "@/lib/media/media-replace-kind";
 
 /** How far new media may fall short of the clip's out-point and still fit. */
 const LENGTH_TOLERANCE_SECONDS = 0.001;
@@ -80,12 +81,14 @@ export function planMediaReplacement({
 		);
 	}
 	const previous = mediaItems.find((item) => item.id === element.mediaId);
-	// A sound stays a sound and a picture a picture (video and stills swap).
-	if (previous && (previous.type === "audio") !== (media.type === "audio")) {
-		throw new Error(
-			`${media.name} is ${media.type === "audio" ? "audio" : "a picture"}; this clip's media is ${previous.type === "audio" ? "audio" : "a picture"}, so it takes ${previous.type === "audio" ? "audio" : "video or an image"}`
-		);
-	}
+	const mismatch = previous
+		? mediaKindMismatch({
+				current: previous.type,
+				next: media.type,
+				nextName: media.name,
+			})
+		: undefined;
+	if (mismatch) throw new Error(mismatch);
 	// A renamed clip keeps its name; one still named after its media follows
 	// the new media, as the editor's own Replace does.
 	const name =
