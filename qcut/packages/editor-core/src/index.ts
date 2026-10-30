@@ -554,6 +554,7 @@ export {
 	captionAssFade,
 	getCaptionAnimationState,
 	type CaptionAnimationState,
+	assBlurForCssBlur,
 	generateASS,
 	secondsToASSTime,
 	parseASS,
