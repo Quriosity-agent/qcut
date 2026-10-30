@@ -29,6 +29,14 @@ export function releaseNotesUrl(version: string): string {
 	return `https://github.com/${owner}/${repo}/releases/tag/v${version}`;
 }
 
+function isUpdateRecord(value: unknown): value is UpdateRecord {
+	if (typeof value !== "object" || value === null) return false;
+	const record = value as Record<string, unknown>;
+	return ["from", "to", "at", "releaseNotes"].every(
+		(key) => typeof record[key] === "string" && record[key] !== ""
+	);
+}
+
 function readHistory(file: string): UpdateHistoryFile | undefined {
 	try {
 		const parsed = JSON.parse(readFileSync(file, "utf8")) as unknown;
@@ -37,7 +45,11 @@ function readHistory(file: string): UpdateHistoryFile | undefined {
 			parsed !== null &&
 			typeof (parsed as UpdateHistoryFile).lastRunVersion === "string"
 		) {
-			return parsed as UpdateHistoryFile;
+			const { lastRunVersion, lastUpdate } = parsed as UpdateHistoryFile;
+			// A last update that is not one (a hand-edited file) is dropped.
+			return isUpdateRecord(lastUpdate)
+				? { lastRunVersion, lastUpdate }
+				: { lastRunVersion };
 		}
 	} catch {
 		// No record yet, or one that cannot be read: start a new one.
