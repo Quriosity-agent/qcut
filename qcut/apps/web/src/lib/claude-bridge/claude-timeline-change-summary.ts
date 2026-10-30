@@ -15,8 +15,7 @@ export interface TimelineChangeSummary {
 	moved: number;
 	/**
 	 * Elements that kept their place but not their settings, such as a clip
-	 * whose media was replaced (N28, 2026-10-30 trailer report: undoing a
-	 * replace-media answered with nothing changed).
+	 * whose media was replaced.
 	 */
 	changed: number;
 	/** The first few changed elements, in timeline order. */
@@ -97,7 +96,11 @@ export function summarizeTimelineChange({
 			elements.push({ elementId, change: "added", ...placement });
 			continue;
 		}
-		const fields = differingFields({ was: earlier.element, now: element });
+		// History snapshots share untouched elements, which need no comparing.
+		const fields =
+			earlier.element === element
+				? []
+				: differingFields({ was: earlier.element, now: element });
 		const from = earlier.placement;
 		if (
 			from.trackId !== placement.trackId ||
