@@ -77,7 +77,7 @@ describe("film subtitle styles in a draft snapshot", () => {
 		expect(
 			issuePath({
 				...FILM_STYLE,
-				shadows: [{ color: "#000000", blur: "soft" }],
+				shadows: [{ color: "#000000", opacity: 1, blur: "soft", x: 0, y: 0 }],
 			})
 		).toBe("$.style.shadows[0].blur");
 		expect(
@@ -86,5 +86,33 @@ describe("film subtitle styles in a draft snapshot", () => {
 				secondary: { ...FILM_STYLE.secondary, letterSpacing: "wide" },
 			})
 		).toBe("$.style.secondary.letterSpacing");
+	});
+
+	it("needs every shadow field and the editor's ranges", () => {
+		// The editor stores a shadow whole.
+		expect(issuePath({ ...FILM_STYLE, shadows: [{ color: "#000000" }] })).toBe(
+			"$.style.shadows[0].opacity"
+		);
+		expect(
+			issuePath({
+				...FILM_STYLE,
+				shadows: [{ color: "#000000", opacity: 1.5, blur: 0, x: 0, y: 0 }],
+			})
+		).toBe("$.style.shadows[0].opacity");
+		expect(issuePath({ ...FILM_STYLE, fontWeight: 950 })).toBe(
+			"$.style.fontWeight"
+		);
+		expect(issuePath({ ...FILM_STYLE, fadeInFrames: 4.5 })).toBe(
+			"$.style.fadeInFrames"
+		);
+		expect(issuePath({ ...FILM_STYLE, fadeOutFrames: -1 })).toBe(
+			"$.style.fadeOutFrames"
+		);
+		expect(
+			issuePath({
+				...FILM_STYLE,
+				secondary: { ...FILM_STYLE.secondary, fontWeight: 50 },
+			})
+		).toBe("$.style.secondary.fontWeight");
 	});
 });
