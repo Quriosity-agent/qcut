@@ -53,7 +53,7 @@ function byStart(left: PeakDip, right: PeakDip): number {
 /**
  * How long the dips lowered the mix for, in seconds of `duration`, the most
  * any moment came down, in dB, and each stretch they lowered (dips whose
- * ramps touch make one). Each pass of dips is applied to the mix the one
+ * ramps touch make one), ramps included: the seconds are the stretches'. Each pass of dips is applied to the mix the one
  * before it left, so their depths add up; within a pass the deepest dip
  * holds, as applyPeakDips applies it.
  */
@@ -70,12 +70,6 @@ export function summarizePeakDips({
 } {
 	const dips = passes.flat().sort(byStart);
 	let seconds = 0;
-	let reach = 0;
-	for (const dip of dips) {
-		const end = Math.min(duration, dip.end);
-		seconds += Math.max(0, end - Math.max(reach, dip.start));
-		reach = Math.max(reach, end);
-	}
 	let deepest = 0;
 	const corrections: ExportAudioCorrection[] = [];
 	for (const group of groupDips({ dips })) {
@@ -118,12 +112,11 @@ export function summarizePeakDips({
 			groupDeepest = Math.max(groupDeepest, total);
 		}
 		deepest = Math.max(deepest, groupDeepest);
-		const start = Math.max(0, group.dips[0].start);
-		const end = Math.min(
-			duration,
-			group.dips.reduce((reached, dip) => Math.max(reached, dip.end), start)
-		);
+		// The stretch the gain changes over: its ramps included.
+		const start = Math.max(0, group.start);
+		const end = Math.min(duration, group.end);
 		if (end > start) {
+			seconds += end - start;
 			corrections.push({
 				start: Number(start.toFixed(3)),
 				end: Number(end.toFixed(3)),
