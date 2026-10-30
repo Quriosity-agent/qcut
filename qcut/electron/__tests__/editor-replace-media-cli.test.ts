@@ -65,11 +65,13 @@ function fakeClient({
 			: timelineWith(clipAfter)
 	);
 	const patch = vi.fn(async () => ({ updated: true }));
+	const remove = vi.fn(async () => true);
 	return {
-		client: { post, get, patch } as unknown as EditorApiClient,
+		client: { post, get, patch, delete: remove } as unknown as EditorApiClient,
 		post,
 		get,
 		patch,
+		remove,
 	};
 }
 
@@ -211,6 +213,22 @@ describe("editor timeline replace-media", () => {
 				"05_v2.mp4 was imported as v2, but the editor has not loaded it yet (Copied; the editor is still loading it.); run again with --media-id v2",
 		});
 		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it("takes back the file it imported when the editor refuses the swap", async () => {
+		const { client, patch, remove } = fakeClient();
+		patch.mockRejectedValueOnce(new Error("05_v2.mp4 is 3.000 s long"));
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow("05_v2.mp4 is 3.000 s long");
+		expect(remove).toHaveBeenCalledWith("/api/claude/media/p1/v2");
+
+		// Media that was in the project already stays.
+		patch.mockRejectedValueOnce(new Error("too short"));
+		await expect(
+			timelineReplaceMedia(client, options({ mediaId: "v2" }))
+		).rejects.toThrow("too short");
+		expect(remove).toHaveBeenCalledTimes(1);
 	});
 
 	it("fails when the timeline still shows the old media", async () => {
