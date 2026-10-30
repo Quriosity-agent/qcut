@@ -28,6 +28,7 @@ import { handleTimelineEditingCommand } from "../editor/editor-handlers-timeline
 import { handleAnalysisCommand } from "../editor/editor-handlers-analysis.js";
 import { handleCaptionsCommand } from "../editor/editor-handlers-captions.js";
 import { handleTransactionCommand } from "../editor/editor-handlers-transaction.js";
+import { handleUpdatesCommand } from "../editor/editor-handlers-updates.js";
 import { handleHistoryStep } from "../editor/editor-handlers-history.js";
 import { handleBeatsCommand } from "../editor/editor-handlers-beats.js";
 import { handleGenerateExportCommand } from "../editor/editor-handlers-generate.js";
@@ -328,6 +329,8 @@ export async function handleEditorCommand(
 					return await handleCaptionsCommand(client, options);
 				case "transaction":
 					return await handleTransactionCommand(client, options);
+				case "updates":
+					return await handleUpdatesCommand(client, options);
 				case "beats":
 					return await handleBeatsCommand(client, options);
 
