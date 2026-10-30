@@ -1,9 +1,6 @@
 /**
- * Main-process code logs through electron-log, which under Node appends to
- * ~/Library/Logs/qcut/main.log: the user's own QCut log (N29, 2026-10-30
- * trailer report: a test run's "rename refused" and "Export job job-1
- * cancelled" sat among the app's real lines). Tests keep their log lines on
- * the console.
+ * Keeps main-process test logs on the console: under Node, electron-log
+ * would append them to ~/Library/Logs/qcut/main.log, the user's own QCut log.
  */
 import { createRequire } from "node:module";
 
