@@ -17,6 +17,7 @@ import {
 	timelineShotSplit,
 } from "./editor-handlers-shot-split.js";
 import { timelineSnap } from "./editor-handlers-beats.js";
+import { timelineReplaceMedia } from "./editor-handlers-replace-media.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import {
@@ -51,6 +52,7 @@ const TIMELINE_ACTIONS = [
 	"add-element",
 	"batch-add",
 	"update-element",
+	"replace-media",
 	"batch-update",
 	"delete-element",
 	"batch-delete",
@@ -294,6 +296,8 @@ async function dispatchTimeline(
 			return timelineBatchAdd(client, opts);
 		case "update-element":
 			return timelineUpdateElement(client, opts);
+		case "replace-media":
+			return timelineReplaceMedia(client, opts);
 		case "batch-update":
 			return timelineBatchUpdate(client, opts);
 		case "delete-element":
