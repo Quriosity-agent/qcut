@@ -196,7 +196,8 @@ export function createAutoUpdateController({
 	/**
 	 * Keeps a downloaded update from installing when QCut quits, for a pause.
 	 * macOS hands the update to Squirrel as the download finishes, and its
-	 * ShipIt then waits for QCut to exit; elsewhere the quit decides.
+	 * ShipIt then waits for QCut to exit; elsewhere the quit decides. Throws
+	 * when the install could not be withdrawn.
 	 */
 	withdrawInstallOnQuit?: () => void;
 	checkIntervalMs?: number;
@@ -509,11 +510,19 @@ export function createAutoUpdateController({
 		try {
 			withdrawInstallOnQuit?.();
 		} catch (error: unknown) {
+			// Still set to install on quit; the next pause tries again.
 			const message = error instanceof Error ? error.message : String(error);
 			logger.warn(
 				"[AutoUpdater] Could not withdraw the staged install:",
 				message
 			);
+			publishState({
+				nextState: {
+					...state,
+					message: `Updates are paused, but QCut ${staged.version} could still install when QCut quits: ${message}`,
+				},
+			});
+			return;
 		}
 		installWithdrawn = true;
 	};
@@ -521,11 +530,14 @@ export function createAutoUpdateController({
 	const release = (): void => {
 		logger.log("[AutoUpdater] Updates resumed");
 		if (!staged || !installWithdrawn) return;
-		installWithdrawn = false;
 		// The download is cached, so this only hands it over again (to
-		// Squirrel on macOS, to the quit handler elsewhere).
+		// Squirrel on macOS, to the quit handler elsewhere). Until that has
+		// worked the update stays withdrawn, so a later resume tries again.
 		updater
 			.downloadUpdate()
+			.then(() => {
+				installWithdrawn = false;
+			})
 			.catch((error: unknown) => publishError({ error, source: "download" }));
 	};
 
