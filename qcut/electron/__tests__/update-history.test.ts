@@ -96,6 +96,9 @@ describe("the update header and health", () => {
 		const header = formatLastUpdateHeader(odd);
 		expect(header).toMatch(/^[\x21-\x7e ]+$/);
 		expect(parseLastUpdateHeader(header)).toEqual(odd);
+		// A lone surrogate becomes U+FFFD instead of throwing.
+		const broken = formatLastUpdateHeader({ ...UPDATE, from: "v\ud800" });
+		expect(parseLastUpdateHeader(broken)?.from).toBe("v\ufffd");
 		expect(parseLastUpdateHeader("from=1; to=2")).toBeUndefined();
 		expect(parseLastUpdateHeader(null)).toBeUndefined();
 	});
