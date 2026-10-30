@@ -216,6 +216,8 @@ export function createAutoUpdateController({
 	let staged: StagedUpdateInfo | undefined;
 	/** The staged update has to be handed over again before it can install. */
 	let installWithdrawn = false;
+	/** The version `onUpdateStaged` last fired for. */
+	let announcedVersion: string | undefined;
 	let state: UpdateState = {
 		phase: "idle",
 		currentVersion: toReleaseVersion({ packageVersion: currentVersion }),
@@ -454,7 +456,6 @@ export function createAutoUpdateController({
 		updater.on("update-downloaded", (...args: unknown[]) => {
 			const info = args[0] as UpdateInfoLike;
 			const version = toReleaseVersion({ packageVersion: info.version });
-			const alreadyStaged = staged?.internalVersion === info.version;
 			logger.log(`[AutoUpdater] Update ${version} is ready to install`);
 			staged = {
 				version,
@@ -481,7 +482,11 @@ export function createAutoUpdateController({
 				holdBack();
 				return;
 			}
-			if (!alreadyStaged) onUpdateStaged?.({ staged });
+			// Once per version, when it can install. One that finished while
+			// paused gets here again when the resume hands it over.
+			if (announcedVersion === info.version) return;
+			announcedVersion = info.version;
+			onUpdateStaged?.({ staged });
 		});
 		updater.on("error", (...args: unknown[]) => {
 			publishError({ error: args[0] });
