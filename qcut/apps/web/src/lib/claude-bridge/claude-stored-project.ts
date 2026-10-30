@@ -17,14 +17,22 @@ export interface StoredProjectView {
 }
 
 /** Whether the editor has `projectId` loaded, so its live state answers. */
-export function isLoadedProject(projectId: string | undefined): boolean {
+export function isLoadedProject({
+	projectId,
+}: {
+	projectId: string | undefined;
+}): boolean {
 	return (
 		projectId === undefined ||
 		useProjectStore.getState().loadedProjectId === projectId
 	);
 }
 
-export function storedProjectNotFound(projectId: string): Error {
+export function storedProjectNotFound({
+	projectId,
+}: {
+	projectId: string;
+}): Error {
 	return new Error(`Project ${projectId} was not found`);
 }
 
