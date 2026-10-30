@@ -143,7 +143,7 @@ export function mediaReplacementFromPatch({
 	changes,
 }: {
 	element: MediaElement;
-	track: Pick<TimelineTrack, "name" | "locked">;
+	track: Pick<TimelineTrack, "name" | "locked" | "type">;
 	changes: Record<string, unknown>;
 }): MediaReplacement | undefined {
 	const { mediaId, sourceDuration, trimStart } = changes;
