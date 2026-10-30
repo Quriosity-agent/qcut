@@ -1,7 +1,7 @@
-import { EventEmitter } from "events";
-import fs from "fs";
-import os from "os";
-import path from "path";
+import { EventEmitter } from "node:events";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createAutoUpdateController,
@@ -14,9 +14,8 @@ import {
 } from "../update-preferences";
 
 /**
- * N26 (2026-10-30 trailer report): an update installed itself while a
- * project was under way. Paused updates download nothing by themselves,
- * install nothing on quit, and pick up where they were once resumed.
+ * Paused updates download nothing by themselves, install nothing on quit,
+ * and pick up where they were once resumed.
  */
 
 class FakeUpdater extends EventEmitter implements AutoUpdaterLike {
@@ -36,8 +35,16 @@ class FakeUpdater extends EventEmitter implements AutoUpdaterLike {
 		return { updateInfo: this.info };
 	}
 
+	/** The next download fails, as a hand-over that cannot reach Squirrel. */
+	nextDownloadError: Error | undefined;
+
 	async downloadUpdate(): Promise<string[]> {
 		this.downloadCount += 1;
+		if (this.nextDownloadError) {
+			const error = this.nextDownloadError;
+			this.nextDownloadError = undefined;
+			throw error;
+		}
 		this.emit("update-downloaded", this.info);
 		return ["/tmp/update.zip"];
 	}
@@ -168,6 +175,44 @@ describe("paused updates", () => {
 		controller.setPreferences({ preferences: { paused: false } });
 		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
 		expect(updater.downloadCount).toBe(1);
+		controller.stop();
+	});
+
+	it("say when the install could not be withdrawn, and retry on the next pause", async () => {
+		const { updater, controller, withdrawInstallOnQuit } = setup();
+		controller.start();
+		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
+		withdrawInstallOnQuit.mockImplementationOnce(() => {
+			throw new Error("com.qcut.videoeditor.ShipIt is still loaded");
+		});
+
+		controller.setPreferences({ preferences: { paused: true } });
+		expect(controller.getState().message).toBe(
+			"Updates are paused, but QCut 2026.10.30.2 could still install when QCut quits: com.qcut.videoeditor.ShipIt is still loaded"
+		);
+		// Nothing was withdrawn, so resuming hands nothing over again.
+		controller.setPreferences({ preferences: { paused: false } });
+		expect(updater.downloadCount).toBe(1);
+
+		controller.setPreferences({ preferences: { paused: true } });
+		expect(withdrawInstallOnQuit).toHaveBeenCalledTimes(2);
+		controller.stop();
+	});
+
+	it("keep the update withdrawn until it is handed over again", async () => {
+		const { updater, controller } = setup();
+		controller.start();
+		await vi.waitFor(() => expect(controller.getState().phase).toBe("ready"));
+		controller.setPreferences({ preferences: { paused: true } });
+
+		updater.nextDownloadError = new Error("proxy closed");
+		controller.setPreferences({ preferences: { paused: false } });
+		await vi.waitFor(() => expect(updater.downloadCount).toBe(2));
+
+		// The failed hand-over is tried again by the next resume.
+		controller.setPreferences({ preferences: { paused: true } });
+		controller.setPreferences({ preferences: { paused: false } });
+		await vi.waitFor(() => expect(updater.downloadCount).toBe(3));
 		controller.stop();
 	});
 });
