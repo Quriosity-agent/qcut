@@ -8,6 +8,8 @@
  */
 
 import { describeRequestFailure } from "./editor-api-failure.js";
+import { noticeLastUpdate } from "./editor-update-notice.js";
+import { LAST_UPDATE_HEADER } from "../../update-notice.js";
 import type { CLIRunOptions } from "../cli/cli-runner/types.js";
 import { readClaudeInstanceInfo } from "../../claude/http/claude-api-token.js";
 import type {
@@ -963,6 +965,8 @@ export class EditorApiClient {
 			if (failure) throw new EditorApiError(failure);
 			throw new EditorApiError(`HTTP request failed for ${url}: ${msg}`);
 		}
+		// Said once per update: QCut changed under this CLI (N26).
+		noticeLastUpdate(response.headers?.get(LAST_UPDATE_HEADER));
 
 		let envelope: ApiEnvelope<T>;
 		try {
