@@ -365,6 +365,13 @@ function metricsFrom({
 	};
 }
 
+/** An index of `directories`, or the system's, built once per process. */
+function fontIndex(directories?: string[]): Map<string, FaceMetrics[]> {
+	if (directories) return buildIndex(directories);
+	cachedIndex ??= buildIndex(systemFontDirectories());
+	return cachedIndex;
+}
+
 /**
  * The font files holding a face of any of `families`, matched by every
  * localized family name, as libass matches them.
@@ -377,13 +384,7 @@ export function assFontFilesForFamilies({
 	/** Folders to index instead of the system's; such an index is not kept. */
 	directories?: string[];
 }): string[] {
-	let index: Map<string, FaceMetrics[]>;
-	if (directories) {
-		index = buildIndex(directories);
-	} else {
-		cachedIndex ??= buildIndex(systemFontDirectories());
-		index = cachedIndex;
-	}
+	const index = fontIndex(directories);
 	const files = new Set<string>();
 	for (const family of families) {
 		for (const face of index.get(family.trim().toLowerCase()) ?? []) {
@@ -405,14 +406,7 @@ export function assFamilyCoversCjk({
 	/** Folders to index instead of the system's; such an index is not kept. */
 	directories?: string[];
 }): boolean {
-	let index: Map<string, FaceMetrics[]>;
-	if (directories) {
-		index = buildIndex(directories);
-	} else {
-		cachedIndex ??= buildIndex(systemFontDirectories());
-		index = cachedIndex;
-	}
-	return (index.get(family.trim().toLowerCase()) ?? []).some(
+	return (fontIndex(directories).get(family.trim().toLowerCase()) ?? []).some(
 		(face) => face.cjk
 	);
 }
