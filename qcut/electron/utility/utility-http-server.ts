@@ -9,6 +9,11 @@
  * a proxied WindowAccessor that forwards calls through the main process.
  */
 
+import {
+	formatLastUpdateHeader,
+	LAST_UPDATE_HEADER,
+	type UpdateRecord,
+} from "../update-notice.js";
 import { createServer } from "node:http";
 import {
 	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
@@ -191,6 +196,8 @@ function readEnumBodyField({
 interface UtilityHttpConfig {
 	port: number;
 	appVersion: string;
+	/** The last update QCut found it had at launch (N26). */
+	lastUpdate?: UpdateRecord;
 	requestFromMain: UtilityRequestFromMain;
 }
 
@@ -253,7 +260,7 @@ function buildUnavailableMainChecks({
 
 /** Start the HTTP server in the utility process that proxies Claude API routes. */
 export function startUtilityHttpServer(config: UtilityHttpConfig): void {
-	const { port, appVersion, requestFromMain } = config;
+	const { port, appVersion, lastUpdate, requestFromMain } = config;
 
 	if (server) {
 		claudeLog.warn("HTTP", "Server already running in utility process");
@@ -317,6 +324,8 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			}) as Promise<ProjectStats>,
 		/** Returns the app version reported by the utility process. */
 		getAppVersion: () => appVersion,
+		/** The last update QCut found it had at launch. */
+		getLastUpdate: () => lastUpdate,
 		/** Enables notification forwarding for the given session. */
 		enableNotifications: (sessionId) =>
 			requestFromMain("notifications:enable", { sessionId }) as Promise<{
@@ -993,6 +1002,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	// ==========================================================================
 	server = createServer((req, res) => {
 		setCorsHeaders(res);
+		// Every answer says what QCut last updated from, for the CLI to note.
+		if (lastUpdate) {
+			res.setHeader(LAST_UPDATE_HEADER, formatLastUpdateHeader(lastUpdate));
+		}
 		if (req.method === "OPTIONS") {
 			res.writeHead(204);
 			res.end();
