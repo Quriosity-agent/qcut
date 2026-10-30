@@ -11,6 +11,7 @@
  * - Message queue for offline utility process
  */
 
+import { getLastUpdate } from "../update-history.js";
 import {
 	utilityProcess,
 	BrowserWindow,
@@ -1338,6 +1339,7 @@ export function startUtilityProcess(): void {
 		config: {
 			httpPort: runtimeEndpoint.port,
 			appVersion: app.getVersion(),
+			lastUpdate: getLastUpdate(),
 		},
 	});
 }
