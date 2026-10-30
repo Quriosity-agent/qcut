@@ -71,7 +71,46 @@ describe("what an undo changed", () => {
 			})
 		).toEqual({
 			label: "Import captions",
-			changes: { added: 0, removed: 0, moved: 0, elements: [] },
+			changes: { added: 0, removed: 0, moved: 0, changed: 0, elements: [] },
 		});
+	});
+
+	it("names what changed on a clip that kept its place (N28)", () => {
+		// Undoing a replace-media: the clip stays at 2 s, its media goes back.
+		const replaced = track("main", [["shot", 2]]);
+		const restored = track("main", [["shot", 2]]);
+		Object.assign(replaced.elements[0], { mediaId: "v2", trimEnd: 1 });
+
+		const summary = summarizeTimelineChange({
+			before: [replaced],
+			after: [restored],
+		});
+		expect(summary).toMatchObject({ moved: 0, changed: 1 });
+		expect(summary.elements).toEqual([
+			{
+				elementId: "shot",
+				name: "shot",
+				change: "changed",
+				trackId: "main",
+				startTime: 2,
+				duration: 2,
+				fields: ["mediaId", "trimEnd"],
+			},
+		]);
+	});
+
+	it("lists the other fields of a moved element", () => {
+		const before = track("main", [["shot", 0]]);
+		const after = track("main", [["shot", 4]]);
+		Object.assign(after.elements[0], { mediaId: "v2" });
+		expect(
+			summarizeTimelineChange({ before: [before], after: [after] }).elements
+		).toEqual([
+			expect.objectContaining({
+				change: "moved",
+				from: { trackId: "main", startTime: 0, duration: 2 },
+				fields: ["mediaId", "startTime"],
+			}),
+		]);
 	});
 });
