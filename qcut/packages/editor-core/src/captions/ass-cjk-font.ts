@@ -88,14 +88,25 @@ export function resolveAssCjkFamily({
 	family,
 	text,
 	fallbackFamily,
+	coversCjk,
 }: {
 	family: string;
 	text: string;
 	/** The platform's CJK font; without one the requested family stands. */
 	fallbackFamily?: string;
+	/**
+	 * Whether an installed face really carries CJK glyphs, read from the font
+	 * itself. The native export always checks this, so without it a family
+	 * outside the fixed list above — an installed Source Han Serif CN, say —
+	 * would be honoured there and replaced here.
+	 */
+	coversCjk?: (family: string) => boolean;
 }): string {
 	if (!fallbackFamily) return family;
 	if (!containsCjkText(text)) return family;
 	if (isCjkCapableFamily(family)) return family;
+	// PingFang is reserved by macOS: libass cannot open it whatever its
+	// coverage says.
+	if (!/^pingfang/i.test(family.trim()) && coversCjk?.(family)) return family;
 	return fallbackFamily;
 }
