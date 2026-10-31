@@ -7,6 +7,7 @@ import { assFamilyCoversCjk, assFontMetrics } from "./ass-font-metrics.js";
 import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
 import {
 	assCaptionFade,
+	assHexColor,
 	assShadowTags,
 	assWeightTag,
 	captionFadeSeconds,
@@ -223,6 +224,9 @@ function collectCaptionOverlay({
 		shadowOpacity: shadowOffsetX !== 0 || shadowOffsetY !== 0 ? 1 : 0,
 		shadowOffsetX,
 		shadowOffsetY,
+		// A caption's hard shadow stays hard; its soft ones come from
+		// `style.shadows` below, which is the film-subtitle look (N25).
+		shadowBlur: 0,
 		glowColor: "#ffffff",
 		glowOpacity: 0,
 		glowBlur: 0,
@@ -275,7 +279,10 @@ function collectCaptionOverlay({
 		overlay.fontWeight = weight >= 600 ? "bold" : "normal";
 	}
 	const shadows = captionShadowsValue(style.shadows);
-	if (shadows) overlay.shadows = shadows;
+	// An array that lost every entry to the colour guard is still truthy, and
+	// assigning it would zero the style's hard Shadow without drawing a soft
+	// one — leaving the caption with no shadow at all.
+	if (shadows?.length) overlay.shadows = shadows;
 	const fadeIn = captionFadeSeconds({ frames: style.fadeInFrames, fps });
 	const fadeOut = captionFadeSeconds({ frames: style.fadeOutFrames, fps });
 	if (fadeIn > 0) overlay.fadeIn = fadeIn;
@@ -378,7 +385,7 @@ function collectCanvasTextOverlay({
 		fallback: "transparent",
 	});
 
-	return {
+	const overlay: TextOverlay = {
 		id: source.id,
 		content,
 		startTime: source.startTime,
@@ -450,6 +457,12 @@ function collectCanvasTextOverlay({
 			element,
 			style,
 			key: "shadowOffsetY",
+			fallback: 0,
+		}),
+		shadowBlur: numberValue({
+			element,
+			style,
+			key: "shadowBlur",
 			fallback: 0,
 		}),
 		glowColor: stringValue({
@@ -524,6 +537,23 @@ function collectCanvasTextOverlay({
 			fallback: 0,
 		}),
 	};
+	// The preview blurs its text-shadow, but ASS's own Shadow column can only
+	// offset a hard copy of the letters — and it offsets by one distance on
+	// both axes, so an offset of (0, 0) drew nothing at all and `shadowBlur`
+	// never reached the export (N32). Draw it as the soft-shadow layer the
+	// caption path already renders instead.
+	if (overlay.shadowOpacity > 0) {
+		overlay.shadows = [
+			{
+				color: assHexColor(overlay.shadowColor),
+				opacity: overlay.shadowOpacity,
+				blur: Math.max(0, overlay.shadowBlur),
+				x: overlay.shadowOffsetX,
+				y: overlay.shadowOffsetY,
+			},
+		];
+	}
+	return overlay;
 }
 
 /** Collect text-like timeline elements for the native FFmpeg overlay pass. */
@@ -946,7 +976,7 @@ export function buildTextAss({
 				backgroundEnabled ? 3 : 1,
 				overlay.strokeWidth,
 				// Soft shadows are layers of their own; the hard one is ASS's.
-				overlay.shadows
+				overlay.shadows?.length
 					? 0
 					: Math.max(
 							Math.abs(overlay.shadowOffsetX),
@@ -999,17 +1029,22 @@ export function buildTextAss({
 		// Soft shadows first, each on its own layer under the text: the letters
 		// in the shadow's colour (the second line's own colour left out).
 		const shadows = overlay.shadows ?? [];
-		const shadowText = shadows.length
-			? (captionEventText({
-					overlay,
-					fontSize,
-					fontFamilyFor: assFontFamily,
-					colorTags: false,
-				}).text ?? eventText)
-			: eventText;
+		// Only a caption's shadow goes through `captionEventText`: it inserts
+		// half-leading spacer lines that a text element's own event does not
+		// have, so a multi-line text shadow would sit on different baselines
+		// than the glyphs it belongs to.
+		const shadowText =
+			shadows.length && caption
+				? (captionEventText({
+						overlay,
+						fontSize,
+						fontFamilyFor: assFontFamily,
+						colorTags: false,
+					}).text ?? eventText)
+				: eventText;
 		for (const [layer, shadow] of shadows.entries()) {
 			events.push(
-				`Dialogue: ${layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay })}}${shadowText}`
+				`Dialogue: ${layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay, borderless: backgroundEnabled })}}${shadowText}`
 			);
 		}
 		const base = shadows.length;
