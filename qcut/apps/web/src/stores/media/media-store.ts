@@ -335,10 +335,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// Save to persistent storage in background
 		try {
+			// A media id is derived from the file name, so re-importing a file
+			// that is being deleted reuses its id: wait for the delete rather
+			// than skip the save, or the item would exist only in memory.
 			await saveTrackedMediaItem({
 				projectId,
 				id: newItem.id,
 				save: () => storageService.saveMediaItem(projectId, newItem),
+				whenDeleting: "wait",
 			});
 			console.log("[MediaStore.addMediaItem] Saved to storage", {
 				projectId,
@@ -416,6 +420,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				projectId,
 				id,
 				save: () => storageService.saveMediaItem(projectId, updated),
+				whenDeleting: "wait",
 			});
 			if (
 				updated.type === "video" &&
