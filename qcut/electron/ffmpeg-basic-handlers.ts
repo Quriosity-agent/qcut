@@ -21,8 +21,9 @@ import type { ExportSession } from "./temp-manager.js";
 
 import { getFFmpegPath } from "./ffmpeg/utils.js";
 import {
-	assFontMetrics,
 	assFamilyCoversCjk,
+	assFontFamilyInstalled,
+	assFontMetrics,
 } from "./claude/handlers/claude-export-handler/ass-font-metrics.js";
 import type {
 	AssFontMetricsReply,
@@ -65,21 +66,30 @@ export function setupBasicHandlers(
 			if (!Array.isArray(requests)) return [];
 			// Each miss walks the system font index on the main thread, so the
 			// batch is bounded: the real caller sends four faces per family.
-			return requests.slice(0, MAX_ASS_FONT_METRICS_REQUESTS).map((request) => {
-				const { sizeFactor, lineHeightEm } = assFontMetrics({
-					family: request.family,
-					bold: request.bold ?? false,
-					italic: request.italic ?? false,
+			return requests
+				.slice(0, MAX_ASS_FONT_METRICS_REQUESTS)
+				.flatMap((request) => {
+					// An uninstalled family would measure a neutral 1.0, which the
+					// renderer cannot tell from a real measurement: it would then
+					// shift the caption by the leading while leaving its size
+					// uncorrected. Omit it so the unmeasured path applies.
+					if (!assFontFamilyInstalled({ family: request.family })) return [];
+					const { sizeFactor, lineHeightEm } = assFontMetrics({
+						family: request.family,
+						bold: request.bold ?? false,
+						italic: request.italic ?? false,
+					});
+					return [
+						{
+							family: request.family,
+							bold: request.bold ?? false,
+							italic: request.italic ?? false,
+							sizeFactor,
+							lineHeightEm,
+							coversCjk: assFamilyCoversCjk({ family: request.family }),
+						},
+					];
 				});
-				return {
-					family: request.family,
-					bold: request.bold ?? false,
-					italic: request.italic ?? false,
-					sizeFactor,
-					lineHeightEm,
-					coversCjk: assFamilyCoversCjk({ family: request.family }),
-				};
-			});
 		}
 	);
 
