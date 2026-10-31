@@ -1,4 +1,9 @@
-import { generateASS } from "@qcut/editor-core";
+import {
+	generateASS,
+	resolveSecondaryLineStyle,
+	resolveSubtitleStyle,
+	type AssFontMetricsLookup,
+} from "@qcut/editor-core";
 import {
 	sortTracksByOrder,
 	type TimelineElement,
@@ -62,6 +67,37 @@ export function resolveCjkExportFont({
 	return undefined;
 }
 
+/**
+ * Every font family the ASS layers for these tracks may name, so their
+ * metrics can be fetched in one IPC call before the layers are built.
+ */
+export function assFontFamiliesInTracks({
+	tracks,
+	platform,
+}: {
+	tracks: TimelineTrack[];
+	platform?: CaptionExportPlatform;
+}): string[] {
+	const families = new Set<string>();
+	const cjkFontFamily = resolveCjkExportFont({ platform });
+	if (cjkFontFamily) families.add(cjkFontFamily);
+	for (const track of tracks) {
+		for (const element of track.elements) {
+			if (element.type === "text" || element.type === "markdown") {
+				const family = (element as { fontFamily?: string }).fontFamily;
+				if (family) families.add(family);
+				continue;
+			}
+			if (element.type === "captions") {
+				const style = resolveSubtitleStyle(element.style);
+				families.add(style.fontFamily);
+				families.add(resolveSecondaryLineStyle(style).fontFamily);
+			}
+		}
+	}
+	return [...families];
+}
+
 export function buildTimelineAssLayers({
 	tracks,
 	canvasWidth,
@@ -69,6 +105,7 @@ export function buildTimelineAssLayers({
 	fps,
 	platform,
 	excludedTextElementIds = new Set(),
+	fontMetrics,
 }: {
 	tracks: TimelineTrack[];
 	canvasWidth: number;
@@ -76,6 +113,12 @@ export function buildTimelineAssLayers({
 	fps: number;
 	platform?: CaptionExportPlatform;
 	excludedTextElementIds?: ReadonlySet<string>;
+	/**
+	 * What libass will do with each face, from `loadAssFontMetrics`. Without
+	 * it captions keep the nominal ASS Fontsize, which libass renders about
+	 * 15 % small (N31).
+	 */
+	fontMetrics?: AssFontMetricsLookup;
 }): {
 	layers: TimelineAssLayer[];
 	renderedTextElementIds: Set<string>;
@@ -123,6 +166,7 @@ export function buildTimelineAssLayers({
 						title: `QCut Caption ${element.id}`,
 						cjkFontFamily,
 						fps,
+						fontMetrics,
 					}),
 					blendMode: "normal",
 					trackOrder,
