@@ -35,6 +35,13 @@ export {
 } from "./ass-generator.js";
 
 export {
+	CJK_CAPABLE_FONT_FAMILIES,
+	containsCjkText,
+	isCjkCapableFamily,
+	resolveAssCjkFamily,
+} from "./ass-cjk-font.js";
+
+export {
 	parseASS,
 	assTimeToSeconds,
 	assStyleToSubtitleStyle,
