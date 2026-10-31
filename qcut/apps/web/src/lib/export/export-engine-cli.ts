@@ -679,14 +679,14 @@ export class CLIExportEngine extends ExportEngine {
 			fps: this.getFrameRate(),
 			excludedTextElementIds: rasterTextElementIds,
 			platform: assPlatform,
-			fontMetrics: await loadAssFontMetrics(
+			...(await loadAssFontMetrics(
 				assFaceRequestsFor(
 					assFontFamiliesInTracks({
 						tracks: this.tracks,
 						platform: assPlatform,
 					})
 				)
-			),
+			)),
 		});
 		const nativelyRenderedTextElementIds = new Set([
 			...assRenderedElementIds,
