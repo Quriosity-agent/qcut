@@ -31,6 +31,10 @@ import {
 	recordMediaAlpha,
 } from "@/lib/media/alpha-playback-proxy";
 import { createFolderActions, type FolderActions } from "./media-store-folders";
+import {
+	deleteTrackedMediaItem,
+	saveTrackedMediaItem,
+} from "./media-persistence-queue";
 
 // Re-export types and helpers for backward compatibility
 export type { MediaItem, MediaType } from "./media-store-types";
@@ -125,24 +129,30 @@ const updateMediaMetadataAndPersist = async (
 	projectId: string,
 	metadata: Partial<MediaItem>
 ) => {
-	const mediaStore = useMediaStore.getState();
-	const item = mediaStore.mediaItems.find((i) => i.id === itemId);
+	const item = useMediaStore.getState().mediaItems.find((i) => i.id === itemId);
 
 	if (!item) {
 		debugError(`[MediaStore] Cannot update item ${itemId} - not found`);
 		return;
 	}
 
-	// Update in-memory state
+	// Update in-memory state. A functional update over the live list, because
+	// this pass runs long after it started: writing back a snapshot taken at
+	// entry would put an item removed in the meantime back into the library.
 	const updatedItem = { ...item, ...metadata };
-	const updatedItems = mediaStore.mediaItems.map((i) =>
-		i.id === itemId ? updatedItem : i
-	);
-	useMediaStore.setState({ mediaItems: updatedItems });
+	useMediaStore.setState((state) => ({
+		mediaItems: state.mediaItems.map((i) =>
+			i.id === itemId ? updatedItem : i
+		),
+	}));
 
 	// Persist to storage
 	try {
-		await storageService.saveMediaItem(projectId, updatedItem);
+		await saveTrackedMediaItem({
+			projectId,
+			id: itemId,
+			save: () => storageService.saveMediaItem(projectId, updatedItem),
+		});
 		debugLog(`[MediaStore] Persisted thumbnail for ${item.name}`);
 	} catch (error) {
 		debugError(
@@ -325,7 +335,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// Save to persistent storage in background
 		try {
-			await storageService.saveMediaItem(projectId, newItem);
+			await saveTrackedMediaItem({
+				projectId,
+				id: newItem.id,
+				save: () => storageService.saveMediaItem(projectId, newItem),
+			});
 			console.log("[MediaStore.addMediaItem] Saved to storage", {
 				projectId,
 				id: newItem.id,
@@ -398,7 +412,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			),
 		}));
 		try {
-			await storageService.saveMediaItem(projectId, updated);
+			await saveTrackedMediaItem({
+				projectId,
+				id,
+				save: () => storageService.saveMediaItem(projectId, updated),
+			});
 			if (
 				updated.type === "video" &&
 				updated.file !== previous.file &&
@@ -513,7 +531,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				await Promise.all(
 					newItems.map(async (item) => {
 						try {
-							await storageService.saveMediaItem(currentProject.id, item);
+							await saveTrackedMediaItem({
+								projectId: currentProject.id,
+								id: item.id,
+								save: () =>
+									storageService.saveMediaItem(currentProject.id, item),
+							});
 						} catch (error) {
 							handleStorageError(error, "Save generated image to storage", {
 								projectId: currentProject.id,
@@ -593,7 +616,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// 3) Remove from persistent storage
 		try {
-			await storageService.deleteMediaItem(projectId, id);
+			await deleteTrackedMediaItem({
+				projectId,
+				id,
+				remove: () => storageService.deleteMediaItem(projectId, id),
+			});
 		} catch (error) {
 			debugError("[MediaStore] deleteMediaItem failed", {
 				projectId,
@@ -730,7 +757,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 		try {
 			const mediaIds = state.mediaItems.map((item) => item.id);
 			await Promise.all(
-				mediaIds.map((id) => storageService.deleteMediaItem(projectId, id))
+				mediaIds.map((id) =>
+					deleteTrackedMediaItem({
+						projectId,
+						id,
+						remove: () => storageService.deleteMediaItem(projectId, id),
+					})
+				)
 			);
 			debugLog(
 				`[Cleanup] Cleared ${mediaIds.length} media items from persistent storage for project ${projectId}`
