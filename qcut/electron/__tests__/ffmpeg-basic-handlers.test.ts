@@ -87,16 +87,31 @@ describe("setupBasicHandlers", () => {
 		expect(channels).toContain("ffmpeg-ass-font-metrics");
 	});
 
-	it("ffmpeg-ass-font-metrics answers one face per request", async () => {
+	it("ffmpeg-ass-font-metrics omits a face it cannot measure", async () => {
 		const handler = getHandler("ffmpeg-ass-font-metrics");
-		const [face] = await handler({}, [{ family: "Helvetica" }]);
+		// An uninstalled family would measure a neutral 1.0, which the renderer
+		// cannot tell from a real measurement, so it has to be left out (N31).
+		// Which families a runner has is not knowable, so this asserts the
+		// absent one is gone and that anything returned is a real measurement.
+		const replies: Array<{
+			family: string;
+			sizeFactor: number;
+			lineHeightEm: number;
+			coversCjk: boolean;
+		}> = await handler({}, [
+			{ family: "QCutNotAnInstalledFamily" },
+			{ family: "Helvetica" },
+			{ family: "DejaVu Sans" },
+		]);
 
-		// The renderer builds the export dialog's ASS but cannot read font
-		// files, so it asks here what libass will do with each face (N31).
-		expect(face.family).toBe("Helvetica");
-		expect(face.sizeFactor).toBeGreaterThan(0);
-		expect(face.lineHeightEm).toBeGreaterThan(0);
-		expect(typeof face.coversCjk).toBe("boolean");
+		expect(
+			replies.some((reply) => reply.family === "QCutNotAnInstalledFamily")
+		).toBe(false);
+		for (const reply of replies) {
+			expect(reply.sizeFactor).toBeGreaterThan(0);
+			expect(reply.lineHeightEm).toBeGreaterThan(0);
+			expect(typeof reply.coversCjk).toBe("boolean");
+		}
 	});
 
 	it("ffmpeg-ass-font-metrics tolerates a malformed request list", async () => {
