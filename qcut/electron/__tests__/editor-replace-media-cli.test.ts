@@ -246,12 +246,14 @@ describe("editor timeline replace-media", () => {
 	});
 
 	it("names the file it could not take back", async () => {
-		// N30: the route answers `false` with a 200 when the renderer refuses
-		// the delete, which a save still writing that item can cause. The old
-		// fire-and-forget cleanup discarded that, so the answer read as a clean
-		// refusal while the import stayed in the project.
+		// N30: the renderer can refuse the delete — a save still writing that
+		// item's storage entry causes it — and the route then answers 409. The
+		// old fire-and-forget cleanup discarded that, so the command read as a
+		// clean refusal while its import stayed in the project.
 		const { client, patch, remove } = fakeClient();
-		remove.mockResolvedValue(false);
+		remove.mockRejectedValue(
+			new EditorApiError("Renderer media deletion was rejected", 409)
+		);
 		patch.mockRejectedValueOnce(
 			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
 		);
@@ -262,6 +264,21 @@ describe("editor timeline replace-media", () => {
 
 		// Retried once, because that race is transient.
 		expect(remove).toHaveBeenCalledTimes(2);
+	});
+
+	it("says nothing extra when the media was already gone", async () => {
+		// A `false` body means the route found no media, before it removed
+		// anything — there is no leftover to warn about.
+		const { client, patch, remove } = fakeClient();
+		remove.mockResolvedValue(false);
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/^05_v2\.mp4 is 3\.000 s long$/);
+		expect(remove).toHaveBeenCalledTimes(1);
 	});
 
 	it("keeps the refusal's own message when cleanup worked", async () => {
