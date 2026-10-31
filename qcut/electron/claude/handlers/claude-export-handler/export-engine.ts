@@ -97,7 +97,10 @@ import {
 	type ResolvedExportSettings,
 	type ExportJobInternal,
 } from "./types.js";
-import { reportKeptExportDirectory } from "./export-temp-retention.js";
+import {
+	keepExportTempFiles,
+	reportKeptExportDirectory,
+} from "./export-temp-retention.js";
 import {
 	parseBitrateForKbps,
 	parseTimecodeToSeconds,
@@ -1801,11 +1804,14 @@ export async function executeExportJob({
 				throw gifError;
 			}
 
-			// Clean up intermediary MP4
-			try {
-				await fsPromises.unlink(videoOutputPath);
-			} catch {
-				/* ignore */
+			// Clean up intermediary MP4, unless it is being kept for a
+			// bit-for-bit comparison of two exports (N34).
+			if (!keepExportTempFiles()) {
+				try {
+					await fsPromises.unlink(videoOutputPath);
+				} catch {
+					/* ignore */
+				}
 			}
 		}
 
@@ -1841,10 +1847,12 @@ export async function executeExportJob({
 				}
 				throw mp3Error;
 			}
-			try {
-				await fsPromises.unlink(videoOutputPath);
-			} catch {
-				// Ignore cleanup errors.
+			if (!keepExportTempFiles()) {
+				try {
+					await fsPromises.unlink(videoOutputPath);
+				} catch {
+					// Ignore cleanup errors.
+				}
 			}
 		}
 
