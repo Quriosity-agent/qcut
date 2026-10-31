@@ -115,6 +115,77 @@ describe("Media Folder Persistence", () => {
 		});
 	});
 
+	describe("persistence while a delete is in flight", () => {
+		it("waits for the delete instead of dropping the folder save", async () => {
+			// N30: a folder save used to use the queue's default skip mode, so a
+			// delete in flight dropped it. An image has no later background save
+			// to recover that, and addMediaItem's own save is already skipped
+			// once the folder move replaces the object it captured — so the item
+			// would end up stored nowhere.
+			const { deleteTrackedMediaItem, resetMediaPersistenceQueue } =
+				await import("../media/media-persistence-queue");
+			resetMediaPersistenceQueue();
+
+			const mediaItem = createMockMediaItem("media-1", "image");
+			useMediaStore.setState({ mediaItems: [mediaItem] });
+
+			let finishDelete: () => void = () => undefined;
+			const removing = new Promise<void>((resolve) => {
+				finishDelete = resolve;
+			});
+			const deleting = deleteTrackedMediaItem({
+				projectId: "test-project-123",
+				id: "media-1",
+				remove: () => removing,
+			});
+
+			useMediaStore.getState().addToFolder("media-1", "folder-1");
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			// Still queued behind the delete, not dropped.
+			expect(mockSaveMediaItem).not.toHaveBeenCalled();
+
+			finishDelete();
+			await deleting;
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(mockSaveMediaItem).toHaveBeenCalledTimes(1);
+			expect(mockSaveMediaItem.mock.calls[0][1].folderIds).toContain(
+				"folder-1"
+			);
+		});
+
+		it("drops the folder save when the item did not survive the delete", async () => {
+			const { deleteTrackedMediaItem, resetMediaPersistenceQueue } =
+				await import("../media/media-persistence-queue");
+			resetMediaPersistenceQueue();
+
+			const mediaItem = createMockMediaItem("media-1", "image");
+			useMediaStore.setState({ mediaItems: [mediaItem] });
+
+			let finishDelete: () => void = () => undefined;
+			const removing = new Promise<void>((resolve) => {
+				finishDelete = resolve;
+			});
+			const deleting = deleteTrackedMediaItem({
+				projectId: "test-project-123",
+				id: "media-1",
+				remove: () => removing,
+			});
+
+			useMediaStore.getState().addToFolder("media-1", "folder-1");
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			// The delete takes it out of the library while the save waits.
+			useMediaStore.setState({ mediaItems: [] });
+			finishDelete();
+			await deleting;
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(mockSaveMediaItem).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("removeFromFolder persistence", () => {
 		it("should persist folder removal", async () => {
 			const mediaItem = createMockMediaItem("media-1", "video", [
