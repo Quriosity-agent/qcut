@@ -35,6 +35,9 @@ import type {
  * Handles: ffmpeg-path, ffmpeg-health, create-export-session,
  * save-frame, read-output-file, cleanup-export-session, open-frames-folder
  */
+/** Faces one `ffmpeg-ass-font-metrics` call may ask about. */
+const MAX_ASS_FONT_METRICS_REQUESTS = 512;
+
 export function setupBasicHandlers(
 	tempManager: TempManager,
 	getFFmpegHealth: () => Promise<FFmpegHealthResult>
@@ -60,7 +63,9 @@ export function setupBasicHandlers(
 			requests: AssFontMetricsRequest[]
 		): AssFontMetricsReply[] => {
 			if (!Array.isArray(requests)) return [];
-			return requests.map((request) => {
+			// Each miss walks the system font index on the main thread, so the
+			// batch is bounded: the real caller sends four faces per family.
+			return requests.slice(0, MAX_ASS_FONT_METRICS_REQUESTS).map((request) => {
 				const { sizeFactor, lineHeightEm } = assFontMetrics({
 					family: request.family,
 					bold: request.bold ?? false,
