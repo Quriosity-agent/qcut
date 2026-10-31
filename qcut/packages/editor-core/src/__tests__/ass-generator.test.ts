@@ -149,6 +149,23 @@ describe("generateASS", () => {
 		expect(latinAss).toContain("Style: Default,Arial,");
 	});
 
+	it("keeps a CJK-capable family the caption actually asked for", () => {
+		// N31: the substitution was unconditional, so a caption asking for
+		// Songti SC — a serif, and a family libass can open — exported in
+		// Hiragino Sans GB, a sans-serif.
+		const serif = caption();
+		serif.text = "\u771f\u5b9e\u89c6\u9891\u5b57\u5e55";
+		serif.style = { ...serif.style, fontFamily: "Songti SC" };
+
+		const ass = generateASS([serif], {
+			resolution: { width: 1080, height: 1920 },
+			cjkFontFamily: "Hiragino Sans GB",
+		});
+
+		expect(ass).toContain("Style: Default,Songti SC,");
+		expect(ass).not.toContain("Hiragino Sans GB");
+	});
+
 	it("writes text alignment, spacing, and animation tags", () => {
 		const animated = caption({ karaoke: true });
 		if (!animated.style) throw new Error("Expected caption style");
