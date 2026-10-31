@@ -13,12 +13,19 @@ import {
 	CJK_CAPABLE_FONT_FAMILIES,
 	resolveAssCjkFamily,
 } from "../../packages/editor-core/src/captions/ass-cjk-font.js";
-import { assFontFamily } from "../claude/handlers/claude-export-handler/text-overlay.js";
+import {
+	assCjkFallbackFamily,
+	assFontFamily,
+} from "../claude/handlers/claude-export-handler/text-overlay.js";
 import type { TextOverlay } from "../claude/handlers/claude-export-handler/types.js";
 
 const CJK_TEXT = "三年前";
-/** macOS's fallback, which the native path picks on this platform. */
-const DARWIN_FALLBACK = "Hiragino Sans GB";
+/**
+ * The fallback for whatever platform the test runs on: Hiragino Sans GB on
+ * macOS, Microsoft YaHei on Windows, Noto Sans CJK SC otherwise. CI builds on
+ * all three, so this cannot be pinned to one of them.
+ */
+const PLATFORM_FALLBACK = assCjkFallbackFamily();
 
 const overlay = (fontFamily: string, content = CJK_TEXT) =>
 	({ fontFamily, content }) as TextOverlay;
@@ -27,7 +34,7 @@ const shared = (family: string, content = CJK_TEXT) =>
 	resolveAssCjkFamily({
 		family,
 		text: content,
-		fallbackFamily: DARWIN_FALLBACK,
+		fallbackFamily: PLATFORM_FALLBACK,
 	});
 
 describe("CJK font rule mirror", () => {
@@ -47,8 +54,8 @@ describe("CJK font rule mirror", () => {
 		// Deliberately not an installed face, so the native path's own
 		// font-file check cannot rescue it either.
 		const absent = "QCutNotAnInstalledFamily";
-		expect(shared(absent)).toBe(DARWIN_FALLBACK);
-		expect(assFontFamily(overlay(absent))).toBe(DARWIN_FALLBACK);
+		expect(shared(absent)).toBe(PLATFORM_FALLBACK);
+		expect(assFontFamily(overlay(absent))).toBe(PLATFORM_FALLBACK);
 	});
 
 	it("leaves the family alone when no fallback is offered", () => {
