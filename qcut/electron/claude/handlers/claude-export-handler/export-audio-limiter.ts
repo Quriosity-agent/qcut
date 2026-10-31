@@ -14,6 +14,11 @@ import {
 	planPeakDips,
 	summarizePeakDips,
 } from "./export-audio-peak-dips.js";
+import {
+	keepExportTempFiles,
+	reportKeptExportDirectory,
+} from "./export-temp-retention.js";
+import { HANDLER_NAME } from "./types.js";
 
 const OVERSAMPLE_FACTOR = 4;
 const HEADROOM_DB = 0.3;
@@ -355,6 +360,18 @@ export async function renderTruePeakLimitedExport({
 				extraDb: REPEAT_CORRECTION_DB * (attempt - 1),
 				padSeconds: CODEC_WINDOW_SAMPLES / sampleRate,
 			});
+			// applyPeakDips patches the PCM in place, so the retained file would
+			// only ever show the corrected audio. Keep the limiter's own output
+			// beside it, or a comparison cannot tell a difference that arrived
+			// with the mix from one the correction loop introduced (N34).
+			if (keepExportTempFiles()) {
+				await fs
+					.copyFile(
+						limitedAudioPath,
+						path.join(audioWorkDir, `limited-before-dips-${attempt}.f32`)
+					)
+					.catch(() => undefined);
+			}
 			await applyPeakDips({
 				file: limitedAudioPath,
 				dips: correction,
@@ -381,6 +398,17 @@ export async function renderTruePeakLimitedExport({
 		await Promise.all(
 			[audioWorkDir, candidateDir]
 				.filter(Boolean)
+				// The audio work dir holds limited.f32, the exact PCM the encoder
+				// was handed: the one artefact that settles whether two runs
+				// diverged before or after the correction loop (N34).
+				.filter(
+					(directory) =>
+						!reportKeptExportDirectory({
+							handler: HANDLER_NAME,
+							label: "the true-peak work files",
+							directory,
+						})
+				)
 				.map((directory) => fs.rm(directory, { recursive: true, force: true }))
 		);
 	}

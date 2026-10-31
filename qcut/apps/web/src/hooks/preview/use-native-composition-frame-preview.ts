@@ -9,7 +9,14 @@ import {
 } from "@/lib/export-cli/sources";
 import type { StickerSourceForFilter } from "@/lib/export-cli/types";
 import type { TextRasterLayerInput } from "@/lib/export-cli/types";
-import { buildTimelineAssLayers } from "@/lib/export/export-engine-cli-text";
+import {
+	assFontFamiliesInTracks,
+	buildTimelineAssLayers,
+} from "@/lib/export/export-engine-cli-text";
+import {
+	assFaceRequestsFor,
+	loadAssFontMetrics,
+} from "@/lib/text/ass-font-metrics";
 import { hasMediaVisualEdits } from "@/lib/video/video-properties";
 import type { ActiveElement } from "@/components/editor/preview-panel/types";
 import type { MediaItem } from "@/stores/media/media-store-types";
@@ -437,6 +444,16 @@ export function useNativeCompositionFramePreview({
 					excludedTextElementIds: new Set(
 						jianyingTextRequests.map(({ elementId }) => elementId)
 					),
+					// The paused-frame preview has to agree with the export it
+					// previews, so it corrects the ASS font size the same way.
+					...(await loadAssFontMetrics(
+						assFaceRequestsFor(
+							assFontFamiliesInTracks({
+								tracks: frameTracks,
+								platform: captionPlatform,
+							})
+						)
+					)),
 				}).layers;
 				const result =
 					await platform().ffmpeg.renderVideoCompositionFramePreview({

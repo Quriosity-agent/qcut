@@ -245,6 +245,56 @@ describe("editor timeline replace-media", () => {
 		expect(remove).toHaveBeenCalledTimes(1);
 	});
 
+	it("names the file it could not take back", async () => {
+		// N30: the renderer can refuse the delete — a save still writing that
+		// item's storage entry causes it — and the route then answers 409. The
+		// old fire-and-forget cleanup discarded that, so the command read as a
+		// clean refusal while its import stayed in the project.
+		const { client, patch, remove } = fakeClient();
+		remove.mockRejectedValue(
+			new EditorApiError("Renderer media deletion was rejected", 409)
+		);
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/still in the project: 05_v2\.mp4 \(v2\)/);
+
+		// Retried once, because that race is transient.
+		expect(remove).toHaveBeenCalledTimes(2);
+	});
+
+	it("says the cleanup is unconfirmed when the editor finds no media", async () => {
+		// A `false` body means the route's lookup found nothing before removing
+		// anything — but that lookup swallows an unreadable directory, and the
+		// file was imported seconds earlier, so it cannot be called removed.
+		const { client, patch, remove } = fakeClient();
+		remove.mockResolvedValue(false);
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/found no media to remove/);
+		// A lookup that found nothing answers the same the second time.
+		expect(remove).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the refusal's own message when cleanup worked", async () => {
+		const { client, patch, remove } = fakeClient();
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/^05_v2\.mp4 is 3\.000 s long$/);
+		expect(remove).toHaveBeenCalledTimes(1);
+	});
+
 	it("fails when the timeline still shows the old media", async () => {
 		const { client } = fakeClient({
 			clipAfter: { ...replaced, sourceId: "old", sourceName: "05.mp4" },

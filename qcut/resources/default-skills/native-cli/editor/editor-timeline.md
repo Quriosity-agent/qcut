@@ -128,7 +128,7 @@ Text fields and their units (preview and export agree):
 | `anchor` | top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right | add-time shorthand for `x`/`y`: the text box sits `anchorInset` px (default 5 % of the shorter canvas side) inside that edge or corner; an explicit `x` or `y` wins on its axis |
 | `fontSize` | project-canvas pixels | scaled with the export resolution |
 | `fontFamily` | family name | system fonts work; for CJK text the export keeps CJK-capable families (Songti SC, Kaiti SC, Heiti SC, Hiragino Sans GB…) and falls back to the platform default with a warning in the log otherwise |
-| `strokeWidth`, `shadowOffsetX/Y`, `glowBlur` | pixels | the stroke is painted behind the glyph; the glow is a blurred copy of the glyphs (CSS `text-shadow` semantics: radius `glowBlur`, so it fades quickly and reads as a soft halo, not a box) |
+| `strokeWidth`, `shadowOffsetX/Y`, `shadowBlur`, `glowBlur` | pixels | the stroke is painted behind the glyph; the shadow and the glow are blurred copies of the glyphs (CSS `text-shadow` semantics: radius `shadowBlur` / `glowBlur`, so they fade quickly and read as a soft halo, not a box). A `shadowBlur` with no offset sits centred on the glyphs |
 | `letterSpacing` | pixels after each character | |
 | `width`, `height`, `backgroundPadding` | project-canvas pixels | the text box (default 640 × 180, padding 12) centred on `x`, `y`; lines wrap at its inner width |
 | `verticalAlign` | top/middle/bottom | where the lines sit inside the box |

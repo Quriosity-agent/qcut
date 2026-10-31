@@ -9,6 +9,7 @@
 
 import { debugLog, debugError } from "@/lib/debug/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
+import { saveTrackedMediaItem } from "./media-persistence-queue";
 import type { MediaItem } from "./media-store-types";
 import { DEFAULT_FOLDER_IDS } from "./media-store-types";
 
@@ -33,13 +34,53 @@ export interface FolderActions {
 	autoOrganizeByType: () => void;
 }
 
+/**
+ * Whether this exact item is still in the library.
+ *
+ * These saves only reach the queue after a dynamic import resolves, so a
+ * folder edit that started before a delete can arrive after it finished —
+ * late enough that the queue no longer knows the item was removed (N30).
+ *
+ * Compared by object, not by id: an id is derived from the file's name, size,
+ * modification time and type, so a different file can reuse it, and writing
+ * this payload would overwrite that one's.
+ */
+async function stillInLibrary(item: MediaItem): Promise<boolean> {
+	const { useMediaStore } = await import("./media-store");
+	return useMediaStore
+		.getState()
+		.mediaItems.some((candidate) => candidate === item);
+}
+
+/**
+ * Persist a folder change once any delete for its id has finished.
+ *
+ * It has to wait rather than be skipped: an image has no later background
+ * save to recover a dropped one, and `addMediaItem`'s own save is skipped as
+ * soon as a folder move replaces the object it captured — so skipping here
+ * too would leave the item stored nowhere. The liveness check is inside the
+ * thunk, which the queue runs *after* the wait; checking before the call
+ * would test the library as it was before the delete.
+ */
+function queueFolderSave(projectId: string, item: MediaItem): Promise<boolean> {
+	return saveTrackedMediaItem({
+		projectId,
+		id: item.id,
+		save: async () => {
+			if (!(await stillInLibrary(item))) return;
+			await storageService.saveMediaItem(projectId, item);
+		},
+		whenDeleting: "wait",
+	});
+}
+
 /** Persist a media item to storage using the active project ID. */
 function persistMediaItem(item: MediaItem): void {
 	import("@/stores/project-store")
 		.then(({ useProjectStore }) => {
 			const projectId = useProjectStore.getState().activeProject?.id;
 			if (projectId) {
-				storageService.saveMediaItem(projectId, item).catch((error) => {
+				queueFolderSave(projectId, item).catch((error) => {
 					debugError("[MediaStore] Failed to persist folder change:", error);
 				});
 			}
@@ -56,7 +97,7 @@ function persistMediaItems(items: MediaItem[]): void {
 			const projectId = useProjectStore.getState().activeProject?.id;
 			if (projectId) {
 				for (const item of items) {
-					storageService.saveMediaItem(projectId, item).catch((error) => {
+					queueFolderSave(projectId, item).catch((error) => {
 						debugError("[MediaStore] Failed to persist folder change:", error);
 					});
 				}

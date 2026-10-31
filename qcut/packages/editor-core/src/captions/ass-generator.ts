@@ -24,6 +24,7 @@ import {
 	captionAssFade,
 	resolveCaptionAnimation,
 } from "./caption-animation.js";
+import { resolveAssCjkFamily } from "./ass-cjk-font.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -31,6 +32,96 @@ export interface ASSGeneratorOptions {
 	cjkFontFamily?: string;
 	/** The project frame rate, for captions' fade frames. */
 	fps?: number;
+	/**
+	 * What libass will do with a face. Without it the ASS Fontsize stays the
+	 * editor's nominal size, which libass renders about 15 % small for a
+	 * typical font (N31) — the native export has always scaled it.
+	 */
+	fontMetrics?: AssFontMetricsLookup;
+	/**
+	 * Whether an installed face carries CJK glyphs, read from the font. The
+	 * native export always checks this; without it a CJK-capable family
+	 * outside the fixed list is replaced here but kept there.
+	 */
+	familyCoversCjk?: (family: string) => boolean;
+}
+
+/** libass's sizing for one face. */
+export interface AssFaceMetrics {
+	/** Multiply the editor's font size by this for the ASS Fontsize. */
+	sizeFactor: number;
+	/** The line height libass lays out, in em. */
+	lineHeightEm: number;
+}
+
+/**
+ * Looks up what libass will do with a face. Answering `undefined` means the
+ * face could not be measured, which is not the same as a face that needs no
+ * correction: a synthetic 1.0 would leave the size alone while still moving
+ * the caption by the leading.
+ */
+export type AssFontMetricsLookup = (request: {
+	family: string;
+	bold: boolean;
+	italic: boolean;
+}) => AssFaceMetrics | undefined;
+
+/** What libass will do with the faces one caption uses. */
+interface CaptionMetrics {
+	sizeFactor: number;
+	secondarySizeFactor: number;
+	/**
+	 * Half the difference between the line box CSS lays out and the one
+	 * libass lays out, so a pinned top or bottom edge lands where the preview
+	 * draws it. A caption's line is as tall as its ASS Fontsize — the nominal
+	 * size times the size factor — which is why this uses `sizeFactor` and
+	 * not `lineHeightEm`; the native export reserves `lineHeightEm` for a
+	 * text element's own placement.
+	 */
+	leading: number;
+}
+
+function captionMetrics({
+	style,
+	fontMetrics,
+}: {
+	style: SubtitleStyle;
+	fontMetrics?: AssFontMetricsLookup;
+}): CaptionMetrics {
+	// Without metrics the size is not corrected either, so the line box is
+	// whatever it always was: compensating it would move every caption that
+	// this path still writes uncorrected, a sidecar .ass among them.
+	if (!fontMetrics) {
+		return { sizeFactor: 1, secondarySizeFactor: 1, leading: 0 };
+	}
+	const face = fontMetrics({
+		family: style.fontFamily,
+		bold: captionFontWeight(style) >= 600,
+		italic: Boolean(style.italic),
+	});
+	// An unmeasured face keeps the nominal size, so its line box is the one it
+	// always was and compensating it would move the caption for nothing.
+	if (!face) {
+		return { sizeFactor: 1, secondarySizeFactor: 1, leading: 0 };
+	}
+	const secondary = resolveSecondaryLineStyle(style);
+	const secondaryFace = fontMetrics({
+		family: secondary.fontFamily,
+		bold: secondary.fontWeight >= 600,
+		italic: Boolean(secondary.italic),
+	});
+	return {
+		sizeFactor: face.sizeFactor,
+		secondarySizeFactor: secondaryFace?.sizeFactor ?? 1,
+		leading:
+			(style.fontSize * style.lineSpacing - style.fontSize * face.sizeFactor) /
+			2,
+	};
+}
+
+/** The ASS Fontsize for an editor font size, rounded as libass reads it. */
+function assFontSize(fontSize: number, sizeFactor: number): number {
+	return Math.round(fontSize * sizeFactor * 100) / 100;
 }
 
 /** The style's MarginL/MarginR. */
@@ -58,23 +149,26 @@ export function assBlurForCssBlur(radius: number): number {
 	return (radius / 2) * LIBASS_BLUR_PER_SIGMA;
 }
 
-function containsCJK(text: string): boolean {
-	return /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
-		text
-	);
-}
-
 function resolveClipStyle({
 	clip,
 	cjkFontFamily,
+	familyCoversCjk,
 }: {
 	clip: CaptionElement;
 	cjkFontFamily?: string;
+	familyCoversCjk?: (family: string) => boolean;
 }): SubtitleStyle {
 	const style = resolveSubtitleStyle(clip.style);
-	return cjkFontFamily && containsCJK(clip.text)
-		? { ...style, fontFamily: cjkFontFamily }
-		: style;
+	// The CJK font is a fallback for a family that cannot render the text, not
+	// an override: a caption that asks for Songti SC used to export in
+	// Hiragino Sans GB (N31).
+	const fontFamily = resolveAssCjkFamily({
+		family: style.fontFamily,
+		text: clip.text,
+		fallbackFamily: cjkFontFamily,
+		coversCjk: familyCoversCjk,
+	});
+	return fontFamily === style.fontFamily ? style : { ...style, fontFamily };
 }
 
 /** Generate a complete ASS file from caption elements */
@@ -90,6 +184,7 @@ export function generateASS(
 		const resolved = resolveClipStyle({
 			clip,
 			cjkFontFamily: options.cjkFontFamily,
+			familyCoversCjk: options.familyCoversCjk,
 		});
 		const key = JSON.stringify(resolved);
 		if (!styleMap.has(key)) {
@@ -120,7 +215,11 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 	// Write style lines
 	for (const [key, style] of styleMap) {
 		const name = styleNames.get(key) || "Default";
-		content += `Style: ${subtitleStyleToASSLine(name, style)}\n`;
+		content += `Style: ${subtitleStyleToASSLine(
+			name,
+			style,
+			captionMetrics({ style, fontMetrics: options.fontMetrics })
+		)}\n`;
 	}
 
 	// Write events
@@ -133,6 +232,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 		const resolved = resolveClipStyle({
 			clip,
 			cjkFontFamily: options.cjkFontFamily,
+			familyCoversCjk: options.familyCoversCjk,
 		});
 		const key = JSON.stringify(resolved);
 		const styleName = styleNames.get(key) || "Default";
@@ -142,6 +242,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 			resolution,
 			fps: options.fps,
 			styleName,
+			metrics: captionMetrics({
+				style: resolved,
+				fontMetrics: options.fontMetrics,
+			}),
 		})) {
 			content += `${line}\n`;
 		}
@@ -162,12 +266,14 @@ function captionEventsForASS({
 	resolution,
 	fps,
 	styleName,
+	metrics,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
 	fps?: number;
 	styleName: string;
+	metrics: CaptionMetrics;
 }): string[] {
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
@@ -189,15 +295,15 @@ function captionEventsForASS({
 	const lines = shadows.map((shadow, layer) =>
 		event(
 			layer,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
-			captionTextForASS({ clip, style, colorTags: false })
+			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, leading: metrics.leading })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
+			captionTextForASS({ clip, style, colorTags: false, metrics })
 		)
 	);
 	lines.push(
 		event(
 			shadows.length,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin })}${weightTag}`,
-			captionTextForASS({ clip, style, colorTags: true })
+			`${captionAnimationTags({ clip, style, resolution, fade, pin, leading: metrics.leading })}${weightTag}`,
+			captionTextForASS({ clip, style, colorTags: true, metrics })
 		)
 	);
 	return lines;
@@ -237,11 +343,13 @@ function captionTextForASS({
 	clip,
 	style,
 	colorTags,
+	metrics,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	/** False for a shadow layer, which draws every line in its colour. */
 	colorTags: boolean;
+	metrics: CaptionMetrics;
 }): string {
 	const text = clip.text.trim().replace(/\n/g, "\\N");
 	const karaokeMode = clip.style?.karaokeMode ?? "none";
@@ -264,7 +372,7 @@ function captionTextForASS({
 						return `{\\${tag}${durationCs}}${word.text.trim()}`;
 					})
 					.join(" ");
-	return `${renderedText}${secondaryLineForASS({ clip, style, colorTags })}`;
+	return `${renderedText}${secondaryLineForASS({ clip, style, colorTags, metrics })}`;
 }
 
 /** A bilingual caption's second-language line, after a break in its own font. */
@@ -272,10 +380,12 @@ function secondaryLineForASS({
 	clip,
 	style,
 	colorTags,
+	metrics,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	colorTags: boolean;
+	metrics: CaptionMetrics;
 }): string {
 	const text = clip.secondaryText?.trim();
 	if (!text) return "";
@@ -297,7 +407,7 @@ function secondaryLineForASS({
 		secondary.letterSpacing === style.letterSpacing
 			? ""
 			: `\\fsp${secondary.letterSpacing}`;
-	return `\\N{\\fn${family}\\fs${secondary.fontSize}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}}${text.replace(/\n/g, "\\N")}`;
+	return `\\N{\\fn${family}\\fs${assFontSize(secondary.fontSize, metrics.secondarySizeFactor)}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}}${text.replace(/\n/g, "\\N")}`;
 }
 
 /**
@@ -312,6 +422,7 @@ function captionAnimationTags({
 	fade: frameFade,
 	pin = false,
 	offset = { x: 0, y: 0 },
+	leading,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -319,10 +430,12 @@ function captionAnimationTags({
 	fade?: string;
 	pin?: boolean;
 	offset?: { x: number; y: number };
+	/** Half the gap between CSS's line box and libass's. */
+	leading: number;
 }): string {
 	const animation = resolveCaptionAnimation({ style });
 	if (animation.type === "none") {
-		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset }) : ""}`;
+		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
 	}
 
 	const clipDurationMs = Math.max(1, Math.round(clip.duration * 1000));
@@ -338,7 +451,7 @@ function captionAnimationTags({
 		frameFade ??
 		`\\fade(255,0,0,${startMs},${endMs},${clipDurationMs},${clipDurationMs})`;
 	if (animation.type === "fade") {
-		return `${fade}${pin ? pinnedPosition({ style, resolution, offset }) : ""}`;
+		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
 	}
 
 	const margin = Math.max(10, Math.round(style.fontSize));
@@ -350,10 +463,10 @@ function captionAnimationTags({
 				: Math.round(resolution.width / 2);
 	const targetY =
 		style.position.align === "top"
-			? margin
+			? margin + leading
 			: style.position.align === "center"
 				? Math.round(resolution.height / 2)
-				: resolution.height - margin;
+				: resolution.height - margin - leading;
 	const startX = animation.type === "slide-left" ? targetX + 120 : targetX;
 	const startY = animation.type === "slide-up" ? targetY + 80 : targetY;
 
@@ -365,12 +478,15 @@ function pinnedPosition({
 	style,
 	resolution,
 	offset,
+	leading,
 }: {
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
 	offset: { x: number; y: number };
+	/** Half the gap between CSS's line box and libass's. */
+	leading: number;
 }): string {
-	const marginV = CAPTION_EDGE_INSET_Y;
+	const marginV = CAPTION_EDGE_INSET_Y + leading;
 	const x =
 		style.textAlign === "left"
 			? STYLE_SIDE_MARGIN
@@ -386,7 +502,11 @@ function pinnedPosition({
 	return `\\pos(${x + offset.x},${y + offset.y})`;
 }
 
-function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
+function subtitleStyleToASSLine(
+	name: string,
+	style: SubtitleStyle,
+	metrics: CaptionMetrics
+): string {
 	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
 	const primary = rgbToASSColor(
 		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
@@ -402,7 +522,8 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
 	const alignment = alignToASSAlignment(style.position.align, style.textAlign);
-	const marginV = CAPTION_EDGE_INSET_Y;
+	// The inset is to the preview's line box, so it carries the half-leading.
+	const marginV = Math.round(CAPTION_EDGE_INSET_Y + metrics.leading);
 	// Soft shadows are layers of their own; the hard one is ASS's.
 	const shadow =
 		!resolveCaptionShadows(style) &&
@@ -413,7 +534,7 @@ function subtitleStyleToASSLine(name: string, style: SubtitleStyle): string {
 	return [
 		name,
 		style.fontFamily,
-		style.fontSize,
+		assFontSize(style.fontSize, metrics.sizeFactor),
 		primary,
 		secondary,
 		outline,

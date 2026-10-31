@@ -35,6 +35,84 @@ function finite(value: unknown, fallback: number): number {
 	return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * A `#rrggbb` to build an ASS colour from. `assColorParts` slices the hex
+ * positionally, so anything else would come out a different colour entirely.
+ *
+ * `#rgb`, `#rgba`, `#rrggbbaa` and `rgb()`/`rgba()` are converted; their
+ * alpha is dropped, because a shadow carries its own opacity. A named CSS
+ * colour is not: no export path in this project parses one (the export
+ * dialog's own `colorToFFmpeg` would emit `0xred`), so resolving names here
+ * alone would make the two engines disagree again.
+ */
+export function assHexColor(value: string): string {
+	return assShadowColor(value).hex;
+}
+
+/**
+ * A shadow colour split into `#rrggbb` and the alpha it carried, if any.
+ *
+ * The preview's `colorWithOpacity` appends the style's opacity to a `#rgb` or
+ * `#rrggbb` and returns every other form untouched, so for `#rrggbbaa` and
+ * `rgba()` the embedded alpha wins and `shadowOpacity` is ignored. Native has
+ * to agree, and must not combine the two: `#ff000000` draws no shadow in the
+ * preview, so it must draw none here either.
+ */
+export function assShadowColor(value: string): {
+	hex: string;
+	alpha?: number;
+} {
+	const text = value.trim();
+	if (HEX_COLOR.test(text)) return { hex: text.slice(0, 7) };
+
+	const hex = /^#([0-9a-f]{3,8})$/i.exec(text);
+	if (hex) {
+		const digits = hex[1];
+		const expand = (channel: string) => `${channel}${channel}`;
+		if (digits.length === 3 || digits.length === 4) {
+			const rgb = `#${expand(digits[0])}${expand(digits[1])}${expand(digits[2])}`;
+			if (digits.length === 3) return { hex: rgb };
+			return {
+				hex: rgb,
+				alpha: Number.parseInt(expand(digits[3]), 16) / 255,
+			};
+		}
+		if (digits.length === 8) {
+			return {
+				hex: `#${digits.slice(0, 6)}`,
+				alpha: Number.parseInt(digits.slice(6, 8), 16) / 255,
+			};
+		}
+		return { hex: "#000000" };
+	}
+
+	const functional = /^rgba?\(([^)]*)\)$/i.exec(text);
+	if (!functional) return { hex: "#000000" };
+	const fields = functional[1].split(/[\s,/]+/).filter(Boolean);
+	const channels = fields.slice(0, 3).map((field) => {
+		const number = Number.parseFloat(field);
+		if (!Number.isFinite(number)) return undefined;
+		const scaled = field.endsWith("%") ? number * 2.55 : number;
+		return Math.min(255, Math.max(0, Math.round(scaled)));
+	});
+	if (
+		channels.length < 3 ||
+		channels.some((channel) => channel === undefined)
+	) {
+		return { hex: "#000000" };
+	}
+	const rgb = `#${channels
+		.map((channel) => (channel as number).toString(16).padStart(2, "0"))
+		.join("")}`;
+
+	const fourth = fields[3];
+	if (fourth === undefined) return { hex: rgb };
+	const raw = Number.parseFloat(fourth);
+	if (!Number.isFinite(raw)) return { hex: rgb };
+	const alpha = fourth.endsWith("%") ? raw / 100 : raw;
+	return { hex: rgb, alpha: Math.min(1, Math.max(0, alpha)) };
+}
+
 /** `fontWeight` when it is a weight; undefined leaves `bold`'s 700 or 400. */
 export function captionWeightValue(value: unknown): number | undefined {
 	return typeof value === "number" && value >= 100 && value <= 900
@@ -153,16 +231,24 @@ function assColorParts(
 export function assShadowTags({
 	shadow,
 	overlay,
+	borderless = false,
 }: {
 	shadow: TextOverlayShadow;
 	overlay: TextOverlay;
+	/**
+	 * A background box makes the style's BorderStyle 3, where `\bord` fills a
+	 * box rather than widening the letters — so casting the shadow from the
+	 * border would paint a solid rectangle in the shadow's colour. Cast it
+	 * from the fill alone instead, as the export dialog's path does.
+	 */
+	borderless?: boolean;
 }): string {
 	const { color, alpha } = assColorParts(
-		shadow.color,
+		assHexColor(shadow.color),
 		shadow.opacity * overlay.opacity
 	);
 	const blur = `\\blur${assBlurForCssBlur(shadow.blur).toFixed(2)}`;
-	if (overlay.strokeWidth > 0) {
+	if (!borderless && overlay.strokeWidth > 0) {
 		// A see-through fill shows the border as the whole widened letter.
 		return `\\1a&HFF&\\3c${color}\\3a${alpha}\\4a&HFF&\\bord${overlay.strokeWidth}\\shad0${blur}`;
 	}

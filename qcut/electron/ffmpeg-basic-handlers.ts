@@ -20,6 +20,15 @@ import type {
 import type { ExportSession } from "./temp-manager.js";
 
 import { getFFmpegPath } from "./ffmpeg/utils.js";
+import {
+	assFamilyCoversCjk,
+	assFontFamilyInstalled,
+	assFontMetrics,
+} from "./claude/handlers/claude-export-handler/ass-font-metrics.js";
+import type {
+	AssFontMetricsReply,
+	AssFontMetricsRequest,
+} from "./ffmpeg/types.js";
 
 /**
  * Registers basic FFmpeg IPC handlers.
@@ -27,6 +36,35 @@ import { getFFmpegPath } from "./ffmpeg/utils.js";
  * Handles: ffmpeg-path, ffmpeg-health, create-export-session,
  * save-frame, read-output-file, cleanup-export-session, open-frames-folder
  */
+/** Faces one `ffmpeg-ass-font-metrics` call may ask about. */
+const MAX_ASS_FONT_METRICS_REQUESTS = 512;
+
+/**
+ * One well-formed entry of a metrics request.
+ *
+ * The array crosses IPC from the renderer, so nothing about its shape is
+ * guaranteed: a null entry would throw on `request.family`, and a non-boolean
+ * `bold` would silently pick the wrong face.
+ */
+function assFontMetricsRequestOf(value: unknown): AssFontMetricsRequest | null {
+	if (typeof value !== "object" || value === null) return null;
+	const candidate = value as Partial<AssFontMetricsRequest>;
+	if (typeof candidate.family !== "string" || !candidate.family.trim()) {
+		return null;
+	}
+	if (candidate.bold !== undefined && typeof candidate.bold !== "boolean") {
+		return null;
+	}
+	if (candidate.italic !== undefined && typeof candidate.italic !== "boolean") {
+		return null;
+	}
+	return {
+		family: candidate.family,
+		bold: candidate.bold ?? false,
+		italic: candidate.italic ?? false,
+	};
+}
+
 export function setupBasicHandlers(
 	tempManager: TempManager,
 	getFFmpegHealth: () => Promise<FFmpegHealthResult>
@@ -40,6 +78,44 @@ export function setupBasicHandlers(
 	ipcMain.handle("ffmpeg-health", (): Promise<FFmpegHealthResult> => {
 		return getFFmpegHealth();
 	});
+
+	// libass sizes a face so its Windows ascent + descent equals the ASS
+	// Fontsize, while the editor sizes by the em square; the renderer builds
+	// ASS for the export dialog but cannot read font files, so it asks here
+	// (N31).
+	ipcMain.handle(
+		"ffmpeg-ass-font-metrics",
+		(
+			_event: IpcMainInvokeEvent,
+			requests: AssFontMetricsRequest[]
+		): AssFontMetricsReply[] => {
+			if (!Array.isArray(requests)) return [];
+			// Each miss walks the system font index on the main thread, so the
+			// batch is bounded: the real caller sends four faces per family.
+			return requests
+				.slice(0, MAX_ASS_FONT_METRICS_REQUESTS)
+				.flatMap((entry) => {
+					const request = assFontMetricsRequestOf(entry);
+					if (!request) return [];
+					// An uninstalled family would measure a neutral 1.0, which the
+					// renderer cannot tell from a real measurement: it would then
+					// shift the caption by the leading while leaving its size
+					// uncorrected. Omit it so the unmeasured path applies.
+					if (!assFontFamilyInstalled({ family: request.family })) return [];
+					const { sizeFactor, lineHeightEm } = assFontMetrics(request);
+					return [
+						{
+							...request,
+							bold: request.bold ?? false,
+							italic: request.italic ?? false,
+							sizeFactor,
+							lineHeightEm,
+							coversCjk: assFamilyCoversCjk({ family: request.family }),
+						},
+					];
+				});
+		}
+	);
 
 	// Create export session
 	ipcMain.handle("create-export-session", async (): Promise<ExportSession> => {

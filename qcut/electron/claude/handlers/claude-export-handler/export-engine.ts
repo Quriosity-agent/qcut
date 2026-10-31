@@ -98,6 +98,10 @@ import {
 	type ExportJobInternal,
 } from "./types.js";
 import {
+	keepExportTempFiles,
+	reportKeptExportDirectory,
+} from "./export-temp-retention.js";
+import {
 	parseBitrateForKbps,
 	parseTimecodeToSeconds,
 	clampProgress,
@@ -1800,11 +1804,14 @@ export async function executeExportJob({
 				throw gifError;
 			}
 
-			// Clean up intermediary MP4
-			try {
-				await fsPromises.unlink(videoOutputPath);
-			} catch {
-				/* ignore */
+			// Clean up intermediary MP4, unless it is being kept for a
+			// bit-for-bit comparison of two exports (N34).
+			if (!keepExportTempFiles()) {
+				try {
+					await fsPromises.unlink(videoOutputPath);
+				} catch {
+					/* ignore */
+				}
 			}
 		}
 
@@ -1840,10 +1847,12 @@ export async function executeExportJob({
 				}
 				throw mp3Error;
 			}
-			try {
-				await fsPromises.unlink(videoOutputPath);
-			} catch {
-				// Ignore cleanup errors.
+			if (!keepExportTempFiles()) {
+				try {
+					await fsPromises.unlink(videoOutputPath);
+				} catch {
+					// Ignore cleanup errors.
+				}
 			}
 		}
 
@@ -1980,7 +1989,14 @@ export async function executeExportJob({
 
 		claudeLog.error(HANDLER_NAME, `Export job ${jobId} failed:`, error);
 	} finally {
-		if (tempDir) {
+		if (
+			tempDir &&
+			!reportKeptExportDirectory({
+				handler: HANDLER_NAME,
+				label: "the export's intermediates",
+				directory: tempDir,
+			})
+		) {
 			try {
 				await fsPromises.rm(tempDir, { recursive: true, force: true });
 			} catch (cleanupError) {

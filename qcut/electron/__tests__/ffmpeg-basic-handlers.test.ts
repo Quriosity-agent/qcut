@@ -73,8 +73,8 @@ describe("setupBasicHandlers", () => {
 		);
 	});
 
-	it("registers all 7 IPC handlers", () => {
-		expect(mockHandle).toHaveBeenCalledTimes(7);
+	it("registers all 8 IPC handlers", () => {
+		expect(mockHandle).toHaveBeenCalledTimes(8);
 
 		const channels = mockHandle.mock.calls.map((c: unknown[]) => c[0]);
 		expect(channels).toContain("ffmpeg-path");
@@ -84,6 +84,57 @@ describe("setupBasicHandlers", () => {
 		expect(channels).toContain("read-output-file");
 		expect(channels).toContain("cleanup-export-session");
 		expect(channels).toContain("open-frames-folder");
+		expect(channels).toContain("ffmpeg-ass-font-metrics");
+	});
+
+	it("ffmpeg-ass-font-metrics omits a face it cannot measure", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		// An uninstalled family would measure a neutral 1.0, which the renderer
+		// cannot tell from a real measurement, so it has to be left out (N31).
+		// Which families a runner has is not knowable, so this asserts the
+		// absent one is gone and that anything returned is a real measurement.
+		const replies: Array<{
+			family: string;
+			sizeFactor: number;
+			lineHeightEm: number;
+			coversCjk: boolean;
+		}> = await handler({}, [
+			{ family: "QCutNotAnInstalledFamily" },
+			{ family: "Helvetica" },
+			{ family: "DejaVu Sans" },
+		]);
+
+		expect(
+			replies.some((reply) => reply.family === "QCutNotAnInstalledFamily")
+		).toBe(false);
+		for (const reply of replies) {
+			expect(reply.sizeFactor).toBeGreaterThan(0);
+			expect(reply.lineHeightEm).toBeGreaterThan(0);
+			expect(typeof reply.coversCjk).toBe("boolean");
+		}
+	});
+
+	it("ffmpeg-ass-font-metrics tolerates a malformed request list", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		expect(await handler({}, undefined)).toEqual([]);
+	});
+
+	it("ffmpeg-ass-font-metrics drops malformed entries instead of throwing", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		// The array crosses IPC from the renderer, so nothing about its shape
+		// is guaranteed: a null entry would throw on `request.family`, and a
+		// non-boolean `bold` would quietly pick the wrong face.
+		expect(
+			await handler({}, [
+				null,
+				42,
+				{},
+				{ family: "" },
+				{ family: "   " },
+				{ family: "Helvetica", bold: "yes" },
+				{ family: "Helvetica", italic: 1 },
+			])
+		).toEqual([]);
 	});
 
 	it("ffmpeg-path returns a string path", async () => {
