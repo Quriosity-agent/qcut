@@ -119,6 +119,24 @@ describe("setupBasicHandlers", () => {
 		expect(await handler({}, undefined)).toEqual([]);
 	});
 
+	it("ffmpeg-ass-font-metrics drops malformed entries instead of throwing", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		// The array crosses IPC from the renderer, so nothing about its shape
+		// is guaranteed: a null entry would throw on `request.family`, and a
+		// non-boolean `bold` would quietly pick the wrong face.
+		expect(
+			await handler({}, [
+				null,
+				42,
+				{},
+				{ family: "" },
+				{ family: "   " },
+				{ family: "Helvetica", bold: "yes" },
+				{ family: "Helvetica", italic: 1 },
+			])
+		).toEqual([]);
+	});
+
 	it("ffmpeg-path returns a string path", async () => {
 		const handler = getHandler("ffmpeg-path");
 		const result = await handler();
