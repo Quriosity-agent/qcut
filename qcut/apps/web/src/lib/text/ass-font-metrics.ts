@@ -14,9 +14,6 @@
 import type { AssFaceMetrics, AssFontMetricsLookup } from "@qcut/editor-core";
 import { debugError } from "@/lib/debug/debug-config";
 
-/** A face whose Windows height is one em: no correction at all. */
-const ONE_EM_FACE: AssFaceMetrics = { sizeFactor: 1, lineHeightEm: 1 };
-
 interface FaceRequest {
 	family: string;
 	bold: boolean;
@@ -28,11 +25,10 @@ function keyFor({ family, bold, italic }: FaceRequest): string {
 }
 
 /**
- * A lookup that corrects nothing — what the dialog path did before N31. For
+ * A lookup that measures nothing — what the dialog path did before N31. For
  * tests, and for a run with no main process to ask.
  */
-export const uncorrectedAssFontMetrics: AssFontMetricsLookup = () =>
-	ONE_EM_FACE;
+export const uncorrectedAssFontMetrics: AssFontMetricsLookup = () => undefined;
 
 /** Every weight and slant of each family, for one prefetch. */
 export function assFaceRequestsFor(families: Iterable<string>): FaceRequest[] {
@@ -52,16 +48,25 @@ export function assFaceRequestsFor(families: Iterable<string>): FaceRequest[] {
 	return requests;
 }
 
+/** What one prefetch learned about the faces an ASS layer may name. */
+export interface AssFontFacts {
+	/** What libass will do with a face; undefined means unmeasured. */
+	fontMetrics: AssFontMetricsLookup;
+	/** Whether an installed family really carries CJK glyphs. */
+	familyCoversCjk: (family: string) => boolean;
+}
+
 /** Ask the main process what libass will do with each face. */
 export async function loadAssFontMetrics(
 	requests: FaceRequest[]
-): Promise<AssFontMetricsLookup> {
+): Promise<AssFontFacts> {
 	const wanted = new Map<string, FaceRequest>();
 	for (const request of requests) {
 		if (request.family?.trim()) wanted.set(keyFor(request), request);
 	}
 
 	const measured = new Map<string, AssFaceMetrics>();
+	const cjkFamilies = new Set<string>();
 	const ffmpeg = window.electronAPI?.ffmpeg;
 	if (ffmpeg?.assFontMetrics && wanted.size > 0) {
 		try {
@@ -70,6 +75,7 @@ export async function loadAssFontMetrics(
 					sizeFactor: reply.sizeFactor,
 					lineHeightEm: reply.lineHeightEm,
 				});
+				if (reply.coversCjk) cjkFamilies.add(reply.family.trim().toLowerCase());
 			}
 		} catch (error) {
 			// An export must not fail because a font could not be measured: an
@@ -78,5 +84,11 @@ export async function loadAssFontMetrics(
 		}
 	}
 
-	return (request) => measured.get(keyFor(request)) ?? ONE_EM_FACE;
+	return {
+		// A face that could not be measured answers undefined, so the generator
+		// leaves both its size and its placement alone: a synthetic 1.0 would
+		// keep the nominal size while still shifting the caption by the leading.
+		fontMetrics: (request) => measured.get(keyFor(request)),
+		familyCoversCjk: (family) => cjkFamilies.has(family.trim().toLowerCase()),
+	};
 }
