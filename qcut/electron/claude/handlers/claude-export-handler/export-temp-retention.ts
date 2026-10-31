@@ -15,9 +15,11 @@
  * limiter's audio work directory survive, and their paths are logged, so two
  * runs of one project can be hashed stage by stage in pipeline order:
  *
- * hash the audio of every `segment-`/`gap-` MOV and of `intermediate.mp4`
- * with `ffmpeg -i <file> -map 0:a:0 -f hash -`, then `shasum` the
- * `limited.f32` inside the `true-peak-pcm-` directory.
+ * hash the audio of every `segment-` and `gap-` MOV with
+ * `ffmpeg -i <file> -map 0:a:0 -f hash -`, then the muxed video the audio mix
+ * pass renames to `video-before-audio-mix.mp4`, then `mixed-master.wav`, then
+ * `shasum` the `limited.f32` inside the `true-peak-pcm-` directory. An export
+ * that never ran the mix pass keeps `intermediate.mp4` instead.
  *
  * The first hash that differs between two runs names the stage to look at.
  * Off by default: a kept directory holds a full-size intermediate video and a
