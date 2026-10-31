@@ -585,8 +585,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 							await saveTrackedMediaItem({
 								projectId: currentProject.id,
 								id: item.id,
-								save: () =>
-									storageService.saveMediaItem(currentProject.id, item),
+								save: () => persistIfStillPresent(currentProject.id, item),
+								// A generated image has no later background save, so a
+								// drop would leave it stored nowhere.
+								whenDeleting: "wait",
 							});
 						} catch (error) {
 							handleStorageError(error, "Save generated image to storage", {
