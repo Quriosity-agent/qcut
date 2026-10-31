@@ -73,8 +73,8 @@ describe("setupBasicHandlers", () => {
 		);
 	});
 
-	it("registers all 7 IPC handlers", () => {
-		expect(mockHandle).toHaveBeenCalledTimes(7);
+	it("registers all 8 IPC handlers", () => {
+		expect(mockHandle).toHaveBeenCalledTimes(8);
 
 		const channels = mockHandle.mock.calls.map((c: unknown[]) => c[0]);
 		expect(channels).toContain("ffmpeg-path");
@@ -84,6 +84,24 @@ describe("setupBasicHandlers", () => {
 		expect(channels).toContain("read-output-file");
 		expect(channels).toContain("cleanup-export-session");
 		expect(channels).toContain("open-frames-folder");
+		expect(channels).toContain("ffmpeg-ass-font-metrics");
+	});
+
+	it("ffmpeg-ass-font-metrics answers one face per request", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		const [face] = await handler({}, [{ family: "Helvetica" }]);
+
+		// The renderer builds the export dialog's ASS but cannot read font
+		// files, so it asks here what libass will do with each face (N31).
+		expect(face.family).toBe("Helvetica");
+		expect(face.sizeFactor).toBeGreaterThan(0);
+		expect(face.lineHeightEm).toBeGreaterThan(0);
+		expect(typeof face.coversCjk).toBe("boolean");
+	});
+
+	it("ffmpeg-ass-font-metrics tolerates a malformed request list", async () => {
+		const handler = getHandler("ffmpeg-ass-font-metrics");
+		expect(await handler({}, undefined)).toEqual([]);
 	});
 
 	it("ffmpeg-path returns a string path", async () => {
