@@ -149,6 +149,51 @@ describe("generateASS", () => {
 		expect(latinAss).toContain("Style: Default,Arial,");
 	});
 
+	it("scales the ASS font size the way libass sizes a face", () => {
+		// libass sizes a face so its Windows ascent + descent equals the ASS
+		// Fontsize, while the editor sizes by the em square, so an uncorrected
+		// Fontsize renders about 15 % small (N31). Measured against the real
+		// Helvetica and the bundled libass: 48 nominal must become 48 x 1.2.
+		const ass = generateASS([caption()], {
+			resolution: { width: 1920, height: 1080 },
+			fontMetrics: () => ({ sizeFactor: 1.2, lineHeightEm: 1 }),
+		});
+
+		const style = ass.split("\n").find((line) => line.startsWith("Style:"));
+		expect(style).toContain("Style: Default,Arial,57.6,");
+	});
+
+	it("carries the half-leading into the caption's edge inset", () => {
+		// The inset is to the preview's line box: libass stacks the font's own
+		// line height with the em at its bottom while CSS centres the em in its
+		// line box, so without this the glyphs do not land where the preview
+		// draws them.
+		const metrics = { sizeFactor: 1.2, lineHeightEm: 1 };
+		const ass = generateASS([caption()], {
+			resolution: { width: 1920, height: 1080 },
+			fontMetrics: () => metrics,
+		});
+
+		// Default caption: 48 px at line spacing 1.4, so (48 * 1.4 - 48) / 2.
+		const leading = (48 * 1.4 - 48 * metrics.lineHeightEm) / 2;
+		const style = ass
+			.split("\n")
+			.find((line) => line.startsWith("Style:")) as string;
+		expect(style.split(",").at(-2)).toBe(String(Math.round(28 + leading)));
+	});
+
+	it("leaves the nominal size alone when no metrics are given", () => {
+		const ass = generateASS([caption()], {
+			resolution: { width: 1920, height: 1080 },
+		});
+
+		const style = ass
+			.split("\n")
+			.find((line) => line.startsWith("Style:")) as string;
+		expect(style).toContain("Style: Default,Arial,48,");
+		expect(style.split(",").at(-2)).toBe("28");
+	});
+
 	it("keeps a CJK-capable family the caption actually asked for", () => {
 		// N31: the substitution was unconditional, so a caption asking for
 		// Songti SC — a serif, and a family libass can open — exported in
