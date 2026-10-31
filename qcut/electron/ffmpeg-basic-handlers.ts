@@ -20,6 +20,14 @@ import type {
 import type { ExportSession } from "./temp-manager.js";
 
 import { getFFmpegPath } from "./ffmpeg/utils.js";
+import {
+	assFontMetrics,
+	assFamilyCoversCjk,
+} from "./claude/handlers/claude-export-handler/ass-font-metrics.js";
+import type {
+	AssFontMetricsReply,
+	AssFontMetricsRequest,
+} from "./ffmpeg/types.js";
 
 /**
  * Registers basic FFmpeg IPC handlers.
@@ -40,6 +48,35 @@ export function setupBasicHandlers(
 	ipcMain.handle("ffmpeg-health", (): Promise<FFmpegHealthResult> => {
 		return getFFmpegHealth();
 	});
+
+	// libass sizes a face so its Windows ascent + descent equals the ASS
+	// Fontsize, while the editor sizes by the em square; the renderer builds
+	// ASS for the export dialog but cannot read font files, so it asks here
+	// (N31).
+	ipcMain.handle(
+		"ffmpeg-ass-font-metrics",
+		(
+			_event: IpcMainInvokeEvent,
+			requests: AssFontMetricsRequest[]
+		): AssFontMetricsReply[] => {
+			if (!Array.isArray(requests)) return [];
+			return requests.map((request) => {
+				const { sizeFactor, lineHeightEm } = assFontMetrics({
+					family: request.family,
+					bold: request.bold ?? false,
+					italic: request.italic ?? false,
+				});
+				return {
+					family: request.family,
+					bold: request.bold ?? false,
+					italic: request.italic ?? false,
+					sizeFactor,
+					lineHeightEm,
+					coversCjk: assFamilyCoversCjk({ family: request.family }),
+				};
+			});
+		}
+	);
 
 	// Create export session
 	ipcMain.handle("create-export-session", async (): Promise<ExportSession> => {
