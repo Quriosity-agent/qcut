@@ -97,6 +97,7 @@ import {
 	type ResolvedExportSettings,
 	type ExportJobInternal,
 } from "./types.js";
+import { reportKeptExportDirectory } from "./export-temp-retention.js";
 import {
 	parseBitrateForKbps,
 	parseTimecodeToSeconds,
@@ -1980,7 +1981,14 @@ export async function executeExportJob({
 
 		claudeLog.error(HANDLER_NAME, `Export job ${jobId} failed:`, error);
 	} finally {
-		if (tempDir) {
+		if (
+			tempDir &&
+			!reportKeptExportDirectory({
+				handler: HANDLER_NAME,
+				label: "the export's intermediates",
+				directory: tempDir,
+			})
+		) {
 			try {
 				await fsPromises.rm(tempDir, { recursive: true, force: true });
 			} catch (cleanupError) {
