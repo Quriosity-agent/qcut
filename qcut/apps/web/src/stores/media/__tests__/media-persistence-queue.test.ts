@@ -13,6 +13,22 @@ import {
 
 const item = { projectId: "p1", id: "m1" };
 
+/**
+ * Let every pending chain advance as far as it can.
+ *
+ * One `await Promise.resolve()` only resumes one link, so a negative
+ * assertion placed after it can pass simply because the operation it is
+ * watching for has not been reached yet.
+ */
+async function settle(): Promise<void> {
+	for (let turn = 0; turn < 20; turn += 1) {
+		await Promise.resolve();
+	}
+	await new Promise((resolve) => {
+		setTimeout(resolve, 0);
+	});
+}
+
 function gate(): { opened: Promise<void>; open: () => void } {
 	let open: () => void = () => undefined;
 	const opened = new Promise<void>((resolve) => {
@@ -44,7 +60,7 @@ describe("media persistence queue", () => {
 		});
 
 		// The delete must not touch storage while the save still holds the entry.
-		await Promise.resolve();
+		await settle();
 		expect(order).toEqual([]);
 
 		writing.open();
@@ -59,7 +75,7 @@ describe("media persistence queue", () => {
 			...item,
 			remove: () => removing.opened,
 		});
-		await Promise.resolve();
+		await settle();
 
 		await expect(saveTrackedMediaItem({ ...item, save })).resolves.toBe(false);
 		expect(save).not.toHaveBeenCalled();
@@ -124,7 +140,7 @@ describe("media persistence queue", () => {
 		// The newer save must not let the delete past the older one, which is
 		// still holding the storage entry open.
 		second.open();
-		await Promise.resolve();
+		await settle();
 		expect(order).not.toContain("deleted");
 
 		first.open();
@@ -140,10 +156,10 @@ describe("media persistence queue", () => {
 			deleteTrackedMediaItem({ ...item, remove: () => firstRemove.opened }),
 			deleteTrackedMediaItem({ ...item, remove: () => secondRemove.opened }),
 		];
-		await Promise.resolve();
+		await settle();
 
 		firstRemove.open();
-		await Promise.resolve();
+		await settle();
 		// One of two deletes finishing must not clear the way while the other
 		// is still removing.
 		await expect(saveTrackedMediaItem({ ...item, save })).resolves.toBe(false);
@@ -164,7 +180,7 @@ describe("media persistence queue", () => {
 					order.push("deleted");
 				}),
 		});
-		await Promise.resolve();
+		await settle();
 
 		// Re-importing the same file reuses its id. Skipping that save would
 		// leave the new item in memory only.
@@ -189,7 +205,7 @@ describe("media persistence queue", () => {
 			...item,
 			remove: () => removing.opened,
 		});
-		await Promise.resolve();
+		await settle();
 
 		await expect(
 			saveTrackedMediaItem({ projectId: "p1", id: "m2", save })
