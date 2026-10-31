@@ -372,4 +372,60 @@ describe("MediaStore", () => {
 
 		expect(storageService.saveMediaItem).not.toHaveBeenCalled();
 	});
+
+	it("drops a queued save when another import reused its id", async () => {
+		// generateFileBasedId hashes the file's name, size, modification time
+		// and type — not its contents — so two different files can share an id.
+		// If import A is waiting and import B reuses that id, B's object is the
+		// one in the library and writing A's would overwrite it.
+		const { storageService } = await import("@/lib/storage/storage-service");
+		const { deleteTrackedMediaItem, resetMediaPersistenceQueue } = await import(
+			"@/stores/media/media-persistence-queue"
+		);
+		resetMediaPersistenceQueue();
+
+		const { result } = renderHook(() => useMediaStore());
+		const first: Omit<MediaItem, "file"> & { file: File } = {
+			id: "media_shared",
+			name: "clip.mp4",
+			type: "video" as const,
+			file: new File(["A"], "clip.mp4", { type: "video/mp4" }),
+			url: "blob:a",
+			duration: 1,
+		};
+
+		let finishDelete: () => void = () => undefined;
+		const removing = new Promise<void>((resolve) => {
+			finishDelete = resolve;
+		});
+		const deleting = deleteTrackedMediaItem({
+			projectId: "test-project",
+			id: first.id,
+			remove: () => removing,
+		});
+
+		const adding = act(async () => {
+			await result.current.addMediaItem("test-project", first);
+		});
+		await act(async () => {
+			for (let turn = 0; turn < 20; turn += 1) {
+				await Promise.resolve();
+			}
+		});
+
+		// A second import reuses the id: same id, different object and file.
+		const second = {
+			...first,
+			file: new File(["BB"], "clip.mp4", { type: "video/mp4" }),
+			url: "blob:b",
+		};
+		act(() => {
+			useMediaStore.setState({ mediaItems: [second as MediaItem] });
+		});
+		finishDelete();
+		await deleting;
+		await adding;
+
+		expect(storageService.saveMediaItem).not.toHaveBeenCalled();
+	});
 });
