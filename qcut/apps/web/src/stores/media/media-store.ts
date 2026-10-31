@@ -124,24 +124,35 @@ const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
 };
 
 /**
- * Persist an item unless it has left the library while the save waited.
+ * Persist an item unless the library has moved on from it.
  *
  * A wait-mode save resumes once every delete for its id has finished — and
- * that id can be the one that was just deleted, since an id is derived from
- * the file name. The item it captured may therefore be gone by the time it
- * runs, and writing it would re-create the storage entry the delete removed.
- * This check sits immediately before the write, which is the only place a
- * delete cannot interleave past (N30).
+ * that id can be the one just deleted, since an id is derived from the file's
+ * name, size, modification time and type. So the item this save captured may
+ * be gone by the time it runs, and writing it would re-create the storage
+ * entry the delete removed (N30).
+ *
+ * The check is on the object, not the id: those four properties do not
+ * include the file's contents, so two different files can share an id. A
+ * later import that reused this one has put *its* object in the list, and
+ * writing the item captured here would overwrite it. Replacing the object is
+ * also how every in-place update works, and each of those issues its own
+ * save, so a payload whose object is gone is stale either way.
+ *
+ * It sits immediately before the write, the only point a delete or a newer
+ * import cannot interleave past.
  */
 const persistIfStillPresent = async (
 	projectId: string,
-	item: MediaItem
+	item: MediaItem,
+	/** The object the store holds, when it is not `item` itself. */
+	live: MediaItem = item
 ): Promise<boolean> => {
 	const present = useMediaStore
 		.getState()
-		.mediaItems.some((candidate) => candidate.id === item.id);
+		.mediaItems.some((candidate) => candidate === live);
 	if (!present) {
-		debugLog(`[MediaStore] Dropped a queued save for removed media ${item.id}`);
+		debugLog(`[MediaStore] Dropped a stale save for media ${item.id}`);
 		return false;
 	}
 	await storageService.saveMediaItem(projectId, item);
@@ -176,7 +187,7 @@ const updateMediaMetadataAndPersist = async (
 		await saveTrackedMediaItem({
 			projectId,
 			id: itemId,
-			save: () => storageService.saveMediaItem(projectId, updatedItem),
+			save: () => persistIfStillPresent(projectId, updatedItem),
 		});
 		debugLog(`[MediaStore] Persisted thumbnail for ${item.name}`);
 	} catch (error) {
@@ -368,7 +379,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				projectId,
 				id: newItem.id,
 				save: async () => {
-					stored = await persistIfStillPresent(projectId, newItem);
+					// The list holds itemWithStatus; newItem is what is stored.
+					stored = await persistIfStillPresent(
+						projectId,
+						newItem,
+						itemWithStatus
+					);
 				},
 				whenDeleting: "wait",
 			});
