@@ -7,7 +7,7 @@ import { assFamilyCoversCjk, assFontMetrics } from "./ass-font-metrics.js";
 import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
 import {
 	assCaptionFade,
-	assHexColor,
+	assShadowColor,
 	assShadowTags,
 	assWeightTag,
 	captionFadeSeconds,
@@ -542,11 +542,16 @@ function collectCanvasTextOverlay({
 	// both axes, so an offset of (0, 0) drew nothing at all and `shadowBlur`
 	// never reached the export (N32). Draw it as the soft-shadow layer the
 	// caption path already renders instead.
-	if (overlay.shadowOpacity > 0) {
+	// A colour carrying its own alpha (#rrggbbaa, rgba(…)) overrides
+	// shadowOpacity rather than combining with it, because the preview's
+	// colorWithOpacity appends the opacity only to #rgb and #rrggbb.
+	const shadow = assShadowColor(overlay.shadowColor);
+	const shadowAlpha = shadow.alpha ?? overlay.shadowOpacity;
+	if (shadowAlpha > 0) {
 		overlay.shadows = [
 			{
-				color: assHexColor(overlay.shadowColor),
-				opacity: overlay.shadowOpacity,
+				color: shadow.hex,
+				opacity: shadowAlpha,
 				blur: Math.max(0, overlay.shadowBlur),
 				x: overlay.shadowOffsetX,
 				y: overlay.shadowOffsetY,
