@@ -245,6 +245,37 @@ describe("editor timeline replace-media", () => {
 		expect(remove).toHaveBeenCalledTimes(1);
 	});
 
+	it("names the file it could not take back", async () => {
+		// N30: the route answers `false` with a 200 when the renderer refuses
+		// the delete, which a save still writing that item can cause. The old
+		// fire-and-forget cleanup discarded that, so the answer read as a clean
+		// refusal while the import stayed in the project.
+		const { client, patch, remove } = fakeClient();
+		remove.mockResolvedValue(false);
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/still in the project: 05_v2\.mp4 \(v2\)/);
+
+		// Retried once, because that race is transient.
+		expect(remove).toHaveBeenCalledTimes(2);
+	});
+
+	it("keeps the refusal's own message when cleanup worked", async () => {
+		const { client, patch, remove } = fakeClient();
+		patch.mockRejectedValueOnce(
+			new EditorApiError("05_v2.mp4 is 3.000 s long", 409)
+		);
+
+		await expect(
+			timelineReplaceMedia(client, options({ source: shotFile() }))
+		).rejects.toThrow(/^05_v2\.mp4 is 3\.000 s long$/);
+		expect(remove).toHaveBeenCalledTimes(1);
+	});
+
 	it("fails when the timeline still shows the old media", async () => {
 		const { client } = fakeClient({
 			clipAfter: { ...replaced, sourceId: "old", sourceName: "05.mp4" },
