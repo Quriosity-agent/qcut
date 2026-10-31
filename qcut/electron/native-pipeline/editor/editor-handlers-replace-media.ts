@@ -76,6 +76,70 @@ async function importSource({
 	return { mediaFile: result.mediaFile };
 }
 
+/** Milliseconds before a second attempt at taking back an imported file. */
+const CLEANUP_RETRY_DELAY_MS = 250;
+
+/**
+ * Take back a file this command imported, and say whether it went.
+ *
+ * The delete asks the editor to drop the item before it unlinks the file, so
+ * a renderer that refuses — which a save still writing that item's storage
+ * entry can cause — leaves both the library entry and the copy in the
+ * project's media folder. The route also answers `false` with a 200 when it
+ * cannot find the media. A single fire-and-forget attempt discarded both
+ * outcomes, so the command reported a clean refusal while its import stayed
+ * behind, twice in six attempts (N30). Retried once, because that race is
+ * transient.
+ */
+async function removeImported({
+	client,
+	project,
+	mediaId,
+}: {
+	client: EditorApiClient;
+	project: string;
+	mediaId: string;
+}): Promise<{ removed: boolean; reason?: string }> {
+	let reason: string | undefined;
+	for (let attempt = 1; attempt <= 2; attempt += 1) {
+		if (attempt > 1) {
+			await new Promise((resolve) => {
+				setTimeout(resolve, CLEANUP_RETRY_DELAY_MS);
+			});
+		}
+		try {
+			const answer = await client.delete<unknown>(
+				`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`
+			);
+			if (answer !== false) return { removed: true };
+			reason = "the editor did not find it";
+		} catch (error) {
+			reason = error instanceof Error ? error.message : String(error);
+		}
+	}
+	return { removed: false, reason };
+}
+
+/** Names a file the command imported and did not take back, and how to. */
+function leftoverNote({
+	imported,
+	mediaId,
+	projectId,
+	reason,
+}: {
+	imported: BatchImportResult["mediaFile"];
+	mediaId: string;
+	projectId: string;
+	reason?: string;
+}): string {
+	const name = imported?.name ?? mediaId;
+	return (
+		`; the file this command imported is still in the project: ${name} (${mediaId})` +
+		` — remove it with "qcut editor:media:delete --project-id ${projectId} --media-id ${mediaId}"` +
+		(reason ? ` (cleanup failed: ${reason})` : "")
+	);
+}
+
 /** Handle `editor:timeline:replace-media`. */
 export async function timelineReplaceMedia(
 	client: EditorApiClient,
@@ -145,9 +209,20 @@ export async function timelineReplaceMedia(
 			error instanceof EditorApiError &&
 			error.statusCode === 409
 		) {
-			await client
-				.delete(`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`)
-				.catch(() => undefined);
+			const cleanup = await removeImported({ client, project, mediaId });
+			if (!cleanup.removed) {
+				throw new EditorApiError(
+					error.message +
+						leftoverNote({
+							imported,
+							mediaId,
+							projectId,
+							reason: cleanup.reason,
+						}),
+					error.statusCode,
+					error.apiError
+				);
+			}
 		}
 		throw error;
 	}
@@ -156,9 +231,13 @@ export async function timelineReplaceMedia(
 	);
 	const clip = describeClip({ timeline, elementId });
 	if (clip?.mediaId !== mediaId) {
+		// The patch was accepted, so the editor may yet apply it and the clip
+		// would then need this media: name the import rather than delete it.
 		return {
 			success: false,
-			error: `The editor answered, but clip ${elementId} still plays ${String(clip?.sourceName ?? "its old media")}`,
+			error:
+				`The editor answered, but clip ${elementId} still plays ${String(clip?.sourceName ?? "its old media")}` +
+				(imported ? leftoverNote({ imported, mediaId, projectId }) : ""),
 		};
 	}
 	return {
