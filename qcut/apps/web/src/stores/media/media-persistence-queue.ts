@@ -137,17 +137,6 @@ export async function deleteTrackedMediaItem({
 	}
 }
 
-/** Whether a delete for this item is still running. */
-export function isMediaItemDeleting({
-	projectId,
-	id,
-}: {
-	projectId: string;
-	id: string;
-}): boolean {
-	return (activeDeletes.get(keyFor({ projectId, id })) ?? 0) > 0;
-}
-
 /** Test seam: drop all tracked state between cases. */
 export function resetMediaPersistenceQueue(): void {
 	pendingSaves.clear();
