@@ -24,6 +24,7 @@ import {
 	captionAssFade,
 	resolveCaptionAnimation,
 } from "./caption-animation.js";
+import { resolveAssCjkFamily } from "./ass-cjk-font.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -58,12 +59,6 @@ export function assBlurForCssBlur(radius: number): number {
 	return (radius / 2) * LIBASS_BLUR_PER_SIGMA;
 }
 
-function containsCJK(text: string): boolean {
-	return /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
-		text
-	);
-}
-
 function resolveClipStyle({
 	clip,
 	cjkFontFamily,
@@ -72,9 +67,15 @@ function resolveClipStyle({
 	cjkFontFamily?: string;
 }): SubtitleStyle {
 	const style = resolveSubtitleStyle(clip.style);
-	return cjkFontFamily && containsCJK(clip.text)
-		? { ...style, fontFamily: cjkFontFamily }
-		: style;
+	// The CJK font is a fallback for a family that cannot render the text, not
+	// an override: a caption that asks for Songti SC used to export in
+	// Hiragino Sans GB (N31).
+	const fontFamily = resolveAssCjkFamily({
+		family: style.fontFamily,
+		text: clip.text,
+		fallbackFamily: cjkFontFamily,
+	});
+	return fontFamily === style.fontFamily ? style : { ...style, fontFamily };
 }
 
 /** Generate a complete ASS file from caption elements */
