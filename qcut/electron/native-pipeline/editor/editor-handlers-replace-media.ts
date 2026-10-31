@@ -85,11 +85,13 @@ const CLEANUP_RETRY_DELAY_MS = 250;
  * The delete asks the editor to drop the item before it unlinks the file, so
  * a renderer that refuses — which a save still writing that item's storage
  * entry can cause — leaves both the library entry and the copy in the
- * project's media folder. The route also answers `false` with a 200 when it
- * cannot find the media. A single fire-and-forget attempt discarded both
- * outcomes, so the command reported a clean refusal while its import stayed
- * behind, twice in six attempts (N30). Retried once, because that race is
- * transient.
+ * project's media folder. A single fire-and-forget attempt discarded that, so
+ * the command reported a clean refusal while its import stayed behind, twice
+ * in six attempts (N30). Retried once, because that race is transient.
+ *
+ * A `false` body is not a refusal: the route answers it when the media is not
+ * there at all, before anything is removed, so there is nothing left behind
+ * to report.
  */
 async function removeImported({
 	client,
@@ -108,11 +110,12 @@ async function removeImported({
 			});
 		}
 		try {
-			const answer = await client.delete<unknown>(
+			// `false` means the media was not found, which the route answers
+			// before it removes anything: nothing is left behind either way.
+			await client.delete<unknown>(
 				`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`
 			);
-			if (answer !== false) return { removed: true };
-			reason = "the editor did not find it";
+			return { removed: true };
 		} catch (error) {
 			reason = error instanceof Error ? error.message : String(error);
 		}
