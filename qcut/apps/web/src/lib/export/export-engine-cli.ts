@@ -78,7 +78,14 @@ import {
 	logActualVideoDurationCLI,
 	logMode2Detection,
 } from "./export-engine-cli-debug";
-import { buildTimelineAssLayers } from "./export-engine-cli-text";
+import {
+	assFontFamiliesInTracks,
+	buildTimelineAssLayers,
+} from "./export-engine-cli-text";
+import {
+	assFaceRequestsFor,
+	loadAssFontMetrics,
+} from "@/lib/text/ass-font-metrics";
 import {
 	applyJianyingTimelineTransitions,
 	partitionJianyingTransitions,
@@ -653,6 +660,11 @@ export class CLIExportEngine extends ExportEngine {
 			textRasterLayers.map(({ elementId }) => elementId)
 		);
 
+		const assPlatform = window.electronAPI?.platform as
+			| "darwin"
+			| "win32"
+			| "linux"
+			| undefined;
 		// Build text overlay filter chain
 		console.log(
 			"🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation..."
@@ -666,11 +678,15 @@ export class CLIExportEngine extends ExportEngine {
 			canvasHeight: this.canvas.height,
 			fps: this.getFrameRate(),
 			excludedTextElementIds: rasterTextElementIds,
-			platform: window.electronAPI?.platform as
-				| "darwin"
-				| "win32"
-				| "linux"
-				| undefined,
+			platform: assPlatform,
+			fontMetrics: await loadAssFontMetrics(
+				assFaceRequestsFor(
+					assFontFamiliesInTracks({
+						tracks: this.tracks,
+						platform: assPlatform,
+					})
+				)
+			),
 		});
 		const nativelyRenderedTextElementIds = new Set([
 			...assRenderedElementIds,
