@@ -9,6 +9,7 @@
 
 import { debugLog, debugError } from "@/lib/debug/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
+import { saveTrackedMediaItem } from "./media-persistence-queue";
 import type { MediaItem } from "./media-store-types";
 import { DEFAULT_FOLDER_IDS } from "./media-store-types";
 
@@ -39,7 +40,11 @@ function persistMediaItem(item: MediaItem): void {
 		.then(({ useProjectStore }) => {
 			const projectId = useProjectStore.getState().activeProject?.id;
 			if (projectId) {
-				storageService.saveMediaItem(projectId, item).catch((error) => {
+				saveTrackedMediaItem({
+					projectId,
+					id: item.id,
+					save: () => storageService.saveMediaItem(projectId, item),
+				}).catch((error) => {
 					debugError("[MediaStore] Failed to persist folder change:", error);
 				});
 			}
@@ -56,7 +61,11 @@ function persistMediaItems(items: MediaItem[]): void {
 			const projectId = useProjectStore.getState().activeProject?.id;
 			if (projectId) {
 				for (const item of items) {
-					storageService.saveMediaItem(projectId, item).catch((error) => {
+					saveTrackedMediaItem({
+						projectId,
+						id: item.id,
+						save: () => storageService.saveMediaItem(projectId, item),
+					}).catch((error) => {
 						debugError("[MediaStore] Failed to persist folder change:", error);
 					});
 				}
