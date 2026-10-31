@@ -35,6 +35,18 @@ function finite(value: unknown, fallback: number): number {
 	return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * A `#rrggbb` to build an ASS colour from. `assColorParts` slices the hex
+ * positionally, so a named colour, an `rgba(…)` or a short `#rgb` would
+ * become a different colour entirely; those fall back to black.
+ */
+export function assHexColor(value: string): string {
+	if (HEX_COLOR.test(value)) return value;
+	const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(value);
+	if (!short) return "#000000";
+	return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
+}
+
 /** `fontWeight` when it is a weight; undefined leaves `bold`'s 700 or 400. */
 export function captionWeightValue(value: unknown): number | undefined {
 	return typeof value === "number" && value >= 100 && value <= 900
@@ -153,16 +165,24 @@ function assColorParts(
 export function assShadowTags({
 	shadow,
 	overlay,
+	borderless = false,
 }: {
 	shadow: TextOverlayShadow;
 	overlay: TextOverlay;
+	/**
+	 * A background box makes the style's BorderStyle 3, where `\bord` fills a
+	 * box rather than widening the letters — so casting the shadow from the
+	 * border would paint a solid rectangle in the shadow's colour. Cast it
+	 * from the fill alone instead, as the export dialog's path does.
+	 */
+	borderless?: boolean;
 }): string {
 	const { color, alpha } = assColorParts(
-		shadow.color,
+		assHexColor(shadow.color),
 		shadow.opacity * overlay.opacity
 	);
 	const blur = `\\blur${assBlurForCssBlur(shadow.blur).toFixed(2)}`;
-	if (overlay.strokeWidth > 0) {
+	if (!borderless && overlay.strokeWidth > 0) {
 		// A see-through fill shows the border as the whole widened letter.
 		return `\\1a&HFF&\\3c${color}\\3a${alpha}\\4a&HFF&\\bord${overlay.strokeWidth}\\shad0${blur}`;
 	}
