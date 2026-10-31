@@ -21,6 +21,10 @@
  * `shasum` the `limited.f32` inside the `true-peak-pcm-` directory. An export
  * that never ran the mix pass keeps `intermediate.mp4` instead.
  *
+ * The correction loop patches `limited.f32` in place, so each round also
+ * leaves a `limited-before-dips-<attempt>.f32`: comparing those separates a
+ * difference that arrived with the mix from one the loop introduced.
+ *
  * The first hash that differs between two runs names the stage to look at.
  * Off by default: a kept directory holds a full-size intermediate video and a
  * float-PCM master, so it is large.
