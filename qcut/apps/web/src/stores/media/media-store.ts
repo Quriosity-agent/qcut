@@ -123,6 +123,31 @@ const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
 	updateMediaItemField(itemId, { metadata: { ...item?.metadata, alpha } });
 };
 
+/**
+ * Persist an item unless it has left the library while the save waited.
+ *
+ * A wait-mode save resumes once every delete for its id has finished — and
+ * that id can be the one that was just deleted, since an id is derived from
+ * the file name. The item it captured may therefore be gone by the time it
+ * runs, and writing it would re-create the storage entry the delete removed.
+ * This check sits immediately before the write, which is the only place a
+ * delete cannot interleave past (N30).
+ */
+const persistIfStillPresent = async (
+	projectId: string,
+	item: MediaItem
+): Promise<boolean> => {
+	const present = useMediaStore
+		.getState()
+		.mediaItems.some((candidate) => candidate.id === item.id);
+	if (!present) {
+		debugLog(`[MediaStore] Dropped a queued save for removed media ${item.id}`);
+		return false;
+	}
+	await storageService.saveMediaItem(projectId, item);
+	return true;
+};
+
 // Helper to update media item metadata and persist to storage
 const updateMediaMetadataAndPersist = async (
 	itemId: string,
@@ -338,18 +363,23 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			// A media id is derived from the file name, so re-importing a file
 			// that is being deleted reuses its id: wait for the delete rather
 			// than skip the save, or the item would exist only in memory.
+			let stored = false;
 			await saveTrackedMediaItem({
 				projectId,
 				id: newItem.id,
-				save: () => storageService.saveMediaItem(projectId, newItem),
+				save: async () => {
+					stored = await persistIfStillPresent(projectId, newItem);
+				},
 				whenDeleting: "wait",
 			});
-			console.log("[MediaStore.addMediaItem] Saved to storage", {
-				projectId,
-				id: newItem.id,
-				name: newItem.name,
-				type: newItem.type,
-			});
+			if (stored) {
+				console.log("[MediaStore.addMediaItem] Saved to storage", {
+					projectId,
+					id: newItem.id,
+					name: newItem.name,
+					type: newItem.type,
+				});
+			}
 
 			// Trigger thumbnail generation for videos AFTER storage save succeeds
 			if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
@@ -419,7 +449,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			await saveTrackedMediaItem({
 				projectId,
 				id,
-				save: () => storageService.saveMediaItem(projectId, updated),
+				save: () => persistIfStillPresent(projectId, updated),
 				whenDeleting: "wait",
 			});
 			if (
