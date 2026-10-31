@@ -37,14 +37,48 @@ function finite(value: unknown, fallback: number): number {
 
 /**
  * A `#rrggbb` to build an ASS colour from. `assColorParts` slices the hex
- * positionally, so a named colour, an `rgba(…)` or a short `#rgb` would
- * become a different colour entirely; those fall back to black.
+ * positionally, so anything else would come out a different colour entirely.
+ *
+ * `#rgb`, `#rgba`, `#rrggbbaa` and `rgb()`/`rgba()` are converted; their
+ * alpha is dropped, because a shadow carries its own opacity. A named CSS
+ * colour is not: no export path in this project parses one (the export
+ * dialog's own `colorToFFmpeg` would emit `0xred`), so resolving names here
+ * alone would make the two engines disagree again.
  */
 export function assHexColor(value: string): string {
-	if (HEX_COLOR.test(value)) return value;
-	const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(value);
-	if (!short) return "#000000";
-	return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
+	const text = value.trim();
+	if (HEX_COLOR.test(text)) return text.slice(0, 7);
+	const hex = /^#([0-9a-f]{3,8})$/i.exec(text);
+	if (hex) {
+		const digits = hex[1];
+		if (digits.length === 3 || digits.length === 4) {
+			const [r, g, b] = [digits[0], digits[1], digits[2]];
+			return `#${r}${r}${g}${g}${b}${b}`;
+		}
+		if (digits.length === 8) return `#${digits.slice(0, 6)}`;
+		return "#000000";
+	}
+	const rgb = /^rgba?\(([^)]*)\)$/i.exec(text);
+	if (rgb) {
+		const parts = rgb[1]
+			.split(/[\s,/]+/)
+			.filter(Boolean)
+			.slice(0, 3);
+		if (parts.length === 3) {
+			const channels = parts.map((part) => {
+				const scale = part.endsWith("%") ? 2.55 : 1;
+				const number = Number.parseFloat(part);
+				if (!Number.isFinite(number)) return undefined;
+				return Math.min(255, Math.max(0, Math.round(number * scale)));
+			});
+			if (channels.every((channel) => channel !== undefined)) {
+				return `#${channels
+					.map((channel) => (channel as number).toString(16).padStart(2, "0"))
+					.join("")}`;
+			}
+		}
+	}
+	return "#000000";
 }
 
 /** `fontWeight` when it is a weight; undefined leaves `bold`'s 700 or 400. */
