@@ -39,6 +39,9 @@ vi.mock("@/lib/export/export-engine-cli-text", () => ({
 		layers: [],
 		renderedTextElementIds: new Set<string>(),
 	})),
+	// The hook also asks which font families the layers will name, so it can
+	// fetch their libass metrics in one call before building them.
+	assFontFamiliesInTracks: vi.fn(() => []),
 }));
 
 const renderVideoCompositionFramePreview = vi.fn();
