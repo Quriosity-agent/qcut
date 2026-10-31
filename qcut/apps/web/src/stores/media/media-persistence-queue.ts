@@ -12,51 +12,88 @@
  * `replace-media` left the file it had just imported in the media library,
  * twice in six attempts (N30).
  *
- * Both orderings close once the delete drains an in-flight save and a save
- * for an item already being deleted is skipped.
- *
  * @module stores/media/media-persistence-queue
  */
 
-const pendingSaves = new Map<string, Promise<unknown>>();
-const deleting = new Set<string>();
+/** Every save still running for a key: a delete has to outlast all of them. */
+const pendingSaves = new Map<string, Set<Promise<unknown>>>();
+/** The tail of a key's delete chain, so deletes for one item run in order. */
+const deleteChain = new Map<string, Promise<unknown>>();
+/** How many deletes for a key are still running. */
+const activeDeletes = new Map<string, number>();
 
 function keyFor({ projectId, id }: { projectId: string; id: string }): string {
 	return `${projectId}:${id}`;
 }
 
+function trackSave(key: string, save: Promise<unknown>): () => void {
+	let running = pendingSaves.get(key);
+	if (!running) {
+		running = new Set();
+		pendingSaves.set(key, running);
+	}
+	running.add(save);
+	return () => {
+		running?.delete(save);
+		if (running?.size === 0) pendingSaves.delete(key);
+	};
+}
+
 /**
- * Run a media item's save unless its delete is already under way.
+ * Wait for every save of this key, not just the newest. Two overlapping
+ * saves used to mean the delete waited for the second while the first was
+ * still writing, and that write then re-created the entry.
+ */
+async function drainSaves(key: string): Promise<void> {
+	// Nothing new can enter while the delete is marked active, so this ends.
+	let running = pendingSaves.get(key);
+	while (running && running.size > 0) {
+		await Promise.allSettled([...running]);
+		running = pendingSaves.get(key);
+	}
+}
+
+/**
+ * Run a media item's save.
  *
- * Returns whether the save ran, so a caller can tell a stored item from one
- * dropped because it is going away.
+ * `whenDeleting` says what to do if a delete for the same item is under way.
+ * A background pass re-saving an item that is going away should be dropped
+ * (`"skip"`, the default). A fresh write — a new import reusing the same id,
+ * which happens because an id is derived from the file name — must instead
+ * wait for the delete and then store the new item (`"wait"`), or it would
+ * live only in memory.
+ *
+ * Returns whether the save ran.
  */
 export async function saveTrackedMediaItem({
 	projectId,
 	id,
 	save,
+	whenDeleting = "skip",
 }: {
 	projectId: string;
 	id: string;
 	save: () => Promise<unknown>;
+	whenDeleting?: "skip" | "wait";
 }): Promise<boolean> {
 	const key = keyFor({ projectId, id });
-	if (deleting.has(key)) return false;
+	while ((activeDeletes.get(key) ?? 0) > 0) {
+		if (whenDeleting === "skip") return false;
+		await deleteChain.get(key)?.catch(() => undefined);
+	}
+
 	const started = save();
-	pendingSaves.set(key, started);
+	const release = trackSave(key, started);
 	try {
 		await started;
 		return true;
 	} finally {
-		// Only clear our own entry: a later save may have replaced it.
-		if (pendingSaves.get(key) === started) {
-			pendingSaves.delete(key);
-		}
+		release();
 	}
 }
 
 /**
- * Delete a media item with any in-flight save for it drained first, and
+ * Delete a media item with every in-flight save for it drained first, and
  * further saves for it suppressed until the delete settles.
  */
 export async function deleteTrackedMediaItem({
@@ -69,21 +106,51 @@ export async function deleteTrackedMediaItem({
 	remove: () => Promise<unknown>;
 }): Promise<void> {
 	const key = keyFor({ projectId, id });
-	deleting.add(key);
-	try {
+	activeDeletes.set(key, (activeDeletes.get(key) ?? 0) + 1);
+
+	// Deletes for one key run one at a time: an earlier one finishing must not
+	// clear the way for a save while a later one is still removing.
+	const earlier = deleteChain.get(key);
+	const run = (async () => {
+		await earlier?.catch(() => undefined);
 		// A save already writing holds the entry open; whether it succeeded is
 		// the saver's business, not the delete's.
-		await pendingSaves.get(key)?.catch(() => undefined);
+		await drainSaves(key);
 		await remove();
+	})();
+	deleteChain.set(
+		key,
+		run.catch(() => undefined)
+	);
+
+	try {
+		await run;
 	} finally {
-		// Cleared, so re-importing the same file can be saved again: a media id
-		// is derived from the file name, so it repeats.
-		deleting.delete(key);
+		const left = (activeDeletes.get(key) ?? 1) - 1;
+		if (left > 0) {
+			activeDeletes.set(key, left);
+		} else {
+			// No delete for this key is left, so its chain is finished too.
+			activeDeletes.delete(key);
+			deleteChain.delete(key);
+		}
 	}
+}
+
+/** Whether a delete for this item is still running. */
+export function isMediaItemDeleting({
+	projectId,
+	id,
+}: {
+	projectId: string;
+	id: string;
+}): boolean {
+	return (activeDeletes.get(keyFor({ projectId, id })) ?? 0) > 0;
 }
 
 /** Test seam: drop all tracked state between cases. */
 export function resetMediaPersistenceQueue(): void {
 	pendingSaves.clear();
-	deleting.clear();
+	deleteChain.clear();
+	activeDeletes.clear();
 }
