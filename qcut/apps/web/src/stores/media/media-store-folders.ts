@@ -34,12 +34,27 @@ export interface FolderActions {
 	autoOrganizeByType: () => void;
 }
 
+/**
+ * Whether the item is still in the library.
+ *
+ * These saves only reach the queue after a dynamic import resolves, so a
+ * folder edit that started before a delete can arrive after it finished —
+ * late enough that the queue no longer knows the item was removed. Checking
+ * the live list closes that window (N30).
+ */
+async function stillInLibrary(item: MediaItem): Promise<boolean> {
+	const { useMediaStore } = await import("./media-store");
+	return useMediaStore
+		.getState()
+		.mediaItems.some((candidate) => candidate.id === item.id);
+}
+
 /** Persist a media item to storage using the active project ID. */
 function persistMediaItem(item: MediaItem): void {
 	import("@/stores/project-store")
-		.then(({ useProjectStore }) => {
+		.then(async ({ useProjectStore }) => {
 			const projectId = useProjectStore.getState().activeProject?.id;
-			if (projectId) {
+			if (projectId && (await stillInLibrary(item))) {
 				saveTrackedMediaItem({
 					projectId,
 					id: item.id,
@@ -57,10 +72,11 @@ function persistMediaItem(item: MediaItem): void {
 /** Persist multiple media items to storage. */
 function persistMediaItems(items: MediaItem[]): void {
 	import("@/stores/project-store")
-		.then(({ useProjectStore }) => {
+		.then(async ({ useProjectStore }) => {
 			const projectId = useProjectStore.getState().activeProject?.id;
 			if (projectId) {
 				for (const item of items) {
+					if (!(await stillInLibrary(item))) continue;
 					saveTrackedMediaItem({
 						projectId,
 						id: item.id,
