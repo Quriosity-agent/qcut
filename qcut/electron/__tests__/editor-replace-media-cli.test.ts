@@ -266,9 +266,10 @@ describe("editor timeline replace-media", () => {
 		expect(remove).toHaveBeenCalledTimes(2);
 	});
 
-	it("says nothing extra when the media was already gone", async () => {
-		// A `false` body means the route found no media, before it removed
-		// anything — there is no leftover to warn about.
+	it("says the cleanup is unconfirmed when the editor finds no media", async () => {
+		// A `false` body means the route's lookup found nothing before removing
+		// anything — but that lookup swallows an unreadable directory, and the
+		// file was imported seconds earlier, so it cannot be called removed.
 		const { client, patch, remove } = fakeClient();
 		remove.mockResolvedValue(false);
 		patch.mockRejectedValueOnce(
@@ -277,7 +278,8 @@ describe("editor timeline replace-media", () => {
 
 		await expect(
 			timelineReplaceMedia(client, options({ source: shotFile() }))
-		).rejects.toThrow(/^05_v2\.mp4 is 3\.000 s long$/);
+		).rejects.toThrow(/found no media to remove/);
+		// A lookup that found nothing answers the same the second time.
 		expect(remove).toHaveBeenCalledTimes(1);
 	});
 
