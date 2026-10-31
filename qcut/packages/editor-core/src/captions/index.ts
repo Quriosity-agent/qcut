@@ -32,6 +32,8 @@ export {
 	generateASS,
 	secondsToASSTime,
 	type ASSGeneratorOptions,
+	type AssFaceMetrics,
+	type AssFontMetricsLookup,
 } from "./ass-generator.js";
 
 export {
