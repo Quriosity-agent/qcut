@@ -94,6 +94,94 @@ describe("media persistence queue", () => {
 		await expect(failed).resolves.toBe("rejected");
 	});
 
+	it("waits for every overlapping save, not just the newest", async () => {
+		const order: string[] = [];
+		const first = gate();
+		const second = gate();
+		const saving = [
+			saveTrackedMediaItem({
+				...item,
+				save: () =>
+					first.opened.then(() => {
+						order.push("first");
+					}),
+			}),
+			saveTrackedMediaItem({
+				...item,
+				save: () =>
+					second.opened.then(() => {
+						order.push("second");
+					}),
+			}),
+		];
+		const deleting = deleteTrackedMediaItem({
+			...item,
+			remove: async () => {
+				order.push("deleted");
+			},
+		});
+
+		// The newer save must not let the delete past the older one, which is
+		// still holding the storage entry open.
+		second.open();
+		await Promise.resolve();
+		expect(order).not.toContain("deleted");
+
+		first.open();
+		await Promise.all([...saving, deleting]);
+		expect(order.at(-1)).toBe("deleted");
+	});
+
+	it("keeps saves out until the last overlapping delete finishes", async () => {
+		const firstRemove = gate();
+		const secondRemove = gate();
+		const save = vi.fn(async () => undefined);
+		const deletions = [
+			deleteTrackedMediaItem({ ...item, remove: () => firstRemove.opened }),
+			deleteTrackedMediaItem({ ...item, remove: () => secondRemove.opened }),
+		];
+		await Promise.resolve();
+
+		firstRemove.open();
+		await Promise.resolve();
+		// One of two deletes finishing must not clear the way while the other
+		// is still removing.
+		await expect(saveTrackedMediaItem({ ...item, save })).resolves.toBe(false);
+		expect(save).not.toHaveBeenCalled();
+
+		secondRemove.open();
+		await Promise.all(deletions);
+		await expect(saveTrackedMediaItem({ ...item, save })).resolves.toBe(true);
+	});
+
+	it("lets a fresh write wait for the delete instead of being dropped", async () => {
+		const order: string[] = [];
+		const removing = gate();
+		const deleting = deleteTrackedMediaItem({
+			...item,
+			remove: () =>
+				removing.opened.then(() => {
+					order.push("deleted");
+				}),
+		});
+		await Promise.resolve();
+
+		// Re-importing the same file reuses its id. Skipping that save would
+		// leave the new item in memory only.
+		const saving = saveTrackedMediaItem({
+			...item,
+			whenDeleting: "wait",
+			save: async () => {
+				order.push("saved");
+			},
+		});
+
+		removing.open();
+		await expect(saving).resolves.toBe(true);
+		await deleting;
+		expect(order).toEqual(["deleted", "saved"]);
+	});
+
 	it("keeps items apart, so one delete does not block another's save", async () => {
 		const removing = gate();
 		const save = vi.fn(async () => undefined);
