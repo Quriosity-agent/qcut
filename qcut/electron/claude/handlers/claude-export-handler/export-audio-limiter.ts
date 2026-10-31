@@ -14,7 +14,10 @@ import {
 	planPeakDips,
 	summarizePeakDips,
 } from "./export-audio-peak-dips.js";
-import { reportKeptExportDirectory } from "./export-temp-retention.js";
+import {
+	keepExportTempFiles,
+	reportKeptExportDirectory,
+} from "./export-temp-retention.js";
 import { HANDLER_NAME } from "./types.js";
 
 const OVERSAMPLE_FACTOR = 4;
@@ -357,6 +360,18 @@ export async function renderTruePeakLimitedExport({
 				extraDb: REPEAT_CORRECTION_DB * (attempt - 1),
 				padSeconds: CODEC_WINDOW_SAMPLES / sampleRate,
 			});
+			// applyPeakDips patches the PCM in place, so the retained file would
+			// only ever show the corrected audio. Keep the limiter's own output
+			// beside it, or a comparison cannot tell a difference that arrived
+			// with the mix from one the correction loop introduced (N34).
+			if (keepExportTempFiles()) {
+				await fs
+					.copyFile(
+						limitedAudioPath,
+						path.join(audioWorkDir, `limited-before-dips-${attempt}.f32`)
+					)
+					.catch(() => undefined);
+			}
 			await applyPeakDips({
 				file: limitedAudioPath,
 				dips: correction,
