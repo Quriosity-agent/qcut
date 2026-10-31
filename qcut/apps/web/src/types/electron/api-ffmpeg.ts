@@ -5,6 +5,8 @@
 import type { StickerSource } from "../../../../../electron/ffmpeg-handler";
 import type {
 	AlphaPlaybackProxyResult,
+	AssFontMetricsReply,
+	AssFontMetricsRequest,
 	AudioWaveformOptions,
 	AudioWaveformResult,
 	FFmpegHealthResult,
@@ -156,6 +158,10 @@ export interface ElectronFFmpegOps {
 			loop: boolean;
 			quality: number;
 		}) => Promise<{ outputPath: string; fileSize: number }>;
+		/** libass's sizing for a face: the renderer cannot read font files. */
+		assFontMetrics: (
+			requests: AssFontMetricsRequest[]
+		) => Promise<AssFontMetricsReply[]>;
 		getPath: () => Promise<string>;
 		checkHealth: () => Promise<FFmpegHealthResult>;
 	};
