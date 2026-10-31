@@ -183,6 +183,8 @@ export interface TextOverlay {
 	shadowOpacity: number;
 	shadowOffsetX: number;
 	shadowOffsetY: number;
+	/** CSS text-shadow blur radius in pixels: a Gaussian of σ = blur ÷ 2. */
+	shadowBlur: number;
 	/** Soft glow behind the glyphs; drawn when glowOpacity and glowBlur are > 0. */
 	glowColor: string;
 	glowOpacity: number;
@@ -207,7 +209,7 @@ export interface TextOverlay {
 	animationDelay: number;
 	/** caption-anchor only (N25): a weight other than bold's (SemiBold 600). */
 	weight?: number;
-	/** caption-anchor only: soft shadows under the text, instead of the hard one. */
+	/** Soft shadows under the text, drawn instead of ASS's hard one. */
 	shadows?: TextOverlayShadow[];
 	/** caption-anchor only: seconds of fade-in from the start. */
 	fadeIn?: number;
