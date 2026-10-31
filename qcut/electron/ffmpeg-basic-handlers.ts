@@ -39,6 +39,32 @@ import type {
 /** Faces one `ffmpeg-ass-font-metrics` call may ask about. */
 const MAX_ASS_FONT_METRICS_REQUESTS = 512;
 
+/**
+ * One well-formed entry of a metrics request.
+ *
+ * The array crosses IPC from the renderer, so nothing about its shape is
+ * guaranteed: a null entry would throw on `request.family`, and a non-boolean
+ * `bold` would silently pick the wrong face.
+ */
+function assFontMetricsRequestOf(value: unknown): AssFontMetricsRequest | null {
+	if (typeof value !== "object" || value === null) return null;
+	const candidate = value as Partial<AssFontMetricsRequest>;
+	if (typeof candidate.family !== "string" || !candidate.family.trim()) {
+		return null;
+	}
+	if (candidate.bold !== undefined && typeof candidate.bold !== "boolean") {
+		return null;
+	}
+	if (candidate.italic !== undefined && typeof candidate.italic !== "boolean") {
+		return null;
+	}
+	return {
+		family: candidate.family,
+		bold: candidate.bold ?? false,
+		italic: candidate.italic ?? false,
+	};
+}
+
 export function setupBasicHandlers(
 	tempManager: TempManager,
 	getFFmpegHealth: () => Promise<FFmpegHealthResult>
@@ -68,20 +94,18 @@ export function setupBasicHandlers(
 			// batch is bounded: the real caller sends four faces per family.
 			return requests
 				.slice(0, MAX_ASS_FONT_METRICS_REQUESTS)
-				.flatMap((request) => {
+				.flatMap((entry) => {
+					const request = assFontMetricsRequestOf(entry);
+					if (!request) return [];
 					// An uninstalled family would measure a neutral 1.0, which the
 					// renderer cannot tell from a real measurement: it would then
 					// shift the caption by the leading while leaving its size
 					// uncorrected. Omit it so the unmeasured path applies.
 					if (!assFontFamilyInstalled({ family: request.family })) return [];
-					const { sizeFactor, lineHeightEm } = assFontMetrics({
-						family: request.family,
-						bold: request.bold ?? false,
-						italic: request.italic ?? false,
-					});
+					const { sizeFactor, lineHeightEm } = assFontMetrics(request);
 					return [
 						{
-							family: request.family,
+							...request,
 							bold: request.bold ?? false,
 							italic: request.italic ?? false,
 							sizeFactor,
