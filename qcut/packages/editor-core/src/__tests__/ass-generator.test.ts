@@ -174,8 +174,10 @@ describe("generateASS", () => {
 			fontMetrics: () => metrics,
 		});
 
-		// Default caption: 48 px at line spacing 1.4, so (48 * 1.4 - 48) / 2.
-		const leading = (48 * 1.4 - 48 * metrics.lineHeightEm) / 2;
+		// A caption's line is as tall as its ASS Fontsize, so the leading comes
+		// from sizeFactor, not lineHeightEm. The fixture keeps them unequal so
+		// the two cannot be confused: 48 px at line spacing 1.4 against 1.2.
+		const leading = (48 * 1.4 - 48 * metrics.sizeFactor) / 2;
 		const style = ass
 			.split("\n")
 			.find((line) => line.startsWith("Style:")) as string;
