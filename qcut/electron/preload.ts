@@ -47,6 +47,8 @@ import type {
 	VideoPreviewProxyOptions,
 	VideoPreviewProxyProgress,
 	VideoPreviewProxyResult,
+	AssFontMetricsReply,
+	AssFontMetricsRequest,
 } from "./ffmpeg/types";
 import type {
 	ElectronAPI,
@@ -865,6 +867,8 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 		checkFFmpegResource: (filename: string): Promise<boolean> =>
 			ipcRenderer.invoke("check-ffmpeg-resource", filename),
 		getPath: (): Promise<string> => ipcRenderer.invoke("ffmpeg-path"),
+		assFontMetrics: (requests: AssFontMetricsRequest[]) =>
+			ipcRenderer.invoke("ffmpeg-ass-font-metrics", requests),
 		checkHealth: (): Promise<{
 			ffmpegOk: boolean;
 			ffprobeOk: boolean;
