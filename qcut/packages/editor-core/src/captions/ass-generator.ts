@@ -38,6 +38,12 @@ export interface ASSGeneratorOptions {
 	 * typical font (N31) — the native export has always scaled it.
 	 */
 	fontMetrics?: AssFontMetricsLookup;
+	/**
+	 * Whether an installed face carries CJK glyphs, read from the font. The
+	 * native export always checks this; without it a CJK-capable family
+	 * outside the fixed list is replaced here but kept there.
+	 */
+	familyCoversCjk?: (family: string) => boolean;
 }
 
 /** libass's sizing for one face. */
@@ -48,12 +54,17 @@ export interface AssFaceMetrics {
 	lineHeightEm: number;
 }
 
-/** Looks up what libass will do with a face. */
+/**
+ * Looks up what libass will do with a face. Answering `undefined` means the
+ * face could not be measured, which is not the same as a face that needs no
+ * correction: a synthetic 1.0 would leave the size alone while still moving
+ * the caption by the leading.
+ */
 export type AssFontMetricsLookup = (request: {
 	family: string;
 	bold: boolean;
 	italic: boolean;
-}) => AssFaceMetrics;
+}) => AssFaceMetrics | undefined;
 
 /** What libass will do with the faces one caption uses. */
 interface CaptionMetrics {
@@ -61,11 +72,11 @@ interface CaptionMetrics {
 	secondarySizeFactor: number;
 	/**
 	 * Half the difference between the line box CSS lays out and the one
-	 * libass lays out. libass stacks the font's own line height with the em
-	 * at its bottom; CSS centres the em in its line box, so a pinned top or
-	 * bottom edge moves by this much or the glyphs do not land where the
-	 * preview draws them. Scaling the Fontsize without it moves every caption
-	 * by about 3.7 % of the nominal size.
+	 * libass lays out, so a pinned top or bottom edge lands where the preview
+	 * draws it. A caption's line is as tall as its ASS Fontsize — the nominal
+	 * size times the size factor — which is why this uses `sizeFactor` and
+	 * not `lineHeightEm`; the native export reserves `lineHeightEm` for a
+	 * text element's own placement.
 	 */
 	leading: number;
 }
@@ -88,6 +99,11 @@ function captionMetrics({
 		bold: captionFontWeight(style) >= 600,
 		italic: Boolean(style.italic),
 	});
+	// An unmeasured face keeps the nominal size, so its line box is the one it
+	// always was and compensating it would move the caption for nothing.
+	if (!face) {
+		return { sizeFactor: 1, secondarySizeFactor: 1, leading: 0 };
+	}
 	const secondary = resolveSecondaryLineStyle(style);
 	const secondaryFace = fontMetrics({
 		family: secondary.fontFamily,
@@ -96,10 +112,9 @@ function captionMetrics({
 	});
 	return {
 		sizeFactor: face.sizeFactor,
-		secondarySizeFactor: secondaryFace.sizeFactor,
+		secondarySizeFactor: secondaryFace?.sizeFactor ?? 1,
 		leading:
-			(style.fontSize * style.lineSpacing -
-				style.fontSize * face.lineHeightEm) /
+			(style.fontSize * style.lineSpacing - style.fontSize * face.sizeFactor) /
 			2,
 	};
 }
@@ -137,9 +152,11 @@ export function assBlurForCssBlur(radius: number): number {
 function resolveClipStyle({
 	clip,
 	cjkFontFamily,
+	familyCoversCjk,
 }: {
 	clip: CaptionElement;
 	cjkFontFamily?: string;
+	familyCoversCjk?: (family: string) => boolean;
 }): SubtitleStyle {
 	const style = resolveSubtitleStyle(clip.style);
 	// The CJK font is a fallback for a family that cannot render the text, not
@@ -149,6 +166,7 @@ function resolveClipStyle({
 		family: style.fontFamily,
 		text: clip.text,
 		fallbackFamily: cjkFontFamily,
+		coversCjk: familyCoversCjk,
 	});
 	return fontFamily === style.fontFamily ? style : { ...style, fontFamily };
 }
@@ -166,6 +184,7 @@ export function generateASS(
 		const resolved = resolveClipStyle({
 			clip,
 			cjkFontFamily: options.cjkFontFamily,
+			familyCoversCjk: options.familyCoversCjk,
 		});
 		const key = JSON.stringify(resolved);
 		if (!styleMap.has(key)) {
@@ -213,6 +232,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 		const resolved = resolveClipStyle({
 			clip,
 			cjkFontFamily: options.cjkFontFamily,
+			familyCoversCjk: options.familyCoversCjk,
 		});
 		const key = JSON.stringify(resolved);
 		const styleName = styleNames.get(key) || "Default";
