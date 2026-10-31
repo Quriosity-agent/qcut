@@ -446,14 +446,14 @@ export function useNativeCompositionFramePreview({
 					),
 					// The paused-frame preview has to agree with the export it
 					// previews, so it corrects the ASS font size the same way.
-					fontMetrics: await loadAssFontMetrics(
+					...(await loadAssFontMetrics(
 						assFaceRequestsFor(
 							assFontFamiliesInTracks({
 								tracks: frameTracks,
 								platform: captionPlatform,
 							})
 						)
-					),
+					)),
 				}).layers;
 				const result =
 					await platform().ffmpeg.renderVideoCompositionFramePreview({
