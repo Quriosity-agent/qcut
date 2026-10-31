@@ -46,39 +46,71 @@ function finite(value: unknown, fallback: number): number {
  * alone would make the two engines disagree again.
  */
 export function assHexColor(value: string): string {
+	return assShadowColor(value).hex;
+}
+
+/**
+ * A shadow colour split into `#rrggbb` and the alpha it carried, if any.
+ *
+ * The preview's `colorWithOpacity` appends the style's opacity to a `#rgb` or
+ * `#rrggbb` and returns every other form untouched, so for `#rrggbbaa` and
+ * `rgba()` the embedded alpha wins and `shadowOpacity` is ignored. Native has
+ * to agree, and must not combine the two: `#ff000000` draws no shadow in the
+ * preview, so it must draw none here either.
+ */
+export function assShadowColor(value: string): {
+	hex: string;
+	alpha?: number;
+} {
 	const text = value.trim();
-	if (HEX_COLOR.test(text)) return text.slice(0, 7);
+	if (HEX_COLOR.test(text)) return { hex: text.slice(0, 7) };
+
 	const hex = /^#([0-9a-f]{3,8})$/i.exec(text);
 	if (hex) {
 		const digits = hex[1];
+		const expand = (channel: string) => `${channel}${channel}`;
 		if (digits.length === 3 || digits.length === 4) {
-			const [r, g, b] = [digits[0], digits[1], digits[2]];
-			return `#${r}${r}${g}${g}${b}${b}`;
+			const rgb = `#${expand(digits[0])}${expand(digits[1])}${expand(digits[2])}`;
+			if (digits.length === 3) return { hex: rgb };
+			return {
+				hex: rgb,
+				alpha: Number.parseInt(expand(digits[3]), 16) / 255,
+			};
 		}
-		if (digits.length === 8) return `#${digits.slice(0, 6)}`;
-		return "#000000";
-	}
-	const rgb = /^rgba?\(([^)]*)\)$/i.exec(text);
-	if (rgb) {
-		const parts = rgb[1]
-			.split(/[\s,/]+/)
-			.filter(Boolean)
-			.slice(0, 3);
-		if (parts.length === 3) {
-			const channels = parts.map((part) => {
-				const scale = part.endsWith("%") ? 2.55 : 1;
-				const number = Number.parseFloat(part);
-				if (!Number.isFinite(number)) return undefined;
-				return Math.min(255, Math.max(0, Math.round(number * scale)));
-			});
-			if (channels.every((channel) => channel !== undefined)) {
-				return `#${channels
-					.map((channel) => (channel as number).toString(16).padStart(2, "0"))
-					.join("")}`;
-			}
+		if (digits.length === 8) {
+			return {
+				hex: `#${digits.slice(0, 6)}`,
+				alpha: Number.parseInt(digits.slice(6, 8), 16) / 255,
+			};
 		}
+		return { hex: "#000000" };
 	}
-	return "#000000";
+
+	const functional = /^rgba?\(([^)]*)\)$/i.exec(text);
+	if (!functional) return { hex: "#000000" };
+	const fields = functional[1].split(/[\s,/]+/).filter(Boolean);
+	const channels = fields.slice(0, 3).map((field) => {
+		const number = Number.parseFloat(field);
+		if (!Number.isFinite(number)) return undefined;
+		const scaled = field.endsWith("%") ? number * 2.55 : number;
+		return Math.min(255, Math.max(0, Math.round(scaled)));
+	});
+	if (
+		channels.length < 3 ||
+		channels.some((channel) => channel === undefined)
+	) {
+		return { hex: "#000000" };
+	}
+	const rgb = `#${channels
+		.map((channel) => (channel as number).toString(16).padStart(2, "0"))
+		.join("")}`;
+
+	const fourth = fields[3];
+	if (fourth === undefined) return { hex: rgb };
+	const raw = Number.parseFloat(fourth);
+	if (!Number.isFinite(raw)) return { hex: rgb };
+	const alpha = fourth.endsWith("%") ? raw / 100 : raw;
+	return { hex: rgb, alpha: Math.min(1, Math.max(0, alpha)) };
 }
 
 /** `fontWeight` when it is a weight; undefined leaves `bold`'s 700 or 400. */
