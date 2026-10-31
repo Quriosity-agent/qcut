@@ -106,6 +106,7 @@ export function buildTimelineAssLayers({
 	platform,
 	excludedTextElementIds = new Set(),
 	fontMetrics,
+	familyCoversCjk,
 }: {
 	tracks: TimelineTrack[];
 	canvasWidth: number;
@@ -119,6 +120,8 @@ export function buildTimelineAssLayers({
 	 * 15 % small (N31).
 	 */
 	fontMetrics?: AssFontMetricsLookup;
+	/** Whether an installed family carries CJK glyphs, read from the font. */
+	familyCoversCjk?: (family: string) => boolean;
 }): {
 	layers: TimelineAssLayer[];
 	renderedTextElementIds: Set<string>;
@@ -167,6 +170,7 @@ export function buildTimelineAssLayers({
 						cjkFontFamily,
 						fps,
 						fontMetrics,
+						familyCoversCjk,
 					}),
 					blendMode: "normal",
 					trackOrder,
