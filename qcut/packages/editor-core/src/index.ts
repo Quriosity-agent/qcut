@@ -565,6 +565,8 @@ export {
 	assTimeToSeconds,
 	assStyleToSubtitleStyle,
 	type ASSGeneratorOptions,
+	type AssFaceMetrics,
+	type AssFontMetricsLookup,
 	type ASSStyle,
 	type ASSEvent,
 	type ASSDocument,
