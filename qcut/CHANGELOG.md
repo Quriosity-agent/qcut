@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.02.1] - 2026-11-01
+
 ### Added
 
 - With `QCUT_EXPORT_KEEP_TEMP=1` in QCut's environment, a native export keeps its intermediate files (its segments, the video before the audio mix, the mixed master, and the limiter's audio before and after each correction) and logs where they are, so two exports of one project can be compared step by step. It is off by default: a kept folder holds a full-size intermediate video.
