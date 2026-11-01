@@ -124,4 +124,8 @@ export interface EditorSnapshotActionResult {
 	role: string | null;
 	name: string | null;
 	value: string | null;
+	/** `check` only: the state the control settled on. */
+	checked?: boolean | "mixed" | null;
+	/** `check` only: false when the control already held the requested state. */
+	changed?: boolean;
 }

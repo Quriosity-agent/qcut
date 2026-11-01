@@ -335,6 +335,119 @@ describe("native export text overlays", () => {
 		expect(events[1]).toMatch(/^Dialogue: 1,/);
 	});
 
+	it("draws a soft shadow at zero offset, which ASS's hard one cannot", () => {
+		// N32: the reported case — blur 24, white, no offset. The style's Shadow
+		// column offsets a hard copy by one distance on both axes, so (0, 0)
+		// drew nothing and shadowBlur never reached the export at all.
+		const timeline: ClaudeTimeline = {
+			name: "Shadow",
+			duration: 2,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "titles",
+					index: 0,
+					name: "Titles",
+					type: "text",
+					elements: [
+						{
+							id: "soft",
+							trackIndex: 0,
+							startTime: 0,
+							endTime: 2,
+							duration: 2,
+							type: "text",
+							content: "QCUT",
+							shadowColor: "#ffffff",
+							shadowOpacity: 1,
+							shadowBlur: 24,
+							shadowOffsetX: 0,
+							shadowOffsetY: 0,
+						},
+					],
+				},
+			],
+		};
+		const ass = buildTextAss({
+			overlays: collectTextOverlays(timeline),
+			width: 1280,
+			height: 720,
+		});
+		const style = ass
+			.split("\n")
+			.find((line) => line.startsWith("Style:")) as string;
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		// The hard shadow is off, because a soft layer replaces it.
+		expect(style.split(",").at(-6)).toBe("0");
+		expect(events).toHaveLength(2);
+		// Layer 0 is the glyphs in the shadow colour, blurred like the preview:
+		// a 24 px radius is a σ of 12, and libass's \blur b a σ of 0.849 b.
+		expect(events[0]).toMatch(/^Dialogue: 0,/);
+		expect(events[0]).toContain(
+			"\\1c&HFFFFFF&\\1a&H00&\\3a&HFF&\\4a&HFF&\\bord0\\shad0\\blur14.13}QCUT"
+		);
+		expect(events[1]).toMatch(/^Dialogue: 1,/);
+	});
+
+	it("puts a shadow exactly on its own offset, not on ASS's diagonal", () => {
+		const timeline: ClaudeTimeline = {
+			name: "Shadow offset",
+			duration: 2,
+			width: 1280,
+			height: 720,
+			fps: 30,
+			tracks: [
+				{
+					id: "titles",
+					index: 0,
+					name: "Titles",
+					type: "text",
+					elements: [
+						{
+							id: "offset",
+							trackIndex: 0,
+							startTime: 0,
+							endTime: 2,
+							duration: 2,
+							type: "text",
+							content: "QCUT",
+							x: 0,
+							y: 0,
+							shadowColor: "#000000",
+							shadowOpacity: 0.5,
+							shadowBlur: 0,
+							shadowOffsetX: 12,
+							shadowOffsetY: 0,
+						},
+					],
+				},
+			],
+		};
+		const ass = buildTextAss({
+			overlays: collectTextOverlays(timeline),
+			width: 1280,
+			height: 720,
+		});
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		const positionOf = (line: string): [number, number] => {
+			const match = /\\pos\(([-\d.]+),([-\d.]+)\)/.exec(line);
+			if (!match) throw new Error("no \\pos in " + line);
+			return [Number(match[1]), Number(match[2])];
+		};
+		const [shadowX, shadowY] = positionOf(events[0]);
+		const [textX, textY] = positionOf(events[1]);
+		// ASS's hard shadow would have moved it by (12, 12); the preview moves
+		// it by the offsets it was given.
+		expect(shadowX - textX).toBeCloseTo(12, 2);
+		expect(shadowY - textY).toBeCloseTo(0, 2);
+	});
+
 	it("keeps PlayRes in project-canvas units so text scales to any export size", () => {
 		// Overlay x/y/fontSize are project-canvas coordinates. PlayRes must stay
 		// in those units — libass scales to the export frame — otherwise a 4K

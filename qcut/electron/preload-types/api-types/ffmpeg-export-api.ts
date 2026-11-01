@@ -17,6 +17,8 @@ import type {
 	VideoPreviewProxyOptions,
 	VideoPreviewProxyProgress,
 	VideoPreviewProxyResult,
+	AssFontMetricsReply,
+	AssFontMetricsRequest,
 } from "../../ffmpeg/types";
 
 /** FFmpeg export and frame processing operations. */
@@ -117,6 +119,10 @@ export interface FFmpegExportAPI {
 		}>;
 		getFFmpegResourcePath: (filename: string) => Promise<string>;
 		checkFFmpegResource: (filename: string) => Promise<boolean>;
+		/** libass's sizing for a face: the renderer cannot read font files. */
+		assFontMetrics: (
+			requests: AssFontMetricsRequest[]
+		) => Promise<AssFontMetricsReply[]>;
 		getPath: () => Promise<string>;
 		checkHealth: () => Promise<{
 			ffmpegOk: boolean;

@@ -31,6 +31,10 @@ import {
 	recordMediaAlpha,
 } from "@/lib/media/alpha-playback-proxy";
 import { createFolderActions, type FolderActions } from "./media-store-folders";
+import {
+	deleteTrackedMediaItem,
+	saveTrackedMediaItem,
+} from "./media-persistence-queue";
 
 // Re-export types and helpers for backward compatibility
 export type { MediaItem, MediaType } from "./media-store-types";
@@ -119,30 +123,72 @@ const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
 	updateMediaItemField(itemId, { metadata: { ...item?.metadata, alpha } });
 };
 
+/**
+ * Persist an item unless the library has moved on from it.
+ *
+ * A wait-mode save resumes once every delete for its id has finished — and
+ * that id can be the one just deleted, since an id is derived from the file's
+ * name, size, modification time and type. So the item this save captured may
+ * be gone by the time it runs, and writing it would re-create the storage
+ * entry the delete removed (N30).
+ *
+ * The check is on the object, not the id: those four properties do not
+ * include the file's contents, so two different files can share an id. A
+ * later import that reused this one has put *its* object in the list, and
+ * writing the item captured here would overwrite it. Replacing the object is
+ * also how every in-place update works, and each of those issues its own
+ * save, so a payload whose object is gone is stale either way.
+ *
+ * It sits immediately before the write, the only point a delete or a newer
+ * import cannot interleave past.
+ */
+const persistIfStillPresent = async (
+	projectId: string,
+	item: MediaItem,
+	/** The object the store holds, when it is not `item` itself. */
+	live: MediaItem = item
+): Promise<boolean> => {
+	const present = useMediaStore
+		.getState()
+		.mediaItems.some((candidate) => candidate === live);
+	if (!present) {
+		debugLog(`[MediaStore] Dropped a stale save for media ${item.id}`);
+		return false;
+	}
+	await storageService.saveMediaItem(projectId, item);
+	return true;
+};
+
 // Helper to update media item metadata and persist to storage
 const updateMediaMetadataAndPersist = async (
 	itemId: string,
 	projectId: string,
 	metadata: Partial<MediaItem>
 ) => {
-	const mediaStore = useMediaStore.getState();
-	const item = mediaStore.mediaItems.find((i) => i.id === itemId);
+	const item = useMediaStore.getState().mediaItems.find((i) => i.id === itemId);
 
 	if (!item) {
 		debugError(`[MediaStore] Cannot update item ${itemId} - not found`);
 		return;
 	}
 
-	// Update in-memory state
+	// Update in-memory state. A functional update over the live list, because
+	// this pass runs long after it started: writing back a snapshot taken at
+	// entry would put an item removed in the meantime back into the library.
 	const updatedItem = { ...item, ...metadata };
-	const updatedItems = mediaStore.mediaItems.map((i) =>
-		i.id === itemId ? updatedItem : i
-	);
-	useMediaStore.setState({ mediaItems: updatedItems });
+	useMediaStore.setState((state) => ({
+		mediaItems: state.mediaItems.map((i) =>
+			i.id === itemId ? updatedItem : i
+		),
+	}));
 
 	// Persist to storage
 	try {
-		await storageService.saveMediaItem(projectId, updatedItem);
+		await saveTrackedMediaItem({
+			projectId,
+			id: itemId,
+			save: () => persistIfStillPresent(projectId, updatedItem),
+		});
 		debugLog(`[MediaStore] Persisted thumbnail for ${item.name}`);
 	} catch (error) {
 		debugError(
@@ -325,13 +371,31 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// Save to persistent storage in background
 		try {
-			await storageService.saveMediaItem(projectId, newItem);
-			console.log("[MediaStore.addMediaItem] Saved to storage", {
+			// A media id is derived from the file name, so re-importing a file
+			// that is being deleted reuses its id: wait for the delete rather
+			// than skip the save, or the item would exist only in memory.
+			let stored = false;
+			await saveTrackedMediaItem({
 				projectId,
 				id: newItem.id,
-				name: newItem.name,
-				type: newItem.type,
+				save: async () => {
+					// The list holds itemWithStatus; newItem is what is stored.
+					stored = await persistIfStillPresent(
+						projectId,
+						newItem,
+						itemWithStatus
+					);
+				},
+				whenDeleting: "wait",
 			});
+			if (stored) {
+				console.log("[MediaStore.addMediaItem] Saved to storage", {
+					projectId,
+					id: newItem.id,
+					name: newItem.name,
+					type: newItem.type,
+				});
+			}
 
 			// Trigger thumbnail generation for videos AFTER storage save succeeds
 			if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
@@ -398,7 +462,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			),
 		}));
 		try {
-			await storageService.saveMediaItem(projectId, updated);
+			await saveTrackedMediaItem({
+				projectId,
+				id,
+				save: () => persistIfStillPresent(projectId, updated),
+				whenDeleting: "wait",
+			});
 			if (
 				updated.type === "video" &&
 				updated.file !== previous.file &&
@@ -513,7 +582,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				await Promise.all(
 					newItems.map(async (item) => {
 						try {
-							await storageService.saveMediaItem(currentProject.id, item);
+							await saveTrackedMediaItem({
+								projectId: currentProject.id,
+								id: item.id,
+								save: () => persistIfStillPresent(currentProject.id, item),
+								// A generated image has no later background save, so a
+								// drop would leave it stored nowhere.
+								whenDeleting: "wait",
+							});
 						} catch (error) {
 							handleStorageError(error, "Save generated image to storage", {
 								projectId: currentProject.id,
@@ -593,7 +669,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// 3) Remove from persistent storage
 		try {
-			await storageService.deleteMediaItem(projectId, id);
+			await deleteTrackedMediaItem({
+				projectId,
+				id,
+				remove: () => storageService.deleteMediaItem(projectId, id),
+			});
 		} catch (error) {
 			debugError("[MediaStore] deleteMediaItem failed", {
 				projectId,
@@ -730,7 +810,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 		try {
 			const mediaIds = state.mediaItems.map((item) => item.id);
 			await Promise.all(
-				mediaIds.map((id) => storageService.deleteMediaItem(projectId, id))
+				mediaIds.map((id) =>
+					deleteTrackedMediaItem({
+						projectId,
+						id,
+						remove: () => storageService.deleteMediaItem(projectId, id),
+					})
+				)
 			);
 			debugLog(
 				`[Cleanup] Cleared ${mediaIds.length} media items from persistent storage for project ${projectId}`

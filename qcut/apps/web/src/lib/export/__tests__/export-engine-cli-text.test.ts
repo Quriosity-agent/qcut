@@ -4,7 +4,10 @@ import type {
 	TextElement,
 	TimelineTrack,
 } from "@/types/timeline";
-import { buildTimelineAssLayers } from "../export-engine-cli-text";
+import {
+	assFontFamiliesInTracks,
+	buildTimelineAssLayers,
+} from "../export-engine-cli-text";
 
 function createTextElement(): TextElement {
 	return {
@@ -152,5 +155,56 @@ describe("buildTimelineAssLayers", () => {
 		expect(result.layers[0].content).toContain("Exported caption");
 		expect(result.layers[0].content).not.toContain("Top title");
 		expect(result.renderedTextElementIds).toEqual(new Set());
+	});
+});
+
+describe("assFontFamiliesInTracks", () => {
+	/**
+	 * A family this misses gets no libass metrics, so its captions silently
+	 * export at the nominal size again — the N31 defect, with no symptom until
+	 * someone measures a frame.
+	 */
+	const tracksWith = (elements: TimelineTrack["elements"]): TimelineTrack[] => [
+		{ id: "t", name: "T", type: "text", order: 0, elements },
+	];
+
+	it("collects a text element's family", () => {
+		const element = { ...createTextElement(), fontFamily: "Futura" };
+		expect(
+			assFontFamiliesInTracks({ tracks: tracksWith([element]) })
+		).toContain("Futura");
+	});
+
+	it("collects a caption's family and its second-language family", () => {
+		const caption = createCaptionElement();
+		caption.style = {
+			fontFamily: "Songti SC",
+			secondary: { fontFamily: "Futura" },
+		} as CaptionElement["style"];
+
+		const families = assFontFamiliesInTracks({
+			tracks: [
+				{ id: "c", name: "C", type: "captions", order: 0, elements: [caption] },
+			],
+		});
+
+		expect(families).toContain("Songti SC");
+		expect(families).toContain("Futura");
+	});
+
+	it("includes the platform's CJK fallback, which substitution can name", () => {
+		expect(
+			assFontFamiliesInTracks({
+				tracks: tracksWith([createTextElement()]),
+				platform: "darwin",
+			})
+		).toContain("Hiragino Sans GB");
+	});
+
+	it("lists each family once", () => {
+		const families = assFontFamiliesInTracks({
+			tracks: tracksWith([createTextElement(), createTextElement()]),
+		});
+		expect(families.filter((family) => family === "Arial")).toHaveLength(1);
 	});
 });

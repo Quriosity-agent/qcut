@@ -4,8 +4,11 @@
  * family such as Arial renders CJK content as notdef "tofu" boxes. When the
  * content needs CJK coverage, substitute a platform font that has it — CJK
  * fonts render Latin glyphs acceptably, the reverse does not hold.
+ *
+ * The coverage rule itself is editor-core's, so this path, the caption ASS
+ * generator and the native export all agree on when to substitute.
  */
-const CJK_CONTENT_PATTERN = /[⺀-鿿぀-ヿㇰ-ㇿ가-힯豈-﫿]/;
+import { resolveAssCjkFamily } from "@qcut/editor-core";
 
 const CJK_FONT_BY_PLATFORM: Record<string, string> = {
 	darwin: "Arial Unicode MS",
@@ -29,6 +32,13 @@ export function assCompatibleFontFamily({
 	family: string;
 	content: string;
 }): string {
-	if (!CJK_CONTENT_PATTERN.test(content)) return family;
-	return CJK_FONT_BY_PLATFORM[runtimePlatform()] ?? "Noto Sans CJK SC";
+	// A family the user chose that can already render the text keeps it: the
+	// substitution used to be unconditional, so asking for Songti SC gave a
+	// sans-serif instead (N31).
+	return resolveAssCjkFamily({
+		family,
+		text: content,
+		fallbackFamily:
+			CJK_FONT_BY_PLATFORM[runtimePlatform()] ?? "Noto Sans CJK SC",
+	});
 }

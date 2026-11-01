@@ -963,6 +963,9 @@ export interface FFmpegHealthResult {
  */
 export interface FFmpegHandlers {
 	"ffmpeg-path": () => Promise<string>;
+	"ffmpeg-ass-font-metrics": (
+		requests: AssFontMetricsRequest[]
+	) => Promise<AssFontMetricsReply[]>;
 	"create-export-session": () => Promise<{
 		sessionId: string;
 		frameDir: string;
@@ -991,3 +994,23 @@ import type {
 	EffectRenderProgram,
 } from "./effect-render-types";
 export type { EffectPersonSource } from "./effect-render-types";
+
+/** One face the renderer needs libass's sizing for. */
+export interface AssFontMetricsRequest {
+	family: string;
+	bold?: boolean;
+	italic?: boolean;
+}
+
+/** What libass will do with that face. */
+export interface AssFontMetricsReply {
+	family: string;
+	bold: boolean;
+	italic: boolean;
+	/** Multiply the editor's font size by this for the ASS Fontsize. */
+	sizeFactor: number;
+	/** The line height libass lays out, in em. */
+	lineHeightEm: number;
+	/** The face carries CJK ideographs (OS/2 ulUnicodeRange bit 59). */
+	coversCjk: boolean;
+}

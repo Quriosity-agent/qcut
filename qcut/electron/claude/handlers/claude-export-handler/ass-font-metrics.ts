@@ -322,6 +322,26 @@ export function assFontMetrics({
 	return metricsFrom({ index: cachedIndex, family, bold, italic });
 }
 
+/**
+ * Whether a face of this family is installed at all.
+ *
+ * `assFontMetrics` answers a neutral 1.0 for a family it cannot find, which
+ * is the right default for the native path but indistinguishable from a real
+ * measurement over IPC: the renderer would treat it as measured and move the
+ * caption by the leading while leaving its size uncorrected. Callers that
+ * forward measurements elsewhere ask this first.
+ */
+export function assFontFamilyInstalled({
+	family,
+	directories,
+}: {
+	family: string;
+	directories?: string[];
+}): boolean {
+	const faces = fontIndex(directories).get(family.trim().toLowerCase());
+	return Boolean(faces?.length);
+}
+
 /** How many times a font index was built; for tests of the cache. */
 export function assFontIndexBuilds(): number {
 	return indexBuilds;

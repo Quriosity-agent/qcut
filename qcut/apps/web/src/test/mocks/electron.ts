@@ -187,6 +187,7 @@ export const mockElectronAPI: ElectronAPI = {
 			fileSize: 2048,
 		}),
 		getPath: vi.fn().mockResolvedValue("/usr/bin/ffmpeg"),
+		assFontMetrics: vi.fn(async () => []),
 		checkHealth: vi.fn().mockResolvedValue({
 			ffmpegOk: true,
 			ffprobeOk: true,
