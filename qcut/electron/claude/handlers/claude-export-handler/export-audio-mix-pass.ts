@@ -1,6 +1,5 @@
 import * as fs from "node:fs/promises";
 import path from "node:path";
-import { amixSteps } from "../../../ffmpeg/audio-mix-graph.js";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
 import type { AudioFile, AudioMixConfig } from "../../../ffmpeg/types.js";
 import { probeHasAudioStream } from "../../../ffmpeg/utils.js";
@@ -189,11 +188,11 @@ export async function renderTimelineAudioMix({
 		const filterSteps = [...graph.filterSteps];
 		let audioMap = graph.mapAudio;
 		if (hasEmbeddedAudio && !embedded) {
+			const externalLabel = audioMap.startsWith("[")
+				? audioMap
+				: `[${audioMap}]`;
 			filterSteps.push(
-				...amixSteps({
-					inputs: ["0:a", audioMap.replace(/^\[|\]$/g, "")],
-					output: "a_final",
-				})
+				`[0:a]${externalLabel}amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[a_final]`
 			);
 			audioMap = "[a_final]";
 		}
