@@ -3,7 +3,11 @@ import type {
 	AudioFile,
 	AudioMixConfig,
 } from "../ffmpeg/types";
-import { appendAudioMixGraph, isNeutralAudioMix } from "./audio-mix-graph";
+import {
+	amixSteps,
+	appendAudioMixGraph,
+	isNeutralAudioMix,
+} from "./audio-mix-graph";
 import {
 	buildAudioEffectTransforms,
 	buildAudioEnvelopeFilter,
@@ -601,7 +605,10 @@ export function buildTimelineAudioFilters({
 		return { mapAudio: mixedLabels[0], filterSteps };
 	}
 	filterSteps.push(
-		`${mixedLabels.join("")}amix=inputs=${mixedLabels.length}:duration=longest:dropout_transition=0:normalize=0[a_mix]`
+		...amixSteps({
+			inputs: mixedLabels.map((label) => label.replace(/^\[|\]$/g, "")),
+			output: "a_mix",
+		})
 	);
 	return { mapAudio: "[a_mix]", filterSteps };
 }
