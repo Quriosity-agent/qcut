@@ -14,10 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The native export draws a text element's background: its own colour, opacity, size and corner radius, under the text. It used to draw a box in the outline colour, tight around the letters, or none at all when the text had no outline. A rotated text element now turns about the centre of its box, as in the preview.
 - The Export dialog's FFmpeg export draws text elements at the size and position the preview and the native export draw them. In fonts such as Arial and Helvetica they came out 10–15 % smaller.
 - Captions that overlap in time are stacked by the Export dialog's FFmpeg export as they are by the preview and the native export. They used to draw over each other.
+- The Export dialog's FFmpeg export scales text and captions with the export's resolution when it differs from the project canvas, as the native export does. A 1470×630 project exported at 1080p used to draw them at their project size on a 2520×1080 frame, so about 40 % too small; an export smaller than the project drew them too large.
 - In the Export dialog's FFmpeg export, a text element's outline keeps its own opacity, and Chinese, Japanese or Korean text in a font that cannot draw it falls back to the same font as captions and the native export.
 
 ### Limitations
 
+- At a resolution other than the project canvas, text and captions from the Export dialog's canvas and muxer exports, and text drawn as an image in its FFmpeg export (animated text, for one), still keep their project size.
 - A caption's background box differs between engines: the preview and the canvas export draw it with padding, the native export draws it tight around the letters (now in the background colour), and the Export dialog's FFmpeg export does not draw it.
 
 ## [2026.11.02.1] - 2026-11-01
