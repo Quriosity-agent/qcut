@@ -225,15 +225,18 @@ function rgbChannels(fields: string[]): number[] | undefined {
 	return channels.includes(undefined) ? undefined : (channels as number[]);
 }
 
-/** CSS Color 4's `hsl()` to 0–255 channels. */
+/**
+ * CSS Color 4's `hsl()` to 0–255 channels. Saturation and lightness run 0–100,
+ * with or without their `%`.
+ */
 function hslChannels(fields: string[]): number[] | undefined {
 	const hue = parseHue(fields[0]);
-	const saturation = parseField(fields[1], 1);
-	const lightness = parseField(fields[2], 1);
+	const saturation = parseField(fields[1], 100);
+	const lightness = parseField(fields[2], 100);
 	if (hue === undefined || saturation === undefined || lightness === undefined)
 		return;
-	const s = clamp01(saturation);
-	const l = clamp01(lightness);
+	const s = clamp01(saturation / 100);
+	const l = clamp01(lightness / 100);
 	const amount = s * Math.min(l, 1 - l);
 	const channel = (offset: number) => {
 		const k = (((offset + hue / 30) % 12) + 12) % 12;
