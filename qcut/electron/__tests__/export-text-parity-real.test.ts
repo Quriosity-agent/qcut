@@ -332,6 +332,9 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 					const half = { width: WIDTH / 2, height: HEIGHT / 2 };
 					const full = inkBounds(renderAss(scripts));
 					const scaled = inkBounds(renderAss(scripts, half), half);
+					// Two blank frames would agree on every edge below.
+					expect(full.right, "no ink at full size").toBeGreaterThan(-1);
+					expect(scaled.right, "no ink at half size").toBeGreaterThan(-1);
 					expect(Math.abs(scaled.left - full.left / 2)).toBeLessThanOrEqual(2);
 					expect(Math.abs(scaled.right - full.right / 2)).toBeLessThanOrEqual(
 						2
