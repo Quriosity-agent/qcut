@@ -44,6 +44,12 @@ export interface ASSGeneratorOptions {
 	 * outside the fixed list is replaced here but kept there.
 	 */
 	familyCoversCjk?: (family: string) => boolean;
+	/**
+	 * How far from its edge a caption draws because of the captions stacked
+	 * under it. For callers that write captions into separate documents: within
+	 * one document, libass stacks overlapping events itself.
+	 */
+	stackOffset?: (clip: CaptionElement) => number;
 }
 
 /** libass's sizing for one face. */
@@ -246,6 +252,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 				style: resolved,
 				fontMetrics: options.fontMetrics,
 			}),
+			stackOffset: options.stackOffset?.(clip) ?? 0,
 		})) {
 			content += `${line}\n`;
 		}
@@ -267,6 +274,7 @@ function captionEventsForASS({
 	fps,
 	styleName,
 	metrics,
+	stackOffset,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -274,6 +282,7 @@ function captionEventsForASS({
 	fps?: number;
 	styleName: string;
 	metrics: CaptionMetrics;
+	stackOffset: number;
 }): string[] {
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
@@ -289,20 +298,24 @@ function captionEventsForASS({
 	const weight = captionFontWeight(style);
 	const weightTag = weight === 400 || weight === 700 ? "" : `\\b${weight}`;
 	const shadows = resolveCaptionShadows(style) ?? [];
+	const edgeOffset = metrics.leading + stackOffset;
+	// 0 is "the style's margin", which is the place of an unstacked caption.
+	const marginV =
+		stackOffset > 0 ? Math.round(CAPTION_EDGE_INSET_Y + edgeOffset) : 0;
 	const event = (layer: number, tags: string, body: string) =>
-		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,0,,${tags ? `{${tags}}` : ""}${body}`;
+		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,${marginV},,${tags ? `{${tags}}` : ""}${body}`;
 	const pin = shadows.length > 0;
 	const lines = shadows.map((shadow, layer) =>
 		event(
 			layer,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, leading: metrics.leading })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
+			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, edgeOffset })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
 			captionTextForASS({ clip, style, colorTags: false, metrics })
 		)
 	);
 	lines.push(
 		event(
 			shadows.length,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, leading: metrics.leading })}${weightTag}`,
+			`${captionAnimationTags({ clip, style, resolution, fade, pin, edgeOffset })}${weightTag}`,
 			captionTextForASS({ clip, style, colorTags: true, metrics })
 		)
 	);
@@ -422,7 +435,7 @@ function captionAnimationTags({
 	fade: frameFade,
 	pin = false,
 	offset = { x: 0, y: 0 },
-	leading,
+	edgeOffset,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -430,12 +443,15 @@ function captionAnimationTags({
 	fade?: string;
 	pin?: boolean;
 	offset?: { x: number; y: number };
-	/** Half the gap between CSS's line box and libass's. */
-	leading: number;
+	/**
+	 * How much further from its edge than the inset the caption draws: half
+	 * the gap between CSS's line box and libass's, plus the captions under it.
+	 */
+	edgeOffset: number;
 }): string {
 	const animation = resolveCaptionAnimation({ style });
 	if (animation.type === "none") {
-		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
+		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset, edgeOffset }) : ""}`;
 	}
 
 	const clipDurationMs = Math.max(1, Math.round(clip.duration * 1000));
@@ -451,7 +467,7 @@ function captionAnimationTags({
 		frameFade ??
 		`\\fade(255,0,0,${startMs},${endMs},${clipDurationMs},${clipDurationMs})`;
 	if (animation.type === "fade") {
-		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
+		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, edgeOffset }) : ""}`;
 	}
 
 	const margin = Math.max(10, Math.round(style.fontSize));
@@ -463,10 +479,10 @@ function captionAnimationTags({
 				: Math.round(resolution.width / 2);
 	const targetY =
 		style.position.align === "top"
-			? margin + leading
+			? margin + edgeOffset
 			: style.position.align === "center"
 				? Math.round(resolution.height / 2)
-				: resolution.height - margin - leading;
+				: resolution.height - margin - edgeOffset;
 	const startX = animation.type === "slide-left" ? targetX + 120 : targetX;
 	const startY = animation.type === "slide-up" ? targetY + 80 : targetY;
 
@@ -478,15 +494,15 @@ function pinnedPosition({
 	style,
 	resolution,
 	offset,
-	leading,
+	edgeOffset,
 }: {
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
 	offset: { x: number; y: number };
-	/** Half the gap between CSS's line box and libass's. */
-	leading: number;
+	/** See `captionAnimationTags`. */
+	edgeOffset: number;
 }): string {
-	const marginV = CAPTION_EDGE_INSET_Y + leading;
+	const marginV = CAPTION_EDGE_INSET_Y + edgeOffset;
 	const x =
 		style.textAlign === "left"
 			? STYLE_SIDE_MARGIN
@@ -517,7 +533,7 @@ function subtitleStyleToASSLine(
 		style.fontOpacity
 	);
 	const outline = rgbToASSColor(style.outlineColor, 1);
-	const back = rgbToASSColor(style.shadowColor, 1);
+	const back = rgbToASSColor(style.shadowColor, 1, "#000000");
 	const bold = captionFontWeight(style) >= 600 ? -1 : 0;
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
