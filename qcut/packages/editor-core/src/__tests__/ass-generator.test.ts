@@ -245,4 +245,56 @@ describe("generateASS", () => {
 			.find((line) => line.startsWith("Style: Default,"));
 		expect(styleLine?.split(",").slice(-4)).toEqual(["10", "10", "28", "1"]);
 	});
+
+	describe("stackOffset", () => {
+		const stacked = (
+			style: Record<string, unknown>,
+			align: "top" | "bottom" = "bottom"
+		) =>
+			generateASS(
+				[
+					{
+						...caption(),
+						style: {
+							...style,
+							bgOpacity: 0,
+							position: { align, y: 90 },
+						},
+					} as CaptionElement,
+				],
+				{
+					resolution: { width: 1920, height: 1080 },
+					stackOffset: () => 100,
+				}
+			)
+				.split("\n")
+				.filter((line) => line.startsWith("Dialogue: "));
+
+		it("moves the event's margin away from the edge, leaving the style's", () => {
+			const lines = stacked({});
+			expect(lines[0]).toContain(",0,0,128,,");
+			// 0 means the style's margin, so without a stack nothing changes.
+			const alone = generateASS([caption()], {
+				resolution: { width: 1920, height: 1080 },
+				stackOffset: () => 0,
+			});
+			expect(alone).toContain(",0,0,0,,");
+		});
+
+		it("moves a pinned caption up from the bottom edge and down from the top", () => {
+			const shadows = [{ color: "#000000", opacity: 1, blur: 2, x: 0, y: 0 }];
+			expect(stacked({ shadows })[0]).toContain("\\pos(960,952)");
+			expect(stacked({ shadows }, "top")[0]).toContain("\\pos(960,128)");
+		});
+
+		it("moves a sliding caption's path with it", () => {
+			const lines = stacked({
+				fontSize: 40,
+				animationType: "slide-up",
+				animationDuration: 0.5,
+			});
+			// The slide ends 40 px (its margin) plus the stack above the edge.
+			expect(lines[0]).toContain("\\move(960,1020,960,940,");
+		});
+	});
 });
