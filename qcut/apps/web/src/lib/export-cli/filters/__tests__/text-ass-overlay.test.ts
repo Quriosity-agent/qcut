@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TextElement, TimelineTrack } from "@/types/timeline";
+import type { AssFontMetricsLookup } from "@qcut/editor-core";
 import { buildTextASSOverlay } from "../text-ass-overlay";
 
 function createTextElement(overrides: Partial<TextElement> = {}): TextElement {
@@ -38,6 +39,145 @@ function createTrack(element: TextElement): TimelineTrack {
 }
 
 describe("buildTextASSOverlay", () => {
+	const face = { sizeFactor: 1.15, lineHeightEm: 1.1 };
+	const build = (
+		overrides: Partial<TextElement>,
+		fontMetrics?: AssFontMetricsLookup
+	) =>
+		buildTextASSOverlay({
+			tracks: [
+				createTrack(createTextElement({ content: "QCut", ...overrides })),
+			],
+			canvasWidth: 1920,
+			canvasHeight: 1080,
+			measureTextWidth: ({ text }) => text.length * 20,
+			fontMetrics,
+		}).content;
+	const styleFontSize = (content: string) =>
+		Number(
+			content
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",")[2]
+		);
+
+	it("scales the ASS size by the face's factor, as the native export does", () => {
+		const content = build({ fontSize: 100 }, () => face);
+		expect(styleFontSize(content)).toBe(115);
+	});
+
+	it("keeps the nominal size and position for a face it could not measure", () => {
+		const measuredNothing = build(
+			{ fontSize: 100, verticalAlign: "top" },
+			() => undefined
+		);
+		expect(styleFontSize(measuredNothing)).toBe(100);
+		expect(measuredNothing).toBe(
+			build({ fontSize: 100, verticalAlign: "top" })
+		);
+	});
+
+	it("moves a pinned edge by the half-leading of the two line boxes", () => {
+		const shared = {
+			fontSize: 100,
+			lineHeight: 1.2,
+			height: 400,
+			backgroundPadding: 0,
+		};
+		// (100 × 1.2 − 100 × 1.1) / 2 = 5 px further in from the edge.
+		expect(build({ ...shared, verticalAlign: "top" }, () => face)).toContain(
+			"\\pos(960.00,345.00)"
+		);
+		expect(build({ ...shared, verticalAlign: "bottom" }, () => face)).toContain(
+			"\\pos(960.00,735.00)"
+		);
+		expect(build({ ...shared, verticalAlign: "middle" }, () => face)).toContain(
+			"\\pos(960.00,540.00)"
+		);
+	});
+
+	it("reads CSS colours in every colour field", () => {
+		const content = build({
+			color: "red",
+			strokeColor: "lime",
+			strokeWidth: 2,
+			shadowColor: "blue",
+			shadowOpacity: 1,
+			glowColor: "rgb(255, 255, 0)",
+			glowOpacity: 1,
+			backgroundColor: "hsl(0, 0%, 50%)",
+			backgroundOpacity: 1,
+		});
+		const style = content
+			.split("\n")
+			.find((line) => line.startsWith("Style: "))
+			?.split(",");
+		expect(style?.[3]).toBe("&H000000FF");
+		expect(style?.[5]).toBe("&H0000FF00");
+		expect(style?.[6]).toBe("&H00FF0000");
+		// The shadow, glow and box are override tags.
+		expect(content).toContain("\\1c&HFF0000&");
+		expect(content).toContain("\\3c&H00FFFF&");
+		expect(content).toContain("\\1c&H808080&");
+	});
+
+	it("lets a colour's own alpha replace its opacity field", () => {
+		const shadow = build({
+			shadowColor: "rgba(0, 0, 0, 0.5)",
+			shadowOpacity: 1,
+		});
+		expect(shadow).toContain("\\alpha&H80&");
+		const box = build({
+			backgroundColor: "#ff000080",
+			backgroundOpacity: 1,
+		});
+		expect(box).toContain("\\alpha&H7F&");
+	});
+
+	it("draws no shadow when the field is 0, whatever alpha the colour has", () => {
+		const content = build({
+			shadowColor: "rgba(0, 0, 0, 0.5)",
+			shadowOpacity: 0,
+		});
+		expect(content).not.toContain("\\blur");
+	});
+
+	it("keeps the outline's opacity apart from the fill's", () => {
+		const content = build({
+			strokeColor: "#ffffff",
+			strokeWidth: 4,
+			strokeOpacity: 0.5,
+		});
+		expect(content).toContain("\\1a&H00&\\3a&H80&");
+		expect(content).not.toContain("\\alpha&H00&");
+	});
+
+	it("fades the fill and outline in to their own opacities", () => {
+		const content = build({
+			strokeColor: "#ffffff",
+			strokeWidth: 4,
+			strokeOpacity: 0.5,
+			animationType: "fade",
+			animationDuration: 0.5,
+		});
+		expect(content).toContain("\\alpha&HFF&\\t(0,500,\\1a&H00&\\3a&H80&)");
+	});
+
+	it("draws an unreadable colour white, or black for a shadow", () => {
+		const content = build({
+			color: "redd",
+			shadowColor: "redd",
+			shadowOpacity: 1,
+		});
+		expect(
+			content
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",")[3]
+		).toBe("&H00FFFFFF");
+		expect(content).toContain("\\1c&H000000&");
+	});
+
 	it("exports multiline advanced text styling and motion", () => {
 		const result = buildTextASSOverlay({
 			tracks: [
