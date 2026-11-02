@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildTimelineAudioFilters } from "../ffmpeg/audio-filter-graph";
-import { amixSteps } from "../ffmpeg/audio-mix-graph";
 import { getFFmpegPath } from "../ffmpeg/paths";
 import type {
 	AudioFile,
@@ -16,10 +15,10 @@ import type {
 
 /**
  * One project mixes to the same samples every time (N34). FFmpeg decodes each
- * input on its own thread, and two of its filters drop samples depending on
- * which input's frames arrived first: `amix` what it queued from its first
- * input when that input ends, `sidechaingate` what waits for the key when the
- * signal ends. An export's sound could therefore differ near a clip's end.
+ * input on its own thread, and two of its filters behave differently depending
+ * on which input's frames arrive first: `sidechaingate` drops what waits for
+ * the key when its signal ends, and `amix` can lose its timestamps after its
+ * first input ends, which a level or pan curve reads as `t` = NaN.
  */
 
 const ffmpeg = getFFmpegPath();
@@ -155,11 +154,26 @@ function difference(left: Buffer, right: Buffer): Buffer {
 }
 
 describe("the timeline's sums", () => {
-	it("pad amix's first input, so that only silence can be dropped", () => {
-		expect(amixSteps({ inputs: ["a", "b", "c"], output: "sum" })).toEqual([
-			"[a]apad=pad_dur=5[sum_first]",
-			"[sum_first][b][c]amix=inputs=3:duration=longest:dropout_transition=0:normalize=0[sum]",
-		]);
+	it("take their clock from their sample count", () => {
+		const { filterSteps } = buildTimelineAudioFilters({
+			audioFiles: [
+				{ path: "a.wav", startTime: 0, volume: 1, trackId: "sound" },
+				{ path: "b.wav", startTime: 4, volume: 1, trackId: "sound" },
+				{ path: "c.wav", startTime: 0, volume: 1, trackId: "music" },
+			] as AudioFile[],
+			audioStartIndex: 0,
+			fps: 30,
+			audioMixConfig: {
+				master: { ...master(), gainDb: -2 },
+				buses: [],
+				tracks: [track({ trackId: "sound" }), track({ trackId: "music" })],
+			},
+		});
+		const sums = filterSteps.filter((step) => step.includes("amix="));
+		expect(sums).toHaveLength(2);
+		for (const sum of sums) {
+			expect(sum).toMatch(/normalize=0,asetpts=N\/SR\/TB\[/);
+		}
 	});
 
 	it("pad a ducked signal, so the gate lives until the key has caught up", () => {
@@ -192,7 +206,6 @@ describe("the timeline's sums", () => {
 		const graph = filterSteps.join(";");
 		expect(graph).toContain("_wet]apad[");
 		expect(graph).toContain("duration=first");
-		expect(graph).toMatch(/_dry\]apad=pad_dur=5\[/);
 	});
 });
 
@@ -232,7 +245,16 @@ describe("a mix rendered with the real FFmpeg", { timeout: 120_000 }, () => {
 			...clips,
 		];
 		audioMixConfig = {
-			master: master(),
+			master: {
+				...master(),
+				// Ends in a ramp: a `t` of NaN falls through to it and plays silent.
+				automation: {
+					gainDb: [
+						{ time: 0, value: 0 },
+						{ time: 0.5, value: -1 },
+					],
+				},
+			},
 			buses: [],
 			tracks: [
 				track({ trackId: "voice", gainDb: -12 }),
