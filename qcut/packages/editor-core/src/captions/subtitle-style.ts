@@ -11,6 +11,7 @@ import type {
 	CaptionShadow,
 	SubtitleStyle,
 } from "../types/timeline.js";
+import { cssColorAlpha, parseCssColor } from "./css-color.js";
 
 /** Default subtitle style used as fallback when no style is set */
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
@@ -126,23 +127,30 @@ export function resolveCaptionShadows(
 		}));
 }
 
-/** Convert hex color + opacity to rgba string */
-export function hexToRgba(hex: string, opacity: number): string {
-	const r = parseInt(hex.slice(1, 3), 16);
-	const g = parseInt(hex.slice(3, 5), 16);
-	const b = parseInt(hex.slice(5, 7), 16);
-	return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+/** Convert a CSS colour + its opacity field to an rgba string */
+export function hexToRgba(color: string, opacity: number): string {
+	const parsed = parseCssColor(color) ?? { hex: "#ffffff" };
+	const r = parseInt(parsed.hex.slice(1, 3), 16);
+	const g = parseInt(parsed.hex.slice(3, 5), 16);
+	const b = parseInt(parsed.hex.slice(5, 7), 16);
+	return `rgba(${r}, ${g}, ${b}, ${cssColorAlpha(parsed, opacity)})`;
 }
 
 /**
  * Convert RGB hex to ASS color format (&HAABBGGRR)
  * ASS uses BGR order with alpha where 00 = fully opaque
  */
-export function rgbToASSColor(hex: string, opacity: number): string {
-	const r = hex.slice(1, 3);
-	const g = hex.slice(3, 5);
-	const b = hex.slice(5, 7);
-	const a = Math.round((1 - opacity) * 255)
+export function rgbToASSColor(
+	color: string,
+	opacity: number,
+	/** What a colour no export can read draws as; a shadow's is black. */
+	fallback = "#ffffff"
+): string {
+	const parsed = parseCssColor(color) ?? { hex: fallback };
+	const r = parsed.hex.slice(1, 3);
+	const g = parsed.hex.slice(3, 5);
+	const b = parsed.hex.slice(5, 7);
+	const a = Math.round((1 - cssColorAlpha(parsed, opacity)) * 255)
 		.toString(16)
 		.padStart(2, "0");
 	return `&H${a}${b}${g}${r}`.toUpperCase();
