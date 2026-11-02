@@ -103,6 +103,25 @@ describe("unreadableTextColors", () => {
 		).toEqual([]);
 	});
 
+	it("reads a markdown element's colours", () => {
+		const track = {
+			id: "markdown-track",
+			name: "Markdown",
+			type: "markdown",
+			elements: [
+				{
+					id: "markdown-element",
+					type: "markdown",
+					textColor: "redd",
+					backgroundColor: "transparent",
+				},
+			],
+		} as unknown as TimelineTrack;
+		expect(unreadableTextColors({ tracks: [track] })).toEqual([
+			'textColor "redd" on markdown-element',
+		]);
+	});
+
 	it("names each colour it cannot read, with its field and element", () => {
 		const element = createTextElement();
 		element.color = "redd";
