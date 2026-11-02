@@ -139,6 +139,15 @@ function captionTextColor(color: string, fontOpacity: number): string {
 	);
 }
 
+/** The colour a caption's event draws in, and its second line inherits. */
+function captionPrimaryColor(style: SubtitleStyle): string {
+	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
+	return captionTextColor(
+		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
+		style.fontOpacity
+	);
+}
+
 /** The ASS Fontsize for an editor font size, rounded as libass reads it. */
 function assFontSize(fontSize: number, sizeFactor: number): number {
 	return Math.round(fontSize * sizeFactor * 100) / 100;
@@ -418,16 +427,14 @@ function secondaryLineForASS({
 	const text = clip.secondaryText?.trim();
 	if (!text) return "";
 	const secondary = resolveSecondaryLineStyle(style);
-	// \c takes the colour without its alpha, so one with its own also needs \1a;
-	// without one the line keeps the event's alpha.
+	// \c takes the colour without its alpha and the line inherits the event's,
+	// so a line that differs also needs its own \1a.
 	const [alpha, rgb] = splitAssColor(
 		captionTextColor(secondary.fontColor, style.fontOpacity)
 	);
-	const ownAlpha =
-		parseCssColor(secondary.fontColor)?.alpha === undefined
-			? ""
-			: `\\1a${alpha}`;
-	const color = colorTags ? `\\c${rgb}${ownAlpha}` : "";
+	const [eventAlpha] = splitAssColor(captionPrimaryColor(style));
+	const alphaTag = alpha === eventAlpha ? "" : `\\1a${alpha}`;
+	const color = colorTags ? `\\c${rgb}${alphaTag}` : "";
 	// `{`, `}` and `\` in a font name would end the override block early.
 	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
 	const weight =
@@ -545,10 +552,7 @@ function subtitleStyleToASSLine(
 	metrics: CaptionMetrics
 ): string {
 	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
-	const primary = captionTextColor(
-		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
-		style.fontOpacity
-	);
+	const primary = captionPrimaryColor(style);
 	const secondary = captionTextColor(
 		karaokeEnabled ? (style.upcomingColor ?? style.fontColor) : "#ffffff",
 		style.fontOpacity
