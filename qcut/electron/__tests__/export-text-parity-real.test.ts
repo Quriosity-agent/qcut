@@ -50,6 +50,11 @@ const measuredFaces: AssFontMetricsLookup = (request) =>
 		? assFontMetrics(request)
 		: undefined;
 
+/** A Windows path's backslashes and drive colon would end a filter option. */
+function escapeFilterPath(filePath: string): string {
+	return filePath.replace(/\\/g, "/").replace(/:/g, "\\:");
+}
+
 let renderIndex = 0;
 
 function renderAss(scripts: string[], size = { width: WIDTH, height: HEIGHT }) {
@@ -61,7 +66,7 @@ function renderAss(scripts: string[], size = { width: WIDTH, height: HEIGHT }) {
 	const filters = scripts.map((script, index) => {
 		const assPath = path.join(tempDir, `${name}-${index}.ass`);
 		fs.writeFileSync(assPath, script, "utf8");
-		return `ass='${assPath}'${fontsDirectory ? `:fontsdir='${fontsDirectory}'` : ""}`;
+		return `ass='${escapeFilterPath(assPath)}'${fontsDirectory ? `:fontsdir='${escapeFilterPath(fontsDirectory)}'` : ""}`;
 	});
 	const result = spawnSync(
 		ffmpegPath,
