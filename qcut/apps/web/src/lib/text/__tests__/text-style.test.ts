@@ -82,6 +82,22 @@ describe("text CSS helpers", () => {
 		expect(colorWithOpacity("#112233", 0)).toBe("transparent");
 	});
 
+	it("gives every colour without its own alpha the opacity field", () => {
+		expect(colorWithOpacity("red", 0.5)).toBe("#ff000080");
+		expect(colorWithOpacity("rgb(255, 0, 0)", 0.5)).toBe("#ff000080");
+		expect(colorWithOpacity("hsl(0, 100%, 50%)", 0.5)).toBe("#ff000080");
+	});
+
+	it("leaves a colour with its own alpha, and one it cannot read, to CSS", () => {
+		expect(colorWithOpacity("#ff000040", 0.5)).toBe("#ff000040");
+		expect(colorWithOpacity("rgba(255, 0, 0, 0.25)", 0.5)).toBe(
+			"rgba(255, 0, 0, 0.25)"
+		);
+		expect(colorWithOpacity("oklch(0.6 0.2 30)", 0.5)).toBe(
+			"oklch(0.6 0.2 30)"
+		);
+	});
+
 	it("combines shadow and glow without replacing either effect", () => {
 		const style = resolveTextStyle(
 			createTextElement({
