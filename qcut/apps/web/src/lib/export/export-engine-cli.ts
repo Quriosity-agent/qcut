@@ -81,6 +81,7 @@ import {
 import {
 	assFontFamiliesInTracks,
 	buildTimelineAssLayers,
+	unreadableTextColors,
 } from "./export-engine-cli-text";
 import {
 	assFaceRequestsFor,
@@ -688,6 +689,9 @@ export class CLIExportEngine extends ExportEngine {
 				)
 			)),
 		});
+		for (const color of unreadableTextColors({ tracks: this.tracks })) {
+			debugWarn(`[CLI Export] Colour not applied: ${color}`);
+		}
 		const nativelyRenderedTextElementIds = new Set([
 			...assRenderedElementIds,
 			...rasterTextElementIds,
