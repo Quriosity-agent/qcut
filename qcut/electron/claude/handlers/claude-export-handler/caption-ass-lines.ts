@@ -14,6 +14,7 @@
 
 import { assFontMetrics } from "./ass-font-metrics.js";
 import { assWeightTag, overlayWeight } from "./caption-ass-style.js";
+import { parseCssColor } from "./css-color.js";
 import type { TextOverlay } from "./types.js";
 
 /** Text as ASS draws it literally; line breaks become `\N`. */
@@ -89,8 +90,8 @@ export function assCaptionText({
 }
 
 /** A `#rrggbb` colour as an inline ASS colour tag value (`&HBBGGRR&`). */
-export function assInlineColor(hex: string): string {
-	const rgb = /^#[0-9a-f]{6}$/i.test(hex) ? hex.slice(1) : "ffffff";
+export function assInlineColor(color: string): string {
+	const rgb = (parseCssColor(color)?.hex ?? "#ffffff").slice(1);
 	return `&H${rgb.slice(4, 6)}${rgb.slice(2, 4)}${rgb.slice(0, 2)}&`.toUpperCase();
 }
 
