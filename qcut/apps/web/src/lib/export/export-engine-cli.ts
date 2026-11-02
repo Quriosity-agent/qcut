@@ -79,6 +79,7 @@ import {
 	logMode2Detection,
 } from "./export-engine-cli-debug";
 import {
+	assCanvasForExport,
 	assFontFamiliesInTracks,
 	buildTimelineAssLayers,
 	unreadableTextColors,
@@ -666,6 +667,10 @@ export class CLIExportEngine extends ExportEngine {
 			| "win32"
 			| "linux"
 			| undefined;
+		const assCanvas = assCanvasForExport({
+			project: useProjectStore.getState().activeProject?.canvasSize,
+			frame: this.canvas,
+		});
 		// Build text overlay filter chain
 		console.log(
 			"🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation..."
@@ -675,8 +680,8 @@ export class CLIExportEngine extends ExportEngine {
 			renderedTextElementIds: assRenderedElementIds,
 		} = buildTimelineAssLayers({
 			tracks: this.tracks,
-			canvasWidth: this.canvas.width,
-			canvasHeight: this.canvas.height,
+			canvasWidth: assCanvas.width,
+			canvasHeight: assCanvas.height,
 			fps: this.getFrameRate(),
 			excludedTextElementIds: rasterTextElementIds,
 			platform: assPlatform,
