@@ -95,6 +95,22 @@ export function assInlineColor(color: string): string {
 	return `&H${rgb.slice(4, 6)}${rgb.slice(2, 4)}${rgb.slice(0, 2)}&`.toUpperCase();
 }
 
+/**
+ * The second line's colour. `\c` takes a colour without its alpha, so one with
+ * its own also needs `\1a`, under the caption's opacity as in the preview;
+ * without one the line keeps the event's alpha.
+ */
+function secondaryColorTags(color: string, opacity: number): string {
+	const tag = `\\c${assInlineColor(color)}`;
+	const own = parseCssColor(color)?.alpha;
+	if (own === undefined) return tag;
+	const alpha = Math.round((1 - own * Math.min(1, Math.max(0, opacity))) * 255)
+		.toString(16)
+		.padStart(2, "0")
+		.toUpperCase();
+	return `${tag}\\1a&H${alpha}&`;
+}
+
 /** A font name inside an override block, where `{`, `}` and `\` would end it. */
 function overrideFontName(family: string): string {
 	return family.replace(/[{}\\]/g, "");
@@ -146,7 +162,9 @@ export function captionEventText({
 		secondary.letterSpacing === overlay.letterSpacing
 			? ""
 			: `\\fsp${secondary.letterSpacing.toFixed(2)}`;
-	const color = colorTags ? `\\c${assInlineColor(secondary.color)}` : "";
+	const color = colorTags
+		? secondaryColorTags(secondary.color, overlay.opacity)
+		: "";
 	const secondaryRun: AssCaptionRun = {
 		lines: lines(secondary.content),
 		fontSize: secondary.fontSize,
