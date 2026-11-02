@@ -246,6 +246,50 @@ describe("generateASS", () => {
 		expect(styleLine?.split(",").slice(-4)).toEqual(["10", "10", "28", "1"]);
 	});
 
+	describe("a colour's own alpha", () => {
+		const styled = (style: Record<string, unknown>, secondaryText?: string) =>
+			generateASS(
+				[
+					{
+						...caption(),
+						secondaryText,
+						style: { bgOpacity: 0, ...style },
+					} as CaptionElement,
+				],
+				{ resolution: { width: 1920, height: 1080 } }
+			);
+
+		it("multiplies with the caption's opacity, as the preview draws them", () => {
+			const style = styled({
+				fontColor: "rgba(255, 0, 0, 0.5)",
+				fontOpacity: 0.5,
+			})
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			expect(style?.[3]).toBe("&HBF0000FF");
+		});
+
+		it("carries to the second line, which \\c alone would draw opaque", () => {
+			const ass = styled(
+				{
+					fontOpacity: 0.5,
+					secondary: { fontColor: "rgba(255, 0, 0, 0.5)" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&\\1a&HBF&}第二行");
+		});
+
+		it("leaves a second line without one on the event's alpha", () => {
+			const ass = styled(
+				{ fontOpacity: 0.5, secondary: { fontColor: "red" } },
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&}第二行");
+		});
+	});
+
 	describe("stackOffset", () => {
 		const stacked = (
 			style: Record<string, unknown>,
