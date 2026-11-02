@@ -52,7 +52,7 @@ const measuredFaces: AssFontMetricsLookup = (request) =>
 
 let renderIndex = 0;
 
-function renderAss(scripts: string[]): Buffer {
+function renderAss(scripts: string[], size = { width: WIDTH, height: HEIGHT }) {
 	const name = `render-${renderIndex++}`;
 	const fontsDirectory = prepareAssFontsDirectory({
 		scripts,
@@ -71,7 +71,7 @@ function renderAss(scripts: string[]): Buffer {
 			"-f",
 			"lavfi",
 			"-i",
-			`color=c=black:s=${WIDTH}x${HEIGHT}:d=1.1:r=25`,
+			`color=c=black:s=${size.width}x${size.height}:d=1.1:r=25`,
 			"-vf",
 			filters.join(","),
 			// Late enough that every element in these tests is on screen.
@@ -85,23 +85,26 @@ function renderAss(scripts: string[]): Buffer {
 			"rgb24",
 			"-",
 		],
-		{ maxBuffer: WIDTH * HEIGHT * 4, timeout: 60_000 }
+		{ maxBuffer: size.width * size.height * 4, timeout: 60_000 }
 	);
 	if (result.status !== 0) throw new Error(result.stderr?.toString());
 	return result.stdout;
 }
 
 /** The box around every pixel above a dim threshold. */
-function inkBounds(frame: Buffer): {
+function inkBounds(
+	frame: Buffer,
+	size = { width: WIDTH, height: HEIGHT }
+): {
 	left: number;
 	right: number;
 	top: number;
 	bottom: number;
 } {
-	let [left, right, top, bottom] = [WIDTH, -1, HEIGHT, -1];
-	for (let y = 0; y < HEIGHT; y++) {
-		for (let x = 0; x < WIDTH; x++) {
-			const at = (y * WIDTH + x) * 3;
+	let [left, right, top, bottom] = [size.width, -1, size.height, -1];
+	for (let y = 0; y < size.height; y++) {
+		for (let x = 0; x < size.width; x++) {
+			const at = (y * size.width + x) * 3;
 			if (Math.max(frame[at], frame[at + 1], frame[at + 2]) <= 40) continue;
 			left = Math.min(left, x);
 			right = Math.max(right, x);
@@ -294,6 +297,50 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 						expect(bottom - top).toBeGreaterThan(80);
 					});
 				}
+			}
+		);
+
+		describe.skipIf(!assFontFamilyInstalled({ family: "Arial" }))(
+			"an export at another resolution than the project",
+			() => {
+				it("scales text, captions and their outlines with the frame", () => {
+					const { layers } = buildTimelineAssLayers({
+						tracks: [
+							textTrack(textElement({ strokeWidth: 16, strokeOpacity: 1 })),
+							captionTrack(
+								"track-1",
+								captionElement({
+									style: {
+										fontFamily: "Arial",
+										fontSize: 48,
+										bgOpacity: 0,
+										outlineColor: "#ffffff",
+										outlineWidth: 16,
+										shadowOffset: { x: 0, y: 0 },
+										position: { align: "bottom", y: 90 },
+									},
+								} as Partial<CaptionElement>)
+							),
+						],
+						canvasWidth: WIDTH,
+						canvasHeight: HEIGHT,
+						fps: 30,
+						platform: process.platform as "darwin" | "win32" | "linux",
+						fontMetrics: measuredFaces,
+					});
+					const scripts = layers.map((layer) => layer.content);
+					const half = { width: WIDTH / 2, height: HEIGHT / 2 };
+					const full = inkBounds(renderAss(scripts));
+					const scaled = inkBounds(renderAss(scripts, half), half);
+					expect(Math.abs(scaled.left - full.left / 2)).toBeLessThanOrEqual(2);
+					expect(Math.abs(scaled.right - full.right / 2)).toBeLessThanOrEqual(
+						2
+					);
+					expect(Math.abs(scaled.top - full.top / 2)).toBeLessThanOrEqual(2);
+					expect(Math.abs(scaled.bottom - full.bottom / 2)).toBeLessThanOrEqual(
+						2
+					);
+				});
 			}
 		);
 
