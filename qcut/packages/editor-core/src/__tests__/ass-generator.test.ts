@@ -281,6 +281,29 @@ describe("generateASS", () => {
 			expect(ass).toContain("\\c&H0000FF&\\1a&HBF&}第二行");
 		});
 
+		it("gives an opaque second line its own alpha over a see-through first", () => {
+			const ass = styled(
+				{
+					fontColor: "rgba(255, 0, 0, 0.5)",
+					fontOpacity: 0.5,
+					secondary: { fontColor: "red" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&\\1a&H80&}第二行");
+		});
+
+		it("leaves a second line with the first line's alpha on the event's", () => {
+			const ass = styled(
+				{
+					fontColor: "rgba(255, 0, 0, 0.5)",
+					secondary: { fontColor: "rgba(0, 255, 0, 0.5)" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H00FF00&}第二行");
+		});
+
 		it("leaves a second line without one on the event's alpha", () => {
 			const ass = styled(
 				{ fontOpacity: 0.5, secondary: { fontColor: "red" } },
