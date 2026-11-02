@@ -1,5 +1,6 @@
 import {
 	generateASS,
+	parseCssColor,
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	type AssFontMetricsLookup,
@@ -10,6 +11,7 @@ import {
 	type TimelineTrack,
 } from "@/types/timeline";
 import { buildTextASSOverlay } from "../export-cli/filters/text-ass-overlay";
+import { captionStackOffset } from "@/lib/captions/caption-stacking";
 import { resolveTextStyle } from "@/lib/text/text-style";
 import { stripMarkdownSyntax } from "@/lib/markdown";
 
@@ -43,6 +45,58 @@ function markdownAsTextElement({
 		rotation: element.rotation,
 		opacity: element.opacity,
 	};
+}
+
+/**
+ * Colours no export can read (a typo, `oklch()`), which the ASS layers draw
+ * white, or black for a shadow. The native export names them in its `warnings`.
+ */
+export function unreadableTextColors({
+	tracks,
+}: {
+	tracks: TimelineTrack[];
+}): string[] {
+	const unread = new Set<string>();
+	const check = (id: string, colors: Record<string, string | undefined>) => {
+		for (const [field, value] of Object.entries(colors)) {
+			if (value === undefined || parseCssColor(value)) continue;
+			unread.add(`${field} "${value}" on ${id}`);
+		}
+	};
+	for (const track of tracks) {
+		for (const element of track.elements) {
+			if (element.type === "text") {
+				const {
+					id,
+					color,
+					backgroundColor,
+					strokeColor,
+					shadowColor,
+					glowColor,
+				} = element;
+				check(id, {
+					color,
+					backgroundColor,
+					strokeColor,
+					shadowColor,
+					glowColor,
+				});
+			} else if (element.type === "markdown") {
+				const { id, textColor, backgroundColor } = element;
+				check(id, { textColor, backgroundColor });
+			} else if (element.type === "captions") {
+				const style = resolveSubtitleStyle(element.style);
+				check(element.id, {
+					fontColor: style.fontColor,
+					outlineColor: style.outlineColor,
+					shadowColor: style.shadowColor,
+					backgroundColor: style.backgroundColor,
+					"secondary.fontColor": resolveSecondaryLineStyle(style).fontColor,
+				});
+			}
+		}
+	}
+	return [...unread];
 }
 
 export interface TimelineAssLayer {
@@ -150,6 +204,8 @@ export function buildTimelineAssLayers({
 					canvasWidth,
 					canvasHeight,
 					fps,
+					fontMetrics,
+					familyCoversCjk,
 				});
 				if (!layer.content) continue;
 				layers.push({
@@ -171,6 +227,9 @@ export function buildTimelineAssLayers({
 						fps,
 						fontMetrics,
 						familyCoversCjk,
+						// Each caption is a layer of its own, so libass cannot see
+						// the others to stack them; the preview's order does it.
+						stackOffset: () => captionStackOffset({ tracks, element }),
 					}),
 					blendMode: "normal",
 					trackOrder,
@@ -187,6 +246,8 @@ export function buildTimelineAssLayers({
 					canvasWidth,
 					canvasHeight,
 					fps,
+					fontMetrics,
+					familyCoversCjk,
 				});
 				if (!layer.content) continue;
 				layers.push({
