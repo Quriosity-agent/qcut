@@ -25,6 +25,7 @@ import {
 	resolveCaptionAnimation,
 } from "./caption-animation.js";
 import { resolveAssCjkFamily } from "./ass-cjk-font.js";
+import { parseCssColor } from "./css-color.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -123,6 +124,19 @@ function captionMetrics({
 			(style.fontSize * style.lineSpacing - style.fontSize * face.sizeFactor) /
 			2,
 	};
+}
+
+/**
+ * A text colour under the caption's opacity. The preview draws the colour's own
+ * alpha and then the element's opacity over it, so here the two multiply, where
+ * a colour's own alpha replaces an opacity field of its own.
+ */
+function captionTextColor(color: string, fontOpacity: number): string {
+	const parsed = parseCssColor(color);
+	return rgbToASSColor(
+		parsed?.hex ?? color,
+		(parsed?.alpha ?? 1) * fontOpacity
+	);
 }
 
 /** The ASS Fontsize for an editor font size, rounded as libass reads it. */
@@ -403,10 +417,16 @@ function secondaryLineForASS({
 	const text = clip.secondaryText?.trim();
 	if (!text) return "";
 	const secondary = resolveSecondaryLineStyle(style);
-	// \c takes the colour without its alpha: &HBBGGRR&.
-	const color = colorTags
-		? `\\c&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`
-		: "";
+	// \c takes the colour without its alpha, so one with its own also needs \1a;
+	// without one the line keeps the event's alpha.
+	const [alpha, rgb] = splitAssColor(
+		captionTextColor(secondary.fontColor, style.fontOpacity)
+	);
+	const ownAlpha =
+		parseCssColor(secondary.fontColor)?.alpha === undefined
+			? ""
+			: `\\1a${alpha}`;
+	const color = colorTags ? `\\c${rgb}${ownAlpha}` : "";
 	// `{`, `}` and `\` in a font name would end the override block early.
 	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
 	const weight =
@@ -524,11 +544,11 @@ function subtitleStyleToASSLine(
 	metrics: CaptionMetrics
 ): string {
 	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
-	const primary = rgbToASSColor(
+	const primary = captionTextColor(
 		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
 		style.fontOpacity
 	);
-	const secondary = rgbToASSColor(
+	const secondary = captionTextColor(
 		karaokeEnabled ? (style.upcomingColor ?? style.fontColor) : "#ffffff",
 		style.fontOpacity
 	);
