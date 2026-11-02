@@ -226,6 +226,7 @@ Title: ${title}
 ScriptType: v4.00+
 PlayResX: ${resolution.width}
 PlayResY: ${resolution.height}
+ScaledBorderAndShadow: yes
 WrapStyle: 0
 
 [V4+ Styles]
