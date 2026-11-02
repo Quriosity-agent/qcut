@@ -89,6 +89,8 @@ describe("caption lines in ASS", () => {
 	it("pins a bilingual caption by its second line's own leading", () => {
 		const fontFamilyFor = vi.fn((overlay: TextOverlay) => overlay.fontFamily);
 		const overlay = {
+			color: "#ffffff",
+			opacity: 1,
 			content: "第一回合",
 			fontSize: 40,
 			fontFamily: "PingFang SC",
@@ -134,6 +136,8 @@ describe("caption lines in ASS", () => {
 				fontSize: 40,
 				fontFamily: "PingFang SC",
 				lineHeight: 1.4,
+				color: "#ffffff",
+				opacity: 1,
 				secondary: {
 					content: "Round one",
 					fontFamily: "Fu}tu\\ra{",
