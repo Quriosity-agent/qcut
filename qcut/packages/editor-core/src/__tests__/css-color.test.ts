@@ -58,6 +58,11 @@ describe("parseCssColor", () => {
 		expect(parseCssColor("hsl(-120, 100%, 50%)")).toEqual({ hex: "#0000ff" });
 	});
 
+	it("reads hsl() saturation and lightness as 0-100, with or without %", () => {
+		expect(parseCssColor("hsl(120 50 50)")).toEqual({ hex: "#40bf40" });
+		expect(parseCssColor("hsl(120 50% 50%)")).toEqual({ hex: "#40bf40" });
+	});
+
 	it("answers undefined for what it cannot read", () => {
 		for (const value of [
 			"redd",
