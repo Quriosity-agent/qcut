@@ -3,6 +3,7 @@ import {
 	assFontMetrics,
 	assFontSizeFactor,
 } from "../claude/handlers/claude-export-handler/ass-font-metrics.js";
+import { unreadableColorsWarning } from "../claude/handlers/claude-export-handler/caption-ass-style.js";
 import {
 	buildTextAss,
 	collectTextOverlays,
@@ -997,5 +998,185 @@ describe("native export text overlays", () => {
 			expect(ass).toContain("Noto Sans CJK SC");
 		}
 		expect(ass).toContain("Arial");
+	});
+
+	describe("CSS colours", () => {
+		const overlaysOf = (element: Record<string, unknown>) =>
+			collectTextOverlays({
+				name: "Colours",
+				duration: 2,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						id: "track",
+						name: "Text",
+						type: "text",
+						index: 0,
+						elements: [
+							{
+								id: "text-1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								type: "text",
+								content: "QCut",
+								...element,
+							},
+						],
+					},
+				],
+			} as unknown as ClaudeTimeline);
+		const styleOf = (element: Record<string, unknown>) => {
+			const ass = buildTextAss({
+				overlays: overlaysOf(element),
+				width: 1920,
+				height: 1080,
+			});
+			const style = ass
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			return { ass, style };
+		};
+
+		it("reads a named colour in every field", () => {
+			const { ass, style } = styleOf({
+				color: "red",
+				strokeColor: "lime",
+				strokeWidth: 2,
+				glowColor: "yellow",
+				glowOpacity: 1,
+				glowBlur: 4,
+				backgroundColor: "rebeccapurple",
+				backgroundOpacity: 1,
+				shadowColor: "blue",
+				shadowOpacity: 1,
+			});
+			expect(style?.[3]).toBe("&H000000FF");
+			expect(style?.[5]).toBe("&H0000FF00");
+			expect(ass).toContain("\\1c&H00FFFF&");
+			expect(ass).toContain("\\1c&H993366&");
+			// An outlined letter casts its shadow from the outline.
+			expect(ass).toContain("\\3c&HFF0000&");
+		});
+
+		it("draws a colour's own alpha in place of its opacity field", () => {
+			expect(
+				styleOf({
+					strokeColor: "rgba(255, 255, 255, 0.5)",
+					strokeOpacity: 1,
+				}).style?.[5]
+			).toBe("&H80FFFFFF");
+		});
+
+		it("draws no shadow at opacity 0, whatever alpha the colour has", () => {
+			const [overlay] = overlaysOf({
+				shadowColor: "rgba(0, 0, 0, 0.5)",
+				shadowOpacity: 0,
+			});
+			expect(overlay.shadows).toBeUndefined();
+		});
+
+		it("names a colour it cannot read, and only those", () => {
+			expect(unreadableColorsWarning(overlaysOf({ color: "red" }))).toBe(
+				undefined
+			);
+			expect(
+				unreadableColorsWarning(
+					overlaysOf({ color: "redd", glowColor: "oklch(0.6 0.2 30)" })
+				)
+			).toBe(
+				'Colours not applied (hex, rgb(), hsl() or a CSS name work): color "redd" on text-1, glowColor "oklch(0.6 0.2 30)" on text-1'
+			);
+		});
+
+		it("draws a text element's box in its own colour and size, under the text", () => {
+			const { ass, style } = styleOf({
+				backgroundColor: "#112233",
+				backgroundOpacity: 0.5,
+				backgroundRadius: 10,
+				width: 400,
+				height: 200,
+				x: 10,
+				y: 20,
+				strokeColor: "#ffffff",
+				strokeWidth: 2,
+			});
+			// An outlined letter, not libass's box, which the outline colour fills.
+			expect(style?.[15]).toBe("1");
+			expect(style?.[5]).toBe("&H00FFFFFF");
+			const box = ass
+				.split("\n")
+				.find((line) => line.startsWith("Dialogue: 0,"));
+			expect(box).toContain("\\an7\\p1");
+			expect(box).toContain("\\pos(770.00,460.00)");
+			expect(box).toContain("\\1c&H332211&\\1a&H80&");
+			expect(box).toContain("m 10 0");
+			expect(ass).toMatch(/Dialogue: 1,.*QCut/);
+		});
+
+		it("turns a text element and its box about the box's centre", () => {
+			const { ass } = styleOf({
+				backgroundColor: "#112233",
+				rotation: 15,
+				textAlign: "left",
+			});
+			const events = ass
+				.split("\n")
+				.filter((line) => line.startsWith("Dialogue: "));
+			expect(events).toHaveLength(2);
+			for (const event of events) {
+				expect(event).toContain("\\org(960.00,540.00)\\frz-15.00");
+			}
+		});
+
+		it("fills a caption's box with its background colour", () => {
+			const [overlay] = collectTextOverlays({
+				name: "Caption",
+				duration: 2,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						id: "track",
+						name: "Captions",
+						type: "captions",
+						index: 0,
+						elements: [
+							{
+								id: "caption-1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								type: "captions",
+								text: "QCut",
+								style: {
+									backgroundColor: "red",
+									bgOpacity: 1,
+									outlineColor: "#000000",
+									outlineWidth: 2,
+								},
+							},
+						],
+					},
+				],
+			} as unknown as ClaudeTimeline);
+			const style = buildTextAss({
+				overlays: [overlay],
+				width: 1920,
+				height: 1080,
+			})
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			// libass's BorderStyle 3 fills the box with the outline colour.
+			expect(style?.[15]).toBe("3");
+			expect(style?.[5]).toBe("&H000000FF");
+		});
 	});
 });
