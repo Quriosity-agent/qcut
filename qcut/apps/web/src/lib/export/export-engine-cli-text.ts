@@ -99,6 +99,33 @@ export function unreadableTextColors({
 	return [...unread];
 }
 
+/**
+ * The canvas an export's ASS layers are written for. Elements are placed and
+ * sized in the project canvas's pixels and libass scales PlayRes to the frame,
+ * so at another resolution this is the project's canvas, as in the native
+ * export. An export of another shape keeps the frame's shape, so that libass
+ * scales both axes alike.
+ */
+export function assCanvasForExport({
+	project,
+	frame,
+}: {
+	project?: { width: number; height: number };
+	frame: { width: number; height: number };
+}): { width: number; height: number } {
+	if (!project || project.width <= 0 || project.height <= 0) {
+		return { width: frame.width, height: frame.height };
+	}
+	const scale = Math.min(
+		frame.width / project.width,
+		frame.height / project.height
+	);
+	return {
+		width: Math.round(frame.width / scale),
+		height: Math.round(frame.height / scale),
+	};
+}
+
 export interface TimelineAssLayer {
 	content: string;
 	blendMode: NonNullable<
