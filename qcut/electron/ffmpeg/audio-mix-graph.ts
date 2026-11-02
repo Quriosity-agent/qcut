@@ -176,39 +176,6 @@ function levelFilters(strip: AudioMixBus | AudioTrackMix): string[] {
 	return gain ? [gain] : [];
 }
 
-/**
- * Silence added to `amix`'s first input. FFmpeg's amix stops reading its first
- * input the moment that input ends, dropping whatever is still queued for the
- * other inputs to catch up with. Every input decodes on its own thread, so how
- * much is dropped depends on which arrived first, and two exports of one
- * project came out different (N34). With silence after the signal only silence
- * can be dropped. Longer than the queue of frames that can wait, and every
- * caller cuts its output to the timeline's length, so it never shows.
- */
-const AMIX_FIRST_INPUT_PADDING_SECONDS = 5;
-
-/**
- * The steps that sum `inputs` into `output`: labels without their brackets.
- * The timeline's sums all go through here; see the padding above.
- */
-export function amixSteps({
-	inputs,
-	output,
-	duration = "longest",
-}: {
-	inputs: string[];
-	output: string;
-	/** "first" ends with the first input, plus its padding. */
-	duration?: "longest" | "first";
-}): string[] {
-	const [first, ...rest] = inputs;
-	const padded = `${output}_first`;
-	return [
-		`[${first}]apad=pad_dur=${AMIX_FIRST_INPUT_PADDING_SECONDS}[${padded}]`,
-		`[${padded}]${rest.map((label) => `[${label}]`).join("")}amix=inputs=${inputs.length}:duration=${duration}:dropout_transition=0:normalize=0[${output}]`,
-	];
-}
-
 /** Joins labels into one, summing when there are several. */
 function sumLabels({
 	labels,
@@ -220,7 +187,15 @@ function sumLabels({
 	filterSteps: string[];
 }): string {
 	if (labels.length === 1) return labels[0];
-	filterSteps.push(...amixSteps({ inputs: labels, output }));
+	// amix takes its timestamps from its first input. If another input's frame
+	// reaches it after that input's last samples but before its end, which
+	// depends on thread timing, every frame from then on has none: a level or
+	// pan curve reads `t` as NaN, which FFmpeg can play as volume 0 (N34). A sum
+	// starts at the timeline's 0 and has no gaps, so its clock is its sample
+	// count.
+	filterSteps.push(
+		`${labels.map((label) => `[${label}]`).join("")}amix=inputs=${labels.length}:duration=longest:dropout_transition=0:normalize=0,asetpts=N/SR/TB[${output}]`
+	);
 	return output;
 }
 
@@ -405,9 +380,9 @@ export function appendAudioMixGraph({
 			const kept = dbToLinear(Math.min(0, track.ducking.reductionDb));
 			filterSteps.push(
 				`[${current}]asplit=2[mix_t${index}_dry][mix_t${index}_wet]`,
-				// The gate stops when the signal ends, dropping what still waits for
-				// the key, which decodes on another thread. Padded, it runs on until
-				// the mix below has what it needs and closes it (N34).
+				// The gate ends as soon as its signal does, dropping what still waits
+				// for the key, which decodes on another thread (N34). Padded, it runs
+				// on until the mix below, which ends with the dry signal, closes it.
 				`[mix_t${index}_wet]apad[mix_t${index}_wet_padded]`,
 				`[mix_t${index}_wet_padded][${sidechain}]sidechaingate=` +
 					`threshold=${round(clamp(dbToLinear(track.ducking.thresholdDb), 0.000001, 1))}` +
@@ -415,11 +390,7 @@ export function appendAudioMixGraph({
 					`:attack=${round(clamp(track.ducking.attackMs, 0.01, 9000))}` +
 					`:release=${round(clamp(track.ducking.releaseMs, 0.01, 9000))}` +
 					`,volume=${round(kept - 1)}[mix_t${index}_gated]`,
-				...amixSteps({
-					inputs: [`mix_t${index}_dry`, `mix_t${index}_gated`],
-					output: `mix_t${index}_duck`,
-					duration: "first",
-				})
+				`[mix_t${index}_dry][mix_t${index}_gated]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix_t${index}_duck]`
 			);
 			current = `mix_t${index}_duck`;
 		}
