@@ -1,3 +1,9 @@
+import {
+	cssColorAlpha,
+	parseCssColor,
+	type AssFaceMetrics,
+	type AssFontMetricsLookup,
+} from "@qcut/editor-core";
 import { rgbToASSColor } from "@/lib/captions/subtitle-style";
 import {
 	assBlurForCssBlur,
@@ -32,9 +38,40 @@ function assAlpha(opacity: number): string {
 		.toUpperCase();
 }
 
-function assOverrideColor(hex: string): string {
-	const value = hex.replace("#", "").padEnd(6, "0").slice(0, 6);
+function assOverrideColor(color: string, fallback = "#ffffff"): string {
+	const value = (parseCssColor(color)?.hex ?? fallback).slice(1);
 	return `&H${value.slice(4, 6)}${value.slice(2, 4)}${value.slice(0, 2)}&`.toUpperCase();
+}
+
+/** What a colour field draws at; see `cssColorAlpha`. */
+function colorOpacity(color: string, opacity: number): number {
+	const parsed = parseCssColor(color);
+	return parsed ? cssColorAlpha(parsed, opacity) : opacity;
+}
+
+/** The family this element's ASS names, and what libass does with it. */
+function resolveAssFace({
+	element,
+	fontMetrics,
+	familyCoversCjk,
+}: {
+	element: TextElement;
+	fontMetrics?: AssFontMetricsLookup;
+	familyCoversCjk?: (family: string) => boolean;
+}): { family: string; metrics?: AssFaceMetrics } {
+	const family = assCompatibleFontFamily({
+		family: element.fontFamily,
+		content: element.content,
+		coversCjk: familyCoversCjk,
+	});
+	return {
+		family,
+		metrics: fontMetrics?.({
+			family,
+			bold: element.fontWeight === "bold",
+			italic: element.fontStyle === "italic",
+		}),
+	};
 }
 
 function escapeASSText(text: string): string {
@@ -82,12 +119,23 @@ function getTextAnchor({
 	element,
 	canvasWidth,
 	canvasHeight,
+	face,
 }: {
 	element: TextElement;
 	canvasWidth: number;
 	canvasHeight: number;
+	face?: AssFaceMetrics;
 }): { x: number; y: number; alignment: number } {
 	const style = resolveTextStyle(element);
+	// CSS centres each em inside its line box, libass stacks the font's own line
+	// height with the em at its bottom, so a pinned top or bottom edge moves by
+	// half the difference of the two (the native export's assPlacement). An
+	// unmeasured face keeps its nominal size, and so its old position.
+	const leading = face
+		? (element.fontSize * style.lineHeight -
+				element.fontSize * face.lineHeightEm) /
+			2
+		: 0;
 	const centerX = canvasWidth / 2 + element.x;
 	const centerY = canvasHeight / 2 + element.y;
 	const horizontalIndex =
@@ -107,9 +155,9 @@ function getTextAnchor({
 				: centerX;
 	const y =
 		verticalIndex === 2
-			? centerY - style.height / 2 + style.backgroundPadding
+			? centerY - style.height / 2 + style.backgroundPadding + leading
 			: verticalIndex === 0
-				? centerY + style.height / 2 - style.backgroundPadding
+				? centerY + style.height / 2 - style.backgroundPadding - leading
 				: centerY;
 	return { x, y, alignment };
 }
@@ -119,14 +167,16 @@ function getStraightLineLayout({
 	canvasWidth,
 	canvasHeight,
 	measureTextWidth,
+	face,
 }: {
 	element: TextElement;
 	canvasWidth: number;
 	canvasHeight: number;
 	measureTextWidth?: TextWidthMeasurer;
+	face?: AssFaceMetrics;
 }): Array<{ text: string; x: number; y: number; alignment: number }> {
 	const style = resolveTextStyle(element);
-	const anchor = getTextAnchor({ element, canvasWidth, canvasHeight });
+	const anchor = getTextAnchor({ element, canvasWidth, canvasHeight, face });
 	const lines = wrapMeasuredText({ element, measureTextWidth });
 	const lineAdvance = element.fontSize * style.lineHeight;
 	return lines.map((text, lineIndex) => {
@@ -147,11 +197,17 @@ function motionTags({
 	x,
 	y,
 	targetOpacity,
+	outlineOpacity,
 }: {
 	element: TextElement;
 	x: number;
 	y: number;
 	targetOpacity: number;
+	/**
+	 * The outline's own opacity when it differs from the fill's: `\alpha` sets
+	 * every colour's, so it would override the style's outline alpha.
+	 */
+	outlineOpacity?: number;
 }): string {
 	const animation = resolveTextAnimation(element);
 	const startMs = Math.round(animation.delay * 1000);
@@ -163,11 +219,14 @@ function motionTags({
 		position = `\\move(${(x + 120).toFixed(2)},${y.toFixed(2)},${x.toFixed(2)},${y.toFixed(2)},${startMs},${endMs})`;
 	}
 
-	const targetAlpha = assAlpha(targetOpacity);
+	const targetAlpha =
+		outlineOpacity === undefined
+			? `\\alpha&H${assAlpha(targetOpacity)}&`
+			: `\\1a&H${assAlpha(targetOpacity)}&\\3a&H${assAlpha(outlineOpacity)}&`;
 	if (animation.type === "none") {
-		return `${position}\\alpha&H${targetAlpha}&`;
+		return `${position}${targetAlpha}`;
 	}
-	return `${position}\\alpha&HFF&\\t(${startMs},${endMs},\\alpha&H${targetAlpha}&)`;
+	return `${position}\\alpha&HFF&\\t(${startMs},${endMs},${targetAlpha})`;
 }
 
 function roundedRectangleDrawing({
@@ -194,19 +253,30 @@ function roundedRectangleDrawing({
 	].join(" ");
 }
 
-function styleLine(name: string, element: TextElement): string {
+function styleLine({
+	name,
+	element,
+	family,
+	face,
+}: {
+	name: string;
+	element: TextElement;
+	family: string;
+	face?: AssFaceMetrics;
+}): string {
 	const style = resolveTextStyle(element);
 	return [
 		name,
-		assCompatibleFontFamily({
-			family: element.fontFamily,
-			content: element.content,
-		}),
-		element.fontSize,
+		family,
+		// libass sizes a face by its Windows ascent + descent, the editor by the
+		// em: the factor makes the exported em the one the preview shows.
+		face
+			? Math.round(element.fontSize * face.sizeFactor * 100) / 100
+			: element.fontSize,
 		rgbToASSColor(element.color, 1),
 		"&H00FFFFFF",
 		rgbToASSColor(style.strokeColor, style.strokeOpacity),
-		rgbToASSColor(style.shadowColor, style.shadowOpacity),
+		rgbToASSColor(style.shadowColor, style.shadowOpacity, "#000000"),
 		element.fontWeight === "bold" ? -1 : 0,
 		element.fontStyle === "italic" ? -1 : 0,
 		element.textDecoration === "underline" ? -1 : 0,
@@ -250,6 +320,8 @@ function buildElementEvents({
 	eventStart,
 	eventEnd,
 	measureTextWidth,
+	fontMetrics,
+	familyCoversCjk,
 }: {
 	element: TextElement;
 	index: number;
@@ -258,6 +330,8 @@ function buildElementEvents({
 	eventStart?: number;
 	eventEnd?: number;
 	measureTextWidth?: TextWidthMeasurer;
+	fontMetrics?: AssFontMetricsLookup;
+	familyCoversCjk?: (family: string) => boolean;
 }): { styles: string[]; events: string[] } {
 	const style = resolveTextStyle(element);
 	const styleName = `QCutText${index}`;
@@ -267,7 +341,12 @@ function buildElementEvents({
 	const centerX = canvasWidth / 2 + element.x;
 	const centerY = canvasHeight / 2 + element.y;
 	const baseTags = `\\org(${centerX.toFixed(2)},${centerY.toFixed(2)})\\frz${-element.rotation}\\fsp${style.letterSpacing}`;
-	const styles = [styleLine(styleName, element)];
+	const { family, metrics: face } = resolveAssFace({
+		element,
+		fontMetrics,
+		familyCoversCjk,
+	});
+	const styles = [styleLine({ name: styleName, element, family, face })];
 	const events: string[] = [];
 
 	if (
@@ -284,7 +363,9 @@ function buildElementEvents({
 				element,
 				x: left,
 				y: top,
-				targetOpacity: element.opacity * style.backgroundOpacity,
+				targetOpacity:
+					element.opacity *
+					colorOpacity(element.backgroundColor, style.backgroundOpacity),
 			}),
 		].join("");
 		events.push(
@@ -344,6 +425,7 @@ function buildElementEvents({
 					canvasWidth,
 					canvasHeight,
 					measureTextWidth,
+					face,
 				}).map((line) => ({
 					text: line.text,
 					x: line.x,
@@ -358,6 +440,7 @@ function buildElementEvents({
 		offsetX,
 		offsetY,
 		border,
+		fallback,
 	}: {
 		color: string;
 		opacity: number;
@@ -365,23 +448,26 @@ function buildElementEvents({
 		offsetX: number;
 		offsetY: number;
 		border: number;
+		fallback?: string;
 	}) => {
-		if (opacity <= 0) return;
+		const drawnOpacity = colorOpacity(color, opacity);
+		if (drawnOpacity <= 0) return;
+		const assColor = assOverrideColor(color, fallback);
 		for (const entry of getEffectLayout()) {
 			const tags = [
 				entry.anchorTags,
 				"\\bord0\\shad0",
-				`\\1c${assOverrideColor(color)}`,
+				`\\1c${assColor}`,
 				// The preview draws `blur` as a CSS text-shadow radius (σ = blur/2).
 				`\\blur${assBlurForCssBlur(blur).toFixed(2)}`,
 				motionTags({
 					element,
 					x: entry.x + offsetX,
 					y: entry.y + offsetY,
-					targetOpacity: element.opacity * opacity,
+					targetOpacity: element.opacity * drawnOpacity,
 				}),
 				border > 0
-					? `\\bord${border}\\1a&HFF&\\3a&H${assAlpha(element.opacity * opacity)}&\\3c${assOverrideColor(color)}`
+					? `\\bord${border}\\1a&HFF&\\3a&H${assAlpha(element.opacity * drawnOpacity)}&\\3c${assColor}`
 					: "",
 			].join("");
 			events.push(
@@ -403,6 +489,7 @@ function buildElementEvents({
 		offsetX: style.shadowOffsetX,
 		offsetY: style.shadowOffsetY,
 		border: 0,
+		fallback: "#000000",
 	});
 	addEffectEvent({
 		color: style.glowColor,
@@ -413,6 +500,9 @@ function buildElementEvents({
 		border: Math.max(1, style.strokeWidth + 2),
 	});
 
+	const textOpacity = element.opacity * colorOpacity(element.color, 1);
+	const outlineOpacity =
+		element.opacity * colorOpacity(style.strokeColor, style.strokeOpacity);
 	if (style.curve !== 0) {
 		for (const glyph of getCurvedGlyphLayout()) {
 			const tags = [
@@ -421,7 +511,8 @@ function buildElementEvents({
 					element,
 					x: glyph.x,
 					y: glyph.y,
-					targetOpacity: element.opacity,
+					targetOpacity: textOpacity,
+					outlineOpacity,
 				}),
 			].join("");
 			events.push(
@@ -440,12 +531,14 @@ function buildElementEvents({
 			canvasWidth,
 			canvasHeight,
 			measureTextWidth,
+			face,
 		})) {
 			const tags = `\\an${line.alignment}${baseTags}${motionTags({
 				element,
 				x: line.x,
 				y: line.y,
-				targetOpacity: element.opacity,
+				targetOpacity: textOpacity,
+				outlineOpacity,
 			})}`;
 			events.push(
 				eventLine({
@@ -469,6 +562,8 @@ export function buildTextASSOverlay({
 	canvasHeight,
 	fps = 30,
 	measureTextWidth,
+	fontMetrics,
+	familyCoversCjk,
 }: {
 	tracks: TimelineTrack[];
 	allTracks?: TimelineTrack[];
@@ -476,6 +571,14 @@ export function buildTextASSOverlay({
 	canvasHeight: number;
 	fps?: number;
 	measureTextWidth?: TextWidthMeasurer;
+	/**
+	 * What libass will do with each face, from `loadAssFontMetrics`. Without
+	 * it the ASS Fontsize stays nominal, which libass renders 10–15 % small in
+	 * fonts such as Arial and Helvetica.
+	 */
+	fontMetrics?: AssFontMetricsLookup;
+	/** Whether an installed family carries CJK glyphs, read from the font. */
+	familyCoversCjk?: (family: string) => boolean;
 }): TextASSExport {
 	const styles: string[] = [];
 	const events: string[] = [];
@@ -529,6 +632,8 @@ export function buildTextASSOverlay({
 						eventStart: frameStart,
 						eventEnd: frameEnd,
 						measureTextWidth,
+						fontMetrics,
+						familyCoversCjk,
 					});
 					styles.push(...result.styles);
 					events.push(...result.events);
@@ -545,6 +650,8 @@ export function buildTextASSOverlay({
 					canvasWidth,
 					canvasHeight,
 					measureTextWidth,
+					fontMetrics,
+					familyCoversCjk,
 				});
 				styles.push(...result.styles);
 				events.push(...result.events);
