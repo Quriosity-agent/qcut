@@ -1133,6 +1133,56 @@ describe("native export text overlays", () => {
 			}
 		});
 
+		const secondLine = (fontColor: string) =>
+			buildTextAss({
+				overlays: collectTextOverlays({
+					name: "Caption",
+					duration: 2,
+					width: 1920,
+					height: 1080,
+					fps: 30,
+					tracks: [
+						{
+							id: "track",
+							name: "Captions",
+							type: "captions",
+							index: 0,
+							elements: [
+								{
+									id: "caption-1",
+									trackIndex: 0,
+									startTime: 0,
+									endTime: 2,
+									duration: 2,
+									type: "captions",
+									content: "QCut",
+									secondaryContent: "Second",
+									style: {
+										fontOpacity: 0.5,
+										bgOpacity: 0,
+										secondary: { fontColor },
+									},
+								},
+							],
+						},
+					],
+				} as unknown as ClaudeTimeline),
+				width: 1920,
+				height: 1080,
+			});
+
+		it("carries a second line's own alpha, under the caption's opacity", () => {
+			expect(secondLine("rgba(255, 0, 0, 0.5)")).toContain(
+				"\\c&H0000FF&\\1a&HBF&"
+			);
+		});
+
+		it("leaves a second line without its own alpha on the event's", () => {
+			const ass = secondLine("red");
+			expect(ass).toContain("\\c&H0000FF&");
+			expect(ass).not.toContain("\\1a&HBF&");
+		});
+
 		it("fills a caption's box with its background colour", () => {
 			const [overlay] = collectTextOverlays({
 				name: "Caption",
