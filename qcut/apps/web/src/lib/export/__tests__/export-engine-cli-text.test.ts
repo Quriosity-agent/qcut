@@ -5,6 +5,7 @@ import type {
 	TimelineTrack,
 } from "@/types/timeline";
 import {
+	assCanvasForExport,
 	assFontFamiliesInTracks,
 	buildTimelineAssLayers,
 	unreadableTextColors,
@@ -49,6 +50,40 @@ function createCaptionElement(): CaptionElement {
 		trimEnd: 0,
 	};
 }
+
+describe("assCanvasForExport", () => {
+	it("is the project's canvas at another resolution of its shape", () => {
+		expect(
+			assCanvasForExport({
+				project: { width: 1920, height: 1080 },
+				frame: { width: 1280, height: 720 },
+			})
+		).toEqual({ width: 1920, height: 1080 });
+		expect(
+			assCanvasForExport({
+				project: { width: 1470, height: 630 },
+				frame: { width: 2520, height: 1080 },
+			})
+		).toEqual({ width: 1470, height: 630 });
+	});
+
+	it("keeps the frame's shape, so both axes scale alike", () => {
+		expect(
+			assCanvasForExport({
+				project: { width: 1920, height: 1080 },
+				frame: { width: 1080, height: 1080 },
+			})
+		).toEqual({ width: 1920, height: 1920 });
+	});
+
+	it("is the frame without a project to go by", () => {
+		const frame = { width: 1280, height: 720 };
+		expect(assCanvasForExport({ frame })).toEqual(frame);
+		expect(
+			assCanvasForExport({ project: { width: 0, height: 0 }, frame })
+		).toEqual(frame);
+	});
+});
 
 describe("unreadableTextColors", () => {
 	const onTrack = (element: TextElement | CaptionElement): TimelineTrack => ({
