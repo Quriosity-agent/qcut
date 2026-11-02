@@ -1133,7 +1133,7 @@ describe("native export text overlays", () => {
 			}
 		});
 
-		const secondLine = (fontColor: string) =>
+		const secondLine = (fontColor: string, primaryColor = "#ffffff") =>
 			buildTextAss({
 				overlays: collectTextOverlays({
 					name: "Caption",
@@ -1158,6 +1158,7 @@ describe("native export text overlays", () => {
 									content: "QCut",
 									secondaryContent: "Second",
 									style: {
+										fontColor: primaryColor,
 										fontOpacity: 0.5,
 										bgOpacity: 0,
 										secondary: { fontColor },
@@ -1175,6 +1176,18 @@ describe("native export text overlays", () => {
 			expect(secondLine("rgba(255, 0, 0, 0.5)")).toContain(
 				"\\c&H0000FF&\\1a&HBF&"
 			);
+		});
+
+		it("gives an opaque second line its own alpha over a see-through first", () => {
+			expect(secondLine("red", "rgba(255, 0, 0, 0.5)")).toContain(
+				"\\c&H0000FF&\\1a&H80&"
+			);
+		});
+
+		it("leaves a second line with the first line's alpha on the event's", () => {
+			const ass = secondLine("rgba(0, 255, 0, 0.5)", "rgba(255, 0, 0, 0.5)");
+			expect(ass).toContain("\\c&H00FF00&");
+			expect(ass).not.toContain("\\c&H00FF00&\\1a");
 		});
 
 		it("leaves a second line without its own alpha on the event's", () => {
