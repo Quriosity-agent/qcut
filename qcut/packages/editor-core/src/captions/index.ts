@@ -37,6 +37,13 @@ export {
 } from "./ass-generator.js";
 
 export {
+	CSS_NAMED_COLORS,
+	cssColorAlpha,
+	parseCssColor,
+	type ParsedCssColor,
+} from "./css-color.js";
+
+export {
 	CJK_CAPABLE_FONT_FAMILIES,
 	containsCjkText,
 	isCjkCapableFamily,
