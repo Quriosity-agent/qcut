@@ -24,7 +24,6 @@ import type {
 
 import { parseProgress, getFFprobePath, normalizeVideo } from "./ffmpeg/utils";
 import { buildTimelineAudioFilters } from "./ffmpeg/audio-filter-graph";
-import { amixSteps } from "./ffmpeg/audio-mix-graph";
 import { appendStickerInputArgs } from "./ffmpeg-sticker-input";
 import { prepareFFmpegFilterComplexScripts } from "./ffmpeg/filter-complex-script";
 import {
@@ -368,12 +367,11 @@ async function mixOverlayAudio(
 		let audioMap = audioGraph.mapAudio ?? "1:a";
 
 		if (hasBaseAudio) {
+			const overlayInput = audioMap.startsWith("[")
+				? audioMap
+				: `[${audioMap}]`;
 			filterParts.push(
-				...amixSteps({
-					inputs: ["0:a", audioMap.replace(/^\[|\]$/g, "")],
-					output: "aout",
-					duration: "first",
-				})
+				`[0:a]${overlayInput}amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`
 			);
 			audioMap = "[aout]";
 		} else {
