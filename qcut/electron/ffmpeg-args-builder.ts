@@ -943,12 +943,6 @@ function buildCompositeEncodeArgs(
 		args.push("-c:a", "aac", "-b:a", "128k");
 	}
 
-	// The picture ends at the timeline's length by itself, the sound's padding
-	// (audio-mix-graph.ts) does not.
-	if (audioMap && duration > 0) {
-		args.push("-t", String(duration));
-	}
-
 	args.push("-movflags", "+faststart", outputFile);
 	return args;
 }
