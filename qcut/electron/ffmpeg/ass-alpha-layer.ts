@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "node:fs";
 import type { VisualLayerBlendMode } from "./visual-layer-compositor";
 
 export function buildAssAlphaLayer({
