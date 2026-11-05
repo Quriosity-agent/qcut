@@ -8,6 +8,7 @@ import type {
 	TimelineTrack,
 } from "../../packages/editor-core/src/types/timeline.js";
 import { resolveSubtitleStyle } from "../../packages/editor-core/src/captions/subtitle-style.js";
+import { generateASS } from "../../packages/editor-core/src/captions/ass-generator.js";
 import * as coreLayout from "../../packages/editor-core/src/captions/caption-layout.js";
 import * as nativeLayout from "../claude/handlers/claude-export-handler/caption-layout.js";
 import { buildTimelineAssLayers } from "../../apps/web/src/lib/export/export-engine-cli-text";
@@ -305,6 +306,87 @@ describe("caption geometry compilation boundary", () => {
 describe.skipIf(
 	!fs.existsSync(ffmpeg) || !assFontFamilyInstalled({ family: "Arial" })
 )("caption padded backgrounds through real libass", () => {
+	it.each([
+		"top",
+		"center",
+		"bottom",
+	] as const)("keeps wrapped karaoke glyphs inside their measured background at %s", (align) => {
+		const caption = fixture({
+			align,
+			karaokeMode: "karaoke",
+			highlightColor: "yellow",
+			upcomingColor: "white",
+		});
+		caption.text = "stale transcript";
+		caption.secondaryText = undefined;
+		caption.words = [
+			{ id: "first", type: "word", text: "MMMMMMMMMMMM", start: 0, end: 0.6 },
+			{
+				id: "second",
+				type: "word",
+				text: "WWWWWWWWWWWW",
+				start: 0.8,
+				end: 1.5,
+			},
+		];
+		const script = generateASS([caption], {
+			resolution: { width: WIDTH, height: HEIGHT },
+			fps: 30,
+			measureText,
+			fontMetrics: assFontMetrics,
+		});
+		const style = caption.style!;
+		const expected = coreLayout.captionBackgroundBox({
+			lineWidths: caption.words.map((word) =>
+				measureText({
+					text: word.text,
+					fontFamily: "Arial",
+					fontSize: 40,
+					fontWeight: 400,
+					italic: false,
+					letterSpacing: 0,
+				})
+			),
+			lineHeights: [40 * style.lineSpacing, 40 * style.lineSpacing],
+			width: WIDTH,
+			height: HEIGHT,
+			align,
+			textAlign: "center",
+			stackOffset: 0,
+		});
+		const highlighted = [0.1, 1.9].map((time) => {
+			const frame = render({ scripts: [script], time });
+			const background = blueBounds({ frame });
+			expect(background.count).toBeGreaterThan(20_000);
+			for (const [actual, target] of [
+				[background.left, expected.x],
+				[background.top, expected.y],
+				[background.right + 1, expected.x + expected.width],
+				[background.bottom + 1, expected.y + expected.height],
+			])
+				expect(Math.abs(actual - target)).toBeLessThanOrEqual(2);
+			let glyphs = 0;
+			let yellow = 0;
+			for (let y = 0; y < HEIGHT; y++) {
+				for (let x = 0; x < WIDTH; x++) {
+					const at = (y * WIDTH + x) * 3;
+					if (frame[at] < 160 || frame[at + 1] < 160) continue;
+					glyphs++;
+					expect(x).toBeGreaterThan(background.left + 4);
+					expect(x).toBeLessThan(background.right - 4);
+					expect(y).toBeGreaterThan(background.top + 2);
+					expect(y).toBeLessThan(background.bottom - 2);
+					if (frame[at + 2] < 80) yellow++;
+				}
+			}
+			expect(glyphs).toBeGreaterThan(4000);
+			return yellow;
+		});
+		expect(highlighted[0]).toBeGreaterThan(100);
+		expect(highlighted[1]).toBeGreaterThan(highlighted[0] * 5);
+		expect(script).toContain("{\\kf80}MMMMMMMMMMMM\\N");
+		expect(script).toContain("{\\kf120}WWWWWWWWWWWW");
+	});
 	for (const align of ["top", "center", "bottom"] as const) {
 		for (const textAlign of ["left", "center", "right"] as const) {
 			it(`matches the preview box for ${align}/${textAlign} bilingual multiline captions`, () => {
