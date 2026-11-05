@@ -45,6 +45,8 @@ export {
 	type CaptionTextMeasurer,
 } from "./caption-layout.js";
 
+export { prepareCaptionLayout } from "./caption-ass-layout.js";
+
 export {
 	CSS_NAMED_COLORS,
 	cssColorAlpha,
