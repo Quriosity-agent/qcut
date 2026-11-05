@@ -1,10 +1,61 @@
 import type { CaptionElement, SubtitleStyle } from "@/types/timeline";
 import { getCaptionAnimationState, hexToRgba } from "./subtitle-style";
 import { canvasFontFamily } from "@/lib/text/canvas-font";
+import { CAPTION_BOX } from "@qcut/editor-core";
 
 interface KaraokeCanvasLine {
 	words: NonNullable<CaptionElement["words"]>;
 	width: number;
+}
+
+function karaokeWords({
+	element,
+	style,
+}: {
+	element: CaptionElement;
+	style: SubtitleStyle;
+}) {
+	if (style.karaokeMode !== "karaoke") return [];
+	return (element.words ?? [])
+		.filter((word) => word.type === "word" && word.text.trim().length > 0)
+		.sort((left, right) => left.start - right.start);
+}
+
+function setKaraokeFont({
+	ctx,
+	style,
+}: {
+	ctx: CanvasRenderingContext2D;
+	style: SubtitleStyle;
+}) {
+	ctx.font = `${style.italic ? "italic" : "normal"} ${style.bold ? "bold" : "normal"} ${style.fontSize}px ${canvasFontFamily(style.fontFamily)}`;
+	ctx.letterSpacing = `${style.letterSpacing}px`;
+}
+
+export function measureKaraokeCanvasBlockHeight({
+	ctx,
+	canvas,
+	element,
+	style,
+}: {
+	ctx: CanvasRenderingContext2D;
+	canvas: { width: number; height: number };
+	element: CaptionElement;
+	style: SubtitleStyle;
+}): number | undefined {
+	const words = karaokeWords({ element, style });
+	if (words.length === 0) return;
+	ctx.save();
+	setKaraokeFont({ ctx, style });
+	const lines = layoutKaraokeLines({
+		ctx,
+		words,
+		maxWidth: canvas.width * 0.8,
+	});
+	ctx.restore();
+	return (
+		lines.length * style.fontSize * style.lineSpacing + CAPTION_BOX.paddingY * 2
+	);
 }
 
 function layoutKaraokeLines({
@@ -84,21 +135,18 @@ export function renderKaraokeCaptionToCanvas({
 	element,
 	currentTime,
 	style,
+	stackOffset = 0,
 }: {
 	ctx: CanvasRenderingContext2D;
 	canvas: { width: number; height: number };
 	element: CaptionElement;
 	currentTime: number;
 	style: SubtitleStyle;
+	stackOffset?: number;
 }): boolean {
-	if (style.karaokeMode !== "karaoke") return false;
-	const words = (element.words ?? [])
-		.filter((word) => word.type === "word" && word.text.trim().length > 0)
-		.sort((left, right) => left.start - right.start);
+	const words = karaokeWords({ element, style });
 	if (words.length === 0) return false;
 
-	const fontWeight = style.bold ? "bold" : "normal";
-	const fontStyle = style.italic ? "italic" : "normal";
 	const animation = getCaptionAnimationState({
 		style,
 		startTime: element.startTime,
@@ -106,8 +154,7 @@ export function renderKaraokeCaptionToCanvas({
 	});
 	ctx.save();
 	ctx.globalAlpha = style.fontOpacity * animation.opacity;
-	ctx.font = `${fontStyle} ${fontWeight} ${style.fontSize}px ${canvasFontFamily(style.fontFamily)}`;
-	ctx.letterSpacing = `${style.letterSpacing}px`;
+	setKaraokeFont({ ctx, style });
 	ctx.textAlign = "left";
 	ctx.textBaseline = "middle";
 	const lines = layoutKaraokeLines({
@@ -125,10 +172,14 @@ export function renderKaraokeCaptionToCanvas({
 				: canvas.width / 2;
 	const centerY =
 		style.position.align === "top"
-			? totalHeight / 2 + style.fontSize
+			? totalHeight / 2 + CAPTION_BOX.edge + CAPTION_BOX.paddingY + stackOffset
 			: style.position.align === "center"
 				? canvas.height / 2
-				: canvas.height - totalHeight / 2 - style.fontSize;
+				: canvas.height -
+					totalHeight / 2 -
+					CAPTION_BOX.edge -
+					CAPTION_BOX.paddingY -
+					stackOffset;
 	const animatedX = anchorX + animation.offsetX;
 	const animatedY = centerY + animation.offsetY;
 
