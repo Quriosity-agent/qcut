@@ -9,14 +9,13 @@ import type {
 import type { MediaItem } from "@/stores/media/media-store";
 import { handleExportError } from "@/lib/debug/error-handler";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
-import { stripMarkdownSyntax } from "@/lib/markdown";
 import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
 import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { getTimelineElementEndTime } from "@/lib/timeline";
 import { getMediaSourcePlaybackTime } from "@/lib/video/video-timing";
-import { canvasFontFamily } from "@/lib/text/canvas-font";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { drawWithMediaTransform } from "./export-engine-utils";
+import { renderMarkdownElement } from "./export-engine-renderer";
 
 // Frame cache entry
 interface CachedFrame {
@@ -437,27 +436,7 @@ export class OptimizedExportEngine extends ExportEngine {
 
 		for (const element of textBatch) {
 			if (element.type !== "markdown") continue;
-
-			const plainText = stripMarkdownSyntax({
-				markdown: element.markdownContent || "",
-			});
-			if (!plainText.trim()) continue;
-
-			const x = element.x || 50;
-			const y = element.y || 50;
-			const lineHeight = (element.fontSize || 18) * 1.4;
-			const lines = plainText.split("\n");
-
-			ctx.save();
-			ctx.globalAlpha = element.opacity ?? 1;
-			ctx.fillStyle = element.textColor || "#ffffff";
-			ctx.font = `${element.fontSize || 18}px ${canvasFontFamily(element.fontFamily || "Arial")}`;
-			ctx.textAlign = "left";
-			ctx.textBaseline = "top";
-			for (let index = 0; index < lines.length; index++) {
-				ctx.fillText(lines[index], x, y + lineHeight * index);
-			}
-			ctx.restore();
+			renderMarkdownElement({ ctx, canvas, element, currentTime });
 		}
 	}
 
