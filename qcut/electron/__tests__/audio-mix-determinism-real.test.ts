@@ -131,15 +131,31 @@ function render({
 	return result.stdout;
 }
 
-function rms(pcm: Buffer, fromSeconds: number, toSeconds: number): number {
+function rms({
+	pcm,
+	fromSeconds,
+	toSeconds,
+	channel,
+}: {
+	pcm: Buffer;
+	fromSeconds: number;
+	toSeconds: number;
+	channel?: 0 | 1;
+}): number {
 	const samples = new Float32Array(
 		pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.length)
 	);
-	const from = Math.round(fromSeconds * SAMPLE_RATE) * 2;
+	const from = Math.round(fromSeconds * SAMPLE_RATE) * 2 + (channel ?? 0);
 	const to = Math.round(toSeconds * SAMPLE_RATE) * 2;
+	const stride = channel === undefined ? 1 : 2;
+	expect(to).toBeLessThanOrEqual(samples.length);
 	let sum = 0;
-	for (let index = from; index < to; index++) sum += samples[index] ** 2;
-	return Math.sqrt(sum / (to - from));
+	let count = 0;
+	for (let index = from; index < to; index += stride) {
+		sum += samples[index] ** 2;
+		count++;
+	}
+	return Math.sqrt(sum / count);
 }
 
 /** One render minus another, sample for sample. */
@@ -277,15 +293,105 @@ describe("a mix rendered with the real FFmpeg", { timeout: 120_000 }, () => {
 	});
 
 	it("gives the same samples every time", () => {
+		const reference = render({
+			audioFiles: [{ ...audioFiles[0], trackId: undefined }],
+			seconds: SECONDS,
+		});
+		const referenceLevel = rms({
+			pcm: reference,
+			fromSeconds: 25,
+			toSeconds: 25.5,
+		});
+		expect(referenceLevel).toBeGreaterThan(0.01);
 		const hashes = new Set<string>();
 		let length = 0;
 		for (let run = 0; run < 8; run++) {
 			const pcm = render({ audioFiles, audioMixConfig, seconds: SECONDS });
 			length = pcm.length;
 			hashes.add(createHash("sha256").update(pcm).digest("hex"));
+			// Only the voice remains: its -12 dB track and -1 dB master must
+			// still be audible after every shorter input has ended.
+			const lateLevel = rms({ pcm, fromSeconds: 25, toSeconds: 25.5 });
+			expect(20 * Math.log10(lateLevel / referenceLevel)).toBeCloseTo(-13, 2);
 		}
 		expect(hashes.size).toBe(1);
 		expect(length).toBe(SECONDS * SAMPLE_RATE * 2 * 4);
+	});
+
+	it.each([
+		{ stage: "track" },
+		{ stage: "bus" },
+		{ stage: "master" },
+	])("keeps $stage gain and pan on the timeline after a short input ends", ({
+		stage,
+	}) => {
+		const seconds = 5.25;
+		const automation = {
+			gainDb: [
+				{ time: 0, value: -12 },
+				{ time: 2, value: -12 },
+				{ time: 3, value: -6 },
+			],
+			pan: [
+				{ time: 0, value: -1 },
+				{ time: 2, value: -1 },
+				{ time: 3, value: 1 },
+			],
+		};
+		const longClip = { ...audioFiles[0], startTime: 1.25, duration: 4 };
+		const reference = render({
+			audioFiles: [{ ...longClip, trackId: undefined }],
+			seconds,
+		});
+		const referenceLevel = rms({
+			pcm: reference,
+			fromSeconds: 1.5,
+			toSeconds: 1.6,
+			channel: 0,
+		});
+		expect(referenceLevel).toBeGreaterThan(0.01);
+		const busId = stage === "bus" ? "group" : "master";
+		const tracks =
+			stage === "track"
+				? [track({ trackId: "sound", automation })]
+				: [
+						track({ trackId: "short", busId }),
+						track({ trackId: "sound", busId }),
+					];
+		const pcm = render({
+			audioFiles: [
+				{
+					...audioFiles[2],
+					startTime: 0,
+					trackId: stage === "track" ? "sound" : "short",
+				},
+				{ ...longClip, trackId: "sound" },
+			],
+			audioMixConfig: {
+				master: stage === "master" ? { ...master(), automation } : master(),
+				buses:
+					stage === "bus" ? [{ ...master(), id: "group", automation }] : [],
+				tracks,
+			},
+			seconds,
+		});
+		expect(pcm.length).toBe(seconds * SAMPLE_RATE * 2 * 4);
+		expect(rms({ pcm, fromSeconds: 0.9, toSeconds: 1.2 })).toBe(0);
+		for (const window of [
+			{ fromSeconds: 1.5, toSeconds: 1.6, channel: 0 as const, gainDb: -12 },
+			{ fromSeconds: 3.5, toSeconds: 3.6, channel: 1 as const, gainDb: -6 },
+		]) {
+			const level = rms({ pcm, ...window });
+			// The fixture has identical stereo channels; hard pan sums both
+			// into the near channel and silences the far channel.
+			expect(level / referenceLevel).toBeCloseTo(
+				2 * 10 ** (window.gainDb / 20),
+				3
+			);
+			expect(
+				rms({ pcm, ...window, channel: window.channel === 0 ? 1 : 0 })
+			).toBeLessThan(referenceLevel * 1e-5);
+		}
 	});
 
 	it("keeps ducking a clip to its very end", () => {
@@ -303,9 +409,17 @@ describe("a mix rendered with the real FFmpeg", { timeout: 120_000 }, () => {
 			audioFiles: [{ ...audioFiles[1], trackId: undefined }],
 			seconds: SECONDS,
 		});
-		// The music's last moments, at 21.85–21.99 s of the 22 s it ends on: -20 dB
-		// of the tone, not the tone at full level.
-		const ducked = rms(difference(voiceAndMusic, voice), 21.85, 21.99);
-		expect(ducked / rms(undisturbed, 21.85, 21.99)).toBeLessThan(0.2);
+		const isolatedMusic = difference(voiceAndMusic, voice);
+		for (const fromSeconds of [20.85, 21.85]) {
+			const window = { fromSeconds, toSeconds: fromSeconds + 0.14 };
+			const referenceLevel = rms({ pcm: undisturbed, ...window });
+			expect(referenceLevel).toBeGreaterThan(0.01);
+			const duckedLevel = rms({ pcm: isolatedMusic, ...window });
+			const gainDb = 20 * Math.log10(duckedLevel / referenceLevel);
+			// -20 dB ducking plus the -1 dB master, through the music's final
+			// 140 ms as well as its settled body; silence cannot pass this bound.
+			expect(gainDb).toBeGreaterThan(-21.5);
+			expect(gainDb).toBeLessThan(-20.5);
+		}
 	});
 });
