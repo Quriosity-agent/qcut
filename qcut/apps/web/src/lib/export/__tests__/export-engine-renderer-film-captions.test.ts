@@ -21,6 +21,8 @@ function recordingContext() {
 		save: vi.fn(),
 		restore: vi.fn(),
 		fillRect: vi.fn(),
+		roundRect: vi.fn(),
+		fill: vi.fn(),
 		strokeText: vi.fn(),
 		beginPath: vi.fn(),
 		moveTo: vi.fn(),
