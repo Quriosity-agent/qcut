@@ -4,6 +4,7 @@ import {
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	type AssFontMetricsLookup,
+	type CaptionTextMeasurer,
 } from "@qcut/editor-core";
 import {
 	sortTracksByOrder,
@@ -14,6 +15,8 @@ import { buildTextASSOverlay } from "../export-cli/filters/text-ass-overlay";
 import { captionStackOffset } from "@/lib/captions/caption-stacking";
 import { resolveTextStyle } from "@/lib/text/text-style";
 import { stripMarkdownSyntax } from "@/lib/markdown";
+import { createBrowserCaptionMeasurer } from "./caption-text-measurement";
+import { resolveExportProjectCanvas } from "./export-project-canvas";
 
 function markdownAsTextElement({
 	element,
@@ -113,16 +116,10 @@ export function assCanvasForExport({
 	project?: { width: number; height: number };
 	frame: { width: number; height: number };
 }): { width: number; height: number } {
-	if (!project || project.width <= 0 || project.height <= 0) {
-		return { width: frame.width, height: frame.height };
-	}
-	const scale = Math.min(
-		frame.width / project.width,
-		frame.height / project.height
-	);
+	const { canvas } = resolveExportProjectCanvas({ project, frame });
 	return {
-		width: Math.round(frame.width / scale),
-		height: Math.round(frame.height / scale),
+		width: Math.round(canvas.width),
+		height: Math.round(canvas.height),
 	};
 }
 
@@ -188,6 +185,7 @@ export function buildTimelineAssLayers({
 	excludedTextElementIds = new Set(),
 	fontMetrics,
 	familyCoversCjk,
+	measureCaptionText = createBrowserCaptionMeasurer(),
 }: {
 	tracks: TimelineTrack[];
 	canvasWidth: number;
@@ -203,6 +201,7 @@ export function buildTimelineAssLayers({
 	fontMetrics?: AssFontMetricsLookup;
 	/** Whether an installed family carries CJK glyphs, read from the font. */
 	familyCoversCjk?: (family: string) => boolean;
+	measureCaptionText?: CaptionTextMeasurer;
 }): {
 	layers: TimelineAssLayer[];
 	renderedTextElementIds: Set<string>;
@@ -254,6 +253,7 @@ export function buildTimelineAssLayers({
 						fps,
 						fontMetrics,
 						familyCoversCjk,
+						measureText: measureCaptionText,
 						// Each caption is a layer of its own, so libass cannot see
 						// the others to stack them; the preview's order does it.
 						stackOffset: () => captionStackOffset({ tracks, element }),
