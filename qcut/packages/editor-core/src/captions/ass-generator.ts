@@ -25,7 +25,16 @@ import {
 	resolveCaptionAnimation,
 } from "./caption-animation.js";
 import { resolveAssCjkFamily } from "./ass-cjk-font.js";
-import { parseCssColor } from "./css-color.js";
+import { cssColorAlpha, parseCssColor } from "./css-color.js";
+import {
+	captionRoundedBoxDrawing,
+	type CaptionTextMeasurer,
+} from "./caption-layout.js";
+import {
+	captionAssLineBreak,
+	escapeCaptionAssText,
+	prepareCaptionLayout,
+} from "./caption-ass-layout.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -51,6 +60,8 @@ export interface ASSGeneratorOptions {
 	 * one document, libass stacks overlapping events itself.
 	 */
 	stackOffset?: (clip: CaptionElement) => number;
+	/** Real canvas advances, including letter spacing, for the padded background. */
+	measureText?: CaptionTextMeasurer;
 }
 
 /** libass's sizing for one face. */
@@ -59,6 +70,10 @@ export interface AssFaceMetrics {
 	sizeFactor: number;
 	/** The line height libass lays out, in em. */
 	lineHeightEm: number;
+	/** Font ascent/descent and Chromium's normalized top baseline, in em. */
+	ascentEm?: number;
+	descentEm?: number;
+	canvasAscentEm?: number;
 }
 
 /**
@@ -86,6 +101,7 @@ interface CaptionMetrics {
 	 * text element's own placement.
 	 */
 	leading: number;
+	secondaryLeading?: number;
 }
 
 function captionMetrics({
@@ -120,6 +136,10 @@ function captionMetrics({
 	return {
 		sizeFactor: face.sizeFactor,
 		secondarySizeFactor: secondaryFace?.sizeFactor ?? 1,
+		secondaryLeading:
+			(secondary.fontSize * style.lineSpacing -
+				secondary.fontSize * (secondaryFace?.sizeFactor ?? 1)) /
+			2,
 		leading:
 			(style.fontSize * style.lineSpacing - style.fontSize * face.sizeFactor) /
 			2,
@@ -154,7 +174,7 @@ function assFontSize(fontSize: number, sizeFactor: number): number {
 }
 
 /** The style's MarginL/MarginR. */
-const STYLE_SIDE_MARGIN = 10;
+const STYLE_SIDE_MARGIN = 36;
 
 /**
  * How far the preview keeps a caption's line box from the frame edge its
@@ -197,7 +217,18 @@ function resolveClipStyle({
 		fallbackFamily: cjkFontFamily,
 		coversCjk: familyCoversCjk,
 	});
-	return fontFamily === style.fontFamily ? style : { ...style, fontFamily };
+	const secondary = resolveSecondaryLineStyle(style);
+	const secondaryFamily = resolveAssCjkFamily({
+		family: secondary.fontFamily,
+		text: clip.secondaryText ?? "",
+		fallbackFamily: cjkFontFamily,
+		coversCjk: familyCoversCjk,
+	});
+	return {
+		...style,
+		fontFamily,
+		secondary: { ...secondary, fontFamily: secondaryFamily },
+	};
 }
 
 /** Generate a complete ASS file from caption elements */
@@ -277,6 +308,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 				fontMetrics: options.fontMetrics,
 			}),
 			stackOffset: options.stackOffset?.(clip) ?? 0,
+			measureText: options.measureText,
 		})) {
 			content += `${line}\n`;
 		}
@@ -299,6 +331,7 @@ function captionEventsForASS({
 	styleName,
 	metrics,
 	stackOffset,
+	measureText,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -307,7 +340,20 @@ function captionEventsForASS({
 	styleName: string;
 	metrics: CaptionMetrics;
 	stackOffset: number;
+	measureText?: CaptionTextMeasurer;
 }): string[] {
+	if (!clip.text.trim()) return [];
+	const layout =
+		measureText && (style.karaokeMode ?? "none") === "none"
+			? prepareCaptionLayout({
+					clip,
+					style,
+					resolution,
+					stackOffset,
+					measureText,
+				})
+			: undefined;
+	clip = layout?.clip ?? clip;
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
 	const centiseconds = (seconds: number) => Math.floor(seconds * 100);
@@ -322,27 +368,63 @@ function captionEventsForASS({
 	const weight = captionFontWeight(style);
 	const weightTag = weight === 400 || weight === 700 ? "" : `\\b${weight}`;
 	const shadows = resolveCaptionShadows(style) ?? [];
-	const edgeOffset = metrics.leading + stackOffset;
+	const lastLeading = clip.secondaryText?.trim()
+		? (metrics.secondaryLeading ?? metrics.leading)
+		: metrics.leading;
+	const edgeOffset =
+		style.position.align === "center"
+			? (metrics.leading - lastLeading) / 2
+			: (style.position.align === "bottom" ? lastLeading : metrics.leading) +
+				stackOffset;
 	// 0 is "the style's margin", which is the place of an unstacked caption.
 	const marginV =
 		stackOffset > 0 ? Math.round(CAPTION_EDGE_INSET_Y + edgeOffset) : 0;
 	const event = (layer: number, tags: string, body: string) =>
 		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,${marginV},,${tags ? `{${tags}}` : ""}${body}`;
-	const pin = shadows.length > 0;
+	const pin = shadows.length > 0 || layout !== undefined;
+	const background = layout && style.bgOpacity > 0 ? layout.box : undefined;
+	const firstLayer = background ? 1 : 0;
 	const lines = shadows.map((shadow, layer) =>
 		event(
-			layer,
+			firstLayer + layer,
 			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, edgeOffset })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
 			captionTextForASS({ clip, style, colorTags: false, metrics })
 		)
 	);
 	lines.push(
 		event(
-			shadows.length,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, edgeOffset })}${weightTag}`,
+			firstLayer + shadows.length,
+			`${layout ? "\\q2" : ""}${captionAnimationTags({ clip, style, resolution, fade, pin, edgeOffset })}${weightTag}`,
 			captionTextForASS({ clip, style, colorTags: true, metrics })
 		)
 	);
+	if (background) {
+		const parsed = parseCssColor(style.backgroundColor);
+		const [alpha, color] = splitAssColor(
+			rgbToASSColor(
+				parsed?.hex ?? "#ffffff",
+				cssColorAlpha(parsed ?? { hex: "#ffffff" }, style.bgOpacity) *
+					style.fontOpacity
+			)
+		);
+		const anchor = captionPosition({ style, resolution, edgeOffset });
+		const motion = captionAnimationTags({
+			clip,
+			style,
+			resolution,
+			fade,
+			pin: true,
+			edgeOffset,
+			offset: { x: background.x - anchor.x, y: background.y - anchor.y },
+		});
+		lines.unshift(
+			event(
+				0,
+				`${motion}\\an7\\p1\\bord0\\shad0\\1c${color}\\1a${alpha}`,
+				captionRoundedBoxDrawing(background)
+			)
+		);
+	}
 	return lines;
 }
 
@@ -388,7 +470,20 @@ function captionTextForASS({
 	colorTags: boolean;
 	metrics: CaptionMetrics;
 }): string {
-	const text = clip.text.trim().replace(/\n/g, "\\N");
+	const primarySize = assFontSize(style.fontSize, metrics.sizeFactor);
+	const text = clip.text
+		.trim()
+		.split(/\r?\n/)
+		.map((text) => escapeCaptionAssText({ text }))
+		.join(
+			captionAssLineBreak({
+				previousSize: style.fontSize,
+				previousAssSize: primarySize,
+				fontSize: style.fontSize,
+				assSize: primarySize,
+				lineSpacing: style.lineSpacing,
+			})
+		);
 	const karaokeMode = clip.style?.karaokeMode ?? "none";
 	const words = (clip.words ?? [])
 		.filter((word) => word.type === "word")
@@ -448,7 +543,34 @@ function secondaryLineForASS({
 		secondary.letterSpacing === style.letterSpacing
 			? ""
 			: `\\fsp${secondary.letterSpacing}`;
-	return `\\N{\\fn${family}\\fs${assFontSize(secondary.fontSize, metrics.secondarySizeFactor)}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}}${text.replace(/\n/g, "\\N")}`;
+	const secondarySize = assFontSize(
+		secondary.fontSize,
+		metrics.secondarySizeFactor
+	);
+	const fontTags = `\\fn${family}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}`;
+	const firstBreak = captionAssLineBreak({
+		previousSize: style.fontSize,
+		previousAssSize: assFontSize(style.fontSize, metrics.sizeFactor),
+		fontSize: secondary.fontSize,
+		assSize: secondarySize,
+		lineSpacing: style.lineSpacing,
+		fontTags,
+	});
+	const nextBreak = captionAssLineBreak({
+		previousSize: secondary.fontSize,
+		previousAssSize: secondarySize,
+		fontSize: secondary.fontSize,
+		assSize: secondarySize,
+		lineSpacing: style.lineSpacing,
+		fontTags,
+	});
+	return (
+		firstBreak +
+		text
+			.split(/\r?\n/)
+			.map((text) => escapeCaptionAssText({ text }))
+			.join(nextBreak)
+	);
 }
 
 /**
@@ -498,19 +620,11 @@ function captionAnimationTags({
 		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, edgeOffset }) : ""}`;
 	}
 
-	const margin = Math.max(10, Math.round(style.fontSize));
-	const targetX =
-		style.textAlign === "left"
-			? margin
-			: style.textAlign === "right"
-				? resolution.width - margin
-				: Math.round(resolution.width / 2);
-	const targetY =
-		style.position.align === "top"
-			? margin + edgeOffset
-			: style.position.align === "center"
-				? Math.round(resolution.height / 2)
-				: resolution.height - margin - edgeOffset;
+	const { x: targetX, y: targetY } = captionPosition({
+		style,
+		resolution,
+		edgeOffset,
+	});
 	const startX = animation.type === "slide-left" ? targetX + 120 : targetX;
 	const startY = animation.type === "slide-up" ? targetY + 80 : targetY;
 
@@ -530,6 +644,19 @@ function pinnedPosition({
 	/** See `captionAnimationTags`. */
 	edgeOffset: number;
 }): string {
+	const { x, y } = captionPosition({ style, resolution, edgeOffset });
+	return `\\pos(${x + offset.x},${y + offset.y})`;
+}
+
+function captionPosition({
+	style,
+	resolution,
+	edgeOffset,
+}: {
+	style: SubtitleStyle;
+	resolution: ASSGeneratorOptions["resolution"];
+	edgeOffset: number;
+}): { x: number; y: number } {
 	const marginV = CAPTION_EDGE_INSET_Y + edgeOffset;
 	const x =
 		style.textAlign === "left"
@@ -541,9 +668,9 @@ function pinnedPosition({
 		style.position.align === "top"
 			? marginV
 			: style.position.align === "center"
-				? resolution.height / 2
+				? resolution.height / 2 + edgeOffset
 				: resolution.height - marginV;
-	return `\\pos(${x + offset.x},${y + offset.y})`;
+	return { x, y };
 }
 
 function subtitleStyleToASSLine(
@@ -557,8 +684,8 @@ function subtitleStyleToASSLine(
 		karaokeEnabled ? (style.upcomingColor ?? style.fontColor) : "#ffffff",
 		style.fontOpacity
 	);
-	const outline = rgbToASSColor(style.outlineColor, 1);
-	const back = rgbToASSColor(style.shadowColor, 1, "#000000");
+	const outline = captionTextColor(style.outlineColor, style.fontOpacity);
+	const back = captionTextColor(style.shadowColor, style.fontOpacity);
 	const bold = captionFontWeight(style) >= 600 ? -1 : 0;
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
