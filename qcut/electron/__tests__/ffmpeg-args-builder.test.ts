@@ -16,6 +16,7 @@ vi.mock("fs", () => ({
 	default: {
 		existsSync: existsSyncMock,
 		writeFileSync: writeFileSyncMock,
+		readFileSync: vi.fn(() => "[Script Info]\n"),
 	},
 	existsSync: existsSyncMock,
 	writeFileSync: writeFileSyncMock,
@@ -447,7 +448,8 @@ describe("buildFFmpegArgs", () => {
 			);
 
 			const filter = args[args.indexOf("-filter_complex") + 1];
-			expect(filter).toContain("ass=filename='/tmp/multiply.ass':alpha=1");
+			expect(filter).toContain("color=c=white:");
+			expect(filter).toContain("text_ass_overlay_0.rgb.ass'");
 			expect(filter).toContain("blend=all_mode=multiply");
 			expect(filter).toContain("alphaextract");
 			expect(filter).toContain("alphamerge");
@@ -708,7 +710,7 @@ describe("buildFFmpegArgs", () => {
 				filter.indexOf("[visual_sticker_0_scaled]overlay")
 			);
 			expect(filter.indexOf("[visual_sticker_0_scaled]overlay")).toBeLessThan(
-				filter.indexOf("[visual_text_ass_0]overlay")
+				filter.indexOf("format=yuva444p,ass=filename=")
 			);
 		});
 
