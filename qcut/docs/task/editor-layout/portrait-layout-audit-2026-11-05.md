@@ -27,7 +27,7 @@
 
 - 删除工具区重复分隔线；布局诊断使用非空可访问名称，拖动前显式验证元素边界，开关断言不再使用非空强制断言。
 - 旧时间线测试通过共享 helper 打开收纳菜单；1280×800 下复制、裁剪、删除、分割、保留右侧、单轨/多轨波纹删除共 4 个真实 Electron 流程通过。
-- P1 编辑器流程明确英文界面，按当前导航、特效分类和人物抠像质量开关操作；滚动导航逐按钮滚入并验证中心命中，属性面板仍检查横向溢出。1280→1800 窗口切换等待工具栏模式完成更新，验证紧凑轨道状态；完整流程连续两次通过（17.7 秒）。测试使用此前生成的视频，不调用抠像推理或云服务。
+- P1 编辑器流程明确英文界面，按当前导航、特效分类和人物抠像质量开关操作；滚动导航逐按钮滚入并验证中心命中，属性面板仍检查横向溢出。1280→1800 窗口切换等待工具栏模式完成更新，验证紧凑轨道状态；完整流程连续两次通过（17.7 秒）。测试通过 `QCUT_REAL_VIDEO_PATH` 读取已存在的视频；本轮指定 `/Users/peter/Desktop/QCut-Layout-9x16-Fixed-20261105/source.mp4`，是此前竖屏回归生成的素材。不调用抠像推理或云服务。
 - 修改后重新构建、完整 lint 和 40 个针对性单元测试通过；竖屏布局矩阵、24 组中英文顶栏与布局持久化再次通过。完整 lint 有 12 条既有 warning、5 条 info，无 error。
 - 本轮复验截图与 JSON：`.local/portrait-layout-audit-20261105/review-evidence/`；时间线/P1 操作截图：`output/playwright/timeline-daily-actions/` 和 `output/playwright/qcut-p1-editor-parity/`。原始修复前后证据保持不变。
 
@@ -43,10 +43,13 @@
 
 ```sh
 bun run build
-bunx playwright test apps/web/src/test/e2e/editor-layout-portrait.e2e.ts --project electron
+QCUT_LAYOUT_EVIDENCE_DIR="$PWD/.local/layout-evidence" \
+  bunx playwright test apps/web/src/test/e2e/editor-layout-portrait.e2e.ts --project electron
+QCUT_REAL_VIDEO_PATH="$PWD/.local/layout-evidence/source.mp4" \
+  bunx playwright test apps/web/src/test/e2e/p1-editor-parity.e2e.ts --project electron --repeat-each 2
 ```
 
-`QCUT_LAYOUT_EVIDENCE_DIR` 可指定证据输出路径；未指定时写入 Playwright 的 test output。此次本地 runner 与原始日志在 `.local/portrait-layout-audit-20261105/`。
+`QCUT_LAYOUT_EVIDENCE_DIR` 可指定证据输出路径；未指定时写入 Playwright 的 test output。上面的竖屏回归先生成 `source.mp4`，再通过 `QCUT_REAL_VIDEO_PATH` 显式传给 P1；P1 不会自动寻找该文件，环境变量未设置或文件不存在时会跳过。此次本地 runner 与原始日志在 `.local/portrait-layout-audit-20261105/`。
 
 证据范围：macOS Electron、DPR=1、720×1280 项目、上述三个窗口尺寸。这轮验证编辑器布局与交互，没有重新验收视频导出、Windows、多显示器或系统缩放。没有加入或上传模型。
 
@@ -132,7 +135,9 @@ bunx playwright test apps/web/src/test/e2e/editor-layout-portrait.e2e.ts --proje
 - 素材导航隐藏在“更多”菜单中的条目不计为缺陷；通用溢出扫描只用作线索，结论以截图与对应控制的命中测试为准。
 - 本轮仅审查 macOS Electron、中文界面和上述固定视口。尚未覆盖 Windows、系统缩放、多显示器或手动拖动后的极限尺寸。
 
-## 本地复现
+## 原始审查本地复现（仅本机）
+
+以下为原始采集命令，依赖未提交到仓库的 `.local/portrait-layout-audit-20261105/playwright.config.ts` 和采集脚本，只能在保留这些文件的本机运行。新 checkout 请使用上文已提交的回归测试和复现命令。
 
 从 QCut 项目目录运行：
 
