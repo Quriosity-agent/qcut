@@ -1,4 +1,20 @@
 import type { CaptionTextMeasurer } from "@qcut/editor-core";
+import { canvasFontFamily } from "@/lib/text/canvas-font";
+
+export function createCanvasCaptionMeasurer({
+	context,
+}: {
+	context: CanvasRenderingContext2D;
+}): CaptionTextMeasurer {
+	return (request) => {
+		context.save();
+		context.font = `${request.italic ? "italic" : "normal"} ${request.fontWeight} ${request.fontSize}px ${canvasFontFamily(request.fontFamily)}`;
+		context.letterSpacing = `${request.letterSpacing}px`;
+		const width = context.measureText(request.text).width;
+		context.restore();
+		return width;
+	};
+}
 
 export function createBrowserCaptionMeasurer():
 	| CaptionTextMeasurer
@@ -10,10 +26,5 @@ export function createBrowserCaptionMeasurer():
 		return;
 	const context = document.createElement("canvas").getContext("2d");
 	if (!context) return;
-	return (request) => {
-		const family = request.fontFamily.replaceAll('"', "");
-		context.font = `${request.italic ? "italic" : "normal"} ${request.fontWeight} ${request.fontSize}px "${family}"`;
-		context.letterSpacing = `${request.letterSpacing}px`;
-		return context.measureText(request.text).width;
-	};
+	return createCanvasCaptionMeasurer({ context });
 }
