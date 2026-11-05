@@ -53,6 +53,16 @@ describe.skipIf(!hasMacFonts)(
 			).toBeCloseTo(1, 2);
 		});
 
+		it("reads Chromium's normalized em ascent separately from the ASS font box", () => {
+			const metrics = assFontMetrics({ family: "Arial" });
+			expect(metrics.ascentEm).toBeCloseTo(1854 / 2048, 8);
+			expect(metrics.descentEm).toBeCloseTo(434 / 2048, 8);
+			expect(metrics.canvasAscentEm).toBeCloseTo(1491 / 1922, 8);
+			const chromiumTopBaseline =
+				Math.round(52 * (metrics.canvasAscentEm ?? 0) * 64) / 64;
+			expect(chromiumTopBaseline).toBe(40.34375);
+		});
+
 		it("leaves an unknown family alone", () => {
 			expect(assFontSizeFactor({ family: "No Such Font 2026" })).toBe(1);
 			expect(assFontMetrics({ family: "No Such Font 2026" })).toEqual({
