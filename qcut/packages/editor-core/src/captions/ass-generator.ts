@@ -63,7 +63,10 @@ export interface ASSGeneratorOptions {
 	 * under it. For callers that write captions into separate documents: within
 	 * one document, libass stacks overlapping events itself.
 	 */
-	stackOffset?: (clip: CaptionElement) => number;
+	stackOffset?: (request: {
+		element: CaptionElement;
+		measureHeight?: (request: { element: CaptionElement }) => number;
+	}) => number;
 	/** Real canvas advances, including letter spacing, for the padded background. */
 	measureText?: CaptionTextMeasurer;
 }
@@ -240,6 +243,25 @@ export function generateASS(
 	clips: CaptionElement[],
 	options: ASSGeneratorOptions
 ): string {
+	const measuredHeights = new Map<CaptionElement, number>();
+	const measureText = options.measureText;
+	const measureHeight = measureText
+		? ({ element: clip }: { element: CaptionElement }) => {
+				const cached = measuredHeights.get(clip);
+				if (cached !== undefined) return cached;
+				const { layout } = prepareCaptionAssLayout({
+					clip,
+					style: resolveClipStyle({ clip, ...options }),
+					resolution: options.resolution,
+					stackOffset: 0,
+					measureText,
+				});
+				if (!layout) throw new Error("Caption height requires measured layout");
+				const height = layout.box.height;
+				measuredHeights.set(clip, height);
+				return height;
+			}
+		: undefined;
 	const { resolution, title = "QCut Export" } = options;
 
 	// Collect unique styles
@@ -311,7 +333,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 				style: resolved,
 				fontMetrics: options.fontMetrics,
 			}),
-			stackOffset: options.stackOffset?.(clip) ?? 0,
+			stackOffset: options.stackOffset?.({ element: clip, measureHeight }) ?? 0,
 			measureText: options.measureText,
 		})) {
 			content += `${line}\n`;
@@ -319,6 +341,40 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 	}
 
 	return content;
+}
+
+function prepareCaptionAssLayout({
+	clip,
+	style,
+	resolution,
+	stackOffset,
+	measureText,
+}: {
+	clip: CaptionElement;
+	style: SubtitleStyle;
+	resolution: ASSGeneratorOptions["resolution"];
+	stackOffset: number;
+	measureText?: CaptionTextMeasurer;
+}) {
+	const karaokeLines = captionKaraokeLines({
+		clip,
+		style,
+		width: resolution.width,
+		measureText,
+	});
+	const layout = measureText
+		? prepareCaptionLayout({
+				clip,
+				style,
+				resolution,
+				stackOffset,
+				measureText,
+				primaryLines: karaokeLines?.map((line) =>
+					line.map((word) => word.text.trim()).join(" ")
+				),
+			})
+		: undefined;
+	return { layout, karaokeLines };
 }
 
 /**
@@ -347,24 +403,13 @@ function captionEventsForASS({
 	measureText?: CaptionTextMeasurer;
 }): string[] {
 	if (!sourceClip.text.trim()) return [];
-	const karaokeLines = captionKaraokeLines({
+	const { layout, karaokeLines } = prepareCaptionAssLayout({
 		clip: sourceClip,
 		style,
-		width: resolution.width,
+		resolution,
+		stackOffset,
 		measureText,
 	});
-	const layout = measureText
-		? prepareCaptionLayout({
-				clip: sourceClip,
-				style,
-				resolution,
-				stackOffset,
-				measureText,
-				primaryLines: karaokeLines?.map((line) =>
-					line.map((word) => word.text.trim()).join(" ")
-				),
-			})
-		: undefined;
 	const clip = layout?.clip ?? sourceClip;
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
