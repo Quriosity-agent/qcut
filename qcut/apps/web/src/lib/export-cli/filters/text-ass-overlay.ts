@@ -1,3 +1,4 @@
+import { canvasTextAssBaselineOffset } from "../../../../../../electron/types/canvas-text-baseline";
 import {
 	cssColorAlpha,
 	parseCssColor,
@@ -127,10 +128,7 @@ function getTextAnchor({
 	face?: AssFaceMetrics;
 }): { x: number; y: number; alignment: number } {
 	const style = resolveTextStyle(element);
-	// CSS centres each em inside its line box, libass stacks the font's own line
-	// height with the em at its bottom, so a pinned top or bottom edge moves by
-	// half the difference of the two (the native export's assPlacement). An
-	// unmeasured face keeps its nominal size, and so its old position.
+	// A font index without em-baseline metrics only supplies the line-height gap.
 	const leading = face
 		? (element.fontSize * style.lineHeight -
 				element.fontSize * face.lineHeightEm) /
@@ -153,12 +151,24 @@ function getTextAnchor({
 			: horizontalIndex === 2
 				? centerX + style.width / 2 - style.backgroundPadding
 				: centerX;
+	const baselineOffset = canvasTextAssBaselineOffset({
+		fontSize: element.fontSize,
+		lineHeight: style.lineHeight,
+		verticalAlign: style.verticalAlign,
+		metrics: face,
+	});
 	const y =
 		verticalIndex === 2
-			? centerY - style.height / 2 + style.backgroundPadding + leading
+			? centerY -
+				style.height / 2 +
+				style.backgroundPadding +
+				(baselineOffset ?? leading)
 			: verticalIndex === 0
-				? centerY + style.height / 2 - style.backgroundPadding - leading
-				: centerY;
+				? centerY +
+					style.height / 2 -
+					style.backgroundPadding +
+					(baselineOffset ?? -leading)
+				: centerY + (baselineOffset ?? 0);
 	return { x, y, alignment };
 }
 
