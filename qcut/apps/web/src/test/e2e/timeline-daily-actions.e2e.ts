@@ -7,6 +7,7 @@ import {
 	importTestVideo,
 	test,
 } from "./helpers/electron-helpers";
+import { openTimelineToolbarGroup } from "./helpers/timeline-toolbar-controls";
 
 const outputDirectory = path.resolve(
 	"output/playwright/timeline-daily-actions"
@@ -223,6 +224,9 @@ async function linkedMultiTrackState({ page }: { page: Page }) {
 
 test.describe("Timeline daily action toolbar", () => {
 	test.setTimeout(90_000);
+	test.beforeEach(async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+	});
 
 	test.beforeAll(async () => {
 		await rm(outputDirectory, { recursive: true, force: true });
@@ -244,6 +248,7 @@ test.describe("Timeline daily action toolbar", () => {
 			fullPage: true,
 		});
 
+		await openTimelineToolbarGroup({ page, group: "tools" });
 		await page.getByTestId("duplicate-clip-button").click();
 		await expect(clips).toHaveCount(2);
 		await expect
@@ -339,6 +344,7 @@ test.describe("Timeline daily action toolbar", () => {
 		const clips = page.getByTestId("timeline-element");
 		await expect(clips).toHaveCount(2);
 		await clips.first().click();
+		await openTimelineToolbarGroup({ page, group: "tools" });
 		await page.getByTestId("split-keep-right-button").click();
 		await expect
 			.poll(async () => {
@@ -367,6 +373,7 @@ test.describe("Timeline daily action toolbar", () => {
 				.find((track) => track.type === "media")
 				?.elements.find((element) => element.id === secondId)?.startTime;
 		}, trimSetup);
+		await openTimelineToolbarGroup({ page, group: "options" });
 		await page.getByTestId("timeline-ripple-button").click();
 		await expect(page.getByTestId("timeline-ripple-button")).toHaveAttribute(
 			"aria-pressed",
@@ -409,6 +416,7 @@ test.describe("Timeline daily action toolbar", () => {
 			fullPage: true,
 		});
 
+		await openTimelineToolbarGroup({ page, group: "options" });
 		await page.getByTestId("timeline-ripple-button").click();
 		await expect(page.getByTestId("timeline-ripple-button")).toHaveAttribute(
 			"aria-pressed",
