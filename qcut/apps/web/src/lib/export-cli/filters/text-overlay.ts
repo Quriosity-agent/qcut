@@ -19,8 +19,21 @@ import {
 import { resolveFontPath } from "./font-resolver";
 import { stripMarkdownSyntax } from "@/lib/markdown";
 import { resolveTextStyle } from "@/lib/text/text-style";
+import { cssColorAlpha, parseCssColor } from "@qcut/editor-core";
 import { buildFFmpegTextAnimationExpressions } from "@/lib/text/text-animation";
 import { buildFFmpegKeyframeExpression } from "@/lib/text/text-keyframes";
+
+function colorWithOpacityForFFmpeg({
+	color,
+	opacity,
+}: {
+	color: string;
+	opacity: number;
+}): string {
+	const parsed = parseCssColor(color) ??
+		parseCssColor(`#${color}`) ?? { hex: "#ffffff" };
+	return `0x${parsed.hex.slice(1)}@${cssColorAlpha(parsed, opacity)}`;
+}
 
 /**
  * Convert a TextElement to FFmpeg drawtext filter string.
@@ -93,7 +106,7 @@ export function convertTextElementToDrawtext(
 	if (fontConfig.useFontconfig) {
 		filterParams.push(`font='${fontConfig.fontName}'`);
 	} else {
-		filterParams.push(`fontfile=${escapePathForFFmpeg(fontConfig.fontPath)}`);
+		filterParams.push(`fontfile='${escapePathForFFmpeg(fontConfig.fontPath)}'`);
 	}
 
 	// Position calculation: element x/y are relative to canvas center
@@ -135,13 +148,13 @@ export function convertTextElementToDrawtext(
 	if (style.strokeWidth > 0) {
 		filterParams.push(
 			`borderw=${style.strokeWidth}`,
-			`bordercolor=${colorToFFmpeg(style.strokeColor)}@${style.strokeOpacity}`
+			`bordercolor=${colorWithOpacityForFFmpeg({ color: style.strokeColor, opacity: style.strokeOpacity })}`
 		);
 	}
 
 	if (style.shadowOpacity > 0) {
 		filterParams.push(
-			`shadowcolor=${colorToFFmpeg(style.shadowColor)}@${style.shadowOpacity}`,
+			`shadowcolor=${colorWithOpacityForFFmpeg({ color: style.shadowColor, opacity: style.shadowOpacity })}`,
 			`shadowx=${style.shadowOffsetX}`,
 			`shadowy=${style.shadowOffsetY}`
 		);
@@ -163,11 +176,14 @@ export function convertTextElementToDrawtext(
 
 	// Handle background color
 	if (element.backgroundColor && element.backgroundColor !== "transparent") {
-		const bgColor = colorToFFmpeg(element.backgroundColor);
+		const bgColor = colorWithOpacityForFFmpeg({
+			color: element.backgroundColor,
+			opacity: style.backgroundOpacity,
+		});
 		if (style.backgroundOpacity > 0) {
 			filterParams.push(
 				"box=1",
-				`boxcolor=${bgColor}@${style.backgroundOpacity}`,
+				`boxcolor=${bgColor}`,
 				`boxborderw=${style.backgroundPadding}`
 			);
 		}
