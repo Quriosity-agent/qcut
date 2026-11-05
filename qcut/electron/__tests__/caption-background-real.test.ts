@@ -223,6 +223,46 @@ function expectedBox({
 }
 
 describe("caption geometry compilation boundary", () => {
+	for (const { engine, wrap } of [
+		{ engine: "core", wrap: coreLayout.wrapCaptionLines },
+		{ engine: "native", wrap: nativeLayout.wrapCaptionLines },
+	]) {
+		it.each([
+			{ text: "abcdefgh x", expected: ["abcde", "fgh x"] },
+			{ text: "abcdef  x", expected: ["abcde", "f  x"] },
+			{ text: "abcdefg 字幕", expected: ["abcde", "fg 字幕"] },
+			{ text: "abcdefg 👩‍👩‍👧‍👧", expected: ["abcde", "fg 👩‍👩‍👧‍👧"] },
+			{ text: "abcdefghij x", expected: ["abcde", "fghij", "x"] },
+			{ text: "abcdefghij   ", expected: ["abcde", "fghij"] },
+			{ text: "q\n  abcdefgh x", expected: ["q", "abcde", "fgh x"] },
+			{
+				text: "abcdefgh x\n\nabcdef  x",
+				expected: ["abcde", "fgh x", "", "abcde", "f  x"],
+			},
+		])(`${engine} preserves separators and intentional lines in $text`, ({
+			text,
+			expected,
+		}) => {
+			const graphemes = new Intl.Segmenter(undefined, {
+				granularity: "grapheme",
+			});
+			expect(
+				wrap({
+					request: {
+						text,
+						fontFamily: "monospace",
+						fontSize: 1,
+						fontWeight: 400,
+						italic: false,
+						letterSpacing: 0,
+					},
+					maxWidth: 5,
+					measureText: ({ text }) => [...graphemes.segment(text)].length,
+				})
+			).toEqual(expected);
+		});
+	}
+
 	it("keeps the native geometry/wrapping mirror equivalent", () => {
 		const args = {
 			lineWidths: [120, 280],
