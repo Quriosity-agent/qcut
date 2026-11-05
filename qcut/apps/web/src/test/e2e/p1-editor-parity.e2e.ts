@@ -7,6 +7,9 @@ import {
 	test,
 	uploadTestMedia,
 } from "./helpers/electron-helpers";
+import { openTimelineToolbarGroup } from "./helpers/timeline-toolbar-controls";
+
+test.use({ appLocale: "en" });
 
 const realVideoPath = process.env.QCUT_REAL_VIDEO_PATH ?? "";
 const artifactDirectory = path.resolve(
@@ -119,10 +122,10 @@ test.describe("P1 editor parity with real video", () => {
 		});
 
 		const navigation = page.getByTestId("standard-editor-navigation");
-		await expect(navigation.getByRole("button")).toHaveCount(11);
-		for (const label of [
+		const navigationLabels = [
 			"Media",
 			"Audio",
+			"Mixer",
 			"Text",
 			"Stickers",
 			"Effects",
@@ -131,13 +134,22 @@ test.describe("P1 editor parity with real video", () => {
 			"Filters",
 			"Adjust",
 			"Templates",
-		]) {
-			await expect(
-				navigation.getByRole("button", { name: label })
-			).toBeVisible();
-		}
+			"Avatar",
+			"Switch workspace",
+		];
+		await expect(navigation.getByRole("button")).toHaveCount(
+			navigationLabels.length
+		);
+		await Promise.all(
+			navigationLabels.map((label) =>
+				expect(
+					navigation.getByRole("button", { name: label, exact: true })
+				).toBeVisible()
+			)
+		);
 
 		await page.getByTestId("effects-panel-tab").click();
+		await page.getByTestId("effect-navigation-atmosphere").click();
 		await page.getByTestId("effect-card-sepia").click();
 		await expect(page.getByTestId("timeline-effect-bar")).toHaveCount(1);
 
@@ -170,11 +182,16 @@ test.describe("P1 editor parity with real video", () => {
 			editorWindow.__playbackStore.getState().seek(clipDuration - 0.2);
 		}, clips);
 
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await expect(page.getByTestId("timeline-tools-overflow")).toBeVisible();
+		await openTimelineToolbarGroup({ page, group: "tools" });
 		await page.getByTestId("compact-tracks-button").click();
 		await expect(page.getByTestId("compact-tracks-button")).toHaveAttribute(
 			"aria-pressed",
 			"true"
 		);
+		await page.setViewportSize({ width: 1800, height: 1040 });
+		await expect(page.getByTestId("timeline-tools-overflow")).toHaveCount(0);
 		await expect(page.getByTestId("timeline-task-badge")).toBeVisible();
 
 		const properties = page.getByTestId("media-properties");
@@ -183,33 +200,52 @@ test.describe("P1 editor parity with real video", () => {
 			.getByRole("tab", { name: "Cutout", exact: true })
 			.click();
 		await expect(
-			properties.getByText("智能抠像", { exact: true })
-		).toBeVisible();
-		await expect(
-			properties.getByRole("radio", { name: "Show cutout result" })
-		).toBeVisible();
-		await properties
-			.getByRole("radio", { name: "Show original video" })
-			.click();
-		await expect(
-			properties.getByRole("radio", { name: "Show original video" })
-		).toHaveAttribute("aria-checked", "true");
+			properties.getByRole("tab", { name: "人物抠像", exact: true })
+		).toHaveAttribute("aria-selected", "true");
+		const basicQuality = properties.getByTestId("person-cutout-quality-basic");
+		const fineQuality = properties.getByTestId("person-cutout-quality-fine");
+		await expect(basicQuality).toHaveAttribute("aria-pressed", "true");
+		await fineQuality.click();
+		await expect(fineQuality).toHaveAttribute("aria-pressed", "true");
+		await expect(basicQuality).toHaveAttribute("aria-pressed", "false");
+		await basicQuality.click();
+		await expect(basicQuality).toHaveAttribute("aria-pressed", "true");
+		await expect(fineQuality).toHaveAttribute("aria-pressed", "false");
 
-		for (const panel of [navigation, properties]) {
-			const overflow = await panel.evaluate((container) => {
-				const bounds = container.getBoundingClientRect();
-				return [...container.querySelectorAll<HTMLElement>("*")].flatMap(
-					(element) => {
-						const elementBounds = element.getBoundingClientRect();
-						const visible = elementBounds.width > 0 && elementBounds.height > 0;
-						return visible && elementBounds.right > bounds.right + 2
-							? [element.getAttribute("data-testid") ?? element.tagName]
-							: [];
-					}
-				);
+		await navigationLabels.reduce(async (previous, label) => {
+			await previous;
+			const button = navigation.getByRole("button", {
+				name: label,
+				exact: true,
 			});
-			expect(overflow).toEqual([]);
-		}
+			await button.scrollIntoViewIfNeeded();
+			await expect
+				.poll(() =>
+					button.evaluate((element) => {
+						const bounds = element.getBoundingClientRect();
+						return element.contains(
+							document.elementFromPoint(
+								bounds.x + bounds.width / 2,
+								bounds.y + bounds.height / 2
+							)
+						);
+					})
+				)
+				.toBe(true);
+		}, Promise.resolve());
+		const overflow = await properties.evaluate((container) => {
+			const bounds = container.getBoundingClientRect();
+			return [...container.querySelectorAll<HTMLElement>("*")].flatMap(
+				(element) => {
+					const elementBounds = element.getBoundingClientRect();
+					const visible = elementBounds.width > 0 && elementBounds.height > 0;
+					return visible && elementBounds.right > bounds.right + 2
+						? [element.getAttribute("data-testid") ?? element.tagName]
+						: [];
+				}
+			);
+		});
+		expect(overflow).toEqual([]);
 		await page.screenshot({
 			path: path.join(artifactDirectory, "01-smart-cutout-and-timeline.png"),
 			animations: "disabled",

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { TimelineTrack, TrackType } from "@/types/timeline";
 import { TimelineToolbar } from "../timeline-toolbar";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
@@ -97,6 +97,8 @@ interface MockProjectState {
 describe("TimelineToolbar", () => {
 	const splitElement = vi.fn(() => "split-el");
 	const setZoomLevel = vi.fn();
+	const resizeObservers = new Map<Element, () => void>();
+	let toolbarWidth = 1920;
 
 	const timelineState: MockTimelineState = {
 		tracks: [
@@ -160,6 +162,21 @@ describe("TimelineToolbar", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		toolbarWidth = 1920;
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
+			() => toolbarWidth
+		);
+		vi.stubGlobal(
+			"ResizeObserver",
+			class implements ResizeObserver {
+				constructor(private callback: ResizeObserverCallback) {}
+				observe(target: Element) {
+					resizeObservers.set(target, () => this.callback([], this));
+				}
+				unobserve() {}
+				disconnect() {}
+			}
+		);
 
 		(
 			useTimelineStore as unknown as ReturnType<typeof vi.fn>
@@ -189,6 +206,51 @@ describe("TimelineToolbar", () => {
 		(
 			useProjectStore as unknown as { getState: () => MockProjectState }
 		).getState = () => projectState;
+	});
+
+	afterEach(() => {
+		resizeObservers.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it("keeps primary actions visible and opens secondary tools in a narrow panel", () => {
+		toolbarWidth = 750;
+		render(<TimelineToolbar zoomLevel={1} setZoomLevel={setZoomLevel} />);
+		expect(screen.getByTestId("timeline-play-button")).toBeVisible();
+		expect(screen.getByTestId("split-clip-button")).toBeVisible();
+		expect(screen.getByTestId("zoom-in-button")).toBeVisible();
+		expect(screen.queryByTestId("freeze-frame-button")).not.toBeInTheDocument();
+		fireEvent.click(screen.getByTestId("timeline-tools-overflow"));
+		fireEvent.click(screen.getByTestId("freeze-frame-button"));
+		expect(timelineState.updateMediaElement).toHaveBeenCalledWith(
+			"track-1",
+			"element-1",
+			{ freezeFrameTime: 5, freezeFrameDuration: 1 }
+		);
+	});
+
+	it("restores inline actions without duplicates when an open overflow group expands", () => {
+		toolbarWidth = 750;
+		render(<TimelineToolbar zoomLevel={1} setZoomLevel={setZoomLevel} />);
+		fireEvent.click(screen.getByTestId("timeline-options-overflow"));
+		fireEvent.click(screen.getByTestId("timeline-snapping-button"));
+		expect(timelineState.toggleSnapping).toHaveBeenCalledOnce();
+		const toolbar = screen.getByTestId("timeline-toolbar");
+		toolbarWidth = 1920;
+		act(() => resizeObservers.get(toolbar)?.());
+		expect(
+			screen.queryByTestId("timeline-options-overflow")
+		).not.toBeInTheDocument();
+		expect(screen.getAllByTestId("timeline-snapping-button")).toHaveLength(1);
+		fireEvent.click(screen.getByTestId("timeline-snapping-button"));
+		expect(timelineState.toggleSnapping).toHaveBeenCalledTimes(2);
+		toolbarWidth = 750;
+		act(() => resizeObservers.get(toolbar)?.());
+		expect(screen.getByTestId("timeline-options-overflow")).toBeVisible();
+		expect(
+			screen.queryByTestId("timeline-snapping-button")
+		).not.toBeInTheDocument();
 	});
 
 	it("renders with play button", () => {

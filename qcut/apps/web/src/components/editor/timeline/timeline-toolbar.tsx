@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useLayoutEffect, useState } from "react";
+import { ToolbarOverflow } from "../toolbar-overflow";
 import {
 	Scissors,
 	ArrowLeftToLine,
@@ -30,6 +31,7 @@ import {
 	FileText,
 	Plus,
 	Rows3,
+	SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import {
@@ -104,6 +106,17 @@ export function TimelineToolbar({
 	setZoomLevel,
 }: TimelineToolbarProps) {
 	const { locale, t } = useTranslation();
+	const toolbarRef = useRef<HTMLDivElement>(null);
+	const [compactToolbar, setCompactToolbar] = useState(true);
+	useLayoutEffect(() => {
+		const toolbar = toolbarRef.current;
+		if (!toolbar) return;
+		const measure = () => setCompactToolbar(toolbar.clientWidth < 1480);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(toolbar);
+		return () => observer.disconnect();
+	}, []);
 	const tracks = useTimelineStore((s) => s.tracks);
 	const addTrack = useTimelineStore((s) => s.addTrack);
 	const insertTrackAt = useTimelineStore((s) => s.insertTrackAt);
@@ -407,57 +420,12 @@ export function TimelineToolbar({
 
 	return (
 		<div
-			className="flex items-center justify-between px-2 py-1 border-b h-10"
+			ref={toolbarRef}
+			className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2 py-1 border-b min-h-10 shrink-0"
 			data-testid="timeline-toolbar"
 		>
-			<div className="flex items-center gap-1">
-				<CloudTaskCenter />
+			<div className="flex flex-wrap items-center gap-1">
 				<TooltipProvider delayDuration={500}>
-					<TimelineEditModeControl />
-					<div className="mx-1 h-6 w-px bg-border" />
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button
-								variant="text"
-								size="icon"
-								type="button"
-								aria-label="Add track"
-								title="Add track"
-								data-testid="add-track-button"
-							>
-								<Plus className="h-4 w-4" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="start">
-							<DropdownMenuLabel>Add track</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-							{ADD_TRACK_OPTIONS.map((trackType) => (
-								<DropdownMenuItem
-									key={trackType}
-									onSelect={() => addTrackFromMenu({ type: trackType })}
-								>
-									<TrackIcon type={trackType} />
-									{localizeTrackTypeName({ type: trackType, locale })}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant="text"
-								size="icon"
-								type="button"
-								onClick={handleAddMarkdown}
-								data-testid="add-markdown-button"
-							>
-								<FileText className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>Add markdown at playhead</TooltipContent>
-					</Tooltip>
-
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -493,59 +461,6 @@ export function TimelineToolbar({
 						{currentTime.toFixed(1)}s / {duration.toFixed(1)}s
 					</div>
 
-					{scenes.length > 0 && (
-						<>
-							<div className="w-px h-6 bg-border mx-1" />
-							<ScenesView>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button variant="text" size="icon">
-											<LayersIcon className="h-4 w-4" />
-										</Button>
-									</TooltipTrigger>
-									<TooltipContent>
-										Scenes ({scenes.length}) -{" "}
-										{currentScene?.name || "No scene"}
-									</TooltipContent>
-								</Tooltip>
-							</ScenesView>
-						</>
-					)}
-
-					{tracks.length === 0 && (
-						<>
-							<div className="w-px h-6 bg-border mx-1" />
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => {
-											const trackId = addTrack("media");
-											addElementToTrack(trackId, {
-												type: "media",
-												mediaId: TEST_MEDIA_ID,
-												name: "Test Clip",
-												duration: TIMELINE_CONSTANTS.DEFAULT_TEXT_DURATION,
-												startTime: 0,
-												trimStart: 0,
-												trimEnd: 0,
-											});
-										}}
-										className="text-xs"
-									>
-										Add Test Clip
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>Add a test clip to try playback</TooltipContent>
-							</Tooltip>
-						</>
-					)}
-
-					<div className="w-px h-6 bg-border mx-1" />
-
-					{/* Jianying order: undo/redo | split, keep-left, keep-right,
-					    delete, freeze, reverse, mirror, rotate, crop | extras. */}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -570,7 +485,6 @@ export function TimelineToolbar({
 							{withShortcut(t("timeline.toolbar.undo"), "undo")}
 						</TooltipContent>
 					</Tooltip>
-
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -595,9 +509,6 @@ export function TimelineToolbar({
 							{withShortcut(t("timeline.toolbar.redo"), "redo")}
 						</TooltipContent>
 					</Tooltip>
-
-					<div className="w-px h-6 bg-border mx-1" />
-
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -616,51 +527,6 @@ export function TimelineToolbar({
 							{withShortcut(t("timeline.toolbar.split"), "split-element")}
 						</TooltipContent>
 					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleSplitAndKeepLeft}
-								disabled={!hasSingleSelection}
-								aria-label="Split and keep left"
-								data-testid="split-keep-left-button"
-							>
-								<ArrowLeftToLine className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								t("timeline.toolbar.keepLeft"),
-								"trim-end-to-playhead"
-							)}
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleSplitAndKeepRight}
-								disabled={!hasSingleSelection}
-								aria-label="Split and keep right"
-								data-testid="split-keep-right-button"
-							>
-								<ArrowRightToLine className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								t("timeline.toolbar.keepRight"),
-								"trim-start-to-playhead"
-							)}
-						</TooltipContent>
-					</Tooltip>
-
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
@@ -688,230 +554,381 @@ export function TimelineToolbar({
 							)}
 						</TooltipContent>
 					</Tooltip>
+					<ToolbarOverflow
+						compact={compactToolbar}
+						label={t("timeline.toolbar.moreTools")}
+						testId="timeline-tools-overflow"
+					>
+						<CloudTaskCenter />
+						<TimelineEditModeControl />
+						<div className="mx-1 h-6 w-px bg-border" />
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="text"
+									size="icon"
+									type="button"
+									aria-label="Add track"
+									title="Add track"
+									data-testid="add-track-button"
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start">
+								<DropdownMenuLabel>Add track</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								{ADD_TRACK_OPTIONS.map((trackType) => (
+									<DropdownMenuItem
+										key={trackType}
+										onSelect={() => addTrackFromMenu({ type: trackType })}
+									>
+										<TrackIcon type={trackType} />
+										{localizeTrackTypeName({ type: trackType, locale })}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleFreezeSelected}
-								onKeyDown={(event) => {
-									if (event.key !== "Enter" && event.key !== " ") return;
-									event.preventDefault();
-									handleFreezeSelected();
-								}}
-								aria-label="Add freeze frame at playhead"
-								data-testid="freeze-frame-button"
-							>
-								<Snowflake className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(t("timeline.toolbar.freeze"), "freeze-selected")}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="text"
+									size="icon"
+									type="button"
+									onClick={handleAddMarkdown}
+									data-testid="add-markdown-button"
+								>
+									<FileText className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Add markdown at playhead</TooltipContent>
+						</Tooltip>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={() => invokeAction("reverse-selected")}
-								onKeyDown={(event) => {
-									if (event.key !== "Enter" && event.key !== " ") return;
-									event.preventDefault();
-									invokeAction("reverse-selected");
-								}}
-								disabled={!hasSingleMediaSelection}
-								aria-label="Reverse selected clip"
-								data-testid="reverse-clip-button"
-							>
-								<Rewind className="h-4 w-4">
-									<title>{t("timeline.toolbar.reverse")}</title>
-								</Rewind>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(t("timeline.toolbar.reverse"), "reverse-selected")}
-						</TooltipContent>
-					</Tooltip>
+						{scenes.length > 0 && (
+							<>
+								<div className="w-px h-6 bg-border mx-1" />
+								<ScenesView>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button variant="text" size="icon">
+												<LayersIcon className="h-4 w-4" />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>
+											Scenes ({scenes.length}) -{" "}
+											{currentScene?.name || "No scene"}
+										</TooltipContent>
+									</Tooltip>
+								</ScenesView>
+							</>
+						)}
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={() => invokeAction("mirror-selected")}
-								onKeyDown={(event) => {
-									if (event.key !== "Enter" && event.key !== " ") return;
-									event.preventDefault();
-									invokeAction("mirror-selected");
-								}}
-								disabled={!hasSingleMediaSelection}
-								aria-label="Mirror selected clip"
-								data-testid="mirror-clip-button"
-							>
-								<FlipHorizontal2 className="h-4 w-4">
-									<title>{t("timeline.toolbar.mirror")}</title>
-								</FlipHorizontal2>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(t("timeline.toolbar.mirror"), "mirror-selected")}
-						</TooltipContent>
-					</Tooltip>
+						{tracks.length === 0 && (
+							<>
+								<div className="w-px h-6 bg-border mx-1" />
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												const trackId = addTrack("media");
+												addElementToTrack(trackId, {
+													type: "media",
+													mediaId: TEST_MEDIA_ID,
+													name: "Test Clip",
+													duration: TIMELINE_CONSTANTS.DEFAULT_TEXT_DURATION,
+													startTime: 0,
+													trimStart: 0,
+													trimEnd: 0,
+												});
+											}}
+											className="text-xs"
+										>
+											Add Test Clip
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent>
+										Add a test clip to try playback
+									</TooltipContent>
+								</Tooltip>
+							</>
+						)}
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={() => invokeAction("rotate-selected")}
-								onKeyDown={(event) => {
-									if (event.key !== "Enter" && event.key !== " ") return;
-									event.preventDefault();
-									invokeAction("rotate-selected");
-								}}
-								disabled={!hasSingleMediaSelection}
-								aria-label="Rotate selected clip"
-								data-testid="rotate-clip-button"
-							>
-								<RotateCw className="h-4 w-4">
-									<title>{t("timeline.toolbar.rotate")}</title>
-								</RotateCw>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(t("timeline.toolbar.rotate"), "rotate-selected")}
-						</TooltipContent>
-					</Tooltip>
+						<div className="w-px h-6 bg-border mx-1" />
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleCropSelected}
-								disabled={!hasSingleMediaSelection}
-								aria-label="Crop selected clip"
-								data-testid="crop-clip-button"
-							>
-								<Crop className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(t("timeline.toolbar.crop"), "crop-selected")}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleSplitAndKeepLeft}
+									disabled={!hasSingleSelection}
+									aria-label="Split and keep left"
+									data-testid="split-keep-left-button"
+								>
+									<ArrowLeftToLine className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									t("timeline.toolbar.keepLeft"),
+									"trim-end-to-playhead"
+								)}
+							</TooltipContent>
+						</Tooltip>
 
-					<div className="w-px h-6 bg-border mx-1" />
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleSplitAndKeepRight}
+									disabled={!hasSingleSelection}
+									aria-label="Split and keep right"
+									data-testid="split-keep-right-button"
+								>
+									<ArrowRightToLine className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									t("timeline.toolbar.keepRight"),
+									"trim-start-to-playhead"
+								)}
+							</TooltipContent>
+						</Tooltip>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleSeparateAudio}
-								disabled={!hasSingleMediaSelection}
-								aria-label="Separate audio from selected clip"
-								data-testid="separate-audio-button"
-							>
-								<SplitSquareHorizontal className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								t("timeline.toolbar.separateAudio"),
-								"separate-audio-selected"
-							)}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleFreezeSelected}
+									onKeyDown={(event) => {
+										if (event.key !== "Enter" && event.key !== " ") return;
+										event.preventDefault();
+										handleFreezeSelected();
+									}}
+									aria-label="Add freeze frame at playhead"
+									data-testid="freeze-frame-button"
+								>
+									<Snowflake className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(t("timeline.toolbar.freeze"), "freeze-selected")}
+							</TooltipContent>
+						</Tooltip>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleDuplicateSelected}
-								disabled={!hasSingleSelection}
-								aria-label="Duplicate selected clip"
-								data-testid="duplicate-clip-button"
-							>
-								<Copy className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								t("timeline.toolbar.duplicate"),
-								"duplicate-selected"
-							)}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={() => invokeAction("reverse-selected")}
+									onKeyDown={(event) => {
+										if (event.key !== "Enter" && event.key !== " ") return;
+										event.preventDefault();
+										invokeAction("reverse-selected");
+									}}
+									disabled={!hasSingleMediaSelection}
+									aria-label="Reverse selected clip"
+									data-testid="reverse-clip-button"
+								>
+									<Rewind className="h-4 w-4">
+										<title>{t("timeline.toolbar.reverse")}</title>
+									</Rewind>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									t("timeline.toolbar.reverse"),
+									"reverse-selected"
+								)}
+							</TooltipContent>
+						</Tooltip>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={compactTracks ? "default" : "text"}
-								size="icon"
-								onClick={() =>
-									setTrackHeightMode(compactTracks ? "default" : "compact")
-								}
-								onKeyDown={(event) => {
-									if (event.key !== "Enter" && event.key !== " ") return;
-									event.preventDefault();
-									setTrackHeightMode(compactTracks ? "default" : "compact");
-								}}
-								aria-label={
-									compactTracks
-										? "Restore default track heights"
-										: "Compact tracks"
-								}
-								aria-pressed={compactTracks}
-								data-testid="compact-tracks-button"
-							>
-								<Rows3 className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{compactTracks
-								? t("timeline.toolbar.restoreTracks")
-								: t("timeline.toolbar.compactTracks")}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={() => invokeAction("mirror-selected")}
+									onKeyDown={(event) => {
+										if (event.key !== "Enter" && event.key !== " ") return;
+										event.preventDefault();
+										invokeAction("mirror-selected");
+									}}
+									disabled={!hasSingleMediaSelection}
+									aria-label="Mirror selected clip"
+									data-testid="mirror-clip-button"
+								>
+									<FlipHorizontal2 className="h-4 w-4">
+										<title>{t("timeline.toolbar.mirror")}</title>
+									</FlipHorizontal2>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(t("timeline.toolbar.mirror"), "mirror-selected")}
+							</TooltipContent>
+						</Tooltip>
 
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="text"
-								size="icon"
-								onClick={handleToggleBookmark}
-								aria-label={
-									currentBookmarked ? "Remove bookmark" : "Add bookmark"
-								}
-							>
-								<Bookmark
-									className={`h-4 w-4 ${currentBookmarked ? "fill-primary text-primary" : ""}`}
-								/>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								currentBookmarked
-									? t("timeline.toolbar.removeBookmark")
-									: t("timeline.toolbar.addBookmark"),
-								"toggle-bookmark"
-							)}
-						</TooltipContent>
-					</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={() => invokeAction("rotate-selected")}
+									onKeyDown={(event) => {
+										if (event.key !== "Enter" && event.key !== " ") return;
+										event.preventDefault();
+										invokeAction("rotate-selected");
+									}}
+									disabled={!hasSingleMediaSelection}
+									aria-label="Rotate selected clip"
+									data-testid="rotate-clip-button"
+								>
+									<RotateCw className="h-4 w-4">
+										<title>{t("timeline.toolbar.rotate")}</title>
+									</RotateCw>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(t("timeline.toolbar.rotate"), "rotate-selected")}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleCropSelected}
+									disabled={!hasSingleMediaSelection}
+									aria-label="Crop selected clip"
+									data-testid="crop-clip-button"
+								>
+									<Crop className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(t("timeline.toolbar.crop"), "crop-selected")}
+							</TooltipContent>
+						</Tooltip>
+
+						<div className="w-px h-6 bg-border mx-1" />
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleSeparateAudio}
+									disabled={!hasSingleMediaSelection}
+									aria-label="Separate audio from selected clip"
+									data-testid="separate-audio-button"
+								>
+									<SplitSquareHorizontal className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									t("timeline.toolbar.separateAudio"),
+									"separate-audio-selected"
+								)}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleDuplicateSelected}
+									disabled={!hasSingleSelection}
+									aria-label="Duplicate selected clip"
+									data-testid="duplicate-clip-button"
+								>
+									<Copy className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									t("timeline.toolbar.duplicate"),
+									"duplicate-selected"
+								)}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant={compactTracks ? "default" : "text"}
+									size="icon"
+									onClick={() =>
+										setTrackHeightMode(compactTracks ? "default" : "compact")
+									}
+									onKeyDown={(event) => {
+										if (event.key !== "Enter" && event.key !== " ") return;
+										event.preventDefault();
+										setTrackHeightMode(compactTracks ? "default" : "compact");
+									}}
+									aria-label={
+										compactTracks
+											? "Restore default track heights"
+											: "Compact tracks"
+									}
+									aria-pressed={compactTracks}
+									data-testid="compact-tracks-button"
+								>
+									<Rows3 className="h-4 w-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{compactTracks
+									? t("timeline.toolbar.restoreTracks")
+									: t("timeline.toolbar.compactTracks")}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant="text"
+									size="icon"
+									onClick={handleToggleBookmark}
+									aria-label={
+										currentBookmarked ? "Remove bookmark" : "Add bookmark"
+									}
+								>
+									<Bookmark
+										className={`h-4 w-4 ${currentBookmarked ? "fill-primary text-primary" : ""}`}
+									/>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									currentBookmarked
+										? t("timeline.toolbar.removeBookmark")
+										: t("timeline.toolbar.addBookmark"),
+									"toggle-bookmark"
+								)}
+							</TooltipContent>
+						</Tooltip>
+					</ToolbarOverflow>
 				</TooltipProvider>
 			</div>
 
@@ -920,7 +937,9 @@ export function TimelineToolbar({
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<SplitButton>
-								<SplitButtonLeft disabled>{currentSceneName}</SplitButtonLeft>
+								<SplitButtonLeft disabled className="max-w-24 truncate">
+									{currentSceneName}
+								</SplitButtonLeft>
 								<SplitButtonSeparator />
 								<ScenesView>
 									<SplitButtonRight
@@ -939,165 +958,178 @@ export function TimelineToolbar({
 				</TooltipProvider>
 			</div>
 
-			<div className="flex items-center gap-1">
+			<div className="flex items-center gap-1 ml-auto">
 				{/* Ordered to match Jianying: magnet, snapping, then ripple/linked. */}
-				<TooltipProvider delayDuration={500}>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={mainTrackMagnetEnabled ? "default" : "text"}
-								size="icon"
-								onClick={toggleMainTrackMagnet}
-								aria-label="Toggle main-track magnet"
-								aria-pressed={mainTrackMagnetEnabled}
-								data-testid="timeline-main-magnet-button"
-								data-enabled={mainTrackMagnetEnabled}
-							>
-								<FoldHorizontal
-									className={`h-4 w-4 ${
-										mainTrackMagnetEnabled ? "text-primary" : ""
-									}`}
-								/>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								mainTrackMagnetEnabled
-									? t("timeline.toolbar.disableMainTrackMagnet")
-									: t("timeline.toolbar.enableMainTrackMagnet"),
-								"toggle-main-track-magnet"
-							)}
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={overlayStacking === "byArrival" ? "default" : "text"}
-								size="icon"
-								onClick={toggleOverlayStacking}
-								aria-label="Toggle overlay stacking mode"
-								aria-pressed={overlayStacking === "byArrival"}
-								data-testid="timeline-overlay-stacking-button"
-								data-mode={overlayStacking}
-							>
-								<ArrowUpFromLine
-									className={`h-4 w-4 ${
-										overlayStacking === "byArrival" ? "text-primary" : ""
-									}`}
-								/>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{overlayStacking === "byArrival"
-								? t("timeline.toolbar.overlayStackingByArrival")
-								: t("timeline.toolbar.overlayStackingByType")}
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={snappingEnabled ? "default" : "text"}
-								size="icon"
-								onClick={toggleSnapping}
-								aria-label="Toggle timeline snapping"
-								aria-pressed={snappingEnabled}
-								data-testid="timeline-snapping-button"
-								data-enabled={snappingEnabled}
-							>
-								{snappingEnabled ? (
-									<Magnet className="h-4 w-4 text-primary" />
-								) : (
-									<Magnet className="h-4 w-4" />
-								)}
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								snappingEnabled
-									? t("timeline.toolbar.disableSnapping")
-									: t("timeline.toolbar.enableSnapping"),
-								"toggle-snapping"
-							)}
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={rippleEditingEnabled ? "default" : "text"}
-								size="icon"
-								onClick={toggleRippleEditing}
-								aria-label="Toggle ripple editing"
-								aria-pressed={rippleEditingEnabled}
-								data-testid="timeline-ripple-button"
-								data-enabled={rippleEditingEnabled}
-							>
-								<Link
-									className={`h-4 w-4 ${
-										rippleEditingEnabled ? "text-primary" : ""
-									}`}
-								/>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{rippleEditingEnabled
-								? t("timeline.toolbar.disableRippleEditing")
-								: t("timeline.toolbar.enableRippleEditing")}
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant={linkedRippleEnabled ? "default" : "text"}
-								size="icon"
-								onClick={toggleLinkedRipple}
-								aria-label="Toggle linked ripple"
-								aria-pressed={linkedRippleEnabled}
-								data-testid="timeline-linked-ripple-button"
-								data-enabled={linkedRippleEnabled}
-							>
-								<Link2
-									className={`h-4 w-4 ${
-										linkedRippleEnabled ? "text-primary" : ""
-									}`}
-								/>
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							{withShortcut(
-								linkedRippleEnabled
-									? t("timeline.toolbar.disableLinkedRipple")
-									: t("timeline.toolbar.enableLinkedRipple"),
-								"toggle-linked-ripple"
-							)}
-						</TooltipContent>
-					</Tooltip>
-
-					{EFFECTS_ENABLED && (
+				<ToolbarOverflow
+					compact={compactToolbar}
+					label={t("timeline.toolbar.options")}
+					testId="timeline-options-overflow"
+					icon={SlidersHorizontal}
+				>
+					<TooltipProvider delayDuration={500}>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<Button variant="text" size="icon" onClick={toggleEffectsTrack}>
-									<Sparkles
+								<Button
+									type="button"
+									variant={mainTrackMagnetEnabled ? "default" : "text"}
+									size="icon"
+									onClick={toggleMainTrackMagnet}
+									aria-label="Toggle main-track magnet"
+									aria-pressed={mainTrackMagnetEnabled}
+									data-testid="timeline-main-magnet-button"
+									data-enabled={mainTrackMagnetEnabled}
+								>
+									<FoldHorizontal
 										className={`h-4 w-4 ${
-											showEffectsTrack ? "text-primary" : ""
+											mainTrackMagnetEnabled ? "text-primary" : ""
 										}`}
 									/>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent>
-								{showEffectsTrack ? "Hide Effects Track" : "Show Effects Track"}
+								{withShortcut(
+									mainTrackMagnetEnabled
+										? t("timeline.toolbar.disableMainTrackMagnet")
+										: t("timeline.toolbar.enableMainTrackMagnet"),
+									"toggle-main-track-magnet"
+								)}
 							</TooltipContent>
 						</Tooltip>
-					)}
-				</TooltipProvider>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant={overlayStacking === "byArrival" ? "default" : "text"}
+									size="icon"
+									onClick={toggleOverlayStacking}
+									aria-label="Toggle overlay stacking mode"
+									aria-pressed={overlayStacking === "byArrival"}
+									data-testid="timeline-overlay-stacking-button"
+									data-mode={overlayStacking}
+								>
+									<ArrowUpFromLine
+										className={`h-4 w-4 ${
+											overlayStacking === "byArrival" ? "text-primary" : ""
+										}`}
+									/>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{overlayStacking === "byArrival"
+									? t("timeline.toolbar.overlayStackingByArrival")
+									: t("timeline.toolbar.overlayStackingByType")}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant={snappingEnabled ? "default" : "text"}
+									size="icon"
+									onClick={toggleSnapping}
+									aria-label="Toggle timeline snapping"
+									aria-pressed={snappingEnabled}
+									data-testid="timeline-snapping-button"
+									data-enabled={snappingEnabled}
+								>
+									{snappingEnabled ? (
+										<Magnet className="h-4 w-4 text-primary" />
+									) : (
+										<Magnet className="h-4 w-4" />
+									)}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									snappingEnabled
+										? t("timeline.toolbar.disableSnapping")
+										: t("timeline.toolbar.enableSnapping"),
+									"toggle-snapping"
+								)}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant={rippleEditingEnabled ? "default" : "text"}
+									size="icon"
+									onClick={toggleRippleEditing}
+									aria-label="Toggle ripple editing"
+									aria-pressed={rippleEditingEnabled}
+									data-testid="timeline-ripple-button"
+									data-enabled={rippleEditingEnabled}
+								>
+									<Link
+										className={`h-4 w-4 ${
+											rippleEditingEnabled ? "text-primary" : ""
+										}`}
+									/>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{rippleEditingEnabled
+									? t("timeline.toolbar.disableRippleEditing")
+									: t("timeline.toolbar.enableRippleEditing")}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									type="button"
+									variant={linkedRippleEnabled ? "default" : "text"}
+									size="icon"
+									onClick={toggleLinkedRipple}
+									aria-label="Toggle linked ripple"
+									aria-pressed={linkedRippleEnabled}
+									data-testid="timeline-linked-ripple-button"
+									data-enabled={linkedRippleEnabled}
+								>
+									<Link2
+										className={`h-4 w-4 ${
+											linkedRippleEnabled ? "text-primary" : ""
+										}`}
+									/>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{withShortcut(
+									linkedRippleEnabled
+										? t("timeline.toolbar.disableLinkedRipple")
+										: t("timeline.toolbar.enableLinkedRipple"),
+									"toggle-linked-ripple"
+								)}
+							</TooltipContent>
+						</Tooltip>
+
+						{EFFECTS_ENABLED && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="text"
+										size="icon"
+										onClick={toggleEffectsTrack}
+									>
+										<Sparkles
+											className={`h-4 w-4 ${
+												showEffectsTrack ? "text-primary" : ""
+											}`}
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									{showEffectsTrack
+										? "Hide Effects Track"
+										: "Show Effects Track"}
+								</TooltipContent>
+							</Tooltip>
+						)}
+					</TooltipProvider>
+				</ToolbarOverflow>
 
 				<div className="h-6 w-px bg-border mx-1" />
 
