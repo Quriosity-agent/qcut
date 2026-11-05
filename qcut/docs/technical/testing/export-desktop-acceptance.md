@@ -39,6 +39,10 @@ Filter state readback uses project units, including complete CSS exponent length
 
 Wrapped caption tokens preserve the separator before the next word and intentional blank lines. Karaoke ASS backgrounds measure the actual sorted timed words and use the same line breaks as the glyphs, preserving the existing `\k` / `\kf` durations. Real libass cases check top, center and bottom placement, full glyph containment and early/late highlight progression.
 
+The optimized export path now uses the same Markdown renderer as the normal path. Eight actual Canvas comparisons cover four output sizes and direct/offscreen rendering with offsets, rotation, translucent backgrounds, wrapping, clipping, scrolling and cached-frame replay; they require byte-identical output. The four direct comparisons failed before the duplicated renderer was removed.
+
+The standalone native subtitle CLI now parses CSS colors in both its drawtext and ASS paths. Intrinsic CSS alpha takes precedence over a per-color opacity field, while an explicit zero disables the color. Real FFmpeg cases verify text, outlines, shadows and backgrounds. Native CLI ASS backgrounds use libass BorderStyle 4 so BackColour fills the box while OutlineColour remains the glyph outline; a 50% blue background is checked alongside green outlines and white text. ASS import accepts both the existing style 3 and style 4. The web drawtext fallback also retains CSS alpha instead of overwriting it with a second FFmpeg opacity suffix.
+
 This closes the ASS background omission. The legacy Canvas karaoke renderer still has different placement conventions, and the native export API currently renders karaoke as static caption text because it does not carry word timing. Full karaoke animation parity across engines is outside this background/layout fix.
 
 ## 32 real source clips
