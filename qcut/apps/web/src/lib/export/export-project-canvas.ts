@@ -2,6 +2,7 @@ import type {
 	CanvasDimensions,
 	CanvasTextContext,
 } from "@/lib/text/text-canvas-primitives";
+import { scaleFilterLengths } from "./export-filter-lengths";
 
 export function resolveExportProjectCanvas({
 	project,
@@ -27,19 +28,6 @@ export function resolveExportProjectCanvas({
 		canvas: { width: frame.width / scale, height: frame.height / scale },
 		scale,
 	};
-}
-
-function scaleFilterLengths({
-	filter,
-	factor,
-}: {
-	filter: string;
-	factor: number;
-}): string {
-	return filter.replace(
-		/(-?(?:\d*\.)?\d+)px\b/g,
-		(_match, length: string) => `${Number(length) * factor}px`
-	);
 }
 
 function scaledCanvasPaintContext<Context extends CanvasTextContext>({
