@@ -42,9 +42,11 @@ function ButtonIcon({ state }: { state: PlatformUpdateState }) {
 export function AppUpdateButton({
 	className,
 	dark = false,
+	compactLabel = false,
 }: {
 	className?: string;
 	dark?: boolean;
+	compactLabel?: boolean;
 }) {
 	const { t } = useTranslation();
 	const { state, available, checkForUpdates } = useAppUpdate();
@@ -89,9 +91,13 @@ export function AppUpdateButton({
 				onKeyDown={handleKeyDown}
 				aria-live="polite"
 				data-testid="global-app-update-button"
+				title={buttonLabel({ state, t })}
+				aria-label={buttonLabel({ state, t })}
 			>
 				<ButtonIcon state={state} />
-				<span>{buttonLabel({ state, t })}</span>
+				<span className={compactLabel ? "hidden 2xl:inline" : undefined}>
+					{buttonLabel({ state, t })}
+				</span>
 			</Button>
 			<AboutUpdatesDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 		</>
