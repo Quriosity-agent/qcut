@@ -51,9 +51,10 @@ export async function assertLayout({ page }: { page: Page }) {
 								)
 							) {
 								failures.push(
-									button.dataset.testid ??
-										button.title ??
-										button.textContent ??
+									button.dataset.testid ||
+										button.title ||
+										button.getAttribute("aria-label") ||
+										button.textContent?.trim() ||
 										selector
 								);
 							}
@@ -151,14 +152,12 @@ export async function exerciseToolbar({ page }: { page: Page }) {
 		});
 	}
 	const snapping = page.getByTestId("timeline-snapping-button");
-	const wasEnabled = await snapping.getAttribute("aria-pressed");
+	await expect(snapping).toHaveAttribute("aria-pressed", /^(true|false)$/);
+	const wasEnabled = (await snapping.getAttribute("aria-pressed")) === "true";
 	await snapping.click();
-	await expect(snapping).toHaveAttribute(
-		"aria-pressed",
-		wasEnabled === "true" ? "false" : "true"
-	);
+	await expect(snapping).toHaveAttribute("aria-pressed", String(!wasEnabled));
 	await snapping.click();
-	await expect(snapping).toHaveAttribute("aria-pressed", wasEnabled!);
+	await expect(snapping).toHaveAttribute("aria-pressed", String(wasEnabled));
 	if (compact) {
 		await page.mouse.move(0, 0);
 		await page.getByTestId("timeline-options-overflow-content").focus();
@@ -179,14 +178,22 @@ export async function exerciseToolbar({ page }: { page: Page }) {
 		await expect(page.getByRole("menu")).toBeVisible();
 		await page.keyboard.press("Escape");
 		const compactTracks = page.getByTestId("compact-tracks-button");
-		const wasCompact = await compactTracks.getAttribute("aria-pressed");
+		await expect(compactTracks).toHaveAttribute(
+			"aria-pressed",
+			/^(true|false)$/
+		);
+		const wasCompact =
+			(await compactTracks.getAttribute("aria-pressed")) === "true";
 		await compactTracks.click();
 		await expect(compactTracks).toHaveAttribute(
 			"aria-pressed",
-			wasCompact === "true" ? "false" : "true"
+			String(!wasCompact)
 		);
 		await compactTracks.click();
-		await expect(compactTracks).toHaveAttribute("aria-pressed", wasCompact!);
+		await expect(compactTracks).toHaveAttribute(
+			"aria-pressed",
+			String(wasCompact)
+		);
 		await page.mouse.move(0, 0);
 		await page.getByTestId("timeline-tools-overflow-content").focus();
 		await expect(page.getByRole("tooltip")).toHaveCount(0);
