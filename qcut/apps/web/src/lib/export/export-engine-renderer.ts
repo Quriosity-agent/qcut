@@ -1,8 +1,4 @@
-import {
-	captionBackgroundBox,
-	captionContentMaxWidth,
-	wrapCaptionLines,
-} from "@qcut/editor-core";
+import { prepareCaptionLayout } from "@qcut/editor-core";
 import type {
 	CanvasDimensions,
 	CanvasTextContext,
@@ -78,7 +74,10 @@ import {
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 } from "@/lib/captions/subtitle-style";
-import { renderKaraokeCaptionToCanvas } from "@/lib/captions/karaoke-canvas-renderer";
+import {
+	measureKaraokeCanvasBlockHeight,
+	renderKaraokeCaptionToCanvas,
+} from "@/lib/captions/karaoke-canvas-renderer";
 import type { CaptionElement } from "@/types/timeline";
 import {
 	ScreenRecordingExportCompositor,
@@ -91,7 +90,11 @@ import {
 import { useWebcamOverlayStore } from "@/stores/webcam-overlay-store";
 import { useFigureAnnotationsStore } from "@/stores/figure-annotations-store";
 import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
-import { captionStackOffset } from "@/lib/captions/caption-stacking";
+import {
+	captionBlockHeight,
+	captionStackOffset,
+} from "@/lib/captions/caption-stacking";
+import { createCanvasCaptionMeasurer } from "./caption-text-measurement";
 import { resolveAnimatedTextElement } from "@/lib/text/text-element-animation";
 import { resolveMediaKeyframes } from "@/lib/video/video-properties";
 import { resolveAlphaPlaybackProxyUrl } from "@/lib/media/alpha-playback-proxy";
@@ -489,7 +492,22 @@ async function renderElement(
 						canvas,
 						element,
 						currentTime,
-						captionStackOffset({ tracks: context.tracks, element }),
+						captionStackOffset({
+							tracks: context.tracks,
+							element,
+							measureHeight: ({ element: caption }) =>
+								measureKaraokeCanvasBlockHeight({
+									ctx,
+									canvas,
+									element: caption,
+									style: resolveSubtitleStyle(caption.style),
+								}) ??
+								captionBlockHeight({
+									element: caption,
+									width: canvas.width,
+									measureText: createCanvasCaptionMeasurer({ context: ctx }),
+								}),
+						}),
 						context.fps
 					);
 				} else {
@@ -1487,6 +1505,7 @@ export function renderCaptionElement(
 			element,
 			currentTime,
 			style,
+			stackOffset,
 		})
 	) {
 		return;
@@ -1512,42 +1531,25 @@ export function renderCaptionElement(
 	// The text's lines, then a bilingual caption's second-language lines in
 	// their own font; each line box is its font size × the line spacing, as
 	// the preview's box lays them out.
-	const rows = wrapCaptionLines({
-		request: {
-			text: element.text.trim(),
-			fontFamily: style.fontFamily,
-			fontSize: style.fontSize,
-			fontWeight: captionFontWeight(style),
-			italic: style.italic,
-			letterSpacing: style.letterSpacing,
-		},
-		measureText: ({ text }) => ctx.measureText(text).width,
-		maxWidth: captionContentMaxWidth({ width: canvas.width }),
-	}).map((text) => ({
+	const layout = prepareCaptionLayout({
+		clip: element,
+		style,
+		resolution: canvas,
+		stackOffset,
+		measureText: createCanvasCaptionMeasurer({ context: ctx }),
+	});
+	const rows = layout.clip.text.split("\n").map((text) => ({
 		text,
 		font,
 		fontSize: style.fontSize,
 		color: style.fontColor,
 		letterSpacing: style.letterSpacing,
 	}));
-	const secondaryText = element.secondaryText?.trim();
+	const secondaryText = layout.clip.secondaryText?.trim();
 	if (secondaryText) {
 		const secondary = resolveSecondaryLineStyle(style);
 		const secondaryFont = `${secondary.italic ? "italic" : "normal"} ${cssFontWeight(secondary.fontWeight)} ${secondary.fontSize}px ${canvasFontFamily(secondary.fontFamily)}`;
-		ctx.font = secondaryFont;
-		ctx.letterSpacing = `${secondary.letterSpacing}px`;
-		for (const text of wrapCaptionLines({
-			request: {
-				text: secondaryText,
-				fontFamily: secondary.fontFamily,
-				fontSize: secondary.fontSize,
-				fontWeight: secondary.fontWeight,
-				italic: secondary.italic,
-				letterSpacing: secondary.letterSpacing,
-			},
-			measureText: ({ text }) => ctx.measureText(text).width,
-			maxWidth: captionContentMaxWidth({ width: canvas.width }),
-		})) {
+		for (const text of secondaryText.split("\n")) {
 			rows.push({
 				text,
 				font: secondaryFont,
@@ -1594,18 +1596,7 @@ export function renderCaptionElement(
 
 	// Draw background
 	if (style.bgOpacity > 0) {
-		const box = captionBackgroundBox({
-			lineWidths: rows.map((row) => {
-				setRowFont(row);
-				return ctx.measureText(row.text).width;
-			}),
-			lineHeights: rows.map((row) => row.fontSize * style.lineSpacing),
-			width: canvas.width,
-			height: canvas.height,
-			align: style.position.align,
-			textAlign: style.textAlign,
-			stackOffset,
-		});
+		const box = layout.box;
 		ctx.fillStyle = hexToRgba(style.backgroundColor, style.bgOpacity);
 		ctx.beginPath();
 		ctx.roundRect(
