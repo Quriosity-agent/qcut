@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Export dialog's FFmpeg export scales text and captions with the export's resolution when it differs from the project canvas, as the native export does. A 1470×630 project exported at 1080p used to draw them at their project size on a 2520×1080 frame, so about 40 % too small; an export smaller than the project drew them too large.
 - In the Export dialog's FFmpeg export, a text element's outline keeps its own opacity, and Chinese, Japanese or Korean text in a font that cannot draw it falls back to the same font as captions and the native export.
 
-### Limitations
-
-- At a resolution other than the project canvas, text and captions from the Export dialog's canvas and muxer exports, and text drawn as an image in its FFmpeg export (animated text, for one), still keep their project size.
-- A caption's background box differs between engines: the preview and the canvas export draw it with padding, the native export draws it tight around the letters (now in the background colour), and the Export dialog's FFmpeg export does not draw it.
+- Canvas and WebCodecs exports now scale text, captions, outlines, shadows and animated text from the project canvas to the output resolution. Animated text rasterized for FFmpeg uses the same mapping and keeps the edges of its cropped frames.
+- Captions use the preview's padded, rounded background across the native, canvas and FFmpeg exports, including bilingual and wrapped lines. Measured browser ASS sidecars include the background as well. The FFmpeg composition preserves background opacity instead of applying it again on a transparent intermediate.
+- Native and FFmpeg text placement uses the font's metrics to match Canvas baselines and line spacing. Arial text previously sat about 9 project pixels too low at a 52 px font size.
+- Standard MP4 exports now use the existing Canvas/WebCodecs pipeline with timeline frame timestamps and the project audio mix. The former canvas-only MediaRecorder path could silently omit audio and stretch a 3-second project to 4.91 seconds. Missing encoders now produce an error instead of a silent video-only fallback. The legacy WebM path is unchanged.
 
 ## [2026.11.02.1] - 2026-11-01
 
