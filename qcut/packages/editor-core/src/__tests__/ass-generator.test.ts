@@ -101,6 +101,75 @@ describe("generateASS", () => {
 		expect(ass).not.toContain("\\kf");
 	});
 
+	it.each([
+		{ mode: "karaoke", tag: "kf" },
+		{ mode: "word-highlight", tag: "k" },
+	] as const)("measures and wraps $mode backgrounds from the timed words", ({
+		mode,
+		tag,
+	}) => {
+		const clip = caption({ karaoke: true });
+		clip.text = "stale transcript";
+		clip.style = {
+			...clip.style!,
+			karaokeMode: mode,
+			backgroundColor: "blue",
+			bgOpacity: 0.5,
+		};
+		const ass = generateASS([clip], {
+			resolution: { width: 300, height: 200 },
+			measureText: ({ text }) => text.length * 20,
+		});
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		expect(events).toHaveLength(2);
+		expect(events[0]).toContain("\\p1\\bord0\\shad0\\1c&HFF0000&\\1a&H80&");
+		expect(events[0]).toContain("\\pos(84,106.4)");
+		expect(events[1]).toContain("\\q2");
+		expect(events[1]).toContain(
+			`{\\${tag}60}Hello\\N{\\fs4.80}\\h\\N{\\fs24.00}{\\${tag}140}world`
+		);
+		expect(ass).not.toContain("stale transcript");
+	});
+
+	it("keeps an oversized timed word whole and measures its entire background", () => {
+		const clip = caption({ karaoke: true });
+		clip.words![0].text = "字幕{long}\\word";
+		clip.style = { ...clip.style!, bgOpacity: 1 };
+		const ass = generateASS([clip], {
+			resolution: { width: 300, height: 200 },
+			measureText: ({ text }) => text.length * 20,
+		});
+		const width = clip.words![0].text.length * 20 + 32;
+		expect(ass).toContain(`\\pos(${(300 - width) / 2},106.4)`);
+		expect(ass).toContain("{\\kf60}字幕\\{long\\}\\\\word\\N");
+		expect(ass.match(/\\kf60/g)).toHaveLength(1);
+		expect(ass.match(/\\kf140/g)).toHaveLength(1);
+	});
+
+	it("still draws the background when a karaoke caption has no word timings", () => {
+		const clip = caption({ karaoke: true });
+		clip.words = [];
+		clip.style = { ...clip.style!, bgOpacity: 1 };
+		const ass = generateASS([clip], {
+			resolution: { width: 1280, height: 720 },
+			measureText: ({ text }) => text.length * 12,
+		});
+		expect(ass).toContain("\\p1");
+		expect(ass).toContain("Hello world");
+		expect(ass).not.toContain("\\kf");
+	});
+
+	it("does not draw a disabled karaoke background", () => {
+		const ass = generateASS([caption({ karaoke: true })], {
+			resolution: { width: 1280, height: 720 },
+			measureText: ({ text }) => text.length * 12,
+		});
+		expect(ass).not.toContain("\\p1");
+		expect(ass).toContain("{\\kf60}Hello {\\kf140}world");
+	});
+
 	it("writes a bilingual caption's second line after a break, in its own font", () => {
 		const ass = generateASS(
 			[
