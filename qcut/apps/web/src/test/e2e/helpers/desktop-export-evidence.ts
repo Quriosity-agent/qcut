@@ -183,7 +183,11 @@ function measureDesktopFrame({
 	projectHeight: number;
 }) {
 	expect(rgb.length).toBe(projectWidth * projectHeight * 3);
-	const bounds = ({ kind }: { kind: "text" | "background" }) => {
+	const bounds = ({
+		kind,
+	}: {
+		kind: "text" | "background" | "stackedBackground";
+	}) => {
 		let left = projectWidth;
 		let top = projectHeight;
 		let right = -1;
@@ -194,9 +198,9 @@ function measureDesktopFrame({
 				const offset = (y * projectWidth + x) * 3;
 				const [r, g, b] = rgb.subarray(offset, offset + 3);
 				const matches =
-					kind === "text"
-						? r > 170 && g > 170 && b < 100
-						: g > r + 45 && b > r + 45;
+					(kind === "text" && r > 170 && g > 170 && b < 100) ||
+					(kind === "background" && g > r + 45 && b > r + 45) ||
+					(kind === "stackedBackground" && r > g + 80 && b > g + 80);
 				if (!matches) continue;
 				left = Math.min(left, x);
 				top = Math.min(top, y);
@@ -209,6 +213,15 @@ function measureDesktopFrame({
 		return { left, top, right, bottom, count };
 	};
 	const background = bounds({ kind: "background" });
+	const stackedBackground = bounds({ kind: "stackedBackground" });
+	expect(
+		background.bottom - background.top,
+		"the first caption includes automatically wrapped secondary rows"
+	).toBeGreaterThan(140);
+	expect(
+		stackedBackground.bottom,
+		"the later caption stays above the complete wrapped caption box"
+	).toBeLessThanOrEqual(background.top + 1);
 	const backgroundFill = [0, 1, 2].map((channel) => {
 		let total = 0;
 		for (let y = background.top + 5; y < background.top + 10; y += 1) {
@@ -224,7 +237,12 @@ function measureDesktopFrame({
 			`70% cyan caption background channel ${channel}`
 		).toBeLessThanOrEqual(6);
 	}
-	return { text: bounds({ kind: "text" }), background, backgroundFill };
+	return {
+		text: bounds({ kind: "text" }),
+		background,
+		stackedBackground,
+		backgroundFill,
+	};
 }
 
 export function verifyDesktopPreview({
