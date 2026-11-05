@@ -185,6 +185,7 @@ export class CLIExportEngine extends ExportEngine {
 			sessionId: this.sessionId,
 			canvasWidth: this.canvas.width,
 			canvasHeight: this.canvas.height,
+			projectCanvas: this.projectCanvas,
 			fps: this.getFrameRate(),
 			logger: debugLog,
 			onProgress: ({ bakedFrames, totalFrames }) => {
@@ -668,7 +669,7 @@ export class CLIExportEngine extends ExportEngine {
 			| "linux"
 			| undefined;
 		const assCanvas = assCanvasForExport({
-			project: useProjectStore.getState().activeProject?.canvasSize,
+			project: this.projectCanvas,
 			frame: this.canvas,
 		});
 		// Build text overlay filter chain
