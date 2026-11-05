@@ -557,6 +557,7 @@ export {
 	assBlurForCssBlur,
 	CAPTION_BOX,
 	captionBackgroundBox,
+	prepareCaptionLayout,
 	captionContentMaxWidth,
 	wrapCaptionLines,
 	type CaptionMeasureRequest,
