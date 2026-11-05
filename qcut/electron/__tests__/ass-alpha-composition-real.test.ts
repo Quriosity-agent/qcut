@@ -9,6 +9,7 @@ import {
 } from "../ffmpeg-args-builder";
 import { getFFmpegPath } from "../ffmpeg/paths";
 import { buildAssAlphaLayer } from "../ffmpeg/ass-alpha-layer";
+import { escapeFfmpegFilterPath } from "../ffmpeg/color-lut-file";
 import { composePreparedVisualLayers } from "../ffmpeg/visual-layer-compositor";
 
 const ffmpeg = getFFmpegPath();
@@ -137,7 +138,7 @@ describe.each([false, true])("ASS compositing, canonical=%s", (canonical) => {
 		);
 		const base = graph({ canonical, layers: [] });
 		const direct = frames({
-			filter: `${base.filter ? `${base.filter};` : ""}[${base.output}]format=yuva444p,ass=filename='${file}'[direct]`,
+			filter: `${base.filter ? `${base.filter};` : ""}[${base.output}]format=yuva444p,ass=filename='${escapeFfmpegFilterPath(file)}'[direct]`,
 			output: "direct",
 		});
 		expect(actual.length).toBe(width * height * 3 * 10);
@@ -169,7 +170,7 @@ describe.each([false, true])("ASS compositing, canonical=%s", (canonical) => {
 		);
 		const base = graph({ canonical, layers: [] });
 		const direct = frames({
-			filter: `${base.filter ? `${base.filter};` : ""}[${base.output}]format=yuva444p,ass=filename='${lower}',ass=filename='${upper}'[direct]`,
+			filter: `${base.filter ? `${base.filter};` : ""}[${base.output}]format=yuva444p,ass=filename='${escapeFfmpegFilterPath(lower)}',ass=filename='${escapeFfmpegFilterPath(upper)}'[direct]`,
 			output: "direct",
 		});
 		expect(actual.equals(direct)).toBe(true);
@@ -200,7 +201,7 @@ describe.each([false, true])("ASS compositing, canonical=%s", (canonical) => {
 			filter: [
 				base.filter,
 				`[${base.output}]format=rgba[reference_base]`,
-				`color=c=${matte}:s=${width}x${height}:r=10:d=1,format=gbrp,ass=filename='${referenceAss}',format=rgba[matte]`,
+				`color=c=${matte}:s=${width}x${height}:r=10:d=1,format=gbrp,ass=filename='${escapeFfmpegFilterPath(referenceAss)}',format=rgba[matte]`,
 				`[reference_base][matte]blend=all_mode=${blendMode}[direct]`,
 			]
 				.filter(Boolean)
@@ -265,7 +266,7 @@ describe("isolated ASS coverage", () => {
 		const filters = buildAssAlphaLayer({
 			sourcePath: file,
 			rgbAssPath,
-			assFilter: `ass=filename='${rgbAssPath}'`,
+			assFilter: `ass=filename='${escapeFfmpegFilterPath(rgbAssPath)}'`,
 			outputLabel: "result",
 			blendMode,
 			width,
