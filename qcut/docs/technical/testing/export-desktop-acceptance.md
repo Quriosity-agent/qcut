@@ -33,6 +33,14 @@ Local mutation checks separately replaced output with silence, froze timestamps 
 
 The frozen-source full Vitest run passed 18,736 tests in 1,992 files, with 102 conditional skips. Repository typechecking and lint completed successfully; lint reported warnings but no errors.
 
+## Review regressions
+
+Filter state readback uses project units, including complete CSS exponent lengths, so saving and restoring a filter cannot scale its blur or offsets twice. Regression renders require exact byte equality; the comparison scans pixel buffers directly instead of performing a slow generic deep comparison. URL references remain unchanged.
+
+Wrapped caption tokens preserve the separator before the next word and intentional blank lines. Karaoke ASS backgrounds measure the actual sorted timed words and use the same line breaks as the glyphs, preserving the existing `\k` / `\kf` durations. Real libass cases check top, center and bottom placement, full glyph containment and early/late highlight progression.
+
+This closes the ASS background omission. The legacy Canvas karaoke renderer still has different placement conventions, and the native export API currently renders karaoke as static caption text because it does not carry word timing. Full karaoke animation parity across engines is outside this background/layout fix.
+
 ## 32 real source clips
 
 The existing `editor-real-batch-workflow.ts` was rerun in a fresh test project using the local 32-clip trailer fixture:
