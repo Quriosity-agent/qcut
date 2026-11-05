@@ -86,7 +86,7 @@ export function renderKaraokeCaptionToCanvas({
 	style,
 }: {
 	ctx: CanvasRenderingContext2D;
-	canvas: HTMLCanvasElement;
+	canvas: { width: number; height: number };
 	element: CaptionElement;
 	currentTime: number;
 	style: SubtitleStyle;
