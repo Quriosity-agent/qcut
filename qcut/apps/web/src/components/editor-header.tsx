@@ -94,16 +94,17 @@ export function EditorHeader() {
 	};
 
 	const leftContent = (
-		<div className="flex items-center gap-2">
+		<div className="flex min-w-0 items-center gap-2">
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="secondary"
-						className="h-auto py-1.5 px-2.5 flex items-center justify-center"
+						className="h-auto min-w-0 max-w-full py-1.5 px-2.5 flex items-center justify-center"
 						data-testid="project-menu-button"
+						title={activeProject?.name}
 					>
 						<ChevronDown className="text-muted-foreground" />
-						<span className="text-sm mr-2 truncate max-w-48">
+						<span className="text-sm mr-2 min-w-0 truncate max-w-48">
 							{activeProject?.name}
 						</span>
 					</Button>
@@ -235,11 +236,11 @@ export function EditorHeader() {
 			<CreditBalance />
 			<LanguageSelector />
 			<PanelPresetSelector />
-			<ScreenshotControl />
+			<ScreenshotControl compactLabel />
 			<ScreenRecordingControl />
 			<UserLibrarySyncControl />
 			<ReviewPanelControl />
-			<AppUpdateButton className="h-7" />
+			<AppUpdateButton compactLabel className="h-7" />
 			<Button
 				type="button"
 				size="sm"
