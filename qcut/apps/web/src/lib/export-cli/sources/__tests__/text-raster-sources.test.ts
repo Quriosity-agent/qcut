@@ -154,10 +154,17 @@ function createSaveMock() {
 }
 
 describe("extractTextRasterSources", () => {
-	it("renders an original Jianying package as a native transparent sequence", async () => {
+	it.each([
+		{ width: 640, height: 360, scale: 1 },
+		{ width: 1280, height: 720, scale: 2 },
+		{ width: 320, height: 180, scale: 0.5 },
+		{ width: 360, height: 640, scale: 360 / 640 },
+	])("renders an original Jianying package at $width x $height", async (frame) => {
 		const element = createTextElement({ animated: false });
 		element.width = 480;
 		element.height = 320;
+		element.x = 10;
+		element.y = -20;
 		element.jianyingTextStyle = {
 			schemaVersion: 1,
 			source: "jianying-cache",
@@ -197,8 +204,9 @@ describe("extractTextRasterSources", () => {
 		const result = await extractTextRasterSources({
 			tracks: tracksWithText({ element }),
 			sessionId: "session-jianying",
-			canvasWidth: 640,
-			canvasHeight: 360,
+			canvasWidth: frame.width,
+			canvasHeight: frame.height,
+			projectCanvas: { width: 640, height: 360 },
 			fps: 10,
 			api: { saveEffectSequenceFrame },
 			createCanvas: createStubCanvas(),
@@ -211,12 +219,18 @@ describe("extractTextRasterSources", () => {
 		expect(runtimeRequest).toEqual(
 			expect.objectContaining({
 				content: "Hello",
-				canvasWidth: 640,
-				canvasHeight: 360,
+				canvasWidth: frame.width,
+				canvasHeight: frame.height,
+				fontSize: 48 * frame.scale,
 				elementDuration: 1,
 				frameCount: 5,
 				fps: 10,
-				transform: expect.objectContaining({ width: 480, height: 320 }),
+				transform: expect.objectContaining({
+					width: 480 * frame.scale,
+					height: 320 * frame.scale,
+					x: 10 * frame.scale,
+					y: -20 * frame.scale,
+				}),
 			})
 		);
 		expect(runtimeRequest?.sourceStart).toBeCloseTo(0.2, 10);
