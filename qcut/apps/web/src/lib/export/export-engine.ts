@@ -1,5 +1,7 @@
 import { ExportSettings, FORMAT_INFO, ExportPurpose } from "@/types/export";
 import { platform } from "@qcut/platform-core";
+import { useProjectStore } from "@/stores/project-store";
+import type { CanvasDimensions } from "@/lib/text/text-canvas-primitives";
 import { TimelineElement, TimelineTrack } from "@/types/timeline";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import {
@@ -75,6 +77,7 @@ export class ExportEngine {
 	protected tracks: TimelineTrack[];
 	protected mediaItems: MediaItem[];
 	protected totalDuration: number;
+	protected readonly projectCanvas?: CanvasDimensions;
 	protected fps: number;
 	protected readonly requiresGuaranteedLocalMp4Engine: boolean;
 
@@ -111,6 +114,8 @@ export class ExportEngine {
 	) {
 		this.canvas = canvas;
 		this.settings = settings;
+		const projectCanvas = useProjectStore.getState().activeProject?.canvasSize;
+		this.projectCanvas = projectCanvas ? { ...projectCanvas } : undefined;
 		this.tracks = expandCompoundMediaTracks({ tracks });
 		this.mediaItems = mediaItems;
 		this.totalDuration = totalDuration;
@@ -231,6 +236,7 @@ export class ExportEngine {
 			signal: this.abortController?.signal,
 			// An export that silently dropped an undecodable clip looked finished.
 			strictMediaErrors: true,
+			projectCanvas: this.projectCanvas,
 			ctx: this.ctx,
 			canvas: this.canvas,
 			tracks: this.tracks,
