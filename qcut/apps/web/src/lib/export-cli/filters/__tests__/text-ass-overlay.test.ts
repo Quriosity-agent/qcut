@@ -77,6 +77,43 @@ describe("buildTextASSOverlay", () => {
 		);
 	});
 
+	it.each([
+		{ verticalAlign: "top" as const, expected: 325 },
+		{ verticalAlign: "middle" as const, expected: 520 },
+		{ verticalAlign: "bottom" as const, expected: 715 },
+	])("matches Canvas top baselines for $verticalAlign text alignment", ({
+		verticalAlign,
+		expected,
+	}) => {
+		const content = build(
+			{
+				fontSize: 100,
+				lineHeight: 1.2,
+				height: 400,
+				backgroundPadding: 0,
+				verticalAlign,
+			},
+			() => ({ ...face, ascentEm: 0.9, descentEm: 0.2, canvasAscentEm: 0.75 })
+		);
+		expect(content).toContain(`\\pos(960.00,${expected.toFixed(2)})`);
+	});
+
+	it("keeps a multiline block centered on its CSS line boxes after baseline correction", () => {
+		const content = build(
+			{
+				content: "QCut\nStudio",
+				fontSize: 100,
+				lineHeight: 1.2,
+				height: 400,
+				backgroundPadding: 0,
+				verticalAlign: "middle",
+			},
+			() => ({ ...face, ascentEm: 0.9, descentEm: 0.2, canvasAscentEm: 0.75 })
+		);
+		expect(content).toContain("\\pos(960.00,460.00)");
+		expect(content).toContain("\\pos(960.00,580.00)");
+	});
+
 	it("moves a pinned edge by the half-leading of the two line boxes", () => {
 		const shared = {
 			fontSize: 100,
