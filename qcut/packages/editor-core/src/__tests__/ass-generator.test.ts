@@ -398,6 +398,21 @@ describe("generateASS", () => {
 	});
 
 	describe("stackOffset", () => {
+		it("measures every predecessor with its actual timed-word layout", () => {
+			const first = caption({ karaoke: true });
+			first.text = "stale";
+			const later = { ...caption(), id: "later", startTime: 1.2 };
+			let measured = 0;
+			generateASS([later], {
+				resolution: { width: 300, height: 200 },
+				measureText: ({ text }) => text.length * 20,
+				stackOffset: ({ measureHeight }) => {
+					measured = measureHeight!({ element: first });
+					return measured;
+				},
+			});
+			expect(measured).toBeCloseTo(2 * 24 * 1.2 + 16);
+		});
 		const stacked = (
 			style: Record<string, unknown>,
 			align: "top" | "bottom" = "bottom"
