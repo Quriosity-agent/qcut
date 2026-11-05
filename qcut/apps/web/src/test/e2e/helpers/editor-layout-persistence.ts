@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import {
 	assertLayout,
 	capture,
@@ -6,10 +6,17 @@ import {
 	LAYOUT_PRESETS,
 } from "./editor-layout-evidence";
 
+async function requireBox({ locator }: { locator: Locator }) {
+	const box = await locator.boundingBox();
+	if (!box) throw new Error(`Expected visible bounds for ${locator}`);
+	return box;
+}
+
 async function timelineTop({ page }: { page: Page }) {
-	const box = await page.getByTestId("timeline-toolbar").boundingBox();
-	expect(box).not.toBeNull();
-	return box!.y;
+	const box = await requireBox({
+		locator: page.getByTestId("timeline-toolbar"),
+	});
+	return box.y;
 }
 
 export async function exercisePresetPersistence({
@@ -27,11 +34,10 @@ export async function exercisePresetPersistence({
 		const separator = page
 			.locator('[data-separator][aria-orientation="horizontal"]')
 			.first();
-		const box = await separator.boundingBox();
-		expect(box).not.toBeNull();
-		await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+		const box = await requireBox({ locator: separator });
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 		await page.mouse.down();
-		await page.mouse.move(box!.x + box!.width / 2, box!.y - 60, { steps: 8 });
+		await page.mouse.move(box.x + box.width / 2, box.y - 60, { steps: 8 });
 		await page.mouse.up();
 		await expect.poll(() => timelineTop({ page })).toBeLessThan(initial - 40);
 		const resized = await timelineTop({ page });
