@@ -369,7 +369,8 @@ export class ExportEngineFactory {
 		}
 
 		const standardMp4 =
-			selectedEngineType === ExportEngineType.STANDARD &&
+			(engineType === ExportEngineType.STANDARD ||
+				selectedEngineType === ExportEngineType.STANDARD) &&
 			settings.format === "mp4";
 		if (standardMp4) {
 			const hasAudioEncoder =
