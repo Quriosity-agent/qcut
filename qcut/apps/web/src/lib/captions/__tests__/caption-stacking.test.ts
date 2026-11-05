@@ -47,6 +47,70 @@ const tracks = [
 ] as unknown as TimelineTrack[];
 
 describe("caption stacking", () => {
+	it.each([
+		"top",
+		"bottom",
+	] as const)("reserves measured wrapped primary and secondary rows at %s", (align) => {
+		const first = {
+			...caption({ id: "wrapped", startTime: 0, duration: 2 }),
+			text: "AAAAAAA BBBBBBB",
+			secondaryText: "CCCCCCCCCCCC DDDDDDDDDDDD",
+			style: {
+				fontSize: 20,
+				lineSpacing: 1.4,
+				secondary: { fontSize: 10 },
+				position: { align, x: 50, y: 90 },
+			},
+		} as CaptionElement;
+		const second = {
+			...first,
+			id: "second",
+			startTime: 0.2,
+			secondaryText: undefined,
+		};
+		const last = { ...first, id: "last", startTime: 0.4, text: "Last" };
+		const tracks = [
+			{
+				id: "captions",
+				type: "captions",
+				name: "Captions",
+				elements: [first, second, last],
+			},
+		] as TimelineTrack[];
+		const measured = ({ width }: { width: number }) =>
+			captionStackOffset({
+				tracks,
+				element: last,
+				measureHeight: ({ element }) =>
+					captionBlockHeight({
+						element,
+						width,
+						measureText: ({ text, fontSize }) => text.length * fontSize,
+					}),
+			});
+		expect(measured({ width: 300 })).toBeCloseTo(
+			(2 * 20 + 2 * 10) * 1.4 + 16 + 2 * 20 * 1.4 + 16
+		);
+		expect(measured({ width: 480 })).toBeCloseTo(
+			(20 + 10) * 1.4 + 16 + 20 * 1.4 + 16
+		);
+	});
+
+	it("measures CJK wrapping and intentional empty rows without modifying the text", () => {
+		const element = {
+			...first,
+			text: "字幕换行测试字幕换行\n\n末行",
+			style: { fontSize: 20, lineSpacing: 1.2 },
+		} as CaptionElement;
+		expect(
+			captionBlockHeight({
+				element,
+				width: 300,
+				measureText: ({ text }) => [...text].length * 20,
+			})
+		).toBe(4 * 20 * 1.2 + 16);
+		expect(element.text).toBe("字幕换行测试字幕换行\n\n末行");
+	});
 	it("keeps the earliest caption at the edge and stacks the later one above it", () => {
 		expect(
 			captionsSharingEdge({ tracks, element: second }).map((c) => c.id)
