@@ -46,6 +46,17 @@ beforeEach(() => {
 });
 
 describe("AppUpdateButton", () => {
+	it("keeps compact update controls named and keyboard operable", () => {
+		render(<AppUpdateButton compactLabel />);
+		const button = screen.getByRole("button", {
+			name: "Check for latest update",
+		});
+		expect(button).toHaveAttribute("title", "Check for latest update");
+		fireEvent.keyDown(button, { key: "Enter" });
+		expect(mocks.checkForUpdates).toHaveBeenCalledTimes(1);
+		expect(screen.getByTestId("update-details")).toBeInTheDocument();
+	});
+
 	it("checks for the latest release and opens update details", async () => {
 		render(<AppUpdateButton />);
 
