@@ -4,14 +4,14 @@ Validated on macOS arm64 on 2026-11-05 with the source Electron production build
 
 ## Desktop coverage
 
-`export-desktop-acceptance.e2e.ts` creates an isolated project, imports a real encoded video/audio fixture, adds animated outlined text and bilingual captions, saves the timeline, reloads the editor, and exports through the actual Export panel. Only the native save-file picker is replaced with a deterministic test destination.
+`export-desktop-acceptance.e2e.ts` creates an isolated project, imports a real encoded video/audio fixture, adds animated outlined text, an automatically wrapped bilingual caption and a later overlapping caption, saves the timeline, reloads the editor, and exports through the actual Export panel. Only the native save-file picker is replaced with a deterministic test destination.
 
 | Project canvas | Export panel | Editor export API |
 | --- | --- | --- |
 | 1280×720 | Native CLI 1920×1080 and 854×480; Standard 1920×1080 | Native and WebCodecs 1920×1080 |
 | 720×1280 | Native CLI 1080×1920 and 480×854; Standard 1080×1920 | Native and WebCodecs 1080×1920 |
 
-All ten outputs must have the requested dimensions, audio RMS of 0.0625 ±0.003 after stereo decoding, video duration within 50 ms of three seconds, audio duration within 80 ms of three seconds, a zero video start timestamp, visible text and caption backgrounds, and a successful full FFmpeg decode. Geometry is measured after resizing frames back to the project canvas: exports must agree within 3 px, and the editor preview within 4 px. The preview capture waits for the seek, fonts and paint frames. Background fill is checked against the expected 70% cyan composite as well as the preview, not just against another engine. All ten inspected outputs have two audio channels; the Standard/WebCodecs AAC tracks measure 3.028 seconds and pass the stated duration tolerance.
+All ten outputs must have the requested dimensions, audio RMS of 0.0625 ±0.003 after stereo decoding, video duration within 50 ms of three seconds, audio duration within 80 ms of three seconds, a zero video start timestamp, visible text and caption backgrounds, and a successful full FFmpeg decode. Geometry is measured after resizing frames back to the project canvas: exports must agree within 3 px, and the editor preview within 4 px. The preview capture waits for the seek, fonts and paint frames. The later magenta caption must stay above the complete wrapped cyan caption box in the preview and every export. Background fill is checked against the expected 70% cyan composite as well as the preview, not just against another engine. All ten inspected outputs have two audio channels; the Standard/WebCodecs AAC tracks measure 3.028 seconds and pass the stated duration tolerance.
 
 The desktop test found and now covers three defects that lower-level tests missed:
 
@@ -39,11 +39,13 @@ Filter state readback uses project units, including complete CSS exponent length
 
 Wrapped caption tokens preserve the separator before the next word and intentional blank lines. Karaoke ASS backgrounds measure the actual sorted timed words and use the same line breaks as the glyphs, preserving the existing `\k` / `\kf` durations. Real libass cases check top, center and bottom placement, full glyph containment and early/late highlight progression.
 
+Overlapping captions now reserve the measured height of every preceding caption, including its own font, automatic wrapping, secondary-language rows and padding. Native export caches each prepared layout before computing offsets; Canvas reuses the canonical caption layout, and browser/ASS callers provide their own measured layout heights. Real native libass renders reduced visible overlap from 54 rows to zero at both edges, without moving the later caption when its predecessor expires. Restoring explicit-line height counting makes all four new web/ASS real-render regressions fail. Mixed Canvas karaoke/ordinary captions use the same 20 px box edge inset while retaining word timings; preview measurement follows the actual timed words and DOM gaps.
+
 The optimized export path now uses the same Markdown renderer as the normal path. Eight actual Canvas comparisons cover four output sizes and direct/offscreen rendering with offsets, rotation, translucent backgrounds, wrapping, clipping, scrolling and cached-frame replay; they require byte-identical output. The four direct comparisons failed before the duplicated renderer was removed.
 
 The standalone native subtitle CLI now parses CSS colors in both its drawtext and ASS paths. Intrinsic CSS alpha takes precedence over a per-color opacity field, while an explicit zero disables the color. Real FFmpeg cases verify text, outlines, shadows and backgrounds. Native CLI ASS backgrounds use libass BorderStyle 4 so BackColour fills the box while OutlineColour remains the glyph outline; a 50% blue background is checked alongside green outlines and white text. ASS import accepts both the existing style 3 and style 4. The web drawtext fallback also retains CSS alpha instead of overwriting it with a second FFmpeg opacity suffix.
 
-This closes the ASS background omission. The legacy Canvas karaoke renderer still has different placement conventions, and the native export API currently renders karaoke as static caption text because it does not carry word timing. Full karaoke animation parity across engines is outside this background/layout fix.
+This closes the ASS background omission. Canvas, DOM and ASS karaoke still have different horizontal word-spacing conventions, and the native export API currently renders karaoke as static caption text because it does not carry word timing. Full karaoke animation parity across engines is outside this background/layout fix.
 
 ## 32 real source clips
 
