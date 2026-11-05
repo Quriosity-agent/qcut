@@ -1,3 +1,10 @@
+import {
+	captionBackgroundBox,
+	captionContentMaxWidth,
+	wrapCaptionLines,
+} from "@qcut/editor-core";
+import type { CanvasDimensions } from "@/lib/text/text-canvas-primitives";
+import { drawExportProjectLayer } from "./export-project-canvas";
 import type {
 	MediaElement,
 	StickerElement,
@@ -282,6 +289,7 @@ function beginMediaTransitionLayer({
 
 /** Context passed to renderer functions */
 export interface RenderContext {
+	projectCanvas?: CanvasDimensions;
 	signal?: AbortSignal;
 	/**
 	 * A clip that fails to render fails the frame, naming the clip, instead of
@@ -453,33 +461,38 @@ async function renderElement(
 			elementTimeOffset,
 			transitionState
 		);
-	} else if (element.type === "text") {
-		renderTextElement({
+	} else if (
+		element.type === "text" ||
+		element.type === "captions" ||
+		element.type === "markdown"
+	) {
+		drawExportProjectLayer({
 			ctx: context.ctx,
-			canvas: context.canvas,
-			element,
-			currentTime,
-			fps: context.fps,
-			tracks: context.tracks,
-		});
-	} else if (element.type === "captions") {
-		renderCaptionElement(
-			context.ctx,
-			context.canvas,
-			element as CaptionElement,
-			currentTime,
-			captionStackOffset({
-				tracks: context.tracks,
-				element: element as CaptionElement,
-			}),
-			context.fps
-		);
-	} else if (element.type === "markdown") {
-		renderMarkdownElement({
-			ctx: context.ctx,
-			canvas: context.canvas,
-			element,
-			currentTime,
+			frame: context.canvas,
+			project: context.projectCanvas,
+			draw: ({ ctx, canvas }) => {
+				if (element.type === "text") {
+					renderTextElement({
+						ctx,
+						canvas,
+						element,
+						currentTime,
+						fps: context.fps,
+						tracks: context.tracks,
+					});
+				} else if (element.type === "captions") {
+					renderCaptionElement(
+						ctx,
+						canvas,
+						element,
+						currentTime,
+						captionStackOffset({ tracks: context.tracks, element }),
+						context.fps
+					);
+				} else {
+					renderMarkdownElement({ ctx, canvas, element, currentTime });
+				}
+			},
 		});
 	} else if (element.type === "sticker") {
 		await exportProfiler.time("sticker-timeline", () =>
@@ -1425,7 +1438,7 @@ export function renderTextElement({
 	tracks,
 }: {
 	ctx: CanvasRenderingContext2D;
-	canvas: HTMLCanvasElement;
+	canvas: CanvasDimensions;
 	element: TimelineElement;
 	currentTime: number;
 	fps: number;
@@ -1453,7 +1466,7 @@ const CAPTION_EDGE_INSET_X = 36;
 /** Render caption element with subtitle styling */
 export function renderCaptionElement(
 	ctx: CanvasRenderingContext2D,
-	canvas: HTMLCanvasElement,
+	canvas: CanvasDimensions,
 	element: CaptionElement,
 	currentTime = element.startTime,
 	/** Distance from the edge taken up by captions stacked under this one. */
@@ -1496,10 +1509,17 @@ export function renderCaptionElement(
 	// The text's lines, then a bilingual caption's second-language lines in
 	// their own font; each line box is its font size × the line spacing, as
 	// the preview's box lays them out.
-	const rows = wrapTextForCanvas({
-		ctx,
-		text: element.text.trim(),
-		maxWidth: canvas.width * 0.8,
+	const rows = wrapCaptionLines({
+		request: {
+			text: element.text.trim(),
+			fontFamily: style.fontFamily,
+			fontSize: style.fontSize,
+			fontWeight: captionFontWeight(style),
+			italic: style.italic,
+			letterSpacing: style.letterSpacing,
+		},
+		measureText: ({ text }) => ctx.measureText(text).width,
+		maxWidth: captionContentMaxWidth({ width: canvas.width }),
 	}).map((text) => ({
 		text,
 		font,
@@ -1513,10 +1533,17 @@ export function renderCaptionElement(
 		const secondaryFont = `${secondary.italic ? "italic" : "normal"} ${cssFontWeight(secondary.fontWeight)} ${secondary.fontSize}px ${canvasFontFamily(secondary.fontFamily)}`;
 		ctx.font = secondaryFont;
 		ctx.letterSpacing = `${secondary.letterSpacing}px`;
-		for (const text of wrapTextForCanvas({
-			ctx,
-			text: secondaryText,
-			maxWidth: canvas.width * 0.8,
+		for (const text of wrapCaptionLines({
+			request: {
+				text: secondaryText,
+				fontFamily: secondary.fontFamily,
+				fontSize: secondary.fontSize,
+				fontWeight: secondary.fontWeight,
+				italic: secondary.italic,
+				letterSpacing: secondary.letterSpacing,
+			},
+			measureText: ({ text }) => ctx.measureText(text).width,
+			maxWidth: captionContentMaxWidth({ width: canvas.width }),
 		})) {
 			rows.push({
 				text,
@@ -1564,26 +1591,28 @@ export function renderCaptionElement(
 
 	// Draw background
 	if (style.bgOpacity > 0) {
-		const maxLineWidth = Math.max(
-			...rows.map((row) => {
+		const box = captionBackgroundBox({
+			lineWidths: rows.map((row) => {
 				setRowFont(row);
 				return ctx.measureText(row.text).width;
-			})
-		);
-		const padding = 16;
+			}),
+			lineHeights: rows.map((row) => row.fontSize * style.lineSpacing),
+			width: canvas.width,
+			height: canvas.height,
+			align: style.position.align,
+			textAlign: style.textAlign,
+			stackOffset,
+		});
 		ctx.fillStyle = hexToRgba(style.backgroundColor, style.bgOpacity);
-		const backgroundX =
-			style.textAlign === "left"
-				? animatedX - padding
-				: style.textAlign === "right"
-					? animatedX - maxLineWidth - padding
-					: animatedX - maxLineWidth / 2 - padding;
-		ctx.fillRect(
-			backgroundX,
-			animatedY - totalHeight / 2 - padding / 2,
-			maxLineWidth + padding * 2,
-			totalHeight + padding
+		ctx.beginPath();
+		ctx.roundRect(
+			box.x + animation.offsetX,
+			box.y + animation.offsetY,
+			box.width,
+			box.height,
+			box.radius
 		);
+		ctx.fill();
 	}
 
 	// Each line's centre: its box is its font size × the line spacing.
@@ -1668,7 +1697,7 @@ export function renderCaptionElement(
 
 interface RenderMarkdownElementParams {
 	ctx: CanvasRenderingContext2D;
-	canvas: HTMLCanvasElement;
+	canvas: CanvasDimensions;
 	element: TimelineElement;
 	currentTime: number;
 }
