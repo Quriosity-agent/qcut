@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.05.1] - 2026-11-05
+
 ### Fixed
 
 - Exporting one project twice gives the same sound, sample for sample. FFmpeg reads each sound on its own thread, and two things depended on which one got there first: a ducked clip's last moments could lose their ducking, and after the first sound of a mix ended a level or pan curve could lose track of the time, which can come out silent. In a 170-second trailer the mix came out five different ways in 24 tries, and those tiny differences could send the AAC encoder down another path from there to the end, with true peaks 0.6 dB apart. It now comes out one way.
