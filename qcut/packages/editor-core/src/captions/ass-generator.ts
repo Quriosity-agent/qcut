@@ -35,6 +35,10 @@ import {
 	escapeCaptionAssText,
 	prepareCaptionLayout,
 } from "./caption-ass-layout.js";
+import {
+	captionKaraokeLines,
+	captionKaraokeText,
+} from "./caption-ass-karaoke.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -343,16 +347,24 @@ function captionEventsForASS({
 	measureText?: CaptionTextMeasurer;
 }): string[] {
 	if (!sourceClip.text.trim()) return [];
-	const layout =
-		measureText && (style.karaokeMode ?? "none") === "none"
-			? prepareCaptionLayout({
-					clip: sourceClip,
-					style,
-					resolution,
-					stackOffset,
-					measureText,
-				})
-			: undefined;
+	const karaokeLines = captionKaraokeLines({
+		clip: sourceClip,
+		style,
+		width: resolution.width,
+		measureText,
+	});
+	const layout = measureText
+		? prepareCaptionLayout({
+				clip: sourceClip,
+				style,
+				resolution,
+				stackOffset,
+				measureText,
+				primaryLines: karaokeLines?.map((line) =>
+					line.map((word) => word.text.trim()).join(" ")
+				),
+			})
+		: undefined;
 	const clip = layout?.clip ?? sourceClip;
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
@@ -387,15 +399,21 @@ function captionEventsForASS({
 	const lines = shadows.map((shadow, layer) =>
 		event(
 			firstLayer + layer,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, edgeOffset })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
-			captionTextForASS({ clip, style, colorTags: false, metrics })
+			`${layout ? "\\q2" : ""}${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, edgeOffset })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
+			captionTextForASS({
+				clip,
+				style,
+				colorTags: false,
+				metrics,
+				karaokeLines,
+			})
 		)
 	);
 	lines.push(
 		event(
 			firstLayer + shadows.length,
 			`${layout ? "\\q2" : ""}${captionAnimationTags({ clip, style, resolution, fade, pin, edgeOffset })}${weightTag}`,
-			captionTextForASS({ clip, style, colorTags: true, metrics })
+			captionTextForASS({ clip, style, colorTags: true, metrics, karaokeLines })
 		)
 	);
 	if (background) {
@@ -463,47 +481,36 @@ function captionTextForASS({
 	style,
 	colorTags,
 	metrics,
+	karaokeLines,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	/** False for a shadow layer, which draws every line in its colour. */
 	colorTags: boolean;
 	metrics: CaptionMetrics;
+	karaokeLines: ReturnType<typeof captionKaraokeLines>;
 }): string {
 	const primarySize = assFontSize(style.fontSize, metrics.sizeFactor);
+	const lineBreak = captionAssLineBreak({
+		previousSize: style.fontSize,
+		previousAssSize: primarySize,
+		fontSize: style.fontSize,
+		assSize: primarySize,
+		lineSpacing: style.lineSpacing,
+	});
 	const text = clip.text
 		.trim()
 		.split(/\r?\n/)
 		.map((text) => escapeCaptionAssText({ text }))
-		.join(
-			captionAssLineBreak({
-				previousSize: style.fontSize,
-				previousAssSize: primarySize,
-				fontSize: style.fontSize,
-				assSize: primarySize,
-				lineSpacing: style.lineSpacing,
+		.join(lineBreak);
+	const renderedText = karaokeLines
+		? captionKaraokeText({
+				lines: karaokeLines,
+				clipEnd: clip.startTime + clip.duration,
+				mode: style.karaokeMode,
+				lineBreak,
 			})
-		);
-	const karaokeMode = clip.style?.karaokeMode ?? "none";
-	const words = (clip.words ?? [])
-		.filter((word) => word.type === "word")
-		.sort((left, right) => left.start - right.start);
-	const renderedText =
-		karaokeMode === "none" || words.length === 0
-			? text
-			: words
-					.map((word, index) => {
-						const clipEnd = clip.startTime + clip.duration;
-						const nextStart = words[index + 1]?.start ?? clipEnd;
-						const end = Math.max(word.end, nextStart);
-						const durationCs = Math.max(
-							1,
-							Math.round((end - word.start) * 100)
-						);
-						const tag = karaokeMode === "karaoke" ? "kf" : "k";
-						return `{\\${tag}${durationCs}}${word.text.trim()}`;
-					})
-					.join(" ");
+		: text;
 	return `${renderedText}${secondaryLineForASS({ clip, style, colorTags, metrics })}`;
 }
 
