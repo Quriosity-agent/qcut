@@ -499,12 +499,12 @@ describe("ExportEngineFactory", () => {
 			};
 		}
 
-		it("creates standard engine for STANDARD type", async () => {
+		it("keeps the legacy standard engine for WebM", async () => {
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			const engine = await factory.createEngine(
 				canvas,
-				defaultSettings,
+				{ ...defaultSettings, format: "webm" },
 				[],
 				[],
 				1,
@@ -1068,12 +1068,12 @@ describe("ExportEngineFactory", () => {
 			expect(engine.constructor.name).toBe("ExportEngineMuxer");
 		});
 
-		it("auto-selects engine type when none specified", async () => {
+		it("auto-selects an engine for WebM when none specified", async () => {
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			const engine = await factory.createEngine(
 				canvas,
-				defaultSettings,
+				{ ...defaultSettings, format: "webm" },
 				[],
 				[],
 				1
