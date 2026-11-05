@@ -130,7 +130,7 @@ describe("film subtitles in the native export", () => {
 		expect(style?.split(",")[17]).toBe("0");
 	});
 
-	it("keeps the old single shadow and fade when the style has none of this", () => {
+	it("fades the padded background with the glyphs and preserves the single shadow", () => {
 		const overlays = collectTextOverlays(
 			timelineWith({ fontFamily: "Songti SC", animationType: "fade" })
 		);
@@ -138,8 +138,9 @@ describe("film subtitles in the native export", () => {
 		const events = ass
 			.split("\n")
 			.filter((line) => line.startsWith("Dialogue:"));
-		expect(events).toHaveLength(1);
-		expect(events[0]).toContain("\\fad(600,0)");
+		expect(events).toHaveLength(2);
+		expect(events[0]).toContain("\\fade(255,0,0,0,600,1000,1000)");
+		expect(events[1]).toContain("\\fade(255,0,0,0,600,1000,1000)");
 		expect(events[0]).not.toContain("\\b600");
 		const style = ass.split("\n").find((line) => line.startsWith("Style:"));
 		expect(style?.split(",")[17]).toBe("1");
