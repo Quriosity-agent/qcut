@@ -28,6 +28,7 @@ import {
 import { resolveStyleFromCLI } from "../subtitle/style-presets.js";
 import { prepareAssFontsDirectory } from "../../claude/handlers/claude-export-handler/ass-fonts-dir.js";
 import { probeVideoInfo } from "../subtitle/probe-video.js";
+import { buildDrawtextFilters } from "../subtitle/subtitle-drawtext.js";
 import type {
 	CLIRunOptions,
 	CLIResult,
@@ -261,7 +262,7 @@ export async function handleSubtitleExport(
 	// Step 4: Build drawtext filter chain (works with any FFmpeg)
 	onProgress({ stage: "filter", percent: 45, message: "Building filters..." });
 
-	const drawtextFilters = buildDrawtextFilters(styledClips, style);
+	const drawtextFilters = buildDrawtextFilters({ clips: styledClips, style });
 
 	// Step 5: Burn subtitles with FFmpeg
 	onProgress({ stage: "ffmpeg", percent: 55, message: "Burning subtitles..." });
@@ -445,124 +446,6 @@ export async function handleSubtitleExport(
 			error: `FFmpeg subtitle export failed: ${msg}. Install FFmpeg with libfreetype (brew install ffmpeg-full) for burn-in support.`,
 		};
 	}
-}
-
-/** Check if text contains CJK characters. */
-function hasCJK(text: string): boolean {
-	return /[\u4e00-\u9fff\u3400-\u4dbf\u3000-\u303f\uff00-\uffef]/.test(text);
-}
-
-/** macOS CJK font paths in preference order. */
-const CJK_FONT_CANDIDATES = [
-	"/System/Library/Fonts/STHeiti Medium.ttc",
-	"/System/Library/Fonts/Hiragino Sans GB.ttc",
-	"/System/Library/Fonts/STHeiti Light.ttc",
-	"/System/Library/Fonts/Supplemental/Songti.ttc",
-];
-
-/**
- * Resolve a fontfile param for drawtext.
- * Falls back to font= name if no fontfile is needed or found.
- */
-function resolveFontfile(fontFamily: string, text: string): string {
-	// CJK text needs an explicit fontfile — drawtext can't find CJK fonts by name
-	if (hasCJK(text) && process.platform === "darwin") {
-		for (const candidate of CJK_FONT_CANDIDATES) {
-			if (fs.existsSync(candidate)) {
-				const escaped = candidate.replace(/:/g, "\\:");
-				return `fontfile='${escaped}'`;
-			}
-		}
-	}
-	return `font=${fontFamily}`;
-}
-
-/**
- * Build a drawtext filter chain for all caption clips.
- * Uses drawtext which works with any FFmpeg (no libass needed).
- */
-function buildDrawtextFilters(
-	clips: CaptionElement[],
-	style: SubtitleStyle
-): string {
-	const filters: string[] = [];
-
-	for (const clip of clips) {
-		const escapedText = clip.text
-			.trim()
-			.replace(/\\/g, "\\\\")
-			.replace(/:/g, "\\:")
-			.replace(/\[/g, "\\[")
-			.replace(/\]/g, "\\]")
-			.replace(/,/g, "\\,")
-			.replace(/;/g, "\\;")
-			.replace(/'/g, "\\'")
-			.replace(/%/g, "\\%")
-			.replace(/\n/g, "\\n")
-			.replace(/\r/g, "")
-			.replace(/=/g, "\\=");
-
-		const startTime = clip.startTime;
-		const endTime = clip.startTime + clip.duration;
-
-		const fontColor = style.fontColor.replace("#", "0x");
-
-		// Position
-		const xExpr = "(w-text_w)/2";
-		let yExpr: string;
-		switch (style.position.align) {
-			case "top":
-				yExpr = `${style.fontSize}`;
-				break;
-			case "center":
-				yExpr = "(h-text_h)/2";
-				break;
-			default:
-				yExpr = `h-text_h-${style.fontSize}`;
-				break;
-		}
-
-		// Use fontfile for CJK support (drawtext's `font` param often can't find CJK fonts)
-		const fontfileParam = resolveFontfile(style.fontFamily, clip.text);
-
-		const params: string[] = [
-			`text='${escapedText}'`,
-			`fontsize=${style.fontSize}`,
-			`fontcolor=${fontColor}`,
-			fontfileParam,
-			`x=${xExpr}`,
-			`y=${yExpr}`,
-		];
-
-		if (style.outlineWidth > 0) {
-			params.push(
-				`borderw=${style.outlineWidth}`,
-				`bordercolor=${style.outlineColor.replace("#", "0x")}`
-			);
-		}
-
-		if (style.shadowOffset.x !== 0 || style.shadowOffset.y !== 0) {
-			params.push(
-				`shadowx=${style.shadowOffset.x}`,
-				`shadowy=${style.shadowOffset.y}`,
-				`shadowcolor=${style.shadowColor.replace("#", "0x")}`
-			);
-		}
-
-		if (style.bgOpacity > 0) {
-			params.push(
-				"box=1",
-				`boxcolor=${style.backgroundColor.replace("#", "0x")}@${style.bgOpacity.toFixed(2)}`,
-				"boxborderw=8"
-			);
-		}
-
-		params.push(`enable='between(t\\,${startTime}\\,${endTime})'`);
-
-		filters.push(`drawtext=${params.join(":")}`);
-	}
-
-	return filters.join(",");
 }
 
 /** Format seconds as SRT time (HH:MM:SS,mmm) */
