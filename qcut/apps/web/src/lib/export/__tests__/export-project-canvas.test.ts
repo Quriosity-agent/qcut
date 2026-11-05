@@ -56,6 +56,22 @@ function pixels({ canvas }: { canvas: Canvas }) {
 		.data;
 }
 
+function expectIdenticalPixels({
+	actual,
+	expected,
+}: {
+	actual: Canvas;
+	expected: Canvas;
+}) {
+	expect(actual.width).toBe(expected.width);
+	expect(actual.height).toBe(expected.height);
+	const expectedPixels = pixels({ canvas: expected });
+	const firstDifference = pixels({ canvas: actual }).findIndex(
+		(value, index) => value !== expectedPixels[index]
+	);
+	expect(firstDifference).toBe(-1);
+}
+
 function bounds({ canvas }: { canvas: Canvas }) {
 	const data = pixels({ canvas });
 	let left = canvas.width,
@@ -206,9 +222,10 @@ describe("project canvas export coordinates", () => {
 			currentTime: 0.75,
 			fps: 4,
 		});
-		expect(pixels({ canvas: drawTitle({ frame: project }) })).toEqual(
-			pixels({ canvas: direct })
-		);
+		expectIdenticalPixels({
+			actual: drawTitle({ frame: project }),
+			expected: direct,
+		});
 	});
 
 	it("scales device-space shadow and filter lengths and restores drawing state after failure", () => {
@@ -230,12 +247,66 @@ describe("project canvas export coordinates", () => {
 					expect(ctx.shadowOffsetX).toBe(-10);
 					expect(ctx.shadowOffsetY).toBe(6);
 					expect(ctx.filter).toBe("blur(5px) brightness(120%)");
+					// Read back in project units, so a save and restore is a no-op.
+					expect(drawing.filter).toBe("blur(2.5px) brightness(120%)");
+					const savedFilter = drawing.filter;
+					drawing.filter = "none";
+					drawing.filter = savedFilter;
+					expect(ctx.filter).toBe("blur(5px) brightness(120%)");
 					throw new Error("failed draw");
 				},
 			})
 		).toThrow("failed draw");
 		expect(ctx.shadowBlur).toBe(7);
 		expect(ctx.getTransform().a).toBe(1);
+	});
+
+	it.each([
+		{ width: 1280, height: 720, scale: 2 },
+		{ width: 320, height: 180, scale: 0.5 },
+		{ width: 360, height: 640, scale: 0.5625 },
+		{ width: 640, height: 360, scale: 1 },
+	])("keeps filter save and restore pixel identical at $width x $height", (frame) => {
+		const filter =
+			"blur(2.5px) drop-shadow(-3px 4px 1px #0000ff) brightness(120%)";
+		const render = ({ roundTrip }: { roundTrip: boolean }) => {
+			const canvas = createCanvas(frame.width, frame.height);
+			const ctx = canvas.getContext("2d");
+			ctx.filter = "brightness(90%)";
+			drawExportProjectLayer({
+				ctx: ctx as unknown as CanvasTextContext,
+				frame,
+				project,
+				draw: ({ ctx: drawing, canvas: logicalCanvas }) => {
+					drawing.save();
+					drawing.filter = filter;
+					const savedFilter = drawing.filter;
+					expect(savedFilter).toBe(filter);
+					if (roundTrip) {
+						drawing.filter = "none";
+						drawing.filter = savedFilter;
+					}
+					expect(ctx.filter).toBe(
+						`blur(${2.5 * frame.scale}px) drop-shadow(${-3 * frame.scale}px ${4 * frame.scale}px ${frame.scale}px #0000ff) brightness(120%)`
+					);
+					drawing.fillStyle = "#ffffff";
+					drawing.fillRect(
+						logicalCanvas.width / 2 - 20,
+						logicalCanvas.height / 2 - 10,
+						40,
+						20
+					);
+					drawing.restore();
+				},
+			});
+			expect(ctx.filter).toBe("brightness(90%)");
+			expect(ctx.getTransform().a).toBe(1);
+			return canvas;
+		};
+		const direct = render({ roundTrip: false });
+		const restored = render({ roundTrip: true });
+		expect(bounds({ canvas: restored }).width).toBeGreaterThan(10);
+		expectIdenticalPixels({ actual: restored, expected: direct });
 	});
 
 	it("fits a portrait project uniformly in a landscape output", () => {
