@@ -3,7 +3,10 @@ import {
 	captionContentMaxWidth,
 	wrapCaptionLines,
 } from "@qcut/editor-core";
-import type { CanvasDimensions } from "@/lib/text/text-canvas-primitives";
+import type {
+	CanvasDimensions,
+	CanvasTextContext,
+} from "@/lib/text/text-canvas-primitives";
 import { drawExportProjectLayer } from "./export-project-canvas";
 import type {
 	MediaElement,
@@ -1696,7 +1699,7 @@ export function renderCaptionElement(
 }
 
 interface RenderMarkdownElementParams {
-	ctx: CanvasRenderingContext2D;
+	ctx: CanvasTextContext;
 	canvas: CanvasDimensions;
 	element: TimelineElement;
 	currentTime: number;
@@ -1707,7 +1710,7 @@ function wrapTextForCanvas({
 	text,
 	maxWidth,
 }: {
-	ctx: CanvasRenderingContext2D;
+	ctx: CanvasTextContext;
 	text: string;
 	maxWidth: number;
 }): string[] {
