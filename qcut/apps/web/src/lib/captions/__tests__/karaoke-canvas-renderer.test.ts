@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CaptionElement } from "@/types/timeline";
 import { DEFAULT_SUBTITLE_STYLE } from "../subtitle-style";
-import { renderKaraokeCaptionToCanvas } from "../karaoke-canvas-renderer";
+import {
+	measureKaraokeCanvasBlockHeight,
+	renderKaraokeCaptionToCanvas,
+} from "../karaoke-canvas-renderer";
 
 function context() {
 	return {
@@ -45,6 +48,22 @@ function caption(): CaptionElement {
 }
 
 describe("renderKaraokeCaptionToCanvas", () => {
+	it("measures actual timed-word rows instead of a stale transcript", () => {
+		const ctx = context() as unknown as CanvasRenderingContext2D;
+		const element = { ...caption(), text: "stale" };
+		const style = {
+			...structuredClone(DEFAULT_SUBTITLE_STYLE),
+			karaokeMode: "karaoke" as const,
+		};
+		expect(
+			measureKaraokeCanvasBlockHeight({
+				ctx,
+				canvas: { width: 100, height: 400 },
+				element,
+				style,
+			})
+		).toBeCloseTo(2 * style.fontSize * style.lineSpacing + 16);
+	});
 	it("clips the active word fill to its timing progress", () => {
 		const mockContext = context();
 		const rendered = renderKaraokeCaptionToCanvas({
