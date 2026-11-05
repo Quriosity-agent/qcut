@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateASS } from "../captions/ass-generator";
 import type { CaptionElement } from "../types/timeline";
+import { resolveSubtitleStyle } from "../captions/subtitle-style";
 
 function caption({
 	karaoke = false,
@@ -67,6 +68,20 @@ function caption({
 }
 
 describe("generateASS", () => {
+	it("keeps the preview's white fallback for an unreadable background color", () => {
+		const clip = {
+			...caption(),
+			style: resolveSubtitleStyle({
+				backgroundColor: "unreadable",
+				bgOpacity: 0.7,
+			}),
+		};
+		const ass = generateASS([clip], {
+			resolution: { width: 1280, height: 720 },
+			measureText: () => 120,
+		});
+		expect(ass).toContain("\\1c&HFFFFFF&\\1a&H4D&");
+	});
 	it("writes progressive karaoke tags from caption word timing", () => {
 		const ass = generateASS([caption({ karaoke: true })], {
 			resolution: { width: 1920, height: 1080 },
@@ -108,7 +123,7 @@ describe("generateASS", () => {
 		);
 
 		expect(ass).toContain(
-			"三年前\\N{\\fnFutura\\fs24\\b0\\i0\\c&H00CCFF&}Three years ago\\Nyou were the best"
+			"三年前\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0\\c&H00CCFF&\\fs24.00}Three years ago\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0\\c&H00CCFF&\\fs24.00}you were the best"
 		);
 	});
 
@@ -129,7 +144,7 @@ describe("generateASS", () => {
 			{ resolution: { width: 1920, height: 1080 } }
 		);
 
-		expect(ass).toContain("三年前\\N{\\fnFutura\\fs24\\b0\\i0");
+		expect(ass).toContain("三年前\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0");
 		expect(ass).toMatch(/\}Three years ago$/m);
 	});
 
@@ -230,7 +245,7 @@ describe("generateASS", () => {
 
 		expect(ass).toContain(",4,0,1,2,0,3,");
 		expect(ass).toContain("\\fade(255,0,0,250,750,2000,2000)");
-		expect(ass).toContain("\\move(1896,1136,1896,1056,250,750)");
+		expect(ass).toContain("\\move(1884,1132,1884,1052,250,750)");
 	});
 
 	// PR #529 follow-up: this path put captions position.y (90 by default)
@@ -243,7 +258,7 @@ describe("generateASS", () => {
 		const styleLine = ass
 			.split("\n")
 			.find((line) => line.startsWith("Style: Default,"));
-		expect(styleLine?.split(",").slice(-4)).toEqual(["10", "10", "28", "1"]);
+		expect(styleLine?.split(",").slice(-4)).toEqual(["36", "36", "28", "1"]);
 	});
 
 	describe("a colour's own alpha", () => {
@@ -278,7 +293,7 @@ describe("generateASS", () => {
 				},
 				"第二行"
 			);
-			expect(ass).toContain("\\c&H0000FF&\\1a&HBF&}第二行");
+			expect(ass).toContain("\\c&H0000FF&\\1a&HBF&\\fs48.00}第二行");
 		});
 
 		it("gives an opaque second line its own alpha over a see-through first", () => {
@@ -290,7 +305,7 @@ describe("generateASS", () => {
 				},
 				"第二行"
 			);
-			expect(ass).toContain("\\c&H0000FF&\\1a&H80&}第二行");
+			expect(ass).toContain("\\c&H0000FF&\\1a&H80&\\fs48.00}第二行");
 		});
 
 		it("leaves a second line with the first line's alpha on the event's", () => {
@@ -301,7 +316,7 @@ describe("generateASS", () => {
 				},
 				"第二行"
 			);
-			expect(ass).toContain("\\c&H00FF00&}第二行");
+			expect(ass).toContain("\\c&H00FF00&\\fs48.00}第二行");
 		});
 
 		it("leaves a second line without one on the event's alpha", () => {
@@ -309,7 +324,7 @@ describe("generateASS", () => {
 				{ fontOpacity: 0.5, secondary: { fontColor: "red" } },
 				"第二行"
 			);
-			expect(ass).toContain("\\c&H0000FF&}第二行");
+			expect(ass).toContain("\\c&H0000FF&\\fs48.00}第二行");
 		});
 	});
 
@@ -360,8 +375,7 @@ describe("generateASS", () => {
 				animationType: "slide-up",
 				animationDuration: 0.5,
 			});
-			// The slide ends 40 px (its margin) plus the stack above the edge.
-			expect(lines[0]).toContain("\\move(960,1020,960,940,");
+			expect(lines[0]).toContain("\\move(960,1032,960,952,");
 		});
 	});
 });
