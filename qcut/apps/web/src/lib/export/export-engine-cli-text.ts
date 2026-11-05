@@ -256,7 +256,8 @@ export function buildTimelineAssLayers({
 						measureText: measureCaptionText,
 						// Each caption is a layer of its own, so libass cannot see
 						// the others to stack them; the preview's order does it.
-						stackOffset: () => captionStackOffset({ tracks, element }),
+						stackOffset: ({ measureHeight }) =>
+							captionStackOffset({ tracks, element, measureHeight }),
 					}),
 					blendMode: "normal",
 					trackOrder,
