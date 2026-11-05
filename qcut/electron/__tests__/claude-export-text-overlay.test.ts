@@ -10,6 +10,7 @@ import {
 } from "../claude/handlers/claude-export-handler/text-overlay.js";
 import { collectJianyingTextOverlays } from "../claude/handlers/claude-export-handler/jianying-text-overlay.js";
 import type { ClaudeTimeline } from "../types/claude-api.js";
+import { canvasTextAssBaselineOffset } from "../types/canvas-text-baseline.js";
 
 /**
  * libass stacks a font's own line height with the em at its bottom, CSS
@@ -17,19 +18,33 @@ import type { ClaudeTimeline } from "../types/claude-api.js";
  * the difference. Computed from the installed font, so the expectation holds
  * on any machine (an uninstalled family counts as a one-em line).
  */
-function halfLeading({
+function textBaselineOffset({
 	family,
 	fontSize,
 	lineHeight,
 	bold = false,
+	italic = false,
+	verticalAlign = "top",
 }: {
 	family: string;
 	fontSize: number;
 	lineHeight: number;
 	bold?: boolean;
+	italic?: boolean;
+	verticalAlign?: "top" | "middle" | "bottom";
 }): number {
-	const { lineHeightEm } = assFontMetrics({ family, bold });
-	return (fontSize * lineHeight - fontSize * lineHeightEm) / 2;
+	const metrics = assFontMetrics({ family, bold, italic });
+	return (
+		canvasTextAssBaselineOffset({
+			fontSize,
+			lineHeight,
+			verticalAlign,
+			metrics,
+		}) ??
+		(verticalAlign === "middle"
+			? 0
+			: (fontSize * lineHeight - fontSize * metrics.lineHeightEm) / 2)
+	);
 }
 
 /**
@@ -221,10 +236,19 @@ describe("native export text overlays", () => {
 			italic: true,
 		});
 		expect(ass).toContain(`Helvetica Neue,${(72 * factor).toFixed(2)}`);
-		// The box is centred on (x, y) and the text is centred in the box.
-		expect(ass).toContain("\\pos(1080.00,460.00)\\q1");
+		const y =
+			460 +
+			textBaselineOffset({
+				family: "Helvetica Neue",
+				fontSize: 72,
+				lineHeight: 1.2,
+				bold: true,
+				italic: true,
+				verticalAlign: "middle",
+			});
+		expect(ass).toContain(`\\pos(1080.00,${y.toFixed(2)})\\q1`);
 		expect(ass).toContain("\\frz-6.00\\fad(400,0)");
-		expect(ass).toContain("QCut\\NCLI");
+		expect(ass).toMatch(/QCut\\N(?:\{[^}]*\}\\h\\N\{[^}]*\})?CLI/);
 		expect(ass).not.toContain("Do not export");
 	});
 
@@ -279,7 +303,12 @@ describe("native export text overlays", () => {
 		// 1030, top at 80 (plus the half-leading shift); margins keep lines
 		// inside the box.
 		const top =
-			80 + halfLeading({ family: "Songti SC", fontSize: 96, lineHeight: 1.2 });
+			80 +
+			textBaselineOffset({
+				family: "Songti SC",
+				fontSize: 96,
+				lineHeight: 1.2,
+			});
 		expect(event).toContain(
 			`,,250,250,0,,{\\pos(250.00,${top.toFixed(2)})\\q1`
 		);
@@ -484,7 +513,15 @@ describe("native export text overlays", () => {
 		const ass = buildTextAss({ overlays, width: 1920, height: 1080 });
 		expect(ass).toContain("PlayResX: 1920");
 		expect(ass).toContain("PlayResY: 1080");
-		expect(ass).toContain("\\pos(960.00,940.00)");
+		const y =
+			940 +
+			textBaselineOffset({
+				family: "Arial",
+				fontSize: 46,
+				lineHeight: 1.2,
+				verticalAlign: "middle",
+			});
+		expect(ass).toContain(`\\pos(960.00,${y.toFixed(2)})`);
 	});
 
 	it("renders unstyled captions at the bottom instead of the text center", () => {
@@ -534,7 +571,7 @@ describe("native export text overlays", () => {
 			.find((line) => line.startsWith("Style: QCutText0"));
 		const captionEvent = ass
 			.split("\n")
-			.find((line) => line.startsWith("Dialogue:"));
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
 		// Bottom-centre alignment, pinned where the preview draws captions:
 		// 28 px plus the half-leading above the bottom edge, wrapping inside
 		// the middle 80 %.
@@ -542,7 +579,7 @@ describe("native export text overlays", () => {
 		const bottom =
 			1052 - captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
 		expect(captionEvent).toContain(
-			`,,192,192,0,,{\\pos(960.00,${bottom.toFixed(2)})\\q1`
+			`,,192,192,0,,{\\pos(960.00,${bottom.toFixed(2)})\\q2`
 		);
 		expect(captionEvent).toContain("Grace in motion and rhythm");
 	});
@@ -579,7 +616,7 @@ describe("native export text overlays", () => {
 		expect(overlays[0]?.content).toBe("First line\nSecond line");
 		const event = buildTextAss({ overlays, width: 1920, height: 1080 })
 			.split("\n")
-			.find((line) => line.startsWith("Dialogue:"));
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
 		// The text starts with its first line and ends with its last.
 		expect(event).toMatch(/\}First line\\N/);
 		expect(event).toMatch(/\}Second line$/);
@@ -624,13 +661,15 @@ describe("native export text overlays", () => {
 			height: 720,
 		});
 		const style = ass.split("\n").find((line) => line.startsWith("Style:"));
-		const event = ass.split("\n").find((line) => line.startsWith("Dialogue:"));
-		expect(style).toContain(",100,100,3.00,0,3,2,1,7,0,0,0,1");
+		const event = ass
+			.split("\n")
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
+		expect(style).toContain(",100,100,3.00,0,1,2,1,7,0,0,0,1");
 		// Top-left: 36 px in from the left, 28 px plus the half-leading down
 		// from the top, wrapping inside the middle 80 %.
 		const top =
 			28 + captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
-		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q1`);
+		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q2`);
 	});
 
 	it("stacks a caption above an earlier one that shares its edge and time", () => {
@@ -1229,17 +1268,19 @@ describe("native export text overlays", () => {
 					},
 				],
 			} as unknown as ClaudeTimeline);
-			const style = buildTextAss({
+			const ass = buildTextAss({
 				overlays: [overlay],
 				width: 1920,
 				height: 1080,
-			})
+			});
+			const style = ass
 				.split("\n")
 				.find((line) => line.startsWith("Style: "))
 				?.split(",");
-			// libass's BorderStyle 3 fills the box with the outline colour.
-			expect(style?.[15]).toBe("3");
-			expect(style?.[5]).toBe("&H000000FF");
+			expect(style?.[15]).toBe("1");
+			expect(style?.[5]).toBe("&H00000000");
+			expect(ass).toContain("\\an7\\p1\\bord0\\shad0");
+			expect(ass).toContain("\\1c&H0000FF&\\1a&H00&");
 		});
 	});
 });
