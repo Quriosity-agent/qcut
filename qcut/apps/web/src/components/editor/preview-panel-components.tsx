@@ -566,7 +566,8 @@ export function PreviewToolbar({
 	return (
 		<div
 			data-toolbar
-			className="flex items-end justify-between gap-2 p-1 pt-2 w-full"
+			data-testid="preview-toolbar"
+			className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 p-1 pt-2 w-full shrink-0"
 		>
 			<div>
 				<p
@@ -638,7 +639,7 @@ export function PreviewToolbar({
 					<SkipForward className="h-3 w-3" />
 				</Button>
 			</div>
-			<div className="flex items-center gap-3">
+			<div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
 				<BackgroundSettings />
 				<DropdownMenu
 					onOpenChange={(open) => handlePreviewQualityMenuOpenChange({ open })}
@@ -862,6 +863,7 @@ export function PreviewToolbar({
 					size="icon"
 					className="size-4! text-muted-foreground"
 					onClick={onToggleExpanded}
+					data-testid="preview-fullscreen-button"
 					title={t("editor.preview.fullscreen")}
 				>
 					<Expand className="size-4!" />
