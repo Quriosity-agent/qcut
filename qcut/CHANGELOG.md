@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.06.1] - 2026-11-06
+
 ### Fixed
 
 - Secondary timeline actions remain accessible in narrow editor panels through compact tool and option menus. Playback, common editing actions and zoom stay visible.
