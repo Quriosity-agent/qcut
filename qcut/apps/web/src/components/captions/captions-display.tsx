@@ -12,6 +12,7 @@ import {
 	subtitleStyleToCSS,
 } from "@/lib/captions/subtitle-style";
 import { KaraokeRenderer } from "@/components/editor/preview-panel/karaoke-renderer";
+import { selectPreviewCaptionWords } from "@/lib/captions/caption-preview-measurement";
 
 interface CaptionsDisplayProps {
 	segments: TranscriptionSegment[];
@@ -63,12 +64,12 @@ export function CaptionsDisplay({
 			!activeSegment
 		)
 			return [];
-		return words.filter(
-			(w) =>
-				w.type === "word" &&
-				w.start >= activeSegment.start - 0.05 &&
-				w.end <= activeSegment.end + 0.05
-		);
+		return selectPreviewCaptionWords({
+			words,
+			startTime: activeSegment.start,
+			endTime: activeSegment.end,
+			mode: karaokeMode,
+		});
 	}, [karaokeMode, words, activeSegment]);
 
 	if (!isVisible || !segments.length || !activeSegment) {

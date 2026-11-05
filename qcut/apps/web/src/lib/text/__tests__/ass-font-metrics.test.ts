@@ -74,6 +74,30 @@ describe("loadAssFontMetrics", () => {
 		).toBeUndefined();
 	});
 
+	it("retains measured canvas and ASS baselines across IPC", async () => {
+		stubMetrics(async () => [
+			{
+				family: "Arial",
+				bold: false,
+				italic: false,
+				sizeFactor: 1.1171875,
+				lineHeightEm: 1.1171875,
+				coversCjk: false,
+				ascentEm: 1854 / 2048,
+				descentEm: 434 / 2048,
+				canvasAscentEm: 1491 / 1922,
+			},
+		]);
+		const facts = await loadAssFontMetrics(assFaceRequestsFor(["Arial"]));
+		expect(
+			facts.fontMetrics({ family: "Arial", bold: false, italic: false })
+		).toMatchObject({
+			ascentEm: 1854 / 2048,
+			descentEm: 434 / 2048,
+			canvasAscentEm: 1491 / 1922,
+		});
+	});
+
 	it("matches a face whatever its case or surrounding space", async () => {
 		stubMetrics(async () => [
 			{

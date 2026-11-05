@@ -5,8 +5,10 @@ import type {
 	TimelineTrack,
 } from "@/types/timeline";
 import {
+	assCanvasForExport,
 	assFontFamiliesInTracks,
 	buildTimelineAssLayers,
+	unreadableTextColors,
 } from "../export-engine-cli-text";
 
 function createTextElement(): TextElement {
@@ -49,6 +51,94 @@ function createCaptionElement(): CaptionElement {
 	};
 }
 
+describe("assCanvasForExport", () => {
+	it("is the project's canvas at another resolution of its shape", () => {
+		expect(
+			assCanvasForExport({
+				project: { width: 1920, height: 1080 },
+				frame: { width: 1280, height: 720 },
+			})
+		).toEqual({ width: 1920, height: 1080 });
+		expect(
+			assCanvasForExport({
+				project: { width: 1470, height: 630 },
+				frame: { width: 2520, height: 1080 },
+			})
+		).toEqual({ width: 1470, height: 630 });
+	});
+
+	it("keeps the frame's shape, so both axes scale alike", () => {
+		expect(
+			assCanvasForExport({
+				project: { width: 1920, height: 1080 },
+				frame: { width: 1080, height: 1080 },
+			})
+		).toEqual({ width: 1920, height: 1920 });
+	});
+
+	it("is the frame without a project to go by", () => {
+		const frame = { width: 1280, height: 720 };
+		expect(assCanvasForExport({ frame })).toEqual(frame);
+		expect(
+			assCanvasForExport({ project: { width: 0, height: 0 }, frame })
+		).toEqual(frame);
+	});
+});
+
+describe("unreadableTextColors", () => {
+	const onTrack = (element: TextElement | CaptionElement): TimelineTrack => ({
+		id: "track",
+		name: "Track",
+		type: element.type === "text" ? "text" : "captions",
+		elements: [element],
+	});
+
+	it("names no colour it can read", () => {
+		const element = createTextElement();
+		element.color = "red";
+		element.shadowColor = "rgb(0, 0, 0)";
+		expect(unreadableTextColors({ tracks: [onTrack(element)] })).toEqual([]);
+		expect(
+			unreadableTextColors({ tracks: [onTrack(createCaptionElement())] })
+		).toEqual([]);
+	});
+
+	it("reads a markdown element's colours", () => {
+		const track = {
+			id: "markdown-track",
+			name: "Markdown",
+			type: "markdown",
+			elements: [
+				{
+					id: "markdown-element",
+					type: "markdown",
+					textColor: "redd",
+					backgroundColor: "transparent",
+				},
+			],
+		} as unknown as TimelineTrack;
+		expect(unreadableTextColors({ tracks: [track] })).toEqual([
+			'textColor "redd" on markdown-element',
+		]);
+	});
+
+	it("names each colour it cannot read, with its field and element", () => {
+		const element = createTextElement();
+		element.color = "redd";
+		element.glowColor = "oklch(0.6 0.2 30)";
+		const caption = createCaptionElement();
+		caption.style = { fontColor: "blu" } as CaptionElement["style"];
+		expect(
+			unreadableTextColors({ tracks: [onTrack(element), onTrack(caption)] })
+		).toEqual([
+			'color "redd" on text-element',
+			'glowColor "oklch(0.6 0.2 30)" on text-element',
+			'fontColor "blu" on caption-element',
+			'secondary.fontColor "blu" on caption-element',
+		]);
+	});
+});
+
 describe("buildTimelineAssLayers", () => {
 	it("builds ordered text and caption layers", () => {
 		const tracks: TimelineTrack[] = [
@@ -80,6 +170,46 @@ describe("buildTimelineAssLayers", () => {
 		expect(result.layers[0].content).toContain("Top title");
 		expect(result.layers[1].content).toContain("Exported caption");
 		expect(result.renderedTextElementIds).toEqual(new Set(["text-element"]));
+	});
+
+	it("stacks captions that overlap in time, as each is its own document", () => {
+		const onTrack = (id: string, startTime: number): TimelineTrack => ({
+			id: `track-${id}`,
+			name: "Captions",
+			type: "captions",
+			elements: [
+				{
+					...createCaptionElement(),
+					id,
+					text: id,
+					startTime,
+					style: {
+						bgOpacity: 0,
+						position: { align: "bottom", x: 0, y: 90 },
+					} as CaptionElement["style"],
+				},
+			],
+		});
+		const eventsOf = (content: string) =>
+			content.split("\n").filter((line) => line.startsWith("Dialogue: "));
+		const tracks = [
+			onTrack("first", 0),
+			onTrack("later", 1),
+			onTrack("off", 5),
+		];
+		const result = buildTimelineAssLayers({
+			tracks,
+			canvasWidth: 1920,
+			canvasHeight: 1080,
+			fps: 30,
+		});
+
+		// The earliest keeps the edge and the one it shares it with moves up by
+		// its block: one 48 px line at 1.4 spacing plus 16 px of padding, on top
+		// of the 28 px inset. One that overlaps neither stays on the edge.
+		expect(eventsOf(result.layers[0].content)[0]).toContain(",0,0,0,,");
+		expect(eventsOf(result.layers[1].content)[0]).toContain(",0,0,111,,");
+		expect(eventsOf(result.layers[2].content)[0]).toContain(",0,0,0,,");
 	});
 
 	it("omits hidden tracks", () => {

@@ -1,3 +1,4 @@
+import { parseCssColor } from "@qcut/editor-core";
 import type { TextElement } from "@/types/timeline";
 
 export const TEXT_BLEND_MODES = [
@@ -70,17 +71,14 @@ export function resolveTextStyle(element: TextElement): ResolvedTextStyle {
 export function colorWithOpacity(color: string, opacity: number): string {
 	if (color === "transparent" || opacity <= 0) return "transparent";
 	const normalized = color.trim();
-	const shortHex = /^#([\da-f])([\da-f])([\da-f])$/i.exec(normalized);
-	const longHex = /^#([\da-f]{6})$/i.exec(normalized);
+	const parsed = parseCssColor(normalized);
+	// A colour with its own alpha keeps it, and one no export can read is left
+	// for CSS: only the forms without an alpha take the opacity field.
+	if (!parsed || parsed.alpha !== undefined) return normalized;
 	const alpha = Math.round(clamp(opacity, 0, 1) * 255)
 		.toString(16)
 		.padStart(2, "0");
-
-	if (shortHex) {
-		return `#${shortHex[1]}${shortHex[1]}${shortHex[2]}${shortHex[2]}${shortHex[3]}${shortHex[3]}${alpha}`;
-	}
-	if (longHex) return `#${longHex[1]}${alpha}`;
-	return normalized;
+	return `${parsed.hex}${alpha}`;
 }
 
 export function buildTextShadow(style: ResolvedTextStyle): string | undefined {

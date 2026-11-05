@@ -9,6 +9,8 @@ import { generateASS } from "./ass-generator";
 import { saveExportedFile, type SaveResult } from "@/lib/export/export-output";
 import { createPlainTextExport } from "./workbench";
 import { assCompatibleFontFamily } from "@/lib/text/ass-font";
+import { createBrowserCaptionMeasurer } from "@/lib/export/caption-text-measurement";
+import { captionStackOffset } from "./caption-stacking";
 
 /** Supported caption export format identifiers. */
 export type CaptionFormat =
@@ -342,7 +344,13 @@ export function exportAssStyled({
 	fps?: number;
 }): string {
 	const clips = extractCaptionElements(tracks);
-	return generateASS(clips, { resolution, fps });
+	return generateASS(clips, {
+		resolution,
+		fps,
+		measureText: createBrowserCaptionMeasurer(),
+		stackOffset: ({ element, measureHeight }) =>
+			captionStackOffset({ tracks, element, measureHeight }),
+	});
 }
 
 /**

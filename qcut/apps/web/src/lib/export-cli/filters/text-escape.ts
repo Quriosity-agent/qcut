@@ -5,6 +5,8 @@
  * Extracted from export-engine-cli.ts lines 89-137.
  */
 
+import { parseCssColor } from "@qcut/editor-core";
+
 /**
  * Escape special characters for FFmpeg drawtext filter.
  * FFmpeg drawtext uses ':' as delimiter and requires escaping for special chars.
@@ -64,12 +66,21 @@ export function escapePathForFFmpeg(path: string): string {
 }
 
 /**
- * Convert CSS hex color to FFmpeg format (0xRRGGBB).
+ * Convert a CSS colour to FFmpeg format (0xRRGGBB, 0xRRGGBBAA with its own
+ * alpha). One that cannot be read draws white, as in the ASS layers: emitting
+ * it as it came (`0xred`) aborts the whole filtergraph.
  *
- * @param hexColor - CSS color string (e.g., "#ffffff" or "ffffff")
+ * @param color - CSS colour (e.g., "#ffffff", "red") or bare hex ("ffffff")
  * @returns FFmpeg color format (e.g., "0xffffff")
  */
-export function colorToFFmpeg(hexColor: string): string {
-	const hex = hexColor.startsWith("#") ? hexColor.substring(1) : hexColor;
-	return `0x${hex}`;
+export function colorToFFmpeg(color: string): string {
+	const parsed = parseCssColor(color) ??
+		parseCssColor(`#${color}`) ?? { hex: "#ffffff" };
+	const alpha =
+		parsed.alpha === undefined
+			? ""
+			: Math.round(parsed.alpha * 255)
+					.toString(16)
+					.padStart(2, "0");
+	return `0x${parsed.hex.slice(1)}${alpha}`;
 }

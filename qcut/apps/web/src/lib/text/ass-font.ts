@@ -11,7 +11,7 @@
 import { resolveAssCjkFamily } from "@qcut/editor-core";
 
 const CJK_FONT_BY_PLATFORM: Record<string, string> = {
-	darwin: "Arial Unicode MS",
+	darwin: "Hiragino Sans GB",
 	win32: "Microsoft YaHei",
 	linux: "Noto Sans CJK SC",
 };
@@ -28,9 +28,12 @@ function runtimePlatform(): string {
 export function assCompatibleFontFamily({
 	family,
 	content,
+	coversCjk,
 }: {
 	family: string;
 	content: string;
+	/** Whether an installed family carries CJK glyphs, read from the font. */
+	coversCjk?: (family: string) => boolean;
 }): string {
 	// A family the user chose that can already render the text keeps it: the
 	// substitution used to be unconditional, so asking for Songti SC gave a
@@ -40,5 +43,6 @@ export function assCompatibleFontFamily({
 		text: content,
 		fallbackFamily:
 			CJK_FONT_BY_PLATFORM[runtimePlatform()] ?? "Noto Sans CJK SC",
+		coversCjk,
 	});
 }

@@ -13,6 +13,7 @@ import type { WordItem } from "@/types/word-timeline";
 import { subtitleStyleToCSS } from "@/lib/captions/subtitle-style";
 import { getKaraokeSegments } from "@/lib/captions/karaoke-utils";
 import type { KaraokeMode } from "@/lib/captions/karaoke-types";
+import { CAPTION_PREVIEW_WORD_GAP } from "@/lib/captions/caption-preview-measurement";
 
 interface KaraokeRendererProps {
 	/** Word items within the current caption segment */
@@ -58,7 +59,7 @@ export function KaraokeRenderer({
 				...baseCSS,
 				display: "inline-flex",
 				flexWrap: "wrap",
-				gap: `${4 * canvasScale}px`,
+				gap: `${CAPTION_PREVIEW_WORD_GAP * canvasScale}px`,
 			}}
 		>
 			{segments.map((seg, i) => {

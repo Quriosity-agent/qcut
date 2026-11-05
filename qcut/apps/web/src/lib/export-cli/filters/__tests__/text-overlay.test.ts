@@ -29,6 +29,29 @@ const createTextElement = (
 });
 
 describe("convertTextElementToDrawtext", () => {
+	it("quotes the escaped Windows font path through both FFmpeg parsers", () => {
+		const filter = convertTextElementToDrawtext(createTextElement(), "win32");
+		expect(filter).toContain("fontfile='C\\:/Windows/Fonts/arial.ttf'");
+	});
+
+	it("retains requested opacity when an unreadable colour falls back to white", () => {
+		const filter = convertTextElementToDrawtext(
+			createTextElement({
+				strokeColor: "not-a-colour",
+				strokeOpacity: 0.2,
+				strokeWidth: 3,
+				shadowColor: "oklch(0.6 0.2 30)",
+				shadowOpacity: 0.3,
+				backgroundColor: "not-a-colour",
+				backgroundOpacity: 0.4,
+			}),
+			"darwin"
+		);
+		expect(filter).toContain("bordercolor=0xffffff@0.2");
+		expect(filter).toContain("shadowcolor=0xffffff@0.3");
+		expect(filter).toContain("boxcolor=0xffffff@0.4");
+	});
+
 	it("does not add an invisible hard-coded stroke", () => {
 		const filter = convertTextElementToDrawtext(createTextElement(), "darwin");
 
@@ -68,6 +91,44 @@ describe("convertTextElementToDrawtext", () => {
 		expect(filter).toContain("boxborderw=20");
 		expect(filter).toContain("-text_w");
 		expect(filter).toContain("-text_h");
+	});
+
+	it("keeps CSS alpha ahead of per-colour opacity and applies element opacity separately", () => {
+		const filter = convertTextElementToDrawtext(
+			createTextElement({
+				strokeColor: "rgba(255, 0, 0, 0.25)",
+				strokeOpacity: 0.8,
+				strokeWidth: 3,
+				shadowColor: "hsla(120, 100%, 50%, 0.25)",
+				shadowOpacity: 0.8,
+				backgroundColor: "rgba(0, 0, 255, 0.25)",
+				backgroundOpacity: 0.8,
+				opacity: 0.5,
+			}),
+			"darwin"
+		);
+		expect(filter).toContain("bordercolor=0xff0000@0.25");
+		expect(filter).toContain("shadowcolor=0x00ff00@0.25");
+		expect(filter).toContain("boxcolor=0x0000ff@0.25");
+		expect(filter).toContain("alpha=0.5");
+	});
+
+	it("keeps explicitly disabled colours invisible even with intrinsic alpha", () => {
+		const filter = convertTextElementToDrawtext(
+			createTextElement({
+				strokeColor: "rgba(255, 0, 0, 0.5)",
+				strokeOpacity: 0,
+				strokeWidth: 3,
+				shadowColor: "rgba(0, 255, 0, 0.5)",
+				shadowOpacity: 0,
+				backgroundColor: "rgba(0, 0, 255, 0.5)",
+				backgroundOpacity: 0,
+			}),
+			"darwin"
+		);
+		expect(filter).toContain("bordercolor=0xff0000@0");
+		expect(filter).not.toContain("shadowcolor=");
+		expect(filter).not.toContain("boxcolor=");
 	});
 
 	it("exports text entrance animation expressions", () => {

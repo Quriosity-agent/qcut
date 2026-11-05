@@ -132,7 +132,7 @@ Text fields and their units (preview and export agree):
 | `letterSpacing` | pixels after each character | |
 | `width`, `height`, `backgroundPadding` | project-canvas pixels | the text box (default 640 × 180, padding 12) centred on `x`, `y`; lines wrap at its inner width |
 | `verticalAlign` | top/middle/bottom | where the lines sit inside the box |
-| `color`, `backgroundColor`, `strokeColor`, `shadowColor`, `glowColor` | CSS colour | with `…Opacity` 0–1 |
+| `color`, `backgroundColor`, `strokeColor`, `shadowColor`, `glowColor` | CSS colour: `#rgb`, `#rrggbb`, `#rgba`, `#rrggbbaa`, `rgb()`, `rgba()`, `hsl()`, `hsla()` or a name (`red`) | with `…Opacity` 0–1, which a colour with its own alpha replaces. Any other form (`oklch()`) draws white, or black for a shadow, and the native export names it in `warnings` |
 | `textAlign` | left/center/right | inside the box |
 | `animationType` | none/fade/slide-up/slide-left | entrance only |
 
@@ -159,7 +159,7 @@ element's top level (top level wins, as for text), on `add-element`,
 | Caption field (`style.*`) | Also accepted | Unit / values |
 |---|---|---|
 | `fontFamily`, `fontSize`, `letterSpacing`, `textAlign` | — | family name; canvas px; px; left/center/right |
-| `fontColor`, `fontOpacity` | `color`, `opacity` | colour (#rrggbb); 0–1 |
+| `fontColor`, `fontOpacity` | `color`, `opacity` | CSS colour, as for text; 0–1 |
 | `outlineColor`, `outlineWidth` | `strokeColor`, `strokeWidth` | colour; px (drawn behind the glyph) |
 | `shadowColor`, `shadowOffset: {x, y}` | `shadowOffsetX`, `shadowOffsetY` | colour; px |
 | `backgroundColor`, `bgOpacity` | `backgroundOpacity`; `backgroundColor: "transparent"` = no box | colour; 0–1 (default **0.8**, a black box) |

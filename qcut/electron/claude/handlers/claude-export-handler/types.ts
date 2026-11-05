@@ -200,6 +200,7 @@ export interface TextOverlay {
 	boxWidth?: number;
 	boxHeight?: number;
 	boxPadding?: number;
+	boxRadius?: number;
 	boxVerticalAlign?: "top" | "middle" | "bottom";
 	positioning: "canvas-offset" | "caption-anchor";
 	verticalAlign: "top" | "center" | "bottom";

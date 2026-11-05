@@ -3,10 +3,24 @@ import type {
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
-import { assFamilyCoversCjk, assFontMetrics } from "./ass-font-metrics.js";
-import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
+import {
+	assFamilyCoversCjk,
+	assFontMetrics,
+	type AssFontMetrics,
+} from "./ass-font-metrics.js";
+import {
+	assCaptionText,
+	captionEventText,
+	escapeAssText,
+} from "./caption-ass-lines.js";
+import { canvasTextAssBaselineOffset } from "../../../types/canvas-text-baseline.js";
+import {
+	createNativeCaptionMeasurer,
+	prepareCaptionBackground,
+} from "./caption-background.js";
 import {
 	assCaptionFade,
+	assRoundedBoxDrawing,
 	assShadowColor,
 	assShadowTags,
 	assWeightTag,
@@ -16,6 +30,7 @@ import {
 	captionWeightValue,
 	overlayWeight,
 } from "./caption-ass-style.js";
+import { cssColorAlpha, parseCssColor } from "./css-color.js";
 import { hasJianyingTextStyleCandidate } from "./jianying-text-overlay.js";
 import { HANDLER_NAME, type TextOverlay } from "./types.js";
 
@@ -505,6 +520,12 @@ function collectCanvasTextOverlay({
 			key: "backgroundPadding",
 			fallback: 12,
 		}),
+		boxRadius: numberValue({
+			element,
+			style,
+			key: "backgroundRadius",
+			fallback: 4,
+		}),
 		boxVerticalAlign: boxVerticalAlignValue({
 			value: stringValue({
 				element,
@@ -546,7 +567,7 @@ function collectCanvasTextOverlay({
 	// shadowOpacity rather than combining with it, because the preview's
 	// colorWithOpacity appends the opacity only to #rgb and #rrggbb.
 	const shadow = assShadowColor(overlay.shadowColor);
-	const shadowAlpha = shadow.alpha ?? overlay.shadowOpacity;
+	const shadowAlpha = cssColorAlpha(shadow, overlay.shadowOpacity);
 	if (shadowAlpha > 0) {
 		overlay.shadows = [
 			{
@@ -618,9 +639,28 @@ function clamp01(value: number): number {
 	return Math.min(1, Math.max(0, value));
 }
 
-function assColor(hex: string, opacity: number): string {
-	const normalized = /^#[0-9a-f]{6}$/i.test(hex) ? hex.slice(1) : "ffffff";
-	const alpha = Math.round((1 - clamp01(opacity)) * 255)
+/**
+ * `opacity` is the colour's own `…Opacity` field, which a colour with its own
+ * alpha replaces; `elementOpacity` applies on top of either, as the preview's
+ * element opacity does.
+ */
+function assColor({
+	color,
+	opacity = 1,
+	elementOpacity = 1,
+	fallback = "#ffffff",
+}: {
+	color: string;
+	opacity?: number;
+	elementOpacity?: number;
+	/** What a colour that cannot be read draws as; a shadow's is black. */
+	fallback?: string;
+}): string {
+	const parsed = parseCssColor(color) ?? { hex: fallback };
+	const normalized = parsed.hex.slice(1);
+	const alpha = Math.round(
+		(1 - clamp01(cssColorAlpha(parsed, opacity) * elementOpacity)) * 255
+	)
 		.toString(16)
 		.padStart(2, "0")
 		.toUpperCase();
@@ -630,10 +670,11 @@ function assColor(hex: string, opacity: number): string {
 /** Override tags that turn an event into the glow layer, or "" without a glow. */
 function assGlowTags({ overlay }: { overlay: TextOverlay }): string {
 	if (overlay.glowOpacity <= 0 || overlay.glowBlur <= 0) return "";
-	const colour = assColor(
-		overlay.glowColor,
-		overlay.glowOpacity * overlay.opacity
-	);
+	const colour = assColor({
+		color: overlay.glowColor,
+		opacity: overlay.glowOpacity,
+		elementOpacity: overlay.opacity,
+	});
 	// A blurred copy of the glyphs themselves in the glow colour, with no
 	// border, shadow or box: the preview's text-shadow blur radius r is a
 	// Gaussian of sigma r/2, and libass's \blur b one of sigma 0.849 b.
@@ -775,6 +816,7 @@ function assPlacement({
 	lineHeightEm,
 	stackOffset = 0,
 	lastLineLeading,
+	textMetrics,
 }: {
 	overlay: TextOverlay;
 	width: number;
@@ -788,6 +830,7 @@ function assPlacement({
 	 * bilingual caption's second-language line), which pins the bottom edge.
 	 */
 	lastLineLeading?: number;
+	textMetrics?: AssFontMetrics;
 }): AssPlacement {
 	// CSS centres each em inside its line box (half-leading); libass stacks
 	// the font's own line height with the em at its bottom. Pinning a top or
@@ -812,6 +855,14 @@ function assPlacement({
 				: overlay.boxVerticalAlign === "bottom"
 					? "bottom"
 					: "center";
+		const baselineOffset = textMetrics
+			? canvasTextAssBaselineOffset({
+					fontSize: overlay.fontSize,
+					lineHeight: overlay.lineHeight,
+					verticalAlign: vertical === "center" ? "middle" : vertical,
+					metrics: textMetrics,
+				})
+			: undefined;
 		return {
 			alignment: ASS_ALIGNMENTS[vertical][overlay.textAlign],
 			x:
@@ -822,10 +873,10 @@ function assPlacement({
 						: centreX,
 			y:
 				vertical === "top"
-					? top + leading
+					? top + (baselineOffset ?? leading)
 					: vertical === "bottom"
-						? bottom - leading
-						: centreY,
+						? bottom + (baselineOffset ?? -leading)
+						: centreY + (baselineOffset ?? 0),
 			marginL: Math.max(0, Math.round(left)),
 			marginR: Math.max(0, Math.round(width - right)),
 		};
@@ -854,55 +905,37 @@ function assPlacement({
 	};
 }
 
-/** The preview's caption box padding (8 px top and bottom). */
-const CAPTION_BOX_PADDING_Y = 8;
-
-/**
- * A caption's block height for stacking: its line boxes (one per line break
- * in the text, as caption-stacking.ts counts them) plus the box padding.
- */
-function captionBlockHeight(overlay: TextOverlay): number {
-	const lines = (text: string) =>
-		Math.max(1, text.trim().split(/\r?\n/).length);
-	const secondary = overlay.secondary;
-	return (
-		(lines(overlay.content) * overlay.fontSize +
-			(secondary ? lines(secondary.content) * secondary.fontSize : 0)) *
-			overlay.lineHeight +
-		2 * CAPTION_BOX_PADDING_Y
-	);
-}
-
 /**
  * How far from its edge each caption draws: the summed block heights of the
  * earlier-starting captions that share its edge and overlap it in time
  * (caption-stacking.ts has the same rule for the preview and canvas export).
  */
-function captionStackOffsets(overlays: TextOverlay[]): Map<string, number> {
+function captionStackOffsets({
+	captions,
+}: {
+	captions: ReturnType<typeof prepareCaptionBackground>[];
+}): Map<string, number> {
 	const offsets = new Map<string, number>();
-	const captions = overlays
-		.filter(
-			(overlay) =>
-				overlay.positioning === "caption-anchor" &&
-				overlay.verticalAlign !== "center"
-		)
+	const edgeCaptions = captions
+		.filter(({ overlay }) => overlay.verticalAlign !== "center")
 		// The preview's order: earliest start keeps the edge; at the same
 		// start the caption on the higher track (drawn on top) does.
 		.sort(
-			(left, right) =>
+			({ overlay: left }, { overlay: right }) =>
 				left.startTime - right.startTime ||
 				(right.trackIndex ?? 0) - (left.trackIndex ?? 0)
 		);
-	for (const overlay of captions) {
+	for (const caption of edgeCaptions) {
+		const { overlay } = caption;
 		let offset = 0;
-		for (const other of captions) {
-			if (other === overlay) break;
+		for (const other of edgeCaptions) {
+			if (other === caption) break;
 			if (
-				other.verticalAlign === overlay.verticalAlign &&
-				other.startTime < overlay.endTime &&
-				overlay.startTime < other.endTime
+				other.overlay.verticalAlign === overlay.verticalAlign &&
+				other.overlay.startTime < overlay.endTime &&
+				overlay.startTime < other.overlay.endTime
 			) {
-				offset += captionBlockHeight(other);
+				offset += other.box.height;
 			}
 		}
 		offsets.set(overlay.id, offset);
@@ -922,9 +955,45 @@ export function buildTextAss({
 }): string {
 	const styles: string[] = [];
 	const events: string[] = [];
-	// Overlays arrive sorted by start time, which is the stacking order.
-	const stackOffsets = captionStackOffsets(overlays);
-	for (const [index, overlay] of overlays.entries()) {
+	const measureText = overlays.some(
+		(overlay) => overlay.positioning === "caption-anchor"
+	)
+		? createNativeCaptionMeasurer()
+		: undefined;
+	const preparedCaptions = new Map<
+		string,
+		ReturnType<typeof prepareCaptionBackground>
+	>();
+	for (const overlay of overlays) {
+		if (overlay.positioning !== "caption-anchor" || !measureText) continue;
+		preparedCaptions.set(
+			overlay.id,
+			prepareCaptionBackground({
+				overlay,
+				width,
+				height,
+				stackOffset: 0,
+				fontFamilyFor: assFontFamily,
+				measureText,
+			})
+		);
+	}
+	const stackOffsets = captionStackOffsets({
+		captions: [...preparedCaptions.values()],
+	});
+	for (const [index, original] of overlays.entries()) {
+		const measuredCaption = preparedCaptions.get(original.id);
+		const stackOffset = stackOffsets.get(original.id) ?? 0;
+		const preparedCaption = measuredCaption && {
+			...measuredCaption,
+			box: {
+				...measuredCaption.box,
+				y:
+					measuredCaption.box.y +
+					(original.verticalAlign === "top" ? stackOffset : -stackOffset),
+			},
+		};
+		const overlay = preparedCaption?.overlay ?? original;
 		const styleName = `QCutText${index}`;
 		const family = assFontFamily(overlay);
 		// libass sizes a font by its Windows ascent + descent, the editor by
@@ -951,25 +1020,37 @@ export function buildTextAss({
 			lineHeightEm: caption ? metrics.sizeFactor : metrics.lineHeightEm,
 			stackOffset: stackOffsets.get(overlay.id) ?? 0,
 			lastLineLeading: caption?.lastLineLeading,
+			textMetrics: metrics,
 		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
 			overlay.backgroundOpacity > 0;
+		const backgroundColor = assColor({
+			color: overlay.backgroundColor,
+			opacity: overlay.backgroundOpacity,
+			elementOpacity: overlay.opacity,
+		});
+		const captionBox = backgroundEnabled && caption !== undefined;
+		const textBox = backgroundEnabled && caption === undefined;
 		const fontSize = overlay.fontSize * metrics.sizeFactor;
 		styles.push(
 			[
 				styleName,
 				family,
 				fontSize.toFixed(2),
-				assColor(overlay.color, overlay.opacity),
-				assColor(overlay.color, overlay.opacity),
-				assColor(overlay.strokeColor, overlay.strokeOpacity * overlay.opacity),
-				assColor(
-					backgroundEnabled ? overlay.backgroundColor : overlay.shadowColor,
-					backgroundEnabled
-						? overlay.backgroundOpacity * overlay.opacity
-						: overlay.shadowOpacity * overlay.opacity
-				),
+				assColor({ color: overlay.color, elementOpacity: overlay.opacity }),
+				assColor({ color: overlay.color, elementOpacity: overlay.opacity }),
+				assColor({
+					color: overlay.strokeColor,
+					opacity: overlay.strokeOpacity,
+					elementOpacity: overlay.opacity,
+				}),
+				assColor({
+					color: overlay.shadowColor,
+					opacity: overlay.shadowOpacity,
+					elementOpacity: overlay.opacity,
+					fallback: "#000000",
+				}),
 				overlay.fontWeight === "bold" ? -1 : 0,
 				overlay.fontStyle === "italic" ? -1 : 0,
 				0,
@@ -978,7 +1059,7 @@ export function buildTextAss({
 				100,
 				overlay.letterSpacing.toFixed(2),
 				0,
-				backgroundEnabled ? 3 : 1,
+				1,
 				overlay.strokeWidth,
 				// Soft shadows are layers of their own; the hard one is ASS's.
 				overlay.shadows?.length
@@ -1014,30 +1095,51 @@ export function buildTextAss({
 		};
 		const start = assTime(overlay.startTime);
 		const end = assTime(overlay.endTime);
+		const durationMs = Math.round(
+			(assSeconds(overlay.endTime) - assSeconds(overlay.startTime)) * 1000
+		);
+		const animationFade =
+			caption && overlay.animationType !== "none"
+				? `\\fade(255,0,0,${animationStart.toFixed(0)},${animationEnd.toFixed(0)},${durationMs},${durationMs})`
+				: overlay.animationType === "fade"
+					? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
+					: "";
 		const fade =
 			assCaptionFade({
 				overlay,
 				duration: assSeconds(overlay.endTime) - assSeconds(overlay.startTime),
-			}) ??
-			(overlay.animationType === "fade"
-				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
-				: "");
+			}) ?? animationFade;
 		const weight = overlayWeight(overlay);
 		const weightTag =
 			weight === 400 || weight === 700 ? "" : assWeightTag(weight);
+		// The preview turns a text element about its box's centre.
+		const origin =
+			overlay.positioning === "canvas-offset" && overlay.rotation !== 0
+				? `\\org(${(width / 2 + overlay.x).toFixed(2)},${(height / 2 + overlay.y).toFixed(2)})`
+				: "";
 		// \q1 wraps greedily at the event margins, the way the preview's box does.
-		const shared = `\\q1\\frz${(-overlay.rotation).toFixed(2)}${fade}${weightTag}`;
+		const shared = `\\q${caption ? 2 : 1}${origin}\\frz${(-overlay.rotation).toFixed(2)}${fade}${weightTag}`;
 		const tags = `${motionAt(0, 0)}${shared}`;
 		const margins = `${placement.marginL},${placement.marginR},0`;
 		const glow = assGlowTags({ overlay });
-		const eventText = caption?.text ?? escapeAssText(overlay.content);
+		const eventText =
+			caption?.text ??
+			assCaptionText({
+				runs: [
+					{
+						lines: overlay.content.split(/\r?\n/).map(escapeAssText),
+						fontSize: overlay.fontSize,
+						assFontSize: fontSize,
+						fontTags: "",
+					},
+				],
+				lineSpacing: overlay.lineHeight,
+			});
 		// Soft shadows first, each on its own layer under the text: the letters
 		// in the shadow's colour (the second line's own colour left out).
 		const shadows = overlay.shadows ?? [];
-		// Only a caption's shadow goes through `captionEventText`: it inserts
-		// half-leading spacer lines that a text element's own event does not
-		// have, so a multi-line text shadow would sit on different baselines
-		// than the glyphs it belongs to.
+		// A bilingual shadow inherits its layer's color rather than the second
+		// language's fill; other text reuses the already-spaced glyph event.
 		const shadowText =
 			shadows.length && caption
 				? (captionEventText({
@@ -1047,12 +1149,34 @@ export function buildTextAss({
 						colorTags: false,
 					}).text ?? eventText)
 				: eventText;
-		for (const [layer, shadow] of shadows.entries()) {
+		if (textBox) {
+			const boxWidth = overlay.boxWidth ?? 640;
+			const boxHeight = overlay.boxHeight ?? 180;
+			const left = width / 2 + overlay.x - boxWidth / 2;
+			const top = height / 2 + overlay.y - boxHeight / 2;
 			events.push(
-				`Dialogue: ${layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay, borderless: backgroundEnabled })}}${shadowText}`
+				`Dialogue: 0,${start},${end},${styleName},,0,0,0,,{\\an7\\p1\\bord0\\shad0${motionAt(left - x, top - y)}${shared}\\1c&H${backgroundColor.slice(4)}&\\1a&H${backgroundColor.slice(2, 4)}&}${assRoundedBoxDrawing(
+					{
+						width: boxWidth,
+						height: boxHeight,
+						radius: overlay.boxRadius ?? 4,
+					}
+				)}`
 			);
 		}
-		const base = shadows.length;
+		if (captionBox && preparedCaption) {
+			const box = preparedCaption.box;
+			events.push(
+				`Dialogue: 0,${start},${end},${styleName},,0,0,0,,{\\an7\\p1\\bord0\\shad0${motionAt(box.x - x, box.y - y)}${shared}\\1c&H${backgroundColor.slice(4)}&\\1a&H${backgroundColor.slice(2, 4)}&}${assRoundedBoxDrawing(box)}`
+			);
+		}
+		const firstLayer = textBox || captionBox ? 1 : 0;
+		for (const [layer, shadow] of shadows.entries()) {
+			events.push(
+				`Dialogue: ${firstLayer + layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay })}}${shadowText}`
+			);
+		}
+		const base = firstLayer + shadows.length;
 		if (glow) {
 			// The glow is the same text on a lower layer, blurred in the glow colour.
 			events.push(

@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CaptionElement } from "@/types/timeline";
 import { renderCaptionElement } from "../export-engine-renderer";
+import {
+	captionBlockHeight,
+	captionStackOffset,
+} from "@/lib/captions/caption-stacking";
+import { createCanvasCaptionMeasurer } from "../caption-text-measurement";
+import { measureKaraokeCanvasBlockHeight } from "@/lib/captions/karaoke-canvas-renderer";
+import { resolveSubtitleStyle } from "@/lib/captions/subtitle-style";
+import type { TimelineTrack } from "@/types/timeline";
 
 /**
  * Captions land where the preview draws them: the line box 28 px in from the
@@ -22,12 +30,16 @@ function fakeContext() {
 		save: vi.fn(),
 		restore: vi.fn(),
 		fillRect: vi.fn(),
+		roundRect: vi.fn(),
+		fill: vi.fn(),
 		strokeText: vi.fn(),
 		fillText,
 		beginPath: vi.fn(),
 		moveTo: vi.fn(),
 		lineTo: vi.fn(),
 		stroke: vi.fn(),
+		rect: vi.fn(),
+		clip: vi.fn(),
 		measureText: vi.fn((text: string) => ({ width: text.length * 20 })),
 		globalAlpha: 1,
 		font: "",
@@ -66,6 +78,68 @@ function caption(style: Record<string, unknown> = {}): CaptionElement {
 }
 
 describe("muxer caption placement", () => {
+	for (const align of ["top", "bottom"] as const) {
+		it.each([
+			true,
+			false,
+		])(`keeps mixed karaoke and ordinary boxes disjoint at ${align}, karaoke first=%s`, (karaokeFirst) => {
+			const { ctx } = fakeContext();
+			const first = {
+				...caption({ fontSize: 48, bgOpacity: 1, position: { align } }),
+				text: "AAAAAAA BBBBBBB",
+			};
+			const second = { ...first, id: "second", startTime: 0.2 };
+			const timed = karaokeFirst ? first : second;
+			timed.style = { ...timed.style!, karaokeMode: "karaoke" };
+			timed.words = [
+				{ id: "first", text: "AAAAAAA", start: 0, end: 0.5, type: "word" },
+				{ id: "second", text: "BBBBBBB", start: 0.6, end: 1, type: "word" },
+			];
+			const canvas = { width: 300, height: 600 };
+			const tracks = [
+				{
+					id: "captions",
+					name: "Captions",
+					type: "captions",
+					elements: [first, second],
+				},
+			] as TimelineTrack[];
+			const offset = captionStackOffset({
+				tracks,
+				element: second,
+				measureHeight: ({ element }) =>
+					measureKaraokeCanvasBlockHeight({
+						ctx,
+						canvas,
+						element,
+						style: resolveSubtitleStyle(element.style),
+					}) ??
+					captionBlockHeight({
+						element,
+						width: canvas.width,
+						measureText: createCanvasCaptionMeasurer({ context: ctx }),
+					}),
+			});
+			renderCaptionElement(ctx, canvas, first, 0.8);
+			renderCaptionElement(ctx, canvas, second, 0.8, offset);
+			const ordinary = vi.mocked(ctx.roundRect).mock.calls[0];
+			const karaoke = vi.mocked(ctx.fillRect).mock.calls[0];
+			const [near, far] = karaokeFirst
+				? [karaoke, ordinary]
+				: [ordinary, karaoke];
+			if (align === "top") {
+				expect(near[1]).toBeCloseTo(20);
+				expect(Number(far[1])).toBeGreaterThanOrEqual(
+					Number(near[1]) + Number(near[3]) - 0.001
+				);
+			} else {
+				expect(Number(near[1]) + Number(near[3])).toBeCloseTo(580);
+				expect(Number(far[1]) + Number(far[3])).toBeLessThanOrEqual(
+					Number(near[1]) + 0.001
+				);
+			}
+		});
+	}
 	it("sits a bottom caption's line box 28 px above the bottom edge", () => {
 		const { ctx, fillText } = fakeContext();
 		renderCaptionElement(ctx, canvas, caption(), 1);

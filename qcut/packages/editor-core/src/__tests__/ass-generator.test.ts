@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateASS } from "../captions/ass-generator";
 import type { CaptionElement } from "../types/timeline";
+import { resolveSubtitleStyle } from "../captions/subtitle-style";
 
 function caption({
 	karaoke = false,
@@ -67,6 +68,20 @@ function caption({
 }
 
 describe("generateASS", () => {
+	it("keeps the preview's white fallback for an unreadable background color", () => {
+		const clip = {
+			...caption(),
+			style: resolveSubtitleStyle({
+				backgroundColor: "unreadable",
+				bgOpacity: 0.7,
+			}),
+		};
+		const ass = generateASS([clip], {
+			resolution: { width: 1280, height: 720 },
+			measureText: () => 120,
+		});
+		expect(ass).toContain("\\1c&HFFFFFF&\\1a&H4D&");
+	});
 	it("writes progressive karaoke tags from caption word timing", () => {
 		const ass = generateASS([caption({ karaoke: true })], {
 			resolution: { width: 1920, height: 1080 },
@@ -84,6 +99,75 @@ describe("generateASS", () => {
 
 		expect(ass).toContain("Hello world");
 		expect(ass).not.toContain("\\kf");
+	});
+
+	it.each([
+		{ mode: "karaoke", tag: "kf" },
+		{ mode: "word-highlight", tag: "k" },
+	] as const)("measures and wraps $mode backgrounds from the timed words", ({
+		mode,
+		tag,
+	}) => {
+		const clip = caption({ karaoke: true });
+		clip.text = "stale transcript";
+		clip.style = {
+			...clip.style!,
+			karaokeMode: mode,
+			backgroundColor: "blue",
+			bgOpacity: 0.5,
+		};
+		const ass = generateASS([clip], {
+			resolution: { width: 300, height: 200 },
+			measureText: ({ text }) => text.length * 20,
+		});
+		const events = ass
+			.split("\n")
+			.filter((line) => line.startsWith("Dialogue:"));
+		expect(events).toHaveLength(2);
+		expect(events[0]).toContain("\\p1\\bord0\\shad0\\1c&HFF0000&\\1a&H80&");
+		expect(events[0]).toContain("\\pos(84,106.4)");
+		expect(events[1]).toContain("\\q2");
+		expect(events[1]).toContain(
+			`{\\${tag}60}Hello\\N{\\fs4.80}\\h\\N{\\fs24.00}{\\${tag}140}world`
+		);
+		expect(ass).not.toContain("stale transcript");
+	});
+
+	it("keeps an oversized timed word whole and measures its entire background", () => {
+		const clip = caption({ karaoke: true });
+		clip.words![0].text = "字幕{long}\\word";
+		clip.style = { ...clip.style!, bgOpacity: 1 };
+		const ass = generateASS([clip], {
+			resolution: { width: 300, height: 200 },
+			measureText: ({ text }) => text.length * 20,
+		});
+		const width = clip.words![0].text.length * 20 + 32;
+		expect(ass).toContain(`\\pos(${(300 - width) / 2},106.4)`);
+		expect(ass).toContain("{\\kf60}字幕\\{long\\}\\\\word\\N");
+		expect(ass.match(/\\kf60/g)).toHaveLength(1);
+		expect(ass.match(/\\kf140/g)).toHaveLength(1);
+	});
+
+	it("still draws the background when a karaoke caption has no word timings", () => {
+		const clip = caption({ karaoke: true });
+		clip.words = [];
+		clip.style = { ...clip.style!, bgOpacity: 1 };
+		const ass = generateASS([clip], {
+			resolution: { width: 1280, height: 720 },
+			measureText: ({ text }) => text.length * 12,
+		});
+		expect(ass).toContain("\\p1");
+		expect(ass).toContain("Hello world");
+		expect(ass).not.toContain("\\kf");
+	});
+
+	it("does not draw a disabled karaoke background", () => {
+		const ass = generateASS([caption({ karaoke: true })], {
+			resolution: { width: 1280, height: 720 },
+			measureText: ({ text }) => text.length * 12,
+		});
+		expect(ass).not.toContain("\\p1");
+		expect(ass).toContain("{\\kf60}Hello {\\kf140}world");
 	});
 
 	it("writes a bilingual caption's second line after a break, in its own font", () => {
@@ -108,7 +192,7 @@ describe("generateASS", () => {
 		);
 
 		expect(ass).toContain(
-			"三年前\\N{\\fnFutura\\fs24\\b0\\i0\\c&H00CCFF&}Three years ago\\Nyou were the best"
+			"三年前\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0\\c&H00CCFF&\\fs24.00}Three years ago\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0\\c&H00CCFF&\\fs24.00}you were the best"
 		);
 	});
 
@@ -129,7 +213,7 @@ describe("generateASS", () => {
 			{ resolution: { width: 1920, height: 1080 } }
 		);
 
-		expect(ass).toContain("三年前\\N{\\fnFutura\\fs24\\b0\\i0");
+		expect(ass).toContain("三年前\\N{\\fs4.80}\\h\\N{\\fnFutura\\b0\\i0");
 		expect(ass).toMatch(/\}Three years ago$/m);
 	});
 
@@ -230,7 +314,7 @@ describe("generateASS", () => {
 
 		expect(ass).toContain(",4,0,1,2,0,3,");
 		expect(ass).toContain("\\fade(255,0,0,250,750,2000,2000)");
-		expect(ass).toContain("\\move(1896,1136,1896,1056,250,750)");
+		expect(ass).toContain("\\move(1884,1132,1884,1052,250,750)");
 	});
 
 	// PR #529 follow-up: this path put captions position.y (90 by default)
@@ -243,6 +327,139 @@ describe("generateASS", () => {
 		const styleLine = ass
 			.split("\n")
 			.find((line) => line.startsWith("Style: Default,"));
-		expect(styleLine?.split(",").slice(-4)).toEqual(["10", "10", "28", "1"]);
+		expect(styleLine?.split(",").slice(-4)).toEqual(["36", "36", "28", "1"]);
+	});
+
+	describe("a colour's own alpha", () => {
+		const styled = (style: Record<string, unknown>, secondaryText?: string) =>
+			generateASS(
+				[
+					{
+						...caption(),
+						secondaryText,
+						style: { bgOpacity: 0, ...style },
+					} as CaptionElement,
+				],
+				{ resolution: { width: 1920, height: 1080 } }
+			);
+
+		it("multiplies with the caption's opacity, as the preview draws them", () => {
+			const style = styled({
+				fontColor: "rgba(255, 0, 0, 0.5)",
+				fontOpacity: 0.5,
+			})
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			expect(style?.[3]).toBe("&HBF0000FF");
+		});
+
+		it("carries to the second line, which \\c alone would draw opaque", () => {
+			const ass = styled(
+				{
+					fontOpacity: 0.5,
+					secondary: { fontColor: "rgba(255, 0, 0, 0.5)" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&\\1a&HBF&\\fs48.00}第二行");
+		});
+
+		it("gives an opaque second line its own alpha over a see-through first", () => {
+			const ass = styled(
+				{
+					fontColor: "rgba(255, 0, 0, 0.5)",
+					fontOpacity: 0.5,
+					secondary: { fontColor: "red" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&\\1a&H80&\\fs48.00}第二行");
+		});
+
+		it("leaves a second line with the first line's alpha on the event's", () => {
+			const ass = styled(
+				{
+					fontColor: "rgba(255, 0, 0, 0.5)",
+					secondary: { fontColor: "rgba(0, 255, 0, 0.5)" },
+				},
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H00FF00&\\fs48.00}第二行");
+		});
+
+		it("leaves a second line without one on the event's alpha", () => {
+			const ass = styled(
+				{ fontOpacity: 0.5, secondary: { fontColor: "red" } },
+				"第二行"
+			);
+			expect(ass).toContain("\\c&H0000FF&\\fs48.00}第二行");
+		});
+	});
+
+	describe("stackOffset", () => {
+		it("measures every predecessor with its actual timed-word layout", () => {
+			const first = caption({ karaoke: true });
+			first.text = "stale";
+			const later = { ...caption(), id: "later", startTime: 1.2 };
+			let measured = 0;
+			generateASS([later], {
+				resolution: { width: 300, height: 200 },
+				measureText: ({ text }) => text.length * 20,
+				stackOffset: ({ measureHeight }) => {
+					measured = measureHeight!({ element: first });
+					return measured;
+				},
+			});
+			expect(measured).toBeCloseTo(2 * 24 * 1.2 + 16);
+		});
+		const stacked = (
+			style: Record<string, unknown>,
+			align: "top" | "bottom" = "bottom"
+		) =>
+			generateASS(
+				[
+					{
+						...caption(),
+						style: {
+							...style,
+							bgOpacity: 0,
+							position: { align, y: 90 },
+						},
+					} as CaptionElement,
+				],
+				{
+					resolution: { width: 1920, height: 1080 },
+					stackOffset: () => 100,
+				}
+			)
+				.split("\n")
+				.filter((line) => line.startsWith("Dialogue: "));
+
+		it("moves the event's margin away from the edge, leaving the style's", () => {
+			const lines = stacked({});
+			expect(lines[0]).toContain(",0,0,128,,");
+			// 0 means the style's margin, so without a stack nothing changes.
+			const alone = generateASS([caption()], {
+				resolution: { width: 1920, height: 1080 },
+				stackOffset: () => 0,
+			});
+			expect(alone).toContain(",0,0,0,,");
+		});
+
+		it("moves a pinned caption up from the bottom edge and down from the top", () => {
+			const shadows = [{ color: "#000000", opacity: 1, blur: 2, x: 0, y: 0 }];
+			expect(stacked({ shadows })[0]).toContain("\\pos(960,952)");
+			expect(stacked({ shadows }, "top")[0]).toContain("\\pos(960,128)");
+		});
+
+		it("moves a sliding caption's path with it", () => {
+			const lines = stacked({
+				fontSize: 40,
+				animationType: "slide-up",
+				animationDuration: 0.5,
+			});
+			expect(lines[0]).toContain("\\move(960,1032,960,952,");
+		});
 	});
 });

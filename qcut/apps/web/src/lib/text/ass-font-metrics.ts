@@ -74,6 +74,9 @@ export async function loadAssFontMetrics(
 				measured.set(keyFor(reply), {
 					sizeFactor: reply.sizeFactor,
 					lineHeightEm: reply.lineHeightEm,
+					ascentEm: reply.ascentEm,
+					descentEm: reply.descentEm,
+					canvasAscentEm: reply.canvasAscentEm,
 				});
 				if (reply.coversCjk) cjkFamilies.add(reply.family.trim().toLowerCase());
 			}

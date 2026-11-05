@@ -187,8 +187,14 @@ function sumLabels({
 	filterSteps: string[];
 }): string {
 	if (labels.length === 1) return labels[0];
+	// amix takes its timestamps from its first input. If another input's frame
+	// reaches it after that input's last samples but before its end, which
+	// depends on thread timing, every frame from then on has none: a level or
+	// pan curve reads `t` as NaN, which FFmpeg can play as volume 0 (N34). A sum
+	// starts at the timeline's 0 and has no gaps, so its clock is its sample
+	// count.
 	filterSteps.push(
-		`${labels.map((label) => `[${label}]`).join("")}amix=inputs=${labels.length}:duration=longest:dropout_transition=0:normalize=0[${output}]`
+		`${labels.map((label) => `[${label}]`).join("")}amix=inputs=${labels.length}:duration=longest:dropout_transition=0:normalize=0,asetpts=N/SR/TB[${output}]`
 	);
 	return output;
 }
@@ -374,7 +380,11 @@ export function appendAudioMixGraph({
 			const kept = dbToLinear(Math.min(0, track.ducking.reductionDb));
 			filterSteps.push(
 				`[${current}]asplit=2[mix_t${index}_dry][mix_t${index}_wet]`,
-				`[mix_t${index}_wet][${sidechain}]sidechaingate=` +
+				// The gate ends as soon as its signal does, dropping what still waits
+				// for the key, which decodes on another thread (N34). Padded, it runs
+				// on until the mix below, which ends with the dry signal, closes it.
+				`[mix_t${index}_wet]apad[mix_t${index}_wet_padded]`,
+				`[mix_t${index}_wet_padded][${sidechain}]sidechaingate=` +
 					`threshold=${round(clamp(dbToLinear(track.ducking.thresholdDb), 0.000001, 1))}` +
 					":ratio=9000:range=0.0001:knee=1:detection=rms" +
 					`:attack=${round(clamp(track.ducking.attackMs, 0.01, 9000))}` +

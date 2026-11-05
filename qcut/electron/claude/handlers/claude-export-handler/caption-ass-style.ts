@@ -11,6 +11,7 @@
  * @module electron/claude/handlers/claude-export-handler/caption-ass-style
  */
 
+import { parseCssColor, type ParsedCssColor } from "./css-color.js";
 import type { TextOverlay, TextOverlayShadow } from "./types.js";
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -38,79 +39,72 @@ function finite(value: unknown, fallback: number): number {
 /**
  * A `#rrggbb` to build an ASS colour from. `assColorParts` slices the hex
  * positionally, so anything else would come out a different colour entirely.
- *
- * `#rgb`, `#rgba`, `#rrggbbaa` and `rgb()`/`rgba()` are converted; their
- * alpha is dropped, because a shadow carries its own opacity. A named CSS
- * colour is not: no export path in this project parses one (the export
- * dialog's own `colorToFFmpeg` would emit `0xred`), so resolving names here
- * alone would make the two engines disagree again.
+ * Its alpha is dropped: a caption's shadow carries its own opacity.
  */
 export function assHexColor(value: string): string {
 	return assShadowColor(value).hex;
 }
 
 /**
- * A shadow colour split into `#rrggbb` and the alpha it carried, if any.
- *
- * The preview's `colorWithOpacity` appends the style's opacity to a `#rgb` or
- * `#rrggbb` and returns every other form untouched, so for `#rrggbbaa` and
- * `rgba()` the embedded alpha wins and `shadowOpacity` is ignored. Native has
- * to agree, and must not combine the two: `#ff000000` draws no shadow in the
- * preview, so it must draw none here either.
+ * A shadow colour as `#rrggbb` and the alpha it carried, if any; black when it
+ * cannot be read (`unreadableColorsWarning` names it).
  */
-export function assShadowColor(value: string): {
-	hex: string;
-	alpha?: number;
-} {
-	const text = value.trim();
-	if (HEX_COLOR.test(text)) return { hex: text.slice(0, 7) };
+export function assShadowColor(value: string): ParsedCssColor {
+	return parseCssColor(value) ?? { hex: "#000000" };
+}
 
-	const hex = /^#([0-9a-f]{3,8})$/i.exec(text);
-	if (hex) {
-		const digits = hex[1];
-		const expand = (channel: string) => `${channel}${channel}`;
-		if (digits.length === 3 || digits.length === 4) {
-			const rgb = `#${expand(digits[0])}${expand(digits[1])}${expand(digits[2])}`;
-			if (digits.length === 3) return { hex: rgb };
-			return {
-				hex: rgb,
-				alpha: Number.parseInt(expand(digits[3]), 16) / 255,
-			};
+/** An ASS drawing of a rounded rectangle, from its top-left corner. */
+export function assRoundedBoxDrawing({
+	width,
+	height,
+	radius,
+}: {
+	width: number;
+	height: number;
+	radius: number;
+}): string {
+	const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+	const k = r * 0.552_284_75;
+	return [
+		`m ${r} 0`,
+		`l ${width - r} 0`,
+		`b ${width - r + k} 0 ${width} ${r - k} ${width} ${r}`,
+		`l ${width} ${height - r}`,
+		`b ${width} ${height - r + k} ${width - r + k} ${height} ${width - r} ${height}`,
+		`l ${r} ${height}`,
+		`b ${r - k} ${height} 0 ${height - r + k} 0 ${height - r}`,
+		`l 0 ${r}`,
+		`b 0 ${r - k} ${r - k} 0 ${r} 0`,
+	].join(" ");
+}
+
+/**
+ * Names the colours an export could not read (a typo, `oklch()`): no browser
+ * here to ask, so they draw as white, or black for a shadow, and the export
+ * says which. Undefined when every colour was read.
+ */
+export function unreadableColorsWarning(
+	overlays: TextOverlay[]
+): string | undefined {
+	const unread = new Set<string>();
+	for (const overlay of overlays) {
+		const colors: Array<[string, string]> = [
+			["color", overlay.color],
+			["backgroundColor", overlay.backgroundColor],
+			["strokeColor", overlay.strokeColor],
+			["shadowColor", overlay.shadowColor],
+			["glowColor", overlay.glowColor],
+		];
+		if (overlay.secondary) {
+			colors.push(["secondary.fontColor", overlay.secondary.color]);
 		}
-		if (digits.length === 8) {
-			return {
-				hex: `#${digits.slice(0, 6)}`,
-				alpha: Number.parseInt(digits.slice(6, 8), 16) / 255,
-			};
+		for (const [field, value] of colors) {
+			if (parseCssColor(value)) continue;
+			unread.add(`${field} "${value}" on ${overlay.id}`);
 		}
-		return { hex: "#000000" };
 	}
-
-	const functional = /^rgba?\(([^)]*)\)$/i.exec(text);
-	if (!functional) return { hex: "#000000" };
-	const fields = functional[1].split(/[\s,/]+/).filter(Boolean);
-	const channels = fields.slice(0, 3).map((field) => {
-		const number = Number.parseFloat(field);
-		if (!Number.isFinite(number)) return undefined;
-		const scaled = field.endsWith("%") ? number * 2.55 : number;
-		return Math.min(255, Math.max(0, Math.round(scaled)));
-	});
-	if (
-		channels.length < 3 ||
-		channels.some((channel) => channel === undefined)
-	) {
-		return { hex: "#000000" };
-	}
-	const rgb = `#${channels
-		.map((channel) => (channel as number).toString(16).padStart(2, "0"))
-		.join("")}`;
-
-	const fourth = fields[3];
-	if (fourth === undefined) return { hex: rgb };
-	const raw = Number.parseFloat(fourth);
-	if (!Number.isFinite(raw)) return { hex: rgb };
-	const alpha = fourth.endsWith("%") ? raw / 100 : raw;
-	return { hex: rgb, alpha: Math.min(1, Math.max(0, alpha)) };
+	if (unread.size === 0) return;
+	return `Colours not applied (hex, rgb(), hsl() or a CSS name work): ${[...unread].join(", ")}`;
 }
 
 /** `fontWeight` when it is a weight; undefined leaves `bold`'s 700 or 400. */

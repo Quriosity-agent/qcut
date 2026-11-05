@@ -13,6 +13,9 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 interface FaceMetrics {
+	ascentEm: number;
+	descentEm: number;
+	canvasAscentEm: number;
 	/** The font file holding the face (a .ttc holds several). */
 	file: string;
 	/** Every family name the face answers to, in every language. */
@@ -29,6 +32,9 @@ interface FaceMetrics {
 }
 
 export interface AssFontMetrics {
+	ascentEm?: number;
+	descentEm?: number;
+	canvasAscentEm?: number;
 	/** Multiply the editor's font size by this for the ASS Fontsize. */
 	sizeFactor: number;
 	/** The line height libass lays out, in em. */
@@ -229,10 +235,16 @@ function readFace({
 	// ulUnicodeRange2 (bytes 46–49) bit 27 is range bit 59: U+4E00–U+9FFF.
 	const unicodeRange2 = os2Table.readUInt32BE(46);
 	if (!unitsPerEm || !(winAscent + winDescent)) return undefined;
-	const hheaHeight =
-		hheaTable && hheaTable.length >= 8
-			? hheaTable.readInt16BE(4) - hheaTable.readInt16BE(6)
-			: 0;
+	const hasHhea = hheaTable && hheaTable.length >= 8;
+	const ascent = hasHhea ? hheaTable.readInt16BE(4) : winAscent;
+	const descent = hasHhea ? -hheaTable.readInt16BE(6) : winDescent;
+	const hheaHeight = ascent + descent;
+	const typoAscent = os2Table.readInt16BE(68);
+	const typoDescent = -os2Table.readInt16BE(70);
+	const validTypoHeight = typoAscent > 0 && typoDescent >= 0;
+	const canvasAscentEm = validTypoHeight
+		? typoAscent / (typoAscent + typoDescent)
+		: ascent / hheaHeight;
 	const families = readNames({ table: nameTable, nameIds: [1, 16] });
 	if (families.length === 0) return undefined;
 	const subfamily =
@@ -245,6 +257,9 @@ function readFace({
 		italic: (selection & 0x01) !== 0 || /italic|oblique/i.test(subfamily),
 		cjk: (unicodeRange2 & (1 << 27)) !== 0,
 		winHeightEm: (winAscent + winDescent) / unitsPerEm,
+		ascentEm: ascent / unitsPerEm,
+		descentEm: descent / unitsPerEm,
+		canvasAscentEm,
 		lineHeightEm:
 			(hheaHeight > 0 ? hheaHeight : winAscent + winDescent) / unitsPerEm,
 	};
@@ -376,11 +391,15 @@ function metricsFrom({
 			score: (face.bold === bold ? 2 : 0) + (face.italic === italic ? 1 : 0),
 		}))
 		.sort((left, right) => right.score - left.score);
-	const { winHeightEm, lineHeightEm } = scored[0].face;
+	const { winHeightEm, lineHeightEm, ascentEm, descentEm, canvasAscentEm } =
+		scored[0].face;
 	const plausible = (value: number) =>
 		Number.isFinite(value) && value > 0.5 && value < 3;
 	return {
 		sizeFactor: plausible(winHeightEm) ? winHeightEm : 1,
+		ascentEm,
+		descentEm,
+		canvasAscentEm,
 		lineHeightEm: plausible(lineHeightEm) ? lineHeightEm : 1,
 	};
 }

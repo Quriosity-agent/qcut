@@ -113,6 +113,7 @@ import {
 	shouldCompositeCursor,
 	compositeCursorOnSegments,
 } from "./cursor-composite.js";
+import { unreadableColorsWarning } from "./caption-ass-style.js";
 import { buildTextAss } from "./text-overlay.js";
 import { buildStickerOverlayPass } from "./sticker-overlay.js";
 import { renderJianyingTextRasterLayers } from "./jianying-text-raster.js";
@@ -1910,6 +1911,10 @@ export async function executeExportJob({
 		const effectsWarning = audioEffectsNotAppliedWarning(segments);
 		if (effectsWarning) {
 			finishedJob.warnings = [...(finishedJob.warnings ?? []), effectsWarning];
+		}
+		const colorsWarning = unreadableColorsWarning(textOverlays);
+		if (colorsWarning) {
+			finishedJob.warnings = [...(finishedJob.warnings ?? []), colorsWarning];
 		}
 		for (const warning of finishedJob.warnings ?? []) {
 			claudeLog.warn(HANDLER_NAME, warning);

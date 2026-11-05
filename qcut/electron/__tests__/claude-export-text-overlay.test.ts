@@ -3,12 +3,14 @@ import {
 	assFontMetrics,
 	assFontSizeFactor,
 } from "../claude/handlers/claude-export-handler/ass-font-metrics.js";
+import { unreadableColorsWarning } from "../claude/handlers/claude-export-handler/caption-ass-style.js";
 import {
 	buildTextAss,
 	collectTextOverlays,
 } from "../claude/handlers/claude-export-handler/text-overlay.js";
 import { collectJianyingTextOverlays } from "../claude/handlers/claude-export-handler/jianying-text-overlay.js";
 import type { ClaudeTimeline } from "../types/claude-api.js";
+import { canvasTextAssBaselineOffset } from "../types/canvas-text-baseline.js";
 
 /**
  * libass stacks a font's own line height with the em at its bottom, CSS
@@ -16,19 +18,33 @@ import type { ClaudeTimeline } from "../types/claude-api.js";
  * the difference. Computed from the installed font, so the expectation holds
  * on any machine (an uninstalled family counts as a one-em line).
  */
-function halfLeading({
+function textBaselineOffset({
 	family,
 	fontSize,
 	lineHeight,
 	bold = false,
+	italic = false,
+	verticalAlign = "top",
 }: {
 	family: string;
 	fontSize: number;
 	lineHeight: number;
 	bold?: boolean;
+	italic?: boolean;
+	verticalAlign?: "top" | "middle" | "bottom";
 }): number {
-	const { lineHeightEm } = assFontMetrics({ family, bold });
-	return (fontSize * lineHeight - fontSize * lineHeightEm) / 2;
+	const metrics = assFontMetrics({ family, bold, italic });
+	return (
+		canvasTextAssBaselineOffset({
+			fontSize,
+			lineHeight,
+			verticalAlign,
+			metrics,
+		}) ??
+		(verticalAlign === "middle"
+			? 0
+			: (fontSize * lineHeight - fontSize * metrics.lineHeightEm) / 2)
+	);
 }
 
 /**
@@ -220,10 +236,19 @@ describe("native export text overlays", () => {
 			italic: true,
 		});
 		expect(ass).toContain(`Helvetica Neue,${(72 * factor).toFixed(2)}`);
-		// The box is centred on (x, y) and the text is centred in the box.
-		expect(ass).toContain("\\pos(1080.00,460.00)\\q1");
+		const y =
+			460 +
+			textBaselineOffset({
+				family: "Helvetica Neue",
+				fontSize: 72,
+				lineHeight: 1.2,
+				bold: true,
+				italic: true,
+				verticalAlign: "middle",
+			});
+		expect(ass).toContain(`\\pos(1080.00,${y.toFixed(2)})\\q1`);
 		expect(ass).toContain("\\frz-6.00\\fad(400,0)");
-		expect(ass).toContain("QCut\\NCLI");
+		expect(ass).toMatch(/QCut\\N(?:\{[^}]*\}\\h\\N\{[^}]*\})?CLI/);
 		expect(ass).not.toContain("Do not export");
 	});
 
@@ -278,7 +303,12 @@ describe("native export text overlays", () => {
 		// 1030, top at 80 (plus the half-leading shift); margins keep lines
 		// inside the box.
 		const top =
-			80 + halfLeading({ family: "Songti SC", fontSize: 96, lineHeight: 1.2 });
+			80 +
+			textBaselineOffset({
+				family: "Songti SC",
+				fontSize: 96,
+				lineHeight: 1.2,
+			});
 		expect(event).toContain(
 			`,,250,250,0,,{\\pos(250.00,${top.toFixed(2)})\\q1`
 		);
@@ -483,7 +513,15 @@ describe("native export text overlays", () => {
 		const ass = buildTextAss({ overlays, width: 1920, height: 1080 });
 		expect(ass).toContain("PlayResX: 1920");
 		expect(ass).toContain("PlayResY: 1080");
-		expect(ass).toContain("\\pos(960.00,940.00)");
+		const y =
+			940 +
+			textBaselineOffset({
+				family: "Arial",
+				fontSize: 46,
+				lineHeight: 1.2,
+				verticalAlign: "middle",
+			});
+		expect(ass).toContain(`\\pos(960.00,${y.toFixed(2)})`);
 	});
 
 	it("renders unstyled captions at the bottom instead of the text center", () => {
@@ -533,7 +571,7 @@ describe("native export text overlays", () => {
 			.find((line) => line.startsWith("Style: QCutText0"));
 		const captionEvent = ass
 			.split("\n")
-			.find((line) => line.startsWith("Dialogue:"));
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
 		// Bottom-centre alignment, pinned where the preview draws captions:
 		// 28 px plus the half-leading above the bottom edge, wrapping inside
 		// the middle 80 %.
@@ -541,7 +579,7 @@ describe("native export text overlays", () => {
 		const bottom =
 			1052 - captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
 		expect(captionEvent).toContain(
-			`,,192,192,0,,{\\pos(960.00,${bottom.toFixed(2)})\\q1`
+			`,,192,192,0,,{\\pos(960.00,${bottom.toFixed(2)})\\q2`
 		);
 		expect(captionEvent).toContain("Grace in motion and rhythm");
 	});
@@ -578,7 +616,7 @@ describe("native export text overlays", () => {
 		expect(overlays[0]?.content).toBe("First line\nSecond line");
 		const event = buildTextAss({ overlays, width: 1920, height: 1080 })
 			.split("\n")
-			.find((line) => line.startsWith("Dialogue:"));
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
 		// The text starts with its first line and ends with its last.
 		expect(event).toMatch(/\}First line\\N/);
 		expect(event).toMatch(/\}Second line$/);
@@ -623,13 +661,15 @@ describe("native export text overlays", () => {
 			height: 720,
 		});
 		const style = ass.split("\n").find((line) => line.startsWith("Style:"));
-		const event = ass.split("\n").find((line) => line.startsWith("Dialogue:"));
-		expect(style).toContain(",100,100,3.00,0,3,2,1,7,0,0,0,1");
+		const event = ass
+			.split("\n")
+			.find((line) => line.startsWith("Dialogue:") && !line.includes("\\p1"));
+		expect(style).toContain(",100,100,3.00,0,1,2,1,7,0,0,0,1");
 		// Top-left: 36 px in from the left, 28 px plus the half-leading down
 		// from the top, wrapping inside the middle 80 %.
 		const top =
 			28 + captionLeading({ family: "Arial", fontSize: 48, lineHeight: 1.4 });
-		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q1`);
+		expect(event).toContain(`,,128,128,0,,{\\pos(36.00,${top.toFixed(2)})\\q2`);
 	});
 
 	it("stacks a caption above an earlier one that shares its edge and time", () => {
@@ -997,5 +1037,250 @@ describe("native export text overlays", () => {
 			expect(ass).toContain("Noto Sans CJK SC");
 		}
 		expect(ass).toContain("Arial");
+	});
+
+	describe("CSS colours", () => {
+		const overlaysOf = (element: Record<string, unknown>) =>
+			collectTextOverlays({
+				name: "Colours",
+				duration: 2,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						id: "track",
+						name: "Text",
+						type: "text",
+						index: 0,
+						elements: [
+							{
+								id: "text-1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								type: "text",
+								content: "QCut",
+								...element,
+							},
+						],
+					},
+				],
+			} as unknown as ClaudeTimeline);
+		const styleOf = (element: Record<string, unknown>) => {
+			const ass = buildTextAss({
+				overlays: overlaysOf(element),
+				width: 1920,
+				height: 1080,
+			});
+			const style = ass
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			return { ass, style };
+		};
+
+		it("reads a named colour in every field", () => {
+			const { ass, style } = styleOf({
+				color: "red",
+				strokeColor: "lime",
+				strokeWidth: 2,
+				glowColor: "yellow",
+				glowOpacity: 1,
+				glowBlur: 4,
+				backgroundColor: "rebeccapurple",
+				backgroundOpacity: 1,
+				shadowColor: "blue",
+				shadowOpacity: 1,
+			});
+			expect(style?.[3]).toBe("&H000000FF");
+			expect(style?.[5]).toBe("&H0000FF00");
+			expect(ass).toContain("\\1c&H00FFFF&");
+			expect(ass).toContain("\\1c&H993366&");
+			// An outlined letter casts its shadow from the outline.
+			expect(ass).toContain("\\3c&HFF0000&");
+		});
+
+		it("draws a colour's own alpha in place of its opacity field", () => {
+			expect(
+				styleOf({
+					strokeColor: "rgba(255, 255, 255, 0.5)",
+					strokeOpacity: 1,
+				}).style?.[5]
+			).toBe("&H80FFFFFF");
+		});
+
+		it("draws no shadow at opacity 0, whatever alpha the colour has", () => {
+			const [overlay] = overlaysOf({
+				shadowColor: "rgba(0, 0, 0, 0.5)",
+				shadowOpacity: 0,
+			});
+			expect(overlay.shadows).toBeUndefined();
+		});
+
+		it("names a colour it cannot read, and only those", () => {
+			expect(unreadableColorsWarning(overlaysOf({ color: "red" }))).toBe(
+				undefined
+			);
+			expect(
+				unreadableColorsWarning(
+					overlaysOf({ color: "redd", glowColor: "oklch(0.6 0.2 30)" })
+				)
+			).toBe(
+				'Colours not applied (hex, rgb(), hsl() or a CSS name work): color "redd" on text-1, glowColor "oklch(0.6 0.2 30)" on text-1'
+			);
+		});
+
+		it("draws a text element's box in its own colour and size, under the text", () => {
+			const { ass, style } = styleOf({
+				backgroundColor: "#112233",
+				backgroundOpacity: 0.5,
+				backgroundRadius: 10,
+				width: 400,
+				height: 200,
+				x: 10,
+				y: 20,
+				strokeColor: "#ffffff",
+				strokeWidth: 2,
+			});
+			// An outlined letter, not libass's box, which the outline colour fills.
+			expect(style?.[15]).toBe("1");
+			expect(style?.[5]).toBe("&H00FFFFFF");
+			const box = ass
+				.split("\n")
+				.find((line) => line.startsWith("Dialogue: 0,"));
+			expect(box).toContain("\\an7\\p1");
+			expect(box).toContain("\\pos(770.00,460.00)");
+			expect(box).toContain("\\1c&H332211&\\1a&H80&");
+			expect(box).toContain("m 10 0");
+			expect(ass).toMatch(/Dialogue: 1,.*QCut/);
+		});
+
+		it("turns a text element and its box about the box's centre", () => {
+			const { ass } = styleOf({
+				backgroundColor: "#112233",
+				rotation: 15,
+				textAlign: "left",
+			});
+			const events = ass
+				.split("\n")
+				.filter((line) => line.startsWith("Dialogue: "));
+			expect(events).toHaveLength(2);
+			for (const event of events) {
+				expect(event).toContain("\\org(960.00,540.00)\\frz-15.00");
+			}
+		});
+
+		const secondLine = (fontColor: string, primaryColor = "#ffffff") =>
+			buildTextAss({
+				overlays: collectTextOverlays({
+					name: "Caption",
+					duration: 2,
+					width: 1920,
+					height: 1080,
+					fps: 30,
+					tracks: [
+						{
+							id: "track",
+							name: "Captions",
+							type: "captions",
+							index: 0,
+							elements: [
+								{
+									id: "caption-1",
+									trackIndex: 0,
+									startTime: 0,
+									endTime: 2,
+									duration: 2,
+									type: "captions",
+									content: "QCut",
+									secondaryContent: "Second",
+									style: {
+										fontColor: primaryColor,
+										fontOpacity: 0.5,
+										bgOpacity: 0,
+										secondary: { fontColor },
+									},
+								},
+							],
+						},
+					],
+				} as unknown as ClaudeTimeline),
+				width: 1920,
+				height: 1080,
+			});
+
+		it("carries a second line's own alpha, under the caption's opacity", () => {
+			expect(secondLine("rgba(255, 0, 0, 0.5)")).toContain(
+				"\\c&H0000FF&\\1a&HBF&"
+			);
+		});
+
+		it("gives an opaque second line its own alpha over a see-through first", () => {
+			expect(secondLine("red", "rgba(255, 0, 0, 0.5)")).toContain(
+				"\\c&H0000FF&\\1a&H80&"
+			);
+		});
+
+		it("leaves a second line with the first line's alpha on the event's", () => {
+			const ass = secondLine("rgba(0, 255, 0, 0.5)", "rgba(255, 0, 0, 0.5)");
+			expect(ass).toContain("\\c&H00FF00&");
+			expect(ass).not.toContain("\\c&H00FF00&\\1a");
+		});
+
+		it("leaves a second line without its own alpha on the event's", () => {
+			const ass = secondLine("red");
+			expect(ass).toContain("\\c&H0000FF&");
+			expect(ass).not.toContain("\\1a&HBF&");
+		});
+
+		it("fills a caption's box with its background colour", () => {
+			const [overlay] = collectTextOverlays({
+				name: "Caption",
+				duration: 2,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						id: "track",
+						name: "Captions",
+						type: "captions",
+						index: 0,
+						elements: [
+							{
+								id: "caption-1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								type: "captions",
+								text: "QCut",
+								style: {
+									backgroundColor: "red",
+									bgOpacity: 1,
+									outlineColor: "#000000",
+									outlineWidth: 2,
+								},
+							},
+						],
+					},
+				],
+			} as unknown as ClaudeTimeline);
+			const ass = buildTextAss({
+				overlays: [overlay],
+				width: 1920,
+				height: 1080,
+			});
+			const style = ass
+				.split("\n")
+				.find((line) => line.startsWith("Style: "))
+				?.split(",");
+			expect(style?.[15]).toBe("1");
+			expect(style?.[5]).toBe("&H00000000");
+			expect(ass).toContain("\\an7\\p1\\bord0\\shad0");
+			expect(ass).toContain("\\1c&H0000FF&\\1a&H00&");
+		});
 	});
 });

@@ -45,6 +45,7 @@ import {
 import { appendStickerInputArgs } from "./ffmpeg-sticker-input";
 import { buildStickerFilterGraph } from "./ffmpeg/sticker-filter-graph";
 import { alphaDecoderInputArgs } from "./ffmpeg/video-alpha";
+import { buildAssAlphaLayer } from "./ffmpeg/ass-alpha-layer";
 
 /**
  * Object options for FFmpeg arg generation.
@@ -362,6 +363,7 @@ function ffmpegColorValue(color: string): string {
 }
 
 function buildCanonicalVisualFilters({
+	inputDir,
 	videoSources,
 	videoTransitions,
 	images,
@@ -378,6 +380,7 @@ function buildCanonicalVisualFilters({
 	textFilterChain,
 	fontsDirSuffix,
 }: {
+	inputDir: string;
 	videoSources: VideoSource[];
 	videoTransitions: VideoTransition[];
 	images: ImageSource[];
@@ -487,12 +490,31 @@ function buildCanonicalVisualFilters({
 			throw new Error(`ASS text overlay file not found: ${layer.path}`);
 		}
 		const overlayLabel = `visual_text_ass_${index}`;
-		filterSteps.push(
-			`color=c=black@0.0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba,` +
-				`ass=filename='${escapeFilterPath(layer.path)}':alpha=1${fontsDirSuffix}[${overlayLabel}]`
-		);
+		const assFilter = `ass=filename='${escapeFilterPath(layer.path)}'${fontsDirSuffix}`;
+		if (layer.blendMode !== "normal") {
+			const rgbAssPath = path.join(inputDir, `${overlayLabel}.rgb.ass`);
+			filterSteps.push(
+				...buildAssAlphaLayer({
+					sourcePath: layer.path,
+					rgbAssPath,
+					assFilter: `ass=filename='${escapeFilterPath(rgbAssPath)}'${fontsDirSuffix}`,
+					outputLabel: overlayLabel,
+					blendMode: layer.blendMode,
+					width,
+					height,
+					duration,
+					fps,
+				})
+			);
+		}
 		layers.push({
 			inputLabel: overlayLabel,
+			// ASS alpha=1 squares opacity on a transparent canvas in FFmpeg 8.1.
+			// YUV also avoids ASS applying its TV color range to RGB components.
+			inlineFilter:
+				layer.blendMode === "normal"
+					? `format=yuva444p,${assFilter}`
+					: undefined,
 			kind: "text",
 			trackOrder: layer.trackOrder,
 			elementOrder: layer.elementOrder,
@@ -746,6 +768,7 @@ function buildCompositeEncodeArgs(
 
 	if (usesCanonicalVisualOrder || mustUseCanonicalTextRasterOrder) {
 		const canonical = buildCanonicalVisualFilters({
+			inputDir,
 			videoSources: resolvedVideoSources,
 			videoTransitions,
 			images: resolvedImages,
@@ -855,15 +878,27 @@ function buildCompositeEncodeArgs(
 				throw new Error(`ASS text overlay file not found: ${layer.path}`);
 			}
 			const overlayLabel = `text_ass_overlay_${index}`;
-			filterSteps.push(
-				`color=c=black@0.0:s=${width}x${height}:d=${duration}:r=${fps},format=rgba,ass=filename='${escapeFilterPath(layer.path)}':alpha=1${fontsDirSuffix}[${overlayLabel}]`
-			);
 			const outputLabel = `v_text_ass_${filterLabelIndex++}`;
+			const assFilter = `ass=filename='${escapeFilterPath(layer.path)}'${fontsDirSuffix}`;
 			if (layer.blendMode === "normal") {
 				filterSteps.push(
-					`[${currentVideoLabel}][${overlayLabel}]overlay=shortest=1:format=auto[${outputLabel}]`
+					`[${currentVideoLabel}]format=yuva444p,${assFilter}[${outputLabel}]`
 				);
 			} else {
+				const rgbAssPath = path.join(inputDir, `${overlayLabel}.rgb.ass`);
+				filterSteps.push(
+					...buildAssAlphaLayer({
+						sourcePath: layer.path,
+						rgbAssPath,
+						assFilter: `ass=filename='${escapeFilterPath(rgbAssPath)}'${fontsDirSuffix}`,
+						outputLabel: overlayLabel,
+						blendMode: layer.blendMode,
+						width,
+						height,
+						duration,
+						fps,
+					})
+				);
 				const baseOriginal = `text_base_original_${index}`;
 				const baseBlendInput = `text_base_blend_input_${index}`;
 				const baseBlend = `text_base_blend_${index}`;

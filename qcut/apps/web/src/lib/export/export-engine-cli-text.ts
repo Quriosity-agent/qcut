@@ -1,8 +1,10 @@
 import {
 	generateASS,
+	parseCssColor,
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 	type AssFontMetricsLookup,
+	type CaptionTextMeasurer,
 } from "@qcut/editor-core";
 import {
 	sortTracksByOrder,
@@ -10,8 +12,11 @@ import {
 	type TimelineTrack,
 } from "@/types/timeline";
 import { buildTextASSOverlay } from "../export-cli/filters/text-ass-overlay";
+import { captionStackOffset } from "@/lib/captions/caption-stacking";
 import { resolveTextStyle } from "@/lib/text/text-style";
 import { stripMarkdownSyntax } from "@/lib/markdown";
+import { createBrowserCaptionMeasurer } from "./caption-text-measurement";
+import { resolveExportProjectCanvas } from "./export-project-canvas";
 
 function markdownAsTextElement({
 	element,
@@ -42,6 +47,79 @@ function markdownAsTextElement({
 		height: element.height,
 		rotation: element.rotation,
 		opacity: element.opacity,
+	};
+}
+
+/**
+ * Colours no export can read (a typo, `oklch()`), which the ASS layers draw
+ * white, or black for a shadow. The native export names them in its `warnings`.
+ */
+export function unreadableTextColors({
+	tracks,
+}: {
+	tracks: TimelineTrack[];
+}): string[] {
+	const unread = new Set<string>();
+	const check = (id: string, colors: Record<string, string | undefined>) => {
+		for (const [field, value] of Object.entries(colors)) {
+			if (value === undefined || parseCssColor(value)) continue;
+			unread.add(`${field} "${value}" on ${id}`);
+		}
+	};
+	for (const track of tracks) {
+		for (const element of track.elements) {
+			if (element.type === "text") {
+				const {
+					id,
+					color,
+					backgroundColor,
+					strokeColor,
+					shadowColor,
+					glowColor,
+				} = element;
+				check(id, {
+					color,
+					backgroundColor,
+					strokeColor,
+					shadowColor,
+					glowColor,
+				});
+			} else if (element.type === "markdown") {
+				const { id, textColor, backgroundColor } = element;
+				check(id, { textColor, backgroundColor });
+			} else if (element.type === "captions") {
+				const style = resolveSubtitleStyle(element.style);
+				check(element.id, {
+					fontColor: style.fontColor,
+					outlineColor: style.outlineColor,
+					shadowColor: style.shadowColor,
+					backgroundColor: style.backgroundColor,
+					"secondary.fontColor": resolveSecondaryLineStyle(style).fontColor,
+				});
+			}
+		}
+	}
+	return [...unread];
+}
+
+/**
+ * The canvas an export's ASS layers are written for. Elements are placed and
+ * sized in the project canvas's pixels and libass scales PlayRes to the frame,
+ * so at another resolution this is the project's canvas, as in the native
+ * export. An export of another shape keeps the frame's shape, so that libass
+ * scales both axes alike.
+ */
+export function assCanvasForExport({
+	project,
+	frame,
+}: {
+	project?: { width: number; height: number };
+	frame: { width: number; height: number };
+}): { width: number; height: number } {
+	const { canvas } = resolveExportProjectCanvas({ project, frame });
+	return {
+		width: Math.round(canvas.width),
+		height: Math.round(canvas.height),
 	};
 }
 
@@ -107,6 +185,7 @@ export function buildTimelineAssLayers({
 	excludedTextElementIds = new Set(),
 	fontMetrics,
 	familyCoversCjk,
+	measureCaptionText = createBrowserCaptionMeasurer(),
 }: {
 	tracks: TimelineTrack[];
 	canvasWidth: number;
@@ -122,6 +201,7 @@ export function buildTimelineAssLayers({
 	fontMetrics?: AssFontMetricsLookup;
 	/** Whether an installed family carries CJK glyphs, read from the font. */
 	familyCoversCjk?: (family: string) => boolean;
+	measureCaptionText?: CaptionTextMeasurer;
 }): {
 	layers: TimelineAssLayer[];
 	renderedTextElementIds: Set<string>;
@@ -150,6 +230,8 @@ export function buildTimelineAssLayers({
 					canvasWidth,
 					canvasHeight,
 					fps,
+					fontMetrics,
+					familyCoversCjk,
 				});
 				if (!layer.content) continue;
 				layers.push({
@@ -171,6 +253,11 @@ export function buildTimelineAssLayers({
 						fps,
 						fontMetrics,
 						familyCoversCjk,
+						measureText: measureCaptionText,
+						// Each caption is a layer of its own, so libass cannot see
+						// the others to stack them; the preview's order does it.
+						stackOffset: ({ measureHeight }) =>
+							captionStackOffset({ tracks, element, measureHeight }),
 					}),
 					blendMode: "normal",
 					trackOrder,
@@ -187,6 +274,8 @@ export function buildTimelineAssLayers({
 					canvasWidth,
 					canvasHeight,
 					fps,
+					fontMetrics,
+					familyCoversCjk,
 				});
 				if (!layer.content) continue;
 				layers.push({

@@ -63,11 +63,26 @@ vi.mock("@/types/export", () => ({
 		mov: { extension: "mov" },
 	},
 	ExportPurpose: { PREVIEW: "preview", FINAL: "final" },
+	shouldIncludeAudio: ({ includeAudio }: { includeAudio?: boolean }) =>
+		includeAudio ?? true,
 }));
+
+function stubWebCodecs() {
+	for (const name of [
+		"VideoEncoder",
+		"VideoDecoder",
+		"VideoFrame",
+		"AudioEncoder",
+		"AudioData",
+	]) {
+		vi.stubGlobal(name, class {});
+	}
+}
 
 describe("ExportEngineFactory", () => {
 	let ExportEngineFactory: any;
 	let ExportEngineType: any;
+	afterEach(() => vi.unstubAllGlobals());
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -499,12 +514,12 @@ describe("ExportEngineFactory", () => {
 			};
 		}
 
-		it("creates standard engine for STANDARD type", async () => {
+		it("keeps the legacy standard engine for WebM", async () => {
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			const engine = await factory.createEngine(
 				canvas,
-				defaultSettings,
+				{ ...defaultSettings, format: "webm" },
 				[],
 				[],
 				1,
@@ -562,6 +577,7 @@ describe("ExportEngineFactory", () => {
 		});
 
 		it("bakes a complete Sticker Lab reference only into a local MP4 engine", async () => {
+			stubWebCodecs();
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			mockPlatform.isElectron = true;
@@ -773,6 +789,7 @@ describe("ExportEngineFactory", () => {
 		});
 
 		it("forces overlay-only runtime metadata through the muxer", async () => {
+			stubWebCodecs();
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			const mediaItems: MediaItem[] = [
@@ -1068,12 +1085,12 @@ describe("ExportEngineFactory", () => {
 			expect(engine.constructor.name).toBe("ExportEngineMuxer");
 		});
 
-		it("auto-selects engine type when none specified", async () => {
+		it("auto-selects an engine for WebM when none specified", async () => {
 			const factory = ExportEngineFactory.getInstance();
 			const canvas = createMockCanvas();
 			const engine = await factory.createEngine(
 				canvas,
-				defaultSettings,
+				{ ...defaultSettings, format: "webm" },
 				[],
 				[],
 				1

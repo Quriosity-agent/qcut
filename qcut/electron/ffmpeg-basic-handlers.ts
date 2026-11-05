@@ -102,14 +102,13 @@ export function setupBasicHandlers(
 					// shift the caption by the leading while leaving its size
 					// uncorrected. Omit it so the unmeasured path applies.
 					if (!assFontFamilyInstalled({ family: request.family })) return [];
-					const { sizeFactor, lineHeightEm } = assFontMetrics(request);
+					const metrics = assFontMetrics(request);
 					return [
 						{
 							...request,
 							bold: request.bold ?? false,
 							italic: request.italic ?? false,
-							sizeFactor,
-							lineHeightEm,
+							...metrics,
 							coversCjk: assFamilyCoversCjk({ family: request.family }),
 						},
 					];

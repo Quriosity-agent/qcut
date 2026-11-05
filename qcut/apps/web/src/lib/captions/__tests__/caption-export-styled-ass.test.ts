@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TimelineTrack } from "@/types/timeline";
 import { exportAssStyled } from "../caption-export";
+
+vi.mock("@/lib/export/caption-text-measurement", () => ({
+	createBrowserCaptionMeasurer: () => () => 120,
+}));
 
 /**
  * N25 (2026-10-30 trailer report): a styled ASS export keeps a caption's
@@ -31,6 +35,15 @@ const tracks = [
 ] as unknown as TimelineTrack[];
 
 describe("styled ASS caption export", () => {
+	it("uses browser measurements for the sidecar's padded background", () => {
+		const ass = exportAssStyled({
+			tracks,
+			resolution: { width: 1470, height: 630 },
+		});
+		expect(ass).toContain("\\pos(659,526.8)\\an7\\p1\\bord0\\shad0");
+		expect(ass).toContain("\\1c&H000000&\\1a&H33&");
+		expect(ass).toContain("m 4 0 l 148 0");
+	});
 	it("writes the fade frames at the rate it is given, and none without one", () => {
 		const resolution = { width: 1470, height: 630 };
 		expect(exportAssStyled({ tracks, resolution, fps: 24 })).toContain(

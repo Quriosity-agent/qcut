@@ -37,6 +37,24 @@ export {
 } from "./ass-generator.js";
 
 export {
+	CAPTION_BOX,
+	captionBackgroundBox,
+	captionContentMaxWidth,
+	wrapCaptionLines,
+	type CaptionMeasureRequest,
+	type CaptionTextMeasurer,
+} from "./caption-layout.js";
+
+export { prepareCaptionLayout } from "./caption-ass-layout.js";
+
+export {
+	CSS_NAMED_COLORS,
+	cssColorAlpha,
+	parseCssColor,
+	type ParsedCssColor,
+} from "./css-color.js";
+
+export {
 	CJK_CAPABLE_FONT_FAMILIES,
 	containsCjkText,
 	isCjkCapableFamily,

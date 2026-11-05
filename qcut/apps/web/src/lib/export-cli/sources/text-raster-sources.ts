@@ -1,3 +1,8 @@
+import type { CanvasDimensions } from "@/lib/text/text-canvas-primitives";
+import {
+	drawExportProjectLayer,
+	resolveExportProjectCanvas,
+} from "@/lib/export/export-project-canvas";
 import { normalizeTextAnimations } from "@qcut/editor-core";
 import { renderTextToCanvas } from "@/lib/text/text-canvas-renderer";
 import { resolveTextStyle } from "@/lib/text/text-style";
@@ -206,6 +211,7 @@ function requireRasterPath({
 }
 
 async function bakeTextRasterJob({
+	projectCanvas,
 	api,
 	canvasHeight,
 	canvasWidth,
@@ -219,6 +225,7 @@ async function bakeTextRasterJob({
 	shouldCancel,
 	tracks,
 }: {
+	projectCanvas?: CanvasDimensions;
 	api: EffectSequenceExportAPI;
 	canvasHeight: number;
 	canvasWidth: number;
@@ -247,7 +254,7 @@ async function bakeTextRasterJob({
 			: { ...job.element, blendMode: "normal" };
 	let patternPath: string | undefined;
 	let firstFramePath: string | undefined;
-	const projectCanvas = { width: canvasWidth, height: canvasHeight };
+	const outputCanvas = { width: canvasWidth, height: canvasHeight };
 
 	const bakeFrame = async ({ frameIndex }: { frameIndex: number }) => {
 		if (shouldCancel?.()) throw new Error("Export cancelled by user");
@@ -262,12 +269,18 @@ async function bakeTextRasterJob({
 		context.save();
 		context.translate(-crop.x, -crop.y);
 		try {
-			renderFrame({
+			drawExportProjectLayer({
 				ctx: context,
-				canvas: projectCanvas,
-				element: frameElement,
-				currentTime,
-				fps,
+				frame: outputCanvas,
+				project: projectCanvas,
+				draw: ({ ctx, canvas }) =>
+					renderFrame({
+						ctx,
+						canvas,
+						element: frameElement,
+						currentTime,
+						fps,
+					}),
 			});
 		} finally {
 			context.restore();
@@ -326,6 +339,7 @@ async function bakeTextRasterJob({
 }
 
 function planTextRasterJobs({
+	projectCanvas,
 	jobs,
 	tracks,
 	canvasWidth,
@@ -334,6 +348,7 @@ function planTextRasterJobs({
 	limits,
 	shouldCancel,
 }: {
+	projectCanvas?: CanvasDimensions;
 	jobs: readonly TextRasterJob[];
 	tracks: TimelineTrack[];
 	canvasWidth: number;
@@ -342,11 +357,15 @@ function planTextRasterJobs({
 	limits: TextRasterBakeLimits;
 	shouldCancel?: () => boolean;
 }): TextRasterPlan[] {
+	const { canvas: logicalCanvas, scale } = resolveExportProjectCanvas({
+		project: projectCanvas,
+		frame: { width: canvasWidth, height: canvasHeight },
+	});
 	const plans: TextRasterPlan[] = [];
 	let pixelFrames = 0;
 	for (const job of jobs) {
 		if (shouldCancel?.()) throw new Error("Export cancelled by user");
-		const crop = job.element.jianyingTextStyle
+		const logicalCrop = job.element.jianyingTextStyle
 			? {
 					x: 0,
 					y: 0,
@@ -356,11 +375,25 @@ function planTextRasterJobs({
 			: resolveTextRasterCrop({
 					job,
 					tracks,
-					canvasWidth,
-					canvasHeight,
+					canvasWidth: logicalCanvas.width,
+					canvasHeight: logicalCanvas.height,
 					fps,
 					shouldCancel,
 				});
+		const x = Math.floor(logicalCrop.x * scale);
+		const y = Math.floor(logicalCrop.y * scale);
+		const crop = {
+			x,
+			y,
+			width: Math.max(
+				1,
+				Math.ceil((logicalCrop.x + logicalCrop.width) * scale) - x
+			),
+			height: Math.max(
+				1,
+				Math.ceil((logicalCrop.y + logicalCrop.height) * scale) - y
+			),
+		};
 		pixelFrames = assertTextRasterCropBudget({
 			elementId: job.element.id,
 			frameCount: job.frameCount,
@@ -374,6 +407,7 @@ function planTextRasterJobs({
 }
 
 async function renderJianyingTextRasterJob({
+	projectCanvas,
 	canvasHeight,
 	canvasWidth,
 	fps,
@@ -381,6 +415,7 @@ async function renderJianyingTextRasterJob({
 	sessionId,
 	shouldCancel,
 }: {
+	projectCanvas?: CanvasDimensions;
 	canvasHeight: number;
 	canvasWidth: number;
 	fps: number;
@@ -388,6 +423,10 @@ async function renderJianyingTextRasterJob({
 	sessionId: string;
 	shouldCancel?: () => boolean;
 }): Promise<TextRasterLayerInput> {
+	const { scale } = resolveExportProjectCanvas({
+		project: projectCanvas,
+		frame: { width: canvasWidth, height: canvasHeight },
+	});
 	const reference = job.element.jianyingTextStyle;
 	const api = window.electronAPI?.jianyingTextRuntime;
 	if (!reference || !api) {
@@ -406,14 +445,14 @@ async function renderJianyingTextRasterJob({
 			reference,
 			content: job.element.content,
 			fontAssetId: job.element.fontAsset?.assetId,
-			fontSize: job.element.fontSize,
+			fontSize: job.element.fontSize * scale,
 			canvasWidth,
 			canvasHeight,
 			transform: {
-				x: job.element.x,
-				y: job.element.y,
-				width: job.element.width ?? 512,
-				height: job.element.height ?? 512,
+				x: job.element.x * scale,
+				y: job.element.y * scale,
+				width: (job.element.width ?? 512) * scale,
+				height: (job.element.height ?? 512) * scale,
 				rotation: job.element.rotation,
 				opacity: job.element.opacity,
 			},
@@ -448,6 +487,7 @@ async function renderJianyingTextRasterJob({
 }
 
 export async function extractTextRasterSources({
+	projectCanvas,
 	tracks,
 	sessionId,
 	canvasWidth,
@@ -461,6 +501,7 @@ export async function extractTextRasterSources({
 	shouldCancel,
 	limits: requestedLimits,
 }: {
+	projectCanvas?: CanvasDimensions;
 	tracks: readonly TimelineTrack[];
 	sessionId: string;
 	canvasWidth: number;
@@ -504,6 +545,7 @@ export async function extractTextRasterSources({
 	await loadTextFonts({ jobs });
 	if (shouldCancel?.()) throw new Error("Export cancelled by user");
 	const plans = planTextRasterJobs({
+		projectCanvas,
 		jobs,
 		tracks: mutableTracks,
 		canvasWidth,
@@ -520,6 +562,7 @@ export async function extractTextRasterSources({
 		const { job, crop } = plan;
 		const layer = job.element.jianyingTextStyle
 			? await renderJianyingTextRasterJob({
+					projectCanvas,
 					canvasHeight,
 					canvasWidth,
 					fps,
@@ -528,6 +571,7 @@ export async function extractTextRasterSources({
 					shouldCancel,
 				})
 			: await bakeTextRasterJob({
+					projectCanvas,
 					api,
 					canvasHeight,
 					canvasWidth,

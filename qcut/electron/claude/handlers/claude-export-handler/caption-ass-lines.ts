@@ -14,6 +14,7 @@
 
 import { assFontMetrics } from "./ass-font-metrics.js";
 import { assWeightTag, overlayWeight } from "./caption-ass-style.js";
+import { parseCssColor } from "./css-color.js";
 import type { TextOverlay } from "./types.js";
 
 /** Text as ASS draws it literally; line breaks become `\N`. */
@@ -89,9 +90,38 @@ export function assCaptionText({
 }
 
 /** A `#rrggbb` colour as an inline ASS colour tag value (`&HBBGGRR&`). */
-export function assInlineColor(hex: string): string {
-	const rgb = /^#[0-9a-f]{6}$/i.test(hex) ? hex.slice(1) : "ffffff";
+export function assInlineColor(color: string): string {
+	const rgb = (parseCssColor(color)?.hex ?? "#ffffff").slice(1);
 	return `&H${rgb.slice(4, 6)}${rgb.slice(2, 4)}${rgb.slice(0, 2)}&`.toUpperCase();
+}
+
+/** A text colour's ASS alpha: its own alpha under the caption's opacity. */
+function assTextAlpha(color: string, opacity: number): string {
+	const own = parseCssColor(color)?.alpha ?? 1;
+	return Math.round((1 - own * Math.min(1, Math.max(0, opacity))) * 255)
+		.toString(16)
+		.padStart(2, "0")
+		.toUpperCase();
+}
+
+/**
+ * The second line's colour. `\c` takes a colour without its alpha and the line
+ * inherits the first line's, so a line that differs also needs its own `\1a`.
+ */
+function secondaryColorTags({
+	color,
+	primaryColor,
+	opacity,
+}: {
+	color: string;
+	primaryColor: string;
+	opacity: number;
+}): string {
+	const tag = `\\c${assInlineColor(color)}`;
+	const alpha = assTextAlpha(color, opacity);
+	return alpha === assTextAlpha(primaryColor, opacity)
+		? tag
+		: `${tag}\\1a&H${alpha}&`;
 }
 
 /** A font name inside an override block, where `{`, `}` and `\` would end it. */
@@ -145,7 +175,13 @@ export function captionEventText({
 		secondary.letterSpacing === overlay.letterSpacing
 			? ""
 			: `\\fsp${secondary.letterSpacing.toFixed(2)}`;
-	const color = colorTags ? `\\c${assInlineColor(secondary.color)}` : "";
+	const color = colorTags
+		? secondaryColorTags({
+				color: secondary.color,
+				primaryColor: overlay.color,
+				opacity: overlay.opacity,
+			})
+		: "";
 	const secondaryRun: AssCaptionRun = {
 		lines: lines(secondary.content),
 		fontSize: secondary.fontSize,

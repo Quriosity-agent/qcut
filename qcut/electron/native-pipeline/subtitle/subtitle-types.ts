@@ -7,6 +7,11 @@
  * @module electron/native-pipeline/subtitle/subtitle-types
  */
 
+import {
+	cssColorAlpha,
+	parseCssColor,
+} from "../../claude/handlers/claude-export-handler/css-color.js";
+
 /** Visual style properties for subtitle/caption elements */
 export interface SubtitleStyle {
 	fontFamily: string;
@@ -91,12 +96,17 @@ export function resolveSubtitleStyle(
 	};
 }
 
-/** Convert RGB hex to ASS color format (&HAABBGGRR) */
-export function rgbToASSColor(hex: string, opacity: number): string {
-	const r = hex.slice(1, 3);
-	const g = hex.slice(3, 5);
-	const b = hex.slice(5, 7);
-	const a = Math.round((1 - opacity) * 255)
+/** Convert a CSS color to ASS color format (&HAABBGGRR). */
+export function rgbToASSColor(
+	color: string,
+	opacity: number,
+	fallback = "#ffffff"
+): string {
+	const parsed = parseCssColor(color) ?? { hex: fallback };
+	const r = parsed.hex.slice(1, 3);
+	const g = parsed.hex.slice(3, 5);
+	const b = parsed.hex.slice(5, 7);
+	const a = Math.round((1 - cssColorAlpha(parsed, opacity)) * 255)
 		.toString(16)
 		.padStart(2, "0");
 	return `&H${a}${b}${g}${r}`.toUpperCase();
@@ -210,11 +220,14 @@ function styleToASSLine(name: string, style: SubtitleStyle): string {
 	const primary = rgbToASSColor(style.fontColor, style.fontOpacity);
 	const secondary = "&H00FFFFFF";
 	const outline = rgbToASSColor(style.outlineColor, 1);
-	const useOpaqueBox = style.bgOpacity > 0;
+	const background = parseCssColor(style.backgroundColor) ?? { hex: "#ffffff" };
+	const backgroundOpacity = cssColorAlpha(background, style.bgOpacity);
+	const useOpaqueBox = backgroundOpacity > 0;
 	const back = useOpaqueBox
-		? rgbToASSColor(style.backgroundColor, style.bgOpacity)
-		: rgbToASSColor(style.shadowColor, 1);
-	const borderStyle = useOpaqueBox ? 3 : 1;
+		? rgbToASSColor(background.hex, backgroundOpacity)
+		: rgbToASSColor(style.shadowColor, 1, "#000000");
+	// libass style 4 keeps the glyph outline separate from BackColour's box.
+	const borderStyle = useOpaqueBox ? 4 : 1;
 	const bold = style.bold ? -1 : 0;
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
@@ -455,7 +468,7 @@ export function assStyleToSubtitleStyle(assStyle: ASSStyle): SubtitleStyle {
 	const primary = assColorToRgb(assStyle.PrimaryColour);
 	const outline = assColorToRgb(assStyle.OutlineColour);
 	const back = assColorToRgb(assStyle.BackColour);
-	const useOpaqueBox = assStyle.BorderStyle === 3;
+	const useOpaqueBox = assStyle.BorderStyle === 3 || assStyle.BorderStyle === 4;
 
 	return {
 		fontFamily: assStyle.Fontname,

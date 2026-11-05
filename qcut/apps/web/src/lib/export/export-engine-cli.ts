@@ -79,8 +79,10 @@ import {
 	logMode2Detection,
 } from "./export-engine-cli-debug";
 import {
+	assCanvasForExport,
 	assFontFamiliesInTracks,
 	buildTimelineAssLayers,
+	unreadableTextColors,
 } from "./export-engine-cli-text";
 import {
 	assFaceRequestsFor,
@@ -183,6 +185,7 @@ export class CLIExportEngine extends ExportEngine {
 			sessionId: this.sessionId,
 			canvasWidth: this.canvas.width,
 			canvasHeight: this.canvas.height,
+			projectCanvas: this.projectCanvas,
 			fps: this.getFrameRate(),
 			logger: debugLog,
 			onProgress: ({ bakedFrames, totalFrames }) => {
@@ -665,6 +668,10 @@ export class CLIExportEngine extends ExportEngine {
 			| "win32"
 			| "linux"
 			| undefined;
+		const assCanvas = assCanvasForExport({
+			project: this.projectCanvas,
+			frame: this.canvas,
+		});
 		// Build text overlay filter chain
 		console.log(
 			"🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation..."
@@ -674,8 +681,8 @@ export class CLIExportEngine extends ExportEngine {
 			renderedTextElementIds: assRenderedElementIds,
 		} = buildTimelineAssLayers({
 			tracks: this.tracks,
-			canvasWidth: this.canvas.width,
-			canvasHeight: this.canvas.height,
+			canvasWidth: assCanvas.width,
+			canvasHeight: assCanvas.height,
 			fps: this.getFrameRate(),
 			excludedTextElementIds: rasterTextElementIds,
 			platform: assPlatform,
@@ -688,6 +695,9 @@ export class CLIExportEngine extends ExportEngine {
 				)
 			)),
 		});
+		for (const color of unreadableTextColors({ tracks: this.tracks })) {
+			debugWarn(`[CLI Export] Colour not applied: ${color}`);
+		}
 		const nativelyRenderedTextElementIds = new Set([
 			...assRenderedElementIds,
 			...rasterTextElementIds,

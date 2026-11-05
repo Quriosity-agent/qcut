@@ -75,6 +75,8 @@ import {
 import { buildMediaMaskStrokeCssFilter } from "@/lib/video/media-mask-stroke";
 import { CaptionsDisplay } from "@/components/captions/captions-display";
 import { captionStackOffset } from "@/lib/captions/caption-stacking";
+import { measurePreviewCaptionBlockHeight } from "@/lib/captions/caption-preview-measurement";
+import { createBrowserCaptionMeasurer } from "@/lib/export/caption-text-measurement";
 import { resolveSubtitleStyle } from "@/lib/captions/subtitle-style";
 import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import { TimelineStickerLayer } from "./timeline-sticker-layer";
@@ -297,6 +299,13 @@ export function PreviewElementRenderer({
 	onElementResize,
 }: PreviewElementRendererProps): React.ReactNode {
 	const portraitSourceSessionId = useId();
+	const measureCaptionText = useMemo(
+		() =>
+			elementData.element.type === "captions"
+				? createBrowserCaptionMeasurer()
+				: undefined,
+		[elementData.element.type]
+	);
 	const selectedMaskElementId = useMaskEditorStore(
 		(state) => state.selectedElementId
 	);
@@ -710,7 +719,16 @@ export function PreviewElementRenderer({
 			// Captions that share an edge while on screen stack away from it, the
 			// earliest-started one keeping the edge (caption-stacking.ts); the
 			// exports stack the same way.
-			const stackOffset = captionStackOffset({ tracks, element });
+			const stackOffset = captionStackOffset({
+				tracks,
+				element,
+				measureHeight: ({ element: caption }) =>
+					measurePreviewCaptionBlockHeight({
+						element: caption,
+						width: canvasSize.width,
+						measureText: measureCaptionText,
+					}),
+			});
 			const stackAlign = resolveSubtitleStyle(element.style).position.align;
 			const segment = {
 				id: 0,

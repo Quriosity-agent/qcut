@@ -1,5 +1,6 @@
 import { ExportEngine } from "./export-engine";
 import type { ExportSettings, ExportSettingsWithAudio } from "@/types/export";
+import { shouldIncludeAudio } from "@/types/export";
 import { TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
@@ -367,6 +368,28 @@ export class ExportEngineFactory {
 			console.log("  - Recommendation reason:", recommendation.reason);
 		}
 
+		const standardMp4 =
+			(engineType === ExportEngineType.STANDARD ||
+				selectedEngineType === ExportEngineType.STANDARD) &&
+			settings.format === "mp4";
+		if (standardMp4) {
+			const hasAudioEncoder =
+				typeof AudioEncoder !== "undefined" && typeof AudioData !== "undefined";
+			if (
+				!this.detectWebCodecs() ||
+				(shouldIncludeAudio(settings) && !hasAudioEncoder)
+			) {
+				throw new Error(
+					"Standard MP4 export requires WebCodecs video and audio encoding. Use Native CLI export in the desktop app or a browser with WebCodecs support."
+				);
+			}
+			// MediaRecorder uses wall-clock frame timing and only captures the canvas.
+			selectedEngineType = ExportEngineType.MUXER;
+			console.log(
+				"[ExportEngineFactory] Standard MP4 uses renderer-muxer for timeline-timed video and audio."
+			);
+		}
+
 		console.log(
 			`🏗️ EXPORT ENGINE CREATION: Creating ${selectedEngineType} engine instance`
 		);
@@ -524,6 +547,12 @@ export class ExportEngineFactory {
 						totalDuration
 					);
 				} catch (error) {
+					if (standardMp4) {
+						throw new Error(
+							"Standard MP4 encoder could not initialize; export stopped to preserve timeline timing and audio.",
+							{ cause: error }
+						);
+					}
 					// The muxer engine is the only path that renders local
 					// Jianying color parity — a silent standard-engine fallback
 					// would export wrong colors with no user-visible signal.

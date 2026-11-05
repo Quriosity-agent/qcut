@@ -10,6 +10,7 @@ export type VisualLayerKind = "video" | "image" | "sticker" | "text";
 
 export interface PreparedVisualLayer {
 	inputLabel: string;
+	inlineFilter?: string;
 	kind: VisualLayerKind;
 	trackOrder?: number;
 	elementOrder?: number;
@@ -85,6 +86,14 @@ export function composePreparedVisualLayers({
 		const nextOutput = `${prefix}_composite`;
 		const enable = layerEnable(layer);
 		const position = `x=${layer.x ?? 0}:y=${layer.y ?? 0}:`;
+		if (layer.inlineFilter) {
+			if (layer.blendMode !== "normal") {
+				throw new Error("Inline visual filters require normal blending");
+			}
+			filterSteps.push(`[${outputLabel}]${layer.inlineFilter}[${nextOutput}]`);
+			outputLabel = nextOutput;
+			continue;
+		}
 
 		if (layer.blendMode === "normal") {
 			filterSteps.push(

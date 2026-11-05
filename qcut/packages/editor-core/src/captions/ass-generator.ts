@@ -25,6 +25,20 @@ import {
 	resolveCaptionAnimation,
 } from "./caption-animation.js";
 import { resolveAssCjkFamily } from "./ass-cjk-font.js";
+import { cssColorAlpha, parseCssColor } from "./css-color.js";
+import {
+	captionRoundedBoxDrawing,
+	type CaptionTextMeasurer,
+} from "./caption-layout.js";
+import {
+	captionAssLineBreak,
+	escapeCaptionAssText,
+	prepareCaptionLayout,
+} from "./caption-ass-layout.js";
+import {
+	captionKaraokeLines,
+	captionKaraokeText,
+} from "./caption-ass-karaoke.js";
 
 export interface ASSGeneratorOptions {
 	resolution: { width: number; height: number };
@@ -44,6 +58,17 @@ export interface ASSGeneratorOptions {
 	 * outside the fixed list is replaced here but kept there.
 	 */
 	familyCoversCjk?: (family: string) => boolean;
+	/**
+	 * How far from its edge a caption draws because of the captions stacked
+	 * under it. For callers that write captions into separate documents: within
+	 * one document, libass stacks overlapping events itself.
+	 */
+	stackOffset?: (request: {
+		element: CaptionElement;
+		measureHeight?: (request: { element: CaptionElement }) => number;
+	}) => number;
+	/** Real canvas advances, including letter spacing, for the padded background. */
+	measureText?: CaptionTextMeasurer;
 }
 
 /** libass's sizing for one face. */
@@ -52,6 +77,10 @@ export interface AssFaceMetrics {
 	sizeFactor: number;
 	/** The line height libass lays out, in em. */
 	lineHeightEm: number;
+	/** Font ascent/descent and Chromium's normalized top baseline, in em. */
+	ascentEm?: number;
+	descentEm?: number;
+	canvasAscentEm?: number;
 }
 
 /**
@@ -79,6 +108,7 @@ interface CaptionMetrics {
 	 * text element's own placement.
 	 */
 	leading: number;
+	secondaryLeading?: number;
 }
 
 function captionMetrics({
@@ -113,10 +143,36 @@ function captionMetrics({
 	return {
 		sizeFactor: face.sizeFactor,
 		secondarySizeFactor: secondaryFace?.sizeFactor ?? 1,
+		secondaryLeading:
+			(secondary.fontSize * style.lineSpacing -
+				secondary.fontSize * (secondaryFace?.sizeFactor ?? 1)) /
+			2,
 		leading:
 			(style.fontSize * style.lineSpacing - style.fontSize * face.sizeFactor) /
 			2,
 	};
+}
+
+/**
+ * A text colour under the caption's opacity. The preview draws the colour's own
+ * alpha and then the element's opacity over it, so here the two multiply, where
+ * a colour's own alpha replaces an opacity field of its own.
+ */
+function captionTextColor(color: string, fontOpacity: number): string {
+	const parsed = parseCssColor(color);
+	return rgbToASSColor(
+		parsed?.hex ?? color,
+		(parsed?.alpha ?? 1) * fontOpacity
+	);
+}
+
+/** The colour a caption's event draws in, and its second line inherits. */
+function captionPrimaryColor(style: SubtitleStyle): string {
+	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
+	return captionTextColor(
+		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
+		style.fontOpacity
+	);
 }
 
 /** The ASS Fontsize for an editor font size, rounded as libass reads it. */
@@ -125,7 +181,7 @@ function assFontSize(fontSize: number, sizeFactor: number): number {
 }
 
 /** The style's MarginL/MarginR. */
-const STYLE_SIDE_MARGIN = 10;
+const STYLE_SIDE_MARGIN = 36;
 
 /**
  * How far the preview keeps a caption's line box from the frame edge its
@@ -168,7 +224,18 @@ function resolveClipStyle({
 		fallbackFamily: cjkFontFamily,
 		coversCjk: familyCoversCjk,
 	});
-	return fontFamily === style.fontFamily ? style : { ...style, fontFamily };
+	const secondary = resolveSecondaryLineStyle(style);
+	const secondaryFamily = resolveAssCjkFamily({
+		family: secondary.fontFamily,
+		text: clip.secondaryText ?? "",
+		fallbackFamily: cjkFontFamily,
+		coversCjk: familyCoversCjk,
+	});
+	return {
+		...style,
+		fontFamily,
+		secondary: { ...secondary, fontFamily: secondaryFamily },
+	};
 }
 
 /** Generate a complete ASS file from caption elements */
@@ -176,6 +243,25 @@ export function generateASS(
 	clips: CaptionElement[],
 	options: ASSGeneratorOptions
 ): string {
+	const measuredHeights = new Map<CaptionElement, number>();
+	const measureText = options.measureText;
+	const measureHeight = measureText
+		? ({ element: clip }: { element: CaptionElement }) => {
+				const cached = measuredHeights.get(clip);
+				if (cached !== undefined) return cached;
+				const { layout } = prepareCaptionAssLayout({
+					clip,
+					style: resolveClipStyle({ clip, ...options }),
+					resolution: options.resolution,
+					stackOffset: 0,
+					measureText,
+				});
+				if (!layout) throw new Error("Caption height requires measured layout");
+				const height = layout.box.height;
+				measuredHeights.set(clip, height);
+				return height;
+			}
+		: undefined;
 	const { resolution, title = "QCut Export" } = options;
 
 	// Collect unique styles
@@ -206,6 +292,7 @@ Title: ${title}
 ScriptType: v4.00+
 PlayResX: ${resolution.width}
 PlayResY: ${resolution.height}
+ScaledBorderAndShadow: yes
 WrapStyle: 0
 
 [V4+ Styles]
@@ -246,12 +333,48 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 				style: resolved,
 				fontMetrics: options.fontMetrics,
 			}),
+			stackOffset: options.stackOffset?.({ element: clip, measureHeight }) ?? 0,
+			measureText: options.measureText,
 		})) {
 			content += `${line}\n`;
 		}
 	}
 
 	return content;
+}
+
+function prepareCaptionAssLayout({
+	clip,
+	style,
+	resolution,
+	stackOffset,
+	measureText,
+}: {
+	clip: CaptionElement;
+	style: SubtitleStyle;
+	resolution: ASSGeneratorOptions["resolution"];
+	stackOffset: number;
+	measureText?: CaptionTextMeasurer;
+}) {
+	const karaokeLines = captionKaraokeLines({
+		clip,
+		style,
+		width: resolution.width,
+		measureText,
+	});
+	const layout = measureText
+		? prepareCaptionLayout({
+				clip,
+				style,
+				resolution,
+				stackOffset,
+				measureText,
+				primaryLines: karaokeLines?.map((line) =>
+					line.map((word) => word.text.trim()).join(" ")
+				),
+			})
+		: undefined;
+	return { layout, karaokeLines };
 }
 
 /**
@@ -261,12 +384,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
  * each shadow sits exactly at its offset from the letters.
  */
 function captionEventsForASS({
-	clip,
+	clip: sourceClip,
 	style,
 	resolution,
 	fps,
 	styleName,
 	metrics,
+	stackOffset,
+	measureText,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -274,7 +399,18 @@ function captionEventsForASS({
 	fps?: number;
 	styleName: string;
 	metrics: CaptionMetrics;
+	stackOffset: number;
+	measureText?: CaptionTextMeasurer;
 }): string[] {
+	if (!sourceClip.text.trim()) return [];
+	const { layout, karaokeLines } = prepareCaptionAssLayout({
+		clip: sourceClip,
+		style,
+		resolution,
+		stackOffset,
+		measureText,
+	});
+	const clip = layout?.clip ?? sourceClip;
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
 	const centiseconds = (seconds: number) => Math.floor(seconds * 100);
@@ -289,23 +425,69 @@ function captionEventsForASS({
 	const weight = captionFontWeight(style);
 	const weightTag = weight === 400 || weight === 700 ? "" : `\\b${weight}`;
 	const shadows = resolveCaptionShadows(style) ?? [];
+	const lastLeading = clip.secondaryText?.trim()
+		? (metrics.secondaryLeading ?? metrics.leading)
+		: metrics.leading;
+	const edgeOffset =
+		style.position.align === "center"
+			? (metrics.leading - lastLeading) / 2
+			: (style.position.align === "bottom" ? lastLeading : metrics.leading) +
+				stackOffset;
+	// 0 is "the style's margin", which is the place of an unstacked caption.
+	const marginV =
+		stackOffset > 0 ? Math.round(CAPTION_EDGE_INSET_Y + edgeOffset) : 0;
 	const event = (layer: number, tags: string, body: string) =>
-		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,0,,${tags ? `{${tags}}` : ""}${body}`;
-	const pin = shadows.length > 0;
+		`Dialogue: ${layer},${startTime},${endTime},${styleName},,0,0,${marginV},,${tags ? `{${tags}}` : ""}${body}`;
+	const pin = shadows.length > 0 || layout !== undefined;
+	const background = layout && style.bgOpacity > 0 ? layout.box : undefined;
+	const firstLayer = background ? 1 : 0;
 	const lines = shadows.map((shadow, layer) =>
 		event(
-			layer,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, leading: metrics.leading })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
-			captionTextForASS({ clip, style, colorTags: false, metrics })
+			firstLayer + layer,
+			`${layout ? "\\q2" : ""}${captionAnimationTags({ clip, style, resolution, fade, pin, offset: shadow, edgeOffset })}${weightTag}${shadowTagsForASS({ shadow, style })}`,
+			captionTextForASS({
+				clip,
+				style,
+				colorTags: false,
+				metrics,
+				karaokeLines,
+			})
 		)
 	);
 	lines.push(
 		event(
-			shadows.length,
-			`${captionAnimationTags({ clip, style, resolution, fade, pin, leading: metrics.leading })}${weightTag}`,
-			captionTextForASS({ clip, style, colorTags: true, metrics })
+			firstLayer + shadows.length,
+			`${layout ? "\\q2" : ""}${captionAnimationTags({ clip, style, resolution, fade, pin, edgeOffset })}${weightTag}`,
+			captionTextForASS({ clip, style, colorTags: true, metrics, karaokeLines })
 		)
 	);
+	if (background) {
+		const parsed = parseCssColor(style.backgroundColor);
+		const [alpha, color] = splitAssColor(
+			rgbToASSColor(
+				parsed?.hex ?? "#ffffff",
+				cssColorAlpha(parsed ?? { hex: "#ffffff" }, style.bgOpacity) *
+					style.fontOpacity
+			)
+		);
+		const anchor = captionPosition({ style, resolution, edgeOffset });
+		const motion = captionAnimationTags({
+			clip,
+			style,
+			resolution,
+			fade,
+			pin: true,
+			edgeOffset,
+			offset: { x: background.x - anchor.x, y: background.y - anchor.y },
+		});
+		lines.unshift(
+			event(
+				0,
+				`${motion}\\an7\\p1\\bord0\\shad0\\1c${color}\\1a${alpha}`,
+				captionRoundedBoxDrawing(background)
+			)
+		);
+	}
 	return lines;
 }
 
@@ -344,34 +526,36 @@ function captionTextForASS({
 	style,
 	colorTags,
 	metrics,
+	karaokeLines,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	/** False for a shadow layer, which draws every line in its colour. */
 	colorTags: boolean;
 	metrics: CaptionMetrics;
+	karaokeLines: ReturnType<typeof captionKaraokeLines>;
 }): string {
-	const text = clip.text.trim().replace(/\n/g, "\\N");
-	const karaokeMode = clip.style?.karaokeMode ?? "none";
-	const words = (clip.words ?? [])
-		.filter((word) => word.type === "word")
-		.sort((left, right) => left.start - right.start);
-	const renderedText =
-		karaokeMode === "none" || words.length === 0
-			? text
-			: words
-					.map((word, index) => {
-						const clipEnd = clip.startTime + clip.duration;
-						const nextStart = words[index + 1]?.start ?? clipEnd;
-						const end = Math.max(word.end, nextStart);
-						const durationCs = Math.max(
-							1,
-							Math.round((end - word.start) * 100)
-						);
-						const tag = karaokeMode === "karaoke" ? "kf" : "k";
-						return `{\\${tag}${durationCs}}${word.text.trim()}`;
-					})
-					.join(" ");
+	const primarySize = assFontSize(style.fontSize, metrics.sizeFactor);
+	const lineBreak = captionAssLineBreak({
+		previousSize: style.fontSize,
+		previousAssSize: primarySize,
+		fontSize: style.fontSize,
+		assSize: primarySize,
+		lineSpacing: style.lineSpacing,
+	});
+	const text = clip.text
+		.trim()
+		.split(/\r?\n/)
+		.map((text) => escapeCaptionAssText({ text }))
+		.join(lineBreak);
+	const renderedText = karaokeLines
+		? captionKaraokeText({
+				lines: karaokeLines,
+				clipEnd: clip.startTime + clip.duration,
+				mode: style.karaokeMode,
+				lineBreak,
+			})
+		: text;
 	return `${renderedText}${secondaryLineForASS({ clip, style, colorTags, metrics })}`;
 }
 
@@ -390,10 +574,14 @@ function secondaryLineForASS({
 	const text = clip.secondaryText?.trim();
 	if (!text) return "";
 	const secondary = resolveSecondaryLineStyle(style);
-	// \c takes the colour without its alpha: &HBBGGRR&.
-	const color = colorTags
-		? `\\c&H${rgbToASSColor(secondary.fontColor, 1).slice(4)}&`
-		: "";
+	// \c takes the colour without its alpha and the line inherits the event's,
+	// so a line that differs also needs its own \1a.
+	const [alpha, rgb] = splitAssColor(
+		captionTextColor(secondary.fontColor, style.fontOpacity)
+	);
+	const [eventAlpha] = splitAssColor(captionPrimaryColor(style));
+	const alphaTag = alpha === eventAlpha ? "" : `\\1a${alpha}`;
+	const color = colorTags ? `\\c${rgb}${alphaTag}` : "";
 	// `{`, `}` and `\` in a font name would end the override block early.
 	const family = secondary.fontFamily.replace(/[{}\\]/g, "");
 	const weight =
@@ -407,7 +595,34 @@ function secondaryLineForASS({
 		secondary.letterSpacing === style.letterSpacing
 			? ""
 			: `\\fsp${secondary.letterSpacing}`;
-	return `\\N{\\fn${family}\\fs${assFontSize(secondary.fontSize, metrics.secondarySizeFactor)}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}}${text.replace(/\n/g, "\\N")}`;
+	const secondarySize = assFontSize(
+		secondary.fontSize,
+		metrics.secondarySizeFactor
+	);
+	const fontTags = `\\fn${family}\\b${weight}\\i${secondary.italic ? 1 : 0}${spacing}${color}`;
+	const firstBreak = captionAssLineBreak({
+		previousSize: style.fontSize,
+		previousAssSize: assFontSize(style.fontSize, metrics.sizeFactor),
+		fontSize: secondary.fontSize,
+		assSize: secondarySize,
+		lineSpacing: style.lineSpacing,
+		fontTags,
+	});
+	const nextBreak = captionAssLineBreak({
+		previousSize: secondary.fontSize,
+		previousAssSize: secondarySize,
+		fontSize: secondary.fontSize,
+		assSize: secondarySize,
+		lineSpacing: style.lineSpacing,
+		fontTags,
+	});
+	return (
+		firstBreak +
+		text
+			.split(/\r?\n/)
+			.map((text) => escapeCaptionAssText({ text }))
+			.join(nextBreak)
+	);
 }
 
 /**
@@ -422,7 +637,7 @@ function captionAnimationTags({
 	fade: frameFade,
 	pin = false,
 	offset = { x: 0, y: 0 },
-	leading,
+	edgeOffset,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
@@ -430,12 +645,15 @@ function captionAnimationTags({
 	fade?: string;
 	pin?: boolean;
 	offset?: { x: number; y: number };
-	/** Half the gap between CSS's line box and libass's. */
-	leading: number;
+	/**
+	 * How much further from its edge than the inset the caption draws: half
+	 * the gap between CSS's line box and libass's, plus the captions under it.
+	 */
+	edgeOffset: number;
 }): string {
 	const animation = resolveCaptionAnimation({ style });
 	if (animation.type === "none") {
-		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
+		return `${frameFade ?? ""}${pin ? pinnedPosition({ style, resolution, offset, edgeOffset }) : ""}`;
 	}
 
 	const clipDurationMs = Math.max(1, Math.round(clip.duration * 1000));
@@ -451,22 +669,14 @@ function captionAnimationTags({
 		frameFade ??
 		`\\fade(255,0,0,${startMs},${endMs},${clipDurationMs},${clipDurationMs})`;
 	if (animation.type === "fade") {
-		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, leading }) : ""}`;
+		return `${fade}${pin ? pinnedPosition({ style, resolution, offset, edgeOffset }) : ""}`;
 	}
 
-	const margin = Math.max(10, Math.round(style.fontSize));
-	const targetX =
-		style.textAlign === "left"
-			? margin
-			: style.textAlign === "right"
-				? resolution.width - margin
-				: Math.round(resolution.width / 2);
-	const targetY =
-		style.position.align === "top"
-			? margin + leading
-			: style.position.align === "center"
-				? Math.round(resolution.height / 2)
-				: resolution.height - margin - leading;
+	const { x: targetX, y: targetY } = captionPosition({
+		style,
+		resolution,
+		edgeOffset,
+	});
 	const startX = animation.type === "slide-left" ? targetX + 120 : targetX;
 	const startY = animation.type === "slide-up" ? targetY + 80 : targetY;
 
@@ -478,15 +688,28 @@ function pinnedPosition({
 	style,
 	resolution,
 	offset,
-	leading,
+	edgeOffset,
 }: {
 	style: SubtitleStyle;
 	resolution: ASSGeneratorOptions["resolution"];
 	offset: { x: number; y: number };
-	/** Half the gap between CSS's line box and libass's. */
-	leading: number;
+	/** See `captionAnimationTags`. */
+	edgeOffset: number;
 }): string {
-	const marginV = CAPTION_EDGE_INSET_Y + leading;
+	const { x, y } = captionPosition({ style, resolution, edgeOffset });
+	return `\\pos(${x + offset.x},${y + offset.y})`;
+}
+
+function captionPosition({
+	style,
+	resolution,
+	edgeOffset,
+}: {
+	style: SubtitleStyle;
+	resolution: ASSGeneratorOptions["resolution"];
+	edgeOffset: number;
+}): { x: number; y: number } {
+	const marginV = CAPTION_EDGE_INSET_Y + edgeOffset;
 	const x =
 		style.textAlign === "left"
 			? STYLE_SIDE_MARGIN
@@ -497,9 +720,9 @@ function pinnedPosition({
 		style.position.align === "top"
 			? marginV
 			: style.position.align === "center"
-				? resolution.height / 2
+				? resolution.height / 2 + edgeOffset
 				: resolution.height - marginV;
-	return `\\pos(${x + offset.x},${y + offset.y})`;
+	return { x, y };
 }
 
 function subtitleStyleToASSLine(
@@ -508,16 +731,13 @@ function subtitleStyleToASSLine(
 	metrics: CaptionMetrics
 ): string {
 	const karaokeEnabled = (style.karaokeMode ?? "none") !== "none";
-	const primary = rgbToASSColor(
-		karaokeEnabled ? (style.highlightColor ?? "#ffff00") : style.fontColor,
-		style.fontOpacity
-	);
-	const secondary = rgbToASSColor(
+	const primary = captionPrimaryColor(style);
+	const secondary = captionTextColor(
 		karaokeEnabled ? (style.upcomingColor ?? style.fontColor) : "#ffffff",
 		style.fontOpacity
 	);
-	const outline = rgbToASSColor(style.outlineColor, 1);
-	const back = rgbToASSColor(style.shadowColor, 1);
+	const outline = captionTextColor(style.outlineColor, style.fontOpacity);
+	const back = captionTextColor(style.shadowColor, style.fontOpacity);
 	const bold = captionFontWeight(style) >= 600 ? -1 : 0;
 	const italic = style.italic ? -1 : 0;
 	const underline = style.underline ? 1 : 0;
