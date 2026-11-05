@@ -11,6 +11,7 @@ import {
 } from "../claude/handlers/claude-export-handler/text-overlay.js";
 import { escapeFfmpegFilterPath } from "../ffmpeg/color-lut-file.js";
 import type { ClaudeTimeline } from "../types/claude-api.js";
+import { rgbBounds } from "./helpers/rgb-bounds.js";
 
 const width = 480;
 const height = 720;
@@ -111,22 +112,16 @@ function render({ file, time }: { file: string; time: number }): Buffer {
 }
 
 function colorBounds({ frame, channel }: { frame: Buffer; channel: 0 | 2 }) {
-	let top = height;
-	let bottom = -1;
-	let count = 0;
-	for (let pixel = 0; pixel < width * height; pixel += 1) {
-		const at = pixel * 3;
-		if (
-			frame[at + channel] < 100 ||
-			frame[at + channel] < frame[at + 1] + 80 ||
-			frame[at + channel] < frame[at + 2 - channel] + 80
-		)
-			continue;
-		const row = Math.floor(pixel / width);
-		top = Math.min(top, row);
-		bottom = Math.max(bottom, row);
-		count += 1;
-	}
+	const { top, bottom, count } = rgbBounds({
+		frame,
+		width,
+		height,
+		matches: ({ r, g, b }) => {
+			const dominant = channel === 0 ? r : b;
+			const other = channel === 0 ? b : r;
+			return dominant >= 100 && dominant >= g + 80 && dominant >= other + 80;
+		},
+	});
 	return { top, bottom, count };
 }
 
