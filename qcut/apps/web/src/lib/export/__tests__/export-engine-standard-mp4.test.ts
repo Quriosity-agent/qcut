@@ -10,6 +10,7 @@ import { ExportEngine } from "../export-engine";
 const engines = vi.hoisted(() => ({
 	legacy: vi.fn(),
 	muxer: vi.fn(),
+	requiresFilterStack: false,
 }));
 
 vi.mock("../export-engine", () => ({
@@ -36,6 +37,9 @@ vi.mock("@/stores/stickers-overlay-store", () => ({
 }));
 vi.mock("@/stores/ai/effects-store", () => ({
 	useEffectsStore: { getState: () => ({ getElementEffects: () => [] }) },
+}));
+vi.mock("../export-filter-stack-policy", () => ({
+	timelineHasEnabledFilterStack: () => engines.requiresFilterStack,
 }));
 
 const settings: ExportSettingsWithAudio = {
@@ -65,6 +69,7 @@ function createStandard({
 beforeEach(() => {
 	engines.legacy.mockReset();
 	engines.muxer.mockReset();
+	engines.requiresFilterStack = false;
 	for (const name of [
 		"VideoEncoder",
 		"VideoDecoder",
@@ -137,6 +142,23 @@ describe("Standard MP4 export", () => {
 		expect(
 			await createStandard({ overrides: { format: "webm" } })
 		).toBeInstanceOf(ExportEngine);
+		expect(engines.muxer).not.toHaveBeenCalled();
+	});
+
+	it("keeps Standard MP4 fail-closed when Filter Lab already selected muxer", async () => {
+		engines.requiresFilterStack = true;
+		engines.muxer.mockImplementation(() => {
+			throw new Error("muxer initialization failed");
+		});
+		await expect(createStandard()).rejects.toThrow("export stopped");
+		expect(engines.legacy).not.toHaveBeenCalled();
+	});
+
+	it("checks audio support even when Filter Lab already selected muxer", async () => {
+		engines.requiresFilterStack = true;
+		vi.stubGlobal("AudioEncoder", undefined);
+		await expect(createStandard()).rejects.toThrow("requires WebCodecs");
+		expect(engines.legacy).not.toHaveBeenCalled();
 		expect(engines.muxer).not.toHaveBeenCalled();
 	});
 });
