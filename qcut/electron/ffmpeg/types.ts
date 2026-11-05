@@ -1004,6 +1004,9 @@ export interface AssFontMetricsRequest {
 
 /** What libass will do with that face. */
 export interface AssFontMetricsReply {
+	ascentEm?: number;
+	descentEm?: number;
+	canvasAscentEm?: number;
 	family: string;
 	bold: boolean;
 	italic: boolean;
