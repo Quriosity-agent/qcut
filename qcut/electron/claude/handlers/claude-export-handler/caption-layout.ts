@@ -84,12 +84,15 @@ export function wrapCaptionLines({
 				line = candidate;
 				continue;
 			}
-			if (line) lines.push(line.trimEnd());
+			const completedLine = line.trimEnd();
+			if (completedLine) lines.push(completedLine);
 			line = "";
 			if (measure(token.trimEnd()) <= maxWidth) {
 				line = token.trimStart();
 				continue;
 			}
+			// The space after an oversized word still separates it from the next.
+			const trailing = token.slice(token.trimEnd().length);
 			for (const { segment } of graphemes.segment(token.trim())) {
 				if (line && measure(line + segment) > maxWidth) {
 					lines.push(line);
@@ -97,6 +100,7 @@ export function wrapCaptionLines({
 				}
 				line += segment;
 			}
+			line += trailing;
 		}
 		lines.push(line.trimEnd());
 	}
