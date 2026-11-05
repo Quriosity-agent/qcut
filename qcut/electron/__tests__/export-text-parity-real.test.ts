@@ -264,6 +264,29 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 		}
 
 		describe.skipIf(!assFontFamilyInstalled({ family: "Arial" }))(
+			"multiline text baselines",
+			() => {
+				for (const verticalAlign of ["top", "middle", "bottom"] as const) {
+					it(`preserves CSS leading at ${verticalAlign} alignment`, () => {
+						const frames = bothPaths([
+							textTrack(
+								textElement({
+									fontSize: 52,
+									lineHeight: 1.8,
+									content: "QCut Export\nSecond line",
+									verticalAlign,
+								})
+							),
+						]);
+						expectSameBounds(frames);
+						const bounds = inkBounds(frames.native);
+						expect(bounds.bottom - bounds.top).toBeGreaterThan(120);
+					});
+				}
+			}
+		);
+
+		describe.skipIf(!assFontFamilyInstalled({ family: "Arial" }))(
 			"stacked captions",
 			() => {
 				const style = (align: "top" | "bottom") => ({
