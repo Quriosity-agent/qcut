@@ -195,7 +195,8 @@ for (const scenario of [
 			startTime: 0,
 			duration: 3,
 			content: "字幕背景",
-			secondaryContent: "Caption background",
+			secondaryContent:
+				"Caption background wraps automatically across multiple lines so later captions must reserve the complete measured height of every preceding line.",
 			style: {
 				fontFamily: "Arial",
 				fontSize: 42,
@@ -211,6 +212,35 @@ for (const scenario of [
 			args: ["editor:timeline:add-element", "--data", JSON.stringify(caption)],
 		});
 		expect(added.warnings ?? []).toEqual([]);
+		const stackedLane = await run<{ trackId: string }>({
+			args: [
+				"editor:track:create",
+				"--type",
+				"captions",
+				"--name",
+				"Overlapping captions",
+			],
+		});
+		const stacked = await run<{ warnings?: string[] }>({
+			args: [
+				"editor:timeline:add-element",
+				"--data",
+				JSON.stringify({
+					type: "captions",
+					trackId: stackedLane.trackId,
+					startTime: 0.25,
+					duration: 2.75,
+					content: "Later caption",
+					style: {
+						...caption.style,
+						fontSize: 30,
+						backgroundColor: "#ff00ff",
+						bgOpacity: 1,
+					},
+				}),
+			],
+		});
+		expect(stacked.warnings ?? []).toEqual([]);
 		const before = await run<{ tracks: unknown[] }>({
 			args: ["editor:timeline:export"],
 		});
@@ -253,7 +283,7 @@ for (const scenario of [
 		await expect(
 			page
 				.getByTestId("preview-capture-surface")
-				.getByText("Caption background", { exact: true })
+				.getByText(caption.secondaryContent, { exact: true })
 		).toBeVisible();
 		await page.evaluate(async () => {
 			await document.fonts.ready;
@@ -373,7 +403,7 @@ for (const scenario of [
 					`${name} caption background matches editor preview channel ${channel}`
 				).toBeLessThanOrEqual(6);
 			}
-			for (const kind of ["text", "background"] as const) {
+			for (const kind of ["text", "background", "stackedBackground"] as const) {
 				for (const edge of ["left", "right", "top", "bottom"] as const) {
 					expect(
 						Math.abs(record[kind][edge] - reference[kind][edge]),
