@@ -22,6 +22,8 @@ function fakeContext() {
 		save: vi.fn(),
 		restore: vi.fn(),
 		fillRect: vi.fn(),
+		roundRect: vi.fn(),
+		fill: vi.fn(),
 		strokeText: vi.fn(),
 		fillText,
 		beginPath: vi.fn(),
