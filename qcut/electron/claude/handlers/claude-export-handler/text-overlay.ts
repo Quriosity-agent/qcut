@@ -905,55 +905,37 @@ function assPlacement({
 	};
 }
 
-/** The preview's caption box padding (8 px top and bottom). */
-const CAPTION_BOX_PADDING_Y = 8;
-
-/**
- * A caption's block height for stacking: its line boxes (one per line break
- * in the text, as caption-stacking.ts counts them) plus the box padding.
- */
-function captionBlockHeight(overlay: TextOverlay): number {
-	const lines = (text: string) =>
-		Math.max(1, text.trim().split(/\r?\n/).length);
-	const secondary = overlay.secondary;
-	return (
-		(lines(overlay.content) * overlay.fontSize +
-			(secondary ? lines(secondary.content) * secondary.fontSize : 0)) *
-			overlay.lineHeight +
-		2 * CAPTION_BOX_PADDING_Y
-	);
-}
-
 /**
  * How far from its edge each caption draws: the summed block heights of the
  * earlier-starting captions that share its edge and overlap it in time
  * (caption-stacking.ts has the same rule for the preview and canvas export).
  */
-function captionStackOffsets(overlays: TextOverlay[]): Map<string, number> {
+function captionStackOffsets({
+	captions,
+}: {
+	captions: ReturnType<typeof prepareCaptionBackground>[];
+}): Map<string, number> {
 	const offsets = new Map<string, number>();
-	const captions = overlays
-		.filter(
-			(overlay) =>
-				overlay.positioning === "caption-anchor" &&
-				overlay.verticalAlign !== "center"
-		)
+	const edgeCaptions = captions
+		.filter(({ overlay }) => overlay.verticalAlign !== "center")
 		// The preview's order: earliest start keeps the edge; at the same
 		// start the caption on the higher track (drawn on top) does.
 		.sort(
-			(left, right) =>
+			({ overlay: left }, { overlay: right }) =>
 				left.startTime - right.startTime ||
 				(right.trackIndex ?? 0) - (left.trackIndex ?? 0)
 		);
-	for (const overlay of captions) {
+	for (const caption of edgeCaptions) {
+		const { overlay } = caption;
 		let offset = 0;
-		for (const other of captions) {
-			if (other === overlay) break;
+		for (const other of edgeCaptions) {
+			if (other === caption) break;
 			if (
-				other.verticalAlign === overlay.verticalAlign &&
-				other.startTime < overlay.endTime &&
-				overlay.startTime < other.endTime
+				other.overlay.verticalAlign === overlay.verticalAlign &&
+				other.overlay.startTime < overlay.endTime &&
+				overlay.startTime < other.overlay.endTime
 			) {
-				offset += captionBlockHeight(other);
+				offset += other.box.height;
 			}
 		}
 		offsets.set(overlay.id, offset);
@@ -973,25 +955,44 @@ export function buildTextAss({
 }): string {
 	const styles: string[] = [];
 	const events: string[] = [];
-	// Overlays arrive sorted by start time, which is the stacking order.
-	const stackOffsets = captionStackOffsets(overlays);
 	const measureText = overlays.some(
 		(overlay) => overlay.positioning === "caption-anchor"
 	)
 		? createNativeCaptionMeasurer()
 		: undefined;
+	const preparedCaptions = new Map<
+		string,
+		ReturnType<typeof prepareCaptionBackground>
+	>();
+	for (const overlay of overlays) {
+		if (overlay.positioning !== "caption-anchor" || !measureText) continue;
+		preparedCaptions.set(
+			overlay.id,
+			prepareCaptionBackground({
+				overlay,
+				width,
+				height,
+				stackOffset: 0,
+				fontFamilyFor: assFontFamily,
+				measureText,
+			})
+		);
+	}
+	const stackOffsets = captionStackOffsets({
+		captions: [...preparedCaptions.values()],
+	});
 	for (const [index, original] of overlays.entries()) {
-		const preparedCaption =
-			original.positioning === "caption-anchor" && measureText
-				? prepareCaptionBackground({
-						overlay: original,
-						width,
-						height,
-						stackOffset: stackOffsets.get(original.id) ?? 0,
-						fontFamilyFor: assFontFamily,
-						measureText,
-					})
-				: undefined;
+		const measuredCaption = preparedCaptions.get(original.id);
+		const stackOffset = stackOffsets.get(original.id) ?? 0;
+		const preparedCaption = measuredCaption && {
+			...measuredCaption,
+			box: {
+				...measuredCaption.box,
+				y:
+					measuredCaption.box.y +
+					(original.verticalAlign === "top" ? stackOffset : -stackOffset),
+			},
+		};
 		const overlay = preparedCaption?.overlay ?? original;
 		const styleName = `QCutText${index}`;
 		const family = assFontFamily(overlay);
