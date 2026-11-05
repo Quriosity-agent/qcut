@@ -1,3 +1,4 @@
+import { drawExportProjectLayer } from "./export-project-canvas";
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
 import type {
@@ -295,7 +296,13 @@ export class OptimizedExportEngine extends ExportEngine {
 
 		// Batch render text
 		if (textBatch.length > 0) {
-			this.renderTextBatch(textBatch, renderCtx, renderCanvas, currentTime);
+			drawExportProjectLayer({
+				ctx: renderCtx,
+				frame: renderCanvas,
+				project: this.projectCanvas,
+				draw: ({ ctx, canvas }) =>
+					this.renderTextBatch(textBatch, ctx, canvas, currentTime),
+			});
 		}
 
 		// Copy from offscreen canvas to main canvas if using offscreen
@@ -408,7 +415,7 @@ export class OptimizedExportEngine extends ExportEngine {
 	private renderTextBatch(
 		textBatch: TimelineElement[],
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-		canvas: HTMLCanvasElement | OffscreenCanvas,
+		canvas: { width: number; height: number },
 		currentTime: number
 	): void {
 		for (const element of textBatch) {
