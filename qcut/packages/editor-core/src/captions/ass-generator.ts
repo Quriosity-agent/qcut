@@ -324,7 +324,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
  * each shadow sits exactly at its offset from the letters.
  */
 function captionEventsForASS({
-	clip,
+	clip: sourceClip,
 	style,
 	resolution,
 	fps,
@@ -342,18 +342,18 @@ function captionEventsForASS({
 	stackOffset: number;
 	measureText?: CaptionTextMeasurer;
 }): string[] {
-	if (!clip.text.trim()) return [];
+	if (!sourceClip.text.trim()) return [];
 	const layout =
 		measureText && (style.karaokeMode ?? "none") === "none"
 			? prepareCaptionLayout({
-					clip,
+					clip: sourceClip,
 					style,
 					resolution,
 					stackOffset,
 					measureText,
 				})
 			: undefined;
-	clip = layout?.clip ?? clip;
+	const clip = layout?.clip ?? sourceClip;
 	const startTime = secondsToASSTime(clip.startTime);
 	const endTime = secondsToASSTime(clip.startTime + clip.duration);
 	const centiseconds = (seconds: number) => Math.floor(seconds * 100);
