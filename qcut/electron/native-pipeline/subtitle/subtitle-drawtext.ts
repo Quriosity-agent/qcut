@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import { existsSync } from "node:fs";
 import type { CaptionElement, SubtitleStyle } from "./subtitle-types.js";
 import {
 	cssColorAlpha,
@@ -40,7 +40,7 @@ function resolveFontfile({
 	// CJK text needs an explicit fontfile — drawtext can't find CJK fonts by name
 	if (hasCJK({ text }) && process.platform === "darwin") {
 		for (const candidate of CJK_FONT_CANDIDATES) {
-			if (fs.existsSync(candidate)) {
+			if (existsSync(candidate)) {
 				const escaped = candidate.replace(/:/g, "\\:");
 				return `fontfile='${escaped}'`;
 			}
