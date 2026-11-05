@@ -22,6 +22,7 @@ import {
 	collectTextOverlays,
 } from "../claude/handlers/claude-export-handler/text-overlay.js";
 import type { ClaudeTimeline } from "../types/claude-api.js";
+import { rgbBounds } from "./helpers/rgb-bounds.js";
 
 const WIDTH = 960;
 const HEIGHT = 540;
@@ -163,28 +164,12 @@ function paths({
 }
 
 function blueBounds({ frame }: { frame: Buffer }) {
-	let left = WIDTH,
-		right = -1,
-		top = HEIGHT,
-		bottom = -1,
-		count = 0;
-	for (let y = 0; y < HEIGHT; y++) {
-		for (let x = 0; x < WIDTH; x++) {
-			const at = (y * WIDTH + x) * 3;
-			if (
-				frame[at + 2] < 20 ||
-				frame[at + 2] <= frame[at] + 15 ||
-				frame[at + 2] <= frame[at + 1] + 10
-			)
-				continue;
-			left = Math.min(left, x);
-			right = Math.max(right, x);
-			top = Math.min(top, y);
-			bottom = Math.max(bottom, y);
-			count++;
-		}
-	}
-	return { left, right, top, bottom, count };
+	return rgbBounds({
+		frame,
+		width: WIDTH,
+		height: HEIGHT,
+		matches: ({ r, g, b }) => b >= 20 && b > r + 15 && b > g + 10,
+	});
 }
 
 function expectedBox({
@@ -342,22 +327,16 @@ describe.skipIf(
 			for (const time of [0.8, 1.7]) {
 				const result = paths({ captions: [first, second], time });
 				for (const frame of [result.dialog, result.native]) {
-					let top = HEIGHT;
-					let bottom = -1;
-					let pixels = 0;
-					for (let y = 0; y < HEIGHT; y++) {
-						for (let x = 0; x < WIDTH; x++) {
-							const at = (y * WIDTH + x) * 3;
-							if (
-								frame[at] <= frame[at + 1] + 50 ||
-								frame[at] <= frame[at + 2] + 50
-							)
-								continue;
-							top = Math.min(top, y);
-							bottom = Math.max(bottom, y);
-							pixels++;
-						}
-					}
+					const {
+						top,
+						bottom,
+						count: pixels,
+					} = rgbBounds({
+						frame,
+						width: WIDTH,
+						height: HEIGHT,
+						matches: ({ r, g, b }) => r > g + 50 && r > b + 50,
+					});
 					expect(pixels).toBeGreaterThan(3000);
 					expect(Math.abs(top - secondBox.y)).toBeLessThanOrEqual(2);
 					expect(
