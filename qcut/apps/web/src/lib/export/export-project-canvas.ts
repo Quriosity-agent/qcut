@@ -29,6 +29,19 @@ export function resolveExportProjectCanvas({
 	};
 }
 
+function scaleFilterLengths({
+	filter,
+	factor,
+}: {
+	filter: string;
+	factor: number;
+}): string {
+	return filter.replace(
+		/(-?(?:\d*\.)?\d+)px\b/g,
+		(_match, length: string) => `${Number(length) * factor}px`
+	);
+}
+
 function scaledCanvasPaintContext<Context extends CanvasTextContext>({
 	ctx,
 	scale,
@@ -50,6 +63,10 @@ function scaledCanvasPaintContext<Context extends CanvasTextContext>({
 			if (typeof key === "string" && paintLengths.has(key)) {
 				return Number(value) / scale;
 			}
+			// Read back in project units too, or saving and restoring it scales twice.
+			if (key === "filter" && typeof value === "string") {
+				return scaleFilterLengths({ filter: value, factor: 1 / scale });
+			}
 			if (typeof value !== "function") return value;
 			if (!methods.has(key)) methods.set(key, value.bind(target));
 			return methods.get(key);
@@ -60,10 +77,7 @@ function scaledCanvasPaintContext<Context extends CanvasTextContext>({
 				scaledValue = Number(value) * scale;
 			}
 			if (key === "filter" && typeof value === "string") {
-				scaledValue = value.replace(
-					/(-?(?:\d*\.)?\d+)px\b/g,
-					(_match, length: string) => `${Number(length) * scale}px`
-				);
+				scaledValue = scaleFilterLengths({ filter: value, factor: scale });
 			}
 			return Reflect.set(target, key, scaledValue, target);
 		},
