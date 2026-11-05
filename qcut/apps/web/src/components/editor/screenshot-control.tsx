@@ -13,6 +13,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Camera, ChevronDown, Loader2, Monitor } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface ScreenshotDisplay {
 	id: number;
@@ -35,7 +36,13 @@ interface ScreenshotDisplay {
  *
  * @param variant - When set to `"menu-item"`, renders as a dropdown menu item; otherwise renders as a toolbar button.
  */
-export function ScreenshotControl({ variant }: { variant?: "menu-item" } = {}) {
+export function ScreenshotControl({
+	variant,
+	compactLabel = false,
+}: {
+	variant?: "menu-item";
+	compactLabel?: boolean;
+} = {}) {
 	const { t } = useTranslation();
 	const [isBusy, setIsBusy] = useState(false);
 
@@ -138,7 +145,9 @@ export function ScreenshotControl({ variant }: { variant?: "menu-item" } = {}) {
 				) : (
 					<Camera className="h-4 w-4" />
 				)}
-				<span className="text-sm">{t("editor.header.screenshot")}</span>
+				<span className={cn("text-sm", compactLabel && "hidden 2xl:inline")}>
+					{t("editor.header.screenshot")}
+				</span>
 			</Button>
 			<DropdownMenu
 				onOpenChange={(open) => {
