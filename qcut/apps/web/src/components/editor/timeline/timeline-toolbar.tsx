@@ -658,8 +658,6 @@ export function TimelineToolbar({
 
 						<div className="w-px h-6 bg-border mx-1" />
 
-						<div className="w-px h-6 bg-border mx-1" />
-
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
