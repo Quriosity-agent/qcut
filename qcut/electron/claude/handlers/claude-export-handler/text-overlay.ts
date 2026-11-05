@@ -3,8 +3,21 @@ import type {
 	ClaudeTimeline,
 } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
-import { assFamilyCoversCjk, assFontMetrics } from "./ass-font-metrics.js";
-import { captionEventText, escapeAssText } from "./caption-ass-lines.js";
+import {
+	assFamilyCoversCjk,
+	assFontMetrics,
+	type AssFontMetrics,
+} from "./ass-font-metrics.js";
+import {
+	assCaptionText,
+	captionEventText,
+	escapeAssText,
+} from "./caption-ass-lines.js";
+import { canvasTextAssBaselineOffset } from "../../../types/canvas-text-baseline.js";
+import {
+	createNativeCaptionMeasurer,
+	prepareCaptionBackground,
+} from "./caption-background.js";
 import {
 	assCaptionFade,
 	assRoundedBoxDrawing,
@@ -803,6 +816,7 @@ function assPlacement({
 	lineHeightEm,
 	stackOffset = 0,
 	lastLineLeading,
+	textMetrics,
 }: {
 	overlay: TextOverlay;
 	width: number;
@@ -816,6 +830,7 @@ function assPlacement({
 	 * bilingual caption's second-language line), which pins the bottom edge.
 	 */
 	lastLineLeading?: number;
+	textMetrics?: AssFontMetrics;
 }): AssPlacement {
 	// CSS centres each em inside its line box (half-leading); libass stacks
 	// the font's own line height with the em at its bottom. Pinning a top or
@@ -840,6 +855,14 @@ function assPlacement({
 				: overlay.boxVerticalAlign === "bottom"
 					? "bottom"
 					: "center";
+		const baselineOffset = textMetrics
+			? canvasTextAssBaselineOffset({
+					fontSize: overlay.fontSize,
+					lineHeight: overlay.lineHeight,
+					verticalAlign: vertical === "center" ? "middle" : vertical,
+					metrics: textMetrics,
+				})
+			: undefined;
 		return {
 			alignment: ASS_ALIGNMENTS[vertical][overlay.textAlign],
 			x:
@@ -850,10 +873,10 @@ function assPlacement({
 						: centreX,
 			y:
 				vertical === "top"
-					? top + leading
+					? top + (baselineOffset ?? leading)
 					: vertical === "bottom"
-						? bottom - leading
-						: centreY,
+						? bottom + (baselineOffset ?? -leading)
+						: centreY + (baselineOffset ?? 0),
 			marginL: Math.max(0, Math.round(left)),
 			marginR: Math.max(0, Math.round(width - right)),
 		};
@@ -952,7 +975,24 @@ export function buildTextAss({
 	const events: string[] = [];
 	// Overlays arrive sorted by start time, which is the stacking order.
 	const stackOffsets = captionStackOffsets(overlays);
-	for (const [index, overlay] of overlays.entries()) {
+	const measureText = overlays.some(
+		(overlay) => overlay.positioning === "caption-anchor"
+	)
+		? createNativeCaptionMeasurer()
+		: undefined;
+	for (const [index, original] of overlays.entries()) {
+		const preparedCaption =
+			original.positioning === "caption-anchor" && measureText
+				? prepareCaptionBackground({
+						overlay: original,
+						width,
+						height,
+						stackOffset: stackOffsets.get(original.id) ?? 0,
+						fontFamilyFor: assFontFamily,
+						measureText,
+					})
+				: undefined;
+		const overlay = preparedCaption?.overlay ?? original;
 		const styleName = `QCutText${index}`;
 		const family = assFontFamily(overlay);
 		// libass sizes a font by its Windows ascent + descent, the editor by
@@ -979,6 +1019,7 @@ export function buildTextAss({
 			lineHeightEm: caption ? metrics.sizeFactor : metrics.lineHeightEm,
 			stackOffset: stackOffsets.get(overlay.id) ?? 0,
 			lastLineLeading: caption?.lastLineLeading,
+			textMetrics: metrics,
 		});
 		const backgroundEnabled =
 			overlay.backgroundColor !== "transparent" &&
@@ -988,9 +1029,6 @@ export function buildTextAss({
 			opacity: overlay.backgroundOpacity,
 			elementOpacity: overlay.opacity,
 		});
-		// A caption's box hugs its letters: libass's BorderStyle 3, which fills it
-		// with the outline colour and pads it by the outline width. A text
-		// element has a box of its own size, drawn under it as a shape.
 		const captionBox = backgroundEnabled && caption !== undefined;
 		const textBox = backgroundEnabled && caption === undefined;
 		const fontSize = overlay.fontSize * metrics.sizeFactor;
@@ -1001,21 +1039,17 @@ export function buildTextAss({
 				fontSize.toFixed(2),
 				assColor({ color: overlay.color, elementOpacity: overlay.opacity }),
 				assColor({ color: overlay.color, elementOpacity: overlay.opacity }),
-				captionBox
-					? backgroundColor
-					: assColor({
-							color: overlay.strokeColor,
-							opacity: overlay.strokeOpacity,
-							elementOpacity: overlay.opacity,
-						}),
-				captionBox
-					? backgroundColor
-					: assColor({
-							color: overlay.shadowColor,
-							opacity: overlay.shadowOpacity,
-							elementOpacity: overlay.opacity,
-							fallback: "#000000",
-						}),
+				assColor({
+					color: overlay.strokeColor,
+					opacity: overlay.strokeOpacity,
+					elementOpacity: overlay.opacity,
+				}),
+				assColor({
+					color: overlay.shadowColor,
+					opacity: overlay.shadowOpacity,
+					elementOpacity: overlay.opacity,
+					fallback: "#000000",
+				}),
 				overlay.fontWeight === "bold" ? -1 : 0,
 				overlay.fontStyle === "italic" ? -1 : 0,
 				0,
@@ -1024,7 +1058,7 @@ export function buildTextAss({
 				100,
 				overlay.letterSpacing.toFixed(2),
 				0,
-				captionBox ? 3 : 1,
+				1,
 				overlay.strokeWidth,
 				// Soft shadows are layers of their own; the hard one is ASS's.
 				overlay.shadows?.length
@@ -1060,14 +1094,20 @@ export function buildTextAss({
 		};
 		const start = assTime(overlay.startTime);
 		const end = assTime(overlay.endTime);
+		const durationMs = Math.round(
+			(assSeconds(overlay.endTime) - assSeconds(overlay.startTime)) * 1000
+		);
+		const animationFade =
+			caption && overlay.animationType !== "none"
+				? `\\fade(255,0,0,${animationStart.toFixed(0)},${animationEnd.toFixed(0)},${durationMs},${durationMs})`
+				: overlay.animationType === "fade"
+					? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
+					: "";
 		const fade =
 			assCaptionFade({
 				overlay,
 				duration: assSeconds(overlay.endTime) - assSeconds(overlay.startTime),
-			}) ??
-			(overlay.animationType === "fade"
-				? `\\fad(${Math.max(1, overlay.animationDuration * 1000).toFixed(0)},0)`
-				: "");
+			}) ?? animationFade;
 		const weight = overlayWeight(overlay);
 		const weightTag =
 			weight === 400 || weight === 700 ? "" : assWeightTag(weight);
@@ -1077,18 +1117,28 @@ export function buildTextAss({
 				? `\\org(${(width / 2 + overlay.x).toFixed(2)},${(height / 2 + overlay.y).toFixed(2)})`
 				: "";
 		// \q1 wraps greedily at the event margins, the way the preview's box does.
-		const shared = `\\q1${origin}\\frz${(-overlay.rotation).toFixed(2)}${fade}${weightTag}`;
+		const shared = `\\q${caption ? 2 : 1}${origin}\\frz${(-overlay.rotation).toFixed(2)}${fade}${weightTag}`;
 		const tags = `${motionAt(0, 0)}${shared}`;
 		const margins = `${placement.marginL},${placement.marginR},0`;
 		const glow = assGlowTags({ overlay });
-		const eventText = caption?.text ?? escapeAssText(overlay.content);
+		const eventText =
+			caption?.text ??
+			assCaptionText({
+				runs: [
+					{
+						lines: overlay.content.split(/\r?\n/).map(escapeAssText),
+						fontSize: overlay.fontSize,
+						assFontSize: fontSize,
+						fontTags: "",
+					},
+				],
+				lineSpacing: overlay.lineHeight,
+			});
 		// Soft shadows first, each on its own layer under the text: the letters
 		// in the shadow's colour (the second line's own colour left out).
 		const shadows = overlay.shadows ?? [];
-		// Only a caption's shadow goes through `captionEventText`: it inserts
-		// half-leading spacer lines that a text element's own event does not
-		// have, so a multi-line text shadow would sit on different baselines
-		// than the glyphs it belongs to.
+		// A bilingual shadow inherits its layer's color rather than the second
+		// language's fill; other text reuses the already-spaced glyph event.
 		const shadowText =
 			shadows.length && caption
 				? (captionEventText({
@@ -1113,10 +1163,16 @@ export function buildTextAss({
 				)}`
 			);
 		}
-		const firstLayer = textBox ? 1 : 0;
+		if (captionBox && preparedCaption) {
+			const box = preparedCaption.box;
+			events.push(
+				`Dialogue: 0,${start},${end},${styleName},,0,0,0,,{\\an7\\p1\\bord0\\shad0${motionAt(box.x - x, box.y - y)}${shared}\\1c&H${backgroundColor.slice(4)}&\\1a&H${backgroundColor.slice(2, 4)}&}${assRoundedBoxDrawing(box)}`
+			);
+		}
+		const firstLayer = textBox || captionBox ? 1 : 0;
 		for (const [layer, shadow] of shadows.entries()) {
 			events.push(
-				`Dialogue: ${firstLayer + layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay, borderless: captionBox })}}${shadowText}`
+				`Dialogue: ${firstLayer + layer},${start},${end},${styleName},,${margins},,{${motionAt(shadow.x, shadow.y)}${shared}${assShadowTags({ shadow, overlay })}}${shadowText}`
 			);
 		}
 		const base = firstLayer + shadows.length;
