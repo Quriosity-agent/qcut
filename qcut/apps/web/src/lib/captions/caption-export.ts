@@ -348,7 +348,8 @@ export function exportAssStyled({
 		resolution,
 		fps,
 		measureText: createBrowserCaptionMeasurer(),
-		stackOffset: (element) => captionStackOffset({ tracks, element }),
+		stackOffset: ({ element, measureHeight }) =>
+			captionStackOffset({ tracks, element, measureHeight }),
 	});
 }
 
