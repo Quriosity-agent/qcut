@@ -37,6 +37,15 @@ export {
 } from "./ass-generator.js";
 
 export {
+	CAPTION_BOX,
+	captionBackgroundBox,
+	captionContentMaxWidth,
+	wrapCaptionLines,
+	type CaptionMeasureRequest,
+	type CaptionTextMeasurer,
+} from "./caption-layout.js";
+
+export {
 	CSS_NAMED_COLORS,
 	cssColorAlpha,
 	parseCssColor,
