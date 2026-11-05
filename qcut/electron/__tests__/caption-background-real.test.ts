@@ -306,6 +306,72 @@ describe("caption geometry compilation boundary", () => {
 describe.skipIf(
 	!fs.existsSync(ffmpeg) || !assFontFamilyInstalled({ family: "Arial" })
 )("caption padded backgrounds through real libass", () => {
+	for (const align of ["top", "bottom"] as const) {
+		it.each([
+			"none",
+			"karaoke",
+		] as const)(`reserves wrapped predecessor boxes at ${align} with %s timing`, (karaokeMode) => {
+			const first = fixture({ align, karaokeMode });
+			first.text = "MMMMMMMMMMMM WWWWWWWWWWWW";
+			first.duration = 1.2;
+			first.words = [
+				{ id: "first", type: "word", text: "MMMMMMMMMMMM", start: 0, end: 0.5 },
+				{
+					id: "second",
+					type: "word",
+					text: "WWWWWWWWWWWW",
+					start: 0.6,
+					end: 1.2,
+				},
+			];
+			const second = {
+				...fixture({ align, backgroundColor: "red", fontSize: 26 }),
+				id: "later",
+				startTime: 0.3,
+				duration: 1.7,
+				text: "Later",
+				secondaryText: "Second",
+			};
+			const firstBox = expectedBox({
+				caption: { ...first, text: "MMMMMMMMMMMM\nWWWWWWWWWWWW" },
+			});
+			const secondBox = expectedBox({
+				caption: second,
+				stackOffset: firstBox.height,
+			});
+			for (const time of [0.8, 1.7]) {
+				const result = paths({ captions: [first, second], time });
+				for (const frame of [result.dialog, result.native]) {
+					let top = HEIGHT;
+					let bottom = -1;
+					let pixels = 0;
+					for (let y = 0; y < HEIGHT; y++) {
+						for (let x = 0; x < WIDTH; x++) {
+							const at = (y * WIDTH + x) * 3;
+							if (
+								frame[at] <= frame[at + 1] + 50 ||
+								frame[at] <= frame[at + 2] + 50
+							)
+								continue;
+							top = Math.min(top, y);
+							bottom = Math.max(bottom, y);
+							pixels++;
+						}
+					}
+					expect(pixels).toBeGreaterThan(3000);
+					expect(Math.abs(top - secondBox.y)).toBeLessThanOrEqual(2);
+					expect(
+						Math.abs(bottom + 1 - secondBox.y - secondBox.height)
+					).toBeLessThanOrEqual(2);
+					if (align === "top")
+						expect(top).toBeGreaterThanOrEqual(
+							Math.floor(firstBox.y + firstBox.height) - 1
+						);
+					else expect(bottom).toBeLessThanOrEqual(Math.ceil(firstBox.y) + 1);
+				}
+			}
+		});
+	}
 	it.each([
 		"top",
 		"center",
