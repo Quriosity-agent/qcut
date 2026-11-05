@@ -1,5 +1,9 @@
 import type { CaptionElement, TimelineTrack } from "@/types/timeline";
 import {
+	prepareCaptionLayout,
+	type CaptionTextMeasurer,
+} from "@qcut/editor-core";
+import {
 	resolveSecondaryLineStyle,
 	resolveSubtitleStyle,
 } from "./subtitle-style";
@@ -19,7 +23,7 @@ const CAPTION_BOX_PADDING_Y = 8;
 /**
  * The lines a caption's text breaks into on its own (`\n`); every engine
  * draws those breaks, so stacking can count them. Automatic wrapping of a
- * long line is not counted: the engines measure text differently.
+ * long line is counted by the renderer's measured-height callback.
  */
 export function captionLineCount({ text }: { text: string }): number {
 	return Math.max(1, text.trim().split(/\r?\n/).length);
@@ -32,11 +36,24 @@ export function captionLineCount({ text }: { text: string }): number {
 export function captionBlockHeight({
 	element,
 	lines = captionLineCount({ text: element.text ?? "" }),
+	width,
+	measureText,
 }: {
 	element: CaptionElement;
 	lines?: number;
+	width?: number;
+	measureText?: CaptionTextMeasurer;
 }): number {
 	const style = resolveSubtitleStyle(element.style);
+	if (width !== undefined && measureText) {
+		return prepareCaptionLayout({
+			clip: element,
+			style,
+			resolution: { width, height: 0 },
+			stackOffset: 0,
+			measureText,
+		}).box.height;
+	}
 	const secondaryLines = element.secondaryText?.trim()
 		? captionLineCount({ text: element.secondaryText })
 		: 0;
@@ -102,15 +119,19 @@ export function captionsSharingEdge({
 export function captionStackOffset({
 	tracks,
 	element,
+	measureHeight,
 }: {
 	tracks: readonly TimelineTrack[];
 	element: CaptionElement;
+	measureHeight?: (request: { element: CaptionElement }) => number;
 }): number {
 	if (resolveSubtitleStyle(element.style).position.align === "center") return 0;
 	let offset = 0;
 	for (const caption of captionsSharingEdge({ tracks, element })) {
 		if (caption.id === element.id) return offset;
-		offset += captionBlockHeight({ element: caption });
+		offset +=
+			measureHeight?.({ element: caption }) ??
+			captionBlockHeight({ element: caption });
 	}
 	return 0;
 }
