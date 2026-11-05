@@ -11,7 +11,7 @@ Validated on macOS arm64 on 2026-11-05 with the source Electron production build
 | 1280×720 | Native CLI 1920×1080 and 854×480; Standard 1920×1080 | Native and WebCodecs 1920×1080 |
 | 720×1280 | Native CLI 1080×1920 and 480×854; Standard 1080×1920 | Native and WebCodecs 1080×1920 |
 
-All ten outputs must have the requested dimensions, stereo audio RMS of 0.0625 ±0.003, three-second video/audio duration, a zero video start timestamp, visible text and caption backgrounds, and a successful full FFmpeg decode. Geometry is measured after resizing frames back to the project canvas: exports must agree within 3 px, and the editor preview within 4 px. The preview capture waits for the seek, fonts and paint frames. Background fill is checked against the expected 70% cyan composite as well as the preview, not just against another engine.
+All ten outputs must have the requested dimensions, audio RMS of 0.0625 ±0.003 after stereo decoding, video duration within 50 ms of three seconds, audio duration within 80 ms of three seconds, a zero video start timestamp, visible text and caption backgrounds, and a successful full FFmpeg decode. Geometry is measured after resizing frames back to the project canvas: exports must agree within 3 px, and the editor preview within 4 px. The preview capture waits for the seek, fonts and paint frames. Background fill is checked against the expected 70% cyan composite as well as the preview, not just against another engine. All ten inspected outputs have two audio channels; the Standard/WebCodecs AAC tracks measure 3.028 seconds and pass the stated duration tolerance.
 
 The desktop test found and now covers three defects that lower-level tests missed:
 
