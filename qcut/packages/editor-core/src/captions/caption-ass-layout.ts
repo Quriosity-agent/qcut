@@ -17,12 +17,14 @@ export function prepareCaptionLayout({
 	resolution,
 	stackOffset,
 	measureText,
+	primaryLines: suppliedPrimaryLines,
 }: {
 	clip: CaptionElement;
 	style: SubtitleStyle;
 	resolution: { width: number; height: number };
 	stackOffset: number;
 	measureText: CaptionTextMeasurer;
+	primaryLines?: string[];
 }): { clip: CaptionElement; box: ReturnType<typeof captionBackgroundBox> } {
 	const primary: CaptionMeasureRequest = {
 		text: clip.text,
@@ -33,11 +35,9 @@ export function prepareCaptionLayout({
 		letterSpacing: style.letterSpacing,
 	};
 	const maxWidth = captionContentMaxWidth({ width: resolution.width });
-	const primaryLines = wrapCaptionLines({
-		request: primary,
-		maxWidth,
-		measureText,
-	});
+	const primaryLines =
+		suppliedPrimaryLines ??
+		wrapCaptionLines({ request: primary, maxWidth, measureText });
 	const rows = primaryLines.map((text) => ({ ...primary, text }));
 	const prepared = { ...clip, text: primaryLines.join("\n") };
 	if (clip.secondaryText?.trim()) {
