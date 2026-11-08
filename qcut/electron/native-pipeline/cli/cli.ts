@@ -1495,7 +1495,7 @@ export async function main(
 			downloadDir: sessionValues["download-dir"] as string | undefined,
 			session: true,
 		};
-		setFFmpegDebugLogging(Boolean(sessionValues.verbose));
+		setFFmpegDebugLogging({ enabled: Boolean(sessionValues.verbose) });
 
 		const runner = new CLIPipelineRunner();
 		const reporter = createProgressReporter({
@@ -1521,7 +1521,7 @@ export async function main(
 		debug: options.verbose,
 	});
 	// FFmpeg path lookups talk only under --verbose, like the CLI's own debug.
-	setFFmpegDebugLogging(options.verbose);
+	setFFmpegDebugLogging({ enabled: options.verbose });
 	const emitter = options.stream
 		? new StreamEmitter({ enabled: true })
 		: new NullEmitter();
