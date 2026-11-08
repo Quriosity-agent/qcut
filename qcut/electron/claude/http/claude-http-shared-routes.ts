@@ -127,9 +127,12 @@ import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { findTimelineOverlaps } from "./timeline-overlap-diagnostic.js";
 import { describeRefusedMove } from "./timeline-move-refusal.js";
 import { readColorLabelField } from "./timeline-color-request.js";
-import { withMediaProbes } from "../handlers/claude-media-probe.js";
+import {
+	withImportedMediaProbes,
+	withMediaProbes,
+} from "../handlers/claude-media-probe.js";
 import { withMediaElementAlpha } from "../handlers/claude-timeline-media-alpha.js";
-import { withDefaultMediaDurations } from "../handlers/claude-media-default-duration.js";
+import { withMediaAddLengths } from "../handlers/claude-media-add-lengths.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import {
 	type MutateAudioMix,
@@ -1088,7 +1091,11 @@ export function registerSharedRoutes(
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
 		const startedAt = Date.now();
-		const copied = await batchImportMedia(req.params.projectId, req.body.items);
+		// Each file comes back with its length, size and rate, as media list
+		// reports them.
+		const copied = await withImportedMediaProbes(
+			await batchImportMedia(req.params.projectId, req.body.items)
+		);
 		// The editor loads what was copied before this answers, so an
 		// add-element right after finds the media; the copy's time counts
 		// against the same wait.
@@ -1338,11 +1345,18 @@ export function registerSharedRoutes(
 				"Renderer timeline element acknowledgement is unavailable"
 			);
 		}
-		// Media named without a length gets its file's length, so the clip is
-		// not placed at whatever the editor guessed before the file loaded.
-		const [element] = await withDefaultMediaDurations({
+		// Media lengths are settled first: a timeline length becomes the
+		// editor's duration, media named without a length gets its file's (not
+		// whatever the editor guessed before the file loaded), and trims that
+		// cannot be meant are refused.
+		const [element] = await withMediaAddLengths({
 			projectId: req.params.projectId,
 			elements: [{ ...req.body, id: elementId }],
+		}).catch((error: unknown) => {
+			throw new HttpError(
+				400,
+				error instanceof Error ? error.message : String(error)
+			);
 		});
 		await requireRendererMutation({
 			operation: "Timeline element placement",
