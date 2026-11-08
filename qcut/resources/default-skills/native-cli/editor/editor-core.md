@@ -21,6 +21,13 @@ qcut editor:<area>:<action> [options]      # e.g. qcut editor:timeline:export --
 qcut editor health
 ```
 
+For scripts, `--json` prints one JSON document on stdout,
+`{"status":"ok","data":{"schema_version":"1","command":…,"data":<payload>}}`.
+Add `--flat` to print the payload alone (what is otherwise `.data.data`);
+a failure still prints the error envelope and exits non-zero. Notices and
+`--verbose` debug lines go to stderr, so parse stdout on its own rather than
+`2>&1`.
+
 `editor health` also reports `window`: `{ "hasWindow": false, "count": 0 }`
 means QCut is running with its window closed (macOS keeps the app alive).
 Editor commands reopen the window themselves and wait until the editor is
