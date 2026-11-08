@@ -4,10 +4,11 @@
  */
 
 import { app } from "electron";
+import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { claudeLog } from "../../utils/logger.js";
-import { defaultExportFileStem } from "./export-file-name.js";
+import { defaultExportFileStem, freeExportPath } from "./export-file-name.js";
 import { HANDLER_NAME, MAX_JOBS } from "./types.js";
 import type { ExportJobInternal } from "./types.js";
 
@@ -95,7 +96,8 @@ export function pruneOldJobs(exportJobs: Map<string, ExportJobInternal>): void {
 /**
  * Where an export goes when the request names no file:
  * `Documents/QCut/Exports/<project name>-<YYYY-MM-DD-HHMMSS>.<format>`, the
- * project id standing in for a name that leaves nothing usable.
+ * project id standing in for a name that leaves nothing usable, and `-2`,
+ * `-3`… added when that file is already there.
  */
 export function getDefaultOutputPath({
 	projectId,
@@ -113,13 +115,12 @@ export function getDefaultOutputPath({
 		documentsPath = path.join(os.homedir(), "Documents");
 	}
 	try {
-		const extension = format || "mp4";
-		return path.join(
-			documentsPath,
-			"QCut",
-			"Exports",
-			`${defaultExportFileStem({ projectName, projectId })}.${extension}`
-		);
+		return freeExportPath({
+			directory: path.join(documentsPath, "QCut", "Exports"),
+			stem: defaultExportFileStem({ projectName, projectId }),
+			extension: format || "mp4",
+			exists: fs.existsSync,
+		});
 	} catch {
 		return path.join(
 			documentsPath,
