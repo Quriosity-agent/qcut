@@ -4,10 +4,13 @@
  * exports says which project each one is (Q4 of the 2026-11-08 report:
  * `export-2026-11-08T12-47-29.mp4` named none).
  *
- * Pure, so the editor's main process and the CLI name files alike.
+ * Free of Electron, so the editor's main process and the CLI name files
+ * alike.
  *
  * @module electron/claude/handlers/claude-export-handler/export-file-name
  */
+
+import path from "node:path";
 
 /** What no file name may hold on macOS or Windows, control characters too. */
 const UNSAFE_CHARACTERS = /[\\/:*?"<>|\u0000-\u001f]+/g;
@@ -35,6 +38,37 @@ export function projectFileName(name: string): string {
 export function exportTimestamp(now: Date): string {
 	const two = (value: number) => String(value).padStart(2, "0");
 	return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+}
+
+/** How many numbered names are tried before a random one is used. */
+const MAX_NUMBERED_NAMES = 999;
+
+/**
+ * `<directory>/<stem>.<extension>`, with `-2`, `-3`… after the stem while a
+ * file of that name is already there: two exports of a project within one
+ * second (a script's loop) must not write over each other. Past `-999` it
+ * takes a random suffix instead of searching on, so an `exists` that says
+ * yes to everything cannot keep it looping. The extension is added here, so
+ * a dot in a project name is never taken for one.
+ */
+export function freeExportPath({
+	directory,
+	stem,
+	extension,
+	exists,
+}: {
+	directory: string;
+	stem: string;
+	extension: string;
+	exists: (filePath: string) => boolean;
+}): string {
+	const candidate = (suffix: string) =>
+		path.join(directory, `${stem}${suffix}.${extension}`);
+	for (let count = 1; count <= MAX_NUMBERED_NAMES; count++) {
+		const filePath = candidate(count === 1 ? "" : `-${count}`);
+		if (!exists(filePath)) return filePath;
+	}
+	return candidate(`-${Math.random().toString(36).slice(2, 10)}`);
 }
 
 /**
