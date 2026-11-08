@@ -1,5 +1,15 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
 import { handleGenerateExportCommand } from "../native-pipeline/editor/editor-handlers-generate.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
@@ -522,6 +532,33 @@ describe("Export handlers", () => {
 			expect(started?.outputPath).toBe(
 				path.resolve("/tmp/qcut-named-exports/成片.mp4")
 			);
+		});
+
+		// Review of PR #535: a second export within the same second wrote over
+		// the first, and a dot in the project name passed for an extension.
+		it("never names a file that is already in the folder", async () => {
+			const folder = mkdtempSync(path.join(tmpdir(), "qcut-named-exports-"));
+			vi.useFakeTimers({ toFake: ["Date"] });
+			vi.setSystemTime(new Date(2026, 10, 8, 12, 47, 29));
+			try {
+				writeFileSync(path.join(folder, "cut v2.1-2026-11-08-124729.mp4"), "");
+				const started = await startedWith({
+					navigator: {
+						status: 200,
+						body: {
+							success: true,
+							data: { projects: [{ id: "p1", name: "cut v2.1" }] },
+						},
+					},
+					opts: { outputDir: folder },
+				});
+				expect(started?.outputPath).toBe(
+					path.join(folder, "cut v2.1-2026-11-08-124729-2.mp4")
+				);
+			} finally {
+				vi.useRealTimers();
+				rmSync(folder, { recursive: true, force: true });
+			}
 		});
 	});
 
