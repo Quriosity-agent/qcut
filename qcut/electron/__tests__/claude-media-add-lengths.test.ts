@@ -132,6 +132,17 @@ describe("withMediaAddLengths", () => {
 		expect(fast).not.toHaveProperty("timelineDuration");
 	});
 
+	it("clamps the speed as the editor does before converting a timeline length", async () => {
+		// The editor keeps 0.1–10: at a requested 20× the clip would otherwise
+		// take twice the length it was given.
+		const [fast, still] = await settle([
+			{ ...video, startTime: 0, timelineDuration: 0.4, playbackRate: 20 },
+			{ ...video, startTime: 1, timelineDuration: 2, playbackRate: 0 },
+		]);
+		expect(fast.duration).toBeCloseTo(4, 9);
+		expect(still.duration).toBeCloseTo(0.2, 9);
+	});
+
 	it("refuses a duration before trims written beside timelineDuration", async () => {
 		await expect(
 			settle([
