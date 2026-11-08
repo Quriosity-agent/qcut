@@ -312,7 +312,11 @@ export async function startRendererExportJob({
 	const settings = resolveExportSettings({ request });
 	const outputPath = request.outputPath?.trim()
 		? path.resolve(request.outputPath.trim())
-		: getDefaultOutputPath({ projectId, format: settings.format });
+		: getDefaultOutputPath({
+				projectId,
+				projectName: timeline.name,
+				format: settings.format,
+			});
 	const isLocalMp4 =
 		settings.format === "mp4" &&
 		path.isAbsolute(outputPath) &&
@@ -434,6 +438,7 @@ export async function startExportJob({
 			? path.resolve(request.outputPath.trim())
 			: getDefaultOutputPath({
 					projectId,
+					projectName: timeline.name,
 					format: settings.format,
 				});
 		const isLocalMp4 =
