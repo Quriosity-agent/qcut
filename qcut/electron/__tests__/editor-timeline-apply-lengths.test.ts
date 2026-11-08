@@ -232,6 +232,22 @@ describe("timeline apply: lengths of trimmed clips", () => {
 		);
 	});
 
+	it("names no element for an unnumbered refusal of a longer batch", async () => {
+		const message = "The clip's grade could not be applied";
+		const editor = standIn({ refuse: message });
+		const result = await timelineApplyManifest(
+			editor.client,
+			options(
+				manifestOf(
+					{ ...clip, alias: "a", startTime: 0, duration: 2 },
+					{ ...clip, alias: "b", startTime: 2, duration: 2 }
+				)
+			)
+		);
+		expect(result.success).toBe(false);
+		expect(result.error).toBe(message);
+	});
+
 	it("refuses a manifest element with no length above 0 before sending anything", async () => {
 		const editor = standIn();
 		const result = await timelineApplyManifest(
