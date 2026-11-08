@@ -25,6 +25,7 @@
  * @module electron/claude/handlers/claude-media-add-lengths
  */
 
+import { clampMediaPlaybackRate } from "../../ffmpeg/media-speed-constants.js";
 import type { MediaFile } from "../../types/claude-api";
 import {
 	mediaFileFor,
@@ -82,7 +83,7 @@ function seconds(value: number): string {
 interface ClipTiming {
 	trimStart: number;
 	trimEnd: number;
-	/** Constant speed; 1 when the request gives none. */
+	/** Constant speed, clamped as the editor clamps it; 1 when none is given. */
 	rate: number;
 	freeze: number;
 	/** Speed keyframes reshape the span, so no formula maps it. */
@@ -103,7 +104,9 @@ function timingOf(element: MediaLengthRequest): ClipTiming {
 	return {
 		trimStart: Math.max(0, finite(element.trimStart) ?? 0),
 		trimEnd: Math.max(0, finite(element.trimEnd) ?? 0),
-		rate: rate !== undefined && rate > 0 ? rate : 1,
+		// Clamped as the editor clamps it (0.1–10), or a length worked out
+		// from a speed it does not keep would place the clip at another length.
+		rate: clampMediaPlaybackRate({ rate }),
 		freeze: Math.max(0, finite(read("freezeFrameDuration")) ?? 0),
 		keyframed: Array.isArray(keyframes) && keyframes.length > 0,
 	};
