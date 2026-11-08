@@ -28,6 +28,7 @@ import {
 	stemsBesideExport,
 	writeMixStems,
 } from "./editor-handlers-audio-mix.js";
+import { defaultExportFileStem } from "../../claude/handlers/claude-export-handler/export-file-name.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -284,6 +285,26 @@ async function exportRecommend(
 }
 
 /** Start a video export job with the given settings and cursor/zoom config. */
+/** The project's name as the editor lists it; undefined when it cannot say. */
+async function projectNameFor({
+	client,
+	projectId,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+}): Promise<string | undefined> {
+	try {
+		const navigator = await client.get<{
+			projects?: Array<{ id?: string; name?: string }>;
+		}>("/api/claude/navigator/projects");
+		return navigator.projects?.find((project) => project.id === projectId)
+			?.name;
+	} catch {
+		// The project id names the file instead.
+		return;
+	}
+}
+
 async function exportStart(
 	client: EditorApiClient,
 	opts: CLIRunOptions,
@@ -411,8 +432,18 @@ async function exportStart(
 		opts.filename ||
 		(opts.outputDir && opts.outputDir !== "./output")
 	) {
-		const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-		const basename = expandHome(opts.filename || `export-${ts}`);
+		// A folder alone gets the name the editor would give the file:
+		// `<project name>-<YYYY-MM-DD-HHMMSS>`.
+		const basename = expandHome(
+			opts.filename ||
+				defaultExportFileStem({
+					projectName: await projectNameFor({
+						client,
+						projectId: opts.projectId,
+					}),
+					projectId: opts.projectId,
+				})
+		);
 		body.outputPath = path.resolve(
 			path.isAbsolute(basename)
 				? ensureExtension(basename)
