@@ -107,7 +107,11 @@ applied back (`--replace` into the same project restores a backup):
   its clips are in, so the adds are not refused.
 - **Clips** carry their `name`, placement (`x`, `y`, `rotation`, `scaleX`,
   `scaleY`, `opacity`, `fitMode`), blending (`blendMode`, `blendEnabled`),
-  timing, speed, `audio` (including empty `lyrics.words`),
+  timing (an exported clip's `duration` is the span after its trims, beside
+  `timelineDuration`; a hand-written one may give the span before its trims
+  instead, which must then be the file's whole length: see
+  [Trimmed clips](editor-timeline.md#trimmed-clips-which-length-is-which)),
+  speed, `audio` (including empty `lyrics.words`),
   `color`/`adjustments`, `filterStack`, `keyframes`, `enhancements` and
   `portraitAdjustments`; a batch add stores all of them. A media clip also
   reports `hasAlpha` (its source video has an alpha channel); that is read
@@ -128,6 +132,11 @@ applied back (`--replace` into the same project restores a backup):
 - **Verification** compares every field the manifest gave (track switches,
   clip fields, the mix) with what the editor read back; a mismatch rolls the
   timeline back. Numbers agree within 0.001; objects may gain editor defaults.
+  A clip is also checked for where it ends on the timeline (`endTime`,
+  `timelineDuration`), worked out from its lengths, trims and speed when the
+  manifest gives none. A clip the editor refuses (see
+  [Trimmed clips](editor-timeline.md#trimmed-clips-which-length-is-which))
+  fails the apply under the clip's alias, and `--atomic` rolls it back.
 - **Size.** Elements and updates go in batches of 50 with a deadline that
   grows with the batch (the editor stores one element at a time), so a
   130-clip manifest applies in one command; nothing needs to be split by hand.
