@@ -268,6 +268,31 @@ export async function withMediaProbes(
 	return results;
 }
 
+/**
+ * Import results with each copied file's length, size and frame rate, the
+ * fields the media list reports, so a script can work out its trims without
+ * listing the media again (Q5 of the 2026-11-08 report).
+ */
+export async function withImportedMediaProbes<
+	T extends { mediaFile?: MediaFile },
+>(results: T[]): Promise<T[]> {
+	const files = results.flatMap((result) =>
+		result.mediaFile ? [result.mediaFile] : []
+	);
+	if (files.length === 0) return results;
+	const probed = new Map(
+		(await withMediaProbes(files)).map((file) => [file.path, file])
+	);
+	return results.map((result) =>
+		result.mediaFile
+			? {
+					...result,
+					mediaFile: probed.get(result.mediaFile.path) ?? result.mediaFile,
+				}
+			: result
+	);
+}
+
 /** Test hook: forget cached probes. */
 export function clearMediaProbeCache(): void {
 	probeCache.clear();
