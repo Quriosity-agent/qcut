@@ -66,7 +66,7 @@ A batch import answers once the open editor has loaded each copied file, so
 an `add-element` right after finds it. Each result says `"editorReady":true`;
 a file the editor has not confirmed within 20 s in all is `"editorReady":false`
 with a `warning` (it keeps loading, and `add-element` waits for it). Each
-result's `mediaFile` also carries the fields `media list` reports
+successful result's `mediaFile` also carries the fields `media list` reports
 (`duration`, `dimensions`, `fps`), so trims can be worked out without listing
 the media again.
 
