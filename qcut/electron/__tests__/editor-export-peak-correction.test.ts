@@ -37,7 +37,10 @@ describe("editor:export:start --peak-correction", () => {
 	it("sends the chosen correction with the export request", async () => {
 		const { fetch, run } = start({ peakCorrection: "whole" });
 		expect(await run).toMatchObject({ success: true });
-		const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+		// The start request; a folder alone first asks for the project's name.
+		const [, init] = fetch.mock.calls.find(([url]) =>
+			String(url).endsWith("/export/project-1/start")
+		) as unknown as [string, RequestInit];
 		expect(JSON.parse(String(init.body))).toMatchObject({
 			peakCorrection: "whole",
 		});
