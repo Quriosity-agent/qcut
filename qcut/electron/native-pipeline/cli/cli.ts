@@ -24,6 +24,7 @@ import { getExitCode, formatErrorForCli } from "../output/errors.js";
 import { CLIOutput } from "../cli/cli-output.js";
 import { StreamEmitter, NullEmitter } from "../infra/stream-emitter.js";
 import { DebugStream } from "../infra/debug-stream.js";
+import { setFFmpegDebugLogging } from "../../ffmpeg/constants.js";
 import { formatCommandOutput } from "./cli-output-formatters.js";
 import { runSession } from "./cli-runner/session.js";
 import { emitJsonResult, jsonOk, jsonError } from "./json-output.js";
@@ -1494,6 +1495,7 @@ export async function main(
 			downloadDir: sessionValues["download-dir"] as string | undefined,
 			session: true,
 		};
+		setFFmpegDebugLogging(Boolean(sessionValues.verbose));
 
 		const runner = new CLIPipelineRunner();
 		const reporter = createProgressReporter({
@@ -1518,6 +1520,8 @@ export async function main(
 		quiet: options.quiet,
 		debug: options.verbose,
 	});
+	// FFmpeg path lookups talk only under --verbose, like the CLI's own debug.
+	setFFmpegDebugLogging(options.verbose);
 	const emitter = options.stream
 		? new StreamEmitter({ enabled: true })
 		: new NullEmitter();
