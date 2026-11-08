@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.09.1] - 2026-11-08
+
 ### Fixed
 
 - A trimmed clip added by the CLI or the editor API (`add-element`, `batch-add`, `timeline apply`) takes the length it was given, or is refused with the reason. A clip's `duration` is its source span before its trims, but `timeline export` writes the span after them, so a clip written the way the export reads (8.5 s, cut from a 15.04 s file by trimEnd 6.54 s) went onto the timeline 1.96 s long, without an error. Every add now reads lengths both ways: beside `timelineDuration` (the length on the timeline), `duration` is the span after the trims, as the export writes it, and an `endTime` alone is where the clip ends. Without `timelineDuration`, a trimmed video or audio clip's `duration` must be its file's whole length; a shorter one is refused, and the message gives both ways to write the clip.
