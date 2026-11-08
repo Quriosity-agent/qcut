@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `timeline apply --verify` checks where each clip ends on the timeline even when the manifest gives no `endTime`, and compares a `timelineDuration` the manifest gives with the clip's length on the timeline. It used to check only lengths worked out from the manifest's own `duration`, so it passed clips that were placed at the wrong length.
 - An export given only `--output-dir`, or no location at all, is named after its project: `<project name>-<YYYY-MM-DD-HHMMSS>.<format>`. It used to be `export-<time>.mp4` with `--output-dir` and the project id without one. Names keep their Chinese and other letters; only characters a file name cannot hold become `-`. A name already in the folder gets `-2`, `-3`…, so two exports within one second no longer write over each other.
 - `editor:media:batch-import` returns each file's length, size and frame rate, as `media list` does, so a script can work out its trims without listing the media again.
-- CLI commands that look for FFprobe, such as `project create --match-media`, no longer print `[FFmpeg] Using staged FFprobe binary…` on stderr; the line shows with `--verbose`.
+- CLI commands that look for FFprobe, such as `project create --match-media`, no longer print `[FFmpeg] Using staged FFprobe binary…` on stderr; the line shows with `--verbose`, but never under `--stream`, whose stderr carries JSONL events.
 
 ### Documentation
 
