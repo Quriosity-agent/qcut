@@ -1520,8 +1520,9 @@ export async function main(
 		quiet: options.quiet,
 		debug: options.verbose,
 	});
-	// FFmpeg path lookups talk only under --verbose, like the CLI's own debug.
-	setFFmpegDebugLogging({ enabled: options.verbose });
+	// FFmpeg path lookups talk only under --verbose, like the CLI's own debug,
+	// and never under --stream, whose stderr carries JSONL events.
+	setFFmpegDebugLogging({ enabled: options.verbose && !options.stream });
 	const emitter = options.stream
 		? new StreamEmitter({ enabled: true })
 		: new NullEmitter();
