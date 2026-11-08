@@ -106,3 +106,43 @@ export async function loadBatchImportInEditor({
 	}
 	return loaded;
 }
+
+/**
+ * A batch import's answer: the editor loads each copied file while `probe`
+ * reads its length, size and frame rate (the fields media list reports),
+ * both within the same wait from `startedAt`. The probes do not hold up the
+ * editor's loading, and neither holds the answer past the wait.
+ */
+export async function answerBatchImport({
+	accessor,
+	projectId,
+	results,
+	probe,
+	startedAt = Date.now(),
+	waitMs = BATCH_IMPORT_EDITOR_WAIT_MS,
+}: {
+	accessor: Pick<WindowAccessor, "requestMediaImport">;
+	projectId: string;
+	results: BatchImportResult[];
+	probe: (request: {
+		results: BatchImportResult[];
+		deadline: number;
+	}) => Promise<BatchImportResult[]>;
+	startedAt?: number;
+	waitMs?: number;
+}): Promise<BatchImportResult[]> {
+	const [loaded, probed] = await Promise.all([
+		loadBatchImportInEditor({
+			accessor,
+			projectId,
+			results,
+			startedAt,
+			waitMs,
+		}),
+		probe({ results, deadline: startedAt + waitMs }),
+	]);
+	return loaded.map((entry, index) => {
+		const mediaFile = probed[index]?.mediaFile;
+		return mediaFile ? { ...entry, mediaFile } : entry;
+	});
+}
