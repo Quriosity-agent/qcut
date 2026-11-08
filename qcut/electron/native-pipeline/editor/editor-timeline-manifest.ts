@@ -198,8 +198,11 @@ export function withManifestAlias({
 }): Error {
 	const message = error instanceof Error ? error.message : String(error);
 	const match = /^(?:Element (\d+)|The clip)\b/.exec(message);
+	// "The clip" names the element only of a batch of one; in a longer batch
+	// it is some other message and names no element.
 	const index = match?.[1] === undefined ? 0 : Number(match[1]);
-	const source = match ? chunk[index]?.element : undefined;
+	const named = match?.[1] !== undefined || chunk.length === 1;
+	const source = match && named ? chunk[index]?.element : undefined;
 	if (!(match && source)) {
 		return error instanceof Error ? error : new Error(message);
 	}
