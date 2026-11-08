@@ -29,7 +29,7 @@ let debugLoggingOverride: boolean | undefined;
  * runs as plain Node with no NODE_ENV, so without this every probe printed
  * "Using staged FFprobe binary…" to stderr; it keeps them for --verbose.
  */
-export function setFFmpegDebugLogging(enabled: boolean): void {
+export function setFFmpegDebugLogging({ enabled }: { enabled: boolean }): void {
 	debugLoggingOverride = enabled;
 }
 
