@@ -140,14 +140,20 @@ function clipLabel({
 	return name ? `${head} ("${name}")` : head;
 }
 
-function withoutTimelineFields<T extends MediaLengthRequest>(
-	element: T,
-	duration: number
-): T {
-	const next: MediaLengthRequest = { ...element, duration };
-	delete next.timelineDuration;
-	delete next.endTime;
-	return next as T;
+/** The request with the editor's `duration` and no timeline lengths left. */
+function withoutTimelineFields<T extends MediaLengthRequest>({
+	element,
+	duration,
+}: {
+	element: T;
+	duration: number;
+}): T {
+	const {
+		timelineDuration: _timelineDuration,
+		endTime: _endTime,
+		...rest
+	} = element;
+	return { ...rest, duration } as unknown as T;
 }
 
 /**
@@ -212,10 +218,10 @@ function fromTimelineLength<T extends MediaLengthRequest>({
 			`${label}: duration ${seconds(duration)} disagrees with its ${seconds(span)} on the timeline. Beside timelineDuration, duration is the span after the trims, as timeline export writes it: ${seconds(expected)} here (or leave duration out).`
 		);
 	}
-	return withoutTimelineFields(
+	return withoutTimelineFields({
 		element,
-		afterTrims + timing.trimStart + timing.trimEnd
-	);
+		duration: afterTrims + timing.trimStart + timing.trimEnd,
+	});
 }
 
 /**
@@ -272,7 +278,7 @@ function checkEditorLength<T extends MediaLengthRequest>({
 			`${label}: endTime ${seconds(endTime)} disagrees with duration ${seconds(duration)} and its trims, which end the clip at ${seconds(startTime + spanOnTimeline({ afterTrims, timing }))}`
 		);
 	}
-	return withoutTimelineFields(element, duration);
+	return withoutTimelineFields({ element, duration });
 }
 
 /** File lengths of the trimmed clips `checkEditorLength` compares, by index. */
