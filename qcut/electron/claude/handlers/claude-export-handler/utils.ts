@@ -7,19 +7,9 @@ import { app } from "electron";
 import * as os from "node:os";
 import * as path from "node:path";
 import { claudeLog } from "../../utils/logger.js";
+import { defaultExportFileStem } from "./export-file-name.js";
 import { HANDLER_NAME, MAX_JOBS } from "./types.js";
 import type { ExportJobInternal } from "./types.js";
-
-const NON_FILENAME_CHARS = /[^a-zA-Z0-9_-]+/g;
-const TRIM_DASHES = /^-+|-+$/g;
-
-export function sanitizeFileName({ input }: { input: string }): string {
-	try {
-		return input.replace(NON_FILENAME_CHARS, "-").replace(TRIM_DASHES, "");
-	} catch {
-		return "export";
-	}
-}
 
 export function parseBitrateForKbps({ bitrate }: { bitrate: string }): string {
 	try {
@@ -102,11 +92,18 @@ export function pruneOldJobs(exportJobs: Map<string, ExportJobInternal>): void {
 	}
 }
 
+/**
+ * Where an export goes when the request names no file:
+ * `Documents/QCut/Exports/<project name>-<YYYY-MM-DD-HHMMSS>.<format>`, the
+ * project id standing in for a name that leaves nothing usable.
+ */
 export function getDefaultOutputPath({
 	projectId,
+	projectName,
 	format,
 }: {
 	projectId: string;
+	projectName?: string;
 	format: string;
 }): string {
 	let documentsPath: string;
@@ -116,15 +113,12 @@ export function getDefaultOutputPath({
 		documentsPath = path.join(os.homedir(), "Documents");
 	}
 	try {
-		const now = new Date();
-		const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-		const safeProjectId = sanitizeFileName({ input: projectId }) || "project";
 		const extension = format || "mp4";
 		return path.join(
 			documentsPath,
 			"QCut",
 			"Exports",
-			`${safeProjectId}-${stamp}.${extension}`
+			`${defaultExportFileStem({ projectName, projectId })}.${extension}`
 		);
 	} catch {
 		return path.join(
