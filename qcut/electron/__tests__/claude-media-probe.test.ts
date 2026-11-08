@@ -6,6 +6,7 @@ import {
 	clearMediaProbeCache,
 	parseMediaProbe,
 	probeMediaFile,
+	withImportedMediaProbes,
 	withMediaProbes,
 } from "../claude/handlers/claude-media-probe.js";
 
@@ -252,6 +253,40 @@ describe("withMediaProbes", () => {
 		};
 		const [result] = await withMediaProbes([unreadable]);
 		expect(result).toEqual(unreadable);
+	});
+
+	it("gives batch import results their files' lengths (Q5)", async () => {
+		const failed = { index: 1, success: false, error: "missing" };
+		const [imported, notImported] = await withImportedMediaProbes({
+			results: [
+				{
+					index: 0,
+					success: true,
+					editorReady: true,
+					mediaFile: fixture("sample-video.mp4", "video"),
+				},
+				failed,
+			],
+		});
+		expect(imported).toMatchObject({
+			index: 0,
+			editorReady: true,
+			mediaFile: { duration: 5, fps: 30 },
+		});
+		expect(notImported).toBe(failed);
+	});
+
+	it("answers a batch import without the fields once its deadline has passed", async () => {
+		const results = [
+			{
+				index: 0,
+				success: true,
+				mediaFile: fixture("sample-video.mp4", "video"),
+			},
+		];
+		expect(
+			await withImportedMediaProbes({ results, deadline: Date.now() - 1 })
+		).toBe(results);
 	});
 
 	it("probes an unchanged file once, and again once it changes", async () => {

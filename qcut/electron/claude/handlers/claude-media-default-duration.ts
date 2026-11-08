@@ -36,7 +36,8 @@ function needsDefaultDuration(element: MediaAddRequest): boolean {
 	);
 }
 
-function mediaFileFor({
+/** The project file an add request names, by source id, media id or name. */
+export function mediaFileFor({
 	element,
 	files,
 }: {

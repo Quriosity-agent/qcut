@@ -28,6 +28,10 @@ import {
 	stemsBesideExport,
 	writeMixStems,
 } from "./editor-handlers-audio-mix.js";
+import {
+	defaultExportFileStem,
+	freeExportPath,
+} from "../../claude/handlers/claude-export-handler/export-file-name.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -284,6 +288,26 @@ async function exportRecommend(
 }
 
 /** Start a video export job with the given settings and cursor/zoom config. */
+/** The project's name as the editor lists it; undefined when it cannot say. */
+async function projectNameFor({
+	client,
+	projectId,
+}: {
+	client: EditorApiClient;
+	projectId: string;
+}): Promise<string | undefined> {
+	try {
+		const navigator = await client.get<{
+			projects?: Array<{ id?: string; name?: string }>;
+		}>("/api/claude/navigator/projects");
+		return navigator.projects?.find((project) => project.id === projectId)
+			?.name;
+	} catch {
+		// The project id names the file instead.
+		return;
+	}
+}
+
 async function exportStart(
 	client: EditorApiClient,
 	opts: CLIRunOptions,
@@ -407,12 +431,8 @@ async function exportStart(
 		path.extname(value).length > 1 ? value : `${value}.${ext}`;
 	if (opts.output) {
 		body.outputPath = path.resolve(ensureExtension(expandHome(opts.output)));
-	} else if (
-		opts.filename ||
-		(opts.outputDir && opts.outputDir !== "./output")
-	) {
-		const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-		const basename = expandHome(opts.filename || `export-${ts}`);
+	} else if (opts.filename) {
+		const basename = expandHome(opts.filename);
 		body.outputPath = path.resolve(
 			path.isAbsolute(basename)
 				? ensureExtension(basename)
@@ -421,6 +441,21 @@ async function exportStart(
 						ensureExtension(basename)
 					)
 		);
+	} else if (opts.outputDir && opts.outputDir !== "./output") {
+		// A folder alone gets the name the editor would give the file,
+		// `<project name>-<YYYY-MM-DD-HHMMSS>`, never one already there.
+		body.outputPath = freeExportPath({
+			directory: path.resolve(expandHome(opts.outputDir)),
+			stem: defaultExportFileStem({
+				projectName: await projectNameFor({
+					client,
+					projectId: opts.projectId,
+				}),
+				projectId: opts.projectId,
+			}),
+			extension: ext,
+			exists: fs.existsSync,
+		});
 	}
 
 	// Stems go beside the export, once it is done.

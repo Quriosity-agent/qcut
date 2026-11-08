@@ -147,6 +147,69 @@ export function valuesMatch(expected: unknown, actual: unknown): boolean {
 	return expected === actual;
 }
 
+/** Element types that are clips of a media file and can carry trims. */
+export const MEDIA_FAMILY_TYPES = new Set(["media", "video", "audio", "image"]);
+
+/**
+ * The length a manifest element gives: `duration`, a clip's
+ * `timelineDuration`, or `endTime − startTime`. A clip goes to the editor as
+ * written, which reads its lengths the way `timeline export` writes them
+ * (`duration` beside `timelineDuration` is the span after the trims) and
+ * refuses trims that cannot be meant; another element has no trims, so an
+ * `endTime` alone becomes its `duration`.
+ */
+export function manifestElementLength({
+	element,
+	alias,
+}: {
+	element: ManifestElement & { startTime: number };
+	alias: string;
+}): { isClip: boolean; span: number } {
+	const isClip = MEDIA_FAMILY_TYPES.has(element.type ?? "");
+	const span =
+		typeof element.duration === "number"
+			? element.duration
+			: isClip && typeof element.timelineDuration === "number"
+				? element.timelineDuration
+				: typeof element.endTime === "number"
+					? element.endTime - element.startTime
+					: undefined;
+	if (typeof span !== "number" || span <= 0) {
+		throw new Error(
+			`Element '${alias}' needs a length above 0: duration, timelineDuration (a clip) or endTime`
+		);
+	}
+	return { isClip, span };
+}
+
+/**
+ * The editor names an element it refuses by its place in the batch
+ * ("Element 3 (…)", or "The clip (…)" when the batch holds one); the
+ * manifest's alias says which one that is.
+ */
+export function withManifestAlias({
+	error,
+	chunk,
+	offset,
+}: {
+	error: unknown;
+	chunk: Array<{ element: ManifestElement }>;
+	offset: number;
+}): Error {
+	const message = error instanceof Error ? error.message : String(error);
+	const match = /^(?:Element (\d+)|The clip)\b/.exec(message);
+	// "The clip" names the element only of a batch of one; in a longer batch
+	// it is some other message and names no element.
+	const index = match?.[1] === undefined ? 0 : Number(match[1]);
+	const named = match?.[1] !== undefined || chunk.length === 1;
+	const source = match && named ? chunk[index]?.element : undefined;
+	if (!(match && source)) {
+		return error instanceof Error ? error : new Error(message);
+	}
+	const alias = aliasFor(source, `element-${offset + index}`);
+	return new Error(`Element '${alias}'${message.slice(match[0].length)}`);
+}
+
 export function collectElements(manifest: TimelineManifest): Array<{
 	element: ManifestElement;
 	trackRef?: string;

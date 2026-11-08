@@ -1,5 +1,15 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
 import { handleGenerateExportCommand } from "../native-pipeline/editor/editor-handlers-generate.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
@@ -429,6 +439,125 @@ describe("Export handlers", () => {
 			} finally {
 				globalThis.fetch = origFetch;
 				installFetchMock(BASE_URL);
+			}
+		});
+	});
+
+	describe("export:start file names (Q4)", () => {
+		async function startedWith({
+			navigator,
+			opts,
+		}: {
+			navigator: { status: number; body: unknown };
+			opts: Partial<CLIRunOptions>;
+		}): Promise<Record<string, unknown> | undefined> {
+			let started: Record<string, unknown> | undefined;
+			const origFetch = globalThis.fetch;
+			globalThis.fetch = async (
+				input: RequestInfo | URL,
+				init?: RequestInit
+			) => {
+				const url = typeof input === "string" ? input : input.toString();
+				if (url.endsWith("/api/claude/navigator/projects")) {
+					return new Response(JSON.stringify(navigator.body), {
+						status: navigator.status,
+						headers: { "Content-Type": "application/json" },
+					});
+				}
+				started = JSON.parse(String(init?.body));
+				return new Response(
+					JSON.stringify({ success: true, data: { jobId: "ej-named" } }),
+					{ headers: { "Content-Type": "application/json" } }
+				);
+			};
+			try {
+				const result = await handleGenerateExportCommand(
+					client,
+					makeOpts({
+						command: "editor:export:start",
+						projectId: "p1",
+						...opts,
+					}),
+					noopProgress
+				);
+				expect(result.success).toBe(true);
+				return started;
+			} finally {
+				globalThis.fetch = origFetch;
+				installFetchMock(BASE_URL);
+			}
+		}
+
+		it("names a file in --output-dir after the project", async () => {
+			const started = await startedWith({
+				navigator: {
+					status: 200,
+					body: {
+						success: true,
+						data: {
+							activeProjectId: "p1",
+							projects: [{ id: "p1", name: "兽族版开场 · 01–08 粗剪" }],
+						},
+					},
+				},
+				opts: { outputDir: "/tmp/qcut-named-exports" },
+			});
+			const outputPath = String(started?.outputPath);
+			expect(path.dirname(outputPath)).toBe(
+				path.resolve("/tmp/qcut-named-exports")
+			);
+			expect(path.basename(outputPath)).toMatch(
+				/^兽族版开场 · 01–08 粗剪-\d{4}-\d{2}-\d{2}-\d{6}\.mp4$/
+			);
+		});
+
+		it("names it after the project id when the editor cannot say", async () => {
+			const started = await startedWith({
+				navigator: {
+					status: 504,
+					body: { success: false, error: "Renderer timed out" },
+				},
+				opts: { outputDir: "/tmp/qcut-named-exports", format: "webm" },
+			});
+			expect(path.basename(String(started?.outputPath))).toMatch(
+				/^p1-\d{4}-\d{2}-\d{2}-\d{6}\.webm$/
+			);
+		});
+
+		it("keeps a --filename the caller gave", async () => {
+			const started = await startedWith({
+				navigator: { status: 500, body: { success: false } },
+				opts: { outputDir: "/tmp/qcut-named-exports", filename: "成片" },
+			});
+			expect(started?.outputPath).toBe(
+				path.resolve("/tmp/qcut-named-exports/成片.mp4")
+			);
+		});
+
+		// Review of PR #535: a second export within the same second wrote over
+		// the first, and a dot in the project name passed for an extension.
+		it("never names a file that is already in the folder", async () => {
+			const folder = mkdtempSync(path.join(tmpdir(), "qcut-named-exports-"));
+			vi.useFakeTimers({ toFake: ["Date"] });
+			vi.setSystemTime(new Date(2026, 10, 8, 12, 47, 29));
+			try {
+				writeFileSync(path.join(folder, "cut v2.1-2026-11-08-124729.mp4"), "");
+				const started = await startedWith({
+					navigator: {
+						status: 200,
+						body: {
+							success: true,
+							data: { projects: [{ id: "p1", name: "cut v2.1" }] },
+						},
+					},
+					opts: { outputDir: folder },
+				});
+				expect(started?.outputPath).toBe(
+					path.join(folder, "cut v2.1-2026-11-08-124729-2.mp4")
+				);
+			} finally {
+				vi.useRealTimers();
+				rmSync(folder, { recursive: true, force: true });
 			}
 		});
 	});

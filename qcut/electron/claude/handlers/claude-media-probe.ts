@@ -268,6 +268,49 @@ export async function withMediaProbes(
 	return results;
 }
 
+/**
+ * Import results with each copied file's length, size and frame rate, the
+ * fields the media list reports, so a script can work out its trims without
+ * listing the media again (Q5 of the 2026-11-08 report).
+ *
+ * Results come back as they are once `deadline` (epoch ms) passes: an import
+ * must answer within its budget however slow the disk, and a probe still
+ * running then finishes into the cache for the next media list.
+ */
+export async function withImportedMediaProbes<
+	T extends { mediaFile?: MediaFile },
+>({ results, deadline }: { results: T[]; deadline?: number }): Promise<T[]> {
+	const files = results.flatMap((result) =>
+		result.mediaFile ? [result.mediaFile] : []
+	);
+	if (files.length === 0) return results;
+	const probing = withMediaProbes(files).then((probedFiles) => {
+		const probed = new Map(probedFiles.map((file) => [file.path, file]));
+		return results.map((result) =>
+			result.mediaFile
+				? {
+						...result,
+						mediaFile: probed.get(result.mediaFile.path) ?? result.mediaFile,
+					}
+				: result
+		);
+	});
+	if (deadline === undefined) return probing;
+	const remaining = deadline - Date.now();
+	if (remaining <= 0) return results;
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			probing,
+			new Promise<T[]>((resolve) => {
+				timer = setTimeout(() => resolve(results), remaining);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
 /** Test hook: forget cached probes. */
 export function clearMediaProbeCache(): void {
 	probeCache.clear();

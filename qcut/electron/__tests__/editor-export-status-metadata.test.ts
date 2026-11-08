@@ -85,7 +85,9 @@ describe.each([
 		};
 		const result = await handleGenerateExportCommand(client, options, vi.fn());
 		expect(result).toEqual({ success: true, data: job });
-		expect(fetch).toHaveBeenCalledTimes(poll ? 2 : 1);
+		// A start into a folder asks for the project's name (it names the
+		// file), then starts and polls the job.
+		expect(fetch).toHaveBeenCalledTimes(poll ? 3 : 1);
 
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		formatCommandOutput(options.command, result);

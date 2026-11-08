@@ -9,6 +9,7 @@ import {
 	aliasFor,
 	collectTransitions,
 	isRecord,
+	MEDIA_FAMILY_TYPES,
 	mapReference,
 	stringValue,
 	valuesMatch,
@@ -139,8 +140,6 @@ const TRANSITION_VERIFY_KEYS = [
 	"maskShape",
 ] as const;
 
-const MEDIA_FAMILY_TYPES = new Set(["media", "video", "audio", "image"]);
-
 function expectedManifestTrims({ expected }: { expected: ManifestElement }): {
 	trimStart: number;
 	trimEnd: number;
@@ -149,6 +148,65 @@ function expectedManifestTrims({ expected }: { expected: ManifestElement }): {
 		trimStart: typeof expected.trimStart === "number" ? expected.trimStart : 0,
 		trimEnd: typeof expected.trimEnd === "number" ? expected.trimEnd : 0,
 	};
+}
+
+/**
+ * The source span after the trims the editor reports as `duration`. Beside
+ * `timelineDuration` the manifest wrote it so (timeline export's shape);
+ * otherwise its `duration` is the span before the trims.
+ */
+function expectedSpanAfterTrims({
+	expected,
+}: {
+	expected: ManifestElement;
+}): number | undefined {
+	if (typeof expected.duration !== "number") return;
+	if (typeof expected.timelineDuration === "number") return expected.duration;
+	const { trimStart, trimEnd } = expectedManifestTrims({ expected });
+	return Math.max(0, expected.duration - trimStart - trimEnd);
+}
+
+/**
+ * How long the clip must last on the timeline: the manifest's own
+ * `timelineDuration` or `endTime − startTime`, else the span after the trims
+ * ÷ speed, plus a freeze frame's hold. Speed keyframes reshape the span in
+ * ways this formula cannot express, so such a clip is checked only against a
+ * length the manifest gave.
+ */
+function expectedTimelineSpan({
+	expected,
+}: {
+	expected: ManifestElement;
+}): number | undefined {
+	if (typeof expected.timelineDuration === "number") {
+		return expected.timelineDuration;
+	}
+	if (
+		typeof expected.duration !== "number" &&
+		typeof expected.endTime === "number" &&
+		typeof expected.startTime === "number"
+	) {
+		return expected.endTime - expected.startTime;
+	}
+	const afterTrims = expectedSpanAfterTrims({ expected });
+	if (
+		afterTrims === undefined ||
+		(Array.isArray(expected.speedKeyframes) &&
+			expected.speedKeyframes.length > 0)
+	) {
+		return;
+	}
+	const playbackRate =
+		typeof expected.playbackRate === "number" &&
+		Number.isFinite(expected.playbackRate) &&
+		expected.playbackRate > 0
+			? expected.playbackRate
+			: 1;
+	const freeze =
+		typeof expected.freezeFrameDuration === "number"
+			? Math.max(0, expected.freezeFrameDuration)
+			: 0;
+	return afterTrims / playbackRate + freeze;
 }
 
 function expectedReadBackValue({
@@ -162,40 +220,21 @@ function expectedReadBackValue({
 	if (key === "textAnimationPreset" && isRecord(value)) {
 		return stringValue(value, "presetId");
 	}
-	// The timeline reports timeline seconds: (source duration − trims) ÷
-	// playbackRate. The manifest carries source seconds, so derive what the
-	// editor must have stored — a 2× audio clip occupies half its source span.
-	// Speed keyframes and freeze frames reshape the span in ways this formula
-	// cannot express, so those elements skip the derived check.
-	if (
-		key === "timelineDuration" &&
-		MEDIA_FAMILY_TYPES.has(expected.type ?? "") &&
-		typeof expected.duration === "number" &&
-		!(
-			Array.isArray(expected.speedKeyframes) &&
-			expected.speedKeyframes.length > 0
-		) &&
-		expected.freezeFrameDuration === undefined &&
-		expected.freezeFrameTime === undefined
-	) {
-		const { trimStart, trimEnd } = expectedManifestTrims({ expected });
-		const playbackRate =
-			typeof expected.playbackRate === "number" &&
-			Number.isFinite(expected.playbackRate) &&
-			expected.playbackRate > 0
-				? expected.playbackRate
-				: 1;
-		return Math.max(0, expected.duration - trimStart - trimEnd) / playbackRate;
+	if (!MEDIA_FAMILY_TYPES.has(expected.type ?? "")) return value;
+	// The timeline reports where a clip shows: its source span after the
+	// trims (`duration`), how long that lasts on the timeline
+	// (`timelineDuration`) and where it ends (`endTime`). The end is checked
+	// even when the manifest gave none, so a clip placed at another length
+	// than the manifest asked for fails here rather than in an export.
+	if (key === "duration") return expectedSpanAfterTrims({ expected });
+	if (key === "timelineDuration") return expectedTimelineSpan({ expected });
+	if (key === "endTime" && value === undefined) {
+		const span = expectedTimelineSpan({ expected });
+		return span !== undefined && typeof expected.startTime === "number"
+			? expected.startTime + span
+			: undefined;
 	}
-	if (
-		key !== "duration" ||
-		!MEDIA_FAMILY_TYPES.has(expected.type ?? "") ||
-		typeof value !== "number"
-	) {
-		return value;
-	}
-	const { trimStart, trimEnd } = expectedManifestTrims({ expected });
-	return Math.max(0, value - trimStart - trimEnd);
+	return value;
 }
 
 function actualReadBackValue({

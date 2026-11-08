@@ -22,12 +22,27 @@ export const QUALITY_SETTINGS: Record<string, QualitySettings> = {
 // Debug Logging
 // ============================================================================
 
+let debugLoggingOverride: boolean | undefined;
+
+/**
+ * Turns the [FFmpeg] debug lines on or off whatever NODE_ENV says. The CLI
+ * runs as plain Node with no NODE_ENV, so without this every probe printed
+ * "Using staged FFprobe binary…" to stderr; it keeps them for --verbose.
+ */
+export function setFFmpegDebugLogging({ enabled }: { enabled: boolean }): void {
+	debugLoggingOverride = enabled;
+}
+
+function debugLoggingEnabled(): boolean {
+	return debugLoggingOverride ?? process.env.NODE_ENV !== "production";
+}
+
 /**
  * Debug logging for development mode only.
  * Logs are prefixed with [FFmpeg] for easy filtering.
  */
 export const debugLog = (...args: any[]): void => {
-	if (process.env.NODE_ENV !== "production") {
+	if (debugLoggingEnabled()) {
 		console.error("[FFmpeg]", ...args);
 	}
 };
@@ -36,7 +51,7 @@ export const debugLog = (...args: any[]): void => {
  * Debug warning for development mode only.
  */
 export const debugWarn = (...args: any[]): void => {
-	if (process.env.NODE_ENV !== "production") {
+	if (debugLoggingEnabled()) {
 		console.warn("[FFmpeg]", ...args);
 	}
 };
@@ -45,7 +60,7 @@ export const debugWarn = (...args: any[]): void => {
  * Debug error for development mode only.
  */
 export const debugError = (...args: any[]): void => {
-	if (process.env.NODE_ENV !== "production") {
+	if (debugLoggingEnabled()) {
 		console.error("[FFmpeg]", ...args);
 	}
 };

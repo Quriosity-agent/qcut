@@ -53,6 +53,25 @@ function makeOptions(manifest: object, extra: Partial<CLIRunOptions> = {}) {
 	} as CLIRunOptions;
 }
 
+/**
+ * How the editor reads a clip written as `timeline export` writes it
+ * (claude-media-add-lengths.ts): beside `timelineDuration`, `duration` is the
+ * span after the trims, so the trims are added back.
+ */
+function storedLengths(element: Record_): Record_ {
+	if (typeof element.timelineDuration !== "number") return element;
+	const { timelineDuration, endTime: _endTime, ...rest } = element;
+	const afterTrims =
+		typeof element.duration === "number" ? element.duration : timelineDuration;
+	return {
+		...rest,
+		duration:
+			afterTrims +
+			Number(element.trimStart ?? 0) +
+			Number(element.trimEnd ?? 0),
+	};
+}
+
 function makeEditor({
 	tracks = [
 		{ id: "main", name: "Main", type: "media", isMain: true, elements: [] },
@@ -148,7 +167,7 @@ function makeEditor({
 				added: elements.map((element, index) => {
 					const id = `el-${state.next++}`;
 					findTrack(String(element.trackId)).elements.push({
-						...element,
+						...storedLengths(element),
 						id,
 					});
 					return { index, success: true, elementId: id };
@@ -515,6 +534,7 @@ describe("timeline apply: track switches and the mix", () => {
 		const editor = makeEditor();
 		// As `timeline export` writes it: `duration` is the 4.875 s left on the
 		// timeline, trims are separate, and `timelineDuration` marks the shape.
+		// The apply sends it so, and the editor adds the trims back.
 		const result = await timelineApplyManifest(
 			editor.client,
 			makeOptions({
@@ -546,8 +566,11 @@ describe("timeline apply: track switches and the mix", () => {
 		const added = editor.post.mock.calls.find(
 			([url]) => url === "/api/claude/timeline/project-1/elements/batch"
 		)?.[1] as { elements: Array<Record<string, unknown>> };
-		expect(added.elements[0].duration).toBeCloseTo(17.458, 3);
-		expect(added.elements[0].trimStart).toBe(12.583);
+		expect(added.elements[0]).toMatchObject({
+			duration: 4.875,
+			timelineDuration: 4.875,
+			trimStart: 12.583,
+		});
 		const stored = editor.state.tracks[0].elements[0];
 		expect(stored.duration).toBeCloseTo(17.458, 3);
 	});

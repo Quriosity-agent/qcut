@@ -349,7 +349,8 @@ qcut editor:timeline:batch-add \
 | `"durationFrames": <n>` | Last `n` whole frames |
 
 Give one start (`startTime`, `after` or `startFrame`) and one length
-(`duration` or `durationFrames`, or neither for video/audio). In a batch,
+(`duration` or `durationFrames`, or neither for video/audio; a clip with
+trims, see [Trimmed clips](#trimmed-clips-which-length-is-which)). In a batch,
 `"end"` sees the elements added earlier in the same batch, so this lays clips
 end to end:
 
@@ -366,6 +367,38 @@ qcut editor:timeline:batch-add \
 To import files and lay them out in one step, use
 `editor:media:batch-import --append-to-track <track-id>` (see
 [editor-media.md](editor-media.md)).
+
+### Trimmed clips: which length is which
+
+A media clip's `duration` is its source span **before** its trims: the
+timeline shows `duration − trimStart − trimEnd` of it, divided by its speed.
+`timeline export` writes clips the other way: its `duration` is the span
+**after** the trims, beside `timelineDuration` (how long the clip lasts on
+the timeline) and `endTime` (where it ends). `add-element`, `batch-add` and
+`timeline apply` read both shapes:
+
+| A media element gives | QCut reads it as |
+|-----------------------|------------------|
+| `duration` and trims | The span before the trims. It must be the file's whole length (`duration` in `media list`, rounding to 0.05 s allowed); a shorter one is refused, since it is nearly always a length after trims |
+| `timelineDuration` and trims | The length on the timeline. A `duration` beside it is the span after the trims (`timelineDuration` × speed), as `timeline export` writes it, and may be left out |
+| `endTime` and trims, no `duration` | Where the clip ends on the timeline |
+
+To take the first 8.5 s of a 15.041667 s file (in 0, out 8.5):
+
+```bash
+qcut editor:timeline:batch-add --project-id <id> --elements '[
+  {"type":"media","sourceName":"G1.mp4","trackId":"<main-track>","startTime":0,
+   "timelineDuration":8.5,"trimStart":0,"trimEnd":6.541667}
+]'
+```
+
+`"duration":15.041667` with the same trims places the same clip.
+`"duration":8.5` with `"trimEnd":6.541667` is refused: it says 8.5 s of
+source with 6.54 s cut off its end, a 1.96 s clip. A clip with nothing left
+after its trims is refused too, and so is `durationFrames` beside trims (it
+counts frames before them). A refused element stops its whole batch, with the
+reason and both ways to write the clip; `timeline apply --atomic` rolls the
+apply back.
 
 ### When a placement is refused
 

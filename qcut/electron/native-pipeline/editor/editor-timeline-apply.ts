@@ -27,7 +27,9 @@ import {
 	collectElements,
 	collectTransitions,
 	isRecord,
+	manifestElementLength,
 	mapReference,
+	withManifestAlias,
 	type JsonRecord,
 	type ManifestElement,
 	type ManifestMedia,
@@ -323,34 +325,6 @@ async function lockManifestTracks({
 	}
 }
 
-const MEDIA_FAMILY_TYPES = new Set(["media", "video", "audio", "image"]);
-
-/**
- * The source length to store for a manifest element: the manifest's own
- * `duration`, or, for a clip read back from `timeline export` (which reports
- * the trimmed length and carries `timelineDuration`), that length plus its
- * trims.
- */
-function manifestSourceDuration({
-	element,
-	duration,
-}: {
-	element: ManifestElement;
-	duration: number;
-}): number {
-	if (
-		typeof element.timelineDuration !== "number" ||
-		!MEDIA_FAMILY_TYPES.has(element.type ?? "")
-	) {
-		return duration;
-	}
-	const trimStart =
-		typeof element.trimStart === "number" ? Math.max(0, element.trimStart) : 0;
-	const trimEnd =
-		typeof element.trimEnd === "number" ? Math.max(0, element.trimEnd) : 0;
-	return duration + trimStart + trimEnd;
-}
-
 async function addManifestElements({
 	client,
 	projectId,
@@ -382,22 +356,9 @@ async function addManifestElements({
 			if (typeof element.startTime !== "number") {
 				throw new Error(`Element '${alias}' is missing startTime`);
 			}
-			const givenDuration =
-				typeof element.duration === "number"
-					? element.duration
-					: typeof element.endTime === "number"
-						? element.endTime - element.startTime
-						: undefined;
-			if (typeof givenDuration !== "number" || givenDuration <= 0) {
-				throw new Error(`Element '${alias}' needs duration > 0`);
-			}
-			// A manifest's `duration` is the source length, before trims. A
-			// `timeline export` snapshot reports the length left on the timeline
-			// (and says so by carrying `timelineDuration`), so its trims are added
-			// back; without this a trimmed clip lost its trims twice.
-			const duration = manifestSourceDuration({
-				element,
-				duration: givenDuration,
+			const { isClip, span } = manifestElementLength({
+				element: { ...element, startTime: element.startTime },
+				alias,
 			});
 
 			// `id` stays in the body: the bridge honors requested element ids,
@@ -406,7 +367,7 @@ async function addManifestElements({
 			const body: JsonRecord = {
 				...element,
 				trackId: resolvedTrackId,
-				duration,
+				...(isClip ? {} : { duration: span }),
 			};
 			delete body.alias;
 			delete body.track;
@@ -422,25 +383,29 @@ async function addManifestElements({
 			}
 			expectedElements.set(alias, {
 				...element,
-				duration,
+				...(isClip ? {} : { duration: span }),
 				...(typeof body.mediaId === "string" ? { mediaId: body.mediaId } : {}),
 			});
 			return body;
 		});
 
-		const result = await client.post<{
-			added: Array<{
-				index: number;
-				success: boolean;
-				elementId?: string;
-				error?: string;
-			}>;
-			failedCount: number;
-		}>(
-			`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`,
-			{ elements: payload },
-			{ timeout: batchRequestTimeoutMs({ count: payload.length }) }
-		);
+		const result = await client
+			.post<{
+				added: Array<{
+					index: number;
+					success: boolean;
+					elementId?: string;
+					error?: string;
+				}>;
+				failedCount: number;
+			}>(
+				`/api/claude/timeline/${encodeURIComponent(projectId)}/elements/batch`,
+				{ elements: payload },
+				{ timeout: batchRequestTimeoutMs({ count: payload.length }) }
+			)
+			.catch((error: unknown) => {
+				throw withManifestAlias({ error, chunk, offset });
+			});
 		if (result.failedCount > 0) {
 			const failures = result.added
 				.filter((item) => !item.success)

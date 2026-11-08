@@ -12,7 +12,7 @@ import {
 	withTimelineBatchTimeoutContext,
 } from "../utils/timeline-batch-deadline.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
-import { withDefaultMediaDurations } from "./claude-media-default-duration.js";
+import { withMediaAddLengths } from "./claude-media-add-lengths.js";
 import {
 	assertIpcMainReady,
 	assertRendererWindowReady,
@@ -744,9 +744,10 @@ export async function batchAddElements(
 			return { added: [], failedCount: 0 };
 		}
 
-		// Media named without a length gets its file's length before anything
-		// checks for one.
-		const requests = await withDefaultMediaDurations({ projectId, elements });
+		// Media lengths are settled before anything checks for one: timeline
+		// lengths become the editor's duration, untimed media takes its file's
+		// length, and trims that cannot be meant are refused.
+		const requests = await withMediaAddLengths({ projectId, elements });
 
 		for (const element of requests) {
 			if (!element.trackId || typeof element.trackId !== "string") {

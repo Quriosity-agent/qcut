@@ -42,7 +42,26 @@ qcut editor:export:start \
 qcut editor:export:start \
   --project-id <id> --format gif \
   --gif-fps 20 --gif-loop --gif-quality 10 --poll
+
+# An exact file, with one WAV per bus beside it
+qcut editor:export:start \
+  --project-id <id> --output ~/Movies/开场_粗剪.mp4 --stems --poll
 ```
+
+Where the file goes:
+
+| Flag | Meaning |
+|------|---------|
+| `--output <file>` | That file; the format's extension is added when it has none |
+| `--output-dir <folder>` | That folder, the file named after the project: `<project name>-<YYYY-MM-DD-HHMMSS>.<format>` |
+| `--filename <name>` | The file's name in `--output-dir` (`./output` without one); an absolute path is used as it is |
+| `--stems` | Also writes one WAV per bus beside the export, `<file name>-<bus>.wav`, once it is done (see [editor-mix.md](editor-mix.md)); needs one of the three above |
+
+With none of them the export goes to
+`Documents/QCut/Exports/<project name>-<YYYY-MM-DD-HHMMSS>.<format>`.
+Characters a file name cannot hold become `-`, a name with nothing left is
+replaced by the project id, and a name already in the folder gets `-2`, `-3`…
+so an export never writes over an earlier one.
 
 The returned job uses `presetId: "custom"` when its effective width, height,
 fps, format, or bitrate differs from the selected preset (or the default

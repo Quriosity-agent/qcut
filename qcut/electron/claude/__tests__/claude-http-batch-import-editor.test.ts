@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BatchImportResult } from "../../types/claude-api.js";
 import {
+	answerBatchImport,
 	BATCH_IMPORT_EDITOR_WAIT_MS,
 	loadBatchImportInEditor,
 } from "../http/claude-http-batch-import-editor.js";
@@ -117,6 +118,58 @@ describe("batch import loads the copied files in the editor", () => {
 		expect(requestMediaImport).toHaveBeenCalledTimes(2);
 		expect(results.map((result) => result.editorReady)).toEqual([false, false]);
 		expect(results[1].warning).toContain("still loading");
+	});
+
+	// 2026-11-08 report, Q5: the answer carries each file's length. Review of
+	// PR #535: probing first ate into the editor's wait, so the two now run
+	// side by side within it.
+	it("reads the files' lengths while the editor loads them, within the same wait", async () => {
+		const events: string[] = [];
+		let finishLoad = () => {};
+		const requestMediaImport = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					events.push("load started");
+					finishLoad = resolve;
+				})
+		);
+		const probe = vi.fn(
+			async ({ results }: { results: BatchImportResult[] }) => {
+				events.push("probe started");
+				finishLoad();
+				return results.map((result) =>
+					result.mediaFile
+						? { ...result, mediaFile: { ...result.mediaFile, duration: 6 } }
+						: result
+				);
+			}
+		);
+		const startedAt = Date.now();
+		const results = await answerBatchImport({
+			accessor: { requestMediaImport },
+			projectId: "p",
+			results: [
+				copied(0, "G1.mp4"),
+				{ index: 1, success: false, error: "File not found" },
+			],
+			probe,
+			startedAt,
+			waitMs: 60_000,
+		});
+
+		expect(events).toEqual(["load started", "probe started"]);
+		expect(probe).toHaveBeenCalledWith(
+			expect.objectContaining({ deadline: startedAt + 60_000 })
+		);
+		expect(results[0]).toMatchObject({
+			editorReady: true,
+			mediaFile: { name: "G1.mp4", duration: 6 },
+		});
+		expect(results[1]).toEqual({
+			index: 1,
+			success: false,
+			error: "File not found",
+		});
 	});
 
 	it("leaves the results alone without an editor to ask", async () => {
