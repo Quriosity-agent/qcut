@@ -25,7 +25,7 @@ import { timelineRequiresRendererAdjustmentLayerExport } from "../../types/adjus
 import { timelineRequiresRendererColorKeyframeExport } from "../../types/color-keyframe-export-policy.js";
 import { mediaOverlayRendererReason } from "../../types/media-overlay-export-policy.js";
 import { assertProjectIsOpen } from "./claude-http-project-scope.js";
-import { loadBatchImportInEditor } from "./claude-http-batch-import-editor.js";
+import { answerBatchImport } from "./claude-http-batch-import-editor.js";
 import {
 	captionStyleWarnings,
 	normalizeCaptionStyleInput,
@@ -1091,18 +1091,16 @@ export function registerSharedRoutes(
 		if (!Array.isArray(req.body?.items))
 			throw new HttpError(400, "Missing 'items' array in request body");
 		const startedAt = Date.now();
-		// Each file comes back with its length, size and rate, as media list
-		// reports them.
-		const copied = await withImportedMediaProbes(
-			await batchImportMedia(req.params.projectId, req.body.items)
-		);
+		const copied = await batchImportMedia(req.params.projectId, req.body.items);
 		// The editor loads what was copied before this answers, so an
-		// add-element right after finds the media; the copy's time counts
-		// against the same wait.
-		const result = await loadBatchImportInEditor({
+		// add-element right after finds the media, and each file comes back
+		// with its length, size and rate; the copy's time counts against the
+		// same wait.
+		const result = await answerBatchImport({
 			accessor,
 			projectId: req.params.projectId,
 			results: copied,
+			probe: withImportedMediaProbes,
 			startedAt,
 		});
 		logOperation({
