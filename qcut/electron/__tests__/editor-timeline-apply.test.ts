@@ -92,6 +92,10 @@ function makeClient({
 					],
 				};
 			}
+			const timelineDuration =
+				typeof videoElement.timelineDuration === "number"
+					? videoElement.timelineDuration
+					: fixtureTimelineDuration(videoElement);
 			const mediaTrack = {
 				id: "main-track",
 				index: textAboveMedia ? 1 : 0,
@@ -103,10 +107,12 @@ function makeClient({
 						id: "video-1",
 						...videoElement,
 						duration: fixtureSourceDuration(videoElement),
-						timelineDuration:
-							typeof videoElement.timelineDuration === "number"
-								? videoElement.timelineDuration
-								: fixtureTimelineDuration(videoElement),
+						timelineDuration,
+						// The bridge reports where the clip ends on the timeline.
+						endTime:
+							typeof videoElement.endTime === "number"
+								? videoElement.endTime
+								: Number(videoElement.startTime) + Number(timelineDuration),
 					},
 				],
 				transitions: mediaTransitions,
@@ -259,7 +265,13 @@ function makeImportedMediaClient({ exportFails = false } = {}) {
 						type: "media",
 						isMain: true,
 						elements: [
-							{ id: "video-1", startTime: 0, duration: 2, timelineDuration: 2 },
+							{
+								id: "video-1",
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								timelineDuration: 2,
+							},
 						],
 						transitions: [],
 					},
