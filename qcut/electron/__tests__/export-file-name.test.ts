@@ -1,7 +1,9 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	defaultExportFileStem,
 	exportTimestamp,
+	freeExportPath,
 	projectFileName,
 } from "../claude/handlers/claude-export-handler/export-file-name.js";
 
@@ -33,6 +35,47 @@ describe("export file names (Q4, 2026-11-08 report)", () => {
 		).toBe("p-1-2026-11-08-124729");
 		expect(defaultExportFileStem({ projectId: "p-1", now: NOW })).toBe(
 			"p-1-2026-11-08-124729"
+		);
+	});
+
+	it("adds -2, -3… rather than write over an export made in the same second", () => {
+		const taken = new Set([
+			path.join("/exports", "开场-2026-11-08-124729.mp4"),
+			path.join("/exports", "开场-2026-11-08-124729-2.mp4"),
+		]);
+		const free = (stem: string) =>
+			freeExportPath({
+				directory: "/exports",
+				stem,
+				extension: "mp4",
+				exists: (filePath) => taken.has(filePath),
+			});
+		expect(free("开场-2026-11-08-124729")).toBe(
+			path.join("/exports", "开场-2026-11-08-124729-3.mp4")
+		);
+		expect(free("开场-2026-11-08-124730")).toBe(
+			path.join("/exports", "开场-2026-11-08-124730.mp4")
+		);
+		// The extension is added, not guessed from a dot in the name.
+		expect(free("cut v2.1-2026-11-08-124729")).toBe(
+			path.join("/exports", "cut v2.1-2026-11-08-124729.mp4")
+		);
+	});
+
+	it("stops searching when every name seems taken", () => {
+		let asked = 0;
+		const filePath = freeExportPath({
+			directory: "/exports",
+			stem: "开场-2026-11-08-124729",
+			extension: "mp4",
+			exists: () => {
+				asked += 1;
+				return true;
+			},
+		});
+		expect(asked).toBe(999);
+		expect(path.basename(filePath)).toMatch(
+			/^开场-2026-11-08-124729-[0-9a-z]{1,8}\.mp4$/
 		);
 	});
 
