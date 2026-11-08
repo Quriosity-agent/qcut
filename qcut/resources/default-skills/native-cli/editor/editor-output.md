@@ -59,8 +59,9 @@ Where the file goes:
 
 With none of them the export goes to
 `Documents/QCut/Exports/<project name>-<YYYY-MM-DD-HHMMSS>.<format>`.
-Characters a file name cannot hold become `-`, and a name with nothing left
-is replaced by the project id.
+Characters a file name cannot hold become `-`, a name with nothing left is
+replaced by the project id, and a name already in the folder gets `-2`, `-3`…
+so an export never writes over an earlier one.
 
 The returned job uses `presetId: "custom"` when its effective width, height,
 fps, format, or bitrate differs from the selected preset (or the default
