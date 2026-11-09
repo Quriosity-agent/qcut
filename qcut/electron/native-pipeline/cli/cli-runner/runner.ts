@@ -119,6 +119,25 @@ async function enforceActionPolicy({
 	}
 }
 
+/**
+ * `--start-time`/`--end-time` that were given but are not numbers arrive as
+ * NaN (cli.ts, session.ts); every command gets the same refusal here rather
+ * than running as if the flag had been left out.
+ */
+function refusedTimeFlag({
+	options,
+}: {
+	options: Pick<CLIRunOptions, "startTime" | "endTime">;
+}): string | undefined {
+	if (Number.isNaN(options.startTime)) {
+		return "--start-time must be a number of seconds (such as 155.583)";
+	}
+	if (Number.isNaN(options.endTime)) {
+		return "--end-time must be a number of seconds (such as 185.75)";
+	}
+	return undefined;
+}
+
 export class CLIPipelineRunner {
 	private executor = new PipelineExecutor();
 	private abortController = new AbortController();
@@ -187,6 +206,11 @@ export class CLIPipelineRunner {
 		});
 		if (policyResult) {
 			return policyResult;
+		}
+
+		const badTimeFlag = refusedTimeFlag({ options: resolvedOptions });
+		if (badTimeFlag) {
+			return { success: false, error: badTimeFlag };
 		}
 
 		// Resolve --provider to --model if model not explicitly set
