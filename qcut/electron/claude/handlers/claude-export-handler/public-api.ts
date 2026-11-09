@@ -309,7 +309,7 @@ export async function startRendererExportJob({
 	}
 	assertRendererExportRequestCompatible({ request, reasons });
 
-	const settings = resolveExportSettings({ request });
+	const settings = resolveExportSettings({ request, project: timeline });
 	const outputPath = request.outputPath?.trim()
 		? path.resolve(request.outputPath.trim())
 		: getDefaultOutputPath({
@@ -433,7 +433,7 @@ export async function startExportJob({
 			);
 		}
 
-		const settings = resolveExportSettings({ request });
+		const settings = resolveExportSettings({ request, project: timeline });
 		const outputPath = request.outputPath?.trim()
 			? path.resolve(request.outputPath.trim())
 			: getDefaultOutputPath({
