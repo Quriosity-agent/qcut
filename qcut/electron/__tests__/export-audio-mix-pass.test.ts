@@ -226,6 +226,42 @@ describe("native audio mix pass", () => {
 		expect(await readFile(outputPath, "utf8")).toBe("rendered mix");
 	});
 
+	it.each([
+		{
+			plays: "a clip trimmed at its start",
+			file: { startTime: 0, duration: 6, trimStart: 3 },
+			end: 3,
+		},
+		{
+			plays: "a clip trimmed at its end",
+			file: { startTime: 1, duration: 5, trimEnd: 3 },
+			end: 3,
+		},
+		{
+			plays: "a clip at double speed",
+			file: { startTime: 1, duration: 4, playbackRate: 2 },
+			end: 3,
+		},
+		{
+			plays: "a clip that runs on past the picture",
+			file: { startTime: 2, duration: 2 },
+			end: 4,
+		},
+	])("mixes to where the sound stops, not to its source length: $plays", async ({
+		file,
+		end,
+	}) => {
+		await renderTimelineAudioMix({
+			...options({ config: mixConfig() }),
+			audioFiles: [{ path: "bed.wav", trackId: "voice", volume: 1, ...file }],
+		});
+		const { args } = runFFmpegCommand.mock.calls[0][0];
+		expect(args[args.indexOf("-t") + 1]).toBe(String(end));
+		expect(renderTruePeakLimitedExport).toHaveBeenCalledWith(
+			expect.objectContaining({ duration: end })
+		);
+	});
+
 	it("remuxes a video with no-audio metadata without inventing an audio stream", async () => {
 		const onPublished = vi.fn();
 		const result = await renderTimelineAudioMix({
