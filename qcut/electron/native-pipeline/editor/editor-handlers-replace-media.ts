@@ -287,9 +287,18 @@ async function matchReplacementLoudness({
 			error: "--match-loudness: the editor did not say where the new file is",
 		};
 	}
-	const lufs = await measureStretchLoudness({
-		stretch: { path: media.path, start, duration: current.sourceSeconds },
-	});
+	// A measurement that fails (ffprobe or ffmpeg refusing the file, a
+	// timeout) is a refusal like any other, so the import is taken back.
+	let lufs: number | null;
+	try {
+		lufs = await measureStretchLoudness({
+			stretch: { path: media.path, start, duration: current.sourceSeconds },
+		});
+	} catch (error) {
+		return {
+			error: `--match-loudness: could not measure ${media.name ?? media.path}: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
 	if (lufs === null) {
 		return {
 			error: `--match-loudness: ${media.name ?? media.path} has no sound over the stretch the clip would play; replace it without --match-loudness`,
