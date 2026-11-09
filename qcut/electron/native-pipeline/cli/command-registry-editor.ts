@@ -1044,7 +1044,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:export:start": ed("editor:export:start", "Start export", [
 		PID,
-		f("--preset", "string", "Export preset name"),
+		f(
+			"--preset",
+			"string",
+			"Export preset name (default: the project's own size and frame rate)"
+		),
 		POLL,
 		f("--filename", "string", "Output filename"),
 		f("--output", "string", "Exact output path (absolute or relative)"),
