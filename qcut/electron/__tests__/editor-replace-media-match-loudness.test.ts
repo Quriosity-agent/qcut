@@ -193,6 +193,23 @@ describe("replace-media --match-loudness", () => {
 		expect(patch).not.toHaveBeenCalled();
 	});
 
+	it("takes back the import when the new file cannot be measured", async () => {
+		measure
+			.mockResolvedValueOnce(-20)
+			.mockRejectedValueOnce(new Error("Audio measurement timed out"));
+		const { client, patch, remove } = fakeClient();
+		const result = await timelineReplaceMedia(
+			client,
+			options({ source: finalFile() })
+		);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain(
+			"could not measure 09_final.mp4: Audio measurement timed out"
+		);
+		expect(remove).toHaveBeenCalledWith("/api/claude/media/p1/final");
+		expect(patch).not.toHaveBeenCalled();
+	});
+
 	it("leaves the gain alone without the flag", async () => {
 		const { client, patch } = fakeClient();
 		await timelineReplaceMedia(
