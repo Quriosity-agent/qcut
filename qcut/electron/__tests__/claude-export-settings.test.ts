@@ -166,3 +166,95 @@ describe("export peak correction", () => {
 		).toThrow("Peak correction must be one of local, whole, check");
 	});
 });
+
+describe("export without a named preset", () => {
+	const trailer = { width: 1470, height: 630, fps: 24 };
+
+	it("takes the project's size and frame rate", () => {
+		expect(
+			resolveExportSettings({ request: {}, project: trailer })
+		).toMatchObject({
+			presetId: "project",
+			width: 1470,
+			height: 630,
+			fps: 24,
+			format: "mp4",
+			bitrate: "8Mbps",
+			codec: "libx264",
+		});
+	});
+
+	it("lets a named preset win over the project", () => {
+		expect(
+			resolveExportSettings({
+				request: { preset: "youtube-720p" },
+				project: trailer,
+			})
+		).toMatchObject({
+			presetId: "youtube-720p",
+			width: 1280,
+			height: 720,
+			fps: 30,
+		});
+	});
+
+	it("reports values that differ from the project as custom", () => {
+		expect(
+			resolveExportSettings({
+				request: { settings: { fps: 30 } },
+				project: trailer,
+			})
+		).toMatchObject({ presetId: "custom", width: 1470, height: 630, fps: 30 });
+	});
+
+	it("keeps the project label when the request repeats the project's values", () => {
+		expect(
+			resolveExportSettings({
+				request: { width: 1470, height: 630, fps: 24, format: "mp4" },
+				project: trailer,
+			}).presetId
+		).toBe("project");
+	});
+
+	it("rounds odd sides down to even ones the encoder takes", () => {
+		expect(
+			resolveExportSettings({
+				request: {},
+				project: { width: 1471, height: 631, fps: 25 },
+			})
+		).toMatchObject({ width: 1470, height: 630, fps: 25 });
+	});
+
+	it.each([
+		{ width: 1280, height: 720, bitrate: "5Mbps" },
+		{ width: 960, height: 540, bitrate: "5Mbps" },
+		{ width: 1470, height: 630, bitrate: "8Mbps" },
+		{ width: 1080, height: 1920, bitrate: "8Mbps" },
+		{ width: 2560, height: 1440, bitrate: "45Mbps" },
+		{ width: 7680, height: 4320, bitrate: "45Mbps" },
+	])("encodes $width×$height at the rate of the YouTube preset of its size", ({
+		width,
+		height,
+		bitrate,
+	}) => {
+		expect(
+			resolveExportSettings({
+				request: {},
+				project: { width, height, fps: 30 },
+			}).bitrate
+		).toBe(bitrate);
+	});
+
+	it.each([
+		{ width: 0, height: 630, fps: 24 },
+		{ width: 1470, height: Number.NaN, fps: 24 },
+		{ width: 1470, height: 630, fps: 0 },
+	])("falls back to YouTube 1080p when the project gives no usable picture", (project) => {
+		expect(resolveExportSettings({ request: {}, project })).toMatchObject({
+			presetId: "youtube-1080p",
+			width: 1920,
+			height: 1080,
+			fps: 30,
+		});
+	});
+});

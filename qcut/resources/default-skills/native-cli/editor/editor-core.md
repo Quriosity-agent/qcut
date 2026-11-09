@@ -107,7 +107,7 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 | `--items` | string | JSON items array for batch import |
 | `--url` | string | URL for import |
 | `--filename` | string | Override filename |
-| `--preset` | string | Export preset name |
+| `--preset` | string | Export preset name (default: the project's own size and frame rate) |
 | `--target` | string | Export target platform |
 | `--threshold` | number | Detection threshold (0-1) |
 | `--timestamps` | string | Comma-separated timestamps |

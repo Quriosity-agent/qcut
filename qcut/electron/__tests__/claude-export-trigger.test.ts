@@ -203,6 +203,182 @@ describe("Claude export trigger", () => {
 		expect(getExportJobStatus(result.jobId)?.presetId).toBe("youtube-1080p");
 	});
 
+	it("exports at the project's size and frame rate when no preset is named", async () => {
+		const result = await startExportJob({
+			projectId: "project_trailer",
+			request: { outputPath: "/tmp/export-project-size.mp4" },
+			timeline: { ...testTimeline, width: 1470, height: 630, fps: 24 },
+			mediaFiles: testMediaFiles,
+		});
+
+		expect(getExportJobStatus(result.jobId)).toMatchObject({
+			presetId: "project",
+			settings: { width: 1470, height: 630, fps: 24, bitrate: "8Mbps" },
+		});
+	});
+
+	describe("a range of the timeline", () => {
+		const twoClips = {
+			...testTimeline,
+			duration: 10,
+			tracks: [
+				{
+					...testTimeline.tracks[0],
+					elements: [
+						testTimeline.tracks[0].elements[0],
+						{
+							...testTimeline.tracks[0].elements[0],
+							id: "el_2",
+							startTime: 5,
+							endTime: 10,
+						},
+					],
+				},
+			],
+		};
+
+		it("renders the clips outside it black, then cuts the picture and sound to it", async () => {
+			const result = await startExportJob({
+				projectId: "project_range",
+				request: {
+					outputPath: "/tmp/export-range.mp4",
+					range: { startTime: 2, endTime: 4 },
+				},
+				timeline: twoClips,
+				mediaFiles: testMediaFiles,
+			});
+			expect(getExportJobStatus(result.jobId)).toMatchObject({
+				range: { startTime: 2, endTime: 4 },
+			});
+			await vi.waitFor(() => {
+				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+			});
+			const commands = mockSpawn.mock.calls.map((call) => call[1] as string[]);
+			// Paths join with a backslash on Windows.
+			const segments = commands.filter((args) =>
+				/[\\/]segment-\d{4}\.mov$/.test(String(args.at(-1)))
+			);
+			expect(segments).toHaveLength(2);
+			expect(segments[0]).toContain("/tmp/clip.mp4");
+			expect(segments[0]).not.toContain("color=c=black:s=1920x1080:r=30");
+			expect(segments[1]).toContain("color=c=black:s=1920x1080:r=30");
+			expect(segments[1]).not.toContain("/tmp/clip.mp4");
+			const cut = commands.find((args) =>
+				/[\\/]range-picture\.mp4$/.test(String(args.at(-1)))
+			);
+			expect(cut).toBeDefined();
+			expect(cut?.[cut.indexOf("-frames:v") + 1]).toBe("60");
+			const published = commands.find(
+				(args) => args.at(-1) === resolve("/tmp/export-range.mp4")
+			);
+			expect(published).toBeDefined();
+			expect(published?.[published.indexOf("-af") + 1]).toBe(
+				"atrim=start=2:end=4,asetpts=PTS-STARTPTS"
+			);
+			expect(getExportJobStatus(result.jobId)).toMatchObject({
+				duration: 2,
+				range: { startTime: 2, endTime: 4 },
+			});
+		});
+
+		it("is refused before anything is queued when it leaves the timeline or the format cannot hold it", async () => {
+			await expect(
+				startExportJob({
+					projectId: "project_range_late",
+					request: {
+						outputPath: "/tmp/export-range-late.mp4",
+						range: { startTime: 12 },
+					},
+					timeline: twoClips,
+					mediaFiles: testMediaFiles,
+				})
+			).rejects.toThrow("at or after the end of the timeline");
+			await expect(
+				startExportJob({
+					projectId: "project_range_gif",
+					request: {
+						outputPath: "/tmp/export-range.gif",
+						format: "gif",
+						range: { startTime: 2, endTime: 4 },
+					} as never,
+					timeline: twoClips,
+					mediaFiles: testMediaFiles,
+				})
+			).rejects.toThrow("A range export writes MP4 or MOV, not gif");
+			expect(mockSpawn).not.toHaveBeenCalled();
+		});
+
+		it("is not something the renderer engine can write", async () => {
+			const dispatch = vi.fn(async () => {});
+			await expect(
+				startRendererExportJob({
+					dispatch,
+					mediaFiles: testMediaFiles,
+					projectId: "project_renderer_range",
+					request: {
+						outputPath: "/tmp/renderer-range.mp4",
+						range: { startTime: 2, endTime: 4 },
+					},
+					timeline: twoClips,
+				})
+			).rejects.toThrow("range (--start-time/--end-time)");
+			expect(dispatch).not.toHaveBeenCalled();
+		});
+	});
+
+	it("snaps a project rate the renderer cannot run to the nearest it can, unless the rate was asked for", async () => {
+		const dispatch = vi.fn(async () => {});
+		const ntsc = { ...testTimeline, width: 1920, height: 1080, fps: 29.97 };
+
+		const result = await startRendererExportJob({
+			dispatch,
+			mediaFiles: testMediaFiles,
+			projectId: "project_renderer_ntsc",
+			request: { outputPath: "/tmp/renderer-ntsc.mp4" },
+			timeline: ntsc,
+		});
+		await vi.waitFor(() => {
+			expect(dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ frameRate: 30 })
+			);
+		});
+		expect(getExportJobStatus(result.jobId)).toMatchObject({
+			presetId: "custom",
+			settings: { fps: 30 },
+		});
+
+		await expect(
+			startRendererExportJob({
+				dispatch,
+				mediaFiles: testMediaFiles,
+				projectId: "project_renderer_ntsc_asked",
+				request: {
+					outputPath: "/tmp/renderer-ntsc-asked.mp4",
+					fps: 29.97,
+				} as never,
+				timeline: ntsc,
+			})
+		).rejects.toThrow("Renderer MP4 export does not support 29.97 fps");
+	});
+
+	it("hands the renderer the project's size and frame rate when no preset is named", async () => {
+		const dispatch = vi.fn(async () => {});
+
+		await startRendererExportJob({
+			dispatch,
+			mediaFiles: testMediaFiles,
+			projectId: "project_renderer_trailer",
+			request: { outputPath: "/tmp/renderer-project-size.mp4" },
+			timeline: { ...testTimeline, width: 1470, height: 630, fps: 24 },
+		});
+
+		await vi.waitFor(() => {
+			expect(dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ width: 1470, height: 630, frameRate: 24 })
+			);
+		});
+	});
+
 	it("refuses a restricted Sticker Lab source before queuing FFmpeg", async () => {
 		await expect(
 			startExportJob({

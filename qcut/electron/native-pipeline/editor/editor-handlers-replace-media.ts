@@ -7,6 +7,8 @@
  * length change (`--trim-start` names a new in-point). Media too short to
  * reach the clip's out-point is refused and the clip stays as it was. The
  * command reads the clip back, so its answer is what the timeline now holds.
+ * With `--match-loudness` the clip's gain also moves by the difference in
+ * loudness between the two files (editor-replace-media-loudness.ts).
  *
  * @module electron/native-pipeline/editor/editor-handlers-replace-media
  */
@@ -19,6 +21,29 @@ import type {
 	ClaudeTimeline,
 } from "../../types/claude-api.js";
 import { type EditorApiClient, EditorApiError } from "./editor-api-client.js";
+import {
+	type ClipGainChange,
+	clipSourceSeconds,
+	matchedClipGain,
+	measureStretchLoudness,
+} from "./editor-replace-media-loudness.js";
+
+/** The clip and the id of its track. */
+function findClip({
+	timeline,
+	elementId,
+}: {
+	timeline: ClaudeTimeline;
+	elementId: string;
+}): { clip: ClaudeElement; trackId?: string } | undefined {
+	for (const track of timeline.tracks) {
+		const clip = track.elements.find(
+			(element: ClaudeElement) => element.id === elementId
+		);
+		if (clip) return { clip, trackId: track.id };
+	}
+	return undefined;
+}
 
 /** The clip as the timeline holds it after the replacement. */
 function describeClip({
@@ -28,24 +53,82 @@ function describeClip({
 	timeline: ClaudeTimeline;
 	elementId: string;
 }): Record<string, unknown> | undefined {
-	for (const track of timeline.tracks) {
-		const clip = track.elements.find(
-			(element: ClaudeElement) => element.id === elementId
-		);
-		if (!clip) continue;
+	const found = findClip({ timeline, elementId });
+	if (!found) return undefined;
+	const { clip, trackId } = found;
+	return {
+		elementId: clip.id,
+		trackId,
+		name: clip.name,
+		mediaId: clip.sourceId,
+		sourceName: clip.sourceName,
+		startTime: clip.startTime,
+		endTime: clip.endTime,
+		trimStart: clip.trimStart,
+		trimEnd: clip.trimEnd,
+	};
+}
+
+/** A media item's file and length, as the editor knows them. */
+async function readMedia({
+	client,
+	project,
+	mediaId,
+}: {
+	client: EditorApiClient;
+	project: string;
+	mediaId: string;
+}): Promise<{ duration?: number; path?: string; name?: string } | null> {
+	return client
+		.get<{ duration?: number; path?: string; name?: string } | null>(
+			`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`
+		)
+		.catch(() => null);
+}
+
+/** The clip before the swap and how loud its file plays over the clip. */
+interface MeasuredClip {
+	clip: ClaudeElement;
+	lufs: number;
+	sourceSeconds: number;
+}
+
+/** Reads the clip and measures the stretch of its current file it plays. */
+async function measureCurrentClip({
+	client,
+	project,
+	elementId,
+}: {
+	client: EditorApiClient;
+	project: string;
+	elementId: string;
+}): Promise<MeasuredClip | { error: string }> {
+	const timeline = await client.get<ClaudeTimeline>(
+		`/api/claude/timeline/${project}`
+	);
+	const clip = findClip({ timeline, elementId })?.clip;
+	if (!clip) return { error: `Clip ${elementId} is not on the timeline` };
+	const mediaId = clip.sourceId ?? clip.mediaId;
+	const media = mediaId ? await readMedia({ client, project, mediaId }) : null;
+	if (!media?.path) {
 		return {
-			elementId: clip.id,
-			trackId: track.id,
-			name: clip.name,
-			mediaId: clip.sourceId,
-			sourceName: clip.sourceName,
-			startTime: clip.startTime,
-			endTime: clip.endTime,
-			trimStart: clip.trimStart,
-			trimEnd: clip.trimEnd,
+			error: `--match-loudness: the editor did not say which file clip ${elementId} plays`,
 		};
 	}
-	return undefined;
+	const sourceSeconds = clipSourceSeconds({ clip });
+	const lufs = await measureStretchLoudness({
+		stretch: {
+			path: media.path,
+			start: clip.trimStart ?? 0,
+			duration: sourceSeconds,
+		},
+	});
+	if (lufs === null) {
+		return {
+			error: `--match-loudness: clip ${elementId} has no sound to match (${media.name ?? media.path} is silent over the clip); replace it without --match-loudness`,
+		};
+	}
+	return { clip, lufs, sourceSeconds };
 }
 
 /** Copy `source` into the project and wait for the editor to load it. */
@@ -156,6 +239,80 @@ function leftoverNote({
 	);
 }
 
+/** Refuses the swap, taking back the file this command imported for it. */
+async function refuseAfterImport({
+	client,
+	project,
+	projectId,
+	mediaId,
+	imported,
+	message,
+}: {
+	client: EditorApiClient;
+	project: string;
+	projectId: string;
+	mediaId: string;
+	imported: BatchImportResult["mediaFile"];
+	message: string;
+}): Promise<CLIResult> {
+	if (!imported) return { success: false, error: message };
+	const cleanup = await removeImported({ client, project, mediaId });
+	return {
+		success: false,
+		error: cleanup.removed
+			? message
+			: message +
+				leftoverNote({
+					imported,
+					mediaId,
+					projectId,
+					reason: cleanup.reason,
+					absent: cleanup.absent,
+				}),
+	};
+}
+
+/** The new file over the stretch the clip will play, and the gain to match. */
+async function matchReplacementLoudness({
+	current,
+	media,
+	start,
+}: {
+	current: MeasuredClip;
+	media: { path?: string; name?: string } | null;
+	start: number;
+}): Promise<{ lufs: number; change: ClipGainChange } | { error: string }> {
+	if (!media?.path) {
+		return {
+			error: "--match-loudness: the editor did not say where the new file is",
+		};
+	}
+	// A measurement that fails (ffprobe or ffmpeg refusing the file, a
+	// timeout) is a refusal like any other, so the import is taken back.
+	let lufs: number | null;
+	try {
+		lufs = await measureStretchLoudness({
+			stretch: { path: media.path, start, duration: current.sourceSeconds },
+		});
+	} catch (error) {
+		return {
+			error: `--match-loudness: could not measure ${media.name ?? media.path}: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
+	if (lufs === null) {
+		return {
+			error: `--match-loudness: ${media.name ?? media.path} has no sound over the stretch the clip would play; replace it without --match-loudness`,
+		};
+	}
+	return {
+		lufs,
+		change: matchedClipGain({
+			clip: current.clip,
+			differenceDb: current.lufs - lufs,
+		}),
+	};
+}
+
 /** Handle `editor:timeline:replace-media`. */
 export async function timelineReplaceMedia(
 	client: EditorApiClient,
@@ -184,6 +341,13 @@ export async function timelineReplaceMedia(
 	}
 
 	const project = encodeURIComponent(projectId);
+	// Measured before anything is imported, so a refusal leaves nothing behind.
+	const current = opts.matchLoudness
+		? await measureCurrentClip({ client, project, elementId })
+		: undefined;
+	if (current && "error" in current) {
+		return { success: false, error: current.error };
+	}
 	let mediaId = opts.mediaId;
 	let imported: BatchImportResult["mediaFile"];
 	if (source) {
@@ -196,15 +360,29 @@ export async function timelineReplaceMedia(
 
 	// The editor may not know a file's length yet right after an import; the
 	// probed length stands in until it does.
-	const media = await client
-		.get<{ duration?: number } | null>(
-			`/api/claude/media/${project}/${encodeURIComponent(mediaId)}`
-		)
-		.catch(() => null);
+	const media = await readMedia({ client, project, mediaId });
 	const sourceDuration =
 		typeof media?.duration === "number" && media.duration > 0
 			? media.duration
 			: undefined;
+
+	const matched = current
+		? await matchReplacementLoudness({
+				current,
+				media,
+				start: trimStart ?? current.clip.trimStart ?? 0,
+			})
+		: undefined;
+	if (matched && "error" in matched) {
+		return refuseAfterImport({
+			client,
+			project,
+			projectId,
+			mediaId,
+			imported,
+			message: matched.error,
+		});
+	}
 
 	let patch: { ignoredFields?: string[] };
 	try {
@@ -214,6 +392,7 @@ export async function timelineReplaceMedia(
 				mediaId,
 				...(sourceDuration ? { sourceDuration } : {}),
 				...(trimStart !== undefined ? { trimStart } : {}),
+				...(matched ? { audio: matched.change.audio } : {}),
 			}
 		);
 	} catch (error) {
@@ -262,6 +441,17 @@ export async function timelineReplaceMedia(
 		data: {
 			replaced: true,
 			clip,
+			...(current && matched
+				? {
+						loudness: {
+							previousLufs: current.lufs,
+							replacementLufs: matched.lufs,
+							gainChangeDb: matched.change.appliedDb,
+							volumeDb: matched.change.audio.volumeDb,
+							...(matched.change.clamped ? { clamped: true } : {}),
+						},
+					}
+				: {}),
 			...(imported ? { imported } : {}),
 			...(patch?.ignoredFields?.length
 				? { ignoredFields: patch.ignoredFields }

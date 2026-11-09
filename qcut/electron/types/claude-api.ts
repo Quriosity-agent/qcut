@@ -485,6 +485,12 @@ export interface ExportRecommendation {
 	estimatedFileSize?: string;
 }
 
+/** Part of the timeline in seconds: no start is 0, no end the timeline's end. */
+export interface ClaudeTimeRange {
+	startTime?: number;
+	endTime?: number;
+}
+
 export interface ExportJobRequest {
 	/**
 	 * Export engine. On the main-process path every accepted value resolves
@@ -515,6 +521,11 @@ export interface ExportJobRequest {
 	 * peak over the ceiling is handled ("local" by default).
 	 */
 	peakCorrection?: ExportPeakCorrection;
+	/**
+	 * Native exports only: write just this part of the timeline, as it plays
+	 * in the full export (see export-range.ts).
+	 */
+	range?: ClaudeTimeRange;
 
 	/** GIF-specific export options */
 	gifConfig?: {
@@ -577,6 +588,8 @@ export interface ExportJobStatus {
 	fileSize?: number;
 	presetId?: string;
 	engine?: string;
+	/** The part of the timeline a range export wrote, snapped to frames. */
+	range?: { startTime: number; endTime: number };
 	audioValidation?: ExportAudioValidation;
 	warnings?: string[];
 }

@@ -28,7 +28,7 @@ project keeps what was saved.
 | `editor mix bus-set` | `--bus-id` | `--name`, `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--solo`/`--no-solo`, `--effects` | Change a bus |
 | `editor mix bus-remove` | `--bus-id` | — | Remove a bus; its tracks go back to the master |
 | `editor mix master-set` | — | `--gain-db`, `--pan`, `--mute`/`--no-mute`, `--effects` | Change the master |
-| `editor mix loudness` | — | `--engine native\|browser`, `--timeout`, `--poll-interval`, `--no-wait` | Render the mix as an export would and measure it (a job; waits for the result by default) |
+| `editor mix loudness` | — | `--engine native\|browser`, `--start-time`, `--end-time`, `--timeout`, `--poll-interval`, `--no-wait` | Render the mix as an export would and measure it, or a stretch of it (a job; waits for the result by default) |
 | `editor mix stems` | `--output-dir` | `--timeout`, `--poll-interval`, `--no-wait` | Write one WAV per bus into a folder (a job; waits by default) |
 | `editor mix job-status` | `--job-id` | `--project-id` | Progress and result of a loudness or stems job |
 | `editor mix bus-automation` | `--bus-id --param` | `--points`, `--clear` | Set or remove a bus's (or the master's) level or pan curve |
@@ -133,6 +133,20 @@ The two can differ by a few tenths of an LU and a dB of true peak on
 material that keeps the master limiter busy: FFmpeg's limiter holds the
 ceiling strictly and so trims a little more than the editor's. Measure the
 engine you export with.
+
+### A stretch of the mix
+
+`--start-time` and `--end-time` (timeline seconds; either may be left out)
+measure only that stretch, native engine only. The whole mix is still
+rendered, so the stretch reads as it plays in the export, and the result
+says what was measured in `range` (snapped to frames) with `durationSeconds`
+its length. `integratedLufs`, the loudest windows and the peaks are the
+stretch's own; `audioValidation` still describes the whole export. Use it
+to compare a replaced clip with the rest, or two versions of one scene:
+
+```bash
+qcut editor mix loudness --project-id $P --start-time 155.583 --end-time 185.75 --json
+```
 
 ## Stems
 

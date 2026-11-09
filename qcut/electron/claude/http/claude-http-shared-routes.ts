@@ -1851,7 +1851,7 @@ export function registerSharedRoutes(
 			assertProjectIsOpen({ accessor, projectId }),
 		router,
 		mutateAudioMix: accessor.mutateAudioMix?.bind(accessor),
-		measureNativeLoudness: async ({ projectId }) => {
+		measureNativeLoudness: async ({ projectId, range }) => {
 			const timeline = await accessor.requestTimeline();
 			if (timeline.projectId && timeline.projectId !== projectId) {
 				throw new Error(
@@ -1862,7 +1862,12 @@ export function registerSharedRoutes(
 				projectId,
 				accessor,
 			});
-			return measureNativeExportLoudness({ projectId, timeline, mediaFiles });
+			return measureNativeExportLoudness({
+				projectId,
+				timeline,
+				mediaFiles,
+				range,
+			});
 		},
 		onChanged: scheduleProjectJsonAutoSync,
 	});

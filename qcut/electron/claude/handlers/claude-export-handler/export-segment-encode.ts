@@ -47,6 +47,20 @@ export function segmentPcmAudioArgs({
 	];
 }
 
+/** An endless black picture at the export's size and rate. */
+export function blackPictureInputArgs({
+	settings,
+}: {
+	settings: Pick<ResolvedExportSettings, "width" | "height" | "fps">;
+}): string[] {
+	return [
+		"-f",
+		"lavfi",
+		"-i",
+		`color=c=black:s=${settings.width}x${settings.height}:r=${settings.fps}`,
+	];
+}
+
 /** An endless silent input in `format`, for a segment with no sound of its own. */
 export function silenceInputArgs({
 	format,
@@ -163,6 +177,10 @@ export async function resolveExportSegmentAudio({
  * from the first file and lays each file's samples straight after the
  * previous file's, so a segment without sound, or with sound in another
  * rate, would move every clip after it.
+ *
+ * With `blackPicture` (a range export, for a clip outside the range) the
+ * picture is black at the export's size and the source is read for its
+ * sound alone, through the same filters, so the mix hears what it would.
  */
 export function buildExportSegmentEncodeArgs({
 	inputArgs,
@@ -171,13 +189,20 @@ export function buildExportSegmentEncodeArgs({
 	settings,
 	audio,
 	outputPath,
+	blackPicture = false,
 }: {
 	inputArgs: string[];
 	scaleFilter: string;
 	segment: ExportSegment;
 	settings: Pick<
 		ResolvedExportSettings,
-		"fps" | "codec" | "bitrate" | "audioSampleRate" | "audioChannels"
+		| "width"
+		| "height"
+		| "fps"
+		| "codec"
+		| "bitrate"
+		| "audioSampleRate"
+		| "audioChannels"
 	>;
 	/**
 	 * Where the segment's sound comes from: the video input itself, a
@@ -187,29 +212,35 @@ export function buildExportSegmentEncodeArgs({
 	audio: ExportSegmentAudio;
 	/** An intermediate MOV: the sound is PCM, which MP4 cannot hold. */
 	outputPath: string;
+	/** Black frames instead of the source's picture; the sound is unchanged. */
+	blackPicture?: boolean;
 }): string[] {
 	const format = segmentAudioFormat({ settings });
 	const atempo =
 		segment.isImage || audio === null
 			? null
 			: buildAtempoChain({ rate: segment.playbackRate ?? 1 });
+	const soundFromPictureInput = audio?.kind === "input" && !blackPicture;
 	const audioInputArgs =
 		audio === null
 			? silenceInputArgs({ format })
 			: audio.kind === "separate"
 				? audio.inputArgs
-				: [];
-	const audioStream = audio?.kind === "input" ? "0:a:0" : "1:a:0";
+				: blackPicture
+					? inputArgs
+					: [];
+	const audioStream = soundFromPictureInput ? "0:a:0" : "1:a:0";
 	return [
 		"-y",
-		...inputArgs,
+		...(blackPicture ? blackPictureInputArgs({ settings }) : inputArgs),
 		...audioInputArgs,
 		"-map",
 		"0:v:0",
 		"-map",
 		audioStream,
-		"-vf",
-		`${scaleFilter},tpad=stop_mode=clone:stop=-1`,
+		...(blackPicture
+			? []
+			: ["-vf", `${scaleFilter},tpad=stop_mode=clone:stop=-1`]),
 		"-r",
 		String(settings.fps),
 		"-c:v",

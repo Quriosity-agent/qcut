@@ -522,9 +522,15 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"number",
 				"Seconds into the new media where the clip starts reading it (default: the clip's current in-point)"
 			),
+			f(
+				"--match-loudness",
+				"boolean",
+				"Move the clip's gain by the difference in loudness (EBU R 128) between the old and new file over the stretch the clip plays"
+			),
 		],
 		[
 			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --source ~/shots/05_v2.mp4 --json",
+			"qcut editor timeline replace-media --project-id <id> --element-id <clip> --source ~/shots/05_final.mp4 --match-loudness --json",
 			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --media-id <media> --trim-start 0 --json",
 		]
 	),
@@ -1044,7 +1050,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:export:start": ed("editor:export:start", "Start export", [
 		PID,
-		f("--preset", "string", "Export preset name"),
+		f(
+			"--preset",
+			"string",
+			"Export preset name (default: the project's own size and frame rate)"
+		),
 		POLL,
 		f("--filename", "string", "Output filename"),
 		f("--output", "string", "Exact output path (absolute or relative)"),
@@ -1052,6 +1062,16 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			enum: ["auto", "native", "cli", "muxer"],
 		}),
 		f("--verify-frames", "string", "Extract frames at comma-separated seconds"),
+		f(
+			"--start-time",
+			"number",
+			"Export from here, in timeline seconds, as it plays in the full export (native MP4/MOV exports; default 0)"
+		),
+		f(
+			"--end-time",
+			"number",
+			"Export up to here, in timeline seconds (default: the end of the timeline)"
+		),
 		f(
 			"--stems",
 			"boolean",

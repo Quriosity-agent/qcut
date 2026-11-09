@@ -96,6 +96,7 @@ describe("editor timeline replace-media", () => {
 			"--source",
 			"--media-id",
 			"--trim-start",
+			"--match-loudness",
 		]);
 		expect(
 			parseCliArgs([

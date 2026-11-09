@@ -14,9 +14,14 @@ import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getFFmpegPath, getFFprobePath } from "../../../ffmpeg/utils.js";
-import { parseTruePeakSummary } from "../../../ffmpeg/audio-true-peak.js";
-import type { ClaudeTimeline, MediaFile } from "../../../types/claude-api.js";
+import type {
+	ClaudeTimeline,
+	ClaudeTimeRange,
+	MediaFile,
+} from "../../../types/claude-api.js";
 import type { ClaudeMixLoudness } from "../../../types/claude-audio-mix-api.js";
+import { parseEbur128Report } from "../../../ffmpeg/ebur128-report.js";
+import { resolveTimelineRange, type TimelineRange } from "./export-range.js";
 import { getExportJobStatus } from "./job-manager.js";
 import { startExportJob } from "./public-api.js";
 import { EXPORT_JOB_STATUS } from "./types.js";
@@ -52,52 +57,19 @@ function runCapturing({
 }
 
 /**
- * The numbers in FFmpeg's `ebur128=peak=true` log followed by `astats`:
- * integrated loudness and true peak from the summary, the loudest momentary
- * (400 ms) and short-term (3 s) windows from the running lines, the sample
- * peak from astats.
+ * Measures a finished file with FFmpeg's R 128 meter, or with `range` only
+ * that stretch of it (cut sample-exactly, so the meter starts fresh there).
  */
-export function parseEbur128Report({
-	stderr,
-}: {
-	stderr: string;
-}): Omit<ClaudeMixLoudness, "durationSeconds"> {
-	const summary = stderr.slice(stderr.lastIndexOf("Summary:"));
-	const integrated = summary.match(/\bI:\s+(-?[\d.]+|-inf) LUFS/);
-	if (!integrated) {
-		throw new Error(
-			`FFmpeg's ebur128 meter gave no summary: ${stderr.slice(-400)}`
-		);
-	}
-	let maxMomentary = Number.NEGATIVE_INFINITY;
-	let maxShortTerm = Number.NEGATIVE_INFINITY;
-	for (const line of stderr.split("\n")) {
-		const momentary = line.match(/\bM:\s*(-?[\d.]+)/);
-		const shortTerm = line.match(/\bS:\s*(-?[\d.]+)/);
-		if (!momentary || !shortTerm || !/\bt:\s*[\d.]+/.test(line)) continue;
-		maxMomentary = Math.max(maxMomentary, Number(momentary[1]));
-		maxShortTerm = Math.max(maxShortTerm, Number(shortTerm[1]));
-	}
-	const samplePeak = stderr.match(/Peak level dB:\s*(-?[\d.]+|-inf)/);
-	const toNumber = (text: string) =>
-		text === "-inf" ? Number.NEGATIVE_INFINITY : Number(text);
-	return {
-		integratedLufs: toNumber(integrated[1]),
-		truePeakDbtp: parseTruePeakSummary({ stderr }),
-		maxMomentaryLufs: maxMomentary,
-		maxShortTermLufs: maxShortTerm,
-		samplePeakDb: samplePeak
-			? toNumber(samplePeak[1])
-			: Number.NEGATIVE_INFINITY,
-	};
-}
-
-/** Measures a finished file with FFmpeg's R 128 meter. */
 export async function measureFileLoudness({
 	file,
+	range,
 }: {
 	file: string;
+	range?: TimelineRange;
 }): Promise<ClaudeMixLoudness> {
+	const rangeFilter = range
+		? `atrim=start=${range.start}:end=${range.end},asetpts=PTS-STARTPTS,`
+		: "";
 	const metered = await runCapturing({
 		command: getFFmpegPath(),
 		args: [
@@ -109,7 +81,7 @@ export async function measureFileLoudness({
 			file,
 			"-vn",
 			"-af",
-			"ebur128=peak=true,astats=measure_overall=Peak_level:measure_perchannel=none",
+			`${rangeFilter}ebur128=peak=true,astats=measure_overall=Peak_level:measure_perchannel=none`,
 			"-f",
 			"null",
 			"-",
@@ -132,10 +104,14 @@ export async function measureFileLoudness({
 			file,
 		],
 	});
-	const durationSeconds = Number(probed.stdout.trim());
+	const probedSeconds = Number(probed.stdout.trim());
+	const fileSeconds = Number.isFinite(probedSeconds) ? probedSeconds : 0;
+	const durationSeconds = range
+		? Math.max(0, Math.min(range.end, fileSeconds) - range.start)
+		: fileSeconds;
 	return {
 		...parseEbur128Report({ stderr: metered.stderr }),
-		durationSeconds: Number.isFinite(durationSeconds) ? durationSeconds : 0,
+		durationSeconds,
 	};
 }
 
@@ -157,17 +133,28 @@ async function waitForExport({ jobId }: { jobId: string }): Promise<void> {
 /**
  * Exports the timeline through the native engine into a temporary folder,
  * sound at the export's defaults and the picture shrunk to a thumbnail, then
- * measures the result and removes it.
+ * measures the result, or the stretch `range` names, and removes it. The
+ * whole programme is rendered either way, so a stretch reads as it plays in
+ * the export: a limiter or reverb reaching into it hears what came before.
  */
 export async function measureNativeExportLoudness({
 	projectId,
 	timeline,
 	mediaFiles,
+	range,
 }: {
 	projectId: string;
 	timeline: ClaudeTimeline;
 	mediaFiles: MediaFile[];
+	range?: ClaudeTimeRange;
 }): Promise<ClaudeMixLoudness> {
+	const stretch = range
+		? resolveTimelineRange({
+				range,
+				duration: timeline.duration,
+				fps: timeline.fps,
+			})
+		: undefined;
 	const tempDir = await fsPromises.mkdtemp(
 		path.join(os.tmpdir(), "qcut-mix-loudness-")
 	);
@@ -191,8 +178,11 @@ export async function measureNativeExportLoudness({
 		await waitForExport({ jobId });
 		const audioValidation = getExportJobStatus(jobId)?.audioValidation;
 		return {
-			...(await measureFileLoudness({ file: outputPath })),
+			...(await measureFileLoudness({ file: outputPath, range: stretch })),
 			engine: "native",
+			...(stretch
+				? { range: { startTime: stretch.start, endTime: stretch.end } }
+				: {}),
 			...(audioValidation ? { audioValidation } : {}),
 		};
 	} finally {

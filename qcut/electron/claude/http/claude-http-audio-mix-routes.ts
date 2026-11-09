@@ -19,6 +19,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { ClaudeTimeRange } from "../../types/claude-api.js";
 import type {
 	ClaudeAudioMixRequest,
 	ClaudeAudioMixResponse,
@@ -59,8 +60,28 @@ function readLoudnessEngine(body: unknown): "native" | "browser" {
 	throw new HttpError(400, 'engine must be "native" or "browser"');
 }
 
+/** `startTime`/`endTime` from a loudness request; undefined for the whole mix. */
+function readLoudnessRange(body: unknown): ClaudeTimeRange | undefined {
+	const { startTime, endTime } = (body ?? {}) as Record<string, unknown>;
+	if (startTime === undefined && endTime === undefined) return undefined;
+	for (const [name, value] of Object.entries({ startTime, endTime })) {
+		if (
+			value !== undefined &&
+			(typeof value !== "number" || !Number.isFinite(value))
+		) {
+			throw new HttpError(400, `${name} must be a number of seconds`);
+		}
+	}
+	return {
+		...(typeof startTime === "number" ? { startTime } : {}),
+		...(typeof endTime === "number" ? { endTime } : {}),
+	};
+}
+
 export type MeasureNativeLoudness = (args: {
 	projectId: string;
+	/** Measure only this stretch of the rendered mix. */
+	range?: ClaudeTimeRange;
 }) => Promise<ClaudeMixLoudness>;
 
 export function registerAudioMixRoutes({
@@ -174,6 +195,13 @@ export function registerAudioMixRoutes({
 		await assertProjectOpen(req.params.projectId);
 		const projectId = req.params.projectId;
 		const engine = readLoudnessEngine(req.body);
+		const range = readLoudnessRange(req.body);
+		if (range && engine === "browser") {
+			throw new HttpError(
+				400,
+				"A stretch of the mix is measured on the native rendering; leave engine at native"
+			);
+		}
 		if (engine === "native" && !measureNativeLoudness) {
 			throw new HttpError(
 				503,
@@ -189,7 +217,9 @@ export function registerAudioMixRoutes({
 					: "Rendering the mix in the editor to measure it",
 			run: async () => {
 				if (engine === "native" && measureNativeLoudness) {
-					return { loudness: await measureNativeLoudness({ projectId }) };
+					return {
+						loudness: await measureNativeLoudness({ projectId, range }),
+					};
 				}
 				const { loudness } = await run(req, {
 					action: "measure-loudness",

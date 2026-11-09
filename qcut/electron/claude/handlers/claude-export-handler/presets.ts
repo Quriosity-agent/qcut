@@ -140,3 +140,64 @@ export function findPresetById({
 		return null;
 	}
 }
+
+/** The preset id an export without a named preset reports. */
+export const PROJECT_PRESET_ID = "project";
+
+/** The preset used when neither a preset nor the project's size is known. */
+export const FALLBACK_PRESET_ID = "youtube-1080p";
+
+/** The picture a project is edited in. */
+export interface ProjectPicture {
+	width: number;
+	height: number;
+	fps: number;
+}
+
+/**
+ * YouTube presets from small to large. A project-sized export takes the
+ * bitrate of the first one whose longer side reaches the project's, so a
+ * 1470×630 trailer gets the 1080p rate, not the 720p one.
+ */
+const PROJECT_BITRATE_LADDER = ["youtube-720p", "youtube-1080p", "youtube-4k"];
+
+/** 4:2:0 H.264 needs even sides; an odd side drops its last pixel. */
+function evenSide(value: number): number {
+	return Math.max(2, Math.floor(value / 2) * 2);
+}
+
+/**
+ * What an export without a named preset uses: the project's own size and
+ * frame rate as MP4, at the bitrate of the YouTube preset of that size.
+ * Null when the project does not give a usable size or rate.
+ */
+export function projectExportPreset({
+	project,
+}: {
+	project: ProjectPicture;
+}): ExportPreset | null {
+	const { width, height, fps } = project;
+	const isUsable = [width, height, fps].every(
+		(value) => Number.isFinite(value) && value > 0
+	);
+	if (!isUsable) return null;
+	const longerSide = Math.max(width, height);
+	const ladder = PROJECT_BITRATE_LADDER.map((presetId) =>
+		findPresetById({ presetId })
+	).filter((preset): preset is ExportPreset => preset !== null);
+	const sizedPreset =
+		ladder.find(
+			(preset) => Math.max(preset.width, preset.height) >= longerSide
+		) ?? ladder.at(-1);
+	if (!sizedPreset) return null;
+	return {
+		id: PROJECT_PRESET_ID,
+		name: "Project settings",
+		platform: "project",
+		width: evenSide(width),
+		height: evenSide(height),
+		fps,
+		bitrate: sizedPreset.bitrate,
+		format: "mp4",
+	};
+}

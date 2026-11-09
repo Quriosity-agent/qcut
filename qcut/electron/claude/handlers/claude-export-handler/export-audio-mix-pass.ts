@@ -7,6 +7,7 @@ import type { ExportAudioValidation } from "../../../types/export-audio-validati
 import { renderTruePeakLimitedExport } from "./export-audio-limiter.js";
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
 import { throwIfCancelled } from "./export-cancel.js";
+import { type RangeCut, rangeAudioFilter } from "./export-range.js";
 import { moveFile } from "./move-file.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 
@@ -98,7 +99,9 @@ export async function renderTimelineAudioMix({
 	runFFmpegCommand,
 	signal,
 	onPublished,
+	rangeCut,
 }: {
+	/** The full-length picture with the joined clips' sound. */
 	videoOutputPath: string;
 	outputPath: string;
 	tempDir: string;
@@ -110,6 +113,12 @@ export async function renderTimelineAudioMix({
 	audioMixConfig?: AudioMixConfig;
 	signal?: AbortSignal;
 	onPublished?: () => void;
+	/**
+	 * A range export: the picture already cut to the range. The mix is still
+	 * made over the whole programme from `videoOutputPath` and the audio
+	 * files, then cut to the range (export-range.ts).
+	 */
+	rangeCut?: RangeCut;
 }): Promise<{
 	finalized: boolean;
 	audioValidation?: ExportAudioValidation;
@@ -129,6 +138,11 @@ export async function renderTimelineAudioMix({
 	}
 	const sourcePath = path.join(tempDir, "video-before-audio-mix.mp4");
 	await moveFile({ from: videoOutputPath, to: sourcePath });
+	// The picture the export shows: the cut one for a range export.
+	const picturePath = rangeCut?.picturePath ?? sourcePath;
+	const exportSeconds = rangeCut
+		? rangeCut.range.end - rangeCut.range.start
+		: undefined;
 	try {
 		const hasEmbeddedAudio = await probeHasAudioStream({
 			mediaPath: sourcePath,
@@ -149,16 +163,16 @@ export async function renderTimelineAudioMix({
 			throwIfCancelled(signal);
 			if (enforceTruePeak) {
 				await publishVideoWithoutAudio({
-					sourcePath,
+					sourcePath: picturePath,
 					outputPath,
 					format: settings.format,
-					duration,
+					duration: exportSeconds ?? duration,
 					runFFmpegCommand,
 					signal,
 					onPublished,
 				});
 			} else {
-				await moveFile({ from: sourcePath, to: videoOutputPath });
+				await moveFile({ from: picturePath, to: videoOutputPath });
 			}
 			return {
 				finalized: enforceTruePeak,
@@ -174,6 +188,9 @@ export async function renderTimelineAudioMix({
 		}
 		const inputArgs = ["-y", "-i", sourcePath];
 		for (const audioFile of mixFiles) inputArgs.push("-i", audioFile.path);
+		// The cut picture is the last input, so the audio inputs keep their places.
+		const pictureInput = rangeCut ? inputArgs.length / 2 - 0.5 : 0;
+		if (rangeCut) inputArgs.push("-i", rangeCut.picturePath);
 		const graph = buildTimelineAudioFilters({
 			audioFiles: mixFiles,
 			audioStartIndex: 1,
@@ -195,6 +212,14 @@ export async function renderTimelineAudioMix({
 				`[0:a]${externalLabel}amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[a_final]`
 			);
 			audioMap = "[a_final]";
+		}
+		// The limited path cuts after its limiter instead (export-audio-limiter.ts).
+		if (rangeCut && !enforceTruePeak) {
+			const mixLabel = audioMap.startsWith("[") ? audioMap : `[${audioMap}]`;
+			filterSteps.push(
+				`${mixLabel}${rangeAudioFilter({ range: rangeCut.range })}[a_range]`
+			);
+			audioMap = "[a_range]";
 		}
 		const totalDuration = Math.max(
 			duration,
@@ -226,10 +251,11 @@ export async function renderTimelineAudioMix({
 			});
 			const result = await renderTruePeakLimitedExport({
 				sourceAudioPath: pcmPath,
-				sourceVideoPath: settings.format === "mp3" ? undefined : sourcePath,
+				sourceVideoPath: settings.format === "mp3" ? undefined : picturePath,
 				outputPath,
 				tempDir,
 				duration: totalDuration,
+				...(rangeCut ? { range: rangeCut.range } : {}),
 				limiter,
 				sampleRate: settings.audioSampleRate ?? 48_000,
 				channels: settings.audioChannels ?? 2,
@@ -243,12 +269,12 @@ export async function renderTimelineAudioMix({
 		}
 		await runFFmpegCommand({
 			signal,
-			estimatedDuration: totalDuration,
+			estimatedDuration: exportSeconds ?? totalDuration,
 			args: [
 				...inputArgs,
 				...graphArgs,
 				"-map",
-				"0:v:0",
+				`${pictureInput}:v:0`,
 				"-map",
 				audioMap,
 				"-c:v",
@@ -262,7 +288,7 @@ export async function renderTimelineAudioMix({
 				"-ac",
 				String(settings.audioChannels ?? 2),
 				"-t",
-				String(totalDuration),
+				String(exportSeconds ?? totalDuration),
 				"-movflags",
 				"+faststart",
 				videoOutputPath,

@@ -435,6 +435,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
 			"trim-start": { type: "string" },
+			"match-loudness": { type: "boolean" },
 			"new-name": { type: "string" },
 			open: { type: "boolean", default: false },
 			"wait-ready": { type: "boolean", default: false },
@@ -1107,17 +1108,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			? (parseFiniteCliNumber({ value: values.time }) ??
 				(values.time as string))
 			: undefined,
-		startTime: values["start-time"]
-			? Number.isNaN(parseFloat(values["start-time"] as string))
-				? undefined
-				: parseFloat(values["start-time"] as string)
-			: undefined,
-		endTime: values["end-time"]
-			? Number.isNaN(parseFloat(values["end-time"] as string))
-				? undefined
-				: parseFloat(values["end-time"] as string)
-			: undefined,
+		// parseFloat read "2:35" as 2; text that is not a number is NaN, which
+		// the runner refuses before any command sees it.
+		startTime: parseStrictCliNumber({ value: values["start-time"] }),
+		endTime: parseStrictCliNumber({ value: values["end-time"] }),
 		trimStart: parseStrictCliNumber({ value: values["trim-start"] }),
+		matchLoudness: values["match-loudness"] === true ? true : undefined,
 		newName: values["new-name"] as string | undefined,
 		name: values.name as string | undefined,
 		open: (values.open as boolean) ?? false,

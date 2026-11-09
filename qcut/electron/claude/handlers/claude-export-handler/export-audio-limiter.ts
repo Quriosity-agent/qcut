@@ -18,6 +18,7 @@ import {
 	keepExportTempFiles,
 	reportKeptExportDirectory,
 } from "./export-temp-retention.js";
+import type { TimelineRange } from "./export-range.js";
 import { HANDLER_NAME } from "./types.js";
 
 const OVERSAMPLE_FACTOR = 4;
@@ -51,8 +52,24 @@ export interface TruePeakLimitedExportOptions {
 	format: string;
 	/** How encoding peaks over the ceiling are handled; "local" by default. */
 	peakCorrection?: ExportPeakCorrection;
+	/**
+	 * A range export: encode only this stretch of the limited mix. The
+	 * limiter still runs over the whole `duration`, so the stretch sounds as
+	 * it does in the full export; `sourceVideoPath` is then the cut picture.
+	 */
+	range?: TimelineRange;
 	signal?: AbortSignal;
 	onPublished?: () => void;
+}
+
+/** Seconds the export holds: the range's, else the whole programme's. */
+function outputSeconds({
+	options,
+}: {
+	options: Pick<TruePeakLimitedExportOptions, "duration" | "range">;
+}): number {
+	const { range, duration } = options;
+	return range ? range.end - range.start : duration;
 }
 
 function validateOptions({
@@ -83,6 +100,19 @@ function validateOptions({
 	}
 	if (!Number.isFinite(duration) || duration <= 0) {
 		throw new Error("True-peak limited export requires a positive duration");
+	}
+	const { range } = options;
+	if (
+		range &&
+		!(
+			range.start >= 0 &&
+			range.end > range.start &&
+			range.end <= duration + 1 / sampleRate
+		)
+	) {
+		throw new Error(
+			"True-peak limited export range must lie within the programme"
+		);
 	}
 	if (
 		!Number.isFinite(limiter.ceilingDb) ||
@@ -127,7 +157,7 @@ function limitingFilter({
 }: {
 	options: TruePeakLimitedExportOptions;
 }) {
-	const { sampleRate, channels, limiter, duration } = options;
+	const { sampleRate, channels, limiter, duration, range } = options;
 	const targetDb = limiter.ceilingDb - HEADROOM_DB;
 	const minimumLimitDb = 20 * Math.log10(0.0625);
 	const filterLimitDb = Math.max(targetDb, minimumLimitDb);
@@ -144,6 +174,8 @@ function limitingFilter({
 		`volume=${targetDb - filterLimitDb}dB:precision=double`,
 		"apad",
 		`atrim=duration=${duration}`,
+		// The range is cut after the limiter has heard everything before it.
+		...(range ? [`atrim=start=${range.start}:end=${range.end}`] : []),
 		"asetpts=N/SR/TB",
 	].join(",");
 }
@@ -174,14 +206,9 @@ function encodingArgs({
 	/** Lowers the whole mix ("whole" correction only). */
 	attenuationDb: number;
 }): string[] {
-	const {
-		format,
-		sourceVideoPath,
-		sampleRate,
-		channels,
-		bitrateKbps,
-		duration,
-	} = options;
+	const { format, sourceVideoPath, sampleRate, channels, bitrateKbps } =
+		options;
+	const duration = outputSeconds({ options });
 	const isAudioOnly = format === "mp3";
 	return [
 		...(isAudioOnly ? [] : ["-i", sourceVideoPath as string]),
@@ -231,6 +258,7 @@ export async function renderTruePeakLimitedExport({
 	bitrateKbps,
 	format,
 	peakCorrection = "local",
+	range,
 	signal,
 	onPublished,
 }: TruePeakLimitedExportOptions): Promise<{
@@ -249,10 +277,12 @@ export async function renderTruePeakLimitedExport({
 		bitrateKbps,
 		format,
 		peakCorrection,
+		range,
 		signal,
 	};
 	signal?.throwIfAborted();
 	validateOptions({ options });
+	const exportSeconds = outputSeconds({ options });
 	let audioWorkDir = "";
 	let candidateDir = "";
 	try {
@@ -290,20 +320,20 @@ export async function renderTruePeakLimitedExport({
 			peakCorrection === "whole"
 				? {
 						correctedSeconds:
-							attenuationDb > 0 ? Number(duration.toFixed(2)) : 0,
+							attenuationDb > 0 ? Number(exportSeconds.toFixed(2)) : 0,
 						maxCorrectionDb: Number(attenuationDb.toFixed(2)),
 						corrections:
 							attenuationDb > 0
 								? [
 										{
 											start: 0,
-											end: Number(duration.toFixed(3)),
+											end: Number(exportSeconds.toFixed(3)),
 											depthDb: Number(attenuationDb.toFixed(2)),
 										},
 									]
 								: [],
 					}
-				: summarizePeakDips({ passes, duration });
+				: summarizePeakDips({ passes, duration: exportSeconds });
 		const encodeCandidate = async ({
 			attempt,
 		}: {

@@ -495,6 +495,10 @@ qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
 # current in-point.
 qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
   --media-id <media-id> --trim-start 0 --json
+
+# A final render in place of a preview, played as loud as the preview was.
+qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
+  --source ~/shots/05_final.mp4 --match-loudness --json
 ```
 
 | Flag | Type | Description |
@@ -504,11 +508,25 @@ qcut editor:timeline:replace-media --project-id <id> --element-id <clip> \
 | `--source` | string | File to import and use (or `--media-id`) |
 | `--media-id` | string | Media already in the project (or `--source`) |
 | `--trim-start` | number | Seconds into the new media where the clip starts reading it (default: the clip's current in-point) |
+| `--match-loudness` | boolean | Move the clip's gain by the difference in loudness between the old and the new file over the stretch the clip plays |
 
 The answer is the clip as the timeline now holds it (`mediaId`,
 `sourceName`, `startTime`, `endTime`, `trimStart`, `trimEnd`), plus the
-imported media with `--source`. The clip stays as it was, and the command
-fails with the reason, when:
+imported media with `--source`.
+
+`--match-loudness` keeps the clip as loud as it was: each file is measured
+with FFmpeg's EBU R 128 meter over the stretch the clip reads (from its
+in-point, its timeline length times its speed), and the difference goes
+into the clip's gain (`audio.volumeDb`, and every volumeDb keyframe with
+it, so a level curve keeps its shape), in the same change as the new media.
+The answer adds `loudness`: `previousLufs`, `replacementLufs`, the
+`gainChangeDb` applied and the clip's new `volumeDb`; `clamped: true` when
+the editor's -60..12 dB range cut the change short. The command refuses,
+before importing anything, when the clip's current file has no sound over
+the clip, and takes back its import when the new file has none; replace
+such a clip without the flag.
+
+The clip stays as it was, and the command fails with the reason, when:
 
 - the new media ends before the clip's out-point (`trimStart` plus the
   clip's span): the error gives both; read it from an earlier point with

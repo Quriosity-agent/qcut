@@ -13,6 +13,7 @@
  */
 
 import {
+	blackPictureInputArgs,
 	segmentAudioFormat,
 	segmentPcmAudioArgs,
 	silenceInputArgs,
@@ -90,10 +91,7 @@ export function buildGapSegmentEncodeArgs({
 }): string[] {
 	return [
 		"-y",
-		"-f",
-		"lavfi",
-		"-i",
-		`color=c=black:s=${settings.width}x${settings.height}:r=${settings.fps}`,
+		...blackPictureInputArgs({ settings }),
 		...silenceInputArgs({ format: segmentAudioFormat({ settings }) }),
 		"-map",
 		"0:v:0",
