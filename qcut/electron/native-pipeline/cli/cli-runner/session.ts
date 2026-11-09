@@ -517,10 +517,13 @@ function parseSessionArgs(args: string[]): {
 		if (values.rotation !== undefined)
 			result.rotation = Number(values.rotation);
 		if (values["sticker-id"]) result.stickerId = values["sticker-id"] as string;
+		// NaN for text that is not a number; the runner refuses it.
 		if (values["start-time"] !== undefined)
-			result.startTime = parseFloat(values["start-time"] as string);
+			result.startTime =
+				parseFiniteSessionNumber({ value: values["start-time"] }) ?? Number.NaN;
 		if (values["end-time"] !== undefined)
-			result.endTime = parseFloat(values["end-time"] as string);
+			result.endTime =
+				parseFiniteSessionNumber({ value: values["end-time"] }) ?? Number.NaN;
 		if (values.width !== undefined) result.width = Number(values.width);
 		if (values.height !== undefined) result.height = Number(values.height);
 		if (values.fps !== undefined) result.fps = Number(values.fps);
