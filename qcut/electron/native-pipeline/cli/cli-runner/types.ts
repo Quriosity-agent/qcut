@@ -332,6 +332,8 @@ export interface CLIRunOptions {
 	endTime?: number;
 	/** `editor timeline replace-media --trim-start`: the new in-point, in seconds. */
 	trimStart?: number;
+	/** `editor timeline replace-media --match-loudness`: keep the clip as loud as before. */
+	matchLoudness?: boolean;
 	newName?: string;
 	/** Project name alias used by editor project create. */
 	name?: string;
