@@ -5,8 +5,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	measureFileLoudness,
 	measureNativeExportLoudness,
-	parseEbur128Report,
 } from "../claude/handlers/claude-export-handler/export-loudness";
+import { parseEbur128Report } from "../ffmpeg/ebur128-report";
 import { exportJobs } from "../claude/handlers/claude-export-handler/job-manager";
 import { startExportJob } from "../claude/handlers/claude-export-handler/public-api";
 import {
