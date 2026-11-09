@@ -1,16 +1,41 @@
-import type { ExportJobRequest } from "../../../types/claude-api";
+import type { ExportJobRequest, ExportPreset } from "../../../types/claude-api";
 import { EXPORT_PEAK_CORRECTIONS } from "../../../types/export-audio-validation.js";
 import type { ResolvedExportSettings } from "./types.js";
-import { findPresetById } from "./presets.js";
+import {
+	FALLBACK_PRESET_ID,
+	findPresetById,
+	type ProjectPicture,
+	projectExportPreset,
+} from "./presets.js";
 
+/** The named preset, else the project's own picture, else YouTube 1080p. */
+function basePreset({
+	presetId,
+	project,
+}: {
+	presetId: string | undefined;
+	project?: ProjectPicture;
+}): ExportPreset | null {
+	if (presetId) return findPresetById({ presetId });
+	const projectPreset = project ? projectExportPreset({ project }) : null;
+	return projectPreset ?? findPresetById({ presetId: FALLBACK_PRESET_ID });
+}
+
+/**
+ * The export's settings: a named preset, or without one the project's own
+ * size and frame rate (`projectExportPreset`), with the request's values
+ * over either. Without a project the YouTube 1080p preset stands in.
+ */
 export function resolveExportSettings({
 	request,
+	project,
 }: {
 	request: ExportJobRequest;
+	project?: ProjectPicture;
 }): ResolvedExportSettings {
 	try {
-		const requestedPresetId = request.preset?.trim() || "youtube-1080p";
-		const preset = findPresetById({ presetId: requestedPresetId });
+		const requestedPresetId = request.preset?.trim();
+		const preset = basePreset({ presetId: requestedPresetId, project });
 		if (!preset) {
 			throw new Error(`Invalid preset ID: ${requestedPresetId}`);
 		}
