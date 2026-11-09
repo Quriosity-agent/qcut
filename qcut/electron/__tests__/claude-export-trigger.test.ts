@@ -254,8 +254,9 @@ describe("Claude export trigger", () => {
 				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
 			});
 			const commands = mockSpawn.mock.calls.map((call) => call[1] as string[]);
+			// Paths join with a backslash on Windows.
 			const segments = commands.filter((args) =>
-				String(args.at(-1)).includes("/segment-")
+				/[\\/]segment-\d{4}\.mov$/.test(String(args.at(-1)))
 			);
 			expect(segments).toHaveLength(2);
 			expect(segments[0]).toContain("/tmp/clip.mp4");
@@ -263,7 +264,7 @@ describe("Claude export trigger", () => {
 			expect(segments[1]).toContain("color=c=black:s=1920x1080:r=30");
 			expect(segments[1]).not.toContain("/tmp/clip.mp4");
 			const cut = commands.find((args) =>
-				String(args.at(-1)).endsWith("/range-picture.mp4")
+				/[\\/]range-picture\.mp4$/.test(String(args.at(-1)))
 			);
 			expect(cut).toBeDefined();
 			expect(cut?.[cut.indexOf("-frames:v") + 1]).toBe("60");
