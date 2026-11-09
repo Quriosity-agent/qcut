@@ -338,6 +338,53 @@ describe("bus and master commands", () => {
 		});
 	});
 
+	it("measures a stretch of the native rendering with --start-time/--end-time", async () => {
+		const { client, post } = fakeClient();
+		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
+		await run(client, "editor:mix:loudness", {
+			startTime: 155.583,
+			endTime: 185.75,
+			noWait: true,
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "native",
+			startTime: 155.583,
+			endTime: 185.75,
+		});
+		await run(client, "editor:mix:loudness", { startTime: 60, noWait: true });
+		expect(post).toHaveBeenLastCalledWith("/api/claude/mix/p1/loudness", {
+			engine: "native",
+			startTime: 60,
+		});
+	});
+
+	it("refuses a stretch it cannot measure", async () => {
+		const { client, post } = fakeClient();
+		expect(
+			await run(client, "editor:mix:loudness", {
+				engine: "browser",
+				startTime: 10,
+			})
+		).toEqual({
+			success: false,
+			error:
+				"--start-time/--end-time measure the native rendering; drop --engine browser",
+		});
+		expect(
+			await run(client, "editor:mix:loudness", { startTime: 20, endTime: 10 })
+		).toEqual({
+			success: false,
+			error: "--end-time must come after --start-time",
+		});
+		expect(await run(client, "editor:mix:loudness", { startTime: -1 })).toEqual(
+			{
+				success: false,
+				error: "--start-time must be a number of seconds, 0 or more",
+			}
+		);
+		expect(post).not.toHaveBeenCalled();
+	});
+
 	it("hands back the job id with --no-wait, and names it when the wait runs out", async () => {
 		const { client, post, pollJob } = fakeClient();
 		post.mockResolvedValue({ jobId: "job-1", status: "running" } as never);
