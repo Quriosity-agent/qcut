@@ -435,6 +435,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
 			"trim-start": { type: "string" },
+			"match-loudness": { type: "boolean" },
 			"new-name": { type: "string" },
 			open: { type: "boolean", default: false },
 			"wait-ready": { type: "boolean", default: false },
@@ -1118,6 +1119,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseFloat(values["end-time"] as string)
 			: undefined,
 		trimStart: parseStrictCliNumber({ value: values["trim-start"] }),
+		matchLoudness: values["match-loudness"] === true ? true : undefined,
 		newName: values["new-name"] as string | undefined,
 		name: values.name as string | undefined,
 		open: (values.open as boolean) ?? false,
