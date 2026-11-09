@@ -3,6 +3,7 @@ import path from "node:path";
 import { buildTimelineAudioFilters } from "../../../ffmpeg/audio-filter-graph.js";
 import type { AudioFile, AudioMixConfig } from "../../../ffmpeg/types.js";
 import { probeHasAudioStream } from "../../../ffmpeg/utils.js";
+import { buildSpeedSamples } from "../../../ffmpeg-video-transform.js";
 import type { ExportAudioValidation } from "../../../types/export-audio-validation.js";
 import { renderTruePeakLimitedExport } from "./export-audio-limiter.js";
 import { embeddedAudioMixInput } from "./export-audio-mix.js";
@@ -85,6 +86,26 @@ function deferMasterLimiter({
 			},
 		},
 	};
+}
+
+/**
+ * When `file` stops playing on the timeline: its source span after the
+ * trims, at its speed, plus any freeze — the stretch the mix's filter graph
+ * plays. `duration` is the source length before the trims, so counting it
+ * as playing time ran a limited export's silence on past the picture: an
+ * ambience bed trimmed 204 s at its start gave a 281 s programme 418 s of
+ * audio.
+ */
+function mixInputEnd({ file, fps }: { file: AudioFile; fps: number }): number {
+	if (file.duration === undefined) return file.startTime;
+	const span = Math.max(
+		0,
+		file.duration -
+			Math.max(0, file.trimStart ?? 0) -
+			Math.max(0, file.trimEnd ?? 0)
+	);
+	const played = buildSpeedSamples(file, span, fps).at(-1)?.outputEnd ?? 0;
+	return file.startTime + played + Math.max(0, file.freezeFrameDuration ?? 0);
 }
 
 export async function renderTimelineAudioMix({
@@ -223,9 +244,7 @@ export async function renderTimelineAudioMix({
 		}
 		const totalDuration = Math.max(
 			duration,
-			...audioFiles.map(
-				(file) => file.startTime + Math.max(0, file.duration ?? 0)
-			)
+			...audioFiles.map((file) => mixInputEnd({ file, fps: settings.fps }))
 		);
 		const graphArgs =
 			filterSteps.length > 0 ? ["-filter_complex", filterSteps.join(";")] : [];
