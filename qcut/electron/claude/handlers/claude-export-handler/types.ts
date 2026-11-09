@@ -130,6 +130,8 @@ export interface ExportJobInternal {
 	estimatedTimeRemaining?: number;
 	/** Aborting it stops the running FFmpeg step; set while the engine runs the job. */
 	abort?: AbortController;
+	/** A range export: the part of the timeline it writes, snapped to frames. */
+	range?: { startTime: number; endTime: number };
 	audioValidation?: ExportAudioValidation;
 	warnings?: string[];
 }
