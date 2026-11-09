@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.10.1] - 2026-11-09
+
 ### Added
 
 - `editor:export:start` without `--preset` exports the project's own picture: its canvas size and frame rate, as MP4, at the bitrate of the YouTube preset of that size (5 Mbps up to 720p, 8 Mbps up to 1080p, 45 Mbps above), and the job reports `presetId: "project"`. A 1470×630, 24 fps project used to come out at 1920×1080, 30 fps unless `--data` said otherwise. A named preset, or values given with the request, still win.

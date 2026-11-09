@@ -1,20 +1,22 @@
 ---
-version: "2026.11.09.1"
-date: "2026-11-08"
+version: "2026.11.10.1"
+date: "2026-11-09"
 channel: "stable"
 ---
 
-# QCut v2026.11.09.1
+# QCut v2026.11.10.1
+
+### Added
+
+- `editor:export:start` without `--preset` exports the project's own picture: its canvas size and frame rate, as MP4, at the bitrate of the YouTube preset of that size (5 Mbps up to 720p, 8 Mbps up to 1080p, 45 Mbps above), and the job reports `presetId: "project"`. A 1470×630, 24 fps project used to come out at 1920×1080, 30 fps unless `--data` said otherwise. A named preset, or values given with the request, still win.
+- `editor:export:start --start-time <seconds> --end-time <seconds>` writes only that part of the timeline, as it plays in the full export. Every clip, overlay, transition and the mix keep their timeline timing; clips whose picture cannot show in the range are not decoded for their picture (their sound still is, so a limiter, ducking or fade reaching into the range hears what plays before it), overlays outside the range are not drawn, and the finished picture and the whole-programme mix are cut to the range. Both ends snap to the export's frames; a range outside the timeline is refused before anything is queued. Native MP4 and MOV exports only. The job reports the `range` it wrote and the file's `duration`.
+- `editor:mix:loudness --start-time/--end-time` measures a stretch of the native rendering. The whole mix is still rendered, so the stretch reads as it plays in the export, and the result names it in `range`.
+- `editor:timeline:replace-media --match-loudness` keeps the clip as loud as it was: the old and the new file are measured with FFmpeg's EBU R 128 meter over the stretch the clip plays (from its in-point, its timeline length times its speed), and the difference goes into the clip's gain, `audio.volumeDb` and every volumeDb keyframe with it, in the same change as the new media. The answer adds `loudness` (`previousLufs`, `replacementLufs`, `gainChangeDb`, `volumeDb`, and `clamped` when the −60..12 dB range cut the change short). A clip whose file is silent over the clip is refused before anything is imported; a silent replacement has its import taken back.
 
 ### Fixed
 
-- A trimmed clip added by the CLI or the editor API (`add-element`, `batch-add`, `timeline apply`) takes the length it was given, or is refused with the reason. A clip's `duration` is its source span before its trims, but `timeline export` writes the span after them, so a clip written the way the export reads (8.5 s, cut from a 15.04 s file by trimEnd 6.54 s) went onto the timeline 1.96 s long, without an error. Every add now reads lengths both ways: beside `timelineDuration` (the length on the timeline), `duration` is the span after the trims, as the export writes it, and an `endTime` alone is where the clip ends. Without `timelineDuration`, a trimmed video or audio clip's `duration` must be its file's whole length; a shorter one is refused, and the message gives both ways to write the clip.
-- A clip with nothing left after its trims is refused. Such clips used to be placed at 0 s, and a refused clip in `timeline apply --atomic` rolls the whole apply back, named by its alias.
-- `timeline apply --verify` checks where each clip ends on the timeline even when the manifest gives no `endTime`, and compares a `timelineDuration` the manifest gives with the clip's length on the timeline. It used to check only lengths worked out from the manifest's own `duration`, so it passed clips that were placed at the wrong length.
-- An export given only `--output-dir`, or no location at all, is named after its project: `<project name>-<YYYY-MM-DD-HHMMSS>.<format>`. It used to be `export-<time>.mp4` with `--output-dir` and the project id without one. Names keep their Chinese and other letters; only characters a file name cannot hold become `-`. A name already in the folder gets `-2`, `-3`…, so two exports within one second no longer write over each other.
-- `editor:media:batch-import` returns each file's length, size and frame rate, as `media list` does, so a script can work out its trims without listing the media again.
-- CLI commands that look for FFprobe, such as `project create --match-media`, no longer print `[FFmpeg] Using staged FFprobe binary…` on stderr; the line shows with `--verbose`, but never under `--stream`, whose stderr carries JSONL events.
+- `--start-time` and `--end-time` are read as numbers of seconds: `2:35` used to be read as 2 s, and text that is not a number was dropped as if the flag had not been given. Every command now refuses it with the reason.
 
 ### Documentation
 
-- `editor-timeline.md` explains which length is which for a trimmed clip, with an example. `editor-output.md` documents `--output`, `--filename`, `--stems` and the default file name for `editor:export:start`. `editor-core.md` points scripts at `--json --flat`, which prints a command's payload without the two `data` wrappers.
+- `editor-output.md` documents the project-picture default and range exports, `editor-mix.md` the measured stretch, `editor-timeline.md` `--match-loudness`, and `editor-core.md` the `--preset` default.
