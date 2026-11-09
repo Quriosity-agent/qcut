@@ -522,9 +522,15 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"number",
 				"Seconds into the new media where the clip starts reading it (default: the clip's current in-point)"
 			),
+			f(
+				"--match-loudness",
+				"boolean",
+				"Move the clip's gain by the difference in loudness (EBU R 128) between the old and new file over the stretch the clip plays"
+			),
 		],
 		[
 			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --source ~/shots/05_v2.mp4 --json",
+			"qcut editor timeline replace-media --project-id <id> --element-id <clip> --source ~/shots/05_final.mp4 --match-loudness --json",
 			"qcut-pipeline editor:timeline:replace-media --project-id <id> --element-id <clip> --media-id <media> --trim-start 0 --json",
 		]
 	),
