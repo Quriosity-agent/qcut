@@ -177,6 +177,16 @@ export function createAudioMixEditorCommands({
 					"string",
 					"Which rendering to measure: native (default; the FFmpeg export, agrees with the exported file) or browser (the preview and the muxer engine)"
 				),
+				f(
+					"--start-time",
+					"number",
+					"Measure from here, in timeline seconds (native only; the whole mix is still rendered)"
+				),
+				f(
+					"--end-time",
+					"number",
+					"Measure up to here, in timeline seconds (default: the end)"
+				),
 				waitTimeout,
 				pollInterval,
 				noWait,
@@ -184,6 +194,7 @@ export function createAudioMixEditorCommands({
 			[
 				"qcut editor mix loudness --project-id <id> --json",
 				"qcut editor mix loudness --project-id <id> --engine browser --json",
+				"qcut editor mix loudness --project-id <id> --start-time 155.583 --end-time 185.75 --json",
 			]
 		),
 		"editor:mix:bus-automation": ed(
