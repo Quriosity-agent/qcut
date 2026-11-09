@@ -74,6 +74,14 @@ import {
 	orderConcatInputs,
 } from "./gap-segments.js";
 import { buildSegmentConcatArgs } from "./concat-timing.js";
+import {
+	buildRangeSoundArgs,
+	cutPictureToRange,
+	layersShowingInRange,
+	type PictureLayers,
+	segmentsShowingInRange,
+	type TimelineRange,
+} from "./export-range.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -1223,16 +1231,17 @@ export async function executeExportJob({
 	settings,
 	outputPath,
 	segments,
-	mediaOverlays = [],
-	stickerOverlays = [],
-	textOverlays = [],
-	jianyingTextOverlays = [],
+	mediaOverlays: allMediaOverlays = [],
+	stickerOverlays: allStickerOverlays = [],
+	textOverlays: allTextOverlays = [],
+	jianyingTextOverlays: allJianyingTextOverlays = [],
 	audioFiles = [],
 	audioMixConfig,
 	videoTransitions = [],
-	adjustmentLayers = [],
+	adjustmentLayers: allAdjustmentLayers = [],
 	projectCanvas,
 	projectFps,
+	range,
 }: {
 	jobId: string;
 	projectId: string;
@@ -1259,11 +1268,32 @@ export async function executeExportJob({
 	 * output instead of rendering it undersized and mispositioned.
 	 */
 	projectCanvas?: { width: number; height: number };
+	/**
+	 * Write only this part of the timeline, as it plays in the full export
+	 * (export-range.ts); MP4 and MOV only.
+	 */
+	range?: TimelineRange;
 }): Promise<void> {
 	const job = exportJobs.get(jobId);
 	if (!job) {
 		return;
 	}
+	const allLayers: PictureLayers = {
+		mediaOverlays: allMediaOverlays,
+		stickerOverlays: allStickerOverlays,
+		textOverlays: allTextOverlays,
+		jianyingTextOverlays: allJianyingTextOverlays,
+		adjustmentLayers: allAdjustmentLayers,
+	};
+	// A range export draws only what shows in the range; the timing below
+	// still counts every layer, so the picture keeps the full export's length.
+	const {
+		mediaOverlays,
+		stickerOverlays,
+		textOverlays,
+		jianyingTextOverlays,
+		adjustmentLayers,
+	} = range ? layersShowingInRange({ layers: allLayers, range }) : allLayers;
 	// `export cancel` aborts this; every FFmpeg step listens, and a cancel
 	// that arrived while the job was still queued takes effect at the first.
 	const abort = new AbortController();
@@ -1292,9 +1322,12 @@ export async function executeExportJob({
 			path.join(tempBase, "qcut-claude-export-")
 		);
 
-		// Limited exports keep video private until the encoded audio is verified.
+		// Limited exports keep video private until the encoded audio is
+		// verified; a range export cuts its full-length picture at the end.
 		const needsIntermediateVideo =
-			["gif", "mp3"].includes(settings.format) || enforceTruePeak;
+			["gif", "mp3"].includes(settings.format) ||
+			enforceTruePeak ||
+			range !== undefined;
 		const intermediateExtension = settings.format === "mov" ? "mov" : "mp4";
 		const videoOutputPath = needsIntermediateVideo
 			? path.join(tempDir, `intermediate.${intermediateExtension}`)
@@ -1306,29 +1339,43 @@ export async function executeExportJob({
 			probe: probeHasAudioStream,
 		});
 
+		const shownSegments = range
+			? segmentsShowingInRange({
+					segments,
+					transitions: videoTransitions,
+					range,
+				})
+			: undefined;
 		for (const [index, rawSegment] of segments.entries()) {
 			// MOV: the segment's sound is PCM (see export-segment-encode.ts).
 			const outputSegmentPath = path.join(
 				tempDir,
 				`segment-${String(index).padStart(4, "0")}.mov`
 			);
+			// A clip whose picture cannot show in the range is black frames
+			// with its real sound, so the mix hears all of it (export-range.ts).
+			const blackPicture =
+				shownSegments !== undefined && !shownSegments.has(index);
 			// Neural interpolation runs RIFE ahead of the graph and swaps in a
 			// lossless intermediate; the rest of the loop never sees the mode.
-			const segment = await resolveNeuralInterpolationSegment({
-				segment: rawSegment,
-				settings,
-				tempDir,
-				index,
-			});
+			const segment = blackPicture
+				? rawSegment
+				: await resolveNeuralInterpolationSegment({
+						segment: rawSegment,
+						settings,
+						tempDir,
+						index,
+					});
 
 			const inputArgs = buildExportSegmentInputArgs({ segment });
-			const scaleFilter = buildExportSegmentScaleFilter({
-				segment,
-				settings,
-			});
+			const scaleFilter = blackPicture
+				? ""
+				: buildExportSegmentScaleFilter({ segment, settings });
 			claudeLog.debug(
 				HANDLER_NAME,
-				`Segment ${segment.elementId} video filter: ${scaleFilter}`
+				blackPicture
+					? `Segment ${segment.elementId} is outside the range: black picture`
+					: `Segment ${segment.elementId} video filter: ${scaleFilter}`
 			);
 
 			await runFFmpegCommand({
@@ -1340,6 +1387,7 @@ export async function executeExportJob({
 					settings,
 					audio: await resolveExportSegmentAudio({ segment, hasAudioStream }),
 					outputPath: outputSegmentPath,
+					blackPicture,
 				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
@@ -1393,9 +1441,9 @@ export async function executeExportJob({
 		// The picture runs on in black under an overlay that outlasts the
 		// clips below it.
 		const overlayEnd =
-			mediaOverlays.length > 0
+			allMediaOverlays.length > 0
 				? Math.max(
-						...mediaOverlays.map(
+						...allMediaOverlays.map(
 							(overlay) => overlay.startTime + overlay.duration
 						)
 					)
@@ -1748,6 +1796,25 @@ export async function executeExportJob({
 			});
 		}
 
+		// A range export: the finished picture is cut to the range here. The
+		// sound is still mixed over the whole programme below and cut from
+		// that, so a limiter, fade or effect reaching into the range hears what
+		// plays before it, as in the full export.
+		const rangeCut = range
+			? await cutPictureToRange({
+					range,
+					pictureEnd: concatDuration,
+					inputPath: videoOutputPath,
+					tempDir,
+					settings,
+					runFFmpegCommand,
+					signal: abort.signal,
+				})
+			: undefined;
+		const exportSeconds = rangeCut
+			? rangeCut.range.end - rangeCut.range.start
+			: concatDuration;
+
 		let audioValidation: ExportAudioValidation | undefined;
 		let audioWarnings: string[] = [];
 		let audioFinalized = false;
@@ -1767,10 +1834,29 @@ export async function executeExportJob({
 				onPublished: () => {
 					ownsFinalOutput = true;
 				},
+				rangeCut,
 			});
 			audioValidation = result.audioValidation;
 			audioWarnings = result.warnings ?? [];
 			audioFinalized = result.finalized;
+			// An unlimited range export was mixed into the intermediate path.
+			if (rangeCut && !result.finalized) {
+				await moveFile({ from: videoOutputPath, to: outputPath });
+			}
+		} else if (rangeCut) {
+			// No mix: the cut picture with the joined clips' sound, cut likewise.
+			updateJobProgress({ jobId, progress: 0.96 });
+			await runFFmpegCommand({
+				signal: abort.signal,
+				args: buildRangeSoundArgs({
+					sourcePath: videoOutputPath,
+					picturePath: rangeCut.picturePath,
+					outputPath,
+					range: rangeCut.range,
+					settings,
+				}),
+				estimatedDuration: exportSeconds,
+			});
 		}
 
 		// =====================================================================
@@ -1877,7 +1963,7 @@ export async function executeExportJob({
 						signal: abort.signal,
 					});
 		const outputStats = await fsPromises.stat(outputPath);
-		const duration = concatDuration;
+		const duration = exportSeconds;
 
 		const finishedJob = exportJobs.get(jobId);
 		if (!finishedJob) {
@@ -1901,6 +1987,12 @@ export async function executeExportJob({
 		finishedJob.duration = duration;
 		finishedJob.fileSize = outputStats.size;
 		finishedJob.completedAt = Date.now();
+		if (rangeCut) {
+			finishedJob.range = {
+				startTime: rangeCut.range.start,
+				endTime: rangeCut.range.end,
+			};
+		}
 		Object.assign(finishedJob, audioCheck);
 		if (audioWarnings.length > 0) {
 			finishedJob.warnings = [
