@@ -203,6 +203,38 @@ describe("Claude export trigger", () => {
 		expect(getExportJobStatus(result.jobId)?.presetId).toBe("youtube-1080p");
 	});
 
+	it("exports at the project's size and frame rate when no preset is named", async () => {
+		const result = await startExportJob({
+			projectId: "project_trailer",
+			request: { outputPath: "/tmp/export-project-size.mp4" },
+			timeline: { ...testTimeline, width: 1470, height: 630, fps: 24 },
+			mediaFiles: testMediaFiles,
+		});
+
+		expect(getExportJobStatus(result.jobId)).toMatchObject({
+			presetId: "project",
+			settings: { width: 1470, height: 630, fps: 24, bitrate: "8Mbps" },
+		});
+	});
+
+	it("hands the renderer the project's size and frame rate when no preset is named", async () => {
+		const dispatch = vi.fn(async () => {});
+
+		await startRendererExportJob({
+			dispatch,
+			mediaFiles: testMediaFiles,
+			projectId: "project_renderer_trailer",
+			request: { outputPath: "/tmp/renderer-project-size.mp4" },
+			timeline: { ...testTimeline, width: 1470, height: 630, fps: 24 },
+		});
+
+		await vi.waitFor(() => {
+			expect(dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ width: 1470, height: 630, frameRate: 24 })
+			);
+		});
+	});
+
 	it("refuses a restricted Sticker Lab source before queuing FFmpeg", async () => {
 		await expect(
 			startExportJob({
