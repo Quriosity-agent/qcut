@@ -12,8 +12,10 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderTruePeakLimitedExport } from "../claude/handlers/claude-export-handler/export-audio-limiter";
 import { renderTimelineAudioMix } from "../claude/handlers/claude-export-handler/export-audio-mix-pass";
+import type { ResolvedExportSettings } from "../claude/handlers/claude-export-handler/types";
 import { measureFileTruePeak } from "../ffmpeg/audio-true-peak";
 import { getFFmpegPath, getFFprobePath } from "../ffmpeg/paths";
+import type { AudioMixConfig } from "../ffmpeg/types";
 
 vi.mock("electron", () => ({
 	app: { getPath: () => tmpdir(), isPackaged: false },
@@ -29,6 +31,51 @@ let noise = "";
 let silence = "";
 let quiet = "";
 let bursts = "";
+let tone = "";
+
+const mixSettings: ResolvedExportSettings = {
+	engine: "native-cli",
+	presetId: "custom",
+	width: 32,
+	height: 32,
+	fps: 24,
+	format: "mp4",
+	codec: "libx264",
+	bitrate: "128k",
+};
+
+/** A mix whose only processing is the master limiter, on or off. */
+function masterLimiterMix({ enabled }: { enabled: boolean }): AudioMixConfig {
+	return {
+		master: {
+			id: "master",
+			name: "Master",
+			gainDb: 0,
+			pan: 0,
+			muted: false,
+			solo: false,
+			effects: {
+				parametricEqualizer: {
+					enabled: false,
+					lowCutHz: 20,
+					highCutHz: 20_000,
+					bands: [],
+				},
+				compressor: {
+					enabled: false,
+					thresholdDb: -18,
+					ratio: 3,
+					attackMs: 10,
+					releaseMs: 120,
+					makeupGainDb: 0,
+				},
+				limiter: { enabled, ceilingDb: -1, releaseMs: 50 },
+			},
+		},
+		buses: [],
+		tracks: [],
+	};
+}
 
 function run({ args }: { args: string[] }): string {
 	const result = spawnSync(
@@ -169,6 +216,11 @@ describe.skipIf(!existsSync(ffmpeg))(
 				name: "quiet",
 				source:
 					"aevalsrc='0.01*exp(-pow((t-1)/0.01,2))*cos(2*PI*1000*(t-1))+0.008*exp(-pow((t-2.997)/0.001,2))*cos(2*PI*1000*(t-2.997))':s=48000:d=3",
+			});
+			// Twice the picture's length: a clip plays its second half.
+			tone = fixture({
+				name: "tone",
+				source: "aevalsrc=0.3*sin(2*PI*440*t):s=48000:d=6",
 			});
 		}, 60_000);
 
@@ -396,48 +448,11 @@ describe.skipIf(!existsSync(ffmpeg))(
 				videoOutputPath: privateVideo,
 				outputPath,
 				tempDir: directory,
-				settings: {
-					engine: "native-cli",
-					presetId: "custom",
-					width: 32,
-					height: 32,
-					fps: 24,
-					format,
-					codec: "libx264",
-					bitrate: "128k",
-				},
+				settings: { ...mixSettings, format },
 				segments: [],
 				audioFiles: [],
 				duration,
-				audioMixConfig: {
-					master: {
-						id: "master",
-						name: "Master",
-						gainDb: 0,
-						pan: 0,
-						muted: false,
-						solo: false,
-						effects: {
-							parametricEqualizer: {
-								enabled: false,
-								lowCutHz: 20,
-								highCutHz: 20_000,
-								bands: [],
-							},
-							compressor: {
-								enabled: false,
-								thresholdDb: -18,
-								ratio: 3,
-								attackMs: 10,
-								releaseMs: 120,
-								makeupGainDb: 0,
-							},
-							limiter: { enabled: true, ceilingDb: -1, releaseMs: 50 },
-						},
-					},
-					buses: [],
-					tracks: [],
-				},
+				audioMixConfig: masterLimiterMix({ enabled: true }),
 				runFFmpegCommand: async ({ args }) => {
 					run({ args });
 				},
@@ -460,5 +475,71 @@ describe.skipIf(!existsSync(ffmpeg))(
 			expect(Number(metadata.format.duration)).toBeCloseTo(duration, 2);
 			expect(onPublished).toHaveBeenCalledOnce();
 		}, 30_000);
+
+		it.each([
+			{ limiter: "on", enabled: true },
+			{ limiter: "off", enabled: false },
+		])("ends the sound with the picture when a clip plays part of its file (limiter $limiter)", async ({
+			limiter,
+			enabled,
+		}) => {
+			const privateVideo = path.join(
+				directory,
+				`private-trimmed-${limiter}.mp4`
+			);
+			const outputPath = path.join(directory, `trimmed-${limiter}.mp4`);
+			copyFileSync(video, privateVideo);
+			const result = await renderTimelineAudioMix({
+				videoOutputPath: privateVideo,
+				outputPath,
+				tempDir: directory,
+				settings: mixSettings,
+				segments: [],
+				// The clip plays the tone's second half: 3 s of a 6 s file under
+				// a 3 s picture. The file's length used to run the limited
+				// export's sound on in silence to 6 s.
+				audioFiles: [
+					{
+						path: tone,
+						trackId: "bed",
+						startTime: 0,
+						duration: 6,
+						trimStart: 3,
+						volume: 1,
+					},
+				],
+				duration,
+				audioMixConfig: masterLimiterMix({ enabled }),
+				runFFmpegCommand: async ({ args }) => {
+					run({ args });
+				},
+			});
+			expect(result.finalized).toBe(enabled);
+			// An unlimited mix goes back to the picture's path for the engine to publish.
+			const file = enabled ? outputPath : privateVideo;
+			const metadata = await probe({ file });
+			const picture = metadata.streams.find(
+				(stream) => stream.codec_type === "video"
+			);
+			const audio = metadata.streams.find(
+				(stream) => stream.codec_type === "audio"
+			);
+			expect(Number(picture?.duration)).toBeCloseTo(duration, 2);
+			expect(
+				Math.abs(Number(audio?.duration) - Number(picture?.duration))
+			).toBeLessThan(1 / 24);
+			const decoded = pcm({ file, name: `trimmed-${limiter}-decoded` });
+			expect(Math.abs(decoded.length - duration * 48_000)).toBeLessThan(
+				48_000 / 24
+			);
+			// The tone plays to the last frame: nothing silent was padded on.
+			expect(
+				levelDb({
+					samples: decoded,
+					start: duration - 0.1,
+					end: duration - 0.01,
+				})
+			).toBeGreaterThan(-20);
+		}, 60_000);
 	}
 );
