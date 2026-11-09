@@ -158,6 +158,11 @@ export interface ClaudeMixLoudness {
 	 */
 	engine?: "native" | "browser";
 	/**
+	 * The stretch measured, snapped to frames; absent for the whole mix. The
+	 * true-peak check below still describes the whole export.
+	 */
+	range?: { startTime: number; endTime: number };
+	/**
 	 * Native only: what the export's true-peak check did to this mix with the
 	 * master limiter on, at the export's default audio settings: which
 	 * stretches an export lowers, and by how much.
