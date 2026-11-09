@@ -42,6 +42,7 @@ import {
 	executeExportJob,
 } from "./export-engine.js";
 import { audioMixConfigFromTimeline } from "./export-audio-mix.js";
+import { resolveTimelineRange } from "./export-range.js";
 import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
 import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
@@ -194,6 +195,9 @@ function assertRendererExportRequestCompatible({
 	}
 	if (request.settings?.codec !== undefined || topLevel.codec !== undefined) {
 		unsupportedOptions.push("codec");
+	}
+	if (request.range !== undefined) {
+		unsupportedOptions.push("range (--start-time/--end-time)");
 	}
 	if (unsupportedOptions.length === 0) return;
 	const because =
@@ -434,6 +438,19 @@ export async function startExportJob({
 		}
 
 		const settings = resolveExportSettings({ request, project: timeline });
+		// Refused here, before anything is queued, with the request's words.
+		const range = request.range
+			? resolveTimelineRange({
+					range: request.range,
+					duration: timeline.duration,
+					fps: settings.fps,
+				})
+			: undefined;
+		if (range && !["mp4", "mov"].includes(settings.format)) {
+			throw new Error(
+				`A range export writes MP4 or MOV, not ${settings.format}`
+			);
+		}
 		const outputPath = request.outputPath?.trim()
 			? path.resolve(request.outputPath.trim())
 			: getDefaultOutputPath({
@@ -582,6 +599,9 @@ export async function startExportJob({
 			engine: settings.engine,
 			settings,
 			outputPath,
+			...(range
+				? { range: { startTime: range.start, endTime: range.end } }
+				: {}),
 		};
 
 		exportJobs.set(jobId, newJob);
@@ -635,6 +655,7 @@ export async function startExportJob({
 				timeline.width > 0 && timeline.height > 0
 					? { width: timeline.width, height: timeline.height }
 					: undefined,
+			range,
 		}).catch((error) => {
 			claudeLog.error(
 				HANDLER_NAME,
