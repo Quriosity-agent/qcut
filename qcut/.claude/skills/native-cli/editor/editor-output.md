@@ -23,6 +23,10 @@ Targets: `youtube` (YouTube), `tiktok` (TikTok), `instagram-reel` (Instagram Ree
 ### Start export
 
 ```bash
+# The project's own size and frame rate (the default)
+qcut editor:export:start \
+  --project-id <id> --output ~/Movies/开场_粗剪.mp4 --poll
+
 # With preset
 qcut editor:export:start \
   --project-id <id> --preset youtube-1080p --poll
@@ -32,6 +36,11 @@ qcut editor:export:start \
   --project-id <id> \
   --data '{"width":1920,"height":1080,"fps":30,"format":"mp4"}' \
   --output-dir ./exports --poll --timeout 600
+
+# Only 2:35.583–3:05.75 of the timeline, as it plays in the full export
+qcut editor:export:start \
+  --project-id <id> --start-time 155.583 --end-time 185.75 \
+  --output ~/Movies/开场_09段.mp4 --poll
 
 # With cursor + auto-zoom enhancements
 qcut editor:export:start \
@@ -63,11 +72,42 @@ Characters a file name cannot hold become `-`, a name with nothing left is
 replaced by the project id, and a name already in the folder gets `-2`, `-3`…
 so an export never writes over an earlier one.
 
+Without `--preset`, the export is the project's own picture: its canvas
+size (an odd side rounded down to even) and frame rate, as MP4, at the
+bitrate of the YouTube preset of that size (5 Mbps up to 720p, 8 Mbps up to
+1080p, 45 Mbps above), and the job reports `presetId: "project"`. A 1470×630,
+24 fps project exports at 1470×630, 24 fps; before 2026.11.10 it came out at
+1920×1080, 30 fps unless `--data` said otherwise.
+
 The returned job uses `presetId: "custom"` when its effective width, height,
-fps, format, or bitrate differs from the selected preset (or the default
-`youtube-1080p`). Unchanged values keep the preset ID. Omitted settings still
-come from that preset; nested `settings` values take precedence over the
-same top-level fields.
+fps, format, or bitrate differs from the selected preset (or from the
+project's picture). Unchanged values keep the preset ID. Omitted settings
+still come from that preset; nested `settings` values take precedence over
+the same top-level fields.
+
+### Export a range
+
+`--start-time` and `--end-time` (timeline seconds; either may be left out)
+write only that part of the timeline, for checking a stretch without
+exporting the whole programme. Both snap to the export's frames. The range
+export is the full export cut to the range, not a separate render of the
+clips in it:
+
+- every clip, overlay, transition and the mix keep their timeline timing;
+  a limiter, ducking, fade or effect reaching into the range hears what
+  plays before it, as in the full export;
+- clips whose picture cannot show in the range are not decoded for their
+  picture (their sound still is), and overlays outside the range are not
+  drawn, which is where the time is saved;
+- the picture in the range matches the full export frame for frame (it is
+  encoded once more from the finished picture); the sound is the same mix,
+  encoded on its own, so its AAC frames differ from the full export's.
+
+Native MP4 and MOV exports only: a GIF or MP3 range, or a timeline that
+exports through the renderer engine, is refused. A range outside the
+timeline is refused rather than cut to fit; one ending after the picture
+ends where the picture ends. The job reports the range it wrote (`range`)
+and the file's `duration`.
 
 ### Enhancement flags
 
