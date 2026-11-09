@@ -32,6 +32,7 @@ import {
 	defaultExportFileStem,
 	freeExportPath,
 } from "../../claude/handlers/claude-export-handler/export-file-name.js";
+import { readTimeRangeFlags } from "./editor-time-range-flags.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -339,6 +340,9 @@ async function exportStart(
 		const settings = await resolveJsonInput(opts.data);
 		body.settings = settings;
 	}
+	const { range, error: rangeError } = readTimeRangeFlags(opts);
+	if (rangeError) return { success: false, error: rangeError };
+	if (range) body.range = range;
 
 	// GIF config from CLI flags
 	const raw = opts as unknown as Record<string, unknown>;
