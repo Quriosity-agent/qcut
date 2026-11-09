@@ -25,6 +25,7 @@ import {
 	EXPORT_JOB_STATUS,
 	type ExportJobInternal,
 	type ProgressEventPayload,
+	type ResolvedExportSettings,
 } from "./types.js";
 import { PRESETS } from "./presets.js";
 import { pruneOldJobs, getDefaultOutputPath } from "./utils.js";
@@ -86,6 +87,40 @@ function rendererExportFrameRate({
 		throw new Error(`Renderer MP4 export does not support ${fps} fps.`);
 	}
 	return supported;
+}
+
+/** The renderer rate closest to `fps` (the lower one when two are as close). */
+function nearestRendererFrameRate({
+	fps,
+}: {
+	fps: number;
+}): ClaudeLocalVideoExportRequest["frameRate"] {
+	return RENDERER_EXPORT_FRAME_RATES.reduce((nearest, candidate) =>
+		Math.abs(candidate - fps) < Math.abs(nearest - fps) ? candidate : nearest
+	);
+}
+
+/**
+ * The rate a renderer export runs at. A rate the request named (a preset,
+ * `--fps`, or `settings.fps`) must be one the renderer supports; a rate
+ * that came from the project (29.97 from `--match-media`, say) snaps to
+ * the nearest supported one instead of failing the export.
+ */
+function rendererFrameRateFor({
+	request,
+	settings,
+}: {
+	request: ExportJobRequest;
+	settings: Pick<ResolvedExportSettings, "fps">;
+}): ClaudeLocalVideoExportRequest["frameRate"] {
+	const top = request as Record<string, unknown>;
+	const rateWasRequested =
+		Boolean(request.preset?.trim()) ||
+		request.settings?.fps !== undefined ||
+		typeof top.fps === "number";
+	return rateWasRequested
+		? rendererExportFrameRate({ fps: settings.fps })
+		: nearestRendererFrameRate({ fps: settings.fps });
 }
 
 function isImplicitCliAudioConfig({
@@ -344,7 +379,12 @@ export async function startRendererExportJob({
 	// discovering after the whole render that the file cannot be written.
 	await fsPromises.mkdir(path.dirname(outputPath), { recursive: true });
 
-	const frameRate = rendererExportFrameRate({ fps: settings.fps });
+	const frameRate = rendererFrameRateFor({ request, settings });
+	// A snapped rate is no longer the project's own picture.
+	const rendererSettings =
+		frameRate === settings.fps
+			? settings
+			: { ...settings, fps: frameRate, presetId: "custom" };
 	const pinMuxerEngine =
 		request.engine === "muxer" ||
 		rendererExportRequiresMuxer({ mediaFiles, timeline });
@@ -354,11 +394,11 @@ export async function startRendererExportJob({
 		engine: "renderer-muxer",
 		jobId,
 		outputPath,
-		presetId: settings.presetId,
+		presetId: rendererSettings.presetId,
 		progress: 0,
 		projectId,
 		// The settings carry the engine that actually renders, not the default.
-		settings: { ...settings, engine: "renderer-muxer" },
+		settings: { ...rendererSettings, engine: "renderer-muxer" },
 		startedAt: now,
 		status: EXPORT_JOB_STATUS.queued,
 	};
