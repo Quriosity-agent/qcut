@@ -1063,6 +1063,16 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		}),
 		f("--verify-frames", "string", "Extract frames at comma-separated seconds"),
 		f(
+			"--start-time",
+			"number",
+			"Export from here, in timeline seconds, as it plays in the full export (native MP4/MOV exports; default 0)"
+		),
+		f(
+			"--end-time",
+			"number",
+			"Export up to here, in timeline seconds (default: the end of the timeline)"
+		),
+		f(
 			"--stems",
 			"boolean",
 			"Also write one WAV per bus beside the export, <name>-<bus>.wav (needs --output; waits for the export)"
