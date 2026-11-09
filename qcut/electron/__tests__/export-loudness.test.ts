@@ -82,6 +82,18 @@ describe("parseEbur128Report", () => {
 });
 
 describe("measureNativeExportLoudness", () => {
+	it("refuses a stretch outside the timeline before exporting", async () => {
+		await expect(
+			measureNativeExportLoudness({
+				projectId: "p",
+				timeline: { fps: 24, duration: 10 } as unknown as ClaudeTimeline,
+				mediaFiles: [] as MediaFile[],
+				range: { startTime: 12 },
+			})
+		).rejects.toThrow("at or after the end of the timeline");
+		expect(startExportJob).not.toHaveBeenCalled();
+	});
+
 	it("stops waiting when the measuring export is cancelled", async () => {
 		await expect(
 			measureNativeExportLoudness({
@@ -123,6 +135,43 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 
 		afterAll(() => {
 			fs.rmSync(tempDir, { recursive: true, force: true });
+		});
+
+		it("measures only the stretch it is given", async () => {
+			const whole = await measureFileLoudness({ file: tone });
+			const stretch = await measureFileLoudness({
+				file: tone,
+				range: { start: 1, end: 4 },
+			});
+			expect(stretch.durationSeconds).toBeCloseTo(3, 3);
+			expect(
+				Math.abs(stretch.integratedLufs - whole.integratedLufs)
+			).toBeLessThan(0.2);
+			const quiet = path.join(tempDir, "half-quiet.wav");
+			const made = spawnSync(
+				ffmpegPath,
+				[
+					"-y",
+					"-f",
+					"lavfi",
+					"-i",
+					"aevalsrc=if(lt(t\\,2.5)\\,0.1\\,0.05)*sin(2*PI*200*t):s=48000:d=5",
+					"-c:a",
+					"pcm_s16le",
+					quiet,
+				],
+				{ encoding: "utf8", timeout: 60_000 }
+			);
+			expect(made.status, made.stderr).toBe(0);
+			const loud = await measureFileLoudness({
+				file: quiet,
+				range: { start: 0, end: 2.5 },
+			});
+			const soft = await measureFileLoudness({
+				file: quiet,
+				range: { start: 2.5, end: 5 },
+			});
+			expect(loud.integratedLufs - soft.integratedLufs).toBeCloseTo(6, 0);
 		});
 
 		it("measures a known tone", async () => {
