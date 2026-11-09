@@ -402,6 +402,72 @@ describe("Export handlers", () => {
 			expect((result.data as { jobId: string }).jobId).toBe("ej1");
 		});
 
+		it("sends --start-time/--end-time as the range to export", async () => {
+			let capturedBody: Record<string, unknown> | undefined;
+			const origFetch = globalThis.fetch;
+			globalThis.fetch = async (
+				_input: RequestInfo | URL,
+				init?: RequestInit
+			) => {
+				capturedBody = JSON.parse(String(init?.body));
+				return new Response(
+					JSON.stringify({ success: true, data: { jobId: "ej-range" } }),
+					{ headers: { "Content-Type": "application/json" } }
+				);
+			};
+			try {
+				const result = await handleGenerateExportCommand(
+					client,
+					makeOpts({
+						command: "editor:export:start",
+						projectId: "p1",
+						startTime: 155.583,
+						endTime: 185.75,
+					}),
+					noopProgress
+				);
+				expect(result.success).toBe(true);
+				expect(capturedBody).toEqual(
+					expect.objectContaining({
+						range: { startTime: 155.583, endTime: 185.75 },
+					})
+				);
+				await handleGenerateExportCommand(
+					client,
+					makeOpts({ command: "editor:export:start", projectId: "p1" }),
+					noopProgress
+				);
+				expect(capturedBody).not.toHaveProperty("range");
+			} finally {
+				globalThis.fetch = origFetch;
+			}
+		});
+
+		it("refuses a range that ends before it starts without asking the editor", async () => {
+			const origFetch = globalThis.fetch;
+			const fetchSpy = vi.fn();
+			globalThis.fetch = fetchSpy as unknown as typeof fetch;
+			try {
+				const result = await handleGenerateExportCommand(
+					client,
+					makeOpts({
+						command: "editor:export:start",
+						projectId: "p1",
+						startTime: 20,
+						endTime: 10,
+					}),
+					noopProgress
+				);
+				expect(result).toEqual({
+					success: false,
+					error: "--end-time must come after --start-time",
+				});
+				expect(fetchSpy).not.toHaveBeenCalled();
+			} finally {
+				globalThis.fetch = origFetch;
+			}
+		});
+
 		it("honors an exact output path and explicit engine", async () => {
 			let capturedBody: Record<string, unknown> | undefined;
 			const origFetch = globalThis.fetch;
