@@ -28,6 +28,7 @@ import type {
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+import { readTimeRangeFlags } from "./editor-time-range-flags.js";
 
 /** Stem rendering runs the whole mix once per bus. */
 const DEFAULT_RENDER_WAIT_SECONDS = 1800;
@@ -449,9 +450,16 @@ export async function handleAudioMixCommand({
 				if (engine !== "native" && engine !== "browser") {
 					throw new FlagError("--engine must be native or browser");
 				}
+				const { range, error } = readTimeRangeFlags(opts);
+				if (error) throw new FlagError(error);
+				if (range && engine === "browser") {
+					throw new FlagError(
+						"--start-time/--end-time measure the native rendering; drop --engine browser"
+					);
+				}
 				const started = await client.post<{ jobId: string }>(
 					`${base}/loudness`,
-					{ engine }
+					{ engine, ...range }
 				);
 				if (opts.noWait) {
 					return { success: true, data: { projectId, ...started } };
