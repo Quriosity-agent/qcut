@@ -325,6 +325,41 @@ describe("Claude export trigger", () => {
 		});
 	});
 
+	it("snaps a project rate the renderer cannot run to the nearest it can, unless the rate was asked for", async () => {
+		const dispatch = vi.fn(async () => {});
+		const ntsc = { ...testTimeline, width: 1920, height: 1080, fps: 29.97 };
+
+		const result = await startRendererExportJob({
+			dispatch,
+			mediaFiles: testMediaFiles,
+			projectId: "project_renderer_ntsc",
+			request: { outputPath: "/tmp/renderer-ntsc.mp4" },
+			timeline: ntsc,
+		});
+		await vi.waitFor(() => {
+			expect(dispatch).toHaveBeenCalledWith(
+				expect.objectContaining({ frameRate: 30 })
+			);
+		});
+		expect(getExportJobStatus(result.jobId)).toMatchObject({
+			presetId: "custom",
+			settings: { fps: 30 },
+		});
+
+		await expect(
+			startRendererExportJob({
+				dispatch,
+				mediaFiles: testMediaFiles,
+				projectId: "project_renderer_ntsc_asked",
+				request: {
+					outputPath: "/tmp/renderer-ntsc-asked.mp4",
+					fps: 29.97,
+				} as never,
+				timeline: ntsc,
+			})
+		).rejects.toThrow("Renderer MP4 export does not support 29.97 fps");
+	});
+
 	it("hands the renderer the project's size and frame rate when no preset is named", async () => {
 		const dispatch = vi.fn(async () => {});
 
