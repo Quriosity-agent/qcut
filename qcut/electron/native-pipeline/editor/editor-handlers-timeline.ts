@@ -17,6 +17,11 @@ import {
 	timelineShotSplit,
 } from "./editor-handlers-shot-split.js";
 import { timelineSnap } from "./editor-handlers-beats.js";
+import {
+	editingInsertGap,
+	snapCommandTimes,
+	summarizeFrameAlignment,
+} from "./editor-handlers-time-edit.js";
 import { timelineReplaceMedia } from "./editor-handlers-replace-media.js";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
@@ -357,33 +362,43 @@ async function timelineExport(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	// A read: without --project-id it is the project the editor has open.
+	const projectId = await resolveProjectId(client, opts);
+	if (!projectId) {
+		return { success: false, error: "No active project; pass --project-id" };
+	}
 
 	const query: Record<string, string> = {};
 	const fmt = opts.outputFormat ?? opts.mode;
 	if (fmt) query.format = fmt;
 
 	const data = await client.get(
-		`/api/claude/timeline/${opts.projectId}`,
+		`/api/claude/timeline/${projectId}`,
 		Object.keys(query).length > 0 ? query : undefined
 	);
 	if (fmt && fmt !== "json") return { success: true, data };
+	// Which clips start or end between frames, so a script can tell before
+	// it exports; `timeline apply` reads past it.
+	const frameAlignment = summarizeFrameAlignment({
+		timeline: data as Parameters<typeof summarizeFrameAlignment>[0]["timeline"],
+	});
+	const timeline = {
+		...(data as Record<string, unknown>),
+		...(frameAlignment ? { frameAlignment } : {}),
+	};
 	// The buses and master ride along so the export can be applied back as a
 	// whole timeline (tracks already carry their own `audio`).
 	try {
 		const mix = await client.get<{ master: unknown; buses: unknown[] }>(
-			`/api/claude/mix/${encodeURIComponent(opts.projectId)}`
+			`/api/claude/mix/${encodeURIComponent(projectId)}`
 		);
 		return {
 			success: true,
-			data: {
-				...(data as Record<string, unknown>),
-				mix: { master: mix.master, buses: mix.buses },
-			},
+			data: { ...timeline, mix: { master: mix.master, buses: mix.buses } },
 		};
 	} catch {
 		// An editor without the mixer route still exports its timeline.
-		return { success: true, data };
+		return { success: true, data: timeline };
 	}
 }
 
@@ -650,14 +665,19 @@ async function timelineSplit(
 	if (opts.splitTime === undefined || Number.isNaN(opts.splitTime))
 		return { success: false, error: "Missing or invalid --split-time" };
 
-	const body: Record<string, unknown> = { splitTime: opts.splitTime };
+	const { times, snapped } = await snapCommandTimes({
+		client,
+		opts,
+		times: { splitTime: opts.splitTime },
+	});
+	const body: Record<string, unknown> = { splitTime: times.splitTime };
 	if (opts.mode) body.mode = opts.mode;
 
-	const data = await client.post(
+	const data = await client.post<Record<string, unknown>>(
 		`/api/claude/timeline/${opts.projectId}/elements/${opts.elementId}/split`,
 		body
 	);
-	return { success: true, data };
+	return { success: true, data: snapped ? { ...data, snapped } : data };
 }
 
 /** Handle timeline move. */
@@ -684,15 +704,23 @@ async function timelineMove(
 	}
 	// Omitting the track keeps the element on its own; omitting the time keeps
 	// it where it is on the new track.
+	const { times, snapped } = await snapCommandTimes({
+		client,
+		opts,
+		times: { newStartTime: targetTime },
+	});
 	const body: Record<string, unknown> = {};
 	if (opts.toTrack) body.toTrackId = opts.toTrack;
-	if (hasTargetTime) body.newStartTime = targetTime;
+	if (hasTargetTime) body.newStartTime = times.newStartTime;
 
-	const data = await client.post(
+	const data = await client.post<Record<string, unknown>>(
 		`/api/claude/timeline/${opts.projectId}/elements/${opts.elementId}/move`,
 		body
 	);
-	return { success: true, data };
+	return {
+		success: true,
+		data: snapped && hasTargetTime ? { ...data, snapped } : data,
+	};
 }
 
 /**
@@ -857,9 +885,13 @@ async function timelineInfo(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	// A read: without --project-id it is the project the editor has open.
+	const projectId = await resolveProjectId(client, opts);
+	if (!projectId) {
+		return { success: false, error: "No active project; pass --project-id" };
+	}
 	const data = await client.get(
-		`/api/claude/timeline/${encodeURIComponent(opts.projectId)}`
+		`/api/claude/timeline/${encodeURIComponent(projectId)}`
 	);
 	return { success: true, data };
 }
@@ -916,15 +948,30 @@ async function timelineTrim(
 		};
 	}
 
+	const { times, snapped } = await snapCommandTimes({
+		client,
+		opts,
+		times: { startTime: opts.startTime, endTime: opts.endTime },
+	});
+	if (
+		times.startTime !== undefined &&
+		times.endTime !== undefined &&
+		times.startTime >= times.endTime
+	) {
+		return {
+			success: false,
+			error: `--snap-frames puts both edges on ${times.startTime} s, which leaves no clip`,
+		};
+	}
 	const changes: Record<string, unknown> = {};
-	if (opts.startTime !== undefined) changes.startTime = opts.startTime;
-	if (opts.endTime !== undefined) changes.endTime = opts.endTime;
+	if (times.startTime !== undefined) changes.startTime = times.startTime;
+	if (times.endTime !== undefined) changes.endTime = times.endTime;
 
-	const data = await client.patch(
+	const data = await client.patch<Record<string, unknown>>(
 		`/api/claude/timeline/${encodeURIComponent(opts.projectId)}/elements/${encodeURIComponent(opts.elementId)}`,
 		changes
 	);
-	return { success: true, data };
+	return { success: true, data: snapped ? { ...data, snapped } : data };
 }
 
 // ---------------------------------------------------------------------------
@@ -943,6 +990,8 @@ async function dispatchEditing(
 			return editingBatchCuts(client, opts);
 		case "delete-range":
 			return editingDeleteRange(client, opts);
+		case "insert-gap":
+			return editingInsertGap(client, opts);
 		case "auto-edit":
 			return editingAutoEdit(client, opts, onProgress);
 		case "auto-edit-status":
@@ -1011,9 +1060,20 @@ async function editingDeleteRange(
 			error: "--start-time must be less than --end-time",
 		};
 
+	const { times, snapped } = await snapCommandTimes({
+		client,
+		opts,
+		times: { startTime: opts.startTime, endTime: opts.endTime },
+	});
+	if ((times.startTime as number) >= (times.endTime as number)) {
+		return {
+			success: false,
+			error: `--snap-frames puts both ends of the range on ${times.startTime} s, which leaves nothing to delete`,
+		};
+	}
 	const body: Record<string, unknown> = {
-		startTime: opts.startTime,
-		endTime: opts.endTime,
+		startTime: times.startTime,
+		endTime: times.endTime,
 	};
 
 	if (opts.trackId) {
@@ -1025,11 +1085,11 @@ async function editingDeleteRange(
 	if (opts.crossTrackRipple) body.crossTrackRipple = true;
 	if (opts.keepAutomation) body.keepAutomation = true;
 
-	const data = await client.delete(
+	const data = await client.delete<Record<string, unknown>>(
 		`/api/claude/timeline/${opts.projectId}/range`,
 		body
 	);
-	return { success: true, data };
+	return { success: true, data: snapped ? { ...data, snapped } : data };
 }
 
 // ---------------------------------------------------------------------------
