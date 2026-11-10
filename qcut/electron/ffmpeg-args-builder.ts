@@ -952,7 +952,10 @@ function buildCompositeEncodeArgs(
 		args.push("-filter_complex", filterSteps.join(";"));
 	}
 
-	const videoMap = filterSteps.length > 0 ? `[${currentVideoLabel}]` : "0:v";
+	// A picture no filter touched is mapped as the input itself, whether or
+	// not the sound has filters of its own.
+	const videoMap =
+		currentVideoLabel === "0:v" ? "0:v" : `[${currentVideoLabel}]`;
 	args.push("-map", videoMap);
 
 	let audioMap = audioResult.mapAudio;
