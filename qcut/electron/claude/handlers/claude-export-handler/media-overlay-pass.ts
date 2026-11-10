@@ -38,6 +38,7 @@ import {
 	planMediaOverlayRead,
 } from "./media-overlay-source.js";
 import { moveFile } from "./move-file.js";
+import { createSourceColorReader, type SourceColor } from "./source-color.js";
 import {
 	type ExportSegment,
 	HANDLER_NAME,
@@ -49,6 +50,8 @@ export interface MediaOverlayInput {
 	segment: ExportSegment;
 	/** Null for a still, or a file whose alpha could not be read. */
 	alpha: VideoAlphaInfo | null;
+	/** How the file's colour is read (source-color.ts); by its own tags if absent. */
+	color?: SourceColor;
 }
 
 const OUTPUT_LABEL = "media_overlay_out";
@@ -85,25 +88,30 @@ export function buildMediaOverlayPassArgs({
 	);
 	const readLabel = (index: number) => `media_overlay_read_${index}`;
 	const readSteps: string[] = [];
-	for (const [index, overlay] of overlays.entries()) {
+	/** The overlays whose stream is prepared ahead of the layer chain. */
+	const prepared = new Set<number>();
+	for (const [index, { segment, alpha, color }] of overlays.entries()) {
 		const read = reads[index];
-		inputArgs.push(...mediaOverlayInputArgs({ ...overlay, read }));
-		if (!read) continue;
-		readSteps.push(
-			`[${index + 1}:v]${mediaOverlayReadFilter({
-				read,
-				segment: overlay.segment,
-				fps: settings.fps,
-			})}[${readLabel(index)}]`
-		);
+		inputArgs.push(...mediaOverlayInputArgs({ segment, alpha, read }));
+		const filters = [
+			// What an untagged file is taken to be, before the layer chain
+			// turns it into RGB by that.
+			...(color?.declare ? [color.declare] : []),
+			...(read
+				? [mediaOverlayReadFilter({ read, segment, fps: settings.fps })]
+				: []),
+		];
+		if (filters.length === 0) continue;
+		prepared.add(index);
+		readSteps.push(`[${index + 1}:v]${filters.join(",")}[${readLabel(index)}]`);
 	}
 	const built = buildVideoTimelineLayers({
 		videoSources: overlays.map(({ segment }) =>
 			mediaOverlayVideoSource({ segment, fps: settings.fps })
 		),
 		inputIndexes: overlays.map((_overlay, index) => index + 1),
-		inputLabels: reads.map((read, index) =>
-			read ? readLabel(index) : undefined
+		inputLabels: overlays.map((_overlay, index) =>
+			prepared.has(index) ? readLabel(index) : undefined
 		),
 		width: settings.width,
 		height: settings.height,
@@ -194,27 +202,31 @@ export function buildMediaOverlayPassArgs({
 }
 
 /**
- * Reads each overlay video's alpha; a still needs no decoder choice. A file
- * that cannot be read fails the export, naming the clip and the file.
+ * Reads each overlay video's alpha (a still needs no decoder choice) and how
+ * each file's colour is read. A file that cannot be read fails the export,
+ * naming the clip and the file.
  */
 export async function probeMediaOverlayInputs({
 	overlays,
 	probe = probeVideoAlpha,
+	readColor = createSourceColorReader(),
 }: {
 	overlays: ExportSegment[];
 	probe?: typeof probeVideoAlpha;
+	readColor?: (input: { mediaPath: string }) => Promise<SourceColor>;
 }): Promise<MediaOverlayInput[]> {
 	const known = new Map<string, Promise<VideoAlphaInfo | null>>();
 	return Promise.all(
 		overlays.map(async (segment) => {
-			if (segment.isImage) return { segment, alpha: null };
+			const color = await readColor({ mediaPath: segment.sourcePath });
+			if (segment.isImage) return { segment, alpha: null, color };
 			let alpha = known.get(segment.sourcePath);
 			if (!alpha) {
 				alpha = probe({ mediaPath: segment.sourcePath });
 				known.set(segment.sourcePath, alpha);
 			}
 			try {
-				return { segment, alpha: await alpha };
+				return { segment, alpha: await alpha, color };
 			} catch (error) {
 				throw new Error(
 					`Overlay clip ${segment.elementId} (${path.basename(segment.sourcePath)}) cannot be read: ${error instanceof Error ? error.message : String(error)}`
