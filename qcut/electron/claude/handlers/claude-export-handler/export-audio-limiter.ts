@@ -430,21 +430,22 @@ export async function renderTruePeakLimitedExport({
 			],
 		};
 	} finally {
+		// The audio work dir holds limited.f32, the exact PCM the encoder
+		// was handed: the one artefact that settles whether two runs
+		// diverged before or after the correction loop (N34). The candidate
+		// directory holds none: it sits beside the user's file, empty once
+		// the candidate is in place, and always goes.
+		const keepsAudioWork =
+			audioWorkDir !== "" &&
+			reportKeptExportDirectory({
+				handler: HANDLER_NAME,
+				label: "the true-peak work files",
+				directory: audioWorkDir,
+				requested: keepTempFiles,
+			});
 		await Promise.all(
-			[audioWorkDir, candidateDir]
+			[keepsAudioWork ? "" : audioWorkDir, candidateDir]
 				.filter(Boolean)
-				// The audio work dir holds limited.f32, the exact PCM the encoder
-				// was handed: the one artefact that settles whether two runs
-				// diverged before or after the correction loop (N34).
-				.filter(
-					(directory) =>
-						!reportKeptExportDirectory({
-							handler: HANDLER_NAME,
-							label: "the true-peak work files",
-							directory,
-							requested: keepTempFiles,
-						})
-				)
 				.map((directory) => fs.rm(directory, { recursive: true, force: true }))
 		);
 	}
