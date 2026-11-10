@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `bitrate` the export cannot read is refused with the forms it takes (`"24Mbps"`, `"24M"`, `"8000kbps"`, `"8000k"`). A bare number or a string without its unit used to export at 8 Mbps without a word.
 - An export without `--preset` takes the bitrate of the size it exports. A `width` and `height` given with the request kept the bitrate of the project's own size.
 - A sticker on a hidden track, and a hidden sticker, are no longer drawn by the native export.
-- `editor:timeline:info` and `editor:timeline:export` without `--project-id` read the project the editor has open, as their help said; they answered `Missing --project-id`.
+- `editor:timeline:info` and `editor:timeline:export` without `--project-id` read the project the editor has open, as the `track`, `mix` and `element` commands do. They answered `Missing --project-id`.
 
 ### Added
 
