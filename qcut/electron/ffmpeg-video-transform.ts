@@ -12,7 +12,10 @@ import { buildVideoColorFilter } from "./ffmpeg/color-filter";
 import { buildVideoColorFilterGraph } from "./ffmpeg/color-filter-graph";
 import { buildChromaKeyFilterGraph } from "./ffmpeg/chroma-key-filter";
 import { buildCustomCutoutExpression } from "./ffmpeg/custom-cutout-expression";
-import { buildNumericKeyframeExpression } from "./ffmpeg/keyframe-expression";
+import {
+	buildNumericKeyframeExpression,
+	isConstantExpression,
+} from "./ffmpeg/keyframe-expression";
 import { buildMaskStrokeFilterGraph } from "./ffmpeg/mask-stroke-filter";
 import {
 	buildXfadeTransitionFilter,
@@ -1520,6 +1523,7 @@ function buildEffectPersonFilters({
 function buildSegmentFilters({
 	source,
 	inputIndex,
+	inputLabel = `${inputIndex}:v`,
 	segmentIndex,
 	width,
 	height,
@@ -1529,6 +1533,8 @@ function buildSegmentFilters({
 }: {
 	source: VideoSource;
 	inputIndex: number;
+	/** The stream the segment is built from; the input's own picture by default. */
+	inputLabel?: string;
 	segmentIndex: number;
 	width: number;
 	height: number;
@@ -1546,7 +1552,7 @@ function buildSegmentFilters({
 	} = resolveVideoSourceTiming({ source, fps });
 	const steps: string[] = [];
 	const timedSource = buildTimedVideoInput({
-		inputLabel: `${inputIndex}:v`,
+		inputLabel,
 		prefix: `video_${segmentIndex}`,
 		source,
 		sourceDuration,
@@ -1724,14 +1730,24 @@ function buildSegmentFilters({
 		customCutout: visual.customCutout,
 		fps: visual.keyframeFps || fps,
 	});
-	const cropped = `video_${segmentIndex}_cropped`;
-	steps.push(
-		`[${current}]geq=` +
-			`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
-			`a='alpha(X,Y)*between(X,W*(${left}),W*(1-(${right})))*` +
-			`between(Y,H*(${top}),H*(1-(${bottom})))*(${mask})*(${customCutout})'[${cropped}]`
-	);
-	current = cropped;
+	// geq runs its expressions for every pixel of every frame; with no crop,
+	// mask or cutout it would copy the picture unchanged, slowly.
+	const keepsAlpha =
+		[left, right, top, bottom].every((expression) =>
+			isConstantExpression({ expression, value: 0 })
+		) &&
+		isConstantExpression({ expression: mask, value: 1 }) &&
+		isConstantExpression({ expression: customCutout, value: 1 });
+	if (!keepsAlpha) {
+		const cropped = `video_${segmentIndex}_cropped`;
+		steps.push(
+			`[${current}]geq=` +
+				`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
+				`a='alpha(X,Y)*between(X,W*(${left}),W*(1-(${right})))*` +
+				`between(Y,H*(${top}),H*(1-(${bottom})))*(${mask})*(${customCutout})'[${cropped}]`
+		);
+		current = cropped;
+	}
 	const maskStrokeGraph = buildMaskStrokeFilterGraph({
 		inputLabel: current,
 		labelPrefix: `video_${segmentIndex}_mask_stroke`,
@@ -1891,10 +1907,13 @@ function buildSegmentFilters({
 		timeVariable: "T",
 	});
 	const alpha = `video_${segmentIndex}_opacity`;
+	const opacityProduct = `(${opacity})*(${opacityAnimation.opacity})*(${effectOpacityMotion.opacity})*(${effectAudioOpacity})`;
 	steps.push(
-		`[${current}]format=rgba,geq=` +
-			`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
-			`a='alpha(X,Y)*max(0,min(1,(${opacity})*(${opacityAnimation.opacity})*(${effectOpacityMotion.opacity})*(${effectAudioOpacity})))'[${alpha}]`
+		isConstantExpression({ expression: opacityProduct, value: 1 })
+			? `[${current}]format=rgba[${alpha}]`
+			: `[${current}]format=rgba,geq=` +
+					`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
+					`a='alpha(X,Y)*max(0,min(1,${opacityProduct}))'[${alpha}]`
 	);
 	current = alpha;
 
@@ -2006,6 +2025,8 @@ function buildLayeredVideoTimelineFilters({
 interface IndexedVideoSource {
 	source: VideoSource;
 	inputIndex: number;
+	/** A stream prepared from the input, to build the source from. */
+	inputLabel?: string;
 	segmentIndex: number;
 }
 
@@ -2120,6 +2141,7 @@ export function buildVideoTimelineLayers({
 	inputIndexOffset = 0,
 	segmentIndexOffset = 0,
 	inputIndexes,
+	inputLabels,
 	width,
 	height,
 	fps,
@@ -2131,6 +2153,11 @@ export function buildVideoTimelineLayers({
 	inputIndexOffset?: number;
 	segmentIndexOffset?: number;
 	inputIndexes?: number[];
+	/**
+	 * A stream to build a source from instead of its input's own picture
+	 * (one a caller prepared from that input), by the source's position.
+	 */
+	inputLabels?: Array<string | undefined>;
 	width: number;
 	height: number;
 	fps: number;
@@ -2140,6 +2167,7 @@ export function buildVideoTimelineLayers({
 	const indexedSources = videoSources.map((source, sourceIndex) => ({
 		source,
 		inputIndex: inputIndexes?.[sourceIndex] ?? inputIndexOffset + sourceIndex,
+		inputLabel: inputLabels?.[sourceIndex],
 		segmentIndex: segmentIndexOffset + sourceIndex,
 	}));
 	const filterSteps: string[] = [];
@@ -2161,10 +2189,12 @@ export function buildVideoTimelineLayers({
 		});
 
 		for (let layerIndex = 0; layerIndex < sortedSources.length; layerIndex++) {
-			const { source, inputIndex, segmentIndex } = sortedSources[layerIndex];
+			const { source, inputIndex, inputLabel, segmentIndex } =
+				sortedSources[layerIndex];
 			const segment = buildSegmentFilters({
 				source,
 				inputIndex,
+				inputLabel,
 				segmentIndex,
 				width,
 				height,
@@ -2213,7 +2243,7 @@ export function buildVideoTimelineLayers({
 
 		for (const run of runs) {
 			const builtSegments = run.sources.map(
-				({ source, inputIndex, segmentIndex }, index) => {
+				({ source, inputIndex, inputLabel, segmentIndex }, index) => {
 					const preparation = prepareTransitionSource({
 						source,
 						previousTransition: run.transitions[index - 1],
@@ -2222,6 +2252,7 @@ export function buildVideoTimelineLayers({
 					const segment = buildSegmentFilters({
 						source: preparation.source,
 						inputIndex,
+						inputLabel,
 						segmentIndex,
 						width,
 						height,

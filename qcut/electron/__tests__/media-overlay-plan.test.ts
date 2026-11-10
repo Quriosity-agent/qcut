@@ -183,6 +183,9 @@ describe("probeMediaOverlayInputs", () => {
 				probe: async () => {
 					throw new Error("moov atom not found");
 				},
+				// Its colour is read first; left to the default, this would run
+				// a real ffprobe on a file that is not there.
+				readColor: async () => ({ declare: null, hdr: false }),
 			})
 		).rejects.toThrow(
 			"Overlay clip broken (broken.mov) cannot be read: moov atom not found"

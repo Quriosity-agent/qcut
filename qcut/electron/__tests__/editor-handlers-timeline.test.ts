@@ -100,14 +100,82 @@ describe("Timeline handlers", () => {
 			expect(result.success).toBe(true);
 		});
 
-		it("requires project-id", async () => {
+		it("reads the project the editor has open when none is named", async () => {
+			mockRoute("GET", "/api/claude/navigator/projects", {
+				success: true,
+				data: { activeProjectId: "open-project", projects: [] },
+			});
+			mockRoute("GET", "/api/claude/timeline/open-project", {
+				success: true,
+				data: { name: "Open", tracks: [] },
+			});
+			for (const command of [
+				"editor:timeline:export",
+				"editor:timeline:info",
+			]) {
+				const result = await handleTimelineEditingCommand(
+					client,
+					makeOpts({ command }),
+					noopProgress
+				);
+				expect(result).toMatchObject({
+					success: true,
+					data: { name: "Open" },
+				});
+			}
+		});
+
+		it("asks for a project id when the editor has none open", async () => {
+			mockRoute("GET", "/api/claude/navigator/projects", {
+				success: true,
+				data: { activeProjectId: null, projects: [] },
+			});
+			for (const command of [
+				"editor:timeline:export",
+				"editor:timeline:info",
+			]) {
+				expect(
+					await handleTimelineEditingCommand(
+						client,
+						makeOpts({ command }),
+						noopProgress
+					)
+				).toEqual({
+					success: false,
+					error: "No active project; pass --project-id",
+				});
+			}
+		});
+
+		it("says how many clips sit between frames", async () => {
+			mockRoute("GET", "/api/claude/timeline/proj1", {
+				success: true,
+				data: {
+					fps: 24,
+					tracks: [
+						{
+							isMain: true,
+							elements: [
+								{ id: "a", startTime: 0, endTime: 126.2 / 24 },
+								{ id: "b", startTime: 126.2 / 24, endTime: 10 },
+							],
+						},
+					],
+				},
+			});
 			const result = await handleTimelineEditingCommand(
 				client,
-				makeOpts({ command: "editor:timeline:export" }),
+				makeOpts({ command: "editor:timeline:export", projectId: "proj1" }),
 				noopProgress
 			);
-			expect(result.success).toBe(false);
-			expect(result.error).toContain("--project-id");
+			expect(result.data).toMatchObject({
+				frameAlignment: {
+					fps: 24,
+					offFrameClips: 2,
+					mainTrackOffFrameClips: 2,
+					elementIds: ["a", "b"],
+				},
+			});
 		});
 	});
 

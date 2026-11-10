@@ -754,7 +754,10 @@ int main(int argc, char* argv[]) {
                 << " <runtime-root> "
                    "<inspect|config|launch|gpu|textures|transition|transition-"
                    "load|transition-frame|transition-video|filter-sequence|"
-                   "text-frame|effect-frame|effect-video>\n";
+                   "text-frame|effect-frame|effect-video>\n"
+                // What this build does beyond its modes, for a caller that
+                // must not be handed an older one (bridge-resolver.ts).
+                << "Capabilities: transition-finish\n";
       return 2;
     }
 

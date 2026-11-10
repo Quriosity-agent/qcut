@@ -5,6 +5,18 @@
  */
 
 import { buildAtempoChain } from "../../../ffmpeg/segment-transform-filter.js";
+import {
+	type ConcatSpan,
+	concatSpan,
+	spanFileCounts,
+} from "./concat-timing.js";
+import { STEREO_SOURCE_FILTERS } from "../../../ffmpeg/stereo-source.js";
+import {
+	EXPORT_PICTURE_COLOR_ARGS,
+	EXPORT_PICTURE_COLOR_FILTERS,
+	EXPORT_PICTURE_TAGS_FILTER,
+	type SourceColor,
+} from "./source-color.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -72,14 +84,78 @@ export function silenceInputArgs({
 }
 
 /**
+ * How far before a clip's in-point its source is opened. FFmpeg drops every
+ * frame that starts before a seek point, the one on screen at that point
+ * included, so a clip whose in-point lies between two source frames (the
+ * right half of a cut made by time, a 30 fps file on a 24 fps timeline)
+ * began on the frame after the one it should start on. Opened a little
+ * earlier, that frame is read, and the cut picks for every output frame the
+ * source frame on screen at its time. A source frame held for longer than
+ * this before the in-point (a still stretch of a variable-rate recording)
+ * is still missed: the clip then starts on the next one, as it used to.
+ */
+const PICTURE_LEAD_SECONDS = 0.25;
+
+/**
+ * A source frame that starts within this after an output frame's time is
+ * on that frame, the rule the preview and the renderer export use.
+ */
+const FRAME_EDGE_SECONDS = 0.001;
+
+/** How a segment's picture is read from its source. */
+export interface SegmentPictureRead {
+	/** Where the input is opened, in source seconds. */
+	seek: number;
+	/** Source seconds from there to the clip's in-point, where its sound starts. */
+	lead: number;
+	/** Source microseconds from there to what the first output frame shows. */
+	pictureShiftMicros: number;
+}
+
+/**
+ * Where a segment's source is opened and how far into it the picture's
+ * first frame is: at the in-point, later by `firstFrameDelay` (timeline
+ * seconds) when the clip starts between two output frames and is first seen
+ * on the later one. Undefined for a picture, which has no time of its own.
+ */
+export function planSegmentPictureRead({
+	segment,
+	firstFrameDelay = 0,
+}: {
+	segment: ExportSegment;
+	firstFrameDelay?: number;
+}): SegmentPictureRead | undefined {
+	if (segment.isImage) return undefined;
+	const rate = segment.playbackRate ?? 1;
+	// On a whole microsecond, which is as fine as FFmpeg reads a seek point.
+	const seek =
+		Math.floor(
+			Math.max(0, segment.trimStart - PICTURE_LEAD_SECONDS) * 1_000_000
+		) / 1_000_000;
+	const lead = segment.trimStart - seek;
+	return {
+		seek,
+		lead,
+		pictureShiftMicros: Math.round(
+			(lead + (Math.max(0, firstFrameDelay) + FRAME_EDGE_SECONDS) * rate) *
+				1_000_000
+		),
+	};
+}
+
+/**
  * Build ffmpeg input args for one export segment. Seeks to the segment's
  * source in-point (trimStart) before decoding so trimmed clips start at the
- * right place instead of source time 0.
+ * right place instead of source time 0; with `read`, to where that plan
+ * opens the source, for the encode command to cut from (the same plan must
+ * be given to `buildExportSegmentEncodeArgs`).
  */
 export function buildExportSegmentInputArgs({
 	segment,
+	read,
 }: {
 	segment: ExportSegment;
+	read?: SegmentPictureRead;
 }): string[] {
 	if (segment.isImage) {
 		return [
@@ -91,13 +167,14 @@ export function buildExportSegmentInputArgs({
 			segment.sourcePath,
 		];
 	}
-	const seekArgs =
-		segment.trimStart > 0 ? ["-ss", String(segment.trimStart)] : [];
+	const seek = read ? read.seek : segment.trimStart;
+	const seekArgs = seek > 0 ? ["-ss", String(seek)] : [];
 	// duration is timeline seconds; a sped-up segment consumes rate× as much
 	// of the source before setpts compresses it back to the timeline length.
 	// `-t` before `-i` bounds what is read; the output is cut to the
 	// timeline length by the encode command.
-	const sourceReadDuration = segment.duration * (segment.playbackRate ?? 1);
+	const sourceReadDuration =
+		segment.duration * (segment.playbackRate ?? 1) + (read?.lead ?? 0);
 	return [
 		...seekArgs,
 		"-t",
@@ -166,11 +243,24 @@ export async function resolveExportSegmentAudio({
 
 /**
  * Both streams are padded without end (the last frame is cloned, the sound
- * gets silence) and the output `-t` alone cuts the segment to exactly its
- * length, so a source shorter than the segment fills it too. There is no
- * `-shortest`: FFmpeg's sync queue then trims every other stream to the
- * first stream that ends, which dropped the last picture frame of clips
- * whose sound ended a little early.
+ * gets silence) and then cut to the segment's span: the picture to its whole
+ * frames at the export's rate, the sound to its samples (see
+ * concat-timing.ts), so a source shorter than the segment fills it too. The
+ * cuts are filters, not output options: `-t` makes as many frames as start
+ * before it ends, one more than the span whenever the clip is not a whole
+ * number of frames long, and `-frames:v` ends the sound along with the
+ * picture. There is no `-shortest` either: FFmpeg's sync queue then trims
+ * every other stream to the first stream that ends, which dropped the last
+ * picture frame of clips whose sound ended a little early.
+ *
+ * Output frame k shows the source frame on screen k frames after the
+ * picture's first frame (`read`, see `planSegmentPictureRead`): the picture
+ * is put on that clock, a retimed clip's time is divided by its rate, and
+ * the `fps` filter counts from zero and gives each frame the latest source
+ * frame that has started by then (`round=up` sends a source frame to the
+ * first output frame at or after it). Left to start where the first source
+ * frame it was given falls, it wrote one frame more than the span whenever
+ * that frame came less than half an output frame late.
  *
  * Every segment has sound, the source's or silence (a picture, a clip
  * without an audio stream), in one format: the concat takes its streams
@@ -181,6 +271,11 @@ export async function resolveExportSegmentAudio({
  * With `blackPicture` (a range export, for a clip outside the range) the
  * picture is black at the export's size and the source is read for its
  * sound alone, through the same filters, so the mix hears what it would.
+ *
+ * The picture leaves in the export's one colour description (see
+ * source-color.ts): what an untagged source is taken to be is stated first
+ * (`color`), and the last thing before the cut is the conversion to BT.709,
+ * limited range. An HDR source keeps its own.
  */
 export function buildExportSegmentEncodeArgs({
 	inputArgs,
@@ -190,6 +285,9 @@ export function buildExportSegmentEncodeArgs({
 	audio,
 	outputPath,
 	blackPicture = false,
+	span,
+	read,
+	color,
 }: {
 	inputArgs: string[];
 	scaleFilter: string;
@@ -214,8 +312,24 @@ export function buildExportSegmentEncodeArgs({
 	outputPath: string;
 	/** Black frames instead of the source's picture; the sound is unchanged. */
 	blackPicture?: boolean;
+	/** The stretch of the timeline the file fills; the clip's own by default. */
+	span?: Pick<ConcatSpan, "frames" | "samples">;
+	/** The plan `inputArgs` were built with; none reads from the in-point. */
+	read?: SegmentPictureRead;
+	/** How the source's colour is read; unknown reads it by its own tags. */
+	color?: SourceColor;
 }): string[] {
 	const format = segmentAudioFormat({ settings });
+	const { frames, samples } = spanFileCounts({
+		span:
+			span ??
+			concatSpan({
+				from: segment.startTime,
+				to: segment.startTime + segment.duration,
+				fps: settings.fps,
+				sampleRate: format.sampleRate,
+			}),
+	});
 	const atempo =
 		segment.isImage || audio === null
 			? null
@@ -230,6 +344,29 @@ export function buildExportSegmentEncodeArgs({
 					? inputArgs
 					: [];
 	const audioStream = soundFromPictureInput ? "0:a:0" : "1:a:0";
+	const rate = segment.isImage ? 1 : (segment.playbackRate ?? 1);
+	const keepsOwnColor = !blackPicture && color?.hdr === true;
+	const picture = [
+		...(color?.declare ? [color.declare] : []),
+		// Microseconds, so the shift is exact whatever the source counts in.
+		...(read ? ["settb=AVTB", `setpts=PTS-${read.pictureShiftMicros}`] : []),
+		scaleFilter,
+		...(rate === 1 ? [] : [`setpts=PTS/${rate}`]),
+		...(keepsOwnColor ? [] : EXPORT_PICTURE_COLOR_FILTERS),
+		"tpad=stop_mode=clone:stop=-1",
+		`fps=${settings.fps}:start_time=0:round=up`,
+		`trim=end_frame=${frames}`,
+	].join(",");
+	// The input opens before the in-point for the picture's sake; its own
+	// sound starts at the in-point.
+	const soundLead =
+		soundFromPictureInput && read && read.lead > 0
+			? [`atrim=start=${read.lead}`, `asetpts=PTS-${read.lead}/TB`]
+			: [];
+	// A mono file at full level in both channels, as it plays; a mono export
+	// keeps its one channel as it is.
+	const stereoSource =
+		audio !== null && format.channels === 2 ? STEREO_SOURCE_FILTERS : [];
 	return [
 		"-y",
 		...(blackPicture ? blackPictureInputArgs({ settings }) : inputArgs),
@@ -238,9 +375,10 @@ export function buildExportSegmentEncodeArgs({
 		"0:v:0",
 		"-map",
 		audioStream,
-		...(blackPicture
-			? []
-			: ["-vf", `${scaleFilter},tpad=stop_mode=clone:stop=-1`]),
+		"-vf",
+		blackPicture
+			? `trim=end_frame=${frames},${EXPORT_PICTURE_TAGS_FILTER}`
+			: picture,
 		"-r",
 		String(settings.fps),
 		"-c:v",
@@ -251,8 +389,11 @@ export function buildExportSegmentEncodeArgs({
 		parseBitrateForKbps({ bitrate: settings.bitrate }),
 		"-pix_fmt",
 		"yuv420p",
+		...(keepsOwnColor ? [] : EXPORT_PICTURE_COLOR_ARGS),
 		"-af",
 		[
+			...stereoSource,
+			...soundLead,
 			// Sound that starts late in its file, or skips, is filled with
 			// silence by its timestamps, so the PCM runs sample for sample
 			// with the picture from the segment's first frame.
@@ -264,10 +405,9 @@ export function buildExportSegmentEncodeArgs({
 				? [segment.audioEnvelope]
 				: []),
 			"apad",
+			`atrim=end_sample=${samples}`,
 		].join(","),
 		...segmentPcmAudioArgs({ format }),
-		"-t",
-		String(segment.duration),
 		outputPath,
 	];
 }

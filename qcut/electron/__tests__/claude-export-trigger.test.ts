@@ -95,6 +95,7 @@ import {
 	buildTransitionAudioAlignmentFilter,
 	buildTransitionVideoSources,
 	collectExportSegments,
+	collectStickerOverlays,
 	collectTimelineAudioFiles,
 	collectVideoTransitions,
 } from "../claude/handlers/claude-export-handler/export-engine";
@@ -163,9 +164,14 @@ function createMockProcess({
 	const proc = new EventEmitter() as EventEmitter & {
 		stderr: EventEmitter;
 		stdout: EventEmitter;
+		kill: () => boolean;
 	};
 	proc.stderr = new EventEmitter();
 	proc.stdout = new EventEmitter();
+	// A child process can always be killed. A check that gives up on one
+	// that hangs (the FFprobe binary check does after 2.5 s) calls this; in
+	// a test file that was still running then, the missing method threw.
+	proc.kill = () => true;
 
 	if (shouldClose) {
 		setTimeout(() => {
@@ -201,6 +207,10 @@ describe("Claude export trigger", () => {
 		expect(result.jobId).toMatch(/^export_/);
 		expect(result.status).toBe("queued");
 		expect(getExportJobStatus(result.jobId)?.presetId).toBe("youtube-1080p");
+		// Let the job run out, so none of its commands lands in the next test.
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
 	});
 
 	it("exports at the project's size and frame rate when no preset is named", async () => {
@@ -214,6 +224,9 @@ describe("Claude export trigger", () => {
 		expect(getExportJobStatus(result.jobId)).toMatchObject({
 			presetId: "project",
 			settings: { width: 1470, height: 630, fps: 24, bitrate: "8Mbps" },
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
 		});
 	});
 
@@ -324,6 +337,256 @@ describe("Claude export trigger", () => {
 			).rejects.toThrow("range (--start-time/--end-time)");
 			expect(dispatch).not.toHaveBeenCalled();
 		});
+	});
+
+	/**
+	 * Clips 24.4 frames long, as a ripple delete on bar lines leaves them.
+	 * Each used to be written with `-t` as 25 frames of its own and joined
+	 * end to end, so the picture of every later clip came later by the sum
+	 * of those remainders while its sound stayed where the timeline has it.
+	 */
+	it("cuts each clip to the frames and samples the timeline gives it, and joins picture and sound by their own lengths", async () => {
+		const clipSeconds = 61 / 60;
+		const timeline = {
+			...testTimeline,
+			fps: 24,
+			duration: 3 * clipSeconds,
+			tracks: [
+				{
+					...testTimeline.tracks[0],
+					elements: [0, 1, 2].map((index) => ({
+						...testTimeline.tracks[0].elements[0],
+						id: `el_${index}`,
+						startTime: index * clipSeconds,
+						endTime: (index + 1) * clipSeconds,
+						duration: clipSeconds,
+					})),
+				},
+			],
+		};
+		const result = await startExportJob({
+			projectId: "project_fractional_cuts",
+			request: { outputPath: "/tmp/export-fractional-cuts.mp4" },
+			timeline,
+			mediaFiles: testMediaFiles,
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
+		const commands = mockSpawn.mock.calls.map((call) => call[1] as string[]);
+		const segments = commands.filter((args) =>
+			/[\\/]segment-\d{4}\.mov$/.test(String(args.at(-1)))
+		);
+		// Frames 0–24, 25–48 and 49–73: 74 in all, where three times 25 is 75.
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-vf") + 1].match(/trim=end_frame=(\d+)$/)?.[1]
+			)
+		).toEqual(["25", "24", "25"]);
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-af") + 1].match(/atrim=end_sample=(\d+)$/)?.[1]
+			)
+		).toEqual(["48800", "48800", "48800"]);
+		for (const args of segments) {
+			expect(args.slice(args.indexOf("-map"))).not.toContain("-t");
+		}
+		// Each clip's picture is read from where its first frame falls: the
+		// second clip starts 0.6 of a frame before frame 25, the third 0.2 of
+		// one before frame 49 (microseconds, with the 1 ms edge rule).
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-vf") + 1].match(
+						/^settb=AVTB,setpts=PTS-(\d+),/
+					)?.[1]
+			)
+		).toEqual(["1000", "26000", "9333"]);
+
+		const lists = new Map(
+			mockFsPromises.writeFile.mock.calls.map((call) => {
+				const [file, content] = call as unknown as [string, string];
+				return [String(file).replace(/^.*[\\/]/, ""), String(content)];
+			})
+		);
+		const durations = (name: string) =>
+			(lists.get(name) ?? "")
+				.split("\n")
+				.filter((line) => line.startsWith("duration "))
+				.map((line) => line.slice("duration ".length));
+		expect(durations("concat-video-list.txt")).toEqual([
+			"1.041667",
+			"1.000000",
+			"1.041666",
+		]);
+		expect(durations("concat-audio-list.txt")).toEqual([
+			"1.016667",
+			"1.016666",
+			"1.016667",
+		]);
+		const concat = commands.find(
+			(args) => args.filter((arg) => arg === "concat").length === 2
+		);
+		expect(concat).toBeDefined();
+		expect(
+			concat?.slice(concat.indexOf("-map"), concat.indexOf("-map") + 4)
+		).toEqual(["-map", "0:v:0", "-map", "1:a:0"]);
+	});
+
+	describe("with --keep-temp", () => {
+		it("keeps the intermediates, writes the commands that made them and names the folder", async () => {
+			const result = await startExportJob({
+				projectId: "project_keep_temp",
+				request: { outputPath: "/tmp/export-keep-temp.mp4", keepTemp: true },
+				timeline: testTimeline,
+				mediaFiles: testMediaFiles,
+			});
+			await vi.waitFor(() => {
+				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+			});
+			expect(getExportJobStatus(result.jobId)?.intermediates).toBe(
+				"/tmp/qcut-claude-export-test"
+			);
+			// The script is written as the job winds up, after it reports done.
+			await vi.waitFor(() => {
+				const script = mockFsPromises.writeFile.mock.calls
+					.map((call) => call as unknown as [string, string])
+					.find(([file]) => /ffmpeg-commands\.sh$/.test(String(file)));
+				expect(script).toBeDefined();
+				const lines = String(script?.[1]).split("\n");
+				expect(lines[0]).toBe("#!/bin/sh");
+				// One line for each FFmpeg step; the probes are not steps.
+				expect(
+					lines.filter((line) => line.startsWith("/mock/ffmpeg -y "))
+				).toHaveLength(
+					mockSpawn.mock.calls.filter(([command]) => command === "/mock/ffmpeg")
+						.length
+				);
+				// A step ends with the file it writes. On Windows the path has
+				// backslashes, so the script quotes it.
+				expect(lines.some((line) => /segment-0000\.mov'?$/.test(line))).toBe(
+					true
+				);
+			});
+			expect(mockFsPromises.rm).not.toHaveBeenCalledWith(
+				"/tmp/qcut-claude-export-test",
+				expect.anything()
+			);
+		});
+
+		it("is not what an export does unless asked", async () => {
+			const result = await startExportJob({
+				projectId: "project_no_keep_temp",
+				request: { outputPath: "/tmp/export-no-keep-temp.mp4" },
+				timeline: testTimeline,
+				mediaFiles: testMediaFiles,
+			});
+			await vi.waitFor(() => {
+				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+			});
+			await vi.waitFor(() => {
+				expect(mockFsPromises.rm).toHaveBeenCalledWith(
+					"/tmp/qcut-claude-export-test",
+					expect.anything()
+				);
+			});
+			expect(getExportJobStatus(result.jobId)?.intermediates).toBeUndefined();
+			expect(
+				mockFsPromises.writeFile.mock.calls.some((call) =>
+					/ffmpeg-commands\.sh$/.test(String((call as unknown[])[0]))
+				)
+			).toBe(false);
+		});
+	});
+
+	/**
+	 * FFmpeg rebuilds a step's filter graph when an input changes format
+	 * part-way, and the step's other inputs lose the frames read ahead. An
+	 * export used to finish `completed` with no warning when that happened.
+	 */
+	it("warns when FFmpeg rebuilt the filter graph of a step that read several inputs", async () => {
+		mockSpawn.mockImplementation((_command: string, args: string[]) => {
+			const proc = createMockProcess({ shouldClose: false });
+			setTimeout(() => {
+				// The join, which reads two lists.
+				if (args.filter((arg) => arg === "concat").length === 2) {
+					(proc as unknown as { stderr: EventEmitter }).stderr.emit(
+						"data",
+						Buffer.from(
+							"[fc#0 @ 0x1] Reconfiguring filter graph because audio parameters changed to 44100 Hz, stereo, fltp\n"
+						)
+					);
+				}
+				proc.emit("close", 0);
+			}, 0);
+			return proc;
+		});
+		const result = await startExportJob({
+			projectId: "project_graph_rebuilt",
+			request: { outputPath: "/tmp/export-graph-rebuilt.mp4" },
+			timeline: testTimeline,
+			mediaFiles: testMediaFiles,
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
+		expect(getExportJobStatus(result.jobId)?.warnings).toEqual([
+			expect.stringMatching(
+				/^FFmpeg rebuilt a filter graph while it read concat-video-list\.txt with 1 other input\(s\) \(audio parameters changed to 44100 Hz, stereo, fltp\)\./
+			),
+		]);
+	});
+
+	it("leaves out stickers on a hidden track, and hidden stickers", async () => {
+		const sticker = {
+			id: "sticker_1",
+			trackIndex: 0,
+			startTime: 1,
+			endTime: 3,
+			duration: 2,
+			type: "sticker" as const,
+			mediaId: "sticker_media",
+		};
+		const timelineWith = ({
+			trackHidden = false,
+			stickerHidden = false,
+		} = {}) => ({
+			...testTimeline,
+			tracks: [
+				{
+					index: 0,
+					name: "Stickers",
+					type: "sticker",
+					hidden: trackHidden,
+					elements: [{ ...sticker, hidden: stickerHidden }],
+				},
+				...testTimeline.tracks,
+			],
+		});
+		const mediaFiles = [
+			...testMediaFiles,
+			{
+				...testMediaFiles[0],
+				id: "sticker_media",
+				name: "badge.png",
+				type: "image" as const,
+				path: "/tmp/badge.png",
+			},
+		];
+		const collect = (timeline: ReturnType<typeof timelineWith>) =>
+			collectStickerOverlays({
+				timeline: timeline as unknown as Parameters<
+					typeof collectStickerOverlays
+				>[0]["timeline"],
+				mediaFiles,
+				projectId: "project_stickers",
+			});
+
+		expect(await collect(timelineWith())).toHaveLength(1);
+		expect(await collect(timelineWith({ trackHidden: true }))).toEqual([]);
+		expect(await collect(timelineWith({ stickerHidden: true }))).toEqual([]);
 	});
 
 	it("snaps a project rate the renderer cannot run to the nearest it can, unless the rate was asked for", async () => {
@@ -1028,7 +1291,7 @@ describe("Claude export trigger", () => {
 			labDeflicker: 60,
 		});
 		expect(filter).toContain(
-			"tpad=stop_mode=clone:stop_duration=0.066667,minterpolate=fps=30"
+			"tpad=stop_mode=clone:stop=2,tpad=stop_mode=clone:stop_duration=0.066667,minterpolate=fps=30"
 		);
 		expect(filter).toContain("deshake=");
 		expect(filter).toContain("hqdn3d=");

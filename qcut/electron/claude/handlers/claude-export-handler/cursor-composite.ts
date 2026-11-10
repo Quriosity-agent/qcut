@@ -19,6 +19,11 @@ import { readCursorTelemetry } from "../../../screen-recording-handler/cursor-te
 import type { ResolvedExportSettings, ExportSegment } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 import {
+	EXPORT_PICTURE_COLOR_ARGS,
+	EXPORT_PICTURE_COLOR_FILTERS,
+	type SourceColor,
+} from "./source-color.js";
+import {
 	analyzeForZoomSuggestions,
 	computeZoomTransform,
 	findConnectedTransitions,
@@ -188,6 +193,117 @@ interface Canvas {
 }
 
 /**
+ * Reads the source as the RGBA frames the canvas draws on (to stdout). What
+ * an untagged source is taken to be is stated first (source-color.ts), so
+ * its RGB is the preview's; FFmpeg left to itself reads it as BT.601.
+ */
+export function buildCursorDecodeArgs({
+	sourcePath,
+	duration,
+	frames,
+	fps,
+	width,
+	height,
+	color,
+}: {
+	sourcePath: string;
+	duration: number;
+	frames: number;
+	fps: number;
+	width: number;
+	height: number;
+	color?: SourceColor;
+}): string[] {
+	return [
+		"-i",
+		sourcePath,
+		...(duration > 0 ? ["-t", String(duration)] : []),
+		"-frames:v",
+		String(frames),
+		"-r",
+		String(fps),
+		...(color?.declare ? ["-vf", color.declare] : []),
+		"-f",
+		"rawvideo",
+		"-pix_fmt",
+		"rgba",
+		"-s",
+		`${width}x${height}`,
+		"-v",
+		"error",
+		"pipe:1",
+	];
+}
+
+/**
+ * Encodes the composited RGBA frames (from stdin) over the segment's own
+ * sound, which is already cut to the segment's samples and is copied.
+ *
+ * Exactly the segment's frames, its last held if the source runs short. The
+ * RGB frames go back to the export's colour description; FFmpeg left to
+ * itself writes them as BT.601 with no tags, which a player reads as BT.709.
+ */
+export function buildCursorEncodeArgs({
+	segmentPath,
+	outputPath,
+	width,
+	height,
+	fps,
+	frames,
+	codec,
+	bitrate,
+}: {
+	segmentPath: string;
+	outputPath: string;
+	width: number;
+	height: number;
+	fps: number;
+	frames: number;
+	codec: string;
+	bitrate: string;
+}): string[] {
+	return [
+		"-y",
+		"-f",
+		"rawvideo",
+		"-pix_fmt",
+		"rgba",
+		"-s",
+		`${width}x${height}`,
+		"-r",
+		String(fps),
+		"-i",
+		"pipe:0",
+		"-i",
+		segmentPath,
+		"-map",
+		"0:v",
+		"-map",
+		"1:a?",
+		"-c:v",
+		codec,
+		"-preset",
+		"veryfast",
+		"-b:v",
+		parseBitrateForKbps({ bitrate }),
+		"-pix_fmt",
+		"yuv420p",
+		...EXPORT_PICTURE_COLOR_ARGS,
+		"-vf",
+		[
+			"tpad=stop_mode=clone:stop=-1",
+			`trim=end_frame=${frames}`,
+			...EXPORT_PICTURE_COLOR_FILTERS,
+		].join(","),
+		"-c:a",
+		"copy",
+		"-movflags",
+		"+faststart",
+		outputPath,
+	];
+}
+
+/**
  * Composite cursor + zoom onto a single encoded segment file.
  */
 async function compositeSegmentCursor({
@@ -196,6 +312,8 @@ async function compositeSegmentCursor({
 	telemetry,
 	settings,
 	duration,
+	frames,
+	color,
 }: {
 	segmentPath: string;
 	/** Original source file at full resolution (for sharp zoom) */
@@ -203,6 +321,10 @@ async function compositeSegmentCursor({
 	telemetry: TelemetryData;
 	settings: ResolvedExportSettings;
 	duration: number;
+	/** The segment's frames (see concat-timing.ts); the file keeps exactly these. */
+	frames: number;
+	/** How the source's colour is read (source-color.ts). */
+	color?: SourceColor;
 }): Promise<void> {
 	// Dynamic import @napi-rs/canvas
 	let canvasLib: {
@@ -268,62 +390,33 @@ async function compositeSegmentCursor({
 
 	try {
 		await new Promise<void>((resolve, reject) => {
-			const decoderArgs = [
-				"-i",
-				originalSourcePath,
-				...(duration > 0 ? ["-t", String(duration)] : []),
-				"-r",
-				String(fps),
-				"-f",
-				"rawvideo",
-				"-pix_fmt",
-				"rgba",
-				"-s",
-				`${srcWidth}x${srcHeight}`,
-				"-v",
-				"error",
-				"pipe:1",
-			];
-			const decoder = spawn(ffmpegPath, decoderArgs, {
-				stdio: ["ignore", "pipe", "pipe"],
-			});
+			const decoder = spawn(
+				ffmpegPath,
+				buildCursorDecodeArgs({
+					sourcePath: originalSourcePath,
+					duration,
+					frames,
+					fps,
+					width: srcWidth,
+					height: srcHeight,
+					color,
+				}),
+				{ stdio: ["ignore", "pipe", "pipe"] }
+			);
 
 			// Encoder: the segment's own sound (already trimmed, PCM) is copied.
 			const encoder = spawn(
 				ffmpegPath,
-				[
-					"-y",
-					"-f",
-					"rawvideo",
-					"-pix_fmt",
-					"rgba",
-					"-s",
-					`${outWidth}x${outHeight}`,
-					"-r",
-					String(fps),
-					"-i",
-					"pipe:0",
-					"-i",
+				buildCursorEncodeArgs({
 					segmentPath,
-					"-map",
-					"0:v",
-					"-map",
-					"1:a?",
-					"-c:v",
+					outputPath: outputTempPath,
+					width: outWidth,
+					height: outHeight,
+					fps,
+					frames,
 					codec,
-					"-preset",
-					"veryfast",
-					"-b:v",
-					parseBitrateForKbps({ bitrate }),
-					"-pix_fmt",
-					"yuv420p",
-					"-c:a",
-					"copy",
-					...(duration > 0 ? ["-t", String(duration)] : ["-shortest"]),
-					"-movflags",
-					"+faststart",
-					outputTempPath,
-				],
+					bitrate,
+				}),
 				{ stdio: ["pipe", "ignore", "pipe"] }
 			);
 
@@ -599,12 +692,18 @@ async function compositeSegmentCursor({
 export async function compositeCursorOnSegments({
 	segmentOutputs,
 	segments,
+	segmentFrames,
 	settings,
+	sourceColor,
 	onProgress,
 }: {
 	segmentOutputs: string[];
 	segments: ExportSegment[];
+	/** Each segment file's frames, in the order of `segments`. */
+	segmentFrames: number[];
 	settings: ResolvedExportSettings;
+	/** How a source file's colour is read (source-color.ts). */
+	sourceColor?: (input: { mediaPath: string }) => Promise<SourceColor>;
 	onProgress?: (progress: number) => void;
 }): Promise<void> {
 	for (const [i, segOut] of segmentOutputs.entries()) {
@@ -626,6 +725,8 @@ export async function compositeCursorOnSegments({
 				telemetry,
 				settings,
 				duration: segment.duration,
+				frames: segmentFrames[i],
+				color: await sourceColor?.({ mediaPath: segment.sourcePath }),
 			});
 		} catch (err) {
 			claudeLog.error(HANDLER, `Segment ${i} compositing failed:`, err);

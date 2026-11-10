@@ -11,6 +11,7 @@ import {
 import { mapWithConcurrency } from "../lib/map-with-concurrency.js";
 import {
 	findQCutProjectRoot,
+	JIANYING_TRANSITION_FINISH_CAPABILITY,
 	resolveJianyingTransitionBridge,
 } from "./bridge-resolver.js";
 
@@ -532,7 +533,11 @@ export async function inspectJianyingTransitionRuntime(): Promise<JianyingRuntim
 	try {
 		const [appBundlePath, bridgePath, packagePaths] = await Promise.all([
 			findAppBundle(),
-			resolveJianyingTransitionBridge(),
+			// Never a bridge that reads a frame back before the engine has
+			// drawn it, wherever on this machine one may be lying.
+			resolveJianyingTransitionBridge({
+				requiredCapability: JIANYING_TRANSITION_FINISH_CAPABILITY,
+			}),
 			findTransitionPackages(),
 		]);
 		const runtime = await selectRuntimeRoot({ appBundlePath, bridgePath });

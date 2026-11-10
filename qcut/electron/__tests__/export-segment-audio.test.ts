@@ -14,6 +14,7 @@ import type {
 	ExportSegment,
 	ResolvedExportSettings,
 } from "../claude/handlers/claude-export-handler/types.js";
+import { STEREO_SOURCE_CHAIN } from "../ffmpeg/stereo-source";
 
 function segment(overrides: Partial<ExportSegment> = {}): ExportSegment {
 	return {
@@ -100,8 +101,9 @@ describe("where a segment's sound comes from", () => {
 			"-map",
 			"1:a:0",
 		]);
+		// The clip's two seconds: cut to their samples, not by `-t`.
 		expect(args[args.indexOf("-af") + 1]).toBe(
-			"aresample=async=1:first_pts=0,atempo=2,apad"
+			`${STEREO_SOURCE_CHAIN},aresample=async=1:first_pts=0,atempo=2,apad,atrim=end_sample=96000`
 		);
 	});
 

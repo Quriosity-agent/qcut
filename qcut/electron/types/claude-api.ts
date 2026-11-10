@@ -526,6 +526,17 @@ export interface ExportJobRequest {
 	 * in the full export (see export-range.ts).
 	 */
 	range?: ClaudeTimeRange;
+	/**
+	 * Native exports only: tracks left out of the export, picture and sound,
+	 * as if each were hidden and muted. The project is not changed.
+	 */
+	excludeTracks?: string[];
+	/**
+	 * Native exports only: keep the export's intermediate files and write the
+	 * FFmpeg commands that made them beside them; the job reports the folder
+	 * as `intermediates`.
+	 */
+	keepTemp?: boolean;
 
 	/** GIF-specific export options */
 	gifConfig?: {
@@ -592,6 +603,8 @@ export interface ExportJobStatus {
 	range?: { startTime: number; endTime: number };
 	audioValidation?: ExportAudioValidation;
 	warnings?: string[];
+	/** Where the intermediate files were kept (`keepTemp`). */
+	intermediates?: string;
 }
 
 // Summary & Report Types (Stage 5)
@@ -771,6 +784,71 @@ export interface ClaudeSnapToBeatsResponse {
 	results: ClaudeSnapToBeatsResult[];
 	moved: number;
 }
+
+/** `editor editing insert-gap`: open empty time in the timeline. */
+export interface ClaudeInsertGapRequest {
+	projectId: string;
+	/** Where the empty time starts, in timeline seconds. */
+	time: number;
+	/** How long it is, in seconds. */
+	duration: number;
+	/** Tracks to open it on; every unlocked track when left out. */
+	trackIds?: string[];
+	/**
+	 * Leave level and pan automation where it is. By default a track's curves
+	 * move with its clips, and bus and master curves when every unlocked track
+	 * moved.
+	 */
+	keepAutomation?: boolean;
+}
+
+export interface ClaudeInsertGapResponse {
+	projectId: string;
+	time: number;
+	duration: number;
+	trackIds: string[];
+	movedElements: number;
+	/** Clips that spanned the point and were split there. */
+	splitElements: number;
+	mixAutomationMoved: boolean;
+}
+
+/** `editor timeline snap --to frames`: put clip edges on whole frames. */
+export interface ClaudeSnapToFramesRequest {
+	projectId: string;
+	/** Tracks to snap; every unlocked track when left out. */
+	trackIds?: string[];
+	/** Clips to snap; every clip of the tracks when left out. */
+	elementIds?: string[];
+	/** Which clips are snapped: those that are seen (default), or sound too. */
+	frameAlign?: "visual" | "all";
+	dryRun?: boolean;
+}
+
+export interface ClaudeSnapToFramesResponse {
+	projectId: string;
+	fps: number;
+	dryRun: boolean;
+	/** Clips looked at. */
+	checked: number;
+	changed: Array<{
+		trackId: string;
+		elementId: string;
+		startTime: { from: number; to: number };
+		endTime: { from: number; to: number };
+	}>;
+	/** Edges left between frames, with the reason. */
+	skipped: Array<{ trackId: string; elementId: string; reason: string }>;
+}
+
+/** An edit of the timeline's time, done by the editor in one undo step. */
+export type ClaudeTimeEditRequest =
+	| ({ operation: "insert-gap" } & ClaudeInsertGapRequest)
+	| ({ operation: "snap-to-frames" } & ClaudeSnapToFramesRequest);
+
+export type ClaudeTimeEditResponse =
+	| ClaudeInsertGapResponse
+	| ClaudeSnapToFramesResponse;
 
 export interface ClaudeShotSplitClipResult {
 	projectId: string;

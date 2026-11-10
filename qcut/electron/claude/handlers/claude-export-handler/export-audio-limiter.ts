@@ -19,6 +19,7 @@ import {
 	reportKeptExportDirectory,
 } from "./export-temp-retention.js";
 import type { TimelineRange } from "./export-range.js";
+import { exportStepLogFor } from "./export-step-log.js";
 import { HANDLER_NAME } from "./types.js";
 
 const OVERSAMPLE_FACTOR = 4;
@@ -58,6 +59,8 @@ export interface TruePeakLimitedExportOptions {
 	 * it does in the full export; `sourceVideoPath` is then the cut picture.
 	 */
 	range?: TimelineRange;
+	/** The export asked for its intermediate files to be kept. */
+	keepTempFiles?: boolean;
 	signal?: AbortSignal;
 	onPublished?: () => void;
 }
@@ -135,6 +138,7 @@ function validateOptions({
 }
 
 async function run({ args, signal }: { args: string[]; signal?: AbortSignal }) {
+	exportStepLogFor({ signal })?.commands.push(args);
 	await runAudioMeasurementProcess({
 		command: getFFmpegPath(),
 		args: [
@@ -259,6 +263,7 @@ export async function renderTruePeakLimitedExport({
 	format,
 	peakCorrection = "local",
 	range,
+	keepTempFiles = false,
 	signal,
 	onPublished,
 }: TruePeakLimitedExportOptions): Promise<{
@@ -394,7 +399,7 @@ export async function renderTruePeakLimitedExport({
 			// only ever show the corrected audio. Keep the limiter's own output
 			// beside it, or a comparison cannot tell a difference that arrived
 			// with the mix from one the correction loop introduced (N34).
-			if (keepExportTempFiles()) {
+			if (keepExportTempFiles({ requested: keepTempFiles })) {
 				await fs
 					.copyFile(
 						limitedAudioPath,
@@ -425,20 +430,22 @@ export async function renderTruePeakLimitedExport({
 			],
 		};
 	} finally {
+		// The audio work dir holds limited.f32, the exact PCM the encoder
+		// was handed: the one artefact that settles whether two runs
+		// diverged before or after the correction loop (N34). The candidate
+		// directory holds none: it sits beside the user's file, empty once
+		// the candidate is in place, and always goes.
+		const keepsAudioWork =
+			audioWorkDir !== "" &&
+			reportKeptExportDirectory({
+				handler: HANDLER_NAME,
+				label: "the true-peak work files",
+				directory: audioWorkDir,
+				requested: keepTempFiles,
+			});
 		await Promise.all(
-			[audioWorkDir, candidateDir]
+			[keepsAudioWork ? "" : audioWorkDir, candidateDir]
 				.filter(Boolean)
-				// The audio work dir holds limited.f32, the exact PCM the encoder
-				// was handed: the one artefact that settles whether two runs
-				// diverged before or after the correction loop (N34).
-				.filter(
-					(directory) =>
-						!reportKeptExportDirectory({
-							handler: HANDLER_NAME,
-							label: "the true-peak work files",
-							directory,
-						})
-				)
 				.map((directory) => fs.rm(directory, { recursive: true, force: true }))
 		);
 	}

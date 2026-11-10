@@ -1,3 +1,4 @@
+import { joinedPictureInputArgs } from "./joined-picture.js";
 import type { StickerOverlay } from "./types.js";
 
 export interface StickerOverlayPass {
@@ -22,7 +23,7 @@ export function buildStickerOverlayPass({
 		throw new Error("Sticker overlay pass requires at least one sticker");
 	}
 
-	const args = ["-y", "-i", inputPath];
+	const args = ["-y", ...joinedPictureInputArgs({ path: inputPath })];
 	for (const sticker of stickerOverlays) {
 		// Read for as long as the sticker shows; its frames are moved to its
 		// start below, so a moving sticker begins on its own first frame.

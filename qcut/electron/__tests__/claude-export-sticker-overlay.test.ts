@@ -24,6 +24,15 @@ describe("native export sticker overlays", () => {
 			bitrate: "8000k",
 		});
 
+		// The picture's colour tags may change along the way; the graph, and
+		// the sticker frames it has read ahead, are kept (joined-picture.ts).
+		expect(pass.args.slice(0, 5)).toEqual([
+			"-y",
+			"-reinit_filter",
+			"0",
+			"-i",
+			"/tmp/source.mp4",
+		]);
 		expect(pass.args).toContain("-stream_loop");
 		expect(pass.args).not.toContain("-loop");
 		expect(pass.args).toEqual(

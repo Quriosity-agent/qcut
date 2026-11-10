@@ -163,6 +163,19 @@ describe("verified true-peak export", () => {
 		expect(await fs.readdir(directory)).toEqual(["output.mp4"]);
 	});
 
+	it("keeps the audio work files when asked, and nothing beside the export", async () => {
+		await renderTruePeakLimitedExport({ ...options, keepTempFiles: true });
+		// The candidate's folder sat beside the output; it is empty once the
+		// candidate is in place, and is not one of the files to keep.
+		const left = (await fs.readdir(directory)).sort();
+		expect(left).toHaveLength(2);
+		expect(left[0]).toBe("output.mp4");
+		expect(left[1]).toMatch(/^true-peak-pcm-/);
+		expect(await fs.readdir(path.join(directory, left[1]))).toEqual([
+			"limited.f32",
+		]);
+	});
+
 	it("lowers a moment just over the ceiling without moving the rest of the mix (N21)", async () => {
 		// v19: the second encode measured -2.4 dBTP against -2.5, and the old
 		// loop took the whole mix down another 0.4 dB.

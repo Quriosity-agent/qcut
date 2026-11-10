@@ -8,6 +8,7 @@
  */
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
+import { timelineSnapToFrames } from "./editor-handlers-time-edit.js";
 
 const BOOKMARK_CHOICES = ["none", "downbeats", "all"] as const;
 const EDGE_CHOICES = ["start", "end", "onset"] as const;
@@ -173,8 +174,9 @@ export async function timelineSnap(
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	const to = opts.to?.trim() ?? "beats";
+	if (to === "frames") return timelineSnapToFrames(client, opts);
 	if (to !== "beats") {
-		return { success: false, error: "--to must be beats" };
+		return { success: false, error: "--to must be beats or frames" };
 	}
 	// --element-ids may be given several times and each value may hold a
 	// comma-separated list; the CLI parser keeps every occurrence as is.

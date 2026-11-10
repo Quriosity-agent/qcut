@@ -3,7 +3,15 @@ import {
 	buildTextRasterVisualFilters,
 } from "../../../ffmpeg/text-raster-input.js";
 import type { TextRasterLayer } from "../../../ffmpeg/types.js";
-import { composePreparedVisualLayers } from "../../../ffmpeg/visual-layer-compositor.js";
+import {
+	ACCURATE_CONVERSION_STEP,
+	composePreparedVisualLayers,
+} from "../../../ffmpeg/visual-layer-compositor.js";
+import {
+	type JoinedPictureColor,
+	joinedPictureColorFilter,
+	joinedPictureInputArgs,
+} from "./joined-picture.js";
 import type { ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -12,16 +20,19 @@ export function buildTextRasterOverlayPassArgs({
 	outputPath,
 	layers,
 	settings,
+	baseColor,
 }: {
 	sourcePath: string;
 	outputPath: string;
 	layers: readonly TextRasterLayer[];
 	settings: ResolvedExportSettings;
+	/** The picture's colour tags at its start (see joined-picture.ts). */
+	baseColor?: JoinedPictureColor;
 }): string[] {
 	if (layers.length === 0) {
 		throw new Error("Text raster overlay pass requires at least one layer.");
 	}
-	const args = ["-y", "-i", sourcePath];
+	const args = ["-y", ...joinedPictureInputArgs({ path: sourcePath })];
 	const resolvedLayers = appendTextRasterInputs({
 		args,
 		layers,
@@ -38,9 +49,12 @@ export function buildTextRasterOverlayPassArgs({
 		labelPrefix: "text_raster",
 		canvasWidth: settings.width,
 		canvasHeight: settings.height,
+		// The joined picture is yuv420p: overlaid as it is, not via RGBA.
+		overlayFormat: "yuv420",
 	});
 	const filterSteps = [
-		`[0:v]settb=AVTB,setpts=PTS-STARTPTS[${baseLabel}]`,
+		ACCURATE_CONVERSION_STEP,
+		`[0:v]${baseColor ? `${joinedPictureColorFilter({ color: baseColor })},` : ""}settb=AVTB,setpts=PTS-STARTPTS[${baseLabel}]`,
 		...rasterVisuals.filterSteps,
 		...composed.filterSteps,
 	];

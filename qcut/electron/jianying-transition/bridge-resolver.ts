@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants, existsSync } from "node:fs";
-import { access, mkdir, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -9,6 +9,17 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 export const JIANYING_TRANSITION_BRIDGE_FILE_NAME =
 	"jianying-transition-bridge";
+/**
+ * In the usage text of a bridge that waits for the engine's own rendering
+ * before it reads a transition frame back. The engine draws on a Metal
+ * queue of its own; a bridge built before this read the output at once, and
+ * while another job kept the GPU busy up to a third of the frames of a
+ * transition were the wrong ones (an input alone, an earlier frame,
+ * half-drawn). The transition
+ * render must never be handed such a bridge, however it got onto the
+ * machine.
+ */
+export const JIANYING_TRANSITION_FINISH_CAPABILITY = "transition-finish";
 export const JIANYING_TRANSITION_BRIDGE_SOURCE_FILE_NAMES = [
 	"probe.mm",
 	"amazer-context-scope.mm",
@@ -40,7 +51,11 @@ export const JIANYING_TRANSITION_BRIDGE_SOURCE_FILE_NAMES = [
 	"probe-utils.h",
 ] as const;
 
-let pendingBridgeResolution: Promise<string | null> | null = null;
+const pendingBridgeResolutions = new Map<string, Promise<string | null>>();
+/** The bridges being compiled, by the file they are compiled to. */
+const pendingBridgeCompilations = new Map<string, Promise<string>>();
+/** The usage text of each bridge binary asked so far, by path and file state. */
+const bridgeUsageTexts = new Map<string, Promise<string>>();
 
 async function isExecutable({
 	filePath,
@@ -217,14 +232,22 @@ export async function compileJianyingTransitionBridge({
 	if (await isExecutable({ filePath: outputPath })) return outputPath;
 
 	await mkdir(path.dirname(outputPath), { recursive: true });
-	await execFileAsync(
-		"xcrun",
-		jianyingTransitionBridgeCompilerArguments({
-			sourceDirectory,
-			outputPath,
-		}),
-		{ maxBuffer: 16 * 1024 * 1024 }
-	);
+	// Linked beside its place and moved there whole: whoever finds the file,
+	// in this process or another, never finds one still being written.
+	const partialPath = `${outputPath}.${process.pid}.partial`;
+	try {
+		await execFileAsync(
+			"xcrun",
+			jianyingTransitionBridgeCompilerArguments({
+				sourceDirectory,
+				outputPath: partialPath,
+			}),
+			{ maxBuffer: 16 * 1024 * 1024 }
+		);
+		await rename(partialPath, outputPath);
+	} finally {
+		await rm(partialPath, { force: true });
+	}
 	if (!(await isExecutable({ filePath: outputPath }))) {
 		throw new Error(
 			"The Jianying transition bridge was not executable after build."
@@ -244,51 +267,78 @@ async function compileDevelopmentBridge({
 		"jianying-runtime-probe"
 	);
 	const fingerprint = await sourceFingerprint({ sourceDirectory });
-	return compileJianyingTransitionBridge({
-		projectRoot,
-		outputPath: path.join(
-			os.homedir(),
-			"Library",
-			"Caches",
-			"QCut",
-			"jianying-transition-bridge",
-			fingerprint,
-			JIANYING_TRANSITION_BRIDGE_FILE_NAME
-		),
-	});
+	const outputPath = path.join(
+		os.homedir(),
+		"Library",
+		"Caches",
+		"QCut",
+		"jianying-transition-bridge",
+		fingerprint,
+		JIANYING_TRANSITION_BRIDGE_FILE_NAME
+	);
+	// Callers that ask for different things look bridges up separately, and
+	// can both end here: one compile for each file, whoever asks.
+	let pending = pendingBridgeCompilations.get(outputPath);
+	if (!pending) {
+		pending = compileJianyingTransitionBridge({
+			projectRoot,
+			outputPath,
+		}).finally(() => {
+			pendingBridgeCompilations.delete(outputPath);
+		});
+		pendingBridgeCompilations.set(outputPath, pending);
+	}
+	return pending;
+}
+
+/** What a bridge prints when run without arguments: its modes and capabilities. */
+async function readBridgeUsage({
+	bridgePath,
+}: {
+	bridgePath: string;
+}): Promise<string> {
+	try {
+		await execFileAsync(bridgePath, [], { timeout: 10_000 });
+		return "";
+	} catch (error) {
+		return `${(error as { stdout?: string }).stdout ?? ""}${
+			(error as { stderr?: string }).stderr ?? ""
+		}`;
+	}
 }
 
 /**
- * A prebuilt bridge is preferred over the fingerprinted dev build, so a binary
- * predating a newly added mode would be picked and fail every call to it.
- * Callers that need a specific mode ask for it, and a binary without it is
- * skipped in favour of compiling one that has it.
+ * A prebuilt bridge is preferred over the fingerprinted dev build, so a
+ * binary that predates a mode, or a fix, would be picked and used as it is.
+ * Callers that need a mode or a capability ask for it (both are named in the
+ * usage text), and a binary without it is skipped in favour of compiling one
+ * that has it. A binary is asked once for as long as its file stays the same.
  */
-async function supportsMode({
+export async function bridgeAdvertises({
 	bridgePath,
-	mode,
+	tokens,
 }: {
 	bridgePath: string;
-	mode: string;
+	tokens: readonly string[];
 }): Promise<boolean> {
-	try {
-		// No arguments prints the usage line, which enumerates the modes.
-		await execFileAsync(bridgePath, [], { timeout: 10_000 });
-		return false;
-	} catch (error) {
-		const usage = `${(error as { stdout?: string }).stdout ?? ""}${
-			(error as { stderr?: string }).stderr ?? ""
-		}`;
-		return usage.includes(mode);
+	if (tokens.length === 0) return true;
+	const { mtimeMs, size } = await stat(bridgePath);
+	const key = `${bridgePath}\n${mtimeMs}\n${size}`;
+	let usage = bridgeUsageTexts.get(key);
+	if (!usage) {
+		usage = readBridgeUsage({ bridgePath });
+		bridgeUsageTexts.set(key, usage);
 	}
+	const text = await usage;
+	return tokens.every((token) => text.includes(token));
 }
 
 async function resolveBridgeInternal({
 	allowCompile,
-	requiredMode,
+	requiredTokens,
 }: {
 	allowCompile: boolean;
-	requiredMode?: string;
+	requiredTokens: readonly string[];
 }): Promise<string | null> {
 	if (process.platform !== "darwin") return null;
 	const projectRoot = findQCutProjectRoot();
@@ -302,8 +352,10 @@ async function resolveBridgeInternal({
 	for (const check of checks) {
 		if (!check.executable) continue;
 		if (
-			requiredMode &&
-			!(await supportsMode({ bridgePath: check.candidate, mode: requiredMode }))
+			!(await bridgeAdvertises({
+				bridgePath: check.candidate,
+				tokens: requiredTokens,
+			}))
 		) {
 			continue;
 		}
@@ -316,21 +368,28 @@ async function resolveBridgeInternal({
 export function resolveJianyingTransitionBridge({
 	allowCompile = true,
 	requiredMode,
+	requiredCapability,
 }: {
 	allowCompile?: boolean;
 	requiredMode?: string;
+	/** Something the bridge must do beyond having a mode, as its usage names it. */
+	requiredCapability?: string;
 } = {}): Promise<string | null> {
-	// Only the shared no-mode resolution is memoized; a mode-specific lookup is
-	// rare and must not poison the shared result.
-	if (requiredMode) {
-		return resolveBridgeInternal({ allowCompile, requiredMode });
-	}
-	if (!pendingBridgeResolution) {
-		pendingBridgeResolution = resolveBridgeInternal({ allowCompile }).finally(
+	const requiredTokens = [requiredMode, requiredCapability].filter(
+		(token): token is string => Boolean(token)
+	);
+	// One lookup at a time for each thing asked, so one caller's needs never
+	// decide another's. Lookups for different things can still both come to
+	// compile; that is shared by the file compiled (compileDevelopmentBridge).
+	const key = `${allowCompile}\n${requiredTokens.join("\n")}`;
+	let pending = pendingBridgeResolutions.get(key);
+	if (!pending) {
+		pending = resolveBridgeInternal({ allowCompile, requiredTokens }).finally(
 			() => {
-				pendingBridgeResolution = null;
+				pendingBridgeResolutions.delete(key);
 			}
 		);
+		pendingBridgeResolutions.set(key, pending);
 	}
-	return pendingBridgeResolution;
+	return pending;
 }

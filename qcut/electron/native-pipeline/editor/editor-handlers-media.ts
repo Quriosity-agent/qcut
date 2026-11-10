@@ -25,6 +25,7 @@ import {
 	buildProjectJSONMinimal,
 } from "../cli/project-json-builder.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
+import { mediaReplace } from "./editor-handlers-media-replace.js";
 import { appendImportedMedia } from "./editor-media-append.js";
 import {
 	type ProjectCreateSettings,
@@ -151,6 +152,8 @@ async function dispatchMedia(
 			return mediaBatchImport(client, opts);
 		case "extract-frame":
 			return mediaExtractFrame(client, opts);
+		case "replace":
+			return mediaReplace(client, opts);
 		case "rename":
 			return mediaRename(client, opts);
 		case "delete":

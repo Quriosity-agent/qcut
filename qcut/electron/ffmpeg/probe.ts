@@ -9,6 +9,7 @@ import type { VideoProbeResult, FFmpegProgress } from "./types";
 import { getFFmpegPath, getFFprobePath } from "./paths";
 import { debugWarn } from "./constants";
 import { parseProgress } from "./progress";
+import { STEREO_SOURCE_CHAIN } from "./stereo-source";
 
 /**
  * Probes a video file to extract codec information using ffprobe.
@@ -340,7 +341,9 @@ export async function normalizeVideo(
 			"🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility..."
 		);
 		args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2");
-		args.push("-af", "aresample=async=1");
+		// Stereo as the preview plays it: a mono file at full level in both
+		// channels, not at FFmpeg's 1/√2.
+		args.push("-af", `${STEREO_SOURCE_CHAIN},aresample=async=1`);
 		args.push(outputPath);
 
 		console.log(

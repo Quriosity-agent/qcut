@@ -1,6 +1,11 @@
 import type { AudioSettings } from "./ffmpeg/audio-settings.js";
 
-export const QCUT_AUDIO_RUNTIME_VERSION = 1;
+/**
+ * Part of every artefact's cache key. 2: a mono source is written at full
+ * level in both channels (ffmpeg/stereo-source.ts); version 1 wrote it 3 dB
+ * lower, so its artefacts are not reused.
+ */
+export const QCUT_AUDIO_RUNTIME_VERSION = 2;
 export const QCUT_AUDIO_RUNTIME_ID = "qcut-ffmpeg-audio-v1";
 
 export const QCUT_AUDIO_RUNTIME_STATUS_CHANNEL = "qcut-audio-runtime:status";

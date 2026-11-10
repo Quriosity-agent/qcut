@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getFFmpegPath } from "../../ffmpeg/paths.js";
+import { STEREO_SOURCE_CHAIN } from "../../ffmpeg/stereo-source.js";
 import type { ComposeOverlay, ComposeTransition } from "./compose-manifest.js";
 import type { ResolvedComposeAudio } from "./compose-resolver.js";
 import {
@@ -82,7 +83,9 @@ export function buildComposeNormalizeArgs({
 	].join(",");
 	const audioInput = hasAudio ? "0:a:0" : "1:a:0";
 	const audio = [
-		`[${audioInput}]${hasAudio ? `atrim=start=${ffmpegNumber({ value: trimIn })}:duration=${durationText}` : "anull"}`,
+		// A mono file at full level in both channels, as an editor project
+		// plays it; the silence is stereo already.
+		`[${audioInput}]${hasAudio ? `${STEREO_SOURCE_CHAIN},atrim=start=${ffmpegNumber({ value: trimIn })}:duration=${durationText}` : "anull"}`,
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",
@@ -289,7 +292,7 @@ function buildSoundFilter({
 	index: number;
 }): string {
 	const filters = [
-		`[${inputIndex}:a:0]atrim=start=${ffmpegNumber({ value: item.audio.trim.in })}:duration=${ffmpegNumber({ value: item.duration })}`,
+		`[${inputIndex}:a:0]${STEREO_SOURCE_CHAIN},atrim=start=${ffmpegNumber({ value: item.audio.trim.in })}:duration=${ffmpegNumber({ value: item.duration })}`,
 		"asetpts=PTS-STARTPTS",
 		"aresample=async=1:first_pts=0",
 		"aformat=sample_rates=48000:channel_layouts=stereo",

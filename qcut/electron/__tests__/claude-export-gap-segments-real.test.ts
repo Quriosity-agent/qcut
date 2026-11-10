@@ -2,7 +2,11 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildSegmentConcatArgs } from "../claude/handlers/claude-export-handler/concat-timing";
+import {
+	buildConcatLists,
+	buildSegmentConcatArgs,
+	planConcatSpans,
+} from "../claude/handlers/claude-export-handler/concat-timing";
 import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
@@ -10,7 +14,7 @@ import {
 import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
-	orderConcatInputs,
+	orderConcatEntries,
 } from "../claude/handlers/claude-export-handler/gap-segments";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types";
 
@@ -208,20 +212,28 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 				})
 			);
 
-			const listPath = path.join(tempDir, "concat-list.txt");
-			fs.writeFileSync(
-				listPath,
-				orderConcatInputs({
-					segmentOutputs: [segmentPath],
-					gaps,
-					gapOutputs: [gapPath],
-				})
-					.map((file) => `file '${file}'`)
-					.join("\n")
-			);
+			const entries = orderConcatEntries({ segments: [segment], gaps });
+			const spans = planConcatSpans({
+				inputs: entries,
+				fps: 24,
+				sampleRate: 48_000,
+			});
+			const lists = buildConcatLists({
+				files: entries.map((entry, position) => ({
+					path: entry.kind === "gap" ? gapPath : segmentPath,
+					span: spans[position],
+				})),
+				fps: 24,
+				sampleRate: 48_000,
+			});
+			const videoListPath = path.join(tempDir, "concat-video-list.txt");
+			const audioListPath = path.join(tempDir, "concat-audio-list.txt");
+			fs.writeFileSync(videoListPath, lists.video);
+			fs.writeFileSync(audioListPath, lists.audio);
 			run(
 				buildSegmentConcatArgs({
-					listPath,
+					videoListPath,
+					audioListPath,
 					outputPath: concatPath,
 					audio: { sampleRate: 48_000, channels: 2 },
 					audioBitrateKbps: 192,

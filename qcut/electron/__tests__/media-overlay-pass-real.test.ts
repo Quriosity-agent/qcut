@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { probeJoinedPictureColor } from "../claude/handlers/claude-export-handler/joined-picture";
 import {
 	buildMediaOverlayPassArgs,
 	probeMediaOverlayInputs,
@@ -110,17 +111,89 @@ function expectNear(
 	}
 }
 
-async function composite(name: string, overlays: ExportSegment[]) {
+async function composite(
+	name: string,
+	overlays: ExportSegment[],
+	basePath = source("base.mp4")
+) {
 	const outputPath = path.join(tempDir, `${name}.mp4`);
 	const pass = buildMediaOverlayPassArgs({
-		inputPath: source("base.mp4"),
+		inputPath: basePath,
 		outputPath,
 		overlays: await probeMediaOverlayInputs({ overlays }),
 		settings: SETTINGS,
 		duration: BASE_SECONDS,
+		baseColor: await probeJoinedPictureColor({ path: basePath }),
 	});
 	run(pass.args);
 	return outputPath;
+}
+
+const YUV_FRAME_BYTES = (W * H * 3) / 2;
+
+/** Every frame of `file` as raw yuv420p, as its decoder gives them. */
+function decodeYuv(file: string): Buffer[] {
+	const result = spawnSync(
+		ffmpegPath,
+		["-v", "error", "-i", file, "-f", "rawvideo", "-pix_fmt", "yuv420p", "-"],
+		{ maxBuffer: 256 * 1024 * 1024 }
+	);
+	expect(result.status, result.stderr?.toString()).toBe(0);
+	return splitYuvFrames(result.stdout);
+}
+
+function splitYuvFrames(bytes: Buffer): Buffer[] {
+	const frames: Buffer[] = [];
+	for (
+		let offset = 0;
+		offset + YUV_FRAME_BYTES <= bytes.length;
+		offset += YUV_FRAME_BYTES
+	) {
+		frames.push(bytes.subarray(offset, offset + YUV_FRAME_BYTES));
+	}
+	return frames;
+}
+
+/**
+ * The frames the pass composites, as raw yuv420p: its inputs and filter
+ * graph with the lossy encode left off, so bytes can be compared.
+ */
+async function compositeRaw(
+	overlays: ExportSegment[],
+	basePath: string,
+	seconds: number
+): Promise<Buffer[]> {
+	const pass = buildMediaOverlayPassArgs({
+		inputPath: basePath,
+		outputPath: "unused.mp4",
+		overlays: await probeMediaOverlayInputs({ overlays }),
+		settings: SETTINGS,
+		duration: seconds,
+		baseColor: await probeJoinedPictureColor({ path: basePath }),
+	});
+	const result = spawnSync(
+		ffmpegPath,
+		[
+			"-v",
+			"error",
+			// Through the picture's `-map`; the encoder options follow it.
+			...pass.args.slice(0, pass.args.indexOf("-map") + 2),
+			"-t",
+			String(seconds),
+			"-f",
+			"rawvideo",
+			"-pix_fmt",
+			"yuv420p",
+			"-",
+		],
+		{ maxBuffer: 256 * 1024 * 1024 }
+	);
+	expect(result.status, result.stderr?.toString()).toBe(0);
+	return splitYuvFrames(result.stdout);
+}
+
+function luma(frame: Buffer, x: number, y: number): number {
+	return frame[y * W + x];
 }
 
 const RED_BOX = { x: 80, y: 70 };
@@ -350,6 +423,280 @@ describe.skipIf(!fs.existsSync(ffmpegPath))("media overlay pass", () => {
 				`frame ${index}`
 			);
 		}
+	}, 60_000);
+
+	/**
+	 * The joined picture is copied from the segments, so its colour tags
+	 * change where a clip from a tagged file follows an untagged one. FFmpeg
+	 * rebuilt the whole graph there and every overlay lost the frames the old
+	 * graph had read ahead: one that appeared later started 2–5 frames into
+	 * its own picture and held its last frame to make up the length.
+	 */
+	it("starts an overlay on its own first frame after the picture's colour tags change", async () => {
+		const colour = `color=c=0x3c8c3c:s=${W}x${H}:r=${FPS}:d=1.5`;
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			colour,
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			source("untagged.mov"),
+		]);
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			colour,
+			"-vf",
+			"setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709",
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			"-color_range",
+			"tv",
+			"-colorspace",
+			"bt709",
+			"-color_primaries",
+			"bt709",
+			"-color_trc",
+			"bt709",
+			source("tagged.mov"),
+		]);
+		fs.writeFileSync(
+			source("mixed-tags.txt"),
+			["untagged.mov", "tagged.mov"]
+				.map((name) => `file '${source(name)}'`)
+				.join("\n")
+		);
+		run([
+			"-f",
+			"concat",
+			"-safe",
+			"0",
+			"-i",
+			source("mixed-tags.txt"),
+			"-c",
+			"copy",
+			source("mixed-tags.mp4"),
+		]);
+		// Twelve opaque frames, each as bright as its own number says.
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`color=c=black:s=${W}x${H}:r=${FPS}:d=0.5,geq=lum='36+16*N':cb=128:cr=128`,
+			"-c:v",
+			"libx264",
+			"-qp",
+			"0",
+			"-pix_fmt",
+			"yuv420p",
+			source("numbered.mp4"),
+		]);
+
+		// Half a second into the tagged part of the picture.
+		const output = await composite(
+			"over-mixed-tags",
+			[overlay(source("numbered.mp4"), 2)],
+			source("mixed-tags.mp4")
+		);
+		const frames = decodeYuv(output);
+		expect(frames).toHaveLength(BASE_SECONDS * FPS);
+		const shown = frames
+			.slice(47, 61)
+			.map((frame) => (luma(frame, 160, 90) - 36) / 16);
+		// The picture's own luma (108) on either side, then frames 0 to 11.
+		expect(Math.abs(shown[0] - 4.5)).toBeLessThan(0.2);
+		expect(Math.abs(shown[13] - 4.5)).toBeLessThan(0.2);
+		for (let number = 0; number < 12; number += 1) {
+			expect(
+				Math.abs(shown[number + 1] - number),
+				`output frame ${48 + number} shows ${shown[number + 1]}`
+			).toBeLessThan(0.2);
+		}
+	}, 60_000);
+
+	/**
+	 * An overlay whose in-point is between two frames of its file (its edge
+	 * was moved onto a frame and its trim took up the difference, or it was
+	 * cut by time) starts on the frame on screen at that point. FFmpeg drops
+	 * that frame at a seek, so the clip used to start on the next one.
+	 */
+	it.each([
+		{ phase: 0.2, delay: 0 },
+		{ phase: 0.5, delay: 0 },
+		{ phase: 0.8, delay: 0 },
+		{ phase: 0.5, delay: 0.6 },
+	])("starts an overlay on the frame on screen at an in-point $phase of a frame into it (first seen $delay of a frame late)", async ({
+		phase,
+		delay,
+	}) => {
+		// Twenty-four opaque frames, each as bright as its own number says.
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`color=c=black:s=${W}x${H}:r=${FPS}:d=1,geq=lum='36+8*N':cb=128:cr=128`,
+			"-c:v",
+			"libx264",
+			"-qp",
+			"0",
+			"-pix_fmt",
+			"yuv420p",
+			source("numbered-24.mp4"),
+		]);
+		// The clip starts `delay` of a frame before output frame 24.
+		const output = await composite(`in-point-${phase}-${delay}`, [
+			overlay(source("numbered-24.mp4"), (24 - delay) / FPS, {
+				trimStart: (4 + phase) / FPS,
+				duration: 12 / FPS,
+			}),
+		]);
+		const frames = decodeYuv(output);
+		expect(frames).toHaveLength(BASE_SECONDS * FPS);
+		const first = Math.floor(4 + phase + delay);
+		const shown = frames
+			.slice(24, 34)
+			.map((frame) => Math.round((luma(frame, 160, 90) - 36) / 8));
+		expect(shown).toEqual(
+			Array.from({ length: 10 }, (_unused, index) => first + index)
+		);
+	}, 60_000);
+
+	/**
+	 * A blend mode works in RGB, so the picture under the clip is converted
+	 * and converted back. The graph is no longer rebuilt at a change of
+	 * colour tags, and FFmpeg would read each frame by its own tags while
+	 * writing it back by the first frame's: the picture under a blended clip
+	 * shifted in colour from the change on (12 levels of green here).
+	 */
+	it("keeps the picture's colours under a blend mode after its colour tags change", async () => {
+		expect(
+			await probeJoinedPictureColor({ path: source("mixed-tags.mp4") })
+		).toEqual({ range: "unknown", space: "unknown" });
+		expect(
+			await probeJoinedPictureColor({ path: source("tagged.mov") })
+		).toEqual({ range: "tv", space: "bt709" });
+		// White multiplies to the picture itself.
+		const output = await composite(
+			"multiply-over-mixed-tags",
+			[overlay(source("opaque.mp4"), 2, { blendMode: "multiply" })],
+			source("mixed-tags.mp4")
+		);
+		const { frames } = decode(output);
+		for (const index of [40, 48, 54, 59, 66]) {
+			expectNear(pixel(frames[index], 160, 90), BASE, 6, `frame ${index}`);
+		}
+	}, 60_000);
+
+	/**
+	 * Overlays used to be drawn in RGBA, and FFmpeg then took the picture
+	 * under them to RGBA and back as well: a timeline with any overlay on it
+	 * exported 1.2–1.6 levels darker from end to end.
+	 */
+	it("leaves the picture as it is wherever no overlay covers it", async () => {
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`testsrc2=s=${W}x${H}:r=${FPS}:d=1`,
+			"-c:v",
+			"libx264",
+			"-qp",
+			"0",
+			"-pix_fmt",
+			"yuv420p",
+			source("picture.mp4"),
+		]);
+		const before = decodeYuv(source("picture.mp4"));
+		// A quarter-size clip in the middle of the frame, frames 6 to 17.
+		const after = await compositeRaw(
+			[
+				overlay(source("opaque.mp4"), 0.25, {
+					transform: {
+						x: 0,
+						y: 0,
+						rotationDegrees: 0,
+						scaleX: 0.25,
+						scaleY: 0.25,
+						opacity: 1,
+					},
+				}),
+			],
+			source("picture.mp4"),
+			1
+		);
+		expect(after).toHaveLength(FPS);
+		// No overlay on screen: the frame is the picture's, byte for byte.
+		expect(after[2].equals(before[2])).toBe(true);
+		expect(after[20].equals(before[20])).toBe(true);
+		// With it on screen, everything around it still is (the clip covers
+		// x 120–200, y 68–112; checked with a margin for the chroma planes).
+		const frame = 12;
+		expect(luma(after[frame], 160, 90)).toBeGreaterThan(230);
+		let differing = 0;
+		for (let y = 0; y < H; y += 1) {
+			for (let x = 0; x < W; x += 1) {
+				if (x >= 112 && x < 208 && y >= 60 && y < 120) continue;
+				if (luma(after[frame], x, y) !== luma(before[frame], x, y)) {
+					differing += 1;
+				}
+			}
+		}
+		expect(differing).toBe(0);
+		const chromaWidth = W / 2;
+		const chromaRows = H; // U then V, H / 2 rows each
+		for (let row = 0; row < chromaRows; row += 1) {
+			const y = (row % (H / 2)) * 2;
+			for (let column = 0; column < chromaWidth; column += 1) {
+				const x = column * 2;
+				if (x >= 112 && x < 208 && y >= 60 && y < 120) continue;
+				const index = W * H + row * chromaWidth + column;
+				if (after[frame][index] !== before[frame][index]) differing += 1;
+			}
+		}
+		expect(differing).toBe(0);
+	}, 60_000);
+
+	/**
+	 * A clip drawn as an overlay goes to RGBA for its own chain and back to
+	 * the picture's format; FFmpeg's default rounding in those conversions
+	 * darkened it as well (0.2 of a level on this smooth picture).
+	 */
+	it("draws an opaque clip at its own levels", async () => {
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`testsrc2=s=${W}x${H}:r=${FPS}:d=1,gblur=sigma=12`,
+			"-c:v",
+			"libx264",
+			"-qp",
+			"0",
+			"-pix_fmt",
+			"yuv420p",
+			source("clip.mp4"),
+		]);
+		const clip = decodeYuv(source("clip.mp4"));
+		const after = await compositeRaw(
+			[overlay(source("clip.mp4"), 0, { duration: 1 })],
+			source("base.mp4"),
+			1
+		);
+		let total = 0;
+		let largest = 0;
+		for (let index = 0; index < W * H; index += 1) {
+			const difference = after[6][index] - clip[6][index];
+			total += difference;
+			largest = Math.max(largest, Math.abs(difference));
+		}
+		// On average the clip is neither darker nor brighter than its file.
+		expect(Math.abs(total / (W * H))).toBeLessThan(0.1);
+		expect(largest).toBeLessThanOrEqual(4);
 	}, 60_000);
 
 	it("keeps the picture's length and copies its sound", async () => {

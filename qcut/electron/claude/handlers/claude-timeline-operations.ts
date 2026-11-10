@@ -40,6 +40,8 @@ import type {
 	ClaudeBeatsMarkResponse,
 	ClaudeSnapToBeatsRequest,
 	ClaudeSnapToBeatsResponse,
+	ClaudeTimeEditRequest,
+	ClaudeTimeEditResponse,
 } from "../../types/claude-api";
 import type {
 	ClaudeAudioMixRequest,
@@ -549,6 +551,22 @@ export async function requestSnapToBeatsFromRenderer(
 		payload: { request },
 		timeoutMs: 30_000,
 		timeoutErrorMessage: "Timeout waiting for the snap to beats result",
+		correlationId,
+	});
+}
+
+/** Opens empty time or snaps clips to frames, as the editor's own edit. */
+export async function requestTimeEditFromRenderer(
+	win: BrowserWindow,
+	request: ClaudeTimeEditRequest,
+	correlationId?: string
+): Promise<ClaudeTimeEditResponse> {
+	return requestRendererOutcome<ClaudeTimeEditResponse>({
+		win,
+		channel: "claude:timeline:timeEdit",
+		payload: { request },
+		timeoutMs: 30_000,
+		timeoutErrorMessage: `Timeout waiting for the ${request.operation} result`,
 		correlationId,
 	});
 }

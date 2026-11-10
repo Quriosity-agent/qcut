@@ -94,6 +94,13 @@ export interface BuildFFmpegArgsOptions {
 	trimStart?: number;
 	trimEnd?: number;
 	backgroundColor?: string;
+	/**
+	 * Filters the finished picture goes through before it is encoded. The
+	 * native export states its colour description here: its segments are
+	 * all in it already, and the layers drawn in RGB come back without
+	 * their primaries and transfer.
+	 */
+	outputPictureFilters?: readonly string[];
 }
 
 function resolveQuality(quality: "high" | "medium" | "low"): QualitySettings {
@@ -579,6 +586,7 @@ function buildCompositeEncodeArgs(
 		includeEmbeddedAudio = true,
 		trimStart,
 		backgroundColor = "#000000",
+		outputPictureFilters = [],
 	} = options;
 	const { crf, preset } = qualitySettings;
 	const args: string[] = ["-y"];
@@ -929,6 +937,14 @@ function buildCompositeEncodeArgs(
 		}
 	}
 
+	if (outputPictureFilters.length > 0) {
+		const outputLabel = "output_picture";
+		filterSteps.push(
+			`[${currentVideoLabel}]${outputPictureFilters.join(",")}[${outputLabel}]`
+		);
+		currentVideoLabel = outputLabel;
+	}
+
 	const audioInputStartIndex =
 		baseInputCount +
 		validImages.length +
@@ -952,7 +968,10 @@ function buildCompositeEncodeArgs(
 		args.push("-filter_complex", filterSteps.join(";"));
 	}
 
-	const videoMap = filterSteps.length > 0 ? `[${currentVideoLabel}]` : "0:v";
+	// A picture no filter touched is mapped as the input itself, whether or
+	// not the sound has filters of its own.
+	const videoMap =
+		currentVideoLabel === "0:v" ? "0:v" : `[${currentVideoLabel}]`;
 	args.push("-map", videoMap);
 
 	let audioMap = audioResult.mapAudio;

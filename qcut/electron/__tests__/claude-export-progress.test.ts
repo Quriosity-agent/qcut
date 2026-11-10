@@ -121,9 +121,14 @@ function createMockProcess({
 	const proc = new EventEmitter() as EventEmitter & {
 		stderr: EventEmitter;
 		stdout: EventEmitter;
+		kill: () => boolean;
 	};
 	proc.stderr = new EventEmitter();
 	proc.stdout = new EventEmitter();
+	// A child process can always be killed. A check that gives up on one
+	// that hangs (the FFprobe binary check does after 2.5 s) calls this; in
+	// a test file that was still running then, the missing method threw.
+	proc.kill = () => true;
 
 	if (shouldClose) {
 		setTimeout(() => {

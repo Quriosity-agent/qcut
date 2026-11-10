@@ -22,6 +22,7 @@ import {
 	blendFrames,
 	colorDistance,
 	decodeFrame,
+	decodeFrames,
 	meanAbsDiff,
 	meanColor,
 	probeVideo,
@@ -298,6 +299,38 @@ async function seamEvidence({
 	};
 }
 
+/**
+ * Every frame of a dissolve's window: how far along from the outgoing clip
+ * to the incoming one it is (0 to 1), and how far off the straight blend of
+ * the two (as a part of the distance between them). Three sample points
+ * miss a frame drawn at the wrong moment; this does not.
+ */
+async function dissolveWindow({
+	filePath,
+	cutTime,
+	fromReference,
+	toReference,
+}: {
+	filePath: string;
+	cutTime: number;
+	fromReference: DecodedFrame;
+	toReference: DecodedFrame;
+}): Promise<Array<{ frame: number; along: number; off: number }>> {
+	const count = Math.round(TRANSITION_SECONDS * FPS);
+	const startFrame = Math.round(cutTime * FPS) - count / 2;
+	const frames = await decodeFrames({ filePath, startFrame, count, fps: FPS });
+	const apart = meanAbsDiff({ a: fromReference, b: toReference });
+	return frames.map((frame, index) => {
+		const fromDistance = meanAbsDiff({ a: frame, b: fromReference });
+		const toDistance = meanAbsDiff({ a: frame, b: toReference });
+		return {
+			frame: startFrame + index,
+			along: fromDistance / apart,
+			off: Math.abs(fromDistance + toDistance - apart) / apart,
+		};
+	});
+}
+
 async function saveSeamFrames({
 	filePath,
 	label,
@@ -446,6 +479,12 @@ test("muxer exports real transitions on both seams and matches the native export
 			fromReference: aCut,
 			toReference: blue,
 		});
+		const muxerWindowAB = await dissolveWindow({
+			filePath: muxerPath,
+			cutTime: CUT_AB,
+			fromReference: aCut,
+			toReference: blue,
+		});
 		const muxerMidBC = await decodeFrame({
 			filePath: muxerPath,
 			timeSeconds: CUT_BC,
@@ -513,6 +552,7 @@ test("muxer exports real transitions on both seams and matches the native export
 						probe: muxerProbe,
 						wallClockMs: muxerMs,
 						seamAB: muxerAB,
+						seamABWindow: muxerWindowAB,
 						seamBC: muxerBC,
 					},
 					native: {
@@ -550,6 +590,18 @@ test("muxer exports real transitions on both seams and matches the native export
 		expect(muxerAB.blendError).toBeLessThan(muxerAB.sourceDistance * 0.3);
 		expect(muxerAB.q1FromDistance).toBeLessThan(muxerAB.q1ToDistance);
 		expect(muxerAB.q3ToDistance).toBeLessThan(muxerAB.q3FromDistance);
+		// And every frame of it is drawn at its own moment: the runtime's
+		// 叠化 runs evenly from the outgoing clip to the incoming one. A frame
+		// read back before the engine had drawn it used to turn up here as an
+		// input alone, an earlier frame, or neither clip.
+		const wrongFrames = muxerWindowAB.filter(
+			({ along, off }, index) =>
+				Math.abs(along - index / muxerWindowAB.length) > 0.06 || off > 0.06
+		);
+		expect(
+			wrongFrames,
+			`frames of the 叠化 window out of place: ${JSON.stringify(wrongFrames)}`
+		).toEqual([]);
 
 		// QCut wipe (direction left) reveals the incoming clip from the left
 		// edge: at 50% the left half is green and the right half is still blue.

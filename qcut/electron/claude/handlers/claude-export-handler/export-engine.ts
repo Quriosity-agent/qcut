@@ -21,10 +21,18 @@ import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
 	createAudioStreamProbe,
+	planSegmentPictureRead,
 	resolveExportSegmentAudio,
 	segmentAudioFormat,
 } from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
+import { probeJoinedPictureColor } from "./joined-picture.js";
+import {
+	createSourceColorReader,
+	EXPORT_PICTURE_COLOR_FILTERS,
+	exportColorWarnings,
+	probeSourceColor,
+} from "./source-color.js";
 import { runMediaOverlayPass } from "./media-overlay-pass.js";
 import { readSegmentBlendFields } from "./media-overlay-source.js";
 import {
@@ -71,17 +79,36 @@ import {
 import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
-	orderConcatInputs,
+	orderConcatEntries,
 } from "./gap-segments.js";
-import { buildSegmentConcatArgs } from "./concat-timing.js";
+import {
+	buildConcatLists,
+	buildSegmentConcatArgs,
+	firstFrameDelay,
+	planConcatSpans,
+	spanFileCounts,
+	standaloneSpan,
+} from "./concat-timing.js";
 import {
 	buildRangeSoundArgs,
 	cutPictureToRange,
 	layersShowingInRange,
 	type PictureLayers,
+	rangeFrameCount,
 	segmentsShowingInRange,
 	type TimelineRange,
 } from "./export-range.js";
+import {
+	checkExportedPicture,
+	checkJoinedPicture,
+} from "./export-picture-check.js";
+import {
+	exportStepLogFor,
+	exportStepScript,
+	graphRebuildReasons,
+	graphRebuildWarnings,
+	openExportStepLog,
+} from "./export-step-log.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -660,8 +687,11 @@ export async function collectStickerOverlays({
 		const diskFallbackCache = new Map<string, MediaFile | null>();
 
 		for (const track of timeline.tracks) {
+			// A hidden track's stickers are not drawn, as in the preview and as
+			// every other layer of the export already was.
+			if (track.hidden) continue;
 			for (const element of track.elements) {
-				if (element.type !== "sticker") continue;
+				if (element.type !== "sticker" || element.hidden === true) continue;
 
 				// Resolve the sticker image file
 				let media = findMediaForElement({ element, mediaById, mediaByName });
@@ -819,6 +849,8 @@ async function runFFmpegCommand({
 	try {
 		throwIfCancelled(signal);
 		const ffmpegPath = getFFmpegPath();
+		const stepLog = exportStepLogFor({ signal });
+		stepLog?.commands.push(args);
 
 		await new Promise<void>((resolve, reject) => {
 			const process = spawn(ffmpegPath, args, {
@@ -876,6 +908,14 @@ async function runFFmpegCommand({
 					return;
 				}
 				if (code === 0) {
+					const reasons = graphRebuildReasons({ stderr: stderrOutput });
+					if (reasons.length > 0) {
+						claudeLog.warn(
+							HANDLER_NAME,
+							`FFmpeg rebuilt a filter graph part-way (${reasons.join("; ")}) in: ${args.join(" ")}`
+						);
+						stepLog?.rebuilds.push({ args, reasons });
+					}
 					resolve();
 					return;
 				}
@@ -1046,20 +1086,15 @@ export function buildExportSegmentScaleFilter({
 					height: settings.height,
 					playbackRate: segment.playbackRate ?? 1,
 				});
-	const rate = segment.playbackRate ?? 1;
-	// Normalize to zero, scale, then resample with the fps filter: the output
-	// -r option alone mis-samples retimed streams (measured 90→47 frames at
-	// rate 2 instead of 45), while an in-graph fps stage lands exactly on the
-	// 2× mapping.
-	const rateFilter =
-		rate === 1 ? "" : `setpts=(PTS-STARTPTS)/${rate},fps=${settings.fps}`;
+	// A retimed clip's time is divided by its rate where the segment is cut
+	// (buildExportSegmentEncodeArgs), after these stages, which all read the
+	// source's own clock.
 	return [
 		frameInterpolationFilter,
 		enhancementFilter,
 		fit,
 		colorFilter,
 		transformFilter,
-		rateFilter,
 	]
 		.filter((stage) => stage !== "")
 		.join(",");
@@ -1141,6 +1176,7 @@ async function renderTransitionedVideo({
 	videoOutputPath,
 	videoTransitions,
 	minimumDuration = 0,
+	keepsOwnColor = false,
 	onProgress,
 	signal,
 }: {
@@ -1151,6 +1187,8 @@ async function renderTransitionedVideo({
 	tempDir: string;
 	videoOutputPath: string;
 	videoTransitions: VideoTransition[];
+	/** An HDR clip is among them: the picture leaves as the layers give it. */
+	keepsOwnColor?: boolean;
 	/** Black runs on to here (the end of an overlay past the clips). */
 	minimumDuration?: number;
 	onProgress?: ({ progress }: { progress: number }) => void;
@@ -1182,6 +1220,12 @@ async function renderTransitionedVideo({
 		videoSources,
 		videoTransitions,
 		includeEmbeddedAudio: false,
+		// The segments are in the export's colour description; the layers the
+		// transitions are drawn in hand the picture back in its matrix and
+		// range but without its primaries and transfer.
+		...(keepsOwnColor
+			? {}
+			: { outputPictureFilters: EXPORT_PICTURE_COLOR_FILTERS }),
 	});
 
 	await runFFmpegCommand({
@@ -1299,6 +1343,9 @@ export async function executeExportJob({
 	const abort = new AbortController();
 	job.abort = abort;
 	if (job.status === EXPORT_JOB_STATUS.cancelled) abort.abort();
+	const stepLog = openExportStepLog({ signal: abort.signal });
+	const keepTempFiles = settings.keepTempFiles === true;
+	const pictureWarnings: string[] = [];
 
 	let tempDir = "";
 	const enforceTruePeak =
@@ -1321,6 +1368,11 @@ export async function executeExportJob({
 		tempDir = await fsPromises.mkdtemp(
 			path.join(tempBase, "qcut-claude-export-")
 		);
+		// Said from the start, so a status read the moment the job completes
+		// already names the folder.
+		if (keepExportTempFiles({ requested: keepTempFiles })) {
+			job.intermediates = tempDir;
+		}
 
 		// Limited exports keep video private until the encoded audio is
 		// verified; a range export cuts its full-length picture at the end.
@@ -1338,6 +1390,61 @@ export async function executeExportJob({
 		const hasAudioStream = createAudioStreamProbe({
 			probe: probeHasAudioStream,
 		});
+		const sourceColor = createSourceColorReader();
+		let hasHdrSegment = false;
+
+		const hasVideoTransitions = videoTransitions.length > 0;
+		// The concat alone would squeeze timeline gaps out and shift every
+		// overlay and audio track after them; black, silent clips keep the
+		// timing (the transition renderer places its segments in time itself).
+		// The picture runs on in black under an overlay that outlasts the
+		// clips below it.
+		const overlayEnd =
+			allMediaOverlays.length > 0
+				? Math.max(
+						...allMediaOverlays.map(
+							(overlay) => overlay.startTime + overlay.duration
+						)
+					)
+				: undefined;
+		const gaps = hasVideoTransitions
+			? []
+			: findTimelineGaps({
+					segments,
+					fps: settings.fps,
+					timelineEnd: overlayEnd,
+				});
+		// Each file is cut to whole frames and samples of the timeline (see
+		// concat-timing.ts); a transition export places its clips in time
+		// itself, so there each keeps its own length.
+		const { sampleRate } = segmentAudioFormat({ settings });
+		const concatEntries = orderConcatEntries({ segments, gaps });
+		const concatSpans = hasVideoTransitions
+			? concatEntries.map((entry) =>
+					standaloneSpan({
+						startTime: entry.startTime,
+						endTime: entry.endTime,
+						fps: settings.fps,
+						sampleRate,
+					})
+				)
+			: planConcatSpans({
+					inputs: concatEntries,
+					fps: settings.fps,
+					sampleRate,
+				});
+		const spanOf = ({
+			kind,
+			index,
+		}: {
+			kind: "segment" | "gap";
+			index: number;
+		}) => {
+			const position = concatEntries.findIndex(
+				(entry) => entry.kind === kind && entry.index === index
+			);
+			return concatSpans[position];
+		};
 
 		const shownSegments = range
 			? segmentsShowingInRange({
@@ -1367,7 +1474,28 @@ export async function executeExportJob({
 						index,
 					});
 
-			const inputArgs = buildExportSegmentInputArgs({ segment });
+			const span = spanOf({ kind: "segment", index });
+			// The picture is read from where its first frame falls (a clip that
+			// starts between two frames is first seen part of a frame into
+			// itself); a transition export places its clips itself, each from
+			// its in-point. A black picture reads its source for the sound.
+			const read = blackPicture
+				? undefined
+				: planSegmentPictureRead({
+						segment,
+						firstFrameDelay: hasVideoTransitions
+							? 0
+							: firstFrameDelay({
+									span,
+									startTime: segment.startTime,
+									fps: settings.fps,
+								}),
+					});
+			const color = blackPicture
+				? undefined
+				: await sourceColor({ mediaPath: segment.sourcePath });
+			if (color?.hdr) hasHdrSegment = true;
+			const inputArgs = buildExportSegmentInputArgs({ segment, read });
 			const scaleFilter = blackPicture
 				? ""
 				: buildExportSegmentScaleFilter({ segment, settings });
@@ -1388,6 +1516,9 @@ export async function executeExportJob({
 					audio: await resolveExportSegmentAudio({ segment, hasAudioStream }),
 					outputPath: outputSegmentPath,
 					blackPicture,
+					span,
+					read,
+					color,
 				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
@@ -1420,7 +1551,13 @@ export async function executeExportJob({
 				await compositeCursorOnSegments({
 					segmentOutputs,
 					segments,
+					segmentFrames: segments.map(
+						(_segment, index) =>
+							spanFileCounts({ span: spanOf({ kind: "segment", index }) })
+								.frames
+					),
 					settings,
+					sourceColor,
 					onProgress: (p) => {
 						updateJobProgress({ jobId, progress: 0.83 + p * 0.05 });
 					},
@@ -1434,27 +1571,6 @@ export async function executeExportJob({
 			}
 		}
 
-		const hasVideoTransitions = videoTransitions.length > 0;
-		// The concat alone would squeeze timeline gaps out and shift every
-		// overlay and audio track after them; black, silent clips keep the
-		// timing (the transition renderer places its segments in time itself).
-		// The picture runs on in black under an overlay that outlasts the
-		// clips below it.
-		const overlayEnd =
-			allMediaOverlays.length > 0
-				? Math.max(
-						...allMediaOverlays.map(
-							(overlay) => overlay.startTime + overlay.duration
-						)
-					)
-				: undefined;
-		const gaps = hasVideoTransitions
-			? []
-			: findTimelineGaps({
-					segments,
-					fps: settings.fps,
-					timelineEnd: overlayEnd,
-				});
 		const gapOutputs: string[] = [];
 		if (gaps.length > 0) {
 			for (const [index, gap] of gaps.entries()) {
@@ -1468,33 +1584,38 @@ export async function executeExportJob({
 						gap,
 						settings,
 						outputPath: gapPath,
+						span: spanOf({ kind: "gap", index }),
 					}),
 					estimatedDuration: gap.duration,
 				});
 				gapOutputs.push(gapPath);
 			}
 		}
-		// The concat output's length: the clips plus the gaps kept between them
-		// (a transition export runs on to the overlays itself).
-		const concatDuration = Math.max(
-			segments.reduce((sum, segment) => sum + segment.duration, 0) +
-				gaps.reduce((sum, gap) => sum + gap.duration, 0),
-			hasVideoTransitions ? (overlayEnd ?? 0) : 0
-		);
+		// The concat output's length: where the last clip or gap ends on the
+		// timeline (a transition export joins its clips' sound end to end and
+		// runs on to the overlays itself).
+		const concatDuration = hasVideoTransitions
+			? Math.max(
+					segments.reduce((sum, segment) => sum + segment.duration, 0),
+					overlayEnd ?? 0
+				)
+			: (concatSpans.at(-1)?.to ?? 0);
 
-		const concatListPath = path.join(tempDir, "concat-list.txt");
-		const concatInputs = orderConcatInputs({
-			segmentOutputs,
-			gaps,
-			gapOutputs,
+		const concatLists = buildConcatLists({
+			files: concatEntries.map((entry, position) => ({
+				path:
+					entry.kind === "segment"
+						? segmentOutputs[entry.index]
+						: gapOutputs[entry.index],
+				span: concatSpans[position],
+			})),
+			fps: settings.fps,
+			sampleRate,
 		});
-		const concatLines = concatInputs
-			.map((segmentPath) => {
-				const escaped = segmentPath.replace(/\\/g, "/").replace(/'/g, "'\\''");
-				return `file '${escaped}'`;
-			})
-			.join("\n");
-		await fsPromises.writeFile(concatListPath, concatLines, "utf8");
+		const videoListPath = path.join(tempDir, "concat-video-list.txt");
+		const audioListPath = path.join(tempDir, "concat-audio-list.txt");
+		await fsPromises.writeFile(videoListPath, concatLists.video, "utf8");
+		await fsPromises.writeFile(audioListPath, concatLists.audio, "utf8");
 
 		const concatOutputPath = hasVideoTransitions
 			? path.join(tempDir, "concat-audio.mp4")
@@ -1507,7 +1628,8 @@ export async function executeExportJob({
 		await runFFmpegCommand({
 			signal: abort.signal,
 			args: buildSegmentConcatArgs({
-				listPath: concatListPath,
+				videoListPath,
+				audioListPath,
 				outputPath: concatOutputPath,
 				audio: segmentAudioFormat({ settings }),
 				audioBitrateKbps: settings.audioBitrate ?? 192,
@@ -1522,6 +1644,35 @@ export async function executeExportJob({
 			},
 		});
 
+		// The files were cut to the timeline's frames; what was written is
+		// counted, so a clip that came out another length is named.
+		const joinedPictureFiles = concatEntries.flatMap((entry, position) =>
+			concatSpans[position].frames > 0
+				? [
+						{
+							path:
+								entry.kind === "segment"
+									? segmentOutputs[entry.index]
+									: gapOutputs[entry.index],
+							label:
+								entry.kind === "segment"
+									? `Clip ${segments[entry.index].elementId}`
+									: `The gap at ${entry.startTime.toFixed(3)} s`,
+							frames: concatSpans[position].frames,
+						},
+					]
+				: []
+		);
+		if (!hasVideoTransitions) {
+			pictureWarnings.push(
+				...(await checkJoinedPicture({
+					joinedPath: concatOutputPath,
+					files: joinedPictureFiles,
+					fps: settings.fps,
+				}))
+			);
+		}
+
 		if (hasVideoTransitions) {
 			await renderTransitionedVideo({
 				signal: abort.signal,
@@ -1533,6 +1684,7 @@ export async function executeExportJob({
 				videoOutputPath,
 				videoTransitions,
 				minimumDuration: overlayEnd,
+				keepsOwnColor: hasHdrSegment,
 				onProgress: ({ progress }) => {
 					updateJobProgress({
 						jobId,
@@ -1675,6 +1827,9 @@ export async function executeExportJob({
 				);
 			}
 			const sourcePath = path.join(tempDir, "video-before-jianying-text.mp4");
+			const baseColor = await probeJoinedPictureColor({
+				path: videoOutputPath,
+			});
 			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
@@ -1684,6 +1839,7 @@ export async function executeExportJob({
 						outputPath: videoOutputPath,
 						layers: textRasterLayers,
 						settings,
+						baseColor,
 					}),
 					estimatedDuration: Math.max(0, concatDuration),
 					onProgress: ({ normalizedProgress }) => {
@@ -1893,7 +2049,7 @@ export async function executeExportJob({
 
 			// Clean up intermediary MP4, unless it is being kept for a
 			// bit-for-bit comparison of two exports (N34).
-			if (!keepExportTempFiles()) {
+			if (!keepExportTempFiles({ requested: keepTempFiles })) {
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {
@@ -1934,7 +2090,7 @@ export async function executeExportJob({
 				}
 				throw mp3Error;
 			}
-			if (!keepExportTempFiles()) {
+			if (!keepExportTempFiles({ requested: keepTempFiles })) {
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {
@@ -1962,6 +2118,35 @@ export async function executeExportJob({
 						limiter: audioMixConfig?.master.effects.limiter,
 						signal: abort.signal,
 					});
+		// A transition export's picture is laid out by the transition pass,
+		// whose frame count is its own; the others have a planned length.
+		const expectedFrames = rangeCut
+			? rangeFrameCount({ range: rangeCut.range, fps: settings.fps })
+			: hasVideoTransitions
+				? undefined
+				: joinedPictureFiles.reduce((sum, file) => sum + file.frames, 0);
+		if (
+			expectedFrames !== undefined &&
+			["mp4", "mov"].includes(settings.format)
+		) {
+			pictureWarnings.push(
+				...(await checkExportedPicture({
+					outputPath,
+					expectedFrames,
+					fps: settings.fps,
+				}))
+			);
+		}
+		pictureWarnings.push(...graphRebuildWarnings({ log: stepLog }));
+		// Every picture was encoded in the export's colour description; the
+		// finished file must still say so (an HDR clip keeps its own).
+		if (!hasHdrSegment && ["mp4", "mov"].includes(settings.format)) {
+			pictureWarnings.push(
+				...exportColorWarnings({
+					probe: await probeSourceColor({ mediaPath: outputPath }),
+				})
+			);
+		}
 		const outputStats = await fsPromises.stat(outputPath);
 		const duration = exportSeconds;
 
@@ -1994,6 +2179,12 @@ export async function executeExportJob({
 			};
 		}
 		Object.assign(finishedJob, audioCheck);
+		if (pictureWarnings.length > 0) {
+			finishedJob.warnings = [
+				...(finishedJob.warnings ?? []),
+				...pictureWarnings,
+			];
+		}
 		if (audioWarnings.length > 0) {
 			finishedJob.warnings = [
 				...(finishedJob.warnings ?? []),
@@ -2088,12 +2279,22 @@ export async function executeExportJob({
 	} finally {
 		if (
 			tempDir &&
-			!reportKeptExportDirectory({
+			reportKeptExportDirectory({
 				handler: HANDLER_NAME,
 				label: "the export's intermediates",
 				directory: tempDir,
+				requested: keepTempFiles,
 			})
 		) {
+			// The commands that made the kept files, to run any of them again.
+			await fsPromises
+				.writeFile(
+					path.join(tempDir, "ffmpeg-commands.sh"),
+					exportStepScript({ log: stepLog, ffmpegPath: getFFmpegPath() }),
+					"utf8"
+				)
+				.catch(() => undefined);
+		} else if (tempDir) {
 			try {
 				await fsPromises.rm(tempDir, { recursive: true, force: true });
 			} catch (cleanupError) {

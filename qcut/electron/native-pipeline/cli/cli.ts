@@ -432,6 +432,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"to-track": { type: "string" },
 			"split-time": { type: "string" },
 			time: { type: "string" },
+			at: { type: "string" },
+			"snap-frames": { type: "boolean", default: false },
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
 			"trim-start": { type: "string" },
@@ -605,6 +607,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"profile-path": { type: "string" },
 			"no-sequential-decode": { type: "boolean", default: false },
 			"peak-correction": { type: "string" },
+			"exclude-tracks": { type: "string" },
+			"keep-temp": { type: "boolean", default: false },
 			mic: { type: "boolean", default: false },
 			// Default true matches the command-registry advertisement and user
 			// docs — capturing system audio is the intended out-of-box
@@ -1112,6 +1116,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// the runner refuses before any command sees it.
 		startTime: parseStrictCliNumber({ value: values["start-time"] }),
 		endTime: parseStrictCliNumber({ value: values["end-time"] }),
+		at: parseStrictCliNumber({ value: values.at }),
+		snapFrames: (values["snap-frames"] as boolean) ?? false,
 		trimStart: parseStrictCliNumber({ value: values["trim-start"] }),
 		matchLoudness: values["match-loudness"] === true ? true : undefined,
 		newName: values["new-name"] as string | undefined,
@@ -1378,6 +1384,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		...(values["peak-correction"]
 			? { "peak-correction": values["peak-correction"] as string }
 			: {}),
+		...(values["exclude-tracks"]
+			? { "exclude-tracks": values["exclude-tracks"] as string }
+			: {}),
+		...(values["keep-temp"] ? { "keep-temp": true } : {}),
 		...(values.mic ? { mic: true } : {}),
 		...(values["system-audio"] ? { "system-audio": true } : {}),
 		// ui options

@@ -2,7 +2,12 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildSegmentConcatArgs } from "../claude/handlers/claude-export-handler/concat-timing.js";
+import {
+	buildConcatLists,
+	buildSegmentConcatArgs,
+	concatSpan,
+	planConcatSpans,
+} from "../claude/handlers/claude-export-handler/concat-timing.js";
 import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
@@ -93,6 +98,31 @@ function clickTimes({ file }: { file: string }): number[] {
 	return times;
 }
 
+/** Each frame's mean luma, in presentation order. */
+function frameLumas({ file }: { file: string }): number[] {
+	const result = spawnSync(
+		ffprobePath,
+		[
+			"-v",
+			"error",
+			"-f",
+			"lavfi",
+			"-i",
+			`movie=${file},signalstats`,
+			"-show_entries",
+			"frame_tags=lavfi.signalstats.YAVG",
+			"-of",
+			"csv=p=0",
+		],
+		{ encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }
+	);
+	// A keyframe's line ends in an empty side-data field: "235,".
+	return result.stdout
+		.trim()
+		.split("\n")
+		.map((line) => Number(line.split(",")[0]));
+}
+
 function videoStart({ file }: { file: string }): number {
 	const result = spawnSync(
 		ffprobePath,
@@ -179,14 +209,22 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			);
 			expect(videoStart({ file: segmentPath })).toBe(0);
 
-			const listPath = path.join(tempDir, "concat-list.txt");
-			fs.writeFileSync(
-				listPath,
-				[segmentPath, segmentPath].map((file) => `file '${file}'`).join("\n")
-			);
+			const lists = buildConcatLists({
+				files: [0, 2].map((from) => ({
+					path: segmentPath,
+					span: concatSpan({ from, to: from + 2, fps: 30, sampleRate: 48_000 }),
+				})),
+				fps: 30,
+				sampleRate: 48_000,
+			});
+			const videoListPath = path.join(tempDir, "concat-video-list.txt");
+			const audioListPath = path.join(tempDir, "concat-audio-list.txt");
+			fs.writeFileSync(videoListPath, lists.video);
+			fs.writeFileSync(audioListPath, lists.audio);
 			run(
 				buildSegmentConcatArgs({
-					listPath,
+					videoListPath,
+					audioListPath,
 					outputPath: concatPath,
 					audio: { sampleRate: 48_000, channels: 2 },
 					audioBitrateKbps: 192,
@@ -226,6 +264,108 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			const passClicks = clickTimes({ file: passPath }).slice(0, 2);
 			expect(Math.abs(passClicks[0] - 1)).toBeLessThan(0.002);
 			expect(Math.abs(passClicks[1] - 3)).toBeLessThan(0.002);
+		}, 120_000);
+
+		/**
+		 * Six clips 24.4 frames long, as a ripple delete on bar lines leaves
+		 * them, alternating white and black with a click at each one's start.
+		 * Every clip used to be rounded up to 25 frames on its own, so the
+		 * pictures of later clips came 1, 2, 3 frames late while their sound
+		 * stayed on the timeline.
+		 */
+		it("puts every cut on the frame the timeline has it on when clips are not whole frames long", () => {
+			const clipSeconds = 61 / 60;
+			const sources = ["white", "black"].map((colour) => {
+				const file = path.join(tempDir, `${colour}-click.mp4`);
+				run([
+					"-y",
+					"-f",
+					"lavfi",
+					"-i",
+					`color=c=${colour}:s=160x90:r=30:d=2`,
+					"-f",
+					"lavfi",
+					"-i",
+					"aevalsrc=0.9*sin(2*PI*1000*t)*between(t\\,0\\,0.01):s=48000:d=2",
+					"-c:v",
+					"libx264",
+					"-pix_fmt",
+					"yuv420p",
+					"-c:a",
+					"aac",
+					"-shortest",
+					file,
+				]);
+				return file;
+			});
+			const segments: ExportSegment[] = Array.from(
+				{ length: 6 },
+				(_, index) => ({
+					elementId: `clip-${index}`,
+					trackId: "main",
+					trackOrder: 0,
+					elementOrder: index,
+					sourcePath: sources[index % 2],
+					startTime: index * clipSeconds,
+					duration: clipSeconds,
+					trimStart: 0,
+					sourceId: `clip-${index}`,
+					fitMode: "cover",
+				})
+			);
+			const spans = planConcatSpans({
+				inputs: segments.map((segment) => ({
+					startTime: segment.startTime,
+					endTime: segment.startTime + segment.duration,
+				})),
+				fps: 24,
+				sampleRate: 48_000,
+			});
+			const files = segments.map((segment, index) => {
+				const outputPath = path.join(tempDir, `cut-${index}.mov`);
+				run(
+					buildExportSegmentEncodeArgs({
+						inputArgs: buildExportSegmentInputArgs({ segment }),
+						scaleFilter: "scale=160:90,setsar=1",
+						segment,
+						settings: { fps: 24, codec: "libx264", bitrate: "500k" },
+						audio: { kind: "input" },
+						outputPath,
+						span: spans[index],
+					})
+				);
+				return { path: outputPath, span: spans[index] };
+			});
+			const lists = buildConcatLists({ files, fps: 24, sampleRate: 48_000 });
+			const videoListPath = path.join(tempDir, "cuts-video-list.txt");
+			const audioListPath = path.join(tempDir, "cuts-audio-list.txt");
+			fs.writeFileSync(videoListPath, lists.video);
+			fs.writeFileSync(audioListPath, lists.audio);
+			const joinedPath = path.join(tempDir, "cuts.mp4");
+			run(
+				buildSegmentConcatArgs({
+					videoListPath,
+					audioListPath,
+					outputPath: joinedPath,
+					audio: { sampleRate: 48_000, channels: 2 },
+					audioBitrateKbps: 192,
+				})
+			);
+
+			const white = frameLumas({ file: joinedPath }).map((luma) => luma > 128);
+			const cuts = white.flatMap((isWhite, frame) =>
+				frame > 0 && isWhite !== white[frame - 1] ? [frame] : []
+			);
+			// ceil(24.4 k − 0.024): the frame each clip starts on in the preview.
+			expect(cuts).toEqual([25, 49, 74, 98, 122]);
+			expect(white).toHaveLength(147);
+			// The sound stays on the timeline: each later clip's click is where
+			// the clip starts (the first has no silence before it to stand out).
+			const clicks = clickTimes({ file: joinedPath });
+			expect(clicks).toHaveLength(5);
+			for (const [index, click] of clicks.entries()) {
+				expect(Math.abs(click - (index + 1) * clipSeconds)).toBeLessThan(0.002);
+			}
 		}, 120_000);
 	}
 );

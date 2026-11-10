@@ -258,3 +258,98 @@ describe("export without a named preset", () => {
 		});
 	});
 });
+
+describe("the picture's bitrate", () => {
+	it.each([
+		["24Mbps", "24Mbps"],
+		["24M", "24Mbps"],
+		["24000k", "24Mbps"],
+		["24000kbps", "24Mbps"],
+		[" 2.5 mbps ", "2500kbps"],
+		["6500k", "6500kbps"],
+	])("reads %s as %s", (given, expected) => {
+		expect(
+			resolveExportSettings({ request: { settings: { bitrate: given } } })
+				.bitrate
+		).toBe(expected);
+	});
+
+	// What the engine could not read used to export at 8 Mbps without a word.
+	it.each([
+		[24_000_000],
+		["24"],
+		["fast"],
+		["0Mbps"],
+		[""],
+	])("refuses %j instead of falling back to 8 Mbps", (given) => {
+		expect(() =>
+			resolveExportSettings({
+				request: { settings: { bitrate: given as unknown as string } },
+			})
+		).toThrow(/Bitrate must be a string such as "24Mbps" or "8000k"/);
+	});
+
+	it("reads a null rate as none given", () => {
+		expect(
+			resolveExportSettings({
+				request: { settings: { bitrate: null as unknown as string } },
+			}).bitrate
+		).toBe("8Mbps");
+	});
+
+	it("still matches a preset when its own rate is written another way", () => {
+		expect(
+			resolveExportSettings({
+				request: { preset: "youtube-1080p", settings: { bitrate: "8000k" } },
+			})
+		).toMatchObject({ presetId: "youtube-1080p", bitrate: "8Mbps" });
+	});
+
+	it("goes with the size given in the request when no preset is named", () => {
+		const project = { width: 1920, height: 1080, fps: 24 };
+		expect(
+			resolveExportSettings({
+				request: { settings: { width: 3840, height: 2160 } },
+				project,
+			})
+		).toMatchObject({ width: 3840, height: 2160, bitrate: "45Mbps" });
+		expect(
+			resolveExportSettings({
+				request: { settings: { width: 1280, height: 720 } },
+				project,
+			})
+		).toMatchObject({ bitrate: "5Mbps" });
+		// The project's own size, and a rate given outright, are as before.
+		expect(resolveExportSettings({ request: {}, project }).bitrate).toBe(
+			"8Mbps"
+		);
+		expect(
+			resolveExportSettings({
+				request: { settings: { width: 3840, height: 2160, bitrate: "20M" } },
+				project,
+			}).bitrate
+		).toBe("20Mbps");
+	});
+
+	it("keeps a named preset's rate when only the size is changed", () => {
+		expect(
+			resolveExportSettings({
+				request: {
+					preset: "youtube-1080p",
+					settings: { width: 3840, height: 2160 },
+				},
+			}).bitrate
+		).toBe("8Mbps");
+	});
+});
+
+describe("keeping the intermediate files", () => {
+	it("is off unless the request asks", () => {
+		expect(
+			resolveExportSettings({ request: {} }).keepTempFiles
+		).toBeUndefined();
+		expect(
+			resolveExportSettings({ request: { keepTemp: true } }).keepTempFiles
+		).toBe(true);
+	});
+});

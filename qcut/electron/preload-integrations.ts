@@ -551,6 +551,16 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					result,
 				});
 			},
+			onTimeEdit: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:timeEdit");
+				ipcRenderer.on("claude:timeline:timeEdit", (_, data) => callback(data));
+			},
+			sendTimeEditResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:timeEdit:response", {
+					requestId,
+					result,
+				});
+			},
 			onExecuteCuts: (callback) => {
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.on("claude:timeline:executeCuts", (_, data) =>
@@ -671,6 +681,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:shotSplit");
 				ipcRenderer.removeAllListeners("claude:timeline:beatsMark");
 				ipcRenderer.removeAllListeners("claude:timeline:snapToBeats");
+				ipcRenderer.removeAllListeners("claude:timeline:timeEdit");
 				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
 				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
 				ipcRenderer.removeAllListeners("claude:timeline:selectElements");

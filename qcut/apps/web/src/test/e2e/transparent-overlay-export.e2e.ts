@@ -8,8 +8,10 @@
  * and a half-transparent blue band. Both the native and the muxer export must
  * keep the timeline's length, show the picture through the clear pixels,
  * draw the box and band on exactly the clips' frames, and agree with each
- * other. `timeline export` → `apply --replace` keeps every overlay field, and
- * a clip that cannot be decoded fails either export by name.
+ * other. `timeline export` → `apply --replace` keeps every overlay field and
+ * leaves the main track the main one (the overlay track sits above it, so it
+ * is the manifest's first media track), and a clip that cannot be decoded
+ * fails either export by name.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -446,6 +448,18 @@ test("transparent overlays export from both engines and round-trip", async ({
 					}))
 				);
 		expect(overlayFields(after)).toEqual(overlayFields(before));
+		// The track marked isMain is still the main one: the picture under the
+		// overlays, not the overlay track that comes first in the manifest.
+		const mainAfter = after.tracks.find((track) => track.isMain);
+		expect(mainAfter?.elements.map((element) => element.sourceName)).toEqual([
+			"base.mp4",
+		]);
+		// A replace makes every other track again, so the overlay track has a
+		// new id from here on.
+		const overlayTrackId = after.tracks.find(
+			(track) => track.type === "media" && !track.isMain
+		)?.id;
+		if (!overlayTrackId) throw new Error("overlay track not restored");
 
 		// The preview plays the QuickTime Animation card from its alpha proxy
 		// and shows the picture through its clear pixels.
@@ -586,8 +600,9 @@ test("transparent overlays export from both engines and round-trip", async ({
 			JSON.stringify({
 				type: "media",
 				sourceName: "broken.mov",
-				trackId: overlay.trackId,
-				startTime: 5.5,
+				trackId: overlayTrackId,
+				// Before the first card: a track plays one clip at a time.
+				startTime: 0.2,
 				duration: 0.4,
 			})
 		);

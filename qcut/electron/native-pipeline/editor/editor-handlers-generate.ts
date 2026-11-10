@@ -365,6 +365,14 @@ async function exportStart(
 		}
 		body.peakCorrection = peakCorrection;
 	}
+	const excludeTracks = raw["exclude-tracks"];
+	if (typeof excludeTracks === "string" && excludeTracks.trim()) {
+		body.excludeTracks = excludeTracks
+			.split(",")
+			.map((id) => id.trim())
+			.filter(Boolean);
+	}
+	if (raw["keep-temp"] === true) body.keepTemp = true;
 	if (exportFormat === "mp3") {
 		body.audioExportConfig = {
 			bitrate: opts.bitrate ?? 192,

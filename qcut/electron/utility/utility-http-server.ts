@@ -71,6 +71,7 @@ import type {
 	ClaudeShotSplitResponse,
 	ClaudeBeatsMarkResponse,
 	ClaudeSnapToBeatsResponse,
+	ClaudeTimeEditResponse,
 } from "../types/claude-api.js";
 import type { ClaudeAudioMixResponse } from "../types/claude-audio-mix-api.js";
 import {
@@ -319,6 +320,13 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				{ request, correlationId },
 				{ timeoutMs: 35_000 }
 			) as Promise<ClaudeSnapToBeatsResponse>,
+		/** Opens empty time or snaps clips to frames in the editor. */
+		requestTimeEdit: (request, correlationId) =>
+			requestFromMain(
+				"timeline:time-edit",
+				{ request, correlationId },
+				{ timeoutMs: 35_000 }
+			) as Promise<ClaudeTimeEditResponse>,
 		/** Fetches project stats through the bridge. */
 		getProjectStats: (projectId) =>
 			requestFromMain("get-project-stats", {

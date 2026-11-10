@@ -17,15 +17,28 @@ import { promises as fsPromises } from "node:fs";
 import path from "node:path";
 import type { VideoAlphaInfo } from "../../../ffmpeg/video-alpha.js";
 import { probeVideoAlpha } from "../../../ffmpeg/video-alpha-probe.js";
-import { composePreparedVisualLayers } from "../../../ffmpeg/visual-layer-compositor.js";
+import {
+	ACCURATE_CONVERSION_STEP,
+	composePreparedVisualLayers,
+} from "../../../ffmpeg/visual-layer-compositor.js";
 import { buildVideoTimelineLayers } from "../../../ffmpeg-video-transform.js";
 import { claudeLog } from "../../utils/logger.js";
+import { formatShellArgs } from "./export-step-log.js";
+import {
+	type JoinedPictureColor,
+	joinedPictureColorFilter,
+	joinedPictureInputArgs,
+	probeJoinedPictureColor,
+} from "./joined-picture.js";
 import {
 	mediaOverlayInputArgs,
+	mediaOverlayReadFilter,
 	mediaOverlayVideoSource,
 	overlayFrameWindow,
+	planMediaOverlayRead,
 } from "./media-overlay-source.js";
 import { moveFile } from "./move-file.js";
+import { createSourceColorReader, type SourceColor } from "./source-color.js";
 import {
 	type ExportSegment,
 	HANDLER_NAME,
@@ -37,9 +50,12 @@ export interface MediaOverlayInput {
 	segment: ExportSegment;
 	/** Null for a still, or a file whose alpha could not be read. */
 	alpha: VideoAlphaInfo | null;
+	/** How the file's colour is read (source-color.ts); by its own tags if absent. */
+	color?: SourceColor;
 }
 
 const OUTPUT_LABEL = "media_overlay_out";
+const BASE_LABEL = "media_overlay_base";
 
 /**
  * The FFmpeg command that draws `overlays` over `inputPath` for `duration`
@@ -51,6 +67,7 @@ export function buildMediaOverlayPassArgs({
 	overlays,
 	settings,
 	duration,
+	baseColor,
 }: {
 	inputPath: string;
 	outputPath: string;
@@ -60,16 +77,42 @@ export function buildMediaOverlayPassArgs({
 		"width" | "height" | "fps" | "codec" | "bitrate"
 	>;
 	duration: number;
+	/** The picture's colour tags at its start (see joined-picture.ts). */
+	baseColor?: JoinedPictureColor;
 }): { args: string[]; filterComplex: string } {
-	const inputArgs = ["-y", "-i", inputPath];
-	for (const overlay of overlays) {
-		inputArgs.push(...mediaOverlayInputArgs(overlay));
+	const inputArgs = ["-y", ...joinedPictureInputArgs({ path: inputPath })];
+	// Each video is opened a little before its in-point and put on the
+	// instants its frames show, so it starts on the frame on screen there.
+	const reads = overlays.map(({ segment }) =>
+		planMediaOverlayRead({ segment, fps: settings.fps })
+	);
+	const readLabel = (index: number) => `media_overlay_read_${index}`;
+	const readSteps: string[] = [];
+	/** The overlays whose stream is prepared ahead of the layer chain. */
+	const prepared = new Set<number>();
+	for (const [index, { segment, alpha, color }] of overlays.entries()) {
+		const read = reads[index];
+		inputArgs.push(...mediaOverlayInputArgs({ segment, alpha, read }));
+		const filters = [
+			// What an untagged file is taken to be, before the layer chain
+			// turns it into RGB by that.
+			...(color?.declare ? [color.declare] : []),
+			...(read
+				? [mediaOverlayReadFilter({ read, segment, fps: settings.fps })]
+				: []),
+		];
+		if (filters.length === 0) continue;
+		prepared.add(index);
+		readSteps.push(`[${index + 1}:v]${filters.join(",")}[${readLabel(index)}]`);
 	}
 	const built = buildVideoTimelineLayers({
 		videoSources: overlays.map(({ segment }) =>
 			mediaOverlayVideoSource({ segment, fps: settings.fps })
 		),
 		inputIndexes: overlays.map((_overlay, index) => index + 1),
+		inputLabels: overlays.map((_overlay, index) =>
+			prepared.has(index) ? readLabel(index) : undefined
+		),
 		width: settings.width,
 		height: settings.height,
 		fps: settings.fps,
@@ -83,7 +126,7 @@ export function buildMediaOverlayPassArgs({
 	// frame late.
 	const exactSteps: string[] = [];
 	const composed = composePreparedVisualLayers({
-		baseLabel: "0:v",
+		baseLabel: baseColor ? BASE_LABEL : "0:v",
 		layers: built.layers.map((layer) => {
 			const { segment } = overlays[layer.sourceIndex - 1];
 			const { firstFrame, frameCount } = overlayFrameWindow({
@@ -113,8 +156,17 @@ export function buildMediaOverlayPassArgs({
 		labelPrefix: "media_overlay",
 		canvasWidth: settings.width,
 		canvasHeight: settings.height,
+		// The joined picture is yuv420p: overlaid as it is, not via RGBA.
+		overlayFormat: "yuv420",
 	});
 	const filterComplex = [
+		ACCURATE_CONVERSION_STEP,
+		...(baseColor
+			? [
+					`[0:v]${joinedPictureColorFilter({ color: baseColor })}[${BASE_LABEL}]`,
+				]
+			: []),
+		...readSteps,
 		...built.filterSteps,
 		...exactSteps,
 		...composed.filterSteps,
@@ -150,27 +202,31 @@ export function buildMediaOverlayPassArgs({
 }
 
 /**
- * Reads each overlay video's alpha; a still needs no decoder choice. A file
- * that cannot be read fails the export, naming the clip and the file.
+ * Reads each overlay video's alpha (a still needs no decoder choice) and how
+ * each file's colour is read. A file that cannot be read fails the export,
+ * naming the clip and the file.
  */
 export async function probeMediaOverlayInputs({
 	overlays,
 	probe = probeVideoAlpha,
+	readColor = createSourceColorReader(),
 }: {
 	overlays: ExportSegment[];
 	probe?: typeof probeVideoAlpha;
+	readColor?: (input: { mediaPath: string }) => Promise<SourceColor>;
 }): Promise<MediaOverlayInput[]> {
 	const known = new Map<string, Promise<VideoAlphaInfo | null>>();
 	return Promise.all(
 		overlays.map(async (segment) => {
-			if (segment.isImage) return { segment, alpha: null };
+			const color = await readColor({ mediaPath: segment.sourcePath });
+			if (segment.isImage) return { segment, alpha: null, color };
 			let alpha = known.get(segment.sourcePath);
 			if (!alpha) {
 				alpha = probe({ mediaPath: segment.sourcePath });
 				known.set(segment.sourcePath, alpha);
 			}
 			try {
-				return { segment, alpha: await alpha };
+				return { segment, alpha: await alpha, color };
 			} catch (error) {
 				throw new Error(
 					`Overlay clip ${segment.elementId} (${path.basename(segment.sourcePath)}) cannot be read: ${error instanceof Error ? error.message : String(error)}`
@@ -220,10 +276,12 @@ export async function runMediaOverlayPass({
 		overlays: inputs,
 		settings,
 		duration,
+		baseColor: await probeJoinedPictureColor({ path: videoOutputPath }),
 	});
+	// The inputs too: the filter alone cannot be run again without them.
 	claudeLog.info(
 		HANDLER_NAME,
-		`Drawing ${overlays.length} media overlay(s): ${pass.filterComplex}`
+		`Drawing ${overlays.length} media overlay(s): ffmpeg ${formatShellArgs({ args: pass.args })}`
 	);
 	await moveFile({ from: videoOutputPath, to: sourcePath });
 	try {

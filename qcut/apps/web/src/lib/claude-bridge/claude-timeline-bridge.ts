@@ -22,6 +22,7 @@ import { setupTrackHandlers } from "./claude-timeline-bridge-tracks";
 import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
+import { setupTimeEditHandlers } from "./claude-time-edit-bridge";
 import {
 	decodeDeterministicMediaSourceName,
 	resolveMediaIdForBatchElement,
@@ -404,6 +405,7 @@ export function setupClaudeTimelineBridge(): void {
 	setupAudioMixHandlers({ claudeAPI });
 	setupShotSplitHandlers({ claudeAPI });
 	setupBeatsHandlers({ claudeAPI });
+	setupTimeEditHandlers({ claudeAPI });
 
 	// Handle element removal
 	claudeAPI.onRemoveElement((elementId: any) => {

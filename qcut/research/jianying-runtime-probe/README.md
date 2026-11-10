@@ -289,6 +289,17 @@ bun transition-parity-matrix.ts \
   `JY_USE_BEF_CONTEXT_SCOPE=0/1` controls whether filter rendering runs inside
   an `AmazerContextScope` (the BEF effect context guard). The default is on;
   `0` skips the scope for renderer-difference diagnostics.
+- `transition-frame` and `transition-video` finish the engine's own renderer
+  after each seek, before the output texture is read back. The Swing manager
+  draws on a Metal queue of its own (the same reason the filter host
+  finishes it), and a seek returns before that queue has run. Read at once,
+  the output texture still held whatever its pooled storage held last: one of
+  the two inputs, an earlier frame, or half of this one. It took another job on
+  the GPU to show (a Cycles render on Metal: 20 to 30% of a dissolve's frames
+  came back wrong; with only the CPU busy, or nothing else running, none did).
+  None do now. The bridge
+  says so in its usage text (`Capabilities: transition-finish`), which is
+  what the app asks for before it uses one.
 - `render-transition-video.sh` uses FFmpeg to normalize two real videos to RGBA,
   preserves their adjacent timeline duration, centers the transition across the
   cut, renders it through `TransitionSegment`, and encodes the combined frames

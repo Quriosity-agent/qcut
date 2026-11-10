@@ -458,8 +458,12 @@ export interface CLIRunOptions {
 	/** editor captions import: a second-language file whose cues become each caption's second line. */
 	secondaryFile?: string;
 	crossTrackRipple?: boolean;
-	/** editor:editing:delete-range: leave mix automation where it is. */
+	/** editor:editing:delete-range, insert-gap: leave mix automation where it is. */
 	keepAutomation?: boolean;
+	/** editor:editing:insert-gap: where the empty time starts, in seconds. */
+	at?: number;
+	/** Round the command's times to the project's frames before sending them. */
+	snapFrames?: boolean;
 	/** editor:beats:mark: bookmarks to add — none, downbeats or all. */
 	bookmarks?: string;
 	/** editor:timeline:snap: the clip whose marked beats are the grid. */

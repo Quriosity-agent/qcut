@@ -45,7 +45,7 @@ async function createFixture({
 		" "
 	),
 	videoObjectCoreMLCapabilities = "video-object-same-model-coreml-v1",
-	transitionUsage = "transition-video|effect-video",
+	transitionUsage = "transition-video|effect-video\nCapabilities: transition-finish",
 }: {
 	deflickerCapabilities?: string;
 	personCutoutCapabilities?: string;
@@ -230,6 +230,15 @@ describe("packaged Jianying runtime bridge verification", () => {
 		});
 		await expect(verifyPackagedJianyingRuntimeBridges(fixture)).rejects.toThrow(
 			"required mode: effect-video"
+		);
+	});
+
+	it("rejects a transition bridge that reads frames back without waiting for the engine", async () => {
+		const fixture = await createFixture({
+			transitionUsage: "transition-video|effect-video",
+		});
+		await expect(verifyPackagedJianyingRuntimeBridges(fixture)).rejects.toThrow(
+			"no transition-finish capability"
 		);
 	});
 

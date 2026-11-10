@@ -89,6 +89,8 @@ export interface ResolvedExportSettings {
 	audioChannels?: 1 | 2;
 	/** How the master limiter's true-peak check handles encoding overshoot. */
 	peakCorrection?: ExportPeakCorrection;
+	/** The request asked for the intermediate files to be kept. */
+	keepTempFiles?: boolean;
 
 	/** Cursor enhancement config (passed through to compositor) */
 	cursorConfig?: {
@@ -134,6 +136,8 @@ export interface ExportJobInternal {
 	range?: { startTime: number; endTime: number };
 	audioValidation?: ExportAudioValidation;
 	warnings?: string[];
+	/** Where the intermediate files were kept (`keepTemp`). */
+	intermediates?: string;
 }
 
 export interface StickerOverlay {

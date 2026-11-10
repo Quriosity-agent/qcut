@@ -70,7 +70,7 @@ function describeClip({
 }
 
 /** A media item's file and length, as the editor knows them. */
-async function readMedia({
+export async function readMedia({
 	client,
 	project,
 	mediaId,
@@ -132,7 +132,7 @@ async function measureCurrentClip({
 }
 
 /** Copy `source` into the project and wait for the editor to load it. */
-async function importSource({
+export async function importSource({
 	client,
 	project,
 	source,
@@ -177,7 +177,7 @@ const CLEANUP_RETRY_DELAY_MS = 250;
  * but the lookup also swallows an unreadable directory, so it can mean it
  * could not look — reported as unconfirmed rather than as removed.
  */
-async function removeImported({
+export async function removeImported({
 	client,
 	project,
 	mediaId,

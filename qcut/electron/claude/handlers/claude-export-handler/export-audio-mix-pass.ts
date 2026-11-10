@@ -220,6 +220,7 @@ export async function renderTimelineAudioMix({
 				enforceTruePeak && audioMixConfig
 					? deferMasterLimiter({ config: audioMixConfig })
 					: audioMixConfig,
+			channels: settings.audioChannels,
 		});
 		if (!graph.mapAudio)
 			throw new Error("Timeline audio filter graph produced no audio map");
@@ -281,6 +282,7 @@ export async function renderTimelineAudioMix({
 				bitrateKbps: settings.audioBitrate ?? 192,
 				format: settings.format,
 				peakCorrection: settings.peakCorrection,
+				keepTempFiles: settings.keepTempFiles,
 				signal,
 				onPublished,
 			});

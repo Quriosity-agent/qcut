@@ -11,6 +11,8 @@ import type { TimelineTrack } from "@/types/timeline";
 import type { TimelineStore } from "./index";
 import { createAddOps } from "./timeline-add-ops";
 import { createElementOps } from "./timeline-element-ops";
+import { createFrameSnapOps } from "./timeline-frame-snap-ops";
+import { createGapOps } from "./timeline-gap-ops";
 import { createTrackOps } from "./timeline-track-ops";
 import { createTransitionOps } from "./timeline-transition-ops";
 import { createPrecisionEditOps } from "./timeline-precision-edit-ops";
@@ -51,6 +53,8 @@ export function createTimelineOperations({
 }) {
 	return {
 		...createTrackOps(get, set, deps),
+		...createGapOps(get, set, deps),
+		...createFrameSnapOps(get, set, deps),
 		...createElementOps(get, set, deps),
 		...createAddOps(get, set, deps),
 		...createTransitionOps(get, set, deps),

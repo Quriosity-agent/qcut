@@ -11,8 +11,11 @@
  * intermediate is deleted when an export ends and there was nothing left to
  * compare.
  *
- * With `QCUT_EXPORT_KEEP_TEMP=1` the export's temp directory and the
- * limiter's audio work directory survive, and their paths are logged, so two
+ * With `QCUT_EXPORT_KEEP_TEMP=1` in QCut's environment, or `keepTemp` on the
+ * export's own request (`export start --keep-temp`), the export's temp
+ * directory and the limiter's audio work directory survive, and their paths
+ * are logged (the request also gets the first back as `intermediates`, with
+ * the FFmpeg commands in `ffmpeg-commands.sh`), so two
  * runs of one project can be hashed stage by stage in pipeline order:
  *
  * hash the audio of every `segment-` and `gap-` MOV with
@@ -33,8 +36,16 @@
  */
 import { claudeLog } from "../../utils/logger.js";
 
-/** True while the debug switch asks for intermediates to be kept. */
-export function keepExportTempFiles(): boolean {
+/**
+ * True when intermediates are to be kept: the debug switch is set, or the
+ * export itself asked (`export start --keep-temp`).
+ */
+export function keepExportTempFiles({
+	requested = false,
+}: {
+	requested?: boolean;
+} = {}): boolean {
+	if (requested) return true;
 	const value = process.env.QCUT_EXPORT_KEEP_TEMP?.trim();
 	return (
 		value !== undefined && value !== "" && value !== "0" && value !== "false"
@@ -42,22 +53,25 @@ export function keepExportTempFiles(): boolean {
 }
 
 /**
- * Report a directory the switch is keeping. Returns true when the caller
+ * Report a directory that is being kept. Returns true when the caller
  * should skip its own removal.
  */
 export function reportKeptExportDirectory({
 	handler,
 	label,
 	directory,
+	requested = false,
 }: {
 	handler: string;
 	label: string;
 	directory: string;
+	/** The export asked for its files to be kept. */
+	requested?: boolean;
 }): boolean {
-	if (!keepExportTempFiles()) return false;
+	if (!keepExportTempFiles({ requested })) return false;
 	claudeLog.warn(
 		handler,
-		`QCUT_EXPORT_KEEP_TEMP is set: keeping ${label} at ${directory}`
+		`${requested ? "The export asked to keep its files" : "QCUT_EXPORT_KEEP_TEMP is set"}: keeping ${label} at ${directory}`
 	);
 	return true;
 }

@@ -234,6 +234,12 @@ function assertRendererExportRequestCompatible({
 	if (request.range !== undefined) {
 		unsupportedOptions.push("range (--start-time/--end-time)");
 	}
+	if (request.excludeTracks !== undefined) {
+		unsupportedOptions.push("excludeTracks (--exclude-tracks)");
+	}
+	if (request.keepTemp !== undefined) {
+		unsupportedOptions.push("keepTemp (--keep-temp)");
+	}
 	if (unsupportedOptions.length === 0) return;
 	const because =
 		reasons.length > 0 ? reasons.join("; ") : "a renderer-only feature";

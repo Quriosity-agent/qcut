@@ -2,7 +2,12 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildSegmentConcatArgs } from "../claude/handlers/claude-export-handler/concat-timing.js";
+import {
+	buildConcatLists,
+	buildSegmentConcatArgs,
+	type ConcatSpan,
+	concatSpan,
+} from "../claude/handlers/claude-export-handler/concat-timing.js";
 import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
@@ -144,7 +149,7 @@ interface Cut {
 async function exportMainTrack({ cuts, name }: { cuts: Cut[]; name: string }) {
 	const hasAudioStream = createAudioStreamProbe({ probe: probeHasAudioStream });
 	let startTime = 0;
-	const files: string[] = [];
+	const files: Array<{ path: string; span: ConcatSpan }> = [];
 	const expected: number[] = [];
 	for (const [index, cut] of cuts.entries()) {
 		const segment: ExportSegment = {
@@ -172,16 +177,28 @@ async function exportMainTrack({ cuts, name }: { cuts: Cut[]; name: string }) {
 				outputPath,
 			})
 		);
-		files.push(outputPath);
+		files.push({
+			path: outputPath,
+			span: concatSpan({
+				from: startTime,
+				to: startTime + segment.duration,
+				fps: FPS,
+				sampleRate: 48_000,
+			}),
+		});
 		if (cut.click !== undefined) expected.push(startTime + cut.click);
 		startTime += segment.duration;
 	}
-	const listPath = path.join(tempDir, `${name}-list.txt`);
-	fs.writeFileSync(listPath, files.map((file) => `file '${file}'`).join("\n"));
+	const lists = buildConcatLists({ files, fps: FPS, sampleRate: 48_000 });
+	const videoListPath = path.join(tempDir, `${name}-video-list.txt`);
+	const audioListPath = path.join(tempDir, `${name}-audio-list.txt`);
+	fs.writeFileSync(videoListPath, lists.video);
+	fs.writeFileSync(audioListPath, lists.audio);
 	const joined = path.join(tempDir, `${name}.mp4`);
 	run(
 		buildSegmentConcatArgs({
-			listPath,
+			videoListPath,
+			audioListPath,
 			outputPath: joined,
 			audio: { sampleRate: 48_000, channels: 2 },
 			audioBitrateKbps: 192,

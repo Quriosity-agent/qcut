@@ -129,9 +129,26 @@ applied back (`--replace` into the same project restores a backup):
   they are; a track moves only when it names an `index`, so a manifest
   applied in parts does not shuffle the rest. The result reports
   `positionalTracks`.
+- **The main track.** `timeline export` marks one media track `"isMain":
+  true`: the track whose clips are the programme's picture, under every
+  overlay. When the manifest is the whole timeline (`--replace`, or a project
+  that still has only its empty main track), the manifest track that carries
+  the mark becomes the project's main track, wherever it sits in the array,
+  and with `--verify` it must read back as the main one. A `--replace`
+  without a mark gives the main track to the manifest's first media track,
+  which is only right when no overlay track comes before it; up to
+  2026.11.10.2 that was the only rule, so an export with an overlay track
+  above its main track came back with the overlay track as the main one. A
+  hand-written manifest with overlays should carry the mark. More than one
+  mark, or a mark on a track that is not a media track, is refused before
+  anything is imported or changed.
 - **Verification** compares every field the manifest gave (track switches,
   clip fields, the mix) with what the editor read back; a mismatch rolls the
-  timeline back. Numbers agree within 0.001; objects may gain editor defaults.
+  timeline back. Numbers agree within 0.001 and are compared as numbers, not
+  as text: JSON has one number for `2.0` and `2`, so a manifest that says
+  `"duration": 2.0` reads back as `"duration": 2`, and a tool that compares
+  the two files should parse them rather than diff them. Objects may gain
+  editor defaults.
   A clip is also checked for where it ends on the timeline (`endTime`,
   `timelineDuration`), worked out from its lengths, trims and speed when the
   manifest gives none. A clip the editor refuses (see
@@ -164,10 +181,14 @@ media info` reports a video's `codec`, `pixelFormat`, `alphaMode` and
 turns on different tracks are joined as before. A clip that overlaps a clip
 on a lower media track by more than half a frame is an overlay: after the
 joined picture is cut, overlays are drawn over it lowest track first, each on
-exactly the frames the preview shows it (start ≤ frame + 1 ms < end), in RGBA
-until the final encode. The picture runs on in black under an overlay that
-outlasts the clips below it, so the export always ends where the timeline
-does. Position, scale, rotation, opacity (it scales the clip's own alpha),
+exactly the frames the preview shows it (start ≤ frame + 1 ms < end). The
+joined picture stays in its own format (yuv420p) and each overlay is
+converted to it, so pixels no overlay covers reach the encoder unconverted;
+only those under a blend mode other than `normal` go through RGB. The
+picture is black wherever no main-track clip plays: before the first clip,
+in a gap between two, and under an overlay that outlasts the clips below
+it, so the export always starts at 0 and ends where the timeline does.
+Position, scale, rotation, opacity (it scales the clip's own alpha),
 `fitMode`, trims, constant speed and blend modes apply; VP9 alpha is read with
 libvpx. An overlay's sound goes into the mix on its own track (its level, pan,
 bus and mute); an overlay without sound adds nothing.

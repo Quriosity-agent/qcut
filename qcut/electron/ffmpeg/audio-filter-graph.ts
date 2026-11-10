@@ -17,6 +17,7 @@ import {
 	appendPostDynamicsGraphEffects,
 } from "./audio-graph-effects";
 import { clampMediaPlaybackRate } from "./media-speed-constants";
+import { STEREO_SOURCE_CHAIN } from "./stereo-source";
 
 export interface AudioFilterGraph {
 	mapAudio: string | null;
@@ -452,6 +453,7 @@ export function buildTimelineAudioFilters({
 	audioStartIndex,
 	fps,
 	audioMixConfig,
+	channels = 2,
 }: {
 	audioFiles: AudioFile[];
 	audioCrossfades?: AudioCrossfade[];
@@ -459,10 +461,17 @@ export function buildTimelineAudioFilters({
 	fps: number;
 	/** Track, bus and master settings; a neutral mix changes nothing. */
 	audioMixConfig?: AudioMixConfig;
+	/**
+	 * The export's channel count. For two, every source is first made stereo
+	 * the way the preview plays it (stereo-source.ts); a one-channel export
+	 * keeps its sources as they are and leaves the mix-down to FFmpeg.
+	 */
+	channels?: 1 | 2;
 }): AudioFilterGraph {
 	if (audioFiles.length === 0) {
 		return { mapAudio: null, filterSteps: [] };
 	}
+	const stereoSources = channels !== 1;
 	const preparedAudioFiles = prepareAudioCrossfades({
 		audioFiles,
 		audioCrossfades,
@@ -474,6 +483,7 @@ export function buildTimelineAudioFilters({
 	const mix = isNeutralAudioMix(audioMixConfig) ? undefined : audioMixConfig;
 
 	if (
+		!stereoSources &&
 		!mix &&
 		preparedAudioFiles.length === 1 &&
 		!hasTransitionEnvelopes &&
@@ -489,9 +499,17 @@ export function buildTimelineAudioFilters({
 	const mixedLabels: string[] = [];
 	for (const [index, preparedAudioFile] of preparedAudioFiles.entries()) {
 		const audioFile = preparedAudioFile.file;
+		let sourceLabel = `${audioStartIndex + index}:a`;
+		if (stereoSources) {
+			// First, so every stage after it works on two channels, as the
+			// preview's stages do.
+			const stereo = `a_${index}_source`;
+			filterSteps.push(`[${sourceLabel}]${STEREO_SOURCE_CHAIN}[${stereo}]`);
+			sourceLabel = stereo;
+		}
 		const timing = appendSourceTiming({
 			audioFile,
-			currentLabel: `${audioStartIndex + index}:a`,
+			currentLabel: sourceLabel,
 			filterSteps,
 			index,
 		});

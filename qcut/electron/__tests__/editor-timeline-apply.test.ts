@@ -1309,3 +1309,240 @@ describe("timeline read-back catches dropped fields", () => {
 		expect(goodResult.success).toBe(true);
 	});
 });
+
+/**
+ * `timeline export` marks the track QCut cannot do without (`isMain`). A
+ * replace used to give the project's main track to the manifest's first media
+ * track whatever the marks said: a timeline whose overlay track sat above its
+ * main track came back with the overlay track as the main one, verified.
+ */
+describe("which track a whole-timeline manifest makes the main one", () => {
+	interface FakeTrack {
+		id: string;
+		name: string;
+		type: string;
+		isMain?: boolean;
+		elements: Array<{ id: string }>;
+	}
+
+	function makeTrackClient(initial: FakeTrack[]) {
+		let tracks = initial.map((track) => ({ ...track }));
+		let created = 0;
+		const place = (track: FakeTrack, index: unknown) => {
+			tracks = tracks.filter((candidate) => candidate !== track);
+			tracks.splice(
+				typeof index === "number" ? index : tracks.length,
+				0,
+				track
+			);
+		};
+		const trackIn = (url: string) =>
+			tracks.find(
+				(track) => track.id === decodeURIComponent(url.split("/").at(-1) ?? "")
+			);
+		const get = vi.fn(async (url: string) => {
+			if (url === "/api/claude/navigator/projects") {
+				return { activeProjectId: "project-1", projects: [] };
+			}
+			if (url === "/api/claude/media/project-1") return [];
+			if (url === "/api/claude/timeline/project-1") {
+				return {
+					tracks: tracks.map((track, index) => ({
+						...track,
+						index,
+						transitions: [],
+					})),
+				};
+			}
+			throw new Error(`Unexpected GET ${url}`);
+		});
+		const post = vi.fn(async (url: string, body?: Record<string, unknown>) => {
+			if (url === "/api/claude/navigator/open") {
+				return { navigated: true, projectId: "project-1" };
+			}
+			if (url === "/api/claude/transaction/begin") {
+				return { transactionId: "transaction-1" };
+			}
+			if (url === "/api/claude/timeline/project-1/tracks") {
+				created += 1;
+				const track: FakeTrack = {
+					id: `new-track-${created}`,
+					name: String(body?.name ?? ""),
+					type: String(body?.type),
+					elements: [],
+				};
+				place(track, body?.index);
+				return { trackId: track.id };
+			}
+			if (url.endsWith("/commit")) return { committed: true };
+			if (url.endsWith("/rollback")) return { rolledBack: true };
+			throw new Error(`Unexpected POST ${url}`);
+		});
+		const patch = vi.fn(async (url: string, body?: Record<string, unknown>) => {
+			const track = trackIn(url);
+			if (!track) throw new Error(`Unexpected PATCH ${url}`);
+			if (typeof body?.name === "string") track.name = body.name;
+			if (body?.index !== undefined) place(track, body.index);
+			return { success: true };
+		});
+		const remove = vi.fn(async (url: string) => {
+			const track = trackIn(url);
+			if (track) tracks = tracks.filter((candidate) => candidate !== track);
+			return { failedCount: 0 };
+		});
+		return {
+			client: {
+				get,
+				post,
+				patch,
+				delete: remove,
+			} as unknown as EditorApiClient,
+			post,
+			patch,
+			read: () => tracks,
+		};
+	}
+
+	const project = (): FakeTrack[] => [
+		{
+			id: "old-overlays",
+			name: "Old overlays",
+			type: "media",
+			elements: [{ id: "old-card" }],
+		},
+		{
+			id: "main-track",
+			name: "Main Track",
+			type: "media",
+			isMain: true,
+			elements: [{ id: "old-clip" }],
+		},
+	];
+	const overlaysAboveMain = {
+		tracks: [
+			{ alias: "cards", name: "Title cards", type: "media", isMain: false },
+			{ alias: "titles", name: "Titles", type: "text" },
+			{ alias: "main", name: "Main track", type: "media", isMain: true },
+		],
+	};
+
+	it("gives the project's main track to the track marked isMain, not to the first media track", async () => {
+		const editor = makeTrackClient(project());
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({ ...overlaysAboveMain, replace: true })
+		);
+
+		expect(result).toEqual(expect.objectContaining({ success: true }));
+		expect(
+			editor.read().map(({ id, name, isMain }) => ({ id, name, isMain }))
+		).toEqual([
+			{ id: "new-track-1", name: "Title cards", isMain: undefined },
+			{ id: "new-track-2", name: "Titles", isMain: undefined },
+			{ id: "main-track", name: "Main track", isMain: true },
+		]);
+	});
+
+	it("still takes the first media track when no track is marked", async () => {
+		const editor = makeTrackClient(project());
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({
+				replace: true,
+				tracks: overlaysAboveMain.tracks.map(
+					({ isMain: _mark, ...track }) => track
+				),
+			})
+		);
+
+		expect(result).toEqual(expect.objectContaining({ success: true }));
+		expect(editor.read().map(({ id, name }) => ({ id, name }))).toEqual([
+			{ id: "main-track", name: "Title cards" },
+			{ id: "new-track-1", name: "Titles" },
+			{ id: "new-track-2", name: "Main track" },
+		]);
+	});
+
+	it("uses the marked track for a project that still has only its empty main track", async () => {
+		const editor = makeTrackClient([
+			{
+				id: "main-track",
+				name: "Main Track",
+				type: "media",
+				isMain: true,
+				elements: [],
+			},
+		]);
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions(overlaysAboveMain)
+		);
+
+		expect(result).toEqual(expect.objectContaining({ success: true }));
+		expect(editor.read().map(({ id, name }) => ({ id, name }))).toEqual([
+			{ id: "new-track-1", name: "Title cards" },
+			{ id: "new-track-2", name: "Titles" },
+			{ id: "main-track", name: "Main track" },
+		]);
+	});
+
+	it("refuses a manifest that marks two tracks, or one that is not a media track, before touching the project", async () => {
+		for (const [tracks, reason] of [
+			[
+				[
+					{ alias: "a", name: "A", type: "media", isMain: true },
+					{ alias: "b", name: "B", type: "media", isMain: true },
+				],
+				"A manifest can mark one track isMain; 2 are marked ('a', 'b')",
+			],
+			[
+				[
+					{ alias: "titles", name: "Titles", type: "text", isMain: true },
+					{ alias: "main", name: "Main", type: "media" },
+				],
+				"Track 'titles' is marked isMain but is a text track; QCut's main track is a media track",
+			],
+		] as const) {
+			const editor = makeTrackClient(project());
+			const result = await timelineApplyManifest(
+				editor.client,
+				makeOptions({ replace: true, tracks })
+			);
+			expect(result).toEqual({ success: false, error: reason });
+			expect(editor.post).not.toHaveBeenCalled();
+			expect(editor.patch).not.toHaveBeenCalled();
+			expect(editor.read()).toHaveLength(2);
+		}
+	});
+
+	it("fails verification when the marked track did not become the main one", async () => {
+		const editor = makeTrackClient(project());
+		// An editor that keeps its main flag on whichever track is first.
+		const get = editor.client.get as unknown as ReturnType<typeof vi.fn>;
+		const read = get.getMockImplementation() as (url: string) => Promise<{
+			tracks?: Array<{ isMain?: boolean }>;
+		}>;
+		let reads = 0;
+		get.mockImplementation(async (url: string) => {
+			const answer = await read(url);
+			if (url !== "/api/claude/timeline/project-1") return answer;
+			reads += 1;
+			if (reads <= 2) return answer;
+			return {
+				tracks: answer.tracks?.map((track, index) => ({
+					...track,
+					isMain: index === 0,
+				})),
+			};
+		});
+		const result = await timelineApplyManifest(
+			editor.client,
+			makeOptions({ ...overlaysAboveMain, replace: true })
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain(
+			"track 'main' is marked isMain, but the main track is 'Title cards'"
+		);
+	});
+});

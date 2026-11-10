@@ -4,8 +4,9 @@
  * by exercising them through the Zustand store.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { CreateMediaElement, CreateTextElement } from "@/types/timeline";
 
@@ -683,6 +684,235 @@ describe("Timeline Store Operations", () => {
 		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
 			{ time: 12, value: -12 },
 		]);
+	});
+
+	it("insertTimeGap moves the clips from the point on and splits the one that spans it", () => {
+		// One clip from 5 s to 15 s; 3 s of empty time open at 9 s.
+		const { result, mainTrackId, elementId } = setupStoreWithElement();
+		let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+		act(() => {
+			answer = result.current.insertTimeGap({ time: 9, duration: 3 });
+		});
+
+		expect(answer).toEqual({
+			ok: true,
+			time: 9,
+			duration: 3,
+			trackIds: [mainTrackId],
+			movedElements: 1,
+			splitElements: 1,
+			mixAutomationMoved: false,
+		});
+		const [left, right] = result.current.tracks[0].elements;
+		expect(left).toMatchObject({ id: elementId, startTime: 5, trimEnd: 6 });
+		expect(left.name).toContain("left");
+		expect(right).toMatchObject({ startTime: 12, trimStart: 4, trimEnd: 0 });
+		expect(right.id).not.toBe(elementId);
+		expect(right.name).toContain("right");
+
+		// One undo step puts the clip back whole.
+		act(() => {
+			result.current.undo();
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0]).toMatchObject({
+			id: elementId,
+			startTime: 5,
+			trimEnd: 0,
+		});
+	});
+
+	it("insertTimeGap at the head moves the whole timeline, automation with it", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: {
+					gainDb: [
+						{ time: 2, value: 0 },
+						{ time: 12, value: -12 },
+					],
+				},
+			});
+		});
+		act(() => {
+			result.current.insertTimeGap({ time: 0, duration: 5 });
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0].startTime).toBe(10);
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 7, value: 0 },
+			{ time: 17, value: -12 },
+		]);
+	});
+
+	it("insertTimeGap leaves automation alone with keepAutomation", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: { gainDb: [{ time: 12, value: -12 }] },
+			});
+		});
+		act(() => {
+			result.current.insertTimeGap({
+				time: 0,
+				duration: 5,
+				keepAutomation: true,
+			});
+		});
+		expect(result.current.tracks[0].elements[0].startTime).toBe(10);
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 12, value: -12 },
+		]);
+	});
+
+	describe("the project's bus and master curves", () => {
+		/** A project whose master and first bus have a curve, and what it saves. */
+		function projectWithMixCurves() {
+			const audioMix = {
+				master: {
+					id: "master",
+					automation: {
+						gainDb: [
+							{ time: 2, value: 0 },
+							{ time: 12, value: -6 },
+						],
+					},
+				},
+				buses: [
+					{ id: "music", automation: { gainDb: [{ time: 8, value: -3 }] } },
+					{ id: "dialogue" },
+				],
+				tracks: [],
+			};
+			const updateProjectAudioMix = vi.fn();
+			vi.mocked(useProjectStore.getState).mockReturnValue({
+				activeProject: { audioMix },
+				updateProjectAudioMix,
+			} as never);
+			return { audioMix, updateProjectAudioMix };
+		}
+
+		afterEach(() => {
+			vi.mocked(useProjectStore.getState).mockReturnValue({
+				activeProject: null,
+			} as never);
+		});
+
+		it("open with the timeline when every unlocked track moves", () => {
+			const { audioMix, updateProjectAudioMix } = projectWithMixCurves();
+			const { result } = setupStoreWithElement();
+			let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				answer = result.current.insertTimeGap({ time: 0, duration: 5 });
+			});
+
+			expect(answer).toMatchObject({ ok: true, mixAutomationMoved: true });
+			expect(updateProjectAudioMix).toHaveBeenCalledTimes(1);
+			const [saved] = updateProjectAudioMix.mock.calls[0];
+			expect(saved.master.automation.gainDb).toEqual([
+				{ time: 7, value: 0 },
+				{ time: 17, value: -6 },
+			]);
+			expect(saved.buses[0].automation.gainDb).toEqual([
+				{ time: 13, value: -3 },
+			]);
+			// A bus without a curve is handed on as it was.
+			expect(saved.buses[1]).toBe(audioMix.buses[1]);
+		});
+
+		it("stay where they are with keepAutomation, or when one track alone moves", () => {
+			const { updateProjectAudioMix } = projectWithMixCurves();
+			const { result, mainTrackId } = setupStoreWithElement();
+			let kept: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				kept = result.current.insertTimeGap({
+					time: 0,
+					duration: 5,
+					keepAutomation: true,
+				});
+			});
+			expect(kept).toMatchObject({ ok: true, mixAutomationMoved: false });
+
+			// A second unlocked track that is left out: the programme as a
+			// whole did not move.
+			act(() => {
+				result.current.addTrack("media");
+			});
+			let partial: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				partial = result.current.insertTimeGap({
+					time: 0,
+					duration: 5,
+					trackIds: [mainTrackId],
+				});
+			});
+			expect(partial).toMatchObject({ ok: true, mixAutomationMoved: false });
+			expect(updateProjectAudioMix).not.toHaveBeenCalled();
+		});
+
+		it("close up with the timeline when a range is deleted from every track", () => {
+			const { updateProjectAudioMix } = projectWithMixCurves();
+			const { result } = setupStoreWithElement();
+			act(() => {
+				result.current.deleteTimeRange({ startTime: 6, endTime: 8 });
+			});
+
+			expect(updateProjectAudioMix).toHaveBeenCalledTimes(1);
+			const [saved] = updateProjectAudioMix.mock.calls[0];
+			expect(saved.master.automation.gainDb).toEqual([
+				{ time: 2, value: 0 },
+				{ time: 10, value: -6 },
+			]);
+			// The bus's one point sat at the end of the removed range.
+			expect(saved.buses[0].automation.gainDb).toEqual([
+				{ time: 6, value: -3 },
+			]);
+		});
+	});
+
+	it("insertTimeGap leaves a clip that ends at the point where it is", () => {
+		const { result } = setupStoreWithElement();
+		act(() => {
+			result.current.insertTimeGap({ time: 15, duration: 2 });
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0]).toMatchObject({
+			startTime: 5,
+			trimEnd: 0,
+		});
+	});
+
+	it("insertTimeGap refuses a bad request, a missing track and a locked one without touching the timeline", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		const before = result.current.tracks;
+		const refused = (
+			request: Parameters<typeof result.current.insertTimeGap>[0]
+		) => {
+			let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				answer = result.current.insertTimeGap(request);
+			});
+			return answer;
+		};
+		expect(refused({ time: -1, duration: 2 })).toEqual({
+			ok: false,
+			error: "time must be 0 seconds or more",
+		});
+		expect(refused({ time: 0, duration: 0 })).toEqual({
+			ok: false,
+			error: "duration must be above 0 seconds",
+		});
+		expect(refused({ time: 0, duration: 2, trackIds: ["nope"] })).toEqual({
+			ok: false,
+			error: "Track not found: nope",
+		});
+		act(() => {
+			result.current.toggleTrackLocked(mainTrackId);
+		});
+		expect(
+			refused({ time: 0, duration: 2, trackIds: [mainTrackId] })
+		).toMatchObject({ ok: false, error: expect.stringContaining("is locked") });
+		expect(result.current.tracks[0].elements).toEqual(before[0].elements);
 	});
 
 	it("deleteTimeRange preserves source boundaries inside a 2x clip", () => {

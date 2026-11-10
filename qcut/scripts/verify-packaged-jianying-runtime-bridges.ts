@@ -12,7 +12,10 @@ import {
 } from "../electron/jianying-person-cutout/video-object-bach-bridge-resolver.js";
 import { VIDEO_OBJECT_COREML_BRIDGE_FILE_NAME } from "../electron/jianying-person-cutout/video-object-coreml-bridge-resolver.js";
 import { JIANYING_TEXT_RUNTIME_BRIDGE_FILE_NAME } from "../electron/jianying-text-runtime/bridge-resolver.js";
-import { JIANYING_TRANSITION_BRIDGE_FILE_NAME } from "../electron/jianying-transition/bridge-resolver.js";
+import {
+	JIANYING_TRANSITION_BRIDGE_FILE_NAME,
+	JIANYING_TRANSITION_FINISH_CAPABILITY,
+} from "../electron/jianying-transition/bridge-resolver.js";
 import {
 	JIANYING_DEFLICKER_HOST_FILE_NAME,
 	JIANYING_DEFLICKER_HOST_REQUIRED_MARKERS,
@@ -48,6 +51,14 @@ async function requireTransitionModes({ bridgePath }: { bridgePath: string }) {
 				`Packaged Jianying transition bridge does not advertise required mode: ${mode}`
 			);
 		}
+	}
+	// A bridge without it still starts and still renders: it reads each
+	// transition frame back before the engine has drawn it, and some frames
+	// come out as the wrong ones. Only the capability itself can gate that.
+	if (!usage.includes(JIANYING_TRANSITION_FINISH_CAPABILITY)) {
+		throw new Error(
+			`Packaged Jianying transition bridge predates waiting for the engine before a frame is read back (no ${JIANYING_TRANSITION_FINISH_CAPABILITY} capability): ${bridgePath}. Re-run \`bun run stage-jianying-transition-bridge\`.`
+		);
 	}
 }
 

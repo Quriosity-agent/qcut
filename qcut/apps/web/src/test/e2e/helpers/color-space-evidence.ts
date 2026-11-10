@@ -86,7 +86,9 @@ function buildColorBarsPpm({
 /**
  * Renders a color-bar clip coded with the given matrix and carrying the
  * matching container and bitstream tags (verified: decoding per tags
- * reproduces the bars within ~3 levels).
+ * reproduces the bars within ~3 levels). With `tagged: false` the clip is
+ * coded the same way but says nothing about it, in the stream or the
+ * container; `range: "pc"` codes and tags it full range.
  */
 export async function generateColorBarsClip({
 	filePath,
@@ -95,6 +97,8 @@ export async function generateColorBarsClip({
 	fps = 30,
 	width = 1280,
 	height = 720,
+	tagged = true,
+	range = "tv",
 }: {
 	filePath: string;
 	matrix: ColorBarsMatrix;
@@ -102,10 +106,15 @@ export async function generateColorBarsClip({
 	fps?: number;
 	width?: number;
 	height?: number;
+	tagged?: boolean;
+	range?: "tv" | "pc";
 }): Promise<void> {
 	const { scaleMatrix, tag } = MATRIX_VARIANTS[matrix];
 	const ppmPath = `${filePath}.ppm`;
 	await writeFile(ppmPath, buildColorBarsPpm({ width, height }));
+	const frameTags = tagged
+		? `setparams=range=${range}:color_primaries=${tag}:color_trc=${tag}:colorspace=${tag}`
+		: "setparams=range=unknown:color_primaries=unknown:color_trc=unknown:colorspace=unknown";
 	try {
 		await execFileAsync(getFFmpegPath(), [
 			"-y",
@@ -120,7 +129,7 @@ export async function generateColorBarsClip({
 			"-i",
 			ppmPath,
 			"-vf",
-			`scale=out_color_matrix=${scaleMatrix}:out_range=tv,format=yuv420p,setparams=range=tv:color_primaries=${tag}:color_trc=${tag}:colorspace=${tag}`,
+			`scale=out_color_matrix=${scaleMatrix}:out_range=${range},format=yuv420p,${frameTags}`,
 			"-c:v",
 			"libx264",
 			"-crf",
@@ -129,15 +138,46 @@ export async function generateColorBarsClip({
 			"15",
 			"-pix_fmt",
 			"yuv420p",
-			"-colorspace",
-			tag,
-			"-color_primaries",
-			tag,
-			"-color_trc",
-			tag,
-			"-color_range",
-			"tv",
+			...(tagged
+				? [
+						"-colorspace",
+						tag,
+						"-color_primaries",
+						tag,
+						"-color_trc",
+						tag,
+						"-color_range",
+						range,
+					]
+				: []),
 			"-an",
+			filePath,
+		]);
+	} finally {
+		await rm(ppmPath, { force: true });
+	}
+}
+
+/** The same bars as a still: a PNG, or a JPEG by the file's extension. */
+export async function generateColorBarsImage({
+	filePath,
+	width = 1280,
+	height = 720,
+}: {
+	filePath: string;
+	width?: number;
+	height?: number;
+}): Promise<void> {
+	const ppmPath = `${filePath}.ppm`;
+	await writeFile(ppmPath, buildColorBarsPpm({ width, height }));
+	try {
+		await execFileAsync(getFFmpegPath(), [
+			"-y",
+			"-v",
+			"error",
+			"-i",
+			ppmPath,
+			...(/\.jpe?g$/i.test(filePath) ? ["-q:v", "1"] : []),
 			filePath,
 		]);
 	} finally {
@@ -194,6 +234,49 @@ export async function probeColorTags({
 
 export type DecodeMatrix = "auto" | ColorBarsMatrix;
 
+/**
+ * The colour at the centre of each bar of a still (a screenshot of the
+ * preview, say), row by row, as RGB.
+ */
+export async function readColorBarsImage({
+	filePath,
+}: {
+	filePath: string;
+}): Promise<number[][]> {
+	const { stdout } = await execFileAsync(
+		getFFmpegPath(),
+		[
+			"-v",
+			"error",
+			"-i",
+			filePath,
+			"-vf",
+			`scale=${MEASURE_WIDTH}:${MEASURE_HEIGHT}:flags=area`,
+			"-frames:v",
+			"1",
+			"-pix_fmt",
+			"rgb24",
+			"-f",
+			"rawvideo",
+			"-",
+		],
+		{ encoding: "buffer", maxBuffer: 16 * 1024 * 1024 }
+	);
+	const pixels = Buffer.from(stdout);
+	const rows = COLOR_BAR_ROWS.length;
+	const cols = COLOR_BAR_ROWS[0].length;
+	const colors: number[][] = [];
+	for (let r = 0; r < rows; r += 1) {
+		for (let c = 0; c < cols; c += 1) {
+			const x = Math.floor((c + 0.5) * (MEASURE_WIDTH / cols));
+			const y = Math.floor((r + 0.5) * (MEASURE_HEIGHT / rows));
+			const offset = (y * MEASURE_WIDTH + x) * 3;
+			colors.push([pixels[offset], pixels[offset + 1], pixels[offset + 2]]);
+		}
+	}
+	return colors;
+}
+
 export interface ColorBarsMeasurement {
 	/** Worst bar error (max abs channel diff, 0-255) for each frame. */
 	perFrame: number[];
@@ -211,19 +294,33 @@ export interface ColorBarsMeasurement {
 export async function measureColorBarsFrames({
 	filePath,
 	decodeMatrix,
+	startSeconds,
+	durationSeconds,
+	region,
 }: {
 	filePath: string;
 	decodeMatrix: DecodeMatrix;
+	/** Measure only this stretch of the file (both, or neither). */
+	startSeconds?: number;
+	durationSeconds?: number;
+	/** Measure the bars inside this part of the picture, in pixels. */
+	region?: { x: number; y: number; width: number; height: number };
 }): Promise<ColorBarsMeasurement> {
+	const crop = region
+		? `crop=${region.width}:${region.height}:${region.x}:${region.y},`
+		: "";
 	const scaleArgs =
 		decodeMatrix === "auto"
-			? `scale=${MEASURE_WIDTH}:${MEASURE_HEIGHT}:flags=area`
-			: `scale=${MEASURE_WIDTH}:${MEASURE_HEIGHT}:flags=area:in_color_matrix=${MATRIX_VARIANTS[decodeMatrix].scaleMatrix}:in_range=tv`;
+			? `${crop}scale=${MEASURE_WIDTH}:${MEASURE_HEIGHT}:flags=area`
+			: `${crop}scale=${MEASURE_WIDTH}:${MEASURE_HEIGHT}:flags=area:in_color_matrix=${MATRIX_VARIANTS[decodeMatrix].scaleMatrix}:in_range=tv`;
 	const { stdout } = await execFileAsync(
 		getFFmpegPath(),
 		[
 			"-v",
 			"error",
+			...(startSeconds !== undefined && durationSeconds !== undefined
+				? ["-ss", String(startSeconds), "-t", String(durationSeconds)]
+				: []),
 			"-i",
 			filePath,
 			"-vf",

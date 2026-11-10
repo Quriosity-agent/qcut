@@ -9,6 +9,7 @@ import type {
 	ClaudeBeatsMarkRequest,
 	ClaudeShotSplitRequest,
 	ClaudeSnapToBeatsRequest,
+	ClaudeTimeEditRequest,
 } from "../types/claude-api.js";
 
 // ─── Messages FROM utility process TO main process ───
@@ -195,6 +196,11 @@ export interface BeatsMarkBridgeRequest {
 
 export interface SnapToBeatsBridgeRequest {
 	request: ClaudeSnapToBeatsRequest;
+	correlationId?: string;
+}
+
+export interface TimeEditBridgeRequest {
+	request: ClaudeTimeEditRequest;
 	correlationId?: string;
 }
 

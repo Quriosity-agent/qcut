@@ -12,6 +12,7 @@ export function buildStandaloneAudioExportArgs({
 		audioStartIndex: 0,
 		fps: 30,
 		audioMixConfig: options.audioMixConfig,
+		channels: options.channels,
 	});
 	return [
 		"-y",
