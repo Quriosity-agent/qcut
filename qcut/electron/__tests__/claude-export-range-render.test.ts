@@ -250,7 +250,7 @@ describe("a segment outside the range", () => {
 			shown.slice(shown.indexOf("-map"), shown.indexOf("-map") + 4)
 		).toEqual(["-map", "0:v:0", "-map", "0:a:0"]);
 		expect(shown[shown.indexOf("-vf") + 1]).toBe(
-			"scale=1470:630,tpad=stop_mode=clone:stop=-1,fps=24,trim=end_frame=120"
+			"scale=1470:630,tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=120"
 		);
 	});
 });
