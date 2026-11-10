@@ -55,6 +55,20 @@ qcut editor:export:start \
 # An exact file, with one WAV per bus beside it
 qcut editor:export:start \
   --project-id <id> --output ~/Movies/开场_粗剪.mp4 --stems --poll
+
+# A clean plate: the picture and sound without the title and caption tracks
+qcut editor:export:start \
+  --project-id <id> --exclude-tracks <titles-track>,<captions-track> \
+  --output ~/Movies/开场_底片.mp4 --poll
+
+# An intermediate for a later grade: the project's picture at 24 Mbps
+qcut editor:export:start \
+  --project-id <id> --data '{"bitrate":"24Mbps"}' \
+  --output ~/Movies/开场_中间片.mp4 --poll
+
+# Keep the intermediate files and the FFmpeg commands, to look into a result
+qcut editor:export:start \
+  --project-id <id> --keep-temp --output ~/Movies/开场_查.mp4 --poll --json
 ```
 
 Where the file goes:
@@ -65,6 +79,8 @@ Where the file goes:
 | `--output-dir <folder>` | That folder, the file named after the project: `<project name>-<YYYY-MM-DD-HHMMSS>.<format>` |
 | `--filename <name>` | The file's name in `--output-dir` (`./output` without one); an absolute path is used as it is |
 | `--stems` | Also writes one WAV per bus beside the export, `<file name>-<bus>.wav`, once it is done (see [editor-mix.md](editor-mix.md)); needs one of the three above |
+| `--exclude-tracks <id,…>` | Leaves those tracks out of this export, picture and sound; the project is not changed (see [Leaving tracks out](#leaving-tracks-out)) |
+| `--keep-temp` | Keeps the export's intermediate files and its FFmpeg commands (see [Keeping the intermediate files](#keeping-the-intermediate-files)) |
 
 With none of them the export goes to
 `Documents/QCut/Exports/<project name>-<YYYY-MM-DD-HHMMSS>.<format>`.
@@ -78,6 +94,20 @@ bitrate of the YouTube preset of that size (5 Mbps up to 720p, 8 Mbps up to
 1080p, 45 Mbps above), and the job reports `presetId: "project"`. A 1470×630,
 24 fps project exports at 1470×630, 24 fps; before 2026.11.10 it came out at
 1920×1080, 30 fps unless `--data` said otherwise.
+
+`--data` takes the same settings one at a time: `width`, `height`, `fps`,
+`format` and `bitrate`. Without `--preset` the bitrate goes with the size
+that is exported, by its longer side, so a `width`/`height` given in `--data`
+gets the bitrate of that size (a 3840×1608 export of a 1470×630 project is
+45 Mbps, not the project's 8). With `--preset` the preset's bitrate stays
+unless `bitrate` is given.
+
+`bitrate` is a string with its unit, megabits or kilobits a second:
+`"24Mbps"`, `"24M"`, `"8000kbps"` or `"8000k"` (any case, a decimal point
+allowed: `"7.5Mbps"`). The job reports it as `"24Mbps"`, or as `"7500kbps"`
+when it is not a whole number of megabits. Anything else (a number, a
+`"24"` without its unit) is refused, saying what it takes; up to 2026.11.10.2
+it exported at 8 Mbps without a word.
 
 The returned job uses `presetId: "custom"` when its effective width, height,
 fps, format, or bitrate differs from the selected preset (or from the
@@ -108,6 +138,96 @@ exports through the renderer engine, is refused. A range outside the
 timeline is refused rather than cut to fit; one ending after the picture
 ends where the picture ends. The job reports the range it wrote (`range`)
 and the file's `duration`.
+
+### Leaving tracks out
+
+`--exclude-tracks <track-id>,<track-id>` (`excludeTracks` in the HTTP
+request, an array or a comma-separated string) exports the timeline as if
+those tracks were hidden and muted: their picture is not drawn and their
+sound is not mixed. The project is not touched, so there is nothing to put
+back afterwards. Track ids come from `editor track list`; an id the timeline
+does not have is refused with 400, naming the tracks it does have.
+
+The engine is chosen from what is left, so leaving out the only track that
+needs the editor window's engine (clips with a `filterStack`, say) makes the
+rest a native export. Native exports only: an export that still runs in the
+editor window refuses the option, naming what in the timeline sent it there.
+
+### What the timeline's gaps and frames become
+
+- **Gaps on the main track are black and silent.** Wherever no main-track
+  clip plays (before the first clip, between two clips, after the last one
+  while an overlay, a caption or sound goes on) the picture is black and the
+  main track is silent, for exactly the gap's length. A timeline whose first
+  clip starts at 5 s exports 5 s of black first; there is no need to put a
+  black clip there. The export ends where the timeline ends.
+- **Clips need not sit on frames.** Frames are counted from the start of
+  the timeline: frame *n* shows what the timeline has at *n*/fps (a clip
+  that starts within 1 ms after a frame still takes it, as in the preview).
+  Each main-track clip is written as exactly the frames from its start to
+  the next clip's start, and its sound as the samples of the same span, so a
+  clip 2.425333 s long moves nothing after it. Up to 2026.11.10.2 each clip
+  was rounded up to whole frames on its own and the picture after it ran
+  later than the sound by the remainder: eleven such cuts left the end of
+  one trailer 5 frames late. `editor timeline export` reports the clips that
+  start or end between frames (`frameAlignment`), and
+  `editor timeline snap --to frames` puts them on frames (see
+  [editor-timeline.md](editor-timeline.md#frames-clip-edges-and-command-times)).
+- **The picture under an overlay is not converted.** Media overlays, text
+  rasters and stickers are drawn onto the joined picture as it is (yuv420p);
+  only the layer is converted. Pixels under a layer with a blend mode other
+  than `normal` go through RGB for the blend, with exact rounding. Up to
+  2026.11.10.2 one overlay anywhere sent every frame of the export through
+  RGBA and back, which lowered the picture's luma by 1.2–1.6 levels (8-bit)
+  in the export this was measured on.
+- **Sources with different colour tags.** Clips from files tagged
+  `tv, bt709` and from untagged files can follow each other: overlays that
+  appear after such a change keep their first frames (up to 2026.11.10.2
+  they started 2–5 frames into themselves). The overlay passes read the
+  whole picture with the colour tags of its first frame, which are also the
+  tags the export carries, so under a blend-mode layer a clip tagged
+  otherwise is converted with that matrix. Give the sources the same tags
+  when that matters.
+
+### What the export checks itself
+
+A native export counts what it wrote and says so in the job's `warnings`
+(the job is still `completed`; the file is there to look at):
+
+| Warning starts | Meaning |
+|----------------|---------|
+| `The joined picture is N frames (…); the timeline gives it M frames` | The main track's picture came out another length than the timeline, so picture and sound are that far apart by the end. A second warning names the clips or gaps that were written another length than planned |
+| `The exported picture is N frames (…); it should be M frames` | A pass after the join (overlays, captions, the mix) added or dropped frames |
+| `FFmpeg rebuilt a filter graph while it read <file> with K other input(s)` | An input changed its picture or sound format part-way through a pass that reads several inputs; what is drawn or mixed over it can start a few frames into itself from that point |
+
+None of them is expected: each names a fault in the export, not in the
+timeline. Report it with the job's `warnings` and, if it can be run again,
+`--keep-temp`.
+
+### Keeping the intermediate files
+
+`--keep-temp` (`keepTemp: true` in the HTTP request; native exports only)
+keeps what an export normally removes when it ends. The finished job reports
+the folder as `intermediates`:
+
+```json
+{ "status": "completed", "outputPath": "…/开场_查.mp4", "intermediates": "/var/folders/…/T/qcut-claude-export-Ab12Cd" }
+```
+
+| In the folder | What it is |
+|---------------|------------|
+| `ffmpeg-commands.sh` | Every FFmpeg command of the export, whole, in the order they ran, quoted for a shell; any step can be run again as it is |
+| `segment-*.mov`, `gap-*.mov` | One file per main-track clip and per gap, picture and PCM sound, cut to the frames and samples of its span |
+| `concat-video-list.txt`, `concat-audio-list.txt` | The lists that join them, each giving every file its own stream's length |
+| `intermediate.mp4` (or `.mov`) | The picture as the last pass left it, when the export has passes after the join |
+| `video-before-media-overlays.mp4`, `concat-before-text.mp4`, `video-before-audio-mix.mp4`, … | The picture as it was before each later pass, named for the pass |
+| `mixed-master.wav` | The mix before limiting and encoding |
+
+The folder holds full-size video and PCM, so it is large; delete it when
+done. `QCUT_EXPORT_KEEP_TEMP=1` in QCut's environment keeps the files of
+every export in the same way. Without either, `main.log` still has the whole
+command of the media overlay pass (`Drawing 21 media overlay(s): ffmpeg …`),
+inputs included.
 
 ### Enhancement flags
 
