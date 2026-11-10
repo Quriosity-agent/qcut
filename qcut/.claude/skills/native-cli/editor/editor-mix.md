@@ -55,6 +55,18 @@ Every change answers with what the editor now holds.
   `presence`, `air`), or by position.
 - `timeline export` includes each audio track's `audio` settings and
   `muted`, and the project's `audioMix` (master and buses).
+- A mono file plays at full level in both channels, and exports so from
+  every engine: a −21 dB mono tone is −21 dB left and −21 dB right. Pan
+  then works on that stereo signal, by the Web Audio panner's law for a
+  stereo input: at centre nothing changes, and towards one side the far
+  channel is folded into the near one, so hard left puts both into the left
+  channel (+6 dB for a mono file) and leaves the right silent. Up to
+  2026.11.10.2 the FFmpeg exports (the native export, the Export dialog's
+  FFmpeg export, MP3) wrote a mono file 3 dB lower than the preview and the
+  in-browser export played it, and so met a compressor, a gate, ducking and
+  the limiter 3 dB lower too. A project with mono sources exports 3 dB
+  louder from them since, which is the level it always played at; stereo
+  files are unchanged.
 
 ## Automation
 
