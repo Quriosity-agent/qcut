@@ -223,6 +223,109 @@ describe("planFrameSnap", () => {
 		]);
 	});
 
+	describe("two clips that meet within half a frame, but not exactly", () => {
+		it("closes the gap on one frame when each clip can take it", () => {
+			// A ends 0.1 before frame 24 and B starts 0.2 after it.
+			const a = clip({ id: "a", start: 0, length: 23.9 });
+			const b = clip({ id: "b", start: 24.2, length: 23.8 });
+			const plan = planFrameSnap({
+				tracks: [track([a, b])],
+				fps: FPS,
+				isTargeted: everything,
+			});
+			const [afterA, afterB] = ["a", "b"].map((id) => snapped(plan, id));
+			expect(afterA.trimEnd).toBeCloseTo(2 - frames(0.1), 9);
+			expect(afterB.startTime).toBeCloseTo(frames(24), 9);
+			// Each trim takes up its own clip's distance, not the other's.
+			expect(afterB.trimStart).toBeCloseTo(2 - frames(0.2), 9);
+			expect(sourceAt(afterB, frames(30))).toBeCloseTo(
+				sourceAt(b, frames(30)),
+				9
+			);
+			expect(plan.skipped).toEqual([]);
+		});
+
+		it("brings the later clip to a cut that is on a frame already", () => {
+			const a = clip({ id: "a", start: 0, length: 24 });
+			const b = clip({ id: "b", start: 24.3, length: 23.7 });
+			const plan = planFrameSnap({
+				tracks: [track([a, b])],
+				fps: FPS,
+				isTargeted: everything,
+			});
+			expect(snapped(plan, "b").startTime).toBeCloseTo(frames(24), 9);
+			expect(snapped(plan, "b").trimStart).toBeCloseTo(2 - frames(0.3), 9);
+			expect(plan.changed.map((change) => change.elementId)).toEqual(["b"]);
+			expect(plan.skipped).toEqual([]);
+		});
+
+		it("leaves the later clip, and says so, when it has no source before its start", () => {
+			// The cut is on frame 24 for A. B would have to start 0.3 of a
+			// frame earlier, and it is at the head of its file: moving it there
+			// would slide what it shows.
+			const a = clip({ id: "a", start: 0, length: 24 });
+			const b = clip({ id: "b", start: 24.3, length: 23.7, trimStart: 0 });
+			const tracks = [track([a, b])];
+			const plan = planFrameSnap({
+				tracks,
+				fps: FPS,
+				isTargeted: everything,
+			});
+			expect(plan.changed).toEqual([]);
+			expect(plan.tracks[0]).toBe(tracks[0]);
+			expect(plan.skipped).toEqual([
+				{
+					trackId: "main",
+					elementId: "b",
+					reason:
+						"its start stays between frames: there is no unused source on either side of that cut",
+				},
+			]);
+		});
+
+		it("reports nothing for an edge that is on its frame", () => {
+			// A's end is on frame 24; the clip after it starts 0.3 later and is
+			// not being snapped. Only A's start has anything to do.
+			const a = clip({ id: "a", start: 0.4, length: 23.6 });
+			const b = clip({ id: "b", start: 24.3, length: 23.7 });
+			const plan = planFrameSnap({
+				tracks: [track([a, b])],
+				fps: FPS,
+				isTargeted: ({ element }) => element.id === "a",
+			});
+			expect(plan.changed).toEqual([
+				{
+					trackId: "main",
+					elementId: "a",
+					startTime: { from: frames(0.4), to: 0 },
+					endTime: { from: frames(24), to: frames(24) },
+				},
+			]);
+			expect(plan.skipped).toEqual([]);
+		});
+	});
+
+	it("takes an edge a rounded time left a hair off its frame as on it", () => {
+		// 1.041667 s is frame 25 written to the microsecond: a third of a
+		// microsecond late. With no source before its start the clip cannot
+		// move earlier, and it used to be sent a whole frame later instead.
+		const before = {
+			...clip({ id: "a", start: 25, length: 20.4, trimStart: 0 }),
+			startTime: 1.041_667,
+		};
+		const plan = planFrameSnap({
+			tracks: [track([before])],
+			fps: FPS,
+			isTargeted: everything,
+		});
+		const after = snapped(plan, "a");
+		expect(after.startTime).toBeCloseTo(frames(25), 9);
+		expect(after.trimStart).toBe(0);
+		// The end, 0.4 of a frame past frame 45, goes to it.
+		expect(after.trimEnd).toBeCloseTo(2 + frames(0.4), 5);
+		expect(plan.skipped).toEqual([]);
+	});
+
 	it("counts a sped-up clip's trims in source seconds", () => {
 		const before = clip({
 			id: "fast",
@@ -329,6 +432,50 @@ describe("planFrameSnap", () => {
 		expect(plan.skipped[0].reason).toBe(
 			"it has a speed curve, so its trims cannot take up the difference"
 		);
+	});
+
+	it("leaves a clip with a freeze frame for the same reason", () => {
+		const plan = planFrameSnap({
+			tracks: [
+				track([
+					clip({
+						id: "held",
+						start: 0.5,
+						length: 24,
+						extra: { freezeFrameDuration: 0.5 },
+					}),
+				]),
+			],
+			fps: FPS,
+			isTargeted: everything,
+		});
+		expect(plan.changed).toEqual([]);
+		expect(plan.skipped.map(({ reason }) => reason)).toEqual([
+			"it has a freeze frame, so its trims cannot take up the difference",
+		]);
+	});
+
+	it("leaves a clip its frames would close up on, and says so", () => {
+		// From 10.6 to 11.4 with no source to grow into: both edges go inwards
+		// to frame 11, which leaves nothing.
+		const sliver = clip({
+			id: "sliver",
+			start: 10.6,
+			length: 0.8,
+			trimStart: 0,
+			trimEnd: 0,
+		});
+		const tracks = [track([sliver])];
+		const plan = planFrameSnap({ tracks, fps: FPS, isTargeted: everything });
+		expect(plan.changed).toEqual([]);
+		expect(plan.tracks[0]).toBe(tracks[0]);
+		expect(plan.skipped).toEqual([
+			{
+				trackId: "main",
+				elementId: "sliver",
+				reason: "it would be left shorter than a frame",
+			},
+		]);
 	});
 
 	it("changes nothing when every edge is on a frame already", () => {
