@@ -11,6 +11,12 @@ import {
 	spanFileCounts,
 } from "./concat-timing.js";
 import { STEREO_SOURCE_FILTERS } from "../../../ffmpeg/stereo-source.js";
+import {
+	EXPORT_PICTURE_COLOR_ARGS,
+	EXPORT_PICTURE_COLOR_FILTERS,
+	EXPORT_PICTURE_TAGS_FILTER,
+	type SourceColor,
+} from "./source-color.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -265,6 +271,11 @@ export async function resolveExportSegmentAudio({
  * With `blackPicture` (a range export, for a clip outside the range) the
  * picture is black at the export's size and the source is read for its
  * sound alone, through the same filters, so the mix hears what it would.
+ *
+ * The picture leaves in the export's one colour description (see
+ * source-color.ts): what an untagged source is taken to be is stated first
+ * (`color`), and the last thing before the cut is the conversion to BT.709,
+ * limited range. An HDR source keeps its own.
  */
 export function buildExportSegmentEncodeArgs({
 	inputArgs,
@@ -276,6 +287,7 @@ export function buildExportSegmentEncodeArgs({
 	blackPicture = false,
 	span,
 	read,
+	color,
 }: {
 	inputArgs: string[];
 	scaleFilter: string;
@@ -304,6 +316,8 @@ export function buildExportSegmentEncodeArgs({
 	span?: Pick<ConcatSpan, "frames" | "samples">;
 	/** The plan `inputArgs` were built with; none reads from the in-point. */
 	read?: SegmentPictureRead;
+	/** How the source's colour is read; unknown reads it by its own tags. */
+	color?: SourceColor;
 }): string[] {
 	const format = segmentAudioFormat({ settings });
 	const { frames, samples } = spanFileCounts({
@@ -331,11 +345,14 @@ export function buildExportSegmentEncodeArgs({
 					: [];
 	const audioStream = soundFromPictureInput ? "0:a:0" : "1:a:0";
 	const rate = segment.isImage ? 1 : (segment.playbackRate ?? 1);
+	const keepsOwnColor = !blackPicture && color?.hdr === true;
 	const picture = [
+		...(color?.declare ? [color.declare] : []),
 		// Microseconds, so the shift is exact whatever the source counts in.
 		...(read ? ["settb=AVTB", `setpts=PTS-${read.pictureShiftMicros}`] : []),
 		scaleFilter,
 		...(rate === 1 ? [] : [`setpts=PTS/${rate}`]),
+		...(keepsOwnColor ? [] : EXPORT_PICTURE_COLOR_FILTERS),
 		"tpad=stop_mode=clone:stop=-1",
 		`fps=${settings.fps}:start_time=0:round=up`,
 		`trim=end_frame=${frames}`,
@@ -359,7 +376,9 @@ export function buildExportSegmentEncodeArgs({
 		"-map",
 		audioStream,
 		"-vf",
-		blackPicture ? `trim=end_frame=${frames}` : picture,
+		blackPicture
+			? `trim=end_frame=${frames},${EXPORT_PICTURE_TAGS_FILTER}`
+			: picture,
 		"-r",
 		String(settings.fps),
 		"-c:v",
@@ -370,6 +389,7 @@ export function buildExportSegmentEncodeArgs({
 		parseBitrateForKbps({ bitrate: settings.bitrate }),
 		"-pix_fmt",
 		"yuv420p",
+		...(keepsOwnColor ? [] : EXPORT_PICTURE_COLOR_ARGS),
 		"-af",
 		[
 			...stereoSource,
