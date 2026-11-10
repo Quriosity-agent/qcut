@@ -95,6 +95,7 @@ import {
 	buildTransitionAudioAlignmentFilter,
 	buildTransitionVideoSources,
 	collectExportSegments,
+	collectStickerOverlays,
 	collectTimelineAudioFiles,
 	collectVideoTransitions,
 } from "../claude/handlers/claude-export-handler/export-engine";
@@ -409,6 +410,158 @@ describe("Claude export trigger", () => {
 		expect(
 			concat?.slice(concat.indexOf("-map"), concat.indexOf("-map") + 4)
 		).toEqual(["-map", "0:v:0", "-map", "1:a:0"]);
+	});
+
+	describe("with --keep-temp", () => {
+		it("keeps the intermediates, writes the commands that made them and names the folder", async () => {
+			const result = await startExportJob({
+				projectId: "project_keep_temp",
+				request: { outputPath: "/tmp/export-keep-temp.mp4", keepTemp: true },
+				timeline: testTimeline,
+				mediaFiles: testMediaFiles,
+			});
+			await vi.waitFor(() => {
+				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+			});
+			expect(getExportJobStatus(result.jobId)?.intermediates).toBe(
+				"/tmp/qcut-claude-export-test"
+			);
+			// The script is written as the job winds up, after it reports done.
+			await vi.waitFor(() => {
+				const script = mockFsPromises.writeFile.mock.calls
+					.map((call) => call as unknown as [string, string])
+					.find(([file]) => /ffmpeg-commands\.sh$/.test(String(file)));
+				expect(script).toBeDefined();
+				const lines = String(script?.[1]).split("\n");
+				expect(lines[0]).toBe("#!/bin/sh");
+				// One line for each FFmpeg step; the probes are not steps.
+				expect(
+					lines.filter((line) => line.startsWith("/mock/ffmpeg -y "))
+				).toHaveLength(
+					mockSpawn.mock.calls.filter(([command]) => command === "/mock/ffmpeg")
+						.length
+				);
+				expect(lines.some((line) => /segment-0000\.mov$/.test(line))).toBe(
+					true
+				);
+			});
+			expect(mockFsPromises.rm).not.toHaveBeenCalledWith(
+				"/tmp/qcut-claude-export-test",
+				expect.anything()
+			);
+		});
+
+		it("is not what an export does unless asked", async () => {
+			const result = await startExportJob({
+				projectId: "project_no_keep_temp",
+				request: { outputPath: "/tmp/export-no-keep-temp.mp4" },
+				timeline: testTimeline,
+				mediaFiles: testMediaFiles,
+			});
+			await vi.waitFor(() => {
+				expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+			});
+			await vi.waitFor(() => {
+				expect(mockFsPromises.rm).toHaveBeenCalledWith(
+					"/tmp/qcut-claude-export-test",
+					expect.anything()
+				);
+			});
+			expect(getExportJobStatus(result.jobId)?.intermediates).toBeUndefined();
+			expect(
+				mockFsPromises.writeFile.mock.calls.some((call) =>
+					/ffmpeg-commands\.sh$/.test(String((call as unknown[])[0]))
+				)
+			).toBe(false);
+		});
+	});
+
+	/**
+	 * FFmpeg rebuilds a step's filter graph when an input changes format
+	 * part-way, and the step's other inputs lose the frames read ahead. An
+	 * export used to finish `completed` with no warning when that happened.
+	 */
+	it("warns when FFmpeg rebuilt the filter graph of a step that read several inputs", async () => {
+		mockSpawn.mockImplementation((_command: string, args: string[]) => {
+			const proc = createMockProcess({ shouldClose: false });
+			setTimeout(() => {
+				// The join, which reads two lists.
+				if (args.filter((arg) => arg === "concat").length === 2) {
+					(proc as unknown as { stderr: EventEmitter }).stderr.emit(
+						"data",
+						Buffer.from(
+							"[fc#0 @ 0x1] Reconfiguring filter graph because audio parameters changed to 44100 Hz, stereo, fltp\n"
+						)
+					);
+				}
+				proc.emit("close", 0);
+			}, 0);
+			return proc;
+		});
+		const result = await startExportJob({
+			projectId: "project_graph_rebuilt",
+			request: { outputPath: "/tmp/export-graph-rebuilt.mp4" },
+			timeline: testTimeline,
+			mediaFiles: testMediaFiles,
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
+		expect(getExportJobStatus(result.jobId)?.warnings).toEqual([
+			expect.stringMatching(
+				/^FFmpeg rebuilt a filter graph while it read concat-video-list\.txt with 1 other input\(s\) \(audio parameters changed to 44100 Hz, stereo, fltp\)\./
+			),
+		]);
+	});
+
+	it("leaves out stickers on a hidden track, and hidden stickers", async () => {
+		const sticker = {
+			id: "sticker_1",
+			trackIndex: 0,
+			startTime: 1,
+			endTime: 3,
+			duration: 2,
+			type: "sticker" as const,
+			mediaId: "sticker_media",
+		};
+		const timelineWith = ({
+			trackHidden = false,
+			stickerHidden = false,
+		} = {}) => ({
+			...testTimeline,
+			tracks: [
+				{
+					index: 0,
+					name: "Stickers",
+					type: "sticker",
+					hidden: trackHidden,
+					elements: [{ ...sticker, hidden: stickerHidden }],
+				},
+				...testTimeline.tracks,
+			],
+		});
+		const mediaFiles = [
+			...testMediaFiles,
+			{
+				...testMediaFiles[0],
+				id: "sticker_media",
+				name: "badge.png",
+				type: "image" as const,
+				path: "/tmp/badge.png",
+			},
+		];
+		const collect = (timeline: ReturnType<typeof timelineWith>) =>
+			collectStickerOverlays({
+				timeline: timeline as unknown as Parameters<
+					typeof collectStickerOverlays
+				>[0]["timeline"],
+				mediaFiles,
+				projectId: "project_stickers",
+			});
+
+		expect(await collect(timelineWith())).toHaveLength(1);
+		expect(await collect(timelineWith({ trackHidden: true }))).toEqual([]);
+		expect(await collect(timelineWith({ stickerHidden: true }))).toEqual([]);
 	});
 
 	it("snaps a project rate the renderer cannot run to the nearest it can, unless the rate was asked for", async () => {
