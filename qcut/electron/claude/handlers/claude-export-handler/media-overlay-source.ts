@@ -16,6 +16,10 @@ import type { VideoSource, VideoVisual } from "../../../ffmpeg/types.js";
 import type { VisualLayerBlendMode } from "../../../ffmpeg/visual-layer-compositor.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import type { ClaudeElement } from "../../../types/claude-api.js";
+import {
+	planSegmentPictureRead,
+	type SegmentPictureRead,
+} from "./export-segment-encode.js";
 import type { ExportSegment } from "./types.js";
 
 const BLEND_MODES = new Set<VisualLayerBlendMode>([
@@ -65,14 +69,17 @@ export function readSegmentBlendFields({
 /**
  * FFmpeg input options for an overlay: a still loops for the clip's length;
  * a video is cut to the clip's source span (seek, then read length × rate)
- * and decoded with its alpha.
+ * and decoded with its alpha. With `read`, it is opened where that plan
+ * says, a little before the in-point, for `mediaOverlayReadFilter`.
  */
 export function mediaOverlayInputArgs({
 	segment,
 	alpha,
+	read,
 }: {
 	segment: ExportSegment;
 	alpha: VideoAlphaInfo | null;
+	read?: SegmentPictureRead;
 }): string[] {
 	if (segment.isImage) {
 		return [
@@ -85,11 +92,12 @@ export function mediaOverlayInputArgs({
 		];
 	}
 	const rate = segment.playbackRate ?? 1;
+	const seek = read ? read.seek : segment.trimStart;
 	return [
 		...alphaDecoderInputArgs({ alpha }),
-		...(segment.trimStart > 0 ? ["-ss", String(segment.trimStart)] : []),
+		...(seek > 0 ? ["-ss", String(seek)] : []),
 		"-t",
-		String(segment.duration * rate),
+		String(segment.duration * rate + (read?.lead ?? 0)),
 		"-i",
 		segment.sourcePath,
 	];
@@ -132,6 +140,62 @@ export function overlayFrameWindow({
 	const firstFrame = outputFrameAt({ time: startTime, fps });
 	const endFrame = outputFrameAt({ time: startTime + duration, fps });
 	return { firstFrame, frameCount: Math.max(0, endFrame - firstFrame) };
+}
+
+/**
+ * How an overlay video is read so that it starts on the source frame on
+ * screen at its in-point (see `planSegmentPictureRead`): FFmpeg drops that
+ * frame at a seek, so a clip whose in-point lies between two frames of its
+ * file started on the next one. Undefined for a still, and for a clip with
+ * frame interpolation, which works on the file's own frames.
+ */
+export function planMediaOverlayRead({
+	segment,
+	fps,
+}: {
+	segment: ExportSegment;
+	fps: number;
+}): SegmentPictureRead | undefined {
+	if (
+		segment.frameInterpolation === "blend" ||
+		segment.frameInterpolation === "motion-compensated"
+	) {
+		return undefined;
+	}
+	const { firstFrame } = overlayFrameWindow({
+		startTime: segment.startTime,
+		duration: segment.duration,
+		fps,
+	});
+	return planSegmentPictureRead({
+		segment,
+		firstFrameDelay: firstFrame / fps - segment.startTime,
+	});
+}
+
+/**
+ * The stream an overlay's layer is built from: the input on the clock of the
+ * clip's first frame, with one frame for every instant a frame of the clip
+ * shows (`rate / fps` seconds of the source apart), each the source frame on
+ * screen then. The layer chain retimes and resamples it as it would the
+ * file, and finds every frame already where it wants it.
+ */
+export function mediaOverlayReadFilter({
+	read,
+	segment,
+	fps,
+}: {
+	read: SegmentPictureRead;
+	segment: ExportSegment;
+	fps: number;
+}): string {
+	const instantsPerSecond = Number(
+		(fps / (segment.playbackRate ?? 1)).toFixed(6)
+	);
+	return (
+		`settb=AVTB,setpts=PTS-${read.pictureShiftMicros},` +
+		`fps=${instantsPerSecond}:start_time=0:round=up,settb=AVTB`
+	);
 }
 
 /**
