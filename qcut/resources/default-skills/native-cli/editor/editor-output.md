@@ -173,6 +173,17 @@ editor window refuses the option, naming what in the timeline sent it there.
   start or end between frames (`frameAlignment`), and
   `editor timeline snap --to frames` puts them on frames (see
   [editor-timeline.md](editor-timeline.md#frames-clip-edges-and-command-times)).
+- **Nor need an in-point sit on a frame of its file.** Each output frame
+  shows the source frame on screen at its time, on the main track and in an
+  overlay, whatever the file's own frame rate: a clip trimmed to 1.508 s of
+  a 24 fps file starts on the frame that began at 1.5 s, and a 30 fps file
+  on a 24 fps timeline shows, frame by frame, what the preview shows. The
+  sound starts at the in-point itself, to the sample. Up to 2026.11.10.2
+  such a clip began on the next source frame (its first frame held for two,
+  or the whole clip a frame ahead). One case is left: a source frame held
+  for more than a quarter of a second before the in-point, as in a still
+  stretch of a variable-rate screen recording, is not found, and the clip
+  starts on the frame after it.
 - **The picture under an overlay is not converted.** Media overlays, text
   rasters and stickers are drawn onto the joined picture as it is (yuv420p);
   only the layer is converted. Pixels under a layer with a blend mode other
