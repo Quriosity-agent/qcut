@@ -221,6 +221,16 @@ export interface ClaudeTimelineAPI {
 				| { ok: true; response: Record<string, unknown> }
 				| { ok: false; error: string }
 		) => void;
+		/** `editing insert-gap` and `timeline snap --to frames`. */
+		onTimeEdit: (
+			callback: (data: { requestId: string; request: unknown }) => void
+		) => void;
+		sendTimeEditResponse: (
+			requestId: string,
+			result:
+				| { ok: true; response: Record<string, unknown> }
+				| { ok: false; error: string }
+		) => void;
 		onExecuteCuts: (
 			callback: (data: {
 				requestId: string;
