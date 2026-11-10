@@ -21,6 +21,7 @@ import {
 	buildExportSegmentEncodeArgs,
 	buildExportSegmentInputArgs,
 	createAudioStreamProbe,
+	planSegmentPictureRead,
 	resolveExportSegmentAudio,
 	segmentAudioFormat,
 } from "./export-segment-encode.js";
@@ -77,6 +78,7 @@ import {
 import {
 	buildConcatLists,
 	buildSegmentConcatArgs,
+	firstFrameDelay,
 	planConcatSpans,
 	spanFileCounts,
 	standaloneSpan,
@@ -1078,20 +1080,15 @@ export function buildExportSegmentScaleFilter({
 					height: settings.height,
 					playbackRate: segment.playbackRate ?? 1,
 				});
-	const rate = segment.playbackRate ?? 1;
-	// Normalize to zero, scale, then resample with the fps filter: the output
-	// -r option alone mis-samples retimed streams (measured 90→47 frames at
-	// rate 2 instead of 45), while an in-graph fps stage lands exactly on the
-	// 2× mapping.
-	const rateFilter =
-		rate === 1 ? "" : `setpts=(PTS-STARTPTS)/${rate},fps=${settings.fps}`;
+	// A retimed clip's time is divided by its rate where the segment is cut
+	// (buildExportSegmentEncodeArgs), after these stages, which all read the
+	// source's own clock.
 	return [
 		frameInterpolationFilter,
 		enhancementFilter,
 		fit,
 		colorFilter,
 		transformFilter,
-		rateFilter,
 	]
 		.filter((stage) => stage !== "")
 		.join(",");
@@ -1460,7 +1457,24 @@ export async function executeExportJob({
 						index,
 					});
 
-			const inputArgs = buildExportSegmentInputArgs({ segment });
+			const span = spanOf({ kind: "segment", index });
+			// The picture is read from where its first frame falls (a clip that
+			// starts between two frames is first seen part of a frame into
+			// itself); a transition export places its clips itself, each from
+			// its in-point. A black picture reads its source for the sound.
+			const read = blackPicture
+				? undefined
+				: planSegmentPictureRead({
+						segment,
+						firstFrameDelay: hasVideoTransitions
+							? 0
+							: firstFrameDelay({
+									span,
+									startTime: segment.startTime,
+									fps: settings.fps,
+								}),
+					});
+			const inputArgs = buildExportSegmentInputArgs({ segment, read });
 			const scaleFilter = blackPicture
 				? ""
 				: buildExportSegmentScaleFilter({ segment, settings });
@@ -1481,7 +1495,8 @@ export async function executeExportJob({
 					audio: await resolveExportSegmentAudio({ segment, hasAudioStream }),
 					outputPath: outputSegmentPath,
 					blackPicture,
-					span: spanOf({ kind: "segment", index }),
+					span,
+					read,
 				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
