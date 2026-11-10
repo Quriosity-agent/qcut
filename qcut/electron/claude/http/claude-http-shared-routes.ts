@@ -145,6 +145,11 @@ import {
 } from "./claude-http-background-jobs.js";
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
+import {
+	excludeTimelineTracks,
+	readExcludedTrackIds,
+	timelineWithoutTracks,
+} from "../handlers/claude-export-handler/export-track-selection.js";
 import { registerSearchRoutes } from "./claude-http-search-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 import {
@@ -1993,7 +1998,7 @@ export function registerSharedRoutes(
 
 	router.post("/api/claude/export/:projectId/start", async (req) => {
 		try {
-			const timeline = await Promise.race([
+			const openTimeline = await Promise.race([
 				accessor.requestTimeline(),
 				new Promise<never>((_, reject) =>
 					setTimeout(
@@ -2002,6 +2007,31 @@ export function registerSharedRoutes(
 					)
 				),
 			]);
+			// Excluded tracks are read as hidden and muted from here on; the
+			// choice of engine looks at the timeline without them.
+			const excludeTracks = (
+				req.body as { excludeTracks?: unknown } | undefined
+			)?.excludeTracks;
+			let timeline = openTimeline;
+			let drawnTimeline = openTimeline;
+			if (excludeTracks !== undefined) {
+				try {
+					const trackIds = readExcludedTrackIds({ value: excludeTracks });
+					timeline = excludeTimelineTracks({
+						timeline: openTimeline,
+						trackIds,
+					});
+					drawnTimeline = timelineWithoutTracks({
+						timeline: openTimeline,
+						trackIds,
+					});
+				} catch (error) {
+					throw new HttpError(
+						400,
+						error instanceof Error ? error.message : String(error)
+					);
+				}
+			}
 			// The renderer can only snapshot the currently open project. Refuse a
 			// mismatched target instead of silently exporting the wrong timeline.
 			if (!timeline.projectId) {
@@ -2031,35 +2061,43 @@ export function registerSharedRoutes(
 					: []),
 				...(hasStickerRuntimeForExport({
 					mediaItems: mediaFiles,
-					tracks: timeline.tracks,
+					tracks: drawnTimeline.tracks,
 				})
 					? ["Sticker Lab runtime stickers"]
 					: []),
 				...(findRestrictedMediaForExport({
 					mediaItems: mediaFiles,
 					scope: "timeline",
-					tracks: timeline.tracks,
+					tracks: drawnTimeline.tracks,
 				}).length > 0
 					? ["restricted media only the live renderer may read"]
 					: []),
-				...(timelineRequiresRendererPortraitExport({ timeline })
+				...(timelineRequiresRendererPortraitExport({ timeline: drawnTimeline })
 					? ["portrait adjustments"]
 					: []),
-				...(timelineRequiresRendererFilterStackExport({ timeline })
+				...(timelineRequiresRendererFilterStackExport({
+					timeline: drawnTimeline,
+				})
 					? ["clips with a filterStack"]
 					: []),
-				...(timelineRequiresRendererShaderTransitionExport({ timeline })
+				...(timelineRequiresRendererShaderTransitionExport({
+					timeline: drawnTimeline,
+				})
 					? ["shader transitions"]
 					: []),
-				...(timelineRequiresRendererAdjustmentLayerExport({ timeline })
+				...(timelineRequiresRendererAdjustmentLayerExport({
+					timeline: drawnTimeline,
+				})
 					? ["masked or multi-pass adjustment layers"]
 					: []),
-				...(timelineRequiresRendererColorKeyframeExport({ timeline })
+				...(timelineRequiresRendererColorKeyframeExport({
+					timeline: drawnTimeline,
+				})
 					? [
 							"animated tonal controls (shadows, highlights, whites, blacks or fade)",
 						]
 					: []),
-				...[mediaOverlayRendererReason({ timeline })].filter(
+				...[mediaOverlayRendererReason({ timeline: drawnTimeline })].filter(
 					(reason): reason is string => reason !== null
 				),
 			];
