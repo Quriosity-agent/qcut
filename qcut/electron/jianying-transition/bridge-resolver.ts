@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants, existsSync } from "node:fs";
-import { access, mkdir, readFile, stat } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -52,6 +52,8 @@ export const JIANYING_TRANSITION_BRIDGE_SOURCE_FILE_NAMES = [
 ] as const;
 
 const pendingBridgeResolutions = new Map<string, Promise<string | null>>();
+/** The bridges being compiled, by the file they are compiled to. */
+const pendingBridgeCompilations = new Map<string, Promise<string>>();
 /** The usage text of each bridge binary asked so far, by path and file state. */
 const bridgeUsageTexts = new Map<string, Promise<string>>();
 
@@ -230,14 +232,22 @@ export async function compileJianyingTransitionBridge({
 	if (await isExecutable({ filePath: outputPath })) return outputPath;
 
 	await mkdir(path.dirname(outputPath), { recursive: true });
-	await execFileAsync(
-		"xcrun",
-		jianyingTransitionBridgeCompilerArguments({
-			sourceDirectory,
-			outputPath,
-		}),
-		{ maxBuffer: 16 * 1024 * 1024 }
-	);
+	// Linked beside its place and moved there whole: whoever finds the file,
+	// in this process or another, never finds one still being written.
+	const partialPath = `${outputPath}.${process.pid}.partial`;
+	try {
+		await execFileAsync(
+			"xcrun",
+			jianyingTransitionBridgeCompilerArguments({
+				sourceDirectory,
+				outputPath: partialPath,
+			}),
+			{ maxBuffer: 16 * 1024 * 1024 }
+		);
+		await rename(partialPath, outputPath);
+	} finally {
+		await rm(partialPath, { force: true });
+	}
 	if (!(await isExecutable({ filePath: outputPath }))) {
 		throw new Error(
 			"The Jianying transition bridge was not executable after build."
@@ -257,18 +267,28 @@ async function compileDevelopmentBridge({
 		"jianying-runtime-probe"
 	);
 	const fingerprint = await sourceFingerprint({ sourceDirectory });
-	return compileJianyingTransitionBridge({
-		projectRoot,
-		outputPath: path.join(
-			os.homedir(),
-			"Library",
-			"Caches",
-			"QCut",
-			"jianying-transition-bridge",
-			fingerprint,
-			JIANYING_TRANSITION_BRIDGE_FILE_NAME
-		),
-	});
+	const outputPath = path.join(
+		os.homedir(),
+		"Library",
+		"Caches",
+		"QCut",
+		"jianying-transition-bridge",
+		fingerprint,
+		JIANYING_TRANSITION_BRIDGE_FILE_NAME
+	);
+	// Callers that ask for different things look bridges up separately, and
+	// can both end here: one compile for each file, whoever asks.
+	let pending = pendingBridgeCompilations.get(outputPath);
+	if (!pending) {
+		pending = compileJianyingTransitionBridge({
+			projectRoot,
+			outputPath,
+		}).finally(() => {
+			pendingBridgeCompilations.delete(outputPath);
+		});
+		pendingBridgeCompilations.set(outputPath, pending);
+	}
+	return pending;
 }
 
 /** What a bridge prints when run without arguments: its modes and capabilities. */
@@ -358,8 +378,9 @@ export function resolveJianyingTransitionBridge({
 	const requiredTokens = [requiredMode, requiredCapability].filter(
 		(token): token is string => Boolean(token)
 	);
-	// One lookup at a time for each thing asked, so two callers never compile
-	// the same bridge at once, and one caller's needs never decide another's.
+	// One lookup at a time for each thing asked, so one caller's needs never
+	// decide another's. Lookups for different things can still both come to
+	// compile; that is shared by the file compiled (compileDevelopmentBridge).
 	const key = `${allowCompile}\n${requiredTokens.join("\n")}`;
 	let pending = pendingBridgeResolutions.get(key);
 	if (!pending) {
