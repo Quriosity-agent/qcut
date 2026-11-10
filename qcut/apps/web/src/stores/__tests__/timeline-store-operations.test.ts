@@ -4,8 +4,9 @@
  * by exercising them through the Zustand store.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { CreateMediaElement, CreateTextElement } from "@/types/timeline";
 
@@ -762,6 +763,111 @@ describe("Timeline Store Operations", () => {
 		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
 			{ time: 12, value: -12 },
 		]);
+	});
+
+	describe("the project's bus and master curves", () => {
+		/** A project whose master and first bus have a curve, and what it saves. */
+		function projectWithMixCurves() {
+			const audioMix = {
+				master: {
+					id: "master",
+					automation: {
+						gainDb: [
+							{ time: 2, value: 0 },
+							{ time: 12, value: -6 },
+						],
+					},
+				},
+				buses: [
+					{ id: "music", automation: { gainDb: [{ time: 8, value: -3 }] } },
+					{ id: "dialogue" },
+				],
+				tracks: [],
+			};
+			const updateProjectAudioMix = vi.fn();
+			vi.mocked(useProjectStore.getState).mockReturnValue({
+				activeProject: { audioMix },
+				updateProjectAudioMix,
+			} as never);
+			return { audioMix, updateProjectAudioMix };
+		}
+
+		afterEach(() => {
+			vi.mocked(useProjectStore.getState).mockReturnValue({
+				activeProject: null,
+			} as never);
+		});
+
+		it("open with the timeline when every unlocked track moves", () => {
+			const { audioMix, updateProjectAudioMix } = projectWithMixCurves();
+			const { result } = setupStoreWithElement();
+			let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				answer = result.current.insertTimeGap({ time: 0, duration: 5 });
+			});
+
+			expect(answer).toMatchObject({ ok: true, mixAutomationMoved: true });
+			expect(updateProjectAudioMix).toHaveBeenCalledTimes(1);
+			const [saved] = updateProjectAudioMix.mock.calls[0];
+			expect(saved.master.automation.gainDb).toEqual([
+				{ time: 7, value: 0 },
+				{ time: 17, value: -6 },
+			]);
+			expect(saved.buses[0].automation.gainDb).toEqual([
+				{ time: 13, value: -3 },
+			]);
+			// A bus without a curve is handed on as it was.
+			expect(saved.buses[1]).toBe(audioMix.buses[1]);
+		});
+
+		it("stay where they are with keepAutomation, or when one track alone moves", () => {
+			const { updateProjectAudioMix } = projectWithMixCurves();
+			const { result, mainTrackId } = setupStoreWithElement();
+			let kept: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				kept = result.current.insertTimeGap({
+					time: 0,
+					duration: 5,
+					keepAutomation: true,
+				});
+			});
+			expect(kept).toMatchObject({ ok: true, mixAutomationMoved: false });
+
+			// A second unlocked track that is left out: the programme as a
+			// whole did not move.
+			act(() => {
+				result.current.addTrack("media");
+			});
+			let partial: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				partial = result.current.insertTimeGap({
+					time: 0,
+					duration: 5,
+					trackIds: [mainTrackId],
+				});
+			});
+			expect(partial).toMatchObject({ ok: true, mixAutomationMoved: false });
+			expect(updateProjectAudioMix).not.toHaveBeenCalled();
+		});
+
+		it("close up with the timeline when a range is deleted from every track", () => {
+			const { updateProjectAudioMix } = projectWithMixCurves();
+			const { result } = setupStoreWithElement();
+			act(() => {
+				result.current.deleteTimeRange({ startTime: 6, endTime: 8 });
+			});
+
+			expect(updateProjectAudioMix).toHaveBeenCalledTimes(1);
+			const [saved] = updateProjectAudioMix.mock.calls[0];
+			expect(saved.master.automation.gainDb).toEqual([
+				{ time: 2, value: 0 },
+				{ time: 10, value: -6 },
+			]);
+			// The bus's one point sat at the end of the removed range.
+			expect(saved.buses[0].automation.gainDb).toEqual([
+				{ time: 6, value: -3 },
+			]);
+		});
 	});
 
 	it("insertTimeGap leaves a clip that ends at the point where it is", () => {
