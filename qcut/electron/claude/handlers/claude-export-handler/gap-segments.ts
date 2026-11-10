@@ -23,6 +23,10 @@ import {
 	segmentPcmAudioArgs,
 	silenceInputArgs,
 } from "./export-segment-encode.js";
+import {
+	EXPORT_PICTURE_COLOR_ARGS,
+	EXPORT_PICTURE_TAGS_FILTER,
+} from "./source-color.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -118,7 +122,8 @@ export function buildGapSegmentEncodeArgs({
 		"-map",
 		"1:a:0",
 		"-vf",
-		`trim=end_frame=${frames}`,
+		// Black says what it is too, so the joined picture has one description.
+		`trim=end_frame=${frames},${EXPORT_PICTURE_TAGS_FILTER}`,
 		"-af",
 		`atrim=end_sample=${samples}`,
 		"-c:v",
@@ -129,6 +134,7 @@ export function buildGapSegmentEncodeArgs({
 		parseBitrateForKbps({ bitrate: settings.bitrate }),
 		"-pix_fmt",
 		"yuv420p",
+		...EXPORT_PICTURE_COLOR_ARGS,
 		...segmentPcmAudioArgs({ format }),
 		outputPath,
 	];
