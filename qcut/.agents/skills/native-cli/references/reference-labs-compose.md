@@ -88,7 +88,9 @@ and a level from -60 to 12 dB, 0 meaning unchanged. The level moves linearly in
 dB between keyframes and holds before the first and after the last. Keyframes
 are the item's whole level, so an `audio` entry with keyframes must leave
 `volume` at 1. Headless renders and editor projects play the same envelope; in
-the editor the keyframes appear as the clip's volume keyframes.
+the editor the keyframes appear as the clip's volume keyframes. A mono source
+is at full level in both channels in either (up to 2026.11.10.2 a headless
+render wrote it 3 dB lower).
 
 ```json
 {
