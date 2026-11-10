@@ -432,6 +432,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"to-track": { type: "string" },
 			"split-time": { type: "string" },
 			time: { type: "string" },
+			at: { type: "string" },
+			"snap-frames": { type: "boolean", default: false },
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
 			"trim-start": { type: "string" },
@@ -1114,6 +1116,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// the runner refuses before any command sees it.
 		startTime: parseStrictCliNumber({ value: values["start-time"] }),
 		endTime: parseStrictCliNumber({ value: values["end-time"] }),
+		at: parseStrictCliNumber({ value: values.at }),
+		snapFrames: (values["snap-frames"] as boolean) ?? false,
 		trimStart: parseStrictCliNumber({ value: values["trim-start"] }),
 		matchLoudness: values["match-loudness"] === true ? true : undefined,
 		newName: values["new-name"] as string | undefined,
