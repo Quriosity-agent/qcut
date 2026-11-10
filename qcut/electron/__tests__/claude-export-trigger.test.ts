@@ -459,7 +459,9 @@ describe("Claude export trigger", () => {
 					mockSpawn.mock.calls.filter(([command]) => command === "/mock/ffmpeg")
 						.length
 				);
-				expect(lines.some((line) => /segment-0000\.mov$/.test(line))).toBe(
+				// A step ends with the file it writes. On Windows the path has
+				// backslashes, so the script quotes it.
+				expect(lines.some((line) => /segment-0000\.mov'?$/.test(line))).toBe(
 					true
 				);
 			});
