@@ -32,8 +32,10 @@ import {
 } from "./joined-picture.js";
 import {
 	mediaOverlayInputArgs,
+	mediaOverlayReadFilter,
 	mediaOverlayVideoSource,
 	overlayFrameWindow,
+	planMediaOverlayRead,
 } from "./media-overlay-source.js";
 import { moveFile } from "./move-file.js";
 import {
@@ -76,14 +78,33 @@ export function buildMediaOverlayPassArgs({
 	baseColor?: JoinedPictureColor;
 }): { args: string[]; filterComplex: string } {
 	const inputArgs = ["-y", ...joinedPictureInputArgs({ path: inputPath })];
-	for (const overlay of overlays) {
-		inputArgs.push(...mediaOverlayInputArgs(overlay));
+	// Each video is opened a little before its in-point and put on the
+	// instants its frames show, so it starts on the frame on screen there.
+	const reads = overlays.map(({ segment }) =>
+		planMediaOverlayRead({ segment, fps: settings.fps })
+	);
+	const readLabel = (index: number) => `media_overlay_read_${index}`;
+	const readSteps: string[] = [];
+	for (const [index, overlay] of overlays.entries()) {
+		const read = reads[index];
+		inputArgs.push(...mediaOverlayInputArgs({ ...overlay, read }));
+		if (!read) continue;
+		readSteps.push(
+			`[${index + 1}:v]${mediaOverlayReadFilter({
+				read,
+				segment: overlay.segment,
+				fps: settings.fps,
+			})}[${readLabel(index)}]`
+		);
 	}
 	const built = buildVideoTimelineLayers({
 		videoSources: overlays.map(({ segment }) =>
 			mediaOverlayVideoSource({ segment, fps: settings.fps })
 		),
 		inputIndexes: overlays.map((_overlay, index) => index + 1),
+		inputLabels: reads.map((read, index) =>
+			read ? readLabel(index) : undefined
+		),
 		width: settings.width,
 		height: settings.height,
 		fps: settings.fps,
@@ -137,6 +158,7 @@ export function buildMediaOverlayPassArgs({
 					`[0:v]${joinedPictureColorFilter({ color: baseColor })}[${BASE_LABEL}]`,
 				]
 			: []),
+		...readSteps,
 		...built.filterSteps,
 		...exactSteps,
 		...composed.filterSteps,
