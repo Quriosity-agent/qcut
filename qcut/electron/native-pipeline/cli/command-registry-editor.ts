@@ -176,6 +176,20 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		f("--new-name", "string", "New name", { required: true }),
 	]),
 	"editor:media:delete": ed("editor:media:delete", "Delete media", [PID, MID]),
+	"editor:media:replace": ed(
+		"editor:media:replace",
+		"Put a new file in a media item's place: it is imported, every clip that played the old item plays it (one undo step), and the old item is removed (confirm tier, needs --force)",
+		[
+			PID,
+			MID,
+			f("--source", "string", "The file to import in its place", {
+				required: true,
+			}),
+		],
+		[
+			"qcut editor media replace --media-id <id> --source ./shake_03.mov --project-id <id> --force --json",
+		]
+	),
 
 	// ── Project ──
 	"editor:project:settings": ed(
@@ -436,7 +450,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		]
 	),
 	"editor:timeline:export": ed("editor:timeline:export", "Export timeline", [
-		PID,
+		PID_ACTIVE,
 		f("--output-format", "string", "Output format", { short: "-f" }),
 		f("--mode", "string", "Export mode"),
 	]),
@@ -572,6 +586,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			PID,
 			EID,
 			f("--split-time", "number", "Split point in seconds", { required: true }),
+			f(
+				"--snap-frames",
+				"boolean",
+				"Round the split point to the project's nearest frame"
+			),
 		]
 	),
 	"editor:timeline:shot-split": ed(
@@ -620,16 +639,24 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:timeline:snap": ed(
 		"editor:timeline:snap",
-		"Move clips onto the nearest marked beat (editor beats mark first), as one undo step",
+		"Move clips onto the nearest marked beat (editor beats mark first), or with --to frames put clip edges on whole frames without moving what the clips show; one undo step",
 		[
 			PID,
-			f("--to", "string", "What to snap to: beats (default)", {
-				enum: ["beats"],
-			}),
+			f(
+				"--to",
+				"string",
+				"What to snap to: beats (default), or frames (each edge to a whole frame, its trim taking up the difference)",
+				{ enum: ["beats", "frames"] }
+			),
 			f(
 				"--element-ids",
 				"string",
-				"Clips to move (comma-separated; --element-id for one)"
+				"Clips to snap (comma-separated; --element-id for one). With --to frames: default every clip of the tracks"
+			),
+			f(
+				"--track-id",
+				"string",
+				"With --to frames: only these tracks (comma-separated); default every unlocked track"
 			),
 			f(
 				"--beats-from",
@@ -647,7 +674,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f(
 				"--frame-align",
 				"string",
-				"Which clips end up on a whole frame: visual (default; video, image, text, stickers), all, or none",
+				"Which clips end up on a whole frame: visual (default; video, image, text, stickers), all, or none (--to frames: visual or all)",
 				{
 					enum: ["visual", "all", "none"],
 				}
@@ -669,6 +696,8 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"qcut editor timeline snap --to beats --element-ids <a>,<b> --project-id <id> --json",
 			"qcut editor timeline snap --to beats --element-ids <a> --edge end --max-distance 0.25 --dry-run --project-id <id> --json",
 			"qcut editor timeline snap --to beats --element-ids <sfx> --edge onset --project-id <id> --json",
+			"qcut editor timeline snap --to frames --dry-run --project-id <id> --json",
+			"qcut editor timeline snap --to frames --track-id <main-track> --project-id <id> --json",
 		]
 	),
 	"editor:timeline:job-status": ed(
@@ -689,6 +718,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"--to-track",
 			"string",
 			"Target track (omit to stay on the current one); give this, --time, or both"
+		),
+		f(
+			"--snap-frames",
+			"boolean",
+			"Round --time to the project's nearest frame"
 		),
 	]),
 	"editor:timeline:arrange": ed(
@@ -760,7 +794,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		f("--time", "number", "Seek time in seconds", { required: true }),
 	]),
 	"editor:timeline:info": ed("editor:timeline:info", "Get timeline state", [
-		PID,
+		PID_ACTIVE,
 	]),
 	"editor:timeline:add-clip": ed(
 		"editor:timeline:add-clip",
@@ -772,6 +806,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		EID,
 		f("--start-time", "number", "Start time in seconds", { required: true }),
 		f("--end-time", "number", "End time in seconds", { required: true }),
+		f(
+			"--snap-frames",
+			"boolean",
+			"Round both times to the project's nearest frames"
+		),
 	]),
 
 	// ── Editing ──
@@ -804,6 +843,43 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 				"boolean",
 				"Leave level/pan automation in place (by default it ripples with the clips)"
 			),
+			f(
+				"--snap-frames",
+				"boolean",
+				"Round both ends of the range to the project's nearest frames, so the cuts it leaves sit on frames"
+			),
+		]
+	),
+	"editor:editing:insert-gap": ed(
+		"editor:editing:insert-gap",
+		"Open empty time: clips from the point on move later, a clip spanning it is split (the reverse of delete-range); one undo step",
+		[
+			PID,
+			f("--at", "number", "Where the empty time starts, in seconds", {
+				required: true,
+			}),
+			f("--duration", "number", "How long it is, in seconds", {
+				required: true,
+			}),
+			f(
+				"--track-id",
+				"string",
+				"Only these tracks (comma-separated); default every unlocked track"
+			),
+			f(
+				"--keep-automation",
+				"boolean",
+				"Leave level/pan automation in place (by default it moves with the clips)"
+			),
+			f(
+				"--snap-frames",
+				"boolean",
+				"Round --at and --duration to the project's frames"
+			),
+		],
+		[
+			"qcut editor editing insert-gap --at 0 --duration 5 --project-id <id> --json",
+			"qcut editor editing insert-gap --at 52.4 --duration 2 --snap-frames --track-id <main-track> --project-id <id> --json",
 		]
 	),
 	"editor:editing:auto-edit": ed(
