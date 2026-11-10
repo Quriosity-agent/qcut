@@ -381,6 +381,17 @@ describe("Claude export trigger", () => {
 		for (const args of segments) {
 			expect(args.slice(args.indexOf("-map"))).not.toContain("-t");
 		}
+		// Each clip's picture is read from where its first frame falls: the
+		// second clip starts 0.6 of a frame before frame 25, the third 0.2 of
+		// one before frame 49 (microseconds, with the 1 ms edge rule).
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-vf") + 1].match(
+						/^settb=AVTB,setpts=PTS-(\d+),/
+					)?.[1]
+			)
+		).toEqual(["1000", "26000", "9333"]);
 
 		const lists = new Map(
 			mockFsPromises.writeFile.mock.calls.map((call) => {
