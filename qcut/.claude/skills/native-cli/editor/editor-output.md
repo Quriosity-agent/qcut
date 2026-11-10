@@ -191,14 +191,29 @@ editor window refuses the option, naming what in the timeline sent it there.
   2026.11.10.2 one overlay anywhere sent every frame of the export through
   RGBA and back, which lowered the picture's luma by 1.2–1.6 levels (8-bit)
   in the export this was measured on.
-- **Sources with different colour tags.** Clips from files tagged
-  `tv, bt709` and from untagged files can follow each other: overlays that
-  appear after such a change keep their first frames (up to 2026.11.10.2
-  they started 2–5 frames into themselves). The overlay passes read the
-  whole picture with the colour tags of its first frame, which are also the
-  tags the export carries, so under a blend-mode layer a clip tagged
-  otherwise is converted with that matrix. Give the sources the same tags
-  when that matters.
+- **One colour description.** A native export (MP4 or MOV) is BT.709,
+  limited range, 8-bit 4:2:0, and says so in the file and on every frame, as
+  the in-browser export does. A source, on the main track or as an overlay,
+  is read as the editor reads it:
+  - by its own tags (BT.601, BT.709, limited or full range);
+  - a file that says nothing as BT.601 if it has fewer than 720 lines and
+    BT.709 from 720 up, limited range (Chromium's rule, so also the
+    preview's);
+  - a PNG or JPEG still as the picture it is.
+
+  A BT.709 clip passes through untouched. Anything else is converted: its
+  matrix and its range, while primaries and transfer are relabelled, which
+  is all the in-browser export does too. Up to 2026.11.10.2 the native
+  export kept each clip's own description, and wrote a still, and a
+  recording with a drawn cursor, as BT.601 with no tags at all: one file
+  changed description from clip to clip under its first clip's tags, a
+  player showed the others up to 40 levels (8-bit) off on saturated colours,
+  and overlays that appeared after such a change started 2–5 frames into
+  themselves. An untagged file whose coding does not match its size (HD
+  coded BT.601, SD coded BT.709) comes out shifted, as it also shows in the
+  preview: tag the file. An HDR source (PQ or HLG) is not tone-mapped; it
+  passes as it is, tags included, as before, and a timeline that mixes one
+  with SDR clips still changes description where they meet.
 
 ### What the export checks itself
 
@@ -210,6 +225,7 @@ A native export counts what it wrote and says so in the job's `warnings`
 | `The joined picture is N frames (…); the timeline gives it M frames` | The main track's picture came out another length than the timeline, so picture and sound are that far apart by the end. A second warning names the clips or gaps that were written another length than planned |
 | `The exported picture is N frames (…); it should be M frames` | A pass after the join (overlays, captions, the mix) added or dropped frames |
 | `FFmpeg rebuilt a filter graph while it read <file> with K other input(s)` | An input changed its picture or sound format part-way through a pass that reads several inputs; what is drawn or mixed over it can start a few frames into itself from that point |
+| `The exported picture is tagged …; it should be tv, bt709, bt709, bt709` | The finished file does not say it is BT.709, limited range: a pass lost or changed the colour description, and a player may show its colours shifted (not checked when the timeline has an HDR clip) |
 
 None of them is expected: each names a fault in the export, not in the
 timeline. Report it with the job's `warnings` and, if it can be run again,
