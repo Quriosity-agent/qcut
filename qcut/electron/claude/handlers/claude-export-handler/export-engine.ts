@@ -86,9 +86,21 @@ import {
 	cutPictureToRange,
 	layersShowingInRange,
 	type PictureLayers,
+	rangeFrameCount,
 	segmentsShowingInRange,
 	type TimelineRange,
 } from "./export-range.js";
+import {
+	checkExportedPicture,
+	checkJoinedPicture,
+} from "./export-picture-check.js";
+import {
+	exportStepLogFor,
+	exportStepScript,
+	graphRebuildReasons,
+	graphRebuildWarnings,
+	openExportStepLog,
+} from "./export-step-log.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
 import { emitClaudeEvent } from "../claude-events-handler.js";
@@ -667,8 +679,11 @@ export async function collectStickerOverlays({
 		const diskFallbackCache = new Map<string, MediaFile | null>();
 
 		for (const track of timeline.tracks) {
+			// A hidden track's stickers are not drawn, as in the preview and as
+			// every other layer of the export already was.
+			if (track.hidden) continue;
 			for (const element of track.elements) {
-				if (element.type !== "sticker") continue;
+				if (element.type !== "sticker" || element.hidden === true) continue;
 
 				// Resolve the sticker image file
 				let media = findMediaForElement({ element, mediaById, mediaByName });
@@ -826,6 +841,8 @@ async function runFFmpegCommand({
 	try {
 		throwIfCancelled(signal);
 		const ffmpegPath = getFFmpegPath();
+		const stepLog = exportStepLogFor({ signal });
+		stepLog?.commands.push(args);
 
 		await new Promise<void>((resolve, reject) => {
 			const process = spawn(ffmpegPath, args, {
@@ -883,6 +900,14 @@ async function runFFmpegCommand({
 					return;
 				}
 				if (code === 0) {
+					const reasons = graphRebuildReasons({ stderr: stderrOutput });
+					if (reasons.length > 0) {
+						claudeLog.warn(
+							HANDLER_NAME,
+							`FFmpeg rebuilt a filter graph part-way (${reasons.join("; ")}) in: ${args.join(" ")}`
+						);
+						stepLog?.rebuilds.push({ args, reasons });
+					}
 					resolve();
 					return;
 				}
@@ -1306,6 +1331,9 @@ export async function executeExportJob({
 	const abort = new AbortController();
 	job.abort = abort;
 	if (job.status === EXPORT_JOB_STATUS.cancelled) abort.abort();
+	const stepLog = openExportStepLog({ signal: abort.signal });
+	const keepTempFiles = settings.keepTempFiles === true;
+	const pictureWarnings: string[] = [];
 
 	let tempDir = "";
 	const enforceTruePeak =
@@ -1328,6 +1356,11 @@ export async function executeExportJob({
 		tempDir = await fsPromises.mkdtemp(
 			path.join(tempBase, "qcut-claude-export-")
 		);
+		// Said from the start, so a status read the moment the job completes
+		// already names the folder.
+		if (keepExportTempFiles({ requested: keepTempFiles })) {
+			job.intermediates = tempDir;
+		}
 
 		// Limited exports keep video private until the encoded audio is
 		// verified; a range export cuts its full-length picture at the end.
@@ -1572,6 +1605,35 @@ export async function executeExportJob({
 				});
 			},
 		});
+
+		// The files were cut to the timeline's frames; what was written is
+		// counted, so a clip that came out another length is named.
+		const joinedPictureFiles = concatEntries.flatMap((entry, position) =>
+			concatSpans[position].frames > 0
+				? [
+						{
+							path:
+								entry.kind === "segment"
+									? segmentOutputs[entry.index]
+									: gapOutputs[entry.index],
+							label:
+								entry.kind === "segment"
+									? `Clip ${segments[entry.index].elementId}`
+									: `The gap at ${entry.startTime.toFixed(3)} s`,
+							frames: concatSpans[position].frames,
+						},
+					]
+				: []
+		);
+		if (!hasVideoTransitions) {
+			pictureWarnings.push(
+				...(await checkJoinedPicture({
+					joinedPath: concatOutputPath,
+					files: joinedPictureFiles,
+					fps: settings.fps,
+				}))
+			);
+		}
 
 		if (hasVideoTransitions) {
 			await renderTransitionedVideo({
@@ -1948,7 +2010,7 @@ export async function executeExportJob({
 
 			// Clean up intermediary MP4, unless it is being kept for a
 			// bit-for-bit comparison of two exports (N34).
-			if (!keepExportTempFiles()) {
+			if (!keepExportTempFiles({ requested: keepTempFiles })) {
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {
@@ -1989,7 +2051,7 @@ export async function executeExportJob({
 				}
 				throw mp3Error;
 			}
-			if (!keepExportTempFiles()) {
+			if (!keepExportTempFiles({ requested: keepTempFiles })) {
 				try {
 					await fsPromises.unlink(videoOutputPath);
 				} catch {
@@ -2017,6 +2079,26 @@ export async function executeExportJob({
 						limiter: audioMixConfig?.master.effects.limiter,
 						signal: abort.signal,
 					});
+		// A transition export's picture is laid out by the transition pass,
+		// whose frame count is its own; the others have a planned length.
+		const expectedFrames = rangeCut
+			? rangeFrameCount({ range: rangeCut.range, fps: settings.fps })
+			: hasVideoTransitions
+				? undefined
+				: joinedPictureFiles.reduce((sum, file) => sum + file.frames, 0);
+		if (
+			expectedFrames !== undefined &&
+			["mp4", "mov"].includes(settings.format)
+		) {
+			pictureWarnings.push(
+				...(await checkExportedPicture({
+					outputPath,
+					expectedFrames,
+					fps: settings.fps,
+				}))
+			);
+		}
+		pictureWarnings.push(...graphRebuildWarnings({ log: stepLog }));
 		const outputStats = await fsPromises.stat(outputPath);
 		const duration = exportSeconds;
 
@@ -2049,6 +2131,12 @@ export async function executeExportJob({
 			};
 		}
 		Object.assign(finishedJob, audioCheck);
+		if (pictureWarnings.length > 0) {
+			finishedJob.warnings = [
+				...(finishedJob.warnings ?? []),
+				...pictureWarnings,
+			];
+		}
 		if (audioWarnings.length > 0) {
 			finishedJob.warnings = [
 				...(finishedJob.warnings ?? []),
@@ -2143,12 +2231,22 @@ export async function executeExportJob({
 	} finally {
 		if (
 			tempDir &&
-			!reportKeptExportDirectory({
+			reportKeptExportDirectory({
 				handler: HANDLER_NAME,
 				label: "the export's intermediates",
 				directory: tempDir,
+				requested: keepTempFiles,
 			})
 		) {
+			// The commands that made the kept files, to run any of them again.
+			await fsPromises
+				.writeFile(
+					path.join(tempDir, "ffmpeg-commands.sh"),
+					exportStepScript({ log: stepLog, ffmpegPath: getFFmpegPath() }),
+					"utf8"
+				)
+				.catch(() => undefined);
+		} else if (tempDir) {
 			try {
 				await fsPromises.rm(tempDir, { recursive: true, force: true });
 			} catch (cleanupError) {
