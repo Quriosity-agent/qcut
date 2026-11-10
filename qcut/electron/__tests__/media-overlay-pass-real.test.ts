@@ -521,6 +521,53 @@ describe.skipIf(!fs.existsSync(ffmpegPath))("media overlay pass", () => {
 	}, 60_000);
 
 	/**
+	 * An overlay whose in-point is between two frames of its file (its edge
+	 * was moved onto a frame and its trim took up the difference, or it was
+	 * cut by time) starts on the frame on screen at that point. FFmpeg drops
+	 * that frame at a seek, so the clip used to start on the next one.
+	 */
+	it.each([
+		{ phase: 0.2, delay: 0 },
+		{ phase: 0.5, delay: 0 },
+		{ phase: 0.8, delay: 0 },
+		{ phase: 0.5, delay: 0.6 },
+	])("starts an overlay on the frame on screen at an in-point $phase of a frame into it (first seen $delay of a frame late)", async ({
+		phase,
+		delay,
+	}) => {
+		// Twenty-four opaque frames, each as bright as its own number says.
+		run([
+			"-f",
+			"lavfi",
+			"-i",
+			`color=c=black:s=${W}x${H}:r=${FPS}:d=1,geq=lum='36+8*N':cb=128:cr=128`,
+			"-c:v",
+			"libx264",
+			"-qp",
+			"0",
+			"-pix_fmt",
+			"yuv420p",
+			source("numbered-24.mp4"),
+		]);
+		// The clip starts `delay` of a frame before output frame 24.
+		const output = await composite(`in-point-${phase}-${delay}`, [
+			overlay(source("numbered-24.mp4"), (24 - delay) / FPS, {
+				trimStart: (4 + phase) / FPS,
+				duration: 12 / FPS,
+			}),
+		]);
+		const frames = decodeYuv(output);
+		expect(frames).toHaveLength(BASE_SECONDS * FPS);
+		const first = Math.floor(4 + phase + delay);
+		const shown = frames
+			.slice(24, 34)
+			.map((frame) => Math.round((luma(frame, 160, 90) - 36) / 8));
+		expect(shown).toEqual(
+			Array.from({ length: 10 }, (_unused, index) => first + index)
+		);
+	}, 60_000);
+
+	/**
 	 * A blend mode works in RGB, so the picture under the clip is converted
 	 * and converted back. The graph is no longer rebuilt at a change of
 	 * colour tags, and FFmpeg would read each frame by its own tags while
