@@ -23,6 +23,7 @@ import {
 } from "../../../ffmpeg/visual-layer-compositor.js";
 import { buildVideoTimelineLayers } from "../../../ffmpeg-video-transform.js";
 import { claudeLog } from "../../utils/logger.js";
+import { formatShellArgs } from "./export-step-log.js";
 import {
 	type JoinedPictureColor,
 	joinedPictureColorFilter,
@@ -243,9 +244,10 @@ export async function runMediaOverlayPass({
 		duration,
 		baseColor: await probeJoinedPictureColor({ path: videoOutputPath }),
 	});
+	// The inputs too: the filter alone cannot be run again without them.
 	claudeLog.info(
 		HANDLER_NAME,
-		`Drawing ${overlays.length} media overlay(s): ${pass.filterComplex}`
+		`Drawing ${overlays.length} media overlay(s): ffmpeg ${formatShellArgs({ args: pass.args })}`
 	);
 	await moveFile({ from: videoOutputPath, to: sourcePath });
 	try {
