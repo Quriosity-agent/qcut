@@ -5,6 +5,7 @@ import {
 	planSegmentPictureRead,
 } from "../claude/handlers/claude-export-handler/export-segment-encode.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
+import { STEREO_SOURCE_CHAIN } from "../ffmpeg/stereo-source.js";
 
 /**
  * Where a segment's source is opened, and how its picture and sound are put
@@ -127,7 +128,7 @@ describe("a segment read by its plan", () => {
 		);
 		// The sound of the same input starts at the in-point, the lead cut off.
 		expect(af).toBe(
-			"atrim=start=0.25,asetpts=PTS-0.25/TB,aresample=async=1:first_pts=0,apad,atrim=end_sample=72000"
+			`${STEREO_SOURCE_CHAIN},atrim=start=0.25,asetpts=PTS-0.25/TB,aresample=async=1:first_pts=0,apad,atrim=end_sample=72000`
 		);
 	});
 
@@ -171,7 +172,7 @@ describe("a segment read by its plan", () => {
 			}),
 		});
 		expect(af).toBe(
-			"aresample=async=1:first_pts=0,apad,atrim=end_sample=72000"
+			`${STEREO_SOURCE_CHAIN},aresample=async=1:first_pts=0,apad,atrim=end_sample=72000`
 		);
 	});
 
@@ -195,7 +196,7 @@ describe("a segment read by its plan", () => {
 		const { vf, af } = filters({ args });
 		expect(vf.startsWith("settb=AVTB,setpts=PTS-1000,scale=")).toBe(true);
 		expect(af).toBe(
-			"aresample=async=1:first_pts=0,apad,atrim=end_sample=72000"
+			`${STEREO_SOURCE_CHAIN},aresample=async=1:first_pts=0,apad,atrim=end_sample=72000`
 		);
 	});
 });
