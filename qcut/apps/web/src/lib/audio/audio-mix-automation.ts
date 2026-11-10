@@ -116,6 +116,64 @@ export function rippleAutomation({
 	return Object.keys(rippled).length > 0 ? rippled : undefined;
 }
 
+/**
+ * A curve after `duration` seconds of empty time open at `time`: points from
+ * `time` on move later by `duration`. Where the curve runs across `time`, the
+ * value it had there is pinned at both edges of the gap, so it holds through
+ * the new time instead of sloping across it. The reverse of `ripplePoints`.
+ */
+export function openGapInPoints({
+	points,
+	time,
+	duration,
+}: {
+	points: AudioAutomationPoint[];
+	time: number;
+	duration: number;
+}): AudioAutomationPoint[] {
+	if (duration <= 0 || points.length === 0) return points;
+	const sorted = [...points].sort((a, b) => a.time - b.time);
+	const before = sorted.filter((point) => point.time < time);
+	const later = sorted.filter((point) => point.time >= time);
+	if (later.length === 0) return points;
+	const after = later.map((point) => ({
+		time: point.time + duration,
+		value: point.value,
+	}));
+	if (before.length === 0) return after;
+	const held = automationValueAt({ points: sorted, time });
+	return [
+		...before,
+		{ time, value: held },
+		// A point that sat on the gap's start is now the one at its end.
+		...(later[0].time === time ? [] : [{ time: time + duration, value: held }]),
+		...after,
+	];
+}
+
+/** Every curve of `automation` with the gap opened by `openGapInPoints`. */
+export function openGapInAutomation({
+	automation,
+	time,
+	duration,
+}: {
+	automation: AudioMixAutomation | undefined;
+	time: number;
+	duration: number;
+}): AudioMixAutomation | undefined {
+	if (!automation) return undefined;
+	let changed = false;
+	const opened: AudioMixAutomation = {};
+	for (const param of Object.keys(AUTOMATION_RANGES) as AutomationParam[]) {
+		const points = automation[param];
+		if (!points?.length) continue;
+		const next = openGapInPoints({ points, time, duration });
+		if (next !== points) changed = true;
+		opened[param] = next;
+	}
+	return changed ? opened : automation;
+}
+
 export function hasAutomation(automation?: AudioMixAutomation): boolean {
 	return Boolean(automation?.gainDb?.length || automation?.pan?.length);
 }
