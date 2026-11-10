@@ -65,3 +65,23 @@ export function buildNumericKeyframeExpression({
 	});
 	return `if(lt(${timeVariable},${timeAt(sorted[0])}),${sorted[0].value},${expression})`;
 }
+
+/**
+ * Whether `expression` is a product of literal numbers equal to `value`, as
+ * the keyframe and animation builders write a property that never changes.
+ */
+export function isConstantExpression({
+	expression,
+	value,
+}: {
+	expression: string;
+	value: number;
+}): boolean {
+	const factors = expression.replace(/[()\s]/g, "").split("*");
+	if (!factors.every((factor) => /^-?\d+(\.\d+)?$/.test(factor))) {
+		return false;
+	}
+	return (
+		factors.reduce((product, factor) => product * Number(factor), 1) === value
+	);
+}
