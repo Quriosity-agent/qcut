@@ -17,9 +17,18 @@ import { promises as fsPromises } from "node:fs";
 import path from "node:path";
 import type { VideoAlphaInfo } from "../../../ffmpeg/video-alpha.js";
 import { probeVideoAlpha } from "../../../ffmpeg/video-alpha-probe.js";
-import { composePreparedVisualLayers } from "../../../ffmpeg/visual-layer-compositor.js";
+import {
+	ACCURATE_CONVERSION_STEP,
+	composePreparedVisualLayers,
+} from "../../../ffmpeg/visual-layer-compositor.js";
 import { buildVideoTimelineLayers } from "../../../ffmpeg-video-transform.js";
 import { claudeLog } from "../../utils/logger.js";
+import {
+	type JoinedPictureColor,
+	joinedPictureColorFilter,
+	joinedPictureInputArgs,
+	probeJoinedPictureColor,
+} from "./joined-picture.js";
 import {
 	mediaOverlayInputArgs,
 	mediaOverlayVideoSource,
@@ -40,6 +49,7 @@ export interface MediaOverlayInput {
 }
 
 const OUTPUT_LABEL = "media_overlay_out";
+const BASE_LABEL = "media_overlay_base";
 
 /**
  * The FFmpeg command that draws `overlays` over `inputPath` for `duration`
@@ -51,6 +61,7 @@ export function buildMediaOverlayPassArgs({
 	overlays,
 	settings,
 	duration,
+	baseColor,
 }: {
 	inputPath: string;
 	outputPath: string;
@@ -60,8 +71,10 @@ export function buildMediaOverlayPassArgs({
 		"width" | "height" | "fps" | "codec" | "bitrate"
 	>;
 	duration: number;
+	/** The picture's colour tags at its start (see joined-picture.ts). */
+	baseColor?: JoinedPictureColor;
 }): { args: string[]; filterComplex: string } {
-	const inputArgs = ["-y", "-i", inputPath];
+	const inputArgs = ["-y", ...joinedPictureInputArgs({ path: inputPath })];
 	for (const overlay of overlays) {
 		inputArgs.push(...mediaOverlayInputArgs(overlay));
 	}
@@ -83,7 +96,7 @@ export function buildMediaOverlayPassArgs({
 	// frame late.
 	const exactSteps: string[] = [];
 	const composed = composePreparedVisualLayers({
-		baseLabel: "0:v",
+		baseLabel: baseColor ? BASE_LABEL : "0:v",
 		layers: built.layers.map((layer) => {
 			const { segment } = overlays[layer.sourceIndex - 1];
 			const { firstFrame, frameCount } = overlayFrameWindow({
@@ -113,8 +126,16 @@ export function buildMediaOverlayPassArgs({
 		labelPrefix: "media_overlay",
 		canvasWidth: settings.width,
 		canvasHeight: settings.height,
+		// The joined picture is yuv420p: overlaid as it is, not via RGBA.
+		overlayFormat: "yuv420",
 	});
 	const filterComplex = [
+		ACCURATE_CONVERSION_STEP,
+		...(baseColor
+			? [
+					`[0:v]${joinedPictureColorFilter({ color: baseColor })}[${BASE_LABEL}]`,
+				]
+			: []),
 		...built.filterSteps,
 		...exactSteps,
 		...composed.filterSteps,
@@ -220,6 +241,7 @@ export async function runMediaOverlayPass({
 		overlays: inputs,
 		settings,
 		duration,
+		baseColor: await probeJoinedPictureColor({ path: videoOutputPath }),
 	});
 	claudeLog.info(
 		HANDLER_NAME,
