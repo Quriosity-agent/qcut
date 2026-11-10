@@ -113,6 +113,16 @@ export interface PlatformClaudeTimelineAPI {
 			| { ok: true; response: Record<string, unknown> }
 			| { ok: false; error: string }
 	) => void;
+	/** `editing insert-gap` and `timeline snap --to frames`. */
+	onTimeEdit: (
+		callback: (data: { requestId: string; request: unknown }) => void
+	) => void;
+	sendTimeEditResponse: (
+		requestId: string,
+		result:
+			| { ok: true; response: Record<string, unknown> }
+			| { ok: false; error: string }
+	) => void;
 	onSplitElement(callback: (data: unknown) => void): void;
 	sendSplitResponse(requestId: string, result: unknown): void;
 	onExecuteCuts(callback: (data: unknown) => void): void;
