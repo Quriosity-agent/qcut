@@ -103,6 +103,20 @@ export function mediaOverlayInputArgs({
 const EDGE_NOISE_SECONDS = 0.001;
 
 /**
+ * The first output frame at or after `time`: frame n shows what the timeline
+ * has at n/fps + 1 ms.
+ */
+export function outputFrameAt({
+	time,
+	fps,
+}: {
+	time: number;
+	fps: number;
+}): number {
+	return Math.max(0, Math.ceil((time - EDGE_NOISE_SECONDS) * fps - 1e-9));
+}
+
+/**
  * The output frames a clip shows: frame n is on screen while
  * start <= n/fps + 1 ms < start + duration.
  */
@@ -115,13 +129,8 @@ export function overlayFrameWindow({
 	duration: number;
 	fps: number;
 }): { firstFrame: number; frameCount: number } {
-	const firstFrame = Math.max(
-		0,
-		Math.ceil((startTime - EDGE_NOISE_SECONDS) * fps - 1e-9)
-	);
-	const endFrame = Math.ceil(
-		(startTime + duration - EDGE_NOISE_SECONDS) * fps - 1e-9
-	);
+	const firstFrame = outputFrameAt({ time: startTime, fps });
+	const endFrame = outputFrameAt({ time: startTime + duration, fps });
 	return { firstFrame, frameCount: Math.max(0, endFrame - firstFrame) };
 }
 
