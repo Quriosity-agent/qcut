@@ -12,7 +12,27 @@ See [editor-core.md](editor-core.md) for connection options, flags, and workflow
 qcut editor:timeline:export --project-id <id>
 qcut editor:timeline:export --project-id <id> --json
 qcut editor:timeline:export --project-id <id> --output-format json
+qcut editor timeline export --json --flat     # the project the editor has open
 ```
+
+Without `--project-id`, `timeline export` and `timeline info` read the
+project the editor has open. The other `timeline` and `editing` commands
+keep asking for the id.
+
+The JSON carries `frameAlignment` when the timeline has a frame rate: how
+many clips start or end between frames, how many of those are on the main
+track, and the first twenty of them.
+
+```json
+"frameAlignment": { "fps": 24, "offFrameClips": 11, "mainTrackOffFrameClips": 11, "elementIds": ["…"] }
+```
+
+A clip between frames exports correctly (see
+[What the timeline's gaps and frames become](editor-output.md#what-the-timelines-gaps-and-frames-become)),
+but its cut shows on the first frame after it, not where its seconds say;
+`timeline snap --to frames` puts the edges on frames
+([Frames](#frames-clip-edges-and-command-times)). `timeline apply` reads past
+the field.
 
 Each track lists its elements in time order. Moves are checked one at a
 time (`batch-update` takes its changes in the order given), so a script that
@@ -644,6 +664,10 @@ qcut editor:timeline:split \
   --project-id <id> \
   --element-id <id> \
   --split-time 10
+
+# On the nearest frame of the project's rate (52.425333 s at 24 fps → 52.416667 s)
+qcut editor:timeline:split \
+  --project-id <id> --element-id <id> --split-time 52.425333 --snap-frames
 ```
 
 ### Split a clip by its shots
@@ -705,6 +729,8 @@ qcut editor:timeline:move \
   --to-track <track-id>
 ```
 
+`--snap-frames` rounds `--time` to the nearest frame of the project's rate.
+
 ### Arrange elements on a track
 
 ```bash
@@ -741,9 +767,11 @@ qcut editor:timeline:clear-selection --project-id <id>
 
 ```bash
 qcut editor:timeline:info --project-id <id> --json
+qcut editor timeline info --json     # the project the editor has open
 ```
 
 Returns timeline state: tracks, elements, duration, playhead position.
+Without `--project-id` it reads the open project, as `timeline export` does.
 
 ### Add media clip to timeline
 
@@ -771,6 +799,7 @@ qcut editor:timeline:trim --project-id <id> --element-id <eid> --start-time 2.0 
 | `--element-id` | string | Element ID (required) |
 | `--start-time` | number | New start time in seconds (required) |
 | `--end-time` | number | New end time in seconds (required) |
+| `--snap-frames` | boolean | Round both to the nearest frame of the project's rate |
 
 ### Playback controls
 
@@ -830,6 +859,101 @@ move too when every unlocked track moved (the default all-tracks delete, or
 is not tied to one track. Pass `--keep-automation` to leave every curve where
 it is. Track curves are in the timeline's undo history with the clips; bus and
 master curves live in the project and are not undone with them.
+
+`--snap-frames` rounds `--start-time` and `--end-time` to the nearest frame
+of the project's rate before the range is deleted, so a range given in bars
+(52.425333 s) leaves clips that still start and end on frames. The answer
+then carries the times that were used, as `snapped`.
+
+### Insert a gap
+
+The reverse of a ripple delete: empty time opens at a point, and everything
+from there on moves later. One undo step.
+
+```bash
+# Five seconds at the head, for a title sequence: every unlocked track moves
+qcut editor:editing:insert-gap \
+  --project-id <id> --at 0 --duration 5 --json
+
+# Two seconds at 52.4 s on the main track only, both rounded to frames
+qcut editor:editing:insert-gap \
+  --project-id <id> --at 52.4 --duration 2 --snap-frames \
+  --track-id <main-track-id> --json
+```
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--at` | number | Where the empty time starts, in seconds (required; `--start-time` reads the same) |
+| `--duration` | number | How long it is, in seconds (required, above 0) |
+| `--track-id` | string | Only these tracks (comma-separated); every unlocked track by default |
+| `--keep-automation` | boolean | Leave level and pan curves where they are |
+| `--snap-frames` | boolean | Round `--at` and `--duration` to the project's frames |
+
+A clip that starts at or after the point moves later by the duration. A clip
+the point falls inside is split there and its second half moves, so a clip
+running under the whole programme (music, a caption) is cut where the gap
+opens; name the tracks with `--track-id` to leave such a track alone. A
+locked track never moves; naming one, or a track the timeline does not have,
+is refused and nothing changes.
+
+Mix automation opens with the clips: a moved track's level and pan curves
+keep their value across the gap and their later points move with the clips.
+Bus and master curves move too when every unlocked track moved, as in
+`delete-range`; `--keep-automation` leaves every curve where it is. The
+answer reports `trackIds`, `movedElements`, `splitElements` and
+`mixAutomationMoved`.
+
+### Frames: clip edges and command times
+
+Times are seconds everywhere in the editor API, and a cut made by time
+rather than by frame (a range deleted on bar lines, a split at 52.425333 s)
+leaves clips that start and end between frames. Three things keep a timeline
+on its frames:
+
+```bash
+# 1. See it: timeline export reports the clips between frames
+qcut editor timeline export --project-id <id> --json --flat | jq .frameAlignment
+
+# 2. Fix it: every edge of every visible clip to a frame, as one undo step
+qcut editor timeline snap --to frames --dry-run --project-id <id> --json
+qcut editor timeline snap --to frames --project-id <id> --json
+qcut editor timeline snap --to frames --track-id <main-track-id> --project-id <id> --json
+qcut editor timeline snap --to frames --element-ids <a>,<b> --frame-align all --project-id <id> --json
+
+# 3. Avoid it: commands that take a time round it to the project's frames
+qcut editor editing delete-range --start-time 52.425333 --end-time 54.425333 --snap-frames --force --project-id <id>
+```
+
+`timeline snap --to frames` moves each edge to a frame **without moving what
+the clip shows**: the trim on that side takes up the difference, so the same
+source frame stays at the same timeline time. Two clips that meet at a cut
+keep meeting; the cut goes to one frame for both.
+
+- An edge goes to the nearest frame when the clip has unused source on that
+  side to cover the move, otherwise to the frame on its inner side. A cut
+  with no spare source on either side stays where it is and is listed in
+  `skipped` with the reason, as is a clip with a speed curve or a freeze
+  frame (its trims cannot take up the difference) and one that would be left
+  shorter than a frame.
+- Text, captions, stickers and still images have no source to run out of:
+  they are simply made to start and end on frames.
+- By default only what is seen is snapped (video, image, text, captions,
+  stickers); sound may sit between frames. `--frame-align all` snaps sound
+  clips too.
+- `--track-id` and `--element-ids` narrow it down; a clip that is not being
+  snapped stays exactly where it is, and no edge is moved into it. A locked
+  track is left out; naming one is refused.
+
+The answer has the project's `fps`, `checked` (clips looked at), `changed`
+(each with `startTime` and `endTime` as `{from, to}`) and `skipped`;
+`--dry-run` reports the same without changing anything.
+
+`--snap-frames` is taken by `editing delete-range`, `editing insert-gap`,
+`timeline split`, `timeline move` and `timeline trim`. It reads the
+project's frame rate, rounds each time the command was given to the nearest
+frame, and reports what it used as `snapped` (`{ "fps": 24, "startTime":
+52.416667, … }`). It rounds the command's own times only: a clip that was
+already between frames stays there until `timeline snap --to frames`.
 
 ### Beats: detect, mark, snap
 
