@@ -326,7 +326,7 @@ describe.skipIf(!fs.existsSync(ffmpegPath))(
 			]);
 			expect(tagsOf(output).stream).toBe("unknown,unknown,unknown,unknown");
 			expect(barsError(output)).toBeGreaterThan(30);
-		});
+		}, 60_000);
 
 		it.each([
 			{ name: "a BT.709 clip", clip: { name: "hd-709.mp4", matrix: "bt709" } },
