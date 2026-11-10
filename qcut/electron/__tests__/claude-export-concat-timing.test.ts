@@ -3,6 +3,7 @@ import {
 	buildConcatLists,
 	buildSegmentConcatArgs,
 	concatSpan,
+	firstFrameDelay,
 	planConcatSpans,
 	spanFileCounts,
 	standaloneSpan,
@@ -70,6 +71,42 @@ describe("concatSpan", () => {
 		expect(
 			concatSpan({ from: 1 + 3e-7, to: 2, fps: 24, sampleRate: 48_000 }).frames
 		).toBe(24);
+	});
+});
+
+describe("firstFrameDelay", () => {
+	it("is how far into a clip its first output frame falls", () => {
+		// A clip that starts 0.6 of a frame before frame 25.
+		const startTime = 61 / 60;
+		const span = concatSpan({
+			from: startTime,
+			to: 2 * startTime,
+			fps: 24,
+			sampleRate: 48_000,
+		});
+		expect(firstFrameDelay({ span, startTime, fps: 24 })).toBeCloseTo(0.025, 9);
+	});
+
+	it("is zero for a clip that starts on a frame, or within a millisecond after one", () => {
+		for (const startTime of [2, 2.0004]) {
+			const span = concatSpan({
+				from: startTime,
+				to: startTime + 1,
+				fps: 24,
+				sampleRate: 48_000,
+			});
+			expect(firstFrameDelay({ span, startTime, fps: 24 })).toBe(0);
+		}
+	});
+
+	it("is zero when the span starts before the clip does", () => {
+		// The first file fills the timeline from 0, a sliver before its clip.
+		const [span] = planConcatSpans({
+			inputs: [{ startTime: 0.01, endTime: 1 }],
+			fps: 25,
+			sampleRate: 48_000,
+		});
+		expect(firstFrameDelay({ span, startTime: 0.01, fps: 25 })).toBe(0);
 	});
 });
 
