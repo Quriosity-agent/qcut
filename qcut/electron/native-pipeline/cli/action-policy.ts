@@ -91,6 +91,7 @@ const DEFAULT_CONFIRM_PATTERNS = [
 	"editor:console --clear",
 	"editor:errors --clear",
 	"editor:media:delete",
+	"editor:media:replace",
 	"editor:project:delete",
 	"editor:project:import-state",
 	"editor:timeline:delete-element",
