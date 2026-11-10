@@ -62,11 +62,15 @@ Every change answers with what the editor now holds.
   channel is folded into the near one, so hard left puts both into the left
   channel (+6 dB for a mono file) and leaves the right silent. Up to
   2026.11.10.2 the FFmpeg exports (the native export, the Export dialog's
-  FFmpeg export, MP3) wrote a mono file 3 dB lower than the preview and the
-  in-browser export played it, and so met a compressor, a gate, ducking and
-  the limiter 3 dB lower too. A project with mono sources exports 3 dB
-  louder from them since, which is the level it always played at; stereo
-  files are unchanged.
+  FFmpeg export, MP3) took a mono file in 3 dB lower than the preview and
+  the in-browser export play it, so it met a compressor, a gate, ducking and
+  the limiter 3 dB lower too. A mono source now enters the mix 3 dB higher
+  in those exports, the level it always played at. How much louder the
+  finished mix is depends on what follows: 3 dB where nothing holds it
+  back, less under a compressor or the limiter, and a track that ducks
+  under a mono source is ducked sooner. Stereo sources enter as before. An
+  export with one audio channel (`audioExportConfig.channels: 1` on the
+  request) is as it was.
 
 ## Automation
 
