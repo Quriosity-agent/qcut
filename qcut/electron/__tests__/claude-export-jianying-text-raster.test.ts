@@ -124,7 +124,7 @@ describe("Claude export original Jianying text raster pass", () => {
 		temporaryDirectories.push(directory);
 		await writeFile(path.join(directory, "frame-000000.png"), "png");
 		const patternPath = path.join(directory, "frame-%06d.png");
-		const args = buildTextRasterOverlayPassArgs({
+		const options = {
 			sourcePath: "/tmp/source.mp4",
 			outputPath: "/tmp/output.mp4",
 			layers: [
@@ -152,7 +152,8 @@ describe("Claude export original Jianying text raster pass", () => {
 				codec: "libx264",
 				bitrate: "8Mbps",
 			},
-		});
+		} satisfies Parameters<typeof buildTextRasterOverlayPassArgs>[0];
+		const args = buildTextRasterOverlayPassArgs(options);
 		const filterComplex = args[args.indexOf("-filter_complex") + 1];
 
 		expect(args).toContain(patternPath);
@@ -160,5 +161,30 @@ describe("Claude export original Jianying text raster pass", () => {
 		expect(filterComplex).toContain("setpts=PTS-STARTPTS+0.2/TB");
 		expect(filterComplex).toContain("x=100:y=200");
 		expect(args.join(" ")).not.toContain("ass=");
+		// The picture under the text is read once and left in its own format,
+		// whatever its colour tags do along the way (see joined-picture.ts).
+		expect(args.slice(0, 5)).toEqual([
+			"-y",
+			"-reinit_filter",
+			"0",
+			"-i",
+			"/tmp/source.mp4",
+		]);
+		expect(filterComplex.split(";")[0]).toBe(
+			"sws_flags=bicubic+accurate_rnd+full_chroma_int"
+		);
+		expect(filterComplex).toContain(
+			"[0:v]settb=AVTB,setpts=PTS-STARTPTS[text_raster_base]"
+		);
+		expect(filterComplex).toContain(":format=yuv420:");
+
+		// Given the picture's tags at its start, every frame is described so.
+		const tagged = buildTextRasterOverlayPassArgs({
+			...options,
+			baseColor: { range: "tv", space: "bt709" },
+		});
+		expect(tagged[tagged.indexOf("-filter_complex") + 1]).toContain(
+			"[0:v]setparams=range=tv:colorspace=bt709,settb=AVTB,setpts=PTS-STARTPTS[text_raster_base]"
+		);
 	});
 });
