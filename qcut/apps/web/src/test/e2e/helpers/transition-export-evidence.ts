@@ -195,6 +195,59 @@ export async function decodeFrame({
 	};
 }
 
+/**
+ * `count` frames in a row from frame `startFrame`, decoded in one pass.
+ * Every frame of a stretch, where `decodeFrame` gives one point of it.
+ */
+export async function decodeFrames({
+	filePath,
+	startFrame,
+	count,
+	fps,
+}: {
+	filePath: string;
+	startFrame: number;
+	count: number;
+	fps: number;
+}): Promise<DecodedFrame[]> {
+	const { stdout } = await execFileAsync(
+		getFFmpegPath(),
+		[
+			"-v",
+			"error",
+			// A quarter of a frame early: the frame that starts at the time
+			// itself is then kept whichever way the time rounds.
+			"-ss",
+			String(Math.max(0, (startFrame - 0.25) / fps)),
+			"-i",
+			filePath,
+			"-frames:v",
+			String(count),
+			"-vf",
+			`scale=${EVIDENCE_WIDTH}:${EVIDENCE_HEIGHT}`,
+			"-pix_fmt",
+			"rgb24",
+			"-f",
+			"rawvideo",
+			"-",
+		],
+		{ encoding: "buffer", maxBuffer: 64 * 1024 * 1024 }
+	);
+	const frameBytes = EVIDENCE_WIDTH * EVIDENCE_HEIGHT * 3;
+	const pixels = Buffer.from(stdout);
+	if (pixels.length !== frameBytes * count) {
+		throw new Error(
+			`Decoded ${pixels.length / frameBytes} of ${count} frames from frame ${startFrame} of ${filePath}`
+		);
+	}
+	return Array.from({ length: count }, (_frame, index) => ({
+		height: EVIDENCE_HEIGHT,
+		pixels: pixels.subarray(index * frameBytes, (index + 1) * frameBytes),
+		timeSeconds: (startFrame + index) / fps,
+		width: EVIDENCE_WIDTH,
+	}));
+}
+
 /** Saves a full-resolution PNG of one frame for human review. */
 export async function savePngFrame({
 	filePath,
