@@ -64,6 +64,8 @@ import type {
 	ClaudeBeatsMarkResponse,
 	ClaudeSnapToBeatsRequest,
 	ClaudeSnapToBeatsResponse,
+	ClaudeTimeEditRequest,
+	ClaudeTimeEditResponse,
 } from "../../types/claude-api.js";
 import type {
 	EditorStateRequest,
@@ -134,6 +136,7 @@ import {
 import { withMediaElementAlpha } from "../handlers/claude-timeline-media-alpha.js";
 import { withMediaAddLengths } from "../handlers/claude-media-add-lengths.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
+import { registerTimeEditRoutes } from "./claude-http-time-edit-routes.js";
 import {
 	type MutateAudioMix,
 	registerAudioMixRoutes,
@@ -223,6 +226,11 @@ export interface WindowAccessor {
 		request: ClaudeSnapToBeatsRequest,
 		correlationId?: string
 	): Promise<ClaudeSnapToBeatsResponse>;
+	/** Open empty time or snap clips to frames, as the editor's own edit. */
+	requestTimeEdit?(
+		request: ClaudeTimeEditRequest,
+		correlationId?: string
+	): Promise<ClaudeTimeEditResponse>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<ProjectStats>;
 	/** Get the app version string */
@@ -2184,6 +2192,7 @@ export function registerSharedRoutes(
 	// Analysis routes
 	// ==========================================================================
 	registerAnalysisRoutes(router, accessor);
+	registerTimeEditRoutes(router, accessor);
 
 	// ==========================================================================
 	// Search routes
