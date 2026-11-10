@@ -5,6 +5,11 @@
  */
 
 import { buildAtempoChain } from "../../../ffmpeg/segment-transform-filter.js";
+import {
+	type ConcatSpan,
+	concatSpan,
+	spanFileCounts,
+} from "./concat-timing.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -166,11 +171,15 @@ export async function resolveExportSegmentAudio({
 
 /**
  * Both streams are padded without end (the last frame is cloned, the sound
- * gets silence) and the output `-t` alone cuts the segment to exactly its
- * length, so a source shorter than the segment fills it too. There is no
- * `-shortest`: FFmpeg's sync queue then trims every other stream to the
- * first stream that ends, which dropped the last picture frame of clips
- * whose sound ended a little early.
+ * gets silence) and then cut to the segment's span: the picture to its whole
+ * frames at the export's rate, the sound to its samples (see
+ * concat-timing.ts), so a source shorter than the segment fills it too. The
+ * cuts are filters, not output options: `-t` makes as many frames as start
+ * before it ends, one more than the span whenever the clip is not a whole
+ * number of frames long, and `-frames:v` ends the sound along with the
+ * picture. There is no `-shortest` either: FFmpeg's sync queue then trims
+ * every other stream to the first stream that ends, which dropped the last
+ * picture frame of clips whose sound ended a little early.
  *
  * Every segment has sound, the source's or silence (a picture, a clip
  * without an audio stream), in one format: the concat takes its streams
@@ -190,6 +199,7 @@ export function buildExportSegmentEncodeArgs({
 	audio,
 	outputPath,
 	blackPicture = false,
+	span,
 }: {
 	inputArgs: string[];
 	scaleFilter: string;
@@ -214,8 +224,20 @@ export function buildExportSegmentEncodeArgs({
 	outputPath: string;
 	/** Black frames instead of the source's picture; the sound is unchanged. */
 	blackPicture?: boolean;
+	/** The stretch of the timeline the file fills; the clip's own by default. */
+	span?: Pick<ConcatSpan, "frames" | "samples">;
 }): string[] {
 	const format = segmentAudioFormat({ settings });
+	const { frames, samples } = spanFileCounts({
+		span:
+			span ??
+			concatSpan({
+				from: segment.startTime,
+				to: segment.startTime + segment.duration,
+				fps: settings.fps,
+				sampleRate: format.sampleRate,
+			}),
+	});
 	const atempo =
 		segment.isImage || audio === null
 			? null
@@ -238,9 +260,10 @@ export function buildExportSegmentEncodeArgs({
 		"0:v:0",
 		"-map",
 		audioStream,
-		...(blackPicture
-			? []
-			: ["-vf", `${scaleFilter},tpad=stop_mode=clone:stop=-1`]),
+		"-vf",
+		blackPicture
+			? `trim=end_frame=${frames}`
+			: `${scaleFilter},tpad=stop_mode=clone:stop=-1,fps=${settings.fps},trim=end_frame=${frames}`,
 		"-r",
 		String(settings.fps),
 		"-c:v",
@@ -264,10 +287,9 @@ export function buildExportSegmentEncodeArgs({
 				? [segment.audioEnvelope]
 				: []),
 			"apad",
+			`atrim=end_sample=${samples}`,
 		].join(","),
 		...segmentPcmAudioArgs({ format }),
-		"-t",
-		String(segment.duration),
 		outputPath,
 	];
 }
