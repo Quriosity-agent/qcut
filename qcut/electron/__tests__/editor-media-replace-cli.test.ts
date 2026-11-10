@@ -43,15 +43,15 @@ function fakeEditor({
 	refuse,
 	stickyClip,
 	removalFails = false,
-	transactionEndFails,
+	transactionFails,
 }: {
 	/** The clip whose swap the editor refuses, and with what status. */
 	refuse?: { elementId: string; status: number };
 	/** A clip the editor reports as still playing the old media afterwards. */
 	stickyClip?: string;
 	removalFails?: boolean;
-	/** The way of ending the transaction that the editor does not answer. */
-	transactionEndFails?: "commit" | "rollback";
+	/** The transaction call the editor does not answer. */
+	transactionFails?: "begin" | "commit" | "rollback";
 } = {}) {
 	const playing = new Map<string, string>([
 		["shake-a", OLD],
@@ -95,11 +95,11 @@ function fakeEditor({
 				},
 			];
 		}
+		if (transactionFails && path.endsWith(`/${transactionFails}`)) {
+			throw new Error("the editor did not answer");
+		}
 		if (path === "/api/claude/transaction/begin") {
 			return { transactionId: "txn-1" };
-		}
-		if (transactionEndFails && path.endsWith(`/${transactionEndFails}`)) {
-			throw new Error("the editor did not answer");
 		}
 		return {};
 	});
@@ -231,10 +231,23 @@ describe("editor media replace", () => {
 		expect(editor.remove).not.toHaveBeenCalled();
 	});
 
+	it("takes its import back when the replace cannot even be started", async () => {
+		const editor = fakeEditor({ transactionFails: "begin" });
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result).toEqual({
+			success: false,
+			error:
+				"The replace could not be started: the editor did not answer. No clip was changed.",
+		});
+		expect(editor.patch).not.toHaveBeenCalled();
+		expect(editor.log.at(-1)).toBe(`DELETE /api/claude/media/p1/${NEW}`);
+	});
+
 	it("says what is left when a refused replace cannot be rolled back either", async () => {
 		const editor = fakeEditor({
 			refuse: { elementId: "shake-b", status: 409 },
-			transactionEndFails: "rollback",
+			transactionFails: "rollback",
 		});
 		const result = await mediaReplace(editor.client, options());
 
@@ -252,7 +265,7 @@ describe("editor media replace", () => {
 	});
 
 	it("does not call the replace done when it cannot be committed", async () => {
-		const editor = fakeEditor({ transactionEndFails: "commit" });
+		const editor = fakeEditor({ transactionFails: "commit" });
 		const result = await mediaReplace(editor.client, options());
 
 		expect(result.success).toBe(false);
