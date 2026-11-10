@@ -202,6 +202,10 @@ describe("Claude export trigger", () => {
 		expect(result.jobId).toMatch(/^export_/);
 		expect(result.status).toBe("queued");
 		expect(getExportJobStatus(result.jobId)?.presetId).toBe("youtube-1080p");
+		// Let the job run out, so none of its commands lands in the next test.
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
 	});
 
 	it("exports at the project's size and frame rate when no preset is named", async () => {
@@ -215,6 +219,9 @@ describe("Claude export trigger", () => {
 		expect(getExportJobStatus(result.jobId)).toMatchObject({
 			presetId: "project",
 			settings: { width: 1470, height: 630, fps: 24, bitrate: "8Mbps" },
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
 		});
 	});
 
