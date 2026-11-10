@@ -209,9 +209,11 @@ describe("a segment outside the range", () => {
 			"-map",
 			"1:a:0",
 		]);
-		expect(args).not.toContain("-vf");
+		// Five seconds at 24 fps, cut by filters rather than by `-t`.
+		expect(args[args.indexOf("-vf") + 1]).toBe("trim=end_frame=120");
 		expect(args[args.indexOf("-af") + 1]).toContain("aresample=async=1");
-		expect(args[args.lastIndexOf("-t") + 1]).toBe("5");
+		expect(args[args.indexOf("-af") + 1]).toContain("atrim=end_sample=240000");
+		expect(args.slice(args.indexOf("-map"))).not.toContain("-t");
 	});
 
 	it("is black frames with silence when the clip has no sound", () => {
@@ -248,7 +250,7 @@ describe("a segment outside the range", () => {
 			shown.slice(shown.indexOf("-map"), shown.indexOf("-map") + 4)
 		).toEqual(["-map", "0:v:0", "-map", "0:a:0"]);
 		expect(shown[shown.indexOf("-vf") + 1]).toBe(
-			"scale=1470:630,tpad=stop_mode=clone:stop=-1"
+			"scale=1470:630,tpad=stop_mode=clone:stop=-1,fps=24,trim=end_frame=120"
 		);
 	});
 });
