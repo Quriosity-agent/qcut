@@ -88,6 +88,77 @@ describe("buildMediaOverlayPassArgs", () => {
 		);
 	});
 
+	// FFmpeg drops the frame on screen at a seek point, so a clip whose
+	// in-point is between two frames of its file started on the next one.
+	it("opens a video a little before its in-point and puts it on the instants its frames show", () => {
+		const built = pass(clip({ trimStart: 4.2 / 24 }));
+		// Nearer the file's start than the lead: opened at 0, the lead read too.
+		expect(built.args.slice(5, 9)).toEqual([
+			"-t",
+			"2.175",
+			"-i",
+			"/media/overlay.mov",
+		]);
+		const steps = built.filterComplex.split(";");
+		// 0.175 s to the in-point, and the millisecond of the edge rule.
+		expect(steps).toContain(
+			"[1:v]settb=AVTB,setpts=PTS-176000,fps=24:start_time=0:round=up,settb=AVTB[media_overlay_read_0]"
+		);
+		// The layer is built from that stream, not from the input.
+		expect(
+			steps.some((step) => step.startsWith("[media_overlay_read_0]trim="))
+		).toBe(true);
+		expect(steps.some((step) => step.startsWith("[1:v]trim="))).toBe(false);
+	});
+
+	it("seeks a quarter of a second before a later in-point, and reads from where the clip's first frame falls", () => {
+		// Starts 0.6 of a frame before frame 24, reading its file from 2 s.
+		const built = pass(clip({ startTime: 23.4 / 24, trimStart: 2 }));
+		expect(built.args.slice(5, 11)).toEqual([
+			"-ss",
+			"1.75",
+			"-t",
+			"2.25",
+			"-i",
+			"/media/overlay.mov",
+		]);
+		expect(built.filterComplex).toContain(
+			"[1:v]settb=AVTB,setpts=PTS-276000,fps=24:start_time=0:round=up,settb=AVTB["
+		);
+	});
+
+	it("gives a retimed clip one frame for each instant its frames show", () => {
+		const graph = pass(clip({ playbackRate: 2, trimStart: 1 })).filterComplex;
+		expect(graph).toContain(
+			"[1:v]settb=AVTB,setpts=PTS-252000,fps=12:start_time=0:round=up,settb=AVTB["
+		);
+	});
+
+	it("reads a still, and a clip with frame interpolation, as before", () => {
+		const still = pass(clip({ isImage: true, trimStart: 1 }));
+		expect(still.args.slice(5, 11)).toEqual([
+			"-loop",
+			"1",
+			"-t",
+			"2",
+			"-i",
+			"/media/overlay.mov",
+		]);
+		expect(still.filterComplex).not.toContain("media_overlay_read_");
+		const interpolated = pass(
+			clip({ frameInterpolation: "blend", trimStart: 1 })
+		);
+		expect(interpolated.args.slice(5, 11)).toEqual([
+			"-ss",
+			"1",
+			"-t",
+			"2",
+			"-i",
+			"/media/overlay.mov",
+		]);
+		expect(interpolated.filterComplex).not.toContain("media_overlay_read_");
+	});
+
 	// geq runs an expression for every pixel of every frame: 21 overlays took
 	// an 80 s export to 180 s, though none was cropped or less than opaque.
 	it("runs no per-pixel expression for a clip that is neither cropped nor faded", () => {
