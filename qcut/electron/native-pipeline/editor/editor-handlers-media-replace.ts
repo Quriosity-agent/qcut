@@ -55,6 +55,11 @@ function clipsPlaying({
 	);
 }
 
+/**
+ * Ends the transaction. When the editor does not end it, its reason comes
+ * back instead of being thrown: the caller still has to say what state the
+ * project was left in.
+ */
 async function endTransaction({
 	client,
 	transactionId,
@@ -63,11 +68,16 @@ async function endTransaction({
 	client: EditorApiClient;
 	transactionId: string;
 	action: "commit" | "rollback";
-}): Promise<void> {
-	await client.post(
-		`/api/claude/transaction/${encodeURIComponent(transactionId)}/${action}`,
-		{}
-	);
+}): Promise<{ failure?: string }> {
+	try {
+		await client.post(
+			`/api/claude/transaction/${encodeURIComponent(transactionId)}/${action}`,
+			{}
+		);
+		return {};
+	} catch (error) {
+		return { failure: error instanceof Error ? error.message : String(error) };
+	}
 }
 
 /** Handle `editor:media:replace --media-id <id> --source <file>`. */
@@ -113,6 +123,12 @@ export async function mediaReplace(
 		"/api/claude/transaction/begin",
 		{ label: "Replace media" }
 	);
+	const newName = imported.mediaFile.name;
+	// What is left when the transaction itself could not be ended: it stays
+	// open with the clips changed so far, which play the new file until the
+	// editor rolls it back, so the import must not be removed under them.
+	const leftOpen = (failure: string) =>
+		`(${failure}). Transaction ${transactionId} may still be open; the editor rolls it back when it times out, and "qcut editor:transaction:rollback --transaction-id ${transactionId}" does it now. ${newName} (${newMediaId}) was left in the project, since clips may still play it; once none does, "qcut editor:media:delete --project-id ${projectId} --media-id ${newMediaId}" removes it.`;
 	for (const clip of clips) {
 		try {
 			await client.patch(
@@ -123,8 +139,19 @@ export async function mediaReplace(
 				}
 			);
 		} catch (error) {
-			await endTransaction({ client, transactionId, action: "rollback" });
 			const reason = error instanceof Error ? error.message : String(error);
+			const refusedClip = `Clip ${clip.elementId}${clip.name ? ` (${clip.name})` : ""} could not take ${newName}: ${reason}`;
+			const rollback = await endTransaction({
+				client,
+				transactionId,
+				action: "rollback",
+			});
+			if (rollback.failure) {
+				return {
+					success: false,
+					error: `${refusedClip}. The clips changed before it could not be put back either: the rollback failed ${leftOpen(rollback.failure)}`,
+				};
+			}
 			// A refusal (409) leaves the project as it was, so the import goes
 			// too; after anything else the editor may yet act, and it stays.
 			const refused =
@@ -135,14 +162,24 @@ export async function mediaReplace(
 			return {
 				success: false,
 				error:
-					`Clip ${clip.elementId}${clip.name ? ` (${clip.name})` : ""} could not take ${imported.mediaFile.name}: ${reason}. No clip was changed` +
+					`${refusedClip}. No clip was changed` +
 					(cleanup.removed
 						? "."
-						: `; ${imported.mediaFile.name} (${newMediaId}) is still in the project ("qcut editor:media:delete --project-id ${projectId} --media-id ${newMediaId}" removes it).`),
+						: `; ${newName} (${newMediaId}) is still in the project ("qcut editor:media:delete --project-id ${projectId} --media-id ${newMediaId}" removes it).`),
 			};
 		}
 	}
-	await endTransaction({ client, transactionId, action: "commit" });
+	const commit = await endTransaction({
+		client,
+		transactionId,
+		action: "commit",
+	});
+	if (commit.failure) {
+		return {
+			success: false,
+			error: `Every clip was given ${newName}, but the change could not be committed ${leftOpen(commit.failure)} ${old.name ?? oldMediaId} was kept.`,
+		};
+	}
 
 	// Removing a media item removes the clips that play it, so the old one
 	// goes only once the timeline is read back without any.
@@ -154,7 +191,7 @@ export async function mediaReplace(
 		oldMediaId,
 		oldName: old.name,
 		mediaId: newMediaId,
-		name: imported.mediaFile.name,
+		name: newName,
 		clips,
 	};
 	if (left.length > 0) {
