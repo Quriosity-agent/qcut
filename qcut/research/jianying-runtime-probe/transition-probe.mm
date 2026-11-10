@@ -44,6 +44,9 @@ constexpr int kAutomaticRendererType = 14;
 constexpr std::int64_t kProbeTimelineDuration = 1'000'000;
 constexpr std::uintptr_t kAmazerContextScopeConstructorOffset = 0x3fb3bc;
 constexpr std::uintptr_t kAmazerContextScopeDestructorOffset = 0x3fb3e8;
+// The getter of the engine's own renderer, as the filter host uses it for
+// this build (filter-probe.mm).
+constexpr std::uintptr_t kEngineRendererGetterOffset = 0x3f9fd8;
 constexpr std::size_t kLeftInputSegmentOffset = 0x2c8;
 constexpr std::size_t kRightInputSegmentOffset = 0x2d0;
 constexpr std::size_t kInputATextureOffset = 0x2d8;
@@ -52,6 +55,8 @@ constexpr std::size_t kInputBTextureOffset = 0x2e8;
 constexpr std::size_t kInputBMetadataOffset = 0x2f0;
 constexpr std::size_t kInputValidOffset = 0x358;
 
+constexpr std::string_view kFinishRenderer =
+    "_ZN13AmazingEngine14RendererDevice6finishEv";
 constexpr std::string_view kTransitionConstructor =
     "_ZN13AmazingEngine17TransitionSegmentC1Ev";
 constexpr std::string_view kTransitionDestructor =
@@ -142,6 +147,8 @@ struct TransitionSymbols {
   ContextScopeConstructorMethod contextScopeConstructor;
   ObjectMethod contextScopeDestructor;
   ConfigureABValueMethod configureABValue;
+  GetObjectMethod getEngineRenderer;
+  ObjectMethod finishRenderer;
 };
 
 template <std::size_t Size>
@@ -398,6 +405,10 @@ template <typename Function>
           "AmazerContextScope::~AmazerContextScope"),
       .configureABValue = resolveSymbol<ConfigureABValueMethod>(
           transitionCore, kConfigureABValue),
+      .getEngineRenderer = resolveImageOffset<GetObjectMethod>(
+          constructor, kEngineRendererGetterOffset, "engine renderer getter"),
+      .finishRenderer =
+          resolveSymbol<ObjectMethod>(transitionCore, kFinishRenderer),
   };
 }
 
@@ -492,6 +503,11 @@ class SwingRenderSession {
               << " (requested " << resources.graphicsDevice << ")\n";
     if (globalContext == nullptr || viewer == nullptr ||
         managerGraphicsDevice != resources.graphicsDevice) {
+      return;
+    }
+    engineRenderer_ = symbols.getEngineRenderer(globalContext);
+    std::cout << "[host] engine renderer = " << engineRenderer_ << '\n';
+    if (engineRenderer_ == nullptr) {
       return;
     }
 
@@ -618,6 +634,16 @@ class SwingRenderSession {
     if (frameReady) {
       seekResult = symbols_.seekManagerDeviceTextureApi(
           manager_->get(), frameTimestamp, &inputA, &output);
+      if (seekResult == 0) {
+        // The engine draws on a Metal queue of its own, and the seek returns
+        // before that queue has run. The caller reads the output through
+        // another device, which cannot wait for it: read too early, the
+        // texture still holds what its pooled storage held last (one of the
+        // inputs, an earlier frame, half of this one). Finishing the
+        // engine's renderer is what makes the frame the one that was asked
+        // for.
+        symbols_.finishRenderer(engineRenderer_);
+      }
       std::cout << "[host] manager seek result = " << seekResult
                 << ", progress = " << progress << '\n';
       printTransitionInputState(transitionSegment_->get(), "manager seek");
@@ -630,6 +656,7 @@ class SwingRenderSession {
  private:
   const TransitionSymbols& symbols_;
   void* graphicsDevice_ = nullptr;
+  void* engineRenderer_ = nullptr;
   std::unique_ptr<SwingManagerHandle> manager_;
   std::unique_ptr<AmazerContextScope> contextScope_;
   std::unique_ptr<SegmentHandle> inputSegmentA_;
