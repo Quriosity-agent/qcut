@@ -935,6 +935,11 @@ keep meeting; the cut goes to one frame for both.
   `skipped` with the reason, as is a clip with a speed curve or a freeze
   frame (its trims cannot take up the difference) and one that would be left
   shorter than a frame.
+- Two clips within half a frame of each other count as one cut: the gap or
+  overlap between them closes on a frame both can take, each by its own
+  trim. Where no frame suits both, the cut is left and listed. An edge
+  within a thousandth of a frame of a frame (a time written to the
+  microsecond) is on it already.
 - Text, captions, stickers and still images have no source to run out of:
   they are simply made to start and end on frames.
 - By default only what is seen is snapped (video, image, text, captions,
