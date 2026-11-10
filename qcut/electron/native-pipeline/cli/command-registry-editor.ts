@@ -1095,6 +1095,16 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"string",
 			"With the master limiter on, how encoding peaks over the ceiling are handled: local (default: lower only those moments), whole (lower the whole mix), check (lower nothing, report)"
 		),
+		f(
+			"--exclude-tracks",
+			"string",
+			"Track ids to leave out of this export, picture and sound, comma-separated (native exports; the project is not changed)"
+		),
+		f(
+			"--keep-temp",
+			"boolean",
+			"Keep the export's intermediate files and its FFmpeg commands (ffmpeg-commands.sh); the job reports the folder as intermediates (native exports)"
+		),
 		// GIF options
 		f("--gif-fps", "number", "GIF frame rate (15|20|25|30)"),
 		f("--gif-loop", "boolean", "GIF loop (true=infinite)"),
