@@ -13,6 +13,11 @@
  */
 
 import {
+	type ConcatSpan,
+	concatSpan,
+	spanFileCounts,
+} from "./concat-timing.js";
+import {
 	blackPictureInputArgs,
 	segmentAudioFormat,
 	segmentPcmAudioArgs,
@@ -69,12 +74,14 @@ export function findTimelineGaps({
 /**
  * The FFmpeg command for one gap: black picture and silence, with the
  * segments' codec, size, rate, pixel format and PCM sound so the concat
- * joins it like any segment. Written as an intermediate MOV.
+ * joins it like any segment, cut to its span like a segment (see
+ * export-segment-encode.ts). Written as an intermediate MOV.
  */
 export function buildGapSegmentEncodeArgs({
 	gap,
 	settings,
 	outputPath,
+	span,
 }: {
 	gap: TimelineGap;
 	settings: Pick<
@@ -88,17 +95,32 @@ export function buildGapSegmentEncodeArgs({
 		| "audioChannels"
 	>;
 	outputPath: string;
+	/** The stretch of the timeline the file fills; the gap's own by default. */
+	span?: Pick<ConcatSpan, "frames" | "samples">;
 }): string[] {
+	const format = segmentAudioFormat({ settings });
+	const { frames, samples } = spanFileCounts({
+		span:
+			span ??
+			concatSpan({
+				from: gap.startTime,
+				to: gap.startTime + gap.duration,
+				fps: settings.fps,
+				sampleRate: format.sampleRate,
+			}),
+	});
 	return [
 		"-y",
 		...blackPictureInputArgs({ settings }),
-		...silenceInputArgs({ format: segmentAudioFormat({ settings }) }),
+		...silenceInputArgs({ format }),
 		"-map",
 		"0:v:0",
 		"-map",
 		"1:a:0",
-		"-t",
-		String(gap.duration),
+		"-vf",
+		`trim=end_frame=${frames}`,
+		"-af",
+		`atrim=end_sample=${samples}`,
 		"-c:v",
 		settings.codec,
 		"-preset",
@@ -107,31 +129,49 @@ export function buildGapSegmentEncodeArgs({
 		parseBitrateForKbps({ bitrate: settings.bitrate }),
 		"-pix_fmt",
 		"yuv420p",
-		...segmentPcmAudioArgs({ format: segmentAudioFormat({ settings }) }),
+		...segmentPcmAudioArgs({ format }),
 		outputPath,
 	];
 }
 
-/** Segment and gap files in timeline order, for the concat list. */
-export function orderConcatInputs({
-	segmentOutputs,
+/** A file the concat joins: a segment or a gap, and where it sits. */
+export interface ConcatEntry {
+	kind: "segment" | "gap";
+	/** Index into the segments or the gaps. */
+	index: number;
+	startTime: number;
+	endTime: number;
+}
+
+/** Segments and gaps in timeline order, the order the concat joins them. */
+export function orderConcatEntries({
+	segments,
 	gaps,
-	gapOutputs,
 }: {
-	segmentOutputs: string[];
+	segments: Array<Pick<ExportSegment, "startTime" | "duration">>;
 	gaps: TimelineGap[];
-	gapOutputs: string[];
-}): string[] {
-	const inputs: string[] = [];
-	const pushGapBefore = (index: number) => {
-		const gapIndex = gaps.findIndex((gap) => gap.beforeSegment === index);
-		if (gapIndex >= 0 && gapOutputs[gapIndex])
-			inputs.push(gapOutputs[gapIndex]);
+}): ConcatEntry[] {
+	const entries: ConcatEntry[] = [];
+	const pushGapBefore = (segmentIndex: number) => {
+		const index = gaps.findIndex((gap) => gap.beforeSegment === segmentIndex);
+		if (index < 0) return;
+		const gap = gaps[index];
+		entries.push({
+			kind: "gap",
+			index,
+			startTime: gap.startTime,
+			endTime: gap.startTime + gap.duration,
+		});
 	};
-	for (const [index, output] of segmentOutputs.entries()) {
+	for (const [index, segment] of segments.entries()) {
 		pushGapBefore(index);
-		inputs.push(output);
+		entries.push({
+			kind: "segment",
+			index,
+			startTime: segment.startTime,
+			endTime: segment.startTime + segment.duration,
+		});
 	}
-	pushGapBefore(segmentOutputs.length);
-	return inputs;
+	pushGapBefore(segments.length);
+	return entries;
 }
