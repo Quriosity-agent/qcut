@@ -309,6 +309,14 @@ export function verifyManifest({
 		if (track.name !== undefined && actual.name !== track.name) {
 			issues.push(`track '${alias}' name mismatch`);
 		}
+		// Only a whole-timeline manifest places its main track; a merge keeps
+		// the project's own.
+		if (positional && track.isMain === true && actual.isMain !== true) {
+			const main = timeline.tracks.find((candidate) => candidate.isMain);
+			issues.push(
+				`track '${alias}' is marked isMain, but the main track is ${main ? `'${main.name}'` : "another one"}`
+			);
+		}
 		if (
 			track.colorLabel !== undefined &&
 			(actual.colorLabel ?? null) !== (track.colorLabel || null)
