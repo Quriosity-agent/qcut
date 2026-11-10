@@ -5,7 +5,11 @@ import {
 	planSegmentPictureRead,
 } from "../claude/handlers/claude-export-handler/export-segment-encode.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
+import { EXPORT_PICTURE_COLOR_FILTERS } from "../claude/handlers/claude-export-handler/source-color.js";
 import { STEREO_SOURCE_CHAIN } from "../ffmpeg/stereo-source.js";
+
+/** The conversion every picture ends with (source-color.test.ts pins its text). */
+const TO_EXPORT_COLOR = EXPORT_PICTURE_COLOR_FILTERS.join(",");
 
 /**
  * Where a segment's source is opened, and how its picture and sound are put
@@ -124,7 +128,7 @@ describe("a segment read by its plan", () => {
 			}),
 		});
 		expect(vf).toBe(
-			"settb=AVTB,setpts=PTS-251000,scale=1470:630,tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=36"
+			`settb=AVTB,setpts=PTS-251000,scale=1470:630,${TO_EXPORT_COLOR},tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=36`
 		);
 		// The sound of the same input starts at the in-point, the lead cut off.
 		expect(af).toBe(
@@ -151,7 +155,7 @@ describe("a segment read by its plan", () => {
 			}),
 		});
 		expect(vf).toBe(
-			"settb=AVTB,setpts=PTS-252000,scale=1470:630,setpts=PTS/2,tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=36"
+			`settb=AVTB,setpts=PTS-252000,scale=1470:630,setpts=PTS/2,${TO_EXPORT_COLOR},tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=36`
 		);
 	});
 
