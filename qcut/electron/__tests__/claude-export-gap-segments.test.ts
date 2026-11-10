@@ -4,6 +4,10 @@ import {
 	findTimelineGaps,
 	orderConcatEntries,
 } from "../claude/handlers/claude-export-handler/gap-segments.js";
+import {
+	EXPORT_PICTURE_COLOR_ARGS,
+	EXPORT_PICTURE_TAGS_FILTER,
+} from "../claude/handlers/claude-export-handler/source-color.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
 
 function segment({
@@ -96,10 +100,12 @@ describe("buildGapSegmentEncodeArgs", () => {
 		expect(args).toContain("color=c=black:s=1280x720:r=25");
 		expect(args).toContain("anullsrc=r=44100:cl=mono");
 		// 2 s to 3.5 s: frames 50 to 87 at 25 fps (38), samples 88 200 to 154 350.
+		// Black states the export's colour description too.
 		expect(args.slice(args.indexOf("-vf"), args.indexOf("-vf") + 2)).toEqual([
 			"-vf",
-			"trim=end_frame=38",
+			`trim=end_frame=38,${EXPORT_PICTURE_TAGS_FILTER}`,
 		]);
+		expect(args.join(" ")).toContain(EXPORT_PICTURE_COLOR_ARGS.join(" "));
 		expect(args.slice(args.indexOf("-af"), args.indexOf("-af") + 2)).toEqual([
 			"-af",
 			"atrim=end_sample=66150",
