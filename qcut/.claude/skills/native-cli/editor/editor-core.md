@@ -28,6 +28,22 @@ a failure still prints the error envelope and exits non-zero. Notices and
 `--verbose` debug lines go to stderr, so parse stdout on its own rather than
 `2>&1`.
 
+```bash
+qcut editor timeline export --project-id <id> --json | jq '.data.data.tracks | length'
+qcut editor timeline export --project-id <id> --json --flat | jq '.tracks | length'
+```
+
+The payload is an object for most commands. Two are plain arrays:
+`editor media list` (the media items) and `editor media batch-import`
+without `--append-to-track` (one result per item); each command's page says
+what its payload holds.
+
+`--project-id` names the project a command works on. Left out,
+`timeline export`, `timeline info` and the `track`, `mix` and `element`
+commands take the project the editor has open (`--help` says "defaults to
+the active project" for each command that does); the rest answer
+`Missing --project-id`.
+
 `editor health` also reports `window`: `{ "hasWindow": false, "count": 0 }`
 means QCut is running with its window closed (macOS keeps the app alive).
 Editor commands reopen the window themselves and wait until the editor is
@@ -117,6 +133,10 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 | `--replace` | boolean | Replace timeline on import |
 | `--ripple` | boolean | Ripple edit (close gaps) |
 | `--cross-track-ripple` | boolean | Ripple across all tracks |
+| `--at` | number | `editing insert-gap`: where the empty time starts, in seconds |
+| `--snap-frames` | boolean | Round the command's times to the project's frames (`editing delete-range`, `editing insert-gap`, `timeline split`, `timeline move`, `timeline trim`) |
+| `--exclude-tracks` | string | `export start`: track ids to leave out of this export, comma-separated |
+| `--keep-temp` | boolean | `export start`: keep the export's intermediate files and FFmpeg commands |
 | `--remove-fillers` | boolean | Remove filler words |
 | `--remove-silences` | boolean | Remove silences |
 | `--poll` | boolean | Auto-poll async jobs |
