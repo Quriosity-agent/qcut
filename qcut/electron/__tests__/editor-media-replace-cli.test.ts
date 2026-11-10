@@ -43,12 +43,15 @@ function fakeEditor({
 	refuse,
 	stickyClip,
 	removalFails = false,
+	transactionEndFails,
 }: {
 	/** The clip whose swap the editor refuses, and with what status. */
 	refuse?: { elementId: string; status: number };
 	/** A clip the editor reports as still playing the old media afterwards. */
 	stickyClip?: string;
 	removalFails?: boolean;
+	/** The way of ending the transaction that the editor does not answer. */
+	transactionEndFails?: "commit" | "rollback";
 } = {}) {
 	const playing = new Map<string, string>([
 		["shake-a", OLD],
@@ -94,6 +97,9 @@ function fakeEditor({
 		}
 		if (path === "/api/claude/transaction/begin") {
 			return { transactionId: "txn-1" };
+		}
+		if (transactionEndFails && path.endsWith(`/${transactionEndFails}`)) {
+			throw new Error("the editor did not answer");
 		}
 		return {};
 	});
@@ -222,6 +228,42 @@ describe("editor media replace", () => {
 		expect(result.error).toContain(
 			`shake_03_1.mov (${NEW}) is still in the project ("qcut editor:media:delete --project-id p1 --media-id ${NEW}" removes it).`
 		);
+		expect(editor.remove).not.toHaveBeenCalled();
+	});
+
+	it("says what is left when a refused replace cannot be rolled back either", async () => {
+		const editor = fakeEditor({
+			refuse: { elementId: "shake-b", status: 409 },
+			transactionEndFails: "rollback",
+		});
+		const result = await mediaReplace(editor.client, options());
+
+		// The first clip was changed and may still play the new file, so the
+		// import stays, and the open transaction is named.
+		expect(result).toEqual({
+			success: false,
+			error:
+				"Clip shake-b (shake-b) could not take shake_03_1.mov: The new media ends before the clip's out-point. " +
+				"The clips changed before it could not be put back either: the rollback failed (the editor did not answer). " +
+				'Transaction txn-1 may still be open; the editor rolls it back when it times out, and "qcut editor:transaction:rollback --transaction-id txn-1" does it now. ' +
+				`shake_03_1.mov (${NEW}) was left in the project, since clips may still play it; once none does, "qcut editor:media:delete --project-id p1 --media-id ${NEW}" removes it.`,
+		});
+		expect(editor.remove).not.toHaveBeenCalled();
+	});
+
+	it("does not call the replace done when it cannot be committed", async () => {
+		const editor = fakeEditor({ transactionEndFails: "commit" });
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result.success).toBe(false);
+		expect(result.error).toBe(
+			"Every clip was given shake_03_1.mov, but the change could not be committed (the editor did not answer). " +
+				'Transaction txn-1 may still be open; the editor rolls it back when it times out, and "qcut editor:transaction:rollback --transaction-id txn-1" does it now. ' +
+				`shake_03_1.mov (${NEW}) was left in the project, since clips may still play it; once none does, "qcut editor:media:delete --project-id p1 --media-id ${NEW}" removes it. ` +
+				"shake_03.mov was kept."
+		);
+		// Neither item is removed: the clips play one now and the other after
+		// a rollback.
 		expect(editor.remove).not.toHaveBeenCalled();
 	});
 
