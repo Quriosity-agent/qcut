@@ -133,10 +133,35 @@ function canMove(edges: Edges): boolean {
 }
 
 /**
+ * Why a clip's edge cannot go to a frame `outward` seconds further out than
+ * it is (earlier for a start, later for an end): the clip stays as it is
+ * (`held`), or the frame is past its unused source (`room`). An edge within
+ * noise of the frame is on it already and needs neither; inwards the trim
+ * only grows.
+ */
+function refusal({
+	edges,
+	outward,
+	room,
+	fps,
+}: {
+	edges: Edges;
+	outward: number;
+	room: number;
+	fps: number;
+}): "held" | "room" | undefined {
+	if (Math.abs(outward) * fps < ON_FRAME_TOLERANCE) return;
+	if (!canMove(edges)) return "held";
+	return outward > room + 1e-9 ? "room" : undefined;
+}
+
+/**
  * Where a boundary goes: the first frame around it that the clip ending
  * there (`ending`) and the clip starting there (`starting`) can both take.
- * A clip that is not being snapped, or cannot be retimed, stays put, so the
- * boundary cannot move at all.
+ * Each is asked about its own edge: two clips that meet at a cut need not
+ * meet exactly (see `SEAM_TOLERANCE`), and one of them can be on the frame
+ * while the other is not. A clip that is not being snapped, or cannot be
+ * retimed, stays put, so its edge cannot move at all.
  */
 function resolveBoundary({
 	time,
@@ -149,21 +174,30 @@ function resolveBoundary({
 	ending?: Edges;
 	starting?: Edges;
 }): Boundary {
-	const slack = 1e-9;
+	let held: Edges | undefined;
 	for (const choice of frameChoices({ time, fps })) {
-		const later = choice - time;
-		if (Math.abs(later) <= slack) return { time: choice };
-		if (ending && !canMove(ending)) continue;
-		if (starting && !canMove(starting)) continue;
 		// Later needs unused source after the clip that ends here; earlier
 		// needs it before the clip that starts here.
-		if (ending && later > ending.tailRoom + slack) continue;
-		if (starting && -later > starting.headRoom + slack) continue;
-		return { time: choice };
+		const endRefused =
+			ending &&
+			refusal({
+				edges: ending,
+				outward: choice - ending.end,
+				room: ending.tailRoom,
+				fps,
+			});
+		const startRefused =
+			starting &&
+			refusal({
+				edges: starting,
+				outward: starting.start - choice,
+				room: starting.headRoom,
+				fps,
+			});
+		if (!endRefused && !startRefused) return { time: choice };
+		if (endRefused === "held") held ??= ending;
+		if (startRefused === "held") held ??= starting;
 	}
-	const held = [ending, starting].find(
-		(edges) => edges !== undefined && !canMove(edges)
-	);
 	if (held?.fixed) {
 		return { reason: `the clip at that cut cannot be retimed (${held.fixed})` };
 	}
@@ -295,9 +329,11 @@ export function planFrameSnap({
 			}
 			const startAt = startOf.get(edges) as Boundary;
 			const endAt = endOf.get(edges) as Boundary;
-			if ("reason" in startAt)
+			// A cut two clips share can fail for the other clip's edge alone,
+			// while this one's is on a frame and has nothing to report.
+			if ("reason" in startAt && !isOnFrame({ time: edges.start, fps }))
 				skip(`its start stays between frames: ${startAt.reason}`);
-			if ("reason" in endAt)
+			if ("reason" in endAt && !isOnFrame({ time: edges.end, fps }))
 				skip(`its end stays between frames: ${endAt.reason}`);
 			const start = "time" in startAt ? startAt.time : edges.start;
 			const end = "time" in endAt ? endAt.time : edges.end;
