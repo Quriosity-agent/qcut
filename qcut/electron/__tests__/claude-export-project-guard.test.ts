@@ -567,6 +567,84 @@ describe("export start project guard", () => {
 	});
 });
 
+describe("export start --exclude-tracks", () => {
+	beforeEach(() => {
+		vi.mocked(startExportJob).mockClear();
+		vi.mocked(startRendererExportJob).mockClear();
+		vi.mocked(listMediaFiles).mockReset().mockResolvedValue([]);
+	});
+
+	const clip = {
+		id: "clip",
+		trackIndex: 0,
+		startTime: 0,
+		endTime: 1,
+		duration: 1,
+		type: "media" as const,
+	};
+	const timeline = (): ClaudeTimeline => ({
+		...buildTimeline("project-a"),
+		tracks: [
+			{
+				id: "portrait-cards",
+				index: 0,
+				name: "Portrait cards",
+				type: "media",
+				// Alone, this clip would make the export a renderer one.
+				elements: [
+					{ ...clip, id: "card", enhancements: { labEyeCorrection: 60 } },
+				],
+			},
+			{
+				id: "main",
+				index: 1,
+				name: "Main track",
+				type: "media",
+				elements: [clip],
+			},
+		],
+	});
+	const start = (body: unknown) => {
+		const accessor = buildAccessor(timeline());
+		accessor.requestLocalVideoExport = vi.fn(async () => {});
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		return getHandler(
+			method,
+			path
+		)({ params: { projectId: "project-a" }, query: {}, body });
+	};
+
+	it("exports the timeline with the named tracks hidden and muted, on the engine that timeline needs", async () => {
+		await start({});
+		expect(startRendererExportJob).toHaveBeenCalledTimes(1);
+
+		await start({ excludeTracks: ["portrait-cards"] });
+		expect(startExportJob).toHaveBeenCalledTimes(1);
+		const [{ timeline: exported }] = vi.mocked(startExportJob).mock.calls[0];
+		expect(
+			exported.tracks.map(({ id, hidden, muted }) => ({ id, hidden, muted }))
+		).toEqual([
+			{ id: "portrait-cards", hidden: true, muted: true },
+			{ id: "main", hidden: undefined, muted: undefined },
+		]);
+	});
+
+	it("answers 400 for a track the timeline does not have", async () => {
+		await expect(start({ excludeTracks: ["titles"] })).rejects.toMatchObject({
+			status: 400,
+			message:
+				"No such track to exclude: titles. The timeline has: portrait-cards (Portrait cards), main (Main track)",
+		});
+		await expect(start({ excludeTracks: 3 })).rejects.toMatchObject({
+			status: 400,
+		});
+		expect(startExportJob).not.toHaveBeenCalled();
+		expect(startRendererExportJob).not.toHaveBeenCalled();
+	});
+});
+
 describe("export cancel route", () => {
 	const CANCEL = "POST /api/claude/export/:projectId/jobs/:jobId/cancel";
 	const cancel = (jobId: string, projectId = "project-a") => {
