@@ -126,6 +126,71 @@ export function overwriteRangeInElements({
 }
 
 /**
+ * The elements as they lie around `time`: untouched before it, marked `after`
+ * from it on. The element spanning the point is split there, its parts named
+ * like a manual split. Seams less than the seam tolerance apart count as
+ * touching.
+ */
+function splitElementsAtTime({
+	elements,
+	time,
+	fps,
+}: {
+	elements: readonly TimelineElement[];
+	time: number;
+	fps: number;
+}): Array<{ element: TimelineElement; after: boolean; split?: true }> {
+	const tolerance = getSeamToleranceSeconds(fps);
+	const pieces: Array<{
+		element: TimelineElement;
+		after: boolean;
+		split?: true;
+	}> = [];
+
+	for (const element of elements) {
+		if (startsAtOrAfter({ startTime: element.startTime, time, fps })) {
+			pieces.push({ element, after: true });
+			continue;
+		}
+
+		const endTime = getTimelineElementEndTime({ element });
+		if (endTime <= time + tolerance) {
+			pieces.push({ element, after: false });
+			continue;
+		}
+
+		const splitUpdates = getTimelineSplitUpdates({
+			element,
+			splitTime: time,
+			fps,
+		});
+		pieces.push({
+			element: {
+				...element,
+				...splitUpdates.left,
+				name: getElementNameWithSuffix(element.name, "left"),
+			},
+			after: false,
+		});
+		pieces.push({
+			element: assignNewStickerInstanceId({
+				element: {
+					...element,
+					id: generateUUID(),
+					startTime: time,
+					...splitUpdates.right,
+					name: getElementNameWithSuffix(element.name, "right"),
+				},
+				newStickerId: createStickerInstanceId(),
+			}),
+			after: true,
+			split: true,
+		});
+	}
+	return pieces;
+}
+
+/**
  * Makes room for `insertDuration` at `insertTime`. The element spanning the
  * point is split (named like a manual split), and every element from the
  * point on moves right as far as the inserted one needs: its whole length
@@ -146,49 +211,7 @@ export function insertGapInElements({
 	fps: number;
 }): TimelineElement[] {
 	const tolerance = getSeamToleranceSeconds(fps);
-	const pieces: Array<{ element: TimelineElement; after: boolean }> = [];
-
-	for (const element of elements) {
-		if (
-			startsAtOrAfter({ startTime: element.startTime, time: insertTime, fps })
-		) {
-			pieces.push({ element, after: true });
-			continue;
-		}
-
-		const endTime = getTimelineElementEndTime({ element });
-		if (endTime <= insertTime + tolerance) {
-			pieces.push({ element, after: false });
-			continue;
-		}
-
-		const splitUpdates = getTimelineSplitUpdates({
-			element,
-			splitTime: insertTime,
-			fps,
-		});
-		pieces.push({
-			element: {
-				...element,
-				...splitUpdates.left,
-				name: getElementNameWithSuffix(element.name, "left"),
-			},
-			after: false,
-		});
-		pieces.push({
-			element: assignNewStickerInstanceId({
-				element: {
-					...element,
-					id: generateUUID(),
-					startTime: insertTime,
-					...splitUpdates.right,
-					name: getElementNameWithSuffix(element.name, "right"),
-				},
-				newStickerId: createStickerInstanceId(),
-			}),
-			after: true,
-		});
-	}
+	const pieces = splitElementsAtTime({ elements, time: insertTime, fps });
 
 	const firstAfterStart = Math.min(
 		...pieces
@@ -202,4 +225,35 @@ export function insertGapInElements({
 			? { ...element, startTime: element.startTime + shift }
 			: element
 	);
+}
+
+/**
+ * Opens `duration` seconds of empty time at `time`: every element from the
+ * point on moves right by exactly that much, whatever room there already
+ * was, and the element spanning the point is split there. The reverse of a
+ * ripple delete of the same span.
+ */
+export function openGapInElements({
+	elements,
+	time,
+	duration,
+	fps,
+}: {
+	elements: readonly TimelineElement[];
+	time: number;
+	duration: number;
+	fps: number;
+}): {
+	elements: TimelineElement[];
+	movedElements: number;
+	splitElements: number;
+} {
+	const pieces = splitElementsAtTime({ elements, time, fps });
+	return {
+		elements: pieces.map(({ element, after }) =>
+			after ? { ...element, startTime: element.startTime + duration } : element
+		),
+		movedElements: pieces.filter((piece) => piece.after).length,
+		splitElements: pieces.filter((piece) => piece.split).length,
+	};
 }
