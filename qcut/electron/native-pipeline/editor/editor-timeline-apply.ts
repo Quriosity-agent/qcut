@@ -160,6 +160,61 @@ async function importManifestMedia({
 	}
 }
 
+/**
+ * The manifest track marked `isMain`, as `timeline export` marks the track
+ * QCut cannot do without; -1 when none is. More than one mark, or a mark on
+ * a track that is not a media track, is a manifest QCut cannot build.
+ */
+function markedMainTrackIndex({
+	manifest,
+}: {
+	manifest: TimelineManifest;
+}): number {
+	const tracks = manifest.tracks ?? [];
+	const marked = tracks.flatMap((track, index) =>
+		track.isMain === true ? [index] : []
+	);
+	const name = (index: number) =>
+		`'${aliasFor(tracks[index], `track-${index}`)}'`;
+	if (marked.length > 1) {
+		throw new Error(
+			`A manifest can mark one track isMain; ${marked.length} are marked (${marked.map(name).join(", ")})`
+		);
+	}
+	if (marked.length === 0) return -1;
+	const [index] = marked;
+	if (tracks[index].type !== "media") {
+		throw new Error(
+			`Track ${name(index)} is marked isMain but is a ${tracks[index].type ?? "typeless"} track; QCut's main track is a media track`
+		);
+	}
+	return index;
+}
+
+/**
+ * Which manifest track a replace gives QCut's required main track: the one
+ * marked `isMain`, else the first media track. The first media track alone
+ * used to decide, so a timeline exported with an overlay track above its
+ * main track came back with the overlay track as the main one.
+ */
+function mainManifestTrackIndex({
+	manifest,
+}: {
+	manifest: TimelineManifest;
+}): number {
+	const marked = markedMainTrackIndex({ manifest });
+	if (marked >= 0) return marked;
+	const firstMedia = (manifest.tracks ?? []).findIndex(
+		(track) => track.type === "media"
+	);
+	if (firstMedia < 0) {
+		throw new Error(
+			"A replace manifest must contain a media track for QCut's required main track"
+		);
+	}
+	return firstMedia;
+}
+
 async function createManifestTracks({
 	client,
 	projectId,
@@ -186,13 +241,7 @@ async function createManifestTracks({
 	let preservedMainId: string | undefined;
 	let mainManifestIndex = -1;
 	if (replace) {
-		mainManifestIndex =
-			manifest.tracks?.findIndex((track) => track.type === "media") ?? -1;
-		if (mainManifestIndex < 0) {
-			throw new Error(
-				"A replace manifest must contain a media track for QCut's required main track"
-			);
-		}
+		mainManifestIndex = mainManifestTrackIndex({ manifest });
 		const mainTrack = before.tracks.find((track) => track.isMain);
 		if (!mainTrack?.id) {
 			throw new Error("QCut did not expose its required main track");
@@ -236,6 +285,14 @@ async function createManifestTracks({
 				}
 			);
 		}
+	} else if (positional) {
+		// A project that still has only its empty main track: the track the
+		// manifest marks takes it, as in a replace. Unmarked, the manifest's
+		// tracks are all new and the empty main track stays, as before.
+		mainManifestIndex = markedMainTrackIndex({ manifest });
+		if (mainManifestIndex >= 0) {
+			preservedMainId = before.tracks.find((track) => track.isMain)?.id;
+		}
 	}
 
 	for (const [arrayIndex, track] of (manifest.tracks ?? []).entries()) {
@@ -247,12 +304,13 @@ async function createManifestTracks({
 				? track.index
 				: undefined;
 		const settings = trackSettingsBody({ track });
-		const existingId = replace
-			? arrayIndex === mainManifestIndex
+		const existingId =
+			arrayIndex === mainManifestIndex && preservedMainId
 				? preservedMainId
-				: undefined
-			: (track.trackId ??
-				before.tracks.find((candidate) => candidate.id === track.id)?.id);
+				: replace
+					? undefined
+					: (track.trackId ??
+						before.tracks.find((candidate) => candidate.id === track.id)?.id);
 		if (existingId) {
 			const body: JsonRecord = {
 				...(index !== undefined ? { index } : {}),
@@ -553,6 +611,17 @@ export async function timelineApplyManifest(
 	const atomic = opts.atomic !== false;
 	const shouldVerify = opts.verify !== false;
 	const replace = opts.replace || manifest.replace === true;
+	// A manifest that cannot say which track is the main one is refused
+	// before anything is imported or changed.
+	try {
+		if (replace) mainManifestTrackIndex({ manifest });
+		else markedMainTrackIndex({ manifest });
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 	const mix = manifestMix(manifest);
 	const touchesMix = mix !== undefined || manifestHasTrackAudio(manifest);
 	let previousMix: MixSnapshot | undefined;
