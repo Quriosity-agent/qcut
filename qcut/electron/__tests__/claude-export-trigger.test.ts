@@ -326,6 +326,91 @@ describe("Claude export trigger", () => {
 		});
 	});
 
+	/**
+	 * Clips 24.4 frames long, as a ripple delete on bar lines leaves them.
+	 * Each used to be written with `-t` as 25 frames of its own and joined
+	 * end to end, so the picture of every later clip came later by the sum
+	 * of those remainders while its sound stayed where the timeline has it.
+	 */
+	it("cuts each clip to the frames and samples the timeline gives it, and joins picture and sound by their own lengths", async () => {
+		const clipSeconds = 61 / 60;
+		const timeline = {
+			...testTimeline,
+			fps: 24,
+			duration: 3 * clipSeconds,
+			tracks: [
+				{
+					...testTimeline.tracks[0],
+					elements: [0, 1, 2].map((index) => ({
+						...testTimeline.tracks[0].elements[0],
+						id: `el_${index}`,
+						startTime: index * clipSeconds,
+						endTime: (index + 1) * clipSeconds,
+						duration: clipSeconds,
+					})),
+				},
+			],
+		};
+		const result = await startExportJob({
+			projectId: "project_fractional_cuts",
+			request: { outputPath: "/tmp/export-fractional-cuts.mp4" },
+			timeline,
+			mediaFiles: testMediaFiles,
+		});
+		await vi.waitFor(() => {
+			expect(getExportJobStatus(result.jobId)?.status).toBe("completed");
+		});
+		const commands = mockSpawn.mock.calls.map((call) => call[1] as string[]);
+		const segments = commands.filter((args) =>
+			/[\\/]segment-\d{4}\.mov$/.test(String(args.at(-1)))
+		);
+		// Frames 0–24, 25–48 and 49–73: 74 in all, where three times 25 is 75.
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-vf") + 1].match(/trim=end_frame=(\d+)$/)?.[1]
+			)
+		).toEqual(["25", "24", "25"]);
+		expect(
+			segments.map(
+				(args) =>
+					args[args.indexOf("-af") + 1].match(/atrim=end_sample=(\d+)$/)?.[1]
+			)
+		).toEqual(["48800", "48800", "48800"]);
+		for (const args of segments) {
+			expect(args.slice(args.indexOf("-map"))).not.toContain("-t");
+		}
+
+		const lists = new Map(
+			mockFsPromises.writeFile.mock.calls.map((call) => {
+				const [file, content] = call as unknown as [string, string];
+				return [String(file).replace(/^.*[\\/]/, ""), String(content)];
+			})
+		);
+		const durations = (name: string) =>
+			(lists.get(name) ?? "")
+				.split("\n")
+				.filter((line) => line.startsWith("duration "))
+				.map((line) => line.slice("duration ".length));
+		expect(durations("concat-video-list.txt")).toEqual([
+			"1.041667",
+			"1.000000",
+			"1.041666",
+		]);
+		expect(durations("concat-audio-list.txt")).toEqual([
+			"1.016667",
+			"1.016666",
+			"1.016667",
+		]);
+		const concat = commands.find(
+			(args) => args.filter((arg) => arg === "concat").length === 2
+		);
+		expect(concat).toBeDefined();
+		expect(
+			concat?.slice(concat.indexOf("-map"), concat.indexOf("-map") + 4)
+		).toEqual(["-map", "0:v:0", "-map", "1:a:0"]);
+	});
+
 	it("snaps a project rate the renderer cannot run to the nearest it can, unless the rate was asked for", async () => {
 		const dispatch = vi.fn(async () => {});
 		const ntsc = { ...testTimeline, width: 1920, height: 1080, fps: 29.97 };
