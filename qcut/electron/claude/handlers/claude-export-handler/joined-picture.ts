@@ -2,13 +2,18 @@
  * The joined picture as the first input of a later pass that draws other
  * files over it (media overlays, text rasters, stickers).
  *
- * Its picture is copied from the segments, so its colour tags change where a
- * clip from a tagged file (`tv, bt709`) follows an untagged one. FFmpeg then
- * rebuilds the pass's whole filter graph, and every other input loses the
- * frames the old graph had already read: overlays that appeared after the
- * change started 2–5 frames into their own picture, with their last frame
- * held to make up the length. The pixel format and size never change here,
- * so the graph is kept (`-reinit_filter 0`).
+ * Its picture is copied from the segments, so its colour tags change where
+ * two clips say different things. FFmpeg then rebuilds the pass's whole
+ * filter graph, and every other input loses the frames the old graph had
+ * already read: overlays that appeared after the change started 2–5 frames
+ * into their own picture, with their last frame held to make up the length.
+ * The pixel format and size never change here, so the graph is kept
+ * (`-reinit_filter 0`).
+ *
+ * Every SDR clip is now encoded in one description (source-color.ts), so
+ * that no longer happens from one ordinary clip to the next. An HDR clip
+ * still keeps its own, and a picture that has both changes where they
+ * meet: that is what this is left guarding.
  *
  * A graph that is kept still reads each frame's own tags wherever it converts
  * the picture (a blend mode works in RGB), while it converts back with the
