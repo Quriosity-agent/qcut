@@ -118,12 +118,31 @@ export async function mediaReplace(
 			? media.duration
 			: undefined;
 
-	// One undo step; a clip the editor refuses puts every clip back.
-	const { transactionId } = await client.post<{ transactionId: string }>(
-		"/api/claude/transaction/begin",
-		{ label: "Replace media" }
-	);
 	const newName = imported.mediaFile.name;
+	// One undo step; a clip the editor refuses puts every clip back.
+	let transactionId: string;
+	try {
+		({ transactionId } = await client.post<{ transactionId: string }>(
+			"/api/claude/transaction/begin",
+			{ label: "Replace media" }
+		));
+	} catch (error) {
+		// Nothing has been changed yet, so the import goes again.
+		const reason = error instanceof Error ? error.message : String(error);
+		const cleanup = await removeImported({
+			client,
+			project,
+			mediaId: newMediaId,
+		});
+		return {
+			success: false,
+			error:
+				`The replace could not be started: ${reason}. No clip was changed` +
+				(cleanup.removed
+					? "."
+					: `; ${newName} (${newMediaId}) is still in the project ("qcut editor:media:delete --project-id ${projectId} --media-id ${newMediaId}" removes it).`),
+		};
+	}
 	// What is left when the transaction itself could not be ended: it stays
 	// open with the clips changed so far, which play the new file until the
 	// editor rolls it back, so the import must not be removed under them.
