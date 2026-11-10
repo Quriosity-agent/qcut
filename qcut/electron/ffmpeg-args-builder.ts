@@ -94,6 +94,13 @@ export interface BuildFFmpegArgsOptions {
 	trimStart?: number;
 	trimEnd?: number;
 	backgroundColor?: string;
+	/**
+	 * Filters the finished picture goes through before it is encoded. The
+	 * native export states its colour description here: its segments are
+	 * all in it already, and the layers drawn in RGB come back without
+	 * their primaries and transfer.
+	 */
+	outputPictureFilters?: readonly string[];
 }
 
 function resolveQuality(quality: "high" | "medium" | "low"): QualitySettings {
@@ -579,6 +586,7 @@ function buildCompositeEncodeArgs(
 		includeEmbeddedAudio = true,
 		trimStart,
 		backgroundColor = "#000000",
+		outputPictureFilters = [],
 	} = options;
 	const { crf, preset } = qualitySettings;
 	const args: string[] = ["-y"];
@@ -927,6 +935,14 @@ function buildCompositeEncodeArgs(
 			}
 			currentVideoLabel = outputLabel;
 		}
+	}
+
+	if (outputPictureFilters.length > 0) {
+		const outputLabel = "output_picture";
+		filterSteps.push(
+			`[${currentVideoLabel}]${outputPictureFilters.join(",")}[${outputLabel}]`
+		);
+		currentVideoLabel = outputLabel;
 	}
 
 	const audioInputStartIndex =
