@@ -685,6 +685,130 @@ describe("Timeline Store Operations", () => {
 		]);
 	});
 
+	it("insertTimeGap moves the clips from the point on and splits the one that spans it", () => {
+		// One clip from 5 s to 15 s; 3 s of empty time open at 9 s.
+		const { result, mainTrackId, elementId } = setupStoreWithElement();
+		let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+		act(() => {
+			answer = result.current.insertTimeGap({ time: 9, duration: 3 });
+		});
+
+		expect(answer).toEqual({
+			ok: true,
+			time: 9,
+			duration: 3,
+			trackIds: [mainTrackId],
+			movedElements: 1,
+			splitElements: 1,
+			mixAutomationMoved: false,
+		});
+		const [left, right] = result.current.tracks[0].elements;
+		expect(left).toMatchObject({ id: elementId, startTime: 5, trimEnd: 6 });
+		expect(left.name).toContain("left");
+		expect(right).toMatchObject({ startTime: 12, trimStart: 4, trimEnd: 0 });
+		expect(right.id).not.toBe(elementId);
+		expect(right.name).toContain("right");
+
+		// One undo step puts the clip back whole.
+		act(() => {
+			result.current.undo();
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0]).toMatchObject({
+			id: elementId,
+			startTime: 5,
+			trimEnd: 0,
+		});
+	});
+
+	it("insertTimeGap at the head moves the whole timeline, automation with it", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: {
+					gainDb: [
+						{ time: 2, value: 0 },
+						{ time: 12, value: -12 },
+					],
+				},
+			});
+		});
+		act(() => {
+			result.current.insertTimeGap({ time: 0, duration: 5 });
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0].startTime).toBe(10);
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 7, value: 0 },
+			{ time: 17, value: -12 },
+		]);
+	});
+
+	it("insertTimeGap leaves automation alone with keepAutomation", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		act(() => {
+			result.current.updateTrackAudio(mainTrackId, {
+				automation: { gainDb: [{ time: 12, value: -12 }] },
+			});
+		});
+		act(() => {
+			result.current.insertTimeGap({
+				time: 0,
+				duration: 5,
+				keepAutomation: true,
+			});
+		});
+		expect(result.current.tracks[0].elements[0].startTime).toBe(10);
+		expect(result.current.tracks[0].audio?.automation?.gainDb).toEqual([
+			{ time: 12, value: -12 },
+		]);
+	});
+
+	it("insertTimeGap leaves a clip that ends at the point where it is", () => {
+		const { result } = setupStoreWithElement();
+		act(() => {
+			result.current.insertTimeGap({ time: 15, duration: 2 });
+		});
+		expect(result.current.tracks[0].elements).toHaveLength(1);
+		expect(result.current.tracks[0].elements[0]).toMatchObject({
+			startTime: 5,
+			trimEnd: 0,
+		});
+	});
+
+	it("insertTimeGap refuses a bad request, a missing track and a locked one without touching the timeline", () => {
+		const { result, mainTrackId } = setupStoreWithElement();
+		const before = result.current.tracks;
+		const refused = (
+			request: Parameters<typeof result.current.insertTimeGap>[0]
+		) => {
+			let answer: ReturnType<typeof result.current.insertTimeGap> | undefined;
+			act(() => {
+				answer = result.current.insertTimeGap(request);
+			});
+			return answer;
+		};
+		expect(refused({ time: -1, duration: 2 })).toEqual({
+			ok: false,
+			error: "time must be 0 seconds or more",
+		});
+		expect(refused({ time: 0, duration: 0 })).toEqual({
+			ok: false,
+			error: "duration must be above 0 seconds",
+		});
+		expect(refused({ time: 0, duration: 2, trackIds: ["nope"] })).toEqual({
+			ok: false,
+			error: "Track not found: nope",
+		});
+		act(() => {
+			result.current.toggleTrackLocked(mainTrackId);
+		});
+		expect(
+			refused({ time: 0, duration: 2, trackIds: [mainTrackId] })
+		).toMatchObject({ ok: false, error: expect.stringContaining("is locked") });
+		expect(result.current.tracks[0].elements).toEqual(before[0].elements);
+	});
+
 	it("deleteTimeRange preserves source boundaries inside a 2x clip", () => {
 		const { result, mainTrackId } = setupStoreWithElement({
 			overrides: { playbackRate: 2 },
