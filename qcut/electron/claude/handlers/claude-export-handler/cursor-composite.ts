@@ -196,6 +196,7 @@ async function compositeSegmentCursor({
 	telemetry,
 	settings,
 	duration,
+	frames,
 }: {
 	segmentPath: string;
 	/** Original source file at full resolution (for sharp zoom) */
@@ -203,6 +204,8 @@ async function compositeSegmentCursor({
 	telemetry: TelemetryData;
 	settings: ResolvedExportSettings;
 	duration: number;
+	/** The segment's frames (see concat-timing.ts); the file keeps exactly these. */
+	frames: number;
 }): Promise<void> {
 	// Dynamic import @napi-rs/canvas
 	let canvasLib: {
@@ -272,6 +275,8 @@ async function compositeSegmentCursor({
 				"-i",
 				originalSourcePath,
 				...(duration > 0 ? ["-t", String(duration)] : []),
+				"-frames:v",
+				String(frames),
 				"-r",
 				String(fps),
 				"-f",
@@ -317,9 +322,12 @@ async function compositeSegmentCursor({
 					parseBitrateForKbps({ bitrate }),
 					"-pix_fmt",
 					"yuv420p",
+					// Exactly the segment's frames, its last held if the source runs
+					// short; its sound is already cut to the segment's samples.
+					"-vf",
+					`tpad=stop_mode=clone:stop=-1,trim=end_frame=${frames}`,
 					"-c:a",
 					"copy",
-					...(duration > 0 ? ["-t", String(duration)] : ["-shortest"]),
 					"-movflags",
 					"+faststart",
 					outputTempPath,
@@ -599,11 +607,14 @@ async function compositeSegmentCursor({
 export async function compositeCursorOnSegments({
 	segmentOutputs,
 	segments,
+	segmentFrames,
 	settings,
 	onProgress,
 }: {
 	segmentOutputs: string[];
 	segments: ExportSegment[];
+	/** Each segment file's frames, in the order of `segments`. */
+	segmentFrames: number[];
 	settings: ResolvedExportSettings;
 	onProgress?: (progress: number) => void;
 }): Promise<void> {
@@ -626,6 +637,7 @@ export async function compositeCursorOnSegments({
 				telemetry,
 				settings,
 				duration: segment.duration,
+				frames: segmentFrames[i],
 			});
 		} catch (err) {
 			claudeLog.error(HANDLER, `Segment ${i} compositing failed:`, err);
