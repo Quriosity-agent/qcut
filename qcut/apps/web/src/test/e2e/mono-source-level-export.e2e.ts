@@ -6,11 +6,12 @@
  * DynamicsCompressorNode, copies it, so the panner after it gets a stereo
  * signal and leaves it alone at centre. The in-browser (muxer) export builds
  * the same nodes. FFmpeg's own conversion to stereo keeps the power instead
- * and writes each channel at 1/√2, so the native export of a mono clip was
- * 3 dB quieter than the preview and the muxer export.
+ * and writes each channel at 1/√2, so the native export of a mono clip, and
+ * the Export dialog's FFmpeg export, were 3 dB quieter than the preview and
+ * the muxer export.
  *
- * Four stretches, each with one sound, measured per channel in both exports
- * against the level of the file itself:
+ * Four stretches, each with one sound, measured per channel in all three
+ * exports against the level of the file itself:
  * - a mono clip on the main track;
  * - a stereo clip on the main track, its right channel half as loud;
  * - a mono clip on an audio track;
@@ -36,6 +37,24 @@ const AT = { mono: 0, stereo: 3, track: 7, panned: 10 };
 const SILENT_DB = -60;
 /** AAC and the meter's window leave a pure tone within this of its source. */
 const TOLERANCE_DB = 0.3;
+/** The native export, the in-browser one, and the Export dialog's FFmpeg one. */
+const ENGINES = ["native", "muxer", "cli"] as const;
+
+interface ExposedWindow extends Window {
+	__exportActions?: {
+		exportLocalVideo: (request: {
+			engine: "cli" | "muxer";
+			filename: string;
+			format: "mp4";
+			frameRate: number;
+			height: number;
+			outputPath: string;
+			projectId: string;
+			quality: "720p";
+			width: number;
+		}) => Promise<void>;
+	};
+}
 
 function cli<T>({
 	apiPort,
@@ -107,7 +126,7 @@ function channelLevels({
 test.use({ captureScreenshotVideo: false });
 test.setTimeout(900_000);
 
-test("a mono source exports at the level it plays at, from both engines", async ({
+test("a mono source exports at the level it plays at, from every engine", async ({
 	apiPort,
 	page,
 }) => {
@@ -305,24 +324,55 @@ test("a mono source exports at the level it plays at, from both engines", async 
 			"-1"
 		);
 
-		// --- both exports, against the files themselves -------------------------
+		// --- every export, against the files themselves -------------------------
+		await page.getByTestId("export-button").click();
+		await expect(page.getByTestId("export-dialog")).toBeVisible();
+		await page.waitForFunction(
+			() => Boolean((window as unknown as ExposedWindow).__exportActions),
+			undefined,
+			{ timeout: 10_000 }
+		);
 		const measured: Record<string, Record<string, number[]>> = {};
-		for (const engine of ["native", "muxer"] as const) {
+		for (const engine of ENGINES) {
 			const outputPath = path.join(workDir, `${engine}.mp4`);
-			const job = cli<{ status: string }>({
-				apiPort,
-				timeout: 600_000,
-				args: [
-					"editor:export:start",
-					...pid,
-					"--output",
-					outputPath,
-					"--engine",
-					engine,
-					"--poll",
-				],
-			});
-			expect(job.status, `${engine} export`).toBe("completed");
+			if (engine === "cli") {
+				// The Export dialog's FFmpeg export, as the dialog starts it.
+				await page.evaluate(
+					async ({ filename, projectId, outputPath }) => {
+						const actions = (window as unknown as ExposedWindow)
+							.__exportActions;
+						if (!actions) throw new Error("Export actions are not registered");
+						await actions.exportLocalVideo({
+							engine: "cli",
+							filename,
+							format: "mp4",
+							frameRate: 24,
+							height: 180,
+							outputPath,
+							projectId,
+							quality: "720p",
+							width: 320,
+						});
+					},
+					{ filename: path.basename(outputPath), projectId, outputPath }
+				);
+				expect(existsSync(outputPath), "cli export written").toBe(true);
+			} else {
+				const job = cli<{ status: string }>({
+					apiPort,
+					timeout: 600_000,
+					args: [
+						"editor:export:start",
+						...pid,
+						"--output",
+						outputPath,
+						"--engine",
+						engine,
+						"--poll",
+					],
+				});
+				expect(job.status, `${engine} export`).toBe("completed");
+			}
 			const at = (start: number) =>
 				channelLevels({ file: outputPath, start: start + 0.5 });
 			measured[engine] = {
@@ -339,7 +389,7 @@ test("a mono source exports at the level it plays at, from both engines", async 
 				Math.abs(actual - expected),
 				`${label}: ${actual.toFixed(2)} dB, want ${expected.toFixed(2)} dB`
 			).toBeLessThan(TOLERANCE_DB);
-		for (const engine of ["muxer", "native"]) {
+		for (const engine of ENGINES) {
 			const levels = measured[engine];
 			for (const stretch of Object.values(levels)) {
 				expect(stretch, `${engine} writes stereo`).toHaveLength(2);
