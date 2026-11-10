@@ -9,6 +9,10 @@ import {
 	segmentsShowingInRange,
 } from "../claude/handlers/claude-export-handler/export-range";
 import { buildExportSegmentEncodeArgs } from "../claude/handlers/claude-export-handler/export-segment-encode";
+import {
+	EXPORT_PICTURE_COLOR_FILTERS,
+	EXPORT_PICTURE_TAGS_FILTER,
+} from "../claude/handlers/claude-export-handler/source-color";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types";
 
 /**
@@ -210,7 +214,9 @@ describe("a segment outside the range", () => {
 			"1:a:0",
 		]);
 		// Five seconds at 24 fps, cut by filters rather than by `-t`.
-		expect(args[args.indexOf("-vf") + 1]).toBe("trim=end_frame=120");
+		expect(args[args.indexOf("-vf") + 1]).toBe(
+			`trim=end_frame=120,${EXPORT_PICTURE_TAGS_FILTER}`
+		);
 		expect(args[args.indexOf("-af") + 1]).toContain("aresample=async=1");
 		expect(args[args.indexOf("-af") + 1]).toContain("atrim=end_sample=240000");
 		expect(args.slice(args.indexOf("-map"))).not.toContain("-t");
@@ -250,7 +256,7 @@ describe("a segment outside the range", () => {
 			shown.slice(shown.indexOf("-map"), shown.indexOf("-map") + 4)
 		).toEqual(["-map", "0:v:0", "-map", "0:a:0"]);
 		expect(shown[shown.indexOf("-vf") + 1]).toBe(
-			"scale=1470:630,tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=120"
+			`scale=1470:630,${EXPORT_PICTURE_COLOR_FILTERS.join(",")},tpad=stop_mode=clone:stop=-1,fps=24:start_time=0:round=up,trim=end_frame=120`
 		);
 	});
 });
