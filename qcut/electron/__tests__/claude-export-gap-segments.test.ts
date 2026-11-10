@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
-	orderConcatInputs,
+	orderConcatEntries,
 } from "../claude/handlers/claude-export-handler/gap-segments.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
 
@@ -95,10 +95,16 @@ describe("buildGapSegmentEncodeArgs", () => {
 		});
 		expect(args).toContain("color=c=black:s=1280x720:r=25");
 		expect(args).toContain("anullsrc=r=44100:cl=mono");
-		expect(args.slice(args.indexOf("-t"), args.indexOf("-t") + 2)).toEqual([
-			"-t",
-			"1.5",
+		// 2 s to 3.5 s: frames 50 to 87 at 25 fps (38), samples 88 200 to 154 350.
+		expect(args.slice(args.indexOf("-vf"), args.indexOf("-vf") + 2)).toEqual([
+			"-vf",
+			"trim=end_frame=38",
 		]);
+		expect(args.slice(args.indexOf("-af"), args.indexOf("-af") + 2)).toEqual([
+			"-af",
+			"atrim=end_sample=66150",
+		]);
+		expect(args).not.toContain("-t");
 		expect(args).toContain("libx264");
 		expect(args).toContain("yuv420p");
 		expect(args.slice(args.indexOf("-c:a"), args.indexOf("-c:a") + 6)).toEqual([
@@ -134,27 +140,38 @@ describe("buildGapSegmentEncodeArgs", () => {
 	});
 });
 
-describe("orderConcatInputs", () => {
-	it("puts each gap clip before the segment it precedes", () => {
+describe("orderConcatEntries", () => {
+	it("puts each gap before the segment it precedes, with where both sit", () => {
 		expect(
-			orderConcatInputs({
-				segmentOutputs: ["s0.mp4", "s1.mp4", "s2.mp4"],
+			orderConcatEntries({
+				segments: [
+					{ startTime: 1, duration: 2 },
+					{ startTime: 3, duration: 2 },
+					{ startTime: 5.5, duration: 1 },
+				],
 				gaps: [
 					{ beforeSegment: 0, startTime: 0, duration: 1 },
 					{ beforeSegment: 2, startTime: 5, duration: 0.5 },
 				],
-				gapOutputs: ["g0.mp4", "g1.mp4"],
 			})
-		).toEqual(["g0.mp4", "s0.mp4", "s1.mp4", "g1.mp4", "s2.mp4"]);
+		).toEqual([
+			{ kind: "gap", index: 0, startTime: 0, endTime: 1 },
+			{ kind: "segment", index: 0, startTime: 1, endTime: 3 },
+			{ kind: "segment", index: 1, startTime: 3, endTime: 5 },
+			{ kind: "gap", index: 1, startTime: 5, endTime: 5.5 },
+			{ kind: "segment", index: 2, startTime: 5.5, endTime: 6.5 },
+		]);
 	});
 
 	it("puts a gap after the last segment at the end", () => {
 		expect(
-			orderConcatInputs({
-				segmentOutputs: ["s0.mp4", "s1.mp4"],
+			orderConcatEntries({
+				segments: [
+					{ startTime: 0, duration: 4 },
+					{ startTime: 4, duration: 4 },
+				],
 				gaps: [{ beforeSegment: 2, startTime: 8, duration: 2 }],
-				gapOutputs: ["g0.mp4"],
-			})
-		).toEqual(["s0.mp4", "s1.mp4", "g0.mp4"]);
+			}).map(({ kind, index }) => `${kind}${index}`)
+		).toEqual(["segment0", "segment1", "gap0"]);
 	});
 });
