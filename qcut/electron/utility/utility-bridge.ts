@@ -38,6 +38,7 @@ import {
 	requestShotSplitFromRenderer,
 	requestBeatsMarkFromRenderer,
 	requestSnapToBeatsFromRenderer,
+	requestTimeEditFromRenderer,
 	requestSelectionFromRenderer,
 	batchAddElements,
 	batchUpdateElements,
@@ -172,6 +173,7 @@ import type {
 	ShotSplitBridgeRequest,
 	BeatsMarkBridgeRequest,
 	SnapToBeatsBridgeRequest,
+	TimeEditBridgeRequest,
 	TimelineAddElementRequest,
 	BatchAddElementsRequest,
 	BatchUpdateElementsRequest,
@@ -758,6 +760,11 @@ async function handleMainRequest(
 				req.request,
 				req.correlationId
 			);
+		}
+
+		case "timeline:time-edit": {
+			const req = data as unknown as TimeEditBridgeRequest;
+			return requestTimeEditFromRenderer(win, req.request, req.correlationId);
 		}
 
 		case "get-project-stats": {
