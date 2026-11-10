@@ -49,6 +49,12 @@ export interface ManifestTrack extends JsonRecord {
 	trackId?: string;
 	name?: string;
 	type?: string;
+	/**
+	 * The track QCut cannot do without, as `timeline export` marks it. A
+	 * replace gives it the project's own main track; without the mark the
+	 * first media track takes that place.
+	 */
+	isMain?: boolean;
 	/** Where the track goes; array order decides when the manifest is a whole timeline. */
 	index?: number;
 	colorLabel?: string | null;
