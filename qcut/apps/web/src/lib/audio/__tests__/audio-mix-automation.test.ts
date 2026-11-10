@@ -4,6 +4,8 @@ import {
 	hasAutomation,
 	normalizeAutomation,
 	normalizeAutomationPoints,
+	openGapInAutomation,
+	openGapInPoints,
 	rippleAutomation,
 	ripplePoints,
 	sampleAutomation,
@@ -141,6 +143,81 @@ describe("automation after a ripple delete", () => {
 				startTime: 4,
 				endTime: 6,
 			})
+		).toBeUndefined();
+	});
+});
+
+describe("automation after empty time is opened", () => {
+	it("moves later points and holds the curve's value across the new time", () => {
+		// A fade from 0 dB at 10 s to -12 dB at 20 s; 5 s open at 15 s.
+		const points = [
+			{ time: 10, value: 0 },
+			{ time: 20, value: -12 },
+		];
+		expect(openGapInPoints({ points, time: 15, duration: 5 })).toEqual([
+			{ time: 10, value: 0 },
+			{ time: 15, value: expect.closeTo(-6, 5) },
+			{ time: 20, value: expect.closeTo(-6, 5) },
+			{ time: 25, value: -12 },
+		]);
+	});
+
+	it("only shifts when every point comes after, and leaves a curve that ends before alone", () => {
+		const points = [
+			{ time: 12, value: 0 },
+			{ time: 14, value: -60 },
+		];
+		expect(openGapInPoints({ points, time: 0, duration: 5 })).toEqual([
+			{ time: 17, value: 0 },
+			{ time: 19, value: -60 },
+		]);
+		expect(openGapInPoints({ points, time: 30, duration: 5 })).toBe(points);
+		expect(openGapInPoints({ points, time: 13, duration: 0 })).toBe(points);
+	});
+
+	it("puts a point that sat on the gap's start at its end, with the value kept before it", () => {
+		const points = [
+			{ time: 4, value: -3 },
+			{ time: 8, value: -9 },
+			{ time: 12, value: 0 },
+		];
+		expect(openGapInPoints({ points, time: 8, duration: 2 })).toEqual([
+			{ time: 4, value: -3 },
+			{ time: 8, value: -9 },
+			{ time: 10, value: -9 },
+			{ time: 14, value: 0 },
+		]);
+	});
+
+	it("is the reverse of rippling the same span out again", () => {
+		const points = [
+			{ time: 10, value: 0 },
+			{ time: 20, value: -12 },
+		];
+		const opened = openGapInPoints({ points, time: 15, duration: 5 });
+		const closed = ripplePoints({ points: opened, startTime: 15, endTime: 20 });
+		for (const time of [10, 12.5, 15, 17.5, 20]) {
+			expect(automationValueAt({ points: closed, time })).toBeCloseTo(
+				automationValueAt({ points, time }),
+				5
+			);
+		}
+	});
+
+	it("opens every curve, and returns the same object when nothing moves", () => {
+		const automation = {
+			gainDb: [{ time: 6, value: -6 }],
+			pan: [{ time: 2, value: 0.5 }],
+		};
+		expect(openGapInAutomation({ automation, time: 4, duration: 3 })).toEqual({
+			gainDb: [{ time: 9, value: -6 }],
+			pan: [{ time: 2, value: 0.5 }],
+		});
+		expect(openGapInAutomation({ automation, time: 60, duration: 3 })).toBe(
+			automation
+		);
+		expect(
+			openGapInAutomation({ automation: undefined, time: 0, duration: 3 })
 		).toBeUndefined();
 	});
 });
