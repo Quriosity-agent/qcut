@@ -24,6 +24,13 @@ Each item carries what you need to place it, read from the file with ffprobe
 A file ffprobe cannot read keeps these fields empty instead of failing the
 listing. `editor:media:info` returns the same fields for one item.
 
+The payload is the list itself, an array of items, not an object holding
+one (`--json --flat` prints `[{ "id": … }, …]`; without `--flat` the array
+is `.data.data`). `media batch-import` answers with an array of results in
+the same way, one per item in the order given, unless `--append-to-track`
+is used (then an object, see below). Most other commands answer with an
+object.
+
 ### Get media info
 
 ```bash
@@ -35,6 +42,17 @@ qcut editor:media:info --project-id <id> --media-id <id>
 ```bash
 qcut editor:media:import --project-id <id> --source /path/to/video.mp4
 ```
+
+An import copies the file into the project
+(`Documents/QCut/Projects/<project-id>/media/`). The project plays its copy
+from then on, so changing the original afterwards changes nothing in the
+project.
+
+Importing a file whose name the project already has does not write over the
+first one: the new copy is stored as `name_1.ext` (then `_2`, …) and becomes
+a second media item with an id of its own, and the clips on the timeline go
+on playing the first. To put a new render in an item's place, use
+[`media replace`](#replace-a-media-item-with-a-new-file).
 
 ### Import from URL
 
@@ -94,11 +112,43 @@ qcut editor:media:rename \
   --new-name "final-cut.mp4"
 ```
 
+### Replace a media item with a new file
+
+For a file rendered again (a shake pass, a sound effect on its third take):
+the new file is imported, every clip that played the old item plays the new
+one, and the old item is removed.
+
+```bash
+qcut editor:media:replace \
+  --project-id <id> --media-id <old-media-id> --source ./shake_03.mov --force --json
+```
+
+- Every clip keeps its place, length, trims and settings, as with
+  `timeline replace-media`; all of them change in one undo step.
+- A clip that cannot take the new file refuses the whole replace (the file
+  ends before the clip's out-point, for one; the reasons are those of
+  [`timeline replace-media`](editor-timeline.md#replace-a-clips-media)): no
+  clip is changed and the import is taken back out, so the project is as it
+  was.
+- The new item has an id of its own (the answer gives `mediaId` and `name`,
+  with `oldMediaId`, `oldName` and the `clips` that changed). Nothing the
+  editor worked out for the old file (thumbnail, waveform, alpha proxy) is
+  shown for the new one. Scripts that kept the old media id need the new one.
+- The old item is removed only once no clip plays it (`oldMediaRemoved`).
+  If one still does, it is kept and a `warning` names the clips.
+
+It sits in the confirm tier (`--force`): it removes a media item. Writing
+over the project's own copy of the file by hand is not a substitute: the
+export reads the new content, but the editor's thumbnails, waveforms and
+proxies were made from the old one.
+
 ### Delete media
 
 ```bash
 qcut editor:media:delete --project-id <id> --media-id <id>
 ```
+
+The clips on the timeline that play the item are removed with it.
 
 ---
 
