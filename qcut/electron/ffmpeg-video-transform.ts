@@ -12,7 +12,10 @@ import { buildVideoColorFilter } from "./ffmpeg/color-filter";
 import { buildVideoColorFilterGraph } from "./ffmpeg/color-filter-graph";
 import { buildChromaKeyFilterGraph } from "./ffmpeg/chroma-key-filter";
 import { buildCustomCutoutExpression } from "./ffmpeg/custom-cutout-expression";
-import { buildNumericKeyframeExpression } from "./ffmpeg/keyframe-expression";
+import {
+	buildNumericKeyframeExpression,
+	isConstantExpression,
+} from "./ffmpeg/keyframe-expression";
 import { buildMaskStrokeFilterGraph } from "./ffmpeg/mask-stroke-filter";
 import {
 	buildXfadeTransitionFilter,
@@ -1724,14 +1727,24 @@ function buildSegmentFilters({
 		customCutout: visual.customCutout,
 		fps: visual.keyframeFps || fps,
 	});
-	const cropped = `video_${segmentIndex}_cropped`;
-	steps.push(
-		`[${current}]geq=` +
-			`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
-			`a='alpha(X,Y)*between(X,W*(${left}),W*(1-(${right})))*` +
-			`between(Y,H*(${top}),H*(1-(${bottom})))*(${mask})*(${customCutout})'[${cropped}]`
-	);
-	current = cropped;
+	// geq runs its expressions for every pixel of every frame; with no crop,
+	// mask or cutout it would copy the picture unchanged, slowly.
+	const keepsAlpha =
+		[left, right, top, bottom].every((expression) =>
+			isConstantExpression({ expression, value: 0 })
+		) &&
+		isConstantExpression({ expression: mask, value: 1 }) &&
+		isConstantExpression({ expression: customCutout, value: 1 });
+	if (!keepsAlpha) {
+		const cropped = `video_${segmentIndex}_cropped`;
+		steps.push(
+			`[${current}]geq=` +
+				`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
+				`a='alpha(X,Y)*between(X,W*(${left}),W*(1-(${right})))*` +
+				`between(Y,H*(${top}),H*(1-(${bottom})))*(${mask})*(${customCutout})'[${cropped}]`
+		);
+		current = cropped;
+	}
 	const maskStrokeGraph = buildMaskStrokeFilterGraph({
 		inputLabel: current,
 		labelPrefix: `video_${segmentIndex}_mask_stroke`,
@@ -1891,10 +1904,13 @@ function buildSegmentFilters({
 		timeVariable: "T",
 	});
 	const alpha = `video_${segmentIndex}_opacity`;
+	const opacityProduct = `(${opacity})*(${opacityAnimation.opacity})*(${effectOpacityMotion.opacity})*(${effectAudioOpacity})`;
 	steps.push(
-		`[${current}]format=rgba,geq=` +
-			`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
-			`a='alpha(X,Y)*max(0,min(1,(${opacity})*(${opacityAnimation.opacity})*(${effectOpacityMotion.opacity})*(${effectAudioOpacity})))'[${alpha}]`
+		isConstantExpression({ expression: opacityProduct, value: 1 })
+			? `[${current}]format=rgba[${alpha}]`
+			: `[${current}]format=rgba,geq=` +
+					`r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':` +
+					`a='alpha(X,Y)*max(0,min(1,${opacityProduct}))'[${alpha}]`
 	);
 	current = alpha;
 
