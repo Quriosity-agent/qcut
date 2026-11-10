@@ -27,6 +27,12 @@ import {
 } from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
 import { probeJoinedPictureColor } from "./joined-picture.js";
+import {
+	createSourceColorReader,
+	EXPORT_PICTURE_COLOR_FILTERS,
+	exportColorWarnings,
+	probeSourceColor,
+} from "./source-color.js";
 import { runMediaOverlayPass } from "./media-overlay-pass.js";
 import { readSegmentBlendFields } from "./media-overlay-source.js";
 import {
@@ -1170,6 +1176,7 @@ async function renderTransitionedVideo({
 	videoOutputPath,
 	videoTransitions,
 	minimumDuration = 0,
+	keepsOwnColor = false,
 	onProgress,
 	signal,
 }: {
@@ -1180,6 +1187,8 @@ async function renderTransitionedVideo({
 	tempDir: string;
 	videoOutputPath: string;
 	videoTransitions: VideoTransition[];
+	/** An HDR clip is among them: the picture leaves as the layers give it. */
+	keepsOwnColor?: boolean;
 	/** Black runs on to here (the end of an overlay past the clips). */
 	minimumDuration?: number;
 	onProgress?: ({ progress }: { progress: number }) => void;
@@ -1211,6 +1220,12 @@ async function renderTransitionedVideo({
 		videoSources,
 		videoTransitions,
 		includeEmbeddedAudio: false,
+		// The segments are in the export's colour description; the layers the
+		// transitions are drawn in hand the picture back in its matrix and
+		// range but without its primaries and transfer.
+		...(keepsOwnColor
+			? {}
+			: { outputPictureFilters: EXPORT_PICTURE_COLOR_FILTERS }),
 	});
 
 	await runFFmpegCommand({
@@ -1375,6 +1390,8 @@ export async function executeExportJob({
 		const hasAudioStream = createAudioStreamProbe({
 			probe: probeHasAudioStream,
 		});
+		const sourceColor = createSourceColorReader();
+		let hasHdrSegment = false;
 
 		const hasVideoTransitions = videoTransitions.length > 0;
 		// The concat alone would squeeze timeline gaps out and shift every
@@ -1474,6 +1491,10 @@ export async function executeExportJob({
 									fps: settings.fps,
 								}),
 					});
+			const color = blackPicture
+				? undefined
+				: await sourceColor({ mediaPath: segment.sourcePath });
+			if (color?.hdr) hasHdrSegment = true;
 			const inputArgs = buildExportSegmentInputArgs({ segment, read });
 			const scaleFilter = blackPicture
 				? ""
@@ -1497,6 +1518,7 @@ export async function executeExportJob({
 					blackPicture,
 					span,
 					read,
+					color,
 				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
@@ -1535,6 +1557,7 @@ export async function executeExportJob({
 								.frames
 					),
 					settings,
+					sourceColor,
 					onProgress: (p) => {
 						updateJobProgress({ jobId, progress: 0.83 + p * 0.05 });
 					},
@@ -1661,6 +1684,7 @@ export async function executeExportJob({
 				videoOutputPath,
 				videoTransitions,
 				minimumDuration: overlayEnd,
+				keepsOwnColor: hasHdrSegment,
 				onProgress: ({ progress }) => {
 					updateJobProgress({
 						jobId,
@@ -2114,6 +2138,15 @@ export async function executeExportJob({
 			);
 		}
 		pictureWarnings.push(...graphRebuildWarnings({ log: stepLog }));
+		// Every picture was encoded in the export's colour description; the
+		// finished file must still say so (an HDR clip keeps its own).
+		if (!hasHdrSegment && ["mp4", "mov"].includes(settings.format)) {
+			pictureWarnings.push(
+				...exportColorWarnings({
+					probe: await probeSourceColor({ mediaPath: outputPath }),
+				})
+			);
+		}
 		const outputStats = await fsPromises.stat(outputPath);
 		const duration = exportSeconds;
 
