@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- In a native export the picture no longer runs later than the sound after clips that are not a whole number of frames long. Each main-track clip was rounded up to whole frames on its own and the clips were joined end to end, so the picture of every clip after it moved later by the remainder while the sound stayed put: eleven such cuts left the end of a trailer 5 frames late. Every clip and gap is now cut to the frames and samples of its span on the timeline, counted from the timeline's start by the preview's frame rule, and the picture and the sound are joined from two lists, each giving every file its own stream's length.
+- Media overlays, text rasters and stickers keep their first frames when the clips under them come from files with different colour tags (a clip tagged `tv, bt709` after an untagged one). FFmpeg rebuilt the pass's filter graph at the change, and every overlay that appeared after it started 2–5 frames into itself, with its last frame held to make up the length. The graph is now kept, and the picture is read with one set of tags throughout.
+- An overlay no longer darkens the whole export. With one overlay anywhere on the timeline every frame went from YUV to RGBA and back with FFmpeg's default rounding, which lowered the picture's luma by 1.2–1.6 levels (8-bit) in the export this was measured on. The picture now stays in its own format and each overlay is converted to it; a layer with a blend mode is blended in RGB with exact rounding.
+- An overlay that is not cropped, masked, cut out or faded is no longer filtered pixel by pixel. Every overlay went through two `geq` passes whether it needed them or not: eight plain overlays over a 30 s, 1470×630 picture took 13.9 s to draw, and now take 2.1 s.
+- `editor:timeline:apply --replace` gives the project's main track to the manifest track marked `"isMain": true`, as `timeline export` marks it, and `--verify` checks that it reads back as the main one. The first media track of the manifest used to take it, so a timeline exported with an overlay track above its main track came back with the overlay track as the main one. An unmarked manifest still gives it to its first media track; more than one mark, or a mark on a track that is not a media track, is refused before anything changes.
+- A `bitrate` the export cannot read is refused with the forms it takes (`"24Mbps"`, `"24M"`, `"8000kbps"`, `"8000k"`). A bare number or a string without its unit used to export at 8 Mbps without a word.
+- An export without `--preset` takes the bitrate of the size it exports. A `width` and `height` given with the request kept the bitrate of the project's own size.
+- A sticker on a hidden track, and a hidden sticker, are no longer drawn by the native export.
+- `editor:timeline:info` and `editor:timeline:export` without `--project-id` read the project the editor has open, as their help said; they answered `Missing --project-id`.
+
+### Added
+
+- `editor:editing:insert-gap --at <seconds> --duration <seconds>` opens empty time, the reverse of `delete-range`: clips from the point on move later, a clip the point falls inside is split there, and level and pan automation opens with them (bus and master curves too when every unlocked track moved; `--keep-automation` leaves them). Every unlocked track by default, or the tracks named with `--track-id`; one undo step. Making room for a title sequence used to mean exporting the timeline, adding the seconds to every clip in a script and applying the whole thing back.
+- `editor:timeline:snap --to frames` puts clip edges on whole frames without moving what the clips show: the trim on each side takes up the difference, and two clips that meet at a cut keep meeting. An edge with no unused source to move into goes to the frame on its inner side; a cut with none on either side, a clip with a speed curve or a freeze frame, and a clip that would be left shorter than a frame stay and are listed in `skipped` with the reason. Visual clips by default (`--frame-align all` snaps sound too), narrowed with `--track-id` and `--element-ids`; `--dry-run` reports the changes without making them.
+- `--snap-frames` on `editing delete-range`, `editing insert-gap`, `timeline split`, `timeline move` and `timeline trim` rounds the command's times to the nearest frame of the project's rate, and the answer carries the times that were used as `snapped`.
+- `editor:timeline:export` reports `frameAlignment`: how many clips start or end between frames, how many of those are on the main track, and the first twenty of them.
+- `editor:media:replace --media-id <id> --source <file>` puts a newly rendered file in a media item's place: the file is imported, every clip that played the old item plays the new one in one undo step (place, length, trims and settings kept), and the old item is removed. A clip that cannot take the new file refuses the whole replace, and the import is taken back out. It sits in the confirm tier (`--force`).
+- `editor:export:start --exclude-tracks <id,…>` exports without the named tracks, picture and sound, and leaves the project as it is; the engine is chosen from the tracks that are left. Native exports only.
+- `editor:export:start --keep-temp` keeps the export's intermediate files and writes every FFmpeg command it ran, whole, to `ffmpeg-commands.sh` beside them; the job reports the folder as `intermediates`. The log line of the media overlay pass also holds its whole command now, inputs included, where it had only the filter.
+- A native export checks its own length. A joined picture or a finished file with another number of frames than the timeline gives it, and a filter graph FFmpeg rebuilt part-way through a pass that reads several inputs, are named in the job's `warnings`, with the clips or gaps that came out another length than planned.
+
+### Documentation
+
+- `editor-output.md` documents `--exclude-tracks`, `--keep-temp` and the kept files, the forms of `bitrate`, the export's own checks, and what the timeline's gaps and off-frame clips become: a gap on the main track is black and silent, a leading one included. `editor-timeline.md` documents `insert-gap`, `snap --to frames`, `--snap-frames` and the frame report; `editor-media.md` `media replace`, what a same-name import does (a second item, `name_1.ext`) and the array payloads of `media list` and `media batch-import`; `editor-tracks-stickers-search.md` the manifest's main-track mark and that `--verify` compares numbers as numbers (`2.0` reads back as `2`); `editor-core.md` the payload shapes and which commands take the open project.
+
 ## [2026.11.10.2] - 2026-11-09
 
 ### Fixed
