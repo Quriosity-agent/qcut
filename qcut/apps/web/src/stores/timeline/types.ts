@@ -56,6 +56,14 @@ import type {
 import type { MediaItem } from "../media/media-store";
 import type { EffectChain, EffectInstance } from "@/types/effects";
 import type { TimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
+import type {
+	SnapElementsToFramesRequest,
+	SnapElementsToFramesResult,
+} from "./timeline-frame-snap-ops";
+import type {
+	InsertTimeGapRequest,
+	InsertTimeGapResult,
+} from "./timeline-gap-ops";
 
 /**
  * Selected element reference for multi-selection
@@ -511,6 +519,12 @@ export interface TimelineStore {
 		splitElements: number;
 		totalRemovedDuration: number;
 	};
+	/** Opens empty time: the reverse of a ripple `deleteTimeRange`. */
+	insertTimeGap: (request: InsertTimeGapRequest) => InsertTimeGapResult;
+	/** Puts clip edges on whole frames without moving what the clips show. */
+	snapElementsToFrames: (
+		request: SnapElementsToFramesRequest
+	) => SnapElementsToFramesResult;
 
 	// Computed values
 	getTotalDuration: () => number;
