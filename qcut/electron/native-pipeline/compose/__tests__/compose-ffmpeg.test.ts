@@ -4,6 +4,7 @@ import {
 	buildComposeNormalizeArgs,
 	buildComposeTimelineArgs,
 } from "../compose-ffmpeg";
+import { STEREO_SOURCE_CHAIN } from "../../../ffmpeg/stereo-source";
 
 describe("compose FFmpeg compiler", () => {
 	it("normalizes a silent clip with a generated stereo track", () => {
@@ -23,6 +24,25 @@ describe("compose FFmpeg compiler", () => {
 		expect(command).toContain("trim=start=0.25:duration=2");
 		expect(command).toContain("scale=640:360");
 		expect(command).toContain("fps=24");
+		// The generated silence is stereo already.
+		expect(command).not.toContain("nb_channels");
+	});
+
+	it("reads a clip's own sound as stereo the way an editor project plays it", () => {
+		const args = buildComposeNormalizeArgs({
+			input: "/tmp/a.mp4",
+			output: "/tmp/a-normalized.mp4",
+			trimIn: 0.25,
+			duration: 2,
+			width: 640,
+			height: 360,
+			fps: 24,
+			hasAudio: true,
+		});
+		// A mono file at full level in both channels, before anything else.
+		expect(args[args.indexOf("-filter_complex") + 1]).toContain(
+			`[0:a:0]${STEREO_SOURCE_CHAIN},atrim=start=0.25:duration=2,`
+		);
 	});
 
 	it("compiles crossfade and hard-cut boundaries into one timeline graph", () => {
@@ -113,6 +133,8 @@ describe("compose FFmpeg compiler", () => {
 		expect(command).toContain("volume=0.5");
 		expect(command).toContain("adelay=1000:all=1");
 		expect(command).toContain("amix=inputs=2");
+		// The sound is made stereo the way an editor project plays it, first.
+		expect(command).toContain(`:a:0]${STEREO_SOURCE_CHAIN},atrim=start=0:`);
 		// A safety limiter that neither delays the mix nor lifts it to full scale.
 		expect(command).toContain("alimiter=limit=0.95:level=0:latency=1");
 	});
