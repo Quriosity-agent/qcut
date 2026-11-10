@@ -25,6 +25,7 @@ import {
 	segmentAudioFormat,
 } from "./export-segment-encode.js";
 import { moveFile } from "./move-file.js";
+import { probeJoinedPictureColor } from "./joined-picture.js";
 import { runMediaOverlayPass } from "./media-overlay-pass.js";
 import { readSegmentBlendFields } from "./media-overlay-source.js";
 import {
@@ -71,9 +72,15 @@ import {
 import {
 	buildGapSegmentEncodeArgs,
 	findTimelineGaps,
-	orderConcatInputs,
+	orderConcatEntries,
 } from "./gap-segments.js";
-import { buildSegmentConcatArgs } from "./concat-timing.js";
+import {
+	buildConcatLists,
+	buildSegmentConcatArgs,
+	planConcatSpans,
+	spanFileCounts,
+	standaloneSpan,
+} from "./concat-timing.js";
 import {
 	buildRangeSoundArgs,
 	cutPictureToRange,
@@ -1339,6 +1346,59 @@ export async function executeExportJob({
 			probe: probeHasAudioStream,
 		});
 
+		const hasVideoTransitions = videoTransitions.length > 0;
+		// The concat alone would squeeze timeline gaps out and shift every
+		// overlay and audio track after them; black, silent clips keep the
+		// timing (the transition renderer places its segments in time itself).
+		// The picture runs on in black under an overlay that outlasts the
+		// clips below it.
+		const overlayEnd =
+			allMediaOverlays.length > 0
+				? Math.max(
+						...allMediaOverlays.map(
+							(overlay) => overlay.startTime + overlay.duration
+						)
+					)
+				: undefined;
+		const gaps = hasVideoTransitions
+			? []
+			: findTimelineGaps({
+					segments,
+					fps: settings.fps,
+					timelineEnd: overlayEnd,
+				});
+		// Each file is cut to whole frames and samples of the timeline (see
+		// concat-timing.ts); a transition export places its clips in time
+		// itself, so there each keeps its own length.
+		const { sampleRate } = segmentAudioFormat({ settings });
+		const concatEntries = orderConcatEntries({ segments, gaps });
+		const concatSpans = hasVideoTransitions
+			? concatEntries.map((entry) =>
+					standaloneSpan({
+						startTime: entry.startTime,
+						endTime: entry.endTime,
+						fps: settings.fps,
+						sampleRate,
+					})
+				)
+			: planConcatSpans({
+					inputs: concatEntries,
+					fps: settings.fps,
+					sampleRate,
+				});
+		const spanOf = ({
+			kind,
+			index,
+		}: {
+			kind: "segment" | "gap";
+			index: number;
+		}) => {
+			const position = concatEntries.findIndex(
+				(entry) => entry.kind === kind && entry.index === index
+			);
+			return concatSpans[position];
+		};
+
 		const shownSegments = range
 			? segmentsShowingInRange({
 					segments,
@@ -1388,6 +1448,7 @@ export async function executeExportJob({
 					audio: await resolveExportSegmentAudio({ segment, hasAudioStream }),
 					outputPath: outputSegmentPath,
 					blackPicture,
+					span: spanOf({ kind: "segment", index }),
 				}),
 				estimatedDuration: segment.duration,
 				onProgress: ({ normalizedProgress, currentFrame }) => {
@@ -1420,6 +1481,11 @@ export async function executeExportJob({
 				await compositeCursorOnSegments({
 					segmentOutputs,
 					segments,
+					segmentFrames: segments.map(
+						(_segment, index) =>
+							spanFileCounts({ span: spanOf({ kind: "segment", index }) })
+								.frames
+					),
 					settings,
 					onProgress: (p) => {
 						updateJobProgress({ jobId, progress: 0.83 + p * 0.05 });
@@ -1434,27 +1500,6 @@ export async function executeExportJob({
 			}
 		}
 
-		const hasVideoTransitions = videoTransitions.length > 0;
-		// The concat alone would squeeze timeline gaps out and shift every
-		// overlay and audio track after them; black, silent clips keep the
-		// timing (the transition renderer places its segments in time itself).
-		// The picture runs on in black under an overlay that outlasts the
-		// clips below it.
-		const overlayEnd =
-			allMediaOverlays.length > 0
-				? Math.max(
-						...allMediaOverlays.map(
-							(overlay) => overlay.startTime + overlay.duration
-						)
-					)
-				: undefined;
-		const gaps = hasVideoTransitions
-			? []
-			: findTimelineGaps({
-					segments,
-					fps: settings.fps,
-					timelineEnd: overlayEnd,
-				});
 		const gapOutputs: string[] = [];
 		if (gaps.length > 0) {
 			for (const [index, gap] of gaps.entries()) {
@@ -1468,33 +1513,38 @@ export async function executeExportJob({
 						gap,
 						settings,
 						outputPath: gapPath,
+						span: spanOf({ kind: "gap", index }),
 					}),
 					estimatedDuration: gap.duration,
 				});
 				gapOutputs.push(gapPath);
 			}
 		}
-		// The concat output's length: the clips plus the gaps kept between them
-		// (a transition export runs on to the overlays itself).
-		const concatDuration = Math.max(
-			segments.reduce((sum, segment) => sum + segment.duration, 0) +
-				gaps.reduce((sum, gap) => sum + gap.duration, 0),
-			hasVideoTransitions ? (overlayEnd ?? 0) : 0
-		);
+		// The concat output's length: where the last clip or gap ends on the
+		// timeline (a transition export joins its clips' sound end to end and
+		// runs on to the overlays itself).
+		const concatDuration = hasVideoTransitions
+			? Math.max(
+					segments.reduce((sum, segment) => sum + segment.duration, 0),
+					overlayEnd ?? 0
+				)
+			: (concatSpans.at(-1)?.to ?? 0);
 
-		const concatListPath = path.join(tempDir, "concat-list.txt");
-		const concatInputs = orderConcatInputs({
-			segmentOutputs,
-			gaps,
-			gapOutputs,
+		const concatLists = buildConcatLists({
+			files: concatEntries.map((entry, position) => ({
+				path:
+					entry.kind === "segment"
+						? segmentOutputs[entry.index]
+						: gapOutputs[entry.index],
+				span: concatSpans[position],
+			})),
+			fps: settings.fps,
+			sampleRate,
 		});
-		const concatLines = concatInputs
-			.map((segmentPath) => {
-				const escaped = segmentPath.replace(/\\/g, "/").replace(/'/g, "'\\''");
-				return `file '${escaped}'`;
-			})
-			.join("\n");
-		await fsPromises.writeFile(concatListPath, concatLines, "utf8");
+		const videoListPath = path.join(tempDir, "concat-video-list.txt");
+		const audioListPath = path.join(tempDir, "concat-audio-list.txt");
+		await fsPromises.writeFile(videoListPath, concatLists.video, "utf8");
+		await fsPromises.writeFile(audioListPath, concatLists.audio, "utf8");
 
 		const concatOutputPath = hasVideoTransitions
 			? path.join(tempDir, "concat-audio.mp4")
@@ -1507,7 +1557,8 @@ export async function executeExportJob({
 		await runFFmpegCommand({
 			signal: abort.signal,
 			args: buildSegmentConcatArgs({
-				listPath: concatListPath,
+				videoListPath,
+				audioListPath,
 				outputPath: concatOutputPath,
 				audio: segmentAudioFormat({ settings }),
 				audioBitrateKbps: settings.audioBitrate ?? 192,
@@ -1675,6 +1726,9 @@ export async function executeExportJob({
 				);
 			}
 			const sourcePath = path.join(tempDir, "video-before-jianying-text.mp4");
+			const baseColor = await probeJoinedPictureColor({
+				path: videoOutputPath,
+			});
 			await moveFile({ from: videoOutputPath, to: sourcePath });
 			try {
 				await runFFmpegCommand({
@@ -1684,6 +1738,7 @@ export async function executeExportJob({
 						outputPath: videoOutputPath,
 						layers: textRasterLayers,
 						settings,
+						baseColor,
 					}),
 					estimatedDuration: Math.max(0, concatDuration),
 					onProgress: ({ normalizedProgress }) => {
