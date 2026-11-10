@@ -281,6 +281,7 @@ export async function renderTimelineAudioMix({
 				bitrateKbps: settings.audioBitrate ?? 192,
 				format: settings.format,
 				peakCorrection: settings.peakCorrection,
+				keepTempFiles: settings.keepTempFiles,
 				signal,
 				onPublished,
 			});
