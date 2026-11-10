@@ -10,6 +10,7 @@ import {
 	concatSpan,
 	spanFileCounts,
 } from "./concat-timing.js";
+import { STEREO_SOURCE_FILTERS } from "../../../ffmpeg/stereo-source.js";
 import type { ExportSegment, ResolvedExportSettings } from "./types.js";
 import { parseBitrateForKbps } from "./utils.js";
 
@@ -345,6 +346,10 @@ export function buildExportSegmentEncodeArgs({
 		soundFromPictureInput && read && read.lead > 0
 			? [`atrim=start=${read.lead}`, `asetpts=PTS-${read.lead}/TB`]
 			: [];
+	// A mono file at full level in both channels, as it plays; a mono export
+	// keeps its one channel as it is.
+	const stereoSource =
+		audio !== null && format.channels === 2 ? STEREO_SOURCE_FILTERS : [];
 	return [
 		"-y",
 		...(blackPicture ? blackPictureInputArgs({ settings }) : inputArgs),
@@ -367,6 +372,7 @@ export function buildExportSegmentEncodeArgs({
 		"yuv420p",
 		"-af",
 		[
+			...stereoSource,
 			...soundLead,
 			// Sound that starts late in its file, or skips, is filled with
 			// silence by its timestamps, so the PCM runs sample for sample
