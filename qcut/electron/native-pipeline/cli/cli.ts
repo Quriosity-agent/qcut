@@ -605,6 +605,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"profile-path": { type: "string" },
 			"no-sequential-decode": { type: "boolean", default: false },
 			"peak-correction": { type: "string" },
+			"exclude-tracks": { type: "string" },
+			"keep-temp": { type: "boolean", default: false },
 			mic: { type: "boolean", default: false },
 			// Default true matches the command-registry advertisement and user
 			// docs — capturing system audio is the intended out-of-box
@@ -1378,6 +1380,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		...(values["peak-correction"]
 			? { "peak-correction": values["peak-correction"] as string }
 			: {}),
+		...(values["exclude-tracks"]
+			? { "exclude-tracks": values["exclude-tracks"] as string }
+			: {}),
+		...(values["keep-temp"] ? { "keep-temp": true } : {}),
 		...(values.mic ? { mic: true } : {}),
 		...(values["system-audio"] ? { "system-audio": true } : {}),
 		// ui options
