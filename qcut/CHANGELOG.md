@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.11.1] - 2026-11-10
+
 ### Fixed
 
 - In a native export the picture no longer runs later than the sound after clips that are not a whole number of frames long. Each main-track clip was rounded up to whole frames on its own and the clips were joined end to end, so the picture of every clip after it moved later by the remainder while the sound stayed put: eleven such cuts left the end of a trailer 5 frames late. Every clip and gap is now cut to the frames and samples of its span on the timeline, counted from the timeline's start by the preview's frame rule, and the picture and the sound are joined from two lists, each giving every file its own stream's length.
