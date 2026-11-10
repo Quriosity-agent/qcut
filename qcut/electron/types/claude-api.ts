@@ -526,6 +526,17 @@ export interface ExportJobRequest {
 	 * in the full export (see export-range.ts).
 	 */
 	range?: ClaudeTimeRange;
+	/**
+	 * Native exports only: tracks left out of the export, picture and sound,
+	 * as if each were hidden and muted. The project is not changed.
+	 */
+	excludeTracks?: string[];
+	/**
+	 * Native exports only: keep the export's intermediate files and write the
+	 * FFmpeg commands that made them beside them; the job reports the folder
+	 * as `intermediates`.
+	 */
+	keepTemp?: boolean;
 
 	/** GIF-specific export options */
 	gifConfig?: {
@@ -592,6 +603,8 @@ export interface ExportJobStatus {
 	range?: { startTime: number; endTime: number };
 	audioValidation?: ExportAudioValidation;
 	warnings?: string[];
+	/** Where the intermediate files were kept (`keepTemp`). */
+	intermediates?: string;
 }
 
 // Summary & Report Types (Stage 5)
