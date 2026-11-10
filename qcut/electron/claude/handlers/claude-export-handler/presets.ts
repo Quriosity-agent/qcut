@@ -167,6 +167,28 @@ function evenSide(value: number): number {
 }
 
 /**
+ * The bitrate of the YouTube preset a picture of this size falls under
+ * (5 Mbps up to 720p, 8 Mbps up to 1080p, 45 Mbps above).
+ */
+export function bitrateForPictureSize({
+	width,
+	height,
+}: {
+	width: number;
+	height: number;
+}): string | null {
+	const longerSide = Math.max(width, height);
+	const ladder = PROJECT_BITRATE_LADDER.map((presetId) =>
+		findPresetById({ presetId })
+	).filter((preset): preset is ExportPreset => preset !== null);
+	const sizedPreset =
+		ladder.find(
+			(preset) => Math.max(preset.width, preset.height) >= longerSide
+		) ?? ladder.at(-1);
+	return sizedPreset?.bitrate ?? null;
+}
+
+/**
  * What an export without a named preset uses: the project's own size and
  * frame rate as MP4, at the bitrate of the YouTube preset of that size.
  * Null when the project does not give a usable size or rate.
@@ -181,15 +203,8 @@ export function projectExportPreset({
 		(value) => Number.isFinite(value) && value > 0
 	);
 	if (!isUsable) return null;
-	const longerSide = Math.max(width, height);
-	const ladder = PROJECT_BITRATE_LADDER.map((presetId) =>
-		findPresetById({ presetId })
-	).filter((preset): preset is ExportPreset => preset !== null);
-	const sizedPreset =
-		ladder.find(
-			(preset) => Math.max(preset.width, preset.height) >= longerSide
-		) ?? ladder.at(-1);
-	if (!sizedPreset) return null;
+	const bitrate = bitrateForPictureSize({ width, height });
+	if (!bitrate) return null;
 	return {
 		id: PROJECT_PRESET_ID,
 		name: "Project settings",
@@ -197,7 +212,7 @@ export function projectExportPreset({
 		width: evenSide(width),
 		height: evenSide(height),
 		fps,
-		bitrate: sizedPreset.bitrate,
+		bitrate,
 		format: "mp4",
 	};
 }
