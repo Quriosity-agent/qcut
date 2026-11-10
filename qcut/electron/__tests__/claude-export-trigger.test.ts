@@ -1291,7 +1291,7 @@ describe("Claude export trigger", () => {
 			labDeflicker: 60,
 		});
 		expect(filter).toContain(
-			"tpad=stop_mode=clone:stop_duration=0.066667,minterpolate=fps=30"
+			"tpad=stop_mode=clone:stop=2,tpad=stop_mode=clone:stop_duration=0.066667,minterpolate=fps=30"
 		);
 		expect(filter).toContain("deshake=");
 		expect(filter).toContain("hqdn3d=");
