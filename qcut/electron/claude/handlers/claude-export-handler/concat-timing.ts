@@ -65,6 +65,24 @@ export function concatSpan({
 }
 
 /**
+ * How long after `startTime` the first frame of `span` is shown. A clip that
+ * starts between two frames is first seen on the later one, by then part of
+ * a frame into itself, and its picture is read from there. Zero when the
+ * span starts with the clip, or before it.
+ */
+export function firstFrameDelay({
+	span,
+	startTime,
+	fps,
+}: {
+	span: Pick<ConcatSpan, "from">;
+	startTime: number;
+	fps: number;
+}): number {
+	return Math.max(0, outputFrameAt({ time: span.from, fps }) / fps - startTime);
+}
+
+/**
  * The span of a file that is placed on the timeline by its start time, not
  * joined to the file before it (a transition export): every frame that starts
  * within its length and all of its samples, as `-t` used to cut it.
