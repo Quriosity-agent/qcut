@@ -28,6 +28,24 @@ export interface ComposedVisualLayers {
 	outputLabel: string;
 }
 
+/**
+ * The pixel format the overlays work in. `auto` lets FFmpeg pick, and with
+ * RGBA layers it picks RGBA for the picture underneath too, so every frame
+ * goes to RGBA and back even where nothing covers it (a picture with no
+ * overlay on screen came out up to 1.6 levels darker). A base already in
+ * yuv420p is kept as it is with `yuv420`; the layers are converted instead.
+ */
+export type VisualLayerOverlayFormat = "auto" | "yuv420";
+
+/**
+ * The first step of a pass's filter graph over the export's picture: exact
+ * rounding and full-resolution chroma for the conversions FFmpeg inserts
+ * (a layer to yuva420p, a blend mode's RGB). The defaults truncate. The
+ * flags replace FFmpeg's own, so its scaler (bicubic) is named again.
+ */
+export const ACCURATE_CONVERSION_STEP =
+	"sws_flags=bicubic+accurate_rnd+full_chroma_int";
+
 function hasTrackOrder(layer: PreparedVisualLayer): boolean {
 	return Number.isFinite(layer.trackOrder);
 }
@@ -69,16 +87,23 @@ export function composePreparedVisualLayers({
 	labelPrefix = "visual",
 	canvasWidth,
 	canvasHeight,
+	overlayFormat = "auto",
 }: {
 	baseLabel: string;
 	layers: PreparedVisualLayer[];
 	labelPrefix?: string;
 	canvasWidth?: number;
 	canvasHeight?: number;
+	overlayFormat?: VisualLayerOverlayFormat;
 }): ComposedVisualLayers {
 	const filterSteps: string[] = [];
 	let outputLabel = baseLabel;
 	const orderedLayers = sortPreparedVisualLayers({ layers });
+	// A blend mode works on R, G and B. The blend filter takes no packed
+	// RGBA, so FFmpeg picks its format from what follows it: before a
+	// `yuv420` overlay that is yuva420p, and the mode would be applied to Y,
+	// U and V. Planar RGB keeps it where it belongs.
+	const blendFormat = overlayFormat === "yuv420" ? "gbrap" : "rgba";
 
 	for (let drawOrder = 0; drawOrder < orderedLayers.length; drawOrder++) {
 		const layer = orderedLayers[drawOrder];
@@ -98,7 +123,7 @@ export function composePreparedVisualLayers({
 		if (layer.blendMode === "normal") {
 			filterSteps.push(
 				`[${outputLabel}][${layer.inputLabel}]overlay=` +
-					`${position}eof_action=pass:repeatlast=0:shortest=0:format=auto${enable}[${nextOutput}]`
+					`${position}eof_action=pass:repeatlast=0:shortest=0:format=${overlayFormat}${enable}[${nextOutput}]`
 			);
 			outputLabel = nextOutput;
 			continue;
@@ -125,12 +150,12 @@ export function composePreparedVisualLayers({
 		filterSteps.push(
 			`[${outputLabel}]split=2[${baseOriginal}][${baseBlendInput}]`
 		);
-		filterSteps.push(`[${baseBlendInput}]format=rgba[${baseBlend}]`);
+		filterSteps.push(`[${baseBlendInput}]format=${blendFormat}[${baseBlend}]`);
 		const foregroundPlacement = hasProjectPosition
 			? `,pad=${canvasWidth}:${canvasHeight}:${layer.x ?? 0}:${layer.y ?? 0}:color=black@0.0`
 			: "";
 		filterSteps.push(
-			`[${layer.inputLabel}]format=rgba${foregroundPlacement}[${foregroundInput}]`
+			`[${layer.inputLabel}]format=${blendFormat}${foregroundPlacement}[${foregroundInput}]`
 		);
 		filterSteps.push(
 			`[${foregroundInput}]split=2[${foregroundBlend}][${foregroundAlpha}]`
@@ -143,7 +168,7 @@ export function composePreparedVisualLayers({
 		const compositePosition = hasProjectPosition ? "x=0:y=0:" : position;
 		filterSteps.push(
 			`[${baseOriginal}][${blendedAlpha}]overlay=` +
-				`${compositePosition}eof_action=pass:repeatlast=0:shortest=0:format=auto${enable}[${nextOutput}]`
+				`${compositePosition}eof_action=pass:repeatlast=0:shortest=0:format=${overlayFormat}${enable}[${nextOutput}]`
 		);
 		outputLabel = nextOutput;
 	}
