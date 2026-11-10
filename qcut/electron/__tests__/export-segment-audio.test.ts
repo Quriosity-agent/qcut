@@ -100,8 +100,9 @@ describe("where a segment's sound comes from", () => {
 			"-map",
 			"1:a:0",
 		]);
+		// The clip's two seconds: cut to their samples, not by `-t`.
 		expect(args[args.indexOf("-af") + 1]).toBe(
-			"aresample=async=1:first_pts=0,atempo=2,apad"
+			"aresample=async=1:first_pts=0,atempo=2,apad,atrim=end_sample=96000"
 		);
 	});
 
