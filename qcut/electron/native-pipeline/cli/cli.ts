@@ -534,6 +534,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			grain: { type: "string" },
 			intensity: { type: "string" },
 			reset: { type: "boolean", default: false },
+			"lut-file": { type: "string" },
+			"lut-name": { type: "string" },
+			"lut-intensity": { type: "string" },
+			"lut-clear": { type: "boolean", default: false },
 			append: { type: "boolean", default: false },
 			"cross-track-ripple": { type: "boolean", default: false },
 			"keep-automation": { type: "boolean", default: false },
@@ -1266,6 +1270,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				.map((name) => [name, Number.parseFloat(values[name] as string)])
 		),
 		reset: (values.reset as boolean) ?? false,
+		lutFile: values["lut-file"] as string | undefined,
+		lutName: values["lut-name"] as string | undefined,
+		...(typeof values["lut-intensity"] === "string"
+			? { lutIntensity: Number.parseFloat(values["lut-intensity"]) }
+			: {}),
+		lutClear: (values["lut-clear"] as boolean) ?? false,
 		append: (values.append as boolean) ?? false,
 		file: values.file as string | undefined,
 		secondaryFile: values["secondary-file"] as string | undefined,
