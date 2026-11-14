@@ -21,8 +21,13 @@ import type { TProject } from "@/types/project";
  * has moved on by the time a save is in, it is saved again as it is, until a
  * save lands with the editor still holding what it wrote. Saves reach storage
  * in the order they were sent, so the last one written is then the editor's.
+ *
+ * It never stops on a write the editor has already moved past: that write
+ * could be the one that puts an old value back. A project that is still
+ * changing after this many saves in a row is not a user changing settings,
+ * and the save fails loudly instead of going round for ever.
  */
-const MAX_FOLLOW_UP_SAVES = 5;
+const RUNAWAY_FOLLOW_UP_SAVES = 50;
 
 export async function saveProjectContentChange({
 	projectId,
@@ -41,9 +46,15 @@ export async function saveProjectContentChange({
 	setActiveProject(updated);
 	let saved = updated;
 	await storageService.saveProject({ project: saved });
-	for (let followUp = 0; followUp < MAX_FOLLOW_UP_SAVES; followUp += 1) {
+	for (
+		let followUps = 0;
+		followUps <= RUNAWAY_FOLLOW_UP_SAVES;
+		followUps += 1
+	) {
 		const latest = getActiveProject();
-		if (!latest || latest.id !== projectId || latest === saved) break;
+		const settled = !latest || latest.id !== projectId || latest === saved;
+		if (settled) return updated.updatedAt;
+		if (followUps === RUNAWAY_FOLLOW_UP_SAVES) break;
 		// A settings change stamps itself when it starts, which can be before
 		// this change: the later of the two times is the project's.
 		const isOlder = latest.updatedAt.getTime() < updated.updatedAt.getTime();
@@ -51,5 +62,7 @@ export async function saveProjectContentChange({
 		if (isOlder) setActiveProject(saved);
 		await storageService.saveProject({ project: saved });
 	}
-	return updated.updatedAt;
+	throw new Error(
+		`Project ${projectId} kept changing through ${RUNAWAY_FOLLOW_UP_SAVES} saves of its change time; its stored record may be behind the editor's`
+	);
 }
