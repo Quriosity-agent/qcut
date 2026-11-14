@@ -565,5 +565,26 @@ describe("editor element color --lut-file", () => {
 			lutIntensity: 80,
 			lutClear: false,
 		});
+		// "50oops" is not 50: the handler refuses what is not a number.
+		const sloppy = parseCliArgs([
+			"editor:element:color",
+			"--project-id",
+			"p1",
+			"--element-id",
+			"e1",
+			"--lut-intensity",
+			"50oops",
+		]);
+		expect(sloppy.lutIntensity).toBeNaN();
+		const { client, patches } = fakeClient();
+		expect(await elementColor(client, sloppy)).toMatchObject({
+			success: false,
+			error: "--lut-intensity must be between 0 and 100",
+		});
+		expect(patches).toEqual([]);
+		expect(
+			parseCliArgs(["editor:element:color", "--lut-intensity", "0"])
+				.lutIntensity
+		).toBe(0);
 	});
 });
