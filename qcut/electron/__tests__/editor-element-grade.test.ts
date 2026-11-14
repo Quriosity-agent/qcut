@@ -355,16 +355,20 @@ describe("editor element color --lut-file", () => {
 		expect(NO_PRESET_FILTER).toEqual(DEFAULT_COLOR_FILTER_APPLICATION);
 
 		const { client, patches } = fakeClient();
-		await elementColor(client, opts({ elementId: "e1", lutFile: twoPoint }));
-		await elementColor(client, opts({ elementId: "e1", lutClear: true }));
-		await elementColor(
-			client,
+		const commands = [
+			opts({ elementId: "e1", lutFile: twoPoint }),
+			opts({ elementId: "e1", lutClear: true }),
 			opts({
 				elementId: "e1",
 				lutFile: twoPoint,
 				set: JSON.stringify({ filter: { presetId: "vivid" } }),
-			})
-		);
+			}),
+		];
+		for (const command of commands) {
+			const result = await elementColor(client, command);
+			expect(result.success, result.error).toBe(true);
+		}
+		expect(patches).toHaveLength(commands.length);
 		for (const patch of patches) {
 			expect(
 				(patch.body as { color: { filter: unknown } }).color.filter
@@ -373,10 +377,12 @@ describe("editor element color --lut-file", () => {
 
 		// A change that leaves the LUT's data alone leaves the preset alone.
 		const untouched = fakeClient();
-		await elementColor(
+		const adjusted = await elementColor(
 			untouched.client,
 			opts({ elementId: "e1", lutIntensity: 60, contrast: 5 })
 		);
+		expect(adjusted.success, adjusted.error).toBe(true);
+		expect(untouched.patches).toHaveLength(1);
 		expect(
 			(untouched.patches[0].body as { color: Record<string, unknown> }).color
 		).not.toHaveProperty("filter");
