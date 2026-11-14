@@ -75,6 +75,34 @@ function colorLabelProblem({ value }: { value: unknown }): string | undefined {
 	return `colorLabel must be one of: ${CLAUDE_TIMELINE_COLOR_LABELS.join(", ")} (got ${JSON.stringify(value)})`;
 }
 
+/**
+ * The name the apply will use for an entry (its alias, else its id, else
+ * `fallback`), and a problem when either is not text: the apply reads both
+ * as strings.
+ */
+function entryName({
+	entry,
+	fallback,
+}: {
+	entry: { alias?: unknown; id?: unknown };
+	fallback: string;
+}): { name: string; problem?: string } {
+	const usable = (value: unknown) =>
+		value === undefined || value === null || typeof value === "string";
+	if (usable(entry.alias) && usable(entry.id)) {
+		return {
+			name: aliasFor(
+				{
+					alias: (entry.alias as string | null | undefined) ?? undefined,
+					id: (entry.id as string | null | undefined) ?? undefined,
+				},
+				fallback
+			),
+		};
+	}
+	return { name: fallback, problem: "alias and id must be text" };
+}
+
 function isClipType({ element }: { element: ManifestElement }): boolean {
 	return MEDIA_FAMILY_TYPES.has(element.type ?? "");
 }
@@ -86,9 +114,10 @@ function trackProblems({
 	track: ManifestTrack;
 	index: number;
 }): string[] {
-	const name = `Track '${aliasFor(track, `track-${index}`)}'`;
 	if (!isRecord(track)) return [`Track ${index} must be an object`];
-	const problems: string[] = [];
+	const named = entryName({ entry: track, fallback: `track-${index}` });
+	const name = `Track '${named.name}'`;
+	const problems: string[] = named.problem ? [`${name}: ${named.problem}`] : [];
 	if (!track.type) {
 		problems.push(`${name} is missing type`);
 	} else if (!Object.hasOwn(TRACK_TYPES, track.type)) {
@@ -181,6 +210,41 @@ function elementProblems({
 }
 
 /**
+ * `updates` patch clips that already exist, so each needs the id of one and
+ * nothing a new element needs; what a patch does carry is checked like an
+ * element's. They run after a replace has cleared the timeline, which is
+ * why a malformed one has to be found here.
+ */
+function updateProblems({ updates }: { updates: unknown }): string[] {
+	if (updates === undefined || updates === null) return [];
+	if (!Array.isArray(updates)) return ["updates must be a list"];
+	const problems: string[] = [];
+	for (const [index, update] of updates.entries()) {
+		if (!isRecord(update)) {
+			problems.push(`Update ${index} must be an object`);
+			continue;
+		}
+		const named = entryName({ entry: update, fallback: `update-${index}` });
+		const name = `Update '${named.name}'`;
+		if (named.problem) problems.push(`${name}: ${named.problem}`);
+		if (typeof update.elementId !== "string" || !update.elementId.trim()) {
+			problems.push(`Update ${index} is missing elementId`);
+		}
+		const colorLabel = colorLabelProblem({ value: update.colorLabel });
+		if (colorLabel) problems.push(`${name}: ${colorLabel}`);
+		// A text patch's `color` is a colour string; a grade is an object.
+		if (isRecord(update.color)) {
+			try {
+				readGradeCubeLuts({ color: update.color });
+			} catch (error) {
+				problems.push(`${name}: ${messageOf(error)}`);
+			}
+		}
+	}
+	return problems;
+}
+
+/**
  * Every problem the manifest itself shows, in manifest order; empty when
  * there is none. Aliases match the ones the apply reports later
  * (`element-<n>` counts top-level `elements` first, then each track's).
@@ -199,10 +263,14 @@ export function manifestProblems({
 	const checkElements = (elements: unknown) => {
 		if (!Array.isArray(elements)) return;
 		for (const element of elements as ManifestElement[]) {
-			const alias = isRecord(element)
-				? aliasFor(element, `element-${elementIndex}`)
-				: `element-${elementIndex}`;
-			problems.push(...elementProblems({ element, alias }));
+			const fallback = `element-${elementIndex}`;
+			const named = isRecord(element)
+				? entryName({ entry: element, fallback })
+				: { name: fallback };
+			if (named.problem) {
+				problems.push(`Element '${named.name}': ${named.problem}`);
+			}
+			problems.push(...elementProblems({ element, alias: named.name }));
 			elementIndex += 1;
 		}
 	};
@@ -210,6 +278,7 @@ export function manifestProblems({
 	for (const track of tracks) {
 		if (isRecord(track)) checkElements(track.elements);
 	}
+	problems.push(...updateProblems({ updates: manifest.updates }));
 	// Left alone when a track is malformed: that is reported above already.
 	const transitions = problems.length === 0 ? collectTransitions(manifest) : [];
 	for (const [index, transition] of transitions.entries()) {
