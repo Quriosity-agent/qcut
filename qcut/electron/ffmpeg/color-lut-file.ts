@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withCubeLutDomain } from "../types/color-cube-lut";
 import type { VideoColorSettings } from "./color-settings";
 
 export type VideoCubeLut = NonNullable<VideoColorSettings["lut"]["cube"]>;
@@ -278,8 +279,10 @@ export function materializeVideoCubeLut({
 	intensity: number;
 	skinProtection: number;
 }): string {
-	if (cube.values.length !== cube.size ** 3 * 3) {
-		throw new Error("Invalid 3D LUT payload");
+	if (cube.values?.length !== cube.size ** 3 * 3) {
+		throw new Error(
+			`Invalid 3D LUT payload: "${name}" holds ${cube.values?.length ?? 0} values, size ${cube.size} needs ${cube.size ** 3 * 3}`
+		);
 	}
 	if (
 		dual &&
@@ -291,9 +294,17 @@ export function materializeVideoCubeLut({
 	if (dual && dual.skinCube.values.length !== dual.skinCube.size ** 3 * 3) {
 		throw new Error("Invalid dual 3D LUT payload");
 	}
+	// A cube stored without a domain is a 0..1 cube, as in a .cube file.
 	const content = serializeCube({
 		name,
-		cube: adjustedCube({ cube, dual, intensity, skinProtection }),
+		cube: adjustedCube({
+			cube: withCubeLutDomain(cube),
+			dual: dual
+				? { ...dual, skinCube: withCubeLutDomain(dual.skinCube) }
+				: undefined,
+			intensity,
+			skinProtection,
+		}),
 	});
 	const directory = join(tmpdir(), "qcut-color-luts");
 	mkdirSync(directory, { recursive: true });
