@@ -73,4 +73,49 @@ describe("a project's last-modified time after its contents change", () => {
 		expect(setActiveProject).not.toHaveBeenCalled();
 		expect(mocks.saveProject).not.toHaveBeenCalled();
 	});
+
+	it("does not put back a setting that was being saved when it ran", async () => {
+		// The frame-rate change is stored first and reaches the editor after.
+		let active: TProject | null = project({ fps: 24 });
+		const stored: TProject[] = [];
+		let publishFps: () => void = () => undefined;
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				stored.push(saved);
+				// While the content save is in flight, the fps save lands and
+				// the editor takes the new rate.
+				if (saved.fps === 24) publishFps();
+			}
+		);
+		const fpsChange = { ...project({ fps: 60 }), updatedAt: NOW };
+		stored.push(fpsChange);
+		publishFps = () => {
+			active = fpsChange;
+		};
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (next) => {
+				active = next;
+			},
+			now: () => NOW,
+		});
+
+		expect(stored.at(-1)?.fps).toBe(60);
+		expect(active?.fps).toBe(60);
+	});
+
+	it("saves once when nothing else changed the project meanwhile", async () => {
+		let active: TProject | null = project();
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (next) => {
+				active = next;
+			},
+			now: () => NOW,
+		});
+		expect(mocks.saveProject).toHaveBeenCalledTimes(1);
+	});
 });
