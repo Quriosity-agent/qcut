@@ -655,5 +655,47 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 		expect(lut.cube ?? null).toBeNull();
 	}
 
+	// --- 问题 6: one LUT for a stretch of the programme, stored once -----------
+	// An adjustment layer grades every track under it for its duration, so a
+	// LUT on one layer does what a copy of it on every clip did.
+	const layer = await run<{ elementId: string }>(
+		"editor:timeline:add-element",
+		...pid,
+		"--data",
+		JSON.stringify({ type: "adjustment", startTime: 0, duration: 2 })
+	);
+	expect(layer.ok, layer.error).toBe(true);
+	const layerGraded = await run<{ updated: number }>(
+		"editor:element:color",
+		...pid,
+		"--element-id",
+		layer.data.elementId,
+		"--lut-file",
+		cubePath
+	);
+	expect(layerGraded.ok, layerGraded.error).toBe(true);
+	const layerOut = path.join(workDir, "layer.mp4");
+	const layerRun = await run(
+		"editor:export:start",
+		...pid,
+		"--engine",
+		"native",
+		"--start-time",
+		"0",
+		"--end-time",
+		"4",
+		"--output",
+		layerOut,
+		"--poll"
+	);
+	expect(layerRun.ok, layerRun.error).toBe(true);
+	const underLayer = meanColor({ file: layerOut, time: 1 });
+	const pastLayer = meanColor({ file: layerOut, time: 3 });
+	note("问题 6 frame under an adjustment layer with the LUT (rgb)", underLayer);
+	note("问题 6 frame after the layer ends (rgb)", pastLayer);
+	expect(underLayer[2]).toBeGreaterThan(200);
+	expect(underLayer[0]).toBeLessThan(60);
+	expect(Math.abs(pastLayer[0] - 128)).toBeLessThan(12);
+
 	console.log(`[qcut-1114]\n${notes.join("\n")}`);
 });
