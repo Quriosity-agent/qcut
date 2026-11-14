@@ -568,4 +568,31 @@ describe("a custom 3D LUT through element patch", () => {
 			domainMax: [1, 1, 1],
 		});
 	});
+
+	it("drops the cube when a patch clears the LUT with cube: null", () => {
+		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
+		storeMocks.state.tracks[0].elements[0] = {
+			...element,
+			color: {
+				enabled: true,
+				lut: lut({ size: 2, values: cubeValues({ size: 2 }) }),
+			},
+		} as unknown as MediaElement;
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: {
+					color: {
+						lut: { enabled: false, presetId: "none", name: "无", cube: null },
+					},
+				} as never,
+				pushHistory: false,
+			})
+		).toEqual({ applied: true });
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: Record<string, unknown>;
+		};
+		expect(stored.lut).toMatchObject({ enabled: false, presetId: "none" });
+		expect(stored.lut).not.toHaveProperty("cube");
+	});
 });
