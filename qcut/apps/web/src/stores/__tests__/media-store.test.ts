@@ -189,10 +189,14 @@ describe("MediaStore", () => {
 			},
 		];
 
+		markProjectContentChanged.mockClear();
 		await act(async () => {
 			await result.current.addGeneratedImages(images);
 		});
 
+		// Once for the batch, not once per image.
+		expect(markProjectContentChanged).toHaveBeenCalledTimes(1);
+		expect(markProjectContentChanged).toHaveBeenCalledWith("test-project");
 		expect(result.current.mediaItems).toHaveLength(2);
 		expect(result.current.mediaItems[0].metadata?.source).toBe("ai-generated");
 		expect(result.current.mediaItems[1].metadata?.source).toBe("ai-generated");
