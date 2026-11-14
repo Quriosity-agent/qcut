@@ -54,6 +54,17 @@ export function mergeMediaColorSettings({
 			cube: patchLut.cube,
 		};
 	}
+	const patchDual = isPlainObject(patchLut) ? patchLut.dual : undefined;
+	if (isPlainObject(patchDual) && isPlainObject(patchDual.skinCube)) {
+		const lut = merged.lut as Record<string, unknown>;
+		merged.lut = {
+			...lut,
+			dual: {
+				...(lut.dual as Record<string, unknown>),
+				skinCube: patchDual.skinCube,
+			},
+		};
+	}
 	return merged as unknown as MediaColorSettings;
 }
 
