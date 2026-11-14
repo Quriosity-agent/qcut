@@ -250,3 +250,66 @@ describe("project record changes start from the latest record (N19)", () => {
 		expect(curveOf(copy)).toBe(-24);
 	});
 });
+
+/** 问题 3 (2026-11-14): the project's time did not follow its contents. */
+describe("the store marks the open project changed", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storage.saveProject.mockResolvedValue(undefined);
+	});
+
+	it("moves updatedAt in the editor, in the list and in storage, keeping the rest", async () => {
+		const open = openWithNewerCurve();
+		const other = project({ id: "other", curveDb: 0 });
+		useProjectStore.setState({
+			savedProjects: [...useProjectStore.getState().savedProjects, other],
+		});
+
+		await useProjectStore.getState().markProjectContentChanged(open.id);
+
+		const state = useProjectStore.getState();
+		expect(state.activeProject?.updatedAt.getTime()).toBeGreaterThan(
+			DATE.getTime()
+		);
+		expect(curveOf(state.activeProject)).toBe(-24);
+		const [listed, untouched] = state.savedProjects;
+		expect(listed.updatedAt).toEqual(state.activeProject?.updatedAt);
+		expect(untouched).toBe(other);
+		expect(savedRecords()).toHaveLength(1);
+		expect(savedRecords()[0]).toBe(state.activeProject);
+	});
+
+	it("leaves everything alone for a project that is not the open one", async () => {
+		openWithNewerCurve();
+		const before = useProjectStore.getState();
+		await useProjectStore.getState().markProjectContentChanged("elsewhere");
+		expect(useProjectStore.getState().activeProject).toBe(before.activeProject);
+		expect(storage.saveProject).not.toHaveBeenCalled();
+	});
+
+	it("reports a failed save instead of throwing into the edit that caused it", async () => {
+		const open = openWithNewerCurve();
+		storage.saveProject.mockRejectedValueOnce(new Error("disk full"));
+		await expect(
+			useProjectStore.getState().markProjectContentChanged(open.id)
+		).resolves.toBeUndefined();
+		const { handleStorageError } = await import("@/lib/debug/error-handler");
+		expect(handleStorageError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "disk full" }),
+			"Record project change time",
+			expect.objectContaining({ projectId: open.id })
+		);
+	});
+
+	it("follows a setting published while its save was in flight, through the real store", async () => {
+		const open = openWithNewerCurve();
+		storage.saveProject.mockImplementationOnce(async () => {
+			// A frame-rate change that was stored first reaches the editor now.
+			const current = useProjectStore.getState().activeProject as TProject;
+			useProjectStore.setState({ activeProject: { ...current, fps: 60 } });
+		});
+		await useProjectStore.getState().markProjectContentChanged(open.id);
+		expect(savedRecords().at(-1)?.fps).toBe(60);
+		expect(useProjectStore.getState().activeProject?.fps).toBe(60);
+	});
+});
