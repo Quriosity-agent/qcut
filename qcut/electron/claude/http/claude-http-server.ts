@@ -118,6 +118,7 @@ import {
 import { getAgentPointerController } from "../handlers/agent-pointer-controller.js";
 import {
 	describeEditorWindows,
+	focusEditorWindow,
 	resolveEditorWindow,
 } from "../handlers/editor-windows.js";
 import {
@@ -393,6 +394,8 @@ export function startClaudeHTTPServer(
 	registerAgentPointerRoutes(router, {
 		getState: async (request) => pointerController(request).getState(),
 		listWindows: async () => describeEditorWindows(),
+		focusWindow: async (request) =>
+			focusEditorWindow({ win: windowFor(request) }),
 		move: (request) => pointerController(request).move(request),
 		hover: (request) => pointerController(request).hover(request),
 		click: (request) => pointerController(request).click(request),
