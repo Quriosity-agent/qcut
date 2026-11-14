@@ -6,6 +6,7 @@ import type { EditorApiClient } from "../native-pipeline/editor/editor-api-clien
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
 import { ComposeFilterStackError } from "../native-pipeline/compose/compose-filter-stack-resolver.js";
 import {
+	NO_PRESET_FILTER,
 	elementColor,
 	elementFilter,
 } from "../native-pipeline/editor/editor-handlers-element-grade.js";
@@ -343,6 +344,42 @@ describe("editor element color --lut-file", () => {
 			domainMax: [1, 1, 1],
 			valueCount: 24,
 		});
+	});
+
+	it("takes a built-in preset off the clip when it sets or removes a LUT", async () => {
+		// The preset is rendered in the LUT's place; left on, it would hide the
+		// LUT the command just set (and keep showing after --lut-clear).
+		const { DEFAULT_COLOR_FILTER_APPLICATION } = await import(
+			"../../apps/web/src/lib/filters/filter-resolver"
+		);
+		expect(NO_PRESET_FILTER).toEqual(DEFAULT_COLOR_FILTER_APPLICATION);
+
+		const { client, patches } = fakeClient();
+		await elementColor(client, opts({ elementId: "e1", lutFile: twoPoint }));
+		await elementColor(client, opts({ elementId: "e1", lutClear: true }));
+		await elementColor(
+			client,
+			opts({
+				elementId: "e1",
+				lutFile: twoPoint,
+				set: JSON.stringify({ filter: { presetId: "vivid" } }),
+			})
+		);
+		for (const patch of patches) {
+			expect(
+				(patch.body as { color: { filter: unknown } }).color.filter
+			).toEqual({ presetId: "none", presetVersion: 1, intensity: 100 });
+		}
+
+		// A change that leaves the LUT's data alone leaves the preset alone.
+		const untouched = fakeClient();
+		await elementColor(
+			untouched.client,
+			opts({ elementId: "e1", lutIntensity: 60, contrast: 5 })
+		);
+		expect(
+			(untouched.patches[0].body as { color: Record<string, unknown> }).color
+		).not.toHaveProperty("filter");
 	});
 
 	it("grades a whole track with a LUT and basic controls in one command", async () => {
