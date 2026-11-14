@@ -541,6 +541,8 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 		`${rolled.error} → ${JSON.stringify(rolled.data.rollback)}`
 	);
 	const restored = await exportTimeline();
+	// Not only the same ids: what a rollback restores reads back the same.
+	expect(restored.tracks).toEqual(written.tracks);
 	expect(
 		restored.tracks.map((track) => [track.id, track.elements.map((e) => e.id)])
 	).toEqual(
@@ -581,6 +583,17 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 			"",
 		].join("\n")
 	);
+	// A built-in preset is rendered in the LUT's place; setting a LUT takes
+	// it off, or the export below would show the preset instead.
+	const preset = await run(
+		"editor:element:patch",
+		...pid,
+		"--element-id",
+		graded?.id as string,
+		"--set",
+		JSON.stringify({ color: { filter: { presetId: "vivid", intensity: 100 } } })
+	);
+	expect(preset.ok, preset.error).toBe(true);
 	const lutApplied = await run<{ updated: number }>(
 		"editor:element:color",
 		...pid,
@@ -605,6 +618,9 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 		opacity: 0.7,
 	});
 	for (const element of mainAfter?.elements ?? []) {
+		expect(
+			(element.color as { filter: { presetId: string } }).filter.presetId
+		).toBe("none");
 		expect((element.color as { lut: Json }).lut).toMatchObject({
 			enabled: true,
 			presetId: "custom",
