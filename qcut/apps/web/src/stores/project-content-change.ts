@@ -18,8 +18,12 @@ import type { TProject } from "@/types/project";
  * rate is saved, then set). One in flight when this runs is not in the copy
  * saved here, and this save, landing second, would put the old value back in
  * storage while the editor shows the new one. So when the editor's project
- * has moved on by the time this save is in, it is saved once more as it is.
+ * has moved on by the time a save is in, it is saved again as it is, until a
+ * save lands with the editor still holding what it wrote. Saves reach storage
+ * in the order they were sent, so the last one written is then the editor's.
  */
+const MAX_FOLLOW_UP_SAVES = 5;
+
 export async function saveProjectContentChange({
 	projectId,
 	getActiveProject,
@@ -35,10 +39,13 @@ export async function saveProjectContentChange({
 	if (active?.id !== projectId) return null;
 	const updated = { ...active, updatedAt: now() };
 	setActiveProject(updated);
-	await storageService.saveProject({ project: updated });
-	const latest = getActiveProject();
-	if (latest && latest.id === projectId && latest !== updated) {
-		await storageService.saveProject({ project: latest });
+	let saved = updated;
+	await storageService.saveProject({ project: saved });
+	for (let followUp = 0; followUp < MAX_FOLLOW_UP_SAVES; followUp += 1) {
+		const latest = getActiveProject();
+		if (!latest || latest.id !== projectId || latest === saved) break;
+		saved = latest;
+		await storageService.saveProject({ project: saved });
 	}
 	return updated.updatedAt;
 }
