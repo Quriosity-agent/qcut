@@ -36,10 +36,13 @@ vi.mock("@/lib/media/image-utils", () => ({
 	revokeBlobUrl: vi.fn(),
 }));
 
+const markProjectContentChanged = vi.hoisted(() => vi.fn());
+
 vi.mock("@/stores/project-store", () => ({
 	useProjectStore: {
 		getState: vi.fn(() => ({
 			activeProject: { id: "test-project" },
+			markProjectContentChanged,
 		})),
 	},
 }));
@@ -118,6 +121,50 @@ describe("MediaStore", () => {
 		});
 
 		expect(result.current.mediaItems[0].id).toBe(customId);
+	});
+
+	/** 问题 3 (2026-11-14): an import left the project's "last modified" alone. */
+	it("marks the project changed when a file is imported and when one is removed", async () => {
+		const { result } = renderHook(() => useMediaStore());
+		markProjectContentChanged.mockClear();
+
+		let mediaId = "";
+		await act(async () => {
+			mediaId = await result.current.addMediaItem("test-project", {
+				type: "image",
+				name: "still.jpg",
+				url: "blob:still",
+				file: new File([""], "still.jpg", { type: "image/jpeg" }),
+				duration: 0,
+				thumbnailUrl: "thumb.jpg",
+			});
+		});
+		expect(markProjectContentChanged).toHaveBeenCalledTimes(1);
+		expect(markProjectContentChanged).toHaveBeenLastCalledWith("test-project");
+
+		await act(async () => {
+			await result.current.removeMediaItem("test-project", mediaId);
+		});
+		expect(markProjectContentChanged).toHaveBeenCalledTimes(2);
+	});
+
+	it("keeps an imported file when the change time cannot be recorded", async () => {
+		const { result } = renderHook(() => useMediaStore());
+		markProjectContentChanged.mockRejectedValueOnce(new Error("disk full"));
+
+		await act(async () => {
+			await result.current.addMediaItem("test-project", {
+				type: "image",
+				name: "kept.jpg",
+				url: "blob:kept",
+				file: new File([""], "kept.jpg", { type: "image/jpeg" }),
+				duration: 0,
+				thumbnailUrl: "thumb.jpg",
+			});
+		});
+		expect(
+			result.current.mediaItems.some((item) => item.name === "kept.jpg")
+		).toBe(true);
 	});
 
 	it("adds multiple generated images at once", async () => {
