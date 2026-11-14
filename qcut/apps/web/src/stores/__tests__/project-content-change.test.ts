@@ -141,6 +141,32 @@ describe("a project's last-modified time after its contents change", () => {
 		expect(active).toBe(fps30);
 	});
 
+	it("keeps its own time when the setting saved meanwhile was stamped earlier", async () => {
+		let active: TProject | null = project({ fps: 24 });
+		const stored: TProject[] = [];
+		// Started before the content change, published during its save.
+		const fps60 = { ...project({ fps: 60 }), updatedAt: YESTERDAY };
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				if (saved.fps === 24) active = fps60;
+				stored.push(saved);
+			}
+		);
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (next) => {
+				active = next;
+			},
+			now: () => NOW,
+		});
+
+		expect(stored.at(-1)).toMatchObject({ fps: 60, updatedAt: NOW });
+		expect(active).toMatchObject({ fps: 60, updatedAt: NOW });
+		expect(mocks.saveProject).toHaveBeenCalledTimes(2);
+	});
+
 	it("stops following a project that will not hold still", async () => {
 		let active: TProject | null = project();
 		mocks.saveProject.mockImplementation(async () => {
