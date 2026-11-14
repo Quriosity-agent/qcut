@@ -70,6 +70,7 @@ import {
 } from "../../../ffmpeg/segment-transform-filter.js";
 import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
+import { readClipColorSettings } from "./clip-color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import { prepareAssFontsDirectory } from "./ass-fonts-dir.js";
 import {
@@ -1019,11 +1020,7 @@ function readElementColorSettings({
 }: {
 	element: ClaudeElement;
 }): VideoColorSettings | undefined {
-	const raw = element.colorSettings;
-	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-		return undefined;
-	}
-	return raw as unknown as VideoColorSettings;
+	return readClipColorSettings({ element });
 }
 
 function readElementEnhancements({
