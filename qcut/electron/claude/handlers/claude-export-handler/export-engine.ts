@@ -70,7 +70,10 @@ import {
 } from "../../../ffmpeg/segment-transform-filter.js";
 import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
-import { readClipColorSettings } from "./clip-color-settings.js";
+import {
+	ClipColorError,
+	readClipColorSettings,
+} from "./clip-color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import { prepareAssFontsDirectory } from "./ass-fonts-dir.js";
 import {
@@ -499,6 +502,8 @@ export async function collectExportSegments({
 		return segments;
 	} catch (error) {
 		if (isRestrictedMediaExportError({ error })) throw error;
+		// Names the clip to fix; "no segments" would hide it.
+		if (error instanceof ClipColorError) throw error;
 		claudeLog.error(HANDLER_NAME, "Failed to collect export segments:", error);
 		return [];
 	}
