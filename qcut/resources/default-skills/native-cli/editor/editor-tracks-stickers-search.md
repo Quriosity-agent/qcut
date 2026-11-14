@@ -61,14 +61,16 @@ strip, and the track's right-click menu sets it too. `timeline export` and
 
 | Command | Required | Key options | What it does |
 | --- | --- | --- | --- |
-| `editor element patch` | `--element-id --set` | `--project-id` | Patch timeline element fields (`--set '{"colorLabel":"teal"}'` or `--set @patch.json`) |
-| `editor element color` | one of `--element-id`, `--element-ids`, `--track-id` + a control | `--exposure --brightness --contrast --highlights --shadows --whites --blacks --temperature --tint --saturation --vibrance --fade --vignette --sharpness --grain`, `--set`, `--reset` | Grade clips with the colour panel's basic controls, merged into each clip's grade |
+| `editor element patch` | `--element-id --set` | `--project-id` | Patch timeline element fields (`--set '{"colorLabel":"blue"}'` or `--set @patch.json`) |
+| `editor element color` | one of `--element-id`, `--element-ids`, `--track-id` + a control | `--exposure --brightness --contrast --highlights --shadows --whites --blacks --temperature --tint --saturation --vibrance --fade --vignette --sharpness --grain`, `--lut-file`, `--lut-name`, `--lut-intensity`, `--lut-clear`, `--set`, `--reset` | Grade clips with the colour panel's basic controls and a 3D LUT from a file, merged into each clip's grade |
 | `editor element filter` | one of `--element-id`, `--element-ids`, `--track-id` + `--resource-id` or `--clear` | `--intensity`, `--append` | Apply catalogue filters by resource id (the filter panel's LUT path), one undo step per call |
 | `editor timeline apply` | `--manifest` | `--project-id`, `--replace`, `--atomic`, `--verify` | Apply a complete timeline manifest atomically |
 
 ```bash
 qcut editor element patch --element-id <id> --set '{"color":{"basic":{"contrast":20,"saturation":-35}}}' --project-id <id> --json
 qcut editor element color --track-id <id> --contrast 15 --saturation -30 --temperature -20 --project-id <id> --json
+qcut editor element color --track-id <id> --lut-file ./grade.cube --lut-intensity 80 --project-id <id> --json
+qcut editor element patch --element-id <id> --set '{"blendMode":"overlay","blendEnabled":true,"opacity":0.8}' --project-id <id> --json
 qcut editor element filter --element-id <id> --resource-id 7596691154008132915 --intensity 70 --project-id <id> --json
 qcut editor timeline apply --manifest @timeline.json --replace --atomic --verify --project-id <id> --json
 ```
@@ -82,9 +84,44 @@ grade: `color` (a partial `MediaColorSettings`, merged into the clip's current
 grade — `color.basic` holds the controls above) and `adjustments` (the eight
 legacy basic fields). A patch made only of fields the element cannot use is an
 error that names them; a patch that mixes supported and unsupported fields
-applies the former and returns the latter as `ignoredFields`. `timeline export`
+applies the former and returns the latter as `ignoredFields`; the error lists
+the fields the element's type takes. `timeline export`
 shows each clip's `color`, `adjustments`, resolved `colorSettings` and
 `filterStack`, so a grade can be read back.
+
+#### A custom 3D LUT on clips
+
+`element color --lut-file <file>` puts one LUT on one clip, several clips or a
+whole track (`--track-id`): a `.cube` file, or a `.json` file holding the cube
+as the editor stores it. `--lut-name` names it (default: the file's `TITLE`,
+else its name), `--lut-intensity` sets its strength (0–100, default 100), and
+`--lut-clear` removes the LUT and its data from the clips. The LUT is the
+colour panel's custom LUT: the preview shows it and the native export applies
+it with `lut3d`.
+
+By hand (`--set`, `element patch`, a manifest) the LUT is `color.lut`:
+
+```json
+{ "color": { "lut": {
+  "enabled": true, "presetId": "custom", "name": "show grade", "intensity": 100,
+  "cube": { "size": 2, "values": [0,0,0, 1,0,0, 0,1,0, 1,1,0, 0,0,1, 1,0,1, 0,1,1, 1,1,1] }
+} } }
+```
+
+- `cube.values` holds `size³` RGB triplets in `.cube` file order: red changes
+  fastest, then green, then blue. Its length must be `size³ × 3`; a cube of
+  any other length is refused when it is written, naming the field.
+- `cube.domainMin` / `cube.domainMax` are optional and default to `[0,0,0]`
+  and `[1,1,1]`; the stored cube always has both.
+- A patch that names a `cube` replaces the clip's cube whole;
+  `"cube": null` removes it.
+- A LUT is stored on each clip that uses it (about 9 bytes per value: an
+  18-point cube is ~150 KB per clip), so prefer the smallest cube that holds
+  the grade.
+- Reading a grade back: every field written comes back with the same value,
+  and the editor adds the fields left out (the rest of the grade at its
+  defaults, the cube's domain). Compare numbers as numbers: JSON has one
+  number type, so a `1.0` written by Python reads back as `1`.
 
 `element filter` resolves ids from `filter-lab catalog` (Jianying filters)
 first and `filter-lab catalog-independent` (QCut's own) second; the result
@@ -94,6 +131,29 @@ any `warnings` (a safe-passthrough resolution is reported, not applied).
 
 `timeline apply --replace` overwrites the whole timeline. Export the current
 timeline first (`editor timeline export`) so the change can be reverted.
+
+How an apply fails:
+
+- **Before anything changes.** The manifest is checked in full first: track
+  types and colours (`colorLabel` is one of violet, blue, green, yellow, red,
+  rose, orange, mango, or absent), each element's type, start and length, a
+  clip's `blendMode`, `fitMode`, placement numbers and the shape of any 3D
+  LUT. Every problem is listed at once (`data.problems`), the error starts
+  "The manifest has N problems; nothing was changed", and `data.changed` is
+  `false`.
+- **Part-way, with `--atomic` (the default).** The timeline is rolled back.
+  `data.rolledBack` says whether the timeline is now what it was before the
+  apply, and `data.rollback` says how that is known: `by: "requested"` (this
+  command rolled it back), `by: "timeout"` (QCut had already ended the
+  transaction and restored the timeline; the timeline was read back and
+  matches), or `by: "none"` with a `detail` when it could not be confirmed.
+  Check `rolledBack` before running an export after a failed apply.
+- The transaction's time limit grows with the manifest (clips, tracks and
+  size, up to QCut's 5-minute cap). An apply that still runs past it fails
+  with "The apply ran past its … timeline transaction" in front of the
+  request that failed after it.
+
+A manifest's `media` list may be any length; files are imported 20 at a time.
 
 ### What a manifest carries, and what comes back from `timeline export`
 
@@ -328,6 +388,7 @@ confirmation.
 | `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/--normalized-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
 | `editor pointer drop-files` | `--files a.mp4,b.png` | targeting flags, `--modifiers`, `--wait-for` | Drop local files on a target as an external HTML5 file drop (media library import, file drop zones); background input only |
 | `editor windows` | — | — | List open QCut windows (id, title, focused, visible, bounds, `main`) for `--window-id` |
+| `editor windows focus` | — | `--window-id` | Bring a QCut window (the first by default) in front of the other apps; restores it when minimized or hidden |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
 
 ```bash
