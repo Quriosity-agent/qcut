@@ -217,6 +217,98 @@ describe("a project's last-modified time after its contents change", () => {
 		expect(mocks.saveProject).toHaveBeenCalledTimes(1);
 	});
 
+	/** A store stand-in whose open project can be watched, like the real one. */
+	function editorWith({ open }: { open: TProject | null }) {
+		let active = open;
+		const listeners = new Set<(project: TProject | null) => void>();
+		return {
+			get: () => active,
+			set: (project: TProject | null) => {
+				active = project;
+				for (const listener of listeners) listener(project);
+			},
+			watch: (listener: (project: TProject | null) => void) => {
+				listeners.add(listener);
+				return () => listeners.delete(listener);
+			},
+			watchers: () => listeners.size,
+		};
+	}
+
+	it("still writes a setting last when the project is left during the save", async () => {
+		// The fps change lands and is published, then another project is
+		// opened, all before this save is in.
+		const editor = editorWith({ open: project({ fps: 24 }) });
+		const stored: TProject[] = [];
+		const fps60 = { ...project({ fps: 60 }), updatedAt: NOW };
+		const other = project({ id: "project-2", name: "Another" });
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				if (saved.fps === 24) {
+					stored.push(fps60);
+					editor.set(fps60);
+					editor.set(other);
+				}
+				stored.push(saved);
+			}
+		);
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: editor.get,
+			setActiveProject: editor.set,
+			watchActiveProject: editor.watch,
+			now: () => NOW,
+		});
+
+		expect(stored.at(-1)).toBe(fps60);
+		// The project that was opened stays open, and nothing is left watching.
+		expect(editor.get()).toBe(other);
+		expect(editor.watchers()).toBe(0);
+	});
+
+	it("does not reopen a closed project to give it its change time", async () => {
+		const editor = editorWith({ open: project({ fps: 24 }) });
+		const stored: TProject[] = [];
+		// Stamped before the content change, then the project is closed.
+		const fps60 = { ...project({ fps: 60 }), updatedAt: YESTERDAY };
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				if (saved.fps === 24) {
+					editor.set(fps60);
+					editor.set(null);
+				}
+				stored.push(saved);
+			}
+		);
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: editor.get,
+			setActiveProject: editor.set,
+			watchActiveProject: editor.watch,
+			now: () => NOW,
+		});
+
+		expect(stored.at(-1)).toMatchObject({ fps: 60, updatedAt: NOW });
+		expect(editor.get()).toBeNull();
+	});
+
+	it("stops watching when a save fails", async () => {
+		const editor = editorWith({ open: project() });
+		mocks.saveProject.mockRejectedValueOnce(new Error("disk full"));
+		await expect(
+			saveProjectContentChange({
+				projectId: "project-1",
+				getActiveProject: editor.get,
+				setActiveProject: editor.set,
+				watchActiveProject: editor.watch,
+				now: () => NOW,
+			})
+		).rejects.toThrow("disk full");
+		expect(editor.watchers()).toBe(0);
+	});
+
 	it("saves once when nothing else changed the project meanwhile", async () => {
 		let active: TProject | null = project();
 		await saveProjectContentChange({
