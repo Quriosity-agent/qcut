@@ -13,6 +13,12 @@ import type { TProject } from "@/types/project";
  * Only the open project changes this way; it is saved as the editor holds
  * it now, like every other record change. Returns the new time, or null
  * when `projectId` is not the open project.
+ *
+ * Some record changes are stored before the editor holds them (a new frame
+ * rate is saved, then set). One in flight when this runs is not in the copy
+ * saved here, and this save, landing second, would put the old value back in
+ * storage while the editor shows the new one. So when the editor's project
+ * has moved on by the time this save is in, it is saved once more as it is.
  */
 export async function saveProjectContentChange({
 	projectId,
@@ -30,5 +36,9 @@ export async function saveProjectContentChange({
 	const updated = { ...active, updatedAt: now() };
 	setActiveProject(updated);
 	await storageService.saveProject({ project: updated });
+	const latest = getActiveProject();
+	if (latest && latest.id === projectId && latest !== updated) {
+		await storageService.saveProject({ project: latest });
+	}
 	return updated.updatedAt;
 }
