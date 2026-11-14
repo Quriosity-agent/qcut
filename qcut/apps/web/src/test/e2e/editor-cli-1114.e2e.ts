@@ -462,9 +462,7 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 		transactionsBefore.data.recent.length
 	);
 	const untouched = await exportTimeline();
-	expect(untouched.tracks.map((track) => track.id)).toEqual(
-		written.tracks.map((track) => track.id)
-	);
+	expect(untouched.tracks).toEqual(written.tracks);
 
 	// A cube that does not fill its size is refused the same way.
 	const badCubePath = path.join(workDir, "bad-cube.json");
@@ -543,11 +541,6 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 	const restored = await exportTimeline();
 	// Not only the same ids: what a rollback restores reads back the same.
 	expect(restored.tracks).toEqual(written.tracks);
-	expect(
-		restored.tracks.map((track) => [track.id, track.elements.map((e) => e.id)])
-	).toEqual(
-		written.tracks.map((track) => [track.id, track.elements.map((e) => e.id)])
-	);
 
 	// --- 问题 7: blend fields through element patch ----------------------------
 	const plain = main?.elements.find((element) => element.name === "02 plain");
