@@ -761,6 +761,18 @@ describe("editor pointer CLI handlers", () => {
 			windowId: 2,
 		});
 
+		// An id that was given but cannot be one is not "the first window".
+		post.mockClear();
+		for (const windowId of [0, -1, 1.5]) {
+			const refused = await handleWindowsCommand({
+				client,
+				options: { command: "editor:windows:focus", windowId },
+			});
+			expect(refused.success).toBe(false);
+			expect(refused.error).toContain("--window-id must be a positive whole");
+		}
+		expect(post).not.toHaveBeenCalled();
+
 		const unknown = await handleWindowsCommand({
 			client,
 			options: { command: "editor:windows:raise" },
