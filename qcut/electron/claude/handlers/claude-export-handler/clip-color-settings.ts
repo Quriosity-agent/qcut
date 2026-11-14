@@ -8,6 +8,14 @@ import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { readGradeCubeLuts } from "../../../types/color-cube-lut.js";
 import type { ClaudeElement } from "../../../types/claude-api.js";
 
+/** A clip's grade cannot be exported; the message names the clip. */
+export class ClipColorError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "ClipColorError";
+	}
+}
+
 type ClipWithGrade = Pick<
 	ClaudeElement,
 	"id" | "name" | "sourceName" | "colorSettings"
@@ -42,7 +50,7 @@ export function readClipColorSettings({
 		}) as unknown as VideoColorSettings;
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : String(error);
-		throw new Error(
+		throw new ClipColorError(
 			`Clip ${clipLabel({ element })} has a 3D LUT that cannot be exported: ${reason}`
 		);
 	}
