@@ -30,6 +30,16 @@ import { readLutFile } from "./editor-element-lut-file.js";
 import { readElementIds } from "./editor-handlers-timeline-color.js";
 
 const BATCH_LIMIT = 50;
+/**
+ * "No preset": the editor's default filter choice (mirrors
+ * DEFAULT_COLOR_FILTER_APPLICATION in apps/web/src/lib/filters, which the
+ * CLI cannot import; a test keeps the two in step).
+ */
+export const NO_PRESET_FILTER = {
+	presetId: "none",
+	presetVersion: 1,
+	intensity: 100,
+} as const;
 /** Well inside the batch route's 64 MB body limit. */
 const BATCH_BYTES = 24 * 1024 * 1024;
 
@@ -280,8 +290,12 @@ export async function elementColor(
 			);
 		}
 		const extraLut = (extra as Record<string, unknown> | undefined)?.lut;
+		// A built-in preset is rendered in the LUT's place, so a LUT set or
+		// removed here takes the preset off, as the colour panel does.
+		const replacesLut = Boolean(opts.lutFile || opts.lutClear);
 		const color: Record<string, unknown> = {
 			...((extra as Record<string, unknown>) ?? {}),
+			...(replacesLut ? { filter: { ...NO_PRESET_FILTER } } : {}),
 			enabled: true,
 			basic: {
 				...(((extra as Record<string, unknown>)?.basic as
