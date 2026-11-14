@@ -5,6 +5,7 @@ import { timelineApplyManifest } from "../native-pipeline/editor/editor-timeline
 import {
 	MAX_TRANSACTION_TIMEOUT_MS,
 	applyTransactionTimeoutMs,
+	timelineFingerprint,
 } from "../native-pipeline/editor/editor-timeline-apply-transaction.js";
 
 const BEFORE = {
@@ -210,6 +211,46 @@ describe("the transaction around timeline apply", () => {
 			},
 		});
 		expect(result.error).toContain("could not be confirmed as rolled back");
+	});
+
+	it("does not take unchanged ids for an unchanged timeline", async () => {
+		// An apply that only patched a clip leaves every id where it was.
+		const sameIdsOtherContents = structuredClone(BEFORE);
+		sameIdsOtherContents.tracks[0].elements[0].duration = 2;
+		const { client } = editorWhoseTransactionExpired({
+			timelineAfter: sameIdsOtherContents,
+			transaction: {
+				state: "timedOut",
+				error: "Timeout waiting for transaction rollback",
+			},
+		});
+		const result = await timelineApplyManifest(client, options());
+		expect(result.data).toMatchObject({
+			rolledBack: false,
+			rollback: { by: "none", timelineMatchesBefore: false },
+		});
+	});
+
+	it("reads the same timeline as the same whatever it reports about a file's alpha", () => {
+		const withAlpha = structuredClone(BEFORE) as typeof BEFORE & {
+			tracks: Array<{ elements: Array<Record<string, unknown>> }>;
+		};
+		withAlpha.tracks[0].elements[0].hasAlpha = true;
+		expect(timelineFingerprint({ timeline: withAlpha })).toBe(
+			timelineFingerprint({ timeline: BEFORE })
+		);
+		const retimed = structuredClone(BEFORE);
+		retimed.tracks[0].elements[0].startTime = 1;
+		expect(timelineFingerprint({ timeline: retimed })).not.toBe(
+			timelineFingerprint({ timeline: BEFORE })
+		);
+		const recoloured = structuredClone(BEFORE) as typeof BEFORE & {
+			tracks: Array<Record<string, unknown>>;
+		};
+		recoloured.tracks[0].colorLabel = "red";
+		expect(timelineFingerprint({ timeline: recoloured })).not.toBe(
+			timelineFingerprint({ timeline: BEFORE })
+		);
 	});
 
 	it("says how to end a transaction QCut still holds", async () => {
