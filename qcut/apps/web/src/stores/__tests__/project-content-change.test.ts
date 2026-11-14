@@ -106,6 +106,57 @@ describe("a project's last-modified time after its contents change", () => {
 		expect(active?.fps).toBe(60);
 	});
 
+	it("keeps up with a second setting saved while it was correcting the first", async () => {
+		let active: TProject | null = project({ fps: 24 });
+		const stored: TProject[] = [];
+		const fps60 = { ...project({ fps: 60 }), updatedAt: NOW };
+		const fps30 = { ...project({ fps: 30 }), updatedAt: NOW };
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				// The content save meets the 60 fps change, and its follow-up
+				// save in turn meets a 30 fps change that landed just before it.
+				if (saved.fps === 24) {
+					stored.push(fps60);
+					active = fps60;
+				}
+				if (saved === fps60) {
+					stored.push(fps30);
+					active = fps30;
+				}
+				stored.push(saved);
+			}
+		);
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (next) => {
+				active = next;
+			},
+			now: () => NOW,
+		});
+
+		// Storage ends on what the editor shows.
+		expect(stored.at(-1)).toBe(fps30);
+		expect(active).toBe(fps30);
+	});
+
+	it("stops following a project that will not hold still", async () => {
+		let active: TProject | null = project();
+		mocks.saveProject.mockImplementation(async () => {
+			active = { ...(active as TProject) };
+		});
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (next) => {
+				active = next;
+			},
+			now: () => NOW,
+		});
+		expect(mocks.saveProject).toHaveBeenCalledTimes(6);
+	});
+
 	it("saves once when nothing else changed the project meanwhile", async () => {
 		let active: TProject | null = project();
 		await saveProjectContentChange({
