@@ -262,15 +262,23 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		[PID]
 	),
 	"editor:project:list": ed("editor:project:list", "List all projects", []),
-	"editor:project:info": ed("editor:project:info", "Get project info as JSON", [
-		PID,
-		f(
-			"--full",
-			"boolean",
-			"Include all arrays (media, subtitles, generated, exports, jobs)",
-			{ default: false }
-		),
-	]),
+	"editor:project:info": ed(
+		"editor:project:info",
+		"Get project info as JSON; without --project-id, the project the editor has open (`isActive` says whether it is)",
+		[
+			PID_ACTIVE,
+			f(
+				"--full",
+				"boolean",
+				"Include all arrays (media, subtitles, generated, exports, jobs)",
+				{ default: false }
+			),
+		],
+		[
+			"qcut editor project info --json",
+			"qcut editor project info --project-id <id> --full --json",
+		]
+	),
 	"editor:project:export-state": ed(
 		"editor:project:export-state",
 		"Dump full project.json to disk",
@@ -1318,9 +1326,12 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 		"Open a project in editor",
 		[
 			PID,
-			f("--wait-ready", "boolean", "Wait for the editor project to be ready", {
-				default: false,
-			}),
+			f(
+				"--wait-ready",
+				"boolean",
+				"Also wait until the project's media and timeline answer; the result's readiness.ready is then true",
+				{ default: false }
+			),
 			f("--timeout-ms", "number", "Readiness timeout in milliseconds", {
 				default: 15000,
 			}),
