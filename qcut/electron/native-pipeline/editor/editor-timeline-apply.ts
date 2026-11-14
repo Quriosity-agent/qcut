@@ -11,6 +11,10 @@ import { resolveJsonInput } from "./editor-api-types.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
 import { importManifestMedia } from "./editor-timeline-apply-media.js";
 import {
+	describeManifestProblems,
+	manifestProblems,
+} from "./editor-timeline-apply-preflight.js";
+import {
 	applyManifestMix,
 	applyManifestTrackAudio,
 	manifestHasTrackAudio,
@@ -526,6 +530,16 @@ export async function timelineApplyManifest(
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+	// What the manifest alone shows to be wrong is reported in full before
+	// anything is imported or changed.
+	const problems = manifestProblems({ manifest });
+	if (problems.length > 0) {
+		return {
+			success: false,
+			error: describeManifestProblems({ problems }),
+			data: { projectId, changed: false, rolledBack: false, problems },
 		};
 	}
 	const mix = manifestMix(manifest);
