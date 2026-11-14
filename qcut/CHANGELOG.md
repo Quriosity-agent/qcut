@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.15.1] - 2026-11-15
+
 ### Fixed
 
 - Packaged desktop builds can persist and reuse portrait beauty preview frames again. Cache identities now bind to the installed ASAR archive and its relevant entries, while rejecting replaced archives, changed runtime dependencies and unsafe paths. Development builds retain their existing file identity checks.
