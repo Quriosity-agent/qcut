@@ -108,65 +108,78 @@ export async function rollbackFailedApply({
 	fingerprintBefore?: string;
 }): Promise<ApplyRollbackOutcome> {
 	const transactionPath = `/api/claude/transaction/${encodeURIComponent(transactionId)}`;
+	// Why this command's own rollback did not restore the timeline, if so.
+	let notRestored: string;
 	try {
-		await client.post(`${transactionPath}/rollback`, { reason });
-		return {
-			rolledBack: true,
-			rollback: { by: "requested", transactionState: "rolledBack" },
-		};
+		const answer = await client.post<{ orphaned?: boolean } | undefined>(
+			`${transactionPath}/rollback`,
+			{ reason }
+		);
+		if (answer?.orphaned !== true) {
+			return {
+				rolledBack: true,
+				rollback: { by: "requested", transactionState: "rolledBack" },
+			};
+		}
+		// An orphaned transaction is dropped where it stands, nothing restored.
+		notRestored =
+			"QCut no longer tracked the transaction and ended it without restoring the timeline";
 	} catch (rollbackError) {
-		let status: TransactionStatus | undefined;
-		try {
-			status = await client.get<TransactionStatus>(transactionPath);
-		} catch {
-			// The comparison below still says what the timeline is.
-		}
-		const transactionState = status?.state;
-		if (transactionState === "active") {
-			return {
-				rolledBack: false,
-				rollback: {
-					by: "none",
-					transactionState,
-					detail: `QCut refused the rollback: ${messageOf(rollbackError)}. End it with \`qcut editor transaction rollback --transaction-id ${transactionId}\`.`,
-				},
-			};
-		}
-		const by = transactionState === "timedOut" ? "timeout" : "none";
-		if (fingerprintBefore === undefined) {
-			// The apply failed before it read or changed the timeline.
-			return {
-				rolledBack: transactionState === "timedOut",
-				rollback: { by, transactionState, detail: status?.error },
-			};
-		}
-		try {
-			// The editor answers in order, so this read comes after a rollback
-			// it was still working on when the transaction was marked ended.
-			const timeline = await client.get<TimelineSnapshot>(
-				`/api/claude/timeline/${encodeURIComponent(projectId)}`
-			);
-			const timelineMatchesBefore =
-				timelineFingerprint({ timeline }) === fingerprintBefore;
-			return {
-				rolledBack: timelineMatchesBefore,
-				rollback: {
-					by: timelineMatchesBefore ? by : "none",
-					transactionState,
-					timelineMatchesBefore,
-					detail: status?.error,
-				},
-			};
-		} catch (readError) {
-			return {
-				rolledBack: false,
-				rollback: {
-					by: "none",
-					transactionState,
-					detail: `The timeline could not be read back to confirm: ${messageOf(readError)}`,
-				},
-			};
-		}
+		notRestored = `QCut refused the rollback: ${messageOf(rollbackError)}`;
+	}
+
+	let status: TransactionStatus | undefined;
+	try {
+		status = await client.get<TransactionStatus>(transactionPath);
+	} catch {
+		// The comparison below still says what the timeline is.
+	}
+	const transactionState = status?.state;
+	if (transactionState === "active") {
+		return {
+			rolledBack: false,
+			rollback: {
+				by: "none",
+				transactionState,
+				detail: `${notRestored}. End it with \`qcut editor transaction rollback --transaction-id ${transactionId}\`.`,
+			},
+		};
+	}
+	const by = transactionState === "timedOut" ? "timeout" : "none";
+	const detail = status?.error ?? notRestored;
+	if (fingerprintBefore === undefined) {
+		// The apply failed before it read or changed the timeline.
+		return {
+			rolledBack: transactionState === "timedOut",
+			rollback: { by, transactionState, detail },
+		};
+	}
+	try {
+		// The editor answers in order, so this read comes after a rollback
+		// it was still working on when the transaction was marked ended.
+		const timeline = await client.get<TimelineSnapshot>(
+			`/api/claude/timeline/${encodeURIComponent(projectId)}`
+		);
+		const timelineMatchesBefore =
+			timelineFingerprint({ timeline }) === fingerprintBefore;
+		return {
+			rolledBack: timelineMatchesBefore,
+			rollback: {
+				by: timelineMatchesBefore ? by : "none",
+				transactionState,
+				timelineMatchesBefore,
+				detail,
+			},
+		};
+	} catch (readError) {
+		return {
+			rolledBack: false,
+			rollback: {
+				by: "none",
+				transactionState,
+				detail: `The timeline could not be read back to confirm: ${messageOf(readError)}`,
+			},
+		};
 	}
 }
 
