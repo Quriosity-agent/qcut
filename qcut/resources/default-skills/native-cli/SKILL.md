@@ -436,7 +436,9 @@ and `--help <flag> --json` exits 1 for them; prefer the declared spelling.
 Two CLI commands export the full project state as structured JSON:
 
 ```bash
-# Minimal (~200 tokens): counts + settings only
+# Minimal (~200 tokens): counts + settings only.
+# Without --project-id it is the project the editor has open (`isActive` says so).
+qcut editor project info --json
 qcut editor project info --project-id <id> --json
 
 # Full (~2000 tokens): settings + media[] + subtitles[] + generated[] + exports[] + jobs[]
