@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { collectAdjustmentLayers } from "../claude/handlers/claude-export-handler/adjustment-layer-pass.js";
 import { readClipColorSettings } from "../claude/handlers/claude-export-handler/clip-color-settings.js";
+import { collectExportSegments } from "../claude/handlers/claude-export-handler/export-engine.js";
+import type { ClaudeTimeline, MediaFile } from "../types/claude-api.js";
 import { materializeVideoCubeLut } from "../ffmpeg/color-lut-file.js";
 import {
 	readCubeLut,
@@ -221,5 +224,91 @@ describe("3D LUTs in the native export", () => {
 			domainMax: [1, 1, 1],
 		});
 		expect(readClipColorSettings({ element: { id: "plain" } })).toBeUndefined();
+	});
+
+	const badLut = {
+		enabled: true,
+		lut: { enabled: true, cube: { size: 3, values } },
+	};
+	const timelineOf = (tracks: Array<Record<string, unknown>>): ClaudeTimeline =>
+		({
+			name: "LUT export",
+			duration: 4,
+			width: 320,
+			height: 180,
+			fps: 24,
+			tracks,
+		}) as unknown as ClaudeTimeline;
+
+	it("lets the clip's error out of the segment collection instead of an empty export", async () => {
+		const mediaFiles: MediaFile[] = [
+			{
+				id: "media-1",
+				name: "clip.mp4",
+				type: "video",
+				path: "/tmp/clip.mp4",
+				size: 1000,
+				duration: 10,
+				createdAt: 0,
+				modifiedAt: 0,
+			},
+		];
+		await expect(
+			collectExportSegments({
+				mediaFiles,
+				timeline: timelineOf([
+					{
+						id: "main",
+						index: 0,
+						name: "Main",
+						type: "media",
+						elements: [
+							{
+								id: "clip-7",
+								name: "07 萨满救场",
+								trackIndex: 0,
+								type: "media",
+								sourceId: "media-1",
+								startTime: 0,
+								endTime: 2,
+								duration: 2,
+								colorSettings: badLut,
+							},
+						],
+					},
+				]),
+			})
+		).rejects.toThrow(
+			'Clip "07 萨满救场" (clip-7) has a 3D LUT that cannot be exported'
+		);
+	});
+
+	it("does not fail the export for an adjustment layer that draws nothing", () => {
+		const layer = (overrides: Record<string, unknown>) =>
+			timelineOf([
+				{
+					id: "grade",
+					index: 0,
+					name: "Grade",
+					type: "adjustment",
+					elements: [
+						{
+							id: "layer-1",
+							name: "Look",
+							type: "adjustment",
+							startTime: 0,
+							endTime: 2,
+							colorSettings: badLut,
+							...overrides,
+						},
+					],
+				},
+			]);
+		expect(
+			collectAdjustmentLayers({ timeline: layer({ opacity: 0 }) })
+		).toEqual([]);
+		expect(() =>
+			collectAdjustmentLayers({ timeline: layer({ opacity: 1 }) })
+		).toThrow('Clip "Look" (layer-1) has a 3D LUT that cannot be exported');
 	});
 });
