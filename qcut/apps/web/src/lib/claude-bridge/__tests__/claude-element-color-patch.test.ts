@@ -569,6 +569,41 @@ describe("a custom 3D LUT through element patch", () => {
 		});
 	});
 
+	it("replaces the skin cube whole too", () => {
+		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
+		const values = cubeValues({ size: 2 });
+		storeMocks.state.tracks[0].elements[0] = {
+			...element,
+			color: {
+				enabled: true,
+				lut: {
+					...lut({ size: 2, values }),
+					dual: {
+						maskKind: "skin-tone-v1",
+						skinCube: {
+							size: 2,
+							values,
+							domainMin: [0, 0, 0],
+							domainMax: [2, 2, 2],
+						},
+					},
+				},
+			},
+		} as unknown as MediaElement;
+		applyElementChanges({
+			elementId: "clip",
+			changes: {
+				color: { lut: { dual: { skinCube: { size: 2, values } } } },
+			} as never,
+			pushHistory: false,
+		});
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: { dual: { maskKind: string; skinCube: Record<string, unknown> } };
+		};
+		expect(stored.lut.dual.maskKind).toBe("skin-tone-v1");
+		expect(stored.lut.dual.skinCube.domainMax).toEqual([1, 1, 1]);
+	});
+
 	it("drops the cube when a patch clears the LUT with cube: null", () => {
 		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
 		storeMocks.state.tracks[0].elements[0] = {
