@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { readdir, realpath, stat } from "node:fs/promises";
+import fs, { type BigIntStats } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { JianyingPortraitAdjustmentRenderRequest } from "./jianying-portrait-adjustment-contract.js";
@@ -91,7 +90,79 @@ export function portraitSourceWindowCacheKey({
 
 export function createPortraitRuntimeFingerprinter() {
 	const files = new Map<string, { signature: string; digest: string }>();
-	async function fingerprintPath({
+	const physicalFs =
+		(process.getBuiltinModule?.("original-fs") as typeof fs | undefined) ?? fs;
+	function signature({ info }: { info: BigIntStats }) {
+		return [info.dev, info.ino, info.size, info.mtimeNs, info.ctimeNs].join(
+			":"
+		);
+	}
+	async function optionalStat({ filePath }: { filePath: string }) {
+		return physicalFs.promises
+			.stat(filePath, { bigint: true })
+			.catch((error) => {
+				if (error.code === "ENOENT" || error.code === "ENOTDIR") return;
+				throw error;
+			});
+	}
+	async function findArchive({ filePath }: { filePath: string }) {
+		const root = path.parse(filePath).root;
+		const parts = filePath.slice(root.length).split(path.sep);
+		return parts.reduce<
+			Promise<{ archivePath: string; signature: string } | undefined>
+		>(async (previous, part, index) => {
+			const found = await previous;
+			if (found || !part.toLowerCase().endsWith(".asar")) return found;
+			const archivePath = path.join(root, ...parts.slice(0, index + 1));
+			const info = await optionalStat({ filePath: archivePath });
+			if (info?.isFile())
+				return { archivePath, signature: signature({ info }) };
+		}, Promise.resolve(undefined));
+	}
+	async function collectArchiveBackingFiles({
+		filePath,
+		archivePath,
+		backingFiles,
+		ancestors = new Set<string>(),
+		signal,
+	}: {
+		filePath: string;
+		archivePath: string;
+		backingFiles: Set<string>;
+		ancestors?: Set<string>;
+		signal?: AbortSignal;
+	}): Promise<void> {
+		signal?.throwIfAborted();
+		const resolved = await fs.promises.realpath(filePath);
+		const info = await fs.promises.stat(resolved);
+		if (info.isDirectory()) {
+			if (ancestors.has(resolved))
+				throw new Error("Native runtime contains a directory cycle");
+			const next = new Set(ancestors).add(resolved);
+			const children = (await fs.promises.readdir(resolved)).sort();
+			await children.reduce(async (previous, name) => {
+				await previous;
+				await collectArchiveBackingFiles({
+					filePath: path.join(resolved, name),
+					archivePath,
+					backingFiles,
+					ancestors: next,
+					signal,
+				});
+			}, Promise.resolve());
+			return;
+		}
+		if (!info.isFile()) throw new Error("Unsupported native runtime entry");
+		// Virtual stat succeeds for missing unpacked files; access checks their backing paths.
+		await fs.promises.access(resolved, fs.constants.R_OK);
+		const unpackedPath = path.join(
+			`${archivePath}.unpacked`,
+			path.relative(archivePath, resolved)
+		);
+		if (await optionalStat({ filePath: unpackedPath }))
+			backingFiles.add(unpackedPath);
+	}
+	async function fingerprintPhysicalPath({
 		filePath,
 		ancestors = new Set<string>(),
 		signal,
@@ -101,8 +172,8 @@ export function createPortraitRuntimeFingerprinter() {
 		signal?: AbortSignal;
 	}): Promise<string> {
 		signal?.throwIfAborted();
-		const resolved = await realpath(filePath);
-		const before = await stat(resolved, { bigint: true });
+		const resolved = await physicalFs.promises.realpath(filePath);
+		const before = await physicalFs.promises.stat(resolved, { bigint: true });
 		const hash = createHash("sha256")
 			.update(filePath)
 			.update("\0")
@@ -110,13 +181,13 @@ export function createPortraitRuntimeFingerprinter() {
 		if (before.isDirectory()) {
 			if (ancestors.has(resolved))
 				throw new Error("Native runtime contains a directory cycle");
-			const children = (await readdir(resolved)).sort();
+			const children = (await physicalFs.promises.readdir(resolved)).sort();
 			const next = new Set(ancestors).add(resolved);
 			// Stream model contents one file at a time; metadata is rechecked on every request.
 			await children.reduce(async (previous, name) => {
 				await previous;
 				hash.update(
-					await fingerprintPath({
+					await fingerprintPhysicalPath({
 						filePath: path.join(resolved, name),
 						ancestors: next,
 						signal,
@@ -126,29 +197,62 @@ export function createPortraitRuntimeFingerprinter() {
 			return hash.digest("hex");
 		}
 		if (!before.isFile()) throw new Error("Unsupported native runtime entry");
-		const signature = [
-			before.dev,
-			before.ino,
-			before.size,
-			before.mtimeNs,
-			before.ctimeNs,
-		].join(":");
+		const beforeSignature = signature({ info: before });
 		let cached = files.get(resolved);
-		if (cached?.signature !== signature) {
+		if (cached?.signature !== beforeSignature) {
 			const content = createHash("sha256");
-			for await (const chunk of createReadStream(resolved, { signal }))
+			for await (const chunk of physicalFs.createReadStream(resolved, {
+				signal,
+			}))
 				content.update(chunk);
-			const after = await stat(resolved, { bigint: true });
-			if (
-				[after.dev, after.ino, after.size, after.mtimeNs, after.ctimeNs].join(
-					":"
-				) !== signature
-			)
+			const after = await physicalFs.promises.stat(resolved, { bigint: true });
+			if (signature({ info: after }) !== beforeSignature)
 				throw new Error("Native runtime changed while fingerprinting");
-			cached = { signature, digest: content.digest("hex") };
+			cached = { signature: beforeSignature, digest: content.digest("hex") };
 			files.set(resolved, cached);
 		}
 		hash.update(cached.digest);
+		return hash.digest("hex");
+	}
+	async function fingerprintPath({
+		filePath,
+		signal,
+	}: {
+		filePath: string;
+		signal?: AbortSignal;
+	}) {
+		signal?.throwIfAborted();
+		if (physicalFs === fs) return fingerprintPhysicalPath({ filePath, signal });
+		const resolved = await fs.promises.realpath(filePath);
+		const archive = await findArchive({ filePath: resolved });
+		if (!archive) return fingerprintPhysicalPath({ filePath, signal });
+		const backingFiles = new Set<string>();
+		await collectArchiveBackingFiles({
+			filePath: resolved,
+			archivePath: archive.archivePath,
+			backingFiles,
+			signal,
+		});
+		// ASAR stats use synthetic inodes; guard the real archive and unpacked bytes instead.
+		const hash = createHash("sha256")
+			.update(filePath)
+			.update("\0")
+			.update(resolved)
+			.update(
+				await fingerprintPhysicalPath({ filePath: archive.archivePath, signal })
+			);
+		await [...backingFiles].sort().reduce(async (previous, unpackedPath) => {
+			await previous;
+			hash.update(
+				await fingerprintPhysicalPath({ filePath: unpackedPath, signal })
+			);
+		}, Promise.resolve());
+		const after = await physicalFs.promises.stat(archive.archivePath, {
+			bigint: true,
+		});
+		if (signature({ info: after }) !== archive.signature)
+			throw new Error("Native runtime changed while fingerprinting");
+		signal?.throwIfAborted();
 		return hash.digest("hex");
 	}
 	return {
