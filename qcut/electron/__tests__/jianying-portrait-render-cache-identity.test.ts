@@ -1,8 +1,18 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import fs from "node:fs";
+import {
+	mkdtemp,
+	mkdir,
+	rename,
+	rm,
+	stat,
+	symlink,
+	utimes,
+	writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createPortraitRuntimeFingerprinter,
 	isCacheablePortraitSourceWindow,
@@ -12,6 +22,7 @@ import type { JianyingPortraitAdjustmentRenderRequest } from "../jianying-portra
 
 const directories: string[] = [];
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await Promise.all(
 		directories
 			.splice(0)
@@ -210,6 +221,122 @@ describe("native source-window render identity", () => {
 		await expect(
 			identity.fingerprint({
 				paths: [root],
+				configuration: {},
+				signal: controller.signal,
+			})
+		).rejects.toMatchObject({ name: "AbortError" });
+	});
+	it("invalidates same-size edits even when the modification time is restored", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		const model = path.join(root, "model");
+		const timestamp = new Date("2000-01-01T00:00:00Z");
+		await writeFile(model, "first");
+		await utimes(model, timestamp, timestamp);
+		const before = await stat(model, { bigint: true });
+		const identity = createPortraitRuntimeFingerprinter();
+		const read = () =>
+			identity.fingerprint({ paths: [model], configuration: {} });
+		const first = await read();
+		await writeFile(model, "other");
+		await utimes(model, timestamp, timestamp);
+		const after = await stat(model, { bigint: true });
+		expect(after.ino).toBe(before.ino);
+		expect(after.size).toBe(before.size);
+		expect(after.mtimeNs).toBe(before.mtimeNs);
+		expect(after.ctimeNs).not.toBe(before.ctimeNs);
+		expect(await read()).not.toBe(first);
+	});
+	it("invalidates a replaced file with the same size and modification time", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		const model = path.join(root, "model");
+		const replacement = path.join(root, "replacement");
+		const timestamp = new Date("2000-01-01T00:00:00Z");
+		await writeFile(model, "first");
+		await utimes(model, timestamp, timestamp);
+		const before = await stat(model, { bigint: true });
+		const identity = createPortraitRuntimeFingerprinter();
+		const read = () =>
+			identity.fingerprint({ paths: [model], configuration: {} });
+		const first = await read();
+		await writeFile(replacement, "other");
+		await utimes(replacement, timestamp, timestamp);
+		await rename(replacement, model);
+		const after = await stat(model, { bigint: true });
+		expect(after.ino).not.toBe(before.ino);
+		expect(after.size).toBe(before.size);
+		expect(after.mtimeNs).toBe(before.mtimeNs);
+		expect(await read()).not.toBe(first);
+	});
+	it("rejects a physical file changed during hashing", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		const model = path.join(root, "model");
+		const timestamp = new Date("2000-01-01T00:00:00Z");
+		await writeFile(model, Buffer.alloc(128 * 1024, 1));
+		await utimes(model, timestamp, timestamp);
+		const createReadStream = fs.createReadStream;
+		vi.spyOn(fs, "createReadStream").mockImplementationOnce(
+			(filePath, options) => {
+				const stream = createReadStream(filePath, options);
+				stream.once("data", () => {
+					fs.writeFileSync(model, Buffer.alloc(128 * 1024, 2));
+					fs.utimesSync(model, timestamp, timestamp);
+				});
+				return stream;
+			}
+		);
+		await expect(
+			createPortraitRuntimeFingerprinter().fingerprint({
+				paths: [model],
+				configuration: {},
+			})
+		).rejects.toThrow("Native runtime changed while fingerprinting");
+	});
+	it("treats an ordinary .asar directory as a mutable directory", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		const archiveDirectory = path.join(root, "ordinary.asar");
+		await mkdir(archiveDirectory);
+		const model = path.join(archiveDirectory, "model");
+		await writeFile(model, "first");
+		const identity = createPortraitRuntimeFingerprinter();
+		const read = () =>
+			identity.fingerprint({ paths: [archiveDirectory], configuration: {} });
+		const first = await read();
+		expect(await read()).toBe(first);
+		await writeFile(model, "other");
+		expect(await read()).not.toBe(first);
+	});
+	it("rejects physical directory symlink cycles", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		await symlink(root, path.join(root, "cycle"));
+		await expect(
+			createPortraitRuntimeFingerprinter().fingerprint({
+				paths: [root],
+				configuration: {},
+			})
+		).rejects.toThrow("Native runtime contains a directory cycle");
+	});
+	it("stops a physical file scan aborted while reading", async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), "native-identity-"));
+		directories.push(root);
+		const model = path.join(root, "model");
+		await writeFile(model, Buffer.alloc(128 * 1024, 1));
+		const controller = new AbortController();
+		const createReadStream = fs.createReadStream;
+		vi.spyOn(fs, "createReadStream").mockImplementationOnce(
+			(filePath, options) => {
+				const stream = createReadStream(filePath, options);
+				stream.once("data", () => controller.abort());
+				return stream;
+			}
+		);
+		await expect(
+			createPortraitRuntimeFingerprinter().fingerprint({
+				paths: [model],
 				configuration: {},
 				signal: controller.signal,
 			})
