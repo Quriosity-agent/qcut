@@ -45,6 +45,7 @@ class ControllerTests(unittest.TestCase):
         self.detach_failure = False
         self.owners_enabled = True
         self.existing_devices = []
+        self.extra_disks = {}
         self.entities = [
             {"dev-entry": "/dev/disk24", "content-hint": "GUID_partition_scheme"},
             {"dev-entry": "/dev/disk25s1", "volume-kind": "apfs", "potentially-mountable": True},
@@ -67,6 +68,8 @@ class ControllerTests(unittest.TestCase):
         self.config.chmod(0o600)
 
     def disk(self, target):
+        if str(target) in self.extra_disks:
+            return self.extra_disks[str(target)]
         if str(target) == "/dev/disk24s2":
             return {"FilesystemType": "hfs", "VolumeUUID": EXTERNAL_UUID}
         if str(target) in ("/dev/disk25s1", str(self.mountpoint)):
@@ -194,6 +197,131 @@ class ControllerTests(unittest.TestCase):
         with self.assertRaisesRegex(V.Refused, "exactly one filesystem"):
             self.controller.mount()
         self.assertFalse(any(x[1] == "mount" for x in self.commands))
+
+    def add_efi(self, device="/dev/disk24s1"):
+        entity = {"dev-entry": device, "content-hint": "EFI",
+                  "unmapped-content-hint": V.EFI_SYSTEM_PARTITION_GUID,
+                  "volume-kind": "msdos", "potentially-mountable": True}
+        info = {"DeviceNode": device, "ParentWholeDisk": "disk24",
+                "Content": "EFI", "FilesystemType": "msdos", "PartitionMapPartition": True,
+                "WholeDisk": False, "BusProtocol": "Disk Image", "MountPoint": "",
+                "VolumeName": "EFI", "GlobalPermissionsEnabled": False}
+        self.entities.insert(1, entity)
+        self.extra_disks[device] = info
+        return entity, info
+
+    def test_standard_efi_partition_survives_full_mount_restore_cycle(self):
+        self.add_efi()
+        self.assertTrue(self.controller.mount()["mounted"])
+        self.assertIn(["/usr/sbin/diskutil", "mount", "nobrowse", "-mountOptions", "owners",
+                       "-mountPoint", str(self.mountpoint), "/dev/disk25s1"], self.commands)
+        self.assertTrue(self.controller.check()["mounted"])
+        self.assertFalse(self.controller.unmount()["mounted"])
+        self.assertTrue(self.controller.restore_empty()["removedNewEmptyDirectory"])
+
+    def test_efi_raw_guid_from_hdiutil_info_is_accepted(self):
+        entity, _ = self.add_efi()
+        entity.clear()
+        entity.update({"dev-entry": "/dev/disk24s1", "content-hint": V.EFI_SYSTEM_PARTITION_GUID})
+        self.assertEqual(self.controller.volume({"system-entities": self.entities})[:2],
+                         ("/dev/disk25s1", "/dev/disk24"))
+
+    def test_efi_volume_name_is_not_identity(self):
+        _, info = self.add_efi()
+        info["VolumeName"] = "A different label"
+        self.assertEqual(self.controller.volume({"system-entities": self.entities})[0], "/dev/disk25s1")
+
+    def test_extra_user_filesystem_named_efi_is_still_refused(self):
+        for filesystem in ("msdos", "hfs", "apfs"):
+            with self.subTest(filesystem=filesystem):
+                extra = {"dev-entry": "/dev/disk24s3", "content-hint": "Microsoft Basic Data"}
+                self.entities.append(extra)
+                self.extra_disks["/dev/disk24s3"] = {"FilesystemType": filesystem, "VolumeName": "EFI"}
+                with self.assertRaisesRegex(V.Refused, "exactly one filesystem"):
+                    self.controller.volume({"system-entities": self.entities})
+                self.entities.pop()
+
+    def test_additional_user_volume_alongside_valid_efi_is_refused(self):
+        self.add_efi()
+        self.entities.append({"dev-entry": "/dev/disk24s2", "content-hint": "Apple_HFS"})
+        with self.assertRaisesRegex(V.Refused, "exactly one filesystem"):
+            self.controller.mount()
+        self.assertFalse(any(x[1] == "mount" for x in self.commands))
+        self.assertEqual(self.commands[-1], ["/usr/bin/hdiutil", "detach", "/dev/disk24"])
+
+    def test_duplicate_efi_partitions_are_refused(self):
+        self.add_efi()
+        self.add_efi("/dev/disk24s3")
+        with self.assertRaisesRegex(V.Refused, "multiple EFI"):
+            self.controller.mount()
+        self.assertFalse(any(x[1] == "mount" for x in self.commands))
+
+    def test_duplicate_efi_entity_is_refused(self):
+        entity, _ = self.add_efi()
+        self.entities.append(dict(entity))
+        with self.assertRaisesRegex(V.Refused, "multiple EFI"):
+            self.controller.volume({"system-entities": self.entities})
+
+    def test_efi_without_trusted_partition_guid_is_refused(self):
+        entity, _ = self.add_efi()
+        entity.pop("unmapped-content-hint")
+        with self.assertRaisesRegex(V.Refused, "Unexpected or mounted EFI"):
+            self.controller.mount()
+        self.assertFalse(any(x[1] == "mount" for x in self.commands))
+
+    def test_efi_conflicting_type_hints_are_refused(self):
+        entity, _ = self.add_efi()
+        entity["content-hint"] = "Apple_HFS"
+        with self.assertRaisesRegex(V.Refused, "Unexpected or mounted EFI"):
+            self.controller.volume({"system-entities": self.entities})
+
+    def test_efi_partition_identity_and_type_mismatches_are_refused(self):
+        _, info = self.add_efi()
+        mismatches = {"DeviceNode": "/dev/disk99s1", "ParentWholeDisk": "disk99",
+                      "Content": "Microsoft Basic Data", "FilesystemType": "hfs",
+                      "PartitionMapPartition": False, "WholeDisk": True, "BusProtocol": "USB"}
+        for key, wrong in mismatches.items():
+            with self.subTest(key=key):
+                original = info[key]; info[key] = wrong
+                with self.assertRaisesRegex(V.Refused, "Unexpected or mounted EFI"):
+                    self.controller.volume({"system-entities": self.entities})
+                info[key] = original
+
+    def test_efi_device_outside_image_root_is_refused_even_if_parent_claim_matches(self):
+        self.add_efi("/dev/disk99s1")
+        with self.assertRaisesRegex(V.Refused, "Unexpected or mounted EFI"):
+            self.controller.volume({"system-entities": self.entities})
+
+    def test_mounted_efi_is_refused_from_any_mount_indicator(self):
+        entity, info = self.add_efi()
+        for target, key, value in [(entity, "mount-point", "/Volumes/EFI"),
+                                   (info, "MountPoint", "/Volumes/EFI"), (info, "Mounted", True)]:
+            with self.subTest(key=key):
+                previous = target.get(key); target[key] = value
+                with self.assertRaisesRegex(V.Refused, "Unexpected or mounted EFI"):
+                    self.controller.volume({"system-entities": self.entities})
+                if previous is None:
+                    target.pop(key)
+                else:
+                    target[key] = previous
+
+    def test_efi_does_not_allow_wrong_apfs_uuid(self):
+        self.add_efi(); self.runtime_uuid = EXTERNAL_UUID
+        with self.assertRaisesRegex(V.Refused, "UUID mismatch"):
+            self.controller.mount()
+        self.assertFalse(any(x[1] == "mount" for x in self.commands))
+        self.assertEqual(self.commands[-1], ["/usr/bin/hdiutil", "detach", "/dev/disk24"])
+
+    def test_efi_does_not_allow_disabled_apfs_ownership(self):
+        self.add_efi(); self.owners_enabled = False
+        with self.assertRaisesRegex(V.Refused, "honor stored file ownership"):
+            self.controller.mount()
+        self.assertFalse(self.attached)
+
+    def test_efi_does_not_allow_ambiguous_image_roots(self):
+        self.add_efi(); self.entities.append({"dev-entry": "/dev/disk99", "content-hint": "GUID_partition_scheme"})
+        with self.assertRaisesRegex(V.Refused, "identity is ambiguous"):
+            self.controller.volume({"system-entities": self.entities})
 
     def test_check_is_read_only(self):
         before = sorted(str(p) for p in self.root.rglob("*"))

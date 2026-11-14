@@ -17,7 +17,11 @@ acceptance. Stop relevant consumers before any separately managed data migration
 Use a separate working image, preserving the immutable backups. Its APFS volume
 must have a unique UUID; cloning a sparse image also clones its volume UUID.
 Only a plain `.sparseimage` file or `.sparsebundle` directory containing one
-filesystem volume is supported. The backing disk must be an attached writable
+data filesystem volume is supported. A GPT image may also contain one unmounted EFI
+system partition. Its GPT type, FAT filesystem, device and parent-disk identity
+must agree; a volume name such as `EFI` does not identify a system partition.
+Additional user filesystems, duplicate EFI partitions and mounted EFI partitions
+are refused. The backing disk must be an attached writable
 external disk, and the runtime volume must be writable APFS.
 The backing filesystem must also honor stored ownership. Shared external-volume
 roots writable by other users, or ownership-ignored backing disks, are refused;

@@ -22,6 +22,8 @@ import tempfile
 
 from macos_local_assets_permissions import trusted_path
 
+EFI_SYSTEM_PARTITION_GUID = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+
 
 class Refused(RuntimeError):
     pass
@@ -48,6 +50,26 @@ def owned(info):
 def identity(path):
     info = path.lstat()
     return [info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode)]
+
+
+def is_efi_system_partition(*, entity, info, image_device):
+    # attach translates the partition type; info exposes its GPT GUID.
+    hint = entity.get("content-hint", "").upper()
+    partition_type = entity.get("unmapped-content-hint", hint).upper()
+    if partition_type != EFI_SYSTEM_PARTITION_GUID and hint != "EFI" and info.get("Content") != "EFI":
+        return False
+    device = entity.get("dev-entry", "")
+    require(partition_type == EFI_SYSTEM_PARTITION_GUID and
+            hint in ("EFI", EFI_SYSTEM_PARTITION_GUID) and
+            info.get("Content") == "EFI" and info.get("FilesystemType") == "msdos" and
+            info.get("PartitionMapPartition") is True and info.get("WholeDisk") is False and
+            info.get("BusProtocol") == "Disk Image" and
+            info.get("DeviceNode") == device and
+            re.fullmatch(re.escape(image_device) + r"s[1-9]\d*", device) and
+            info.get("ParentWholeDisk") == image_device.removeprefix("/dev/") and
+            not info.get("Mounted") and not info.get("MountPoint") and not entity.get("mount-point"),
+            "Unexpected or mounted EFI system partition")
+    return True
 
 
 def private_json(path):
@@ -190,9 +212,19 @@ class Controller:
 
     def volume(self, row):
         entities = row.get("system-entities", [])
+        roots = [e.get("dev-entry", "") for e in entities if e.get("content-hint") == "GUID_partition_scheme"]
+        require(len(roots) == 1 and re.fullmatch(r"/dev/disk\d+", roots[0]), "Image device identity is ambiguous")
         # hdiutil info omits volume-kind/potentially-mountable, unlike attach.
-        volumes = [(entity, self.disk(entity.get("dev-entry", ""))) for entity in entities]
-        volumes = [(entity, info) for entity, info in volumes if info.get("FilesystemType")]
+        volumes = []
+        efi_count = 0
+        for entity in entities:
+            info = self.disk(entity.get("dev-entry", ""))
+            if is_efi_system_partition(entity=entity, info=info, image_device=roots[0]):
+                efi_count += 1
+                continue
+            if info.get("FilesystemType"):
+                volumes.append((entity, info))
+        require(efi_count <= 1, "Runtime image has multiple EFI system partitions")
         require(len(volumes) == 1, "Runtime image must contain exactly one filesystem volume")
         volume, info = volumes[0]
         device = volume.get("dev-entry", "")
@@ -201,8 +233,6 @@ class Controller:
                 info.get("VolumeUUID", "").upper() == self.settings["apfsVolumeUUID"],
                 "APFS runtime UUID mismatch")
         require(info.get("Writable") is True, "Runtime volume must be writable")
-        roots = [e.get("dev-entry", "") for e in entities if e.get("content-hint") == "GUID_partition_scheme"]
-        require(len(roots) == 1 and re.fullmatch(r"/dev/disk\d+", roots[0]), "Image device identity is ambiguous")
         return device, roots[0], info
 
     def state(self):
