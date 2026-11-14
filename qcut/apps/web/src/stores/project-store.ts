@@ -715,6 +715,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 								: saved
 						),
 					})),
+				watchActiveProject: (onChange) =>
+					useProjectStore.subscribe((state) => onChange(state.activeProject)),
 			});
 		} catch (error) {
 			handleStorageError(error, "Record project change time", {
