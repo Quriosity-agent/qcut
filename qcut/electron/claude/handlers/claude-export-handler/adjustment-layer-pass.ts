@@ -72,8 +72,6 @@ export function collectAdjustmentLayers({
 		if (track.hidden) continue;
 		for (const element of track.elements) {
 			if (element.type !== "adjustment" || element.hidden) continue;
-			const color = readClipColorSettings({ element });
-			if (color === undefined) continue;
 			if (
 				!Number.isFinite(element.startTime) ||
 				!Number.isFinite(element.endTime) ||
@@ -86,6 +84,9 @@ export function collectAdjustmentLayers({
 					? Math.min(1, Math.max(0, element.opacity))
 					: 1;
 			if (opacity <= 0) continue;
+			// Read last: a layer that draws nothing cannot fail the export.
+			const color = readClipColorSettings({ element });
+			if (color === undefined) continue;
 			layers.push({
 				elementId: element.id,
 				trackOrder,
