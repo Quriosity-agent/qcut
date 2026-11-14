@@ -55,14 +55,40 @@ function windowScope(options: Pick<CLIRunOptions, "windowId">): {
 		: {};
 }
 
-/** List the QCut windows a `--window-id` can target. */
+/**
+ * `editor windows` lists the QCut windows a `--window-id` can target;
+ * `editor windows focus` brings one (the first by default) to the front.
+ */
 export async function handleWindowsCommand({
 	client,
+	options,
 }: {
 	client: EditorApiClient;
+	options: Pick<CLIRunOptions, "command" | "windowId">;
 }): Promise<CLIResult> {
-	const data = await client.get("/api/claude/windows");
-	return { success: true, data };
+	const action = options.command.split(":")[2];
+	if (action === undefined) {
+		const data = await client.get("/api/claude/windows");
+		return { success: true, data };
+	}
+	if (action === "focus") {
+		// A window id that was given must be usable: falling back to the
+		// first window would raise the wrong one and report success.
+		const scope = windowScope(options);
+		if (options.windowId !== undefined && scope.windowId === undefined) {
+			return {
+				success: false,
+				error:
+					"--window-id must be a positive whole number (see `qcut editor windows`)",
+			};
+		}
+		const data = await client.post("/api/claude/windows/focus", scope);
+		return { success: true, data };
+	}
+	return {
+		success: false,
+		error: `Unknown windows action: ${action}. Available: focus (or none, to list the windows)`,
+	};
 }
 
 export async function postTargetAction({

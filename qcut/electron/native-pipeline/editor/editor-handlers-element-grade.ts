@@ -26,9 +26,22 @@ import {
 import type { ComposeFilterStep } from "../compose/compose-protocol.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
+import { readLutFile } from "./editor-element-lut-file.js";
 import { readElementIds } from "./editor-handlers-timeline-color.js";
 
 const BATCH_LIMIT = 50;
+/**
+ * "No preset": the editor's default filter choice (mirrors
+ * DEFAULT_COLOR_FILTER_APPLICATION in apps/web/src/lib/filters, which the
+ * CLI cannot import; a test keeps the two in step).
+ */
+export const NO_PRESET_FILTER = {
+	presetId: "none",
+	presetVersion: 1,
+	intensity: 100,
+} as const;
+/** Well inside the batch route's 64 MB body limit. */
+const BATCH_BYTES = 24 * 1024 * 1024;
 
 const BASIC_CONTROLS = [
 	"exposure",
@@ -149,8 +162,15 @@ async function patchElements({
 	let updated = 0;
 	const failed: Array<{ elementId: string; error: string }> = [];
 	const ignored = new Set<string>();
-	for (let start = 0; start < elementIds.length; start += BATCH_LIMIT) {
-		const chunk = elementIds.slice(start, start + BATCH_LIMIT);
+	// Every update carries the whole change, so a change with a 3D LUT in
+	// it goes to fewer clips per request.
+	const changeBytes = JSON.stringify(changes).length;
+	const perBatch = Math.max(
+		1,
+		Math.min(BATCH_LIMIT, Math.floor(BATCH_BYTES / Math.max(1, changeBytes)))
+	);
+	for (let start = 0; start < elementIds.length; start += perBatch) {
+		const chunk = elementIds.slice(start, start + perBatch);
 		const response = await client.patch<BatchUpdateResponse>(
 			`/api/claude/timeline/${projectId}/elements/batch`,
 			{ updates: chunk.map((elementId) => ({ elementId, changes })) }
@@ -169,7 +189,69 @@ async function patchElements({
 	return { updated, failed, ignoredFields: [...ignored] };
 }
 
-/** `editor element color`: the basic grade controls as flags, merged per clip. */
+/**
+ * The `lut` part of the grade from `--lut-file` / `--lut-name` /
+ * `--lut-intensity` / `--lut-clear`, or undefined when none is given.
+ */
+async function lutPatch({
+	opts,
+}: {
+	opts: CLIRunOptions;
+}): Promise<Record<string, unknown> | undefined> {
+	const intensity = opts.lutIntensity;
+	if (
+		intensity !== undefined &&
+		(!Number.isFinite(intensity) || intensity < 0 || intensity > 100)
+	) {
+		throw new FlagError("--lut-intensity must be between 0 and 100");
+	}
+	if (opts.lutClear) {
+		if (opts.lutFile) {
+			throw new FlagError("Give --lut-file or --lut-clear, not both");
+		}
+		// `cube: null` drops the stored cube; a disabled LUT alone would keep it.
+		return { enabled: false, presetId: "none", name: "无", cube: null };
+	}
+	if (!opts.lutFile) {
+		if (opts.lutName !== undefined) {
+			throw new FlagError("--lut-name names the LUT of --lut-file");
+		}
+		return intensity === undefined ? undefined : { intensity };
+	}
+	let file: Awaited<ReturnType<typeof readLutFile>>;
+	try {
+		file = await readLutFile({ filePath: opts.lutFile });
+	} catch (error) {
+		throw new FlagError(error instanceof Error ? error.message : String(error));
+	}
+	return {
+		enabled: true,
+		presetId: "custom",
+		name: opts.lutName?.trim() || file.name,
+		intensity: intensity ?? 100,
+		cube: file.cube,
+	};
+}
+
+/** The grade as sent, with a cube's values counted instead of listed. */
+function summarizeColorPatch({
+	color,
+}: {
+	color: Record<string, unknown>;
+}): Record<string, unknown> {
+	const lut = color.lut as { cube?: { values?: unknown[] } } | undefined;
+	if (!lut?.cube || !Array.isArray(lut.cube.values)) return color;
+	const { values, ...cube } = lut.cube;
+	return {
+		...color,
+		lut: { ...lut, cube: { ...cube, valueCount: values.length } },
+	};
+}
+
+/**
+ * `editor element color`: the basic grade controls as flags and a 3D LUT
+ * from a file, merged into each clip's grade.
+ */
 export async function elementColor(
 	client: EditorApiClient,
 	opts: CLIRunOptions
@@ -201,13 +283,19 @@ export async function elementColor(
 				"--set must be a JSON object (a partial colour grade)"
 			);
 		}
-		if (Object.keys(basic).length === 1 && !extra) {
+		const lut = await lutPatch({ opts });
+		if (Object.keys(basic).length === 1 && !extra && !lut) {
 			throw new FlagError(
-				`Give at least one control (${BASIC_CONTROLS.map((name) => `--${name}`).join(", ")}), --reset, or --set`
+				`Give at least one control (${BASIC_CONTROLS.map((name) => `--${name}`).join(", ")}), --lut-file, --lut-clear, --reset, or --set`
 			);
 		}
+		const extraLut = (extra as Record<string, unknown> | undefined)?.lut;
+		// A built-in preset is rendered in the LUT's place, so a LUT set or
+		// removed here takes the preset off, as the colour panel does.
+		const replacesLut = Boolean(opts.lutFile || opts.lutClear);
 		const color: Record<string, unknown> = {
 			...((extra as Record<string, unknown>) ?? {}),
+			...(replacesLut ? { filter: { ...NO_PRESET_FILTER } } : {}),
 			enabled: true,
 			basic: {
 				...(((extra as Record<string, unknown>)?.basic as
@@ -215,6 +303,16 @@ export async function elementColor(
 					| undefined) ?? {}),
 				...basic,
 			},
+			...(lut
+				? {
+						lut: {
+							...(typeof extraLut === "object" && extraLut !== null
+								? extraLut
+								: {}),
+							...lut,
+						},
+					}
+				: {}),
 		};
 		const { elementIds } = await targetElementIds({ client, opts });
 		const outcome = await patchElements({
@@ -222,6 +320,8 @@ export async function elementColor(
 			projectId: opts.projectId,
 			elementIds,
 			changes: { color },
+			// A cube is far past the single-element route's 1 MB body limit.
+			forceBatch: JSON.stringify(color).length > 512 * 1024,
 		});
 		return {
 			success: outcome.failed.length === 0,
@@ -235,7 +335,7 @@ export async function elementColor(
 			data: {
 				projectId: opts.projectId,
 				elementIds,
-				color,
+				color: summarizeColorPatch({ color }),
 				updated: outcome.updated,
 				failed: outcome.failed,
 				...(outcome.ignoredFields.length

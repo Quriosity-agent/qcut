@@ -54,6 +54,13 @@ export interface EditorWindowsResult {
 	count: number;
 }
 
+/** The window `POST /api/claude/windows/focus` brought to the front. */
+export interface EditorWindowFocusResult {
+	window: EditorWindowInfo;
+	/** The window was minimized or hidden and had to be shown first. */
+	restored: boolean;
+}
+
 /** Keyboard modifiers held while a pointer event is dispatched. */
 export interface AgentPointerModifierOptions {
 	modifiers?: AgentKeyboardModifier[];

@@ -26,6 +26,7 @@ import {
 } from "@qcut/editor-core/cover";
 import { toast } from "sonner";
 import { getMediaStore } from "./media/media-store-loader";
+import { saveProjectContentChange } from "./project-content-change";
 import { saveProjectRecordChange } from "./project-record-change";
 // Dynamic import to break circular dependency
 // import { useTimelineStore } from "./timeline-store";
@@ -98,6 +99,11 @@ interface ProjectStore {
 	closeProject: () => Promise<void>;
 	renameProject: (projectId: string, name: string) => Promise<void>;
 	duplicateProject: (projectId: string) => Promise<string>;
+	/**
+	 * The open project's timeline or media was just saved: its `updatedAt`
+	 * follows, here and in the project list.
+	 */
+	markProjectContentChanged: (projectId: string) => Promise<void>;
 	setProjectCover: (options: {
 		projectId: string;
 		cover?: ProjectCoverBindingV1;
@@ -692,6 +698,31 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 				});
 			}
 			throw error;
+		}
+	},
+
+	markProjectContentChanged: async (projectId: string) => {
+		try {
+			await saveProjectContentChange({
+				projectId,
+				getActiveProject: () => get().activeProject,
+				setActiveProject: (project) =>
+					set((state) => ({
+						activeProject: project,
+						savedProjects: state.savedProjects.map((saved) =>
+							saved.id === project.id
+								? { ...saved, updatedAt: project.updatedAt }
+								: saved
+						),
+					})),
+				watchActiveProject: (onChange) =>
+					useProjectStore.subscribe((state) => onChange(state.activeProject)),
+			});
+		} catch (error) {
+			handleStorageError(error, "Record project change time", {
+				projectId,
+				operation: "markProjectContentChanged",
+			});
 		}
 	},
 

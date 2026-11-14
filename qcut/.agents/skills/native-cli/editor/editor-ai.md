@@ -400,7 +400,9 @@ qcut editor:navigator:open --project-id <id>
 Navigates the editor to the project, loads timeline, media, and skills,
 and answers once the project has loaded (up to 25 s; `navigated: false` with
 the reason otherwise). Add `--wait-ready` to also wait until the media and
-timeline reads answer, before the first edit of a large project.
+timeline reads answer, before the first edit of a large project; the result
+then carries `readiness: { ready: true, opened: true, elapsedMs }`, where
+`elapsedMs` covers the navigation and the wait.
 
 ---
 

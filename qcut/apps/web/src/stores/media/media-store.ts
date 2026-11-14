@@ -124,6 +124,24 @@ const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
 };
 
 /**
+ * An imported or removed file changes the project, so its "last modified"
+ * follows. The project store is loaded lazily: it loads this store itself.
+ */
+const markProjectContentChanged = async ({
+	projectId,
+}: {
+	projectId: string;
+}): Promise<void> => {
+	try {
+		const { useProjectStore } = await import("../project-store");
+		await useProjectStore.getState().markProjectContentChanged(projectId);
+	} catch (error) {
+		// The file is in; a time that could not be recorded must not undo that.
+		debugError("[MediaStore] Could not record the project change", error);
+	}
+};
+
+/**
  * Persist an item unless the library has moved on from it.
  *
  * A wait-mode save resumes once every delete for its id has finished — and
@@ -395,6 +413,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 					name: newItem.name,
 					type: newItem.type,
 				});
+				await markProjectContentChanged({ projectId });
 			}
 
 			// Trigger thumbnail generation for videos AFTER storage save succeeds
@@ -579,13 +598,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			const currentProject = useProjectStore.getState().activeProject;
 
 			if (currentProject) {
+				let storedAny = false;
 				await Promise.all(
 					newItems.map(async (item) => {
 						try {
 							await saveTrackedMediaItem({
 								projectId: currentProject.id,
 								id: item.id,
-								save: () => persistIfStillPresent(currentProject.id, item),
+								save: async () => {
+									const stored = await persistIfStillPresent(
+										currentProject.id,
+										item
+									);
+									storedAny ||= stored;
+								},
 								// A generated image has no later background save, so a
 								// drop would leave it stored nowhere.
 								whenDeleting: "wait",
@@ -601,6 +627,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 						}
 					})
 				);
+				// Once for the batch, like any other import.
+				if (storedAny) {
+					await markProjectContentChanged({ projectId: currentProject.id });
+				}
 			} else {
 			}
 		} catch (error) {}
@@ -674,6 +704,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				id,
 				remove: () => storageService.deleteMediaItem(projectId, id),
 			});
+			await markProjectContentChanged({ projectId });
 		} catch (error) {
 			debugError("[MediaStore] deleteMediaItem failed", {
 				projectId,

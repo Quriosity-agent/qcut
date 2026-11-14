@@ -70,6 +70,7 @@ const DEFAULT_ALLOW_PATTERNS = [
 	"editor:pointer:scroll",
 	"editor:pointer:hide",
 	"editor:windows",
+	"editor:windows:focus",
 	"editor:pointer:state",
 	"editor:pointer:hit-test",
 	"editor:pointer:wait-for",

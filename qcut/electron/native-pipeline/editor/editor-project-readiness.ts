@@ -6,8 +6,24 @@ interface NavigatorProjects {
 
 export interface ProjectReadyResult {
 	projectId: string;
+	/** The editor has the project open and its media and timeline answer. */
+	ready: true;
+	/** This command navigated the editor to the project. */
 	opened: boolean;
+	/** From the start of the command, the navigation included. */
 	elapsedMs: number;
+}
+
+/** The project the editor has open, if any. */
+export async function resolveActiveProjectId({
+	client,
+}: {
+	client: EditorApiClient;
+}): Promise<string | undefined> {
+	const navigator = await client.get<NavigatorProjects>(
+		"/api/claude/navigator/projects"
+	);
+	return navigator.activeProjectId ?? undefined;
 }
 
 const sleep = (durationMs: number) =>
@@ -55,6 +71,7 @@ export async function ensureEditorProjectReady({
 				]);
 				return {
 					projectId,
+					ready: true,
 					opened,
 					elapsedMs: Date.now() - startedAt,
 				};

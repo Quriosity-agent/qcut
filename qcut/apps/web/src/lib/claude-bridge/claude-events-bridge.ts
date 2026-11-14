@@ -7,6 +7,11 @@ import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineTrack } from "@/types/timeline";
 import {
+	createTimelineSnapshotter,
+	diffTimelineSnapshots,
+	snapshotElementData,
+} from "./claude-events-timeline-snapshot";
+import {
 	CLAUDE_EDITOR_EVENT_ACTION,
 	CLAUDE_EDITOR_EVENT_CATEGORY,
 	type EditorEvent,
@@ -17,14 +22,6 @@ type EmitPayload = Omit<EditorEvent, "eventId" | "timestamp"> &
 	Partial<Pick<EditorEvent, "eventId" | "timestamp">>;
 
 type UnsubscribeFn = () => void;
-
-interface TimelineElementSnapshot {
-	elementId: string;
-	trackId: string;
-	trackType: string;
-	signature: string;
-	elementData: Record<string, unknown>;
-}
 
 interface MediaItemSnapshot {
 	id: string;
@@ -65,55 +62,6 @@ const bridgeState = {
 	playheadSamples: [] as PlayheadSample[],
 	lastPlayheadTime: null as number | null,
 };
-
-function clonePlainRecord({
-	value,
-}: {
-	value: unknown;
-}): Record<string, unknown> {
-	try {
-		if (!value || typeof value !== "object") {
-			return {};
-		}
-
-		return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
-	} catch {
-		return {};
-	}
-}
-
-function buildTimelineElementSnapshotMap({
-	tracks,
-}: {
-	tracks: TimelineTrack[];
-}): Map<string, TimelineElementSnapshot> {
-	const snapshot = new Map<string, TimelineElementSnapshot>();
-
-	try {
-		for (const track of tracks) {
-			for (const element of track.elements) {
-				const elementData = clonePlainRecord({ value: element });
-				const signature = JSON.stringify({
-					trackId: track.id,
-					trackType: track.type,
-					element: elementData,
-				});
-
-				snapshot.set(element.id, {
-					elementId: element.id,
-					trackId: track.id,
-					trackType: track.type,
-					signature,
-					elementData,
-				});
-			}
-		}
-	} catch (error) {
-		debugError("[ClaudeEventsBridge] Failed to snapshot timeline", error);
-	}
-
-	return snapshot;
-}
 
 function buildMediaSnapshotMap(): Map<string, MediaItemSnapshot> {
 	const snapshot = new Map<string, MediaItemSnapshot>();
@@ -332,73 +280,73 @@ function schedulePlayheadFlush(): void {
 }
 
 function setupTimelineSubscriptions(): void {
-	let previousTimeline = buildTimelineElementSnapshotMap({
-		tracks: useTimelineStore.getState().tracks,
-	});
+	const snapshotTimeline = createTimelineSnapshotter();
+	let previousTracks = useTimelineStore.getState().tracks;
+	let previousTimeline = snapshotTimeline({ tracks: previousTracks });
 	let previousSelection = getSelectionSnapshot();
+
+	const emitTimelineChanges = ({ tracks }: { tracks: TimelineTrack[] }) => {
+		const nextTimeline = snapshotTimeline({ tracks });
+		const { added, updated, removed } = diffTimelineSnapshots({
+			previous: previousTimeline,
+			next: nextTimeline,
+		});
+		previousTimeline = nextTimeline;
+		const projectId = getActiveProjectId();
+		for (const snapshot of added) {
+			emitClaudeRendererEvent({
+				category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementAdded,
+				action: CLAUDE_EDITOR_EVENT_ACTION.elementAdded,
+				source: "renderer.timeline-store",
+				data: {
+					projectId,
+					elementId: snapshot.elementId,
+					trackId: snapshot.trackId,
+					trackType: snapshot.trackType,
+					element: snapshotElementData({ snapshot }),
+				},
+			});
+		}
+		for (const { before, after } of updated) {
+			emitClaudeRendererEvent({
+				category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementUpdated,
+				action: CLAUDE_EDITOR_EVENT_ACTION.elementUpdated,
+				source: "renderer.timeline-store",
+				data: {
+					projectId,
+					elementId: after.elementId,
+					trackId: after.trackId,
+					trackType: after.trackType,
+					before: snapshotElementData({ snapshot: before }),
+					after: snapshotElementData({ snapshot: after }),
+				},
+			});
+		}
+		for (const snapshot of removed) {
+			emitClaudeRendererEvent({
+				category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementRemoved,
+				action: CLAUDE_EDITOR_EVENT_ACTION.elementRemoved,
+				source: "renderer.timeline-store",
+				data: {
+					projectId,
+					elementId: snapshot.elementId,
+					trackId: snapshot.trackId,
+					trackType: snapshot.trackType,
+					element: snapshotElementData({ snapshot }),
+				},
+			});
+		}
+	};
 
 	const unsubscribe = useTimelineStore.subscribe((state) => {
 		try {
-			const nextTimeline = buildTimelineElementSnapshotMap({
-				tracks: state.tracks,
-			});
+			// The store sets a new `tracks` array only when the timeline
+			// changed; selection, save status and the like leave it alone.
+			if (state.tracks !== previousTracks) {
+				previousTracks = state.tracks;
+				emitTimelineChanges({ tracks: state.tracks });
+			}
 			const projectId = getActiveProjectId();
-
-			for (const [elementId, nextSnapshot] of nextTimeline) {
-				const previousSnapshot = previousTimeline.get(elementId);
-				if (!previousSnapshot) {
-					emitClaudeRendererEvent({
-						category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementAdded,
-						action: CLAUDE_EDITOR_EVENT_ACTION.elementAdded,
-						source: "renderer.timeline-store",
-						data: {
-							projectId,
-							elementId,
-							trackId: nextSnapshot.trackId,
-							trackType: nextSnapshot.trackType,
-							element: nextSnapshot.elementData,
-						},
-					});
-					continue;
-				}
-
-				if (previousSnapshot.signature !== nextSnapshot.signature) {
-					emitClaudeRendererEvent({
-						category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementUpdated,
-						action: CLAUDE_EDITOR_EVENT_ACTION.elementUpdated,
-						source: "renderer.timeline-store",
-						data: {
-							projectId,
-							elementId,
-							trackId: nextSnapshot.trackId,
-							trackType: nextSnapshot.trackType,
-							before: previousSnapshot.elementData,
-							after: nextSnapshot.elementData,
-						},
-					});
-				}
-			}
-
-			for (const [elementId, previousSnapshot] of previousTimeline) {
-				if (nextTimeline.has(elementId)) {
-					continue;
-				}
-
-				emitClaudeRendererEvent({
-					category: CLAUDE_EDITOR_EVENT_CATEGORY.timelineElementRemoved,
-					action: CLAUDE_EDITOR_EVENT_ACTION.elementRemoved,
-					source: "renderer.timeline-store",
-					data: {
-						projectId,
-						elementId,
-						trackId: previousSnapshot.trackId,
-						trackType: previousSnapshot.trackType,
-						element: previousSnapshot.elementData,
-					},
-				});
-			}
-
-			previousTimeline = nextTimeline;
 
 			const nextSelection = getSelectionSnapshot();
 			if (nextSelection !== previousSelection) {

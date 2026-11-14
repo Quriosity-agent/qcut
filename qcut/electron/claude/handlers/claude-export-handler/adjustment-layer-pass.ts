@@ -18,6 +18,7 @@ import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import type { ClaudeTimeline } from "../../../types/claude-api.js";
 import { claudeLog } from "../../utils/logger.js";
+import { readClipColorSettings } from "./clip-color-settings.js";
 import { moveFile } from "./move-file.js";
 import { HANDLER_NAME } from "./types.js";
 
@@ -71,10 +72,6 @@ export function collectAdjustmentLayers({
 		if (track.hidden) continue;
 		for (const element of track.elements) {
 			if (element.type !== "adjustment" || element.hidden) continue;
-			const color = element.colorSettings;
-			if (color === null || typeof color !== "object" || Array.isArray(color)) {
-				continue;
-			}
 			if (
 				!Number.isFinite(element.startTime) ||
 				!Number.isFinite(element.endTime) ||
@@ -87,12 +84,15 @@ export function collectAdjustmentLayers({
 					? Math.min(1, Math.max(0, element.opacity))
 					: 1;
 			if (opacity <= 0) continue;
+			// Read last: a layer that draws nothing cannot fail the export.
+			const color = readClipColorSettings({ element });
+			if (color === undefined) continue;
 			layers.push({
 				elementId: element.id,
 				trackOrder,
 				startTime: element.startTime,
 				endTime: element.endTime,
-				color: color as unknown as VideoColorSettings,
+				color,
 				opacity,
 				// Without any overlay track there is nothing to wait for.
 				aboveOverlays: Number.isFinite(overlayTop) && trackOrder < overlayTop,
