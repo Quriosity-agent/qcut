@@ -39,6 +39,7 @@ type CacheReport = {
 	missingRejected?: boolean;
 	ordinaryDirectoryMutationDetected?: boolean;
 	archiveMutationRejected?: boolean;
+	archiveMutationApplied?: boolean;
 	linkedUnpackedMutationDetected?: boolean;
 };
 
@@ -226,6 +227,7 @@ describe("native frame cache in real Electron ASAR", () => {
 		const f = await fixture();
 		expect(await f.run({ mode: "archive-mutation" })).toMatchObject({
 			archiveMutationRejected: true,
+			archiveMutationApplied: true,
 		});
 	});
 

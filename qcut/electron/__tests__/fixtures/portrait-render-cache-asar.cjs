@@ -51,25 +51,31 @@ async function main() {
 	if (mode === "archive-mutation") {
 		const physicalFs = process.getBuiltinModule("original-fs");
 		const createReadStream = physicalFs.createReadStream;
-		const archivePath = physicalFs.realpathSync(__dirname);
+		// Match the fingerprinter's native realpath expansion of Windows 8.3 aliases.
+		const archivePath = await physicalFs.promises.realpath(__dirname);
 		let mutated = false;
 		physicalFs.createReadStream = (file, streamOptions) => {
 			const stream = createReadStream(file, streamOptions);
 			if (file === archivePath && !mutated) {
 				stream.once("data", () => {
-					physicalFs.appendFileSync(__dirname, "changed-during-read");
+					physicalFs.appendFileSync(archivePath, "changed-during-read");
 					mutated = true;
 				});
 			}
 			return stream;
 		};
 		try {
-			await assert.rejects(
-				fingerprint(),
+			const error = await fingerprint().then(
+				() => null,
+				(error) => error
+			);
+			assert.equal(mutated, true, "Archive mutation hook must execute");
+			assert.ok(error instanceof Error);
+			assert.match(
+				error.message,
 				/Native runtime changed while fingerprinting/
 			);
-			assert.equal(mutated, true);
-			return { archiveMutationRejected: true };
+			return { archiveMutationRejected: true, archiveMutationApplied: true };
 		} finally {
 			physicalFs.createReadStream = createReadStream;
 		}
