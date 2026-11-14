@@ -4,6 +4,7 @@
  *
  * @module electron/native-pipeline/editor/editor-timeline-apply-transaction
  */
+import { createHash } from "node:crypto";
 import type { EditorApiClient } from "./editor-api-client.js";
 import {
 	collectElements,
@@ -41,18 +42,24 @@ export function applyTransactionTimeoutMs({
 	return Math.min(MAX_TRANSACTION_TIMEOUT_MS, Math.round(allowance));
 }
 
-/** Track and element ids in order: equal fingerprints, same timeline. */
+/**
+ * A digest of everything the timeline holds: every track with its settings,
+ * clips and transitions, in order. Two reads with the same fingerprint are
+ * the same timeline. Ids alone would not do: an apply that only patches
+ * clips leaves every id where it was.
+ *
+ * `hasAlpha` is left out: it is read from the media file on each request and
+ * is not part of what a transaction restores.
+ */
 export function timelineFingerprint({
 	timeline,
 }: {
 	timeline: TimelineSnapshot;
 }): string {
-	return JSON.stringify(
-		timeline.tracks.map((track) => [
-			track.id ?? null,
-			track.elements.map((element) => element.id),
-		])
+	const contents = JSON.stringify(timeline.tracks, (key, value) =>
+		key === "hasAlpha" ? undefined : value
 	);
+	return createHash("sha256").update(contents).digest("hex");
 }
 
 export interface ApplyRollbackOutcome {
