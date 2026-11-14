@@ -598,13 +598,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			const currentProject = useProjectStore.getState().activeProject;
 
 			if (currentProject) {
+				let storedAny = false;
 				await Promise.all(
 					newItems.map(async (item) => {
 						try {
 							await saveTrackedMediaItem({
 								projectId: currentProject.id,
 								id: item.id,
-								save: () => persistIfStillPresent(currentProject.id, item),
+								save: async () => {
+									const stored = await persistIfStillPresent(
+										currentProject.id,
+										item
+									);
+									storedAny ||= stored;
+								},
 								// A generated image has no later background save, so a
 								// drop would leave it stored nowhere.
 								whenDeleting: "wait",
@@ -620,6 +627,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 						}
 					})
 				);
+				// Once for the batch, like any other import.
+				if (storedAny) {
+					await markProjectContentChanged({ projectId: currentProject.id });
+				}
 			} else {
 			}
 		} catch (error) {}
