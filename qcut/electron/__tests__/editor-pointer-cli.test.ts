@@ -771,7 +771,32 @@ describe("editor pointer CLI handlers", () => {
 			expect(refused.success).toBe(false);
 			expect(refused.error).toContain("--window-id must be a positive whole");
 		}
+		// Text that is not a number survives both parsers as NaN and is
+		// refused the same way; an omitted id is still "the first window".
+		const oneShot = parseCliArgs([
+			"editor",
+			"windows",
+			"focus",
+			"--window-id",
+			"nope",
+		]);
+		expect(oneShot.windowId).toBeNaN();
+		const inSession = parseSessionLine(
+			"editor:windows:focus --window-id nope",
+			{
+				json: true,
+			}
+		);
+		expect(inSession.windowId).toBeNaN();
+		for (const options of [oneShot, inSession]) {
+			const refused = await handleWindowsCommand({ client, options });
+			expect(refused.success).toBe(false);
+			expect(refused.error).toContain("--window-id must be a positive whole");
+		}
 		expect(post).not.toHaveBeenCalled();
+		expect(
+			parseSessionLine("editor:windows:focus", { json: true }).windowId
+		).toBeUndefined();
 
 		const unknown = await handleWindowsCommand({
 			client,
