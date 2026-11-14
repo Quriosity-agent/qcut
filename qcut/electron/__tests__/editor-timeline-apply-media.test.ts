@@ -3,7 +3,14 @@ import type { EditorApiClient } from "../native-pipeline/editor/editor-api-clien
 import { importManifestMedia } from "../native-pipeline/editor/editor-timeline-apply-media.js";
 
 /** An editor that takes at most 20 files per import, as the real one does. */
-function editor({ failAt }: { failAt?: string } = {}) {
+function editor({
+	failAt,
+	dropRequest,
+}: {
+	failAt?: string;
+	/** The 1-based import request that never gets an answer. */
+	dropRequest?: number;
+} = {}) {
 	const batches: string[][] = [];
 	const post = vi.fn(
 		async (
@@ -15,6 +22,9 @@ function editor({ failAt }: { failAt?: string } = {}) {
 				throw new Error(
 					`Batch size ${body.items.length} exceeds maximum of 20`
 				);
+			}
+			if (batches.length + 1 === dropRequest) {
+				throw new Error("socket hang up");
 			}
 			batches.push(body.items.map((item) => item.path));
 			return body.items.map((item) =>
@@ -72,5 +82,39 @@ describe("timeline apply: importing a manifest's media", () => {
 				newMediaIds: new Set(),
 			})
 		).rejects.toThrow("Media 'clip-31' failed: unreadable");
+	});
+
+	it("remembers the files already imported when a later request fails", async () => {
+		const { client } = editor({ dropRequest: 2 });
+		const newMediaIds = new Set<string>();
+		await expect(
+			importManifestMedia({
+				client,
+				projectId: "project-1",
+				media: media({ count: 25 }),
+				mediaIds: new Map(),
+				newMediaIds,
+			})
+		).rejects.toThrow("socket hang up");
+		// The caller can take the first 20 back out.
+		expect(newMediaIds.size).toBe(20);
+		expect(newMediaIds.has("id:/no/such/dir/clip-19.mp4")).toBe(true);
+	});
+
+	it("remembers every file of a batch that also holds a failed one", async () => {
+		const { client } = editor({ failAt: "/no/such/dir/clip-3.mp4" });
+		const newMediaIds = new Set<string>();
+		await expect(
+			importManifestMedia({
+				client,
+				projectId: "project-1",
+				media: media({ count: 6 }),
+				mediaIds: new Map(),
+				newMediaIds,
+			})
+		).rejects.toThrow("Media 'clip-3' failed: unreadable");
+		expect([...newMediaIds].sort()).toEqual(
+			[0, 1, 2, 4, 5].map((index) => `id:/no/such/dir/clip-${index}.mp4`)
+		);
 	});
 });
