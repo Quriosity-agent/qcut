@@ -23,11 +23,16 @@ import type { TProject } from "@/types/project";
  * in the order they were sent, so the last one written is then the editor's.
  *
  * It never stops on a write the editor has already moved past: that write
- * could be the one that puts an old value back. A project that is still
- * changing after this many saves in a row is not a user changing settings,
- * and the save fails loudly instead of going round for ever.
+ * could be the one that puts an old value back. There is no limit on the
+ * number of saves for the same reason; what ends it is the project holding
+ * still for the length of one save, and only a record that really differs
+ * counts as having moved on.
  */
-const RUNAWAY_FOLLOW_UP_SAVES = 50;
+
+/** Same record, whether or not it is the same object. */
+function sameRecord({ left, right }: { left: TProject; right: TProject }) {
+	return left === right || JSON.stringify(left) === JSON.stringify(right);
+}
 
 export async function saveProjectContentChange({
 	projectId,
@@ -46,15 +51,10 @@ export async function saveProjectContentChange({
 	setActiveProject(updated);
 	let saved = updated;
 	await storageService.saveProject({ project: saved });
-	for (
-		let followUps = 0;
-		followUps <= RUNAWAY_FOLLOW_UP_SAVES;
-		followUps += 1
-	) {
+	while (true) {
 		const latest = getActiveProject();
-		const settled = !latest || latest.id !== projectId || latest === saved;
-		if (settled) return updated.updatedAt;
-		if (followUps === RUNAWAY_FOLLOW_UP_SAVES) break;
+		if (!latest || latest.id !== projectId) break;
+		if (sameRecord({ left: latest, right: saved })) break;
 		// A settings change stamps itself when it starts, which can be before
 		// this change: the later of the two times is the project's.
 		const isOlder = latest.updatedAt.getTime() < updated.updatedAt.getTime();
@@ -62,7 +62,5 @@ export async function saveProjectContentChange({
 		if (isOlder) setActiveProject(saved);
 		await storageService.saveProject({ project: saved });
 	}
-	throw new Error(
-		`Project ${projectId} kept changing through ${RUNAWAY_FOLLOW_UP_SAVES} saves of its change time; its stored record may be behind the editor's`
-	);
+	return updated.updatedAt;
 }
