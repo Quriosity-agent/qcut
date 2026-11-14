@@ -23,6 +23,7 @@ vi.mock("electron", () => ({
 	app: {
 		getPath: vi.fn(() => "/mock/Documents"),
 		getVersion: vi.fn(() => "1.0.0-test"),
+		focus: vi.fn(),
 	},
 	ipcMain: {
 		handle: vi.fn(),
@@ -416,7 +417,7 @@ describe("Claude HTTP Server", () => {
 
 	it("POST /api/claude/transaction/begin passes the caller's time limit on", async () => {
 		const mockWindow = createMockWindow();
-		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
 		vi.mocked(transactionHandler.beginTransaction).mockClear();
 
 		const res = await fetch("/api/claude/transaction/begin", {
@@ -1361,6 +1362,38 @@ describe("Claude HTTP Server", () => {
 			expect(second.sendCommand).toHaveBeenCalled();
 			expect(first.sendCommand).not.toHaveBeenCalled();
 			expect(missing.status).toBe(404);
+
+			const focused = await fetch("/api/claude/windows/focus", {
+				method: "POST",
+				body: JSON.stringify({ windowId: 2 }),
+			});
+			expect(focused.status).toBe(200);
+			expect(focused.body.data).toEqual({
+				window: expect.objectContaining({ id: 2, title: "Filter Lab" }),
+				restored: false,
+			});
+			expect(second.focus).toHaveBeenCalledTimes(1);
+			expect(first.focus).not.toHaveBeenCalled();
+
+			const byDefault = await fetch("/api/claude/windows/focus", {
+				method: "POST",
+				body: JSON.stringify({}),
+			});
+			expect(byDefault.body.data.window).toEqual(
+				expect.objectContaining({ id: 1, main: true })
+			);
+			expect(first.focus).toHaveBeenCalledTimes(1);
+
+			const unknown = await fetch("/api/claude/windows/focus", {
+				method: "POST",
+				body: JSON.stringify({ windowId: 99 }),
+			});
+			expect(unknown.status).toBe(404);
+			const malformed = await fetch("/api/claude/windows/focus", {
+				method: "POST",
+				body: JSON.stringify({ windowId: "front" }),
+			});
+			expect(malformed.status).toBe(400);
 		} finally {
 			browserWindow.fromId = previousFromId;
 		}
