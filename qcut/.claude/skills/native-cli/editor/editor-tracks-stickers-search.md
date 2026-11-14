@@ -97,7 +97,10 @@ as the editor stores it. `--lut-name` names it (default: the file's `TITLE`,
 else its name), `--lut-intensity` sets its strength (0–100, default 100), and
 `--lut-clear` removes the LUT and its data from the clips. The LUT is the
 colour panel's custom LUT: the preview shows it and the native export applies
-it with `lut3d`.
+it with `lut3d`. A built-in preset on the clip (`color.filter`) is rendered in
+the LUT's place, so `--lut-file` and `--lut-clear` take the preset off, as
+the colour panel does; writing `color.lut` by hand does not, so set
+`"filter": { "presetId": "none" }` beside it when the clip may carry one.
 
 By hand (`--set`, `element patch`, a manifest) the LUT is `color.lut`:
 
