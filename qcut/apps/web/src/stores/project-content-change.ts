@@ -44,7 +44,11 @@ export async function saveProjectContentChange({
 	for (let followUp = 0; followUp < MAX_FOLLOW_UP_SAVES; followUp += 1) {
 		const latest = getActiveProject();
 		if (!latest || latest.id !== projectId || latest === saved) break;
-		saved = latest;
+		// A settings change stamps itself when it starts, which can be before
+		// this change: the later of the two times is the project's.
+		const isOlder = latest.updatedAt.getTime() < updated.updatedAt.getTime();
+		saved = isOlder ? { ...latest, updatedAt: updated.updatedAt } : latest;
+		if (isOlder) setActiveProject(saved);
 		await storageService.saveProject({ project: saved });
 	}
 	return updated.updatedAt;
