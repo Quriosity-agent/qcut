@@ -445,7 +445,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f(
 				"--set",
 				"string",
-				"Extra partial colour grade as JSON or @file, merged key by key. Keys: enabled, basic{exposure,contrast,…}, lut{enabled,presetId,name,intensity,skinProtection,cube}, hsl, curves, secondaryCurves, wheels, smart, mask, management, keyframes. lut.cube = { size, values, domainMin?, domainMax? }: values holds size³ RGB triplets in .cube order (red changes fastest, then green, then blue); the domain defaults to 0..1"
+				"Extra partial colour grade as JSON or @file, merged key by key. Keys: enabled, basic{exposure,contrast and the other controls}, lut{enabled,presetId,name,intensity,skinProtection,cube}, hsl, curves, secondaryCurves, wheels, smart, mask, management, keyframes. lut.cube = { size, values, domainMin?, domainMax? }: values holds size³ RGB triplets in .cube order (red changes fastest, then green, then blue); the domain defaults to 0..1"
 			),
 			f("--reset", "boolean", "Return every basic control to its default"),
 		],
@@ -483,7 +483,7 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	),
 	"editor:timeline:export": ed(
 		"editor:timeline:export",
-		"Export timeline. With --json the timeline (tracks, mix, …) is always the object at .data.data; --flat prints that object alone",
+		"Export timeline. With --json the timeline (its tracks and mix) is always the object at .data.data; --flat prints that object alone",
 		[
 			PID_ACTIVE,
 			f(
