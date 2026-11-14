@@ -1273,7 +1273,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		lutFile: values["lut-file"] as string | undefined,
 		lutName: values["lut-name"] as string | undefined,
 		...(typeof values["lut-intensity"] === "string"
-			? { lutIntensity: Number.parseFloat(values["lut-intensity"]) }
+			? {
+					lutIntensity: parseStrictCliNumber({
+						value: values["lut-intensity"],
+					}),
+				}
 			: {}),
 		lutClear: (values["lut-clear"] as boolean) ?? false,
 		append: (values.append as boolean) ?? false,
