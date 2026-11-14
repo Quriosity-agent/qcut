@@ -169,6 +169,61 @@ describe("what a manifest shows to be wrong before it is applied", () => {
 		).toEqual(["Transition 0 needs type and duration"]);
 	});
 
+	it("reports entries that are not objects, or named with something that is not text", () => {
+		expect(
+			manifestProblems({
+				manifest: {
+					tracks: [
+						null,
+						{
+							alias: 7,
+							name: "A",
+							type: "media",
+							elements: [null, { ...clip, id: 3 }],
+						},
+					],
+				} as never,
+			})
+		).toEqual([
+			"Track 0 must be an object",
+			"Track 'track-1': alias and id must be text",
+			"Element 'element-0' must be an object",
+			"Element 'element-1': alias and id must be text",
+		]);
+	});
+
+	it("checks updates before a replace can clear the timeline for them", () => {
+		expect(
+			manifestProblems({
+				manifest: {
+					tracks: [{ name: "Main", type: "media", elements: [clip] }],
+					updates: [
+						{},
+						{ elementId: "clip-1", name: "renamed", startTime: 4 },
+						"clip-2",
+						{
+							alias: "regrade",
+							elementId: "clip-3",
+							colorLabel: "teal",
+							color: { lut: { cube: { size: 3, values: [0, 0, 0] } } },
+						},
+						{ elementId: "title-1", color: "#ffcc00" },
+					],
+				} as never,
+			})
+		).toEqual([
+			"Update 0 is missing elementId",
+			"Update 2 must be an object",
+			`Update 'regrade': colorLabel must be one of: violet, blue, green, yellow, red, rose, orange, mango (got "teal")`,
+			"Update 'regrade': color.lut.cube.values must hold 81 numbers (size³ × 3 for size 3); it holds 3",
+		]);
+		expect(
+			manifestProblems({
+				manifest: { tracks: [], updates: { elementId: "x" } } as never,
+			})
+		).toEqual(["updates must be a list"]);
+	});
+
 	it("keeps a long list readable", () => {
 		const problems = Array.from({ length: 23 }, (_, index) => `p${index}`);
 		const message = describeManifestProblems({ problems });
@@ -180,6 +235,24 @@ describe("what a manifest shows to be wrong before it is applied", () => {
 });
 
 describe("timeline apply with a manifest that cannot be applied", () => {
+	it("refuses a malformed update without touching the editor, even without --atomic", async () => {
+		const { client, calls } = untouchedEditor();
+		const result = await timelineApplyManifest(client, {
+			...options({
+				tracks: [{ name: "Main", type: "media", elements: [clip] }],
+				updates: [{}],
+			}),
+			atomic: false,
+		});
+		expect(result.success).toBe(false);
+		expect(result.error).toBe(
+			"The manifest has 1 problem; nothing was changed. Update 0 is missing elementId"
+		);
+		for (const method of Object.values(calls)) {
+			expect(method).not.toHaveBeenCalled();
+		}
+	});
+
 	it("fails before the editor is asked for anything", async () => {
 		const { client, calls } = untouchedEditor();
 		const result = await timelineApplyManifest(
