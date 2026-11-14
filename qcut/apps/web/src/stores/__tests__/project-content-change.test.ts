@@ -49,11 +49,13 @@ describe("a project's last-modified time after its contents change", () => {
 	});
 
 	it("saves the project as the editor holds it now, not an earlier copy", async () => {
-		const active = project({ fps: 30, name: "Renamed since" });
+		let active: TProject | null = project({ fps: 30, name: "Renamed since" });
 		await saveProjectContentChange({
 			projectId: "project-1",
 			getActiveProject: () => active,
-			setActiveProject: vi.fn(),
+			setActiveProject: (next) => {
+				active = next;
+			},
 			now: () => NOW,
 		});
 		expect(mocks.saveProject).toHaveBeenCalledWith({
@@ -167,20 +169,57 @@ describe("a project's last-modified time after its contents change", () => {
 		expect(mocks.saveProject).toHaveBeenCalledTimes(2);
 	});
 
-	it("stops following a project that will not hold still", async () => {
+	it("follows as many settings changes as arrive, to the last one", async () => {
+		// Six frame rates in a row, each published while the save before it
+		// was in flight: none may be overwritten by an earlier copy.
+		let active: TProject | null = project({ fps: 24 });
+		const stored: TProject[] = [];
+		const rates = [25, 30, 48, 50, 60, 120].map((fps) => ({
+			...project({ fps }),
+			updatedAt: NOW,
+		}));
+		let next = 0;
+		mocks.saveProject.mockImplementation(
+			async ({ project: saved }: { project: TProject }) => {
+				const change = rates[next];
+				if (change) {
+					next += 1;
+					stored.push(change);
+					active = change;
+				}
+				stored.push(saved);
+			}
+		);
+
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => active,
+			setActiveProject: (value) => {
+				active = value;
+			},
+			now: () => NOW,
+		});
+
+		expect(stored.at(-1)?.fps).toBe(120);
+		expect(active?.fps).toBe(120);
+	});
+
+	it("fails loudly for a project that never holds still, instead of going round for ever", async () => {
 		let active: TProject | null = project();
 		mocks.saveProject.mockImplementation(async () => {
 			active = { ...(active as TProject) };
 		});
-		await saveProjectContentChange({
-			projectId: "project-1",
-			getActiveProject: () => active,
-			setActiveProject: (next) => {
-				active = next;
-			},
-			now: () => NOW,
-		});
-		expect(mocks.saveProject).toHaveBeenCalledTimes(6);
+		await expect(
+			saveProjectContentChange({
+				projectId: "project-1",
+				getActiveProject: () => active,
+				setActiveProject: (value) => {
+					active = value;
+				},
+				now: () => NOW,
+			})
+		).rejects.toThrow("kept changing through 50 saves");
+		expect(mocks.saveProject).toHaveBeenCalledTimes(51);
 	});
 
 	it("saves once when nothing else changed the project meanwhile", async () => {
