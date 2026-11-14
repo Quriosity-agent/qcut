@@ -182,9 +182,9 @@ function gradeCubeSlots({ color }: { color: Record<string, unknown> }): Array<{
 
 /**
  * Checks every cube a grade carries and returns the grade with each cube's
- * domain filled in. The grade itself is returned when nothing needed
- * filling, so a 3D LUT is not copied on the way through. Throws like
- * `readCubeLut`, with `prefix` in front of the field.
+ * domain filled in. A grade without cubes is returned as it is; otherwise
+ * only the objects on the way to a cube are copied, never a cube's values.
+ * Throws like `readCubeLut`, with `prefix` in front of the field.
  */
 export function readGradeCubeLuts<T extends object>({
 	color,
@@ -193,50 +193,32 @@ export function readGradeCubeLuts<T extends object>({
 	color: T;
 	prefix?: string;
 }): T {
-	if (!isRecord(color)) return color;
-	const slots = gradeCubeSlots({ color });
-	if (slots.length === 0) return color;
-	const completed = copyGradeDownToCubes({ color, slots });
+	if (!isRecord(color) || gradeCubeSlots({ color }).length === 0) return color;
+	const completed = copyGradeDownToCubes({ color });
 	for (const slot of gradeCubeSlots({ color: completed })) {
-		const cube = readCubeLut({
-			value: slot.holder[slot.key],
-			path: `${prefix}.${slot.path}`,
-		});
-		const stored = slot.holder[slot.key] as Record<string, unknown>;
-		slot.holder[slot.key] =
-			isTriplet(stored.domainMin) && isTriplet(stored.domainMax)
-				? stored
-				: { ...stored, domainMin: cube.domainMin, domainMax: cube.domainMax };
+		const stored = slot.holder[slot.key];
+		readCubeLut({ value: stored, path: `${prefix}.${slot.path}` });
+		slot.holder[slot.key] = withCubeLutDomain(stored as object);
 	}
 	return completed as T;
 }
 
 /**
- * Copies only the objects on the way to a cube (the grade, its `lut`,
- * `dual`, `multiPass`, the pass list and its LUT passes), never the cubes,
- * so filling a domain in does not change the caller's grade.
+ * The grade with its `lut`, `dual`, `multiPass`, pass list and LUT passes
+ * copied, so filling a domain in does not change the caller's grade.
  */
 function copyGradeDownToCubes({
 	color,
-	slots,
 }: {
 	color: Record<string, unknown>;
-	slots: Array<{ path: string }>;
 }): Record<string, unknown> {
 	const next: Record<string, unknown> = { ...color };
-	if (
-		slots.some((slot) => slot.path.startsWith("lut.")) &&
-		isRecord(next.lut)
-	) {
+	if (isRecord(next.lut)) {
 		const lut: Record<string, unknown> = { ...next.lut };
 		if (isRecord(lut.dual)) lut.dual = { ...lut.dual };
 		next.lut = lut;
 	}
-	if (
-		slots.some((slot) => slot.path.startsWith("multiPass.")) &&
-		isRecord(next.multiPass) &&
-		Array.isArray(next.multiPass.passes)
-	) {
+	if (isRecord(next.multiPass) && Array.isArray(next.multiPass.passes)) {
 		next.multiPass = {
 			...next.multiPass,
 			passes: next.multiPass.passes.map((pass: unknown) =>
