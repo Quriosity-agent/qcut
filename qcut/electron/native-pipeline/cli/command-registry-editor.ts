@@ -393,16 +393,19 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 	]),
 	"editor:element:patch": ed(
 		"editor:element:patch",
-		"Patch any timeline element fields",
+		"Patch timeline element fields. A clip takes: name, startTime, duration, trimStart, trimEnd, colorLabel, fitMode, x, y, rotation, scaleX, scaleY, opacity, blendMode (normal|multiply|screen|overlay|darken|lighten), blendEnabled, playbackRate, color, adjustments, filterStack, audio, keyframes; a refusal lists the fields the element's type takes",
 		[
 			PID_ACTIVE,
 			f("--element-id", "string", "Element ID", { required: true }),
 			f("--set", "string", "JSON object or @file", { required: true }),
+		],
+		[
+			`qcut editor element patch --element-id <id> --set '{"blendMode":"overlay","blendEnabled":true,"opacity":0.8}' --json`,
 		]
 	),
 	"editor:element:color": ed(
 		"editor:element:color",
-		"Grade clips: the colour panel's basic controls, merged into each clip's grade",
+		"Grade clips: the colour panel's basic controls and a 3D LUT from a .cube file, merged into each clip's grade",
 		[
 			PID_ACTIVE,
 			f("--element-id", "string", "One clip"),
@@ -427,8 +430,29 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--vignette", "number", "Vignette (0..100)"),
 			f("--sharpness", "number", "Sharpness (0..100)"),
 			f("--grain", "number", "Grain (0..100)"),
-			f("--set", "string", "Extra partial colour grade as JSON or @file"),
+			f(
+				"--lut-file",
+				"string",
+				"3D LUT for the clips: a .cube file, or a .json cube { size, values, domainMin?, domainMax? }"
+			),
+			f(
+				"--lut-name",
+				"string",
+				"Name shown for the LUT (default: the file's TITLE or name)"
+			),
+			f("--lut-intensity", "number", "LUT strength 0–100 (default 100)"),
+			f("--lut-clear", "boolean", "Remove the clips' 3D LUT"),
+			f(
+				"--set",
+				"string",
+				"Extra partial colour grade as JSON or @file, merged key by key. Keys: enabled, basic{exposure,contrast,…}, lut{enabled,presetId,name,intensity,skinProtection,cube}, hsl, curves, secondaryCurves, wheels, smart, mask, management, keyframes. lut.cube = { size, values, domainMin?, domainMax? }: values holds size³ RGB triplets in .cube order (red changes fastest, then green, then blue); the domain defaults to 0..1"
+			),
 			f("--reset", "boolean", "Return every basic control to its default"),
+		],
+		[
+			"qcut editor element color --track-id <track> --lut-file ./grade.cube --json",
+			'qcut editor element color --element-ids \'["a","b"]\' --lut-file ./grade.cube --lut-intensity 80 --contrast 10 --json',
+			"qcut editor element color --track-id <track> --lut-clear --json",
 		]
 	),
 	"editor:element:filter": ed(
@@ -457,11 +481,24 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--clear", "boolean", "Remove every filter from the clips"),
 		]
 	),
-	"editor:timeline:export": ed("editor:timeline:export", "Export timeline", [
-		PID_ACTIVE,
-		f("--output-format", "string", "Output format", { short: "-f" }),
-		f("--mode", "string", "Export mode"),
-	]),
+	"editor:timeline:export": ed(
+		"editor:timeline:export",
+		"Export timeline. With --json the timeline (tracks, mix, …) is always the object at .data.data; --flat prints that object alone",
+		[
+			PID_ACTIVE,
+			f(
+				"--output-format",
+				"string",
+				"json (default) or md; md puts Markdown text at .data.data instead",
+				{ short: "-f" }
+			),
+			f("--mode", "string", "Export mode (alias of --output-format)"),
+		],
+		[
+			"qcut editor timeline export --json | jq '.data.data.tracks | length'",
+			"qcut editor timeline export --json --flat > timeline.json",
+		]
+	),
 	"editor:timeline:import": ed(
 		"editor:timeline:import",
 		"Import timeline data",
