@@ -98,29 +98,30 @@ export async function importManifestMedia({
 	}
 
 	if (imports.length === 0) return;
-	const results: ImportResult[] = [];
+	// Each batch is recorded as it comes back, every success before any
+	// failure is raised: a failed apply removes the files it imported, and it
+	// can only remove the ones it knows about.
 	for (let offset = 0; offset < imports.length; offset += MEDIA_IMPORT_BATCH) {
 		const batch = imports.slice(offset, offset + MEDIA_IMPORT_BATCH);
-		results.push(
-			...(await client.post<ImportResult[]>(
-				`/api/claude/media/${encodeURIComponent(projectId)}/batch-import`,
-				{ items: batch },
-				{ timeout: mediaImportTimeoutMs({ count: batch.length }) }
-			))
+		const results = await client.post<ImportResult[]>(
+			`/api/claude/media/${encodeURIComponent(projectId)}/batch-import`,
+			{ items: batch },
+			{ timeout: mediaImportTimeoutMs({ count: batch.length }) }
 		);
-	}
-	for (const [index, result] of results.entries()) {
-		const { entry, manifestIndex } = importEntries[index];
-		const alias = aliasFor(entry, `media-${manifestIndex}`);
-		if (!result.success || !result.mediaFile) {
-			throw new Error(
-				`Media '${alias}' failed: ${result.error || "unknown error"}`
-			);
+		let failure: string | undefined;
+		for (const [index, result] of results.entries()) {
+			const { entry, manifestIndex } = importEntries[offset + index];
+			const alias = aliasFor(entry, `media-${manifestIndex}`);
+			if (!result.success || !result.mediaFile) {
+				failure ??= `Media '${alias}' failed: ${result.error || "unknown error"}`;
+				continue;
+			}
+			const mediaId = result.mediaFile.id;
+			mediaIds.set(alias, mediaId);
+			mediaIds.set(mediaId, mediaId);
+			if (entry.id) mediaIds.set(entry.id, mediaId);
+			if (!existingIds.has(mediaId)) newMediaIds.add(mediaId);
 		}
-		const mediaId = result.mediaFile.id;
-		mediaIds.set(alias, mediaId);
-		mediaIds.set(mediaId, mediaId);
-		if (entry.id) mediaIds.set(entry.id, mediaId);
-		if (!existingIds.has(mediaId)) newMediaIds.add(mediaId);
+		if (failure) throw new Error(failure);
 	}
 }
