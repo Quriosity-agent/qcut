@@ -9,6 +9,14 @@ import { basename } from "node:path";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { aliasFor, type ManifestMedia } from "./editor-timeline-manifest.js";
 
+/** Files per import request: the editor takes at most this many at once. */
+const MEDIA_IMPORT_BATCH = 20;
+
+/** Each file may wait for the editor to load it (up to 20 s of its own). */
+function mediaImportTimeoutMs({ count }: { count: number }): number {
+	return 60_000 + 20_000 * count;
+}
+
 interface MediaFileSummary {
 	id: string;
 	name?: string;
@@ -90,10 +98,17 @@ export async function importManifestMedia({
 	}
 
 	if (imports.length === 0) return;
-	const results = await client.post<ImportResult[]>(
-		`/api/claude/media/${encodeURIComponent(projectId)}/batch-import`,
-		{ items: imports }
-	);
+	const results: ImportResult[] = [];
+	for (let offset = 0; offset < imports.length; offset += MEDIA_IMPORT_BATCH) {
+		const batch = imports.slice(offset, offset + MEDIA_IMPORT_BATCH);
+		results.push(
+			...(await client.post<ImportResult[]>(
+				`/api/claude/media/${encodeURIComponent(projectId)}/batch-import`,
+				{ items: batch },
+				{ timeout: mediaImportTimeoutMs({ count: batch.length }) }
+			))
+		);
+	}
 	for (const [index, result] of results.entries()) {
 		const { entry, manifestIndex } = importEntries[index];
 		const alias = aliasFor(entry, `media-${manifestIndex}`);
