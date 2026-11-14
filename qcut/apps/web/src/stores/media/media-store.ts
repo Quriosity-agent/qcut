@@ -124,6 +124,24 @@ const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
 };
 
 /**
+ * An imported or removed file changes the project, so its "last modified"
+ * follows. The project store is loaded lazily: it loads this store itself.
+ */
+const markProjectContentChanged = async ({
+	projectId,
+}: {
+	projectId: string;
+}): Promise<void> => {
+	try {
+		const { useProjectStore } = await import("../project-store");
+		await useProjectStore.getState().markProjectContentChanged(projectId);
+	} catch (error) {
+		// The file is in; a time that could not be recorded must not undo that.
+		debugError("[MediaStore] Could not record the project change", error);
+	}
+};
+
+/**
  * Persist an item unless the library has moved on from it.
  *
  * A wait-mode save resumes once every delete for its id has finished — and
@@ -395,6 +413,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 					name: newItem.name,
 					type: newItem.type,
 				});
+				await markProjectContentChanged({ projectId });
 			}
 
 			// Trigger thumbnail generation for videos AFTER storage save succeeds
@@ -674,6 +693,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				id,
 				remove: () => storageService.deleteMediaItem(projectId, id),
 			});
+			await markProjectContentChanged({ projectId });
 		} catch (error) {
 			debugError("[MediaStore] deleteMediaItem failed", {
 				projectId,
