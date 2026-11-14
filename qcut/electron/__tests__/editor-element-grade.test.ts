@@ -586,5 +586,13 @@ describe("editor element color --lut-file", () => {
 			parseCliArgs(["editor:element:color", "--lut-intensity", "0"])
 				.lutIntensity
 		).toBe(0);
+		// A blank value is not 0 either.
+		expect(
+			parseCliArgs(["editor:element:color", "--lut-intensity", ""]).lutIntensity
+		).toBeNaN();
+		expect(
+			parseCliArgs(["editor:element:color", "--lut-intensity", "  "])
+				.lutIntensity
+		).toBeNaN();
 	});
 });
