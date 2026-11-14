@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The native-cli skill describes custom LUTs (the cube's layout, its default domain, what reads back), how a `timeline apply` fails and what `rolledBack` means, `project info` without an id, and `windows focus`.
 
+## [2026.11.15.1] - 2026-11-15
+
+### Fixed
+
+- Packaged desktop builds can persist and reuse portrait beauty preview frames again. Cache identities now bind to the installed ASAR archive and its relevant entries, while rejecting replaced archives, changed runtime dependencies and unsafe paths. Development builds retain their existing file identity checks.
+
 ## [2026.11.11.1] - 2026-11-10
 
 ### Fixed
