@@ -683,14 +683,15 @@ test("QCut 1114 report: modified time, LUTs, blend patch, preflight, rollback", 
 		"--start-time",
 		"0",
 		"--end-time",
-		"4",
+		"3",
 		"--output",
 		layerOut,
 		"--poll"
 	);
 	expect(layerRun.ok, layerRun.error).toBe(true);
 	const underLayer = meanColor({ file: layerOut, time: 1 });
-	const pastLayer = meanColor({ file: layerOut, time: 3 });
+	// Still the first clip: the second one is at 70 % opacity since 问题 7.
+	const pastLayer = meanColor({ file: layerOut, time: 2.5 });
 	note("问题 6 frame under an adjustment layer with the LUT (rgb)", underLayer);
 	note("问题 6 frame after the layer ends (rgb)", pastLayer);
 	expect(underLayer[2]).toBeGreaterThan(200);
