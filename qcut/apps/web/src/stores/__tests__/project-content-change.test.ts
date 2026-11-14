@@ -170,12 +170,12 @@ describe("a project's last-modified time after its contents change", () => {
 	});
 
 	it("follows as many settings changes as arrive, to the last one", async () => {
-		// Six frame rates in a row, each published while the save before it
-		// was in flight: none may be overwritten by an earlier copy.
+		// Sixty frame rates in a row, each published while the save before it
+		// was in flight: there is no last save that an earlier copy can win.
 		let active: TProject | null = project({ fps: 24 });
 		const stored: TProject[] = [];
-		const rates = [25, 30, 48, 50, 60, 120].map((fps) => ({
-			...project({ fps }),
+		const rates = Array.from({ length: 60 }, (_, index) => ({
+			...project({ fps: 25 + index }),
 			updatedAt: NOW,
 		}));
 		let next = 0;
@@ -200,26 +200,21 @@ describe("a project's last-modified time after its contents change", () => {
 			now: () => NOW,
 		});
 
-		expect(stored.at(-1)?.fps).toBe(120);
-		expect(active?.fps).toBe(120);
+		expect(stored.at(-1)?.fps).toBe(84);
+		expect(active?.fps).toBe(84);
 	});
 
-	it("fails loudly for a project that never holds still, instead of going round for ever", async () => {
+	it("does not chase a store that hands out a new copy of the same record", async () => {
 		let active: TProject | null = project();
-		mocks.saveProject.mockImplementation(async () => {
-			active = { ...(active as TProject) };
+		await saveProjectContentChange({
+			projectId: "project-1",
+			getActiveProject: () => (active ? { ...active } : null),
+			setActiveProject: (value) => {
+				active = value;
+			},
+			now: () => NOW,
 		});
-		await expect(
-			saveProjectContentChange({
-				projectId: "project-1",
-				getActiveProject: () => active,
-				setActiveProject: (value) => {
-					active = value;
-				},
-				now: () => NOW,
-			})
-		).rejects.toThrow("kept changing through 50 saves");
-		expect(mocks.saveProject).toHaveBeenCalledTimes(51);
+		expect(mocks.saveProject).toHaveBeenCalledTimes(1);
 	});
 
 	it("saves once when nothing else changed the project meanwhile", async () => {
