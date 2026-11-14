@@ -72,10 +72,17 @@ export async function handleWindowsCommand({
 		return { success: true, data };
 	}
 	if (action === "focus") {
-		const data = await client.post(
-			"/api/claude/windows/focus",
-			windowScope(options)
-		);
+		// A window id that was given must be usable: falling back to the
+		// first window would raise the wrong one and report success.
+		const scope = windowScope(options);
+		if (options.windowId !== undefined && scope.windowId === undefined) {
+			return {
+				success: false,
+				error:
+					"--window-id must be a positive whole number (see `qcut editor windows`)",
+			};
+		}
+		const data = await client.post("/api/claude/windows/focus", scope);
 		return { success: true, data };
 	}
 	return {
