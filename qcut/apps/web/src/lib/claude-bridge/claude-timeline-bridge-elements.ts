@@ -46,10 +46,11 @@ import {
 import { resolveClaudeStickerGeometry } from "./claude-sticker-geometry";
 import { parseTimelineColorLabel } from "@/lib/timeline/timeline-color-labels";
 import { getTimelineElementDuration } from "@/lib/timeline";
+import { captionUpdatesFromPatch } from "./claude-caption-patch";
 import {
-	CAPTION_PATCH_FIELDS,
-	captionUpdatesFromPatch,
-} from "./claude-caption-patch";
+	patchableFields,
+	unsupportedPatchFields,
+} from "./claude-element-patch-fields";
 import {
 	describeOccupancyConflict,
 	formatSeconds,
@@ -141,91 +142,6 @@ export interface ElementChangesResult {
 	ignoredFields?: string[];
 }
 
-/** Keys every element patch may carry (ids and timing). */
-const COMMON_PATCH_FIELDS = new Set([
-	"elementId",
-	"type",
-	"startTime",
-	"colorLabel",
-	"trimStart",
-	"trimEnd",
-	"duration",
-	"endTime",
-]);
-
-/**
- * The fields a patch can change per element type. Text patches are schema
- * driven (`getClaudeTextProperties`) and are not checked here.
- */
-const PATCH_FIELDS_BY_TYPE: Partial<Record<string, ReadonlySet<string>>> = {
-	media: new Set([
-		"name",
-		"fitMode",
-		"x",
-		"y",
-		"rotation",
-		"scaleX",
-		"scaleY",
-		"opacity",
-		"playbackRate",
-		"speedKeyframes",
-		"reverse",
-		"freezeFrameTime",
-		"freezeFrameDuration",
-		"preservePitch",
-		"frameInterpolation",
-		"style",
-		"portraitAdjustments",
-		"enhancements",
-		"keyframes",
-		"audio",
-		"filterStack",
-		"color",
-		"adjustments",
-		// Replacing the source in place (N24): claude-media-replace.ts.
-		"mediaId",
-		"sourceDuration",
-	]),
-	adjustment: new Set(["name", "opacity", "color", "adjustments", "masks"]),
-	markdown: new Set(["content"]),
-	captions: new Set(CAPTION_PATCH_FIELDS),
-	sticker: new Set([
-		"mediaId",
-		"x",
-		"y",
-		"width",
-		"height",
-		"stickerGeometrySpace",
-		"stickerId",
-		"stickerAssetId",
-		"stickerRuntime",
-		"rotation",
-		"opacity",
-	]),
-};
-
-/**
- * Fields the element's type cannot use. A patch made only of such fields is
- * an error (it used to answer `updated: true` while changing nothing); a
- * patch that also carries supported fields applies them and reports the rest.
- */
-export function unsupportedPatchFields({
-	elementType,
-	changes,
-}: {
-	elementType: string;
-	changes: Record<string, unknown>;
-}): string[] {
-	const typed = PATCH_FIELDS_BY_TYPE[elementType];
-	if (!typed) return [];
-	return Object.keys(changes).filter(
-		(key) =>
-			changes[key] !== undefined &&
-			!COMMON_PATCH_FIELDS.has(key) &&
-			!typed.has(key)
-	);
-}
-
 export const applyElementChanges = ({
 	elementId,
 	changes,
@@ -271,7 +187,7 @@ export const applyElementChanges = ({
 				).length
 		) {
 			throw new Error(
-				`No supported field for a ${element.type} element in: ${ignoredFields.join(", ")}`
+				`No supported field for a ${element.type} element in: ${ignoredFields.join(", ")}. It takes: ${patchableFields({ elementType: element.type }).join(", ")}`
 			);
 		}
 		// Validate up front: a malformed stack must fail the whole update
