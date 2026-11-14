@@ -5,14 +5,17 @@ import os
 from pathlib import Path
 import plistlib
 import stat
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "macos-local-assets-volume.py"
+sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("local_volume", SCRIPT)
 V = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(V)
+import macos_local_assets_permissions as P
 EXTERNAL_UUID = "11111111-1111-1111-1111-111111111111"
 RUNTIME_UUID = "22222222-2222-2222-2222-222222222222"
 SOURCE_UUID = "33333333-3333-3333-3333-333333333333"
@@ -72,7 +75,7 @@ class ControllerTests(unittest.TestCase):
                     "GlobalPermissionsEnabled": self.owners_enabled,
                     "Mounted": self.mounted, "MountPoint": str(self.mountpoint) if self.mounted else "",
                     "DeviceNode": "/dev/disk25s1"}
-        return {"Internal": True, "VolumeUUID": SOURCE_UUID}
+        return {"Internal": True, "GlobalPermissionsEnabled": True, "VolumeUUID": SOURCE_UUID}
 
     def command(self, args):
         self.commands.append(args)
@@ -114,6 +117,17 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse(self.controller.restore_empty()["removedNewEmptyDirectory"])
         self.assertEqual(self.mountpoint.stat().st_ino, before)
         self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0o750)
+
+    def test_setgid_empty_directory_survives_full_mount_restore_cycle(self):
+        self.mountpoint.mkdir(mode=0o700)
+        self.mountpoint.chmod(0o2700)
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0o2700)
+        original_inode = self.mountpoint.stat().st_ino
+        self.controller.mount()
+        self.controller.unmount()
+        self.assertFalse(self.controller.restore_empty()["removedNewEmptyDirectory"])
+        self.assertEqual(self.mountpoint.stat().st_ino, original_inode)
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0o2700)
 
     def test_nonempty_local_is_never_covered_or_chmodded(self):
         self.mountpoint.mkdir(mode=0o700)
@@ -243,7 +257,7 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse(self.commands)
 
     def test_wrong_backing_uuid_refused(self):
-        self.controller.disk = lambda target: {"Internal": True} if Path(target) == self.source else {"VolumeUUID": SOURCE_UUID, "Writable": True, "Internal": False}
+        self.controller.disk = lambda target: {"Internal": True, "GlobalPermissionsEnabled": True} if Path(target) == self.source else {"VolumeUUID": SOURCE_UUID, "Writable": True, "Internal": False}
         with patch.object(V.os.path, "ismount", return_value=True):
             with self.assertRaisesRegex(V.Refused, "external volume"):
                 V.Controller.validate_image(self.controller)
@@ -336,6 +350,119 @@ class ControllerTests(unittest.TestCase):
         self.assertTrue(any(x[1] == "detach" for x in self.commands))
         mount_command = next(x for x in self.commands if x[1] == "mount")
         self.assertEqual(mount_command[mount_command.index("-mountOptions") + 1], "owners")
+
+    def test_allow_acl_on_config_file_or_parent_is_refused(self):
+        for target in (self.config, self.config.parent):
+            with self.subTest(target=target), patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == target else []):
+                with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                    V.Controller(self.config)
+
+    def test_allow_acl_on_source_image_and_lock_is_refused(self):
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.source else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                self.controller.validate_source()
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.image else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                V.Controller.validate_image(self.controller)
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.controller.lock_path else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                with self.controller.locked():
+                    self.fail("ACL-granted lock was trusted")
+
+    def test_allow_acl_cannot_bypass_guarded_zero_mode_mountpoint(self):
+        state = self.controller.prepare_mountpoint()
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0)
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.mountpoint else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                self.controller.empty_guarded(state)
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0)
+
+    def test_deny_only_acl_is_allowed_and_unknown_tags_are_refused(self):
+        with patch.object(P, "read_acl_tags", return_value=[2]):
+            P.trusted_path(self.config)
+        with patch.object(P, "read_acl_tags", return_value=[999]):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                P.trusted_path(self.config)
+
+    def test_writable_ancestor_is_refused_but_trusted_sticky_ancestor_is_allowed(self):
+        shared = self.root / "shared"
+        shared.mkdir()
+        child = shared / "private"
+        child.mkdir(mode=0o700)
+        shared.chmod(0o777)
+        with self.assertRaisesRegex(PermissionError, "ancestor"):
+            P.trusted_path(child)
+        shared.chmod(0o1777)
+        P.trusted_path(child)
+        with self.assertRaisesRegex(PermissionError, "Writable trusted"):
+            P.trusted_path(shared)
+
+    def test_allow_acl_on_ancestor_rejected_even_if_leaf_is_private(self):
+        child = self.source / "private"
+        child.mkdir(mode=0o700)
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.source else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                P.trusted_path(child)
+
+    def test_acl_read_error_and_permission_change_fail_closed(self):
+        with patch.object(P, "read_acl_tags", side_effect=PermissionError("ACL unreadable")):
+            with self.assertRaisesRegex(PermissionError, "ACL unreadable"):
+                P.trusted_path(self.config)
+        def changed(path):
+            if path == self.config:
+                path.chmod(0o640)
+            return []
+        with patch.object(P, "read_acl_tags", side_effect=changed):
+            with self.assertRaisesRegex(PermissionError, "changed during"):
+                P.trusted_path(self.config)
+
+    def test_sparsebundle_root_must_be_private(self):
+        bundle = self.root / "runtime.sparsebundle"
+        bundle.mkdir(mode=0o755)
+        self.settings.update(image=str(bundle), imageFileId=bundle.stat().st_ino)
+        self.write_config()
+        controller = V.Controller(self.config)
+        controller.disk = self.disk
+        with self.assertRaisesRegex(V.Refused, "Sparsebundle root must be private"):
+            controller.validate_image()
+
+    def test_backing_volume_ownership_must_be_honored(self):
+        self.controller.disk = lambda target: {"Internal": True, "GlobalPermissionsEnabled": True} if Path(target) == self.source else {
+            "VolumeUUID": EXTERNAL_UUID, "Writable": True, "Internal": False,
+            "GlobalPermissionsEnabled": False}
+        with self.assertRaisesRegex(V.Refused, "Backing volume must honor"):
+            V.Controller.validate_image(self.controller)
+
+    def test_source_and_control_ownership_rejected_before_any_mutation(self):
+        self.controller.disk = lambda target: {"Internal": True, "GlobalPermissionsEnabled": False}
+        with self.assertRaisesRegex(V.Refused, "control filesystem must honor"):
+            self.controller.mount()
+        self.assertFalse(self.mountpoint.exists())
+        self.assertFalse(self.controller.lock_path.exists())
+
+    def test_nested_or_unknown_backing_protocol_refused(self):
+        for protocol in ("Disk Image", None):
+            with self.subTest(protocol=protocol):
+                self.controller.disk = lambda target: {"Internal": True, "GlobalPermissionsEnabled": True} if Path(target) == self.source else {
+                    "VolumeUUID": EXTERNAL_UUID, "Writable": True, "Internal": False,
+                    "GlobalPermissionsEnabled": True, "BusProtocol": protocol}
+                with self.assertRaisesRegex(V.Refused, "physical external disk"):
+                    V.Controller.validate_image(self.controller)
+
+    def test_silently_dropped_setgid_bit_reguards_and_retains_state(self):
+        self.mountpoint.mkdir(mode=0o700)
+        self.mountpoint.chmod(0o2700)
+        self.controller.prepare_mountpoint()
+        original = os.chmod
+        def drop_special_bits(path, mode, **kwargs):
+            return original(path, mode & 0o777, **kwargs)
+        with patch.object(V.os, "chmod", side_effect=drop_special_bits):
+            with self.assertRaisesRegex(V.Refused, "not restored"):
+                self.controller.restore_empty()
+        self.assertTrue(self.controller.state_path.exists())
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0)
+
+
 
 
 if __name__ == "__main__":

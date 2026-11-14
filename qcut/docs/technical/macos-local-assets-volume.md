@@ -19,12 +19,23 @@ must have a unique UUID; cloning a sparse image also clones its volume UUID.
 Only a plain `.sparseimage` file or `.sparsebundle` directory containing one
 filesystem volume is supported. The backing disk must be an attached writable
 external disk, and the runtime volume must be writable APFS.
+The backing filesystem must also honor stored ownership. Shared external-volume
+roots writable by other users, or ownership-ignored backing disks, are refused;
+placing an image inside a private subdirectory alone does not fix an ancestor
+that lets other users replace that subdirectory. Plan permissions separately;
+the controller never changes an existing disk's settings or ACLs. A sparsebundle
+root must be private (`0700`) so its internal bands cannot be reached by others.
+Nested disk-image backing and an unknown backing bus protocol are refused.
+Do not wrap an image on an untrusted shared disk in another image to bypass these
+requirements; the outer image would still be replaceable. This controller targets
+a trusted physical external disk and does not audit chains of backing images.
 Mounting explicitly honors stored ownership; `check` rejects an ownership-ignored
 mount so the existing user/permission guards retain their meaning. This sets the
 runtime mount options, not ownership preferences on the backing external disk.
 
 Keep the JSON outside the image and `.local`, in a directory owned by the current
-user and not writable by other users. Give the file mode `0600`. All paths must
+user and not writable by other users, on the same internal, ownership-enabled
+filesystem as the source checkout. Give the file mode `0600`. All paths must
 be absolute, canonical and free of symlinks or `.` / `..` components. Example
 values below are placeholders, not a runnable migration plan:
 
@@ -48,6 +59,15 @@ requires a separately verified new configuration, not just ignoring a mismatch.
 Run as the ordinary asset owner. Root/sudo is refused because root bypasses the
 offline directory permissions.
 
+Trusted files, directories and their ancestors are inspected using native macOS
+ACL APIs. The conservative policy accepts no ACL or deny-only entries (including
+the common `everyone deny delete` entry) and rejects **all allow entries**, even
+read-only or owner-specific grants. An owner allow grant can bypass mode `000`.
+Ancestors must belong to root or the current user and not permit other users to
+write, except a trusted sticky ancestor protecting an already existing trusted
+child. Shared leaf directories are still refused. ACLs are never removed or
+rewritten to make a check pass.
+
 ```sh
 python3 -B scripts/macos-local-assets-volume.py check --config /absolute/private/volume.json
 python3 -B scripts/macos-local-assets-volume.py mount --config /absolute/private/volume.json
@@ -69,6 +89,8 @@ empty directory is guarded with mode `000` before mounting and after unmounting.
 Ordinary consumers therefore fail rather than silently write fresh data onto the
 internal disk while the image is unavailable. Do not remove this guard or edit
 the state file to bypass an error.
+The original complete permission mode, including special bits such as directory
+setgid (`2700`), is retained for empty-directory restoration.
 
 Controllers serialize on the source directory and an image-specific private
 `.qcut-mount.lock` file beside the image, including when different configuration
@@ -118,14 +140,15 @@ their own verified restoration procedure.
 
 ## Tests
 
-The unit suite mocks native disk commands and covers path/identity/UUID failures,
+The test suites require macOS. Disk commands are mocked; additional native ACL
+tests use fresh temporary fixtures and modify only those fixtures' ACLs. Coverage includes path/identity/UUID failures,
 nonempty and replaced roots, wrong mounts, duplicate attachments, offline
 permissions, shared locks, busy unmounts, partial detach failures and narrow
 empty-directory restoration:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover \
-  -s scripts/__tests__ -p macos_local_assets_volume_test.py -v
+  -s scripts/__tests__ -p 'macos_local_assets_*_test.py' -v
 ```
 
 Real disk tests must use a new small image and an isolated synthetic source root.

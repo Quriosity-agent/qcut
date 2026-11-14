@@ -20,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 
+from macos_local_assets_permissions import trusted_path
+
 
 class Refused(RuntimeError):
     pass
@@ -49,6 +51,7 @@ def identity(path):
 
 
 def private_json(path):
+    trusted_path(path)
     require(path.resolve() == path, "Symlinked control file rejected")
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
@@ -69,6 +72,7 @@ def private_json(path):
 
 
 def write_private(path, value):
+    trusted_path(path.parent)
     fd, name = tempfile.mkstemp(prefix=".local-volume-", dir=path.parent)
     try:
         with os.fdopen(fd, "w") as stream:
@@ -76,6 +80,7 @@ def write_private(path, value):
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
+        trusted_path(Path(name))
         os.replace(name, path)
     finally:
         if os.path.exists(name):
@@ -85,6 +90,7 @@ def write_private(path, value):
 class Controller:
     def __init__(self, config):
         self.config = canonical(str(config))
+        trusted_path(self.config.parent)
         owned(self.config.parent.stat())
         self.settings = private_json(self.config)
         require(set(self.settings) == {"sourceRoot", "image", "externalVolumeUUID",
@@ -98,6 +104,7 @@ class Controller:
                 "Positive image inode required")
         self.source = canonical(self.settings["sourceRoot"])
         require(self.source.is_dir(), "Source root must exist")
+        trusted_path(self.source)
         owned(self.source.stat())
         self.source_identity = identity(self.source)
         self.mountpoint = self.source / ".local"
@@ -131,24 +138,38 @@ class Controller:
         return plistlib.loads(self.command(["/usr/bin/hdiutil", "info", "-plist"])).get("images", [])
 
     def validate_source(self):
+        trusted_path(self.source)
         require(self.source.resolve() == self.source and identity(self.source) == self.source_identity,
                 "Source root changed")
         require(not self.mountpoint.is_symlink(), "Mountpoint symlink rejected")
-        require(self.disk(self.source).get("Internal") is True, "Source checkout must remain on an internal volume")
+        if os.path.lexists(self.mountpoint):
+            trusted_path(self.mountpoint)
+        source_disk = self.disk(self.source)
+        require(source_disk.get("Internal") is True, "Source checkout must remain on an internal volume")
+        require(source_disk.get("GlobalPermissionsEnabled") is True,
+                "Source and control filesystem must honor stored file ownership")
+        require(self.config.stat().st_dev == self.source.stat().st_dev,
+                "Configuration and state must share the source's internal filesystem")
 
     def validate_image(self):
         self.validate_source()
         require(self.image.resolve() == self.image, "Image path changed")
         info = self.image.lstat()
         owned(info)
+        trusted_path(self.image)
         require((self.image.suffix == ".sparseimage" and stat.S_ISREG(info.st_mode) and info.st_nlink == 1) or
                 (self.image.suffix == ".sparsebundle" and stat.S_ISDIR(info.st_mode)),
                 "Only plain sparseimage files or sparsebundle directories are supported")
+        require(not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) == 0o700,
+                "Sparsebundle root must be private (0700)")
         require(info.st_ino == self.settings["imageFileId"], "Image inode changed")
         disk = self.disk(self.image)
         require(disk.get("VolumeUUID", "").upper() == self.settings["externalVolumeUUID"] and
                 disk.get("Writable") is True and disk.get("Internal") is False,
                 "Expected writable external volume is unavailable")
+        require(disk.get("GlobalPermissionsEnabled") is True, "Backing volume must honor stored file ownership")
+        require(disk.get("BusProtocol") and disk["BusProtocol"] != "Disk Image",
+                "Backing must be a physical external disk, not a nested disk image")
         require(self.source.stat().st_dev != info.st_dev, "Source root must remain on a different volume")
         return identity(self.image)
 
@@ -192,7 +213,7 @@ class Controller:
                 "State belongs to a different configuration")
         require(type(state.get("created")) is bool and type(state.get("originalMode")) is int,
                 "Invalid mountpoint state")
-        require(0 <= state["originalMode"] <= 0o777 and not state["originalMode"] & 0o022,
+        require(0 <= state["originalMode"] <= 0o7777 and not state["originalMode"] & 0o022,
                 "Unsafe original mountpoint mode")
         return state
 
@@ -322,6 +343,9 @@ class Controller:
             os.rmdir(self.mountpoint)
         else:
             os.chmod(self.mountpoint, state["originalMode"], follow_symlinks=False)
+            if stat.S_IMODE(self.mountpoint.stat().st_mode) != state["originalMode"]:
+                os.chmod(self.mountpoint, 0, follow_symlinks=False)
+                raise Refused("Original directory mode was not restored; mountpoint re-guarded and state retained")
         self.state_path.unlink()
         return {"restoredEmptyMountpoint": True, "removedNewEmptyDirectory": state["created"]}
 
@@ -335,6 +359,7 @@ class Controller:
             if image_required:
                 self.validate_image()
                 fd = os.open(self.lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+                trusted_path(self.lock_path)
                 info = os.fstat(fd)
                 owned(info)
                 require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and
