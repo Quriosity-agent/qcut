@@ -377,6 +377,14 @@ class ControllerTests(unittest.TestCase):
                 self.controller.empty_guarded(state)
         self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0)
 
+    def test_new_mountpoint_acl_is_checked_before_state_or_mode_changes(self):
+        with patch.object(P, "read_acl_tags", side_effect=lambda p: [1] if p == self.mountpoint else []):
+            with self.assertRaisesRegex(PermissionError, "ACL entry"):
+                self.controller.prepare_mountpoint()
+        self.assertFalse(self.controller.state_path.exists())
+        self.assertEqual(stat.S_IMODE(self.mountpoint.stat().st_mode), 0o500)
+        self.assertEqual(self.commands, [])
+
     def test_deny_only_acl_is_allowed_and_unknown_tags_are_refused(self):
         with patch.object(P, "read_acl_tags", return_value=[2]):
             P.trusted_path(self.config)

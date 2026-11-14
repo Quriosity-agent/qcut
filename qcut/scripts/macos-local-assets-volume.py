@@ -243,6 +243,7 @@ class Controller:
             self.mountpoint.mkdir(mode=0o500)
         info = self.mountpoint.lstat()
         owned(info)
+        trusted_path(self.mountpoint)
         require(stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) & 0o500 == 0o500,
                 "An existing empty mountpoint must be readable; refusing unknown guarded directory")
         require(not list(self.mountpoint.iterdir()), "Nonempty .local is never moved or covered")
