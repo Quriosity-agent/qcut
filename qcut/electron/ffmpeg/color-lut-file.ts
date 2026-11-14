@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withCubeLutDomain } from "../types/color-cube-lut";
+import { withCubeLutDomain } from "../types/color-cube-lut.js";
 import type { VideoColorSettings } from "./color-settings";
 
 export type VideoCubeLut = NonNullable<VideoColorSettings["lut"]["cube"]>;
