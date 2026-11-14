@@ -98,6 +98,7 @@ import {
 } from "../claude/handlers/agent-pointer-hit-test.js";
 import {
 	describeEditorWindows,
+	focusEditorWindow,
 	resolveEditorWindow,
 } from "../claude/handlers/editor-windows.js";
 import type {
@@ -661,6 +662,12 @@ async function handleMainRequest(
 
 		case "playback-diagnostics:reset": {
 			return resetPlaybackDiagnosticsInRenderer(win);
+		}
+
+		case "windows:focus": {
+			return focusEditorWindow({
+				win: windowFor((data as { request?: { windowId?: number } }).request),
+			});
 		}
 
 		case "pointer:state": {
