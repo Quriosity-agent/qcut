@@ -273,6 +273,40 @@ describe("the transaction around timeline apply", () => {
 		);
 	});
 
+	/** An orphaned transaction is dropped where it stands: nothing is restored. */
+	it("does not take an orphaned rollback for a restored timeline", async () => {
+		const changed = structuredClone(BEFORE);
+		changed.tracks[0].elements[0].duration = 2;
+		const orphanedRollback = async (timelineAfter: unknown) => {
+			const { client, post } = editorWhoseTransactionExpired({
+				timelineAfter,
+				transaction: new Error("Transaction not found: transaction-1"),
+			});
+			const refuse = post.getMockImplementation();
+			post.mockImplementation(async (url: string, body?: unknown) =>
+				url.endsWith("/rollback")
+					? { transaction: { state: "rolledBack" }, orphaned: true }
+					: refuse?.(url, body)
+			);
+			return timelineApplyManifest(client, options());
+		};
+
+		expect((await orphanedRollback(changed)).data).toMatchObject({
+			rolledBack: false,
+			rollback: {
+				by: "none",
+				timelineMatchesBefore: false,
+				detail:
+					"QCut no longer tracked the transaction and ended it without restoring the timeline",
+			},
+		});
+		// Nothing had changed yet: the timeline is what it was, and says so.
+		expect((await orphanedRollback(BEFORE)).data).toMatchObject({
+			rolledBack: true,
+			rollback: { by: "none", timelineMatchesBefore: true },
+		});
+	});
+
 	it("keeps the plain outcome when its own rollback is accepted", async () => {
 		const { client, post } = editorWhoseTransactionExpired({
 			timelineAfter: BEFORE,
