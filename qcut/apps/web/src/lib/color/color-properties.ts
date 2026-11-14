@@ -336,16 +336,21 @@ export function normalizeMediaColorSettings({
 			},
 		])
 	) as Record<ColorHslRangeName, ColorHslRangeSettings>;
-	const { dual: storedDual, ...lutRest } = {
+	const {
+		dual: storedDual,
+		cube: storedCube,
+		...lutRest
+	} = {
 		...DEFAULT_MEDIA_COLOR_SETTINGS.lut,
 		...stored?.lut,
 	};
 	const dual = normalizeDualLutSettings({ dual: storedDual });
 	// A cube written without a domain (the .cube default, 0..1) is stored
 	// with one, so the preview and every export read the same cube.
+	// A patch clears the LUT with `cube: null`; the key then goes too.
 	const lut = {
 		...lutRest,
-		...(lutRest.cube ? { cube: withCubeLutDomain(lutRest.cube) } : {}),
+		...(storedCube ? { cube: withCubeLutDomain(storedCube) } : {}),
 		...(dual ? { dual } : {}),
 	};
 	return {
