@@ -414,6 +414,37 @@ describe("Claude HTTP Server", () => {
 		expect(transactionHandler.beginTransaction).toHaveBeenCalled();
 	});
 
+	it("POST /api/claude/transaction/begin passes the caller's time limit on", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(transactionHandler.beginTransaction).mockClear();
+
+		const res = await fetch("/api/claude/transaction/begin", {
+			method: "POST",
+			body: JSON.stringify({ label: "Apply", timeoutMs: 240_000 }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(transactionHandler.beginTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				request: { label: "Apply", timeoutMs: 240_000 },
+			})
+		);
+	});
+
+	it("POST /api/claude/transaction/begin refuses a time limit that is not a duration", async () => {
+		vi.mocked(transactionHandler.beginTransaction).mockClear();
+		for (const timeoutMs of ["60000", 0, -5]) {
+			const res = await fetch("/api/claude/transaction/begin", {
+				method: "POST",
+				body: JSON.stringify({ timeoutMs }),
+			});
+			expect(res.status).toBe(400);
+			expect(res.body.error).toContain("timeoutMs");
+		}
+		expect(transactionHandler.beginTransaction).not.toHaveBeenCalled();
+	});
+
 	it("POST /api/claude/transaction/:id/commit proxies to handler", async () => {
 		const res = await fetch("/api/claude/transaction/txn_test_1/commit", {
 			method: "POST",
