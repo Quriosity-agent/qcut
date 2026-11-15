@@ -20,6 +20,7 @@ import {
 	createDefaultSecondaryCurve,
 	normalizeSecondaryCurve,
 } from "./color-secondary-curves";
+import { withCubeLutDomain } from "../../../../../electron/types/color-cube-lut";
 import { resolveColorCurveShapes } from "./color-curve-keyframes";
 import {
 	DEFAULT_COLOR_FILTER_APPLICATION,
@@ -303,13 +304,14 @@ function normalizeDualLutSettings({
 	dual: ColorDualLutSettings | undefined;
 }): ColorDualLutSettings | undefined {
 	if (!dual || typeof dual !== "object" || !dual.skinCube) return undefined;
-	if (dual.maskKind === "skin-tone-v1") return dual;
+	const skinCube = withCubeLutDomain(dual.skinCube);
+	if (dual.maskKind === "skin-tone-v1") return { ...dual, skinCube };
 	if (
 		dual.maskKind === "skin-segmentation-v1" &&
 		typeof dual.resourceId === "string" &&
 		dual.resourceId.length > 0
 	) {
-		return dual;
+		return { ...dual, skinCube };
 	}
 	return undefined;
 }
@@ -334,17 +336,29 @@ export function normalizeMediaColorSettings({
 			},
 		])
 	) as Record<ColorHslRangeName, ColorHslRangeSettings>;
-	const { dual: storedDual, ...lutRest } = {
+	const {
+		dual: storedDual,
+		cube: storedCube,
+		...lutRest
+	} = {
 		...DEFAULT_MEDIA_COLOR_SETTINGS.lut,
 		...stored?.lut,
 	};
 	const dual = normalizeDualLutSettings({ dual: storedDual });
+	// A cube written without a domain (the .cube default, 0..1) is stored
+	// with one, so the preview and every export read the same cube.
+	// A patch clears the LUT with `cube: null`; the key then goes too.
+	const lut = {
+		...lutRest,
+		...(storedCube ? { cube: withCubeLutDomain(storedCube) } : {}),
+		...(dual ? { dual } : {}),
+	};
 	return {
 		...DEFAULT_MEDIA_COLOR_SETTINGS,
 		...stored,
 		filter: normalizeColorFilterApplication({ filter: stored?.filter }),
 		basic,
-		lut: { ...lutRest, ...(dual ? { dual } : {}) },
+		lut,
 		multiPass: stored?.multiPass
 			? {
 					...stored.multiPass,
@@ -355,7 +369,7 @@ export function normalizeMediaColorSettings({
 						pass.kind === "lut"
 							? {
 									...pass,
-									cube: pass.cube,
+									cube: pass.cube ? withCubeLutDomain(pass.cube) : pass.cube,
 								}
 							: { ...pass }
 					),

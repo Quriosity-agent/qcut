@@ -98,6 +98,15 @@ export function createAutoSaveHelpers(get: StoreGet, set: StoreSet) {
 					autoSaveStatus: "Auto-saved",
 					lastAutoSaveAt: Date.now(),
 				});
+				// Only edits schedule this save, so the project changed now.
+				try {
+					await useProjectStore
+						.getState()
+						.markProjectContentChanged(activeProject.id);
+				} catch (error) {
+					// The timeline is saved; its time stamp is not worth failing for.
+					debugLog("[TimelineStore] Project change time not recorded", error);
+				}
 			} catch (error) {
 				set({
 					isAutoSaving: false,

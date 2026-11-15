@@ -24,7 +24,10 @@ import {
 	buildProjectJSON,
 	buildProjectJSONMinimal,
 } from "../cli/project-json-builder.js";
-import { ensureEditorProjectReady } from "./editor-project-readiness.js";
+import {
+	ensureEditorProjectReady,
+	resolveActiveProjectId,
+} from "./editor-project-readiness.js";
 import { mediaReplace } from "./editor-handlers-media-replace.js";
 import { appendImportedMedia } from "./editor-media-append.js";
 import {
@@ -674,17 +677,28 @@ async function projectInfo(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
-
-	const isFull = opts.full === true;
-
-	if (isFull) {
-		const data = await buildProjectJSON(client, opts.projectId);
-		return { success: true, data };
+	// Without --project-id it is the project the editor has open, as for the
+	// timeline and element commands; `isActive` says whether the one asked
+	// for is that project.
+	const activeProjectId = await resolveActiveProjectId({ client }).catch(
+		() => undefined
+	);
+	const projectId = opts.projectId ?? activeProjectId;
+	if (!projectId) {
+		return {
+			success: false,
+			error:
+				"No project is open in the editor; pass --project-id (see `qcut editor project list`)",
+		};
 	}
-
-	const data = await buildProjectJSONMinimal(client, opts.projectId);
-	return { success: true, data };
+	const data =
+		opts.full === true
+			? await buildProjectJSON(client, projectId)
+			: await buildProjectJSONMinimal(client, projectId);
+	return {
+		success: true,
+		data: { ...data, isActive: projectId === activeProjectId },
+	};
 }
 
 /** Handle project export state. */

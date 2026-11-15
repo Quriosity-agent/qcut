@@ -179,7 +179,55 @@ describe("unsupported patch fields", () => {
 			})
 		).toMatchObject({
 			applied: false,
-			error: "No supported field for a media element in: wobble, glow",
+			error: expect.stringMatching(
+				/^No supported field for a media element in: wobble, glow\. It takes: .*\bblendMode\b.*\bcolor\b/
+			),
+		});
+		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
+	});
+
+	/** 问题 7 (2026-11-14): blendMode / blendEnabled were "No supported field". */
+	it("changes how a clip blends with what is under it", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: {
+					blendMode: "overlay",
+					blendEnabled: true,
+					opacity: 0.6,
+				} as never,
+				pushHistory: false,
+			})
+		).toEqual({ applied: true });
+		expect(lastMediaUpdate()).toMatchObject({
+			blendMode: "overlay",
+			blendEnabled: true,
+			opacity: 0.6,
+		});
+	});
+
+	it("switches blending off with blendEnabled alone", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { blendEnabled: false } as never,
+				pushHistory: false,
+			})
+		).toEqual({ applied: true });
+		expect(lastMediaUpdate()).toEqual({ blendEnabled: false });
+	});
+
+	it("refuses a blend mode QCut does not have, listing the ones it has", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { blendMode: "soft-light" } as never,
+				pushHistory: false,
+			})
+		).toEqual({
+			applied: false,
+			error:
+				"blendMode must be one of normal, multiply, screen, overlay, darken, lighten",
 		});
 		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
 	});
@@ -422,5 +470,164 @@ describe("grade precedence and ranges through element patch", () => {
 		expect(result).toEqual({ applied: true });
 		const update = lastMediaUpdate();
 		expect(update.color.basic).toMatchObject({ exposure: -5 });
+	});
+});
+
+/** 问题 2 (2026-11-14): a custom LUT written without its domain broke the export. */
+describe("a custom 3D LUT through element patch", () => {
+	const cubeValues = ({ size }: { size: number }) =>
+		Array.from({ length: size ** 3 * 3 }, (_, index) => (index % 7) / 7);
+	const lut = (cube: Record<string, unknown>) => ({
+		enabled: true,
+		presetId: "custom",
+		name: "show grade",
+		intensity: 100,
+		skinProtection: 0,
+		cube,
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storeMocks.state.tracks[0].elements[0] = {
+			id: "clip",
+			type: "media",
+			mediaId: "media",
+			name: "Clip",
+			startTime: 0,
+			duration: 8,
+			trimStart: 0,
+			trimEnd: 0,
+		};
+	});
+
+	it("stores a cube given without a domain with the default one", () => {
+		const values = cubeValues({ size: 2 });
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: { color: { lut: lut({ size: 2, values }) } } as never,
+				pushHistory: false,
+			})
+		).toEqual({ applied: true });
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: { cube: Record<string, unknown> };
+		};
+		expect(stored.lut.cube).toEqual({
+			size: 2,
+			values,
+			domainMin: [0, 0, 0],
+			domainMax: [1, 1, 1],
+		});
+	});
+
+	it("refuses a cube whose values do not fill its size, before touching the clip", () => {
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: {
+					color: { lut: lut({ size: 3, values: cubeValues({ size: 2 }) }) },
+				} as never,
+				pushHistory: false,
+			})
+		).toEqual({
+			applied: false,
+			error:
+				"color.lut.cube.values must hold 81 numbers (size³ × 3 for size 3); it holds 24",
+		});
+		expect(storeMocks.state.updateMediaElement).not.toHaveBeenCalled();
+	});
+
+	it("replaces the clip's cube instead of merging the new one into it", () => {
+		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
+		storeMocks.state.tracks[0].elements[0] = {
+			...element,
+			color: {
+				enabled: true,
+				lut: lut({
+					size: 3,
+					values: cubeValues({ size: 3 }),
+					domainMin: [0, 0, 0],
+					domainMax: [2, 2, 2],
+				}),
+			},
+		} as unknown as MediaElement;
+		const values = cubeValues({ size: 2 });
+		applyElementChanges({
+			elementId: "clip",
+			changes: { color: { lut: { cube: { size: 2, values } } } } as never,
+			pushHistory: false,
+		});
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: { name: string; cube: Record<string, unknown> };
+		};
+		expect(stored.lut.name).toBe("show grade");
+		expect(stored.lut.cube).toEqual({
+			size: 2,
+			values,
+			domainMin: [0, 0, 0],
+			domainMax: [1, 1, 1],
+		});
+	});
+
+	it("replaces the skin cube whole too", () => {
+		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
+		const values = cubeValues({ size: 2 });
+		storeMocks.state.tracks[0].elements[0] = {
+			...element,
+			color: {
+				enabled: true,
+				lut: {
+					...lut({ size: 2, values }),
+					dual: {
+						maskKind: "skin-tone-v1",
+						skinCube: {
+							size: 2,
+							values,
+							domainMin: [0, 0, 0],
+							domainMax: [2, 2, 2],
+						},
+					},
+				},
+			},
+		} as unknown as MediaElement;
+		applyElementChanges({
+			elementId: "clip",
+			changes: {
+				color: { lut: { dual: { skinCube: { size: 2, values } } } },
+			} as never,
+			pushHistory: false,
+		});
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: { dual: { maskKind: string; skinCube: Record<string, unknown> } };
+		};
+		expect(stored.lut.dual.maskKind).toBe("skin-tone-v1");
+		expect(stored.lut.dual.skinCube.domainMax).toEqual([1, 1, 1]);
+	});
+
+	it("drops the cube when a patch clears the LUT with cube: null", () => {
+		const element = storeMocks.state.tracks[0].elements[0] as MediaElement;
+		storeMocks.state.tracks[0].elements[0] = {
+			...element,
+			color: {
+				enabled: true,
+				lut: lut({ size: 2, values: cubeValues({ size: 2 }) }),
+			},
+		} as unknown as MediaElement;
+		expect(
+			applyElementChanges({
+				elementId: "clip",
+				changes: {
+					color: {
+						lut: { enabled: false, presetId: "none", name: "无", cube: null },
+					},
+				} as never,
+				pushHistory: false,
+			})
+		).toEqual({ applied: true });
+		const stored = lastMediaUpdate().color as unknown as {
+			lut: Record<string, unknown>;
+		};
+		expect(stored.lut).toMatchObject({ enabled: false, presetId: "none" });
+		expect(stored.lut).not.toHaveProperty("cube");
 	});
 });

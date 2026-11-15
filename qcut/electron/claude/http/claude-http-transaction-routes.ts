@@ -96,11 +96,27 @@ export function registerTransactionRoutes({
 				) {
 					throw new HttpError(400, "Optional 'label' must be a string");
 				}
+				const timeoutMs = req.body?.timeoutMs;
+				if (
+					timeoutMs !== undefined &&
+					(typeof timeoutMs !== "number" ||
+						!Number.isFinite(timeoutMs) ||
+						timeoutMs <= 0)
+				) {
+					throw new HttpError(
+						400,
+						"Optional 'timeoutMs' must be a number of milliseconds above 0"
+					);
+				}
 				const transaction = await accessor.beginTransaction({
 					label:
 						typeof req.body?.label === "string" ? req.body.label : undefined,
+					...(timeoutMs !== undefined ? { timeoutMs } : {}),
 				});
-				return { transactionId: transaction.id };
+				return {
+					transactionId: transaction.id,
+					expiresAt: transaction.expiresAt,
+				};
 			} catch (error) {
 				throw toHttpError({
 					error,

@@ -451,6 +451,14 @@ export interface CLIRunOptions {
 	intensity?: number;
 	/** editor element color: return every control to its default. */
 	reset?: boolean;
+	/** editor element color: a .cube (or cube .json) file as the clips' 3D LUT. */
+	lutFile?: string;
+	/** editor element color: the LUT's name in the colour panel. */
+	lutName?: string;
+	/** editor element color: LUT strength, 0–100. */
+	lutIntensity?: number;
+	/** editor element color: remove the clips' 3D LUT. */
+	lutClear?: boolean;
 	/** editor element filter: keep the clip's current effects and add after them. */
 	append?: boolean;
 	/** editor captions import: the subtitle file to read. */
