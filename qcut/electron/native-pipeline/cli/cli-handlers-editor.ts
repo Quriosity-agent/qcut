@@ -376,7 +376,7 @@ export async function handleEditorCommand(
 					return await handlePointerCommand({ client, options });
 
 				case "windows":
-					return await handleWindowsCommand({ client });
+					return await handleWindowsCommand({ client, options });
 
 				case "demo":
 					if (parts[2] !== "run") {
@@ -513,6 +513,7 @@ async function handleNavigatorCommand(
 					error: "Missing --project-id",
 				};
 			}
+			const startedAt = Date.now();
 			const data = await client.post<{
 				navigated?: boolean;
 				error?: string;
@@ -536,7 +537,19 @@ async function handleNavigatorCommand(
 				open: false,
 				timeoutMs: options.timeoutMs,
 			});
-			return { success: true, data: { navigation: data, readiness } };
+			// The readiness check ran after this command's own navigation, so
+			// the project was opened here and the time covers both steps.
+			return {
+				success: true,
+				data: {
+					navigation: data,
+					readiness: {
+						...readiness,
+						opened: true,
+						elapsedMs: Date.now() - startedAt,
+					},
+				},
+			};
 		}
 		default:
 			return {

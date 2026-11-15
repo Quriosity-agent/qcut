@@ -534,6 +534,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			grain: { type: "string" },
 			intensity: { type: "string" },
 			reset: { type: "boolean", default: false },
+			"lut-file": { type: "string" },
+			"lut-name": { type: "string" },
+			"lut-intensity": { type: "string" },
+			"lut-clear": { type: "boolean", default: false },
 			append: { type: "boolean", default: false },
 			"cross-track-ripple": { type: "boolean", default: false },
 			"keep-automation": { type: "boolean", default: false },
@@ -1207,7 +1211,10 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		keyEvents: (values["key-events"] as boolean) ?? false,
 		files: values.files as string | undefined,
 		seekMode: values["seek-mode"] as string | undefined,
-		windowId: parseFiniteCliNumber({ value: values["window-id"] }),
+		// Strict: text that is not a number stays visible as NaN, so
+		// `windows focus --window-id nope` is refused instead of raising
+		// the first window.
+		windowId: parseStrictCliNumber({ value: values["window-id"] }),
 		holdMs: parseFiniteCliNumber({ value: values["hold-ms"] }),
 		durationMs: parseFiniteCliNumber({ value: values["duration-ms"] }),
 		steps: values.steps
@@ -1266,6 +1273,16 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				.map((name) => [name, Number.parseFloat(values[name] as string)])
 		),
 		reset: (values.reset as boolean) ?? false,
+		lutFile: values["lut-file"] as string | undefined,
+		lutName: values["lut-name"] as string | undefined,
+		...(typeof values["lut-intensity"] === "string"
+			? {
+					lutIntensity: parseStrictCliNumber({
+						value: values["lut-intensity"],
+					}),
+				}
+			: {}),
+		lutClear: (values["lut-clear"] as boolean) ?? false,
 		append: (values.append as boolean) ?? false,
 		file: values.file as string | undefined,
 		secondaryFile: values["secondary-file"] as string | undefined,

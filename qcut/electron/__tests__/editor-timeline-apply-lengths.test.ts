@@ -256,10 +256,9 @@ describe("timeline apply: lengths of trimmed clips", () => {
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toBe(
-			"Element '空' needs a length above 0: duration, timelineDuration (a clip) or endTime"
+			"The manifest has 1 problem; nothing was changed. Element '空' needs a length above 0: duration, timelineDuration (a clip) or endTime"
 		);
-		expect(
-			editor.post.mock.calls.some(([url]) => url.endsWith("/elements/batch"))
-		).toBe(false);
+		// Found in the manifest itself: the editor is not asked for anything.
+		expect(editor.post).not.toHaveBeenCalled();
 	});
 });

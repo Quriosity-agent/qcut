@@ -5,12 +5,15 @@
  *
  * @module electron/native-pipeline/editor/editor-timeline-apply
  */
-import { promises as fs } from "node:fs";
-import { basename } from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 import { ensureEditorProjectReady } from "./editor-project-readiness.js";
+import { importManifestMedia } from "./editor-timeline-apply-media.js";
+import {
+	describeManifestProblems,
+	manifestProblems,
+} from "./editor-timeline-apply-preflight.js";
 import {
 	applyManifestMix,
 	applyManifestTrackAudio,
@@ -21,6 +24,13 @@ import {
 	verifyManifestMix,
 	type MixSnapshot,
 } from "./editor-timeline-apply-mix.js";
+import {
+	applyTransactionTimeoutMs,
+	describeApplyFailure,
+	rollbackFailedApply,
+	timelineFingerprint,
+	type ApplyRollbackOutcome,
+} from "./editor-timeline-apply-transaction.js";
 import { verifyManifest } from "./editor-timeline-apply-verify.js";
 import {
 	aliasFor,
@@ -32,7 +42,6 @@ import {
 	withManifestAlias,
 	type JsonRecord,
 	type ManifestElement,
-	type ManifestMedia,
 	type ManifestTrack,
 	type TimelineManifest,
 	type TimelineSnapshot,
@@ -50,19 +59,6 @@ function batchRequestTimeoutMs({ count }: { count: number }): number {
 	return 60_000 + 1_000 * count;
 }
 
-interface MediaFileSummary {
-	id: string;
-	name?: string;
-	size?: number;
-}
-
-interface ImportResult {
-	index: number;
-	success: boolean;
-	mediaFile?: MediaFileSummary;
-	error?: string;
-}
-
 async function resolveActiveProjectId(
 	client: EditorApiClient
 ): Promise<string | undefined> {
@@ -70,94 +66,6 @@ async function resolveActiveProjectId(
 		"/api/claude/navigator/projects"
 	);
 	return navigator.activeProjectId ?? undefined;
-}
-
-async function importManifestMedia({
-	client,
-	projectId,
-	media,
-	mediaIds,
-	newMediaIds,
-}: {
-	client: EditorApiClient;
-	projectId: string;
-	media: ManifestMedia[];
-	mediaIds: Map<string, string>;
-	newMediaIds: Set<string>;
-}): Promise<void> {
-	const existing = await client.get<MediaFileSummary[]>(
-		`/api/claude/media/${encodeURIComponent(projectId)}`
-	);
-	const existingIds = new Set(existing.map((item) => item.id));
-	const sourceSizes = await Promise.all(
-		media.map(async (entry) => {
-			if (!entry.path) return undefined;
-			try {
-				return (await fs.stat(entry.path)).size;
-			} catch {
-				return undefined;
-			}
-		})
-	);
-	const imports: Array<{ path?: string; url?: string; filename?: string }> = [];
-	const importEntries: Array<{ entry: ManifestMedia; manifestIndex: number }> =
-		[];
-
-	for (const [index, entry] of media.entries()) {
-		const alias = aliasFor(entry, `media-${index}`);
-		const directId =
-			entry.mediaId ?? (!entry.path && !entry.url ? entry.id : undefined);
-		if (directId) {
-			mediaIds.set(alias, directId);
-			mediaIds.set(directId, directId);
-			continue;
-		}
-		const expectedName =
-			entry.filename ?? (entry.path ? basename(entry.path) : undefined);
-		const sourceSize = sourceSizes[index];
-		const reusable =
-			expectedName && sourceSize !== undefined
-				? existing.filter(
-						(item) => item.name === expectedName && item.size === sourceSize
-					)
-				: [];
-		if (reusable.length === 1) {
-			const mediaId = reusable[0].id;
-			mediaIds.set(alias, mediaId);
-			mediaIds.set(mediaId, mediaId);
-			if (entry.id) mediaIds.set(entry.id, mediaId);
-			continue;
-		}
-		if (!entry.path && !entry.url) {
-			throw new Error(`Media '${alias}' needs path, url, or mediaId`);
-		}
-		imports.push({
-			path: entry.path,
-			url: entry.url,
-			filename: entry.filename,
-		});
-		importEntries.push({ entry, manifestIndex: index });
-	}
-
-	if (imports.length === 0) return;
-	const results = await client.post<ImportResult[]>(
-		`/api/claude/media/${encodeURIComponent(projectId)}/batch-import`,
-		{ items: imports }
-	);
-	for (const [index, result] of results.entries()) {
-		const { entry, manifestIndex } = importEntries[index];
-		const alias = aliasFor(entry, `media-${manifestIndex}`);
-		if (!result.success || !result.mediaFile) {
-			throw new Error(
-				`Media '${alias}' failed: ${result.error || "unknown error"}`
-			);
-		}
-		const mediaId = result.mediaFile.id;
-		mediaIds.set(alias, mediaId);
-		mediaIds.set(mediaId, mediaId);
-		if (entry.id) mediaIds.set(entry.id, mediaId);
-		if (!existingIds.has(mediaId)) newMediaIds.add(mediaId);
-	}
 }
 
 /**
@@ -221,15 +129,17 @@ async function createManifestTracks({
 	manifest,
 	replace,
 	trackIds,
+	before,
 }: {
 	client: EditorApiClient;
 	projectId: string;
 	manifest: TimelineManifest;
 	replace: boolean;
 	trackIds: Map<string, string>;
+	/** The timeline as it was read before the apply changed anything. */
+	before: TimelineSnapshot;
 }): Promise<{ positional: boolean }> {
 	const basePath = `/api/claude/timeline/${encodeURIComponent(projectId)}`;
-	const before = await client.get<TimelineSnapshot>(basePath);
 	// Array order sets the track order when the manifest is the whole
 	// timeline: a replace, or a project that still has only its empty main
 	// track. Merging into a timeline that has tracks keeps their order, and a
@@ -622,6 +532,16 @@ export async function timelineApplyManifest(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+	// What the manifest alone shows to be wrong is reported in full before
+	// anything is imported or changed.
+	const problems = manifestProblems({ manifest });
+	if (problems.length > 0) {
+		return {
+			success: false,
+			error: describeManifestProblems({ problems }),
+			data: { projectId, changed: false, rolledBack: false, problems },
+		};
+	}
 	const mix = manifestMix(manifest);
 	const touchesMix = mix !== undefined || manifestHasTrackAudio(manifest);
 	let previousMix: MixSnapshot | undefined;
@@ -631,6 +551,8 @@ export async function timelineApplyManifest(
 	const expectedElements = new Map<string, ManifestElement>();
 	const newMediaIds = new Set<string>();
 	let transactionId: string | undefined;
+	const transactionTimeoutMs = applyTransactionTimeoutMs({ manifest });
+	let fingerprintBefore: string | undefined;
 	let previousSettings: JsonRecord | undefined;
 	let settingsChanged = false;
 	let timelineMutationStarted = false;
@@ -653,7 +575,7 @@ export async function timelineApplyManifest(
 		if (atomic) {
 			const started = await client.post<{ transactionId: string }>(
 				"/api/claude/transaction/begin",
-				{ label: "Apply timeline manifest" }
+				{ label: "Apply timeline manifest", timeoutMs: transactionTimeoutMs }
 			);
 			transactionId = started.transactionId;
 		}
@@ -672,12 +594,17 @@ export async function timelineApplyManifest(
 		}
 
 		timelineMutationStarted = true;
+		const before = await client.get<TimelineSnapshot>(
+			`/api/claude/timeline/${encodeURIComponent(projectId)}`
+		);
+		fingerprintBefore = timelineFingerprint({ timeline: before });
 		const { positional } = await createManifestTracks({
 			client,
 			projectId,
 			manifest,
 			replace,
 			trackIds,
+			before,
 		});
 		await addManifestElements({
 			client,
@@ -782,18 +709,16 @@ export async function timelineApplyManifest(
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		let rolledBack = false;
-		if (transactionId) {
-			try {
-				await client.post(
-					`/api/claude/transaction/${encodeURIComponent(transactionId)}/rollback`,
-					{ reason: message }
-				);
-				rolledBack = true;
-			} catch {
-				rolledBack = false;
-			}
-		}
+		const outcome: ApplyRollbackOutcome | undefined = transactionId
+			? await rollbackFailedApply({
+					client,
+					projectId,
+					transactionId,
+					reason: message,
+					fingerprintBefore,
+				})
+			: undefined;
+		const rolledBack = outcome?.rolledBack ?? false;
 		if (settingsChanged && previousSettings) {
 			try {
 				await client.patch(
@@ -826,8 +751,17 @@ export async function timelineApplyManifest(
 		}
 		return {
 			success: false,
-			error: message,
-			data: { projectId, rolledBack, cleanedMedia },
+			error: describeApplyFailure({
+				message,
+				outcome,
+				timeoutMs: transactionTimeoutMs,
+			}),
+			data: {
+				projectId,
+				rolledBack,
+				...(outcome ? { rollback: outcome.rollback } : {}),
+				cleanedMedia,
+			},
 		};
 	}
 }

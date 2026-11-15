@@ -1,4 +1,5 @@
 import type { MediaAdjustments, MediaColorSettings } from "@/types/timeline";
+import { readGradeCubeLuts } from "../../../../../electron/types/color-cube-lut";
 import {
 	buildLegacyColorAdjustments,
 	COLOR_KEYFRAME_DEFINITIONS,
@@ -40,10 +41,31 @@ export function mergeMediaColorSettings({
 	current: MediaColorSettings;
 	patch: Record<string, unknown>;
 }): MediaColorSettings {
-	return deepMerge(
+	const merged = deepMerge(
 		current as unknown as Record<string, unknown>,
 		patch
-	) as unknown as MediaColorSettings;
+	);
+	// A cube is one value: a patch that names one replaces the clip's, so the
+	// new values never keep the old cube's size or domain.
+	const patchLut = patch.lut;
+	if (isPlainObject(patchLut) && isPlainObject(patchLut.cube)) {
+		merged.lut = {
+			...(merged.lut as Record<string, unknown>),
+			cube: patchLut.cube,
+		};
+	}
+	const patchDual = isPlainObject(patchLut) ? patchLut.dual : undefined;
+	if (isPlainObject(patchDual) && isPlainObject(patchDual.skinCube)) {
+		const lut = merged.lut as Record<string, unknown>;
+		merged.lut = {
+			...lut,
+			dual: {
+				...(lut.dual as Record<string, unknown>),
+				skinCube: patchDual.skinCube,
+			},
+		};
+	}
+	return merged as unknown as MediaColorSettings;
 }
 
 export const MEDIA_ADJUSTMENT_KEYS = [
@@ -93,8 +115,10 @@ export function readMediaAdjustmentsPatch({
  * same way a misspelt adjustments field is refused, instead of being clamped
  * behind the caller's back.
  *
- * Only known numeric leaves are checked; fields without a published range
- * (curves, LUT payloads, keyframe lists…) pass through untouched.
+ * Known numeric leaves are checked against their range, and a 3D LUT
+ * (`lut.cube`, `lut.dual.skinCube`, a LUT pass) against its own shape: the
+ * right number of values for its size. Fields without a published range
+ * (curves, keyframe lists…) pass through untouched.
  */
 export function assertColorPatchInRange({
 	patch,
@@ -130,6 +154,7 @@ export function assertColorPatchInRange({
 		}
 	};
 	walk(patch, []);
+	readGradeCubeLuts({ color: patch, prefix });
 }
 
 /**

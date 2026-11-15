@@ -99,6 +99,7 @@ import type {
 	AgentPointerHitTestResult,
 	AgentPointerRulerLabelsResult,
 	AgentPointerVisualState,
+	EditorWindowFocusResult,
 	EditorWindowsResult,
 	AgentKeyboardResult,
 	EditorSnapshotActionResult,
@@ -608,6 +609,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			})) as AgentPointerVisualState,
 		listWindows: async () =>
 			(await requestFromMain("windows:list", {})) as EditorWindowsResult,
+		focusWindow: async (request) =>
+			(await requestFromMain("windows:focus", {
+				request,
+			})) as EditorWindowFocusResult,
 		move: async (request) =>
 			(await requestFromMain("pointer:move", {
 				request,

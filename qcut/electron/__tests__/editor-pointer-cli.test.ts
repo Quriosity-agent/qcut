@@ -719,7 +719,10 @@ describe("editor pointer CLI handlers", () => {
 	it("lists windows and parses --window-id in one-shot and session modes", async () => {
 		const get = vi.fn(async () => ({ count: 1, windows: [{ id: 1 }] }));
 		const client = { get } as unknown as EditorApiClient;
-		const result = await handleWindowsCommand({ client });
+		const result = await handleWindowsCommand({
+			client,
+			options: { command: "editor:windows" },
+		});
 		expect(result.success).toBe(true);
 		expect(get).toHaveBeenCalledWith("/api/claude/windows");
 		expect(
@@ -730,6 +733,77 @@ describe("editor pointer CLI handlers", () => {
 				json: true,
 			})
 		).toEqual(expect.objectContaining({ windowId: 4 }));
+	});
+
+	/** 问题 12 (2026-11-14): `editor windows` showed `focused: false` and nothing could raise it. */
+	it("brings a window to the front with editor windows focus", async () => {
+		const post = vi.fn(async () => ({
+			window: { id: 2, focused: true },
+			restored: false,
+		}));
+		const client = { post } as unknown as EditorApiClient;
+
+		const first = await handleWindowsCommand({
+			client,
+			options: parseCliArgs(["editor", "windows", "focus"]),
+		});
+		expect(first).toEqual({
+			success: true,
+			data: { window: { id: 2, focused: true }, restored: false },
+		});
+		expect(post).toHaveBeenLastCalledWith("/api/claude/windows/focus", {});
+
+		await handleWindowsCommand({
+			client,
+			options: parseCliArgs(["editor:windows:focus", "--window-id", "2"]),
+		});
+		expect(post).toHaveBeenLastCalledWith("/api/claude/windows/focus", {
+			windowId: 2,
+		});
+
+		// An id that was given but cannot be one is not "the first window".
+		post.mockClear();
+		for (const windowId of [0, -1, 1.5]) {
+			const refused = await handleWindowsCommand({
+				client,
+				options: { command: "editor:windows:focus", windowId },
+			});
+			expect(refused.success).toBe(false);
+			expect(refused.error).toContain("--window-id must be a positive whole");
+		}
+		// Text that is not a number survives both parsers as NaN and is
+		// refused the same way; an omitted id is still "the first window".
+		const oneShot = parseCliArgs([
+			"editor",
+			"windows",
+			"focus",
+			"--window-id",
+			"nope",
+		]);
+		expect(oneShot.windowId).toBeNaN();
+		const inSession = parseSessionLine(
+			"editor:windows:focus --window-id nope",
+			{
+				json: true,
+			}
+		);
+		expect(inSession.windowId).toBeNaN();
+		for (const options of [oneShot, inSession]) {
+			const refused = await handleWindowsCommand({ client, options });
+			expect(refused.success).toBe(false);
+			expect(refused.error).toContain("--window-id must be a positive whole");
+		}
+		expect(post).not.toHaveBeenCalled();
+		expect(
+			parseSessionLine("editor:windows:focus", { json: true }).windowId
+		).toBeUndefined();
+
+		const unknown = await handleWindowsCommand({
+			client,
+			options: { command: "editor:windows:raise" },
+		});
+		expect(unknown.success).toBe(false);
+		expect(unknown.error).toContain("Unknown windows action: raise");
 	});
 
 	it("drags flattened interactive list items by semantic index", async () => {

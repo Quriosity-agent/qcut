@@ -491,7 +491,8 @@ function parseSessionArgs(args: string[]): {
 		if (values["key-events"]) result.keyEvents = true;
 		if (values.files) result.files = values.files as string;
 		if (values["seek-mode"]) result.seekMode = values["seek-mode"] as string;
-		result.windowId = parseFiniteSessionNumber({ value: values["window-id"] });
+		// Strict, as in the one-shot parser: unreadable text stays NaN.
+		result.windowId = parseStrictSessionNumber({ value: values["window-id"] });
 		if (values.force) result.force = true;
 		if (values.discard) result.discard = true;
 		if (values.replace) result.replace = true;
