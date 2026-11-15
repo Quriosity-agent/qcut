@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.15.3] - 2026-11-15
+
 ### Added
 
 - Added an opt-in macOS controller for mounting an APFS local-asset image at a checkout’s original `.local` path. It validates volume identity and permissions, guards the offline mountpoint, and refuses conflicting or busy attachments (#541).
