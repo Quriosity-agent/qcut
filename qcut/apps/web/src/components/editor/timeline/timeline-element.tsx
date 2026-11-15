@@ -1175,6 +1175,11 @@ function TimelineElementComponent({
 					);
 					return;
 				}
+				// The clip plays another file now: the project changed, like on
+				// an import. The store reports its own failure.
+				void useProjectStore
+					.getState()
+					.markProjectContentChanged(activeProject.id);
 				toast.success("Clip relinked");
 			} catch (error) {
 				handleMediaProcessingError(error, "Relink clip", {

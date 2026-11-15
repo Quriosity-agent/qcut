@@ -270,8 +270,15 @@ qcut editor:project:info --project-id <id> --full --json
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--project-id` | string | | Project ID (required) |
+| `--project-id` | string | the open project | Project ID; without it, the project the editor has open |
 | `--full` | boolean | `false` | Include all arrays (media, subtitles, generated, exports, jobs) |
+
+The result's `isActive` says whether the project is the one the editor has
+open, so `qcut editor project info --json` answers "which project is open".
+With no project open and no `--project-id` the command fails and says so.
+
+A project's `updatedAt` (here and in `project list`) moves whenever its
+timeline or media changes, from the editor or the CLI.
 
 ### Export project state to disk
 

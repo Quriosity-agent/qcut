@@ -462,6 +462,21 @@ export function createExtraEditorCommands({
 			[],
 			["qcut editor windows --json"]
 		),
+		"editor:windows:focus": ed(
+			"editor:windows:focus",
+			"Bring a QCut window to the front (restores it when minimized or hidden)",
+			[
+				f(
+					"--window-id",
+					"number",
+					"BrowserWindow id from editor:windows (default: first window)"
+				),
+			],
+			[
+				"qcut editor windows focus --json",
+				"qcut editor windows focus --window-id 2 --json",
+			]
+		),
 		"editor:pointer:state": ed(
 			"editor:pointer:state",
 			"Read the Agent pointer overlay state: position, action, pressed button, input mode",

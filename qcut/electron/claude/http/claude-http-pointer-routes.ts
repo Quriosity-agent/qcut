@@ -16,6 +16,7 @@ import type {
 	AgentPointerScrollRequest,
 	AgentPointerTarget,
 	AgentPointerVisualState,
+	EditorWindowFocusResult,
 	EditorWindowsResult,
 } from "../../types/claude-api.js";
 import { DEFAULT_AGENT_POINTER_INPUT_MODE } from "../../types/claude-api.js";
@@ -31,6 +32,10 @@ interface WindowScopedRequest {
 interface AgentPointerRouteHandlers {
 	getState: (request: WindowScopedRequest) => Promise<AgentPointerVisualState>;
 	listWindows: () => Promise<EditorWindowsResult>;
+	/** Optional so handler sets predating it keep compiling; the route 501s. */
+	focusWindow?: (
+		request: WindowScopedRequest
+	) => Promise<EditorWindowFocusResult>;
 	move: (request: AgentPointerMoveRequest) => Promise<AgentPointerResult>;
 	hover: (request: AgentPointerMoveRequest) => Promise<AgentPointerResult>;
 	click: (request: AgentPointerClickRequest) => Promise<AgentPointerResult>;
@@ -564,6 +569,20 @@ export function registerAgentPointerRoutes(
 
 	router.get("/api/claude/windows", async () => {
 		return await withPointerTimeout({ timeoutMs, work: handlers.listWindows });
+	});
+
+	router.post("/api/claude/windows/focus", async (req) => {
+		const focusWindow = handlers.focusWindow;
+		if (!focusWindow) {
+			throw new HttpError(501, "Focusing a window is not supported");
+		}
+		const request = {
+			windowId: parseAgentPointerWindowId({ value: req.body?.windowId }),
+		};
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await focusWindow(request),
+		});
 	});
 
 	router.post("/api/claude/pointer/move", async (req) => {
