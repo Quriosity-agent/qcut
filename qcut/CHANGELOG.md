@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added an opt-in macOS controller for mounting an APFS local-asset image at a checkout’s original `.local` path. It validates volume identity and permissions, guards the offline mountpoint, and refuses conflicting or busy attachments (#541).
+
+### Fixed
+
+- Native beauty audits now preserve bounded debugger failure details before host protocol validation and through process cleanup, making intermittent failures easier to diagnose (#542).
+
+### Known limitation
+
+- The intermittent native beauty debugger stop is still under investigation. This release improves diagnostics; it does not claim to resolve that stop. Local-asset mounting remains explicit and does not automatically move or delete user data.
+
 ## [2026.11.15.2] - 2026-11-15
 
 ### Fixed
