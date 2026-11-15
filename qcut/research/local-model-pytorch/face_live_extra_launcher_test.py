@@ -98,7 +98,7 @@ class ExtraLauncherTests(fixtures.BundleFixture, unittest.TestCase):
             (out / "live").mkdir(parents=True)
             scope = mock.Mock()
             with self.subTest(enabled=enabled), \
-                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=fixtures.DEBUGGER_OK), \
                     mock.patch.object(probe.audit, "protocol", return_value={}), \
                     mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                     mock.patch.object(probe.makeup_audit, "audit", side_effect=ValueError("mock stop after launch")):
@@ -164,7 +164,7 @@ class ExtraLauncherTests(fixtures.BundleFixture, unittest.TestCase):
             (out / "live").mkdir(parents=True)
             scope = mock.Mock()
             with self.subTest(enabled=enabled), \
-                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=fixtures.DEBUGGER_OK), \
                     mock.patch.object(probe.audit, "protocol", return_value={}), \
                     mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                     mock.patch.object(probe.makeup_audit, "audit", side_effect=ValueError("stop after mocked launch")):

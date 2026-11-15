@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 import face_live_bridge_probe as probe
-from face_live_bridge_probe_test import BundleFixture
+from face_live_bridge_probe_test import BundleFixture, DEBUGGER_OK
 
 
 class StageLauncherTests(BundleFixture, unittest.TestCase):
@@ -37,7 +37,7 @@ class StageLauncherTests(BundleFixture, unittest.TestCase):
             scope.wait.side_effect = write_snapshots
             report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
             with self.subTest(inventory=inventory), \
-                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                     mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                     mock.patch.object(probe.makeup_audit, "audit", return_value={}), \
                     mock.patch.object(probe.audit, "protocol", return_value={}), \

@@ -62,6 +62,13 @@ def lldb_command(*, config, executable=None):
         "-o", "quit"]
 
 
+def debugger_result(*, out, report):
+    observer = strict_json(data=sequence.bounded_bytes(path=out / "live/observer.json", limit=4 * 1024**2))
+    report["live_debugger_result"] = audit.debugger_summary(observer=observer)
+    audit.require_debugger_success(observer=observer)
+    return observer
+
+
 def python_command(*, script, cache, arguments):
     # -B prevents writes, not reads; a fresh prefix excludes stale source-tree bytecode.
     return [sys.executable, "-B", "-X", "pycache_prefix=" + str(cache), str(script), *arguments]
@@ -160,6 +167,7 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
         report["live_process"] = scope.wait(process=debugger, timeout=args.timeout, companions=(worker,))
         scope.finish(process=debugger)
         report["phase"] = "live-audit"
+        observer = debugger_result(out=out, report=report)
         consume_makeup = getattr(args, "consume_makeup_candidate", False)
         if consume_makeup:
             report["makeup_render_audit"] = makeup_audit.audit(
@@ -181,7 +189,6 @@ def execute(*, args, out, frames, dimensions, requests, models, guard, scope, re
             stderr = sequence.bounded_bytes(path=directory / "host.stderr", limit=4 * 1024**2)
             audit.require(condition=b"[research-error]" not in stderr, message="native host logged a research failure")
         timestamps = [row["timestamp_us"] for row in requests["live"] for _ in range(2)]
-        observer = strict_json(data=sequence.bounded_bytes(path=live / "observer.json", limit=4 * 1024**2))
         worker_rows, records = audit.json_lines(path=live / "worker.jsonl"), audit.json_lines(path=live / "records.jsonl")
         if getattr(args, "extra_root", None) is not None:
             report["extra_refinement_audit"] = extra_audit.audit(worker=worker_rows,
@@ -382,6 +389,12 @@ def run(*, args):
                         models=models, guard=guard, scope=scope, report=report)
     except BaseException as error:
         report["failures"].append(dict(phase=report["phase"], error=f"{type(error).__name__}: {error}"[:2000]))
+        if report["phase"] == "live-native-lldb" and report["native_execution_performed"]:
+            try:
+                debugger_result(out=out, report=report)
+            except Exception as diagnostic:
+                report["failures"].append(dict(phase="live-debugger-diagnostic",
+                    error=f"{type(diagnostic).__name__}: {diagnostic}"[:2000]))
         if report["phase"] in ("baseline-native", "live-native-lldb") and report["native_execution_performed"]:
             try:
                 report["timeout_diagnostic"] = timeout_context(out=out, phase=report["phase"])

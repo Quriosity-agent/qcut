@@ -50,7 +50,7 @@ class MeshLauncherTests(fixtures.BundleFixture, unittest.TestCase):
     def test_config_is_explicit_and_publication_gate_still_rejects_mesh_only(self):
         (self.out / "live").mkdir(parents=True)
         scope = mock.Mock()
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=fixtures.DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "protocol", return_value={}), \
                 mock.patch.object(probe.audit, "render_outputs") as renders:
             with self.assertRaisesRegex(ValueError, "publication alone"):

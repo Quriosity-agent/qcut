@@ -8,6 +8,7 @@ from unittest import mock
 
 import face_live_bridge_lldb as bridge
 import face_live_bridge_probe as probe
+from face_live_bridge_probe_test import DEBUGGER_OK
 import face_live_mesh_launcher_test as fixtures
 
 
@@ -56,7 +57,7 @@ class MatrixLauncherTests(unittest.TestCase):
     def test_config_contains_matrix_flag_but_publication_still_insufficient(self):
         (self.out / "live").mkdir(parents=True)
         scope = mock.Mock()
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "protocol", return_value={}), \
                 mock.patch.object(probe.audit, "render_outputs") as renders:
             with self.assertRaisesRegex(ValueError, "publication alone"):

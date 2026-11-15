@@ -57,6 +57,30 @@ def protocol(*, data, requests):
     return dict(requests=len(requests), rows=rows)
 
 
+def debugger_summary(*, observer):
+    require(condition=type(observer) is dict, message="live debugger report must be an object")
+    summary = {key: observer.get(key) for key in ("passed", "state", "exit_status", "debugger_version")
+               if type(observer.get(key)) in (bool, int, str, type(None))}
+    summary = {key: value[:256] if type(value) is str else value for key, value in summary.items()}
+    for key in ("failures", "observer_failures"):
+        rows = observer.get(key)
+        summary[key] = [row[:512] for row in rows[:3] if type(row) is str] if type(rows) is list else None
+    stops = observer.get("unexpected_stops")
+    summary["unexpected_stops"] = [dict(reason=row.get("reason"), description=row["description"][:1024])
+        for row in stops[:3] if type(row) is dict and type(row.get("description")) is str
+        and type(row.get("reason")) is int] if type(stops) is list else None
+    return summary
+
+
+def require_debugger_success(*, observer):
+    summary = debugger_summary(observer=observer)
+    require(condition=observer.get("passed") is True and observer.get("failures") == [] and
+            observer.get("observer_failures") == [] and observer.get("unexpected_stops") == [] and
+            type(observer.get("state")) is int and observer["state"] == 10 and
+            type(observer.get("exit_status")) is int and observer["exit_status"] == 0,
+            message="live debugger failed: " + json.dumps(summary, ensure_ascii=True))
+
+
 def observer_groups(*, observer, count):
     require(condition=observer.get("passed") is True and observer.get("failures") == [] and
             observer.get("observer_failures") == [] and observer.get("predictions") == count,

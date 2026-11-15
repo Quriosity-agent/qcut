@@ -48,6 +48,40 @@ def receipts(*, cold_frame=False):
                 token=packets.TOKEN, source_key="synthetic-worker-source")
 
 
+class DebuggerStatusTests(unittest.TestCase):
+    def test_only_completed_clean_debugger_is_accepted(self):
+        good = dict(passed=True, failures=[], observer_failures=[], unexpected_stops=[], state=10, exit_status=0)
+        audit.require_debugger_success(observer=good)
+        for key, value in [("passed", False), ("passed", 1), ("state", 5), ("exit_status", False),
+                           ("exit_status", 1), ("failures", ["failed"]), ("observer_failures", ["failed"]),
+                           ("unexpected_stops", [dict(reason=6, description="trap")])]:
+            with self.subTest(key=key, value=value), self.assertRaisesRegex(ValueError, "live debugger failed"):
+                audit.require_debugger_success(observer=dict(good, **{key: value}))
+        for key in good:
+            value = dict(good); value.pop(key)
+            with self.subTest(missing=key), self.assertRaises(ValueError):
+                audit.require_debugger_success(observer=value)
+
+    def test_error_detail_is_bounded_and_escaped_without_hiding_failure(self):
+        report = dict(passed=False, debugger_version="v" * 10000, failures=["bad\n" * 1000] * 100,
+                      observer_failures=[], unexpected_stops=[dict(reason=6, description="trap" * 1000)] * 100)
+        summary = audit.debugger_summary(observer=report)
+        self.assertEqual(len(summary["debugger_version"]), 256)
+        self.assertEqual(len(summary["failures"]), 3)
+        self.assertEqual(len(summary["failures"][0]), 512)
+        self.assertEqual(len(summary["unexpected_stops"]), 3)
+        self.assertEqual(len(summary["unexpected_stops"][0]["description"]), 1024)
+        with self.assertRaises(ValueError) as error:
+            audit.require_debugger_success(observer=report)
+        self.assertNotIn("\n", str(error.exception))
+        self.assertIn("\\n", str(error.exception))
+
+    def test_non_object_report_cannot_become_success(self):
+        for value in [None, [], True]:
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "must be an object"):
+                audit.require_debugger_success(observer=value)
+
+
 class CallbackAuditTests(unittest.TestCase):
     def setUp(self):
         self.data = receipts()
