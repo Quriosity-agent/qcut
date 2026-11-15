@@ -66,7 +66,7 @@ class ReshapeLauncherTests(fixtures.BundleFixture, unittest.TestCase):
     def test_host_only_flag_and_publication_gate_are_not_bypassed(self):
         (self.out / "live").mkdir(parents=True)
         scope = mock.Mock()
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=fixtures.DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "protocol", return_value={}), \
                 mock.patch.object(probe.audit, "callbacks") as callbacks, \
                 mock.patch.object(probe.audit, "render_outputs") as renders:
@@ -164,7 +164,7 @@ class ReshapePointLauncherTests(fixtures.BundleFixture, unittest.TestCase):
             self.args.trace_reshape_points = branch
             scope = mock.Mock()
             with self.subTest(branch=branch), \
-                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+                    mock.patch.object(probe.sequence, "bounded_bytes", return_value=fixtures.DEBUGGER_OK), \
                     mock.patch.object(probe.audit, "protocol", return_value={}), \
                     mock.patch.object(probe.audit, "callbacks") as callbacks, \
                     mock.patch.object(probe.audit, "render_outputs") as renders, \

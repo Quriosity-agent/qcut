@@ -16,6 +16,10 @@ import face_live_bridge_bundle as bundle
 import face_live_bridge_probe as probe
 
 
+DEBUGGER_OK = json.dumps(dict(passed=True, failures=[], observer_failures=[], unexpected_stops=[],
+                             state=10, exit_status=0)).encode()
+
+
 class BundleFixture:
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="qcut-live-bundle-", dir="/tmp")
@@ -335,7 +339,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         executable.chmod(0o700)
         report["debugger"] = dict(executable=str(executable.resolve()),
                                  environment_overrides={"LLDB_DEBUGSERVER_PATH": "/explicit/server"})
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b""), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "protocol", return_value=dict(passed=True)), \
                 mock.patch.object(probe.audit, "render_outputs") as render_outputs:
             with self.assertRaisesRegex(ValueError, "publication alone cannot establish landmark consumption"):
@@ -358,12 +362,29 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_PUBLISH"], "1")
         self.assertEqual(config["environment"]["QCUT_FACE_LIVE_MAKEUP_STAGES"], "1")
 
+    def test_debugger_stop_is_reported_before_missing_host_acknowledgement(self):
+        observer = dict(passed=False, failures=["RuntimeError: live host stopped or failed"],
+            observer_failures=[], state=5, exit_status=-1,
+            unexpected_stops=[dict(reason=6, description="EXC_BREAKPOINT (code=1, subcode=0x1234)")])
+        report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=json.dumps(observer).encode()), \
+                mock.patch.object(probe.audit, "protocol", side_effect=[{}, ValueError("missing acknowledgement")]) as protocol, \
+                mock.patch.object(probe.audit, "render_outputs") as render:
+            with self.assertRaisesRegex(ValueError, "live debugger failed:.*EXC_BREAKPOINT"):
+                probe.execute(args=self.args, out=self.out, frames=[], dimensions=(8, 8),
+                    requests=dict(baseline=[], live=[]), models=mock.Mock(), guard=mock.Mock(),
+                    scope=mock.Mock(), report=report)
+        self.assertEqual(protocol.call_count, 1)
+        self.assertEqual(report["live_debugger_result"]["state"], 5)
+        self.assertNotIn("live_checks_completed", report)
+        render.assert_not_called()
+
     def test_read_proof_survives_final_host_rejection_without_becoming_render_success(self):
         self.args.trace_makeup_points = True
         self.args.trace_makeup_system = self.args.publish_makeup_candidate = self.args.stage_makeup_render = True
         proof = dict(candidate_xy_reads_verified=True, renderer_consumption=False)
         report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                 mock.patch.object(probe.point_audit, "audit", return_value=proof) as audit_points, \
                 mock.patch.object(probe.audit, "protocol", side_effect=[{}, ValueError("final consumption missing")]):
@@ -384,7 +405,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         proof = dict(renderer_consumption=True, product_parity_verified=False)
         difference = dict(frame=0, equal=False, changed_pixels=3970)
         report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                 mock.patch.object(probe.makeup_audit, "audit", return_value=proof) as receipt, \
                 mock.patch.object(probe.audit, "protocol", return_value={}), \
@@ -406,7 +427,7 @@ class LauncherTests(BundleFixture, unittest.TestCase):
     def test_makeup_consumer_cannot_skip_receipt_validation(self):
         self.args.consume_makeup_candidate = self.args.trace_makeup_points = True
         report = dict(cold_frame_audit=True, manifest_sha256="a" * 64)
-        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=b"{}"), \
+        with mock.patch.object(probe.sequence, "bounded_bytes", return_value=DEBUGGER_OK), \
                 mock.patch.object(probe.audit, "json_lines", return_value=[]), \
                 mock.patch.object(probe.makeup_audit, "audit", side_effect=ValueError("bad geometry receipt")), \
                 mock.patch.object(probe.audit, "protocol", return_value={}), \
@@ -503,6 +524,24 @@ class LauncherTests(BundleFixture, unittest.TestCase):
         self.assertFalse(result["timeout_diagnostic"]["permission_bypass_attempted"])
         self.assertFalse(result["timeout_diagnostic"]["algorithm_failure_inferred"])
         self.assertTrue((self.args.out / "report.json").is_file())
+
+    def test_companion_exit_retains_debugger_exception_after_cleanup(self):
+        def failure(**kwargs):
+            kwargs["report"].update(phase="live-native-lldb", native_execution_performed=True)
+            live = kwargs["out"] / "live"
+            (live / "observer.json").write_text(json.dumps(dict(passed=False, state=5, exit_status=-1,
+                failures=["live host stopped or failed"], observer_failures=[],
+                unexpected_stops=[dict(reason=6, description="EXC_BREAKPOINT (code=1, subcode=0x0)")])))
+            raise RuntimeError("persistent companion exited before native completion")
+
+        self.args.execute_native, self.args.lease = True, "CPU-test-mocked-no-native"
+        result, _ = self.run_preparation(execute=failure)
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["completed"])
+        self.assertTrue(result["cleanup"]["completed"])
+        self.assertIn("persistent companion exited", result["failures"][0]["error"])
+        self.assertIn("EXC_BREAKPOINT", result["failures"][1]["error"])
+        self.assertEqual(result["live_debugger_result"]["state"], 5)
 
     def test_late_source_model_guard_failure_revokes_readiness(self):
         result, _ = self.run_preparation(verify=[None, ValueError("model source changed")])
