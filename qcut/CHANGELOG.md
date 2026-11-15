@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2026.11.15.2] - 2026-11-15
+
 ### Fixed
 
 - A long `editor:timeline:apply` no longer fails with `Track not found`. Every change to the timeline made the editor read every clip again, whole, to tell listeners what had changed; with a 3D LUT on sixty clips each added clip re-read tens of megabytes, so the apply ran past the 30 seconds its transaction lasts, QCut rolled the timeline back under it, and the next request found its track gone. A clip is now read once, when it changes. A 30-track, 213-clip manifest with an 18-point LUT on 60 clips held the transaction for 52–61 s before and takes 15–20 s now; a 22 MB manifest (216 clips, 63 LUTs of 25 points) that could not be applied at all takes 6 s. The apply also asks for a transaction that lasts as long as its manifest needs (it grows with the clips, the tracks and the size, up to QCut's 5 minutes), and `POST /api/claude/transaction/begin` takes `timeoutMs`.
