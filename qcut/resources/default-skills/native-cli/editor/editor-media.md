@@ -136,8 +136,12 @@ nothing (`renamed: false`). An id that is not in the project is an error
 a file so large that copying it outlasts the 30 s the request waits, the
 project closed or another project or scene opened meanwhile), it takes back
 what it had changed, the file is put back under its old name and the command
-fails: the project is as it was. Renames of one project are done one after
-the other, also when they are asked for at the same time.
+fails: the project is as it was. Two failures leave it otherwise, and each
+says so in its error: the file could not be put back (its old name was taken
+meanwhile), so it keeps the new name the error gives; or the editor could
+not take back everything it had changed, and the error names what. Renames
+of one project are done one after the other, also when they are asked for at
+the same time.
 
 ### Replace a media item with a new file
 
@@ -201,9 +205,10 @@ date (a file it could not read, an item that was removed or replaced while
 its file was being read), and the command then fails. So does a check that
 could not look at every file because the project was closed or another one
 opened meanwhile. An `export start` that goes through the renderer engine is
-refused while a file is in `failed`, or while the check has not answered
-within 15 s (it may still be reading a large file: retry), since it would
-draw the old copy; a native export reads the folder and goes ahead.
+refused while a file that a clip on the timeline plays is in `failed`, or
+while the check has not answered within 15 s (it may still be reading a
+large file: retry), since it would draw the old copy; a native export reads
+the folder and goes ahead.
 
 Writing over a file is still the wrong tool when a clip has to keep working:
 a file that got shorter leaves its clips running past its end. `media
