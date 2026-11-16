@@ -33,3 +33,22 @@ export interface ClaudeMediaRendererResponse {
 	error?: string;
 	requestId: string;
 }
+
+/**
+ * Asks the editor to read again every media file of the project that was
+ * written over in the project folder since the editor copied it.
+ */
+export interface ClaudeMediaRefreshEvent {
+	projectId: string;
+	requestId?: string;
+}
+
+/** What `POST /api/claude/media/:projectId/refresh` found and did. */
+export interface ClaudeMediaRefreshResult {
+	/** Media items with a file in the project folder that were compared. */
+	checked: number;
+	/** Items whose file had changed; the editor now holds the new file. */
+	refreshed: Array<{ id: string; name: string }>;
+	/** Items whose changed file could not be read; they keep the old copy. */
+	failed: Array<{ id: string; name: string; error: string }>;
+}
