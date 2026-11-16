@@ -442,6 +442,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				{ payload },
 				{ timeoutMs: MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS }
 			) as Promise<void>,
+		/** Notes a rename for the editor to settle when the project is next open. */
+		noteUnsettledMediaRename: (payload) =>
+			requestFromMain("media:note-unsettled-rename", {
+				payload,
+			}) as Promise<void>,
 		/** Has the renderer read again the media files that changed on disk. */
 		requestMediaRefresh: (payload) =>
 			requestFromMain(
