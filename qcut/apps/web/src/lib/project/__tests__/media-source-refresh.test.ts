@@ -53,199 +53,8 @@ vi.mock("@/stores/media/media-store", () => ({
 }));
 
 import { resetMediaPersistenceQueue } from "@/stores/media/media-persistence-queue";
-import {
-	planMediaSourceRefresh,
-	readSourceFileStat,
-	refreshChangedMediaSources,
-} from "../media-source-refresh";
-
-const FOLDER = "/Users/me/Documents/QCut/Projects/p1/media";
-
-function diskFile(
-	overrides: Partial<ProjectFolderFileInfo> = {}
-): ProjectFolderFileInfo {
-	return {
-		name: "shake.mp4",
-		path: `${FOLDER}/shake.mp4`,
-		relativePath: "media/shake.mp4",
-		type: "video",
-		size: 400,
-		modifiedAt: 5000,
-		isDirectory: false,
-		...overrides,
-	};
-}
-
-/** An item the editor copied when the file was `bytes` long. */
-function mediaItem({
-	bytes = 400,
-	...overrides
-}: Partial<MediaItem> & { bytes?: number } = {}): MediaItem {
-	return {
-		id: "media_shake",
-		name: "shake.mp4",
-		type: "video",
-		file: new File([new Uint8Array(bytes)], "shake.mp4", {
-			type: "video/mp4",
-		}),
-		url: "blob:old",
-		localPath: `${FOLDER}/shake.mp4`,
-		duration: 2,
-		width: 1920,
-		height: 1080,
-		thumbnailUrl: "data:old-thumbnail",
-		...overrides,
-	} as MediaItem;
-}
-
-const recorded = (size: number, modifiedAt: number) => ({
-	metadata: { source: "upload", sourceFile: { size, modifiedAt } },
-});
-
-describe("which media files changed in the project folder", () => {
-	it("leaves an item alone whose file is as it was when it was copied", () => {
-		const plan = planMediaSourceRefresh({
-			diskFiles: [diskFile({ size: 400, modifiedAt: 5000.4 })],
-			// The time comes back in whole milliseconds from one call and with
-			// a fraction from another.
-			mediaItems: [mediaItem(recorded(400, 5000))],
-		});
-		expect(plan).toEqual({ changed: [], adopt: [], checked: 1 });
-	});
-
-	it("reads a file again whose size or time moved", () => {
-		const item = mediaItem(recorded(400, 5000));
-		for (const file of [
-			diskFile({ size: 512, modifiedAt: 5000 }),
-			// Written again with the same length.
-			diskFile({ size: 400, modifiedAt: 9000 }),
-		]) {
-			expect(
-				planMediaSourceRefresh({ diskFiles: [file], mediaItems: [item] })
-					.changed
-			).toEqual([{ item, file }]);
-		}
-	});
-
-	/**
-	 * Items imported before the record existed: the size of the editor's copy
-	 * is all that is known about the file it came from.
-	 */
-	it("compares an item that has no record by the size of the editor's copy", () => {
-		const stale = mediaItem({ id: "stale", bytes: 300 });
-		const current = mediaItem({
-			id: "current",
-			name: "other.mp4",
-			localPath: `${FOLDER}/other.mp4`,
-			bytes: 700,
-		});
-		const shake = diskFile({ size: 400 });
-		const other = diskFile({
-			name: "other.mp4",
-			path: `${FOLDER}/other.mp4`,
-			size: 700,
-		});
-		expect(
-			planMediaSourceRefresh({
-				diskFiles: [shake, other],
-				mediaItems: [stale, current],
-			})
-		).toEqual({
-			changed: [{ item: stale, file: shake }],
-			adopt: [{ item: current, file: other }],
-			checked: 2,
-		});
-	});
-
-	it("matches a path whatever its case and separators", () => {
-		const item = mediaItem({
-			localPath: "C:\\Users\\Me\\QCut\\Projects\\p1\\media\\Shake.MP4",
-			bytes: 300,
-		});
-		const file = diskFile({
-			path: "c:/users/me/qcut/projects/p1/media/shake.mp4",
-		});
-		expect(
-			planMediaSourceRefresh({ diskFiles: [file], mediaItems: [item] }).changed
-		).toHaveLength(1);
-	});
-
-	/**
-	 * Where the file system tells `A.mp4` from `a.mp4`, they are two files:
-	 * neither may be compared with, or read into, the other's item.
-	 */
-	it("keeps two files apart whose paths differ only by case", () => {
-		const upper = mediaItem({
-			id: "upper",
-			localPath: `${FOLDER}/A.mp4`,
-			...recorded(100, 1000),
-		});
-		const lower = mediaItem({
-			id: "lower",
-			localPath: `${FOLDER}/a.mp4`,
-			...recorded(200, 2000),
-		});
-		const upperFile = diskFile({
-			name: "A.mp4",
-			path: `${FOLDER}/A.mp4`,
-			size: 100,
-			modifiedAt: 1000,
-		});
-		// Only the lower-case file was written over.
-		const lowerFile = diskFile({
-			name: "a.mp4",
-			path: `${FOLDER}/a.mp4`,
-			size: 250,
-			modifiedAt: 9000,
-		});
-		for (const diskFiles of [
-			[upperFile, lowerFile],
-			[lowerFile, upperFile],
-		]) {
-			expect(
-				planMediaSourceRefresh({ diskFiles, mediaItems: [upper, lower] })
-			).toEqual({
-				changed: [{ item: lower, file: lowerFile }],
-				adopt: [],
-				checked: 2,
-			});
-		}
-		// A path that names neither as written cannot say which one it means.
-		const vague = mediaItem({ id: "vague", localPath: `${FOLDER}/A.MP4` });
-		expect(
-			planMediaSourceRefresh({
-				diskFiles: [upperFile, lowerFile],
-				mediaItems: [vague],
-			}).checked
-		).toBe(0);
-	});
-
-	it("passes over items with no file in the folder, no bytes of their own, or not kept", () => {
-		const plan = planMediaSourceRefresh({
-			diskFiles: [diskFile({ size: 999 })],
-			mediaItems: [
-				mediaItem({ id: "elsewhere", localPath: "/tmp/elsewhere.mp4" }),
-				mediaItem({ id: "no-path", localPath: undefined }),
-				mediaItem({ id: "placeholder", bytes: 0 }),
-				mediaItem({ id: "ephemeral", ephemeral: true }),
-			],
-		});
-		expect(plan).toEqual({ changed: [], adopt: [], checked: 0 });
-	});
-
-	it("does not take a damaged record for a record", () => {
-		expect(
-			readSourceFileStat({
-				item: { metadata: { sourceFile: { size: "400" } } },
-			})
-		).toBeUndefined();
-		expect(readSourceFileStat({ item: {} })).toBeUndefined();
-		expect(readSourceFileStat({ item: mediaItem(recorded(1, 2)) })).toEqual({
-			size: 1,
-			modifiedAt: 2,
-		});
-	});
-});
+import { refreshChangedMediaSources } from "../media-source-refresh";
+import { diskFile, FOLDER, mediaItem, recorded } from "./media-source-fixtures";
 
 describe("reading changed media files again", () => {
 	const NEW_BYTES = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -302,6 +111,53 @@ describe("reading changed media files again", () => {
 		expect(forgetAlpha).toHaveBeenCalledWith({
 			localPath: `${FOLDER}/shake.mp4`,
 		});
+	});
+
+	/**
+	 * The folder is asked whether it sets case aside: the item's path, which
+	 * no file is spelled like, answers only where it does.
+	 */
+	it("takes a file spelled in another case for the item's where the folder ignores case", async () => {
+		mediaState.mediaItems = [
+			mediaItem({ bytes: 300, localPath: `${FOLDER}/SHAKE.mp4` }),
+		];
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(files.getFileInfo).toHaveBeenCalledWith(`${FOLDER}/SHAKE.mp4`);
+		expect(result.refreshed).toEqual([
+			{ id: "media_shake", name: "shake.mp4" },
+		]);
+		expect(files.readFile).toHaveBeenCalledWith(`${FOLDER}/shake.mp4`);
+	});
+
+	it("leaves the item alone where the folder tells the two spellings apart", async () => {
+		mediaState.mediaItems = [
+			mediaItem({ bytes: 300, localPath: `${FOLDER}/SHAKE.mp4` }),
+		];
+		// Nothing is at the item's path: the file in the folder is another.
+		files.getFileInfo.mockImplementation(async (filePath: unknown) =>
+			filePath === `${FOLDER}/SHAKE.mp4`
+				? null
+				: { size: 8, lastModified: new Date(9000) }
+		);
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(result).toEqual({ checked: 0, refreshed: [], failed: [] });
+		expect(files.readFile).not.toHaveBeenCalled();
+		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
+	});
+
+	it("does not ask the folder when every path is spelled as its file is", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 400, ...recorded(400, 5000) })];
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile()],
+		});
+		expect(files.getFileInfo).not.toHaveBeenCalled();
 	});
 
 	it("records a file that has not changed without copying its bytes again", async () => {
@@ -399,14 +255,150 @@ describe("reading changed media files again", () => {
 			mediaState.mediaItems = [otherProjectsItem];
 			return Buffer.from(NEW_BYTES);
 		});
+		// The check did not get through: it says so, and is not taken for
+		// one that found every file as the editor has it.
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+			})
+		).rejects.toThrow("the check is not complete");
+		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
+		expect(blobs.createReplacementObjectURL).not.toHaveBeenCalled();
+		expect(mediaState.mediaItems).toEqual([otherProjectsItem]);
+		// The next check of the project starts afresh.
+		project.activeProject = { id: "p1" };
+		mediaState.mediaItems = [mediaItem({ bytes: 8, ...recorded(8, 9000) })];
+		files.readFile.mockResolvedValue(Buffer.from(NEW_BYTES));
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+			})
+		).resolves.toEqual({ checked: 1, refreshed: [], failed: [] });
+	});
+
+	/**
+	 * One item going away is not the project going away. The check used to
+	 * stop at it and answer as if every file had been looked at, so an
+	 * export that followed could draw the old copy of a file further down.
+	 */
+	it("goes on with the other files when one item is removed while its file is read", async () => {
+		const first = mediaItem({ bytes: 300 });
+		const second = mediaItem({
+			id: "media_other",
+			name: "other.mp4",
+			localPath: `${FOLDER}/other.mp4`,
+			bytes: 300,
+		});
+		mediaState.mediaItems = [first, second];
+		files.readFile.mockImplementationOnce(async () => {
+			// The first item is deleted while its file is being read.
+			mediaState.mediaItems = [second];
+			return Buffer.from(NEW_BYTES);
+		});
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [
+				diskFile({ size: 8, modifiedAt: 9000 }),
+				diskFile({
+					name: "other.mp4",
+					path: `${FOLDER}/other.mp4`,
+					size: 8,
+					modifiedAt: 9000,
+				}),
+			],
+		});
+		expect(result.refreshed).toEqual([
+			{ id: "media_other", name: "other.mp4" },
+		]);
+		// Not brought up to date here, and said so.
+		expect(result.failed).toEqual([
+			{
+				id: "media_shake",
+				name: "shake.mp4",
+				error: expect.stringContaining("removed or replaced"),
+			},
+		]);
+		expect(mediaState.updateMediaItem).toHaveBeenCalledTimes(1);
+		expect(mediaState.updateMediaItem.mock.calls[0][1]).toBe("media_other");
+	});
+
+	it("does not write over an item that was given another file while its own was read", async () => {
+		const item = mediaItem({ bytes: 300 });
+		mediaState.mediaItems = [item];
+		const relinked = {
+			...item,
+			file: new File([new Uint8Array(12)], "shake.mp4", { type: "video/mp4" }),
+			url: "blob:relinked",
+		};
+		files.readFile.mockImplementationOnce(async () => {
+			// Relinked to the same path: same id, same path, other bytes.
+			mediaState.mediaItems = [relinked];
+			return Buffer.from(NEW_BYTES);
+		});
 		const result = await refreshChangedMediaSources({
 			projectId: "p1",
 			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
 		});
-		expect(result).toEqual({ checked: 1, refreshed: [], failed: [] });
 		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
 		expect(blobs.createReplacementObjectURL).not.toHaveBeenCalled();
-		expect(mediaState.mediaItems).toEqual([otherProjectsItem]);
+		expect(mediaState.mediaItems).toEqual([relinked]);
+		expect(result.refreshed).toEqual([]);
+		expect(result.failed).toEqual([
+			{
+				id: "media_shake",
+				name: "shake.mp4",
+				error: expect.stringContaining("removed or replaced"),
+			},
+		]);
+	});
+
+	it("records the other files when one item is removed meanwhile", async () => {
+		const first = mediaItem({ bytes: 400 });
+		const second = mediaItem({
+			id: "media_other",
+			name: "other.mp4",
+			localPath: `${FOLDER}/other.mp4`,
+			bytes: 700,
+		});
+		const third = mediaItem({
+			id: "media_third",
+			name: "third.mp4",
+			localPath: `${FOLDER}/third.mp4`,
+			bytes: 900,
+		});
+		mediaState.mediaItems = [first, second, third];
+		storage.saveMediaItemRecord.mockImplementationOnce(async () => {
+			// The second item is deleted while the first is being recorded.
+			mediaState.mediaItems = (mediaState.mediaItems as MediaItem[]).filter(
+				(item) => item.id !== "media_other"
+			);
+		});
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [
+				diskFile({ size: 400, modifiedAt: 5000 }),
+				diskFile({
+					name: "other.mp4",
+					path: `${FOLDER}/other.mp4`,
+					size: 700,
+					modifiedAt: 6000,
+				}),
+				diskFile({
+					name: "third.mp4",
+					path: `${FOLDER}/third.mp4`,
+					size: 900,
+					modifiedAt: 7000,
+				}),
+			],
+		});
+		expect(result.failed).toEqual([]);
+		expect(
+			storage.saveMediaItemRecord.mock.calls.map(
+				([, item]) => (item as MediaItem).id
+			)
+		).toEqual(["media_shake", "media_third"]);
 	});
 
 	it("records nothing on an item of another project either", async () => {
@@ -428,18 +420,20 @@ describe("reading changed media files again", () => {
 			project.activeProject = { id: "p2" };
 			mediaState.mediaItems = [otherProjectsItem];
 		});
-		await refreshChangedMediaSources({
-			projectId: "p1",
-			diskFiles: [
-				diskFile({ size: 400, modifiedAt: 5000 }),
-				diskFile({
-					name: "other.mp4",
-					path: `${FOLDER}/other.mp4`,
-					size: 700,
-					modifiedAt: 6000,
-				}),
-			],
-		});
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [
+					diskFile({ size: 400, modifiedAt: 5000 }),
+					diskFile({
+						name: "other.mp4",
+						path: `${FOLDER}/other.mp4`,
+						size: 700,
+						modifiedAt: 6000,
+					}),
+				],
+			})
+		).rejects.toThrow("the check is not complete");
 		expect(storage.saveMediaItemRecord).toHaveBeenCalledTimes(1);
 		expect(mediaState.mediaItems).toEqual([otherProjectsItem]);
 		expect(otherProjectsItem.metadata).toBeUndefined();
