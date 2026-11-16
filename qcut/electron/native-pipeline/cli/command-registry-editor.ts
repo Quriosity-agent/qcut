@@ -191,6 +191,12 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			"qcut editor media rename --media-id <id> --new-name shake_v2 --project-id <id> --json",
 		]
 	),
+	"editor:media:refresh": ed(
+		"editor:media:refresh",
+		"Have the editor read again the media files that were written over in the project folder. The editor plays its own copy of each file; the native export reads the folder. The editor checks on its own when its window is looked at again, before a timeline apply and before an export; this asks for it outright and says which files it read (refreshed) and which it could not (failed)",
+		[PID],
+		["qcut editor media refresh --project-id <id> --json"]
+	),
 	"editor:media:delete": ed("editor:media:delete", "Delete media", [PID, MID]),
 	"editor:media:replace": ed(
 		"editor:media:replace",
