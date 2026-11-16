@@ -315,12 +315,15 @@ function passedOver(item: MediaItem): MediaSourceRefreshResult["failed"][0] {
 }
 
 const inFlight = new Map<string, Promise<MediaSourceRefreshResult>>();
+/** The one run owed to those who asked while another was under way. */
+const followUps = new Map<string, Promise<MediaSourceRefreshResult>>();
 
 /**
  * Reads again every media file of the project that changed in the project
  * folder since the editor copied it. `diskFiles` is a scan of the project's
  * media folder the caller already has; without one the folder is scanned.
- * One run per project at a time: a second call joins the run under way.
+ * One run per project at a time. A call that comes while one is under way
+ * gets the run that follows it, shared with the others that came meanwhile.
  *
  * It fails when the project is closed, or another one opened, before every
  * file was looked at: the files are then not to be taken for checked.
@@ -333,7 +336,25 @@ export function refreshChangedMediaSources({
 	diskFiles?: ProjectFolderFileInfo[];
 }): Promise<MediaSourceRefreshResult> {
 	const running = inFlight.get(projectId);
-	if (running) return running;
+	if (running) {
+		// The run under way listed the folder when it started: a file written
+		// since is not in its answer. One more run follows it, with a scan of
+		// its own, for everyone who asked meanwhile.
+		let queued = followUps.get(projectId);
+		if (!queued) {
+			queued = running
+				.then(
+					() => undefined,
+					() => undefined
+				)
+				.then(() => {
+					followUps.delete(projectId);
+					return refreshChangedMediaSources({ projectId });
+				});
+			followUps.set(projectId, queued);
+		}
+		return queued;
+	}
 	const run = refreshOnce({ projectId, diskFiles }).finally(() => {
 		inFlight.delete(projectId);
 	});
