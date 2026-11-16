@@ -99,11 +99,19 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 	 * whole milliseconds).
 	 */
 	it("says what the renamed file looks like, wherever it is by then", async () => {
-		await fs.writeFile(renamed().path, "the renamed picture");
+		// Noted before the file is moved: it has its old name still.
+		await fs.writeFile(renamed().previous.path, "the renamed picture");
 		const changed = new Date("2026-11-01T08:00:00.123Z");
-		await fs.utimes(renamed().path, changed, changed);
+		await fs.utimes(renamed().previous.path, changed, changed);
 		const seen = { size: 19, modifiedAt: changed.getTime() };
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "moving",
+		});
+		expect((await stored()).file).toEqual(seen);
 
+		await fs.rename(renamed().previous.path, renamed().path);
 		await noteUnsettledMediaRename({
 			projectId: "project-1",
 			renamed: renamed(),
