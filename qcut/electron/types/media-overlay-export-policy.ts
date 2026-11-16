@@ -16,9 +16,12 @@
  *
  * An adjustment layer under an overlay is stacked: it is graded inside the
  * overlay pass, at its own place, so the overlays above it are left alone.
- * The one case that is not: a layer that is also above every text or sticker
- * track. Its grade has to wait for that text to be drawn, which happens after
- * the overlay pass, and by then the overlay above it is in the picture too.
+ * Not when text or a sticker lies under the layer, though. Those are drawn
+ * after the overlay pass, so the layer's grade, made inside that pass, would
+ * miss them, and by the time they are drawn the overlay above the layer is
+ * in the picture too: such a timeline stays with the renderer. So does a
+ * layer that is above every text and sticker track, whose grade is made
+ * after they are drawn, over the finished picture.
  */
 
 /** The layers the native export draws after the media overlays. */
@@ -106,6 +109,36 @@ export function findOverlayClips<Clip extends StackedClip>({
 		}
 	}
 	return overlays;
+}
+
+/**
+ * Whether a visible text or sticker layer on a lower track shares time with
+ * `layer`: the layer grades it in the preview.
+ */
+function textLayerUnder({
+	timeline,
+	layer,
+	tolerance,
+}: {
+	timeline: OverlayPolicyTimeline;
+	layer: StackedClip;
+	tolerance: number;
+}): boolean {
+	return timeline.tracks.some(
+		(track, trackOrder) =>
+			trackOrder > layer.trackOrder &&
+			!track.hidden &&
+			track.elements.some(
+				(element) =>
+					!element.hidden &&
+					TEXT_LAYER_TYPES.has(element.type ?? "") &&
+					overlapSeconds(layer, {
+						trackOrder,
+						startTime: element.startTime,
+						endTime: element.endTime,
+					}) > tolerance
+			)
+	);
 }
 
 interface OverlayPolicyElement {
@@ -208,9 +241,13 @@ export function mediaOverlayRendererReason({
 			if (element.type !== "adjustment") {
 				return `${withArticle(element.type ?? track.type ?? "visual")} layer under a media clip stacked over a lower track`;
 			}
-			// Graded inside the overlay pass, unless it must wait for text.
-			if (Number.isFinite(textTop) && trackOrder < textTop) {
-				return "an adjustment layer that is under a media clip stacked over a lower track and over the text or sticker tracks";
+			// Graded inside the overlay pass, unless text or a sticker under
+			// it has to be graded too: that is drawn after the pass.
+			const overText =
+				(Number.isFinite(textTop) && trackOrder < textTop) ||
+				textLayerUnder({ timeline, layer, tolerance });
+			if (overText) {
+				return "an adjustment layer that is under a media clip stacked over a lower track and over a text or sticker layer";
 			}
 		}
 	}
