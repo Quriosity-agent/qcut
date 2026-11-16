@@ -59,7 +59,6 @@ import {
 	reopenProject,
 	resetKit,
 	SEEN,
-	sometimeLater,
 	stickers,
 	storage,
 	storedTimelines,
@@ -330,26 +329,29 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	 * reloaded) saw the file under its new name, followed it and dropped the
 	 * note; the file then went back. And when the app's later notes cannot
 	 * be written and the editor cannot be asked, this first note is all
-	 * there is: it settles the two once the app must be done.
+	 * there is: it settles the two once the app is done.
 	 */
-	it("leaves a note alone while the desktop app may still be moving the file", async () => {
+	it("leaves a rename alone while the desktop app is at work on it", async () => {
 		await renameProjectMedia(RENAME);
 		desktop.files = new Set([NEW_PATH]);
-		const notedAt = Date.now();
-		noted({ file: SEEN, notedAt });
+		noted({ file: SEEN, notedAt: Date.now() });
+		desktop.atWork.add(NOTES);
 
-		const { lookAgainAt } = await settleUnsettledMediaRenames({
+		const asked = Date.now();
+		const { lookAgainAt, dropped } = await settleUnsettledMediaRenames({
 			projectId: "project-1",
 		});
+		expect(dropped).toBe(0);
 		expect(heldIds()).toEqual([NEW]);
 		expect(desktop.stored.has(NOTES)).toBe(true);
 		expect(storage.saveTimeline).toHaveBeenCalledTimes(1);
-		// When to look again: once the app must be done.
-		expect(lookAgainAt).toBe(notedAt + 5 * 60 * 1000);
+		// Worth another look in a while, not at once and not much later.
+		expect(lookAgainAt).toBeGreaterThan(asked + 1000);
+		expect(lookAgainAt).toBeLessThanOrEqual(Date.now() + 60_000);
 
-		// The file went back, and nothing more was heard of the app.
+		// The file went back, and the app is done without another word.
 		desktop.files = new Set([OLD_PATH]);
-		sometimeLater();
+		desktop.atWork.delete(NOTES);
 		expect(
 			await settleUnsettledMediaRenames({ projectId: "project-1" })
 		).toEqual({ dropped: 1 });
@@ -364,41 +366,131 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	});
 
 	/**
-	 * A copy of a large file takes longer than the editor waits. The app
-	 * writes the note again every minute while it is at work, so the note
-	 * is never old while the file may still move. Taken for a note the app
-	 * had left, it was settled by the folder as it was in the middle of the
-	 * copy, and dropped; the copy then finished and nothing was left to
-	 * settle the rename by when it went wrong.
+	 * A copy of a large file takes longer than anyone waits, and the app may
+	 * not be able to write its note again in all that time. The editor went
+	 * by the age of the note: one that had not been written for five minutes
+	 * was taken for a rename the app had left, settled by the folder as it
+	 * was in the middle of the copy, and dropped. The copy then finished,
+	 * the editor followed, its answer was lost, the file went back, and the
+	 * app could not write that either: nothing was left to settle the rename
+	 * by, and the stored project named the new id.
 	 */
-	it("leaves a note alone for as long as the app keeps it fresh", async () => {
-		// The copy is under way: the file is under its old name still.
-		noted({ file: SEEN, notedAt: Date.now() });
-		await settleUnsettledMediaRenames({ projectId: "project-1" });
+	it("leaves it alone however old the note is, and settles by that note once the app is done", async () => {
+		// The copy is under way: the file is under its old name still, and the
+		// note is as old as the rename.
+		noted({ file: SEEN, notedAt: Date.now() - 3 * 60 * 60 * 1000 });
+		desktop.atWork.add(NOTES);
+		const written = desktop.stored.get(NOTES);
 
-		// A long time later it still is, and the app has just said so again.
-		sometimeLater();
-		sometimeLater();
-		const writtenAgain = Date.now() - 30_000;
-		noted({ file: SEEN, notedAt: writtenAgain });
+		// The project is loaded again in the middle of it.
 		const { lookAgainAt } = await settleUnsettledMediaRenames({
 			projectId: "project-1",
 		});
-		expect(lookAgainAt).toBe(writtenAgain + 5 * 60 * 1000);
-		expect(desktop.stored.has(NOTES)).toBe(true);
+		expect(lookAgainAt).toBeDefined();
+		expect(desktop.stored.get(NOTES)).toEqual(written);
 		expect(storage.saveTimeline).not.toHaveBeenCalled();
 
-		// The copy finished and the editor followed; its answer was lost,
-		// the file went back, and the app could not say so. The note is not
-		// written any more, and settles the two once it has gone stale.
+		// The copy finished and the editor followed; its answer was lost, the
+		// request to go back did not reach it, the file went back, and the app
+		// could not write that: the note is as it was. The app is done.
 		await renameProjectMedia(RENAME);
-		sometimeLater();
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			NEW,
+			"media_other",
+			NEW,
+		]);
+		expect(desktop.stored.get(NOTES)).toEqual(written);
+		desktop.atWork.delete(NOTES);
+
 		expect(
 			await settleUnsettledMediaRenames({ projectId: "project-1" })
 		).toEqual({ dropped: 1 });
 		expect(heldIds()).toEqual([OLD]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			OLD,
+			"media_other",
+			OLD,
+		]);
 		expect(desktop.stored.has(NOTES)).toBe(false);
+	});
+
+	it("settles a rename of a note written this moment, when the app is not at work on it", async () => {
+		// Left by an app that ended in the middle: nothing is at work on it.
+		desktop.files = new Set([NEW_PATH]);
+		noted({ file: SEEN, notedAt: Date.now() });
+		expect(
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({ dropped: 1 });
+		expect(heldIds()).toEqual([NEW]);
+	});
+
+	/**
+	 * The editor settles by what it read of the note and the folder a moment
+	 * ago. The app can begin the rename again in that moment, or write where
+	 * it has left the file: the note is then no longer the one that was
+	 * settled, and dropping it would drop what is still to be settled.
+	 */
+	it("has the app keep a note it has written again while the editor was settling", async () => {
+		await renameProjectMedia(RENAME);
+		noted({ file: SEEN, notedAt: 1000 });
+		const stays = appNote({ file: SEEN, fileIs: "new", notedAt: 2000 });
+		storage.saveTimeline.mockImplementation(async (request: unknown) => {
+			storeTimeline(request);
+			// Meanwhile the app says that the file stays renamed after all.
+			desktop.stored.set(NOTES, stays);
+		});
+
+		// Settled by the folder as it was: the file under its old name.
+		expect(
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({ dropped: 0 });
+		expect(heldIds()).toEqual([OLD]);
+		expect(desktop.stored.get(NOTES)).toEqual(stays);
+
+		// The next time, by what the note says now and the folder holds now.
+		desktop.files = new Set([NEW_PATH]);
+		expect(
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({ dropped: 1 });
+		expect(heldIds()).toEqual([NEW]);
+		expect(desktop.stored.has(NOTES)).toBe(false);
+	});
+
+	it("has the app keep the note of a rename it began again while the editor was settling", async () => {
+		await renameProjectMedia(RENAME);
+		noted({ file: SEEN, notedAt: 1000 });
+		storage.saveTimeline.mockImplementation(async (request: unknown) => {
+			storeTimeline(request);
+			desktop.atWork.add(NOTES);
+		});
+		expect(
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({ dropped: 0 });
+		expect(desktop.stored.has(NOTES)).toBe(true);
+	});
+
+	/**
+	 * A rename the app begins while the editor is settling an older note of
+	 * the same two names asks the editor after that: the request has the
+	 * last word, whatever the folder held when the editor looked.
+	 */
+	it("settles in turn with the app's requests, which come after it", async () => {
+		await renameProjectMedia(RENAME);
+		// An earlier rename ended with the file back and the editor not.
+		noted({ file: SEEN, notedAt: 1000 });
+		const settled = settleUnsettledMediaRenames({ projectId: "project-1" });
+		// The app renames the file again, and has the editor follow.
+		const followed = renameProjectMedia(RENAME);
+		await settled;
+		await followed;
+		expect(heldIds()).toEqual([NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			NEW,
+			"media_other",
+			NEW,
+		]);
 	});
 
 	it("settles at once a note in which the app says where it left the file", async () => {
