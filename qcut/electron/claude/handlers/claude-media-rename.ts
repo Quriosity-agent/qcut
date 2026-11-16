@@ -191,6 +191,16 @@ async function copyToFreeName({
  * again, so a failed move leaves the file where it was; another file that
  * has the name by then is left alone. If the move's own file cannot be
  * removed, the file is under both names (`MediaMoveIncompleteError`).
+ *
+ * What this cannot do. Taking the name is one step, so the move never
+ * writes over a file. Giving a name up is two steps: a look at which file
+ * has it, then its removal. Nothing available here makes them one: a
+ * rename that refuses a taken name (`renameat2`, `renamex_np`), or a
+ * removal of a given file and not of a given name, would take a native
+ * addon. Should another program rename a file of its own over the new name
+ * between the two, a move that is failing removes that file with the name
+ * it gives up, and a move that is finishing gives up the old name with the
+ * moved file already replaced, as it would have been a moment later.
  */
 export async function moveWithoutOverwriting({
 	from,
