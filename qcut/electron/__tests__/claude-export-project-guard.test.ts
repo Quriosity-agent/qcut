@@ -54,6 +54,7 @@ import {
 	clearExportJobsForTests,
 } from "../claude/handlers/claude-export-handler.js";
 import { listMediaFiles } from "../claude/handlers/claude-media-handler.js";
+import { ClipMediaMissingError } from "../claude/handlers/claude-export-handler/missing-clip-media.js";
 import { exportJobs } from "../claude/handlers/claude-export-handler/job-manager.js";
 import {
 	EXPORT_JOB_STATUS,
@@ -184,6 +185,33 @@ describe("export start project guard", () => {
 		expect(result).toMatchObject({ jobId: "test-job" });
 		expect(startExportJob).toHaveBeenCalledTimes(1);
 		expect(startRendererExportJob).not.toHaveBeenCalled();
+	});
+
+	it("answers 409 with the clips named when their media is not in the project", async () => {
+		const missing = new ClipMediaMissingError({
+			missing: [
+				{
+					elementId: "shake-1",
+					trackName: "动效 · 震屏",
+					startTime: 41.7,
+					wanted: "media_renamed",
+				},
+			],
+		});
+		vi.mocked(startExportJob).mockRejectedValueOnce(missing);
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, buildAccessor(buildTimeline("project-a")));
+		const [method, path] = EXPORT_START.split(" ");
+		await expect(
+			getHandler(
+				method,
+				path
+			)({ params: { projectId: "project-a" }, query: {}, body: {} })
+		).rejects.toMatchObject({
+			// The project has to change first; it is not a server fault.
+			status: 409,
+			message: missing.message,
+		});
 	});
 
 	it("routes local eye correction through the live portrait renderer", async () => {
