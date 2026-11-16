@@ -102,19 +102,39 @@ const sidecarFolder = () =>
 /** Where the media file of the id would be: there is none in these tests. */
 const MEDIA_FILE = () => path.join(sidecarFolder(), "..", "wanted.gif");
 
+/** How long the bridge between the two processes waits for an answer. */
+const BRIDGE_WAIT_MS = 10_000;
+
 /**
- * The changes as the HTTP API's process asks them of the main process: each
- * goes over to the one that makes them (utility-bridge.ts), as plain data.
+ * The changes as the HTTP API's process asks them of the main process, the
+ * way the bridge between the two does (utility-process.ts, utility-bridge.ts):
+ * each goes over as plain data with the time at which the asker stops
+ * waiting, and the asker is told "timed out" when no answer has come by then.
  */
 function askedOfTheMainProcess(
 	asked: string[] = []
 ): RestrictedMetadataChanges {
 	const ask =
-		(change: keyof RestrictedMetadataChanges) => async (request: unknown) => {
+		(change: keyof RestrictedMetadataChanges) => (request: unknown) => {
 			asked.push(change);
-			return changeRestrictedMetadataHere({
-				change,
-				request: JSON.parse(JSON.stringify(request)),
+			const deadline = Date.now() + BRIDGE_WAIT_MS;
+			return new Promise((resolve, reject) => {
+				const waited = setInterval(() => {
+					if (Date.now() < deadline) return;
+					clearInterval(waited);
+					reject(
+						new Error(
+							"Main process request timed out: media:restricted-metadata"
+						)
+					);
+				}, 10);
+				changeRestrictedMetadataHere({
+					change,
+					request: JSON.parse(JSON.stringify(request)),
+					deadline,
+				})
+					.then(resolve, reject)
+					.finally(() => clearInterval(waited));
 			});
 		};
 	return {
@@ -310,56 +330,90 @@ describe("writers of one restricted metadata sidecar", () => {
 		 * staged: it has looked at which file is there, and then pauses. An
 		 * import through the HTTP API arrives meanwhile. A lock with an age
 		 * was taken from the paused cleanup after a while, the import wrote
-		 * its metadata, and the cleanup went on to remove it. However long
-		 * the pause, the import now waits its turn in the one process.
+		 * its metadata, and the cleanup went on to remove it.
 		 */
-		it("does not let an import past a cleanup that pauses, however long", async () => {
-			const staged = await stageMediaRestrictedMetadata({
-				mediaId: MEDIA_ID,
-				metadata: OURS,
-				projectId: PROJECT_ID,
-				mediaFilePath: MEDIA_FILE(),
-			});
-			const other = await inTheOtherProcess();
-			other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess());
-
+		describe("when a cleanup pauses and an import arrives", () => {
 			const clock = { ahead: 0 };
-			const realNow = Date.now.bind(Date);
-			vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
 			let goOn = () => {};
-			const paused = new Promise<void>((resolve) => {
-				goOn = resolve;
+			let imported: Promise<string> | undefined;
+
+			/** The cleanup has looked, and waits; the import has been asked for. */
+			async function pausedCleanup(): Promise<{ discarded: Promise<void> }> {
+				const staged = await stageMediaRestrictedMetadata({
+					mediaId: MEDIA_ID,
+					metadata: OURS,
+					projectId: PROJECT_ID,
+					mediaFilePath: MEDIA_FILE(),
+				});
+				const other = await inTheOtherProcess();
+				other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess());
+				clock.ahead = 0;
+				const realNow = Date.now.bind(Date);
+				vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
+				const paused = new Promise<void>((resolve) => {
+					goOn = resolve;
+				});
+				imported = undefined;
+				hooks.onLstat = async (filePath) => {
+					if (!filePath.endsWith(".json") || imported) return;
+					imported = other
+						.persistMediaRestrictedMetadata({
+							mediaId: MEDIA_ID,
+							metadata: THEIRS,
+							projectId: PROJECT_ID,
+						})
+						.then(
+							() => "made",
+							(error: unknown) => String(error)
+						);
+					await paused;
+				};
+				const discarded = staged.discard();
+				await vi.waitFor(() => expect(imported).toBeDefined());
+				return { discarded };
+			}
+
+			it("makes the import after the cleanup, when the cleanup goes on in time", async () => {
+				const { discarded } = await pausedCleanup();
+				// A while goes by, well within what the import waits.
+				await new Promise((resolve) => setTimeout(resolve, 150));
+				clock.ahead = BRIDGE_WAIT_MS / 2;
+				expect(await stored()).toMatchObject({ itemId: "42001" });
+
+				goOn();
+				await discarded;
+				expect(await imported).toBe("made");
+				hooks.onLstat = undefined;
+				expect(await stored()).toMatchObject({ itemId: "42002" });
 			});
-			let imported: Promise<void> | undefined;
-			let importDone = false;
-			hooks.onLstat = async (filePath) => {
-				if (!filePath.endsWith(".json") || imported) return;
-				imported = other
-					.persistMediaRestrictedMetadata({
-						mediaId: MEDIA_ID,
-						metadata: THEIRS,
-						projectId: PROJECT_ID,
-					})
-					.then(() => {
-						importDone = true;
-					});
-				await paused;
-			};
-			const discarded = staged.discard();
 
-			// An hour goes by on the clock, and a while in fact.
-			await new Promise((resolve) => setTimeout(resolve, 150));
-			clock.ahead = 60 * 60 * 1000;
-			await new Promise((resolve) => setTimeout(resolve, 150));
-			expect(imported).toBeDefined();
-			expect(importDone).toBe(false);
-			expect(await stored()).toMatchObject({ itemId: "42001" });
+			/**
+			 * The import's process stops waiting after ten seconds and goes
+			 * on as if the write had failed: it takes the imported file away
+			 * again. Made when the cleanup finally goes on, the write would
+			 * leave restricted metadata for a file that is not there, to
+			 * stick to whatever file takes that name next.
+			 */
+			it("does not make the import once the one who asked has stopped waiting", async () => {
+				const { discarded } = await pausedCleanup();
+				// The cleanup pauses for an hour.
+				clock.ahead = 60 * 60 * 1000;
+				expect(await imported).toContain("timed out");
+				expect(await stored()).toMatchObject({ itemId: "42001" });
 
-			goOn();
-			await discarded;
-			await imported;
-			hooks.onLstat = undefined;
-			expect(await stored()).toMatchObject({ itemId: "42002" });
+				goOn();
+				await discarded;
+				hooks.onLstat = undefined;
+				// The cleanup took its own away; the import's turn came, and
+				// nothing was written for it.
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				expect(await stored()).toBeUndefined();
+				expect(
+					(await fs.readdir(sidecarFolder())).filter((name) =>
+						name.endsWith(".json")
+					)
+				).toEqual([]);
+			});
 		});
 	});
 
