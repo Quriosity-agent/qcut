@@ -43,6 +43,10 @@ export function TimelineHoverAxis({
 	const scrubTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const zoomRef = useRef(zoomLevel);
 	zoomRef.current = zoomLevel;
+	// After a seek the paused preview shows the frame sought to, until the
+	// pointer moves again: the line still follows a scroll or a zoom under
+	// the resting pointer, but brings no hover preview back over that frame.
+	const heldBySeekRef = useRef(false);
 
 	const cancelScheduledScrub = useCallback(() => {
 		pendingScrubRef.current = undefined;
@@ -123,8 +127,9 @@ export function TimelineHoverAxis({
 				setVisible(true);
 			}
 			// During playback the axis stays visual-only: the advancing frame
-			// keeps the preview, so no scrub override is published.
-			scheduleScrub(playback.isPlaying ? null : time);
+			// keeps the preview, so no scrub override is published. So it does
+			// after a seek, whose frame the preview keeps.
+			scheduleScrub(playback.isPlaying || heldBySeekRef.current ? null : time);
 		},
 		[hide, scheduleScrub, timelineRef, tracksScrollRef, trackLabelsRef]
 	);
@@ -135,7 +140,18 @@ export function TimelineHoverAxis({
 				hide();
 				return;
 			}
+			heldBySeekRef.current = false;
 			update(event.clientX, event.clientY);
+		};
+		// A seek ends the hover preview; one still waiting must not bring the
+		// hovered frame back over the frame just sought to. The store sends
+		// its own hover previews down the same channel, marked as scrubs; a
+		// seek to the time the playhead already has comes down it as well.
+		const handleSeek = (event: Event) => {
+			const detail = (event as CustomEvent<{ scrub?: boolean }>).detail;
+			if (detail?.scrub !== undefined) return;
+			heldBySeekRef.current = true;
+			cancelScheduledScrub();
 		};
 		const handlePointerDown = () => hide();
 		const handleDragOver = () => hide();
@@ -145,10 +161,8 @@ export function TimelineHoverAxis({
 		};
 		const unsubscribe = usePlaybackStore.subscribe((state, previous) => {
 			if (state.isPlaying && !previous.isPlaying) cancelScheduledScrub();
-			// A seek ends the hover preview; one still waiting must not bring
-			// the hovered frame back over the frame just sought to.
-			if (state.currentTime !== previous.currentTime) cancelScheduledScrub();
 		});
+		window.addEventListener("playback-seek", handleSeek);
 		document.addEventListener("pointermove", handlePointerMove);
 		document.addEventListener("pointerdown", handlePointerDown, true);
 		document.addEventListener("dragover", handleDragOver);
@@ -164,6 +178,7 @@ export function TimelineHoverAxis({
 			document.removeEventListener("dragover", handleDragOver);
 			window.removeEventListener("blur", hide);
 			document.removeEventListener("visibilitychange", handleVisibility);
+			window.removeEventListener("playback-seek", handleSeek);
 			unsubscribe();
 			document.documentElement.removeEventListener(
 				"mouseleave",
