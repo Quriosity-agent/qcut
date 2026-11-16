@@ -2,20 +2,32 @@ import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({})));
+const settle = vi.hoisted(() =>
+	vi.fn(async (..._args: unknown[]) => undefined)
+);
 const stores = vi.hoisted(() => ({
 	projectId: "p1" as string | undefined,
+	/** The project the stores have finished loading. */
+	loadedProjectId: "p1" as string | null,
 	mediaLoaded: true,
 }));
 
 vi.mock("@/lib/project/media-source-refresh", () => ({
 	refreshChangedMediaSources: refresh,
 }));
+vi.mock("@/stores/media/media-rename", () => ({
+	settleUnsettledMediaRenames: settle,
+}));
 vi.mock("@/stores/project-store", () => ({
 	useProjectStore: (
-		select: (state: { activeProject?: { id: string } }) => unknown
+		select: (state: {
+			activeProject?: { id: string };
+			loadedProjectId: string | null;
+		}) => unknown
 	) =>
 		select({
 			activeProject: stores.projectId ? { id: stores.projectId } : undefined,
+			loadedProjectId: stores.loadedProjectId,
 		}),
 }));
 vi.mock("@/stores/media/media-store", () => ({
@@ -33,6 +45,7 @@ describe("checking the project's media files when the window is looked at", () =
 		vi.useFakeTimers();
 		vi.clearAllMocks();
 		stores.projectId = "p1";
+		stores.loadedProjectId = "p1";
 		stores.mediaLoaded = true;
 	});
 
@@ -48,6 +61,26 @@ describe("checking the project's media files when the window is looked at", () =
 		vi.advanceTimersByTime(5000);
 		lookAtWindow();
 		expect(refresh).toHaveBeenCalledTimes(2);
+	});
+
+	/**
+	 * A rename can end with the editor and the folder apart, and is then
+	 * noted. It is settled when the project is all there, not before: the
+	 * timeline is loaded after the media.
+	 */
+	it("settles the renames noted for the project once it has finished loading", () => {
+		stores.loadedProjectId = null;
+		const { rerender } = renderHook(() => useRefreshChangedMedia());
+		expect(settle).not.toHaveBeenCalled();
+
+		stores.loadedProjectId = "p1";
+		rerender();
+		expect(settle).toHaveBeenCalledTimes(1);
+		expect(settle).toHaveBeenCalledWith({ projectId: "p1" });
+		// Not on every look at the window.
+		vi.advanceTimersByTime(5000);
+		lookAtWindow();
+		expect(settle).toHaveBeenCalledTimes(1);
 	});
 
 	it("waits for a project and its media", () => {
