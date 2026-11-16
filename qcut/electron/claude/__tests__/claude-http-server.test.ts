@@ -1166,6 +1166,9 @@ describe("Claude HTTP Server", () => {
 			projectId: "proj_123",
 			mediaId: "media_old",
 			newName: "shake_v2",
+			// The rename is noted before the file is moved.
+			beforeMove: expect.any(Function),
+			notMoved: expect.any(Function),
 		});
 		expect(
 			mediaRendererHandler.requestMediaRenameFromRenderer
@@ -1202,6 +1205,8 @@ describe("Claude HTTP Server", () => {
 			mediaId: "media_new",
 			newName: "shake.mp4",
 			exactName: true,
+			beforeMove: expect.any(Function),
+			notMoved: expect.any(Function),
 		});
 		expect(res.status).toBe(500);
 		expect(res.body.error).toContain("already taken");
