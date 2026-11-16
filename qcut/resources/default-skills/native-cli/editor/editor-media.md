@@ -227,11 +227,12 @@ date (a file it could not read, an item that was removed or replaced while
 its file was being read, an item of a rename that is not settled yet: it is
 read once the rename is), and the command then fails. So does a check that
 could not look at every file because the project was closed or another one
-opened meanwhile. An `export start` that goes through the renderer engine is
-refused while a file that a clip on the timeline plays is in `failed`, or
-while the check has not answered within 15 s (it may still be reading a
-large file: retry), since it would draw the old copy; a native export reads
-the folder and goes ahead.
+opened meanwhile, and one that could not read the desktop app's notes of
+renames (it then checks nothing). An `export start` that goes through the
+renderer engine is refused while a file that a clip on the timeline plays is
+in `failed`, or while the check has not answered within 15 s (it may still
+be reading a large file: retry), since it would draw the old copy; a native
+export reads the folder and goes ahead.
 
 Writing over a file is still the wrong tool when a clip has to keep working:
 a file that got shorter leaves its clips running past its end. `media
