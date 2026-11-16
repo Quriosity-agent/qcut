@@ -26,16 +26,55 @@ export const MEDIA_RENAME_COMMIT_MARGIN_MS = 3_000;
 /**
  * The main process waits this long for a refresh that was asked for
  * outright. It reads whole files again, so it may take a while; it stays
- * under the utility server's two minutes for one HTTP request.
+ * under the two minutes one HTTP request for it has.
  */
 export const MEDIA_REFRESH_TIMEOUT_MS = 100_000;
 /** An export start waits this long for the check that precedes it. */
 export const MEDIA_REFRESH_BEFORE_EXPORT_MS = 15_000;
 /** The utility process waits this much longer than the main process does. */
 export const UTILITY_BRIDGE_MARGIN_MS = 5_000;
+/**
+ * What one HTTP request has for each, in the main-process server and in the
+ * utility server alike. A server ends a request that outlasts its usual
+ * time (30 s in the main-process server) with a 408, whatever the route is
+ * still doing: a rename waits that long by itself, and a refresh longer.
+ */
+export const MEDIA_RENAME_HTTP_TIMEOUT_MS =
+	MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS + 5_000;
+export const MEDIA_REFRESH_HTTP_TIMEOUT_MS = 120_000;
+/** An export start keeps the 30 s it had; the check before it comes on top. */
+export const EXPORT_START_HTTP_TIMEOUT_MS =
+	30_000 + MEDIA_REFRESH_BEFORE_EXPORT_MS + UTILITY_BRIDGE_MARGIN_MS;
 /** What the command line waits for each, outlasting every wait inside. */
 export const MEDIA_RENAME_CLIENT_TIMEOUT_MS = 45_000;
 export const MEDIA_REFRESH_CLIENT_TIMEOUT_MS = 125_000;
+
+const MEDIA_RENAME_ROUTE_PATTERN =
+	/^\/api\/claude\/media\/[^/]+\/[^/]+\/rename$/;
+const MEDIA_REFRESH_ROUTE_PATTERN = /^\/api\/claude\/media\/[^/]+\/refresh$/;
+const EXPORT_START_ROUTE_PATTERN = /^\/api\/claude\/export\/[^/]+\/start$/;
+
+/**
+ * The time one HTTP request needs when it is for a rename, a refresh or an
+ * export start; nothing for any other route. A server gives the request at
+ * least this.
+ */
+export function mediaRouteHttpTimeoutMs({
+	path,
+}: {
+	path: string;
+}): number | undefined {
+	if (MEDIA_REFRESH_ROUTE_PATTERN.test(path)) {
+		return MEDIA_REFRESH_HTTP_TIMEOUT_MS;
+	}
+	if (MEDIA_RENAME_ROUTE_PATTERN.test(path)) {
+		return MEDIA_RENAME_HTTP_TIMEOUT_MS;
+	}
+	if (EXPORT_START_ROUTE_PATTERN.test(path)) {
+		return EXPORT_START_HTTP_TIMEOUT_MS;
+	}
+	return;
+}
 
 /** How long the main process waits for one refresh request. */
 export function mediaRefreshWaitMs({
