@@ -468,6 +468,34 @@ test("QCut 1117 field test: renamed and overwritten media, a grade under an over
 		size: statSync(green).size,
 		recorded: statSync(green).size,
 	});
+	// Its length and thumbnail are measured again, from the new file.
+	await expect
+		.poll(
+			() =>
+				page.evaluate((id) => {
+					const item = (
+						window as unknown as {
+							__mediaStore: {
+								getState: () => {
+									mediaItems: Array<{
+										id: string;
+										duration?: number;
+										thumbnailStatus?: string;
+									}>;
+								};
+							};
+						}
+					).__mediaStore
+						.getState()
+						.mediaItems.find((candidate) => candidate.id === id);
+					return {
+						seconds: Math.round(item?.duration ?? 0),
+						thumbnail: item?.thumbnailStatus,
+					};
+				}, newId),
+			{ timeout: 30_000 }
+		)
+		.toEqual({ seconds: 5, thumbnail: "ready" });
 	// A second check finds nothing left to read.
 	const again = await run<{ refreshed: unknown[] }>(
 		"editor:media:refresh",
