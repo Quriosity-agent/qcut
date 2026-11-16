@@ -26,6 +26,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { MEDIA_RENAME_CLIENT_TIMEOUT_MS } from "../../claude/handlers/claude-media-deadlines.js";
 import type { ClaudeElement, ClaudeTimeline } from "../../types/claude-api.js";
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import { type EditorApiClient, EditorApiError } from "./editor-api-client.js";
@@ -254,7 +255,8 @@ export async function mediaReplace(
 	try {
 		const named = await client.patch<{ id: string; name: string }>(
 			`/api/claude/media/${project}/${encodeURIComponent(newMediaId)}/rename`,
-			{ newName: old.name, exactName: true }
+			{ newName: old.name, exactName: true },
+			{ timeout: MEDIA_RENAME_CLIENT_TIMEOUT_MS }
 		);
 		return {
 			success: true,
