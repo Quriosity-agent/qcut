@@ -12,13 +12,14 @@
  * after the editor has gone back. Nothing would put that right once the
  * project is closed.
  *
- * So such a rename is noted, in the desktop app's key-value store beside
- * the project's, and settled from what the project folder holds the next
- * time the project is open (`settleUnsettledMediaRenames`). A note is a
- * record of its own, under a key made of the project and the two ids: the
- * editor writes one when it knows, and so does the desktop app before it
- * moves a file without the editor's word
- * (electron/claude/handlers/claude-media-rename-note.ts makes the same key).
+ * So a rename is noted, in the desktop app's key-value store beside the
+ * project's, and settled from what the project folder holds the next time
+ * the project is open (`settleUnsettledMediaRenames`). A note is a record
+ * of its own, under a key made of the project and the two ids. The desktop
+ * app writes one for every rename, before it moves the file, and drops it
+ * when the rename has ended with the two together
+ * (electron/claude/handlers/claude-media-rename-note.ts makes the same
+ * key); the editor writes one when it knows that they are apart.
  *
  * A note is dropped by whoever has seen the editor and the folder agree:
  * the desktop app, once the file is where it had the editor end, or the
