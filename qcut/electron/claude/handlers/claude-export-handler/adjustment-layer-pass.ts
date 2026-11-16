@@ -17,6 +17,10 @@ import { buildVideoColorFilter } from "../../../ffmpeg/color-filter.js";
 import type { VideoColorSettings } from "../../../ffmpeg/color-settings.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import type { ClaudeTimeline } from "../../../types/claude-api.js";
+import {
+	stackToleranceSeconds,
+	textLayerTop,
+} from "../../../types/media-overlay-export-policy.js";
 import { claudeLog } from "../../utils/logger.js";
 import { readClipColorSettings } from "./clip-color-settings.js";
 import { moveFile } from "./move-file.js";
@@ -39,13 +43,6 @@ export interface AdjustmentLayer {
 	aboveOverlays: boolean;
 }
 
-const OVERLAY_ELEMENT_TYPES = new Set([
-	"sticker",
-	"text",
-	"captions",
-	"markdown",
-]);
-
 /**
  * The adjustment layers the native export grades, lowest track first (the
  * order they apply in). Layers without a grade, hidden, or fully transparent
@@ -56,17 +53,7 @@ export function collectAdjustmentLayers({
 }: {
 	timeline: ClaudeTimeline;
 }): AdjustmentLayer[] {
-	let overlayTop = Number.POSITIVE_INFINITY;
-	for (const [trackOrder, track] of timeline.tracks.entries()) {
-		if (track.hidden) continue;
-		if (
-			track.elements.some(
-				(element) => OVERLAY_ELEMENT_TYPES.has(element.type) && !element.hidden
-			)
-		) {
-			overlayTop = Math.min(overlayTop, trackOrder);
-		}
-	}
+	const overlayTop = textLayerTop({ timeline });
 	const layers: AdjustmentLayer[] = [];
 	for (const [trackOrder, track] of timeline.tracks.entries()) {
 		if (track.hidden) continue;
@@ -105,6 +92,77 @@ export function collectAdjustmentLayers({
 	);
 }
 
+/**
+ * The filter steps that grade the picture at `input` inside one layer's
+ * time window and leave it at `output`, or null when the layer's grade is
+ * neutral. The grade runs on a copy of the stream, and the copy is laid back
+ * over the original only inside the window, with the layer's opacity as its
+ * alpha.
+ */
+export function adjustmentLayerGradeSteps({
+	layer,
+	input,
+	output,
+	suffix,
+}: {
+	layer: AdjustmentLayer;
+	input: string;
+	output: string;
+	/** Ends the labels between `input` and `output`; unique per layer. */
+	suffix: string;
+}): string[] | null {
+	const grade = buildVideoColorFilter({
+		visual: { ...DEFAULT_VISUAL, color: layer.color },
+	});
+	if (!grade) return null;
+	const base = `adj_b${suffix}`;
+	const source = `adj_s${suffix}`;
+	const graded = `adj_g${suffix}`;
+	const steps = [
+		`[${input}]split=2[${base}][${source}]`,
+		`[${source}]${grade}[${graded}]`,
+	];
+	let top = graded;
+	if (layer.opacity < 1) {
+		const faded = `adj_a${suffix}`;
+		steps.push(
+			`[${graded}]format=rgba,colorchannelmixer=aa=${layer.opacity}[${faded}]`
+		);
+		top = faded;
+	}
+	steps.push(
+		`[${base}][${top}]overlay=enable='between(t,${layer.startTime},${layer.endTime})'[${output}]`
+	);
+	return steps;
+}
+
+/**
+ * Whether any of `layers` lies under a media overlay it shares time with.
+ * Such a layer grades the tracks below it and leaves that overlay alone, so
+ * it has to run inside the overlay pass, at its own place in the stack, and
+ * not over the finished picture.
+ */
+export function adjustmentLayersUnderOverlays({
+	layers,
+	overlays,
+	fps,
+}: {
+	layers: AdjustmentLayer[];
+	overlays: Array<{ trackOrder: number; startTime: number; duration: number }>;
+	fps: number;
+}): boolean {
+	const tolerance = stackToleranceSeconds({ fps });
+	return layers.some((layer) =>
+		overlays.some(
+			(overlay) =>
+				overlay.trackOrder < layer.trackOrder &&
+				Math.min(layer.endTime, overlay.startTime + overlay.duration) -
+					Math.max(layer.startTime, overlay.startTime) >
+					tolerance
+		)
+	);
+}
+
 export interface AdjustmentLayerPass {
 	args: string[];
 	filterComplex: string;
@@ -130,27 +188,15 @@ export function buildAdjustmentLayerPass({
 	const steps: string[] = [];
 	let current = "0:v";
 	for (const [index, layer] of layers.entries()) {
-		const grade = buildVideoColorFilter({
-			visual: { ...DEFAULT_VISUAL, color: layer.color },
-		});
-		if (!grade) continue;
-		const base = `adj_b${index}`;
-		const source = `adj_s${index}`;
-		const graded = `adj_g${index}`;
 		const output = `adj_o${index}`;
-		steps.push(`[${current}]split=2[${base}][${source}]`);
-		steps.push(`[${source}]${grade}[${graded}]`);
-		let top = graded;
-		if (layer.opacity < 1) {
-			const faded = `adj_a${index}`;
-			steps.push(
-				`[${graded}]format=rgba,colorchannelmixer=aa=${layer.opacity}[${faded}]`
-			);
-			top = faded;
-		}
-		steps.push(
-			`[${base}][${top}]overlay=enable='between(t,${layer.startTime},${layer.endTime})'[${output}]`
-		);
+		const gradeSteps = adjustmentLayerGradeSteps({
+			layer,
+			input: current,
+			output,
+			suffix: String(index),
+		});
+		if (!gradeSteps) continue;
+		steps.push(...gradeSteps);
 		current = output;
 	}
 	if (steps.length === 0) return null;
