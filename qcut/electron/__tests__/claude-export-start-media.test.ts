@@ -151,8 +151,10 @@ describe("export start and the project's media", () => {
 			method,
 			path
 		)({ params: { projectId: "project-a" }, query: {}, body: {} });
+		// It does not hold an export start up for long.
 		expect(requestMediaRefresh).toHaveBeenCalledWith({
 			projectId: "project-a",
+			timeoutMs: 15_000,
 		});
 		expect(requestMediaRefresh.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(startExportJob).mock.invocationCallOrder[0]
@@ -216,9 +218,40 @@ describe("export start and the project's media", () => {
 			})
 		).rejects.toMatchObject({
 			status: 409,
-			message: expect.stringContaining(
-				"1 media file(s) changed in the project folder and the editor could not read them again, so a renderer export would use its old copies: shake.mp4 (the file kept changing while it was read)."
-			),
+			message:
+				"A renderer export would use the editor's old copies: 1 media file(s) changed in the project folder and the editor could not read them again: shake.mp4 (the file kept changing while it was read). Fix the files or import them again, then retry.",
+		});
+		expect(startRendererExportJob).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * A check that did not answer may still be reading a changed file: the
+	 * renderer would draw the old copy, and a failure here used to pass as
+	 * "nothing changed".
+	 */
+	it("refuses a renderer export when the check did not answer in time", async () => {
+		const accessor = buildAccessor(buildTimeline("project-a"));
+		Object.assign(accessor, {
+			requestMediaRefresh: vi.fn(async () => {
+				throw new Error("Renderer media refresh timed out.");
+			}),
+		});
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		await expect(
+			getHandler(
+				method,
+				path
+			)({
+				params: { projectId: "project-a" },
+				query: {},
+				body: { engine: "muxer" },
+			})
+		).rejects.toMatchObject({
+			status: 409,
+			message:
+				"A renderer export would use the editor's old copies: the editor did not confirm that its media copies match the project folder (Renderer media refresh timed out.). It may still be reading files that changed; retry in a moment.",
 		});
 		expect(startRendererExportJob).not.toHaveBeenCalled();
 	});
