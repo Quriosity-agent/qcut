@@ -24,6 +24,7 @@ import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
 import { setupTimeEditHandlers } from "./claude-time-edit-bridge";
 import { setupMediaRenameHandler } from "./claude-media-rename-bridge";
+import { setupMediaRefreshHandler } from "./claude-media-refresh-bridge";
 import {
 	decodeDeterministicMediaSourceName,
 	resolveMediaIdForBatchElement,
@@ -391,6 +392,7 @@ export function setupClaudeTimelineBridge(): void {
 	}
 
 	setupMediaRenameHandler({ media: claude.media });
+	setupMediaRefreshHandler({ media: claude.media });
 
 	setupRequestHandlers({ claudeAPI });
 
