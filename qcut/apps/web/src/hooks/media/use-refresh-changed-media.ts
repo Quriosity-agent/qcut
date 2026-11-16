@@ -7,6 +7,8 @@ import { useProjectStore } from "@/stores/project-store";
 
 /** A window that keeps taking focus does not scan the folder each time. */
 const MIN_INTERVAL_MS = 3000;
+/** Noted renames are not looked at again sooner than this. */
+const SETTLE_AGAIN_MIN_MS = 1000;
 
 /**
  * Keeps the editor's copies of the open project's media files current: once
@@ -31,9 +33,31 @@ export function useRefreshChangedMedia(): void {
 	// they are stored.
 	useEffect(() => {
 		if (!projectId || !projectLoaded) return;
-		settleUnsettledMediaRenames({ projectId }).catch((error: unknown) => {
-			debugWarn("[RefreshChangedMedia] Noted renames were not settled:", error);
-		});
+		let over = false;
+		let later: ReturnType<typeof setTimeout> | undefined;
+		const settle = () => {
+			settleUnsettledMediaRenames({ projectId })
+				.then(({ lookAgainAt }) => {
+					// A rename the desktop app may still be at work on is looked
+					// at again once it must be done with the file.
+					if (over || lookAgainAt === undefined) return;
+					later = setTimeout(
+						settle,
+						Math.max(SETTLE_AGAIN_MIN_MS, lookAgainAt - Date.now())
+					);
+				})
+				.catch((error: unknown) => {
+					debugWarn(
+						"[RefreshChangedMedia] Noted renames were not settled:",
+						error
+					);
+				});
+		};
+		settle();
+		return () => {
+			over = true;
+			clearTimeout(later);
+		};
 	}, [projectId, projectLoaded]);
 
 	useEffect(() => {
