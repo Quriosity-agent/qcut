@@ -74,6 +74,10 @@ import {
 	ClipColorError,
 	readClipColorSettings,
 } from "./clip-color-settings.js";
+import {
+	type MissingClipMedia,
+	missingClipMedia,
+} from "./missing-clip-media.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import { prepareAssFontsDirectory } from "./ass-fonts-dir.js";
 import {
@@ -219,11 +223,14 @@ export async function collectTimelineAudioFiles({
 	mediaFiles,
 	projectId,
 	resolvedMediaFiles,
+	missingMedia,
 }: {
 	timeline: ClaudeTimeline;
 	mediaFiles: MediaFile[];
 	projectId?: string;
 	resolvedMediaFiles?: MediaFile[];
+	/** Filled with the clips whose media was not found, when given. */
+	missingMedia?: MissingClipMedia[];
 }): Promise<AudioFile[]> {
 	const mediaById = new Map<string, MediaFile>();
 	const mediaByName = new Map<string, MediaFile>();
@@ -257,7 +264,15 @@ export async function collectTimelineAudioFiles({
 					diskFallbackCache.set(element.sourceName, media);
 				}
 			}
-			if (!media || (media.type !== "audio" && media.type !== "video")) {
+			if (!media) {
+				const missing = missingClipMedia({
+					element,
+					trackName: track.name ?? `track ${trackIndex + 1}`,
+				});
+				if (missing) missingMedia?.push(missing);
+				continue;
+			}
+			if (media.type !== "audio" && media.type !== "video") {
 				continue;
 			}
 
@@ -367,11 +382,14 @@ export async function collectExportSegments({
 	mediaFiles,
 	projectId,
 	resolvedMediaFiles,
+	missingMedia,
 }: {
 	timeline: ClaudeTimeline;
 	mediaFiles: MediaFile[];
 	projectId?: string;
 	resolvedMediaFiles?: MediaFile[];
+	/** Filled with the clips whose media was not found, when given. */
+	missingMedia?: MissingClipMedia[];
 }): Promise<ExportSegment[]> {
 	try {
 		const mediaById = new Map<string, MediaFile>();
@@ -424,7 +442,20 @@ export async function collectExportSegments({
 					}
 				}
 
-				if (!media || (media.type !== "video" && media.type !== "image")) {
+				if (!media) {
+					// A sound track's clips are the sound collection's to report:
+					// it knows a muted track is not heard.
+					const missing =
+						track.type === "audio"
+							? null
+							: missingClipMedia({
+									element,
+									trackName: track.name ?? `track ${trackOrder + 1}`,
+								});
+					if (missing) missingMedia?.push(missing);
+					continue;
+				}
+				if (media.type !== "video" && media.type !== "image") {
 					continue;
 				}
 
