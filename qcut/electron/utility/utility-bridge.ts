@@ -77,6 +77,7 @@ import {
 	forgetUnsettledMediaRename,
 	noteUnsettledMediaRename,
 } from "../claude/handlers/claude-media-rename-note.js";
+import { changeRestrictedMetadataHere } from "../claude/handlers/claude-media-restricted-metadata.js";
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaRefreshEvent,
@@ -527,6 +528,27 @@ async function handleMainRequest(
 	const updateStatus = handleUpdateControlRequest({ channel, data });
 	if (updateStatus) return updateStatus;
 
+	// What follows is done here for the utility process and needs no window:
+	// a rename is noted, and a restricted file's metadata changed, also when
+	// the editor's window is gone.
+	if (channel === "media:restricted-metadata") {
+		return changeRestrictedMetadataHere(
+			data as Parameters<typeof changeRestrictedMetadataHere>[0]
+		);
+	}
+	if (channel === "media:note-unsettled-rename") {
+		const req = data as unknown as {
+			payload: Parameters<typeof noteUnsettledMediaRename>[0];
+		};
+		return noteUnsettledMediaRename(req.payload);
+	}
+	if (channel === "media:forget-unsettled-rename") {
+		const req = data as unknown as {
+			payload: Parameters<typeof forgetUnsettledMediaRename>[0];
+		};
+		return forgetUnsettledMediaRename(req.payload);
+	}
+
 	// Everything below talks to the editor, so a closed window is reopened
 	// rather than failing the request. Reopening can outlast the caller's
 	// wait, and a mutation it has given up on must not run afterwards.
@@ -610,20 +632,6 @@ async function handleMainRequest(
 				payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">;
 			};
 			return requestMediaRenameFromRenderer({ payload: req.payload, win });
-		}
-
-		case "media:note-unsettled-rename": {
-			const req = data as unknown as {
-				payload: Parameters<typeof noteUnsettledMediaRename>[0];
-			};
-			return noteUnsettledMediaRename(req.payload);
-		}
-
-		case "media:forget-unsettled-rename": {
-			const req = data as unknown as {
-				payload: Parameters<typeof forgetUnsettledMediaRename>[0];
-			};
-			return forgetUnsettledMediaRename(req.payload);
 		}
 
 		case "get-qcut-import-evidence": {
