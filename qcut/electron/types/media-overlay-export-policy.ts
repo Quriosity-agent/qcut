@@ -11,9 +11,57 @@
  * Every overlay sits above every joined clip it overlaps (a joined clip has
  * no overlapping clip below it), so that order reproduces the stack. What the
  * native export cannot stack — a transition into or out of an overlay, neural
- * frame interpolation on one, or a text, sticker, adjustment or effect layer
- * under one — makes the timeline a renderer export instead of a wrong one.
+ * frame interpolation on one, or a text, sticker or effect layer under one —
+ * makes the timeline a renderer export instead of a wrong one.
+ *
+ * An adjustment layer under an overlay is stacked: it is graded inside the
+ * overlay pass, at its own place, so the overlays above it are left alone.
+ * The one case that is not: a layer that is also above every text or sticker
+ * track. Its grade has to wait for that text to be drawn, which happens after
+ * the overlay pass, and by then the overlay above it is in the picture too.
  */
+
+/** The layers the native export draws after the media overlays. */
+export const TEXT_LAYER_TYPES: ReadonlySet<string> = new Set([
+	"sticker",
+	"text",
+	"captions",
+	"markdown",
+]);
+
+/** "an adjustment layer", "a text layer". */
+function withArticle(noun: string): string {
+	return `${/^[aeiou]/i.test(noun) ? "an" : "a"} ${noun}`;
+}
+
+/**
+ * The highest track (lowest index) that shows a text or sticker layer, or
+ * infinity when the timeline shows none. An adjustment layer above it grades
+ * those layers too, so its grade runs after they are drawn.
+ */
+export function textLayerTop({
+	timeline,
+}: {
+	timeline: {
+		tracks: Array<{
+			hidden?: boolean;
+			elements: Array<{ type?: string; hidden?: boolean }>;
+		}>;
+	};
+}): number {
+	let top = Number.POSITIVE_INFINITY;
+	for (const [trackOrder, track] of timeline.tracks.entries()) {
+		if (track.hidden) continue;
+		if (
+			track.elements.some(
+				(element) => TEXT_LAYER_TYPES.has(element.type ?? "") && !element.hidden
+			)
+		) {
+			top = Math.min(top, trackOrder);
+		}
+	}
+	return top;
+}
 
 export interface StackedClip {
 	/** UI order, top to bottom: a higher value is a lower track. */
@@ -140,6 +188,7 @@ export function mediaOverlayRendererReason({
 		}
 	}
 	const tolerance = stackToleranceSeconds({ fps });
+	const textTop = textLayerTop({ timeline });
 	for (const [trackOrder, track] of timeline.tracks.entries()) {
 		if (track.hidden || track.type === "media" || track.type === "audio")
 			continue;
@@ -150,13 +199,18 @@ export function mediaOverlayRendererReason({
 				startTime: element.startTime,
 				endTime: element.endTime,
 			};
-			for (const overlay of overlays) {
-				if (
+			const underOverlay = [...overlays].some(
+				(overlay) =>
 					trackOrder > overlay.trackOrder &&
 					overlapSeconds(layer, overlay) > tolerance
-				) {
-					return `a ${element.type ?? track.type ?? "visual"} layer under a media clip stacked over a lower track`;
-				}
+			);
+			if (!underOverlay) continue;
+			if (element.type !== "adjustment") {
+				return `${withArticle(element.type ?? track.type ?? "visual")} layer under a media clip stacked over a lower track`;
+			}
+			// Graded inside the overlay pass, unless it must wait for text.
+			if (Number.isFinite(textTop) && trackOrder < textTop) {
+				return "an adjustment layer that is under a media clip stacked over a lower track and over the text or sticker tracks";
 			}
 		}
 	}
