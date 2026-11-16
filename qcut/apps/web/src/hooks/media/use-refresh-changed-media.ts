@@ -48,8 +48,8 @@ export function useRefreshChangedMedia(): void {
 							}
 						);
 					}
-					// A rename the desktop app may still be at work on is looked
-					// at again once it must be done with the file.
+					// A rename the desktop app is at work on is looked at again
+					// in a while: what the app leaves noted is settled then.
 					if (lookAgainAt === undefined) return;
 					later = setTimeout(
 						settle,
