@@ -73,7 +73,10 @@ import {
 	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../claude/handlers/claude-media-renderer-handler.js";
-import { noteUnsettledMediaRename } from "../claude/handlers/claude-media-rename-note.js";
+import {
+	forgetUnsettledMediaRename,
+	noteUnsettledMediaRename,
+} from "../claude/handlers/claude-media-rename-note.js";
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaRefreshEvent,
@@ -614,6 +617,13 @@ async function handleMainRequest(
 				payload: Parameters<typeof noteUnsettledMediaRename>[0];
 			};
 			return noteUnsettledMediaRename(req.payload);
+		}
+
+		case "media:forget-unsettled-rename": {
+			const req = data as unknown as {
+				payload: Parameters<typeof forgetUnsettledMediaRename>[0];
+			};
+			return forgetUnsettledMediaRename(req.payload);
 		}
 
 		case "get-qcut-import-evidence": {
