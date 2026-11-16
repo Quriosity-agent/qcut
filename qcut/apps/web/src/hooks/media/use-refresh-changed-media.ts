@@ -37,10 +37,20 @@ export function useRefreshChangedMedia(): void {
 		let later: ReturnType<typeof setTimeout> | undefined;
 		const settle = () => {
 			settleUnsettledMediaRenames({ projectId })
-				.then(({ lookAgainAt }) => {
+				.then(({ lookAgainAt, dropped }) => {
+					if (over) return;
+					// An item of a rename that was not settled had been left as
+					// it was by the check below: it is looked at now.
+					if (dropped > 0) {
+						refreshChangedMediaSources({ projectId }).catch(
+							(error: unknown) => {
+								debugWarn("[RefreshChangedMedia] The check failed:", error);
+							}
+						);
+					}
 					// A rename the desktop app may still be at work on is looked
 					// at again once it must be done with the file.
-					if (over || lookAgainAt === undefined) return;
+					if (lookAgainAt === undefined) return;
 					later = setTimeout(
 						settle,
 						Math.max(SETTLE_AGAIN_MIN_MS, lookAgainAt - Date.now())
