@@ -150,12 +150,13 @@ was unless the answer says otherwise, in one of three ways.
   not, the command fails and the error says that the file "stays renamed".
 - The editor could not be asked at all (it was reloaded, its window is gone).
 
-In all three the desktop app keeps a note of the rename until the editor is
-known to be where the file is. What is still apart then, the editor settles
-from the name the file has when the project is next opened; the renamed file
-is told from another file that has taken its old name by its size and the
-time it was changed. The error says so when even the note could not be
-written. After a rename that failed,
+The desktop app notes every rename before it moves the file, and keeps the
+note until the editor is known to be where the file is; a rename it cannot
+note is not made ("could not be noted … nothing was changed"). What is still
+apart after a failure, or after the app was closed in the middle of a
+rename, the editor settles from the name the file has when the project is
+next opened; the renamed file is told from another file that has taken its
+old name by its size and the time it was changed. After a rename that failed,
 look at the file's name and at what the error names (`media list`,
 `timeline export`) before the rename is tried again. One request can wait
 for the editor three times, so the command waits up to two minutes.
