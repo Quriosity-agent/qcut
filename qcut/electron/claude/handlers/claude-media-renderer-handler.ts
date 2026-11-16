@@ -74,11 +74,17 @@ export async function requestMediaRenameFromRenderer({
 		channel: MEDIA_RENAME_CHANNEL,
 		// The editor is told when this stops waiting: a rename it finished
 		// after that would stand in the editor while the file is put back.
-		payload: {
-			...payload,
-			deadlineAt:
-				Date.now() + MEDIA_RENAME_TIMEOUT_MS - MEDIA_RENAME_COMMIT_MARGIN_MS,
-		},
+		// A request that settles has no such moment: the file stays where
+		// it is, and the editor is to end on its id however long it takes.
+		payload: payload.settles
+			? payload
+			: {
+					...payload,
+					deadlineAt:
+						Date.now() +
+						MEDIA_RENAME_TIMEOUT_MS -
+						MEDIA_RENAME_COMMIT_MARGIN_MS,
+				},
 		requestIdPrefix: "media",
 		responseChannel: MEDIA_RENAME_RESPONSE_CHANNEL,
 		timeoutMessage: "Renderer media rename timed out.",
