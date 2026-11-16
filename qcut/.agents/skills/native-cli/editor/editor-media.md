@@ -37,6 +37,9 @@ object.
 qcut editor:media:info --project-id <id> --media-id <id>
 ```
 
+An id that is not in the project is an error (`Media not found: <id>`, HTTP
+404), not an empty answer.
+
 ### Import local file
 
 ```bash
@@ -109,8 +112,25 @@ qcut editor:media:extract-frame \
 qcut editor:media:rename \
   --project-id <id> \
   --media-id <id> \
-  --new-name "final-cut.mp4"
+  --new-name "final-cut.mp4" --json
 ```
+
+A media id is made from the file's name (`media_` + the name in base64), so
+**a renamed file has a new id**. The rename takes the project along:
+
+- the editor's item gets the new id, name and path;
+- every clip that played the old id plays the new one, in the open scene and
+  in the others (locked tracks too), and so do the stickers;
+- the answer gives both: `{ "renamed": true, "id": "<new>", "name":
+  "final-cut.mp4", "previousId": "<old>", "previousName": "…" }`. A script
+  that kept the old id needs `id` from here on.
+
+The extension is kept when the new name has none. A name another file
+already has gets a suffix (`final-cut_1.mp4`); the answer's `name` says what
+it became. Renaming a file to its own name changes nothing (`renamed:
+false`). An id that is not in the project is an error (404). If the editor
+cannot follow the rename, the file is put back under its old name and the
+command fails: the project is as it was.
 
 ### Replace a media item with a new file
 
@@ -130,17 +150,53 @@ qcut editor:media:replace \
   [`timeline replace-media`](editor-timeline.md#replace-a-clips-media)): no
   clip is changed and the import is taken back out, so the project is as it
   was.
-- The new item has an id of its own (the answer gives `mediaId` and `name`,
-  with `oldMediaId`, `oldName` and the `clips` that changed). Nothing the
-  editor worked out for the old file (thumbnail, waveform, alpha proxy) is
-  shown for the new one. Scripts that kept the old media id need the new one.
+- The new file is imported as an item of its own, so nothing the editor
+  worked out for the old file (thumbnail, waveform, alpha proxy) is shown
+  for the new one. The answer gives `mediaId` and `name`, with `oldMediaId`,
+  `oldName` and the `clips` that changed.
+- **A file with the old item's name keeps that name.** It is imported beside
+  the old item as `name_1.ext`, because the name is still taken; once the old
+  item is gone it is given the name back (`importedAs` says what it was
+  called meanwhile). Its id follows its name, so `mediaId` is then the id
+  the old item had, and a script that finds media by file name or by that id
+  still finds it. A file with another name keeps its own name and id. If
+  the name cannot be given back, the item keeps `name_1.ext` and a `warning`
+  says so.
 - The old item is removed only once no clip plays it (`oldMediaRemoved`).
   If one still does, it is kept and a `warning` names the clips.
 
-It sits in the confirm tier (`--force`): it removes a media item. Writing
-over the project's own copy of the file by hand is not a substitute: the
-export reads the new content, but the editor's thumbnails, waveforms and
-proxies were made from the old one.
+It sits in the confirm tier (`--force`): it removes a media item.
+
+### A file changed in the project folder
+
+The editor copies every media file into its own store when it imports it;
+the preview and the renderer export play that copy. The native export and
+`media list` read the file in the project folder. So a file written over in
+`Documents/QCut/Projects/<project-id>/media/` under the same name left the
+two apart: the preview showed the old picture, the export held the new one.
+
+The editor now reads such a file again. It compares each file's size and
+modification time with what it copied, and reads the ones that changed:
+
+- when its window is looked at again after another app had it, and once
+  after a project's media has loaded;
+- before `timeline apply`, a batch add and every `export start`;
+- when asked:
+
+```bash
+qcut editor media refresh --project-id <id> --json
+# { "checked": 197, "refreshed": [{ "id": "media_…", "name": "shake.mp4" }], "failed": [] }
+```
+
+`refreshed` lists the files it read again (thumbnail, length and size are
+made again from the new file); `failed` lists those it could not read, and
+the command then fails. An `export start` that goes through the renderer
+engine is refused while a file is in `failed`, since it would draw the old
+copy; a native export reads the folder and goes ahead.
+
+Writing over a file is still the wrong tool when a clip has to keep working:
+a file that got shorter leaves its clips running past its end. `media
+replace` checks every clip against the new file first.
 
 ### Delete media
 
