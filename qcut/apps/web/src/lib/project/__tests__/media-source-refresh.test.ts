@@ -597,7 +597,11 @@ describe("reading changed media files again", () => {
 		expect(files.readFile).toHaveBeenCalledTimes(2);
 		const updates = mediaState.updateMediaItem.mock.calls[0][2];
 		expect(updates.file.size).toBe(8);
-		expect(updates.metadata.sourceFile).toEqual({ size: 8, modifiedAt: 9500 });
+		expect(updates.metadata.sourceFile).toEqual({
+			size: 8,
+			modifiedAt: 9500,
+			heldSince: expect.any(Number),
+		});
 	});
 
 	it("keeps the old copy and its record when the file cannot be read", async () => {
