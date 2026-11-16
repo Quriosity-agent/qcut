@@ -157,6 +157,7 @@ import {
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
 import { ClipMediaMissingError } from "../handlers/claude-export-handler/missing-clip-media.js";
+import { MEDIA_REFRESH_BEFORE_EXPORT_MS } from "../handlers/claude-media-deadlines.js";
 import {
 	excludeTimelineTracks,
 	readExcludedTrackIds,
@@ -326,7 +327,7 @@ export interface WindowAccessor {
 	): Promise<void>;
 	/** Re-key a renamed media item in the renderer and repoint its clips. */
 	requestMediaRename?(
-		payload: Omit<ClaudeMediaRenamedEvent, "requestId">
+		payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">
 	): Promise<void>;
 	/** Have the renderer read again the media files that changed on disk. */
 	requestMediaRefresh?(
@@ -777,8 +778,10 @@ function readTrackSwitches({
 
 /**
  * Has the editor read again the media files that changed on disk, before an
- * export. Returns the ones it could not read. A renderer that cannot be
- * asked at all is not a reason to stop: the native export does not need it.
+ * export, and says why its copies cannot be relied on, if they cannot: the
+ * files it could not read, or the check itself not answering in time. A
+ * native export reads the folder and does not need the answer; a renderer
+ * export draws from the editor's copies and does.
  */
 async function refreshMediaBeforeExport({
 	accessor,
@@ -786,17 +789,25 @@ async function refreshMediaBeforeExport({
 }: {
 	accessor: WindowAccessor;
 	projectId: string;
-}): Promise<ClaudeMediaRefreshResult["failed"]> {
-	if (!accessor.requestMediaRefresh) return [];
+}): Promise<string | null> {
+	if (!accessor.requestMediaRefresh) return null;
 	try {
-		const answer = await accessor.requestMediaRefresh({ projectId });
-		return Array.isArray(answer?.failed) ? answer.failed : [];
+		const answer = await accessor.requestMediaRefresh({
+			projectId,
+			timeoutMs: MEDIA_REFRESH_BEFORE_EXPORT_MS,
+		});
+		const failed = Array.isArray(answer?.failed) ? answer.failed : [];
+		if (failed.length === 0) return null;
+		return `${failed.length} media file(s) changed in the project folder and the editor could not read them again: ${failed
+			.map((entry) => `${entry.name} (${entry.error})`)
+			.join("; ")}. Fix the files or import them again, then retry`;
 	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
 		claudeLog.warn(
 			"HTTP",
-			`Could not check the editor's media copies before the export: ${error instanceof Error ? error.message : String(error)}`
+			`Could not check the editor's media copies before the export: ${reason}`
 		);
-		return [];
+		return `the editor did not confirm that its media copies match the project folder (${reason}). It may still be reading files that changed; retry in a moment`;
 	}
 }
 
@@ -2187,7 +2198,7 @@ export function registerSharedRoutes(
 			// The editor reads again any media file that was written over in the
 			// project folder, so its preview, and a renderer export, hold what
 			// the folder holds. A native export reads the folder either way.
-			const staleMedia = await refreshMediaBeforeExport({
+			const staleCopies = await refreshMediaBeforeExport({
 				accessor,
 				projectId: req.params.projectId,
 			});
@@ -2246,12 +2257,10 @@ export function registerSharedRoutes(
 			if (rendererExportReasons.length > 0) {
 				// The renderer draws from the editor's copies: with a stale one
 				// the file would hold an old picture or sound.
-				if (staleMedia.length > 0) {
+				if (staleCopies) {
 					throw new HttpError(
 						409,
-						`${staleMedia.length} media file(s) changed in the project folder and the editor could not read them again, so a renderer export would use its old copies: ${staleMedia
-							.map((entry) => `${entry.name} (${entry.error})`)
-							.join("; ")}. Fix the files or import them again, then retry.`
+						`A renderer export would use the editor's old copies: ${staleCopies}.`
 					);
 				}
 				if (!accessor.requestLocalVideoExport) {
