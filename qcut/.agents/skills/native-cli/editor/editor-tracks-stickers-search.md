@@ -267,9 +267,10 @@ or without: it is the same engine.
 An **adjustment layer below an overlay** is drawn natively: it is graded
 inside the overlay pass, at its own track's place, so it grades the tracks
 below it and leaves the overlays above it alone (a vignette track over a
-whole-film grade, say). One exception goes to the renderer: a layer that is
-below an overlay and at the same time above every text or sticker track,
-because its grade would have to wait for that text to be drawn.
+whole-film grade, say). Text and stickers are drawn after the overlays, so
+such a layer goes to the renderer when they are involved: when it is above
+every text and sticker track, or has text or a sticker under it at the same
+time.
 
 **Muxer engine and preview.** VP9 alpha decodes with its alpha. Browsers
 cannot decode ProRes, QuickTime Animation or PNG MOV, so on import (or at the
