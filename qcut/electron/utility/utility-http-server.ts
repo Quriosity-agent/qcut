@@ -15,10 +15,7 @@ import {
 	type UpdateRecord,
 } from "../update-notice.js";
 import { createServer } from "node:http";
-import {
-	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
-	TIMELINE_BATCH_ROUTE_PATTERN,
-} from "../claude/utils/timeline-batch-deadline.js";
+import { httpRequestTimeoutMs } from "../claude/http/claude-http-request-timeout.js";
 import type { ClaudeMediaRefreshResult } from "../types/claude-media-bridge-api.js";
 import {
 	MEDIA_RENAME_TIMEOUT_MS,
@@ -36,12 +33,10 @@ import { registerStateRoutes } from "../claude/http/claude-http-state-routes.js"
 import { registerQCutImportEvidenceRoutes } from "../claude/http/claude-http-import-evidence-routes.js";
 import { registerQCutSameProfileWritebackRoutes } from "../claude/http/claude-http-same-profile-writeback-routes.js";
 import {
-	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
 	JIANYING_PROJECT_IMPORT_ROUTE_TIMEOUT_MS,
 	registerQCutJianyingProjectImportRoutes,
 } from "../claude/http/claude-http-jianying-project-import-routes.js";
 import {
-	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
 	JIANYING_PROJECT_EXPORT_ROUTE_TIMEOUT_MS,
 	registerQCutJianyingProjectExportRoutes,
 } from "../claude/http/claude-http-jianying-project-export-routes.js";
@@ -127,17 +122,6 @@ let server: Server | null = null;
 const REQUEST_TIMEOUT_MS = 120_000;
 /** Main may ask the editor (up to 5 s) before acting on a transaction (5 s). */
 const TRANSACTION_REQUEST_TIMEOUT_MS = 15_000;
-const LONG_RUNNING_ROUTE_PATHS = new Set([
-	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
-	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
-]);
-// The extra minute keeps the route-level 504 authoritative: the socket-level
-// 408 must never fire before the route's own deadline.
-const LONG_RUNNING_REQUEST_TIMEOUT_MS =
-	Math.max(
-		JIANYING_PROJECT_IMPORT_ROUTE_TIMEOUT_MS,
-		JIANYING_PROJECT_EXPORT_ROUTE_TIMEOUT_MS
-	) + 60_000;
 
 /** Window proxy shape returned by createWindowProxy */
 interface WindowProxy {
@@ -1062,11 +1046,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			return;
 		}
 		const requestPath = (req.url ?? "").split("?")[0] ?? "";
-		const requestTimeoutMs = LONG_RUNNING_ROUTE_PATHS.has(requestPath)
-			? LONG_RUNNING_REQUEST_TIMEOUT_MS
-			: TIMELINE_BATCH_ROUTE_PATTERN.test(requestPath)
-				? TIMELINE_BATCH_HTTP_TIMEOUT_MS
-				: REQUEST_TIMEOUT_MS;
+		const requestTimeoutMs = httpRequestTimeoutMs({
+			path: requestPath,
+			usualMs: REQUEST_TIMEOUT_MS,
+		});
 		req.setTimeout(requestTimeoutMs, () => {
 			if (res.writableEnded || res.headersSent) return;
 			res.writeHead(408, { "Content-Type": "application/json" });
