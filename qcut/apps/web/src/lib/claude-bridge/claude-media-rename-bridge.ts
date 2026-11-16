@@ -39,7 +39,18 @@ export function parseClaudeRenamedMediaEvent({
 	const name = readText({ value: record.newName });
 	const localPath = readText({ value: record.newPath });
 	if (!projectId || !fromId || !toId || !name || !localPath) return null;
-	return { projectId, fromId, toId, name, localPath };
+	const deadlineAt =
+		typeof record.deadlineAt === "number" && Number.isFinite(record.deadlineAt)
+			? record.deadlineAt
+			: undefined;
+	return {
+		projectId,
+		fromId,
+		toId,
+		name,
+		localPath,
+		...(deadlineAt === undefined ? {} : { deadlineAt }),
+	};
 }
 
 export function setupMediaRenameHandler({
