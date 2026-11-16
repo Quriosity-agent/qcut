@@ -96,11 +96,10 @@ import {
 	MediaNotFoundError,
 	type RenamedMediaFile,
 	renameMediaFileOnDisk,
-	undoMediaRename,
 } from "../handlers/claude-media-rename.js";
 import {
-	mediaRenameOutcomeUnknown,
-	settleUnknownMediaRename,
+	type MediaRenameNotes,
+	settleUnfollowedMediaRename,
 } from "./claude-http-media-rename-settle.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
 import {
@@ -337,10 +336,9 @@ export interface WindowAccessor {
 		payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">
 	): Promise<void>;
 	/** Note a rename for the editor to settle when the project is next open. */
-	noteUnsettledMediaRename?(payload: {
-		projectId: string;
-		renamed: RenamedMediaFile;
-	}): Promise<void>;
+	noteUnsettledMediaRename?: MediaRenameNotes["noteUnsettledMediaRename"];
+	/** Drop that note: the editor and the folder are known to agree. */
+	forgetUnsettledMediaRename?: MediaRenameNotes["forgetUnsettledMediaRename"];
 	/** Have the renderer read again the media files that changed on disk. */
 	requestMediaRefresh?(
 		payload: Omit<ClaudeMediaRefreshEvent, "requestId">
@@ -1125,7 +1123,8 @@ export function registerSharedRoutes(
 	// The editor re-keys its item and points every clip at the new id before
 	// the rename counts; when it cannot, the file is put back. A rename that
 	// only moved the file left the clips on the old id, and the native export
-	// then left them out without a word.
+	// then left them out without a word. What is done when the editor does
+	// not follow is in claude-http-media-rename-settle.ts.
 	router.patch("/api/claude/media/:projectId/:mediaId/rename", async (req) => {
 		const newName = req.body?.newName;
 		if (typeof newName !== "string" || !newName.trim())
@@ -1158,6 +1157,7 @@ export function registerSharedRoutes(
 			}
 			throw error;
 		}
+		let warning: string | undefined;
 		if (renamed.id !== renamed.previous.id) {
 			try {
 				await requireRendererMutation({
@@ -1174,36 +1174,16 @@ export function registerSharedRoutes(
 						}),
 				});
 			} catch (error) {
-				const reason = error instanceof Error ? error.message : String(error);
-				// The file goes back under its old name. Where the editor
-				// stands is not known when its answer did not come (it may
-				// have finished) or says that it could not take everything
-				// back: it is asked to end on the old id, so that the two do
-				// not part. If it cannot, it notes the rename and settles it
-				// when the project is next open.
-				const unsettled = mediaRenameOutcomeUnknown({ reason })
-					? await settleUnknownMediaRename({
-							accessor,
-							requestMediaRename,
-							projectId,
-							renamed,
-						})
-					: null;
-				try {
-					await undoMediaRename({ projectId, renamed });
-				} catch (undoError) {
-					throw new HttpError(
-						500,
-						`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`
-					);
-				}
-				if (unsettled) {
-					throw new HttpError(
-						error instanceof HttpError ? error.status : 500,
-						`${reason}. The file is back under ${renamed.previous.name}, but ${unsettled}`
-					);
-				}
-				throw error;
+				// The file goes back under its old name and the failure is
+				// thrown; unless the file cannot go back and the editor then
+				// follows it, in which case the rename stands.
+				({ warning } = await settleUnfollowedMediaRename({
+					accessor,
+					requestMediaRename,
+					projectId,
+					renamed,
+					error,
+				}));
 			}
 		}
 		scheduleProjectJsonAutoSync({ projectId });
@@ -1213,6 +1193,7 @@ export function registerSharedRoutes(
 			name: renamed.name,
 			previousId: renamed.previous.id,
 			previousName: renamed.previous.name,
+			...(warning ? { warning } : {}),
 		};
 	});
 
