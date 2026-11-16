@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockAccess,
 	mockDeleteMetadata,
+	mockLink,
+	mockLstat,
 	mockPersistMetadata,
 	mockReadMetadata,
 	mockReaddir,
@@ -13,6 +15,8 @@ const {
 } = vi.hoisted(() => ({
 	mockAccess: vi.fn(),
 	mockDeleteMetadata: vi.fn(),
+	mockLink: vi.fn(),
+	mockLstat: vi.fn(),
 	mockPersistMetadata: vi.fn(),
 	mockReadMetadata: vi.fn(),
 	mockReaddir: vi.fn(),
@@ -38,6 +42,8 @@ vi.mock("electron-log", () => ({
 
 vi.mock("fs/promises", () => ({
 	access: (...args: unknown[]) => mockAccess(...args),
+	link: (...args: unknown[]) => mockLink(...args),
+	lstat: (...args: unknown[]) => mockLstat(...args),
 	readdir: (...args: unknown[]) => mockReaddir(...args),
 	rename: (...args: unknown[]) => mockRename(...args),
 	stat: (...args: unknown[]) => mockStat(...args),
@@ -98,6 +104,11 @@ describe("restricted metadata rename rollback", () => {
 		mockReadMetadata.mockResolvedValue(METADATA);
 		mockPersistMetadata.mockResolvedValue(undefined);
 		mockDeleteMetadata.mockResolvedValue(undefined);
+		// The file cannot be moved: neither by a hard link nor by a rename.
+		mockLstat.mockResolvedValue({ isSymbolicLink: () => false });
+		mockLink.mockRejectedValue(
+			Object.assign(new Error("link refused"), { code: "EPERM" })
+		);
 		mockRename.mockRejectedValue(new Error("rename refused"));
 		mockUnlink.mockResolvedValue(undefined);
 	});
@@ -107,6 +118,8 @@ describe("restricted metadata rename rollback", () => {
 			renameMediaFile("project-1", OLD_ID, "renamed.gif")
 		).resolves.toBe(false);
 
+		expect(mockLink).toHaveBeenCalledOnce();
+		expect(mockRename).toHaveBeenCalledOnce();
 		expect(mockPersistMetadata).toHaveBeenCalledWith({
 			mediaId: NEW_ID,
 			metadata: METADATA,
