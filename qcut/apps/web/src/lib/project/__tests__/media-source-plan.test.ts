@@ -28,7 +28,12 @@ describe("which media files changed in the project folder", () => {
 			// a fraction from another.
 			mediaItems: [mediaItem(recorded(400, 5000))],
 		});
-		expect(plan).toEqual({ changed: [], adopt: [], checked: 1 });
+		expect(plan).toEqual({
+			changed: [],
+			adopt: [],
+			unsettled: [],
+			checked: 1,
+		});
 	});
 
 	it("reads a file again whose size or time moved", () => {
@@ -71,6 +76,7 @@ describe("which media files changed in the project folder", () => {
 		).toEqual({
 			changed: [{ item: stale, file: shake }],
 			adopt: [{ item: current, file: other }],
+			unsettled: [],
 			checked: 2,
 		});
 	});
@@ -110,7 +116,7 @@ describe("which media files changed in the project folder", () => {
 		).toEqual([{ item, file }]);
 		expect(
 			planMediaSourceRefresh({ diskFiles: [file], mediaItems: [item] })
-		).toEqual({ changed: [], adopt: [], checked: 0 });
+		).toEqual({ changed: [], adopt: [], unsettled: [], checked: 0 });
 	});
 
 	/**
@@ -150,6 +156,7 @@ describe("which media files changed in the project folder", () => {
 			).toEqual({
 				changed: [{ item: lower, file: lowerFile }],
 				adopt: [],
+				unsettled: [],
 				checked: 2,
 			});
 		}
@@ -176,7 +183,12 @@ describe("which media files changed in the project folder", () => {
 				mediaItem({ id: "ephemeral", ephemeral: true }),
 			],
 		});
-		expect(plan).toEqual({ changed: [], adopt: [], checked: 0 });
+		expect(plan).toEqual({
+			changed: [],
+			adopt: [],
+			unsettled: [],
+			checked: 0,
+		});
 	});
 
 	it("does not take a damaged record for a record", () => {
@@ -189,6 +201,56 @@ describe("which media files changed in the project folder", () => {
 		expect(readSourceFileStat({ item: mediaItem(recorded(1, 2)) })).toEqual({
 			size: 1,
 			modifiedAt: 2,
+		});
+	});
+
+	/**
+	 * A file was renamed and the rename is not settled: another file can
+	 * have its old name by now. The item's record of the file it was copied
+	 * from is what tells it from an item of that other file. Read again from
+	 * the file under its name, the record said the other file's, and the
+	 * clips that were the renamed file's were taken for the other file's.
+	 */
+	it("leaves an item of a rename that is not settled as it is", () => {
+		const renamedFilesItem = mediaItem(recorded(400, 5000));
+		const unrecorded = mediaItem({
+			id: "media_old_take",
+			name: "take.mp4",
+			localPath: `${FOLDER}/take.mp4`,
+			bytes: 300,
+		});
+		const another = diskFile({ size: 512, modifiedAt: 9000 });
+		const sameLength = diskFile({
+			name: "take.mp4",
+			path: `${FOLDER}/take.mp4`,
+			relativePath: "media/take.mp4",
+			size: 300,
+		});
+		const plan = planMediaSourceRefresh({
+			diskFiles: [another, sameLength],
+			mediaItems: [renamedFilesItem, unrecorded],
+			unsettled: new Set(["media_shake", "media_old_take"]),
+		});
+		// Not read again; and nothing is recorded for the one without a
+		// record, though the file is as long as its copy.
+		expect(plan).toEqual({
+			changed: [],
+			adopt: [],
+			unsettled: [{ item: renamedFilesItem, file: another }],
+			checked: 2,
+		});
+
+		// With the rename settled it is a changed file like any other.
+		expect(
+			planMediaSourceRefresh({
+				diskFiles: [another, sameLength],
+				mediaItems: [renamedFilesItem, unrecorded],
+				unsettled: new Set(),
+			})
+		).toMatchObject({
+			changed: [{ item: renamedFilesItem, file: another }],
+			adopt: [{ item: unrecorded, file: sameLength }],
+			unsettled: [],
 		});
 	});
 });
