@@ -286,32 +286,33 @@ export async function whereNotedFileIs(
  * have one size and time, and an item of a file long gone from that name
  * was held before the rename too.
  *
- * It is another file's when both say so: it was not held before the rename
- * began, as far as is recorded, and was copied from a file that does not
- * look like the renamed one. Everything in between is not known, and
- * nothing is to be changed on it: an item with no record of when the editor
- * came to hold it, a note that does not say what the file looked like or
- * when the rename began.
+ * It is another file's when both say the opposite: the editor came to hold
+ * it after the rename began, and copied it from a file that does not look
+ * like the renamed one.
+ *
+ * Everything else is not known, and nothing is to be changed on it. That is
+ * so wherever one of the two cannot be said: an item with no record of the
+ * file it was copied from, or none of when the editor came to hold it; a
+ * note that does not say what the file looked like, or when the rename
+ * began. A copy that merely differs from the renamed file is no other
+ * file's item for that: the editor holds an older copy of the renamed file
+ * itself when the file was written over shortly before it was renamed.
+ * Taken for another file's, its clips would stay under the name that file
+ * left, and the next check of the folder would read the other file into
+ * them.
  */
 export function whoseItemIs({
 	item,
 	note,
 }: {
-	item: Pick<MediaItem, "file" | "metadata">;
+	item: Pick<MediaItem, "metadata">;
 	note: UnsettledRename;
 }): "the renamed file's" | "another file's" | "unknown" {
-	if (!note.file) return "unknown";
+	if (!note.file || note.beganAt === undefined) return "unknown";
 	const copiedFrom = readSourceFileStat({ item });
-	if (!copiedFrom) {
-		// From before the record was kept: the size of its copy is all there
-		// is, and a copy of another size is not the renamed file's.
-		return item.file.size === note.file.size ? "unknown" : "another file's";
-	}
+	if (copiedFrom?.heldSince === undefined) return "unknown";
 	const looksLikeIt = sameSourceFile(copiedFrom, note.file);
-	const heldBeforeRename =
-		copiedFrom.heldSince !== undefined &&
-		note.beganAt !== undefined &&
-		copiedFrom.heldSince < note.beganAt;
+	const heldBeforeRename = copiedFrom.heldSince < note.beganAt;
 	if (looksLikeIt && heldBeforeRename) return "the renamed file's";
 	if (!looksLikeIt && !heldBeforeRename) return "another file's";
 	return "unknown";
