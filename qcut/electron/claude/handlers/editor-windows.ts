@@ -41,21 +41,59 @@ export function describeEditorWindows(): EditorWindowsResult {
 	return { windows, count: windows.length };
 }
 
+/** How long a focus request may take to land before the window is described. */
+export const FOCUS_SETTLE_TIMEOUT_MS = 1000;
+
+/**
+ * Resolves once `win` has focus, or after `timeoutMs`. Focus lands
+ * asynchronously: on macOS the app has to become the active one first, so
+ * `isFocused()` read right after `focus()` still says false.
+ */
+function waitForFocus({
+	win,
+	timeoutMs,
+}: {
+	win: BrowserWindow;
+	timeoutMs: number;
+}): Promise<void> {
+	if (win.isDestroyed() || win.isFocused()) return Promise.resolve();
+	return new Promise((resolve) => {
+		const done = () => {
+			clearTimeout(timer);
+			if (!win.isDestroyed()) win.removeListener("focus", done);
+			resolve();
+		};
+		const timer = setTimeout(done, timeoutMs);
+		win.once("focus", done);
+	});
+}
+
 /**
  * Brings a QCut window in front of the other apps. A minimized or hidden
  * window is shown first. On macOS a window can only take focus once its app
- * is the active one, so the app is activated as well.
+ * is the active one, so the app is activated as well. The window is described
+ * once the focus has landed (or after `FOCUS_SETTLE_TIMEOUT_MS`), so
+ * `focused` says where it ended up rather than where it was.
  */
-export function focusEditorWindow({
+export async function focusEditorWindow({
 	win,
+	timeoutMs = FOCUS_SETTLE_TIMEOUT_MS,
 }: {
 	win: BrowserWindow;
-}): EditorWindowFocusResult {
+	timeoutMs?: number;
+}): Promise<EditorWindowFocusResult> {
+	const windowId = win.id;
 	const restored = win.isMinimized() || !win.isVisible();
 	if (win.isMinimized()) win.restore();
 	win.show();
 	app.focus({ steal: true });
 	win.focus();
+	await waitForFocus({ win, timeoutMs });
+	if (win.isDestroyed()) {
+		throw new Error(
+			`QCut window ${windowId} closed while it was being focused`
+		);
+	}
 	return {
 		window: describeEditorWindow({
 			win,
