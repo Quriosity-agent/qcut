@@ -274,6 +274,53 @@ describe("reading changed media files again", () => {
 		expect(storage.saveMediaItemRecord).not.toHaveBeenCalled();
 	});
 
+	it("adds the record to what the item holds by then, not to what it held when the folder was scanned", async () => {
+		const second = {
+			id: "media_other",
+			name: "other.mp4",
+			localPath: `${FOLDER}/other.mp4`,
+		};
+		mediaState.mediaItems = [
+			mediaItem({ bytes: 400, metadata: { source: "upload" } }),
+			mediaItem({ ...second, bytes: 700, metadata: { source: "upload" } }),
+		];
+		// While the first item's record is being saved, another task records
+		// the second video's alpha.
+		storage.saveMediaItemRecord.mockImplementationOnce(async () => {
+			mediaState.mediaItems = (mediaState.mediaItems as MediaItem[]).map(
+				(item) =>
+					item.id === second.id
+						? {
+								...item,
+								metadata: { ...item.metadata, alpha: { hasAlpha: true } },
+							}
+						: item
+			);
+		});
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [
+				diskFile({ size: 400, modifiedAt: 5000 }),
+				diskFile({
+					name: second.name,
+					path: second.localPath,
+					size: 700,
+					modifiedAt: 6000,
+				}),
+			],
+		});
+		const metadata = {
+			source: "upload",
+			alpha: { hasAlpha: true },
+			sourceFile: { size: 700, modifiedAt: 6000 },
+		};
+		expect(mediaState.mediaItems[1]).toMatchObject({ metadata });
+		expect(storage.saveMediaItemRecord.mock.calls[1][1]).toMatchObject({
+			id: second.id,
+			metadata,
+		});
+	});
+
 	it("reads a file again that was still being written", async () => {
 		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
 		files.readFile
