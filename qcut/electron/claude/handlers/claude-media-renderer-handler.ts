@@ -6,6 +6,11 @@ import type {
 	ClaudeMediaRefreshResult,
 	ClaudeMediaRenamedEvent,
 } from "../../types/claude-media-bridge-api.js";
+import {
+	MEDIA_RENAME_COMMIT_MARGIN_MS,
+	MEDIA_RENAME_TIMEOUT_MS,
+	mediaRefreshWaitMs,
+} from "./claude-media-deadlines.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
 
 const MEDIA_IMPORT_CHANNEL = "claude:media:imported" as const;
@@ -17,8 +22,6 @@ const MEDIA_RENAME_RESPONSE_CHANNEL = "claude:media:renamed:response" as const;
 const MEDIA_REFRESH_CHANNEL = "claude:media:refresh" as const;
 const MEDIA_REFRESH_RESPONSE_CHANNEL = "claude:media:refresh:response" as const;
 const MEDIA_RENDERER_TIMEOUT_MS = 30_000;
-/** A refresh reads whole files again; several large ones take a while. */
-const MEDIA_REFRESH_TIMEOUT_MS = 5 * 60_000;
 
 export async function requestMediaImportFromRenderer({
 	payload,
@@ -64,16 +67,22 @@ export async function requestMediaRenameFromRenderer({
 	payload,
 	win,
 }: {
-	payload: Omit<ClaudeMediaRenamedEvent, "requestId">;
+	payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">;
 	win: BrowserWindow;
 }): Promise<void> {
 	await requestRendererMutation({
 		channel: MEDIA_RENAME_CHANNEL,
-		payload,
+		// The editor is told when this stops waiting: a rename it finished
+		// after that would stand in the editor while the file is put back.
+		payload: {
+			...payload,
+			deadlineAt:
+				Date.now() + MEDIA_RENAME_TIMEOUT_MS - MEDIA_RENAME_COMMIT_MARGIN_MS,
+		},
 		requestIdPrefix: "media",
 		responseChannel: MEDIA_RENAME_RESPONSE_CHANNEL,
-		timeoutMessage: "Renderer media mutation timed out.",
-		timeoutMs: MEDIA_RENDERER_TIMEOUT_MS,
+		timeoutMessage: "Renderer media rename timed out.",
+		timeoutMs: MEDIA_RENAME_TIMEOUT_MS,
 		win,
 	});
 }
@@ -109,7 +118,7 @@ export async function requestMediaRefreshFromRenderer({
 		requestIdPrefix: "media",
 		responseChannel: MEDIA_REFRESH_RESPONSE_CHANNEL,
 		timeoutMessage: "Renderer media refresh timed out.",
-		timeoutMs: MEDIA_REFRESH_TIMEOUT_MS,
+		timeoutMs: mediaRefreshWaitMs({ timeoutMs: payload.timeoutMs }),
 		win,
 	});
 	const record =
