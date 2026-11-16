@@ -220,6 +220,9 @@ async function statFile({
  * is written: it can only answer where case is ignored, and that file is
  * then the item's. Where case counts, the other spelling is another file,
  * and reading it would put that file's picture into this item.
+ *
+ * One path that answers settles it. One that does not settles nothing: its
+ * file may have gone since the folder was scanned, so the next is asked.
  */
 async function folderIgnoresCase({
 	diskFiles,
@@ -229,14 +232,15 @@ async function folderIgnoresCase({
 	mediaItems: MediaItem[];
 }): Promise<boolean> {
 	const scanned = scannedFiles(diskFiles);
-	const undecided = mediaItems.find(
-		(item) => item.localPath && scanned.differsByCase(item.localPath)
-	);
-	if (!undecided?.localPath) return false;
-	return statFile({ filePath: undecided.localPath }).then(
-		() => true,
-		() => false
-	);
+	for (const item of mediaItems) {
+		if (!item.localPath || !scanned.differsByCase(item.localPath)) continue;
+		const answers = await statFile({ filePath: item.localPath }).then(
+			() => true,
+			() => false
+		);
+		if (answers) return true;
+	}
+	return false;
 }
 
 /**
