@@ -313,11 +313,12 @@ describe("Claude media renderer acknowledgement", () => {
 	 */
 	it("keeps every wait longer than the one inside it", () => {
 		// Rename: editor < main < utility bridge < one HTTP request < command
-		// line. The request has room for two waits for the editor: to follow
-		// the rename, and to end on the old id again when that is unknown.
+		// line. The request has room for three waits for the editor: to follow
+		// the rename, to end on the old id again when that is unknown, and to
+		// follow the file after all when it cannot be put back.
 		expect(MEDIA_RENAME_COMMIT_MARGIN_MS).toBeGreaterThan(0);
 		expect(
-			2 * (MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS)
+			3 * (MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS)
 		).toBeLessThan(MEDIA_RENAME_HTTP_TIMEOUT_MS);
 		expect(MEDIA_RENAME_HTTP_TIMEOUT_MS).toBeLessThan(
 			MEDIA_RENAME_CLIENT_TIMEOUT_MS
