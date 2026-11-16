@@ -23,6 +23,7 @@ import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
 import { setupTimeEditHandlers } from "./claude-time-edit-bridge";
+import { setupMediaRenameHandler } from "./claude-media-rename-bridge";
 import {
 	decodeDeterministicMediaSourceName,
 	resolveMediaIdForBatchElement,
@@ -388,6 +389,8 @@ export function setupClaudeTimelineBridge(): void {
 			await useMediaStore.getState().removeMediaItem(projectId, data.mediaId);
 		});
 	}
+
+	setupMediaRenameHandler({ media: claude.media });
 
 	setupRequestHandlers({ claudeAPI });
 
