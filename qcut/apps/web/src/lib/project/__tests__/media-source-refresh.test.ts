@@ -529,6 +529,57 @@ describe("reading changed media files again", () => {
 		expect(mediaState.mediaItems[0]).toBe(item);
 	});
 
+	/**
+	 * The desktop app answers a file's facts with dates today; its declared
+	 * type says a number. Both are read, and anything else is a failure that
+	 * leaves the item's record alone, so the next check tries again.
+	 */
+	it("reads the file's time in either shape, and fails on a file it cannot stat", async () => {
+		const changed = () => {
+			mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+			return refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+			});
+		};
+		files.getFileInfo.mockResolvedValue({ size: 8, modifiedAt: 9000 });
+		expect((await changed()).refreshed).toHaveLength(1);
+
+		files.getFileInfo.mockResolvedValue(null);
+		expect((await changed()).failed).toEqual([
+			{ id: "media_shake", name: "shake.mp4", error: "the file is gone" },
+		]);
+
+		files.getFileInfo.mockResolvedValue({ size: 8, lastModified: "never" });
+		expect((await changed()).failed[0].error).toBe(
+			"the file's modification time could not be read"
+		);
+	});
+
+	it("gives up on a file that never stops changing, and leaves its record for the next check", async () => {
+		const item = mediaItem({ bytes: 300 });
+		mediaState.mediaItems = [item];
+		let size = 8;
+		// Longer every time it is looked at: someone is still writing it.
+		files.getFileInfo.mockImplementation(async () => {
+			size += 1;
+			return { size, lastModified: new Date(9000 + size) };
+		});
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(result.failed).toEqual([
+			{
+				id: "media_shake",
+				name: "shake.mp4",
+				error: "the file kept changing while it was read",
+			},
+		]);
+		expect(files.readFile).toHaveBeenCalledTimes(3);
+		expect(mediaState.mediaItems[0]).toBe(item);
+	});
+
 	it("measures a still again, since nothing else would", async () => {
 		mediaState.mediaItems = [
 			mediaItem({
