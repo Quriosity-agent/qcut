@@ -22,7 +22,6 @@ const project = vi.hoisted(() => ({
 }));
 const timeline = vi.hoisted(() => ({
 	tracks: [] as unknown[],
-	saveImmediate: vi.fn(async () => true),
 }));
 const stickers = vi.hoisted(() => ({
 	overlayStickers: new Map<string, { id: string; mediaItemId: string }>(),
@@ -44,6 +43,7 @@ vi.mock("@qcut/platform-core", () => ({
 				return true;
 			},
 			remove: async (key: string) => desktop.stored.delete(key),
+			list: async () => [...desktop.stored.keys()],
 		},
 		files: {
 			getFileInfo: async (filePath: string) => {
@@ -81,7 +81,10 @@ vi.mock("../../timeline/timeline-store", async () => {
 	return {
 		useTimelineStore: {
 			getState: () => ({
-				saveImmediate: timeline.saveImmediate,
+				// What the store holds, as its save would write it.
+				get _tracks() {
+					return timeline.tracks;
+				},
 				repointMediaReferences: (ids: { fromId: string; toId: string }) => {
 					const result = repointMediaReferences({
 						tracks: timeline.tracks as TimelineTrack[],
@@ -113,15 +116,20 @@ import {
 	forgetUnsettledRename,
 	noteUnsettledRename,
 	readUnsettledRenames,
-	resetUnsettledRenameChanges,
 	type UnsettledRename,
+	unsettledRenameKey,
 } from "../media-rename-notes";
 
 const OLD = "media_b2xkLm1wNA";
 const NEW = "media_bmV3Lm1wNA";
 const OLD_PATH = "/projects/project-1/media/old.mp4";
 const NEW_PATH = "/projects/project-1/media/new.mp4";
-const NOTES = "media-renames-unsettled-project-1";
+/**
+ * The key of the note for the two ids above. The desktop app writes notes
+ * under the same key (claude-media-rename-note.test.ts has this literal too).
+ */
+const NOTES =
+	"media-rename-unsettled-project-1-41286e42738c611db286b10f55980497";
 /** The rename the desktop app asks the editor to follow. */
 const RENAME = {
 	projectId: "project-1",
@@ -152,6 +160,33 @@ const NOTE: UnsettledRename = {
 };
 
 const storedTimelines = new Map<string, TimelineTrack[]>();
+
+/**
+ * How the saves of project-1's open scene go, one entry a save: `false`
+ * fails it. Past the list they go as `otherwise` says.
+ */
+const openSceneSaves = {
+	count: 0,
+	plan: [] as boolean[],
+	otherwise: true,
+};
+
+/** What storage does with a timeline it is given. */
+function storeTimeline(request: unknown): void {
+	const saved = request as {
+		projectId: string;
+		sceneId: string;
+		tracks: TimelineTrack[];
+	};
+	const key = `${saved.projectId}/${saved.sceneId}`;
+	if (key === "project-1/scene-main") {
+		const saves =
+			openSceneSaves.plan[openSceneSaves.count] ?? openSceneSaves.otherwise;
+		openSceneSaves.count += 1;
+		if (!saves) throw new Error("The open scene could not be saved");
+	}
+	storedTimelines.set(key, saved.tracks);
+}
 
 function mediaTrack(mediaIds: string[]): TimelineTrack {
 	return {
@@ -199,7 +234,6 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetMediaPersistenceQueue();
-		resetUnsettledRenameChanges();
 		desktop.stored.clear();
 		desktop.files = new Set([OLD_PATH]);
 		project.activeProject = {
@@ -215,20 +249,11 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 					`${(request as { projectId: string }).projectId}/${(request as { sceneId: string }).sceneId}`
 				) ?? null
 		);
+		openSceneSaves.count = 0;
+		openSceneSaves.plan = [];
+		openSceneSaves.otherwise = true;
 		storage.saveTimeline.mockImplementation(async (request: unknown) => {
-			const saved = request as {
-				projectId: string;
-				sceneId: string;
-				tracks: TimelineTrack[];
-			};
-			storedTimelines.set(`${saved.projectId}/${saved.sceneId}`, saved.tracks);
-		});
-		timeline.saveImmediate.mockImplementation(async () => {
-			storedTimelines.set(
-				"project-1/scene-main",
-				timeline.tracks as TimelineTrack[]
-			);
-			return true;
+			storeTimeline(request);
 		});
 		mediaState.mediaItems = [
 			item({ id: OLD, name: "old.mp4", path: OLD_PATH }),
@@ -251,18 +276,15 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	 */
 	it("puts the stored project right when it is next opened, though the take-back could not be saved", async () => {
 		storedTimelines.set("project-1/scene-b", [mediaTrack([OLD])]);
-		storage.saveTimeline.mockImplementationOnce(async () => {
-			throw new Error("Scene B could not be saved");
+		storage.saveTimeline.mockImplementation(async (request: unknown) => {
+			if ((request as { sceneId: string }).sceneId === "scene-b") {
+				throw new Error("Scene B could not be saved");
+			}
+			storeTimeline(request);
 		});
 		// Saved going forward; never while it is taken back.
-		timeline.saveImmediate.mockImplementationOnce(async () => {
-			storedTimelines.set(
-				"project-1/scene-main",
-				timeline.tracks as TimelineTrack[]
-			);
-			return true;
-		});
-		timeline.saveImmediate.mockImplementation(async () => false);
+		openSceneSaves.plan = [true];
+		openSceneSaves.otherwise = false;
 		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
 			"Not everything could be taken back"
 		);
@@ -278,12 +300,9 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		]);
 
 		// The project is closed and opened again; saving works by then.
-		timeline.saveImmediate.mockImplementation(async () => {
-			storedTimelines.set(
-				"project-1/scene-main",
-				timeline.tracks as TimelineTrack[]
-			);
-			return true;
+		openSceneSaves.otherwise = true;
+		storage.saveTimeline.mockImplementation(async (request: unknown) => {
+			storeTimeline(request);
 		});
 		reopenProject({
 			items: [item({ id: OLD, name: "old.mp4", path: OLD_PATH })],
@@ -340,7 +359,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 			stickersUpdated: 0,
 		});
 		expect(heldIds()).toEqual([OLD]);
-		expect(timeline.saveImmediate).toHaveBeenCalledTimes(1);
+		expect(openSceneSaves.count).toBe(1);
 		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
 			OLD,
 			"media_other",
@@ -358,7 +377,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 
 	it("notes a rename it was asked to settle and could not, and settles it later", async () => {
 		await renameProjectMedia(RENAME);
-		timeline.saveImmediate.mockImplementation(async () => false);
+		openSceneSaves.otherwise = false;
 		await expect(renameProjectMedia(BACK_ON_OLD)).rejects.toThrow(
 			"The timeline could not be saved"
 		);
@@ -366,13 +385,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 			{ oldId: OLD, oldPath: OLD_PATH, newId: NEW, newPath: NEW_PATH },
 		]);
 
-		timeline.saveImmediate.mockImplementation(async () => {
-			storedTimelines.set(
-				"project-1/scene-main",
-				timeline.tracks as TimelineTrack[]
-			);
-			return true;
-		});
+		openSceneSaves.otherwise = true;
 		await settleUnsettledMediaRenames({ projectId: "project-1" });
 		expect(heldIds()).toEqual([OLD]);
 		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
@@ -401,7 +414,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		);
 		expect(heldIds()).toEqual([NEW]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW]);
-		expect(timeline.saveImmediate).not.toHaveBeenCalled();
+		expect(storage.saveTimeline).not.toHaveBeenCalled();
 		expect(await readUnsettledRenames("project-1")).toMatchObject([
 			{ oldId: OLD, oldPath: OLD_PATH, newId: NEW, newPath: NEW_PATH },
 		]);
@@ -457,7 +470,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		await settleUnsettledMediaRenames({ projectId: "project-1" });
 
 		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW]);
-		expect(timeline.saveImmediate).not.toHaveBeenCalled();
+		expect(storage.saveTimeline).not.toHaveBeenCalled();
 		expect(await readUnsettledRenames("project-1")).toHaveLength(1);
 	});
 
@@ -474,7 +487,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	it("keeps the note when settling fails, for the next time", async () => {
 		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
 		timeline.tracks = [mediaTrack([NEW])];
-		timeline.saveImmediate.mockImplementation(async () => false);
+		openSceneSaves.otherwise = false;
 		await settleUnsettledMediaRenames({ projectId: "project-1" });
 		expect(await readUnsettledRenames("project-1")).toHaveLength(1);
 		// Taken back: the editor is as it was before the attempt.
@@ -484,8 +497,15 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 
 describe("the notes of unsettled renames", () => {
 	beforeEach(() => {
-		resetUnsettledRenameChanges();
 		desktop.stored.clear();
+	});
+
+	it("keeps each note under a key of its own, made of the project and the two ids", async () => {
+		expect(
+			await unsettledRenameKey({ projectId: "project-1", rename: NOTE })
+		).toBe(NOTES);
+		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
+		expect(desktop.stored.get(NOTES)).toEqual(NOTE);
 	});
 
 	it("keeps one note for a pair of ids, and none once it is forgotten", async () => {
@@ -499,10 +519,9 @@ describe("the notes of unsettled renames", () => {
 			rename: { ...NOTE, newId: "media_third", newPath: "/p/third.mp4" },
 		});
 		expect(
-			(await readUnsettledRenames("project-1")).map((note) => [
-				note.newId,
-				note.notedAt,
-			])
+			(await readUnsettledRenames("project-1"))
+				.map((note) => [note.newId, note.notedAt])
+				.sort()
 		).toEqual([
 			[NEW, 5],
 			["media_third", 0],
@@ -515,7 +534,7 @@ describe("the notes of unsettled renames", () => {
 			projectId: "project-1",
 			rename: { newId: "media_third", oldId: OLD },
 		});
-		expect(desktop.stored.has(NOTES)).toBe(false);
+		expect(desktop.stored.size).toBe(0);
 	});
 
 	it("keeps every note when several are written at once", async () => {
@@ -530,10 +549,15 @@ describe("the notes of unsettled renames", () => {
 		expect(await readUnsettledRenames("project-1")).toHaveLength(3);
 	});
 
-	it("reads nothing from what is not a list of notes", async () => {
-		desktop.stored.set(NOTES, { not: "a list" });
+	it("reads nothing from what is not a note", async () => {
+		desktop.stored.set("media-rename-unsettled-project-1-junk", {
+			newId: NEW,
+		});
+		desktop.stored.set("media-rename-unsettled-project-1-list", [NOTE]);
+		// Not a note of this project at all.
+		desktop.stored.set("overlay-stickers-project-1", [NOTE]);
 		expect(await readUnsettledRenames("project-1")).toEqual([]);
-		desktop.stored.set(NOTES, [NOTE, { newId: NEW }, "junk", null]);
+		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
 		expect(await readUnsettledRenames("project-1")).toEqual([NOTE]);
 	});
 });
