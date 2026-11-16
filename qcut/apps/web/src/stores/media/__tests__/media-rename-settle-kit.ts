@@ -235,14 +235,20 @@ export function mediaIdsOf(tracks: unknown): Array<string | null> {
 	);
 }
 
+/**
+ * A media item. `copiedFrom` is the file its bytes were copied from, as the
+ * item records it: the renamed file, unless a test says otherwise.
+ */
 export function item({
 	id,
 	name,
 	path,
+	copiedFrom = THE_FILE,
 }: {
 	id: string;
 	name: string;
 	path: string;
+	copiedFrom?: { size: number; modified: Date } | null;
 }) {
 	return {
 		id,
@@ -251,6 +257,16 @@ export function item({
 		file: new File(["picture"], name, { type: "video/mp4" }),
 		url: `blob:${id}`,
 		localPath: path,
+		...(copiedFrom
+			? {
+					metadata: {
+						sourceFile: {
+							size: copiedFrom.size,
+							modifiedAt: copiedFrom.modified.getTime(),
+						},
+					},
+				}
+			: {}),
 	};
 }
 
@@ -258,6 +274,9 @@ export const OLD_ITEM = () =>
 	item({ id: OLD, name: "old.mp4", path: OLD_PATH });
 export const NEW_ITEM = () =>
 	item({ id: NEW, name: "new.mp4", path: NEW_PATH });
+/** The item of another file that has taken the old name. */
+export const ANOTHER_FILES_ITEM = () =>
+	item({ id: OLD, name: "old.mp4", path: OLD_PATH, copiedFrom: ANOTHER_FILE });
 
 export const heldIds = () =>
 	(mediaState.mediaItems as Array<{ id: string }>).map((held) => held.id);
