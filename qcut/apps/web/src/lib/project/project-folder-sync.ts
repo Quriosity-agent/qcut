@@ -238,6 +238,7 @@ export async function syncProjectFolder(
 				if (!buffer) {
 					throw new Error("readFile returned null");
 				}
+				const readAt = Date.now();
 
 				// Create File object (convert Buffer to Uint8Array for Blob compatibility)
 				const mimeType = getMimeType(file.name, file.type);
@@ -272,8 +273,13 @@ export async function syncProjectFolder(
 						source: isGenerated
 							? "project-folder-sync-generated"
 							: "project-folder-sync",
-						// What these bytes were copied from, for the next check.
-						sourceFile: { size: file.size, modifiedAt: file.modifiedAt },
+						// What these bytes were copied from, for the next check,
+						// and the moment they had been read.
+						sourceFile: {
+							size: file.size,
+							modifiedAt: file.modifiedAt,
+							heldSince: readAt,
+						},
 					},
 				});
 
