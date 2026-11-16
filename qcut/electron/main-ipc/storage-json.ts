@@ -145,3 +145,38 @@ export async function removeStorageJson({
 		await fs.rm(target, { force: true });
 	});
 }
+
+/**
+ * Deletes a stored value if it is still what the caller takes it for.
+ *
+ * The look and the removal are one turn in the file's queue, behind the
+ * saves queued before it: a value saved meanwhile is the one `isStill` is
+ * shown, and nothing is saved between the look and the removal. Answers
+ * whether the file is gone (removed now, or not there in the first place);
+ * a value that is no longer the same, or cannot be read, is left.
+ */
+export async function removeStorageJsonIf({
+	filePath,
+	isStill,
+}: {
+	filePath: string;
+	isStill: (value: unknown) => boolean;
+}): Promise<boolean> {
+	const target = path.resolve(filePath);
+	let gone = false;
+	await enqueue(target, async () => {
+		let stored: StorageJsonRead | null;
+		try {
+			stored = await readStorageJson({ filePath: target });
+		} catch {
+			// Not known to be what the caller means: left where it is.
+			return;
+		}
+		if (stored !== null) {
+			if (!isStill(stored.value)) return;
+			await fs.rm(target, { force: true });
+		}
+		gone = true;
+	});
+	return gone;
+}
