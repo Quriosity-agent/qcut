@@ -1169,6 +1169,9 @@ describe("Claude HTTP Server", () => {
 				newMediaId: "media_new",
 				newName: "shake_v2.mp4",
 				newPath: "/mock/project/media/shake_v2.mp4",
+				// What the file had, to settle the rename by if it ends badly.
+				previousName: "shake.mp4",
+				previousPath: "/mock/project/media/shake.mp4",
 			},
 			win: mockWindow,
 		});
