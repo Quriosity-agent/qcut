@@ -8,7 +8,36 @@ const hooks = vi.hoisted(() => ({
 	noHardLinks: false,
 	/** Runs when a copy, or a new symbolic link, is about to take `to`. */
 	beforeCopyOrSymlink: undefined as undefined | ((to: string) => Promise<void>),
+	/**
+	 * Runs once a part of the file has been read for a copy, before it is
+	 * written. What it throws breaks the copy off.
+	 */
+	whileCopying: undefined as undefined | (() => Promise<void>),
+	/** Runs right after a hard link was made. */
+	afterLink: undefined as undefined | (() => Promise<void>),
+	/** The paths whose file cannot be removed. */
+	removalRefused: new Set<string>(),
 }));
+
+vi.mock("fs", async (importOriginal) => {
+	const real = await importOriginal<typeof import("fs")>();
+	const { Readable } = await import("node:stream");
+	return {
+		...real,
+		createReadStream: (...args: Parameters<typeof real.createReadStream>) => {
+			const file = real.createReadStream(...args);
+			if (!hooks.whileCopying) return file;
+			return Readable.from(
+				(async function* () {
+					for await (const chunk of file) {
+						await hooks.whileCopying?.();
+						yield chunk;
+					}
+				})()
+			);
+		},
+	};
+});
 
 vi.mock("fs/promises", async (importOriginal) => {
 	const real = await importOriginal<typeof import("fs/promises")>();
@@ -20,11 +49,21 @@ vi.mock("fs/promises", async (importOriginal) => {
 					code: "ENOTSUP",
 				});
 			}
-			return real.link(...args);
+			await real.link(...args);
+			await hooks.afterLink?.();
 		},
-		copyFile: async (...args: Parameters<typeof real.copyFile>) => {
-			await hooks.beforeCopyOrSymlink?.(String(args[1]));
-			return real.copyFile(...args);
+		// A copy begins by making its file where nothing is.
+		open: async (...args: Parameters<typeof real.open>) => {
+			if (args[1] === "wx") await hooks.beforeCopyOrSymlink?.(String(args[0]));
+			return real.open(...args);
+		},
+		unlink: async (...args: Parameters<typeof real.unlink>) => {
+			if (hooks.removalRefused.has(String(args[0]))) {
+				throw Object.assign(new Error("EPERM: operation not permitted"), {
+					code: "EPERM",
+				});
+			}
+			return real.unlink(...args);
 		},
 		symlink: async (...args: Parameters<typeof real.symlink>) => {
 			await hooks.beforeCopyOrSymlink?.(String(args[1]));
@@ -54,6 +93,7 @@ vi.mock("electron-log", () => ({
 }));
 
 import {
+	MediaMoveIncompleteError,
 	MediaNameTakenError,
 	moveWithoutOverwriting,
 } from "../claude/handlers/claude-media-rename.js";
@@ -69,6 +109,9 @@ describe("moving a file without writing over another", () => {
 	afterEach(async () => {
 		hooks.noHardLinks = false;
 		hooks.beforeCopyOrSymlink = undefined;
+		hooks.whileCopying = undefined;
+		hooks.afterLink = undefined;
+		hooks.removalRefused.clear();
 		await fs.rm(folder, { recursive: true, force: true });
 	});
 
@@ -165,6 +208,21 @@ describe("moving a file without writing over another", () => {
 		);
 	});
 
+	it("copies a file that is read in several parts whole", async () => {
+		hooks.noHardLinks = true;
+		// More than two of the parts a copy is read in.
+		const picture = Buffer.alloc(9 * 1024 * 1024 + 123);
+		for (let at = 0; at < picture.length; at += 4099) picture[at] = at % 251;
+		await fs.writeFile(path.join(folder, "long.mp4"), picture);
+		await moveWithoutOverwriting({
+			from: path.join(folder, "long.mp4"),
+			to: path.join(folder, "moved.mp4"),
+		});
+		expect((await fs.readdir(folder)).sort()).toEqual(["a.mp4", "moved.mp4"]);
+		const moved = await fs.readFile(path.join(folder, "moved.mp4"));
+		expect(moved.equals(picture)).toBe(true);
+	});
+
 	/**
 	 * Without hard links there is no look at the name followed by a rename:
 	 * the name is taken by a copy that fails when something has it, however
@@ -181,6 +239,105 @@ describe("moving a file without writing over another", () => {
 		).rejects.toBeInstanceOf(MediaNameTakenError);
 		expect(await fs.readFile(to, "utf8")).toBe("theirs");
 		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
+	});
+
+	/**
+	 * A copy can break off with a part of the file written (the volume is
+	 * full, the source cannot be read on). That part is this move's own
+	 * file, and is taken away again.
+	 */
+	it("takes away the part it wrote when a copy breaks off", async () => {
+		hooks.noHardLinks = true;
+		hooks.whileCopying = async () => {
+			// The file is there by now, made by the move.
+			expect(await fs.readdir(folder)).toEqual(["a.mp4", "b.mp4"]);
+			throw Object.assign(new Error("EIO: i/o error, read"), { code: "EIO" });
+		};
+		await expect(
+			moveWithoutOverwriting({
+				from: path.join(folder, "a.mp4"),
+				to: path.join(folder, "b.mp4"),
+			})
+		).rejects.toMatchObject({ code: "EIO" });
+		expect(await fs.readdir(folder)).toEqual(["a.mp4"]);
+		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
+	});
+
+	it("says that the file is under both names when that part cannot be taken away", async () => {
+		hooks.noHardLinks = true;
+		const to = path.join(folder, "b.mp4");
+		hooks.whileCopying = async () => {
+			throw Object.assign(new Error("ENOSPC: no space left on device"), {
+				code: "ENOSPC",
+			});
+		};
+		hooks.removalRefused.add(to);
+		const failure = await moveWithoutOverwriting({
+			from: path.join(folder, "a.mp4"),
+			to,
+		}).catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(MediaMoveIncompleteError);
+		expect((failure as Error).message).toContain("no space left on device");
+		expect((await fs.readdir(folder)).sort()).toEqual(["a.mp4", "b.mp4"]);
+		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
+	});
+
+	/** As another program does that writes a file by renaming it into place. */
+	const replaceWithTheirs = async (to: string) => {
+		await fs.writeFile(path.join(folder, "theirs.tmp"), "theirs");
+		await fs.rename(path.join(folder, "theirs.tmp"), to);
+	};
+
+	/**
+	 * A rename by another program replaces the file a copy is being written
+	 * to. That file is the other program's from then on: it is not removed
+	 * when the copy fails, and the old name is not given up for it.
+	 */
+	// Windows does not let a file be replaced while it is open.
+	it.skipIf(process.platform === "win32")(
+		"leaves alone a file that replaces its copy while the copy is made",
+		async () => {
+			hooks.noHardLinks = true;
+			const from = path.join(folder, "a.mp4");
+			const to = path.join(folder, "b.mp4");
+
+			// The copy goes through, into a file that no longer has the name.
+			hooks.whileCopying = () => replaceWithTheirs(to);
+			await expect(moveWithoutOverwriting({ from, to })).rejects.toBeInstanceOf(
+				MediaNameTakenError
+			);
+			expect(await fs.readFile(to, "utf8")).toBe("theirs");
+			expect(await fs.readFile(from, "utf8")).toBe("mine");
+
+			// The copy breaks off after it was replaced.
+			await fs.unlink(to);
+			hooks.whileCopying = async () => {
+				await replaceWithTheirs(to);
+				throw Object.assign(new Error("EIO: i/o error, read"), {
+					code: "EIO",
+				});
+			};
+			await expect(moveWithoutOverwriting({ from, to })).rejects.toMatchObject({
+				code: "EIO",
+			});
+			expect(await fs.readFile(to, "utf8")).toBe("theirs");
+			expect(await fs.readFile(from, "utf8")).toBe("mine");
+		}
+	);
+
+	/**
+	 * The same for a hard link: with the new name replaced before the old
+	 * one is given up, the file would be under neither.
+	 */
+	it("does not give up the old name when the new one is another file's by then", async () => {
+		const from = path.join(folder, "a.mp4");
+		const to = path.join(folder, "b.mp4");
+		hooks.afterLink = () => replaceWithTheirs(to);
+		await expect(moveWithoutOverwriting({ from, to })).rejects.toBeInstanceOf(
+			MediaNameTakenError
+		);
+		expect(await fs.readFile(to, "utf8")).toBe("theirs");
+		expect(await fs.readFile(from, "utf8")).toBe("mine");
 	});
 
 	it.skipIf(process.platform === "win32")(
