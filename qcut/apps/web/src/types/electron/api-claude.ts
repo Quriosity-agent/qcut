@@ -74,6 +74,12 @@ export interface ElectronClaudeOps {
 					requestId?: string;
 				}) => void | Promise<void>
 			) => void;
+			onMediaRefresh: (
+				callback: (data: {
+					projectId: string;
+					requestId?: string;
+				}) => unknown | Promise<unknown>
+			) => void;
 			onMediaRenamed: (
 				callback: (data: {
 					mediaId: string;
