@@ -42,7 +42,6 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 
 import * as fs from "node:fs/promises";
 import {
-	changeRestrictedMetadataHere,
 	deleteMediaRestrictedMetadata,
 	makeRestrictedMetadataChangesThrough,
 	persistMediaRestrictedMetadata,
@@ -50,6 +49,14 @@ import {
 	readMediaRestrictedMetadata,
 	stageMediaRestrictedMetadata,
 } from "../claude/handlers/claude-media-restricted-metadata.js";
+import type { MainResponseMessage } from "../utility/utility-ipc-types.js";
+import {
+	answerMainRequest,
+	createMainRequests,
+	MAIN_REQUEST_TIMEOUT_MS,
+} from "../utility/utility-main-requests.js";
+import { handleWindowFreeMediaRequest } from "../utility/utility-media-bridge.js";
+import { restrictedMetadataChangesThroughMain } from "../utility/utility-media-requests.js";
 
 const PROJECT_ID = "restricted-writers-test";
 const MEDIA_ID = `media_${Buffer.from("wanted.gif").toString("base64url")}`;
@@ -102,46 +109,59 @@ const sidecarFolder = () =>
 /** Where the media file of the id would be: there is none in these tests. */
 const MEDIA_FILE = () => path.join(sidecarFolder(), "..", "wanted.gif");
 
-/** How long the bridge between the two processes waits for an answer. */
-const BRIDGE_WAIT_MS = 10_000;
-
 /**
- * The changes as the HTTP API's process asks them of the main process, the
- * way the bridge between the two does (utility-process.ts, utility-bridge.ts):
- * each goes over as plain data with the time at which the asker stops
- * waiting, and the asker is told "timed out" when no answer has come by then.
+ * The bridge between the two processes, as it is but for the port: the
+ * utility process's requests with their wait and deadline
+ * (utility-main-requests.ts), what it asks for sidecars
+ * (utility-media-requests.ts), the main process's answering of a request,
+ * and what it does for these channels (utility-media-bridge.ts). A message
+ * crosses as a port carries it: as a copy, a turn of the event loop later.
+ *
+ * `asked` are the changes asked for, `answers` what the main process said.
  */
-function askedOfTheMainProcess(
-	asked: string[] = []
-): RestrictedMetadataChanges {
-	const ask =
-		(change: keyof RestrictedMetadataChanges) => (request: unknown) => {
-			asked.push(change);
-			const deadline = Date.now() + BRIDGE_WAIT_MS;
-			return new Promise((resolve, reject) => {
-				const waited = setInterval(() => {
-					if (Date.now() < deadline) return;
-					clearInterval(waited);
-					reject(
-						new Error(
-							"Main process request timed out: media:restricted-metadata"
-						)
-					);
-				}, 10);
-				changeRestrictedMetadataHere({
-					change,
-					request: JSON.parse(JSON.stringify(request)),
-					deadline,
-				})
-					.then(resolve, reject)
-					.finally(() => clearInterval(waited));
+function bridgeToTheMainProcess(): {
+	changes: RestrictedMetadataChanges;
+	asked: string[];
+	answers: MainResponseMessage[];
+} {
+	const asked: string[] = [];
+	const answers: MainResponseMessage[] = [];
+	const cross = <Message>(
+		message: Message,
+		deliver: (copy: Message) => void
+	) => {
+		const copy = structuredClone(message);
+		setImmediate(() => deliver(copy));
+	};
+	const requests = createMainRequests({
+		post: (message) => {
+			asked.push(String(message.data.change));
+			cross(message, (request) => {
+				answerMainRequest({
+					message: request,
+					handle: async (channel, data, deadline) => {
+						const answer = handleWindowFreeMediaRequest({
+							channel,
+							data,
+							deadline,
+						});
+						if (!answer) throw new Error(`Not a media request: ${channel}`);
+						return answer;
+					},
+					post: (response) => {
+						answers.push(response);
+						cross(response, requests.answered);
+					},
+				});
 			});
-		};
+		},
+	});
 	return {
-		persist: ask("persist") as RestrictedMetadataChanges["persist"],
-		stage: ask("stage") as RestrictedMetadataChanges["stage"],
-		discard: ask("discard") as RestrictedMetadataChanges["discard"],
-		remove: ask("remove") as RestrictedMetadataChanges["remove"],
+		changes: restrictedMetadataChangesThroughMain({
+			requestFromMain: requests.requestFromMain,
+		}),
+		asked,
+		answers,
 	};
 }
 
@@ -284,8 +304,8 @@ describe("writers of one restricted metadata sidecar", () => {
 
 		it("has the main process make them, and learns what came of them", async () => {
 			const other = await inTheOtherProcess();
-			const asked: string[] = [];
-			other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess(asked));
+			const { changes, asked } = bridgeToTheMainProcess();
+			other.makeRestrictedMetadataChangesThrough(changes);
 
 			await other.persistMediaRestrictedMetadata({
 				mediaId: MEDIA_ID,
@@ -333,9 +353,13 @@ describe("writers of one restricted metadata sidecar", () => {
 		 * its metadata, and the cleanup went on to remove it.
 		 */
 		describe("when a cleanup pauses and an import arrives", () => {
-			const clock = { ahead: 0 };
 			let goOn = () => {};
 			let imported: Promise<string> | undefined;
+			let bridge: ReturnType<typeof bridgeToTheMainProcess>;
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
 
 			/** The cleanup has looked, and waits; the import has been asked for. */
 			async function pausedCleanup(): Promise<{ discarded: Promise<void> }> {
@@ -346,10 +370,11 @@ describe("writers of one restricted metadata sidecar", () => {
 					mediaFilePath: MEDIA_FILE(),
 				});
 				const other = await inTheOtherProcess();
-				other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess());
-				clock.ahead = 0;
-				const realNow = Date.now.bind(Date);
-				vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
+				bridge = bridgeToTheMainProcess();
+				other.makeRestrictedMetadataChangesThrough(bridge.changes);
+				// From here on the test moves the clock: the bridge's own wait,
+				// and the time the main process goes by, run on it.
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
 				const paused = new Promise<void>((resolve) => {
 					goOn = resolve;
 				});
@@ -369,16 +394,16 @@ describe("writers of one restricted metadata sidecar", () => {
 					await paused;
 				};
 				const discarded = staged.discard();
-				await vi.waitFor(() => expect(imported).toBeDefined());
+				await vi.waitFor(() => expect(bridge.asked).toEqual(["persist"]));
 				return { discarded };
 			}
 
 			it("makes the import after the cleanup, when the cleanup goes on in time", async () => {
 				const { discarded } = await pausedCleanup();
 				// A while goes by, well within what the import waits.
-				await new Promise((resolve) => setTimeout(resolve, 150));
-				clock.ahead = BRIDGE_WAIT_MS / 2;
+				await vi.advanceTimersByTimeAsync(MAIN_REQUEST_TIMEOUT_MS / 2);
 				expect(await stored()).toMatchObject({ itemId: "42001" });
+				expect(bridge.answers).toEqual([]);
 
 				goOn();
 				await discarded;
@@ -396,17 +421,24 @@ describe("writers of one restricted metadata sidecar", () => {
 			 */
 			it("does not make the import once the one who asked has stopped waiting", async () => {
 				const { discarded } = await pausedCleanup();
-				// The cleanup pauses for an hour.
-				clock.ahead = 60 * 60 * 1000;
-				expect(await imported).toContain("timed out");
+				// The cleanup pauses for an hour: the bridge gives up on the
+				// import after its ten seconds.
+				await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+				expect(await imported).toBe(
+					"Error: Main process request timed out: media:restricted-metadata"
+				);
 				expect(await stored()).toMatchObject({ itemId: "42001" });
+				expect(bridge.answers).toEqual([]);
 
 				goOn();
 				await discarded;
 				hooks.onLstat = undefined;
-				// The cleanup took its own away; the import's turn came, and
-				// nothing was written for it.
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				// The cleanup took its own away. The import's turn came, and the
+				// main process says that it made nothing of it.
+				await vi.waitFor(() => expect(bridge.answers).toHaveLength(1));
+				expect(bridge.answers[0].error).toContain(
+					"waited for its turn longer than the request for it; it was not made"
+				);
 				expect(await stored()).toBeUndefined();
 				expect(
 					(await fs.readdir(sidecarFolder())).filter((name) =>
