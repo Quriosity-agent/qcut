@@ -861,6 +861,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
 				errors: [],
 				scanTime: 5,
 				totalDiskFiles: 1,
+				refreshed: 0,
 			};
 		});
 
