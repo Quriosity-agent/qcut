@@ -17,6 +17,14 @@
  * else, read by the editor, and removed by whoever has seen the editor and
  * the folder agree. Main process only.
  *
+ * While a rename is under way its note is written again every minute. A
+ * rename can take long (a large file copied on a volume without hard
+ * links), and the editor must not settle a note the app is still at work
+ * on: it would end where the file is about to leave. So the editor leaves
+ * alone a note that does not say where the file was left for as long as it
+ * is kept fresh, and takes one that has gone stale for a rename the app has
+ * left (it ended, or its last word could not be written).
+ *
  * @module electron/claude/handlers/claude-media-rename-note
  */
 import { createHash } from "node:crypto";
@@ -38,6 +46,29 @@ import type { RenamedMediaFile } from "./claude-media-rename.js";
  * - `stays`: it could not be put back, and keeps its new name.
  */
 export type RenamedFileStage = "moving" | "back" | "stays";
+
+/** How often the note of a rename that is under way is written again. */
+export const RENAME_NOTE_FRESH_EVERY_MS = 60_000;
+
+/** The notes of the renames this app is at work on, and what keeps each fresh. */
+const underWay = new Map<string, NodeJS.Timeout>();
+
+function stopKeepingFresh(filePath: string): void {
+	const upkeep = underWay.get(filePath);
+	if (!upkeep) return;
+	clearInterval(upkeep);
+	underWay.delete(filePath);
+}
+
+/**
+ * The renames that were under way have ended without a last word: the
+ * process that was making them is gone. Their notes are no longer kept
+ * fresh, so that the editor settles them.
+ */
+export function noLongerAtWorkOnMediaRenames(): void {
+	for (const upkeep of underWay.values()) clearInterval(upkeep);
+	underWay.clear();
+}
 
 /**
  * The same key as `unsettledRenameKey` in the editor's notes makes: one for
@@ -85,6 +116,10 @@ function notePath({
  * like: its size and the time it was last changed, as the editor is shown
  * them (get-file-info). Another file can take one of the two names
  * meanwhile, and is told from the renamed one by these.
+ *
+ * A note of a file that may still move (`moving`) is kept fresh from here
+ * on, until the next note of the rename, its removal, or the end of the
+ * process that is making the rename.
  */
 export async function noteUnsettledMediaRename({
 	projectId,
@@ -108,24 +143,33 @@ export async function noteUnsettledMediaRename({
 	for (const place of places) {
 		seen ??= await fs.stat(place).catch(() => undefined);
 	}
-	await writeStorageJson({
-		filePath: notePath({ projectId, renamed }),
-		data: {
-			oldId: before.id,
-			oldName: before.name,
-			oldPath: before.path,
-			newId: renamed.id,
-			newName: renamed.name,
-			newPath: renamed.path,
-			...(seen?.isFile()
-				? { file: { size: seen.size, modifiedAt: seen.mtime.getTime() } }
-				: {}),
-			...(stage === "moving"
-				? {}
-				: { fileIs: stage === "back" ? "old" : "new" }),
-			notedAt: Date.now(),
-		},
-	});
+	const filePath = notePath({ projectId, renamed });
+	// The rename has come this far whatever becomes of this note: a note
+	// that cannot be written leaves the last one to go stale.
+	stopKeepingFresh(filePath);
+	const note = {
+		oldId: before.id,
+		oldName: before.name,
+		oldPath: before.path,
+		newId: renamed.id,
+		newName: renamed.name,
+		newPath: renamed.path,
+		...(seen?.isFile()
+			? { file: { size: seen.size, modifiedAt: seen.mtime.getTime() } }
+			: {}),
+		...(stage === "moving" ? {} : { fileIs: stage === "back" ? "old" : "new" }),
+	};
+	await writeStorageJson({ filePath, data: { ...note, notedAt: Date.now() } });
+	if (stage !== "moving") return;
+	const upkeep = setInterval(() => {
+		writeStorageJson({
+			filePath,
+			data: { ...note, notedAt: Date.now() },
+		}).catch(() => undefined);
+	}, RENAME_NOTE_FRESH_EVERY_MS);
+	// It is not what keeps the app running.
+	upkeep.unref();
+	underWay.set(filePath, upkeep);
 }
 
 /** Drops the note of a rename: the editor and the folder are known to agree. */
@@ -136,5 +180,7 @@ export async function forgetUnsettledMediaRename({
 	projectId: string;
 	renamed: RenamedMediaFile;
 }): Promise<void> {
-	await removeStorageJson({ filePath: notePath({ projectId, renamed }) });
+	const filePath = notePath({ projectId, renamed });
+	stopKeepingFresh(filePath);
+	await removeStorageJson({ filePath });
 }
