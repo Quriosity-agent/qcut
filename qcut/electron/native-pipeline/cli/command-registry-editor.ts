@@ -133,7 +133,11 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 
 	// ── Media ──
 	"editor:media:list": ed("editor:media:list", "List media files", [PID]),
-	"editor:media:info": ed("editor:media:info", "Get media info", [PID, MID]),
+	"editor:media:info": ed(
+		"editor:media:info",
+		"Get media info (an id that is not in the project is an error)",
+		[PID, MID]
+	),
 	"editor:media:import": ed("editor:media:import", "Import local file", [
 		PID,
 		f("--source", "string", "File path to import", { required: true }),
@@ -170,15 +174,27 @@ export const EDITOR_COMMANDS: Record<string, CommandDef> = {
 			f("--output-format", "string", "Output format"),
 		]
 	),
-	"editor:media:rename": ed("editor:media:rename", "Rename media", [
-		PID,
-		MID,
-		f("--new-name", "string", "New name", { required: true }),
-	]),
+	"editor:media:rename": ed(
+		"editor:media:rename",
+		"Rename a media file. Its id follows its name, so it gets a new id: the clips that play it are pointed at the new id, and the answer gives it (id, name, previousId, previousName). A taken name gets a suffix (name_1.ext)",
+		[
+			PID,
+			MID,
+			f(
+				"--new-name",
+				"string",
+				"New file name; the extension is kept when it has none",
+				{ required: true }
+			),
+		],
+		[
+			"qcut editor media rename --media-id <id> --new-name shake_v2 --project-id <id> --json",
+		]
+	),
 	"editor:media:delete": ed("editor:media:delete", "Delete media", [PID, MID]),
 	"editor:media:replace": ed(
 		"editor:media:replace",
-		"Put a new file in a media item's place: it is imported, every clip that played the old item plays it (one undo step), and the old item is removed (confirm tier, needs --force)",
+		"Put a new file in a media item's place: it is imported, every clip that played the old item plays it (one undo step), and the old item is removed (confirm tier, needs --force). A file with the old item's name ends up under that name, and so under its id",
 		[
 			PID,
 			MID,
