@@ -965,6 +965,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				errors: [String(error)],
 				scanTime: 0,
 				totalDiskFiles: 0,
+				refreshed: 0,
 			};
 		}
 	},
