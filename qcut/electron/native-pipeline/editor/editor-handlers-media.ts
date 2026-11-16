@@ -159,6 +159,8 @@ async function dispatchMedia(
 			return mediaReplace(client, opts);
 		case "rename":
 			return mediaRename(client, opts);
+		case "refresh":
+			return mediaRefresh(client, opts);
 		case "delete":
 			return mediaDelete(client, opts);
 		default:
@@ -398,6 +400,31 @@ async function mediaRename(
 		`/api/claude/media/${opts.projectId}/${o.mediaId}/rename`,
 		{ newName: o.newName }
 	);
+	return { success: true, data };
+}
+
+/**
+ * Handle media refresh: have the editor read again the media files that
+ * were written over in the project folder since it copied them.
+ */
+async function mediaRefresh(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	const data = await client.post<{
+		failed?: Array<{ name: string; error: string }>;
+	}>(`/api/claude/media/${encodeURIComponent(opts.projectId)}/refresh`, {});
+	const failed = data?.failed ?? [];
+	if (failed.length > 0) {
+		return {
+			success: false,
+			error: `${failed.length} changed media file(s) could not be read again, and the editor still plays its old copy of each: ${failed
+				.map((entry) => `${entry.name} (${entry.error})`)
+				.join("; ")}`,
+			data,
+		};
+	}
 	return { success: true, data };
 }
 
