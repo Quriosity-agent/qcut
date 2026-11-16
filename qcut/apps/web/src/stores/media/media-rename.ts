@@ -1,6 +1,10 @@
 import { platform } from "@qcut/platform-core";
 import { debugWarn } from "@/lib/debug/debug-config";
 import { forgetMediaAlphaInspection } from "@/lib/media/alpha-playback-proxy";
+import {
+	readSourceFileStat,
+	sameSourceFile,
+} from "@/lib/project/media-source-stat";
 import { storageService } from "@/lib/storage/storage-service";
 import type { TProject } from "@/types/project";
 import { useProjectStore } from "../project-store";
@@ -11,11 +15,11 @@ import {
 	deleteTrackedMediaItem,
 	saveTrackedMediaItem,
 } from "./media-persistence-queue";
-import { openProjectPlaysMedia } from "./media-in-use";
 import {
 	forgetUnsettledRename,
 	readUnsettledRename,
 	readUnsettledRenames,
+	type UnsettledRename,
 	whereNotedFileIs,
 } from "./media-rename-notes";
 import { useMediaStore } from "./media-store";
@@ -64,10 +68,7 @@ interface Undo {
 const TAKE_BACK_ATTEMPTS = 3;
 const TAKE_BACK_RETRY_MS = 150;
 
-/**
- * A note that settles nothing is dropped after a day: no file under either
- * name, or clips that cannot be told apart.
- */
+/** A note that no file under either name speaks to is dropped after a day. */
 const NOTE_KEPT_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -220,46 +221,48 @@ function inTurn<Result>({
  * Settles the renames noted for the project by what its folder holds: the
  * editor ends on the id of the name the file has (`whereNotedFileIs`). With
  * a file under neither name, or when the folder cannot be asked, the note
- * is kept for the next time, a day at most.
+ * is kept for the next time; one that no file speaks to goes after a day.
  *
- * A note is there because the desktop app never learned that the editor had
- * ended where it left the file. So when the app said where that is, the
- * editor is brought there whatever it holds: clips of the other id are the
- * renamed file's, also when another file has taken that name since and has
- * an item of its own by now.
+ * A note the desktop app has not finished is left alone while it is fresh:
+ * the app may still be moving the file, and following it now would end on
+ * the name it is leaving. `lookAgainAt` is when the first such note can be
+ * settled.
  *
- * A note the app has not finished is another matter. While it is young, the
- * app may still be moving the file, and following it now would end on the
- * name it is leaving: it is left alone, and `lookAgainAt` is when the first
- * such note can be settled. Once it is old, the app ended before it was
- * done. If each name then has a file, and each id an item that is in use,
- * whose the clips are cannot be told: the editor may have followed the file
- * and the other file be a media of its own. Nothing is changed then, and
- * the note is kept, a day at most.
+ * Another file can have taken the name the renamed file left, and be a
+ * media item of its own by now, with clips of its own. A note can also have
+ * outlived a rename the editor did follow (it could not be dropped). So
+ * when the other name has a file, the item under its id is brought over
+ * only when it is the renamed file's: when its record of the file it was
+ * copied from is as the app noted the renamed file. An item of another file
+ * is left where it is, with its clips. Where nothing tells whose the item
+ * is, or which of two files is the renamed one, nothing is changed and the
+ * note is kept.
  *
  * Called when a project has finished loading: its timelines are then in the
- * stores as they are stored, so what is put right is saved right.
+ * stores as they are stored, so what is put right is saved right. `dropped`
+ * is how many notes were dealt with.
  */
 export async function settleUnsettledMediaRenames({
 	projectId,
 }: {
 	projectId: string;
-}): Promise<{ lookAgainAt?: number }> {
+}): Promise<{ lookAgainAt?: number; dropped: number }> {
 	let lookAgainAt: number | undefined;
+	let dropped = 0;
 	for (const note of await readUnsettledRenames(projectId)) {
 		const age = Date.now() - note.notedAt;
-		const unfinished = note.fileIs === undefined;
-		if (unfinished && age >= 0 && age < NOTE_UNDECIDED_MS) {
+		if (note.fileIs === undefined && age >= 0 && age < NOTE_UNDECIDED_MS) {
 			const settledBy = note.notedAt + NOTE_UNDECIDED_MS;
 			lookAgainAt = Math.min(lookAgainAt ?? settledBy, settledBy);
 			continue;
 		}
 		try {
 			const where = await whereNotedFileIs(note);
-			if (where === undefined) continue;
+			if (where === undefined || where === "unclear") continue;
 			if (where === "nowhere") {
 				if (age > NOTE_KEPT_MS) {
 					await forgetUnsettledRename({ projectId, rename: note });
+					dropped += 1;
 				}
 				continue;
 			}
@@ -271,20 +274,13 @@ export async function settleUnsettledMediaRenames({
 			};
 			const [to, from] = where.name === "old" ? [old, renamed] : [renamed, old];
 			// In turn with the project's renames: the stores are then at rest.
-			const settled = await inTurn({
+			const whose = await inTurn({
 				projectId,
 				run: async () => {
-					if (
-						unfinished &&
-						where.otherNameTaken &&
-						(await areTwoMediaInUse({
-							projectId,
-							fromId: from.id,
-							toId: to.id,
-						}))
-					) {
-						return false;
-					}
+					const left = where.otherNameTaken
+						? itemLeftUnder({ projectId, mediaId: from.id, note })
+						: "the renamed file's";
+					if (left !== "the renamed file's") return left;
 					await renameNow({
 						projectId,
 						fromId: from.id,
@@ -293,12 +289,12 @@ export async function settleUnsettledMediaRenames({
 						localPath: to.path,
 						settles: true,
 					});
-					return true;
+					return left;
 				},
 			});
-			if (settled || age > NOTE_KEPT_MS) {
-				await forgetUnsettledRename({ projectId, rename: note });
-			}
+			if (whose === "unknown") continue;
+			await forgetUnsettledRename({ projectId, rename: note });
+			dropped += 1;
 		} catch (error) {
 			debugWarn(
 				"[MediaRename] A noted rename could not be settled yet:",
@@ -306,35 +302,45 @@ export async function settleUnsettledMediaRenames({
 			);
 		}
 	}
-	return lookAgainAt === undefined ? {} : { lookAgainAt };
+	return { ...(lookAgainAt === undefined ? {} : { lookAgainAt }), dropped };
 }
 
 /**
- * Whether the two ids are two media of the open project: each with an item,
- * each in use. A project that is not open is not asked: the rename then
- * refuses it.
+ * Whose the item is that the open project holds under the name the renamed
+ * file left, now that another file has that name.
+ *
+ * It is the renamed file's own when it was copied from a file that looks as
+ * the app noted the renamed file: the editor has not followed the rename,
+ * and the item and its clips are to be brought over. It is another file's
+ * when it was copied from something else: a media item of its own, to be
+ * left alone. With no item there, what still names the id can only be the
+ * renamed file's. And with nothing noted of the file, it is not known.
+ *
+ * (media-source-refresh.ts leaves an item of a rename that is not settled
+ * as it is, so that this record still says what the item was copied from.)
  */
-async function areTwoMediaInUse({
+function itemLeftUnder({
 	projectId,
-	fromId,
-	toId,
-}: MediaIds & { projectId: string }): Promise<boolean> {
-	const project = useProjectStore.getState().activeProject;
-	if (!project || !projectIsOpen(projectId)) return false;
-	const { mediaItems } = useMediaStore.getState();
-	for (const mediaId of [fromId, toId]) {
-		if (!mediaItems.some((item) => item.id === mediaId)) return false;
-		const inUse = await openProjectPlaysMedia({ project, mediaId });
-		// That waited on storage, and the stores are read again for the next
-		// id: they have to be this project's still.
-		if (!projectIsOpen(projectId)) {
-			throw new Error(
-				`Project ${projectId} was closed while its media were looked at; nothing was changed`
-			);
-		}
-		if (!inUse) return false;
-	}
-	return true;
+	mediaId,
+	note,
+}: {
+	projectId: string;
+	mediaId: string;
+	note: UnsettledRename;
+}): "the renamed file's" | "another file's" | "unknown" {
+	// A project that is not open is not asked: the rename then refuses it.
+	if (!projectIsOpen(projectId)) return "the renamed file's";
+	const item = useMediaStore
+		.getState()
+		.mediaItems.find((held) => held.id === mediaId);
+	if (!item) return "the renamed file's";
+	if (!note.file) return "unknown";
+	const copiedFrom = readSourceFileStat({ item });
+	const isOfRenamedFile = copiedFrom
+		? sameSourceFile(copiedFrom, note.file)
+		: // From before the record was kept: the size of its copy is all there is.
+			item.file.size === note.file.size;
+	return isOfRenamedFile ? "the renamed file's" : "another file's";
 }
 
 async function renameNow({
