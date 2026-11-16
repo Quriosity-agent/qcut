@@ -560,8 +560,8 @@ export interface TimelineStore {
 	/** Restore timeline tracks (for rollback on load failure) */
 	restoreTracks: (tracks: TimelineTrack[]) => void;
 	/**
-	 * Point every clip that plays media `fromId` at `toId` (a renamed file
-	 * has a new id). Returns how many clips changed; adds no undo step.
+	 * Point every clip of media `fromId` at `toId` (a renamed file's new id),
+	 * undo and redo steps included. Returns the timeline clips changed.
 	 */
 	repointMediaReferences: (ids: { fromId: string; toId: string }) => number;
 	updateTextElement: (
