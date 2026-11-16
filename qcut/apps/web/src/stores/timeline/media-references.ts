@@ -1,7 +1,8 @@
 import type { TimelineTrack } from "@/types/timeline";
 
 /**
- * Points every clip that plays media `fromId` at `toId`.
+ * Points every clip that plays media `fromId` at `toId`: media clips, and
+ * the stickers on the timeline, which name their picture by media id too.
  *
  * A media id follows its file name, so a file renamed in the project folder
  * comes back under a new id. The clips have to follow, or they play an item
@@ -26,7 +27,10 @@ export function repointMediaReferences({
 	const repointed = tracks.map((track) => {
 		let trackChanged = false;
 		const elements = track.elements.map((element) => {
-			if (element.type !== "media" || element.mediaId !== fromId) {
+			if (
+				(element.type !== "media" && element.type !== "sticker") ||
+				element.mediaId !== fromId
+			) {
 				return element;
 			}
 			trackChanged = true;
