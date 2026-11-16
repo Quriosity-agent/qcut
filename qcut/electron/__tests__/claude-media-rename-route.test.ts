@@ -1,9 +1,9 @@
 /**
- * What `PATCH /api/claude/media/:projectId/:mediaId/rename` does when the
- * editor does not follow the rename: the file goes back under its old name,
- * and the editor is brought to the name the file ends under. The route
- * notes the rename itself for as long as it does not know that the two
- * agree.
+ * How `PATCH /api/claude/media/:projectId/:mediaId/rename` keeps the editor
+ * and the folder together. The route notes every rename before the file is
+ * moved, and keeps the note for as long as it does not know that the two
+ * agree. When the editor does not follow, the file goes back under its old
+ * name, and the editor is brought to the name the file ends under.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -89,15 +89,31 @@ const NAME_TAKEN = new Error(
 const stagesNoted = (note: ReturnType<typeof vi.fn>) =>
 	note.mock.calls.map(([payload]) => (payload as { stage: string }).stage);
 
+/**
+ * The rename on disk as the route sees it: it says where the file is about
+ * to go, and moves it unless that could not be recorded.
+ */
+async function movesTheFile({
+	beforeMove,
+}: {
+	beforeMove?: (planned: typeof RENAMED) => Promise<void>;
+}): Promise<typeof RENAMED> {
+	await beforeMove?.(RENAMED);
+	return RENAMED;
+}
+
 function renameRoute({
 	requestMediaRename,
 	noteUnsettledMediaRename = vi.fn(async () => undefined),
 	forgetUnsettledMediaRename = vi.fn(async () => undefined),
+	notes = true,
 }: {
 	requestMediaRename: ReturnType<typeof vi.fn>;
 	/** The desktop app's own note of a rename the editor may not have settled. */
 	noteUnsettledMediaRename?: ReturnType<typeof vi.fn>;
 	forgetUnsettledMediaRename?: ReturnType<typeof vi.fn>;
+	/** Whether the server can keep such notes at all. */
+	notes?: boolean;
 }): () => Promise<unknown> {
 	const handlers = new Map<string, RouteHandler>();
 	const record = (method: string) => (path: string, handler: RouteHandler) => {
@@ -114,10 +130,10 @@ function renameRoute({
 		get(_target, property) {
 			if (property === "requestMediaRename") return requestMediaRename;
 			if (property === "noteUnsettledMediaRename") {
-				return noteUnsettledMediaRename;
+				return notes ? noteUnsettledMediaRename : undefined;
 			}
 			if (property === "forgetUnsettledMediaRename") {
-				return forgetUnsettledMediaRename;
+				return notes ? forgetUnsettledMediaRename : undefined;
 			}
 			if (property === "requestStateSnapshot") {
 				return async () => ({
@@ -144,25 +160,60 @@ function renameRoute({
 		});
 }
 
-describe("a media rename the editor did not plainly refuse", () => {
+/**
+ * A rename the app does not live to see the end of, an answer that never
+ * comes, an editor that is reloaded: whatever happens after the file has
+ * moved, a record has to be there already. So the rename is noted first,
+ * and a rename that cannot be noted is not made.
+ */
+describe("a media rename is noted before the file is moved", () => {
 	beforeEach(() => {
-		vi.mocked(renameMediaFileOnDisk).mockReset().mockResolvedValue(RENAMED);
+		vi.mocked(renameMediaFileOnDisk)
+			.mockReset()
+			.mockImplementation(movesTheFile as never);
 		vi.mocked(undoMediaRename).mockReset().mockResolvedValue(undefined);
 	});
 
-	it("tells the editor the name and path the file had", async () => {
-		const requestMediaRename = vi.fn(async () => undefined);
-		const noteUnsettledMediaRename = vi.fn(async () => undefined);
+	it("notes it, has the editor follow, and drops the note", async () => {
+		const events: string[] = [];
+		vi.mocked(renameMediaFileOnDisk).mockImplementation((async (request: {
+			beforeMove?: (planned: typeof RENAMED) => Promise<void>;
+		}) => {
+			await request.beforeMove?.(RENAMED);
+			events.push("moved");
+			return RENAMED;
+		}) as never);
+		const requestMediaRename = vi.fn(async () => {
+			events.push("editor asked");
+		});
+		const noteUnsettledMediaRename = vi.fn(async () => {
+			events.push("noted");
+		});
+		const forgetUnsettledMediaRename = vi.fn(async () => {
+			events.push("note dropped");
+		});
 		const answer = await renameRoute({
 			requestMediaRename,
 			noteUnsettledMediaRename,
+			forgetUnsettledMediaRename,
 		})();
+
 		expect(answer).toMatchObject({
 			renamed: true,
 			id: RENAMED.id,
 			previousId: OLD.id,
 		});
 		expect(answer).not.toHaveProperty("warning");
+		expect(events).toEqual(["noted", "moved", "editor asked", "note dropped"]);
+		expect(noteUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "project-a",
+			renamed: RENAMED,
+			stage: "moving",
+		});
+		expect(forgetUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "project-a",
+			renamed: RENAMED,
+		});
 		expect(requestMediaRename).toHaveBeenCalledTimes(1);
 		expect(requestMediaRename).toHaveBeenCalledWith({
 			projectId: "project-a",
@@ -174,8 +225,70 @@ describe("a media rename the editor did not plainly refuse", () => {
 			previousPath: OLD.path,
 		});
 		expect(undoMediaRename).not.toHaveBeenCalled();
-		// Nothing is open: nothing is noted.
-		expect(noteUnsettledMediaRename).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * With no note and no answer from the editor, the file went back while
+	 * the stored project could keep the new id, and nothing was left to put
+	 * that right. Without a note there is no rename now.
+	 */
+	it("does not make a rename it cannot note", async () => {
+		const requestMediaRename = vi.fn(async () => undefined);
+		const noteUnsettledMediaRename = vi.fn(async () => {
+			throw new Error("the disk is full");
+		});
+		const failure = await renameRoute({
+			requestMediaRename,
+			noteUnsettledMediaRename,
+		})().catch((error: Error & { status?: number }) => error);
+
+		expect(failure).toMatchObject({ status: 500 });
+		expect((failure as Error).message).toBe(
+			"The rename could not be noted for the editor to settle (the disk is full), so it was not made: nothing was changed"
+		);
+		// The editor is not asked, and there is no file to put back.
+		expect(requestMediaRename).not.toHaveBeenCalled();
+		expect(undoMediaRename).not.toHaveBeenCalled();
+	});
+
+	it("does not make one where notes cannot be kept at all", async () => {
+		const requestMediaRename = vi.fn(async () => undefined);
+		await expect(
+			renameRoute({ requestMediaRename, notes: false })()
+		).rejects.toMatchObject({ status: 503 });
+		expect(renameMediaFileOnDisk).not.toHaveBeenCalled();
+		expect(requestMediaRename).not.toHaveBeenCalled();
+	});
+
+	it("gives the rename on disk the means to take a note back when the file did not move", async () => {
+		const forgetUnsettledMediaRename = vi.fn(async () => undefined);
+		vi.mocked(renameMediaFileOnDisk).mockImplementation((async (request: {
+			beforeMove?: (planned: typeof RENAMED) => Promise<void>;
+			notMoved?: (planned: typeof RENAMED) => Promise<void>;
+		}) => {
+			await request.beforeMove?.(RENAMED);
+			await request.notMoved?.(RENAMED);
+			throw new Error("new.mp4 is already taken in the project's media folder");
+		}) as never);
+		await expect(
+			renameRoute({
+				requestMediaRename: vi.fn(async () => undefined),
+				forgetUnsettledMediaRename,
+			})()
+		).rejects.toThrow("already taken");
+		expect(forgetUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "project-a",
+			renamed: RENAMED,
+		});
+	});
+});
+
+describe("a media rename the editor did not plainly refuse", () => {
+	beforeEach(() => {
+		vi.mocked(renameMediaFileOnDisk)
+			.mockReset()
+			.mockImplementation(movesTheFile as never);
+		vi.mocked(undoMediaRename).mockReset().mockResolvedValue(undefined);
 	});
 
 	/**
@@ -199,29 +312,6 @@ describe("a media rename the editor did not plainly refuse", () => {
 		expect(requestMediaRename.mock.invocationCallOrder[1]).toBeLessThan(
 			vi.mocked(undoMediaRename).mock.invocationCallOrder[0]
 		);
-	});
-
-	/**
-	 * The editor may never get to the request: it is busy, or reloaded. And
-	 * the note it would write itself may not be written. So the desktop app
-	 * notes the rename first, in its own name, before anything else.
-	 */
-	it("notes the rename itself before it asks the editor and before the file goes back", async () => {
-		const requestMediaRename = vi.fn().mockRejectedValue(TIMED_OUT);
-		const noteUnsettledMediaRename = vi.fn(async () => undefined);
-		await expect(
-			renameRoute({ requestMediaRename, noteUnsettledMediaRename })()
-		).rejects.toMatchObject({ status: 504 });
-		expect(noteUnsettledMediaRename).toHaveBeenNthCalledWith(1, {
-			projectId: "project-a",
-			renamed: RENAMED,
-			stage: "moving",
-		});
-		const noted = noteUnsettledMediaRename.mock.invocationCallOrder[0];
-		const asked = requestMediaRename.mock.invocationCallOrder[1];
-		const putBack = vi.mocked(undoMediaRename).mock.invocationCallOrder[0];
-		expect(noted).toBeLessThan(asked);
-		expect(asked).toBeLessThan(putBack);
 	});
 
 	/**
@@ -255,30 +345,37 @@ describe("a media rename the editor did not plainly refuse", () => {
 		// Noted before the file moved, and again once it was back.
 		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving", "back"]);
 		expect(noteUnsettledMediaRename.mock.invocationCallOrder[0]).toBeLessThan(
-			vi.mocked(undoMediaRename).mock.invocationCallOrder[0]
+			requestMediaRename.mock.invocationCallOrder[0]
 		);
 		expect(forgetUnsettledMediaRename).not.toHaveBeenCalled();
 	});
 
-	it("does not promise that the editor will put right what could not be noted", async () => {
+	/**
+	 * The note cannot be written a second time, and the editor does not
+	 * confirm. The file goes back all the same. What settles the two is the
+	 * note made before the file was moved, which is still there.
+	 */
+	it("leaves the note it made before the move when it cannot bring it up to date", async () => {
 		const requestMediaRename = vi.fn().mockRejectedValue(TIMED_OUT);
-		const noteUnsettledMediaRename = vi.fn(async () => {
-			throw new Error("the disk is full");
-		});
+		const noteUnsettledMediaRename = vi
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValue(new Error("the disk is full"));
+		const forgetUnsettledMediaRename = vi.fn(async () => undefined);
 		const failure = await renameRoute({
 			requestMediaRename,
 			noteUnsettledMediaRename,
+			forgetUnsettledMediaRename,
 		})().catch((error: Error & { status?: number }) => error);
+
 		expect(failure).toMatchObject({ status: 504 });
 		const { message } = failure as Error;
 		expect(message).toContain("The file is back under old.mp4");
-		expect(message).toContain(
-			"the rename could not be noted for it to put right later (the disk is full)"
-		);
-		expect(message).toContain("the project may still name media_bmV3");
-		expect(message).not.toContain("next opened");
-		// The file goes back all the same: it is the one thing that can.
+		expect(message).toContain("when the project is next opened");
 		expect(undoMediaRename).toHaveBeenCalledTimes(1);
+		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving", "back"]);
+		// Nothing removed the first note.
+		expect(forgetUnsettledMediaRename).not.toHaveBeenCalled();
 	});
 
 	/**
@@ -313,30 +410,6 @@ describe("a media rename the editor did not plainly refuse", () => {
 		expect(vi.mocked(undoMediaRename).mock.invocationCallOrder[0]).toBeLessThan(
 			forgetUnsettledMediaRename.mock.invocationCallOrder[0]
 		);
-	});
-
-	it("says the same when the note could not be written but the editor confirmed", async () => {
-		const requestMediaRename = vi
-			.fn()
-			.mockRejectedValueOnce(TIMED_OUT)
-			.mockResolvedValueOnce(undefined);
-		const noteUnsettledMediaRename = vi.fn(async () => {
-			throw new Error("the disk is full");
-		});
-		const forgetUnsettledMediaRename = vi.fn(async () => undefined);
-		await expect(
-			renameRoute({
-				requestMediaRename,
-				noteUnsettledMediaRename,
-				forgetUnsettledMediaRename,
-			})()
-		).rejects.toMatchObject({
-			status: 504,
-			message:
-				"Renderer media rename timed out: Renderer media rename timed out.",
-		});
-		// There is no note to drop.
-		expect(forgetUnsettledMediaRename).not.toHaveBeenCalled();
 	});
 
 	it("asks the same when the editor could not take everything back", async () => {
@@ -375,15 +448,22 @@ describe("a media rename the editor did not plainly refuse", () => {
 			.fn()
 			.mockRejectedValue(new Error("Quota exceeded"));
 		const noteUnsettledMediaRename = vi.fn(async () => undefined);
+		const forgetUnsettledMediaRename = vi.fn(async () => undefined);
 		await expect(
-			renameRoute({ requestMediaRename, noteUnsettledMediaRename })()
+			renameRoute({
+				requestMediaRename,
+				noteUnsettledMediaRename,
+				forgetUnsettledMediaRename,
+			})()
 		).rejects.toMatchObject({
 			status: 409,
 			message: "Renderer media rename was rejected: Quota exceeded",
 		});
 		expect(requestMediaRename).toHaveBeenCalledTimes(1);
 		expect(undoMediaRename).toHaveBeenCalledTimes(1);
-		expect(noteUnsettledMediaRename).not.toHaveBeenCalled();
+		// The file is back and the editor never left: the note has no more to say.
+		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving"]);
+		expect(forgetUnsettledMediaRename).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -395,7 +475,9 @@ describe("a media rename the editor did not plainly refuse", () => {
  */
 describe("a media rename whose file cannot be put back", () => {
 	beforeEach(() => {
-		vi.mocked(renameMediaFileOnDisk).mockReset().mockResolvedValue(RENAMED);
+		vi.mocked(renameMediaFileOnDisk)
+			.mockReset()
+			.mockImplementation(movesTheFile as never);
 		vi.mocked(undoMediaRename).mockReset().mockRejectedValue(NAME_TAKEN);
 	});
 
@@ -470,33 +552,9 @@ describe("a media rename whose file cannot be put back", () => {
 		expect(forgetUnsettledMediaRename).not.toHaveBeenCalled();
 	});
 
-	it("says which id the project may still name when that could not be noted either", async () => {
-		const requestMediaRename = vi
-			.fn()
-			.mockRejectedValueOnce(TIMED_OUT)
-			.mockResolvedValueOnce(undefined)
-			.mockRejectedValueOnce(WINDOW_GONE);
-		const noteUnsettledMediaRename = vi.fn(async () => {
-			throw new Error("the disk is full");
-		});
-		const failure = await renameRoute({
-			requestMediaRename,
-			noteUnsettledMediaRename,
-		})().catch((error: Error & { status?: number }) => error);
-		expect(failure).toMatchObject({ status: 500 });
-		const { message } = failure as Error;
-		expect(message).toContain("The file stays renamed to new.mp4");
-		expect(message).toContain(
-			"the rename could not be noted for it to put right later (the disk is full)"
-		);
-		// The old id is the one no file has now.
-		expect(message).toContain("the project may still name media_b2xk");
-		expect(message).not.toContain("next opened");
-	});
-
 	/**
-	 * A plain refusal leaves the editor on the old id, with nothing noted so
-	 * far. The file that stays renamed is noted then, and followed.
+	 * A plain refusal leaves the editor on the old id. The file that stays
+	 * renamed is noted as such, and followed.
 	 */
 	it("notes and follows the file after a plain refusal too", async () => {
 		const requestMediaRename = vi
@@ -515,7 +573,7 @@ describe("a media rename whose file cannot be put back", () => {
 		expect(answer.warning).toContain("Quota exceeded");
 		expect(requestMediaRename).toHaveBeenCalledTimes(2);
 		expect(requestMediaRename).toHaveBeenLastCalledWith(FOLLOW_THE_FILE);
-		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["stays"]);
+		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving", "stays"]);
 		expect(forgetUnsettledMediaRename).toHaveBeenCalledTimes(1);
 	});
 });
