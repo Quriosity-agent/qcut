@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	readStorageJson,
 	removeStorageJson,
+	removeStorageJsonIf,
 	writeStorageJson,
 } from "../main-ipc/storage-json.js";
 
@@ -216,5 +217,98 @@ describe("reading stored project JSON", () => {
 			"could not be copied aside first (EACCES: permission denied)"
 		);
 		expect(await fs.readFile(filePath, "utf8")).toBe('{"name":"a"}}');
+	});
+});
+
+/**
+ * A stored value someone else may write again is dropped only if it still
+ * is what the one who drops it has seen: looked at and removed in one turn
+ * of the file's queue.
+ */
+describe("removing a stored value that is still the one meant", () => {
+	let directory: string;
+	let filePath: string;
+	const isVersion = (version: number) => (value: unknown) =>
+		(value as { version?: number }).version === version;
+	const exists = () =>
+		fs.access(filePath).then(
+			() => true,
+			() => false
+		);
+
+	beforeEach(async () => {
+		directory = await fs.mkdtemp(path.join(os.tmpdir(), "qcut-storage-if-"));
+		filePath = path.join(directory, "note.json");
+		await fs.writeFile(filePath, JSON.stringify({ version: 1 }));
+	});
+	afterEach(async () => {
+		vi.restoreAllMocks();
+		await fs.rm(directory, { recursive: true, force: true });
+	});
+
+	it("removes it, and says that it is gone", async () => {
+		expect(await removeStorageJsonIf({ filePath, isStill: isVersion(1) })).toBe(
+			true
+		);
+		expect(await exists()).toBe(false);
+	});
+
+	it("leaves a value that is another one by now", async () => {
+		expect(await removeStorageJsonIf({ filePath, isStill: isVersion(2) })).toBe(
+			false
+		);
+		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
+			version: 1,
+		});
+	});
+
+	it("says that a value that is not there is gone, without asking", async () => {
+		await fs.rm(filePath);
+		const isStill = vi.fn(() => true);
+		expect(await removeStorageJsonIf({ filePath, isStill })).toBe(true);
+		expect(isStill).not.toHaveBeenCalled();
+	});
+
+	it("leaves a file it cannot read", async () => {
+		await fs.writeFile(filePath, "{ not json");
+		expect(await removeStorageJsonIf({ filePath, isStill: () => true })).toBe(
+			false
+		);
+		expect(await exists()).toBe(true);
+	});
+
+	it("is shown the value of a save that was asked for before it", async () => {
+		const saved = writeStorageJson({ filePath, data: { version: 2 } });
+		const removed = removeStorageJsonIf({ filePath, isStill: isVersion(1) });
+		await saved;
+		// Version 1 is what was there when it was asked; version 2 by its turn.
+		expect(await removed).toBe(false);
+		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
+			version: 2,
+		});
+	});
+
+	/**
+	 * Nothing is saved between the look and the removal: a save asked for
+	 * while the value is being removed is written after it, and stays.
+	 */
+	it("does not remove a value that is saved while it removes the old one", async () => {
+		const rm = fs.rm.bind(fs);
+		let saved: Promise<void> | undefined;
+		vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+			if (target === filePath && !saved) {
+				// Looked at and found to be the one; now, before it is gone:
+				saved = writeStorageJson({ filePath, data: { version: 2 } });
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			}
+			await rm(target, options);
+		});
+		expect(await removeStorageJsonIf({ filePath, isStill: isVersion(1) })).toBe(
+			true
+		);
+		await saved;
+		expect(JSON.parse(await fs.readFile(filePath, "utf8"))).toEqual({
+			version: 2,
+		});
 	});
 });
