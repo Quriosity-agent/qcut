@@ -21,7 +21,10 @@
 import { platform } from "@qcut/platform-core";
 import { debugError, debugLog } from "@/lib/debug/debug-config";
 import { forgetMediaAlphaInspection } from "@/lib/media/alpha-playback-proxy";
-import { getOrCreateObjectURL } from "@/lib/media/blob-manager";
+import {
+	createReplacementObjectURL,
+	releaseObjectURL,
+} from "@/lib/media/blob-manager";
 import { getMimeType } from "@/lib/media/bulk-import";
 import { storageService } from "@/lib/storage/storage-service";
 import { saveTrackedMediaItem } from "@/stores/media/media-persistence-queue";
@@ -51,8 +54,39 @@ const SAME_TIME_MS = 2;
 const READ_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 400;
 
-function normalizePath(filePath: string): string {
-	return filePath.replace(/\\/g, "/").toLowerCase();
+/** The same path whichever slash it is written with. */
+function slashed(filePath: string): string {
+	return filePath.replace(/\\/g, "/");
+}
+
+/**
+ * Finds the scanned file an item's path names. The path as written wins: on
+ * a file system that tells `A.mp4` from `a.mp4` they are two files, and one
+ * must never be read into the other's item. Only when no file has the path
+ * as written is case set aside, and then only if a single file answers to
+ * it (a file system that ignores case, a path typed in another case).
+ */
+function scannedFiles(diskFiles: ProjectFolderFileInfo[]): {
+	find: (localPath: string) => ProjectFolderFileInfo | undefined;
+} {
+	const asWritten = new Map<string, ProjectFolderFileInfo>();
+	const caseSetAside = new Map<string, ProjectFolderFileInfo[]>();
+	for (const file of diskFiles) {
+		if (file.isDirectory) continue;
+		const path = slashed(file.path);
+		asWritten.set(path, file);
+		const folded = path.toLowerCase();
+		caseSetAside.set(folded, [...(caseSetAside.get(folded) ?? []), file]);
+	}
+	return {
+		find: (localPath) => {
+			const path = slashed(localPath);
+			const exact = asWritten.get(path);
+			if (exact) return exact;
+			const candidates = caseSetAside.get(path.toLowerCase()) ?? [];
+			return candidates.length === 1 ? candidates[0] : undefined;
+		},
+	};
 }
 
 /** The record on an item, or undefined when it has none that can be used. */
@@ -102,16 +136,12 @@ export function planMediaSourceRefresh({
 	diskFiles: ProjectFolderFileInfo[];
 	mediaItems: MediaItem[];
 }): MediaSourcePlan {
-	const byPath = new Map<string, ProjectFolderFileInfo>();
-	for (const file of diskFiles) {
-		if (file.isDirectory) continue;
-		byPath.set(normalizePath(file.path), file);
-	}
+	const scanned = scannedFiles(diskFiles);
 	const plan: MediaSourcePlan = { changed: [], adopt: [], checked: 0 };
 	for (const item of mediaItems) {
 		// An item without bytes of its own has no copy that could be stale.
 		if (item.ephemeral || !item.localPath || !(item.file?.size > 0)) continue;
-		const file = byPath.get(normalizePath(item.localPath));
+		const file = scanned.find(item.localPath);
 		if (!file) continue;
 		plan.checked += 1;
 		const recorded = readSourceFileStat({ item });
@@ -257,21 +287,31 @@ async function refreshOnce({
 				mediaOnly: true,
 			})
 		).files;
-	// Loaded on use: the media store loads this module's callers itself.
+	// Loaded on use: the stores load this module's callers themselves.
 	const { useMediaStore } = await import("@/stores/media/media-store");
+	const { useProjectStore } = await import("@/stores/project-store");
 	const plan = planMediaSourceRefresh({
 		diskFiles: files,
 		mediaItems: useMediaStore.getState().mediaItems,
 	});
 	result.checked = plan.checked;
 
-	/** The item as the store holds it now; it may have gained facts since. */
-	const liveItem = (id: string): MediaItem | undefined =>
-		useMediaStore
+	/**
+	 * The item as the store holds it now, or undefined once it is no longer
+	 * this project's item for this file. A media id is made from the file's
+	 * name, so another project with a file of that name has an item of the
+	 * same id: after a switch of projects, a write by id would land on it.
+	 */
+	const stillHeld = (planned: MediaItem): MediaItem | undefined => {
+		if (useProjectStore.getState().activeProject?.id !== projectId) return;
+		const live = useMediaStore
 			.getState()
-			.mediaItems.find((candidate) => candidate.id === id);
+			.mediaItems.find((candidate) => candidate.id === planned.id);
+		return live && live.localPath === planned.localPath ? live : undefined;
+	};
 
 	for (const { item, file } of plan.adopt) {
+		if (!stillHeld(item)) break;
 		// Added to what the item holds now, not to what it held when the
 		// folder was scanned: another task may have recorded something since.
 		useMediaStore.setState((state) => ({
@@ -284,8 +324,8 @@ async function refreshOnce({
 					: candidate
 			),
 		}));
-		const recorded = liveItem(item.id);
-		if (!recorded) continue;
+		const recorded = stillHeld(item);
+		if (!recorded) break;
 		try {
 			// The record only: the bytes are what they were.
 			await saveTrackedMediaItem({
@@ -300,6 +340,10 @@ async function refreshOnce({
 	}
 
 	for (const { item, file } of plan.changed) {
+		// The project was closed or another one opened: what is left belongs
+		// to the next check of this project.
+		if (!stillHeld(item)) break;
+		let replacementUrl: string | undefined;
 		try {
 			const { bytes, stat } = await readSettledFile({ file });
 			const mimeType =
@@ -308,27 +352,45 @@ async function refreshOnce({
 				type: mimeType,
 				lastModified: Math.round(stat.modifiedAt),
 			});
+			const dimensions = await freshDimensions({ item, file: fresh });
+			// Reading took a while; the item is looked up again and written to
+			// in the same breath, with nothing awaited in between.
+			const held = stillHeld(item);
+			if (!held) break;
 			// What was learned about the old file describes another file now.
 			const { alpha: _alpha, ...metadata } =
-				withSourceFile({ item: liveItem(item.id) ?? item, stat }) ?? {};
+				withSourceFile({ item: held, stat }) ?? {};
 			if (item.localPath) {
 				forgetMediaAlphaInspection({ localPath: item.localPath });
 			}
+			// Its own URL: one looked up by name and size would be the old
+			// file's whenever the new file is as long as the old one.
+			replacementUrl = createReplacementObjectURL(
+				fresh,
+				"media-source-refresh"
+			);
 			const updated = await useMediaStore
 				.getState()
 				.updateMediaItem(projectId, item.id, {
 					file: fresh,
-					url: getOrCreateObjectURL(fresh, "media-source-refresh"),
+					url: replacementUrl,
 					metadata,
 					thumbnailUrl: undefined,
 					thumbnailStatus: item.type === "video" ? "pending" : undefined,
 					// Read again from the new file by the store.
 					duration: undefined,
-					...(await freshDimensions({ item, file: fresh })),
+					...dimensions,
 				});
 			if (!updated) throw new Error("the new copy could not be stored");
+			// The item held the old URL; nothing of the old file is kept for it.
+			if (held.url?.startsWith("blob:") && held.url !== replacementUrl) {
+				releaseObjectURL(held.url, "media-source-refresh:superseded");
+			}
 			result.refreshed.push({ id: item.id, name: item.name });
 		} catch (error) {
+			if (replacementUrl) {
+				releaseObjectURL(replacementUrl, "media-source-refresh:failed");
+			}
 			const message = error instanceof Error ? error.message : String(error);
 			debugError(`[MediaSourceRefresh] ${item.name}: ${message}`);
 			result.failed.push({ id: item.id, name: item.name, error: message });
