@@ -41,6 +41,10 @@ export const desktop = {
 	stored: new Map<string, unknown>(),
 	/** The notes, by key, of the renames the app is at work on. */
 	atWork: new Set<string>(),
+	/** The app does not answer when it is asked for its notes. */
+	notesUnreadable: false,
+	/** What a file holds, for a test that has files read: by path. */
+	contents: new Map<string, string>(),
 	/** The paths that have a file; "unreadable" when the folder cannot be asked. */
 	files: new Set<string>() as Set<string> | "unreadable",
 	/** What the file at a path looks like, where a test tells files apart. */
@@ -74,11 +78,17 @@ export const modules = {
 			// The notes as the desktop app hands them out, and drops one.
 			claude: {
 				media: {
-					unsettledRenames: async (projectId: string) =>
-						notesOf(projectId).map(([key, note]) => ({
+					unsettledRenames: async (projectId: string) => {
+						if (desktop.notesUnreadable) {
+							throw new Error(
+								"Error invoking remote method 'claude:media:unsettled-renames'"
+							);
+						}
+						return notesOf(projectId).map(([key, note]) => ({
 							...note,
 							atWork: desktop.atWork.has(key),
-						})),
+						}));
+					},
 					forgetSettledRename: async (request: {
 						projectId: string;
 						oldId: string;
@@ -99,6 +109,10 @@ export const modules = {
 				},
 			},
 			files: {
+				readFile: async (filePath: string) => {
+					const held = desktop.contents.get(filePath);
+					return held === undefined ? null : Buffer.from(held);
+				},
 				getFileInfo: async (filePath: string) => {
 					if (desktop.files === "unreadable") {
 						throw new Error("Error invoking remote method 'get-file-info'");
@@ -350,6 +364,8 @@ export function resetKit(): void {
 	resetMediaPersistenceQueue();
 	desktop.stored.clear();
 	desktop.atWork.clear();
+	desktop.notesUnreadable = false;
+	desktop.contents.clear();
 	desktop.files = new Set([OLD_PATH]);
 	desktop.looks.clear();
 	project.activeProject = {
