@@ -222,7 +222,8 @@ qcut editor media refresh --project-id <id> --json
 `refreshed` lists the files it read again (thumbnail, length and size are
 made again from the new file); `failed` lists those it could not bring up to
 date (a file it could not read, an item that was removed or replaced while
-its file was being read), and the command then fails. So does a check that
+its file was being read, an item of a rename that is not settled yet: it is
+read once the rename is), and the command then fails. So does a check that
 could not look at every file because the project was closed or another one
 opened meanwhile. An `export start` that goes through the renderer engine is
 refused while a file that a clip on the timeline plays is in `failed`, or
