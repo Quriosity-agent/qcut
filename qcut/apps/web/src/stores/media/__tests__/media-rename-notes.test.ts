@@ -223,19 +223,22 @@ describe("which of a note's two names the file has", () => {
 
 	/**
 	 * The app noted the rename and never said where it left the file: its
-	 * later note could not be written, or it ended. Put back under its old
-	 * name, the file would have left the new one free. With a file under
-	 * each, it is under the new name, and the old one is another file's.
+	 * later note could not be written, or it ended. The file may have stayed
+	 * renamed, with another file under its old name; or gone back, with
+	 * another file under the new one. Both leave a file under each name, and
+	 * when the two look alike, neither name is taken without evidence.
 	 */
-	it("is the new name when the app never said, and the two cannot be told apart", async () => {
+	it("is unclear when the app never said, and the two cannot be told apart", async () => {
 		desktop.files.set(OLD_PATH, theFile);
 		desktop.files.set(NEW_PATH, theFile);
-		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			besideAnother("new")
-		);
-		// Nothing was noted of the file.
+		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toBe("unclear");
+		// Neither looks like it.
 		desktop.files.set(OLD_PATH, another);
-		expect(await whereNotedFileIs(NOTE)).toEqual(besideAnother("new"));
+		desktop.files.set(NEW_PATH, another);
+		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toBe("unclear");
+		// Nothing was noted of the file.
+		desktop.files.set(NEW_PATH, theFile);
+		expect(await whereNotedFileIs(NOTE)).toBe("unclear");
 	});
 
 	it("reads the time a file was changed as a date, a number or a date in writing", async () => {
