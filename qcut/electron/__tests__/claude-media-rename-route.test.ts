@@ -63,8 +63,6 @@ const SETTLE_ON_OLD = {
 	newMediaId: OLD.id,
 	newName: OLD.name,
 	newPath: OLD.path,
-	previousName: RENAMED.name,
-	previousPath: RENAMED.path,
 	settles: true,
 };
 /** What it is asked when the file could not be put back. */
@@ -74,8 +72,6 @@ const FOLLOW_THE_FILE = {
 	newMediaId: RENAMED.id,
 	newName: RENAMED.name,
 	newPath: RENAMED.path,
-	previousName: OLD.name,
-	previousPath: OLD.path,
 	settles: true,
 };
 const TIMED_OUT = new Error("Renderer media rename timed out.");
@@ -221,8 +217,6 @@ describe("a media rename is noted before the file is moved", () => {
 			newMediaId: RENAMED.id,
 			newName: RENAMED.name,
 			newPath: RENAMED.path,
-			previousName: OLD.name,
-			previousPath: OLD.path,
 		});
 		expect(undoMediaRename).not.toHaveBeenCalled();
 	});
@@ -546,6 +540,41 @@ describe("a media rename whose file cannot be put back", () => {
 		);
 		expect(message).toContain(
 			"The editor did not confirm that it follows the renamed file (The timeline could not be saved)"
+		);
+		expect(message).toContain("when the project is next opened");
+		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving", "stays"]);
+		expect(forgetUnsettledMediaRename).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * The note that the file stays cannot be written, and the editor cannot
+	 * be asked to follow. What is left is the note made before the move,
+	 * which does not say where the file was left. The editor settles by it
+	 * all the same: with a file under each name it takes the new one, as
+	 * media-rename-settle-taken-name.test.ts shows. So the note must stay.
+	 */
+	it("leaves the note made before the move when it cannot write that the file stays", async () => {
+		const requestMediaRename = vi
+			.fn()
+			.mockRejectedValueOnce(TIMED_OUT)
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(WINDOW_GONE);
+		const noteUnsettledMediaRename = vi
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValue(new Error("the disk is full"));
+		const forgetUnsettledMediaRename = vi.fn(async () => undefined);
+		const failure = await renameRoute({
+			requestMediaRename,
+			noteUnsettledMediaRename,
+			forgetUnsettledMediaRename,
+		})().catch((error: Error & { status?: number }) => error);
+
+		expect(failure).toMatchObject({ status: 500 });
+		const { message } = failure as Error;
+		expect(message).toContain("The file stays renamed to new.mp4");
+		expect(message).toContain(
+			"The editor did not confirm that it follows the renamed file (QCut main window is unavailable.)"
 		);
 		expect(message).toContain("when the project is next opened");
 		expect(stagesNoted(noteUnsettledMediaRename)).toEqual(["moving", "stays"]);
