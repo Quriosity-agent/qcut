@@ -5,6 +5,7 @@
  *
  * @module electron/claude/handlers/claude-media-rename
  */
+import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { getMediaPath, sanitizeFilename } from "../utils/helpers.js";
@@ -80,6 +81,95 @@ async function isTaken(filePath: string): Promise<boolean> {
 	);
 }
 
+/** One file, told from any other that later has its path. */
+interface FileIdentity {
+	dev: bigint;
+	ino: bigint;
+}
+
+/** A copy is read and written this much at a time. */
+const COPY_CHUNK_BYTES = 4 * 1024 * 1024;
+
+/** Whether the file at the path is the one `identity` names. */
+async function isStill({
+	filePath,
+	identity,
+}: {
+	filePath: string;
+	identity: FileIdentity;
+}): Promise<boolean> {
+	try {
+		const now = await fs.lstat(filePath, { bigint: true });
+		return now.dev === identity.dev && now.ino === identity.ino;
+	} catch (error) {
+		if (errorCode(error) === "ENOENT") return false;
+		throw error;
+	}
+}
+
+/**
+ * Gives up a name this move had taken: removes the file under it, if that
+ * still is the one the move put there (`made`). Another file that has the
+ * name by now is not this move's to remove. When the move's own file cannot
+ * be removed, the file is under both names (`MediaMoveIncompleteError`).
+ */
+async function giveUpName({
+	to,
+	made,
+	cause,
+}: {
+	to: string;
+	/** Not known when the file had only just been made: it is that one. */
+	made: FileIdentity | undefined;
+	cause: unknown;
+}): Promise<void> {
+	try {
+		if (made && !(await isStill({ filePath: to, identity: made }))) return;
+		await fs.unlink(to);
+	} catch (error) {
+		if (errorCode(error) === "ENOENT") return;
+		throw new MediaMoveIncompleteError(to, { cause });
+	}
+}
+
+/**
+ * Copies a file to a name nothing has, for a volume without hard links.
+ *
+ * The new file is made here, by an open that fails when something has the
+ * name, and is written through that one handle: from then on it is known by
+ * its identity. A copy by path does not say, when it fails, whether the
+ * file under the name is the half it wrote or another file that got there
+ * first, and it leaves that half behind when it cannot remove it. Here the
+ * half is this move's, known as such, and given up like any name it took.
+ */
+async function copyToFreeName({
+	from,
+	to,
+	source,
+}: {
+	from: string;
+	to: string;
+	source: { mode: bigint; atime: Date; mtime: Date };
+}): Promise<FileIdentity> {
+	const handle = await fs.open(to, "wx", Number(source.mode) & 0o777);
+	let made: FileIdentity | undefined;
+	try {
+		const { dev, ino } = await handle.stat({ bigint: true });
+		made = { dev, ino };
+		const chunks = createReadStream(from, { highWaterMark: COPY_CHUNK_BYTES });
+		// Each is written whole, where the last one ended.
+		for await (const chunk of chunks) await handle.writeFile(chunk);
+		// A copy is a new file: it is given the times the old one had.
+		await handle.utimes(source.atime, source.mtime);
+		await handle.close();
+		return made;
+	} catch (error) {
+		await handle.close().catch(() => undefined);
+		await giveUpName({ to, made, cause: error });
+		throw error;
+	}
+}
+
 /**
  * Moves a file to a name nothing has, and never onto another file.
  *
@@ -91,13 +181,16 @@ async function isTaken(filePath: string): Promise<boolean> {
  *   is the same one under either name;
  * - a symbolic link, made again under the new name: a hard link would
  *   replace the link by the file it points to;
- * - a copy that refuses an existing name, on a volume without hard links
- *   (exFAT, some network shares). It takes as long as the file is large,
- *   and is the one way left there that cannot write over a file.
+ * - a copy into a file made where nothing was, on a volume without hard
+ *   links (exFAT, some network shares). It takes as long as the file is
+ *   large, and is the one way left there that cannot write over a file.
  *
- * Whatever fails once the new name is taken, that name is given up again,
- * so a failed move leaves the file where it was. If even that fails, the
- * file is under both names (`MediaMoveIncompleteError`).
+ * The file the move put under the new name is known by its identity from
+ * then on. The old name is given up only while the new one still is that
+ * file. Whatever fails once the new name is taken, that name is given up
+ * again, so a failed move leaves the file where it was; another file that
+ * has the name by then is left alone. If the move's own file cannot be
+ * removed, the file is under both names (`MediaMoveIncompleteError`).
  */
 export async function moveWithoutOverwriting({
 	from,
@@ -106,10 +199,10 @@ export async function moveWithoutOverwriting({
 	from: string;
 	to: string;
 }): Promise<void> {
-	const source = await fs.lstat(from);
+	const source = await fs.lstat(from, { bigint: true });
 	const taken = (error: unknown) =>
 		errorCode(error) === "EEXIST" ? new MediaNameTakenError(to) : error;
-	let copied = false;
+	let made: FileIdentity;
 	if (source.isSymbolicLink()) {
 		const target = await fs.readlink(from);
 		// A relative link is kept pointing at the same file from its new place.
@@ -123,30 +216,38 @@ export async function moveWithoutOverwriting({
 		await fs.symlink(pointsTo, to, "file").catch((error: unknown) => {
 			throw taken(error);
 		});
+		try {
+			const { dev, ino } = await fs.lstat(to, { bigint: true });
+			made = { dev, ino };
+		} catch (error) {
+			await giveUpName({ to, made: undefined, cause: error });
+			throw error;
+		}
 	} else {
 		try {
 			await fs.link(from, to);
+			// The same file under either name.
+			made = { dev: source.dev, ino: source.ino };
 		} catch (error) {
 			const code = errorCode(error);
 			if (code === "EEXIST" || code === "ENOENT") throw taken(error);
-			await fs
-				.copyFile(from, to, fs.constants.COPYFILE_EXCL)
-				.catch((copyError: unknown) => {
+			made = await copyToFreeName({ from, to, source }).catch(
+				(copyError: unknown) => {
 					throw taken(copyError);
-				});
-			copied = true;
+				}
+			);
 		}
 	}
 	try {
-		// A copy is a new file: it is given the times the old one had.
-		if (copied) await fs.utimes(to, source.atime, source.mtime);
+		// Replaced by another file meanwhile, the new name is that file's:
+		// with the old name given up too, this one would be under neither.
+		if (!(await isStill({ filePath: to, identity: made }))) {
+			throw new MediaNameTakenError(to);
+		}
 		await fs.unlink(from);
 	} catch (error) {
 		// Under one name again, the old one: nothing was moved.
-		await fs.unlink(to).catch((cleanupError: unknown) => {
-			if (errorCode(cleanupError) === "ENOENT") return;
-			throw new MediaMoveIncompleteError(to, { cause: error });
-		});
+		await giveUpName({ to, made, cause: error });
 		throw error;
 	}
 }
@@ -161,17 +262,27 @@ export async function moveWithoutOverwriting({
  * set: then a taken name is refused, so a rename can be undone, or a file
  * given back the name it had, without landing next to it. Renaming a file
  * to its own name changes nothing.
+ *
+ * `beforeMove` is told where the file is about to go, before it is moved:
+ * a caller that has others follow the rename records it there, and a rename
+ * it cannot record is not made (when `beforeMove` fails, the file stays
+ * where it is). `notMoved` is told when the file did not get there after
+ * all.
  */
 export async function renameMediaFileOnDisk({
 	projectId,
 	mediaId,
 	newName,
 	exactName = false,
+	beforeMove,
+	notMoved,
 }: {
 	projectId: string;
 	mediaId: string;
 	newName: string;
 	exactName?: boolean;
+	beforeMove?: (planned: RenamedMediaFile) => Promise<void>;
+	notMoved?: (planned: RenamedMediaFile) => Promise<void>;
 }): Promise<RenamedMediaFile> {
 	const sanitizedName = sanitizeFilename(newName);
 	if (!sanitizedName) {
@@ -199,14 +310,26 @@ export async function renameMediaFileOnDisk({
 		const newPath = exactName
 			? path.join(mediaDir, newNameWithExt)
 			: await getUniqueFilePath(mediaDir, newNameWithExt);
-		const newMediaId = createMediaId({ fileName: path.basename(newPath) });
+		const planned: RenamedMediaFile = {
+			previous,
+			id: createMediaId({ fileName: path.basename(newPath) }),
+			name: path.basename(newPath),
+			path: newPath,
+		};
+		await beforeMove?.(planned);
 		try {
 			await moveMediaFile({
 				projectId,
 				from: { id: mediaFile.id, path: mediaFile.path },
-				to: { id: newMediaId, path: newPath },
+				to: { id: planned.id, path: newPath },
 			});
 		} catch (error) {
+			// Under both names, the plan still says where a part of it is. And
+			// what the caller cannot take back of its record does not hide why
+			// the file did not move.
+			if (!(error instanceof MediaMoveIncompleteError)) {
+				await notMoved?.(planned).catch(() => undefined);
+			}
 			if (!(error instanceof MediaNameTakenError)) throw error;
 			// A name seen free can be taken by the time the file gets there:
 			// the next free one is looked for, unless this very name was asked.
@@ -215,14 +338,9 @@ export async function renameMediaFileOnDisk({
 		}
 		claudeLog.info(
 			HANDLER_NAME,
-			`Successfully renamed: ${mediaFile.name} -> ${path.basename(newPath)}`
+			`Successfully renamed: ${mediaFile.name} -> ${planned.name}`
 		);
-		return {
-			previous,
-			id: newMediaId,
-			name: path.basename(newPath),
-			path: newPath,
-		};
+		return planned;
 	}
 	throw new Error(
 		`${newNameWithExt} is already taken in the project's media folder`
