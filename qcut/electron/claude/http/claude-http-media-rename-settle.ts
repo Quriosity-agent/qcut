@@ -1,10 +1,17 @@
 /**
- * What the rename route does with a rename the editor did not follow.
+ * How the rename route keeps the editor and the folder together.
  *
  * The route renames the file, then waits for the editor to follow. When the
- * editor does not, the file goes back under its old name. Three things can
- * leave the editor and the folder apart on the way, and each is seen to:
+ * editor does not, the file goes back under its old name. Between the first
+ * move of the file and the editor's last word, the two can be apart, and
+ * each way of that is seen to:
  *
+ * - Every rename is noted by the desktop app before the file is moved, and
+ *   a rename that cannot be noted is not made. The note is kept until the
+ *   editor is known to be where the file is, and says where the file is as
+ *   it moves. The editor settles a rename that is still noted from what the
+ *   folder holds, when the project has next finished loading: whatever
+ *   becomes of the editor or of this request, a record is there.
  * - Where the editor stands is not known: its answer did not come in time
  *   (it may have finished all the same), or says it could not take
  *   everything back. The editor is asked to end on the old id, in a request
@@ -12,12 +19,6 @@
  * - The file cannot be put back (its old name was taken meanwhile, or the
  *   folder refuses). The editor has left a name the file keeps, so it is
  *   asked to follow the file after all. When it confirms, the rename stands.
- * - The editor cannot be asked, or does not confirm: it is busy, it was
- *   reloaded, its window is gone. The rename is therefore noted by the
- *   desktop app itself before the file is moved, and the note is kept until
- *   the editor is known to be where the file is. The editor settles a noted
- *   rename from what the folder holds when the project has next finished
- *   loading.
  *
  * @module electron/claude/http/claude-http-media-rename-settle
  */
@@ -36,16 +37,20 @@ type RequestMediaRename = (
 
 /** The desktop app's notes of renames the editor may not have settled. */
 export interface MediaRenameNotes {
-	noteUnsettledMediaRename?(payload: {
+	noteUnsettledMediaRename(payload: {
 		projectId: string;
 		renamed: RenamedMediaFile;
 		stage: RenamedFileStage;
 	}): Promise<void>;
-	forgetUnsettledMediaRename?(payload: {
+	forgetUnsettledMediaRename(payload: {
 		projectId: string;
 		renamed: RenamedMediaFile;
 	}): Promise<void>;
 }
+
+/** What an editor that did not confirm is left with: the note. */
+const PUT_RIGHT_LATER =
+	"; it puts that right when the project is next opened. Check the timeline before the rename is tried again";
 
 const messageOf = (error: unknown) =>
 	error instanceof Error ? error.message : String(error);
@@ -57,6 +62,69 @@ const messageOf = (error: unknown) =>
  */
 function mediaRenameOutcomeUnknown({ reason }: { reason: string }): boolean {
 	return /timed out|timeout|Not everything could be taken back/i.test(reason);
+}
+
+/**
+ * Drops the note of a rename that needs none any more: the editor is where
+ * the file is, or the file was not moved. A note that cannot be dropped is
+ * left; the editor settles it and finds nothing to change.
+ */
+export async function forgetSettledMediaRename({
+	notes,
+	projectId,
+	renamed,
+}: {
+	notes: MediaRenameNotes;
+	projectId: string;
+	renamed: RenamedMediaFile;
+}): Promise<void> {
+	try {
+		await notes.forgetUnsettledMediaRename({ projectId, renamed });
+	} catch (error) {
+		claudeLog.warn(
+			"HTTP",
+			`The note of the rename of ${renamed.previous.id} could not be removed: ${messageOf(error)}`
+		);
+	}
+}
+
+/**
+ * What a rename on disk is given so that no file is moved unnoted
+ * (`renameMediaFileOnDisk`).
+ *
+ * The note is written while the file still has its old name. A rename that
+ * cannot be noted is not made: nothing has changed then, and the caller is
+ * told so. From the move on, the note is the record that outlasts the
+ * editor, this request and the app itself.
+ */
+export function notedMove({
+	notes,
+	projectId,
+}: {
+	notes: MediaRenameNotes;
+	projectId: string;
+}): {
+	beforeMove: (planned: RenamedMediaFile) => Promise<void>;
+	notMoved: (planned: RenamedMediaFile) => Promise<void>;
+} {
+	return {
+		beforeMove: async (planned) => {
+			try {
+				await notes.noteUnsettledMediaRename({
+					projectId,
+					renamed: planned,
+					stage: "moving",
+				});
+			} catch (error) {
+				throw new HttpError(
+					500,
+					`The rename could not be noted for the editor to settle (${messageOf(error)}), so it was not made: nothing was changed`
+				);
+			}
+		},
+		notMoved: (planned) =>
+			forgetSettledMediaRename({ notes, projectId, renamed: planned }),
+	};
 }
 
 /**
@@ -100,102 +168,55 @@ async function askEditorToEndOn({
 }
 
 /**
- * The app's note of one rename, as the route keeps it: written again as the
- * file moves, dropped when the editor is known to be where the file is.
- * Neither can fail the route; what could not be written is told to the
- * caller instead (`outlook`).
- */
-function noteOf({
-	accessor,
-	projectId,
-	renamed,
-}: {
-	accessor: MediaRenameNotes;
-	projectId: string;
-	renamed: RenamedMediaFile;
-}) {
-	let inPlace = false;
-	let notNoted = "";
-	return {
-		async write(stage: RenamedFileStage): Promise<void> {
-			try {
-				if (!accessor.noteUnsettledMediaRename) {
-					throw new Error("this server cannot note it");
-				}
-				await accessor.noteUnsettledMediaRename({ projectId, renamed, stage });
-				inPlace = true;
-			} catch (error) {
-				notNoted = messageOf(error);
-				claudeLog.warn(
-					"HTTP",
-					`The rename of ${renamed.previous.id} could not be noted for the editor to settle: ${notNoted}`
-				);
-			}
-		},
-		async drop(): Promise<void> {
-			if (!inPlace) return;
-			// A note left behind is settled by the editor, and changes nothing.
-			await accessor
-				.forgetUnsettledMediaRename?.({ projectId, renamed })
-				.catch((error: unknown) => {
-					claudeLog.warn(
-						"HTTP",
-						`The note of the rename of ${renamed.previous.id} could not be removed: ${messageOf(error)}`
-					);
-				});
-		},
-		/**
-		 * What becomes of an editor that did not confirm. Nothing is promised
-		 * that is not in place: without a note the caller is told which id
-		 * the project may still name.
-		 */
-		outlook({ mayStillName }: { mayStillName: string }): string {
-			return inPlace
-				? "; it puts that right when the project is next opened. Check the timeline before the rename is tried again"
-				: `, and the rename could not be noted for it to put right later (${notNoted}): the project may still name ${mayStillName}. Check the timeline (editor:timeline:export) and the media list before the rename is tried again`;
-		},
-	};
-}
-
-/**
  * Sees a rename through that the editor did not follow (`error` is its
- * refusal, or the lack of an answer).
+ * refusal, or the lack of an answer). The rename was noted before the file
+ * was moved (`notedMove`).
  *
  * The file is put back under its old name, and the failure is thrown: as it
  * was when the editor is known to be on the old id, with what remains open
  * when it is not. When the file cannot be put back and the editor then
  * follows it, the rename stands after all, and this returns a warning to
  * hand to the caller with the result.
+ *
+ * The note is dropped when the editor is known to be where the file ended,
+ * and otherwise says where that is. Writing that can fail without harm: the
+ * note made before the move is still there, and tells the file by its size
+ * and time.
  */
 export async function settleUnfollowedMediaRename({
-	accessor,
+	notes,
 	requestMediaRename,
 	projectId,
 	renamed,
 	error,
 }: {
-	accessor: MediaRenameNotes;
+	notes: MediaRenameNotes;
 	requestMediaRename: RequestMediaRename;
 	projectId: string;
 	renamed: RenamedMediaFile;
 	error: unknown;
 }): Promise<{ warning: string }> {
 	const reason = messageOf(error);
-	const note = noteOf({ accessor, projectId, renamed });
 	const { previous } = renamed;
+	const noteThatFileIs = async (stage: RenamedFileStage): Promise<void> => {
+		try {
+			await notes.noteUnsettledMediaRename({ projectId, renamed, stage });
+		} catch (noteError) {
+			claudeLog.warn(
+				"HTTP",
+				`The note of the rename of ${previous.id} could not be brought up to date: ${messageOf(noteError)}`
+			);
+		}
+	};
 
-	// The note comes first, so that it is there whatever becomes of the
-	// editor: the request may never reach it.
-	let onOldId: string | null = null;
-	if (mediaRenameOutcomeUnknown({ reason })) {
-		await note.write("moving");
-		onOldId = await askEditorToEndOn({
-			requestMediaRename,
-			projectId,
-			renamed,
-			name: "old",
-		});
-	}
+	const onOldId = mediaRenameOutcomeUnknown({ reason })
+		? await askEditorToEndOn({
+				requestMediaRename,
+				projectId,
+				renamed,
+				name: "old",
+			})
+		: null;
 
 	const notPutBack = await undoMediaRename({ projectId, renamed }).then(
 		() => null,
@@ -203,18 +224,18 @@ export async function settleUnfollowedMediaRename({
 	);
 	if (notPutBack === null) {
 		if (onOldId === null) {
-			await note.drop();
+			await forgetSettledMediaRename({ notes, projectId, renamed });
 			throw error;
 		}
-		await note.write("back");
+		await noteThatFileIs("back");
 		throw new HttpError(
 			error instanceof HttpError ? error.status : 500,
-			`${reason}. The file is back under ${previous.name}, but the editor did not confirm that it names ${previous.id} again (${onOldId})${note.outlook({ mayStillName: renamed.id })}`
+			`${reason}. The file is back under ${previous.name}, but the editor did not confirm that it names ${previous.id} again (${onOldId})${PUT_RIGHT_LATER}`
 		);
 	}
 
 	// The file keeps its new name, which the editor has left or never took.
-	await note.write("stays");
+	await noteThatFileIs("stays");
 	const following = await askEditorToEndOn({
 		requestMediaRename,
 		projectId,
@@ -222,13 +243,13 @@ export async function settleUnfollowedMediaRename({
 		name: "new",
 	});
 	if (following === null) {
-		await note.drop();
+		await forgetSettledMediaRename({ notes, projectId, renamed });
 		return {
 			warning: `The editor did not follow the rename at first (${reason}), and the file could not be put back under ${previous.name} (${notPutBack}). The editor has followed the renamed file since: the rename stands.`,
 		};
 	}
 	throw new HttpError(
 		500,
-		`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${notPutBack}. The editor did not confirm that it follows the renamed file (${following})${note.outlook({ mayStillName: previous.id })}`
+		`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${notPutBack}. The editor did not confirm that it follows the renamed file (${following})${PUT_RIGHT_LATER}`
 	);
 }
