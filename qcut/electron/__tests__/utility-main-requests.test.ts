@@ -35,6 +35,10 @@ import {
 } from "../utility/utility-main-requests.js";
 import { handleWindowFreeMediaRequest } from "../utility/utility-media-bridge.js";
 import { mediaRenameNotesThroughMain } from "../utility/utility-media-requests.js";
+import {
+	closeBridges,
+	mediaBridgeToTheMainProcess,
+} from "./utility-bridge-kit.js";
 
 /**
  * The utility process serves the HTTP API and asks the main process for
@@ -199,37 +203,11 @@ describe("the notes of renames, asked of the main process", () => {
 		name: "new.mp4",
 		path: path.join(testState.userData, "media", "new.mp4"),
 	});
-	/** The bridge but for the port: a message crosses as a copy, a turn later. */
-	function bridge() {
-		const cross = <Message>(
-			message: Message,
-			deliver: (copy: Message) => void
-		) => {
-			const copy = structuredClone(message);
-			setImmediate(() => deliver(copy));
-		};
-		const requests = createMainRequests({
-			post: (message) =>
-				cross(message, (request) => {
-					answerMainRequest({
-						message: request,
-						handle: async (channel, data, deadline) => {
-							const answer = handleWindowFreeMediaRequest({
-								channel,
-								data,
-								deadline,
-							});
-							if (!answer) throw new Error(`Not a media request: ${channel}`);
-							return answer;
-						},
-						post: (response) => cross(response, requests.answered),
-					});
-				}),
+	/** The bridge's own code over a real port pair (utility-bridge-kit.ts). */
+	const bridge = () =>
+		mediaRenameNotesThroughMain({
+			requestFromMain: mediaBridgeToTheMainProcess().requestFromMain,
 		});
-		return mediaRenameNotesThroughMain({
-			requestFromMain: requests.requestFromMain,
-		});
-	}
 	const notes = () => listUnsettledMediaRenames({ projectId: "project-1" });
 
 	beforeEach(async () => {
@@ -239,6 +217,7 @@ describe("the notes of renames, asked of the main process", () => {
 	});
 
 	afterEach(async () => {
+		closeBridges();
 		noLongerAtWorkOnMediaRenames();
 		await fs.rm(testState.userData, { recursive: true, force: true });
 	});
