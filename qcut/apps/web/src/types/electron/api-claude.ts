@@ -74,6 +74,16 @@ export interface ElectronClaudeOps {
 					requestId?: string;
 				}) => void | Promise<void>
 			) => void;
+			onMediaRenamed: (
+				callback: (data: {
+					mediaId: string;
+					newMediaId: string;
+					newName: string;
+					newPath: string;
+					projectId: string;
+					requestId?: string;
+				}) => void | Promise<void>
+			) => void;
 		};
 		search: {
 			loadTranscriptions: (projectId: string) => Promise<unknown[]>;
