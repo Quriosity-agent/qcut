@@ -86,8 +86,8 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 			oldPath: renamed().previous.path,
 		});
 		expect(note.notedAt).toBeGreaterThanOrEqual(before);
-		// The file is about to go back: the folder settles nothing yet.
-		expect(note).not.toHaveProperty("decided");
+		// The file may still move: the app has not said where it left it.
+		expect(note).not.toHaveProperty("fileIs");
 		// No file to look at: nothing is said of it.
 		expect(note).not.toHaveProperty("file");
 	});
@@ -138,7 +138,12 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 		expect((await stored()).file).toEqual(seen);
 	});
 
-	it("expects the file under its old name once it is back, and says the app is done", async () => {
+	/**
+	 * The two names keep their places in the note whatever becomes of the
+	 * file: which one it had before, which one the rename gave it. Where the
+	 * app left it is said beside them.
+	 */
+	it("says that the file is under its old name once it is back", async () => {
 		await noteUnsettledMediaRename({
 			projectId: "project-1",
 			renamed: renamed(),
@@ -149,11 +154,11 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 			oldPath: renamed().previous.path,
 			newId: NEW,
 			newPath: renamed().path,
-			decided: true,
+			fileIs: "old",
 		});
 	});
 
-	it("expects the file under its new name when it could not be put back", async () => {
+	it("says that the file is under its new name when it could not be put back", async () => {
 		await noteUnsettledMediaRename({
 			projectId: "project-1",
 			renamed: renamed(),
@@ -168,13 +173,13 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 			[`${KEY}.json`]
 		);
 		expect(await stored()).toMatchObject({
-			oldId: NEW,
-			oldName: "new.mp4",
-			oldPath: renamed().path,
-			newId: OLD,
-			newName: "old.mp4",
-			newPath: renamed().previous.path,
-			decided: true,
+			oldId: OLD,
+			oldName: "old.mp4",
+			oldPath: renamed().previous.path,
+			newId: NEW,
+			newName: "new.mp4",
+			newPath: renamed().path,
+			fileIs: "new",
 		});
 	});
 
