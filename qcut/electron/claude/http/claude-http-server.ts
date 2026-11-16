@@ -76,6 +76,7 @@ import {
 	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../handlers/claude-media-renderer-handler.js";
+import { noteUnsettledMediaRename } from "../handlers/claude-media-rename-note.js";
 import { registerQCutImportEvidenceRoutes } from "./claude-http-import-evidence-routes.js";
 import { requestQCutImportEvidenceFromRenderer } from "../handlers/qcut-import-evidence-handler.js";
 import { registerQCutSameProfileWritebackRoutes } from "./claude-http-same-profile-writeback-routes.js";
@@ -295,6 +296,8 @@ export function startClaudeHTTPServer(
 		/** Re-keys a renamed media item in the renderer and repoints its clips. */
 		requestMediaRename: (payload) =>
 			requestMediaRenameFromRenderer({ payload, win: getWindow() }),
+		/** Notes a rename for the editor to settle when the project is next open. */
+		noteUnsettledMediaRename: (payload) => noteUnsettledMediaRename(payload),
 		/** Has the renderer read again the media files that changed on disk. */
 		requestMediaRefresh: (payload) =>
 			requestMediaRefreshFromRenderer({ payload, win: getWindow() }),
