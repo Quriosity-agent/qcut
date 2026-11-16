@@ -275,6 +275,25 @@ describe("following a media file renamed in the project folder", () => {
 		expect(project.markProjectContentChanged).not.toHaveBeenCalled();
 	});
 
+	it("reports the failure that stopped it, even when a step cannot be taken back", async () => {
+		// The open scene saves, the stickers save; removing the new entry on
+		// the way back fails.
+		storage.loadTimeline.mockImplementation(async () => {
+			throw new Error("The other scene could not be read");
+		});
+		storage.deleteMediaItem.mockRejectedValueOnce(new Error("Entry is busy"));
+		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
+			"The other scene could not be read"
+		);
+		// Everything else was still taken back.
+		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
+		expect(
+			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
+				element.type === "media" ? element.mediaId : null
+			)
+		).toEqual([OLD, "media_other", OLD]);
+	});
+
 	it("takes the open scene back when it cannot be saved", async () => {
 		timeline.saveImmediate.mockResolvedValueOnce(false);
 		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
