@@ -23,6 +23,13 @@ export interface PlatformClaudeMediaAPI {
 	onMediaDeleted(callback: (data: unknown) => void | Promise<void>): void;
 	/** A media file was renamed in the project folder; its id changed with it. */
 	onMediaRenamed?(callback: (data: unknown) => void | Promise<void>): void;
+	/**
+	 * Read again the media files that changed in the project folder; the
+	 * callback's answer goes back to the desktop app.
+	 */
+	onMediaRefresh?(
+		callback: (data: unknown) => unknown | Promise<unknown>
+	): void;
 }
 
 // ---------------------------------------------------------------------------
