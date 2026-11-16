@@ -223,28 +223,41 @@ describe("whose an item under the name the renamed file left is", () => {
 		).toBe("unknown");
 	});
 
-	it("is another file's when it was copied from a file of another look, and not before the rename", () => {
+	it("is another file's when the editor came to hold it after the rename began, from a file of another look", () => {
 		const another = { size: 512, modifiedAt: SEEN.modifiedAt };
 		expect(
 			whoseItemIs({ item: item({ ...another, heldSince: since }), note })
 		).toBe("another file's");
-		// Recorded before the time was kept: the look is all there is.
-		expect(whoseItemIs({ item: item(another), note })).toBe("another file's");
 	});
 
-	it("is not known when it was held before the rename, and copied from a file of another look", () => {
+	/**
+	 * The file was written over in the folder shortly before it was renamed,
+	 * and the editor still holds its copy of what the file was before. That
+	 * copy does not look like the renamed file, and it is the renamed file's
+	 * item all the same. Taken for another file's, its note was dropped, the
+	 * clips stayed under the name the file had left, and the next check of
+	 * the folder read the other file into them.
+	 */
+	it("is not known for a copy that differs from the renamed file, unless it is known to have been made since the rename began", () => {
+		const older = { size: 512, modifiedAt: 1 };
+		// Held before the rename: an older copy of the renamed file, or an
+		// item of a file long gone from the name.
+		expect(
+			whoseItemIs({ item: item({ ...older, heldSince: before }), note })
+		).toBe("unknown");
+		// A record that does not say by when the editor held the copy.
+		expect(whoseItemIs({ item: item(older), note })).toBe("unknown");
+		// A note that does not say when the rename began.
 		expect(
 			whoseItemIs({
-				item: item({ size: 512, modifiedAt: 1, heldSince: before }),
-				note,
+				item: item({ ...older, heldSince: since }),
+				note: { ...NOTE, file: SEEN },
 			})
 		).toBe("unknown");
 	});
 
-	it("goes by the length of the copy for an item with no record: another length is another file's, the same length says nothing", () => {
-		expect(whoseItemIs({ item: item(undefined, 7), note })).toBe(
-			"another file's"
-		);
+	it("is not known for an item with no record of the file it was copied from, whatever the length of its copy", () => {
+		expect(whoseItemIs({ item: item(undefined, 7), note })).toBe("unknown");
 		expect(whoseItemIs({ item: item(undefined, SEEN.size), note })).toBe(
 			"unknown"
 		);
