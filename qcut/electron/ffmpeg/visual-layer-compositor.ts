@@ -6,11 +6,28 @@ export type VisualLayerBlendMode =
 	| "darken"
 	| "lighten";
 
-export type VisualLayerKind = "video" | "image" | "sticker" | "text";
+export type VisualLayerKind =
+	| "video"
+	| "image"
+	| "sticker"
+	| "text"
+	| "adjustment";
 
 export interface PreparedVisualLayer {
 	inputLabel: string;
 	inlineFilter?: string;
+	/**
+	 * A layer that changes the picture under it instead of drawing an input
+	 * over it (an adjustment layer's grade): the filter steps that take the
+	 * stack so far at `input` and leave it at `output`. `prefix` is free for
+	 * the labels in between. Runs at the layer's place in the stack, so what
+	 * is drawn after it is left as it is.
+	 */
+	inlineSteps?: (io: {
+		input: string;
+		output: string;
+		prefix: string;
+	}) => string[];
 	kind: VisualLayerKind;
 	trackOrder?: number;
 	elementOrder?: number;
@@ -111,6 +128,20 @@ export function composePreparedVisualLayers({
 		const nextOutput = `${prefix}_composite`;
 		const enable = layerEnable(layer);
 		const position = `x=${layer.x ?? 0}:y=${layer.y ?? 0}:`;
+		if (layer.inlineSteps) {
+			if (layer.blendMode !== "normal") {
+				throw new Error("Inline visual steps require normal blending");
+			}
+			filterSteps.push(
+				...layer.inlineSteps({
+					input: outputLabel,
+					output: nextOutput,
+					prefix,
+				})
+			);
+			outputLabel = nextOutput;
+			continue;
+		}
 		if (layer.inlineFilter) {
 			if (layer.blendMode !== "normal") {
 				throw new Error("Inline visual filters require normal blending");
