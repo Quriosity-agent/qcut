@@ -73,6 +73,7 @@ import type {
 } from "../../types/claude-state-api.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../../types/claude-media-bridge-api.js";
 import {
@@ -85,11 +86,16 @@ import {
 	getMediaInfo,
 	importMediaFile,
 	deleteMediaFile,
-	renameMediaFile,
 	importMediaFromUrl,
 	batchImportMedia,
 	extractFrame,
 } from "../handlers/claude-media-handler.js";
+import {
+	MediaNotFoundError,
+	type RenamedMediaFile,
+	renameMediaFileOnDisk,
+	undoMediaRename,
+} from "../handlers/claude-media-rename.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
 import {
 	timelineToMarkdown,
@@ -314,6 +320,10 @@ export interface WindowAccessor {
 	/** Remove media from the renderer store and persistent storage. */
 	requestMediaDelete?(
 		payload: Omit<ClaudeMediaDeletedEvent, "requestId">
+	): Promise<void>;
+	/** Re-key a renamed media item in the renderer and repoint its clips. */
+	requestMediaRename?(
+		payload: Omit<ClaudeMediaRenamedEvent, "requestId">
 	): Promise<void>;
 	/** Execute batch timeline cuts (optional utility-process bridge hook) */
 	executeBatchCuts?(request: BatchCutRequest): Promise<BatchCutResponse>;
@@ -950,7 +960,13 @@ export function registerSharedRoutes(
 
 	router.get("/api/claude/media/:projectId/:mediaId", async (req) => {
 		const media = await getMediaInfo(req.params.projectId, req.params.mediaId);
-		return media ? (await withMediaProbes([media]))[0] : media;
+		if (!media) {
+			throw new HttpError(
+				404,
+				`Media not found: ${req.params.mediaId} in project ${req.params.projectId} (see editor:media:list)`
+			);
+		}
+		return (await withMediaProbes([media]))[0];
 	});
 
 	router.post("/api/claude/media/:projectId/import", async (req) => {
@@ -1063,20 +1079,70 @@ export function registerSharedRoutes(
 		return true;
 	});
 
+	// A media id follows its file name, so a rename gives the item a new id.
+	// The editor re-keys its item and points every clip at the new id before
+	// the rename counts; when it cannot, the file is put back. A rename that
+	// only moved the file left the clips on the old id, and the native export
+	// then left them out without a word.
 	router.patch("/api/claude/media/:projectId/:mediaId/rename", async (req) => {
-		if (!req.body?.newName)
+		const newName = req.body?.newName;
+		if (typeof newName !== "string" || !newName.trim())
 			throw new HttpError(400, "Missing 'newName' in request body");
-		await assertProjectIsOpen({
-			accessor,
-			projectId: req.params.projectId,
-		});
-		const result = await renameMediaFile(
-			req.params.projectId,
-			req.params.mediaId,
-			req.body.newName
-		);
-		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
-		return result;
+		const { projectId, mediaId } = req.params;
+		await assertProjectIsOpen({ accessor, projectId });
+		const requestMediaRename = accessor.requestMediaRename;
+		if (!requestMediaRename) {
+			throw new HttpError(
+				503,
+				"Renderer media rename acknowledgement is unavailable"
+			);
+		}
+		let renamed: RenamedMediaFile;
+		try {
+			renamed = await renameMediaFileOnDisk({ projectId, mediaId, newName });
+		} catch (error) {
+			if (error instanceof MediaNotFoundError) {
+				throw new HttpError(
+					404,
+					`${error.message} in project ${projectId} (see editor:media:list)`
+				);
+			}
+			throw error;
+		}
+		if (renamed.id !== renamed.previous.id) {
+			try {
+				await requireRendererMutation({
+					operation: "Renderer media rename",
+					request: () =>
+						requestMediaRename({
+							projectId,
+							mediaId: renamed.previous.id,
+							newMediaId: renamed.id,
+							newName: renamed.name,
+							newPath: renamed.path,
+						}),
+				});
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				try {
+					await undoMediaRename({ projectId, renamed });
+				} catch (undoError) {
+					throw new HttpError(
+						500,
+						`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`
+					);
+				}
+				throw error;
+			}
+		}
+		scheduleProjectJsonAutoSync({ projectId });
+		return {
+			renamed: renamed.id !== renamed.previous.id,
+			id: renamed.id,
+			name: renamed.name,
+			previousId: renamed.previous.id,
+			previousName: renamed.previous.name,
+		};
 	});
 
 	router.post("/api/claude/media/:projectId/import-from-url", async (req) => {
