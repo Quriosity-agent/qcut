@@ -142,10 +142,11 @@ not be put back (its old name was taken meanwhile), and it keeps the new
 name the error gives; or the editor could not take back everything it had
 changed ("Not everything could be taken back"), and the error names what;
 or the editor's answer did not come and it "did not confirm" that it names
-the old id again. In the last two the editor is asked once more to end on
-the old id before the file goes back, and what it still cannot put right it
-notes and settles from the name the file has when the project is next
-opened. After any of them, look at the file's name and at what the error
+the old id again. In the last two the rename is noted and the editor is
+asked once more to end on the old id before the file goes back; what it
+still cannot put right then, it settles from the name the file has when the
+project is next opened (the error says so when even the note could not be
+written). After any of them, look at the file's name and at what the error
 names (`media list`, `timeline export`) before the rename is tried again.
 Renames of one project are done one after the other, also when they are
 asked for at the same time.
