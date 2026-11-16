@@ -23,6 +23,7 @@ export {
 
 // Import for internal use
 import { setupClaudeMediaIPC } from "./handlers/claude-media-handler.js";
+import { setupMediaRenameNotesIPC } from "./handlers/claude-media-rename-note.js";
 import { setupClaudeTimelineIPC } from "./handlers/claude-timeline-handler.js";
 import { setupClaudeProjectIPC } from "./handlers/claude-project-handler.js";
 import { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
@@ -42,6 +43,7 @@ export function setupAllClaudeIPC(): void {
 	claudeLog.info("Claude", "Initializing Claude Code Integration...");
 
 	setupClaudeMediaIPC();
+	setupMediaRenameNotesIPC();
 	setupClaudeTimelineIPC();
 	setupClaudeProjectIPC();
 	setupClaudeExportIPC();
