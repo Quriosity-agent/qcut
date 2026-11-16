@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineTrack } from "@/types/timeline";
-import { repointMediaReferences } from "../media-references";
+import { repointMediaReferences, tracksPlayMedia } from "../media-references";
 
 function track({
 	id,
@@ -113,5 +113,31 @@ describe("pointing clips at a renamed media item", () => {
 		expect(
 			repointMediaReferences({ tracks, fromId: OLD, toId: OLD }).changed
 		).toBe(0);
+	});
+});
+
+describe("whether a timeline plays a media item", () => {
+	it("is so for a media clip or a sticker of that id, on any track", () => {
+		const tracks = [
+			track({
+				id: "titles",
+				elements: [{ id: "t1", type: "text", content: OLD }],
+			}),
+			track({
+				id: "main",
+				locked: true,
+				elements: [{ id: "a", type: "media", mediaId: OLD }],
+			}),
+			track({
+				id: "stickers",
+				elements: [{ id: "s", type: "sticker", mediaId: NEW }],
+			}),
+		];
+		expect(tracksPlayMedia({ tracks, mediaId: OLD })).toBe(true);
+		expect(tracksPlayMedia({ tracks, mediaId: NEW })).toBe(true);
+		expect(tracksPlayMedia({ tracks, mediaId: "media_other" })).toBe(false);
+		// A text that happens to read like the id plays nothing.
+		expect(tracksPlayMedia({ tracks: [tracks[0]], mediaId: OLD })).toBe(false);
+		expect(tracksPlayMedia({ tracks: [], mediaId: OLD })).toBe(false);
 	});
 });
