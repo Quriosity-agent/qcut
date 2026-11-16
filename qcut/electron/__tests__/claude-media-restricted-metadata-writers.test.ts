@@ -6,6 +6,8 @@ const testState = vi.hoisted(() => ({ documentsRoot: "" }));
 const hooks = vi.hoisted(() => ({
 	/** Runs right after a file was looked at, before whoever looked acts. */
 	onLstat: undefined as undefined | ((filePath: string) => Promise<void>),
+	/** Runs before a written file is put in place under the name given. */
+	beforePlacing: undefined as undefined | ((name: string) => Promise<void>),
 }));
 
 vi.mock("electron", () => ({
@@ -37,6 +39,16 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 			await hooks.onLstat?.(String(args[0]));
 			return seen;
 		},
+		// The two ways a sidecar gets its name: an import's by a rename, a
+		// staged one by a hard link.
+		rename: async (...args: Parameters<typeof real.rename>) => {
+			await hooks.beforePlacing?.(String(args[1]));
+			return real.rename(...args);
+		},
+		link: async (...args: Parameters<typeof real.link>) => {
+			await hooks.beforePlacing?.(String(args[1]));
+			return real.link(...args);
+		},
 	};
 });
 
@@ -49,14 +61,12 @@ import {
 	readMediaRestrictedMetadata,
 	stageMediaRestrictedMetadata,
 } from "../claude/handlers/claude-media-restricted-metadata.js";
-import type { MainResponseMessage } from "../utility/utility-ipc-types.js";
-import {
-	answerMainRequest,
-	createMainRequests,
-	MAIN_REQUEST_TIMEOUT_MS,
-} from "../utility/utility-main-requests.js";
-import { handleWindowFreeMediaRequest } from "../utility/utility-media-bridge.js";
+import { MAIN_REQUEST_TIMEOUT_MS } from "../utility/utility-main-requests.js";
 import { restrictedMetadataChangesThroughMain } from "../utility/utility-media-requests.js";
+import {
+	closeBridges,
+	mediaBridgeToTheMainProcess,
+} from "./utility-bridge-kit.js";
 
 const PROJECT_ID = "restricted-writers-test";
 const MEDIA_ID = `media_${Buffer.from("wanted.gif").toString("base64url")}`;
@@ -110,58 +120,23 @@ const sidecarFolder = () =>
 const MEDIA_FILE = () => path.join(sidecarFolder(), "..", "wanted.gif");
 
 /**
- * The bridge between the two processes, as it is but for the port: the
- * utility process's requests with their wait and deadline
- * (utility-main-requests.ts), what it asks for sidecars
- * (utility-media-requests.ts), the main process's answering of a request,
- * and what it does for these channels (utility-media-bridge.ts). A message
- * crosses as a port carries it: as a copy, a turn of the event loop later.
+ * The bridge between the two processes, with what the utility process asks
+ * over it for sidecars (utility-media-requests.ts) and what the main
+ * process does for it (utility-media-bridge.ts): the bridge's own code on
+ * both sides, over a real message port pair (utility-bridge-kit.ts).
  *
- * `asked` are the changes asked for, `answers` what the main process said.
+ * `asked()` are the changes asked for, `answers` what the main process said.
  */
-function bridgeToTheMainProcess(): {
-	changes: RestrictedMetadataChanges;
-	asked: string[];
-	answers: MainResponseMessage[];
-} {
-	const asked: string[] = [];
-	const answers: MainResponseMessage[] = [];
-	const cross = <Message>(
-		message: Message,
-		deliver: (copy: Message) => void
-	) => {
-		const copy = structuredClone(message);
-		setImmediate(() => deliver(copy));
-	};
-	const requests = createMainRequests({
-		post: (message) => {
-			asked.push(String(message.data.change));
-			cross(message, (request) => {
-				answerMainRequest({
-					message: request,
-					handle: async (channel, data, deadline) => {
-						const answer = handleWindowFreeMediaRequest({
-							channel,
-							data,
-							deadline,
-						});
-						if (!answer) throw new Error(`Not a media request: ${channel}`);
-						return answer;
-					},
-					post: (response) => {
-						answers.push(response);
-						cross(response, requests.answered);
-					},
-				});
-			});
-		},
-	});
+function bridgeToTheMainProcess() {
+	const bridge = mediaBridgeToTheMainProcess();
 	return {
 		changes: restrictedMetadataChangesThroughMain({
-			requestFromMain: requests.requestFromMain,
+			requestFromMain: bridge.requestFromMain,
 		}),
-		asked,
-		answers,
+		asked: () => bridge.asked.map((message) => String(message.data.change)),
+		/** When the asker of each request stops waiting for it. */
+		deadlines: () => bridge.asked.map((message) => Number(message.deadline)),
+		answers: bridge.answers,
 	};
 }
 
@@ -182,6 +157,8 @@ describe("writers of one restricted metadata sidecar", () => {
 
 	afterEach(async () => {
 		hooks.onLstat = undefined;
+		hooks.beforePlacing = undefined;
+		closeBridges();
 		makeRestrictedMetadataChangesThrough(undefined);
 		vi.restoreAllMocks();
 		await fs.rm(testState.documentsRoot, { recursive: true, force: true });
@@ -342,7 +319,13 @@ describe("writers of one restricted metadata sidecar", () => {
 			expect(await stored()).toMatchObject({ itemId: "42001" });
 			await staged.discard();
 			expect(await stored()).toBeUndefined();
-			expect(asked).toEqual(["persist", "stage", "remove", "stage", "discard"]);
+			expect(asked()).toEqual([
+				"persist",
+				"stage",
+				"remove",
+				"stage",
+				"discard",
+			]);
 		});
 
 		/**
@@ -394,7 +377,7 @@ describe("writers of one restricted metadata sidecar", () => {
 					await paused;
 				};
 				const discarded = staged.discard();
-				await vi.waitFor(() => expect(bridge.asked).toEqual(["persist"]));
+				await vi.waitFor(() => expect(bridge.asked()).toEqual(["persist"]));
 				return { discarded };
 			}
 
@@ -445,6 +428,156 @@ describe("writers of one restricted metadata sidecar", () => {
 						name.endsWith(".json")
 					)
 				).toEqual([]);
+			});
+		});
+
+		/**
+		 * A write was begun in time, and the disk then held it up. The asker
+		 * stopped waiting and went on as if the write had failed: an import
+		 * takes the imported file away again, and asks for the sidecar to be
+		 * removed, which waits behind the write and is given up in its turn.
+		 * Finished after all that, the write left restricted metadata for a
+		 * file that was no longer there, to stick to whatever file took that
+		 * name next.
+		 */
+		describe("when a write is held up past the asker's wait", () => {
+			let bridge: ReturnType<typeof bridgeToTheMainProcess>;
+			let goOn = () => {};
+			let heldUp = false;
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			/** The other process, and a disk that holds the next sidecar up. */
+			async function withTheDiskHoldingUp() {
+				const other = await inTheOtherProcess();
+				bridge = bridgeToTheMainProcess();
+				other.makeRestrictedMetadataChangesThrough(bridge.changes);
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+				const released = new Promise<void>((resolve) => {
+					goOn = resolve;
+				});
+				heldUp = false;
+				hooks.beforePlacing = async (name) => {
+					if (!name.endsWith(".json") || heldUp) return;
+					heldUp = true;
+					await released;
+				};
+				return other;
+			}
+			const sidecars = async () =>
+				(await fs.readdir(sidecarFolder())).filter((name) =>
+					name.endsWith(".json")
+				);
+			const outcome = (change: Promise<unknown>) =>
+				change.then(
+					() => "made",
+					(error: unknown) => String(error)
+				);
+
+			it("takes an import's sidecar away again when it is finished only then", async () => {
+				const other = await withTheDiskHoldingUp();
+				const written = outcome(
+					other.persistMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						metadata: THEIRS,
+						projectId: PROJECT_ID,
+					})
+				);
+				await vi.waitFor(() => expect(heldUp).toBe(true));
+
+				// The asker's wait runs out while the disk holds the write.
+				await vi.advanceTimersByTimeAsync(MAIN_REQUEST_TIMEOUT_MS);
+				expect(await written).toBe(
+					"Error: Main process request timed out: media:restricted-metadata"
+				);
+				// It rolls back: the sidecar is to go. That waits behind the
+				// write, and is given up as well.
+				const removed = outcome(
+					other.deleteMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						projectId: PROJECT_ID,
+					})
+				);
+				await vi.waitFor(() =>
+					expect(bridge.asked()).toEqual(["persist", "remove"])
+				);
+				await vi.advanceTimersByTimeAsync(MAIN_REQUEST_TIMEOUT_MS);
+				expect(await removed).toContain("timed out");
+				expect(bridge.answers).toEqual([]);
+
+				// The disk lets go.
+				goOn();
+				await vi.waitFor(() => expect(bridge.answers).toHaveLength(2));
+				expect(bridge.answers[0].error).toBe(
+					"The change to restricted media metadata took longer than the request for it waits; it was taken back"
+				);
+				expect(bridge.answers[1].error).toContain("it was not made");
+				expect(await stored()).toBeUndefined();
+				expect(await sidecars()).toEqual([]);
+			});
+
+			it("takes a staged sidecar away again when it is finished only then", async () => {
+				const other = await withTheDiskHoldingUp();
+				const staged = outcome(
+					other.stageMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						metadata: OURS,
+						projectId: PROJECT_ID,
+						mediaFilePath: MEDIA_FILE(),
+					})
+				);
+				await vi.waitFor(() => expect(heldUp).toBe(true));
+				await vi.advanceTimersByTimeAsync(MAIN_REQUEST_TIMEOUT_MS);
+				expect(await staged).toContain("timed out");
+
+				goOn();
+				await vi.waitFor(() => expect(bridge.answers).toHaveLength(1));
+				expect(bridge.answers[0].error).toContain("it was taken back");
+				expect(await stored()).toBeUndefined();
+				expect(await sidecars()).toEqual([]);
+			});
+
+			it("leaves a sidecar that the disk held up for less than the asker waits", async () => {
+				const other = await withTheDiskHoldingUp();
+				const written = outcome(
+					other.persistMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						metadata: THEIRS,
+						projectId: PROJECT_ID,
+					})
+				);
+				await vi.waitFor(() => expect(heldUp).toBe(true));
+				await vi.advanceTimersByTimeAsync(MAIN_REQUEST_TIMEOUT_MS / 2);
+				goOn();
+				expect(await written).toBe("made");
+				expect(await stored()).toMatchObject({ itemId: "42002" });
+			});
+
+			/**
+			 * Finished with less than a second of the asker's wait left, the
+			 * answer might not be back in time: the asker would roll back
+			 * while the main process took the write for made.
+			 */
+			it("takes a sidecar away that is finished in the last second of the asker's wait", async () => {
+				const other = await withTheDiskHoldingUp();
+				const written = outcome(
+					other.persistMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						metadata: THEIRS,
+						projectId: PROJECT_ID,
+					})
+				);
+				await vi.waitFor(() => expect(heldUp).toBe(true));
+				// Half a second before the asker stops waiting.
+				vi.setSystemTime(bridge.deadlines()[0] - 500);
+				goOn();
+				// Told so while it still waits: it rolls back knowing why.
+				expect(await written).toBe(
+					"Error: The change to restricted media metadata took longer than the request for it waits; it was taken back"
+				);
+				expect(await sidecars()).toEqual([]);
 			});
 		});
 	});
