@@ -115,13 +115,25 @@ const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
 	useMediaStore.setState({ mediaItems: updatedItems });
 };
 
-/** Records a video's alpha facts (see lib/media/alpha-playback-proxy.ts). */
-const recordItemAlpha = (itemId: string) => (alpha: MediaAlphaInfo) => {
-	const item = useMediaStore
+/**
+ * Whether the item still plays `file`. An item keeps its id when its file is
+ * written over and read again: what was measured from the old file (thumbnail,
+ * size, length, alpha) must not be written to it then.
+ */
+const stillPlays = (itemId: string, file: File): boolean =>
+	useMediaStore
 		.getState()
-		.mediaItems.find((candidate) => candidate.id === itemId);
-	updateMediaItemField(itemId, { metadata: { ...item?.metadata, alpha } });
-};
+		.mediaItems.some((item) => item.id === itemId && item.file === file);
+
+/** Records a video's alpha facts (see lib/media/alpha-playback-proxy.ts). */
+const recordItemAlpha =
+	(itemId: string, file: File) => (alpha: MediaAlphaInfo) => {
+		if (!stillPlays(itemId, file)) return;
+		const item = useMediaStore
+			.getState()
+			.mediaItems.find((candidate) => candidate.id === itemId);
+		updateMediaItemField(itemId, { metadata: { ...item?.metadata, alpha } });
+	};
 
 /**
  * An imported or removed file changes the project, so its "last modified"
@@ -177,16 +189,24 @@ const persistIfStillPresent = async (
 	return true;
 };
 
-// Helper to update media item metadata and persist to storage
+// Helper to update media item metadata and persist to storage. `source` is
+// the file the metadata was measured from.
 const updateMediaMetadataAndPersist = async (
 	itemId: string,
 	projectId: string,
-	metadata: Partial<MediaItem>
+	metadata: Partial<MediaItem>,
+	source: File
 ) => {
 	const item = useMediaStore.getState().mediaItems.find((i) => i.id === itemId);
 
 	if (!item) {
 		debugError(`[MediaStore] Cannot update item ${itemId} - not found`);
+		return;
+	}
+	if (item.file !== source) {
+		debugLog(
+			`[MediaStore] Dropped what was measured from ${item.name}'s old file`
+		);
 		return;
 	}
 
@@ -227,7 +247,7 @@ const extractAudioMetadataBackground = async (
 	try {
 		const fileClone = cloneFileForTemporaryUse(file);
 		const duration = await getMediaDurationImpl(fileClone);
-		await updateMediaMetadataAndPersist(itemId, projectId, { duration });
+		await updateMediaMetadataAndPersist(itemId, projectId, { duration }, file);
 	} catch (error) {
 		debugError(
 			`[MediaStore] Audio duration extraction failed for ${itemId}`,
@@ -254,7 +274,7 @@ const extractVideoMetadataBackground = async (
 		const proxyFile = item
 			? await recordMediaAlpha({
 					mediaItem: item,
-					update: recordItemAlpha(itemId),
+					update: recordItemAlpha(itemId, file),
 				})
 			: null;
 
@@ -289,9 +309,11 @@ const extractVideoMetadataBackground = async (
 		}
 
 		// Update the media item with real metadata and persist to storage
-		await updateMediaMetadataAndPersist(itemId, projectId, result);
+		await updateMediaMetadataAndPersist(itemId, projectId, result, file);
 		return result;
 	} catch (browserError) {
+		// The item has another file by now: this one's failure is not its own.
+		if (!stillPlays(itemId, file)) return;
 		if (attempt < VIDEO_METADATA_MAX_RETRIES) {
 			debugError(
 				`[MediaStore] Thumbnail generation attempt ${attempt} failed for ${itemId}, retrying`,
@@ -774,7 +796,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 				if (item.type === "video" && item.thumbnailUrl) {
 					void recordMediaAlpha({
 						mediaItem: item,
-						update: recordItemAlpha(item.id),
+						update: recordItemAlpha(item.id, item.file),
 						readProxy: false,
 					});
 				}
