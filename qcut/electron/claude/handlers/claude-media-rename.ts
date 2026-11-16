@@ -378,7 +378,7 @@ async function moveMediaFile({
 				mediaId: to.id,
 				metadata,
 				projectId,
-				mediaFileExists: () => isTaken(to.path),
+				mediaFilePath: to.path,
 			});
 		} catch (error) {
 			if (!(error instanceof RestrictedMetadataTakenError)) throw error;
