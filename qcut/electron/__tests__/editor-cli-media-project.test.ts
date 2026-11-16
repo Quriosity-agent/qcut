@@ -224,6 +224,66 @@ describe("Media handlers — uncovered actions", () => {
 		});
 	});
 
+	describe("media:refresh", () => {
+		it("requires project-id", async () => {
+			const result = await handleMediaProjectCommand(
+				client,
+				makeOpts({ command: "editor:media:refresh" }),
+				noopProgress
+			);
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("--project-id");
+		});
+
+		it("asks the editor to read changed files again and says which it read", async () => {
+			const refreshed = {
+				checked: 197,
+				refreshed: [{ id: "media_shake", name: "震屏01_踹盾.mp4" }],
+				failed: [],
+			};
+			mockRoute("POST", "/api/claude/media/p1/refresh", {
+				success: true,
+				data: refreshed,
+			});
+			const result = await handleMediaProjectCommand(
+				client,
+				makeOpts({ command: "editor:media:refresh", projectId: "p1" }),
+				noopProgress
+			);
+			expect(result).toEqual({ success: true, data: refreshed });
+			expect(lastCapturedMethod).toBe("POST");
+		});
+
+		it("fails when a changed file could not be read, naming it", async () => {
+			const data = {
+				checked: 2,
+				refreshed: [],
+				failed: [
+					{
+						id: "media_shake",
+						name: "shake.mp4",
+						error: "the file kept changing while it was read",
+					},
+				],
+			};
+			mockRoute("POST", "/api/claude/media/p1/refresh", {
+				success: true,
+				data,
+			});
+			const result = await handleMediaProjectCommand(
+				client,
+				makeOpts({ command: "editor:media:refresh", projectId: "p1" }),
+				noopProgress
+			);
+			expect(result).toEqual({
+				success: false,
+				error:
+					"1 changed media file(s) could not be read again, and the editor still plays its old copy of each: shake.mp4 (the file kept changing while it was read)",
+				data,
+			});
+		});
+	});
+
 	describe("media:delete", () => {
 		it("requires project-id and media-id", async () => {
 			const result = await handleMediaProjectCommand(
