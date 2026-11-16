@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { debugWarn } from "@/lib/debug/debug-config";
 import { refreshChangedMediaSources } from "@/lib/project/media-source-refresh";
+import { settleUnsettledMediaRenames } from "@/stores/media/media-rename";
 import { useMediaStore } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 
@@ -16,9 +17,24 @@ const MIN_INTERVAL_MS = 3000;
  */
 export function useRefreshChangedMedia(): void {
 	const projectId = useProjectStore((state) => state.activeProject?.id);
+	const projectLoaded = useProjectStore(
+		(state) =>
+			state.loadedProjectId !== null &&
+			state.loadedProjectId === state.activeProject?.id
+	);
 	const mediaLoaded = useMediaStore(
 		(state) => state.hasInitialized && !state.isLoading
 	);
+
+	// A rename that ended with the editor and the folder apart is settled
+	// once the project is all there: its timelines are then in the stores as
+	// they are stored.
+	useEffect(() => {
+		if (!projectId || !projectLoaded) return;
+		settleUnsettledMediaRenames({ projectId }).catch((error: unknown) => {
+			debugWarn("[RefreshChangedMedia] Noted renames were not settled:", error);
+		});
+	}, [projectId, projectLoaded]);
 
 	useEffect(() => {
 		if (!projectId || !mediaLoaded) return;
