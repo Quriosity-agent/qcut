@@ -179,6 +179,36 @@ describe("Claude media renderer acknowledgement", () => {
 		}
 	});
 
+	/**
+	 * A request that settles a rename says where the file is for good. The
+	 * editor is to end on that id however long it takes, so it is given no
+	 * moment after which it would take the change back.
+	 */
+	it("gives a request that settles a rename no deadline", async () => {
+		const win = createWindow();
+		await requestMediaRenameFromRenderer({
+			payload: {
+				mediaId: "media_new",
+				newMediaId: "media_old",
+				newName: "old.mp4",
+				newPath: "/project/media/old.mp4",
+				previousName: "new.mp4",
+				previousPath: "/project/media/new.mp4",
+				projectId: "project-1",
+				settles: true,
+			},
+			win,
+		});
+		const [, sent] = vi.mocked(win.webContents.send).mock.calls[0];
+		expect(sent).toMatchObject({
+			mediaId: "media_new",
+			newMediaId: "media_old",
+			previousPath: "/project/media/new.mp4",
+			settles: true,
+		});
+		expect(sent).not.toHaveProperty("deadlineAt");
+	});
+
 	it("gives up on a rename only after the editor's own deadline", async () => {
 		vi.useFakeTimers();
 		try {
@@ -282,11 +312,13 @@ describe("Claude media renderer acknowledgement", () => {
 	 * utility process's usual wait is 10 s.
 	 */
 	it("keeps every wait longer than the one inside it", () => {
-		// Rename: editor < main < utility bridge < one HTTP request < command line.
+		// Rename: editor < main < utility bridge < one HTTP request < command
+		// line. The request has room for two waits for the editor: to follow
+		// the rename, and to end on the old id again when that is unknown.
 		expect(MEDIA_RENAME_COMMIT_MARGIN_MS).toBeGreaterThan(0);
-		expect(MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS).toBeLessThan(
-			MEDIA_RENAME_HTTP_TIMEOUT_MS
-		);
+		expect(
+			2 * (MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS)
+		).toBeLessThan(MEDIA_RENAME_HTTP_TIMEOUT_MS);
 		expect(MEDIA_RENAME_HTTP_TIMEOUT_MS).toBeLessThan(
 			MEDIA_RENAME_CLIENT_TIMEOUT_MS
 		);
