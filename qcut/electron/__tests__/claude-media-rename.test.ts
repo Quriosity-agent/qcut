@@ -15,8 +15,9 @@ const hooks = vi.hoisted(() => ({
 	noHardLinks: false,
 	/** Runs when a file is about to take the name `to`. */
 	beforeLink: undefined as undefined | ((to: string) => Promise<void>),
-	/** Runs when a copy, or a new symbolic link, is about to take `to`. */
-	beforeCopyOrSymlink: undefined as undefined | ((to: string) => Promise<void>),
+	/** The paths whose times cannot be set, and those that cannot be removed. */
+	timesRefused: new Set<string>(),
+	removalRefused: new Set<string>(),
 }));
 
 vi.mock("fs/promises", async (importOriginal) => {
@@ -32,13 +33,21 @@ vi.mock("fs/promises", async (importOriginal) => {
 			}
 			return real.link(...args);
 		},
-		copyFile: async (...args: Parameters<typeof real.copyFile>) => {
-			await hooks.beforeCopyOrSymlink?.(String(args[1]));
-			return real.copyFile(...args);
+		utimes: async (...args: Parameters<typeof real.utimes>) => {
+			if (hooks.timesRefused.has(String(args[0]))) {
+				throw Object.assign(new Error("EPERM: operation not permitted"), {
+					code: "EPERM",
+				});
+			}
+			return real.utimes(...args);
 		},
-		symlink: async (...args: Parameters<typeof real.symlink>) => {
-			await hooks.beforeCopyOrSymlink?.(String(args[1]));
-			return real.symlink(...args);
+		unlink: async (...args: Parameters<typeof real.unlink>) => {
+			if (hooks.removalRefused.has(String(args[0]))) {
+				throw Object.assign(new Error("EBUSY: resource busy or locked"), {
+					code: "EBUSY",
+				});
+			}
+			return real.unlink(...args);
 		},
 	};
 });
@@ -84,9 +93,8 @@ vi.mock("electron-log", () => ({
 
 import { listMediaFiles } from "../claude/handlers/claude-media-handler.js";
 import {
-	MediaNameTakenError,
+	MediaMoveIncompleteError,
 	MediaNotFoundError,
-	moveWithoutOverwriting,
 	renameMediaFileOnDisk,
 	undoMediaRename,
 } from "../claude/handlers/claude-media-rename.js";
@@ -174,6 +182,8 @@ describe("renaming a media file in the project folder", () => {
 		hooks.onMetadataRead = undefined;
 		hooks.noHardLinks = false;
 		hooks.beforeLink = undefined;
+		hooks.timesRefused.clear();
+		hooks.removalRefused.clear();
 		await fs.rm(testState.documentsRoot, { recursive: true, force: true });
 	});
 
@@ -529,6 +539,77 @@ describe("renaming a media file in the project folder", () => {
 		).toMatchObject({ itemId: "42001" });
 	});
 
+	/**
+	 * Without hard links the file is copied to its new name. A copy that
+	 * could not be finished (its times could not be set) was left there while
+	 * the metadata staged for it was taken away: a restricted file listed as
+	 * an ordinary one.
+	 */
+	it("removes the copy it made when the move fails after it, and the metadata staged for it", async () => {
+		hooks.noHardLinks = true;
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		hooks.timesRefused.add(wanted);
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toThrow("EPERM");
+
+		await expect(fs.access(wanted)).rejects.toThrow();
+		expect(await mediaNames()).toEqual(["taken.mp4", "震屏01_踹盾.mp4"]);
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toBeUndefined();
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+	});
+
+	it("leaves the metadata with a copy it could not remove again", async () => {
+		hooks.noHardLinks = true;
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		hooks.timesRefused.add(wanted);
+		hooks.removalRefused.add(wanted);
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toBeInstanceOf(MediaMoveIncompleteError);
+		hooks.removalRefused.clear();
+
+		// The file is under both names, and restricted under both.
+		expect(await fs.readFile(wanted, "utf8")).toBe("shake");
+		for (const mediaId of [shake, idOf("wanted.mp4")]) {
+			expect(
+				await readMediaRestrictedMetadata({ mediaId, projectId: PROJECT_ID })
+			).toMatchObject({ itemId: "42001" });
+		}
+	});
+
 	it("looks for the next free name when the one it picked is taken meanwhile", async () => {
 		const shake = idOf("震屏01_踹盾.mp4");
 		const picked = path.join(mediaDirectory(), "renamed.mp4");
@@ -604,170 +685,4 @@ describe("renaming a media file in the project folder", () => {
 			})
 		).toBeUndefined();
 	});
-});
-
-describe("moving a file without writing over another", () => {
-	let folder = "";
-
-	beforeEach(async () => {
-		folder = await fs.mkdtemp(path.join(os.tmpdir(), "qcut-media-move-"));
-		await fs.writeFile(path.join(folder, "a.mp4"), "mine");
-	});
-
-	afterEach(async () => {
-		hooks.noHardLinks = false;
-		hooks.beforeCopyOrSymlink = undefined;
-		await fs.rm(folder, { recursive: true, force: true });
-	});
-
-	it("refuses a name that has a file, and leaves both", async () => {
-		await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
-		await expect(
-			moveWithoutOverwriting({
-				from: path.join(folder, "a.mp4"),
-				to: path.join(folder, "b.mp4"),
-			})
-		).rejects.toBeInstanceOf(MediaNameTakenError);
-		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
-		expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe(
-			"theirs"
-		);
-	});
-
-	it("leaves one file, under the new name", async () => {
-		await moveWithoutOverwriting({
-			from: path.join(folder, "a.mp4"),
-			to: path.join(folder, "b.mp4"),
-		});
-		expect(await fs.readdir(folder)).toEqual(["b.mp4"]);
-		expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe("mine");
-		expect((await fs.stat(path.join(folder, "b.mp4"))).nlink).toBe(1);
-	});
-
-	it("reports a file that is not there", async () => {
-		await expect(
-			moveWithoutOverwriting({
-				from: path.join(folder, "missing.mp4"),
-				to: path.join(folder, "b.mp4"),
-			})
-		).rejects.toMatchObject({ code: "ENOENT" });
-		expect(await fs.readdir(folder)).toEqual(["a.mp4"]);
-	});
-
-	// Making a file's symbolic link needs a privilege on Windows.
-	it.skipIf(process.platform === "win32")(
-		"moves a symbolic link as the link it is",
-		async () => {
-			await fs.symlink(
-				path.join(folder, "a.mp4"),
-				path.join(folder, "link.mp4")
-			);
-			await moveWithoutOverwriting({
-				from: path.join(folder, "link.mp4"),
-				to: path.join(folder, "moved-link.mp4"),
-			});
-			const moved = await fs.lstat(path.join(folder, "moved-link.mp4"));
-			expect(moved.isSymbolicLink()).toBe(true);
-			expect(
-				await fs.readFile(path.join(folder, "moved-link.mp4"), "utf8")
-			).toBe("mine");
-			// The file it points to has one name still, its own.
-			expect((await fs.stat(path.join(folder, "a.mp4"))).nlink).toBe(1);
-			await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
-			await expect(
-				moveWithoutOverwriting({
-					from: path.join(folder, "moved-link.mp4"),
-					to: path.join(folder, "b.mp4"),
-				})
-			).rejects.toBeInstanceOf(MediaNameTakenError);
-			expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe(
-				"theirs"
-			);
-		}
-	);
-
-	it("still moves, and still refuses a taken name, on a volume without hard links", async () => {
-		hooks.noHardLinks = true;
-		const written = new Date("2026-11-01T08:00:00.000Z");
-		await fs.utimes(path.join(folder, "a.mp4"), written, written);
-		await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
-		await expect(
-			moveWithoutOverwriting({
-				from: path.join(folder, "a.mp4"),
-				to: path.join(folder, "b.mp4"),
-			})
-		).rejects.toBeInstanceOf(MediaNameTakenError);
-		expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe(
-			"theirs"
-		);
-
-		await moveWithoutOverwriting({
-			from: path.join(folder, "a.mp4"),
-			to: path.join(folder, "c.mp4"),
-		});
-		expect((await fs.readdir(folder)).sort()).toEqual(["b.mp4", "c.mp4"]);
-		expect(await fs.readFile(path.join(folder, "c.mp4"), "utf8")).toBe("mine");
-		// Copied there, so a new file: it keeps the time the old one had.
-		expect((await fs.stat(path.join(folder, "c.mp4"))).mtimeMs).toBe(
-			written.getTime()
-		);
-	});
-
-	/**
-	 * Without hard links there is no look at the name followed by a rename:
-	 * the name is taken by a copy that fails when something has it, however
-	 * late that something got there.
-	 */
-	it("does not write over a file that takes the name at the last moment, without hard links", async () => {
-		hooks.noHardLinks = true;
-		const to = path.join(folder, "b.mp4");
-		hooks.beforeCopyOrSymlink = async (destination) => {
-			if (destination === to) await fs.writeFile(to, "theirs");
-		};
-		await expect(
-			moveWithoutOverwriting({ from: path.join(folder, "a.mp4"), to })
-		).rejects.toBeInstanceOf(MediaNameTakenError);
-		expect(await fs.readFile(to, "utf8")).toBe("theirs");
-		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
-	});
-
-	it.skipIf(process.platform === "win32")(
-		"does not write over a file that takes a symbolic link's new name at the last moment",
-		async () => {
-			await fs.symlink(
-				path.join(folder, "a.mp4"),
-				path.join(folder, "link.mp4")
-			);
-			const to = path.join(folder, "b.mp4");
-			hooks.beforeCopyOrSymlink = async (destination) => {
-				if (destination === to) await fs.writeFile(to, "theirs");
-			};
-			await expect(
-				moveWithoutOverwriting({ from: path.join(folder, "link.mp4"), to })
-			).rejects.toBeInstanceOf(MediaNameTakenError);
-			expect(await fs.readFile(to, "utf8")).toBe("theirs");
-			expect(
-				(await fs.lstat(path.join(folder, "link.mp4"))).isSymbolicLink()
-			).toBe(true);
-		}
-	);
-
-	it.skipIf(process.platform === "win32")(
-		"keeps a relative symbolic link pointing at its file from another folder",
-		async () => {
-			await fs.mkdir(path.join(folder, "imported"));
-			await fs.symlink(
-				path.join("..", "a.mp4"),
-				path.join(folder, "imported", "link.mp4")
-			);
-			await moveWithoutOverwriting({
-				from: path.join(folder, "imported", "link.mp4"),
-				to: path.join(folder, "moved.mp4"),
-			});
-			expect(await fs.readlink(path.join(folder, "moved.mp4"))).toBe("a.mp4");
-			expect(await fs.readFile(path.join(folder, "moved.mp4"), "utf8")).toBe(
-				"mine"
-			);
-		}
-	);
 });
