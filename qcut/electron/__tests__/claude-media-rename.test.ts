@@ -412,30 +412,37 @@ describe("moving a file without writing over another", () => {
 		expect(await fs.readdir(folder)).toEqual(["a.mp4"]);
 	});
 
-	it("moves a symbolic link as the link it is", async () => {
-		await fs.symlink(path.join(folder, "a.mp4"), path.join(folder, "link.mp4"));
-		await moveWithoutOverwriting({
-			from: path.join(folder, "link.mp4"),
-			to: path.join(folder, "moved-link.mp4"),
-		});
-		const moved = await fs.lstat(path.join(folder, "moved-link.mp4"));
-		expect(moved.isSymbolicLink()).toBe(true);
-		expect(await fs.readlink(path.join(folder, "moved-link.mp4"))).toBe(
-			path.join(folder, "a.mp4")
-		);
-		// The file it points to has one name still, its own.
-		expect((await fs.stat(path.join(folder, "a.mp4"))).nlink).toBe(1);
-		await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
-		await expect(
-			moveWithoutOverwriting({
-				from: path.join(folder, "moved-link.mp4"),
-				to: path.join(folder, "b.mp4"),
-			})
-		).rejects.toBeInstanceOf(MediaNameTakenError);
-		expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe(
-			"theirs"
-		);
-	});
+	// Making a file's symbolic link needs a privilege on Windows.
+	it.skipIf(process.platform === "win32")(
+		"moves a symbolic link as the link it is",
+		async () => {
+			await fs.symlink(
+				path.join(folder, "a.mp4"),
+				path.join(folder, "link.mp4")
+			);
+			await moveWithoutOverwriting({
+				from: path.join(folder, "link.mp4"),
+				to: path.join(folder, "moved-link.mp4"),
+			});
+			const moved = await fs.lstat(path.join(folder, "moved-link.mp4"));
+			expect(moved.isSymbolicLink()).toBe(true);
+			expect(
+				await fs.readFile(path.join(folder, "moved-link.mp4"), "utf8")
+			).toBe("mine");
+			// The file it points to has one name still, its own.
+			expect((await fs.stat(path.join(folder, "a.mp4"))).nlink).toBe(1);
+			await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
+			await expect(
+				moveWithoutOverwriting({
+					from: path.join(folder, "moved-link.mp4"),
+					to: path.join(folder, "b.mp4"),
+				})
+			).rejects.toBeInstanceOf(MediaNameTakenError);
+			expect(await fs.readFile(path.join(folder, "b.mp4"), "utf8")).toBe(
+				"theirs"
+			);
+		}
+	);
 
 	it("still moves, and still refuses a taken name, on a volume without hard links", async () => {
 		hooks.noHardLinks = true;
