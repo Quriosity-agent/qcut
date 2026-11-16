@@ -208,6 +208,125 @@ describe("following a media file renamed in the project folder", () => {
 		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
 	});
 
+	/**
+	 * The desktop app puts the file back under its old name when the editor
+	 * cannot follow. Whatever the editor had already changed has to go back
+	 * too, or the clips are left on an id the file no longer has.
+	 */
+	it("takes back every step when a later one fails", async () => {
+		const sceneB = [mediaTrack([OLD])];
+		const sceneC = [mediaTrack([OLD, OLD])];
+		project.activeProject.scenes = [
+			{ id: "scene-main" },
+			{ id: "scene-b" },
+			{ id: "scene-c" },
+		];
+		storage.loadTimeline.mockImplementation(async (request: unknown) =>
+			(request as { sceneId?: string }).sceneId === "scene-b" ? sceneB : sceneC
+		);
+		// Scene B is saved; saving scene C fails.
+		storage.saveTimeline.mockImplementation(async (request: unknown) => {
+			const { sceneId, tracks } = request as {
+				sceneId: string;
+				tracks: TimelineTrack[];
+			};
+			const repointing = tracks.some((track) =>
+				track.elements.some(
+					(element) => element.type === "media" && element.mediaId === NEW
+				)
+			);
+			if (sceneId === "scene-c" && repointing) {
+				throw new Error("Scene C could not be saved");
+			}
+		});
+		try {
+			await expect(renameProjectMedia(RENAME)).rejects.toThrow(
+				"Scene C could not be saved"
+			);
+		} finally {
+			project.activeProject.scenes = [{ id: "scene-main" }, { id: "scene-b" }];
+			storage.saveTimeline.mockImplementation(async () => undefined);
+		}
+
+		// The editor holds the item under its old id again, as it was.
+		expect(mediaState.mediaItems[0]).toMatchObject({
+			id: OLD,
+			name: "old.mp4",
+			localPath: "/projects/project-1/media/old.mp4",
+		});
+		// The entry stored under the new id is gone; the old one was never touched.
+		expect(storage.deleteMediaItem).toHaveBeenCalledTimes(1);
+		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
+		// The open scene points at the old id again, and that was saved.
+		expect(
+			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
+				element.type === "media" ? element.mediaId : null
+			)
+		).toEqual([OLD, "media_other", OLD]);
+		expect(timeline.saveImmediate).toHaveBeenCalledTimes(2);
+		// Scene B, which had been saved with the new id, is back as it was read.
+		const lastSaveOfB = storage.saveTimeline.mock.calls
+			.map(([request]) => request as { sceneId: string; tracks: unknown })
+			.filter((request) => request.sceneId === "scene-b")
+			.at(-1);
+		expect(lastSaveOfB?.tracks).toBe(sceneB);
+		// The stickers were not reached.
+		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
+		expect(project.markProjectContentChanged).not.toHaveBeenCalled();
+	});
+
+	it("takes the open scene back when it cannot be saved", async () => {
+		timeline.saveImmediate.mockResolvedValueOnce(false);
+		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
+			"The timeline could not be saved with the renamed media"
+		);
+		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
+		expect(
+			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
+				element.type === "media" ? element.mediaId : null
+			)
+		).toEqual([OLD, "media_other", OLD]);
+		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
+	});
+
+	/**
+	 * The asker waits only so long, then renames the file back. A rename
+	 * that finishes after that must not leave anything on the new id.
+	 */
+	it("changes nothing when copying the file outlasts the asker's wait", async () => {
+		await expect(
+			renameProjectMedia({ ...RENAME, deadlineAt: Date.now() - 1 })
+		).rejects.toThrow("took longer than the request waits for");
+		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
+		expect(timeline.saveImmediate).not.toHaveBeenCalled();
+		// Only the copy made under the new id is removed.
+		expect(storage.deleteMediaItem).toHaveBeenCalledTimes(1);
+		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
+	});
+
+	it("takes everything back when the wait runs out on the last step", async () => {
+		storage.loadTimeline.mockImplementation(async (request: unknown) => {
+			await new Promise((resolve) => setTimeout(resolve, 60));
+			return (request as { sceneId?: string }).sceneId === "scene-b"
+				? [mediaTrack([OLD])]
+				: null;
+		});
+		await expect(
+			renameProjectMedia({ ...RENAME, deadlineAt: Date.now() + 25 })
+		).rejects.toThrow("took longer than the request waits for");
+		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
+		expect(
+			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
+				element.type === "media" ? element.mediaId : null
+			)
+		).toEqual([OLD, "media_other", OLD]);
+		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
+		// Saved with the new id, then saved back; the old entry never removed.
+		expect(stickers.saveToProject).toHaveBeenCalledTimes(2);
+		expect(storage.deleteMediaItem).toHaveBeenCalledTimes(1);
+		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
+	});
+
 	it("refuses a new id the project already holds", async () => {
 		await expect(
 			renameProjectMedia({ ...RENAME, toId: "media_other" })
