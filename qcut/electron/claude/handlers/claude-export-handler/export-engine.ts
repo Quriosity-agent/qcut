@@ -80,6 +80,14 @@ import {
 } from "./missing-clip-media.js";
 import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import { prepareAssFontsDirectory } from "./ass-fonts-dir.js";
+import { runIndependently } from "./task-pool.js";
+import {
+	buildPictureWindowConcatArgs,
+	layersInPictureWindow,
+	planPictureWindow,
+	rangeInPictureWindow,
+	segmentsInPictureWindow,
+} from "./picture-window.js";
 import {
 	type AdjustmentLayer,
 	adjustmentLayersUnderOverlays,
@@ -1419,7 +1427,7 @@ export async function executeExportJob({
 			? path.join(tempDir, `intermediate.${intermediateExtension}`)
 			: outputPath;
 
-		const segmentOutputs: string[] = [];
+		const segmentOutputs: string[] = new Array(segments.length);
 		const totalSegments = segments.length;
 		const hasAudioStream = createAudioStreamProbe({
 			probe: probeHasAudioStream,
@@ -1480,23 +1488,59 @@ export async function executeExportJob({
 			return concatSpans[position];
 		};
 
-		const shownSegments = range
-			? segmentsShowingInRange({
-					segments,
-					transitions: videoTransitions,
-					range,
+		// The layers that show in the range, as the timeline has them.
+		const rangeLayers: PictureLayers = {
+			mediaOverlays,
+			stickerOverlays,
+			textOverlays,
+			jianyingTextOverlays,
+			adjustmentLayers,
+		};
+		// A range export draws its picture for the clips around the range
+		// only (picture-window.ts). Transitions place their clips in time
+		// themselves and the cursor is drawn on every clip's file, so with
+		// either the whole picture is made, as before.
+		const pictureWindow =
+			range && !hasVideoTransitions && !shouldCompositeCursor(settings)
+				? planPictureWindow({
+						range,
+						entries: concatEntries,
+						spans: concatSpans,
+						layers: rangeLayers,
+						fps: settings.fps,
+					})
+				: undefined;
+		const shownSegments = pictureWindow
+			? segmentsInPictureWindow({
+					window: pictureWindow,
+					entries: concatEntries,
 				})
-			: undefined;
-		for (const [index, rawSegment] of segments.entries()) {
+			: range
+				? segmentsShowingInRange({
+						segments,
+						transitions: videoTransitions,
+						range,
+					})
+				: undefined;
+		let encodedSegments = 0;
+		const encodeSegment = async ({
+			index,
+			rawSegment,
+			blackPicture,
+		}: {
+			index: number;
+			rawSegment: ExportSegment;
+			/**
+			 * A clip whose picture cannot show in the range is black frames
+			 * with its real sound, so the mix hears all of it (export-range.ts).
+			 */
+			blackPicture: boolean;
+		}): Promise<void> => {
 			// MOV: the segment's sound is PCM (see export-segment-encode.ts).
 			const outputSegmentPath = path.join(
 				tempDir,
 				`segment-${String(index).padStart(4, "0")}.mov`
 			);
-			// A clip whose picture cannot show in the range is black frames
-			// with its real sound, so the mix hears all of it (export-range.ts).
-			const blackPicture =
-				shownSegments !== undefined && !shownSegments.has(index);
 			// Neural interpolation runs RIFE ahead of the graph and swaps in a
 			// lossless intermediate; the rest of the loop never sees the mode.
 			const segment = blackPicture
@@ -1555,24 +1599,49 @@ export async function executeExportJob({
 					color,
 				}),
 				estimatedDuration: segment.duration,
-				onProgress: ({ normalizedProgress, currentFrame }) => {
-					const sliceSize = 0.82 / totalSegments;
-					const base = (index / totalSegments) * 0.82;
-					const progress = base + normalizedProgress * sliceSize;
-					updateJobProgress({
-						jobId,
-						progress,
-						currentFrame,
-					});
-				},
+				// Black clips run several at once: each only counts when done.
+				...(blackPicture
+					? {}
+					: {
+							onProgress: ({
+								normalizedProgress,
+								currentFrame,
+							}: {
+								normalizedProgress: number;
+								currentFrame?: number;
+							}) => {
+								const sliceSize = 0.82 / totalSegments;
+								const base = (encodedSegments / totalSegments) * 0.82;
+								updateJobProgress({
+									jobId,
+									progress: base + normalizedProgress * sliceSize,
+									currentFrame,
+								});
+							},
+						}),
 			});
 
-			segmentOutputs.push(outputSegmentPath);
+			segmentOutputs[index] = outputSegmentPath;
+			encodedSegments += 1;
 			updateJobProgress({
 				jobId,
-				progress: ((index + 1) / totalSegments) * 0.82,
+				progress: (encodedSegments / totalSegments) * 0.82,
 			});
+		};
+		// The clips the range shows are encoded one after another, as in a
+		// full export. The others are black frames with their sound: none
+		// waits for another, so several are encoded at once (task-pool.ts).
+		const blackSegments: Array<() => Promise<void>> = [];
+		for (const [index, rawSegment] of segments.entries()) {
+			if (shownSegments !== undefined && !shownSegments.has(index)) {
+				blackSegments.push(() =>
+					encodeSegment({ index, rawSegment, blackPicture: true })
+				);
+			} else {
+				await encodeSegment({ index, rawSegment, blackPicture: false });
+			}
 		}
+		await runIndependently({ tasks: blackSegments });
 
 		// ==============================================================
 		// CURSOR OVERLAY — per-segment, before concat
@@ -1605,9 +1674,10 @@ export async function executeExportJob({
 			}
 		}
 
-		const gapOutputs: string[] = [];
-		if (gaps.length > 0) {
-			for (const [index, gap] of gaps.entries()) {
+		// Black, silent files, each on its own: several at once.
+		const gapOutputs: string[] = new Array(gaps.length);
+		await runIndependently({
+			tasks: gaps.map((gap, index) => async () => {
 				const gapPath = path.join(
 					tempDir,
 					`gap-${String(index).padStart(4, "0")}.mov`
@@ -1622,9 +1692,9 @@ export async function executeExportJob({
 					}),
 					estimatedDuration: gap.duration,
 				});
-				gapOutputs.push(gapPath);
-			}
-		}
+				gapOutputs[index] = gapPath;
+			}),
+		});
 		// The concat output's length: where the last clip or gap ends on the
 		// timeline (a transition export joins its clips' sound end to end and
 		// runs on to the overlays itself).
@@ -1728,295 +1798,378 @@ export async function executeExportJob({
 			});
 		}
 
-		// Adjustment layers below the text/sticker tracks grade the picture
-		// before those overlays are drawn, as the preview stacks them.
-		const lowerAdjustmentLayers = adjustmentLayers.filter(
-			(layer) => !layer.aboveOverlays
-		);
-		// One of them under a media overlay grades the tracks below itself and
-		// leaves that overlay alone: they then all run inside the overlay pass,
-		// each at its own place in the stack, instead of over the finished
-		// picture.
-		const gradeInsideOverlayPass =
-			mediaOverlays.length > 0 &&
-			adjustmentLayersUnderOverlays({
-				layers: lowerAdjustmentLayers,
-				overlays: mediaOverlays,
-				fps: settings.fps,
-			});
-		if (mediaOverlays.length > 0 && settings.format !== "mp3") {
-			updateJobProgress({ jobId, progress: 0.9 });
-			await runMediaOverlayPass({
-				overlays: mediaOverlays,
-				adjustmentLayers: gradeInsideOverlayPass ? lowerAdjustmentLayers : [],
-				videoOutputPath,
+		// The picture the layers are drawn on: the window's for a range
+		// export that has one, the whole joined picture otherwise.
+		let picturePath = videoOutputPath;
+		let pictureDuration = concatDuration;
+		let pictureLayers = rangeLayers;
+		if (pictureWindow) {
+			const windowListPath = path.join(tempDir, "window-video-list.txt");
+			await fsPromises.writeFile(
+				windowListPath,
+				buildConcatLists({
+					files: concatEntries
+						.slice(pictureWindow.first, pictureWindow.last + 1)
+						.map((entry, offset) => ({
+							path:
+								entry.kind === "segment"
+									? segmentOutputs[entry.index]
+									: gapOutputs[entry.index],
+							span: concatSpans[pictureWindow.first + offset],
+						})),
+					fps: settings.fps,
+					sampleRate,
+				}).video,
+				"utf8"
+			);
+			picturePath = path.join(
 				tempDir,
-				settings,
-				duration: concatDuration,
+				`window-picture.${intermediateExtension}`
+			);
+			await runFFmpegCommand({
 				signal: abort.signal,
-				runFFmpegCommand,
-				onProgress: (progress) =>
-					updateJobProgress({ jobId, progress: 0.9 + progress * 0.01 }),
+				args: buildPictureWindowConcatArgs({
+					videoListPath: windowListPath,
+					outputPath: picturePath,
+				}),
+				estimatedDuration: pictureWindow.duration,
 			});
-		}
-
-		if (
-			lowerAdjustmentLayers.length > 0 &&
-			!gradeInsideOverlayPass &&
-			settings.format !== "mp3"
-		) {
-			updateJobProgress({ jobId, progress: 0.91 });
-			await runAdjustmentLayerPass({
-				layers: lowerAdjustmentLayers,
-				videoOutputPath,
-				tempDir,
-				stage: "below-overlays",
-				codec: settings.codec,
-				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
-				estimatedDuration: concatDuration,
-				signal: abort.signal,
-				runFFmpegCommand,
-				onProgress: (progress) =>
-					updateJobProgress({ jobId, progress: 0.91 + progress * 0.01 }),
+			pictureDuration = pictureWindow.duration;
+			pictureLayers = layersInPictureWindow({
+				layers: rangeLayers,
+				window: pictureWindow,
 			});
-		}
-
-		// =====================================================================
-		// STICKER OVERLAY COMPOSITING
-		// After concat, overlay any sticker images onto the exported video.
-		// =====================================================================
-		if (stickerOverlays.length > 0) {
 			claudeLog.info(
 				HANDLER_NAME,
-				`Applying ${stickerOverlays.length} sticker overlay(s) to exported video`
+				`Drawing the range on ${pictureWindow.frames} frame(s) of the picture from ${pictureWindow.start.toFixed(3)} s, not on all ${Math.round(concatDuration * settings.fps)}`
 			);
-			updateJobProgress({ jobId, progress: 0.92 });
+		}
 
-			const concatOutputPath = path.join(tempDir, "concat-no-stickers.mp4");
-			// Move the concat output so we can use it as input for the overlay pass
-			await moveFile({ from: videoOutputPath, to: concatOutputPath });
+		/**
+		 * Draws the layers on the picture at `videoOutputPath`, in place. The
+		 * names are the whole picture's: for a window they are given its
+		 * path, its length and its layers.
+		 */
+		const drawPictureLayers = async ({
+			videoOutputPath,
+			concatDuration,
+			mediaOverlays,
+			stickerOverlays,
+			textOverlays,
+			jianyingTextOverlays,
+			adjustmentLayers,
+		}: PictureLayers & {
+			videoOutputPath: string;
+			concatDuration: number;
+		}): Promise<void> => {
+			// Adjustment layers below the text/sticker tracks grade the picture
+			// before those overlays are drawn, as the preview stacks them.
+			const lowerAdjustmentLayers = adjustmentLayers.filter(
+				(layer) => !layer.aboveOverlays
+			);
+			// One of them under a media overlay grades the tracks below itself and
+			// leaves that overlay alone: they then all run inside the overlay pass,
+			// each at its own place in the stack, instead of over the finished
+			// picture.
+			const gradeInsideOverlayPass =
+				mediaOverlays.length > 0 &&
+				adjustmentLayersUnderOverlays({
+					layers: lowerAdjustmentLayers,
+					overlays: mediaOverlays,
+					fps: settings.fps,
+				});
+			if (mediaOverlays.length > 0 && settings.format !== "mp3") {
+				updateJobProgress({ jobId, progress: 0.9 });
+				await runMediaOverlayPass({
+					overlays: mediaOverlays,
+					adjustmentLayers: gradeInsideOverlayPass ? lowerAdjustmentLayers : [],
+					videoOutputPath,
+					tempDir,
+					settings,
+					duration: concatDuration,
+					signal: abort.signal,
+					runFFmpegCommand,
+					onProgress: (progress) =>
+						updateJobProgress({ jobId, progress: 0.9 + progress * 0.01 }),
+				});
+			}
 
-			try {
-				const stickerPass = buildStickerOverlayPass({
-					inputPath: concatOutputPath,
-					outputPath: videoOutputPath,
-					stickerOverlays,
+			if (
+				lowerAdjustmentLayers.length > 0 &&
+				!gradeInsideOverlayPass &&
+				settings.format !== "mp3"
+			) {
+				updateJobProgress({ jobId, progress: 0.91 });
+				await runAdjustmentLayerPass({
+					layers: lowerAdjustmentLayers,
+					videoOutputPath,
+					tempDir,
+					stage: "below-overlays",
 					codec: settings.codec,
 					bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+					estimatedDuration: concatDuration,
+					signal: abort.signal,
+					runFFmpegCommand,
+					onProgress: (progress) =>
+						updateJobProgress({ jobId, progress: 0.91 + progress * 0.01 }),
 				});
+			}
 
+			// =====================================================================
+			// STICKER OVERLAY COMPOSITING
+			// After concat, overlay any sticker images onto the exported video.
+			// =====================================================================
+			if (stickerOverlays.length > 0) {
 				claudeLog.info(
 					HANDLER_NAME,
-					`Sticker overlay filter_complex: ${stickerPass.filterComplex}`
+					`Applying ${stickerOverlays.length} sticker overlay(s) to exported video`
 				);
+				updateJobProgress({ jobId, progress: 0.92 });
 
-				const totalDuration = concatDuration;
-				await runFFmpegCommand({
-					signal: abort.signal,
-					args: stickerPass.args,
-					estimatedDuration: Math.max(0, totalDuration),
-					onProgress: ({ normalizedProgress }) => {
-						updateJobProgress({
-							jobId,
-							progress: 0.92 + normalizedProgress * 0.06,
-						});
-					},
-				});
+				const concatOutputPath = path.join(tempDir, "concat-no-stickers.mp4");
+				// Move the concat output so we can use it as input for the overlay pass
+				await moveFile({ from: videoOutputPath, to: concatOutputPath });
 
-				claudeLog.info(HANDLER_NAME, "Sticker overlay compositing complete");
-			} catch (stickerError) {
-				claudeLog.error(
-					HANDLER_NAME,
-					"Sticker overlay pass failed, restoring concatenated export:",
-					stickerError
-				);
-				// Remove partial sticker output (Windows won't overwrite on rename)
 				try {
-					await fsPromises.unlink(videoOutputPath);
-				} catch {
-					/* may not exist */
-				}
-				// Restore first so failed jobs never leave a partial output behind.
-				await moveFile({ from: concatOutputPath, to: videoOutputPath });
-				throw new Error(
-					`Sticker overlay export failed: ${stickerError instanceof Error ? stickerError.message : String(stickerError)}`
-				);
-			}
-		}
-
-		if (jianyingTextOverlays.length > 0 && settings.format !== "mp3") {
-			claudeLog.info(
-				HANDLER_NAME,
-				`Rendering ${jianyingTextOverlays.length} original Jianying text overlay(s)`
-			);
-			updateJobProgress({ jobId, progress: 0.93 });
-			const canvas = projectCanvas ?? {
-				width: settings.width,
-				height: settings.height,
-			};
-			const resolvedProjectFps =
-				typeof projectFps === "number" &&
-				Number.isFinite(projectFps) &&
-				projectFps > 0
-					? projectFps
-					: settings.fps;
-			const textRasterLayers: TextRasterLayer[] =
-				await renderJianyingTextRasterLayers({
-					jobId,
-					overlays: jianyingTextOverlays,
-					projectCanvas: canvas,
-					outputCanvas: {
-						width: settings.width,
-						height: settings.height,
-					},
-					projectFps: resolvedProjectFps,
-				});
-			if (textRasterLayers.length !== jianyingTextOverlays.length) {
-				throw new Error(
-					"Jianying text renderer did not return every requested overlay."
-				);
-			}
-			const sourcePath = path.join(tempDir, "video-before-jianying-text.mp4");
-			const baseColor = await probeJoinedPictureColor({
-				path: videoOutputPath,
-			});
-			await moveFile({ from: videoOutputPath, to: sourcePath });
-			try {
-				await runFFmpegCommand({
-					signal: abort.signal,
-					args: buildTextRasterOverlayPassArgs({
-						sourcePath,
+					const stickerPass = buildStickerOverlayPass({
+						inputPath: concatOutputPath,
 						outputPath: videoOutputPath,
-						layers: textRasterLayers,
-						settings,
-						baseColor,
-					}),
-					estimatedDuration: Math.max(0, concatDuration),
-					onProgress: ({ normalizedProgress }) => {
-						updateJobProgress({
-							jobId,
-							progress: 0.93 + normalizedProgress * 0.01,
-						});
-					},
+						stickerOverlays,
+						codec: settings.codec,
+						bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+					});
+
+					claudeLog.info(
+						HANDLER_NAME,
+						`Sticker overlay filter_complex: ${stickerPass.filterComplex}`
+					);
+
+					const totalDuration = concatDuration;
+					await runFFmpegCommand({
+						signal: abort.signal,
+						args: stickerPass.args,
+						estimatedDuration: Math.max(0, totalDuration),
+						onProgress: ({ normalizedProgress }) => {
+							updateJobProgress({
+								jobId,
+								progress: 0.92 + normalizedProgress * 0.06,
+							});
+						},
+					});
+
+					claudeLog.info(HANDLER_NAME, "Sticker overlay compositing complete");
+				} catch (stickerError) {
+					claudeLog.error(
+						HANDLER_NAME,
+						"Sticker overlay pass failed, restoring concatenated export:",
+						stickerError
+					);
+					// Remove partial sticker output (Windows won't overwrite on rename)
+					try {
+						await fsPromises.unlink(videoOutputPath);
+					} catch {
+						/* may not exist */
+					}
+					// Restore first so failed jobs never leave a partial output behind.
+					await moveFile({ from: concatOutputPath, to: videoOutputPath });
+					throw new Error(
+						`Sticker overlay export failed: ${stickerError instanceof Error ? stickerError.message : String(stickerError)}`
+					);
+				}
+			}
+
+			if (jianyingTextOverlays.length > 0 && settings.format !== "mp3") {
+				claudeLog.info(
+					HANDLER_NAME,
+					`Rendering ${jianyingTextOverlays.length} original Jianying text overlay(s)`
+				);
+				updateJobProgress({ jobId, progress: 0.93 });
+				const canvas = projectCanvas ?? {
+					width: settings.width,
+					height: settings.height,
+				};
+				const resolvedProjectFps =
+					typeof projectFps === "number" &&
+					Number.isFinite(projectFps) &&
+					projectFps > 0
+						? projectFps
+						: settings.fps;
+				const textRasterLayers: TextRasterLayer[] =
+					await renderJianyingTextRasterLayers({
+						jobId,
+						overlays: jianyingTextOverlays,
+						projectCanvas: canvas,
+						outputCanvas: {
+							width: settings.width,
+							height: settings.height,
+						},
+						projectFps: resolvedProjectFps,
+					});
+				if (textRasterLayers.length !== jianyingTextOverlays.length) {
+					throw new Error(
+						"Jianying text renderer did not return every requested overlay."
+					);
+				}
+				const sourcePath = path.join(tempDir, "video-before-jianying-text.mp4");
+				const baseColor = await probeJoinedPictureColor({
+					path: videoOutputPath,
 				});
-			} catch (error) {
+				await moveFile({ from: videoOutputPath, to: sourcePath });
 				try {
-					await fsPromises.unlink(videoOutputPath);
-				} catch {}
-				await moveFile({ from: sourcePath, to: videoOutputPath });
-				throw new Error(
-					`Jianying text raster export failed: ${error instanceof Error ? error.message : String(error)}`
+					await runFFmpegCommand({
+						signal: abort.signal,
+						args: buildTextRasterOverlayPassArgs({
+							sourcePath,
+							outputPath: videoOutputPath,
+							layers: textRasterLayers,
+							settings,
+							baseColor,
+						}),
+						estimatedDuration: Math.max(0, concatDuration),
+						onProgress: ({ normalizedProgress }) => {
+							updateJobProgress({
+								jobId,
+								progress: 0.93 + normalizedProgress * 0.01,
+							});
+						},
+					});
+				} catch (error) {
+					try {
+						await fsPromises.unlink(videoOutputPath);
+					} catch {}
+					await moveFile({ from: sourcePath, to: videoOutputPath });
+					throw new Error(
+						`Jianying text raster export failed: ${error instanceof Error ? error.message : String(error)}`
+					);
+				}
+				claudeLog.info(
+					HANDLER_NAME,
+					"Original Jianying text compositing complete"
 				);
 			}
-			claudeLog.info(
-				HANDLER_NAME,
-				"Original Jianying text compositing complete"
-			);
-		}
 
-		// Text/caption overlays are a required parity pass. Failure is fatal so a
-		// successful export can never silently omit visible timeline text.
-		if (textOverlays.length > 0 && settings.format !== "mp3") {
-			claudeLog.info(
-				HANDLER_NAME,
-				`Applying ${textOverlays.length} text overlay(s) to exported video`
+			// Text/caption overlays are a required parity pass. Failure is fatal so a
+			// successful export can never silently omit visible timeline text.
+			if (textOverlays.length > 0 && settings.format !== "mp3") {
+				claudeLog.info(
+					HANDLER_NAME,
+					`Applying ${textOverlays.length} text overlay(s) to exported video`
+				);
+				updateJobProgress({ jobId, progress: 0.94 });
+				const sourcePath = path.join(tempDir, "concat-before-text.mp4");
+				const assPath = path.join(tempDir, "timeline-text.ass");
+				// Overlay x/y/fontSize are project-canvas coordinates, so PlayRes must
+				// be the canvas size — libass then scales text to the export frame.
+				const assScript = buildTextAss({
+					overlays: textOverlays,
+					width: projectCanvas?.width ?? settings.width,
+					height: projectCanvas?.height ?? settings.height,
+				});
+				await fsPromises.writeFile(assPath, assScript, "utf8");
+				// libass gets just the files of the families the text uses, from
+				// every font folder, so it picks each face itself (bold stays
+				// upright) without loading a whole system folder.
+				const fontsDirectory = prepareAssFontsDirectory({
+					scripts: [assScript],
+					directory: path.join(tempDir, "ass-fonts"),
+				});
+				await moveFile({ from: videoOutputPath, to: sourcePath });
+				try {
+					await runFFmpegCommand({
+						signal: abort.signal,
+						args: [
+							"-y",
+							"-i",
+							sourcePath,
+							"-vf",
+							`ass='${escapeAssFilterPath(assPath)}'${fontsDirectory ? `:fontsdir='${escapeAssFilterPath(fontsDirectory)}'` : ""}`,
+							"-map",
+							"0:v:0",
+							"-map",
+							"0:a?",
+							"-c:v",
+							settings.codec,
+							"-preset",
+							"medium",
+							"-b:v",
+							parseBitrateForKbps({ bitrate: settings.bitrate }),
+							"-pix_fmt",
+							"yuv420p",
+							"-c:a",
+							"copy",
+							"-movflags",
+							"+faststart",
+							videoOutputPath,
+						],
+						estimatedDuration: Math.max(0, concatDuration),
+					});
+				} catch (error) {
+					try {
+						await fsPromises.unlink(videoOutputPath);
+					} catch {}
+					await moveFile({ from: sourcePath, to: videoOutputPath });
+					throw new Error(
+						`Text overlay export failed: ${error instanceof Error ? error.message : String(error)}`
+					);
+				}
+			}
+
+			// Adjustment layers above every text/sticker track grade those overlays
+			// too, so they run once the overlays are on the picture.
+			const upperAdjustmentLayers = adjustmentLayers.filter(
+				(layer) => layer.aboveOverlays
 			);
-			updateJobProgress({ jobId, progress: 0.94 });
-			const sourcePath = path.join(tempDir, "concat-before-text.mp4");
-			const assPath = path.join(tempDir, "timeline-text.ass");
-			// Overlay x/y/fontSize are project-canvas coordinates, so PlayRes must
-			// be the canvas size — libass then scales text to the export frame.
-			const assScript = buildTextAss({
-				overlays: textOverlays,
-				width: projectCanvas?.width ?? settings.width,
-				height: projectCanvas?.height ?? settings.height,
-			});
-			await fsPromises.writeFile(assPath, assScript, "utf8");
-			// libass gets just the files of the families the text uses, from
-			// every font folder, so it picks each face itself (bold stays
-			// upright) without loading a whole system folder.
-			const fontsDirectory = prepareAssFontsDirectory({
-				scripts: [assScript],
-				directory: path.join(tempDir, "ass-fonts"),
-			});
-			await moveFile({ from: videoOutputPath, to: sourcePath });
-			try {
-				await runFFmpegCommand({
+			if (upperAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+				updateJobProgress({ jobId, progress: 0.955 });
+				await runAdjustmentLayerPass({
+					layers: upperAdjustmentLayers,
+					videoOutputPath,
+					tempDir,
+					stage: "above-overlays",
+					codec: settings.codec,
+					bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
+					estimatedDuration: concatDuration,
 					signal: abort.signal,
-					args: [
-						"-y",
-						"-i",
-						sourcePath,
-						"-vf",
-						`ass='${escapeAssFilterPath(assPath)}'${fontsDirectory ? `:fontsdir='${escapeAssFilterPath(fontsDirectory)}'` : ""}`,
-						"-map",
-						"0:v:0",
-						"-map",
-						"0:a?",
-						"-c:v",
-						settings.codec,
-						"-preset",
-						"medium",
-						"-b:v",
-						parseBitrateForKbps({ bitrate: settings.bitrate }),
-						"-pix_fmt",
-						"yuv420p",
-						"-c:a",
-						"copy",
-						"-movflags",
-						"+faststart",
-						videoOutputPath,
-					],
-					estimatedDuration: Math.max(0, concatDuration),
+					runFFmpegCommand,
+					onProgress: (progress) =>
+						updateJobProgress({ jobId, progress: 0.955 + progress * 0.005 }),
 				});
-			} catch (error) {
-				try {
-					await fsPromises.unlink(videoOutputPath);
-				} catch {}
-				await moveFile({ from: sourcePath, to: videoOutputPath });
-				throw new Error(
-					`Text overlay export failed: ${error instanceof Error ? error.message : String(error)}`
-				);
 			}
-		}
-
-		// Adjustment layers above every text/sticker track grade those overlays
-		// too, so they run once the overlays are on the picture.
-		const upperAdjustmentLayers = adjustmentLayers.filter(
-			(layer) => layer.aboveOverlays
-		);
-		if (upperAdjustmentLayers.length > 0 && settings.format !== "mp3") {
-			updateJobProgress({ jobId, progress: 0.955 });
-			await runAdjustmentLayerPass({
-				layers: upperAdjustmentLayers,
-				videoOutputPath,
-				tempDir,
-				stage: "above-overlays",
-				codec: settings.codec,
-				bitrate: parseBitrateForKbps({ bitrate: settings.bitrate }),
-				estimatedDuration: concatDuration,
-				signal: abort.signal,
-				runFFmpegCommand,
-				onProgress: (progress) =>
-					updateJobProgress({ jobId, progress: 0.955 + progress * 0.005 }),
-			});
-		}
+		};
+		await drawPictureLayers({
+			videoOutputPath: picturePath,
+			concatDuration: pictureDuration,
+			...pictureLayers,
+		});
 
 		// A range export: the finished picture is cut to the range here. The
 		// sound is still mixed over the whole programme below and cut from
 		// that, so a limiter, fade or effect reaching into the range hears what
 		// plays before it, as in the full export.
-		const rangeCut = range
+		const pictureCut = range
 			? await cutPictureToRange({
-					range,
-					pictureEnd: concatDuration,
-					inputPath: videoOutputPath,
+					range: pictureWindow
+						? rangeInPictureWindow({ range, window: pictureWindow })
+						: range,
+					pictureEnd: pictureDuration,
+					inputPath: picturePath,
 					tempDir,
 					settings,
 					runFFmpegCommand,
 					signal: abort.signal,
 				})
 			: undefined;
+		// The sound is cut on the timeline's clock, not on the window's.
+		const rangeCut =
+			pictureCut && pictureWindow
+				? {
+						picturePath: pictureCut.picturePath,
+						range: {
+							start: pictureCut.range.start + pictureWindow.start,
+							end: pictureCut.range.end + pictureWindow.start,
+						},
+					}
+				: pictureCut;
 		const exportSeconds = rangeCut
 			? rangeCut.range.end - rangeCut.range.start
 			: concatDuration;
