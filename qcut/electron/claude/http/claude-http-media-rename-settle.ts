@@ -152,8 +152,6 @@ async function askEditorToEndOn({
 			newMediaId: to.id,
 			newName: to.name,
 			newPath: to.path,
-			previousName: from.name,
-			previousPath: from.path,
 			settles: true,
 		});
 		return null;
