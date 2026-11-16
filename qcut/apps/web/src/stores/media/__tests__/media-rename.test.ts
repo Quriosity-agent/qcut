@@ -23,7 +23,6 @@ const project = vi.hoisted(() => ({
 }));
 const timeline = vi.hoisted(() => ({
 	tracks: [] as unknown[],
-	saveImmediate: vi.fn(async () => true),
 }));
 const stickers = vi.hoisted(() => ({
 	overlayStickers: new Map<string, { id: string; mediaItemId: string }>(),
@@ -32,6 +31,8 @@ const stickers = vi.hoisted(() => ({
 const platformStorage = vi.hoisted(() => ({
 	load: vi.fn(async (..._args: unknown[]): Promise<unknown> => null),
 	save: vi.fn(async (..._args: unknown[]) => true),
+	remove: vi.fn(async (..._args: unknown[]) => true),
+	list: vi.fn(async (): Promise<string[]> => []),
 }));
 const forgetAlpha = vi.hoisted(() => vi.fn());
 
@@ -59,7 +60,10 @@ vi.mock("../../timeline/timeline-store", async () => {
 	return {
 		useTimelineStore: {
 			getState: () => ({
-				saveImmediate: timeline.saveImmediate,
+				// What the store holds, as its save would write it.
+				get _tracks() {
+					return timeline.tracks;
+				},
 				repointMediaReferences: (ids: { fromId: string; toId: string }) => {
 					const result = repointMediaReferences({
 						tracks: timeline.tracks as TimelineTrack[],
@@ -104,6 +108,32 @@ const timelineKey = ({
 	projectId: string;
 	sceneId?: string;
 }) => `${projectId}/${sceneId}`;
+
+/**
+ * How the saves of project-1's open scene go, one entry a save: `false`
+ * fails it. Past the list they go as `otherwise` says.
+ */
+const openSceneSaves = {
+	count: 0,
+	plan: [] as boolean[],
+	otherwise: true,
+};
+
+/** What storage does with a timeline it is given. */
+function storeTimeline(request: unknown): void {
+	const saved = request as {
+		projectId: string;
+		sceneId?: string;
+		tracks: TimelineTrack[];
+	};
+	if (timelineKey(saved) === "project-1/scene-main") {
+		const saves =
+			openSceneSaves.plan[openSceneSaves.count] ?? openSceneSaves.otherwise;
+		openSceneSaves.count += 1;
+		if (!saves) throw new Error("The open scene could not be saved");
+	}
+	storedTimelines.set(timelineKey(saved), saved.tracks);
+}
 
 function mediaIdsOf(tracks: unknown): Array<string | null> {
 	return (tracks as TimelineTrack[]).flatMap((track) =>
@@ -164,26 +194,11 @@ describe("following a media file renamed in the project folder", () => {
 					timelineKey(request as { projectId: string; sceneId?: string })
 				) ?? null
 		);
+		openSceneSaves.count = 0;
+		openSceneSaves.plan = [];
+		openSceneSaves.otherwise = true;
 		storage.saveTimeline.mockImplementation(async (request: unknown) => {
-			const saved = request as {
-				projectId: string;
-				sceneId?: string;
-				tracks: TimelineTrack[];
-			};
-			storedTimelines.set(timelineKey(saved), saved.tracks);
-		});
-		// As the timeline store does: what it holds, to the open scene.
-		timeline.saveImmediate.mockImplementation(async () => {
-			const active = project.activeProject;
-			if (!active) return false;
-			storedTimelines.set(
-				timelineKey({
-					projectId: active.id,
-					sceneId: active.currentSceneId,
-				}),
-				timeline.tracks as TimelineTrack[]
-			);
-			return true;
+			storeTimeline(request);
 		});
 		stickers.saveToProject.mockImplementation(async () => undefined);
 		platformStorage.load.mockImplementation(async () => null);
@@ -278,12 +293,14 @@ describe("following a media file renamed in the project folder", () => {
 	it("points the open scene's clips at the new id and saves the timeline", async () => {
 		const result = await renameProjectMedia(RENAME);
 		expect(result.clipsUpdated).toBe(2);
-		expect(
-			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
-				element.type === "media" ? element.mediaId : null
-			)
-		).toEqual([NEW, "media_other", NEW]);
-		expect(timeline.saveImmediate).toHaveBeenCalledTimes(1);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		// Saved once, as the open scene of this project and of no other.
+		expect(openSceneSaves.count).toBe(1);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			NEW,
+			"media_other",
+			NEW,
+		]);
 	});
 
 	it("repoints the scenes that are not open, in storage", async () => {
@@ -300,12 +317,13 @@ describe("following a media file renamed in the project folder", () => {
 			projectId: "project-1",
 			sceneId: "scene-b",
 		});
-		const saved = storage.saveTimeline.mock.calls[0][0] as {
-			sceneId: string;
-			tracks: TimelineTrack[];
-		};
-		expect(saved.sceneId).toBe("scene-b");
-		expect(saved.tracks[0].elements[0]).toMatchObject({ mediaId: NEW });
+		const saved = storage.saveTimeline.mock.calls
+			.map(
+				([request]) => request as { sceneId: string; tracks: TimelineTrack[] }
+			)
+			.filter((request) => request.sceneId === "scene-b");
+		expect(saved).toHaveLength(1);
+		expect(saved[0].tracks[0].elements[0]).toMatchObject({ mediaId: NEW });
 	});
 
 	it("takes the stickers along, which are dropped on load when their media is gone", async () => {
@@ -320,11 +338,7 @@ describe("following a media file renamed in the project folder", () => {
 		storage.saveMediaItem.mockRejectedValueOnce(new Error("Quota exceeded"));
 		await expect(renameProjectMedia(RENAME)).rejects.toThrow("Quota exceeded");
 		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
-		expect(
-			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
-				element.type === "media" ? element.mediaId : null
-			)
-		).toEqual([OLD, "media_other", OLD]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 		expect(storage.deleteMediaItem).not.toHaveBeenCalled();
 		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
 	});
@@ -356,7 +370,7 @@ describe("following a media file renamed in the project folder", () => {
 			) {
 				throw new Error("Scene C could not be saved");
 			}
-			storedTimelines.set(timelineKey(saved), saved.tracks);
+			storeTimeline(saved);
 		});
 		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
 			"Scene C could not be saved"
@@ -373,7 +387,7 @@ describe("following a media file renamed in the project folder", () => {
 		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
 		// The open scene points at the old id again, and that was saved.
 		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
-		expect(timeline.saveImmediate).toHaveBeenCalledTimes(2);
+		expect(openSceneSaves.count).toBe(2);
 		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
 			OLD,
 			"media_other",
@@ -400,11 +414,7 @@ describe("following a media file renamed in the project folder", () => {
 		);
 		// Everything else was still taken back.
 		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
-		expect(
-			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
-				element.type === "media" ? element.mediaId : null
-			)
-		).toEqual([OLD, "media_other", OLD]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 	});
 
 	/**
@@ -420,20 +430,21 @@ describe("following a media file renamed in the project folder", () => {
 				sceneId: string;
 				tracks: TimelineTrack[];
 			};
-			if (mediaIdsOf(saved.tracks).includes(NEW)) {
+			if (
+				saved.sceneId === "scene-b" &&
+				mediaIdsOf(saved.tracks).includes(NEW)
+			) {
 				throw new Error("Scene B could not be saved");
 			}
-			storedTimelines.set(timelineKey(saved), saved.tracks);
+			storeTimeline(saved);
 		});
 		// Saved going forward; on the way back the first save fails.
-		timeline.saveImmediate
-			.mockImplementationOnce(async () => true)
-			.mockImplementationOnce(async () => false);
+		openSceneSaves.plan = [true, false];
 		const failure = await renameProjectMedia(RENAME).catch(
 			(error: Error) => error
 		);
 		expect((failure as Error).message).toBe("Scene B could not be saved");
-		expect(timeline.saveImmediate).toHaveBeenCalledTimes(3);
+		expect(openSceneSaves.count).toBe(3);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
 			OLD,
@@ -447,9 +458,8 @@ describe("following a media file renamed in the project folder", () => {
 			throw new Error("The other scene could not be read");
 		});
 		// The open scene is saved going forward, and never again.
-		timeline.saveImmediate
-			.mockImplementationOnce(async () => true)
-			.mockImplementation(async () => false);
+		openSceneSaves.plan = [true];
+		openSceneSaves.otherwise = false;
 		const failure = await renameProjectMedia(RENAME).catch(
 			(error: Error) => error
 		);
@@ -528,16 +538,12 @@ describe("following a media file renamed in the project folder", () => {
 	});
 
 	it("takes the open scene back when it cannot be saved", async () => {
-		timeline.saveImmediate.mockResolvedValueOnce(false);
+		openSceneSaves.plan = [false];
 		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
 			"The timeline could not be saved with the renamed media"
 		);
 		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
-		expect(
-			(timeline.tracks as TimelineTrack[])[0].elements.map((element) =>
-				element.type === "media" ? element.mediaId : null
-			)
-		).toEqual([OLD, "media_other", OLD]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
 	});
 
@@ -553,7 +559,7 @@ describe("following a media file renamed in the project folder", () => {
 			renameProjectMedia({ ...RENAME, deadlineAt: Date.now() + 40 })
 		).rejects.toThrow("took longer than the request waits for");
 		expect((mediaState.mediaItems[0] as { id: string }).id).toBe(OLD);
-		expect(timeline.saveImmediate).not.toHaveBeenCalled();
+		expect(openSceneSaves.count).toBe(0);
 		// Only the copy made under the new id is removed.
 		expect(storage.deleteMediaItem).toHaveBeenCalledTimes(1);
 		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
@@ -633,13 +639,55 @@ describe("following a media file renamed in the project folder", () => {
 			{ id: NEW, url: "blob:theirs-new" },
 		]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, OLD]);
-		expect(timeline.saveImmediate).not.toHaveBeenCalled();
+		expect(openSceneSaves.count).toBe(0);
 		expect(stickers.overlayStickers.get("t1")?.mediaItemId).toBe(NEW);
 		expect(stickers.saveToProject).not.toHaveBeenCalled();
 		// Only the copy this project made under the new id is removed.
 		expect(storage.deleteMediaItem).toHaveBeenCalledTimes(1);
 		expect(storage.deleteMediaItem).toHaveBeenCalledWith("project-1", NEW);
 		expect(storage.saveTimeline).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * The store's own save waits a moment, then reads the open project and
+	 * its tracks: with another project opened meanwhile it saved that
+	 * project's timeline, still empty, into that project's storage. The
+	 * rename saves the tracks it holds at the time, as this scene's.
+	 */
+	it("saves this scene's tracks, and nothing of another project, when one is opened while the save waits", async () => {
+		let savedWhileWaiting: unknown;
+		storage.saveTimeline.mockImplementationOnce(async (request: unknown) => {
+			// The save is under way; the other project is opened, its
+			// timeline in the store by the time the save is through.
+			openAnotherProject();
+			savedWhileWaiting = request;
+			storeTimeline(request);
+		});
+		await expect(renameProjectMedia(RENAME)).rejects.toThrow(
+			"another project or scene opened"
+		);
+
+		// What was saved was this project's scene, with its own clips.
+		expect(savedWhileWaiting).toMatchObject({
+			projectId: "project-1",
+			sceneId: "scene-main",
+		});
+		expect(
+			mediaIdsOf((savedWhileWaiting as { tracks: unknown }).tracks)
+		).toEqual([NEW, "media_other", NEW]);
+		// Taken back in its storage; nothing was ever saved for the other one.
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			OLD,
+			"media_other",
+			OLD,
+		]);
+		expect(
+			storage.saveTimeline.mock.calls.every(
+				([request]) =>
+					(request as { projectId: string }).projectId === "project-1"
+			)
+		).toBe(true);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, OLD]);
 	});
 
 	it("takes its saved scenes and stickers back in storage when another project opens on the last step", async () => {
