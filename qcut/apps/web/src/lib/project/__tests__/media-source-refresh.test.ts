@@ -151,6 +151,58 @@ describe("reading changed media files again", () => {
 		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
 	});
 
+	/**
+	 * The first path asked may be of a file that went away after the folder
+	 * was scanned. Taken for the folder's answer, it left every other item
+	 * spelled in another case unmatched, and its changed file unread.
+	 */
+	it("asks the next path when the first one's file is gone", async () => {
+		mediaState.mediaItems = [
+			mediaItem({
+				id: "media_gone",
+				name: "gone.mp4",
+				bytes: 300,
+				localPath: `${FOLDER}/GONE.mp4`,
+			}),
+			mediaItem({ bytes: 300, localPath: `${FOLDER}/SHAKE.mp4` }),
+		];
+		// Scanned a moment ago; gone.mp4 was deleted since, under any spelling.
+		files.getFileInfo.mockImplementation(async (filePath: unknown) =>
+			String(filePath).toLowerCase().endsWith("/gone.mp4")
+				? null
+				: { size: 8, lastModified: new Date(9000) }
+		);
+		files.readFile.mockImplementation(async (filePath: unknown) =>
+			String(filePath).toLowerCase().endsWith("/gone.mp4")
+				? null
+				: Buffer.from(NEW_BYTES)
+		);
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [
+				diskFile({
+					name: "gone.mp4",
+					path: `${FOLDER}/gone.mp4`,
+					size: 8,
+					modifiedAt: 9000,
+				}),
+				diskFile({ size: 8, modifiedAt: 9000 }),
+			],
+		});
+		// The surviving file is read; the vanished one is a failure, not a
+		// file passed over in silence.
+		expect(result.refreshed).toEqual([
+			{ id: "media_shake", name: "shake.mp4" },
+		]);
+		expect(result.failed).toEqual([
+			{
+				id: "media_gone",
+				name: "gone.mp4",
+				error: "the file could not be read",
+			},
+		]);
+	});
+
 	it("does not ask the folder when every path is spelled as its file is", async () => {
 		mediaState.mediaItems = [mediaItem({ bytes: 400, ...recorded(400, 5000) })];
 		await refreshChangedMediaSources({
