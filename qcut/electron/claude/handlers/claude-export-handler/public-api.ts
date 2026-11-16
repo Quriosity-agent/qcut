@@ -250,8 +250,35 @@ function assertRendererExportRequestCompatible({
 	throw new Error(
 		`This timeline exports through the renderer engine (${because}), which does not take these CLI overrides: ${unsupportedOptions.join(
 			", "
-		)}. Drop them, or pass --engine muxer.`
+		)}. ${rendererOverrideAdvice({ request, reasons, unsupportedOptions })}`
 	);
+}
+
+/**
+ * What to do about overrides the renderer engine refused. "Pass --engine
+ * muxer" used to end every such refusal, and helps in one case only: muxer
+ * is the renderer engine, so a range, a bitrate or --keep-temp is refused
+ * again with it.
+ */
+function rendererOverrideAdvice({
+	request,
+	reasons,
+	unsupportedOptions,
+}: {
+	request: ExportJobRequest;
+	reasons: string[];
+	unsupportedOptions: string[];
+}): string {
+	const onlyEngine =
+		unsupportedOptions.length === 1 && unsupportedOptions[0] === "engine";
+	if (onlyEngine) {
+		return "Drop --engine, or pass --engine auto or --engine muxer.";
+	}
+	// Nothing in the timeline needs the renderer; the request chose it.
+	if (request.engine === "muxer" && reasons.length <= 1) {
+		return "Drop them, or drop --engine muxer: the native export takes them.";
+	}
+	return "Drop them. They belong to the native export, which cannot draw this timeline while it has what is named in the brackets; --engine muxer is the renderer engine too and takes none of them.";
 }
 
 /**
