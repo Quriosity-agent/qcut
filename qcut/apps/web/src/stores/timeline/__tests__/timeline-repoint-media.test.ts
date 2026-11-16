@@ -86,6 +86,50 @@ describe("the timeline store repoints a renamed media item's clips", () => {
 		expect(useTimelineStore.getState()._tracks).toBe(before);
 	});
 
+	/**
+	 * An undo step holds the tracks as they were. Undone after a rename, it
+	 * would put the old id back on the timeline, for media the project no
+	 * longer has under that id.
+	 */
+	it("repoints the undo and redo steps, so an undo does not bring the old id back", () => {
+		const store = useTimelineStore.getState();
+		// One undo step: the first clip is removed.
+		store.removeElementFromTrack("main", "a");
+		expect(useTimelineStore.getState().history).toHaveLength(1);
+		expect(mediaIds()).toEqual(["media_other", OLD]);
+
+		store.repointMediaReferences({ fromId: OLD, toId: NEW });
+		useTimelineStore.getState().undo();
+		// The removed clip is back, playing the renamed media.
+		expect(mediaIds()).toEqual([NEW, "media_other", NEW]);
+		useTimelineStore.getState().redo();
+		useTimelineStore.getState().undo();
+		expect(mediaIds()).toEqual([NEW, "media_other", NEW]);
+	});
+
+	it("repoints the steps even when no clip on the timeline plays the id any more", () => {
+		const store = useTimelineStore.getState();
+		store.removeElementFromTrack("main", "a");
+		useTimelineStore.setState((state) => ({
+			_tracks: state._tracks.map((track) =>
+				track.id === "locked" ? { ...track, elements: [] } : track
+			),
+		}));
+		expect(
+			useTimelineStore
+				.getState()
+				.repointMediaReferences({ fromId: OLD, toId: NEW })
+		).toBe(0);
+		const [snapshot] = useTimelineStore.getState().history;
+		expect(
+			snapshot.tracks.flatMap((track) =>
+				track.elements.map((element) =>
+					element.type === "media" ? element.mediaId : null
+				)
+			)
+		).toEqual([NEW, "media_other", NEW]);
+	});
+
 	it("can be taken back by repointing the other way", () => {
 		const store = useTimelineStore.getState();
 		store.repointMediaReferences({ fromId: OLD, toId: NEW });
