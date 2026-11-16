@@ -20,6 +20,11 @@ import {
 	TIMELINE_BATCH_ROUTE_PATTERN,
 } from "../claude/utils/timeline-batch-deadline.js";
 import type { ClaudeMediaRefreshResult } from "../types/claude-media-bridge-api.js";
+import {
+	MEDIA_RENAME_TIMEOUT_MS,
+	UTILITY_BRIDGE_MARGIN_MS,
+	mediaRefreshWaitMs,
+} from "../claude/handlers/claude-media-deadlines.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -444,13 +449,26 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		requestMediaDelete: (payload) =>
 			requestFromMain("media:delete-renderer", { payload }) as Promise<void>,
 		/** Re-keys a renamed media item in the renderer and repoints its clips. */
+		// Each waits longer than the main process does (claude-media-deadlines):
+		// the bridge's usual 10 s would end first, and the route would undo a
+		// rename the editor was still making.
 		requestMediaRename: (payload) =>
-			requestFromMain("media:rename-renderer", { payload }) as Promise<void>,
+			requestFromMain(
+				"media:rename-renderer",
+				{ payload },
+				{ timeoutMs: MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS }
+			) as Promise<void>,
 		/** Has the renderer read again the media files that changed on disk. */
 		requestMediaRefresh: (payload) =>
-			requestFromMain("media:refresh-renderer", {
-				payload,
-			}) as Promise<ClaudeMediaRefreshResult>,
+			requestFromMain(
+				"media:refresh-renderer",
+				{ payload },
+				{
+					timeoutMs:
+						mediaRefreshWaitMs({ timeoutMs: payload.timeoutMs }) +
+						UTILITY_BRIDGE_MARGIN_MS,
+				}
+			) as Promise<ClaudeMediaRefreshResult>,
 		/** Executes batched cut operations through the bridge. */
 		executeBatchCuts: async (request) =>
 			(await requestFromMain("timeline:batch-cuts", {
