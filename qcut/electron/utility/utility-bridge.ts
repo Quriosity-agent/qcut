@@ -533,9 +533,11 @@ async function handleMainRequest(
 	// a rename is noted, and a restricted file's metadata changed, also when
 	// the editor's window is gone.
 	if (channel === "media:restricted-metadata") {
-		return changeRestrictedMetadataHere(
-			data as Parameters<typeof changeRestrictedMetadataHere>[0]
-		);
+		// What the utility process has stopped waiting for is not made.
+		return changeRestrictedMetadataHere({
+			...(data as Parameters<typeof changeRestrictedMetadataHere>[0]),
+			deadline,
+		});
 	}
 	if (channel === "media:note-unsettled-rename") {
 		const req = data as unknown as {
