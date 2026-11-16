@@ -73,6 +73,8 @@ import type {
 } from "../../types/claude-state-api.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRefreshResult,
 	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../../types/claude-media-bridge-api.js";
@@ -326,6 +328,10 @@ export interface WindowAccessor {
 	requestMediaRename?(
 		payload: Omit<ClaudeMediaRenamedEvent, "requestId">
 	): Promise<void>;
+	/** Have the renderer read again the media files that changed on disk. */
+	requestMediaRefresh?(
+		payload: Omit<ClaudeMediaRefreshEvent, "requestId">
+	): Promise<ClaudeMediaRefreshResult>;
 	/** Execute batch timeline cuts (optional utility-process bridge hook) */
 	executeBatchCuts?(request: BatchCutRequest): Promise<BatchCutResponse>;
 	/** Execute range delete (optional utility-process bridge hook) */
@@ -769,6 +775,31 @@ function readTrackSwitches({
 	return switches;
 }
 
+/**
+ * Has the editor read again the media files that changed on disk, before an
+ * export. Returns the ones it could not read. A renderer that cannot be
+ * asked at all is not a reason to stop: the native export does not need it.
+ */
+async function refreshMediaBeforeExport({
+	accessor,
+	projectId,
+}: {
+	accessor: WindowAccessor;
+	projectId: string;
+}): Promise<ClaudeMediaRefreshResult["failed"]> {
+	if (!accessor.requestMediaRefresh) return [];
+	try {
+		const answer = await accessor.requestMediaRefresh({ projectId });
+		return Array.isArray(answer?.failed) ? answer.failed : [];
+	} catch (error) {
+		claudeLog.warn(
+			"HTTP",
+			`Could not check the editor's media copies before the export: ${error instanceof Error ? error.message : String(error)}`
+		);
+		return [];
+	}
+}
+
 async function requireRendererMutation({
 	operation,
 	request,
@@ -1078,6 +1109,28 @@ export function registerSharedRoutes(
 		}
 		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
 		return true;
+	});
+
+	// The editor plays its own copy of each media file; the native export and
+	// this API read the file in the project folder. A file written over in
+	// the folder leaves the two apart until the editor reads it again. It
+	// does so on its own when its window is looked at again, before a
+	// timeline apply and before an export; this asks for it outright.
+	router.post("/api/claude/media/:projectId/refresh", async (req) => {
+		const { projectId } = req.params;
+		await assertProjectIsOpen({ accessor, projectId });
+		const requestMediaRefresh = accessor.requestMediaRefresh;
+		if (!requestMediaRefresh) {
+			throw new HttpError(503, "Renderer media refresh is unavailable");
+		}
+		let result: ClaudeMediaRefreshResult | undefined;
+		await requireRendererMutation({
+			operation: "Renderer media refresh",
+			request: async () => {
+				result = await requestMediaRefresh({ projectId });
+			},
+		});
+		return result;
 	});
 
 	// A media id follows its file name, so a rename gives the item a new id.
@@ -2131,6 +2184,13 @@ export function registerSharedRoutes(
 						"editor:navigator:open, then retry the export."
 				);
 			}
+			// The editor reads again any media file that was written over in the
+			// project folder, so its preview, and a renderer export, hold what
+			// the folder holds. A native export reads the folder either way.
+			const staleMedia = await refreshMediaBeforeExport({
+				accessor,
+				projectId: req.params.projectId,
+			});
 			const mediaFiles = await listMediaFilesWithRendererFallback({
 				projectId: req.params.projectId,
 				accessor,
@@ -2184,6 +2244,16 @@ export function registerSharedRoutes(
 				),
 			];
 			if (rendererExportReasons.length > 0) {
+				// The renderer draws from the editor's copies: with a stale one
+				// the file would hold an old picture or sound.
+				if (staleMedia.length > 0) {
+					throw new HttpError(
+						409,
+						`${staleMedia.length} media file(s) changed in the project folder and the editor could not read them again, so a renderer export would use its old copies: ${staleMedia
+							.map((entry) => `${entry.name} (${entry.error})`)
+							.join("; ")}. Fix the files or import them again, then retry.`
+					);
+				}
 				if (!accessor.requestLocalVideoExport) {
 					throw new HttpError(
 						503,
