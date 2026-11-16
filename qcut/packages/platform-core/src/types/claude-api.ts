@@ -21,6 +21,8 @@ export interface PlatformClaudeMediaAPI {
 	rename(projectId: string, mediaId: string, newName: string): Promise<unknown>;
 	onMediaImported(callback: (data: unknown) => void | Promise<void>): void;
 	onMediaDeleted(callback: (data: unknown) => void | Promise<void>): void;
+	/** A media file was renamed in the project folder; its id changed with it. */
+	onMediaRenamed?(callback: (data: unknown) => void | Promise<void>): void;
 }
 
 // ---------------------------------------------------------------------------
