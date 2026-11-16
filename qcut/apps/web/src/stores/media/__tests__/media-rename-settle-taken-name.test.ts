@@ -36,6 +36,7 @@ import {
 	ANOTHER_FILE,
 	ANOTHER_FILES_ITEM,
 	desktop,
+	HELD_SINCE,
 	heldIds,
 	item,
 	mediaIdsOf,
@@ -166,9 +167,11 @@ describe("a noted rename when another file has taken one of the two names", () =
 
 	/**
 	 * Whose the item under the old id is, the renamed file's or the other
-	 * file's, is told by the file it was copied from. That both ids are in
-	 * use tells nothing: a rename taken back in one scene only leaves both
-	 * in use for one file, and two media are in use each for its own.
+	 * file's, is told by the file it was copied from and by when the editor
+	 * came to hold it: the renamed file's own was held before the rename
+	 * began. That both ids are in use tells nothing: a rename taken back in
+	 * one scene only leaves both in use for one file, and two media are in
+	 * use each for its own.
 	 */
 	describe("with an item under each id", () => {
 		beforeEach(anotherFileHasTheOldName);
@@ -267,26 +270,141 @@ describe("a noted rename when another file has taken one of the two names", () =
 			expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
 		});
 
-		it("tells an item from before the record was kept by the size of its copy", async () => {
-			// 7 bytes, as the items of these tests are; nothing recorded.
-			const unrecorded = (id: string, name: string, path: string) =>
-				item({ id, name, path, copiedFrom: null });
-			reopenProject({
-				items: [unrecorded(OLD, "old.mp4", OLD_PATH), NEW_ITEM()],
+		/**
+		 * Two files can have one size and one time: the same clip brought
+		 * into the project twice has, the second time under the name the
+		 * renamed file left. With a note that outlived the rename, the second
+		 * file's item was taken for the renamed file's by its size and time:
+		 * it was dropped, its clips were sent to the renamed file, and the
+		 * note went.
+		 */
+		it("does not take another file's item for the renamed file's because the two files look alike", async () => {
+			// Both names have a file of the same size and time.
+			desktop.looks.set(OLD_PATH, THE_FILE);
+			const importedSince = item({
+				id: OLD,
+				name: "old.mp4",
+				path: OLD_PATH,
+				// Copied from a file that looks as the renamed one does, after
+				// the rename began: from the file that took the old name.
+				heldSince: HELD_SINCE,
 			});
-			timeline.tracks = [mediaTrack([OLD, NEW])];
-
-			// The renamed file is not 7 bytes long: the item is another file's.
+			reopenProject({ items: [importedSince, NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW, OLD])];
 			noted({ file: SEEN, fileIs: "new" });
+
+			expect(
+				await settleUnsettledMediaRenames({ projectId: "project-1" })
+			).toEqual({ dropped: 0 });
+
+			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW, OLD]);
+			expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
+			expect(storage.saveTimeline).not.toHaveBeenCalled();
+			expect(storage.deleteMediaItem).not.toHaveBeenCalled();
+			// Whose it is, is not known: the note stays for what may tell.
+			expect(desktop.stored.has(NOTES)).toBe(true);
+		});
+
+		it("does the same when the record does not say by when the editor held the item", async () => {
+			const fromBefore = item({
+				id: OLD,
+				name: "old.mp4",
+				path: OLD_PATH,
+				heldSince: null,
+			});
+			reopenProject({ items: [fromBefore, NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			noted({ file: SEEN, fileIs: "new" });
+
+			expect(
+				await settleUnsettledMediaRenames({ projectId: "project-1" })
+			).toEqual({ dropped: 0 });
+			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW]);
+			expect(desktop.stored.has(NOTES)).toBe(true);
+		});
+
+		it("does the same when the note does not say when the rename began", async () => {
+			reopenProject({ items: [OLD_ITEM(), NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			noted({ file: SEEN, fileIs: "new", beganAt: undefined });
+
 			await settleUnsettledMediaRenames({ projectId: "project-1" });
 			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(desktop.stored.has(NOTES)).toBe(true);
+		});
 
-			// It is: the item is the renamed file's own.
+		/**
+		 * An item from before any record was kept has only the size of its
+		 * copy to go by. A copy as long as the renamed file was taken for the
+		 * renamed file's own; any file of that length would have been.
+		 */
+		it("does not take the size of a copy for proof of whose an unrecorded item is", async () => {
+			// 7 bytes, as the items of these tests are; nothing recorded.
+			const unrecorded = item({
+				id: OLD,
+				name: "old.mp4",
+				path: OLD_PATH,
+				copiedFrom: null,
+			});
+			reopenProject({ items: [unrecorded, NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			// The renamed file is 7 bytes long too.
 			desktop.looks.set(NEW_PATH, { ...THE_FILE, size: 7 });
 			noted({ file: { ...SEEN, size: 7 }, fileIs: "new" });
-			await settleUnsettledMediaRenames({ projectId: "project-1" });
-			expect(heldIds()).toEqual([NEW]);
-			expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, NEW]);
+
+			expect(
+				await settleUnsettledMediaRenames({ projectId: "project-1" })
+			).toEqual({ dropped: 0 });
+
+			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW]);
+			expect(storage.deleteMediaItem).not.toHaveBeenCalled();
+			expect(desktop.stored.has(NOTES)).toBe(true);
+		});
+
+		it("leaves an unrecorded item of another length alone, as another file's", async () => {
+			const unrecorded = item({
+				id: OLD,
+				name: "old.mp4",
+				path: OLD_PATH,
+				copiedFrom: null,
+			});
+			reopenProject({ items: [unrecorded, NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			// The renamed file is not 7 bytes long.
+			noted({ file: SEEN, fileIs: "new" });
+
+			expect(
+				await settleUnsettledMediaRenames({ projectId: "project-1" })
+			).toEqual({ dropped: 1 });
+			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW]);
+		});
+
+		/**
+		 * Held before the rename, and copied from a file that does not look
+		 * like the renamed one: its file was written over before the rename
+		 * and not read again, or it is an item of a file long gone from that
+		 * name. Neither is plain, so it is neither brought over nor given up.
+		 */
+		it("changes nothing for an item held before the rename that was copied from a file of another look", async () => {
+			const stale = item({
+				id: OLD,
+				name: "old.mp4",
+				path: OLD_PATH,
+				copiedFrom: ANOTHER_FILE,
+			});
+			reopenProject({ items: [stale, NEW_ITEM()] });
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			noted({ file: SEEN, fileIs: "new" });
+
+			expect(
+				await settleUnsettledMediaRenames({ projectId: "project-1" })
+			).toEqual({ dropped: 0 });
+			expect(heldIds()).toEqual([OLD, NEW]);
+			expect(desktop.stored.has(NOTES)).toBe(true);
 		});
 
 		it("changes nothing, and keeps the note, when nothing was noted of the file", async () => {
