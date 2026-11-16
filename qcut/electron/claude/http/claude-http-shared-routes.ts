@@ -1098,9 +1098,16 @@ export function registerSharedRoutes(
 				"Renderer media rename acknowledgement is unavailable"
 			);
 		}
+		// `exactName` refuses a taken name instead of adding a suffix to it.
+		const exactName = req.body?.exactName === true;
 		let renamed: RenamedMediaFile;
 		try {
-			renamed = await renameMediaFileOnDisk({ projectId, mediaId, newName });
+			renamed = await renameMediaFileOnDisk({
+				projectId,
+				mediaId,
+				newName,
+				...(exactName ? { exactName } : {}),
+			});
 		} catch (error) {
 			if (error instanceof MediaNotFoundError) {
 				throw new HttpError(
