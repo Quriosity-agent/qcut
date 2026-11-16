@@ -59,6 +59,27 @@ describe("playback store preview scrub time", () => {
 		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
 	});
 
+	it("shows the sought frame when a seek arrives during a hover preview", () => {
+		const store = usePlaybackStore.getState();
+		store.setDuration(300);
+		// The pointer rests over the timeline at 8.4 s while paused.
+		store.setPreviewScrubTime(8.4);
+		const seen: Array<{ time: number; scrub?: boolean }> = [];
+		const listener = (event: Event) => {
+			seen.push((event as CustomEvent).detail);
+		};
+		window.addEventListener("playback-seek", listener);
+		try {
+			store.seek(42.2);
+		} finally {
+			window.removeEventListener("playback-seek", listener);
+		}
+		const state = usePlaybackStore.getState();
+		expect(state.currentTime).toBe(42.2);
+		expect(state.previewScrubTime).toBeNull();
+		expect(seen).toEqual([{ time: 42.2 }]);
+	});
+
 	it("publishes explicit pauses even while already paused so a buffering preview can cancel its resume", () => {
 		const states: boolean[] = [];
 		const listener = () => {
