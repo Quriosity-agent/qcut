@@ -23,6 +23,8 @@ import type {
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRefreshResult,
 	ClaudeMediaRenamedEvent,
 } from "../../types/claude-media-bridge-api";
 import type {
@@ -57,6 +59,11 @@ export interface ClaudeMediaAPI {
 		) => void;
 		onMediaRenamed: (
 			callback: (data: ClaudeMediaRenamedEvent) => void | Promise<void>
+		) => void;
+		onMediaRefresh: (
+			callback: (
+				data: ClaudeMediaRefreshEvent
+			) => ClaudeMediaRefreshResult | Promise<ClaudeMediaRefreshResult>
 		) => void;
 	};
 }
