@@ -12,6 +12,10 @@
  *   it moves. The editor settles a rename that is still noted from what the
  *   folder holds, when the project has next finished loading: whatever
  *   becomes of the editor or of this request, a record is there.
+ * - While this request may still move the file, the editor does not settle
+ *   the rename by itself: the app knows that it is at work on it, from the
+ *   first note until it says where it left the file, and at the latest
+ *   until the request is over (`notedMove`).
  * - Where the editor stands is not known: its answer did not come in time
  *   (it may have finished all the same), or says it could not take
  *   everything back. The editor is asked to end on the old id, in a request
@@ -35,7 +39,10 @@ type RequestMediaRename = (
 	payload: Omit<ClaudeMediaRenamedEvent, "requestId">
 ) => Promise<void>;
 
-/** The desktop app's notes of renames the editor may not have settled. */
+/**
+ * The desktop app's notes of renames the editor may not have settled, for
+ * one request: what it says of a rename is said in its own name.
+ */
 export interface MediaRenameNotes {
 	noteUnsettledMediaRename(payload: {
 		projectId: string;
@@ -45,7 +52,30 @@ export interface MediaRenameNotes {
 	forgetUnsettledMediaRename(payload: {
 		projectId: string;
 		renamed: RenamedMediaFile;
+		/**
+		 * The file was not moved after all: what was noted of the two names
+		 * before this rename began is as it was.
+		 */
+		unmoved?: boolean;
 	}): Promise<void>;
+}
+
+/**
+ * The same notes as a server reaches them: every word names the request
+ * that says it (`by`), so that the app tells one request's rename from
+ * another's between the same two names.
+ */
+export interface MediaRenameNoteAccess {
+	noteUnsettledMediaRename(
+		payload: Parameters<MediaRenameNotes["noteUnsettledMediaRename"]>[0] & {
+			by: string;
+		}
+	): Promise<void>;
+	forgetUnsettledMediaRename(
+		payload: Parameters<MediaRenameNotes["forgetUnsettledMediaRename"]>[0] & {
+			by: string;
+		}
+	): Promise<void>;
 }
 
 /** What an editor that did not confirm is left with: the note. */
@@ -66,20 +96,28 @@ function mediaRenameOutcomeUnknown({ reason }: { reason: string }): boolean {
 
 /**
  * Drops the note of a rename that needs none any more: the editor is where
- * the file is, or the file was not moved. A note that cannot be dropped is
- * left; the editor settles it and finds nothing to change.
+ * the file is, or the file was not moved (`unmoved`: an earlier rename
+ * between the same two names that is still noted stays noted). A note that
+ * cannot be dropped is left; the editor settles it and finds nothing to
+ * change.
  */
 export async function forgetSettledMediaRename({
 	notes,
 	projectId,
 	renamed,
+	unmoved = false,
 }: {
 	notes: MediaRenameNotes;
 	projectId: string;
 	renamed: RenamedMediaFile;
+	unmoved?: boolean;
 }): Promise<void> {
 	try {
-		await notes.forgetUnsettledMediaRename({ projectId, renamed });
+		await notes.forgetUnsettledMediaRename({
+			projectId,
+			renamed,
+			...(unmoved ? { unmoved } : {}),
+		});
 	} catch (error) {
 		claudeLog.warn(
 			"HTTP",
@@ -96,6 +134,13 @@ export async function forgetSettledMediaRename({
  * cannot be noted is not made: nothing has changed then, and the caller is
  * told so. From the move on, the note is the record that outlasts the
  * editor, this request and the app itself.
+ *
+ * With that note the app is at work on the rename, and the editor leaves
+ * it alone. `left` ends that, and is to be called when the request is
+ * over, however it went: the note that is there then is the editor's to
+ * settle. It is said for every rename this request set out to note, also
+ * one whose note may not have got through: the app may have it all the
+ * same, and nothing else would end it.
  */
 export function notedMove({
 	notes,
@@ -106,9 +151,12 @@ export function notedMove({
 }): {
 	beforeMove: (planned: RenamedMediaFile) => Promise<void>;
 	notMoved: (planned: RenamedMediaFile) => Promise<void>;
+	left: () => Promise<void>;
 } {
+	const begun: RenamedMediaFile[] = [];
 	return {
 		beforeMove: async (planned) => {
+			begun.push(planned);
 			try {
 				await notes.noteUnsettledMediaRename({
 					projectId,
@@ -123,7 +171,29 @@ export function notedMove({
 			}
 		},
 		notMoved: (planned) =>
-			forgetSettledMediaRename({ notes, projectId, renamed: planned }),
+			forgetSettledMediaRename({
+				notes,
+				projectId,
+				renamed: planned,
+				unmoved: true,
+			}),
+		left: async () => {
+			for (const planned of begun) {
+				try {
+					await notes.noteUnsettledMediaRename({
+						projectId,
+						renamed: planned,
+						stage: "left",
+					});
+				} catch (error) {
+					// It is at work on it until the process serving requests ends.
+					claudeLog.warn(
+						"HTTP",
+						`The app was not told that the rename of ${planned.previous.id} is over: ${messageOf(error)}`
+					);
+				}
+			}
+		},
 	};
 }
 
