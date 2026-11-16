@@ -10,10 +10,11 @@
  * the exported file had the new one, and nothing said so.
  *
  * Each item records the size and modification time of the file it was
- * copied from (`metadata.sourceFile`). A file whose size or time no longer
- * matches is read again. An item from before this was recorded is compared
- * by size alone, the one thing known about what it was copied from; if that
- * matches, the file's present size and time are taken as its record.
+ * copied from (`metadata.sourceFile`), and by when the editor held the
+ * copy. A file whose size or time no longer matches is read again. An item
+ * from before this was recorded is compared by size alone, the one thing
+ * known about what it was copied from; if that matches, the file's present
+ * size and time are taken as its record.
  *
  * @module lib/project/media-source-refresh
  */
@@ -36,6 +37,7 @@ import {
 	readSourceFileStat,
 	type SourceFileStat,
 	sameSourceFile,
+	statSourceFile,
 } from "./media-source-stat";
 
 export { readSourceFileStat, type SourceFileStat } from "./media-source-stat";
@@ -174,45 +176,24 @@ async function idsOfUnsettledRenames(projectId: string): Promise<Set<string>> {
 	}
 }
 
+/**
+ * The item's metadata with its record of the file it was copied from.
+ * `heldSince` is the moment by which the editor held these bytes: when they
+ * had been read, or, where only the record is new, now.
+ */
 function withSourceFile({
 	item,
 	stat,
+	heldSince,
 }: {
 	item: MediaItem;
-	stat: SourceFileStat;
+	stat: Pick<SourceFileStat, "size" | "modifiedAt">;
+	heldSince: number;
 }): MediaItem["metadata"] {
 	return {
 		...item.metadata,
-		sourceFile: { size: stat.size, modifiedAt: stat.modifiedAt },
+		sourceFile: { size: stat.size, modifiedAt: stat.modifiedAt, heldSince },
 	};
-}
-
-/**
- * The file's size and time now. The desktop app answers with dates
- * (`lastModified`, `modified`), which is not what its declared type says, so
- * both shapes are read.
- */
-async function statFile({
-	filePath,
-}: {
-	filePath: string;
-}): Promise<SourceFileStat> {
-	const info = (await platform().files.getFileInfo(filePath)) as unknown as {
-		size?: unknown;
-		modifiedAt?: unknown;
-		lastModified?: unknown;
-		modified?: unknown;
-	} | null;
-	if (!info || typeof info.size !== "number") {
-		throw new Error("the file is gone");
-	}
-	const when = info.modifiedAt ?? info.lastModified ?? info.modified;
-	const modifiedAt =
-		typeof when === "number" ? when : new Date(when as string | Date).getTime();
-	if (!Number.isFinite(modifiedAt)) {
-		throw new Error("the file's modification time could not be read");
-	}
-	return { size: info.size, modifiedAt };
 }
 
 /**
@@ -239,7 +220,7 @@ async function folderIgnoresCase({
 	const scanned = scannedFiles(diskFiles);
 	for (const item of mediaItems) {
 		if (!item.localPath || !scanned.differsByCase(item.localPath)) continue;
-		const answers = await statFile({ filePath: item.localPath }).then(
+		const answers = await statSourceFile({ filePath: item.localPath }).then(
 			() => true,
 			() => false
 		);
@@ -258,14 +239,20 @@ async function readSettledFile({
 	file,
 }: {
 	file: ProjectFolderFileInfo;
-}): Promise<{ bytes: Uint8Array<ArrayBuffer>; stat: SourceFileStat }> {
+}): Promise<{
+	bytes: Uint8Array<ArrayBuffer>;
+	stat: SourceFileStat;
+	/** The moment the bytes had been read. */
+	readAt: number;
+}> {
 	let before: SourceFileStat = { size: file.size, modifiedAt: file.modifiedAt };
 	for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt += 1) {
 		const buffer = await platform().files.readFile(file.path);
 		if (!buffer) throw new Error("the file could not be read");
-		const after = await statFile({ filePath: file.path });
+		const readAt = Date.now();
+		const after = await statSourceFile({ filePath: file.path });
 		if (buffer.byteLength === after.size && sameSourceFile(before, after)) {
-			return { bytes: new Uint8Array(buffer), stat: before };
+			return { bytes: new Uint8Array(buffer), stat: before, readAt };
 		}
 		before = after;
 		if (attempt < READ_ATTEMPTS) {
@@ -445,6 +432,7 @@ async function refreshOnce({
 	for (const { item, file } of plan.adopt) {
 		stayInProject();
 		if (!stillHeld(item)) continue;
+		const adoptedAt = Date.now();
 		// Added to what the item holds now, not to what it held when the
 		// folder was scanned: another task may have recorded something since.
 		useMediaStore.setState((state) => ({
@@ -452,7 +440,13 @@ async function refreshOnce({
 				candidate.id === item.id
 					? {
 							...candidate,
-							metadata: withSourceFile({ item: candidate, stat: file }),
+							// Its bytes are older than this moment, whenever they
+							// were read.
+							metadata: withSourceFile({
+								item: candidate,
+								stat: file,
+								heldSince: adoptedAt,
+							}),
 						}
 					: candidate
 			),
@@ -481,7 +475,7 @@ async function refreshOnce({
 		}
 		let replacementUrl: string | undefined;
 		try {
-			const { bytes, stat } = await readSettledFile({ file });
+			const { bytes, stat, readAt } = await readSettledFile({ file });
 			const mimeType =
 				item.file.type || getMimeType(file.name, file.type) || "";
 			const fresh = new File([bytes], item.name, {
@@ -502,7 +496,7 @@ async function refreshOnce({
 			}
 			// What was learned about the old file describes another file now.
 			const { alpha: _alpha, ...metadata } =
-				withSourceFile({ item: held, stat }) ?? {};
+				withSourceFile({ item: held, stat, heldSince: readAt }) ?? {};
 			if (item.localPath) {
 				forgetMediaAlphaInspection({ localPath: item.localPath });
 			}
