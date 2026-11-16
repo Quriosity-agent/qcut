@@ -133,9 +133,9 @@ clips in it:
   the range only, not on the whole film. An overlay that began before those
   clips is read from the matching instant of its file; a sticker, a text or
   an overlay that moves over its length makes the drawn stretch start where
-  it starts. With a transition in the timeline, or a drawn cursor, the whole
-  picture is drawn as before. The sound is still mixed over the whole
-  programme, which is most of what a short range now costs;
+  it starts. With a transition, a drawn cursor or a keyframed grade in the
+  timeline, the whole picture is drawn as before. The sound is still mixed
+  over the whole programme, which is most of what a short range now costs;
 - the picture in the range matches the full export frame for frame (it is
   encoded once more from the finished picture); the sound is the same mix,
   encoded on its own, so its AAC frames differ from the full export's.
