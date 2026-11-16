@@ -193,6 +193,30 @@ describe("export start and the project's media", () => {
 		);
 	});
 
+	/**
+	 * Only an export through the renderer draws from the editor's copies. A
+	 * native export used to wait for the check all the same: up to fifteen
+	 * seconds, with an editor that was busy reading a large file.
+	 */
+	it("starts a native export without waiting for the editor's check", async () => {
+		const requestMediaRefresh = vi.fn(
+			() => new Promise<never>(() => undefined)
+		);
+		const accessor = buildAccessor(buildTimeline("project-a"));
+		Object.assign(accessor, { requestMediaRefresh });
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		await expect(
+			getHandler(
+				method,
+				path
+			)({ params: { projectId: "project-a" }, query: {}, body: {} })
+		).resolves.toMatchObject({ jobId: "test-job" });
+		// Asked all the same, so that the preview catches up.
+		expect(requestMediaRefresh).toHaveBeenCalledTimes(1);
+	});
+
 	it("exports natively even when the editor could not read a changed file, or could not be asked", async () => {
 		for (const requestMediaRefresh of [
 			vi.fn(async () => ({
