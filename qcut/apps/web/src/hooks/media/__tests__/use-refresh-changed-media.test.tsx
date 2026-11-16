@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({})));
 const settle = vi.hoisted(() =>
-	vi.fn(async (..._args: unknown[]): Promise<{ lookAgainAt?: number }> => ({}))
+	vi.fn(
+		async (
+			..._args: unknown[]
+		): Promise<{ lookAgainAt?: number; dropped: number }> => ({ dropped: 0 })
+	)
 );
 const stores = vi.hoisted(() => ({
 	projectId: "p1" as string | undefined,
@@ -89,7 +93,10 @@ describe("checking the project's media files when the window is looked at", () =
 	 * project stays open, so it is looked at again once the app must be done.
 	 */
 	it("looks again at a rename the desktop app was still at work on", async () => {
-		settle.mockResolvedValueOnce({ lookAgainAt: Date.now() + 120_000 });
+		settle.mockResolvedValueOnce({
+			lookAgainAt: Date.now() + 120_000,
+			dropped: 0,
+		});
 		renderHook(() => useRefreshChangedMedia());
 		expect(settle).toHaveBeenCalledTimes(1);
 
@@ -103,12 +110,34 @@ describe("checking the project's media files when the window is looked at", () =
 	});
 
 	it("does not look again once the project is closed", async () => {
-		settle.mockResolvedValueOnce({ lookAgainAt: Date.now() + 120_000 });
+		settle.mockResolvedValueOnce({
+			lookAgainAt: Date.now() + 120_000,
+			dropped: 0,
+		});
 		const { unmount } = renderHook(() => useRefreshChangedMedia());
 		await vi.advanceTimersByTimeAsync(1000);
 		unmount();
 		await vi.advanceTimersByTimeAsync(600_000);
 		expect(settle).toHaveBeenCalledTimes(1);
+	});
+
+	/**
+	 * The check leaves an item of a rename that is not settled as it is.
+	 * Once the rename is settled, the item is looked at.
+	 */
+	it("checks the media files again once a noted rename was settled", async () => {
+		settle.mockResolvedValueOnce({ dropped: 1 });
+		renderHook(() => useRefreshChangedMedia());
+		expect(refresh).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(refresh).toHaveBeenLastCalledWith({ projectId: "p1" });
+	});
+
+	it("does not check again when no rename was settled", async () => {
+		renderHook(() => useRefreshChangedMedia());
+		await vi.advanceTimersByTimeAsync(0);
+		expect(refresh).toHaveBeenCalledTimes(1);
 	});
 
 	it("waits for a project and its media", () => {
