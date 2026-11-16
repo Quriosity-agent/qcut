@@ -165,10 +165,11 @@ async function writeSidecar({
 	mediaId: string;
 	metadata: StickerLabRestrictedMediaMetadata;
 	projectId: string;
+	/** Puts the file in place; answers which file is there, if not that one. */
 	publish: (paths: {
 		temporaryPath: string;
 		destinationPath: string;
-	}) => Promise<void>;
+	}) => Promise<FileIdentity | undefined>;
 }): Promise<{ destinationPath: string; written: FileIdentity }> {
 	const normalizedMediaId = requireMediaId({ mediaId });
 	const normalizedMetadata = parseStickerLabRestrictedMediaMetadata({
@@ -202,8 +203,8 @@ async function writeSidecar({
 		const { dev, ino } = await handle.stat({ bigint: true });
 		await handle.close();
 		handle = undefined;
-		await publish({ temporaryPath, destinationPath });
-		return { destinationPath, written: { dev, ino } };
+		const published = await publish({ temporaryPath, destinationPath });
+		return { destinationPath, written: published ?? { dev, ino } };
 	} catch (error) {
 		await handle?.close().catch(() => undefined);
 		await fs.unlink(temporaryPath).catch(() => undefined);
@@ -224,8 +225,9 @@ export async function persistMediaRestrictedMetadata({
 		mediaId,
 		metadata,
 		projectId,
-		publish: ({ temporaryPath, destinationPath }) =>
-			fs.rename(temporaryPath, destinationPath),
+		publish: async ({ temporaryPath, destinationPath }): Promise<undefined> => {
+			await fs.rename(temporaryPath, destinationPath);
+		},
 	});
 }
 
@@ -249,29 +251,34 @@ export interface StagedRestrictedMetadata {
  */
 const STAGED_FRESH_MS = 60_000;
 
-/** Puts the file in place only where nothing is, and never over a sidecar. */
+/**
+ * Puts the file in place only where nothing is, and never over a sidecar:
+ * by a hard link, which takes the name only when it is free, or, on a
+ * volume without hard links, by a copy that refuses an existing name.
+ */
 async function publishWhereNothingIs({
 	temporaryPath,
 	destinationPath,
 }: {
 	temporaryPath: string;
 	destinationPath: string;
-}): Promise<void> {
+}): Promise<FileIdentity | undefined> {
+	let copied: FileIdentity | undefined;
 	try {
-		// A hard link takes the name only when it is free.
 		await fs.link(temporaryPath, destinationPath);
 	} catch (error) {
 		if (isFileSystemError({ code: "EEXIST", error })) throw error;
-		// No hard links on this volume: looked at, then renamed at once.
-		const taken = await fs.lstat(destinationPath).then(
-			() => true,
-			() => false
+		await fs.copyFile(
+			temporaryPath,
+			destinationPath,
+			fileSystemConstants.COPYFILE_EXCL
 		);
-		if (taken) throw Object.assign(new Error("exists"), { code: "EEXIST" });
-		await fs.rename(temporaryPath, destinationPath);
-		return;
+		// The copy is another file than the one that was written.
+		const { dev, ino } = await fs.lstat(destinationPath, { bigint: true });
+		copied = { dev, ino };
 	}
 	await fs.unlink(temporaryPath);
+	return copied;
 }
 
 /**
