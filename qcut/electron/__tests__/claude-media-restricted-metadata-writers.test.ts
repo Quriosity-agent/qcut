@@ -6,8 +6,6 @@ const testState = vi.hoisted(() => ({ documentsRoot: "" }));
 const hooks = vi.hoisted(() => ({
 	/** Runs right after a file was looked at, before whoever looked acts. */
 	onLstat: undefined as undefined | ((filePath: string) => Promise<void>),
-	/** The same for a look at a hold. */
-	onStat: undefined as undefined | ((filePath: string) => Promise<void>),
 }));
 
 vi.mock("electron", () => ({
@@ -39,18 +37,16 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 			await hooks.onLstat?.(String(args[0]));
 			return seen;
 		},
-		stat: async (...args: Parameters<typeof real.stat>) => {
-			const seen = await real.stat(...args);
-			await hooks.onStat?.(String(args[0]));
-			return seen;
-		},
 	};
 });
 
 import * as fs from "node:fs/promises";
 import {
+	changeRestrictedMetadataHere,
 	deleteMediaRestrictedMetadata,
+	makeRestrictedMetadataChangesThrough,
 	persistMediaRestrictedMetadata,
+	type RestrictedMetadataChanges,
 	readMediaRestrictedMetadata,
 	stageMediaRestrictedMetadata,
 } from "../claude/handlers/claude-media-restricted-metadata.js";
@@ -103,21 +99,30 @@ const sidecarFolder = () =>
 		".qcut-restricted-media"
 	);
 
+/** Where the media file of the id would be: there is none in these tests. */
+const MEDIA_FILE = () => path.join(sidecarFolder(), "..", "wanted.gif");
+
 /**
- * Writes the id's sidecar, and puts a hold on it as another process would:
- * a folder beside it, made at `madeAt`.
+ * The changes as the HTTP API's process asks them of the main process: each
+ * goes over to the one that makes them (utility-bridge.ts), as plain data.
  */
-async function holdOf({ madeAt }: { madeAt: number }): Promise<string> {
-	await persistMediaRestrictedMetadata({
-		mediaId: MEDIA_ID,
-		metadata: OURS,
-		projectId: PROJECT_ID,
-	});
-	const [sidecar] = await fs.readdir(sidecarFolder());
-	const hold = path.join(sidecarFolder(), `${sidecar}.lock`);
-	await fs.mkdir(hold);
-	await fs.utimes(hold, new Date(madeAt), new Date(madeAt));
-	return hold;
+function askedOfTheMainProcess(
+	asked: string[] = []
+): RestrictedMetadataChanges {
+	const ask =
+		(change: keyof RestrictedMetadataChanges) => async (request: unknown) => {
+			asked.push(change);
+			return changeRestrictedMetadataHere({
+				change,
+				request: JSON.parse(JSON.stringify(request)),
+			});
+		};
+	return {
+		persist: ask("persist") as RestrictedMetadataChanges["persist"],
+		stage: ask("stage") as RestrictedMetadataChanges["stage"],
+		discard: ask("discard") as RestrictedMetadataChanges["discard"],
+		remove: ask("remove") as RestrictedMetadataChanges["remove"],
+	};
 }
 
 /**
@@ -133,12 +138,11 @@ describe("writers of one restricted metadata sidecar", () => {
 			path.join(os.tmpdir(), "qcut-restricted-writers-")
 		);
 		hooks.onLstat = undefined;
-		hooks.onStat = undefined;
 	});
 
 	afterEach(async () => {
 		hooks.onLstat = undefined;
-		hooks.onStat = undefined;
+		makeRestrictedMetadataChangesThrough(undefined);
 		vi.restoreAllMocks();
 		await fs.rm(testState.documentsRoot, { recursive: true, force: true });
 	});
@@ -148,7 +152,7 @@ describe("writers of one restricted metadata sidecar", () => {
 			mediaId: MEDIA_ID,
 			metadata: OURS,
 			projectId: PROJECT_ID,
-			mediaFileExists: async () => false,
+			mediaFilePath: MEDIA_FILE(),
 		});
 		expect(await stored()).toMatchObject({ itemId: "42001" });
 
@@ -192,7 +196,7 @@ describe("writers of one restricted metadata sidecar", () => {
 			mediaId: MEDIA_ID,
 			metadata: OURS,
 			projectId: PROJECT_ID,
-			mediaFileExists: async () => false,
+			mediaFilePath: MEDIA_FILE(),
 		});
 		hooks.onLstat = undefined;
 		await imported?.written;
@@ -205,124 +209,158 @@ describe("writers of one restricted metadata sidecar", () => {
 
 	/**
 	 * The HTTP API runs in a process of its own, and the desktop app's media
-	 * handlers in the main one. They share no queue, so a sidecar is held by
-	 * a folder beside it while it is changed.
+	 * handlers in the main one. Two processes that both changed sidecars
+	 * would each look and then act, with the other in between; so the HTTP
+	 * API's process changes none, and asks the main process for each change.
 	 */
-	it("holds a sidecar against a writer in another process", async () => {
-		const staged = await stageMediaRestrictedMetadata({
-			mediaId: MEDIA_ID,
-			metadata: OURS,
-			projectId: PROJECT_ID,
-			mediaFileExists: async () => false,
+	describe("in the process that does not make the changes", () => {
+		/** A second copy of the module stands in for that process. */
+		async function inTheOtherProcess() {
+			vi.resetModules();
+			return import("../claude/handlers/claude-media-restricted-metadata.js");
+		}
+
+		it("asks for every change, and makes none itself", async () => {
+			const other = await inTheOtherProcess();
+			// Asked of nobody: what it would have done itself is not done.
+			const asked: string[] = [];
+			const nobody =
+				(change: string, answer: unknown = undefined) =>
+				async () => {
+					asked.push(change);
+					return answer;
+				};
+			other.makeRestrictedMetadataChangesThrough({
+				persist: nobody("persist") as RestrictedMetadataChanges["persist"],
+				stage: nobody("stage", {
+					written: { dev: "1", ino: "2" },
+				}) as RestrictedMetadataChanges["stage"],
+				discard: nobody("discard") as RestrictedMetadataChanges["discard"],
+				remove: nobody("remove") as RestrictedMetadataChanges["remove"],
+			});
+
+			await other.persistMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				metadata: OURS,
+				projectId: PROJECT_ID,
+			});
+			const staged = await other.stageMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				metadata: OURS,
+				projectId: PROJECT_ID,
+				mediaFilePath: MEDIA_FILE(),
+			});
+			await staged.discard();
+			await other.deleteMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				projectId: PROJECT_ID,
+			});
+
+			expect(asked).toEqual(["persist", "stage", "discard", "remove"]);
+			await expect(fs.stat(sidecarFolder())).rejects.toMatchObject({
+				code: "ENOENT",
+			});
 		});
-		// A second copy of the module stands in for the other process: it
-		// has a queue of its own.
-		vi.resetModules();
-		const otherProcess = await import(
-			"../claude/handlers/claude-media-restricted-metadata.js"
-		);
-		let imported: { written: Promise<void> } | undefined;
-		hooks.onLstat = async (filePath) => {
-			if (!filePath.endsWith(".json") || imported) return;
-			imported = { written: Promise.resolve() };
-			const written = otherProcess.persistMediaRestrictedMetadata({
+
+		it("has the main process make them, and learns what came of them", async () => {
+			const other = await inTheOtherProcess();
+			const asked: string[] = [];
+			other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess(asked));
+
+			await other.persistMediaRestrictedMetadata({
 				mediaId: MEDIA_ID,
 				metadata: THEIRS,
 				projectId: PROJECT_ID,
 			});
-			await Promise.race([
-				written,
-				new Promise((resolve) => setTimeout(resolve, 60)),
-			]);
-			imported = { written };
-		};
-		await staged.discard();
-		hooks.onLstat = undefined;
-		await imported?.written;
+			expect(await stored()).toMatchObject({ itemId: "42002" });
 
-		expect(await stored()).toMatchObject({ itemId: "42002" });
-		// Nothing is left of the hold.
-		const sidecars = sidecarFolder();
-		expect(
-			(await fs.readdir(sidecars)).filter((name) => !name.endsWith(".json"))
-		).toEqual([]);
-	});
+			// The id's metadata is a file's that is there: it is not staged over.
+			await fs.writeFile(MEDIA_FILE(), "theirs");
+			await expect(
+				other.stageMediaRestrictedMetadata({
+					mediaId: MEDIA_ID,
+					metadata: OURS,
+					projectId: PROJECT_ID,
+					mediaFilePath: MEDIA_FILE(),
+				})
+			).rejects.toBeInstanceOf(other.RestrictedMetadataTakenError);
+			expect(await stored()).toMatchObject({ itemId: "42002" });
 
-	it("takes over a hold left by a process that ended", async () => {
-		const hold = await holdOf({ madeAt: Date.now() - 60_000 });
-		await persistMediaRestrictedMetadata({
-			mediaId: MEDIA_ID,
-			metadata: THEIRS,
-			projectId: PROJECT_ID,
+			await other.deleteMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				projectId: PROJECT_ID,
+			});
+			expect(await stored()).toBeUndefined();
+
+			// Staged, and taken away again by what the main process said it wrote.
+			const staged = await other.stageMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				metadata: OURS,
+				projectId: PROJECT_ID,
+				mediaFilePath: MEDIA_FILE(),
+			});
+			expect(await stored()).toMatchObject({ itemId: "42001" });
+			await staged.discard();
+			expect(await stored()).toBeUndefined();
+			expect(asked).toEqual(["persist", "stage", "remove", "stage", "discard"]);
 		});
-		expect(await stored()).toMatchObject({ itemId: "42002" });
-		await expect(fs.stat(hold)).rejects.toMatchObject({ code: "ENOENT" });
-	});
 
-	it("gives up on a hold that another process keeps, and changes nothing", async () => {
-		// Not left, however long this waits for it.
-		const hold = await holdOf({ madeAt: Date.now() + 3_600_000 });
-		const clock = { ahead: 0 };
-		const realNow = Date.now.bind(Date);
-		vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
+		/**
+		 * A rename in the main process gives up, and is taking away what it
+		 * staged: it has looked at which file is there, and then pauses. An
+		 * import through the HTTP API arrives meanwhile. A lock with an age
+		 * was taken from the paused cleanup after a while, the import wrote
+		 * its metadata, and the cleanup went on to remove it. However long
+		 * the pause, the import now waits its turn in the one process.
+		 */
+		it("does not let an import past a cleanup that pauses, however long", async () => {
+			const staged = await stageMediaRestrictedMetadata({
+				mediaId: MEDIA_ID,
+				metadata: OURS,
+				projectId: PROJECT_ID,
+				mediaFilePath: MEDIA_FILE(),
+			});
+			const other = await inTheOtherProcess();
+			other.makeRestrictedMetadataChangesThrough(askedOfTheMainProcess());
 
-		let outcome: string | undefined;
-		const refused = persistMediaRestrictedMetadata({
-			mediaId: MEDIA_ID,
-			metadata: THEIRS,
-			projectId: PROJECT_ID,
-		}).then(
-			() => "changed",
-			(error: unknown) => String(error)
-		);
-		void refused.then((result) => {
-			outcome = result;
+			const clock = { ahead: 0 };
+			const realNow = Date.now.bind(Date);
+			vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
+			let goOn = () => {};
+			const paused = new Promise<void>((resolve) => {
+				goOn = resolve;
+			});
+			let imported: Promise<void> | undefined;
+			let importDone = false;
+			hooks.onLstat = async (filePath) => {
+				if (!filePath.endsWith(".json") || imported) return;
+				imported = other
+					.persistMediaRestrictedMetadata({
+						mediaId: MEDIA_ID,
+						metadata: THEIRS,
+						projectId: PROJECT_ID,
+					})
+					.then(() => {
+						importDone = true;
+					});
+				await paused;
+			};
+			const discarded = staged.discard();
+
+			// An hour goes by on the clock, and a while in fact.
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			clock.ahead = 60 * 60 * 1000;
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			expect(imported).toBeDefined();
+			expect(importDone).toBe(false);
+			expect(await stored()).toMatchObject({ itemId: "42001" });
+
+			goOn();
+			await discarded;
+			await imported;
+			hooks.onLstat = undefined;
+			expect(await stored()).toMatchObject({ itemId: "42002" });
 		});
-		// Time goes by for the change that waits.
-		for (let turn = 0; turn < 100 && outcome === undefined; turn += 1) {
-			clock.ahead += 2000;
-			await new Promise((resolve) => setTimeout(resolve, 20));
-		}
-
-		expect(await refused).toContain("being changed by another process");
-		expect(await stored()).toMatchObject({ itemId: "42001" });
-		// The hold is the other process's to take away.
-		expect((await fs.stat(hold)).isDirectory()).toBe(true);
-	});
-
-	/**
-	 * Both processes can find the same left hold. The first removes it and
-	 * makes its own; the second must not take that one for the left one.
-	 */
-	it("does not remove a hold made since it was found left", async () => {
-		const hold = await holdOf({ madeAt: Date.now() - 60_000 });
-		let othersHold: bigint | undefined;
-		hooks.onStat = async (filePath) => {
-			if (filePath !== hold || othersHold !== undefined) return;
-			// The other process got there first, and is at work.
-			await fs.rmdir(hold);
-			await fs.mkdir(hold);
-			othersHold = (await fs.lstat(hold, { bigint: true })).ino;
-		};
-		let changed = false;
-		const written = persistMediaRestrictedMetadata({
-			mediaId: MEDIA_ID,
-			metadata: THEIRS,
-			projectId: PROJECT_ID,
-		}).then(() => {
-			changed = true;
-		});
-		await new Promise((resolve) => setTimeout(resolve, 150));
-
-		expect(othersHold).toBeDefined();
-		expect(changed).toBe(false);
-		expect((await fs.lstat(hold, { bigint: true })).ino).toBe(othersHold);
-		expect(await stored()).toMatchObject({ itemId: "42001" });
-
-		// The other process is done: this one has its turn.
-		await fs.rmdir(hold);
-		await written;
-		expect(await stored()).toMatchObject({ itemId: "42002" });
 	});
 
 	it("makes the changes to one sidecar in the order they were asked for", async () => {
