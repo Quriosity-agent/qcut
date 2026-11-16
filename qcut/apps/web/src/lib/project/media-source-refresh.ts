@@ -28,16 +28,17 @@ import {
 import { getMimeType } from "@/lib/media/bulk-import";
 import { storageService } from "@/lib/storage/storage-service";
 import { saveTrackedMediaItem } from "@/stores/media/media-persistence-queue";
+import { readUnsettledRenames } from "@/stores/media/media-rename-notes";
 import { getImageDimensions } from "@/stores/media/media-store-helpers";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { ProjectFolderFileInfo } from "@/types/electron.d";
+import {
+	readSourceFileStat,
+	type SourceFileStat,
+	sameSourceFile,
+} from "./media-source-stat";
 
-/** The file an item's bytes were copied from, as it was then. */
-export interface SourceFileStat {
-	size: number;
-	/** Milliseconds, as the file system reports it. */
-	modifiedAt: number;
-}
+export { readSourceFileStat, type SourceFileStat } from "./media-source-stat";
 
 export interface MediaSourceRefreshResult {
 	/** Items with a file in the project folder that were looked at. */
@@ -48,8 +49,6 @@ export interface MediaSourceRefreshResult {
 	failed: Array<{ id: string; name: string; error: string }>;
 }
 
-/** File systems keep times to different precisions; under this is the same. */
-const SAME_TIME_MS = 2;
 /** A file still being written when it is read is read again, this often. */
 const READ_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 400;
@@ -98,39 +97,16 @@ function scannedFiles(diskFiles: ProjectFolderFileInfo[]): {
 	};
 }
 
-/** The record on an item, or undefined when it has none that can be used. */
-export function readSourceFileStat({
-	item,
-}: {
-	item: Pick<MediaItem, "metadata">;
-}): SourceFileStat | undefined {
-	const recorded = item.metadata?.sourceFile as
-		| Partial<SourceFileStat>
-		| undefined;
-	if (
-		!recorded ||
-		typeof recorded.size !== "number" ||
-		typeof recorded.modifiedAt !== "number" ||
-		!Number.isFinite(recorded.size) ||
-		!Number.isFinite(recorded.modifiedAt)
-	) {
-		return;
-	}
-	return { size: recorded.size, modifiedAt: recorded.modifiedAt };
-}
-
-function sameStat(left: SourceFileStat, right: SourceFileStat): boolean {
-	return (
-		left.size === right.size &&
-		Math.abs(left.modifiedAt - right.modifiedAt) <= SAME_TIME_MS
-	);
-}
-
 export interface MediaSourcePlan {
 	/** The file is not what the item was copied from: read it again. */
 	changed: Array<{ item: MediaItem; file: ProjectFolderFileInfo }>;
 	/** No record yet and nothing says it changed: record the file as it is. */
 	adopt: Array<{ item: MediaItem; file: ProjectFolderFileInfo }>;
+	/**
+	 * The file is not what the item was copied from, and the item is one of
+	 * a rename that is not settled: left as it is until the rename is.
+	 */
+	unsettled: Array<{ item: MediaItem; file: ProjectFolderFileInfo }>;
 	checked: number;
 }
 
@@ -140,18 +116,31 @@ export interface MediaSourcePlan {
  * `ignoresCase` says the folder's file system takes `A.mp4` and `a.mp4` for
  * one file (see `folderIgnoresCase`); without it a path names a file only
  * as it is written.
+ *
+ * `unsettled` are the ids of renames that are not settled yet. Which file
+ * such an item plays is what the rename's note settles, and the item's
+ * record of the file it was copied from is what that goes by: it tells the
+ * renamed file's own item from an item of another file that has taken the
+ * name. So neither the record nor the bytes of such an item are touched.
  */
 export function planMediaSourceRefresh({
 	diskFiles,
 	mediaItems,
 	ignoresCase = false,
+	unsettled,
 }: {
 	diskFiles: ProjectFolderFileInfo[];
 	mediaItems: MediaItem[];
 	ignoresCase?: boolean;
+	unsettled?: ReadonlySet<string>;
 }): MediaSourcePlan {
 	const scanned = scannedFiles(diskFiles);
-	const plan: MediaSourcePlan = { changed: [], adopt: [], checked: 0 };
+	const plan: MediaSourcePlan = {
+		changed: [],
+		adopt: [],
+		unsettled: [],
+		checked: 0,
+	};
 	for (const item of mediaItems) {
 		// An item without bytes of its own has no copy that could be stale.
 		if (item.ephemeral || !item.localPath || !(item.file?.size > 0)) continue;
@@ -159,14 +148,30 @@ export function planMediaSourceRefresh({
 		if (!file) continue;
 		plan.checked += 1;
 		const recorded = readSourceFileStat({ item });
-		if (recorded) {
-			if (!sameStat(recorded, file)) plan.changed.push({ item, file });
-			continue;
+		const changed = recorded
+			? !sameSourceFile(recorded, file)
+			: item.file.size !== file.size;
+		if (unsettled?.has(item.id)) {
+			if (changed) plan.unsettled.push({ item, file });
+		} else if (changed) {
+			plan.changed.push({ item, file });
+		} else if (!recorded) {
+			plan.adopt.push({ item, file });
 		}
-		if (item.file.size === file.size) plan.adopt.push({ item, file });
-		else plan.changed.push({ item, file });
 	}
 	return plan;
+}
+
+/** The ids of the project's renames that are not settled yet. */
+async function idsOfUnsettledRenames(projectId: string): Promise<Set<string>> {
+	try {
+		const notes = await readUnsettledRenames(projectId);
+		return new Set(notes.flatMap((note) => [note.oldId, note.newId]));
+	} catch (error) {
+		// Without the notes the check goes on as if there were none.
+		debugError("[MediaSourceRefresh] Could not read the rename notes", error);
+		return new Set();
+	}
 }
 
 function withSourceFile({
@@ -259,7 +264,7 @@ async function readSettledFile({
 		const buffer = await platform().files.readFile(file.path);
 		if (!buffer) throw new Error("the file could not be read");
 		const after = await statFile({ filePath: file.path });
-		if (buffer.byteLength === after.size && sameStat(before, after)) {
+		if (buffer.byteLength === after.size && sameSourceFile(before, after)) {
 			return { bytes: new Uint8Array(buffer), stat: before };
 		}
 		before = after;
@@ -408,12 +413,23 @@ async function refreshOnce({
 		mediaItems: useMediaStore.getState().mediaItems,
 	});
 	stayInProject();
+	const unsettled = await idsOfUnsettledRenames(projectId);
+	stayInProject();
 	const plan = planMediaSourceRefresh({
 		diskFiles: files,
 		mediaItems: useMediaStore.getState().mediaItems,
 		ignoresCase,
+		unsettled,
 	});
 	result.checked = plan.checked;
+	for (const { item } of plan.unsettled) {
+		result.failed.push({
+			id: item.id,
+			name: item.name,
+			error:
+				"its file was renamed and the rename is not settled yet; it is read again once it is",
+		});
+	}
 	/**
 	 * The item as the store holds it now, or undefined once it is gone or
 	 * plays another file. Only that item is passed over: the others are
