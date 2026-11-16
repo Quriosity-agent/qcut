@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({})));
 const settle = vi.hoisted(() =>
-	vi.fn(async (..._args: unknown[]) => undefined)
+	vi.fn(async (..._args: unknown[]): Promise<{ lookAgainAt?: number }> => ({}))
 );
 const stores = vi.hoisted(() => ({
 	projectId: "p1" as string | undefined,
@@ -80,6 +80,34 @@ describe("checking the project's media files when the window is looked at", () =
 		// Not on every look at the window.
 		vi.advanceTimersByTime(5000);
 		lookAtWindow();
+		expect(settle).toHaveBeenCalledTimes(1);
+	});
+
+	/**
+	 * A rename the desktop app noted and may still be at work on is left
+	 * alone when the project loads. Nothing else settles renames while the
+	 * project stays open, so it is looked at again once the app must be done.
+	 */
+	it("looks again at a rename the desktop app was still at work on", async () => {
+		settle.mockResolvedValueOnce({ lookAgainAt: Date.now() + 120_000 });
+		renderHook(() => useRefreshChangedMedia());
+		expect(settle).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(119_000);
+		expect(settle).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(settle).toHaveBeenCalledTimes(2);
+		// Settled by then: not looked at any more.
+		await vi.advanceTimersByTimeAsync(600_000);
+		expect(settle).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not look again once the project is closed", async () => {
+		settle.mockResolvedValueOnce({ lookAgainAt: Date.now() + 120_000 });
+		const { unmount } = renderHook(() => useRefreshChangedMedia());
+		await vi.advanceTimersByTimeAsync(1000);
+		unmount();
+		await vi.advanceTimersByTimeAsync(600_000);
 		expect(settle).toHaveBeenCalledTimes(1);
 	});
 
