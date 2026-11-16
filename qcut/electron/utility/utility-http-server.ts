@@ -22,6 +22,10 @@ import {
 	UTILITY_BRIDGE_MARGIN_MS,
 	mediaRefreshWaitMs,
 } from "../claude/handlers/claude-media-deadlines.js";
+import {
+	makeRestrictedMetadataChangesThrough,
+	type RestrictedMetadataChanges,
+} from "../claude/handlers/claude-media-restricted-metadata.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -260,6 +264,18 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		claudeLog.warn("HTTP", "Server already running in utility process");
 		return;
 	}
+
+	// The main process makes every change to a restricted file's metadata;
+	// this one asks it (claude-media-restricted-metadata.ts says why).
+	const askMainTo =
+		(change: keyof RestrictedMetadataChanges) => (request: unknown) =>
+			requestFromMain("media:restricted-metadata", { change, request });
+	makeRestrictedMetadataChangesThrough({
+		persist: askMainTo("persist") as RestrictedMetadataChanges["persist"],
+		stage: askMainTo("stage") as RestrictedMetadataChanges["stage"],
+		discard: askMainTo("discard") as RestrictedMetadataChanges["discard"],
+		remove: askMainTo("remove") as RestrictedMetadataChanges["remove"],
+	});
 
 	const router = createRouter();
 	const timelineMutationAccessor = createUtilityTimelineMutationAccessor({
