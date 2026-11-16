@@ -353,6 +353,26 @@ async function refreshOnce({
 		refreshed: [],
 		failed: [],
 	};
+	// Loaded on use: the stores load this module's callers themselves.
+	const { useMediaStore } = await import("@/stores/media/media-store");
+	const { useProjectStore } = await import("@/stores/project-store");
+	/**
+	 * Ends the check once the project is closed or another one is open. A
+	 * media id is made from the file's name, so another project with a file
+	 * of that name has an item of the same id: a write by id would land on
+	 * it. What was not looked at yet is said to be so, by failing: whoever
+	 * asked must not take the files for checked.
+	 *
+	 * It is asked after every wait, also where nothing is written: the plan
+	 * is made from the items the store holds, and with another project's
+	 * items it would be an empty plan that reads as "nothing had changed".
+	 */
+	const stayInProject = () => {
+		if (useProjectStore.getState().activeProject?.id !== projectId) {
+			throw new ProjectLeftError();
+		}
+	};
+	stayInProject();
 	const files =
 		diskFiles ??
 		(
@@ -361,32 +381,18 @@ async function refreshOnce({
 				mediaOnly: true,
 			})
 		).files;
-	// Loaded on use: the stores load this module's callers themselves.
-	const { useMediaStore } = await import("@/stores/media/media-store");
-	const { useProjectStore } = await import("@/stores/project-store");
+	stayInProject();
 	const ignoresCase = await folderIgnoresCase({
 		diskFiles: files,
 		mediaItems: useMediaStore.getState().mediaItems,
 	});
+	stayInProject();
 	const plan = planMediaSourceRefresh({
 		diskFiles: files,
 		mediaItems: useMediaStore.getState().mediaItems,
 		ignoresCase,
 	});
 	result.checked = plan.checked;
-
-	/**
-	 * Ends the check once the project is closed or another one is open. A
-	 * media id is made from the file's name, so another project with a file
-	 * of that name has an item of the same id: a write by id would land on
-	 * it. What was not looked at yet is said to be so, by failing: whoever
-	 * asked must not take the files for checked.
-	 */
-	const stayInProject = () => {
-		if (useProjectStore.getState().activeProject?.id !== projectId) {
-			throw new ProjectLeftError();
-		}
-	};
 	/**
 	 * The item as the store holds it now, or undefined once it is gone or
 	 * plays another file. Only that item is passed over: the others are
@@ -498,6 +504,8 @@ async function refreshOnce({
 			result.failed.push({ id: item.id, name: item.name, error: message });
 		}
 	}
+	// The last wait may have been the one the project was left in.
+	stayInProject();
 	if (result.refreshed.length > 0) {
 		debugLog(
 			`[MediaSourceRefresh] Read ${result.refreshed.length} changed file(s) again:`,
