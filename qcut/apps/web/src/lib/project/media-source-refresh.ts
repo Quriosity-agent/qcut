@@ -265,20 +265,33 @@ async function refreshOnce({
 	});
 	result.checked = plan.checked;
 
+	/** The item as the store holds it now; it may have gained facts since. */
+	const liveItem = (id: string): MediaItem | undefined =>
+		useMediaStore
+			.getState()
+			.mediaItems.find((candidate) => candidate.id === id);
+
 	for (const { item, file } of plan.adopt) {
-		const metadata = withSourceFile({ item, stat: file });
+		// Added to what the item holds now, not to what it held when the
+		// folder was scanned: another task may have recorded something since.
 		useMediaStore.setState((state) => ({
 			mediaItems: state.mediaItems.map((candidate) =>
-				candidate.id === item.id ? { ...candidate, metadata } : candidate
+				candidate.id === item.id
+					? {
+							...candidate,
+							metadata: withSourceFile({ item: candidate, stat: file }),
+						}
+					: candidate
 			),
 		}));
+		const recorded = liveItem(item.id);
+		if (!recorded) continue;
 		try {
 			// The record only: the bytes are what they were.
 			await saveTrackedMediaItem({
 				projectId,
 				id: item.id,
-				save: () =>
-					storageService.saveMediaItemRecord(projectId, { ...item, metadata }),
+				save: () => storageService.saveMediaItemRecord(projectId, recorded),
 			});
 		} catch (error) {
 			// Not recorded: the next check compares by size again.
@@ -297,7 +310,7 @@ async function refreshOnce({
 			});
 			// What was learned about the old file describes another file now.
 			const { alpha: _alpha, ...metadata } =
-				withSourceFile({ item, stat }) ?? {};
+				withSourceFile({ item: liveItem(item.id) ?? item, stat }) ?? {};
 			if (item.localPath) {
 				forgetMediaAlphaInspection({ localPath: item.localPath });
 			}
