@@ -98,7 +98,9 @@ import {
 	renameMediaFileOnDisk,
 } from "../handlers/claude-media-rename.js";
 import {
+	forgetSettledMediaRename,
 	type MediaRenameNotes,
+	notedMove,
 	settleUnfollowedMediaRename,
 } from "./claude-http-media-rename-settle.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
@@ -1123,8 +1125,9 @@ export function registerSharedRoutes(
 	// The editor re-keys its item and points every clip at the new id before
 	// the rename counts; when it cannot, the file is put back. A rename that
 	// only moved the file left the clips on the old id, and the native export
-	// then left them out without a word. What is done when the editor does
-	// not follow is in claude-http-media-rename-settle.ts.
+	// then left them out without a word. How the two are kept together when
+	// the editor does not follow is in claude-http-media-rename-settle.ts: the
+	// rename is noted before the file is moved, and not made when it cannot be.
 	router.patch("/api/claude/media/:projectId/:mediaId/rename", async (req) => {
 		const newName = req.body?.newName;
 		if (typeof newName !== "string" || !newName.trim())
@@ -1138,6 +1141,18 @@ export function registerSharedRoutes(
 				"Renderer media rename acknowledgement is unavailable"
 			);
 		}
+		const { noteUnsettledMediaRename, forgetUnsettledMediaRename } = accessor;
+		if (!noteUnsettledMediaRename || !forgetUnsettledMediaRename) {
+			throw new HttpError(
+				503,
+				"Media renames cannot be noted here, so none is made"
+			);
+		}
+		const notes: MediaRenameNotes = {
+			noteUnsettledMediaRename: (payload) => noteUnsettledMediaRename(payload),
+			forgetUnsettledMediaRename: (payload) =>
+				forgetUnsettledMediaRename(payload),
+		};
 		// `exactName` refuses a taken name instead of adding a suffix to it.
 		const exactName = req.body?.exactName === true;
 		let renamed: RenamedMediaFile;
@@ -1147,6 +1162,7 @@ export function registerSharedRoutes(
 				mediaId,
 				newName,
 				...(exactName ? { exactName } : {}),
+				...notedMove({ notes, projectId }),
 			});
 		} catch (error) {
 			if (error instanceof MediaNotFoundError) {
@@ -1173,12 +1189,14 @@ export function registerSharedRoutes(
 							previousPath: renamed.previous.path,
 						}),
 				});
+				// The editor is where the file is: nothing is left to settle.
+				await forgetSettledMediaRename({ notes, projectId, renamed });
 			} catch (error) {
 				// The file goes back under its old name and the failure is
 				// thrown; unless the file cannot go back and the editor then
 				// follows it, in which case the rename stands.
 				({ warning } = await settleUnfollowedMediaRename({
-					accessor,
+					notes,
 					requestMediaRename,
 					projectId,
 					renamed,
