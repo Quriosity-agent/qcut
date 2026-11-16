@@ -187,6 +187,98 @@ describe("export start project guard", () => {
 		expect(startRendererExportJob).not.toHaveBeenCalled();
 	});
 
+	/**
+	 * The editor plays its own copy of each media file. One written over in
+	 * the project folder is read again before the export, so the preview and
+	 * a renderer export hold what the folder holds.
+	 */
+	it("has the editor read changed media files again before it exports", async () => {
+		const requestMediaRefresh = vi.fn(async () => ({
+			checked: 3,
+			refreshed: [{ id: "media_shake", name: "shake.mp4" }],
+			failed: [],
+		}));
+		const accessor = buildAccessor(buildTimeline("project-a"));
+		Object.assign(accessor, { requestMediaRefresh });
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		await getHandler(
+			method,
+			path
+		)({ params: { projectId: "project-a" }, query: {}, body: {} });
+		expect(requestMediaRefresh).toHaveBeenCalledWith({
+			projectId: "project-a",
+		});
+		expect(requestMediaRefresh.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(startExportJob).mock.invocationCallOrder[0]
+		);
+	});
+
+	it("exports natively even when the editor could not read a changed file, or could not be asked", async () => {
+		for (const requestMediaRefresh of [
+			vi.fn(async () => ({
+				checked: 1,
+				refreshed: [],
+				failed: [{ id: "m", name: "shake.mp4", error: "the file is gone" }],
+			})),
+			vi.fn(async () => {
+				throw new Error("Renderer media refresh timed out.");
+			}),
+		]) {
+			vi.mocked(startExportJob).mockClear();
+			const accessor = buildAccessor(buildTimeline("project-a"));
+			Object.assign(accessor, { requestMediaRefresh });
+			const { router, getHandler } = buildRouterHarness();
+			registerSharedRoutes(router, accessor);
+			const [method, path] = EXPORT_START.split(" ");
+			// The native export reads the folder's files, not the editor's copies.
+			await expect(
+				getHandler(
+					method,
+					path
+				)({ params: { projectId: "project-a" }, query: {}, body: {} })
+			).resolves.toMatchObject({ jobId: "test-job" });
+			expect(startExportJob).toHaveBeenCalledTimes(1);
+		}
+	});
+
+	it("refuses a renderer export while the editor holds an old copy of a changed file", async () => {
+		const accessor = buildAccessor(buildTimeline("project-a"));
+		Object.assign(accessor, {
+			requestMediaRefresh: vi.fn(async () => ({
+				checked: 1,
+				refreshed: [],
+				failed: [
+					{
+						id: "m",
+						name: "shake.mp4",
+						error: "the file kept changing while it was read",
+					},
+				],
+			})),
+		});
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		await expect(
+			getHandler(
+				method,
+				path
+			)({
+				params: { projectId: "project-a" },
+				query: {},
+				body: { engine: "muxer" },
+			})
+		).rejects.toMatchObject({
+			status: 409,
+			message: expect.stringContaining(
+				"1 media file(s) changed in the project folder and the editor could not read them again, so a renderer export would use its old copies: shake.mp4 (the file kept changing while it was read)."
+			),
+		});
+		expect(startRendererExportJob).not.toHaveBeenCalled();
+	});
+
 	it("answers 409 with the clips named when their media is not in the project", async () => {
 		const missing = new ClipMediaMissingError({
 			missing: [
