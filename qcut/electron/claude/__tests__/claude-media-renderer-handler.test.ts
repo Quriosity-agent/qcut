@@ -220,6 +220,29 @@ describe("Claude media renderer acknowledgement", () => {
 		});
 	});
 
+	/**
+	 * A check that came back with nothing used to read as "3 files, none
+	 * changed" with the numbers at nought: an export through the renderer
+	 * went ahead on it.
+	 */
+	it("does not take an answer that is not one for a clean check", async () => {
+		for (const result of [
+			undefined,
+			null,
+			"done",
+			{},
+			{ checked: 3 },
+			{ checked: 3, refreshed: [], failed: "none" },
+		]) {
+			await expect(
+				requestMediaRefreshFromRenderer({
+					payload: { projectId: "project-1" },
+					win: createWindow({ result }),
+				})
+			).rejects.toThrow("could not be read");
+		}
+	});
+
 	it("waits for a refresh as long as the asker does, and no longer than its own limit", async () => {
 		vi.useFakeTimers();
 		try {
