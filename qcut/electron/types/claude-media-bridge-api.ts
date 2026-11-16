@@ -27,6 +27,11 @@ export interface ClaudeMediaRenamedEvent {
 	newPath: string;
 	projectId: string;
 	requestId?: string;
+	/**
+	 * When the asker stops waiting (epoch milliseconds) and puts the file
+	 * back: the editor takes the rename back rather than finish after it.
+	 */
+	deadlineAt?: number;
 }
 
 export interface ClaudeMediaRendererResponse {
@@ -41,6 +46,12 @@ export interface ClaudeMediaRendererResponse {
 export interface ClaudeMediaRefreshEvent {
 	projectId: string;
 	requestId?: string;
+	/**
+	 * How long the asker waits for the answer, when shorter than the usual
+	 * wait (an export start does not hold on for minutes). The refresh itself
+	 * runs to its end either way: finishing late does no harm.
+	 */
+	timeoutMs?: number;
 }
 
 /** What `POST /api/claude/media/:projectId/refresh` found and did. */
