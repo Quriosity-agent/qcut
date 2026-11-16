@@ -16,6 +16,15 @@ const mediaState = vi.hoisted(() => ({
 	updateMediaItem: vi.fn(),
 }));
 const forgetAlpha = vi.hoisted(() => vi.fn());
+const blobs = vi.hoisted(() => ({
+	createReplacementObjectURL: vi.fn(
+		(file: File) => `blob:new:${file.name}:${file.size}`
+	),
+	releaseObjectURL: vi.fn(),
+}));
+const project = vi.hoisted(() => ({
+	activeProject: { id: "p1" } as { id: string } | null,
+}));
 
 vi.mock("@qcut/platform-core", () => ({
 	platform: () => ({
@@ -27,8 +36,9 @@ vi.mock("@/lib/storage/storage-service", () => ({ storageService: storage }));
 vi.mock("@/lib/media/alpha-playback-proxy", () => ({
 	forgetMediaAlphaInspection: forgetAlpha,
 }));
-vi.mock("@/lib/media/blob-manager", () => ({
-	getOrCreateObjectURL: (file: File) => `blob:${file.name}:${file.size}`,
+vi.mock("@/lib/media/blob-manager", () => blobs);
+vi.mock("@/stores/project-store", () => ({
+	useProjectStore: { getState: () => project },
 }));
 vi.mock("@/stores/media/media-store-helpers", () => ({
 	getImageDimensions: vi.fn(async () => ({ width: 640, height: 360 })),
@@ -160,6 +170,56 @@ describe("which media files changed in the project folder", () => {
 		).toHaveLength(1);
 	});
 
+	/**
+	 * Where the file system tells `A.mp4` from `a.mp4`, they are two files:
+	 * neither may be compared with, or read into, the other's item.
+	 */
+	it("keeps two files apart whose paths differ only by case", () => {
+		const upper = mediaItem({
+			id: "upper",
+			localPath: `${FOLDER}/A.mp4`,
+			...recorded(100, 1000),
+		});
+		const lower = mediaItem({
+			id: "lower",
+			localPath: `${FOLDER}/a.mp4`,
+			...recorded(200, 2000),
+		});
+		const upperFile = diskFile({
+			name: "A.mp4",
+			path: `${FOLDER}/A.mp4`,
+			size: 100,
+			modifiedAt: 1000,
+		});
+		// Only the lower-case file was written over.
+		const lowerFile = diskFile({
+			name: "a.mp4",
+			path: `${FOLDER}/a.mp4`,
+			size: 250,
+			modifiedAt: 9000,
+		});
+		for (const diskFiles of [
+			[upperFile, lowerFile],
+			[lowerFile, upperFile],
+		]) {
+			expect(
+				planMediaSourceRefresh({ diskFiles, mediaItems: [upper, lower] })
+			).toEqual({
+				changed: [{ item: lower, file: lowerFile }],
+				adopt: [],
+				checked: 2,
+			});
+		}
+		// A path that names neither as written cannot say which one it means.
+		const vague = mediaItem({ id: "vague", localPath: `${FOLDER}/A.MP4` });
+		expect(
+			planMediaSourceRefresh({
+				diskFiles: [upperFile, lowerFile],
+				mediaItems: [vague],
+			}).checked
+		).toBe(0);
+	});
+
 	it("passes over items with no file in the folder, no bytes of their own, or not kept", () => {
 		const plan = planMediaSourceRefresh({
 			diskFiles: [diskFile({ size: 999 })],
@@ -193,6 +253,7 @@ describe("reading changed media files again", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetMediaPersistenceQueue();
+		project.activeProject = { id: "p1" };
 		mediaState.updateMediaItem.mockResolvedValue(true);
 		files.readFile.mockResolvedValue(Buffer.from(NEW_BYTES));
 		// The desktop app answers with dates, not the declared number.
@@ -225,7 +286,7 @@ describe("reading changed media files again", () => {
 		expect(updates.file.name).toBe("shake.mp4");
 		expect(updates.file.type).toBe("video/mp4");
 		expect(updates).toMatchObject({
-			url: "blob:shake.mp4:8",
+			url: "blob:new:shake.mp4:8",
 			// Made again from the new file by the store.
 			thumbnailUrl: undefined,
 			thumbnailStatus: "pending",
@@ -319,6 +380,108 @@ describe("reading changed media files again", () => {
 			id: second.id,
 			metadata,
 		});
+	});
+
+	/**
+	 * A media id is made from the file's name, so two projects with a
+	 * `shake.mp4` each have an item of the same id. A read that finishes
+	 * after the other project was opened must not write to its item.
+	 */
+	it("writes nothing once another project is open, even to an item of the same id", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		const otherProjectsItem = mediaItem({
+			bytes: 300,
+			localPath: "/Users/me/Documents/QCut/Projects/p2/media/shake.mp4",
+		});
+		files.readFile.mockImplementation(async () => {
+			// The user opens project p2 while the file is being read.
+			project.activeProject = { id: "p2" };
+			mediaState.mediaItems = [otherProjectsItem];
+			return Buffer.from(NEW_BYTES);
+		});
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(result).toEqual({ checked: 1, refreshed: [], failed: [] });
+		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
+		expect(blobs.createReplacementObjectURL).not.toHaveBeenCalled();
+		expect(mediaState.mediaItems).toEqual([otherProjectsItem]);
+	});
+
+	it("records nothing on an item of another project either", async () => {
+		const first = mediaItem({ bytes: 400 });
+		const second = mediaItem({
+			id: "media_other",
+			name: "other.mp4",
+			localPath: `${FOLDER}/other.mp4`,
+			bytes: 700,
+		});
+		mediaState.mediaItems = [first, second];
+		const otherProjectsItem = mediaItem({
+			id: "media_other",
+			name: "other.mp4",
+			localPath: "/Users/me/Documents/QCut/Projects/p2/media/other.mp4",
+			bytes: 700,
+		});
+		storage.saveMediaItemRecord.mockImplementationOnce(async () => {
+			project.activeProject = { id: "p2" };
+			mediaState.mediaItems = [otherProjectsItem];
+		});
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [
+				diskFile({ size: 400, modifiedAt: 5000 }),
+				diskFile({
+					name: "other.mp4",
+					path: `${FOLDER}/other.mp4`,
+					size: 700,
+					modifiedAt: 6000,
+				}),
+			],
+		});
+		expect(storage.saveMediaItemRecord).toHaveBeenCalledTimes(1);
+		expect(mediaState.mediaItems).toEqual([otherProjectsItem]);
+		expect(otherProjectsItem.metadata).toBeUndefined();
+	});
+
+	it("gives the new file a URL of its own and lets go of the old file's", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 8, ...recorded(8, 5000) })];
+		// Written over with a file of the same length: only its time moved.
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(blobs.createReplacementObjectURL).toHaveBeenCalledTimes(1);
+		expect(mediaState.updateMediaItem.mock.calls[0][2].url).toBe(
+			"blob:new:shake.mp4:8"
+		);
+		expect(blobs.releaseObjectURL).toHaveBeenCalledTimes(1);
+		expect(blobs.releaseObjectURL).toHaveBeenCalledWith(
+			"blob:old",
+			"media-source-refresh:superseded"
+		);
+	});
+
+	it("lets go of the new URL, and keeps the old one, when the copy cannot be stored", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		mediaState.updateMediaItem.mockResolvedValue(false);
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		expect(result.failed).toEqual([
+			{
+				id: "media_shake",
+				name: "shake.mp4",
+				error: "the new copy could not be stored",
+			},
+		]);
+		expect(blobs.releaseObjectURL).toHaveBeenCalledTimes(1);
+		expect(blobs.releaseObjectURL).toHaveBeenCalledWith(
+			"blob:new:shake.mp4:8",
+			"media-source-refresh:failed"
+		);
 	});
 
 	it("reads a file again that was still being written", async () => {
