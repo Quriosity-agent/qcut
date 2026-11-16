@@ -15,19 +15,25 @@
  * So every rename is noted, in the desktop app's key-value store beside the
  * project's, and what is still noted is settled from what the project
  * folder holds the next time the project is open
- * (`settleUnsettledMediaRenames`). A note is a record of its own, under a
- * key made of the project and the two ids.
+ * (`settleUnsettledMediaRenames`).
  *
- * The desktop app alone writes notes
- * (electron/claude/handlers/claude-media-rename-note.ts): before it moves
- * the file, and again once it knows where it has left it. The app has the
- * file in view; the editor knows only where a request wanted the file,
- * which may be a request the app has since gone back on. The editor reads
- * notes, and drops one when it has seen itself and the folder agree.
+ * The desktop app keeps the notes
+ * (electron/claude/handlers/claude-media-rename-note.ts). It writes them:
+ * before it moves the file, and again once it knows where it has left it.
+ * It says of each whether it is at work on the rename at this moment. And
+ * it drops one when the editor says it has settled it. The app has the file
+ * in view; the editor knows only where a request wanted the file, which may
+ * be a request the app has since gone back on. So the editor reads the
+ * notes, settles those the app is not at work on, and has them dropped.
  *
  * @module stores/media/media-rename-notes
  */
 import { platform } from "@qcut/platform-core";
+import {
+	readSourceFileStat,
+	sameSourceFile,
+} from "@/lib/project/media-source-stat";
+import type { MediaItem } from "./media-store-types";
 
 /** What tells a file from another one that has since taken its name. */
 export interface NotedFile {
@@ -57,35 +63,26 @@ export interface UnsettledRename {
 	 * still move: what the folder holds settles nothing yet.
 	 */
 	fileIs?: "old" | "new";
-	/** Epoch milliseconds. */
+	/**
+	 * When the desktop app began the rename, before it moved the file (epoch
+	 * milliseconds). Until then the file had its old name, and no other file
+	 * could have had it.
+	 */
+	beganAt?: number;
+	/**
+	 * When the note was written (epoch milliseconds). No two notes of a
+	 * rename have the same: it tells the note read here from a later one.
+	 */
 	notedAt: number;
+	/**
+	 * The desktop app is at work on the rename at this moment: the file may
+	 * still move, and the rename is the app's to see through.
+	 */
+	atWork: boolean;
 }
 
+/** A rename and its undoing are one matter, and have one note. */
 type RenamePair = Pick<UnsettledRename, "newId" | "oldId">;
-
-const keyPrefix = (projectId: string) => `media-rename-unsettled-${projectId}-`;
-
-/**
- * The key of the note for two ids, whichever way round: a rename and its
- * undoing are one matter, and have one note. Ids follow file names and can
- * be long, and a key becomes a file name: the pair goes in as a digest.
- */
-export async function unsettledRenameKey({
-	projectId,
-	rename,
-}: {
-	projectId: string;
-	rename: RenamePair;
-}): Promise<string> {
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode([rename.newId, rename.oldId].sort().join("\n"))
-	);
-	const hex = Array.from(new Uint8Array(digest), (byte) =>
-		byte.toString(16).padStart(2, "0")
-	).join("");
-	return `${keyPrefix(projectId)}${hex.slice(0, 32)}`;
-}
 
 function notedFileOf(candidate: unknown): NotedFile | undefined {
 	if (typeof candidate !== "object" || candidate === null) return;
@@ -114,7 +111,7 @@ function noteOf(candidate: unknown): UnsettledRename | undefined {
 		"newName",
 		"newPath",
 	].map(text);
-	const { notedAt, fileIs } = record;
+	const { notedAt, fileIs, beganAt, atWork } = record;
 	if (
 		!oldId ||
 		!oldName ||
@@ -137,21 +134,28 @@ function noteOf(candidate: unknown): UnsettledRename | undefined {
 		newPath,
 		...(file ? { file } : {}),
 		...(fileIs === "old" || fileIs === "new" ? { fileIs } : {}),
+		...(typeof beganAt === "number" && Number.isFinite(beganAt)
+			? { beganAt }
+			: {}),
 		notedAt,
+		// Only the app's plain "no" lets the editor settle a rename.
+		atWork: atWork !== false,
 	};
 }
 
-/** The renames noted for a project. */
+/**
+ * The renames noted for a project, as the desktop app holds them now. Only
+ * the desktop app renames files and keeps notes of it: elsewhere there are
+ * none.
+ */
 export async function readUnsettledRenames(
 	projectId: string
 ): Promise<UnsettledRename[]> {
-	const prefix = keyPrefix(projectId);
-	const keys = (await platform().storage.list()).filter((key) =>
-		key.startsWith(prefix)
-	);
+	const media = platform().claude?.media;
+	if (!media?.unsettledRenames) return [];
 	const notes: UnsettledRename[] = [];
-	for (const key of keys.sort()) {
-		const note = noteOf(await platform().storage.load(key));
+	for (const candidate of await media.unsettledRenames(projectId)) {
+		const note = noteOf(candidate);
 		if (note) notes.push(note);
 	}
 	return notes;
@@ -165,24 +169,34 @@ export async function readUnsettledRename({
 	projectId: string;
 	rename: RenamePair;
 }): Promise<UnsettledRename | undefined> {
-	return noteOf(
-		await platform().storage.load(
-			await unsettledRenameKey({ projectId, rename })
-		)
+	const pair = [rename.newId, rename.oldId].sort().join("\n");
+	return (await readUnsettledRenames(projectId)).find(
+		(note) => [note.newId, note.oldId].sort().join("\n") === pair
 	);
 }
 
-/** Drops the note of a rename that is settled. */
+/**
+ * Has the desktop app drop the note of a rename the editor has settled, and
+ * answers whether it is gone. The app keeps it when it is at work on the
+ * rename (again), or has written the note since the one given here was
+ * read: what the note says by then is still to be settled.
+ */
 export async function forgetUnsettledRename({
 	projectId,
 	rename,
 }: {
 	projectId: string;
-	rename: RenamePair;
-}): Promise<void> {
-	await platform().storage.remove(
-		await unsettledRenameKey({ projectId, rename })
-	);
+	rename: Pick<UnsettledRename, "newId" | "oldId" | "notedAt">;
+}): Promise<boolean> {
+	const media = platform().claude?.media;
+	if (!media?.forgetSettledRename) return false;
+	const gone = await media.forgetSettledRename({
+		projectId,
+		oldId: rename.oldId,
+		newId: rename.newId,
+		notedAt: rename.notedAt,
+	});
+	return gone === true;
 }
 
 /** What the folder shows at a path: a file, none (null), or no answer. */
@@ -257,4 +271,48 @@ export async function whereNotedFileIs(
 		return { name: looksLike(atNew) ? "new" : "old", otherNameTaken: true };
 	}
 	return note.fileIs ? { name: note.fileIs, otherNameTaken: true } : "unclear";
+}
+
+/**
+ * Whose a media item is that the project holds under the name the renamed
+ * file left, now that another file has that name: the renamed file's own,
+ * which the editor has not brought over yet, or an item of the other file,
+ * imported since, with clips of its own.
+ *
+ * Two things together make it the renamed file's. The editor held it before
+ * the app began the rename: until then the name was the renamed file's, and
+ * no other file can have had it. And it was copied from a file that looks
+ * as the app noted the renamed file. Neither is enough alone: two files can
+ * have one size and time, and an item of a file long gone from that name
+ * was held before the rename too.
+ *
+ * It is another file's when both say so: it was not held before the rename
+ * began, as far as is recorded, and was copied from a file that does not
+ * look like the renamed one. Everything in between is not known, and
+ * nothing is to be changed on it: an item with no record of when the editor
+ * came to hold it, a note that does not say what the file looked like or
+ * when the rename began.
+ */
+export function whoseItemIs({
+	item,
+	note,
+}: {
+	item: Pick<MediaItem, "file" | "metadata">;
+	note: UnsettledRename;
+}): "the renamed file's" | "another file's" | "unknown" {
+	if (!note.file) return "unknown";
+	const copiedFrom = readSourceFileStat({ item });
+	if (!copiedFrom) {
+		// From before the record was kept: the size of its copy is all there
+		// is, and a copy of another size is not the renamed file's.
+		return item.file.size === note.file.size ? "unknown" : "another file's";
+	}
+	const looksLikeIt = sameSourceFile(copiedFrom, note.file);
+	const heldBeforeRename =
+		copiedFrom.heldSince !== undefined &&
+		note.beganAt !== undefined &&
+		copiedFrom.heldSince < note.beganAt;
+	if (looksLikeIt && heldBeforeRename) return "the renamed file's";
+	if (!looksLikeIt && !heldBeforeRename) return "another file's";
+	return "unknown";
 }
