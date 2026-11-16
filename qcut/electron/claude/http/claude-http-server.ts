@@ -75,6 +75,7 @@ import { registerStateRoutes } from "./claude-http-state-routes.js";
 import { requestEditorStateSnapshotFromRenderer } from "../handlers/claude-state-handler.js";
 import {
 	requestMediaDeleteFromRenderer,
+	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../handlers/claude-media-renderer-handler.js";
 import { registerQCutImportEvidenceRoutes } from "./claude-http-import-evidence-routes.js";
@@ -312,6 +313,9 @@ export function startClaudeHTTPServer(
 		/** Removes media from the renderer and waits for persistence. */
 		requestMediaDelete: (payload) =>
 			requestMediaDeleteFromRenderer({ payload, win: getWindow() }),
+		/** Re-keys a renamed media item in the renderer and repoints its clips. */
+		requestMediaRename: (payload) =>
+			requestMediaRenameFromRenderer({ payload, win: getWindow() }),
 		/** Starts an auto-edit job in the main process. */
 		startAutoEditJob: async (projectId, request) =>
 			startAutoEditJob(projectId, request, getWindow()),
