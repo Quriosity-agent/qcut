@@ -1280,10 +1280,12 @@ describe("Claude HTTP Server", () => {
 			projectId: "proj_123",
 			renamed: RENAMED,
 			stage: "stays",
+			by: expect.any(String),
 		});
 		expect(mediaRenameNote.forgetUnsettledMediaRename).toHaveBeenCalledWith({
 			projectId: "proj_123",
 			renamed: RENAMED,
+			by: expect.any(String),
 		});
 	});
 
