@@ -144,10 +144,48 @@ describe("mediaOverlayRendererReason", () => {
 			],
 		};
 		expect(mediaOverlayRendererReason({ timeline })).toBe(
-			"an adjustment layer that is under a media clip stacked over a lower track and over the text or sticker tracks"
+			"an adjustment layer that is under a media clip stacked over a lower track and over a text or sticker layer"
 		);
 		// A hidden text track is not drawn, so nothing has to wait for it.
 		(timeline.tracks[2] as { hidden?: boolean }).hidden = true;
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	/**
+	 * Text above the layer and text below it: the layer is not above every
+	 * text track, so its grade is made inside the overlay pass, before any
+	 * text is drawn. The text under it would come out ungraded, where the
+	 * renderer, which this timeline went to before, grades it.
+	 */
+	it("keeps the renderer when a text or sticker under the layer shares time with it", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{
+					type: "text",
+					elements: [{ type: "text", startTime: 0, endTime: 4 }],
+				},
+				{ type: "media", elements: [media("vignette", 0, 10)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 10 }],
+				},
+				{
+					type: "sticker",
+					elements: [{ type: "sticker", startTime: 2, endTime: 3 }],
+				},
+				{ type: "media", elements: [media("main", 0, 20)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an adjustment layer that is under a media clip stacked over a lower track and over a text or sticker layer"
+		);
+		// At another time than the layer, the sticker is not the layer's to grade.
+		timeline.tracks[3].elements[0] = {
+			type: "sticker",
+			startTime: 12,
+			endTime: 14,
+		};
 		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
 	});
 
