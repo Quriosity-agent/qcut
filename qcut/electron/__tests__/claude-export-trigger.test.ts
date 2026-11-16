@@ -1130,6 +1130,65 @@ describe("Claude export trigger", () => {
 		expect(dispatch).not.toHaveBeenCalled();
 	});
 
+	/**
+	 * Every refusal used to end "Drop them, or pass --engine muxer". Muxer is
+	 * the renderer engine: with it a range was refused again, in the same
+	 * words.
+	 */
+	it("gives advice that can be followed for each kind of refused override", async () => {
+		const refusal = async ({
+			request,
+			reasons,
+		}: {
+			request: Record<string, unknown>;
+			reasons: string[];
+		}) =>
+			startRendererExportJob({
+				dispatch: vi.fn(async () => {}),
+				mediaFiles: testMediaFiles,
+				projectId: "project_renderer_advice",
+				request: { outputPath: "/tmp/renderer-advice.mp4", ...request },
+				timeline: testTimeline,
+				reasons,
+			}).then(
+				() => "started",
+				(error: Error) => error.message
+			);
+
+		// What the timeline holds makes it a renderer export: only dropping helps.
+		const range = { range: { startTime: 1, endTime: 2 } };
+		const masked = ["masked or multi-pass adjustment layers"];
+		for (const engine of [undefined, "muxer"]) {
+			expect(
+				await refusal({
+					request: { ...range, ...(engine ? { engine } : {}) },
+					reasons: engine
+						? ["--engine muxer was asked for", ...masked]
+						: masked,
+				})
+			).toMatch(
+				/does not take these CLI overrides: range \(--start-time\/--end-time\)\. Drop them\. They belong to the native export, which cannot draw this timeline while it has what is named in the brackets; --engine muxer is the renderer engine too and takes none of them\.$/
+			);
+		}
+
+		// The request alone chose the renderer: the native export would take them.
+		expect(
+			await refusal({
+				request: { ...range, engine: "muxer", keepTemp: true },
+				reasons: ["--engine muxer was asked for"],
+			})
+		).toMatch(
+			/keepTemp \(--keep-temp\)\. Drop them, or drop --engine muxer: the native export takes them\.$/
+		);
+
+		// Only the engine was refused: the one case the old advice fitted.
+		expect(
+			await refusal({ request: { engine: "native" }, reasons: masked })
+		).toMatch(
+			/these CLI overrides: engine\. Drop --engine, or pass --engine auto or --engine muxer\.$/
+		);
+	});
+
 	it.each([
 		{
 			label: "a directory",
