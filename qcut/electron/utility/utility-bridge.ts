@@ -69,11 +69,13 @@ import {
 import { requestEditorStateSnapshotFromRenderer } from "../claude/handlers/claude-state-handler.js";
 import {
 	requestMediaDeleteFromRenderer,
+	requestMediaRefreshFromRenderer,
 	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../claude/handlers/claude-media-renderer-handler.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRefreshEvent,
 	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../types/claude-media-bridge-api.js";
@@ -590,6 +592,13 @@ async function handleMainRequest(
 				payload: Omit<ClaudeMediaDeletedEvent, "requestId">;
 			};
 			return requestMediaDeleteFromRenderer({ payload: req.payload, win });
+		}
+
+		case "media:refresh-renderer": {
+			const req = data as unknown as {
+				payload: Omit<ClaudeMediaRefreshEvent, "requestId">;
+			};
+			return requestMediaRefreshFromRenderer({ payload: req.payload, win });
 		}
 
 		case "media:rename-renderer": {
