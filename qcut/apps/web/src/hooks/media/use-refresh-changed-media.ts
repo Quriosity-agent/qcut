@@ -23,11 +23,21 @@ export function useRefreshChangedMedia(): void {
 	useEffect(() => {
 		if (!projectId || !mediaLoaded) return;
 		let lastRun = 0;
+		let later: ReturnType<typeof setTimeout> | undefined;
 		const check = () => {
 			if (document.visibilityState === "hidden") return;
-			const now = Date.now();
-			if (now - lastRun < MIN_INTERVAL_MS) return;
-			lastRun = now;
+			const wait = lastRun + MIN_INTERVAL_MS - Date.now();
+			if (wait > 0) {
+				// Too soon after the last check. It is made once the interval is
+				// over: the window may stay in front from here on, and a file
+				// that changed in between would not be looked at again.
+				later ??= setTimeout(() => {
+					later = undefined;
+					check();
+				}, wait);
+				return;
+			}
+			lastRun = Date.now();
 			refreshChangedMediaSources({ projectId }).catch((error: unknown) => {
 				debugWarn("[RefreshChangedMedia] The check failed:", error);
 			});
@@ -38,6 +48,7 @@ export function useRefreshChangedMedia(): void {
 		return () => {
 			window.removeEventListener("focus", check);
 			document.removeEventListener("visibilitychange", check);
+			clearTimeout(later);
 		};
 	}, [projectId, mediaLoaded]);
 }
