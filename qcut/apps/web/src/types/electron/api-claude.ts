@@ -88,6 +88,7 @@ export interface ElectronClaudeOps {
 					newPath: string;
 					projectId: string;
 					requestId?: string;
+					deadlineAt?: number;
 				}) => void | Promise<void>
 			) => void;
 		};
