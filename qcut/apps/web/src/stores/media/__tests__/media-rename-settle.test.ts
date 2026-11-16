@@ -352,7 +352,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		sometimeLater();
 		expect(
 			await settleUnsettledMediaRenames({ projectId: "project-1" })
-		).toEqual({});
+		).toEqual({ dropped: 1 });
 		expect(heldIds()).toEqual([OLD]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
@@ -395,7 +395,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		sometimeLater();
 		expect(
 			await settleUnsettledMediaRenames({ projectId: "project-1" })
-		).toEqual({});
+		).toEqual({ dropped: 1 });
 		expect(heldIds()).toEqual([OLD]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
 		expect(desktop.stored.has(NOTES)).toBe(false);
@@ -406,7 +406,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		noted({ file: SEEN, fileIs: "old", notedAt: Date.now() });
 		expect(
 			await settleUnsettledMediaRenames({ projectId: "project-1" })
-		).toEqual({});
+		).toEqual({ dropped: 1 });
 		expect(heldIds()).toEqual([OLD]);
 		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
