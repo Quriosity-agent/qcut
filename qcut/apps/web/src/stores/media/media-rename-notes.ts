@@ -11,9 +11,13 @@
  * then cannot go back either. Nothing would put that right once the project
  * is closed.
  *
- * So such a rename is noted here, in a store of its own beside the
- * project's, and settled from what the project folder holds the next time
- * the project is open (`settleUnsettledMediaRenames`).
+ * So such a rename is noted, in the desktop app's key-value store beside
+ * the project's, and settled from what the project folder holds the next
+ * time the project is open (`settleUnsettledMediaRenames`). A note is a
+ * record of its own, under a key made of the project and the two ids: the
+ * editor writes one when it knows, and so does the desktop app before it
+ * puts a file back without the editor's word
+ * (electron/claude/handlers/claude-media-rename-note.ts makes the same key).
  *
  * @module stores/media/media-rename-notes
  */
@@ -33,11 +37,30 @@ export interface UnsettledRename {
 	notedAt: number;
 }
 
-const storageKey = (projectId: string) =>
-	`media-renames-unsettled-${projectId}`;
+type RenamePair = Pick<UnsettledRename, "newId" | "oldId">;
 
-/** One change to a project's notes at a time: each reads, then writes. */
-const lastChange = new Map<string, Promise<unknown>>();
+const keyPrefix = (projectId: string) => `media-rename-unsettled-${projectId}-`;
+
+/**
+ * The key of the note for one pair of ids. Ids follow file names and can be
+ * long, and a key becomes a file name: the pair goes in as a digest.
+ */
+export async function unsettledRenameKey({
+	projectId,
+	rename,
+}: {
+	projectId: string;
+	rename: RenamePair;
+}): Promise<string> {
+	const digest = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(`${rename.newId}\n${rename.oldId}`)
+	);
+	const hex = Array.from(new Uint8Array(digest), (byte) =>
+		byte.toString(16).padStart(2, "0")
+	).join("");
+	return `${keyPrefix(projectId)}${hex.slice(0, 32)}`;
+}
 
 function isUnsettledRename(candidate: unknown): candidate is UnsettledRename {
 	if (typeof candidate !== "object" || candidate === null) return false;
@@ -51,84 +74,48 @@ function isUnsettledRename(candidate: unknown): candidate is UnsettledRename {
 	);
 }
 
-/** The renames noted for a project; none when the notes cannot be read. */
+/** The renames noted for a project. */
 export async function readUnsettledRenames(
 	projectId: string
 ): Promise<UnsettledRename[]> {
-	const stored = await platform().storage.load(storageKey(projectId));
-	return Array.isArray(stored) ? stored.filter(isUnsettledRename) : [];
-}
-
-function change({
-	projectId,
-	edit,
-}: {
-	projectId: string;
-	edit: (notes: UnsettledRename[]) => UnsettledRename[];
-}): Promise<void> {
-	const run = (lastChange.get(projectId) ?? Promise.resolve()).then(
-		async () => {
-			const notes = await readUnsettledRenames(projectId);
-			const edited = edit(notes);
-			if (edited.length === 0) {
-				if (notes.length > 0) {
-					await platform().storage.remove(storageKey(projectId));
-				}
-				return;
-			}
-			const saved = await platform().storage.save(
-				storageKey(projectId),
-				edited
-			);
-			if (saved === false) {
-				throw new Error("The note of an unsettled rename could not be saved");
-			}
-		}
+	const prefix = keyPrefix(projectId);
+	const keys = (await platform().storage.list()).filter((key) =>
+		key.startsWith(prefix)
 	);
-	lastChange.set(
-		projectId,
-		run.catch(() => undefined)
-	);
-	return run;
+	const notes: UnsettledRename[] = [];
+	for (const key of keys.sort()) {
+		const stored = await platform().storage.load(key);
+		if (isUnsettledRename(stored)) notes.push(stored);
+	}
+	return notes;
 }
-
-const samePair = (
-	left: Pick<UnsettledRename, "newId" | "oldId">,
-	right: Pick<UnsettledRename, "newId" | "oldId">
-) => left.newId === right.newId && left.oldId === right.oldId;
 
 /** Notes a rename to be settled; one note per pair of ids. */
-export function noteUnsettledRename({
+export async function noteUnsettledRename({
 	projectId,
 	rename,
 }: {
 	projectId: string;
 	rename: UnsettledRename;
 }): Promise<void> {
-	return change({
-		projectId,
-		edit: (notes) => [
-			...notes.filter((note) => !samePair(note, rename)),
-			rename,
-		],
-	});
+	const saved = await platform().storage.save(
+		await unsettledRenameKey({ projectId, rename }),
+		rename
+	);
+	if (saved === false) {
+		throw new Error("The note of an unsettled rename could not be saved");
+	}
 }
 
 /** Drops the note of a rename that is settled. */
-export function forgetUnsettledRename({
+export async function forgetUnsettledRename({
 	projectId,
 	rename,
 }: {
 	projectId: string;
-	rename: Pick<UnsettledRename, "newId" | "oldId">;
+	rename: RenamePair;
 }): Promise<void> {
-	return change({
-		projectId,
-		edit: (notes) => notes.filter((note) => !samePair(note, rename)),
-	});
-}
-
-/** Test seam: forget the order of changes kept between cases. */
-export function resetUnsettledRenameChanges(): void {
-	lastChange.clear();
+	await platform().storage.remove(
+		await unsettledRenameKey({ projectId, rename })
+	);
 }
