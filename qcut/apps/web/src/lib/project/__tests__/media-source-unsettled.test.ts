@@ -177,8 +177,54 @@ describe("the check of changed files while a rename is not settled", () => {
 		);
 	});
 
-	it("goes on as without notes when they cannot be read", async () => {
+	/**
+	 * Without the notes nothing says which items are of a rename that is not
+	 * settled. The check went on as if there were none: it read the other
+	 * file into the renamed file's item and wrote that file into its record,
+	 * by which the note, once it could be read again, took the item for the
+	 * other file's own and was dropped.
+	 */
+	it("checks nothing, and says so, when the notes cannot be read", async () => {
 		desktop.notesFail = true;
+		const before = mediaState.mediaItems[0];
+
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [anotherFile],
+			})
+		).rejects.toThrow(
+			"The notes of media renames could not be read (the app does not answer), so the media files were not checked"
+		);
+
+		expect(desktop.readFile).not.toHaveBeenCalled();
+		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
+		expect(storage.saveMediaItemRecord).not.toHaveBeenCalled();
+		// The item, its bytes and its record are what they were.
+		expect(mediaState.mediaItems[0]).toBe(before);
+	});
+
+	it("does not take a file's present look for the record of an unrecorded item either, when the notes cannot be read", async () => {
+		desktop.notesFail = true;
+		// No record yet, and a copy as long as the file under its name.
+		mediaState.mediaItems = [mediaItem({ bytes: 8 })];
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [anotherFile],
+			})
+		).rejects.toThrow("could not be read");
+		expect(storage.saveMediaItemRecord).not.toHaveBeenCalled();
+		expect(mediaState.mediaItems[0]).not.toHaveProperty("metadata.sourceFile");
+	});
+
+	it("checks the files again once the notes can be read", async () => {
+		desktop.notesFail = true;
+		await expect(
+			refreshChangedMediaSources({ projectId: "p1", diskFiles: [anotherFile] })
+		).rejects.toThrow("could not be read");
+
+		desktop.notesFail = false;
 		const result = await refreshChangedMediaSources({
 			projectId: "p1",
 			diskFiles: [anotherFile],
