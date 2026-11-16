@@ -43,6 +43,8 @@ export function parseClaudeRenamedMediaEvent({
 		typeof record.deadlineAt === "number" && Number.isFinite(record.deadlineAt)
 			? record.deadlineAt
 			: undefined;
+	const previousName = readText({ value: record.previousName });
+	const previousPath = readText({ value: record.previousPath });
 	return {
 		projectId,
 		fromId,
@@ -50,6 +52,10 @@ export function parseClaudeRenamedMediaEvent({
 		name,
 		localPath,
 		...(deadlineAt === undefined ? {} : { deadlineAt }),
+		...(previousName && previousPath
+			? { previous: { name: previousName, localPath: previousPath } }
+			: {}),
+		...(record.settles === true ? { settles: true } : {}),
 	};
 }
 
@@ -63,7 +69,9 @@ export function setupMediaRenameHandler({
 		const rename = parseClaudeRenamedMediaEvent({ candidate });
 		if (!rename) throw new Error("Invalid media rename event");
 		const activeProjectId = useProjectStore.getState().activeProject?.id;
-		if (activeProjectId !== rename.projectId) {
+		// A request that settles goes on for a project that is not open:
+		// it is refused there, and noted for when the project is.
+		if (activeProjectId !== rename.projectId && !rename.settles) {
 			throw new Error(
 				`Cannot rename media for inactive project ${rename.projectId}`
 			);
