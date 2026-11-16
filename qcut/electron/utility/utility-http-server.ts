@@ -447,6 +447,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			requestFromMain("media:note-unsettled-rename", {
 				payload,
 			}) as Promise<void>,
+		/** Drops that note: the editor and the folder are known to agree. */
+		forgetUnsettledMediaRename: (payload) =>
+			requestFromMain("media:forget-unsettled-rename", {
+				payload,
+			}) as Promise<void>,
 		/** Has the renderer read again the media files that changed on disk. */
 		requestMediaRefresh: (payload) =>
 			requestFromMain(
