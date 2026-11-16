@@ -1185,8 +1185,6 @@ export function registerSharedRoutes(
 							newMediaId: renamed.id,
 							newName: renamed.name,
 							newPath: renamed.path,
-							previousName: renamed.previous.name,
-							previousPath: renamed.previous.path,
 						}),
 				});
 				// The editor is where the file is: nothing is left to settle.
