@@ -4,20 +4,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
 	mockAccess,
 	mockDeleteMetadata,
+	mockDiscardStaged,
 	mockLink,
 	mockLstat,
 	mockPersistMetadata,
 	mockReadMetadata,
 	mockReaddir,
 	mockRename,
+	mockStageMetadata,
 	mockStat,
 	mockUnlink,
 } = vi.hoisted(() => ({
 	mockAccess: vi.fn(),
 	mockDeleteMetadata: vi.fn(),
+	mockDiscardStaged: vi.fn(),
 	mockLink: vi.fn(),
 	mockLstat: vi.fn(),
 	mockPersistMetadata: vi.fn(),
+	mockStageMetadata: vi.fn(),
 	mockReadMetadata: vi.fn(),
 	mockReaddir: vi.fn(),
 	mockRename: vi.fn(),
@@ -57,6 +61,9 @@ vi.mock("../claude/handlers/claude-media-restricted-metadata.js", () => ({
 		mockPersistMetadata(...args),
 	readMediaRestrictedMetadata: (...args: unknown[]) =>
 		mockReadMetadata(...args),
+	RestrictedMetadataTakenError: class extends Error {},
+	stageMediaRestrictedMetadata: (...args: unknown[]) =>
+		mockStageMetadata(...args),
 }));
 
 import {
@@ -103,6 +110,8 @@ describe("restricted metadata rename rollback", () => {
 		});
 		mockReadMetadata.mockResolvedValue(METADATA);
 		mockPersistMetadata.mockResolvedValue(undefined);
+		mockDiscardStaged.mockResolvedValue(undefined);
+		mockStageMetadata.mockResolvedValue({ discard: mockDiscardStaged });
 		mockDeleteMetadata.mockResolvedValue(undefined);
 		// The file cannot be moved: neither by a hard link nor by a rename.
 		mockLstat.mockResolvedValue({ isSymbolicLink: () => false });
@@ -120,20 +129,17 @@ describe("restricted metadata rename rollback", () => {
 
 		expect(mockLink).toHaveBeenCalledOnce();
 		expect(mockRename).toHaveBeenCalledOnce();
-		expect(mockPersistMetadata).toHaveBeenCalledWith({
+		expect(mockStageMetadata).toHaveBeenCalledWith({
 			mediaId: NEW_ID,
 			metadata: METADATA,
 			projectId: "project-1",
+			mediaFileExists: expect.any(Function),
 		});
-		expect(mockDeleteMetadata).toHaveBeenCalledOnce();
-		expect(mockDeleteMetadata).toHaveBeenCalledWith({
-			mediaId: NEW_ID,
-			projectId: "project-1",
-		});
-		expect(mockDeleteMetadata).not.toHaveBeenCalledWith({
-			mediaId: OLD_ID,
-			projectId: "project-1",
-		});
+		// What was staged is taken away by the one who staged it, and nothing
+		// is removed by id: the old sidecar stays, and so would another
+		// file's under the new id.
+		expect(mockDiscardStaged).toHaveBeenCalledOnce();
+		expect(mockDeleteMetadata).not.toHaveBeenCalled();
 	});
 
 	it("returns success after media deletion when orphan cleanup fails", async () => {
