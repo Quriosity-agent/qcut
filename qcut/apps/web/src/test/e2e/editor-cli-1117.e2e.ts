@@ -401,6 +401,53 @@ test("QCut 1117 field test: renamed and overwritten media, a grade under an over
 		{ id: newId, name: "shake_v2.mp4" },
 	]);
 
+	// The desktop app notes a rename before it moves the file, and keeps the
+	// note until the editor is where the file is. The editor reads the app's
+	// notes over its bridge: after a rename that went well there is none,
+	// and the editor's item says what it was copied from and by when.
+	const afterTheRename = await page.evaluate(
+		async ({ id, from, to }) => {
+			const { electronAPI, __mediaStore } = window as unknown as {
+				electronAPI: {
+					claude: {
+						media: {
+							unsettledRenames: (projectId: string) => Promise<unknown[]>;
+							forgetSettledRename: (request: object) => Promise<boolean>;
+						};
+					};
+				};
+				__mediaStore: {
+					getState: () => {
+						mediaItems: Array<{
+							id: string;
+							metadata?: { sourceFile?: { heldSince?: number } };
+						}>;
+					};
+				};
+			};
+			const item = __mediaStore
+				.getState()
+				.mediaItems.find((candidate) => candidate.id === to);
+			const { media } = electronAPI.claude;
+			return {
+				notes: await media.unsettledRenames(id),
+				// Nothing to drop, and the app says so.
+				gone: await media.forgetSettledRename({
+					projectId: id,
+					oldId: from,
+					newId: to,
+					notedAt: 0,
+				}),
+				heldSince: item?.metadata?.sourceFile?.heldSince,
+			};
+		},
+		{ id: projectId, from: oldId, to: newId }
+	);
+	expect(afterTheRename.notes).toEqual([]);
+	expect(afterTheRename.gone).toBe(true);
+	expect(afterTheRename.heldSince).toBeLessThanOrEqual(Date.now());
+	expect(afterTheRename.heldSince).toBeGreaterThan(Date.now() - 3_600_000);
+
 	// The clip is still in the export; it used to be left out without a word.
 	const afterRenameExport = await exportFile(
 		"--engine",
