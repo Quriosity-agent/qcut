@@ -152,7 +152,9 @@ was unless the answer says otherwise, in one of three ways.
 
 The desktop app notes every rename before it moves the file, and keeps the
 note until the editor is known to be where the file is; a rename it cannot
-note is not made ("could not be noted … nothing was changed"). What is still
+note is not made ("could not be noted … nothing was changed"). That is also
+the answer while another request is renaming the same file ("Another request
+is renaming …"): try again once that one has answered. What is still
 apart after a failure, or after the app was closed in the middle of a
 rename, the editor settles from the name the file has when the project is
 next opened; the renamed file is told from another file that has taken its
