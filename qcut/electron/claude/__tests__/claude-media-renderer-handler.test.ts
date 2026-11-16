@@ -20,14 +20,18 @@ const electronMocks = vi.hoisted(() => {
 vi.mock("electron", () => ({ ipcMain: electronMocks.ipcMain }));
 
 import {
+	EXPORT_START_HTTP_TIMEOUT_MS,
 	MEDIA_REFRESH_BEFORE_EXPORT_MS,
 	MEDIA_REFRESH_CLIENT_TIMEOUT_MS,
+	MEDIA_REFRESH_HTTP_TIMEOUT_MS,
 	MEDIA_REFRESH_TIMEOUT_MS,
 	MEDIA_RENAME_CLIENT_TIMEOUT_MS,
+	MEDIA_RENAME_HTTP_TIMEOUT_MS,
 	MEDIA_RENAME_COMMIT_MARGIN_MS,
 	MEDIA_RENAME_TIMEOUT_MS,
 	UTILITY_BRIDGE_MARGIN_MS,
 	mediaRefreshWaitMs,
+	mediaRouteHttpTimeoutMs,
 } from "../handlers/claude-media-deadlines";
 import {
 	requestMediaDeleteFromRenderer,
@@ -255,25 +259,65 @@ describe("Claude media renderer acknowledgement", () => {
 	 * utility process's usual wait is 10 s.
 	 */
 	it("keeps every wait longer than the one inside it", () => {
-		const UTILITY_HTTP_REQUEST_MS = 120_000;
-		// Rename: editor < main < utility bridge < command line.
+		// Rename: editor < main < utility bridge < one HTTP request < command line.
 		expect(MEDIA_RENAME_COMMIT_MARGIN_MS).toBeGreaterThan(0);
 		expect(MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS).toBeLessThan(
-			MEDIA_RENAME_CLIENT_TIMEOUT_MS
+			MEDIA_RENAME_HTTP_TIMEOUT_MS
 		);
-		expect(MEDIA_RENAME_CLIENT_TIMEOUT_MS).toBeLessThan(
-			UTILITY_HTTP_REQUEST_MS
+		expect(MEDIA_RENAME_HTTP_TIMEOUT_MS).toBeLessThan(
+			MEDIA_RENAME_CLIENT_TIMEOUT_MS
 		);
 		// Refresh: main < utility bridge < one HTTP request < command line.
 		expect(MEDIA_REFRESH_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS).toBeLessThan(
-			UTILITY_HTTP_REQUEST_MS
+			MEDIA_REFRESH_HTTP_TIMEOUT_MS
 		);
-		expect(UTILITY_HTTP_REQUEST_MS).toBeLessThan(
+		expect(MEDIA_REFRESH_HTTP_TIMEOUT_MS).toBeLessThan(
 			MEDIA_REFRESH_CLIENT_TIMEOUT_MS
 		);
-		// An export start's own check fits inside a usual 30 s request.
+		// An export start: its check fits inside the command line's usual
+		// 30 s, and the request keeps 30 s for the start itself.
 		expect(
 			MEDIA_REFRESH_BEFORE_EXPORT_MS + UTILITY_BRIDGE_MARGIN_MS
 		).toBeLessThan(30_000);
+		expect(EXPORT_START_HTTP_TIMEOUT_MS).toBe(
+			30_000 + MEDIA_REFRESH_BEFORE_EXPORT_MS + UTILITY_BRIDGE_MARGIN_MS
+		);
+	});
+
+	/**
+	 * The main-process server ends a request after 30 s: as long as a rename
+	 * waits by itself, and less than a refresh does. It answered 408 while
+	 * the route was still at work.
+	 */
+	it("gives a rename, a refresh and an export start the HTTP request they need", () => {
+		expect(
+			mediaRouteHttpTimeoutMs({ path: "/api/claude/media/project-1/refresh" })
+		).toBe(MEDIA_REFRESH_HTTP_TIMEOUT_MS);
+		expect(
+			mediaRouteHttpTimeoutMs({
+				path: "/api/claude/media/project-1/media_b2xkLm1wNA/rename",
+			})
+		).toBe(MEDIA_RENAME_HTTP_TIMEOUT_MS);
+		expect(
+			mediaRouteHttpTimeoutMs({ path: "/api/claude/export/project-1/start" })
+		).toBe(EXPORT_START_HTTP_TIMEOUT_MS);
+		// Every one of them outlasts the main-process server's usual 30 s.
+		for (const needed of [
+			MEDIA_REFRESH_HTTP_TIMEOUT_MS,
+			MEDIA_RENAME_HTTP_TIMEOUT_MS,
+			EXPORT_START_HTTP_TIMEOUT_MS,
+		]) {
+			expect(needed).toBeGreaterThan(30_000);
+		}
+		// Other routes keep the server's own time.
+		for (const path of [
+			"/api/claude/media/project-1",
+			"/api/claude/media/project-1/media_b2xkLm1wNA",
+			"/api/claude/media/project-1/refresh/again",
+			"/api/claude/export/project-1/jobs/job-1",
+			"/api/claude/timeline/project-1",
+		]) {
+			expect(mediaRouteHttpTimeoutMs({ path })).toBeUndefined();
+		}
 	});
 });
