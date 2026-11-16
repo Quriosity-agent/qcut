@@ -70,14 +70,16 @@ async function isTaken(filePath: string): Promise<boolean> {
  * Moves a file to a name nothing has, and never onto another file.
  *
  * `fs.rename` replaces whatever is at the destination, also a file that was
- * created after the name was seen free. A hard link is made only when the
- * name is free, so the file takes its new name that way and then gives up
- * the old one.
+ * created after the name was seen free. So the new name is taken by a call
+ * that fails when something has it, and the old name is given up after that:
  *
- * Two cases cannot go that way and are renamed right after a look at the
- * name instead: a symbolic link, which a hard link would replace by the file
- * it points to, and a volume without hard links (exFAT, some network
- * shares).
+ * - a hard link, for a file: made only when the name is free, and the file
+ *   is the same one under either name;
+ * - a symbolic link, made again under the new name: a hard link would
+ *   replace the link by the file it points to;
+ * - a copy that refuses an existing name, on a volume without hard links
+ *   (exFAT, some network shares). It takes as long as the file is large,
+ *   and is the one way left there that cannot write over a file.
  */
 export async function moveWithoutOverwriting({
 	from,
@@ -87,36 +89,43 @@ export async function moveWithoutOverwriting({
 	to: string;
 }): Promise<void> {
 	const source = await fs.lstat(from);
-	if (!source.isSymbolicLink()) {
+	const taken = (error: unknown) =>
+		errorCode(error) === "EEXIST" ? new MediaNameTakenError(to) : error;
+	if (source.isSymbolicLink()) {
+		const target = await fs.readlink(from);
+		// A relative link is kept pointing at the same file from its new place.
+		const pointsTo =
+			path.isAbsolute(target) || path.dirname(from) === path.dirname(to)
+				? target
+				: path.relative(
+						path.dirname(to),
+						path.resolve(path.dirname(from), target)
+					);
+		await fs.symlink(pointsTo, to, "file").catch((error: unknown) => {
+			throw taken(error);
+		});
+	} else {
 		try {
 			await fs.link(from, to);
 		} catch (error) {
 			const code = errorCode(error);
-			if (code === "EEXIST") throw new MediaNameTakenError(to);
-			if (code === "ENOENT") throw error;
-			return renameToFreeName({ from, to });
+			if (code === "EEXIST" || code === "ENOENT") throw taken(error);
+			await fs
+				.copyFile(from, to, fs.constants.COPYFILE_EXCL)
+				.catch((copyError: unknown) => {
+					throw taken(copyError);
+				});
+			// A copy is a new file: it is given the times the old one had.
+			await fs.utimes(to, source.atime, source.mtime);
 		}
-		try {
-			await fs.unlink(from);
-		} catch (error) {
-			// Under one name again, the old one: nothing was moved.
-			await fs.unlink(to).catch(() => undefined);
-			throw error;
-		}
-		return;
 	}
-	await renameToFreeName({ from, to });
-}
-
-async function renameToFreeName({
-	from,
-	to,
-}: {
-	from: string;
-	to: string;
-}): Promise<void> {
-	if (await isTaken(to)) throw new MediaNameTakenError(to);
-	await fs.rename(from, to);
+	try {
+		await fs.unlink(from);
+	} catch (error) {
+		// Under one name again, the old one: nothing was moved.
+		await fs.unlink(to).catch(() => undefined);
+		throw error;
+	}
 }
 
 /**
