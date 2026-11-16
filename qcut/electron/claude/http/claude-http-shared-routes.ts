@@ -157,7 +157,10 @@ import {
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
 import { ClipMediaMissingError } from "../handlers/claude-export-handler/missing-clip-media.js";
-import { MEDIA_REFRESH_BEFORE_EXPORT_MS } from "../handlers/claude-media-deadlines.js";
+import {
+	checkMediaBeforeExport,
+	staleCopiesOnTimeline,
+} from "./claude-http-export-media-check.js";
 import {
 	excludeTimelineTracks,
 	readExcludedTrackIds,
@@ -774,41 +777,6 @@ function readTrackSwitches({
 		switches[key] = value;
 	}
 	return switches;
-}
-
-/**
- * Has the editor read again the media files that changed on disk, before an
- * export, and says why its copies cannot be relied on, if they cannot: the
- * files it could not read, or the check itself not answering in time. A
- * native export reads the folder and does not need the answer; a renderer
- * export draws from the editor's copies and does.
- */
-async function refreshMediaBeforeExport({
-	accessor,
-	projectId,
-}: {
-	accessor: WindowAccessor;
-	projectId: string;
-}): Promise<string | null> {
-	if (!accessor.requestMediaRefresh) return null;
-	try {
-		const answer = await accessor.requestMediaRefresh({
-			projectId,
-			timeoutMs: MEDIA_REFRESH_BEFORE_EXPORT_MS,
-		});
-		const failed = Array.isArray(answer?.failed) ? answer.failed : [];
-		if (failed.length === 0) return null;
-		return `${failed.length} media file(s) changed in the project folder and the editor could not read them again: ${failed
-			.map((entry) => `${entry.name} (${entry.error})`)
-			.join("; ")}. Fix the files or import them again, then retry`;
-	} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
-		claudeLog.warn(
-			"HTTP",
-			`Could not check the editor's media copies before the export: ${reason}`
-		);
-		return `the editor did not confirm that its media copies match the project folder (${reason}). It may still be reading files that changed; retry in a moment`;
-	}
 }
 
 async function requireRendererMutation({
@@ -2198,7 +2166,7 @@ export function registerSharedRoutes(
 			// The editor reads again any media file that was written over in the
 			// project folder, so its preview, and a renderer export, hold what
 			// the folder holds. A native export reads the folder either way.
-			const staleCopies = await refreshMediaBeforeExport({
+			const mediaCheck = await checkMediaBeforeExport({
 				accessor,
 				projectId: req.params.projectId,
 			});
@@ -2257,6 +2225,10 @@ export function registerSharedRoutes(
 			if (rendererExportReasons.length > 0) {
 				// The renderer draws from the editor's copies: with a stale one
 				// the file would hold an old picture or sound.
+				const staleCopies = staleCopiesOnTimeline({
+					check: mediaCheck,
+					tracks: drawnTimeline.tracks,
+				});
 				if (staleCopies) {
 					throw new HttpError(
 						409,
