@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const desktop = vi.hoisted(() => ({
-	stored: new Map<string, unknown>(),
-	storeFails: false,
+	/** The notes of renames the desktop app holds, by project. */
+	notes: new Map<string, unknown[]>(),
+	notesFail: false,
 	readFile: vi.fn(),
 	getFileInfo: vi.fn(),
 }));
@@ -18,12 +19,13 @@ const mediaState = vi.hoisted(() => ({
 vi.mock("@qcut/platform-core", () => ({
 	platform: () => ({
 		files: { readFile: desktop.readFile, getFileInfo: desktop.getFileInfo },
-		storage: {
-			list: async () => {
-				if (desktop.storeFails) throw new Error("the store cannot be read");
-				return [...desktop.stored.keys()];
+		claude: {
+			media: {
+				unsettledRenames: async (projectId: string) => {
+					if (desktop.notesFail) throw new Error("the app does not answer");
+					return desktop.notes.get(projectId) ?? [];
+				},
 			},
-			load: async (key: string) => desktop.stored.get(key) ?? null,
 		},
 	}),
 }));
@@ -72,6 +74,7 @@ describe("the check of changed files while a rename is not settled", () => {
 		newPath: `${FOLDER}/shake_v1.mp4`,
 		fileIs: "new",
 		notedAt: 0,
+		atWork: false,
 	};
 	/** Another file under the old name: not what the item was copied from. */
 	const anotherFile = diskFile({ size: 8, modifiedAt: 9000 });
@@ -79,8 +82,8 @@ describe("the check of changed files while a rename is not settled", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetMediaPersistenceQueue();
-		desktop.stored.clear();
-		desktop.storeFails = false;
+		desktop.notes.clear();
+		desktop.notesFail = false;
 		mediaState.updateMediaItem.mockResolvedValue(true);
 		desktop.readFile.mockResolvedValue(Buffer.from(new Uint8Array(8)));
 		desktop.getFileInfo.mockResolvedValue({
@@ -91,7 +94,7 @@ describe("the check of changed files while a rename is not settled", () => {
 	});
 
 	it("leaves the item as it is, and says that it was not read", async () => {
-		desktop.stored.set("media-rename-unsettled-p1-0123", note);
+		desktop.notes.set("p1", [note]);
 		const result = await refreshChangedMediaSources({
 			projectId: "p1",
 			diskFiles: [anotherFile],
@@ -113,9 +116,19 @@ describe("the check of changed files while a rename is not settled", () => {
 		});
 	});
 
+	it("leaves it alone as well while the desktop app is at work on the rename", async () => {
+		desktop.notes.set("p1", [{ ...note, fileIs: undefined, atWork: true }]);
+		const result = await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [anotherFile],
+		});
+		expect(result.refreshed).toEqual([]);
+		expect(desktop.readFile).not.toHaveBeenCalled();
+	});
+
 	it("reads the file once the note is gone, and for another project's note", async () => {
 		// A note of another project names the same ids: they follow names.
-		desktop.stored.set("media-rename-unsettled-p2-0123", note);
+		desktop.notes.set("p2", [note]);
 		const result = await refreshChangedMediaSources({
 			projectId: "p1",
 			diskFiles: [anotherFile],
@@ -126,8 +139,46 @@ describe("the check of changed files while a rename is not settled", () => {
 		expect(result.failed).toEqual([]);
 	});
 
+	/**
+	 * The record says by when the editor held the copy. A file that gets the
+	 * item's name later than that is not what the item was copied from: a
+	 * rename that is not settled tells by it whose an item is.
+	 */
+	it("records by when it held the copy: once the bytes were read, or when a copy was first found to match", async () => {
+		// A changed file: held once it had been read.
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		let read = 0;
+		desktop.readFile.mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			read = Date.now();
+			return Buffer.from(new Uint8Array(8));
+		});
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+		});
+		const again = mediaState.updateMediaItem.mock.calls[0][2];
+		expect(again.metadata.sourceFile.heldSince).toBeGreaterThanOrEqual(read);
+		expect(again.metadata.sourceFile.heldSince).toBeLessThanOrEqual(Date.now());
+
+		// A copy from before any record: held, for all that is known, by now.
+		mediaState.mediaItems = [mediaItem({ bytes: 400 })];
+		const asked = Date.now();
+		await refreshChangedMediaSources({
+			projectId: "p1",
+			diskFiles: [diskFile({ size: 400, modifiedAt: 5000 })],
+		});
+		const adopted = storage.saveMediaItemRecord.mock.calls[0][1] as {
+			metadata: { sourceFile: { heldSince: number } };
+		};
+		expect(adopted.metadata.sourceFile.heldSince).toBeGreaterThanOrEqual(asked);
+		expect(adopted.metadata.sourceFile.heldSince).toBeLessThanOrEqual(
+			Date.now()
+		);
+	});
+
 	it("goes on as without notes when they cannot be read", async () => {
-		desktop.storeFails = true;
+		desktop.notesFail = true;
 		const result = await refreshChangedMediaSources({
 			projectId: "p1",
 			diskFiles: [anotherFile],
