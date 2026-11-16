@@ -154,6 +154,7 @@ import {
 } from "./claude-http-background-jobs.js";
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
+import { ClipMediaMissingError } from "../handlers/claude-export-handler/missing-clip-media.js";
 import {
 	excludeTimelineTracks,
 	readExcludedTrackIds,
@@ -2199,6 +2200,10 @@ export function registerSharedRoutes(
 			});
 		} catch (error) {
 			if (error instanceof HttpError) throw error;
+			// The project has to change before this export can run: not a fault.
+			if (error instanceof ClipMediaMissingError) {
+				throw new HttpError(409, error.message);
+			}
 			throw new HttpError(
 				500,
 				error instanceof Error ? error.message : "Failed to start export"
