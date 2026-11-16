@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
 	mockAccess,
-	mockCopyFile,
 	mockDeleteMetadata,
 	mockDiscardStaged,
 	mockLink,
 	mockLstat,
+	mockOpen,
 	mockPersistMetadata,
 	mockReadMetadata,
 	mockReaddir,
@@ -17,11 +17,11 @@ const {
 	mockUnlink,
 } = vi.hoisted(() => ({
 	mockAccess: vi.fn(),
-	mockCopyFile: vi.fn(),
 	mockDeleteMetadata: vi.fn(),
 	mockDiscardStaged: vi.fn(),
 	mockLink: vi.fn(),
 	mockLstat: vi.fn(),
+	mockOpen: vi.fn(),
 	mockPersistMetadata: vi.fn(),
 	mockStageMetadata: vi.fn(),
 	mockReadMetadata: vi.fn(),
@@ -48,10 +48,9 @@ vi.mock("electron-log", () => ({
 
 vi.mock("fs/promises", () => ({
 	access: (...args: unknown[]) => mockAccess(...args),
-	constants: { COPYFILE_EXCL: 1 },
-	copyFile: (...args: unknown[]) => mockCopyFile(...args),
 	link: (...args: unknown[]) => mockLink(...args),
 	lstat: (...args: unknown[]) => mockLstat(...args),
+	open: (...args: unknown[]) => mockOpen(...args),
 	readdir: (...args: unknown[]) => mockReaddir(...args),
 	rename: (...args: unknown[]) => mockRename(...args),
 	stat: (...args: unknown[]) => mockStat(...args),
@@ -122,7 +121,8 @@ describe("restricted metadata rename rollback", () => {
 		mockLink.mockRejectedValue(
 			Object.assign(new Error("link refused"), { code: "EPERM" })
 		);
-		mockCopyFile.mockRejectedValue(new Error("copy refused"));
+		// A copy starts by making its file under the new name.
+		mockOpen.mockRejectedValue(new Error("copy refused"));
 		mockRename.mockRejectedValue(new Error("rename refused"));
 		mockUnlink.mockResolvedValue(undefined);
 	});
@@ -133,7 +133,8 @@ describe("restricted metadata rename rollback", () => {
 		).resolves.toBe(false);
 
 		expect(mockLink).toHaveBeenCalledOnce();
-		expect(mockCopyFile).toHaveBeenCalledOnce();
+		expect(mockOpen).toHaveBeenCalledOnce();
+		expect(mockOpen.mock.calls[0][1]).toBe("wx");
 		// Never by a plain rename, which would replace a file at the name.
 		expect(mockRename).not.toHaveBeenCalled();
 		expect(mockStageMetadata).toHaveBeenCalledWith({
