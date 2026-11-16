@@ -18,7 +18,6 @@ import {
 import { claudeLog } from "../utils/logger.js";
 import {
 	deleteMediaRestrictedMetadata,
-	persistMediaRestrictedMetadata,
 	readMediaRestrictedMetadata,
 } from "./claude-media-restricted-metadata.js";
 import type {
@@ -27,38 +26,9 @@ import type {
 	BatchImportResult,
 } from "../../types/claude-api";
 import { assertRestrictedMediaExportAllowed } from "../../types/restricted-media-export-policy.js";
+import { createMediaId, getUniqueFilePath } from "./claude-media-names.js";
 
 const HANDLER_NAME = "Media";
-
-function createMediaId({ fileName }: { fileName: string }): string {
-	return `media_${Buffer.from(fileName).toString("base64url")}`;
-}
-
-/**
- * Generate a unique filename if file already exists
- * Appends numeric suffix: file.mp4 -> file_1.mp4 -> file_2.mp4
- */
-async function getUniqueFilePath(
-	dir: string,
-	fileName: string
-): Promise<string> {
-	const ext = path.extname(fileName);
-	const baseName = path.basename(fileName, ext);
-	let destPath = path.join(dir, fileName);
-	let counter = 1;
-
-	while (true) {
-		try {
-			await fs.access(destPath);
-			// File exists, try next suffix
-			destPath = path.join(dir, `${baseName}_${counter}${ext}`);
-			counter++;
-		} catch {
-			// File doesn't exist, use this path
-			return destPath;
-		}
-	}
-}
 
 /**
  * Scan a single directory for media files and append to the results array.
@@ -349,7 +319,8 @@ export async function deleteMediaFile(
 }
 
 /**
- * Rename a media file by ID
+ * Rename a media file by ID. Answers whether it was renamed; the editor's
+ * item and clips are not touched (the HTTP route does that).
  */
 export async function renameMediaFile(
 	projectId: string,
@@ -357,68 +328,10 @@ export async function renameMediaFile(
 	newName: string
 ): Promise<boolean> {
 	claudeLog.info(HANDLER_NAME, `Renaming media ${mediaId} to: ${newName}`);
-
-	const sanitizedName = sanitizeFilename(newName);
-	if (!sanitizedName) {
-		claudeLog.error(HANDLER_NAME, "Invalid new filename");
-		return false;
-	}
-
 	try {
-		const allMedia = await listMediaFiles(projectId);
-		const mediaFile = allMedia.find((m) => m.id === mediaId);
-
-		if (!mediaFile) {
-			claudeLog.warn(HANDLER_NAME, `Media not found: ${mediaId}`);
-			return false;
-		}
-
-		const originalExt = path.extname(mediaFile.name);
-		const newNameWithExt = sanitizedName.includes(".")
-			? sanitizedName
-			: sanitizedName + originalExt;
-
-		const mediaPath = getMediaPath(projectId);
-		const newPath = await getUniqueFilePath(mediaPath, newNameWithExt);
-		const newMediaId = createMediaId({ fileName: path.basename(newPath) });
-		const metadata = await readMediaRestrictedMetadata({
-			mediaId: mediaFile.id,
-			projectId,
-		});
-		if (metadata) {
-			await persistMediaRestrictedMetadata({
-				mediaId: newMediaId,
-				metadata,
-				projectId,
-			});
-		}
-
-		try {
-			await fs.rename(mediaFile.path, newPath);
-		} catch (error) {
-			if (metadata) {
-				await deleteMediaRestrictedMetadata({
-					mediaId: newMediaId,
-					projectId,
-				}).catch(() => undefined);
-			}
-			throw error;
-		}
-		if (metadata) {
-			await deleteMediaRestrictedMetadata({
-				mediaId: mediaFile.id,
-				projectId,
-			}).catch((error) => {
-				claudeLog.warn(
-					HANDLER_NAME,
-					`Renamed media but could not remove its old restricted metadata: ${String(error)}`
-				);
-			});
-		}
-		claudeLog.info(
-			HANDLER_NAME,
-			`Successfully renamed: ${mediaFile.name} -> ${path.basename(newPath)}`
-		);
+		// Loaded on use: the rename module reads the media list from here.
+		const { renameMediaFileOnDisk } = await import("./claude-media-rename.js");
+		await renameMediaFileOnDisk({ projectId, mediaId, newName });
 		return true;
 	} catch (error) {
 		claudeLog.error(HANDLER_NAME, "Failed to rename media:", error);
