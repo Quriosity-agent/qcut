@@ -200,16 +200,30 @@ const lastSidecarChange = new Map<string, Promise<unknown>>();
  * This queue is all the coordination there is, because one process makes
  * every change (`makeRestrictedMetadataChangesThrough`): no change waits on
  * another process, and none is taken from one that has only paused.
+ *
+ * A change asked for by the other process has a time by which that process
+ * stops waiting (`giveUpAt`) and goes on as if the change had failed. When
+ * its turn comes later than that, it is not made: made then, it would be a
+ * change nobody knows of (metadata staged for a rename that was given up).
  */
 function oneSidecarChangeAtATime<Result>({
 	sidecarPath,
 	change,
+	giveUpAt,
 }: {
 	sidecarPath: string;
 	change: () => Promise<Result>;
+	giveUpAt?: number;
 }): Promise<Result> {
 	const earlier = lastSidecarChange.get(sidecarPath) ?? Promise.resolve();
-	const running = earlier.then(change);
+	const running = earlier.then(() => {
+		if (giveUpAt !== undefined && Date.now() >= giveUpAt) {
+			throw new Error(
+				"The change to restricted media metadata waited for its turn longer than the request for it; it was not made"
+			);
+		}
+		return change();
+	});
 	const settled = running.then(
 		() => undefined,
 		() => undefined
@@ -231,13 +245,16 @@ function removingSidecar({
 	projectId,
 	sidecarPath,
 	change,
+	giveUpAt,
 }: {
 	projectId: string;
 	sidecarPath: string;
 	change: () => Promise<void>;
+	giveUpAt?: number;
 }): Promise<void> {
 	return oneSidecarChangeAtATime({
 		sidecarPath,
+		giveUpAt,
 		change: async () => {
 			if (!(await getExistingSidecarDirectory({ projectId }))) return;
 			await change();
@@ -371,11 +388,20 @@ async function unlinkIfStill({
 	});
 }
 
+/** When a change asked for by another process is no longer to be made. */
+interface Wait {
+	giveUpAt?: number;
+}
+
 /** The changes, made in this process. */
-const here: RestrictedMetadataChanges = {
-	async persist({ mediaId, metadata, projectId }) {
+const here = {
+	async persist(
+		{ mediaId, metadata, projectId }: PersistRequest,
+		{ giveUpAt }: Wait = {}
+	): Promise<void> {
 		await oneSidecarChangeAtATime({
 			sidecarPath: getSidecarPath({ mediaId, projectId }),
+			giveUpAt,
 			change: () =>
 				writeSidecar({
 					mediaId,
@@ -391,7 +417,10 @@ const here: RestrictedMetadataChanges = {
 		});
 	},
 
-	async stage({ mediaId, metadata, projectId, mediaFilePath }) {
+	async stage(
+		{ mediaId, metadata, projectId, mediaFilePath }: StageRequest,
+		{ giveUpAt }: Wait = {}
+	): Promise<StagedSidecar> {
 		const sidecarPath = getSidecarPath({ mediaId, projectId });
 		const stage = () =>
 			writeSidecar({
@@ -402,6 +431,7 @@ const here: RestrictedMetadataChanges = {
 			});
 		const staged = await oneSidecarChangeAtATime({
 			sidecarPath,
+			giveUpAt,
 			change: async () => {
 				try {
 					return await stage();
@@ -438,11 +468,15 @@ const here: RestrictedMetadataChanges = {
 
 	// In turn with every other change to this sidecar: the look at which
 	// file is there and its removal are then one step to them.
-	discard({ mediaId, projectId, written }) {
+	discard(
+		{ mediaId, projectId, written }: DiscardRequest,
+		{ giveUpAt }: Wait = {}
+	): Promise<void> {
 		const sidecarPath = getSidecarPath({ mediaId, projectId });
 		return removingSidecar({
 			projectId,
 			sidecarPath,
+			giveUpAt,
 			change: () =>
 				unlinkIfStill({
 					filePath: sidecarPath,
@@ -451,18 +485,22 @@ const here: RestrictedMetadataChanges = {
 		});
 	},
 
-	async remove({ mediaId, projectId }) {
+	async remove(
+		{ mediaId, projectId }: MediaRef,
+		{ giveUpAt }: Wait = {}
+	): Promise<void> {
 		const sidecarPath = getSidecarPath({ mediaId, projectId });
 		await removingSidecar({
 			projectId,
 			sidecarPath,
+			giveUpAt,
 			change: () => fs.unlink(sidecarPath),
 		}).catch((error: unknown) => {
 			// Not there, or gone with its folder while this waited its turn.
 			if (!isFileSystemError({ code: "ENOENT", error })) throw error;
 		});
 	},
-};
+} satisfies RestrictedMetadataChanges;
 
 /** Where the changes are made, when that is not this process. */
 let elsewhere: RestrictedMetadataChanges | undefined;
@@ -485,23 +523,38 @@ export function makeRestrictedMetadataChangesThrough(
 	elsewhere = changes;
 }
 
-/** One change, as another process asks it of the one that makes them. */
+/**
+ * A change is given up this long before the asker stops waiting for it:
+ * started later, its answer might not be back in time.
+ */
+const ANSWER_MARGIN_MS = 1000;
+
+/**
+ * One change, as another process asks it of the one that makes them.
+ * `deadline` is when that process stops waiting for the answer (epoch
+ * milliseconds): it then goes on as if the change had failed, so a change
+ * whose turn has not come by then is not made.
+ */
 export function changeRestrictedMetadataHere({
 	change,
 	request,
+	deadline,
 }: {
 	change: keyof RestrictedMetadataChanges;
 	request: unknown;
+	deadline?: number;
 }): Promise<unknown> {
+	const wait: Wait =
+		deadline === undefined ? {} : { giveUpAt: deadline - ANSWER_MARGIN_MS };
 	switch (change) {
 		case "persist":
-			return here.persist(request as PersistRequest);
+			return here.persist(request as PersistRequest, wait);
 		case "stage":
-			return here.stage(request as StageRequest);
+			return here.stage(request as StageRequest, wait);
 		case "discard":
-			return here.discard(request as DiscardRequest);
+			return here.discard(request as DiscardRequest, wait);
 		case "remove":
-			return here.remove(request as MediaRef);
+			return here.remove(request as MediaRef, wait);
 		default:
 			throw new Error(`Unknown restricted metadata change: ${String(change)}`);
 	}
