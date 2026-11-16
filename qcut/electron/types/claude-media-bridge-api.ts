@@ -32,6 +32,15 @@ export interface ClaudeMediaRenamedEvent {
 	 * back: the editor takes the rename back rather than finish after it.
 	 */
 	deadlineAt?: number;
+	/** The name and path the file had before, to settle the rename by later. */
+	previousName?: string;
+	previousPath?: string;
+	/**
+	 * The file has this name for good, whatever the editor made of an
+	 * earlier request: it ends on this id, with no deadline, and notes the
+	 * rename for the next time the project is open if it cannot.
+	 */
+	settles?: boolean;
 }
 
 export interface ClaudeMediaRendererResponse {
