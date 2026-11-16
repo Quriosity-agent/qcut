@@ -50,6 +50,7 @@ import type {
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRefreshEvent,
 	ClaudeMediaRenamedEvent,
 } from "./types/claude-media-bridge-api.js";
 import {
@@ -246,15 +247,19 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		failure,
 		requestId,
 		responseChannel,
+		result,
 		status,
 	}: {
 		failure?: unknown;
 		requestId: string | undefined;
 		responseChannel: string;
+		/** What the handler returned, for a request that asks for an answer. */
+		result?: unknown;
 		status: "ack" | "nack";
 	}): void => {
 		if (!requestId) return;
 		ipcRenderer.send(responseChannel, {
+			...(status === "ack" && result !== undefined ? { result } : {}),
 			...(status === "nack"
 				? {
 						error:
@@ -318,6 +323,30 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 								failure: error,
 								requestId: data.requestId,
 								responseChannel: "claude:media:deleted:response",
+								status: "nack",
+							});
+						}
+					}
+				);
+			},
+			onMediaRefresh: (callback) => {
+				ipcRenderer.removeAllListeners("claude:media:refresh");
+				ipcRenderer.on(
+					"claude:media:refresh",
+					async (_: IpcRendererEvent, data: ClaudeMediaRefreshEvent) => {
+						try {
+							const result = await callback(data);
+							sendRendererMutationResponse({
+								requestId: data.requestId,
+								responseChannel: "claude:media:refresh:response",
+								result,
+								status: "ack",
+							});
+						} catch (error) {
+							sendRendererMutationResponse({
+								failure: error,
+								requestId: data.requestId,
+								responseChannel: "claude:media:refresh:response",
 								status: "nack",
 							});
 						}
