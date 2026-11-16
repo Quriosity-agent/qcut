@@ -703,21 +703,67 @@ describe("reading changed media files again", () => {
 		});
 	});
 
-	it("scans the project's media folder itself when no scan is handed in, one run at a time", async () => {
+	it("scans the project's media folder itself when no scan is handed in", async () => {
 		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
 		files.scan.mockResolvedValue({
 			files: [diskFile({ size: 8, modifiedAt: 9000 })],
 		});
-		const [first, second] = await Promise.all([
-			refreshChangedMediaSources({ projectId: "p1" }),
-			refreshChangedMediaSources({ projectId: "p1" }),
-		]);
+		const result = await refreshChangedMediaSources({ projectId: "p1" });
 		expect(files.scan).toHaveBeenCalledTimes(1);
 		expect(files.scan).toHaveBeenCalledWith("p1", "media", {
 			recursive: true,
 			mediaOnly: true,
 		});
-		expect(second).toBe(first);
-		expect(first.refreshed).toHaveLength(1);
+		expect(result.refreshed).toHaveLength(1);
+	});
+
+	/**
+	 * A run lists the folder when it starts. Someone who asks while it is
+	 * under way was given its answer, in which a file written since the
+	 * listing is missing: an export that asked just then drew the old copy.
+	 */
+	it("gives those who ask during a run the run that follows it, one for all of them", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 8, ...recorded(8, 5000) })];
+		let endFirstScan: () => void = () => undefined;
+		files.scan
+			// The first run's listing: the file as it was.
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						endFirstScan = () =>
+							resolve({ files: [diskFile({ size: 8, modifiedAt: 5000 })] });
+					})
+			)
+			// Written over since: only a later listing has it.
+			.mockResolvedValue({ files: [diskFile({ size: 8, modifiedAt: 9000 })] });
+
+		const first = refreshChangedMediaSources({ projectId: "p1" });
+		const second = refreshChangedMediaSources({ projectId: "p1" });
+		const third = refreshChangedMediaSources({ projectId: "p1" });
+		expect(third).toBe(second);
+		await vi.waitFor(() => expect(files.scan).toHaveBeenCalledTimes(1));
+		endFirstScan();
+
+		expect((await first).refreshed).toEqual([]);
+		expect((await second).refreshed).toEqual([
+			{ id: "media_shake", name: "shake.mp4" },
+		]);
+		// Two runs, not three: the two who asked meanwhile share one.
+		expect(files.scan).toHaveBeenCalledTimes(2);
+
+		// Nothing is owed after that: the next call is a run of its own.
+		await refreshChangedMediaSources({ projectId: "p1" });
+		expect(files.scan).toHaveBeenCalledTimes(3);
+	});
+
+	it("runs the one that follows also when the run under way fails", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		files.scan
+			.mockRejectedValueOnce(new Error("the folder could not be listed"))
+			.mockResolvedValue({ files: [diskFile({ size: 8, modifiedAt: 9000 })] });
+		const first = refreshChangedMediaSources({ projectId: "p1" });
+		const second = refreshChangedMediaSources({ projectId: "p1" });
+		await expect(first).rejects.toThrow("the folder could not be listed");
+		expect((await second).refreshed).toHaveLength(1);
 	});
 });
