@@ -76,6 +76,11 @@ vi.mock("../handlers/claude-media-renderer-handler.js", () => ({
 	requestMediaImportFromRenderer: vi.fn(async () => undefined),
 	requestMediaDeleteFromRenderer: vi.fn(async () => undefined),
 	requestMediaRenameFromRenderer: vi.fn(async () => undefined),
+	requestMediaRefreshFromRenderer: vi.fn(async () => ({
+		checked: 0,
+		refreshed: [],
+		failed: [],
+	})),
 }));
 
 vi.mock("../handlers/claude-media-rename.js", () => {
@@ -1255,6 +1260,50 @@ describe("Claude HTTP Server", () => {
 		expect(
 			mediaRendererHandler.requestMediaRenameFromRenderer
 		).not.toHaveBeenCalled();
+	});
+
+	it("POST /api/claude/media/:projectId/refresh has the editor read changed files again", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		const refreshed = {
+			checked: 197,
+			refreshed: [{ id: "media_shake", name: "shake.mp4" }],
+			failed: [],
+		};
+		vi.mocked(
+			mediaRendererHandler.requestMediaRefreshFromRenderer
+		).mockResolvedValueOnce(refreshed);
+
+		const res = await fetch("/api/claude/media/proj_123/refresh", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual(refreshed);
+		expect(
+			mediaRendererHandler.requestMediaRefreshFromRenderer
+		).toHaveBeenCalledWith({
+			payload: { projectId: "proj_123" },
+			win: mockWindow,
+		});
+
+		// Only the open project has copies in the editor to bring up to date.
+		vi.mocked(
+			stateHandler.requestEditorStateSnapshotFromRenderer
+		).mockResolvedValueOnce({
+			version: 1,
+			timestamp: Date.now(),
+			state: {
+				project: { activeProject: { id: "proj_open" } },
+				media: { items: [] },
+			},
+		});
+		const other = await fetch("/api/claude/media/proj_other/refresh", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+		expect(other.status).toBe(409);
 	});
 
 	it("answers 404 to a rename or a lookup of media that is not in the project", async () => {
