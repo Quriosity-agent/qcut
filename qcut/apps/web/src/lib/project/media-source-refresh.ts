@@ -164,16 +164,35 @@ export function planMediaSourceRefresh({
 	return plan;
 }
 
-/** The ids of the project's renames that are not settled yet. */
-async function idsOfUnsettledRenames(projectId: string): Promise<Set<string>> {
-	try {
-		const notes = await readUnsettledRenames(projectId);
-		return new Set(notes.flatMap((note) => [note.oldId, note.newId]));
-	} catch (error) {
-		// Without the notes the check goes on as if there were none.
-		debugError("[MediaSourceRefresh] Could not read the rename notes", error);
-		return new Set();
+/** The notes of renames could not be read, so nothing was checked. */
+class RenameNotesUnreadError extends Error {
+	constructor(cause: unknown) {
+		super(
+			`The notes of media renames could not be read (${cause instanceof Error ? cause.message : String(cause)}), so the media files were not checked: an item of a rename that is not settled must not be read from another file`,
+			{ cause }
+		);
+		this.name = "RenameNotesUnreadError";
 	}
+}
+
+/**
+ * The ids of the project's renames that are not settled yet.
+ *
+ * It fails when the notes cannot be read, and the check with it. Going on
+ * as if there were none would read whatever file has an item's name into
+ * the item, and write that file into its record: for an item of a rename
+ * that is not settled, another file's. The rename's note would later take
+ * the item for that other file's own, by its record, and be dropped.
+ */
+async function idsOfUnsettledRenames(projectId: string): Promise<Set<string>> {
+	let notes: Awaited<ReturnType<typeof readUnsettledRenames>>;
+	try {
+		notes = await readUnsettledRenames(projectId);
+	} catch (error) {
+		debugError("[MediaSourceRefresh] Could not read the rename notes", error);
+		throw new RenameNotesUnreadError(error);
+	}
+	return new Set(notes.flatMap((note) => [note.oldId, note.newId]));
 }
 
 /**
@@ -318,7 +337,9 @@ const followUps = new Map<string, Promise<MediaSourceRefreshResult>>();
  * gets the run that follows it, shared with the others that came meanwhile.
  *
  * It fails when the project is closed, or another one opened, before every
- * file was looked at: the files are then not to be taken for checked.
+ * file was looked at: the files are then not to be taken for checked. It
+ * fails as well, before anything is changed, when the notes of renames
+ * cannot be read (`idsOfUnsettledRenames`).
  */
 export function refreshChangedMediaSources({
 	projectId,
