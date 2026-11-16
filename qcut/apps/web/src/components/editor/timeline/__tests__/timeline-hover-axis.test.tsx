@@ -236,6 +236,44 @@ describe("TimelineHoverAxis", () => {
 		expect(usePlaybackStore.getState().previewScrubTime).toBe(4);
 	});
 
+	it("cancels a waiting hover preview on a seek to the time the playhead already has", async () => {
+		render(<TimelineHoverAxis {...createRefs()} zoomLevel={1} />);
+		expect(usePlaybackStore.getState().currentTime).toBe(0);
+		movePointer({ clientX: 324, clientY: 100 });
+		// The time does not change, so nothing but the seek itself says so.
+		act(() => usePlaybackStore.getState().seek(0));
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+	});
+
+	it("keeps the frame sought to when the tracks scroll or the zoom changes under a resting pointer", async () => {
+		const refs = createRefs();
+		const { rerender } = render(<TimelineHoverAxis {...refs} zoomLevel={1} />);
+		movePointer({ clientX: 324, clientY: 100 });
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(2);
+
+		act(() => usePlaybackStore.getState().seek(7));
+		act(() => {
+			refs.tracksScrollRef.current.scrollLeft = 100;
+			refs.tracksScrollRef.current.dispatchEvent(new Event("scroll"));
+		});
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+		// The line still follows what is under the pointer: 4 s by now.
+		expect(screen.getByTestId("timeline-hover-axis").style.left).toBe("324px");
+
+		rerender(<TimelineHoverAxis {...refs} zoomLevel={2} />);
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+		expect(usePlaybackStore.getState().currentTime).toBe(7);
+
+		// The pointer moves: hovering previews again.
+		movePointer({ clientX: 424, clientY: 100 });
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(3);
+	});
+
 	it("uses the latest zoom and scroll position under a stationary pointer", async () => {
 		const refs = createRefs();
 		const { rerender } = render(<TimelineHoverAxis {...refs} zoomLevel={1} />);
