@@ -145,6 +145,9 @@ export function TimelineHoverAxis({
 		};
 		const unsubscribe = usePlaybackStore.subscribe((state, previous) => {
 			if (state.isPlaying && !previous.isPlaying) cancelScheduledScrub();
+			// A seek ends the hover preview; one still waiting must not bring
+			// the hovered frame back over the frame just sought to.
+			if (state.currentTime !== previous.currentTime) cancelScheduledScrub();
 		});
 		document.addEventListener("pointermove", handlePointerMove);
 		document.addEventListener("pointerdown", handlePointerDown, true);
