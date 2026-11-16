@@ -28,6 +28,7 @@ import {
 	ensureEditorProjectReady,
 	resolveActiveProjectId,
 } from "./editor-project-readiness.js";
+import { MEDIA_RENAME_CLIENT_TIMEOUT_MS } from "../../claude/handlers/claude-media-deadlines.js";
 import { mediaRefresh } from "./editor-handlers-media-refresh.js";
 import { mediaReplace } from "./editor-handlers-media-replace.js";
 import { appendImportedMedia } from "./editor-media-append.js";
@@ -397,9 +398,11 @@ async function mediaRename(
 	if (!o.mediaId) return { success: false, error: "Missing --media-id" };
 	if (!o.newName) return { success: false, error: "Missing --new-name" };
 
+	// The editor copies the file under its new id: outlast its wait.
 	const data = await client.patch(
 		`/api/claude/media/${opts.projectId}/${o.mediaId}/rename`,
-		{ newName: o.newName }
+		{ newName: o.newName },
+		{ timeout: MEDIA_RENAME_CLIENT_TIMEOUT_MS }
 	);
 	return { success: true, data };
 }
