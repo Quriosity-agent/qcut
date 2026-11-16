@@ -101,6 +101,73 @@ describe("mediaOverlayRendererReason", () => {
 		);
 	});
 
+	/**
+	 * A vignette over the whole film, an adjustment layer under it, the film
+	 * under that: the grade belongs to the film and not to the vignette.
+	 */
+	it("lets the native export take an adjustment layer under an overlay", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("vignette", 0, 15)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 15 }],
+				},
+				{ type: "media", elements: [media("main", 0, 15)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+		// Text above them all is drawn last either way.
+		timeline.tracks.unshift({
+			type: "text",
+			elements: [{ type: "text", startTime: 1, endTime: 2 }],
+		});
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	it("keeps an adjustment layer for the renderer when its grade would have to wait for text under it", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("vignette", 0, 10)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 20 }],
+				},
+				// Not under the vignette in time, so the text itself is no reason.
+				{
+					type: "text",
+					elements: [{ type: "text", startTime: 15, endTime: 18 }],
+				},
+				{ type: "media", elements: [media("main", 0, 20)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an adjustment layer that is under a media clip stacked over a lower track and over the text or sticker tracks"
+		);
+		// A hidden text track is not drawn, so nothing has to wait for it.
+		(timeline.tracks[2] as { hidden?: boolean }).hidden = true;
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	it("says 'an' before a vowel", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("overlay", 1, 3)] },
+				{
+					type: "effect",
+					elements: [{ type: "effect", startTime: 2, endTime: 3 }],
+				},
+				{ type: "media", elements: [media("main", 0, 15)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an effect layer under a media clip stacked over a lower track"
+		);
+	});
+
 	it("names a transition on an overlay", () => {
 		const timeline = overlayTimeline();
 		timeline.tracks[0] = {
