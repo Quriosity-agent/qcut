@@ -69,10 +69,12 @@ import {
 import { requestEditorStateSnapshotFromRenderer } from "../claude/handlers/claude-state-handler.js";
 import {
 	requestMediaDeleteFromRenderer,
+	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../claude/handlers/claude-media-renderer-handler.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../types/claude-media-bridge-api.js";
 import { requestQCutImportEvidenceFromRenderer } from "../claude/handlers/qcut-import-evidence-handler.js";
@@ -588,6 +590,13 @@ async function handleMainRequest(
 				payload: Omit<ClaudeMediaDeletedEvent, "requestId">;
 			};
 			return requestMediaDeleteFromRenderer({ payload: req.payload, win });
+		}
+
+		case "media:rename-renderer": {
+			const req = data as unknown as {
+				payload: Omit<ClaudeMediaRenamedEvent, "requestId">;
+			};
+			return requestMediaRenameFromRenderer({ payload: req.payload, win });
 		}
 
 		case "get-qcut-import-evidence": {
