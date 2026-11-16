@@ -4,6 +4,8 @@ import { generateId } from "../utils/helpers.js";
 interface RendererMutationResponse {
 	error?: string;
 	requestId: string;
+	/** What the renderer's handler returned, when it returns anything. */
+	result?: unknown;
 }
 
 function isRendererMutationResponse(
@@ -33,12 +35,12 @@ export async function requestRendererMutation<TPayload extends object>({
 	timeoutMessage: string;
 	timeoutMs: number;
 	win: BrowserWindow;
-}): Promise<void> {
+}): Promise<unknown> {
 	if (win.isDestroyed() || win.webContents.isDestroyed()) {
 		throw new Error("QCut main window is unavailable.");
 	}
 
-	await new Promise<void>((resolve, reject) => {
+	return new Promise<unknown>((resolve, reject) => {
 		const requestId = generateId(requestIdPrefix);
 		let settled = false;
 		let timeout: NodeJS.Timeout | undefined;
@@ -68,7 +70,7 @@ export async function requestRendererMutation<TPayload extends object>({
 			}
 			settled = true;
 			cleanup();
-			resolve();
+			resolve(response.result);
 		};
 
 		timeout = setTimeout(() => {
