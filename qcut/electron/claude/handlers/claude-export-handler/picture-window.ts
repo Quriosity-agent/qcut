@@ -49,7 +49,7 @@ export interface PictureWindow {
 	duration: number;
 }
 
-function hasEntries(record: unknown): boolean {
+function hasEntries({ record }: { record: unknown }): boolean {
 	if (!record || typeof record !== "object") return false;
 	return Object.values(record as Record<string, unknown>).some(
 		(value) => Array.isArray(value) && value.length > 0
@@ -66,10 +66,10 @@ export function overlayCanBeCut({
 	overlay: ExportSegment;
 }): boolean {
 	return !(
-		hasEntries(overlay.keyframes) ||
+		hasEntries({ record: overlay.keyframes }) ||
 		(overlay.transform?.xKeyframes?.length ?? 0) > 0 ||
 		(overlay.transform?.yKeyframes?.length ?? 0) > 0 ||
-		hasEntries(overlay.color?.keyframes) ||
+		hasEntries({ record: overlay.color?.keyframes }) ||
 		overlay.frameInterpolation !== undefined
 	);
 }
@@ -96,7 +96,9 @@ export function planPictureWindow({
 	fps: number;
 }): PictureWindow | undefined {
 	if (
-		layers.adjustmentLayers.some((layer) => hasEntries(layer.color?.keyframes))
+		layers.adjustmentLayers.some((layer) =>
+			hasEntries({ record: layer.color?.keyframes })
+		)
 	) {
 		return;
 	}
@@ -158,10 +160,13 @@ export function segmentsInPictureWindow({
 	return shown;
 }
 
-function moved<T extends { startTime: number; endTime: number }>(
-	item: T,
-	by: number
-): T {
+function moved<T extends { startTime: number; endTime: number }>({
+	item,
+	by,
+}: {
+	item: T;
+	by: number;
+}): T {
 	return {
 		...item,
 		startTime: item.startTime - by,
@@ -198,14 +203,16 @@ export function layersInPictureWindow({
 			};
 		}),
 		stickerOverlays: layers.stickerOverlays.map((sticker) =>
-			moved(sticker, window.start)
+			moved({ item: sticker, by: window.start })
 		),
-		textOverlays: layers.textOverlays.map((text) => moved(text, window.start)),
+		textOverlays: layers.textOverlays.map((text) =>
+			moved({ item: text, by: window.start })
+		),
 		jianyingTextOverlays: layers.jianyingTextOverlays.map((text) =>
-			moved(text, window.start)
+			moved({ item: text, by: window.start })
 		),
 		adjustmentLayers: layers.adjustmentLayers.map((layer) =>
-			moved(layer, window.start)
+			moved({ item: layer, by: window.start })
 		),
 	};
 }
