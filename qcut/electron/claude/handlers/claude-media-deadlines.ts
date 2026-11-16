@@ -39,14 +39,16 @@ export const UTILITY_BRIDGE_MARGIN_MS = 5_000;
  * time (30 s in the main-process server) with a 408, whatever the route is
  * still doing: a rename waits that long by itself, and a refresh longer.
  */
+// A rename can wait for the editor twice: to follow, and, when that fails
+// with the editor's state unknown, to end on the old id again.
 export const MEDIA_RENAME_HTTP_TIMEOUT_MS =
-	MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS + 5_000;
+	2 * (MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS) + 5_000;
 export const MEDIA_REFRESH_HTTP_TIMEOUT_MS = 120_000;
 /** An export start keeps the 30 s it had; the check before it comes on top. */
 export const EXPORT_START_HTTP_TIMEOUT_MS =
 	30_000 + MEDIA_REFRESH_BEFORE_EXPORT_MS + UTILITY_BRIDGE_MARGIN_MS;
 /** What the command line waits for each, outlasting every wait inside. */
-export const MEDIA_RENAME_CLIENT_TIMEOUT_MS = 45_000;
+export const MEDIA_RENAME_CLIENT_TIMEOUT_MS = 80_000;
 export const MEDIA_REFRESH_CLIENT_TIMEOUT_MS = 125_000;
 
 const MEDIA_RENAME_ROUTE_PATTERN =
