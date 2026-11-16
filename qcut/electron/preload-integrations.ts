@@ -50,6 +50,7 @@ import type {
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRenamedEvent,
 } from "./types/claude-media-bridge-api.js";
 import {
 	CLAUDE_LOCAL_VIDEO_EXPORT_REQUEST_CHANNEL,
@@ -317,6 +318,29 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 								failure: error,
 								requestId: data.requestId,
 								responseChannel: "claude:media:deleted:response",
+								status: "nack",
+							});
+						}
+					}
+				);
+			},
+			onMediaRenamed: (callback) => {
+				ipcRenderer.removeAllListeners("claude:media:renamed");
+				ipcRenderer.on(
+					"claude:media:renamed",
+					async (_: IpcRendererEvent, data: ClaudeMediaRenamedEvent) => {
+						try {
+							await callback(data);
+							sendRendererMutationResponse({
+								requestId: data.requestId,
+								responseChannel: "claude:media:renamed:response",
+								status: "ack",
+							});
+						} catch (error) {
+							sendRendererMutationResponse({
+								failure: error,
+								requestId: data.requestId,
+								responseChannel: "claude:media:renamed:response",
 								status: "nack",
 							});
 						}
