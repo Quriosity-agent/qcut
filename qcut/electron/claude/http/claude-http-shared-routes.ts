@@ -100,7 +100,7 @@ import {
 } from "../handlers/claude-media-rename.js";
 import {
 	mediaRenameOutcomeUnknown,
-	settleMediaRenameInEditor,
+	settleUnknownMediaRename,
 } from "./claude-http-media-rename-settle.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
 import {
@@ -336,6 +336,11 @@ export interface WindowAccessor {
 	requestMediaRename?(
 		payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">
 	): Promise<void>;
+	/** Note a rename for the editor to settle when the project is next open. */
+	noteUnsettledMediaRename?(payload: {
+		projectId: string;
+		renamed: RenamedMediaFile;
+	}): Promise<void>;
 	/** Have the renderer read again the media files that changed on disk. */
 	requestMediaRefresh?(
 		payload: Omit<ClaudeMediaRefreshEvent, "requestId">
@@ -1176,8 +1181,9 @@ export function registerSharedRoutes(
 				// back: it is asked to end on the old id, so that the two do
 				// not part. If it cannot, it notes the rename and settles it
 				// when the project is next open.
-				const editorUnsettled = mediaRenameOutcomeUnknown({ reason })
-					? await settleMediaRenameInEditor({
+				const unsettled = mediaRenameOutcomeUnknown({ reason })
+					? await settleUnknownMediaRename({
+							accessor,
 							requestMediaRename,
 							projectId,
 							renamed,
@@ -1191,10 +1197,10 @@ export function registerSharedRoutes(
 						`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`
 					);
 				}
-				if (editorUnsettled) {
+				if (unsettled) {
 					throw new HttpError(
 						error instanceof HttpError ? error.status : 500,
-						`${reason}. The file is back under ${renamed.previous.name}, but the editor did not confirm that it names ${renamed.previous.id} again (${editorUnsettled}); it puts that right when the project is next opened. Check the timeline before the rename is tried again`
+						`${reason}. The file is back under ${renamed.previous.name}, but ${unsettled}`
 					);
 				}
 				throw error;
