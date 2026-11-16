@@ -141,7 +141,15 @@ describe("restricted metadata rename rollback", () => {
 			mediaId: NEW_ID,
 			metadata: METADATA,
 			projectId: "project-1",
-			mediaFileExists: expect.any(Function),
+			// Where the file of that id would be, to tell left-over metadata.
+			mediaFilePath: path.join(
+				"/mock/Documents",
+				"QCut",
+				"Projects",
+				"project-1",
+				"media",
+				"renamed.gif"
+			),
 		});
 		// What was staged is taken away by the one who staged it, and nothing
 		// is removed by id: the old sidecar stays, and so would another
