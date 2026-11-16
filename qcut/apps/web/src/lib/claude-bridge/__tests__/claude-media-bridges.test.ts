@@ -88,6 +88,45 @@ describe("the editor's answer to a media rename", () => {
 		).toEqual(RENAME);
 	});
 
+	it("reads the name and path the file had, and that the request settles", () => {
+		expect(
+			parseClaudeRenamedMediaEvent({
+				candidate: {
+					...EVENT,
+					previousName: "shake.mp4",
+					previousPath: "/project/media/shake.mp4",
+					settles: true,
+				},
+			})
+		).toEqual({
+			...RENAME,
+			previous: { name: "shake.mp4", localPath: "/project/media/shake.mp4" },
+			settles: true,
+		});
+		// Half of it is none of it, and only `true` settles.
+		expect(
+			parseClaudeRenamedMediaEvent({
+				candidate: { ...EVENT, previousName: "shake.mp4", settles: "yes" },
+			})
+		).toEqual(RENAME);
+	});
+
+	/**
+	 * A request that settles says where the file is for good. For a project
+	 * that is not open the editor cannot act on it; it has to reach the
+	 * rename all the same, which notes it for when the project is opened.
+	 */
+	it("passes on a request that settles, also for a project that is not open", async () => {
+		const app = desktop();
+		setupMediaRenameHandler({ media: app.media });
+		project.activeProject = { id: "project-2" };
+		await app.rename({ ...EVENT, settles: true });
+		expect(renameProjectMedia).toHaveBeenCalledWith({
+			...RENAME,
+			settles: true,
+		});
+	});
+
 	it("does not take anything else for a rename", () => {
 		for (const candidate of [
 			null,
