@@ -15,6 +15,8 @@ const hooks = vi.hoisted(() => ({
 	noHardLinks: false,
 	/** Runs when a file is about to take the name `to`. */
 	beforeLink: undefined as undefined | ((to: string) => Promise<void>),
+	/** Runs when a copy, or a new symbolic link, is about to take `to`. */
+	beforeCopyOrSymlink: undefined as undefined | ((to: string) => Promise<void>),
 }));
 
 vi.mock("fs/promises", async (importOriginal) => {
@@ -29,6 +31,14 @@ vi.mock("fs/promises", async (importOriginal) => {
 				});
 			}
 			return real.link(...args);
+		},
+		copyFile: async (...args: Parameters<typeof real.copyFile>) => {
+			await hooks.beforeCopyOrSymlink?.(String(args[1]));
+			return real.copyFile(...args);
+		},
+		symlink: async (...args: Parameters<typeof real.symlink>) => {
+			await hooks.beforeCopyOrSymlink?.(String(args[1]));
+			return real.symlink(...args);
 		},
 	};
 });
@@ -606,6 +616,7 @@ describe("moving a file without writing over another", () => {
 
 	afterEach(async () => {
 		hooks.noHardLinks = false;
+		hooks.beforeCopyOrSymlink = undefined;
 		await fs.rm(folder, { recursive: true, force: true });
 	});
 
@@ -677,6 +688,8 @@ describe("moving a file without writing over another", () => {
 
 	it("still moves, and still refuses a taken name, on a volume without hard links", async () => {
 		hooks.noHardLinks = true;
+		const written = new Date("2026-11-01T08:00:00.000Z");
+		await fs.utimes(path.join(folder, "a.mp4"), written, written);
 		await fs.writeFile(path.join(folder, "b.mp4"), "theirs");
 		await expect(
 			moveWithoutOverwriting({
@@ -694,5 +707,67 @@ describe("moving a file without writing over another", () => {
 		});
 		expect((await fs.readdir(folder)).sort()).toEqual(["b.mp4", "c.mp4"]);
 		expect(await fs.readFile(path.join(folder, "c.mp4"), "utf8")).toBe("mine");
+		// Copied there, so a new file: it keeps the time the old one had.
+		expect((await fs.stat(path.join(folder, "c.mp4"))).mtimeMs).toBe(
+			written.getTime()
+		);
 	});
+
+	/**
+	 * Without hard links there is no look at the name followed by a rename:
+	 * the name is taken by a copy that fails when something has it, however
+	 * late that something got there.
+	 */
+	it("does not write over a file that takes the name at the last moment, without hard links", async () => {
+		hooks.noHardLinks = true;
+		const to = path.join(folder, "b.mp4");
+		hooks.beforeCopyOrSymlink = async (destination) => {
+			if (destination === to) await fs.writeFile(to, "theirs");
+		};
+		await expect(
+			moveWithoutOverwriting({ from: path.join(folder, "a.mp4"), to })
+		).rejects.toBeInstanceOf(MediaNameTakenError);
+		expect(await fs.readFile(to, "utf8")).toBe("theirs");
+		expect(await fs.readFile(path.join(folder, "a.mp4"), "utf8")).toBe("mine");
+	});
+
+	it.skipIf(process.platform === "win32")(
+		"does not write over a file that takes a symbolic link's new name at the last moment",
+		async () => {
+			await fs.symlink(
+				path.join(folder, "a.mp4"),
+				path.join(folder, "link.mp4")
+			);
+			const to = path.join(folder, "b.mp4");
+			hooks.beforeCopyOrSymlink = async (destination) => {
+				if (destination === to) await fs.writeFile(to, "theirs");
+			};
+			await expect(
+				moveWithoutOverwriting({ from: path.join(folder, "link.mp4"), to })
+			).rejects.toBeInstanceOf(MediaNameTakenError);
+			expect(await fs.readFile(to, "utf8")).toBe("theirs");
+			expect(
+				(await fs.lstat(path.join(folder, "link.mp4"))).isSymbolicLink()
+			).toBe(true);
+		}
+	);
+
+	it.skipIf(process.platform === "win32")(
+		"keeps a relative symbolic link pointing at its file from another folder",
+		async () => {
+			await fs.mkdir(path.join(folder, "imported"));
+			await fs.symlink(
+				path.join("..", "a.mp4"),
+				path.join(folder, "imported", "link.mp4")
+			);
+			await moveWithoutOverwriting({
+				from: path.join(folder, "imported", "link.mp4"),
+				to: path.join(folder, "moved.mp4"),
+			});
+			expect(await fs.readlink(path.join(folder, "moved.mp4"))).toBe("a.mp4");
+			expect(await fs.readFile(path.join(folder, "moved.mp4"), "utf8")).toBe(
+				"mine"
+			);
+		}
+	);
 });
