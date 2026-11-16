@@ -151,6 +151,39 @@ interface FileIdentity {
 	ino: bigint;
 }
 
+/** A file's identity as it is handed to another process, and back. */
+interface SentFileIdentity {
+	dev: string;
+	ino: string;
+}
+
+interface MediaRef {
+	mediaId: string;
+	projectId: string;
+}
+
+type PersistRequest = MediaRef & {
+	metadata: StickerLabRestrictedMediaMetadata;
+};
+
+type StageRequest = PersistRequest & {
+	/** Where the media file of that id is, when there is one. */
+	mediaFilePath: string;
+};
+
+type DiscardRequest = MediaRef & { written: SentFileIdentity };
+
+/** What staging put there, or that the id's metadata is another file's. */
+type StagedSidecar = { written: SentFileIdentity } | { taken: true };
+
+/** The changes there are to a sidecar. */
+export interface RestrictedMetadataChanges {
+	persist(request: PersistRequest): Promise<void>;
+	stage(request: StageRequest): Promise<StagedSidecar>;
+	discard(request: DiscardRequest): Promise<void>;
+	remove(request: MediaRef): Promise<void>;
+}
+
 /** The last change asked for each sidecar, in this process. */
 const lastSidecarChange = new Map<string, Promise<unknown>>();
 
@@ -163,6 +196,10 @@ const lastSidecarChange = new Map<string, Promise<unknown>>();
  *
  * A change takes its turn the moment it is asked for: nothing is waited for
  * before this is called, or a later change could get ahead of it.
+ *
+ * This queue is all the coordination there is, because one process makes
+ * every change (`makeRestrictedMetadataChangesThrough`): no change waits on
+ * another process, and none is taken from one that has only paused.
  */
 function oneSidecarChangeAtATime<Result>({
 	sidecarPath,
@@ -186,119 +223,9 @@ function oneSidecarChangeAtATime<Result>({
 	return running;
 }
 
-/** How long a change waits for another process's change to the sidecar. */
-const SIDECAR_HOLD_WAIT_MS = 5000;
 /**
- * A change takes milliseconds: a hold this old was left by a process that
- * ended while it had it.
- */
-const SIDECAR_HOLD_LEFT_MS = 30_000;
-const SIDECAR_HOLD_RETRY_MS = 25;
-
-/** Makes the folder that is a hold, or finds it made by someone else. */
-async function takeHold(holdPath: string): Promise<boolean> {
-	try {
-		await fs.mkdir(holdPath);
-		return true;
-	} catch (error) {
-		if (isFileSystemError({ code: "EEXIST", error })) return false;
-		throw error;
-	}
-}
-
-async function holdWasLeft(holdPath: string): Promise<boolean> {
-	const held = await fs.stat(holdPath).catch(() => undefined);
-	return held !== undefined && Date.now() - held.mtimeMs > SIDECAR_HOLD_LEFT_MS;
-}
-
-/**
- * Removes a hold that a process left behind, and says whether it did.
- *
- * Two processes can find the same left hold. Were each to remove what it
- * saw, the second would remove the hold the first has made since. So the
- * removal has a hold of its own, and looks again once it has that.
- */
-async function removeLeftHold(holdPath: string): Promise<boolean> {
-	const removingPath = `${holdPath}.removing`;
-	if (!(await takeHold(removingPath))) {
-		if (await holdWasLeft(removingPath)) {
-			await fs.rmdir(removingPath).catch(() => undefined);
-		}
-		return false;
-	}
-	try {
-		if (!(await holdWasLeft(holdPath))) return false;
-		await fs.rmdir(holdPath);
-		return true;
-	} catch {
-		return false;
-	} finally {
-		await fs.rmdir(removingPath).catch(() => undefined);
-	}
-}
-
-/**
- * Holds a sidecar against other processes for one change. The HTTP API and
- * the desktop app's own media handlers run in different processes, which do
- * not share the queue above; a folder made beside the sidecar is something
- * only one of them can make at a time.
- *
- * A change that cannot get the hold fails: made without it, it could remove
- * the restriction of another file.
- */
-async function holdingSidecar<Result>({
-	sidecarPath,
-	change,
-}: {
-	sidecarPath: string;
-	change: () => Promise<Result>;
-}): Promise<Result> {
-	const holdPath = `${sidecarPath}.lock`;
-	const giveUpAt = Date.now() + SIDECAR_HOLD_WAIT_MS;
-	while (!(await takeHold(holdPath))) {
-		if ((await holdWasLeft(holdPath)) && (await removeLeftHold(holdPath))) {
-			continue;
-		}
-		if (Date.now() >= giveUpAt) {
-			throw new Error(
-				"Restricted media metadata is being changed by another process; try again."
-			);
-		}
-		await new Promise((resolve) => setTimeout(resolve, SIDECAR_HOLD_RETRY_MS));
-	}
-	try {
-		return await change();
-	} finally {
-		await fs.rmdir(holdPath).catch(() => undefined);
-	}
-}
-
-/**
- * A change that writes a sidecar, in its turn and with the sidecar held.
- * The sidecar folder is made first: the hold is made in it.
- */
-function writingSidecar<Result>({
-	projectId,
-	sidecarPath,
-	change,
-}: {
-	projectId: string;
-	sidecarPath: string;
-	change: () => Promise<Result>;
-}): Promise<Result> {
-	return oneSidecarChangeAtATime({
-		sidecarPath,
-		change: async () => {
-			await ensureSidecarDirectory({ projectId });
-			return holdingSidecar({ sidecarPath, change });
-		},
-	});
-}
-
-/**
- * A change that takes a sidecar away, in its turn and with the sidecar
- * held. Where there is no sidecar folder there is nothing to take away, and
- * none is made for it.
+ * A change that takes a sidecar away, in its turn. Where there is no
+ * sidecar folder there is nothing to take away, and none is made for it.
  */
 function removingSidecar({
 	projectId,
@@ -313,7 +240,7 @@ function removingSidecar({
 		sidecarPath,
 		change: async () => {
 			if (!(await getExistingSidecarDirectory({ projectId }))) return;
-			await holdingSidecar({ sidecarPath, change });
+			await change();
 		},
 	});
 }
@@ -379,33 +306,6 @@ async function writeSidecar({
 	}
 }
 
-export async function persistMediaRestrictedMetadata({
-	mediaId,
-	metadata,
-	projectId,
-}: {
-	mediaId: string;
-	metadata: StickerLabRestrictedMediaMetadata;
-	projectId: string;
-}): Promise<void> {
-	await writingSidecar({
-		projectId,
-		sidecarPath: getSidecarPath({ mediaId, projectId }),
-		change: () =>
-			writeSidecar({
-				mediaId,
-				metadata,
-				projectId,
-				publish: async ({
-					temporaryPath,
-					destinationPath,
-				}): Promise<undefined> => {
-					await fs.rename(temporaryPath, destinationPath);
-				},
-			}),
-	});
-}
-
 /** The media id already has restricted metadata, which is another file's. */
 export class RestrictedMetadataTakenError extends Error {
 	constructor(mediaId: string) {
@@ -456,81 +356,6 @@ async function publishWhereNothingIs({
 	return copied;
 }
 
-/**
- * Puts restricted metadata in place for a file that is about to take
- * `mediaId` (a file being renamed), ahead of the file, so that the file is
- * at no moment in the folder without it.
- *
- * The id may be another file's at that very moment: one that is taking the
- * same name. Metadata that is there is therefore never written over while
- * the file it belongs to exists (`mediaFileExists`) or while it is fresh
- * (another move is bringing its file): `RestrictedMetadataTakenError`. Only
- * what a file that is gone left behind is replaced. And `discard` removes
- * what was staged here, not whatever has the path by then.
- */
-export async function stageMediaRestrictedMetadata({
-	mediaId,
-	metadata,
-	projectId,
-	mediaFileExists,
-}: {
-	mediaId: string;
-	metadata: StickerLabRestrictedMediaMetadata;
-	projectId: string;
-	mediaFileExists: () => Promise<boolean>;
-}): Promise<StagedRestrictedMetadata> {
-	const sidecarPath = getSidecarPath({ mediaId, projectId });
-	const stage = () =>
-		writeSidecar({
-			mediaId,
-			metadata,
-			projectId,
-			publish: publishWhereNothingIs,
-		});
-	const staged = await writingSidecar({
-		projectId,
-		sidecarPath,
-		change: async () => {
-			try {
-				return await stage();
-			} catch (error) {
-				if (!isFileSystemError({ code: "EEXIST", error })) throw error;
-			}
-			const leftOver = await fs
-				.lstat(sidecarPath, { bigint: true })
-				.catch(() => undefined);
-			if (
-				!leftOver ||
-				(await mediaFileExists()) ||
-				Date.now() - Number(leftOver.mtimeMs) < STAGED_FRESH_MS
-			) {
-				throw new RestrictedMetadataTakenError(mediaId);
-			}
-			await unlinkIfStill({ filePath: sidecarPath, identity: leftOver });
-			try {
-				return await stage();
-			} catch (again) {
-				if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
-				throw new RestrictedMetadataTakenError(mediaId);
-			}
-		},
-	});
-	return {
-		// In turn with every other change to this sidecar: the look at which
-		// file is there and its removal are then one step to them.
-		discard: () =>
-			removingSidecar({
-				projectId,
-				sidecarPath,
-				change: () =>
-					unlinkIfStill({
-						filePath: staged.destinationPath,
-						identity: staged.written,
-					}),
-			}),
-	};
-}
-
 /** Removes the file at `filePath` if it is the one `identity` names. */
 async function unlinkIfStill({
 	filePath,
@@ -544,6 +369,175 @@ async function unlinkIfStill({
 	await fs.unlink(filePath).catch((error: unknown) => {
 		if (!isFileSystemError({ code: "ENOENT", error })) throw error;
 	});
+}
+
+/** The changes, made in this process. */
+const here: RestrictedMetadataChanges = {
+	async persist({ mediaId, metadata, projectId }) {
+		await oneSidecarChangeAtATime({
+			sidecarPath: getSidecarPath({ mediaId, projectId }),
+			change: () =>
+				writeSidecar({
+					mediaId,
+					metadata,
+					projectId,
+					publish: async ({
+						temporaryPath,
+						destinationPath,
+					}): Promise<undefined> => {
+						await fs.rename(temporaryPath, destinationPath);
+					},
+				}),
+		});
+	},
+
+	async stage({ mediaId, metadata, projectId, mediaFilePath }) {
+		const sidecarPath = getSidecarPath({ mediaId, projectId });
+		const stage = () =>
+			writeSidecar({
+				mediaId,
+				metadata,
+				projectId,
+				publish: publishWhereNothingIs,
+			});
+		const staged = await oneSidecarChangeAtATime({
+			sidecarPath,
+			change: async () => {
+				try {
+					return await stage();
+				} catch (error) {
+					if (!isFileSystemError({ code: "EEXIST", error })) throw error;
+				}
+				const leftOver = await fs
+					.lstat(sidecarPath, { bigint: true })
+					.catch(() => undefined);
+				const fileIsThere = () =>
+					fs.access(mediaFilePath).then(
+						() => true,
+						() => false
+					);
+				if (
+					!leftOver ||
+					(await fileIsThere()) ||
+					Date.now() - Number(leftOver.mtimeMs) < STAGED_FRESH_MS
+				) {
+					return;
+				}
+				await unlinkIfStill({ filePath: sidecarPath, identity: leftOver });
+				try {
+					return await stage();
+				} catch (again) {
+					if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
+				}
+			},
+		});
+		if (!staged) return { taken: true };
+		const { dev, ino } = staged.written;
+		return { written: { dev: String(dev), ino: String(ino) } };
+	},
+
+	// In turn with every other change to this sidecar: the look at which
+	// file is there and its removal are then one step to them.
+	discard({ mediaId, projectId, written }) {
+		const sidecarPath = getSidecarPath({ mediaId, projectId });
+		return removingSidecar({
+			projectId,
+			sidecarPath,
+			change: () =>
+				unlinkIfStill({
+					filePath: sidecarPath,
+					identity: { dev: BigInt(written.dev), ino: BigInt(written.ino) },
+				}),
+		});
+	},
+
+	async remove({ mediaId, projectId }) {
+		const sidecarPath = getSidecarPath({ mediaId, projectId });
+		await removingSidecar({
+			projectId,
+			sidecarPath,
+			change: () => fs.unlink(sidecarPath),
+		}).catch((error: unknown) => {
+			// Not there, or gone with its folder while this waited its turn.
+			if (!isFileSystemError({ code: "ENOENT", error })) throw error;
+		});
+	},
+};
+
+/** Where the changes are made, when that is not this process. */
+let elsewhere: RestrictedMetadataChanges | undefined;
+
+/**
+ * Has this process ask another one for every change to a sidecar.
+ *
+ * The HTTP API runs in a process of its own beside the app's main process,
+ * which has media handlers too. Were both to change sidecars, each would
+ * look at what is there and then act, with the other's change in between.
+ * A lock between them would have to be taken over from a process that
+ * ended, and so could be taken from one that had only paused. So one
+ * process makes every change, in the order they are asked for, and the
+ * other asks it (utility-http-server.ts sets this, utility-bridge.ts
+ * answers). Reading stays in the process that asks.
+ */
+export function makeRestrictedMetadataChangesThrough(
+	changes: RestrictedMetadataChanges | undefined
+): void {
+	elsewhere = changes;
+}
+
+/** One change, as another process asks it of the one that makes them. */
+export function changeRestrictedMetadataHere({
+	change,
+	request,
+}: {
+	change: keyof RestrictedMetadataChanges;
+	request: unknown;
+}): Promise<unknown> {
+	switch (change) {
+		case "persist":
+			return here.persist(request as PersistRequest);
+		case "stage":
+			return here.stage(request as StageRequest);
+		case "discard":
+			return here.discard(request as DiscardRequest);
+		case "remove":
+			return here.remove(request as MediaRef);
+		default:
+			throw new Error(`Unknown restricted metadata change: ${String(change)}`);
+	}
+}
+
+export async function persistMediaRestrictedMetadata(
+	request: PersistRequest
+): Promise<void> {
+	await (elsewhere ?? here).persist(request);
+}
+
+/**
+ * Puts restricted metadata in place for a file that is about to take
+ * `mediaId` (a file being renamed), ahead of the file, so that the file is
+ * at no moment in the folder without it.
+ *
+ * The id may be another file's at that very moment: one that is taking the
+ * same name. Metadata that is there is therefore never written over while
+ * the file it belongs to exists (at `mediaFilePath`) or while it is fresh
+ * (another move is bringing its file): `RestrictedMetadataTakenError`. Only
+ * what a file that is gone left behind is replaced. And `discard` removes
+ * what was staged here, not whatever has the path by then.
+ */
+export async function stageMediaRestrictedMetadata(
+	request: StageRequest
+): Promise<StagedRestrictedMetadata> {
+	const changes = elsewhere ?? here;
+	const staged = await changes.stage(request);
+	if ("taken" in staged) {
+		throw new RestrictedMetadataTakenError(request.mediaId);
+	}
+	const { mediaId, projectId } = request;
+	return {
+		discard: () =>
+			changes.discard({ mediaId, projectId, written: staged.written }),
+	};
 }
 
 export async function readMediaRestrictedMetadata({
@@ -598,20 +592,8 @@ export async function readMediaRestrictedMetadata({
 	}
 }
 
-export async function deleteMediaRestrictedMetadata({
-	mediaId,
-	projectId,
-}: {
-	mediaId: string;
-	projectId: string;
-}): Promise<void> {
-	const sidecarPath = getSidecarPath({ mediaId, projectId });
-	await removingSidecar({
-		projectId,
-		sidecarPath,
-		change: () => fs.unlink(sidecarPath),
-	}).catch((error: unknown) => {
-		// Not there, or gone with its folder while this waited its turn.
-		if (!isFileSystemError({ code: "ENOENT", error })) throw error;
-	});
+export async function deleteMediaRestrictedMetadata(
+	request: MediaRef
+): Promise<void> {
+	await (elsewhere ?? here).remove(request);
 }
