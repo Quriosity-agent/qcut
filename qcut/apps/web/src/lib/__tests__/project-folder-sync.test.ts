@@ -357,6 +357,7 @@ describe("project-folder-sync", () => {
 			const { syncProjectFolder } = await import(
 				"../project/project-folder-sync"
 			);
+			const began = Date.now();
 			const result = await syncProjectFolder("p1");
 
 			// Checked from the scan the sync made, not from a second one.
@@ -374,7 +375,8 @@ describe("project-folder-sync", () => {
 			// A newly imported file carries what it was copied from, so the
 			// next check has something exact to compare.
 			expect(addMediaItem).toHaveBeenCalledTimes(1);
-			expect(addMediaItem.mock.calls[0][1]).toMatchObject({
+			const imported = addMediaItem.mock.calls[0][1];
+			expect(imported).toMatchObject({
 				name: "new.mp4",
 				localPath: "/Projects/p1/media/new.mp4",
 				metadata: {
@@ -382,6 +384,11 @@ describe("project-folder-sync", () => {
 					sourceFile: { size: 4, modifiedAt: 7000.5 },
 				},
 			});
+			// And by when the editor held the bytes: once they were read. A
+			// file that gets the name later is not what this was copied from.
+			const { heldSince } = imported.metadata.sourceFile;
+			expect(heldSince).toBeGreaterThanOrEqual(began);
+			expect(heldSince).toBeLessThanOrEqual(Date.now());
 		});
 	});
 });
