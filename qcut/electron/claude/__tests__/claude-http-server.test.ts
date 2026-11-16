@@ -99,6 +99,12 @@ vi.mock("../handlers/claude-media-rename.js", () => {
 	};
 });
 
+// The app's notes of unsettled renames go into its own store on disk.
+vi.mock("../handlers/claude-media-rename-note.js", () => ({
+	noteUnsettledMediaRename: vi.fn(async () => undefined),
+	forgetUnsettledMediaRename: vi.fn(async () => undefined),
+}));
+
 vi.mock("../handlers/claude-media-restricted-metadata.js", () => ({
 	persistMediaRestrictedMetadata: vi.fn(async () => undefined),
 }));
@@ -306,6 +312,7 @@ import * as mediaHandler from "../handlers/claude-media-handler.js";
 import * as stateHandler from "../handlers/claude-state-handler.js";
 import * as mediaRendererHandler from "../handlers/claude-media-renderer-handler.js";
 import * as mediaRename from "../handlers/claude-media-rename.js";
+import * as mediaRenameNote from "../handlers/claude-media-rename-note.js";
 import * as mediaRestrictedMetadata from "../handlers/claude-media-restricted-metadata.js";
 import { notificationBridge } from "../notification-bridge";
 import { createFetch, createMockWindow } from "./claude-http-test-helpers";
@@ -1224,7 +1231,12 @@ describe("Claude HTTP Server", () => {
 		});
 	});
 
-	it("says so when the file could not be put back either", async () => {
+	/**
+	 * The editor is on the old id and the file keeps the new name: the
+	 * clips would be on an id no file has. The editor is asked to follow
+	 * the file, and the rename stands when it does.
+	 */
+	it("has the editor follow a file that could not be put back", async () => {
 		const mockWindow = createMockWindow();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
 		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
@@ -1240,9 +1252,64 @@ describe("Claude HTTP Server", () => {
 			body: JSON.stringify({ newName: "shake_v2" }),
 		});
 
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({
+			renamed: true,
+			id: "media_new",
+			name: "shake_v2.mp4",
+			previousId: "media_old",
+		});
+		expect(res.body.data.warning).toContain("shake.mp4 was taken again");
+		expect(res.body.data.warning).toContain("the rename stands");
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				payload: expect.objectContaining({
+					mediaId: "media_old",
+					newMediaId: "media_new",
+					newPath: RENAMED.path,
+					settles: true,
+				}),
+			})
+		);
+		// Noted while it was open, and no longer.
+		expect(mediaRenameNote.noteUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			renamed: RENAMED,
+			stage: "stays",
+		});
+		expect(mediaRenameNote.forgetUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			renamed: RENAMED,
+		});
+	});
+
+	it("says so when the file could not be put back and the editor does not follow it", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
+		vi.mocked(mediaRendererHandler.requestMediaRenameFromRenderer)
+			.mockRejectedValueOnce(new Error("Quota exceeded"))
+			.mockRejectedValueOnce(new Error("Quota exceeded"));
+		vi.mocked(mediaRename.undoMediaRename).mockRejectedValueOnce(
+			new Error("shake.mp4 was taken again")
+		);
+		vi.mocked(mediaRenameNote.forgetUnsettledMediaRename).mockClear();
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake_v2" }),
+		});
+
 		expect(res.status).toBe(500);
 		expect(res.body.error).toContain("stays renamed to shake_v2.mp4");
 		expect(res.body.error).toContain("shake.mp4 was taken again");
+		expect(res.body.error).toContain(
+			"did not confirm that it follows the renamed file"
+		);
+		expect(res.body.error).toContain("when the project is next opened");
+		expect(mediaRenameNote.forgetUnsettledMediaRename).not.toHaveBeenCalled();
 	});
 
 	it("does not trouble the editor when the file already has that name", async () => {
