@@ -30,6 +30,23 @@ export interface PlatformClaudeMediaAPI {
 	onMediaRefresh?(
 		callback: (data: unknown) => unknown | Promise<unknown>
 	): void;
+	/**
+	 * The project's media renames that are noted and not settled, as the
+	 * desktop app holds them, each with whether the app is at work on it at
+	 * this moment (`atWork`).
+	 */
+	unsettledRenames?(projectId: string): Promise<unknown[]>;
+	/**
+	 * Has the desktop app drop the note of a rename the editor has settled.
+	 * False when the note is kept: the app is at work on the rename, or has
+	 * written the note again since the one the editor read (`notedAt`).
+	 */
+	forgetSettledRename?(request: {
+		projectId: string;
+		oldId: string;
+		newId: string;
+		notedAt: number;
+	}): Promise<boolean>;
 }
 
 // ---------------------------------------------------------------------------
