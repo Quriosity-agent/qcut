@@ -442,6 +442,9 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		/** Removes media from the renderer and waits for persistence. */
 		requestMediaDelete: (payload) =>
 			requestFromMain("media:delete-renderer", { payload }) as Promise<void>,
+		/** Re-keys a renamed media item in the renderer and repoints its clips. */
+		requestMediaRename: (payload) =>
+			requestFromMain("media:rename-renderer", { payload }) as Promise<void>,
 		/** Executes batched cut operations through the bridge. */
 		executeBatchCuts: async (request) =>
 			(await requestFromMain("timeline:batch-cuts", {
