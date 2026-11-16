@@ -163,6 +163,53 @@ describe("what was measured from a file the item no longer has", () => {
 		expect(generateVideoThumbnailBrowser).toHaveBeenCalledTimes(2);
 	});
 
+	/**
+	 * A thumbnail that fails is tried again after a pause. An item given
+	 * another file during that pause was set back to "loading" by the old
+	 * file's second try, and stayed there: what that try measured is dropped.
+	 */
+	it("does not try the old file again once the item has another", async () => {
+		const oldFile = new File(["old"], "shake.mp4", { type: "video/mp4" });
+		const newFile = new File(["newer"], "shake.mp4", { type: "video/mp4" });
+		vi.mocked(generateVideoThumbnailBrowser)
+			.mockImplementationOnce(async () => {
+				throw new Error("the decoder was busy");
+			})
+			.mockImplementation(async () => ({
+				thumbnailUrl: "data:new",
+				width: 1920,
+				height: 1080,
+			}));
+		vi.mocked(getMediaDuration).mockImplementation(async () => 9);
+
+		const id = await useMediaStore.getState().addMediaItem("proj-1", {
+			name: "shake.mp4",
+			type: "video",
+			file: oldFile,
+			url: "blob:old",
+		});
+		// The first try has failed and waits; the file is written over.
+		await vi.waitFor(() => {
+			expect(generateVideoThumbnailBrowser).toHaveBeenCalledTimes(1);
+		});
+		await useMediaStore.getState().updateMediaItem("proj-1", id, {
+			file: newFile,
+			url: "blob:new",
+			thumbnailUrl: undefined,
+		});
+		await vi.waitFor(() => {
+			expect(itemOf(id)?.thumbnailStatus).toBe("ready");
+		});
+
+		// Past the pause before the second try.
+		await new Promise((resolve) => setTimeout(resolve, 450));
+		expect(itemOf(id)).toMatchObject({
+			thumbnailStatus: "ready",
+			thumbnailUrl: "data:new",
+		});
+		expect(generateVideoThumbnailBrowser).toHaveBeenCalledTimes(2);
+	});
+
 	it("does not land on a sound that was given another file meanwhile", async () => {
 		const oldFile = new File(["old"], "hit.wav", { type: "audio/wav" });
 		const newFile = new File(["newer"], "hit.wav", { type: "audio/wav" });
