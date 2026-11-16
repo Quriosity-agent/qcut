@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The editor notices a media file that was written over in the project folder. It keeps a copy of its own of every file it imports, and the preview and the in-editor export play that copy; the native export reads the file in the folder. A file rendered again under the same name left the two apart, so the preview went on showing the old shot while the exported file held the new one, and nothing said so. The editor now compares each file's size and modification time with what it copied and reads the ones that changed: when its window is looked at again, once a project's media has loaded, before `editor:timeline:apply` and a batch add, and before every export. A file from before this was recorded is compared by size. `editor:media:refresh` asks for the check outright and lists what was read again; `POST /api/claude/media/:projectId/refresh` does the same. An export through the renderer engine is refused while a changed file could not be read, since it would draw the old copy.
+- `editor:media:rename` takes the clips along. A media id is made from the file's name, so a renamed file had a new id while its clips kept the old one: the preview still played them, and the native export left them out and reported success. The editor's item now gets the new id, name and path, every clip that played the old id plays the new one (in every scene, on locked tracks too), and so do the stickers. If the editor cannot follow, the file is put back under its old name. The answer gives the new and the old id and name; renaming a file to its own name changes nothing (it used to come back as `name_1`).
+- A native export stops when a clip's media is not in the project, instead of leaving the clip out. The error names every such clip, picture and sound, with its track and time, and nothing is exported (HTTP 409). A hidden clip, a hidden track and a muted sound track do not stop it.
+- `editor:media:info` and `editor:media:rename` answer `Media not found` (404) for an id the project does not have. `media info` used to answer success with no data, and `media rename` success with `false`.
+- `editor:media:replace` leaves a file with the old item's name under that name. It was imported beside the old item as `name_1.ext` and stayed there after the old one was removed, so a script that finds media by file name lost it. It is now given the name back once the old item is gone, which also gives it the id the old item had.
+- An adjustment layer under a media overlay exports natively. Such a timeline (a vignette track over a whole-film grade) was sent to the renderer engine, which takes no range, bitrate or `--keep-temp`. The layer is now graded inside the overlay pass, at its own track's place: it grades the tracks below it and leaves the overlays above it alone. A layer that is under an overlay and over the text or sticker tracks still goes to the renderer.
+- The refusal of an override the renderer engine does not take says what can be done. It always ended "Drop them, or pass --engine muxer", and muxer is that same engine, so a range was refused again in the same words. It now says to drop them, names the one case where `--engine` alone was the trouble, and no longer writes "a adjustment layer".
+- A paused preview shows the frame of `editor:timeline:seek`. With the pointer resting on the timeline the preview shows the hovered frame, and a seek (from the command line, the keyboard or a click elsewhere) moved the time and left that frame on screen until playback. A seek now ends the hover preview until the pointer moves again.
+- `editor:windows:focus` reports the window as it is once the focus has landed. It read the state straight after asking, and on macOS answered `focused: false` for a window it had just brought to the front.
+
+### Changed
+
+- A range export (`--start-time` / `--end-time`) is faster. The clips outside the range, which are encoded as black frames with their sound for the mix, are encoded several at a time, and the overlays, grades and text are drawn on the clips around the range only, not on the whole film. A 2-second range of a 300-second timeline of 150 clips with an overlay track, 100 sounds and the limiter on took 33 s and takes 17 s; the full export of it takes 98 s. The picture still matches the full export frame for frame (52 dB or better on every frame of four test timelines), and the sound is still the full mix cut to the range, which is most of what a short range now costs. With a transition or a drawn cursor in the timeline the whole picture is drawn as before.
+
+### Added
+
+- `editor:media:refresh` (see above).
+
 ## [2026.11.15.3] - 2026-11-15
 
 ### Added
