@@ -18,6 +18,7 @@ vi.mock("@qcut/platform-core", async (importOriginal) => {
 
 import {
 	clearMediaAlphaInspections,
+	forgetMediaAlphaInspection,
 	inspectMediaAlpha,
 	recordMediaAlpha,
 	resolveAlphaPlaybackProxyUrl,
@@ -36,6 +37,30 @@ describe("alpha playback proxy (renderer)", () => {
 		clearMediaAlphaInspections();
 		mocks.isElectron = true;
 		mocks.ensure.mockReset();
+	});
+
+	/**
+	 * The verdict is kept per path. A file written over, or another file
+	 * renamed onto the path, is a different file under the same path.
+	 */
+	it("asks again about a path whose file was replaced, and only about that path", async () => {
+		mocks.ensure.mockResolvedValue({ alpha: qtrleAlpha });
+		await inspectMediaAlpha({ localPath: "/Projects/p/media/card.mov" });
+		await inspectMediaAlpha({ localPath: "/Projects/p/media/other.mov" });
+		expect(mocks.ensure).toHaveBeenCalledTimes(2);
+
+		forgetMediaAlphaInspection({ localPath: "/Projects/p/media/card.mov" });
+		mocks.ensure.mockResolvedValue({
+			alpha: { ...qtrleAlpha, hasAlpha: false },
+		});
+		expect(
+			await inspectMediaAlpha({ localPath: "/Projects/p/media/card.mov" })
+		).toMatchObject({ hasAlpha: false });
+		// The other path's verdict is still the one first given.
+		expect(
+			await inspectMediaAlpha({ localPath: "/Projects/p/media/other.mov" })
+		).toMatchObject({ hasAlpha: true });
+		expect(mocks.ensure).toHaveBeenCalledTimes(3);
 	});
 
 	it("asks the desktop app once per file and keeps the proxy path", async () => {
