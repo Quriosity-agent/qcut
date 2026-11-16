@@ -10,6 +10,7 @@ vi.mock("electron", () => ({
 }));
 
 import {
+	forgetUnsettledMediaRename,
 	noteUnsettledMediaRename,
 	unsettledRenameKey,
 } from "../claude/handlers/claude-media-rename-note.js";
@@ -18,16 +19,38 @@ const OLD = "media_b2xkLm1wNA";
 const NEW = "media_bmV3Lm1wNA";
 /**
  * The key of the note for these two ids. The editor reads and removes notes
- * under the same key (media-rename-settle.test.ts has this literal too): a
+ * under the same key (media-rename-notes.test.ts has this literal too): a
  * key made differently here would be a note nobody finds.
  */
-const KEY = "media-rename-unsettled-project-1-41286e42738c611db286b10f55980497";
+const KEY = "media-rename-unsettled-project-1-a3cbdd9407c9b3ca14077f6663acc643";
 
 describe("the desktop app's note of a rename the editor may not have settled", () => {
+	let mediaFolder = "";
+	/** The rename of old.mp4 to new.mp4 in the test's media folder. */
+	const renamed = () => ({
+		previous: {
+			id: OLD,
+			name: "old.mp4",
+			path: path.join(mediaFolder, "old.mp4"),
+		},
+		id: NEW,
+		name: "new.mp4",
+		path: path.join(mediaFolder, "new.mp4"),
+	});
+	const stored = async () =>
+		JSON.parse(
+			await fs.readFile(
+				path.join(testState.userData, "projects", `${KEY}.json`),
+				"utf8"
+			)
+		);
+
 	beforeEach(async () => {
 		testState.userData = await fs.mkdtemp(
 			path.join(os.tmpdir(), "qcut-rename-note-")
 		);
+		mediaFolder = path.join(testState.userData, "media");
+		await fs.mkdir(mediaFolder);
 	});
 
 	afterEach(async () => {
@@ -38,9 +61,12 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 		expect(
 			unsettledRenameKey({ projectId: "project-1", newId: NEW, oldId: OLD })
 		).toBe(KEY);
-		// The other way round is another rename.
+		// A rename and its undoing are one matter: one note either way round.
 		expect(
 			unsettledRenameKey({ projectId: "project-1", newId: OLD, oldId: NEW })
+		).toBe(KEY);
+		expect(
+			unsettledRenameKey({ projectId: "project-2", newId: NEW, oldId: OLD })
 		).not.toBe(KEY);
 	});
 
@@ -48,28 +74,117 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 		const before = Date.now();
 		await noteUnsettledMediaRename({
 			projectId: "project-1",
-			renamed: {
-				previous: { id: OLD, name: "old.mp4", path: "/p/media/old.mp4" },
-				id: NEW,
-				name: "new.mp4",
-				path: "/p/media/new.mp4",
-			},
+			renamed: renamed(),
 		});
-		const stored = JSON.parse(
-			await fs.readFile(
-				path.join(testState.userData, "projects", `${KEY}.json`),
-				"utf8"
-			)
-		);
-		expect(stored).toMatchObject({
+		const note = await stored();
+		expect(note).toMatchObject({
 			newId: NEW,
 			newName: "new.mp4",
-			newPath: "/p/media/new.mp4",
+			newPath: renamed().path,
 			oldId: OLD,
 			oldName: "old.mp4",
-			oldPath: "/p/media/old.mp4",
+			oldPath: renamed().previous.path,
 		});
-		expect(stored.notedAt).toBeGreaterThanOrEqual(before);
+		expect(note.notedAt).toBeGreaterThanOrEqual(before);
+		// The file is about to go back: the folder settles nothing yet.
+		expect(note).not.toHaveProperty("decided");
+		// No file to look at: nothing is said of it.
+		expect(note).not.toHaveProperty("file");
+	});
+
+	/**
+	 * Another file can take one of the two names before the editor settles
+	 * the rename. The note says what the renamed file looked like, as the
+	 * editor is shown a file (its size, and the time it was changed in
+	 * whole milliseconds).
+	 */
+	it("says what the renamed file looks like, wherever it is by then", async () => {
+		await fs.writeFile(renamed().path, "the renamed picture");
+		const changed = new Date("2026-11-01T08:00:00.123Z");
+		await fs.utimes(renamed().path, changed, changed);
+		const seen = { size: 19, modifiedAt: changed.getTime() };
+
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "moving",
+		});
+		expect((await stored()).file).toEqual(seen);
+
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "stays",
+		});
+		expect((await stored()).file).toEqual(seen);
+
+		// Put back: it is looked at under its old name, and another file
+		// that took the new name since is not taken for it.
+		await fs.rename(renamed().path, renamed().previous.path);
+		await fs.writeFile(renamed().path, "another file altogether");
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "back",
+		});
+		expect((await stored()).file).toEqual(seen);
+	});
+
+	it("expects the file under its old name once it is back, and says the app is done", async () => {
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "back",
+		});
+		expect(await stored()).toMatchObject({
+			oldId: OLD,
+			oldPath: renamed().previous.path,
+			newId: NEW,
+			newPath: renamed().path,
+			decided: true,
+		});
+	});
+
+	it("expects the file under its new name when it could not be put back", async () => {
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+		});
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+			stage: "stays",
+		});
+		// One note for the rename, saying the latest.
+		expect(await fs.readdir(path.join(testState.userData, "projects"))).toEqual(
+			[`${KEY}.json`]
+		);
+		expect(await stored()).toMatchObject({
+			oldId: NEW,
+			oldName: "new.mp4",
+			oldPath: renamed().path,
+			newId: OLD,
+			newName: "old.mp4",
+			newPath: renamed().previous.path,
+			decided: true,
+		});
+	});
+
+	it("drops the note, and has nothing to drop where none is", async () => {
+		await noteUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+		});
+		await forgetUnsettledMediaRename({
+			projectId: "project-1",
+			renamed: renamed(),
+		});
+		expect(await fs.readdir(path.join(testState.userData, "projects"))).toEqual(
+			[]
+		);
+		await expect(
+			forgetUnsettledMediaRename({ projectId: "project-1", renamed: renamed() })
+		).resolves.toBeUndefined();
 	});
 
 	it("fits a key into a file name whatever the length of the ids", () => {
