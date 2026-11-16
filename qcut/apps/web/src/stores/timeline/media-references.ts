@@ -13,30 +13,6 @@ import type { TimelineTrack } from "@/types/timeline";
  * watches the timeline sees them as edited. A locked track is repointed too:
  * this keeps a reference whole, it is not an edit of the clip.
  */
-/** A clip plays the media: a media clip, or a sticker on the timeline. */
-function playsMedia(
-	element: TimelineTrack["elements"][number],
-	mediaId: string
-): boolean {
-	return (
-		(element.type === "media" || element.type === "sticker") &&
-		element.mediaId === mediaId
-	);
-}
-
-/** Whether any clip on the tracks plays the media. */
-export function tracksPlayMedia({
-	tracks,
-	mediaId,
-}: {
-	tracks: TimelineTrack[];
-	mediaId: string;
-}): boolean {
-	return tracks.some((track) =>
-		track.elements.some((element) => playsMedia(element, mediaId))
-	);
-}
-
 export function repointMediaReferences({
 	tracks,
 	fromId,
@@ -51,7 +27,12 @@ export function repointMediaReferences({
 	const repointed = tracks.map((track) => {
 		let trackChanged = false;
 		const elements = track.elements.map((element) => {
-			if (!playsMedia(element, fromId)) return element;
+			if (
+				(element.type !== "media" && element.type !== "sticker") ||
+				element.mediaId !== fromId
+			) {
+				return element;
+			}
 			trackChanged = true;
 			changed += 1;
 			return { ...element, mediaId: toId };
