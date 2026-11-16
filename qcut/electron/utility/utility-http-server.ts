@@ -19,6 +19,7 @@ import {
 	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
 	TIMELINE_BATCH_ROUTE_PATTERN,
 } from "../claude/utils/timeline-batch-deadline.js";
+import type { ClaudeMediaRefreshResult } from "../types/claude-media-bridge-api.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -445,6 +446,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		/** Re-keys a renamed media item in the renderer and repoints its clips. */
 		requestMediaRename: (payload) =>
 			requestFromMain("media:rename-renderer", { payload }) as Promise<void>,
+		/** Has the renderer read again the media files that changed on disk. */
+		requestMediaRefresh: (payload) =>
+			requestFromMain("media:refresh-renderer", {
+				payload,
+			}) as Promise<ClaudeMediaRefreshResult>,
 		/** Executes batched cut operations through the bridge. */
 		executeBatchCuts: async (request) =>
 			(await requestFromMain("timeline:batch-cuts", {
