@@ -136,10 +136,13 @@ nothing (`renamed: false`). An id that is not in the project is an error
 a file so large that copying it outlasts the 30 s the request waits, the
 project closed or another project or scene opened meanwhile), it takes back
 what it had changed, the file is put back under its old name and the command
-fails: the project is as it was. Two failures leave it otherwise, and each
-says so in its error: the file could not be put back (its old name was taken
-meanwhile), so it keeps the new name the error gives; or the editor could
-not take back everything it had changed, and the error names what. Renames
+fails. Taking back is attempted, not promised: it leaves the project as it
+was unless the error says otherwise, in one of two ways. Either the file
+could not be put back (its old name was taken meanwhile), and it keeps the
+new name the error gives; or the editor could not take back everything it
+had changed ("Not everything could be taken back"), and the error names
+what. After either, look at the file's name and at what the error names
+(`media list`, `timeline export`) before the rename is tried again. Renames
 of one project are done one after the other, also when they are asked for at
 the same time.
 
