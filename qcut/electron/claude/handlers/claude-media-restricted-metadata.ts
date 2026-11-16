@@ -202,27 +202,52 @@ const lastSidecarChange = new Map<string, Promise<unknown>>();
  * another process, and none is taken from one that has only paused.
  *
  * A change asked for by the other process has a time by which that process
- * stops waiting (`giveUpAt`) and goes on as if the change had failed. When
- * its turn comes later than that, it is not made: made then, it would be a
- * change nobody knows of (metadata staged for a rename that was given up).
+ * stops waiting (`giveUpAt`) and goes on as if the change had failed: it
+ * takes away the file it had brought, say. A change that process has given
+ * up on must leave nothing behind, or it would be a change nobody knows of
+ * (metadata for a file that is no longer there, to stick to whatever takes
+ * its name next). So when its turn comes later than that, it is not made.
+ * And when it was begun in time and is finished only after that (the disk
+ * held it up), what it put in place is taken away again (`takeBack`), in
+ * the same turn, before anything else gets to the sidecar.
  */
 function oneSidecarChangeAtATime<Result>({
 	sidecarPath,
 	change,
 	giveUpAt,
+	takeBack,
 }: {
 	sidecarPath: string;
 	change: () => Promise<Result>;
 	giveUpAt?: number;
+	/** Undoes a change that puts something in place, given what it made. */
+	takeBack?: (made: Result) => Promise<void>;
 }): Promise<Result> {
+	const givenUp = () => giveUpAt !== undefined && Date.now() >= giveUpAt;
 	const earlier = lastSidecarChange.get(sidecarPath) ?? Promise.resolve();
-	const running = earlier.then(() => {
-		if (giveUpAt !== undefined && Date.now() >= giveUpAt) {
+	const running = earlier.then(async () => {
+		if (givenUp()) {
 			throw new Error(
 				"The change to restricted media metadata waited for its turn longer than the request for it; it was not made"
 			);
 		}
-		return change();
+		const made = await change();
+		if (!takeBack || !givenUp()) return made;
+		try {
+			await takeBack(made);
+		} catch (error) {
+			claudeLog.warn(
+				HANDLER_NAME,
+				`Restricted media metadata that was written too late for its request could not be taken away again (${sidecarPath}): ${String(error)}`
+			);
+			throw new Error(
+				"The change to restricted media metadata took longer than the request for it waits, and could not be taken back",
+				{ cause: error }
+			);
+		}
+		throw new Error(
+			"The change to restricted media metadata took longer than the request for it waits; it was taken back"
+		);
 	});
 	const settled = running.then(
 		() => undefined,
@@ -388,6 +413,15 @@ async function unlinkIfStill({
 	});
 }
 
+/** Takes away a sidecar a change has written, if it is still that file. */
+const takeAwayWhatWasWritten = ({
+	destinationPath,
+	written,
+}: {
+	destinationPath: string;
+	written: FileIdentity;
+}) => unlinkIfStill({ filePath: destinationPath, identity: written });
+
 /** When a change asked for by another process is no longer to be made. */
 interface Wait {
 	giveUpAt?: number;
@@ -414,6 +448,7 @@ const here = {
 						await fs.rename(temporaryPath, destinationPath);
 					},
 				}),
+			takeBack: takeAwayWhatWasWritten,
 		});
 	},
 
@@ -459,6 +494,9 @@ const here = {
 				} catch (again) {
 					if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
 				}
+			},
+			takeBack: async (made) => {
+				if (made) await takeAwayWhatWasWritten(made);
 			},
 		});
 		if (!staged) return { taken: true };
@@ -525,15 +563,16 @@ export function makeRestrictedMetadataChangesThrough(
 
 /**
  * A change is given up this long before the asker stops waiting for it:
- * started later, its answer might not be back in time.
+ * started or finished later, its answer might not be back in time.
  */
 const ANSWER_MARGIN_MS = 1000;
 
 /**
  * One change, as another process asks it of the one that makes them.
  * `deadline` is when that process stops waiting for the answer (epoch
- * milliseconds): it then goes on as if the change had failed, so a change
- * whose turn has not come by then is not made.
+ * milliseconds): it then goes on as if the change had failed. So a change
+ * whose turn has not come by then is not made, and one that puts a sidecar
+ * in place and is not finished by then takes that sidecar away again.
  */
 export function changeRestrictedMetadataHere({
 	change,
