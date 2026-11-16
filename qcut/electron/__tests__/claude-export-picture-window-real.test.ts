@@ -46,6 +46,7 @@ import {
 	type TextOverlay,
 } from "../claude/handlers/claude-export-handler/types";
 import { DEFAULT_VIDEO_COLOR_SETTINGS } from "../ffmpeg/color-settings";
+import type { AudioBusEffects, AudioMixConfig } from "../ffmpeg/types";
 import type { ClaudeTimeline } from "../types/claude-api";
 
 /**
@@ -131,6 +132,86 @@ function psnr({ a, b }: { a: Uint8Array; b: Uint8Array }): number {
 	return mse === 0 ? Number.POSITIVE_INFINITY : 10 * Math.log10(255 ** 2 / mse);
 }
 
+/** The sound of a file as interleaved stereo float samples. */
+function samples({ file }: { file: string }): Float32Array {
+	const raw = run({
+		args: [
+			"-i",
+			file,
+			"-map",
+			"0:a:0",
+			"-vn",
+			"-f",
+			"f32le",
+			"-ac",
+			"2",
+			"-ar",
+			"48000",
+			"-",
+		],
+	});
+	return new Float32Array(
+		raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.length)
+	);
+}
+
+/** RMS of the difference over the RMS of the reference. */
+function relativeError({
+	reference,
+	candidate,
+}: {
+	reference: Float32Array;
+	candidate: Float32Array;
+}): number {
+	let differences = 0;
+	let energy = 0;
+	for (let index = 0; index < reference.length; index += 1) {
+		const difference = reference[index] - (candidate[index] ?? 0);
+		differences += difference * difference;
+		energy += reference[index] * reference[index];
+	}
+	return Math.sqrt(differences / Math.max(energy, 1e-12));
+}
+
+function effects(): AudioBusEffects {
+	return {
+		parametricEqualizer: {
+			enabled: false,
+			lowCutHz: 20,
+			highCutHz: 20_000,
+			bands: [],
+		},
+		compressor: {
+			enabled: false,
+			thresholdDb: -18,
+			ratio: 3,
+			attackMs: 10,
+			releaseMs: 120,
+			makeupGainDb: 0,
+		},
+		limiter: { enabled: false, ceilingDb: -1, releaseMs: 50 },
+	};
+}
+
+/** A master limiter the film's tone keeps busy. */
+function limitedMix(): AudioMixConfig {
+	const master = effects();
+	master.limiter = { enabled: true, ceilingDb: -18, releaseMs: 200 };
+	return {
+		master: {
+			id: "master",
+			name: "Master",
+			gainDb: 3,
+			pan: 0,
+			muted: false,
+			solo: false,
+			effects: master,
+		},
+		buses: [],
+		tracks: [],
+	};
+}
+
 interface Layers {
 	mediaOverlays?: ExportSegment[];
 	adjustmentLayers?: AdjustmentLayer[];
@@ -150,10 +231,12 @@ describe.skipIf(!existsSync(ffmpeg))(
 			name,
 			layers,
 			range,
+			audioMixConfig,
 		}: {
 			name: string;
 			layers: Layers;
 			range?: { start: number; end: number };
+			audioMixConfig?: AudioMixConfig;
 		}): Promise<string> {
 			const outputPath = path.join(directory, `${name}.mp4`);
 			const jobId = `export_${name}`;
@@ -176,6 +259,7 @@ describe.skipIf(!existsSync(ffmpeg))(
 				outputPath,
 				segments,
 				audioFiles: [],
+				audioMixConfig,
 				projectFps: FPS,
 				projectCanvas: { width: WIDTH, height: HEIGHT },
 				range,
@@ -256,7 +340,9 @@ describe.skipIf(!existsSync(ffmpeg))(
 					"-f",
 					"lavfi",
 					"-i",
-					`sine=frequency=440:sample_rate=48000:duration=${CLIPS * CLIP_SECONDS}`,
+					// Another pitch each second, so sound cut from the wrong place
+					// does not pass as right.
+					`aevalsrc=0.2*sin(2*PI*(300+80*floor(t))*t)|0.2*sin(2*PI*(300+80*floor(t))*t):s=48000:d=${CLIPS * CLIP_SECONDS}`,
 					"-c:v",
 					"libx264",
 					"-preset",
@@ -501,6 +587,55 @@ describe.skipIf(!existsSync(ffmpeg))(
 				windowSeconds: { start: 2, end: 8 },
 			});
 		}, 240_000);
+
+		/**
+		 * The picture is counted from the window's start, the sound from the
+		 * timeline's: the range of the mix must not move with the window.
+		 */
+		it("cuts the sound on the timeline's clock, with or without a mix", async () => {
+			for (const [name, audioMixConfig] of [
+				["sound-plain", undefined],
+				["sound-limited", limitedMix()],
+			] as const) {
+				const layers = { adjustmentLayers: [grade()] };
+				const full = await exportTimeline({
+					name: `${name}-full`,
+					layers,
+					audioMixConfig,
+				});
+				vi.mocked(planPictureWindow).mockClear();
+				const range = await exportTimeline({
+					name: `${name}-range`,
+					layers,
+					range: RANGE,
+					audioMixConfig,
+				});
+				expect(
+					vi.mocked(planPictureWindow).mock.results[0]?.value
+				).toMatchObject({ start: 4 });
+				const fullSound = samples({ file: full });
+				const rangeSound = samples({ file: range });
+				const sampleCount = (RANGE.end - RANGE.start) * 48_000 * 2;
+				const at = (seconds: number) =>
+					fullSound.subarray(
+						seconds * 48_000 * 2,
+						seconds * 48_000 * 2 + sampleCount
+					);
+				expect(Math.abs(rangeSound.length - sampleCount)).toBeLessThan(
+					0.05 * 48_000 * 2
+				);
+				const candidate = rangeSound.subarray(0, sampleCount);
+				expect(
+					relativeError({ reference: at(RANGE.start), candidate }),
+					`${name}: the range's sound`
+				).toBeLessThan(0.1);
+				// Not the sound a second into the window (seconds 1 to 3 of it).
+				expect(
+					relativeError({ reference: at(RANGE.start - 4), candidate }),
+					`${name}: the sound at the window's own second 1`
+				).toBeGreaterThan(0.5);
+			}
+		}, 480_000);
 
 		it("draws the whole picture when the range touches every clip", async () => {
 			vi.mocked(planPictureWindow).mockClear();
