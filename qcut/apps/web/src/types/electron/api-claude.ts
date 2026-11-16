@@ -36,6 +36,7 @@ import type {
 	ClaudeLocalVideoExportRendererRequest,
 	ClaudeLocalVideoExportRendererResponse,
 } from "../../../../../electron/types/claude-local-video-export-api";
+import type { ClaudeMediaRefreshResult } from "../../../../../electron/types/claude-media-bridge-api";
 
 type EmitPayload = Omit<EditorEvent, "eventId" | "timestamp"> &
 	Partial<Pick<EditorEvent, "eventId" | "timestamp">>;
@@ -78,7 +79,7 @@ export interface ElectronClaudeOps {
 				callback: (data: {
 					projectId: string;
 					requestId?: string;
-				}) => unknown | Promise<unknown>
+				}) => ClaudeMediaRefreshResult | Promise<ClaudeMediaRefreshResult>
 			) => void;
 			onMediaRenamed: (
 				callback: (data: {
