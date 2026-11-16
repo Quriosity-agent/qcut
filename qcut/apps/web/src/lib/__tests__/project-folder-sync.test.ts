@@ -5,6 +5,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const refreshChangedMediaSources = vi.hoisted(() => vi.fn());
+vi.mock("../project/media-source-refresh", () => ({
+	refreshChangedMediaSources,
+}));
+// The desktop app's bridge as a test sets it on `window.electronAPI`;
+// without one the platform is not there, as before the app has started.
+vi.mock("@qcut/platform-core", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@qcut/platform-core")>()),
+	platform: () => {
+		const api = (window as any).electronAPI;
+		if (!api) throw new Error("Platform not initialized.");
+		return {
+			projectFolder: api.projectFolder,
+			files: { readFile: api.readFile },
+		};
+	},
+}));
+
 import {
 	findUntrackedFiles,
 	determineFolderIds,
@@ -217,6 +236,12 @@ describe("project-folder-sync", () => {
 
 		beforeEach(() => {
 			originalElectronAPI = (window as any).electronAPI;
+			refreshChangedMediaSources.mockReset();
+			refreshChangedMediaSources.mockResolvedValue({
+				checked: 0,
+				refreshed: [],
+				failed: [],
+			});
 		});
 
 		afterEach(() => {
@@ -269,6 +294,94 @@ describe("project-folder-sync", () => {
 			const result = await syncProjectFolder("test-project");
 			expect(result.imported).toBe(0);
 			expect(result.totalDiskFiles).toBe(0);
+		});
+
+		/**
+		 * The sync is what runs before a timeline apply and when the media
+		 * panel opens: a tracked file that was written over in the folder is
+		 * read again there, from the scan the sync already has.
+		 */
+		it("reads tracked files that changed on disk again, and records what a new file was copied from", async () => {
+			const tracked = mockDiskFile({
+				name: "shake.mp4",
+				path: "/Projects/p1/media/shake.mp4",
+				relativePath: "media/shake.mp4",
+				size: 512,
+				modifiedAt: 9000,
+			});
+			const fresh = mockDiskFile({
+				name: "new.mp4",
+				path: "/Projects/p1/media/new.mp4",
+				relativePath: "media/new.mp4",
+				size: 4,
+				modifiedAt: 7000.5,
+			});
+			(window as any).electronAPI = {
+				projectFolder: {
+					ensureStructure: vi.fn().mockResolvedValue({
+						created: [],
+						existing: ["media"],
+					}),
+					scan: vi.fn().mockResolvedValue({
+						files: [tracked, fresh],
+						folders: [],
+						totalSize: 516,
+						scanTime: 5,
+					}),
+				},
+				readFile: vi.fn().mockResolvedValue(Buffer.from("film")),
+			};
+			refreshChangedMediaSources.mockResolvedValue({
+				checked: 1,
+				refreshed: [{ id: "media_shake", name: "shake.mp4" }],
+				failed: [
+					{ id: "media_card", name: "card.png", error: "the file is gone" },
+				],
+			});
+			const addMediaItem = vi.fn().mockResolvedValue("media_new");
+			vi.doMock("@/stores/media/media-store", () => ({
+				useMediaStore: {
+					getState: () => ({
+						mediaItems: [
+							mockMediaItem({
+								id: "media_shake",
+								name: "shake.mp4",
+								localPath: "/Projects/p1/media/shake.mp4",
+							}),
+						],
+						addMediaItem,
+					}),
+				},
+			}));
+
+			const { syncProjectFolder } = await import(
+				"../project/project-folder-sync"
+			);
+			const result = await syncProjectFolder("p1");
+
+			// Checked from the scan the sync made, not from a second one.
+			expect(refreshChangedMediaSources).toHaveBeenCalledWith({
+				projectId: "p1",
+				diskFiles: [tracked, fresh],
+			});
+			expect(result).toMatchObject({
+				totalDiskFiles: 2,
+				refreshed: 1,
+				imported: 1,
+				skipped: 1,
+				errors: ["card.png: the file is gone"],
+			});
+			// A newly imported file carries what it was copied from, so the
+			// next check has something exact to compare.
+			expect(addMediaItem).toHaveBeenCalledTimes(1);
+			expect(addMediaItem.mock.calls[0][1]).toMatchObject({
+				name: "new.mp4",
+				localPath: "/Projects/p1/media/new.mp4",
+				metadata: {
+					source: "project-folder-sync",
+					sourceFile: { size: 4, modifiedAt: 7000.5 },
+				},
+			});
 		});
 	});
 });
