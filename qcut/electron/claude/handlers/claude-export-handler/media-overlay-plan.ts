@@ -44,7 +44,7 @@ export async function planMediaOverlays({
 	const reason = mediaOverlayRendererReason({ timeline });
 	if (reason) {
 		throw new Error(
-			`The native export cannot stack this timeline's media overlays (${reason}). Export it with --engine muxer.`
+			`The native export cannot stack this timeline's media overlays (${reason}). Export it with --engine muxer, without the native export's overrides (a range, a bitrate, --keep-temp).`
 		);
 	}
 	const overlayClips = findOverlayClips({
