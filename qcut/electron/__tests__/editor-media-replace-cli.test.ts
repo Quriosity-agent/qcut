@@ -47,6 +47,7 @@ function fakeEditor({
 	removalFails = false,
 	transactionFails,
 	renameRefused = false,
+	mediaAfterRename,
 }: {
 	/** The clip whose swap the editor refuses, and with what status. */
 	refuse?: { elementId: string; status: number };
@@ -57,6 +58,12 @@ function fakeEditor({
 	transactionFails?: "begin" | "commit" | "rollback";
 	/** The old name was taken again before the new item could have it. */
 	renameRefused?: boolean;
+	/**
+	 * What the project's media list holds once the rename request has
+	 * failed, or "unreadable" when the list cannot be had either. Left out:
+	 * the new item under its spare name, beside whatever took the old name.
+	 */
+	mediaAfterRename?: Array<{ id: string; name: string }> | "unreadable";
 } = {}) {
 	const playing = new Map<string, string>([
 		["shake-a", OLD],
@@ -70,6 +77,17 @@ function fakeEditor({
 		}
 		if (path === `/api/claude/media/p1/${NEW}`) {
 			return { id: NEW, name: "shake_03_1.mov", duration: 6 };
+		}
+		if (path === "/api/claude/media/p1") {
+			if (mediaAfterRename === "unreadable") {
+				throw new Error("the editor did not answer");
+			}
+			return (
+				mediaAfterRename ?? [
+					{ id: NEW, name: "shake_03_1.mov" },
+					{ id: "media_someone_elses", name: "shake_03.mov" },
+				]
+			);
 		}
 		if (path.startsWith("/api/claude/media/")) return null;
 		return {
@@ -269,6 +287,49 @@ describe("editor media replace", () => {
 				oldMediaRemoved: true,
 				warning:
 					"shake_03_1.mov could not be given the name shake_03.mov back (shake_03.mov is already taken in the project's media folder); it keeps shake_03_1.mov",
+			},
+		});
+	});
+
+	/**
+	 * The rename route moves the file before it answers. An answer that is
+	 * lost or late is a failure to the command, while the file has its old
+	 * name back, and with it the old id.
+	 */
+	it("reports the name the file has when the rename landed but its answer did not", async () => {
+		const editor = fakeEditor({
+			renameRefused: true,
+			mediaAfterRename: [{ id: NAMED, name: "shake_03.mov" }],
+		});
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result).toMatchObject({
+			success: true,
+			data: {
+				mediaId: NAMED,
+				name: "shake_03.mov",
+				importedAs: "shake_03_1.mov",
+				oldMediaRemoved: true,
+			},
+		});
+		expect(
+			(result.data as { warning?: string } | undefined)?.warning
+		).toBeUndefined();
+	});
+
+	it("does not claim a name it could not look up", async () => {
+		const editor = fakeEditor({
+			renameRefused: true,
+			mediaAfterRename: "unreadable",
+		});
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result).toMatchObject({
+			success: true,
+			data: {
+				oldMediaRemoved: true,
+				warning:
+					'shake_03_1.mov may not have been given the name shake_03.mov back (shake_03.mov is already taken in the project\'s media folder); "qcut editor:media:list --project-id p1" shows the name and id it has now',
 			},
 		});
 	});
