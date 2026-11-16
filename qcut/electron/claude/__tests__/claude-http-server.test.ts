@@ -1170,6 +1170,31 @@ describe("Claude HTTP Server", () => {
 		expect(mediaRename.undoMediaRename).not.toHaveBeenCalled();
 	});
 
+	it("passes on a rename that must land on the exact name or not at all", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockRejectedValueOnce(
+			new Error("shake.mp4 is already taken in the project's media folder")
+		);
+
+		const res = await fetch("/api/claude/media/proj_123/media_new/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake.mp4", exactName: true }),
+		});
+
+		expect(mediaRename.renameMediaFileOnDisk).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			mediaId: "media_new",
+			newName: "shake.mp4",
+			exactName: true,
+		});
+		expect(res.status).toBe(500);
+		expect(res.body.error).toContain("already taken");
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).not.toHaveBeenCalled();
+	});
+
 	it("puts the file back when the editor cannot follow the rename", async () => {
 		const mockWindow = createMockWindow();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
