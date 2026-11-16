@@ -11,6 +11,12 @@ import {
 	deleteTrackedMediaItem,
 	saveTrackedMediaItem,
 } from "./media-persistence-queue";
+import {
+	forgetUnsettledRename,
+	noteUnsettledRename,
+	readUnsettledRenames,
+	type UnsettledRename,
+} from "./media-rename-notes";
 import { useMediaStore } from "./media-store";
 import type { MediaItem } from "./media-store-types";
 
@@ -28,6 +34,20 @@ export interface ProjectMediaRename {
 	 * pointing at the new one.
 	 */
 	deadlineAt?: number;
+	/**
+	 * The name and path the file had before. With them a rename that ends
+	 * unsettled can be put right the next time the project is open.
+	 */
+	previous?: { name: string; localPath: string };
+	/**
+	 * Settles a rename by where the file is, whatever the editor had made
+	 * of it: the file has this name for good, so nothing waits on a
+	 * deadline; the open scene is saved even when its clips needed no
+	 * change, since it may be stored with the other id; and an item still
+	 * held under the id being left is dropped when the one it would become
+	 * is held too.
+	 */
+	settles?: boolean;
 }
 
 export interface ProjectMediaRenameResult {
@@ -48,6 +68,17 @@ interface Undo {
 /** A step that cannot be taken back is tried again this often, this far apart. */
 const TAKE_BACK_ATTEMPTS = 3;
 const TAKE_BACK_RETRY_MS = 150;
+
+/** A note nothing in the folder speaks to any more is dropped after a day. */
+const NOTE_KEPT_MS = 24 * 60 * 60 * 1000;
+
+/** The rename failed, and not all it had changed could be taken back. */
+class RenameNotTakenBackError extends Error {
+	constructor(message: string, options: { cause: unknown }) {
+		super(message, options);
+		this.name = "RenameNotTakenBackError";
+	}
+}
 
 /** The last rename asked for each project, done or not. */
 const lastRename = new Map<string, Promise<unknown>>();
@@ -109,15 +140,33 @@ function sceneIsOpen({ projectId, sceneId }: SceneRef): boolean {
  *
  * One rename at a time for a project: each reads, changes and saves the same
  * stored scenes, and two at once would save over each other's work.
+ *
+ * A rename after which the editor and the folder may not agree is noted, to
+ * be settled when the project is next open (media-rename-notes.ts): one
+ * that could not take back all it had changed, and one that was asked to
+ * settle and could not.
  */
 export function renameProjectMedia(
 	rename: ProjectMediaRename
 ): Promise<ProjectMediaRenameResult> {
-	const { projectId } = rename;
+	return inTurn({
+		projectId: rename.projectId,
+		run: () => renameAndNote(rename),
+	});
+}
+
+/** Runs after every rename of the project asked for before it. */
+function inTurn<Result>({
+	projectId,
+	run,
+}: {
+	projectId: string;
+	run: () => Promise<Result>;
+}): Promise<Result> {
 	const earlier = lastRename.get(projectId) ?? Promise.resolve();
-	const run = earlier.then(() => renameNow(rename));
+	const running = earlier.then(run);
 	// The next one waits for this one, whatever comes of it.
-	const settled = run.then(
+	const settled = running.then(
 		() => undefined,
 		() => undefined
 	);
@@ -125,7 +174,138 @@ export function renameProjectMedia(
 	settled.then(() => {
 		if (lastRename.get(projectId) === settled) lastRename.delete(projectId);
 	});
-	return run;
+	return running;
+}
+
+/**
+ * The two names of a rename as a note keeps them: `old` is the one the file
+ * is expected to have when nothing more is known.
+ */
+function asNote(rename: ProjectMediaRename): UnsettledRename | undefined {
+	const held = useMediaStore
+		.getState()
+		.mediaItems.find((item) => item.id === rename.fromId);
+	const before =
+		rename.previous ??
+		(held?.localPath
+			? { name: held.name, localPath: held.localPath }
+			: undefined);
+	if (!before) return;
+	const from = {
+		id: rename.fromId,
+		name: before.name,
+		path: before.localPath,
+	};
+	const to = { id: rename.toId, name: rename.name, path: rename.localPath };
+	// A rename that settles says where the file is: that is the side to keep.
+	const [kept, other] = rename.settles ? [to, from] : [from, to];
+	return {
+		oldId: kept.id,
+		oldName: kept.name,
+		oldPath: kept.path,
+		newId: other.id,
+		newName: other.name,
+		newPath: other.path,
+		notedAt: Date.now(),
+	};
+}
+
+async function renameAndNote(
+	rename: ProjectMediaRename
+): Promise<ProjectMediaRenameResult> {
+	const note = asNote(rename);
+	try {
+		const result = await renameNow(rename);
+		if (rename.settles && note) {
+			await forgetUnsettledRename({
+				projectId: rename.projectId,
+				rename: note,
+			}).catch(() => undefined);
+		}
+		return result;
+	} catch (error) {
+		if (rename.settles || error instanceof RenameNotTakenBackError) {
+			// Without the name the file had there is nothing to settle it by.
+			const noted = note
+				? noteUnsettledRename({ projectId: rename.projectId, rename: note })
+				: Promise.reject(new Error("the name the file had is not known"));
+			await noted.catch((noteError: unknown) => {
+				debugWarn(
+					"[MediaRename] An unsettled rename could not be noted:",
+					noteError
+				);
+			});
+		}
+		throw error;
+	}
+}
+
+/** Whether a file is at the path; undefined when that could not be asked. */
+async function fileIsThere(filePath: string): Promise<boolean | undefined> {
+	try {
+		return Boolean(await platform().files.getFileInfo(filePath));
+	} catch (error) {
+		// The desktop app answers a missing file with the system's ENOENT;
+		// any other failure says nothing about the file.
+		const reason = error instanceof Error ? error.message : String(error);
+		return /ENOENT/.test(reason) ? false : undefined;
+	}
+}
+
+/**
+ * Settles the renames noted for the project by what its folder holds: the
+ * editor ends on the id of the name the file has. The old name wins when a
+ * file is there (the file was put back, or never left); the new one when
+ * only it is. With neither, or when the folder cannot be asked, the note is
+ * kept for the next time, a day at most.
+ *
+ * Called when a project has finished loading: its timelines are then in the
+ * stores as they are stored, so what is put right is saved right.
+ */
+export async function settleUnsettledMediaRenames({
+	projectId,
+}: {
+	projectId: string;
+}): Promise<void> {
+	for (const note of await readUnsettledRenames(projectId)) {
+		try {
+			const oldThere = await fileIsThere(note.oldPath);
+			const newThere = await fileIsThere(note.newPath);
+			if (oldThere === undefined || newThere === undefined) continue;
+			if (!oldThere && !newThere) {
+				if (Date.now() - note.notedAt > NOTE_KEPT_MS) {
+					await forgetUnsettledRename({ projectId, rename: note });
+				}
+				continue;
+			}
+			const old = { id: note.oldId, name: note.oldName, path: note.oldPath };
+			const renamed = {
+				id: note.newId,
+				name: note.newName,
+				path: note.newPath,
+			};
+			const [to, from] = oldThere ? [old, renamed] : [renamed, old];
+			await inTurn({
+				projectId,
+				run: () =>
+					renameNow({
+						projectId,
+						fromId: from.id,
+						toId: to.id,
+						name: to.name,
+						localPath: to.path,
+						previous: { name: from.name, localPath: from.path },
+						settles: true,
+					}),
+			});
+			await forgetUnsettledRename({ projectId, rename: note });
+		} catch (error) {
+			debugWarn(
+				"[MediaRename] A noted rename could not be settled yet:",
+				error
+			);
+		}
+	}
 }
 
 async function renameNow({
@@ -135,6 +315,7 @@ async function renameNow({
 	name,
 	localPath,
 	deadlineAt,
+	settles = false,
 }: ProjectMediaRename): Promise<ProjectMediaRenameResult> {
 	if (fromId === toId) {
 		return { mediaRenamed: false, clipsUpdated: 0, stickersUpdated: 0 };
@@ -148,7 +329,11 @@ async function renameNow({
 	const openScene: SceneRef = { projectId, sceneId: project.currentSceneId };
 	const { mediaItems } = useMediaStore.getState();
 	const previous = mediaItems.find((item) => item.id === fromId);
-	if (mediaItems.some((item) => item.id === toId)) {
+	// Two items would end under one id. With no item to re-key there is no
+	// such clash: clips of an id nothing holds are pointed at the item.
+	const alreadyHeld =
+		previous !== undefined && mediaItems.some((item) => item.id === toId);
+	if (alreadyHeld && !settles) {
 		throw new Error(
 			`The project already has a media item with the id of ${name} (${toId})`
 		);
@@ -157,7 +342,7 @@ async function renameNow({
 	const undo: Undo[] = [];
 	/** Stops the rename once it can no longer be finished as asked. */
 	const goOn = () => {
-		if (deadlineAt !== undefined && Date.now() >= deadlineAt) {
+		if (!settles && deadlineAt !== undefined && Date.now() >= deadlineAt) {
 			throw new Error(
 				"The rename took longer than the request waits for; nothing was changed"
 			);
@@ -172,7 +357,22 @@ async function renameNow({
 	try {
 		// The wait may be over already: this rename stood behind another.
 		goOn();
-		if (previous) {
+		if (previous && alreadyHeld) {
+			// Settling: the item under the id being left is a copy a rename
+			// that did not stand left behind; the project's own is held.
+			useMediaStore.setState((state) => ({
+				mediaItems: state.mediaItems.filter((item) => item.id !== fromId),
+			}));
+			undo.push({
+				what: "the item left behind in the media library",
+				run: () => {
+					if (!projectIsOpen(projectId)) return;
+					useMediaStore.setState((state) => ({
+						mediaItems: [...state.mediaItems, previous],
+					}));
+				},
+			});
+		} else if (previous) {
 			const renamed: MediaItem = {
 				...previous,
 				id: toId,
@@ -232,6 +432,7 @@ async function renameNow({
 			fromId,
 			toId,
 			undo,
+			alwaysSave: settles,
 		});
 		clipsUpdated += await repointStoredScenes({ project, fromId, toId, undo });
 		goOn();
@@ -261,7 +462,7 @@ async function renameNow({
 		const notTakenBack = await takeBack(undo);
 		if (notTakenBack.length === 0) throw error;
 		const reason = error instanceof Error ? error.message : String(error);
-		throw new Error(
+		throw new RenameNotTakenBackError(
 			`${reason}. Not everything could be taken back in the editor, which may still name ${toId}: ${notTakenBack.join("; ")}`,
 			{ cause: error }
 		);
@@ -337,7 +538,13 @@ async function repointOpenScene({
 	fromId,
 	toId,
 	undo,
-}: MediaIds & { scene: SceneRef; undo: Undo[] }): Promise<number> {
+	alwaysSave,
+}: MediaIds & {
+	scene: SceneRef;
+	undo: Undo[];
+	/** The scene may be stored with the other id though the store is not. */
+	alwaysSave: boolean;
+}): Promise<number> {
 	const timeline = useTimelineStore.getState();
 	const changed = timeline.repointMediaReferences({ fromId, toId });
 	// Even with no clip changed: an undo step may hold one, and was repointed.
@@ -345,7 +552,7 @@ async function repointOpenScene({
 		what: "the open scene's timeline",
 		run: () => takeSceneBack({ ...scene, fromId, toId }),
 	});
-	if (changed > 0 && !(await timeline.saveImmediate())) {
+	if ((changed > 0 || alwaysSave) && !(await timeline.saveImmediate())) {
 		throw new Error("The timeline could not be saved with the renamed media");
 	}
 	return changed;
