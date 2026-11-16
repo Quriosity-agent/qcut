@@ -23,6 +23,7 @@ import type {
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRenamedEvent,
 } from "../../types/claude-media-bridge-api";
 import type {
 	ClaudeAudioMixRequest,
@@ -53,6 +54,9 @@ export interface ClaudeMediaAPI {
 		) => void;
 		onMediaDeleted: (
 			callback: (data: ClaudeMediaDeletedEvent) => void | Promise<void>
+		) => void;
+		onMediaRenamed: (
+			callback: (data: ClaudeMediaRenamedEvent) => void | Promise<void>
 		) => void;
 	};
 }
