@@ -5,6 +5,11 @@
  * into the media store. Detects duplicates by localPath, originalPath, or
  * name+size to avoid re-importing existing items.
  *
+ * A file the store already tracks is checked too: one that was written over
+ * in the folder since the editor copied it is read again (see
+ * media-source-refresh.ts), so the preview shows what an export of the
+ * folder's files will hold.
+ *
  * @module lib/project-folder-sync
  */
 
@@ -20,6 +25,7 @@ import type {
 import { getMimeType } from "@/lib/media/bulk-import";
 import { getOrCreateObjectURL } from "@/lib/media/blob-manager";
 import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { refreshChangedMediaSources } from "./media-source-refresh";
 
 // ============================================================================
 // Types
@@ -36,6 +42,8 @@ export interface SyncResult {
 	scanTime: number;
 	/** Total media files found on disk */
 	totalDiskFiles: number;
+	/** Tracked files that had changed on disk and were read again */
+	refreshed: number;
 }
 
 // ============================================================================
@@ -171,6 +179,7 @@ export async function syncProjectFolder(
 		errors: [],
 		scanTime: 0,
 		totalDiskFiles: 0,
+		refreshed: 0,
 	};
 
 	try {
@@ -188,6 +197,17 @@ export async function syncProjectFolder(
 		debugLog(
 			`[ProjectFolderSync] Found ${scanResult.files.length} media files on disk (${scanResult.scanTime}ms)`
 		);
+
+		// A tracked file that changed on disk is read again before anything new
+		// is imported: the store then holds what the folder holds.
+		const refresh = await refreshChangedMediaSources({
+			projectId,
+			diskFiles: scanResult.files,
+		});
+		result.refreshed = refresh.refreshed.length;
+		for (const failure of refresh.failed) {
+			result.errors.push(`${failure.name}: ${failure.error}`);
+		}
 
 		// Dynamically import media store to avoid circular dependencies
 		const { useMediaStore } = await import("@/stores/media/media-store");
@@ -248,9 +268,13 @@ export async function syncProjectFolder(
 					localPath: file.path,
 					isLocalFile: true,
 					folderIds,
-					metadata: isGenerated
-						? { source: "project-folder-sync-generated" }
-						: { source: "project-folder-sync" },
+					metadata: {
+						source: isGenerated
+							? "project-folder-sync-generated"
+							: "project-folder-sync",
+						// What these bytes were copied from, for the next check.
+						sourceFile: { size: file.size, modifiedAt: file.modifiedAt },
+					},
 				});
 
 				result.imported++;
