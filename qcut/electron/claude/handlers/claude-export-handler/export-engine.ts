@@ -82,6 +82,7 @@ import { DEFAULT_VISUAL } from "../../../ffmpeg-video-transform.js";
 import { prepareAssFontsDirectory } from "./ass-fonts-dir.js";
 import {
 	type AdjustmentLayer,
+	adjustmentLayersUnderOverlays,
 	runAdjustmentLayerPass,
 } from "./adjustment-layer-pass.js";
 import {
@@ -1727,10 +1728,27 @@ export async function executeExportJob({
 			});
 		}
 
+		// Adjustment layers below the text/sticker tracks grade the picture
+		// before those overlays are drawn, as the preview stacks them.
+		const lowerAdjustmentLayers = adjustmentLayers.filter(
+			(layer) => !layer.aboveOverlays
+		);
+		// One of them under a media overlay grades the tracks below itself and
+		// leaves that overlay alone: they then all run inside the overlay pass,
+		// each at its own place in the stack, instead of over the finished
+		// picture.
+		const gradeInsideOverlayPass =
+			mediaOverlays.length > 0 &&
+			adjustmentLayersUnderOverlays({
+				layers: lowerAdjustmentLayers,
+				overlays: mediaOverlays,
+				fps: settings.fps,
+			});
 		if (mediaOverlays.length > 0 && settings.format !== "mp3") {
 			updateJobProgress({ jobId, progress: 0.9 });
 			await runMediaOverlayPass({
 				overlays: mediaOverlays,
+				adjustmentLayers: gradeInsideOverlayPass ? lowerAdjustmentLayers : [],
 				videoOutputPath,
 				tempDir,
 				settings,
@@ -1742,12 +1760,11 @@ export async function executeExportJob({
 			});
 		}
 
-		// Adjustment layers below the text/sticker tracks grade the picture
-		// before those overlays are drawn, as the preview stacks them.
-		const lowerAdjustmentLayers = adjustmentLayers.filter(
-			(layer) => !layer.aboveOverlays
-		);
-		if (lowerAdjustmentLayers.length > 0 && settings.format !== "mp3") {
+		if (
+			lowerAdjustmentLayers.length > 0 &&
+			!gradeInsideOverlayPass &&
+			settings.format !== "mp3"
+		) {
 			updateJobProgress({ jobId, progress: 0.91 });
 			await runAdjustmentLayerPass({
 				layers: lowerAdjustmentLayers,
