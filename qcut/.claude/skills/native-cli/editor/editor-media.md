@@ -121,19 +121,23 @@ A media id is made from the file's name (`media_` + the name in base64), so
 - the editor's item gets the new id, name and path;
 - every clip that played the old id plays the new one, in the open scene and
   in the others (locked tracks too), and so do the stickers, on the timeline
-  and over the preview;
+  and over the preview; the undo and redo steps follow, so undoing an
+  earlier edit does not bring the old id back;
 - the answer gives both: `{ "renamed": true, "id": "<new>", "name":
   "final-cut.mp4", "previousId": "<old>", "previousName": "…" }`. A script
   that kept the old id needs `id` from here on.
 
 The extension is kept when the new name has none. A name another file
-already has gets a suffix (`final-cut_1.mp4`); the answer's `name` says what
-it became. Renaming a file to its own name changes nothing (`renamed:
-false`). An id that is not in the project is an error (404). If the editor
-cannot follow the rename (a scene that cannot be saved, a file so large
-that copying it outlasts the 30 s the request waits), it takes back what it
-had changed, the file is put back under its old name and the command fails:
-the project is as it was.
+already has gets a suffix (`final-cut_1.mp4`), also when that file appears
+while the rename is under way: a file is never moved onto another. The
+answer's `name` says what it became. Renaming a file to its own name changes
+nothing (`renamed: false`). An id that is not in the project is an error
+(404). If the editor cannot follow the rename (a scene that cannot be saved,
+a file so large that copying it outlasts the 30 s the request waits, the
+project closed or another project or scene opened meanwhile), it takes back
+what it had changed, the file is put back under its old name and the command
+fails: the project is as it was. Renames of one project are done one after
+the other, also when they are asked for at the same time.
 
 ### Replace a media item with a new file
 
@@ -192,11 +196,14 @@ qcut editor media refresh --project-id <id> --json
 ```
 
 `refreshed` lists the files it read again (thumbnail, length and size are
-made again from the new file); `failed` lists those it could not read, and
-the command then fails. An `export start` that goes through the renderer
-engine is refused while a file is in `failed`, or while the check has not
-answered within 15 s (it may still be reading a large file: retry), since
-it would draw the old copy; a native export reads the folder and goes ahead.
+made again from the new file); `failed` lists those it could not bring up to
+date (a file it could not read, an item that was removed or replaced while
+its file was being read), and the command then fails. So does a check that
+could not look at every file because the project was closed or another one
+opened meanwhile. An `export start` that goes through the renderer engine is
+refused while a file is in `failed`, or while the check has not answered
+within 15 s (it may still be reading a large file: retry), since it would
+draw the old copy; a native export reads the folder and goes ahead.
 
 Writing over a file is still the wrong tool when a clip has to keep working:
 a file that got shorter leaves its clips running past its end. `media
