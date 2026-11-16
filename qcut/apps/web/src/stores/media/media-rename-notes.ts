@@ -8,22 +8,22 @@
  * project naming an id the file does not have: a step that cannot be taken
  * back (a timeline that will not save), the desktop app putting the file
  * back after the editor had finished (its answer came too late) when the
- * editor then cannot go back either, and a file that cannot be put back
- * after the editor has gone back. Nothing would put that right once the
- * project is closed.
+ * editor then cannot go back either, a file that cannot be put back after
+ * the editor has gone back, and the app ending in the middle of it all.
+ * Nothing would put that right once the project is closed.
  *
- * So a rename is noted, in the desktop app's key-value store beside the
- * project's, and settled from what the project folder holds the next time
- * the project is open (`settleUnsettledMediaRenames`). A note is a record
- * of its own, under a key made of the project and the two ids. The desktop
- * app writes one for every rename, before it moves the file, and drops it
- * when the rename has ended with the two together
- * (electron/claude/handlers/claude-media-rename-note.ts makes the same
- * key); the editor writes one when it knows that they are apart.
+ * So every rename is noted, in the desktop app's key-value store beside the
+ * project's, and what is still noted is settled from what the project
+ * folder holds the next time the project is open
+ * (`settleUnsettledMediaRenames`). A note is a record of its own, under a
+ * key made of the project and the two ids.
  *
- * A note is dropped by whoever has seen the editor and the folder agree:
- * the desktop app, once the file is where it had the editor end, or the
- * editor when it settles the note itself.
+ * The desktop app alone writes notes
+ * (electron/claude/handlers/claude-media-rename-note.ts): before it moves
+ * the file, and again once it knows where it has left it. The app has the
+ * file in view; the editor knows only where a request wanted the file,
+ * which may be a request the app has since gone back on. The editor reads
+ * notes, and drops one when it has seen itself and the folder agree.
  *
  * @module stores/media/media-rename-notes
  */
@@ -38,15 +38,11 @@ export interface NotedFile {
 
 /** A rename after which the editor and the folder may not agree. */
 export interface UnsettledRename {
-	/**
-	 * The name the file is expected to have when the folder does not say:
-	 * the one it had before the rename, or, when it could not be put back,
-	 * the one the rename gave it.
-	 */
+	/** The name the file had before the rename. */
 	oldId: string;
 	oldName: string;
 	oldPath: string;
-	/** The other name of the rename. */
+	/** The name the rename gave it. */
 	newId: string;
 	newName: string;
 	newPath: string;
@@ -56,11 +52,11 @@ export interface UnsettledRename {
 	 */
 	file?: NotedFile;
 	/**
-	 * Set by the desktop app once it is done moving the file. Until then
-	 * the file may still go back under its old name, and what the folder
-	 * holds settles nothing yet.
+	 * Where the desktop app left the file, once it is done moving it: under
+	 * its old name again, or under the new one. Not set while the file may
+	 * still move: what the folder holds settles nothing yet.
 	 */
-	decided?: boolean;
+	fileIs?: "old" | "new";
 	/** Epoch milliseconds. */
 	notedAt: number;
 }
@@ -118,7 +114,7 @@ function noteOf(candidate: unknown): UnsettledRename | undefined {
 		"newName",
 		"newPath",
 	].map(text);
-	const { notedAt } = record;
+	const { notedAt, fileIs } = record;
 	if (
 		!oldId ||
 		!oldName ||
@@ -140,7 +136,7 @@ function noteOf(candidate: unknown): UnsettledRename | undefined {
 		newName,
 		newPath,
 		...(file ? { file } : {}),
-		...(record.decided === true ? { decided: true } : {}),
+		...(fileIs === "old" || fileIs === "new" ? { fileIs } : {}),
 		notedAt,
 	};
 }
@@ -161,33 +157,19 @@ export async function readUnsettledRenames(
 	return notes;
 }
 
-/**
- * Notes a rename to be settled; one note for a pair of ids.
- *
- * A note that is there is kept as it is when the desktop app has marked it
- * as decided: the app knows where the file ended, and the editor only where
- * a request wanted it, which may be a request the app has since gone back
- * on. It is kept too when it expects the file under the same name: it says
- * as much, and may be the app's, which has also seen the file. Otherwise it
- * is replaced, and what it knew of the file goes into the new one.
- */
-export async function noteUnsettledRename({
+/** The note of the rename between two ids, when there is one. */
+export async function readUnsettledRename({
 	projectId,
 	rename,
 }: {
 	projectId: string;
-	rename: UnsettledRename;
-}): Promise<void> {
-	const key = await unsettledRenameKey({ projectId, rename });
-	const noted = noteOf(await platform().storage.load(key));
-	if (noted && (noted.decided || noted.oldId === rename.oldId)) return;
-	const saved = await platform().storage.save(
-		key,
-		rename.file || !noted?.file ? rename : { ...rename, file: noted.file }
+	rename: RenamePair;
+}): Promise<UnsettledRename | undefined> {
+	return noteOf(
+		await platform().storage.load(
+			await unsettledRenameKey({ projectId, rename })
+		)
 	);
-	if (saved === false) {
-		throw new Error("The note of an unsettled rename could not be saved");
-	}
 }
 
 /** Drops the note of a rename that is settled. */
@@ -254,9 +236,11 @@ export interface NotedFilePlace {
  * asked.
  *
  * A name that alone has a file is the one. When both have one, another file
- * has taken a name since: the renamed file is then known by what the
- * desktop app noted of it, and where that does not tell them apart, the
- * name the note expects is taken.
+ * has taken a name since. The renamed file is then the one that looks as
+ * the desktop app noted it. Where that does not tell them apart, it is
+ * where the app says it left it; and if the app never said, it is under the
+ * new name: put back under the old one, it would have left the new one
+ * free.
  */
 export async function whereNotedFileIs(
 	note: UnsettledRename
@@ -267,9 +251,13 @@ export async function whereNotedFileIs(
 	if (!atOld && !atNew) return "nowhere";
 	if (!atOld) return { name: "new", otherNameTaken: false };
 	if (!atNew) return { name: "old", otherNameTaken: false };
-	const underNew =
-		note.file !== undefined &&
-		isNotedFile(atNew, note.file) &&
-		!isNotedFile(atOld, note.file);
-	return { name: underNew ? "new" : "old", otherNameTaken: true };
+	const looksLike = (seen: Partial<NotedFile>) =>
+		note.file !== undefined && isNotedFile(seen, note.file);
+	const name =
+		looksLike(atNew) !== looksLike(atOld)
+			? looksLike(atNew)
+				? "new"
+				: "old"
+			: (note.fileIs ?? "new");
+	return { name, otherNameTaken: true };
 }
