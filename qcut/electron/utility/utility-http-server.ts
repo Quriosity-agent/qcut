@@ -22,10 +22,7 @@ import {
 	UTILITY_BRIDGE_MARGIN_MS,
 	mediaRefreshWaitMs,
 } from "../claude/handlers/claude-media-deadlines.js";
-import {
-	makeRestrictedMetadataChangesThrough,
-	type RestrictedMetadataChanges,
-} from "../claude/handlers/claude-media-restricted-metadata.js";
+import { makeRestrictedMetadataChangesThrough } from "../claude/handlers/claude-media-restricted-metadata.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -120,6 +117,10 @@ import {
 	type UtilityRequestFromMain,
 } from "./utility-timeline-accessor.js";
 import { createUtilityLocalVideoExportAccessor } from "./utility-local-video-export-bridge.js";
+import {
+	mediaRenameNotesThroughMain,
+	restrictedMetadataChangesThroughMain,
+} from "./utility-media-requests.js";
 
 let server: Server | null = null;
 
@@ -267,15 +268,9 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 
 	// The main process makes every change to a restricted file's metadata;
 	// this one asks it (claude-media-restricted-metadata.ts says why).
-	const askMainTo =
-		(change: keyof RestrictedMetadataChanges) => (request: unknown) =>
-			requestFromMain("media:restricted-metadata", { change, request });
-	makeRestrictedMetadataChangesThrough({
-		persist: askMainTo("persist") as RestrictedMetadataChanges["persist"],
-		stage: askMainTo("stage") as RestrictedMetadataChanges["stage"],
-		discard: askMainTo("discard") as RestrictedMetadataChanges["discard"],
-		remove: askMainTo("remove") as RestrictedMetadataChanges["remove"],
-	});
+	makeRestrictedMetadataChangesThrough(
+		restrictedMetadataChangesThroughMain({ requestFromMain })
+	);
 
 	const router = createRouter();
 	const timelineMutationAccessor = createUtilityTimelineMutationAccessor({
@@ -458,16 +453,8 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				{ payload },
 				{ timeoutMs: MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS }
 			) as Promise<void>,
-		/** Notes a rename for the editor to settle when the project is next open. */
-		noteUnsettledMediaRename: (payload) =>
-			requestFromMain("media:note-unsettled-rename", {
-				payload,
-			}) as Promise<void>,
-		/** Drops that note: the editor and the folder are known to agree. */
-		forgetUnsettledMediaRename: (payload) =>
-			requestFromMain("media:forget-unsettled-rename", {
-				payload,
-			}) as Promise<void>,
+		// The notes of renames are the main process's to keep.
+		...mediaRenameNotesThroughMain({ requestFromMain }),
 		/** Has the renderer read again the media files that changed on disk. */
 		requestMediaRefresh: (payload) =>
 			requestFromMain(
