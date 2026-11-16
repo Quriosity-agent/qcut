@@ -137,14 +137,18 @@ a file so large that copying it outlasts the 30 s the request waits, the
 project closed or another project or scene opened meanwhile), it takes back
 what it had changed, the file is put back under its old name and the command
 fails. Taking back is attempted, not promised: it leaves the project as it
-was unless the error says otherwise, in one of two ways. Either the file
-could not be put back (its old name was taken meanwhile), and it keeps the
-new name the error gives; or the editor could not take back everything it
-had changed ("Not everything could be taken back"), and the error names
-what. After either, look at the file's name and at what the error names
-(`media list`, `timeline export`) before the rename is tried again. Renames
-of one project are done one after the other, also when they are asked for at
-the same time.
+was unless the error says otherwise, in one of three ways. The file could
+not be put back (its old name was taken meanwhile), and it keeps the new
+name the error gives; or the editor could not take back everything it had
+changed ("Not everything could be taken back"), and the error names what;
+or the editor's answer did not come and it "did not confirm" that it names
+the old id again. In the last two the editor is asked once more to end on
+the old id before the file goes back, and what it still cannot put right it
+notes and settles from the name the file has when the project is next
+opened. After any of them, look at the file's name and at what the error
+names (`media list`, `timeline export`) before the rename is tried again.
+Renames of one project are done one after the other, also when they are
+asked for at the same time.
 
 ### Replace a media item with a new file
 
