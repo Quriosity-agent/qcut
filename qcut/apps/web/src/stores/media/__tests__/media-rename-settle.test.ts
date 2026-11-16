@@ -32,6 +32,8 @@ const desktop = vi.hoisted(() => ({
 	stored: new Map<string, unknown>(),
 	/** The paths that have a file; "unreadable" when the folder cannot be asked. */
 	files: new Set<string>() as Set<string> | "unreadable",
+	/** What the file at a path looks like, where a test tells files apart. */
+	looks: new Map<string, { size: number; modified: Date }>(),
 }));
 
 vi.mock("@qcut/platform-core", () => ({
@@ -56,7 +58,8 @@ vi.mock("@qcut/platform-core", () => ({
 						`ENOENT: no such file or directory, stat '${filePath}'`
 					);
 				}
-				return { path: filePath, size: 1 };
+				// As the desktop app shows a file: the time is a date.
+				return { path: filePath, size: 1, ...desktop.looks.get(filePath) };
 			},
 		},
 	}),
@@ -113,23 +116,18 @@ import {
 	settleUnsettledMediaRenames,
 } from "../media-rename";
 import {
-	forgetUnsettledRename,
 	noteUnsettledRename,
 	readUnsettledRenames,
 	type UnsettledRename,
-	unsettledRenameKey,
 } from "../media-rename-notes";
 
 const OLD = "media_b2xkLm1wNA";
 const NEW = "media_bmV3Lm1wNA";
 const OLD_PATH = "/projects/project-1/media/old.mp4";
 const NEW_PATH = "/projects/project-1/media/new.mp4";
-/**
- * The key of the note for the two ids above. The desktop app writes notes
- * under the same key (claude-media-rename-note.test.ts has this literal too).
- */
+/** The key of the note for the two ids above (media-rename-notes.test.ts). */
 const NOTES =
-	"media-rename-unsettled-project-1-41286e42738c611db286b10f55980497";
+	"media-rename-unsettled-project-1-a3cbdd9407c9b3ca14077f6663acc643";
 /** The rename the desktop app asks the editor to follow. */
 const RENAME = {
 	projectId: "project-1",
@@ -158,6 +156,38 @@ const NOTE: UnsettledRename = {
 	newPath: NEW_PATH,
 	notedAt: 0,
 };
+/** What the renamed file looks like, and another file that took a name. */
+const THE_FILE = { size: 4096, modified: new Date("2026-11-01T08:00:00.123Z") };
+const ANOTHER_FILE = {
+	size: 512,
+	modified: new Date("2026-11-17T09:30:00.000Z"),
+};
+/** The note the desktop app writes before it moves the file. */
+const APP_NOTE: UnsettledRename = {
+	...NOTE,
+	file: { size: THE_FILE.size, modifiedAt: THE_FILE.modified.getTime() },
+};
+
+/** The desktop app's note of a file that could not be put back. */
+const FILE_STAYS_NOTE: UnsettledRename = {
+	oldId: NEW,
+	oldName: "new.mp4",
+	oldPath: NEW_PATH,
+	newId: OLD,
+	newName: "old.mp4",
+	newPath: OLD_PATH,
+	file: APP_NOTE.file,
+	decided: true,
+	notedAt: 0,
+};
+
+/** How far the clock has been put on since the test began. */
+const clock = { ahead: 0 };
+const realNow = Date.now.bind(Date);
+/** Time goes by: a note written just now is no longer one being worked on. */
+function sometimeLater(): void {
+	clock.ahead += 10 * 60 * 1000;
+}
 
 const storedTimelines = new Map<string, TimelineTrack[]>();
 
@@ -234,8 +264,11 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	beforeEach(() => {
 		vi.clearAllMocks();
 		resetMediaPersistenceQueue();
+		clock.ahead = 0;
+		vi.spyOn(Date, "now").mockImplementation(() => realNow() + clock.ahead);
 		desktop.stored.clear();
 		desktop.files = new Set([OLD_PATH]);
+		desktop.looks.clear();
 		project.activeProject = {
 			id: "project-1",
 			currentSceneId: "scene-main",
@@ -300,6 +333,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		]);
 
 		// The project is closed and opened again; saving works by then.
+		sometimeLater();
 		openSceneSaves.otherwise = true;
 		storage.saveTimeline.mockImplementation(async (request: unknown) => {
 			storeTimeline(request);
@@ -329,6 +363,8 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		await renameProjectMedia(RENAME);
 		expect(heldIds()).toEqual([NEW]);
 		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		// The desktop app noted the rename before it asked.
+		desktop.stored.set(NOTES, { ...APP_NOTE, notedAt: Date.now() });
 
 		const result = await renameProjectMedia(BACK_ON_OLD);
 		expect(result).toMatchObject({ mediaRenamed: true, clipsUpdated: 2 });
@@ -344,7 +380,13 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 			OLD,
 		]);
 		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
-		expect(desktop.stored.has(NOTES)).toBe(false);
+		// The file is still under its new name: whether it gets back is the
+		// desktop app's to know, and the note its to drop.
+		expect(desktop.stored.get(NOTES)).toMatchObject({
+			oldId: OLD,
+			newId: NEW,
+			file: APP_NOTE.file,
+		});
 	});
 
 	it("has nothing to change, and saves the open scene, when it had taken the rename back already", async () => {
@@ -385,6 +427,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 			{ oldId: OLD, oldPath: OLD_PATH, newId: NEW, newPath: NEW_PATH },
 		]);
 
+		sometimeLater();
 		openSceneSaves.otherwise = true;
 		await settleUnsettledMediaRenames({ projectId: "project-1" });
 		expect(heldIds()).toEqual([OLD]);
@@ -458,7 +501,7 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 	it("waits when the folder cannot say which name the file has", async () => {
 		await noteUnsettledRename({
 			projectId: "project-1",
-			rename: { ...NOTE, notedAt: Date.now() },
+			rename: { ...NOTE, decided: true, notedAt: Date.now() },
 		});
 		timeline.tracks = [mediaTrack([NEW])];
 
@@ -493,71 +536,258 @@ describe("a media rename that ended with the editor and the folder apart", () =>
 		// Taken back: the editor is as it was before the attempt.
 		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW]);
 	});
-});
 
-describe("the notes of unsettled renames", () => {
-	beforeEach(() => {
-		desktop.stored.clear();
+	/**
+	 * The desktop app notes a rename before it asks the editor to go back
+	 * and before it moves the file. A project that finishes loading in
+	 * between (the editor was reloaded) saw the file under its new name,
+	 * followed it and dropped the note; the file then went back.
+	 */
+	it("leaves a note alone while the desktop app may still be moving the file", async () => {
+		await renameProjectMedia(RENAME);
+		desktop.files = new Set([NEW_PATH]);
+		const notedAt = Date.now();
+		desktop.stored.set(NOTES, { ...APP_NOTE, notedAt });
+
+		const { lookAgainAt } = await settleUnsettledMediaRenames({
+			projectId: "project-1",
+		});
+		expect(heldIds()).toEqual([NEW]);
+		expect(desktop.stored.has(NOTES)).toBe(true);
+		expect(storage.saveTimeline).toHaveBeenCalledTimes(1);
+		// When to look again: once the app must be done.
+		expect(lookAgainAt).toBe(notedAt + 5 * 60 * 1000);
+
+		// The file went back, and nothing more was heard of the app.
+		desktop.files = new Set([OLD_PATH]);
+		sometimeLater();
+		expect(
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({});
+		expect(heldIds()).toEqual([OLD]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
+		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
 
-	it("keeps each note under a key of its own, made of the project and the two ids", async () => {
+	it("settles at once a note the desktop app says it is done with", async () => {
+		await renameProjectMedia(RENAME);
+		desktop.stored.set(NOTES, {
+			...APP_NOTE,
+			decided: true,
+			notedAt: Date.now(),
+		});
 		expect(
-			await unsettledRenameKey({ projectId: "project-1", rename: NOTE })
-		).toBe(NOTES);
-		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
-		expect(desktop.stored.get(NOTES)).toEqual(NOTE);
+			await settleUnsettledMediaRenames({ projectId: "project-1" })
+		).toEqual({});
+		expect(heldIds()).toEqual([OLD]);
+		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
 
-	it("keeps one note for a pair of ids, and none once it is forgotten", async () => {
-		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: { ...NOTE, notedAt: 5 },
-		});
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: { ...NOTE, newId: "media_third", newPath: "/p/third.mp4" },
-		});
-		expect(
-			(await readUnsettledRenames("project-1"))
-				.map((note) => [note.newId, note.notedAt])
-				.sort()
-		).toEqual([
-			[NEW, 5],
-			["media_third", 0],
+	/**
+	 * The editor made the rename and its answer was lost; the request to go
+	 * back could not reach it (its window was gone), and the file was put
+	 * back. All that is left is the desktop app's note.
+	 */
+	it("is back on the old id when the project is next opened, by the desktop app's note alone", async () => {
+		await renameProjectMedia(RENAME);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			NEW,
+			"media_other",
+			NEW,
 		]);
-		// Another project's notes are its own.
-		expect(await readUnsettledRenames("project-2")).toEqual([]);
-
-		await forgetUnsettledRename({ projectId: "project-1", rename: NOTE });
-		await forgetUnsettledRename({
-			projectId: "project-1",
-			rename: { newId: "media_third", oldId: OLD },
+		desktop.stored.set(NOTES, {
+			...APP_NOTE,
+			decided: true,
+			notedAt: Date.now(),
 		});
-		expect(desktop.stored.size).toBe(0);
+		// Opened again: the stores hold the rename as it was stored.
+		reopenProject({
+			items: [item({ id: NEW, name: "new.mp4", path: NEW_PATH })],
+		});
+		stickers.overlayStickers = new Map([
+			["s1", { id: "s1", mediaItemId: NEW }],
+		]);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+
+		expect(mediaState.mediaItems[0]).toMatchObject({
+			id: OLD,
+			name: "old.mp4",
+			localPath: OLD_PATH,
+		});
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, "media_other", OLD]);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-main"))).toEqual([
+			OLD,
+			"media_other",
+			OLD,
+		]);
+		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(OLD);
+		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
 
-	it("keeps every note when several are written at once", async () => {
-		await Promise.all(
-			["a", "b", "c"].map((name) =>
-				noteUnsettledRename({
-					projectId: "project-1",
-					rename: { ...NOTE, newId: `media_${name}` },
-				})
-			)
-		);
-		expect(await readUnsettledRenames("project-1")).toHaveLength(3);
+	/**
+	 * The file could not be put back because another file had taken its old
+	 * name. Both names have a file then, and the old one won: the clips went
+	 * to a file that was never theirs.
+	 */
+	it("follows the renamed file, not another file that has taken its old name", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(NEW_PATH, THE_FILE);
+		desktop.looks.set(OLD_PATH, ANOTHER_FILE);
+		desktop.stored.set(NOTES, APP_NOTE);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+		expect(mediaState.mediaItems[0]).toMatchObject({
+			id: NEW,
+			localPath: NEW_PATH,
+		});
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
 
-	it("reads nothing from what is not a note", async () => {
-		desktop.stored.set("media-rename-unsettled-project-1-junk", {
-			newId: NEW,
+	it("stays on the old name when the renamed file is the one that has it", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(OLD_PATH, THE_FILE);
+		desktop.looks.set(NEW_PATH, ANOTHER_FILE);
+		desktop.stored.set(NOTES, APP_NOTE);
+		timeline.tracks = [mediaTrack([NEW, OLD])];
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+		expect(heldIds()).toEqual([OLD]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, OLD]);
+	});
+
+	it("goes by the name the note expects when the two files cannot be told apart", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		// The file stayed renamed: the desktop app expects it under new.mp4.
+		desktop.stored.set(NOTES, {
+			oldId: NEW,
+			oldName: "new.mp4",
+			oldPath: NEW_PATH,
+			newId: OLD,
+			newName: "old.mp4",
+			newPath: OLD_PATH,
+			decided: true,
+			notedAt: Date.now(),
 		});
-		desktop.stored.set("media-rename-unsettled-project-1-list", [NOTE]);
-		// Not a note of this project at all.
-		desktop.stored.set("overlay-stickers-project-1", [NOTE]);
-		expect(await readUnsettledRenames("project-1")).toEqual([]);
-		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
-		expect(await readUnsettledRenames("project-1")).toEqual([NOTE]);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+		expect(heldIds()).toEqual([NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		expect(desktop.stored.has(NOTES)).toBe(false);
+	});
+
+	/**
+	 * The file kept its new name because another file had taken the old
+	 * one, and the editor followed it. The other file is then brought into
+	 * the project as a media item of its own, under the old id, and used. A
+	 * note left from the rename took that item for a copy the rename had
+	 * left behind: it was dropped, and its clips went to the renamed file.
+	 */
+	it("does not make one item of two when another file has the old name, an item of its own and clips", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(NEW_PATH, THE_FILE);
+		desktop.looks.set(OLD_PATH, ANOTHER_FILE);
+		reopenProject({
+			items: [
+				item({ id: OLD, name: "old.mp4", path: OLD_PATH }),
+				item({ id: NEW, name: "new.mp4", path: NEW_PATH }),
+			],
+		});
+		timeline.tracks = [mediaTrack([OLD, NEW])];
+		desktop.stored.set(NOTES, FILE_STAYS_NOTE);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+
+		expect(heldIds()).toEqual([OLD, NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW]);
+		expect(storage.saveTimeline).not.toHaveBeenCalled();
+		expect(storage.deleteMediaItem).not.toHaveBeenCalled();
+		// Nothing is apart: the note has nothing left to say.
+		expect(desktop.stored.has(NOTES)).toBe(false);
+	});
+
+	it("counts a clip in a scene that is not open as use", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(NEW_PATH, THE_FILE);
+		desktop.looks.set(OLD_PATH, ANOTHER_FILE);
+		reopenProject({
+			items: [
+				item({ id: OLD, name: "old.mp4", path: OLD_PATH }),
+				item({ id: NEW, name: "new.mp4", path: NEW_PATH }),
+			],
+		});
+		stickers.overlayStickers = new Map();
+		timeline.tracks = [mediaTrack([OLD])];
+		storedTimelines.set("project-1/scene-b", [mediaTrack([NEW])]);
+		desktop.stored.set(NOTES, FILE_STAYS_NOTE);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+
+		expect(heldIds()).toEqual([OLD, NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD]);
+		expect(mediaIdsOf(storedTimelines.get("project-1/scene-b"))).toEqual([NEW]);
+	});
+
+	it("keeps the note when the project is left while its scenes are looked at", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(NEW_PATH, THE_FILE);
+		desktop.looks.set(OLD_PATH, ANOTHER_FILE);
+		reopenProject({
+			items: [
+				item({ id: OLD, name: "old.mp4", path: OLD_PATH }),
+				item({ id: NEW, name: "new.mp4", path: NEW_PATH }),
+			],
+		});
+		stickers.overlayStickers = new Map();
+		timeline.tracks = [];
+		desktop.stored.set(NOTES, FILE_STAYS_NOTE);
+		// Another project is opened while the stored scene is read. Its
+		// timeline plays media of the same ids.
+		storage.loadTimeline.mockImplementation(async () => {
+			project.activeProject = {
+				id: "project-2",
+				currentSceneId: "scene-main",
+				scenes: [{ id: "scene-main" }],
+			};
+			project.loadedProjectId = "project-2";
+			timeline.tracks = [mediaTrack([OLD, NEW])];
+			return [mediaTrack([OLD])];
+		});
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+
+		// Nothing was concluded from the other project's timeline.
+		expect(desktop.stored.has(NOTES)).toBe(true);
+		expect(heldIds()).toEqual([OLD, NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([OLD, NEW]);
+		expect(storage.saveTimeline).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * The editor never followed the file: it was reloaded, or its window
+	 * was gone. Opened again, the project finds the renamed file in its
+	 * folder and brings it in as a new item, while the item the clips are
+	 * on has the name another file took. The clips are the renamed file's.
+	 */
+	it("takes the clips to the renamed file when the project had not followed it", async () => {
+		desktop.files = new Set([OLD_PATH, NEW_PATH]);
+		desktop.looks.set(NEW_PATH, THE_FILE);
+		desktop.looks.set(OLD_PATH, ANOTHER_FILE);
+		reopenProject({
+			items: [
+				item({ id: OLD, name: "old.mp4", path: OLD_PATH }),
+				// Found in the folder when the project was opened.
+				item({ id: NEW, name: "new.mp4", path: NEW_PATH }),
+			],
+		});
+		desktop.stored.set(NOTES, FILE_STAYS_NOTE);
+
+		await settleUnsettledMediaRenames({ projectId: "project-1" });
+
+		expect(heldIds()).toEqual([NEW]);
+		expect(mediaIdsOf(timeline.tracks)).toEqual([NEW, "media_other", NEW]);
+		expect(stickers.overlayStickers.get("s1")?.mediaItemId).toBe(NEW);
+		expect(desktop.stored.has(NOTES)).toBe(false);
 	});
 });
