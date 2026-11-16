@@ -603,7 +603,7 @@ async function handleMainRequest(
 
 		case "media:rename-renderer": {
 			const req = data as unknown as {
-				payload: Omit<ClaudeMediaRenamedEvent, "requestId">;
+				payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">;
 			};
 			return requestMediaRenameFromRenderer({ payload: req.payload, win });
 		}
