@@ -20,6 +20,7 @@ import type { TimelineStore } from "./index";
 import type { StoreGet, StoreSet } from "./timeline-store-operations";
 import { normalizeLoadedTracks } from "./timeline-store-normalization";
 import { clearAutoSaveTimer } from "./timeline-store-autosave";
+import { repointMediaReferences } from "./media-references";
 import {
 	captureTimelineHistorySnapshot,
 	restoreTimelinePlayhead,
@@ -279,6 +280,18 @@ export function createPersistenceOperations(
 		restoreTracks: (tracks: TimelineTrack[]) => {
 			debugLog(`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`);
 			updateTracks(tracks);
+		},
+
+		repointMediaReferences: ({ fromId, toId }) => {
+			const repointed = repointMediaReferences({
+				tracks: get()._tracks,
+				fromId,
+				toId,
+			});
+			// No undo step: undoing would point the clips back at an id that
+			// is no longer in the project.
+			if (repointed.changed > 0) updateTracksAndSave(repointed.tracks);
+			return repointed.changed;
 		},
 	} satisfies Partial<TimelineStore>;
 }
