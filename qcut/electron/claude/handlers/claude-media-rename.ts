@@ -13,8 +13,10 @@ import { listMediaFiles } from "./claude-media-handler.js";
 import { createMediaId, getUniqueFilePath } from "./claude-media-names.js";
 import {
 	deleteMediaRestrictedMetadata,
-	persistMediaRestrictedMetadata,
+	RestrictedMetadataTakenError,
 	readMediaRestrictedMetadata,
+	type StagedRestrictedMetadata,
+	stageMediaRestrictedMetadata,
 } from "./claude-media-restricted-metadata.js";
 
 const HANDLER_NAME = "Media";
@@ -200,7 +202,9 @@ export async function renameMediaFileOnDisk({
  * never onto a file that is there already (`MediaNameTakenError`).
  *
  * The metadata is in place under the new id before the file gets there, so
- * a restricted file is at no moment in the folder without it.
+ * a restricted file is at no moment in the folder without it. That id can be
+ * another file's by then, one that took the name meanwhile: its metadata is
+ * neither written over nor removed (see `stageMediaRestrictedMetadata`).
  */
 async function moveMediaFile({
 	projectId,
@@ -217,24 +221,26 @@ async function moveMediaFile({
 		mediaId: from.id,
 		projectId,
 	});
+	let staged: StagedRestrictedMetadata | undefined;
 	if (metadata) {
-		await persistMediaRestrictedMetadata({
-			mediaId: to.id,
-			metadata,
-			projectId,
-		});
+		try {
+			staged = await stageMediaRestrictedMetadata({
+				mediaId: to.id,
+				metadata,
+				projectId,
+				mediaFileExists: () => isTaken(to.path),
+			});
+		} catch (error) {
+			if (!(error instanceof RestrictedMetadataTakenError)) throw error;
+			throw new MediaNameTakenError(to.path);
+		}
 	}
 
 	try {
 		// The name may have been taken while the metadata was written.
 		await moveWithoutOverwriting({ from: from.path, to: to.path });
 	} catch (error) {
-		if (metadata) {
-			await deleteMediaRestrictedMetadata({
-				mediaId: to.id,
-				projectId,
-			}).catch(() => undefined);
-		}
+		await staged?.discard().catch(() => undefined);
 		throw error;
 	}
 	if (metadata) {
