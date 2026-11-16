@@ -155,10 +155,14 @@ interface FileIdentity {
 const lastSidecarChange = new Map<string, Promise<unknown>>();
 
 /**
- * Runs one change to a sidecar at a time. Writing, staging and removing each
- * look at what is there and then act on it; with another writer in between
- * that look is stale, and a rename that gives up would remove the sidecar an
- * import had just put in the place of its own.
+ * Runs one change to a sidecar at a time, in the order they were asked for.
+ * Writing, staging and removing each look at what is there and then act on
+ * it; with another writer in between that look is stale, and a rename that
+ * gives up would remove the sidecar an import had just put in the place of
+ * its own.
+ *
+ * A change takes its turn the moment it is asked for: nothing is waited for
+ * before this is called, or a later change could get ahead of it.
  */
 function oneSidecarChangeAtATime<Result>({
 	sidecarPath,
@@ -180,6 +184,138 @@ function oneSidecarChangeAtATime<Result>({
 		}
 	});
 	return running;
+}
+
+/** How long a change waits for another process's change to the sidecar. */
+const SIDECAR_HOLD_WAIT_MS = 5000;
+/**
+ * A change takes milliseconds: a hold this old was left by a process that
+ * ended while it had it.
+ */
+const SIDECAR_HOLD_LEFT_MS = 30_000;
+const SIDECAR_HOLD_RETRY_MS = 25;
+
+/** Makes the folder that is a hold, or finds it made by someone else. */
+async function takeHold(holdPath: string): Promise<boolean> {
+	try {
+		await fs.mkdir(holdPath);
+		return true;
+	} catch (error) {
+		if (isFileSystemError({ code: "EEXIST", error })) return false;
+		throw error;
+	}
+}
+
+async function holdWasLeft(holdPath: string): Promise<boolean> {
+	const held = await fs.stat(holdPath).catch(() => undefined);
+	return held !== undefined && Date.now() - held.mtimeMs > SIDECAR_HOLD_LEFT_MS;
+}
+
+/**
+ * Removes a hold that a process left behind, and says whether it did.
+ *
+ * Two processes can find the same left hold. Were each to remove what it
+ * saw, the second would remove the hold the first has made since. So the
+ * removal has a hold of its own, and looks again once it has that.
+ */
+async function removeLeftHold(holdPath: string): Promise<boolean> {
+	const removingPath = `${holdPath}.removing`;
+	if (!(await takeHold(removingPath))) {
+		if (await holdWasLeft(removingPath)) {
+			await fs.rmdir(removingPath).catch(() => undefined);
+		}
+		return false;
+	}
+	try {
+		if (!(await holdWasLeft(holdPath))) return false;
+		await fs.rmdir(holdPath);
+		return true;
+	} catch {
+		return false;
+	} finally {
+		await fs.rmdir(removingPath).catch(() => undefined);
+	}
+}
+
+/**
+ * Holds a sidecar against other processes for one change. The HTTP API and
+ * the desktop app's own media handlers run in different processes, which do
+ * not share the queue above; a folder made beside the sidecar is something
+ * only one of them can make at a time.
+ *
+ * A change that cannot get the hold fails: made without it, it could remove
+ * the restriction of another file.
+ */
+async function holdingSidecar<Result>({
+	sidecarPath,
+	change,
+}: {
+	sidecarPath: string;
+	change: () => Promise<Result>;
+}): Promise<Result> {
+	const holdPath = `${sidecarPath}.lock`;
+	const giveUpAt = Date.now() + SIDECAR_HOLD_WAIT_MS;
+	while (!(await takeHold(holdPath))) {
+		if ((await holdWasLeft(holdPath)) && (await removeLeftHold(holdPath))) {
+			continue;
+		}
+		if (Date.now() >= giveUpAt) {
+			throw new Error(
+				"Restricted media metadata is being changed by another process; try again."
+			);
+		}
+		await new Promise((resolve) => setTimeout(resolve, SIDECAR_HOLD_RETRY_MS));
+	}
+	try {
+		return await change();
+	} finally {
+		await fs.rmdir(holdPath).catch(() => undefined);
+	}
+}
+
+/**
+ * A change that writes a sidecar, in its turn and with the sidecar held.
+ * The sidecar folder is made first: the hold is made in it.
+ */
+function writingSidecar<Result>({
+	projectId,
+	sidecarPath,
+	change,
+}: {
+	projectId: string;
+	sidecarPath: string;
+	change: () => Promise<Result>;
+}): Promise<Result> {
+	return oneSidecarChangeAtATime({
+		sidecarPath,
+		change: async () => {
+			await ensureSidecarDirectory({ projectId });
+			return holdingSidecar({ sidecarPath, change });
+		},
+	});
+}
+
+/**
+ * A change that takes a sidecar away, in its turn and with the sidecar
+ * held. Where there is no sidecar folder there is nothing to take away, and
+ * none is made for it.
+ */
+function removingSidecar({
+	projectId,
+	sidecarPath,
+	change,
+}: {
+	projectId: string;
+	sidecarPath: string;
+	change: () => Promise<void>;
+}): Promise<void> {
+	return oneSidecarChangeAtATime({
+		sidecarPath,
+		change: async () => {
+			if (!(await getExistingSidecarDirectory({ projectId }))) return;
+			await holdingSidecar({ sidecarPath, change });
+		},
+	});
 }
 
 /**
@@ -252,7 +388,8 @@ export async function persistMediaRestrictedMetadata({
 	metadata: StickerLabRestrictedMediaMetadata;
 	projectId: string;
 }): Promise<void> {
-	await oneSidecarChangeAtATime({
+	await writingSidecar({
+		projectId,
 		sidecarPath: getSidecarPath({ mediaId, projectId }),
 		change: () =>
 			writeSidecar({
@@ -350,7 +487,8 @@ export async function stageMediaRestrictedMetadata({
 			projectId,
 			publish: publishWhereNothingIs,
 		});
-	const staged = await oneSidecarChangeAtATime({
+	const staged = await writingSidecar({
+		projectId,
 		sidecarPath,
 		change: async () => {
 			try {
@@ -381,7 +519,8 @@ export async function stageMediaRestrictedMetadata({
 		// In turn with every other change to this sidecar: the look at which
 		// file is there and its removal are then one step to them.
 		discard: () =>
-			oneSidecarChangeAtATime({
+			removingSidecar({
+				projectId,
 				sidecarPath,
 				change: () =>
 					unlinkIfStill({
@@ -466,16 +605,13 @@ export async function deleteMediaRestrictedMetadata({
 	mediaId: string;
 	projectId: string;
 }): Promise<void> {
-	if (!(await getExistingSidecarDirectory({ projectId }))) return;
 	const sidecarPath = getSidecarPath({ mediaId, projectId });
-	await oneSidecarChangeAtATime({
+	await removingSidecar({
+		projectId,
 		sidecarPath,
-		change: async () => {
-			try {
-				await fs.unlink(sidecarPath);
-			} catch (error) {
-				if (!isFileSystemError({ code: "ENOENT", error })) throw error;
-			}
-		},
+		change: () => fs.unlink(sidecarPath),
+	}).catch((error: unknown) => {
+		// Not there, or gone with its folder while this waited its turn.
+		if (!isFileSystemError({ code: "ENOENT", error })) throw error;
 	});
 }
