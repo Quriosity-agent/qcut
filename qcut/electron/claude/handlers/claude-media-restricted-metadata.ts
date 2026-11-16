@@ -151,6 +151,37 @@ interface FileIdentity {
 	ino: bigint;
 }
 
+/** The last change asked for each sidecar, in this process. */
+const lastSidecarChange = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs one change to a sidecar at a time. Writing, staging and removing each
+ * look at what is there and then act on it; with another writer in between
+ * that look is stale, and a rename that gives up would remove the sidecar an
+ * import had just put in the place of its own.
+ */
+function oneSidecarChangeAtATime<Result>({
+	sidecarPath,
+	change,
+}: {
+	sidecarPath: string;
+	change: () => Promise<Result>;
+}): Promise<Result> {
+	const earlier = lastSidecarChange.get(sidecarPath) ?? Promise.resolve();
+	const running = earlier.then(change);
+	const settled = running.then(
+		() => undefined,
+		() => undefined
+	);
+	lastSidecarChange.set(sidecarPath, settled);
+	settled.then(() => {
+		if (lastSidecarChange.get(sidecarPath) === settled) {
+			lastSidecarChange.delete(sidecarPath);
+		}
+	});
+	return running;
+}
+
 /**
  * Writes a media id's sidecar to a file of its own beside where it goes,
  * and hands that file to `publish` to put in place. The file is removed if
@@ -221,13 +252,20 @@ export async function persistMediaRestrictedMetadata({
 	metadata: StickerLabRestrictedMediaMetadata;
 	projectId: string;
 }): Promise<void> {
-	await writeSidecar({
-		mediaId,
-		metadata,
-		projectId,
-		publish: async ({ temporaryPath, destinationPath }): Promise<undefined> => {
-			await fs.rename(temporaryPath, destinationPath);
-		},
+	await oneSidecarChangeAtATime({
+		sidecarPath: getSidecarPath({ mediaId, projectId }),
+		change: () =>
+			writeSidecar({
+				mediaId,
+				metadata,
+				projectId,
+				publish: async ({
+					temporaryPath,
+					destinationPath,
+				}): Promise<undefined> => {
+					await fs.rename(temporaryPath, destinationPath);
+				},
+			}),
 	});
 }
 
@@ -304,6 +342,7 @@ export async function stageMediaRestrictedMetadata({
 	projectId: string;
 	mediaFileExists: () => Promise<boolean>;
 }): Promise<StagedRestrictedMetadata> {
+	const sidecarPath = getSidecarPath({ mediaId, projectId });
 	const stage = () =>
 		writeSidecar({
 			mediaId,
@@ -311,34 +350,45 @@ export async function stageMediaRestrictedMetadata({
 			projectId,
 			publish: publishWhereNothingIs,
 		});
-	let staged: Awaited<ReturnType<typeof stage>>;
-	try {
-		staged = await stage();
-	} catch (error) {
-		if (!isFileSystemError({ code: "EEXIST", error })) throw error;
-		const sidecarPath = getSidecarPath({ mediaId, projectId });
-		const leftOver = await fs
-			.lstat(sidecarPath, { bigint: true })
-			.catch(() => undefined);
-		if (
-			!leftOver ||
-			(await mediaFileExists()) ||
-			Date.now() - Number(leftOver.mtimeMs) < STAGED_FRESH_MS
-		) {
-			throw new RestrictedMetadataTakenError(mediaId);
-		}
-		await unlinkIfStill({ filePath: sidecarPath, identity: leftOver });
-		try {
-			staged = await stage();
-		} catch (again) {
-			if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
-			throw new RestrictedMetadataTakenError(mediaId);
-		}
-	}
-	const { destinationPath, written } = staged;
+	const staged = await oneSidecarChangeAtATime({
+		sidecarPath,
+		change: async () => {
+			try {
+				return await stage();
+			} catch (error) {
+				if (!isFileSystemError({ code: "EEXIST", error })) throw error;
+			}
+			const leftOver = await fs
+				.lstat(sidecarPath, { bigint: true })
+				.catch(() => undefined);
+			if (
+				!leftOver ||
+				(await mediaFileExists()) ||
+				Date.now() - Number(leftOver.mtimeMs) < STAGED_FRESH_MS
+			) {
+				throw new RestrictedMetadataTakenError(mediaId);
+			}
+			await unlinkIfStill({ filePath: sidecarPath, identity: leftOver });
+			try {
+				return await stage();
+			} catch (again) {
+				if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
+				throw new RestrictedMetadataTakenError(mediaId);
+			}
+		},
+	});
 	return {
+		// In turn with every other change to this sidecar: the look at which
+		// file is there and its removal are then one step to them.
 		discard: () =>
-			unlinkIfStill({ filePath: destinationPath, identity: written }),
+			oneSidecarChangeAtATime({
+				sidecarPath,
+				change: () =>
+					unlinkIfStill({
+						filePath: staged.destinationPath,
+						identity: staged.written,
+					}),
+			}),
 	};
 }
 
@@ -418,9 +468,14 @@ export async function deleteMediaRestrictedMetadata({
 }): Promise<void> {
 	if (!(await getExistingSidecarDirectory({ projectId }))) return;
 	const sidecarPath = getSidecarPath({ mediaId, projectId });
-	try {
-		await fs.unlink(sidecarPath);
-	} catch (error) {
-		if (!isFileSystemError({ code: "ENOENT", error })) throw error;
-	}
+	await oneSidecarChangeAtATime({
+		sidecarPath,
+		change: async () => {
+			try {
+				await fs.unlink(sidecarPath);
+			} catch (error) {
+				if (!isFileSystemError({ code: "ENOENT", error })) throw error;
+			}
+		},
+	});
 }
