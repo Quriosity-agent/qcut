@@ -27,16 +27,18 @@ afterEach(() => {
 		rmSync(dir, { recursive: true, force: true });
 });
 
-function renderedFile(): string {
+function renderedFile({ name = "shake_03.mov" } = {}): string {
 	const dir = mkdtempSync(join(tmpdir(), "qcut-media-replace-"));
 	dirs.push(dir);
-	const file = join(dir, "shake_03.mov");
+	const file = join(dir, name);
 	writeFileSync(file, "");
 	return file;
 }
 
 const OLD = "media_old";
 const NEW = "media_new";
+/** The id the new item has once it carries the old item's name again. */
+const NAMED = "media_named_shake_03";
 
 /** An editor with two clips of the old media, one of another, and its API. */
 function fakeEditor({
@@ -44,6 +46,7 @@ function fakeEditor({
 	stickyClip,
 	removalFails = false,
 	transactionFails,
+	renameRefused = false,
 }: {
 	/** The clip whose swap the editor refuses, and with what status. */
 	refuse?: { elementId: string; status: number };
@@ -52,6 +55,8 @@ function fakeEditor({
 	removalFails?: boolean;
 	/** The transaction call the editor does not answer. */
 	transactionFails?: "begin" | "commit" | "rollback";
+	/** The old name was taken again before the new item could have it. */
+	renameRefused?: boolean;
 } = {}) {
 	const playing = new Map<string, string>([
 		["shake-a", OLD],
@@ -103,7 +108,23 @@ function fakeEditor({
 		}
 		return {};
 	});
-	const patch = vi.fn(async (path: string, body: { mediaId: string }) => {
+	const patch = vi.fn(async (path: string, body: Record<string, unknown>) => {
+		if (path === `/api/claude/media/p1/${NEW}/rename`) {
+			log.push(`RENAME ${NEW} to ${JSON.stringify(body)}`);
+			if (renameRefused) {
+				throw new EditorApiError(
+					"shake_03.mov is already taken in the project's media folder",
+					500
+				);
+			}
+			return {
+				renamed: true,
+				id: NAMED,
+				name: body.newName,
+				previousId: NEW,
+				previousName: "shake_03_1.mov",
+			};
+		}
 		const elementId = decodeURIComponent(path.split("/").at(-1) ?? "");
 		log.push(`PATCH ${elementId}`);
 		if (refuse?.elementId === elementId) {
@@ -112,7 +133,7 @@ function fakeEditor({
 				refuse.status
 			);
 		}
-		playing.set(elementId, body.mediaId);
+		playing.set(elementId, String(body.mediaId));
 		return { updated: true };
 	});
 	const remove = vi.fn(async (path: string) => {
@@ -170,7 +191,10 @@ describe("editor media replace", () => {
 
 	it("imports the file, gives it to every clip of the old media in one undo step, then removes the old media", async () => {
 		const editor = fakeEditor();
-		const result = await mediaReplace(editor.client, options());
+		const result = await mediaReplace(
+			editor.client,
+			options({ source: renderedFile({ name: "shake_03_take2.mov" }) })
+		);
 
 		expect(result).toEqual({
 			success: true,
@@ -186,6 +210,7 @@ describe("editor media replace", () => {
 				oldMediaRemoved: true,
 			},
 		});
+		// A file with a name of its own keeps the name it was imported under.
 		expect(editor.log).toEqual([
 			"POST /api/claude/media/p1/batch-import",
 			"POST /api/claude/transaction/begin",
@@ -199,6 +224,69 @@ describe("editor media replace", () => {
 			"/api/claude/timeline/p1/elements/shake-a",
 			{ mediaId: NEW, sourceDuration: 6 }
 		);
+	});
+
+	/**
+	 * The usual case: the file was rendered again under its own name. It is
+	 * imported as `shake_03_1.mov` because the old item still holds the name;
+	 * left there, a script that finds media by file name no longer finds it.
+	 */
+	it("gives a file with the old item's name that name back once the old item is gone", async () => {
+		const editor = fakeEditor();
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result).toEqual({
+			success: true,
+			data: {
+				oldMediaId: OLD,
+				oldName: "shake_03.mov",
+				mediaId: NAMED,
+				name: "shake_03.mov",
+				importedAs: "shake_03_1.mov",
+				clips: [
+					{ elementId: "shake-a", trackId: "overlays", name: "shake-a" },
+					{ elementId: "shake-b", trackId: "overlays", name: "shake-b" },
+				],
+				oldMediaRemoved: true,
+			},
+		});
+		// Only after the old item is removed, and never onto a taken name.
+		expect(editor.log.slice(-2)).toEqual([
+			`DELETE /api/claude/media/p1/${OLD}`,
+			`RENAME ${NEW} to {"newName":"shake_03.mov","exactName":true}`,
+		]);
+	});
+
+	it("keeps the spare name, and says so, when the old name cannot be had", async () => {
+		const editor = fakeEditor({ renameRefused: true });
+		const result = await mediaReplace(editor.client, options());
+
+		expect(result).toMatchObject({
+			success: true,
+			data: {
+				mediaId: NEW,
+				name: "shake_03_1.mov",
+				oldMediaRemoved: true,
+				warning:
+					"shake_03_1.mov could not be given the name shake_03.mov back (shake_03.mov is already taken in the project's media folder); it keeps shake_03_1.mov",
+			},
+		});
+	});
+
+	it("leaves the names alone while the old item is still in the project", async () => {
+		for (const editor of [
+			fakeEditor({ stickyClip: "shake-b" }),
+			fakeEditor({ removalFails: true }),
+		]) {
+			const result = await mediaReplace(editor.client, options());
+			expect(result).toMatchObject({
+				success: true,
+				data: { mediaId: NEW, name: "shake_03_1.mov", oldMediaRemoved: false },
+			});
+			expect(editor.log.some((entry) => entry.startsWith("RENAME"))).toBe(
+				false
+			);
+		}
 	});
 
 	it("puts every clip back and takes its import back when the editor refuses one", async () => {
