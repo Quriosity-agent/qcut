@@ -75,6 +75,7 @@ import {
 } from "../claude/handlers/claude-media-renderer-handler.js";
 import {
 	forgetUnsettledMediaRename,
+	noLongerAtWorkOnMediaRenames,
 	noteUnsettledMediaRename,
 } from "../claude/handlers/claude-media-rename-note.js";
 import { changeRestrictedMetadataHere } from "../claude/handlers/claude-media-restricted-metadata.js";
@@ -1355,6 +1356,8 @@ export function startUtilityProcess(): void {
 		utilityChild = null;
 		utilityReady = false;
 		stopHeartbeat();
+		// The renames it was making have ended with it.
+		noLongerAtWorkOnMediaRenames();
 
 		// Do not clear sessionRegistry -- we need it for re-spawning!
 		// But do notify renderers that sessions are temporarily unavailable
