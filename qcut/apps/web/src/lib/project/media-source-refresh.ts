@@ -62,12 +62,17 @@ function slashed(filePath: string): string {
 /**
  * Finds the scanned file an item's path names. The path as written wins: on
  * a file system that tells `A.mp4` from `a.mp4` they are two files, and one
- * must never be read into the other's item. Only when no file has the path
- * as written is case set aside, and then only if a single file answers to
- * it (a file system that ignores case, a path typed in another case).
+ * must never be read into the other's item. Case is set aside only where
+ * the folder's file system sets it aside itself (`ignoresCase`), for a path
+ * no file is spelled like, and then only if a single file answers to it.
  */
 function scannedFiles(diskFiles: ProjectFolderFileInfo[]): {
-	find: (localPath: string) => ProjectFolderFileInfo | undefined;
+	find: (request: {
+		localPath: string;
+		ignoresCase: boolean;
+	}) => ProjectFolderFileInfo | undefined;
+	/** No file is spelled like the path; one is, once case is set aside. */
+	differsByCase: (localPath: string) => boolean;
 } {
 	const asWritten = new Map<string, ProjectFolderFileInfo>();
 	const caseSetAside = new Map<string, ProjectFolderFileInfo[]>();
@@ -78,14 +83,18 @@ function scannedFiles(diskFiles: ProjectFolderFileInfo[]): {
 		const folded = path.toLowerCase();
 		caseSetAside.set(folded, [...(caseSetAside.get(folded) ?? []), file]);
 	}
+	const otherwiseSpelled = (path: string): ProjectFolderFileInfo[] =>
+		asWritten.has(path) ? [] : (caseSetAside.get(path.toLowerCase()) ?? []);
 	return {
-		find: (localPath) => {
+		find: ({ localPath, ignoresCase }) => {
 			const path = slashed(localPath);
 			const exact = asWritten.get(path);
-			if (exact) return exact;
-			const candidates = caseSetAside.get(path.toLowerCase()) ?? [];
+			if (exact || !ignoresCase) return exact;
+			const candidates = otherwiseSpelled(path);
 			return candidates.length === 1 ? candidates[0] : undefined;
 		},
+		differsByCase: (localPath) =>
+			otherwiseSpelled(slashed(localPath)).length > 0,
 	};
 }
 
@@ -128,20 +137,25 @@ export interface MediaSourcePlan {
 /**
  * Sorts the items that have a file in the project folder into those whose
  * file changed since it was copied, and those that only lack a record.
+ * `ignoresCase` says the folder's file system takes `A.mp4` and `a.mp4` for
+ * one file (see `folderIgnoresCase`); without it a path names a file only
+ * as it is written.
  */
 export function planMediaSourceRefresh({
 	diskFiles,
 	mediaItems,
+	ignoresCase = false,
 }: {
 	diskFiles: ProjectFolderFileInfo[];
 	mediaItems: MediaItem[];
+	ignoresCase?: boolean;
 }): MediaSourcePlan {
 	const scanned = scannedFiles(diskFiles);
 	const plan: MediaSourcePlan = { changed: [], adopt: [], checked: 0 };
 	for (const item of mediaItems) {
 		// An item without bytes of its own has no copy that could be stale.
 		if (item.ephemeral || !item.localPath || !(item.file?.size > 0)) continue;
-		const file = scanned.find(item.localPath);
+		const file = scanned.find({ localPath: item.localPath, ignoresCase });
 		if (!file) continue;
 		plan.checked += 1;
 		const recorded = readSourceFileStat({ item });
@@ -197,6 +211,35 @@ async function statFile({
 }
 
 /**
+ * Whether the project folder's file system sets case aside. It is asked, not
+ * guessed from the platform: a Mac volume can tell case apart, and a Linux
+ * folder can ignore it.
+ *
+ * It only matters for an item whose path no file in the folder is spelled
+ * like, while one is once case is set aside. Such a path is looked up as it
+ * is written: it can only answer where case is ignored, and that file is
+ * then the item's. Where case counts, the other spelling is another file,
+ * and reading it would put that file's picture into this item.
+ */
+async function folderIgnoresCase({
+	diskFiles,
+	mediaItems,
+}: {
+	diskFiles: ProjectFolderFileInfo[];
+	mediaItems: MediaItem[];
+}): Promise<boolean> {
+	const scanned = scannedFiles(diskFiles);
+	const undecided = mediaItems.find(
+		(item) => item.localPath && scanned.differsByCase(item.localPath)
+	);
+	if (!undecided?.localPath) return false;
+	return statFile({ filePath: undecided.localPath }).then(
+		() => true,
+		() => false
+	);
+}
+
+/**
  * Reads the file and says what it was when read. A file whose size or time
  * moved while it was being read (a script still writing it) is read again;
  * one that never settles is an error, so its record is not set and the next
@@ -243,6 +286,30 @@ async function freshDimensions({
 	}
 }
 
+/** The project was left while its media files were being checked. */
+class ProjectLeftError extends Error {
+	constructor() {
+		super(
+			"The project was closed or another one opened while its media files were being checked; the check is not complete"
+		);
+		this.name = "ProjectLeftError";
+	}
+}
+
+/**
+ * A changed file that was not read into its item, because the item went
+ * away or was given other bytes while this check was at it. It is listed
+ * with the failures: its copy was not brought up to date here.
+ */
+function passedOver(item: MediaItem): MediaSourceRefreshResult["failed"][0] {
+	return {
+		id: item.id,
+		name: item.name,
+		error:
+			"the item was removed or replaced while its file was read; check again",
+	};
+}
+
 const inFlight = new Map<string, Promise<MediaSourceRefreshResult>>();
 
 /**
@@ -250,6 +317,9 @@ const inFlight = new Map<string, Promise<MediaSourceRefreshResult>>();
  * folder since the editor copied it. `diskFiles` is a scan of the project's
  * media folder the caller already has; without one the folder is scanned.
  * One run per project at a time: a second call joins the run under way.
+ *
+ * It fails when the project is closed, or another one opened, before every
+ * file was looked at: the files are then not to be taken for checked.
  */
 export function refreshChangedMediaSources({
 	projectId,
@@ -290,20 +360,35 @@ async function refreshOnce({
 	// Loaded on use: the stores load this module's callers themselves.
 	const { useMediaStore } = await import("@/stores/media/media-store");
 	const { useProjectStore } = await import("@/stores/project-store");
+	const ignoresCase = await folderIgnoresCase({
+		diskFiles: files,
+		mediaItems: useMediaStore.getState().mediaItems,
+	});
 	const plan = planMediaSourceRefresh({
 		diskFiles: files,
 		mediaItems: useMediaStore.getState().mediaItems,
+		ignoresCase,
 	});
 	result.checked = plan.checked;
 
 	/**
-	 * The item as the store holds it now, or undefined once it is no longer
-	 * this project's item for this file. A media id is made from the file's
-	 * name, so another project with a file of that name has an item of the
-	 * same id: after a switch of projects, a write by id would land on it.
+	 * Ends the check once the project is closed or another one is open. A
+	 * media id is made from the file's name, so another project with a file
+	 * of that name has an item of the same id: a write by id would land on
+	 * it. What was not looked at yet is said to be so, by failing: whoever
+	 * asked must not take the files for checked.
+	 */
+	const stayInProject = () => {
+		if (useProjectStore.getState().activeProject?.id !== projectId) {
+			throw new ProjectLeftError();
+		}
+	};
+	/**
+	 * The item as the store holds it now, or undefined once it is gone or
+	 * plays another file. Only that item is passed over: the others are
+	 * still looked at.
 	 */
 	const stillHeld = (planned: MediaItem): MediaItem | undefined => {
-		if (useProjectStore.getState().activeProject?.id !== projectId) return;
 		const live = useMediaStore
 			.getState()
 			.mediaItems.find((candidate) => candidate.id === planned.id);
@@ -311,7 +396,8 @@ async function refreshOnce({
 	};
 
 	for (const { item, file } of plan.adopt) {
-		if (!stillHeld(item)) break;
+		stayInProject();
+		if (!stillHeld(item)) continue;
 		// Added to what the item holds now, not to what it held when the
 		// folder was scanned: another task may have recorded something since.
 		useMediaStore.setState((state) => ({
@@ -325,7 +411,7 @@ async function refreshOnce({
 			),
 		}));
 		const recorded = stillHeld(item);
-		if (!recorded) break;
+		if (!recorded) continue;
 		try {
 			// The record only: the bytes are what they were.
 			await saveTrackedMediaItem({
@@ -340,9 +426,12 @@ async function refreshOnce({
 	}
 
 	for (const { item, file } of plan.changed) {
-		// The project was closed or another one opened: what is left belongs
-		// to the next check of this project.
-		if (!stillHeld(item)) break;
+		stayInProject();
+		const started = stillHeld(item);
+		if (!started) {
+			result.failed.push(passedOver(item));
+			continue;
+		}
 		let replacementUrl: string | undefined;
 		try {
 			const { bytes, stat } = await readSettledFile({ file });
@@ -355,8 +444,15 @@ async function refreshOnce({
 			const dimensions = await freshDimensions({ item, file: fresh });
 			// Reading took a while; the item is looked up again and written to
 			// in the same breath, with nothing awaited in between.
+			stayInProject();
 			const held = stillHeld(item);
-			if (!held) break;
+			// Gone, or given other bytes meanwhile (relinked, replaced): what
+			// it holds now is newer than what was read here, and must not be
+			// written over with it.
+			if (!held || held.file !== started.file) {
+				result.failed.push(passedOver(item));
+				continue;
+			}
 			// What was learned about the old file describes another file now.
 			const { alpha: _alpha, ...metadata } =
 				withSourceFile({ item: held, stat }) ?? {};
@@ -391,6 +487,8 @@ async function refreshOnce({
 			if (replacementUrl) {
 				releaseObjectURL(replacementUrl, "media-source-refresh:failed");
 			}
+			// Not one file's failure: the check as a whole stops here.
+			if (error instanceof ProjectLeftError) throw error;
 			const message = error instanceof Error ? error.message : String(error);
 			debugError(`[MediaSourceRefresh] ${item.name}: ${message}`);
 			result.failed.push({ id: item.id, name: item.name, error: message });
