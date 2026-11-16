@@ -73,12 +73,9 @@ import {
 	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../claude/handlers/claude-media-renderer-handler.js";
-import {
-	forgetUnsettledMediaRename,
-	noLongerAtWorkOnMediaRenames,
-	noteUnsettledMediaRename,
-} from "../claude/handlers/claude-media-rename-note.js";
-import { changeRestrictedMetadataHere } from "../claude/handlers/claude-media-restricted-metadata.js";
+import { noLongerAtWorkOnMediaRenames } from "../claude/handlers/claude-media-rename-note.js";
+import { answerMainRequest } from "./utility-main-requests.js";
+import { handleWindowFreeMediaRequest } from "./utility-media-bridge.js";
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaRefreshEvent,
@@ -532,25 +529,8 @@ async function handleMainRequest(
 	// What follows is done here for the utility process and needs no window:
 	// a rename is noted, and a restricted file's metadata changed, also when
 	// the editor's window is gone.
-	if (channel === "media:restricted-metadata") {
-		// What the utility process has stopped waiting for is not made.
-		return changeRestrictedMetadataHere({
-			...(data as Parameters<typeof changeRestrictedMetadataHere>[0]),
-			deadline,
-		});
-	}
-	if (channel === "media:note-unsettled-rename") {
-		const req = data as unknown as {
-			payload: Parameters<typeof noteUnsettledMediaRename>[0];
-		};
-		return noteUnsettledMediaRename(req.payload);
-	}
-	if (channel === "media:forget-unsettled-rename") {
-		const req = data as unknown as {
-			payload: Parameters<typeof forgetUnsettledMediaRename>[0];
-		};
-		return forgetUnsettledMediaRename(req.payload);
-	}
+	const mediaAnswer = handleWindowFreeMediaRequest({ channel, data, deadline });
+	if (mediaAnswer) return mediaAnswer;
 
 	// Everything below talks to the editor, so a closed window is reopened
 	// rather than failing the request. Reopening can outlast the caller's
@@ -1273,29 +1253,14 @@ export function startUtilityProcess(): void {
 				}
 				break;
 
-			case "main-request": {
+			case "main-request":
 				// Utility process needs something from main
-				try {
-					const result = await handleMainRequest(
-						msg.channel,
-						msg.data,
-						msg.deadline
-					);
-					child.postMessage({
-						type: "main-response",
-						id: msg.id,
-						result,
-					});
-				} catch (err: unknown) {
-					const errMessage = err instanceof Error ? err.message : String(err);
-					child.postMessage({
-						type: "main-response",
-						id: msg.id,
-						error: errMessage,
-					});
-				}
+				await answerMainRequest({
+					message: msg,
+					handle: handleMainRequest,
+					post: (response) => child.postMessage(response),
+				});
 				break;
-			}
 
 			// PTY data/exit forwarded to the correct renderer
 			case "pty:data":
