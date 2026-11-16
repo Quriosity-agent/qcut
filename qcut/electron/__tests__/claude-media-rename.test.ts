@@ -18,7 +18,28 @@ const hooks = vi.hoisted(() => ({
 	/** The paths whose times cannot be set, and those that cannot be removed. */
 	timesRefused: new Set<string>(),
 	removalRefused: new Set<string>(),
+	/** Breaks a copy off once a part of the file has been read. */
+	copyBreaksOff: false,
 }));
+
+vi.mock("fs", async (importOriginal) => {
+	const real = await importOriginal<typeof import("fs")>();
+	const { Readable } = await import("node:stream");
+	return {
+		...real,
+		createReadStream: (...args: Parameters<typeof real.createReadStream>) => {
+			if (!hooks.copyBreaksOff) return real.createReadStream(...args);
+			return Readable.from(
+				(async function* () {
+					yield Buffer.from("sh");
+					throw Object.assign(new Error("ENOSPC: no space left on device"), {
+						code: "ENOSPC",
+					});
+				})()
+			);
+		},
+	};
+});
 
 vi.mock("fs/promises", async (importOriginal) => {
 	const real = await importOriginal<typeof import("fs/promises")>();
@@ -33,13 +54,18 @@ vi.mock("fs/promises", async (importOriginal) => {
 			}
 			return real.link(...args);
 		},
-		utimes: async (...args: Parameters<typeof real.utimes>) => {
-			if (hooks.timesRefused.has(String(args[0]))) {
-				throw Object.assign(new Error("EPERM: operation not permitted"), {
-					code: "EPERM",
-				});
+		// A copy makes its file where nothing is, and sets its times through
+		// the handle it wrote it with.
+		open: async (...args: Parameters<typeof real.open>) => {
+			const handle = await real.open(...args);
+			if (args[1] === "wx" && hooks.timesRefused.has(String(args[0]))) {
+				handle.utimes = async () => {
+					throw Object.assign(new Error("EPERM: operation not permitted"), {
+						code: "EPERM",
+					});
+				};
 			}
-			return real.utimes(...args);
+			return handle;
 		},
 		unlink: async (...args: Parameters<typeof real.unlink>) => {
 			if (hooks.removalRefused.has(String(args[0]))) {
@@ -184,6 +210,7 @@ describe("renaming a media file in the project folder", () => {
 		hooks.beforeLink = undefined;
 		hooks.timesRefused.clear();
 		hooks.removalRefused.clear();
+		hooks.copyBreaksOff = false;
 		await fs.rm(testState.documentsRoot, { recursive: true, force: true });
 	});
 
@@ -534,6 +561,74 @@ describe("renaming a media file in the project folder", () => {
 		expect(
 			await readMediaRestrictedMetadata({
 				mediaId: renamed.id,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+	});
+
+	/**
+	 * A copy can break off with a part of the file written, and that part
+	 * can be impossible to remove (the volume is full, or gone read-only).
+	 * It is a part of a restricted file: the metadata staged for it stays.
+	 */
+	it("leaves the metadata with the part a broken-off copy could not take away", async () => {
+		hooks.noHardLinks = true;
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		hooks.copyBreaksOff = true;
+		hooks.removalRefused.add(wanted);
+		const failure = await renameMediaFileOnDisk({
+			projectId: PROJECT_ID,
+			mediaId: shake,
+			newName: "wanted.mp4",
+			exactName: true,
+		}).catch((error: unknown) => error);
+		hooks.removalRefused.clear();
+
+		expect(failure).toBeInstanceOf(MediaMoveIncompleteError);
+		expect((failure as Error).message).toContain("no space left on device");
+		// A part of the file is under the new name, restricted like the whole.
+		expect(await fs.readFile(wanted, "utf8")).toBe("sh");
+		for (const mediaId of [shake, idOf("wanted.mp4")]) {
+			expect(
+				await readMediaRestrictedMetadata({ mediaId, projectId: PROJECT_ID })
+			).toMatchObject({ itemId: "42001" });
+		}
+	});
+
+	it("takes the part of a broken-off copy away, and the metadata staged for it", async () => {
+		hooks.noHardLinks = true;
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		hooks.copyBreaksOff = true;
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toMatchObject({ code: "ENOSPC" });
+
+		expect(await mediaNames()).toEqual(["taken.mp4", "震屏01_踹盾.mp4"]);
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toBeUndefined();
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
 				projectId: PROJECT_ID,
 			})
 		).toMatchObject({ itemId: "42001" });
