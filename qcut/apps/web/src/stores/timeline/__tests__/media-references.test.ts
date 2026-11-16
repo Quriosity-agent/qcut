@@ -75,6 +75,27 @@ describe("pointing clips at a renamed media item", () => {
 		expect(result.tracks[0].locked).toBe(true);
 	});
 
+	it("repoints a sticker on the timeline, which names its picture by media id", () => {
+		const tracks = [
+			{
+				...track({ id: "stickers", elements: [] }),
+				type: "sticker",
+				elements: [
+					{ id: "s1", type: "sticker", stickerId: "badge", mediaId: OLD },
+					{ id: "s2", type: "sticker", stickerId: "other", mediaId: "media_x" },
+				],
+			} as unknown as TimelineTrack,
+		];
+		const result = repointMediaReferences({ tracks, fromId: OLD, toId: NEW });
+		expect(result.changed).toBe(1);
+		expect(result.tracks[0].elements[0]).toMatchObject({
+			type: "sticker",
+			stickerId: "badge",
+			mediaId: NEW,
+		});
+		expect(result.tracks[0].elements[1]).toBe(tracks[0].elements[1]);
+	});
+
 	it("hands back the same tracks when no clip plays the old id", () => {
 		const tracks = [
 			track({
