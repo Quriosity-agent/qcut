@@ -320,6 +320,7 @@ const extractVideoMetadataBackground = async (
 				browserError
 			);
 			await delay(VIDEO_METADATA_RETRY_DELAY_MS * attempt);
+			if (!stillPlays(itemId, file)) return;
 			return extractVideoMetadataBackground(
 				file,
 				itemId,
