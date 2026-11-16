@@ -93,8 +93,9 @@ export function resolveTimelineRange({
  *   time (task-pool.ts);
  * - overlays and layers outside the range are dropped (`layersShowingInRange`);
  * - the layers that are left are drawn on the clips around the range only,
- *   not on the whole film (picture-window.ts); with a transition or a drawn
- *   cursor in the timeline they are drawn on all of it, as they used to be;
+ *   not on the whole film (picture-window.ts); with a transition, a drawn
+ *   cursor or a keyframed grade in the timeline they are drawn on all of it,
+ *   as they used to be;
  * - after the picture passes the picture is cut to the range
  *   (`buildRangePictureArgs`), and the mix is cut from the same full-length
  *   mix a full export makes (export-audio-mix-pass.ts, export-audio-limiter.ts).
