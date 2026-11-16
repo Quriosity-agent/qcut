@@ -59,22 +59,29 @@ function cli<T = Json>({
 				maxBuffer: 64 * 1024 * 1024,
 				timeout: 420_000,
 			},
-			(_error, stdout, stderr) => {
-				const start = stdout.indexOf("{");
-				if (start < 0) {
-					reject(new Error(`${args[0]} printed no JSON: ${stdout}\n${stderr}`));
-					return;
+			(error, stdout, stderr) => {
+				// Thrown in here it would escape the promise: every way out
+				// of this callback settles it.
+				try {
+					const start = stdout.indexOf("{");
+					if (start < 0) throw new Error("it printed no JSON");
+					const envelope = JSON.parse(stdout.slice(start)) as {
+						status: string;
+						error?: string;
+						data?: { data?: T } & Json;
+					};
+					resolve({
+						ok: envelope.status === "ok",
+						data: (envelope.data?.data ?? {}) as T,
+						error: envelope.error,
+					});
+				} catch (unreadable) {
+					reject(
+						new Error(
+							`${args.join(" ")}: ${unreadable instanceof Error ? unreadable.message : String(unreadable)}${error ? ` (${error.message})` : ""}\n${stdout}\n${stderr}`
+						)
+					);
 				}
-				const envelope = JSON.parse(stdout.slice(start)) as {
-					status: string;
-					error?: string;
-					data?: { data?: T } & Json;
-				};
-				resolve({
-					ok: envelope.status === "ok",
-					data: (envelope.data?.data ?? {}) as T,
-					error: envelope.error,
-				});
 			}
 		);
 	});
