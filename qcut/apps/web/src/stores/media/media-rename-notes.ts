@@ -238,13 +238,13 @@ export interface NotedFilePlace {
  * A name that alone has a file is the one. When both have one, another file
  * has taken a name since. The renamed file is then the one that looks as
  * the desktop app noted it. Where that does not tell them apart, it is
- * where the app says it left it; and if the app never said, it is under the
- * new name: put back under the old one, it would have left the new one
- * free.
+ * where the app says it left it. And if the app never said, nothing tells
+ * which it is ("unclear"): it may have gone back and another file taken the
+ * new name, or stayed and another file taken the old one.
  */
 export async function whereNotedFileIs(
 	note: UnsettledRename
-): Promise<NotedFilePlace | "nowhere" | undefined> {
+): Promise<NotedFilePlace | "nowhere" | "unclear" | undefined> {
 	const atOld = await fileAt(note.oldPath);
 	const atNew = await fileAt(note.newPath);
 	if (atOld === undefined || atNew === undefined) return;
@@ -253,11 +253,8 @@ export async function whereNotedFileIs(
 	if (!atNew) return { name: "old", otherNameTaken: false };
 	const looksLike = (seen: Partial<NotedFile>) =>
 		note.file !== undefined && isNotedFile(seen, note.file);
-	const name =
-		looksLike(atNew) !== looksLike(atOld)
-			? looksLike(atNew)
-				? "new"
-				: "old"
-			: (note.fileIs ?? "new");
-	return { name, otherNameTaken: true };
+	if (looksLike(atNew) !== looksLike(atOld)) {
+		return { name: looksLike(atNew) ? "new" : "old", otherNameTaken: true };
+	}
+	return note.fileIs ? { name: note.fileIs, otherNameTaken: true } : "unclear";
 }
