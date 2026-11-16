@@ -72,8 +72,10 @@ const NOTE_KEPT_MS = 24 * 60 * 60 * 1000;
 
 /**
  * How long a note is left alone in which the desktop app has not said where
- * it left the file: it may still be moving it, and is done well within
- * this, whatever becomes of the rename.
+ * it left the file: it may still be moving it. The app writes such a note
+ * again every minute for as long as it is at work on the rename, however
+ * long that takes; one that has not been written for this long is of a
+ * rename the app has left.
  */
 const NOTE_UNDECIDED_MS = 5 * 60 * 1000;
 
