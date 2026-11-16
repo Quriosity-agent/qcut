@@ -2190,8 +2190,9 @@ export function registerSharedRoutes(
 			}
 			// The editor reads again any media file that was written over in the
 			// project folder, so its preview, and a renderer export, hold what
-			// the folder holds. A native export reads the folder either way.
-			const mediaCheck = await checkMediaBeforeExport({
+			// the folder holds. A native export reads the folder either way,
+			// and does not wait for the answer (which never rejects).
+			const mediaCheck = checkMediaBeforeExport({
 				accessor,
 				projectId: req.params.projectId,
 			});
@@ -2251,7 +2252,7 @@ export function registerSharedRoutes(
 				// The renderer draws from the editor's copies: with a stale one
 				// the file would hold an old picture or sound.
 				const staleCopies = staleCopiesOnTimeline({
-					check: mediaCheck,
+					check: await mediaCheck,
 					tracks: drawnTimeline.tracks,
 				});
 				if (staleCopies) {
