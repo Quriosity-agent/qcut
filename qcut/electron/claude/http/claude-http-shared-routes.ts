@@ -15,6 +15,7 @@
  */
 
 import type { UpdateRecord } from "../../update-notice.js";
+import { randomUUID } from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
@@ -99,6 +100,7 @@ import {
 } from "../handlers/claude-media-rename.js";
 import {
 	forgetSettledMediaRename,
+	type MediaRenameNoteAccess,
 	type MediaRenameNotes,
 	notedMove,
 	settleUnfollowedMediaRename,
@@ -338,9 +340,9 @@ export interface WindowAccessor {
 		payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">
 	): Promise<void>;
 	/** Note a rename for the editor to settle when the project is next open. */
-	noteUnsettledMediaRename?: MediaRenameNotes["noteUnsettledMediaRename"];
+	noteUnsettledMediaRename?: MediaRenameNoteAccess["noteUnsettledMediaRename"];
 	/** Drop that note: the editor and the folder are known to agree. */
-	forgetUnsettledMediaRename?: MediaRenameNotes["forgetUnsettledMediaRename"];
+	forgetUnsettledMediaRename?: MediaRenameNoteAccess["forgetUnsettledMediaRename"];
 	/** Have the renderer read again the media files that changed on disk. */
 	requestMediaRefresh?(
 		payload: Omit<ClaudeMediaRefreshEvent, "requestId">
@@ -1148,59 +1150,71 @@ export function registerSharedRoutes(
 				"Media renames cannot be noted here, so none is made"
 			);
 		}
+		// What this request says of a rename, it says in its own name: the
+		// app tells its rename from another request's between the same names.
+		const by = randomUUID();
 		const notes: MediaRenameNotes = {
-			noteUnsettledMediaRename: (payload) => noteUnsettledMediaRename(payload),
+			noteUnsettledMediaRename: (payload) =>
+				noteUnsettledMediaRename({ ...payload, by }),
 			forgetUnsettledMediaRename: (payload) =>
-				forgetUnsettledMediaRename(payload),
+				forgetUnsettledMediaRename({ ...payload, by }),
 		};
+		const move = notedMove({ notes, projectId });
 		// `exactName` refuses a taken name instead of adding a suffix to it.
 		const exactName = req.body?.exactName === true;
 		let renamed: RenamedMediaFile;
-		try {
-			renamed = await renameMediaFileOnDisk({
-				projectId,
-				mediaId,
-				newName,
-				...(exactName ? { exactName } : {}),
-				...notedMove({ notes, projectId }),
-			});
-		} catch (error) {
-			if (error instanceof MediaNotFoundError) {
-				throw new HttpError(
-					404,
-					`${error.message} in project ${projectId} (see editor:media:list)`
-				);
-			}
-			throw error;
-		}
 		let warning: string | undefined;
-		if (renamed.id !== renamed.previous.id) {
+		try {
 			try {
-				await requireRendererMutation({
-					operation: "Renderer media rename",
-					request: () =>
-						requestMediaRename({
-							projectId,
-							mediaId: renamed.previous.id,
-							newMediaId: renamed.id,
-							newName: renamed.name,
-							newPath: renamed.path,
-						}),
-				});
-				// The editor is where the file is: nothing is left to settle.
-				await forgetSettledMediaRename({ notes, projectId, renamed });
-			} catch (error) {
-				// The file goes back under its old name and the failure is
-				// thrown; unless the file cannot go back and the editor then
-				// follows it, in which case the rename stands.
-				({ warning } = await settleUnfollowedMediaRename({
-					notes,
-					requestMediaRename,
+				renamed = await renameMediaFileOnDisk({
 					projectId,
-					renamed,
-					error,
-				}));
+					mediaId,
+					newName,
+					...(exactName ? { exactName } : {}),
+					beforeMove: move.beforeMove,
+					notMoved: move.notMoved,
+				});
+			} catch (error) {
+				if (error instanceof MediaNotFoundError) {
+					throw new HttpError(
+						404,
+						`${error.message} in project ${projectId} (see editor:media:list)`
+					);
+				}
+				throw error;
 			}
+			if (renamed.id !== renamed.previous.id) {
+				try {
+					await requireRendererMutation({
+						operation: "Renderer media rename",
+						request: () =>
+							requestMediaRename({
+								projectId,
+								mediaId: renamed.previous.id,
+								newMediaId: renamed.id,
+								newName: renamed.name,
+								newPath: renamed.path,
+							}),
+					});
+					// The editor is where the file is: nothing is left to settle.
+					await forgetSettledMediaRename({ notes, projectId, renamed });
+				} catch (error) {
+					// The file goes back under its old name and the failure is
+					// thrown; unless the file cannot go back and the editor then
+					// follows it, in which case the rename stands.
+					({ warning } = await settleUnfollowedMediaRename({
+						notes,
+						requestMediaRename,
+						projectId,
+						renamed,
+						error,
+					}));
+				}
+			}
+		} finally {
+			// This request moves the file no more: what is still noted is the
+			// editor's to settle from here on.
+			await move.left();
 		}
 		scheduleProjectJsonAutoSync({ projectId });
 		return {
