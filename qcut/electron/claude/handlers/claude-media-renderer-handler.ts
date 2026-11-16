@@ -2,6 +2,7 @@ import type { BrowserWindow } from "electron";
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRenamedEvent,
 } from "../../types/claude-media-bridge-api.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
 
@@ -9,6 +10,8 @@ const MEDIA_IMPORT_CHANNEL = "claude:media:imported" as const;
 const MEDIA_IMPORT_RESPONSE_CHANNEL = "claude:media:imported:response" as const;
 const MEDIA_DELETE_CHANNEL = "claude:media:deleted" as const;
 const MEDIA_DELETE_RESPONSE_CHANNEL = "claude:media:deleted:response" as const;
+const MEDIA_RENAME_CHANNEL = "claude:media:renamed" as const;
+const MEDIA_RENAME_RESPONSE_CHANNEL = "claude:media:renamed:response" as const;
 const MEDIA_RENDERER_TIMEOUT_MS = 30_000;
 
 export async function requestMediaImportFromRenderer({
@@ -41,6 +44,28 @@ export async function requestMediaDeleteFromRenderer({
 		payload,
 		requestIdPrefix: "media",
 		responseChannel: MEDIA_DELETE_RESPONSE_CHANNEL,
+		timeoutMessage: "Renderer media mutation timed out.",
+		timeoutMs: MEDIA_RENDERER_TIMEOUT_MS,
+		win,
+	});
+}
+
+/**
+ * Tells the editor a media file was renamed on disk, and waits until it has
+ * re-keyed the item and pointed every clip at the new id.
+ */
+export async function requestMediaRenameFromRenderer({
+	payload,
+	win,
+}: {
+	payload: Omit<ClaudeMediaRenamedEvent, "requestId">;
+	win: BrowserWindow;
+}): Promise<void> {
+	await requestRendererMutation({
+		channel: MEDIA_RENAME_CHANNEL,
+		payload,
+		requestIdPrefix: "media",
+		responseChannel: MEDIA_RENAME_RESPONSE_CHANNEL,
 		timeoutMessage: "Renderer media mutation timed out.",
 		timeoutMs: MEDIA_RENDERER_TIMEOUT_MS,
 		win,
