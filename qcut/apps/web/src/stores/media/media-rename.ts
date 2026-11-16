@@ -20,6 +20,12 @@ export interface ProjectMediaRename {
 	toId: string;
 	name: string;
 	localPath: string;
+	/**
+	 * When the asker stops waiting (epoch milliseconds). Past it the asker
+	 * has put the file back under its old name, so nothing may be left
+	 * pointing at the new one.
+	 */
+	deadlineAt?: number;
 }
 
 export interface ProjectMediaRenameResult {
@@ -29,6 +35,9 @@ export interface ProjectMediaRenameResult {
 	clipsUpdated: number;
 	stickersUpdated: number;
 }
+
+/** What puts one finished step back, should a later step fail. */
+type Undo = () => Promise<void> | void;
 
 /**
  * Follows a media file that was renamed in the project folder.
@@ -41,9 +50,13 @@ export interface ProjectMediaRenameResult {
  * played them from the editor's own copy, and the native export left them
  * out.
  *
- * The new item is stored first, so a failure there leaves the project as it
- * was and the caller can put the file back. The old entry is removed last;
- * if that fails the rename still stands and only a stale entry is left.
+ * It is all or nothing. The asker puts the file back under its old name when
+ * this fails, so a failure part-way (a scene that cannot be saved, the
+ * asker's deadline passing while a large file is copied) takes back every
+ * step already made, in reverse: the project is then as it was, pointing at
+ * the old id, which the file has again. Only removing the old stored entry,
+ * the last step, is allowed to fail: the rename stands and a stale entry is
+ * left.
  */
 export async function renameProjectMedia({
 	projectId,
@@ -51,6 +64,7 @@ export async function renameProjectMedia({
 	toId,
 	name,
 	localPath,
+	deadlineAt,
 }: ProjectMediaRename): Promise<ProjectMediaRenameResult> {
 	if (fromId === toId) {
 		return { mediaRenamed: false, clipsUpdated: 0, stickersUpdated: 0 };
@@ -63,64 +77,140 @@ export async function renameProjectMedia({
 		);
 	}
 
-	let renamed: MediaItem | undefined;
-	if (previous) {
-		renamed = {
-			...previous,
-			id: toId,
-			name,
-			localPath,
-			isLocalFile: true,
-			file: new File([previous.file], name, {
-				type: previous.file.type,
-				lastModified: previous.file.lastModified,
-			}),
-		};
-		const stored = renamed;
-		await saveTrackedMediaItem({
-			projectId,
-			id: toId,
-			save: () => storageService.saveMediaItem(projectId, stored),
-			whenDeleting: "wait",
-		});
-		useMediaStore.setState((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				item.id === fromId ? stored : item
-			),
-		}));
-		// The verdict on a path is kept per path; a file renamed onto a path
-		// another file had must be looked at again.
-		forgetMediaAlphaInspection({ localPath });
-		if (previous.localPath) {
-			forgetMediaAlphaInspection({ localPath: previous.localPath });
-		}
-	}
-
-	const timeline = useTimelineStore.getState();
-	let clipsUpdated = timeline.repointMediaReferences({ fromId, toId });
-	if (clipsUpdated > 0) await timeline.saveImmediate();
-	clipsUpdated += await repointStoredScenes({ projectId, fromId, toId });
-	const stickersUpdated = await repointStickers({ projectId, fromId, toId });
-
-	if (previous) {
-		try {
-			await deleteTrackedMediaItem({
-				projectId,
-				id: fromId,
-				remove: () => storageService.deleteMediaItem(projectId, fromId),
-			});
-		} catch (error) {
-			debugWarn(
-				"[MediaRename] The renamed item's old entry could not be removed:",
-				error
+	const undo: Undo[] = [];
+	const inTime = () => {
+		if (deadlineAt !== undefined && Date.now() >= deadlineAt) {
+			throw new Error(
+				"The rename took longer than the request waits for; nothing was changed"
 			);
 		}
+	};
+
+	try {
+		if (previous) {
+			const renamed: MediaItem = {
+				...previous,
+				id: toId,
+				name,
+				localPath,
+				isLocalFile: true,
+				file: new File([previous.file], name, {
+					type: previous.file.type,
+					lastModified: previous.file.lastModified,
+				}),
+			};
+			// Copying a large file into the store is the slow step.
+			await saveTrackedMediaItem({
+				projectId,
+				id: toId,
+				save: () => storageService.saveMediaItem(projectId, renamed),
+				whenDeleting: "wait",
+			});
+			undo.push(() =>
+				deleteTrackedMediaItem({
+					projectId,
+					id: toId,
+					remove: () => storageService.deleteMediaItem(projectId, toId),
+				})
+			);
+			inTime();
+			useMediaStore.setState((state) => ({
+				mediaItems: state.mediaItems.map((item) =>
+					item.id === fromId ? renamed : item
+				),
+			}));
+			undo.push(() => {
+				useMediaStore.setState((state) => ({
+					mediaItems: state.mediaItems.map((item) =>
+						item.id === toId ? previous : item
+					),
+				}));
+			});
+			// The verdict on a path is kept per path; a file renamed onto a
+			// path another file had must be looked at again.
+			forgetMediaAlphaInspection({ localPath });
+			if (previous.localPath) {
+				forgetMediaAlphaInspection({ localPath: previous.localPath });
+			}
+		}
+
+		let clipsUpdated = await repointOpenScene({ fromId, toId, undo });
+		clipsUpdated += await repointStoredScenes({
+			projectId,
+			fromId,
+			toId,
+			undo,
+		});
+		const stickersUpdated = await repointStickers({
+			projectId,
+			fromId,
+			toId,
+			undo,
+		});
+		// The last moment the asker may have given up: after this the rename
+		// stands.
+		inTime();
+
+		if (previous) {
+			try {
+				await deleteTrackedMediaItem({
+					projectId,
+					id: fromId,
+					remove: () => storageService.deleteMediaItem(projectId, fromId),
+				});
+			} catch (error) {
+				debugWarn(
+					"[MediaRename] The renamed item's old entry could not be removed:",
+					error
+				);
+			}
+		}
+		await useProjectStore
+			.getState()
+			.markProjectContentChanged(projectId)
+			.catch(() => undefined);
+		return {
+			mediaRenamed: previous !== undefined,
+			clipsUpdated,
+			stickersUpdated,
+		};
+	} catch (error) {
+		for (const step of undo.reverse()) {
+			try {
+				await step();
+			} catch (undoError) {
+				debugWarn(
+					"[MediaRename] A step of the rename could not be taken back:",
+					undoError
+				);
+			}
+		}
+		throw error;
 	}
-	await useProjectStore
-		.getState()
-		.markProjectContentChanged(projectId)
-		.catch(() => undefined);
-	return { mediaRenamed: renamed !== undefined, clipsUpdated, stickersUpdated };
+}
+
+/** The open scene: its clips are repointed in the store and saved at once. */
+async function repointOpenScene({
+	fromId,
+	toId,
+	undo,
+}: {
+	fromId: string;
+	toId: string;
+	undo: Undo[];
+}): Promise<number> {
+	const timeline = useTimelineStore.getState();
+	const changed = timeline.repointMediaReferences({ fromId, toId });
+	if (changed === 0) return 0;
+	undo.push(async () => {
+		const store = useTimelineStore.getState();
+		store.repointMediaReferences({ fromId: toId, toId: fromId });
+		await store.saveImmediate();
+	});
+	if (!(await timeline.saveImmediate())) {
+		throw new Error("The timeline could not be saved with the renamed media");
+	}
+	return changed;
 }
 
 /** The scenes that are not open keep their timelines in storage only. */
@@ -128,10 +218,12 @@ async function repointStoredScenes({
 	projectId,
 	fromId,
 	toId,
+	undo,
 }: {
 	projectId: string;
 	fromId: string;
 	toId: string;
+	undo: Undo[];
 }): Promise<number> {
 	const project = useProjectStore.getState().activeProject;
 	if (project?.id !== projectId) return 0;
@@ -150,6 +242,10 @@ async function repointStoredScenes({
 			tracks: repointed.tracks,
 			sceneId: scene.id,
 		});
+		// As it was read: the scene's own tracks, before the rename.
+		undo.push(() =>
+			storageService.saveTimeline({ projectId, tracks, sceneId: scene.id })
+		);
 		changed += repointed.changed;
 	}
 	return changed;
@@ -160,14 +256,17 @@ async function repointStickers({
 	projectId,
 	fromId,
 	toId,
+	undo,
 }: {
 	projectId: string;
 	fromId: string;
 	toId: string;
+	undo: Undo[];
 }): Promise<number> {
 	const stickers = useStickersOverlayStore.getState();
+	const before = stickers.overlayStickers;
 	let changed = 0;
-	const overlayStickers = new Map(stickers.overlayStickers);
+	const overlayStickers = new Map(before);
 	for (const [id, sticker] of overlayStickers) {
 		if (sticker.mediaItemId !== fromId) continue;
 		overlayStickers.set(id, { ...sticker, mediaItemId: toId });
@@ -175,6 +274,10 @@ async function repointStickers({
 	}
 	if (changed === 0) return 0;
 	useStickersOverlayStore.setState({ overlayStickers });
+	undo.push(async () => {
+		useStickersOverlayStore.setState({ overlayStickers: before });
+		await stickers.saveToProject(projectId);
+	});
 	await stickers.saveToProject(projectId);
 	return changed;
 }
