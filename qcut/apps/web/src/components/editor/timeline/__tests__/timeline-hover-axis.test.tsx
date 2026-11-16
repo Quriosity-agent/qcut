@@ -213,6 +213,29 @@ describe("TimelineHoverAxis", () => {
 		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
 	});
 
+	it("lets a seek show its frame under a resting pointer until the pointer moves again", async () => {
+		render(<TimelineHoverAxis {...createRefs()} zoomLevel={1} />);
+		movePointer({ clientX: 324, clientY: 100 });
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(2);
+
+		act(() => usePlaybackStore.getState().seek(7));
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+
+		// A hover preview still waiting when a seek lands does not come back.
+		movePointer({ clientX: 374, clientY: 100 });
+		act(() => usePlaybackStore.getState().seek(8));
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBeNull();
+		expect(usePlaybackStore.getState().currentTime).toBe(8);
+
+		// Moving the pointer starts a new hover preview.
+		movePointer({ clientX: 424, clientY: 100 });
+		await flushScrubFrame();
+		expect(usePlaybackStore.getState().previewScrubTime).toBe(4);
+	});
+
 	it("uses the latest zoom and scroll position under a stationary pointer", async () => {
 		const refs = createRefs();
 		const { rerender } = render(<TimelineHoverAxis {...refs} zoomLevel={1} />);
