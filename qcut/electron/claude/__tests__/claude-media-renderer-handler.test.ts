@@ -180,9 +180,9 @@ describe("Claude media renderer acknowledgement", () => {
 	});
 
 	/**
-	 * A request that settles a rename says where the file is for good. The
-	 * editor is to end on that id however long it takes, so it is given no
-	 * moment after which it would take the change back.
+	 * A request that settles a rename has the editor end on an id however
+	 * long it takes, so it is given no moment after which it would take the
+	 * change back.
 	 */
 	it("gives a request that settles a rename no deadline", async () => {
 		const win = createWindow();
@@ -192,8 +192,6 @@ describe("Claude media renderer acknowledgement", () => {
 				newMediaId: "media_old",
 				newName: "old.mp4",
 				newPath: "/project/media/old.mp4",
-				previousName: "new.mp4",
-				previousPath: "/project/media/new.mp4",
 				projectId: "project-1",
 				settles: true,
 			},
@@ -203,7 +201,7 @@ describe("Claude media renderer acknowledgement", () => {
 		expect(sent).toMatchObject({
 			mediaId: "media_new",
 			newMediaId: "media_old",
-			previousPath: "/project/media/new.mp4",
+			newPath: "/project/media/old.mp4",
 			settles: true,
 		});
 		expect(sent).not.toHaveProperty("deadlineAt");
