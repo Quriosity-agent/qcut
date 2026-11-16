@@ -367,6 +367,48 @@ describe("setupClaudeTimelineBridge - add element", () => {
 		);
 	});
 
+	/**
+	 * What the bytes were copied from, and by when the editor held them: the
+	 * checks of the project folder go by that record, and so does a rename
+	 * that is not settled when it tells whose an item is.
+	 */
+	it("records the file an imported item was copied from, and by when it was held", async () => {
+		storeMocks.projectStoreState.activeProject = { id: "project-1" };
+		const { mediaImportedHandler } = setupTimelineBridgeWithHandlers();
+		const changed = new Date("2026-11-01T08:00:00.123Z");
+		const api = (window as unknown as { electronAPI: Record<string, unknown> })
+			.electronAPI;
+		// As the desktop app shows a file: its time is a date.
+		api.getFileInfo = vi.fn(async () => ({ size: 4, modified: changed }));
+
+		const began = Date.now();
+		await mediaImportedHandler({
+			id: "media-clip-1",
+			name: "clip.mp4",
+			path: "/tmp/clip.mp4",
+			projectId: "project-1",
+			type: "video",
+			size: 4,
+		});
+
+		const imported = storeMocks.mediaStoreState.addMediaItem.mock.calls.at(
+			-1
+		)?.[1] as {
+			metadata: { sourceFile: Record<string, number> };
+		};
+		expect(imported.metadata.sourceFile).toEqual({
+			size: 4,
+			modifiedAt: changed.getTime(),
+			heldSince: expect.any(Number),
+		});
+		expect(imported.metadata.sourceFile.heldSince).toBeGreaterThanOrEqual(
+			began
+		);
+		expect(imported.metadata.sourceFile.heldSince).toBeLessThanOrEqual(
+			Date.now()
+		);
+	});
+
 	it("preserves a CLI-provided runtime package instead of replacing it from the preview", async () => {
 		const { mediaImportedHandler } = setupTimelineBridgeWithHandlers();
 		const stickerRuntime = {
