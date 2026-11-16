@@ -74,9 +74,6 @@ export function staleCopiesOnTimeline({
 	check: MediaCheckBeforeExport;
 	tracks: ReadonlyArray<{ elements?: readonly ClipOfMedia[] }>;
 }): string | null {
-	if (check.unanswered !== undefined) {
-		return `the editor did not confirm that its media copies match the project folder (${check.unanswered}). It may still be reading files that changed; retry in a moment`;
-	}
 	const ids = new Set<string>();
 	const names = new Set<string>();
 	for (const track of tracks) {
@@ -85,6 +82,11 @@ export function staleCopiesOnTimeline({
 			if (clip.mediaId) ids.add(clip.mediaId);
 			if (clip.sourceName) names.add(clip.sourceName);
 		}
+	}
+	if (check.unanswered !== undefined) {
+		// Text alone has no copy that could be old.
+		if (ids.size === 0 && names.size === 0) return null;
+		return `the editor did not confirm that its media copies match the project folder (${check.unanswered}). It may still be reading files that changed; retry in a moment`;
 	}
 	const played = check.failed.filter(
 		(entry) => ids.has(entry.id) || names.has(entry.name)
