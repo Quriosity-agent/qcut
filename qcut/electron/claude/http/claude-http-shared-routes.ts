@@ -98,6 +98,10 @@ import {
 	renameMediaFileOnDisk,
 	undoMediaRename,
 } from "../handlers/claude-media-rename.js";
+import {
+	mediaRenameOutcomeUnknown,
+	settleMediaRenameInEditor,
+} from "./claude-http-media-rename-settle.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
 import {
 	timelineToMarkdown,
@@ -1160,16 +1164,37 @@ export function registerSharedRoutes(
 							newMediaId: renamed.id,
 							newName: renamed.name,
 							newPath: renamed.path,
+							previousName: renamed.previous.name,
+							previousPath: renamed.previous.path,
 						}),
 				});
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : String(error);
+				// The file goes back under its old name. Where the editor
+				// stands is not known when its answer did not come (it may
+				// have finished) or says that it could not take everything
+				// back: it is asked to end on the old id, so that the two do
+				// not part. If it cannot, it notes the rename and settles it
+				// when the project is next open.
+				const editorUnsettled = mediaRenameOutcomeUnknown({ reason })
+					? await settleMediaRenameInEditor({
+							requestMediaRename,
+							projectId,
+							renamed,
+						})
+					: null;
 				try {
 					await undoMediaRename({ projectId, renamed });
 				} catch (undoError) {
 					throw new HttpError(
 						500,
 						`${reason}. The file stays renamed to ${renamed.name} (${renamed.id}), and putting it back failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`
+					);
+				}
+				if (editorUnsettled) {
+					throw new HttpError(
+						error instanceof HttpError ? error.status : 500,
+						`${reason}. The file is back under ${renamed.previous.name}, but the editor did not confirm that it names ${renamed.previous.id} again (${editorUnsettled}); it puts that right when the project is next opened. Check the timeline before the rename is tried again`
 					);
 				}
 				throw error;
