@@ -453,6 +453,54 @@ describe("reading changed media files again", () => {
 		).toEqual(["media_shake", "media_third"]);
 	});
 
+	/**
+	 * With another project's items in the store nothing matches the scanned
+	 * folder: an empty plan, which read as a check that found every file as
+	 * the editor has it. An export through the renderer went ahead on it.
+	 */
+	it("fails when the project is left while its folder is scanned, though nothing is left to look at", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		files.scan.mockImplementationOnce(async () => {
+			// Project p2 is opened while the folder of p1 is being listed.
+			project.activeProject = { id: "p2" };
+			mediaState.mediaItems = [
+				mediaItem({
+					bytes: 300,
+					localPath: "/Users/me/Documents/QCut/Projects/p2/media/shake.mp4",
+				}),
+			];
+			return { files: [diskFile({ size: 8, modifiedAt: 9000 })] };
+		});
+		await expect(
+			refreshChangedMediaSources({ projectId: "p1" })
+		).rejects.toThrow("the check is not complete");
+		expect(files.readFile).not.toHaveBeenCalled();
+		expect(mediaState.updateMediaItem).not.toHaveBeenCalled();
+	});
+
+	it("fails when the project is left during the last thing it does", async () => {
+		mediaState.mediaItems = [mediaItem({ bytes: 300 })];
+		mediaState.updateMediaItem.mockImplementationOnce(async () => {
+			// The file is stored; the project is closed before the check ends.
+			project.activeProject = null;
+			return true;
+		});
+		await expect(
+			refreshChangedMediaSources({
+				projectId: "p1",
+				diskFiles: [diskFile({ size: 8, modifiedAt: 9000 })],
+			})
+		).rejects.toThrow("the check is not complete");
+	});
+
+	it("does not start for a project that is not the open one", async () => {
+		project.activeProject = { id: "p2" };
+		await expect(
+			refreshChangedMediaSources({ projectId: "p1" })
+		).rejects.toThrow("the check is not complete");
+		expect(files.scan).not.toHaveBeenCalled();
+	});
+
 	it("records nothing on an item of another project either", async () => {
 		const first = mediaItem({ bytes: 400 });
 		const second = mediaItem({
