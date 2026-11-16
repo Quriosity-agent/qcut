@@ -13,9 +13,9 @@
  * finished loading (apps/web/src/stores/media/media-rename.ts).
  *
  * The note is one record in the app's key-value store, under the key the
- * editor's own notes use (media-rename-notes.ts): written by either, read
- * by the editor, and removed by whoever has seen the editor and the folder
- * agree. Main process only.
+ * editor looks it up by (media-rename-notes.ts): written here and nowhere
+ * else, read by the editor, and removed by whoever has seen the editor and
+ * the folder agree. Main process only.
  *
  * @module electron/claude/handlers/claude-media-rename-note
  */
@@ -80,10 +80,10 @@ function notePath({
 /**
  * Notes a rename for the editor to settle when the project is next open.
  *
- * The note says under which name the file is expected (its old one, unless
- * it stays renamed), whether the app is done moving it, and what the file
- * looked like: its size and the time it was last changed, as the editor is
- * shown them (get-file-info). Another file can take one of the two names
+ * The note names the file before and after the rename, says where the app
+ * left it once it is done moving it (`fileIs`), and what the file looked
+ * like: its size and the time it was last changed, as the editor is shown
+ * them (get-file-info). Another file can take one of the two names
  * meanwhile, and is told from the renamed one by these.
  */
 export async function noteUnsettledMediaRename({
@@ -96,8 +96,6 @@ export async function noteUnsettledMediaRename({
 	stage?: RenamedFileStage;
 }): Promise<void> {
 	const before = renamed.previous;
-	const [expected, other] =
-		stage === "stays" ? [renamed, before] : [before, renamed];
 	// Where the file is. On its way it has one of the two names: the old
 	// one until it is moved, which is when the route notes it.
 	const places =
@@ -113,16 +111,18 @@ export async function noteUnsettledMediaRename({
 	await writeStorageJson({
 		filePath: notePath({ projectId, renamed }),
 		data: {
-			newId: other.id,
-			newName: other.name,
-			newPath: other.path,
-			oldId: expected.id,
-			oldName: expected.name,
-			oldPath: expected.path,
+			oldId: before.id,
+			oldName: before.name,
+			oldPath: before.path,
+			newId: renamed.id,
+			newName: renamed.name,
+			newPath: renamed.path,
 			...(seen?.isFile()
 				? { file: { size: seen.size, modifiedAt: seen.mtime.getTime() } }
 				: {}),
-			...(stage === "moving" ? {} : { decided: true }),
+			...(stage === "moving"
+				? {}
+				: { fileIs: stage === "back" ? "old" : "new" }),
 			notedAt: Date.now(),
 		},
 	});
