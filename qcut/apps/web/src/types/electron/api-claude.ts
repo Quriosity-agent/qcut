@@ -92,6 +92,21 @@ export interface ElectronClaudeOps {
 					deadlineAt?: number;
 				}) => void | Promise<void>
 			) => void;
+			/**
+			 * The project's media renames that are noted and not settled, each
+			 * with whether the desktop app is at work on it (`atWork`).
+			 */
+			unsettledRenames: (projectId: string) => Promise<unknown[]>;
+			/**
+			 * Has the desktop app drop the note of a rename the editor has
+			 * settled; false when it keeps the note.
+			 */
+			forgetSettledRename: (request: {
+				projectId: string;
+				oldId: string;
+				newId: string;
+				notedAt: number;
+			}) => Promise<boolean>;
 		};
 		search: {
 			loadTranscriptions: (projectId: string) => Promise<unknown[]>;
