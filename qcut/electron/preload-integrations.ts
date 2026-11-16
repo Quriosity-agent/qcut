@@ -376,6 +376,10 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					}
 				);
 			},
+			unsettledRenames: (projectId) =>
+				ipcRenderer.invoke("claude:media:unsettled-renames", projectId),
+			forgetSettledRename: (request) =>
+				ipcRenderer.invoke("claude:media:forget-settled-rename", request),
 		},
 		search: {
 			loadTranscriptions: (projectId) =>
