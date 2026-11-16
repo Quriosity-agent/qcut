@@ -125,8 +125,19 @@ export async function requestMediaRefreshFromRenderer({
 		typeof answer === "object" && answer !== null
 			? (answer as Record<string, unknown>)
 			: {};
+	// An answer that is not one must not read as "nothing had changed": an
+	// export through the renderer would go ahead on it.
+	if (
+		typeof record.checked !== "number" ||
+		!Array.isArray(record.refreshed) ||
+		!Array.isArray(record.failed)
+	) {
+		throw new Error(
+			"The editor's answer to the media check could not be read."
+		);
+	}
 	return {
-		checked: typeof record.checked === "number" ? record.checked : 0,
+		checked: record.checked,
 		refreshed: refreshEntries({ value: record.refreshed }).map(
 			({ id, name }) => ({ id, name })
 		),
