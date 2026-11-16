@@ -123,6 +123,38 @@ function buildTimeline(projectId?: string): ClaudeTimeline {
 	};
 }
 
+/** The same timeline with one clip of `shake.mp4` on it. */
+function timelineWithShake({
+	projectId,
+	clip,
+}: {
+	projectId: string;
+	clip: { sourceId?: string; sourceName?: string; mediaId?: string };
+}): ClaudeTimeline {
+	return {
+		...buildTimeline(projectId),
+		tracks: [
+			{
+				id: "main",
+				index: 0,
+				name: "Main",
+				type: "media",
+				elements: [
+					{
+						id: "clip-1",
+						trackIndex: 0,
+						startTime: 0,
+						endTime: 1,
+						duration: 1,
+						type: "media",
+						...clip,
+					},
+				],
+			},
+		],
+	} as ClaudeTimeline;
+}
+
 const EXPORT_START = "POST /api/claude/export/:projectId/start";
 
 describe("export start and the project's media", () => {
@@ -189,39 +221,84 @@ describe("export start and the project's media", () => {
 		}
 	});
 
-	it("refuses a renderer export while the editor holds an old copy of a changed file", async () => {
-		const accessor = buildAccessor(buildTimeline("project-a"));
+	it("refuses a renderer export while the editor holds an old copy of a file the timeline plays", async () => {
+		// A clip names its media by id, or by the file's name.
+		for (const clip of [
+			{ sourceId: "m" },
+			{ mediaId: "m" },
+			{ sourceName: "shake.mp4" },
+		]) {
+			const accessor = buildAccessor(
+				timelineWithShake({ projectId: "project-a", clip })
+			);
+			Object.assign(accessor, {
+				requestMediaRefresh: vi.fn(async () => ({
+					checked: 2,
+					refreshed: [],
+					failed: [
+						{
+							id: "m",
+							name: "shake.mp4",
+							error: "the file kept changing while it was read",
+						},
+						{ id: "unused", name: "spare.mp4", error: "the file is gone" },
+					],
+				})),
+			});
+			const { router, getHandler } = buildRouterHarness();
+			registerSharedRoutes(router, accessor);
+			const [method, path] = EXPORT_START.split(" ");
+			await expect(
+				getHandler(
+					method,
+					path
+				)({
+					params: { projectId: "project-a" },
+					query: {},
+					body: { engine: "muxer" },
+				})
+			).rejects.toMatchObject({
+				status: 409,
+				// The file no clip plays is not named: it holds nothing up.
+				message:
+					"A renderer export would use the editor's old copies: 1 media file(s) on the timeline changed in the project folder and the editor could not read them again: shake.mp4 (the file kept changing while it was read). Fix the files or import them again, then retry.",
+			});
+			expect(startRendererExportJob).not.toHaveBeenCalled();
+		}
+	});
+
+	/**
+	 * The check covers every media file of the project. A changed file that
+	 * could not be read, and that no clip plays, would otherwise refuse
+	 * every renderer export until it was fixed or removed.
+	 */
+	it("lets a renderer export start when the file that could not be read is not on the timeline", async () => {
+		const accessor = buildAccessor(
+			timelineWithShake({
+				projectId: "project-a",
+				clip: { sourceId: "media_other", sourceName: "other.mp4" },
+			})
+		);
 		Object.assign(accessor, {
 			requestMediaRefresh: vi.fn(async () => ({
-				checked: 1,
+				checked: 2,
 				refreshed: [],
-				failed: [
-					{
-						id: "m",
-						name: "shake.mp4",
-						error: "the file kept changing while it was read",
-					},
-				],
+				failed: [{ id: "m", name: "shake.mp4", error: "the file is gone" }],
 			})),
+			requestLocalVideoExport: vi.fn(),
 		});
 		const { router, getHandler } = buildRouterHarness();
 		registerSharedRoutes(router, accessor);
 		const [method, path] = EXPORT_START.split(" ");
-		await expect(
-			getHandler(
-				method,
-				path
-			)({
-				params: { projectId: "project-a" },
-				query: {},
-				body: { engine: "muxer" },
-			})
-		).rejects.toMatchObject({
-			status: 409,
-			message:
-				"A renderer export would use the editor's old copies: 1 media file(s) changed in the project folder and the editor could not read them again: shake.mp4 (the file kept changing while it was read). Fix the files or import them again, then retry.",
+		await getHandler(
+			method,
+			path
+		)({
+			params: { projectId: "project-a" },
+			query: {},
+			body: { engine: "muxer" },
 		});
-		expect(startRendererExportJob).not.toHaveBeenCalled();
+		expect(startRendererExportJob).toHaveBeenCalledTimes(1);
 	});
 
 	/**
