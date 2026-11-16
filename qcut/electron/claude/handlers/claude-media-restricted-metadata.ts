@@ -145,15 +145,31 @@ function parseSidecar({
 	};
 }
 
-export async function persistMediaRestrictedMetadata({
+/** One file, told from any other that later has its path. */
+interface FileIdentity {
+	dev: bigint;
+	ino: bigint;
+}
+
+/**
+ * Writes a media id's sidecar to a file of its own beside where it goes,
+ * and hands that file to `publish` to put in place. The file is removed if
+ * it was not.
+ */
+async function writeSidecar({
 	mediaId,
 	metadata,
 	projectId,
+	publish,
 }: {
 	mediaId: string;
 	metadata: StickerLabRestrictedMediaMetadata;
 	projectId: string;
-}): Promise<void> {
+	publish: (paths: {
+		temporaryPath: string;
+		destinationPath: string;
+	}) => Promise<void>;
+}): Promise<{ destinationPath: string; written: FileIdentity }> {
 	const normalizedMediaId = requireMediaId({ mediaId });
 	const normalizedMetadata = parseStickerLabRestrictedMediaMetadata({
 		candidate: metadata,
@@ -183,14 +199,155 @@ export async function persistMediaRestrictedMetadata({
 		await handle.writeFile(serializedSidecar, "utf8");
 		await handle.chmod(0o600);
 		await handle.sync();
+		const { dev, ino } = await handle.stat({ bigint: true });
 		await handle.close();
 		handle = undefined;
-		await fs.rename(temporaryPath, destinationPath);
+		await publish({ temporaryPath, destinationPath });
+		return { destinationPath, written: { dev, ino } };
 	} catch (error) {
 		await handle?.close().catch(() => undefined);
 		await fs.unlink(temporaryPath).catch(() => undefined);
 		throw error;
 	}
+}
+
+export async function persistMediaRestrictedMetadata({
+	mediaId,
+	metadata,
+	projectId,
+}: {
+	mediaId: string;
+	metadata: StickerLabRestrictedMediaMetadata;
+	projectId: string;
+}): Promise<void> {
+	await writeSidecar({
+		mediaId,
+		metadata,
+		projectId,
+		publish: ({ temporaryPath, destinationPath }) =>
+			fs.rename(temporaryPath, destinationPath),
+	});
+}
+
+/** The media id already has restricted metadata, which is another file's. */
+export class RestrictedMetadataTakenError extends Error {
+	constructor(mediaId: string) {
+		super(`Media ${mediaId} already has restricted metadata`);
+		this.name = "RestrictedMetadataTakenError";
+	}
+}
+
+/** Metadata put in place for a file that is about to take a media id. */
+export interface StagedRestrictedMetadata {
+	/** Takes it away again, unless other metadata has replaced it since. */
+	discard: () => Promise<void>;
+}
+
+/**
+ * A sidecar with no media file is left over from a file that is gone, unless
+ * it was only just written: then a move of another file is taking that id.
+ */
+const STAGED_FRESH_MS = 60_000;
+
+/** Puts the file in place only where nothing is, and never over a sidecar. */
+async function publishWhereNothingIs({
+	temporaryPath,
+	destinationPath,
+}: {
+	temporaryPath: string;
+	destinationPath: string;
+}): Promise<void> {
+	try {
+		// A hard link takes the name only when it is free.
+		await fs.link(temporaryPath, destinationPath);
+	} catch (error) {
+		if (isFileSystemError({ code: "EEXIST", error })) throw error;
+		// No hard links on this volume: looked at, then renamed at once.
+		const taken = await fs.lstat(destinationPath).then(
+			() => true,
+			() => false
+		);
+		if (taken) throw Object.assign(new Error("exists"), { code: "EEXIST" });
+		await fs.rename(temporaryPath, destinationPath);
+		return;
+	}
+	await fs.unlink(temporaryPath);
+}
+
+/**
+ * Puts restricted metadata in place for a file that is about to take
+ * `mediaId` (a file being renamed), ahead of the file, so that the file is
+ * at no moment in the folder without it.
+ *
+ * The id may be another file's at that very moment: one that is taking the
+ * same name. Metadata that is there is therefore never written over while
+ * the file it belongs to exists (`mediaFileExists`) or while it is fresh
+ * (another move is bringing its file): `RestrictedMetadataTakenError`. Only
+ * what a file that is gone left behind is replaced. And `discard` removes
+ * what was staged here, not whatever has the path by then.
+ */
+export async function stageMediaRestrictedMetadata({
+	mediaId,
+	metadata,
+	projectId,
+	mediaFileExists,
+}: {
+	mediaId: string;
+	metadata: StickerLabRestrictedMediaMetadata;
+	projectId: string;
+	mediaFileExists: () => Promise<boolean>;
+}): Promise<StagedRestrictedMetadata> {
+	const stage = () =>
+		writeSidecar({
+			mediaId,
+			metadata,
+			projectId,
+			publish: publishWhereNothingIs,
+		});
+	let staged: Awaited<ReturnType<typeof stage>>;
+	try {
+		staged = await stage();
+	} catch (error) {
+		if (!isFileSystemError({ code: "EEXIST", error })) throw error;
+		const sidecarPath = getSidecarPath({ mediaId, projectId });
+		const leftOver = await fs
+			.lstat(sidecarPath, { bigint: true })
+			.catch(() => undefined);
+		if (
+			!leftOver ||
+			(await mediaFileExists()) ||
+			Date.now() - Number(leftOver.mtimeMs) < STAGED_FRESH_MS
+		) {
+			throw new RestrictedMetadataTakenError(mediaId);
+		}
+		await unlinkIfStill({ filePath: sidecarPath, identity: leftOver });
+		try {
+			staged = await stage();
+		} catch (again) {
+			if (!isFileSystemError({ code: "EEXIST", error: again })) throw again;
+			throw new RestrictedMetadataTakenError(mediaId);
+		}
+	}
+	const { destinationPath, written } = staged;
+	return {
+		discard: () =>
+			unlinkIfStill({ filePath: destinationPath, identity: written }),
+	};
+}
+
+/** Removes the file at `filePath` if it is the one `identity` names. */
+async function unlinkIfStill({
+	filePath,
+	identity,
+}: {
+	filePath: string;
+	identity: FileIdentity;
+}): Promise<void> {
+	const now = await fs.lstat(filePath, { bigint: true }).catch(() => undefined);
+	if (!now || now.dev !== identity.dev || now.ino !== identity.ino) return;
+	await fs.unlink(filePath).catch((error: unknown) => {
+		if (!isFileSystemError({ code: "ENOENT", error })) throw error;
+	});
 }
 
 export async function readMediaRestrictedMetadata({
