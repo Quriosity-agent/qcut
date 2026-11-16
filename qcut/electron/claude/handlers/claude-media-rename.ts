@@ -46,6 +46,20 @@ export class MediaNameTakenError extends Error {
 }
 
 /**
+ * A move failed after the file had its new name, and that name could not be
+ * given up again: the file is under both.
+ */
+export class MediaMoveIncompleteError extends Error {
+	constructor(filePath: string, options: { cause: unknown }) {
+		super(
+			`The move failed and ${path.basename(filePath)} could not be removed again: ${options.cause instanceof Error ? options.cause.message : String(options.cause)}`,
+			options
+		);
+		this.name = "MediaMoveIncompleteError";
+	}
+}
+
+/**
  * How often a rename looks for another free name when the one it picked is
  * taken before the file gets there.
  */
@@ -80,6 +94,10 @@ async function isTaken(filePath: string): Promise<boolean> {
  * - a copy that refuses an existing name, on a volume without hard links
  *   (exFAT, some network shares). It takes as long as the file is large,
  *   and is the one way left there that cannot write over a file.
+ *
+ * Whatever fails once the new name is taken, that name is given up again,
+ * so a failed move leaves the file where it was. If even that fails, the
+ * file is under both names (`MediaMoveIncompleteError`).
  */
 export async function moveWithoutOverwriting({
 	from,
@@ -91,6 +109,7 @@ export async function moveWithoutOverwriting({
 	const source = await fs.lstat(from);
 	const taken = (error: unknown) =>
 		errorCode(error) === "EEXIST" ? new MediaNameTakenError(to) : error;
+	let copied = false;
 	if (source.isSymbolicLink()) {
 		const target = await fs.readlink(from);
 		// A relative link is kept pointing at the same file from its new place.
@@ -115,15 +134,19 @@ export async function moveWithoutOverwriting({
 				.catch((copyError: unknown) => {
 					throw taken(copyError);
 				});
-			// A copy is a new file: it is given the times the old one had.
-			await fs.utimes(to, source.atime, source.mtime);
+			copied = true;
 		}
 	}
 	try {
+		// A copy is a new file: it is given the times the old one had.
+		if (copied) await fs.utimes(to, source.atime, source.mtime);
 		await fs.unlink(from);
 	} catch (error) {
 		// Under one name again, the old one: nothing was moved.
-		await fs.unlink(to).catch(() => undefined);
+		await fs.unlink(to).catch((cleanupError: unknown) => {
+			if (errorCode(cleanupError) === "ENOENT") return;
+			throw new MediaMoveIncompleteError(to, { cause: error });
+		});
 		throw error;
 	}
 }
@@ -249,7 +272,11 @@ async function moveMediaFile({
 		// The name may have been taken while the metadata was written.
 		await moveWithoutOverwriting({ from: from.path, to: to.path });
 	} catch (error) {
-		await staged?.discard().catch(() => undefined);
+		// A file left under the new name keeps the metadata staged for it:
+		// without it, a restricted file would be listed as an ordinary one.
+		if (!(error instanceof MediaMoveIncompleteError)) {
+			await staged?.discard().catch(() => undefined);
+		}
 		throw error;
 	}
 	if (metadata) {
