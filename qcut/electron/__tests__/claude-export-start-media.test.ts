@@ -307,7 +307,9 @@ describe("export start and the project's media", () => {
 	 * "nothing changed".
 	 */
 	it("refuses a renderer export when the check did not answer in time", async () => {
-		const accessor = buildAccessor(buildTimeline("project-a"));
+		const accessor = buildAccessor(
+			timelineWithShake({ projectId: "project-a", clip: { sourceId: "m" } })
+		);
 		Object.assign(accessor, {
 			requestMediaRefresh: vi.fn(async () => {
 				throw new Error("Renderer media refresh timed out.");
@@ -331,6 +333,29 @@ describe("export start and the project's media", () => {
 				"A renderer export would use the editor's old copies: the editor did not confirm that its media copies match the project folder (Renderer media refresh timed out.). It may still be reading files that changed; retry in a moment.",
 		});
 		expect(startRendererExportJob).not.toHaveBeenCalled();
+	});
+
+	it("lets a renderer export of a timeline without media start though the check did not answer", async () => {
+		const accessor = buildAccessor(buildTimeline("project-a"));
+		Object.assign(accessor, {
+			requestMediaRefresh: vi.fn(async () => {
+				throw new Error("Renderer media refresh timed out.");
+			}),
+			requestLocalVideoExport: vi.fn(),
+		});
+		const { router, getHandler } = buildRouterHarness();
+		registerSharedRoutes(router, accessor);
+		const [method, path] = EXPORT_START.split(" ");
+		// Titles alone: the editor holds no copy of a file that could be old.
+		await getHandler(
+			method,
+			path
+		)({
+			params: { projectId: "project-a" },
+			query: {},
+			body: { engine: "muxer" },
+		});
+		expect(startRendererExportJob).toHaveBeenCalledTimes(1);
 	});
 
 	it("answers 409 with the clips named when their media is not in the project", async () => {
