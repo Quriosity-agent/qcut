@@ -48,6 +48,10 @@ import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
 import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
 import { planMediaOverlays } from "./media-overlay-plan.js";
+import {
+	ClipMediaMissingError,
+	type MissingClipMedia,
+} from "./missing-clip-media.js";
 import { mediaOverlayRendererReason } from "../../../types/media-overlay-export-policy.js";
 import { probeHasAudioStream } from "../../../ffmpeg/utils.js";
 import {
@@ -521,12 +525,26 @@ export async function startExportJob({
 		});
 		const nonStickerResolvedMediaFiles: MediaFile[] = [];
 		const stickerResolvedMediaFiles: MediaFile[] = [];
+		const missingMedia: MissingClipMedia[] = [];
 		const allSegments = await collectExportSegments({
 			timeline,
 			mediaFiles,
 			projectId,
 			resolvedMediaFiles: nonStickerResolvedMediaFiles,
+			missingMedia,
 		});
+		const timelineAudioFiles = await collectTimelineAudioFiles({
+			timeline,
+			mediaFiles,
+			projectId,
+			resolvedMediaFiles: nonStickerResolvedMediaFiles,
+			missingMedia,
+		});
+		// A clip whose media is not found would be left out of the file while
+		// the editor still plays it: say which clips, and export nothing.
+		if (missingMedia.length > 0) {
+			throw new ClipMediaMissingError({ missing: missingMedia });
+		}
 
 		if (allSegments.length === 0) {
 			throw new Error(
@@ -587,15 +605,9 @@ export async function startExportJob({
 				`Found ${textOverlays.length} text/caption overlay(s) to render`
 			);
 		}
-		const audioFiles = [
-			...(await collectTimelineAudioFiles({
-				timeline,
-				mediaFiles,
-				projectId,
-				resolvedMediaFiles: nonStickerResolvedMediaFiles,
-			})),
-			...overlayAudioFiles,
-		].sort((left, right) => left.startTime - right.startTime);
+		const audioFiles = [...timelineAudioFiles, ...overlayAudioFiles].sort(
+			(left, right) => left.startTime - right.startTime
+		);
 		const stickerOverlayMediaIds = stickerOverlays.map(
 			(stickerOverlay) => stickerOverlay.mediaId
 		);
