@@ -270,12 +270,33 @@ export async function mediaReplace(
 		};
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : String(error);
+		// A request can fail after the file was renamed (the answer came too
+		// late): which name the file has now is asked, not assumed.
+		const held = await client
+			.get<Array<{ id: string; name: string }>>(`/api/claude/media/${project}`)
+			.catch(() => null);
+		const names = Array.isArray(held) ? held : null;
+		const named = names?.find((item) => item.name === old.name);
+		if (names && named && !names.some((item) => item.name === newName)) {
+			return {
+				success: true,
+				data: {
+					...replaced,
+					mediaId: named.id,
+					name: named.name,
+					importedAs: newName,
+					oldMediaRemoved: true,
+				},
+			};
+		}
 		return {
 			success: true,
 			data: {
 				...replaced,
 				oldMediaRemoved: true,
-				warning: `${newName} could not be given the name ${old.name} back (${reason}); it keeps ${newName}`,
+				warning: names?.some((item) => item.name === newName)
+					? `${newName} could not be given the name ${old.name} back (${reason}); it keeps ${newName}`
+					: `${newName} may not have been given the name ${old.name} back (${reason}); "qcut editor:media:list --project-id ${projectId}" shows the name and id it has now`,
 			},
 		};
 	}
