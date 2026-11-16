@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -12,6 +13,8 @@ const hooks = vi.hoisted(() => ({
 	onMetadataRead: undefined as undefined | ((mediaId: string) => Promise<void>),
 	/** Stands in for a volume that has no hard links. */
 	noHardLinks: false,
+	/** Runs when a file is about to take the name `to`. */
+	beforeLink: undefined as undefined | ((to: string) => Promise<void>),
 }));
 
 vi.mock("fs/promises", async (importOriginal) => {
@@ -19,6 +22,7 @@ vi.mock("fs/promises", async (importOriginal) => {
 	return {
 		...real,
 		link: async (...args: Parameters<typeof real.link>) => {
+			await hooks.beforeLink?.(String(args[1]));
 			if (hooks.noHardLinks) {
 				throw Object.assign(new Error("ENOTSUP: operation not supported"), {
 					code: "ENOTSUP",
@@ -111,6 +115,18 @@ const RESTRICTED = {
 	usage: "internal-reference-only",
 } as const;
 
+/** Another restricted file's metadata, told from `RESTRICTED` by its item. */
+const THEIRS = { ...RESTRICTED, itemId: "42002" } as const;
+
+/** Where a media id's restricted metadata is kept. */
+function sidecarOf(mediaId: string): string {
+	return path.join(
+		mediaDirectory(),
+		".qcut-restricted-media",
+		`${createHash("sha256").update(mediaId, "utf8").digest("hex")}.json`
+	);
+}
+
 /**
  * Has someone else's file appear at `filePath` at the moment a move of
  * media `mediaId` has seen that name free and is reading the metadata it
@@ -147,6 +163,7 @@ describe("renaming a media file in the project folder", () => {
 	afterEach(async () => {
 		hooks.onMetadataRead = undefined;
 		hooks.noHardLinks = false;
+		hooks.beforeLink = undefined;
 		await fs.rm(testState.documentsRoot, { recursive: true, force: true });
 	});
 
@@ -286,6 +303,220 @@ describe("renaming a media file in the project folder", () => {
 				projectId: PROJECT_ID,
 			})
 		).toBeUndefined();
+	});
+
+	/**
+	 * A restricted file's metadata is kept by media id, and the id follows
+	 * the name. A file that takes the wanted name while a rename is under
+	 * way owns that id: the rename must neither write its own metadata over
+	 * the other file's nor, when it gives up, remove it. Either way the other
+	 * file would be left without its restriction.
+	 */
+	it("leaves alone the metadata of a restricted file that takes the name first", async () => {
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		// As an import does: the file, then its metadata, after the rename
+		// has seen the name free.
+		let reads = 0;
+		hooks.onMetadataRead = async (readId) => {
+			if (readId !== shake) return;
+			reads += 1;
+			if (reads !== 2) return;
+			await fs.writeFile(wanted, "someone else");
+			await persistMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				metadata: THEIRS,
+				projectId: PROJECT_ID,
+			});
+		};
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toThrow("wanted.mp4 is already taken");
+		hooks.onMetadataRead = undefined;
+
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42002" });
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+		expect(await fs.readFile(wanted, "utf8")).toBe("someone else");
+	});
+
+	it("takes away the metadata it staged, not what a file put there since", async () => {
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		// The rename has staged its metadata; the other file arrives, with
+		// its own, just before the renamed file would take the name.
+		hooks.beforeLink = async (to) => {
+			if (to !== wanted) return;
+			hooks.beforeLink = undefined;
+			await fs.writeFile(wanted, "someone else");
+			await persistMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				metadata: THEIRS,
+				projectId: PROJECT_ID,
+			});
+		};
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toThrow("wanted.mp4 is already taken");
+
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42002" });
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+	});
+
+	it("replaces metadata a file that is gone left behind, but not metadata only just written", async () => {
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		// No file is named wanted.mp4; metadata for that id is there.
+		await persistMediaRestrictedMetadata({
+			mediaId: idOf("wanted.mp4"),
+			metadata: THEIRS,
+			projectId: PROJECT_ID,
+		});
+		const rename = () =>
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			});
+		// Written a moment ago: another move may be bringing its file.
+		await expect(rename()).rejects.toThrow("wanted.mp4 is already taken");
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42002" });
+
+		// Minutes old with no file: its file was removed outside the app.
+		const longAgo = new Date(Date.now() - 10 * 60_000);
+		await fs.utimes(sidecarOf(idOf("wanted.mp4")), longAgo, longAgo);
+		const renamed = await rename();
+		expect(renamed.name).toBe("wanted.mp4");
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: renamed.id,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
+				projectId: PROJECT_ID,
+			})
+		).toBeUndefined();
+	});
+
+	/**
+	 * A volume without hard links moves a file by a look at the name and a
+	 * rename. A file that takes the name while the move is prepared must
+	 * stay there too, and each file keep its own metadata.
+	 */
+	it("leaves both files and their metadata on a volume without hard links", async () => {
+		hooks.noHardLinks = true;
+		const shake = idOf("震屏01_踹盾.mp4");
+		await persistMediaRestrictedMetadata({
+			mediaId: shake,
+			metadata: RESTRICTED,
+			projectId: PROJECT_ID,
+		});
+		const wanted = path.join(mediaDirectory(), "wanted.mp4");
+		let reads = 0;
+		hooks.onMetadataRead = async (readId) => {
+			if (readId !== shake) return;
+			reads += 1;
+			if (reads !== 2) return;
+			await fs.writeFile(wanted, "someone else");
+			await persistMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				metadata: THEIRS,
+				projectId: PROJECT_ID,
+			});
+		};
+		await expect(
+			renameMediaFileOnDisk({
+				projectId: PROJECT_ID,
+				mediaId: shake,
+				newName: "wanted.mp4",
+				exactName: true,
+			})
+		).rejects.toThrow("wanted.mp4 is already taken");
+		hooks.onMetadataRead = undefined;
+
+		expect(await fs.readFile(wanted, "utf8")).toBe("someone else");
+		expect(
+			await fs.readFile(path.join(mediaDirectory(), "震屏01_踹盾.mp4"), "utf8")
+		).toBe("shake");
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: idOf("wanted.mp4"),
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42002" });
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: shake,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
+
+		// A plain rename there takes the next free name, with its metadata.
+		const renamed = await renameMediaFileOnDisk({
+			projectId: PROJECT_ID,
+			mediaId: shake,
+			newName: "wanted.mp4",
+		});
+		expect(renamed.name).toBe("wanted_1.mp4");
+		expect(await fs.readFile(renamed.path, "utf8")).toBe("shake");
+		expect(
+			await readMediaRestrictedMetadata({
+				mediaId: renamed.id,
+				projectId: PROJECT_ID,
+			})
+		).toMatchObject({ itemId: "42001" });
 	});
 
 	it("looks for the next free name when the one it picked is taken meanwhile", async () => {
