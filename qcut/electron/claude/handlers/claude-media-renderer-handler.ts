@@ -2,6 +2,8 @@ import type { BrowserWindow } from "electron";
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRefreshResult,
 	ClaudeMediaRenamedEvent,
 } from "../../types/claude-media-bridge-api.js";
 import { requestRendererMutation } from "./claude-renderer-mutation-handler.js";
@@ -12,7 +14,11 @@ const MEDIA_DELETE_CHANNEL = "claude:media:deleted" as const;
 const MEDIA_DELETE_RESPONSE_CHANNEL = "claude:media:deleted:response" as const;
 const MEDIA_RENAME_CHANNEL = "claude:media:renamed" as const;
 const MEDIA_RENAME_RESPONSE_CHANNEL = "claude:media:renamed:response" as const;
+const MEDIA_REFRESH_CHANNEL = "claude:media:refresh" as const;
+const MEDIA_REFRESH_RESPONSE_CHANNEL = "claude:media:refresh:response" as const;
 const MEDIA_RENDERER_TIMEOUT_MS = 30_000;
+/** A refresh reads whole files again; several large ones take a while. */
+const MEDIA_REFRESH_TIMEOUT_MS = 5 * 60_000;
 
 export async function requestMediaImportFromRenderer({
 	payload,
@@ -70,4 +76,53 @@ export async function requestMediaRenameFromRenderer({
 		timeoutMs: MEDIA_RENDERER_TIMEOUT_MS,
 		win,
 	});
+}
+
+function refreshEntries({ value }: { value: unknown }): Array<{
+	id: string;
+	name: string;
+	error?: string;
+}> {
+	if (!Array.isArray(value)) return [];
+	return value.flatMap((entry) => {
+		if (typeof entry !== "object" || entry === null) return [];
+		const { id, name, error } = entry as Record<string, unknown>;
+		if (typeof id !== "string" || typeof name !== "string") return [];
+		return [{ id, name, ...(typeof error === "string" ? { error } : {}) }];
+	});
+}
+
+/**
+ * Has the editor read again the media files that changed in the project
+ * folder, and says which ones it read and which it could not.
+ */
+export async function requestMediaRefreshFromRenderer({
+	payload,
+	win,
+}: {
+	payload: Omit<ClaudeMediaRefreshEvent, "requestId">;
+	win: BrowserWindow;
+}): Promise<ClaudeMediaRefreshResult> {
+	const answer = await requestRendererMutation({
+		channel: MEDIA_REFRESH_CHANNEL,
+		payload,
+		requestIdPrefix: "media",
+		responseChannel: MEDIA_REFRESH_RESPONSE_CHANNEL,
+		timeoutMessage: "Renderer media refresh timed out.",
+		timeoutMs: MEDIA_REFRESH_TIMEOUT_MS,
+		win,
+	});
+	const record =
+		typeof answer === "object" && answer !== null
+			? (answer as Record<string, unknown>)
+			: {};
+	return {
+		checked: typeof record.checked === "number" ? record.checked : 0,
+		refreshed: refreshEntries({ value: record.refreshed }).map(
+			({ id, name }) => ({ id, name })
+		),
+		failed: refreshEntries({ value: record.failed }).map(
+			({ id, name, error }) => ({ id, name, error: error ?? "unknown error" })
+		),
+	};
 }
