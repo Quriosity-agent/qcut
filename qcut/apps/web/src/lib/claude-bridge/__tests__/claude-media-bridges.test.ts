@@ -88,25 +88,16 @@ describe("the editor's answer to a media rename", () => {
 		).toEqual(RENAME);
 	});
 
-	it("reads the name and path the file had, and that the request settles", () => {
+	it("reads that the request settles", () => {
 		expect(
 			parseClaudeRenamedMediaEvent({
-				candidate: {
-					...EVENT,
-					previousName: "shake.mp4",
-					previousPath: "/project/media/shake.mp4",
-					settles: true,
-				},
+				candidate: { ...EVENT, settles: true },
 			})
-		).toEqual({
-			...RENAME,
-			previous: { name: "shake.mp4", localPath: "/project/media/shake.mp4" },
-			settles: true,
-		});
-		// Half of it is none of it, and only `true` settles.
+		).toEqual({ ...RENAME, settles: true });
+		// Only `true` settles.
 		expect(
 			parseClaudeRenamedMediaEvent({
-				candidate: { ...EVENT, previousName: "shake.mp4", settles: "yes" },
+				candidate: { ...EVENT, settles: "yes" },
 			})
 		).toEqual(RENAME);
 	});
