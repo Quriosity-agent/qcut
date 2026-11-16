@@ -10,6 +10,7 @@
  * @module electron/native-pipeline/editor/editor-handlers-media-refresh
  */
 
+import { MEDIA_REFRESH_CLIENT_TIMEOUT_MS } from "../../claude/handlers/claude-media-deadlines.js";
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import type { EditorApiClient } from "./editor-api-client.js";
 
@@ -19,9 +20,14 @@ export async function mediaRefresh(
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	// Whole files are read again: longer than a request usually waits.
 	const data = await client.post<{
 		failed?: Array<{ name: string; error: string }>;
-	}>(`/api/claude/media/${encodeURIComponent(opts.projectId)}/refresh`, {});
+	}>(
+		`/api/claude/media/${encodeURIComponent(opts.projectId)}/refresh`,
+		{},
+		{ timeout: MEDIA_REFRESH_CLIENT_TIMEOUT_MS }
+	);
 	const failed = data?.failed ?? [];
 	if (failed.length > 0) {
 		return {
