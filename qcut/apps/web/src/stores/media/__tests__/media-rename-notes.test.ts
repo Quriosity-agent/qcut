@@ -36,7 +36,7 @@ vi.mock("@qcut/platform-core", () => ({
 
 import {
 	forgetUnsettledRename,
-	noteUnsettledRename,
+	readUnsettledRename,
 	readUnsettledRenames,
 	type UnsettledRename,
 	unsettledRenameKey,
@@ -53,6 +53,7 @@ const NEW_PATH = "/projects/project-1/media/new.mp4";
  */
 const NOTES =
 	"media-rename-unsettled-project-1-a3cbdd9407c9b3ca14077f6663acc643";
+/** A note as the desktop app writes it before it moves the file. */
 const NOTE: UnsettledRename = {
 	oldId: OLD,
 	oldName: "old.mp4",
@@ -62,16 +63,6 @@ const NOTE: UnsettledRename = {
 	newPath: NEW_PATH,
 	notedAt: 0,
 };
-/** The same rename, with the file expected under its new name. */
-const NOTE_FILE_STAYS: UnsettledRename = {
-	oldId: NEW,
-	oldName: "new.mp4",
-	oldPath: NEW_PATH,
-	newId: OLD,
-	newName: "old.mp4",
-	newPath: OLD_PATH,
-	notedAt: 7,
-};
 const CHANGED = new Date("2026-11-01T08:00:00.123Z");
 const SEEN = { size: 4096, modifiedAt: CHANGED.getTime() };
 
@@ -80,7 +71,7 @@ describe("the notes of unsettled renames", () => {
 		desktop.stored.clear();
 	});
 
-	it("keeps each note under a key of its own, made of the project and the two ids", async () => {
+	it("finds each note under a key of its own, made of the project and the two ids", async () => {
 		expect(
 			await unsettledRenameKey({ projectId: "project-1", rename: NOTE })
 		).toBe(NOTES);
@@ -88,19 +79,39 @@ describe("the notes of unsettled renames", () => {
 		expect(
 			await unsettledRenameKey({
 				projectId: "project-1",
-				rename: NOTE_FILE_STAYS,
+				rename: { oldId: NEW, newId: OLD },
 			})
 		).toBe(NOTES);
-		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
-		expect(desktop.stored.get(NOTES)).toEqual(NOTE);
+		expect(
+			await unsettledRenameKey({ projectId: "project-2", rename: NOTE })
+		).not.toBe(NOTES);
+
+		desktop.stored.set(NOTES, { ...NOTE, file: SEEN, fileIs: "new" });
+		const found = { ...NOTE, file: SEEN, fileIs: "new" };
+		expect(
+			await readUnsettledRename({ projectId: "project-1", rename: NOTE })
+		).toEqual(found);
+		expect(
+			await readUnsettledRename({
+				projectId: "project-1",
+				rename: { oldId: NEW, newId: OLD },
+			})
+		).toEqual(found);
+		expect(
+			await readUnsettledRename({
+				projectId: "project-1",
+				rename: { oldId: OLD, newId: "media_third" },
+			})
+		).toBeUndefined();
 	});
 
-	it("keeps one note for a pair of ids, and none once it is forgotten", async () => {
-		await noteUnsettledRename({ projectId: "project-1", rename: NOTE });
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: { ...NOTE, newId: "media_third", newPath: "/p/third.mp4" },
-		});
+	it("reads a project's notes, and drops one by its two ids", async () => {
+		const third = { ...NOTE, newId: "media_third", newPath: "/p/third.mp4" };
+		desktop.stored.set(NOTES, NOTE);
+		desktop.stored.set(
+			await unsettledRenameKey({ projectId: "project-1", rename: third }),
+			third
+		);
 		expect(
 			(await readUnsettledRenames("project-1")).map((note) => note.newId).sort()
 		).toEqual([NEW, "media_third"]);
@@ -115,64 +126,7 @@ describe("the notes of unsettled renames", () => {
 		expect(desktop.stored.size).toBe(0);
 	});
 
-	/**
-	 * The desktop app notes a rename before the editor can: it has seen the
-	 * file, and says when it is done with it. The editor's own note of the
-	 * same matter must not take that away.
-	 */
-	it("keeps the note that is there when it expects the file under the same name", async () => {
-		const fromApp = { ...NOTE, file: SEEN, decided: true, notedAt: 3 };
-		desktop.stored.set(NOTES, fromApp);
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: { ...NOTE, notedAt: 99 },
-		});
-		expect(desktop.stored.get(NOTES)).toEqual(fromApp);
-	});
-
-	it("replaces a note that expects the other name, and keeps what it knew of the file", async () => {
-		desktop.stored.set(NOTES, { ...NOTE, file: SEEN });
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: NOTE_FILE_STAYS,
-		});
-		expect(desktop.stored.get(NOTES)).toEqual({
-			...NOTE_FILE_STAYS,
-			file: SEEN,
-		});
-		expect(await readUnsettledRenames("project-1")).toHaveLength(1);
-	});
-
-	/**
-	 * The editor was asked to go back to the old id and took its time; the
-	 * file could not be put back meanwhile, and the desktop app noted that
-	 * it stays. The editor then fails, and would note that the file is
-	 * expected under its old name: what the request wanted, no longer what
-	 * is so.
-	 */
-	it("keeps a note the desktop app is done with, though it expects the other name", async () => {
-		const fromApp = { ...NOTE_FILE_STAYS, file: SEEN, decided: true };
-		desktop.stored.set(NOTES, fromApp);
-		await noteUnsettledRename({
-			projectId: "project-1",
-			rename: { ...NOTE, notedAt: 99 },
-		});
-		expect(desktop.stored.get(NOTES)).toEqual(fromApp);
-	});
-
-	it("keeps every note when several are written at once", async () => {
-		await Promise.all(
-			["a", "b", "c"].map((name) =>
-				noteUnsettledRename({
-					projectId: "project-1",
-					rename: { ...NOTE, newId: `media_${name}` },
-				})
-			)
-		);
-		expect(await readUnsettledRenames("project-1")).toHaveLength(3);
-	});
-
-	it("reads nothing from what is not a note, and nothing of a file from what does not describe one", async () => {
+	it("reads nothing from what is not a note, and leaves out what a note says wrongly", async () => {
 		desktop.stored.set("media-rename-unsettled-project-1-junk", {
 			newId: NEW,
 		});
@@ -184,12 +138,12 @@ describe("the notes of unsettled renames", () => {
 		desktop.stored.set(NOTES, {
 			...NOTE,
 			file: { size: "large" },
-			decided: "yes",
+			fileIs: "somewhere",
 		});
 		expect(await readUnsettledRenames("project-1")).toEqual([NOTE]);
-		desktop.stored.set(NOTES, { ...NOTE, file: SEEN, decided: true });
+		desktop.stored.set(NOTES, { ...NOTE, file: SEEN, fileIs: "old" });
 		expect(await readUnsettledRenames("project-1")).toEqual([
-			{ ...NOTE, file: SEEN, decided: true },
+			{ ...NOTE, file: SEEN, fileIs: "old" },
 		]);
 	});
 });
@@ -209,16 +163,16 @@ describe("which of a note's two names the file has", () => {
 		desktop.files.clear();
 	});
 
-	it("is the name that alone has a file, whatever that file looks like", async () => {
+	it("is the name that alone has a file, whatever that file looks like and whatever the app said", async () => {
 		desktop.files.set(OLD_PATH, another);
-		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			alone("old")
-		);
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "new" })
+		).toEqual(alone("old"));
 		desktop.files.clear();
 		desktop.files.set(NEW_PATH, another);
-		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			alone("new")
-		);
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "old" })
+		).toEqual(alone("new"));
 	});
 
 	it("is nowhere with a file under neither name, and unknown when the folder cannot be asked", async () => {
@@ -233,14 +187,15 @@ describe("which of a note's two names the file has", () => {
 
 	/**
 	 * Both names have a file when another file took one of them: the
-	 * renamed file is the one that looks as the desktop app noted it.
+	 * renamed file is the one that looks as the desktop app noted it,
+	 * wherever the app meant to leave it.
 	 */
 	it("tells the renamed file from another file by its size and the time it was changed", async () => {
 		desktop.files.set(OLD_PATH, another);
 		desktop.files.set(NEW_PATH, theFile);
-		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			besideAnother("new")
-		);
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "old" })
+		).toEqual(besideAnother("new"));
 
 		desktop.files.set(OLD_PATH, theFile);
 		desktop.files.set(NEW_PATH, another);
@@ -249,21 +204,38 @@ describe("which of a note's two names the file has", () => {
 		);
 	});
 
-	it("takes the name the note expects when that does not tell them apart", async () => {
+	it("is where the app left it when the two files cannot be told apart", async () => {
 		desktop.files.set(OLD_PATH, theFile);
 		desktop.files.set(NEW_PATH, theFile);
-		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			besideAnother("old")
-		);
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "old" })
+		).toEqual(besideAnother("old"));
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "new" })
+		).toEqual(besideAnother("new"));
 		// Neither looks like it any more.
 		desktop.files.set(OLD_PATH, another);
 		desktop.files.set(NEW_PATH, { ...theFile, size: 1 });
+		expect(
+			await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "old" })
+		).toEqual(besideAnother("old"));
+	});
+
+	/**
+	 * The app noted the rename and never said where it left the file: its
+	 * later note could not be written, or it ended. Put back under its old
+	 * name, the file would have left the new one free. With a file under
+	 * each, it is under the new name, and the old one is another file's.
+	 */
+	it("is the new name when the app never said, and the two cannot be told apart", async () => {
+		desktop.files.set(OLD_PATH, theFile);
+		desktop.files.set(NEW_PATH, theFile);
 		expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-			besideAnother("old")
+			besideAnother("new")
 		);
 		// Nothing was noted of the file.
-		desktop.files.set(NEW_PATH, theFile);
-		expect(await whereNotedFileIs(NOTE)).toEqual(besideAnother("old"));
+		desktop.files.set(OLD_PATH, another);
+		expect(await whereNotedFileIs(NOTE)).toEqual(besideAnother("new"));
 	});
 
 	it("reads the time a file was changed as a date, a number or a date in writing", async () => {
@@ -274,9 +246,9 @@ describe("which of a note's two names the file has", () => {
 			{ size: SEEN.size, lastModified: CHANGED.toISOString() },
 		]) {
 			desktop.files.set(NEW_PATH, shown);
-			expect(await whereNotedFileIs({ ...NOTE, file: SEEN })).toEqual(
-				besideAnother("new")
-			);
+			expect(
+				await whereNotedFileIs({ ...NOTE, file: SEEN, fileIs: "old" })
+			).toEqual(besideAnother("new"));
 		}
 	});
 });
