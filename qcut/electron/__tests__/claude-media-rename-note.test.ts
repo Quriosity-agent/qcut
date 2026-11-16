@@ -7,6 +7,8 @@ const testState = vi.hoisted(() => ({
 	userData: "",
 	/** The app's store cannot be written. */
 	storeIsFull: false,
+	/** The writes to the store that were begun, done or not. */
+	writes: [] as Promise<unknown>[],
 }));
 
 vi.mock("electron", () => ({
@@ -22,7 +24,9 @@ vi.mock("../main-ipc/storage-json.js", async (importOriginal) => {
 			...args: Parameters<typeof real.writeStorageJson>
 		) => {
 			if (testState.storeIsFull) throw new Error("the disk is full");
-			return real.writeStorageJson(...args);
+			const written = real.writeStorageJson(...args);
+			testState.writes.push(written.catch(() => undefined));
+			return written;
 		},
 	};
 });
@@ -75,6 +79,7 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 
 	afterEach(async () => {
 		noLongerAtWorkOnMediaRenames();
+		await Promise.all(testState.writes.splice(0));
 		testState.storeIsFull = false;
 		vi.useRealTimers();
 		await fs.rm(testState.userData, { recursive: true, force: true });
@@ -233,13 +238,11 @@ describe("the desktop app's note of a rename the editor may not have settled", (
 	describe("while the rename is under way", () => {
 		const MINUTE = 60_000;
 		const noted = () => fs.readdir(path.join(testState.userData, "projects"));
-		/** Time goes by, and what was written in it reaches the disk. */
+		/** Time goes by, and what was written in it has reached the disk. */
 		async function minutesGoBy(minutes: number): Promise<void> {
 			for (let minute = 0; minute < minutes; minute += 1) {
 				vi.advanceTimersByTime(MINUTE);
-				for (let turn = 0; turn < 20; turn += 1) {
-					await new Promise((resolve) => setImmediate(resolve));
-				}
+				await Promise.all(testState.writes.splice(0));
 			}
 		}
 
