@@ -545,17 +545,40 @@ async function repointOpenScene({
 	/** The scene may be stored with the other id though the store is not. */
 	alwaysSave: boolean;
 }): Promise<number> {
-	const timeline = useTimelineStore.getState();
-	const changed = timeline.repointMediaReferences({ fromId, toId });
+	const changed = useTimelineStore
+		.getState()
+		.repointMediaReferences({ fromId, toId });
 	// Even with no clip changed: an undo step may hold one, and was repointed.
 	undo.push({
 		what: "the open scene's timeline",
 		run: () => takeSceneBack({ ...scene, fromId, toId }),
 	});
-	if ((changed > 0 || alwaysSave) && !(await timeline.saveImmediate())) {
-		throw new Error("The timeline could not be saved with the renamed media");
+	if (changed > 0 || alwaysSave) {
+		await saveOpenScene(scene).catch((error: unknown) => {
+			throw new Error(
+				`The timeline could not be saved with the renamed media: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error }
+			);
+		});
 	}
 	return changed;
+}
+
+/**
+ * Saves the timeline the store holds as this scene's, and as no other's.
+ *
+ * The tracks are taken here and now, with the scene known to be the open
+ * one, and saved under its own project and scene. The store's own
+ * `saveImmediate` waits a moment and then reads the open project and the
+ * tracks: with another project opened in that moment it wrote that
+ * project's timeline, still empty, into that project's storage.
+ */
+function saveOpenScene({ projectId, sceneId }: SceneRef): Promise<void> {
+	return storageService.saveTimeline({
+		projectId,
+		tracks: useTimelineStore.getState()._tracks,
+		sceneId,
+	});
 }
 
 /** The scenes that are not open keep their timelines in storage only. */
@@ -602,13 +625,17 @@ async function takeSceneBack({
 	toId,
 }: SceneRef & MediaIds): Promise<void> {
 	if (sceneIsOpen({ projectId, sceneId })) {
-		const timeline = useTimelineStore.getState();
-		timeline.repointMediaReferences({ fromId: toId, toId: fromId });
+		useTimelineStore
+			.getState()
+			.repointMediaReferences({ fromId: toId, toId: fromId });
 		// Saved whatever the store had to change: the rename may have written
 		// this scene to storage while another one was open.
-		if (!(await timeline.saveImmediate())) {
-			throw new Error("The timeline could not be saved with the old media id");
-		}
+		await saveOpenScene({ projectId, sceneId }).catch((error: unknown) => {
+			throw new Error(
+				`The timeline could not be saved with the old media id: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error }
+			);
+		});
 		return;
 	}
 	const tracks = await storageService.loadTimeline({ projectId, sceneId });
