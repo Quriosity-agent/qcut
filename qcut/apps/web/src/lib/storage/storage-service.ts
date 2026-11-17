@@ -455,6 +455,19 @@ class StorageService {
 		await mediaMetadataAdapter.set(mediaItem.id, metadata);
 	}
 
+	/**
+	 * Saves a media item's record and leaves its stored bytes alone. For a
+	 * fact about the item that does not change its file: writing the bytes
+	 * again for that would copy the whole file each time.
+	 */
+	async saveMediaItemRecord(
+		projectId: string,
+		mediaItem: MediaItem
+	): Promise<void> {
+		const { mediaMetadataAdapter } = this.getProjectMediaAdapters(projectId);
+		await this.saveMediaItemMetadata({ mediaItem, mediaMetadataAdapter });
+	}
+
 	async saveMediaItem(projectId: string, mediaItem: MediaItem): Promise<void> {
 		debugLog(
 			`[StorageService.saveMediaItem] Called with projectId: ${projectId}, mediaItem.id: ${mediaItem.id}, mediaItem.name: ${mediaItem.name}`

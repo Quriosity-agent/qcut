@@ -11,13 +11,22 @@
  * The new file is imported, every clip that played the old item is given the
  * new one in one undo step (each as `timeline replace-media` would: its
  * place, length and settings kept, a file too short for it refused), and the
- * old item is then removed. The new item has an id of its own, so nothing the
- * editor worked out for the old file can be shown for the new one.
+ * old item is then removed. The new item is imported as an item of its own,
+ * so nothing the editor worked out for the old file can be shown for the new
+ * one.
+ *
+ * A file that has the old item's name is imported beside it under a spare
+ * name (`name_1.ext`), because the old one still holds the name. Once the
+ * old item is gone the new one is given the name back, so a script that
+ * finds media by file name still finds it; its id follows the name, so it is
+ * the id the old item had.
  *
  * @module electron/native-pipeline/editor/editor-handlers-media-replace
  */
 
 import fs from "node:fs";
+import path from "node:path";
+import { MEDIA_RENAME_CLIENT_TIMEOUT_MS } from "../../claude/handlers/claude-media-deadlines.js";
 import type { ClaudeElement, ClaudeTimeline } from "../../types/claude-api.js";
 import type { CLIResult, CLIRunOptions } from "../cli/cli-runner/types.js";
 import { type EditorApiClient, EditorApiError } from "./editor-api-client.js";
@@ -228,16 +237,67 @@ export async function mediaReplace(
 		project,
 		mediaId: oldMediaId,
 	});
-	return {
-		success: true,
-		data: {
-			...replaced,
-			oldMediaRemoved: removal.removed,
-			...(removal.removed
-				? {}
-				: {
-						warning: `${old.name ?? oldMediaId} could not be removed${removal.reason ? ` (${removal.reason})` : ""}; "qcut editor:media:delete --project-id ${projectId} --media-id ${oldMediaId}" removes it`,
-					}),
-		},
-	};
+	if (!removal.removed) {
+		return {
+			success: true,
+			data: {
+				...replaced,
+				oldMediaRemoved: false,
+				warning: `${old.name ?? oldMediaId} could not be removed${removal.reason ? ` (${removal.reason})` : ""}; "qcut editor:media:delete --project-id ${projectId} --media-id ${oldMediaId}" removes it`,
+			},
+		};
+	}
+	// The source had the old item's name and was imported beside it under a
+	// spare one; the name is free now.
+	if (!old.name || newName === old.name || path.basename(source) !== old.name) {
+		return { success: true, data: { ...replaced, oldMediaRemoved: true } };
+	}
+	try {
+		const named = await client.patch<{ id: string; name: string }>(
+			`/api/claude/media/${project}/${encodeURIComponent(newMediaId)}/rename`,
+			{ newName: old.name, exactName: true },
+			{ timeout: MEDIA_RENAME_CLIENT_TIMEOUT_MS }
+		);
+		return {
+			success: true,
+			data: {
+				...replaced,
+				mediaId: named.id,
+				name: named.name,
+				importedAs: newName,
+				oldMediaRemoved: true,
+			},
+		};
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		// A request can fail after the file was renamed (the answer came too
+		// late): which name the file has now is asked, not assumed.
+		const held = await client
+			.get<Array<{ id: string; name: string }>>(`/api/claude/media/${project}`)
+			.catch(() => null);
+		const names = Array.isArray(held) ? held : null;
+		const named = names?.find((item) => item.name === old.name);
+		if (names && named && !names.some((item) => item.name === newName)) {
+			return {
+				success: true,
+				data: {
+					...replaced,
+					mediaId: named.id,
+					name: named.name,
+					importedAs: newName,
+					oldMediaRemoved: true,
+				},
+			};
+		}
+		return {
+			success: true,
+			data: {
+				...replaced,
+				oldMediaRemoved: true,
+				warning: names?.some((item) => item.name === newName)
+					? `${newName} could not be given the name ${old.name} back (${reason}); it keeps ${newName}`
+					: `${newName} may not have been given the name ${old.name} back (${reason}); "qcut editor:media:list --project-id ${projectId}" shows the name and id it has now`,
+			},
+		};
+	}
 }

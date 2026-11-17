@@ -48,6 +48,10 @@ import { collectJianyingTextOverlays } from "./jianying-text-overlay.js";
 import { collectTextOverlays } from "./text-overlay.js";
 import { collectAdjustmentLayers } from "./adjustment-layer-pass.js";
 import { planMediaOverlays } from "./media-overlay-plan.js";
+import {
+	ClipMediaMissingError,
+	type MissingClipMedia,
+} from "./missing-clip-media.js";
 import { mediaOverlayRendererReason } from "../../../types/media-overlay-export-policy.js";
 import { probeHasAudioStream } from "../../../ffmpeg/utils.js";
 import {
@@ -246,8 +250,35 @@ function assertRendererExportRequestCompatible({
 	throw new Error(
 		`This timeline exports through the renderer engine (${because}), which does not take these CLI overrides: ${unsupportedOptions.join(
 			", "
-		)}. Drop them, or pass --engine muxer.`
+		)}. ${rendererOverrideAdvice({ request, reasons, unsupportedOptions })}`
 	);
+}
+
+/**
+ * What to do about overrides the renderer engine refused. "Pass --engine
+ * muxer" used to end every such refusal, and helps in one case only: muxer
+ * is the renderer engine, so a range, a bitrate or --keep-temp is refused
+ * again with it.
+ */
+function rendererOverrideAdvice({
+	request,
+	reasons,
+	unsupportedOptions,
+}: {
+	request: ExportJobRequest;
+	reasons: string[];
+	unsupportedOptions: string[];
+}): string {
+	const onlyEngine =
+		unsupportedOptions.length === 1 && unsupportedOptions[0] === "engine";
+	if (onlyEngine) {
+		return "Drop --engine, or pass --engine auto or --engine muxer.";
+	}
+	// Nothing in the timeline needs the renderer; the request chose it.
+	if (request.engine === "muxer" && reasons.length <= 1) {
+		return "Drop them, or drop --engine muxer: the native export takes them.";
+	}
+	return "Drop them. They belong to the native export, which cannot draw this timeline while it has what is named in the brackets; --engine muxer is the renderer engine too and takes none of them.";
 }
 
 /**
@@ -521,12 +552,26 @@ export async function startExportJob({
 		});
 		const nonStickerResolvedMediaFiles: MediaFile[] = [];
 		const stickerResolvedMediaFiles: MediaFile[] = [];
+		const missingMedia: MissingClipMedia[] = [];
 		const allSegments = await collectExportSegments({
 			timeline,
 			mediaFiles,
 			projectId,
 			resolvedMediaFiles: nonStickerResolvedMediaFiles,
+			missingMedia,
 		});
+		const timelineAudioFiles = await collectTimelineAudioFiles({
+			timeline,
+			mediaFiles,
+			projectId,
+			resolvedMediaFiles: nonStickerResolvedMediaFiles,
+			missingMedia,
+		});
+		// A clip whose media is not found would be left out of the file while
+		// the editor still plays it: say which clips, and export nothing.
+		if (missingMedia.length > 0) {
+			throw new ClipMediaMissingError({ missing: missingMedia });
+		}
 
 		if (allSegments.length === 0) {
 			throw new Error(
@@ -587,15 +632,9 @@ export async function startExportJob({
 				`Found ${textOverlays.length} text/caption overlay(s) to render`
 			);
 		}
-		const audioFiles = [
-			...(await collectTimelineAudioFiles({
-				timeline,
-				mediaFiles,
-				projectId,
-				resolvedMediaFiles: nonStickerResolvedMediaFiles,
-			})),
-			...overlayAudioFiles,
-		].sort((left, right) => left.startTime - right.startTime);
+		const audioFiles = [...timelineAudioFiles, ...overlayAudioFiles].sort(
+			(left, right) => left.startTime - right.startTime
+		);
 		const stickerOverlayMediaIds = stickerOverlays.map(
 			(stickerOverlay) => stickerOverlay.mediaId
 		);

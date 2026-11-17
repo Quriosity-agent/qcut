@@ -15,6 +15,7 @@ import {
 } from "./utility-http-server.js";
 import { UtilityPtyManager } from "./utility-pty-manager.js";
 import type { MainToUtilityMessage } from "./utility-ipc-types.js";
+import { createMainRequests } from "./utility-main-requests.js";
 import { setSessionTokenProvider } from "../native-pipeline/infra/proxy-client.js";
 import { getKey } from "../native-pipeline/infra/key-manager.js";
 import { applyProgressEvent } from "../claude/handlers/claude-export-handler/public-api.js";
@@ -83,60 +84,17 @@ setSessionTokenProvider(async () => {
 
 const ptyManager = new UtilityPtyManager(parentPort);
 
-// Pending request callbacks for main process responses
-const pendingRequests = new Map<
-	string,
-	{ resolve: (value: unknown) => void; reject: (err: Error) => void }
->();
+// What this process asks of the main one goes over the port, and the
+// answers come back the same way (utility-main-requests.ts).
+const mainRequests = createMainRequests({
+	post: (message) => parentPort.postMessage(message),
+});
 
 /**
  * Send a request to the main process and await response.
  * Used for operations that need BrowserWindow access.
  */
-export function requestFromMain(
-	channel: string,
-	data: Record<string, unknown>,
-	options: { timeoutMs?: number } = {}
-): Promise<unknown> {
-	return new Promise((resolve, reject) => {
-		const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-		// Screen-recording start AND stop are both slow paths:
-		//  - start: in standalone/headless mode the renderer is still
-		//    booting React + bridge listeners (can take 5-15s on a cold
-		//    hidden window); the main-side handler itself waits up to 30s.
-		//  - stop: MediaRecorder flush + chunk writes take up to 30s.
-		// Any shorter timeout here truncates main's own wait and produces
-		// a misleading "Main process request timed out" error while the
-		// renderer is still coming up.
-		const timeoutMs =
-			options.timeoutMs ??
-			(channel.startsWith("screen-recording:") ? 35_000 : 10_000);
-		const timer = setTimeout(() => {
-			pendingRequests.delete(id);
-			reject(new Error(`Main process request timed out: ${channel}`));
-		}, timeoutMs);
-
-		pendingRequests.set(id, {
-			resolve: (value: unknown) => {
-				clearTimeout(timer);
-				resolve(value);
-			},
-			reject: (err: Error) => {
-				clearTimeout(timer);
-				reject(err);
-			},
-		});
-
-		// The deadline lets main skip work this request has stopped waiting for.
-		parentPort.postMessage({
-			type: "main-request",
-			id,
-			channel,
-			data,
-			deadline: Date.now() + timeoutMs,
-		});
-	});
-}
+export const requestFromMain = mainRequests.requestFromMain;
 
 // Handle messages from main process
 parentPort.on(
@@ -161,19 +119,10 @@ parentPort.on(
 				break;
 			}
 
-			case "main-response": {
+			case "main-response":
 				// Response to a requestFromMain call
-				const pending = pendingRequests.get(msg.id);
-				if (pending) {
-					pendingRequests.delete(msg.id);
-					if (msg.error) {
-						pending.reject(new Error(msg.error));
-					} else {
-						pending.resolve(msg.result);
-					}
-				}
+				mainRequests.answered(msg);
 				break;
-			}
 
 			// PTY operations forwarded from main process IPC handlers
 			case "pty:spawn":

@@ -149,6 +149,30 @@ class BlobManager {
 	}
 
 	/**
+	 * A new long-lived URL for a file that takes the place of another one
+	 * with the same name (a media file written over on disk and read again).
+	 *
+	 * `getOrCreateObjectURL` would hand back the old file's URL when the two
+	 * are the same size: its fallback key is the size and the name, nothing of
+	 * the content. This always makes a new URL and points both caches at it,
+	 * so later lookups for the file, by instance or by name and size, find the
+	 * new content. The old URL keeps its references until they are released.
+	 */
+	createReplacementObjectURL(file: File | Blob, source?: string): string {
+		const url = URL.createObjectURL(file);
+		this.blobs.set(url, {
+			url,
+			file,
+			createdAt: Date.now(),
+			source,
+			refCount: 1,
+		});
+		this.fileToUrl.set(file, url);
+		this.fileKeyToUrl.set(this.getFileKey(file), url);
+		return url;
+	}
+
+	/**
 	 * Create a tracked blob URL that will be automatically cleaned up.
 	 * Always creates a NEW URL - use for temporary operations that revoke immediately.
 	 *
@@ -447,6 +471,18 @@ export const getOrCreateObjectURL = (
 	source?: string
 ): string => {
 	return blobManager.getOrCreateObjectURL(file, source);
+};
+
+/**
+ * A new long-lived URL for a file that replaces another of the same name;
+ * later cached lookups resolve to it. See
+ * {@link BlobManager.createReplacementObjectURL}.
+ */
+export const createReplacementObjectURL = (
+	file: File | Blob,
+	source?: string
+): string => {
+	return blobManager.createReplacementObjectURL(file, source);
 };
 
 /**

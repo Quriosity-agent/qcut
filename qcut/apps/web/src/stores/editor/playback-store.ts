@@ -206,7 +206,11 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
 		const clampedTime = Math.max(0, Math.min(duration, time));
 
 		_mutableCurrentTime = clampedTime;
-		set({ currentTime: clampedTime });
+		// A seek ends a hover preview: with the pointer resting on the timeline
+		// the paused preview kept showing the hovered frame, so a seek from the
+		// keyboard or `qcut editor timeline seek` moved the time but not the
+		// picture. The next pointer move starts a new hover preview.
+		set({ currentTime: clampedTime, previewScrubTime: null });
 
 		const event = new CustomEvent("playback-seek", {
 			detail: { time: clampedTime },

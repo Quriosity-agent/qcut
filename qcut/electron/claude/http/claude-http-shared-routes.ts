@@ -15,6 +15,7 @@
  */
 
 import type { UpdateRecord } from "../../update-notice.js";
+import { randomUUID } from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
@@ -73,6 +74,9 @@ import type {
 } from "../../types/claude-state-api.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRefreshResult,
+	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../../types/claude-media-bridge-api.js";
 import {
@@ -85,11 +89,22 @@ import {
 	getMediaInfo,
 	importMediaFile,
 	deleteMediaFile,
-	renameMediaFile,
 	importMediaFromUrl,
 	batchImportMedia,
 	extractFrame,
 } from "../handlers/claude-media-handler.js";
+import {
+	MediaNotFoundError,
+	type RenamedMediaFile,
+	renameMediaFileOnDisk,
+} from "../handlers/claude-media-rename.js";
+import {
+	forgetSettledMediaRename,
+	type MediaRenameNoteAccess,
+	type MediaRenameNotes,
+	notedMove,
+	settleUnfollowedMediaRename,
+} from "./claude-http-media-rename-settle.js";
 import { persistMediaRestrictedMetadata } from "../handlers/claude-media-restricted-metadata.js";
 import {
 	timelineToMarkdown,
@@ -148,6 +163,11 @@ import {
 } from "./claude-http-background-jobs.js";
 import { SCENE_DETECTION_ENGINE_CHOICES } from "../../types/claude-api.js";
 import { measureNativeExportLoudness } from "../handlers/claude-export-handler/export-loudness.js";
+import { ClipMediaMissingError } from "../handlers/claude-export-handler/missing-clip-media.js";
+import {
+	checkMediaBeforeExport,
+	staleCopiesOnTimeline,
+} from "./claude-http-export-media-check.js";
 import {
 	excludeTimelineTracks,
 	readExcludedTrackIds,
@@ -315,6 +335,18 @@ export interface WindowAccessor {
 	requestMediaDelete?(
 		payload: Omit<ClaudeMediaDeletedEvent, "requestId">
 	): Promise<void>;
+	/** Re-key a renamed media item in the renderer and repoint its clips. */
+	requestMediaRename?(
+		payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">
+	): Promise<void>;
+	/** Note a rename for the editor to settle when the project is next open. */
+	noteUnsettledMediaRename?: MediaRenameNoteAccess["noteUnsettledMediaRename"];
+	/** Drop that note: the editor and the folder are known to agree. */
+	forgetUnsettledMediaRename?: MediaRenameNoteAccess["forgetUnsettledMediaRename"];
+	/** Have the renderer read again the media files that changed on disk. */
+	requestMediaRefresh?(
+		payload: Omit<ClaudeMediaRefreshEvent, "requestId">
+	): Promise<ClaudeMediaRefreshResult>;
 	/** Execute batch timeline cuts (optional utility-process bridge hook) */
 	executeBatchCuts?(request: BatchCutRequest): Promise<BatchCutResponse>;
 	/** Execute range delete (optional utility-process bridge hook) */
@@ -950,7 +982,13 @@ export function registerSharedRoutes(
 
 	router.get("/api/claude/media/:projectId/:mediaId", async (req) => {
 		const media = await getMediaInfo(req.params.projectId, req.params.mediaId);
-		return media ? (await withMediaProbes([media]))[0] : media;
+		if (!media) {
+			throw new HttpError(
+				404,
+				`Media not found: ${req.params.mediaId} in project ${req.params.projectId} (see editor:media:list)`
+			);
+		}
+		return (await withMediaProbes([media]))[0];
 	});
 
 	router.post("/api/claude/media/:projectId/import", async (req) => {
@@ -1063,20 +1101,130 @@ export function registerSharedRoutes(
 		return true;
 	});
 
-	router.patch("/api/claude/media/:projectId/:mediaId/rename", async (req) => {
-		if (!req.body?.newName)
-			throw new HttpError(400, "Missing 'newName' in request body");
-		await assertProjectIsOpen({
-			accessor,
-			projectId: req.params.projectId,
+	// The editor plays its own copy of each media file; the native export and
+	// this API read the file in the project folder. A file written over in
+	// the folder leaves the two apart until the editor reads it again. It
+	// does so on its own when its window is looked at again, before a
+	// timeline apply and before an export; this asks for it outright.
+	router.post("/api/claude/media/:projectId/refresh", async (req) => {
+		const { projectId } = req.params;
+		await assertProjectIsOpen({ accessor, projectId });
+		const requestMediaRefresh = accessor.requestMediaRefresh;
+		if (!requestMediaRefresh) {
+			throw new HttpError(503, "Renderer media refresh is unavailable");
+		}
+		let result: ClaudeMediaRefreshResult | undefined;
+		await requireRendererMutation({
+			operation: "Renderer media refresh",
+			request: async () => {
+				result = await requestMediaRefresh({ projectId });
+			},
 		});
-		const result = await renameMediaFile(
-			req.params.projectId,
-			req.params.mediaId,
-			req.body.newName
-		);
-		scheduleProjectJsonAutoSync({ projectId: req.params.projectId });
 		return result;
+	});
+
+	// A media id follows its file name, so a rename gives the item a new id.
+	// The editor re-keys its item and points every clip at the new id before
+	// the rename counts; when it cannot, the file is put back. A rename that
+	// only moved the file left the clips on the old id, and the native export
+	// then left them out without a word. How the two are kept together when
+	// the editor does not follow is in claude-http-media-rename-settle.ts: the
+	// rename is noted before the file is moved, and not made when it cannot be.
+	router.patch("/api/claude/media/:projectId/:mediaId/rename", async (req) => {
+		const newName = req.body?.newName;
+		if (typeof newName !== "string" || !newName.trim())
+			throw new HttpError(400, "Missing 'newName' in request body");
+		const { projectId, mediaId } = req.params;
+		await assertProjectIsOpen({ accessor, projectId });
+		const requestMediaRename = accessor.requestMediaRename;
+		if (!requestMediaRename) {
+			throw new HttpError(
+				503,
+				"Renderer media rename acknowledgement is unavailable"
+			);
+		}
+		const { noteUnsettledMediaRename, forgetUnsettledMediaRename } = accessor;
+		if (!noteUnsettledMediaRename || !forgetUnsettledMediaRename) {
+			throw new HttpError(
+				503,
+				"Media renames cannot be noted here, so none is made"
+			);
+		}
+		// What this request says of a rename, it says in its own name: the
+		// app tells its rename from another request's between the same names.
+		const by = randomUUID();
+		const notes: MediaRenameNotes = {
+			noteUnsettledMediaRename: (payload) =>
+				noteUnsettledMediaRename({ ...payload, by }),
+			forgetUnsettledMediaRename: (payload) =>
+				forgetUnsettledMediaRename({ ...payload, by }),
+		};
+		const move = notedMove({ notes, projectId });
+		// `exactName` refuses a taken name instead of adding a suffix to it.
+		const exactName = req.body?.exactName === true;
+		let renamed: RenamedMediaFile;
+		let warning: string | undefined;
+		try {
+			try {
+				renamed = await renameMediaFileOnDisk({
+					projectId,
+					mediaId,
+					newName,
+					...(exactName ? { exactName } : {}),
+					beforeMove: move.beforeMove,
+					notMoved: move.notMoved,
+				});
+			} catch (error) {
+				if (error instanceof MediaNotFoundError) {
+					throw new HttpError(
+						404,
+						`${error.message} in project ${projectId} (see editor:media:list)`
+					);
+				}
+				throw error;
+			}
+			if (renamed.id !== renamed.previous.id) {
+				try {
+					await requireRendererMutation({
+						operation: "Renderer media rename",
+						request: () =>
+							requestMediaRename({
+								projectId,
+								mediaId: renamed.previous.id,
+								newMediaId: renamed.id,
+								newName: renamed.name,
+								newPath: renamed.path,
+							}),
+					});
+					// The editor is where the file is: nothing is left to settle.
+					await forgetSettledMediaRename({ notes, projectId, renamed });
+				} catch (error) {
+					// The file goes back under its old name and the failure is
+					// thrown; unless the file cannot go back and the editor then
+					// follows it, in which case the rename stands.
+					({ warning } = await settleUnfollowedMediaRename({
+						notes,
+						requestMediaRename,
+						projectId,
+						renamed,
+						error,
+					}));
+				}
+			}
+		} finally {
+			// This request moves the file no more: what is still noted is the
+			// editor's to settle from here on.
+			await move.left();
+		}
+		scheduleProjectJsonAutoSync({ projectId });
+		return {
+			renamed: renamed.id !== renamed.previous.id,
+			id: renamed.id,
+			name: renamed.name,
+			previousId: renamed.previous.id,
+			previousName: renamed.previous.name,
+			...(warning ? { warning } : {}),
+		};
 	});
 
 	router.post("/api/claude/media/:projectId/import-from-url", async (req) => {
@@ -2057,6 +2205,14 @@ export function registerSharedRoutes(
 						"editor:navigator:open, then retry the export."
 				);
 			}
+			// The editor reads again any media file that was written over in the
+			// project folder, so its preview, and a renderer export, hold what
+			// the folder holds. A native export reads the folder either way,
+			// and does not wait for the answer (which never rejects).
+			const mediaCheck = checkMediaBeforeExport({
+				accessor,
+				projectId: req.params.projectId,
+			});
 			const mediaFiles = await listMediaFilesWithRendererFallback({
 				projectId: req.params.projectId,
 				accessor,
@@ -2110,6 +2266,18 @@ export function registerSharedRoutes(
 				),
 			];
 			if (rendererExportReasons.length > 0) {
+				// The renderer draws from the editor's copies: with a stale one
+				// the file would hold an old picture or sound.
+				const staleCopies = staleCopiesOnTimeline({
+					check: await mediaCheck,
+					tracks: drawnTimeline.tracks,
+				});
+				if (staleCopies) {
+					throw new HttpError(
+						409,
+						`A renderer export would use the editor's old copies: ${staleCopies}.`
+					);
+				}
 				if (!accessor.requestLocalVideoExport) {
 					throw new HttpError(
 						503,
@@ -2133,6 +2301,10 @@ export function registerSharedRoutes(
 			});
 		} catch (error) {
 			if (error instanceof HttpError) throw error;
+			// The project has to change before this export can run: not a fault.
+			if (error instanceof ClipMediaMissingError) {
+				throw new HttpError(409, error.message);
+			}
 			throw new HttpError(
 				500,
 				error instanceof Error ? error.message : "Failed to start export"

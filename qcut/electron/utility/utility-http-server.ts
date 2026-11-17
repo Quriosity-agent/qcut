@@ -15,10 +15,14 @@ import {
 	type UpdateRecord,
 } from "../update-notice.js";
 import { createServer } from "node:http";
+import { httpRequestTimeoutMs } from "../claude/http/claude-http-request-timeout.js";
+import type { ClaudeMediaRefreshResult } from "../types/claude-media-bridge-api.js";
 import {
-	TIMELINE_BATCH_HTTP_TIMEOUT_MS,
-	TIMELINE_BATCH_ROUTE_PATTERN,
-} from "../claude/utils/timeline-batch-deadline.js";
+	MEDIA_RENAME_TIMEOUT_MS,
+	UTILITY_BRIDGE_MARGIN_MS,
+	mediaRefreshWaitMs,
+} from "../claude/handlers/claude-media-deadlines.js";
+import { makeRestrictedMetadataChangesThrough } from "../claude/handlers/claude-media-restricted-metadata.js";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
@@ -30,12 +34,10 @@ import { registerStateRoutes } from "../claude/http/claude-http-state-routes.js"
 import { registerQCutImportEvidenceRoutes } from "../claude/http/claude-http-import-evidence-routes.js";
 import { registerQCutSameProfileWritebackRoutes } from "../claude/http/claude-http-same-profile-writeback-routes.js";
 import {
-	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
 	JIANYING_PROJECT_IMPORT_ROUTE_TIMEOUT_MS,
 	registerQCutJianyingProjectImportRoutes,
 } from "../claude/http/claude-http-jianying-project-import-routes.js";
 import {
-	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
 	JIANYING_PROJECT_EXPORT_ROUTE_TIMEOUT_MS,
 	registerQCutJianyingProjectExportRoutes,
 } from "../claude/http/claude-http-jianying-project-export-routes.js";
@@ -115,23 +117,16 @@ import {
 	type UtilityRequestFromMain,
 } from "./utility-timeline-accessor.js";
 import { createUtilityLocalVideoExportAccessor } from "./utility-local-video-export-bridge.js";
+import {
+	mediaRenameNotesThroughMain,
+	restrictedMetadataChangesThroughMain,
+} from "./utility-media-requests.js";
 
 let server: Server | null = null;
 
 const REQUEST_TIMEOUT_MS = 120_000;
 /** Main may ask the editor (up to 5 s) before acting on a transaction (5 s). */
 const TRANSACTION_REQUEST_TIMEOUT_MS = 15_000;
-const LONG_RUNNING_ROUTE_PATHS = new Set([
-	JIANYING_PROJECT_IMPORT_ROUTE_PATH,
-	JIANYING_PROJECT_EXPORT_ROUTE_PATH,
-]);
-// The extra minute keeps the route-level 504 authoritative: the socket-level
-// 408 must never fire before the route's own deadline.
-const LONG_RUNNING_REQUEST_TIMEOUT_MS =
-	Math.max(
-		JIANYING_PROJECT_IMPORT_ROUTE_TIMEOUT_MS,
-		JIANYING_PROJECT_EXPORT_ROUTE_TIMEOUT_MS
-	) + 60_000;
 
 /** Window proxy shape returned by createWindowProxy */
 interface WindowProxy {
@@ -270,6 +265,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		claudeLog.warn("HTTP", "Server already running in utility process");
 		return;
 	}
+
+	// The main process makes every change to a restricted file's metadata;
+	// this one asks it (claude-media-restricted-metadata.ts says why).
+	makeRestrictedMetadataChangesThrough(
+		restrictedMetadataChangesThroughMain({ requestFromMain })
+	);
 
 	const router = createRouter();
 	const timelineMutationAccessor = createUtilityTimelineMutationAccessor({
@@ -442,6 +443,29 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		/** Removes media from the renderer and waits for persistence. */
 		requestMediaDelete: (payload) =>
 			requestFromMain("media:delete-renderer", { payload }) as Promise<void>,
+		/** Re-keys a renamed media item in the renderer and repoints its clips. */
+		// Each waits longer than the main process does (claude-media-deadlines):
+		// the bridge's usual 10 s would end first, and the route would undo a
+		// rename the editor was still making.
+		requestMediaRename: (payload) =>
+			requestFromMain(
+				"media:rename-renderer",
+				{ payload },
+				{ timeoutMs: MEDIA_RENAME_TIMEOUT_MS + UTILITY_BRIDGE_MARGIN_MS }
+			) as Promise<void>,
+		// The notes of renames are the main process's to keep.
+		...mediaRenameNotesThroughMain({ requestFromMain }),
+		/** Has the renderer read again the media files that changed on disk. */
+		requestMediaRefresh: (payload) =>
+			requestFromMain(
+				"media:refresh-renderer",
+				{ payload },
+				{
+					timeoutMs:
+						mediaRefreshWaitMs({ timeoutMs: payload.timeoutMs }) +
+						UTILITY_BRIDGE_MARGIN_MS,
+				}
+			) as Promise<ClaudeMediaRefreshResult>,
 		/** Executes batched cut operations through the bridge. */
 		executeBatchCuts: async (request) =>
 			(await requestFromMain("timeline:batch-cuts", {
@@ -1035,11 +1059,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			return;
 		}
 		const requestPath = (req.url ?? "").split("?")[0] ?? "";
-		const requestTimeoutMs = LONG_RUNNING_ROUTE_PATHS.has(requestPath)
-			? LONG_RUNNING_REQUEST_TIMEOUT_MS
-			: TIMELINE_BATCH_ROUTE_PATTERN.test(requestPath)
-				? TIMELINE_BATCH_HTTP_TIMEOUT_MS
-				: REQUEST_TIMEOUT_MS;
+		const requestTimeoutMs = httpRequestTimeoutMs({
+			path: requestPath,
+			usualMs: REQUEST_TIMEOUT_MS,
+		});
 		req.setTimeout(requestTimeoutMs, () => {
 			if (res.writableEnded || res.headersSent) return;
 			res.writeHead(408, { "Content-Type": "application/json" });

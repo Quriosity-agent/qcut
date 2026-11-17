@@ -83,15 +83,19 @@ export function resolveTimelineRange({
 }
 
 /**
- * A range export is the full export cut to the range. The pipeline keeps the
- * whole timeline's timing, so every overlay, transition and the mix land
- * where they do in a full export; only work that cannot reach the range is
- * left out:
+ * A range export is the full export cut to the range. Every overlay,
+ * transition and the mix land where they do in a full export; only work
+ * that cannot reach the range is left out:
  * - a clip whose picture cannot show in the range is encoded as black frames
  *   with its real sound (`segmentsShowingInRange`), because the mix needs
  *   all of it: a limiter, a reverb tail or a fade reaching into the range
- *   depends on what plays before it;
+ *   depends on what plays before it. These clips are encoded several at a
+ *   time (task-pool.ts);
  * - overlays and layers outside the range are dropped (`layersShowingInRange`);
+ * - the layers that are left are drawn on the clips around the range only,
+ *   not on the whole film (picture-window.ts); with a transition, a drawn
+ *   cursor or a keyframed grade in the timeline they are drawn on all of it,
+ *   as they used to be;
  * - after the picture passes the picture is cut to the range
  *   (`buildRangePictureArgs`), and the mix is cut from the same full-length
  *   mix a full export makes (export-audio-mix-pass.ts, export-audio-limiter.ts).

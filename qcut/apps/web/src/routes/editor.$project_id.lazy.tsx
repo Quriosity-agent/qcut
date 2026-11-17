@@ -8,6 +8,7 @@ import { AgentPointerOverlay } from "@/components/editor/agent-pointer-overlay";
 import { useProjectStore, NotFoundError } from "@/stores/project-store";
 import { usePlaybackControls } from "@/hooks/timeline/use-playback-controls";
 import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change";
+import { useRefreshChangedMedia } from "@/hooks/media/use-refresh-changed-media";
 import { useProjectJsonSync } from "@/hooks/use-project-json-sync";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug/debug-config";
@@ -63,6 +64,9 @@ function EditorPage() {
 
 	// Save timeline when page becomes hidden (tab switch, close, etc.)
 	useSaveOnVisibilityChange();
+
+	// Read again the media files that were written over in the project folder
+	useRefreshChangedMedia();
 
 	// Gap generation listener (fills timeline gaps with AI video)
 	useGapGeneration();

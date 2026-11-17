@@ -559,6 +559,11 @@ export interface TimelineStore {
 	clearTimeline: () => void;
 	/** Restore timeline tracks (for rollback on load failure) */
 	restoreTracks: (tracks: TimelineTrack[]) => void;
+	/**
+	 * Point every clip of media `fromId` at `toId` (a renamed file's new id),
+	 * undo and redo steps included. Returns the timeline clips changed.
+	 */
+	repointMediaReferences: (ids: { fromId: string; toId: string }) => number;
 	updateTextElement: (
 		trackId: string,
 		elementId: string,

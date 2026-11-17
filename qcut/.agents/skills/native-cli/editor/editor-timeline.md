@@ -810,6 +810,10 @@ qcut editor:timeline:toggle-play --project-id <id>
 qcut editor:timeline:seek --project-id <id> --time 15.0
 ```
 
+A seek shows its frame in the paused preview. With the pointer resting on
+the timeline the preview shows the hovered frame instead of the playhead's;
+a seek ends that hover preview until the pointer moves again.
+
 ---
 
 ## Editing Commands

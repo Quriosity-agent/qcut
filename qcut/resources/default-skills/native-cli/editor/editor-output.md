@@ -127,14 +127,23 @@ clips in it:
   a limiter, ducking, fade or effect reaching into the range hears what
   plays before it, as in the full export;
 - clips whose picture cannot show in the range are not decoded for their
-  picture (their sound still is), and overlays outside the range are not
-  drawn, which is where the time is saved;
+  picture (their sound still is, several clips at a time), and overlays
+  outside the range are not drawn;
+- the overlays, grades and text that are left are drawn on the clips around
+  the range only, not on the whole film. An overlay that began before those
+  clips is read from the matching instant of its file; a sticker, a text or
+  an overlay that moves over its length makes the drawn stretch start where
+  it starts. With a transition, a drawn cursor or a keyframed grade in the
+  timeline, the whole picture is drawn as before. The sound is still mixed
+  over the whole programme, which is most of what a short range now costs;
 - the picture in the range matches the full export frame for frame (it is
   encoded once more from the finished picture); the sound is the same mix,
   encoded on its own, so its AAC frames differ from the full export's.
 
 Native MP4 and MOV exports only: a GIF or MP3 range, or a timeline that
-exports through the renderer engine, is refused. A range outside the
+exports through the renderer engine, is refused (`--engine muxer` is that
+engine, so it does not help; the refusal names what in the timeline needs
+the renderer). A range outside the
 timeline is refused rather than cut to fit; one ending after the picture
 ends where the picture ends. The job reports the range it wrote (`range`)
 and the file's `duration`.
@@ -214,6 +223,26 @@ editor window refuses the option, naming what in the timeline sent it there.
   preview: tag the file. An HDR source (PQ or HLG) is not tone-mapped; it
   passes as it is, tags included, as before, and a timeline that mixes one
   with SDR clips still changes description where they meet.
+
+### Clips whose media is missing
+
+A native export stops before it starts when a clip's media is not in the
+project: the file was deleted from the project folder, or the clip points
+at a media id nothing has (older versions left such clips on the old id
+after a `media rename`). It used to leave the clip out and report
+`completed`. The error (HTTP 409) names every such clip, picture and sound:
+
+```
+2 clips play media that is not in the project, and the export would leave
+them out: "震屏01" (shake-1) at 41.7 s on track "动效 · 震屏" asks for
+media_…; hit-1 at 53.25 s on track "音效" asks for media_…. Nothing was
+exported. …
+```
+
+Import the media again, give the clip another file (`timeline
+replace-media`), delete the clip, or leave its track out with
+`--exclude-tracks`. A hidden clip, a hidden track and a muted sound track
+are not drawn or heard, so they do not stop the export.
 
 ### What the export checks itself
 

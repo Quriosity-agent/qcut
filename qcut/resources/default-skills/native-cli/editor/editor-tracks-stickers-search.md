@@ -257,9 +257,20 @@ libvpx. An overlay's sound goes into the mix on its own track (its level, pan,
 bus and mute); an overlay without sound adds nothing.
 
 The native engine cannot stack a transition into or out of an overlay,
-neural frame interpolation on one, or a text, caption, sticker, adjustment or
-effect layer below one that it overlaps. `auto` sends such a timeline to the
-renderer's muxer engine; `--engine native` is refused with the reason.
+neural frame interpolation on one, or a text, caption, sticker or effect
+layer below one that it overlaps. `auto` sends such a timeline to the
+renderer's muxer engine; `--engine native` is refused with the reason. The
+renderer engine takes none of the native export's overrides (a range, a
+bitrate or codec, `--keep-temp`, `--exclude-tracks`), with `--engine muxer`
+or without: it is the same engine.
+
+An **adjustment layer below an overlay** is drawn natively: it is graded
+inside the overlay pass, at its own track's place, so it grades the tracks
+below it and leaves the overlays above it alone (a vignette track over a
+whole-film grade, say). Text and stickers are drawn after the overlays, so
+such a layer goes to the renderer when they are involved: when it is above
+every text and sticker track, or has text or a sticker under it at the same
+time.
 
 **Muxer engine and preview.** VP9 alpha decodes with its alpha. Browsers
 cannot decode ProRes, QuickTime Animation or PNG MOV, so on import (or at the
@@ -391,7 +402,7 @@ confirmation.
 | `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/--normalized-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
 | `editor pointer drop-files` | `--files a.mp4,b.png` | targeting flags, `--modifiers`, `--wait-for` | Drop local files on a target as an external HTML5 file drop (media library import, file drop zones); background input only |
 | `editor windows` | — | — | List open QCut windows (id, title, focused, visible, bounds, `main`) for `--window-id` |
-| `editor windows focus` | — | `--window-id` | Bring a QCut window (the first by default) in front of the other apps; restores it when minimized or hidden |
+| `editor windows focus` | — | `--window-id` | Bring a QCut window (the first by default) in front of the other apps; restores it when minimized or hidden. The answer's `window.focused` is read once the focus has landed (it waits up to a second) |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
 
 ```bash

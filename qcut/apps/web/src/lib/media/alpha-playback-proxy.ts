@@ -125,6 +125,18 @@ export async function recordMediaAlpha({
 	}
 }
 
+/**
+ * Forget the verdict on one path: the file there was renamed or replaced,
+ * so what was learned about it describes another file.
+ */
+export function forgetMediaAlphaInspection({
+	localPath,
+}: {
+	localPath: string;
+}): void {
+	inspections.delete(localPath);
+}
+
 /** Test hook: forget earlier verdicts. */
 export function clearMediaAlphaInspections(): void {
 	inspections.clear();

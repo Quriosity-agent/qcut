@@ -10,6 +10,12 @@
  * covers what is under it like picture-in-picture. Only the final encode
  * turns the picture into yuv420p, and the sound is copied untouched.
  *
+ * An adjustment layer that lies under one of the overlays is graded in the
+ * same pass, at its own place in the stack: it grades what is drawn below it
+ * (the joined picture and the overlays on lower tracks) and leaves the
+ * overlays above it alone, as the preview stacks them. Graded over the
+ * finished picture instead, it would grade those overlays too.
+ *
  * @module electron/claude/handlers/claude-export-handler/media-overlay-pass
  */
 
@@ -20,9 +26,14 @@ import { probeVideoAlpha } from "../../../ffmpeg/video-alpha-probe.js";
 import {
 	ACCURATE_CONVERSION_STEP,
 	composePreparedVisualLayers,
+	type PreparedVisualLayer,
 } from "../../../ffmpeg/visual-layer-compositor.js";
 import { buildVideoTimelineLayers } from "../../../ffmpeg-video-transform.js";
 import { claudeLog } from "../../utils/logger.js";
+import {
+	type AdjustmentLayer,
+	adjustmentLayerGradeSteps,
+} from "./adjustment-layer-pass.js";
 import { formatShellArgs } from "./export-step-log.js";
 import {
 	type JoinedPictureColor,
@@ -65,6 +76,7 @@ export function buildMediaOverlayPassArgs({
 	inputPath,
 	outputPath,
 	overlays,
+	adjustmentLayers = [],
 	settings,
 	duration,
 	baseColor,
@@ -72,6 +84,8 @@ export function buildMediaOverlayPassArgs({
 	inputPath: string;
 	outputPath: string;
 	overlays: MediaOverlayInput[];
+	/** Graded inside the stack, each at its track's place (see above). */
+	adjustmentLayers?: AdjustmentLayer[];
 	settings: Pick<
 		ResolvedExportSettings,
 		"width" | "height" | "fps" | "codec" | "bitrate"
@@ -125,34 +139,54 @@ export function buildMediaOverlayPassArgs({
 	// millisecond-stamped WebM layers a frame or two early and others a
 	// frame late.
 	const exactSteps: string[] = [];
+	const gradeLayers: PreparedVisualLayer[] = adjustmentLayers.map(
+		(layer, index) => ({
+			inputLabel: "",
+			kind: "adjustment" as const,
+			trackOrder: layer.trackOrder,
+			// Layers of one track take turns; their order is their time.
+			elementOrder: index,
+			sourceOrder: overlays.length + 1 + index,
+			legacyOrder: 0,
+			blendMode: "normal" as const,
+			inlineSteps: ({ input, output, prefix }) =>
+				adjustmentLayerGradeSteps({
+					layer,
+					input,
+					output,
+					suffix: `_${prefix}`,
+				}) ?? [`[${input}]null[${output}]`],
+		})
+	);
+	const mediaLayers: PreparedVisualLayer[] = built.layers.map((layer) => {
+		const { segment } = overlays[layer.sourceIndex - 1];
+		const { firstFrame, frameCount } = overlayFrameWindow({
+			startTime: segment.startTime,
+			duration: segment.duration,
+			fps: settings.fps,
+		});
+		const exactLabel = `${layer.outputLabel}_exact`;
+		exactSteps.push(
+			`[${layer.outputLabel}]setpts=PTS-STARTPTS,` +
+				"tpad=stop_mode=clone:stop=-1," +
+				`trim=end_frame=${frameCount},` +
+				`setpts=PTS-STARTPTS+${firstFrame}/${settings.fps}/TB[${exactLabel}]`
+		);
+		return {
+			inputLabel: exactLabel,
+			kind: "video" as const,
+			trackOrder: layer.trackOrder,
+			elementOrder: layer.elementOrder,
+			sourceOrder: layer.sourceIndex,
+			legacyOrder: 0,
+			blendMode: layer.blendMode,
+			startTime: (firstFrame - 0.5) / settings.fps,
+			endTime: (firstFrame + frameCount - 0.5) / settings.fps,
+		};
+	});
 	const composed = composePreparedVisualLayers({
 		baseLabel: baseColor ? BASE_LABEL : "0:v",
-		layers: built.layers.map((layer) => {
-			const { segment } = overlays[layer.sourceIndex - 1];
-			const { firstFrame, frameCount } = overlayFrameWindow({
-				startTime: segment.startTime,
-				duration: segment.duration,
-				fps: settings.fps,
-			});
-			const exactLabel = `${layer.outputLabel}_exact`;
-			exactSteps.push(
-				`[${layer.outputLabel}]setpts=PTS-STARTPTS,` +
-					"tpad=stop_mode=clone:stop=-1," +
-					`trim=end_frame=${frameCount},` +
-					`setpts=PTS-STARTPTS+${firstFrame}/${settings.fps}/TB[${exactLabel}]`
-			);
-			return {
-				inputLabel: exactLabel,
-				kind: "video" as const,
-				trackOrder: layer.trackOrder,
-				elementOrder: layer.elementOrder,
-				sourceOrder: layer.sourceIndex,
-				legacyOrder: 0,
-				blendMode: layer.blendMode,
-				startTime: (firstFrame - 0.5) / settings.fps,
-				endTime: (firstFrame + frameCount - 0.5) / settings.fps,
-			};
-		}),
+		layers: [...mediaLayers, ...gradeLayers],
 		labelPrefix: "media_overlay",
 		canvasWidth: settings.width,
 		canvasHeight: settings.height,
@@ -242,6 +276,7 @@ export async function probeMediaOverlayInputs({
  */
 export async function runMediaOverlayPass({
 	overlays,
+	adjustmentLayers = [],
 	videoOutputPath,
 	tempDir,
 	settings,
@@ -251,6 +286,8 @@ export async function runMediaOverlayPass({
 	onProgress,
 }: {
 	overlays: ExportSegment[];
+	/** Graded inside the stack, each at its track's place. */
+	adjustmentLayers?: AdjustmentLayer[];
 	videoOutputPath: string;
 	tempDir: string;
 	settings: Pick<
@@ -274,14 +311,19 @@ export async function runMediaOverlayPass({
 		inputPath: sourcePath,
 		outputPath: videoOutputPath,
 		overlays: inputs,
+		adjustmentLayers,
 		settings,
 		duration,
 		baseColor: await probeJoinedPictureColor({ path: videoOutputPath }),
 	});
 	// The inputs too: the filter alone cannot be run again without them.
+	const graded =
+		adjustmentLayers.length > 0
+			? ` with ${adjustmentLayers.length} adjustment layer(s) graded between them`
+			: "";
 	claudeLog.info(
 		HANDLER_NAME,
-		`Drawing ${overlays.length} media overlay(s): ffmpeg ${formatShellArgs({ args: pass.args })}`
+		`Drawing ${overlays.length} media overlay(s)${graded}: ffmpeg ${formatShellArgs({ args: pass.args })}`
 	);
 	await moveFile({ from: videoOutputPath, to: sourcePath });
 	try {

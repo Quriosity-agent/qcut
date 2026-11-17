@@ -23,6 +23,8 @@ import { setupAudioMixHandlers } from "./claude-audio-mix-bridge";
 import { setupShotSplitHandlers } from "./claude-shot-split-bridge";
 import { setupBeatsHandlers } from "./claude-beats-bridge";
 import { setupTimeEditHandlers } from "./claude-time-edit-bridge";
+import { setupMediaRenameHandler } from "./claude-media-rename-bridge";
+import { setupMediaRefreshHandler } from "./claude-media-refresh-bridge";
 import {
 	decodeDeterministicMediaSourceName,
 	resolveMediaIdForBatchElement,
@@ -36,6 +38,7 @@ import {
 	readRequiredTimelineProjectId,
 } from "./claude-timeline-project-guard";
 import { parseStickerFileRuntime } from "@/lib/stickers/sticker-file-runtime";
+import { readWithSourceRecord } from "@/lib/project/media-source-stat";
 
 interface ClaudeImportedMediaEvent {
 	id: string;
@@ -298,7 +301,12 @@ export function setupClaudeTimelineBridge(): void {
 					data.name
 				);
 
-				const buffer = await platform().files.readFile(data.path);
+				// With what the bytes were copied from, and by when: the checks
+				// of the project folder go by that record.
+				const { bytes: buffer, sourceFile } = await readWithSourceRecord({
+					filePath: data.path,
+					read: () => platform().files.readFile(data.path),
+				});
 				assertMediaProjectIsActive({ projectId });
 				if (!buffer) throw new Error("Imported media could not be read");
 
@@ -320,9 +328,12 @@ export function setupClaudeTimelineBridge(): void {
 							animatedSticker: metadata?.animatedSticker === true,
 							file: fileObj,
 						});
-				const runtimeMetadata = stickerRuntime
+				const withRuntime = stickerRuntime
 					? { ...metadata, stickerRuntime }
 					: metadata;
+				const runtimeMetadata = sourceFile
+					? { ...withRuntime, sourceFile }
+					: withRuntime;
 
 				const { getOrCreateObjectURL, releaseObjectURL } = await import(
 					"@/lib/media/blob-manager"
@@ -388,6 +399,9 @@ export function setupClaudeTimelineBridge(): void {
 			await useMediaStore.getState().removeMediaItem(projectId, data.mediaId);
 		});
 	}
+
+	setupMediaRenameHandler({ media: claude.media });
+	setupMediaRefreshHandler({ media: claude.media });
 
 	setupRequestHandlers({ claudeAPI });
 

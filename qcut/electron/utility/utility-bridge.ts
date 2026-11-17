@@ -69,10 +69,17 @@ import {
 import { requestEditorStateSnapshotFromRenderer } from "../claude/handlers/claude-state-handler.js";
 import {
 	requestMediaDeleteFromRenderer,
+	requestMediaRefreshFromRenderer,
+	requestMediaRenameFromRenderer,
 	requestMediaImportFromRenderer,
 } from "../claude/handlers/claude-media-renderer-handler.js";
+import { noLongerAtWorkOnMediaRenames } from "../claude/handlers/claude-media-rename-note.js";
+import { answerMainRequest } from "./utility-main-requests.js";
+import { handleWindowFreeMediaRequest } from "./utility-media-bridge.js";
 import type {
 	ClaudeMediaDeletedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRenamedEvent,
 	ClaudeMediaImportedEvent,
 } from "../types/claude-media-bridge-api.js";
 import { requestQCutImportEvidenceFromRenderer } from "../claude/handlers/qcut-import-evidence-handler.js";
@@ -519,6 +526,12 @@ async function handleMainRequest(
 	const updateStatus = handleUpdateControlRequest({ channel, data });
 	if (updateStatus) return updateStatus;
 
+	// What follows is done here for the utility process and needs no window:
+	// a rename is noted, and a restricted file's metadata changed, also when
+	// the editor's window is gone.
+	const mediaAnswer = handleWindowFreeMediaRequest({ channel, data, deadline });
+	if (mediaAnswer) return mediaAnswer;
+
 	// Everything below talks to the editor, so a closed window is reopened
 	// rather than failing the request. Reopening can outlast the caller's
 	// wait, and a mutation it has given up on must not run afterwards.
@@ -588,6 +601,20 @@ async function handleMainRequest(
 				payload: Omit<ClaudeMediaDeletedEvent, "requestId">;
 			};
 			return requestMediaDeleteFromRenderer({ payload: req.payload, win });
+		}
+
+		case "media:refresh-renderer": {
+			const req = data as unknown as {
+				payload: Omit<ClaudeMediaRefreshEvent, "requestId">;
+			};
+			return requestMediaRefreshFromRenderer({ payload: req.payload, win });
+		}
+
+		case "media:rename-renderer": {
+			const req = data as unknown as {
+				payload: Omit<ClaudeMediaRenamedEvent, "requestId" | "deadlineAt">;
+			};
+			return requestMediaRenameFromRenderer({ payload: req.payload, win });
 		}
 
 		case "get-qcut-import-evidence": {
@@ -1226,29 +1253,14 @@ export function startUtilityProcess(): void {
 				}
 				break;
 
-			case "main-request": {
+			case "main-request":
 				// Utility process needs something from main
-				try {
-					const result = await handleMainRequest(
-						msg.channel,
-						msg.data,
-						msg.deadline
-					);
-					child.postMessage({
-						type: "main-response",
-						id: msg.id,
-						result,
-					});
-				} catch (err: unknown) {
-					const errMessage = err instanceof Error ? err.message : String(err);
-					child.postMessage({
-						type: "main-response",
-						id: msg.id,
-						error: errMessage,
-					});
-				}
+				await answerMainRequest({
+					message: msg,
+					handle: handleMainRequest,
+					post: (response) => child.postMessage(response),
+				});
 				break;
-			}
 
 			// PTY data/exit forwarded to the correct renderer
 			case "pty:data":
@@ -1311,6 +1323,8 @@ export function startUtilityProcess(): void {
 		utilityChild = null;
 		utilityReady = false;
 		stopHeartbeat();
+		// The renames it was making have ended with it.
+		noLongerAtWorkOnMediaRenames();
 
 		// Do not clear sessionRegistry -- we need it for re-spawning!
 		// But do notify renderers that sessions are temporarily unavailable

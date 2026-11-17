@@ -50,6 +50,8 @@ import type {
 import type {
 	ClaudeMediaDeletedEvent,
 	ClaudeMediaImportedEvent,
+	ClaudeMediaRefreshEvent,
+	ClaudeMediaRenamedEvent,
 } from "./types/claude-media-bridge-api.js";
 import {
 	CLAUDE_LOCAL_VIDEO_EXPORT_REQUEST_CHANNEL,
@@ -245,15 +247,19 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		failure,
 		requestId,
 		responseChannel,
+		result,
 		status,
 	}: {
 		failure?: unknown;
 		requestId: string | undefined;
 		responseChannel: string;
+		/** What the handler returned, for a request that asks for an answer. */
+		result?: unknown;
 		status: "ack" | "nack";
 	}): void => {
 		if (!requestId) return;
 		ipcRenderer.send(responseChannel, {
+			...(status === "ack" && result !== undefined ? { result } : {}),
 			...(status === "nack"
 				? {
 						error:
@@ -323,6 +329,57 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					}
 				);
 			},
+			onMediaRefresh: (callback) => {
+				ipcRenderer.removeAllListeners("claude:media:refresh");
+				ipcRenderer.on(
+					"claude:media:refresh",
+					async (_: IpcRendererEvent, data: ClaudeMediaRefreshEvent) => {
+						try {
+							const result = await callback(data);
+							sendRendererMutationResponse({
+								requestId: data.requestId,
+								responseChannel: "claude:media:refresh:response",
+								result,
+								status: "ack",
+							});
+						} catch (error) {
+							sendRendererMutationResponse({
+								failure: error,
+								requestId: data.requestId,
+								responseChannel: "claude:media:refresh:response",
+								status: "nack",
+							});
+						}
+					}
+				);
+			},
+			onMediaRenamed: (callback) => {
+				ipcRenderer.removeAllListeners("claude:media:renamed");
+				ipcRenderer.on(
+					"claude:media:renamed",
+					async (_: IpcRendererEvent, data: ClaudeMediaRenamedEvent) => {
+						try {
+							await callback(data);
+							sendRendererMutationResponse({
+								requestId: data.requestId,
+								responseChannel: "claude:media:renamed:response",
+								status: "ack",
+							});
+						} catch (error) {
+							sendRendererMutationResponse({
+								failure: error,
+								requestId: data.requestId,
+								responseChannel: "claude:media:renamed:response",
+								status: "nack",
+							});
+						}
+					}
+				);
+			},
+			unsettledRenames: (projectId) =>
+				ipcRenderer.invoke("claude:media:unsettled-renames", projectId),
+			forgetSettledRename: (request) =>
+				ipcRenderer.invoke("claude:media:forget-settled-rename", request),
 		},
 		search: {
 			loadTranscriptions: (projectId) =>

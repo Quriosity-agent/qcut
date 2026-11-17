@@ -75,6 +75,34 @@ vi.mock("../handlers/claude-state-handler.js", () => ({
 vi.mock("../handlers/claude-media-renderer-handler.js", () => ({
 	requestMediaImportFromRenderer: vi.fn(async () => undefined),
 	requestMediaDeleteFromRenderer: vi.fn(async () => undefined),
+	requestMediaRenameFromRenderer: vi.fn(async () => undefined),
+	requestMediaRefreshFromRenderer: vi.fn(async () => ({
+		checked: 0,
+		refreshed: [],
+		failed: [],
+	})),
+}));
+
+vi.mock("../handlers/claude-media-rename.js", () => {
+	class MediaNotFoundError extends Error {
+		constructor(mediaId: string) {
+			super(`Media not found: ${mediaId}`);
+			this.name = "MediaNotFoundError";
+		}
+	}
+	return {
+		MediaNotFoundError,
+		renameMediaFileOnDisk: vi.fn(async ({ mediaId }: { mediaId: string }) => {
+			throw new MediaNotFoundError(mediaId);
+		}),
+		undoMediaRename: vi.fn(async () => undefined),
+	};
+});
+
+// The app's notes of unsettled renames go into its own store on disk.
+vi.mock("../handlers/claude-media-rename-note.js", () => ({
+	noteUnsettledMediaRename: vi.fn(async () => undefined),
+	forgetUnsettledMediaRename: vi.fn(async () => undefined),
 }));
 
 vi.mock("../handlers/claude-media-restricted-metadata.js", () => ({
@@ -283,6 +311,8 @@ import * as projectHandler from "../handlers/claude-project-handler.js";
 import * as mediaHandler from "../handlers/claude-media-handler.js";
 import * as stateHandler from "../handlers/claude-state-handler.js";
 import * as mediaRendererHandler from "../handlers/claude-media-renderer-handler.js";
+import * as mediaRename from "../handlers/claude-media-rename.js";
+import * as mediaRenameNote from "../handlers/claude-media-rename-note.js";
 import * as mediaRestrictedMetadata from "../handlers/claude-media-restricted-metadata.js";
 import { notificationBridge } from "../notification-bridge";
 import { createFetch, createMockWindow } from "./claude-http-test-helpers";
@@ -309,12 +339,22 @@ function createPointerWindow({
 		async (_method: string, _params: Record<string, unknown>) => ({})
 	);
 	let debuggerAttached = false;
+	// Focus lands a moment after it is asked for, as it does on macOS.
+	let focused = false;
 	const mockWindow = {
 		isDestroyed: () => false,
 		isVisible: () => true,
-		isFocused: () => false,
+		isFocused: () => focused,
 		isMinimized: () => false,
 		focus,
+		once: (event: string, listener: () => void) => {
+			if (event !== "focus") return;
+			setTimeout(() => {
+				focused = true;
+				listener();
+			}, 0);
+		},
+		removeListener: vi.fn(),
 		show: vi.fn(),
 		showInactive: vi.fn(),
 		restore: vi.fn(),
@@ -384,6 +424,18 @@ describe("Claude HTTP Server", () => {
 		vi.mocked(mediaHandler.deleteMediaFile).mockResolvedValue(false);
 		vi.mocked(mediaHandler.renameMediaFile).mockReset();
 		vi.mocked(mediaHandler.renameMediaFile).mockResolvedValue(false);
+		vi.mocked(mediaRendererHandler.requestMediaRenameFromRenderer).mockReset();
+		vi.mocked(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).mockResolvedValue(undefined);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockReset();
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockImplementation(
+			async ({ mediaId }) => {
+				throw new mediaRename.MediaNotFoundError(mediaId);
+			}
+		);
+		vi.mocked(mediaRename.undoMediaRename).mockReset();
+		vi.mocked(mediaRename.undoMediaRename).mockResolvedValue(undefined);
 		vi.mocked(BrowserWindow.getAllWindows).mockReset();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([]);
 		vi.mocked(
@@ -1078,7 +1130,274 @@ describe("Claude HTTP Server", () => {
 
 		expect(res.status).toBe(409);
 		expect(res.body.error).toContain("proj_open");
-		expect(mediaHandler.renameMediaFile).not.toHaveBeenCalled();
+		expect(mediaRename.renameMediaFileOnDisk).not.toHaveBeenCalled();
+	});
+
+	const RENAMED = {
+		previous: {
+			id: "media_old",
+			name: "shake.mp4",
+			path: "/mock/project/media/shake.mp4",
+		},
+		id: "media_new",
+		name: "shake_v2.mp4",
+		path: "/mock/project/media/shake_v2.mp4",
+	};
+
+	it("a media rename has the editor re-key its item and repoint the clips", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake_v2" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual({
+			renamed: true,
+			id: "media_new",
+			name: "shake_v2.mp4",
+			previousId: "media_old",
+			previousName: "shake.mp4",
+		});
+		expect(mediaRename.renameMediaFileOnDisk).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			mediaId: "media_old",
+			newName: "shake_v2",
+			// The rename is noted before the file is moved.
+			beforeMove: expect.any(Function),
+			notMoved: expect.any(Function),
+		});
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).toHaveBeenCalledWith({
+			payload: {
+				projectId: "proj_123",
+				mediaId: "media_old",
+				newMediaId: "media_new",
+				newName: "shake_v2.mp4",
+				newPath: "/mock/project/media/shake_v2.mp4",
+			},
+			win: mockWindow,
+		});
+		expect(mediaRename.undoMediaRename).not.toHaveBeenCalled();
+	});
+
+	it("passes on a rename that must land on the exact name or not at all", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockRejectedValueOnce(
+			new Error("shake.mp4 is already taken in the project's media folder")
+		);
+
+		const res = await fetch("/api/claude/media/proj_123/media_new/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake.mp4", exactName: true }),
+		});
+
+		expect(mediaRename.renameMediaFileOnDisk).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			mediaId: "media_new",
+			newName: "shake.mp4",
+			exactName: true,
+			beforeMove: expect.any(Function),
+			notMoved: expect.any(Function),
+		});
+		expect(res.status).toBe(500);
+		expect(res.body.error).toContain("already taken");
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).not.toHaveBeenCalled();
+	});
+
+	it("puts the file back when the editor cannot follow the rename", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
+		vi.mocked(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).mockRejectedValueOnce(new Error("Quota exceeded"));
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake_v2" }),
+		});
+
+		expect(res.status).toBe(409);
+		expect(res.body.error).toContain("Quota exceeded");
+		expect(mediaRename.undoMediaRename).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			renamed: RENAMED,
+		});
+	});
+
+	/**
+	 * The editor is on the old id and the file keeps the new name: the
+	 * clips would be on an id no file has. The editor is asked to follow
+	 * the file, and the rename stands when it does.
+	 */
+	it("has the editor follow a file that could not be put back", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
+		vi.mocked(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).mockRejectedValueOnce(new Error("Quota exceeded"));
+		vi.mocked(mediaRename.undoMediaRename).mockRejectedValueOnce(
+			new Error("shake.mp4 was taken again")
+		);
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake_v2" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({
+			renamed: true,
+			id: "media_new",
+			name: "shake_v2.mp4",
+			previousId: "media_old",
+		});
+		expect(res.body.data.warning).toContain("shake.mp4 was taken again");
+		expect(res.body.data.warning).toContain("the rename stands");
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				payload: expect.objectContaining({
+					mediaId: "media_old",
+					newMediaId: "media_new",
+					newPath: RENAMED.path,
+					settles: true,
+				}),
+			})
+		);
+		// Noted while it was open, and no longer.
+		expect(mediaRenameNote.noteUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			renamed: RENAMED,
+			stage: "stays",
+			by: expect.any(String),
+		});
+		expect(mediaRenameNote.forgetUnsettledMediaRename).toHaveBeenCalledWith({
+			projectId: "proj_123",
+			renamed: RENAMED,
+			by: expect.any(String),
+		});
+	});
+
+	it("says so when the file could not be put back and the editor does not follow it", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce(RENAMED);
+		vi.mocked(mediaRendererHandler.requestMediaRenameFromRenderer)
+			.mockRejectedValueOnce(new Error("Quota exceeded"))
+			.mockRejectedValueOnce(new Error("Quota exceeded"));
+		vi.mocked(mediaRename.undoMediaRename).mockRejectedValueOnce(
+			new Error("shake.mp4 was taken again")
+		);
+		vi.mocked(mediaRenameNote.forgetUnsettledMediaRename).mockClear();
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake_v2" }),
+		});
+
+		expect(res.status).toBe(500);
+		expect(res.body.error).toContain("stays renamed to shake_v2.mp4");
+		expect(res.body.error).toContain("shake.mp4 was taken again");
+		expect(res.body.error).toContain(
+			"did not confirm that it follows the renamed file"
+		);
+		expect(res.body.error).toContain("when the project is next opened");
+		expect(mediaRenameNote.forgetUnsettledMediaRename).not.toHaveBeenCalled();
+	});
+
+	it("does not trouble the editor when the file already has that name", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		vi.mocked(mediaRename.renameMediaFileOnDisk).mockResolvedValueOnce({
+			previous: RENAMED.previous,
+			...RENAMED.previous,
+		});
+
+		const res = await fetch("/api/claude/media/proj_123/media_old/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "shake.mp4" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toMatchObject({ renamed: false, id: "media_old" });
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).not.toHaveBeenCalled();
+	});
+
+	it("POST /api/claude/media/:projectId/refresh has the editor read changed files again", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+		const refreshed = {
+			checked: 197,
+			refreshed: [{ id: "media_shake", name: "shake.mp4" }],
+			failed: [],
+		};
+		vi.mocked(
+			mediaRendererHandler.requestMediaRefreshFromRenderer
+		).mockResolvedValueOnce(refreshed);
+
+		const res = await fetch("/api/claude/media/proj_123/refresh", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual(refreshed);
+		expect(
+			mediaRendererHandler.requestMediaRefreshFromRenderer
+		).toHaveBeenCalledWith({
+			payload: { projectId: "proj_123" },
+			win: mockWindow,
+		});
+
+		// Only the open project has copies in the editor to bring up to date.
+		vi.mocked(
+			stateHandler.requestEditorStateSnapshotFromRenderer
+		).mockResolvedValueOnce({
+			version: 1,
+			timestamp: Date.now(),
+			state: {
+				project: { activeProject: { id: "proj_open" } },
+				media: { items: [] },
+			},
+		});
+		const other = await fetch("/api/claude/media/proj_other/refresh", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+		expect(other.status).toBe(409);
+	});
+
+	it("answers 404 to a rename or a lookup of media that is not in the project", async () => {
+		const mockWindow = createMockWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+
+		const rename = await fetch("/api/claude/media/proj_123/media_gone/rename", {
+			method: "PATCH",
+			body: JSON.stringify({ newName: "anything.mp4" }),
+		});
+		expect(rename.status).toBe(404);
+		expect(rename.body.error).toContain("Media not found: media_gone");
+		expect(
+			mediaRendererHandler.requestMediaRenameFromRenderer
+		).not.toHaveBeenCalled();
+
+		// It used to answer 200 with no data, which reads as "found, and empty".
+		const info = await fetch("/api/claude/media/proj_123/media_gone");
+		expect(info.status).toBe(404);
+		expect(info.body.error).toContain("Media not found: media_gone");
 	});
 
 	it("GET /api/claude/export/presets returns preset list", async () => {
@@ -1368,8 +1687,13 @@ describe("Claude HTTP Server", () => {
 				body: JSON.stringify({ windowId: 2 }),
 			});
 			expect(focused.status).toBe(200);
+			// Described once the focus has landed, not as it was when asked.
 			expect(focused.body.data).toEqual({
-				window: expect.objectContaining({ id: 2, title: "Filter Lab" }),
+				window: expect.objectContaining({
+					id: 2,
+					title: "Filter Lab",
+					focused: true,
+				}),
 				restored: false,
 			});
 			expect(second.focus).toHaveBeenCalledTimes(1);

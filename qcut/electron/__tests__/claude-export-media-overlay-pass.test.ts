@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import {
+	type AdjustmentLayer,
+	adjustmentLayersUnderOverlays,
+} from "../claude/handlers/claude-export-handler/adjustment-layer-pass.js";
 import { buildMediaOverlayPassArgs } from "../claude/handlers/claude-export-handler/media-overlay-pass.js";
 import type { ExportSegment } from "../claude/handlers/claude-export-handler/types.js";
+import { DEFAULT_VIDEO_COLOR_SETTINGS } from "../ffmpeg/color-settings.js";
 import { isConstantExpression } from "../ffmpeg/keyframe-expression.js";
 
 const SETTINGS = {
@@ -185,6 +190,148 @@ describe("buildMediaOverlayPassArgs", () => {
 			})
 		).filterComplex;
 		expect(fading.match(/geq=/g)).toHaveLength(1);
+	});
+});
+
+describe("an adjustment layer in the overlay stack", () => {
+	const color = structuredClone(DEFAULT_VIDEO_COLOR_SETTINGS);
+	color.enabled = true;
+	color.basic = { ...color.basic, enabled: true, saturation: -100 };
+	const layer = (trackOrder: number): AdjustmentLayer => ({
+		elementId: `grade-${trackOrder}`,
+		trackOrder,
+		startTime: 1,
+		endTime: 2,
+		color,
+		opacity: 1,
+		aboveOverlays: false,
+	});
+	const stack = (adjustmentLayers: AdjustmentLayer[]) =>
+		buildMediaOverlayPassArgs({
+			inputPath: "/tmp/video-before-media-overlays.mp4",
+			outputPath: "/tmp/out.mp4",
+			overlays: [
+				{ segment: clip({ elementId: "top", trackOrder: 0 }), alpha: null },
+				{ segment: clip({ elementId: "low", trackOrder: 2 }), alpha: null },
+			],
+			adjustmentLayers,
+			settings: SETTINGS,
+			duration: 5,
+		}).filterComplex.split(";");
+	/** The stack's steps in the order they draw, by what each one outputs. */
+	const drawn = (steps: string[]) =>
+		steps
+			.map((step) => /\[(media_overlay_\w+_\d+)_composite\]$/.exec(step)?.[1])
+			.filter((label): label is string => label !== undefined);
+
+	it("is graded after the tracks below it and before the tracks above it", () => {
+		const steps = stack([layer(1)]);
+		expect(drawn(steps)).toEqual([
+			"media_overlay_video_0",
+			"media_overlay_adjustment_1",
+			"media_overlay_video_2",
+		]);
+		// The lower overlay's picture goes into the grade.
+		expect(steps).toContain(
+			"[media_overlay_video_0_composite]split=2[adj_b_media_overlay_adjustment_1][adj_s_media_overlay_adjustment_1]"
+		);
+		// The upper overlay is drawn on the graded picture.
+		expect(
+			steps.some((step) =>
+				step.startsWith("[media_overlay_adjustment_1_composite][")
+			)
+		).toBe(true);
+		expect(
+			steps.find((step) =>
+				step.endsWith("[media_overlay_adjustment_1_composite]")
+			)
+		).toBe(
+			"[adj_b_media_overlay_adjustment_1][adj_g_media_overlay_adjustment_1]overlay=enable='between(t,1,2)'[media_overlay_adjustment_1_composite]"
+		);
+	});
+
+	it("takes its place by its track among the overlays", () => {
+		expect(drawn(stack([layer(3)]))).toEqual([
+			"media_overlay_adjustment_0",
+			"media_overlay_video_1",
+			"media_overlay_video_2",
+		]);
+		expect(drawn(stack([layer(-1), layer(1)]))).toEqual([
+			"media_overlay_video_0",
+			"media_overlay_adjustment_1",
+			"media_overlay_video_2",
+			"media_overlay_adjustment_3",
+		]);
+	});
+
+	it("leaves the stack as it was when no layer is graded in it", () => {
+		expect(stack([])).toEqual(
+			buildMediaOverlayPassArgs({
+				inputPath: "/tmp/video-before-media-overlays.mp4",
+				outputPath: "/tmp/out.mp4",
+				overlays: [
+					{ segment: clip({ elementId: "top", trackOrder: 0 }), alpha: null },
+					{ segment: clip({ elementId: "low", trackOrder: 2 }), alpha: null },
+				],
+				settings: SETTINGS,
+				duration: 5,
+			}).filterComplex.split(";")
+		);
+	});
+
+	it("passes the picture through a layer whose grade changes nothing", () => {
+		const neutral = {
+			...layer(1),
+			color: structuredClone(DEFAULT_VIDEO_COLOR_SETTINGS),
+		};
+		expect(stack([neutral])).toContain(
+			"[media_overlay_video_0_composite]null[media_overlay_adjustment_1_composite]"
+		);
+	});
+});
+
+describe("adjustmentLayersUnderOverlays", () => {
+	const layer = {
+		trackOrder: 1,
+		startTime: 10,
+		endTime: 20,
+	} as AdjustmentLayer;
+	const overlay = (
+		trackOrder: number,
+		startTime: number,
+		duration: number
+	) => ({
+		trackOrder,
+		startTime,
+		duration,
+	});
+
+	it("is true for a layer under an overlay it shares time with", () => {
+		expect(
+			adjustmentLayersUnderOverlays({
+				layers: [layer],
+				overlays: [overlay(0, 15, 10)],
+				fps: 24,
+			})
+		).toBe(true);
+	});
+
+	it("is false when the overlay is below the layer, or they only meet at a cut", () => {
+		expect(
+			adjustmentLayersUnderOverlays({
+				layers: [layer],
+				overlays: [overlay(2, 15, 10)],
+				fps: 24,
+			})
+		).toBe(false);
+		// Ends where the layer starts, give or take under half a frame.
+		expect(
+			adjustmentLayersUnderOverlays({
+				layers: [layer],
+				overlays: [overlay(0, 0, 10.01), overlay(0, 20, 5)],
+				fps: 24,
+			})
+		).toBe(false);
 	});
 });
 

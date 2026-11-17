@@ -101,6 +101,111 @@ describe("mediaOverlayRendererReason", () => {
 		);
 	});
 
+	/**
+	 * A vignette over the whole film, an adjustment layer under it, the film
+	 * under that: the grade belongs to the film and not to the vignette.
+	 */
+	it("lets the native export take an adjustment layer under an overlay", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("vignette", 0, 15)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 15 }],
+				},
+				{ type: "media", elements: [media("main", 0, 15)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+		// Text above them all is drawn last either way.
+		timeline.tracks.unshift({
+			type: "text",
+			elements: [{ type: "text", startTime: 1, endTime: 2 }],
+		});
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	it("keeps an adjustment layer for the renderer when its grade would have to wait for text under it", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("vignette", 0, 10)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 20 }],
+				},
+				// Not under the vignette in time, so the text itself is no reason.
+				{
+					type: "text",
+					elements: [{ type: "text", startTime: 15, endTime: 18 }],
+				},
+				{ type: "media", elements: [media("main", 0, 20)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an adjustment layer that is under a media clip stacked over a lower track and over a text or sticker layer"
+		);
+		// A hidden text track is not drawn, so nothing has to wait for it.
+		(timeline.tracks[2] as { hidden?: boolean }).hidden = true;
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	/**
+	 * Text above the layer and text below it: the layer is not above every
+	 * text track, so its grade is made inside the overlay pass, before any
+	 * text is drawn. The text under it would come out ungraded, where the
+	 * renderer, which this timeline went to before, grades it.
+	 */
+	it("keeps the renderer when a text or sticker under the layer shares time with it", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{
+					type: "text",
+					elements: [{ type: "text", startTime: 0, endTime: 4 }],
+				},
+				{ type: "media", elements: [media("vignette", 0, 10)] },
+				{
+					type: "adjustment",
+					elements: [{ type: "adjustment", startTime: 0, endTime: 10 }],
+				},
+				{
+					type: "sticker",
+					elements: [{ type: "sticker", startTime: 2, endTime: 3 }],
+				},
+				{ type: "media", elements: [media("main", 0, 20)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an adjustment layer that is under a media clip stacked over a lower track and over a text or sticker layer"
+		);
+		// At another time than the layer, the sticker is not the layer's to grade.
+		timeline.tracks[3].elements[0] = {
+			type: "sticker",
+			startTime: 12,
+			endTime: 14,
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBeNull();
+	});
+
+	it("says 'an' before a vowel", () => {
+		const timeline = {
+			fps: 24,
+			tracks: [
+				{ type: "media", elements: [media("overlay", 1, 3)] },
+				{
+					type: "effect",
+					elements: [{ type: "effect", startTime: 2, endTime: 3 }],
+				},
+				{ type: "media", elements: [media("main", 0, 15)] },
+			],
+		};
+		expect(mediaOverlayRendererReason({ timeline })).toBe(
+			"an effect layer under a media clip stacked over a lower track"
+		);
+	});
+
 	it("names a transition on an overlay", () => {
 		const timeline = overlayTimeline();
 		timeline.tracks[0] = {

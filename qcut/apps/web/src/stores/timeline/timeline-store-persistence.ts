@@ -20,6 +20,7 @@ import type { TimelineStore } from "./index";
 import type { StoreGet, StoreSet } from "./timeline-store-operations";
 import { normalizeLoadedTracks } from "./timeline-store-normalization";
 import { clearAutoSaveTimer } from "./timeline-store-autosave";
+import { repointMediaReferences } from "./media-references";
 import {
 	captureTimelineHistorySnapshot,
 	restoreTimelinePlayhead,
@@ -279,6 +280,38 @@ export function createPersistenceOperations(
 		restoreTracks: (tracks: TimelineTrack[]) => {
 			debugLog(`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`);
 			updateTracks(tracks);
+		},
+
+		repointMediaReferences: ({ fromId, toId }) => {
+			const repointed = repointMediaReferences({
+				tracks: get()._tracks,
+				fromId,
+				toId,
+			});
+			// The undo and redo steps hold tracks of their own. Left on the old
+			// id, an undo after the rename would bring that id back to the
+			// timeline, for media the project no longer has under it.
+			let snapshotsChanged = false;
+			const inSnapshots = (
+				snapshots: TimelineStore["history"]
+			): TimelineStore["history"] =>
+				snapshots.map((snapshot) => {
+					const tracks = repointMediaReferences({
+						tracks: snapshot.tracks,
+						fromId,
+						toId,
+					});
+					if (tracks.changed === 0) return snapshot;
+					snapshotsChanged = true;
+					return { ...snapshot, tracks: tracks.tracks };
+				});
+			const history = inSnapshots(get().history);
+			const redoStack = inSnapshots(get().redoStack);
+			if (snapshotsChanged) set({ history, redoStack });
+			// No undo step of its own: undoing would point the clips back at
+			// an id that is no longer in the project.
+			if (repointed.changed > 0) updateTracksAndSave(repointed.tracks);
+			return repointed.changed;
 		},
 	} satisfies Partial<TimelineStore>;
 }
