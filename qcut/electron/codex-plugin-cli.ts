@@ -46,6 +46,8 @@ const OFFICIAL_REPOSITORY_URLS = new Set([
 	"git@github.com:Quriosity-agent/qcut.git",
 ]);
 const execFileAsync = promisify(execFile);
+const DEFAULT_OUTPUT_LIMIT = 4 * 1024 * 1024;
+const AVAILABLE_PLUGIN_OUTPUT_LIMIT = 32 * 1024 * 1024;
 
 export function createCodexInvocation({
 	candidate,
@@ -211,16 +213,26 @@ async function resolveCodexInvocation(): Promise<CodexInvocation> {
 	throw new CodexCliUnavailableError();
 }
 
-export function createDefaultCodexRunner(): RunCodex {
-	let invocation: CodexInvocation | undefined;
+export function createDefaultCodexRunner({
+	initialInvocation,
+}: {
+	initialInvocation?: CodexInvocation;
+} = {}): RunCodex {
+	let invocation = initialInvocation;
 	return async ({ args }) => {
 		invocation ??= await resolveCodexInvocation();
+		const listsAvailablePlugins =
+			args[0] === "plugin" &&
+			args[1] === "list" &&
+			args.includes("--available");
 		const { stdout } = await execFileAsync(
 			invocation.executable,
 			[...invocation.prefixArgs, ...args],
 			{
 				encoding: "utf8",
-				maxBuffer: 4 * 1024 * 1024,
+				maxBuffer: listsAvailablePlugins
+					? AVAILABLE_PLUGIN_OUTPUT_LIMIT
+					: DEFAULT_OUTPUT_LIMIT,
 				timeout: 120_000,
 			}
 		);
