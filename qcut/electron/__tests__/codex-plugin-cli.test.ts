@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createCodexInvocation, parseCodexOutput } from "../codex-plugin-cli";
+import {
+	createCodexInvocation,
+	createDefaultCodexRunner,
+	findAvailablePlugin,
+	parseCodexOutput,
+	type CodexPluginList,
+} from "../codex-plugin-cli";
 
 describe("Codex CLI invocation", () => {
 	it("runs Windows command shims through the command processor", () => {
@@ -66,5 +72,40 @@ describe("Codex CLI output", () => {
 		expect(() =>
 			parseCodexOutput({ stdout: "warning: unsupported flag" })
 		).toThrow("Codex CLI returned invalid JSON output");
+	});
+});
+
+describe("Codex CLI runner", () => {
+	const qcutPlugin = {
+		pluginId: "qcut@custom",
+		name: "qcut",
+		marketplaceName: "custom",
+		version: "1.0.0",
+	};
+	const script = `process.stdout.write(JSON.stringify({
+		available: [
+			{ name: "other", description: "x".repeat(7 * 1024 * 1024) },
+			${JSON.stringify(qcutPlugin)},
+		],
+	}));`;
+	const runCodex = createDefaultCodexRunner({
+		initialInvocation: {
+			executable: process.execPath,
+			prefixArgs: ["-e", script, "--"],
+		},
+	});
+
+	it("finds QCut at the end of a marketplace response larger than 4 MiB", async () => {
+		const list = (await runCodex({
+			args: ["plugin", "list", "--available", "--json"],
+		})) as CodexPluginList;
+
+		expect(findAvailablePlugin({ list })).toEqual(qcutPlugin);
+	});
+
+	it("keeps the regular output limit for other commands", async () => {
+		await expect(
+			runCodex({ args: ["plugin", "list", "--json"] })
+		).rejects.toMatchObject({ code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" });
 	});
 });
