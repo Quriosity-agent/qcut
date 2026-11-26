@@ -9,7 +9,7 @@
  * `dist:*` build; exits non-zero when a package is missing.
  *
  * Usage:
- *   bun scripts/verify-packaged-dependencies.ts [path/to/app.asar]
+ *   bun scripts/verify-packaged-dependencies.ts [--linux-pty] [path/to/app.asar]
  *   (default: newest app.asar under the dist output directories)
  */
 
@@ -111,7 +111,9 @@ function readAsarPackageNames(asarPath: string): Set<string> {
 	}
 }
 
-const asarPath = process.argv[2] ?? findDefaultAsar();
+const args = process.argv.slice(2);
+const verifyLinuxPty = args.includes("--linux-pty");
+const asarPath = args.find((arg) => arg !== "--linux-pty") ?? findDefaultAsar();
 if (!asarPath || !fs.existsSync(asarPath)) {
 	console.error("✗ No app.asar found — pass a path or run a dist build first.");
 	process.exit(2);
@@ -137,3 +139,28 @@ if (missing.length > 0) {
 	process.exit(1);
 }
 console.log("✓ All required packages present in app.asar.");
+
+if (verifyLinuxPty) {
+	const addonRoot = path.join(
+		`${asarPath}.unpacked`,
+		"node_modules",
+		"node-pty"
+	);
+	// node-pty checks the source build first, then the target's prebuild.
+	const packagedAddon = [
+		"build/Release/pty.node",
+		"prebuilds/linux-x64/pty.node",
+	]
+		.map((candidate) => path.join(addonRoot, candidate))
+		.find((candidate) => {
+			const stat = fs.statSync(candidate, { throwIfNoEntry: false });
+			return stat?.isFile() && stat.size > 0;
+		});
+	if (!packagedAddon) {
+		console.error(
+			`✗ Missing Linux x64 node-pty native addon under ${addonRoot}.`
+		);
+		process.exit(1);
+	}
+	console.log(`✓ Linux x64 node-pty addon present: ${packagedAddon}`);
+}
