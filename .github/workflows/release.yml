@@ -429,12 +429,12 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --linux --publish never --config.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --linux --publish never --config.npmRebuild=true --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify packaged dependencies
-        run: bun run verify:packaged-dependencies
+        run: bun run verify:packaged-dependencies --linux-pty
 
       - name: Verify packaged RIFE host
         run: bun run verify:packaged-rife
